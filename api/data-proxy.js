@@ -21,10 +21,7 @@
 const { createClient } = require('@supabase/supabase-js');
 
 // Service-role client for privileged operations
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
 // Anon client for JWT verification
 const supabaseAuth = createClient(
@@ -38,55 +35,155 @@ const supabaseAuth = createClient(
 
 /** Tables that can be queried via the proxy */
 const ALLOWED_TABLES = new Set([
-  'awards', 'organisations', 'entries', 'winners', 'events',
-  'invoices', 'payments', 'award_assignments', 'contacts',
-  'activity_log', 'email_templates', 'user_preferences',
-  'counties', 'regions', 'award_years', 'judges', 'votes',
-  'email_lists', 'email_list_members', 'email_campaigns',
-  'sponsorship_packages', 'tickets', 'ticket_types',
-  'seating_tables', 'seating_assignments', 'documents',
-  'media', 'notifications', 'webhooks', 'tenant_branding',
-  'organisation_notes', 'organisation_documents',
-  'organisation_custom_fields', 'organisation_follow_ups',
-  'organisation_relationships', 'organisation_comms_log',
-  'org_audit_log', 'organisation_images', 'organisation_contacts',
-  'org_activity_notes', 'event_galleries',
-  'entry_revisions', 'winner_announcements', 'calendar_events',
-  'report_schedules', 'api_request_logs', 'ip_blocklist',
-  'rate_limit_alerts', 'rate_limit_config', 'social_media_posts',
-  'notification_queue', 'judge_scores', 'email_log', 'public_votes',
-  'gdpr_requests', 'media_gallery', 'media_items', 'cms_audit_logs',
-  'table_assignments', 'event_room_fixtures', 'event_milestones',
-  'meeting_notes', 'organisation_segments', 'contact_segments',
-  'banners', 'sponsors', 'tenants', 'cms_config', 'shortlists',
-  'notification_preferences', 'communications', 'deals',
-  'user_roles', 'organisations_with_crm_summary'
+  'awards',
+  'organisations',
+  'entries',
+  'winners',
+  'events',
+  'invoices',
+  'payments',
+  'award_assignments',
+  'contacts',
+  'activity_log',
+  'email_templates',
+  'user_preferences',
+  'counties',
+  'regions',
+  'award_years',
+  'judges',
+  'votes',
+  'email_lists',
+  'email_list_members',
+  'email_campaigns',
+  'sponsorship_packages',
+  'tickets',
+  'ticket_types',
+  'seating_tables',
+  'seating_assignments',
+  'documents',
+  'media',
+  'notifications',
+  'webhooks',
+  'tenant_branding',
+  'organisation_notes',
+  'organisation_documents',
+  'organisation_custom_fields',
+  'organisation_follow_ups',
+  'organisation_relationships',
+  'organisation_comms_log',
+  'org_audit_log',
+  'organisation_images',
+  'organisation_contacts',
+  'org_activity_notes',
+  'event_galleries',
+  'entry_revisions',
+  'entry_files',
+  'winner_announcements',
+  'calendar_events',
+  'report_schedules',
+  'api_request_logs',
+  'ip_blocklist',
+  'rate_limit_alerts',
+  'rate_limit_config',
+  'social_media_posts',
+  'notification_queue',
+  'judge_scores',
+  'email_log',
+  'public_votes',
+  'gdpr_requests',
+  'media_gallery',
+  'media_items',
+  'cms_audit_logs',
+  'table_assignments',
+  'event_room_fixtures',
+  'event_milestones',
+  'meeting_notes',
+  'organisation_segments',
+  'contact_segments',
+  'banners',
+  'sponsors',
+  'tenants',
+  'cms_config',
+  'shortlists',
+  'notification_preferences',
+  'communications',
+  'deals',
+  'user_roles',
+  'organisations_with_crm_summary',
 ]);
 
 /** Tables that can be mutated (insert/update/delete/upsert) */
 const MUTABLE_TABLES = new Set([
-  'awards', 'organisations', 'entries', 'winners', 'events',
-  'invoices', 'payments', 'award_assignments', 'contacts',
-  'activity_log', 'email_templates', 'user_preferences',
-  'judges', 'votes', 'email_lists', 'email_list_members',
-  'email_campaigns', 'sponsorship_packages', 'tickets',
-  'ticket_types', 'seating_tables', 'seating_assignments',
-  'documents', 'media', 'notifications', 'webhooks',
-  'tenant_branding', 'organisation_notes',
-  'organisation_documents', 'organisation_custom_fields',
-  'organisation_follow_ups', 'organisation_relationships',
-  'organisation_comms_log', 'org_audit_log',
-  'organisation_images', 'organisation_contacts',
-  'org_activity_notes', 'event_galleries', 'entry_revisions',
-  'winner_announcements', 'calendar_events', 'report_schedules',
-  'api_request_logs', 'ip_blocklist', 'rate_limit_alerts',
-  'rate_limit_config', 'social_media_posts', 'notification_queue',
-  'judge_scores', 'email_log', 'public_votes', 'gdpr_requests',
-  'media_gallery', 'media_items', 'cms_audit_logs',
-  'table_assignments', 'event_room_fixtures', 'event_milestones',
-  'meeting_notes', 'organisation_segments', 'contact_segments',
-  'banners', 'sponsors', 'tenants', 'cms_config', 'shortlists',
-  'notification_preferences', 'communications', 'deals'
+  'awards',
+  'organisations',
+  'entries',
+  'winners',
+  'events',
+  'invoices',
+  'payments',
+  'award_assignments',
+  'contacts',
+  'activity_log',
+  'email_templates',
+  'user_preferences',
+  'judges',
+  'votes',
+  'email_lists',
+  'email_list_members',
+  'email_campaigns',
+  'sponsorship_packages',
+  'tickets',
+  'ticket_types',
+  'seating_tables',
+  'seating_assignments',
+  'documents',
+  'media',
+  'notifications',
+  'webhooks',
+  'tenant_branding',
+  'organisation_notes',
+  'organisation_documents',
+  'organisation_custom_fields',
+  'organisation_follow_ups',
+  'organisation_relationships',
+  'organisation_comms_log',
+  'org_audit_log',
+  'organisation_images',
+  'organisation_contacts',
+  'org_activity_notes',
+  'event_galleries',
+  'entry_revisions',
+  'entry_files',
+  'winner_announcements',
+  'calendar_events',
+  'report_schedules',
+  'api_request_logs',
+  'ip_blocklist',
+  'rate_limit_alerts',
+  'rate_limit_config',
+  'social_media_posts',
+  'notification_queue',
+  'judge_scores',
+  'email_log',
+  'public_votes',
+  'gdpr_requests',
+  'media_gallery',
+  'media_items',
+  'cms_audit_logs',
+  'table_assignments',
+  'event_room_fixtures',
+  'event_milestones',
+  'meeting_notes',
+  'organisation_segments',
+  'contact_segments',
+  'banners',
+  'sponsors',
+  'tenants',
+  'cms_config',
+  'shortlists',
+  'notification_preferences',
+  'communications',
+  'deals',
 ]);
 
 /** Maximum page size to prevent abuse */
@@ -105,47 +202,69 @@ const MAX_SELECT_LENGTH = 500;
  */
 const ROLE_PERMISSIONS = {
   super_admin: { read: '*', write: '*' },
-  admin:       { read: '*', write: '*' },
+  admin: { read: '*', write: '*' },
   editor: {
     read: '*',
     write: new Set([
-      'awards', 'organisations', 'entries', 'winners', 'events',
-      'award_assignments', 'contacts', 'email_templates',
-      'email_campaigns', 'media', 'organisation_notes',
-      'organisation_documents', 'organisation_contacts',
-      'org_activity_notes', 'event_galleries', 'entry_revisions',
-      'winner_announcements', 'calendar_events', 'user_preferences'
-    ])
+      'awards',
+      'organisations',
+      'entries',
+      'winners',
+      'events',
+      'award_assignments',
+      'contacts',
+      'email_templates',
+      'email_campaigns',
+      'media',
+      'organisation_notes',
+      'organisation_documents',
+      'organisation_contacts',
+      'org_activity_notes',
+      'event_galleries',
+      'entry_revisions',
+      'winner_announcements',
+      'calendar_events',
+      'user_preferences',
+    ]),
   },
   viewer: {
     read: '*',
-    write: new Set(['user_preferences'])
+    write: new Set(['user_preferences']),
   },
   judge: {
-    read: new Set(['awards', 'award_years', 'entries', 'organisations', 'user_preferences', 'judge_scores', 'organisation_contacts', 'user_roles']),
-    write: new Set(['user_preferences', 'judge_scores'])
+    read: new Set([
+      'awards',
+      'award_years',
+      'entries',
+      'organisations',
+      'user_preferences',
+      'judge_scores',
+      'organisation_contacts',
+      'user_roles',
+    ]),
+    write: new Set(['user_preferences', 'judge_scores']),
   },
   marketing: {
     read: '*',
     write: new Set([
-      'email_templates', 'email_campaigns', 'email_lists',
-      'email_list_members', 'media', 'event_galleries',
-      'organisation_notes', 'user_preferences'
-    ])
+      'email_templates',
+      'email_campaigns',
+      'email_lists',
+      'email_list_members',
+      'media',
+      'event_galleries',
+      'organisation_notes',
+      'user_preferences',
+    ]),
   },
   finance: {
     read: '*',
-    write: new Set([
-      'invoices', 'payments', 'sponsorship_packages',
-      'user_preferences'
-    ])
-  }
+    write: new Set(['invoices', 'payments', 'sponsorship_packages', 'user_preferences']),
+  },
 };
 
 /** Read-only tables that no user role should mutate directly */
-const READ_ONLY_TABLES = new Set([
-  'activity_log', 'counties', 'regions'
-]);
+const READ_ONLY_TABLES = new Set(['activity_log', 'counties', 'regions']);
 
 /**
  * Fetch user role from user_preferences or a roles table.
@@ -213,7 +332,10 @@ async function verifyAuth(req, res) {
 
   const token = authHeader.replace('Bearer ', '');
   try {
-    const { data: { user }, error } = await supabaseAuth.auth.getUser(token);
+    const {
+      data: { user },
+      error,
+    } = await supabaseAuth.auth.getUser(token);
     if (error || !user) {
       res.status(401).json({ error: 'Invalid or expired token' });
       return null;
@@ -318,16 +440,35 @@ function applyFilters(query, filters) {
 
     if (typeof value === 'object' && value.op) {
       switch (value.op) {
-        case 'neq':   query = query.neq(key, value.value); break;
-        case 'gt':    query = query.gt(key, value.value); break;
-        case 'gte':   query = query.gte(key, value.value); break;
-        case 'lt':    query = query.lt(key, value.value); break;
-        case 'lte':   query = query.lte(key, value.value); break;
-        case 'like':  query = query.like(key, value.value); break;
-        case 'ilike': query = query.ilike(key, value.value); break;
-        case 'in':    query = query.in(key, value.value); break;
-        case 'is':    query = query.is(key, value.value); break;
-        default:      query = query.eq(key, value);
+        case 'neq':
+          query = query.neq(key, value.value);
+          break;
+        case 'gt':
+          query = query.gt(key, value.value);
+          break;
+        case 'gte':
+          query = query.gte(key, value.value);
+          break;
+        case 'lt':
+          query = query.lt(key, value.value);
+          break;
+        case 'lte':
+          query = query.lte(key, value.value);
+          break;
+        case 'like':
+          query = query.like(key, value.value);
+          break;
+        case 'ilike':
+          query = query.ilike(key, value.value);
+          break;
+        case 'in':
+          query = query.in(key, value.value);
+          break;
+        case 'is':
+          query = query.is(key, value.value);
+          break;
+        default:
+          query = query.eq(key, value);
       }
     } else {
       query = query.eq(key, value);
@@ -348,27 +489,20 @@ function applyFilters(query, filters) {
  * @throws {Error} If the operation is unsupported or the Supabase query fails.
  */
 async function executeQuery(body, user) {
-  const {
-    table, operation, select = '*', filters = {},
-    sort, page = 1, pageSize = 50, data, id, search
-  } = body;
+  const { table, operation, select = '*', filters = {}, sort, page = 1, pageSize = 50, data, id, search } = body;
 
   // SELECT / COUNT
   if (operation === 'select' || operation === 'count') {
     const isCount = operation === 'count';
-    let query = supabase
-      .from(table)
-      .select(select, isCount ? { count: 'exact', head: true } : { count: 'exact' });
+    let query = supabase.from(table).select(select, isCount ? { count: 'exact', head: true } : { count: 'exact' });
 
     // Apply filters (supports eq, neq, gt, gte, lt, lte, like, ilike, in, is)
     query = applyFilters(query, filters);
 
     // Apply full-text search (OR across multiple columns via ilike)
     if (search && search.term && search.columns && search.columns.length > 0) {
-      const safeTerm = search.term.replace(/[%_\\]/g, c => '\\' + c);
-      const orClause = search.columns
-        .map(col => `${col}.ilike.%${safeTerm}%`)
-        .join(',');
+      const safeTerm = search.term.replace(/[%_\\]/g, (c) => '\\' + c);
+      const orClause = search.columns.map((col) => `${col}.ilike.%${safeTerm}%`).join(',');
       query = query.or(orClause);
     }
 
@@ -396,7 +530,7 @@ async function executeQuery(body, user) {
       count: result.count || 0,
       page,
       pageSize,
-      totalPages: Math.ceil((result.count || 0) / pageSize)
+      totalPages: Math.ceil((result.count || 0) / pageSize),
     };
   }
 
@@ -404,16 +538,13 @@ async function executeQuery(body, user) {
   if (operation === 'insert') {
     // Inject audit fields
     const insertData = Array.isArray(data) ? data : [data];
-    const enriched = insertData.map(row => ({
+    const enriched = insertData.map((row) => ({
       ...row,
       created_at: row.created_at || new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
     }));
 
-    const { data: result, error } = await supabase
-      .from(table)
-      .insert(enriched)
-      .select();
+    const { data: result, error } = await supabase.from(table).insert(enriched).select();
 
     if (error) throw error;
 
@@ -426,16 +557,13 @@ async function executeQuery(body, user) {
   // UPSERT
   if (operation === 'upsert') {
     const upsertData = Array.isArray(data) ? data : [data];
-    const enriched = upsertData.map(row => ({
+    const enriched = upsertData.map((row) => ({
       ...row,
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
     }));
     const upsertOpts = {};
     if (body.onConflict) upsertOpts.onConflict = body.onConflict;
-    const { data: result, error } = await supabase
-      .from(table)
-      .upsert(enriched, upsertOpts)
-      .select();
+    const { data: result, error } = await supabase.from(table).upsert(enriched, upsertOpts).select();
     if (error) throw error;
     await logActivity(table, 'upsert', user, result, {});
     return { data: result };
@@ -445,7 +573,7 @@ async function executeQuery(body, user) {
   if (operation === 'update') {
     const updateData = {
       ...data,
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
     };
 
     let query = supabase.from(table).update(updateData);
@@ -499,7 +627,10 @@ async function logActivity(table, action, user, result, context = {}) {
   try {
     const count = Array.isArray(result) ? result.length : 1;
     const recordIds = Array.isArray(result)
-      ? result.slice(0, 10).map(r => r.id).filter(Boolean)
+      ? result
+          .slice(0, 10)
+          .map((r) => r.id)
+          .filter(Boolean)
       : [];
 
     const detailParts = [`${action} ${count} record(s) in ${table} via API proxy`];
@@ -509,12 +640,14 @@ async function logActivity(table, action, user, result, context = {}) {
       detailParts.push(`filters=${JSON.stringify(context.filters)}`);
     }
 
-    await supabase.from('activity_log').insert([{
-      entity_type: table,
-      action: `proxy_${action}`,
-      details: detailParts.join(' | '),
-      performed_by: user.email
-    }]);
+    await supabase.from('activity_log').insert([
+      {
+        entity_type: table,
+        action: `proxy_${action}`,
+        details: detailParts.join(' | '),
+        performed_by: user.email,
+      },
+    ]);
   } catch (e) {
     // Don't fail the main operation if logging fails
     console.error('Activity log error:', e.message);
@@ -527,7 +660,7 @@ async function logActivity(table, action, user, result, context = {}) {
 
 const rateLimits = new Map();
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
-const RATE_LIMIT_MAX = 120;           // 120 requests per minute
+const RATE_LIMIT_MAX = 120; // 120 requests per minute
 
 let lastCleanup = Date.now();
 
@@ -587,11 +720,12 @@ function checkRateLimit(userId) {
 module.exports = async function handler(req, res) {
   // CORS headers — restrict to known origins when configured
   const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
-    .split(',').map(o => o.trim()).filter(Boolean);
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
   const origin = req.headers.origin || '';
-  const corsOrigin = allowedOrigins.length === 0 || allowedOrigins.includes(origin)
-    ? (origin || '*')
-    : (allowedOrigins[0] || '');
+  const corsOrigin =
+    allowedOrigins.length === 0 || allowedOrigins.includes(origin) ? origin || '*' : allowedOrigins[0] || '';
   res.setHeader('Access-Control-Allow-Origin', corsOrigin);
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -631,19 +765,18 @@ module.exports = async function handler(req, res) {
     if (!checkPermission(role, body.table, body.operation)) {
       return res.status(403).json({
         error: 'Forbidden',
-        message: `Role "${role}" cannot ${body.operation} on "${body.table}"`
+        message: `Role "${role}" cannot ${body.operation} on "${body.table}"`,
       });
     }
 
     // 5. Execute
     const result = await executeQuery(body, user);
     return res.status(200).json(result);
-
   } catch (error) {
     console.error('[data-proxy] Error:', error.message);
     return res.status(500).json({
       error: 'Internal server error',
-      message: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: process.env.NODE_ENV === 'development' ? error.message : undefined,
     });
   }
 };

@@ -8,12 +8,15 @@ const utils = {
    */
   copyToClipboard(text, successMsg = 'Copied to clipboard!') {
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(() => {
-        utils.showToast(successMsg, 'success');
-      }).catch(() => {
-        // Fallback for clipboard permission denied
-        utils._fallbackCopy(text, successMsg);
-      });
+      navigator.clipboard
+        .writeText(text)
+        .then(() => {
+          utils.showToast(successMsg, 'success');
+        })
+        .catch(() => {
+          // Fallback for clipboard permission denied
+          utils._fallbackCopy(text, successMsg);
+        });
     } else {
       utils._fallbackCopy(text, successMsg);
     }
@@ -21,8 +24,12 @@ const utils = {
   _fallbackCopy(text, successMsg) {
     try {
       const ta = document.createElement('textarea');
-      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
-      document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
       document.body.removeChild(ta);
       utils.showToast(successMsg, 'success');
     } catch (e) {
@@ -41,50 +48,50 @@ const utils = {
     const toastIcon = document.getElementById('toastIcon');
     const toastTitle = document.getElementById('toastTitle');
     const toastMessage = document.getElementById('toastMessage');
-    
+
     // Set icon and styling based on type
     const config = {
       success: {
         icon: 'bi-check-circle-fill',
         title: title || 'Success',
-        class: 'bg-success'
+        class: 'bg-success',
       },
       error: {
         icon: 'bi-exclamation-circle-fill',
         title: title || 'Error',
-        class: 'bg-danger'
+        class: 'bg-danger',
       },
       warning: {
         icon: 'bi-exclamation-triangle-fill',
         title: title || 'Warning',
-        class: 'bg-warning'
+        class: 'bg-warning',
       },
       info: {
         icon: 'bi-info-circle-fill',
         title: title || 'Info',
-        class: 'bg-info'
-      }
+        class: 'bg-info',
+      },
     };
-    
+
     const settings = config[type] || config.info;
-    
+
     // Reset classes
     toastEl.className = 'toast';
     toastIcon.className = `bi ${settings.icon} me-2`;
-    
+
     // Add type-specific class
     if (type === 'success' || type === 'error' || type === 'warning') {
       toastEl.classList.add(settings.class, 'text-white');
     }
-    
+
     // Set content
     toastTitle.textContent = settings.title;
     toastMessage.innerHTML = message;
-    
+
     // Show toast
     const toast = new bootstrap.Toast(toastEl, {
       autohide: true,
-      delay: 4000
+      delay: 4000,
     });
     toast.show();
   },
@@ -104,7 +111,9 @@ const utils = {
     const elapsed = Date.now() - (this._loadingShowTime || 0);
     const minTime = 300;
     if (elapsed < minTime) {
-      setTimeout(() => { document.getElementById('loadingBar').style.display = 'none'; }, minTime - elapsed);
+      setTimeout(() => {
+        document.getElementById('loadingBar').style.display = 'none';
+      }, minTime - elapsed);
     } else {
       document.getElementById('loadingBar').style.display = 'none';
     }
@@ -122,7 +131,7 @@ const utils = {
     return date.toLocaleDateString('en-GB', {
       day: '2-digit',
       month: 'short',
-      year: 'numeric'
+      year: 'numeric',
     });
   },
 
@@ -179,13 +188,13 @@ const utils = {
    */
   getStatusBadge(status) {
     const statusMap = {
-      'Draft': 'secondary',
-      'Pending': 'warning',
-      'Approved': 'success',
-      'Published': 'primary',
-      'Active': 'success',
-      'Archived': 'dark',
-      'Rejected': 'danger'
+      Draft: 'secondary',
+      Pending: 'warning',
+      Approved: 'success',
+      Published: 'primary',
+      Active: 'success',
+      Archived: 'dark',
+      Rejected: 'danger',
     };
     const badgeClass = statusMap[status] || 'secondary';
     return `<span class="badge bg-${badgeClass}">${status}</span>`;
@@ -277,16 +286,24 @@ const utils = {
       };
 
       // Elevate confirm dialog + its backdrop above any already-open modals
-      dlg.addEventListener('shown.bs.modal', () => {
-        dlg.style.zIndex = '10100';
-        const backdrops = document.querySelectorAll('.modal-backdrop');
-        if (backdrops.length > 0) {
-          backdrops[backdrops.length - 1].style.zIndex = '10099';
-        }
-      }, { once: true });
-      dlg.addEventListener('hidden.bs.modal', () => {
-        dlg.style.zIndex = '';
-      }, { once: true });
+      dlg.addEventListener(
+        'shown.bs.modal',
+        () => {
+          dlg.style.zIndex = '10100';
+          const backdrops = document.querySelectorAll('.modal-backdrop');
+          if (backdrops.length > 0) {
+            backdrops[backdrops.length - 1].style.zIndex = '10099';
+          }
+        },
+        { once: true }
+      );
+      dlg.addEventListener(
+        'hidden.bs.modal',
+        () => {
+          dlg.style.zIndex = '';
+        },
+        { once: true }
+      );
 
       okBtn.addEventListener('click', onConfirm);
       dlg.addEventListener('hidden.bs.modal', onDismiss);
@@ -304,7 +321,7 @@ const utils = {
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
   },
 
   /**
@@ -324,7 +341,7 @@ const utils = {
    * @returns {Array} Array of unique values
    */
   getUniqueValues(array, key) {
-    return [...new Set(array.map(item => item[key]).filter(Boolean))].sort();
+    return [...new Set(array.map((item) => item[key]).filter(Boolean))].sort();
   },
 
   /**
@@ -345,13 +362,15 @@ const utils = {
       // Create CSV content
       const csvContent = [
         headers.join(','), // Header row
-        ...data.map(row =>
-          headers.map(header => {
-            const value = row[header] || '';
-            // Escape commas and quotes
-            return `"${String(value).replace(/"/g, '""')}"`;
-          }).join(',')
-        )
+        ...data.map((row) =>
+          headers
+            .map((header) => {
+              const value = row[header] || '';
+              // Escape commas and quotes
+              return `"${String(value).replace(/"/g, '""')}"`;
+            })
+            .join(',')
+        ),
       ].join('\n');
 
       // Create blob and download
@@ -425,9 +444,9 @@ const utils = {
   populateFilter(data, key, selectId, placeholder = 'All') {
     const select = document.getElementById(selectId);
     const uniqueValues = this.getUniqueValues(data, key);
-    
+
     select.innerHTML = `<option value="">${placeholder}</option>`;
-    uniqueValues.forEach(value => {
+    uniqueValues.forEach((value) => {
       select.innerHTML += `<option value="${this.escapeHtml(value)}">${this.escapeHtml(value)}</option>`;
     });
   },
@@ -448,7 +467,7 @@ const utils = {
 
     const highlightRow = (idx) => {
       const rows = getRows();
-      rows.forEach(r => r.classList.remove('table-active'));
+      rows.forEach((r) => r.classList.remove('table-active'));
       if (idx >= 0 && idx < rows.length) {
         rows[idx].classList.add('table-active');
         rows[idx].scrollIntoView({ block: 'nearest' });
@@ -459,17 +478,21 @@ const utils = {
       // Skip if typing in an input/textarea/select
       const tag = e.target.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
-        if (e.key === 'Escape') { e.target.blur(); selectedIdx = -1; highlightRow(-1); }
+        if (e.key === 'Escape') {
+          e.target.blur();
+          selectedIdx = -1;
+          highlightRow(-1);
+        }
         return;
       }
       // Skip if modal is open
       if (document.querySelector('.modal.show')) return;
       // Check if this table's tab is active
       const tbody = document.getElementById(tableBodyId);
-      if (!tbody || tbody.closest('.tab-pane') && !tbody.closest('.tab-pane.active')) return;
+      if (!tbody || (tbody.closest('.tab-pane') && !tbody.closest('.tab-pane.active'))) return;
 
       const rows = getRows();
-      switch(e.key) {
+      switch (e.key) {
         case 'ArrowDown':
           e.preventDefault();
           selectedIdx = Math.min(selectedIdx + 1, rows.length - 1);
@@ -517,7 +540,9 @@ const utils = {
         if (data) {
           localStorage.setItem('draft_' + formKey, JSON.stringify({ data, savedAt: Date.now() }));
         }
-      } catch(e) { console.warn('Failed to auto-save form draft to localStorage:', e.message); }
+      } catch (e) {
+        console.warn('Failed to auto-save form draft to localStorage:', e.message);
+      }
     }, intervalMs);
   },
 
@@ -538,7 +563,11 @@ const utils = {
    */
   clearFormDraft(formKey) {
     this.stopFormAutoSave(formKey);
-    try { localStorage.removeItem('draft_' + formKey); } catch(e) { console.warn('Failed to clear form draft from localStorage:', e.message); }
+    try {
+      localStorage.removeItem('draft_' + formKey);
+    } catch (e) {
+      console.warn('Failed to clear form draft from localStorage:', e.message);
+    }
   },
 
   /**
@@ -556,7 +585,9 @@ const utils = {
         }
         localStorage.removeItem('draft_' + formKey);
       }
-    } catch(e) { console.warn('Failed to parse form draft from localStorage:', e.message); }
+    } catch (e) {
+      console.warn('Failed to parse form draft from localStorage:', e.message);
+    }
     return null;
   },
 
@@ -585,15 +616,17 @@ const utils = {
     setTimeout(() => {
       const restoreBtn = document.getElementById('restoreDraftBtn_' + formKey);
       const discardBtn = document.getElementById('discardDraftBtn_' + formKey);
-      if (restoreBtn) restoreBtn.addEventListener('click', () => {
-        onRestore(draft.data);
-        banner.remove();
-        utils.clearFormDraft(formKey);
-      });
-      if (discardBtn) discardBtn.addEventListener('click', () => {
-        banner.remove();
-        utils.clearFormDraft(formKey);
-      });
+      if (restoreBtn)
+        restoreBtn.addEventListener('click', () => {
+          onRestore(draft.data);
+          banner.remove();
+          utils.clearFormDraft(formKey);
+        });
+      if (discardBtn)
+        discardBtn.addEventListener('click', () => {
+          banner.remove();
+          utils.clearFormDraft(formKey);
+        });
     }, 100);
 
     return banner;
@@ -614,9 +647,11 @@ const utils = {
       trash.push({ ...record, _deletedAt: Date.now() });
       // Keep only last 50 items per table, and only items less than 30 days old
       const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
-      const filtered = trash.filter(r => r._deletedAt > cutoff).slice(-50);
+      const filtered = trash.filter((r) => r._deletedAt > cutoff).slice(-50);
       localStorage.setItem('trash_' + table, JSON.stringify(filtered));
-    } catch(e) { console.warn('Failed to save soft-delete trash to localStorage:', e.message); }
+    } catch (e) {
+      console.warn('Failed to save soft-delete trash to localStorage:', e.message);
+    }
   },
 
   /**
@@ -628,8 +663,10 @@ const utils = {
     try {
       const trash = JSON.parse(localStorage.getItem('trash_' + table) || '[]');
       const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
-      return trash.filter(r => r._deletedAt > cutoff);
-    } catch(e) { return []; }
+      return trash.filter((r) => r._deletedAt > cutoff);
+    } catch (e) {
+      return [];
+    }
   },
 
   /**
@@ -647,10 +684,10 @@ const utils = {
 
       // Remove from trash
       const trash = this.getTrash(table);
-      const updated = trash.filter(r => r.id !== record.id);
+      const updated = trash.filter((r) => r.id !== record.id);
       localStorage.setItem('trash_' + table, JSON.stringify(updated));
       return true;
-    } catch(e) {
+    } catch (e) {
       console.error('Restore failed:', e);
       return false;
     }
@@ -664,9 +701,11 @@ const utils = {
   clearTrashItem(table, recordId) {
     try {
       const trash = this.getTrash(table);
-      const updated = trash.filter(r => r.id !== recordId);
+      const updated = trash.filter((r) => r.id !== recordId);
       localStorage.setItem('trash_' + table, JSON.stringify(updated));
-    } catch(e) { console.warn('Failed to clear trash item from localStorage:', e.message); }
+    } catch (e) {
+      console.warn('Failed to clear trash item from localStorage:', e.message);
+    }
   },
 
   /**
@@ -681,12 +720,22 @@ const utils = {
     if (success) {
       this.showToast('Restored successfully', 'success');
       // Reload the relevant module
-      switch(table) {
-        case 'awards': awardsModule?.loadAwards(); break;
-        case 'invoices': paymentsModule?.loadAllData(); break;
-        case 'winners': winnersModule?.loadWinners(); break;
-        case 'events': eventsModule?.loadEvents(); break;
-        case 'organisations': orgsModule?.loadOrganisations(); break;
+      switch (table) {
+        case 'awards':
+          awardsModule?.loadAwards();
+          break;
+        case 'invoices':
+          paymentsModule?.loadAllData();
+          break;
+        case 'winners':
+          winnersModule?.loadWinners();
+          break;
+        case 'events':
+          eventsModule?.loadEvents();
+          break;
+        case 'organisations':
+          orgsModule?.loadOrganisations();
+          break;
       }
     } else {
       this.showToast('Restore failed', 'error');
@@ -711,7 +760,7 @@ const utils = {
       { key: 'bta_email_lists_pending', table: 'email_lists' },
       { key: 'bta_sponsors_pending', table: 'sponsors' },
       { key: 'bta_media_videos_pending', table: 'media_videos' },
-      { key: 'bta_banners_pending', table: 'banners' }
+      { key: 'bta_banners_pending', table: 'banners' },
     ];
 
     for (const { key, table } of queues) {
@@ -794,18 +843,25 @@ const utils = {
     if (age < 1) {
       el.innerHTML = '<i class="bi bi-check-circle text-success me-1"></i><small class="text-muted">Just now</small>';
     } else if (age < 5) {
-      el.innerHTML = '<i class="bi bi-check-circle text-success me-1"></i><small class="text-muted">' + age + 'm ago</small>';
+      el.innerHTML =
+        '<i class="bi bi-check-circle text-success me-1"></i><small class="text-muted">' + age + 'm ago</small>';
     } else if (age < 15) {
-      el.innerHTML = '<i class="bi bi-exclamation-circle text-warning me-1"></i><small class="text-warning">' + age + 'm ago</small>';
+      el.innerHTML =
+        '<i class="bi bi-exclamation-circle text-warning me-1"></i><small class="text-warning">' +
+        age +
+        'm ago</small>';
     } else {
-      el.innerHTML = '<i class="bi bi-exclamation-triangle text-danger me-1"></i><small class="text-danger">' + age + 'm ago - <a href="#" onclick="event.preventDefault();" class="text-danger">stale</a></small>';
+      el.innerHTML =
+        '<i class="bi bi-exclamation-triangle text-danger me-1"></i><small class="text-danger">' +
+        age +
+        'm ago - <a href="#" data-action="utils.noop" data-prevent-default="true" class="text-danger">stale</a></small>';
     }
   },
 
   startFreshnessTimer() {
     if (this._freshnessTimerId) clearInterval(this._freshnessTimerId);
     this._freshnessTimerId = setInterval(() => {
-      Object.keys(this._dataTimestamps).forEach(key => this._updateFreshnessIndicator(key));
+      Object.keys(this._dataTimestamps).forEach((key) => this._updateFreshnessIndicator(key));
     }, 60000); // Update every minute
   },
 
@@ -823,14 +879,16 @@ const utils = {
     try {
       let recent = JSON.parse(localStorage.getItem('recentlyViewed') || '[]');
       // Remove duplicate if exists
-      recent = recent.filter(r => !(r.type === type && r.id === id));
+      recent = recent.filter((r) => !(r.type === type && r.id === id));
       // Add to front
       recent.unshift({ type, id, name, timestamp: Date.now() });
       // Cap at 15
       recent = recent.slice(0, 15);
       localStorage.setItem('recentlyViewed', JSON.stringify(recent));
       this.renderRecentlyViewed();
-    } catch(e) { console.warn('Failed to save recently viewed to localStorage:', e.message); }
+    } catch (e) {
+      console.warn('Failed to save recently viewed to localStorage:', e.message);
+    }
   },
 
   /**
@@ -838,7 +896,11 @@ const utils = {
    * @returns {Array} Array of recently viewed record objects
    */
   getRecentlyViewed() {
-    try { return JSON.parse(localStorage.getItem('recentlyViewed') || '[]'); } catch(e) { return []; }
+    try {
+      return JSON.parse(localStorage.getItem('recentlyViewed') || '[]');
+    } catch (e) {
+      return [];
+    }
   },
 
   /**
@@ -852,15 +914,24 @@ const utils = {
       el.innerHTML = '<li><span class="dropdown-item text-muted small">No recent items</span></li>';
       return;
     }
-    const icons = { award: 'bi-trophy', organisation: 'bi-building', entry: 'bi-file-earmark-text', winner: 'bi-award', invoice: 'bi-receipt', event: 'bi-calendar-event' };
-    el.innerHTML = recent.map(r => {
-      const icon = icons[r.type] || 'bi-clock-history';
-      const ago = this._timeAgo(r.timestamp);
-      return `<li><a class="dropdown-item small" href="#" data-action="utils.openRecentItem" data-prevent-default="true" data-args='${JSON.stringify([r.type, r.id, utils.escapeHtml(r.name)]).replace(/'/g, "&#39;")}'>
+    const icons = {
+      award: 'bi-trophy',
+      organisation: 'bi-building',
+      entry: 'bi-file-earmark-text',
+      winner: 'bi-award',
+      invoice: 'bi-receipt',
+      event: 'bi-calendar-event',
+    };
+    el.innerHTML = recent
+      .map((r) => {
+        const icon = icons[r.type] || 'bi-clock-history';
+        const ago = this._timeAgo(r.timestamp);
+        return `<li><a class="dropdown-item small" href="#" data-action="utils.openRecentItem" data-prevent-default="true" data-args='${JSON.stringify([r.type, r.id, utils.escapeHtml(r.name)]).replace(/'/g, '&#39;')}'>
         <i class="bi ${icon} me-2 text-muted"></i>${utils.escapeHtml(r.name)}
         <span class="text-muted float-end" style="font-size:0.7rem">${ago}</span>
       </a></li>`;
-    }).join('');
+      })
+      .join('');
   },
 
   /**
@@ -884,13 +955,25 @@ const utils = {
    * @param {string} name - Display name
    */
   openRecentItem(type, id, name) {
-    switch(type) {
-      case 'organisation': orgsModule.openCompanyProfile(id, name); break;
-      case 'award': document.getElementById('awards-tab')?.click(); break;
-      case 'invoice': paymentsModule.viewInvoice(id); break;
-      case 'entry': document.getElementById('entries-tab')?.click(); break;
-      case 'event': document.getElementById('events-tab')?.click(); break;
-      case 'winner': document.getElementById('winners-tab')?.click(); break;
+    switch (type) {
+      case 'organisation':
+        orgsModule.openCompanyProfile(id, name);
+        break;
+      case 'award':
+        document.getElementById('awards-tab')?.click();
+        break;
+      case 'invoice':
+        paymentsModule.viewInvoice(id);
+        break;
+      case 'entry':
+        document.getElementById('entries-tab')?.click();
+        break;
+      case 'event':
+        document.getElementById('events-tab')?.click();
+        break;
+      case 'winner':
+        document.getElementById('winners-tab')?.click();
+        break;
     }
   },
 
@@ -916,7 +999,9 @@ const utils = {
       document.body.appendChild(div);
 
       // Close on backdrop click
-      div.addEventListener('click', (e) => { if (e.target === div) utils.closeCommandPalette(); });
+      div.addEventListener('click', (e) => {
+        if (e.target === div) utils.closeCommandPalette();
+      });
 
       // Input handler
       document.getElementById('commandPaletteInput').addEventListener('input', (e) => {
@@ -928,12 +1013,21 @@ const utils = {
         const items = document.querySelectorAll('#commandPaletteResults .cp-item');
         const active = document.querySelector('#commandPaletteResults .cp-item.active');
         let idx = Array.from(items).indexOf(active);
-        if (e.key === 'ArrowDown') { e.preventDefault(); idx = Math.min(idx + 1, items.length - 1); }
-        else if (e.key === 'ArrowUp') { e.preventDefault(); idx = Math.max(idx - 1, 0); }
-        else if (e.key === 'Enter' && active) { e.preventDefault(); active.click(); return; }
-        else if (e.key === 'Escape') { utils.closeCommandPalette(); return; }
-        else return;
-        items.forEach(i => i.classList.remove('active'));
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          idx = Math.min(idx + 1, items.length - 1);
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          idx = Math.max(idx - 1, 0);
+        } else if (e.key === 'Enter' && active) {
+          e.preventDefault();
+          active.click();
+          return;
+        } else if (e.key === 'Escape') {
+          utils.closeCommandPalette();
+          return;
+        } else return;
+        items.forEach((i) => i.classList.remove('active'));
         if (items[idx]) items[idx].classList.add('active');
       });
     }
@@ -980,58 +1074,89 @@ const utils = {
       { label: 'Events', icon: 'bi-calendar-event', tab: 'events' },
       { label: 'Payments', icon: 'bi-credit-card', tab: 'payments' },
       { label: 'CRM', icon: 'bi-people', tab: 'crm' },
-      { label: 'Settings', icon: 'bi-gear', tab: 'settings' }
+      { label: 'Settings', icon: 'bi-gear', tab: 'settings' },
     ];
     const resultsEl = document.getElementById('commandPaletteResults');
-    resultsEl.innerHTML = tabs.map(t => `
+    resultsEl.innerHTML = tabs
+      .map(
+        (t) => `
       <div class="cp-item" data-action="utils._commandPaletteAction" data-args='["tab", "${t.tab}"]'>
         <span class="cp-icon"><i class="bi ${t.icon}"></i></span>
         <span class="cp-label">Go to ${t.label}</span>
         <span class="cp-hint">Tab</span>
-      </div>`).join('');
+      </div>`
+      )
+      .join('');
   },
 
   _searchCommandPalette(query) {
-    if (!query) { this._showCommandPaletteDefaults(); return; }
+    if (!query) {
+      this._showCommandPaletteDefaults();
+      return;
+    }
     const q = query.toLowerCase();
     const results = [];
 
     // Search tabs
     const tabMap = {
-      dashboard: 'bi-speedometer2', awards: 'bi-trophy', organisations: 'bi-building',
-      winners: 'bi-star', entries: 'bi-file-earmark-text', events: 'bi-calendar-event',
-      payments: 'bi-credit-card', crm: 'bi-people', settings: 'bi-gear'
+      dashboard: 'bi-speedometer2',
+      awards: 'bi-trophy',
+      organisations: 'bi-building',
+      winners: 'bi-star',
+      entries: 'bi-file-earmark-text',
+      events: 'bi-calendar-event',
+      payments: 'bi-credit-card',
+      crm: 'bi-people',
+      settings: 'bi-gear',
     };
-    Object.keys(tabMap).forEach(tab => {
-      if (tab.includes(q)) results.push({ type: 'tab', label: `Go to ${tab.charAt(0).toUpperCase() + tab.slice(1)}`, icon: tabMap[tab], id: tab });
+    Object.keys(tabMap).forEach((tab) => {
+      if (tab.includes(q))
+        results.push({
+          type: 'tab',
+          label: `Go to ${tab.charAt(0).toUpperCase() + tab.slice(1)}`,
+          icon: tabMap[tab],
+          id: tab,
+        });
     });
 
     // Search awards
     if (window.STATE?.allAwards) {
-      STATE.allAwards.filter(a => (a.award_name || '').toLowerCase().includes(q)).slice(0, 5).forEach(a => {
-        results.push({ type: 'award', label: a.award_name, icon: 'bi-trophy', id: a.id, hint: 'Award' });
-      });
+      STATE.allAwards
+        .filter((a) => (a.award_name || '').toLowerCase().includes(q))
+        .slice(0, 5)
+        .forEach((a) => {
+          results.push({ type: 'award', label: a.award_name, icon: 'bi-trophy', id: a.id, hint: 'Award' });
+        });
     }
 
     // Search organisations
     if (window.STATE?.allOrganisations) {
-      STATE.allOrganisations.filter(o => (o.company_name || '').toLowerCase().includes(q)).slice(0, 5).forEach(o => {
-        results.push({ type: 'org', label: o.company_name, icon: 'bi-building', id: o.id, hint: 'Organisation' });
-      });
+      STATE.allOrganisations
+        .filter((o) => (o.company_name || '').toLowerCase().includes(q))
+        .slice(0, 5)
+        .forEach((o) => {
+          results.push({ type: 'org', label: o.company_name, icon: 'bi-building', id: o.id, hint: 'Organisation' });
+        });
     }
 
     // Search winners
     if (window.STATE?.allWinners) {
-      STATE.allWinners.filter(w => (w.winner_name || '').toLowerCase().includes(q)).slice(0, 5).forEach(w => {
-        results.push({ type: 'winner', label: w.winner_name, icon: 'bi-star', id: w.id, hint: 'Winner' });
-      });
+      STATE.allWinners
+        .filter((w) => (w.winner_name || '').toLowerCase().includes(q))
+        .slice(0, 5)
+        .forEach((w) => {
+          results.push({ type: 'winner', label: w.winner_name, icon: 'bi-star', id: w.id, hint: 'Winner' });
+        });
     }
 
     // Search events
     if (window.STATE?.allEvents) {
-      STATE.allEvents.filter(e => (e.event_name || '').toLowerCase().includes(q)).slice(0, 5).forEach(e => {
-        results.push({ type: 'event', label: e.event_name, icon: 'bi-calendar-event', id: e.id, hint: 'Event' });
-      });
+      STATE.allEvents
+        .filter((e) => (e.event_name || '').toLowerCase().includes(q))
+        .slice(0, 5)
+        .forEach((e) => {
+          results.push({ type: 'event', label: e.event_name, icon: 'bi-calendar-event', id: e.id, hint: 'Event' });
+        });
     }
 
     const resultsEl = document.getElementById('commandPaletteResults');
@@ -1039,12 +1164,17 @@ const utils = {
       resultsEl.innerHTML = '<div class="p-3 text-center text-muted">No results found</div>';
       return;
     }
-    resultsEl.innerHTML = results.slice(0, 20).map((r, i) => `
+    resultsEl.innerHTML = results
+      .slice(0, 20)
+      .map(
+        (r, i) => `
       <div class="cp-item ${i === 0 ? 'active' : ''}" data-action="utils._commandPaletteAction" data-args='["${r.type}", "${r.id}"]'>
         <span class="cp-icon"><i class="bi ${r.icon}"></i></span>
         <span class="cp-label">${utils.escapeHtml(r.label)}</span>
         ${r.hint ? `<span class="cp-hint">${r.hint}</span>` : ''}
-      </div>`).join('');
+      </div>`
+      )
+      .join('');
   },
 
   _commandPaletteAction(type, id) {
@@ -1055,7 +1185,9 @@ const utils = {
     } else if (type === 'org' && window.orgsModule) {
       const tabBtn = document.querySelector('[data-bs-target="#organisations"]');
       if (tabBtn) tabBtn.click();
-      setTimeout(() => { if (orgsModule.openCompanyProfile) orgsModule.openCompanyProfile(id, ''); }, 300);
+      setTimeout(() => {
+        if (orgsModule.openCompanyProfile) orgsModule.openCompanyProfile(id, '');
+      }, 300);
     } else if (type === 'award') {
       const tabBtn = document.querySelector('[data-bs-target="#awards"]');
       if (tabBtn) tabBtn.click();
@@ -1074,11 +1206,19 @@ const utils = {
 
   /**
    * Show toast with optional action buttons
+   * @param {string} message - Toast message
+   * @param {string} type - Toast type
+   * @param {Array<{label: string, class?: string, action: string, id?: string}>} actions - Action buttons using data-action delegation
    */
   showToastWithAction(message, type, actions) {
-    const actionHtml = actions ? actions.map(a =>
-      `<button class="btn btn-sm btn-${this.escapeHtml(a.class || 'light')} ms-2" onclick="${this.escapeHtml(a.onclick)}">${this.escapeHtml(a.label)}</button>`
-    ).join('') : '';
+    const actionHtml = actions
+      ? actions
+          .map(
+            (a) =>
+              `<button class="btn btn-sm btn-${this.escapeHtml(a.class || 'light')} ms-2" data-action="${this.escapeHtml(a.action)}"${a.id ? ` data-id="${this.escapeHtml(a.id)}"` : ''}>${this.escapeHtml(a.label)}</button>`
+          )
+          .join('')
+      : '';
     this.showToast(message + actionHtml, type);
   },
 
@@ -1097,7 +1237,7 @@ const utils = {
         if (attempt === maxRetries) throw err;
         const delay = baseDelay * Math.pow(2, attempt);
         console.warn(`Retry ${attempt + 1}/${maxRetries} after ${delay}ms:`, err.message);
-        await new Promise(r => setTimeout(r, delay));
+        await new Promise((r) => setTimeout(r, delay));
       }
     }
   },
@@ -1125,7 +1265,9 @@ const utils = {
       <div class="progress" style="height:6px;"><div class="progress-bar" style="width:${pct}%"></div></div>`;
     bar.style.display = 'block';
     if (current >= total) {
-      setTimeout(() => { bar.style.display = 'none'; }, 1500);
+      setTimeout(() => {
+        bar.style.display = 'none';
+      }, 1500);
     }
   },
 
@@ -1145,9 +1287,13 @@ const utils = {
     btn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
     document.body.appendChild(btn);
 
-    window.addEventListener('scroll', () => {
-      btn.classList.toggle('show', window.scrollY > 300);
-    }, { passive: true });
+    window.addEventListener(
+      'scroll',
+      () => {
+        btn.classList.toggle('show', window.scrollY > 300);
+      },
+      { passive: true }
+    );
   },
 
   /* ==================================================== */
@@ -1178,29 +1324,40 @@ const utils = {
     if (!modal) return;
     const inputs = modal.querySelectorAll('input, textarea, select');
     const snapshot = {};
-    inputs.forEach((inp, i) => { snapshot[i] = inp.value; });
+    inputs.forEach((inp, i) => {
+      snapshot[i] = inp.value;
+    });
     modal._formSnapshot = snapshot;
     modal._formDirty = false;
 
     const onChange = () => {
       const current = {};
-      inputs.forEach((inp, i) => { current[i] = inp.value; });
+      inputs.forEach((inp, i) => {
+        current[i] = inp.value;
+      });
       modal._formDirty = JSON.stringify(current) !== JSON.stringify(snapshot);
     };
-    inputs.forEach(inp => inp.addEventListener('input', onChange));
+    inputs.forEach((inp) => inp.addEventListener('input', onChange));
 
     // Warn on close
     const _modalInstance = bootstrap.Modal.getInstance(modal) || new bootstrap.Modal(modal);
     modal.addEventListener('hide.bs.modal', (e) => {
       if (modal._formDirty && !modal._formSaved) {
         e.preventDefault();
-        utils.confirmDialog({ title: 'Unsaved Changes', message: 'You have unsaved changes. Discard them?', confirmText: 'Discard', danger: true }).then(confirmed => {
-          if (confirmed) {
-            modal._formDirty = false;
-            modal._formSaved = false;
-            bootstrap.Modal.getInstance(modal)?.hide();
-          }
-        });
+        utils
+          .confirmDialog({
+            title: 'Unsaved Changes',
+            message: 'You have unsaved changes. Discard them?',
+            confirmText: 'Discard',
+            danger: true,
+          })
+          .then((confirmed) => {
+            if (confirmed) {
+              modal._formDirty = false;
+              modal._formSaved = false;
+              bootstrap.Modal.getInstance(modal)?.hide();
+            }
+          });
         return;
       }
       modal._formDirty = false;
@@ -1210,7 +1367,10 @@ const utils = {
 
   markFormSaved(modalId) {
     const modal = document.getElementById(modalId);
-    if (modal) { modal._formSaved = true; modal._formDirty = false; }
+    if (modal) {
+      modal._formSaved = true;
+      modal._formDirty = false;
+    }
   },
 
   /* ==================================================== */
@@ -1222,35 +1382,27 @@ const utils = {
    */
   async loadRecordNotes(tableName, recordId) {
     try {
-      const { data, error } = await STATE.client
-        .from('record_notes')
-        .select('*')
-        .eq('table_name', tableName)
-        .eq('record_id', recordId)
-        .order('created_at', { ascending: false });
-      if (error) {
-        // Table may not exist - return empty gracefully
-        console.warn('record_notes table not available:', error.message);
-        return [];
-      }
-      return data || [];
+      const result = await apiClient.select('record_notes', {
+        filters: { table_name: { eq: tableName }, record_id: { eq: recordId } },
+        sort: { column: 'created_at', ascending: false },
+      });
+      return result.data || [];
     } catch (e) {
+      // Table may not exist - return empty gracefully
+      console.warn('record_notes table not available:', e.message);
       return [];
     }
   },
 
   async addRecordNote(tableName, recordId, noteText) {
     try {
-      const { error } = await STATE.client
-        .from('record_notes')
-        .insert([{
-          table_name: tableName,
-          record_id: recordId,
-          note: noteText,
-          created_by: STATE.user?.email || 'unknown',
-          created_at: new Date().toISOString()
-        }]);
-      if (error) throw error;
+      await apiClient.insert('record_notes', {
+        table_name: tableName,
+        record_id: recordId,
+        note: noteText,
+        created_by: STATE.user?.email || 'unknown',
+        created_at: new Date().toISOString(),
+      });
       utils.showToast('Note added', 'success');
       return true;
     } catch (e) {
@@ -1264,7 +1416,7 @@ const utils = {
     if (!container) return;
     container.innerHTML = `<div class="text-center py-2"><div class="spinner-border spinner-border-sm"></div></div>`;
 
-    this.loadRecordNotes(tableName, recordId).then(notes => {
+    this.loadRecordNotes(tableName, recordId).then((notes) => {
       container.innerHTML = `
         <div class="mb-2">
           <div class="input-group input-group-sm">
@@ -1273,12 +1425,19 @@ const utils = {
           </div>
         </div>
         <div class="notes-list" style="max-height:200px;overflow-y:auto;">
-          ${notes.length === 0 ? '<p class="text-muted small">No notes yet</p>' :
-            notes.map(n => `
+          ${
+            notes.length === 0
+              ? '<p class="text-muted small">No notes yet</p>'
+              : notes
+                  .map(
+                    (n) => `
               <div class="small border-bottom py-1">
                 <div>${utils.escapeHtml(n.note)}</div>
                 <div class="text-muted" style="font-size:0.7rem;">${n.created_by} &middot; ${utils.formatRelativeTime(n.created_at)}</div>
-              </div>`).join('')}
+              </div>`
+                  )
+                  .join('')
+          }
         </div>`;
     });
   },
@@ -1300,7 +1459,7 @@ const utils = {
   getModifiedByData() {
     return {
       last_modified_by: STATE.user?.email || 'unknown',
-      last_modified_at: new Date().toISOString()
+      last_modified_at: new Date().toISOString(),
     };
   },
 
@@ -1314,12 +1473,16 @@ const utils = {
   showColumnVisibilityDialog(tableId, columns) {
     const storageKey = `colVis_${tableId}`;
     let saved = {};
-    try { saved = JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch (e) { /* private browsing */ }
+    try {
+      saved = JSON.parse(localStorage.getItem(storageKey) || '{}');
+    } catch (e) {
+      /* private browsing */
+    }
 
     let html = '<div class="p-3"><h6>Show/Hide Columns</h6>';
     columns.forEach((col, i) => {
       const visible = saved[col.key] !== false;
-      html += `<div class="form-check"><input class="form-check-input" type="checkbox" id="colVis_${i}" ${visible ? 'checked' : ''} onchange="utils._toggleColumn('${tableId}', '${col.key}', this.checked)"><label class="form-check-label" for="colVis_${i}">${col.label}</label></div>`;
+      html += `<div class="form-check"><input class="form-check-input" type="checkbox" id="colVis_${i}" ${visible ? 'checked' : ''} data-on-change="utils._handleColVisChange" data-table-id="${tableId}" data-col-key="${col.key}"><label class="form-check-label" for="colVis_${i}">${col.label}</label></div>`;
     });
     html += '</div>';
 
@@ -1332,23 +1495,40 @@ const utils = {
       dialog.style.cssText = 'z-index:9998;top:50%;left:50%;transform:translate(-50%,-50%);max-width:300px;';
       document.body.appendChild(dialog);
     }
-    dialog.innerHTML = html + '<div class="p-2 border-top"><button class="btn btn-sm btn-secondary w-100" onclick="document.getElementById(\'colVisDialog\').style.display=\'none\'">Close</button></div>';
+    dialog.innerHTML =
+      html +
+      '<div class="p-2 border-top"><button class="btn btn-sm btn-secondary w-100" data-action="utils.closeColVisDialog">Close</button></div>';
     dialog.style.display = 'block';
+  },
+
+  _handleColVisChange(_value, event) {
+    const el = event.target;
+    const tableId = el.getAttribute('data-table-id');
+    const colKey = el.getAttribute('data-col-key');
+    this._toggleColumn(tableId, colKey, el.checked);
   },
 
   _toggleColumn(tableId, colKey, visible) {
     const storageKey = `colVis_${tableId}`;
     let saved = {};
-    try { saved = JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch (e) { /* private browsing */ }
+    try {
+      saved = JSON.parse(localStorage.getItem(storageKey) || '{}');
+    } catch (e) {
+      /* private browsing */
+    }
     saved[colKey] = visible;
-    try { localStorage.setItem(storageKey, JSON.stringify(saved)); } catch (e) { /* private browsing */ }
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(saved));
+    } catch (e) {
+      /* private browsing */
+    }
 
     // Toggle column visibility via CSS class
     const table = document.getElementById(tableId) || document.querySelector(`#${tableId}`);
     if (!table) return;
-    const colIndex = Array.from(table.querySelectorAll('thead th')).findIndex(th => th.dataset.colKey === colKey);
+    const colIndex = Array.from(table.querySelectorAll('thead th')).findIndex((th) => th.dataset.colKey === colKey);
     if (colIndex === -1) return;
-    table.querySelectorAll(`tr`).forEach(row => {
+    table.querySelectorAll(`tr`).forEach((row) => {
       const cells = row.querySelectorAll('th, td');
       if (cells[colIndex]) cells[colIndex].style.display = visible ? '' : 'none';
     });
@@ -1357,7 +1537,11 @@ const utils = {
   applyColumnVisibility(tableId) {
     const storageKey = `colVis_${tableId}`;
     let saved = {};
-    try { saved = JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch (e) { /* private browsing */ }
+    try {
+      saved = JSON.parse(localStorage.getItem(storageKey) || '{}');
+    } catch (e) {
+      /* private browsing */
+    }
     Object.entries(saved).forEach(([colKey, visible]) => {
       if (!visible) this._toggleColumn(tableId, colKey, false);
     });
@@ -1373,9 +1557,10 @@ const utils = {
   renderRowCount(containerId, shown, total, label) {
     const el = document.getElementById(containerId);
     if (!el) return;
-    el.innerHTML = shown < total
-      ? `<span class="text-muted small">Showing ${shown} of ${total} ${label || 'records'}</span>`
-      : `<span class="text-muted small">${total} ${label || 'records'}</span>`;
+    el.innerHTML =
+      shown < total
+        ? `<span class="text-muted small">Showing ${shown} of ${total} ${label || 'records'}</span>`
+        : `<span class="text-muted small">${total} ${label || 'records'}</span>`;
   },
 
   /* ==================================================== */
@@ -1392,8 +1577,10 @@ const utils = {
     const tbody = document.getElementById(tableBodyId);
     if (!tbody) return;
     const skeletonRows = Array.from({ length: rows }, () => {
-      const cells = Array.from({ length: colspan }, () =>
-        `<td><div class="skeleton-line" style="height:14px;background:linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%);background-size:200% 100%;animation:skeleton-shimmer 1.5s infinite;border-radius:4px;width:${60 + Math.random() * 40}%"></div></td>`
+      const cells = Array.from(
+        { length: colspan },
+        () =>
+          `<td><div class="skeleton-line" style="height:14px;background:linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%);background-size:200% 100%;animation:skeleton-shimmer 1.5s infinite;border-radius:4px;width:${60 + Math.random() * 40}%"></div></td>`
       ).join('');
       return `<tr>${cells}</tr>`;
     }).join('');
@@ -1402,7 +1589,8 @@ const utils = {
     if (!document.getElementById('skeletonStyle')) {
       const style = document.createElement('style');
       style.id = 'skeletonStyle';
-      style.textContent = '@keyframes skeleton-shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}';
+      style.textContent =
+        '@keyframes skeleton-shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}';
       document.head.appendChild(style);
     }
   },
@@ -1423,13 +1611,19 @@ const utils = {
       message = 'No data found',
       description = '',
       actionLabel = '',
-      actionOnclick = '',
-      isFiltered = false
+      actionAction = '',
+      actionId = '',
+      isFiltered = false,
     } = options;
     const tbody = document.getElementById(tableBodyId);
     if (!tbody) return;
-    const filterHint = isFiltered ? '<p class="text-muted small mb-2">Try adjusting your filters or search terms</p>' : '';
-    const actionBtn = actionLabel ? `<button class="btn btn-sm btn-primary mt-2" onclick="${this.escapeHtml(actionOnclick)}"><i class="bi bi-plus-circle me-1"></i>${this.escapeHtml(actionLabel)}</button>` : '';
+    const filterHint = isFiltered
+      ? '<p class="text-muted small mb-2">Try adjusting your filters or search terms</p>'
+      : '';
+    const actionBtn =
+      actionLabel && actionAction
+        ? `<button class="btn btn-sm btn-primary mt-2" data-action="${this.escapeHtml(actionAction)}"${actionId ? ` data-id="${this.escapeHtml(actionId)}"` : ''}><i class="bi bi-plus-circle me-1"></i>${this.escapeHtml(actionLabel)}</button>`
+        : '';
     tbody.innerHTML = `
       <tr>
         <td colspan="${colspan}" class="text-center py-5">
@@ -1496,8 +1690,8 @@ const utils = {
   fuzzyFilter(items, query, keys) {
     if (!query || !query.trim()) return items;
     return items
-      .map(item => {
-        const maxScore = Math.max(...keys.map(key => this.fuzzyMatch(String(item[key] || ''), query)));
+      .map((item) => {
+        const maxScore = Math.max(...keys.map((key) => this.fuzzyMatch(String(item[key] || ''), query)));
         return { item, score: maxScore };
       })
       .filter(({ score }) => score > 0)
@@ -1524,18 +1718,31 @@ const utils = {
     try {
       const { columns, formatDates = true } = options;
       const headers = columns || Object.keys(data[0]);
-      const headerLabels = headers.map(h => h.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()));
+      const headerLabels = headers.map((h) => h.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()));
 
-      let html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="UTF-8"></head><body><table>';
-      html += '<tr>' + headerLabels.map(h => `<th style="font-weight:bold;background:#4472C4;color:white;padding:8px">${this.escapeHtml(h)}</th>`).join('') + '</tr>';
-      data.forEach(row => {
-        html += '<tr>' + headers.map(header => {
-          let value = row[header] || '';
-          if (formatDates && typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
-            value = this.formatDate(value);
-          }
-          return `<td style="padding:4px;border:1px solid #ddd">${this.escapeHtml(String(value))}</td>`;
-        }).join('') + '</tr>';
+      let html =
+        '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="UTF-8"></head><body><table>';
+      html +=
+        '<tr>' +
+        headerLabels
+          .map(
+            (h) => `<th style="font-weight:bold;background:#4472C4;color:white;padding:8px">${this.escapeHtml(h)}</th>`
+          )
+          .join('') +
+        '</tr>';
+      data.forEach((row) => {
+        html +=
+          '<tr>' +
+          headers
+            .map((header) => {
+              let value = row[header] || '';
+              if (formatDates && typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+                value = this.formatDate(value);
+              }
+              return `<td style="padding:4px;border:1px solid #ddd">${this.escapeHtml(String(value))}</td>`;
+            })
+            .join('') +
+          '</tr>';
       });
       html += '</table></body></html>';
 
@@ -1570,7 +1777,7 @@ const utils = {
     try {
       const { columns, formatDates = true } = options;
       const headers = columns || Object.keys(data[0]);
-      const headerLabels = headers.map(h => h.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()));
+      const headerLabels = headers.map((h) => h.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()));
 
       const printWindow = window.open('', '_blank');
       if (!printWindow) {
@@ -1593,14 +1800,23 @@ const utils = {
         <h1>${this.escapeHtml(title)}</h1>
         <div class="meta">Generated: ${new Date().toLocaleDateString('en-GB')} at ${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} | ${data.length} records</div>
         <table>
-          <thead><tr>${headerLabels.map(h => `<th>${this.escapeHtml(h)}</th>`).join('')}</tr></thead>
-          <tbody>${data.map(row => '<tr>' + headers.map(header => {
-            let value = row[header] || '';
-            if (formatDates && typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
-              value = this.formatDate(value);
-            }
-            return `<td>${this.escapeHtml(String(value))}</td>`;
-          }).join('') + '</tr>').join('')}</tbody>
+          <thead><tr>${headerLabels.map((h) => `<th>${this.escapeHtml(h)}</th>`).join('')}</tr></thead>
+          <tbody>${data
+            .map(
+              (row) =>
+                '<tr>' +
+                headers
+                  .map((header) => {
+                    let value = row[header] || '';
+                    if (formatDates && typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+                      value = this.formatDate(value);
+                    }
+                    return `<td>${this.escapeHtml(String(value))}</td>`;
+                  })
+                  .join('') +
+                '</tr>'
+            )
+            .join('')}</tbody>
         </table>
         <div class="footer">Awards CMS Report</div>
       </body></html>`);
@@ -1633,7 +1849,7 @@ const utils = {
     const elapsed = Date.now() - this._loadingShowTime;
     const minTime = 300;
     if (elapsed < minTime) {
-      await new Promise(r => setTimeout(r, minTime - elapsed));
+      await new Promise((r) => setTimeout(r, minTime - elapsed));
     }
     document.getElementById('loadingBar').style.display = 'none';
   },
@@ -1653,15 +1869,16 @@ const utils = {
     const table = document.getElementById(tableId);
     if (!table) return;
     const headers = table.querySelectorAll('thead th[data-sort-field]');
-    headers.forEach(th => {
+    headers.forEach((th) => {
       const field = th.dataset.sortField;
       // Remove old indicators
-      th.querySelectorAll('.sort-indicator').forEach(el => el.remove());
+      th.querySelectorAll('.sort-indicator').forEach((el) => el.remove());
       // Add indicator
       const indicator = document.createElement('span');
       indicator.className = 'sort-indicator ms-1';
       if (field === currentField) {
-        indicator.innerHTML = currentDir === 'asc' ? '<i class="bi bi-caret-up-fill"></i>' : '<i class="bi bi-caret-down-fill"></i>';
+        indicator.innerHTML =
+          currentDir === 'asc' ? '<i class="bi bi-caret-up-fill"></i>' : '<i class="bi bi-caret-down-fill"></i>';
         th.classList.add('text-primary');
       } else {
         indicator.innerHTML = '<i class="bi bi-caret-up opacity-25"></i>';
@@ -1675,7 +1892,7 @@ const utils = {
       const newTh = th.cloneNode(true);
       th.parentNode.replaceChild(newTh, th);
       newTh.addEventListener('click', () => {
-        const newDir = (field === currentField && currentDir === 'asc') ? 'desc' : 'asc';
+        const newDir = field === currentField && currentDir === 'asc' ? 'desc' : 'asc';
         onSort(field, newDir);
       });
     });
@@ -1685,14 +1902,22 @@ const utils = {
    * Persist sort state to localStorage
    */
   saveSortState(moduleKey, field, direction) {
-    try { localStorage.setItem(`sort_${moduleKey}`, JSON.stringify({ field, direction })); } catch (e) { /* non-critical */ }
+    try {
+      localStorage.setItem(`sort_${moduleKey}`, JSON.stringify({ field, direction }));
+    } catch (e) {
+      /* non-critical */
+    }
   },
 
   /**
    * Load persisted sort state
    */
   loadSortState(moduleKey) {
-    try { return JSON.parse(localStorage.getItem(`sort_${moduleKey}`)); } catch (e) { return null; }
+    try {
+      return JSON.parse(localStorage.getItem(`sort_${moduleKey}`));
+    } catch (e) {
+      return null;
+    }
   },
 
   /* ==================================================== */
@@ -1721,7 +1946,11 @@ const utils = {
    * Get all saved filter views for a module
    */
   getSavedFilterViews(moduleKey) {
-    try { return JSON.parse(localStorage.getItem(`savedViews_${moduleKey}`) || '[]'); } catch (e) { return []; }
+    try {
+      return JSON.parse(localStorage.getItem(`savedViews_${moduleKey}`) || '[]');
+    } catch (e) {
+      return [];
+    }
   },
 
   /**
@@ -1754,7 +1983,8 @@ const utils = {
       el.innerHTML = '<option value="">No saved views</option>';
       return;
     }
-    el.innerHTML = '<option value="">Load saved view...</option>' +
+    el.innerHTML =
+      '<option value="">Load saved view...</option>' +
       views.map((v, i) => `<option value="${i}">${this.escapeHtml(v.name)}</option>`).join('');
     el.onchange = () => {
       const idx = parseInt(el.value);
@@ -1830,8 +2060,12 @@ const utils = {
   /**
    * Check if undo/redo is available
    */
-  canUndo(moduleKey) { return (this._undoStacks[moduleKey]?.length || 0) > 0; },
-  canRedo(moduleKey) { return (this._redoStacks[moduleKey]?.length || 0) > 0; },
+  canUndo(moduleKey) {
+    return (this._undoStacks[moduleKey]?.length || 0) > 0;
+  },
+  canRedo(moduleKey) {
+    return (this._redoStacks[moduleKey]?.length || 0) > 0;
+  },
 
   /* ==================================================== */
   /* NETWORK ERROR HANDLING (UX-5)                        */
@@ -1845,13 +2079,28 @@ const utils = {
   classifyError(error) {
     const msg = (error.message || '').toLowerCase();
     if (msg.includes('failed to fetch') || msg.includes('networkerror') || msg.includes('network request failed')) {
-      return { message: 'Network connection lost. Please check your internet and try again.', type: 'error', isNetwork: true, canRetry: true };
+      return {
+        message: 'Network connection lost. Please check your internet and try again.',
+        type: 'error',
+        isNetwork: true,
+        canRetry: true,
+      };
     }
     if (msg.includes('timeout') || msg.includes('timed out')) {
-      return { message: 'Request timed out. The server may be busy — please try again.', type: 'warning', isNetwork: true, canRetry: true };
+      return {
+        message: 'Request timed out. The server may be busy — please try again.',
+        type: 'warning',
+        isNetwork: true,
+        canRetry: true,
+      };
     }
     if (msg.includes('cors') || msg.includes('cross-origin')) {
-      return { message: 'Connection blocked by security policy. Please contact support.', type: 'error', isNetwork: true, canRetry: false };
+      return {
+        message: 'Connection blocked by security policy. Please contact support.',
+        type: 'error',
+        isNetwork: true,
+        canRetry: false,
+      };
     }
     if (msg.includes('401') || msg.includes('unauthorized')) {
       // Auto-logout on session expiry
@@ -1861,12 +2110,22 @@ const utils = {
       return { message: 'Session expired. Logging you out...', type: 'warning', isNetwork: false, canRetry: false };
     }
     if (msg.includes('403') || msg.includes('forbidden')) {
-      return { message: 'You do not have permission for this action.', type: 'error', isNetwork: false, canRetry: false };
+      return {
+        message: 'You do not have permission for this action.',
+        type: 'error',
+        isNetwork: false,
+        canRetry: false,
+      };
     }
     if (msg.includes('404') || msg.includes('not found')) {
       return { message: 'The requested resource was not found.', type: 'warning', isNetwork: false, canRetry: false };
     }
-    return { message: error.message || 'An unexpected error occurred.', type: 'error', isNetwork: false, canRetry: false };
+    return {
+      message: error.message || 'An unexpected error occurred.',
+      type: 'error',
+      isNetwork: false,
+      canRetry: false,
+    };
   },
 
   /**
@@ -1875,11 +2134,21 @@ const utils = {
    * @param {string} context - What was being done (e.g., "loading awards")
    * @param {Function} retryFn - Optional retry function
    */
+  /** @type {Function|null} Stored retry callback for the most recent error toast */
+  _lastRetryFn: null,
+
+  /** Execute the stored retry function (called via data-action delegation) */
+  executeRetry() {
+    if (this._lastRetryFn) this._lastRetryFn();
+  },
+
   showErrorWithRetry(error, context, retryFn) {
     const classified = this.classifyError(error);
-    const retryHtml = (classified.canRetry && retryFn)
-      ? ` <button class="btn btn-sm btn-light ms-2" onclick="(${retryFn.toString()})()">Retry</button>`
-      : '';
+    let retryHtml = '';
+    if (classified.canRetry && retryFn) {
+      this._lastRetryFn = retryFn;
+      retryHtml = ' <button class="btn btn-sm btn-light ms-2" data-action="utils.executeRetry">Retry</button>';
+    }
     this.showToast(`Failed ${context}: ${classified.message}${retryHtml}`, classified.type);
   },
 
@@ -1912,7 +2181,10 @@ const utils = {
     } else if (succeeded.length === 0) {
       this.showToast(`${label}: All ${failed.length} items failed`, 'error');
     } else {
-      this.showToast(`${label}: ${succeeded.length} succeeded, ${failed.length} failed. Check console for details.`, 'warning');
+      this.showToast(
+        `${label}: ${succeeded.length} succeeded, ${failed.length} failed. Check console for details.`,
+        'warning'
+      );
       console.warn(`${label} - Failed items:`, failed);
     }
     return { succeeded, failed };
@@ -1942,12 +2214,13 @@ const utils = {
     }
     overlay = document.createElement('div');
     overlay.id = 'shortcutHelpOverlay';
-    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:10000;display:flex;align-items:center;justify-content:center;';
+    overlay.style.cssText =
+      'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:10000;display:flex;align-items:center;justify-content:center;';
     overlay.innerHTML = `
       <div style="background:white;border-radius:12px;padding:24px;max-width:600px;width:90%;max-height:80vh;overflow-y:auto;">
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h5 class="mb-0"><i class="bi bi-keyboard me-2"></i>Keyboard Shortcuts</h5>
-          <button class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('shortcutHelpOverlay').remove()"><i class="bi bi-x-lg"></i></button>
+          <button class="btn btn-sm btn-outline-secondary" data-action="utils.closeShortcutHelp"><i class="bi bi-x-lg"></i></button>
         </div>
         <table class="table table-sm mb-0">
           <tbody>
@@ -1964,7 +2237,9 @@ const utils = {
         <p class="text-muted small mt-3 mb-0 text-center">Press <kbd>?</kbd> or <kbd>Escape</kbd> to close</p>
       </div>
     `;
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) overlay.remove();
+    });
     document.addEventListener('keydown', function handler(e) {
       if (e.key === 'Escape') {
         document.getElementById('shortcutHelpOverlay')?.remove();
@@ -2004,12 +2279,12 @@ const utils = {
     const cancelBtns = modal.querySelectorAll('[data-bs-dismiss="modal"]');
     // Disable close buttons
     if (closeBtn) closeBtn.disabled = true;
-    cancelBtns.forEach(btn => btn.disabled = true);
+    cancelBtns.forEach((btn) => (btn.disabled = true));
     try {
       return await asyncFn();
     } finally {
       if (closeBtn) closeBtn.disabled = false;
-      cancelBtns.forEach(btn => btn.disabled = false);
+      cancelBtns.forEach((btn) => (btn.disabled = false));
     }
   },
 
@@ -2051,8 +2326,10 @@ const utils = {
   initInlineValidation(formId) {
     const form = document.getElementById(formId);
     if (!form) return;
-    const inputs = form.querySelectorAll('input[required], select[required], textarea[required], input[pattern], input[type="email"], input[type="url"]');
-    inputs.forEach(input => {
+    const inputs = form.querySelectorAll(
+      'input[required], select[required], textarea[required], input[pattern], input[type="email"], input[type="url"]'
+    );
+    inputs.forEach((input) => {
       input.addEventListener('blur', () => this._validateField(input));
       input.addEventListener('input', () => {
         if (input.classList.contains('is-invalid')) {
@@ -2104,7 +2381,22 @@ const utils = {
       feedback.textContent = message;
     }
     return isValid;
-  }
+  },
+
+  /** No-op handler for elements that only need event modifiers (e.g. data-prevent-default) */
+  noop() {},
+
+  /** Close the column visibility dialog */
+  closeColVisDialog() {
+    const el = document.getElementById('colVisDialog');
+    if (el) el.style.display = 'none';
+  },
+
+  /** Close the keyboard shortcut help overlay */
+  closeShortcutHelp() {
+    const el = document.getElementById('shortcutHelpOverlay');
+    if (el) el.remove();
+  },
 };
 
 // ============================================
@@ -2118,19 +2410,18 @@ const utils = {
  * @param {Object} pagination - { page, totalPages, count, pageSize }
  * @param {string} goToPageFn - Global function path to call, e.g. "awardsModule._goToPage"
  */
-utils.renderServerPagination = function(containerId, pagination, goToPageFn) {
+utils.renderServerPagination = function (containerId, pagination, goToPageFn) {
   const el = document.getElementById(containerId);
   if (!el) return;
 
   const { page, totalPages, count, pageSize } = pagination;
   if (!totalPages || totalPages <= 1) {
-    el.innerHTML = count
-      ? `<div class="text-center text-muted small mt-2">Showing all ${count} records</div>`
-      : '';
+    el.innerHTML = count ? `<div class="text-center text-muted small mt-2">Showing all ${count} records</div>` : '';
     return;
   }
 
-  let html = '<nav aria-label="Table pagination"><ul class="pagination pagination-sm justify-content-center mt-3 mb-1">';
+  let html =
+    '<nav aria-label="Table pagination"><ul class="pagination pagination-sm justify-content-center mt-3 mb-1">';
 
   // Previous button
   html += `<li class="page-item ${page <= 1 ? 'disabled' : ''}">
@@ -2153,7 +2444,7 @@ utils.renderServerPagination = function(containerId, pagination, goToPageFn) {
   html += '</ul></nav>';
 
   // Summary text
-  const from = ((page - 1) * pageSize) + 1;
+  const from = (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, count);
   html += `<div class="text-center text-muted small">Showing ${from}\u2013${to} of ${count} records (page ${page}/${totalPages})</div>`;
 
@@ -2205,14 +2496,12 @@ const serverQuery = {
       sort = null,
       page = 1,
       pageSize = 50,
-      customFilters = []
+      customFilters = [],
     } = options;
 
     if (!STATE.client) throw new Error('Supabase client not initialized');
 
-    let query = STATE.client
-      .from(table)
-      .select(select, { count: 'exact' });
+    let query = STATE.client.from(table).select(select, { count: 'exact' });
 
     // Apply equality filters
     for (const [key, value] of Object.entries(filters)) {
@@ -2224,7 +2513,7 @@ const serverQuery = {
     // Apply search (OR across multiple columns using ilike)
     if (search && search.term && search.columns && search.columns.length > 0) {
       const searchTerm = `%${search.term}%`;
-      const orClause = search.columns.map(col => `${col}.ilike.${searchTerm}`).join(',');
+      const orClause = search.columns.map((col) => `${col}.ilike.${searchTerm}`).join(',');
       query = query.or(orClause);
     }
 
@@ -2253,7 +2542,7 @@ const serverQuery = {
       count: count || 0,
       page,
       pageSize,
-      totalPages: Math.ceil((count || 0) / pageSize)
+      totalPages: Math.ceil((count || 0) / pageSize),
     };
   },
 
@@ -2271,9 +2560,7 @@ const serverQuery = {
     const { table, select = '*', filters = {}, sort = null, customFilters = [] } = options;
 
     // First, get the total count
-    let countQuery = STATE.client
-      .from(table)
-      .select(select, { count: 'exact', head: true });
+    let countQuery = STATE.client.from(table).select(select, { count: 'exact', head: true });
 
     for (const [key, value] of Object.entries(filters)) {
       if (value !== null && value !== undefined && value !== '') {
@@ -2316,7 +2603,7 @@ const serverQuery = {
     }
 
     return allData;
-  }
+  },
 };
 
 // ============================================
@@ -2480,7 +2767,9 @@ const actionRegistry = {
         try {
           const parsed = JSON.parse(argsJson);
           extraArgs = Array.isArray(parsed) ? parsed : [parsed];
-        } catch (_e) { extraArgs = []; }
+        } catch (_e) {
+          extraArgs = [];
+        }
       }
       if (id !== null && id !== undefined) {
         handler(id, ...extraArgs, el, event);
@@ -2508,7 +2797,9 @@ const actionRegistry = {
         try {
           const parsed = JSON.parse(argsJson);
           extraArgs = Array.isArray(parsed) ? parsed : [parsed];
-        } catch (_e) { extraArgs = []; }
+        } catch (_e) {
+          extraArgs = [];
+        }
       }
       if (id !== null && id !== undefined) {
         handler(id, ...extraArgs, event);
@@ -2535,7 +2826,9 @@ const actionRegistry = {
         try {
           const parsed = JSON.parse(argsJson);
           extraArgs = Array.isArray(parsed) ? parsed : [parsed];
-        } catch (_e) { extraArgs = []; }
+        } catch (_e) {
+          extraArgs = [];
+        }
       }
       if (id !== null && id !== undefined) {
         handler(id, ...extraArgs, el, event);
@@ -2599,7 +2892,74 @@ const actionRegistry = {
       if (!handler) return;
       handler(el, event);
     });
-  }
+
+    // Handle blur events (data-on-blur)
+    document.addEventListener('focusout', (event) => {
+      const el = event.target.closest('[data-on-blur]');
+      if (!el) return;
+      const actionName = el.getAttribute('data-on-blur');
+      if (!actionName) return;
+      const handler = this._resolve(actionName);
+      if (!handler) return;
+      const id = el.getAttribute('data-id');
+      if (id) {
+        handler(el, id, event);
+      } else {
+        handler(el, event);
+      }
+    });
+
+    // Handle mousedown events (data-on-mousedown)
+    document.addEventListener('mousedown', (event) => {
+      const el = event.target.closest('[data-on-mousedown]');
+      if (!el) return;
+      const actionName = el.getAttribute('data-on-mousedown');
+      if (!actionName) return;
+      const handler = this._resolve(actionName);
+      if (!handler) return;
+      const id = el.getAttribute('data-id');
+      if (id) {
+        handler(id, el, event);
+      } else {
+        handler(el, event);
+      }
+    });
+
+    // Handle mouseenter events (data-on-mouseenter)
+    document.addEventListener(
+      'mouseenter',
+      (event) => {
+        const el = event.target.closest('[data-on-mouseenter]');
+        if (!el) return;
+        const actionName = el.getAttribute('data-on-mouseenter');
+        if (!actionName) return;
+        const handler = this._resolve(actionName);
+        if (!handler) return;
+        const id = el.getAttribute('data-id');
+        if (id) {
+          handler(el, id, event);
+        } else {
+          handler(el, event);
+        }
+      },
+      true
+    );
+
+    // Handle mouseleave events (data-on-mouseleave)
+    document.addEventListener(
+      'mouseleave',
+      (event) => {
+        const el = event.target.closest('[data-on-mouseleave]');
+        if (!el) return;
+        const actionName = el.getAttribute('data-on-mouseleave');
+        if (!actionName) return;
+        const handler = this._resolve(actionName);
+        if (!handler) return;
+        handler(el, event);
+      },
+      true
+    );
+  },
 };
 
 // ============================================
@@ -2613,7 +2973,7 @@ const actionRegistry = {
 Object.assign(utils, {
   /** Toggle all collapse sections in an accordion */
   toggleAccordion(accordionId) {
-    document.querySelectorAll(`#${accordionId} .collapse`).forEach(c => {
+    document.querySelectorAll(`#${accordionId} .collapse`).forEach((c) => {
       new bootstrap.Collapse(c, { toggle: true });
     });
   },
@@ -2661,10 +3021,12 @@ Object.assign(utils, {
       try {
         const parsed = JSON.parse(argsJson);
         selector = Array.isArray(parsed) ? parsed[0] : parsed;
-      } catch (_e) { /* use default */ }
+      } catch (_e) {
+        /* use default */
+      }
     }
     const lowerVal = (value || '').toLowerCase();
-    document.querySelectorAll(selector).forEach(item => {
+    document.querySelectorAll(selector).forEach((item) => {
       item.style.display = item.textContent.toLowerCase().includes(lowerVal) ? '' : 'none';
     });
   },
@@ -2682,7 +3044,7 @@ Object.assign(utils, {
     if (el) {
       el.style.transform = '';
     }
-  }
+  },
 });
 
 // ============================================
@@ -2727,10 +3089,10 @@ const apiClient = {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(body),
-        signal: controller.signal
+        signal: controller.signal,
       });
 
       clearTimeout(timeoutId);
@@ -2738,7 +3100,7 @@ const apiClient = {
       // Retry on network/timeout errors (not on abort from user)
       if (attempt < this.MAX_RETRIES && (err.name === 'AbortError' || err.name === 'TypeError')) {
         const delay = Math.pow(2, attempt) * 1000; // 1s, 2s
-        await new Promise(r => setTimeout(r, delay));
+        await new Promise((r) => setTimeout(r, delay));
         return this._call(body, attempt + 1);
       }
       throw new Error(err.name === 'AbortError' ? 'Request timed out' : `Network error: ${err.message}`);
@@ -2755,7 +3117,7 @@ const apiClient = {
     // Retry on 429 (rate-limited) or 5xx server errors
     if ((res.status === 429 || res.status >= 500) && attempt < this.MAX_RETRIES) {
       const delay = Math.pow(2, attempt) * 1000;
-      await new Promise(r => setTimeout(r, delay));
+      await new Promise((r) => setTimeout(r, delay));
       return this._call(body, attempt + 1);
     }
 
@@ -2781,7 +3143,7 @@ const apiClient = {
       search: options.search || undefined,
       sort: options.sort || undefined,
       page: options.page || 1,
-      pageSize: options.pageSize || 50
+      pageSize: options.pageSize || 50,
     });
   },
 
@@ -2860,7 +3222,7 @@ const apiClient = {
       table,
       operation: 'upsert',
       data,
-      onConflict: options.onConflict || undefined
+      onConflict: options.onConflict || undefined,
     });
   },
 
@@ -2887,14 +3249,14 @@ const apiClient = {
         filters: options.filters || {},
         sort: options.sort,
         page,
-        pageSize: batchSize
+        pageSize: batchSize,
       });
       allData.push(...(result.data || []));
       totalPages = result.totalPages || 1;
       page++;
     }
     return allData;
-  }
+  },
 };
 
 // Export to window for global access

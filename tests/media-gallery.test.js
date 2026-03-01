@@ -5,7 +5,8 @@
 
 const { JSDOM } = require('jsdom');
 
-const dom = new JSDOM(`<!DOCTYPE html><html><body>
+const dom = new JSDOM(
+  `<!DOCTYPE html><html><body>
   <div id="loadingBar" style="display:none;"></div>
   <div id="notificationToast"><span id="toastIcon"></span><span id="toastTitle"></span><span id="toastMessage"></span></div>
   <div id="connectionStatus"><span class="status-icon"></span><span class="status-text"></span></div>
@@ -20,7 +21,9 @@ const dom = new JSDOM(`<!DOCTYPE html><html><body>
   <span id="awardsCount"></span><span id="eventsCount"></span><span id="winnersCount"></span>
   <div id="mediaEventsContainer"></div>
   <div id="mediaStatsCards"></div>
-</body></html>`, { url: 'http://localhost' });
+</body></html>`,
+  { url: 'http://localhost' }
+);
 
 global.window = dom.window;
 global.document = dom.window.document;
@@ -29,45 +32,78 @@ global.navigator = dom.window.navigator;
 global.HTMLElement = dom.window.HTMLElement;
 
 global.bootstrap = {
-  Toast: class { show() {} hide() {} },
-  Modal: class { show() {} hide() {} static getInstance() { return { hide() {} }; } },
-  Tooltip: class {}
+  Toast: class {
+    show() {}
+    hide() {}
+  },
+  Modal: class {
+    show() {}
+    hide() {}
+    static getInstance() {
+      return { hide() {} };
+    }
+  },
+  Tooltip: class {},
 };
 
 const mockSupabase = {
-  from: jest.fn(() => mockSupabase), select: jest.fn(() => mockSupabase),
-  insert: jest.fn(() => mockSupabase), update: jest.fn(() => mockSupabase),
-  delete: jest.fn(() => mockSupabase), eq: jest.fn(() => mockSupabase),
-  order: jest.fn(() => mockSupabase), range: jest.fn(() => mockSupabase),
+  from: jest.fn(() => mockSupabase),
+  select: jest.fn(() => mockSupabase),
+  insert: jest.fn(() => mockSupabase),
+  update: jest.fn(() => mockSupabase),
+  delete: jest.fn(() => mockSupabase),
+  eq: jest.fn(() => mockSupabase),
+  order: jest.fn(() => mockSupabase),
+  range: jest.fn(() => mockSupabase),
   limit: jest.fn(() => mockSupabase),
   single: jest.fn(() => Promise.resolve({ data: null, error: null })),
   rpc: jest.fn(() => Promise.resolve({ data: [], error: null })),
-  then: jest.fn(cb => cb({ data: [], error: null })),
+  then: jest.fn((cb) => cb({ data: [], error: null })),
   storage: {
     from: jest.fn(() => ({
       upload: jest.fn(() => Promise.resolve({ error: null })),
       getPublicUrl: jest.fn(() => ({ data: { publicUrl: 'https://cdn.example.com/photo.jpg' } })),
       list: jest.fn(() => Promise.resolve({ data: [], error: null })),
-      remove: jest.fn(() => Promise.resolve({ error: null }))
-    }))
+      remove: jest.fn(() => Promise.resolve({ error: null })),
+    })),
   },
-  auth: { getSession: jest.fn(() => Promise.resolve({ data: { session: null }, error: null })), signOut: jest.fn(() => Promise.resolve({ error: null })) },
-  channel: jest.fn(() => ({ on: jest.fn(function() { return this; }), subscribe: jest.fn(function() { return this; }) }))
+  auth: {
+    getSession: jest.fn(() => Promise.resolve({ data: { session: null }, error: null })),
+    signOut: jest.fn(() => Promise.resolve({ error: null })),
+  },
+  channel: jest.fn(() => ({
+    on: jest.fn(function () {
+      return this;
+    }),
+    subscribe: jest.fn(function () {
+      return this;
+    }),
+  })),
 };
 global.supabase = { createClient: () => mockSupabase };
 global.window.supabase = global.supabase;
 
 require('../config.js');
-global.STATE = global.window.STATE; global.SUPABASE_CONFIG = global.window.SUPABASE_CONFIG;
-global.STATUS = global.window.STATUS; global.MEDIA_TYPES = global.window.MEDIA_TYPES;
-global.INACTIVITY_TIMEOUT = global.window.INACTIVITY_TIMEOUT; global.YEARS = global.window.YEARS;
-global.SECTORS = global.window.SECTORS; global.REGIONS = global.window.REGIONS;
+global.STATE = global.window.STATE;
+global.SUPABASE_CONFIG = global.window.SUPABASE_CONFIG;
+global.STATUS = global.window.STATUS;
+global.MEDIA_TYPES = global.window.MEDIA_TYPES;
+global.INACTIVITY_TIMEOUT = global.window.INACTIVITY_TIMEOUT;
+global.YEARS = global.window.YEARS;
+global.SECTORS = global.window.SECTORS;
+global.REGIONS = global.window.REGIONS;
 global.STATE.client = mockSupabase;
 
-function syncWindowToGlobal() { for (const key of Object.keys(global.window)) { if (!(key in global) && typeof global.window[key] !== 'undefined') global[key] = global.window[key]; } }
+function syncWindowToGlobal() {
+  for (const key of Object.keys(global.window)) {
+    if (!(key in global) && typeof global.window[key] !== 'undefined') global[key] = global.window[key];
+  }
+}
 
-require('../utils.js'); syncWindowToGlobal();
-require('../media-gallery-new.js'); syncWindowToGlobal();
+require('../utils.js');
+syncWindowToGlobal();
+require('../media-gallery-new.js');
+syncWindowToGlobal();
 
 describe('Media Gallery Module - Structure', () => {
   test('mediaGalleryModule is defined', () => {
@@ -126,7 +162,7 @@ describe('Media Gallery Module - State Management', () => {
 describe('Media Gallery Module - View Management', () => {
   test('supports all view types', () => {
     const views = ['events-list', 'event-contents', 'photos-production', 'videos-production'];
-    views.forEach(view => {
+    views.forEach((view) => {
       mediaGalleryModule.currentView = view;
       expect(mediaGalleryModule.currentView).toBe(view);
     });
@@ -135,8 +171,17 @@ describe('Media Gallery Module - View Management', () => {
 
 describe('Media Gallery Module - Sort Options', () => {
   test('supports different sort options', () => {
-    const sorts = ['display_order', 'name_asc', 'name_desc', 'date_newest', 'date_oldest', 'org_asc', 'tagged', 'untagged'];
-    sorts.forEach(sort => {
+    const sorts = [
+      'display_order',
+      'name_asc',
+      'name_desc',
+      'date_newest',
+      'date_oldest',
+      'org_asc',
+      'tagged',
+      'untagged',
+    ];
+    sorts.forEach((sort) => {
       mediaGalleryModule.currentSortBy = sort;
       expect(mediaGalleryModule.currentSortBy).toBe(sort);
     });

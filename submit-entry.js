@@ -392,8 +392,7 @@
       awardsList.innerHTML = sectorCategories
         .map(
           (cat, idx) => `
-      <div class="award-option" data-category-index="${idx}" role="button" tabindex="0"
-           onkeydown="if(event.key==='Enter')this.click()">
+      <div class="award-option" data-category-index="${idx}" role="button" tabindex="0">
         <div class="award-check">
           <i class="bi bi-check" style="display:none; font-size:14px; font-weight:900;"></i>
         </div>
@@ -403,11 +402,14 @@
         )
         .join('');
 
-      // Attach click handlers via data attributes to avoid inline JS escaping issues
+      // Attach click and keyboard handlers via addEventListener
       awardsList.querySelectorAll('.award-option').forEach((opt) => {
         opt.addEventListener('click', () => {
           const idx = parseInt(opt.dataset.categoryIndex);
           this.selectCategory(sectorCategories[idx], opt);
+        });
+        opt.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') opt.click();
         });
       });
 
@@ -666,7 +668,7 @@
       <div class="review-group">
         <div class="review-group-title">
           Award Details
-          <span class="review-edit-btn float-end" data-action="entryFormApp.goToStep" data-step="1">Edit</span>
+          <span class="review-edit-btn float-end" data-action="entryFormApp.goToStep" data-args="[1]">Edit</span>
         </div>
         ${row('Region', d.region)}
         ${row('Sector', this.toTitleCase(d.sector || ''))}
@@ -676,7 +678,7 @@
       <div class="review-group">
         <div class="review-group-title">
           Company Information
-          <span class="review-edit-btn float-end" data-action="entryFormApp.goToStep" data-step="4">Edit</span>
+          <span class="review-edit-btn float-end" data-action="entryFormApp.goToStep" data-args="[4]">Edit</span>
         </div>
         ${row('Company Name', d.companyName)}
         ${row('Website', d.companyWebsite)}
@@ -687,7 +689,7 @@
       <div class="review-group">
         <div class="review-group-title">
           About Your Entry
-          <span class="review-edit-btn float-end" data-action="entryFormApp.goToStep" data-step="5">Edit</span>
+          <span class="review-edit-btn float-end" data-action="entryFormApp.goToStep" data-args="[5]">Edit</span>
         </div>
         <div class="review-row"><span class="review-label">Description</span></div>
         ${textBlock(d.entryDescription)}
@@ -701,7 +703,7 @@
       <div class="review-group">
         <div class="review-group-title">
           Supporting Information
-          <span class="review-edit-btn float-end" data-action="entryFormApp.goToStep" data-step="6">Edit</span>
+          <span class="review-edit-btn float-end" data-action="entryFormApp.goToStep" data-args="[6]">Edit</span>
         </div>
         ${d.supportingInfo ? `<div class="review-row"><span class="review-label">Additional Info</span></div>${textBlock(d.supportingInfo)}` : ''}
         ${row('Trade Bodies', d.tradeBodies)}
@@ -714,7 +716,7 @@
       <div class="review-group">
         <div class="review-group-title">
           Contact Details
-          <span class="review-edit-btn float-end" onclick="entryFormApp.goToStep(7)">Edit</span>
+          <span class="review-edit-btn float-end" data-action="entryFormApp.goToStep" data-args="[7]">Edit</span>
         </div>
         ${row('Name', d.contactName)}
         ${row('Position', d.contactPosition)}

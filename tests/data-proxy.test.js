@@ -41,10 +41,10 @@ function chainable(resolveWith = { data: [], error: null, count: 0 }) {
     order: mockOrder.mockReturnThis(),
     range: mockRange.mockReturnThis(),
     maybeSingle: jest.fn(),
-    then: (resolve) => resolve(resolveWith)
+    then: (resolve) => resolve(resolveWith),
   };
   // Make all methods chainable by default
-  Object.keys(obj).forEach(key => {
+  Object.keys(obj).forEach((key) => {
     if (typeof obj[key] === 'function' && key !== 'then' && key !== 'maybeSingle') {
       obj[key] = jest.fn(() => obj);
     }
@@ -68,12 +68,16 @@ const mockFrom = jest.fn((table) => {
 
 const mockGetUser = jest.fn();
 
-jest.mock('@supabase/supabase-js', () => ({
-  createClient: jest.fn(() => ({
-    from: mockFrom,
-    auth: { getUser: mockGetUser }
-  }))
-}), { virtual: true });
+jest.mock(
+  '@supabase/supabase-js',
+  () => ({
+    createClient: jest.fn(() => ({
+      from: mockFrom,
+      auth: { getUser: mockGetUser },
+    })),
+  }),
+  { virtual: true }
+);
 
 // Set required env vars
 process.env.SUPABASE_URL = 'https://test.supabase.co';
@@ -93,9 +97,9 @@ function createReq({ method = 'POST', body = {}, headers = {} } = {}) {
     headers: {
       authorization: 'Bearer valid-token',
       origin: 'http://localhost',
-      ...headers
+      ...headers,
     },
-    params: {}
+    params: {},
   };
 }
 
@@ -104,10 +108,20 @@ function createRes() {
     statusCode: null,
     body: null,
     headers: {},
-    status(code) { res.statusCode = code; return res; },
-    json(data) { res.body = data; return res; },
-    end() { return res; },
-    setHeader(key, value) { res.headers[key] = value; }
+    status(code) {
+      res.statusCode = code;
+      return res;
+    },
+    json(data) {
+      res.body = data;
+      return res;
+    },
+    end() {
+      return res;
+    },
+    setHeader(key, value) {
+      res.headers[key] = value;
+    },
   };
   return res;
 }
@@ -122,7 +136,7 @@ describe('Data Proxy API', () => {
     // Default: auth succeeds
     mockGetUser.mockResolvedValue({
       data: { user: { id: 'user-123', email: 'admin@test.com' } },
-      error: null
+      error: null,
     });
   });
 
@@ -220,7 +234,7 @@ describe('Data Proxy API', () => {
 
   test('accepts valid select request', async () => {
     const req = createReq({
-      body: { table: 'awards', operation: 'select', page: 1, pageSize: 25 }
+      body: { table: 'awards', operation: 'select', page: 1, pageSize: 25 },
     });
     const res = createRes();
     await handler(req, res);
@@ -230,7 +244,7 @@ describe('Data Proxy API', () => {
 
   test('accepts valid count request', async () => {
     const req = createReq({
-      body: { table: 'entries', operation: 'count', filters: { status: 'submitted' } }
+      body: { table: 'entries', operation: 'count', filters: { status: 'submitted' } },
     });
     const res = createRes();
     await handler(req, res);
@@ -244,8 +258,8 @@ describe('Data Proxy API', () => {
       body: {
         table: 'awards',
         operation: 'insert',
-        data: { award_name: 'Best Plumber', county: 'Kent', year: 2026 }
-      }
+        data: { award_name: 'Best Plumber', county: 'Kent', year: 2026 },
+      },
     });
     const res = createRes();
     await handler(req, res);
@@ -261,8 +275,8 @@ describe('Data Proxy API', () => {
         table: 'awards',
         operation: 'update',
         id: 'abc-123',
-        data: { award_name: 'Updated Name' }
-      }
+        data: { award_name: 'Updated Name' },
+      },
     });
     const res = createRes();
     await handler(req, res);
@@ -275,8 +289,8 @@ describe('Data Proxy API', () => {
         table: 'entries',
         operation: 'update',
         filters: { status: 'draft' },
-        data: { status: 'submitted' }
-      }
+        data: { status: 'submitted' },
+      },
     });
     const res = createRes();
     await handler(req, res);
@@ -287,7 +301,7 @@ describe('Data Proxy API', () => {
 
   test('accepts valid delete with id', async () => {
     const req = createReq({
-      body: { table: 'awards', operation: 'delete', id: 'abc-123' }
+      body: { table: 'awards', operation: 'delete', id: 'abc-123' },
     });
     const res = createRes();
     await handler(req, res);
@@ -298,7 +312,7 @@ describe('Data Proxy API', () => {
 
   test('immutable tables reject mutations', async () => {
     const req = createReq({
-      body: { table: 'counties', operation: 'insert', data: { name: 'Hack' } }
+      body: { table: 'counties', operation: 'insert', data: { name: 'Hack' } },
     });
     const res = createRes();
     await handler(req, res);
@@ -327,7 +341,7 @@ describe('Data Proxy API', () => {
 
   test('rejects negative page number', async () => {
     const req = createReq({
-      body: { table: 'awards', operation: 'select', page: -1 }
+      body: { table: 'awards', operation: 'select', page: -1 },
     });
     const res = createRes();
     await handler(req, res);
@@ -337,7 +351,7 @@ describe('Data Proxy API', () => {
 
   test('rejects zero pageSize', async () => {
     const req = createReq({
-      body: { table: 'awards', operation: 'select', pageSize: 0 }
+      body: { table: 'awards', operation: 'select', pageSize: 0 },
     });
     const res = createRes();
     await handler(req, res);
@@ -346,7 +360,7 @@ describe('Data Proxy API', () => {
 
   test('rejects select string exceeding max length', async () => {
     const req = createReq({
-      body: { table: 'awards', operation: 'select', select: 'x'.repeat(501) }
+      body: { table: 'awards', operation: 'select', select: 'x'.repeat(501) },
     });
     const res = createRes();
     await handler(req, res);
@@ -356,7 +370,7 @@ describe('Data Proxy API', () => {
 
   test('rejects sort without column', async () => {
     const req = createReq({
-      body: { table: 'awards', operation: 'select', sort: { ascending: true } }
+      body: { table: 'awards', operation: 'select', sort: { ascending: true } },
     });
     const res = createRes();
     await handler(req, res);
@@ -366,7 +380,7 @@ describe('Data Proxy API', () => {
 
   test('rejects filters as non-object', async () => {
     const req = createReq({
-      body: { table: 'awards', operation: 'select', filters: 'bad' }
+      body: { table: 'awards', operation: 'select', filters: 'bad' },
     });
     const res = createRes();
     await handler(req, res);
@@ -375,10 +389,23 @@ describe('Data Proxy API', () => {
   });
 
   test('all allowed tables can be selected', async () => {
-    const allowed = ['awards', 'organisations', 'entries', 'winners', 'events',
-      'invoices', 'payments', 'award_assignments', 'contacts',
-      'activity_log', 'email_templates', 'user_preferences',
-      'counties', 'regions', 'award_years'];
+    const allowed = [
+      'awards',
+      'organisations',
+      'entries',
+      'winners',
+      'events',
+      'invoices',
+      'payments',
+      'award_assignments',
+      'contacts',
+      'activity_log',
+      'email_templates',
+      'user_preferences',
+      'counties',
+      'regions',
+      'award_years',
+    ];
 
     for (const table of allowed) {
       const req = createReq({ body: { table, operation: 'select' } });
@@ -391,7 +418,7 @@ describe('Data Proxy API', () => {
   test('read-only tables reject insert', async () => {
     for (const table of ['counties', 'regions', 'award_years']) {
       const req = createReq({
-        body: { table, operation: 'insert', data: { name: 'test' } }
+        body: { table, operation: 'insert', data: { name: 'test' } },
       });
       const res = createRes();
       await handler(req, res);
@@ -402,7 +429,7 @@ describe('Data Proxy API', () => {
   test('read-only tables reject delete', async () => {
     for (const table of ['counties', 'regions', 'award_years']) {
       const req = createReq({
-        body: { table, operation: 'delete', id: 'abc' }
+        body: { table, operation: 'delete', id: 'abc' },
       });
       const res = createRes();
       await handler(req, res);
@@ -412,7 +439,7 @@ describe('Data Proxy API', () => {
 
   test('multiple validation errors are returned together', async () => {
     const req = createReq({
-      body: { table: 'secret', operation: 'drop', pageSize: -5 }
+      body: { table: 'secret', operation: 'drop', pageSize: -5 },
     });
     const res = createRes();
     await handler(req, res);
@@ -425,8 +452,8 @@ describe('Data Proxy API', () => {
       body: {
         table: 'awards',
         operation: 'select',
-        sort: { column: 'created_at', ascending: false }
-      }
+        sort: { column: 'created_at', ascending: false },
+      },
     });
     const res = createRes();
     await handler(req, res);
@@ -438,8 +465,8 @@ describe('Data Proxy API', () => {
       body: {
         table: 'awards',
         operation: 'insert',
-        data: [{ award_name: 'A' }, { award_name: 'B' }]
-      }
+        data: [{ award_name: 'A' }, { award_name: 'B' }],
+      },
     });
     const res = createRes();
     await handler(req, res);
@@ -451,8 +478,8 @@ describe('Data Proxy API', () => {
       body: {
         table: 'awards',
         operation: 'delete',
-        filters: { status: 'draft' }
-      }
+        filters: { status: 'draft' },
+      },
     });
     const res = createRes();
     await handler(req, res);

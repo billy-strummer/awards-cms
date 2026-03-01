@@ -128,7 +128,7 @@ const dashboardModule = {
       // Use already-loaded awards; fetch only assignments and entries (not in global state)
       const awards = STATE.allAwards || [];
 
-      // selectAll required: cross-referencing assignment/entry award_ids against per-year award sets
+      // selectAll justified: cross-referencing assignments/entries against per-year award sets for year summary (see pagination documentation)
       const [assignments, entries] = await Promise.all([
         apiClient.selectAll('award_assignments', { select: 'award_id, status' }),
         apiClient.selectAll('entries', { select: 'id, award_id' }),
@@ -347,6 +347,7 @@ const dashboardModule = {
             .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
         } else {
           try {
+            // selectAll justified: aggregating all pending invoices to compute total value for user notification (see pagination documentation)
             const result = await apiClient.selectAll('invoices', {
               select: 'id, invoice_number, total_amount, organisations(company_name)',
               filters: {
@@ -359,6 +360,7 @@ const dashboardModule = {
           } catch (selectErr) {
             // Fallback without join if relationship fails
             if (selectErr.message?.includes('relationship') || selectErr.message?.includes('schema cache')) {
+              // selectAll justified: retry without FK join for pending invoice aggregation (see pagination documentation)
               const result = await apiClient.selectAll('invoices', {
                 select: 'id, invoice_number, total_amount',
                 filters: {
@@ -646,6 +648,7 @@ const dashboardModule = {
       // Check for pending/unpaid product sales (invoices)
       let pendingInvoices;
       try {
+        // selectAll justified: aggregating pending invoices for notification badge total value (see pagination documentation)
         const invoiceResult = await apiClient.selectAll('invoices', {
           select: 'id, invoice_number, total_amount, organisations(company_name)',
           filters: {
@@ -658,6 +661,7 @@ const dashboardModule = {
       } catch (invoiceErr) {
         // Fallback without join if relationship fails
         if (invoiceErr.message?.includes('relationship') || invoiceErr.message?.includes('schema cache')) {
+          // selectAll justified: fallback without FK join for pending invoice notification (see pagination documentation)
           const invoiceResult = await apiClient.selectAll('invoices', {
             select: 'id, invoice_number, total_amount',
             filters: {
@@ -906,9 +910,10 @@ const dashboardModule = {
   },
 
   /**
-   * Get companies by spending
+   * Get companies by spending.
    */
   async getCompaniesBySpending() {
+    // selectAll justified: aggregates all payments by organisation for spending rankings (see pagination documentation)
     const payments = await apiClient.selectAll('payments', {
       select: 'organisation_id, amount, payment_date, organisations(company_name)',
     });
@@ -1573,7 +1578,7 @@ const dashboardModule = {
       });
 
       // Tagged media (only fetch columns needed for counting)
-      const { data: allMedia } = await STATE.client.from('media_gallery').select('id, organisation_id, award_id');
+      const { data: allMedia } = await apiClient.select('media_gallery', { select: 'id, organisation_id, award_id' });
 
       const totalMedia = allMedia?.length || 0;
       const taggedMedia = allMedia?.filter((m) => m.organisation_id || m.award_id).length || 0;
@@ -1894,7 +1899,7 @@ const dashboardModule = {
    */
   async loadSalesData() {
     try {
-      // Fetch invoices and payments once, then pass to sub-functions
+      // selectAll justified: aggregating invoices and payments for sales summary, charts, and breakdowns (see pagination documentation)
       const [allInvoices, allPayments] = await Promise.all([
         apiClient.selectAll('invoices', {
           select: '*, organisations(company_name)',
@@ -2202,7 +2207,7 @@ const dashboardModule = {
     try {
       utils.showLoading();
 
-      // Fetch comprehensive sales data
+      // selectAll justified: CSV export requires complete invoice and payment datasets (see pagination documentation)
       const [invoices, payments] = await Promise.all([
         apiClient.selectAll('invoices', {
           select: '*, organisations(company_name)',
@@ -2687,7 +2692,7 @@ const dashboardModule = {
       const awards = STATE.allAwards || [];
       const awardData = STATE.allAwards || [];
 
-      // award_assignments not in global state — query API
+      // selectAll justified: cross-referencing all assignments with awards for county/city coverage map (see pagination documentation)
       const assignments = await apiClient.selectAll('award_assignments', {
         select: 'award_id, organisation_id',
       });

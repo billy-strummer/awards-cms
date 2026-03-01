@@ -4,6 +4,17 @@
     "es2020": true
   },
   "globals": {
+    "bootstrap": "readonly",
+    "supabase": "readonly",
+    "Stripe": "readonly",
+    "Chart": "readonly",
+    "XLSX": "readonly",
+    "L": "readonly",
+    "Sentry": "readonly",
+    "jsPDF": "readonly",
+    "jspdf": "readonly",
+    "Choices": "readonly",
+    "uploadApp": "readonly",
     "ModuleRegistry": "readonly",
     "STATE": "readonly",
     "SUPABASE_CONFIG": "readonly",
@@ -13,9 +24,10 @@
     "YEARS": "readonly",
     "SECTORS": "readonly",
     "REGIONS": "readonly",
-    "supabase": "readonly",
-    "bootstrap": "readonly",
     "utils": "readonly",
+    "apiClient": "readonly",
+    "actionRegistry": "readonly",
+    "serverQuery": "readonly",
     "authModule": "readonly",
     "awardsModule": "readonly",
     "orgsModule": "readonly",
@@ -27,7 +39,7 @@
     "dashboardModule": "readonly",
     "rbacModule": "readonly",
     "securityModule": "readonly",
-    "emailBuilderModule": "readonly",
+    "emailBuilder": "readonly",
     "emailTemplatesModule": "readonly",
     "emailListsModule": "readonly",
     "mediaGalleryModule": "readonly",
@@ -36,7 +48,8 @@
     "settingsModule": "readonly",
     "gdprModule": "readonly",
     "stripeFrontend": "readonly",
-    "multiTenancy": "readonly",
+    "tenantModule": "readonly",
+    "multiTenancyModule": "readonly",
     "testDataManager": "readonly",
     "reportingModule": "readonly",
     "sponsorPortalModule": "readonly",
@@ -51,22 +64,17 @@
     "reportsScheduler": "readonly",
     "aiVettingModule": "readonly",
     "marketingModule": "readonly",
-    "apiClient": "readonly",
-    "actionRegistry": "readonly",
-    "serverQuery": "readonly",
-    "L": "readonly",
-    "Sentry": "readonly",
-    "Stripe": "readonly",
-    "Chart": "readonly",
-    "XLSX": "readonly",
     "a11yModule": "readonly",
     "i18n": "readonly",
-    "tenantModule": "readonly",
-    "multiTenancyModule": "readonly",
-    "emailBuilder": "readonly",
-    "jsPDF": "readonly",
-    "jspdf": "readonly",
-    "Choices": "readonly"
+    "nomineeVoting": "readonly",
+    "winnerPipelineModule": "readonly",
+    "rateLimitModule": "readonly",
+    "seatingEnhancements": "readonly",
+    "reportsAnalytics": "readonly",
+    "judgePortal": "readonly",
+    "showPublicToast": "readonly",
+    "esc": "readonly",
+    "updateTabCounts": "readonly"
   },
   "parserOptions": {
     "ecmaVersion": 2022,
@@ -102,7 +110,15 @@
   },
   "overrides": [
     {
-      "files": ["build.js", "check-schema.js", "diagnose.js", "bulk-csv-importer.js", "jest.config.js", "jest-esm-transform.js", "scripts/**/*.js"],
+      "files": [
+        "build.js",
+        "check-schema.js",
+        "diagnose.js",
+        "bulk-csv-importer.js",
+        "jest.config.js",
+        "jest-esm-transform.js",
+        "scripts/**/*.js"
+      ],
       "env": {
         "node": true,
         "browser": false
@@ -129,11 +145,19 @@
         "node": true
       },
       "rules": {
-        "no-restricted-syntax": "off"
+        "no-restricted-syntax": "off",
+        "no-console": "off"
       }
     },
     {
-      "files": ["auth.js", "config.js", "utils.js"],
+      "files": ["__mocks__/**/*.js"],
+      "env": {
+        "jest": true,
+        "node": true
+      }
+    },
+    {
+      "files": ["auth.js", "config.js", "utils.js", "test-data-manager.js", "diagnose.js"],
       "rules": {
         "no-restricted-syntax": "off"
       }

@@ -29,29 +29,33 @@ const tenantModule = {
       const result = await apiClient.select('tenants', {
         select: 'id, name, slug, logo_url, is_active',
         filters: { is_active: true },
-        sort: { column: 'name', ascending: true }
+        sort: { column: 'name', ascending: true },
       });
       this._tenants = result.data || [];
 
       // If no tenants table exists yet, create a default tenant
       if (this._tenants.length === 0) {
-        this._tenants = [{
+        this._tenants = [
+          {
+            id: 'default',
+            name: 'British Trade Awards',
+            slug: 'bta',
+            logo_url: null,
+            is_active: true,
+          },
+        ];
+      }
+    } catch (e) {
+      // Table may not exist yet - use default
+      this._tenants = [
+        {
           id: 'default',
           name: 'British Trade Awards',
           slug: 'bta',
           logo_url: null,
-          is_active: true
-        }];
-      }
-    } catch (e) {
-      // Table may not exist yet - use default
-      this._tenants = [{
-        id: 'default',
-        name: 'British Trade Awards',
-        slug: 'bta',
-        logo_url: null,
-        is_active: true
-      }];
+          is_active: true,
+        },
+      ];
     }
   },
 
@@ -78,7 +82,7 @@ const tenantModule = {
   restoreLastTenant() {
     const savedId = localStorage.getItem('bta_current_tenant');
     if (savedId) {
-      const tenant = this._tenants.find(t => t.id === savedId);
+      const tenant = this._tenants.find((t) => t.id === savedId);
       if (tenant) {
         this._currentTenant = tenant;
         return;
@@ -94,7 +98,7 @@ const tenantModule = {
    * @returns {Promise<void>}
    */
   async switchTenant(tenantId) {
-    const tenant = this._tenants.find(t => t.id === tenantId);
+    const tenant = this._tenants.find((t) => t.id === tenantId);
     if (!tenant) {
       utils.showToast('Tenant not found', 'error');
       return;
@@ -105,8 +109,8 @@ const tenantModule = {
 
     // Update UI
     this.renderTenantSwitcher();
-    document.getElementById('tenantBrandName')?.textContent
-      && (document.getElementById('tenantBrandName').textContent = tenant.name);
+    document.getElementById('tenantBrandName')?.textContent &&
+      (document.getElementById('tenantBrandName').textContent = tenant.name);
 
     // Reload data for new tenant context
     utils.showToast(`Switched to ${tenant.name}`, 'info');
@@ -144,7 +148,9 @@ const tenantModule = {
         <i class="bi bi-building me-1"></i>${utils.escapeHtml(this._currentTenant?.name || 'Select Programme')}
       </button>
       <ul class="dropdown-menu">
-        ${this._tenants.map(t => `
+        ${this._tenants
+          .map(
+            (t) => `
           <li>
             <a class="dropdown-item ${t.id === this._currentTenant?.id ? 'active' : ''}" href="#"
                data-action="tenantModule.switchTenant" data-id="${t.id}">
@@ -152,7 +158,9 @@ const tenantModule = {
               ${utils.escapeHtml(t.name)}
             </a>
           </li>
-        `).join('')}
+        `
+          )
+          .join('')}
         <li><hr class="dropdown-divider"></li>
         <li><a class="dropdown-item text-muted" href="#" data-action="tenantModule.openManageTenants"><i class="bi bi-gear me-2"></i>Manage Programmes</a></li>
       </ul>
@@ -183,7 +191,7 @@ const tenantModule = {
     const tenantId = this.getTenantId();
     if (tenantId && tenantId !== 'default') {
       if (Array.isArray(data)) {
-        return data.map(d => ({ ...d, tenant_id: tenantId }));
+        return data.map((d) => ({ ...d, tenant_id: tenantId }));
       }
       return { ...data, tenant_id: tenantId };
     }
@@ -249,19 +257,27 @@ const tenantModule = {
           <tr><th>Name</th><th>Slug</th><th>Status</th><th>Actions</th></tr>
         </thead>
         <tbody>
-          ${this._tenants.map(t => `
+          ${this._tenants
+            .map(
+              (t) => `
             <tr>
               <td>${utils.escapeHtml(t.name)}</td>
               <td><code>${utils.escapeHtml(t.slug)}</code></td>
               <td><span class="badge bg-${t.is_active ? 'success' : 'secondary'}">${t.is_active ? 'Active' : 'Inactive'}</span></td>
               <td>
-                ${t.id !== 'default' ? `
+                ${
+                  t.id !== 'default'
+                    ? `
                   <button class="btn btn-sm btn-outline-primary" data-action="tenantModule.editTenant" data-id="${t.id}" aria-label="Edit"><i class="bi bi-pencil"></i></button>
                   <button class="btn btn-sm btn-outline-danger" data-action="tenantModule.deleteTenant" data-id="${t.id}" aria-label="Delete"><i class="bi bi-trash"></i></button>
-                ` : '<small class="text-muted">Default</small>'}
+                `
+                    : '<small class="text-muted">Default</small>'
+                }
               </td>
             </tr>
-          `).join('')}
+          `
+            )
+            .join('')}
         </tbody>
       </table>
     `;
@@ -274,7 +290,10 @@ const tenantModule = {
   async addTenant() {
     const name = prompt('Programme name:');
     if (!name) return;
-    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const slug = name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
 
     try {
       await apiClient.insert('tenants', { name, slug, is_active: true });
@@ -293,7 +312,7 @@ const tenantModule = {
    * @returns {Promise<void>}
    */
   async editTenant(tenantId) {
-    const tenant = this._tenants.find(t => t.id === tenantId);
+    const tenant = this._tenants.find((t) => t.id === tenantId);
     if (!tenant) return;
     const name = prompt('Programme name:', tenant.name);
     if (!name || name === tenant.name) return;
@@ -315,7 +334,15 @@ const tenantModule = {
    * @returns {Promise<void>}
    */
   async deleteTenant(tenantId) {
-    if (!await utils.confirmDialog({ title: 'Delete Programme', message: 'Delete this programme? Data associated with it will become orphaned.', confirmText: 'Delete', danger: true })) return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Delete Programme',
+        message: 'Delete this programme? Data associated with it will become orphaned.',
+        confirmText: 'Delete',
+        danger: true,
+      }))
+    )
+      return;
     try {
       await apiClient.update('tenants', tenantId, { is_active: false });
       if (this._currentTenant?.id === tenantId) {
@@ -328,7 +355,7 @@ const tenantModule = {
     } catch (e) {
       utils.showToast('Failed to delete: ' + e.message, 'error');
     }
-  }
+  },
 };
 
 ModuleRegistry.register('tenantModule', tenantModule);

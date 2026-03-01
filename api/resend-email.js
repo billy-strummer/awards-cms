@@ -12,10 +12,7 @@ require('dotenv').config();
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
 const FROM_EMAIL = process.env.FROM_EMAIL || 'awards@britishtradeawards.com';
 const FROM_NAME = process.env.FROM_NAME || 'British Trade Awards';
@@ -25,13 +22,13 @@ const FROM_NAME = process.env.FROM_NAME || 'British Trade Awards';
  * These subtitles appear in the email header below the brand name.
  */
 const HEADER_SUBTITLES = {
-  winner_notification:    'Entry Approved',
-  event_invitation:       'Event Invitation',
-  entry_confirmation:     'Self-Nomination Entry Confirmation',
-  payment_reminder:       'Payment Reminder',
+  winner_notification: 'Entry Approved',
+  event_invitation: 'Event Invitation',
+  entry_confirmation: 'Self-Nomination Entry Confirmation',
+  payment_reminder: 'Payment Reminder',
   shortlist_notification: 'Entry Approved/Shortlisted',
-  judge_assignment:       'Judging Assignment',
-  ticket_issued:          'Ticket Issued',
+  judge_assignment: 'Judging Assignment',
+  ticket_issued: 'Ticket Issued',
 };
 
 /**
@@ -68,7 +65,7 @@ async function sendEmail({ to, subject, html, text, replyTo, tags }) {
       html,
       text: text || undefined,
       reply_to: replyTo || undefined,
-      tags: tags || undefined
+      tags: tags || undefined,
     });
 
     if (error) throw error;
@@ -80,11 +77,10 @@ async function sendEmail({ to, subject, html, text, replyTo, tags }) {
       subject,
       status: 'sent',
       sent_at: new Date().toISOString(),
-      template_data: { resend_id: data?.id }
+      template_data: { resend_id: data?.id },
     });
 
     return { success: true, id: data?.id };
-
   } catch (error) {
     console.error('Resend send error:', error);
 
@@ -94,7 +90,7 @@ async function sendEmail({ to, subject, html, text, replyTo, tags }) {
       recipient_email: Array.isArray(to) ? to.join(', ') : to,
       subject,
       status: 'failed',
-      last_error: error.message
+      last_error: error.message,
     });
 
     return { success: false, error: error.message };
@@ -111,7 +107,12 @@ async function sendEmail({ to, subject, html, text, replyTo, tags }) {
  */
 async function sendTemplatedEmail({ to, templateType, data }) {
   // Escape user-provided values to prevent HTML injection in emails
-  const esc = (str) => String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const esc = (str) =>
+    String(str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
   const safeData = {};
   for (const [key, value] of Object.entries(data || {})) {
     safeData[key] = typeof value === 'string' ? esc(value) : value;
@@ -125,7 +126,7 @@ async function sendTemplatedEmail({ to, templateType, data }) {
         <p>This prestigious award recognizes your outstanding achievements and contributions to your industry.</p>
         ${d.event_name ? `<h3>Event Details</h3><ul><li><strong>Event:</strong> ${d.event_name}</li><li><strong>Date:</strong> ${d.event_date}</li><li><strong>Venue:</strong> ${d.venue}</li></ul>` : ''}
         <p>We look forward to celebrating your success!</p>
-        <a href="${data.confirm_url || '#'}" class="btn">Confirm Attendance</a>`
+        <a href="${data.confirm_url || '#'}" class="btn">Confirm Attendance</a>`,
     },
     event_invitation: {
       subject: `You're Invited: ${d.event_name}`,
@@ -133,33 +134,33 @@ async function sendTemplatedEmail({ to, templateType, data }) {
         <p>You are cordially invited to attend the <strong>${d.event_name}</strong>.</p>
         <ul><li><strong>Date:</strong> ${d.event_date}</li><li><strong>Venue:</strong> ${d.venue}</li></ul>
         <p>We would be honoured by your presence at this special occasion.</p>
-        <a href="${data.rsvp_url || '#'}" class="btn">RSVP Now</a>`
+        <a href="${data.rsvp_url || '#'}" class="btn">RSVP Now</a>`,
     },
     entry_confirmation: {
       subject: `Entry Received: ${d.award_category}`,
       body: `<h2>Entry Confirmed</h2>
         <p>Thank you for submitting your entry for the <strong>${d.award_category}</strong> award.</p>
         <p><strong>Entry Reference:</strong> ${d.entry_number || 'N/A'}</p>
-        <p>Our team will review your submission. You will be notified of progress updates.</p>`
+        <p>Our team will review your submission. You will be notified of progress updates.</p>`,
     },
     payment_reminder: {
       subject: `Payment Reminder: Invoice ${d.invoice_number}`,
       body: `<h2>Payment Reminder</h2>
         <p>This is a reminder that invoice <strong>${d.invoice_number}</strong> for <strong>&pound;${d.amount}</strong> is due on <strong>${d.due_date}</strong>.</p>
-        <a href="${data.payment_url || '#'}" class="btn">Pay Now</a>`
+        <a href="${data.payment_url || '#'}" class="btn">Pay Now</a>`,
     },
     shortlist_notification: {
       subject: `Congratulations! You've Been Shortlisted for ${d.award_category}`,
       body: `<h2>You've Been Shortlisted!</h2>
         <p>We are pleased to inform you that <strong>${d.company_name}</strong> has been shortlisted for the <strong>${d.award_category}</strong> award.</p>
-        <p>The final winners will be announced at the awards ceremony.</p>`
+        <p>The final winners will be announced at the awards ceremony.</p>`,
     },
     judge_assignment: {
       subject: 'New Judging Assignment - British Trade Awards',
       body: `<h2>Judging Assignment</h2>
         <p>You have been assigned <strong>${d.entry_count || 0}</strong> entries to judge for the British Trade Awards ${d.year}.</p>
         <p>Please complete your scoring by <strong>${d.deadline || 'the deadline'}</strong>.</p>
-        <a href="${data.portal_url || '#'}" class="btn">Open Judge Portal</a>`
+        <a href="${data.portal_url || '#'}" class="btn">Open Judge Portal</a>`,
     },
     ticket_issued: {
       subject: `Your Ticket: ${d.event_name}`,
@@ -168,8 +169,8 @@ async function sendTemplatedEmail({ to, templateType, data }) {
         <p><strong>Ticket Number:</strong> ${d.ticket_number}</p>
         <p><strong>Date:</strong> ${d.event_date}</p>
         <p><strong>Venue:</strong> ${d.venue}</p>
-        <p>Please present this ticket at check-in.</p>`
-    }
+        <p>Please present this ticket at check-in.</p>`,
+    },
   };
 
   const template = templates[templateType];
@@ -213,7 +214,10 @@ async function sendCampaignEmail(campaignId) {
     }
 
     // Update campaign status
-    await supabase.from('email_campaigns').update({ status: 'sending', sent_date: new Date().toISOString() }).eq('id', campaignId);
+    await supabase
+      .from('email_campaigns')
+      .update({ status: 'sending', sent_date: new Date().toISOString() })
+      .eq('id', campaignId);
 
     let sent = 0;
     let failed = 0;
@@ -224,7 +228,7 @@ async function sendCampaignEmail(campaignId) {
       const batch = subscribers.slice(i, i + 10);
 
       const results = await Promise.allSettled(
-        batch.map(async sub => {
+        batch.map(async (sub) => {
           let body = campaign.html_content || campaign.body || '';
           body = body.replace(/\{first_name\}/g, sub.first_name || '');
           body = body.replace(/\{last_name\}/g, sub.last_name || '');
@@ -235,32 +239,37 @@ async function sendCampaignEmail(campaignId) {
             to: sub.email,
             subject: campaign.subject,
             html,
-            tags: [{ name: 'campaign', value: campaignId }]
+            tags: [{ name: 'campaign', value: campaignId }],
           });
         })
       );
 
-      results.forEach(r => {
+      results.forEach((r) => {
         if (r.status === 'fulfilled' && r.value.success) sent++;
-        else { failed++; errors.push(r.reason?.message || r.value?.error || 'Unknown'); }
+        else {
+          failed++;
+          errors.push(r.reason?.message || r.value?.error || 'Unknown');
+        }
       });
 
       // Small delay between batches
       if (i + 10 < subscribers.length) {
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise((resolve) => setTimeout(resolve, 500));
       }
     }
 
     // Update campaign with results
-    await supabase.from('email_campaigns').update({
-      status: failed === subscribers.length ? 'failed' : 'sent',
-      total_recipients: subscribers.length,
-      sent_count: sent,
-      failed_count: failed
-    }).eq('id', campaignId);
+    await supabase
+      .from('email_campaigns')
+      .update({
+        status: failed === subscribers.length ? 'failed' : 'sent',
+        total_recipients: subscribers.length,
+        sent_count: sent,
+        failed_count: failed,
+      })
+      .eq('id', campaignId);
 
     return { success: true, sent, failed, total: subscribers.length };
-
   } catch (error) {
     console.error('Campaign send error:', error);
     await supabase.from('email_campaigns').update({ status: 'failed' }).eq('id', campaignId);
@@ -303,18 +312,19 @@ async function processNotificationQueue() {
   // Load branding once for the whole batch
   let branding = {};
   try {
-    const { data } = await supabase
-      .from('tenant_branding')
-      .select('*')
-      .eq('tenant_id', 'default')
-      .maybeSingle();
+    const { data } = await supabase.from('tenant_branding').select('*').eq('tenant_id', 'default').maybeSingle();
     branding = data || {};
-  } catch (_) { /* use defaults */ }
+  } catch (_) {
+    /* use defaults */
+  }
 
   let processed = 0;
 
   for (const notification of pending) {
-    await supabase.from('notification_queue').update({ status: 'sending', attempts: notification.attempts + 1 }).eq('id', notification.id);
+    await supabase
+      .from('notification_queue')
+      .update({ status: 'sending', attempts: notification.attempts + 1 })
+      .eq('id', notification.id);
 
     // Wrap the notification body with branded header & footer
     const html = wrapEmailTemplate(
@@ -322,21 +332,27 @@ async function processNotificationQueue() {
       notification.body,
       '',
       branding,
-      notification.template_key ? (HEADER_SUBTITLES[notification.template_key] || '') : ''
+      notification.template_key ? HEADER_SUBTITLES[notification.template_key] || '' : ''
     );
 
     const result = await sendEmail({
       to: notification.recipient_email,
       subject: notification.subject,
-      html
+      html,
     });
 
     if (result.success) {
-      await supabase.from('notification_queue').update({ status: 'sent', sent_at: new Date().toISOString() }).eq('id', notification.id);
+      await supabase
+        .from('notification_queue')
+        .update({ status: 'sent', sent_at: new Date().toISOString() })
+        .eq('id', notification.id);
       processed++;
     } else {
       const newStatus = notification.attempts + 1 >= notification.max_attempts ? 'failed' : 'pending';
-      await supabase.from('notification_queue').update({ status: newStatus, last_error: result.error }).eq('id', notification.id);
+      await supabase
+        .from('notification_queue')
+        .update({ status: newStatus, last_error: result.error })
+        .eq('id', notification.id);
     }
   }
 
@@ -349,5 +365,5 @@ module.exports = {
   sendCampaignEmail,
   sendTestEmail,
   processNotificationQueue,
-  wrapEmailTemplate
+  wrapEmailTemplate,
 };

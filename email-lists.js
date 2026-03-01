@@ -55,7 +55,7 @@ const emailListsModule = {
       search: this._searchTerm ? { term: this._searchTerm, columns: ['list_name', 'description'] } : undefined,
       sort: { column: 'created_at', ascending: false },
       page,
-      pageSize: this._pagination.pageSize
+      pageSize: this._pagination.pageSize,
     });
     this._pagination = { ...this._pagination, ...result, page };
     return result.data;
@@ -67,7 +67,7 @@ const emailListsModule = {
    * @returns {void}
    */
   _goToPage(page) {
-    this._fetchPage(page).then(data => {
+    this._fetchPage(page).then((data) => {
       this.currentLists = data || [];
       this.renderEmailLists();
     });
@@ -131,8 +131,7 @@ const emailListsModule = {
         const subs = subscribersData || [];
         if (subs.length > 0) {
           avgOpenRate = Math.round(
-            (subs.reduce((sum, s) => sum + (s.emails_opened / s.emails_received), 0)
-            / subs.length) * 100
+            (subs.reduce((sum, s) => sum + s.emails_opened / s.emails_received, 0) / subs.length) * 100
           );
         }
       }
@@ -142,7 +141,6 @@ const emailListsModule = {
       document.getElementById('emailListsTotalSubscribers').textContent = totalSubscribers;
       document.getElementById('emailListsActiveSubscribers').textContent = activeSubscribers;
       document.getElementById('emailListsAvgOpenRate').textContent = `${avgOpenRate}%`;
-
     } catch (error) {
       console.error('Error loading stats:', error);
     }
@@ -172,7 +170,7 @@ const emailListsModule = {
       return;
     }
 
-    container.innerHTML = this.currentLists.map(list => this.renderListCard(list)).join('');
+    container.innerHTML = this.currentLists.map((list) => this.renderListCard(list)).join('');
 
     // Attach delegated click handler for list card actions
     container.addEventListener('click', (e) => {
@@ -184,12 +182,24 @@ const emailListsModule = {
       const name = actionEl.getAttribute('data-name');
 
       switch (action) {
-        case 'emailListsModule.viewSubscribers': this.viewSubscribers(id, name); break;
-        case 'emailListsModule.addSubscriber': this.addSubscriber(id); break;
-        case 'emailListsModule.openImportModal': this.openImportModal(id); break;
-        case 'emailListsModule.editList': this.editList(id); break;
-        case 'emailListsModule.exportList': this.exportList(id); break;
-        case 'emailListsModule.deleteList': this.deleteList(id); break;
+        case 'emailListsModule.viewSubscribers':
+          this.viewSubscribers(id, name);
+          break;
+        case 'emailListsModule.addSubscriber':
+          this.addSubscriber(id);
+          break;
+        case 'emailListsModule.openImportModal':
+          this.openImportModal(id);
+          break;
+        case 'emailListsModule.editList':
+          this.editList(id);
+          break;
+        case 'emailListsModule.exportList':
+          this.exportList(id);
+          break;
+        case 'emailListsModule.deleteList':
+          this.deleteList(id);
+          break;
       }
     });
 
@@ -334,14 +344,15 @@ const emailListsModule = {
    */
   getListTypeBadge(type) {
     const types = {
-      'general': '<span class="badge bg-secondary">General</span>',
-      'winners': '<span class="badge bg-success"><i class="bi bi-trophy me-1"></i>Winners</span>',
-      'nominees': '<span class="badge bg-warning text-dark"><i class="bi bi-star me-1"></i>Nominees</span>',
-      'sponsors': '<span class="badge bg-primary"><i class="bi bi-award me-1"></i>Sponsors</span>',
-      'vip': '<span class="badge bg-danger"><i class="bi bi-star-fill me-1"></i>VIP</span>',
-      'event': '<span class="badge bg-info"><i class="bi bi-calendar-event me-1"></i>Event</span>',
-      'media': '<span class="badge bg-purple" style="background-color:#6f42c1!important"><i class="bi bi-camera-reels me-1"></i>Media</span>',
-      'custom': '<span class="badge bg-dark">Custom</span>'
+      general: '<span class="badge bg-secondary">General</span>',
+      winners: '<span class="badge bg-success"><i class="bi bi-trophy me-1"></i>Winners</span>',
+      nominees: '<span class="badge bg-warning text-dark"><i class="bi bi-star me-1"></i>Nominees</span>',
+      sponsors: '<span class="badge bg-primary"><i class="bi bi-award me-1"></i>Sponsors</span>',
+      vip: '<span class="badge bg-danger"><i class="bi bi-star-fill me-1"></i>VIP</span>',
+      event: '<span class="badge bg-info"><i class="bi bi-calendar-event me-1"></i>Event</span>',
+      media:
+        '<span class="badge bg-purple" style="background-color:#6f42c1!important"><i class="bi bi-camera-reels me-1"></i>Media</span>',
+      custom: '<span class="badge bg-dark">Custom</span>',
     };
     return types[type] || '<span class="badge bg-secondary">General</span>';
   },
@@ -462,7 +473,7 @@ const emailListsModule = {
       color: document.getElementById('listColor').value,
       icon: document.getElementById('listIcon').value,
       is_active: document.getElementById('listActive').checked,
-      auto_clean: document.getElementById('listAutoClean').checked
+      auto_clean: document.getElementById('listAutoClean').checked,
     };
 
     try {
@@ -498,7 +509,7 @@ const emailListsModule = {
     const lists = await apiClient.selectAll('email_lists', {
       select: 'id, list_name',
       filters: { is_active: true },
-      sort: { column: 'list_name', ascending: true }
+      sort: { column: 'list_name', ascending: true },
     });
 
     const modalHtml = `
@@ -516,9 +527,13 @@ const emailListsModule = {
                 <label class="form-label fw-bold">Select List <span class="text-danger">*</span></label>
                 <select class="form-select" id="importListSelect" ${listId ? 'disabled' : ''}>
                   <option value="">Choose a list...</option>
-                  ${(lists || []).map(list => `
+                  ${(lists || [])
+                    .map(
+                      (list) => `
                     <option value="${list.id}" ${list.id === listId ? 'selected' : ''}>${list.list_name}</option>
-                  `).join('')}
+                  `
+                    )
+                    .join('')}
                 </select>
               </div>
 
@@ -674,17 +689,28 @@ const emailListsModule = {
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = e.target.result;
-      const lines = text.split('\n').filter(line => line.trim());
+      const lines = text.split('\n').filter((line) => line.trim());
       const hasHeader = document.getElementById('csvHasHeader').checked;
 
       const preview = lines.slice(0, hasHeader ? 6 : 5);
       const headers = hasHeader ? preview[0].split(',') : ['Column 1', 'Column 2', 'Column 3', 'Column 4'];
       const dataRows = hasHeader ? preview.slice(1) : preview;
 
-      let tableHtml = '<thead><tr>' + headers.map(h => `<th>${h.trim()}</th>`).join('') + '</tr></thead>';
-      tableHtml += '<tbody>' + dataRows.map(row =>
-        '<tr>' + row.split(',').map(cell => `<td>${cell.trim()}</td>`).join('') + '</tr>'
-      ).join('') + '</tbody>';
+      let tableHtml = '<thead><tr>' + headers.map((h) => `<th>${h.trim()}</th>`).join('') + '</tr></thead>';
+      tableHtml +=
+        '<tbody>' +
+        dataRows
+          .map(
+            (row) =>
+              '<tr>' +
+              row
+                .split(',')
+                .map((cell) => `<td>${cell.trim()}</td>`)
+                .join('') +
+              '</tr>'
+          )
+          .join('') +
+        '</tbody>';
 
       document.getElementById('csvPreviewTable').innerHTML = tableHtml;
       document.getElementById('csvPreview').style.display = 'block';
@@ -731,19 +757,19 @@ const emailListsModule = {
           file_name: activeTab.replace('-tab', '') + '-import-' + new Date().toISOString(),
           total_records: subscribers.length,
           imported: 0,
-          status: 'processing'
+          status: 'processing',
         });
 
         const batch = batchResult.data;
 
         // Insert subscribers (only columns that exist in the table)
-        const subscribersToInsert = subscribers.map(sub => ({
+        const subscribersToInsert = subscribers.map((sub) => ({
           list_id: listId,
           email: sub.email,
           first_name: sub.first_name || null,
           last_name: sub.last_name || null,
           company_name: sub.company_name || null,
-          status: 'active'
+          status: 'active',
         }));
 
         const skipDuplicates = document.getElementById('csvSkipDuplicates')?.checked;
@@ -758,7 +784,7 @@ const emailListsModule = {
         if (batch?.id) {
           await apiClient.update('email_import_batches', batch.id, {
             status: 'completed',
-            imported: subscribers.length
+            imported: subscribers.length,
           });
         }
 
@@ -786,14 +812,16 @@ const emailListsModule = {
       const reader = new FileReader();
       reader.onload = (e) => {
         const text = e.target.result;
-        const lines = text.split('\n').filter(line => line.trim());
+        const lines = text.split('\n').filter((line) => line.trim());
         const hasHeader = document.getElementById('csvHasHeader').checked;
 
         const dataLines = hasHeader ? lines.slice(1) : lines;
-        const subscribers = dataLines.map(line => {
-          const [email, first_name, last_name, company_name] = line.split(',').map(s => s.trim());
-          return { email, first_name, last_name, company_name };
-        }).filter(s => s.email && s.email.includes('@'));
+        const subscribers = dataLines
+          .map((line) => {
+            const [email, first_name, last_name, company_name] = line.split(',').map((s) => s.trim());
+            return { email, first_name, last_name, company_name };
+          })
+          .filter((s) => s.email && s.email.includes('@'));
 
         resolve(subscribers);
       };
@@ -808,8 +836,11 @@ const emailListsModule = {
    */
   async parseManualEmails() {
     const text = document.getElementById('manualEmails').value;
-    const emails = text.split(/[\n,]/).map(e => e.trim()).filter(e => e && e.includes('@'));
-    return emails.map(email => ({ email }));
+    const emails = text
+      .split(/[\n,]/)
+      .map((e) => e.trim())
+      .filter((e) => e && e.includes('@'));
+    return emails.map((email) => ({ email }));
   },
 
   /**
@@ -817,8 +848,9 @@ const emailListsModule = {
    * @returns {Promise<Array<Object>>} Subscriber records from CRM segments
    */
   async importFromCRM() {
-    const selectedSegments = Array.from(document.getElementById('crmSegmentSelect')?.selectedOptions || [])
-      .map(opt => opt.value);
+    const selectedSegments = Array.from(document.getElementById('crmSegmentSelect')?.selectedOptions || []).map(
+      (opt) => opt.value
+    );
 
     if (selectedSegments.length === 0) {
       utils.showToast('Please select at least one CRM segment', 'warning');
@@ -830,72 +862,76 @@ const emailListsModule = {
     try {
       // Map CRM segments to database queries
       const segmentQueries = {
-        'past_winners': async () => {
+        past_winners: async () => {
           const { data } = await STATE.client
             .from('award_assignments')
             .select('organisations(id, company_name, contact_email, contact_first_name, contact_last_name)')
             .eq('status', 'winner')
             .not('organisations', 'is', null);
-          return (data || []).filter(d => d.organisations?.contact_email).map(d => ({
-            email: d.organisations.contact_email,
-            first_name: d.organisations.contact_first_name || '',
-            last_name: d.organisations.contact_last_name || '',
-            company_name: d.organisations.company_name || ''
-          }));
+          return (data || [])
+            .filter((d) => d.organisations?.contact_email)
+            .map((d) => ({
+              email: d.organisations.contact_email,
+              first_name: d.organisations.contact_first_name || '',
+              last_name: d.organisations.contact_last_name || '',
+              company_name: d.organisations.company_name || '',
+            }));
         },
-        'current_nominees': async () => {
+        current_nominees: async () => {
           const { data } = await STATE.client
             .from('award_assignments')
             .select('organisations(id, company_name, contact_email, contact_first_name, contact_last_name)')
             .eq('status', 'nominee')
             .not('organisations', 'is', null);
-          return (data || []).filter(d => d.organisations?.contact_email).map(d => ({
-            email: d.organisations.contact_email,
-            first_name: d.organisations.contact_first_name || '',
-            last_name: d.organisations.contact_last_name || '',
-            company_name: d.organisations.company_name || ''
-          }));
+          return (data || [])
+            .filter((d) => d.organisations?.contact_email)
+            .map((d) => ({
+              email: d.organisations.contact_email,
+              first_name: d.organisations.contact_first_name || '',
+              last_name: d.organisations.contact_last_name || '',
+              company_name: d.organisations.company_name || '',
+            }));
         },
-        'sponsors': async () => {
+        sponsors: async () => {
           return (STATE.allOrganisations || [])
-            .filter(org => org.is_sponsor && org.contact_email)
-            .map(org => ({
+            .filter((org) => org.is_sponsor && org.contact_email)
+            .map((org) => ({
               email: org.contact_email,
               first_name: org.contact_first_name || '',
               last_name: org.contact_last_name || '',
-              company_name: org.company_name || ''
+              company_name: org.company_name || '',
             }));
         },
-        'vip_contacts': async () => {
+        vip_contacts: async () => {
           return (STATE.allOrganisations || [])
-            .filter(org => org.vip && org.contact_email)
-            .map(org => ({
+            .filter((org) => org.vip && org.contact_email)
+            .map((org) => ({
               email: org.contact_email,
               first_name: org.contact_first_name || '',
               last_name: org.contact_last_name || '',
-              company_name: org.company_name || ''
+              company_name: org.company_name || '',
             }));
         },
-        'industry_leaders': async () => {
+        industry_leaders: async () => {
           return (STATE.allOrganisations || [])
-            .filter(org => org.industry_leader && org.contact_email)
-            .map(org => ({
+            .filter((org) => org.industry_leader && org.contact_email)
+            .map((org) => ({
               email: org.contact_email,
               first_name: org.contact_first_name || '',
               last_name: org.contact_last_name || '',
-              company_name: org.company_name || ''
+              company_name: org.company_name || '',
             }));
         },
-        'renewal_prospects': async () => {
+        renewal_prospects: async () => {
           return (STATE.allOrganisations || [])
-            .filter(org => org.contact_email)
-            .map(org => ({
+            .filter((org) => org.contact_email)
+            .map((org) => ({
               email: org.contact_email,
               first_name: org.contact_first_name || '',
               last_name: org.contact_last_name || '',
-              company_name: org.company_name || ''
+              company_name: org.company_name || '',
             }));
-        }
+        },
       };
 
       let allSubscribers = [];
@@ -908,7 +944,7 @@ const emailListsModule = {
 
       // Deduplicate by email
       const seen = new Set();
-      const unique = allSubscribers.filter(s => {
+      const unique = allSubscribers.filter((s) => {
         if (!s.email || seen.has(s.email.toLowerCase())) return false;
         seen.add(s.email.toLowerCase());
         return true;
@@ -916,7 +952,6 @@ const emailListsModule = {
 
       utils.showToast(`Found ${unique.length} contacts from ${selectedSegments.length} segment(s)`, 'info');
       return unique;
-
     } catch (error) {
       console.error('CRM import error:', error);
       utils.showToast('Error importing from CRM: ' + error.message, 'error');
@@ -938,35 +973,45 @@ const emailListsModule = {
     this.currentListId = listId;
 
     try {
+      // selectAll required: status counts need full subscriber set; scoped by list_id
       const subscribers = await apiClient.selectAll('email_list_subscribers', {
         filters: { list_id: listId },
-        sort: { column: 'created_at', ascending: false }
+        sort: { column: 'created_at', ascending: false },
       });
 
       const subs = subscribers || [];
       this._currentSubscribers = subs;
 
       const statusCounts = {
-        active: subs.filter(s => s.status === 'active').length,
-        unsubscribed: subs.filter(s => s.status === 'unsubscribed').length,
-        bounced: subs.filter(s => s.status === 'bounced').length,
-        pending: subs.filter(s => s.status === 'pending').length
+        active: subs.filter((s) => s.status === 'active').length,
+        unsubscribed: subs.filter((s) => s.status === 'unsubscribed').length,
+        bounced: subs.filter((s) => s.status === 'bounced').length,
+        pending: subs.filter((s) => s.status === 'pending').length,
       };
 
-      const subscriberRows = subs.length > 0
-        ? subs.map(s => {
-            const statusBadge = {
-              'active': '<span class="badge bg-success">Active</span>',
-              'unsubscribed': '<span class="badge bg-warning text-dark">Unsubscribed</span>',
-              'bounced': '<span class="badge bg-danger">Bounced</span>',
-              'complained': '<span class="badge bg-danger">Complained</span>',
-              'pending': '<span class="badge bg-secondary">Pending</span>'
-            }[s.status] || `<span class="badge bg-secondary">${s.status}</span>`;
+      const subscriberRows =
+        subs.length > 0
+          ? subs
+              .map((s) => {
+                const statusBadge =
+                  {
+                    active: '<span class="badge bg-success">Active</span>',
+                    unsubscribed: '<span class="badge bg-warning text-dark">Unsubscribed</span>',
+                    bounced: '<span class="badge bg-danger">Bounced</span>',
+                    complained: '<span class="badge bg-danger">Complained</span>',
+                    pending: '<span class="badge bg-secondary">Pending</span>',
+                  }[s.status] || `<span class="badge bg-secondary">${s.status}</span>`;
 
-            const openRate = s.emails_received > 0 ? Math.round((s.emails_opened / s.emails_received) * 100) : 0;
-            const addedDate = s.created_at ? new Date(s.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
+                const openRate = s.emails_received > 0 ? Math.round((s.emails_opened / s.emails_received) * 100) : 0;
+                const addedDate = s.created_at
+                  ? new Date(s.created_at).toLocaleDateString('en-GB', {
+                      day: '2-digit',
+                      month: 'short',
+                      year: 'numeric',
+                    })
+                  : '-';
 
-            return `
+                return `
               <tr>
                 <td>${utils.escapeHtml(s.email)}</td>
                 <td>${utils.escapeHtml(s.first_name || '-')}</td>
@@ -983,8 +1028,9 @@ const emailListsModule = {
                 </td>
               </tr>
             `;
-          }).join('')
-        : '<tr><td colspan="9" class="text-center text-muted py-4">No subscribers in this list</td></tr>';
+              })
+              .join('')
+          : '<tr><td colspan="9" class="text-center text-muted py-4">No subscribers in this list</td></tr>';
 
       const modalHtml = `
         <div class="modal fade" id="subscribersModal" tabindex="-1">
@@ -1096,8 +1142,9 @@ const emailListsModule = {
       modal.show();
       // Attach debounced search after dynamic modal is in the DOM
       utils.initDebouncedSearch('subscriberSearch', () => this.filterSubscriberTable());
-      modalEl.addEventListener('hidden.bs.modal', function() { this.remove(); });
-
+      modalEl.addEventListener('hidden.bs.modal', function () {
+        this.remove();
+      });
     } catch (error) {
       console.error('Error loading subscribers:', error);
       utils.showToast('Error loading subscribers: ' + error.message, 'error');
@@ -1114,7 +1161,7 @@ const emailListsModule = {
     const rows = document.querySelectorAll('#subscribersTableBody tr');
 
     let visibleCount = 0;
-    rows.forEach(row => {
+    rows.forEach((row) => {
       const text = row.textContent.toLowerCase();
       const rowStatus = row.querySelector('.badge')?.textContent?.toLowerCase() || '';
       const matchesSearch = !search || text.includes(search);
@@ -1126,10 +1173,15 @@ const emailListsModule = {
 
     // If search query is active and no exact matches found, try fuzzy search
     if (search && visibleCount === 0 && this._currentSubscribers) {
-      let fuzzyResults = utils.fuzzyFilter(this._currentSubscribers, search, ['email', 'first_name', 'last_name', 'company_name']);
-      if (status !== 'all') fuzzyResults = fuzzyResults.filter(s => s.status === status);
-      const fuzzyEmails = new Set(fuzzyResults.map(s => s.email?.toLowerCase()));
-      rows.forEach(row => {
+      let fuzzyResults = utils.fuzzyFilter(this._currentSubscribers, search, [
+        'email',
+        'first_name',
+        'last_name',
+        'company_name',
+      ]);
+      if (status !== 'all') fuzzyResults = fuzzyResults.filter((s) => s.status === status);
+      const fuzzyEmails = new Set(fuzzyResults.map((s) => s.email?.toLowerCase()));
+      rows.forEach((row) => {
         const rowEmail = (row.querySelector('td')?.textContent || '').toLowerCase().trim();
         row.style.display = fuzzyEmails.has(rowEmail) ? '' : 'none';
       });
@@ -1150,7 +1202,7 @@ const emailListsModule = {
 
       // Refresh the modal if open
       if (this.currentListId) {
-        const list = this.currentLists.find(l => l.id === this.currentListId);
+        const list = this.currentLists.find((l) => l.id === this.currentListId);
         if (list) {
           bootstrap.Modal.getInstance(document.getElementById('subscribersModal'))?.hide();
           setTimeout(() => this.viewSubscribers(this.currentListId, list.list_name), 300);
@@ -1170,7 +1222,15 @@ const emailListsModule = {
    * @returns {Promise<void>}
    */
   async deleteSubscriber(subscriberId, listId) {
-    if (!await utils.confirmDialog({ title: 'Remove Subscriber', message: 'Remove this subscriber from the list?', confirmText: 'Remove', danger: true })) return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Remove Subscriber',
+        message: 'Remove this subscriber from the list?',
+        confirmText: 'Remove',
+        danger: true,
+      }))
+    )
+      return;
 
     try {
       await apiClient.delete('email_list_subscribers', subscriberId);
@@ -1179,7 +1239,7 @@ const emailListsModule = {
 
       // Refresh the modal
       if (listId) {
-        const list = this.currentLists.find(l => l.id === listId);
+        const list = this.currentLists.find((l) => l.id === listId);
         if (list) {
           bootstrap.Modal.getInstance(document.getElementById('subscribersModal'))?.hide();
           setTimeout(() => this.viewSubscribers(listId, list.list_name), 300);
@@ -1285,7 +1345,7 @@ const emailListsModule = {
       last_name: document.getElementById('subLastName').value.trim() || null,
       company_name: document.getElementById('subCompanyName').value.trim() || null,
       status: 'active',
-      source: 'manual'
+      source: 'manual',
     };
 
     try {
@@ -1305,7 +1365,7 @@ const emailListsModule = {
         // Refresh the subscribers modal if it's open
         const subModal = document.getElementById('subscribersModal');
         if (subModal) {
-          const list = this.currentLists.find(l => l.id === listId);
+          const list = this.currentLists.find((l) => l.id === listId);
           if (list) {
             bootstrap.Modal.getInstance(subModal)?.hide();
             setTimeout(() => this.viewSubscribers(listId, list.list_name), 300);
@@ -1333,7 +1393,7 @@ const emailListsModule = {
    * @returns {Promise<void>}
    */
   async editList(listId) {
-    const list = this.currentLists.find(l => l.id === listId);
+    const list = this.currentLists.find((l) => l.id === listId);
     if (!list) {
       utils.showToast('List not found', 'error');
       return;
@@ -1439,7 +1499,7 @@ const emailListsModule = {
           color: document.getElementById('editListColor').value,
           icon: document.getElementById('editListIcon').value || null,
           is_active: document.getElementById('editListActive').checked,
-          auto_clean: document.getElementById('editListAutoClean').checked
+          auto_clean: document.getElementById('editListAutoClean').checked,
         });
 
         bootstrap.Modal.getInstance(document.getElementById('editListModal'))?.hide();
@@ -1448,11 +1508,14 @@ const emailListsModule = {
       utils.showToast('List updated successfully', 'success');
     } catch (error) {
       console.warn('DB update for email list failed, using localStorage:', error);
-      localStorage.setItem(`bta_email_list_edit_${listId}`, JSON.stringify({
-        list_name: document.getElementById('editListName').value,
-        description: document.getElementById('editListDescription').value || null,
-        list_type: document.getElementById('editListType').value
-      }));
+      localStorage.setItem(
+        `bta_email_list_edit_${listId}`,
+        JSON.stringify({
+          list_name: document.getElementById('editListName').value,
+          description: document.getElementById('editListDescription').value || null,
+          list_type: document.getElementById('editListType').value,
+        })
+      );
       bootstrap.Modal.getInstance(document.getElementById('editListModal'))?.hide();
       utils.showToast('List saved locally', 'success');
     }
@@ -1467,15 +1530,15 @@ const emailListsModule = {
     try {
       const subscribers = await apiClient.selectAll('email_list_subscribers', {
         select: 'email, first_name, last_name, company_name, status',
-        filters: { list_id: listId }
+        filters: { list_id: listId },
       });
 
       // Create CSV
       const csv = [
         'Email,First Name,Last Name,Company Name,Status',
-        ...(subscribers || []).map(s =>
-          `${s.email},${s.first_name || ''},${s.last_name || ''},${s.company_name || ''},${s.status}`
-        )
+        ...(subscribers || []).map(
+          (s) => `${s.email},${s.first_name || ''},${s.last_name || ''},${s.company_name || ''},${s.status}`
+        ),
       ].join('\n');
 
       // Download
@@ -1500,7 +1563,14 @@ const emailListsModule = {
    * @returns {Promise<void>}
    */
   async deleteList(listId) {
-    if (!await utils.confirmDialog({ title: 'Delete Email List', message: 'Are you sure you want to delete this list? All subscribers will be removed. This cannot be undone.', confirmText: 'Delete', danger: true })) {
+    if (
+      !(await utils.confirmDialog({
+        title: 'Delete Email List',
+        message: 'Are you sure you want to delete this list? All subscribers will be removed. This cannot be undone.',
+        confirmText: 'Delete',
+        danger: true,
+      }))
+    ) {
       return;
     }
 
@@ -1513,7 +1583,7 @@ const emailListsModule = {
       console.error('Delete error:', error);
       utils.showToast('Error deleting list', 'error');
     }
-  }
+  },
 };
 
 // ============================================

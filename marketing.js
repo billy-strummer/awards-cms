@@ -381,9 +381,7 @@ const marketingModule = {
       return;
 
     try {
-      const { error } = await STATE.client.from('banners').delete().eq('id', bannerId);
-
-      if (error) throw error;
+      await apiClient.delete('banners', bannerId);
 
       utils.showToast('Banner deleted successfully', 'success');
       await this.loadBanners();
@@ -808,7 +806,7 @@ const marketingModule = {
         </div>
         <div class="alert alert-info mt-4 mb-0">
           <i class="bi bi-info-circle me-2"></i>
-          <strong>How branding is used:</strong> These settings are automatically applied to email templates, campaign headers/footers, certificates, public pages, and event materials. Edit them in <a href="#" onclick="document.getElementById('settings-tab').click(); return false;">Settings</a> to update across the entire CMS.
+          <strong>How branding is used:</strong> These settings are automatically applied to email templates, campaign headers/footers, certificates, public pages, and event materials. Edit them in <a href="#" data-action="marketingModule.goToSettings" data-prevent-default="true">Settings</a> to update across the entire CMS.
         </div>
       `;
     } catch (e) {
@@ -977,7 +975,7 @@ const marketingModule = {
         </div>
         <div class="d-flex gap-2 mt-4">
           <button type="submit" class="btn btn-primary"><i class="bi bi-save me-2"></i>Save Placeholder Defaults</button>
-          <button type="button" class="btn btn-outline-secondary" onclick="marketingModule.resetPlaceholderDefaults()"><i class="bi bi-arrow-counterclockwise me-2"></i>Reset to Defaults</button>
+          <button type="button" class="btn btn-outline-secondary" data-action="marketingModule.resetPlaceholderDefaults"><i class="bi bi-arrow-counterclockwise me-2"></i>Reset to Defaults</button>
         </div>
       </form>
       <div class="card mt-4">
@@ -1160,11 +1158,11 @@ const marketingModule = {
             <div class="col-4"><label class="form-label small">Subject</label><input type="text" class="form-control form-control-sm seq-subject" placeholder="Subject..."></div>
             <div class="col-5"><label class="form-label small">Body</label><textarea class="form-control form-control-sm seq-body" rows="2" placeholder="Use {{company_name}}, {{contact_name}}..."></textarea></div>
           </div></div></div>
-          <button class="btn btn-sm btn-outline-secondary mb-3" onclick="marketingModule._addSequenceStep()"><i class="bi bi-plus me-1"></i>Add Step</button>
+          <button class="btn btn-sm btn-outline-secondary mb-3" data-action="marketingModule._addSequenceStep"><i class="bi bi-plus me-1"></i>Add Step</button>
         </div>
         <div class="modal-footer">
           <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button class="btn btn-primary" onclick="marketingModule._saveSequence()"><i class="bi bi-check-circle me-2"></i>Save Sequence</button>
+          <button class="btn btn-primary" data-action="marketingModule._saveSequence"><i class="bi bi-check-circle me-2"></i>Save Sequence</button>
         </div>
       </div></div>
     </div>`;
@@ -1230,6 +1228,11 @@ const marketingModule = {
     this._emailSequences.splice(i, 1);
     await this._saveEmailSequences();
     this.loadEmailSequences();
+  },
+
+  goToSettings() {
+    const tab = document.getElementById('settings-tab');
+    if (tab) tab.click();
   },
 };
 

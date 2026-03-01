@@ -2,6 +2,22 @@
 /* EVENTS MODULE */
 /* ==================================================== */
 
+/**
+ * Create an event proxy that overrides currentTarget while properly binding
+ * native event methods (preventDefault, stopPropagation, etc.) to the
+ * original event object.
+ */
+function _eventProxy(originalEvent, currentTargetEl) {
+  return new Proxy(originalEvent, {
+    get(target, prop) {
+      if (prop === 'currentTarget') return currentTargetEl;
+      const val = target[prop];
+      if (typeof val === 'function') return val.bind(target);
+      return val;
+    },
+  });
+}
+
 const eventsModule = {
   _loading: false,
 
@@ -311,7 +327,7 @@ const eventsModule = {
       await apiClient.delete('events', eventId);
 
       utils.showToast(
-        'Event deleted. <a href="#" onclick="event.preventDefault(); utils.undoLastDelete(\'events\')">Undo</a>',
+        'Event deleted. <a href="#" data-action="utils.undoLastDelete" data-id="events" data-prevent-default="true">Undo</a>',
         'info'
       );
       await this.loadEvents();
@@ -425,7 +441,7 @@ const eventsModule = {
    */
   async cloneGallerySections(sourceEventId, newEventId) {
     try {
-      // Get all gallery sections from source event
+      /* selectAll: justified — scoped to single event */
       const sections = await apiClient.selectAll('event_galleries', {
         filters: { event_id: sourceEventId },
         sort: { column: 'display_order', ascending: true },
@@ -463,6 +479,7 @@ const eventsModule = {
    */
   async loadTemplates() {
     try {
+      /* selectAll: justified — small reference table (event templates) */
       const data = await apiClient.selectAll('event_templates', {
         sort: { column: 'created_at', ascending: false },
       });
@@ -738,16 +755,35 @@ const eventsModule = {
   /* ==================================================== */
 
   /**
-   * Get attendees for an event from Supabase
+   * Get attendees for an event from Supabase.
+   * Uses paginated apiClient.select() to avoid loading unbounded result sets
+   * in a single request. Collects all pages so callers still receive the
+   * full attendee list for the event.
+   * @param {string} eventId - The event ID to fetch attendees for
+   * @returns {Promise<Array<Object>>} Array of attendee objects
    */
   async getAttendees(eventId) {
     try {
-      const data = await apiClient.selectAll('event_attendees', {
-        filters: { event_id: eventId },
-        sort: { column: 'created_at', ascending: true },
-      });
+      // Paginated fetch: collect all pages of attendees for this event
+      const pageSize = 200;
+      let page = 1;
+      let allRows = [];
+      let totalPages = 1;
+
+      do {
+        const result = await apiClient.select('event_attendees', {
+          filters: { event_id: eventId },
+          sort: { column: 'created_at', ascending: true },
+          page,
+          pageSize,
+        });
+        allRows = allRows.concat(result.data || []);
+        totalPages = result.totalPages || 1;
+        page++;
+      } while (page <= totalPages);
+
       // Map DB column names to JS property names used by the UI
-      return (data || []).map((row) => ({
+      return allRows.map((row) => ({
         id: row.id,
         name: row.attendee_name || row.name || '',
         email: row.attendee_email || row.email || '',
@@ -1156,7 +1192,7 @@ const eventsModule = {
         resultsEl.innerHTML = data
           .map(
             (o) => `
-          <div class="p-2 small" style="cursor:pointer;" onmouseover="this.style.background='#e3f2fd'" onmouseout="this.style.background=''"
+          <div class="p-2 small hover-highlight" style="cursor:pointer;"
             data-action="eventsModule._selectOrgForAttendee" data-args='${JSON.stringify([o.id, utils.escapeHtml(o.company_name).replace(/'/g, "\\'")])}'>
             <i class="bi bi-building me-1 text-muted"></i>${utils.escapeHtml(o.company_name)}
           </div>
@@ -1582,6 +1618,7 @@ const eventsModule = {
 
   async _getTicketData(eventId) {
     try {
+      /* selectAll: justified — scoped to single event */
       const data = await apiClient.selectAll('event_tickets', {
         filters: { event_id: eventId },
         sort: { column: 'created_at', ascending: true },
@@ -2020,6 +2057,7 @@ const eventsModule = {
 
   async getWaitlist(eventId) {
     try {
+      /* selectAll: justified — scoped to single event */
       const data = await apiClient.selectAll('event_waitlist', {
         filters: { event_id: eventId },
         sort: { column: 'created_at', ascending: true },
@@ -2364,11 +2402,13 @@ const eventsModule = {
 
   async _buildSeatingChartPage(win, event, eventId) {
     try {
+      /* selectAll: justified — scoped to single event */
       const tables = await apiClient.selectAll('event_tables', {
         filters: { event_id: eventId, is_active: true },
         sort: { column: 'table_number', ascending: true },
       });
 
+      /* selectAll: justified — scoped to single event */
       const assignments = await apiClient.selectAll('table_assignments', {
         filters: { event_id: eventId },
       });
@@ -2472,6 +2512,7 @@ const eventsModule = {
       }
 
       try {
+        /* selectAll: justified — scoped to single event */
         items = await apiClient.selectAll('event_budget_items', {
           filters: { event_id: eventId },
           sort: { column: 'created_at', ascending: true },
@@ -2774,6 +2815,7 @@ const eventsModule = {
 
   async getVendors(eventId) {
     try {
+      /* selectAll: justified — scoped to single event */
       const data = await apiClient.selectAll('event_vendors', {
         filters: { event_id: eventId },
         sort: { column: 'created_at', ascending: true },
@@ -3163,12 +3205,11 @@ const eventsModule = {
 
   async _getSpecialReqs(eventId) {
     try {
-      const { data, error } = await STATE.client
-        .from('event_special_requirements')
-        .select('*')
-        .eq('event_id', eventId)
-        .single();
-      if (error && error.code !== 'PGRST116') throw error;
+      const result = await apiClient.select('event_special_requirements', {
+        filters: { event_id: eventId },
+        pageSize: 1,
+      });
+      const data = result.data?.[0] || null;
       return data || {};
     } catch (e) {
       const stored = localStorage.getItem(this._specialReqsKey(eventId));
@@ -3195,10 +3236,11 @@ const eventsModule = {
       ceremonyTime: document.getElementById('ceremonyTime')?.value || '',
     };
     try {
-      const { error } = await STATE.client
-        .from('event_special_requirements')
-        .upsert({ event_id: eventId, requirements: reqs }, { onConflict: 'event_id' });
-      if (error) throw error;
+      await apiClient.upsert(
+        'event_special_requirements',
+        { event_id: eventId, requirements: reqs },
+        { onConflict: 'event_id' }
+      );
     } catch (e) {
       localStorage.setItem(this._specialReqsKey(eventId), JSON.stringify(reqs));
     }
@@ -3213,12 +3255,12 @@ const eventsModule = {
 
   async getStripePublicKey() {
     try {
-      const { data, error } = await STATE.client
-        .from('user_preferences')
-        .select('value')
-        .eq('key', 'stripe_public_key')
-        .maybeSingle();
-      if (error) throw error;
+      const result = await apiClient.select('user_preferences', {
+        select: 'value',
+        filters: { key: 'stripe_public_key' },
+        pageSize: 1,
+      });
+      const data = result.data?.[0] || null;
       return data?.value || '';
     } catch (e) {
       return localStorage.getItem('bta_stripe_pk') || '';
@@ -3229,13 +3271,11 @@ const eventsModule = {
     const key = document.getElementById('stripePublicKeyInput')?.value?.trim();
     if (key) {
       try {
-        const { error } = await STATE.client
-          .from('user_preferences')
-          .upsert(
-            { key: 'stripe_public_key', value: key, user_email: STATE.currentUser?.email },
-            { onConflict: 'key' }
-          );
-        if (error) throw error;
+        await apiClient.upsert(
+          'user_preferences',
+          { key: 'stripe_public_key', value: key, user_email: STATE.currentUser?.email },
+          { onConflict: 'key' }
+        );
       } catch (e) {
         localStorage.setItem('bta_stripe_pk', key);
       }
@@ -3362,8 +3402,11 @@ const eventsModule = {
 
   async _getPostEventData(eventId) {
     try {
-      const { data, error } = await STATE.client.from('event_post_data').select('*').eq('event_id', eventId).single();
-      if (error && error.code !== 'PGRST116') throw error;
+      const result = await apiClient.select('event_post_data', {
+        filters: { event_id: eventId },
+        pageSize: 1,
+      });
+      const data = result.data?.[0] || null;
       return data?.post_data || {};
     } catch (e) {
       const stored = localStorage.getItem(this._postEventKey(eventId));
@@ -3373,10 +3416,7 @@ const eventsModule = {
 
   async _savePostEventDataStore(eventId, data) {
     try {
-      const { error } = await STATE.client
-        .from('event_post_data')
-        .upsert({ event_id: eventId, post_data: data }, { onConflict: 'event_id' });
-      if (error) throw error;
+      await apiClient.upsert('event_post_data', { event_id: eventId, post_data: data }, { onConflict: 'event_id' });
     } catch (e) {
       localStorage.setItem(this._postEventKey(eventId), JSON.stringify(data));
     }
@@ -3659,12 +3699,12 @@ const eventsModule = {
     // Load winners for this event's year
     let winners = [];
     try {
-      const { data } = await STATE.client
-        .from('award_assignments')
-        .select('*, awards:award_years(award_name), organisations(company_name)')
-        .eq('year', event.year)
-        .eq('assignment_type', 'winner');
-      winners = data || [];
+      const result = await apiClient.select('award_assignments', {
+        select: '*, awards:award_years(award_name), organisations(company_name)',
+        filters: { year: event.year, assignment_type: 'winner' },
+        pageSize: 1000,
+      });
+      winners = result.data || [];
     } catch (e) {
       console.error(e);
     }
@@ -3709,7 +3749,7 @@ const eventsModule = {
               <textarea class="form-control" id="pressReleaseText" rows="25" style="font-family:monospace;font-size:0.85rem;">${utils.escapeHtml(pressRelease)}</textarea>
             </div>
             <div class="modal-footer">
-              <button class="btn btn-outline-secondary" onclick="navigator.clipboard.writeText(document.getElementById('pressReleaseText').value); utils.showToast('Copied to clipboard','success')"><i class="bi bi-clipboard me-1"></i>Copy</button>
+              <button class="btn btn-outline-secondary" data-action="eventsModule.copyPressRelease"><i class="bi bi-clipboard me-1"></i>Copy</button>
               <button class="btn btn-primary" data-action="eventsModule.downloadPressRelease" data-event-name="${event.event_name.replace(/[^a-z0-9]/gi, '_')}"><i class="bi bi-download me-1"></i>Download .txt</button>
             </div>
           </div>
@@ -3728,12 +3768,12 @@ const eventsModule = {
 
     let winners = [];
     try {
-      const { data } = await STATE.client
-        .from('award_assignments')
-        .select('*, awards:award_years(award_name), organisations(company_name)')
-        .eq('year', event.year)
-        .eq('assignment_type', 'winner');
-      winners = data || [];
+      const result = await apiClient.select('award_assignments', {
+        select: '*, awards:award_years(award_name), organisations(company_name)',
+        filters: { year: event.year, assignment_type: 'winner' },
+        pageSize: 1000,
+      });
+      winners = result.data || [];
     } catch (e) {
       console.error(e);
     }
@@ -3879,12 +3919,12 @@ const eventsModule = {
 
     let winners = [];
     try {
-      const { data } = await STATE.client
-        .from('award_assignments')
-        .select('*, awards:award_years(award_name), organisations(company_name)')
-        .eq('year', event.year)
-        .eq('assignment_type', 'winner');
-      winners = data || [];
+      const result = await apiClient.select('award_assignments', {
+        select: '*, awards:award_years(award_name), organisations(company_name)',
+        filters: { year: event.year, assignment_type: 'winner' },
+        pageSize: 1000,
+      });
+      winners = result.data || [];
     } catch (e) {
       console.error(e);
     }
@@ -4380,7 +4420,7 @@ const eventsModule = {
                     <div class="input-group input-group-sm" style="width:200px;">
                       <span class="input-group-text"><i class="bi bi-search"></i></span>
                       <input type="text" class="form-control" id="roSearchInput" placeholder="Search items..."
-                             oninput="clearTimeout(eventsModule._roSearchTimer); eventsModule._roSearchTimer = setTimeout(() => eventsModule.searchRunningOrder(this.value), 300)">
+                             data-on-input="eventsModule._roSearchDebounced">
                     </div>
                   </div>
                 </div>
@@ -4657,21 +4697,17 @@ const eventsModule = {
   async loadRunningOrder() {
     try {
       // Try with FK joins first, fall back to simple query if relationships missing
-      let items, itemsError;
-      ({ data: items, error: itemsError } = await STATE.client
-        .from('running_order')
-        .select(
-          `
-          *,
-          organisations(company_name, logo_url),
-          awards:award_years(award_name),
-          event_guests(guest_name, guest_email, dietary_requirements)
-        `
-        )
-        .eq('event_id', this.currentEventIdRunningOrder)
-        .order('display_order', { ascending: true }));
-
-      if (itemsError) {
+      let items;
+      try {
+        /* selectAll: justified — scoped to single event */
+        const result = await apiClient.selectAll('running_order', {
+          select:
+            '*, organisations(company_name, logo_url), awards:award_years(award_name), event_guests(guest_name, guest_email, dietary_requirements)',
+          filters: { event_id: this.currentEventIdRunningOrder },
+          sort: { column: 'display_order', ascending: true },
+        });
+        items = result || [];
+      } catch (itemsError) {
         // Table may not exist
         if (itemsError.code === '42P01' || itemsError.message?.includes('does not exist')) {
           this.runningOrderItems = [];
@@ -4683,14 +4719,12 @@ const eventsModule = {
         // FK relationship missing in schema cache - retry without joins
         if (itemsError.message?.includes('relationship') || itemsError.message?.includes('schema cache')) {
           console.warn('Running order FK relationships not found, loading without joins');
-          const fallback = await STATE.client
-            .from('running_order')
-            .select('*')
-            .eq('event_id', this.currentEventIdRunningOrder)
-            .order('display_order', { ascending: true });
-          if (fallback.error) throw fallback.error;
-          items = fallback.data || [];
-          itemsError = null;
+          /* selectAll: justified — scoped to single event (FK fallback) */
+          const fallbackData = await apiClient.selectAll('running_order', {
+            filters: { event_id: this.currentEventIdRunningOrder },
+            sort: { column: 'display_order', ascending: true },
+          });
+          items = fallbackData || [];
         } else {
           throw itemsError;
         }
@@ -4699,15 +4733,11 @@ const eventsModule = {
 
       // Load settings (table may not exist)
       try {
-        const { data: settings, error: settingsError } = await STATE.client
-          .from('running_order_settings')
-          .select('*')
-          .eq('event_id', this.currentEventIdRunningOrder)
-          .single();
-
-        if (settingsError && settingsError.code !== 'PGRST116') {
-          console.warn('Error loading RO settings:', settingsError);
-        }
+        const settingsResult = await apiClient.select('running_order_settings', {
+          filters: { event_id: this.currentEventIdRunningOrder },
+          pageSize: 1,
+        });
+        const settings = settingsResult.data?.[0] || null;
         this.isPublished = settings?.is_published || false;
         this._roCeremonyStartTime = settings?.ceremony_start_time || null;
         this._roAutoSchedule = settings?.auto_schedule || false;
@@ -4805,14 +4835,7 @@ const eventsModule = {
              draggable="${!this.isPublished}"
              data-id="${item.id}"
              data-index="${index}"
-             ondragstart="eventsModule.handleDragStart(event)"
-             ondragover="eventsModule.handleDragOver(event)"
-             ondragleave="eventsModule.handleDragLeave(event)"
-             ondrop="eventsModule.handleDrop(event)"
-             ondragend="eventsModule.handleDragEnd(event)"
-             ontouchstart="eventsModule.handleTouchStart(event)"
-             ontouchmove="eventsModule.handleTouchMove(event)"
-             ontouchend="eventsModule.handleTouchEnd(event)">
+             data-drag="ro-item">
           <div class="d-flex align-items-center gap-2 py-2 px-2">
             ${!this.isPublished ? `<div class="ro-drag-handle" title="Drag to reorder"><i class="bi bi-grip-vertical"></i></div>` : '<div style="width:32px;"></div>'}
             <div class="ro-number" style="color:#7e57c2;">
@@ -4884,14 +4907,7 @@ const eventsModule = {
              draggable="${!this.isPublished}"
              data-group="${item.presentation_group}"
              data-id="${item.id}"
-             ondragstart="eventsModule.handleDragStart(event)"
-             ondragover="eventsModule.handleDragOver(event)"
-             ondragleave="eventsModule.handleDragLeave(event)"
-             ondrop="eventsModule.handleDrop(event)"
-             ondragend="eventsModule.handleDragEnd(event)"
-             ontouchstart="eventsModule.handleTouchStart(event)"
-             ontouchmove="eventsModule.handleTouchMove(event)"
-             ontouchend="eventsModule.handleTouchEnd(event)">
+             data-drag="ro-item">
           <div class="d-flex align-items-center gap-2 py-2 px-2">
             ${!this.isPublished ? `<div class="ro-drag-handle" title="Drag group to reorder"><i class="bi bi-grip-vertical"></i></div>` : '<div style="width:32px;"></div>'}
             <div class="ro-number">${presentationNumber}<span class="sub">GROUP</span></div>
@@ -4993,14 +5009,7 @@ const eventsModule = {
            draggable="${!this.isPublished}"
            data-id="${item.id}"
            data-index="${index}"
-           ondragstart="eventsModule.handleDragStart(event)"
-           ondragover="eventsModule.handleDragOver(event)"
-           ondragleave="eventsModule.handleDragLeave(event)"
-           ondrop="eventsModule.handleDrop(event)"
-           ondragend="eventsModule.handleDragEnd(event)"
-           ontouchstart="eventsModule.handleTouchStart(event)"
-           ontouchmove="eventsModule.handleTouchMove(event)"
-           ontouchend="eventsModule.handleTouchEnd(event)">
+           data-drag="ro-item">
         <div class="d-flex align-items-center gap-2 py-2 px-2">
           ${!this.isPublished ? `<div class="ro-drag-handle" title="Drag to reorder"><i class="bi bi-grip-vertical"></i></div>` : '<div style="width:32px;"></div>'}
           <div class="ro-number">
@@ -5073,6 +5082,9 @@ const eventsModule = {
 
     container.innerHTML = html;
 
+    // Bind drag/drop/touch event listeners via delegation
+    this._bindRODragListeners(container);
+
     // Update total badge and presentation count
     const totalBadge = document.querySelector('#runningOrderModal .badge.bg-secondary');
     if (totalBadge)
@@ -5120,6 +5132,60 @@ const eventsModule = {
   // ============================================
   // DRAG AND DROP (Enhanced)
   // ============================================
+
+  /**
+   * Bind drag/drop/touch event listeners to the running order container using event delegation.
+   * Called after renderRunningOrderItems sets innerHTML.
+   */
+  _bindRODragListeners(container) {
+    if (!container) return;
+    // Only bind once per container element to avoid duplicate listeners.
+    if (container._roDragBound) return;
+    container._roDragBound = true;
+
+    const sel = '[data-drag="ro-item"]';
+    container.addEventListener('dragstart', (e) => {
+      const item = e.target.closest(sel);
+      if (item) this.handleDragStart(_eventProxy(e, item));
+    });
+    container.addEventListener('dragover', (e) => {
+      const item = e.target.closest(sel);
+      if (item) this.handleDragOver(_eventProxy(e, item));
+    });
+    container.addEventListener('dragleave', (e) => {
+      const item = e.target.closest(sel);
+      if (item) this.handleDragLeave(_eventProxy(e, item));
+    });
+    container.addEventListener('drop', (e) => {
+      const item = e.target.closest(sel);
+      if (item) this.handleDrop(_eventProxy(e, item));
+    });
+    container.addEventListener('dragend', (e) => {
+      const item = e.target.closest(sel);
+      if (item) this.handleDragEnd(_eventProxy(e, item));
+    });
+    container.addEventListener(
+      'touchstart',
+      (e) => {
+        const item = e.target.closest(sel);
+        if (item) this.handleTouchStart(_eventProxy(e, item));
+      },
+      { passive: false }
+    );
+    container.addEventListener(
+      'touchmove',
+      (e) => {
+        const item = e.target.closest(sel);
+        if (item) this.handleTouchMove(_eventProxy(e, item));
+      },
+      { passive: false }
+    );
+    container.addEventListener('touchend', (e) => {
+      const item = e.target.closest(sel);
+      if (item) this.handleTouchEnd(_eventProxy(e, item));
+    });
+  },
+
   handleDragStart(event) {
     if (this.isPublished) return;
     const item = event.currentTarget;
@@ -5288,6 +5354,16 @@ const eventsModule = {
         `${item.award_name || ''} ${item.display_name || ''} ${item.recipient_collecting || ''} ${item.notes || ''}`.toLowerCase();
       el.classList.toggle('search-hidden', search.length > 0 && !haystack.includes(search));
     });
+  },
+
+  /**
+   * Debounced wrapper for searchRunningOrder, used via data-on-input delegation.
+   * The action registry calls this with (value, event).
+   */
+  _roSearchTimer: null,
+  _roSearchDebounced(value) {
+    clearTimeout(this._roSearchTimer);
+    this._roSearchTimer = setTimeout(() => this.searchRunningOrder(value), 300);
   },
 
   // ============================================
@@ -6196,7 +6272,7 @@ const eventsModule = {
     const activeFilter = this._trophyFilterStatus;
     let html = `
       <div class="d-flex gap-2 p-3 mb-3 border rounded bg-light flex-wrap align-items-center">
-        <button class="btn btn-sm ${!activeFilter ? 'btn-dark' : 'btn-outline-secondary'}" style="font-size:0.75rem;" onclick="eventsModule._trophyFilterStatus=null;eventsModule.renderTrophiesTab();">
+        <button class="btn btn-sm ${!activeFilter ? 'btn-dark' : 'btn-outline-secondary'}" style="font-size:0.75rem;" data-action="eventsModule.clearTrophyFilter">
           <i class="bi bi-grid me-1"></i>All: ${awardItems.length}
         </button>
         ${statuses
@@ -6421,11 +6497,12 @@ const eventsModule = {
    */
   async loadSectionConfig() {
     try {
-      const { data: settings } = await STATE.client
-        .from('running_order_settings')
-        .select('section_config')
-        .eq('event_id', this.currentEventIdRunningOrder)
-        .single();
+      const settingsResult = await apiClient.select('running_order_settings', {
+        select: 'section_config',
+        filters: { event_id: this.currentEventIdRunningOrder },
+        pageSize: 1,
+      });
+      const settings = settingsResult.data?.[0] || null;
       this._roSectionConfig = settings?.section_config || [];
     } catch (error) {
       this._roSectionConfig = [];
@@ -6464,7 +6541,7 @@ const eventsModule = {
                     <input type="number" class="form-control form-control-sm" style="width:60px;" value="${s.section}" min="1" placeholder="#">
                     <input type="text" class="form-control form-control-sm" value="${utils.escapeHtml(s.name)}" placeholder="e.g. Act 1: Community Awards">
                     <input type="color" class="form-control form-control-sm form-control-color" value="${s.colour}" style="width:40px; padding:2px;">
-                    <button class="btn btn-sm btn-outline-danger" onclick="this.closest('[data-section-idx]').remove()"><i class="bi bi-trash"></i></button>
+                    <button class="btn btn-sm btn-outline-danger" data-action="eventsModule.removeRunningOrderSection"><i class="bi bi-trash"></i></button>
                   </div>
                 `
                   )
@@ -6506,7 +6583,7 @@ const eventsModule = {
         <input type="number" class="form-control form-control-sm" style="width:60px;" value="${idx + 1}" min="1" placeholder="#">
         <input type="text" class="form-control form-control-sm" value="" placeholder="e.g. Act ${idx + 1}: Category Name">
         <input type="color" class="form-control form-control-sm form-control-color" value="${colour}" style="width:40px; padding:2px;">
-        <button class="btn btn-sm btn-outline-danger" onclick="this.closest('[data-section-idx]').remove()"><i class="bi bi-trash"></i></button>
+        <button class="btn btn-sm btn-outline-danger" data-action="eventsModule.removeRunningOrderSection"><i class="bi bi-trash"></i></button>
       </div>
     `
     );
@@ -6527,14 +6604,14 @@ const eventsModule = {
     this._roSectionConfig = config;
 
     try {
-      const { error } = await STATE.client.from('running_order_settings').upsert(
+      await apiClient.upsert(
+        'running_order_settings',
         {
           event_id: this.currentEventIdRunningOrder,
           section_config: config,
         },
         { onConflict: 'event_id' }
       );
-      if (error) throw error;
     } catch (error) {
       console.warn('DB save for section config failed, using localStorage:', error);
       localStorage.setItem(`bta_ro_section_config_${this.currentEventIdRunningOrder}`, JSON.stringify(config));
@@ -6601,13 +6678,12 @@ const eventsModule = {
 
   async loadVersions() {
     try {
-      const { data, error } = await STATE.client
-        .from('running_order_versions')
-        .select('*')
-        .eq('event_id', this.currentEventIdRunningOrder)
-        .order('version_number', { ascending: false });
-      if (error) throw error;
-      this._roVersions = data || [];
+      /* selectAll: justified — scoped to single event */
+      const versionsResult = await apiClient.selectAll('running_order_versions', {
+        filters: { event_id: this.currentEventIdRunningOrder },
+        sort: { column: 'version_number', ascending: false },
+      });
+      this._roVersions = versionsResult || [];
     } catch (error) {
       console.error('Error loading versions:', error);
       this._roVersions = [];
@@ -6645,15 +6721,12 @@ const eventsModule = {
     }));
 
     try {
-      const { error } = await STATE.client.from('running_order_versions').insert([
-        {
-          event_id: this.currentEventIdRunningOrder,
-          version_name: name,
-          version_number: this._roVersions.length + 1,
-          snapshot: snapshot,
-        },
-      ]);
-      if (error) throw error;
+      await apiClient.insert('running_order_versions', {
+        event_id: this.currentEventIdRunningOrder,
+        version_name: name,
+        version_number: this._roVersions.length + 1,
+        snapshot: snapshot,
+      });
     } catch (error) {
       console.warn('DB save for version failed, using localStorage:', error);
       const key = `bta_ro_versions_${this.currentEventIdRunningOrder}`;
@@ -6954,6 +7027,7 @@ const eventsModule = {
       // 1. Get confirmed RSVPs from both event_guests and event_attendees
       let guests = [];
       try {
+        /* selectAll: justified — scoped to single event */
         const eg = await apiClient.selectAll('event_guests', {
           select: 'id, organisation_id, guest_name, guest_email, guest_type',
           filters: { event_id: eventId, rsvp_status: 'confirmed' },
@@ -6965,6 +7039,7 @@ const eventsModule = {
 
       // Also pull from event_attendees (admin-added guests with status 'attending')
       try {
+        /* selectAll: justified — scoped to single event */
         const ea = await apiClient.selectAll('event_attendees', {
           select: 'id, organisation_id, attendee_name, attendee_email, guest_type',
           filters: { event_id: eventId, rsvp_status_in: ['attending', 'confirmed'] },
@@ -7000,6 +7075,7 @@ const eventsModule = {
       const orgIds = [...new Set(guests.map((g) => g.organisation_id).filter(Boolean))];
       const assignMap = {};
       if (orgIds.length > 0) {
+        /* selectAll: justified — scoped to filtered org IDs from single event */
         const assigns = await apiClient.selectAll('award_assignments', {
           select: 'award_id, organisation_id',
           filters: { organisation_id_in: orgIds, status: 'winner' },
@@ -7014,6 +7090,7 @@ const eventsModule = {
       const allAwardIds = [...new Set(Object.values(assignMap).flat())];
       const awardMap = {};
       if (allAwardIds.length > 0) {
+        /* selectAll: justified — small reference table, filtered by known IDs */
         const awards = await apiClient.selectAll('awards', {
           select: 'id, award_name',
           filters: { id_in: allAwardIds },
@@ -7026,6 +7103,7 @@ const eventsModule = {
       // 4. Get org names
       const orgMap = {};
       if (orgIds.length > 0) {
+        /* selectAll: justified — filtered to known org IDs from single event */
         const orgs = await apiClient.selectAll('organisations', {
           select: 'id, company_name',
           filters: { id_in: orgIds },
@@ -7552,15 +7630,14 @@ const eventsModule = {
         return;
       }
 
-      // 1. Load all awards for this event's year with their winner assignments
-      const awardsQuery = STATE.client
-        .from('award_years')
-        .select('id, award_name, award_category, sector')
-        .eq('year', event.year)
-        .order('sector', { ascending: true });
-
-      const { data: awards, error: awardsErr } = await awardsQuery;
-      if (awardsErr) throw awardsErr;
+      /* selectAll: justified — scoped to single event year */
+      const awardsResult = await apiClient.selectAll('award_years', {
+        select: 'id, award_name, award_category, sector',
+        filters: { year: event.year },
+        sort: { column: 'sector', ascending: true },
+      });
+      const awards = awardsResult || [];
+      if (!awards) throw new Error('Failed to load awards');
 
       if (!awards || awards.length === 0) {
         utils.showToast(`No awards found for ${event.year}. Add awards first.`, 'warning');
@@ -7569,19 +7646,23 @@ const eventsModule = {
 
       // 2. Load confirmed winners from award_assignments
       const awardIds = awards.map((a) => a.id);
-      const { data: assignments, error: assignErr } = await STATE.client
-        .from('award_assignments')
-        .select('award_id, organisation_id, status, winner_position')
-        .in('award_id', awardIds)
-        .eq('status', 'winner');
-      if (assignErr) throw assignErr;
+      /* selectAll: justified — scoped to awards for single event year */
+      const assignResult = await apiClient.selectAll('award_assignments', {
+        select: 'award_id, organisation_id, status, winner_position',
+        filters: { award_id: { op: 'in', value: awardIds }, status: 'winner' },
+      });
+      const assignments = assignResult || [];
 
       // 3. Load organisation names for winners
       const orgIds = [...new Set((assignments || []).map((a) => a.organisation_id).filter(Boolean))];
       const orgsMap = {};
       if (orgIds.length > 0) {
-        const { data: orgs } = await STATE.client.from('organisations').select('id, company_name').in('id', orgIds);
-        (orgs || []).forEach((o) => {
+        /* selectAll: justified — filtered to known org IDs from single event */
+        const orgsResult = await apiClient.selectAll('organisations', {
+          select: 'id, company_name',
+          filters: { id: { op: 'in', value: orgIds } },
+        });
+        (orgsResult || []).forEach((o) => {
           orgsMap[o.id] = o.company_name;
         });
       }
@@ -7590,26 +7671,28 @@ const eventsModule = {
       const guestByOrg = {};
       if (orgIds.length > 0) {
         try {
-          const { data: eg } = await STATE.client
-            .from('event_guests')
-            .select('guest_name, organisation_id')
-            .eq('event_id', event.id)
-            .eq('rsvp_status', 'confirmed')
-            .in('organisation_id', orgIds);
-          (eg || []).forEach((g) => {
+          /* selectAll: justified — scoped to single event, filtered by org IDs */
+          const egResult = await apiClient.selectAll('event_guests', {
+            select: 'guest_name, organisation_id',
+            filters: { event_id: event.id, rsvp_status: 'confirmed', organisation_id: { op: 'in', value: orgIds } },
+          });
+          (egResult || []).forEach((g) => {
             if (g.organisation_id && !guestByOrg[g.organisation_id]) guestByOrg[g.organisation_id] = g.guest_name;
           });
         } catch (e) {
           /* event_guests may not exist */
         }
         try {
-          const { data: ea } = await STATE.client
-            .from('event_attendees')
-            .select('attendee_name, organisation_id')
-            .eq('event_id', event.id)
-            .in('rsvp_status', ['attending', 'confirmed'])
-            .in('organisation_id', orgIds);
-          (ea || []).forEach((a) => {
+          /* selectAll: justified — scoped to single event, filtered by org IDs */
+          const eaResult = await apiClient.selectAll('event_attendees', {
+            select: 'attendee_name, organisation_id',
+            filters: {
+              event_id: event.id,
+              rsvp_status: { op: 'in', value: ['attending', 'confirmed'] },
+              organisation_id: { op: 'in', value: orgIds },
+            },
+          });
+          (eaResult || []).forEach((a) => {
             if (a.organisation_id && !guestByOrg[a.organisation_id]) guestByOrg[a.organisation_id] = a.attendee_name;
           });
         } catch (e) {
@@ -7677,7 +7760,7 @@ const eventsModule = {
                   </div>
                   <div class="input-group input-group-sm">
                     <span class="input-group-text"><i class="bi bi-search"></i></span>
-                    <input type="text" class="form-control" id="winnersChecklistSearch" placeholder="Filter awards..." oninput="eventsModule._filterWinnersChecklist(this.value)">
+                    <input type="text" class="form-control" id="winnersChecklistSearch" placeholder="Filter awards..." data-on-input="eventsModule._filterWinnersChecklist">
                   </div>
                 </div>
                 <div id="winnersChecklistBody" style="max-height:450px; overflow-y:auto;">
@@ -7982,22 +8065,21 @@ const eventsModule = {
   async _loadAwardsForManualEntry() {
     try {
       // Try filtering by event_id first
-      let { data, error } = await STATE.client
-        .from('award_years')
-        .select('id, award_name, award_category, sector, event_id, winner_confirmed, prev_year_winner')
-        .eq('event_id', this.currentEventIdRunningOrder)
-        .order('sector', { ascending: true });
-
-      if (error) throw error;
+      /* selectAll: justified — scoped to single event */
+      let data = await apiClient.selectAll('award_years', {
+        select: 'id, award_name, award_category, sector, event_id, winner_confirmed, prev_year_winner',
+        filters: { event_id: this.currentEventIdRunningOrder },
+        sort: { column: 'sector', ascending: true },
+      });
 
       // If no awards linked to this event, load all active awards instead
       if (!data || data.length === 0) {
-        const fallback = await STATE.client
-          .from('award_years')
-          .select('id, award_name, award_category, sector, event_id, winner_confirmed, prev_year_winner')
-          .eq('is_active', true)
-          .order('sector', { ascending: true });
-        if (!fallback.error && fallback.data) data = fallback.data;
+        /* selectAll: justified — small reference table (active awards) */
+        data = await apiClient.selectAll('award_years', {
+          select: 'id, award_name, award_category, sector, event_id, winner_confirmed, prev_year_winner',
+          filters: { is_active: true },
+          sort: { column: 'sector', ascending: true },
+        });
       }
 
       this._manualEntryAwards = data || [];
@@ -8471,11 +8553,11 @@ const eventsModule = {
                         <label class="form-label small fw-bold">Table Shape</label>
                         <div class="d-flex gap-2">
                           <label class="btn btn-sm btn-outline-secondary flex-fill active" id="tpShapeRoundLabel">
-                            <input type="radio" name="tpSetupShape" value="round" checked class="d-none" onchange="document.getElementById('tpShapeRoundLabel').classList.add('active');document.getElementById('tpShapeRectLabel').classList.remove('active');">
+                            <input type="radio" name="tpSetupShape" value="round" checked class="d-none" data-on-change="eventsModule._handleTableShapeChange">
                             <i class="bi bi-circle me-1"></i>Round
                           </label>
                           <label class="btn btn-sm btn-outline-secondary flex-fill" id="tpShapeRectLabel">
-                            <input type="radio" name="tpSetupShape" value="rectangular" class="d-none" onchange="document.getElementById('tpShapeRectLabel').classList.add('active');document.getElementById('tpShapeRoundLabel').classList.remove('active');">
+                            <input type="radio" name="tpSetupShape" value="rectangular" class="d-none" data-on-change="eventsModule._handleTableShapeChange">
                             <i class="bi bi-square me-1"></i>Rectangular
                           </label>
                         </div>
@@ -8500,7 +8582,7 @@ const eventsModule = {
                     <div class="p-2 border-bottom">
                       <div class="input-group input-group-sm">
                         <span class="input-group-text"><i class="bi bi-search"></i></span>
-                        <input type="text" class="form-control" id="tpGuestSearch" placeholder="Search guests or companies..." oninput="eventsModule.filterGuests(this.value)">
+                        <input type="text" class="form-control" id="tpGuestSearch" placeholder="Search guests or companies..." data-on-input="eventsModule.filterGuests">
                       </div>
                     </div>
 
@@ -8508,7 +8590,7 @@ const eventsModule = {
                     <div class="p-2 border-bottom">
                       <div class="d-flex justify-content-between align-items-center mb-1">
                         <small class="fw-bold text-muted">ROOM ELEMENTS</small>
-                        <button class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="document.getElementById('tpSetupPanel').style.display='block'; document.getElementById('tpGuestsPanel').style.display='none';" title="Room Setup">
+                        <button class="btn btn-sm btn-outline-secondary py-0 px-1" data-action="eventsModule.showRoomSetupPanel" title="Room Setup">
                           <i class="bi bi-gear" style="font-size: 0.75rem;"></i>
                         </button>
                       </div>
@@ -8550,10 +8632,10 @@ const eventsModule = {
                     <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.canvasZoom" data-id="-0.1" title="Zoom Out">
                       <i class="bi bi-zoom-out"></i>
                     </button>
-                    <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.canvasZoom(0, true)" title="Reset Zoom (100%)">
+                    <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.resetCanvasZoom" title="Reset Zoom (100%)">
                       <i class="bi bi-aspect-ratio"></i>
                     </button>
-                    <small class="text-muted" id="tpZoomLevel" style="cursor:pointer; user-select:none;" onclick="eventsModule.canvasZoom(0, true)" title="Click to reset zoom">100%</small>
+                    <small class="text-muted" id="tpZoomLevel" style="cursor:pointer; user-select:none;" data-action="eventsModule.resetCanvasZoom" title="Click to reset zoom">100%</small>
                     <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.toggleCanvasFullscreen" title="Fullscreen" id="tpFullscreenBtn">
                       <i class="bi bi-arrows-fullscreen"></i>
                     </button>
@@ -8569,8 +8651,7 @@ const eventsModule = {
 
                   <!-- Canvas (the room) -->
                   <div id="tpCanvasWrapper" class="flex-grow-1 overflow-auto position-relative" style="background: #f0f2f5; background-image: radial-gradient(circle, #d0d0d0 1px, transparent 1px); background-size: 30px 30px;"
-                       ondragover="eventsModule.handleCanvasDragOver(event)"
-                       ondrop="eventsModule.handleCanvasDrop(event)">
+                       data-canvas-drop="true">
                     <div id="tpCanvas" class="position-relative" style="width: 2400px; height: 1600px; transform-origin: 0 0;">
                       <!-- Tables rendered here as absolutely positioned elements -->
                     </div>
@@ -8591,7 +8672,7 @@ const eventsModule = {
                           <tr>
                             <th style="width:30%" class="tp-sortable" data-sort="table" data-action="eventsModule.sortBottomIndex" data-id="table">Table <i class="bi bi-chevron-expand tp-sort-icon"></i></th>
                             <th style="width:25%" class="tp-sortable" data-sort="guest" data-action="eventsModule.sortBottomIndex" data-id="guest">Guest <i class="bi bi-chevron-expand tp-sort-icon"></i></th>
-                            <th style="width:25%" class="tp-sortable" data-sort="company" onclick="eventsModule.sortBottomIndex('company')">Company <i class="bi bi-chevron-expand tp-sort-icon"></i></th>
+                            <th style="width:25%" class="tp-sortable" data-sort="company" data-action="eventsModule.sortBottomIndex" data-id="company">Company <i class="bi bi-chevron-expand tp-sort-icon"></i></th>
                             <th style="width:10%" class="text-center">Seat</th>
                             <th style="width:10%" class="text-center">VIP</th>
                           </tr>
@@ -8776,6 +8857,14 @@ const eventsModule = {
     this.renderCanvasTables();
     this.initBottomIndexDrag();
 
+    // Bind canvas wrapper dragover/drop listeners (for dropping guests onto canvas background)
+    const canvasWrapper = document.getElementById('tpCanvasWrapper');
+    if (canvasWrapper && !canvasWrapper._canvasWrapperBound) {
+      canvasWrapper._canvasWrapperBound = true;
+      canvasWrapper.addEventListener('dragover', (e) => this.handleCanvasDragOver(e));
+      canvasWrapper.addEventListener('drop', (e) => this.handleCanvasDrop(e));
+    }
+
     // Clean up
     document.getElementById('tablePlanModal').addEventListener('hidden.bs.modal', () => {
       document.getElementById('tablePlanModal').remove();
@@ -8787,14 +8876,14 @@ const eventsModule = {
    */
   async loadTablePlan() {
     try {
-      const { data: tables, error: tablesError } = await STATE.client
-        .from('event_tables')
-        .select('*')
-        .eq('event_id', this.currentEventIdTablePlan)
-        .eq('is_active', true)
-        .order('table_number', { ascending: true });
-
-      if (tablesError) {
+      let tables;
+      try {
+        /* selectAll: justified — scoped to single event */
+        tables = await apiClient.selectAll('event_tables', {
+          filters: { event_id: this.currentEventIdTablePlan, is_active: true },
+          sort: { column: 'table_number', ascending: true },
+        });
+      } catch (tablesError) {
         // Table may not exist in database yet
         if (tablesError.code === '42P01' || tablesError.message?.includes('does not exist')) {
           this.tables = [];
@@ -8807,12 +8896,17 @@ const eventsModule = {
 
       // Load assignments for each table
       for (const table of this.tables) {
-        const { data: assignments, error: assignError } = await STATE.client
-          .from('table_assignments')
-          .select('*')
-          .eq('table_id', table.id);
-        if (assignError && assignError.code !== '42P01') throw assignError;
-        table.assignments = assignments || [];
+        try {
+          /* selectAll: justified — scoped to single table within single event */
+          const tableAssignments = await apiClient.selectAll('table_assignments', {
+            filters: { table_id: table.id },
+            select: '*, organisations(company_name)',
+          });
+          table.assignments = tableAssignments || [];
+        } catch (assignError) {
+          if (assignError.code !== '42P01') throw assignError;
+          table.assignments = [];
+        }
       }
 
       // Load unassigned guests
@@ -8827,15 +8921,14 @@ const eventsModule = {
         // Collect guests from event_guests (confirmed RSVPs)
         let allGuests = [];
         try {
-          const guestResult = await STATE.client
-            .from('event_guests')
-            .select(
-              'id, guest_name, guest_email, organisation_id, guest_type, plus_ones, rsvp_status, dietary_requirements'
-            )
-            .eq('event_id', this.currentEventIdTablePlan)
-            .eq('rsvp_status', 'confirmed');
-          if (!guestResult.error && guestResult.data) {
-            allGuests = guestResult.data.map((g) => ({
+          /* selectAll: justified — scoped to single event */
+          const guestResult = await apiClient.selectAll('event_guests', {
+            select:
+              'id, guest_name, guest_email, organisation_id, guest_type, plus_ones, rsvp_status, dietary_requirements',
+            filters: { event_id: this.currentEventIdTablePlan, rsvp_status: 'confirmed' },
+          });
+          if (guestResult && guestResult.length > 0) {
+            allGuests = guestResult.map((g) => ({
               guest_id: g.id,
               guest_name: g.guest_name,
               guest_email: g.guest_email,
@@ -8853,17 +8946,20 @@ const eventsModule = {
         // Also pull from event_attendees (status = 'attending') so attendees
         // added via the Attendees modal appear in the table plan
         try {
-          const attResult = await STATE.client
-            .from('event_attendees')
-            .select('id, attendee_name, attendee_email, organisation_id, guest_type, plus_ones, meal_preference, notes')
-            .eq('event_id', this.currentEventIdTablePlan)
-            .in('rsvp_status', ['attending', 'confirmed']);
-          if (!attResult.error && attResult.data) {
+          /* selectAll: justified — scoped to single event */
+          const attData = await apiClient.selectAll('event_attendees', {
+            select: 'id, attendee_name, attendee_email, organisation_id, guest_type, plus_ones, meal_preference, notes',
+            filters: {
+              event_id: this.currentEventIdTablePlan,
+              rsvp_status: { op: 'in', value: ['attending', 'confirmed'] },
+            },
+          });
+          if (attData && attData.length > 0) {
             // Deduplicate: skip if same name+email already present from event_guests
             const existingKeys = new Set(
               allGuests.map((g) => (g.guest_name || '').toLowerCase() + '|' + (g.guest_email || '').toLowerCase())
             );
-            for (const a of attResult.data) {
+            for (const a of attData) {
               const key = (a.attendee_name || '').toLowerCase() + '|' + (a.attendee_email || '').toLowerCase();
               if (!existingKeys.has(key)) {
                 existingKeys.add(key);
@@ -8889,9 +8985,13 @@ const eventsModule = {
         const orgIds = [...new Set(allGuests.filter((g) => g.organisation_id).map((g) => g.organisation_id))];
         const orgMap = {};
         if (orgIds.length > 0) {
-          const { data: orgs } = await STATE.client.from('organisations').select('id, company_name').in('id', orgIds);
-          if (orgs)
-            orgs.forEach((o) => {
+          /* selectAll: justified — filtered to known org IDs from single event */
+          const orgsData = await apiClient.selectAll('organisations', {
+            select: 'id, company_name',
+            filters: { id: { op: 'in', value: orgIds } },
+          });
+          if (orgsData)
+            orgsData.forEach((o) => {
               orgMap[o.id] = o.company_name;
             });
         }
@@ -8906,12 +9006,12 @@ const eventsModule = {
 
       // Load room fixtures (stage, photowall, AV booth)
       try {
-        const { data: fixtures, error: fixturesError } = await STATE.client
-          .from('event_room_fixtures')
-          .select('*')
-          .eq('event_id', this.currentEventIdTablePlan);
+        /* selectAll: justified — scoped to single event */
+        const fixtures = await apiClient.selectAll('event_room_fixtures', {
+          filters: { event_id: this.currentEventIdTablePlan },
+        });
 
-        if (!fixturesError && fixtures) {
+        if (fixtures) {
           this.roomFixtures = fixtures;
         } else {
           // Table may not exist - fall back to localStorage
@@ -8927,6 +9027,22 @@ const eventsModule = {
     } catch (error) {
       console.error('Error loading table plan:', error);
       throw error;
+    }
+  },
+
+  /**
+   * Handle table shape radio button change via data-on-change delegation.
+   * Toggles active class on the corresponding label elements.
+   */
+  _handleTableShapeChange(value) {
+    const roundLabel = document.getElementById('tpShapeRoundLabel');
+    const rectLabel = document.getElementById('tpShapeRectLabel');
+    if (value === 'round') {
+      if (roundLabel) roundLabel.classList.add('active');
+      if (rectLabel) rectLabel.classList.remove('active');
+    } else {
+      if (rectLabel) rectLabel.classList.add('active');
+      if (roundLabel) roundLabel.classList.remove('active');
     }
   },
 
@@ -8976,9 +9092,7 @@ const eventsModule = {
         position_y: pos.y,
       }));
 
-      const { error } = await STATE.client.from('event_tables').insert(tablesToInsert);
-
-      if (error) throw error;
+      await apiClient.insert('event_tables', tablesToInsert);
 
       utils.showToast(`${count} tables created`, 'success');
 
@@ -9126,9 +9240,8 @@ const eventsModule = {
                draggable="true"
                data-company-name="${utils.escapeHtml(group.company_name || '')}"
                data-organisation-id="${group.organisation_id || ''}"
-               ondragstart="eventsModule.handleCompanyDragStart(event)"
-               ondragend="eventsModule.handleGuestDragEnd(event)"
-               onclick="this.nextElementSibling.classList.toggle('d-none')">
+               data-drag="company-item"
+               data-action="eventsModule.toggleCompanyGuests">
             <span>${companyLabel}</span>
             <span class="badge bg-secondary">${group.guests.length}</span>
           </div>
@@ -9149,8 +9262,7 @@ const eventsModule = {
                    data-guest-name="${utils.escapeHtml(guest.guest_name)}"
                    data-company-name="${utils.escapeHtml(guest.company_name || '')}"
                    data-organisation-id="${guest.organisation_id || ''}"
-                   ondragstart="eventsModule.handleGuestDragStart(event)"
-                   ondragend="eventsModule.handleGuestDragEnd(event)">
+                   data-drag="guest-item">
                 <i class="bi bi-person-fill text-muted" style="font-size:0.75rem;"></i>
                 <span class="guest-name">${utils.escapeHtml(guest.guest_name)}</span>
                 ${typeBadge}${dietaryIcon}
@@ -9162,6 +9274,36 @@ const eventsModule = {
         </div>`;
       })
       .join('');
+
+    // Bind drag event listeners via delegation on the guest list container
+    this._bindGuestDragListeners(container);
+  },
+
+  /**
+   * Bind drag event listeners for guest chips and company headers using event delegation.
+   * Attaches once per container element.
+   */
+  _bindGuestDragListeners(container) {
+    if (!container || container._guestDragBound) return;
+    container._guestDragBound = true;
+
+    container.addEventListener('dragstart', (e) => {
+      const company = e.target.closest('[data-drag="company-item"]');
+      if (company) {
+        eventsModule.handleCompanyDragStart(_eventProxy(e, company));
+        return;
+      }
+      const guest = e.target.closest('[data-drag="guest-item"]');
+      if (guest) {
+        eventsModule.handleGuestDragStart(_eventProxy(e, guest));
+      }
+    });
+    container.addEventListener('dragend', (e) => {
+      const item = e.target.closest('[data-drag="company-item"], [data-drag="guest-item"]');
+      if (item) {
+        eventsModule.handleGuestDragEnd(_eventProxy(e, item));
+      }
+    });
   },
 
   // ---- CANVAS: Render tables as positioned shapes ----
@@ -9297,11 +9439,8 @@ const eventsModule = {
         <div class="tp-table-el ${selected}"
              data-table-id="${table.id}"
              style="left:${px}px; top:${py}px; width:${totalW}px; height:${totalH}px;"
-             onmousedown="eventsModule.startTableDrag(event, '${table.id}')"
-             data-action="eventsModule.selectTable" data-id="${table.id}"
-             ondragover="eventsModule.handleTableDragOver(event)"
-             ondrop="eventsModule.handleTableDrop(event, '${table.id}')"
-             ondragleave="eventsModule.handleTableDragLeave(event)">
+             data-drag="table-item"
+             data-action="eventsModule.selectTable" data-id="${table.id}">
           ${dotsHtml}
           <div class="tp-table-shape ${shapeClass} ${capClass}"
                style="width:${sz.w}px; height:${sz.h}px; margin:${pad}px;">
@@ -9313,8 +9452,73 @@ const eventsModule = {
         })
         .join('');
 
+    // Bind drag/mousedown event listeners on the canvas for tables and fixtures
+    this._bindCanvasTableListeners(canvas);
+
     // Keep bottom index panel in sync
     this.renderTableIndexPanel();
+  },
+
+  /**
+   * Bind mousedown, dragover, drop, and dragleave listeners on the canvas element
+   * for table elements and fixture elements using event delegation.
+   * Attaches once per canvas element.
+   */
+  _bindCanvasTableListeners(canvas) {
+    if (!canvas || canvas._canvasTableBound) return;
+    canvas._canvasTableBound = true;
+
+    // Mousedown: handles fixture resize, fixture drag, and table drag
+    canvas.addEventListener('mousedown', (e) => {
+      // Fixture resize handles
+      const resizeHandle = e.target.closest('[data-fixture-resize]');
+      if (resizeHandle) {
+        const dir = resizeHandle.getAttribute('data-fixture-resize');
+        const fixtureId = resizeHandle.getAttribute('data-fixture-resize-id');
+        eventsModule.startFixtureResize(e, fixtureId, dir);
+        return;
+      }
+      // Fixture stop-propagation buttons (e.g. remove button)
+      const stopProp = e.target.closest('[data-fixture-stop-prop]');
+      if (stopProp) {
+        e.stopPropagation();
+        return;
+      }
+      // Fixture drag
+      const fixture = e.target.closest('[data-drag="fixture-item"]');
+      if (fixture) {
+        const fixtureId = fixture.getAttribute('data-fixture-id');
+        eventsModule.startFixtureDrag(_eventProxy(e, fixture), fixtureId);
+        return;
+      }
+      // Table drag
+      const table = e.target.closest('[data-drag="table-item"]');
+      if (table) {
+        const tableId = table.getAttribute('data-table-id');
+        eventsModule.startTableDrag(e, tableId);
+      }
+    });
+
+    // Dragover: for guest/company drop onto tables
+    canvas.addEventListener('dragover', (e) => {
+      const table = e.target.closest('[data-drag="table-item"]');
+      if (table) eventsModule.handleTableDragOver(_eventProxy(e, table));
+    });
+
+    // Drop: handle guest/company drop onto tables
+    canvas.addEventListener('drop', (e) => {
+      const table = e.target.closest('[data-drag="table-item"]');
+      if (table) {
+        const tableId = table.getAttribute('data-table-id');
+        eventsModule.handleTableDrop(_eventProxy(e, table), tableId);
+      }
+    });
+
+    // Dragleave: remove hover styles
+    canvas.addEventListener('dragleave', (e) => {
+      const table = e.target.closest('[data-drag="table-item"]');
+      if (table) eventsModule.handleTableDragLeave(_eventProxy(e, table));
+    });
   },
 
   // ==== BOTTOM TABLE INDEX PANEL ====
@@ -9508,10 +9712,11 @@ const eventsModule = {
 
     // Try saving to DB first, fall back to localStorage
     try {
-      const { data, error } = await STATE.client.from('event_room_fixtures').insert([fixture]).select().single();
+      const { data } = await apiClient.insert('event_room_fixtures', fixture);
+      const insertedFixture = Array.isArray(data) ? data[0] : data;
 
-      if (!error && data) {
-        fixture.id = data.id;
+      if (insertedFixture) {
+        fixture.id = insertedFixture.id;
         this.roomFixtures.push(fixture);
       } else {
         this.roomFixtures.push(fixture);
@@ -9541,22 +9746,22 @@ const eventsModule = {
              data-fixture-id="${f.id}"
              style="left:${f.position_x}px; top:${f.position_y}px; width:${f.width}px; height:${f.height}px;
                     background: ${config.bg}; border: 2.5px ${f.fixture_type === 'stage' ? 'double' : 'dashed'} ${config.color};"
-             onmousedown="eventsModule.startFixtureDrag(event, '${f.id}')">
+             data-drag="fixture-item">
           <div class="tp-fixture-label" style="color:${config.color};">
             <i class="bi ${config.icon} me-1"></i>${utils.escapeHtml(label)}
           </div>
           ${
             selected
               ? `<div class="tp-fixture-actions">
-            <button class="btn btn-sm btn-outline-danger py-0 px-1" onmousedown="event.stopPropagation();" data-action="eventsModule.removeFixture" data-id="f.id" title="Remove">
+            <button class="btn btn-sm btn-outline-danger py-0 px-1" data-fixture-stop-prop="true" data-action="eventsModule.removeFixture" data-id="f.id" title="Remove">
               <i class="bi bi-trash" style="font-size:0.7rem;"></i>
             </button>
           </div>`
               : ''
           }
-          <div class="tp-fixture-resize-handle tp-resize-se" onmousedown="eventsModule.startFixtureResize(event, '${f.id}', 'se')"></div>
-          <div class="tp-fixture-resize-handle tp-resize-e" onmousedown="eventsModule.startFixtureResize(event, '${f.id}', 'e')"></div>
-          <div class="tp-fixture-resize-handle tp-resize-s" onmousedown="eventsModule.startFixtureResize(event, '${f.id}', 's')"></div>
+          <div class="tp-fixture-resize-handle tp-resize-se" data-fixture-resize="se" data-fixture-resize-id="${f.id}"></div>
+          <div class="tp-fixture-resize-handle tp-resize-e" data-fixture-resize="e" data-fixture-resize-id="${f.id}"></div>
+          <div class="tp-fixture-resize-handle tp-resize-s" data-fixture-resize="s" data-fixture-resize-id="${f.id}"></div>
         </div>`;
       })
       .join('');
@@ -9695,7 +9900,7 @@ const eventsModule = {
     if (this._selectedFixtureId === fixtureId) this._selectedFixtureId = null;
 
     try {
-      await STATE.client.from('event_room_fixtures').delete().eq('id', fixtureId);
+      await apiClient.delete('event_room_fixtures', fixtureId);
     } catch (e) {
       // Fall back to localStorage
     }
@@ -9709,7 +9914,7 @@ const eventsModule = {
    */
   async _saveFixture(fixture) {
     try {
-      const { error } = await STATE.client.from('event_room_fixtures').upsert({
+      await apiClient.upsert('event_room_fixtures', {
         id: fixture.id,
         event_id: fixture.event_id,
         fixture_type: fixture.fixture_type,
@@ -9719,7 +9924,6 @@ const eventsModule = {
         width: fixture.width,
         height: fixture.height,
       });
-      if (error) throw error;
     } catch (e) {
       this._saveFixturesToLocalStorage();
     }
@@ -9805,7 +10009,7 @@ const eventsModule = {
         const newX = Math.max(0, Math.round(parseInt(this._tableDrag.el.style.left)));
         const newY = Math.max(0, Math.round(parseInt(this._tableDrag.el.style.top)));
         try {
-          await STATE.client.from('event_tables').update({ position_x: newX, position_y: newY }).eq('id', tableId);
+          await apiClient.update('event_tables', tableId, { position_x: newX, position_y: newY });
           // Update local data
           const t = this.tables.find((t) => t.id === tableId);
           if (t) {
@@ -9872,7 +10076,7 @@ const eventsModule = {
         ? `
       <div class="mb-2">
         <small class="fw-bold text-muted d-block mb-1">ASSIGN ORGANISATION</small>
-        <input type="text" class="form-control form-control-sm mb-1" id="tpOrgSearch" placeholder="Search companies..." oninput="eventsModule._filterOrgPicker(this.value)">
+        <input type="text" class="form-control form-control-sm mb-1" id="tpOrgSearch" placeholder="Search companies..." data-on-input="eventsModule._filterOrgPicker">
         <div id="tpOrgPickerList" style="max-height: 180px; overflow-y: auto;">
           ${orgGroupsArr
             .map((grp) => {
@@ -9884,9 +10088,7 @@ const eventsModule = {
               const vipBadge = hasVip
                 ? '<span class="badge bg-warning text-dark ms-1" style="font-size:0.65rem;">VIP</span>'
                 : '';
-              return `<div class="tp-org-pick-item d-flex align-items-center justify-content-between p-2 mb-1 rounded border" style="cursor:pointer; font-size:0.82rem; background:${hasVip ? '#fff8e1' : '#f8f9fa'}; transition: background 0.15s; ${hasVip ? 'border-color:#ffc107 !important;' : ''}"
-              onmouseover="this.style.background='#e3f2fd'"
-              onmouseout="this.style.background='${hasVip ? '#fff8e1' : '#f8f9fa'}'"
+              return `<div class="tp-org-pick-item hover-highlight d-flex align-items-center justify-content-between p-2 mb-1 rounded border" style="cursor:pointer; font-size:0.82rem; background:${hasVip ? '#fff8e1' : '#f8f9fa'}; transition: background 0.15s; ${hasVip ? 'border-color:#ffc107 !important;' : ''}"
               data-org-name="${utils.escapeHtml(name).toLowerCase()}"
               data-action="eventsModule.assignOrgToTable" data-table-id="${table.id}" data-org-key="${utils.escapeHtml(JSON.stringify(orgKey))}">
               <div>
@@ -10123,11 +10325,7 @@ const eventsModule = {
     }
 
     try {
-      const { error } = await STATE.client
-        .from('event_tables')
-        .update({ table_name: name, total_seats: seats, shape })
-        .eq('id', tableId);
-      if (error) throw error;
+      await apiClient.update('event_tables', tableId, { table_name: name, total_seats: seats, shape });
     } catch (error) {
       console.warn('DB update for table properties failed, using localStorage:', error);
       const key = `bta_event_tables_${this.currentEventIdRunningOrder || 'unknown'}`;
@@ -10296,24 +10494,21 @@ const eventsModule = {
       try {
         // Look up full guest data for dietary info
         const fullGuest = this.unassignedGuests.find((g) => (g.guest_id || g.id) === this.draggedGuestData.guest_id);
-        const { error } = await STATE.client.from('table_assignments').insert([
-          {
-            event_id: this.currentEventIdTablePlan,
-            table_id: tableId,
-            guest_id: this.draggedGuestData.guest_id,
-            guest_name: this.draggedGuestData.guest_name,
-            organisation_id: this.draggedGuestData.organisation_id || null,
-            company_name: this.draggedGuestData.company_name || null,
-            seat_number: _nextSeat(0),
-            is_vip:
-              fullGuest?.guest_type === 'vip' ||
-              fullGuest?.guest_type === 'sponsor' ||
-              fullGuest?.guest_type === 'speaker',
-            guest_type: fullGuest?.guest_type || 'guest',
-            dietary_requirements: fullGuest?.dietary_requirements || null,
-          },
-        ]);
-        if (error) throw error;
+        await apiClient.insert('table_assignments', {
+          event_id: this.currentEventIdTablePlan,
+          table_id: tableId,
+          guest_id: this.draggedGuestData.guest_id,
+          guest_name: this.draggedGuestData.guest_name,
+          organisation_id: this.draggedGuestData.organisation_id || null,
+          company_name: this.draggedGuestData.company_name || null,
+          seat_number: _nextSeat(0),
+          is_vip:
+            fullGuest?.guest_type === 'vip' ||
+            fullGuest?.guest_type === 'sponsor' ||
+            fullGuest?.guest_type === 'speaker',
+          guest_type: fullGuest?.guest_type || 'guest',
+          dietary_requirements: fullGuest?.dietary_requirements || null,
+        });
         utils.showToast('Guest assigned to table', 'success');
         await this.loadTablePlan();
         this.renderUnassignedGuests();
@@ -10355,17 +10550,14 @@ const eventsModule = {
       const cx = Math.round((scrollLeft + 300) / this._canvasZoom);
       const cy = Math.round((scrollTop + 200) / this._canvasZoom);
 
-      const { error } = await STATE.client.from('event_tables').insert([
-        {
-          event_id: this.currentEventIdTablePlan,
-          table_number: nextNumber,
-          total_seats: 8,
-          shape: 'round',
-          position_x: cx + (this.tables.length % 4) * 180,
-          position_y: cy + Math.floor((this.tables.length % 12) / 4) * 180,
-        },
-      ]);
-      if (error) throw error;
+      await apiClient.insert('event_tables', {
+        event_id: this.currentEventIdTablePlan,
+        table_number: nextNumber,
+        total_seats: 8,
+        shape: 'round',
+        position_x: cx + (this.tables.length % 4) * 180,
+        position_y: cy + Math.floor((this.tables.length % 12) / 4) * 180,
+      });
 
       utils.showToast('Table added', 'success');
       await this.loadTablePlan();
@@ -10388,12 +10580,10 @@ const eventsModule = {
     try {
       // Remove all assignments first to avoid orphaned records
       if (assignedCount > 0) {
-        const { error: clearError } = await STATE.client.from('table_assignments').delete().eq('table_id', tableId);
-        if (clearError) throw clearError;
+        await apiClient.deleteByFilters('table_assignments', { table_id: tableId });
       }
 
-      const { error } = await STATE.client.from('event_tables').delete().eq('id', tableId);
-      if (error) throw error;
+      await apiClient.delete('event_tables', tableId);
 
       if (this._selectedTableId === tableId) this.closeTableDetail();
       utils.showToast('Table deleted', 'success');
@@ -10409,8 +10599,7 @@ const eventsModule = {
 
   async removeGuestFromTable(assignmentId) {
     try {
-      const { error } = await STATE.client.from('table_assignments').delete().eq('id', assignmentId);
-      if (error) throw error;
+      await apiClient.delete('table_assignments', assignmentId);
 
       utils.showToast('Guest removed from table', 'success');
       await this.loadTablePlan();
@@ -10513,8 +10702,8 @@ const eventsModule = {
             }
           }
 
-          const { error } = await STATE.client.from('table_assignments').insert([
-            {
+          try {
+            await apiClient.insert('table_assignments', {
               event_id: this.currentEventIdTablePlan,
               table_id: targetTable.id,
               guest_id: guest.guest_id || guest.id,
@@ -10525,12 +10714,11 @@ const eventsModule = {
               is_vip: guest.guest_type === 'vip' || guest.guest_type === 'sponsor' || guest.guest_type === 'speaker',
               guest_type: guest.guest_type || 'guest',
               dietary_requirements: guest.dietary_requirements || null,
-            },
-          ]);
-
-          if (!error) {
+            });
             targetTable.availableSeats--;
             assigned++;
+          } catch (_insertErr) {
+            // Skip this guest if insert fails
           }
         }
       }
@@ -11166,11 +11354,11 @@ const eventsModule = {
     document.body.insertAdjacentHTML(
       'beforeend',
       `
-      <div id="tpIndexOverlay" style="position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center;" onclick="if(event.target===this)this.remove();">
+      <div id="tpIndexOverlay" style="position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center;" data-action="eventsModule.closeOverlayOnBackdrop" data-id="tpIndexOverlay">
         <div style="background:white; border-radius:16px; padding:24px; width:700px; max-width:92vw; max-height:85vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <h5 class="mb-0"><i class="bi bi-card-list me-2"></i>Table Index</h5>
-            <button class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('tpIndexOverlay').remove()"><i class="bi bi-x-lg"></i></button>
+            <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.closeOverlay" data-id="tpIndexOverlay"><i class="bi bi-x-lg"></i></button>
           </div>
 
           <!-- Tab nav -->
@@ -11184,9 +11372,9 @@ const eventsModule = {
             <div class="tab-pane fade show active" id="tpIdxByTable">
               <div class="d-flex gap-1 mb-2">
                 <small class="text-muted me-1 align-self-center">Sort by:</small>
-                <button class="btn btn-sm btn-outline-secondary tp-idx-sort-btn" data-tab="byTable" data-col="table" onclick="eventsModule.sortIndexOverlay('byTable','table')">Table <i class="bi bi-sort-down-alt tp-sort-icon"></i></button>
-                <button class="btn btn-sm btn-outline-secondary tp-idx-sort-btn" data-tab="byTable" data-col="seats" onclick="eventsModule.sortIndexOverlay('byTable','seats')">Seats <i class="bi bi-chevron-expand tp-sort-icon"></i></button>
-                <button class="btn btn-sm btn-outline-secondary tp-idx-sort-btn" data-tab="byTable" data-col="company" onclick="eventsModule.sortIndexOverlay('byTable','company')">Company <i class="bi bi-chevron-expand tp-sort-icon"></i></button>
+                <button class="btn btn-sm btn-outline-secondary tp-idx-sort-btn" data-tab="byTable" data-col="table" data-action="eventsModule.sortIndexOverlay" data-args='["byTable","table"]'>Table <i class="bi bi-sort-down-alt tp-sort-icon"></i></button>
+                <button class="btn btn-sm btn-outline-secondary tp-idx-sort-btn" data-tab="byTable" data-col="seats" data-action="eventsModule.sortIndexOverlay" data-args='["byTable","seats"]'>Seats <i class="bi bi-chevron-expand tp-sort-icon"></i></button>
+                <button class="btn btn-sm btn-outline-secondary tp-idx-sort-btn" data-tab="byTable" data-col="company" data-action="eventsModule.sortIndexOverlay" data-args='["byTable","company"]'>Company <i class="bi bi-chevron-expand tp-sort-icon"></i></button>
               </div>
               <div id="tpIdxByTableContent"></div>
             </div>
@@ -11195,9 +11383,9 @@ const eventsModule = {
             <div class="tab-pane fade" id="tpIdxByCompany">
               <table class="table table-sm table-hover" id="tpIdxCompanyTable">
                 <thead><tr>
-                  <th class="tp-idx-co-sort" style="cursor:pointer; user-select:none;" onclick="eventsModule.sortIndexOverlay('byCompany','company')">Company <i class="bi bi-chevron-expand tp-sort-icon"></i></th>
-                  <th class="text-center tp-idx-co-sort" style="cursor:pointer; user-select:none;" onclick="eventsModule.sortIndexOverlay('byCompany','guests')">Guests <i class="bi bi-sort-down tp-sort-icon"></i></th>
-                  <th class="tp-idx-co-sort" style="cursor:pointer; user-select:none;" onclick="eventsModule.sortIndexOverlay('byCompany','tables')">Tables <i class="bi bi-chevron-expand tp-sort-icon"></i></th>
+                  <th class="tp-idx-co-sort" style="cursor:pointer; user-select:none;" data-action="eventsModule.sortIndexOverlay" data-args='["byCompany","company"]'>Company <i class="bi bi-chevron-expand tp-sort-icon"></i></th>
+                  <th class="text-center tp-idx-co-sort" style="cursor:pointer; user-select:none;" data-action="eventsModule.sortIndexOverlay" data-args='["byCompany","guests"]'>Guests <i class="bi bi-sort-down tp-sort-icon"></i></th>
+                  <th class="tp-idx-co-sort" style="cursor:pointer; user-select:none;" data-action="eventsModule.sortIndexOverlay" data-args='["byCompany","tables"]'>Tables <i class="bi bi-chevron-expand tp-sort-icon"></i></th>
                 </tr></thead>
                 <tbody id="tpIdxCompanyBody"></tbody>
               </table>
@@ -11419,11 +11607,11 @@ const eventsModule = {
     document.body.insertAdjacentHTML(
       'beforeend',
       `
-      <div id="tpStatsOverlay" style="position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center;" onclick="if(event.target===this)this.remove();">
+      <div id="tpStatsOverlay" style="position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center;" data-action="eventsModule.closeOverlayOnBackdrop" data-id="tpStatsOverlay">
         <div style="background:white; border-radius:16px; padding:30px; width:560px; max-height:80vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <h5 class="mb-0"><i class="bi bi-bar-chart me-2"></i>Table Plan Stats</h5>
-            <button class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('tpStatsOverlay').remove()"><i class="bi bi-x-lg"></i></button>
+            <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.closeOverlay" data-id="tpStatsOverlay"><i class="bi bi-x-lg"></i></button>
           </div>
 
           <div class="row g-3 mb-4">
@@ -11491,18 +11679,15 @@ const eventsModule = {
       });
       if (numberError) throw numberError;
 
-      const { error } = await STATE.client.from('event_tables').insert([
-        {
-          event_id: this.currentEventIdTablePlan,
-          table_number: nextNumber,
-          table_name: source.table_name ? source.table_name + ' (copy)' : null,
-          total_seats: source.total_seats,
-          shape: source.shape,
-          position_x: (source.position_x || 100) + 50,
-          position_y: (source.position_y || 100) + 50,
-        },
-      ]);
-      if (error) throw error;
+      await apiClient.insert('event_tables', {
+        event_id: this.currentEventIdTablePlan,
+        table_number: nextNumber,
+        table_name: source.table_name ? source.table_name + ' (copy)' : null,
+        total_seats: source.total_seats,
+        shape: source.shape,
+        position_x: (source.position_x || 100) + 50,
+        position_y: (source.position_y || 100) + 50,
+      });
 
       utils.showToast('Table duplicated (empty copy created)', 'success');
       await this.loadTablePlan();
@@ -11542,17 +11727,12 @@ const eventsModule = {
       // Delete all assignments first
       if (seatedCount > 0) {
         const tableIds = this.tables.map((t) => t.id);
-        const { error: clearErr } = await STATE.client.from('table_assignments').delete().in('table_id', tableIds);
-        if (clearErr) throw clearErr;
+        await apiClient.deleteByFilters('table_assignments', { table_id: { op: 'in', value: tableIds } });
       }
 
       // Delete all tables
       if (tableCount > 0) {
-        const { error: tabErr } = await STATE.client
-          .from('event_tables')
-          .delete()
-          .eq('event_id', this.currentEventIdTablePlan);
-        if (tabErr) throw tabErr;
+        await apiClient.deleteByFilters('event_tables', { event_id: this.currentEventIdTablePlan });
       }
 
       // Delete all fixtures
@@ -11604,8 +11784,7 @@ const eventsModule = {
       return;
 
     try {
-      const { error } = await STATE.client.from('table_assignments').delete().eq('table_id', tableId);
-      if (error) throw error;
+      await apiClient.deleteByFilters('table_assignments', { table_id: tableId });
 
       utils.showToast('All guests removed from table', 'success');
       await this.loadTablePlan();
@@ -12028,15 +12207,15 @@ const eventsModule = {
         const pgStart = (cp - 1) * (this._evtPageSize || 50);
         const pgEnd = pgStart + (this._evtPageSize || 50);
         let html = '<nav><ul class="pagination pagination-sm justify-content-center mt-3">';
-        html += `<li class="page-item ${cp <= 1 ? 'disabled' : ''}"><a class="page-link" href="#" data-action="eventsModule.goToEventsPage" data-page="${cp - 1}" data-prevent-default="true">Prev</a></li>`;
+        html += `<li class="page-item ${cp <= 1 ? 'disabled' : ''}"><a class="page-link" href="#" data-action="eventsModule.goToEventsPage" data-id="${cp - 1}" data-prevent-default="true">Prev</a></li>`;
         for (let i = 1; i <= totalPages; i++) {
           if (i === 1 || i === totalPages || (i >= cp - 2 && i <= cp + 2)) {
-            html += `<li class="page-item ${i === cp ? 'active' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); eventsModule.goToEventsPage(${i})">${i}</a></li>`;
+            html += `<li class="page-item ${i === cp ? 'active' : ''}"><a class="page-link" href="#" data-action="eventsModule.goToEventsPage" data-id="${i}" data-prevent-default="true">${i}</a></li>`;
           } else if (i === cp - 3 || i === cp + 3) {
             html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
           }
         }
-        html += `<li class="page-item ${cp >= totalPages ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); eventsModule.goToEventsPage(${cp + 1})">Next</a></li>`;
+        html += `<li class="page-item ${cp >= totalPages ? 'disabled' : ''}"><a class="page-link" href="#" data-action="eventsModule.goToEventsPage" data-id="${cp + 1}" data-prevent-default="true">Next</a></li>`;
         html += '</ul></nav>';
         html += `<div class="text-center text-muted small">Showing ${pgStart + 1}-${Math.min(pgEnd, events.length)} of ${events.length}</div>`;
         paginationEl.innerHTML = html;
@@ -12047,6 +12226,7 @@ const eventsModule = {
   },
 
   goToEventsPage(page) {
+    page = parseInt(page) || 1;
     const events = this._lastFilteredEvents || STATE.allEvents || [];
     const totalPages = Math.ceil(events.length / (this._evtPageSize || 50));
     this._evtCurrentPage = Math.max(1, Math.min(page, totalPages));
@@ -12058,9 +12238,7 @@ const eventsModule = {
    */
   async quickSetStatus(eventId, newStatus) {
     try {
-      const { error } = await STATE.client.from('events').update({ event_status: newStatus }).eq('id', eventId);
-
-      if (error) throw error;
+      await apiClient.update('events', eventId, { event_status: newStatus });
 
       // Update local state
       const evt = STATE.allEvents.find((e) => e.id === eventId);
@@ -12090,24 +12268,40 @@ const eventsModule = {
       const awardsByEvent = {};
 
       // Try querying award_years by event_id first (requires migration 018)
-      const { data: allAwards, error } = await STATE.client
-        .from('award_years')
-        .select('id, event_id, winner_confirmed')
-        .in('event_id', uncached);
+      let allAwards;
+      let awardsQueryFailed = false;
+      try {
+        /* selectAll: justified — filtered to specific event IDs for progress badges */
+        allAwards = await apiClient.selectAll('award_years', {
+          select: 'id, event_id, winner_confirmed',
+          filters: { event_id: { op: 'in', value: uncached } },
+        });
+      } catch (_e) {
+        awardsQueryFailed = true;
+      }
 
-      if (!error && allAwards) {
+      if (!awardsQueryFailed && allAwards) {
         (allAwards || []).forEach((award) => {
           if (!awardsByEvent[award.event_id]) awardsByEvent[award.event_id] = [];
           awardsByEvent[award.event_id].push(award);
         });
       } else {
         // Fallback: look up events to get years, then match award_years by year
-        const { data: events } = await STATE.client.from('events').select('id, year').in('id', uncached);
+        /* selectAll: justified — filtered to specific event IDs for year lookup */
+        const evResult = await apiClient.selectAll('events', {
+          select: 'id, year',
+          filters: { id: { op: 'in', value: uncached } },
+        });
+        const events = evResult || [];
 
         if (events && events.length > 0) {
           const years = [...new Set(events.map((e) => e.year).filter(Boolean))];
           if (years.length > 0) {
-            const { data: awards } = await STATE.client.from('award_years').select('id, year').in('year', years);
+            /* selectAll: justified — filtered to specific years for event progress */
+            const awards = await apiClient.selectAll('award_years', {
+              select: 'id, year',
+              filters: { year: { op: 'in', value: years } },
+            });
 
             // Map year back to event_id
             const yearToEvents = {};
@@ -12466,8 +12660,8 @@ const eventsModule = {
               </div>
               <p class="small mb-1"><strong>Columns can be in any order.</strong> Extra unrecognised columns are ignored. Duplicates (same name + email) are skipped.</p>
               <div class="d-flex gap-2 mt-2">
-                <button class="btn btn-sm btn-outline-primary" onclick="eventsModule._downloadImportTemplate('csv')"><i class="bi bi-download me-1"></i>Download CSV Template</button>
-                <button class="btn btn-sm btn-outline-success" onclick="eventsModule._downloadImportTemplate('xlsx')"><i class="bi bi-download me-1"></i>Download Excel Template</button>
+                <button class="btn btn-sm btn-outline-primary" data-action="eventsModule._downloadImportTemplate" data-id="csv"><i class="bi bi-download me-1"></i>Download CSV Template</button>
+                <button class="btn btn-sm btn-outline-success" data-action="eventsModule._downloadImportTemplate" data-id="xlsx"><i class="bi bi-download me-1"></i>Download Excel Template</button>
               </div>
             </div>
           </div>
@@ -13146,12 +13340,11 @@ const eventsModule = {
 
   async getMilestones(eventId) {
     try {
-      const { data, error } = await STATE.client
-        .from('event_milestones')
-        .select('*')
-        .eq('event_id', eventId)
-        .order('created_at', { ascending: true });
-      if (error) throw error;
+      /* selectAll: justified — scoped to single event */
+      const data = await apiClient.selectAll('event_milestones', {
+        filters: { event_id: eventId },
+        sort: { column: 'created_at', ascending: true },
+      });
       return data && data.length > 0
         ? data.map((m) => ({
             id: m.milestone_id || m.id,
@@ -13334,9 +13527,12 @@ const eventsModule = {
   // ============================================
   async _getEventNotes(eventId) {
     try {
-      const { data, error } = await STATE.client.from('events').select('notes').eq('id', eventId).single();
-      if (error) throw error;
-      return data?.notes || '';
+      const result = await apiClient.select('events', {
+        select: 'notes',
+        filters: { id: { eq: eventId } },
+        pageSize: 1,
+      });
+      return result?.data?.[0]?.notes || '';
     } catch (e) {
       return localStorage.getItem(`bta_event_notes_${eventId}`) || '';
     }
@@ -13345,8 +13541,7 @@ const eventsModule = {
   async _saveEventNotes(eventId) {
     const notes = document.getElementById('eventQuickNotes')?.value || '';
     try {
-      const { error } = await STATE.client.from('events').update({ notes }).eq('id', eventId);
-      if (error) throw error;
+      await apiClient.update('events', eventId, { notes });
     } catch (e) {
       localStorage.setItem(`bta_event_notes_${eventId}`, notes);
     }
@@ -13418,6 +13613,81 @@ const eventsModule = {
       }
     };
     input.click();
+  },
+
+  /* ==================================================== */
+  /* HELPER METHODS FOR DATA-ACTION DELEGATION */
+  /* ==================================================== */
+
+  /**
+   * Copy press release text to clipboard
+   */
+  copyPressRelease() {
+    const textarea = document.getElementById('pressReleaseText');
+    if (textarea) {
+      navigator.clipboard.writeText(textarea.value);
+      utils.showToast('Copied to clipboard', 'success');
+    }
+  },
+
+  /**
+   * Filter trophies to show all statuses
+   */
+  clearTrophyFilter() {
+    this._trophyFilterStatus = null;
+    this.renderTrophiesTab();
+  },
+
+  /**
+   * Remove a running order section row from the DOM
+   */
+  removeRunningOrderSection(event) {
+    const btn = event.target.closest ? event.target.closest('[data-action]') : event.target;
+    const row = btn.closest('[data-section-idx]');
+    if (row) row.remove();
+  },
+
+  /**
+   * Toggle the room setup/guests panel visibility
+   */
+  showRoomSetupPanel() {
+    document.getElementById('tpSetupPanel').style.display = 'block';
+    document.getElementById('tpGuestsPanel').style.display = 'none';
+  },
+
+  /**
+   * Reset canvas zoom to 100%
+   */
+  resetCanvasZoom() {
+    this.canvasZoom(0, true);
+  },
+
+  /**
+   * Toggle company guest list visibility (table plan sidebar)
+   */
+  toggleCompanyGuests(event) {
+    const el = event.target.closest ? event.target.closest('[data-action]') : event.target;
+    if (el && el.nextElementSibling) {
+      el.nextElementSibling.classList.toggle('d-none');
+    }
+  },
+
+  /**
+   * Close an overlay by clicking its backdrop
+   */
+  closeOverlayOnBackdrop(id, event) {
+    const overlay = document.getElementById(id);
+    if (overlay && event.target === overlay) {
+      overlay.remove();
+    }
+  },
+
+  /**
+   * Close an overlay by its element ID
+   */
+  closeOverlay(id) {
+    const overlay = document.getElementById(id);
+    if (overlay) overlay.remove();
   },
 };
 

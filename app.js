@@ -1847,9 +1847,7 @@ window.addEventListener('beforeunload', (e) => {
   // Warn if there's a save in progress or email builder has unsaved changes
   const isSaving = document.querySelector('.btn:disabled .spinner-border');
   const emailUnsaved =
-    typeof emailBuilderModule !== 'undefined' &&
-    emailBuilderModule.hasUnsavedChanges &&
-    emailBuilderModule.blocks?.length > 0;
+    typeof emailBuilder !== 'undefined' && emailBuilder.hasUnsavedChanges && emailBuilder.blocks?.length > 0;
   if (STATE.currentUser && (isSaving || emailUnsaved)) {
     e.preventDefault();
     e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';

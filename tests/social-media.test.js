@@ -5,7 +5,8 @@
 
 const { JSDOM } = require('jsdom');
 
-const dom = new JSDOM(`<!DOCTYPE html><html><head></head><body>
+const dom = new JSDOM(
+  `<!DOCTYPE html><html><head></head><body>
   <div id="loadingBar" style="display:none;"></div>
   <div id="notificationToast"><span id="toastIcon"></span><span id="toastTitle"></span><span id="toastMessage"></span></div>
   <div id="connectionStatus"><span class="status-icon"></span><span class="status-text"></span></div>
@@ -120,7 +121,9 @@ const dom = new JSDOM(`<!DOCTYPE html><html><head></head><body>
   <!-- Tab elements for DOMContentLoaded listener -->
   <div id="social-subtab"></div>
   <div id="marketing-tab"></div>
-</body></html>`, { url: 'http://localhost' });
+</body></html>`,
+  { url: 'http://localhost' }
+);
 
 global.window = dom.window;
 global.document = dom.window.document;
@@ -133,15 +136,26 @@ global.URL = { createObjectURL: jest.fn(() => 'blob://mock'), revokeObjectURL: j
 global.window.URL = global.URL;
 
 global.bootstrap = {
-  Toast: class { show() {} hide() {} },
-  Modal: class {
-    show() {} hide() {}
-    static getInstance() { return { hide() {} }; }
+  Toast: class {
+    show() {}
+    hide() {}
   },
-  Tooltip: class {}
+  Modal: class {
+    show() {}
+    hide() {}
+    static getInstance() {
+      return { hide() {} };
+    }
+  },
+  Tooltip: class {},
 };
 
-global.crypto = { getRandomValues: (arr) => { for (let i = 0; i < arr.length; i++) arr[i] = Math.floor(Math.random() * 256); return arr; } };
+global.crypto = {
+  getRandomValues: (arr) => {
+    for (let i = 0; i < arr.length; i++) arr[i] = Math.floor(Math.random() * 256);
+    return arr;
+  },
+};
 
 const mockSupabase = {
   from: jest.fn(() => mockSupabase),
@@ -157,25 +171,29 @@ const mockSupabase = {
   limit: jest.fn(() => mockSupabase),
   single: jest.fn(() => Promise.resolve({ data: null, error: null })),
   rpc: jest.fn(() => Promise.resolve({ data: [], error: null })),
-  then: jest.fn(cb => cb({ data: [], error: null })),
+  then: jest.fn((cb) => cb({ data: [], error: null })),
   auth: {
     getSession: jest.fn(() => Promise.resolve({ data: { session: null }, error: null })),
     signInWithPassword: jest.fn(() => Promise.resolve({ data: { user: { email: 'test@test.com' } }, error: null })),
-    signOut: jest.fn(() => Promise.resolve({ error: null }))
+    signOut: jest.fn(() => Promise.resolve({ error: null })),
   },
   channel: jest.fn(() => ({
-    on: jest.fn(function() { return this; }),
-    subscribe: jest.fn(function() { return this; })
+    on: jest.fn(function () {
+      return this;
+    }),
+    subscribe: jest.fn(function () {
+      return this;
+    }),
   })),
   storage: {
     from: jest.fn(() => ({
       upload: jest.fn(() => Promise.resolve({ data: {}, error: null })),
-      getPublicUrl: jest.fn(() => ({ data: { publicUrl: 'https://storage.example.com/image.png' } }))
-    }))
+      getPublicUrl: jest.fn(() => ({ data: { publicUrl: 'https://storage.example.com/image.png' } })),
+    })),
   },
   functions: {
-    invoke: jest.fn(() => Promise.resolve({ data: {}, error: null }))
-  }
+    invoke: jest.fn(() => Promise.resolve({ data: {}, error: null })),
+  },
 };
 
 global.supabase = { createClient: () => mockSupabase };
@@ -224,7 +242,7 @@ const sampleScheduledPosts = [
     image_url: null,
     template_type: 'nominee',
     organisations: { company_name: 'Acme Plumbing' },
-    awards: { award_name: 'Best Plumber South East' }
+    awards: { award_name: 'Best Plumber South East' },
   },
   {
     id: 'post-2',
@@ -238,8 +256,8 @@ const sampleScheduledPosts = [
     image_url: 'https://example.com/image.png',
     template_type: 'winner',
     organisations: { company_name: 'Beta Builders' },
-    awards: { award_name: 'Best Builder London' }
-  }
+    awards: { award_name: 'Best Builder London' },
+  },
 ];
 
 const sampleDraftPosts = [
@@ -254,8 +272,8 @@ const sampleDraftPosts = [
     image_url: null,
     template_type: 'voting',
     organisations: { company_name: 'Acme Plumbing' },
-    awards: { award_name: 'Best Plumber South East' }
-  }
+    awards: { award_name: 'Best Plumber South East' },
+  },
 ];
 
 const samplePublishedPosts = [
@@ -270,7 +288,7 @@ const samplePublishedPosts = [
     image_url: 'https://example.com/logo1.png',
     template_type: 'nominee',
     organisations: { company_name: 'Acme Plumbing' },
-    awards: { award_name: 'Best Plumber South East' }
+    awards: { award_name: 'Best Plumber South East' },
   },
   {
     id: 'pub-2',
@@ -283,8 +301,8 @@ const samplePublishedPosts = [
     image_url: null,
     template_type: 'winner',
     organisations: { company_name: 'Beta Builders' },
-    awards: { award_name: 'Best Builder London' }
-  }
+    awards: { award_name: 'Best Builder London' },
+  },
 ];
 
 // ==========================================
@@ -528,7 +546,7 @@ describe('Social Media Module - selectTemplate()', () => {
   beforeEach(() => {
     socialMediaModule.currentTemplate = null;
     document.getElementById('smPostContent').value = '';
-    document.querySelectorAll('.template-card').forEach(card => card.classList.remove('selected'));
+    document.querySelectorAll('.template-card').forEach((card) => card.classList.remove('selected'));
   });
 
   test('sets currentTemplate to given key', () => {
@@ -571,7 +589,7 @@ describe('Social Media Module - updatePostPreview()', () => {
     document.getElementById('smCompanySelect').selectedIndex = 1;
     document.getElementById('smAwardSelect').selectedIndex = 1;
     document.getElementById('smPlatformOverrides').checked = false;
-    ['smTwitterContent', 'smFacebookContent', 'smInstagramContent', 'smLinkedInContent'].forEach(id => {
+    ['smTwitterContent', 'smFacebookContent', 'smInstagramContent', 'smLinkedInContent'].forEach((id) => {
       document.getElementById(id).value = '';
     });
   });
@@ -652,7 +670,7 @@ describe('Social Media Module - togglePlatformOverrides()', () => {
     document.getElementById('smPlatformOverrides').checked = false;
     document.getElementById('platformOverridesContainer').style.display = 'none';
     document.getElementById('smPostContent').value = 'Main content here';
-    ['smTwitterContent', 'smFacebookContent', 'smInstagramContent', 'smLinkedInContent'].forEach(id => {
+    ['smTwitterContent', 'smFacebookContent', 'smInstagramContent', 'smLinkedInContent'].forEach((id) => {
       document.getElementById(id).value = '';
     });
   });
@@ -692,7 +710,7 @@ describe('Social Media Module - getContentForPlatform()', () => {
   beforeEach(() => {
     document.getElementById('smPostContent').value = 'Main content';
     document.getElementById('smPlatformOverrides').checked = false;
-    ['smTwitterContent', 'smFacebookContent', 'smInstagramContent', 'smLinkedInContent'].forEach(id => {
+    ['smTwitterContent', 'smFacebookContent', 'smInstagramContent', 'smLinkedInContent'].forEach((id) => {
       document.getElementById(id).value = '';
     });
   });
@@ -777,10 +795,12 @@ describe('Social Media Module - renderScheduledPosts()', () => {
   });
 
   test('renders content preview with truncation', () => {
-    const longPost = [{
-      ...sampleScheduledPosts[0],
-      content: 'x'.repeat(200)
-    }];
+    const longPost = [
+      {
+        ...sampleScheduledPosts[0],
+        content: 'x'.repeat(200),
+      },
+    ];
     socialMediaModule.renderScheduledPosts(longPost);
     const container = document.getElementById('scheduledPostsList');
     // Content should be truncated to 100 chars + ellipsis
@@ -788,11 +808,13 @@ describe('Social Media Module - renderScheduledPosts()', () => {
   });
 
   test('handles posts with null organisations/awards gracefully', () => {
-    const postsWithNulls = [{
-      ...sampleScheduledPosts[0],
-      organisations: null,
-      awards: null
-    }];
+    const postsWithNulls = [
+      {
+        ...sampleScheduledPosts[0],
+        organisations: null,
+        awards: null,
+      },
+    ];
     expect(() => socialMediaModule.renderScheduledPosts(postsWithNulls)).not.toThrow();
     const container = document.getElementById('scheduledPostsList');
     expect(container.innerHTML).toContain('No company');
@@ -800,10 +822,12 @@ describe('Social Media Module - renderScheduledPosts()', () => {
   });
 
   test('handles posts with null platforms gracefully', () => {
-    const postsNoPlatforms = [{
-      ...sampleScheduledPosts[0],
-      platforms: null
-    }];
+    const postsNoPlatforms = [
+      {
+        ...sampleScheduledPosts[0],
+        platforms: null,
+      },
+    ];
     expect(() => socialMediaModule.renderScheduledPosts(postsNoPlatforms)).not.toThrow();
   });
 });
@@ -828,10 +852,12 @@ describe('Social Media Module - renderDraftPosts()', () => {
   });
 
   test('renders truncated content preview (80 char limit)', () => {
-    const longDraft = [{
-      ...sampleDraftPosts[0],
-      content: 'y'.repeat(150)
-    }];
+    const longDraft = [
+      {
+        ...sampleDraftPosts[0],
+        content: 'y'.repeat(150),
+      },
+    ];
     socialMediaModule.renderDraftPosts(longDraft);
     const container = document.getElementById('draftPostsList');
     expect(container.innerHTML).toContain('y'.repeat(80) + '...');
@@ -889,11 +915,13 @@ describe('Social Media Module - renderPublishedPosts()', () => {
   });
 
   test('handles posts with null organisations/awards', () => {
-    const postsWithNulls = [{
-      ...samplePublishedPosts[0],
-      organisations: null,
-      awards: null
-    }];
+    const postsWithNulls = [
+      {
+        ...samplePublishedPosts[0],
+        organisations: null,
+        awards: null,
+      },
+    ];
     expect(() => socialMediaModule.renderPublishedPosts(postsWithNulls)).not.toThrow();
     const container = document.getElementById('publishedPostsList');
     expect(container.innerHTML).toContain('No company');
@@ -901,10 +929,12 @@ describe('Social Media Module - renderPublishedPosts()', () => {
   });
 
   test('truncates published post content at 120 chars', () => {
-    const longPublished = [{
-      ...samplePublishedPosts[0],
-      content: 'z'.repeat(200)
-    }];
+    const longPublished = [
+      {
+        ...samplePublishedPosts[0],
+        content: 'z'.repeat(200),
+      },
+    ];
     socialMediaModule.renderPublishedPosts(longPublished);
     const container = document.getElementById('publishedPostsList');
     expect(container.innerHTML).toContain('z'.repeat(120) + '...');
@@ -1014,7 +1044,7 @@ describe('Social Media Module - updateImagePreview()', () => {
     socialMediaModule.uploadedImageUrl = null;
     document.getElementById('imageSizeWarning').innerHTML = '';
     // Clear all preview divs
-    ['twitterPreviewImage', 'facebookPreviewImage', 'instagramPreviewImage', 'linkedinPreviewImage'].forEach(id => {
+    ['twitterPreviewImage', 'facebookPreviewImage', 'instagramPreviewImage', 'linkedinPreviewImage'].forEach((id) => {
       document.getElementById(id).innerHTML = '';
     });
   });
@@ -1069,7 +1099,7 @@ describe('Social Media Module - updateImagePreview()', () => {
   test('updates all four platform preview elements', () => {
     document.getElementById('smCompanySelect').selectedIndex = 1;
     socialMediaModule.updateImagePreview();
-    ['twitterPreviewImage', 'facebookPreviewImage', 'instagramPreviewImage', 'linkedinPreviewImage'].forEach(id => {
+    ['twitterPreviewImage', 'facebookPreviewImage', 'instagramPreviewImage', 'linkedinPreviewImage'].forEach((id) => {
       const preview = document.getElementById(id);
       expect(preview.querySelector('img')).not.toBeNull();
     });
@@ -1125,7 +1155,7 @@ describe('Social Media Module - showPostSuccessMessage()', () => {
 describe('Social Media Module - syncPlatformOverrides()', () => {
   beforeEach(() => {
     document.getElementById('smPostContent').value = 'Sync content';
-    ['smTwitterContent', 'smFacebookContent', 'smInstagramContent', 'smLinkedInContent'].forEach(id => {
+    ['smTwitterContent', 'smFacebookContent', 'smInstagramContent', 'smLinkedInContent'].forEach((id) => {
       document.getElementById(id).value = '';
     });
   });
@@ -1175,26 +1205,32 @@ describe('Social Media Module - openPlatformSettings()', () => {
 
 describe('Social Media Module - Edge Cases', () => {
   test('renderScheduledPosts handles empty content gracefully', () => {
-    const posts = [{
-      ...sampleScheduledPosts[0],
-      content: ''
-    }];
+    const posts = [
+      {
+        ...sampleScheduledPosts[0],
+        content: '',
+      },
+    ];
     expect(() => socialMediaModule.renderScheduledPosts(posts)).not.toThrow();
   });
 
   test('renderDraftPosts handles null content gracefully', () => {
-    const posts = [{
-      ...sampleDraftPosts[0],
-      content: null
-    }];
+    const posts = [
+      {
+        ...sampleDraftPosts[0],
+        content: null,
+      },
+    ];
     expect(() => socialMediaModule.renderDraftPosts(posts)).not.toThrow();
   });
 
   test('renderPublishedPosts handles undefined platforms', () => {
-    const posts = [{
-      ...samplePublishedPosts[0],
-      platforms: undefined
-    }];
+    const posts = [
+      {
+        ...samplePublishedPosts[0],
+        platforms: undefined,
+      },
+    ];
     expect(() => socialMediaModule.renderPublishedPosts(posts)).not.toThrow();
   });
 

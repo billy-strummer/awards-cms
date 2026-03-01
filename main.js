@@ -6,7 +6,17 @@
  */
 
 // Core infrastructure
-export { SUPABASE_CONFIG, STATUS, MEDIA_TYPES, INACTIVITY_TIMEOUT, YEARS, SECTORS, REGIONS, STATE, ModuleRegistry } from './config.js';
+export {
+  SUPABASE_CONFIG,
+  STATUS,
+  MEDIA_TYPES,
+  INACTIVITY_TIMEOUT,
+  YEARS,
+  SECTORS,
+  REGIONS,
+  STATE,
+  ModuleRegistry,
+} from './config.js';
 export { utils, apiClient, serverQuery, actionRegistry } from './utils.js';
 
 // Authentication & security

@@ -5,7 +5,8 @@
 
 const { JSDOM } = require('jsdom');
 
-const dom = new JSDOM(`<!DOCTYPE html><html><head></head><body>
+const dom = new JSDOM(
+  `<!DOCTYPE html><html><head></head><body>
   <div id="loadingBar" style="display:none;"></div>
   <div id="notificationToast"><span id="toastIcon"></span><span id="toastTitle"></span><span id="toastMessage"></span></div>
   <div id="connectionStatus"><span class="status-icon"></span><span class="status-text"></span></div>
@@ -44,7 +45,9 @@ const dom = new JSDOM(`<!DOCTYPE html><html><head></head><body>
   <div id="confirmDialogTitle"></div>
   <div id="confirmDialogBody"></div>
   <div id="confirmDialogOk"></div>
-</body></html>`, { url: 'http://localhost' });
+</body></html>`,
+  { url: 'http://localhost' }
+);
 
 global.window = dom.window;
 global.document = dom.window.document;
@@ -56,17 +59,26 @@ global.URL = { createObjectURL: jest.fn(() => 'blob://mock'), revokeObjectURL: j
 global.window.URL = global.URL;
 
 global.bootstrap = {
-  Toast: class { show() {} hide() {} },
-  Modal: class {
-    show() {} hide() {}
-    static getInstance() { return { hide() {} }; }
+  Toast: class {
+    show() {}
+    hide() {}
   },
-  Tooltip: class {}
+  Modal: class {
+    show() {}
+    hide() {}
+    static getInstance() {
+      return { hide() {} };
+    }
+  },
+  Tooltip: class {},
 };
 
 global.crypto = {
-  getRandomValues: (arr) => { for (let i = 0; i < arr.length; i++) arr[i] = Math.floor(Math.random() * 256); return arr; },
-  randomUUID: () => 'test-uuid-1234-5678-abcd'
+  getRandomValues: (arr) => {
+    for (let i = 0; i < arr.length; i++) arr[i] = Math.floor(Math.random() * 256);
+    return arr;
+  },
+  randomUUID: () => 'test-uuid-1234-5678-abcd',
 };
 
 const mockSupabase = {
@@ -84,16 +96,20 @@ const mockSupabase = {
   limit: jest.fn(() => mockSupabase),
   single: jest.fn(() => Promise.resolve({ data: null, error: null })),
   rpc: jest.fn(() => Promise.resolve({ data: [], error: null })),
-  then: jest.fn(cb => cb({ data: [], error: null })),
+  then: jest.fn((cb) => cb({ data: [], error: null })),
   auth: {
     getSession: jest.fn(() => Promise.resolve({ data: { session: null }, error: null })),
     signInWithPassword: jest.fn(() => Promise.resolve({ data: { user: { email: 'test@test.com' } }, error: null })),
-    signOut: jest.fn(() => Promise.resolve({ error: null }))
+    signOut: jest.fn(() => Promise.resolve({ error: null })),
   },
   channel: jest.fn(() => ({
-    on: jest.fn(function() { return this; }),
-    subscribe: jest.fn(function() { return this; })
-  }))
+    on: jest.fn(function () {
+      return this;
+    }),
+    subscribe: jest.fn(function () {
+      return this;
+    }),
+  })),
 };
 
 global.supabase = { createClient: () => mockSupabase };
@@ -143,7 +159,7 @@ const sampleBanners = [
     display_order: 1,
     is_active: true,
     impressions: 15000,
-    clicks: 450
+    clicks: 450,
   },
   {
     id: 'banner-2',
@@ -158,7 +174,7 @@ const sampleBanners = [
     display_order: 2,
     is_active: true,
     impressions: 5000,
-    clicks: 120
+    clicks: 120,
   },
   {
     id: 'banner-3',
@@ -173,8 +189,8 @@ const sampleBanners = [
     display_order: 3,
     is_active: false,
     impressions: 0,
-    clicks: 0
-  }
+    clicks: 0,
+  },
 ];
 
 const sampleSponsors = [
@@ -191,7 +207,7 @@ const sampleSponsors = [
     sponsorship_amount: 50000,
     display_order: 1,
     is_active: true,
-    end_date: '2099-12-31T00:00:00Z'
+    end_date: '2099-12-31T00:00:00Z',
   },
   {
     id: 'sponsor-2',
@@ -206,7 +222,7 @@ const sampleSponsors = [
     sponsorship_amount: 25000,
     display_order: 1,
     is_active: true,
-    end_date: null
+    end_date: null,
   },
   {
     id: 'sponsor-3',
@@ -221,7 +237,7 @@ const sampleSponsors = [
     sponsorship_amount: 10000,
     display_order: 1,
     is_active: false,
-    end_date: null
+    end_date: null,
   },
   {
     id: 'sponsor-4',
@@ -236,7 +252,7 @@ const sampleSponsors = [
     sponsorship_amount: 5000,
     display_order: 1,
     is_active: true,
-    end_date: null
+    end_date: null,
   },
   {
     id: 'sponsor-5',
@@ -251,8 +267,8 @@ const sampleSponsors = [
     sponsorship_amount: 2000,
     display_order: 2,
     is_active: true,
-    end_date: '2099-12-31T00:00:00Z'
-  }
+    end_date: '2099-12-31T00:00:00Z',
+  },
 ];
 
 // ==========================================
@@ -580,8 +596,9 @@ describe('Marketing Module - renderSponsorCard()', () => {
     const html = marketingModule.renderSponsorCard(sampleSponsors[0]);
     expect(html).toContain('bi-pencil');
     expect(html).toContain('bi-trash');
-    expect(html).toContain(`editSponsor('sponsor-1')`);
-    expect(html).toContain(`deleteSponsor('sponsor-1')`);
+    expect(html).toContain('data-action="marketingModule.editSponsor"');
+    expect(html).toContain('data-action="marketingModule.deleteSponsor"');
+    expect(html).toContain('data-id="sponsor-1"');
   });
 });
 
@@ -808,8 +825,19 @@ describe('Marketing Module - resetPlaceholderDefaults()', () => {
   beforeEach(() => {
     // Set up placeholder input fields in the DOM
     const panel = document.getElementById('placeholdersPanel');
-    const keys = ['ENTRY_NUMBER', 'CONTACT_NAME', 'COMPANY_NAME', 'AWARD_NAME', 'SECTOR', 'REGION', 'UPLOAD_LINK', 'DEADLINE_DATE', 'ANNOUNCEMENT_DATE', 'CONTACT_EMAIL'];
-    panel.innerHTML = keys.map(k => `<input type="text" id="ph_${k}" value="custom-value">`).join('');
+    const keys = [
+      'ENTRY_NUMBER',
+      'CONTACT_NAME',
+      'COMPANY_NAME',
+      'AWARD_NAME',
+      'SECTOR',
+      'REGION',
+      'UPLOAD_LINK',
+      'DEADLINE_DATE',
+      'ANNOUNCEMENT_DATE',
+      'CONTACT_EMAIL',
+    ];
+    panel.innerHTML = keys.map((k) => `<input type="text" id="ph_${k}" value="custom-value">`).join('');
   });
 
   test('resets ENTRY_NUMBER to default', () => {
@@ -902,8 +930,20 @@ describe('Marketing Module - _addSequenceStep()', () => {
 describe('Marketing Module - toggleSequence()', () => {
   beforeEach(() => {
     marketingModule._emailSequences = [
-      { name: 'Seq 1', trigger: 'manual', steps: [{ delay: 0, subject: 'Test', body: 'Body' }], active: true, enrolled: 0 },
-      { name: 'Seq 2', trigger: 'status_prospect', steps: [{ delay: 1, subject: 'Hello', body: 'World' }], active: false, enrolled: 5 }
+      {
+        name: 'Seq 1',
+        trigger: 'manual',
+        steps: [{ delay: 0, subject: 'Test', body: 'Body' }],
+        active: true,
+        enrolled: 0,
+      },
+      {
+        name: 'Seq 2',
+        trigger: 'status_prospect',
+        steps: [{ delay: 1, subject: 'Hello', body: 'World' }],
+        active: false,
+        enrolled: 5,
+      },
     ];
   });
 
@@ -951,7 +991,7 @@ describe('Marketing Module - Edge Cases', () => {
       display_order: 0,
       is_active: false,
       impressions: null,
-      clicks: null
+      clicks: null,
     };
     expect(() => marketingModule.renderBannerCard(banner)).not.toThrow();
     const html = marketingModule.renderBannerCard(banner);
@@ -972,7 +1012,7 @@ describe('Marketing Module - Edge Cases', () => {
       sponsorship_amount: null,
       display_order: 0,
       is_active: true,
-      end_date: null
+      end_date: null,
     };
     expect(() => marketingModule.renderSponsorCard(sponsor)).not.toThrow();
     const html = marketingModule.renderSponsorCard(sponsor);
@@ -992,7 +1032,7 @@ describe('Marketing Module - Edge Cases', () => {
   test('renderBannerCard escapes special characters in image_url', () => {
     const banner = {
       ...sampleBanners[0],
-      image_url: 'https://example.com/image.jpg?a=1&b=2"onload="alert(1)'
+      image_url: 'https://example.com/image.jpg?a=1&b=2"onload="alert(1)',
     };
     const html = marketingModule.renderBannerCard(banner);
     expect(html).not.toContain('"onload="alert(1)');
@@ -1017,7 +1057,7 @@ describe('Marketing Module - Edge Cases', () => {
     const pastBanner = {
       ...sampleBanners[0],
       is_active: true,
-      end_date: '2020-01-01T00:00:00Z'
+      end_date: '2020-01-01T00:00:00Z',
     };
     const html = marketingModule.renderBannerCard(pastBanner);
     expect(html).toContain('Inactive');
@@ -1026,7 +1066,7 @@ describe('Marketing Module - Edge Cases', () => {
     const noEndBanner = {
       ...sampleBanners[0],
       is_active: true,
-      end_date: null
+      end_date: null,
     };
     const html2 = marketingModule.renderBannerCard(noEndBanner);
     expect(html2).toContain('Active');
@@ -1037,7 +1077,7 @@ describe('Marketing Module - Edge Cases', () => {
     const pastSponsor = {
       ...sampleSponsors[0],
       is_active: true,
-      end_date: '2020-01-01T00:00:00Z'
+      end_date: '2020-01-01T00:00:00Z',
     };
     const html = marketingModule.renderSponsorCard(pastSponsor);
     expect(html).toContain('Inactive');
@@ -1046,7 +1086,7 @@ describe('Marketing Module - Edge Cases', () => {
     const noEndSponsor = {
       ...sampleSponsors[0],
       is_active: true,
-      end_date: null
+      end_date: null,
     };
     const html2 = marketingModule.renderSponsorCard(noEndSponsor);
     expect(html2).not.toContain('badge bg-secondary mb-2">Inactive');
@@ -1088,7 +1128,7 @@ describe('Marketing Module - showCreateSequence()', () => {
     marketingModule.showCreateSequence();
     const triggerSelect = document.getElementById('seqTrigger');
     const options = Array.from(triggerSelect.querySelectorAll('option'));
-    const values = options.map(o => o.value);
+    const values = options.map((o) => o.value);
     expect(values).toContain('status_prospect');
     expect(values).toContain('status_entrant');
     expect(values).toContain('status_nominee');
@@ -1129,8 +1169,23 @@ describe('Marketing Module - loadEmailSequences() rendering', () => {
     const origLoad = marketingModule._loadEmailSequences;
     marketingModule._loadEmailSequences = jest.fn(async () => {
       marketingModule._emailSequences = [
-        { name: 'Welcome Sequence', trigger: 'status_prospect', steps: [{ delay: 0, subject: 'Welcome', body: 'Hi' }], active: true, enrolled: 10 },
-        { name: 'Follow Up', trigger: 'manual', steps: [{ delay: 3, subject: 'Reminder', body: 'Hey' }, { delay: 7, subject: 'Check in', body: 'Yo' }], active: false, enrolled: 0 }
+        {
+          name: 'Welcome Sequence',
+          trigger: 'status_prospect',
+          steps: [{ delay: 0, subject: 'Welcome', body: 'Hi' }],
+          active: true,
+          enrolled: 10,
+        },
+        {
+          name: 'Follow Up',
+          trigger: 'manual',
+          steps: [
+            { delay: 3, subject: 'Reminder', body: 'Hey' },
+            { delay: 7, subject: 'Check in', body: 'Yo' },
+          ],
+          active: false,
+          enrolled: 0,
+        },
       ];
     });
 
@@ -1173,7 +1228,7 @@ describe('Marketing Module - XSS Prevention', () => {
     const banner = {
       ...sampleBanners[0],
       title: '<script>alert("xss")</script>',
-      image_url: 'https://safe.com/img.jpg'
+      image_url: 'https://safe.com/img.jpg',
     };
     const html = marketingModule.renderBannerCard(banner);
     // The h6 card-title should contain escaped angle brackets
@@ -1185,7 +1240,7 @@ describe('Marketing Module - XSS Prevention', () => {
   test('renderSponsorCard escapes company_name', () => {
     const sponsor = {
       ...sampleSponsors[0],
-      company_name: '"><script>document.cookie</script>'
+      company_name: '"><script>document.cookie</script>',
     };
     const html = marketingModule.renderSponsorCard(sponsor);
     expect(html).not.toContain('<script>document.cookie</script>');
@@ -1194,7 +1249,7 @@ describe('Marketing Module - XSS Prevention', () => {
   test('renderSponsorCard escapes website URL', () => {
     const sponsor = {
       ...sampleSponsors[0],
-      website: 'javascript:alert(1)'
+      website: 'javascript:alert(1)',
     };
     const html = marketingModule.renderSponsorCard(sponsor);
     // The URL should be escaped so it does not execute JS
@@ -1204,7 +1259,7 @@ describe('Marketing Module - XSS Prevention', () => {
   test('renderBannerCard escapes link_url', () => {
     const banner = {
       ...sampleBanners[0],
-      link_url: '"><script>alert(1)</script><a href="'
+      link_url: '"><script>alert(1)</script><a href="',
     };
     const html = marketingModule.renderBannerCard(banner);
     expect(html).not.toContain('<script>alert(1)</script>');

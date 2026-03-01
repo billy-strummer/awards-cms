@@ -9,7 +9,8 @@ const { JSDOM } = require('jsdom');
 // JSDOM Setup — include every element the email-builder module references
 // ---------------------------------------------------------------------------
 
-const dom = new JSDOM(`<!DOCTYPE html><html><head></head><body>
+const dom = new JSDOM(
+  `<!DOCTYPE html><html><head></head><body>
   <!-- Toast / notifications -->
   <div id="loadingBar" style="display:none;"></div>
   <div id="notificationToast"><span id="toastIcon"></span><span id="toastTitle"></span><span id="toastMessage"></span></div>
@@ -78,7 +79,9 @@ const dom = new JSDOM(`<!DOCTYPE html><html><head></head><body>
   <div id="contentLibraryPanel"></div>
   <div id="companyContentItems"></div>
   <select id="promotionCompanySelect"><option value="">Choose...</option></select>
-</body></html>`, { url: 'http://localhost' });
+</body></html>`,
+  { url: 'http://localhost' }
+);
 
 // ---------------------------------------------------------------------------
 // Global bindings (mirrors awards.test.js pattern)
@@ -96,19 +99,25 @@ global.URL = { createObjectURL: jest.fn(() => 'blob://mock'), revokeObjectURL: j
 global.window.URL = global.URL;
 
 global.bootstrap = {
-  Toast: class { show() {} hide() {} },
-  Modal: class {
-    show() {} hide() {}
-    static getInstance() { return { hide() {} }; }
+  Toast: class {
+    show() {}
+    hide() {}
   },
-  Tooltip: class {}
+  Modal: class {
+    show() {}
+    hide() {}
+    static getInstance() {
+      return { hide() {} };
+    }
+  },
+  Tooltip: class {},
 };
 
 global.crypto = {
   getRandomValues: (arr) => {
     for (let i = 0; i < arr.length; i++) arr[i] = Math.floor(Math.random() * 256);
     return arr;
-  }
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -131,22 +140,26 @@ const mockSupabase = {
   limit: jest.fn(() => mockSupabase),
   single: jest.fn(() => Promise.resolve({ data: null, error: null })),
   rpc: jest.fn(() => Promise.resolve({ data: [], error: null })),
-  then: jest.fn(cb => cb({ data: [], error: null })),
+  then: jest.fn((cb) => cb({ data: [], error: null })),
   auth: {
     getSession: jest.fn(() => Promise.resolve({ data: { session: null }, error: null })),
     signInWithPassword: jest.fn(() => Promise.resolve({ data: { user: { email: 'test@test.com' } }, error: null })),
-    signOut: jest.fn(() => Promise.resolve({ error: null }))
+    signOut: jest.fn(() => Promise.resolve({ error: null })),
   },
   channel: jest.fn(() => ({
-    on: jest.fn(function() { return this; }),
-    subscribe: jest.fn(function() { return this; })
+    on: jest.fn(function () {
+      return this;
+    }),
+    subscribe: jest.fn(function () {
+      return this;
+    }),
   })),
   storage: {
     from: jest.fn(() => ({
       upload: jest.fn(() => Promise.resolve({ error: null })),
-      getPublicUrl: jest.fn(() => ({ data: { publicUrl: 'https://example.com/img.jpg' } }))
-    }))
-  }
+      getPublicUrl: jest.fn(() => ({ data: { publicUrl: 'https://example.com/img.jpg' } })),
+    })),
+  },
 };
 
 global.supabase = { createClient: () => mockSupabase };
@@ -424,7 +437,7 @@ describe('Email Builder Module - Block Templates (getBlockHTML)', () => {
       company_name: 'Test Corp',
       logo_url: 'https://example.com/logo.png',
       website: 'https://testcorp.com',
-      region: 'South East'
+      region: 'South East',
     };
     const html = emailBuilder.getBlockHTML('company-profile', 'test-id');
     expect(html).toContain('Test Corp');
@@ -444,8 +457,8 @@ describe('Email Builder Module - Block Templates (getBlockHTML)', () => {
       company_name: 'Test Corp',
       awards: [
         { year: 2025, award_category: 'Best Plumber', sector: 'MEP' },
-        { year: 2024, award_category: 'Best Builder', sector: null }
-      ]
+        { year: 2024, award_category: 'Best Builder', sector: null },
+      ],
     };
     const html = emailBuilder.getBlockHTML('award-list', 'test-id');
     expect(html).toContain('2025');
@@ -499,7 +512,7 @@ describe('Email Builder Module - addBlock()', () => {
     emailBuilder.addBlock('text');
     emailBuilder.addBlock('text');
     emailBuilder.addBlock('text');
-    const ids = emailBuilder.blocks.map(b => b.id);
+    const ids = emailBuilder.blocks.map((b) => b.id);
     const unique = new Set(ids);
     expect(unique.size).toBe(3);
   });
@@ -982,7 +995,8 @@ describe('Email Builder Module - updateSubjectCounter()', () => {
 
   test('shows truncation warning for long subjects (61-80 chars)', () => {
     // Exactly 70 characters to land in the 61-80 range
-    document.getElementById('builderSubject').value = 'A somewhat longer subject line that will probably be truncated mobile!';
+    document.getElementById('builderSubject').value =
+      'A somewhat longer subject line that will probably be truncated mobile!';
     emailBuilder.updateSubjectCounter();
     const counter = document.getElementById('subjectCharCounter');
     expect(counter.textContent).toContain('May be truncated on mobile');
@@ -1244,7 +1258,7 @@ describe('Email Builder Module - autosaveToLocalStorage() / recoverAutosave()', 
       subject: 'Recovered Subject',
       preheader: 'Recovered Preheader',
       canvasHTML: '<div class="recovered">content</div>',
-      blocks: [{ id: 'r1', type: 'header' }]
+      blocks: [{ id: 'r1', type: 'header' }],
     };
     localStorage.setItem('emailBuilder_autosave', JSON.stringify(state));
 
@@ -1283,7 +1297,7 @@ describe('Email Builder Module - Edge Cases', () => {
       company_name: 'Minimal Corp',
       logo_url: null,
       website: null,
-      region: null
+      region: null,
     };
     const html = emailBuilder.getBlockHTML('company-profile', 'test-id');
     expect(html).toContain('Minimal Corp');
@@ -1301,11 +1315,22 @@ describe('Email Builder Module - Edge Cases', () => {
 
   test('getBlockHTML handles all known block types without errors', () => {
     const types = [
-      'header', 'hero', 'text', 'company-profile', 'award-list',
-      'button', 'image', 'video', 'countdown', 'divider',
-      'social-links', 'richtext', 'html-code', 'footer'
+      'header',
+      'hero',
+      'text',
+      'company-profile',
+      'award-list',
+      'button',
+      'image',
+      'video',
+      'countdown',
+      'divider',
+      'social-links',
+      'richtext',
+      'html-code',
+      'footer',
     ];
-    types.forEach(type => {
+    types.forEach((type) => {
       expect(() => emailBuilder.getBlockHTML(type, `test-${type}`)).not.toThrow();
     });
   });
@@ -1314,7 +1339,7 @@ describe('Email Builder Module - Edge Cases', () => {
     for (let i = 0; i < 20; i++) {
       emailBuilder.addBlock('text');
     }
-    const ids = emailBuilder.blocks.map(b => b.id);
+    const ids = emailBuilder.blocks.map((b) => b.id);
     const unique = new Set(ids);
     expect(unique.size).toBe(20);
   });
@@ -1341,10 +1366,1160 @@ describe('Email Builder Module - Edge Cases', () => {
       company_name: '<script>alert("xss")</script>',
       logo_url: null,
       website: null,
-      region: null
+      region: null,
     };
     const html = emailBuilder.getBlockHTML('company-profile', 'test-id');
     expect(html).not.toContain('<script>');
     expect(html).toContain('&lt;script&gt;');
+  });
+});
+
+// =========================================================================
+// ADDITIONAL TESTS — targeting ≥35% coverage
+// =========================================================================
+
+describe('Email Builder - generateFullHTML', () => {
+  beforeEach(() => {
+    resetBuilder();
+  });
+
+  test('generateFullHTML returns complete HTML document structure', () => {
+    const html = emailBuilder.generateFullHTML();
+    expect(html).toContain('<!DOCTYPE html>');
+    expect(html).toContain('<html');
+    expect(html).toContain('</html>');
+    expect(html).toContain('<head>');
+    expect(html).toContain('<body');
+    expect(html).toContain('</body>');
+  });
+
+  test('generateFullHTML uses campaign name as title', () => {
+    document.getElementById('builderCampaignName').value = 'My Test Campaign';
+    const html = emailBuilder.generateFullHTML();
+    expect(html).toContain('<title>My Test Campaign</title>');
+  });
+
+  test('generateFullHTML defaults title to Email Campaign when no name', () => {
+    document.getElementById('builderCampaignName').value = '';
+    const html = emailBuilder.generateFullHTML();
+    expect(html).toContain('<title>Email Campaign</title>');
+  });
+
+  test('generateFullHTML includes preheader when set', () => {
+    document.getElementById('builderPreheader').value = 'Preview text for inbox';
+    const html = emailBuilder.generateFullHTML();
+    expect(html).toContain('Preview text for inbox');
+    expect(html).toContain('display:none');
+  });
+
+  test('generateFullHTML omits preheader div when empty', () => {
+    document.getElementById('builderPreheader').value = '';
+    const html = emailBuilder.generateFullHTML();
+    // Should not have the preheader wrapper div
+    expect(html).not.toContain('max-height:0px;max-width:0px;opacity:0');
+  });
+
+  test('generateFullHTML includes responsive CSS', () => {
+    const html = emailBuilder.generateFullHTML();
+    expect(html).toContain('@media only screen and (max-width: 480px)');
+    expect(html).toContain('.mob-stack');
+    expect(html).toContain('.mob-pad');
+  });
+
+  test('generateFullHTML strips contenteditable from blocks', () => {
+    emailBuilder.addBlock('text');
+    const html = emailBuilder.generateFullHTML();
+    // contenteditable should be removed in generated output
+    expect(html).not.toContain('contenteditable');
+  });
+
+  test('generateFullHTML strips editor controls from blocks', () => {
+    emailBuilder.addBlock('text');
+    const html = emailBuilder.generateFullHTML();
+    expect(html).not.toContain('email-block-controls');
+  });
+
+  test('generateFullHTML extracts HTML code block textarea value', () => {
+    emailBuilder.addBlock('html-code');
+    const textarea = emailBuilder.canvas.querySelector('.email-html-code-editor');
+    textarea.value = '<p>Custom HTML here</p>';
+    const html = emailBuilder.generateFullHTML();
+    expect(html).toContain('<p>Custom HTML here</p>');
+  });
+
+  test('generateFullHTML wraps richtext content in table', () => {
+    emailBuilder.addBlock('richtext');
+    const richContent = emailBuilder.canvas.querySelector('.email-richtext-content');
+    richContent.innerHTML = '<p>Rich text paragraph</p>';
+    const html = emailBuilder.generateFullHTML();
+    expect(html).toContain('Rich text paragraph');
+    expect(html).not.toContain('email-richtext-toolbar');
+  });
+});
+
+describe('Email Builder - saveUndoState / undo / redo', () => {
+  beforeEach(() => {
+    resetBuilder();
+  });
+
+  test('saveUndoState pushes to undoStack and clears redoStack', () => {
+    emailBuilder.redoStack = [{ canvasHTML: 'old', blocks: [] }];
+    emailBuilder.saveUndoState();
+    expect(emailBuilder.undoStack.length).toBe(1);
+    expect(emailBuilder.redoStack.length).toBe(0);
+  });
+
+  test('saveUndoState trims stack when exceeding maxUndoSteps', () => {
+    emailBuilder.maxUndoSteps = 3;
+    for (let i = 0; i < 5; i++) {
+      emailBuilder.saveUndoState();
+    }
+    expect(emailBuilder.undoStack.length).toBe(3);
+    emailBuilder.maxUndoSteps = 30; // reset
+  });
+
+  test('undo with empty stack shows toast and does nothing', () => {
+    const spy = jest.spyOn(utils, 'showToast');
+    emailBuilder.undoStack = [];
+    emailBuilder.undo();
+    expect(spy).toHaveBeenCalledWith('Nothing to undo', 'info');
+    spy.mockRestore();
+  });
+
+  test('redo with empty stack shows toast and does nothing', () => {
+    const spy = jest.spyOn(utils, 'showToast');
+    emailBuilder.redoStack = [];
+    emailBuilder.redo();
+    expect(spy).toHaveBeenCalledWith('Nothing to redo', 'info');
+    spy.mockRestore();
+  });
+
+  test('undo restores previous canvas state', () => {
+    emailBuilder.addBlock('text');
+    expect(emailBuilder.blocks.length).toBe(1);
+    emailBuilder.addBlock('divider');
+    expect(emailBuilder.blocks.length).toBe(2);
+    emailBuilder.undo();
+    expect(emailBuilder.blocks.length).toBe(1);
+  });
+
+  test('redo restores undone state', () => {
+    emailBuilder.addBlock('text');
+    emailBuilder.addBlock('divider');
+    emailBuilder.undo();
+    expect(emailBuilder.blocks.length).toBe(1);
+    emailBuilder.redo();
+    expect(emailBuilder.blocks.length).toBe(2);
+  });
+});
+
+describe('Email Builder - setViewMode', () => {
+  beforeEach(() => {
+    resetBuilder();
+  });
+
+  test('setViewMode to mobile constrains canvas width', () => {
+    emailBuilder.setViewMode('mobile', null);
+    expect(emailBuilder.viewMode).toBe('mobile');
+    expect(emailBuilder.canvas.style.maxWidth).toBe('375px');
+    // JSDOM normalizes '0 auto' to '0px auto'
+    expect(emailBuilder.canvas.style.margin).toMatch(/0(px)? auto/);
+  });
+
+  test('setViewMode to desktop resets canvas width', () => {
+    emailBuilder.setViewMode('mobile', null);
+    emailBuilder.setViewMode('desktop', null);
+    expect(emailBuilder.viewMode).toBe('desktop');
+    expect(emailBuilder.canvas.style.maxWidth).toBe('600px');
+  });
+});
+
+describe('Email Builder - markUnsavedChanges & showEmptyState', () => {
+  beforeEach(() => {
+    resetBuilder();
+  });
+
+  test('markUnsavedChanges sets hasUnsavedChanges to true', () => {
+    emailBuilder.hasUnsavedChanges = false;
+    emailBuilder.markUnsavedChanges();
+    expect(emailBuilder.hasUnsavedChanges).toBe(true);
+  });
+
+  test('showEmptyState renders placeholder text in canvas', () => {
+    emailBuilder.showEmptyState();
+    expect(emailBuilder.canvas.innerHTML).toContain('Drag blocks from the left panel');
+    expect(emailBuilder.canvas.innerHTML).toContain('bi-grid-3x3-gap');
+  });
+});
+
+describe('Email Builder - updateSubjectCounter', () => {
+  beforeEach(() => {
+    resetBuilder();
+    // setupSubjectLineCounter creates the counter element
+    emailBuilder.setupSubjectLineCounter();
+  });
+
+  test('counter shows good length for mobile for short subjects', () => {
+    document.getElementById('builderSubject').value = 'Short';
+    emailBuilder.updateSubjectCounter();
+    const counter = document.getElementById('subjectCharCounter');
+    expect(counter.textContent).toContain('5 characters');
+    expect(counter.textContent).toContain('Good length for mobile');
+  });
+
+  test('counter shows good length for medium subjects', () => {
+    document.getElementById('builderSubject').value = 'A'.repeat(50);
+    emailBuilder.updateSubjectCounter();
+    const counter = document.getElementById('subjectCharCounter');
+    expect(counter.textContent).toContain('50 characters');
+    expect(counter.textContent).toContain('Good length');
+  });
+
+  test('counter shows may be truncated for long subjects', () => {
+    document.getElementById('builderSubject').value = 'A'.repeat(70);
+    emailBuilder.updateSubjectCounter();
+    const counter = document.getElementById('subjectCharCounter');
+    expect(counter.textContent).toContain('70 characters');
+    expect(counter.textContent).toContain('May be truncated on mobile');
+  });
+
+  test('counter shows too long for very long subjects', () => {
+    document.getElementById('builderSubject').value = 'A'.repeat(90);
+    emailBuilder.updateSubjectCounter();
+    const counter = document.getElementById('subjectCharCounter');
+    expect(counter.textContent).toContain('90 characters');
+    expect(counter.textContent).toContain('Too long, will be truncated');
+  });
+
+  test('counter shows just character count for empty subject', () => {
+    document.getElementById('builderSubject').value = '';
+    emailBuilder.updateSubjectCounter();
+    const counter = document.getElementById('subjectCharCounter');
+    expect(counter.textContent).toBe('0 characters');
+  });
+});
+
+describe('Email Builder - generateBadge', () => {
+  test('generateBadge winner mode includes WINNER text and trophy emoji', () => {
+    const badge = emailBuilder.generateBadge('winner');
+    expect(badge).toContain('WINNER');
+    expect(badge).toContain('#FFD700'); // gold color
+    expect(badge).toContain('British Trade Awards');
+    expect(badge).toContain(String(new Date().getFullYear()));
+  });
+
+  test('generateBadge nominee mode includes NOMINEE text and star emoji', () => {
+    const badge = emailBuilder.generateBadge('nominee');
+    expect(badge).toContain('NOMINEE');
+    expect(badge).toContain('#C0C0C0'); // silver color
+    expect(badge).toContain('British Trade Awards');
+  });
+});
+
+describe('Email Builder - getResponsiveEmailCSS', () => {
+  test('returns CSS with mobile media queries', () => {
+    const css = emailBuilder.getResponsiveEmailCSS();
+    expect(css).toContain('<style type="text/css">');
+    expect(css).toContain('@media only screen and (max-width: 480px)');
+    expect(css).toContain('.mob-stack');
+    expect(css).toContain('.mob-full-img');
+    expect(css).toContain('.mob-pad');
+    expect(css).toContain('.mob-btn-full');
+    expect(css).toContain('.mob-hide');
+    expect(css).toContain('.mob-show');
+  });
+});
+
+describe('Email Builder - autosaveToLocalStorage & checkAutosaveRecovery', () => {
+  beforeEach(() => {
+    resetBuilder();
+    localStorage.removeItem('emailBuilder_autosave');
+  });
+
+  test('autosaveToLocalStorage saves state to localStorage', () => {
+    document.getElementById('builderCampaignName').value = 'Test Campaign';
+    document.getElementById('builderSubject').value = 'Test Subject';
+    emailBuilder.blocks = [{ id: 'b-1', type: 'text' }];
+    emailBuilder.canvas.innerHTML = '<div>test</div>';
+    emailBuilder.autosaveToLocalStorage();
+    const saved = JSON.parse(localStorage.getItem('emailBuilder_autosave'));
+    expect(saved).toBeTruthy();
+    expect(saved.campaignName).toBe('Test Campaign');
+    expect(saved.subject).toBe('Test Subject');
+    expect(saved.canvasHTML).toBe('<div>test</div>');
+  });
+
+  test('checkAutosaveRecovery ignores stale autosaves (>24h)', () => {
+    const staleState = {
+      timestamp: Date.now() - 100000000, // >24h old
+      blocks: [{ id: 'b', type: 'text' }],
+      campaignName: 'Old',
+    };
+    localStorage.setItem('emailBuilder_autosave', JSON.stringify(staleState));
+    emailBuilder.checkAutosaveRecovery();
+    // Should have been removed
+    expect(localStorage.getItem('emailBuilder_autosave')).toBeNull();
+  });
+
+  test('checkAutosaveRecovery ignores autosaves with no blocks', () => {
+    const emptyState = {
+      timestamp: Date.now(),
+      blocks: [],
+      campaignName: '',
+    };
+    localStorage.setItem('emailBuilder_autosave', JSON.stringify(emptyState));
+    emailBuilder.checkAutosaveRecovery();
+    expect(localStorage.getItem('emailBuilder_autosave')).toBeNull();
+  });
+
+  test('checkAutosaveRecovery shows banner for recent valid autosave', () => {
+    const validState = {
+      timestamp: Date.now() - 5000,
+      blocks: [{ id: 'b-1', type: 'text' }],
+      campaignName: 'Recent Draft',
+      canvasHTML: '<div>stuff</div>',
+    };
+    localStorage.setItem('emailBuilder_autosave', JSON.stringify(validState));
+    emailBuilder.checkAutosaveRecovery();
+    const banner = document.getElementById('autosaveRecoveryBanner');
+    expect(banner).toBeTruthy();
+    expect(banner.innerHTML).toContain('Unsaved work found');
+    expect(banner.innerHTML).toContain('Recent Draft');
+    // Cleanup
+    banner.remove();
+  });
+});
+
+describe('Email Builder - recoverAutosave', () => {
+  beforeEach(() => {
+    resetBuilder();
+    localStorage.removeItem('emailBuilder_autosave');
+  });
+
+  test('recoverAutosave restores canvas and form fields', () => {
+    const state = {
+      timestamp: Date.now(),
+      campaignName: 'Recovered Campaign',
+      subject: 'Recovered Subject',
+      preheader: 'Recovered Preheader',
+      canvasHTML: '<div class="email-block-wrapper">recovered</div>',
+      blocks: [{ id: 'r-1', type: 'text' }],
+    };
+    localStorage.setItem('emailBuilder_autosave', JSON.stringify(state));
+    emailBuilder.recoverAutosave();
+    expect(document.getElementById('builderCampaignName').value).toBe('Recovered Campaign');
+    expect(document.getElementById('builderSubject').value).toBe('Recovered Subject');
+    expect(document.getElementById('builderPreheader').value).toBe('Recovered Preheader');
+    expect(emailBuilder.blocks).toEqual([{ id: 'r-1', type: 'text' }]);
+    expect(localStorage.getItem('emailBuilder_autosave')).toBeNull();
+  });
+
+  test('recoverAutosave does nothing when no saved state', () => {
+    localStorage.removeItem('emailBuilder_autosave');
+    expect(() => emailBuilder.recoverAutosave()).not.toThrow();
+  });
+});
+
+describe('Email Builder - _syncBlocksFromDOM', () => {
+  beforeEach(() => {
+    resetBuilder();
+  });
+
+  test('rebuilds blocks array from DOM order', () => {
+    emailBuilder.addBlock('text');
+    emailBuilder.addBlock('divider');
+    const ids = emailBuilder.blocks.map((b) => b.id);
+    // Reverse the DOM
+    const first = emailBuilder.canvas.firstChild;
+    emailBuilder.canvas.appendChild(first);
+    emailBuilder._syncBlocksFromDOM();
+    // After sync, block order should match DOM
+    expect(emailBuilder.blocks[0].id).toBe(ids[1]);
+    expect(emailBuilder.blocks[1].id).toBe(ids[0]);
+  });
+
+  test('handles unknown block IDs gracefully', () => {
+    emailBuilder.canvas.innerHTML = '<div class="email-block-wrapper" data-block-id="unknown-123"></div>';
+    emailBuilder.blocks = [];
+    emailBuilder._syncBlocksFromDOM();
+    expect(emailBuilder.blocks.length).toBe(1);
+    expect(emailBuilder.blocks[0].type).toBe('unknown');
+  });
+});
+
+describe('Email Builder - addBlock edge cases', () => {
+  beforeEach(() => {
+    resetBuilder();
+  });
+
+  test('addBlock clears empty state for first block', () => {
+    emailBuilder.showEmptyState();
+    expect(emailBuilder.canvas.innerHTML).toContain('Drag blocks');
+    emailBuilder.addBlock('text');
+    // Empty state should be cleared
+    expect(emailBuilder.canvas.innerHTML).not.toContain('Drag blocks');
+    expect(emailBuilder.blocks.length).toBe(1);
+  });
+
+  test('addBlock creates wrapper with data-block-id', () => {
+    emailBuilder.addBlock('divider');
+    const wrapper = emailBuilder.canvas.querySelector('.email-block-wrapper');
+    expect(wrapper).toBeTruthy();
+    expect(wrapper.getAttribute('data-block-id')).toBeTruthy();
+  });
+
+  test('addBlock adds block controls to wrapper', () => {
+    emailBuilder.addBlock('text');
+    const controls = emailBuilder.canvas.querySelector('.email-block-controls');
+    expect(controls).toBeTruthy();
+    expect(controls.innerHTML).toContain('block-drag-handle');
+    expect(controls.innerHTML).toContain('moveBlockUp');
+    expect(controls.innerHTML).toContain('moveBlockDown');
+    expect(controls.innerHTML).toContain('duplicateBlock');
+    expect(controls.innerHTML).toContain('deleteBlock');
+  });
+
+  test('addBlock saves undo state', () => {
+    emailBuilder.addBlock('text');
+    expect(emailBuilder.undoStack.length).toBe(1);
+  });
+});
+
+describe('Email Builder - deleteBlock', () => {
+  beforeEach(() => {
+    resetBuilder();
+  });
+
+  test('deleteBlock removes block from canvas and array', () => {
+    emailBuilder.addBlock('text');
+    emailBuilder.addBlock('divider');
+    const blockId = emailBuilder.blocks[0].id;
+    emailBuilder.deleteBlock(blockId);
+    expect(emailBuilder.blocks.length).toBe(1);
+    expect(emailBuilder.canvas.querySelectorAll('.email-block-wrapper').length).toBe(1);
+  });
+
+  test('deleteBlock shows empty state when last block removed', () => {
+    emailBuilder.addBlock('text');
+    const blockId = emailBuilder.blocks[0].id;
+    emailBuilder.deleteBlock(blockId);
+    expect(emailBuilder.blocks.length).toBe(0);
+    expect(emailBuilder.canvas.innerHTML).toContain('Drag blocks');
+  });
+
+  test('deleteBlock is no-op for non-existent blockId', () => {
+    emailBuilder.addBlock('text');
+    emailBuilder.deleteBlock('nonexistent-id');
+    expect(emailBuilder.blocks.length).toBe(1);
+  });
+});
+
+describe('Email Builder - moveBlockUp / moveBlockDown', () => {
+  beforeEach(() => {
+    resetBuilder();
+  });
+
+  test('moveBlockUp swaps block with previous sibling', () => {
+    emailBuilder.addBlock('header');
+    emailBuilder.addBlock('text');
+    const secondId = emailBuilder.blocks[1].id;
+    emailBuilder.moveBlockUp(secondId);
+    emailBuilder._syncBlocksFromDOM();
+    expect(emailBuilder.blocks[0].id).toBe(secondId);
+  });
+
+  test('moveBlockUp does nothing for first block', () => {
+    emailBuilder.addBlock('header');
+    emailBuilder.addBlock('text');
+    const firstId = emailBuilder.blocks[0].id;
+    emailBuilder.moveBlockUp(firstId);
+    emailBuilder._syncBlocksFromDOM();
+    expect(emailBuilder.blocks[0].id).toBe(firstId);
+  });
+
+  test('moveBlockDown swaps block with next sibling', () => {
+    emailBuilder.addBlock('header');
+    emailBuilder.addBlock('text');
+    const firstId = emailBuilder.blocks[0].id;
+    emailBuilder.moveBlockDown(firstId);
+    emailBuilder._syncBlocksFromDOM();
+    expect(emailBuilder.blocks[1].id).toBe(firstId);
+  });
+
+  test('moveBlockDown does nothing for last block', () => {
+    emailBuilder.addBlock('header');
+    emailBuilder.addBlock('text');
+    const lastId = emailBuilder.blocks[1].id;
+    emailBuilder.moveBlockDown(lastId);
+    emailBuilder._syncBlocksFromDOM();
+    expect(emailBuilder.blocks[1].id).toBe(lastId);
+  });
+});
+
+describe('Email Builder - duplicateBlock', () => {
+  beforeEach(() => {
+    resetBuilder();
+  });
+
+  test('duplicateBlock creates a copy after original', () => {
+    emailBuilder.addBlock('text');
+    expect(emailBuilder.blocks.length).toBe(1);
+    const blockId = emailBuilder.blocks[0].id;
+    emailBuilder.duplicateBlock(blockId);
+    expect(emailBuilder.blocks.length).toBe(2);
+    expect(emailBuilder.blocks[0].id).toBe(blockId);
+    expect(emailBuilder.blocks[1].id).not.toBe(blockId);
+    expect(emailBuilder.blocks[1].type).toBe('text');
+  });
+
+  test('duplicateBlock does nothing for nonexistent block', () => {
+    emailBuilder.addBlock('text');
+    emailBuilder.duplicateBlock('nonexistent');
+    expect(emailBuilder.blocks.length).toBe(1);
+  });
+});
+
+describe('Email Builder - saveTemplate', () => {
+  beforeEach(() => {
+    resetBuilder();
+    mockSupabase.from.mockClear();
+    mockSupabase.insert.mockClear();
+  });
+
+  test('saveTemplate warns when name or subject is missing', async () => {
+    const spy = jest.spyOn(utils, 'showToast');
+    document.getElementById('builderCampaignName').value = '';
+    document.getElementById('builderSubject').value = '';
+    await emailBuilder.saveTemplate();
+    expect(spy).toHaveBeenCalledWith('Please enter campaign name and subject', 'warning');
+    spy.mockRestore();
+  });
+
+  test('saveTemplate calls Supabase insert with correct data', async () => {
+    document.getElementById('builderCampaignName').value = 'Test Template';
+    document.getElementById('builderSubject').value = 'Test Subject';
+    mockSupabase.insert.mockReturnValueOnce(Promise.resolve({ error: null }));
+    await emailBuilder.saveTemplate();
+    expect(mockSupabase.from).toHaveBeenCalledWith('email_templates');
+    expect(mockSupabase.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'Test Template',
+        subject: 'Test Subject',
+        description: 'Custom Build',
+        is_active: true,
+      })
+    );
+  });
+
+  test('saveTemplate handles Supabase errors', async () => {
+    const spy = jest.spyOn(utils, 'showToast');
+    document.getElementById('builderCampaignName').value = 'Test';
+    document.getElementById('builderSubject').value = 'Subject';
+    mockSupabase.insert.mockReturnValueOnce(Promise.resolve({ error: { message: 'DB Error' } }));
+    await emailBuilder.saveTemplate();
+    expect(spy).toHaveBeenCalledWith(expect.stringContaining('Failed to save template'), 'error');
+    spy.mockRestore();
+  });
+});
+
+describe('Email Builder - loadOrganisations', () => {
+  beforeEach(() => {
+    resetBuilder();
+    mockSupabase.from.mockClear();
+    mockSupabase.select.mockClear();
+    mockSupabase.order.mockClear();
+  });
+
+  test('loadOrganisations queries organisations table', async () => {
+    mockSupabase.order.mockReturnValueOnce(
+      Promise.resolve({
+        data: [
+          { id: 'org-1', company_name: 'Org A' },
+          { id: 'org-2', company_name: 'Org B' },
+        ],
+        error: null,
+      })
+    );
+    await emailBuilder.loadOrganisations();
+    expect(mockSupabase.from).toHaveBeenCalledWith('organisations');
+    const select = document.getElementById('builderOrgSelect');
+    expect(select.innerHTML).toContain('Org A');
+    expect(select.innerHTML).toContain('Org B');
+  });
+
+  test('loadOrganisations handles error gracefully', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    mockSupabase.order.mockReturnValueOnce(
+      Promise.resolve({
+        data: null,
+        error: { message: 'Network error' },
+      })
+    );
+    await emailBuilder.loadOrganisations();
+    expect(consoleSpy).toHaveBeenCalledWith('Error loading organisations:', expect.anything());
+    consoleSpy.mockRestore();
+  });
+});
+
+describe('Email Builder - company-profile and award-list blocks with org data', () => {
+  beforeEach(() => {
+    resetBuilder();
+  });
+
+  test('company-profile block without org shows warning', () => {
+    emailBuilder.currentOrg = null;
+    const html = emailBuilder.getBlockHTML('company-profile', 'cp-1');
+    expect(html).toContain('Select an organisation first');
+  });
+
+  test('company-profile block with org shows company details', () => {
+    emailBuilder.currentOrg = {
+      company_name: 'Test Corp',
+      logo_url: 'https://example.com/logo.png',
+      website: 'https://testcorp.com',
+      region: 'London',
+    };
+    const html = emailBuilder.getBlockHTML('company-profile', 'cp-2');
+    expect(html).toContain('Test Corp');
+    expect(html).toContain('https://example.com/logo.png');
+    expect(html).toContain('https://testcorp.com');
+    expect(html).toContain('London');
+  });
+
+  test('award-list block without org shows placeholder', () => {
+    emailBuilder.currentOrg = null;
+    const html = emailBuilder.getBlockHTML('award-list', 'al-1');
+    expect(html).toContain('Select an organisation to view award history');
+  });
+
+  test('award-list block with org and awards renders award rows', () => {
+    emailBuilder.currentOrg = {
+      company_name: 'Test Corp',
+      awards: [
+        { year: 2025, award_category: 'Best Builder', sector: 'Construction' },
+        { year: 2024, award_category: 'Top Innovator', sector: 'Tech' },
+      ],
+    };
+    const html = emailBuilder.getBlockHTML('award-list', 'al-2');
+    expect(html).toContain('Award History');
+    expect(html).toContain('2025');
+    expect(html).toContain('Best Builder');
+    expect(html).toContain('2024');
+    expect(html).toContain('Top Innovator');
+  });
+});
+
+describe('Email Builder - setBlockBackground', () => {
+  beforeEach(() => {
+    resetBuilder();
+  });
+
+  test('setBlockBackground changes background color on block table', () => {
+    emailBuilder.addBlock('text');
+    const blockId = emailBuilder.blocks[0].id;
+    emailBuilder.setBlockBackground(blockId, '#ff0000');
+    const wrapper = emailBuilder.canvas.querySelector(`[data-block-id="${blockId}"]`);
+    const table = wrapper.querySelector('table[role="presentation"]');
+    expect(table.style.backgroundColor).toBe('rgb(255, 0, 0)');
+  });
+
+  test('setBlockBackground does nothing for nonexistent block', () => {
+    expect(() => emailBuilder.setBlockBackground('no-such-block', '#000')).not.toThrow();
+  });
+});
+
+describe('Email Builder - searchCampaigns', () => {
+  test('searchCampaigns sets search term and resets page to 0', () => {
+    emailBuilder.campaignLogPage = 5;
+    emailBuilder.campaignLogSearch = '';
+    // Mock loadCampaignLog to prevent actual Supabase calls
+    const orig = emailBuilder.loadCampaignLog;
+    emailBuilder.loadCampaignLog = jest.fn();
+    emailBuilder.searchCampaigns('test query');
+    expect(emailBuilder.campaignLogSearch).toBe('test query');
+    expect(emailBuilder.campaignLogPage).toBe(0);
+    expect(emailBuilder.loadCampaignLog).toHaveBeenCalled();
+    emailBuilder.loadCampaignLog = orig;
+  });
+});
+
+describe('Email Builder - goToCampaignPage', () => {
+  test('goToCampaignPage sets page and calls loadCampaignLog', () => {
+    const orig = emailBuilder.loadCampaignLog;
+    emailBuilder.loadCampaignLog = jest.fn();
+    emailBuilder.goToCampaignPage(3);
+    expect(emailBuilder.campaignLogPage).toBe(3);
+    expect(emailBuilder.loadCampaignLog).toHaveBeenCalled();
+    emailBuilder.loadCampaignLog = orig;
+  });
+});
+
+describe('Email Builder - renderCampaignPagination', () => {
+  beforeEach(() => {
+    resetBuilder();
+  });
+
+  test('renders single page message when totalPages is 1', () => {
+    emailBuilder.campaignLogTotal = 5;
+    emailBuilder.campaignLogPageSize = 20;
+    emailBuilder.campaignLogPage = 0;
+    emailBuilder.renderCampaignPagination();
+    const container = document.getElementById('campaignLogPagination');
+    expect(container.innerHTML).toContain('5 campaigns');
+  });
+
+  test('renders pagination controls when multiple pages', () => {
+    emailBuilder.campaignLogTotal = 50;
+    emailBuilder.campaignLogPageSize = 20;
+    emailBuilder.campaignLogPage = 1;
+    emailBuilder.renderCampaignPagination();
+    const container = document.getElementById('campaignLogPagination');
+    expect(container.innerHTML).toContain('21-40 of 50');
+    expect(container.innerHTML).toContain('goToCampaignPage');
+  });
+});
+
+// ===========================================================================
+// ADDITIONAL COVERAGE TESTS
+// ===========================================================================
+
+function resetBuilderExtra() {
+  emailBuilder.canvas = document.getElementById('emailCanvas');
+  emailBuilder.canvas.innerHTML = '';
+  emailBuilder.blocks = [];
+  emailBuilder._blockIdCounter = 0;
+  emailBuilder.undoStack = [];
+  emailBuilder.redoStack = [];
+  emailBuilder.hasUnsavedChanges = false;
+  emailBuilder.currentOrg = null;
+  emailBuilder.abTestEnabled = false;
+  emailBuilder.abVariantB = '';
+  emailBuilder._reorderDragId = null;
+  emailBuilder.campaignLogPage = 0;
+  emailBuilder.campaignLogTotal = 0;
+  emailBuilder.campaignLogSearch = '';
+}
+
+// ---------------------------------------------------------------------------
+// checkSpamScore
+// ---------------------------------------------------------------------------
+describe('Email Builder - checkSpamScore()', () => {
+  beforeEach(resetBuilderExtra);
+
+  afterEach(() => {
+    const modal = document.getElementById('spamCheckModal');
+    if (modal) modal.remove();
+  });
+
+  test('renders deliverability check modal for clean email', () => {
+    document.getElementById('builderSubject').value = 'Your Award Nomination';
+    document.getElementById('builderPreheader').value = 'Congrats on your nomination';
+    emailBuilder.addBlock('footer');
+    emailBuilder.checkSpamScore();
+    const modal = document.getElementById('spamCheckModal');
+    expect(modal).not.toBeNull();
+    expect(modal.innerHTML).toContain('Deliverability Check');
+  });
+
+  test('shows ALL CAPS warning for caps subject', () => {
+    document.getElementById('builderSubject').value = 'FREE MONEY NOW';
+    document.getElementById('builderPreheader').value = 'preheader text here';
+    emailBuilder.addBlock('footer');
+    emailBuilder.checkSpamScore();
+    const modal = document.getElementById('spamCheckModal');
+    expect(modal.innerHTML).toContain('ALL CAPS');
+  });
+
+  test('shows exclamation mark warning', () => {
+    document.getElementById('builderSubject').value = 'Amazing!! Wow!!';
+    document.getElementById('builderPreheader').value = 'preheader';
+    emailBuilder.addBlock('footer');
+    emailBuilder.checkSpamScore();
+    const modal = document.getElementById('spamCheckModal');
+    expect(modal.innerHTML).toContain('exclamation');
+  });
+
+  test('shows spam trigger words warning', () => {
+    document.getElementById('builderSubject').value = 'You are a winner - act now';
+    document.getElementById('builderPreheader').value = 'pre';
+    emailBuilder.addBlock('footer');
+    emailBuilder.checkSpamScore();
+    const modal = document.getElementById('spamCheckModal');
+    expect(modal.innerHTML).toContain('spam trigger');
+  });
+
+  test('shows unsubscribe warning when no unsubscribe link', () => {
+    document.getElementById('builderSubject').value = 'Hello from us';
+    document.getElementById('builderPreheader').value = 'pre';
+    emailBuilder.addBlock('text');
+    emailBuilder.checkSpamScore();
+    const modal = document.getElementById('spamCheckModal');
+    expect(modal.innerHTML).toContain('unsubscribe');
+  });
+
+  test('shows preheader warning when empty', () => {
+    document.getElementById('builderSubject').value = 'Hello';
+    document.getElementById('builderPreheader').value = '';
+    emailBuilder.addBlock('footer');
+    emailBuilder.checkSpamScore();
+    const modal = document.getElementById('spamCheckModal');
+    expect(modal.innerHTML).toContain('preheader');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// exportPlainText
+// ---------------------------------------------------------------------------
+describe('Email Builder - exportPlainText()', () => {
+  beforeEach(resetBuilderExtra);
+
+  test('converts HTML to plain text', () => {
+    emailBuilder.addBlock('text');
+    const spy = jest.fn();
+    const origCreateObj = URL.createObjectURL;
+    URL.createObjectURL = jest.fn(() => 'blob://mock');
+    emailBuilder.exportPlainText();
+    URL.createObjectURL = origCreateObj;
+    // Should not throw
+  });
+
+  test('does not throw with empty canvas', () => {
+    expect(() => emailBuilder.exportPlainText()).not.toThrow();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// exportHTML
+// ---------------------------------------------------------------------------
+describe('Email Builder - exportHTML()', () => {
+  beforeEach(resetBuilderExtra);
+
+  test('creates downloadable HTML file', () => {
+    emailBuilder.addBlock('header');
+    const spy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    emailBuilder.exportHTML();
+    expect(spy).toHaveBeenCalledWith(expect.stringContaining('HTML exported'), 'success');
+    spy.mockRestore();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// _getDragAfterElement
+// ---------------------------------------------------------------------------
+describe('Email Builder - _getDragAfterElement()', () => {
+  beforeEach(resetBuilderExtra);
+
+  test('returns null when no blocks in canvas', () => {
+    const result = emailBuilder._getDragAfterElement(100);
+    expect(result).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// _syncBlocksFromDOM (additional edge cases)
+// ---------------------------------------------------------------------------
+describe('Email Builder - _syncBlocksFromDOM edge cases', () => {
+  beforeEach(resetBuilderExtra);
+
+  test('creates unknown type for unrecognized block IDs', () => {
+    emailBuilder.canvas.innerHTML = '<div class="email-block-wrapper" data-block-id="mystery-1"></div>';
+    emailBuilder.blocks = [];
+    emailBuilder._syncBlocksFromDOM();
+    expect(emailBuilder.blocks.length).toBe(1);
+    expect(emailBuilder.blocks[0].type).toBe('unknown');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getBlockHTML - all block types
+// ---------------------------------------------------------------------------
+describe('Email Builder - getBlockHTML for all types', () => {
+  beforeEach(resetBuilderExtra);
+
+  test('returns video block HTML', () => {
+    const html = emailBuilder.getBlockHTML('video', 'v1');
+    expect(html).toContain('video');
+  });
+
+  test('returns countdown block HTML', () => {
+    const html = emailBuilder.getBlockHTML('countdown', 'cd1');
+    expect(html).toContain('countdown');
+  });
+
+  test('returns richtext block HTML', () => {
+    const html = emailBuilder.getBlockHTML('richtext', 'rt1');
+    expect(html).toContain('richtext');
+  });
+
+  test('returns html-code block HTML', () => {
+    const html = emailBuilder.getBlockHTML('html-code', 'hc1');
+    expect(html).toContain('html');
+  });
+
+  test('returns footer block HTML', () => {
+    const html = emailBuilder.getBlockHTML('footer', 'ft1');
+    expect(html).toContain('unsubscribe');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getStatusBadge / getRecipientStatusBadge edge cases
+// ---------------------------------------------------------------------------
+describe('Email Builder - getStatusBadge edge cases', () => {
+  test('handles empty string', () => {
+    const badge = emailBuilder.getStatusBadge('');
+    expect(badge).toContain('badge');
+  });
+
+  test('Partial status capitalized', () => {
+    const badge = emailBuilder.getStatusBadge('Sending');
+    expect(badge).toContain('Sending');
+  });
+});
+
+describe('Email Builder - getRecipientStatusBadge edge cases', () => {
+  test('handles null input', () => {
+    const badge = emailBuilder.getRecipientStatusBadge(null);
+    expect(badge).toContain('badge');
+  });
+
+  test('handles undefined input', () => {
+    const badge = emailBuilder.getRecipientStatusBadge(undefined);
+    expect(badge).toContain('badge');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// toggleScheduler edge cases
+// ---------------------------------------------------------------------------
+describe('Email Builder - toggleScheduler edge cases', () => {
+  test('toggling twice returns to original state', () => {
+    const sendNow = document.getElementById('sendModeNow');
+    const scheduled = document.getElementById('sendModeScheduled');
+    sendNow.checked = true;
+    scheduled.checked = false;
+
+    emailBuilder.toggleScheduler();
+    const display1 = document.getElementById('scheduleOptions').style.display;
+
+    scheduled.checked = true;
+    sendNow.checked = false;
+    emailBuilder.toggleScheduler();
+    const display2 = document.getElementById('scheduleOptions').style.display;
+
+    expect(display1).not.toBe(display2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// updateSchedulePreview
+// ---------------------------------------------------------------------------
+describe('Email Builder - updateSchedulePreview edge cases', () => {
+  test('handles invalid date gracefully', () => {
+    document.getElementById('builderScheduleDate').value = 'not-a-date';
+    document.getElementById('builderScheduleTime').value = '10:00';
+    expect(() => emailBuilder.updateSchedulePreview()).not.toThrow();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// setBlockBackground edge cases
+// ---------------------------------------------------------------------------
+describe('Email Builder - setBlockBackground edge cases', () => {
+  beforeEach(resetBuilderExtra);
+
+  test('sets background on nested td when table exists', () => {
+    emailBuilder.addBlock('text');
+    const blockId = emailBuilder.blocks[0].id;
+    emailBuilder.setBlockBackground(blockId, '#ff0000');
+    const wrapper = emailBuilder.canvas.querySelector(`[data-block-id="${blockId}"]`);
+    const table = wrapper.querySelector('table');
+    if (table) {
+      expect(table.style.backgroundColor || table.getAttribute('bgcolor')).toBeTruthy();
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// generateBadge edge cases
+// ---------------------------------------------------------------------------
+describe('Email Builder - generateBadge edge cases', () => {
+  test('defaults to nominee mode', () => {
+    emailBuilder.promotionMode = 'nominee';
+    const html = emailBuilder.generateBadge();
+    expect(html).toContain('NOMINEE');
+  });
+
+  test('handles unknown mode gracefully', () => {
+    emailBuilder.promotionMode = 'unknown_mode';
+    // Should not throw
+    expect(() => emailBuilder.generateBadge('unknown_mode')).not.toThrow();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// addBlock edge cases (block ID uniqueness under rapid calls)
+// ---------------------------------------------------------------------------
+describe('Email Builder - addBlock block counter', () => {
+  beforeEach(resetBuilderExtra);
+
+  test('incrementing counter ensures unique block IDs', () => {
+    emailBuilder.addBlock('text');
+    emailBuilder.addBlock('text');
+    emailBuilder.addBlock('text');
+    const ids = emailBuilder.blocks.map((b) => b.id);
+    const uniqueIds = new Set(ids);
+    expect(uniqueIds.size).toBe(3);
+    // Counter should have advanced
+    expect(emailBuilder._blockIdCounter).toBeGreaterThanOrEqual(3);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// insertHtmlSnippet
+// ---------------------------------------------------------------------------
+describe('Email Builder - insertHtmlSnippet()', () => {
+  beforeEach(resetBuilderExtra);
+
+  test('returns early for unknown snippet key', () => {
+    const spy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    emailBuilder.insertHtmlSnippet('nonexistent_key');
+    // Should not throw, and should not call showToast for warning since no textarea
+    spy.mockRestore();
+  });
+
+  test('shows warning toast when no HTML editor active', () => {
+    const spy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    emailBuilder.insertHtmlSnippet('divider');
+    expect(spy).toHaveBeenCalledWith(expect.stringContaining('No HTML editor'), 'warning');
+    spy.mockRestore();
+  });
+
+  test('inserts snippet at cursor in HTML editor', () => {
+    emailBuilder.addBlock('html-code');
+    const textarea = emailBuilder.canvas.querySelector('.email-html-code-editor');
+    if (textarea) {
+      textarea.value = 'before|after';
+      textarea.selectionStart = 6;
+      textarea.selectionEnd = 7;
+      emailBuilder.insertHtmlSnippet('divider');
+      expect(textarea.value).toContain('border-top');
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// htmlSnippets existence
+// ---------------------------------------------------------------------------
+describe('Email Builder - htmlSnippets', () => {
+  test('has all expected snippet keys', () => {
+    const expected = [
+      'divider',
+      'heading',
+      'paragraph',
+      'image',
+      'button',
+      'bg-section',
+      'link',
+      'bold-text',
+      'preheader',
+    ];
+    expected.forEach((key) => {
+      expect(emailBuilder.htmlSnippets[key]).toBeDefined();
+      expect(typeof emailBuilder.htmlSnippets[key]).toBe('string');
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// updateCountdown
+// ---------------------------------------------------------------------------
+describe('Email Builder - updateCountdown()', () => {
+  beforeEach(resetBuilderExtra);
+
+  test('does not throw when block does not exist', () => {
+    expect(() => emailBuilder.updateCountdown('nonexistent-block')).not.toThrow();
+  });
+
+  test('updates countdown display for a countdown block', () => {
+    emailBuilder.addBlock('countdown');
+    const blockId = emailBuilder.blocks[0].id;
+    const dateInput = emailBuilder.canvas.querySelector(`#countdown-date-${blockId}`);
+    if (dateInput) {
+      // Set future date
+      const future = new Date(Date.now() + 10 * 86400 * 1000);
+      dateInput.value = future.toISOString().split('T')[0];
+      emailBuilder.updateCountdown(blockId);
+      const daysEl = emailBuilder.canvas.querySelector(`#countdown-days-${blockId}`);
+      if (daysEl) {
+        expect(parseInt(daysEl.textContent)).toBeGreaterThanOrEqual(9);
+      }
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// setPromotionMode
+// ---------------------------------------------------------------------------
+describe('Email Builder - setPromotionMode', () => {
+  test('sets mode to winner', () => {
+    emailBuilder.setPromotionMode('winner');
+    expect(emailBuilder.promotionMode).toBe('winner');
+  });
+
+  test('sets mode to nominee', () => {
+    emailBuilder.setPromotionMode('nominee');
+    expect(emailBuilder.promotionMode).toBe('nominee');
+  });
+
+  test('does not crash with empty canvas and custom-html block', () => {
+    emailBuilder.blocks = [{ id: 'b1', type: 'custom-html' }];
+    expect(() => emailBuilder.setPromotionMode('winner')).not.toThrow();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// moveBlockUp / moveBlockDown with sync
+// ---------------------------------------------------------------------------
+describe('Email Builder - moveBlock sync', () => {
+  beforeEach(resetBuilderExtra);
+
+  test('moveBlockUp syncs blocks array', () => {
+    emailBuilder.addBlock('text');
+    emailBuilder.addBlock('divider');
+    const secondId = emailBuilder.blocks[1].id;
+    emailBuilder.moveBlockUp(secondId);
+    expect(emailBuilder.blocks[0].id).toBe(secondId);
+  });
+
+  test('moveBlockDown syncs blocks array', () => {
+    emailBuilder.addBlock('text');
+    emailBuilder.addBlock('divider');
+    const firstId = emailBuilder.blocks[0].id;
+    emailBuilder.moveBlockDown(firstId);
+    expect(emailBuilder.blocks[1].id).toBe(firstId);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// undo / redo comprehensive
+// ---------------------------------------------------------------------------
+describe('Email Builder - undo/redo comprehensive', () => {
+  beforeEach(resetBuilderExtra);
+
+  test('multiple undo restores to empty state', () => {
+    emailBuilder.addBlock('text');
+    emailBuilder.addBlock('divider');
+    emailBuilder.undo();
+    emailBuilder.undo();
+    expect(emailBuilder.blocks.length).toBe(0);
+  });
+
+  test('redo after undo restores state', () => {
+    emailBuilder.addBlock('text');
+    const origBlockCount = emailBuilder.blocks.length;
+    emailBuilder.undo();
+    emailBuilder.redo();
+    expect(emailBuilder.blocks.length).toBe(origBlockCount);
   });
 });

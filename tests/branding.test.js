@@ -5,7 +5,8 @@
 
 const { JSDOM } = require('jsdom');
 
-const dom = new JSDOM(`<!DOCTYPE html><html><head></head><body>
+const dom = new JSDOM(
+  `<!DOCTYPE html><html><head></head><body>
   <div id="loadingBar" style="display:none;"></div>
   <div id="notificationToast"><span id="toastIcon"></span><span id="toastTitle"></span><span id="toastMessage"></span></div>
   <div id="connectionStatus"><span class="status-icon"></span><span class="status-text"></span></div>
@@ -19,7 +20,9 @@ const dom = new JSDOM(`<!DOCTYPE html><html><head></head><body>
   <table><tbody id="entriesTableBody"></tbody></table>
   <span id="awardsCount"></span><span id="eventsCount"></span><span id="winnersCount"></span>
   <img id="navbarLogo" src="">
-</body></html>`, { url: 'http://localhost' });
+</body></html>`,
+  { url: 'http://localhost' }
+);
 
 global.window = dom.window;
 global.document = dom.window.document;
@@ -29,45 +32,78 @@ global.HTMLElement = dom.window.HTMLElement;
 global.FileReader = dom.window.FileReader;
 
 global.bootstrap = {
-  Toast: class { show() {} hide() {} },
-  Modal: class { show() {} hide() {} static getInstance() { return { hide() {} }; } },
-  Tooltip: class {}
+  Toast: class {
+    show() {}
+    hide() {}
+  },
+  Modal: class {
+    show() {}
+    hide() {}
+    static getInstance() {
+      return { hide() {} };
+    }
+  },
+  Tooltip: class {},
 };
 
 const mockSupabase = {
-  from: jest.fn(() => mockSupabase), select: jest.fn(() => mockSupabase),
-  insert: jest.fn(() => mockSupabase), update: jest.fn(() => mockSupabase),
+  from: jest.fn(() => mockSupabase),
+  select: jest.fn(() => mockSupabase),
+  insert: jest.fn(() => mockSupabase),
+  update: jest.fn(() => mockSupabase),
   upsert: jest.fn(() => Promise.resolve({ error: null })),
-  delete: jest.fn(() => mockSupabase), eq: jest.fn(() => mockSupabase),
-  order: jest.fn(() => mockSupabase), range: jest.fn(() => mockSupabase),
+  delete: jest.fn(() => mockSupabase),
+  eq: jest.fn(() => mockSupabase),
+  order: jest.fn(() => mockSupabase),
+  range: jest.fn(() => mockSupabase),
   limit: jest.fn(() => mockSupabase),
   maybeSingle: jest.fn(() => Promise.resolve({ data: null, error: null })),
   single: jest.fn(() => Promise.resolve({ data: null, error: null })),
   rpc: jest.fn(() => Promise.resolve({ data: [], error: null })),
-  then: jest.fn(cb => cb({ data: [], error: null })),
+  then: jest.fn((cb) => cb({ data: [], error: null })),
   storage: {
     from: jest.fn(() => ({
       upload: jest.fn(() => Promise.resolve({ error: null })),
-      getPublicUrl: jest.fn(() => ({ data: { publicUrl: 'https://cdn.example.com/logo.png' } }))
-    }))
+      getPublicUrl: jest.fn(() => ({ data: { publicUrl: 'https://cdn.example.com/logo.png' } })),
+    })),
   },
-  auth: { getSession: jest.fn(() => Promise.resolve({ data: { session: null }, error: null })), signOut: jest.fn(() => Promise.resolve({ error: null })) },
-  channel: jest.fn(() => ({ on: jest.fn(function() { return this; }), subscribe: jest.fn(function() { return this; }) }))
+  auth: {
+    getSession: jest.fn(() => Promise.resolve({ data: { session: null }, error: null })),
+    signOut: jest.fn(() => Promise.resolve({ error: null })),
+  },
+  channel: jest.fn(() => ({
+    on: jest.fn(function () {
+      return this;
+    }),
+    subscribe: jest.fn(function () {
+      return this;
+    }),
+  })),
 };
 global.supabase = { createClient: () => mockSupabase };
 global.window.supabase = global.supabase;
 
 require('../config.js');
-global.STATE = global.window.STATE; global.SUPABASE_CONFIG = global.window.SUPABASE_CONFIG;
-global.STATUS = global.window.STATUS; global.MEDIA_TYPES = global.window.MEDIA_TYPES;
-global.INACTIVITY_TIMEOUT = global.window.INACTIVITY_TIMEOUT; global.YEARS = global.window.YEARS;
-global.SECTORS = global.window.SECTORS; global.REGIONS = global.window.REGIONS;
+global.STATE = global.window.STATE;
+global.SUPABASE_CONFIG = global.window.SUPABASE_CONFIG;
+global.STATUS = global.window.STATUS;
+global.MEDIA_TYPES = global.window.MEDIA_TYPES;
+global.INACTIVITY_TIMEOUT = global.window.INACTIVITY_TIMEOUT;
+global.YEARS = global.window.YEARS;
+global.SECTORS = global.window.SECTORS;
+global.REGIONS = global.window.REGIONS;
 global.STATE.client = mockSupabase;
 
-function syncWindowToGlobal() { for (const key of Object.keys(global.window)) { if (!(key in global) && typeof global.window[key] !== 'undefined') global[key] = global.window[key]; } }
+function syncWindowToGlobal() {
+  for (const key of Object.keys(global.window)) {
+    if (!(key in global) && typeof global.window[key] !== 'undefined') global[key] = global.window[key];
+  }
+}
 
-require('../utils.js'); syncWindowToGlobal();
-require('../branding.js'); syncWindowToGlobal();
+require('../utils.js');
+syncWindowToGlobal();
+require('../branding.js');
+syncWindowToGlobal();
 
 describe('Branding Module - Structure', () => {
   test('brandingModule is defined', () => {
@@ -98,7 +134,7 @@ describe('Branding Module - getPresets', () => {
 
   test('presets include BTA Official', () => {
     const presets = brandingModule.getPresets();
-    const bta = presets.find(p => p.id === 'bta-official');
+    const bta = presets.find((p) => p.id === 'bta-official');
     expect(bta).toBeDefined();
     expect(bta.primary_color).toBe('#000000');
   });
@@ -110,7 +146,7 @@ describe('Branding Module - applyBranding', () => {
       primary_color: '#ff0000',
       secondary_color: '#00ff00',
       accent_color: '#0000ff',
-      font_family: 'Arial, sans-serif'
+      font_family: 'Arial, sans-serif',
     });
     const root = document.documentElement;
     expect(root.style.getPropertyValue('--brand-primary')).toBe('#ff0000');
@@ -143,7 +179,7 @@ describe('Branding Module - renderPreview', () => {
       secondary_color: '#222222',
       accent_color: '#333333',
       company_name: 'Preview Co',
-      tagline: 'Testing tagline'
+      tagline: 'Testing tagline',
     });
     expect(html).toContain('Preview Co');
     expect(html).toContain('Testing tagline');
@@ -154,7 +190,11 @@ describe('Branding Module - renderPreview', () => {
 
 describe('Branding Module - getEmailStyles', () => {
   test('returns css, header, and footer', () => {
-    const styles = brandingModule.getEmailStyles('t1', { primary_color: '#000', accent_color: '#D4AF37', company_name: 'BTA' });
+    const styles = brandingModule.getEmailStyles('t1', {
+      primary_color: '#000',
+      accent_color: '#D4AF37',
+      company_name: 'BTA',
+    });
     expect(styles).toHaveProperty('css');
     expect(styles).toHaveProperty('header');
     expect(styles).toHaveProperty('footer');

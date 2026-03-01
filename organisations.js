@@ -29,74 +29,81 @@ const orgsModule = {
   _columnVisibility: (() => {
     try {
       return JSON.parse(localStorage.getItem('orgsColumnVisibility') || '{}');
-    } catch (e) { return {}; }
+    } catch (e) {
+      return {};
+    }
   })(),
 
   /**
- * Load all organisations from database
- * ENHANCED: Now calculates dashboard stats
- */
-async loadOrganisations() {
-  if (this._loading) return;
-  this._loading = true;
-  try {
-    utils.showLoading();
-    utils.showSkeletonLoading('orgsTableBody', 10);
+   * Load all organisations from database
+   * ENHANCED: Now calculates dashboard stats
+   */
+  async loadOrganisations() {
+    if (this._loading) return;
+    this._loading = true;
+    try {
+      utils.showLoading();
+      utils.showSkeletonLoading('orgsTableBody', 10);
 
-    // Populate filter dropdowns from constants
-    this._populateFiltersFromConstants();
+      // Populate filter dropdowns from constants
+      this._populateFiltersFromConstants();
 
-    // Initialize keyboard shortcuts
-    this.initKeyboardShortcuts();
+      // Initialize keyboard shortcuts
+      this.initKeyboardShortcuts();
 
-    // Initialize inline validation for Add Company form when modal is shown
-    const addOrgModalEl = document.getElementById('addNewOrgModal');
-    if (addOrgModalEl && !addOrgModalEl._inlineValidationInit) {
-      addOrgModalEl._inlineValidationInit = true;
-      addOrgModalEl.addEventListener('shown.bs.modal', () => {
-        utils.initInlineValidation('addCompanyForm');
-      });
+      // Initialize inline validation for Add Company form when modal is shown
+      const addOrgModalEl = document.getElementById('addNewOrgModal');
+      if (addOrgModalEl && !addOrgModalEl._inlineValidationInit) {
+        addOrgModalEl._inlineValidationInit = true;
+        addOrgModalEl.addEventListener('shown.bs.modal', () => {
+          utils.initInlineValidation('addCompanyForm');
+        });
+      }
+
+      // Subscribe to realtime changes
+      this._subscribeToRealtimeChanges();
+
+      // NEW: Calculate and display dashboard stats
+      await this.calculateDashboardStats();
+
+      // Show overdue follow-up alert on page load
+      this._showFollowUpAlert();
+
+      // Restore filter state from localStorage
+      const lsFilters = (() => {
+        try {
+          return JSON.parse(localStorage.getItem('orgsFilters') || '{}');
+        } catch (e) {
+          return {};
+        }
+      })();
+      if (lsFilters.year) document.getElementById('orgsYearFilter').value = lsFilters.year;
+      if (lsFilters.sector) document.getElementById('orgsSectorFilter').value = lsFilters.sector;
+      if (lsFilters.region) {
+        document.getElementById('orgsRegionFilter').value = lsFilters.region;
+        this.updateCountyFilterByRegion();
+      }
+      if (lsFilters.county) document.getElementById('orgsCountyFilter').value = lsFilters.county;
+      if (lsFilters.status) document.getElementById('orgsStatusFilter').value = lsFilters.status;
+      if (lsFilters.search) document.getElementById('orgsSearchBox').value = lsFilters.search;
+
+      // Enable server-side pagination and fetch first page with active filters
+      this._serverPagination = true;
+      await this._srvFetchPage(1);
+
+      this.populateSectorSuggestions();
+      utils.trackDataLoad('organisations');
+    } catch (error) {
+      console.error('Error loading organisations:', error);
+      console.error('Error details:', error.details, error.hint, error.message);
+      utils.showErrorWithRetry(error, 'loading organisations', () => this.loadOrganisations());
+      utils.showEmptyState('orgsTableBody', 10, 'Failed to load organisations', 'bi-exclamation-triangle');
+    } finally {
+      utils.hideLoading();
+      this._loading = false;
     }
+  },
 
-    // Subscribe to realtime changes
-    this._subscribeToRealtimeChanges();
-
-    // NEW: Calculate and display dashboard stats
-    await this.calculateDashboardStats();
-
-    // Show overdue follow-up alert on page load
-    this._showFollowUpAlert();
-
-    // Restore filter state from localStorage
-    const lsFilters = (() => { try { return JSON.parse(localStorage.getItem('orgsFilters') || '{}'); } catch (e) { return {}; } })();
-    if (lsFilters.year) document.getElementById('orgsYearFilter').value = lsFilters.year;
-    if (lsFilters.sector) document.getElementById('orgsSectorFilter').value = lsFilters.sector;
-    if (lsFilters.region) {
-      document.getElementById('orgsRegionFilter').value = lsFilters.region;
-      this.updateCountyFilterByRegion();
-    }
-    if (lsFilters.county) document.getElementById('orgsCountyFilter').value = lsFilters.county;
-    if (lsFilters.status) document.getElementById('orgsStatusFilter').value = lsFilters.status;
-    if (lsFilters.search) document.getElementById('orgsSearchBox').value = lsFilters.search;
-
-    // Enable server-side pagination and fetch first page with active filters
-    this._serverPagination = true;
-    await this._srvFetchPage(1);
-
-    this.populateSectorSuggestions();
-    utils.trackDataLoad('organisations');
-
-  } catch (error) {
-    console.error('Error loading organisations:', error);
-    console.error('Error details:', error.details, error.hint, error.message);
-    utils.showErrorWithRetry(error, 'loading organisations', () => this.loadOrganisations());
-    utils.showEmptyState('orgsTableBody', 10, 'Failed to load organisations', 'bi-exclamation-triangle');
-  } finally {
-    utils.hideLoading();
-    this._loading = false;
-  }
-},
-      
   // ============================================
   // State for advanced filters
   // ============================================
@@ -110,41 +117,51 @@ async loadOrganisations() {
       const totalCount = STATE.allOrganisations.length;
 
       // Count organisations with award assignments (already computed during load)
-      const activeNominees = STATE.allOrganisations.filter(o => o.awards_count > 0).length;
+      const activeNominees = STATE.allOrganisations.filter((o) => o.awards_count > 0).length;
 
       // New this month
       const now = new Date();
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      const newThisMonth = STATE.allOrganisations.filter(org => {
+      const newThisMonth = STATE.allOrganisations.filter((org) => {
         const created = new Date(org.created_at);
         return created >= monthStart;
       }).length;
 
       // Missing data indicators
-      const missingEmail = STATE.allOrganisations.filter(o => !o.email).length;
-      const missingLogo = STATE.allOrganisations.filter(o => !o.logo_url).length;
+      const missingEmail = STATE.allOrganisations.filter((o) => !o.email).length;
+      const missingLogo = STATE.allOrganisations.filter((o) => !o.logo_url).length;
 
       // Pipeline counts (exclude archived)
-      const statusCounts = { prospect: 0, entrant: 0, nominee: 0, shortlisted: 0, winner: 0, sponsor: 0, past_winner: 0 };
-      STATE.allOrganisations.forEach(org => {
+      const statusCounts = {
+        prospect: 0,
+        entrant: 0,
+        nominee: 0,
+        shortlisted: 0,
+        winner: 0,
+        sponsor: 0,
+        past_winner: 0,
+      };
+      STATE.allOrganisations.forEach((org) => {
         const s = org.status || 'prospect';
         if (statusCounts[s] !== undefined) statusCounts[s]++;
       });
 
       // Find top sector
       const sectorCounts = {};
-      STATE.allOrganisations.forEach(org => {
+      STATE.allOrganisations.forEach((org) => {
         if (org.sector) {
           sectorCounts[org.sector] = (sectorCounts[org.sector] || 0) + 1;
         }
       });
 
-      const topSectorEntry = Object.entries(sectorCounts)
-        .sort((a, b) => b[1] - a[1])[0];
+      const topSectorEntry = Object.entries(sectorCounts).sort((a, b) => b[1] - a[1])[0];
       const topSector = topSectorEntry ? topSectorEntry[0] : '-';
 
       // Update dashboard UI
-      const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+      const set = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = val;
+      };
       set('orgsTotalCount', totalCount);
       set('orgsWithAwards', activeNominees);
       set('orgsNewThisMonth', newThisMonth);
@@ -162,7 +179,10 @@ async loadOrganisations() {
       set('orgsPipelineWinner', statusCounts.winner + ' Winners');
 
       // Set conversion rate badges
-      const setConv = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val + '%'; };
+      const setConv = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = val + '%';
+      };
       setConv('orgsConvProspectEntrant', convRates.prospect_to_entrant || 0);
       setConv('orgsConvEntrantNominee', convRates.entrant_to_nominee || 0);
       setConv('orgsConvNomineeShortlisted', convRates.nominee_to_shortlisted || 0);
@@ -173,7 +193,7 @@ async loadOrganisations() {
       set('orgsSponsorCount', sponsorCount);
 
       // At-risk: stale (180+ days) with no recent activity
-      const atRisk = STATE.allOrganisations.filter(o => {
+      const atRisk = STATE.allOrganisations.filter((o) => {
         const days = o.updated_at ? Math.floor((Date.now() - new Date(o.updated_at).getTime()) / 86400000) : 999;
         return days > 180 && (o.status || 'prospect') !== 'archived';
       }).length;
@@ -181,14 +201,14 @@ async loadOrganisations() {
 
       // Average engagement score
       const scores = STATE.allOrganisations
-        .filter(o => (o.status || 'prospect') !== 'archived')
-        .map(o => this.calculateEngagementScore(o));
+        .filter((o) => (o.status || 'prospect') !== 'archived')
+        .map((o) => this.calculateEngagementScore(o));
       const avgEngagement = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
       set('orgsAvgEngagement', avgEngagement + '%');
 
       // Revenue by tier
       const tierRevenue = {};
-      STATE.allOrganisations.forEach(org => {
+      STATE.allOrganisations.forEach((org) => {
         if (org.tier) tierRevenue[org.tier] = (tierRevenue[org.tier] || 0) + 1;
       });
       const topTier = Object.entries(tierRevenue).sort((a, b) => b[1] - a[1])[0];
@@ -196,136 +216,137 @@ async loadOrganisations() {
 
       // Load overdue follow-ups for the dashboard widget
       await this.loadOverdueFollowUps();
-
     } catch (error) {
       console.error('Error calculating dashboard stats:', error);
     }
   },
 
-/**
- * Populate filter dropdowns with unique values (Enhanced)
- */
-populateFilters() {
-  // Populate sector filter
-  const sectors = [...new Set(STATE.allOrganisations
-    .map(o => o.sector)
-    .filter(s => s)
-  )].sort();
+  /**
+   * Populate filter dropdowns with unique values (Enhanced)
+   */
+  populateFilters() {
+    // Populate sector filter
+    const sectors = [...new Set(STATE.allOrganisations.map((o) => o.sector).filter((s) => s))].sort();
 
-  const sectorSelect = document.getElementById('orgsSectorFilter');
-  if (sectorSelect) {
-    sectorSelect.innerHTML = '<option value="">All</option>' +
-      sectors.map(s => `<option value="${s}">${utils.escapeHtml(s)}</option>`).join('');
-  }
-
-  // Populate county filter
-  const counties = [...new Set(STATE.allOrganisations
-    .map(o => o.county)
-    .filter(c => c)
-  )].sort();
-
-  const countySelect = document.getElementById('orgsCountyFilter');
-  if (countySelect) {
-    countySelect.innerHTML = '<option value="">All</option>' +
-      counties.map(c => `<option value="${c}">${utils.escapeHtml(c)}</option>`).join('');
-  }
-
-  // Populate region filter
-  const regions = [...new Set(STATE.allOrganisations
-    .map(o => o.region)
-    .filter(r => r)
-  )].sort();
-
-  const regionSelect = document.getElementById('orgsRegionFilter');
-  if (regionSelect) {
-    regionSelect.innerHTML = '<option value="">All Regions</option>' +
-      regions.map(r => `<option value="${r}">${utils.escapeHtml(r)}</option>`).join('');
-  }
-
-  // Populate tag filter
-  const allTags = new Set();
-  STATE.allOrganisations.forEach(o => {
-    if (o.tags && Array.isArray(o.tags)) {
-      o.tags.forEach(t => allTags.add(t));
+    const sectorSelect = document.getElementById('orgsSectorFilter');
+    if (sectorSelect) {
+      sectorSelect.innerHTML =
+        '<option value="">All</option>' +
+        sectors.map((s) => `<option value="${s}">${utils.escapeHtml(s)}</option>`).join('');
     }
-  });
-  const tagSelect = document.getElementById('orgsTagFilter');
-  if (tagSelect) {
-    tagSelect.innerHTML = '<option value="">All Tags</option>' +
-      [...allTags].sort().map(t => `<option value="${utils.escapeHtml(t)}">${utils.escapeHtml(t)}</option>`).join('');
-  }
 
-  // Populate saved filter presets
-  this._populateFilterPresets();
-},
+    // Populate county filter
+    const counties = [...new Set(STATE.allOrganisations.map((o) => o.county).filter((c) => c))].sort();
 
-/**
- * Restore saved filter values from localStorage
- */
-restoreFilters() {
-  try {
-    const saved = JSON.parse(localStorage.getItem('orgsFilters') || '{}');
-    if (saved.year) {
-      const el = document.getElementById('orgsYearFilter');
-      if (el) el.value = saved.year;
+    const countySelect = document.getElementById('orgsCountyFilter');
+    if (countySelect) {
+      countySelect.innerHTML =
+        '<option value="">All</option>' +
+        counties.map((c) => `<option value="${c}">${utils.escapeHtml(c)}</option>`).join('');
     }
-    if (saved.sector) {
-      const el = document.getElementById('orgsSectorFilter');
-      if (el) el.value = saved.sector;
-    }
-    if (saved.region) {
-      const el = document.getElementById('orgsRegionFilter');
-      if (el) el.value = saved.region;
-      this.updateCountyFilterByRegion();
-    }
-    if (saved.county) {
-      const el = document.getElementById('orgsCountyFilter');
-      if (el) el.value = saved.county;
-    }
-    if (saved.status) {
-      const el = document.getElementById('orgsStatusFilter');
-      if (el) el.value = saved.status;
-    }
-    if (saved.search) {
-      const el = document.getElementById('orgsSearchBox');
-      if (el) el.value = saved.search;
-    }
-  } catch (e) { /* ignore */ }
-},
 
-/**
- * Update county dropdown based on selected region
- */
-updateCountyFilterByRegion() {
-  const selectedRegion = document.getElementById('orgsRegionFilter')?.value || '';
-  const countySelect = document.getElementById('orgsCountyFilter');
-  
-  if (!countySelect) return;
-  
-  if (!selectedRegion) {
-    // No region selected - show all counties
-    const allCounties = [...new Set(STATE.allOrganisations
-      .map(o => o.county)
-      .filter(c => c)
-    )].sort();
-    
-    countySelect.innerHTML = '<option value="">All Counties</option>' +
-      allCounties.map(c => `<option value="${c}">${utils.escapeHtml(c)}</option>`).join('');
-  } else {
-    // Region selected - show only counties in that region
-    const countiesInRegion = [...new Set(STATE.allOrganisations
-      .filter(o => o.region === selectedRegion)
-      .map(o => o.county)
-      .filter(c => c)
-    )].sort();
-    
-    countySelect.innerHTML = '<option value="">All Counties</option>' +
-      countiesInRegion.map(c => `<option value="${c}">${utils.escapeHtml(c)}</option>`).join('');
-  }
-  
-  // Reset county selection
-  countySelect.value = '';
-},
+    // Populate region filter
+    const regions = [...new Set(STATE.allOrganisations.map((o) => o.region).filter((r) => r))].sort();
+
+    const regionSelect = document.getElementById('orgsRegionFilter');
+    if (regionSelect) {
+      regionSelect.innerHTML =
+        '<option value="">All Regions</option>' +
+        regions.map((r) => `<option value="${r}">${utils.escapeHtml(r)}</option>`).join('');
+    }
+
+    // Populate tag filter
+    const allTags = new Set();
+    STATE.allOrganisations.forEach((o) => {
+      if (o.tags && Array.isArray(o.tags)) {
+        o.tags.forEach((t) => allTags.add(t));
+      }
+    });
+    const tagSelect = document.getElementById('orgsTagFilter');
+    if (tagSelect) {
+      tagSelect.innerHTML =
+        '<option value="">All Tags</option>' +
+        [...allTags]
+          .sort()
+          .map((t) => `<option value="${utils.escapeHtml(t)}">${utils.escapeHtml(t)}</option>`)
+          .join('');
+    }
+
+    // Populate saved filter presets
+    this._populateFilterPresets();
+  },
+
+  /**
+   * Restore saved filter values from localStorage
+   */
+  restoreFilters() {
+    try {
+      const saved = JSON.parse(localStorage.getItem('orgsFilters') || '{}');
+      if (saved.year) {
+        const el = document.getElementById('orgsYearFilter');
+        if (el) el.value = saved.year;
+      }
+      if (saved.sector) {
+        const el = document.getElementById('orgsSectorFilter');
+        if (el) el.value = saved.sector;
+      }
+      if (saved.region) {
+        const el = document.getElementById('orgsRegionFilter');
+        if (el) el.value = saved.region;
+        this.updateCountyFilterByRegion();
+      }
+      if (saved.county) {
+        const el = document.getElementById('orgsCountyFilter');
+        if (el) el.value = saved.county;
+      }
+      if (saved.status) {
+        const el = document.getElementById('orgsStatusFilter');
+        if (el) el.value = saved.status;
+      }
+      if (saved.search) {
+        const el = document.getElementById('orgsSearchBox');
+        if (el) el.value = saved.search;
+      }
+    } catch (e) {
+      /* ignore */
+    }
+  },
+
+  /**
+   * Update county dropdown based on selected region
+   */
+  updateCountyFilterByRegion() {
+    const selectedRegion = document.getElementById('orgsRegionFilter')?.value || '';
+    const countySelect = document.getElementById('orgsCountyFilter');
+
+    if (!countySelect) return;
+
+    if (!selectedRegion) {
+      // No region selected - show all counties
+      const allCounties = [...new Set(STATE.allOrganisations.map((o) => o.county).filter((c) => c))].sort();
+
+      countySelect.innerHTML =
+        '<option value="">All Counties</option>' +
+        allCounties.map((c) => `<option value="${c}">${utils.escapeHtml(c)}</option>`).join('');
+    } else {
+      // Region selected - show only counties in that region
+      const countiesInRegion = [
+        ...new Set(
+          STATE.allOrganisations
+            .filter((o) => o.region === selectedRegion)
+            .map((o) => o.county)
+            .filter((c) => c)
+        ),
+      ].sort();
+
+      countySelect.innerHTML =
+        '<option value="">All Counties</option>' +
+        countiesInRegion.map((c) => `<option value="${c}">${utils.escapeHtml(c)}</option>`).join('');
+    }
+
+    // Reset county selection
+    countySelect.value = '';
+  },
 
   /**
    * Populate filter dropdowns from known constants
@@ -333,13 +354,15 @@ updateCountyFilterByRegion() {
   _populateFiltersFromConstants() {
     const sectorSelect = document.getElementById('orgsSectorFilter');
     if (sectorSelect) {
-      sectorSelect.innerHTML = '<option value="">All</option>' +
-        SECTORS.map(s => `<option value="${utils.escapeHtml(s)}">${utils.escapeHtml(s)}</option>`).join('');
+      sectorSelect.innerHTML =
+        '<option value="">All</option>' +
+        SECTORS.map((s) => `<option value="${utils.escapeHtml(s)}">${utils.escapeHtml(s)}</option>`).join('');
     }
     const regionSelect = document.getElementById('orgsRegionFilter');
     if (regionSelect) {
-      regionSelect.innerHTML = '<option value="">All Regions</option>' +
-        REGIONS.map(r => `<option value="${utils.escapeHtml(r)}">${utils.escapeHtml(r)}</option>`).join('');
+      regionSelect.innerHTML =
+        '<option value="">All Regions</option>' +
+        REGIONS.map((r) => `<option value="${utils.escapeHtml(r)}">${utils.escapeHtml(r)}</option>`).join('');
     }
   },
 
@@ -376,7 +399,7 @@ updateCountyFilterByRegion() {
       search: search ? { term: search, columns: ['company_name', 'contact_name', 'email'] } : undefined,
       sort: { column: sortCol, ascending: sortAsc },
       page,
-      pageSize: this._pageSize
+      pageSize: this._pageSize,
     });
 
     if (fetchId !== this._srvFetchId) return;
@@ -388,7 +411,12 @@ updateCountyFilterByRegion() {
 
     STATE.allOrganisations = pageData;
     STATE.filteredOrganisations = pageData;
-    this._srvPagination = { page: result.page, totalPages: result.totalPages, count: result.count, pageSize: result.pageSize };
+    this._srvPagination = {
+      page: result.page,
+      totalPages: result.totalPages,
+      count: result.count,
+      pageSize: result.pageSize,
+    };
     this._currentPage = 1; // client-side pagination within the server page is not needed
 
     this.renderOrganisations();
@@ -399,20 +427,20 @@ updateCountyFilterByRegion() {
    */
   async _enrichOrgPageData(orgs) {
     if (!orgs.length) return;
-    const orgIds = orgs.map(o => o.id).filter(Boolean);
+    const orgIds = orgs.map((o) => o.id).filter(Boolean);
 
     try {
       // Batch lookup assignments for orgs on this page
       const { data: assignments } = await apiClient.select('award_assignments', {
         select: 'organisation_id, award_id',
         filters: { organisation_id: { op: 'in', value: orgIds } },
-        pageSize: 1000
+        pageSize: 1000,
       });
 
       // Collect unique award IDs
       const orgAwardMap = {};
       const orgAwardsCount = {};
-      (assignments || []).forEach(a => {
+      (assignments || []).forEach((a) => {
         if (!orgAwardMap[a.organisation_id]) orgAwardMap[a.organisation_id] = a.award_id;
         orgAwardsCount[a.organisation_id] = (orgAwardsCount[a.organisation_id] || 0) + 1;
       });
@@ -424,37 +452,45 @@ updateCountyFilterByRegion() {
         const { data: awardData } = await apiClient.select('awards', {
           select: 'id, county, sector, year',
           filters: { id: { op: 'in', value: awardIds } },
-          pageSize: 1000
+          pageSize: 1000,
         });
-        (awardData || []).forEach(a => { awardMap[a.id] = a; });
+        (awardData || []).forEach((a) => {
+          awardMap[a.id] = a;
+        });
       }
 
       // Fetch county→region mapping
-      const uniqueCounties = [...new Set([
-        ...orgs.map(o => o.catchment_area).filter(Boolean),
-        ...Object.values(awardMap).map(a => a.county).filter(Boolean)
-      ])];
+      const uniqueCounties = [
+        ...new Set([
+          ...orgs.map((o) => o.catchment_area).filter(Boolean),
+          ...Object.values(awardMap)
+            .map((a) => a.county)
+            .filter(Boolean),
+        ]),
+      ];
       const countyToRegion = {};
       if (uniqueCounties.length > 0) {
         try {
           const { data: countyData } = await apiClient.select('counties', {
             select: 'Name, regions(name)',
             filters: { Name: { op: 'in', value: uniqueCounties } },
-            pageSize: 1000
+            pageSize: 1000,
           });
-          (countyData || []).forEach(c => {
+          (countyData || []).forEach((c) => {
             if (c.Name && c.regions?.name) countyToRegion[c.Name] = c.regions.name;
           });
-        } catch (_e) { /* counties table may not exist */ }
+        } catch (_e) {
+          /* counties table may not exist */
+        }
       }
 
       // Attach enriched data
-      orgs.forEach(org => {
+      orgs.forEach((org) => {
         const awardId = orgAwardMap[org.id];
         const award = awardMap[awardId];
         const awardCounty = award?.county || null;
         org.county = awardCounty || org.catchment_area || org.county || null;
-        org.region = org.county ? (countyToRegion[org.county] || org.region || null) : (org.region || null);
+        org.region = org.county ? countyToRegion[org.county] || org.region || null : org.region || null;
         org.sector = award?.sector || org.sector || null;
         org.year = award?.year || org.year || null;
         org.awards_count = orgAwardsCount[org.id] || 0;
@@ -485,212 +521,261 @@ updateCountyFilterByRegion() {
    * Filter organisations based on all filters (Enhanced)
    */
   filterOrganisations() {
-  const year = document.getElementById('orgsYearFilter')?.value || '';
-  const sector = document.getElementById('orgsSectorFilter')?.value || '';
-  const county = document.getElementById('orgsCountyFilter')?.value || '';
-  const region = document.getElementById('orgsRegionFilter')?.value || '';
-  const status = document.getElementById('orgsStatusFilter')?.value || '';
-  const search = document.getElementById('orgsSearchBox')?.value.toLowerCase().trim() || '';
-  const tier = document.getElementById('orgsTierFilter')?.value || '';
-  const tag = document.getElementById('orgsTagFilter')?.value || '';
-  const logoFilter = document.getElementById('orgsLogoFilter')?.value || '';
-  const dateFilter = document.getElementById('orgsDateFilter')?.value || '';
-  const missingField = this._filterMissingField || '';
+    const year = document.getElementById('orgsYearFilter')?.value || '';
+    const sector = document.getElementById('orgsSectorFilter')?.value || '';
+    const county = document.getElementById('orgsCountyFilter')?.value || '';
+    const region = document.getElementById('orgsRegionFilter')?.value || '';
+    const status = document.getElementById('orgsStatusFilter')?.value || '';
+    const search = document.getElementById('orgsSearchBox')?.value.toLowerCase().trim() || '';
+    const tier = document.getElementById('orgsTierFilter')?.value || '';
+    const tag = document.getElementById('orgsTagFilter')?.value || '';
+    const logoFilter = document.getElementById('orgsLogoFilter')?.value || '';
+    const dateFilter = document.getElementById('orgsDateFilter')?.value || '';
+    const missingField = this._filterMissingField || '';
 
-  // Save filters to localStorage
-  try {
-    localStorage.setItem('orgsFilters', JSON.stringify({ year, sector, county, region, status, search, tier, tag, logoFilter, dateFilter }));
-  } catch (e) { /* ignore */ }
+    // Save filters to localStorage
+    try {
+      localStorage.setItem(
+        'orgsFilters',
+        JSON.stringify({ year, sector, county, region, status, search, tier, tag, logoFilter, dateFilter })
+      );
+    } catch (e) {
+      /* ignore */
+    }
 
-  // Server-side pagination: send filters to server and re-fetch page 1
-  if (this._serverPagination) {
-    this._srvFetchPage(1).catch(err => {
-      console.error('Error filtering organisations:', err);
-      utils.showToast('Error filtering organisations: ' + err.message, 'error');
+    // Server-side pagination: send filters to server and re-fetch page 1
+    if (this._serverPagination) {
+      this._srvFetchPage(1).catch((err) => {
+        console.error('Error filtering organisations:', err);
+        utils.showToast('Error filtering organisations: ' + err.message, 'error');
+      });
+      return;
+    }
+
+    // Client-side fallback (used by tests and when data is pre-loaded)
+    // Hide archived by default unless status filter is 'archived' or 'all'
+    const showArchived = status === 'archived' || status === 'all';
+
+    // Date range calculation
+    let dateThreshold = null;
+    let isStaleFilter = false;
+    if (dateFilter === 'stale') {
+      isStaleFilter = true;
+      dateThreshold = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000);
+    } else if (dateFilter) {
+      dateThreshold = new Date(Date.now() - parseInt(dateFilter) * 24 * 60 * 60 * 1000);
+    }
+
+    STATE.filteredOrganisations = STATE.allOrganisations.filter((org) => {
+      const orgStatus = org.status || 'prospect';
+
+      // Hide archived unless explicitly filtering for them
+      if (!showArchived && orgStatus === 'archived') return false;
+
+      // Year filter — show orgs assigned to the selected year AND unassigned orgs (no year).
+      // Only hide orgs explicitly assigned to a different year.
+      if (year && org.year && String(org.year) !== String(year)) return false;
+
+      // Status filter (skip if 'all')
+      if (status && status !== 'all' && orgStatus !== status) return false;
+
+      // Sector filter
+      if (sector && org.sector !== sector) return false;
+
+      // County filter
+      if (county && org.county !== county) return false;
+
+      // Region filter
+      if (region && org.region !== region) return false;
+
+      // Tier filter
+      if (tier && (org.tier || '') !== tier) return false;
+
+      // Tag filter (single dropdown)
+      if (tag && !(org.tags && org.tags.includes(tag))) return false;
+
+      // Multi-tag filter (AND logic)
+      if (this._selectedTagFilters && this._selectedTagFilters.length > 0) {
+        if (!this._selectedTagFilters.every((t) => org.tags && org.tags.includes(t))) return false;
+      }
+
+      // Logo filter
+      if (logoFilter === 'has' && !org.logo_url) return false;
+      if (logoFilter === 'missing' && org.logo_url) return false;
+
+      // Date filter
+      if (dateThreshold) {
+        const orgDate = new Date(org.updated_at || org.created_at || 0);
+        if (isStaleFilter) {
+          if (orgDate > dateThreshold) return false; // stale = NOT updated recently
+        } else {
+          if (orgDate < dateThreshold) return false; // recent = updated after threshold
+        }
+      }
+
+      // Missing field filter (from dashboard click)
+      if (missingField) {
+        if (org[missingField]) return false; // only show orgs missing this field
+      }
+
+      // Search filter - searches ALL fields including county, sector, status, tags
+      if (search) {
+        const tagStr = (org.tags || []).join(' ');
+        const searchFields = [
+          org.company_name,
+          org.contact_name,
+          org.email,
+          org.website,
+          org.notes,
+          org.county,
+          org.sector,
+          org.region,
+          org.catchment_area,
+          org.address,
+          orgStatus,
+          org.tier,
+          tagStr,
+          org.contact_phone,
+        ].map((f) => (f || '').toLowerCase());
+
+        if (!searchFields.some((f) => f.includes(search))) {
+          return false;
+        }
+      }
+
+      return true;
     });
-    return;
-  }
 
-  // Client-side fallback (used by tests and when data is pre-loaded)
-  // Hide archived by default unless status filter is 'archived' or 'all'
-  const showArchived = status === 'archived' || status === 'all';
-
-  // Date range calculation
-  let dateThreshold = null;
-  let isStaleFilter = false;
-  if (dateFilter === 'stale') {
-    isStaleFilter = true;
-    dateThreshold = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000);
-  } else if (dateFilter) {
-    dateThreshold = new Date(Date.now() - parseInt(dateFilter) * 24 * 60 * 60 * 1000);
-  }
-
-  STATE.filteredOrganisations = STATE.allOrganisations.filter(org => {
-    const orgStatus = org.status || 'prospect';
-
-    // Hide archived unless explicitly filtering for them
-    if (!showArchived && orgStatus === 'archived') return false;
-
-    // Year filter — show orgs assigned to the selected year AND unassigned orgs (no year).
-    // Only hide orgs explicitly assigned to a different year.
-    if (year && org.year && String(org.year) !== String(year)) return false;
-
-    // Status filter (skip if 'all')
-    if (status && status !== 'all' && orgStatus !== status) return false;
-
-    // Sector filter
-    if (sector && org.sector !== sector) return false;
-
-    // County filter
-    if (county && org.county !== county) return false;
-
-    // Region filter
-    if (region && org.region !== region) return false;
-
-    // Tier filter
-    if (tier && (org.tier || '') !== tier) return false;
-
-    // Tag filter (single dropdown)
-    if (tag && !(org.tags && org.tags.includes(tag))) return false;
-
-    // Multi-tag filter (AND logic)
-    if (this._selectedTagFilters && this._selectedTagFilters.length > 0) {
-      if (!this._selectedTagFilters.every(t => org.tags && org.tags.includes(t))) return false;
+    // If search query is active and no exact matches found, try fuzzy search
+    if (search && STATE.filteredOrganisations.length === 0) {
+      STATE.filteredOrganisations = utils.fuzzyFilter(STATE.allOrganisations, search, [
+        'company_name',
+        'contact_name',
+        'email',
+      ]);
+      // Also apply non-search filters to fuzzy results
+      if (year)
+        STATE.filteredOrganisations = STATE.filteredOrganisations.filter(
+          (o) => !o.year || String(o.year) === String(year)
+        );
+      if (status && status !== 'all')
+        STATE.filteredOrganisations = STATE.filteredOrganisations.filter((o) => (o.status || 'prospect') === status);
+      if (sector) STATE.filteredOrganisations = STATE.filteredOrganisations.filter((o) => o.sector === sector);
+      if (county) STATE.filteredOrganisations = STATE.filteredOrganisations.filter((o) => o.county === county);
+      if (region) STATE.filteredOrganisations = STATE.filteredOrganisations.filter((o) => o.region === region);
+      if (tier) STATE.filteredOrganisations = STATE.filteredOrganisations.filter((o) => (o.tier || '') === tier);
     }
 
-    // Logo filter
-    if (logoFilter === 'has' && !org.logo_url) return false;
-    if (logoFilter === 'missing' && org.logo_url) return false;
+    // Clear the missing field filter after applying it once
+    this._filterMissingField = null;
 
-    // Date filter
-    if (dateThreshold) {
-      const orgDate = new Date(org.updated_at || org.created_at || 0);
-      if (isStaleFilter) {
-        if (orgDate > dateThreshold) return false; // stale = NOT updated recently
-      } else {
-        if (orgDate < dateThreshold) return false; // recent = updated after threshold
-      }
-    }
+    // Reset to page 1 when filters change
+    this._currentPage = 1;
 
-    // Missing field filter (from dashboard click)
-    if (missingField) {
-      if (org[missingField]) return false; // only show orgs missing this field
-    }
-
-    // Search filter - searches ALL fields including county, sector, status, tags
-    if (search) {
-      const tagStr = (org.tags || []).join(' ');
-      const searchFields = [
-        org.company_name, org.contact_name, org.email, org.website,
-        org.notes, org.county, org.sector, org.region,
-        org.catchment_area, org.address, orgStatus, org.tier, tagStr,
-        org.contact_phone
-      ].map(f => (f || '').toLowerCase());
-
-      if (!searchFields.some(f => f.includes(search))) {
-        return false;
-      }
-    }
-
-    return true;
-  });
-
-  // If search query is active and no exact matches found, try fuzzy search
-  if (search && STATE.filteredOrganisations.length === 0) {
-    STATE.filteredOrganisations = utils.fuzzyFilter(STATE.allOrganisations, search, ['company_name', 'contact_name', 'email']);
-    // Also apply non-search filters to fuzzy results
-    if (year) STATE.filteredOrganisations = STATE.filteredOrganisations.filter(o => !o.year || String(o.year) === String(year));
-    if (status && status !== 'all') STATE.filteredOrganisations = STATE.filteredOrganisations.filter(o => (o.status || 'prospect') === status);
-    if (sector) STATE.filteredOrganisations = STATE.filteredOrganisations.filter(o => o.sector === sector);
-    if (county) STATE.filteredOrganisations = STATE.filteredOrganisations.filter(o => o.county === county);
-    if (region) STATE.filteredOrganisations = STATE.filteredOrganisations.filter(o => o.region === region);
-    if (tier) STATE.filteredOrganisations = STATE.filteredOrganisations.filter(o => (o.tier || '') === tier);
-  }
-
-  // Clear the missing field filter after applying it once
-  this._filterMissingField = null;
-
-  // Reset to page 1 when filters change
-  this._currentPage = 1;
-
-  this.renderOrganisations();
-},
+    this.renderOrganisations();
+  },
 
   /**
    * Render organisations table
    */
   renderOrganisations() {
-  const tbody = document.getElementById('orgsTableBody');
-  const count = document.getElementById('orgsCount');
-  const showing = document.getElementById('orgsShowing');
-  const total = document.getElementById('orgsTotal');
-  const lastRefresh = document.getElementById('orgsLastRefresh');
+    const tbody = document.getElementById('orgsTableBody');
+    const count = document.getElementById('orgsCount');
+    const showing = document.getElementById('orgsShowing');
+    const total = document.getElementById('orgsTotal');
+    const lastRefresh = document.getElementById('orgsLastRefresh');
 
-  // Server-side: data is already one page; client-side: slice locally
-  let pageOrgs, totalFiltered;
-  if (this._serverPagination) {
-    pageOrgs = STATE.filteredOrganisations;
-    totalFiltered = this._srvPagination.count;
-    const from = ((this._srvPagination.page - 1) * this._srvPagination.pageSize) + 1;
-    const to = Math.min(this._srvPagination.page * this._srvPagination.pageSize, totalFiltered);
-    if (count) count.textContent = totalFiltered;
-    if (showing) showing.textContent = pageOrgs.length > 0 ? `${from}-${to}` : '0';
-    if (total) total.textContent = totalFiltered;
-  } else {
-    totalFiltered = STATE.filteredOrganisations.length;
-    const totalPages = Math.max(1, Math.ceil(totalFiltered / this._pageSize));
-    if (this._currentPage > totalPages) this._currentPage = totalPages;
-    if (this._currentPage < 1) this._currentPage = 1;
-    const startIdx = (this._currentPage - 1) * this._pageSize;
-    const endIdx = Math.min(startIdx + this._pageSize, totalFiltered);
-    pageOrgs = STATE.filteredOrganisations.slice(startIdx, endIdx);
-    if (count) count.textContent = totalFiltered;
-    if (showing) showing.textContent = pageOrgs.length > 0 ? `${startIdx + 1}-${endIdx}` : '0';
-    if (total) total.textContent = STATE.allOrganisations.length;
-  }
-  if (lastRefresh) lastRefresh.textContent = new Date().toLocaleTimeString('en-GB');
+    // Server-side: data is already one page; client-side: slice locally
+    let pageOrgs, totalFiltered;
+    if (this._serverPagination) {
+      pageOrgs = STATE.filteredOrganisations;
+      totalFiltered = this._srvPagination.count;
+      const from = (this._srvPagination.page - 1) * this._srvPagination.pageSize + 1;
+      const to = Math.min(this._srvPagination.page * this._srvPagination.pageSize, totalFiltered);
+      if (count) count.textContent = totalFiltered;
+      if (showing) showing.textContent = pageOrgs.length > 0 ? `${from}-${to}` : '0';
+      if (total) total.textContent = totalFiltered;
+    } else {
+      totalFiltered = STATE.filteredOrganisations.length;
+      const totalPages = Math.max(1, Math.ceil(totalFiltered / this._pageSize));
+      if (this._currentPage > totalPages) this._currentPage = totalPages;
+      if (this._currentPage < 1) this._currentPage = 1;
+      const startIdx = (this._currentPage - 1) * this._pageSize;
+      const endIdx = Math.min(startIdx + this._pageSize, totalFiltered);
+      pageOrgs = STATE.filteredOrganisations.slice(startIdx, endIdx);
+      if (count) count.textContent = totalFiltered;
+      if (showing) showing.textContent = pageOrgs.length > 0 ? `${startIdx + 1}-${endIdx}` : '0';
+      if (total) total.textContent = STATE.allOrganisations.length;
+    }
+    if (lastRefresh) lastRefresh.textContent = new Date().toLocaleTimeString('en-GB');
 
-  // Column visibility helper
-  const isColVisible = (col) => this._columnVisibility[col] !== false;
+    // Column visibility helper
+    const isColVisible = (col) => this._columnVisibility[col] !== false;
 
-  // Dynamic phone column header
-  const phoneHeaderEl = document.getElementById('phoneColHeader');
-  if (phoneHeaderEl) phoneHeaderEl.style.display = this._showPhoneColumn ? '' : 'none';
+    // Dynamic phone column header
+    const phoneHeaderEl = document.getElementById('phoneColHeader');
+    if (phoneHeaderEl) phoneHeaderEl.style.display = this._showPhoneColumn ? '' : 'none';
 
-  // Apply column visibility to table headers
-  const colVisMap = {
-    'sector': 2, 'county': 3, 'contact': 4, 'email': 5, 'tier': 6,
-    'tags': 7, 'region': 8, 'status': 9, 'awards': 10, 'updated': 11,
-    'lastContacted': 12, 'health': 13
-  };
-  const thead = tbody.closest('table')?.querySelector('thead tr');
-  if (thead) {
-    const ths = thead.querySelectorAll('th');
-    Object.entries(colVisMap).forEach(([col, idx]) => {
-      if (ths[idx]) ths[idx].style.display = isColVisible(col) ? '' : 'none';
-    });
-  }
+    // Apply column visibility to table headers
+    const colVisMap = {
+      sector: 2,
+      county: 3,
+      contact: 4,
+      email: 5,
+      tier: 6,
+      tags: 7,
+      region: 8,
+      status: 9,
+      awards: 10,
+      updated: 11,
+      lastContacted: 12,
+      health: 13,
+    };
+    const thead = tbody.closest('table')?.querySelector('thead tr');
+    if (thead) {
+      const ths = thead.querySelectorAll('th');
+      Object.entries(colVisMap).forEach(([col, idx]) => {
+        if (ths[idx]) ths[idx].style.display = isColVisible(col) ? '' : 'none';
+      });
+    }
 
-  const visibleColCount = 2 + Object.keys(colVisMap).filter(c => isColVisible(c)).length + (this._showPhoneColumn ? 1 : 0) + 1;
+    const visibleColCount =
+      2 + Object.keys(colVisMap).filter((c) => isColVisible(c)).length + (this._showPhoneColumn ? 1 : 0) + 1;
 
-  if (totalFiltered === 0) {
-    const hasActiveFilters = !!(document.getElementById('orgsYearFilter')?.value || document.getElementById('orgsSectorFilter')?.value || document.getElementById('orgsRegionFilter')?.value || document.getElementById('orgsCountyFilter')?.value || document.getElementById('orgsStatusFilter')?.value || document.getElementById('orgsSearchBox')?.value);
-    utils.showEnhancedEmptyState('orgsTableBody', visibleColCount, { icon: 'bi-building', message: 'No organisations found', description: 'Organisations will appear here once added', isFiltered: hasActiveFilters });
-    this._renderPaginationControls(0, 1);
-    return;
-  }
+    if (totalFiltered === 0) {
+      const hasActiveFilters = !!(
+        document.getElementById('orgsYearFilter')?.value ||
+        document.getElementById('orgsSectorFilter')?.value ||
+        document.getElementById('orgsRegionFilter')?.value ||
+        document.getElementById('orgsCountyFilter')?.value ||
+        document.getElementById('orgsStatusFilter')?.value ||
+        document.getElementById('orgsSearchBox')?.value
+      );
+      utils.showEnhancedEmptyState('orgsTableBody', visibleColCount, {
+        icon: 'bi-building',
+        message: 'No organisations found',
+        description: 'Organisations will appear here once added',
+        isFiltered: hasActiveFilters,
+      });
+      this._renderPaginationControls(0, 1);
+      return;
+    }
 
-  const cv = (col) => isColVisible(col) ? '' : 'display:none;';
+    const cv = (col) => (isColVisible(col) ? '' : 'display:none;');
 
-  tbody.innerHTML = pageOrgs.map(org => {
-    const isSelected = this.selectedOrgs.has(org.id);
-    const awardsCount = org.awards_count || 0;
-    const escapedName = (org.company_name || '').replace(/<[^>]*>/g, '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
-    const tierColors = { 'Bronze': '#CD7F32', 'Silver': '#C0C0C0', 'Gold': '#FFD700', 'Platinum': '#E5E4E2' };
-    const tierColor = tierColors[org.tier] || '';
-    const updatedDate = org.updated_at || org.created_at;
+    tbody.innerHTML = pageOrgs
+      .map((org) => {
+        const isSelected = this.selectedOrgs.has(org.id);
+        const awardsCount = org.awards_count || 0;
+        const escapedName = (org.company_name || '')
+          .replace(/<[^>]*>/g, '')
+          .replace(/'/g, "\\'")
+          .replace(/"/g, '&quot;');
+        const tierColors = { Bronze: '#CD7F32', Silver: '#C0C0C0', Gold: '#FFD700', Platinum: '#E5E4E2' };
+        const tierColor = tierColors[org.tier] || '';
+        const updatedDate = org.updated_at || org.created_at;
 
-    return `
+        return `
       <tr class="fade-in ${isSelected ? 'table-active' : ''}">
         <td class="text-center">
           <input type="checkbox" class="form-check-input"
@@ -699,10 +784,11 @@ updateCountyFilterByRegion() {
         </td>
         <td>
           <div class="d-flex align-items-center">
-            ${org.logo_url ?
-              `<img src="${org.logo_url}" alt="${utils.escapeHtml(org.company_name)}"
-                   class="me-2 rounded" style="width: 40px; height: 28px; object-fit: contain; border: 1px solid #e0e0e0;">` :
-              `<div class="me-2 d-flex align-items-center justify-content-center rounded"
+            ${
+              org.logo_url
+                ? `<img src="${org.logo_url}" alt="${utils.escapeHtml(org.company_name)}"
+                   class="me-2 rounded" style="width: 40px; height: 28px; object-fit: contain; border: 1px solid #e0e0e0;">`
+                : `<div class="me-2 d-flex align-items-center justify-content-center rounded"
                    style="width: 40px; height: 28px; background: #f5f5f5; border: 1px solid #e0e0e0;">
                 <i class="bi bi-building text-muted" style="font-size: 0.8rem;"></i>
               </div>`
@@ -714,7 +800,7 @@ updateCountyFilterByRegion() {
             </a>
           </div>
         </td>
-        <td style="${cv('sector')}cursor: pointer;" data-on-dblclick="orgsModule.startInlineEdit" data-args='${JSON.stringify([org.id, "sector", org.sector || ""])}' title="Double-click to edit">
+        <td style="${cv('sector')}cursor: pointer;" data-on-dblclick="orgsModule.startInlineEdit" data-args='${JSON.stringify([org.id, 'sector', org.sector || ''])}' title="Double-click to edit">
           <span class="badge bg-info-subtle text-info small">
             ${utils.escapeHtml(org.sector || '-')}
           </span>
@@ -724,28 +810,41 @@ updateCountyFilterByRegion() {
             ${utils.escapeHtml(org.county || '-')}
           </span>
         </td>
-        <td class="small" style="${cv('contact')}cursor: pointer;" data-on-dblclick="orgsModule.startInlineEdit" data-args='${JSON.stringify([org.id, "contact", org.contact_name || ""])}' title="Double-click to edit">
+        <td class="small" style="${cv('contact')}cursor: pointer;" data-on-dblclick="orgsModule.startInlineEdit" data-args='${JSON.stringify([org.id, 'contact', org.contact_name || ''])}' title="Double-click to edit">
           ${utils.escapeHtml(org.contact_name ? (org.contact_name.length > 18 ? org.contact_name.substring(0, 18) + '...' : org.contact_name) : '-')}
         </td>
-        <td class="small" style="${cv('email')}cursor: pointer;" data-on-dblclick="orgsModule.startInlineEdit" data-args='${JSON.stringify([org.id, "email", org.email || ""])}' title="Double-click to edit">
-          ${org.email ?
-            `<a href="mailto:${org.email}" class="text-decoration-none" title="${utils.escapeHtml(org.email)}">
+        <td class="small" style="${cv('email')}cursor: pointer;" data-on-dblclick="orgsModule.startInlineEdit" data-args='${JSON.stringify([org.id, 'email', org.email || ''])}' title="Double-click to edit">
+          ${
+            org.email
+              ? `<a href="mailto:${org.email}" class="text-decoration-none" title="${utils.escapeHtml(org.email)}">
               ${org.email.length > 22 ? utils.escapeHtml(org.email.substring(0, 22)) + '...' : utils.escapeHtml(org.email)}
-            </a>` : '-'
+            </a>`
+              : '-'
           }
         </td>
         <td class="text-center" style="${cv('tier')}">
-          ${org.tier ?
-            `<span class="badge" style="background: ${tierColor}; color: ${org.tier === 'Gold' || org.tier === 'Silver' || org.tier === 'Platinum' ? '#000' : '#fff'}; font-size: 0.7rem;">
+          ${
+            org.tier
+              ? `<span class="badge" style="background: ${tierColor}; color: ${org.tier === 'Gold' || org.tier === 'Silver' || org.tier === 'Platinum' ? '#000' : '#fff'}; font-size: 0.7rem;">
               ${utils.escapeHtml(org.tier)}
-            </span>` : '<span class="text-muted small">-</span>'
+            </span>`
+              : '<span class="text-muted small">-</span>'
           }
         </td>
         <td style="${cv('tags')}">
-          ${org.tags && org.tags.length > 0 ?
-            org.tags.slice(0, 3).map(t => `<span class="badge bg-secondary me-1" style="font-size: 0.65rem;">${utils.escapeHtml(t)}</span>`).join('') +
-            (org.tags.length > 3 ? `<span class="text-muted" style="font-size: 0.65rem;">+${org.tags.length - 3}</span>` : '')
-            : '<span class="text-muted small">-</span>'
+          ${
+            org.tags && org.tags.length > 0
+              ? org.tags
+                  .slice(0, 3)
+                  .map(
+                    (t) =>
+                      `<span class="badge bg-secondary me-1" style="font-size: 0.65rem;">${utils.escapeHtml(t)}</span>`
+                  )
+                  .join('') +
+                (org.tags.length > 3
+                  ? `<span class="text-muted" style="font-size: 0.65rem;">+${org.tags.length - 3}</span>`
+                  : '')
+              : '<span class="text-muted small">-</span>'
           }
         </td>
         <td style="${cv('region')}">
@@ -758,16 +857,20 @@ updateCountyFilterByRegion() {
                   style="font-size: 0.75rem; background-position: right 0.25rem center; padding-right: 1.2rem !important; cursor: pointer;"
                   data-on-change="orgsModule.quickUpdateStatus" data-id="org.id"
                   title="Click to change status">
-            ${this._getStatusOptions(org.status || 'prospect').map(s =>
-              `<option value="${s.value}" ${(org.status || 'prospect') === s.value ? 'selected' : ''}>${s.label}</option>`
-            ).join('')}
+            ${this._getStatusOptions(org.status || 'prospect')
+              .map(
+                (s) =>
+                  `<option value="${s.value}" ${(org.status || 'prospect') === s.value ? 'selected' : ''}>${s.label}</option>`
+              )
+              .join('')}
           </select>
         </td>
         ${this._showPhoneColumn ? `<td class="small">${utils.escapeHtml(org.contact_phone || '-')}</td>` : ''}
         <td class="text-center" style="${cv('awards')}">
-          ${awardsCount > 0 ?
-            `<span class="badge bg-warning text-dark">${awardsCount}</span>` :
-            `<span class="text-muted">-</span>`
+          ${
+            awardsCount > 0
+              ? `<span class="badge bg-warning text-dark">${awardsCount}</span>`
+              : `<span class="text-muted">-</span>`
           }
         </td>
         <td class="text-center small text-muted" style="${cv('updated')}" title="${updatedDate ? new Date(updatedDate).toLocaleDateString('en-GB') : 'N/A'}">
@@ -792,11 +895,12 @@ updateCountyFilterByRegion() {
                     title="View Profile">
               <i class="bi bi-eye"></i>
             </button>
-            ${(org.status || 'prospect') === 'archived'
-              ? `<button class="btn btn-sm btn-outline-success"
+            ${
+              (org.status || 'prospect') === 'archived'
+                ? `<button class="btn btn-sm btn-outline-success"
                       data-action="orgsModule.restoreOrganisation" data-args='${JSON.stringify([org.id, escapedName])}'
                       title="Restore"><i class="bi bi-arrow-counterclockwise"></i></button>`
-              : `<button class="btn btn-sm btn-outline-danger"
+                : `<button class="btn btn-sm btn-outline-danger"
                       data-action="orgsModule.deleteOrganisation" data-args='${JSON.stringify([org.id, escapedName])}'
                       title="Archive"><i class="bi bi-archive"></i></button>`
             }
@@ -804,7 +908,8 @@ updateCountyFilterByRegion() {
         </td>
       </tr>
     `;
-  }).join('');
+      })
+      .join('');
 
     this.updateSortIndicators();
 
@@ -823,7 +928,7 @@ updateCountyFilterByRegion() {
       const totalPages = Math.max(1, Math.ceil(totalFiltered / this._pageSize));
       this._renderPaginationControls(totalFiltered, totalPages);
     }
-},
+  },
   /**
    * Open company profile modal
    * @param {string} orgId - Organisation ID
@@ -879,28 +984,30 @@ updateCountyFilterByRegion() {
 
     try {
       // Use already-loaded org data from STATE
-      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      const org = STATE.allOrganisations.find((o) => o.id === orgId);
       if (!org) throw new Error('Organisation not found');
-      
+
       // Fetch related awards through award_assignments using explicit FK
       const { data: assignments, error: awardsError } = await STATE.client
         .from('award_assignments')
-        .select(`
+        .select(
+          `
           status,
           awards:award_years!award_assignments_award_id_fkey (*)
-        `)
+        `
+        )
         .eq('organisation_id', orgId);
 
       if (awardsError) throw awardsError;
 
       // Extract and sort awards, using assignment status instead of award status
       const awards = (assignments || [])
-        .filter(a => a.awards)
-        .map(a => ({
+        .filter((a) => a.awards)
+        .map((a) => ({
           ...a.awards,
           status: a.status, // Use assignment status (nominated/shortlisted/winner)
           package_type: 'bronze', // Default package type
-          enhanced_profile: false // Default enhanced profile
+          enhanced_profile: false, // Default enhanced profile
         }))
         .sort((a, b) => (b.year || 0) - (a.year || 0));
 
@@ -935,16 +1042,18 @@ updateCountyFilterByRegion() {
         count: (invoices || []).length,
         totalAmount: (invoices || []).reduce((sum, inv) => sum + parseFloat(inv.total_amount || 0), 0),
         paidAmount: (invoices || []).reduce((sum, inv) => sum + parseFloat(inv.paid_amount || 0), 0),
-        balanceDue: (invoices || []).reduce((sum, inv) => sum + parseFloat(inv.balance_due || 0), 0)
+        balanceDue: (invoices || []).reduce((sum, inv) => sum + parseFloat(inv.balance_due || 0), 0),
       };
 
       // Fetch entries with public voting enabled for this organisation
       const { data: votingEntries, error: entriesError } = await STATE.client
         .from('entries')
-        .select(`
+        .select(
+          `
           *,
           award_years (award_name, year)
-        `)
+        `
+        )
         .eq('organisation_id', orgId)
         .eq('allow_public_voting', true)
         .order('created_at', { ascending: false });
@@ -958,10 +1067,11 @@ updateCountyFilterByRegion() {
             <h6 class="text-muted mb-2"><i class="bi bi-image me-2"></i>Company Logo</h6>
             <div class="card">
               <div class="card-body text-center">
-                ${org.logo_url ?
-                  `<img src="${org.logo_url}" alt="${utils.escapeHtml(org.company_name)}"
-                    class="mb-3" style="width: 250px; height: 170px; object-fit: contain; border: 1px solid #dee2e6; border-radius: 4px; background: #f8f9fa;">` :
-                  `<div class="text-muted mb-3" style="width: 250px; height: 170px; display: flex; align-items: center; justify-content: center; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px;">
+                ${
+                  org.logo_url
+                    ? `<img src="${org.logo_url}" alt="${utils.escapeHtml(org.company_name)}"
+                    class="mb-3" style="width: 250px; height: 170px; object-fit: contain; border: 1px solid #dee2e6; border-radius: 4px; background: #f8f9fa;">`
+                    : `<div class="text-muted mb-3" style="width: 250px; height: 170px; display: flex; align-items: center; justify-content: center; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px;">
                     <i class="bi bi-image" style="font-size: 3rem;"></i>
                   </div>`
                 }
@@ -971,11 +1081,13 @@ updateCountyFilterByRegion() {
                   data-action="orgsModule.openLogoGalleryModal" data-id="org.id">
                   <i class="bi bi-images me-1"></i>Choose from Media Gallery
                 </button>
-                ${org.website ?
-                  `<button type="button" class="btn btn-sm btn-outline-success w-100 mb-2"
+                ${
+                  org.website
+                    ? `<button type="button" class="btn btn-sm btn-outline-success w-100 mb-2"
                     data-action="orgsModule.fetchLogoFromWebsite" data-id="org.id">
                     <i class="bi bi-globe me-1"></i>Fetch from Website
-                  </button>` : ''
+                  </button>`
+                    : ''
                 }
                 <small class="text-muted">Required: 250x170 px</small>
               </div>
@@ -1009,10 +1121,13 @@ updateCountyFilterByRegion() {
                 <div class="mb-0">
                   <strong>Website:</strong>
                   <span class="view-mode" id="viewWebsite">
-                    ${org.website ?
-                      `<a href="${org.website.startsWith('http://') || org.website.startsWith('https://') ? org.website : 'https://' + org.website}" target="_blank" rel="noopener noreferrer">
+                    ${
+                      org.website
+                        ? `<a href="${org.website.startsWith('http://') || org.website.startsWith('https://') ? org.website : 'https://' + org.website}" target="_blank" rel="noopener noreferrer">
                         ${utils.escapeHtml(org.website)} <i class="bi bi-box-arrow-up-right small"></i>
-                      </a>` : 'N/A'}
+                      </a>`
+                        : 'N/A'
+                    }
                   </span>
                   <input type="url" class="form-control form-control-sm edit-mode" id="editWebsite"
                     value="${utils.escapeHtml(org.website || '')}" style="display: none;" placeholder="e.g., https://example.com">
@@ -1032,7 +1147,7 @@ updateCountyFilterByRegion() {
                   </span>
                   <select class="form-select form-select-sm edit-mode" id="editRegion" style="display: none;">
                     <option value="">Select Region</option>
-                    ${REGIONS.map(r => `<option value="${r}" ${org.region === r ? 'selected' : ''}>${r}</option>`).join('')}
+                    ${REGIONS.map((r) => `<option value="${r}" ${org.region === r ? 'selected' : ''}>${r}</option>`).join('')}
                   </select>
                 </div>
                 <div class="mb-2">
@@ -1063,12 +1178,16 @@ updateCountyFilterByRegion() {
             <div class="card">
               <div class="card-body">
                 <div class="d-flex flex-wrap gap-1">
-                  ${['prospect','entrant','nominee','shortlisted','winner','sponsor','past_winner'].map(s => `
+                  ${['prospect', 'entrant', 'nominee', 'shortlisted', 'winner', 'sponsor', 'past_winner']
+                    .map(
+                      (s) => `
                     <button class="btn btn-sm ${org.status === s ? 'btn-primary' : 'btn-outline-secondary'}"
                       data-action="orgsModule.updateOrgStatus" data-args='${JSON.stringify([org.id, s])}'>
                       ${s.charAt(0).toUpperCase() + s.slice(1).replace('_', ' ')}
                     </button>
-                  `).join('')}
+                  `
+                    )
+                    .join('')}
                 </div>
               </div>
             </div>
@@ -1111,7 +1230,7 @@ updateCountyFilterByRegion() {
                     <span class="view-mode" id="viewCompanySize">${utils.escapeHtml(org.company_size || 'N/A')}</span>
                     <select class="form-select form-select-sm edit-mode" id="editCompanySize" style="display: none;">
                       <option value="">Select</option>
-                      ${['1-10','11-50','51-200','201-500','500+'].map(s => `<option value="${s}" ${org.company_size === s ? 'selected' : ''}>${s}</option>`).join('')}
+                      ${['1-10', '11-50', '51-200', '201-500', '500+'].map((s) => `<option value="${s}" ${org.company_size === s ? 'selected' : ''}>${s}</option>`).join('')}
                     </select>
                   </div>
                   <div class="col-6 mb-2">
@@ -1133,7 +1252,7 @@ updateCountyFilterByRegion() {
                     </span>
                     <select class="form-select form-select-sm edit-mode" id="editTier" style="display: none;">
                       <option value="">None</option>
-                      ${['Bronze','Silver','Gold','Platinum'].map(t => `<option value="${t}" ${org.tier === t ? 'selected' : ''}>${t}</option>`).join('')}
+                      ${['Bronze', 'Silver', 'Gold', 'Platinum'].map((t) => `<option value="${t}" ${org.tier === t ? 'selected' : ''}>${t}</option>`).join('')}
                     </select>
                   </div>
                 </div>
@@ -1181,9 +1300,15 @@ updateCountyFilterByRegion() {
                 <div class="mb-0">
                   <strong><i class="bi bi-tags me-1"></i>Tags:</strong>
                   <div id="orgTagsContainer">
-                    ${(org.tags && org.tags.length > 0)
-                      ? org.tags.map(t => `<span class="badge bg-secondary me-1 mb-1">${utils.escapeHtml(t)} <a href="javascript:void(0);" class="text-white ms-1" data-action="orgsModule.removeTag" data-args='${JSON.stringify([org.id, utils.escapeHtml(t).replace(/'/g, "\\'")])}'><i class="bi bi-x-circle-fill"></i></a></span>`).join('')
-                      : '<span class="text-muted small">No tags</span>'
+                    ${
+                      org.tags && org.tags.length > 0
+                        ? org.tags
+                            .map(
+                              (t) =>
+                                `<span class="badge bg-secondary me-1 mb-1">${utils.escapeHtml(t)} <a href="javascript:void(0);" class="text-white ms-1" data-action="orgsModule.removeTag" data-args='${JSON.stringify([org.id, utils.escapeHtml(t).replace(/'/g, "\\'")])}'><i class="bi bi-x-circle-fill"></i></a></span>`
+                            )
+                            .join('')
+                        : '<span class="text-muted small">No tags</span>'
                     }
                   </div>
                   <div class="input-group input-group-sm mt-2">
@@ -1196,8 +1321,9 @@ updateCountyFilterByRegion() {
           </div>
         </div>
 
-        ${invoicesSummary.count > 0 ?
-          `<div class="mt-4">
+        ${
+          invoicesSummary.count > 0
+            ? `<div class="mt-4">
             <h6 class="text-muted mb-3"><i class="bi bi-receipt me-2"></i>Billing & Invoices</h6>
             <div class="card">
               <div class="card-body">
@@ -1231,14 +1357,16 @@ updateCountyFilterByRegion() {
                 </div>
               </div>
             </div>
-          </div>` : ''
+          </div>`
+            : ''
         }
 
         <div class="mt-4">
           <h6 class="text-muted mb-3"><i class="bi bi-trophy me-2"></i>Award History (${awards.length})</h6>
-          ${awards.length === 0 ?
-            '<div class="alert alert-info">No awards found for this organisation.</div>' :
-            `<div class="table-responsive">
+          ${
+            awards.length === 0
+              ? '<div class="alert alert-info">No awards found for this organisation.</div>'
+              : `<div class="table-responsive">
               <table class="table table-sm table-hover">
                 <thead>
                   <tr>
@@ -1251,7 +1379,9 @@ updateCountyFilterByRegion() {
                   </tr>
                 </thead>
                 <tbody>
-                  ${awards.map(award => `
+                  ${awards
+                    .map(
+                      (award) => `
                     <tr>
                       <td><span class="badge bg-primary-subtle text-primary">${award.year}</span></td>
                       <td>
@@ -1264,30 +1394,35 @@ updateCountyFilterByRegion() {
                       <td><span class="badge bg-info-subtle text-info">${utils.escapeHtml(award.sector)}</span></td>
                       <td>${utils.getStatusBadge(award.status)}</td>
                       <td>
-                        ${['bronze', 'silver', 'gold'].includes(award.package_type) ?
-                          `<a href="javascript:void(0);"
+                        ${
+                          ['bronze', 'silver', 'gold'].includes(award.package_type)
+                            ? `<a href="javascript:void(0);"
                               data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([org.id, utils.escapeHtml(org.company_name).replace(/'/g, "\\'")])}'>
                               ${orgsModule.getPackageBadge(award.package_type)}
-                           </a>` :
-                          '<span class="text-muted">-</span>'
+                           </a>`
+                            : '<span class="text-muted">-</span>'
                         }
                       </td>
                       <td class="text-center">
-                        ${award.enhanced_profile ?
-                          '<i class="bi bi-star-fill text-warning" title="Enhanced Profile" style="font-size: 1.2rem;"></i>' :
-                          '<i class="bi bi-star text-muted" title="Standard Profile" style="font-size: 1.2rem; opacity: 0.3;"></i>'
+                        ${
+                          award.enhanced_profile
+                            ? '<i class="bi bi-star-fill text-warning" title="Enhanced Profile" style="font-size: 1.2rem;"></i>'
+                            : '<i class="bi bi-star text-muted" title="Standard Profile" style="font-size: 1.2rem; opacity: 0.3;"></i>'
                         }
                       </td>
                     </tr>
-                  `).join('')}
+                  `
+                    )
+                    .join('')}
                 </tbody>
               </table>
             </div>`
           }
         </div>
 
-        ${votingEntries && votingEntries.length > 0 ?
-          `<div class="mt-4">
+        ${
+          votingEntries && votingEntries.length > 0
+            ? `<div class="mt-4">
             <h6 class="text-muted mb-3"><i class="bi bi-link-45deg me-2"></i>Public Voting Links (${votingEntries.length})</h6>
             <div class="card">
               <div class="card-body">
@@ -1308,10 +1443,11 @@ updateCountyFilterByRegion() {
                       </tr>
                     </thead>
                     <tbody>
-                      ${votingEntries.map(entry => {
-                        const votingUrl = `${window.location.origin}/vote.html?entry=${encodeURIComponent(entry.entry_number)}`;
-                        const safeVotingUrl = utils.escapeHtml(votingUrl);
-                        return `
+                      ${votingEntries
+                        .map((entry) => {
+                          const votingUrl = `${window.location.origin}/vote.html?entry=${encodeURIComponent(entry.entry_number)}`;
+                          const safeVotingUrl = utils.escapeHtml(votingUrl);
+                          return `
                           <tr>
                             <td><span class="badge bg-primary">${utils.escapeHtml(entry.entry_number)}</span></td>
                             <td>
@@ -1327,7 +1463,7 @@ updateCountyFilterByRegion() {
                               <div class="input-group input-group-sm" style="max-width: 400px;">
                                 <input type="text" class="form-control" value="${safeVotingUrl}" readonly id="votingUrl_${entry.id}">
                                 <button class="btn btn-outline-primary" type="button"
-                                  data-action="utils.copyToClipboard" data-args='${JSON.stringify([safeVotingUrl, "Voting link copied!"])}'>
+                                  data-action="utils.copyToClipboard" data-args='${JSON.stringify([safeVotingUrl, 'Voting link copied!'])}'>
                                   <i class="bi bi-clipboard"></i>
                                 </button>
                               </div>
@@ -1339,13 +1475,15 @@ updateCountyFilterByRegion() {
                             </td>
                           </tr>
                         `;
-                      }).join('')}
+                        })
+                        .join('')}
                     </tbody>
                   </table>
                 </div>
               </div>
             </div>
-          </div>` : ''
+          </div>`
+            : ''
         }
 
         <!-- Enhanced Winner Profile Section -->
@@ -1355,12 +1493,12 @@ updateCountyFilterByRegion() {
             <div class="btn-group btn-group-sm" role="group">
               <button type="button"
                 class="btn ${org.winner_profile_status === 'published' ? 'btn-success' : 'btn-outline-success'}"
-                data-action="orgsModule.setWinnerProfileStatus" data-args='${JSON.stringify([org.id, "published"])}'>
+                data-action="orgsModule.setWinnerProfileStatus" data-args='${JSON.stringify([org.id, 'published'])}'>
                 <i class="bi bi-check-circle me-1"></i>Published
               </button>
               <button type="button"
                 class="btn ${org.winner_profile_status === 'draft' || !org.winner_profile_status ? 'btn-secondary' : 'btn-outline-secondary'}"
-                data-action="orgsModule.setWinnerProfileStatus" data-args='${JSON.stringify([org.id, "draft"])}'>
+                data-action="orgsModule.setWinnerProfileStatus" data-args='${JSON.stringify([org.id, 'draft'])}'>
                 <i class="bi bi-file-earmark me-1"></i>Draft
               </button>
             </div>
@@ -1424,10 +1562,13 @@ updateCountyFilterByRegion() {
               <i class="bi bi-cloud-upload me-1"></i>Upload Images
             </button>
           </div>
-          ${!companyImages || companyImages.length === 0 ?
-            '<div class="alert alert-info"><i class="bi bi-info-circle me-2"></i>No marketing images uploaded yet. Click "Upload Images" to add photos for email campaigns.</div>' :
-            `<div class="row g-3">
-              ${companyImages.map(img => `
+          ${
+            !companyImages || companyImages.length === 0
+              ? '<div class="alert alert-info"><i class="bi bi-info-circle me-2"></i>No marketing images uploaded yet. Click "Upload Images" to add photos for email campaigns.</div>'
+              : `<div class="row g-3">
+              ${companyImages
+                .map(
+                  (img) => `
                 <div class="col-md-3">
                   <div class="card h-100">
                     <img src="${img.file_url}" class="card-img-top" alt="${utils.escapeHtml(img.title || 'Company Image')}"
@@ -1443,7 +1584,9 @@ updateCountyFilterByRegion() {
                     </div>
                   </div>
                 </div>
-              `).join('')}
+              `
+                )
+                .join('')}
             </div>`
           }
         </div>
@@ -1451,30 +1594,33 @@ updateCountyFilterByRegion() {
         <!-- Tagged Media Gallery Section -->
         <div class="mt-4">
           <h6 class="text-muted mb-3"><i class="bi bi-images me-2"></i>Tagged Media Gallery (${(taggedMedia || []).length})</h6>
-          ${!taggedMedia || taggedMedia.length === 0 ?
-            '<div class="alert alert-info">No media tagged to this organisation yet. Upload photos/videos in the Media Gallery tab and tag them to this company.</div>' :
-            `<div class="row g-3">
-              ${taggedMedia.map(media => {
-                const isImage = media.file_type?.startsWith('image/');
-                const isYouTube = media.file_type === 'video/youtube';
-                const eventName = media.events?.event_name || 'Unknown Event';
-                const eventYear = media.events?.year || media.events?.event_date?.substring(0, 4) || '';
+          ${
+            !taggedMedia || taggedMedia.length === 0
+              ? '<div class="alert alert-info">No media tagged to this organisation yet. Upload photos/videos in the Media Gallery tab and tag them to this company.</div>'
+              : `<div class="row g-3">
+              ${taggedMedia
+                .map((media) => {
+                  const isImage = media.file_type?.startsWith('image/');
+                  const isYouTube = media.file_type === 'video/youtube';
+                  const eventName = media.events?.event_name || 'Unknown Event';
+                  const eventYear = media.events?.year || media.events?.event_date?.substring(0, 4) || '';
 
-                return `
+                  return `
                   <div class="col-md-3">
                     <div class="card h-100">
-                      ${isImage ?
-                        `<img src="${media.file_url}" class="card-img-top" alt="${utils.escapeHtml(media.title || 'Media')}" style="height: 150px; object-fit: cover;">` :
-                        isYouTube ?
-                        `<div class="card-img-top" style="height: 150px; position: relative;">
+                      ${
+                        isImage
+                          ? `<img src="${media.file_url}" class="card-img-top" alt="${utils.escapeHtml(media.title || 'Media')}" style="height: 150px; object-fit: cover;">`
+                          : isYouTube
+                            ? `<div class="card-img-top" style="height: 150px; position: relative;">
                           <img src="https://img.youtube.com/vi/${media.file_url}/mqdefault.jpg"
                             alt="${utils.escapeHtml(media.title || 'YouTube Video')}"
                             style="width: 100%; height: 100%; object-fit: cover;">
                           <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
                             <i class="bi bi-youtube text-danger" style="font-size: 2.5rem; filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));"></i>
                           </div>
-                        </div>` :
-                        `<div class="card-img-top d-flex align-items-center justify-content-center bg-dark" style="height: 150px;">
+                        </div>`
+                            : `<div class="card-img-top d-flex align-items-center justify-content-center bg-dark" style="height: 150px;">
                           <i class="bi bi-play-circle text-white" style="font-size: 3rem;"></i>
                         </div>`
                       }
@@ -1487,7 +1633,8 @@ updateCountyFilterByRegion() {
                     </div>
                   </div>
                 `;
-              }).join('')}
+                })
+                .join('')}
             </div>`
           }
         </div>
@@ -1590,7 +1737,11 @@ updateCountyFilterByRegion() {
               <div class="col-md-4">
                 <input type="text" class="form-control form-control-sm" id="relatedOrgSearch" placeholder="Search organisation..." list="orgNameSuggestions">
                 <datalist id="orgNameSuggestions">
-                  ${STATE.allOrganisations.filter(o => o.id !== orgId).slice(0, 100).map(o => `<option value="${utils.escapeHtml(o.company_name)}">`).join('')}
+                  ${STATE.allOrganisations
+                    .filter((o) => o.id !== orgId)
+                    .slice(0, 100)
+                    .map((o) => `<option value="${utils.escapeHtml(o.company_name)}">`)
+                    .join('')}
                 </datalist>
               </div>
               <div class="col-md-4">
@@ -1678,7 +1829,9 @@ updateCountyFilterByRegion() {
         <div class="mt-4">
           <h6 class="text-muted mb-3"><i class="bi bi-speedometer2 me-2"></i>Data Completeness</h6>
           <div class="card"><div class="card-body">
-            ${(() => { const _cs = this.calculateCompletenessScore(org); return `
+            ${(() => {
+              const _cs = this.calculateCompletenessScore(org);
+              return `
             <div class="d-flex align-items-center gap-3">
               <div class="progress flex-grow-1" style="height: 24px;">
                 <div class="progress-bar ${_cs >= 70 ? 'bg-success' : _cs >= 40 ? 'bg-warning' : 'bg-danger'}" style="width: ${_cs}%">
@@ -1687,7 +1840,8 @@ updateCountyFilterByRegion() {
               </div>
               <span class="fw-bold">${_cs}%</span>
             </div>
-            <small class="text-muted mt-1 d-block">Based on: name, email, contact, phone, website, logo, sector, region, address, description</small>`; })()}
+            <small class="text-muted mt-1 d-block">Based on: name, email, contact, phone, website, logo, sector, region, address, description</small>`;
+            })()}
           </div></div>
         </div>
       `;
@@ -1706,7 +1860,6 @@ updateCountyFilterByRegion() {
       editBtn.onclick = () => this.enableEditMode(orgId);
       saveBtn.onclick = () => this.saveOrgChanges(orgId);
       cancelBtn.onclick = () => this.cancelEditMode(orgId, companyName);
-
     } catch (error) {
       console.error('Error loading company profile:', error);
       contentDiv.innerHTML = `
@@ -1761,10 +1914,11 @@ updateCountyFilterByRegion() {
         followUpsEl.innerHTML = '<p class="text-muted small mb-0">No scheduled follow-ups</p>';
       } else {
         followUpsEl.innerHTML = `<div class="list-group list-group-flush">
-          ${followUps.map(f => {
-            const isOverdue = !f.done && new Date(f.date) < new Date();
-            const fId = f.id || f.orgId;
-            return `<div class="list-group-item px-0 py-2 border-0 d-flex align-items-center ${f.done ? 'text-muted' : ''}">
+          ${followUps
+            .map((f) => {
+              const isOverdue = !f.done && new Date(f.date) < new Date();
+              const fId = f.id || f.orgId;
+              return `<div class="list-group-item px-0 py-2 border-0 d-flex align-items-center ${f.done ? 'text-muted' : ''}">
               <i class="bi ${f.done ? 'bi-check-circle text-success' : isOverdue ? 'bi-exclamation-circle text-danger' : 'bi-clock text-warning'} me-2"></i>
               <div class="flex-grow-1">
                 <div class="small ${f.done ? 'text-decoration-line-through' : 'fw-semibold'}">${utils.escapeHtml(f.note || 'Follow up')}</div>
@@ -1773,7 +1927,8 @@ updateCountyFilterByRegion() {
               ${!f.done ? `<button class="btn btn-sm btn-outline-success me-1" data-action="orgsModule.completeFollowUp" data-args='${JSON.stringify([orgId, fId])}'><i class="bi bi-check"></i></button>` : ''}
               <button class="btn btn-sm btn-outline-danger" data-action="orgsModule.deleteFollowUp" data-args='${JSON.stringify([orgId, fId])}'><i class="bi bi-x"></i></button>
             </div>`;
-          }).join('')}
+            })
+            .join('')}
         </div>`;
       }
     }
@@ -1786,14 +1941,20 @@ updateCountyFilterByRegion() {
         docsEl.innerHTML = '<p class="text-muted small mb-0">No documents attached yet</p>';
       } else {
         docsEl.innerHTML = `<div class="list-group list-group-flush">
-          ${docs.map(d => `<a href="${d.file_url}" target="_blank" class="list-group-item list-group-item-action d-flex align-items-center py-2 px-0 border-0">
+          ${docs
+            .map(
+              (
+                d
+              ) => `<a href="${d.file_url}" target="_blank" class="list-group-item list-group-item-action d-flex align-items-center py-2 px-0 border-0">
             <i class="bi bi-file-earmark me-2 text-primary"></i>
             <div class="flex-grow-1">
               <div class="small fw-semibold">${utils.escapeHtml(d.title || 'Document')}</div>
               <div class="text-muted" style="font-size: 0.7rem;">${d.file_size ? Math.round(d.file_size / 1024) + ' KB' : ''} ${d.created_at ? '&middot; ' + new Date(d.created_at).toLocaleDateString('en-GB') : ''}</div>
             </div>
             <i class="bi bi-box-arrow-up-right text-muted"></i>
-          </a>`).join('')}
+          </a>`
+            )
+            .join('')}
         </div>`;
       }
     }
@@ -1806,13 +1967,17 @@ updateCountyFilterByRegion() {
       if (entries.length === 0) {
         cfEl.innerHTML = '<p class="text-muted small mb-0">No custom fields defined</p>';
       } else {
-        cfEl.innerHTML = entries.map(([name, value]) => `
+        cfEl.innerHTML = entries
+          .map(
+            ([name, value]) => `
           <div class="d-flex align-items-center mb-1">
             <span class="small fw-semibold me-2" style="width: 120px;">${utils.escapeHtml(name)}:</span>
             <span class="small flex-grow-1">${utils.escapeHtml(value)}</span>
             <button class="btn btn-sm btn-outline-danger py-0" data-action="orgsModule.removeCustomField" data-args='${JSON.stringify([orgId, utils.escapeHtml(name).replace(/'/g, "\\'")])}'><i class="bi bi-x"></i></button>
           </div>
-        `).join('');
+        `
+          )
+          .join('');
       }
     }
   },
@@ -1860,15 +2025,13 @@ updateCountyFilterByRegion() {
             .from('organisation-logos')
             .upload(fileName, file, {
               cacheControl: '3600',
-              upsert: false
+              upsert: false,
             });
 
           if (uploadError) throw uploadError;
 
           // Get public URL
-          const { data: urlData } = STATE.client.storage
-            .from('organisation-logos')
-            .getPublicUrl(fileName);
+          const { data: urlData } = STATE.client.storage.from('organisation-logos').getPublicUrl(fileName);
 
           // Update organisation record with logo URL
           const { error: updateError } = await STATE.client
@@ -1881,11 +2044,10 @@ updateCountyFilterByRegion() {
           utils.showToast('Logo uploaded successfully!', 'success');
 
           // Reload the profile to show new logo
-          const org = STATE.allOrganisations.find(o => o.id === orgId);
+          const org = STATE.allOrganisations.find((o) => o.id === orgId);
           if (org) {
             await this.openCompanyProfile(orgId, org.company_name);
           }
-
         } catch (error) {
           console.error('Error uploading logo:', error);
           utils.showToast('Error uploading logo: ' + error.message, 'error');
@@ -1930,11 +2092,10 @@ updateCountyFilterByRegion() {
       utils.showToast(`Winner profile ${status === 'published' ? 'published' : 'saved as draft'}!`, 'success');
 
       // Reload the profile to show updated status
-      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      const org = STATE.allOrganisations.find((o) => o.id === orgId);
       if (org) {
         await this.openCompanyProfile(orgId, org.company_name);
       }
-
     } catch (error) {
       console.error('Error updating status:', error);
       utils.showToast('Error updating status: ' + error.message, 'error');
@@ -1951,15 +2112,16 @@ updateCountyFilterByRegion() {
     const intro = document.getElementById('winnerIntro')?.value?.trim() || '';
     const videoId = document.getElementById('winnerVideoId')?.value?.trim() || '';
     const voteUrl = document.getElementById('winnerVoteUrl')?.value?.trim() || '';
-    const profileData = { winner_intro: intro || null, winner_video_id: videoId || null, winner_vote_url: voteUrl || null };
+    const profileData = {
+      winner_intro: intro || null,
+      winner_video_id: videoId || null,
+      winner_vote_url: voteUrl || null,
+    };
 
     try {
       utils.showLoading();
 
-      const { error } = await STATE.client
-        .from('organisations')
-        .update(profileData)
-        .eq('id', orgId);
+      const { error } = await STATE.client.from('organisations').update(profileData).eq('id', orgId);
 
       if (error) throw error;
     } catch (error) {
@@ -1968,8 +2130,10 @@ updateCountyFilterByRegion() {
     }
 
     // Update local state
-    const org = STATE.allOrganisations.find(o => o.id === orgId);
-    if (org) { Object.assign(org, profileData); }
+    const org = STATE.allOrganisations.find((o) => o.id === orgId);
+    if (org) {
+      Object.assign(org, profileData);
+    }
 
     utils.showToast('Winner profile saved successfully!', 'success');
 
@@ -1986,7 +2150,13 @@ updateCountyFilterByRegion() {
    * @param {string} companyName - Company name
    */
   async cancelWinnerProfile(orgId, companyName) {
-    if (await utils.confirmDialog({ title: 'Discard Changes', message: 'Discard changes to winner profile?', confirmText: 'Discard' })) {
+    if (
+      await utils.confirmDialog({
+        title: 'Discard Changes',
+        message: 'Discard changes to winner profile?',
+        confirmText: 'Discard',
+      })
+    ) {
       await this.openCompanyProfile(orgId, companyName);
     }
   },
@@ -2020,9 +2190,7 @@ updateCountyFilterByRegion() {
       if (error) throw error;
 
       // Filter images only (no videos) and check dimensions
-      const imageMedia = (allMedia || []).filter(m =>
-        m.file_url && m.file_url.match(/\.(jpg|jpeg|png|gif|webp)$/i)
-      );
+      const imageMedia = (allMedia || []).filter((m) => m.file_url && m.file_url.match(/\.(jpg|jpeg|png|gif|webp)$/i));
 
       if (imageMedia.length === 0) {
         contentDiv.innerHTML = `
@@ -2072,7 +2240,9 @@ updateCountyFilterByRegion() {
 
       contentDiv.innerHTML = `
         <div class="row g-3">
-          ${validLogos.map(media => `
+          ${validLogos
+            .map(
+              (media) => `
             <div class="col-md-3">
               <div class="card h-100 logo-option" style="cursor: pointer;"
                    data-action="orgsModule.setLogoFromGallery" data-args='${JSON.stringify([orgId, utils.escapeHtml(media.file_url), media.id])}'>
@@ -2085,7 +2255,9 @@ updateCountyFilterByRegion() {
                 </div>
               </div>
             </div>
-          `).join('')}
+          `
+            )
+            .join('')}
         </div>
       `;
 
@@ -2102,7 +2274,6 @@ updateCountyFilterByRegion() {
         `;
         document.head.appendChild(style);
       }
-
     } catch (error) {
       console.error('Error loading media gallery:', error);
       contentDiv.innerHTML = `
@@ -2125,10 +2296,7 @@ updateCountyFilterByRegion() {
       utils.showLoading();
 
       // Update organisation record with logo URL
-      const { error } = await STATE.client
-        .from('organisations')
-        .update({ logo_url: fileUrl })
-        .eq('id', orgId);
+      const { error } = await STATE.client.from('organisations').update({ logo_url: fileUrl }).eq('id', orgId);
 
       if (error) throw error;
 
@@ -2139,13 +2307,12 @@ updateCountyFilterByRegion() {
       if (modal) modal.hide();
 
       // Reload the profile to show new logo
-      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      const org = STATE.allOrganisations.find((o) => o.id === orgId);
       if (org) {
         org.logo_url = fileUrl; // Update in state
         await this.openCompanyProfile(orgId, org.company_name);
         await this.loadOrganisations(); // Refresh table
       }
-
     } catch (error) {
       console.error('Error setting logo:', error);
       utils.showToast('Error setting logo: ' + error.message, 'error');
@@ -2164,7 +2331,7 @@ updateCountyFilterByRegion() {
     try {
       // If no websiteUrl provided, look it up from state
       if (!websiteUrl) {
-        const org = STATE.allOrganisations.find(o => o.id === orgId);
+        const org = STATE.allOrganisations.find((o) => o.id === orgId);
         if (!org || !org.website) {
           utils.showToast('Please add a website URL first', 'warning');
           return;
@@ -2187,7 +2354,7 @@ updateCountyFilterByRegion() {
         // Google's favicon service (good fallback)
         `https://www.google.com/s2/favicons?sz=128&domain=${domain}`,
         // DuckDuckGo icon service
-        `https://icons.duckduckgo.com/ip3/${domain}.ico`
+        `https://icons.duckduckgo.com/ip3/${domain}.ico`,
       ];
 
       let logoUrl = null;
@@ -2212,23 +2379,19 @@ updateCountyFilterByRegion() {
       }
 
       // Update the organisation's logo_url
-      const { error } = await STATE.client
-        .from('organisations')
-        .update({ logo_url: logoUrl })
-        .eq('id', orgId);
+      const { error } = await STATE.client.from('organisations').update({ logo_url: logoUrl }).eq('id', orgId);
 
       if (error) throw error;
 
       utils.showToast('Logo fetched successfully from website!', 'success');
 
       // Reload the profile to show new logo
-      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      const org = STATE.allOrganisations.find((o) => o.id === orgId);
       if (org) {
         org.logo_url = logoUrl; // Update in state
         await this.openCompanyProfile(orgId, org.company_name);
         await this.loadOrganisations(); // Refresh table
       }
-
     } catch (error) {
       console.error('Error fetching logo from website:', error);
       utils.showToast('Could not fetch logo from website. Try uploading manually.', 'warning');
@@ -2271,13 +2434,13 @@ updateCountyFilterByRegion() {
 
     // Validate file types (images only)
     const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-    const invalidFiles = files.filter(f => !validTypes.includes(f.type));
+    const invalidFiles = files.filter((f) => !validTypes.includes(f.type));
 
     if (invalidFiles.length > 0) {
       utils.showToast(`${invalidFiles.length} file(s) are not valid images and will be skipped`, 'warning');
     }
 
-    const validFiles = files.filter(f => validTypes.includes(f.type));
+    const validFiles = files.filter((f) => validTypes.includes(f.type));
     if (validFiles.length === 0) {
       utils.showToast('No valid images to upload', 'error');
       return;
@@ -2306,25 +2469,22 @@ updateCountyFilterByRegion() {
             if (uploadError) throw uploadError;
 
             // Get public URL
-            const { data: urlData } = STATE.client.storage
-              .from('media-gallery')
-              .getPublicUrl(fileName);
+            const { data: urlData } = STATE.client.storage.from('media-gallery').getPublicUrl(fileName);
 
             // Insert record into organisation_images table
-            const { error: dbError } = await STATE.client
-              .from('organisation_images')
-              .insert([{
+            const { error: dbError } = await STATE.client.from('organisation_images').insert([
+              {
                 organisation_id: this.currentOrgIdForImages,
                 file_url: urlData.publicUrl,
                 title: title || file.name,
                 caption: caption || null,
-                display_order: successCount
-              }]);
+                display_order: successCount,
+              },
+            ]);
 
             if (dbError) throw dbError;
 
             successCount++;
-
           } catch (error) {
             console.error(`Error uploading ${file.name}:`, error);
             errorCount++;
@@ -2341,12 +2501,11 @@ updateCountyFilterByRegion() {
         }
 
         // Reload the profile to show new images
-        const org = STATE.allOrganisations.find(o => o.id === this.currentOrgIdForImages);
+        const org = STATE.allOrganisations.find((o) => o.id === this.currentOrgIdForImages);
         if (org) {
           await this.openCompanyProfile(this.currentOrgIdForImages, org.company_name);
         }
       });
-
     } catch (error) {
       console.error('Error uploading company images:', error);
       utils.showToast('Error uploading images: ' + error.message, 'error');
@@ -2362,7 +2521,12 @@ updateCountyFilterByRegion() {
    * @param {string} orgId - Organisation ID
    */
   async deleteCompanyImage(imageId, orgId) {
-    if (!await utils.confirmDialog({ title: 'Delete Image', message: 'Are you sure you want to delete this image? This action cannot be undone.' })) {
+    if (
+      !(await utils.confirmDialog({
+        title: 'Delete Image',
+        message: 'Are you sure you want to delete this image? This action cannot be undone.',
+      }))
+    ) {
       return;
     }
 
@@ -2379,10 +2543,7 @@ updateCountyFilterByRegion() {
       if (fetchError) throw fetchError;
 
       // Delete from database
-      const { error: deleteError } = await STATE.client
-        .from('organisation_images')
-        .delete()
-        .eq('id', imageId);
+      const { error: deleteError } = await STATE.client.from('organisation_images').delete().eq('id', imageId);
 
       if (deleteError) throw deleteError;
 
@@ -2391,20 +2552,17 @@ updateCountyFilterByRegion() {
         const urlParts = image.file_url.split('/storage/v1/object/public/media-gallery/');
         if (urlParts.length > 1) {
           const filePath = urlParts[1];
-          await STATE.client.storage
-            .from('media-gallery')
-            .remove([filePath]);
+          await STATE.client.storage.from('media-gallery').remove([filePath]);
         }
       }
 
       utils.showToast('Image deleted successfully!', 'success');
 
       // Reload the profile
-      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      const org = STATE.allOrganisations.find((o) => o.id === orgId);
       if (org) {
         await this.openCompanyProfile(orgId, org.company_name);
       }
-
     } catch (error) {
       console.error('Error deleting image:', error);
       utils.showToast('Error deleting image: ' + error.message, 'error');
@@ -2433,8 +2591,8 @@ updateCountyFilterByRegion() {
    */
   enableEditMode(_orgId) {
     // Hide view elements and show edit elements
-    document.querySelectorAll('.view-mode').forEach(el => el.style.display = 'none');
-    document.querySelectorAll('.edit-mode').forEach(el => el.style.display = 'block');
+    document.querySelectorAll('.view-mode').forEach((el) => (el.style.display = 'none'));
+    document.querySelectorAll('.edit-mode').forEach((el) => (el.style.display = 'block'));
 
     // Toggle buttons
     document.getElementById('editOrgBtn').style.display = 'none';
@@ -2464,39 +2622,42 @@ updateCountyFilterByRegion() {
           description: document.getElementById('editDescription')?.value.trim() || null,
           achievements: document.getElementById('editAchievements')?.value.trim() || null,
           company_size: document.getElementById('editCompanySize')?.value || null,
-          employee_count: document.getElementById('editEmployeeCount')?.value ? parseInt(document.getElementById('editEmployeeCount').value) : null,
-          year_founded: document.getElementById('editYearFounded')?.value ? parseInt(document.getElementById('editYearFounded').value) : null,
-          annual_revenue: document.getElementById('editAnnualRevenue')?.value ? parseFloat(document.getElementById('editAnnualRevenue').value) : null,
+          employee_count: document.getElementById('editEmployeeCount')?.value
+            ? parseInt(document.getElementById('editEmployeeCount').value)
+            : null,
+          year_founded: document.getElementById('editYearFounded')?.value
+            ? parseInt(document.getElementById('editYearFounded').value)
+            : null,
+          annual_revenue: document.getElementById('editAnnualRevenue')?.value
+            ? parseFloat(document.getElementById('editAnnualRevenue').value)
+            : null,
           tier: document.getElementById('editTier')?.value || null,
           linkedin_url: document.getElementById('editLinkedin')?.value.trim() || null,
           twitter_url: document.getElementById('editTwitter')?.value.trim() || null,
           facebook_url: document.getElementById('editFacebook')?.value.trim() || null,
-          instagram_url: document.getElementById('editInstagram')?.value.trim() || null
+          instagram_url: document.getElementById('editInstagram')?.value.trim() || null,
         };
 
         // Update in database
-        const { error } = await STATE.client
-          .from('organisations')
-          .update(updatedData)
-          .eq('id', orgId);
+        const { error } = await STATE.client.from('organisations').update(updatedData).eq('id', orgId);
 
         if (error) throw error;
 
         // Update local state
-        const orgIndex = STATE.allOrganisations.findIndex(o => o.id === orgId);
+        const orgIndex = STATE.allOrganisations.findIndex((o) => o.id === orgId);
         if (orgIndex !== -1) {
           STATE.allOrganisations[orgIndex] = {
             ...STATE.allOrganisations[orgIndex],
-            ...updatedData
+            ...updatedData,
           };
         }
 
         // Update filtered organisations
-        const filteredIndex = STATE.filteredOrganisations.findIndex(o => o.id === orgId);
+        const filteredIndex = STATE.filteredOrganisations.findIndex((o) => o.id === orgId);
         if (filteredIndex !== -1) {
           STATE.filteredOrganisations[filteredIndex] = {
             ...STATE.filteredOrganisations[filteredIndex],
-            ...updatedData
+            ...updatedData,
           };
         }
 
@@ -2574,10 +2735,12 @@ updateCountyFilterByRegion() {
       // Load invoices with line items
       const { data: invoices, error } = await STATE.client
         .from('invoices')
-        .select(`
+        .select(
+          `
           *,
           invoice_line_items (*)
-        `)
+        `
+        )
         .eq('organisation_id', orgId)
         .order('created_at', { ascending: false });
 
@@ -2617,7 +2780,9 @@ updateCountyFilterByRegion() {
                 </tr>
               </thead>
               <tbody>
-                ${invoices.map(invoice => `
+                ${invoices
+                  .map(
+                    (invoice) => `
                   <tr>
                     <td><strong>${utils.escapeHtml(invoice.invoice_number)}</strong></td>
                     <td>${invoice.invoice_date ? new Date(invoice.invoice_date).toLocaleDateString('en-GB') : 'N/A'}</td>
@@ -2625,17 +2790,20 @@ updateCountyFilterByRegion() {
                       <span class="badge bg-info-subtle text-info">
                         ${this.formatInvoiceType(invoice.invoice_type)}
                       </span>
-                      ${invoice.package_type && ['bronze', 'silver', 'gold'].includes(invoice.package_type) ?
-                        `<br>${this.getPackageBadge(invoice.package_type)}` : ''
+                      ${
+                        invoice.package_type && ['bronze', 'silver', 'gold'].includes(invoice.package_type)
+                          ? `<br>${this.getPackageBadge(invoice.package_type)}`
+                          : ''
                       }
                     </td>
                     <td>
                       <small class="text-muted">
-                        ${invoice.invoice_line_items && invoice.invoice_line_items.length > 0 ?
-                          invoice.invoice_line_items.map(item =>
-                            `${item.quantity}x ${utils.escapeHtml(item.item_name)}`
-                          ).join('<br>') :
-                          invoice.description || 'N/A'
+                        ${
+                          invoice.invoice_line_items && invoice.invoice_line_items.length > 0
+                            ? invoice.invoice_line_items
+                                .map((item) => `${item.quantity}x ${utils.escapeHtml(item.item_name)}`)
+                                .join('<br>')
+                            : invoice.description || 'N/A'
                         }
                       </small>
                     </td>
@@ -2646,7 +2814,9 @@ updateCountyFilterByRegion() {
                     </td>
                     <td>${this.getInvoiceStatusBadge(invoice.status, invoice.payment_status)}</td>
                   </tr>
-                `).join('')}
+                `
+                  )
+                  .join('')}
               </tbody>
             </table>
           </div>
@@ -2654,7 +2824,6 @@ updateCountyFilterByRegion() {
       }
 
       modal.show();
-
     } catch (error) {
       console.error('Error loading invoices:', error);
       utils.showToast('Error loading invoices: ' + error.message, 'error');
@@ -2672,7 +2841,7 @@ updateCountyFilterByRegion() {
       package: 'Package',
       sponsorship: 'Sponsorship',
       tickets: 'Tickets',
-      other: 'Other'
+      other: 'Other',
     };
     return types[type] || type;
   },
@@ -2689,7 +2858,7 @@ updateCountyFilterByRegion() {
       partially_paid: '<span class="badge bg-warning">Partially Paid</span>',
       overdue: '<span class="badge bg-danger">Overdue</span>',
       cancelled: '<span class="badge bg-dark">Cancelled</span>',
-      refunded: '<span class="badge bg-secondary">Refunded</span>'
+      refunded: '<span class="badge bg-secondary">Refunded</span>',
     };
     return badges[status] || badges[paymentStatus] || '<span class="badge bg-secondary">Unknown</span>';
   },
@@ -2701,10 +2870,12 @@ updateCountyFilterByRegion() {
    */
   getPackageBadge(packageType) {
     const packages = {
-      'gold': '<span class="badge" style="background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); color: #000;"><i class="bi bi-award-fill me-1"></i>Gold</span>',
-      'silver': '<span class="badge" style="background: linear-gradient(135deg, #C0C0C0 0%, #808080 100%); color: #000;"><i class="bi bi-award-fill me-1"></i>Silver</span>',
-      'bronze': '<span class="badge" style="background: linear-gradient(135deg, #CD7F32 0%, #8B4513 100%); color: #fff;"><i class="bi bi-award-fill me-1"></i>Bronze</span>',
-      'non-attendee': '<span class="badge bg-secondary"><i class="bi bi-x-circle me-1"></i>Non-Attendee</span>'
+      gold: '<span class="badge" style="background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); color: #000;"><i class="bi bi-award-fill me-1"></i>Gold</span>',
+      silver:
+        '<span class="badge" style="background: linear-gradient(135deg, #C0C0C0 0%, #808080 100%); color: #000;"><i class="bi bi-award-fill me-1"></i>Silver</span>',
+      bronze:
+        '<span class="badge" style="background: linear-gradient(135deg, #CD7F32 0%, #8B4513 100%); color: #fff;"><i class="bi bi-award-fill me-1"></i>Bronze</span>',
+      'non-attendee': '<span class="badge bg-secondary"><i class="bi bi-x-circle me-1"></i>Non-Attendee</span>',
     };
     return packages[packageType] || packages['bronze'];
   },
@@ -2714,13 +2885,13 @@ updateCountyFilterByRegion() {
   // ============================================
   getStatusBadge(status) {
     const badges = {
-      'prospect': '<span class="badge bg-secondary">Prospect</span>',
-      'entrant': '<span class="badge bg-info">Entrant</span>',
-      'nominee': '<span class="badge bg-primary">Nominee</span>',
-      'shortlisted': '<span class="badge bg-warning text-dark">Shortlisted</span>',
-      'winner': '<span class="badge bg-success">Winner</span>',
-      'sponsor': '<span class="badge bg-danger">Sponsor</span>',
-      'past_winner': '<span class="badge bg-dark">Past Winner</span>'
+      prospect: '<span class="badge bg-secondary">Prospect</span>',
+      entrant: '<span class="badge bg-info">Entrant</span>',
+      nominee: '<span class="badge bg-primary">Nominee</span>',
+      shortlisted: '<span class="badge bg-warning text-dark">Shortlisted</span>',
+      winner: '<span class="badge bg-success">Winner</span>',
+      sponsor: '<span class="badge bg-danger">Sponsor</span>',
+      past_winner: '<span class="badge bg-dark">Past Winner</span>',
     };
     return badges[status] || badges['prospect'];
   },
@@ -2754,7 +2925,14 @@ updateCountyFilterByRegion() {
     const fuzzyDupes = this.checkDuplicateOnEntry(companyName);
     if (fuzzyDupes && fuzzyDupes.length > 0) {
       const dupeList = fuzzyDupes.join(', ');
-      if (!await utils.confirmDialog({ title: 'Potential Duplicates', message: `Potential duplicates found:<br>${dupeList}<br><br>Add "${companyName}" anyway?`, confirmText: 'Add Anyway', danger: false })) {
+      if (
+        !(await utils.confirmDialog({
+          title: 'Potential Duplicates',
+          message: `Potential duplicates found:<br>${dupeList}<br><br>Add "${companyName}" anyway?`,
+          confirmText: 'Add Anyway',
+          danger: false,
+        }))
+      ) {
         return;
       }
     }
@@ -2771,16 +2949,14 @@ updateCountyFilterByRegion() {
       region: document.getElementById('newCompanyRegion').value,
       address: document.getElementById('newCompanyAddress').value.trim() || null,
       catchment_area: selectedCounty || document.getElementById('newCompanyCatchment').value.trim() || null,
-      status: 'prospect'
+      status: 'prospect',
     };
 
     try {
       await utils.protectModalDuringSave('addNewOrgModal', async () => {
         utils.showLoading();
 
-        const { error } = await STATE.client
-          .from('organisations')
-          .insert([companyData]);
+        const { error } = await STATE.client.from('organisations').insert([companyData]);
 
         if (error) throw error;
 
@@ -2803,7 +2979,7 @@ updateCountyFilterByRegion() {
   toggleSelectAll() {
     const checkbox = document.getElementById('selectAllOrgs');
     if (checkbox.checked) {
-      STATE.filteredOrganisations.forEach(org => this.selectedOrgs.add(org.id));
+      STATE.filteredOrganisations.forEach((org) => this.selectedOrgs.add(org.id));
     } else {
       this.selectedOrgs.clear();
     }
@@ -2894,7 +3070,7 @@ updateCountyFilterByRegion() {
           valB = b.awards_count || 0;
           break;
         case 'tier':
-          const tierOrder = { 'Platinum': 4, 'Gold': 3, 'Silver': 2, 'Bronze': 1 };
+          const tierOrder = { Platinum: 4, Gold: 3, Silver: 2, Bronze: 1 };
           valA = tierOrder[a.tier] || 0;
           valB = tierOrder[b.tier] || 0;
           break;
@@ -2923,7 +3099,7 @@ updateCountyFilterByRegion() {
    * Update sort direction indicators in column headers
    */
   updateSortIndicators() {
-    document.querySelectorAll('#organisations [data-sort-icon]').forEach(icon => {
+    document.querySelectorAll('#organisations [data-sort-icon]').forEach((icon) => {
       icon.className = 'bi bi-arrow-down-up text-muted ms-1 small';
     });
     if (this.sortField) {
@@ -2941,9 +3117,9 @@ updateCountyFilterByRegion() {
   populateSectorSuggestions() {
     const datalist = document.getElementById('sectorSuggestions');
     if (!datalist) return;
-    const existingSectors = [...new Set(STATE.allOrganisations.map(o => o.sector).filter(Boolean))];
+    const existingSectors = [...new Set(STATE.allOrganisations.map((o) => o.sector).filter(Boolean))];
     const allSectors = [...new Set([...SECTORS, ...existingSectors])].sort();
-    datalist.innerHTML = allSectors.map(s => `<option value="${utils.escapeHtml(s)}">`).join('');
+    datalist.innerHTML = allSectors.map((s) => `<option value="${utils.escapeHtml(s)}">`).join('');
   },
 
   /**
@@ -2969,7 +3145,11 @@ updateCountyFilterByRegion() {
     this._filterMissingField = null;
     this._selectedTagFilters = [];
     this.updateCountyFilterByRegion();
-    try { localStorage.removeItem('orgsFilters'); } catch (e) { /* ignore */ }
+    try {
+      localStorage.removeItem('orgsFilters');
+    } catch (e) {
+      /* ignore */
+    }
     this.filterOrganisations();
   },
 
@@ -2983,45 +3163,44 @@ updateCountyFilterByRegion() {
       return;
     }
     try {
+      const csv = [
+        'Company Name,Sector,County,Region,Contact Name,Email,Phone,Website,Status,Tier,Tags,Awards Count,Address,Catchment Area,Description,Engagement Score,Health Status,Last Contacted',
+        ...data.map((org) => {
+          const engagement = this.calculateEngagementScore(org);
+          const health = this.getOrgHealthIndicator(org);
+          const lastContacted = this.getLastContacted(org.id);
+          return [
+            `"${(org.company_name || '').replace(/"/g, '""')}"`,
+            `"${(org.sector || '').replace(/"/g, '""')}"`,
+            `"${(org.county || '').replace(/"/g, '""')}"`,
+            `"${(org.region || '').replace(/"/g, '""')}"`,
+            `"${(org.contact_name || '').replace(/"/g, '""')}"`,
+            `"${(org.email || '').replace(/"/g, '""')}"`,
+            `"${(org.contact_phone || '').replace(/"/g, '""')}"`,
+            `"${(org.website || '').replace(/"/g, '""')}"`,
+            `"${(org.status || 'prospect').replace(/"/g, '""')}"`,
+            `"${(org.tier || '').replace(/"/g, '""')}"`,
+            `"${(org.tags || []).join('; ').replace(/"/g, '""')}"`,
+            `"${org.awards_count || 0}"`,
+            `"${(org.address || '').replace(/"/g, '""')}"`,
+            `"${(org.catchment_area || '').replace(/"/g, '""')}"`,
+            `"${(org.description || '').replace(/"/g, '""')}"`,
+            `"${engagement}"`,
+            `"${health.label}"`,
+            `"${lastContacted ? new Date(lastContacted).toLocaleDateString('en-GB') : 'Never'}"`,
+          ].join(',');
+        }),
+      ].join('\n');
 
-    const csv = [
-      'Company Name,Sector,County,Region,Contact Name,Email,Phone,Website,Status,Tier,Tags,Awards Count,Address,Catchment Area,Description,Engagement Score,Health Status,Last Contacted',
-      ...data.map(org => {
-        const engagement = this.calculateEngagementScore(org);
-        const health = this.getOrgHealthIndicator(org);
-        const lastContacted = this.getLastContacted(org.id);
-        return [
-          `"${(org.company_name || '').replace(/"/g, '""')}"`,
-          `"${(org.sector || '').replace(/"/g, '""')}"`,
-          `"${(org.county || '').replace(/"/g, '""')}"`,
-          `"${(org.region || '').replace(/"/g, '""')}"`,
-          `"${(org.contact_name || '').replace(/"/g, '""')}"`,
-          `"${(org.email || '').replace(/"/g, '""')}"`,
-          `"${(org.contact_phone || '').replace(/"/g, '""')}"`,
-          `"${(org.website || '').replace(/"/g, '""')}"`,
-          `"${(org.status || 'prospect').replace(/"/g, '""')}"`,
-          `"${(org.tier || '').replace(/"/g, '""')}"`,
-          `"${(org.tags || []).join('; ').replace(/"/g, '""')}"`,
-          `"${org.awards_count || 0}"`,
-          `"${(org.address || '').replace(/"/g, '""')}"`,
-          `"${(org.catchment_area || '').replace(/"/g, '""')}"`,
-          `"${(org.description || '').replace(/"/g, '""')}"`,
-          `"${engagement}"`,
-          `"${health.label}"`,
-          `"${lastContacted ? new Date(lastContacted).toLocaleDateString('en-GB') : 'Never'}"`
-        ].join(',');
-      })
-    ].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `organisations-export-${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+      window.URL.revokeObjectURL(url);
 
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `organisations-export-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
-
-    utils.showToast(`Exported ${data.length} organisations`, 'success');
+      utils.showToast(`Exported ${data.length} organisations`, 'success');
     } catch (err) {
       console.error('Organisation CSV export failed:', err);
       utils.showToast('Export failed: ' + err.message, 'error');
@@ -3037,19 +3216,19 @@ updateCountyFilterByRegion() {
       return;
     }
 
-    const selectedData = STATE.allOrganisations.filter(org => this.selectedOrgs.has(org.id));
+    const selectedData = STATE.allOrganisations.filter((org) => this.selectedOrgs.has(org.id));
 
     // Fetch contact-level emails for all selected orgs
     const contactEmails = await this._getContactEmails(Array.from(this.selectedOrgs));
     const contactsByOrg = {};
-    contactEmails.forEach(c => {
+    contactEmails.forEach((c) => {
       if (!c.email) return;
       if (!contactsByOrg[c.organisation_id]) contactsByOrg[c.organisation_id] = [];
       contactsByOrg[c.organisation_id].push(c);
     });
 
-    const withEmail = selectedData.filter(o => o.email || contactsByOrg[o.id]?.length > 0);
-    const withoutEmail = selectedData.filter(o => !o.email && !contactsByOrg[o.id]?.length);
+    const withEmail = selectedData.filter((o) => o.email || contactsByOrg[o.id]?.length > 0);
+    const withoutEmail = selectedData.filter((o) => !o.email && !contactsByOrg[o.id]?.length);
     const totalContactEmails = Object.values(contactsByOrg).reduce((sum, arr) => sum + arr.length, 0);
     this._bulkEmailContacts = contactsByOrg;
 
@@ -3081,7 +3260,7 @@ updateCountyFilterByRegion() {
           <label class="form-label small fw-semibold">Template</label>
           <select class="form-select form-select-sm" id="bulkEmailTemplate" data-on-change="orgsModule._populateBulkEmailFromTemplate">
             <option value="">-- Custom email --</option>
-            ${templates.map(t => `<option value="${t.id}">${utils.escapeHtml(t.name)}</option>`).join('')}
+            ${templates.map((t) => `<option value="${t.id}">${utils.escapeHtml(t.name)}</option>`).join('')}
           </select>
         </div>
         <div class="col-12">
@@ -3107,7 +3286,7 @@ updateCountyFilterByRegion() {
   _populateBulkEmailFromTemplate() {
     const templateId = document.getElementById('bulkEmailTemplate')?.value;
     if (!templateId) return;
-    const template = this._emailTemplates.find(t => t.id === templateId);
+    const template = this._emailTemplates.find((t) => t.id === templateId);
     if (template) {
       document.getElementById('bulkEmailSubject').value = template.subject;
       document.getElementById('bulkEmailBody').value = template.body;
@@ -3117,14 +3296,21 @@ updateCountyFilterByRegion() {
   _previewBulkEmail() {
     const subject = document.getElementById('bulkEmailSubject')?.value.trim();
     const body = document.getElementById('bulkEmailBody')?.value.trim();
-    if (!subject || !body) { utils.showToast('Enter subject and body first', 'warning'); return; }
+    if (!subject || !body) {
+      utils.showToast('Enter subject and body first', 'warning');
+      return;
+    }
 
-    const selectedData = STATE.allOrganisations.filter(org => this.selectedOrgs.has(org.id) && org.email);
+    const selectedData = STATE.allOrganisations.filter((org) => this.selectedOrgs.has(org.id) && org.email);
     const sample = selectedData[0];
     if (!sample) return;
 
-    const previewSubject = subject.replace(/{company_name}/g, sample.company_name || '').replace(/{contact_name}/g, sample.contact_name || 'Sir/Madam');
-    const previewBody = body.replace(/{company_name}/g, sample.company_name || '').replace(/{contact_name}/g, sample.contact_name || 'Sir/Madam');
+    const previewSubject = subject
+      .replace(/{company_name}/g, sample.company_name || '')
+      .replace(/{contact_name}/g, sample.contact_name || 'Sir/Madam');
+    const previewBody = body
+      .replace(/{company_name}/g, sample.company_name || '')
+      .replace(/{contact_name}/g, sample.contact_name || 'Sir/Madam');
 
     const previewEl = document.getElementById('bulkEmailPreview');
     previewEl.style.display = 'block';
@@ -3145,38 +3331,65 @@ updateCountyFilterByRegion() {
     const body = document.getElementById('bulkEmailBody')?.value.trim();
     const method = document.querySelector('input[name="emailMethod"]:checked')?.value || 'bcc';
 
-    if (!subject || !body) { utils.showToast('Enter subject and body', 'warning'); return; }
+    if (!subject || !body) {
+      utils.showToast('Enter subject and body', 'warning');
+      return;
+    }
 
-    const selectedData = STATE.allOrganisations.filter(org => this.selectedOrgs.has(org.id) && org.email);
+    const selectedData = STATE.allOrganisations.filter((org) => this.selectedOrgs.has(org.id) && org.email);
     const includeContacts = document.getElementById('includeContactEmails')?.checked;
     const contactsByOrg = this._bulkEmailContacts || {};
 
     // Build full email list
-    const allEmails = selectedData.map(o => o.email);
+    const allEmails = selectedData.map((o) => o.email);
     if (includeContacts) {
-      Object.values(contactsByOrg).forEach(contacts => {
-        contacts.forEach(c => { if (c.email && !allEmails.includes(c.email)) allEmails.push(c.email); });
+      Object.values(contactsByOrg).forEach((contacts) => {
+        contacts.forEach((c) => {
+          if (c.email && !allEmails.includes(c.email)) allEmails.push(c.email);
+        });
       });
     }
 
-    if (allEmails.length === 0) { utils.showToast('No recipients with email addresses', 'warning'); return; }
+    if (allEmails.length === 0) {
+      utils.showToast('No recipients with email addresses', 'warning');
+      return;
+    }
 
-    if (!await utils.confirmDialog({ title: 'Send Email', message: `Send email to ${allEmails.length} recipient(s) via ${method === 'bcc' ? 'BCC' : 'individual emails'}?`, confirmText: 'Send', danger: false })) return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Send Email',
+        message: `Send email to ${allEmails.length} recipient(s) via ${method === 'bcc' ? 'BCC' : 'individual emails'}?`,
+        confirmText: 'Send',
+        danger: false,
+      }))
+    )
+      return;
 
     if (method === 'bcc') {
       // BCC mode: single mailto with all addresses in BCC
       const emails = allEmails.join(',');
       const bccSubject = subject.replace(/{company_name}/g, '').replace(/{contact_name}/g, '');
       const bccBody = body.replace(/{company_name}/g, '').replace(/{contact_name}/g, '');
-      window.open(`mailto:?bcc=${encodeURIComponent(emails)}&subject=${encodeURIComponent(bccSubject)}&body=${encodeURIComponent(bccBody)}`);
+      window.open(
+        `mailto:?bcc=${encodeURIComponent(emails)}&subject=${encodeURIComponent(bccSubject)}&body=${encodeURIComponent(bccBody)}`
+      );
     } else {
       // Individual mode: open first mailto, log all
       const first = selectedData[0];
-      const personalSubject = subject.replace(/{company_name}/g, first.company_name || '').replace(/{contact_name}/g, first.contact_name || 'Sir/Madam');
-      const personalBody = body.replace(/{company_name}/g, first.company_name || '').replace(/{contact_name}/g, first.contact_name || 'Sir/Madam');
-      window.open(`mailto:${encodeURIComponent(first.email)}?subject=${encodeURIComponent(personalSubject)}&body=${encodeURIComponent(personalBody)}`);
+      const personalSubject = subject
+        .replace(/{company_name}/g, first.company_name || '')
+        .replace(/{contact_name}/g, first.contact_name || 'Sir/Madam');
+      const personalBody = body
+        .replace(/{company_name}/g, first.company_name || '')
+        .replace(/{contact_name}/g, first.contact_name || 'Sir/Madam');
+      window.open(
+        `mailto:${encodeURIComponent(first.email)}?subject=${encodeURIComponent(personalSubject)}&body=${encodeURIComponent(personalBody)}`
+      );
       if (selectedData.length > 1) {
-        utils.showToast(`Opened email for ${first.company_name}. ${selectedData.length - 1} more will be logged.`, 'info');
+        utils.showToast(
+          `Opened email for ${first.company_name}. ${selectedData.length - 1} more will be logged.`,
+          'info'
+        );
       }
     }
 
@@ -3184,13 +3397,13 @@ updateCountyFilterByRegion() {
     try {
       const templateId = document.getElementById('bulkEmailTemplate')?.value || 'custom';
       const _performedBy = await this._getCurrentUserEmail();
-      const commsRecords = selectedData.map(org => ({
+      const commsRecords = selectedData.map((org) => ({
         organisation_id: org.id,
         template_id: templateId,
         template_name: `Campaign: ${subject.substring(0, 50)}`,
         subject,
         channel: 'email',
-        direction: 'outbound'
+        direction: 'outbound',
       }));
       // Insert in batches of 50
       for (let i = 0; i < commsRecords.length; i += 50) {
@@ -3217,7 +3430,7 @@ updateCountyFilterByRegion() {
     }
 
     const originalFiltered = STATE.filteredOrganisations;
-    STATE.filteredOrganisations = STATE.allOrganisations.filter(org => this.selectedOrgs.has(org.id));
+    STATE.filteredOrganisations = STATE.allOrganisations.filter((org) => this.selectedOrgs.has(org.id));
     if (format === 'excel') {
       this.exportToExcel();
     } else if (format === 'pdf') {
@@ -3235,19 +3448,16 @@ updateCountyFilterByRegion() {
   // ============================================
   async quickUpdateStatus(orgId, newStatus) {
     try {
-      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      const org = STATE.allOrganisations.find((o) => o.id === orgId);
       const oldStatus = org?.status || 'prospect';
 
-      const { error } = await STATE.client
-        .from('organisations')
-        .update({ status: newStatus })
-        .eq('id', orgId);
+      const { error } = await STATE.client.from('organisations').update({ status: newStatus }).eq('id', orgId);
 
       if (error) throw error;
 
       // Update local state
       if (org) org.status = newStatus;
-      const filteredOrg = STATE.filteredOrganisations.find(o => o.id === orgId);
+      const filteredOrg = STATE.filteredOrganisations.find((o) => o.id === orgId);
       if (filteredOrg) filteredOrg.status = newStatus;
 
       // Audit trail
@@ -3264,17 +3474,20 @@ updateCountyFilterByRegion() {
   // ARCHIVE ORGANISATION (Soft Delete)
   // ============================================
   async deleteOrganisation(orgId, companyName) {
-    if (!await utils.confirmDialog({ title: 'Archive Organisation', message: `Archive "${companyName}"? This will hide it from the main list but keep all data intact. You can restore it later from the "Show Archived" filter.`, confirmText: 'Archive' })) {
+    if (
+      !(await utils.confirmDialog({
+        title: 'Archive Organisation',
+        message: `Archive "${companyName}"? This will hide it from the main list but keep all data intact. You can restore it later from the "Show Archived" filter.`,
+        confirmText: 'Archive',
+      }))
+    ) {
       return;
     }
 
     try {
       utils.showLoading();
 
-      const { error } = await STATE.client
-        .from('organisations')
-        .update({ status: 'archived' })
-        .eq('id', orgId);
+      const { error } = await STATE.client.from('organisations').update({ status: 'archived' }).eq('id', orgId);
 
       if (error) throw error;
 
@@ -3284,13 +3497,12 @@ updateCountyFilterByRegion() {
       utils.showToast(`"${companyName}" archived successfully`, 'success');
 
       // Update local state
-      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      const org = STATE.allOrganisations.find((o) => o.id === orgId);
       if (org) org.status = 'archived';
 
       this.selectedOrgs.delete(orgId);
       this.filterOrganisations();
       this.updateBulkActionsBar();
-
     } catch (error) {
       console.error('Error archiving organisation:', error);
       utils.showToast('Error archiving: ' + error.message, 'error');
@@ -3301,16 +3513,13 @@ updateCountyFilterByRegion() {
 
   async restoreOrganisation(orgId, companyName) {
     try {
-      const { error } = await STATE.client
-        .from('organisations')
-        .update({ status: 'prospect' })
-        .eq('id', orgId);
+      const { error } = await STATE.client.from('organisations').update({ status: 'prospect' }).eq('id', orgId);
 
       if (error) throw error;
 
       this._logAudit(orgId, 'restored', companyName, 'Organisation restored from archive');
 
-      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      const org = STATE.allOrganisations.find((o) => o.id === orgId);
       if (org) org.status = 'prospect';
 
       utils.showToast(`"${companyName}" restored`, 'success');
@@ -3322,14 +3531,26 @@ updateCountyFilterByRegion() {
   },
 
   async permanentDelete(orgId, companyName) {
-    if (!await utils.confirmDialog({ title: 'Permanent Delete', message: `PERMANENTLY delete "${companyName}" and all associated data? This CANNOT be undone.` })) return;
-    if (!await utils.confirmDialog({ title: 'Final Confirmation', message: `Final confirmation: Delete "${companyName}" forever?` })) return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Permanent Delete',
+        message: `PERMANENTLY delete "${companyName}" and all associated data? This CANNOT be undone.`,
+      }))
+    )
+      return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Final Confirmation',
+        message: `Final confirmation: Delete "${companyName}" forever?`,
+      }))
+    )
+      return;
 
     try {
       utils.showLoading();
 
       // Save to trash before permanently deleting
-      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      const org = STATE.allOrganisations.find((o) => o.id === orgId);
       if (org) utils.softDelete('organisations', org);
 
       // Delete all child records to prevent orphaned data
@@ -3344,11 +3565,14 @@ updateCountyFilterByRegion() {
       ]);
       await apiClient.delete('organisations', orgId);
 
-      STATE.allOrganisations = STATE.allOrganisations.filter(o => o.id !== orgId);
-      STATE.filteredOrganisations = STATE.filteredOrganisations.filter(o => o.id !== orgId);
+      STATE.allOrganisations = STATE.allOrganisations.filter((o) => o.id !== orgId);
+      STATE.filteredOrganisations = STATE.filteredOrganisations.filter((o) => o.id !== orgId);
       this.selectedOrgs.delete(orgId);
 
-      utils.showToast(`"${companyName}" permanently deleted. <a href="#" data-action="utils.undoLastDelete" data-id="organisations" data-prevent-default="true">Undo</a>`, 'info');
+      utils.showToast(
+        `"${companyName}" permanently deleted. <a href="#" data-action="utils.undoLastDelete" data-id="organisations" data-prevent-default="true">Undo</a>`,
+        'info'
+      );
       this.renderOrganisations();
       this.updateBulkActionsBar();
     } catch (error) {
@@ -3369,7 +3593,13 @@ updateCountyFilterByRegion() {
     }
 
     const count = this.selectedOrgs.size;
-    if (!await utils.confirmDialog({ title: 'Bulk Archive', message: `Archive ${count} organisation(s)? They will be hidden from the main list but can be restored later.`, confirmText: 'Archive' })) {
+    if (
+      !(await utils.confirmDialog({
+        title: 'Bulk Archive',
+        message: `Archive ${count} organisation(s)? They will be hidden from the main list but can be restored later.`,
+        confirmText: 'Archive',
+      }))
+    ) {
       return;
     }
 
@@ -3377,16 +3607,13 @@ updateCountyFilterByRegion() {
       utils.showLoading();
       const orgIds = Array.from(this.selectedOrgs);
 
-      const { error } = await STATE.client
-        .from('organisations')
-        .update({ status: 'archived' })
-        .in('id', orgIds);
+      const { error } = await STATE.client.from('organisations').update({ status: 'archived' }).in('id', orgIds);
 
       if (error) throw error;
 
       // Update local state
-      orgIds.forEach(id => {
-        const org = STATE.allOrganisations.find(o => o.id === id);
+      orgIds.forEach((id) => {
+        const org = STATE.allOrganisations.find((o) => o.id === id);
         if (org) org.status = 'archived';
       });
       this.selectedOrgs.clear();
@@ -3394,7 +3621,6 @@ updateCountyFilterByRegion() {
       utils.showToast(`${count} organisation(s) archived`, 'success');
       this.filterOrganisations();
       this.updateBulkActionsBar();
-
     } catch (error) {
       console.error('Error bulk archiving:', error);
       utils.showToast('Error archiving: ' + error.message, 'error');
@@ -3413,23 +3639,28 @@ updateCountyFilterByRegion() {
     }
 
     const count = this.selectedOrgs.size;
-    if (!await utils.confirmDialog({ title: 'Change Status', message: `Change status of ${count} organisation(s) to "${newStatus.replace('_', ' ')}"?`, confirmText: 'Update', danger: false })) return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Change Status',
+        message: `Change status of ${count} organisation(s) to "${newStatus.replace('_', ' ')}"?`,
+        confirmText: 'Update',
+        danger: false,
+      }))
+    )
+      return;
 
     try {
       utils.showLoading();
       const orgIds = Array.from(this.selectedOrgs);
 
-      const { error } = await STATE.client
-        .from('organisations')
-        .update({ status: newStatus })
-        .in('id', orgIds);
+      const { error } = await STATE.client.from('organisations').update({ status: newStatus }).in('id', orgIds);
 
       if (error) throw error;
 
-      orgIds.forEach(id => {
-        const org = STATE.allOrganisations.find(o => o.id === id);
+      orgIds.forEach((id) => {
+        const org = STATE.allOrganisations.find((o) => o.id === id);
         if (org) org.status = newStatus;
-        const fOrg = STATE.filteredOrganisations.find(o => o.id === id);
+        const fOrg = STATE.filteredOrganisations.find((o) => o.id === id);
         if (fOrg) fOrg.status = newStatus;
       });
 
@@ -3445,18 +3676,15 @@ updateCountyFilterByRegion() {
 
   async updateOrgStatus(orgId, newStatus) {
     try {
-      const { error } = await STATE.client
-        .from('organisations')
-        .update({ status: newStatus })
-        .eq('id', orgId);
+      const { error } = await STATE.client.from('organisations').update({ status: newStatus }).eq('id', orgId);
 
       if (error) throw error;
 
       // Update local state
-      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      const org = STATE.allOrganisations.find((o) => o.id === orgId);
       if (org) org.status = newStatus;
 
-      const filteredOrg = STATE.filteredOrganisations.find(o => o.id === orgId);
+      const filteredOrg = STATE.filteredOrganisations.find((o) => o.id === orgId);
       if (filteredOrg) filteredOrg.status = newStatus;
 
       utils.showToast(`Status updated to ${newStatus}`, 'success');
@@ -3475,14 +3703,14 @@ updateCountyFilterByRegion() {
   // STATUS WORKFLOW ENFORCEMENT
   // ============================================
   _statusFlow: {
-    'prospect':    { next: ['entrant', 'sponsor'], label: 'Prospect' },
-    'entrant':     { next: ['nominee', 'prospect'], label: 'Entrant' },
-    'nominee':     { next: ['shortlisted', 'entrant'], label: 'Nominee' },
-    'shortlisted': { next: ['winner', 'nominee'], label: 'Shortlisted' },
-    'winner':      { next: ['past_winner'], label: 'Winner' },
-    'past_winner': { next: ['entrant', 'prospect'], label: 'Past Winner' },
-    'sponsor':     { next: ['prospect'], label: 'Sponsor' },
-    'archived':    { next: ['prospect'], label: 'Archived' }
+    prospect: { next: ['entrant', 'sponsor'], label: 'Prospect' },
+    entrant: { next: ['nominee', 'prospect'], label: 'Entrant' },
+    nominee: { next: ['shortlisted', 'entrant'], label: 'Nominee' },
+    shortlisted: { next: ['winner', 'nominee'], label: 'Shortlisted' },
+    winner: { next: ['past_winner'], label: 'Winner' },
+    past_winner: { next: ['entrant', 'prospect'], label: 'Past Winner' },
+    sponsor: { next: ['prospect'], label: 'Sponsor' },
+    archived: { next: ['prospect'], label: 'Archived' },
   },
 
   _getStatusOptions(currentStatus) {
@@ -3491,7 +3719,7 @@ updateCountyFilterByRegion() {
 
     // Show current + valid next statuses
     const options = [{ value: currentStatus, label: flow.label + ' (current)' }];
-    (flow.next || []).forEach(s => {
+    (flow.next || []).forEach((s) => {
       const f = this._statusFlow[s];
       if (f) options.push({ value: s, label: f.label });
     });
@@ -3527,15 +3755,11 @@ updateCountyFilterByRegion() {
 
   async getAuditLog(orgId) {
     try {
-      let query = STATE.client
-        .from('org_audit_log')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(50);
+      let query = STATE.client.from('org_audit_log').select('*').order('created_at', { ascending: false }).limit(50);
       if (orgId) query = query.eq('org_id', orgId);
       const { data, error } = await query;
       if (error) throw error;
-      return (data || []).map(e => ({ ...e, timestamp: e.created_at }));
+      return (data || []).map((e) => ({ ...e, timestamp: e.created_at }));
     } catch (e) {
       console.warn('Failed to read audit log from Supabase:', e.message);
       return [];
@@ -3547,20 +3771,22 @@ updateCountyFilterByRegion() {
     if (log.length === 0) return '<p class="text-muted small">No activity recorded yet</p>';
 
     return `<div class="list-group list-group-flush" style="max-height: 300px; overflow-y: auto;">
-      ${log.slice(0, 50).map(entry => {
-        const date = new Date(entry.timestamp || entry.created_at);
-        const timeAgo = this._timeAgo(date);
-        const icons = {
-          'status_change': 'bi-arrow-repeat text-primary',
-          'archived': 'bi-archive text-warning',
-          'restored': 'bi-arrow-counterclockwise text-success',
-          'created': 'bi-plus-circle text-success',
-          'email_sent': 'bi-envelope text-info',
-          'note_added': 'bi-sticky text-secondary',
-          'csv_import': 'bi-file-earmark-arrow-up text-primary'
-        };
-        const icon = icons[entry.action] || 'bi-clock-history text-muted';
-        return `<div class="list-group-item px-0 py-2 border-0">
+      ${log
+        .slice(0, 50)
+        .map((entry) => {
+          const date = new Date(entry.timestamp || entry.created_at);
+          const timeAgo = this._timeAgo(date);
+          const icons = {
+            status_change: 'bi-arrow-repeat text-primary',
+            archived: 'bi-archive text-warning',
+            restored: 'bi-arrow-counterclockwise text-success',
+            created: 'bi-plus-circle text-success',
+            email_sent: 'bi-envelope text-info',
+            note_added: 'bi-sticky text-secondary',
+            csv_import: 'bi-file-earmark-arrow-up text-primary',
+          };
+          const icon = icons[entry.action] || 'bi-clock-history text-muted';
+          return `<div class="list-group-item px-0 py-2 border-0">
           <div class="d-flex align-items-start">
             <i class="bi ${icon} me-2 mt-1"></i>
             <div>
@@ -3569,7 +3795,8 @@ updateCountyFilterByRegion() {
             </div>
           </div>
         </div>`;
-      }).join('')}
+        })
+        .join('')}
     </div>`;
   },
 
@@ -3586,7 +3813,8 @@ updateCountyFilterByRegion() {
   // DUPLICATE DETECTION
   // ============================================
   _normaliseForMatch(str) {
-    return (str || '').toLowerCase()
+    return (str || '')
+      .toLowerCase()
       .replace(/\b(ltd|limited|plc|inc|llp|llc|&|and|the|co|company)\b/g, '')
       .replace(/[^a-z0-9]/g, '')
       .trim();
@@ -3596,7 +3824,7 @@ updateCountyFilterByRegion() {
     const normalised = this._normaliseForMatch(companyName);
     if (!normalised || normalised.length < 3) return [];
 
-    return STATE.allOrganisations.filter(org => {
+    return STATE.allOrganisations.filter((org) => {
       const orgNorm = this._normaliseForMatch(org.company_name);
       if (!orgNorm) return false;
 
@@ -3616,15 +3844,15 @@ updateCountyFilterByRegion() {
   },
 
   _levenshtein(a, b) {
-    const m = a.length, n = b.length;
+    const m = a.length,
+      n = b.length;
     const dp = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
     for (let i = 0; i <= m; i++) dp[i][0] = i;
     for (let j = 0; j <= n; j++) dp[0][j] = j;
     for (let i = 1; i <= m; i++) {
       for (let j = 1; j <= n; j++) {
-        dp[i][j] = a[i-1] === b[j-1]
-          ? dp[i-1][j-1]
-          : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
+        dp[i][j] =
+          a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
       }
     }
     return dp[m][n];
@@ -3633,14 +3861,14 @@ updateCountyFilterByRegion() {
   showDuplicateCheck() {
     const dupeMap = new Map();
 
-    STATE.allOrganisations.forEach(org => {
+    STATE.allOrganisations.forEach((org) => {
       const norm = this._normaliseForMatch(org.company_name);
       if (!norm) return;
       if (!dupeMap.has(norm)) dupeMap.set(norm, []);
       dupeMap.get(norm).push(org);
     });
 
-    const duplicateGroups = Array.from(dupeMap.values()).filter(group => group.length > 1);
+    const duplicateGroups = Array.from(dupeMap.values()).filter((group) => group.length > 1);
 
     if (duplicateGroups.length === 0) {
       utils.showToast('No duplicates found!', 'success');
@@ -3655,13 +3883,17 @@ updateCountyFilterByRegion() {
         <div class="table-responsive"><table class="table table-sm mb-0">
           <thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Awards</th><th>Action</th></tr></thead>
           <tbody>
-          ${group.map(org => `<tr>
+          ${group
+            .map(
+              (org) => `<tr>
             <td class="small">${utils.escapeHtml(org.company_name)}</td>
             <td class="small">${utils.escapeHtml(org.email || '-')}</td>
             <td><span class="badge bg-secondary">${org.status || 'prospect'}</span></td>
             <td class="text-center">${org.awards_count || 0}</td>
             <td><button class="btn btn-sm btn-outline-danger" data-action="orgsModule.deleteOrganisation" data-args='${JSON.stringify([org.id, utils.escapeHtml(org.company_name).replace(/'/g, "\\'")])}'>Archive</button></td>
-          </tr>`).join('')}
+          </tr>`
+            )
+            .join('')}
           </tbody>
         </table></div>
       </div></div>`;
@@ -3678,43 +3910,48 @@ updateCountyFilterByRegion() {
       id: 'shortlist_notify',
       name: 'Shortlist Notification',
       subject: 'Congratulations - You have been shortlisted!',
-      body: `Dear {contact_name},\n\nWe are delighted to inform you that {company_name} has been shortlisted for the British Trade Awards.\n\nThe awards ceremony will take place shortly, and we will be in touch with further details.\n\nKind regards,\nBritish Trade Awards Team`
+      body: `Dear {contact_name},\n\nWe are delighted to inform you that {company_name} has been shortlisted for the British Trade Awards.\n\nThe awards ceremony will take place shortly, and we will be in touch with further details.\n\nKind regards,\nBritish Trade Awards Team`,
     },
     {
       id: 'winner_notify',
       name: 'Winner Announcement',
       subject: 'You are a Winner - British Trade Awards!',
-      body: `Dear {contact_name},\n\nCongratulations! We are thrilled to announce that {company_name} has won at the British Trade Awards!\n\nPlease find attached your winner's pack with logos, press release template, and trophy collection details.\n\nKind regards,\nBritish Trade Awards Team`
+      body: `Dear {contact_name},\n\nCongratulations! We are thrilled to announce that {company_name} has won at the British Trade Awards!\n\nPlease find attached your winner's pack with logos, press release template, and trophy collection details.\n\nKind regards,\nBritish Trade Awards Team`,
     },
     {
       id: 'entry_invite',
       name: 'Entry Invitation',
       subject: 'British Trade Awards - Invitation to Enter',
-      body: `Dear {contact_name},\n\nWe would like to invite {company_name} to enter the British Trade Awards this year.\n\nEntries are now open and close on [DATE]. You can enter online at [URL].\n\nKind regards,\nBritish Trade Awards Team`
+      body: `Dear {contact_name},\n\nWe would like to invite {company_name} to enter the British Trade Awards this year.\n\nEntries are now open and close on [DATE]. You can enter online at [URL].\n\nKind regards,\nBritish Trade Awards Team`,
     },
     {
       id: 'feedback_request',
       name: 'Feedback Request',
       subject: 'British Trade Awards - We value your feedback',
-      body: `Dear {contact_name},\n\nThank you for participating in the British Trade Awards. We would love to hear your feedback to help us improve.\n\nPlease take a moment to complete our short survey: [SURVEY_URL]\n\nKind regards,\nBritish Trade Awards Team`
+      body: `Dear {contact_name},\n\nThank you for participating in the British Trade Awards. We would love to hear your feedback to help us improve.\n\nPlease take a moment to complete our short survey: [SURVEY_URL]\n\nKind regards,\nBritish Trade Awards Team`,
     },
     {
       id: 'sponsor_inquiry',
       name: 'Sponsorship Inquiry',
       subject: 'Sponsorship Opportunities - British Trade Awards',
-      body: `Dear {contact_name},\n\nWe are reaching out to {company_name} regarding sponsorship opportunities for the upcoming British Trade Awards.\n\nWe have several packages available, including category sponsorship and headline sponsorship.\n\nWould you be available for a brief call to discuss?\n\nKind regards,\nBritish Trade Awards Team`
-    }
+      body: `Dear {contact_name},\n\nWe are reaching out to {company_name} regarding sponsorship opportunities for the upcoming British Trade Awards.\n\nWe have several packages available, including category sponsorship and headline sponsorship.\n\nWould you be available for a brief call to discuss?\n\nKind regards,\nBritish Trade Awards Team`,
+    },
   ],
 
   openEmailTemplate(orgId) {
-    const org = STATE.allOrganisations.find(o => o.id === orgId) || {};
+    const org = STATE.allOrganisations.find((o) => o.id === orgId) || {};
     const templates = this._emailTemplates;
 
     const html = `<div class="list-group">
-      ${templates.map(t => {
-        const subject = t.subject.replace(/{company_name}/g, org.company_name || '').replace(/{contact_name}/g, org.contact_name || 'Sir/Madam');
-        const body = t.body.replace(/{company_name}/g, org.company_name || '').replace(/{contact_name}/g, org.contact_name || 'Sir/Madam');
-        return `<a href="mailto:${org.email || ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}"
+      ${templates
+        .map((t) => {
+          const subject = t.subject
+            .replace(/{company_name}/g, org.company_name || '')
+            .replace(/{contact_name}/g, org.contact_name || 'Sir/Madam');
+          const body = t.body
+            .replace(/{company_name}/g, org.company_name || '')
+            .replace(/{contact_name}/g, org.contact_name || 'Sir/Madam');
+          return `<a href="mailto:${org.email || ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}"
                    class="list-group-item list-group-item-action"
                    data-action="orgsModule._logComms" data-args='${JSON.stringify([orgId, t.id, utils.escapeHtml(org.company_name || '').replace(/'/g, "\\'")])}'>
           <div class="d-flex justify-content-between align-items-center">
@@ -3725,7 +3962,8 @@ updateCountyFilterByRegion() {
             <i class="bi bi-envelope text-primary"></i>
           </div>
         </a>`;
-      }).join('')}
+        })
+        .join('')}
     </div>`;
 
     this._showDynamicModal(`Email ${utils.escapeHtml(org.company_name || '')}`, html, 'bi-envelope');
@@ -3736,14 +3974,14 @@ updateCountyFilterByRegion() {
   // ============================================
   async _logComms(orgId, templateId, companyName) {
     try {
-      const template = this._emailTemplates.find(t => t.id === templateId);
-      await STATE.client
-        .from('organisation_comms_log')
-        .insert([{
+      const template = this._emailTemplates.find((t) => t.id === templateId);
+      await STATE.client.from('organisation_comms_log').insert([
+        {
           organisation_id: orgId,
           template_id: templateId,
-          template_name: template?.name || templateId
-        }]);
+          template_name: template?.name || templateId,
+        },
+      ]);
 
       this._logAudit(orgId, 'email_sent', companyName, `Email sent: ${template?.name || templateId}`);
     } catch (e) {
@@ -3761,7 +3999,7 @@ updateCountyFilterByRegion() {
       if (orgId) query = query.eq('organisation_id', orgId);
       const { data, error } = await query;
       if (error) throw error;
-      return (data || []).map(e => ({ ...e, timestamp: e.created_at, templateName: e.template_name }));
+      return (data || []).map((e) => ({ ...e, timestamp: e.created_at, templateName: e.template_name }));
     } catch (e) {
       console.warn('Failed to read comms history from Supabase:', e.message);
       return [];
@@ -3773,9 +4011,10 @@ updateCountyFilterByRegion() {
     if (history.length === 0) return '<p class="text-muted small">No communications recorded yet</p>';
 
     return `<div class="list-group list-group-flush" style="max-height: 250px; overflow-y: auto;">
-      ${history.map(entry => {
-        const date = new Date(entry.timestamp);
-        return `<div class="list-group-item px-0 py-2 border-0">
+      ${history
+        .map((entry) => {
+          const date = new Date(entry.timestamp);
+          return `<div class="list-group-item px-0 py-2 border-0">
           <div class="d-flex align-items-center">
             <i class="bi bi-envelope-check text-success me-2"></i>
             <div>
@@ -3784,7 +4023,8 @@ updateCountyFilterByRegion() {
             </div>
           </div>
         </div>`;
-      }).join('')}
+        })
+        .join('')}
     </div>`;
   },
 
@@ -3797,7 +4037,7 @@ updateCountyFilterByRegion() {
     if (!tag) return;
 
     try {
-      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      const org = STATE.allOrganisations.find((o) => o.id === orgId);
       const currentTags = org?.tags || [];
 
       if (currentTags.includes(tag)) {
@@ -3806,10 +4046,7 @@ updateCountyFilterByRegion() {
       }
 
       const newTags = [...currentTags, tag];
-      const { error } = await STATE.client
-        .from('organisations')
-        .update({ tags: newTags })
-        .eq('id', orgId);
+      const { error } = await STATE.client.from('organisations').update({ tags: newTags }).eq('id', orgId);
 
       if (error) throw error;
 
@@ -3825,13 +4062,10 @@ updateCountyFilterByRegion() {
 
   async removeTag(orgId, tag) {
     try {
-      const org = STATE.allOrganisations.find(o => o.id === orgId);
-      const newTags = (org?.tags || []).filter(t => t !== tag);
+      const org = STATE.allOrganisations.find((o) => o.id === orgId);
+      const newTags = (org?.tags || []).filter((t) => t !== tag);
 
-      const { error } = await STATE.client
-        .from('organisations')
-        .update({ tags: newTags })
-        .eq('id', orgId);
+      const { error } = await STATE.client.from('organisations').update({ tags: newTags }).eq('id', orgId);
 
       if (error) throw error;
 
@@ -3885,12 +4119,12 @@ updateCountyFilterByRegion() {
     const newValue = input.value.trim();
 
     // Map display field to DB field
-    const fieldMap = { 'contact': 'contact_name', 'email': 'email', 'sector': 'sector' };
+    const fieldMap = { contact: 'contact_name', email: 'email', sector: 'sector' };
     const dbField = fieldMap[field] || field;
 
     // Capture old value for undo
-    const org = STATE.allOrganisations.find(o => o.id === orgId);
-    const oldValue = org ? (org[dbField] || '') : '';
+    const org = STATE.allOrganisations.find((o) => o.id === orgId);
+    const oldValue = org ? org[dbField] || '' : '';
 
     try {
       const { error } = await STATE.client
@@ -3909,7 +4143,7 @@ updateCountyFilterByRegion() {
 
     // Update local state
     if (org) org[dbField] = newValue || null;
-    const fOrg = STATE.filteredOrganisations.find(o => o.id === orgId);
+    const fOrg = STATE.filteredOrganisations.find((o) => o.id === orgId);
     if (fOrg) fOrg[dbField] = newValue || null;
 
     // Store for undo
@@ -3940,7 +4174,10 @@ updateCountyFilterByRegion() {
 
   async undoLastInlineEdit() {
     const edit = this._lastInlineEdit;
-    if (!edit) { utils.showToast('Nothing to undo', 'warning'); return; }
+    if (!edit) {
+      utils.showToast('Nothing to undo', 'warning');
+      return;
+    }
 
     try {
       const { error } = await STATE.client
@@ -3950,9 +4187,9 @@ updateCountyFilterByRegion() {
 
       if (error) throw error;
 
-      const org = STATE.allOrganisations.find(o => o.id === edit.orgId);
+      const org = STATE.allOrganisations.find((o) => o.id === edit.orgId);
       if (org) org[edit.dbField] = edit.oldValue || null;
-      const fOrg = STATE.filteredOrganisations.find(o => o.id === edit.orgId);
+      const fOrg = STATE.filteredOrganisations.find((o) => o.id === edit.orgId);
       if (fOrg) fOrg[edit.dbField] = edit.oldValue || null;
 
       this._lastInlineEdit = null;
@@ -3977,7 +4214,15 @@ updateCountyFilterByRegion() {
 
     const count = this.selectedOrgs.size;
     const displayValue = value || '(empty)';
-    if (!await utils.confirmDialog({ title: 'Bulk Update Field', message: `Set ${field} to "${displayValue}" for ${count} organisation(s)?`, confirmText: 'Update', danger: false })) return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Bulk Update Field',
+        message: `Set ${field} to "${displayValue}" for ${count} organisation(s)?`,
+        confirmText: 'Update',
+        danger: false,
+      }))
+    )
+      return;
 
     try {
       utils.showLoading();
@@ -3990,10 +4235,10 @@ updateCountyFilterByRegion() {
 
       if (error) throw error;
 
-      orgIds.forEach(id => {
-        const org = STATE.allOrganisations.find(o => o.id === id);
+      orgIds.forEach((id) => {
+        const org = STATE.allOrganisations.find((o) => o.id === id);
         if (org) org[field] = value || null;
-        const fOrg = STATE.filteredOrganisations.find(o => o.id === id);
+        const fOrg = STATE.filteredOrganisations.find((o) => o.id === id);
         if (fOrg) fOrg[field] = value || null;
       });
 
@@ -4011,13 +4256,13 @@ updateCountyFilterByRegion() {
     let options = '';
     if (field === 'sector') {
       // Combine global SECTORS with any existing custom sectors
-      const existingSectors = [...new Set(STATE.allOrganisations.map(o => o.sector).filter(Boolean))];
+      const existingSectors = [...new Set(STATE.allOrganisations.map((o) => o.sector).filter(Boolean))];
       const allSectors = [...new Set([...SECTORS, ...existingSectors])].sort();
-      options = allSectors.map(s => `<option value="${s}">${utils.escapeHtml(s)}</option>`).join('');
+      options = allSectors.map((s) => `<option value="${s}">${utils.escapeHtml(s)}</option>`).join('');
     } else if (field === 'region') {
-      options = REGIONS.map(r => `<option value="${r}">${utils.escapeHtml(r)}</option>`).join('');
+      options = REGIONS.map((r) => `<option value="${r}">${utils.escapeHtml(r)}</option>`).join('');
     } else if (field === 'tier') {
-      options = ['Bronze','Silver','Gold','Platinum'].map(t => `<option value="${t}">${t}</option>`).join('');
+      options = ['Bronze', 'Silver', 'Gold', 'Platinum'].map((t) => `<option value="${t}">${t}</option>`).join('');
     }
 
     const modalHtml = `
@@ -4053,14 +4298,22 @@ updateCountyFilterByRegion() {
   // ============================================
   async bulkFetchLogos() {
     const selected = Array.from(this.selectedOrgs);
-    const orgs = STATE.allOrganisations.filter(o => selected.includes(o.id) && o.website && !o.logo_url);
+    const orgs = STATE.allOrganisations.filter((o) => selected.includes(o.id) && o.website && !o.logo_url);
 
     if (orgs.length === 0) {
       utils.showToast('No selected organisations with websites and missing logos', 'warning');
       return;
     }
 
-    if (!await utils.confirmDialog({ title: 'Fetch Logos', message: `Fetch logos for ${orgs.length} organisations with websites but no logo?`, confirmText: 'Fetch Logos', danger: false })) return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Fetch Logos',
+        message: `Fetch logos for ${orgs.length} organisations with websites but no logo?`,
+        confirmText: 'Fetch Logos',
+        danger: false,
+      }))
+    )
+      return;
 
     utils.showLoading(`Fetching logos: 0/${orgs.length}`);
     let successCount = 0;
@@ -4076,22 +4329,24 @@ updateCountyFilterByRegion() {
         const logoServices = [
           `https://logo.clearbit.com/${domain}`,
           `https://www.google.com/s2/favicons?sz=128&domain=${domain}`,
-          `https://icons.duckduckgo.com/ip3/${domain}.ico`
+          `https://icons.duckduckgo.com/ip3/${domain}.ico`,
         ];
 
         let logoUrl = null;
         for (const serviceUrl of logoServices) {
           try {
             const response = await fetch(serviceUrl, { method: 'HEAD' });
-            if (response.ok) { logoUrl = serviceUrl; break; }
-          } catch (e) { continue; }
+            if (response.ok) {
+              logoUrl = serviceUrl;
+              break;
+            }
+          } catch (e) {
+            continue;
+          }
         }
 
         if (logoUrl) {
-          await STATE.client
-            .from('organisations')
-            .update({ logo_url: logoUrl })
-            .eq('id', org.id);
+          await STATE.client.from('organisations').update({ logo_url: logoUrl }).eq('id', org.id);
           org.logo_url = logoUrl;
           successCount++;
         } else {
@@ -4103,11 +4358,14 @@ updateCountyFilterByRegion() {
 
       utils.showLoading(`Fetching logos: ${i + 1}/${orgs.length}`);
       // Small delay between orgs to avoid rate limiting from logo services
-      if (i < orgs.length - 1) await new Promise(r => setTimeout(r, 300));
+      if (i < orgs.length - 1) await new Promise((r) => setTimeout(r, 300));
     }
 
     utils.hideLoading();
-    utils.showToast(`Logos fetched: ${successCount} success, ${failCount} failed`, successCount > 0 ? 'success' : 'warning');
+    utils.showToast(
+      `Logos fetched: ${successCount} success, ${failCount} failed`,
+      successCount > 0 ? 'success' : 'warning'
+    );
     this.renderOrganisations();
   },
 
@@ -4120,25 +4378,70 @@ updateCountyFilterByRegion() {
 
   // Known DB column mappings from common CSV header names
   _columnAliases: {
-    'company_name': 'company_name', 'company name': 'company_name', 'companyname': 'company_name',
-    'name': 'company_name', 'business name': 'company_name', 'organisation': 'company_name',
-    'sector': 'sector', 'industry': 'sector', 'category': 'sector',
-    'county': 'county', 'county/city': 'county', 'location': 'county', 'city': 'county',
-    'region': 'region', 'area': 'region',
-    'contact_name': 'contact_name', 'contact name': 'contact_name', 'contact': 'contact_name',
-    'email': 'email', 'email address': 'email', 'e-mail': 'email',
-    'phone': 'contact_phone', 'contact_phone': 'contact_phone', 'telephone': 'contact_phone', 'tel': 'contact_phone',
-    'website': 'website', 'url': 'website', 'web': 'website', 'site': 'website',
-    'address': 'address', 'postal address': 'address',
-    'catchment_area': 'catchment_area', 'catchment area': 'catchment_area', 'catchment': 'catchment_area',
+    company_name: 'company_name',
+    'company name': 'company_name',
+    companyname: 'company_name',
+    name: 'company_name',
+    'business name': 'company_name',
+    organisation: 'company_name',
+    sector: 'sector',
+    industry: 'sector',
+    category: 'sector',
+    county: 'county',
+    'county/city': 'county',
+    location: 'county',
+    city: 'county',
+    region: 'region',
+    area: 'region',
+    contact_name: 'contact_name',
+    'contact name': 'contact_name',
+    contact: 'contact_name',
+    email: 'email',
+    'email address': 'email',
+    'e-mail': 'email',
+    phone: 'contact_phone',
+    contact_phone: 'contact_phone',
+    telephone: 'contact_phone',
+    tel: 'contact_phone',
+    website: 'website',
+    url: 'website',
+    web: 'website',
+    site: 'website',
+    address: 'address',
+    'postal address': 'address',
+    catchment_area: 'catchment_area',
+    'catchment area': 'catchment_area',
+    catchment: 'catchment_area',
     // Contact-specific fields for multi-contact import
-    'first name': 'contact_first_name', 'first_name': 'contact_first_name', 'firstname': 'contact_first_name',
-    'last name': 'contact_last_name', 'last_name': 'contact_last_name', 'lastname': 'contact_last_name', 'surname': 'contact_last_name',
-    'job title': 'contact_job_title', 'job_title': 'contact_job_title', 'title': 'contact_job_title', 'role': 'contact_job_title', 'position': 'contact_job_title',
-    'mobile': 'contact_mobile', 'mobile phone': 'contact_mobile', 'mobile_phone': 'contact_mobile', 'cell': 'contact_mobile'
+    'first name': 'contact_first_name',
+    first_name: 'contact_first_name',
+    firstname: 'contact_first_name',
+    'last name': 'contact_last_name',
+    last_name: 'contact_last_name',
+    lastname: 'contact_last_name',
+    surname: 'contact_last_name',
+    'job title': 'contact_job_title',
+    job_title: 'contact_job_title',
+    title: 'contact_job_title',
+    role: 'contact_job_title',
+    position: 'contact_job_title',
+    mobile: 'contact_mobile',
+    'mobile phone': 'contact_mobile',
+    mobile_phone: 'contact_mobile',
+    cell: 'contact_mobile',
   },
 
-  _dbFields: ['company_name', 'sector', 'region', 'contact_name', 'email', 'contact_phone', 'website', 'address', 'catchment_area'],
+  _dbFields: [
+    'company_name',
+    'sector',
+    'region',
+    'contact_name',
+    'email',
+    'contact_phone',
+    'website',
+    'address',
+    'catchment_area',
+  ],
   _contactFields: ['contact_first_name', 'contact_last_name', 'contact_job_title', 'contact_mobile'],
 
   _getSelectedCounty() {
@@ -4180,7 +4483,7 @@ updateCountyFilterByRegion() {
   },
 
   _processCSVText(text) {
-    const lines = text.split(/\r?\n/).filter(l => l.trim());
+    const lines = text.split(/\r?\n/).filter((l) => l.trim());
     if (lines.length < 2) {
       utils.showToast('CSV must have at least a header row and one data row', 'error');
       return;
@@ -4193,7 +4496,7 @@ updateCountyFilterByRegion() {
     this._csvData = [];
     for (let i = 1; i < lines.length; i++) {
       const values = this._parseCSVLine(lines[i]);
-      if (values.some(v => v.trim())) {
+      if (values.some((v) => v.trim())) {
         this._csvData.push(values);
       }
     }
@@ -4254,7 +4557,8 @@ updateCountyFilterByRegion() {
     const selectedCounty = this._getSelectedCounty();
 
     const container = document.getElementById('csvColumnMapping');
-    container.innerHTML = `
+    container.innerHTML =
+      `
       <div class="col-12 mb-2">
         <div class="alert alert-success py-2 mb-2">
           <i class="bi bi-geo-alt-fill me-1"></i>
@@ -4262,9 +4566,11 @@ updateCountyFilterByRegion() {
           <small class="text-muted ms-2">(all imported orgs will be tagged to this county)</small>
         </div>
       </div>
-    ` + this._csvHeaders.map((header, idx) => {
-      const mapped = this._csvColumnMap[idx] || '';
-      return `
+    ` +
+      this._csvHeaders
+        .map((header, idx) => {
+          const mapped = this._csvColumnMap[idx] || '';
+          return `
         <div class="col-md-4 mb-2">
           <label class="form-label small fw-semibold mb-1">
             CSV: "${utils.escapeHtml(header)}"
@@ -4273,15 +4579,16 @@ updateCountyFilterByRegion() {
           <select class="form-select form-select-sm" data-on-change="orgsModule._updateColumnMap" data-id="${idx}">
             <option value="">-- Skip --</option>
             <optgroup label="Organisation Fields">
-              ${this._dbFields.map(f => `<option value="${f}" ${mapped === f ? 'selected' : ''}>${f.replace(/_/g, ' ')}</option>`).join('')}
+              ${this._dbFields.map((f) => `<option value="${f}" ${mapped === f ? 'selected' : ''}>${f.replace(/_/g, ' ')}</option>`).join('')}
             </optgroup>
             <optgroup label="Contact Fields">
-              ${this._contactFields.map(f => `<option value="${f}" ${mapped === f ? 'selected' : ''}>${f.replace(/^contact_/, '').replace(/_/g, ' ')}</option>`).join('')}
+              ${this._contactFields.map((f) => `<option value="${f}" ${mapped === f ? 'selected' : ''}>${f.replace(/^contact_/, '').replace(/_/g, ' ')}</option>`).join('')}
             </optgroup>
           </select>
         </div>
       `;
-    }).join('');
+        })
+        .join('');
 
     // Add apply mapping button
     container.innerHTML += `
@@ -4310,21 +4617,20 @@ updateCountyFilterByRegion() {
     }
 
     // Build preview
-    const existingNames = new Set(
-      STATE.allOrganisations.map(o => (o.company_name || '').toLowerCase())
-    );
+    const existingNames = new Set(STATE.allOrganisations.map((o) => (o.company_name || '').toLowerCase()));
 
     let newCount = 0;
     let dupCount = 0;
 
-    const previewRows = this._csvData.map(row => {
+    const previewRows = this._csvData.map((row) => {
       const record = {};
       Object.entries(this._csvColumnMap).forEach(([idx, field]) => {
         record[field] = row[parseInt(idx)] || '';
       });
 
       const isDuplicate = existingNames.has((record.company_name || '').toLowerCase());
-      if (isDuplicate) dupCount++; else newCount++;
+      if (isDuplicate) dupCount++;
+      else newCount++;
 
       return { record, isDuplicate };
     });
@@ -4340,24 +4646,25 @@ updateCountyFilterByRegion() {
     document.getElementById('csvDuplicateCount').textContent = `${dupCount} duplicates`;
 
     document.getElementById('csvPreviewHeader').innerHTML =
-      '<th>#</th>' +
-      mappedFields.map(f => `<th>${f.replace(/_/g, ' ')}</th>`).join('') +
-      '<th>Status</th>';
+      '<th>#</th>' + mappedFields.map((f) => `<th>${f.replace(/_/g, ' ')}</th>`).join('') + '<th>Status</th>';
 
-    document.getElementById('csvPreviewBody').innerHTML = previewRows.map((item, i) => {
-      const issues = this._validateImportRow(item.record);
-      return `<tr class="${item.isDuplicate ? 'table-warning' : ''} ${issues.length > 0 ? 'table-danger' : ''}">
+    document.getElementById('csvPreviewBody').innerHTML = previewRows
+      .map((item, i) => {
+        const issues = this._validateImportRow(item.record);
+        return `<tr class="${item.isDuplicate ? 'table-warning' : ''} ${issues.length > 0 ? 'table-danger' : ''}">
         <td class="small">${i + 1}</td>
-        ${mappedFields.map(f => `<td class="small">${utils.escapeHtml(item.record[f] || '-')}</td>`).join('')}
+        ${mappedFields.map((f) => `<td class="small">${utils.escapeHtml(item.record[f] || '-')}</td>`).join('')}
         <td>
-          ${item.isDuplicate
-            ? '<span class="badge bg-warning text-dark">Duplicate</span>'
-            : '<span class="badge bg-success">New</span>'
+          ${
+            item.isDuplicate
+              ? '<span class="badge bg-warning text-dark">Duplicate</span>'
+              : '<span class="badge bg-success">New</span>'
           }
           ${issues.length > 0 ? `<span class="badge bg-danger ms-1" title="${utils.escapeHtml(issues.join(', '))}">Issues: ${issues.length}</span>` : ''}
         </td>
       </tr>`;
-    }).join('');
+      })
+      .join('');
 
     // Enable import button
     const importBtn = document.getElementById('csvImportBtn');
@@ -4375,8 +4682,8 @@ updateCountyFilterByRegion() {
     }
 
     // Only import non-duplicates by default, or ask
-    const newRows = this._csvPreviewRows.filter(r => !r.isDuplicate);
-    const dupRows = this._csvPreviewRows.filter(r => r.isDuplicate);
+    const newRows = this._csvPreviewRows.filter((r) => !r.isDuplicate);
+    const dupRows = this._csvPreviewRows.filter((r) => r.isDuplicate);
 
     let rowsToImport = newRows;
     let mergeRows = [];
@@ -4385,15 +4692,37 @@ updateCountyFilterByRegion() {
       // Merge mode: update existing records with new data
       mergeRows = dupRows;
       rowsToImport = newRows;
-      if (!await utils.confirmDialog({ title: 'Merge Import', message: `Merge mode: ${dupRows.length} existing record(s) will be updated, ${newRows.length} new record(s) will be inserted. Continue?`, confirmText: 'Import', danger: false })) return;
+      if (
+        !(await utils.confirmDialog({
+          title: 'Merge Import',
+          message: `Merge mode: ${dupRows.length} existing record(s) will be updated, ${newRows.length} new record(s) will be inserted. Continue?`,
+          confirmText: 'Import',
+          danger: false,
+        }))
+      )
+        return;
     } else if (dupRows.length > 0 && newRows.length > 0) {
-      if (await utils.confirmDialog({ title: 'Duplicates Found', message: `${dupRows.length} duplicate(s) found. Import only the ${newRows.length} new companies?<br><br>Click "Import New Only" to skip duplicates, or Cancel and re-run to import all.`, confirmText: 'Import New Only', danger: false })) {
+      if (
+        await utils.confirmDialog({
+          title: 'Duplicates Found',
+          message: `${dupRows.length} duplicate(s) found. Import only the ${newRows.length} new companies?<br><br>Click "Import New Only" to skip duplicates, or Cancel and re-run to import all.`,
+          confirmText: 'Import New Only',
+          danger: false,
+        })
+      ) {
         rowsToImport = newRows;
       } else {
         rowsToImport = this._csvPreviewRows;
       }
     } else if (newRows.length === 0) {
-      if (!await utils.confirmDialog({ title: 'All Duplicates', message: `All ${dupRows.length} companies already exist. Import them anyway as duplicates?`, confirmText: 'Import Anyway', danger: false })) {
+      if (
+        !(await utils.confirmDialog({
+          title: 'All Duplicates',
+          message: `All ${dupRows.length} companies already exist. Import them anyway as duplicates?`,
+          confirmText: 'Import Anyway',
+          danger: false,
+        }))
+      ) {
         return;
       }
       rowsToImport = this._csvPreviewRows;
@@ -4409,9 +4738,9 @@ updateCountyFilterByRegion() {
       if (!selectedCounty) return;
 
       // Build records - tag each org with the selected county
-      const records = rowsToImport.map(item => {
+      const records = rowsToImport.map((item) => {
         const rec = { status: 'prospect', catchment_area: selectedCounty };
-        this._dbFields.forEach(field => {
+        this._dbFields.forEach((field) => {
           if (item.record[field]) {
             let val = item.record[field].trim();
             // Auto-prefix website
@@ -4433,9 +4762,7 @@ updateCountyFilterByRegion() {
 
       for (let i = 0; i < records.length; i += batchSize) {
         const batch = records.slice(i, i + batchSize);
-        const { error } = await STATE.client
-          .from('organisations')
-          .insert(batch);
+        const { error } = await STATE.client.from('organisations').insert(batch);
 
         if (error) {
           console.error('Batch import error:', error);
@@ -4449,12 +4776,12 @@ updateCountyFilterByRegion() {
       if (mergeRows.length > 0) {
         for (const item of mergeRows) {
           try {
-            const existingOrg = STATE.allOrganisations.find(o =>
-              (o.company_name || '').toLowerCase() === (item.record.company_name || '').toLowerCase()
+            const existingOrg = STATE.allOrganisations.find(
+              (o) => (o.company_name || '').toLowerCase() === (item.record.company_name || '').toLowerCase()
             );
             if (existingOrg) {
               const updateData = {};
-              this._dbFields.forEach(field => {
+              this._dbFields.forEach((field) => {
                 if (item.record[field] && item.record[field].trim()) {
                   updateData[field] = item.record[field].trim();
                 }
@@ -4463,18 +4790,22 @@ updateCountyFilterByRegion() {
                 await apiClient.update('organisations', existingOrg.id, updateData);
               }
             }
-          } catch (e) { console.error('Merge error:', e); }
+          } catch (e) {
+            console.error('Merge error:', e);
+          }
         }
       }
 
       // Import contacts from contact-specific CSV columns
-      const hasContactFields = Object.values(this._csvColumnMap).some(f => this._contactFields.includes(f));
+      const hasContactFields = Object.values(this._csvColumnMap).some((f) => this._contactFields.includes(f));
       let contactCount = 0;
       if (hasContactFields) {
-        // Reload orgs to get the new IDs
+        /* selectAll: justified — re-mapping imported org names to IDs after bulk CSV import */
         const freshOrgs = await apiClient.selectAll('organisations', { select: 'id, company_name' });
         const orgNameMap = {};
-        (freshOrgs || []).forEach(o => { orgNameMap[(o.company_name || '').toLowerCase()] = o.id; });
+        (freshOrgs || []).forEach((o) => {
+          orgNameMap[(o.company_name || '').toLowerCase()] = o.id;
+        });
 
         const contactRecords = [];
         for (const item of rowsToImport) {
@@ -4497,7 +4828,7 @@ updateCountyFilterByRegion() {
               phone: item.record.contact_phone?.trim() || null,
               mobile: mobile || null,
               is_primary: true,
-              receive_emails: true
+              receive_emails: true,
             });
           }
         }
@@ -4507,7 +4838,9 @@ updateCountyFilterByRegion() {
             try {
               await apiClient.insert('organisation_contacts', contactRecords.slice(i, i + 50));
               contactCount += contactRecords.slice(i, i + 50).length;
-            } catch (e) { console.warn('Contact import batch error:', e.message); }
+            } catch (e) {
+              console.warn('Contact import batch error:', e.message);
+            }
           }
         }
       }
@@ -4517,10 +4850,12 @@ updateCountyFilterByRegion() {
         const imported = JSON.parse(localStorage.getItem('csvImportedCounties') || '{}');
         imported[selectedCounty] = {
           count: (imported[selectedCounty]?.count || 0) + successCount,
-          lastImport: new Date().toISOString()
+          lastImport: new Date().toISOString(),
         };
         localStorage.setItem('csvImportedCounties', JSON.stringify(imported));
-      } catch (e) { console.warn('Failed to track imported counties:', e.message); }
+      } catch (e) {
+        console.warn('Failed to track imported counties:', e.message);
+      }
 
       // Log import history
       const fileInput = document.getElementById('csvFileInput');
@@ -4532,7 +4867,10 @@ updateCountyFilterByRegion() {
 
       if (errorCount === 0) {
         const contactMsg = contactCount > 0 ? ` + ${contactCount} contacts` : '';
-        utils.showToast(`Successfully imported ${successCount} organisations${contactMsg} for ${selectedCounty}!`, 'success');
+        utils.showToast(
+          `Successfully imported ${successCount} organisations${contactMsg} for ${selectedCounty}!`,
+          'success'
+        );
       } else {
         utils.showToast(`${successCount} imported, ${errorCount} failed. Check console for details.`, 'warning');
       }
@@ -4545,7 +4883,6 @@ updateCountyFilterByRegion() {
       if (typeof dashboardModule !== 'undefined' && dashboardModule.updateCountyCoverage) {
         dashboardModule.updateCountyCoverage();
       }
-
     } catch (error) {
       console.error('CSV import error:', error);
       utils.showToast('Import failed: ' + error.message, 'error');
@@ -4584,7 +4921,7 @@ updateCountyFilterByRegion() {
       const result = await apiClient.select('user_preferences', {
         select: 'value',
         filters: { key: 'orgsFilterPresets' },
-        pageSize: 1
+        pageSize: 1,
       });
       const data = result.data;
       if (data?.[0]?.value) {
@@ -4594,10 +4931,15 @@ updateCountyFilterByRegion() {
       // Fallback to localStorage
       try {
         presets = JSON.parse(localStorage.getItem('orgsFilterPresets') || '{}');
-      } catch (parseErr) { /* ignore */ }
+      } catch (parseErr) {
+        /* ignore */
+      }
     }
-    presetSelect.innerHTML = '<option value="">-- Saved Views --</option>' +
-      Object.keys(presets).map(name => `<option value="${utils.escapeHtml(name)}">${utils.escapeHtml(name)}</option>`).join('');
+    presetSelect.innerHTML =
+      '<option value="">-- Saved Views --</option>' +
+      Object.keys(presets)
+        .map((name) => `<option value="${utils.escapeHtml(name)}">${utils.escapeHtml(name)}</option>`)
+        .join('');
   },
 
   async saveFilterPreset() {
@@ -4610,7 +4952,7 @@ updateCountyFilterByRegion() {
         const result = await apiClient.select('user_preferences', {
           select: 'value',
           filters: { key: 'orgsFilterPresets' },
-          pageSize: 1
+          pageSize: 1,
         });
         if (result.data?.[0]?.value) {
           presets = typeof result.data[0].value === 'string' ? JSON.parse(result.data[0].value) : result.data[0].value;
@@ -4633,32 +4975,37 @@ updateCountyFilterByRegion() {
         sort: { field: this.sortField, direction: this.sortDirection },
         columns: { ...this._columnVisibility },
         pageSize: this._pageSize,
-        tagFilters: [...(this._selectedTagFilters || [])]
+        tagFilters: [...(this._selectedTagFilters || [])],
       };
 
       // Build synced saved views
       const savedViews = Object.fromEntries(
-        Object.entries(presets).map(([k, v]) => [k, { filters: v, sort: v.sort, columns: v.columns, pageSize: v.pageSize, tagFilters: v.tagFilters }])
+        Object.entries(presets).map(([k, v]) => [
+          k,
+          { filters: v, sort: v.sort, columns: v.columns, pageSize: v.pageSize, tagFilters: v.tagFilters },
+        ])
       );
 
       try {
-        const { error } = await STATE.client
-          .from('user_preferences')
-          .upsert({
+        const { error } = await STATE.client.from('user_preferences').upsert(
+          {
             key: 'orgsFilterPresets',
             value: JSON.stringify(presets),
-            user_email: STATE.currentUser?.email
-          }, { onConflict: 'key' });
+            user_email: STATE.currentUser?.email,
+          },
+          { onConflict: 'key' }
+        );
         if (error) throw error;
 
         // Also keep saved views in sync in Supabase
-        const { error: viewsError } = await STATE.client
-          .from('user_preferences')
-          .upsert({
+        const { error: viewsError } = await STATE.client.from('user_preferences').upsert(
+          {
             key: 'orgsSavedViews',
             value: JSON.stringify(savedViews),
-            user_email: STATE.currentUser?.email
-          }, { onConflict: 'key' });
+            user_email: STATE.currentUser?.email,
+          },
+          { onConflict: 'key' }
+        );
         if (viewsError) throw viewsError;
       } catch (saveErr) {
         // Fallback to localStorage
@@ -4669,7 +5016,9 @@ updateCountyFilterByRegion() {
       this._populateFilterPresets();
       document.getElementById('orgsFilterPreset').value = name.trim();
       utils.showToast(`View "${name.trim()}" saved`, 'success');
-    } catch (e) { utils.showToast('Error saving preset', 'error'); }
+    } catch (e) {
+      utils.showToast('Error saving preset', 'error');
+    }
   },
 
   async loadFilterPreset(name) {
@@ -4679,7 +5028,7 @@ updateCountyFilterByRegion() {
       const result = await apiClient.select('user_preferences', {
         select: 'value',
         filters: { key: 'orgsFilterPresets' },
-        pageSize: 1
+        pageSize: 1,
       });
       if (result.data?.[0]?.value) {
         presets = typeof result.data[0].value === 'string' ? JSON.parse(result.data[0].value) : result.data[0].value;
@@ -4688,7 +5037,9 @@ updateCountyFilterByRegion() {
       // Fallback to localStorage
       try {
         presets = JSON.parse(localStorage.getItem('orgsFilterPresets') || '{}');
-      } catch (parseErr) { return; }
+      } catch (parseErr) {
+        return;
+      }
     }
 
     const preset = presets[name];
@@ -4716,7 +5067,11 @@ updateCountyFilterByRegion() {
     // Restore column visibility if saved
     if (preset.columns) {
       this._columnVisibility = { ...preset.columns };
-      try { localStorage.setItem('orgsColumnVisibility', JSON.stringify(this._columnVisibility)); } catch (e) { console.warn('Failed to save column visibility to localStorage:', e.message); }
+      try {
+        localStorage.setItem('orgsColumnVisibility', JSON.stringify(this._columnVisibility));
+      } catch (e) {
+        console.warn('Failed to save column visibility to localStorage:', e.message);
+      }
     }
     // Restore page size if saved
     if (preset.pageSize) this._pageSize = preset.pageSize;
@@ -4729,8 +5084,11 @@ updateCountyFilterByRegion() {
   async deleteFilterPreset() {
     const presetSelect = document.getElementById('orgsFilterPreset');
     const name = presetSelect?.value;
-    if (!name) { utils.showToast('Select a preset to delete', 'warning'); return; }
-    if (!await utils.confirmDialog({ title: 'Delete Preset', message: `Delete preset "${name}"?` })) return;
+    if (!name) {
+      utils.showToast('Select a preset to delete', 'warning');
+      return;
+    }
+    if (!(await utils.confirmDialog({ title: 'Delete Preset', message: `Delete preset "${name}"?` }))) return;
     try {
       // Load existing presets from Supabase
       let presets = {};
@@ -4738,7 +5096,7 @@ updateCountyFilterByRegion() {
         const result = await apiClient.select('user_preferences', {
           select: 'value',
           filters: { key: 'orgsFilterPresets' },
-          pageSize: 1
+          pageSize: 1,
         });
         if (result.data?.[0]?.value) {
           presets = typeof result.data[0].value === 'string' ? JSON.parse(result.data[0].value) : result.data[0].value;
@@ -4750,13 +5108,14 @@ updateCountyFilterByRegion() {
       delete presets[name];
 
       try {
-        const { error } = await STATE.client
-          .from('user_preferences')
-          .upsert({
+        const { error } = await STATE.client.from('user_preferences').upsert(
+          {
             key: 'orgsFilterPresets',
             value: JSON.stringify(presets),
-            user_email: STATE.currentUser?.email
-          }, { onConflict: 'key' });
+            user_email: STATE.currentUser?.email,
+          },
+          { onConflict: 'key' }
+        );
         if (error) throw error;
       } catch (saveErr) {
         localStorage.setItem('orgsFilterPresets', JSON.stringify(presets));
@@ -4764,7 +5123,9 @@ updateCountyFilterByRegion() {
 
       this._populateFilterPresets();
       utils.showToast(`Preset "${name}" deleted`, 'success');
-    } catch (e) { /* ignore */ }
+    } catch (e) {
+      /* ignore */
+    }
   },
 
   // ============================================
@@ -4825,7 +5186,9 @@ updateCountyFilterByRegion() {
           <th>Name</th><th>Job Title</th><th>Email</th><th>Phone</th><th>Primary</th><th>Emails</th><th>Actions</th>
         </tr></thead>
         <tbody>
-          ${contacts.map(c => `<tr>
+          ${contacts
+            .map(
+              (c) => `<tr>
             <td class="small">${utils.escapeHtml((c.first_name || '') + ' ' + (c.last_name || ''))}</td>
             <td class="small">${utils.escapeHtml(c.job_title || '-')}</td>
             <td class="small">${c.email ? `<a href="mailto:${c.email}">${utils.escapeHtml(c.email)}</a>` : '-'}</td>
@@ -4833,7 +5196,9 @@ updateCountyFilterByRegion() {
             <td class="text-center">${c.is_primary ? '<i class="bi bi-star-fill text-warning"></i>' : `<i class="bi bi-star text-muted" style="cursor:pointer" data-action="orgsModule.setPrimaryContact" data-args='${JSON.stringify([orgId, c.id])}'></i>`}</td>
             <td class="text-center">${c.receive_emails ? '<i class="bi bi-check-circle text-success"></i>' : `<i class="bi bi-x-circle text-muted" style="cursor:pointer" data-action="orgsModule.toggleContactEmails" data-args='${JSON.stringify([orgId, c.id, true])}'></i>`}</td>
             <td><button class="btn btn-sm btn-outline-danger" data-action="orgsModule.deleteContact" data-args='${JSON.stringify([orgId, c.id])}'><i class="bi bi-trash"></i></button></td>
-          </tr>`).join('')}
+          </tr>`
+            )
+            .join('')}
         </tbody>
       </table>
     </div>`;
@@ -4848,19 +5213,27 @@ updateCountyFilterByRegion() {
     const isPrimary = document.getElementById('newContactIsPrimary')?.checked || false;
     const receiveEmails = document.getElementById('newContactReceiveEmails')?.checked ?? true;
 
-    if (!firstName && !lastName) { utils.showToast('Please enter a name', 'warning'); return; }
+    if (!firstName && !lastName) {
+      utils.showToast('Please enter a name', 'warning');
+      return;
+    }
 
     try {
       if (isPrimary) {
         await apiClient.updateByFilters('organisation_contacts', { organisation_id: orgId }, { is_primary: false });
       }
       await apiClient.insert('organisation_contacts', {
-        organisation_id: orgId, first_name: firstName || null, last_name: lastName || null,
-        job_title: jobTitle || null, email: email || null, phone: phone || null,
-        is_primary: isPrimary, receive_emails: receiveEmails
+        organisation_id: orgId,
+        first_name: firstName || null,
+        last_name: lastName || null,
+        job_title: jobTitle || null,
+        email: email || null,
+        phone: phone || null,
+        is_primary: isPrimary,
+        receive_emails: receiveEmails,
       });
       utils.showToast('Contact added', 'success');
-      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      const org = STATE.allOrganisations.find((o) => o.id === orgId);
       if (org) await this.openCompanyProfile(orgId, org.company_name);
     } catch (e) {
       console.warn('Error adding contact:', e);
@@ -4869,11 +5242,11 @@ updateCountyFilterByRegion() {
   },
 
   async deleteContact(orgId, contactId) {
-    if (!await utils.confirmDialog({ title: 'Delete Contact', message: 'Delete this contact?' })) return;
+    if (!(await utils.confirmDialog({ title: 'Delete Contact', message: 'Delete this contact?' }))) return;
     try {
       await apiClient.delete('organisation_contacts', contactId);
       utils.showToast('Contact deleted', 'success');
-      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      const org = STATE.allOrganisations.find((o) => o.id === orgId);
       if (org) await this.openCompanyProfile(orgId, org.company_name);
     } catch (e) {
       utils.showToast('Error: ' + e.message, 'error');
@@ -4885,7 +5258,7 @@ updateCountyFilterByRegion() {
       await apiClient.updateByFilters('organisation_contacts', { organisation_id: orgId }, { is_primary: false });
       await apiClient.update('organisation_contacts', contactId, { is_primary: true });
       utils.showToast('Primary contact updated', 'success');
-      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      const org = STATE.allOrganisations.find((o) => o.id === orgId);
       if (org) await this.openCompanyProfile(orgId, org.company_name);
     } catch (e) {
       utils.showToast('Error: ' + e.message, 'error');
@@ -4896,7 +5269,7 @@ updateCountyFilterByRegion() {
     try {
       await apiClient.update('organisation_contacts', contactId, { receive_emails: value });
       utils.showToast(value ? 'Will receive emails' : 'Opted out of emails', 'success');
-      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      const org = STATE.allOrganisations.find((o) => o.id === orgId);
       if (org) await this.openCompanyProfile(orgId, org.company_name);
     } catch (e) {
       utils.showToast('Error: ' + e.message, 'error');
@@ -4908,12 +5281,15 @@ updateCountyFilterByRegion() {
   // ============================================
   async getCustomFields(orgId) {
     try {
+      /* selectAll: justified — scoped to single organisation */
       const result = await apiClient.selectAll('organisation_custom_fields', {
         filters: { organisation_id: orgId },
-        sort: { column: 'field_name', ascending: true }
+        sort: { column: 'field_name', ascending: true },
       });
       const fields = {};
-      (result || []).forEach(f => { fields[f.field_name] = f.field_value; });
+      (result || []).forEach((f) => {
+        fields[f.field_name] = f.field_value;
+      });
       return fields;
     } catch (e) {
       console.warn('Failed to read custom fields from Supabase:', e.message);
@@ -4926,12 +5302,23 @@ updateCountyFilterByRegion() {
       if (fieldValue) {
         // upsert not supported by apiClient — try update, fall back to insert
         try {
-          await apiClient.updateByFilters('organisation_custom_fields', { organisation_id: orgId, field_name: fieldName }, { field_value: fieldValue });
+          await apiClient.updateByFilters(
+            'organisation_custom_fields',
+            { organisation_id: orgId, field_name: fieldName },
+            { field_value: fieldValue }
+          );
         } catch (_) {
-          await apiClient.insert('organisation_custom_fields', { organisation_id: orgId, field_name: fieldName, field_value: fieldValue });
+          await apiClient.insert('organisation_custom_fields', {
+            organisation_id: orgId,
+            field_name: fieldName,
+            field_value: fieldValue,
+          });
         }
       } else {
-        await apiClient.deleteByFilters('organisation_custom_fields', { organisation_id: orgId, field_name: fieldName });
+        await apiClient.deleteByFilters('organisation_custom_fields', {
+          organisation_id: orgId,
+          field_name: fieldName,
+        });
       }
       utils.showToast('Custom field saved', 'success');
     } catch (e) {
@@ -4942,15 +5329,18 @@ updateCountyFilterByRegion() {
   async addCustomField(orgId) {
     const name = document.getElementById('customFieldName')?.value.trim();
     const value = document.getElementById('customFieldValue')?.value.trim();
-    if (!name) { utils.showToast('Enter a field name', 'warning'); return; }
+    if (!name) {
+      utils.showToast('Enter a field name', 'warning');
+      return;
+    }
     await this.saveCustomField(orgId, name, value);
-    const org = STATE.allOrganisations.find(o => o.id === orgId);
+    const org = STATE.allOrganisations.find((o) => o.id === orgId);
     if (org) this.openCompanyProfile(orgId, org.company_name);
   },
 
   async removeCustomField(orgId, fieldName) {
     await this.saveCustomField(orgId, fieldName, null);
-    const org = STATE.allOrganisations.find(o => o.id === orgId);
+    const org = STATE.allOrganisations.find((o) => o.id === orgId);
     if (org) this.openCompanyProfile(orgId, org.company_name);
   },
 
@@ -4960,7 +5350,10 @@ updateCountyFilterByRegion() {
   async uploadDocument(orgId) {
     const fileInput = document.getElementById('docUploadInput');
     const docTitle = document.getElementById('docTitle')?.value.trim() || '';
-    if (!fileInput?.files?.[0]) { utils.showToast('Select a file', 'warning'); return; }
+    if (!fileInput?.files?.[0]) {
+      utils.showToast('Select a file', 'warning');
+      return;
+    }
 
     const file = fileInput.files[0];
     try {
@@ -4974,15 +5367,18 @@ updateCountyFilterByRegion() {
       // Store in organisation_documents or fallback to localStorage
       try {
         await apiClient.insert('organisation_documents', {
-          organisation_id: orgId, file_url: urlData.publicUrl, title: docTitle || file.name,
-          file_type: file.type, file_size: file.size
+          organisation_id: orgId,
+          file_url: urlData.publicUrl,
+          title: docTitle || file.name,
+          file_type: file.type,
+          file_size: file.size,
         });
       } catch (dbErr) {
         console.warn('Failed to save document to Supabase:', dbErr.message);
       }
 
       utils.showToast('Document uploaded', 'success');
-      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      const org = STATE.allOrganisations.find((o) => o.id === orgId);
       if (org) await this.openCompanyProfile(orgId, org.company_name);
     } catch (e) {
       utils.showToast('Error: ' + e.message, 'error');
@@ -4993,9 +5389,10 @@ updateCountyFilterByRegion() {
 
   async getDocuments(orgId) {
     try {
+      /* selectAll: justified — scoped to single organisation */
       const result = await apiClient.selectAll('organisation_documents', {
         filters: { organisation_id: orgId },
-        sort: { column: 'created_at', ascending: false }
+        sort: { column: 'created_at', ascending: false },
       });
       return result || [];
     } catch (e) {
@@ -5011,13 +5408,19 @@ updateCountyFilterByRegion() {
     try {
       const filters = {};
       if (orgId) filters.organisation_id = orgId;
+      /* selectAll: justified — scoped to single organisation (or bounded follow-up list) */
       const data = await apiClient.selectAll('organisation_follow_ups', {
         filters,
-        sort: { column: 'follow_up_date', ascending: true }
+        sort: { column: 'follow_up_date', ascending: true },
       });
-      return (data || []).map(f => ({
-        id: f.id, orgId: f.organisation_id, companyName: f.company_name,
-        date: f.follow_up_date, note: f.note, done: f.completed, created: f.created_at
+      return (data || []).map((f) => ({
+        id: f.id,
+        orgId: f.organisation_id,
+        companyName: f.company_name,
+        date: f.follow_up_date,
+        note: f.note,
+        done: f.completed,
+        created: f.created_at,
       }));
     } catch (e) {
       console.warn('Failed to read follow-ups from Supabase:', e.message);
@@ -5029,78 +5432,132 @@ updateCountyFilterByRegion() {
     const date = document.getElementById('followUpDate')?.value;
     const note = document.getElementById('followUpNote')?.value.trim();
     const assignee = document.getElementById('followUpAssignee')?.value.trim() || null;
-    if (!date) { utils.showToast('Select a date', 'warning'); return; }
+    if (!date) {
+      utils.showToast('Select a date', 'warning');
+      return;
+    }
 
-    const org = STATE.allOrganisations.find(o => o.id === orgId);
+    const org = STATE.allOrganisations.find((o) => o.id === orgId);
     try {
       const insertData = {
-        organisation_id: orgId, company_name: org?.company_name || '',
-        follow_up_date: date, note: note || null
+        organisation_id: orgId,
+        company_name: org?.company_name || '',
+        follow_up_date: date,
+        note: note || null,
       };
       if (assignee) insertData.assigned_to = assignee;
       await apiClient.insert('organisation_follow_ups', insertData);
       utils.showToast('Follow-up scheduled' + (assignee ? ` (assigned to ${assignee})` : ''), 'success');
       if (org) this.openCompanyProfile(orgId, org.company_name);
-    } catch (e) { utils.showToast('Error: ' + e.message, 'error'); }
+    } catch (e) {
+      utils.showToast('Error: ' + e.message, 'error');
+    }
   },
 
   async completeFollowUp(orgId, followUpId) {
     try {
-      await apiClient.update('organisation_follow_ups', followUpId, { completed: true, completed_at: new Date().toISOString() });
+      await apiClient.update('organisation_follow_ups', followUpId, {
+        completed: true,
+        completed_at: new Date().toISOString(),
+      });
       utils.showToast('Follow-up completed', 'success');
-      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      const org = STATE.allOrganisations.find((o) => o.id === orgId);
       if (org) this.openCompanyProfile(orgId, org.company_name);
-    } catch (e) { utils.showToast('Error: ' + e.message, 'error'); }
+    } catch (e) {
+      utils.showToast('Error: ' + e.message, 'error');
+    }
   },
 
   async deleteFollowUp(orgId, followUpId) {
-    if (!await utils.confirmDialog({ title: 'Delete Follow-Up', message: 'Delete this follow-up?', confirmText: 'Delete', danger: true })) return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Delete Follow-Up',
+        message: 'Delete this follow-up?',
+        confirmText: 'Delete',
+        danger: true,
+      }))
+    )
+      return;
     try {
       await apiClient.delete('organisation_follow_ups', followUpId);
       utils.showToast('Follow-up deleted', 'success');
-      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      const org = STATE.allOrganisations.find((o) => o.id === orgId);
       if (org) this.openCompanyProfile(orgId, org.company_name);
-    } catch (e) { utils.showToast('Error: ' + e.message, 'error'); }
+    } catch (e) {
+      utils.showToast('Error: ' + e.message, 'error');
+    }
   },
 
   // ============================================
   // AREA 6: SMS/WHATSAPP TEMPLATES
   // ============================================
   _smsTemplates: [
-    { id: 'sms_shortlist', name: 'Shortlist SMS', body: 'Hi {contact_name}, great news! {company_name} has been shortlisted for the British Trade Awards. Check your email for details.' },
-    { id: 'sms_winner', name: 'Winner SMS', body: 'Congratulations {contact_name}! {company_name} has won at the British Trade Awards! Details in your inbox.' },
-    { id: 'sms_reminder', name: 'Entry Reminder', body: 'Hi {contact_name}, just a reminder that entries for British Trade Awards close soon. Don\'t miss out!' }
+    {
+      id: 'sms_shortlist',
+      name: 'Shortlist SMS',
+      body: 'Hi {contact_name}, great news! {company_name} has been shortlisted for the British Trade Awards. Check your email for details.',
+    },
+    {
+      id: 'sms_winner',
+      name: 'Winner SMS',
+      body: 'Congratulations {contact_name}! {company_name} has won at the British Trade Awards! Details in your inbox.',
+    },
+    {
+      id: 'sms_reminder',
+      name: 'Entry Reminder',
+      body: "Hi {contact_name}, just a reminder that entries for British Trade Awards close soon. Don't miss out!",
+    },
   ],
 
   _whatsappTemplates: [
-    { id: 'wa_shortlist', name: 'Shortlist WhatsApp', body: 'Hi {contact_name}! Exciting news - {company_name} has been shortlisted for the British Trade Awards! Check your email for all the details.' },
-    { id: 'wa_winner', name: 'Winner WhatsApp', body: 'Congratulations {contact_name}! We\'re thrilled to let you know that {company_name} has won at the British Trade Awards! Full details coming to your inbox.' },
-    { id: 'wa_invite', name: 'Invitation WhatsApp', body: 'Hi {contact_name}, we\'d love to invite {company_name} to enter the British Trade Awards this year. Interested? Reply for more info!' }
+    {
+      id: 'wa_shortlist',
+      name: 'Shortlist WhatsApp',
+      body: 'Hi {contact_name}! Exciting news - {company_name} has been shortlisted for the British Trade Awards! Check your email for all the details.',
+    },
+    {
+      id: 'wa_winner',
+      name: 'Winner WhatsApp',
+      body: "Congratulations {contact_name}! We're thrilled to let you know that {company_name} has won at the British Trade Awards! Full details coming to your inbox.",
+    },
+    {
+      id: 'wa_invite',
+      name: 'Invitation WhatsApp',
+      body: "Hi {contact_name}, we'd love to invite {company_name} to enter the British Trade Awards this year. Interested? Reply for more info!",
+    },
   ],
 
   openSMSTemplate(orgId) {
-    const org = STATE.allOrganisations.find(o => o.id === orgId) || {};
+    const org = STATE.allOrganisations.find((o) => o.id === orgId) || {};
     const phone = org.contact_phone || '';
     const cleanPhone = phone.replace(/[^0-9+]/g, '');
 
     const html = `<div class="mb-3"><strong>Phone:</strong> ${utils.escapeHtml(phone || 'No phone number')}</div>
     <h6 class="fw-semibold mb-2">SMS Templates</h6>
     <div class="list-group mb-3">
-      ${this._smsTemplates.map(t => {
-        const body = t.body.replace(/{company_name}/g, org.company_name || '').replace(/{contact_name}/g, org.contact_name || '');
-        return `<a href="sms:${cleanPhone}?body=${encodeURIComponent(body)}" class="list-group-item list-group-item-action">
+      ${this._smsTemplates
+        .map((t) => {
+          const body = t.body
+            .replace(/{company_name}/g, org.company_name || '')
+            .replace(/{contact_name}/g, org.contact_name || '');
+          return `<a href="sms:${cleanPhone}?body=${encodeURIComponent(body)}" class="list-group-item list-group-item-action">
           <div class="d-flex justify-content-between"><div><h6 class="mb-1">${t.name}</h6><small class="text-muted">${utils.escapeHtml(body.substring(0, 80))}...</small></div><i class="bi bi-chat-dots text-success"></i></div>
         </a>`;
-      }).join('')}
+        })
+        .join('')}
     </div>
     <h6 class="fw-semibold mb-2">WhatsApp Templates</h6>
     <div class="list-group">
-      ${this._whatsappTemplates.map(t => {
-        const body = t.body.replace(/{company_name}/g, org.company_name || '').replace(/{contact_name}/g, org.contact_name || '');
-        return `<a href="https://wa.me/${cleanPhone.replace('+', '')}?text=${encodeURIComponent(body)}" target="_blank" class="list-group-item list-group-item-action">
+      ${this._whatsappTemplates
+        .map((t) => {
+          const body = t.body
+            .replace(/{company_name}/g, org.company_name || '')
+            .replace(/{contact_name}/g, org.contact_name || '');
+          return `<a href="https://wa.me/${cleanPhone.replace('+', '')}?text=${encodeURIComponent(body)}" target="_blank" class="list-group-item list-group-item-action">
           <div class="d-flex justify-content-between"><div><h6 class="mb-1">${t.name}</h6><small class="text-muted">${utils.escapeHtml(body.substring(0, 80))}...</small></div><i class="bi bi-whatsapp text-success"></i></div>
         </a>`;
-      }).join('')}
+        })
+        .join('')}
     </div>`;
 
     this._showDynamicModal('SMS / WhatsApp', html, 'bi-phone');
@@ -5133,7 +5590,9 @@ updateCountyFilterByRegion() {
       this._cachedAuditLog = log;
     } catch (e) {
       utils.showToast('Error loading audit log', 'error');
-    } finally { utils.hideLoading(); }
+    } finally {
+      utils.hideLoading();
+    }
   },
 
   _cachedAuditLog: [],
@@ -5145,20 +5604,19 @@ updateCountyFilterByRegion() {
     const search = (document.getElementById('auditSearchFilter')?.value || '').toLowerCase();
 
     let filtered = this._cachedAuditLog;
-    if (action) filtered = filtered.filter(e => e.action === action);
-    if (dateFrom) filtered = filtered.filter(e => (e.timestamp || e.created_at) >= dateFrom);
-    if (dateTo) filtered = filtered.filter(e => (e.timestamp || e.created_at) <= dateTo + 'T23:59:59');
+    if (action) filtered = filtered.filter((e) => e.action === action);
+    if (dateFrom) filtered = filtered.filter((e) => (e.timestamp || e.created_at) >= dateFrom);
+    if (dateTo) filtered = filtered.filter((e) => (e.timestamp || e.created_at) <= dateTo + 'T23:59:59');
     if (search) {
-      filtered = filtered.filter(e =>
-        (e.company_name || '').toLowerCase().includes(search) ||
-        (e.details || '').toLowerCase().includes(search)
+      filtered = filtered.filter(
+        (e) => (e.company_name || '').toLowerCase().includes(search) || (e.details || '').toLowerCase().includes(search)
       );
       // Fuzzy search fallback
       if (filtered.length === 0) {
         filtered = utils.fuzzyFilter(this._cachedAuditLog, search, ['company_name', 'details']);
-        if (action) filtered = filtered.filter(e => e.action === action);
-        if (dateFrom) filtered = filtered.filter(e => (e.timestamp || e.created_at) >= dateFrom);
-        if (dateTo) filtered = filtered.filter(e => (e.timestamp || e.created_at) <= dateTo + 'T23:59:59');
+        if (action) filtered = filtered.filter((e) => e.action === action);
+        if (dateFrom) filtered = filtered.filter((e) => (e.timestamp || e.created_at) >= dateFrom);
+        if (dateTo) filtered = filtered.filter((e) => (e.timestamp || e.created_at) <= dateTo + 'T23:59:59');
       }
     }
 
@@ -5169,33 +5627,35 @@ updateCountyFilterByRegion() {
   _renderAuditEntries(entries) {
     if (!entries || entries.length === 0) return '<p class="text-muted text-center">No audit entries found</p>';
     const icons = {
-      'status_change': 'bi-arrow-repeat text-primary',
-      'archived': 'bi-archive text-warning',
-      'restored': 'bi-arrow-counterclockwise text-success',
-      'created': 'bi-plus-circle text-success',
-      'email_sent': 'bi-envelope text-info',
-      'note_added': 'bi-sticky text-secondary',
-      'csv_import': 'bi-file-earmark-arrow-up text-primary'
+      status_change: 'bi-arrow-repeat text-primary',
+      archived: 'bi-archive text-warning',
+      restored: 'bi-arrow-counterclockwise text-success',
+      created: 'bi-plus-circle text-success',
+      email_sent: 'bi-envelope text-info',
+      note_added: 'bi-sticky text-secondary',
+      csv_import: 'bi-file-earmark-arrow-up text-primary',
     };
     return `<table class="table table-sm table-hover"><thead><tr><th>Time</th><th>User</th><th>Company</th><th>Action</th><th>Details</th></tr></thead><tbody>
-      ${entries.map(e => {
-        const date = new Date(e.timestamp || e.created_at);
-        const icon = icons[e.action] || 'bi-clock-history text-muted';
-        // Diff view: parse "Status: X → Y" from details
-        let detailsHtml = utils.escapeHtml(e.details || e.action);
-        const diffMatch = (e.details || '').match(/(.+?):\s*(.+?)\s*→\s*(.+)/);
-        if (diffMatch) {
-          detailsHtml = `${utils.escapeHtml(diffMatch[1])}: <span class="text-danger text-decoration-line-through">${utils.escapeHtml(diffMatch[2])}</span> → <span class="text-success fw-semibold">${utils.escapeHtml(diffMatch[3])}</span>`;
-        }
-        const user = e.performed_by || '';
-        return `<tr>
+      ${entries
+        .map((e) => {
+          const date = new Date(e.timestamp || e.created_at);
+          const icon = icons[e.action] || 'bi-clock-history text-muted';
+          // Diff view: parse "Status: X → Y" from details
+          let detailsHtml = utils.escapeHtml(e.details || e.action);
+          const diffMatch = (e.details || '').match(/(.+?):\s*(.+?)\s*→\s*(.+)/);
+          if (diffMatch) {
+            detailsHtml = `${utils.escapeHtml(diffMatch[1])}: <span class="text-danger text-decoration-line-through">${utils.escapeHtml(diffMatch[2])}</span> → <span class="text-success fw-semibold">${utils.escapeHtml(diffMatch[3])}</span>`;
+          }
+          const user = e.performed_by || '';
+          return `<tr>
           <td class="small text-muted text-nowrap">${date.toLocaleDateString('en-GB')} ${date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</td>
           <td class="small text-muted">${user ? `<i class="bi bi-person me-1"></i>${utils.escapeHtml(user)}` : ''}</td>
           <td class="small fw-semibold">${utils.escapeHtml(e.company_name || e.companyName || '-')}</td>
           <td><span class="badge bg-light text-dark"><i class="bi ${icon} me-1"></i>${utils.escapeHtml(e.action)}</span></td>
           <td class="small">${detailsHtml}</td>
         </tr>`;
-      }).join('')}
+        })
+        .join('')}
     </tbody></table>`;
   },
 
@@ -5209,16 +5669,24 @@ updateCountyFilterByRegion() {
   // AREA 8: BULK TAG ASSIGNMENT
   // ============================================
   showBulkTagModal() {
-    if (this.selectedOrgs.size === 0) { utils.showToast('No organisations selected', 'warning'); return; }
+    if (this.selectedOrgs.size === 0) {
+      utils.showToast('No organisations selected', 'warning');
+      return;
+    }
     const allTags = new Set();
-    STATE.allOrganisations.forEach(o => { if (o.tags) o.tags.forEach(t => allTags.add(t)); });
+    STATE.allOrganisations.forEach((o) => {
+      if (o.tags) o.tags.forEach((t) => allTags.add(t));
+    });
 
     const html = `<p class="small text-muted">Apply to <strong>${this.selectedOrgs.size}</strong> selected organisations</p>
       <div class="mb-3">
         <label class="form-label fw-semibold">Add Tag</label>
         <div class="input-group">
           <input type="text" class="form-control" id="bulkTagInput" list="bulkTagSuggestions" placeholder="Enter tag name...">
-          <datalist id="bulkTagSuggestions">${[...allTags].sort().map(t => `<option value="${utils.escapeHtml(t)}">`).join('')}</datalist>
+          <datalist id="bulkTagSuggestions">${[...allTags]
+            .sort()
+            .map((t) => `<option value="${utils.escapeHtml(t)}">`)
+            .join('')}</datalist>
           <button class="btn btn-primary" data-action="orgsModule.executeBulkTagAdd"><i class="bi bi-plus me-1"></i>Add</button>
         </div>
       </div>
@@ -5226,7 +5694,10 @@ updateCountyFilterByRegion() {
         <label class="form-label fw-semibold">Remove Tag</label>
         <select class="form-select" id="bulkTagRemoveSelect">
           <option value="">-- Select tag to remove --</option>
-          ${[...allTags].sort().map(t => `<option value="${utils.escapeHtml(t)}">${utils.escapeHtml(t)}</option>`).join('')}
+          ${[...allTags]
+            .sort()
+            .map((t) => `<option value="${utils.escapeHtml(t)}">${utils.escapeHtml(t)}</option>`)
+            .join('')}
         </select>
         <button class="btn btn-outline-danger btn-sm mt-2" data-action="orgsModule.executeBulkTagRemove"><i class="bi bi-trash me-1"></i>Remove from Selected</button>
       </div>`;
@@ -5236,7 +5707,10 @@ updateCountyFilterByRegion() {
 
   async executeBulkTagAdd() {
     const tag = document.getElementById('bulkTagInput')?.value.trim();
-    if (!tag) { utils.showToast('Enter a tag', 'warning'); return; }
+    if (!tag) {
+      utils.showToast('Enter a tag', 'warning');
+      return;
+    }
 
     try {
       utils.showLoading();
@@ -5244,7 +5718,7 @@ updateCountyFilterByRegion() {
       // Build updates for orgs that need the tag
       const updates = [];
       for (const id of orgIds) {
-        const org = STATE.allOrganisations.find(o => o.id === id);
+        const org = STATE.allOrganisations.find((o) => o.id === id);
         const currentTags = org?.tags || [];
         if (!currentTags.includes(tag)) {
           const newTags = [...currentTags, tag];
@@ -5254,20 +5728,28 @@ updateCountyFilterByRegion() {
       // Execute in parallel batches of 5
       for (let i = 0; i < updates.length; i += 5) {
         const batch = updates.slice(i, i + 5);
-        await Promise.all(batch.map(({ id, org, newTags }) => {
-          if (org) org.tags = newTags;
-          return apiClient.update('organisations', id, { tags: newTags });
-        }));
+        await Promise.all(
+          batch.map(({ id, org, newTags }) => {
+            if (org) org.tags = newTags;
+            return apiClient.update('organisations', id, { tags: newTags });
+          })
+        );
       }
       utils.showToast(`Tag "${tag}" added to ${updates.length} org(s)`, 'success');
       this.renderOrganisations();
-    } catch (e) { utils.showToast('Error: ' + e.message, 'error'); }
-    finally { utils.hideLoading(); }
+    } catch (e) {
+      utils.showToast('Error: ' + e.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
   },
 
   async executeBulkTagRemove() {
     const tag = document.getElementById('bulkTagRemoveSelect')?.value;
-    if (!tag) { utils.showToast('Select a tag', 'warning'); return; }
+    if (!tag) {
+      utils.showToast('Select a tag', 'warning');
+      return;
+    }
 
     try {
       utils.showLoading();
@@ -5275,45 +5757,54 @@ updateCountyFilterByRegion() {
       // Build updates for orgs that have the tag
       const updates = [];
       for (const id of orgIds) {
-        const org = STATE.allOrganisations.find(o => o.id === id);
+        const org = STATE.allOrganisations.find((o) => o.id === id);
         const currentTags = org?.tags || [];
         if (currentTags.includes(tag)) {
-          const newTags = currentTags.filter(t => t !== tag);
+          const newTags = currentTags.filter((t) => t !== tag);
           updates.push({ id, org, newTags });
         }
       }
       // Execute in parallel batches of 5
       for (let i = 0; i < updates.length; i += 5) {
         const batch = updates.slice(i, i + 5);
-        await Promise.all(batch.map(({ id, org, newTags }) => {
-          if (org) org.tags = newTags;
-          return apiClient.update('organisations', id, { tags: newTags });
-        }));
+        await Promise.all(
+          batch.map(({ id, org, newTags }) => {
+            if (org) org.tags = newTags;
+            return apiClient.update('organisations', id, { tags: newTags });
+          })
+        );
       }
       utils.showToast(`Tag "${tag}" removed from ${updates.length} org(s)`, 'success');
       this.renderOrganisations();
-    } catch (e) { utils.showToast('Error: ' + e.message, 'error'); }
-    finally { utils.hideLoading(); }
+    } catch (e) {
+      utils.showToast('Error: ' + e.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
   },
 
   // ============================================
   // AREA 8: BULK ASSIGN TO AWARD
   // ============================================
   async showBulkAssignAwardModal() {
-    if (this.selectedOrgs.size === 0) { utils.showToast('No organisations selected', 'warning'); return; }
+    if (this.selectedOrgs.size === 0) {
+      utils.showToast('No organisations selected', 'warning');
+      return;
+    }
 
     utils.showLoading();
     try {
+      /* selectAll: justified — small reference table (awards for bulk-assign dropdown) */
       const awards = await apiClient.selectAll('awards', {
         select: 'id, award_name, county, sector, year',
-        sort: { column: 'year', ascending: false }
+        sort: { column: 'year', ascending: false },
       });
       const html = `<p class="small text-muted">Assign <strong>${this.selectedOrgs.size}</strong> selected organisations to an award</p>
         <div class="mb-3">
           <label class="form-label fw-semibold">Select Award</label>
           <select class="form-select" id="bulkAssignAwardSelect">
             <option value="">-- Select Award --</option>
-            ${(awards || []).map(a => `<option value="${a.id}">${utils.escapeHtml(a.year + ' - ' + (a.award_name || a.county + ' ' + a.sector))}</option>`).join('')}
+            ${(awards || []).map((a) => `<option value="${a.id}">${utils.escapeHtml(a.year + ' - ' + (a.award_name || a.county + ' ' + a.sector))}</option>`).join('')}
           </select>
         </div>
         <div class="mb-3">
@@ -5325,33 +5816,46 @@ updateCountyFilterByRegion() {
         <button class="btn btn-primary" data-action="orgsModule.executeBulkAssignAward"><i class="bi bi-trophy me-1"></i>Assign</button>`;
 
       this._showDynamicModal('Bulk Assign to Award', html, 'bi-trophy');
-    } catch (e) { utils.showToast('Error loading awards', 'error'); }
-    finally { utils.hideLoading(); }
+    } catch (e) {
+      utils.showToast('Error loading awards', 'error');
+    } finally {
+      utils.hideLoading();
+    }
   },
 
   async executeBulkAssignAward() {
     const awardId = document.getElementById('bulkAssignAwardSelect')?.value;
     const status = document.getElementById('bulkAssignStatus')?.value || 'nominated';
-    if (!awardId) { utils.showToast('Select an award', 'warning'); return; }
+    if (!awardId) {
+      utils.showToast('Select an award', 'warning');
+      return;
+    }
 
     try {
       utils.showLoading();
       const orgIds = Array.from(this.selectedOrgs);
-      const records = orgIds.map(orgId => ({ award_id: awardId, organisation_id: orgId, status }));
+      const records = orgIds.map((orgId) => ({ award_id: awardId, organisation_id: orgId, status }));
       // upsert not supported by apiClient — insert with conflict handled server-side
       for (const record of records) {
         try {
           await apiClient.insert('award_assignments', record);
         } catch (_) {
-          await apiClient.updateByFilters('award_assignments', { award_id: record.award_id, organisation_id: record.organisation_id }, { status: record.status });
+          await apiClient.updateByFilters(
+            'award_assignments',
+            { award_id: record.award_id, organisation_id: record.organisation_id },
+            { status: record.status }
+          );
         }
       }
       // Auto-promote prospects/entrants to nominee
       await this._autoPromoteStatus(orgIds);
       utils.showToast(`${orgIds.length} org(s) assigned to award`, 'success');
       await this.loadOrganisations();
-    } catch (e) { utils.showToast('Error: ' + e.message, 'error'); }
-    finally { utils.hideLoading(); }
+    } catch (e) {
+      utils.showToast('Error: ' + e.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
   },
 
   // ============================================
@@ -5364,23 +5868,39 @@ updateCountyFilterByRegion() {
     }
 
     const [id1, id2] = Array.from(this.selectedOrgs);
-    const org1 = STATE.allOrganisations.find(o => o.id === id1);
-    const org2 = STATE.allOrganisations.find(o => o.id === id2);
+    const org1 = STATE.allOrganisations.find((o) => o.id === id1);
+    const org2 = STATE.allOrganisations.find((o) => o.id === id2);
     if (!org1 || !org2) return;
 
-    const fields = ['company_name', 'contact_name', 'email', 'contact_phone', 'website', 'sector', 'region', 'address', 'catchment_area', 'description', 'tier', 'status', 'logo_url'];
+    const fields = [
+      'company_name',
+      'contact_name',
+      'email',
+      'contact_phone',
+      'website',
+      'sector',
+      'region',
+      'address',
+      'catchment_area',
+      'description',
+      'tier',
+      'status',
+      'logo_url',
+    ];
 
     const html = `<div class="alert alert-warning small"><i class="bi bi-exclamation-triangle me-2"></i>Select which value to keep for each field. The other organisation will be deleted.</div>
     <table class="table table-sm"><thead><tr><th>Field</th><th>Organisation A</th><th>Organisation B</th></tr></thead><tbody>
-    ${fields.map(f => {
-      const v1 = org1[f] || '';
-      const v2 = org2[f] || '';
-      return `<tr>
+    ${fields
+      .map((f) => {
+        const v1 = org1[f] || '';
+        const v2 = org2[f] || '';
+        return `<tr>
         <td class="fw-semibold small">${f.replace(/_/g, ' ')}</td>
         <td><label class="d-flex align-items-center small"><input type="radio" name="merge_${f}" value="a" class="me-2" ${v1 ? 'checked' : ''}>${utils.escapeHtml(String(v1) || '(empty)')}</label></td>
         <td><label class="d-flex align-items-center small"><input type="radio" name="merge_${f}" value="b" class="me-2" ${!v1 && v2 ? 'checked' : ''}>${utils.escapeHtml(String(v2) || '(empty)')}</label></td>
       </tr>`;
-    }).join('')}
+      })
+      .join('')}
     </tbody></table>
     <button class="btn btn-danger" data-action="orgsModule.executeMerge" data-args='${JSON.stringify([id1, id2])}'><i class="bi bi-intersect me-1"></i>Merge (keeps selected values, deletes other)</button>`;
 
@@ -5388,16 +5908,41 @@ updateCountyFilterByRegion() {
   },
 
   async executeMerge(id1, id2) {
-    if (!await utils.confirmDialog({ title: 'Merge Organisations', message: 'This will merge the two organisations. The non-primary org will be deleted. Continue?', confirmText: 'Merge' })) return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Merge Organisations',
+        message: 'This will merge the two organisations. The non-primary org will be deleted. Continue?',
+        confirmText: 'Merge',
+      }))
+    )
+      return;
 
-    const org1 = STATE.allOrganisations.find(o => o.id === id1);
-    const org2 = STATE.allOrganisations.find(o => o.id === id2);
-    if (!org1 || !org2) { utils.showToast('Could not find both organisations', 'error'); return; }
-    const fields = ['company_name', 'contact_name', 'email', 'contact_phone', 'website', 'sector', 'region', 'address', 'catchment_area', 'description', 'tier', 'status', 'logo_url'];
+    const org1 = STATE.allOrganisations.find((o) => o.id === id1);
+    const org2 = STATE.allOrganisations.find((o) => o.id === id2);
+    if (!org1 || !org2) {
+      utils.showToast('Could not find both organisations', 'error');
+      return;
+    }
+    const fields = [
+      'company_name',
+      'contact_name',
+      'email',
+      'contact_phone',
+      'website',
+      'sector',
+      'region',
+      'address',
+      'catchment_area',
+      'description',
+      'tier',
+      'status',
+      'logo_url',
+    ];
 
     const merged = {};
-    const keepId = id1, deleteId = id2;
-    fields.forEach(f => {
+    const keepId = id1,
+      deleteId = id2;
+    fields.forEach((f) => {
       const radio = document.querySelector(`input[name="merge_${f}"]:checked`);
       if (radio?.value === 'b') {
         merged[f] = org2[f] || null;
@@ -5418,7 +5963,11 @@ updateCountyFilterByRegion() {
         apiClient.updateByFilters('invoices', { organisation_id: deleteId }, { organisation_id: keepId }),
         apiClient.updateByFilters('organisation_contacts', { organisation_id: deleteId }, { organisation_id: keepId }),
         apiClient.updateByFilters('organisation_notes', { organisation_id: deleteId }, { organisation_id: keepId }),
-        apiClient.updateByFilters('organisation_follow_ups', { organisation_id: deleteId }, { organisation_id: keepId }),
+        apiClient.updateByFilters(
+          'organisation_follow_ups',
+          { organisation_id: deleteId },
+          { organisation_id: keepId }
+        ),
         apiClient.updateByFilters('organisation_images', { organisation_id: deleteId }, { organisation_id: keepId }),
         apiClient.updateByFilters('organisation_documents', { organisation_id: deleteId }, { organisation_id: keepId }),
       ]);
@@ -5437,15 +5986,28 @@ updateCountyFilterByRegion() {
       await this.loadOrganisations();
     } catch (e) {
       utils.showToast('Error: ' + e.message, 'error');
-    } finally { utils.hideLoading(); }
+    } finally {
+      utils.hideLoading();
+    }
   },
 
   // ============================================
   // AREA 9: DATA QUALITY
   // ============================================
   calculateCompletenessScore(org) {
-    const keyFields = ['company_name', 'email', 'contact_name', 'contact_phone', 'website', 'logo_url', 'sector', 'region', 'address', 'description'];
-    const filled = keyFields.filter(f => org[f]).length;
+    const keyFields = [
+      'company_name',
+      'email',
+      'contact_name',
+      'contact_phone',
+      'website',
+      'logo_url',
+      'sector',
+      'region',
+      'address',
+      'description',
+    ];
+    const filled = keyFields.filter((f) => org[f]).length;
     return Math.round((filled / keyFields.length) * 100);
   },
 
@@ -5460,26 +6022,27 @@ updateCountyFilterByRegion() {
   },
 
   showDataQualityWizard() {
-    const orgs = STATE.allOrganisations.filter(o => (o.status || 'prospect') !== 'archived');
+    const orgs = STATE.allOrganisations.filter((o) => (o.status || 'prospect') !== 'archived');
 
     // Calculate stats
-    const missingEmail = orgs.filter(o => !o.email);
-    const missingPhone = orgs.filter(o => !o.contact_phone);
-    const missingLogo = orgs.filter(o => !o.logo_url);
-    const missingWebsite = orgs.filter(o => !o.website);
-    const missingContact = orgs.filter(o => !o.contact_name);
-    const missingDescription = orgs.filter(o => !o.description);
+    const missingEmail = orgs.filter((o) => !o.email);
+    const missingPhone = orgs.filter((o) => !o.contact_phone);
+    const missingLogo = orgs.filter((o) => !o.logo_url);
+    const missingWebsite = orgs.filter((o) => !o.website);
+    const missingContact = orgs.filter((o) => !o.contact_name);
+    const missingDescription = orgs.filter((o) => !o.description);
 
-    const invalidEmails = orgs.filter(o => o.email && !this.validateEmail(o.email).valid);
-    const staleOrgs = orgs.filter(o => {
+    const invalidEmails = orgs.filter((o) => o.email && !this.validateEmail(o.email).valid);
+    const staleOrgs = orgs.filter((o) => {
       const updated = new Date(o.updated_at || o.created_at || 0);
-      return (Date.now() - updated.getTime()) > 180 * 24 * 60 * 60 * 1000;
+      return Date.now() - updated.getTime() > 180 * 24 * 60 * 60 * 1000;
     });
 
     // Average completeness
-    const avgCompleteness = orgs.length > 0
-      ? Math.round(orgs.reduce((sum, o) => sum + this.calculateCompletenessScore(o), 0) / orgs.length)
-      : 0;
+    const avgCompleteness =
+      orgs.length > 0
+        ? Math.round(orgs.reduce((sum, o) => sum + this.calculateCompletenessScore(o), 0) / orgs.length)
+        : 0;
 
     const html = `
       <div class="row g-3 mb-4">
@@ -5506,36 +6069,61 @@ updateCountyFilterByRegion() {
           { label: 'Missing Logo', count: missingLogo.length, field: 'logo_url', icon: 'bi-image' },
           { label: 'Missing Website', count: missingWebsite.length, field: 'website', icon: 'bi-globe' },
           { label: 'Missing Contact Name', count: missingContact.length, field: 'contact_name', icon: 'bi-person' },
-          { label: 'Missing Description', count: missingDescription.length, field: 'description', icon: 'bi-text-paragraph' }
-        ].map(item => `
+          {
+            label: 'Missing Description',
+            count: missingDescription.length,
+            field: 'description',
+            icon: 'bi-text-paragraph',
+          },
+        ]
+          .map(
+            (item) => `
           <a href="javascript:void(0);" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
              data-action="orgsModule.filterByMissingField" data-id="${item.field}">
             <span><i class="bi ${item.icon} me-2"></i>${item.label}</span>
             <span class="badge ${item.count > 0 ? 'bg-warning text-dark' : 'bg-success'}">${item.count}</span>
           </a>
-        `).join('')}
+        `
+          )
+          .join('')}
       </div>
-      ${invalidEmails.length > 0 ? `
+      ${
+        invalidEmails.length > 0
+          ? `
         <h6 class="fw-semibold mb-2">Invalid Emails</h6>
         <div class="table-responsive mb-3" style="max-height: 200px; overflow-y: auto;">
           <table class="table table-sm"><thead><tr><th>Company</th><th>Email</th><th>Issue</th></tr></thead><tbody>
-            ${invalidEmails.slice(0, 50).map(o => {
-              const v = this.validateEmail(o.email);
-              return `<tr><td class="small">${utils.escapeHtml(o.company_name)}</td><td class="small">${utils.escapeHtml(o.email)}</td><td class="small text-danger">${v.reason}</td></tr>`;
-            }).join('')}
+            ${invalidEmails
+              .slice(0, 50)
+              .map((o) => {
+                const v = this.validateEmail(o.email);
+                return `<tr><td class="small">${utils.escapeHtml(o.company_name)}</td><td class="small">${utils.escapeHtml(o.email)}</td><td class="small text-danger">${v.reason}</td></tr>`;
+              })
+              .join('')}
           </tbody></table>
-        </div>` : ''}
-      ${staleOrgs.length > 0 ? `
+        </div>`
+          : ''
+      }
+      ${
+        staleOrgs.length > 0
+          ? `
         <h6 class="fw-semibold mb-2">Stale Records (6+ months without updates)</h6>
         <div class="table-responsive" style="max-height: 200px; overflow-y: auto;">
           <table class="table table-sm"><thead><tr><th>Company</th><th>Last Updated</th><th>Status</th></tr></thead><tbody>
-            ${staleOrgs.slice(0, 50).map(o => `<tr>
+            ${staleOrgs
+              .slice(0, 50)
+              .map(
+                (o) => `<tr>
               <td class="small">${utils.escapeHtml(o.company_name)}</td>
               <td class="small text-muted">${o.updated_at ? new Date(o.updated_at).toLocaleDateString('en-GB') : 'Never'}</td>
               <td>${this.getStatusBadge(o.status || 'prospect')}</td>
-            </tr>`).join('')}
+            </tr>`
+              )
+              .join('')}
           </tbody></table>
-        </div>` : ''}`;
+        </div>`
+          : ''
+      }`;
 
     this._showDynamicModal('Data Quality Wizard', html, 'bi-shield-check', 'modal-lg');
   },
@@ -5544,28 +6132,37 @@ updateCountyFilterByRegion() {
   // AREA 10: ANALYTICS & REPORTING
   // ============================================
   showAnalyticsDashboard() {
-    const orgs = STATE.allOrganisations.filter(o => (o.status || 'prospect') !== 'archived');
+    const orgs = STATE.allOrganisations.filter((o) => (o.status || 'prospect') !== 'archived');
 
     // Sector breakdown
     const sectorCounts = {};
-    orgs.forEach(o => { if (o.sector) sectorCounts[o.sector] = (sectorCounts[o.sector] || 0) + 1; });
-    const topSectors = Object.entries(sectorCounts).sort((a, b) => b[1] - a[1]).slice(0, 10);
+    orgs.forEach((o) => {
+      if (o.sector) sectorCounts[o.sector] = (sectorCounts[o.sector] || 0) + 1;
+    });
+    const topSectors = Object.entries(sectorCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10);
     const maxSectorCount = topSectors[0]?.[1] || 1;
 
     // Regional distribution
     const regionCounts = {};
-    orgs.forEach(o => { if (o.region) regionCounts[o.region] = (regionCounts[o.region] || 0) + 1; });
+    orgs.forEach((o) => {
+      if (o.region) regionCounts[o.region] = (regionCounts[o.region] || 0) + 1;
+    });
     const topRegions = Object.entries(regionCounts).sort((a, b) => b[1] - a[1]);
     const maxRegionCount = topRegions[0]?.[1] || 1;
 
     // Status pipeline
     const statusCounts = { prospect: 0, entrant: 0, nominee: 0, shortlisted: 0, winner: 0, sponsor: 0, past_winner: 0 };
-    orgs.forEach(o => { const s = o.status || 'prospect'; if (statusCounts[s] !== undefined) statusCounts[s]++; });
+    orgs.forEach((o) => {
+      const s = o.status || 'prospect';
+      if (statusCounts[s] !== undefined) statusCounts[s]++;
+    });
     const conversionRates = this._calculateConversionRates(statusCounts);
 
     // Year-over-year growth
     const yearCounts = {};
-    STATE.allOrganisations.forEach(o => {
+    STATE.allOrganisations.forEach((o) => {
       const year = o.created_at ? new Date(o.created_at).getFullYear() : null;
       if (year) yearCounts[year] = (yearCounts[year] || 0) + 1;
     });
@@ -5573,7 +6170,7 @@ updateCountyFilterByRegion() {
 
     // Win rate by sector
     const sectorWinData = {};
-    orgs.forEach(o => {
+    orgs.forEach((o) => {
       if (o.sector) {
         if (!sectorWinData[o.sector]) sectorWinData[o.sector] = { total: 0, winners: 0 };
         sectorWinData[o.sector].total++;
@@ -5581,12 +6178,25 @@ updateCountyFilterByRegion() {
       }
     });
     const winRates = Object.entries(sectorWinData)
-      .map(([sector, data]) => ({ sector, rate: data.total > 0 ? Math.round((data.winners / data.total) * 100) : 0, winners: data.winners, total: data.total }))
-      .filter(d => d.winners > 0)
+      .map(([sector, data]) => ({
+        sector,
+        rate: data.total > 0 ? Math.round((data.winners / data.total) * 100) : 0,
+        winners: data.winners,
+        total: data.total,
+      }))
+      .filter((d) => d.winners > 0)
       .sort((a, b) => b.rate - a.rate)
       .slice(0, 10);
 
-    const statusColors = { prospect: '#6c757d', entrant: '#0dcaf0', nominee: '#0d6efd', shortlisted: '#ffc107', winner: '#198754', sponsor: '#dc3545', past_winner: '#212529' };
+    const statusColors = {
+      prospect: '#6c757d',
+      entrant: '#0dcaf0',
+      nominee: '#0d6efd',
+      shortlisted: '#ffc107',
+      winner: '#198754',
+      sponsor: '#dc3545',
+      past_winner: '#212529',
+    };
 
     const html = `
       <div class="row g-4">
@@ -5594,13 +6204,17 @@ updateCountyFilterByRegion() {
         <div class="col-md-6">
           <h6 class="fw-semibold mb-3"><i class="bi bi-pie-chart me-2"></i>Sector Breakdown (Top 10)</h6>
           <div class="card"><div class="card-body">
-            ${topSectors.map(([sector, count]) => `
+            ${topSectors
+              .map(
+                ([sector, count]) => `
               <div class="d-flex align-items-center mb-2">
                 <span class="small text-truncate me-2" style="width: 120px;" title="${utils.escapeHtml(sector)}">${utils.escapeHtml(sector)}</span>
                 <div class="flex-grow-1"><div class="progress" style="height: 20px;">
                   <div class="progress-bar bg-info" style="width: ${(count / maxSectorCount) * 100}%">${count}</div>
                 </div></div>
-              </div>`).join('')}
+              </div>`
+              )
+              .join('')}
             ${topSectors.length === 0 ? '<p class="text-muted small">No sector data</p>' : ''}
           </div></div>
         </div>
@@ -5609,13 +6223,17 @@ updateCountyFilterByRegion() {
         <div class="col-md-6">
           <h6 class="fw-semibold mb-3"><i class="bi bi-geo-alt me-2"></i>Regional Distribution</h6>
           <div class="card"><div class="card-body">
-            ${topRegions.map(([region, count]) => `
+            ${topRegions
+              .map(
+                ([region, count]) => `
               <div class="d-flex align-items-center mb-2">
                 <span class="small text-truncate me-2" style="width: 120px;" title="${utils.escapeHtml(region)}">${utils.escapeHtml(region)}</span>
                 <div class="flex-grow-1"><div class="progress" style="height: 20px;">
                   <div class="progress-bar bg-success" style="width: ${(count / maxRegionCount) * 100}%">${count}</div>
                 </div></div>
-              </div>`).join('')}
+              </div>`
+              )
+              .join('')}
             ${topRegions.length === 0 ? '<p class="text-muted small">No region data</p>' : ''}
           </div></div>
         </div>
@@ -5624,19 +6242,21 @@ updateCountyFilterByRegion() {
         <div class="col-md-6">
           <h6 class="fw-semibold mb-3"><i class="bi bi-funnel me-2"></i>Status Pipeline & Conversion</h6>
           <div class="card"><div class="card-body">
-            ${['prospect', 'entrant', 'nominee', 'shortlisted', 'winner'].map((s, i, arr) => {
-              const count = statusCounts[s] || 0;
-              const maxCount = Math.max(...Object.values(statusCounts)) || 1;
-              const convKey = i < arr.length - 1 ? `${s}_to_${arr[i + 1]}` : null;
-              const convRate = convKey ? conversionRates[convKey] : null;
-              return `<div class="d-flex align-items-center mb-1">
+            ${['prospect', 'entrant', 'nominee', 'shortlisted', 'winner']
+              .map((s, i, arr) => {
+                const count = statusCounts[s] || 0;
+                const maxCount = Math.max(...Object.values(statusCounts)) || 1;
+                const convKey = i < arr.length - 1 ? `${s}_to_${arr[i + 1]}` : null;
+                const convRate = convKey ? conversionRates[convKey] : null;
+                return `<div class="d-flex align-items-center mb-1">
                 <span class="small me-2" style="width: 80px;">${s.charAt(0).toUpperCase() + s.slice(1)}</span>
                 <div class="flex-grow-1"><div class="progress" style="height: 22px;">
                   <div class="progress-bar" style="width: ${(count / maxCount) * 100}%; background-color: ${statusColors[s]}">${count}</div>
                 </div></div>
               </div>
               ${convRate !== null ? `<div class="text-end mb-2"><small class="text-muted"><i class="bi bi-arrow-down"></i> ${convRate}% conversion</small></div>` : ''}`;
-            }).join('')}
+              })
+              .join('')}
           </div></div>
         </div>
 
@@ -5644,21 +6264,27 @@ updateCountyFilterByRegion() {
         <div class="col-md-6">
           <h6 class="fw-semibold mb-3"><i class="bi bi-graph-up me-2"></i>Year-over-Year Growth</h6>
           <div class="card"><div class="card-body">
-            ${years.length > 0 ? (() => {
-              const maxYearCount = Math.max(...Object.values(yearCounts)) || 1;
-              return years.map((y, i) => {
-                const count = yearCounts[y];
-                const prevCount = i > 0 ? yearCounts[years[i - 1]] : null;
-                const growth = prevCount ? Math.round(((count - prevCount) / prevCount) * 100) : null;
-                return `<div class="d-flex align-items-center mb-2">
+            ${
+              years.length > 0
+                ? (() => {
+                    const maxYearCount = Math.max(...Object.values(yearCounts)) || 1;
+                    return years
+                      .map((y, i) => {
+                        const count = yearCounts[y];
+                        const prevCount = i > 0 ? yearCounts[years[i - 1]] : null;
+                        const growth = prevCount ? Math.round(((count - prevCount) / prevCount) * 100) : null;
+                        return `<div class="d-flex align-items-center mb-2">
                   <span class="small fw-semibold me-2" style="width: 50px;">${y}</span>
                   <div class="flex-grow-1"><div class="progress" style="height: 22px;">
                     <div class="progress-bar bg-primary" style="width: ${(count / maxYearCount) * 100}%">${count}</div>
                   </div></div>
                   ${growth !== null ? `<span class="ms-2 small ${growth >= 0 ? 'text-success' : 'text-danger'}">${growth >= 0 ? '+' : ''}${growth}%</span>` : ''}
                 </div>`;
-              }).join('');
-            })() : '<p class="text-muted small">No year data available</p>'}
+                      })
+                      .join('');
+                  })()
+                : '<p class="text-muted small">No year data available</p>'
+            }
           </div></div>
         </div>
 
@@ -5666,15 +6292,23 @@ updateCountyFilterByRegion() {
         <div class="col-12">
           <h6 class="fw-semibold mb-3"><i class="bi bi-trophy me-2"></i>Win Rate by Sector</h6>
           <div class="card"><div class="card-body">
-            ${winRates.length > 0 ? `<div class="table-responsive"><table class="table table-sm"><thead><tr><th>Sector</th><th>Total Orgs</th><th>Winners</th><th>Win Rate</th><th></th></tr></thead><tbody>
-              ${winRates.map(d => `<tr>
+            ${
+              winRates.length > 0
+                ? `<div class="table-responsive"><table class="table table-sm"><thead><tr><th>Sector</th><th>Total Orgs</th><th>Winners</th><th>Win Rate</th><th></th></tr></thead><tbody>
+              ${winRates
+                .map(
+                  (d) => `<tr>
                 <td class="small fw-semibold">${utils.escapeHtml(d.sector)}</td>
                 <td class="small">${d.total}</td>
                 <td class="small">${d.winners}</td>
                 <td class="small fw-bold ${d.rate >= 50 ? 'text-success' : d.rate >= 25 ? 'text-warning' : 'text-muted'}">${d.rate}%</td>
                 <td><div class="progress" style="height: 12px; width: 100px;"><div class="progress-bar bg-success" style="width: ${d.rate}%"></div></div></td>
-              </tr>`).join('')}
-            </tbody></table></div>` : '<p class="text-muted small">No winners data to show win rates</p>'}
+              </tr>`
+                )
+                .join('')}
+            </tbody></table></div>`
+                : '<p class="text-muted small">No winners data to show win rates</p>'
+            }
           </div></div>
         </div>
 
@@ -5684,7 +6318,7 @@ updateCountyFilterByRegion() {
           <div class="card"><div class="card-body">
             ${(() => {
               const buckets = { '0-20': 0, '21-40': 0, '41-60': 0, '61-80': 0, '81-100': 0 };
-              orgs.forEach(o => {
+              orgs.forEach((o) => {
                 const s = this.calculateEngagementScore(o);
                 if (s <= 20) buckets['0-20']++;
                 else if (s <= 40) buckets['21-40']++;
@@ -5693,14 +6327,24 @@ updateCountyFilterByRegion() {
                 else buckets['81-100']++;
               });
               const maxB = Math.max(...Object.values(buckets)) || 1;
-              const colors = { '0-20': '#dc3545', '21-40': '#fd7e14', '41-60': '#ffc107', '61-80': '#20c997', '81-100': '#198754' };
-              return Object.entries(buckets).map(([range, count]) => `
+              const colors = {
+                '0-20': '#dc3545',
+                '21-40': '#fd7e14',
+                '41-60': '#ffc107',
+                '61-80': '#20c997',
+                '81-100': '#198754',
+              };
+              return Object.entries(buckets)
+                .map(
+                  ([range, count]) => `
                 <div class="d-flex align-items-center mb-2">
                   <span class="small fw-semibold me-2" style="width: 55px;">${range}</span>
                   <div class="flex-grow-1"><div class="progress" style="height: 20px;">
                     <div class="progress-bar" style="width: ${(count / maxB) * 100}%; background-color: ${colors[range]}">${count}</div>
                   </div></div>
-                </div>`).join('');
+                </div>`
+                )
+                .join('');
             })()}
           </div></div>
         </div>
@@ -5710,17 +6354,29 @@ updateCountyFilterByRegion() {
           <h6 class="fw-semibold mb-3"><i class="bi bi-gem me-2"></i>Tier Distribution</h6>
           <div class="card"><div class="card-body">
             ${(() => {
-              const tierCounts = { 'Platinum': 0, 'Gold': 0, 'Silver': 0, 'Bronze': 0, 'None': 0 };
-              orgs.forEach(o => { tierCounts[o.tier || 'None']++; });
+              const tierCounts = { Platinum: 0, Gold: 0, Silver: 0, Bronze: 0, None: 0 };
+              orgs.forEach((o) => {
+                tierCounts[o.tier || 'None']++;
+              });
               const maxT = Math.max(...Object.values(tierCounts)) || 1;
-              const tierColors = { 'Platinum': '#E5E4E2', 'Gold': '#FFD700', 'Silver': '#C0C0C0', 'Bronze': '#CD7F32', 'None': '#dee2e6' };
-              return Object.entries(tierCounts).map(([tier, count]) => `
+              const tierColors = {
+                Platinum: '#E5E4E2',
+                Gold: '#FFD700',
+                Silver: '#C0C0C0',
+                Bronze: '#CD7F32',
+                None: '#dee2e6',
+              };
+              return Object.entries(tierCounts)
+                .map(
+                  ([tier, count]) => `
                 <div class="d-flex align-items-center mb-2">
                   <span class="small fw-semibold me-2" style="width: 65px;">${tier}</span>
                   <div class="flex-grow-1"><div class="progress" style="height: 20px;">
                     <div class="progress-bar" style="width: ${(count / maxT) * 100}%; background-color: ${tierColors[tier]}; color: #333;">${count}</div>
                   </div></div>
-                </div>`).join('');
+                </div>`
+                )
+                .join('');
             })()}
           </div></div>
         </div>
@@ -5735,26 +6391,74 @@ updateCountyFilterByRegion() {
   // Excel Export
   exportToExcel() {
     const data = STATE.filteredOrganisations;
-    if (data.length === 0) { utils.showToast('No organisations to export', 'warning'); return; }
+    if (data.length === 0) {
+      utils.showToast('No organisations to export', 'warning');
+      return;
+    }
 
     // Build XML Spreadsheet (compatible with Excel without external libs)
-    const headers = ['Company Name', 'Sector', 'County', 'Region', 'Contact Name', 'Email', 'Phone', 'Website', 'Status', 'Tier', 'Tags', 'Awards Count', 'Address', 'Catchment Area', 'Description', 'Year Founded', 'Employees', 'Engagement Score', 'Health Status', 'Last Contacted'];
-    const xmlHeader = '<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Organisations"><Table>';
-    const headerRow = '<Row>' + headers.map(h => `<Cell><Data ss:Type="String">${this._xmlEscape(h)}</Data></Cell>`).join('') + '</Row>';
-    const dataRows = data.map(org => {
-      const engagement = this.calculateEngagementScore(org);
-      const health = this.getOrgHealthIndicator(org);
-      const lastContacted = this.getLastContacted(org.id);
-      const vals = [
-        org.company_name, org.sector, org.county, org.region, org.contact_name,
-        org.email, org.contact_phone, org.website, org.status || 'prospect',
-        org.tier, (org.tags || []).join(', '), String(org.awards_count || 0),
-        org.address, org.catchment_area, org.description, org.year_founded ? String(org.year_founded) : '', org.employee_count ? String(org.employee_count) : '',
-        String(engagement), health.label,
-        lastContacted ? new Date(lastContacted).toLocaleDateString('en-GB') : 'Never'
-      ];
-      return '<Row>' + vals.map(v => `<Cell><Data ss:Type="String">${this._xmlEscape(v || '')}</Data></Cell>`).join('') + '</Row>';
-    }).join('');
+    const headers = [
+      'Company Name',
+      'Sector',
+      'County',
+      'Region',
+      'Contact Name',
+      'Email',
+      'Phone',
+      'Website',
+      'Status',
+      'Tier',
+      'Tags',
+      'Awards Count',
+      'Address',
+      'Catchment Area',
+      'Description',
+      'Year Founded',
+      'Employees',
+      'Engagement Score',
+      'Health Status',
+      'Last Contacted',
+    ];
+    const xmlHeader =
+      '<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Organisations"><Table>';
+    const headerRow =
+      '<Row>' +
+      headers.map((h) => `<Cell><Data ss:Type="String">${this._xmlEscape(h)}</Data></Cell>`).join('') +
+      '</Row>';
+    const dataRows = data
+      .map((org) => {
+        const engagement = this.calculateEngagementScore(org);
+        const health = this.getOrgHealthIndicator(org);
+        const lastContacted = this.getLastContacted(org.id);
+        const vals = [
+          org.company_name,
+          org.sector,
+          org.county,
+          org.region,
+          org.contact_name,
+          org.email,
+          org.contact_phone,
+          org.website,
+          org.status || 'prospect',
+          org.tier,
+          (org.tags || []).join(', '),
+          String(org.awards_count || 0),
+          org.address,
+          org.catchment_area,
+          org.description,
+          org.year_founded ? String(org.year_founded) : '',
+          org.employee_count ? String(org.employee_count) : '',
+          String(engagement),
+          health.label,
+          lastContacted ? new Date(lastContacted).toLocaleDateString('en-GB') : 'Never',
+        ];
+        return (
+          '<Row>' +
+          vals.map((v) => `<Cell><Data ss:Type="String">${this._xmlEscape(v || '')}</Data></Cell>`).join('') +
+          '</Row>'
+        );
+      })
+      .join('');
     const xmlFooter = '</Table></Worksheet></Workbook>';
     const xml = xmlHeader + headerRow + dataRows + xmlFooter;
 
@@ -5771,18 +6475,23 @@ updateCountyFilterByRegion() {
   // PDF Export
   exportToPDF() {
     const data = STATE.filteredOrganisations;
-    if (data.length === 0) { utils.showToast('No organisations to export', 'warning'); return; }
+    if (data.length === 0) {
+      utils.showToast('No organisations to export', 'warning');
+      return;
+    }
 
-    const exportData = data.map(org => ({
+    const exportData = data.map((org) => ({
       company_name: org.company_name || '',
       sector: org.sector || '',
       county: org.county || '',
       region: org.region || '',
       contact_name: org.contact_name || '',
       email: org.email || '',
-      status: org.status || 'prospect'
+      status: org.status || 'prospect',
     }));
-    utils.exportToPrintablePDF(exportData, 'Organisations Report', { columns: ['company_name', 'sector', 'county', 'region', 'contact_name', 'email', 'status'] });
+    utils.exportToPrintablePDF(exportData, 'Organisations Report', {
+      columns: ['company_name', 'sector', 'county', 'region', 'contact_name', 'email', 'status'],
+    });
   },
 
   _xmlEscape(str) {
@@ -5796,33 +6505,44 @@ updateCountyFilterByRegion() {
       history.unshift({ filename, count, county, date: new Date().toISOString() });
       if (history.length > 100) history.length = 100;
       localStorage.setItem('orgImportHistory', JSON.stringify(history));
-    } catch (e) { /* ignore */ }
+    } catch (e) {
+      /* ignore */
+    }
   },
 
   showImportHistory() {
     try {
       const history = JSON.parse(localStorage.getItem('orgImportHistory') || '[]');
-      const html = history.length === 0
-        ? '<p class="text-muted text-center">No import history yet</p>'
-        : `<div class="table-responsive"><table class="table table-sm"><thead><tr><th>Date</th><th>File</th><th>County</th><th>Records</th></tr></thead><tbody>
-          ${history.map(h => `<tr>
+      const html =
+        history.length === 0
+          ? '<p class="text-muted text-center">No import history yet</p>'
+          : `<div class="table-responsive"><table class="table table-sm"><thead><tr><th>Date</th><th>File</th><th>County</th><th>Records</th></tr></thead><tbody>
+          ${history
+            .map(
+              (h) => `<tr>
             <td class="small">${new Date(h.date).toLocaleDateString('en-GB')} ${new Date(h.date).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</td>
             <td class="small">${utils.escapeHtml(h.filename || 'N/A')}</td>
             <td class="small">${utils.escapeHtml(h.county || 'N/A')}</td>
             <td class="small fw-semibold">${h.count}</td>
-          </tr>`).join('')}
+          </tr>`
+            )
+            .join('')}
         </tbody></table></div>`;
 
       this._showDynamicModal('Import History', html, 'bi-clock-history');
-    } catch (e) { utils.showToast('Error loading history', 'error'); }
+    } catch (e) {
+      utils.showToast('Error loading history', 'error');
+    }
   },
 
   // Enhanced CSV import with validation
   _validateImportRow(record) {
     const issues = [];
     if (!record.company_name || record.company_name.trim().length < 2) issues.push('Company name too short');
-    if (record.email && !this.validateEmail(record.email).valid) issues.push('Invalid email: ' + this.validateEmail(record.email).reason);
-    if (record.website && !/^https?:\/\/.+\..+/.test(record.website) && !/^.+\..+/.test(record.website)) issues.push('Invalid website URL');
+    if (record.email && !this.validateEmail(record.email).valid)
+      issues.push('Invalid email: ' + this.validateEmail(record.email).reason);
+    if (record.website && !/^https?:\/\/.+\..+/.test(record.website) && !/^.+\..+/.test(record.website))
+      issues.push('Invalid website URL');
     if (record.contact_phone && !/^[\d\s+\-()]{7,}$/.test(record.contact_phone)) issues.push('Invalid phone format');
     return issues;
   },
@@ -5851,7 +6571,7 @@ updateCountyFilterByRegion() {
         this.getAuditLog(orgId),
         this.getCommsHistory(orgId),
         this.getThreadedNotes(orgId),
-        this.getFollowUps(orgId)
+        this.getFollowUps(orgId),
       ]);
 
       // Also load award assignments for this org
@@ -5860,10 +6580,12 @@ updateCountyFilterByRegion() {
         const result = await apiClient.select('award_assignments', {
           select: '*, awards:award_years!award_assignments_award_id_fkey(award_name, year)',
           filters: { organisation_id: orgId },
-          pageSize: 1000
+          pageSize: 1000,
         });
         assignments = result.data || [];
-      } catch (e) { /* ignore */ }
+      } catch (e) {
+        /* ignore */
+      }
 
       // Also load invoices
       let invoices = [];
@@ -5871,37 +6593,86 @@ updateCountyFilterByRegion() {
         const result = await apiClient.select('invoices', {
           select: 'id, invoice_number, total_amount, status, created_at',
           filters: { organisation_id: orgId },
-          pageSize: 1000
+          pageSize: 1000,
         });
         invoices = result.data || [];
-      } catch (e) { /* ignore */ }
+      } catch (e) {
+        /* ignore */
+      }
 
       const timeline = [
-        ...auditLog.map(e => ({ ...e, _type: 'audit', _date: new Date(e.timestamp || e.created_at), _icon: 'bi-clock-history text-muted', _label: e.details || e.action })),
-        ...commsLog.map(e => ({ ...e, _type: 'comms', _date: new Date(e.timestamp || e.created_at), _icon: 'bi-envelope-check text-success', _label: `Email: ${e.templateName || e.template_name || 'Unknown'}` })),
-        ...notes.map(e => ({ ...e, _type: 'note', _date: new Date(e.created_at), _icon: 'bi-chat-left-text text-info', _label: `Note by ${e.author || 'Unknown'}: ${(e.content || '').substring(0, 80)}` })),
-        ...followUps.filter(f => f.done).map(f => ({ ...f, _type: 'followup', _date: new Date(f.created), _icon: 'bi-check-circle text-success', _label: `Follow-up completed: ${f.note || 'N/A'}` })),
-        ...assignments.map(a => ({ ...a, _type: 'assignment', _date: new Date(a.created_at), _icon: 'bi-trophy text-warning', _label: `Award assignment: ${a.awards?.award_name || 'Unknown'} (${a.status})` })),
-        ...invoices.map(inv => ({ ...inv, _type: 'invoice', _date: new Date(inv.created_at), _icon: 'bi-receipt text-primary', _label: `Invoice #${inv.invoice_number || 'N/A'}: £${parseFloat(inv.total_amount || 0).toFixed(2)} (${inv.status})` }))
-      ].sort((a, b) => b._date - a._date).slice(0, 50);
+        ...auditLog.map((e) => ({
+          ...e,
+          _type: 'audit',
+          _date: new Date(e.timestamp || e.created_at),
+          _icon: 'bi-clock-history text-muted',
+          _label: e.details || e.action,
+        })),
+        ...commsLog.map((e) => ({
+          ...e,
+          _type: 'comms',
+          _date: new Date(e.timestamp || e.created_at),
+          _icon: 'bi-envelope-check text-success',
+          _label: `Email: ${e.templateName || e.template_name || 'Unknown'}`,
+        })),
+        ...notes.map((e) => ({
+          ...e,
+          _type: 'note',
+          _date: new Date(e.created_at),
+          _icon: 'bi-chat-left-text text-info',
+          _label: `Note by ${e.author || 'Unknown'}: ${(e.content || '').substring(0, 80)}`,
+        })),
+        ...followUps
+          .filter((f) => f.done)
+          .map((f) => ({
+            ...f,
+            _type: 'followup',
+            _date: new Date(f.created),
+            _icon: 'bi-check-circle text-success',
+            _label: `Follow-up completed: ${f.note || 'N/A'}`,
+          })),
+        ...assignments.map((a) => ({
+          ...a,
+          _type: 'assignment',
+          _date: new Date(a.created_at),
+          _icon: 'bi-trophy text-warning',
+          _label: `Award assignment: ${a.awards?.award_name || 'Unknown'} (${a.status})`,
+        })),
+        ...invoices.map((inv) => ({
+          ...inv,
+          _type: 'invoice',
+          _date: new Date(inv.created_at),
+          _icon: 'bi-receipt text-primary',
+          _label: `Invoice #${inv.invoice_number || 'N/A'}: £${parseFloat(inv.total_amount || 0).toFixed(2)} (${inv.status})`,
+        })),
+      ]
+        .sort((a, b) => b._date - a._date)
+        .slice(0, 50);
 
       return timeline;
-    } catch (e) { return []; }
+    } catch (e) {
+      return [];
+    }
   },
 
   renderUnifiedTimeline(timeline) {
     if (!timeline || timeline.length === 0) return '<p class="text-muted small">No activity recorded yet</p>';
     const iconMap = {
-      'status_change': 'bi-arrow-repeat text-primary', 'archived': 'bi-archive text-warning',
-      'restored': 'bi-arrow-counterclockwise text-success', 'created': 'bi-plus-circle text-success',
-      'email_sent': 'bi-envelope text-info', 'note_added': 'bi-sticky text-secondary',
-      'csv_import': 'bi-file-earmark-arrow-up text-primary', 'field_changed': 'bi-pencil text-info'
+      status_change: 'bi-arrow-repeat text-primary',
+      archived: 'bi-archive text-warning',
+      restored: 'bi-arrow-counterclockwise text-success',
+      created: 'bi-plus-circle text-success',
+      email_sent: 'bi-envelope text-info',
+      note_added: 'bi-sticky text-secondary',
+      csv_import: 'bi-file-earmark-arrow-up text-primary',
+      field_changed: 'bi-pencil text-info',
     };
 
     return `<div class="list-group list-group-flush" style="max-height: 400px; overflow-y: auto;">
-      ${timeline.map(e => {
-        const icon = e._type === 'audit' ? (iconMap[e.action] || e._icon) : e._icon;
-        return `<div class="list-group-item px-0 py-2 border-0">
+      ${timeline
+        .map((e) => {
+          const icon = e._type === 'audit' ? iconMap[e.action] || e._icon : e._icon;
+          return `<div class="list-group-item px-0 py-2 border-0">
           <div class="d-flex align-items-start">
             <i class="bi ${icon} me-2 mt-1"></i>
             <div class="flex-grow-1">
@@ -5911,7 +6682,8 @@ updateCountyFilterByRegion() {
             <span class="badge bg-light text-muted" style="font-size: 0.6rem;">${e._type}</span>
           </div>
         </div>`;
-      }).join('')}
+        })
+        .join('')}
     </div>`;
   },
 
@@ -5923,67 +6695,118 @@ updateCountyFilterByRegion() {
       const outRes = await apiClient.select('organisation_relationships', {
         select: '*, related:related_organisation_id(id, company_name, logo_url, status)',
         filters: { organisation_id: orgId },
-        pageSize: 1000
+        pageSize: 1000,
       });
       const inRes = await apiClient.select('organisation_relationships', {
         select: '*, source:organisation_id(id, company_name, logo_url, status)',
         filters: { related_organisation_id: orgId },
-        pageSize: 1000
+        pageSize: 1000,
       });
       const outgoing = outRes.data;
       const incoming = inRes.data;
       return { outgoing: outgoing || [], incoming: incoming || [] };
-    } catch (e) { return { outgoing: [], incoming: [] }; }
+    } catch (e) {
+      return { outgoing: [], incoming: [] };
+    }
   },
 
   async addRelationship(orgId) {
     const relatedName = document.getElementById('relatedOrgSearch')?.value.trim();
     const relType = document.getElementById('relationshipType')?.value || 'related';
-    if (!relatedName) { utils.showToast('Search for an organisation', 'warning'); return; }
+    if (!relatedName) {
+      utils.showToast('Search for an organisation', 'warning');
+      return;
+    }
 
-    const related = STATE.allOrganisations.find(o =>
-      o.company_name?.toLowerCase() === relatedName.toLowerCase() && o.id !== orgId
+    const related = STATE.allOrganisations.find(
+      (o) => o.company_name?.toLowerCase() === relatedName.toLowerCase() && o.id !== orgId
     );
-    if (!related) { utils.showToast('Organisation not found', 'error'); return; }
+    if (!related) {
+      utils.showToast('Organisation not found', 'error');
+      return;
+    }
 
     try {
       await apiClient.insert('organisation_relationships', {
-        organisation_id: orgId, related_organisation_id: related.id, relationship_type: relType
+        organisation_id: orgId,
+        related_organisation_id: related.id,
+        relationship_type: relType,
       });
       utils.showToast('Relationship added', 'success');
-      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      const org = STATE.allOrganisations.find((o) => o.id === orgId);
       if (org) this.openCompanyProfile(orgId, org.company_name);
-    } catch (e) { utils.showToast('Error: ' + e.message, 'error'); }
+    } catch (e) {
+      utils.showToast('Error: ' + e.message, 'error');
+    }
   },
 
   async removeRelationship(relId, orgId) {
     try {
       await apiClient.delete('organisation_relationships', relId);
       utils.showToast('Relationship removed', 'success');
-      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      const org = STATE.allOrganisations.find((o) => o.id === orgId);
       if (org) this.openCompanyProfile(orgId, org.company_name);
-    } catch (e) { utils.showToast('Error: ' + e.message, 'error'); }
+    } catch (e) {
+      utils.showToast('Error: ' + e.message, 'error');
+    }
   },
 
   renderRelationships(relationships, orgId) {
-    const all = [
-      ...relationships.outgoing.map(r => ({ id: r.id, type: r.relationship_type, org: r.related, direction: 'outgoing' })),
-      ...relationships.incoming.map(r => ({ id: r.id, type: r.relationship_type, org: r.source, direction: 'incoming' }))
-    ];
-    const typeLabels = { parent: 'Parent Company', subsidiary: 'Subsidiary', co_sponsor: 'Co-Sponsor', partner: 'Partner', franchise: 'Franchise', related: 'Related', competitor: 'Competitor', supplier: 'Supplier' };
+    if (!relationships) return '<p class="text-muted small mb-0">No relationships</p>';
+    let all;
+    if (Array.isArray(relationships)) {
+      all = relationships.map((r) => ({
+        id: r.id,
+        type: r.relationship_type,
+        org: r.related || { id: r.related_org_id, company_name: r.related_org_name },
+        direction: 'outgoing',
+      }));
+    } else {
+      all = [
+        ...(relationships.outgoing || []).map((r) => ({
+          id: r.id,
+          type: r.relationship_type,
+          org: r.related,
+          direction: 'outgoing',
+        })),
+        ...(relationships.incoming || []).map((r) => ({
+          id: r.id,
+          type: r.relationship_type,
+          org: r.source,
+          direction: 'incoming',
+        })),
+      ];
+    }
+    const typeLabels = {
+      parent: 'Parent Company',
+      subsidiary: 'Subsidiary',
+      co_sponsor: 'Co-Sponsor',
+      partner: 'Partner',
+      franchise: 'Franchise',
+      related: 'Related',
+      competitor: 'Competitor',
+      supplier: 'Supplier',
+    };
 
-    if (all.length === 0) return '<p class="text-muted small mb-0">No linked organisations</p>';
+    if (all.length === 0) return '<p class="text-muted small mb-0">No relationships</p>';
     return `<div class="list-group list-group-flush">
-      ${all.map(r => `<div class="list-group-item px-0 py-2 border-0 d-flex align-items-center">
-        ${r.org?.logo_url ? `<img src="${r.org.logo_url}" class="me-2 rounded" style="width:30px;height:21px;object-fit:contain;border:1px solid #e0e0e0;">` :
-          `<div class="me-2 d-flex align-items-center justify-content-center rounded" style="width:30px;height:21px;background:#f5f5f5;border:1px solid #e0e0e0;"><i class="bi bi-building text-muted" style="font-size:0.6rem;"></i></div>`}
+      ${all
+        .map(
+          (r) => `<div class="list-group-item px-0 py-2 border-0 d-flex align-items-center">
+        ${
+          r.org?.logo_url
+            ? `<img src="${r.org.logo_url}" class="me-2 rounded" style="width:30px;height:21px;object-fit:contain;border:1px solid #e0e0e0;">`
+            : `<div class="me-2 d-flex align-items-center justify-content-center rounded" style="width:30px;height:21px;background:#f5f5f5;border:1px solid #e0e0e0;"><i class="bi bi-building text-muted" style="font-size:0.6rem;"></i></div>`
+        }
         <div class="flex-grow-1">
           <a href="javascript:void(0);" class="small fw-semibold text-primary text-decoration-none"
             data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([r.org?.id, utils.escapeHtml(r.org?.company_name || '').replace(/'/g, "\\'")])}'>${utils.escapeHtml(r.org?.company_name || 'Unknown')}</a>
           <span class="badge bg-light text-muted ms-1" style="font-size:0.6rem;">${typeLabels[r.type] || r.type}${r.direction === 'incoming' ? ' (of this)' : ''}</span>
         </div>
         <button class="btn btn-sm btn-outline-danger py-0" data-action="orgsModule.removeRelationship" data-args='${JSON.stringify([r.id, orgId])}'><i class="bi bi-x"></i></button>
-      </div>`).join('')}
+      </div>`
+        )
+        .join('')}
     </div>`;
   },
 
@@ -5991,20 +6814,33 @@ updateCountyFilterByRegion() {
   // FEATURE 4: EMAIL INTEGRATION IN PROFILE
   // ============================================
   async composeEmailFromProfile(orgId) {
-    const org = STATE.allOrganisations.find(o => o.id === orgId);
+    const org = STATE.allOrganisations.find((o) => o.id === orgId);
     if (!org) return;
     const to = org.email || '';
     const subject = document.getElementById('profileEmailSubject')?.value.trim() || '';
     const body = document.getElementById('profileEmailBody')?.value.trim() || '';
-    if (!to) { utils.showToast('No email address for this company', 'warning'); return; }
-    if (!subject) { utils.showToast('Enter a subject', 'warning'); return; }
+    if (!to) {
+      utils.showToast('No email address for this company', 'warning');
+      return;
+    }
+    if (!subject) {
+      utils.showToast('Enter a subject', 'warning');
+      return;
+    }
 
     // Log the communication
     try {
       await apiClient.insert('organisation_comms_log', {
-        organisation_id: orgId, template_name: subject, subject, message: body, channel: 'email', direction: 'outbound'
+        organisation_id: orgId,
+        template_name: subject,
+        subject,
+        message: body,
+        channel: 'email',
+        direction: 'outbound',
       });
-    } catch (e) { /* ignore */ }
+    } catch (e) {
+      /* ignore */
+    }
     this._logAudit(orgId, 'email_sent', org.company_name, `Email composed: ${subject}`);
 
     // Open mailto link
@@ -6030,12 +6866,18 @@ updateCountyFilterByRegion() {
     if (this._kanbanViewActive) {
       if (kanbanEl) kanbanEl.style.display = 'block';
       if (tableEl) tableEl.style.display = 'none';
-      if (toggleBtn) { toggleBtn.classList.remove('btn-outline-info'); toggleBtn.classList.add('btn-info'); }
+      if (toggleBtn) {
+        toggleBtn.classList.remove('btn-outline-info');
+        toggleBtn.classList.add('btn-info');
+      }
       this.renderKanbanBoard();
     } else {
       if (kanbanEl) kanbanEl.style.display = 'none';
       if (tableEl) tableEl.style.display = 'block';
-      if (toggleBtn) { toggleBtn.classList.remove('btn-info'); toggleBtn.classList.add('btn-outline-info'); }
+      if (toggleBtn) {
+        toggleBtn.classList.remove('btn-info');
+        toggleBtn.classList.add('btn-outline-info');
+      }
     }
   },
 
@@ -6050,21 +6892,19 @@ updateCountyFilterByRegion() {
       { key: 'shortlisted', label: 'Shortlisted', color: '#ffc107', icon: 'bi-list-check' },
       { key: 'winner', label: 'Winner', color: '#198754', icon: 'bi-trophy' },
       { key: 'sponsor', label: 'Sponsor', color: '#6f42c1', icon: 'bi-cash-stack' },
-      { key: 'past_winner', label: 'Past Winner', color: '#fd7e14', icon: 'bi-award' }
+      { key: 'past_winner', label: 'Past Winner', color: '#fd7e14', icon: 'bi-award' },
     ];
 
-    const orgs = STATE.filteredOrganisations.filter(o => (o.status || 'prospect') !== 'archived');
+    const orgs = STATE.filteredOrganisations.filter((o) => (o.status || 'prospect') !== 'archived');
 
     kanbanEl.innerHTML = `
       <div class="d-flex gap-2 overflow-auto pb-3" style="min-height: 500px;">
-        ${stages.map(stage => {
-          const stageOrgs = orgs.filter(o => (o.status || 'prospect') === stage.key);
-          return `
+        ${stages
+          .map((stage) => {
+            const stageOrgs = orgs.filter((o) => (o.status || 'prospect') === stage.key);
+            return `
             <div class="kanban-column flex-shrink-0" style="width: 220px; min-width: 220px;"
-              data-status="${stage.key}"
-              ondragover="event.preventDefault(); this.classList.add('kanban-drag-over')"
-              ondragleave="this.classList.remove('kanban-drag-over')"
-              ondrop="orgsModule.handleKanbanDrop(event, '${stage.key}'); this.classList.remove('kanban-drag-over')">
+              data-status="${stage.key}">
               <div class="card h-100 border-0 shadow-sm">
                 <div class="card-header py-2 text-white" style="background: ${stage.color};">
                   <div class="d-flex justify-content-between align-items-center">
@@ -6074,14 +6914,18 @@ updateCountyFilterByRegion() {
                 </div>
                 <div class="card-body p-2" style="max-height: 450px; overflow-y: auto;">
                   ${(() => {
-                    if (stageOrgs.length === 0) return '<p class="text-muted small text-center py-3">No organisations</p>';
+                    if (stageOrgs.length === 0)
+                      return '<p class="text-muted small text-center py-3">No organisations</p>';
                     const isExpanded = this._kanbanExpandedColumns.has(stage.key);
                     const limit = isExpanded ? stageOrgs.length : 30;
                     const visible = stageOrgs.slice(0, limit);
                     const remaining = stageOrgs.length - limit;
-                    return visible.map(org => `
+                    return (
+                      visible
+                        .map(
+                          (org) => `
                       <div class="card mb-2 kanban-card" draggable="true"
-                        ondragstart="event.dataTransfer.setData('text/plain', '${org.id}')"
+                        data-org-id="${org.id}"
                         style="cursor: grab; border-left: 3px solid ${stage.color};">
                         <div class="card-body p-2">
                           <div class="d-flex align-items-center mb-1">
@@ -6091,22 +6935,58 @@ updateCountyFilterByRegion() {
                               style="max-width: 150px;">${utils.escapeHtml(org.company_name || 'N/A')}</a>
                           </div>
                           <div class="text-muted" style="font-size: 0.65rem;">${utils.escapeHtml(org.sector || '-')} &middot; ${utils.escapeHtml(org.county || '-')}</div>
-                          ${org.tier ? `<span class="badge" style="font-size:0.55rem;background:${{'Bronze':'#CD7F32','Silver':'#C0C0C0','Gold':'#FFD700','Platinum':'#E5E4E2'}[org.tier] || '#ccc'}">${org.tier}</span>` : ''}
+                          ${org.tier ? `<span class="badge" style="font-size:0.55rem;background:${{ Bronze: '#CD7F32', Silver: '#C0C0C0', Gold: '#FFD700', Platinum: '#E5E4E2' }[org.tier] || '#ccc'}">${org.tier}</span>` : ''}
                         </div>
                       </div>
-                    `).join('') + (remaining > 0
-                      ? `<button class="btn btn-sm btn-outline-secondary w-100 mt-1" data-action="orgsModule.expandKanbanColumn" data-id="stage.key"><i class="bi bi-chevron-down me-1"></i>Show ${remaining} more</button>`
-                      : (isExpanded && stageOrgs.length > 30
-                        ? `<button class="btn btn-sm btn-outline-secondary w-100 mt-1" data-action="orgsModule.collapseKanbanColumn" data-id="stage.key"><i class="bi bi-chevron-up me-1"></i>Show less</button>`
-                        : ''));
+                    `
+                        )
+                        .join('') +
+                      (remaining > 0
+                        ? `<button class="btn btn-sm btn-outline-secondary w-100 mt-1" data-action="orgsModule.expandKanbanColumn" data-id="stage.key"><i class="bi bi-chevron-down me-1"></i>Show ${remaining} more</button>`
+                        : isExpanded && stageOrgs.length > 30
+                          ? `<button class="btn btn-sm btn-outline-secondary w-100 mt-1" data-action="orgsModule.collapseKanbanColumn" data-id="stage.key"><i class="bi bi-chevron-up me-1"></i>Show less</button>`
+                          : '')
+                    );
                   })()}
                 </div>
               </div>
             </div>
           `;
-        }).join('')}
+          })
+          .join('')}
       </div>
     `;
+
+    // Bind kanban drag & drop listeners (replacing inline handlers)
+    this._bindKanbanDragListeners(kanbanEl);
+  },
+
+  /**
+   * Bind drag/drop listeners to the kanban board (replaces inline handlers).
+   */
+  _bindKanbanDragListeners(container) {
+    // Column drop targets
+    container.querySelectorAll('.kanban-column').forEach((col) => {
+      const status = col.dataset.status;
+      col.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        col.classList.add('kanban-drag-over');
+      });
+      col.addEventListener('dragleave', () => {
+        col.classList.remove('kanban-drag-over');
+      });
+      col.addEventListener('drop', (e) => {
+        col.classList.remove('kanban-drag-over');
+        this.handleKanbanDrop(e, status);
+      });
+    });
+
+    // Card drag sources
+    container.querySelectorAll('.kanban-card[draggable="true"]').forEach((card) => {
+      card.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('text/plain', card.dataset.orgId);
+      });
+    });
   },
 
   async handleKanbanDrop(event, newStatus) {
@@ -6133,7 +7013,9 @@ updateCountyFilterByRegion() {
   // ============================================
   calculateEngagementScore(org) {
     let score = 0;
-    const daysSinceUpdate = org.updated_at ? Math.floor((Date.now() - new Date(org.updated_at).getTime()) / 86400000) : 999;
+    const daysSinceUpdate = org.updated_at
+      ? Math.floor((Date.now() - new Date(org.updated_at).getTime()) / 86400000)
+      : 999;
     // Activity recency (time decay: exponential falloff)
     if (daysSinceUpdate < 7) score += 40;
     else if (daysSinceUpdate < 30) score += 25;
@@ -6163,13 +7045,17 @@ updateCountyFilterByRegion() {
   },
 
   getOrgHealthIndicator(org) {
-    const daysSinceUpdate = org.updated_at ? Math.floor((Date.now() - new Date(org.updated_at).getTime()) / 86400000) : 999;
+    const daysSinceUpdate = org.updated_at
+      ? Math.floor((Date.now() - new Date(org.updated_at).getTime()) / 86400000)
+      : 999;
     const hasEmail = !!org.email;
     const hasContact = !!org.contact_name;
     const engagement = this.calculateEngagementScore(org);
 
-    if (daysSinceUpdate > 180 || (!hasEmail && !hasContact)) return { color: 'danger', label: 'At Risk', icon: 'bi-exclamation-triangle-fill' };
-    if (daysSinceUpdate > 90 || engagement < 30) return { color: 'warning', label: 'Needs Attention', icon: 'bi-exclamation-circle' };
+    if (daysSinceUpdate > 180 || (!hasEmail && !hasContact))
+      return { color: 'danger', label: 'At Risk', icon: 'bi-exclamation-triangle-fill' };
+    if (daysSinceUpdate > 90 || engagement < 30)
+      return { color: 'warning', label: 'Needs Attention', icon: 'bi-exclamation-circle' };
     return { color: 'success', label: 'Healthy', icon: 'bi-check-circle-fill' };
   },
 
@@ -6182,52 +7068,67 @@ updateCountyFilterByRegion() {
       const result = await apiClient.select('organisation_notes', {
         filters: { organisation_id: orgId },
         sort: { column: 'created_at', ascending: false },
-        pageSize: 1000
+        pageSize: 1000,
       });
       const data = result.data || [];
       // Sort pinned first, then by created_at descending (apiClient only supports single sort)
       data.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || new Date(b.created_at) - new Date(a.created_at));
       return data;
-    } catch (e) { return []; }
+    } catch (e) {
+      return [];
+    }
   },
 
   async addThreadedNote(orgId) {
     const content = document.getElementById('newNoteContent')?.value.trim();
-    if (!content) { utils.showToast('Enter a note', 'warning'); return; }
+    if (!content) {
+      utils.showToast('Enter a note', 'warning');
+      return;
+    }
     try {
       const userEmail = STATE.client?.auth?.getUser ? (await STATE.client.auth.getUser())?.data?.user?.email : 'admin';
       await apiClient.insert('organisation_notes', {
-        organisation_id: orgId, content, author: userEmail || 'admin'
+        organisation_id: orgId,
+        content,
+        author: userEmail || 'admin',
       });
       this._logAudit(orgId, 'note_added', '', `Note added: ${content.substring(0, 50)}`);
       utils.showToast('Note added', 'success');
-      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      const org = STATE.allOrganisations.find((o) => o.id === orgId);
       if (org) this.openCompanyProfile(orgId, org.company_name);
-    } catch (e) { utils.showToast('Error: ' + e.message, 'error'); }
+    } catch (e) {
+      utils.showToast('Error: ' + e.message, 'error');
+    }
   },
 
   async deleteThreadedNote(noteId, orgId) {
-    if (!await utils.confirmDialog({ title: 'Delete Note', message: 'Delete this note?' })) return;
+    if (!(await utils.confirmDialog({ title: 'Delete Note', message: 'Delete this note?' }))) return;
     try {
       await apiClient.delete('organisation_notes', noteId);
       utils.showToast('Note deleted', 'success');
-      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      const org = STATE.allOrganisations.find((o) => o.id === orgId);
       if (org) this.openCompanyProfile(orgId, org.company_name);
-    } catch (e) { utils.showToast('Error: ' + e.message, 'error'); }
+    } catch (e) {
+      utils.showToast('Error: ' + e.message, 'error');
+    }
   },
 
   async togglePinNote(noteId, pinned, orgId) {
     try {
       await apiClient.update('organisation_notes', noteId, { pinned: !pinned });
-      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      const org = STATE.allOrganisations.find((o) => o.id === orgId);
       if (org) this.openCompanyProfile(orgId, org.company_name);
-    } catch (e) { utils.showToast('Error: ' + e.message, 'error'); }
+    } catch (e) {
+      utils.showToast('Error: ' + e.message, 'error');
+    }
   },
 
   renderThreadedNotes(notes, orgId) {
     if (notes.length === 0) return '<p class="text-muted small mb-0">No notes yet. Add one below.</p>';
     return `<div class="list-group list-group-flush" style="max-height: 300px; overflow-y: auto;">
-      ${notes.map(n => `<div class="list-group-item px-0 py-2 border-0 ${n.pinned ? 'bg-warning-subtle' : ''}">
+      ${notes
+        .map(
+          (n) => `<div class="list-group-item px-0 py-2 border-0 ${n.pinned ? 'bg-warning-subtle' : ''}">
         <div class="d-flex align-items-start">
           ${n.pinned ? '<i class="bi bi-pin-fill text-warning me-2 mt-1"></i>' : '<i class="bi bi-chat-left-text text-muted me-2 mt-1"></i>'}
           <div class="flex-grow-1">
@@ -6242,7 +7143,9 @@ updateCountyFilterByRegion() {
             <button class="btn btn-sm btn-outline-danger py-0" data-action="orgsModule.deleteThreadedNote" data-args='${JSON.stringify([n.id, orgId])}'><i class="bi bi-trash"></i></button>
           </div>
         </div>
-      </div>`).join('')}
+      </div>`
+        )
+        .join('')}
     </div>`;
   },
 
@@ -6254,10 +7157,12 @@ updateCountyFilterByRegion() {
       const result = await apiClient.select('sponsorship_packages', {
         filters: { organisation_id: orgId },
         sort: { column: 'created_at', ascending: false },
-        pageSize: 1000
+        pageSize: 1000,
       });
       return result.data || [];
-    } catch (e) { return []; }
+    } catch (e) {
+      return [];
+    }
   },
 
   async addSponsorshipPackage(orgId) {
@@ -6269,39 +7174,61 @@ updateCountyFilterByRegion() {
     const renewalDate = document.getElementById('spkgRenewalDate')?.value || null;
     const schedule = document.getElementById('spkgSchedule')?.value || 'one_time';
     const benefitsRaw = document.getElementById('spkgBenefits')?.value.trim() || '';
-    const benefits = benefitsRaw ? benefitsRaw.split('\n').filter(b => b.trim()) : [];
+    const benefits = benefitsRaw ? benefitsRaw.split('\n').filter((b) => b.trim()) : [];
 
-    if (!pkgName) { utils.showToast('Enter package name', 'warning'); return; }
+    if (!pkgName) {
+      utils.showToast('Enter package name', 'warning');
+      return;
+    }
     try {
       await apiClient.insert('sponsorship_packages', {
-        organisation_id: orgId, package_name: pkgName, tier, amount,
-        start_date: startDate, end_date: endDate, renewal_date: renewalDate,
-        payment_schedule: schedule, benefits: JSON.stringify(benefits), status: 'active'
+        organisation_id: orgId,
+        package_name: pkgName,
+        tier,
+        amount,
+        start_date: startDate,
+        end_date: endDate,
+        renewal_date: renewalDate,
+        payment_schedule: schedule,
+        benefits: JSON.stringify(benefits),
+        status: 'active',
       });
       utils.showToast('Package added', 'success');
-      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      const org = STATE.allOrganisations.find((o) => o.id === orgId);
       if (org) this.openCompanyProfile(orgId, org.company_name);
-    } catch (e) { utils.showToast('Error: ' + e.message, 'error'); }
+    } catch (e) {
+      utils.showToast('Error: ' + e.message, 'error');
+    }
   },
 
   async deleteSponsorshipPackage(pkgId, orgId) {
-    if (!await utils.confirmDialog({ title: 'Delete Sponsorship Package', message: 'Delete this sponsorship package?' })) return;
+    if (
+      !(await utils.confirmDialog({ title: 'Delete Sponsorship Package', message: 'Delete this sponsorship package?' }))
+    )
+      return;
     try {
       await apiClient.delete('sponsorship_packages', pkgId);
       utils.showToast('Package deleted', 'success');
-      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      const org = STATE.allOrganisations.find((o) => o.id === orgId);
       if (org) this.openCompanyProfile(orgId, org.company_name);
-    } catch (e) { utils.showToast('Error: ' + e.message, 'error'); }
+    } catch (e) {
+      utils.showToast('Error: ' + e.message, 'error');
+    }
   },
 
   renderSponsorshipPackages(packages, orgId) {
-    if (packages.length === 0) return '<p class="text-muted small mb-0">No sponsorship packages</p>';
+    if (!packages || packages.length === 0) return '<p class="text-muted small mb-0">No sponsorship packages</p>';
     const statusColors = { active: 'success', expired: 'danger', pending: 'warning', cancelled: 'secondary' };
-    return packages.map(pkg => {
-      let benefits = [];
-      try { benefits = typeof pkg.benefits === 'string' ? JSON.parse(pkg.benefits) : (pkg.benefits || []); } catch (e) { benefits = []; }
-      const isExpiring = pkg.renewal_date && new Date(pkg.renewal_date) < new Date(Date.now() + 30 * 86400000);
-      return `<div class="card mb-2 ${isExpiring ? 'border-warning' : ''}">
+    return packages
+      .map((pkg) => {
+        let benefits = [];
+        try {
+          benefits = typeof pkg.benefits === 'string' ? JSON.parse(pkg.benefits) : pkg.benefits || [];
+        } catch (e) {
+          benefits = [];
+        }
+        const isExpiring = pkg.renewal_date && new Date(pkg.renewal_date) < new Date(Date.now() + 30 * 86400000);
+        return `<div class="card mb-2 ${isExpiring ? 'border-warning' : ''}">
         <div class="card-body p-2">
           <div class="d-flex justify-content-between align-items-start">
             <div>
@@ -6315,13 +7242,14 @@ updateCountyFilterByRegion() {
                 ${pkg.end_date ? ` - ${new Date(pkg.end_date).toLocaleDateString('en-GB')}` : ''}
               </div>
               ${isExpiring ? `<div class="text-warning small fw-semibold mt-1"><i class="bi bi-exclamation-triangle me-1"></i>Renewal: ${new Date(pkg.renewal_date).toLocaleDateString('en-GB')}</div>` : ''}
-              ${benefits.length > 0 ? `<div class="mt-1">${benefits.map(b => `<span class="badge bg-light text-dark me-1 mb-1" style="font-size:0.65rem;">${utils.escapeHtml(b)}</span>`).join('')}</div>` : ''}
+              ${benefits.length > 0 ? `<div class="mt-1">${benefits.map((b) => `<span class="badge bg-light text-dark me-1 mb-1" style="font-size:0.65rem;">${utils.escapeHtml(b)}</span>`).join('')}</div>` : ''}
             </div>
             <button class="btn btn-sm btn-outline-danger py-0" data-action="orgsModule.deleteSponsorshipPackage" data-args='${JSON.stringify([pkg.id, orgId])}'><i class="bi bi-trash"></i></button>
           </div>
         </div>
       </div>`;
-    }).join('');
+      })
+      .join('');
   },
 
   // ============================================
@@ -6330,7 +7258,7 @@ updateCountyFilterByRegion() {
   showMapView() {
     const regions = {};
     const counties = {};
-    STATE.filteredOrganisations.forEach(org => {
+    STATE.filteredOrganisations.forEach((org) => {
       const r = org.region || 'Unknown';
       const c = org.county || 'Unknown';
       regions[r] = (regions[r] || 0) + 1;
@@ -6339,7 +7267,9 @@ updateCountyFilterByRegion() {
 
     const maxRegionCount = Math.max(...Object.values(regions), 1);
     const sortedRegions = Object.entries(regions).sort((a, b) => b[1] - a[1]);
-    const sortedCounties = Object.entries(counties).sort((a, b) => b[1] - a[1]).slice(0, 25);
+    const sortedCounties = Object.entries(counties)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 25);
 
     const getHeatColor = (count) => {
       const intensity = Math.floor((count / maxRegionCount) * 255);
@@ -6351,9 +7281,10 @@ updateCountyFilterByRegion() {
         <div class="col-md-6">
           <h6 class="fw-semibold mb-3"><i class="bi bi-geo-alt me-2"></i>Regional Distribution</h6>
           <div style="max-height: 400px; overflow-y: auto;">
-            ${sortedRegions.map(([region, count]) => {
-              const pct = ((count / STATE.filteredOrganisations.length) * 100).toFixed(1);
-              return `<div class="d-flex align-items-center mb-2 cursor-pointer" data-action="orgsModule.filterByRegion" data-id="${utils.escapeHtml(region)}" style="cursor:pointer;">
+            ${sortedRegions
+              .map(([region, count]) => {
+                const pct = ((count / STATE.filteredOrganisations.length) * 100).toFixed(1);
+                return `<div class="d-flex align-items-center mb-2 cursor-pointer" data-action="orgsModule.filterByRegion" data-id="${utils.escapeHtml(region)}" style="cursor:pointer;">
                 <div class="me-2" style="width: 20px; height: 20px; border-radius: 4px; background: ${getHeatColor(count)};"></div>
                 <div class="flex-grow-1 small fw-semibold">${utils.escapeHtml(region)}</div>
                 <div class="text-end">
@@ -6361,16 +7292,18 @@ updateCountyFilterByRegion() {
                   <span class="text-muted small ms-1">(${pct}%)</span>
                 </div>
               </div>`;
-            }).join('')}
+              })
+              .join('')}
           </div>
         </div>
         <div class="col-md-6">
           <h6 class="fw-semibold mb-3"><i class="bi bi-pin-map me-2"></i>Top Counties/Cities</h6>
           <div style="max-height: 400px; overflow-y: auto;">
-            ${sortedCounties.map(([county, count]) => {
-              const pct = ((count / STATE.filteredOrganisations.length) * 100).toFixed(1);
-              const barWidth = (count / sortedCounties[0][1]) * 100;
-              return `<div class="mb-2">
+            ${sortedCounties
+              .map(([county, count]) => {
+                const pct = ((count / STATE.filteredOrganisations.length) * 100).toFixed(1);
+                const barWidth = (count / sortedCounties[0][1]) * 100;
+                return `<div class="mb-2">
                 <div class="d-flex justify-content-between small">
                   <span class="fw-semibold">${utils.escapeHtml(county)}</span>
                   <span>${count} (${pct}%)</span>
@@ -6379,7 +7312,8 @@ updateCountyFilterByRegion() {
                   <div class="progress-bar bg-info" style="width: ${barWidth}%"></div>
                 </div>
               </div>`;
-            }).join('')}
+              })
+              .join('')}
           </div>
         </div>
       </div>
@@ -6447,7 +7381,10 @@ updateCountyFilterByRegion() {
         e.preventDefault();
         const row = rows[this._selectedRowIndex];
         const cb = row?.querySelector('input[type="checkbox"]');
-        if (cb) { cb.checked = !cb.checked; cb.dispatchEvent(new Event('change')); }
+        if (cb) {
+          cb.checked = !cb.checked;
+          cb.dispatchEvent(new Event('change'));
+        }
       } else if (e.key === 'Escape') {
         // Close any open modal
         const openModal = document.querySelector('.modal.show');
@@ -6491,7 +7428,7 @@ updateCountyFilterByRegion() {
     if (!companyName || companyName.length < 3) return null;
     const dupes = this.findDuplicates(companyName);
     if (dupes.length > 0) {
-      return dupes.map(d => d.company_name).slice(0, 5);
+      return dupes.map((d) => d.company_name).slice(0, 5);
     }
     return null;
   },
@@ -6504,11 +7441,11 @@ updateCountyFilterByRegion() {
       const result = await apiClient.select('organisation_comms_log', {
         select: 'organisation_id, created_at',
         sort: { column: 'created_at', ascending: false },
-        pageSize: 1000
+        pageSize: 1000,
       });
       const data = result.data;
       const lastContacted = {};
-      (data || []).forEach(r => {
+      (data || []).forEach((r) => {
         if (!lastContacted[r.organisation_id]) {
           lastContacted[r.organisation_id] = r.created_at;
         }
@@ -6558,26 +7495,26 @@ updateCountyFilterByRegion() {
 
     if (eventType === 'INSERT' && newRow) {
       // Check if we already have this org (from our own insert)
-      const exists = STATE.allOrganisations.find(o => o.id === newRow.id);
+      const exists = STATE.allOrganisations.find((o) => o.id === newRow.id);
       if (!exists) {
         STATE.allOrganisations.push({ ...newRow, awards_count: 0 });
         this._debouncedRealtimeRefresh('New organisation added by another user');
       }
     } else if (eventType === 'UPDATE' && newRow) {
-      const org = STATE.allOrganisations.find(o => o.id === newRow.id);
+      const org = STATE.allOrganisations.find((o) => o.id === newRow.id);
       if (org) {
         // Only trigger toast if this wasn't our own update (compare updated_at)
         const wasExternal = org.updated_at && newRow.updated_at && org.updated_at !== newRow.updated_at;
         Object.assign(org, newRow);
-        const fOrg = STATE.filteredOrganisations.find(o => o.id === newRow.id);
+        const fOrg = STATE.filteredOrganisations.find((o) => o.id === newRow.id);
         if (fOrg) Object.assign(fOrg, newRow);
         if (wasExternal) {
           this._debouncedRealtimeRefresh(`${newRow.company_name || 'Organisation'} updated`);
         }
       }
     } else if (eventType === 'DELETE' && oldRow) {
-      STATE.allOrganisations = STATE.allOrganisations.filter(o => o.id !== oldRow.id);
-      STATE.filteredOrganisations = STATE.filteredOrganisations.filter(o => o.id !== oldRow.id);
+      STATE.allOrganisations = STATE.allOrganisations.filter((o) => o.id !== oldRow.id);
+      STATE.filteredOrganisations = STATE.filteredOrganisations.filter((o) => o.id !== oldRow.id);
       this._debouncedRealtimeRefresh('Organisation removed');
     }
   },
@@ -6616,13 +7553,13 @@ updateCountyFilterByRegion() {
       <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
         <div class="d-flex align-items-center gap-2">
           <small class="text-muted">
-            Showing ${totalFiltered > 0 ? ((page - 1) * this._pageSize + 1) + '-' + Math.min(page * this._pageSize, totalFiltered) : '0'}
+            Showing ${totalFiltered > 0 ? (page - 1) * this._pageSize + 1 + '-' + Math.min(page * this._pageSize, totalFiltered) : '0'}
             of ${STATE.allOrganisations.length}
             (${totalFiltered} filtered)
           </small>
           <select class="form-select form-select-sm" style="width: auto; font-size: 0.75rem;"
                   data-on-change="orgsModule.changePageSize">
-            ${pageSizes.map(s => `<option value="${s}" ${s === this._pageSize ? 'selected' : ''}>${s} per page</option>`).join('')}
+            ${pageSizes.map((s) => `<option value="${s}" ${s === this._pageSize ? 'selected' : ''}>${s} per page</option>`).join('')}
           </select>
         </div>
         <div class="d-flex align-items-center gap-1">
@@ -6662,8 +7599,8 @@ updateCountyFilterByRegion() {
       const allFollowUps = await this.getFollowUps();
       const today = new Date().toISOString().split('T')[0];
       const threeDays = new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0];
-      const overdue = allFollowUps.filter(f => !f.done && f.date && f.date < today);
-      const dueSoon = allFollowUps.filter(f => !f.done && f.date && f.date >= today && f.date <= threeDays);
+      const overdue = allFollowUps.filter((f) => !f.done && f.date && f.date < today);
+      const dueSoon = allFollowUps.filter((f) => !f.done && f.date && f.date >= today && f.date <= threeDays);
 
       const overdueEl = document.getElementById('orgsOverdueCount');
       const dueSoonEl = document.getElementById('orgsDueSoonCount');
@@ -6695,22 +7632,29 @@ updateCountyFilterByRegion() {
             <th>Company</th><th>Due Date</th><th>Note</th><th>Status</th><th>Action</th>
           </tr></thead>
           <tbody>
-            ${all.map(f => {
-              const isOverdue = f.date < today;
-              const safeName = utils.escapeHtml((f.companyName || '').replace(/'/g, "\\'"));
-              return `<tr class="${isOverdue ? 'table-danger' : 'table-warning'}">
+            ${all
+              .map((f) => {
+                const isOverdue = f.date < today;
+                const safeName = utils.escapeHtml((f.companyName || '').replace(/'/g, "\\'"));
+                return `<tr class="${isOverdue ? 'table-danger' : 'table-warning'}">
                 <td><a href="#" class="text-decoration-none" data-action="orgsModule.closeModalAndOpenProfile" data-args='${JSON.stringify([f.orgId, safeName])}' data-prevent-default="true">${utils.escapeHtml(f.companyName || 'Unknown')}</a></td>
                 <td class="small">${f.date || '-'}</td>
                 <td class="small">${utils.escapeHtml(f.note || '-')}</td>
                 <td><span class="badge ${isOverdue ? 'bg-danger' : 'bg-warning text-dark'}">${isOverdue ? 'Overdue' : 'Due Soon'}</span></td>
                 <td><button class="btn btn-sm btn-outline-success" data-action="orgsModule.completeFollowUp" data-args='${JSON.stringify([f.orgId, f.id])}'><i class="bi bi-check"></i></button></td>
               </tr>`;
-            }).join('')}
+              })
+              .join('')}
           </tbody>
         </table>
       </div>`;
 
-    this._showDynamicModal(`Follow-ups (${overdue.length} overdue, ${dueSoon.length} due soon)`, html, 'bi-bell', 'modal-lg');
+    this._showDynamicModal(
+      `Follow-ups (${overdue.length} overdue, ${dueSoon.length} due soon)`,
+      html,
+      'bi-bell',
+      'modal-lg'
+    );
   },
 
   // ============================================
@@ -6729,22 +7673,24 @@ updateCountyFilterByRegion() {
       { key: 'awards', label: 'Awards' },
       { key: 'updated', label: 'Updated' },
       { key: 'lastContacted', label: 'Last Contacted' },
-      { key: 'health', label: 'Health' }
+      { key: 'health', label: 'Health' },
     ];
 
     const html = `
       <p class="small text-muted mb-3">Toggle columns on/off. Settings persist across sessions.</p>
       <div class="row g-2">
-        ${columns.map(c => {
-          const checked = this._columnVisibility[c.key] !== false ? 'checked' : '';
-          return `<div class="col-6">
+        ${columns
+          .map((c) => {
+            const checked = this._columnVisibility[c.key] !== false ? 'checked' : '';
+            return `<div class="col-6">
             <div class="form-check form-switch">
               <input class="form-check-input" type="checkbox" id="colVis_${c.key}" ${checked}
                      data-on-check="orgsModule.toggleColumnVisibility" data-id="c.key">
               <label class="form-check-label small" for="colVis_${c.key}">${c.label}</label>
             </div>
           </div>`;
-        }).join('')}
+          })
+          .join('')}
       </div>
       <hr>
       <div class="d-flex gap-2">
@@ -6761,22 +7707,47 @@ updateCountyFilterByRegion() {
 
   toggleColumnVisibility(col, visible) {
     this._columnVisibility[col] = visible;
-    try { localStorage.setItem('orgsColumnVisibility', JSON.stringify(this._columnVisibility)); } catch (e) { console.warn('Failed to save column visibility to localStorage:', e.message); }
+    try {
+      localStorage.setItem('orgsColumnVisibility', JSON.stringify(this._columnVisibility));
+    } catch (e) {
+      console.warn('Failed to save column visibility to localStorage:', e.message);
+    }
     this.renderOrganisations();
   },
 
   resetColumnVisibility() {
     this._columnVisibility = {};
-    try { localStorage.setItem('orgsColumnVisibility', JSON.stringify(this._columnVisibility)); } catch (e) { console.warn('Failed to save column visibility to localStorage:', e.message); }
-    document.querySelectorAll('[id^="colVis_"]').forEach(cb => cb.checked = true);
+    try {
+      localStorage.setItem('orgsColumnVisibility', JSON.stringify(this._columnVisibility));
+    } catch (e) {
+      console.warn('Failed to save column visibility to localStorage:', e.message);
+    }
+    document.querySelectorAll('[id^="colVis_"]').forEach((cb) => (cb.checked = true));
     this.renderOrganisations();
   },
 
   hideAllColumns() {
-    const cols = ['sector','county','contact','email','tier','tags','region','status','awards','updated','lastContacted','health'];
-    cols.forEach(c => this._columnVisibility[c] = false);
-    try { localStorage.setItem('orgsColumnVisibility', JSON.stringify(this._columnVisibility)); } catch (e) { console.warn('Failed to save column visibility to localStorage:', e.message); }
-    document.querySelectorAll('[id^="colVis_"]').forEach(cb => cb.checked = false);
+    const cols = [
+      'sector',
+      'county',
+      'contact',
+      'email',
+      'tier',
+      'tags',
+      'region',
+      'status',
+      'awards',
+      'updated',
+      'lastContacted',
+      'health',
+    ];
+    cols.forEach((c) => (this._columnVisibility[c] = false));
+    try {
+      localStorage.setItem('orgsColumnVisibility', JSON.stringify(this._columnVisibility));
+    } catch (e) {
+      console.warn('Failed to save column visibility to localStorage:', e.message);
+    }
+    document.querySelectorAll('[id^="colVis_"]').forEach((cb) => (cb.checked = false));
     this.renderOrganisations();
   },
 
@@ -6784,8 +7755,11 @@ updateCountyFilterByRegion() {
   // FEATURE: PRINT/PDF COMPANY PROFILE
   // ============================================
   printCompanyProfile(orgId) {
-    const org = STATE.allOrganisations.find(o => o.id === orgId);
-    if (!org) { utils.showToast('Organisation not found', 'error'); return; }
+    const org = STATE.allOrganisations.find((o) => o.id === orgId);
+    if (!org) {
+      utils.showToast('Organisation not found', 'error');
+      return;
+    }
 
     const engagement = this.calculateEngagementScore(org);
     const health = this.getOrgHealthIndicator(org);
@@ -6825,7 +7799,7 @@ updateCountyFilterByRegion() {
     <div class="field"><span class="label">Region:</span><div class="value">${utils.escapeHtml(org.region || 'N/A')}</div></div>
     <div class="field"><span class="label">County:</span><div class="value">${utils.escapeHtml(org.county || 'N/A')}</div></div>
     <div class="field"><span class="label">Address:</span><div class="value">${utils.escapeHtml(org.address || 'N/A')}</div></div>
-    <div class="field"><span class="label">Tags:</span><div class="value">${(org.tags || []).map(t => utils.escapeHtml(t)).join(', ') || 'None'}</div></div>
+    <div class="field"><span class="label">Tags:</span><div class="value">${(org.tags || []).map((t) => utils.escapeHtml(t)).join(', ') || 'None'}</div></div>
     <div class="field"><span class="label">Awards Count:</span><div class="value">${org.awards_count || 0}</div></div>
   </div>
   <h2>Engagement &amp; Health</h2>
@@ -6854,8 +7828,8 @@ updateCountyFilterByRegion() {
   // ============================================
   async _autoPromoteStatus(orgIds) {
     const promotable = ['prospect', 'entrant'];
-    const toPromote = orgIds.filter(id => {
-      const org = STATE.allOrganisations.find(o => o.id === id);
+    const toPromote = orgIds.filter((id) => {
+      const org = STATE.allOrganisations.find((o) => o.id === id);
       return org && promotable.includes(org.status || 'prospect');
     });
 
@@ -6866,29 +7840,27 @@ updateCountyFilterByRegion() {
       batches.push(toPromote.slice(i, i + 5));
     }
     for (const batch of batches) {
-      await Promise.all(batch.map(id =>
-        apiClient.update('organisations', id, { status: 'nominee' })
-      ));
+      await Promise.all(batch.map((id) => apiClient.update('organisations', id, { status: 'nominee' })));
     }
 
-    toPromote.forEach(id => {
-      const org = STATE.allOrganisations.find(o => o.id === id);
+    toPromote.forEach((id) => {
+      const org = STATE.allOrganisations.find((o) => o.id === id);
       if (org) org.status = 'nominee';
-      const fOrg = STATE.filteredOrganisations.find(o => o.id === id);
+      const fOrg = STATE.filteredOrganisations.find((o) => o.id === id);
       if (fOrg) fOrg.status = 'nominee';
     });
 
     // Batch audit log inserts instead of sequential loop
     try {
       const performedBy = await this._getCurrentUserEmail();
-      const auditLogs = toPromote.map(id => {
-        const org = STATE.allOrganisations.find(o => o.id === id);
+      const auditLogs = toPromote.map((id) => {
+        const org = STATE.allOrganisations.find((o) => o.id === id);
         return {
           org_id: id,
           company_name: org?.company_name || '',
           action: 'auto_status_promotion',
           details: JSON.stringify({ from: 'prospect/entrant', to: 'nominee', reason: 'Assigned to award' }),
-          performed_by: performedBy
+          performed_by: performedBy,
         };
       });
       if (auditLogs.length > 0) {
@@ -6907,11 +7879,14 @@ updateCountyFilterByRegion() {
   _liveCheckDuplicate(name) {
     const warningEl = document.getElementById('duplicateWarning');
     if (!warningEl) return;
-    if (!name || name.length < 3) { warningEl.style.display = 'none'; return; }
+    if (!name || name.length < 3) {
+      warningEl.style.display = 'none';
+      return;
+    }
     const dupes = this.checkDuplicateOnEntry(name);
     if (dupes && dupes.length > 0) {
       warningEl.style.display = '';
-      warningEl.innerHTML = `<i class="bi bi-exclamation-triangle me-1"></i>Possible duplicates: <strong>${dupes.map(d => utils.escapeHtml(d)).join(', ')}</strong>`;
+      warningEl.innerHTML = `<i class="bi bi-exclamation-triangle me-1"></i>Possible duplicates: <strong>${dupes.map((d) => utils.escapeHtml(d)).join(', ')}</strong>`;
     } else {
       warningEl.style.display = 'none';
     }
@@ -6947,17 +7922,22 @@ updateCountyFilterByRegion() {
       const result = await apiClient.select('organisation_contacts', {
         select: 'organisation_id, first_name, last_name, email',
         filters: { organisation_id: { op: 'in', value: orgIds } },
-        pageSize: 1000
+        pageSize: 1000,
       });
       return result.data || [];
-    } catch (e) { return []; }
+    } catch (e) {
+      return [];
+    }
   },
 
   // ============================================
   // FEATURE: BULK EDIT CUSTOM FIELDS
   // ============================================
   async showBulkCustomFieldModal() {
-    if (this.selectedOrgs.size === 0) { utils.showToast('No organisations selected', 'warning'); return; }
+    if (this.selectedOrgs.size === 0) {
+      utils.showToast('No organisations selected', 'warning');
+      return;
+    }
 
     const html = `
       <p class="small text-muted">Set a custom field value on <strong>${this.selectedOrgs.size}</strong> selected organisations.</p>
@@ -6979,7 +7959,10 @@ updateCountyFilterByRegion() {
   async executeBulkCustomField() {
     const fieldName = document.getElementById('bulkCustomFieldName')?.value.trim();
     const fieldValue = document.getElementById('bulkCustomFieldValue')?.value.trim();
-    if (!fieldName) { utils.showToast('Enter a field name', 'warning'); return; }
+    if (!fieldName) {
+      utils.showToast('Enter a field name', 'warning');
+      return;
+    }
 
     try {
       utils.showLoading();
@@ -6989,8 +7972,11 @@ updateCountyFilterByRegion() {
       }
       utils.showToast(`Custom field "${fieldName}" updated on ${orgIds.length} org(s)`, 'success');
       bootstrap.Modal.getInstance(document.getElementById('dynamicOrgModal'))?.hide();
-    } catch (e) { utils.showToast('Error: ' + e.message, 'error'); }
-    finally { utils.hideLoading(); }
+    } catch (e) {
+      utils.showToast('Error: ' + e.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
   },
 
   // ============================================
@@ -7000,33 +7986,43 @@ updateCountyFilterByRegion() {
     const date = document.getElementById('followUpDate')?.value;
     const note = document.getElementById('followUpNote')?.value.trim();
     const assignee = document.getElementById('followUpAssignee')?.value.trim() || null;
-    if (!date) { utils.showToast('Select a date', 'warning'); return; }
+    if (!date) {
+      utils.showToast('Select a date', 'warning');
+      return;
+    }
 
-    const org = STATE.allOrganisations.find(o => o.id === orgId);
+    const org = STATE.allOrganisations.find((o) => o.id === orgId);
     try {
       await apiClient.insert('organisation_follow_ups', {
-        organisation_id: orgId, company_name: org?.company_name || '',
-        follow_up_date: date, note: note || null, assigned_to: assignee
+        organisation_id: orgId,
+        company_name: org?.company_name || '',
+        follow_up_date: date,
+        note: note || null,
+        assigned_to: assignee,
       });
       utils.showToast('Follow-up scheduled' + (assignee ? ` (assigned to ${assignee})` : ''), 'success');
       if (org) this.openCompanyProfile(orgId, org.company_name);
-    } catch (e) { utils.showToast('Error: ' + e.message, 'error'); }
+    } catch (e) {
+      utils.showToast('Error: ' + e.message, 'error');
+    }
   },
 
   // ============================================
   // FEATURE: DASHBOARD CHART VISUALISATIONS
   // ============================================
   _renderBarChart(data, maxVal, colorClass) {
-    return data.map(([label, count]) => {
-      const pct = Math.round((count / maxVal) * 100);
-      return `<div class="d-flex align-items-center gap-2 mb-1">
+    return data
+      .map(([label, count]) => {
+        const pct = Math.round((count / maxVal) * 100);
+        return `<div class="d-flex align-items-center gap-2 mb-1">
         <span class="small text-end" style="width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${utils.escapeHtml(label)}">${utils.escapeHtml(label)}</span>
         <div class="flex-grow-1" style="height: 20px; background: #f0f0f0; border-radius: 3px;">
           <div style="width: ${pct}%; height: 100%; background: ${colorClass}; border-radius: 3px; transition: width 0.3s;"></div>
         </div>
         <span class="small fw-semibold" style="width: 35px;">${count}</span>
       </div>`;
-    }).join('');
+      })
+      .join('');
   },
 
   // ============================================
@@ -7045,25 +8041,30 @@ updateCountyFilterByRegion() {
   },
 
   showTagFilterModal() {
-    const allTags = [...new Set(STATE.allOrganisations.flatMap(o => o.tags || []))].sort();
-    if (allTags.length === 0) { utils.showToast('No tags found', 'info'); return; }
+    const allTags = [...new Set(STATE.allOrganisations.flatMap((o) => o.tags || []))].sort();
+    if (allTags.length === 0) {
+      utils.showToast('No tags found', 'info');
+      return;
+    }
 
     const html = `
       <p class="small text-muted mb-2">Select multiple tags to filter by (AND logic).</p>
       <div class="d-flex flex-wrap gap-2 mb-3">
-        ${allTags.map(t => {
-          const active = this._selectedTagFilters.includes(t);
-          return `<button class="btn btn-sm ${active ? 'btn-primary' : 'btn-outline-secondary'}" data-action="orgsModule.toggleTagFilterAndRefresh" data-id="${utils.escapeHtml(t)}">
+        ${allTags
+          .map((t) => {
+            const active = this._selectedTagFilters.includes(t);
+            return `<button class="btn btn-sm ${active ? 'btn-primary' : 'btn-outline-secondary'}" data-action="orgsModule.toggleTagFilterAndRefresh" data-id="${utils.escapeHtml(t)}">
             ${utils.escapeHtml(t)}
           </button>`;
-        }).join('')}
+          })
+          .join('')}
       </div>
       <div class="d-flex gap-2">
         <button class="btn btn-sm btn-outline-danger" data-action="orgsModule.clearAllTagFilters">
           <i class="bi bi-x-circle me-1"></i>Clear All Tags
         </button>
       </div>
-      ${this._selectedTagFilters.length > 0 ? `<div class="mt-2 small text-muted">Active: <strong>${this._selectedTagFilters.map(t => utils.escapeHtml(t)).join(' + ')}</strong></div>` : ''}`;
+      ${this._selectedTagFilters.length > 0 ? `<div class="mt-2 small text-muted">Active: <strong>${this._selectedTagFilters.map((t) => utils.escapeHtml(t)).join(' + ')}</strong></div>` : ''}`;
 
     this._showDynamicModal('Multi-Tag Filter', html, 'bi-tags');
   },
@@ -7073,7 +8074,11 @@ updateCountyFilterByRegion() {
   // ============================================
   _draggedOrgId: null,
   _customOrgOrder: (() => {
-    try { return JSON.parse(localStorage.getItem('orgsCustomOrder') || '[]'); } catch (e) { return []; }
+    try {
+      return JSON.parse(localStorage.getItem('orgsCustomOrder') || '[]');
+    } catch (e) {
+      return [];
+    }
   })(),
 
   enableDragDrop() {
@@ -7081,7 +8086,10 @@ updateCountyFilterByRegion() {
     const btn = document.getElementById('dragDropToggleBtn');
     if (btn) btn.classList.toggle('active', this._dragDropEnabled);
     this.renderOrganisations();
-    utils.showToast(this._dragDropEnabled ? 'Drag & drop enabled — drag rows to reorder' : 'Drag & drop disabled', 'info');
+    utils.showToast(
+      this._dragDropEnabled ? 'Drag & drop enabled — drag rows to reorder' : 'Drag & drop disabled',
+      'info'
+    );
   },
 
   _handleDragStart(orgId, e) {
@@ -7111,16 +8119,20 @@ updateCountyFilterByRegion() {
 
     // Reorder in filtered array
     const arr = STATE.filteredOrganisations;
-    const fromIdx = arr.findIndex(o => o.id === this._draggedOrgId);
-    const toIdx = arr.findIndex(o => o.id === targetOrgId);
+    const fromIdx = arr.findIndex((o) => o.id === this._draggedOrgId);
+    const toIdx = arr.findIndex((o) => o.id === targetOrgId);
     if (fromIdx < 0 || toIdx < 0) return;
 
     const [moved] = arr.splice(fromIdx, 1);
     arr.splice(toIdx, 0, moved);
 
     // Save custom order
-    this._customOrgOrder = arr.map(o => o.id);
-    try { localStorage.setItem('orgsCustomOrder', JSON.stringify(this._customOrgOrder)); } catch (e) { console.warn('Failed to save custom org order to localStorage:', e.message); }
+    this._customOrgOrder = arr.map((o) => o.id);
+    try {
+      localStorage.setItem('orgsCustomOrder', JSON.stringify(this._customOrgOrder));
+    } catch (e) {
+      console.warn('Failed to save custom org order to localStorage:', e.message);
+    }
 
     this._draggedOrgId = null;
     this.renderOrganisations();
@@ -7165,22 +8177,23 @@ updateCountyFilterByRegion() {
           tier: document.getElementById('orgsTierFilter')?.value || '',
           tag: document.getElementById('orgsTagFilter')?.value || '',
           logoFilter: document.getElementById('orgsLogoFilter')?.value || '',
-          dateFilter: document.getElementById('orgsDateFilter')?.value || ''
+          dateFilter: document.getElementById('orgsDateFilter')?.value || '',
         },
         sort: { field: this.sortField, direction: this.sortDirection },
         columns: { ...this._columnVisibility },
         pageSize: this._pageSize,
-        tagFilters: [...this._selectedTagFilters]
+        tagFilters: [...this._selectedTagFilters],
       };
 
       try {
-        const { error } = await STATE.client
-          .from('user_preferences')
-          .upsert({
+        const { error } = await STATE.client.from('user_preferences').upsert(
+          {
             key: 'orgsSavedViews',
             value: JSON.stringify(views),
-            user_email: STATE.currentUser?.email
-          }, { onConflict: 'key' });
+            user_email: STATE.currentUser?.email,
+          },
+          { onConflict: 'key' }
+        );
         if (error) throw error;
       } catch (saveErr) {
         // Fallback to localStorage
@@ -7188,7 +8201,9 @@ updateCountyFilterByRegion() {
       }
 
       utils.showToast(`View "${name.trim()}" saved`, 'success');
-    } catch (e) { utils.showToast('Error saving view', 'error'); }
+    } catch (e) {
+      utils.showToast('Error saving view', 'error');
+    }
   },
 
   async showSavedViews() {
@@ -7205,7 +8220,11 @@ updateCountyFilterByRegion() {
       }
     } catch (e) {
       // Fallback to localStorage
-      try { views = JSON.parse(localStorage.getItem('orgsSavedViews') || '{}'); } catch (parseErr) { views = {}; }
+      try {
+        views = JSON.parse(localStorage.getItem('orgsSavedViews') || '{}');
+      } catch (parseErr) {
+        views = {};
+      }
     }
     const names = Object.keys(views);
 
@@ -7217,16 +8236,25 @@ updateCountyFilterByRegion() {
     const html = `
       <p class="small text-muted mb-3">Load a saved view to restore filters, sort, columns, and page size.</p>
       <div class="list-group">
-        ${names.map(n => `<div class="list-group-item d-flex justify-content-between align-items-center">
+        ${names
+          .map(
+            (n) => `<div class="list-group-item d-flex justify-content-between align-items-center">
           <div>
             <strong>${utils.escapeHtml(n)}</strong>
-            <div class="small text-muted">${Object.entries(views[n].filters).filter(([_k,v]) => v).map(([k,v]) => `${k}: ${utils.escapeHtml(v)}`).join(', ') || 'No filters'}</div>
+            <div class="small text-muted">${
+              Object.entries(views[n].filters)
+                .filter(([_k, v]) => v)
+                .map(([k, v]) => `${k}: ${utils.escapeHtml(v)}`)
+                .join(', ') || 'No filters'
+            }</div>
           </div>
           <div class="d-flex gap-1">
             <button class="btn btn-sm btn-primary" data-action="orgsModule.loadView" data-id="utils.escapeHtml(n).replace(/'/g, "\\'")"><i class="bi bi-box-arrow-in-right"></i></button>
             <button class="btn btn-sm btn-outline-danger" data-action="orgsModule.deleteView" data-id="utils.escapeHtml(n).replace(/'/g, "\\'")"><i class="bi bi-trash"></i></button>
           </div>
-        </div>`).join('')}
+        </div>`
+          )
+          .join('')}
       </div>`;
 
     this._showDynamicModal('Saved Views', html, 'bi-bookmark');
@@ -7246,7 +8274,12 @@ updateCountyFilterByRegion() {
       }
     } catch (e) {
       // Fallback to localStorage
-      try { views = JSON.parse(localStorage.getItem('orgsSavedViews') || '{}'); } catch (parseErr) { utils.showToast('Error loading view', 'error'); return; }
+      try {
+        views = JSON.parse(localStorage.getItem('orgsSavedViews') || '{}');
+      } catch (parseErr) {
+        utils.showToast('Error loading view', 'error');
+        return;
+      }
     }
 
     const view = views[name];
@@ -7279,7 +8312,11 @@ updateCountyFilterByRegion() {
     // Restore column visibility
     if (view.columns) {
       this._columnVisibility = { ...view.columns };
-      try { localStorage.setItem('orgsColumnVisibility', JSON.stringify(this._columnVisibility)); } catch (e) { console.warn('Failed to save column visibility to localStorage:', e.message); }
+      try {
+        localStorage.setItem('orgsColumnVisibility', JSON.stringify(this._columnVisibility));
+      } catch (e) {
+        console.warn('Failed to save column visibility to localStorage:', e.message);
+      }
     }
 
     // Restore page size
@@ -7294,7 +8331,7 @@ updateCountyFilterByRegion() {
   },
 
   async deleteView(name) {
-    if (!await utils.confirmDialog({ title: 'Delete View', message: `Delete view "${name}"?` })) return;
+    if (!(await utils.confirmDialog({ title: 'Delete View', message: `Delete view "${name}"?` }))) return;
     try {
       // Load existing views from Supabase
       let views = {};
@@ -7315,13 +8352,14 @@ updateCountyFilterByRegion() {
       delete views[name];
 
       try {
-        const { error } = await STATE.client
-          .from('user_preferences')
-          .upsert({
+        const { error } = await STATE.client.from('user_preferences').upsert(
+          {
             key: 'orgsSavedViews',
             value: JSON.stringify(views),
-            user_email: STATE.currentUser?.email
-          }, { onConflict: 'key' });
+            user_email: STATE.currentUser?.email,
+          },
+          { onConflict: 'key' }
+        );
         if (error) throw error;
       } catch (saveErr) {
         localStorage.setItem('orgsSavedViews', JSON.stringify(views));
@@ -7329,7 +8367,10 @@ updateCountyFilterByRegion() {
 
       utils.showToast(`View "${name}" deleted`, 'success');
       this.showSavedViews();
-    } catch (e) { console.warn('Failed to delete view:', e.message); utils.showToast('Failed to delete view', 'warning'); }
+    } catch (e) {
+      console.warn('Failed to delete view:', e.message);
+      utils.showToast('Failed to delete view', 'warning');
+    }
   },
 
   // ============================================
@@ -7396,7 +8437,7 @@ updateCountyFilterByRegion() {
   },
 
   _matchesSegmentRules(org, rules) {
-    return rules.every(r => {
+    return rules.every((r) => {
       let orgVal;
       if (r.field === 'engagement') orgVal = this.calculateEngagementScore(org);
       else if (r.field === 'awards_count') orgVal = org.awards_count || 0;
@@ -7404,21 +8445,30 @@ updateCountyFilterByRegion() {
 
       const testVal = r.val;
       switch (r.op) {
-        case 'eq': return String(orgVal).toLowerCase() === testVal.toLowerCase();
-        case 'neq': return String(orgVal).toLowerCase() !== testVal.toLowerCase();
-        case 'gt': return Number(orgVal) > Number(testVal);
-        case 'lt': return Number(orgVal) < Number(testVal);
-        case 'contains': return String(orgVal).toLowerCase().includes(testVal.toLowerCase());
-        default: return false;
+        case 'eq':
+          return String(orgVal).toLowerCase() === testVal.toLowerCase();
+        case 'neq':
+          return String(orgVal).toLowerCase() !== testVal.toLowerCase();
+        case 'gt':
+          return Number(orgVal) > Number(testVal);
+        case 'lt':
+          return Number(orgVal) < Number(testVal);
+        case 'contains':
+          return String(orgVal).toLowerCase().includes(testVal.toLowerCase());
+        default:
+          return false;
       }
     });
   },
 
   _applySegment() {
     const rules = this._getSegmentRules();
-    if (rules.length === 0) { utils.showToast('Add at least one rule', 'warning'); return; }
+    if (rules.length === 0) {
+      utils.showToast('Add at least one rule', 'warning');
+      return;
+    }
 
-    const matching = STATE.allOrganisations.filter(o => this._matchesSegmentRules(o, rules));
+    const matching = STATE.allOrganisations.filter((o) => this._matchesSegmentRules(o, rules));
     const resultEl = document.getElementById('segmentResult');
     if (resultEl) {
       resultEl.innerHTML = `<div class="alert alert-info small py-2">
@@ -7440,13 +8490,19 @@ updateCountyFilterByRegion() {
 
   // Segments — delegated to crmModule (single source of truth)
   async _saveSegment() {
-    if (typeof crmModule !== 'undefined') { crmModule.saveSmartSegment(); }
+    if (typeof crmModule !== 'undefined') {
+      crmModule.saveSmartSegment();
+    }
   },
   async _loadSegments() {
-    if (typeof crmModule !== 'undefined') { crmModule.loadSmartSegments(); }
+    if (typeof crmModule !== 'undefined') {
+      crmModule.loadSmartSegments();
+    }
   },
   async _loadAndApplySegment(name) {
-    if (typeof crmModule !== 'undefined') { crmModule._loadAndApplySegment(name); }
+    if (typeof crmModule !== 'undefined') {
+      crmModule._loadAndApplySegment(name);
+    }
   },
 
   // ============================================
@@ -7458,7 +8514,9 @@ updateCountyFilterByRegion() {
       return;
     }
 
-    const orgs = Array.from(this.selectedOrgs).map(id => STATE.allOrganisations.find(o => o.id === id)).filter(Boolean);
+    const orgs = Array.from(this.selectedOrgs)
+      .map((id) => STATE.allOrganisations.find((o) => o.id === id))
+      .filter(Boolean);
     const fields = [
       { key: 'status', label: 'Status' },
       { key: 'tier', label: 'Tier' },
@@ -7472,7 +8530,7 @@ updateCountyFilterByRegion() {
       { key: 'awards_count', label: 'Awards' },
       { key: '_engagement', label: 'Engagement Score' },
       { key: '_health', label: 'Health' },
-      { key: '_lastContacted', label: 'Last Contacted' }
+      { key: '_lastContacted', label: 'Last Contacted' },
     ];
 
     const html = `
@@ -7480,20 +8538,28 @@ updateCountyFilterByRegion() {
         <table class="table table-sm table-bordered">
           <thead><tr>
             <th style="width: 120px;"></th>
-            ${orgs.map(o => `<th class="small fw-semibold">${o.logo_url ? `<img src="${o.logo_url}" style="width:30px; height:20px; object-fit:contain;" class="me-1">` : ''}${utils.escapeHtml(o.company_name)}</th>`).join('')}
+            ${orgs.map((o) => `<th class="small fw-semibold">${o.logo_url ? `<img src="${o.logo_url}" style="width:30px; height:20px; object-fit:contain;" class="me-1">` : ''}${utils.escapeHtml(o.company_name)}</th>`).join('')}
           </tr></thead>
           <tbody>
-            ${fields.map(f => `<tr>
+            ${fields
+              .map(
+                (f) => `<tr>
               <td class="small fw-semibold text-muted">${f.label}</td>
-              ${orgs.map(o => {
-                let val;
-                if (f.key === '_engagement') val = this.calculateEngagementScore(o) + '/100';
-                else if (f.key === '_health') val = this.getOrgHealthIndicator(o).label;
-                else if (f.key === '_lastContacted') { const lc = this.getLastContacted(o.id); val = lc ? new Date(lc).toLocaleDateString('en-GB') : 'Never'; }
-                else val = o[f.key] || '-';
-                return `<td class="small">${utils.escapeHtml(String(val))}</td>`;
-              }).join('')}
-            </tr>`).join('')}
+              ${orgs
+                .map((o) => {
+                  let val;
+                  if (f.key === '_engagement') val = this.calculateEngagementScore(o) + '/100';
+                  else if (f.key === '_health') val = this.getOrgHealthIndicator(o).label;
+                  else if (f.key === '_lastContacted') {
+                    const lc = this.getLastContacted(o.id);
+                    val = lc ? new Date(lc).toLocaleDateString('en-GB') : 'Never';
+                  } else val = o[f.key] || '-';
+                  return `<td class="small">${utils.escapeHtml(String(val))}</td>`;
+                })
+                .join('')}
+            </tr>`
+              )
+              .join('')}
           </tbody>
         </table>
       </div>`;
@@ -7505,21 +8571,30 @@ updateCountyFilterByRegion() {
   // FEATURE: COMPANIES HOUSE LOOKUP (UK)
   // ============================================
   async companiesHouseLookup(orgId) {
-    const org = STATE.allOrganisations.find(o => o.id === orgId);
-    if (!org) { utils.showToast('Organisation not found', 'error'); return; }
+    const org = STATE.allOrganisations.find((o) => o.id === orgId);
+    if (!org) {
+      utils.showToast('Organisation not found', 'error');
+      return;
+    }
 
     const searchName = org.company_name.replace(/\s*(Ltd|Limited|PLC|LLP|Inc)\s*\.?$/i, '').trim();
     utils.showToast('Searching Companies House...', 'info');
 
     try {
       // Use the free Companies House search API (no API key required for basic search)
-      const response = await fetch(`https://api.company-information.service.gov.uk/search/companies?q=${encodeURIComponent(searchName)}&items_per_page=5`, {
-        headers: { 'Accept': 'application/json' }
-      });
+      const response = await fetch(
+        `https://api.company-information.service.gov.uk/search/companies?q=${encodeURIComponent(searchName)}&items_per_page=5`,
+        {
+          headers: { Accept: 'application/json' },
+        }
+      );
 
       if (!response.ok) {
         // Fallback: open Companies House website search
-        window.open(`https://find-and-update.company-information.service.gov.uk/search?q=${encodeURIComponent(searchName)}`, '_blank');
+        window.open(
+          `https://find-and-update.company-information.service.gov.uk/search?q=${encodeURIComponent(searchName)}`,
+          '_blank'
+        );
         utils.showToast('Opened Companies House search in new tab (API requires auth key)', 'info');
         return;
       }
@@ -7535,7 +8610,9 @@ updateCountyFilterByRegion() {
       const html = `
         <p class="small text-muted mb-3">Results for "<strong>${utils.escapeHtml(searchName)}</strong>" from Companies House</p>
         <div class="list-group">
-          ${items.map((c, _idx) => `<div class="list-group-item">
+          ${items
+            .map(
+              (c, _idx) => `<div class="list-group-item">
             <div class="d-flex justify-content-between">
               <div>
                 <strong>${utils.escapeHtml(c.title)}</strong>
@@ -7549,7 +8626,9 @@ updateCountyFilterByRegion() {
                 <i class="bi bi-arrow-down-circle me-1"></i>Apply
               </button>
             </div>
-          </div>`).join('')}
+          </div>`
+            )
+            .join('')}
         </div>`;
 
       this._showDynamicModal('Companies House Results', html, 'bi-bank', 'modal-lg');
@@ -7570,12 +8649,14 @@ updateCountyFilterByRegion() {
 
       await apiClient.update('organisations', orgId, updates);
 
-      const org = STATE.allOrganisations.find(o => o.id === orgId);
+      const org = STATE.allOrganisations.find((o) => o.id === orgId);
       if (org) Object.assign(org, updates);
 
       utils.showToast('Companies House data applied', 'success');
       bootstrap.Modal.getInstance(document.getElementById('dynamicOrgModal'))?.hide();
-    } catch (e) { utils.showToast('Error: ' + e.message, 'error'); }
+    } catch (e) {
+      utils.showToast('Error: ' + e.message, 'error');
+    }
   },
 
   // ============================================
@@ -7602,15 +8683,31 @@ updateCountyFilterByRegion() {
     const type = document.getElementById('activityNoteType')?.value || 'note';
     const content = document.getElementById('activityNoteContent')?.value?.trim();
     const priority = document.getElementById('activityNotePriority')?.value || 'normal';
-    if (!content) { utils.showToast('Please enter note content', 'warning'); return; }
+    if (!content) {
+      utils.showToast('Please enter note content', 'warning');
+      return;
+    }
     try {
       const user = await this._getCurrentUserEmail();
-      await apiClient.insert('org_activity_notes', { organisation_id: orgId, type, content, priority, created_by: user });
+      await apiClient.insert('org_activity_notes', {
+        organisation_id: orgId,
+        type,
+        content,
+        priority,
+        created_by: user,
+      });
     } catch (e) {
       console.warn('DB insert for activity note failed, using localStorage:', e);
       const key = `bta_org_notes_${orgId}`;
       const stored = JSON.parse(localStorage.getItem(key) || '[]');
-      stored.push({ id: crypto.randomUUID(), organisation_id: orgId, type, content, priority, created_at: new Date().toISOString() });
+      stored.push({
+        id: crypto.randomUUID(),
+        organisation_id: orgId,
+        type,
+        content,
+        priority,
+        created_at: new Date().toISOString(),
+      });
       localStorage.setItem(key, JSON.stringify(stored));
     }
     this._logAudit(orgId, 'note_added', '', `${type}: ${content.substring(0, 80)}`);
@@ -7620,31 +8717,62 @@ updateCountyFilterByRegion() {
       const timeline = await this.loadUnifiedTimeline(orgId);
       const el = document.getElementById('orgActivityTimeline');
       if (el) el.innerHTML = this.renderUnifiedTimeline(timeline);
-    } catch (e) { /* timeline refresh best-effort */ }
+    } catch (e) {
+      /* timeline refresh best-effort */
+    }
   },
 
   // Email sequences — delegated to marketingModule (single source of truth)
-  showEmailSequences() { if (typeof marketingModule !== 'undefined') { marketingModule.loadEmailSequences(); const tab = document.getElementById('marketing-tab'); if (tab) new bootstrap.Tab(tab).show(); setTimeout(() => { const sub = document.getElementById('email-sequences-subtab'); if (sub) new bootstrap.Tab(sub).show(); }, 100); } },
-  showCreateSequence() { if (typeof marketingModule !== 'undefined') marketingModule.showCreateSequence(); },
-  toggleSequence(i) { if (typeof marketingModule !== 'undefined') marketingModule.toggleSequence(i); },
-  deleteSequence(i) { if (typeof marketingModule !== 'undefined') marketingModule.deleteSequence(i); },
+  showEmailSequences() {
+    if (typeof marketingModule !== 'undefined') {
+      marketingModule.loadEmailSequences();
+      const tab = document.getElementById('marketing-tab');
+      if (tab) new bootstrap.Tab(tab).show();
+      setTimeout(() => {
+        const sub = document.getElementById('email-sequences-subtab');
+        if (sub) new bootstrap.Tab(sub).show();
+      }, 100);
+    }
+  },
+  showCreateSequence() {
+    if (typeof marketingModule !== 'undefined') marketingModule.showCreateSequence();
+  },
+  toggleSequence(i) {
+    if (typeof marketingModule !== 'undefined') marketingModule.toggleSequence(i);
+  },
+  deleteSequence(i) {
+    if (typeof marketingModule !== 'undefined') marketingModule.deleteSequence(i);
+  },
 
   // ============================================
   // FEATURE: MY TASKS DASHBOARD
   // ============================================
   async showMyTasks() {
     let followUps = [];
-    try { const result = await apiClient.select('organisation_follow_ups', { sort: { column: 'date', ascending: true }, pageSize: 1000 }); followUps = result.data || []; } catch (e) { console.warn('Could not load follow-ups:', e); }
+    try {
+      const result = await apiClient.select('organisation_follow_ups', {
+        sort: { column: 'date', ascending: true },
+        pageSize: 1000,
+      });
+      followUps = result.data || [];
+    } catch (e) {
+      console.warn('Could not load follow-ups:', e);
+    }
     const today = new Date().toISOString().split('T')[0];
-    const overdue = followUps.filter(f => !f.done && f.date < today);
-    const todayTasks = followUps.filter(f => !f.done && f.date === today);
-    const upcoming = followUps.filter(f => !f.done && f.date > today).slice(0, 20);
-    const completed = followUps.filter(f => f.done).slice(0, 10);
+    const overdue = followUps.filter((f) => !f.done && f.date < today);
+    const todayTasks = followUps.filter((f) => !f.done && f.date === today);
+    const upcoming = followUps.filter((f) => !f.done && f.date > today).slice(0, 20);
+    const completed = followUps.filter((f) => f.done).slice(0, 10);
 
     const renderTask = (f, section) => {
-      const org = STATE.allOrganisations.find(o => o.id === f.org_id);
+      const org = STATE.allOrganisations.find((o) => o.id === f.org_id);
       const orgName = org ? utils.escapeHtml(org.company_name) : 'Unknown';
-      const icons = { overdue: 'bi-exclamation-triangle text-danger', today: 'bi-bell text-warning', completed: 'bi-check-circle text-success', upcoming: 'bi-clock text-info' };
+      const icons = {
+        overdue: 'bi-exclamation-triangle text-danger',
+        today: 'bi-bell text-warning',
+        completed: 'bi-check-circle text-success',
+        upcoming: 'bi-clock text-info',
+      };
       return `<div class="d-flex align-items-center py-2 border-bottom">
         <i class="bi ${icons[section]} me-2 fs-5"></i>
         <div class="flex-grow-1"><div class="fw-semibold small">${utils.escapeHtml(f.note || 'Follow up')}</div>
@@ -7660,11 +8788,11 @@ updateCountyFilterByRegion() {
         <div class="col-3"><div class="card border-info"><div class="card-body py-2"><h4 class="text-info mb-0">${upcoming.length}</h4><small class="text-muted">Upcoming</small></div></div></div>
         <div class="col-3"><div class="card border-success"><div class="card-body py-2"><h4 class="text-success mb-0">${completed.length}</h4><small class="text-muted">Done</small></div></div></div>
       </div>
-      ${overdue.length > 0 ? `<h6 class="text-danger fw-bold"><i class="bi bi-exclamation-triangle me-1"></i>Overdue (${overdue.length})</h6>${overdue.map(f => renderTask(f, 'overdue')).join('')}<hr>` : ''}
-      ${todayTasks.length > 0 ? `<h6 class="text-warning fw-bold"><i class="bi bi-bell me-1"></i>Due Today</h6>${todayTasks.map(f => renderTask(f, 'today')).join('')}<hr>` : ''}
-      ${upcoming.length > 0 ? `<h6 class="text-info fw-bold"><i class="bi bi-clock me-1"></i>Upcoming</h6>${upcoming.map(f => renderTask(f, 'upcoming')).join('')}<hr>` : ''}
-      ${completed.length > 0 ? `<h6 class="text-success fw-bold"><i class="bi bi-check-circle me-1"></i>Recently Completed</h6>${completed.map(f => renderTask(f, 'completed')).join('')}` : ''}
-      ${followUps.filter(f => !f.done).length === 0 ? '<div class="text-center py-4"><i class="bi bi-emoji-smile fs-1 d-block mb-2 text-success"></i><p class="text-muted">All caught up!</p></div>' : ''}`;
+      ${overdue.length > 0 ? `<h6 class="text-danger fw-bold"><i class="bi bi-exclamation-triangle me-1"></i>Overdue (${overdue.length})</h6>${overdue.map((f) => renderTask(f, 'overdue')).join('')}<hr>` : ''}
+      ${todayTasks.length > 0 ? `<h6 class="text-warning fw-bold"><i class="bi bi-bell me-1"></i>Due Today</h6>${todayTasks.map((f) => renderTask(f, 'today')).join('')}<hr>` : ''}
+      ${upcoming.length > 0 ? `<h6 class="text-info fw-bold"><i class="bi bi-clock me-1"></i>Upcoming</h6>${upcoming.map((f) => renderTask(f, 'upcoming')).join('')}<hr>` : ''}
+      ${completed.length > 0 ? `<h6 class="text-success fw-bold"><i class="bi bi-check-circle me-1"></i>Recently Completed</h6>${completed.map((f) => renderTask(f, 'completed')).join('')}` : ''}
+      ${followUps.filter((f) => !f.done).length === 0 ? '<div class="text-center py-4"><i class="bi bi-emoji-smile fs-1 d-block mb-2 text-success"></i><p class="text-muted">All caught up!</p></div>' : ''}`;
     this._showDynamicModal('My Tasks & Follow-ups', html, 'bi-person-check', 'modal-lg');
   },
 
@@ -7673,19 +8801,45 @@ updateCountyFilterByRegion() {
   // ============================================
   async showFieldLevelAudit(orgId) {
     let logs = [];
-    try { const { data } = await STATE.client.from('org_audit_log').select('*').eq('org_id', orgId).order('created_at', { ascending: false }).limit(100); logs = data || []; } catch (e) { console.warn('Audit log load error:', e); }
-    if (logs.length === 0) { this._showDynamicModal('Change History', '<div class="text-center py-4 text-muted"><i class="bi bi-clock-history fs-1 d-block mb-2"></i>No change history recorded.</div>', 'bi-clock-history', ''); return; }
-    const iconMap = { status_change: 'bi-arrow-repeat text-warning', archived: 'bi-archive text-danger', restored: 'bi-box-arrow-up text-success', note_added: 'bi-journal-plus text-info', email_sent: 'bi-envelope text-primary', field_update: 'bi-pencil text-secondary' };
-    const html = `<div class="mb-3"><input type="text" class="form-control form-control-sm" placeholder="Filter history..." data-on-input="utils.filterElementsByText" data-args='${JSON.stringify([".audit-entry"])}'></div>
-      <div style="max-height:500px;overflow-y:auto;">${logs.map(log => {
-        const icon = iconMap[log.action] || 'bi-circle text-muted';
-        return `<div class="audit-entry d-flex align-items-start py-2 border-bottom">
+    try {
+      const result = await apiClient.select('org_audit_log', {
+        filters: { org_id: { eq: orgId } },
+        sort: { column: 'created_at', ascending: false },
+        pageSize: 100,
+      });
+      logs = result.data || [];
+    } catch (e) {
+      console.warn('Audit log load error:', e);
+    }
+    if (logs.length === 0) {
+      this._showDynamicModal(
+        'Change History',
+        '<div class="text-center py-4 text-muted"><i class="bi bi-clock-history fs-1 d-block mb-2"></i>No change history recorded.</div>',
+        'bi-clock-history',
+        ''
+      );
+      return;
+    }
+    const iconMap = {
+      status_change: 'bi-arrow-repeat text-warning',
+      archived: 'bi-archive text-danger',
+      restored: 'bi-box-arrow-up text-success',
+      note_added: 'bi-journal-plus text-info',
+      email_sent: 'bi-envelope text-primary',
+      field_update: 'bi-pencil text-secondary',
+    };
+    const html = `<div class="mb-3"><input type="text" class="form-control form-control-sm" placeholder="Filter history..." data-on-input="utils.filterElementsByText" data-args='${JSON.stringify(['.audit-entry'])}'></div>
+      <div style="max-height:500px;overflow-y:auto;">${logs
+        .map((log) => {
+          const icon = iconMap[log.action] || 'bi-circle text-muted';
+          return `<div class="audit-entry d-flex align-items-start py-2 border-bottom">
           <i class="bi ${icon} me-2 mt-1 fs-5"></i><div class="flex-grow-1">
-          <div class="fw-semibold small">${utils.escapeHtml(log.action?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || '')}</div>
+          <div class="fw-semibold small">${utils.escapeHtml(log.action?.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()) || '')}</div>
           <div class="small">${utils.escapeHtml(log.details || '')}</div>
           <div class="text-muted" style="font-size:0.7rem;">${new Date(log.created_at).toLocaleString('en-GB')} · by ${utils.escapeHtml(log.performed_by || 'system')}</div>
         </div></div>`;
-      }).join('')}</div>`;
+        })
+        .join('')}</div>`;
     this._showDynamicModal('Change History', html, 'bi-clock-history', 'modal-lg');
   },
 
@@ -7695,17 +8849,21 @@ updateCountyFilterByRegion() {
   validateImportData(rows) {
     const issues = [];
     const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const existNames = new Set(STATE.allOrganisations.map(o => o.company_name?.toLowerCase().trim()));
-    const existEmails = new Set(STATE.allOrganisations.map(o => o.email?.toLowerCase().trim()).filter(Boolean));
+    const existNames = new Set(STATE.allOrganisations.map((o) => o.company_name?.toLowerCase().trim()));
+    const existEmails = new Set(STATE.allOrganisations.map((o) => o.email?.toLowerCase().trim()).filter(Boolean));
     const seen = new Set();
     rows.forEach((row, i) => {
       const r = i + 1;
       if (!row.company_name?.trim()) issues.push({ row: r, severity: 'error', message: 'Missing company name' });
-      if (row.email && !emailRe.test(row.email)) issues.push({ row: r, severity: 'error', message: `Invalid email: ${row.email}` });
-      if (row.company_name && existNames.has(row.company_name.toLowerCase().trim())) issues.push({ row: r, severity: 'warning', message: `Duplicate: "${row.company_name}" already exists` });
-      if (row.email && existEmails.has(row.email.toLowerCase().trim())) issues.push({ row: r, severity: 'warning', message: `Email exists: ${row.email}` });
+      if (row.email && !emailRe.test(row.email))
+        issues.push({ row: r, severity: 'error', message: `Invalid email: ${row.email}` });
+      if (row.company_name && existNames.has(row.company_name.toLowerCase().trim()))
+        issues.push({ row: r, severity: 'warning', message: `Duplicate: "${row.company_name}" already exists` });
+      if (row.email && existEmails.has(row.email.toLowerCase().trim()))
+        issues.push({ row: r, severity: 'warning', message: `Email exists: ${row.email}` });
       const k = row.company_name?.toLowerCase().trim();
-      if (k && seen.has(k)) issues.push({ row: r, severity: 'warning', message: `Duplicate in import: "${row.company_name}"` });
+      if (k && seen.has(k))
+        issues.push({ row: r, severity: 'warning', message: `Duplicate in import: "${row.company_name}"` });
       if (k) seen.add(k);
       if (!row.region?.trim()) issues.push({ row: r, severity: 'info', message: 'Missing region' });
     });
@@ -7714,60 +8872,124 @@ updateCountyFilterByRegion() {
 
   showImportValidationPreview(rows) {
     const issues = this.validateImportData(rows);
-    const errors = issues.filter(i => i.severity === 'error'), warnings = issues.filter(i => i.severity === 'warning'), infos = issues.filter(i => i.severity === 'info');
+    const errors = issues.filter((i) => i.severity === 'error'),
+      warnings = issues.filter((i) => i.severity === 'warning'),
+      infos = issues.filter((i) => i.severity === 'info');
     return `<div class="row text-center mb-3">
       <div class="col-3"><div class="card"><div class="card-body py-2"><h5 class="mb-0">${rows.length}</h5><small>Total Rows</small></div></div></div>
       <div class="col-3"><div class="card border-danger"><div class="card-body py-2"><h5 class="text-danger mb-0">${errors.length}</h5><small>Errors</small></div></div></div>
       <div class="col-3"><div class="card border-warning"><div class="card-body py-2"><h5 class="text-warning mb-0">${warnings.length}</h5><small>Warnings</small></div></div></div>
       <div class="col-3"><div class="card border-info"><div class="card-body py-2"><h5 class="text-info mb-0">${infos.length}</h5><small>Info</small></div></div></div>
     </div>
-    ${errors.length > 0 ? `<div class="alert alert-danger py-2"><strong>Errors:</strong><ul class="mb-0 small">${errors.slice(0, 20).map(e => `<li>Row ${e.row}: ${utils.escapeHtml(e.message)}</li>`).join('')}</ul></div>` : ''}
-    ${warnings.length > 0 ? `<div class="alert alert-warning py-2"><strong>Warnings:</strong><ul class="mb-0 small">${warnings.slice(0, 20).map(w => `<li>Row ${w.row}: ${utils.escapeHtml(w.message)}</li>`).join('')}</ul></div>` : ''}
+    ${
+      errors.length > 0
+        ? `<div class="alert alert-danger py-2"><strong>Errors:</strong><ul class="mb-0 small">${errors
+            .slice(0, 20)
+            .map((e) => `<li>Row ${e.row}: ${utils.escapeHtml(e.message)}</li>`)
+            .join('')}</ul></div>`
+        : ''
+    }
+    ${
+      warnings.length > 0
+        ? `<div class="alert alert-warning py-2"><strong>Warnings:</strong><ul class="mb-0 small">${warnings
+            .slice(0, 20)
+            .map((w) => `<li>Row ${w.row}: ${utils.escapeHtml(w.message)}</li>`)
+            .join('')}</ul></div>`
+        : ''
+    }
     ${errors.length === 0 ? '<div class="alert alert-success py-2"><i class="bi bi-check-circle me-2"></i>Ready to import.</div>' : '<div class="alert alert-danger py-2">Fix errors before importing.</div>'}`;
   },
 
   // Scheduled reports — delegated to reportsScheduler (single source of truth)
-  showScheduledReports() { if (typeof reportsScheduler !== 'undefined') { reportsScheduler.loadReports(); const tab = document.getElementById('reports-tab'); if (tab) new bootstrap.Tab(tab).show(); } },
-  showCreateScheduledReport() { if (typeof reportsScheduler !== 'undefined') reportsScheduler.showCreateReport(); },
-  previewScheduledReport(i) { if (typeof reportsScheduler !== 'undefined') reportsScheduler.previewReport(i); },
-  deleteScheduledReport(i) { if (typeof reportsScheduler !== 'undefined') reportsScheduler.deleteReport(i); },
+  showScheduledReports() {
+    if (typeof reportsScheduler !== 'undefined') {
+      reportsScheduler.loadReports();
+      const tab = document.getElementById('reports-tab');
+      if (tab) new bootstrap.Tab(tab).show();
+    }
+  },
+  showCreateScheduledReport() {
+    if (typeof reportsScheduler !== 'undefined') reportsScheduler.showCreateReport();
+  },
+  previewScheduledReport(i) {
+    if (typeof reportsScheduler !== 'undefined') reportsScheduler.previewReport(i);
+  },
+  deleteScheduledReport(i) {
+    if (typeof reportsScheduler !== 'undefined') reportsScheduler.deleteReport(i);
+  },
 
   // ============================================
   // FEATURE: DUPLICATE DETECTION DASHBOARD
   // ============================================
   showDuplicateDetectionDashboard() {
     const orgs = STATE.allOrganisations;
-    const nameG = new Map(), emailG = new Map(), phoneG = new Map(), webG = new Map();
-    orgs.forEach(org => {
-      const n = org.company_name?.toLowerCase().replace(/[^a-z0-9]/g, '').trim();
-      if (n && n.length > 2) { if (!nameG.has(n)) nameG.set(n, []); nameG.get(n).push(org); }
+    const nameG = new Map(),
+      emailG = new Map(),
+      phoneG = new Map(),
+      webG = new Map();
+    orgs.forEach((org) => {
+      const n = org.company_name
+        ?.toLowerCase()
+        .replace(/[^a-z0-9]/g, '')
+        .trim();
+      if (n && n.length > 2) {
+        if (!nameG.has(n)) nameG.set(n, []);
+        nameG.get(n).push(org);
+      }
       const e = org.email?.toLowerCase().trim();
-      if (e) { if (!emailG.has(e)) emailG.set(e, []); emailG.get(e).push(org); }
+      if (e) {
+        if (!emailG.has(e)) emailG.set(e, []);
+        emailG.get(e).push(org);
+      }
       const p = org.phone?.replace(/\D/g, '');
-      if (p && p.length >= 8) { if (!phoneG.has(p)) phoneG.set(p, []); phoneG.get(p).push(org); }
-      const w = org.website?.toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*/, '').trim();
-      if (w) { if (!webG.has(w)) webG.set(w, []); webG.get(w).push(org); }
+      if (p && p.length >= 8) {
+        if (!phoneG.has(p)) phoneG.set(p, []);
+        phoneG.get(p).push(org);
+      }
+      const w = org.website
+        ?.toLowerCase()
+        .replace(/^https?:\/\//, '')
+        .replace(/^www\./, '')
+        .replace(/\/.*/, '')
+        .trim();
+      if (w) {
+        if (!webG.has(w)) webG.set(w, []);
+        webG.get(w).push(org);
+      }
     });
-    const nD = Array.from(nameG.values()).filter(g => g.length > 1);
-    const eD = Array.from(emailG.values()).filter(g => g.length > 1);
-    const pD = Array.from(phoneG.values()).filter(g => g.length > 1);
-    const wD = Array.from(webG.values()).filter(g => g.length > 1);
+    const nD = Array.from(nameG.values()).filter((g) => g.length > 1);
+    const eD = Array.from(emailG.values()).filter((g) => g.length > 1);
+    const pD = Array.from(phoneG.values()).filter((g) => g.length > 1);
+    const wD = Array.from(webG.values()).filter((g) => g.length > 1);
     const total = nD.length + eD.length + pD.length + wD.length;
 
-    const renderG = (groups, label, icon) => groups.length === 0 ? '' :
-      `<h6 class="fw-bold mt-3"><i class="bi ${icon} me-2"></i>${label} (${groups.length})</h6>` +
-      groups.slice(0, 15).map(g => `<div class="card mb-2"><div class="card-body py-2"><div class="d-flex flex-wrap gap-2">
-        ${g.map(o => `<div class="border rounded px-2 py-1 small"><a href="#" class="text-primary text-decoration-none" data-action="orgsModule.openCompanyProfile" data-id="o.id">${utils.escapeHtml(o.company_name)}</a>
-        <span class="text-muted ms-1">${utils.escapeHtml(o.region || '')}</span></div>`).join('')}
-        <button class="btn btn-sm btn-outline-warning" data-action="orgsModule.mergeDuplicateGroup" data-args='${JSON.stringify(g.map(o=>o.id))}'>
+    const renderG = (groups, label, icon) =>
+      groups.length === 0
+        ? ''
+        : `<h6 class="fw-bold mt-3"><i class="bi ${icon} me-2"></i>${label} (${groups.length})</h6>` +
+          groups
+            .slice(0, 15)
+            .map(
+              (g) => `<div class="card mb-2"><div class="card-body py-2"><div class="d-flex flex-wrap gap-2">
+        ${g
+          .map(
+            (
+              o
+            ) => `<div class="border rounded px-2 py-1 small"><a href="#" class="text-primary text-decoration-none" data-action="orgsModule.openCompanyProfile" data-id="o.id">${utils.escapeHtml(o.company_name)}</a>
+        <span class="text-muted ms-1">${utils.escapeHtml(o.region || '')}</span></div>`
+          )
+          .join('')}
+        <button class="btn btn-sm btn-outline-warning" data-action="orgsModule.mergeDuplicateGroup" data-args='${JSON.stringify(g.map((o) => o.id))}'>
           <i class="bi bi-intersect me-1"></i>Merge</button>
-      </div></div></div>`).join('');
+      </div></div></div>`
+            )
+            .join('');
 
     const html = `<div class="row text-center mb-3">
-        <div class="col-3"><div class="card"><div class="card-body py-2"><h4 class="mb-0 ${nD.length?'text-danger':'text-success'}">${nD.length}</h4><small>Name</small></div></div></div>
-        <div class="col-3"><div class="card"><div class="card-body py-2"><h4 class="mb-0 ${eD.length?'text-warning':'text-success'}">${eD.length}</h4><small>Email</small></div></div></div>
-        <div class="col-3"><div class="card"><div class="card-body py-2"><h4 class="mb-0 ${pD.length?'text-warning':'text-success'}">${pD.length}</h4><small>Phone</small></div></div></div>
-        <div class="col-3"><div class="card"><div class="card-body py-2"><h4 class="mb-0 ${wD.length?'text-info':'text-success'}">${wD.length}</h4><small>Website</small></div></div></div>
+        <div class="col-3"><div class="card"><div class="card-body py-2"><h4 class="mb-0 ${nD.length ? 'text-danger' : 'text-success'}">${nD.length}</h4><small>Name</small></div></div></div>
+        <div class="col-3"><div class="card"><div class="card-body py-2"><h4 class="mb-0 ${eD.length ? 'text-warning' : 'text-success'}">${eD.length}</h4><small>Email</small></div></div></div>
+        <div class="col-3"><div class="card"><div class="card-body py-2"><h4 class="mb-0 ${pD.length ? 'text-warning' : 'text-success'}">${pD.length}</h4><small>Phone</small></div></div></div>
+        <div class="col-3"><div class="card"><div class="card-body py-2"><h4 class="mb-0 ${wD.length ? 'text-info' : 'text-success'}">${wD.length}</h4><small>Website</small></div></div></div>
       </div>
       ${total === 0 ? '<div class="text-center py-4"><i class="bi bi-shield-check fs-1 text-success d-block mb-2"></i><p class="text-muted">No duplicates detected!</p></div>' : ''}
       ${renderG(nD, 'Duplicate Names', 'bi-building')}${renderG(eD, 'Duplicate Emails', 'bi-envelope')}
@@ -7779,9 +9001,14 @@ updateCountyFilterByRegion() {
   // FEATURE: PUBLIC SHARE LINK
   // ============================================
   generateShareLink(orgId) {
-    const org = STATE.allOrganisations.find(o => o.id === orgId);
-    if (!org) { utils.showToast('Organisation not found', 'error'); return; }
-    const token = btoa(orgId + ':' + org.company_name).replace(/[^a-zA-Z0-9]/g, '').substring(0, 24);
+    const org = STATE.allOrganisations.find((o) => o.id === orgId);
+    if (!org) {
+      utils.showToast('Organisation not found', 'error');
+      return;
+    }
+    const token = btoa(orgId + ':' + org.company_name)
+      .replace(/[^a-zA-Z0-9]/g, '')
+      .substring(0, 24);
     const shareUrl = `${window.location.origin}${window.location.pathname}?share=${token}&org=${orgId}`;
     const shares = JSON.parse(localStorage.getItem('orgShareTokens') || '{}');
     shares[token] = { orgId, created: new Date().toISOString(), active: true };
@@ -7798,17 +9025,36 @@ updateCountyFilterByRegion() {
 
   revokeShareLink(token) {
     const shares = JSON.parse(localStorage.getItem('orgShareTokens') || '{}');
-    delete shares[token]; localStorage.setItem('orgShareTokens', JSON.stringify(shares));
+    delete shares[token];
+    localStorage.setItem('orgShareTokens', JSON.stringify(shares));
     utils.showToast('Share link revoked', 'success');
     bootstrap.Modal.getInstance(document.getElementById('dynamicOrgModal'))?.hide();
   },
 
   // Accounting integration — delegated to paymentsModule (single source of truth)
-  showXeroIntegration() { if (typeof paymentsModule !== 'undefined') { paymentsModule.loadAccountingIntegration(); const tab = document.getElementById('payments-tab'); if (tab) new bootstrap.Tab(tab).show(); setTimeout(() => { const sub = document.getElementById('accounting-subtab'); if (sub) new bootstrap.Tab(sub).show(); }, 100); } },
-  _setAccountingProvider(p) { if (typeof paymentsModule !== 'undefined') paymentsModule._setAccountingProvider(p); },
-  _connectAccounting() { if (typeof paymentsModule !== 'undefined') paymentsModule._connectAccounting(); },
-  _disconnectAccounting() { if (typeof paymentsModule !== 'undefined') paymentsModule._disconnectAccounting(); },
-  _runAccountingSync() { if (typeof paymentsModule !== 'undefined') paymentsModule._runAccountingSync(); },
+  showXeroIntegration() {
+    if (typeof paymentsModule !== 'undefined') {
+      paymentsModule.loadAccountingIntegration();
+      const tab = document.getElementById('payments-tab');
+      if (tab) new bootstrap.Tab(tab).show();
+      setTimeout(() => {
+        const sub = document.getElementById('accounting-subtab');
+        if (sub) new bootstrap.Tab(sub).show();
+      }, 100);
+    }
+  },
+  _setAccountingProvider(p) {
+    if (typeof paymentsModule !== 'undefined') paymentsModule._setAccountingProvider(p);
+  },
+  _connectAccounting() {
+    if (typeof paymentsModule !== 'undefined') paymentsModule._connectAccounting();
+  },
+  _disconnectAccounting() {
+    if (typeof paymentsModule !== 'undefined') paymentsModule._disconnectAccounting();
+  },
+  _runAccountingSync() {
+    if (typeof paymentsModule !== 'undefined') paymentsModule._runAccountingSync();
+  },
 
   // ============================================
   // FEATURE: INTERACTIVE BRITISH ISLES MAP
@@ -7818,57 +9064,169 @@ updateCountyFilterByRegion() {
   _mapViewActive: false,
 
   _UK_LOCATIONS: {
-    'London':[51.507,-0.128],'South East':[51.28,0.52],'South West':[50.82,-3.00],'East of England':[52.20,0.90],
-    'East Midlands':[52.83,-1.00],'West Midlands':[52.48,-1.90],'North West':[53.50,-2.50],'North East':[54.97,-1.60],
-    'Yorkshire and the Humber':[53.93,-1.10],'Yorkshire':[53.93,-1.10],'Wales':[52.13,-3.63],'Scotland':[56.49,-4.20],
-    'Northern Ireland':[54.60,-6.70],'South East England':[51.28,0.52],'South West England':[50.82,-3.00],
-    'East':[52.20,0.90],'North West England':[53.50,-2.50],'North East England':[54.97,-1.60],
-    'Birmingham':[52.486,-1.890],'Manchester':[53.481,-2.243],'Glasgow':[55.864,-4.252],'Leeds':[53.801,-1.549],
-    'Edinburgh':[55.953,-3.188],'Liverpool':[53.408,-2.992],'Bristol':[51.455,-2.588],'Sheffield':[53.381,-1.470],
-    'Newcastle':[54.978,-1.618],'Newcastle upon Tyne':[54.978,-1.618],'Nottingham':[52.955,-1.158],
-    'Leicester':[52.637,-1.140],'Belfast':[54.597,-5.930],'Brighton':[50.823,-0.137],'Cardiff':[51.482,-3.179],
-    'Aberdeen':[57.150,-2.094],'Derby':[52.923,-1.475],'Exeter':[50.718,-3.534],'Plymouth':[50.376,-4.143],
-    'Southampton':[50.910,-1.404],'Portsmouth':[50.820,-1.088],'Oxford':[51.752,-1.258],'Cambridge':[52.205,0.122],
-    'Norwich':[52.631,1.297],'Ipswich':[52.057,1.148],'Coventry':[52.407,-1.520],'Wolverhampton':[52.587,-2.129],
-    'Stoke-on-Trent':[53.003,-2.179],'Sunderland':[54.907,-1.384],'Swansea':[51.621,-3.944],
-    'Newport':[51.584,-2.998],'Dundee':[56.462,-2.971],'Inverness':[57.478,-4.225],'Perth':[56.395,-3.431],
-    'Stirling':[56.117,-3.937],'York':[53.959,-1.082],'Chester':[53.193,-2.893],'Worcester':[52.192,-2.222],
-    'Gloucester':[51.864,-2.238],'Bath':[51.381,-2.359],'Canterbury':[51.280,1.079],'Bournemouth':[50.719,-1.881],
-    'Reading':[51.454,-0.978],'Milton Keynes':[52.041,-0.759],'Northampton':[52.241,-0.903],
-    'Luton':[51.879,-0.420],'Peterborough':[52.570,-0.241],'Colchester':[51.889,0.903],'Chelmsford':[51.736,0.469],
-    'Maidstone':[51.272,0.529],'Guildford':[51.236,-0.570],'Swindon':[51.556,-1.780],'Cheltenham':[51.899,-2.078],
-    'Hereford':[52.057,-2.716],'Shrewsbury':[52.708,-2.754],'Lincoln':[53.231,-0.541],'Hull':[53.768,-0.327],
-    'Doncaster':[53.523,-1.129],'Wakefield':[53.683,-1.498],'Bradford':[53.796,-1.759],
-    'Huddersfield':[53.646,-1.785],'Bolton':[53.579,-2.430],'Wigan':[53.545,-2.633],
-    'Warrington':[53.390,-2.597],'Preston':[53.763,-2.703],'Lancaster':[54.047,-2.801],
-    'Carlisle':[54.893,-2.933],'Middlesbrough':[54.574,-1.235],'Durham':[54.775,-1.585],
-    'Darlington':[54.524,-1.553],'Blackpool':[53.818,-3.036],'Stockport':[53.411,-2.158],
-    'Salford':[53.488,-2.290],'Blackburn':[53.749,-2.485],'Burnley':[53.789,-2.239],
-    'Bangor':[53.227,-4.129],'Wrexham':[53.046,-2.993],'Aberystwyth':[52.415,-4.083],
-    'Kent':[51.28,0.77],'Surrey':[51.25,-0.38],'Essex':[51.73,0.47],'Sussex':[50.92,-0.28],
-    'Hampshire':[51.05,-1.15],'Berkshire':[51.45,-1.08],'Dorset':[50.75,-2.25],'Wiltshire':[51.35,-1.83],
-    'Somerset':[51.05,-2.95],'Devon':[50.72,-3.53],'Cornwall':[50.27,-5.05],'Norfolk':[52.66,0.94],
-    'Suffolk':[52.19,1.00],'Cambridgeshire':[52.25,0.12],'Hertfordshire':[51.81,-0.24],
-    'Buckinghamshire':[51.77,-0.81],'Oxfordshire':[51.77,-1.26],'Bedfordshire':[52.00,-0.45],
-    'Northamptonshire':[52.24,-0.90],'Warwickshire':[52.28,-1.58],'Worcestershire':[52.19,-2.22],
-    'Gloucestershire':[51.86,-2.24],'Staffordshire':[52.82,-2.00],'Shropshire':[52.63,-2.75],
-    'Cheshire':[53.19,-2.59],'Derbyshire':[53.10,-1.56],'Nottinghamshire':[53.10,-1.00],
-    'Leicestershire':[52.63,-1.13],'Lincolnshire':[53.07,-0.26],'Lancashire':[53.85,-2.58],
-    'Cumbria':[54.57,-2.75],'Merseyside':[53.40,-2.99],'Tyne and Wear':[54.96,-1.60],
-    'County Durham':[54.68,-1.73],'Fife':[56.25,-3.19],'Aberdeenshire':[57.17,-2.72],
-    'Highland':[57.47,-5.00],'Ayrshire':[55.47,-4.58],'Borders':[55.55,-2.78],
-    'Lothian':[55.93,-3.13],'Lanarkshire':[55.68,-3.78],'Renfrewshire':[55.83,-4.43],
-    'Antrim':[54.72,-6.21],'Down':[54.37,-5.72],'Armagh':[54.35,-6.65],
-    'Tyrone':[54.60,-7.30],'Derry':[55.00,-7.32],'Fermanagh':[54.35,-7.63],
-    'Isle of Man':[54.24,-4.55],'Isle of Wight':[50.69,-1.30]
+    London: [51.507, -0.128],
+    'South East': [51.28, 0.52],
+    'South West': [50.82, -3.0],
+    'East of England': [52.2, 0.9],
+    'East Midlands': [52.83, -1.0],
+    'West Midlands': [52.48, -1.9],
+    'North West': [53.5, -2.5],
+    'North East': [54.97, -1.6],
+    'Yorkshire and the Humber': [53.93, -1.1],
+    Yorkshire: [53.93, -1.1],
+    Wales: [52.13, -3.63],
+    Scotland: [56.49, -4.2],
+    'Northern Ireland': [54.6, -6.7],
+    'South East England': [51.28, 0.52],
+    'South West England': [50.82, -3.0],
+    East: [52.2, 0.9],
+    'North West England': [53.5, -2.5],
+    'North East England': [54.97, -1.6],
+    Birmingham: [52.486, -1.89],
+    Manchester: [53.481, -2.243],
+    Glasgow: [55.864, -4.252],
+    Leeds: [53.801, -1.549],
+    Edinburgh: [55.953, -3.188],
+    Liverpool: [53.408, -2.992],
+    Bristol: [51.455, -2.588],
+    Sheffield: [53.381, -1.47],
+    Newcastle: [54.978, -1.618],
+    'Newcastle upon Tyne': [54.978, -1.618],
+    Nottingham: [52.955, -1.158],
+    Leicester: [52.637, -1.14],
+    Belfast: [54.597, -5.93],
+    Brighton: [50.823, -0.137],
+    Cardiff: [51.482, -3.179],
+    Aberdeen: [57.15, -2.094],
+    Derby: [52.923, -1.475],
+    Exeter: [50.718, -3.534],
+    Plymouth: [50.376, -4.143],
+    Southampton: [50.91, -1.404],
+    Portsmouth: [50.82, -1.088],
+    Oxford: [51.752, -1.258],
+    Cambridge: [52.205, 0.122],
+    Norwich: [52.631, 1.297],
+    Ipswich: [52.057, 1.148],
+    Coventry: [52.407, -1.52],
+    Wolverhampton: [52.587, -2.129],
+    'Stoke-on-Trent': [53.003, -2.179],
+    Sunderland: [54.907, -1.384],
+    Swansea: [51.621, -3.944],
+    Newport: [51.584, -2.998],
+    Dundee: [56.462, -2.971],
+    Inverness: [57.478, -4.225],
+    Perth: [56.395, -3.431],
+    Stirling: [56.117, -3.937],
+    York: [53.959, -1.082],
+    Chester: [53.193, -2.893],
+    Worcester: [52.192, -2.222],
+    Gloucester: [51.864, -2.238],
+    Bath: [51.381, -2.359],
+    Canterbury: [51.28, 1.079],
+    Bournemouth: [50.719, -1.881],
+    Reading: [51.454, -0.978],
+    'Milton Keynes': [52.041, -0.759],
+    Northampton: [52.241, -0.903],
+    Luton: [51.879, -0.42],
+    Peterborough: [52.57, -0.241],
+    Colchester: [51.889, 0.903],
+    Chelmsford: [51.736, 0.469],
+    Maidstone: [51.272, 0.529],
+    Guildford: [51.236, -0.57],
+    Swindon: [51.556, -1.78],
+    Cheltenham: [51.899, -2.078],
+    Hereford: [52.057, -2.716],
+    Shrewsbury: [52.708, -2.754],
+    Lincoln: [53.231, -0.541],
+    Hull: [53.768, -0.327],
+    Doncaster: [53.523, -1.129],
+    Wakefield: [53.683, -1.498],
+    Bradford: [53.796, -1.759],
+    Huddersfield: [53.646, -1.785],
+    Bolton: [53.579, -2.43],
+    Wigan: [53.545, -2.633],
+    Warrington: [53.39, -2.597],
+    Preston: [53.763, -2.703],
+    Lancaster: [54.047, -2.801],
+    Carlisle: [54.893, -2.933],
+    Middlesbrough: [54.574, -1.235],
+    Durham: [54.775, -1.585],
+    Darlington: [54.524, -1.553],
+    Blackpool: [53.818, -3.036],
+    Stockport: [53.411, -2.158],
+    Salford: [53.488, -2.29],
+    Blackburn: [53.749, -2.485],
+    Burnley: [53.789, -2.239],
+    Bangor: [53.227, -4.129],
+    Wrexham: [53.046, -2.993],
+    Aberystwyth: [52.415, -4.083],
+    Kent: [51.28, 0.77],
+    Surrey: [51.25, -0.38],
+    Essex: [51.73, 0.47],
+    Sussex: [50.92, -0.28],
+    Hampshire: [51.05, -1.15],
+    Berkshire: [51.45, -1.08],
+    Dorset: [50.75, -2.25],
+    Wiltshire: [51.35, -1.83],
+    Somerset: [51.05, -2.95],
+    Devon: [50.72, -3.53],
+    Cornwall: [50.27, -5.05],
+    Norfolk: [52.66, 0.94],
+    Suffolk: [52.19, 1.0],
+    Cambridgeshire: [52.25, 0.12],
+    Hertfordshire: [51.81, -0.24],
+    Buckinghamshire: [51.77, -0.81],
+    Oxfordshire: [51.77, -1.26],
+    Bedfordshire: [52.0, -0.45],
+    Northamptonshire: [52.24, -0.9],
+    Warwickshire: [52.28, -1.58],
+    Worcestershire: [52.19, -2.22],
+    Gloucestershire: [51.86, -2.24],
+    Staffordshire: [52.82, -2.0],
+    Shropshire: [52.63, -2.75],
+    Cheshire: [53.19, -2.59],
+    Derbyshire: [53.1, -1.56],
+    Nottinghamshire: [53.1, -1.0],
+    Leicestershire: [52.63, -1.13],
+    Lincolnshire: [53.07, -0.26],
+    Lancashire: [53.85, -2.58],
+    Cumbria: [54.57, -2.75],
+    Merseyside: [53.4, -2.99],
+    'Tyne and Wear': [54.96, -1.6],
+    'County Durham': [54.68, -1.73],
+    Fife: [56.25, -3.19],
+    Aberdeenshire: [57.17, -2.72],
+    Highland: [57.47, -5.0],
+    Ayrshire: [55.47, -4.58],
+    Borders: [55.55, -2.78],
+    Lothian: [55.93, -3.13],
+    Lanarkshire: [55.68, -3.78],
+    Renfrewshire: [55.83, -4.43],
+    Antrim: [54.72, -6.21],
+    Down: [54.37, -5.72],
+    Armagh: [54.35, -6.65],
+    Tyrone: [54.6, -7.3],
+    Derry: [55.0, -7.32],
+    Fermanagh: [54.35, -7.63],
+    'Isle of Man': [54.24, -4.55],
+    'Isle of Wight': [50.69, -1.3],
   },
 
   _getOrgCoords(org) {
-    const c = org.county?.trim(), r = org.region?.trim();
+    const c = org.county?.trim(),
+      r = org.region?.trim();
     if (c && this._UK_LOCATIONS[c]) return this._UK_LOCATIONS[c];
     if (r && this._UK_LOCATIONS[r]) return this._UK_LOCATIONS[r];
-    if (c) { for (const [k, v] of Object.entries(this._UK_LOCATIONS)) { if (k.toLowerCase().includes(c.toLowerCase()) || c.toLowerCase().includes(k.toLowerCase())) return v; } }
-    if (r) { for (const [k, v] of Object.entries(this._UK_LOCATIONS)) { if (k.toLowerCase().includes(r.toLowerCase()) || r.toLowerCase().includes(k.toLowerCase())) return v; } }
+    if (c) {
+      for (const [k, v] of Object.entries(this._UK_LOCATIONS)) {
+        if (k.toLowerCase().includes(c.toLowerCase()) || c.toLowerCase().includes(k.toLowerCase())) return v;
+      }
+    }
+    if (r) {
+      for (const [k, v] of Object.entries(this._UK_LOCATIONS)) {
+        if (k.toLowerCase().includes(r.toLowerCase()) || r.toLowerCase().includes(k.toLowerCase())) return v;
+      }
+    }
     return null;
   },
 
@@ -7880,64 +9238,93 @@ updateCountyFilterByRegion() {
     if (this._mapViewActive) {
       if (mapContainer) mapContainer.style.display = 'block';
       if (tableEl) tableEl.style.display = 'none';
-      if (mapBtn) { mapBtn.classList.remove('btn-outline-success'); mapBtn.classList.add('btn-success'); }
+      if (mapBtn) {
+        mapBtn.classList.remove('btn-outline-success');
+        mapBtn.classList.add('btn-success');
+      }
       this._initLeafletMap();
     } else {
       if (mapContainer) mapContainer.style.display = 'none';
       if (tableEl) tableEl.style.display = 'block';
-      if (mapBtn) { mapBtn.classList.remove('btn-success'); mapBtn.classList.add('btn-outline-success'); }
-      if (this._mapInstance) { this._mapInstance.remove(); this._mapInstance = null; }
+      if (mapBtn) {
+        mapBtn.classList.remove('btn-success');
+        mapBtn.classList.add('btn-outline-success');
+      }
+      if (this._mapInstance) {
+        this._mapInstance.remove();
+        this._mapInstance = null;
+      }
     }
   },
 
   _initLeafletMap() {
-    if (typeof L === 'undefined') { utils.showToast('Map library not loaded. Please refresh.', 'error'); return; }
-    if (this._mapInstance) { this._mapInstance.remove(); this._mapInstance = null; }
+    if (typeof L === 'undefined') {
+      utils.showToast('Map library not loaded. Please refresh.', 'error');
+      return;
+    }
+    if (this._mapInstance) {
+      this._mapInstance.remove();
+      this._mapInstance = null;
+    }
     this._mapInstance = L.map('orgLeafletMap').setView([54.5, -3.5], 6);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors', maxZoom: 18
+      attribution: '&copy; OpenStreetMap contributors',
+      maxZoom: 18,
     }).addTo(this._mapInstance);
     this._plotOrgsOnMap();
   },
 
   _plotOrgsOnMap() {
     if (!this._mapInstance) return;
-    this._mapMarkers.forEach(m => m.remove());
+    this._mapMarkers.forEach((m) => m.remove());
     this._mapMarkers = [];
     const orgs = STATE.filteredOrganisations;
-    let plotted = 0, unplotted = 0;
+    let plotted = 0,
+      unplotted = 0;
     const locGroups = {};
-    orgs.forEach(org => {
+    orgs.forEach((org) => {
       const coords = this._getOrgCoords(org);
-      if (!coords) { unplotted++; return; }
+      if (!coords) {
+        unplotted++;
+        return;
+      }
       const key = coords.join(',');
       locGroups[key] = locGroups[key] || [];
       locGroups[key].push(org);
     });
-    const statusColors = { prospect:'#6c757d', entrant:'#0d6efd', nominee:'#ffc107', shortlisted:'#fd7e14', winner:'#198754', sponsor:'#6f42c1', archived:'#adb5bd' };
+    const statusColors = {
+      prospect: '#6c757d',
+      entrant: '#0d6efd',
+      nominee: '#ffc107',
+      shortlisted: '#fd7e14',
+      winner: '#198754',
+      sponsor: '#6f42c1',
+      archived: '#adb5bd',
+    };
     Object.entries(locGroups).forEach(([key, gOrgs]) => {
       const [bLat, bLng] = key.split(',').map(Number);
       gOrgs.forEach((org, i) => {
         const jitter = i * 0.008;
-        const angle = (i * 137.5) * Math.PI / 180;
+        const angle = (i * 137.5 * Math.PI) / 180;
         const lat = bLat + jitter * Math.cos(angle);
         const lng = bLng + jitter * Math.sin(angle);
         const color = statusColors[org.status] || '#6c757d';
         const icon = L.divIcon({
           className: 'custom-map-marker',
-          html: `<div style="width:28px;height:28px;border-radius:50%;background:${color};border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;color:white;font-size:11px;font-weight:bold;cursor:pointer;">${org.company_name?.charAt(0)||'?'}</div>`,
-          iconSize: [28, 28], iconAnchor: [14, 14]
+          html: `<div style="width:28px;height:28px;border-radius:50%;background:${color};border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;color:white;font-size:11px;font-weight:bold;cursor:pointer;">${org.company_name?.charAt(0) || '?'}</div>`,
+          iconSize: [28, 28],
+          iconAnchor: [14, 14],
         });
         const marker = L.marker([lat, lng], { icon }).addTo(this._mapInstance);
         marker.bindPopup(`<div style="min-width:220px;">
           <strong style="font-size:14px;">${utils.escapeHtml(org.company_name)}</strong><br>
-          <span class="badge" style="background:${color};color:white;font-size:10px;">${org.status||'prospect'}</span>
-          ${org.sector?`<span class="badge bg-light text-dark ms-1" style="font-size:10px;">${utils.escapeHtml(org.sector)}</span>`:''}
+          <span class="badge" style="background:${color};color:white;font-size:10px;">${org.status || 'prospect'}</span>
+          ${org.sector ? `<span class="badge bg-light text-dark ms-1" style="font-size:10px;">${utils.escapeHtml(org.sector)}</span>` : ''}
           <hr style="margin:6px 0;">
-          ${org.region?`<div style="font-size:12px;"><i class="bi bi-geo-alt"></i> ${utils.escapeHtml(org.region)}${org.county?', '+utils.escapeHtml(org.county):''}</div>`:''}
-          ${org.email?`<div style="font-size:12px;"><i class="bi bi-envelope"></i> ${utils.escapeHtml(org.email)}</div>`:''}
-          ${org.phone?`<div style="font-size:12px;"><i class="bi bi-telephone"></i> ${utils.escapeHtml(org.phone)}</div>`:''}
-          ${org.website?`<div style="font-size:12px;"><i class="bi bi-globe"></i> <a href="${utils.escapeHtml(org.website)}" target="_blank">${utils.escapeHtml(org.website)}</a></div>`:''}
+          ${org.region ? `<div style="font-size:12px;"><i class="bi bi-geo-alt"></i> ${utils.escapeHtml(org.region)}${org.county ? ', ' + utils.escapeHtml(org.county) : ''}</div>` : ''}
+          ${org.email ? `<div style="font-size:12px;"><i class="bi bi-envelope"></i> ${utils.escapeHtml(org.email)}</div>` : ''}
+          ${org.phone ? `<div style="font-size:12px;"><i class="bi bi-telephone"></i> ${utils.escapeHtml(org.phone)}</div>` : ''}
+          ${org.website ? `<div style="font-size:12px;"><i class="bi bi-globe"></i> <a href="${utils.escapeHtml(org.website)}" target="_blank">${utils.escapeHtml(org.website)}</a></div>` : ''}
           <div style="margin-top:8px;"><button class="btn btn-sm btn-primary" style="font-size:11px;" data-action="orgsModule.openCompanyProfile" data-id="org.id"><i class="bi bi-eye me-1"></i>View Profile</button></div>
         </div>`);
         this._mapMarkers.push(marker);
@@ -7978,7 +9365,10 @@ updateCountyFilterByRegion() {
   /** Helper for data-action: apply bulk field update from modal */
   _applyBulkFieldUpdate(field) {
     const val = document.getElementById('bulkFieldValue')?.value;
-    if (!val) { utils.showToast('Please select a value', 'warning'); return; }
+    if (!val) {
+      utils.showToast('Please select a value', 'warning');
+      return;
+    }
     bootstrap.Modal.getInstance(document.getElementById('bulkFieldModal'))?.hide();
     this.bulkUpdateField(field, val);
   },
@@ -8039,7 +9429,7 @@ updateCountyFilterByRegion() {
     if (el) {
       this._applyCompaniesHouseData(orgId, {
         address: el.dataset.chAddress,
-        company_number: el.dataset.chNumber
+        company_number: el.dataset.chNumber,
       });
     }
   },
@@ -8049,7 +9439,8 @@ updateCountyFilterByRegion() {
     // Support both old signature (el, orgId) and new delegation signature (orgId, event)
     if (typeof elOrId === 'string' && (orgIdOrEvent instanceof Event || orgIdOrEvent === undefined)) {
       // Called via data-action: elOrId is the orgId from data-id
-      const td = document.querySelector(`[data-original-html]`) || document.querySelector('.input-group')?.closest('td');
+      const td =
+        document.querySelector(`[data-original-html]`) || document.querySelector('.input-group')?.closest('td');
       if (td && td.dataset.originalHtml) {
         td.innerHTML = td.dataset.originalHtml;
       }
@@ -8060,7 +9451,7 @@ updateCountyFilterByRegion() {
     if (td && td.dataset.originalHtml) {
       td.innerHTML = td.dataset.originalHtml;
     }
-  }
+  },
 };
 
 // Export to window for global access

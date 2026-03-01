@@ -448,6 +448,7 @@ const paymentsModule = {
       document.getElementById('customDiscountRow').style.display = 'none';
       document.getElementById('invoiceDiscountCustom').value = '';
 
+      /* selectAll: justified — populating dropdown; organisations is a bounded business dataset */
       const orgs = await apiClient.selectAll('organisations', {
         select: 'id, company_name',
         sort: { column: 'company_name', ascending: true },
@@ -698,6 +699,7 @@ const paymentsModule = {
           select: '*, organisations(id, company_name, email, contact_phone)',
           filters: { id: invoiceId },
         }),
+        /* selectAll: justified — scoped to single invoice */
         apiClient.selectAll('invoice_line_items', {
           select: '*',
           filters: { invoice_id: invoiceId },
@@ -939,7 +941,7 @@ const paymentsModule = {
       await apiClient.delete('invoices', invoiceId);
 
       utils.showToast(
-        'Invoice deleted. <a href="#" onclick="event.preventDefault(); utils.undoLastDelete(\'invoices\')">Undo</a>',
+        'Invoice deleted. <a href="#" data-action="utils.undoLastDelete" data-id="invoices" data-prevent-default="true">Undo</a>',
         'info'
       );
       await this.loadInvoices();
@@ -1052,6 +1054,7 @@ const paymentsModule = {
    */
   async loadPayments() {
     try {
+      /* selectAll: justified — client-side filtering/pagination requires full dataset */
       const data = await apiClient.selectAll('payments', {
         select: '*, organisations (id, company_name), invoices (invoice_number)',
         sort: { column: 'payment_date', ascending: false },
@@ -2193,7 +2196,7 @@ const paymentsModule = {
           <thead class="table-light">
             <tr>
               <th style="width: 40px;">
-                <input type="checkbox" class="form-check-input" id="overdueSelectAll" checked onchange="paymentsModule.toggleAllOverdueCheckboxes(this.checked)">
+                <input type="checkbox" class="form-check-input" id="overdueSelectAll" checked data-on-change="paymentsModule._toggleAllOverdueFromChange">
               </th>
               <th>Company</th>
               <th>Invoice #</th>
@@ -2241,6 +2244,13 @@ const paymentsModule = {
     document.querySelectorAll('.overdue-reminder-check').forEach((cb) => {
       cb.checked = checked;
     });
+  },
+
+  /**
+   * Wrapper for toggleAllOverdueCheckboxes called via data-on-change (receives id, value, event).
+   */
+  _toggleAllOverdueFromChange(_id, _value, event) {
+    this.toggleAllOverdueCheckboxes(event.target.checked);
   },
 
   /**
@@ -2318,6 +2328,7 @@ const paymentsModule = {
           .map((o) => ({ id: o.id, company_name: o.company_name }))
           .sort((a, b) => (a.company_name || '').localeCompare(b.company_name || ''));
       } else {
+        /* selectAll: justified — populating filter dropdown; organisations is a bounded business dataset */
         data = await apiClient.selectAll('organisations', {
           select: 'id, company_name',
           sort: { column: 'company_name', ascending: true },
@@ -2421,12 +2432,12 @@ const paymentsModule = {
       </div>
       <div class="row mb-4">
         <div class="col-6">
-          <div class="card ${provider === 'xero' ? 'border-primary' : ''}" style="cursor:pointer" onclick="paymentsModule._setAccountingProvider('xero')">
+          <div class="card ${provider === 'xero' ? 'border-primary' : ''}" style="cursor:pointer" data-action="paymentsModule._setAccountingProvider" data-id="xero">
             <div class="card-body text-center py-3"><i class="bi bi-x-diamond fs-2 text-primary"></i><div class="fw-bold mt-1">Xero</div><small class="text-muted">Cloud accounting</small></div>
           </div>
         </div>
         <div class="col-6">
-          <div class="card ${provider === 'quickbooks' ? 'border-success' : ''}" style="cursor:pointer" onclick="paymentsModule._setAccountingProvider('quickbooks')">
+          <div class="card ${provider === 'quickbooks' ? 'border-success' : ''}" style="cursor:pointer" data-action="paymentsModule._setAccountingProvider" data-id="quickbooks">
             <div class="card-body text-center py-3"><i class="bi bi-book fs-2 text-success"></i><div class="fw-bold mt-1">QuickBooks</div><small class="text-muted">Intuit accounting</small></div>
           </div>
         </div>

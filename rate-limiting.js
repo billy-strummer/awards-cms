@@ -387,7 +387,7 @@ const rateLimitModule = {
     const el = document.getElementById(containerId);
     if (!el) return;
     const { data: configs } = STATE?.client
-      ? await STATE.client.from('rate_limit_config').select('*').order('endpoint').limit(500)
+      ? await apiClient.select('rate_limit_config', { sort: { column: 'endpoint', ascending: true }, pageSize: 500 })
       : { data: [] };
     el.innerHTML = `
       <div class="card p-3">

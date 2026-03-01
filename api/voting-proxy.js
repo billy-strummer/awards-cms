@@ -17,10 +17,7 @@
 
 const { createClient } = require('@supabase/supabase-js');
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
 /** Rate-limit: max votes per email per hour */
 const RATE_LIMIT_MAX = 10;
@@ -77,11 +74,13 @@ async function loadAwards() {
 async function loadEntries() {
   const { data, error } = await supabase
     .from('entries')
-    .select(`
+    .select(
+      `
       *,
       organisations(company_name, logo_url, website),
       awards:award_years(award_name, award_category)
-    `)
+    `
+    )
     .eq('is_public', true)
     .eq('allow_public_voting', true)
     .in('status', ['shortlisted', 'submitted'])
@@ -101,13 +100,10 @@ async function checkVotes({ voter_email }) {
     return { error: 'Invalid email address', status: 400 };
   }
 
-  const { data, error } = await supabase
-    .from('public_votes')
-    .select('entry_id')
-    .eq('voter_email', voter_email);
+  const { data, error } = await supabase.from('public_votes').select('entry_id').eq('voter_email', voter_email);
 
   if (error) throw error;
-  return { entry_ids: (data || []).map(v => v.entry_id) };
+  return { entry_ids: (data || []).map((v) => v.entry_id) };
 }
 
 /**
@@ -195,9 +191,8 @@ async function submitVote({ entry_id, voter_email, voter_name, voter_ip, verific
   }
 
   // Insert the vote
-  const { error: insertError } = await supabase
-    .from('public_votes')
-    .insert([{
+  const { error: insertError } = await supabase.from('public_votes').insert([
+    {
       entry_id,
       voter_email,
       voter_name,
@@ -205,8 +200,9 @@ async function submitVote({ entry_id, voter_email, voter_name, voter_ip, verific
       vote_value: 1,
       email_verified: false,
       verification_token,
-      verification_sent_at: new Date().toISOString()
-    }]);
+      verification_sent_at: new Date().toISOString(),
+    },
+  ]);
 
   if (insertError) {
     // Handle unique constraint violation gracefully
@@ -225,11 +221,13 @@ async function submitVote({ entry_id, voter_email, voter_name, voter_ip, verific
 async function loadEntry({ entry_number, entry_id }) {
   let query = supabase
     .from('entries')
-    .select(`
+    .select(
+      `
       *,
       organisations(company_name, logo_url, website),
       awards:award_years(award_name, award_category)
-    `)
+    `
+    )
     .eq('is_public', true)
     .eq('allow_public_voting', true)
     .in('status', ['shortlisted', 'submitted']);
@@ -271,7 +269,7 @@ const ACTIONS = {
   check_rate_limit: checkRateLimit,
   check_existing_vote: checkExistingVote,
   submit_vote: submitVote,
-  load_entry: loadEntry
+  load_entry: loadEntry,
 };
 
 // ────────────────────────────────────────────
@@ -307,7 +305,6 @@ module.exports = async function handler(req, res) {
     }
 
     return res.status(200).json(result);
-
   } catch (err) {
     console.error('[voting-proxy] Error:', err);
     return res.status(500).json({ error: 'Internal server error' });

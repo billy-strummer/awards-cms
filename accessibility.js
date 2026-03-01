@@ -39,7 +39,7 @@ const a11yModule = {
    */
   enhanceButtons() {
     // Find all buttons with only an icon child and no aria-label
-    document.querySelectorAll('button:not([aria-label])').forEach(btn => {
+    document.querySelectorAll('button:not([aria-label])').forEach((btn) => {
       if (btn.textContent.trim() === '' || btn.children.length === 1) {
         const icon = btn.querySelector('i.bi');
         if (icon) {
@@ -50,12 +50,12 @@ const a11yModule = {
     });
 
     // Add aria-label to all onclick delete buttons
-    document.querySelectorAll('button[onclick*="delete"]:not([aria-label])').forEach(btn => {
+    document.querySelectorAll('button[onclick*="delete"]:not([aria-label])').forEach((btn) => {
       btn.setAttribute('aria-label', 'Delete');
     });
 
     // Add role="button" to anchors acting as buttons
-    document.querySelectorAll('a[onclick]:not([role])').forEach(a => {
+    document.querySelectorAll('a[onclick]:not([role])').forEach((a) => {
       a.setAttribute('role', 'button');
     });
   },
@@ -64,7 +64,7 @@ const a11yModule = {
    * Make non-button clickable elements (divs/spans with onclick) keyboard-accessible
    */
   enhanceClickableElements() {
-    document.querySelectorAll('div[onclick]:not([role]), span[onclick]:not([role])').forEach(el => {
+    document.querySelectorAll('div[onclick]:not([role]), span[onclick]:not([role])').forEach((el) => {
       el.setAttribute('role', 'button');
       if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
       if (!el._a11yKeyHandler) {
@@ -108,7 +108,7 @@ const a11yModule = {
       'bi-printer': 'Print',
       'bi-save': 'Save',
       'bi-refresh': 'Refresh',
-      'bi-arrow-clockwise': 'Refresh'
+      'bi-arrow-clockwise': 'Refresh',
     };
 
     for (const [iconClass, label] of Object.entries(map)) {
@@ -121,13 +121,13 @@ const a11yModule = {
    * Enhance data tables with proper ARIA roles
    */
   enhanceTables() {
-    document.querySelectorAll('table').forEach(table => {
+    document.querySelectorAll('table').forEach((table) => {
       if (!table.getAttribute('role')) {
         table.setAttribute('role', 'grid');
       }
 
       // Add scope to header cells
-      table.querySelectorAll('thead th').forEach(th => {
+      table.querySelectorAll('thead th').forEach((th) => {
         if (!th.getAttribute('scope')) {
           th.setAttribute('scope', 'col');
         }
@@ -139,7 +139,7 @@ const a11yModule = {
    * Enhance modals with proper ARIA attributes
    */
   enhanceModals() {
-    document.querySelectorAll('.modal').forEach(modal => {
+    document.querySelectorAll('.modal').forEach((modal) => {
       if (!modal.getAttribute('aria-labelledby')) {
         const title = modal.querySelector('.modal-title');
         if (title) {
@@ -159,7 +159,7 @@ const a11yModule = {
    */
   setupKeyboardNav() {
     // Arrow key navigation for nav tabs
-    document.querySelectorAll('.nav-tabs').forEach(tabList => {
+    document.querySelectorAll('.nav-tabs').forEach((tabList) => {
       tabList.setAttribute('role', 'tablist');
       const tabs = Array.from(tabList.querySelectorAll('.nav-link'));
 
@@ -209,7 +209,9 @@ const a11yModule = {
     if (region) {
       region.textContent = '';
       // Brief delay so screen readers pick up the change
-      setTimeout(() => { region.textContent = message; }, 100);
+      setTimeout(() => {
+        region.textContent = message;
+      }, 100);
     }
   },
 
@@ -255,14 +257,14 @@ const a11yModule = {
    */
   announceTableUpdate(action, count, moduleName) {
     const messages = {
-      'load': `${moduleName}: ${count} records loaded`,
-      'filter': `${moduleName}: ${count} records match current filters`,
-      'create': `${moduleName}: Record created successfully. ${count} total records`,
-      'update': `${moduleName}: Record updated successfully`,
-      'delete': `${moduleName}: Record deleted. ${count} records remaining`,
-      'page': `${moduleName}: Showing page of ${count} records`,
-      'sort': `${moduleName}: Table sorted. ${count} records`,
-      'bulk': `${moduleName}: Bulk operation completed on ${count} records`
+      load: `${moduleName}: ${count} records loaded`,
+      filter: `${moduleName}: ${count} records match current filters`,
+      create: `${moduleName}: Record created successfully. ${count} total records`,
+      update: `${moduleName}: Record updated successfully`,
+      delete: `${moduleName}: Record deleted. ${count} records remaining`,
+      page: `${moduleName}: Showing page of ${count} records`,
+      sort: `${moduleName}: Table sorted. ${count} records`,
+      bulk: `${moduleName}: Bulk operation completed on ${count} records`,
     };
     this.announce(messages[action] || `${moduleName}: ${count} records`);
   },
@@ -273,7 +275,7 @@ const a11yModule = {
    */
   announceNavigation(tabName) {
     this.announce(`Navigated to ${tabName}`);
-  }
+  },
 };
 
 ModuleRegistry.register('a11yModule', a11yModule);

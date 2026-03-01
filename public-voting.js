@@ -382,6 +382,12 @@ const votingSystem = {
   },
 };
 
+// Expose on window for tests and event delegation
+window.votingSystem = votingSystem;
+window.votingApi = votingApi;
+window.showPublicToast = showPublicToast;
+window.esc = esc;
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
   votingSystem.initialize();

@@ -5,7 +5,8 @@
 
 const { JSDOM } = require('jsdom');
 
-const dom = new JSDOM(`<!DOCTYPE html><html><head></head><body>
+const dom = new JSDOM(
+  `<!DOCTYPE html><html><head></head><body>
   <div id="loadingBar" style="display:none;"></div>
   <div id="notificationToast"><span id="toastIcon"></span><span id="toastTitle"></span><span id="toastMessage"></span></div>
   <div id="connectionStatus"><span class="status-icon"></span><span class="status-text"></span></div>
@@ -37,7 +38,9 @@ const dom = new JSDOM(`<!DOCTYPE html><html><head></head><body>
   <div id="confirmDialogTitle"></div>
   <div id="confirmDialogBody"></div>
   <div id="confirmDialogOk"></div>
-</body></html>`, { url: 'http://localhost' });
+</body></html>`,
+  { url: 'http://localhost' }
+);
 
 global.window = dom.window;
 global.document = dom.window.document;
@@ -49,15 +52,26 @@ global.URL = { createObjectURL: jest.fn(() => 'blob://mock'), revokeObjectURL: j
 global.window.URL = global.URL;
 
 global.bootstrap = {
-  Toast: class { show() {} hide() {} },
-  Modal: class {
-    show() {} hide() {}
-    static getInstance() { return { hide() {} }; }
+  Toast: class {
+    show() {}
+    hide() {}
   },
-  Tooltip: class {}
+  Modal: class {
+    show() {}
+    hide() {}
+    static getInstance() {
+      return { hide() {} };
+    }
+  },
+  Tooltip: class {},
 };
 
-global.crypto = { getRandomValues: (arr) => { for (let i = 0; i < arr.length; i++) arr[i] = Math.floor(Math.random() * 256); return arr; } };
+global.crypto = {
+  getRandomValues: (arr) => {
+    for (let i = 0; i < arr.length; i++) arr[i] = Math.floor(Math.random() * 256);
+    return arr;
+  },
+};
 
 const mockSupabase = {
   from: jest.fn(() => mockSupabase),
@@ -73,16 +87,20 @@ const mockSupabase = {
   limit: jest.fn(() => mockSupabase),
   single: jest.fn(() => Promise.resolve({ data: null, error: null })),
   rpc: jest.fn(() => Promise.resolve({ data: [], error: null })),
-  then: jest.fn(cb => cb({ data: [], error: null })),
+  then: jest.fn((cb) => cb({ data: [], error: null })),
   auth: {
     getSession: jest.fn(() => Promise.resolve({ data: { session: null }, error: null })),
     signInWithPassword: jest.fn(() => Promise.resolve({ data: { user: { email: 'test@test.com' } }, error: null })),
-    signOut: jest.fn(() => Promise.resolve({ error: null }))
+    signOut: jest.fn(() => Promise.resolve({ error: null })),
   },
   channel: jest.fn(() => ({
-    on: jest.fn(function() { return this; }),
-    subscribe: jest.fn(function() { return this; })
-  }))
+    on: jest.fn(function () {
+      return this;
+    }),
+    subscribe: jest.fn(function () {
+      return this;
+    }),
+  })),
 };
 
 global.supabase = { createClient: () => mockSupabase };
@@ -119,11 +137,71 @@ syncWindowToGlobal();
 // ==========================================
 
 const sampleAwards = [
-  { id: 'award-1', award_name: 'Best Plumber', county: 'Kent', sector: 'MECHANICAL, ELECTRICAL & PLUMBING', year: 2026, status: 'published', description: 'Top plumbing award', _assignmentCounts: { total: 5, nominated: 3, shortlisted: 1, winner: 1 }, _winnerName: 'Acme Plumbing', _runnerUpName: null, _actualRegion: 'South East' },
-  { id: 'award-2', award_name: 'Best Builder', county: 'Essex', sector: 'BUILDING & CONSTRUCTION', year: 2026, status: 'draft', description: 'Builder award', _assignmentCounts: { total: 0, nominated: 0, shortlisted: 0, winner: 0 }, _winnerName: null, _runnerUpName: null, _actualRegion: 'East' },
-  { id: 'award-3', award_name: 'Best Electrician', county: 'London', sector: 'MECHANICAL, ELECTRICAL & PLUMBING', year: 2025, status: 'active', description: null, _assignmentCounts: { total: 10, nominated: 7, shortlisted: 2, winner: 1 }, _winnerName: 'Spark Electric', _runnerUpName: 'Bolt Ltd', _actualRegion: 'London' },
-  { id: 'award-4', award_name: 'Best Carpenter', county: 'Surrey', sector: 'CARPENTRY & JOINERY', year: 2026, status: 'pending', description: 'Carpentry excellence', _assignmentCounts: { total: 3, nominated: 2, shortlisted: 1, winner: 0 }, _winnerName: null, _runnerUpName: null, _actualRegion: 'South East' },
-  { id: 'award-5', award_name: 'Best Landscaper', county: 'Devon', sector: 'OUTDOOR & LANDSCAPING', year: 2025, status: 'archived', description: 'Landscaping award', _assignmentCounts: { total: 1, nominated: 1, shortlisted: 0, winner: 0 }, _winnerName: null, _runnerUpName: null, _actualRegion: 'South West' }
+  {
+    id: 'award-1',
+    award_name: 'Best Plumber',
+    county: 'Kent',
+    sector: 'MECHANICAL, ELECTRICAL & PLUMBING',
+    year: 2026,
+    status: 'published',
+    description: 'Top plumbing award',
+    _assignmentCounts: { total: 5, nominated: 3, shortlisted: 1, winner: 1 },
+    _winnerName: 'Acme Plumbing',
+    _runnerUpName: null,
+    _actualRegion: 'South East',
+  },
+  {
+    id: 'award-2',
+    award_name: 'Best Builder',
+    county: 'Essex',
+    sector: 'BUILDING & CONSTRUCTION',
+    year: 2026,
+    status: 'draft',
+    description: 'Builder award',
+    _assignmentCounts: { total: 0, nominated: 0, shortlisted: 0, winner: 0 },
+    _winnerName: null,
+    _runnerUpName: null,
+    _actualRegion: 'East',
+  },
+  {
+    id: 'award-3',
+    award_name: 'Best Electrician',
+    county: 'London',
+    sector: 'MECHANICAL, ELECTRICAL & PLUMBING',
+    year: 2025,
+    status: 'active',
+    description: null,
+    _assignmentCounts: { total: 10, nominated: 7, shortlisted: 2, winner: 1 },
+    _winnerName: 'Spark Electric',
+    _runnerUpName: 'Bolt Ltd',
+    _actualRegion: 'London',
+  },
+  {
+    id: 'award-4',
+    award_name: 'Best Carpenter',
+    county: 'Surrey',
+    sector: 'CARPENTRY & JOINERY',
+    year: 2026,
+    status: 'pending',
+    description: 'Carpentry excellence',
+    _assignmentCounts: { total: 3, nominated: 2, shortlisted: 1, winner: 0 },
+    _winnerName: null,
+    _runnerUpName: null,
+    _actualRegion: 'South East',
+  },
+  {
+    id: 'award-5',
+    award_name: 'Best Landscaper',
+    county: 'Devon',
+    sector: 'OUTDOOR & LANDSCAPING',
+    year: 2025,
+    status: 'archived',
+    description: 'Landscaping award',
+    _assignmentCounts: { total: 1, nominated: 1, shortlisted: 0, winner: 0 },
+    _winnerName: null,
+    _runnerUpName: null,
+    _actualRegion: 'South West',
+  },
 ];
 
 // ==========================================
@@ -198,7 +276,7 @@ describe('Awards Module - filterAwards() (client-side)', () => {
     document.getElementById('awardsYearFilterSelect').value = '2025';
     awardsModule.filterAwards();
     expect(STATE.filteredAwards.length).toBe(2);
-    STATE.filteredAwards.forEach(a => expect(String(a.year)).toBe('2025'));
+    STATE.filteredAwards.forEach((a) => expect(String(a.year)).toBe('2025'));
   });
 
   test('filters by status', () => {
@@ -231,19 +309,19 @@ describe('Awards Module - filterAwards() (client-side)', () => {
     document.getElementById('awardsSearchBox').value = 'plumber';
     awardsModule.filterAwards();
     expect(STATE.filteredAwards.length).toBeGreaterThanOrEqual(1);
-    expect(STATE.filteredAwards.some(a => a.id === 'award-1')).toBe(true);
+    expect(STATE.filteredAwards.some((a) => a.id === 'award-1')).toBe(true);
   });
 
   test('filters by search text matching county', () => {
     document.getElementById('awardsSearchBox').value = 'essex';
     awardsModule.filterAwards();
-    expect(STATE.filteredAwards.some(a => a.id === 'award-2')).toBe(true);
+    expect(STATE.filteredAwards.some((a) => a.id === 'award-2')).toBe(true);
   });
 
   test('filters by search text matching winner name', () => {
     document.getElementById('awardsSearchBox').value = 'Spark Electric';
     awardsModule.filterAwards();
-    expect(STATE.filteredAwards.some(a => a.id === 'award-3')).toBe(true);
+    expect(STATE.filteredAwards.some((a) => a.id === 'award-3')).toBe(true);
   });
 
   test('combines multiple filters', () => {
@@ -264,7 +342,7 @@ describe('Awards Module - filterAwards() (client-side)', () => {
   test('search is case insensitive', () => {
     document.getElementById('awardsSearchBox').value = 'PLUMBER';
     awardsModule.filterAwards();
-    expect(STATE.filteredAwards.some(a => a.id === 'award-1')).toBe(true);
+    expect(STATE.filteredAwards.some((a) => a.id === 'award-1')).toBe(true);
   });
 });
 
@@ -293,7 +371,7 @@ describe('Awards Module - sortBy()', () => {
     awardsModule.currentSort = { column: 'year', direction: 'desc' };
     awardsModule.sortBy('year');
     awardsModule.applySorting();
-    const years = STATE.filteredAwards.map(a => a.year);
+    const years = STATE.filteredAwards.map((a) => a.year);
     for (let i = 0; i < years.length - 1; i++) {
       expect(years[i] <= years[i + 1]).toBe(true);
     }
@@ -302,7 +380,7 @@ describe('Awards Module - sortBy()', () => {
   test('sortBy county ascending orders alphabetically', () => {
     awardsModule.currentSort = { column: 'county', direction: 'asc' };
     awardsModule.applySorting();
-    const counties = STATE.filteredAwards.map(a => (a.county || '').toLowerCase());
+    const counties = STATE.filteredAwards.map((a) => (a.county || '').toLowerCase());
     for (let i = 0; i < counties.length - 1; i++) {
       expect(counties[i] <= counties[i + 1]).toBe(true);
     }
@@ -311,7 +389,7 @@ describe('Awards Module - sortBy()', () => {
   test('sortBy nominees ascending orders by total count', () => {
     awardsModule.currentSort = { column: 'nominees', direction: 'asc' };
     awardsModule.applySorting();
-    const counts = STATE.filteredAwards.map(a => a._assignmentCounts?.total || 0);
+    const counts = STATE.filteredAwards.map((a) => a._assignmentCounts?.total || 0);
     for (let i = 0; i < counts.length - 1; i++) {
       expect(counts[i] <= counts[i + 1]).toBe(true);
     }
@@ -320,7 +398,7 @@ describe('Awards Module - sortBy()', () => {
   test('sortBy status ascending orders alphabetically', () => {
     awardsModule.currentSort = { column: 'status', direction: 'asc' };
     awardsModule.applySorting();
-    const statuses = STATE.filteredAwards.map(a => (a.status || '').toLowerCase());
+    const statuses = STATE.filteredAwards.map((a) => (a.status || '').toLowerCase());
     for (let i = 0; i < statuses.length - 1; i++) {
       expect(statuses[i] <= statuses[i + 1]).toBe(true);
     }
@@ -335,7 +413,7 @@ describe('Awards Module - applySorting()', () => {
   test('sorts by sector ascending', () => {
     awardsModule.currentSort = { column: 'sector', direction: 'asc' };
     awardsModule.applySorting();
-    const sectors = STATE.filteredAwards.map(a => (a.sector || '').toLowerCase());
+    const sectors = STATE.filteredAwards.map((a) => (a.sector || '').toLowerCase());
     for (let i = 0; i < sectors.length - 1; i++) {
       expect(sectors[i] <= sectors[i + 1]).toBe(true);
     }
@@ -344,7 +422,7 @@ describe('Awards Module - applySorting()', () => {
   test('sorts by winner name ascending', () => {
     awardsModule.currentSort = { column: 'winner', direction: 'asc' };
     awardsModule.applySorting();
-    const winners = STATE.filteredAwards.map(a => (a._winnerName || '').toLowerCase());
+    const winners = STATE.filteredAwards.map((a) => (a._winnerName || '').toLowerCase());
     for (let i = 0; i < winners.length - 1; i++) {
       expect(winners[i] <= winners[i + 1]).toBe(true);
     }
@@ -353,7 +431,7 @@ describe('Awards Module - applySorting()', () => {
   test('sorts descending correctly', () => {
     awardsModule.currentSort = { column: 'year', direction: 'desc' };
     awardsModule.applySorting();
-    const years = STATE.filteredAwards.map(a => parseInt(a.year) || 0);
+    const years = STATE.filteredAwards.map((a) => parseInt(a.year) || 0);
     for (let i = 0; i < years.length - 1; i++) {
       expect(years[i] >= years[i + 1]).toBe(true);
     }
@@ -388,12 +466,14 @@ describe('Awards Module - renderAwards()', () => {
   });
 
   test('escapes HTML in award names (XSS prevention)', () => {
-    STATE.filteredAwards = [{
-      ...sampleAwards[0],
-      id: 'xss-award',
-      award_name: '<script>alert("xss")</script>',
-      county: '<img onerror=alert(1)>'
-    }];
+    STATE.filteredAwards = [
+      {
+        ...sampleAwards[0],
+        id: 'xss-award',
+        award_name: '<script>alert("xss")</script>',
+        county: '<img onerror=alert(1)>',
+      },
+    ];
     awardsModule.renderAwards();
     const tbody = document.getElementById('awardsTableBody');
     // No actual script or img elements should be injected
@@ -455,7 +535,7 @@ describe('Awards Module - getAwardPhase()', () => {
   test('returns Entries Open for current entry period', () => {
     const award = {
       entry_open_date: new Date(Date.now() - 86400000 * 5).toISOString(),
-      entry_close_date: new Date(Date.now() + 86400000 * 30).toISOString()
+      entry_close_date: new Date(Date.now() + 86400000 * 30).toISOString(),
     };
     const phase = awardsModule.getAwardPhase(award);
     expect(phase.label).toBe('Entries Open');
@@ -467,7 +547,7 @@ describe('Awards Module - getAwardPhase()', () => {
       entry_open_date: new Date(Date.now() - 86400000 * 60).toISOString(),
       entry_close_date: new Date(Date.now() - 86400000 * 30).toISOString(),
       judging_open_date: new Date(Date.now() - 86400000 * 5).toISOString(),
-      judging_close_date: new Date(Date.now() + 86400000 * 10).toISOString()
+      judging_close_date: new Date(Date.now() + 86400000 * 10).toISOString(),
     };
     const phase = awardsModule.getAwardPhase(award);
     expect(phase.label).toBe('Judging');
@@ -477,7 +557,7 @@ describe('Awards Module - getAwardPhase()', () => {
   test('returns Voting for current voting period', () => {
     const award = {
       voting_open_date: new Date(Date.now() - 86400000 * 5).toISOString(),
-      voting_close_date: new Date(Date.now() + 86400000 * 10).toISOString()
+      voting_close_date: new Date(Date.now() + 86400000 * 10).toISOString(),
     };
     const phase = awardsModule.getAwardPhase(award);
     expect(phase.label).toBe('Voting');
@@ -486,7 +566,7 @@ describe('Awards Module - getAwardPhase()', () => {
 
   test('returns Complete for past winners announcement', () => {
     const award = {
-      winners_announcement_date: new Date(Date.now() - 86400000 * 5).toISOString()
+      winners_announcement_date: new Date(Date.now() - 86400000 * 5).toISOString(),
     };
     const phase = awardsModule.getAwardPhase(award);
     expect(phase.label).toBe('Complete');
@@ -513,7 +593,9 @@ describe('Awards Module - populateYearFilter()', () => {
     STATE.allAwards = sampleAwards;
     awardsModule.populateYearFilter();
     const select = document.getElementById('awardsYearFilterSelect');
-    const values = Array.from(select.querySelectorAll('option')).map(o => o.value).filter(v => v);
+    const values = Array.from(select.querySelectorAll('option'))
+      .map((o) => o.value)
+      .filter((v) => v);
     for (let i = 0; i < values.length - 1; i++) {
       expect(parseInt(values[i])).toBeGreaterThanOrEqual(parseInt(values[i + 1]));
     }
@@ -633,18 +715,20 @@ describe('Awards Module - Edge Cases', () => {
   });
 
   test('renderAwards handles awards with null fields', () => {
-    STATE.filteredAwards = [{
-      id: 'null-award',
-      award_name: null,
-      county: null,
-      sector: null,
-      year: null,
-      status: null,
-      description: null,
-      _assignmentCounts: null,
-      _winnerName: null,
-      _runnerUpName: null
-    }];
+    STATE.filteredAwards = [
+      {
+        id: 'null-award',
+        award_name: null,
+        county: null,
+        sector: null,
+        year: null,
+        status: null,
+        description: null,
+        _assignmentCounts: null,
+        _winnerName: null,
+        _runnerUpName: null,
+      },
+    ];
     expect(() => awardsModule.renderAwards()).not.toThrow();
   });
 

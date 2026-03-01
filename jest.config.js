@@ -6,7 +6,7 @@ module.exports = {
   forceExit: true,
   modulePathIgnorePatterns: ['<rootDir>/.claude/'],
   transform: {
-    '^.+\\.js$': '<rootDir>/jest-esm-transform.js'
+    '^.+\\.js$': '<rootDir>/jest-esm-transform.js',
   },
   transformIgnorePatterns: ['/node_modules/'],
   collectCoverageFrom: [
@@ -21,7 +21,7 @@ module.exports = {
     '!main.js',
     '!dist/**',
     '!scripts/**',
-    '!node_modules/**'
+    '!node_modules/**',
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'text-summary', 'lcov', 'json-summary'],
@@ -30,7 +30,7 @@ module.exports = {
       branches: 30,
       functions: 40,
       lines: 40,
-      statements: 40
-    }
-  }
+      statements: 40,
+    },
+  },
 };

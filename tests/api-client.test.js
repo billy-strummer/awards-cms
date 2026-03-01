@@ -5,10 +5,13 @@
 
 const { JSDOM } = require('jsdom');
 
-const dom = new JSDOM(`<!DOCTYPE html><html><body>
+const dom = new JSDOM(
+  `<!DOCTYPE html><html><body>
   <div id="loadingBar" style="display:none;"></div>
   <div id="notificationToast"><span id="toastIcon"></span><span id="toastTitle"></span><span id="toastMessage"></span></div>
-</body></html>`, { url: 'http://localhost' });
+</body></html>`,
+  { url: 'http://localhost' }
+);
 
 global.window = dom.window;
 global.document = dom.window.document;
@@ -17,9 +20,18 @@ global.navigator = dom.window.navigator;
 global.HTMLElement = dom.window.HTMLElement;
 
 global.bootstrap = {
-  Toast: class { show() {} hide() {} },
-  Modal: class { show() {} hide() {} static getInstance() { return { hide() {} }; } },
-  Tooltip: class {}
+  Toast: class {
+    show() {}
+    hide() {}
+  },
+  Modal: class {
+    show() {}
+    hide() {}
+    static getInstance() {
+      return { hide() {} };
+    }
+  },
+  Tooltip: class {},
 };
 
 const mockSupabase = {
@@ -32,13 +44,20 @@ const mockSupabase = {
   order: jest.fn(() => mockSupabase),
   range: jest.fn(() => mockSupabase),
   single: jest.fn(() => Promise.resolve({ data: null, error: null })),
-  then: jest.fn(cb => cb({ data: [], error: null })),
+  then: jest.fn((cb) => cb({ data: [], error: null })),
   auth: {
     getSession: jest.fn(),
     signInWithPassword: jest.fn(),
-    signOut: jest.fn(() => Promise.resolve({ error: null }))
+    signOut: jest.fn(() => Promise.resolve({ error: null })),
   },
-  channel: jest.fn(() => ({ on: jest.fn(function() { return this; }), subscribe: jest.fn(function() { return this; }) }))
+  channel: jest.fn(() => ({
+    on: jest.fn(function () {
+      return this;
+    }),
+    subscribe: jest.fn(function () {
+      return this;
+    }),
+  })),
 };
 
 global.supabase = { createClient: () => mockSupabase };
@@ -74,7 +93,7 @@ describe('apiClient', () => {
     jest.clearAllMocks();
     STATE.client = mockSupabase;
     mockSupabase.auth.getSession.mockResolvedValue({
-      data: { session: { access_token: 'test-jwt-token' } }
+      data: { session: { access_token: 'test-jwt-token' } },
     });
   });
 
@@ -94,7 +113,7 @@ describe('apiClient', () => {
 
   test('_getToken returns null when no session', async () => {
     mockSupabase.auth.getSession.mockResolvedValue({
-      data: { session: null }
+      data: { session: null },
     });
     const token = await apiClient._getToken();
     expect(token).toBeNull();
@@ -110,18 +129,21 @@ describe('apiClient', () => {
   test('select calls /api/data-proxy with correct payload', async () => {
     global.fetch.mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ data: [{ id: 1 }], count: 1, page: 1, pageSize: 50, totalPages: 1 })
+      json: () => Promise.resolve({ data: [{ id: 1 }], count: 1, page: 1, pageSize: 50, totalPages: 1 }),
     });
 
     const result = await apiClient.select('awards', { page: 2, pageSize: 25 });
 
-    expect(global.fetch).toHaveBeenCalledWith('/api/data-proxy', expect.objectContaining({
-      method: 'POST',
-      headers: expect.objectContaining({
-        'Authorization': 'Bearer test-jwt-token',
-        'Content-Type': 'application/json'
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/data-proxy',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          Authorization: 'Bearer test-jwt-token',
+          'Content-Type': 'application/json',
+        }),
       })
-    }));
+    );
 
     const sentBody = JSON.parse(global.fetch.mock.calls[0][1].body);
     expect(sentBody.table).toBe('awards');
@@ -135,7 +157,7 @@ describe('apiClient', () => {
   test('count calls with count operation', async () => {
     global.fetch.mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ count: 42 })
+      json: () => Promise.resolve({ count: 42 }),
     });
 
     const result = await apiClient.count('entries', { status: 'submitted' });
@@ -149,7 +171,7 @@ describe('apiClient', () => {
   test('insert sends data to proxy', async () => {
     global.fetch.mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ data: [{ id: 'new-1' }] })
+      json: () => Promise.resolve({ data: [{ id: 'new-1' }] }),
     });
 
     await apiClient.insert('awards', { award_name: 'Best Plumber', year: 2026 });
@@ -162,7 +184,7 @@ describe('apiClient', () => {
   test('update sends id and data to proxy', async () => {
     global.fetch.mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ data: [{ id: 'abc-123' }] })
+      json: () => Promise.resolve({ data: [{ id: 'abc-123' }] }),
     });
 
     await apiClient.update('awards', 'abc-123', { award_name: 'Updated' });
@@ -176,7 +198,7 @@ describe('apiClient', () => {
   test('delete sends id to proxy', async () => {
     global.fetch.mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ data: [{ id: 'abc-123' }] })
+      json: () => Promise.resolve({ data: [{ id: 'abc-123' }] }),
     });
 
     await apiClient.delete('awards', 'abc-123');
@@ -190,7 +212,7 @@ describe('apiClient', () => {
     global.fetch.mockResolvedValue({
       ok: false,
       status: 400,
-      json: () => Promise.resolve({ error: 'Table not allowed' })
+      json: () => Promise.resolve({ error: 'Table not allowed' }),
     });
 
     await expect(apiClient.select('secret_table')).rejects.toThrow('Table not allowed');
@@ -200,7 +222,7 @@ describe('apiClient', () => {
     global.fetch.mockResolvedValue({
       ok: false,
       status: 401,
-      json: () => Promise.resolve({ error: 'Authentication required' })
+      json: () => Promise.resolve({ error: 'Authentication required' }),
     });
 
     await expect(apiClient.select('awards')).rejects.toThrow('Authentication required');
@@ -208,7 +230,7 @@ describe('apiClient', () => {
 
   test('throws when not authenticated (no token)', async () => {
     mockSupabase.auth.getSession.mockResolvedValue({
-      data: { session: null }
+      data: { session: null },
     });
 
     await expect(apiClient.select('awards')).rejects.toThrow('Not authenticated');
@@ -218,7 +240,7 @@ describe('apiClient', () => {
   test('includes Authorization header with Bearer token', async () => {
     global.fetch.mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ data: [], count: 0 })
+      json: () => Promise.resolve({ data: [], count: 0 }),
     });
 
     await apiClient.select('awards');
@@ -262,7 +284,7 @@ describe('apiClient', () => {
     global.fetch.mockResolvedValue({
       ok: false,
       status: 502,
-      json: () => Promise.reject(new Error('not json'))
+      json: () => Promise.reject(new Error('not json')),
     });
 
     apiClient.MAX_RETRIES = 0;
@@ -278,12 +300,12 @@ describe('apiClient', () => {
         return Promise.resolve({
           ok: false,
           status: 429,
-          json: () => Promise.resolve({ error: 'Rate limit exceeded' })
+          json: () => Promise.resolve({ error: 'Rate limit exceeded' }),
         });
       }
       return Promise.resolve({
         ok: true,
-        json: () => Promise.resolve({ data: [{ id: 1 }], count: 1 })
+        json: () => Promise.resolve({ data: [{ id: 1 }], count: 1 }),
       });
     });
 
@@ -300,12 +322,12 @@ describe('apiClient', () => {
         return Promise.resolve({
           ok: false,
           status: 500,
-          json: () => Promise.resolve({ error: 'Internal server error' })
+          json: () => Promise.resolve({ error: 'Internal server error' }),
         });
       }
       return Promise.resolve({
         ok: true,
-        json: () => Promise.resolve({ data: [], count: 0 })
+        json: () => Promise.resolve({ data: [], count: 0 }),
       });
     });
 
@@ -318,7 +340,7 @@ describe('apiClient', () => {
     global.fetch.mockResolvedValue({
       ok: false,
       status: 400,
-      json: () => Promise.resolve({ error: null, details: ['Table "x" is not allowed'] })
+      json: () => Promise.resolve({ error: null, details: ['Table "x" is not allowed'] }),
     });
 
     apiClient.MAX_RETRIES = 0;
@@ -331,7 +353,7 @@ describe('apiClient', () => {
   test('select sends default options when none provided', async () => {
     global.fetch.mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ data: [], count: 0, page: 1, pageSize: 50, totalPages: 0 })
+      json: () => Promise.resolve({ data: [], count: 0, page: 1, pageSize: 50, totalPages: 0 }),
     });
 
     await apiClient.select('awards');
@@ -346,7 +368,7 @@ describe('apiClient', () => {
   test('count sends filters correctly', async () => {
     global.fetch.mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ count: 5 })
+      json: () => Promise.resolve({ count: 5 }),
     });
 
     await apiClient.count('entries', { status: 'submitted', year: 2026 });
@@ -359,13 +381,13 @@ describe('apiClient', () => {
   test('select passes sort and custom select', async () => {
     global.fetch.mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ data: [], count: 0 })
+      json: () => Promise.resolve({ data: [], count: 0 }),
     });
 
     await apiClient.select('awards', {
       select: 'id,award_name',
       sort: { column: 'created_at', ascending: false },
-      filters: { year: 2026 }
+      filters: { year: 2026 },
     });
 
     const sentBody = JSON.parse(global.fetch.mock.calls[0][1].body);

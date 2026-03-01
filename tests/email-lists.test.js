@@ -8,7 +8,8 @@ const { JSDOM } = require('jsdom');
 // ==========================================
 // JSDOM SETUP
 // ==========================================
-const dom = new JSDOM(`<!DOCTYPE html><html><head></head><body>
+const dom = new JSDOM(
+  `<!DOCTYPE html><html><head></head><body>
   <div id="loadingBar" style="display:none;"></div>
   <div id="notificationToast"><span id="toastIcon"></span><span id="toastTitle"></span><span id="toastMessage"></span></div>
   <div id="connectionStatus"><span class="status-icon"></span><span class="status-text"></span></div>
@@ -33,7 +34,9 @@ const dom = new JSDOM(`<!DOCTYPE html><html><head></head><body>
   <div id="confirmDialogTitle"></div>
   <div id="confirmDialogBody"></div>
   <div id="confirmDialogOk"></div>
-</body></html>`, { url: 'http://localhost' });
+</body></html>`,
+  { url: 'http://localhost' }
+);
 
 global.window = dom.window;
 global.document = dom.window.document;
@@ -45,17 +48,26 @@ global.URL = { createObjectURL: jest.fn(() => 'blob://mock'), revokeObjectURL: j
 global.window.URL = global.URL;
 
 global.bootstrap = {
-  Toast: class { show() {} hide() {} },
-  Modal: class {
-    show() {} hide() {}
-    static getInstance() { return { hide() {} }; }
+  Toast: class {
+    show() {}
+    hide() {}
   },
-  Tooltip: class {}
+  Modal: class {
+    show() {}
+    hide() {}
+    static getInstance() {
+      return { hide() {} };
+    }
+  },
+  Tooltip: class {},
 };
 
 global.crypto = {
-  getRandomValues: (arr) => { for (let i = 0; i < arr.length; i++) arr[i] = Math.floor(Math.random() * 256); return arr; },
-  randomUUID: () => 'test-uuid-' + Math.random().toString(36).substring(2, 10)
+  getRandomValues: (arr) => {
+    for (let i = 0; i < arr.length; i++) arr[i] = Math.floor(Math.random() * 256);
+    return arr;
+  },
+  randomUUID: () => 'test-uuid-' + Math.random().toString(36).substring(2, 10),
 };
 
 // ==========================================
@@ -77,16 +89,20 @@ const mockSupabase = {
   limit: jest.fn(() => mockSupabase),
   single: jest.fn(() => Promise.resolve({ data: null, error: null })),
   rpc: jest.fn(() => Promise.resolve({ data: [], error: null })),
-  then: jest.fn(cb => cb({ data: [], error: null })),
+  then: jest.fn((cb) => cb({ data: [], error: null })),
   auth: {
     getSession: jest.fn(() => Promise.resolve({ data: { session: null }, error: null })),
     signInWithPassword: jest.fn(() => Promise.resolve({ data: { user: { email: 'test@test.com' } }, error: null })),
-    signOut: jest.fn(() => Promise.resolve({ error: null }))
+    signOut: jest.fn(() => Promise.resolve({ error: null })),
   },
   channel: jest.fn(() => ({
-    on: jest.fn(function() { return this; }),
-    subscribe: jest.fn(function() { return this; })
-  }))
+    on: jest.fn(function () {
+      return this;
+    }),
+    subscribe: jest.fn(function () {
+      return this;
+    }),
+  })),
 };
 
 global.supabase = { createClient: () => mockSupabase };
@@ -138,7 +154,7 @@ const sampleLists = [
     active_subscribers: 140,
     unsubscribed_count: 8,
     avg_open_rate: 0.72,
-    created_at: '2025-06-01T10:00:00Z'
+    created_at: '2025-06-01T10:00:00Z',
   },
   {
     id: 'list-2',
@@ -153,7 +169,7 @@ const sampleLists = [
     active_subscribers: 48,
     unsubscribed_count: 1,
     avg_open_rate: 0.85,
-    created_at: '2025-03-15T08:30:00Z'
+    created_at: '2025-03-15T08:30:00Z',
   },
   {
     id: 'list-3',
@@ -168,8 +184,8 @@ const sampleLists = [
     active_subscribers: 0,
     unsubscribed_count: 0,
     avg_open_rate: null,
-    created_at: '2024-01-10T12:00:00Z'
-  }
+    created_at: '2024-01-10T12:00:00Z',
+  },
 ];
 
 const sampleSubscribers = [
@@ -183,7 +199,7 @@ const sampleSubscribers = [
     status: 'active',
     emails_received: 20,
     emails_opened: 16,
-    created_at: '2025-06-10T09:00:00Z'
+    created_at: '2025-06-10T09:00:00Z',
   },
   {
     id: 'sub-2',
@@ -195,7 +211,7 @@ const sampleSubscribers = [
     status: 'unsubscribed',
     emails_received: 10,
     emails_opened: 3,
-    created_at: '2025-06-11T10:00:00Z'
+    created_at: '2025-06-11T10:00:00Z',
   },
   {
     id: 'sub-3',
@@ -207,7 +223,7 @@ const sampleSubscribers = [
     status: 'bounced',
     emails_received: 5,
     emails_opened: 0,
-    created_at: '2025-07-01T14:00:00Z'
+    created_at: '2025-07-01T14:00:00Z',
   },
   {
     id: 'sub-4',
@@ -219,8 +235,8 @@ const sampleSubscribers = [
     status: 'active',
     emails_received: 0,
     emails_opened: 0,
-    created_at: '2025-08-01T08:00:00Z'
-  }
+    created_at: '2025-08-01T08:00:00Z',
+  },
 ];
 
 // ==========================================
@@ -395,9 +411,9 @@ describe('Email Lists Module - renderListCard()', () => {
 
   test('renders correct subscriber counts', () => {
     const html = emailListsModule.renderListCard(sampleLists[0]);
-    expect(html).toContain('150');  // total_subscribers
-    expect(html).toContain('140');  // active_subscribers
-    expect(html).toContain('8');    // unsubscribed_count
+    expect(html).toContain('150'); // total_subscribers
+    expect(html).toContain('140'); // active_subscribers
+    expect(html).toContain('8'); // unsubscribed_count
   });
 
   test('renders zero counts when no subscribers', () => {
@@ -548,7 +564,7 @@ describe('Email Lists Module - parseManualEmails()', () => {
     document.getElementById('manualEmails').value = 'alice@example.com\nnot-an-email\nbob@test.com';
     const result = await emailListsModule.parseManualEmails();
     expect(result.length).toBe(2);
-    expect(result.every(r => r.email.includes('@'))).toBe(true);
+    expect(result.every((r) => r.email.includes('@'))).toBe(true);
   });
 
   test('trims whitespace from emails', async () => {
@@ -611,7 +627,7 @@ describe('Email Lists Module - filterSubscriberTable()', () => {
   test('shows all rows when no filter is applied', () => {
     emailListsModule.filterSubscriberTable();
     const rows = document.querySelectorAll('#subscribersTableBody tr');
-    const visibleRows = Array.from(rows).filter(r => r.style.display !== 'none');
+    const visibleRows = Array.from(rows).filter((r) => r.style.display !== 'none');
     expect(visibleRows.length).toBe(4);
   });
 
@@ -619,7 +635,7 @@ describe('Email Lists Module - filterSubscriberTable()', () => {
     document.getElementById('subscriberSearch').value = 'alice';
     emailListsModule.filterSubscriberTable();
     const rows = document.querySelectorAll('#subscribersTableBody tr');
-    const visibleRows = Array.from(rows).filter(r => r.style.display !== 'none');
+    const visibleRows = Array.from(rows).filter((r) => r.style.display !== 'none');
     expect(visibleRows.length).toBe(1);
     expect(visibleRows[0].textContent).toContain('alice@example.com');
   });
@@ -628,7 +644,7 @@ describe('Email Lists Module - filterSubscriberTable()', () => {
     document.getElementById('subscriberSearch').value = 'startupx';
     emailListsModule.filterSubscriberTable();
     const rows = document.querySelectorAll('#subscribersTableBody tr');
-    const visibleRows = Array.from(rows).filter(r => r.style.display !== 'none');
+    const visibleRows = Array.from(rows).filter((r) => r.style.display !== 'none');
     expect(visibleRows.length).toBe(1);
     expect(visibleRows[0].textContent).toContain('dave@test.io');
   });
@@ -637,7 +653,7 @@ describe('Email Lists Module - filterSubscriberTable()', () => {
     document.getElementById('subscriberSearch').value = 'BOB';
     emailListsModule.filterSubscriberTable();
     const rows = document.querySelectorAll('#subscribersTableBody tr');
-    const visibleRows = Array.from(rows).filter(r => r.style.display !== 'none');
+    const visibleRows = Array.from(rows).filter((r) => r.style.display !== 'none');
     expect(visibleRows.length).toBe(1);
     expect(visibleRows[0].textContent).toContain('bob@company.com');
   });
@@ -646,7 +662,7 @@ describe('Email Lists Module - filterSubscriberTable()', () => {
     document.getElementById('subscriberStatusFilter').value = 'active';
     emailListsModule.filterSubscriberTable();
     const rows = document.querySelectorAll('#subscribersTableBody tr');
-    const visibleRows = Array.from(rows).filter(r => r.style.display !== 'none');
+    const visibleRows = Array.from(rows).filter((r) => r.style.display !== 'none');
     expect(visibleRows.length).toBe(2); // alice and dave
   });
 
@@ -654,7 +670,7 @@ describe('Email Lists Module - filterSubscriberTable()', () => {
     document.getElementById('subscriberStatusFilter').value = 'unsubscribed';
     emailListsModule.filterSubscriberTable();
     const rows = document.querySelectorAll('#subscribersTableBody tr');
-    const visibleRows = Array.from(rows).filter(r => r.style.display !== 'none');
+    const visibleRows = Array.from(rows).filter((r) => r.style.display !== 'none');
     expect(visibleRows.length).toBe(1);
     expect(visibleRows[0].textContent).toContain('bob@company.com');
   });
@@ -663,7 +679,7 @@ describe('Email Lists Module - filterSubscriberTable()', () => {
     document.getElementById('subscriberStatusFilter').value = 'bounced';
     emailListsModule.filterSubscriberTable();
     const rows = document.querySelectorAll('#subscribersTableBody tr');
-    const visibleRows = Array.from(rows).filter(r => r.style.display !== 'none');
+    const visibleRows = Array.from(rows).filter((r) => r.style.display !== 'none');
     expect(visibleRows.length).toBe(1);
     expect(visibleRows[0].textContent).toContain('carol@domain.org');
   });
@@ -673,11 +689,11 @@ describe('Email Lists Module - filterSubscriberTable()', () => {
     document.getElementById('subscriberStatusFilter').value = 'active';
     emailListsModule.filterSubscriberTable();
     const rows = document.querySelectorAll('#subscribersTableBody tr');
-    const visibleRows = Array.from(rows).filter(r => r.style.display !== 'none');
+    const visibleRows = Array.from(rows).filter((r) => r.style.display !== 'none');
     // 'a' matches alice, carol (text includes 'a'), dave (has 'a' in Dave/StartupX)
     // status filter 'active' only shows alice and dave
     expect(visibleRows.length).toBeGreaterThanOrEqual(1);
-    visibleRows.forEach(row => {
+    visibleRows.forEach((row) => {
       expect(row.textContent.toLowerCase()).toContain('active');
     });
   });
@@ -688,7 +704,7 @@ describe('Email Lists Module - filterSubscriberTable()', () => {
     emailListsModule._currentSubscribers = [];
     emailListsModule.filterSubscriberTable();
     const rows = document.querySelectorAll('#subscribersTableBody tr');
-    const visibleRows = Array.from(rows).filter(r => r.style.display !== 'none');
+    const visibleRows = Array.from(rows).filter((r) => r.style.display !== 'none');
     expect(visibleRows.length).toBe(0);
   });
 
@@ -727,7 +743,7 @@ describe('Email Lists Module - Edge Cases', () => {
       total_subscribers: null,
       active_subscribers: null,
       unsubscribed_count: null,
-      avg_open_rate: null
+      avg_open_rate: null,
     };
     expect(() => emailListsModule.renderListCard(minimalList)).not.toThrow();
     const html = emailListsModule.renderListCard(minimalList);
@@ -765,7 +781,7 @@ describe('Email Lists Module - Edge Cases', () => {
 
   test('getListTypeBadge returns consistent HTML structure', () => {
     const types = ['general', 'winners', 'nominees', 'sponsors', 'vip', 'event', 'media', 'custom'];
-    types.forEach(type => {
+    types.forEach((type) => {
       const badge = emailListsModule.getListTypeBadge(type);
       expect(badge).toContain('<span');
       expect(badge).toContain('badge');
@@ -853,7 +869,7 @@ describe('Email Lists Module - openCreateListModal() DOM setup', () => {
   test('openCreateListModal includes all list type options', async () => {
     await emailListsModule.openCreateListModal();
     const select = document.getElementById('listType');
-    const options = Array.from(select.options).map(o => o.value);
+    const options = Array.from(select.options).map((o) => o.value);
     expect(options).toContain('general');
     expect(options).toContain('winners');
     expect(options).toContain('nominees');
@@ -897,14 +913,14 @@ describe('Email Lists Module - loadStats() computation', () => {
     mockSupabase.from.mockReturnValue(mockSupabase);
     mockSupabase.select.mockReturnValue(mockSupabase);
     mockSupabase.gt.mockReturnValue(mockSupabase);
-    mockSupabase.then.mockImplementation(cb => cb({ data: [], error: null }));
+    mockSupabase.then.mockImplementation((cb) => cb({ data: [], error: null }));
   });
 
   test('updates stat counts from currentLists data', async () => {
     emailListsModule.currentLists = [...sampleLists];
 
     // For the subscriber open rate query, return empty (no subscriber-level data)
-    mockSupabase.then.mockImplementation(cb => cb({ data: [], error: null }));
+    mockSupabase.then.mockImplementation((cb) => cb({ data: [], error: null }));
 
     await emailListsModule.loadStats();
 
@@ -945,5 +961,1186 @@ describe('Email Lists Module - State Management', () => {
     emailListsModule._currentSubscribers = [...sampleSubscribers];
     expect(emailListsModule._currentSubscribers.length).toBe(4);
     expect(emailListsModule._currentSubscribers[0].email).toBe('alice@example.com');
+  });
+});
+
+// ==========================================
+// ADDITIONAL TESTS FOR COVERAGE
+// ==========================================
+
+describe('Email Lists Module - loadAllData()', () => {
+  let originalFetch;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    originalFetch = global.fetch;
+    global.fetch = jest.fn();
+    global.AbortController = class {
+      constructor() {
+        this.signal = {};
+        this.abort = jest.fn();
+      }
+    };
+    mockSupabase.auth.getSession.mockResolvedValue({
+      data: { session: { access_token: 'test-token' } },
+      error: null,
+    });
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+    mockSupabase.auth.getSession.mockResolvedValue({
+      data: { session: null },
+      error: null,
+    });
+  });
+
+  test('loadAllData calls loadEmailLists and loadStats', async () => {
+    const loadListsSpy = jest.spyOn(emailListsModule, 'loadEmailLists').mockResolvedValue();
+    const loadStatsSpy = jest.spyOn(emailListsModule, 'loadStats').mockResolvedValue();
+
+    await emailListsModule.loadAllData();
+
+    expect(loadListsSpy).toHaveBeenCalled();
+    expect(loadStatsSpy).toHaveBeenCalled();
+
+    loadListsSpy.mockRestore();
+    loadStatsSpy.mockRestore();
+  });
+
+  test('loadAllData handles errors gracefully with showErrorWithRetry', async () => {
+    const loadListsSpy = jest.spyOn(emailListsModule, 'loadEmailLists').mockRejectedValue(new Error('Network error'));
+    const showErrorSpy = jest.spyOn(utils, 'showErrorWithRetry').mockImplementation(() => {});
+
+    await emailListsModule.loadAllData();
+
+    expect(showErrorSpy).toHaveBeenCalledWith(expect.any(Error), 'loading email lists', expect.any(Function));
+
+    loadListsSpy.mockRestore();
+    showErrorSpy.mockRestore();
+  });
+});
+
+describe('Email Lists Module - loadEmailLists()', () => {
+  let originalFetch;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    originalFetch = global.fetch;
+    global.fetch = jest.fn();
+    global.AbortController = class {
+      constructor() {
+        this.signal = {};
+        this.abort = jest.fn();
+      }
+    };
+    mockSupabase.auth.getSession.mockResolvedValue({
+      data: { session: { access_token: 'test-token' } },
+      error: null,
+    });
+    document.getElementById('emailListsGrid').innerHTML = '';
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+    mockSupabase.auth.getSession.mockResolvedValue({
+      data: { session: null },
+      error: null,
+    });
+  });
+
+  test('loadEmailLists sets currentLists from fetched data', async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () =>
+        Promise.resolve({
+          data: sampleLists,
+          count: 3,
+          page: 1,
+          pageSize: 50,
+          totalPages: 1,
+        }),
+    });
+
+    await emailListsModule.loadEmailLists();
+
+    expect(emailListsModule.currentLists).toEqual(sampleLists);
+    const container = document.getElementById('emailListsGrid');
+    expect(container.innerHTML).toContain('2025 Award Winners');
+  });
+
+  test('loadEmailLists shows error on failure', async () => {
+    global.fetch.mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: () => Promise.resolve({ error: 'Server error' }),
+    });
+
+    await emailListsModule.loadEmailLists();
+
+    const container = document.getElementById('emailListsGrid');
+    expect(container.innerHTML).toContain('Error loading email lists');
+  });
+
+  test('loadEmailLists sets empty array when data is null', async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () =>
+        Promise.resolve({
+          data: null,
+          count: 0,
+          page: 1,
+          pageSize: 50,
+          totalPages: 0,
+        }),
+    });
+
+    await emailListsModule.loadEmailLists();
+
+    expect(emailListsModule.currentLists).toEqual([]);
+  });
+});
+
+describe('Email Lists Module - saveList()', () => {
+  let originalFetch;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    originalFetch = global.fetch;
+    global.fetch = jest.fn();
+    global.AbortController = class {
+      constructor() {
+        this.signal = {};
+        this.abort = jest.fn();
+      }
+    };
+    mockSupabase.auth.getSession.mockResolvedValue({
+      data: { session: { access_token: 'test-token' } },
+      error: null,
+    });
+    // Remove any existing modal
+    document.getElementById('createListModal')?.remove();
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+    mockSupabase.auth.getSession.mockResolvedValue({
+      data: { session: null },
+      error: null,
+    });
+    document.getElementById('createListModal')?.remove();
+  });
+
+  test('saveList inserts list data via apiClient', async () => {
+    // Set up the create list modal
+    await emailListsModule.openCreateListModal();
+
+    // Fill in the form
+    document.getElementById('listName').value = 'New Test List';
+    document.getElementById('listDescription').value = 'A test description';
+    document.getElementById('listType').value = 'winners';
+    document.getElementById('listColor').value = '#ff0000';
+    document.getElementById('listIcon').value = 'trophy';
+    document.getElementById('listActive').checked = true;
+    document.getElementById('listAutoClean').checked = false;
+
+    // Mock the form validity check
+    const form = document.getElementById('createListForm');
+    form.checkValidity = jest.fn().mockReturnValue(true);
+
+    // Mock apiClient insert
+    global.fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ data: [{ id: 'new-list-1' }] }),
+    });
+
+    // Mock loadAllData to prevent cascading calls
+    const loadAllSpy = jest.spyOn(emailListsModule, 'loadAllData').mockResolvedValue();
+
+    await emailListsModule.saveList();
+
+    expect(global.fetch).toHaveBeenCalled();
+    const callBody = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(callBody.operation).toBe('insert');
+    expect(callBody.table).toBe('email_lists');
+    expect(callBody.data.list_name).toBe('New Test List');
+
+    loadAllSpy.mockRestore();
+  });
+
+  test('saveList falls back to localStorage on API failure', async () => {
+    await emailListsModule.openCreateListModal();
+
+    document.getElementById('listName').value = 'Offline List';
+    document.getElementById('listDescription').value = '';
+    document.getElementById('listType').value = 'general';
+
+    const form = document.getElementById('createListForm');
+    form.checkValidity = jest.fn().mockReturnValue(true);
+
+    // Mock API failure
+    global.fetch.mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: () => Promise.resolve({ error: 'Server down' }),
+    });
+
+    const showToastSpy = jest.spyOn(utils, 'showToast');
+
+    await emailListsModule.saveList();
+
+    // Check it was saved to localStorage as fallback
+    const pending = JSON.parse(localStorage.getItem('bta_email_lists_pending') || '[]');
+    expect(pending.length).toBeGreaterThanOrEqual(1);
+    expect(pending[pending.length - 1].list_name).toBe('Offline List');
+
+    expect(showToastSpy).toHaveBeenCalledWith('Email list saved locally', 'success');
+
+    showToastSpy.mockRestore();
+    localStorage.removeItem('bta_email_lists_pending');
+  });
+
+  test('saveList returns early when form is invalid', async () => {
+    await emailListsModule.openCreateListModal();
+
+    const form = document.getElementById('createListForm');
+    form.checkValidity = jest.fn().mockReturnValue(false);
+    form.reportValidity = jest.fn();
+
+    await emailListsModule.saveList();
+
+    expect(form.reportValidity).toHaveBeenCalled();
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+});
+
+describe('Email Lists Module - editList()', () => {
+  beforeEach(() => {
+    emailListsModule.currentLists = [...sampleLists];
+    document.getElementById('editListModal')?.remove();
+  });
+
+  afterEach(() => {
+    document.getElementById('editListModal')?.remove();
+  });
+
+  test('editList creates modal with pre-filled values', async () => {
+    await emailListsModule.editList('list-1');
+
+    const modal = document.getElementById('editListModal');
+    expect(modal).not.toBeNull();
+    expect(document.getElementById('editListName').value).toBe('2025 Award Winners');
+    expect(document.getElementById('editListDescription').value).toBe('All winners from the 2025 ceremony');
+    expect(document.getElementById('editListType').value).toBe('winners');
+    expect(document.getElementById('editListColor').value).toBe('#28a745');
+    expect(document.getElementById('editListIcon').value).toBe('trophy');
+    expect(document.getElementById('editListActive').checked).toBe(true);
+    expect(document.getElementById('editListAutoClean').checked).toBe(true);
+  });
+
+  test('editList shows toast for non-existent list', async () => {
+    const showToastSpy = jest.spyOn(utils, 'showToast');
+    await emailListsModule.editList('nonexistent');
+    expect(showToastSpy).toHaveBeenCalledWith('List not found', 'error');
+    showToastSpy.mockRestore();
+  });
+
+  test('editList pre-fills inactive list correctly', async () => {
+    await emailListsModule.editList('list-3');
+
+    expect(document.getElementById('editListActive').checked).toBe(false);
+    expect(document.getElementById('editListAutoClean').checked).toBe(false);
+  });
+
+  test('editList replaces existing modal', async () => {
+    await emailListsModule.editList('list-1');
+    await emailListsModule.editList('list-2');
+    const modals = document.querySelectorAll('#editListModal');
+    expect(modals.length).toBe(1);
+    expect(document.getElementById('editListName').value).toBe('VIP Contacts');
+  });
+});
+
+describe('Email Lists Module - saveEditedList()', () => {
+  let originalFetch;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    originalFetch = global.fetch;
+    global.fetch = jest.fn();
+    global.AbortController = class {
+      constructor() {
+        this.signal = {};
+        this.abort = jest.fn();
+      }
+    };
+    mockSupabase.auth.getSession.mockResolvedValue({
+      data: { session: { access_token: 'test-token' } },
+      error: null,
+    });
+    emailListsModule.currentLists = [...sampleLists];
+    document.getElementById('editListModal')?.remove();
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+    mockSupabase.auth.getSession.mockResolvedValue({
+      data: { session: null },
+      error: null,
+    });
+    document.getElementById('editListModal')?.remove();
+  });
+
+  test('saveEditedList calls apiClient.update with correct data', async () => {
+    await emailListsModule.editList('list-1');
+
+    document.getElementById('editListName').value = 'Updated List Name';
+    document.getElementById('editListDescription').value = 'Updated description';
+
+    const form = document.getElementById('editListForm');
+    form.checkValidity = jest.fn().mockReturnValue(true);
+
+    global.fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ data: [{ id: 'list-1' }] }),
+    });
+
+    const loadAllSpy = jest.spyOn(emailListsModule, 'loadAllData').mockResolvedValue();
+    const showToastSpy = jest.spyOn(utils, 'showToast');
+
+    await emailListsModule.saveEditedList('list-1');
+
+    expect(global.fetch).toHaveBeenCalled();
+    const callBody = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(callBody.operation).toBe('update');
+    expect(callBody.data.list_name).toBe('Updated List Name');
+    expect(showToastSpy).toHaveBeenCalledWith('List updated successfully', 'success');
+
+    loadAllSpy.mockRestore();
+    showToastSpy.mockRestore();
+  });
+
+  test('saveEditedList falls back to localStorage on failure', async () => {
+    await emailListsModule.editList('list-1');
+
+    document.getElementById('editListName').value = 'Offline Edit';
+
+    const form = document.getElementById('editListForm');
+    form.checkValidity = jest.fn().mockReturnValue(true);
+
+    global.fetch.mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: () => Promise.resolve({ error: 'Server error' }),
+    });
+
+    const showToastSpy = jest.spyOn(utils, 'showToast');
+    await emailListsModule.saveEditedList('list-1');
+
+    const stored = JSON.parse(localStorage.getItem('bta_email_list_edit_list-1') || 'null');
+    expect(stored).not.toBeNull();
+    expect(stored.list_name).toBe('Offline Edit');
+
+    expect(showToastSpy).toHaveBeenCalledWith('List saved locally', 'success');
+    showToastSpy.mockRestore();
+    localStorage.removeItem('bta_email_list_edit_list-1');
+  });
+
+  test('saveEditedList returns early when form is invalid', async () => {
+    await emailListsModule.editList('list-1');
+
+    const form = document.getElementById('editListForm');
+    form.checkValidity = jest.fn().mockReturnValue(false);
+    form.reportValidity = jest.fn();
+
+    await emailListsModule.saveEditedList('list-1');
+
+    expect(form.reportValidity).toHaveBeenCalled();
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+});
+
+describe('Email Lists Module - deleteList()', () => {
+  let originalFetch;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    originalFetch = global.fetch;
+    global.fetch = jest.fn();
+    global.AbortController = class {
+      constructor() {
+        this.signal = {};
+        this.abort = jest.fn();
+      }
+    };
+    mockSupabase.auth.getSession.mockResolvedValue({
+      data: { session: { access_token: 'test-token' } },
+      error: null,
+    });
+    emailListsModule.currentLists = [...sampleLists];
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+    mockSupabase.auth.getSession.mockResolvedValue({
+      data: { session: null },
+      error: null,
+    });
+  });
+
+  test('deleteList calls apiClient.delete when confirmed', async () => {
+    // Mock confirmDialog to return true
+    const confirmSpy = jest.spyOn(utils, 'confirmDialog').mockResolvedValue(true);
+    const loadAllSpy = jest.spyOn(emailListsModule, 'loadAllData').mockResolvedValue();
+    const showToastSpy = jest.spyOn(utils, 'showToast');
+
+    global.fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ data: [] }),
+    });
+
+    await emailListsModule.deleteList('list-1');
+
+    expect(global.fetch).toHaveBeenCalled();
+    const callBody = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(callBody.operation).toBe('delete');
+    expect(callBody.id).toBe('list-1');
+    expect(showToastSpy).toHaveBeenCalledWith('Email list deleted successfully', 'success');
+
+    confirmSpy.mockRestore();
+    loadAllSpy.mockRestore();
+    showToastSpy.mockRestore();
+  });
+
+  test('deleteList does nothing when user cancels confirmation', async () => {
+    const confirmSpy = jest.spyOn(utils, 'confirmDialog').mockResolvedValue(false);
+
+    await emailListsModule.deleteList('list-1');
+
+    expect(global.fetch).not.toHaveBeenCalled();
+
+    confirmSpy.mockRestore();
+  });
+
+  test('deleteList handles API error gracefully', async () => {
+    const confirmSpy = jest.spyOn(utils, 'confirmDialog').mockResolvedValue(true);
+    const showToastSpy = jest.spyOn(utils, 'showToast');
+
+    global.fetch.mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: () => Promise.resolve({ error: 'Server error' }),
+    });
+
+    await emailListsModule.deleteList('list-1');
+
+    expect(showToastSpy).toHaveBeenCalledWith('Error deleting list', 'error');
+
+    confirmSpy.mockRestore();
+    showToastSpy.mockRestore();
+  });
+});
+
+describe('Email Lists Module - exportList()', () => {
+  let originalFetch;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    originalFetch = global.fetch;
+    global.fetch = jest.fn();
+    global.AbortController = class {
+      constructor() {
+        this.signal = {};
+        this.abort = jest.fn();
+      }
+    };
+    mockSupabase.auth.getSession.mockResolvedValue({
+      data: { session: { access_token: 'test-token' } },
+      error: null,
+    });
+    global.URL.createObjectURL.mockClear();
+    global.URL.revokeObjectURL.mockClear();
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+    mockSupabase.auth.getSession.mockResolvedValue({
+      data: { session: null },
+      error: null,
+    });
+  });
+
+  test('exportList creates CSV download from subscriber data', async () => {
+    // selectAll uses multiple calls to select
+    global.fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () =>
+        Promise.resolve({
+          data: [
+            {
+              email: 'alice@example.com',
+              first_name: 'Alice',
+              last_name: 'Smith',
+              company_name: 'Acme',
+              status: 'active',
+            },
+            {
+              email: 'bob@test.com',
+              first_name: 'Bob',
+              last_name: 'Jones',
+              company_name: null,
+              status: 'unsubscribed',
+            },
+          ],
+          count: 2,
+          page: 1,
+          pageSize: 1000,
+          totalPages: 1,
+        }),
+    });
+
+    const showToastSpy = jest.spyOn(utils, 'showToast');
+
+    await emailListsModule.exportList('list-1');
+
+    expect(global.URL.createObjectURL).toHaveBeenCalled();
+    expect(showToastSpy).toHaveBeenCalledWith('Email list exported successfully', 'success');
+
+    showToastSpy.mockRestore();
+  });
+
+  test('exportList handles empty subscriber list', async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () =>
+        Promise.resolve({
+          data: [],
+          count: 0,
+          page: 1,
+          pageSize: 1000,
+          totalPages: 0,
+        }),
+    });
+
+    const showToastSpy = jest.spyOn(utils, 'showToast');
+
+    await emailListsModule.exportList('list-1');
+
+    expect(showToastSpy).toHaveBeenCalledWith('Email list exported successfully', 'success');
+    showToastSpy.mockRestore();
+  });
+
+  test('exportList handles API error', async () => {
+    global.fetch.mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: () => Promise.resolve({ error: 'Server error' }),
+    });
+
+    const showToastSpy = jest.spyOn(utils, 'showToast');
+
+    await emailListsModule.exportList('list-1');
+
+    expect(showToastSpy).toHaveBeenCalledWith('Error exporting list', 'error');
+    showToastSpy.mockRestore();
+  });
+});
+
+describe('Email Lists Module - saveSubscriber()', () => {
+  let originalFetch;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    originalFetch = global.fetch;
+    global.fetch = jest.fn();
+    global.AbortController = class {
+      constructor() {
+        this.signal = {};
+        this.abort = jest.fn();
+      }
+    };
+    mockSupabase.auth.getSession.mockResolvedValue({
+      data: { session: { access_token: 'test-token' } },
+      error: null,
+    });
+    emailListsModule.currentLists = [...sampleLists];
+    document.getElementById('addSubscriberModal')?.remove();
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+    mockSupabase.auth.getSession.mockResolvedValue({
+      data: { session: null },
+      error: null,
+    });
+    document.getElementById('addSubscriberModal')?.remove();
+  });
+
+  test('saveSubscriber inserts subscriber via apiClient', async () => {
+    await emailListsModule.addSubscriber('list-1');
+
+    document.getElementById('subEmail').value = 'new@example.com';
+    document.getElementById('subFirstName').value = 'New';
+    document.getElementById('subLastName').value = 'User';
+    document.getElementById('subCompanyName').value = 'NewCo';
+
+    const form = document.getElementById('addSubscriberForm');
+    form.checkValidity = jest.fn().mockReturnValue(true);
+
+    global.fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ data: [{ id: 'sub-new' }] }),
+    });
+
+    const loadAllSpy = jest.spyOn(emailListsModule, 'loadAllData').mockResolvedValue();
+    const showToastSpy = jest.spyOn(utils, 'showToast');
+
+    await emailListsModule.saveSubscriber('list-1');
+
+    expect(global.fetch).toHaveBeenCalled();
+    const callBody = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(callBody.operation).toBe('insert');
+    expect(callBody.table).toBe('email_list_subscribers');
+    expect(callBody.data.email).toBe('new@example.com');
+    expect(callBody.data.list_id).toBe('list-1');
+
+    loadAllSpy.mockRestore();
+    showToastSpy.mockRestore();
+  });
+
+  test('saveSubscriber rejects invalid email', async () => {
+    await emailListsModule.addSubscriber('list-1');
+
+    document.getElementById('subEmail').value = 'not-an-email';
+
+    const form = document.getElementById('addSubscriberForm');
+    form.checkValidity = jest.fn().mockReturnValue(true);
+
+    const showToastSpy = jest.spyOn(utils, 'showToast');
+
+    await emailListsModule.saveSubscriber('list-1');
+
+    expect(showToastSpy).toHaveBeenCalledWith('Please enter a valid email address', 'warning');
+    expect(global.fetch).not.toHaveBeenCalled();
+
+    showToastSpy.mockRestore();
+  });
+
+  test('saveSubscriber returns early when form is invalid', async () => {
+    await emailListsModule.addSubscriber('list-1');
+
+    const form = document.getElementById('addSubscriberForm');
+    form.checkValidity = jest.fn().mockReturnValue(false);
+    form.reportValidity = jest.fn();
+
+    await emailListsModule.saveSubscriber('list-1');
+
+    expect(form.reportValidity).toHaveBeenCalled();
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  test('saveSubscriber falls back to localStorage on API failure', async () => {
+    await emailListsModule.addSubscriber('list-1');
+
+    document.getElementById('subEmail').value = 'offline@test.com';
+    document.getElementById('subFirstName').value = '';
+    document.getElementById('subLastName').value = '';
+    document.getElementById('subCompanyName').value = '';
+
+    const form = document.getElementById('addSubscriberForm');
+    form.checkValidity = jest.fn().mockReturnValue(true);
+
+    global.fetch.mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: () => Promise.resolve({ error: 'Server down' }),
+    });
+
+    const showToastSpy = jest.spyOn(utils, 'showToast');
+    await emailListsModule.saveSubscriber('list-1');
+
+    const stored = JSON.parse(localStorage.getItem('bta_subscribers_pending_list-1') || '[]');
+    expect(stored.length).toBeGreaterThanOrEqual(1);
+    expect(stored[stored.length - 1].email).toBe('offline@test.com');
+
+    expect(showToastSpy).toHaveBeenCalledWith('Subscriber saved locally', 'success');
+    showToastSpy.mockRestore();
+    localStorage.removeItem('bta_subscribers_pending_list-1');
+  });
+});
+
+describe('Email Lists Module - updateSubscriberStatus()', () => {
+  let originalFetch;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    originalFetch = global.fetch;
+    global.fetch = jest.fn();
+    global.AbortController = class {
+      constructor() {
+        this.signal = {};
+        this.abort = jest.fn();
+      }
+    };
+    mockSupabase.auth.getSession.mockResolvedValue({
+      data: { session: { access_token: 'test-token' } },
+      error: null,
+    });
+    emailListsModule.currentLists = [...sampleLists];
+    emailListsModule.currentListId = null;
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+    mockSupabase.auth.getSession.mockResolvedValue({
+      data: { session: null },
+      error: null,
+    });
+  });
+
+  test('updateSubscriberStatus calls apiClient.update', async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ data: [{ id: 'sub-1' }] }),
+    });
+
+    const loadAllSpy = jest.spyOn(emailListsModule, 'loadAllData').mockResolvedValue();
+    const showToastSpy = jest.spyOn(utils, 'showToast');
+
+    await emailListsModule.updateSubscriberStatus('sub-1', 'unsubscribed');
+
+    expect(global.fetch).toHaveBeenCalled();
+    const callBody = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(callBody.operation).toBe('update');
+    expect(callBody.data.status).toBe('unsubscribed');
+    expect(showToastSpy).toHaveBeenCalledWith(expect.stringContaining('unsubscribed'), 'success');
+
+    loadAllSpy.mockRestore();
+    showToastSpy.mockRestore();
+  });
+
+  test('updateSubscriberStatus shows resubscribed message for active', async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ data: [{ id: 'sub-1' }] }),
+    });
+
+    const loadAllSpy = jest.spyOn(emailListsModule, 'loadAllData').mockResolvedValue();
+    const showToastSpy = jest.spyOn(utils, 'showToast');
+
+    await emailListsModule.updateSubscriberStatus('sub-1', 'active');
+
+    expect(showToastSpy).toHaveBeenCalledWith(expect.stringContaining('resubscribed'), 'success');
+
+    loadAllSpy.mockRestore();
+    showToastSpy.mockRestore();
+  });
+
+  test('updateSubscriberStatus handles errors', async () => {
+    global.fetch.mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: () => Promise.resolve({ error: 'Server error' }),
+    });
+
+    const showToastSpy = jest.spyOn(utils, 'showToast');
+
+    await emailListsModule.updateSubscriberStatus('sub-1', 'active');
+
+    expect(showToastSpy).toHaveBeenCalledWith(expect.stringContaining('Error updating subscriber'), 'error');
+
+    showToastSpy.mockRestore();
+  });
+});
+
+describe('Email Lists Module - deleteSubscriber()', () => {
+  let originalFetch;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    originalFetch = global.fetch;
+    global.fetch = jest.fn();
+    global.AbortController = class {
+      constructor() {
+        this.signal = {};
+        this.abort = jest.fn();
+      }
+    };
+    mockSupabase.auth.getSession.mockResolvedValue({
+      data: { session: { access_token: 'test-token' } },
+      error: null,
+    });
+    emailListsModule.currentLists = [...sampleLists];
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+    mockSupabase.auth.getSession.mockResolvedValue({
+      data: { session: null },
+      error: null,
+    });
+  });
+
+  test('deleteSubscriber calls apiClient.delete when confirmed', async () => {
+    const confirmSpy = jest.spyOn(utils, 'confirmDialog').mockResolvedValue(true);
+    const loadAllSpy = jest.spyOn(emailListsModule, 'loadAllData').mockResolvedValue();
+    const showToastSpy = jest.spyOn(utils, 'showToast');
+
+    global.fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ data: [] }),
+    });
+
+    await emailListsModule.deleteSubscriber('sub-1', 'list-1');
+
+    expect(global.fetch).toHaveBeenCalled();
+    const callBody = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(callBody.operation).toBe('delete');
+    expect(callBody.id).toBe('sub-1');
+    expect(showToastSpy).toHaveBeenCalledWith('Subscriber removed', 'success');
+
+    confirmSpy.mockRestore();
+    loadAllSpy.mockRestore();
+    showToastSpy.mockRestore();
+  });
+
+  test('deleteSubscriber does nothing when user cancels', async () => {
+    const confirmSpy = jest.spyOn(utils, 'confirmDialog').mockResolvedValue(false);
+
+    await emailListsModule.deleteSubscriber('sub-1', 'list-1');
+
+    expect(global.fetch).not.toHaveBeenCalled();
+    confirmSpy.mockRestore();
+  });
+});
+
+describe('Email Lists Module - _renderPaginationControls()', () => {
+  beforeEach(() => {
+    document.getElementById('emailListsPaginationControls')?.remove();
+    document.getElementById('emailListsGrid').innerHTML = '';
+  });
+
+  test('renders summary when only one page', () => {
+    emailListsModule._pagination = { page: 1, totalPages: 1, count: 3, pageSize: 50 };
+    emailListsModule.currentLists = [...sampleLists];
+    emailListsModule.renderEmailLists();
+
+    const paginationEl = document.getElementById('emailListsPaginationControls');
+    if (paginationEl) {
+      expect(paginationEl.innerHTML).toContain('3 list(s)');
+    }
+  });
+
+  test('renders pagination buttons for multiple pages', () => {
+    emailListsModule._pagination = { page: 1, totalPages: 3, count: 120, pageSize: 50 };
+    emailListsModule.currentLists = [...sampleLists];
+    emailListsModule.renderEmailLists();
+
+    const paginationEl = document.getElementById('emailListsPaginationControls');
+    expect(paginationEl).not.toBeNull();
+    expect(paginationEl.innerHTML).toContain('Page 1 of 3');
+    expect(paginationEl.innerHTML).toContain('Next');
+    expect(paginationEl.innerHTML).toContain('Prev');
+  });
+
+  test('renders empty string when count is 0 and single page', () => {
+    emailListsModule._pagination = { page: 1, totalPages: 1, count: 0, pageSize: 50 };
+    emailListsModule.currentLists = [];
+    emailListsModule.renderEmailLists();
+
+    const paginationEl = document.getElementById('emailListsPaginationControls');
+    if (paginationEl) {
+      // Should be empty or minimal
+      expect(paginationEl.innerHTML).not.toContain('Next');
+    }
+  });
+});
+
+describe('Email Lists Module - _buildServerFilters()', () => {
+  test('returns empty object by default', () => {
+    const filters = emailListsModule._buildServerFilters();
+    expect(filters).toEqual({});
+  });
+});
+
+describe('Email Lists Module - _fetchPage()', () => {
+  let originalFetch;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    originalFetch = global.fetch;
+    global.fetch = jest.fn();
+    global.AbortController = class {
+      constructor() {
+        this.signal = {};
+        this.abort = jest.fn();
+      }
+    };
+    mockSupabase.auth.getSession.mockResolvedValue({
+      data: { session: { access_token: 'test-token' } },
+      error: null,
+    });
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+    mockSupabase.auth.getSession.mockResolvedValue({
+      data: { session: null },
+      error: null,
+    });
+  });
+
+  test('_fetchPage updates pagination state', async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () =>
+        Promise.resolve({
+          data: sampleLists.slice(0, 2),
+          count: 3,
+          page: 2,
+          pageSize: 2,
+          totalPages: 2,
+        }),
+    });
+
+    const data = await emailListsModule._fetchPage(2);
+
+    expect(emailListsModule._pagination.page).toBe(2);
+    expect(data.length).toBe(2);
+  });
+
+  test('_fetchPage includes search term when set', async () => {
+    emailListsModule._searchTerm = 'winners';
+
+    global.fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () =>
+        Promise.resolve({
+          data: [sampleLists[0]],
+          count: 1,
+          page: 1,
+          pageSize: 50,
+          totalPages: 1,
+        }),
+    });
+
+    await emailListsModule._fetchPage(1);
+
+    const callBody = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(callBody.search).toBeDefined();
+    expect(callBody.search.term).toBe('winners');
+
+    emailListsModule._searchTerm = '';
+  });
+});
+
+describe('Email Lists Module - importFromCRM()', () => {
+  beforeEach(() => {
+    // Set up the CRM import elements
+    const existing = document.getElementById('crmSegmentSelect');
+    if (existing) existing.remove();
+    const existingContacts = document.getElementById('crmIncludeContacts');
+    if (existingContacts) existingContacts.remove();
+
+    const select = document.createElement('select');
+    select.id = 'crmSegmentSelect';
+    select.multiple = true;
+    select.innerHTML = `
+      <option value="sponsors">Sponsors</option>
+      <option value="vip_contacts">VIP Contacts</option>
+      <option value="renewal_prospects">Renewal Prospects</option>
+    `;
+    document.body.appendChild(select);
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.id = 'crmIncludeContacts';
+    document.body.appendChild(checkbox);
+
+    // Set up STATE.allOrganisations
+    STATE.allOrganisations = [
+      {
+        company_name: 'Sponsor Corp',
+        contact_email: 'sponsor@example.com',
+        is_sponsor: true,
+        vip: false,
+        contact_first_name: 'Sam',
+        contact_last_name: 'Sponsor',
+      },
+      {
+        company_name: 'VIP Ltd',
+        contact_email: 'vip@example.com',
+        is_sponsor: false,
+        vip: true,
+        contact_first_name: 'Vic',
+        contact_last_name: 'VIP',
+      },
+      {
+        company_name: 'Regular Co',
+        contact_email: 'regular@example.com',
+        is_sponsor: false,
+        vip: false,
+        contact_first_name: 'Reg',
+        contact_last_name: 'Regular',
+      },
+      { company_name: 'No Email Co', contact_email: null, is_sponsor: true, vip: true },
+    ];
+  });
+
+  afterEach(() => {
+    document.getElementById('crmSegmentSelect')?.remove();
+    document.getElementById('crmIncludeContacts')?.remove();
+    delete STATE.allOrganisations;
+  });
+
+  test('importFromCRM returns empty array when no segments selected', async () => {
+    const showToastSpy = jest.spyOn(utils, 'showToast');
+    const result = await emailListsModule.importFromCRM();
+    expect(result).toEqual([]);
+    expect(showToastSpy).toHaveBeenCalledWith(expect.stringContaining('at least one'), 'warning');
+    showToastSpy.mockRestore();
+  });
+
+  test('importFromCRM returns sponsors when sponsors segment selected', async () => {
+    const select = document.getElementById('crmSegmentSelect');
+    select.options[0].selected = true; // sponsors
+
+    const result = await emailListsModule.importFromCRM();
+    expect(result.length).toBe(1);
+    expect(result[0].email).toBe('sponsor@example.com');
+    expect(result[0].company_name).toBe('Sponsor Corp');
+  });
+
+  test('importFromCRM deduplicates results across segments', async () => {
+    const select = document.getElementById('crmSegmentSelect');
+    // Select sponsors and renewal_prospects (renewal_prospects includes all with email)
+    select.options[0].selected = true; // sponsors
+    select.options[2].selected = true; // renewal_prospects
+
+    const result = await emailListsModule.importFromCRM();
+    const emails = result.map((r) => r.email);
+    const unique = new Set(emails);
+    expect(emails.length).toBe(unique.size); // no duplicates
+  });
+
+  test('importFromCRM filters out entries without email', async () => {
+    const select = document.getElementById('crmSegmentSelect');
+    select.options[2].selected = true; // renewal_prospects - all with email
+
+    const result = await emailListsModule.importFromCRM();
+    expect(result.every((r) => r.email)).toBe(true);
+    expect(result.length).toBe(3); // 3 have emails, 1 doesn't
+  });
+});
+
+describe('Email Lists Module - openImportModal()', () => {
+  let originalFetch;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    originalFetch = global.fetch;
+    global.fetch = jest.fn();
+    global.AbortController = class {
+      constructor() {
+        this.signal = {};
+        this.abort = jest.fn();
+      }
+    };
+    mockSupabase.auth.getSession.mockResolvedValue({
+      data: { session: { access_token: 'test-token' } },
+      error: null,
+    });
+    document.getElementById('importModal')?.remove();
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+    mockSupabase.auth.getSession.mockResolvedValue({
+      data: { session: null },
+      error: null,
+    });
+    document.getElementById('importModal')?.remove();
+  });
+
+  test('openImportModal creates modal with import tabs', async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () =>
+        Promise.resolve({
+          data: [{ id: 'list-1', list_name: 'Test List' }],
+          count: 1,
+          page: 1,
+          pageSize: 1000,
+          totalPages: 1,
+        }),
+    });
+
+    await emailListsModule.openImportModal('list-1');
+
+    const modal = document.getElementById('importModal');
+    expect(modal).not.toBeNull();
+    expect(modal.innerHTML).toContain('Import Subscribers');
+    expect(modal.innerHTML).toContain('CSV Import');
+    expect(modal.innerHTML).toContain('Manual Entry');
+    expect(modal.innerHTML).toContain('From CRM');
+  });
+
+  test('openImportModal pre-selects list when listId provided', async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () =>
+        Promise.resolve({
+          data: [
+            { id: 'list-1', list_name: 'Test List' },
+            { id: 'list-2', list_name: 'Other List' },
+          ],
+          count: 2,
+          page: 1,
+          pageSize: 1000,
+          totalPages: 1,
+        }),
+    });
+
+    await emailListsModule.openImportModal('list-1');
+
+    const select = document.getElementById('importListSelect');
+    expect(select.value).toBe('list-1');
+    expect(select.disabled).toBe(true);
+  });
+
+  test('openImportModal removes existing modal before creating new one', async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () =>
+        Promise.resolve({
+          data: [],
+          count: 0,
+          page: 1,
+          pageSize: 1000,
+          totalPages: 0,
+        }),
+    });
+
+    await emailListsModule.openImportModal();
+    await emailListsModule.openImportModal();
+
+    const modals = document.querySelectorAll('#importModal');
+    expect(modals.length).toBe(1);
   });
 });

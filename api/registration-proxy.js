@@ -14,10 +14,7 @@
 
 const { createClient } = require('@supabase/supabase-js');
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
 function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -89,7 +86,9 @@ async function handleGetEvent(req, res) {
 
   const { data: event, error } = await supabase
     .from('events')
-    .select('id, event_name, event_date, event_time, venue_name, venue_address, venue, description, status, event_status, max_capacity, registration_open, registration_close, ticket_price')
+    .select(
+      'id, event_name, event_date, event_time, venue_name, venue_address, venue, description, status, event_status, max_capacity, registration_open, registration_close, ticket_price'
+    )
     .eq('id', eventId)
     .single();
 
@@ -135,16 +134,12 @@ async function handleRegisterGuest(req, res) {
       plus_ones: typeof guest.plus_ones === 'number' ? Math.min(Math.max(Math.floor(guest.plus_ones), 0), 20) : 0,
       notes: sanitizeString(guest.notes || '', 500) || null,
       status: 'registered',
-      registration_date: new Date().toISOString()
+      registration_date: new Date().toISOString(),
     });
   }
 
   // Verify event exists and has capacity
-  const { data: event } = await supabase
-    .from('events')
-    .select('id, max_capacity')
-    .eq('id', eventId)
-    .single();
+  const { data: event } = await supabase.from('events').select('id, max_capacity').eq('id', eventId).single();
 
   if (!event) {
     return res.status(404).json({ error: 'Event not found' });
@@ -164,6 +159,6 @@ async function handleRegisterGuest(req, res) {
   return res.status(200).json({
     success: true,
     registered: insertedGuests.length,
-    guests: insertedGuests
+    guests: insertedGuests,
   });
 }

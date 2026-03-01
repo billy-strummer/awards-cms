@@ -5,7 +5,8 @@
 
 const { JSDOM } = require('jsdom');
 
-const dom = new JSDOM(`<!DOCTYPE html><html><body>
+const dom = new JSDOM(
+  `<!DOCTYPE html><html><body>
   <div id="loadingBar" style="display:none;"></div>
   <div id="notificationToast"><span id="toastIcon"></span><span id="toastTitle"></span><span id="toastMessage"></span></div>
   <div id="connectionStatus"><span class="status-icon"></span><span class="status-text"></span></div>
@@ -19,7 +20,9 @@ const dom = new JSDOM(`<!DOCTYPE html><html><body>
   <table><tbody id="entriesTableBody"></tbody></table>
   <span id="awardsCount"></span><span id="eventsCount"></span><span id="winnersCount"></span>
   <div id="paymentContainer"></div>
-</body></html>`, { url: 'http://localhost' });
+</body></html>`,
+  { url: 'http://localhost' }
+);
 
 global.window = dom.window;
 global.document = dom.window.document;
@@ -28,50 +31,80 @@ global.navigator = dom.window.navigator;
 global.HTMLElement = dom.window.HTMLElement;
 
 global.bootstrap = {
-  Toast: class { show() {} hide() {} },
-  Modal: class { show() {} hide() {} static getInstance() { return { hide() {} }; } },
-  Tooltip: class {}
+  Toast: class {
+    show() {}
+    hide() {}
+  },
+  Modal: class {
+    show() {}
+    hide() {}
+    static getInstance() {
+      return { hide() {} };
+    }
+  },
+  Tooltip: class {},
 };
 
 // Mock Stripe
 global.Stripe = jest.fn(() => ({
-  redirectToCheckout: jest.fn(() => Promise.resolve({ error: null }))
+  redirectToCheckout: jest.fn(() => Promise.resolve({ error: null })),
 }));
 
 const mockSupabase = {
-  from: jest.fn(() => mockSupabase), select: jest.fn(() => mockSupabase),
-  insert: jest.fn(() => mockSupabase), update: jest.fn(() => mockSupabase),
-  delete: jest.fn(() => mockSupabase), eq: jest.fn(() => mockSupabase),
-  order: jest.fn(() => mockSupabase), range: jest.fn(() => mockSupabase),
+  from: jest.fn(() => mockSupabase),
+  select: jest.fn(() => mockSupabase),
+  insert: jest.fn(() => mockSupabase),
+  update: jest.fn(() => mockSupabase),
+  delete: jest.fn(() => mockSupabase),
+  eq: jest.fn(() => mockSupabase),
+  order: jest.fn(() => mockSupabase),
+  range: jest.fn(() => mockSupabase),
   limit: jest.fn(() => mockSupabase),
   single: jest.fn(() => Promise.resolve({ data: null, error: null })),
   rpc: jest.fn(() => Promise.resolve({ data: [], error: null })),
-  then: jest.fn(cb => cb({ data: [], error: null })),
+  then: jest.fn((cb) => cb({ data: [], error: null })),
   auth: {
     getSession: jest.fn(() => Promise.resolve({ data: { session: { access_token: 'test-token' } }, error: null })),
-    signOut: jest.fn(() => Promise.resolve({ error: null }))
+    signOut: jest.fn(() => Promise.resolve({ error: null })),
   },
-  channel: jest.fn(() => ({ on: jest.fn(function() { return this; }), subscribe: jest.fn(function() { return this; }) }))
+  channel: jest.fn(() => ({
+    on: jest.fn(function () {
+      return this;
+    }),
+    subscribe: jest.fn(function () {
+      return this;
+    }),
+  })),
 };
 global.supabase = { createClient: () => mockSupabase };
 global.window.supabase = global.supabase;
 global.fetch = jest.fn();
 
 require('../config.js');
-global.STATE = global.window.STATE; global.SUPABASE_CONFIG = global.window.SUPABASE_CONFIG;
-global.STATUS = global.window.STATUS; global.MEDIA_TYPES = global.window.MEDIA_TYPES;
-global.INACTIVITY_TIMEOUT = global.window.INACTIVITY_TIMEOUT; global.YEARS = global.window.YEARS;
-global.SECTORS = global.window.SECTORS; global.REGIONS = global.window.REGIONS;
+global.STATE = global.window.STATE;
+global.SUPABASE_CONFIG = global.window.SUPABASE_CONFIG;
+global.STATUS = global.window.STATUS;
+global.MEDIA_TYPES = global.window.MEDIA_TYPES;
+global.INACTIVITY_TIMEOUT = global.window.INACTIVITY_TIMEOUT;
+global.YEARS = global.window.YEARS;
+global.SECTORS = global.window.SECTORS;
+global.REGIONS = global.window.REGIONS;
 global.STATE.client = mockSupabase;
 
 // Mock rbacModule
 global.rbacModule = { guard: jest.fn(() => true), canAccess: jest.fn(() => true) };
 global.window.rbacModule = global.rbacModule;
 
-function syncWindowToGlobal() { for (const key of Object.keys(global.window)) { if (!(key in global) && typeof global.window[key] !== 'undefined') global[key] = global.window[key]; } }
+function syncWindowToGlobal() {
+  for (const key of Object.keys(global.window)) {
+    if (!(key in global) && typeof global.window[key] !== 'undefined') global[key] = global.window[key];
+  }
+}
 
-require('../utils.js'); syncWindowToGlobal();
-require('../stripe-frontend.js'); syncWindowToGlobal();
+require('../utils.js');
+syncWindowToGlobal();
+require('../stripe-frontend.js');
+syncWindowToGlobal();
 
 describe('Stripe Frontend - Structure', () => {
   test('stripeFrontend is defined', () => {
@@ -125,24 +158,27 @@ describe('Stripe Frontend - createCheckoutSession', () => {
   test('calls fetch with correct parameters', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ sessionId: 'sess_123', url: 'https://checkout.stripe.com/sess_123' })
+      json: () => Promise.resolve({ sessionId: 'sess_123', url: 'https://checkout.stripe.com/sess_123' }),
     });
 
     stripeFrontend.stripe = { redirectToCheckout: jest.fn().mockResolvedValue({ error: null }) };
 
     await stripeFrontend.createCheckoutSession('e1', 99.99, 'Entry Fee');
 
-    expect(fetch).toHaveBeenCalledWith('/api/create-checkout-session', expect.objectContaining({
-      method: 'POST',
-      headers: expect.objectContaining({ 'Content-Type': 'application/json' }),
-      body: expect.stringContaining('"entry_id":"e1"')
-    }));
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/create-checkout-session',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ 'Content-Type': 'application/json' }),
+        body: expect.stringContaining('"entry_id":"e1"'),
+      })
+    );
   });
 
   test('handles API error', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: false,
-      json: () => Promise.resolve({ error: 'Payment failed' })
+      json: () => Promise.resolve({ error: 'Payment failed' }),
     });
 
     const toastSpy = jest.spyOn(utils, 'showToast');
@@ -156,7 +192,7 @@ describe('Stripe Frontend - checkPaymentStatus', () => {
   test('returns payment status', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ status: 'paid', amount: 9999 })
+      json: () => Promise.resolve({ status: 'paid', amount: 9999 }),
     });
 
     const result = await stripeFrontend.checkPaymentStatus('e1');
@@ -278,10 +314,10 @@ describe('Stripe Frontend - createCheckoutSession Advanced', () => {
   test('converts amount to pence (integer)', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ sessionId: 'sess_123', url: 'https://checkout.stripe.com/sess_123' })
+      json: () => Promise.resolve({ sessionId: 'sess_123', url: 'https://checkout.stripe.com/sess_123' }),
     });
 
-    await stripeFrontend.createCheckoutSession('e1', 50.00, 'Test');
+    await stripeFrontend.createCheckoutSession('e1', 50.0, 'Test');
 
     const call = fetch.mock.calls[0];
     const body = JSON.parse(call[1].body);
@@ -291,10 +327,10 @@ describe('Stripe Frontend - createCheckoutSession Advanced', () => {
   test('uses default description when none provided', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ sessionId: 'sess_123', url: null })
+      json: () => Promise.resolve({ sessionId: 'sess_123', url: null }),
     });
 
-    await stripeFrontend.createCheckoutSession('e1', 50.00);
+    await stripeFrontend.createCheckoutSession('e1', 50.0);
 
     const call = fetch.mock.calls[0];
     const body = JSON.parse(call[1].body);
@@ -304,10 +340,10 @@ describe('Stripe Frontend - createCheckoutSession Advanced', () => {
   test('includes correct success and cancel URLs', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ sessionId: 'sess_123', url: null })
+      json: () => Promise.resolve({ sessionId: 'sess_123', url: null }),
     });
 
-    await stripeFrontend.createCheckoutSession('entry-42', 100.00, 'Fee');
+    await stripeFrontend.createCheckoutSession('entry-42', 100.0, 'Fee');
 
     const call = fetch.mock.calls[0];
     const body = JSON.parse(call[1].body);
@@ -321,7 +357,7 @@ describe('Stripe Frontend - createCheckoutSession Advanced', () => {
     global.fetch = jest.fn().mockRejectedValue(new Error('Network error'));
     const toastSpy = jest.spyOn(utils, 'showToast');
 
-    await stripeFrontend.createCheckoutSession('e1', 50.00, 'Fee');
+    await stripeFrontend.createCheckoutSession('e1', 50.0, 'Fee');
 
     expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('Network error'), 'error');
   });
@@ -332,11 +368,11 @@ describe('Stripe Frontend - createCheckoutSession Advanced', () => {
 
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ sessionId: null, url: 'https://checkout.stripe.com/redirect' })
+      json: () => Promise.resolve({ sessionId: null, url: 'https://checkout.stripe.com/redirect' }),
     });
 
     // This would normally redirect, but in JSDOM it sets location.href
-    await stripeFrontend.createCheckoutSession('e1', 50.00, 'Fee');
+    await stripeFrontend.createCheckoutSession('e1', 50.0, 'Fee');
     // Just verify no error was thrown
     expect(true).toBe(true);
   });
@@ -344,17 +380,17 @@ describe('Stripe Frontend - createCheckoutSession Advanced', () => {
   test('handles Stripe redirect error', async () => {
     stripeFrontend.stripe = {
       redirectToCheckout: jest.fn().mockResolvedValue({
-        error: { message: 'Redirect failed' }
-      })
+        error: { message: 'Redirect failed' },
+      }),
     };
 
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ sessionId: 'sess_fail', url: null })
+      json: () => Promise.resolve({ sessionId: 'sess_fail', url: null }),
     });
 
     const toastSpy = jest.spyOn(utils, 'showToast');
-    await stripeFrontend.createCheckoutSession('e1', 50.00, 'Fee');
+    await stripeFrontend.createCheckoutSession('e1', 50.0, 'Fee');
     expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('Redirect failed'), 'error');
   });
 
@@ -362,7 +398,7 @@ describe('Stripe Frontend - createCheckoutSession Advanced', () => {
     global.rbacModule.guard = jest.fn(() => false);
     global.fetch = jest.fn();
 
-    await stripeFrontend.createCheckoutSession('e1', 50.00, 'Fee');
+    await stripeFrontend.createCheckoutSession('e1', 50.0, 'Fee');
 
     expect(fetch).not.toHaveBeenCalled();
   });
@@ -370,10 +406,10 @@ describe('Stripe Frontend - createCheckoutSession Advanced', () => {
   test('sends entry_id in request body', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ sessionId: 'sess_123', url: null })
+      json: () => Promise.resolve({ sessionId: 'sess_123', url: null }),
     });
 
-    await stripeFrontend.createCheckoutSession('my-entry-id', 25.00, 'Fee');
+    await stripeFrontend.createCheckoutSession('my-entry-id', 25.0, 'Fee');
 
     const call = fetch.mock.calls[0];
     const body = JSON.parse(call[1].body);
@@ -383,10 +419,10 @@ describe('Stripe Frontend - createCheckoutSession Advanced', () => {
   test('sets Content-Type to application/json', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ sessionId: 'sess_123', url: null })
+      json: () => Promise.resolve({ sessionId: 'sess_123', url: null }),
     });
 
-    await stripeFrontend.createCheckoutSession('e1', 50.00, 'Fee');
+    await stripeFrontend.createCheckoutSession('e1', 50.0, 'Fee');
 
     const call = fetch.mock.calls[0];
     expect(call[1].headers['Content-Type']).toBe('application/json');
@@ -395,10 +431,10 @@ describe('Stripe Frontend - createCheckoutSession Advanced', () => {
   test('includes authorization header', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ sessionId: 'sess_123', url: null })
+      json: () => Promise.resolve({ sessionId: 'sess_123', url: null }),
     });
 
-    await stripeFrontend.createCheckoutSession('e1', 50.00, 'Fee');
+    await stripeFrontend.createCheckoutSession('e1', 50.0, 'Fee');
 
     const call = fetch.mock.calls[0];
     expect(call[1].headers['Authorization']).toContain('Bearer');
@@ -407,7 +443,7 @@ describe('Stripe Frontend - createCheckoutSession Advanced', () => {
   test('handles zero amount', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ sessionId: 'sess_123', url: null })
+      json: () => Promise.resolve({ sessionId: 'sess_123', url: null }),
     });
 
     await stripeFrontend.createCheckoutSession('e1', 0, 'Free Entry');
@@ -420,7 +456,7 @@ describe('Stripe Frontend - createCheckoutSession Advanced', () => {
   test('handles large amount', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ sessionId: 'sess_123', url: null })
+      json: () => Promise.resolve({ sessionId: 'sess_123', url: null }),
     });
 
     await stripeFrontend.createCheckoutSession('e1', 99999.99, 'Premium');
@@ -433,7 +469,7 @@ describe('Stripe Frontend - createCheckoutSession Advanced', () => {
   test('handles decimal amount correctly', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ sessionId: 'sess_123', url: null })
+      json: () => Promise.resolve({ sessionId: 'sess_123', url: null }),
     });
 
     await stripeFrontend.createCheckoutSession('e1', 49.95, 'Fee');
@@ -452,7 +488,7 @@ describe('Stripe Frontend - checkPaymentStatus Advanced', () => {
   test('calls correct API endpoint', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ status: 'paid' })
+      json: () => Promise.resolve({ status: 'paid' }),
     });
 
     await stripeFrontend.checkPaymentStatus('entry-99');
@@ -462,7 +498,7 @@ describe('Stripe Frontend - checkPaymentStatus Advanced', () => {
   test('includes authorization header', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ status: 'paid' })
+      json: () => Promise.resolve({ status: 'paid' }),
     });
 
     await stripeFrontend.checkPaymentStatus('e1');
@@ -473,7 +509,7 @@ describe('Stripe Frontend - checkPaymentStatus Advanced', () => {
   test('returns full response data', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ status: 'paid', amount: 5000, currency: 'gbp' })
+      json: () => Promise.resolve({ status: 'paid', amount: 5000, currency: 'gbp' }),
     });
 
     const result = await stripeFrontend.checkPaymentStatus('e1');
@@ -513,7 +549,7 @@ describe('Stripe Frontend - renderPaymentButton Advanced', () => {
   test('renders button with correct amount formatting', () => {
     localStorage.setItem('bta_stripe_pk', 'pk_test_123');
     const container = document.getElementById('paymentContainer');
-    stripeFrontend.renderPaymentButton('e1', 150.50, 'paymentContainer');
+    stripeFrontend.renderPaymentButton('e1', 150.5, 'paymentContainer');
     expect(container.innerHTML).toContain('150.50');
   });
 
@@ -617,10 +653,10 @@ describe('Stripe Frontend - apiBase Configuration', () => {
 
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ sessionId: 'sess_123', url: null })
+      json: () => Promise.resolve({ sessionId: 'sess_123', url: null }),
     });
 
-    await stripeFrontend.createCheckoutSession('e1', 50.00, 'Fee');
+    await stripeFrontend.createCheckoutSession('e1', 50.0, 'Fee');
     expect(fetch).toHaveBeenCalledWith('https://api.custom.com/create-checkout-session', expect.any(Object));
 
     stripeFrontend.apiBase = original;
@@ -632,7 +668,7 @@ describe('Stripe Frontend - apiBase Configuration', () => {
 
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ status: 'paid' })
+      json: () => Promise.resolve({ status: 'paid' }),
     });
 
     await stripeFrontend.checkPaymentStatus('e1');

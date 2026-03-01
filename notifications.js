@@ -34,8 +34,7 @@ const notificationsModule = {
     const li = document.createElement('li');
     li.id = 'notif-bell-wrapper';
     li.className = 'nav-item dropdown ms-2 position-relative';
-    li.innerHTML =
-      `<a class="nav-link p-1" id="notifBellBtn" href="#" data-bs-toggle="dropdown"
+    li.innerHTML = `<a class="nav-link p-1" id="notifBellBtn" href="#" data-bs-toggle="dropdown"
           aria-expanded="false" title="Notifications" style="line-height:1"
           data-action="notificationsModule.renderNotificationDropdown">
          <i class="bi bi-bell fs-5"></i>
@@ -68,13 +67,18 @@ const notificationsModule = {
    */
   _subscribeRealtime() {
     const email = STATE.currentUser.email;
-    this._realtimeChannel = STATE.client.channel('notifications')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications',
-          filter: `user_email=eq.${email}` }, payload => {
-        this._unreadCount++;
-        this._updateBadge();
-        utils.showToast(payload.new.message, 'info', payload.new.title);
-      }).subscribe();
+    this._realtimeChannel = STATE.client
+      .channel('notifications')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_email=eq.${email}` },
+        (payload) => {
+          this._unreadCount++;
+          this._updateBadge();
+          utils.showToast(payload.new.message, 'info', payload.new.title);
+        }
+      )
+      .subscribe();
   },
 
   /**
@@ -89,12 +93,14 @@ const notificationsModule = {
         filters: { user_email: STATE.currentUser.email },
         sort: { column: 'created_at', ascending: false },
         page: 1,
-        pageSize: this._pagination.pageSize
+        pageSize: this._pagination.pageSize,
       });
       this._pagination = { ...this._pagination, ...result, page: 1 };
-      this._unreadCount = (result.data || []).filter(n => !n.is_read).length;
+      this._unreadCount = (result.data || []).filter((n) => !n.is_read).length;
       this._updateBadge();
-    } catch (e) { console.error('Notifications fetch error:', e.message); }
+    } catch (e) {
+      console.error('Notifications fetch error:', e.message);
+    }
   },
 
   /**
@@ -109,7 +115,7 @@ const notificationsModule = {
       filters: { ...filters, user_email: STATE.currentUser.email },
       sort: { column: 'created_at', ascending: false },
       page,
-      pageSize: this._pagination.pageSize
+      pageSize: this._pagination.pageSize,
     });
     this._pagination = { ...this._pagination, ...result, page };
     return result.data;
@@ -119,14 +125,18 @@ const notificationsModule = {
    * Navigate to a specific page and re-render the notification dropdown.
    * @param {number} page - The page number to navigate to
    */
-  _goToPage(page) { this._fetchPage(page).then(() => this.renderNotificationDropdown()); },
+  _goToPage(page) {
+    this._fetchPage(page).then(() => this.renderNotificationDropdown());
+  },
 
   /**
    * Build server-side filters for notification queries.
    * @returns {Object} Filter object
    * @private
    */
-  _buildServerFilters() { return {}; },
+  _buildServerFilters() {
+    return {};
+  },
 
   /**
    * Render the notification dropdown panel with current notifications.
@@ -142,14 +152,18 @@ const notificationsModule = {
         filters: { user_email: STATE.currentUser.email },
         sort: { column: 'created_at', ascending: false },
         page: this._pagination.page,
-        pageSize: 20
+        pageSize: 20,
       });
       const data = result.data;
       this._pagination = { ...this._pagination, ...result };
-      const esc = s => (utils.escapeHtml ? utils.escapeHtml(s) : s);
-      const icon = { judge_assigned:'bi-person-check text-primary', scores_due:'bi-clock-history text-warning',
-        conflict_review:'bi-exclamation-triangle text-danger', shortlist_ready:'bi-list-stars text-success',
-        winner_confirmed:'bi-trophy text-warning' };
+      const esc = (s) => (utils.escapeHtml ? utils.escapeHtml(s) : s);
+      const icon = {
+        judge_assigned: 'bi-person-check text-primary',
+        scores_due: 'bi-clock-history text-warning',
+        conflict_review: 'bi-exclamation-triangle text-danger',
+        shortlist_ready: 'bi-list-stars text-success',
+        winner_confirmed: 'bi-trophy text-warning',
+      };
       const header = `<div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom bg-light">
         <span class="fw-semibold small">Notifications</span>
         <div class="d-flex gap-2">
@@ -159,13 +173,17 @@ const notificationsModule = {
              data-action="notificationsModule.renderPreferences">
             <i class="bi bi-gear"></i></a></div></div>`;
       const items = data || [];
-      const rows = items.length === 0
-        ? `<div class="text-center text-muted py-4 small">No notifications</div>`
-        : items.map(n => {
-            const ic = icon[n.type] || 'bi-bell text-secondary';
-            const dot = n.is_read ? '' : `<span class="badge rounded-pill bg-primary ms-1" style="font-size:.5rem">&nbsp;</span>`;
-            const href = n.link ? `href="${n.link}"` : 'href="#"';
-            return `<div class="d-flex align-items-start px-3 py-2 border-bottom ${n.is_read ? '' : 'bg-light'}" id="notif-${n.id}">
+      const rows =
+        items.length === 0
+          ? `<div class="text-center text-muted py-4 small">No notifications</div>`
+          : items
+              .map((n) => {
+                const ic = icon[n.type] || 'bi-bell text-secondary';
+                const dot = n.is_read
+                  ? ''
+                  : `<span class="badge rounded-pill bg-primary ms-1" style="font-size:.5rem">&nbsp;</span>`;
+                const href = n.link ? `href="${n.link}"` : 'href="#"';
+                return `<div class="d-flex align-items-start px-3 py-2 border-bottom ${n.is_read ? '' : 'bg-light'}" id="notif-${n.id}">
               <i class="bi ${ic} me-2 mt-1 flex-shrink-0"></i>
               <div class="flex-grow-1 overflow-hidden">
                 <div class="d-flex justify-content-between align-items-start">
@@ -178,7 +196,8 @@ const notificationsModule = {
                 <p class="mb-0 text-muted small text-truncate">${esc(n.message)}</p>
                 <span class="text-muted" style="font-size:.7rem">${this._timeAgo(n.created_at)}</span>
               </div></div>`;
-          }).join('');
+              })
+              .join('');
       panel.innerHTML = header + rows;
     } catch (e) {
       panel.innerHTML = `<div class="text-danger small px-3 py-2">Failed to load notifications.</div>`;
@@ -199,10 +218,18 @@ const notificationsModule = {
   async _insert(userEmail, type, title, message, link = null) {
     try {
       if (!(await this._isPrefEnabled(userEmail, type))) return;
-      await apiClient.insert('notifications',
-        { user_email: userEmail, type, title, message, link, is_read: false,
-          created_at: new Date().toISOString() });
-    } catch (e) { console.error('Notification insert error:', e.message); }
+      await apiClient.insert('notifications', {
+        user_email: userEmail,
+        type,
+        title,
+        message,
+        link,
+        is_read: false,
+        created_at: new Date().toISOString(),
+      });
+    } catch (e) {
+      console.error('Notification insert error:', e.message);
+    }
   },
 
   /**
@@ -213,8 +240,13 @@ const notificationsModule = {
    */
   async notifyJudgeAssigned(judgeEmail, entryIds) {
     const n = Array.isArray(entryIds) ? entryIds.length : entryIds;
-    await this._insert(judgeEmail, 'judge_assigned', 'New Entries Assigned',
-      `You have been assigned ${n} new entr${n === 1 ? 'y' : 'ies'} to judge.`, '#assignments');
+    await this._insert(
+      judgeEmail,
+      'judge_assigned',
+      'New Entries Assigned',
+      `You have been assigned ${n} new entr${n === 1 ? 'y' : 'ies'} to judge.`,
+      '#assignments'
+    );
   },
 
   /**
@@ -224,11 +256,17 @@ const notificationsModule = {
    * @returns {Promise<void>}
    */
   async notifyScoresDue(judgeEmail, deadline) {
-    const when = deadline instanceof Date
-      ? deadline.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-      : deadline;
-    await this._insert(judgeEmail, 'scores_due', 'Scoring Deadline Approaching',
-      `Your scores are due by ${when}. Please complete your assessments.`, '#assignments');
+    const when =
+      deadline instanceof Date
+        ? deadline.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+        : deadline;
+    await this._insert(
+      judgeEmail,
+      'scores_due',
+      'Scoring Deadline Approaching',
+      `Your scores are due by ${when}. Please complete your assessments.`,
+      '#assignments'
+    );
   },
 
   /**
@@ -239,9 +277,13 @@ const notificationsModule = {
    * @returns {Promise<void>}
    */
   async notifyConflictReview(adminEmail, judgeEmail, entryId) {
-    await this._insert(adminEmail, 'conflict_review', 'Conflict of Interest Requires Review',
+    await this._insert(
+      adminEmail,
+      'conflict_review',
+      'Conflict of Interest Requires Review',
       `Judge ${judgeEmail} has flagged a conflict with entry #${entryId}. Please reassign.`,
-      `#assignments?entry=${entryId}`);
+      `#assignments?entry=${entryId}`
+    );
   },
 
   /**
@@ -251,9 +293,13 @@ const notificationsModule = {
    * @returns {Promise<void>}
    */
   async notifyShortlistReady(adminEmail, awardId) {
-    await this._insert(adminEmail, 'shortlist_ready', 'Shortlist Ready for Review',
+    await this._insert(
+      adminEmail,
+      'shortlist_ready',
+      'Shortlist Ready for Review',
       `The shortlist for award #${awardId} has been compiled and is ready for your review.`,
-      `#awards?id=${awardId}`);
+      `#awards?id=${awardId}`
+    );
   },
 
   /**
@@ -264,8 +310,17 @@ const notificationsModule = {
    */
   async notifyWinnerConfirmed(teamEmails, winnerId) {
     const emails = Array.isArray(teamEmails) ? teamEmails : [teamEmails];
-    await Promise.allSettled(emails.map(e => this._insert(e, 'winner_confirmed', 'Winner Confirmed',
-      `Winner entry #${winnerId} has been confirmed. Congratulations!`, `#winners?id=${winnerId}`)));
+    await Promise.allSettled(
+      emails.map((e) =>
+        this._insert(
+          e,
+          'winner_confirmed',
+          'Winner Confirmed',
+          `Winner entry #${winnerId} has been confirmed. Congratulations!`,
+          `#winners?id=${winnerId}`
+        )
+      )
+    );
   },
 
   /**
@@ -275,14 +330,18 @@ const notificationsModule = {
    */
   async markRead(notificationId) {
     try {
-      await apiClient.updateByFilters('notifications',
+      await apiClient.updateByFilters(
+        'notifications',
         { id: notificationId, user_email: STATE.currentUser.email },
-        { is_read: true });
+        { is_read: true }
+      );
       const el = document.getElementById(`notif-${notificationId}`);
       if (el) el.classList.remove('bg-light');
       if (this._unreadCount > 0) this._unreadCount--;
       this._updateBadge();
-    } catch (e) { console.error('markRead error:', e.message); }
+    } catch (e) {
+      console.error('markRead error:', e.message);
+    }
   },
 
   /**
@@ -291,14 +350,18 @@ const notificationsModule = {
    */
   async markAllRead() {
     try {
-      await apiClient.updateByFilters('notifications',
+      await apiClient.updateByFilters(
+        'notifications',
         { user_email: STATE.currentUser.email, is_read: false },
-        { is_read: true });
+        { is_read: true }
+      );
       this._unreadCount = 0;
       this._updateBadge();
       await this.renderNotificationDropdown();
       utils.showToast('All notifications marked as read.', 'success');
-    } catch (e) { console.error('markAllRead error:', e.message); }
+    } catch (e) {
+      console.error('markAllRead error:', e.message);
+    }
   },
 
   /**
@@ -310,21 +373,22 @@ const notificationsModule = {
     try {
       const el = document.getElementById(`notif-${notificationId}`);
       const wasUnread = el?.classList.contains('bg-light');
-      await apiClient.deleteByFilters('notifications',
-        { id: notificationId, user_email: STATE.currentUser.email });
+      await apiClient.deleteByFilters('notifications', { id: notificationId, user_email: STATE.currentUser.email });
       if (el) el.remove();
       if (wasUnread && this._unreadCount > 0) this._unreadCount--;
       this._updateBadge();
-    } catch (e) { console.error('dismissNotification error:', e.message); }
+    } catch (e) {
+      console.error('dismissNotification error:', e.message);
+    }
   },
 
   /** @type {Array<{type: string, label: string}>} Available notification preference types */
   _prefTypes: [
-    { type: 'judge_assigned',   label: 'New entries assigned to me' },
-    { type: 'scores_due',       label: 'Scoring deadline reminders' },
-    { type: 'conflict_review',  label: 'Conflict of interest alerts' },
-    { type: 'shortlist_ready',  label: 'Shortlist ready for review' },
-    { type: 'winner_confirmed', label: 'Winner confirmations' }
+    { type: 'judge_assigned', label: 'New entries assigned to me' },
+    { type: 'scores_due', label: 'Scoring deadline reminders' },
+    { type: 'conflict_review', label: 'Conflict of interest alerts' },
+    { type: 'shortlist_ready', label: 'Shortlist ready for review' },
+    { type: 'winner_confirmed', label: 'Winner confirmations' },
   ],
 
   /**
@@ -339,10 +403,12 @@ const notificationsModule = {
       const { data } = await apiClient.select('notification_preferences', {
         select: 'enabled',
         filters: { user_email: userEmail, type },
-        pageSize: 1
+        pageSize: 1,
       });
       return data?.[0] ? data[0].enabled : true;
-    } catch { return true; }
+    } catch {
+      return true;
+    }
   },
 
   /**
@@ -356,23 +422,30 @@ const notificationsModule = {
       const { data } = await apiClient.select('notification_preferences', {
         select: 'type, enabled',
         filters: { user_email: email },
-        pageSize: 100
+        pageSize: 100,
       });
-      (data || []).forEach(p => { prefs[p.type] = p.enabled; });
-    } catch (e) { console.error('Prefs load error:', e.message); }
+      (data || []).forEach((p) => {
+        prefs[p.type] = p.enabled;
+      });
+    } catch (e) {
+      console.error('Prefs load error:', e.message);
+    }
 
-    const rows = this._prefTypes.map(({ type, label }) =>
-      `<div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+    const rows = this._prefTypes
+      .map(
+        ({ type, label }) =>
+          `<div class="d-flex justify-content-between align-items-center py-2 border-bottom">
          <span class="small">${label}</span>
          <div class="form-check form-switch mb-0">
            <input class="form-check-input" type="checkbox" role="switch" id="pref-${type}"
                   ${prefs[type] !== false ? 'checked' : ''}
-                  onchange="notificationsModule._savePref('${type}',this.checked)">
-         </div></div>`).join('');
+                  data-on-change="notificationsModule._saveNotifPrefFromChange" data-id="${type}">
+         </div></div>`
+      )
+      .join('');
 
     const wrap = document.createElement('div');
-    wrap.innerHTML =
-      `<div class="modal fade" tabindex="-1" id="notifPrefModal">
+    wrap.innerHTML = `<div class="modal fade" tabindex="-1" id="notifPrefModal">
          <div class="modal-dialog modal-sm"><div class="modal-content">
            <div class="modal-header py-2">
              <h6 class="modal-title mb-0"><i class="bi bi-bell-slash me-1"></i>Notification Preferences</h6>
@@ -396,13 +469,22 @@ const notificationsModule = {
    */
   async _savePref(type, enabled) {
     try {
-      await apiClient.upsert('notification_preferences',
-        { user_email: STATE.currentUser.email, type, enabled,
-          created_at: new Date().toISOString() }, { onConflict: 'user_email,type' });
+      await apiClient.upsert(
+        'notification_preferences',
+        { user_email: STATE.currentUser.email, type, enabled, created_at: new Date().toISOString() },
+        { onConflict: 'user_email,type' }
+      );
     } catch (e) {
       utils.showToast('Failed to save preference.', 'error');
       console.error('_savePref error:', e.message);
     }
+  },
+
+  /**
+   * Wrapper for _savePref called via data-on-change (receives id, value, event).
+   */
+  _saveNotifPrefFromChange(id, _value, event) {
+    this._savePref(id, event.target.checked);
   },
 
   /**
@@ -415,11 +497,11 @@ const notificationsModule = {
     const d = utils.safeDate(isoString);
     if (!d) return '';
     const diff = Math.floor((Date.now() - d) / 1000);
-    if (diff < 60)    return 'Just now';
-    if (diff < 3600)  return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 60) return 'Just now';
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
     if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
     return `${Math.floor(diff / 86400)}d ago`;
-  }
+  },
 };
 ModuleRegistry.register('notificationsModule', notificationsModule);
 

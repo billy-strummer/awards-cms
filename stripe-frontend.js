@@ -47,15 +47,15 @@ const stripeFrontend = {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${(await STATE.client.auth.getSession()).data.session?.access_token}`
+          Authorization: `Bearer ${(await STATE.client.auth.getSession()).data.session?.access_token}`,
         },
         body: JSON.stringify({
           entry_id: entryId,
           amount: Math.round(amount * 100), // Convert to pence
           description: description || 'British Trade Awards Entry Fee',
           success_url: `${window.location.origin}/payment-success?entry=${entryId}`,
-          cancel_url: `${window.location.origin}/payment-cancelled?entry=${entryId}`
-        })
+          cancel_url: `${window.location.origin}/payment-cancelled?entry=${entryId}`,
+        }),
       });
 
       if (!response.ok) {
@@ -72,7 +72,6 @@ const stripeFrontend = {
       } else if (url) {
         window.location.href = url;
       }
-
     } catch (error) {
       console.error('Stripe checkout error:', error);
       utils.showToast('Payment failed: ' + error.message, 'error');
@@ -90,15 +89,14 @@ const stripeFrontend = {
     try {
       const response = await fetch(`${this.apiBase}/payment-status/${entryId}`, {
         headers: {
-          'Authorization': `Bearer ${(await STATE.client.auth.getSession()).data.session?.access_token}`
-        }
+          Authorization: `Bearer ${(await STATE.client.auth.getSession()).data.session?.access_token}`,
+        },
       });
 
       if (!response.ok) throw new Error('Failed to check status');
 
       const data = await response.json();
       return data;
-
     } catch (error) {
       console.error('Payment status check error:', error);
       return { status: 'unknown', error: error.message };
@@ -133,7 +131,7 @@ const stripeFrontend = {
         <i class="bi bi-arrow-clockwise me-1"></i>Check Status
       </button>
     `;
-  }
+  },
 };
 
 ModuleRegistry.register('stripeFrontend', stripeFrontend);

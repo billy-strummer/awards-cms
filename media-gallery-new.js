@@ -43,7 +43,6 @@ const mediaGalleryModule = {
 
       // Load and display events list
       await this.showEventsListView();
-
     } catch (error) {
       console.error('Error initializing media gallery:', error);
       utils.showErrorWithRetry(error, 'loading media gallery', () => this.initialize());
@@ -82,7 +81,7 @@ const mediaGalleryModule = {
         .select('event_id')
         .not('event_id', 'is', null);
 
-      const uniqueEvents = new Set(eventsWithMedia?.map(m => m.event_id));
+      const uniqueEvents = new Set(eventsWithMedia?.map((m) => m.event_id));
 
       // Update UI elements (if they exist on current page)
       const totalPhotosEl = document.getElementById('totalPhotosCount');
@@ -109,7 +108,6 @@ const mediaGalleryModule = {
       if (dashboardUntagged) {
         dashboardUntagged.textContent = untaggedPhotos || 0;
       }
-
     } catch (error) {
       console.error('Error loading media statistics:', error);
     }
@@ -125,12 +123,14 @@ const mediaGalleryModule = {
       // Load untagged photos
       const { data: untagged, error } = await STATE.client
         .from('media_items')
-        .select(`
+        .select(
+          `
           *,
           organisations(company_name),
           awards:award_years(award_name),
           events(event_name)
-        `)
+        `
+        )
         .eq('media_type', 'image')
         .or('organisation_id.is.null,award_id.is.null')
         .order('uploaded_at', { ascending: false });
@@ -170,7 +170,9 @@ const mediaGalleryModule = {
         </div>
 
         <div class="row g-3">
-          ${untagged.map(photo => `
+          ${untagged
+            .map(
+              (photo) => `
             <div class="col-md-3">
               <div class="card h-100">
                 <img src="${photo.file_url}" class="card-img-top" alt="${photo.caption || 'Photo'}"
@@ -196,12 +198,13 @@ const mediaGalleryModule = {
                 </div>
               </div>
             </div>
-          `).join('')}
+          `
+            )
+            .join('')}
         </div>
       `;
 
       utils.showToast(`Found ${untagged.length} untagged photo(s)`, 'info');
-
     } catch (error) {
       console.error('Error loading untagged photos:', error);
       utils.showToast('Failed to load untagged photos: ' + error.message, 'error');
@@ -225,10 +228,10 @@ const mediaGalleryModule = {
 
       // Use already-loaded orgs and awards for dropdowns
       const orgs = (STATE.allOrganisations || [])
-        .map(o => ({ id: o.id, company_name: o.company_name }))
+        .map((o) => ({ id: o.id, company_name: o.company_name }))
         .sort((a, b) => (a.company_name || '').localeCompare(b.company_name || ''));
       const awards = (STATE.allAwards || [])
-        .map(a => ({ id: a.id, award_name: a.award_name }))
+        .map((a) => ({ id: a.id, award_name: a.award_name }))
         .sort((a, b) => (a.award_name || '').localeCompare(b.award_name || ''));
 
       const html = `
@@ -249,14 +252,14 @@ const mediaGalleryModule = {
                   <label class="form-label">Organisation</label>
                   <select class="form-select" id="editTagPhotoOrg">
                     <option value="">-- None --</option>
-                    ${(orgs || []).map(o => `<option value="${o.id}" ${photo.organisation_id === o.id ? 'selected' : ''}>${utils.escapeHtml(o.company_name)}</option>`).join('')}
+                    ${(orgs || []).map((o) => `<option value="${o.id}" ${photo.organisation_id === o.id ? 'selected' : ''}>${utils.escapeHtml(o.company_name)}</option>`).join('')}
                   </select>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Award</label>
                   <select class="form-select" id="editTagPhotoAward">
                     <option value="">-- None --</option>
-                    ${(awards || []).map(a => `<option value="${a.id}" ${photo.award_id === a.id ? 'selected' : ''}>${utils.escapeHtml(a.award_name)}</option>`).join('')}
+                    ${(awards || []).map((a) => `<option value="${a.id}" ${photo.award_id === a.id ? 'selected' : ''}>${utils.escapeHtml(a.award_name)}</option>`).join('')}
                   </select>
                 </div>
               </div>
@@ -319,7 +322,6 @@ const mediaGalleryModule = {
       if (error) throw error;
 
       await this.renderEventsList(events || []);
-
     } catch (error) {
       console.error('Error loading events:', error);
       document.getElementById('eventsListContainer').innerHTML = `
@@ -347,31 +349,34 @@ const mediaGalleryModule = {
     }
 
     // Get media counts for each event
-    const eventsWithCounts = await Promise.all(events.map(async (event) => {
-      const { count: photoCount } = await STATE.client
-        .from('media_items')
-        .select('*', { count: 'exact', head: true })
-        .eq('event_id', event.id)
-        .eq('media_type', 'image');
+    const eventsWithCounts = await Promise.all(
+      events.map(async (event) => {
+        const { count: photoCount } = await STATE.client
+          .from('media_items')
+          .select('*', { count: 'exact', head: true })
+          .eq('event_id', event.id)
+          .eq('media_type', 'image');
 
-      const { count: videoCount } = await STATE.client
-        .from('media_items')
-        .select('*', { count: 'exact', head: true })
-        .eq('event_id', event.id)
-        .eq('media_type', 'video');
+        const { count: videoCount } = await STATE.client
+          .from('media_items')
+          .select('*', { count: 'exact', head: true })
+          .eq('event_id', event.id)
+          .eq('media_type', 'video');
 
-      return {
-        ...event,
-        photoCount: photoCount || 0,
-        videoCount: videoCount || 0
-      };
-    }));
+        return {
+          ...event,
+          photoCount: photoCount || 0,
+          videoCount: videoCount || 0,
+        };
+      })
+    );
 
-    container.innerHTML = eventsWithCounts.map(event => {
-      const eventDate = event.event_date ? new Date(event.event_date).toLocaleDateString() : 'Date TBD';
-      const totalMedia = event.photoCount + event.videoCount;
+    container.innerHTML = eventsWithCounts
+      .map((event) => {
+        const eventDate = event.event_date ? new Date(event.event_date).toLocaleDateString() : 'Date TBD';
+        const totalMedia = event.photoCount + event.videoCount;
 
-      return `
+        return `
         <div class="col-md-6 col-lg-4">
           <div class="card h-100" style="cursor: pointer;" data-action="mediaGalleryModule.showEventContentsView" data-id="event.id">
             <div class="card-body">
@@ -409,7 +414,8 @@ const mediaGalleryModule = {
           </div>
         </div>
       `;
-    }).join('');
+      })
+      .join('');
   },
 
   /**
@@ -451,7 +457,6 @@ const mediaGalleryModule = {
 
       document.getElementById('eventPhotosCount').textContent = photoCount || 0;
       document.getElementById('eventVideosCount').textContent = videoCount || 0;
-
     } catch (error) {
       console.error('Error loading event contents:', error);
       utils.showToast('Error loading event contents', 'error');
@@ -490,13 +495,15 @@ const mediaGalleryModule = {
       if (secError) throw secError;
 
       // Load all photos across all sections for stats
-      const sectionIds = (sections || []).map(s => s.id);
+      const sectionIds = (sections || []).map((s) => s.id);
       let allPhotos = [];
       if (sectionIds.length > 0) {
         let photos, pError;
         ({ data: photos, error: pError } = await STATE.client
           .from('media_gallery')
-          .select('*, organisations!media_gallery_organisation_id_fkey(*), awards:award_years!media_gallery_award_id_fkey(*)')
+          .select(
+            '*, organisations!media_gallery_organisation_id_fkey(*), awards:award_years!media_gallery_award_id_fkey(*)'
+          )
           .in('gallery_section_id', sectionIds)
           .order('display_order'));
         // Fall back if FK relationships missing
@@ -512,15 +519,15 @@ const mediaGalleryModule = {
         allPhotos = photos || [];
       }
 
-      const published = allPhotos.filter(p => p.published !== false).length;
-      const drafts = allPhotos.filter(p => p.published === false).length;
-      const featured = allPhotos.filter(p => p.featured).length;
-      const untagged = allPhotos.filter(p => !p.organisation_id && !p.award_id).length;
-      const photographers = [...new Set(allPhotos.filter(p => p.photographer).map(p => p.photographer))];
+      const published = allPhotos.filter((p) => p.published !== false).length;
+      const drafts = allPhotos.filter((p) => p.published === false).length;
+      const featured = allPhotos.filter((p) => p.featured).length;
+      const untagged = allPhotos.filter((p) => !p.organisation_id && !p.award_id).length;
+      const photographers = [...new Set(allPhotos.filter((p) => p.photographer).map((p) => p.photographer))];
 
       // Group photos by section
       const photosBySection = {};
-      allPhotos.forEach(p => {
+      allPhotos.forEach((p) => {
         if (!photosBySection[p.gallery_section_id]) photosBySection[p.gallery_section_id] = [];
         photosBySection[p.gallery_section_id].push(p);
       });
@@ -545,10 +552,14 @@ const mediaGalleryModule = {
           </div></div></div>
         </div>
 
-        ${photographers.length > 0 ? `
+        ${
+          photographers.length > 0
+            ? `
         <div class="mb-3">
-          <small class="text-muted"><i class="bi bi-camera me-1"></i>Photographers: ${photographers.map(p => `<span class="badge bg-light text-dark me-1">${utils.escapeHtml(p)}</span>`).join('')}</small>
-        </div>` : ''}
+          <small class="text-muted"><i class="bi bi-camera me-1"></i>Photographers: ${photographers.map((p) => `<span class="badge bg-light text-dark me-1">${utils.escapeHtml(p)}</span>`).join('')}</small>
+        </div>`
+            : ''
+        }
 
         <!-- Quick Actions -->
         <div class="d-flex gap-2 mb-4 flex-wrap">
@@ -563,12 +574,16 @@ const mediaGalleryModule = {
         </div>
 
         <!-- Sections with Photo Thumbnails -->
-        ${(sections || []).length === 0 ? `
+        ${
+          (sections || []).length === 0
+            ? `
           <div class="alert alert-info"><i class="bi bi-info-circle me-2"></i>No gallery sections yet. Click "Add Section" to create sections like "Drinks Reception", "Award Winners", etc.</div>
-        ` : (sections || []).map(section => {
-          const sectionPhotos = photosBySection[section.id] || [];
-          const sectionPublished = sectionPhotos.filter(p => p.published !== false).length;
-          return `
+        `
+            : (sections || [])
+                .map((section) => {
+                  const sectionPhotos = photosBySection[section.id] || [];
+                  const sectionPublished = sectionPhotos.filter((p) => p.published !== false).length;
+                  return `
           <div class="card mb-3">
             <div class="card-header d-flex justify-content-between align-items-center" style="cursor:pointer;" data-action="mediaGalleryModule.viewSectionPhotos" data-args='${JSON.stringify([section.id, utils.escapeHtml(section.gallery_name)])}'>
               <div>
@@ -583,24 +598,34 @@ const mediaGalleryModule = {
                 <button class="btn btn-sm btn-outline-secondary" data-action="mediaGalleryModule.editSection" data-id="${section.id}" data-stop-propagation="true"><i class="bi bi-pencil"></i></button>
               </div>
             </div>
-            ${sectionPhotos.length > 0 ? `
+            ${
+              sectionPhotos.length > 0
+                ? `
             <div class="card-body py-2">
               <div class="d-flex gap-2 overflow-auto pb-2" style="scrollbar-width:thin;">
-                ${sectionPhotos.slice(0, 12).map(p => {
-                  const isYT = p.file_type === 'video/youtube';
-                  const thumb = isYT ? `https://img.youtube.com/vi/${p.file_url}/mqdefault.jpg` : p.thumbnail_url || p.file_url;
-                  return `<div style="min-width:80px;width:80px;height:60px;border-radius:6px;overflow:hidden;flex-shrink:0;cursor:pointer;position:relative;${!p.published ? 'opacity:0.5;' : ''}"
-                    data-action="mediaGalleryModule.viewPhotoFull" data-args='${JSON.stringify([p.id, p.file_url, p.title || "", isYT ? "youtube" : "image"])}'>
+                ${sectionPhotos
+                  .slice(0, 12)
+                  .map((p) => {
+                    const isYT = p.file_type === 'video/youtube';
+                    const thumb = isYT
+                      ? `https://img.youtube.com/vi/${p.file_url}/mqdefault.jpg`
+                      : p.thumbnail_url || p.file_url;
+                    return `<div style="min-width:80px;width:80px;height:60px;border-radius:6px;overflow:hidden;flex-shrink:0;cursor:pointer;position:relative;${!p.published ? 'opacity:0.5;' : ''}"
+                    data-action="mediaGalleryModule.viewPhotoFull" data-args='${JSON.stringify([p.id, p.file_url, p.title || '', isYT ? 'youtube' : 'image'])}'>
                     <img src="${thumb}" style="width:100%;height:100%;object-fit:cover;">
                     ${p.featured ? '<div style="position:absolute;top:2px;right:2px;"><i class="bi bi-star-fill text-warning" style="font-size:0.7rem;filter:drop-shadow(0 0 2px black);"></i></div>' : ''}
                   </div>`;
-                }).join('')}
+                  })
+                  .join('')}
                 ${sectionPhotos.length > 12 ? `<div style="min-width:80px;display:flex;align-items:center;justify-content:center;background:#f0f2f5;border-radius:6px;flex-shrink:0;font-weight:bold;color:#6c757d;">+${sectionPhotos.length - 12}</div>` : ''}
               </div>
-            </div>` : ''}
+            </div>`
+                : ''
+            }
           </div>`;
-        }).join('')}`;
-
+                })
+                .join('')
+        }`;
     } catch (error) {
       console.error('Error loading photos production:', error);
       container.innerHTML = `<div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-2"></i>Error loading photos: ${utils.escapeHtml(error.message)}</div>`;
@@ -608,12 +633,28 @@ const mediaGalleryModule = {
   },
 
   async _bulkPublishAll() {
-    if (!await utils.confirmDialog({ title: 'Publish All Photos', message: 'Publish all draft photos across all sections?', confirmText: 'Publish All', danger: false })) return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Publish All Photos',
+        message: 'Publish all draft photos across all sections?',
+        confirmText: 'Publish All',
+        danger: false,
+      }))
+    )
+      return;
     try {
-      const secResult = await apiClient.select('event_galleries', { select: 'id', filters: { event_id: this.currentEventId }, pageSize: 1000 });
-      const sectionIds = (secResult.data || []).map(s => s.id);
+      const secResult = await apiClient.select('event_galleries', {
+        select: 'id',
+        filters: { event_id: this.currentEventId },
+        pageSize: 1000,
+      });
+      const sectionIds = (secResult.data || []).map((s) => s.id);
       if (sectionIds.length > 0) {
-        await apiClient.updateByFilters('media_gallery', { gallery_section_id: { op: 'in', value: sectionIds }, published: false }, { published: true });
+        await apiClient.updateByFilters(
+          'media_gallery',
+          { gallery_section_id: { op: 'in', value: sectionIds }, published: false },
+          { published: true }
+        );
       }
       utils.showToast('All photos published', 'success');
       await this.loadPhotosProduction();
@@ -624,9 +665,17 @@ const mediaGalleryModule = {
 
   async downloadAllEventPhotos() {
     utils.showToast('Starting download of all event photos...', 'info');
-    const secRes = await apiClient.select('event_galleries', { select: 'id, gallery_name', filters: { event_id: this.currentEventId }, pageSize: 1000 });
-    for (const section of (secRes.data || [])) {
-      const photoRes = await apiClient.select('media_gallery', { select: 'file_url, title', filters: { gallery_section_id: section.id }, pageSize: 1000 });
+    const secRes = await apiClient.select('event_galleries', {
+      select: 'id, gallery_name',
+      filters: { event_id: this.currentEventId },
+      pageSize: 1000,
+    });
+    for (const section of secRes.data || []) {
+      const photoRes = await apiClient.select('media_gallery', {
+        select: 'file_url, title',
+        filters: { gallery_section_id: section.id },
+        pageSize: 1000,
+      });
       const photos = photoRes.data;
       (photos || []).forEach((p, i) => {
         if (p.file_url && !p.file_url.includes('youtube')) {
@@ -644,41 +693,62 @@ const mediaGalleryModule = {
 
   async openPublicGalleryPreview() {
     const win = window.open('', '_blank', 'width=1200,height=800');
-    if (!win) { utils.showToast('Please allow popups', 'warning'); return; }
+    if (!win) {
+      utils.showToast('Please allow popups', 'warning');
+      return;
+    }
 
     // Escape HTML for safe injection into preview window
-    const esc = (str) => String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+    const esc = (str) =>
+      String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
 
     try {
-      const secResult = await apiClient.select('event_galleries', { filters: { event_id: this.currentEventId }, sort: { column: 'display_order', ascending: true }, pageSize: 1000 });
+      const secResult = await apiClient.select('event_galleries', {
+        filters: { event_id: this.currentEventId },
+        sort: { column: 'display_order', ascending: true },
+        pageSize: 1000,
+      });
       const sections = secResult.data || [];
-      const sectionIds = sections.map(s => s.id);
+      const sectionIds = sections.map((s) => s.id);
       let allPhotos = [];
       if (sectionIds.length > 0) {
-        // Direct call: complex query not supported by apiClient (.in + .eq combined filter)
-        const { data } = await STATE.client.from('media_gallery').select('*, organisations!media_gallery_organisation_id_fkey(company_name)').in('gallery_section_id', sectionIds).eq('published', true).order('display_order');
-        allPhotos = data || [];
+        const photoResult = await apiClient.selectAll('media_gallery', {
+          select: '*, organisations!media_gallery_organisation_id_fkey(company_name)',
+          filters: {
+            gallery_section_id: { op: 'in', value: sectionIds },
+            published: { eq: true },
+          },
+          sort: { column: 'display_order', ascending: true },
+        });
+        allPhotos = photoResult || [];
       }
 
       const event = this.currentEvent;
       const photosBySection = {};
-      allPhotos.forEach(p => {
+      allPhotos.forEach((p) => {
         if (!photosBySection[p.gallery_section_id]) photosBySection[p.gallery_section_id] = [];
         photosBySection[p.gallery_section_id].push(p);
       });
 
-      const sectionsHtml = (sections || []).map(s => {
-        const photos = photosBySection[s.id] || [];
-        if (photos.length === 0) return '';
-        return `
+      const sectionsHtml = (sections || [])
+        .map((s) => {
+          const photos = photosBySection[s.id] || [];
+          if (photos.length === 0) return '';
+          return `
           <div style="margin-bottom:40px;">
             <h2 style="text-align:center;font-size:1.5rem;color:#333;margin-bottom:20px;">${esc(s.gallery_name)}</h2>
             ${s.gallery_description ? `<p style="text-align:center;color:#6c757d;margin-bottom:20px;">${esc(s.gallery_description)}</p>` : ''}
             <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;">
-              ${photos.map(p => {
-                const isYT = p.file_type === 'video/youtube';
-                const src = isYT ? `https://img.youtube.com/vi/${esc(p.file_url)}/hqdefault.jpg` : esc(p.file_url);
-                return `<div style="border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1);background:white;">
+              ${photos
+                .map((p) => {
+                  const isYT = p.file_type === 'video/youtube';
+                  const src = isYT ? `https://img.youtube.com/vi/${esc(p.file_url)}/hqdefault.jpg` : esc(p.file_url);
+                  return `<div style="border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1);background:white;">
                   <img src="${src}" style="width:100%;height:200px;object-fit:cover;display:block;">
                   <div style="padding:10px;">
                     <div style="font-weight:600;font-size:0.9rem;">${esc(p.title)}</div>
@@ -686,12 +756,15 @@ const mediaGalleryModule = {
                     ${p.photographer ? `<div style="font-size:0.75rem;color:#adb5bd;"><i>\u{1F4F7}</i> ${esc(p.photographer)}</div>` : ''}
                   </div>
                 </div>`;
-              }).join('')}
+                })
+                .join('')}
             </div>
           </div>`;
-      }).join('');
+        })
+        .join('');
 
-      win.document.write(`<!DOCTYPE html><html><head><title>${esc(event?.event_name) || 'Gallery'} - Photo Gallery</title>
+      win.document
+        .write(`<!DOCTYPE html><html><head><title>${esc(event?.event_name) || 'Gallery'} - Photo Gallery</title>
         <style>
           body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; background: #fafafa; }
           .header { background: linear-gradient(135deg, #1a1a2e, #16213e); color: white; padding: 40px; text-align: center; }
@@ -718,10 +791,18 @@ const mediaGalleryModule = {
     const name = prompt('Photographer name (will be applied to all photos without a photographer credit):');
     if (!name || !name.trim()) return;
     try {
-      const secRes2 = await apiClient.select('event_galleries', { select: 'id', filters: { event_id: this.currentEventId }, pageSize: 1000 });
-      const sectionIds = (secRes2.data || []).map(s => s.id);
+      const secRes2 = await apiClient.select('event_galleries', {
+        select: 'id',
+        filters: { event_id: this.currentEventId },
+        pageSize: 1000,
+      });
+      const sectionIds = (secRes2.data || []).map((s) => s.id);
       if (sectionIds.length > 0) {
-        await apiClient.updateByFilters('media_gallery', { gallery_section_id: { op: 'in', value: sectionIds }, photographer: { op: 'is', value: null } }, { photographer: name.trim() });
+        await apiClient.updateByFilters(
+          'media_gallery',
+          { gallery_section_id: { op: 'in', value: sectionIds }, photographer: { op: 'is', value: null } },
+          { photographer: name.trim() }
+        );
       }
       utils.showToast(`Photographer "${name.trim()}" set for uncredited photos`, 'success');
       await this.loadPhotosProduction();
@@ -785,7 +866,6 @@ const mediaGalleryModule = {
       }
 
       this.renderVideosGrid(videos);
-
     } catch (error) {
       console.error('Error loading videos:', error);
       container.innerHTML = `
@@ -811,50 +891,51 @@ const mediaGalleryModule = {
         </button>
       </div>
       <div class="row g-4" id="videosGrid">
-        ${videos.map(video => {
-          const isYouTube = video.youtube_id || (video.file_url && video.file_url.includes('youtube'));
-          const thumbnailUrl = isYouTube
-            ? `https://img.youtube.com/vi/${video.youtube_id || 'default'}/hqdefault.jpg`
-            : video.thumbnail_url || video.file_url;
+        ${videos
+          .map((video) => {
+            const isYouTube = video.youtube_id || (video.file_url && video.file_url.includes('youtube'));
+            const thumbnailUrl = isYouTube
+              ? `https://img.youtube.com/vi/${video.youtube_id || 'default'}/hqdefault.jpg`
+              : video.thumbnail_url || video.file_url;
 
-          // Get org/award from FK joins (preferred) or fallback to JSON tags
-          const fkOrgName = video.organisations?.company_name;
-          const fkAwardName = video.awards?.award_name;
-          let companyTags = [];
-          let awardTags = [];
-          if (video.tags) {
-            try {
-              const parsed = JSON.parse(video.tags);
-              if (Array.isArray(parsed)) {
-                companyTags = parsed;
-              } else {
-                companyTags = (parsed.companies || []).map(c => typeof c === 'string' ? c : c.name);
-                awardTags = (parsed.awards || []).map(a => typeof a === 'string' ? a : a.name);
+            // Get org/award from FK joins (preferred) or fallback to JSON tags
+            const fkOrgName = video.organisations?.company_name;
+            const fkAwardName = video.awards?.award_name;
+            let companyTags = [];
+            let awardTags = [];
+            if (video.tags) {
+              try {
+                const parsed = JSON.parse(video.tags);
+                if (Array.isArray(parsed)) {
+                  companyTags = parsed;
+                } else {
+                  companyTags = (parsed.companies || []).map((c) => (typeof c === 'string' ? c : c.name));
+                  awardTags = (parsed.awards || []).map((a) => (typeof a === 'string' ? a : a.name));
+                }
+              } catch (e) {
+                /* ignore parse errors */
               }
-            } catch (e) { /* ignore parse errors */ }
-          }
-          // If FK tags exist, show those first
-          if (fkOrgName && !companyTags.includes(fkOrgName)) companyTags.unshift(fkOrgName);
-          if (fkAwardName && !awardTags.includes(fkAwardName)) awardTags.unshift(fkAwardName);
-          const hasAnyTags = companyTags.length > 0 || awardTags.length > 0;
+            }
+            // If FK tags exist, show those first
+            if (fkOrgName && !companyTags.includes(fkOrgName)) companyTags.unshift(fkOrgName);
+            if (fkAwardName && !awardTags.includes(fkAwardName)) awardTags.unshift(fkAwardName);
+            const hasAnyTags = companyTags.length > 0 || awardTags.length > 0;
 
-          return `
+            return `
             <div class="col-md-6 col-lg-4" data-video-id="${video.id}"
-              ${this._videoReorderMode ? `
+              ${
+                this._videoReorderMode
+                  ? `
                 draggable="true"
-                ondragstart="mediaGalleryModule.onVideoDragStart(event, '${video.id}')"
-                ondragover="mediaGalleryModule.onVideoDragOver(event, '${video.id}')"
-                ondrop="mediaGalleryModule.onVideoDrop(event, '${video.id}')"
-                ondragend="mediaGalleryModule.onVideoDragEnd(event)"
+                data-video-drag="true"
                 style="cursor: move;"
-              ` : ''}>
+              `
+                  : ''
+              }>
               <div class="card h-100 ${this._videoReorderMode ? 'border-primary' : ''}">
                 ${this._videoReorderMode ? '<div class="position-absolute top-0 start-0 m-2" style="z-index:10;"><i class="bi bi-grip-vertical text-primary" style="font-size:1.2rem;"></i></div>' : ''}
                 <div class="position-relative video-thumbnail-container"
-                  ${isYouTube ? `
-                    onmouseenter="mediaGalleryModule._showVideoHoverPreview(this, '${video.youtube_id}')"
-                    onmouseleave="mediaGalleryModule._hideVideoHoverPreview(this)"
-                  ` : ''}>
+                  ${isYouTube ? `data-youtube-hover="${video.youtube_id}"` : ''}>
                   <img src="${thumbnailUrl}" class="card-img-top" alt="${utils.escapeHtml(video.title || 'Video')}" style="height: 200px; object-fit: cover;">
                   <div class="position-absolute top-50 start-50 translate-middle">
                     <i class="bi bi-play-circle-fill text-white" style="font-size: 3rem; opacity: 0.8;"></i>
@@ -865,19 +946,33 @@ const mediaGalleryModule = {
                   <h6 class="card-title">${utils.escapeHtml(video.title || 'Untitled Video')}</h6>
                   ${video.description ? `<p class="card-text small text-muted">${utils.escapeHtml(video.description).substring(0, 100)}...</p>` : ''}
 
-                  ${hasAnyTags ? `
+                  ${
+                    hasAnyTags
+                      ? `
                     <div class="mb-2">
-                      ${companyTags.slice(0, 2).map(tag => `<span class="badge bg-primary me-1">${utils.escapeHtml(tag)}</span>`).join('')}
-                      ${awardTags.slice(0, 2).map(tag => `<span class="badge bg-success me-1">${utils.escapeHtml(tag)}</span>`).join('')}
-                      ${(companyTags.length + awardTags.length) > 4 ? `<span class="badge bg-light text-dark">+${(companyTags.length + awardTags.length) - 4}</span>` : ''}
+                      ${companyTags
+                        .slice(0, 2)
+                        .map((tag) => `<span class="badge bg-primary me-1">${utils.escapeHtml(tag)}</span>`)
+                        .join('')}
+                      ${awardTags
+                        .slice(0, 2)
+                        .map((tag) => `<span class="badge bg-success me-1">${utils.escapeHtml(tag)}</span>`)
+                        .join('')}
+                      ${companyTags.length + awardTags.length > 4 ? `<span class="badge bg-light text-dark">+${companyTags.length + awardTags.length - 4}</span>` : ''}
                     </div>
-                  ` : ''}
+                  `
+                      : ''
+                  }
 
-                  ${isYouTube ? `
+                  ${
+                    isYouTube
+                      ? `
                     <p class="small text-muted mb-2">
                       <i class="bi bi-youtube me-1"></i>ID: ${video.youtube_id}
                     </p>
-                  ` : ''}
+                  `
+                      : ''
+                  }
                 </div>
                 <div class="card-footer bg-transparent">
                   <div class="btn-group btn-group-sm w-100">
@@ -895,9 +990,33 @@ const mediaGalleryModule = {
               </div>
             </div>
           `;
-        }).join('')}
+          })
+          .join('')}
       </div>
     `;
+
+    // Bind video grid event listeners (replacing inline handlers)
+    this._bindVideoGridListeners(container);
+  },
+
+  /**
+   * Bind drag and hover listeners to the video grid container (replaces inline handlers).
+   */
+  _bindVideoGridListeners(container) {
+    // Video drag listeners
+    container.querySelectorAll('[data-video-drag="true"]').forEach((el) => {
+      const videoId = el.dataset.videoId;
+      el.addEventListener('dragstart', (e) => this.onVideoDragStart(e, videoId));
+      el.addEventListener('dragover', (e) => this.onVideoDragOver(e, videoId));
+      el.addEventListener('drop', (e) => this.onVideoDrop(e, videoId));
+      el.addEventListener('dragend', (e) => this.onVideoDragEnd(e));
+    });
+
+    // Video hover preview listeners
+    container.querySelectorAll('[data-youtube-hover]').forEach((el) => {
+      el.addEventListener('mouseenter', () => this._showVideoHoverPreview(el, el.dataset.youtubeHover));
+      el.addEventListener('mouseleave', () => this._hideVideoHoverPreview(el));
+    });
   },
 
   /**
@@ -943,8 +1062,14 @@ const mediaGalleryModule = {
 
       if (error) throw error;
 
-      const options = '<option value="">Select a company...</option>' +
-        (companies || []).map(c => `<option value="${c.id}" data-name="${utils.escapeHtml(c.company_name)}">${utils.escapeHtml(c.company_name)}</option>`).join('');
+      const options =
+        '<option value="">Select a company...</option>' +
+        (companies || [])
+          .map(
+            (c) =>
+              `<option value="${c.id}" data-name="${utils.escapeHtml(c.company_name)}">${utils.escapeHtml(c.company_name)}</option>`
+          )
+          .join('');
 
       const select = document.getElementById('videoTagInput');
       if (select) select.innerHTML = options;
@@ -969,8 +1094,14 @@ const mediaGalleryModule = {
 
       if (error) throw error;
 
-      const options = '<option value="">Select an award...</option>' +
-        (awards || []).map(a => `<option value="${a.id}" data-name="${utils.escapeHtml(a.award_name)}">${utils.escapeHtml(a.award_name)}</option>`).join('');
+      const options =
+        '<option value="">Select an award...</option>' +
+        (awards || [])
+          .map(
+            (a) =>
+              `<option value="${a.id}" data-name="${utils.escapeHtml(a.award_name)}">${utils.escapeHtml(a.award_name)}</option>`
+          )
+          .join('');
 
       const select = document.getElementById('videoAwardTagInput');
       if (select) select.innerHTML = options;
@@ -1016,7 +1147,7 @@ const mediaGalleryModule = {
       return;
     }
 
-    if (this.videoTags.find(t => t.id === id)) {
+    if (this.videoTags.find((t) => t.id === id)) {
       utils.showToast('Company already tagged', 'warning');
       return;
     }
@@ -1027,7 +1158,7 @@ const mediaGalleryModule = {
   },
 
   removeVideoTag(tagId, context) {
-    this.videoTags = this.videoTags.filter(t => t.id !== tagId);
+    this.videoTags = this.videoTags.filter((t) => t.id !== tagId);
     this.renderVideoTags(context);
   },
 
@@ -1035,12 +1166,16 @@ const mediaGalleryModule = {
     const prefix = context === 'bulk' ? 'bulkVideo' : 'video';
     const container = document.getElementById(`${prefix}TagsContainer`);
     if (!container) return;
-    container.innerHTML = this.videoTags.map(tag => `
+    container.innerHTML = this.videoTags
+      .map(
+        (tag) => `
       <span class="badge bg-primary" style="font-size: 14px;">
         <i class="bi bi-building me-1"></i>${utils.escapeHtml(tag.name)}
-        <i class="bi bi-x-circle ms-1" style="cursor: pointer;" data-action="mediaGalleryModule.removeVideoTag" data-args='${JSON.stringify([tag.id, context || ""])}'></i>
+        <i class="bi bi-x-circle ms-1" style="cursor: pointer;" data-action="mediaGalleryModule.removeVideoTag" data-args='${JSON.stringify([tag.id, context || ''])}'></i>
       </span>
-    `).join('');
+    `
+      )
+      .join('');
   },
 
   addVideoAwardTag(context) {
@@ -1054,7 +1189,7 @@ const mediaGalleryModule = {
       return;
     }
 
-    if (this.videoAwardTags.find(t => t.id === id)) {
+    if (this.videoAwardTags.find((t) => t.id === id)) {
       utils.showToast('Award already tagged', 'warning');
       return;
     }
@@ -1065,7 +1200,7 @@ const mediaGalleryModule = {
   },
 
   removeVideoAwardTag(tagId, context) {
-    this.videoAwardTags = this.videoAwardTags.filter(t => t.id !== tagId);
+    this.videoAwardTags = this.videoAwardTags.filter((t) => t.id !== tagId);
     this.renderVideoAwardTags(context);
   },
 
@@ -1073,12 +1208,16 @@ const mediaGalleryModule = {
     const prefix = context === 'bulk' ? 'bulkVideo' : 'video';
     const container = document.getElementById(`${prefix}AwardTagsContainer`);
     if (!container) return;
-    container.innerHTML = this.videoAwardTags.map(tag => `
+    container.innerHTML = this.videoAwardTags
+      .map(
+        (tag) => `
       <span class="badge bg-success" style="font-size: 14px;">
         <i class="bi bi-trophy me-1"></i>${utils.escapeHtml(tag.name)}
-        <i class="bi bi-x-circle ms-1" style="cursor: pointer;" data-action="mediaGalleryModule.removeVideoAwardTag" data-args='${JSON.stringify([tag.id, context || ""])}'></i>
+        <i class="bi bi-x-circle ms-1" style="cursor: pointer;" data-action="mediaGalleryModule.removeVideoAwardTag" data-args='${JSON.stringify([tag.id, context || ''])}'></i>
       </span>
-    `).join('');
+    `
+      )
+      .join('');
   },
 
   /**
@@ -1096,7 +1235,7 @@ const mediaGalleryModule = {
     const patterns = [
       /(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/,
       /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
-      /youtube\.com\/v\/([a-zA-Z0-9_-]{11})/
+      /youtube\.com\/v\/([a-zA-Z0-9_-]{11})/,
     ];
 
     for (const pattern of patterns) {
@@ -1152,7 +1291,6 @@ const mediaGalleryModule = {
           // Set YouTube thumbnail
           thumbnailUrl = `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`;
           fileUrl = `https://www.youtube.com/watch?v=${youtubeId}`;
-
         } else {
           // Handle file upload
           const fileInput = document.getElementById('videoFileUpload');
@@ -1169,14 +1307,12 @@ const mediaGalleryModule = {
               .from('media')
               .upload(fileName, file, {
                 cacheControl: '3600',
-                upsert: false
+                upsert: false,
               });
 
             if (uploadError) throw uploadError;
 
-            const { data: urlData } = STATE.client.storage
-              .from('media')
-              .getPublicUrl(fileName);
+            const { data: urlData } = STATE.client.storage.from('media').getPublicUrl(fileName);
 
             fileUrl = urlData.publicUrl;
             thumbnailUrl = fileUrl; // Use video URL as placeholder thumbnail
@@ -1193,8 +1329,8 @@ const mediaGalleryModule = {
 
         // Also store full tags as JSON for multi-tag support (backward compatible)
         const tagsObject = {
-          companies: this.videoTags.map(t => ({ id: t.id, name: t.name })),
-          awards: this.videoAwardTags.map(t => ({ id: t.id, name: t.name }))
+          companies: this.videoTags.map((t) => ({ id: t.id, name: t.name })),
+          awards: this.videoAwardTags.map((t) => ({ id: t.id, name: t.name })),
         };
 
         // Prepare data for database
@@ -1208,16 +1344,13 @@ const mediaGalleryModule = {
           youtube_id: youtubeId,
           organisation_id: primaryOrgId,
           award_id: primaryAwardId,
-          tags: (this.videoTags.length > 0 || this.videoAwardTags.length > 0) ? JSON.stringify(tagsObject) : null,
+          tags: this.videoTags.length > 0 || this.videoAwardTags.length > 0 ? JSON.stringify(tagsObject) : null,
           status: 'published',
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
         };
 
         // Insert into database
-        const { _data, error } = await STATE.client
-          .from('media_items')
-          .insert([videoData])
-          .select();
+        const { _data, error } = await STATE.client.from('media_items').insert([videoData]).select();
 
         if (error) throw error;
 
@@ -1241,11 +1374,7 @@ const mediaGalleryModule = {
    */
   async viewVideo(videoId) {
     try {
-      const { data: video, error } = await STATE.client
-        .from('media_items')
-        .select('*')
-        .eq('id', videoId)
-        .single();
+      const { data: video, error } = await STATE.client.from('media_items').select('*').eq('id', videoId).single();
 
       if (error) throw error;
 
@@ -1283,7 +1412,6 @@ const mediaGalleryModule = {
       document.getElementById('viewVideoModal').addEventListener('hidden.bs.modal', () => {
         document.getElementById('viewVideoModal').remove();
       });
-
     } catch (error) {
       console.error('Error viewing video:', error);
       utils.showToast('Failed to load video: ' + error.message, 'error');
@@ -1292,11 +1420,7 @@ const mediaGalleryModule = {
 
   async editVideo(videoId) {
     try {
-      const { data: video, error } = await STATE.client
-        .from('media_items')
-        .select('*')
-        .eq('id', videoId)
-        .single();
+      const { data: video, error } = await STATE.client.from('media_items').select('*').eq('id', videoId).single();
 
       if (error) throw error;
 
@@ -1348,7 +1472,6 @@ const mediaGalleryModule = {
       document.getElementById('editVideoModal').addEventListener('hidden.bs.modal', () => {
         document.getElementById('editVideoModal').remove();
       });
-
     } catch (error) {
       console.error('Error loading video for edit:', error);
       utils.showToast('Failed to load video: ' + error.message, 'error');
@@ -1392,20 +1515,24 @@ const mediaGalleryModule = {
    * Delete Video
    */
   async deleteVideo(videoId) {
-    if (!await utils.confirmDialog({ title: 'Delete Video', message: 'Are you sure you want to delete this video?', confirmText: 'Delete', danger: true })) return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Delete Video',
+        message: 'Are you sure you want to delete this video?',
+        confirmText: 'Delete',
+        danger: true,
+      }))
+    )
+      return;
 
     try {
-      const { error } = await STATE.client
-        .from('media_items')
-        .delete()
-        .eq('id', videoId);
+      const { error } = await STATE.client.from('media_items').delete().eq('id', videoId);
 
       if (error) throw error;
 
       utils.showToast('Video deleted successfully', 'success');
       this._logActivity('delete', videoId, 'Video deleted');
       await this.loadVideosProduction();
-
     } catch (error) {
       console.error('Error deleting video:', error);
       utils.showToast('Error deleting video', 'error');
@@ -1443,7 +1570,7 @@ const mediaGalleryModule = {
     const eventSelect = document.getElementById('mediaEventSelect');
     if (eventSelect) {
       eventSelect.innerHTML = '<option value="">Select an Event</option>';
-      STATE.allEvents.forEach(event => {
+      STATE.allEvents.forEach((event) => {
         const label = event.year ? `${event.event_name} (${event.year})` : event.event_name;
         eventSelect.innerHTML += `<option value="${event.id}">${utils.escapeHtml(label)}</option>`;
       });
@@ -1512,19 +1639,18 @@ const mediaGalleryModule = {
 
           sectionsWithCounts.push({
             ...section,
-            photoCount: count || 0
+            photoCount: count || 0,
           });
         }
 
         summaryData.push({
           event,
           sections: sectionsWithCounts,
-          totalPhotos: sectionsWithCounts.reduce((sum, s) => sum + s.photoCount, 0)
+          totalPhotos: sectionsWithCounts.reduce((sum, s) => sum + s.photoCount, 0),
         });
       }
 
       this.renderSummaryView(summaryData);
-
     } catch (error) {
       console.error('Error loading summary:', error);
       utils.showToast('Failed to load summary: ' + error.message, 'error');
@@ -1545,12 +1671,15 @@ const mediaGalleryModule = {
         <span class="badge bg-primary fs-6">${summaryData.length} Events</span>
       </div>
 
-      ${summaryData.length === 0 ? `
+      ${
+        summaryData.length === 0
+          ? `
         <div class="alert alert-info">
           <i class="bi bi-info-circle me-2"></i>
           No events found. Create an event in the Events tab to get started.
         </div>
-      ` : `
+      `
+          : `
         <div class="table-responsive">
           <table class="table table-hover">
             <thead>
@@ -1563,9 +1692,11 @@ const mediaGalleryModule = {
               </tr>
             </thead>
             <tbody>
-              ${summaryData.map(item => {
-                const eventYear = item.event.year || (item.event.event_date ? item.event.event_date.substring(0, 4) : 'N/A');
-                return `
+              ${summaryData
+                .map((item) => {
+                  const eventYear =
+                    item.event.year || (item.event.event_date ? item.event.event_date.substring(0, 4) : 'N/A');
+                  return `
                   <tr>
                     <td>
                       <strong>${utils.escapeHtml(item.event.event_name)}</strong>
@@ -1575,16 +1706,21 @@ const mediaGalleryModule = {
                       <span class="badge bg-primary-subtle text-primary">${eventYear}</span>
                     </td>
                     <td>
-                      ${item.sections.length === 0 ?
-                        '<span class="text-muted">No sections yet</span>' :
-                        `<ul class="list-unstyled mb-0">
-                          ${item.sections.map(section => `
+                      ${
+                        item.sections.length === 0
+                          ? '<span class="text-muted">No sections yet</span>'
+                          : `<ul class="list-unstyled mb-0">
+                          ${item.sections
+                            .map(
+                              (section) => `
                             <li class="mb-1">
                               <i class="bi bi-folder2 me-1 text-primary"></i>
                               ${utils.escapeHtml(section.gallery_name)}
                               <span class="badge bg-secondary ms-2">${section.photoCount} items</span>
                             </li>
-                          `).join('')}
+                          `
+                            )
+                            .join('')}
                         </ul>`
                       }
                     </td>
@@ -1599,7 +1735,8 @@ const mediaGalleryModule = {
                     </td>
                   </tr>
                 `;
-              }).join('')}
+                })
+                .join('')}
             </tbody>
             <tfoot>
               <tr class="table-light fw-bold">
@@ -1612,7 +1749,8 @@ const mediaGalleryModule = {
             </tfoot>
           </table>
         </div>
-      `}
+      `
+      }
     `;
   },
 
@@ -1643,7 +1781,6 @@ const mediaGalleryModule = {
       if (error) throw error;
 
       this.renderGallerySections(sections || []);
-
     } catch (error) {
       console.error('Error loading gallery sections:', error);
       utils.showToast('Failed to load gallery sections: ' + error.message, 'error');
@@ -1666,17 +1803,21 @@ const mediaGalleryModule = {
         </button>
       </div>
 
-      ${sections.length === 0 ? `
+      ${
+        sections.length === 0
+          ? `
         <div class="alert alert-info">
           <i class="bi bi-info-circle me-2"></i>
           No gallery sections yet. Click "Add Gallery Section" to create sections like
           "Drinks Reception", "Dinner", "Winner Photos", etc.
         </div>
-      ` : `
+      `
+          : `
         <div class="row g-4" id="gallerySectionsGrid">
-          ${sections.map(section => this.renderSectionCard(section)).join('')}
+          ${sections.map((section) => this.renderSectionCard(section)).join('')}
         </div>
-      `}
+      `
+      }
     `;
 
     // Load photo counts for each section
@@ -1690,7 +1831,7 @@ const mediaGalleryModule = {
    */
   async loadSectionPhotoCounts(sections) {
     try {
-      const sectionIds = sections.map(s => s.id);
+      const sectionIds = sections.map((s) => s.id);
 
       // Single batch query instead of N+1 loop
       const { data: items, error } = await STATE.client
@@ -1700,11 +1841,11 @@ const mediaGalleryModule = {
 
       // Count per section in memory
       const countsBySection = {};
-      (items || []).forEach(item => {
+      (items || []).forEach((item) => {
         countsBySection[item.gallery_section_id] = (countsBySection[item.gallery_section_id] || 0) + 1;
       });
 
-      sections.forEach(section => {
+      sections.forEach((section) => {
         const count = countsBySection[section.id] || 0;
         const badge = document.getElementById(`photoCount_${section.id}`);
         if (badge) {
@@ -1801,7 +1942,6 @@ const mediaGalleryModule = {
 
       const modal = new bootstrap.Modal(document.getElementById('gallerySectionModal'));
       modal.show();
-
     } catch (error) {
       console.error('Error loading section:', error);
       utils.showToast('Error loading section: ' + error.message, 'error');
@@ -1830,22 +1970,17 @@ const mediaGalleryModule = {
           event_id: this.currentEventId,
           gallery_name: sectionName,
           gallery_description: sectionDesc || null,
-          display_order: displayOrder
+          display_order: displayOrder,
         };
 
         let error;
 
         if (sectionId) {
           // Update
-          ({ error } = await STATE.client
-            .from('event_galleries')
-            .update(sectionData)
-            .eq('id', sectionId));
+          ({ error } = await STATE.client.from('event_galleries').update(sectionData).eq('id', sectionId));
         } else {
           // Insert
-          ({ error } = await STATE.client
-            .from('event_galleries')
-            .insert([sectionData]));
+          ({ error } = await STATE.client.from('event_galleries').insert([sectionData]));
         }
 
         if (error) throw error;
@@ -1868,23 +2003,26 @@ const mediaGalleryModule = {
    * Delete section
    */
   async deleteSection(sectionId, sectionName) {
-    if (!await utils.confirmDialog({ title: 'Delete Section', message: `Delete "${sectionName}"?<br><br>Photos in this section will NOT be deleted, but will be unlinked from this section.`, confirmText: 'Delete Section', danger: true })) {
+    if (
+      !(await utils.confirmDialog({
+        title: 'Delete Section',
+        message: `Delete "${sectionName}"?<br><br>Photos in this section will NOT be deleted, but will be unlinked from this section.`,
+        confirmText: 'Delete Section',
+        danger: true,
+      }))
+    ) {
       return;
     }
 
     try {
       utils.showLoading();
 
-      const { error } = await STATE.client
-        .from('event_galleries')
-        .delete()
-        .eq('id', sectionId);
+      const { error } = await STATE.client.from('event_galleries').delete().eq('id', sectionId);
 
       if (error) throw error;
 
       utils.showToast('Section deleted successfully!', 'success');
       await this.onEventSelected(this.currentEventId);
-
     } catch (error) {
       console.error('Error deleting section:', error);
       utils.showToast('Error deleting section: ' + error.message, 'error');
@@ -1906,11 +2044,13 @@ const mediaGalleryModule = {
       // Load photos for this section, ordered by display_order (fallback to uploaded_at)
       const { data: photos, error } = await STATE.client
         .from('media_gallery')
-        .select(`
+        .select(
+          `
           *,
           organisations!media_gallery_organisation_id_fkey (*),
           awards:award_years!media_gallery_award_id_fkey (*)
-        `)
+        `
+        )
         .eq('gallery_section_id', sectionId)
         .order('display_order', { ascending: true, nullsFirst: false })
         .order('uploaded_at', { ascending: false });
@@ -1926,7 +2066,6 @@ const mediaGalleryModule = {
       this.selectedPhotoIds.clear(); // Clear selections when switching sections
 
       this.renderSectionPhotos(sectionName);
-
     } catch (error) {
       console.error('Error loading photos:', error);
       utils.showToast('Failed to load photos: ' + error.message, 'error');
@@ -1946,20 +2085,21 @@ const mediaGalleryModule = {
 
     // Filter by published status
     if (this.currentFilter === 'published') {
-      filteredPhotos = filteredPhotos.filter(p => p.published !== false);
+      filteredPhotos = filteredPhotos.filter((p) => p.published !== false);
     } else if (this.currentFilter === 'drafts') {
-      filteredPhotos = filteredPhotos.filter(p => p.published === false);
+      filteredPhotos = filteredPhotos.filter((p) => p.published === false);
     }
 
     // Filter by search term
     if (this.currentSearchTerm) {
       const term = this.currentSearchTerm.toLowerCase();
-      filteredPhotos = filteredPhotos.filter(p =>
-        (p.title || '').toLowerCase().includes(term) ||
-        (p.organisations?.company_name || '').toLowerCase().includes(term) ||
-        (p.awards?.award_name || p.awards?.award_category || '').toLowerCase().includes(term) ||
-        (p.photographer || '').toLowerCase().includes(term) ||
-        (p.caption || '').toLowerCase().includes(term)
+      filteredPhotos = filteredPhotos.filter(
+        (p) =>
+          (p.title || '').toLowerCase().includes(term) ||
+          (p.organisations?.company_name || '').toLowerCase().includes(term) ||
+          (p.awards?.award_name || p.awards?.award_category || '').toLowerCase().includes(term) ||
+          (p.photographer || '').toLowerCase().includes(term) ||
+          (p.caption || '').toLowerCase().includes(term)
       );
     }
 
@@ -1979,7 +2119,9 @@ const mediaGalleryModule = {
         filteredPhotos.sort((a, b) => new Date(a.uploaded_at || 0) - new Date(b.uploaded_at || 0));
         break;
       case 'org_asc':
-        filteredPhotos.sort((a, b) => (a.organisations?.company_name || 'zzz').localeCompare(b.organisations?.company_name || 'zzz'));
+        filteredPhotos.sort((a, b) =>
+          (a.organisations?.company_name || 'zzz').localeCompare(b.organisations?.company_name || 'zzz')
+        );
         break;
       case 'tagged':
         filteredPhotos.sort((a, b) => {
@@ -2001,8 +2143,8 @@ const mediaGalleryModule = {
     }
 
     const totalCount = this.currentSectionPhotos.length;
-    const publishedCount = this.currentSectionPhotos.filter(p => p.published !== false).length;
-    const draftCount = this.currentSectionPhotos.filter(p => p.published === false).length;
+    const publishedCount = this.currentSectionPhotos.filter((p) => p.published !== false).length;
+    const draftCount = this.currentSectionPhotos.filter((p) => p.published === false).length;
 
     // Pagination
     const totalPages = Math.ceil(filteredPhotos.length / this.photosPerPage);
@@ -2012,7 +2154,7 @@ const mediaGalleryModule = {
     const showPagination = filteredPhotos.length > this.photosPerPage;
 
     // Select all state for current page
-    const allPageSelected = pagePhotos.length > 0 && pagePhotos.every(p => this.selectedPhotoIds.has(p.id));
+    const allPageSelected = pagePhotos.length > 0 && pagePhotos.every((p) => this.selectedPhotoIds.has(p.id));
 
     contentDiv.innerHTML = `
       <div class="mb-4">
@@ -2092,11 +2234,15 @@ const mediaGalleryModule = {
                     placeholder="Search by title, organisation, or award..."
                     value="${utils.escapeHtml(this.currentSearchTerm)}"
                     data-on-input="mediaGalleryModule.debouncedSearch">
-                  ${this.currentSearchTerm ? `
+                  ${
+                    this.currentSearchTerm
+                      ? `
                     <button class="btn btn-outline-secondary" data-action="mediaGalleryModule.clearSearch">
                       <i class="bi bi-x"></i>
                     </button>
-                  ` : ''}
+                  `
+                      : ''
+                  }
                 </div>
               </div>
             </div>
@@ -2104,7 +2250,9 @@ const mediaGalleryModule = {
         </div>
 
         <!-- Select All + Count Bar -->
-        ${filteredPhotos.length > 0 ? `
+        ${
+          filteredPhotos.length > 0
+            ? `
         <div class="d-flex justify-content-between align-items-center mb-2">
           <div class="d-flex align-items-center gap-2">
             <button class="btn btn-sm ${allPageSelected ? 'btn-primary' : 'btn-outline-primary'}"
@@ -2112,45 +2260,59 @@ const mediaGalleryModule = {
               <i class="bi bi-${allPageSelected ? 'check-square-fill' : 'square'} me-1"></i>
               ${allPageSelected ? 'Deselect Page' : 'Select Page'} (${pagePhotos.length})
             </button>
-            ${filteredPhotos.length > this.photosPerPage ? `
+            ${
+              filteredPhotos.length > this.photosPerPage
+                ? `
             <button class="btn btn-sm btn-outline-secondary"
               data-action="mediaGalleryModule.selectAllFiltered" title="Select all ${filteredPhotos.length} filtered photos">
               <i class="bi bi-check-all me-1"></i>Select All ${filteredPhotos.length}
-            </button>` : ''}
-            ${this.selectedPhotoIds.size > 0 ? `
+            </button>`
+                : ''
+            }
+            ${
+              this.selectedPhotoIds.size > 0
+                ? `
               <span class="text-muted small">${this.selectedPhotoIds.size} selected</span>
-            ` : ''}
+            `
+                : ''
+            }
           </div>
           <small class="text-muted">
             Showing ${startIdx + 1}-${Math.min(startIdx + this.photosPerPage, filteredPhotos.length)} of ${filteredPhotos.length}
             ${filteredPhotos.length !== totalCount ? ` (${totalCount} total)` : ''}
           </small>
-        </div>` : ''}
+        </div>`
+            : ''
+        }
       </div>
 
       <!-- Drag & Drop Zone -->
       <div id="dropZone" class="border border-2 border-dashed rounded p-4 text-center mb-4"
-        style="border-color: #dee2e6 !important; transition: all 0.3s;"
-        ondragover="mediaGalleryModule.handleDragOver(event)"
-        ondragleave="mediaGalleryModule.handleDragLeave(event)"
-        ondrop="mediaGalleryModule.handleDrop(event)">
+        style="border-color: #dee2e6 !important; transition: all 0.3s;">
         <i class="bi bi-cloud-upload text-muted" style="font-size: 2rem;"></i>
         <p class="text-muted mb-0 mt-1">Drag & drop photos/videos here to upload</p>
       </div>
 
-      ${filteredPhotos.length === 0 ? `
+      ${
+        filteredPhotos.length === 0
+          ? `
         <div class="alert alert-info">
           <i class="bi bi-info-circle me-2"></i>
-          ${totalCount === 0 ?
-            'No photos in this section yet. Drag & drop files above or click "Upload Photos".' :
-            'No items match your filters. Try different filter options or search terms.'}
+          ${
+            totalCount === 0
+              ? 'No photos in this section yet. Drag & drop files above or click "Upload Photos".'
+              : 'No items match your filters. Try different filter options or search terms.'
+          }
         </div>
-      ` : `
+      `
+          : `
         <div class="row g-3" id="photoGrid">
-          ${pagePhotos.map(photo => this.renderPhotoCard(photo)).join('')}
+          ${pagePhotos.map((photo) => this.renderPhotoCard(photo)).join('')}
         </div>
 
-        ${showPagination ? `
+        ${
+          showPagination
+            ? `
         <nav class="mt-4">
           <ul class="pagination justify-content-center">
             <li class="page-item ${this.currentPage === 1 ? 'disabled' : ''}">
@@ -2165,8 +2327,11 @@ const mediaGalleryModule = {
               </a>
             </li>
           </ul>
-        </nav>` : ''}
-      `}
+        </nav>`
+            : ''
+        }
+      `
+      }
 
       <!-- Floating Bulk Actions Bar -->
       <div id="bulkActionsBar" class="position-fixed bottom-0 start-50 translate-middle-x mb-4 d-none"
@@ -2214,8 +2379,59 @@ const mediaGalleryModule = {
       </div>
     `;
 
+    // Bind drop zone listeners (replacing inline handlers)
+    this._bindDropZoneListeners();
+
+    // Bind photo drag listeners (replacing inline handlers)
+    this._bindPhotoDragListeners(contentDiv);
+
+    // Bind inline title edit listeners (replacing inline handlers)
+    this._bindInlineEditListeners(contentDiv);
+
     this.updateBulkActionsBar();
     this._registerKeyboardShortcuts();
+  },
+
+  /**
+   * Bind drag & drop listeners to the upload drop zone (replaces inline handlers).
+   */
+  _bindDropZoneListeners() {
+    const dropZone = document.getElementById('dropZone');
+    if (!dropZone) return;
+    dropZone.addEventListener('dragover', (e) => this.handleDragOver(e));
+    dropZone.addEventListener('dragleave', (e) => this.handleDragLeave(e));
+    dropZone.addEventListener('drop', (e) => this.handleDrop(e));
+  },
+
+  /**
+   * Bind drag listeners to photo cards for reordering (replaces inline handlers).
+   */
+  _bindPhotoDragListeners(container) {
+    container.querySelectorAll('[data-photo-drag="true"]').forEach((el) => {
+      const photoId = el.dataset.photoId;
+      el.addEventListener('dragstart', (e) => this.handlePhotoDragStart(e, photoId));
+      el.addEventListener('dragover', (e) => this.handlePhotoDragOver(e, photoId));
+      el.addEventListener('drop', (e) => this.handlePhotoDrop(e, photoId));
+      el.addEventListener('dragenter', (e) => this.handlePhotoDragEnter(e, photoId));
+      el.addEventListener('dragleave', (e) => this.handlePhotoDragLeave(e, photoId));
+      el.addEventListener('dragend', (e) => this.handlePhotoDragEnd(e));
+    });
+  },
+
+  /**
+   * Bind blur and keydown listeners for inline title editing (replaces inline handlers).
+   */
+  _bindInlineEditListeners(container) {
+    container.querySelectorAll('[data-inline-edit="true"]').forEach((el) => {
+      const photoId = el.dataset.photoId;
+      el.addEventListener('blur', () => this.saveInlineTitle(el, photoId));
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          el.blur();
+        }
+      });
+    });
   },
 
   /**
@@ -2304,29 +2520,50 @@ const mediaGalleryModule = {
    */
   _getFilteredPhotos() {
     let filtered = this.currentSectionPhotos;
-    if (this.currentFilter === 'published') filtered = filtered.filter(p => p.published !== false);
-    else if (this.currentFilter === 'drafts') filtered = filtered.filter(p => p.published === false);
+    if (this.currentFilter === 'published') filtered = filtered.filter((p) => p.published !== false);
+    else if (this.currentFilter === 'drafts') filtered = filtered.filter((p) => p.published === false);
     if (this.currentSearchTerm) {
       const term = this.currentSearchTerm.toLowerCase();
-      filtered = filtered.filter(p =>
-        (p.title || '').toLowerCase().includes(term) ||
-        (p.organisations?.company_name || '').toLowerCase().includes(term) ||
-        (p.awards?.award_name || p.awards?.award_category || '').toLowerCase().includes(term) ||
-        (p.photographer || '').toLowerCase().includes(term) ||
-        (p.caption || '').toLowerCase().includes(term)
+      filtered = filtered.filter(
+        (p) =>
+          (p.title || '').toLowerCase().includes(term) ||
+          (p.organisations?.company_name || '').toLowerCase().includes(term) ||
+          (p.awards?.award_name || p.awards?.award_category || '').toLowerCase().includes(term) ||
+          (p.photographer || '').toLowerCase().includes(term) ||
+          (p.caption || '').toLowerCase().includes(term)
       );
     }
     // Apply sorting to match renderSectionPhotos
     filtered = [...filtered];
     switch (this.currentSortBy) {
-      case 'name_asc': filtered.sort((a, b) => (a.title || '').localeCompare(b.title || '')); break;
-      case 'name_desc': filtered.sort((a, b) => (b.title || '').localeCompare(a.title || '')); break;
-      case 'date_newest': filtered.sort((a, b) => new Date(b.uploaded_at || 0) - new Date(a.uploaded_at || 0)); break;
-      case 'date_oldest': filtered.sort((a, b) => new Date(a.uploaded_at || 0) - new Date(b.uploaded_at || 0)); break;
-      case 'org_asc': filtered.sort((a, b) => (a.organisations?.company_name || 'zzz').localeCompare(b.organisations?.company_name || 'zzz')); break;
-      case 'tagged': filtered.sort((a, b) => (a.organisation_id || a.award_id ? 0 : 1) - (b.organisation_id || b.award_id ? 0 : 1)); break;
-      case 'untagged': filtered.sort((a, b) => (!a.organisation_id && !a.award_id ? 0 : 1) - (!b.organisation_id && !b.award_id ? 0 : 1)); break;
-      default: filtered.sort((a, b) => (a.display_order || 0) - (b.display_order || 0)); break;
+      case 'name_asc':
+        filtered.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+        break;
+      case 'name_desc':
+        filtered.sort((a, b) => (b.title || '').localeCompare(a.title || ''));
+        break;
+      case 'date_newest':
+        filtered.sort((a, b) => new Date(b.uploaded_at || 0) - new Date(a.uploaded_at || 0));
+        break;
+      case 'date_oldest':
+        filtered.sort((a, b) => new Date(a.uploaded_at || 0) - new Date(b.uploaded_at || 0));
+        break;
+      case 'org_asc':
+        filtered.sort((a, b) =>
+          (a.organisations?.company_name || 'zzz').localeCompare(b.organisations?.company_name || 'zzz')
+        );
+        break;
+      case 'tagged':
+        filtered.sort((a, b) => (a.organisation_id || a.award_id ? 0 : 1) - (b.organisation_id || b.award_id ? 0 : 1));
+        break;
+      case 'untagged':
+        filtered.sort(
+          (a, b) => (!a.organisation_id && !a.award_id ? 0 : 1) - (!b.organisation_id && !b.award_id ? 0 : 1)
+        );
+        break;
+      default:
+        filtered.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+        break;
     }
     return filtered;
   },
@@ -2339,11 +2576,11 @@ const mediaGalleryModule = {
     const startIdx = (this.currentPage - 1) * this.photosPerPage;
     const pagePhotos = filtered.slice(startIdx, startIdx + this.photosPerPage);
 
-    const allSelected = pagePhotos.every(p => this.selectedPhotoIds.has(p.id));
+    const allSelected = pagePhotos.every((p) => this.selectedPhotoIds.has(p.id));
     if (allSelected) {
-      pagePhotos.forEach(p => this.selectedPhotoIds.delete(p.id));
+      pagePhotos.forEach((p) => this.selectedPhotoIds.delete(p.id));
     } else {
-      pagePhotos.forEach(p => this.selectedPhotoIds.add(p.id));
+      pagePhotos.forEach((p) => this.selectedPhotoIds.add(p.id));
     }
     this.renderSectionPhotos(this.currentSectionName || 'Section');
   },
@@ -2353,11 +2590,11 @@ const mediaGalleryModule = {
    */
   selectAllFiltered() {
     const filtered = this._getFilteredPhotos();
-    const allSelected = filtered.every(p => this.selectedPhotoIds.has(p.id));
+    const allSelected = filtered.every((p) => this.selectedPhotoIds.has(p.id));
     if (allSelected) {
-      filtered.forEach(p => this.selectedPhotoIds.delete(p.id));
+      filtered.forEach((p) => this.selectedPhotoIds.delete(p.id));
     } else {
-      filtered.forEach(p => this.selectedPhotoIds.add(p.id));
+      filtered.forEach((p) => this.selectedPhotoIds.add(p.id));
     }
     this.renderSectionPhotos(this.currentSectionName || 'Section');
   },
@@ -2371,8 +2608,17 @@ const mediaGalleryModule = {
     try {
       // Load orgs and awards for dropdowns
       const [orgsResult, awardsResult] = await Promise.all([
-        apiClient.select('organisations', { select: 'id, company_name', sort: { column: 'company_name', ascending: true }, pageSize: 1000 }),
-        apiClient.select('awards', { select: 'id, award_name', filters: { event_id: this.currentEventId }, sort: { column: 'award_name', ascending: true }, pageSize: 1000 })
+        apiClient.select('organisations', {
+          select: 'id, company_name',
+          sort: { column: 'company_name', ascending: true },
+          pageSize: 1000,
+        }),
+        apiClient.select('awards', {
+          select: 'id, award_name',
+          filters: { event_id: this.currentEventId },
+          sort: { column: 'award_name', ascending: true },
+          pageSize: 1000,
+        }),
       ]);
 
       const orgs = orgsResult.data || [];
@@ -2395,7 +2641,7 @@ const mediaGalleryModule = {
                   <select class="form-select" id="bulkTagOrg">
                     <option value="">-- Keep existing --</option>
                     <option value="__clear__">Clear organisation</option>
-                    ${orgs.map(o => `<option value="${o.id}">${utils.escapeHtml(o.company_name)}</option>`).join('')}
+                    ${orgs.map((o) => `<option value="${o.id}">${utils.escapeHtml(o.company_name)}</option>`).join('')}
                   </select>
                 </div>
                 <div class="mb-3">
@@ -2403,7 +2649,7 @@ const mediaGalleryModule = {
                   <select class="form-select" id="bulkTagAward">
                     <option value="">-- Keep existing --</option>
                     <option value="__clear__">Clear award</option>
-                    ${awards.map(a => `<option value="${a.id}">${utils.escapeHtml(a.award_name)}</option>`).join('')}
+                    ${awards.map((a) => `<option value="${a.id}">${utils.escapeHtml(a.award_name)}</option>`).join('')}
                   </select>
                 </div>
               </div>
@@ -2482,7 +2728,7 @@ const mediaGalleryModule = {
 
     // Group by file_size
     const sizeGroups = {};
-    photos.forEach(p => {
+    photos.forEach((p) => {
       const size = p.file_size || 0;
       if (size > 0) {
         if (!sizeGroups[size]) sizeGroups[size] = [];
@@ -2492,7 +2738,7 @@ const mediaGalleryModule = {
 
     // Also check for similar filenames (ignoring timestamp prefix)
     const nameGroups = {};
-    photos.forEach(p => {
+    photos.forEach((p) => {
       const url = p.file_url || '';
       const rawName = url.split('/').pop() || '';
       const cleanName = rawName.replace(/^\d+_[a-z0-9]+_/, '').toLowerCase();
@@ -2505,9 +2751,13 @@ const mediaGalleryModule = {
     const duplicates = [];
 
     // Exact size matches
-    Object.values(sizeGroups).forEach(group => {
+    Object.values(sizeGroups).forEach((group) => {
       if (group.length > 1) {
-        duplicates.push({ type: 'Identical file size', photos: group, detail: `${(group[0].file_size / 1024).toFixed(0)} KB` });
+        duplicates.push({
+          type: 'Identical file size',
+          photos: group,
+          detail: `${(group[0].file_size / 1024).toFixed(0)} KB`,
+        });
       }
     });
 
@@ -2515,9 +2765,8 @@ const mediaGalleryModule = {
     Object.entries(nameGroups).forEach(([name, group]) => {
       if (group.length > 1) {
         // Avoid double-counting if already found by size
-        const alreadyFound = duplicates.some(d =>
-          d.photos.length === group.length &&
-          d.photos.every(p => group.some(g => g.id === p.id))
+        const alreadyFound = duplicates.some(
+          (d) => d.photos.length === group.length && d.photos.every((p) => group.some((g) => g.id === p.id))
         );
         if (!alreadyFound) {
           duplicates.push({ type: 'Same filename', photos: group, detail: name });
@@ -2539,7 +2788,9 @@ const mediaGalleryModule = {
               <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
-              ${duplicates.map((dup, gi) => `
+              ${duplicates
+                .map(
+                  (dup, gi) => `
                 <div class="card mb-3">
                   <div class="card-header py-2 d-flex justify-content-between align-items-center">
                     <span><span class="badge bg-warning text-dark me-2">${dup.type}</span> <code>${utils.escapeHtml(dup.detail)}</code> (${dup.photos.length} photos)</span>
@@ -2549,12 +2800,15 @@ const mediaGalleryModule = {
                   </div>
                   <div class="card-body p-2">
                     <div class="row g-2">
-                      ${dup.photos.map(p => `
+                      ${dup.photos
+                        .map(
+                          (p) => `
                         <div class="col-md-3">
                           <div class="card h-100">
-                            ${p.file_type?.startsWith('image/') ?
-                              `<img src="${p.file_url}" class="card-img-top" style="height:120px;object-fit:cover;">` :
-                              `<div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height:120px;"><i class="bi bi-play-circle" style="font-size:2rem;"></i></div>`
+                            ${
+                              p.file_type?.startsWith('image/')
+                                ? `<img src="${p.file_url}" class="card-img-top" style="height:120px;object-fit:cover;">`
+                                : `<div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height:120px;"><i class="bi bi-play-circle" style="font-size:2rem;"></i></div>`
                             }
                             <div class="card-body p-2">
                               <small class="text-truncate d-block">${utils.escapeHtml(p.title || 'Untitled')}</small>
@@ -2562,11 +2816,15 @@ const mediaGalleryModule = {
                             </div>
                           </div>
                         </div>
-                      `).join('')}
+                      `
+                        )
+                        .join('')}
                     </div>
                   </div>
                 </div>
-              `).join('')}
+              `
+                )
+                .join('')}
               <div class="alert alert-info py-2 mt-2">
                 <small><i class="bi bi-info-circle me-1"></i>Click "Select Group" to select those photos, then close this dialog and use bulk actions to delete duplicates.</small>
               </div>
@@ -2594,10 +2852,13 @@ const mediaGalleryModule = {
     if (!this._duplicateGroups || !this._duplicateGroups[groupIdx]) return;
     const group = this._duplicateGroups[groupIdx].photos;
     // Select all except the first one (keep original, select potential duplicates)
-    group.slice(1).forEach(p => this.selectedPhotoIds.add(p.id));
+    group.slice(1).forEach((p) => this.selectedPhotoIds.add(p.id));
     bootstrap.Modal.getInstance(document.getElementById('duplicatesModal'))?.hide();
     this.renderSectionPhotos(this.currentSectionName || 'Section');
-    utils.showToast(`Selected ${group.length - 1} potential duplicate(s) for review. First photo kept as original.`, 'info');
+    utils.showToast(
+      `Selected ${group.length - 1} potential duplicate(s) for review. First photo kept as original.`,
+      'info'
+    );
   },
 
   /**
@@ -2609,7 +2870,13 @@ const mediaGalleryModule = {
 
     this._keyboardHandler = (e) => {
       // Don't trigger shortcuts when typing in inputs
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT' || e.target.isContentEditable) return;
+      if (
+        e.target.tagName === 'INPUT' ||
+        e.target.tagName === 'TEXTAREA' ||
+        e.target.tagName === 'SELECT' ||
+        e.target.isContentEditable
+      )
+        return;
       // Only active when viewing section photos
       if (!document.getElementById('photoGrid')) return;
 
@@ -2716,8 +2983,18 @@ const mediaGalleryModule = {
     }
 
     const files = Array.from(e.dataTransfer.files);
-    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/webm'];
-    const validFiles = files.filter(f => validTypes.includes(f.type));
+    const validTypes = [
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/gif',
+      'image/webp',
+      'video/mp4',
+      'video/quicktime',
+      'video/x-msvideo',
+      'video/webm',
+    ];
+    const validFiles = files.filter((f) => validTypes.includes(f.type));
 
     if (validFiles.length === 0) {
       utils.showToast('No valid image/video files detected', 'error');
@@ -2727,7 +3004,8 @@ const mediaGalleryModule = {
     // Store files and show publish prompt modal
     this.draggedFiles = validFiles;
     document.getElementById('dragDropFileCount').textContent = validFiles.length;
-    document.getElementById('dragDropFileCountText').textContent = `${validFiles.length} file${validFiles.length > 1 ? 's' : ''}`;
+    document.getElementById('dragDropFileCountText').textContent =
+      `${validFiles.length} file${validFiles.length > 1 ? 's' : ''}`;
     document.getElementById('dragDropPublished').checked = true;
 
     const modal = new bootstrap.Modal(document.getElementById('dragDropPublishModal'));
@@ -2750,7 +3028,7 @@ const mediaGalleryModule = {
     const validFiles = [];
     const oversizedFiles = [];
 
-    this.draggedFiles.forEach(file => {
+    this.draggedFiles.forEach((file) => {
       if (file.size <= maxSizeBytes) {
         validFiles.push(file);
       } else {
@@ -2759,8 +3037,11 @@ const mediaGalleryModule = {
     });
 
     if (oversizedFiles.length > 0) {
-      const fileNames = oversizedFiles.map(f => f.name).join(', ');
-      utils.showToast(`${oversizedFiles.length} file(s) exceed ${maxSizeMB}MB limit and will be skipped: ${fileNames}`, 'warning');
+      const fileNames = oversizedFiles.map((f) => f.name).join(', ');
+      utils.showToast(
+        `${oversizedFiles.length} file(s) exceed ${maxSizeMB}MB limit and will be skipped: ${fileNames}`,
+        'warning'
+      );
     }
 
     if (validFiles.length === 0) {
@@ -2782,21 +3063,16 @@ const mediaGalleryModule = {
           const fileName = `gallery-sections/${this.currentSectionId}/${timestamp}_${randomSuffix}_${file.name}`;
 
           // Upload to storage
-          const { error: uploadError } = await STATE.client.storage
-            .from('media-gallery')
-            .upload(fileName, file);
+          const { error: uploadError } = await STATE.client.storage.from('media-gallery').upload(fileName, file);
 
           if (uploadError) throw uploadError;
 
           // Get public URL
-          const { data: urlData } = STATE.client.storage
-            .from('media-gallery')
-            .getPublicUrl(fileName);
+          const { data: urlData } = STATE.client.storage.from('media-gallery').getPublicUrl(fileName);
 
           // Insert into database
-          const { error: dbError } = await STATE.client
-            .from('media_gallery')
-            .insert([{
+          const { error: dbError } = await STATE.client.from('media_gallery').insert([
+            {
               gallery_section_id: this.currentSectionId,
               event_id: this.currentEventId,
               file_url: urlData.publicUrl,
@@ -2804,8 +3080,9 @@ const mediaGalleryModule = {
               title: file.name,
               organisation_id: null,
               award_id: null,
-              published: published
-            }]);
+              published: published,
+            },
+          ]);
 
           if (dbError) throw dbError;
 
@@ -2844,16 +3121,16 @@ const mediaGalleryModule = {
 
     // Format video type for display
     const videoTypeLabels = {
-      'highlights': 'Highlights',
-      'full_ceremony': 'Full Ceremony',
-      'interview': 'Interview',
-      'live_stream': 'Live Stream',
-      'virtual_winner_presentation': 'Virtual Winner',
-      'winner_promotional': 'Promotional',
-      'sponsor_videos': 'Sponsor',
-      'social_media_clips': 'Social Media',
-      'teasers_trailers': 'Teaser/Trailer',
-      'press_clips': 'Press Clip'
+      highlights: 'Highlights',
+      full_ceremony: 'Full Ceremony',
+      interview: 'Interview',
+      live_stream: 'Live Stream',
+      virtual_winner_presentation: 'Virtual Winner',
+      winner_promotional: 'Promotional',
+      sponsor_videos: 'Sponsor',
+      social_media_clips: 'Social Media',
+      teasers_trailers: 'Teaser/Trailer',
+      press_clips: 'Press Clip',
     };
     const videoTypeLabel = photo.video_type ? videoTypeLabels[photo.video_type] || photo.video_type : null;
 
@@ -2862,41 +3139,38 @@ const mediaGalleryModule = {
     return `
       <div class="col-md-3">
         <div class="card h-100 ${!isPublished ? 'border-secondary' : ''} ${isSelected ? 'border-primary border-3' : ''}"
-          ${canDrag ? `draggable="true"` : ''}
+          ${canDrag ? `draggable="true" data-photo-drag="true"` : ''}
           data-photo-id="${photo.id}"
-          ${canDrag ? `
-          ondragstart="mediaGalleryModule.handlePhotoDragStart(event, '${photo.id}')"
-          ondragover="mediaGalleryModule.handlePhotoDragOver(event, '${photo.id}')"
-          ondrop="mediaGalleryModule.handlePhotoDrop(event, '${photo.id}')"
-          ondragenter="mediaGalleryModule.handlePhotoDragEnter(event, '${photo.id}')"
-          ondragleave="mediaGalleryModule.handlePhotoDragLeave(event, '${photo.id}')"
-          ondragend="mediaGalleryModule.handlePhotoDragEnd(event)"
-          ` : ''}
           data-action="mediaGalleryModule.toggleCardSelection" data-id="${photo.id}"
           style="cursor: pointer; transition: all 0.2s; ${isSelected ? 'box-shadow: 0 0 15px rgba(13, 110, 253, 0.5);' : ''}">
-          ${canDrag ? `
+          ${
+            canDrag
+              ? `
           <div class="position-absolute top-0 start-0 m-2" style="z-index: 10;">
-            <i class="bi bi-grip-vertical text-muted" style="font-size: 1.2rem; cursor: move;" title="Drag to reorder" onclick="event.stopPropagation();"></i>
-          </div>` : ''}
+            <i class="bi bi-grip-vertical text-muted" style="font-size: 1.2rem; cursor: move;" title="Drag to reorder" data-action="mediaGalleryModule.noop" data-stop-propagation="true"></i>
+          </div>`
+              : ''
+          }
           ${isSelected ? '<div class="position-absolute top-0 end-0 m-2"><div class="badge bg-primary"><i class="bi bi-check-circle-fill"></i> Selected</div></div>' : ''}
           ${!isPublished && !isSelected ? '<div class="position-absolute top-0 end-0 m-2 badge bg-secondary">Draft</div>' : ''}
           ${photo.featured && !isSelected ? '<div class="position-absolute top-0 end-0 m-2 badge bg-warning text-dark"><i class="bi bi-star-fill me-1"></i>Featured</div>' : ''}
           ${videoTypeLabel && !isSelected && isPublished ? `<div class="position-absolute top-0 end-0 m-2 badge bg-danger"><i class="bi bi-camera-video me-1"></i>${videoTypeLabel}</div>` : ''}
-          ${isImage ?
-            `<img src="${photo.file_url}" class="card-img-top ${!isPublished ? 'opacity-50' : ''}" alt="${utils.escapeHtml(photo.title || 'Photo')}"
+          ${
+            isImage
+              ? `<img src="${photo.file_url}" class="card-img-top ${!isPublished ? 'opacity-50' : ''}" alt="${utils.escapeHtml(photo.title || 'Photo')}"
               style="height: 200px; object-fit: cover; cursor: pointer;"
-              data-action="mediaGalleryModule.viewPhotoFull" data-args='${JSON.stringify([photo.id, photo.file_url, photo.title || "Photo", "image"]).replace(/'/g, "&#39;")}'>` :
-            isYouTube ?
-            `<div class="card-img-top ${!isPublished ? 'opacity-50' : ''}" style="height: 200px; position: relative; cursor: pointer;"
-              data-action="mediaGalleryModule.viewPhotoFull" data-args='${JSON.stringify([photo.id, photo.file_url, photo.title || "Video", "youtube"]).replace(/'/g, "&#39;")}'>
+              data-action="mediaGalleryModule.viewPhotoFull" data-args='${JSON.stringify([photo.id, photo.file_url, photo.title || 'Photo', 'image']).replace(/'/g, '&#39;')}'>`
+              : isYouTube
+                ? `<div class="card-img-top ${!isPublished ? 'opacity-50' : ''}" style="height: 200px; position: relative; cursor: pointer;"
+              data-action="mediaGalleryModule.viewPhotoFull" data-args='${JSON.stringify([photo.id, photo.file_url, photo.title || 'Video', 'youtube']).replace(/'/g, '&#39;')}'>
               <img src="https://img.youtube.com/vi/${photo.file_url}/mqdefault.jpg"
                 alt="${utils.escapeHtml(photo.title || 'YouTube Video')}"
                 style="width: 100%; height: 100%; object-fit: cover;">
               <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
                 <i class="bi bi-youtube text-danger" style="font-size: 3rem; filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));"></i>
               </div>
-            </div>` :
-            `<div class="card-img-top d-flex align-items-center justify-content-center bg-dark ${!isPublished ? 'opacity-50' : ''}" style="height: 200px;">
+            </div>`
+                : `<div class="card-img-top d-flex align-items-center justify-content-center bg-dark ${!isPublished ? 'opacity-50' : ''}" style="height: 200px;">
               <i class="bi bi-play-circle text-white" style="font-size: 3rem;"></i>
             </div>`
           }
@@ -2905,8 +3179,7 @@ const mediaGalleryModule = {
               contenteditable="true"
               data-photo-id="${photo.id}"
               data-original-title="${utils.escapeHtml(photo.title || 'Untitled')}"
-              onblur="mediaGalleryModule.saveInlineTitle(this, '${photo.id}')"
-              onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}"
+              data-inline-edit="true"
               style="cursor: text; outline: none; padding: 2px;"
               title="Click to edit">${utils.escapeHtml(photo.title || 'Untitled')}</p>
 
@@ -2914,13 +3187,13 @@ const mediaGalleryModule = {
               ${videoTypeLabel ? `<span class="badge bg-danger me-1"><i class="bi bi-camera-video me-1"></i>${videoTypeLabel}</span>` : ''}
               <span class="badge ${orgName ? 'bg-success' : 'bg-warning'} me-1"
                 style="cursor: pointer;"
-                data-action="mediaGalleryModule.quickEditTag" data-args='${JSON.stringify([photo.id, "org"])}'
+                data-action="mediaGalleryModule.quickEditTag" data-args='${JSON.stringify([photo.id, 'org'])}'
                 title="Click to change organisation">
                 <i class="bi bi-building me-1"></i>${orgName ? utils.escapeHtml(orgName) : 'No Org'}
               </span>
               <span class="badge ${awardName ? 'bg-info' : 'bg-warning'}"
                 style="cursor: pointer;"
-                data-action="mediaGalleryModule.quickEditTag" data-args='${JSON.stringify([photo.id, "award"])}'
+                data-action="mediaGalleryModule.quickEditTag" data-args='${JSON.stringify([photo.id, 'award'])}'
                 title="Click to change award">
                 <i class="bi bi-trophy me-1"></i>${awardName ? utils.escapeHtml(awardName) : 'No Award'}
               </span>
@@ -2941,11 +3214,15 @@ const mediaGalleryModule = {
               <button class="btn ${photo.featured ? 'btn-warning' : 'btn-outline-warning'}" data-action="mediaGalleryModule.toggleFeatured" data-args='${JSON.stringify([photo.id, !photo.featured])}' title="${photo.featured ? 'Unfeature' : 'Feature'}">
                 <i class="bi bi-star${photo.featured ? '-fill' : ''}"></i>
               </button>
-              ${!isYouTube ? `
-                <button class="btn btn-outline-secondary" data-action="mediaGalleryModule.downloadPhoto" data-args='${JSON.stringify([photo.file_url, photo.title || "photo"]).replace(/'/g, "&#39;")}' data-stop-propagation="true" title="Download">
+              ${
+                !isYouTube
+                  ? `
+                <button class="btn btn-outline-secondary" data-action="mediaGalleryModule.downloadPhoto" data-args='${JSON.stringify([photo.file_url, photo.title || 'photo']).replace(/'/g, '&#39;')}' data-stop-propagation="true" title="Download">
                   <i class="bi bi-download"></i>
                 </button>
-              ` : ''}
+              `
+                  : ''
+              }
               <button class="btn ${isPublished ? 'btn-outline-secondary' : 'btn-outline-success'}"
                 data-action="mediaGalleryModule.togglePublish" data-args='${JSON.stringify([photo.id, !isPublished])}'
                 title="${isPublished ? 'Unpublish' : 'Publish'}">
@@ -2994,7 +3271,7 @@ const mediaGalleryModule = {
     this.selectedFiles = files;
 
     // Check if any videos are selected
-    const hasVideos = files.some(file => file.type.startsWith('video/'));
+    const hasVideos = files.some((file) => file.type.startsWith('video/'));
     document.getElementById('videoTypeContainer').style.display = hasVideos ? 'block' : 'none';
 
     this.renderFilePreview();
@@ -3087,7 +3364,7 @@ const mediaGalleryModule = {
     const fileInput = document.getElementById('sectionPhotosFile');
     const dataTransfer = new DataTransfer();
 
-    this.selectedFiles.forEach(file => {
+    this.selectedFiles.forEach((file) => {
       dataTransfer.items.add(file);
     });
 
@@ -3112,12 +3389,22 @@ const mediaGalleryModule = {
     }
 
     const files = Array.from(fileInput.files);
-    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/webm'];
+    const validTypes = [
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/gif',
+      'image/webp',
+      'video/mp4',
+      'video/quicktime',
+      'video/x-msvideo',
+      'video/webm',
+    ];
     const maxSizeMB = 4.5;
     const maxSizeBytes = maxSizeMB * 1024 * 1024;
 
     // Filter by file type
-    const validTypeFiles = files.filter(f => validTypes.includes(f.type));
+    const validTypeFiles = files.filter((f) => validTypes.includes(f.type));
 
     if (validTypeFiles.length === 0) {
       utils.showToast('No valid image/video files selected', 'error');
@@ -3128,7 +3415,7 @@ const mediaGalleryModule = {
     const validFiles = [];
     const oversizedFiles = [];
 
-    validTypeFiles.forEach(file => {
+    validTypeFiles.forEach((file) => {
       if (file.size <= maxSizeBytes) {
         validFiles.push(file);
       } else {
@@ -3138,8 +3425,11 @@ const mediaGalleryModule = {
 
     // Show warning if any files are too large
     if (oversizedFiles.length > 0) {
-      const fileNames = oversizedFiles.map(f => f.name).join(', ');
-      utils.showToast(`${oversizedFiles.length} file(s) exceed ${maxSizeMB}MB limit and will be skipped: ${fileNames}`, 'warning');
+      const fileNames = oversizedFiles.map((f) => f.name).join(', ');
+      utils.showToast(
+        `${oversizedFiles.length} file(s) exceed ${maxSizeMB}MB limit and will be skipped: ${fileNames}`,
+        'warning'
+      );
     }
 
     if (validFiles.length === 0) {
@@ -3159,16 +3449,12 @@ const mediaGalleryModule = {
           const fileName = `gallery-sections/${this.currentSectionId}/${timestamp}_${randomSuffix}_${file.name}`;
 
           // Upload to storage
-          const { error: uploadError } = await STATE.client.storage
-            .from('media-gallery')
-            .upload(fileName, file);
+          const { error: uploadError } = await STATE.client.storage.from('media-gallery').upload(fileName, file);
 
           if (uploadError) throw uploadError;
 
           // Get public URL
-          const { data: urlData } = STATE.client.storage
-            .from('media-gallery')
-            .getPublicUrl(fileName);
+          const { data: urlData } = STATE.client.storage.from('media-gallery').getPublicUrl(fileName);
 
           // Prepare media record
           const isVideo = file.type.startsWith('video/');
@@ -3180,7 +3466,7 @@ const mediaGalleryModule = {
             title: title || file.name,
             organisation_id: null,
             award_id: null,
-            published: published
+            published: published,
           };
 
           // Add video_type only for videos
@@ -3189,9 +3475,7 @@ const mediaGalleryModule = {
           }
 
           // Insert into database
-          const { error: dbError } = await STATE.client
-            .from('media_gallery')
-            .insert([mediaRecord]);
+          const { error: dbError } = await STATE.client.from('media_gallery').insert([mediaRecord]);
 
           if (dbError) throw dbError;
 
@@ -3250,7 +3534,10 @@ const mediaGalleryModule = {
 
     // Validate it's 11 characters (YouTube video ID length)
     if (cleanVideoId.length !== 11) {
-      utils.showToast('Invalid YouTube video ID. Please enter the 11-character video ID or a valid YouTube URL.', 'error');
+      utils.showToast(
+        'Invalid YouTube video ID. Please enter the 11-character video ID or a valid YouTube URL.',
+        'error'
+      );
       return;
     }
 
@@ -3259,9 +3546,8 @@ const mediaGalleryModule = {
         utils.showLoading();
 
         // Insert into database
-        const { error } = await STATE.client
-          .from('media_gallery')
-          .insert([{
+        const { error } = await STATE.client.from('media_gallery').insert([
+          {
             gallery_section_id: this.currentSectionId,
             event_id: this.currentEventId,
             file_url: cleanVideoId,
@@ -3269,8 +3555,9 @@ const mediaGalleryModule = {
             title: title || 'YouTube Video',
             organisation_id: null,
             award_id: null,
-            published: published
-          }]);
+            published: published,
+          },
+        ]);
 
         if (error) throw error;
 
@@ -3308,14 +3595,21 @@ const mediaGalleryModule = {
    * Download all photos in current section
    */
   async downloadAllPhotos(sectionName) {
-    const photos = this.currentSectionPhotos.filter(p => p.file_type !== 'video/youtube');
+    const photos = this.currentSectionPhotos.filter((p) => p.file_type !== 'video/youtube');
 
     if (photos.length === 0) {
       utils.showToast('No downloadable photos in this section', 'warning');
       return;
     }
 
-    if (!await utils.confirmDialog({ title: 'Download Photos', message: `Download ${photos.length} photo(s)? They will be downloaded one by one.`, confirmText: 'Download', danger: false })) {
+    if (
+      !(await utils.confirmDialog({
+        title: 'Download Photos',
+        message: `Download ${photos.length} photo(s)? They will be downloaded one by one.`,
+        confirmText: 'Download',
+        danger: false,
+      }))
+    ) {
       return;
     }
 
@@ -3324,7 +3618,7 @@ const mediaGalleryModule = {
     let downloadCount = 0;
     for (const photo of photos) {
       try {
-        await new Promise(resolve => setTimeout(resolve, 500)); // Delay between downloads
+        await new Promise((resolve) => setTimeout(resolve, 500)); // Delay between downloads
         const filename = `${sectionName}_${downloadCount + 1}_${photo.title || 'photo'}`;
         this.downloadPhoto(photo.file_url, filename);
         downloadCount++;
@@ -3349,10 +3643,7 @@ const mediaGalleryModule = {
     }
 
     try {
-      const { error } = await STATE.client
-        .from('media_gallery')
-        .update({ title: newTitle })
-        .eq('id', photoId);
+      const { error } = await STATE.client.from('media_gallery').update({ title: newTitle }).eq('id', photoId);
 
       if (error) throw error;
 
@@ -3360,7 +3651,7 @@ const mediaGalleryModule = {
       utils.showToast('Title updated', 'success');
 
       // Update in currentSectionPhotos array
-      const photo = this.currentSectionPhotos.find(p => p.id === photoId);
+      const photo = this.currentSectionPhotos.find((p) => p.id === photoId);
       if (photo) photo.title = newTitle;
     } catch (error) {
       element.textContent = originalTitle;
@@ -3435,8 +3726,8 @@ const mediaGalleryModule = {
 
     try {
       // Find the source and target photos in currentSectionPhotos
-      const sourceIndex = this.currentSectionPhotos.findIndex(p => p.id === sourcePhotoId);
-      const targetIndex = this.currentSectionPhotos.findIndex(p => p.id === targetPhotoId);
+      const sourceIndex = this.currentSectionPhotos.findIndex((p) => p.id === sourcePhotoId);
+      const targetIndex = this.currentSectionPhotos.findIndex((p) => p.id === targetPhotoId);
 
       if (sourceIndex === -1 || targetIndex === -1) {
         throw new Error('Photo not found in current section');
@@ -3454,7 +3745,6 @@ const mediaGalleryModule = {
 
       // Re-render to show new order
       this.renderSectionPhotos(this.currentSectionName || 'Section');
-
     } catch (error) {
       console.error('Error reordering photos:', error);
       utils.showToast('Error reordering: ' + error.message, 'error');
@@ -3476,20 +3766,17 @@ const mediaGalleryModule = {
   async updatePhotoDisplayOrder() {
     const updates = this.currentSectionPhotos.map((photo, index) => ({
       id: photo.id,
-      display_order: index
+      display_order: index,
     }));
 
     // Batch update display_order using Promise.all instead of sequential loop
     const results = await Promise.all(
-      updates.map(update =>
-        STATE.client
-          .from('media_gallery')
-          .update({ display_order: update.display_order })
-          .eq('id', update.id)
+      updates.map((update) =>
+        STATE.client.from('media_gallery').update({ display_order: update.display_order }).eq('id', update.id)
       )
     );
 
-    const errorResult = results.find(res => res.error);
+    const errorResult = results.find((res) => res.error);
     if (errorResult) throw errorResult.error;
   },
 
@@ -3499,11 +3786,12 @@ const mediaGalleryModule = {
   toggleCardSelection(event, photoId) {
     // Don't select if clicking on interactive elements
     const target = event.target;
-    const isInteractive = target.closest('button') ||
-                         target.closest('[contenteditable]') ||
-                         target.closest('.badge[onclick]') ||
-                         target.closest('img') ||
-                         target.closest('.bi-grip-vertical');
+    const isInteractive =
+      target.closest('button') ||
+      target.closest('[contenteditable]') ||
+      target.closest('.badge[onclick]') ||
+      target.closest('img') ||
+      target.closest('.bi-grip-vertical');
 
     if (isInteractive) {
       return;
@@ -3550,7 +3838,14 @@ const mediaGalleryModule = {
   async bulkPublish() {
     if (this.selectedPhotoIds.size === 0) return;
 
-    if (!await utils.confirmDialog({ title: 'Publish Photos', message: `Publish ${this.selectedPhotoIds.size} photo(s)?`, confirmText: 'Publish', danger: false })) {
+    if (
+      !(await utils.confirmDialog({
+        title: 'Publish Photos',
+        message: `Publish ${this.selectedPhotoIds.size} photo(s)?`,
+        confirmText: 'Publish',
+        danger: false,
+      }))
+    ) {
       return;
     }
 
@@ -3571,7 +3866,6 @@ const mediaGalleryModule = {
 
       // Reload section
       await this.viewSectionPhotos(this.currentSectionId, this.currentSectionName);
-
     } catch (error) {
       console.error('Error publishing photos:', error);
       utils.showToast('Error publishing: ' + error.message, 'error');
@@ -3586,7 +3880,14 @@ const mediaGalleryModule = {
   async bulkUnpublish() {
     if (this.selectedPhotoIds.size === 0) return;
 
-    if (!await utils.confirmDialog({ title: 'Unpublish Photos', message: `Unpublish ${this.selectedPhotoIds.size} photo(s)?`, confirmText: 'Unpublish', danger: false })) {
+    if (
+      !(await utils.confirmDialog({
+        title: 'Unpublish Photos',
+        message: `Unpublish ${this.selectedPhotoIds.size} photo(s)?`,
+        confirmText: 'Unpublish',
+        danger: false,
+      }))
+    ) {
       return;
     }
 
@@ -3607,7 +3908,6 @@ const mediaGalleryModule = {
 
       // Reload section
       await this.viewSectionPhotos(this.currentSectionId, this.currentSectionName);
-
     } catch (error) {
       console.error('Error unpublishing photos:', error);
       utils.showToast('Error unpublishing: ' + error.message, 'error');
@@ -3622,8 +3922,8 @@ const mediaGalleryModule = {
   async bulkDownload() {
     if (this.selectedPhotoIds.size === 0) return;
 
-    const photos = this.currentSectionPhotos.filter(p =>
-      this.selectedPhotoIds.has(p.id) && p.file_type !== 'video/youtube'
+    const photos = this.currentSectionPhotos.filter(
+      (p) => this.selectedPhotoIds.has(p.id) && p.file_type !== 'video/youtube'
     );
 
     if (photos.length === 0) {
@@ -3631,7 +3931,14 @@ const mediaGalleryModule = {
       return;
     }
 
-    if (!await utils.confirmDialog({ title: 'Download Photos', message: `Download ${photos.length} photo(s)? They will be downloaded one by one.`, confirmText: 'Download', danger: false })) {
+    if (
+      !(await utils.confirmDialog({
+        title: 'Download Photos',
+        message: `Download ${photos.length} photo(s)? They will be downloaded one by one.`,
+        confirmText: 'Download',
+        danger: false,
+      }))
+    ) {
       return;
     }
 
@@ -3640,7 +3947,7 @@ const mediaGalleryModule = {
     let downloadCount = 0;
     for (const photo of photos) {
       try {
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise((resolve) => setTimeout(resolve, 500));
         const filename = `${photo.title || 'photo'}`;
         this.downloadPhoto(photo.file_url, filename);
         downloadCount++;
@@ -3658,7 +3965,14 @@ const mediaGalleryModule = {
   async bulkDelete() {
     if (this.selectedPhotoIds.size === 0) return;
 
-    if (!await utils.confirmDialog({ title: 'Delete Photos', message: `Delete ${this.selectedPhotoIds.size} photo(s)? This action cannot be undone.`, confirmText: 'Delete All', danger: true })) {
+    if (
+      !(await utils.confirmDialog({
+        title: 'Delete Photos',
+        message: `Delete ${this.selectedPhotoIds.size} photo(s)? This action cannot be undone.`,
+        confirmText: 'Delete All',
+        danger: true,
+      }))
+    ) {
       return;
     }
 
@@ -3667,14 +3981,16 @@ const mediaGalleryModule = {
       const count = this.selectedPhotoIds.size;
 
       // Get file paths for storage cleanup (non-YouTube files only)
-      const photosToDelete = this.currentSectionPhotos.filter(p =>
-        this.selectedPhotoIds.has(p.id) && p.file_type !== 'video/youtube' && p.file_url
+      const photosToDelete = this.currentSectionPhotos.filter(
+        (p) => this.selectedPhotoIds.has(p.id) && p.file_type !== 'video/youtube' && p.file_url
       );
-      const storagePaths = photosToDelete.map(p => {
-        const url = p.file_url || '';
-        const pathMatch = url.match(/media-gallery\/(.+)$/);
-        return pathMatch ? pathMatch[1] : null;
-      }).filter(Boolean);
+      const storagePaths = photosToDelete
+        .map((p) => {
+          const url = p.file_url || '';
+          const pathMatch = url.match(/media-gallery\/(.+)$/);
+          return pathMatch ? pathMatch[1] : null;
+        })
+        .filter(Boolean);
 
       // Delete from database in a single query
       const { error } = await STATE.client
@@ -3699,7 +4015,6 @@ const mediaGalleryModule = {
 
       // Reload section
       await this.viewSectionPhotos(this.currentSectionId, this.currentSectionName);
-
     } catch (error) {
       console.error('Error deleting photos:', error);
       utils.showToast('Error deleting: ' + error.message, 'error');
@@ -3718,7 +4033,9 @@ const mediaGalleryModule = {
       // Load current photo data including visibility flags and metadata
       const { data: photo, error: photoError } = await STATE.client
         .from('media_gallery')
-        .select('organisation_id, award_id, caption, alt_text, photographer, show_in_gallery, show_on_winner_page, show_on_company_page')
+        .select(
+          'organisation_id, award_id, caption, alt_text, photographer, show_in_gallery, show_on_winner_page, show_on_company_page'
+        )
         .eq('id', photoId)
         .single();
 
@@ -3743,7 +4060,6 @@ const mediaGalleryModule = {
 
       const modal = new bootstrap.Modal(document.getElementById('tagPhotoModal'));
       modal.show();
-
     } catch (error) {
       console.error('Error loading photo tags:', error);
       utils.showToast('Error loading tags: ' + error.message, 'error');
@@ -3755,14 +4071,11 @@ const mediaGalleryModule = {
    */
   async populateTagDropdowns() {
     // Load organisations
-    const { data: orgs } = await STATE.client
-      .from('organisations')
-      .select('id, company_name')
-      .order('company_name');
+    const { data: orgs } = await STATE.client.from('organisations').select('id, company_name').order('company_name');
 
     const orgSelect = document.getElementById('tagPhotoOrgSelect');
     orgSelect.innerHTML = '<option value="">None</option>';
-    (orgs || []).forEach(org => {
+    (orgs || []).forEach((org) => {
       orgSelect.innerHTML += `<option value="${org.id}">${utils.escapeHtml(org.company_name)}</option>`;
     });
 
@@ -3774,7 +4087,7 @@ const mediaGalleryModule = {
 
     const awardSelect = document.getElementById('tagPhotoAwardSelect');
     awardSelect.innerHTML = '<option value="">None</option>';
-    (awards || []).forEach(award => {
+    (awards || []).forEach((award) => {
       const label = award.award_name || award.award_category || 'Unknown';
       awardSelect.innerHTML += `<option value="${award.id}">${utils.escapeHtml(label)}</option>`;
     });
@@ -3794,19 +4107,21 @@ const mediaGalleryModule = {
     const showOnCompanyPage = document.getElementById('tagPhotoShowCompany').checked;
 
     const photoTags = {
-      organisation_id: orgId || null, award_id: awardId || null,
-      caption: caption || null, alt_text: altText || null, photographer: photographer || null,
-      show_in_gallery: showInGallery, show_on_winner_page: showOnWinnerPage, show_on_company_page: showOnCompanyPage
+      organisation_id: orgId || null,
+      award_id: awardId || null,
+      caption: caption || null,
+      alt_text: altText || null,
+      photographer: photographer || null,
+      show_in_gallery: showInGallery,
+      show_on_winner_page: showOnWinnerPage,
+      show_on_company_page: showOnCompanyPage,
     };
 
     try {
       await utils.protectModalDuringSave('tagPhotoModal', async () => {
         utils.showLoading();
 
-        const { error } = await STATE.client
-          .from('media_gallery')
-          .update(photoTags)
-          .eq('id', this.currentMediaId);
+        const { error } = await STATE.client.from('media_gallery').update(photoTags).eq('id', this.currentMediaId);
 
         if (error) throw error;
 
@@ -3831,7 +4146,14 @@ const mediaGalleryModule = {
    * Delete photo
    */
   async deletePhoto(photoId) {
-    if (!await utils.confirmDialog({ title: 'Delete Photo', message: 'Delete this photo? This action cannot be undone.', confirmText: 'Delete', danger: true })) {
+    if (
+      !(await utils.confirmDialog({
+        title: 'Delete Photo',
+        message: 'Delete this photo? This action cannot be undone.',
+        confirmText: 'Delete',
+        danger: true,
+      }))
+    ) {
       return;
     }
 
@@ -3839,13 +4161,10 @@ const mediaGalleryModule = {
       utils.showLoading();
 
       // Get file URL for storage cleanup before deleting record
-      const photo = this.currentSectionPhotos.find(p => p.id === photoId);
+      const photo = this.currentSectionPhotos.find((p) => p.id === photoId);
       const fileUrl = photo?.file_url || '';
 
-      const { error } = await STATE.client
-        .from('media_gallery')
-        .delete()
-        .eq('id', photoId);
+      const { error } = await STATE.client.from('media_gallery').delete().eq('id', photoId);
 
       if (error) throw error;
 
@@ -3864,7 +4183,6 @@ const mediaGalleryModule = {
       utils.showToast('Photo deleted successfully!', 'success');
       this._logActivity('delete', photoId, 'Photo deleted');
       await this.viewSectionPhotos(this.currentSectionId, this.currentSectionName);
-
     } catch (error) {
       console.error('Error deleting photo:', error);
       utils.showToast('Error deleting photo: ' + error.message, 'error');
@@ -3890,7 +4208,6 @@ const mediaGalleryModule = {
       utils.showToast(`Photo ${newPublishState ? 'published' : 'unpublished'} successfully!`, 'success');
 
       await this.viewSectionPhotos(this.currentSectionId, this.currentSectionName);
-
     } catch (error) {
       console.error('Error toggling publish status:', error);
       utils.showToast('Error updating publish status: ' + error.message, 'error');
@@ -3904,10 +4221,7 @@ const mediaGalleryModule = {
    */
   async toggleFeatured(photoId, newState) {
     try {
-      const { error } = await STATE.client
-        .from('media_gallery')
-        .update({ featured: newState })
-        .eq('id', photoId);
+      const { error } = await STATE.client.from('media_gallery').update({ featured: newState }).eq('id', photoId);
       if (error) throw error;
 
       utils.showToast(newState ? 'Photo featured!' : 'Photo unfeatured', 'success');
@@ -3983,9 +4297,12 @@ const mediaGalleryModule = {
    */
   async openCropRotate() {
     const photoId = this.currentMediaId;
-    if (!photoId) { utils.showToast('No photo selected', 'warning'); return; }
+    if (!photoId) {
+      utils.showToast('No photo selected', 'warning');
+      return;
+    }
 
-    const photo = this.currentSectionPhotos.find(p => p.id === photoId);
+    const photo = this.currentSectionPhotos.find((p) => p.id === photoId);
     if (!photo || !photo.file_url || !photo.file_type?.startsWith('image/')) {
       utils.showToast('Crop/rotate is only available for images', 'warning');
       return;
@@ -4093,7 +4410,8 @@ const mediaGalleryModule = {
     const img = this._cropRotateImage;
     const state = this._cropRotateState;
 
-    const isRotated90 = state.rotation === 90 || state.rotation === 270 || state.rotation === -90 || state.rotation === -270;
+    const isRotated90 =
+      state.rotation === 90 || state.rotation === 270 || state.rotation === -90 || state.rotation === -270;
     canvas.width = isRotated90 ? img.height : img.width;
     canvas.height = isRotated90 ? img.width : img.height;
 
@@ -4123,10 +4441,14 @@ const mediaGalleryModule = {
       ctx.lineWidth = 1;
       ctx.setLineDash([5, 5]);
       ctx.beginPath();
-      ctx.moveTo(x + w / 3, y); ctx.lineTo(x + w / 3, y + h);
-      ctx.moveTo(x + 2 * w / 3, y); ctx.lineTo(x + 2 * w / 3, y + h);
-      ctx.moveTo(x, y + h / 3); ctx.lineTo(x + w, y + h / 3);
-      ctx.moveTo(x, y + 2 * h / 3); ctx.lineTo(x + w, y + 2 * h / 3);
+      ctx.moveTo(x + w / 3, y);
+      ctx.lineTo(x + w / 3, y + h);
+      ctx.moveTo(x + (2 * w) / 3, y);
+      ctx.lineTo(x + (2 * w) / 3, y + h);
+      ctx.moveTo(x, y + h / 3);
+      ctx.lineTo(x + w, y + h / 3);
+      ctx.moveTo(x, y + (2 * h) / 3);
+      ctx.lineTo(x + w, y + (2 * h) / 3);
       ctx.stroke();
       ctx.setLineDash([]);
 
@@ -4141,7 +4463,9 @@ const mediaGalleryModule = {
   _initCropSelection() {
     const canvas = document.getElementById('cropRotateCanvas');
     if (!canvas) return;
-    let dragging = false, startX, startY;
+    let dragging = false,
+      startX,
+      startY;
 
     canvas.onmousedown = (e) => {
       const rect = canvas.getBoundingClientRect();
@@ -4159,13 +4483,19 @@ const mediaGalleryModule = {
       const curX = (e.clientX - rect.left) * scaleX;
       const curY = (e.clientY - rect.top) * scaleY;
       this._cropRotateState.cropRect = {
-        x: Math.min(startX, curX), y: Math.min(startY, curY),
-        w: Math.abs(curX - startX), h: Math.abs(curY - startY)
+        x: Math.min(startX, curX),
+        y: Math.min(startY, curY),
+        w: Math.abs(curX - startX),
+        h: Math.abs(curY - startY),
       };
       this._drawCropRotateCanvas();
     };
-    canvas.onmouseup = () => { dragging = false; };
-    canvas.onmouseleave = () => { dragging = false; };
+    canvas.onmouseup = () => {
+      dragging = false;
+    };
+    canvas.onmouseleave = () => {
+      dragging = false;
+    };
   },
 
   _updateCropFromInputs() {
@@ -4173,7 +4503,7 @@ const mediaGalleryModule = {
       x: parseInt(document.getElementById('cropX').value) || 0,
       y: parseInt(document.getElementById('cropY').value) || 0,
       w: parseInt(document.getElementById('cropW').value) || 0,
-      h: parseInt(document.getElementById('cropH').value) || 0
+      h: parseInt(document.getElementById('cropH').value) || 0,
     };
     this._drawCropRotateCanvas();
   },
@@ -4191,7 +4521,13 @@ const mediaGalleryModule = {
   },
 
   _resetCropRotate() {
-    this._cropRotateState = { rotation: 0, flipH: false, flipV: false, cropRect: null, originalUrl: this._cropRotateState.originalUrl };
+    this._cropRotateState = {
+      rotation: 0,
+      flipH: false,
+      flipV: false,
+      cropRect: null,
+      originalUrl: this._cropRotateState.originalUrl,
+    };
     this._drawCropRotateCanvas();
   },
 
@@ -4215,7 +4551,7 @@ const mediaGalleryModule = {
         }
 
         // Convert canvas to blob
-        const blob = await new Promise(resolve => outputCanvas.toBlob(resolve, 'image/jpeg', 0.92));
+        const blob = await new Promise((resolve) => outputCanvas.toBlob(resolve, 'image/jpeg', 0.92));
         if (!blob) throw new Error('Could not generate image');
 
         // Upload to storage (new file, preserve original)
@@ -4230,9 +4566,9 @@ const mediaGalleryModule = {
 
         if (uploadError) throw uploadError;
 
-        const { data: { publicUrl } } = STATE.client.storage
-          .from('media-gallery')
-          .getPublicUrl(filePath);
+        const {
+          data: { publicUrl },
+        } = STATE.client.storage.from('media-gallery').getPublicUrl(filePath);
 
         // Update database record with new URL
         const { error: updateError } = await STATE.client
@@ -4273,7 +4609,7 @@ const mediaGalleryModule = {
       detail,
       eventId: this.currentEventId,
       sectionId: this.currentSectionId,
-      user: STATE.currentUser?.email || 'unknown'
+      user: STATE.currentUser?.email || 'unknown',
     };
     try {
       await apiClient.insert('cms_audit_logs', {
@@ -4285,9 +4621,9 @@ const mediaGalleryModule = {
         metadata: {
           eventId: this.currentEventId,
           sectionId: this.currentSectionId,
-          originalAction: action
+          originalAction: action,
         },
-        created_at: entry.timestamp
+        created_at: entry.timestamp,
       });
     } catch (e) {
       // Fallback to localStorage
@@ -4296,7 +4632,9 @@ const mediaGalleryModule = {
         log.unshift(entry);
         if (log.length > 500) log.length = 500;
         localStorage.setItem('mediaGalleryActivityLog', JSON.stringify(log));
-      } catch (storageErr) { /* ignore storage errors */ }
+      } catch (storageErr) {
+        /* ignore storage errors */
+      }
     }
   },
 
@@ -4317,19 +4655,19 @@ const mediaGalleryModule = {
       }
       const { data, error } = await query;
       if (error) throw error;
-      log = (data || []).map(row => ({
+      log = (data || []).map((row) => ({
         timestamp: row.created_at,
         action: row.metadata?.originalAction || row.action,
         targetId: row.entity_id,
         detail: row.description || '',
         eventId: row.metadata?.eventId,
         sectionId: row.metadata?.sectionId,
-        user: row.user_email || 'unknown'
+        user: row.user_email || 'unknown',
       }));
     } catch (e) {
       // Fallback to localStorage
       const stored = JSON.parse(localStorage.getItem('mediaGalleryActivityLog') || '[]');
-      log = this.currentEventId ? stored.filter(l => l.eventId === this.currentEventId) : stored;
+      log = this.currentEventId ? stored.filter((l) => l.eventId === this.currentEventId) : stored;
     }
     const eventLog = log;
 
@@ -4345,7 +4683,7 @@ const mediaGalleryModule = {
       tag: '<span class="badge bg-info">Tag</span>',
       crop_rotate: '<span class="badge bg-warning text-dark">Crop/Rotate</span>',
       reorder: '<span class="badge bg-dark">Reorder</span>',
-      auto_tag: '<span class="badge bg-warning text-dark">Auto-Tag</span>'
+      auto_tag: '<span class="badge bg-warning text-dark">Auto-Tag</span>',
     };
 
     const html = `
@@ -4357,26 +4695,35 @@ const mediaGalleryModule = {
               <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
-              ${eventLog.length === 0 ? '<p class="text-muted text-center py-3">No activity recorded yet.</p>' : `
+              ${
+                eventLog.length === 0
+                  ? '<p class="text-muted text-center py-3">No activity recorded yet.</p>'
+                  : `
                 <table class="table table-sm table-hover">
                   <thead>
                     <tr><th>Time</th><th>Action</th><th>Details</th><th>User</th></tr>
                   </thead>
                   <tbody>
-                    ${eventLog.slice(0, 100).map(entry => `
+                    ${eventLog
+                      .slice(0, 100)
+                      .map(
+                        (entry) => `
                       <tr>
                         <td><small>${new Date(entry.timestamp).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</small></td>
                         <td>${actionLabels[entry.action] || `<span class="badge bg-light text-dark">${utils.escapeHtml(entry.action)}</span>`}</td>
                         <td><small>${utils.escapeHtml(entry.detail)}</small></td>
                         <td><small class="text-muted">${utils.escapeHtml(entry.user)}</small></td>
                       </tr>
-                    `).join('')}
+                    `
+                      )
+                      .join('')}
                   </tbody>
                 </table>
-              `}
+              `
+              }
             </div>
             <div class="modal-footer">
-              <button class="btn btn-outline-danger btn-sm" onclick="(async()=>{if(!await utils.confirmDialog({title:'Clear Logs',message:'Clear all activity logs?',confirmText:'Clear',danger:true}))return;try{await apiClient.deleteByFilters('cms_audit_logs',{entity:'media_gallery'});} catch(e){localStorage.removeItem('mediaGalleryActivityLog');}bootstrap.Modal.getInstance(document.getElementById('activityLogModal'))?.hide();utils.showToast('Activity log cleared','success');})()">
+              <button class="btn btn-outline-danger btn-sm" data-action="mediaGalleryModule.clearActivityLog">
                 <i class="bi bi-trash me-1"></i>Clear Log
               </button>
               <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -4399,15 +4746,14 @@ const mediaGalleryModule = {
     const select = document.getElementById('mediaOrgFilter');
     if (!select) return;
     try {
-      const { data: orgs } = await STATE.client
-        .from('organisations')
-        .select('id, company_name')
-        .order('company_name');
+      const { data: orgs } = await STATE.client.from('organisations').select('id, company_name').order('company_name');
       select.innerHTML = '<option value="">View all media for org...</option>';
-      (orgs || []).forEach(org => {
+      (orgs || []).forEach((org) => {
         select.innerHTML += `<option value="${org.id}">${utils.escapeHtml(org.company_name)}</option>`;
       });
-    } catch (e) { console.error('Error loading org filter:', e); }
+    } catch (e) {
+      console.error('Error loading org filter:', e);
+    }
   },
 
   async viewOrgMedia(orgId) {
@@ -4431,7 +4777,9 @@ const mediaGalleryModule = {
       // Load photos tagged to this org (from gallery sections)
       const { data: photos } = await STATE.client
         .from('media_gallery')
-        .select('*, event_galleries(gallery_name, event_id), awards:award_years!media_gallery_award_id_fkey(award_name)')
+        .select(
+          '*, event_galleries(gallery_name, event_id), awards:award_years!media_gallery_award_id_fkey(award_name)'
+        )
         .eq('organisation_id', orgId)
         .order('uploaded_at', { ascending: false });
 
@@ -4455,13 +4803,13 @@ const mediaGalleryModule = {
 
       const allPhotos = photos || [];
       const allVideos = videos || [];
-      const publishedPhotos = allPhotos.filter(p => p.published !== false);
-      const winnerPagePhotos = allPhotos.filter(p => p.show_on_winner_page !== false);
-      const companyPagePhotos = allPhotos.filter(p => p.show_on_company_page !== false);
+      const publishedPhotos = allPhotos.filter((p) => p.published !== false);
+      const winnerPagePhotos = allPhotos.filter((p) => p.show_on_winner_page !== false);
+      const companyPagePhotos = allPhotos.filter((p) => p.show_on_company_page !== false);
 
       orgView.innerHTML = `
         <div class="mb-4">
-          <button class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('mediaOrgFilter').value=''; mediaGalleryModule.showEventsListView()">
+          <button class="btn btn-outline-secondary btn-sm" data-action="mediaGalleryModule.backToEventsList">
             <i class="bi bi-arrow-left me-2"></i>Back to Events
           </button>
           <h3 class="mt-3">
@@ -4490,18 +4838,21 @@ const mediaGalleryModule = {
         </div>
 
         <!-- Photos Grid -->
-        ${allPhotos.length > 0 ? `
+        ${
+          allPhotos.length > 0
+            ? `
         <h5 class="mb-3"><i class="bi bi-camera me-2"></i>Photos (${allPhotos.length})</h5>
         <div class="row g-3 mb-4">
-          ${allPhotos.map(p => {
-            const isYT = p.file_type === 'video/youtube';
-            const thumb = isYT ? `https://img.youtube.com/vi/${p.file_url}/mqdefault.jpg` : p.file_url;
-            const awardName = p.awards?.award_name || '';
-            return `
+          ${allPhotos
+            .map((p) => {
+              const isYT = p.file_type === 'video/youtube';
+              const thumb = isYT ? `https://img.youtube.com/vi/${p.file_url}/mqdefault.jpg` : p.file_url;
+              const awardName = p.awards?.award_name || '';
+              return `
             <div class="col-md-2 col-sm-3">
               <div class="card h-100 ${!p.published ? 'border-secondary opacity-75' : ''}">
                 <img src="${thumb}" class="card-img-top" style="height:120px;object-fit:cover;cursor:pointer;"
-                  data-action="mediaGalleryModule.viewPhotoFull" data-args='${JSON.stringify([p.id, p.file_url, p.title || "", isYT ? "youtube" : "image"]).replace(/'/g, "&#39;")}'>
+                  data-action="mediaGalleryModule.viewPhotoFull" data-args='${JSON.stringify([p.id, p.file_url, p.title || '', isYT ? 'youtube' : 'image']).replace(/'/g, '&#39;')}'>
                 <div class="card-body p-1">
                   <small class="d-block text-truncate fw-semibold">${utils.escapeHtml(p.title || 'Untitled')}</small>
                   ${awardName ? `<small class="badge bg-info">${utils.escapeHtml(awardName)}</small>` : ''}
@@ -4513,17 +4864,23 @@ const mediaGalleryModule = {
                 </div>
               </div>
             </div>`;
-          }).join('')}
-        </div>` : ''}
+            })
+            .join('')}
+        </div>`
+            : ''
+        }
 
         <!-- Videos Grid -->
-        ${allVideos.length > 0 ? `
+        ${
+          allVideos.length > 0
+            ? `
         <h5 class="mb-3"><i class="bi bi-play-btn me-2"></i>Videos (${allVideos.length})</h5>
         <div class="row g-3">
-          ${allVideos.map(v => {
-            const isYT = v.youtube_id || (v.file_url && v.file_url.includes('youtube'));
-            const thumb = isYT ? `https://img.youtube.com/vi/${v.youtube_id}/hqdefault.jpg` : v.thumbnail_url || '';
-            return `
+          ${allVideos
+            .map((v) => {
+              const isYT = v.youtube_id || (v.file_url && v.file_url.includes('youtube'));
+              const thumb = isYT ? `https://img.youtube.com/vi/${v.youtube_id}/hqdefault.jpg` : v.thumbnail_url || '';
+              return `
             <div class="col-md-3">
               <div class="card h-100">
                 <div class="position-relative">
@@ -4537,15 +4894,21 @@ const mediaGalleryModule = {
                 </div>
               </div>
             </div>`;
-          }).join('')}
-        </div>` : ''}
+            })
+            .join('')}
+        </div>`
+            : ''
+        }
 
-        ${allPhotos.length === 0 && allVideos.length === 0 ? `
+        ${
+          allPhotos.length === 0 && allVideos.length === 0
+            ? `
         <div class="text-center py-5">
           <i class="bi bi-images display-4 d-block mb-2 opacity-25"></i>
           <p class="text-muted">No media tagged to this organisation yet. Tag photos and videos with this organisation to see them here.</p>
-        </div>` : ''}`;
-
+        </div>`
+            : ''
+        }`;
     } catch (error) {
       console.error('Error loading org media:', error);
       utils.showToast('Error loading media: ' + error.message, 'error');
@@ -4689,17 +5052,26 @@ const mediaGalleryModule = {
 
       const event = this.currentEvent;
       const eventName = event?.event_name || 'Event';
-      const eventDate = event?.event_date ? new Date(event.event_date).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '';
+      const eventDate = event?.event_date
+        ? new Date(event.event_date).toLocaleDateString('en-GB', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+          })
+        : '';
 
       // Group by section
       const sections = {};
-      roItems.forEach(item => {
+      roItems.forEach((item) => {
         const sec = item.section || 1;
         if (!sections[sec]) sections[sec] = [];
         sections[sec].push(item);
       });
 
-      const sectionsHtml = Object.entries(sections).map(([secNum, items]) => `
+      const sectionsHtml = Object.entries(sections)
+        .map(
+          ([secNum, items]) => `
         <div style="margin-bottom:20px;">
           <h3 style="background:#1a1a2e;color:white;padding:8px 15px;border-radius:6px;font-size:1.1rem;">
             Section ${secNum}
@@ -4715,13 +5087,16 @@ const mediaGalleryModule = {
               </tr>
             </thead>
             <tbody>
-              ${items.map((item, i) => {
-                const isAward = !item.item_type || item.item_type === 'award';
-                const orgName = item.display_name || item.organisations?.company_name || '-';
-                const awardName = item.award_name || item.awards?.award_name || '-';
-                const prefix = item.award_number || String(item.display_order).padStart(2, '0');
-                const typeLabel = item.item_type ? item.item_type.charAt(0).toUpperCase() + item.item_type.slice(1).replace(/_/g, ' ') : 'Award';
-                return `
+              ${items
+                .map((item, i) => {
+                  const isAward = !item.item_type || item.item_type === 'award';
+                  const orgName = item.display_name || item.organisations?.company_name || '-';
+                  const awardName = item.award_name || item.awards?.award_name || '-';
+                  const prefix = item.award_number || String(item.display_order).padStart(2, '0');
+                  const typeLabel = item.item_type
+                    ? item.item_type.charAt(0).toUpperCase() + item.item_type.slice(1).replace(/_/g, ' ')
+                    : 'Award';
+                  return `
                   <tr style="border-bottom:1px solid #ddd;${!isAward ? 'background:#fff3cd;' : i % 2 ? 'background:#fafafa;' : ''}">
                     <td style="padding:8px;text-align:center;font-weight:bold;font-size:1.1rem;color:#0d6efd;">${utils.escapeHtml(item.award_number || '-')}</td>
                     <td style="padding:8px;text-align:center;">
@@ -4731,10 +5106,13 @@ const mediaGalleryModule = {
                     <td style="padding:8px;">${utils.escapeHtml(awardName)}</td>
                     <td style="padding:8px;"><span style="background:${isAward ? '#d4edda' : '#fff3cd'};padding:2px 8px;border-radius:10px;font-size:0.85rem;">${typeLabel}</span></td>
                   </tr>`;
-              }).join('')}
+                })
+                .join('')}
             </tbody>
           </table>
-        </div>`).join('');
+        </div>`
+        )
+        .join('');
 
       const cheatSheetHtml = `<!DOCTYPE html>
 <html><head>
@@ -4783,10 +5161,12 @@ const mediaGalleryModule = {
 </body></html>`;
 
       const win = window.open('', '_blank', 'width=900,height=700');
-      if (!win) { utils.showToast('Please allow popups to view the cheat sheet', 'warning'); return; }
+      if (!win) {
+        utils.showToast('Please allow popups to view the cheat sheet', 'warning');
+        return;
+      }
       win.document.write(cheatSheetHtml);
       win.document.close();
-
     } catch (err) {
       console.error('Error generating cheat sheet:', err);
       utils.showToast('Error generating cheat sheet: ' + err.message, 'error');
@@ -4823,7 +5203,10 @@ const mediaGalleryModule = {
       if (roError) throw roError;
 
       if (!roItems || roItems.length === 0) {
-        utils.showToast('No running order found for this event. Please set up the running order in the Events tab first.', 'warning');
+        utils.showToast(
+          'No running order found for this event. Please set up the running order in the Events tab first.',
+          'warning'
+        );
         return;
       }
 
@@ -4832,7 +5215,7 @@ const mediaGalleryModule = {
         .from('event_galleries')
         .select('id')
         .eq('event_id', this.currentEventId);
-      const sectionIds = (sections || []).map(s => s.id);
+      const sectionIds = (sections || []).map((s) => s.id);
 
       let photos = [];
       if (sectionIds.length > 0) {
@@ -4855,7 +5238,6 @@ const mediaGalleryModule = {
 
       // Show preview modal
       this._showAutoTagPreview(matches, roItems, photos);
-
     } catch (error) {
       console.error('Error opening auto-tag:', error);
       utils.showToast('Error loading auto-tag data: ' + error.message, 'error');
@@ -4872,18 +5254,18 @@ const mediaGalleryModule = {
     const matches = [];
 
     // Build lookup maps
-    const byAwardNumber = {};   // "1-01" -> item
-    const byDisplayOrder = {};  // 1 -> item
-    const byOrgName = {};       // "company name" -> item
+    const byAwardNumber = {}; // "1-01" -> item
+    const byDisplayOrder = {}; // 1 -> item
+    const byOrgName = {}; // "company name" -> item
 
-    roItems.forEach(item => {
+    roItems.forEach((item) => {
       if (item.award_number) byAwardNumber[item.award_number.toLowerCase()] = item;
       if (item.display_order != null) byDisplayOrder[item.display_order] = item;
       if (item.organisations?.company_name) byOrgName[item.organisations.company_name.toLowerCase()] = item;
       if (item.display_name) byOrgName[item.display_name.toLowerCase()] = item;
     });
 
-    photos.forEach(photo => {
+    photos.forEach((photo) => {
       // Extract the filename (without path and extension)
       const fullUrl = photo.file_url || '';
       const urlParts = fullUrl.split('/');
@@ -4941,7 +5323,7 @@ const mediaGalleryModule = {
         matchType,
         matchedPrefix,
         alreadyTagged: !!(photo.organisation_id || photo.award_id),
-        filename: fileTitle
+        filename: fileTitle,
       });
     });
 
@@ -4952,26 +5334,32 @@ const mediaGalleryModule = {
    * Show auto-tag preview modal with match results
    */
   _showAutoTagPreview(matches, roItems, photos) {
-    const matched = matches.filter(m => m.runningOrderItem);
-    const unmatched = matches.filter(m => !m.runningOrderItem);
-    const alreadyTagged = matches.filter(m => m.alreadyTagged);
-    const newMatches = matched.filter(m => !m.alreadyTagged);
+    const matched = matches.filter((m) => m.runningOrderItem);
+    const unmatched = matches.filter((m) => !m.runningOrderItem);
+    const alreadyTagged = matches.filter((m) => m.alreadyTagged);
+    const newMatches = matched.filter((m) => !m.alreadyTagged);
 
     // Build running order reference table
-    const roRefHtml = roItems.filter(i => i.item_type === 'award' || !i.item_type).map(item => `
+    const roRefHtml = roItems
+      .filter((i) => i.item_type === 'award' || !i.item_type)
+      .map(
+        (item) => `
       <tr>
         <td><code class="text-primary fw-bold">${utils.escapeHtml(item.award_number || '-')}</code></td>
         <td>${utils.escapeHtml(item.display_name || item.organisations?.company_name || '-')}</td>
         <td>${utils.escapeHtml(item.award_name || item.awards?.award_name || '-')}</td>
-      </tr>`).join('');
+      </tr>`
+      )
+      .join('');
 
     // Build match preview rows
-    const matchPreviewHtml = matched.map((m, _idx) => {
-      const item = m.runningOrderItem;
-      const orgName = item.organisations?.company_name || item.display_name || '-';
-      const awardName = item.award_name || item.awards?.award_name || '-';
-      const matchLabels = { award_number: 'Award #', display_order: 'Position #', name_match: 'Name' };
-      return `
+    const matchPreviewHtml = matched
+      .map((m, _idx) => {
+        const item = m.runningOrderItem;
+        const orgName = item.organisations?.company_name || item.display_name || '-';
+        const awardName = item.award_name || item.awards?.award_name || '-';
+        const matchLabels = { award_number: 'Award #', display_order: 'Position #', name_match: 'Name' };
+        return `
         <tr class="${m.alreadyTagged ? 'table-secondary' : 'table-success'}">
           <td>
             <input type="checkbox" class="form-check-input auto-tag-check" data-photo-id="${m.photoId}"
@@ -4984,13 +5372,19 @@ const mediaGalleryModule = {
           <td><span class="badge bg-info">${utils.escapeHtml(awardName)}</span></td>
           <td>${m.alreadyTagged ? '<span class="badge bg-secondary">Already Tagged</span>' : '<span class="badge bg-warning text-dark">Will Tag</span>'}</td>
         </tr>`;
-    }).join('');
+      })
+      .join('');
 
-    const unmatchedHtml = unmatched.slice(0, 20).map(m => `
+    const unmatchedHtml = unmatched
+      .slice(0, 20)
+      .map(
+        (m) => `
       <tr>
         <td><small class="text-truncate d-inline-block" style="max-width:250px;" title="${utils.escapeHtml(m.filename)}">${utils.escapeHtml(m.filename)}</small></td>
         <td class="text-muted"><small>No matching prefix found</small></td>
-      </tr>`).join('');
+      </tr>`
+      )
+      .join('');
 
     const html = `
       <div class="modal fade" id="autoTagModal" tabindex="-1">
@@ -5052,22 +5446,28 @@ const mediaGalleryModule = {
               </div>
 
               <!-- Matched Photos Preview -->
-              ${matched.length > 0 ? `
+              ${
+                matched.length > 0
+                  ? `
               <h6 class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Matched Photos (${matched.length})</h6>
               <div class="table-responsive mb-3" style="max-height:300px; overflow-y:auto;">
                 <table class="table table-sm table-hover align-middle mb-0">
                   <thead class="table-light sticky-top">
                     <tr>
-                      <th style="width:30px;"><input type="checkbox" class="form-check-input" id="autoTagCheckAll" checked onchange="mediaGalleryModule._toggleAutoTagAll(this.checked)"></th>
+                      <th style="width:30px;"><input type="checkbox" class="form-check-input" id="autoTagCheckAll" checked data-on-change="mediaGalleryModule._toggleAutoTagAllFromChange"></th>
                       <th>Filename</th><th>Matched By</th><th>Organisation</th><th>Award</th><th>Status</th>
                     </tr>
                   </thead>
                   <tbody>${matchPreviewHtml}</tbody>
                 </table>
-              </div>` : ''}
+              </div>`
+                  : ''
+              }
 
               <!-- Unmatched Photos -->
-              ${unmatched.length > 0 ? `
+              ${
+                unmatched.length > 0
+                  ? `
               <details class="mb-3">
                 <summary class="text-danger" style="cursor:pointer;"><strong><i class="bi bi-x-circle me-1"></i>${unmatched.length} Unmatched Photos</strong> (click to expand)</summary>
                 <div class="table-responsive mt-2" style="max-height:200px; overflow-y:auto;">
@@ -5077,7 +5477,9 @@ const mediaGalleryModule = {
                   </table>
                 </div>
                 ${unmatched.length > 20 ? `<small class="text-muted">...and ${unmatched.length - 20} more</small>` : ''}
-              </details>` : ''}
+              </details>`
+                  : ''
+              }
 
               <!-- Running Order Reference -->
               <details class="mb-2">
@@ -5110,11 +5512,18 @@ const mediaGalleryModule = {
   },
 
   _toggleAutoTagAll(checked) {
-    document.querySelectorAll('.auto-tag-check').forEach(cb => {
+    document.querySelectorAll('.auto-tag-check').forEach((cb) => {
       if (!cb.closest('tr').classList.contains('table-secondary')) {
         cb.checked = checked;
       }
     });
+  },
+
+  /**
+   * Wrapper for _toggleAutoTagAll called via data-on-change (receives id, value, event).
+   */
+  _toggleAutoTagAllFromChange(_id, _value, event) {
+    this._toggleAutoTagAll(event.target.checked);
   },
 
   /**
@@ -5124,9 +5533,9 @@ const mediaGalleryModule = {
     if (!this._autoTagMatches) return;
 
     const checkboxes = document.querySelectorAll('.auto-tag-check:checked');
-    const selectedPhotoIds = new Set(Array.from(checkboxes).map(cb => cb.dataset.photoId));
+    const selectedPhotoIds = new Set(Array.from(checkboxes).map((cb) => cb.dataset.photoId));
 
-    const matched = this._autoTagMatches.filter(m => m.runningOrderItem && selectedPhotoIds.has(m.photoId));
+    const matched = this._autoTagMatches.filter((m) => m.runningOrderItem && selectedPhotoIds.has(m.photoId));
 
     if (matched.length === 0) {
       utils.showToast('No photos selected for tagging', 'warning');
@@ -5157,10 +5566,7 @@ const mediaGalleryModule = {
           }
 
           if (Object.keys(updateData).length > 0) {
-            const { error } = await STATE.client
-              .from('media_gallery')
-              .update(updateData)
-              .eq('id', m.photo.id);
+            const { error } = await STATE.client.from('media_gallery').update(updateData).eq('id', m.photo.id);
 
             if (error) {
               console.error(`Error tagging photo ${m.photo.id}:`, error);
@@ -5220,7 +5626,7 @@ const mediaGalleryModule = {
 
   previewBulkYouTube() {
     const input = document.getElementById('bulkYouTubeUrls').value.trim();
-    const lines = input.split('\n').filter(l => l.trim());
+    const lines = input.split('\n').filter((l) => l.trim());
     const container = document.getElementById('bulkYouTubePreview');
 
     if (lines.length === 0) {
@@ -5228,7 +5634,7 @@ const mediaGalleryModule = {
       return;
     }
 
-    const previews = lines.map(line => {
+    const previews = lines.map((line) => {
       const id = this.extractYouTubeId(line.trim());
       if (!id) {
         return `<div class="col-md-4 mb-2"><div class="card border-danger"><div class="card-body p-2"><small class="text-danger">Invalid: ${utils.escapeHtml(line.trim().substring(0, 40))}</small></div></div></div>`;
@@ -5251,7 +5657,7 @@ const mediaGalleryModule = {
 
   async saveBulkYouTube() {
     const input = document.getElementById('bulkYouTubeUrls').value.trim();
-    const lines = input.split('\n').filter(l => l.trim());
+    const lines = input.split('\n').filter((l) => l.trim());
 
     if (lines.length === 0) {
       utils.showToast('Please paste at least one YouTube URL', 'warning');
@@ -5266,8 +5672,8 @@ const mediaGalleryModule = {
     const primaryOrgId = this.videoTags.length > 0 ? this.videoTags[0].id : null;
     const primaryAwardId = this.videoAwardTags.length > 0 ? this.videoAwardTags[0].id : null;
     const tagsObject = {
-      companies: this.videoTags.map(t => ({ id: t.id, name: t.name })),
-      awards: this.videoAwardTags.map(t => ({ id: t.id, name: t.name }))
+      companies: this.videoTags.map((t) => ({ id: t.id, name: t.name })),
+      awards: this.videoAwardTags.map((t) => ({ id: t.id, name: t.name })),
     };
     const hasTags = this.videoTags.length > 0 || this.videoAwardTags.length > 0;
 
@@ -5295,7 +5701,7 @@ const mediaGalleryModule = {
             award_id: primaryAwardId,
             tags: hasTags ? JSON.stringify(tagsObject) : null,
             status: 'published',
-            created_at: new Date().toISOString()
+            created_at: new Date().toISOString(),
           };
 
           try {
@@ -5376,7 +5782,7 @@ const mediaGalleryModule = {
 
     const sectionSelect = document.getElementById('watermarkSection');
     sectionSelect.innerHTML = '<option value="all">All Sections</option>';
-    (sections || []).forEach(s => {
+    (sections || []).forEach((s) => {
       sectionSelect.innerHTML += `<option value="${s.id}">${utils.escapeHtml(s.gallery_name)}</option>`;
     });
 
@@ -5434,11 +5840,26 @@ const mediaGalleryModule = {
 
           let x, y;
           switch (position) {
-            case 'top-left': x = 10; y = 10; break;
-            case 'top-right': x = canvas.width - wmWidth - 10; y = 10; break;
-            case 'bottom-left': x = 10; y = canvas.height - wmHeight - 10; break;
-            case 'center': x = (canvas.width - wmWidth) / 2; y = (canvas.height - wmHeight) / 2; break;
-            default: x = canvas.width - wmWidth - 10; y = canvas.height - wmHeight - 10; break;
+            case 'top-left':
+              x = 10;
+              y = 10;
+              break;
+            case 'top-right':
+              x = canvas.width - wmWidth - 10;
+              y = 10;
+              break;
+            case 'bottom-left':
+              x = 10;
+              y = canvas.height - wmHeight - 10;
+              break;
+            case 'center':
+              x = (canvas.width - wmWidth) / 2;
+              y = (canvas.height - wmHeight) / 2;
+              break;
+            default:
+              x = canvas.width - wmWidth - 10;
+              y = canvas.height - wmHeight - 10;
+              break;
           }
 
           ctx.drawImage(watermark, x, y, wmWidth, wmHeight);
@@ -5453,7 +5874,8 @@ const mediaGalleryModule = {
       reader.readAsDataURL(fileInput.files[0]);
     };
     img.onerror = () => {
-      document.getElementById('watermarkPreviewResult').innerHTML = '<small class="text-warning">Could not load sample photo for preview (CORS). Watermark will still be applied on download.</small>';
+      document.getElementById('watermarkPreviewResult').innerHTML =
+        '<small class="text-warning">Could not load sample photo for preview (CORS). Watermark will still be applied on download.</small>';
     };
     img.src = photos[0].file_url;
   },
@@ -5474,21 +5896,35 @@ const mediaGalleryModule = {
     if (sectionVal !== 'all') wmFilters2.gallery_section_id = sectionVal;
     let photos, wmError;
     try {
-      const wmRes = await apiClient.select('media_gallery', { select: 'id, file_url, title', filters: wmFilters2, pageSize: 1000 });
+      const wmRes = await apiClient.select('media_gallery', {
+        select: 'id, file_url, title',
+        filters: wmFilters2,
+        pageSize: 1000,
+      });
       photos = wmRes.data;
-    } catch (e) { wmError = e; }
+    } catch (e) {
+      wmError = e;
+    }
 
     if (wmError || !photos || photos.length === 0) {
       utils.showToast('No photos found to watermark', 'warning');
       return;
     }
 
-    if (!await utils.confirmDialog({ title: 'Watermark Photos', message: `This will create watermarked copies of ${photos.length} photos. The originals will NOT be modified. Continue?`, confirmText: 'Create Watermarks', danger: false })) return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Watermark Photos',
+        message: `This will create watermarked copies of ${photos.length} photos. The originals will NOT be modified. Continue?`,
+        confirmText: 'Create Watermarks',
+        danger: false,
+      }))
+    )
+      return;
 
     utils.showLoading();
 
     // Read watermark file
-    const wmDataUrl = await new Promise(resolve => {
+    const wmDataUrl = await new Promise((resolve) => {
       const reader = new FileReader();
       reader.onload = (e) => resolve(e.target.result);
       reader.readAsDataURL(fileInput.files[0]);
@@ -5546,11 +5982,26 @@ const mediaGalleryModule = {
 
           let x, y;
           switch (position) {
-            case 'top-left': x = 15; y = 15; break;
-            case 'top-right': x = canvas.width - wmWidth - 15; y = 15; break;
-            case 'bottom-left': x = 15; y = canvas.height - wmHeight - 15; break;
-            case 'center': x = (canvas.width - wmWidth) / 2; y = (canvas.height - wmHeight) / 2; break;
-            default: x = canvas.width - wmWidth - 15; y = canvas.height - wmHeight - 15; break;
+            case 'top-left':
+              x = 15;
+              y = 15;
+              break;
+            case 'top-right':
+              x = canvas.width - wmWidth - 15;
+              y = 15;
+              break;
+            case 'bottom-left':
+              x = 15;
+              y = canvas.height - wmHeight - 15;
+              break;
+            case 'center':
+              x = (canvas.width - wmWidth) / 2;
+              y = (canvas.height - wmHeight) / 2;
+              break;
+            default:
+              x = canvas.width - wmWidth - 15;
+              y = canvas.height - wmHeight - 15;
+              break;
           }
 
           ctx.drawImage(watermark, x, y, wmWidth, wmHeight);
@@ -5620,7 +6071,7 @@ const mediaGalleryModule = {
         .not('organisation_id', 'is', null);
 
       const orgCounts = {};
-      (orgMedia || []).forEach(m => {
+      (orgMedia || []).forEach((m) => {
         const name = m.organisations?.company_name || 'Unknown';
         orgCounts[name] = (orgCounts[name] || 0) + 1;
       });
@@ -5633,7 +6084,7 @@ const mediaGalleryModule = {
         totalVideos: totalVideos || 0,
         untaggedPhotos: untaggedPhotos || 0,
         youtubeCount: youtubeCount || 0,
-        topOrgs
+        topOrgs,
       };
     } catch (error) {
       console.error('Error loading media dashboard stats:', error);
@@ -5645,10 +6096,9 @@ const mediaGalleryModule = {
     const container = document.getElementById(containerId);
     if (!container) return;
 
-    this.getMediaDashboardStats().then(stats => {
-      const taggedPct = stats.totalPhotos > 0
-        ? Math.round(((stats.totalPhotos - stats.untaggedPhotos) / stats.totalPhotos) * 100)
-        : 0;
+    this.getMediaDashboardStats().then((stats) => {
+      const taggedPct =
+        stats.totalPhotos > 0 ? Math.round(((stats.totalPhotos - stats.untaggedPhotos) / stats.totalPhotos) * 100) : 0;
 
       container.innerHTML = `
         <div class="card">
@@ -5684,15 +6134,23 @@ const mediaGalleryModule = {
                 <div class="progress-bar ${taggedPct === 100 ? 'bg-success' : 'bg-primary'}" style="width: ${taggedPct}%"></div>
               </div>
             </div>
-            ${stats.topOrgs.length > 0 ? `
+            ${
+              stats.topOrgs.length > 0
+                ? `
               <h6 class="mb-2 small text-muted">Most Photographed</h6>
-              ${stats.topOrgs.map(([name, count]) => `
+              ${stats.topOrgs
+                .map(
+                  ([name, count]) => `
                 <div class="d-flex justify-content-between align-items-center mb-1">
                   <small>${utils.escapeHtml(name)}</small>
                   <span class="badge bg-light text-dark">${count}</span>
                 </div>
-              `).join('')}
-            ` : ''}
+              `
+                )
+                .join('')}
+            `
+                : ''
+            }
           </div>
         </div>`;
     });
@@ -5758,8 +6216,8 @@ const mediaGalleryModule = {
     if (!this._draggedVideoId || this._draggedVideoId === videoId || !this._currentVideos) return;
 
     // Reorder the videos array
-    const fromIdx = this._currentVideos.findIndex(v => v.id === this._draggedVideoId);
-    const toIdx = this._currentVideos.findIndex(v => v.id === videoId);
+    const fromIdx = this._currentVideos.findIndex((v) => v.id === this._draggedVideoId);
+    const toIdx = this._currentVideos.findIndex((v) => v.id === videoId);
     if (fromIdx === -1 || toIdx === -1) return;
 
     const [moved] = this._currentVideos.splice(fromIdx, 1);
@@ -5772,7 +6230,7 @@ const mediaGalleryModule = {
 
   onVideoDragEnd(e) {
     e.currentTarget.style.opacity = '1';
-    document.querySelectorAll('#videosGrid > div').forEach(el => {
+    document.querySelectorAll('#videosGrid > div').forEach((el) => {
       el.style.border = '';
     });
     this._draggedVideoEl = null;
@@ -5784,10 +6242,7 @@ const mediaGalleryModule = {
 
     try {
       for (let i = 0; i < this._currentVideos.length; i++) {
-        await STATE.client
-          .from('media_items')
-          .update({ display_order: i })
-          .eq('id', this._currentVideos[i].id);
+        await STATE.client.from('media_items').update({ display_order: i }).eq('id', this._currentVideos[i].id);
       }
       utils.showToast('Video order saved!', 'success');
       this._logActivity('reorder', null, 'Videos reordered');
@@ -5855,11 +6310,13 @@ const mediaGalleryModule = {
     const previewEl = document.getElementById('playlistPreview');
 
     if (!playlistId) {
-      statusEl.innerHTML = '<div class="alert alert-warning">Invalid playlist URL. Please paste a full YouTube playlist URL.</div>';
+      statusEl.innerHTML =
+        '<div class="alert alert-warning">Invalid playlist URL. Please paste a full YouTube playlist URL.</div>';
       return;
     }
 
-    statusEl.innerHTML = '<div class="alert alert-info"><i class="bi bi-hourglass-split me-2"></i>Fetching playlist... This uses the YouTube oEmbed API.</div>';
+    statusEl.innerHTML =
+      '<div class="alert alert-info"><i class="bi bi-hourglass-split me-2"></i>Fetching playlist... This uses the YouTube oEmbed API.</div>';
 
     // Since we can't use the YouTube Data API without a key, we use a workaround:
     // Try fetching the playlist page via noembed/YouTube oEmbed
@@ -5891,12 +6348,13 @@ const mediaGalleryModule = {
     const input = document.getElementById('playlistVideoUrls')?.value?.trim();
     if (!input) return;
 
-    const lines = input.split('\n').filter(l => l.trim());
+    const lines = input.split('\n').filter((l) => l.trim());
     const previewEl = document.getElementById('playlistPreview');
 
-    const previews = lines.map(line => {
+    const previews = lines.map((line) => {
       const id = this.extractYouTubeId(line.trim());
-      if (!id) return `<div class="col-md-3 mb-2"><div class="card border-danger p-2"><small class="text-danger">Invalid</small></div></div>`;
+      if (!id)
+        return `<div class="col-md-3 mb-2"><div class="card border-danger p-2"><small class="text-danger">Invalid</small></div></div>`;
       return `
         <div class="col-md-3 mb-2">
           <div class="card">
@@ -5936,7 +6394,7 @@ const mediaGalleryModule = {
 
     const select = document.getElementById('exportOrgSelect');
     select.innerHTML = '<option value="">Select a company...</option>';
-    (orgs || []).forEach(org => {
+    (orgs || []).forEach((org) => {
       select.innerHTML += `<option value="${org.id}">${utils.escapeHtml(org.company_name)}</option>`;
     });
 
@@ -5961,13 +6419,17 @@ const mediaGalleryModule = {
       // Fetch photos for this org
       const { data: photos } = await STATE.client
         .from('media_gallery')
-        .select('id, file_url, title, caption, organisations!media_gallery_organisation_id_fkey(company_name), awards:award_years!media_gallery_award_id_fkey(award_name)')
+        .select(
+          'id, file_url, title, caption, organisations!media_gallery_organisation_id_fkey(company_name), awards:award_years!media_gallery_award_id_fkey(award_name)'
+        )
         .eq('organisation_id', orgId);
 
       // Fetch videos for this org
       const { data: videos } = await STATE.client
         .from('media_items')
-        .select('id, title, youtube_id, file_url, thumbnail_url, organisations(company_name), awards:award_years(award_name)')
+        .select(
+          'id, title, youtube_id, file_url, thumbnail_url, organisations(company_name), awards:award_years(award_name)'
+        )
         .eq('organisation_id', orgId)
         .eq('media_type', 'video');
 
@@ -5986,19 +6448,28 @@ const mediaGalleryModule = {
           <strong>${photoCount} photos</strong> and <strong>${videoCount} videos</strong> found.
         </div>
         <div class="row">
-          ${(photos || []).slice(0, 6).map(p => `
+          ${(photos || [])
+            .slice(0, 6)
+            .map(
+              (p) => `
             <div class="col-md-2 mb-2">
               <img src="${p.file_url}" class="img-fluid rounded" style="height:80px; object-fit:cover; width:100%;" alt="${utils.escapeHtml(p.title || '')}">
             </div>
-          `).join('')}
+          `
+            )
+            .join('')}
           ${photoCount > 6 ? `<div class="col-md-2 mb-2 d-flex align-items-center justify-content-center"><span class="text-muted">+${photoCount - 6} more</span></div>` : ''}
         </div>
-        ${videoCount > 0 ? `
+        ${
+          videoCount > 0
+            ? `
           <h6 class="mt-3 mb-2">Videos:</h6>
           <ul class="list-unstyled">
-            ${(videos || []).map(v => `<li><i class="bi bi-play-circle me-1"></i>${utils.escapeHtml(v.title)} ${v.youtube_id ? `<small class="text-muted">(${v.youtube_id})</small>` : ''}</li>`).join('')}
+            ${(videos || []).map((v) => `<li><i class="bi bi-play-circle me-1"></i>${utils.escapeHtml(v.title)} ${v.youtube_id ? `<small class="text-muted">(${v.youtube_id})</small>` : ''}</li>`).join('')}
           </ul>
-        ` : ''}`;
+        `
+            : ''
+        }`;
     } catch (error) {
       previewEl.innerHTML = `<div class="alert alert-danger">Error: ${utils.escapeHtml(error.message)}</div>`;
     }
@@ -6014,7 +6485,8 @@ const mediaGalleryModule = {
     const statusEl = document.getElementById('exportStatus');
 
     // Generate a text manifest
-    const orgName = document.getElementById('exportOrgSelect').options[document.getElementById('exportOrgSelect').selectedIndex].text;
+    const orgName =
+      document.getElementById('exportOrgSelect').options[document.getElementById('exportOrgSelect').selectedIndex].text;
     let manifest = `MEDIA EXPORT - ${orgName}\n`;
     manifest += `${'='.repeat(50)}\n`;
     manifest += `Generated: ${new Date().toLocaleDateString()}\n\n`;
@@ -6053,7 +6525,7 @@ const mediaGalleryModule = {
         document.body.appendChild(photoLink);
         photoLink.click();
         document.body.removeChild(photoLink);
-        await new Promise(r => setTimeout(r, 400));
+        await new Promise((r) => setTimeout(r, 400));
       } catch (err) {
         console.warn('Download failed for photo:', photos[i].id);
       }
@@ -6075,8 +6547,14 @@ const mediaGalleryModule = {
 
     const select1 = document.getElementById('comparisonEvent1');
     const select2 = document.getElementById('comparisonEvent2');
-    const options = '<option value="">Select event...</option>' +
-      (events || []).map(e => `<option value="${e.id}">${utils.escapeHtml(e.event_name)} (${e.event_date ? new Date(e.event_date).getFullYear() : 'N/A'})</option>`).join('');
+    const options =
+      '<option value="">Select event...</option>' +
+      (events || [])
+        .map(
+          (e) =>
+            `<option value="${e.id}">${utils.escapeHtml(e.event_name)} (${e.event_date ? new Date(e.event_date).getFullYear() : 'N/A'})</option>`
+        )
+        .join('');
 
     select1.innerHTML = options;
     select2.innerHTML = options;
@@ -6090,7 +6568,7 @@ const mediaGalleryModule = {
 
     const orgSelect = document.getElementById('comparisonOrg');
     orgSelect.innerHTML = '<option value="">All companies</option>';
-    (orgs || []).forEach(org => {
+    (orgs || []).forEach((org) => {
       orgSelect.innerHTML += `<option value="${org.id}">${utils.escapeHtml(org.company_name)}</option>`;
     });
 
@@ -6117,12 +6595,16 @@ const mediaGalleryModule = {
       // Fetch photos for event 1
       const photoFilters1 = { event_id: event1Id };
       const photoFilters2 = { event_id: event2Id };
-      if (orgId) { photoFilters1.organisation_id = orgId; photoFilters2.organisation_id = orgId; }
+      if (orgId) {
+        photoFilters1.organisation_id = orgId;
+        photoFilters2.organisation_id = orgId;
+      }
 
-      const photoSelect = 'id, file_url, title, caption, organisation_id, organisations!media_gallery_organisation_id_fkey(company_name)';
+      const photoSelect =
+        'id, file_url, title, caption, organisation_id, organisations!media_gallery_organisation_id_fkey(company_name)';
       const [pRes1, pRes2] = await Promise.all([
         apiClient.select('media_gallery', { select: photoSelect, filters: photoFilters1, pageSize: 1000 }),
-        apiClient.select('media_gallery', { select: photoSelect, filters: photoFilters2, pageSize: 1000 })
+        apiClient.select('media_gallery', { select: photoSelect, filters: photoFilters2, pageSize: 1000 }),
       ]);
       const photos1 = pRes1.data;
       const photos2 = pRes2.data;
@@ -6130,18 +6612,25 @@ const mediaGalleryModule = {
       // Fetch videos for both events
       const videoFilters1 = { event_id: event1Id, media_type: 'video' };
       const videoFilters2 = { event_id: event2Id, media_type: 'video' };
-      if (orgId) { videoFilters1.organisation_id = orgId; videoFilters2.organisation_id = orgId; }
+      if (orgId) {
+        videoFilters1.organisation_id = orgId;
+        videoFilters2.organisation_id = orgId;
+      }
 
       const videoSelect = 'id, title, youtube_id, organisation_id, organisations(company_name)';
       const [vRes1, vRes2] = await Promise.all([
         apiClient.select('media_items', { select: videoSelect, filters: videoFilters1, pageSize: 1000 }),
-        apiClient.select('media_items', { select: videoSelect, filters: videoFilters2, pageSize: 1000 })
+        apiClient.select('media_items', { select: videoSelect, filters: videoFilters2, pageSize: 1000 }),
       ]);
       const videos1 = vRes1.data;
       const videos2 = vRes2.data;
 
-      const event1Name = document.getElementById('comparisonEvent1').options[document.getElementById('comparisonEvent1').selectedIndex].text;
-      const event2Name = document.getElementById('comparisonEvent2').options[document.getElementById('comparisonEvent2').selectedIndex].text;
+      const event1Name =
+        document.getElementById('comparisonEvent1').options[document.getElementById('comparisonEvent1').selectedIndex]
+          .text;
+      const event2Name =
+        document.getElementById('comparisonEvent2').options[document.getElementById('comparisonEvent2').selectedIndex]
+          .text;
 
       resultEl.innerHTML = `
         <div class="row">
@@ -6156,18 +6645,33 @@ const mediaGalleryModule = {
                   <span class="badge bg-danger fs-6">${(videos1 || []).length} videos</span>
                 </div>
                 <div class="row g-1">
-                  ${(photos1 || []).slice(0, 8).map(p => `
+                  ${(photos1 || [])
+                    .slice(0, 8)
+                    .map(
+                      (p) => `
                     <div class="col-3">
                       <img src="${p.file_url}" class="img-fluid rounded" style="height:60px; object-fit:cover; width:100%;" alt="">
                     </div>
-                  `).join('')}
+                  `
+                    )
+                    .join('')}
                   ${(photos1 || []).length > 8 ? `<div class="col-3 d-flex align-items-center justify-content-center"><small class="text-muted">+${(photos1 || []).length - 8}</small></div>` : ''}
                 </div>
-                ${(videos1 || []).length > 0 ? `
+                ${
+                  (videos1 || []).length > 0
+                    ? `
                   <div class="mt-2">
-                    ${(videos1 || []).slice(0, 3).map(v => `<div class="small"><i class="bi bi-play-circle me-1"></i>${utils.escapeHtml(v.title || v.youtube_id || 'Video')}</div>`).join('')}
+                    ${(videos1 || [])
+                      .slice(0, 3)
+                      .map(
+                        (v) =>
+                          `<div class="small"><i class="bi bi-play-circle me-1"></i>${utils.escapeHtml(v.title || v.youtube_id || 'Video')}</div>`
+                      )
+                      .join('')}
                   </div>
-                ` : ''}
+                `
+                    : ''
+                }
               </div>
             </div>
           </div>
@@ -6182,18 +6686,33 @@ const mediaGalleryModule = {
                   <span class="badge bg-danger fs-6">${(videos2 || []).length} videos</span>
                 </div>
                 <div class="row g-1">
-                  ${(photos2 || []).slice(0, 8).map(p => `
+                  ${(photos2 || [])
+                    .slice(0, 8)
+                    .map(
+                      (p) => `
                     <div class="col-3">
                       <img src="${p.file_url}" class="img-fluid rounded" style="height:60px; object-fit:cover; width:100%;" alt="">
                     </div>
-                  `).join('')}
+                  `
+                    )
+                    .join('')}
                   ${(photos2 || []).length > 8 ? `<div class="col-3 d-flex align-items-center justify-content-center"><small class="text-muted">+${(photos2 || []).length - 8}</small></div>` : ''}
                 </div>
-                ${(videos2 || []).length > 0 ? `
+                ${
+                  (videos2 || []).length > 0
+                    ? `
                   <div class="mt-2">
-                    ${(videos2 || []).slice(0, 3).map(v => `<div class="small"><i class="bi bi-play-circle me-1"></i>${utils.escapeHtml(v.title || v.youtube_id || 'Video')}</div>`).join('')}
+                    ${(videos2 || [])
+                      .slice(0, 3)
+                      .map(
+                        (v) =>
+                          `<div class="small"><i class="bi bi-play-circle me-1"></i>${utils.escapeHtml(v.title || v.youtube_id || 'Video')}</div>`
+                      )
+                      .join('')}
                   </div>
-                ` : ''}
+                `
+                    : ''
+                }
               </div>
             </div>
           </div>
@@ -6248,7 +6767,8 @@ const mediaGalleryModule = {
     const resultEl = document.getElementById('youtubeHealthResult');
     const statusEl = document.getElementById('youtubeHealthStatus');
 
-    statusEl.innerHTML = '<div class="alert alert-info"><i class="bi bi-hourglass-split me-2"></i>Checking YouTube videos... This may take a moment.</div>';
+    statusEl.innerHTML =
+      '<div class="alert alert-info"><i class="bi bi-hourglass-split me-2"></i>Checking YouTube videos... This may take a moment.</div>';
 
     try {
       // Fetch all YouTube videos
@@ -6273,20 +6793,22 @@ const mediaGalleryModule = {
       for (const video of videos) {
         try {
           // Use oEmbed endpoint to check if video exists (no API key needed)
-          const response = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${video.youtube_id}&format=json`);
+          const response = await fetch(
+            `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${video.youtube_id}&format=json`
+          );
 
           results.push({
             ...video,
             status: response.ok ? 'ok' : 'broken',
             httpStatus: response.status,
-            oembedTitle: response.ok ? (await response.json()).title : null
+            oembedTitle: response.ok ? (await response.json()).title : null,
           });
         } catch (err) {
           console.error(`Video validation failed for YouTube ID ${video.youtube_id}:`, err);
           results.push({
             ...video,
             status: 'error',
-            httpStatus: 0
+            httpStatus: 0,
           });
         }
 
@@ -6296,12 +6818,12 @@ const mediaGalleryModule = {
         }
 
         // Rate limit to avoid being blocked
-        await new Promise(r => setTimeout(r, 300));
+        await new Promise((r) => setTimeout(r, 300));
       }
 
-      const okCount = results.filter(r => r.status === 'ok').length;
-      const brokenCount = results.filter(r => r.status !== 'ok').length;
-      const broken = results.filter(r => r.status !== 'ok');
+      const okCount = results.filter((r) => r.status === 'ok').length;
+      const brokenCount = results.filter((r) => r.status !== 'ok').length;
+      const broken = results.filter((r) => r.status !== 'ok');
 
       statusEl.innerHTML = `
         <div class="alert ${brokenCount > 0 ? 'alert-warning' : 'alert-success'}">
@@ -6317,7 +6839,9 @@ const mediaGalleryModule = {
             <table class="table table-sm table-hover">
               <thead><tr><th>Title</th><th>YouTube ID</th><th>Company</th><th>Status</th><th>Action</th></tr></thead>
               <tbody>
-                ${broken.map(v => `
+                ${broken
+                  .map(
+                    (v) => `
                   <tr>
                     <td>${utils.escapeHtml(v.title || 'Untitled')}</td>
                     <td><code>${v.youtube_id}</code></td>
@@ -6332,7 +6856,9 @@ const mediaGalleryModule = {
                       </button>
                     </td>
                   </tr>
-                `).join('')}
+                `
+                  )
+                  .join('')}
               </tbody>
             </table>
           </div>`;
@@ -6343,7 +6869,6 @@ const mediaGalleryModule = {
             <p class="text-success">All ${results.length} YouTube videos are accessible and working.</p>
           </div>`;
       }
-
     } catch (error) {
       statusEl.innerHTML = `<div class="alert alert-danger">Error: ${utils.escapeHtml(error.message)}</div>`;
     }
@@ -6354,7 +6879,10 @@ const mediaGalleryModule = {
   // ============================================
   async launchSlideshow(sectionId) {
     const section = sectionId || this.currentSectionId;
-    if (!section) { utils.showToast('Select a gallery section first', 'warning'); return; }
+    if (!section) {
+      utils.showToast('Select a gallery section first', 'warning');
+      return;
+    }
 
     let photos = this.currentSectionPhotos || [];
     if (photos.length === 0) {
@@ -6366,12 +6894,15 @@ const mediaGalleryModule = {
         .order('display_order', { ascending: true });
       photos = data || [];
     } else {
-      photos = photos.filter(p => p.published !== false);
+      photos = photos.filter((p) => p.published !== false);
     }
 
-    if (photos.length === 0) { utils.showToast('No published photos to show', 'warning'); return; }
+    if (photos.length === 0) {
+      utils.showToast('No published photos to show', 'warning');
+      return;
+    }
 
-    const event = STATE.allEvents.find(e => e.id === this.currentEventId);
+    const event = STATE.allEvents.find((e) => e.id === this.currentEventId);
     const eventName = event ? event.event_name : '';
 
     const slideshowWin = window.open('', '_blank');
@@ -6397,21 +6928,21 @@ const mediaGalleryModule = {
       <div class="slide-container" id="slideContainer">
         <span class="slide-event">${utils.escapeHtml(eventName)}</span>
         <span class="slide-counter" id="slideCounter">1 / ${photos.length}</span>
-        <span class="nav-arrow left" onclick="prevSlide()">&lsaquo;</span>
+        <span class="nav-arrow left" id="navPrev">&lsaquo;</span>
         <img class="slide-img" id="slideImg" src="${photos[0].file_url}" alt="">
-        <span class="nav-arrow right" onclick="nextSlide()">&rsaquo;</span>
+        <span class="nav-arrow right" id="navNext">&rsaquo;</span>
         <div class="slide-caption" id="slideCaption">
           <h3 id="slideTitle">${utils.escapeHtml(photos[0].title || '')}</h3>
           <p id="slideInfo">${utils.escapeHtml(photos[0].photographer ? 'Photo: ' + photos[0].photographer : '')}</p>
         </div>
         <div class="controls">
-          <button onclick="prevSlide()">&#9664; Prev</button>
-          <button id="playBtn" onclick="toggleAutoplay()">&#9654; Play</button>
-          <button onclick="nextSlide()">Next &#9654;</button>
+          <button id="prevBtn">&#9664; Prev</button>
+          <button id="playBtn">&#9654; Play</button>
+          <button id="nextBtn">Next &#9654;</button>
         </div>
       </div>
       <script>
-        const photos = ${JSON.stringify(photos.map(p => ({ url: p.file_url, title: p.title || '', photographer: p.photographer || '', org: '' })))};
+        const photos = ${JSON.stringify(photos.map((p) => ({ url: p.file_url, title: p.title || '', photographer: p.photographer || '', org: '' })))};
         let current = 0;
         let autoplayTimer = null;
 
@@ -6428,6 +6959,11 @@ const mediaGalleryModule = {
           if (autoplayTimer) { clearInterval(autoplayTimer); autoplayTimer = null; document.getElementById('playBtn').innerHTML = '&#9654; Play'; }
           else { autoplayTimer = setInterval(nextSlide, 4000); document.getElementById('playBtn').innerHTML = '&#9646;&#9646; Pause'; }
         }
+        document.getElementById('navPrev').addEventListener('click', prevSlide);
+        document.getElementById('navNext').addEventListener('click', nextSlide);
+        document.getElementById('prevBtn').addEventListener('click', prevSlide);
+        document.getElementById('playBtn').addEventListener('click', toggleAutoplay);
+        document.getElementById('nextBtn').addEventListener('click', nextSlide);
         document.addEventListener('keydown', function(e) {
           if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); nextSlide(); }
           if (e.key === 'ArrowLeft') prevSlide();
@@ -6482,7 +7018,10 @@ const mediaGalleryModule = {
   // BULK MOVE PHOTOS BETWEEN SECTIONS
   // ============================================
   async bulkMoveToSection() {
-    if (this.selectedPhotoIds.size === 0) { utils.showToast('Select photos to move', 'warning'); return; }
+    if (this.selectedPhotoIds.size === 0) {
+      utils.showToast('Select photos to move', 'warning');
+      return;
+    }
 
     // Load sections for current event
     const { data: sections, error } = await STATE.client
@@ -6491,11 +7030,17 @@ const mediaGalleryModule = {
       .eq('event_id', this.currentEventId)
       .order('display_order', { ascending: true });
 
-    if (error || !sections || sections.length === 0) { utils.showToast('No sections available', 'warning'); return; }
+    if (error || !sections || sections.length === 0) {
+      utils.showToast('No sections available', 'warning');
+      return;
+    }
 
     const currentSection = this.currentSectionId;
-    const otherSections = sections.filter(s => s.id !== currentSection);
-    if (otherSections.length === 0) { utils.showToast('No other sections to move photos to', 'warning'); return; }
+    const otherSections = sections.filter((s) => s.id !== currentSection);
+    if (otherSections.length === 0) {
+      utils.showToast('No other sections to move photos to', 'warning');
+      return;
+    }
 
     const old = document.getElementById('bulkMoveSectionModal');
     if (old) old.remove();
@@ -6507,13 +7052,17 @@ const mediaGalleryModule = {
         <div class="modal-body">
           <p>Select the destination gallery section:</p>
           <div class="list-group">
-            ${otherSections.map(s => `
+            ${otherSections
+              .map(
+                (s) => `
               <button class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
                 data-action="mediaGalleryModule._executeBulkMove" data-args='${JSON.stringify([s.id, utils.escapeHtml(s.gallery_name).replace(/'/g, "\\'")])}'>
                 <span><i class="bi bi-folder me-2"></i>${utils.escapeHtml(s.gallery_name)}</span>
                 <i class="bi bi-arrow-right"></i>
               </button>
-            `).join('')}
+            `
+              )
+              .join('')}
           </div>
         </div>
       </div></div></div>`;
@@ -6572,7 +7121,7 @@ const mediaGalleryModule = {
       for (const photo of photos) {
         const eventId = photo.event_galleries?.event_id;
         if (!eventMap[eventId]) {
-          const event = STATE.allEvents.find(e => e.id === eventId);
+          const event = STATE.allEvents.find((e) => e.id === eventId);
           eventMap[eventId] = { event, photos: [] };
         }
         eventMap[eventId].photos.push(photo);
@@ -6588,10 +7137,14 @@ const mediaGalleryModule = {
             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
           </div>
           <div class="modal-body">
-            ${Object.values(eventMap).map(group => `
+            ${Object.values(eventMap)
+              .map(
+                (group) => `
               <h6 class="mb-2">${group.event ? utils.escapeHtml(group.event.event_name) : 'Unknown Event'}</h6>
               <div class="row g-2 mb-4">
-                ${group.photos.map(p => `
+                ${group.photos
+                  .map(
+                    (p) => `
                   <div class="col-6 col-md-3 col-lg-2">
                     <div class="card h-100">
                       <img src="${p.file_url}" class="card-img-top" style="height:120px;object-fit:cover;" alt="${utils.escapeHtml(p.title || '')}">
@@ -6600,9 +7153,13 @@ const mediaGalleryModule = {
                       </div>
                     </div>
                   </div>
-                `).join('')}
+                `
+                  )
+                  .join('')}
               </div>
-            `).join('')}
+            `
+              )
+              .join('')}
           </div>
         </div></div></div>`;
 
@@ -6621,10 +7178,16 @@ const mediaGalleryModule = {
 
   async handleUpload() {
     const form = document.getElementById('uploadMediaGalleryForm');
-    if (!form.checkValidity()) { form.reportValidity(); return; }
+    if (!form.checkValidity()) {
+      form.reportValidity();
+      return;
+    }
 
     const eventId = document.getElementById('uploadEventSelect').value;
-    if (!eventId) { utils.showToast('Please select an event', 'warning'); return; }
+    if (!eventId) {
+      utils.showToast('Please select an event', 'warning');
+      return;
+    }
 
     const fileInput = document.getElementById('uploadFile');
     if (!fileInput.files || fileInput.files.length === 0) {
@@ -6666,20 +7229,18 @@ const mediaGalleryModule = {
             continue;
           }
 
-          const { data: urlData } = STATE.client.storage
-            .from('media')
-            .getPublicUrl(fileName);
+          const { data: urlData } = STATE.client.storage.from('media').getPublicUrl(fileName);
 
-          const { error: dbError } = await STATE.client
-            .from('media_gallery')
-            .insert([{
+          const { error: dbError } = await STATE.client.from('media_gallery').insert([
+            {
               event_id: eventId,
               file_url: urlData.publicUrl,
               file_type: file.type,
               title: title || file.name,
               caption: caption || null,
-              published: true
-            }]);
+              published: true,
+            },
+          ]);
 
           if (dbError) {
             console.error('DB error for', file.name, dbError);
@@ -6701,7 +7262,10 @@ const mediaGalleryModule = {
       utils.showToast('Error uploading files: ' + error.message, 'error');
     } finally {
       const btn = document.getElementById('uploadMediaGalleryBtn');
-      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-upload me-2"></i>Upload'; }
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-upload me-2"></i>Upload';
+      }
       document.getElementById('uploadFileProgress').classList.add('d-none');
     }
   },
@@ -6720,7 +7284,10 @@ const mediaGalleryModule = {
 
   async saveQuickEvent() {
     const name = document.getElementById('quickEventName').value.trim();
-    if (!name) { utils.showToast('Event name is required', 'warning'); return; }
+    if (!name) {
+      utils.showToast('Event name is required', 'warning');
+      return;
+    }
 
     const eventDate = document.getElementById('quickEventDate').value;
     const year = document.getElementById('quickEventYear').value || new Date().getFullYear();
@@ -6764,7 +7331,7 @@ const mediaGalleryModule = {
           .from('media_gallery')
           .update({
             organisation_id: orgId,
-            award_id: awardId
+            award_id: awardId,
           })
           .eq('id', this._currentTagMediaId);
 
@@ -6780,7 +7347,37 @@ const mediaGalleryModule = {
       bootstrap.Modal.getInstance(document.getElementById('tagMediaModal'))?.hide();
       utils.showToast('Tags saved locally', 'success');
     }
-  }
+  },
+
+  /** No-op handler used to stop propagation on drag-handle icons */
+  noop() {},
+
+  /** Clear the media gallery activity log after confirmation */
+  async clearActivityLog() {
+    if (
+      !(await utils.confirmDialog({
+        title: 'Clear Logs',
+        message: 'Clear all activity logs?',
+        confirmText: 'Clear',
+        danger: true,
+      }))
+    )
+      return;
+    try {
+      await apiClient.deleteByFilters('cms_audit_logs', { entity: 'media_gallery' });
+    } catch (e) {
+      localStorage.removeItem('mediaGalleryActivityLog');
+    }
+    bootstrap.Modal.getInstance(document.getElementById('activityLogModal'))?.hide();
+    utils.showToast('Activity log cleared', 'success');
+  },
+
+  /** Navigate back to the events list view from org media view */
+  backToEventsList() {
+    const filter = document.getElementById('mediaOrgFilter');
+    if (filter) filter.value = '';
+    this.showEventsListView();
+  },
 };
 
 // Export to window for global access

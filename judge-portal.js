@@ -9,7 +9,12 @@
  */
 function esc(str) {
   if (!str) return '';
-  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 /**
@@ -31,8 +36,11 @@ function showPortalToast(msg, type = 'info') {
   toast.style.cssText = `background:${colors[type] || colors.info};color:${type === 'warning' ? '#000' : '#fff'};padding:12px 20px;margin-bottom:8px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.15);font-size:14px;opacity:0;transition:opacity .3s;`;
   toast.textContent = msg;
   container.appendChild(toast);
-  requestAnimationFrame(() => toast.style.opacity = '1');
-  setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 4000);
+  requestAnimationFrame(() => (toast.style.opacity = '1'));
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    setTimeout(() => toast.remove(), 300);
+  }, 4000);
 }
 
 const judgePortal = {
@@ -51,7 +59,7 @@ const judgePortal = {
     { id: 'innovation_score', name: 'Innovation & Creativity', maxScore: 10, weight: 0.2 },
     { id: 'impact_score', name: 'Business Impact', maxScore: 10, weight: 0.3 },
     { id: 'quality_score', name: 'Quality & Excellence', maxScore: 10, weight: 0.25 },
-    { id: 'presentation_score', name: 'Presentation', maxScore: 10, weight: 0.25 }
+    { id: 'presentation_score', name: 'Presentation', maxScore: 10, weight: 0.25 },
   ],
 
   // Server-side pagination state
@@ -75,19 +83,17 @@ const judgePortal = {
       const _roleResult = await apiClient.select('user_roles', {
         select: 'email, role',
         filters: { email: judgeEmail },
-        pageSize: 1
+        pageSize: 1,
       });
 
       const contactResult = await apiClient.select('organisation_contacts', {
         select: 'first_name, last_name',
         filters: { email: judgeEmail },
-        pageSize: 1
+        pageSize: 1,
       });
       const contactData = contactResult.data?.[0] || null;
 
-      const judgeName = contactData
-        ? `${contactData.first_name} ${contactData.last_name}`
-        : judgeEmail.split('@')[0];
+      const judgeName = contactData ? `${contactData.first_name} ${contactData.last_name}` : judgeEmail.split('@')[0];
 
       this.currentJudge = { email: judgeEmail, name: judgeName };
     } catch (e) {
@@ -159,7 +165,7 @@ const judgePortal = {
     if (!this.blindMode || !text) return text;
     let hash = 0;
     for (let i = 0; i < text.length; i++) {
-      hash = ((hash << 5) - hash) + text.charCodeAt(i);
+      hash = (hash << 5) - hash + text.charCodeAt(i);
       hash |= 0;
     }
     return `Entry #${Math.abs(hash).toString(36).toUpperCase().slice(0, 6)}`;
@@ -184,15 +190,22 @@ const judgePortal = {
     this._pagination.page = page;
 
     // Use STATE.client for complex joins (select with nested relations)
-    const { data: entries, error, count } = await STATE.client
+    const {
+      data: entries,
+      error,
+      count,
+    } = await STATE.client
       .from('entries')
-      .select(`
+      .select(
+        `
         *,
         organisations(company_name, logo_url),
         awards:award_years(award_name, award_category),
         entry_files(*),
         judge_scores!judge_scores_entry_id_fkey(*)
-      `, { count: 'exact' })
+      `,
+        { count: 'exact' }
+      )
       .eq('status', 'submitted')
       .order('submission_date', { ascending: true })
       .range((page - 1) * this._pagination.pageSize, page * this._pagination.pageSize - 1);
@@ -204,7 +217,7 @@ const judgePortal = {
       ...this._pagination,
       page,
       count: totalCount,
-      totalPages: Math.ceil(totalCount / this._pagination.pageSize)
+      totalPages: Math.ceil(totalCount / this._pagination.pageSize),
     };
 
     return entries || [];
@@ -217,13 +230,15 @@ const judgePortal = {
    */
   _goToPage(page) {
     page = Math.max(1, Math.min(page, this._pagination.totalPages));
-    this._fetchPage(page).then(entries => {
-      this.assignedEntries = this._enrichEntries(entries);
-      this.renderEntriesList();
-    }).catch(err => {
-      console.error('Error navigating page:', err);
-      showPortalToast('Error loading page: ' + err.message, 'error');
-    });
+    this._fetchPage(page)
+      .then((entries) => {
+        this.assignedEntries = this._enrichEntries(entries);
+        this.renderEntriesList();
+      })
+      .catch((err) => {
+        console.error('Error navigating page:', err);
+        showPortalToast('Error loading page: ' + err.message, 'error');
+      });
   },
 
   /**
@@ -232,14 +247,12 @@ const judgePortal = {
    * @returns {Array} Entries with hasScored and myScore properties
    */
   _enrichEntries(entries) {
-    return (entries || []).map(entry => {
-      const existingScore = entry.judge_scores?.find(
-        score => score.judge_email === this.currentJudge.email
-      );
+    return (entries || []).map((entry) => {
+      const existingScore = entry.judge_scores?.find((score) => score.judge_email === this.currentJudge.email);
       return {
         ...entry,
         hasScored: !!existingScore,
-        myScore: existingScore || null
+        myScore: existingScore || null,
       };
     });
   },
@@ -279,7 +292,9 @@ const judgePortal = {
       return;
     }
 
-    container.innerHTML = this.assignedEntries.map(entry => `
+    container.innerHTML = this.assignedEntries
+      .map(
+        (entry) => `
       <div class="entry-card ${entry.hasScored ? 'scored' : ''} ${this.currentEntry?.id === entry.id ? 'active' : ''}"
            data-action="judgePortal.selectEntry" data-id="${esc(entry.id)}" style="cursor:pointer;">
         <div class="d-flex justify-content-between align-items-start mb-2">
@@ -290,7 +305,9 @@ const judgePortal = {
         <div class="small text-truncate">${esc(entry.entry_title)}</div>
         ${entry.hasScored ? `<div class="small text-success mt-2">Score: ${parseInt(entry.myScore?.total_score) || 0}/40</div>` : ''}
       </div>
-    `).join('');
+    `
+      )
+      .join('');
 
     // Render pagination if needed
     this._renderPaginationControls();
@@ -337,10 +354,10 @@ const judgePortal = {
     if (filter === 'all') {
       this.renderEntriesList();
     } else if (filter === 'pending') {
-      const pending = this.assignedEntries.filter(e => !e.hasScored);
+      const pending = this.assignedEntries.filter((e) => !e.hasScored);
       this.renderFilteredEntries(pending);
     } else if (filter === 'scored') {
-      const scored = this.assignedEntries.filter(e => e.hasScored);
+      const scored = this.assignedEntries.filter((e) => e.hasScored);
       this.renderFilteredEntries(scored);
     }
   },
@@ -352,7 +369,9 @@ const judgePortal = {
    */
   renderFilteredEntries(entries) {
     const container = document.getElementById('entriesList');
-    container.innerHTML = entries.map(entry => `
+    container.innerHTML = entries
+      .map(
+        (entry) => `
       <div class="entry-card ${entry.hasScored ? 'scored' : ''} ${this.currentEntry?.id === entry.id ? 'active' : ''}"
            data-action="judgePortal.selectEntry" data-id="${esc(entry.id)}" style="cursor:pointer;">
         <div class="d-flex justify-content-between align-items-start mb-2">
@@ -363,7 +382,9 @@ const judgePortal = {
         <div class="small text-truncate">${esc(entry.entry_title)}</div>
         ${entry.hasScored ? `<div class="small text-success mt-2">Score: ${parseInt(entry.myScore?.total_score) || 0}/40</div>` : ''}
       </div>
-    `).join('');
+    `
+      )
+      .join('');
   },
 
   /**
@@ -372,7 +393,7 @@ const judgePortal = {
    * @returns {Promise<void>}
    */
   async selectEntry(entryId) {
-    this.currentEntry = this.assignedEntries.find(e => e.id === entryId);
+    this.currentEntry = this.assignedEntries.find((e) => e.id === entryId);
 
     if (!this.currentEntry) return;
 
@@ -401,8 +422,13 @@ const judgePortal = {
       const companyName = (entry.organisations?.company_name || '').toLowerCase();
 
       // Check 1: Judge's email domain matches company website/email domain
-      if (judgeDomain && judgeDomain !== 'gmail.com' && judgeDomain !== 'hotmail.com' &&
-          judgeDomain !== 'yahoo.com' && judgeDomain !== 'outlook.com') {
+      if (
+        judgeDomain &&
+        judgeDomain !== 'gmail.com' &&
+        judgeDomain !== 'hotmail.com' &&
+        judgeDomain !== 'yahoo.com' &&
+        judgeDomain !== 'outlook.com'
+      ) {
         const domainParts = judgeDomain.replace('.co.uk', '').replace('.com', '').replace('.org', '');
         if (companyName.includes(domainParts) || domainParts.includes(companyName.replace(/\s+/g, ''))) {
           return true;
@@ -413,7 +439,7 @@ const judgePortal = {
       const conflictResult = await apiClient.select('judge_scores', {
         select: 'conflict_declared',
         filters: { entry_id: entry.id, judge_email: judgeEmail, conflict_declared: true },
-        pageSize: 1
+        pageSize: 1,
       });
 
       if (conflictResult.data && conflictResult.data.length > 0) {
@@ -425,7 +451,7 @@ const judgePortal = {
         const contactResult = await apiClient.select('organisation_contacts', {
           select: 'email',
           filters: { organisation_id: entry.organisation_id, email: judgeEmail },
-          pageSize: 1
+          pageSize: 1,
         });
 
         if (contactResult.data && contactResult.data.length > 0) {
@@ -466,7 +492,9 @@ const judgePortal = {
         <span class="badge bg-primary">${esc(this.currentEntry.entry_number)}</span>
       </div>
 
-      ${hasConflict ? `
+      ${
+        hasConflict
+          ? `
         <div class="conflict-warning">
           <h5><i class="bi bi-exclamation-triangle me-2"></i>Conflict of Interest Detected</h5>
           <p class="mb-2">You may have a conflict of interest with this entry.</p>
@@ -477,7 +505,9 @@ const judgePortal = {
             </label>
           </div>
         </div>
-      ` : ''}
+      `
+          : ''
+      }
 
       <!-- Entry Content -->
       <div class="mb-4">
@@ -494,14 +524,18 @@ const judgePortal = {
         </div>
       </div>
 
-      ${this.currentEntry.supporting_information ? `
+      ${
+        this.currentEntry.supporting_information
+          ? `
         <div class="mb-4">
           <h5>Supporting Information</h5>
           <div class="p-3 bg-light rounded" style="max-height: 200px; overflow-y: auto;">
             ${esc(this.currentEntry.supporting_information)}
           </div>
         </div>
-      ` : ''}
+      `
+          : ''
+      }
 
       <!-- Supporting Files -->
       ${this.renderSupportingFiles()}
@@ -585,7 +619,9 @@ const judgePortal = {
     return `
       <div class="mb-4">
         <h5>Supporting Documents</h5>
-        ${this.currentEntry.entry_files.map(file => `
+        ${this.currentEntry.entry_files
+          .map(
+            (file) => `
           <div class="file-preview">
             <div>
               <i class="bi bi-file-earmark-pdf me-2"></i>
@@ -596,7 +632,9 @@ const judgePortal = {
               <i class="bi bi-download"></i> View
             </a>
           </div>
-        `).join('')}
+        `
+          )
+          .join('')}
       </div>
     `;
   },
@@ -606,17 +644,21 @@ const judgePortal = {
    * @returns {string} HTML string for scoring criteria
    */
   renderScoringCriteria() {
-    return this.scoringCriteria.map(criterion => `
+    return this.scoringCriteria
+      .map(
+        (criterion) => `
       <div class="score-input">
         <div style="min-width: 200px;">
           <strong>${criterion.name}</strong>
-          <small class="d-block text-muted">Weight: ${(criterion.weight * 100)}%</small>
+          <small class="d-block text-muted">Weight: ${criterion.weight * 100}%</small>
         </div>
         <input type="range" class="form-range score-slider" min="0" max="${criterion.maxScore}" step="0.5"
                id="${criterion.id}" value="${this.currentScore?.[criterion.id] || 0}">
         <div class="score-value" id="${criterion.id}_value">${this.currentScore?.[criterion.id] || 0}</div>
       </div>
-    `).join('');
+    `
+      )
+      .join('');
   },
 
   /**
@@ -624,7 +666,7 @@ const judgePortal = {
    * @returns {void}
    */
   setupScoreSliders() {
-    this.scoringCriteria.forEach(criterion => {
+    this.scoringCriteria.forEach((criterion) => {
       const slider = document.getElementById(criterion.id);
       const valueDisplay = document.getElementById(`${criterion.id}_value`);
 
@@ -644,7 +686,7 @@ const judgePortal = {
   calculateTotalScore() {
     let total = 0;
 
-    this.scoringCriteria.forEach(criterion => {
+    this.scoringCriteria.forEach((criterion) => {
       const slider = document.getElementById(criterion.id);
       if (slider) {
         total += parseFloat(slider.value) || 0;
@@ -675,7 +717,7 @@ const judgePortal = {
       // Get scores from sliders
       const scores = {};
       let validationFailed = false;
-      this.scoringCriteria.forEach(criterion => {
+      this.scoringCriteria.forEach((criterion) => {
         const slider = document.getElementById(criterion.id);
         const val = parseFloat(slider.value) || 0;
         // Enforce score bounds (0 to maxScore)
@@ -698,7 +740,9 @@ const judgePortal = {
       // Check for conflict - if declared, flag the score but still allow saving
       const hasConflict = document.getElementById('declareConflict')?.checked || false;
       if (hasConflict && isComplete) {
-        const proceed = confirm('You have declared a conflict of interest. Your score will be flagged for review. Continue?');
+        const proceed = confirm(
+          'You have declared a conflict of interest. Your score will be flagged for review. Continue?'
+        );
         if (!proceed) return;
       }
 
@@ -714,19 +758,20 @@ const judgePortal = {
         recommendation,
         has_conflict: hasConflict,
         is_complete: isComplete,
-        scored_at: new Date().toISOString()
+        scored_at: new Date().toISOString(),
       };
 
       // Upsert score (update if exists, insert if new) - use STATE.client for upsert with onConflict
-      const { error } = await STATE.client
-        .from('judge_scores')
-        .upsert([scoreData], {
-          onConflict: 'entry_id,judge_email'
-        });
+      const { error } = await STATE.client.from('judge_scores').upsert([scoreData], {
+        onConflict: 'entry_id,judge_email',
+      });
 
       if (error) throw error;
 
-      showPortalToast(isComplete ? 'Score submitted successfully!' : 'Score saved as draft', isComplete ? 'success' : 'info');
+      showPortalToast(
+        isComplete ? 'Score submitted successfully!' : 'Score saved as draft',
+        isComplete ? 'success' : 'info'
+      );
 
       // Reload entries to update status
       await this.loadAssignedEntries();
@@ -736,7 +781,6 @@ const judgePortal = {
       if (isComplete) {
         this.nextEntry();
       }
-
     } catch (error) {
       console.error('Error saving score:', error);
       showPortalToast('Failed to save score: ' + error.message, 'error');
@@ -748,7 +792,7 @@ const judgePortal = {
    * @returns {void}
    */
   nextEntry() {
-    const currentIndex = this.assignedEntries.findIndex(e => e.id === this.currentEntry.id);
+    const currentIndex = this.assignedEntries.findIndex((e) => e.id === this.currentEntry.id);
     const nextIndex = currentIndex + 1;
 
     if (nextIndex < this.assignedEntries.length) {
@@ -763,11 +807,9 @@ const judgePortal = {
    * @returns {void}
    */
   updateProgress() {
-    const scored = this.assignedEntries.filter(e => e.hasScored).length;
+    const scored = this.assignedEntries.filter((e) => e.hasScored).length;
     const pending = this.assignedEntries.length - scored;
-    const percent = this.assignedEntries.length > 0
-      ? Math.round((scored / this.assignedEntries.length) * 100)
-      : 0;
+    const percent = this.assignedEntries.length > 0 ? Math.round((scored / this.assignedEntries.length) * 100) : 0;
 
     document.getElementById('scoredCount').textContent = scored;
     document.getElementById('pendingCount').textContent = pending;
@@ -782,7 +824,7 @@ const judgePortal = {
   logout() {
     localStorage.removeItem('judgeEmail');
     window.location.href = '/judge-login.html';
-  }
+  },
 };
 
 // Export to window for global access

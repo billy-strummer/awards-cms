@@ -7,10 +7,7 @@
 
 const { createClient } = require('@supabase/supabase-js');
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
 // ==========================================
 // Twitter/X API v2
@@ -28,8 +25,8 @@ async function postToTwitter(content, imageUrl = null) {
   if (!token) throw new Error('Twitter API token not configured');
 
   const headers = {
-    'Authorization': `Bearer ${token}`,
-    'Content-Type': 'application/json'
+    Authorization: `Bearer ${token}`,
+    'Content-Type': 'application/json',
   };
 
   let mediaId = null;
@@ -45,7 +42,7 @@ async function postToTwitter(content, imageUrl = null) {
   const res = await fetch('https://api.twitter.com/2/tweets', {
     method: 'POST',
     headers,
-    body: JSON.stringify(body)
+    body: JSON.stringify(body),
   });
 
   if (!res.ok) {
@@ -74,10 +71,10 @@ async function uploadTwitterMedia(imageUrl, token) {
   const uploadRes = await fetch('https://upload.twitter.com/1.1/media/upload.json', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/x-www-form-urlencoded'
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
     },
-    body: `media_data=${encodeURIComponent(base64)}`
+    body: `media_data=${encodeURIComponent(base64)}`,
   });
 
   if (!uploadRes.ok) throw new Error('Failed to upload media to Twitter');
@@ -102,9 +99,9 @@ async function postToLinkedIn(content, imageUrl = null) {
   if (!accessToken || !orgId) throw new Error('LinkedIn API credentials not configured');
 
   const headers = {
-    'Authorization': `Bearer ${accessToken}`,
+    Authorization: `Bearer ${accessToken}`,
     'Content-Type': 'application/json',
-    'X-Restli-Protocol-Version': '2.0.0'
+    'X-Restli-Protocol-Version': '2.0.0',
   };
 
   let imageAsset = null;
@@ -120,22 +117,24 @@ async function postToLinkedIn(content, imageUrl = null) {
         shareCommentary: { text: content },
         shareMediaCategory: imageAsset ? 'IMAGE' : 'NONE',
         ...(imageAsset && {
-          media: [{
-            status: 'READY',
-            media: imageAsset
-          }]
-        })
-      }
+          media: [
+            {
+              status: 'READY',
+              media: imageAsset,
+            },
+          ],
+        }),
+      },
     },
     visibility: {
-      'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC'
-    }
+      'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC',
+    },
   };
 
   const res = await fetch('https://api.linkedin.com/v2/ugcPosts', {
     method: 'POST',
     headers,
-    body: JSON.stringify(body)
+    body: JSON.stringify(body),
   });
 
   if (!res.ok) {
@@ -159,23 +158,26 @@ async function uploadLinkedInImage(imageUrl, accessToken, orgId) {
   const registerRes = await fetch('https://api.linkedin.com/v2/assets?action=registerUpload', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'Content-Type': 'application/json'
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
     },
     body: JSON.stringify({
       registerUploadRequest: {
         recipes: ['urn:li:digitalmediaRecipe:feedshare-image'],
         owner: `urn:li:organization:${orgId}`,
-        serviceRelationships: [{
-          relationshipType: 'OWNER',
-          identifier: 'urn:li:userGeneratedContent'
-        }]
-      }
-    })
+        serviceRelationships: [
+          {
+            relationshipType: 'OWNER',
+            identifier: 'urn:li:userGeneratedContent',
+          },
+        ],
+      },
+    }),
   });
 
   const regData = await registerRes.json();
-  const uploadUrl = regData.value.uploadMechanism['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest'].uploadUrl;
+  const uploadUrl =
+    regData.value.uploadMechanism['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest'].uploadUrl;
   const asset = regData.value.asset;
 
   // Download and re-upload image
@@ -185,10 +187,10 @@ async function uploadLinkedInImage(imageUrl, accessToken, orgId) {
   await fetch(uploadUrl, {
     method: 'PUT',
     headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'Content-Type': 'image/png'
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'image/png',
     },
-    body: buffer
+    body: buffer,
   });
 
   return asset;
@@ -217,19 +219,19 @@ async function postToFacebook(content, imageUrl = null) {
     body = new URLSearchParams({
       message: content,
       url: imageUrl,
-      access_token: pageToken
+      access_token: pageToken,
     });
   } else {
     endpoint = `https://graph.facebook.com/v18.0/${pageId}/feed`;
     body = new URLSearchParams({
       message: content,
-      access_token: pageToken
+      access_token: pageToken,
     });
   }
 
   const res = await fetch(endpoint, {
     method: 'POST',
-    body
+    body,
   });
 
   if (!res.ok) {
@@ -259,17 +261,14 @@ async function postToInstagram(content, imageUrl) {
   if (!imageUrl) throw new Error('Instagram requires an image');
 
   // Step 1: Create media container
-  const containerRes = await fetch(
-    `https://graph.facebook.com/v18.0/${igAccountId}/media`,
-    {
-      method: 'POST',
-      body: new URLSearchParams({
-        image_url: imageUrl,
-        caption: content,
-        access_token: accessToken
-      })
-    }
-  );
+  const containerRes = await fetch(`https://graph.facebook.com/v18.0/${igAccountId}/media`, {
+    method: 'POST',
+    body: new URLSearchParams({
+      image_url: imageUrl,
+      caption: content,
+      access_token: accessToken,
+    }),
+  });
 
   if (!containerRes.ok) {
     const err = await containerRes.json();
@@ -279,16 +278,13 @@ async function postToInstagram(content, imageUrl) {
   const container = await containerRes.json();
 
   // Step 2: Publish media container
-  const publishRes = await fetch(
-    `https://graph.facebook.com/v18.0/${igAccountId}/media_publish`,
-    {
-      method: 'POST',
-      body: new URLSearchParams({
-        creation_id: container.id,
-        access_token: accessToken
-      })
-    }
-  );
+  const publishRes = await fetch(`https://graph.facebook.com/v18.0/${igAccountId}/media_publish`, {
+    method: 'POST',
+    body: new URLSearchParams({
+      creation_id: container.id,
+      access_token: accessToken,
+    }),
+  });
 
   if (!publishRes.ok) {
     const err = await publishRes.json();
@@ -311,11 +307,7 @@ async function postToInstagram(content, imageUrl) {
  * @throws {Error} If the post is not found in the database.
  */
 async function publishToSocialMedia(postId) {
-  const { data: post, error } = await supabase
-    .from('social_media_posts')
-    .select('*')
-    .eq('id', postId)
-    .single();
+  const { data: post, error } = await supabase.from('social_media_posts').select('*').eq('id', postId).single();
 
   if (error || !post) throw new Error('Post not found');
 
@@ -349,13 +341,16 @@ async function publishToSocialMedia(postId) {
   }
 
   // Update post with results
-  const status = errors.length === 0 ? 'published' : (results.length > 0 ? 'partial' : 'failed');
-  await supabase.from('social_media_posts').update({
-    status,
-    published_at: new Date().toISOString(),
-    publish_results: results,
-    publish_errors: errors.length > 0 ? errors : null
-  }).eq('id', postId);
+  const status = errors.length === 0 ? 'published' : results.length > 0 ? 'partial' : 'failed';
+  await supabase
+    .from('social_media_posts')
+    .update({
+      status,
+      published_at: new Date().toISOString(),
+      publish_results: results,
+      publish_errors: errors.length > 0 ? errors : null,
+    })
+    .eq('id', postId);
 
   return { results, errors, status };
 }
@@ -399,5 +394,5 @@ module.exports = {
   postToFacebook,
   postToInstagram,
   publishToSocialMedia,
-  processScheduledPosts
+  processScheduledPosts,
 };

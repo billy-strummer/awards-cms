@@ -16,8 +16,11 @@ function showPublicToast(msg, type = 'warning') {
   toast.style.cssText = `background:${colors[type] || colors.warning};color:${type === 'warning' ? '#000' : '#fff'};padding:12px 20px;margin-bottom:8px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.15);font-size:14px;opacity:0;transition:opacity .3s;`;
   toast.textContent = msg;
   container.appendChild(toast);
-  requestAnimationFrame(() => toast.style.opacity = '1');
-  setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 4000);
+  requestAnimationFrame(() => (toast.style.opacity = '1'));
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    setTimeout(() => toast.remove(), 300);
+  }, 4000);
 }
 
 /**
@@ -29,7 +32,7 @@ async function votingApi(action, params = {}) {
   const res = await fetch('/api/voting-proxy', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action, ...params })
+    body: JSON.stringify({ action, ...params }),
   });
   const data = await res.json();
   if (!res.ok) {
@@ -97,7 +100,6 @@ const nomineeVoting = {
 
       // Display the entry
       this.displayEntry();
-
     } catch (error) {
       console.error('Error loading entry:', error);
       this.showError();
@@ -111,7 +113,7 @@ const nomineeVoting = {
     try {
       const { exists } = await votingApi('check_existing_vote', {
         entry_id: this.entryId,
-        voter_email: this.voterEmail
+        voter_email: this.voterEmail,
       });
 
       this.hasVoted = !!exists;
@@ -149,7 +151,8 @@ const nomineeVoting = {
       logoEl.src = org.logo_url;
       logoEl.alt = org.company_name;
     } else {
-      logoEl.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="120" height="120"%3E%3Crect fill="%23f8f9fa" width="120" height="120"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%236c757d" font-size="40"%3E%F0%9F%8F%A2%3C/text%3E%3C/svg%3E';
+      logoEl.src =
+        'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="120" height="120"%3E%3Crect fill="%23f8f9fa" width="120" height="120"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%236c757d" font-size="40"%3E%F0%9F%8F%A2%3C/text%3E%3C/svg%3E';
       logoEl.alt = 'Company Logo';
     }
 
@@ -267,7 +270,7 @@ const nomineeVoting = {
 
       // Rate limit: max 10 votes per hour per email (server enforces too)
       const { count: recentVotes } = await votingApi('check_rate_limit', {
-        voter_email: this.voterEmail
+        voter_email: this.voterEmail,
       });
       if (recentVotes >= 10) {
         showPublicToast('You have reached the voting limit. Please try again later.', 'warning');
@@ -278,7 +281,7 @@ const nomineeVoting = {
       // Check if already voted for this entry
       const { exists } = await votingApi('check_existing_vote', {
         entry_id: this.entryId,
-        voter_email: this.voterEmail
+        voter_email: this.voterEmail,
       });
 
       if (exists) {
@@ -295,7 +298,7 @@ const nomineeVoting = {
         voter_email: this.voterEmail,
         voter_name: voterName,
         voter_ip: 'unknown',
-        verification_token: this.generateToken()
+        verification_token: this.generateToken(),
       });
 
       // Update local vote count
@@ -314,7 +317,6 @@ const nomineeVoting = {
 
       // Send verification email
       await this.sendVerificationEmail();
-
     } catch (error) {
       console.error('Error submitting vote:', error);
       // Handle duplicate vote (409 from server)
@@ -376,9 +378,9 @@ const nomineeVoting = {
             voter_email: this.voterEmail,
             company_name: this.entry.organisations?.company_name || 'N/A',
             award_name: this.entry.awards?.award_name || 'British Trade Awards',
-            entry_number: this.entry.entry_number || ''
-          }
-        })
+            entry_number: this.entry.entry_number || '',
+          },
+        }),
       });
     } catch (e) {
       console.warn('Email service unavailable:', e.message);
@@ -429,11 +431,15 @@ const nomineeVoting = {
       console.error('Failed to copy:', err);
       showPublicToast('Failed to copy link. Please copy manually.', 'error');
     }
-  }
+  },
 };
 
 // Expose globally for tests and external access
-if (typeof window !== 'undefined') window.nomineeVoting = nomineeVoting;
+if (typeof window !== 'undefined') {
+  window.nomineeVoting = nomineeVoting;
+  window.showPublicToast = showPublicToast;
+  window.votingApi = votingApi;
+}
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {

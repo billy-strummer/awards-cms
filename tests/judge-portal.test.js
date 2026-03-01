@@ -5,7 +5,8 @@
 
 const { JSDOM } = require('jsdom');
 
-const dom = new JSDOM(`<!DOCTYPE html><html><body>
+const dom = new JSDOM(
+  `<!DOCTYPE html><html><body>
   <div id="loadingBar" style="display:none;"></div>
   <div id="notificationToast"><span id="toastIcon"></span><span id="toastTitle"></span><span id="toastMessage"></span></div>
   <div id="connectionStatus"><span class="status-icon"></span><span class="status-text"></span></div>
@@ -43,37 +44,59 @@ const dom = new JSDOM(`<!DOCTYPE html><html><body>
   <select id="recommendation"><option value="">Select</option><option value="shortlist">Shortlist</option></select>
   <input type="checkbox" id="declareConflict">
   <div id="portalToastContainer"></div>
-</body></html>`, { url: 'http://localhost' });
+</body></html>`,
+  { url: 'http://localhost' }
+);
 
 global.window = dom.window;
 global.document = dom.window.document;
 global.localStorage = dom.window.localStorage;
 global.navigator = dom.window.navigator;
 global.HTMLElement = dom.window.HTMLElement;
-global.requestAnimationFrame = jest.fn(cb => cb());
+global.requestAnimationFrame = jest.fn((cb) => cb());
 
 global.bootstrap = {
-  Toast: class { show() {} hide() {} },
-  Modal: class { show() {} hide() {} static getInstance() { return { hide() {} }; } },
-  Tooltip: class {}
+  Toast: class {
+    show() {}
+    hide() {}
+  },
+  Modal: class {
+    show() {}
+    hide() {}
+    static getInstance() {
+      return { hide() {} };
+    }
+  },
+  Tooltip: class {},
 };
 
 const mockSupabase = {
-  from: jest.fn(() => mockSupabase), select: jest.fn(() => mockSupabase),
-  insert: jest.fn(() => mockSupabase), update: jest.fn(() => mockSupabase),
+  from: jest.fn(() => mockSupabase),
+  select: jest.fn(() => mockSupabase),
+  insert: jest.fn(() => mockSupabase),
+  update: jest.fn(() => mockSupabase),
   upsert: jest.fn(() => Promise.resolve({ error: null })),
-  delete: jest.fn(() => mockSupabase), eq: jest.fn(() => mockSupabase),
+  delete: jest.fn(() => mockSupabase),
+  eq: jest.fn(() => mockSupabase),
   in: jest.fn(() => mockSupabase),
-  order: jest.fn(() => mockSupabase), range: jest.fn(() => mockSupabase),
+  order: jest.fn(() => mockSupabase),
+  range: jest.fn(() => mockSupabase),
   limit: jest.fn(() => mockSupabase),
   single: jest.fn(() => Promise.resolve({ data: null, error: null })),
   rpc: jest.fn(() => Promise.resolve({ data: [], error: null })),
-  then: jest.fn(cb => cb({ data: [], error: null })),
+  then: jest.fn((cb) => cb({ data: [], error: null })),
   auth: {
     getSession: jest.fn(() => ({ data: { session: { user: { email: 'judge@test.com' } } } })),
-    signOut: jest.fn(() => Promise.resolve({ error: null }))
+    signOut: jest.fn(() => Promise.resolve({ error: null })),
   },
-  channel: jest.fn(() => ({ on: jest.fn(function() { return this; }), subscribe: jest.fn(function() { return this; }) }))
+  channel: jest.fn(() => ({
+    on: jest.fn(function () {
+      return this;
+    }),
+    subscribe: jest.fn(function () {
+      return this;
+    }),
+  })),
 };
 
 global.window.SUPABASE_CONFIG = { url: 'https://test.supabase.co', anonKey: 'test-key' };
@@ -81,18 +104,28 @@ global.window.supabase = { createClient: () => mockSupabase };
 global.supabase = global.window.supabase;
 
 require('../config.js');
-global.STATE = global.window.STATE; global.SUPABASE_CONFIG = global.window.SUPABASE_CONFIG;
-global.STATUS = global.window.STATUS; global.MEDIA_TYPES = global.window.MEDIA_TYPES;
-global.INACTIVITY_TIMEOUT = global.window.INACTIVITY_TIMEOUT; global.YEARS = global.window.YEARS;
-global.SECTORS = global.window.SECTORS; global.REGIONS = global.window.REGIONS;
+global.STATE = global.window.STATE;
+global.SUPABASE_CONFIG = global.window.SUPABASE_CONFIG;
+global.STATUS = global.window.STATUS;
+global.MEDIA_TYPES = global.window.MEDIA_TYPES;
+global.INACTIVITY_TIMEOUT = global.window.INACTIVITY_TIMEOUT;
+global.YEARS = global.window.YEARS;
+global.SECTORS = global.window.SECTORS;
+global.REGIONS = global.window.REGIONS;
 global.STATE.client = mockSupabase;
 
-function syncWindowToGlobal() { for (const key of Object.keys(global.window)) { if (!(key in global) && typeof global.window[key] !== 'undefined') global[key] = global.window[key]; } }
+function syncWindowToGlobal() {
+  for (const key of Object.keys(global.window)) {
+    if (!(key in global) && typeof global.window[key] !== 'undefined') global[key] = global.window[key];
+  }
+}
 
-require('../utils.js'); syncWindowToGlobal();
+require('../utils.js');
+syncWindowToGlobal();
 
 // judge-portal.js creates its own supabase client, so we need to handle that
-require('../judge-portal.js'); syncWindowToGlobal();
+require('../judge-portal.js');
+syncWindowToGlobal();
 
 describe('Judge Portal - Structure', () => {
   test('judgePortal is defined', () => {
@@ -179,7 +212,7 @@ describe('Judge Portal - updateProgress', () => {
       { hasScored: true },
       { hasScored: false },
       { hasScored: true },
-      { hasScored: false }
+      { hasScored: false },
     ];
     judgePortal.updateProgress();
     expect(document.getElementById('scoredCount').textContent).toBe('2');
@@ -222,7 +255,7 @@ describe('Judge Portal - nextEntry', () => {
     judgePortal.assignedEntries = [
       { id: 'e1', hasScored: false },
       { id: 'e2', hasScored: false },
-      { id: 'e3', hasScored: false }
+      { id: 'e3', hasScored: false },
     ];
     judgePortal.currentEntry = { id: 'e1' };
     judgePortal.selectEntry = jest.fn();

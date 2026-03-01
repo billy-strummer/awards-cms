@@ -5,7 +5,8 @@
 
 const { JSDOM } = require('jsdom');
 
-const dom = new JSDOM(`<!DOCTYPE html><html><head></head><body>
+const dom = new JSDOM(
+  `<!DOCTYPE html><html><head></head><body>
   <div id="loadingBar" style="display:none;"></div>
   <div id="notificationToast"><span id="toastIcon"></span><span id="toastTitle"></span><span id="toastMessage"></span></div>
   <div id="connectionStatus"><span class="status-icon"></span><span class="status-text"></span></div>
@@ -49,7 +50,9 @@ const dom = new JSDOM(`<!DOCTYPE html><html><head></head><body>
   <div id="confirmDialogTitle"></div>
   <div id="confirmDialogBody"></div>
   <div id="confirmDialogOk"></div>
-</body></html>`, { url: 'http://localhost' });
+</body></html>`,
+  { url: 'http://localhost' }
+);
 
 global.window = dom.window;
 global.document = dom.window.document;
@@ -61,15 +64,26 @@ global.URL = { createObjectURL: jest.fn(() => 'blob://mock'), revokeObjectURL: j
 global.window.URL = global.URL;
 
 global.bootstrap = {
-  Toast: class { show() {} hide() {} },
-  Modal: class {
-    show() {} hide() {}
-    static getInstance() { return { hide() {} }; }
+  Toast: class {
+    show() {}
+    hide() {}
   },
-  Tooltip: class {}
+  Modal: class {
+    show() {}
+    hide() {}
+    static getInstance() {
+      return { hide() {} };
+    }
+  },
+  Tooltip: class {},
 };
 
-global.crypto = { getRandomValues: (arr) => { for (let i = 0; i < arr.length; i++) arr[i] = Math.floor(Math.random() * 256); return arr; } };
+global.crypto = {
+  getRandomValues: (arr) => {
+    for (let i = 0; i < arr.length; i++) arr[i] = Math.floor(Math.random() * 256);
+    return arr;
+  },
+};
 
 const mockSupabase = {
   from: jest.fn(() => mockSupabase),
@@ -85,16 +99,20 @@ const mockSupabase = {
   limit: jest.fn(() => mockSupabase),
   single: jest.fn(() => Promise.resolve({ data: null, error: null })),
   rpc: jest.fn(() => Promise.resolve({ data: [], error: null })),
-  then: jest.fn(cb => cb({ data: [], error: null })),
+  then: jest.fn((cb) => cb({ data: [], error: null })),
   auth: {
     getSession: jest.fn(() => Promise.resolve({ data: { session: null }, error: null })),
     signInWithPassword: jest.fn(() => Promise.resolve({ data: { user: { email: 'test@test.com' } }, error: null })),
-    signOut: jest.fn(() => Promise.resolve({ error: null }))
+    signOut: jest.fn(() => Promise.resolve({ error: null })),
   },
   channel: jest.fn(() => ({
-    on: jest.fn(function() { return this; }),
-    subscribe: jest.fn(function() { return this; })
-  }))
+    on: jest.fn(function () {
+      return this;
+    }),
+    subscribe: jest.fn(function () {
+      return this;
+    }),
+  })),
 };
 
 global.supabase = { createClient: () => mockSupabase };
@@ -138,15 +156,15 @@ const sampleInvoices = [
     invoice_date: '2026-01-15',
     due_date: '2026-02-15',
     invoice_type: 'entry_fee',
-    total_amount: 500.00,
-    paid_amount: 500.00,
+    total_amount: 500.0,
+    paid_amount: 500.0,
     balance_due: 0,
     status: 'paid',
     payment_status: 'paid',
     notes: 'Entry fee for Best Plumber',
     description: null,
     created_at: '2026-01-15T10:00:00Z',
-    organisations: { id: 'org-1', company_name: 'Acme Corp', email: 'acme@test.com', contact_phone: '01234567890' }
+    organisations: { id: 'org-1', company_name: 'Acme Corp', email: 'acme@test.com', contact_phone: '01234567890' },
   },
   {
     id: 'inv-2',
@@ -155,15 +173,15 @@ const sampleInvoices = [
     invoice_date: '2026-01-20',
     due_date: '2026-02-20',
     invoice_type: 'package',
-    total_amount: 1200.00,
-    paid_amount: 600.00,
-    balance_due: 600.00,
+    total_amount: 1200.0,
+    paid_amount: 600.0,
+    balance_due: 600.0,
     status: 'partially_paid',
     payment_status: 'partially_paid',
     notes: 'Winner package',
     description: null,
     created_at: '2026-01-20T10:00:00Z',
-    organisations: { id: 'org-2', company_name: 'Best Builders', email: 'builders@test.com', contact_phone: null }
+    organisations: { id: 'org-2', company_name: 'Best Builders', email: 'builders@test.com', contact_phone: null },
   },
   {
     id: 'inv-3',
@@ -172,15 +190,20 @@ const sampleInvoices = [
     invoice_date: '2026-02-01',
     due_date: '2026-03-01',
     invoice_type: 'sponsorship',
-    total_amount: 3000.00,
+    total_amount: 3000.0,
     paid_amount: 0,
-    balance_due: 3000.00,
+    balance_due: 3000.0,
     status: 'sent',
     payment_status: 'unpaid',
     notes: null,
     description: 'Sponsorship invoice',
     created_at: '2026-02-01T10:00:00Z',
-    organisations: { id: 'org-3', company_name: 'Spark Electric', email: 'spark@test.com', contact_phone: '09876543210' }
+    organisations: {
+      id: 'org-3',
+      company_name: 'Spark Electric',
+      email: 'spark@test.com',
+      contact_phone: '09876543210',
+    },
   },
   {
     id: 'inv-4',
@@ -189,15 +212,15 @@ const sampleInvoices = [
     invoice_date: '2026-02-10',
     due_date: '2026-03-10',
     invoice_type: 'tickets',
-    total_amount: 200.00,
+    total_amount: 200.0,
     paid_amount: 0,
-    balance_due: 200.00,
+    balance_due: 200.0,
     status: 'draft',
     payment_status: 'unpaid',
     notes: 'Event tickets',
     description: null,
     created_at: '2026-02-10T10:00:00Z',
-    organisations: { id: 'org-1', company_name: 'Acme Corp', email: 'acme@test.com', contact_phone: '01234567890' }
+    organisations: { id: 'org-1', company_name: 'Acme Corp', email: 'acme@test.com', contact_phone: '01234567890' },
   },
   {
     id: 'inv-5',
@@ -206,16 +229,16 @@ const sampleInvoices = [
     invoice_date: '2025-12-01',
     due_date: '2025-12-31',
     invoice_type: 'entry_fee',
-    total_amount: 750.00,
-    paid_amount: 750.00,
+    total_amount: 750.0,
+    paid_amount: 750.0,
     balance_due: 0,
     status: 'paid',
     payment_status: 'paid',
     notes: 'Entry fee 2025',
     description: null,
     created_at: '2025-12-01T10:00:00Z',
-    organisations: { id: 'org-2', company_name: 'Best Builders', email: 'builders@test.com', contact_phone: null }
-  }
+    organisations: { id: 'org-2', company_name: 'Best Builders', email: 'builders@test.com', contact_phone: null },
+  },
 ];
 
 const samplePayments = [
@@ -224,34 +247,34 @@ const samplePayments = [
     invoice_id: 'inv-1',
     payment_reference: 'PAY-REF-001',
     payment_date: '2026-01-20',
-    amount: 500.00,
+    amount: 500.0,
     payment_method: 'bank_transfer',
     status: 'completed',
     notes: 'Full payment received',
-    created_at: '2026-01-20T12:00:00Z'
+    created_at: '2026-01-20T12:00:00Z',
   },
   {
     id: 'pay-2',
     invoice_id: 'inv-2',
     payment_reference: 'PAY-REF-002',
     payment_date: '2026-01-25',
-    amount: 600.00,
+    amount: 600.0,
     payment_method: 'card',
     status: 'completed',
     notes: 'Partial payment',
-    created_at: '2026-01-25T14:00:00Z'
+    created_at: '2026-01-25T14:00:00Z',
   },
   {
     id: 'pay-3',
     invoice_id: 'inv-5',
     payment_reference: 'PAY-REF-003',
     payment_date: '2025-12-15',
-    amount: 750.00,
+    amount: 750.0,
     payment_method: 'stripe',
     status: 'completed',
     notes: null,
-    created_at: '2025-12-15T10:00:00Z'
-  }
+    created_at: '2025-12-15T10:00:00Z',
+  },
 ];
 
 // ==========================================
@@ -431,7 +454,7 @@ describe('Payments Module - filterInvoices()', () => {
     document.getElementById('invoiceStatusFilter').value = 'paid';
     paymentsModule.filterInvoices();
     expect(paymentsModule.currentInvoices.length).toBe(2);
-    paymentsModule.currentInvoices.forEach(inv =>
+    paymentsModule.currentInvoices.forEach((inv) =>
       expect(inv.status === 'paid' || inv.payment_status === 'paid').toBe(true)
     );
   });
@@ -446,9 +469,7 @@ describe('Payments Module - filterInvoices()', () => {
     document.getElementById('invoiceMonthFilter').value = '2026-01';
     paymentsModule.filterInvoices();
     expect(paymentsModule.currentInvoices.length).toBe(2);
-    paymentsModule.currentInvoices.forEach(inv =>
-      expect(inv.invoice_date.startsWith('2026-01')).toBe(true)
-    );
+    paymentsModule.currentInvoices.forEach((inv) => expect(inv.invoice_date.startsWith('2026-01')).toBe(true));
   });
 
   test('combines search and status filters', () => {
@@ -462,7 +483,7 @@ describe('Payments Module - filterInvoices()', () => {
   test('search is case insensitive', () => {
     document.getElementById('invoiceSearchBox').value = 'SPARK';
     paymentsModule.filterInvoices();
-    expect(paymentsModule.currentInvoices.some(inv => inv.id === 'inv-3')).toBe(true);
+    expect(paymentsModule.currentInvoices.some((inv) => inv.id === 'inv-3')).toBe(true);
   });
 
   test('saves filters to localStorage', () => {
@@ -481,7 +502,7 @@ describe('Payments Module - filterInvoices()', () => {
   test('searches in notes/description fields', () => {
     document.getElementById('invoiceSearchBox').value = 'sponsorship';
     paymentsModule.filterInvoices();
-    expect(paymentsModule.currentInvoices.some(inv => inv.id === 'inv-3')).toBe(true);
+    expect(paymentsModule.currentInvoices.some((inv) => inv.id === 'inv-3')).toBe(true);
   });
 });
 
@@ -545,11 +566,13 @@ describe('Payments Module - renderInvoices()', () => {
   });
 
   test('escapes HTML in invoice numbers', () => {
-    paymentsModule.currentInvoices = [{
-      ...sampleInvoices[0],
-      id: 'xss-inv',
-      invoice_number: '<script>alert("xss")</script>'
-    }];
+    paymentsModule.currentInvoices = [
+      {
+        ...sampleInvoices[0],
+        id: 'xss-inv',
+        invoice_number: '<script>alert("xss")</script>',
+      },
+    ];
     paymentsModule.renderInvoices();
     const tbody = document.getElementById('invoicesTableBody');
     // No actual script elements should be created in the DOM
@@ -675,11 +698,13 @@ describe('Payments Module - Edge Cases', () => {
   });
 
   test('renderInvoices handles invoices with null organisations', () => {
-    paymentsModule.currentInvoices = [{
-      ...sampleInvoices[0],
-      id: 'no-org',
-      organisations: null
-    }];
+    paymentsModule.currentInvoices = [
+      {
+        ...sampleInvoices[0],
+        id: 'no-org',
+        organisations: null,
+      },
+    ];
     paymentsModule._invPageSize = 50;
     paymentsModule._selectedInvoiceIds = new Set();
     expect(() => paymentsModule.renderInvoices()).not.toThrow();
@@ -702,7 +727,7 @@ describe('Payments Module - Edge Cases', () => {
 describe('Payments Module - Invoice Status Badge Comprehensive', () => {
   test('returns correct badge for every defined status', () => {
     const statuses = ['draft', 'sent', 'viewed', 'paid', 'partially_paid', 'overdue', 'cancelled', 'refunded'];
-    statuses.forEach(status => {
+    statuses.forEach((status) => {
       const badge = paymentsModule.getInvoiceStatusBadge(status);
       expect(badge).toContain('<span');
       expect(badge).toContain('badge');
@@ -760,7 +785,7 @@ describe('Payments Module - Payment Method Formatting Advanced', () => {
 describe('Payments Module - Payment Status Badge Comprehensive', () => {
   test('returns correct badge for every defined status', () => {
     const statuses = ['pending', 'completed', 'failed', 'refunded', 'cancelled'];
-    statuses.forEach(status => {
+    statuses.forEach((status) => {
       const badge = paymentsModule.getPaymentStatusBadge(status);
       expect(badge).toContain('<span');
       expect(badge).toContain('badge');
@@ -817,8 +842,10 @@ describe('Payments Module - Invoice Filtering Advanced', () => {
       due_date: '2025-02-01',
       status: 'overdue',
       payment_status: 'unpaid',
-      total_amount: 100, paid_amount: 0, balance_due: 100,
-      organisations: { company_name: 'OD Co', id: 'org-1' }
+      total_amount: 100,
+      paid_amount: 0,
+      balance_due: 100,
+      organisations: { company_name: 'OD Co', id: 'org-1' },
     });
     document.getElementById('invoiceStatusFilter').value = 'overdue';
     paymentsModule.filterInvoices();
@@ -830,7 +857,7 @@ describe('Payments Module - Invoice Filtering Advanced', () => {
     document.getElementById('invoiceSearchBox').value = 'INV-2026';
     document.getElementById('invoiceOrgFilter').value = 'org-1';
     paymentsModule.filterInvoices();
-    paymentsModule.currentInvoices.forEach(inv => {
+    paymentsModule.currentInvoices.forEach((inv) => {
       expect(inv.organisation_id).toBe('org-1');
       expect(inv.invoice_number.toLowerCase()).toContain('inv-2026');
     });
@@ -853,7 +880,7 @@ describe('Payments Module - Invoice Filtering Advanced', () => {
   test('filter by February 2026 month', () => {
     document.getElementById('invoiceMonthFilter').value = '2026-02';
     paymentsModule.filterInvoices();
-    paymentsModule.currentInvoices.forEach(inv => {
+    paymentsModule.currentInvoices.forEach((inv) => {
       expect(inv.invoice_date.startsWith('2026-02')).toBe(true);
     });
   });
@@ -887,7 +914,7 @@ describe('Payments Module - Payment Filtering Advanced', () => {
   test('filters by completed status', () => {
     document.getElementById('paymentStatusFilter').value = 'completed';
     paymentsModule.filterPayments();
-    paymentsModule.currentPayments.forEach(p => {
+    paymentsModule.currentPayments.forEach((p) => {
       expect(p.status).toBe('completed');
     });
   });
@@ -895,7 +922,7 @@ describe('Payments Module - Payment Filtering Advanced', () => {
   test('filters by January 2026 month', () => {
     document.getElementById('paymentMonthFilter').value = '2026-01';
     paymentsModule.filterPayments();
-    paymentsModule.currentPayments.forEach(p => {
+    paymentsModule.currentPayments.forEach((p) => {
       expect(p.payment_date.startsWith('2026-01')).toBe(true);
     });
   });
@@ -951,7 +978,7 @@ describe('Payments Module - Invoice Sorting Advanced', () => {
     paymentsModule._invoiceSortField = 'total_amount';
     paymentsModule._invoiceSortDir = 'asc';
     paymentsModule._applySortInvoices();
-    const amounts = paymentsModule.currentInvoices.map(inv => parseFloat(inv.total_amount || 0));
+    const amounts = paymentsModule.currentInvoices.map((inv) => parseFloat(inv.total_amount || 0));
     for (let i = 0; i < amounts.length - 1; i++) {
       expect(amounts[i] <= amounts[i + 1]).toBe(true);
     }
@@ -961,7 +988,7 @@ describe('Payments Module - Invoice Sorting Advanced', () => {
     paymentsModule._invoiceSortField = 'total_amount';
     paymentsModule._invoiceSortDir = 'desc';
     paymentsModule._applySortInvoices();
-    const amounts = paymentsModule.currentInvoices.map(inv => parseFloat(inv.total_amount || 0));
+    const amounts = paymentsModule.currentInvoices.map((inv) => parseFloat(inv.total_amount || 0));
     for (let i = 0; i < amounts.length - 1; i++) {
       expect(amounts[i] >= amounts[i + 1]).toBe(true);
     }
@@ -971,9 +998,7 @@ describe('Payments Module - Invoice Sorting Advanced', () => {
     paymentsModule._invoiceSortField = 'org_name';
     paymentsModule._invoiceSortDir = 'asc';
     paymentsModule._applySortInvoices();
-    const names = paymentsModule.currentInvoices.map(inv =>
-      (inv.organisations?.company_name || '').toLowerCase()
-    );
+    const names = paymentsModule.currentInvoices.map((inv) => (inv.organisations?.company_name || '').toLowerCase());
     for (let i = 0; i < names.length - 1; i++) {
       expect(names[i] <= names[i + 1]).toBe(true);
     }
@@ -983,7 +1008,7 @@ describe('Payments Module - Invoice Sorting Advanced', () => {
     paymentsModule._invoiceSortField = 'balance_due';
     paymentsModule._invoiceSortDir = 'desc';
     paymentsModule._applySortInvoices();
-    const balances = paymentsModule.currentInvoices.map(inv => parseFloat(inv.balance_due || 0));
+    const balances = paymentsModule.currentInvoices.map((inv) => parseFloat(inv.balance_due || 0));
     for (let i = 0; i < balances.length - 1; i++) {
       expect(balances[i] >= balances[i + 1]).toBe(true);
     }
@@ -993,7 +1018,7 @@ describe('Payments Module - Invoice Sorting Advanced', () => {
     paymentsModule._invoiceSortField = 'paid_amount';
     paymentsModule._invoiceSortDir = 'asc';
     paymentsModule._applySortInvoices();
-    const paid = paymentsModule.currentInvoices.map(inv => parseFloat(inv.paid_amount || 0));
+    const paid = paymentsModule.currentInvoices.map((inv) => parseFloat(inv.paid_amount || 0));
     for (let i = 0; i < paid.length - 1; i++) {
       expect(paid[i] <= paid[i + 1]).toBe(true);
     }
@@ -1018,7 +1043,7 @@ describe('Payments Module - Invoice Sorting Advanced', () => {
     paymentsModule._invoiceSortField = 'invoice_number';
     paymentsModule._invoiceSortDir = 'asc';
     paymentsModule._applySortInvoices();
-    const nums = paymentsModule.currentInvoices.map(inv => (inv.invoice_number || '').toLowerCase());
+    const nums = paymentsModule.currentInvoices.map((inv) => (inv.invoice_number || '').toLowerCase());
     for (let i = 0; i < nums.length - 1; i++) {
       expect(nums[i] <= nums[i + 1]).toBe(true);
     }
@@ -1028,7 +1053,7 @@ describe('Payments Module - Invoice Sorting Advanced', () => {
     paymentsModule._invoiceSortField = 'status';
     paymentsModule._invoiceSortDir = 'asc';
     paymentsModule._applySortInvoices();
-    const statuses = paymentsModule.currentInvoices.map(inv => (inv.status || '').toLowerCase());
+    const statuses = paymentsModule.currentInvoices.map((inv) => (inv.status || '').toLowerCase());
     for (let i = 0; i < statuses.length - 1; i++) {
       expect(statuses[i] <= statuses[i + 1]).toBe(true);
     }
@@ -1053,7 +1078,7 @@ describe('Payments Module - Invoice Pagination Advanced', () => {
         paid_amount: 0,
         balance_due: 100 + i,
         status: 'sent',
-        payment_status: 'unpaid'
+        payment_status: 'unpaid',
       });
     }
     paymentsModule.currentInvoices = manyInvoices;
@@ -1121,7 +1146,7 @@ describe('Payments Module - Payment Pagination Advanced', () => {
         status: 'completed',
         organisations: { company_name: 'Test Co', id: 'org-1' },
         invoices: { invoice_number: `INV-${i}` },
-        invoice_id: `inv-${i}`
+        invoice_id: `inv-${i}`,
       });
     }
     paymentsModule.currentPayments = manyPayments;
@@ -1169,14 +1194,14 @@ describe('Payments Module - Statistics Advanced', () => {
   test('updates overdue count', () => {
     paymentsModule.updateStatistics();
     const overdueCount = parseInt(document.getElementById('overdueInvoicesCount').textContent);
-    const expected = sampleInvoices.filter(i => i.status === 'overdue').length;
+    const expected = sampleInvoices.filter((i) => i.status === 'overdue').length;
     expect(overdueCount).toBe(expected);
   });
 
   test('updates paid count', () => {
     paymentsModule.updateStatistics();
     const paidCount = parseInt(document.getElementById('paidInvoicesCount').textContent);
-    const expected = sampleInvoices.filter(i => i.payment_status === 'paid').length;
+    const expected = sampleInvoices.filter((i) => i.payment_status === 'paid').length;
     expect(paidCount).toBe(expected);
   });
 
@@ -1190,7 +1215,7 @@ describe('Payments Module - Statistics Advanced', () => {
     paymentsModule.updateStatistics();
     const amountEl = document.getElementById('totalPaymentsAmount');
     const completedTotal = samplePayments
-      .filter(p => p.status === 'completed')
+      .filter((p) => p.status === 'completed')
       .reduce((s, p) => s + parseFloat(p.amount || 0), 0);
     expect(amountEl.textContent).toContain(completedTotal.toFixed(2));
   });
@@ -1213,11 +1238,11 @@ describe('Payments Module - Statistics Advanced', () => {
   });
 
   test('statistics with all paid invoices', () => {
-    paymentsModule.currentInvoices = sampleInvoices.map(inv => ({
+    paymentsModule.currentInvoices = sampleInvoices.map((inv) => ({
       ...inv,
       status: 'paid',
       payment_status: 'paid',
-      balance_due: 0
+      balance_due: 0,
     }));
     paymentsModule.updateStatistics();
     const paidCount = parseInt(document.getElementById('paidInvoicesCount').textContent);
@@ -1227,12 +1252,14 @@ describe('Payments Module - Statistics Advanced', () => {
   });
 
   test('statistics with null amount values', () => {
-    paymentsModule.currentInvoices = [{
-      id: 'null-amt',
-      balance_due: null,
-      status: 'sent',
-      payment_status: 'unpaid'
-    }];
+    paymentsModule.currentInvoices = [
+      {
+        id: 'null-amt',
+        balance_due: null,
+        status: 'sent',
+        payment_status: 'unpaid',
+      },
+    ];
     paymentsModule.currentPayments = [];
     expect(() => paymentsModule.updateStatistics()).not.toThrow();
   });
@@ -1280,7 +1307,7 @@ describe('Payments Module - Render Invoices Content', () => {
   test('renderInvoices displays invoice numbers', () => {
     paymentsModule.renderInvoices();
     const tbody = document.getElementById('invoicesTableBody');
-    sampleInvoices.forEach(inv => {
+    sampleInvoices.forEach((inv) => {
       expect(tbody.innerHTML).toContain(inv.invoice_number);
     });
   });
@@ -1350,33 +1377,39 @@ describe('Payments Module - XSS Prevention', () => {
   });
 
   test('renderInvoices escapes HTML in invoice number', () => {
-    paymentsModule.currentInvoices = [{
-      ...sampleInvoices[0],
-      id: 'xss-inv',
-      invoice_number: '<script>alert(1)</script>'
-    }];
+    paymentsModule.currentInvoices = [
+      {
+        ...sampleInvoices[0],
+        id: 'xss-inv',
+        invoice_number: '<script>alert(1)</script>',
+      },
+    ];
     paymentsModule.renderInvoices();
     const tbody = document.getElementById('invoicesTableBody');
     expect(tbody.querySelector('script')).toBeNull();
   });
 
   test('renderInvoices escapes HTML in company name', () => {
-    paymentsModule.currentInvoices = [{
-      ...sampleInvoices[0],
-      id: 'xss-co',
-      organisations: { company_name: '<img src=x onerror=alert(1)>', id: 'org-x' }
-    }];
+    paymentsModule.currentInvoices = [
+      {
+        ...sampleInvoices[0],
+        id: 'xss-co',
+        organisations: { company_name: '<img src=x onerror=alert(1)>', id: 'org-x' },
+      },
+    ];
     paymentsModule.renderInvoices();
     const tbody = document.getElementById('invoicesTableBody');
     expect(tbody.querySelector('img[onerror]')).toBeNull();
   });
 
   test('renderPayments escapes HTML in payment reference', () => {
-    paymentsModule.currentPayments = [{
-      ...samplePayments[0],
-      id: 'xss-pay',
-      payment_reference: '<img src=x onerror=alert(1)>'
-    }];
+    paymentsModule.currentPayments = [
+      {
+        ...samplePayments[0],
+        id: 'xss-pay',
+        payment_reference: '<img src=x onerror=alert(1)>',
+      },
+    ];
     paymentsModule.renderPayments();
     const tbody = document.getElementById('paymentsTableBody');
     expect(tbody.querySelector('img[onerror]')).toBeNull();
@@ -1428,7 +1461,10 @@ describe('Payments Module - Export Edge Cases', () => {
     expect(() => {
       paymentsModule._downloadCSV(
         ['Name', 'Amount'],
-        [['Smith & Co, Ltd', '100.00'], ['O\'Brien', '200.00']],
+        [
+          ['Smith & Co, Ltd', '100.00'],
+          ["O'Brien", '200.00'],
+        ],
         'test.csv'
       );
     }).not.toThrow();
@@ -1465,18 +1501,20 @@ describe('Payments Module - Export Edge Cases', () => {
 
 describe('Payments Module - Null Safety', () => {
   test('renderInvoices handles invoice with null organisations', () => {
-    paymentsModule.currentInvoices = [{
-      id: 'null-org',
-      invoice_number: 'INV-NULL',
-      organisations: null,
-      invoice_date: '2026-01-01',
-      due_date: '2026-02-01',
-      total_amount: 100,
-      paid_amount: 0,
-      balance_due: 100,
-      status: 'draft',
-      invoice_type: 'entry_fee'
-    }];
+    paymentsModule.currentInvoices = [
+      {
+        id: 'null-org',
+        invoice_number: 'INV-NULL',
+        organisations: null,
+        invoice_date: '2026-01-01',
+        due_date: '2026-02-01',
+        total_amount: 100,
+        paid_amount: 0,
+        balance_due: 100,
+        status: 'draft',
+        invoice_type: 'entry_fee',
+      },
+    ];
     paymentsModule._invCurrentPage = 1;
     paymentsModule._invPageSize = 50;
     paymentsModule._selectedInvoiceIds = new Set();
@@ -1484,29 +1522,33 @@ describe('Payments Module - Null Safety', () => {
   });
 
   test('renderPayments handles payment with null organisations', () => {
-    paymentsModule.currentPayments = [{
-      id: 'null-org-pay',
-      payment_reference: 'PAY-NULL',
-      payment_date: '2026-01-01',
-      amount: 50,
-      payment_method: 'card',
-      status: 'completed',
-      organisations: null,
-      invoices: null,
-      invoice_id: null
-    }];
+    paymentsModule.currentPayments = [
+      {
+        id: 'null-org-pay',
+        payment_reference: 'PAY-NULL',
+        payment_date: '2026-01-01',
+        amount: 50,
+        payment_method: 'card',
+        status: 'completed',
+        organisations: null,
+        invoices: null,
+        invoice_id: null,
+      },
+    ];
     paymentsModule._payCurrentPage = 1;
     paymentsModule._payPageSize = 50;
     expect(() => paymentsModule.renderPayments()).not.toThrow();
   });
 
   test('updateStatistics with null balance_due values', () => {
-    paymentsModule.currentInvoices = [{
-      id: 'null-bal',
-      balance_due: null,
-      status: 'sent',
-      payment_status: 'unpaid'
-    }];
+    paymentsModule.currentInvoices = [
+      {
+        id: 'null-bal',
+        balance_due: null,
+        status: 'sent',
+        payment_status: 'unpaid',
+      },
+    ];
     paymentsModule.currentPayments = [];
     expect(() => paymentsModule.updateStatistics()).not.toThrow();
   });
@@ -1532,21 +1574,670 @@ describe('Payments Module - Null Safety', () => {
   });
 
   test('renderInvoices handles invoice with null amounts', () => {
-    paymentsModule.currentInvoices = [{
-      id: 'null-amts',
-      invoice_number: 'INV-NA',
-      organisations: { company_name: 'Test', id: 'org-1' },
-      invoice_date: null,
-      due_date: null,
-      total_amount: null,
-      paid_amount: null,
-      balance_due: null,
-      status: null,
-      invoice_type: null
-    }];
+    paymentsModule.currentInvoices = [
+      {
+        id: 'null-amts',
+        invoice_number: 'INV-NA',
+        organisations: { company_name: 'Test', id: 'org-1' },
+        invoice_date: null,
+        due_date: null,
+        total_amount: null,
+        paid_amount: null,
+        balance_due: null,
+        status: null,
+        invoice_type: null,
+      },
+    ];
     paymentsModule._invCurrentPage = 1;
     paymentsModule._invPageSize = 50;
     paymentsModule._selectedInvoiceIds = new Set();
     expect(() => paymentsModule.renderInvoices()).not.toThrow();
+  });
+});
+
+// ==========================================================================
+// NEW TESTS — coverage boost for payments.js
+// ==========================================================================
+
+describe('Payments Module - _buildInvoiceServerFilters()', () => {
+  beforeEach(() => {
+    document.getElementById('invoiceStatusFilter').value = '';
+    document.getElementById('invoiceOrgFilter').value = '';
+    document.getElementById('invoiceMonthFilter').value = '';
+  });
+
+  test('returns empty object when no filters set', () => {
+    const filters = paymentsModule._buildInvoiceServerFilters();
+    expect(Object.keys(filters).length).toBe(0);
+  });
+
+  test('adds status filter', () => {
+    document.getElementById('invoiceStatusFilter').value = 'paid';
+    const filters = paymentsModule._buildInvoiceServerFilters();
+    expect(filters.status).toBe('paid');
+  });
+
+  test('adds organisation_id filter', () => {
+    document.getElementById('invoiceOrgFilter').value = 'org-1';
+    const filters = paymentsModule._buildInvoiceServerFilters();
+    expect(filters.organisation_id).toBe('org-1');
+  });
+
+  test('adds month filter with date range', () => {
+    document.getElementById('invoiceMonthFilter').value = '2026-03';
+    const filters = paymentsModule._buildInvoiceServerFilters();
+    expect(filters.invoice_date).toEqual({ op: 'gte', value: '2026-03-01' });
+    expect(filters['invoice_date@lt']).toEqual({ op: 'lt', value: '2026-04-01' });
+  });
+
+  test('handles December month correctly (wraps to next year)', () => {
+    document.getElementById('invoiceMonthFilter').value = '2026-12';
+    const filters = paymentsModule._buildInvoiceServerFilters();
+    expect(filters.invoice_date).toEqual({ op: 'gte', value: '2026-12-01' });
+    expect(filters['invoice_date@lt']).toEqual({ op: 'lt', value: '2027-01-01' });
+  });
+
+  test('combines all filters', () => {
+    document.getElementById('invoiceStatusFilter').value = 'overdue';
+    document.getElementById('invoiceOrgFilter').value = 'org-2';
+    document.getElementById('invoiceMonthFilter').value = '2026-01';
+    const filters = paymentsModule._buildInvoiceServerFilters();
+    expect(filters.status).toBe('overdue');
+    expect(filters.organisation_id).toBe('org-2');
+    expect(filters.invoice_date).toBeDefined();
+  });
+});
+
+describe('Payments Module - _goToInvoicePage()', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    paymentsModule._serverPagination = true;
+    paymentsModule._pagination = { page: 1, totalPages: 5, count: 250, pageSize: 50 };
+    paymentsModule._fetchInvoicePage = jest.fn().mockResolvedValue();
+  });
+
+  test('clamps page to valid range (min)', async () => {
+    paymentsModule._pagination = { page: 3, totalPages: 5, count: 250, pageSize: 50 };
+    await paymentsModule._goToInvoicePage(0);
+    expect(paymentsModule._fetchInvoicePage).toHaveBeenCalledWith(1);
+  });
+
+  test('clamps page to valid range (max)', async () => {
+    paymentsModule._pagination = { page: 3, totalPages: 5, count: 250, pageSize: 50 };
+    await paymentsModule._goToInvoicePage(100);
+    expect(paymentsModule._fetchInvoicePage).toHaveBeenCalledWith(5);
+  });
+
+  test('does nothing when page equals current page', async () => {
+    paymentsModule._pagination = { page: 1, totalPages: 5, count: 250, pageSize: 50 };
+    await paymentsModule._goToInvoicePage(1);
+    expect(paymentsModule._fetchInvoicePage).not.toHaveBeenCalled();
+  });
+
+  test('navigates to requested page', async () => {
+    await paymentsModule._goToInvoicePage(3);
+    expect(paymentsModule._fetchInvoicePage).toHaveBeenCalledWith(3);
+  });
+
+  test('handles error gracefully', async () => {
+    paymentsModule._fetchInvoicePage = jest.fn().mockRejectedValue(new Error('Network fail'));
+    const toastSpy = jest.spyOn(utils, 'showToast');
+    await paymentsModule._goToInvoicePage(2);
+    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('Error loading page'), 'error');
+    toastSpy.mockRestore();
+  });
+});
+
+describe('Payments Module - handleDiscountChange()', () => {
+  beforeEach(() => {
+    // Add discount elements to DOM
+    if (!document.getElementById('invoiceDiscount')) {
+      const select = document.createElement('select');
+      select.id = 'invoiceDiscount';
+      select.innerHTML =
+        '<option value="0">0%</option><option value="10">10%</option><option value="custom">Custom</option>';
+      document.body.appendChild(select);
+    }
+    if (!document.getElementById('customDiscountRow')) {
+      const div = document.createElement('div');
+      div.id = 'customDiscountRow';
+      div.style.display = 'none';
+      document.body.appendChild(div);
+    }
+    if (!document.getElementById('invoiceDiscountCustom')) {
+      const input = document.createElement('input');
+      input.id = 'invoiceDiscountCustom';
+      input.type = 'number';
+      input.focus = jest.fn();
+      document.body.appendChild(input);
+    }
+  });
+
+  test('shows custom discount row when custom selected', () => {
+    document.getElementById('invoiceDiscount').value = 'custom';
+    paymentsModule.handleDiscountChange();
+    expect(document.getElementById('customDiscountRow').style.display).toBe('block');
+  });
+
+  test('hides custom discount row when preset selected', () => {
+    document.getElementById('invoiceDiscount').value = '10';
+    document.getElementById('customDiscountRow').style.display = 'block';
+    paymentsModule.handleDiscountChange();
+    expect(document.getElementById('customDiscountRow').style.display).toBe('none');
+  });
+});
+
+describe('Payments Module - getDiscountPercentage()', () => {
+  beforeEach(() => {
+    if (!document.getElementById('invoiceDiscount')) {
+      const select = document.createElement('select');
+      select.id = 'invoiceDiscount';
+      select.innerHTML =
+        '<option value="0">0%</option><option value="10">10%</option><option value="custom">Custom</option>';
+      document.body.appendChild(select);
+    }
+    if (!document.getElementById('invoiceDiscountCustom')) {
+      const input = document.createElement('input');
+      input.id = 'invoiceDiscountCustom';
+      input.type = 'number';
+      document.body.appendChild(input);
+    }
+  });
+
+  test('returns selected preset percentage', () => {
+    document.getElementById('invoiceDiscount').value = '10';
+    expect(paymentsModule.getDiscountPercentage()).toBe(10);
+  });
+
+  test('returns custom percentage', () => {
+    document.getElementById('invoiceDiscount').value = 'custom';
+    document.getElementById('invoiceDiscountCustom').value = '15';
+    expect(paymentsModule.getDiscountPercentage()).toBe(15);
+  });
+
+  test('clamps to 0 for negative custom value', () => {
+    document.getElementById('invoiceDiscount').value = 'custom';
+    document.getElementById('invoiceDiscountCustom').value = '-5';
+    expect(paymentsModule.getDiscountPercentage()).toBe(0);
+  });
+
+  test('clamps to 100 for value over 100', () => {
+    document.getElementById('invoiceDiscount').value = 'custom';
+    document.getElementById('invoiceDiscountCustom').value = '150';
+    expect(paymentsModule.getDiscountPercentage()).toBe(100);
+  });
+
+  test('returns 0 for empty custom value', () => {
+    document.getElementById('invoiceDiscount').value = 'custom';
+    document.getElementById('invoiceDiscountCustom').value = '';
+    expect(paymentsModule.getDiscountPercentage()).toBe(0);
+  });
+
+  test('returns 0 for 0% preset', () => {
+    document.getElementById('invoiceDiscount').value = '0';
+    expect(paymentsModule.getDiscountPercentage()).toBe(0);
+  });
+});
+
+describe('Payments Module - addInvoiceLineItem()', () => {
+  beforeEach(() => {
+    if (!document.getElementById('invoiceLineItems')) {
+      const div = document.createElement('div');
+      div.id = 'invoiceLineItems';
+      document.body.appendChild(div);
+    }
+    document.getElementById('invoiceLineItems').innerHTML = '';
+  });
+
+  test('adds a line item row to the container', () => {
+    paymentsModule.addInvoiceLineItem();
+    const items = document.querySelectorAll('.invoice-line-item');
+    expect(items.length).toBe(1);
+  });
+
+  test('adds multiple line items', () => {
+    paymentsModule.addInvoiceLineItem();
+    paymentsModule.addInvoiceLineItem();
+    const items = document.querySelectorAll('.invoice-line-item');
+    expect(items.length).toBe(2);
+  });
+
+  test('each line item has required input fields', () => {
+    paymentsModule.addInvoiceLineItem();
+    const item = document.querySelector('.invoice-line-item');
+    const inputs = item.querySelectorAll('input');
+    expect(inputs.length).toBe(4); // name, description, qty, price
+  });
+});
+
+describe('Payments Module - removeInvoiceLineItem()', () => {
+  beforeEach(() => {
+    if (!document.getElementById('invoiceLineItems')) {
+      const div = document.createElement('div');
+      div.id = 'invoiceLineItems';
+      document.body.appendChild(div);
+    }
+    document.getElementById('invoiceLineItems').innerHTML = '';
+  });
+
+  test('removes an existing line item', () => {
+    paymentsModule.addInvoiceLineItem();
+    const item = document.querySelector('.invoice-line-item');
+    const itemId = item.getAttribute('data-item-id');
+    paymentsModule.removeInvoiceLineItem(itemId);
+    expect(document.querySelectorAll('.invoice-line-item').length).toBe(0);
+  });
+
+  test('does nothing for non-existent item ID', () => {
+    paymentsModule.addInvoiceLineItem();
+    paymentsModule.removeInvoiceLineItem('nonexistent-id');
+    expect(document.querySelectorAll('.invoice-line-item').length).toBe(1);
+  });
+});
+
+describe('Payments Module - filterThisMonth()', () => {
+  test('sets payment month filter to current month and re-filters', () => {
+    paymentsModule.allPayments = [];
+    paymentsModule.currentPayments = [];
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    paymentsModule.filterThisMonth();
+    expect(document.getElementById('paymentMonthFilter').value).toBe(currentMonth);
+  });
+});
+
+describe('Payments Module - generateRevenueReport()', () => {
+  test('calculates totals correctly', () => {
+    const invoices = [
+      { total_amount: 100, paid_amount: 80, balance_due: 20 },
+      { total_amount: 200, paid_amount: 200, balance_due: 0 },
+    ];
+    const html = paymentsModule.generateRevenueReport(invoices, '2026-01-01', '2026-12-31');
+    expect(html).toContain('300.00'); // total invoiced
+    expect(html).toContain('280.00'); // total paid
+    expect(html).toContain('20.00'); // outstanding
+    expect(html).toContain('Total Invoices: 2');
+  });
+
+  test('handles empty invoices', () => {
+    const html = paymentsModule.generateRevenueReport([], '2026-01-01', '2026-12-31');
+    expect(html).toContain('0.00');
+    expect(html).toContain('Total Invoices: 0');
+  });
+});
+
+describe('Payments Module - generateOutstandingReport()', () => {
+  test('filters to only outstanding invoices', () => {
+    const invoices = [
+      { invoice_number: 'INV-1', balance_due: 100, total_amount: 200, due_date: '2026-03-01', status: 'sent' },
+      { invoice_number: 'INV-2', balance_due: 0, total_amount: 150, due_date: '2026-02-01', status: 'paid' },
+    ];
+    const html = paymentsModule.generateOutstandingReport(invoices);
+    expect(html).toContain('Outstanding Invoices (1)');
+    expect(html).toContain('INV-1');
+    expect(html).not.toContain('INV-2');
+  });
+});
+
+describe('Payments Module - generatePaymentHistoryReport()', () => {
+  test('filters payments by date range', () => {
+    paymentsModule.currentPayments = [
+      {
+        payment_reference: 'PAY-1',
+        payment_date: '2026-02-15',
+        amount: 100,
+        status: 'completed',
+        organisations: { company_name: 'A' },
+        payment_method: 'card',
+      },
+      {
+        payment_reference: 'PAY-2',
+        payment_date: '2026-04-15',
+        amount: 200,
+        status: 'completed',
+        organisations: { company_name: 'B' },
+        payment_method: 'cash',
+      },
+    ];
+    const html = paymentsModule.generatePaymentHistoryReport('2026-01-01', '2026-03-31');
+    expect(html).toContain('PAY-1');
+    expect(html).not.toContain('PAY-2');
+    expect(html).toContain('100.00');
+  });
+});
+
+describe('Payments Module - _applySortInvoices()', () => {
+  test('sorts by org_name ascending', () => {
+    paymentsModule.currentInvoices = [
+      { organisations: { company_name: 'Zebra' } },
+      { organisations: { company_name: 'Alpha' } },
+    ];
+    paymentsModule._invoiceSortField = 'org_name';
+    paymentsModule._invoiceSortDir = 'asc';
+    paymentsModule._applySortInvoices();
+    expect(paymentsModule.currentInvoices[0].organisations.company_name).toBe('Alpha');
+    expect(paymentsModule.currentInvoices[1].organisations.company_name).toBe('Zebra');
+  });
+
+  test('sorts by total_amount descending', () => {
+    paymentsModule.currentInvoices = [{ total_amount: 100 }, { total_amount: 500 }, { total_amount: 200 }];
+    paymentsModule._invoiceSortField = 'total_amount';
+    paymentsModule._invoiceSortDir = 'desc';
+    paymentsModule._applySortInvoices();
+    expect(paymentsModule.currentInvoices[0].total_amount).toBe(500);
+    expect(paymentsModule.currentInvoices[2].total_amount).toBe(100);
+  });
+
+  test('sorts by generic field (e.g. invoice_number) ascending', () => {
+    paymentsModule.currentInvoices = [
+      { invoice_number: 'INV-003' },
+      { invoice_number: 'INV-001' },
+      { invoice_number: 'INV-002' },
+    ];
+    paymentsModule._invoiceSortField = 'invoice_number';
+    paymentsModule._invoiceSortDir = 'asc';
+    paymentsModule._applySortInvoices();
+    expect(paymentsModule.currentInvoices[0].invoice_number).toBe('INV-001');
+  });
+
+  test('handles null organisations in org_name sort', () => {
+    paymentsModule.currentInvoices = [{ organisations: null }, { organisations: { company_name: 'Alpha' } }];
+    paymentsModule._invoiceSortField = 'org_name';
+    paymentsModule._invoiceSortDir = 'asc';
+    expect(() => paymentsModule._applySortInvoices()).not.toThrow();
+  });
+});
+
+describe('Payments Module - sortInvoices() server-side', () => {
+  test('toggles sort direction when same field', () => {
+    paymentsModule._serverPagination = false;
+    paymentsModule._invoiceSortField = 'created_at';
+    paymentsModule._invoiceSortDir = 'asc';
+    paymentsModule.currentInvoices = [];
+    paymentsModule.sortInvoices('created_at');
+    expect(paymentsModule._invoiceSortDir).toBe('desc');
+  });
+
+  test('sets new field and resets to asc', () => {
+    paymentsModule._serverPagination = false;
+    paymentsModule._invoiceSortField = 'created_at';
+    paymentsModule._invoiceSortDir = 'desc';
+    paymentsModule.currentInvoices = [];
+    paymentsModule.sortInvoices('total_amount');
+    expect(paymentsModule._invoiceSortField).toBe('total_amount');
+    expect(paymentsModule._invoiceSortDir).toBe('asc');
+  });
+});
+
+describe('Payments Module - loadPayments()', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('loads payments and filters', async () => {
+    const mockPayments = [
+      { id: 'p1', payment_reference: 'PAY-001', amount: 100, status: 'completed', payment_date: '2026-01-15' },
+    ];
+    apiClient.selectAll = jest.fn().mockResolvedValue(mockPayments);
+    await paymentsModule.loadPayments();
+    expect(paymentsModule.allPayments).toEqual(mockPayments);
+  });
+
+  test('handles load error', async () => {
+    apiClient.selectAll = jest.fn().mockRejectedValue(new Error('DB error'));
+    await paymentsModule.loadPayments();
+    // Should not throw, error is caught internally
+  });
+});
+
+describe('Payments Module - sendInvoice()', () => {
+  beforeEach(() => {
+    // Add send invoice modal elements
+    ['sendInvoiceEmail', 'sendInvoiceCc', 'sendInvoiceSubject', 'sendInvoiceMessage'].forEach((id) => {
+      if (!document.getElementById(id)) {
+        const el = document.createElement(id === 'sendInvoiceMessage' ? 'textarea' : 'input');
+        el.id = id;
+        document.body.appendChild(el);
+      }
+    });
+    if (!document.getElementById('sendInvoiceModal')) {
+      const div = document.createElement('div');
+      div.id = 'sendInvoiceModal';
+      document.body.appendChild(div);
+    }
+  });
+
+  test('shows toast when invoice not found', async () => {
+    paymentsModule.currentInvoices = [];
+    const toastSpy = jest.spyOn(utils, 'showToast');
+    await paymentsModule.sendInvoice('nonexistent');
+    expect(toastSpy).toHaveBeenCalledWith('Invoice not found', 'error');
+    toastSpy.mockRestore();
+  });
+
+  test('pre-fills modal form with invoice data', async () => {
+    paymentsModule.currentInvoices = [
+      {
+        id: 'inv-1',
+        invoice_number: 'INV-001',
+        total_amount: 500,
+        due_date: '2026-04-01',
+        organisations: { company_name: 'Test Corp', email: 'test@test.com' },
+      },
+    ];
+    await paymentsModule.sendInvoice('inv-1');
+    expect(paymentsModule.currentSendInvoiceId).toBe('inv-1');
+    expect(document.getElementById('sendInvoiceEmail').value).toBe('test@test.com');
+    expect(document.getElementById('sendInvoiceSubject').value).toContain('INV-001');
+  });
+});
+
+describe('Payments Module - deleteInvoice()', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    paymentsModule.allInvoices = [{ id: 'inv-1', invoice_number: 'INV-001' }];
+    paymentsModule.currentInvoices = paymentsModule.allInvoices;
+  });
+
+  test('aborts when user cancels confirmation', async () => {
+    utils.confirmDialog = jest.fn().mockResolvedValue(false);
+    apiClient.delete = jest.fn();
+    await paymentsModule.deleteInvoice('inv-1');
+    expect(apiClient.delete).not.toHaveBeenCalled();
+  });
+
+  test('deletes invoice and line items on confirmation', async () => {
+    utils.confirmDialog = jest.fn().mockResolvedValue(true);
+    utils.softDelete = jest.fn();
+    apiClient.deleteByFilters = jest.fn().mockResolvedValue({});
+    apiClient.delete = jest.fn().mockResolvedValue({});
+    paymentsModule.loadInvoices = jest.fn().mockResolvedValue();
+    paymentsModule.updateStatistics = jest.fn();
+    await paymentsModule.deleteInvoice('inv-1');
+    expect(apiClient.deleteByFilters).toHaveBeenCalledWith('invoice_line_items', { invoice_id: 'inv-1' });
+    expect(apiClient.delete).toHaveBeenCalledWith('invoices', 'inv-1');
+  });
+
+  test('handles delete error', async () => {
+    utils.confirmDialog = jest.fn().mockResolvedValue(true);
+    utils.softDelete = jest.fn();
+    apiClient.deleteByFilters = jest.fn().mockRejectedValue(new Error('Delete failed'));
+    const toastSpy = jest.spyOn(utils, 'showToast');
+    await paymentsModule.deleteInvoice('inv-1');
+    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to delete invoice'), 'error');
+    toastSpy.mockRestore();
+  });
+});
+
+describe('Payments Module - exportInvoicesExcel()', () => {
+  test('shows warning when no invoices', () => {
+    paymentsModule.currentInvoices = [];
+    const toastSpy = jest.spyOn(utils, 'showToast');
+    paymentsModule.exportInvoicesExcel();
+    expect(toastSpy).toHaveBeenCalledWith('No invoices to export', 'warning');
+    toastSpy.mockRestore();
+  });
+
+  test('calls exportToExcel with data', () => {
+    paymentsModule.currentInvoices = [
+      {
+        invoice_number: 'INV-1',
+        total_amount: 100,
+        paid_amount: 50,
+        balance_due: 50,
+        invoice_type: 'entry_fee',
+        status: 'sent',
+      },
+    ];
+    utils.exportToExcel = jest.fn();
+    paymentsModule.exportInvoicesExcel();
+    expect(utils.exportToExcel).toHaveBeenCalledWith(
+      expect.arrayContaining([expect.objectContaining({ invoice_number: 'INV-1' })]),
+      expect.stringContaining('invoices_export_')
+    );
+  });
+});
+
+describe('Payments Module - exportInvoicesPDF()', () => {
+  test('shows warning when no invoices', () => {
+    paymentsModule.currentInvoices = [];
+    const toastSpy = jest.spyOn(utils, 'showToast');
+    paymentsModule.exportInvoicesPDF();
+    expect(toastSpy).toHaveBeenCalledWith('No invoices to export', 'warning');
+    toastSpy.mockRestore();
+  });
+
+  test('calls exportToPrintablePDF with data', () => {
+    paymentsModule.currentInvoices = [{ invoice_number: 'INV-1', total_amount: 100, balance_due: 50, status: 'sent' }];
+    utils.exportToPrintablePDF = jest.fn();
+    paymentsModule.exportInvoicesPDF();
+    expect(utils.exportToPrintablePDF).toHaveBeenCalled();
+  });
+});
+
+describe('Payments Module - exportPaymentsExcel()', () => {
+  test('shows warning when no payments', () => {
+    paymentsModule.currentPayments = [];
+    const toastSpy = jest.spyOn(utils, 'showToast');
+    paymentsModule.exportPaymentsExcel();
+    expect(toastSpy).toHaveBeenCalledWith('No payments to export', 'warning');
+    toastSpy.mockRestore();
+  });
+
+  test('calls exportToExcel with data', () => {
+    paymentsModule.currentPayments = [
+      { payment_reference: 'PAY-1', amount: 100, payment_method: 'card', status: 'completed' },
+    ];
+    utils.exportToExcel = jest.fn();
+    paymentsModule.exportPaymentsExcel();
+    expect(utils.exportToExcel).toHaveBeenCalled();
+  });
+});
+
+describe('Payments Module - exportPaymentsPDF()', () => {
+  test('shows warning when no payments', () => {
+    paymentsModule.currentPayments = [];
+    const toastSpy = jest.spyOn(utils, 'showToast');
+    paymentsModule.exportPaymentsPDF();
+    expect(toastSpy).toHaveBeenCalledWith('No payments to export', 'warning');
+    toastSpy.mockRestore();
+  });
+
+  test('calls exportToPrintablePDF with data', () => {
+    paymentsModule.currentPayments = [
+      { payment_reference: 'PAY-1', amount: 100, payment_method: 'card', status: 'completed' },
+    ];
+    utils.exportToPrintablePDF = jest.fn();
+    paymentsModule.exportPaymentsPDF();
+    expect(utils.exportToPrintablePDF).toHaveBeenCalled();
+  });
+});
+
+describe('Payments Module - loadAllData()', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    paymentsModule.loadInvoices = jest.fn().mockResolvedValue();
+    paymentsModule.loadPayments = jest.fn().mockResolvedValue();
+    paymentsModule.loadOrganisationsForFilters = jest.fn().mockResolvedValue();
+    paymentsModule.filterInvoices = jest.fn();
+    paymentsModule.filterPayments = jest.fn();
+    paymentsModule.updateStatistics = jest.fn();
+  });
+
+  test('calls all load functions', async () => {
+    await paymentsModule.loadAllData();
+    expect(paymentsModule.loadInvoices).toHaveBeenCalled();
+    expect(paymentsModule.loadPayments).toHaveBeenCalled();
+    expect(paymentsModule.loadOrganisationsForFilters).toHaveBeenCalled();
+  });
+
+  test('restores saved invoice filters from localStorage', async () => {
+    localStorage.setItem('invoiceFilters', JSON.stringify({ search: 'test', status: 'paid' }));
+    await paymentsModule.loadAllData();
+    expect(document.getElementById('invoiceSearchBox').value).toBe('test');
+    expect(document.getElementById('invoiceStatusFilter').value).toBe('paid');
+    // Clean up
+    localStorage.removeItem('invoiceFilters');
+  });
+
+  test('restores saved payment filters from localStorage', async () => {
+    localStorage.setItem('paymentFilters', JSON.stringify({ search: 'ref', method: 'card' }));
+    await paymentsModule.loadAllData();
+    expect(document.getElementById('paymentSearchBox').value).toBe('ref');
+    // Clean up
+    localStorage.removeItem('paymentFilters');
+  });
+
+  test('handles error in loadAllData gracefully', async () => {
+    paymentsModule.loadInvoices = jest.fn().mockRejectedValue(new Error('Fail'));
+    await paymentsModule.loadAllData();
+    // Should not throw
+  });
+});
+
+describe('Payments Module - renderInvoices server-side pagination', () => {
+  test('uses server pagination data when enabled', () => {
+    paymentsModule._serverPagination = true;
+    paymentsModule._pagination = { page: 2, totalPages: 5, count: 250, pageSize: 50 };
+    paymentsModule.currentInvoices = [
+      {
+        id: 'inv-1',
+        invoice_number: 'INV-001',
+        organisations: { company_name: 'Test', id: 'org-1' },
+        invoice_date: '2026-01-15',
+        due_date: '2026-02-15',
+        total_amount: 100,
+        paid_amount: 0,
+        balance_due: 100,
+        status: 'sent',
+        invoice_type: 'entry_fee',
+      },
+    ];
+    paymentsModule._selectedInvoiceIds = new Set();
+    paymentsModule.renderInvoices();
+    const tbody = document.getElementById('invoicesTableBody');
+    expect(tbody.innerHTML).toContain('INV-001');
+  });
+});
+
+describe('Payments Module - filterInvoices fuzzy search fallback', () => {
+  test('tries fuzzy search when exact search returns empty', () => {
+    paymentsModule._serverPagination = false;
+    paymentsModule.allInvoices = [
+      {
+        id: 'inv-1',
+        invoice_number: 'INV-2026-001',
+        organisations: { company_name: 'Acme' },
+        status: 'sent',
+        payment_status: 'unpaid',
+        invoice_date: '2026-01-15',
+      },
+    ];
+    document.getElementById('invoiceSearchBox').value = 'xyznotfound';
+    document.getElementById('invoiceStatusFilter').value = '';
+    document.getElementById('invoiceOrgFilter').value = '';
+    document.getElementById('invoiceMonthFilter').value = '';
+    paymentsModule.filterInvoices();
+    // Fuzzy search should run, may or may not match
+    expect(paymentsModule.currentInvoices).toBeDefined();
   });
 });

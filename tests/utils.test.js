@@ -6,7 +6,8 @@
 const { JSDOM } = require('jsdom');
 
 // Setup minimal DOM before loading modules
-const dom = new JSDOM(`<!DOCTYPE html><html><head></head><body>
+const dom = new JSDOM(
+  `<!DOCTYPE html><html><head></head><body>
   <div id="loadingBar" style="display:none;"></div>
   <div id="notificationToast"><span id="toastIcon"></span><span id="toastTitle"></span><span id="toastMessage"></span></div>
   <div id="connectionStatus"><span class="status-icon"></span><span class="status-text"></span></div>
@@ -35,7 +36,9 @@ const dom = new JSDOM(`<!DOCTYPE html><html><head></head><body>
   <div id="awardsFreshness"></div>
   <div id="recentlyViewedList"></div>
   <div id="bulkProgressBar" style="display:none;"></div>
-</body></html>`, { url: 'http://localhost' });
+</body></html>`,
+  { url: 'http://localhost' }
+);
 
 global.window = dom.window;
 global.document = dom.window.document;
@@ -48,16 +51,27 @@ global.window.URL = global.URL;
 
 // Mock bootstrap
 global.bootstrap = {
-  Toast: class { show() {} hide() {} },
-  Modal: class {
-    show() {} hide() {}
-    static getInstance() { return { hide() {} }; }
+  Toast: class {
+    show() {}
+    hide() {}
   },
-  Tooltip: class {}
+  Modal: class {
+    show() {}
+    hide() {}
+    static getInstance() {
+      return { hide() {} };
+    }
+  },
+  Tooltip: class {},
 };
 
 // Mock crypto.getRandomValues
-global.crypto = { getRandomValues: (arr) => { for (let i = 0; i < arr.length; i++) arr[i] = Math.floor(Math.random() * 256); return arr; } };
+global.crypto = {
+  getRandomValues: (arr) => {
+    for (let i = 0; i < arr.length; i++) arr[i] = Math.floor(Math.random() * 256);
+    return arr;
+  },
+};
 
 // Mock supabase
 const mockSupabase = {
@@ -74,16 +88,20 @@ const mockSupabase = {
   limit: jest.fn(() => mockSupabase),
   single: jest.fn(() => Promise.resolve({ data: null, error: null })),
   rpc: jest.fn(() => Promise.resolve({ data: [], error: null })),
-  then: jest.fn(cb => cb({ data: [], error: null })),
+  then: jest.fn((cb) => cb({ data: [], error: null })),
   auth: {
     getSession: jest.fn(() => Promise.resolve({ data: { session: null }, error: null })),
     signInWithPassword: jest.fn(() => Promise.resolve({ data: { user: { email: 'test@test.com' } }, error: null })),
-    signOut: jest.fn(() => Promise.resolve({ error: null }))
+    signOut: jest.fn(() => Promise.resolve({ error: null })),
   },
   channel: jest.fn(() => ({
-    on: jest.fn(function() { return this; }),
-    subscribe: jest.fn(function() { return this; })
-  }))
+    on: jest.fn(function () {
+      return this;
+    }),
+    subscribe: jest.fn(function () {
+      return this;
+    }),
+  })),
 };
 
 global.supabase = { createClient: () => mockSupabase };
@@ -416,7 +434,10 @@ describe('Utils - exportToCSV()', () => {
   });
 
   test('creates download for valid data', () => {
-    const data = [{ name: 'Alice', age: 30 }, { name: 'Bob', age: 25 }];
+    const data = [
+      { name: 'Alice', age: 30 },
+      { name: 'Bob', age: 25 },
+    ];
     utils.exportToCSV(data, 'people.csv');
     expect(global.URL.createObjectURL).toHaveBeenCalled();
     expect(global.URL.revokeObjectURL).toHaveBeenCalled();
@@ -426,7 +447,10 @@ describe('Utils - exportToCSV()', () => {
     let capturedContent = '';
     const OrigBlob = global.Blob;
     global.Blob = class extends OrigBlob {
-      constructor(parts, opts) { super(parts, opts); capturedContent = parts.join(''); }
+      constructor(parts, opts) {
+        super(parts, opts);
+        capturedContent = parts.join('');
+      }
     };
 
     const data = [{ name: 'Smith, John', city: 'London' }];
@@ -440,7 +464,10 @@ describe('Utils - exportToCSV()', () => {
     let capturedContent = '';
     const OrigBlob = global.Blob;
     global.Blob = class extends OrigBlob {
-      constructor(parts, opts) { super(parts, opts); capturedContent = parts.join(''); }
+      constructor(parts, opts) {
+        super(parts, opts);
+        capturedContent = parts.join('');
+      }
     };
 
     const data = [{ name: 'Quotes "R" Us' }];
@@ -454,7 +481,10 @@ describe('Utils - exportToCSV()', () => {
     let capturedContent = '';
     const OrigBlob = global.Blob;
     global.Blob = class extends OrigBlob {
-      constructor(parts, opts) { super(parts, opts); capturedContent = parts.join(''); }
+      constructor(parts, opts) {
+        super(parts, opts);
+        capturedContent = parts.join('');
+      }
     };
 
     const data = [{ firstName: 'Alice', lastName: 'Smith' }];
@@ -530,33 +560,19 @@ describe('Utils - formatFileSize()', () => {
 
 describe('Utils - getUniqueValues()', () => {
   test('extracts unique values from array of objects', () => {
-    const data = [
-      { sector: 'Building' },
-      { sector: 'Plumbing' },
-      { sector: 'Building' },
-      { sector: 'Electrical' }
-    ];
+    const data = [{ sector: 'Building' }, { sector: 'Plumbing' }, { sector: 'Building' }, { sector: 'Electrical' }];
     const result = utils.getUniqueValues(data, 'sector');
     expect(result).toEqual(['Building', 'Electrical', 'Plumbing']);
   });
 
   test('filters out null/undefined values', () => {
-    const data = [
-      { sector: 'Building' },
-      { sector: null },
-      { sector: undefined },
-      { sector: '' }
-    ];
+    const data = [{ sector: 'Building' }, { sector: null }, { sector: undefined }, { sector: '' }];
     const result = utils.getUniqueValues(data, 'sector');
     expect(result).toEqual(['Building']);
   });
 
   test('returns sorted array', () => {
-    const data = [
-      { name: 'Zeta' },
-      { name: 'Alpha' },
-      { name: 'Middle' }
-    ];
+    const data = [{ name: 'Zeta' }, { name: 'Alpha' }, { name: 'Middle' }];
     const result = utils.getUniqueValues(data, 'name');
     expect(result).toEqual(['Alpha', 'Middle', 'Zeta']);
   });
@@ -627,7 +643,7 @@ describe('Utils - initTableKeyboardNav()', () => {
       utils.initTableKeyboardNav({
         tableBodyId: 'testTableBody',
         searchBoxId: 'testSearchBox',
-        onEnter: () => {}
+        onEnter: () => {},
       });
     }).not.toThrow();
   });
@@ -735,18 +751,24 @@ describe('Utils - Form Auto-Save', () => {
   });
 
   test('getFormDraft returns null for expired drafts', () => {
-    localStorage.setItem('draft_testForm', JSON.stringify({
-      data: { field: 'value' },
-      savedAt: Date.now() - 25 * 60 * 60 * 1000 // 25 hours ago
-    }));
+    localStorage.setItem(
+      'draft_testForm',
+      JSON.stringify({
+        data: { field: 'value' },
+        savedAt: Date.now() - 25 * 60 * 60 * 1000, // 25 hours ago
+      })
+    );
     expect(utils.getFormDraft('testForm')).toBeNull();
   });
 
   test('getFormDraft returns valid recent drafts', () => {
-    localStorage.setItem('draft_testForm', JSON.stringify({
-      data: { field: 'value' },
-      savedAt: Date.now() - 1000 // 1 second ago
-    }));
+    localStorage.setItem(
+      'draft_testForm',
+      JSON.stringify({
+        data: { field: 'value' },
+        savedAt: Date.now() - 1000, // 1 second ago
+      })
+    );
     const draft = utils.getFormDraft('testForm');
     expect(draft).not.toBeNull();
     expect(draft.data.field).toBe('value');
@@ -853,9 +875,7 @@ describe('Utils - withRetry()', () => {
   });
 
   test('retries on failure and eventually succeeds', async () => {
-    const fn = jest.fn()
-      .mockRejectedValueOnce(new Error('fail'))
-      .mockResolvedValue('ok');
+    const fn = jest.fn().mockRejectedValueOnce(new Error('fail')).mockResolvedValue('ok');
     const result = await utils.withRetry(fn, 3, 1);
     expect(result).toBe('ok');
     expect(fn).toHaveBeenCalledTimes(2);
@@ -865,5 +885,785 @@ describe('Utils - withRetry()', () => {
     const fn = jest.fn().mockRejectedValue(new Error('persistent failure'));
     await expect(utils.withRetry(fn, 2, 1)).rejects.toThrow('persistent failure');
     expect(fn).toHaveBeenCalledTimes(3); // initial + 2 retries
+  });
+});
+
+// ==========================================
+// ADDITIONAL TESTS FOR COVERAGE
+// ==========================================
+
+describe('Utils - confirmDialog()', () => {
+  test('sets dialog title and message', () => {
+    // Start the promise but don't await (it waits for user click)
+    const promise = utils.confirmDialog({
+      title: 'Delete Record',
+      message: 'Are you sure?',
+      confirmText: 'Yes, Delete',
+      danger: true,
+    });
+    expect(document.getElementById('confirmDialogTitle').textContent).toBe('Delete Record');
+    expect(document.getElementById('confirmDialogBody').innerHTML).toBe('Are you sure?');
+    const okBtn = document.getElementById('confirmDialogOk');
+    expect(okBtn.textContent).toBe('Yes, Delete');
+    expect(okBtn.className).toBe('btn btn-danger');
+    // Simulate click to resolve the promise
+    okBtn.click();
+    return promise.then((result) => {
+      expect(result).toBe(true);
+    });
+  });
+
+  test('resolves false when dialog is dismissed (hidden.bs.modal)', () => {
+    const promise = utils.confirmDialog({
+      title: 'Confirm',
+      message: 'Dismiss test',
+    });
+    // Simulate the modal being hidden (dismissed)
+    const dlg = document.getElementById('confirmDialogModal');
+    const event = new dom.window.Event('hidden.bs.modal');
+    dlg.dispatchEvent(event);
+    return promise.then((result) => {
+      expect(result).toBe(false);
+    });
+  });
+
+  test('uses primary styling when danger is false', () => {
+    const promise = utils.confirmDialog({
+      title: 'Save',
+      message: 'Save changes?',
+      confirmText: 'Save',
+      danger: false,
+    });
+    const okBtn = document.getElementById('confirmDialogOk');
+    expect(okBtn.className).toBe('btn btn-primary');
+    okBtn.click();
+    return promise;
+  });
+
+  test('uses defaults when no options provided', () => {
+    const promise = utils.confirmDialog();
+    expect(document.getElementById('confirmDialogTitle').textContent).toBe('Confirm');
+    expect(document.getElementById('confirmDialogBody').innerHTML).toBe('Are you sure?');
+    const okBtn = document.getElementById('confirmDialogOk');
+    expect(okBtn.textContent).toBe('Delete');
+    okBtn.click();
+    return promise;
+  });
+});
+
+describe('Utils - classifyError()', () => {
+  test('classifies network errors', () => {
+    const result = utils.classifyError(new Error('Failed to fetch'));
+    expect(result.isNetwork).toBe(true);
+    expect(result.canRetry).toBe(true);
+    expect(result.type).toBe('error');
+  });
+
+  test('classifies timeout errors', () => {
+    const result = utils.classifyError(new Error('Request timed out'));
+    expect(result.isNetwork).toBe(true);
+    expect(result.canRetry).toBe(true);
+    expect(result.type).toBe('warning');
+  });
+
+  test('classifies CORS errors', () => {
+    const result = utils.classifyError(new Error('CORS policy blocked'));
+    expect(result.isNetwork).toBe(true);
+    expect(result.canRetry).toBe(false);
+  });
+
+  test('classifies 401 unauthorized errors', () => {
+    const result = utils.classifyError(new Error('401 Unauthorized'));
+    expect(result.isNetwork).toBe(false);
+    expect(result.canRetry).toBe(false);
+    expect(result.message).toContain('Session expired');
+  });
+
+  test('classifies 403 forbidden errors', () => {
+    const result = utils.classifyError(new Error('403 Forbidden'));
+    expect(result.isNetwork).toBe(false);
+    expect(result.canRetry).toBe(false);
+    expect(result.message).toContain('permission');
+  });
+
+  test('classifies 404 not found errors', () => {
+    const result = utils.classifyError(new Error('404 not found'));
+    expect(result.isNetwork).toBe(false);
+    expect(result.canRetry).toBe(false);
+    expect(result.message).toContain('not found');
+  });
+
+  test('classifies generic errors as non-retryable', () => {
+    const result = utils.classifyError(new Error('Something went wrong'));
+    expect(result.isNetwork).toBe(false);
+    expect(result.canRetry).toBe(false);
+    expect(result.message).toBe('Something went wrong');
+  });
+
+  test('handles error with empty message', () => {
+    const result = utils.classifyError(new Error(''));
+    expect(result.message).toBe('An unexpected error occurred.');
+  });
+});
+
+describe('Utils - showErrorWithRetry()', () => {
+  test('calls showToast with classified error message', () => {
+    const showToastSpy = jest.spyOn(utils, 'showToast');
+    utils.showErrorWithRetry(new Error('Failed to fetch'), 'loading data', () => {});
+    expect(showToastSpy).toHaveBeenCalled();
+    const callArgs = showToastSpy.mock.calls[showToastSpy.mock.calls.length - 1];
+    expect(callArgs[0]).toContain('Failed loading data');
+    expect(callArgs[0]).toContain('Retry');
+    showToastSpy.mockRestore();
+  });
+
+  test('stores retry function for later execution', () => {
+    const retryFn = jest.fn();
+    utils.showErrorWithRetry(new Error('Failed to fetch'), 'loading data', retryFn);
+    expect(utils._lastRetryFn).toBe(retryFn);
+    utils.executeRetry();
+    expect(retryFn).toHaveBeenCalledTimes(1);
+  });
+
+  test('does not show retry button for non-retryable errors', () => {
+    const showToastSpy = jest.spyOn(utils, 'showToast');
+    utils.showErrorWithRetry(new Error('403 Forbidden'), 'deleting record', () => {});
+    const callArgs = showToastSpy.mock.calls[showToastSpy.mock.calls.length - 1];
+    expect(callArgs[0]).not.toContain('Retry');
+    showToastSpy.mockRestore();
+  });
+
+  test('works without a retry function', () => {
+    expect(() => {
+      utils.showErrorWithRetry(new Error('something'), 'testing');
+    }).not.toThrow();
+  });
+});
+
+describe('Utils - fuzzyMatch()', () => {
+  test('returns 100 for exact substring match', () => {
+    expect(utils.fuzzyMatch('Hello World', 'Hello')).toBe(100);
+  });
+
+  test('returns 0 when no match possible', () => {
+    expect(utils.fuzzyMatch('abc', 'xyz')).toBe(0);
+  });
+
+  test('returns 0 for null/empty inputs', () => {
+    expect(utils.fuzzyMatch(null, 'test')).toBe(0);
+    expect(utils.fuzzyMatch('test', null)).toBe(0);
+    expect(utils.fuzzyMatch('', 'test')).toBe(0);
+  });
+
+  test('returns positive score for fuzzy character match', () => {
+    const score = utils.fuzzyMatch('construction', 'cnstn');
+    expect(score).toBeGreaterThan(0);
+  });
+
+  test('gives bonus for consecutive character matches', () => {
+    const consecutiveScore = utils.fuzzyMatch('abcdef', 'abc');
+    const nonConsecutiveScore = utils.fuzzyMatch('aXbXcX', 'abc');
+    // Both should match, but consecutive gets higher fuzzy score
+    // (though both might get 100 if exact substring for 'abc' in 'abcdef')
+    expect(consecutiveScore).toBeGreaterThanOrEqual(nonConsecutiveScore);
+  });
+});
+
+describe('Utils - fuzzyFilter()', () => {
+  const items = [
+    { name: 'Alice Smith', email: 'alice@example.com' },
+    { name: 'Bob Jones', email: 'bob@test.com' },
+    { name: 'Charlie Brown', email: 'charlie@domain.org' },
+  ];
+
+  test('returns all items when query is empty', () => {
+    const result = utils.fuzzyFilter(items, '', ['name', 'email']);
+    expect(result.length).toBe(3);
+  });
+
+  test('returns all items when query is whitespace', () => {
+    const result = utils.fuzzyFilter(items, '   ', ['name', 'email']);
+    expect(result.length).toBe(3);
+  });
+
+  test('filters items by name match', () => {
+    const result = utils.fuzzyFilter(items, 'Alice', ['name', 'email']);
+    expect(result.length).toBe(1);
+    expect(result[0].name).toBe('Alice Smith');
+  });
+
+  test('filters items by email match', () => {
+    const result = utils.fuzzyFilter(items, 'test.com', ['name', 'email']);
+    expect(result.length).toBe(1);
+    expect(result[0].email).toBe('bob@test.com');
+  });
+
+  test('returns empty array when nothing matches', () => {
+    const result = utils.fuzzyFilter(items, 'zzzznotexist', ['name', 'email']);
+    expect(result.length).toBe(0);
+  });
+});
+
+describe('Utils - apiClient', () => {
+  let originalFetch;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    // Mock fetch globally
+    originalFetch = global.fetch;
+    global.fetch = jest.fn();
+    // Mock AbortController
+    global.AbortController = class {
+      constructor() {
+        this.signal = {};
+        this.abort = jest.fn();
+      }
+    };
+    // Mock STATE.client.auth.getSession to return a valid token
+    mockSupabase.auth.getSession.mockResolvedValue({
+      data: { session: { access_token: 'test-token-123' } },
+      error: null,
+    });
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+    mockSupabase.auth.getSession.mockResolvedValue({
+      data: { session: null },
+      error: null,
+    });
+  });
+
+  test('apiClient.select calls _call with correct operation', async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ data: [{ id: 1 }], count: 1, page: 1, pageSize: 50, totalPages: 1 }),
+    });
+
+    const result = await apiClient.select('awards', {
+      filters: { year: 2026 },
+      sort: { column: 'created_at', ascending: false },
+      page: 1,
+      pageSize: 50,
+    });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/data-proxy',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer test-token-123',
+        }),
+      })
+    );
+    expect(result.data).toEqual([{ id: 1 }]);
+  });
+
+  test('apiClient.insert sends insert operation', async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ data: [{ id: 'new-1' }] }),
+    });
+
+    const result = await apiClient.insert('awards', { name: 'Test Award' });
+    expect(result.data).toEqual([{ id: 'new-1' }]);
+
+    const callBody = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(callBody.operation).toBe('insert');
+    expect(callBody.table).toBe('awards');
+    expect(callBody.data).toEqual({ name: 'Test Award' });
+  });
+
+  test('apiClient.update sends update operation with id', async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ data: [{ id: 'rec-1' }] }),
+    });
+
+    await apiClient.update('awards', 'rec-1', { name: 'Updated' });
+    const callBody = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(callBody.operation).toBe('update');
+    expect(callBody.id).toBe('rec-1');
+    expect(callBody.data).toEqual({ name: 'Updated' });
+  });
+
+  test('apiClient.delete sends delete operation', async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ data: [] }),
+    });
+
+    await apiClient.delete('awards', 'rec-1');
+    const callBody = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(callBody.operation).toBe('delete');
+    expect(callBody.id).toBe('rec-1');
+  });
+
+  test('apiClient.count sends count operation', async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ count: 42 }),
+    });
+
+    const result = await apiClient.count('awards', { year: 2026 });
+    expect(result.count).toBe(42);
+    const callBody = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(callBody.operation).toBe('count');
+  });
+
+  test('apiClient.upsert sends upsert operation', async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ data: [{ id: 'rec-1' }] }),
+    });
+
+    await apiClient.upsert('scores', { entry_id: 'e1', score: 10 }, { onConflict: 'entry_id' });
+    const callBody = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(callBody.operation).toBe('upsert');
+    expect(callBody.onConflict).toBe('entry_id');
+  });
+
+  test('apiClient.updateByFilters sends update with filters', async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ data: [] }),
+    });
+
+    await apiClient.updateByFilters('awards', { year: 2025 }, { status: 'Archived' });
+    const callBody = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(callBody.operation).toBe('update');
+    expect(callBody.filters).toEqual({ year: 2025 });
+    expect(callBody.data).toEqual({ status: 'Archived' });
+  });
+
+  test('apiClient.deleteByFilters sends delete with filters', async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ data: [] }),
+    });
+
+    await apiClient.deleteByFilters('temp_records', { expired: true });
+    const callBody = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(callBody.operation).toBe('delete');
+    expect(callBody.filters).toEqual({ expired: true });
+  });
+
+  test('apiClient.selectAll fetches all pages', async () => {
+    // First page returns totalPages: 2
+    global.fetch
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ data: [{ id: 1 }, { id: 2 }], count: 4, page: 1, pageSize: 2, totalPages: 2 }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ data: [{ id: 3 }, { id: 4 }], count: 4, page: 2, pageSize: 2, totalPages: 2 }),
+      });
+
+    const result = await apiClient.selectAll('awards', { batchSize: 2 });
+    expect(result.length).toBe(4);
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+  });
+
+  test('apiClient throws on non-authenticated state', async () => {
+    mockSupabase.auth.getSession.mockResolvedValue({
+      data: { session: null },
+      error: null,
+    });
+
+    await expect(apiClient.select('awards')).rejects.toThrow('Not authenticated');
+  });
+
+  test('apiClient throws on API error response', async () => {
+    global.fetch.mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: () => Promise.resolve({ error: 'Invalid request' }),
+    });
+
+    await expect(apiClient.select('awards')).rejects.toThrow('Invalid request');
+  });
+
+  test('apiClient.select uses default options', async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ data: [], count: 0, page: 1, pageSize: 50, totalPages: 0 }),
+    });
+
+    await apiClient.select('awards');
+    const callBody = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(callBody.select).toBe('*');
+    expect(callBody.page).toBe(1);
+    expect(callBody.pageSize).toBe(50);
+  });
+});
+
+describe('Utils - actionRegistry', () => {
+  beforeAll(() => {
+    // Initialize the event delegation system so document-level listeners are attached
+    actionRegistry.init();
+  });
+
+  test('actionRegistry has required methods', () => {
+    expect(typeof actionRegistry.register).toBe('function');
+    expect(typeof actionRegistry._resolve).toBe('function');
+    expect(typeof actionRegistry.init).toBe('function');
+  });
+
+  test('register stores handler and _resolve finds it', () => {
+    const handler = jest.fn();
+    actionRegistry.register('test.action', handler);
+    const resolved = actionRegistry._resolve('test.action');
+    expect(resolved).toBe(handler);
+    // Clean up
+    delete actionRegistry._handlers['test.action'];
+  });
+
+  test('_resolve returns null for unknown action', () => {
+    const resolved = actionRegistry._resolve('nonexistent.module.method');
+    expect(resolved).toBeNull();
+  });
+
+  test('_resolve resolves dotted path on window', () => {
+    // Set up a module on window
+    window.testModuleForResolve = {
+      doSomething: jest.fn(),
+    };
+    const resolved = actionRegistry._resolve('testModuleForResolve.doSomething');
+    expect(resolved).toBeTruthy();
+    // Clean up
+    delete window.testModuleForResolve;
+  });
+
+  test('_resolve returns null for non-function window path', () => {
+    window.testModuleNonFn = {
+      notAFunction: 'just a string',
+    };
+    const resolved = actionRegistry._resolve('testModuleNonFn.notAFunction');
+    expect(resolved).toBeNull();
+    delete window.testModuleNonFn;
+  });
+
+  test('click delegation calls registered handler with data-id', () => {
+    const handler = jest.fn();
+    actionRegistry.register('testClick.handler', handler);
+
+    const btn = document.createElement('button');
+    btn.setAttribute('data-action', 'testClick.handler');
+    btn.setAttribute('data-id', 'rec-42');
+    document.body.appendChild(btn);
+
+    btn.click();
+
+    expect(handler).toHaveBeenCalled();
+    expect(handler.mock.calls[0][0]).toBe('rec-42');
+
+    document.body.removeChild(btn);
+    delete actionRegistry._handlers['testClick.handler'];
+  });
+
+  test('click delegation calls handler with parsed data-args', () => {
+    const handler = jest.fn();
+    actionRegistry.register('testArgs.handler', handler);
+
+    const btn = document.createElement('button');
+    btn.setAttribute('data-action', 'testArgs.handler');
+    btn.setAttribute('data-args', '["arg1", "arg2"]');
+    document.body.appendChild(btn);
+
+    btn.click();
+
+    expect(handler).toHaveBeenCalled();
+    expect(handler.mock.calls[0][0]).toBe('arg1');
+    expect(handler.mock.calls[0][1]).toBe('arg2');
+
+    document.body.removeChild(btn);
+    delete actionRegistry._handlers['testArgs.handler'];
+  });
+
+  test('click delegation calls handler with data-id and data-args', () => {
+    const handler = jest.fn();
+    actionRegistry.register('testBoth.handler', handler);
+
+    const btn = document.createElement('button');
+    btn.setAttribute('data-action', 'testBoth.handler');
+    btn.setAttribute('data-id', 'item-99');
+    btn.setAttribute('data-args', '["extra"]');
+    document.body.appendChild(btn);
+
+    btn.click();
+
+    expect(handler).toHaveBeenCalled();
+    expect(handler.mock.calls[0][0]).toBe('item-99');
+    expect(handler.mock.calls[0][1]).toBe('extra');
+
+    document.body.removeChild(btn);
+    delete actionRegistry._handlers['testBoth.handler'];
+  });
+
+  test('click delegation respects data-prevent-default', () => {
+    const handler = jest.fn();
+    actionRegistry.register('testPrevent.handler', handler);
+
+    const link = document.createElement('a');
+    link.href = '#';
+    link.setAttribute('data-action', 'testPrevent.handler');
+    link.setAttribute('data-prevent-default', 'true');
+    document.body.appendChild(link);
+
+    const clickEvent = new dom.window.Event('click', { bubbles: true });
+    const preventSpy = jest.spyOn(clickEvent, 'preventDefault');
+    link.dispatchEvent(clickEvent);
+
+    expect(preventSpy).toHaveBeenCalled();
+
+    document.body.removeChild(link);
+    delete actionRegistry._handlers['testPrevent.handler'];
+  });
+
+  test('click delegation handles invalid JSON in data-args gracefully', () => {
+    const handler = jest.fn();
+    actionRegistry.register('testBadJson.handler', handler);
+
+    const btn = document.createElement('button');
+    btn.setAttribute('data-action', 'testBadJson.handler');
+    btn.setAttribute('data-args', '{invalid json}');
+    document.body.appendChild(btn);
+
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    btn.click();
+
+    expect(handler).toHaveBeenCalled();
+    warnSpy.mockRestore();
+
+    document.body.removeChild(btn);
+    delete actionRegistry._handlers['testBadJson.handler'];
+  });
+});
+
+describe('Utils - serverQuery', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    // Reset chainable mock
+    mockSupabase.from.mockReturnValue(mockSupabase);
+    mockSupabase.select.mockReturnValue(mockSupabase);
+    mockSupabase.eq.mockReturnValue(mockSupabase);
+    mockSupabase.order.mockReturnValue(mockSupabase);
+    mockSupabase.range.mockReturnValue(mockSupabase);
+    mockSupabase.ilike.mockReturnValue(mockSupabase);
+    // Add .or method to mock
+    mockSupabase.or = jest.fn(() => mockSupabase);
+    // Make the mock thenable to resolve the query
+    mockSupabase.then = jest.fn((cb) => {
+      return Promise.resolve(cb({ data: [{ id: 1 }], error: null, count: 1 }));
+    });
+    // Make the mock actually return via await
+    // serverQuery uses `await query` so we need the mock to be a promise
+    const promiseMock = Promise.resolve({ data: [{ id: 1 }], error: null, count: 1 });
+    mockSupabase.range.mockReturnValue(promiseMock);
+  });
+
+  test('serverQuery.execute builds a query with filters', async () => {
+    const result = await serverQuery.execute({
+      table: 'entries',
+      filters: { status: 'submitted' },
+      page: 1,
+      pageSize: 50,
+    });
+
+    expect(mockSupabase.from).toHaveBeenCalledWith('entries');
+    expect(result.data).toBeDefined();
+  });
+
+  test('serverQuery.execute applies sort when provided', async () => {
+    await serverQuery.execute({
+      table: 'entries',
+      sort: { column: 'created_at', ascending: false },
+      page: 1,
+      pageSize: 10,
+    });
+
+    expect(mockSupabase.order).toHaveBeenCalled();
+  });
+
+  test('serverQuery.execute throws when client not initialized', async () => {
+    const savedClient = STATE.client;
+    STATE.client = null;
+
+    await expect(serverQuery.execute({ table: 'entries' })).rejects.toThrow('Supabase client not initialized');
+
+    STATE.client = savedClient;
+  });
+
+  test('serverQuery.execute skips null/empty filter values', async () => {
+    await serverQuery.execute({
+      table: 'entries',
+      filters: { status: 'submitted', year: null, region: '', name: undefined },
+      page: 1,
+      pageSize: 50,
+    });
+
+    // eq should only be called for 'status' (the non-null/empty value)
+    // The call count includes potential calls from select setup, so just verify 'status' was used
+    const eqCalls = mockSupabase.eq.mock.calls;
+    const statusCall = eqCalls.find((call) => call[0] === 'status');
+    expect(statusCall).toBeTruthy();
+    expect(statusCall[1]).toBe('submitted');
+  });
+
+  test('serverQuery.execute throws when query returns an error', async () => {
+    mockSupabase.range.mockReturnValue(
+      Promise.resolve({ data: null, error: { message: 'Permission denied' }, count: 0 })
+    );
+
+    await expect(serverQuery.execute({ table: 'entries', page: 1, pageSize: 50 })).rejects.toBeTruthy();
+  });
+});
+
+describe('Utils - protectModalDuringSave()', () => {
+  test('disables close buttons during operation and re-enables after', async () => {
+    const modal = document.createElement('div');
+    modal.id = 'testSaveModal';
+    modal.innerHTML = `
+      <button class="btn-close"></button>
+      <button data-bs-dismiss="modal">Cancel</button>
+    `;
+    document.body.appendChild(modal);
+
+    let wasDisabled = false;
+    await utils.protectModalDuringSave('testSaveModal', async () => {
+      wasDisabled = modal.querySelector('.btn-close').disabled;
+    });
+
+    expect(wasDisabled).toBe(true);
+    expect(modal.querySelector('.btn-close').disabled).toBe(false);
+    modal.remove();
+  });
+
+  test('re-enables buttons even if operation throws', async () => {
+    const modal = document.createElement('div');
+    modal.id = 'testErrorModal';
+    modal.innerHTML = `<button class="btn-close"></button>`;
+    document.body.appendChild(modal);
+
+    try {
+      await utils.protectModalDuringSave('testErrorModal', async () => {
+        throw new Error('save failed');
+      });
+    } catch (e) {
+      // expected
+    }
+
+    expect(modal.querySelector('.btn-close').disabled).toBe(false);
+    modal.remove();
+  });
+
+  test('runs asyncFn directly when modal not found', async () => {
+    const fn = jest.fn().mockResolvedValue('ok');
+    const result = await utils.protectModalDuringSave('nonExistentModal', fn);
+    expect(fn).toHaveBeenCalled();
+    expect(result).toBe('ok');
+  });
+});
+
+describe('Utils - asyncGuard()', () => {
+  test('prevents concurrent execution', async () => {
+    let callCount = 0;
+    const slowFn = async () => {
+      callCount++;
+      await new Promise((r) => setTimeout(r, 50));
+      return callCount;
+    };
+    const guarded = utils.asyncGuard(slowFn);
+
+    // Start two calls concurrently
+    const p1 = guarded();
+    const p2 = guarded();
+
+    await p1;
+    await p2;
+
+    // Only the first call should have executed
+    expect(callCount).toBe(1);
+  });
+
+  test('allows sequential execution after first completes', async () => {
+    let callCount = 0;
+    const fn = async () => ++callCount;
+    const guarded = utils.asyncGuard(fn);
+
+    await guarded();
+    await guarded();
+
+    expect(callCount).toBe(2);
+  });
+});
+
+describe('Utils - safeDate()', () => {
+  test('returns null for falsy input', () => {
+    expect(utils.safeDate(null)).toBeNull();
+    expect(utils.safeDate(undefined)).toBeNull();
+    expect(utils.safeDate('')).toBeNull();
+  });
+
+  test('returns Date for valid ISO string', () => {
+    const d = utils.safeDate('2026-01-15T12:00:00Z');
+    expect(d).toBeInstanceOf(Date);
+    expect(d.getFullYear()).toBe(2026);
+  });
+
+  test('returns null for invalid date string', () => {
+    expect(utils.safeDate('not-a-date')).toBeNull();
+  });
+});
+
+describe('Utils - formatCurrency / noop / misc', () => {
+  test('noop does not throw', () => {
+    expect(() => utils.noop()).not.toThrow();
+  });
+
+  test('showTableLoading renders spinner', () => {
+    utils.showTableLoading('testTableBody', 5);
+    const tbody = document.getElementById('testTableBody');
+    expect(tbody.innerHTML).toContain('spinner-border');
+    expect(tbody.innerHTML).toContain('Loading data...');
+  });
+
+  test('renderRowCount renders count text', () => {
+    const container = document.createElement('div');
+    container.id = 'testRowCountContainer';
+    document.body.appendChild(container);
+
+    utils.renderRowCount('testRowCountContainer', 10, 100, 'awards');
+    expect(container.innerHTML).toContain('Showing 10 of 100 awards');
+
+    utils.renderRowCount('testRowCountContainer', 50, 50, 'records');
+    expect(container.innerHTML).toContain('50 records');
+    expect(container.innerHTML).not.toContain('Showing');
+
+    container.remove();
+  });
+
+  test('saveSortState and loadSortState work together', () => {
+    utils.saveSortState('testModule', 'name', 'asc');
+    const state = utils.loadSortState('testModule');
+    expect(state).toEqual({ field: 'name', direction: 'asc' });
+    localStorage.removeItem('sort_testModule');
+  });
+
+  test('loadSortState returns null for unknown module', () => {
+    expect(utils.loadSortState('nonexistentSort')).toBeNull();
   });
 });

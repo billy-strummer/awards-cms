@@ -6,7 +6,8 @@
 const { JSDOM } = require('jsdom');
 
 // Setup minimal DOM before loading modules
-const dom = new JSDOM(`<!DOCTYPE html><html><body>
+const dom = new JSDOM(
+  `<!DOCTYPE html><html><body>
   <div id="loadingBar" style="display:none;"></div>
   <div id="notificationToast"><span id="toastIcon"></span><span id="toastTitle"></span><span id="toastMessage"></span></div>
   <div id="connectionStatus"><span class="status-icon"></span><span class="status-text"></span></div>
@@ -43,7 +44,9 @@ const dom = new JSDOM(`<!DOCTYPE html><html><body>
     <li><a class="nav-link" href="#">Tab2</a></li>
     <li><a class="nav-link" href="#">Tab3</a></li>
   </ul>
-</body></html>`, { url: 'http://localhost' });
+</body></html>`,
+  { url: 'http://localhost' }
+);
 
 global.window = dom.window;
 global.document = dom.window.document;
@@ -54,12 +57,18 @@ global.setTimeout = dom.window.setTimeout;
 
 // Mock bootstrap
 global.bootstrap = {
-  Toast: class { show() {} hide() {} },
-  Modal: class {
-    show() {} hide() {}
-    static getInstance() { return { hide() {} }; }
+  Toast: class {
+    show() {}
+    hide() {}
   },
-  Tooltip: class {}
+  Modal: class {
+    show() {}
+    hide() {}
+    static getInstance() {
+      return { hide() {} };
+    }
+  },
+  Tooltip: class {},
 };
 
 // Mock supabase
@@ -75,16 +84,20 @@ const mockSupabase = {
   limit: jest.fn(() => mockSupabase),
   single: jest.fn(() => Promise.resolve({ data: null, error: null })),
   rpc: jest.fn(() => Promise.resolve({ data: [], error: null })),
-  then: jest.fn(cb => cb({ data: [], error: null })),
+  then: jest.fn((cb) => cb({ data: [], error: null })),
   auth: {
     getSession: jest.fn(() => Promise.resolve({ data: { session: null }, error: null })),
     signInWithPassword: jest.fn(() => Promise.resolve({ data: { user: { email: 'test@test.com' } }, error: null })),
-    signOut: jest.fn(() => Promise.resolve({ error: null }))
+    signOut: jest.fn(() => Promise.resolve({ error: null })),
   },
   channel: jest.fn(() => ({
-    on: jest.fn(function() { return this; }),
-    subscribe: jest.fn(function() { return this; })
-  }))
+    on: jest.fn(function () {
+      return this;
+    }),
+    subscribe: jest.fn(function () {
+      return this;
+    }),
+  })),
 };
 
 global.supabase = { createClient: () => mockSupabase };
@@ -231,7 +244,7 @@ describe('Accessibility Module - Enhance Tables', () => {
   test('enhanceTables adds scope=col to header cells', () => {
     a11yModule.enhanceTables();
     const ths = document.querySelectorAll('#testTable thead th');
-    ths.forEach(th => {
+    ths.forEach((th) => {
       expect(th.getAttribute('scope')).toBe('col');
     });
   });
@@ -335,7 +348,7 @@ describe('Accessibility Module - Keyboard Navigation', () => {
   test('setupKeyboardNav sets tab role on nav-links', () => {
     a11yModule.setupKeyboardNav();
     const navLinks = document.querySelectorAll('.nav-link');
-    navLinks.forEach(link => {
+    navLinks.forEach((link) => {
       expect(link.getAttribute('role')).toBe('tab');
     });
   });

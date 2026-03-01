@@ -364,33 +364,32 @@ const crmModule = {
     this.filters.communications.followUpRequired = followUpEl && followUpEl.value ? followUpEl.value : 'all';
 
     try {
-      let query = STATE.client
-        .from('communications')
-        .select(
-          `
-          *,
-          organisation:organisations(company_name),
-          contact:organisation_contacts(first_name, last_name, email)
-        `
-        )
-        .order('communication_date', { ascending: false });
-
-      // Apply filters
+      const filters = {};
       if (this.filters.communications.type !== 'all') {
-        query = query.eq('type', this.filters.communications.type);
+        filters.type = { eq: this.filters.communications.type };
       }
       if (this.filters.communications.regarding !== 'all') {
-        query = query.eq('regarding', this.filters.communications.regarding);
+        filters.regarding = { eq: this.filters.communications.regarding };
       }
       if (this.filters.communications.followUpRequired !== 'all') {
-        query = query.eq('follow_up_required', this.filters.communications.followUpRequired === 'true');
+        filters.follow_up_required = { eq: this.filters.communications.followUpRequired === 'true' };
       }
 
-      const { data: communications, error } = await query;
+      const result = await apiClient.select('communications', {
+        select:
+          '*, organisation:organisations(company_name), contact:organisation_contacts(first_name, last_name, email)',
+        filters,
+        sort: { column: 'communication_date', ascending: false },
+        page: this._crmCurrentPage,
+        pageSize: this._crmPageSize,
+      });
 
-      if (error) throw error;
-
-      this._communications = communications || [];
+      this._communications = result.data || [];
+      this._commsPagination = {
+        page: result.page || 1,
+        totalPages: result.totalPages || 1,
+        count: result.count || 0,
+      };
       this.renderCommunicationsTable(this._communications);
     } catch (error) {
       console.error('Error loading communications:', error);
@@ -411,12 +410,9 @@ const crmModule = {
       return;
     }
 
-    // Pagination
-    const commTotalPages = Math.ceil(communications.length / this._crmPageSize);
-    if (this._crmCurrentPage > commTotalPages) this._crmCurrentPage = commTotalPages || 1;
-    const commStart = (this._crmCurrentPage - 1) * this._crmPageSize;
-    const commEnd = commStart + this._crmPageSize;
-    const pageComms = communications.slice(commStart, commEnd);
+    // Server-side pagination: data is already the current page
+    const pageComms = communications;
+    const commTotalPages = this._commsPagination?.totalPages || 1;
 
     tbody.innerHTML = pageComms
       .map((comm) => {
@@ -480,10 +476,11 @@ const crmModule = {
     );
   },
 
-  goToCrmCommPage(page) {
-    const total = Math.ceil((this._communications || []).length / this._crmPageSize);
+  async goToCrmCommPage(page) {
+    page = parseInt(page, 10);
+    const total = this._commsPagination?.totalPages || 1;
     this._crmCurrentPage = Math.max(1, Math.min(page, total));
-    this.renderCommunicationsTable(this._communications);
+    await this.loadCommunications();
   },
 
   getTypeBadge(type) {
@@ -519,34 +516,36 @@ const crmModule = {
     console.warn('Loading deals...');
 
     try {
-      let query = STATE.client
-        .from('deals')
-        .select(
-          `
-          *,
-          organisation:organisations(company_name),
-          contact:organisation_contacts(first_name, last_name)
-        `
-        )
-        .order('created_at', { ascending: false });
-
-      // Apply filters
+      const filters = {};
       if (this.filters.deals.stage !== 'all') {
-        query = query.eq('stage', this.filters.deals.stage);
+        filters.stage = { eq: this.filters.deals.stage };
       }
       if (this.filters.deals.type !== 'all') {
-        query = query.eq('deal_type', this.filters.deals.type);
+        filters.deal_type = { eq: this.filters.deals.type };
       }
       if (this.filters.deals.status !== 'all') {
-        query = query.eq('status', this.filters.deals.status);
+        filters.status = { eq: this.filters.deals.status };
       }
 
-      const { data: deals, error } = await query;
+      const result = await apiClient.select('deals', {
+        select: '*, organisation:organisations(company_name), contact:organisation_contacts(first_name, last_name)',
+        filters,
+        sort: { column: 'created_at', ascending: false },
+        page: this._dealCurrentPage,
+        pageSize: this._dealPageSize,
+      });
 
-      if (error) throw error;
+      const deals = result.data || [];
 
-      // Calculate pipeline stats
+      this._dealsPagination = {
+        page: result.page || 1,
+        totalPages: result.totalPages || 1,
+        count: result.count || 0,
+      };
+
+      // Calculate pipeline stats from the current page (best effort)
       const activeDeals = deals.filter((d) => d.status === 'active');
+      const closedDeals = deals.filter((d) => d.status === 'won' || d.status === 'lost');
       const stats = {
         activeCount: activeDeals.length,
         pipelineValue: activeDeals.reduce((sum, d) => sum + parseFloat(d.deal_value || 0), 0),
@@ -557,12 +556,8 @@ const crmModule = {
           return closeDate.getMonth() === now.getMonth() && closeDate.getFullYear() === now.getFullYear();
         }).length,
         winRate:
-          deals.filter((d) => d.status === 'won' || d.status === 'lost').length > 0
-            ? Math.round(
-                (deals.filter((d) => d.status === 'won').length /
-                  deals.filter((d) => d.status === 'won' || d.status === 'lost').length) *
-                  100
-              )
+          closedDeals.length > 0
+            ? Math.round((deals.filter((d) => d.status === 'won').length / closedDeals.length) * 100)
             : 0,
       };
 
@@ -576,7 +571,7 @@ const crmModule = {
       if (dEl3) dEl3.textContent = stats.wonThisMonth;
       if (dEl4) dEl4.textContent = `${stats.winRate}%`;
 
-      this._deals = deals || [];
+      this._deals = deals;
       this.renderDealsTable(this._deals);
     } catch (error) {
       console.error('Error loading deals:', error);
@@ -603,12 +598,9 @@ const crmModule = {
       return;
     }
 
-    // Pagination
-    const dealTotalPages = Math.ceil(deals.length / this._dealPageSize);
-    if (this._dealCurrentPage > dealTotalPages) this._dealCurrentPage = dealTotalPages || 1;
-    const dealStart = (this._dealCurrentPage - 1) * this._dealPageSize;
-    const dealEnd = dealStart + this._dealPageSize;
-    const pageDeals = deals.slice(dealStart, dealEnd);
+    // Server-side pagination: data is already the current page
+    const pageDeals = deals;
+    const dealTotalPages = this._dealsPagination?.totalPages || 1;
 
     tbody.innerHTML = pageDeals
       .map((deal) => {
@@ -669,10 +661,11 @@ const crmModule = {
     );
   },
 
-  goToCrmDealPage(page) {
-    const total = Math.ceil((this._deals || []).length / this._dealPageSize);
+  async goToCrmDealPage(page) {
+    page = parseInt(page, 10);
+    const total = this._dealsPagination?.totalPages || 1;
     this._dealCurrentPage = Math.max(1, Math.min(page, total));
-    this.renderDealsTable(this._deals);
+    await this.loadDeals();
   },
 
   getStageBadge(stage) {
@@ -722,27 +715,25 @@ const crmModule = {
     console.warn('Loading meetings...');
 
     try {
-      let query = STATE.client
-        .from('meeting_notes')
-        .select(
-          `
-          *,
-          organisation:organisations(company_name),
-          deal:deals(deal_name)
-        `
-        )
-        .order('meeting_date', { ascending: false });
-
-      // Apply filters
+      const filters = {};
       if (this.filters.meetings.type !== 'all') {
-        query = query.eq('meeting_type', this.filters.meetings.type);
+        filters.meeting_type = { eq: this.filters.meetings.type };
       }
 
-      const { data: meetings, error } = await query;
+      const result = await apiClient.select('meeting_notes', {
+        select: '*, organisation:organisations(company_name), deal:deals(deal_name)',
+        filters,
+        sort: { column: 'meeting_date', ascending: false },
+        page: this._meetingCurrentPage,
+        pageSize: this._meetingPageSize,
+      });
 
-      if (error) throw error;
-
-      this._meetings = meetings || [];
+      this._meetings = result.data || [];
+      this._meetingsPagination = {
+        page: result.page || 1,
+        totalPages: result.totalPages || 1,
+        count: result.count || 0,
+      };
       this.renderMeetingsTable(this._meetings);
     } catch (error) {
       console.error('Error loading meetings:', error);
@@ -763,12 +754,9 @@ const crmModule = {
       return;
     }
 
-    // Pagination
-    const mtgTotalPages = Math.ceil(meetings.length / this._meetingPageSize);
-    if (this._meetingCurrentPage > mtgTotalPages) this._meetingCurrentPage = mtgTotalPages || 1;
-    const mtgStart = (this._meetingCurrentPage - 1) * this._meetingPageSize;
-    const mtgEnd = mtgStart + this._meetingPageSize;
-    const pageMeetings = meetings.slice(mtgStart, mtgEnd);
+    // Server-side pagination: data is already the current page
+    const pageMeetings = meetings;
+    const mtgTotalPages = this._meetingsPagination?.totalPages || 1;
 
     tbody.innerHTML = pageMeetings
       .map((meeting) => {
@@ -836,10 +824,11 @@ const crmModule = {
     );
   },
 
-  goToCrmMeetingPage(page) {
-    const total = Math.ceil((this._meetings || []).length / this._meetingPageSize);
+  async goToCrmMeetingPage(page) {
+    page = parseInt(page, 10);
+    const total = this._meetingsPagination?.totalPages || 1;
     this._meetingCurrentPage = Math.max(1, Math.min(page, total));
-    this.renderMeetingsTable(this._meetings);
+    await this.loadMeetings();
   },
 
   getMeetingTypeBadge(type) {
@@ -863,18 +852,11 @@ const crmModule = {
     console.warn('Loading segments...');
 
     try {
-      // Load all segments with counts
-      const { data: segments, error } = await STATE.client
-        .from('contact_segments')
-        .select(
-          `
-          *,
-          organisation_segments(count)
-        `
-        )
-        .order('segment_name');
-
-      if (error) throw error;
+      // selectAll justified: contact_segments is a small lookup table for segment management (see pagination documentation)
+      const segments = await apiClient.selectAll('contact_segments', {
+        select: '*, organisation_segments(count)',
+        sort: { column: 'segment_name', ascending: true },
+      });
 
       // Use counts already fetched via the join
       const segmentsWithCounts = segments.map((segment) => ({
@@ -1157,9 +1139,7 @@ const crmModule = {
 
     try {
       await utils.protectModalDuringSave('logCommunicationModal', async () => {
-        const { error } = await STATE.client.from('communications').insert([communicationData]);
-
-        if (error) throw error;
+        await apiClient.insert('communications', communicationData);
 
         bootstrap.Modal.getInstance(document.getElementById('logCommunicationModal')).hide();
       });
@@ -1289,11 +1269,13 @@ const crmModule = {
 
       // If org is preselected, load contacts
       if (organisationId) {
-        const { data: contacts } = await STATE.client
-          .from('organisation_contacts')
-          .select('id, first_name, last_name')
-          .eq('organisation_id', organisationId)
-          .order('first_name');
+        /* selectAll: justified — scoped to single organisation */
+        const contactResult = await apiClient.selectAll('organisation_contacts', {
+          select: 'id, first_name, last_name',
+          filters: { organisation_id: { eq: organisationId } },
+          sort: { column: 'first_name', ascending: true },
+        });
+        const contacts = contactResult || [];
 
         const contactSelect = document.getElementById('dealContact');
         contactSelect.innerHTML =
@@ -1347,9 +1329,7 @@ const crmModule = {
 
     try {
       await utils.protectModalDuringSave('createDealModal', async () => {
-        const { error } = await STATE.client.from('deals').insert([dealData]);
-
-        if (error) throw error;
+        await apiClient.insert('deals', dealData);
 
         bootstrap.Modal.getInstance(document.getElementById('createDealModal')).hide();
       });
@@ -1371,19 +1351,14 @@ const crmModule = {
     console.warn('View communication:', commId);
 
     try {
-      const { data: comm, error } = await STATE.client
-        .from('communications')
-        .select(
-          `
-          *,
-          organisation:organisations(company_name),
-          contact:organisation_contacts(first_name, last_name, email)
-        `
-        )
-        .eq('id', commId)
-        .single();
-
-      if (error) throw error;
+      const commResult = await apiClient.select('communications', {
+        select:
+          '*, organisation:organisations(company_name), contact:organisation_contacts(first_name, last_name, email)',
+        filters: { id: { eq: commId } },
+        pageSize: 1,
+      });
+      const comm = commResult.data?.[0];
+      if (!comm) throw new Error('Communication not found');
 
       const date = new Date(comm.communication_date).toLocaleString();
       const companyName = comm.organisation?.company_name || 'Unknown';
@@ -1428,7 +1403,7 @@ const crmModule = {
                 </div>
               </div>
               <div class="modal-footer">
-                <button type="button" class="btn btn-outline-success" onclick="bootstrap.Modal.getInstance(document.getElementById('viewCommunicationModal')).hide(); crmModule.editCommunication('${comm.id}')">
+                <button type="button" class="btn btn-outline-success" data-action="crmModule.dismissAndEditCommunication" data-id="${comm.id}">
                   <i class="bi bi-pencil me-2"></i>Edit
                 </button>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -1457,9 +1432,13 @@ const crmModule = {
     console.warn('Edit communication:', commId);
 
     try {
-      const { data: comm, error } = await STATE.client.from('communications').select('*').eq('id', commId).single();
-
-      if (error) throw error;
+      const result = await apiClient.select('communications', {
+        select: '*',
+        filters: { id: { eq: commId } },
+        pageSize: 1,
+      });
+      const comm = result.data?.[0];
+      if (!comm) throw new Error('Communication not found');
 
       const modalHtml = `
         <div class="modal fade" id="editCommunicationModal" tabindex="-1">
@@ -1582,9 +1561,7 @@ const crmModule = {
 
     try {
       await utils.protectModalDuringSave('editCommunicationModal', async () => {
-        const { error } = await STATE.client.from('communications').update(updateData).eq('id', commId);
-
-        if (error) throw error;
+        await apiClient.update('communications', commId, updateData);
 
         utils.showToast('Communication updated successfully', 'success');
         bootstrap.Modal.getInstance(document.getElementById('editCommunicationModal')).hide();
@@ -1608,9 +1585,7 @@ const crmModule = {
     }
 
     try {
-      const { error } = await STATE.client.from('communications').delete().eq('id', commId);
-
-      if (error) throw error;
+      await apiClient.delete('communications', commId);
 
       utils.showToast('Communication deleted successfully', 'success');
       this.loadCommunications();
@@ -1625,19 +1600,14 @@ const crmModule = {
     console.warn('View deal:', dealId);
 
     try {
-      const { data: deal, error } = await STATE.client
-        .from('deals')
-        .select(
-          `
-          *,
-          organisation:organisations(company_name),
-          contact:organisation_contacts(first_name, last_name, email)
-        `
-        )
-        .eq('id', dealId)
-        .single();
-
-      if (error) throw error;
+      const dealResult = await apiClient.select('deals', {
+        select:
+          '*, organisation:organisations(company_name), contact:organisation_contacts(first_name, last_name, email)',
+        filters: { id: { eq: dealId } },
+        pageSize: 1,
+      });
+      const deal = dealResult.data?.[0];
+      if (!deal) throw new Error('Deal not found');
 
       const companyName = deal.organisation?.company_name || 'Unknown';
       const contactName = deal.contact ? `${deal.contact.first_name} ${deal.contact.last_name}` : 'N/A';
@@ -1713,7 +1683,7 @@ const crmModule = {
                 }
               </div>
               <div class="modal-footer">
-                <button type="button" class="btn btn-outline-success" onclick="bootstrap.Modal.getInstance(document.getElementById('viewDealModal')).hide(); crmModule.editDeal('${deal.id}')">
+                <button type="button" class="btn btn-outline-success" data-action="crmModule.dismissAndEditDeal" data-id="${deal.id}">
                   <i class="bi bi-pencil me-2"></i>Edit
                 </button>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -1742,9 +1712,9 @@ const crmModule = {
     console.warn('Edit deal:', dealId);
 
     try {
-      const { data: deal, error } = await STATE.client.from('deals').select('*').eq('id', dealId).single();
-
-      if (error) throw error;
+      const result = await apiClient.select('deals', { select: '*', filters: { id: { eq: dealId } }, pageSize: 1 });
+      const deal = result.data?.[0];
+      if (!deal) throw new Error('Deal not found');
 
       const modalHtml = `
         <div class="modal fade" id="editDealModal" tabindex="-1">
@@ -1882,9 +1852,7 @@ const crmModule = {
 
     try {
       await utils.protectModalDuringSave('editDealModal', async () => {
-        const { error } = await STATE.client.from('deals').update(updateData).eq('id', dealId);
-
-        if (error) throw error;
+        await apiClient.update('deals', dealId, updateData);
 
         utils.showToast('Deal updated successfully', 'success');
         bootstrap.Modal.getInstance(document.getElementById('editDealModal')).hide();
@@ -1908,9 +1876,7 @@ const crmModule = {
     }
 
     try {
-      const { error } = await STATE.client.from('deals').delete().eq('id', dealId);
-
-      if (error) throw error;
+      await apiClient.delete('deals', dealId);
 
       utils.showToast('Deal deleted successfully', 'success');
       this.loadDeals();
@@ -1925,19 +1891,13 @@ const crmModule = {
     console.warn('View meeting:', meetingId);
 
     try {
-      const { data: meeting, error } = await STATE.client
-        .from('meeting_notes')
-        .select(
-          `
-          *,
-          organisation:organisations(company_name),
-          deal:deals(deal_name)
-        `
-        )
-        .eq('id', meetingId)
-        .single();
-
-      if (error) throw error;
+      const meetingResult = await apiClient.select('meeting_notes', {
+        select: '*, organisation:organisations(company_name), deal:deals(deal_name)',
+        filters: { id: { eq: meetingId } },
+        pageSize: 1,
+      });
+      const meeting = meetingResult.data?.[0];
+      if (!meeting) throw new Error('Meeting not found');
 
       const date = new Date(meeting.meeting_date).toLocaleDateString();
       const time = new Date(meeting.meeting_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -2015,7 +1975,7 @@ const crmModule = {
                 }
               </div>
               <div class="modal-footer">
-                <button type="button" class="btn btn-outline-success" onclick="bootstrap.Modal.getInstance(document.getElementById('viewMeetingModal')).hide(); crmModule.editMeeting('${meeting.id}')">
+                <button type="button" class="btn btn-outline-success" data-action="crmModule.dismissAndEditMeeting" data-id="${meeting.id}">
                   <i class="bi bi-pencil me-2"></i>Edit
                 </button>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -2044,13 +2004,13 @@ const crmModule = {
     console.warn('Edit meeting:', meetingId);
 
     try {
-      const { data: meeting, error } = await STATE.client
-        .from('meeting_notes')
-        .select('*')
-        .eq('id', meetingId)
-        .single();
-
-      if (error) throw error;
+      const meetingResult = await apiClient.select('meeting_notes', {
+        select: '*',
+        filters: { id: { eq: meetingId } },
+        pageSize: 1,
+      });
+      const meeting = meetingResult.data?.[0];
+      if (!meeting) throw new Error('Meeting not found');
 
       let attendeesList = [];
       try {
@@ -2197,9 +2157,7 @@ const crmModule = {
 
     try {
       await utils.protectModalDuringSave('editMeetingModal', async () => {
-        const { error } = await STATE.client.from('meeting_notes').update(updateData).eq('id', meetingId);
-
-        if (error) throw error;
+        await apiClient.update('meeting_notes', meetingId, updateData);
 
         utils.showToast('Meeting updated successfully', 'success');
         bootstrap.Modal.getInstance(document.getElementById('editMeetingModal')).hide();
@@ -2223,9 +2181,7 @@ const crmModule = {
     }
 
     try {
-      const { error } = await STATE.client.from('meeting_notes').delete().eq('id', meetingId);
-
-      if (error) throw error;
+      await apiClient.delete('meeting_notes', meetingId);
 
       utils.showToast('Meeting note deleted successfully', 'success');
       this.loadMeetings();
@@ -2244,19 +2200,12 @@ const crmModule = {
     console.warn('View companies in segment:', segmentName);
 
     try {
-      // Load companies in this segment
-      const { data: assignments, error } = await STATE.client
-        .from('organisation_segments')
-        .select(
-          `
-          *,
-          organisation:organisations(id, company_name, industry, email, phone)
-        `
-        )
-        .eq('segment_id', segmentId)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
+      // selectAll justified: organisation_segments is a small lookup/join table for segment membership (see pagination documentation)
+      const assignments = await apiClient.selectAll('organisation_segments', {
+        select: '*, organisation:organisations(id, company_name, industry, email, phone)',
+        filters: { segment_id: { eq: segmentId } },
+        sort: { column: 'created_at', ascending: false },
+      });
 
       const companies = (assignments || []).filter((a) => a.organisation);
 
@@ -2354,9 +2303,7 @@ const crmModule = {
 
     try {
       await utils.protectModalDuringSave('viewSegmentCompaniesModal', async () => {
-        const { error } = await STATE.client.from('organisation_segments').delete().eq('id', assignmentId);
-
-        if (error) throw error;
+        await apiClient.delete('organisation_segments', assignmentId);
 
         utils.showToast('Company removed from segment', 'success');
         // Refresh the segment companies view
@@ -2374,13 +2321,13 @@ const crmModule = {
     console.warn('Edit segment:', segmentId);
 
     try {
-      const { data: segment, error } = await STATE.client
-        .from('contact_segments')
-        .select('*')
-        .eq('id', segmentId)
-        .single();
-
-      if (error) throw error;
+      const segResult = await apiClient.select('contact_segments', {
+        select: '*',
+        filters: { id: { eq: segmentId } },
+        pageSize: 1,
+      });
+      const segment = segResult.data?.[0];
+      if (!segment) throw new Error('Segment not found');
 
       const colors = [
         '#0d6efd',
@@ -2433,7 +2380,7 @@ const crmModule = {
                           (c) => `
                         <div class="rounded-circle border ${segment.color === c ? 'border-dark border-3' : ''}"
                              style="width: 32px; height: 32px; background: ${c}; cursor: pointer;"
-                             onclick="document.getElementById('editSegmentColor').value = '${c}'; document.querySelectorAll('#segmentColorPicker > div').forEach(d => d.classList.remove('border-dark','border-3')); this.classList.add('border-dark','border-3');">
+                             data-action="crmModule.pickSegmentColor" data-color="${c}" data-target="editSegmentColor" data-picker="segmentColorPicker">
                         </div>
                       `
                         )
@@ -2448,7 +2395,7 @@ const crmModule = {
                         .map(
                           (ic) => `
                         <button type="button" class="btn btn-sm ${segment.icon === ic ? 'btn-primary' : 'btn-outline-secondary'}"
-                                onclick="document.getElementById('editSegmentIcon').value = '${ic}'; document.querySelectorAll('#segmentIconPicker > button').forEach(b => { b.classList.remove('btn-primary'); b.classList.add('btn-outline-secondary'); }); this.classList.remove('btn-outline-secondary'); this.classList.add('btn-primary');">
+                                data-action="crmModule.pickSegmentIcon" data-icon="${ic}" data-target="editSegmentIcon" data-picker="segmentIconPicker">
                           <i class="bi bi-${ic}"></i>
                         </button>
                       `
@@ -2500,9 +2447,7 @@ const crmModule = {
 
     try {
       await utils.protectModalDuringSave('editSegmentModal', async () => {
-        const { error } = await STATE.client.from('contact_segments').update(updateData).eq('id', segmentId);
-
-        if (error) throw error;
+        await apiClient.update('contact_segments', segmentId, updateData);
 
         utils.showToast('Segment updated successfully', 'success');
         bootstrap.Modal.getInstance(document.getElementById('editSegmentModal')).hide();
@@ -2513,6 +2458,86 @@ const crmModule = {
       utils.showToast('Error updating segment: ' + error.message, 'error');
     }
   },
+  // ============================================
+  // DELEGATED-ACTION HELPER METHODS
+  // ============================================
+
+  /** Dismiss the viewCommunicationModal and open edit for the given communication. */
+  dismissAndEditCommunication(commId) {
+    const modalEl = document.getElementById('viewCommunicationModal');
+    if (modalEl) {
+      const instance = bootstrap.Modal.getInstance(modalEl);
+      if (instance) instance.hide();
+    }
+    this.editCommunication(commId);
+  },
+
+  /** Dismiss the viewDealModal and open edit for the given deal. */
+  dismissAndEditDeal(dealId) {
+    const modalEl = document.getElementById('viewDealModal');
+    if (modalEl) {
+      const instance = bootstrap.Modal.getInstance(modalEl);
+      if (instance) instance.hide();
+    }
+    this.editDeal(dealId);
+  },
+
+  /** Dismiss the viewMeetingModal and open edit for the given meeting. */
+  dismissAndEditMeeting(meetingId) {
+    const modalEl = document.getElementById('viewMeetingModal');
+    if (modalEl) {
+      const instance = bootstrap.Modal.getInstance(modalEl);
+      if (instance) instance.hide();
+    }
+    this.editMeeting(meetingId);
+  },
+
+  /**
+   * Pick a segment color from a color swatch.
+   * Called via data-action with no data-id, so signature is (event).
+   * Reads data-color, data-target (hidden input ID), data-picker (container ID) from the clicked element.
+   */
+  pickSegmentColor(event) {
+    const el = event.target.closest('[data-action="crmModule.pickSegmentColor"]');
+    if (!el) return;
+    const color = el.dataset.color;
+    const targetId = el.dataset.target;
+    const pickerId = el.dataset.picker;
+    if (targetId) document.getElementById(targetId).value = color;
+    if (pickerId) {
+      document.querySelectorAll(`#${pickerId} > div`).forEach((d) => d.classList.remove('border-dark', 'border-3'));
+    }
+    el.classList.add('border-dark', 'border-3');
+  },
+
+  /**
+   * Pick a segment icon from an icon button grid.
+   * Called via data-action with no data-id, so signature is (event).
+   * Reads data-icon, data-target (hidden input ID), data-picker (container ID) from the clicked element.
+   */
+  pickSegmentIcon(event) {
+    const el = event.target.closest('[data-action="crmModule.pickSegmentIcon"]');
+    if (!el) return;
+    const icon = el.dataset.icon;
+    const targetId = el.dataset.target;
+    const pickerId = el.dataset.picker;
+    if (targetId) document.getElementById(targetId).value = icon;
+    if (pickerId) {
+      document.querySelectorAll(`#${pickerId} > button`).forEach((b) => {
+        b.classList.remove('btn-primary');
+        b.classList.add('btn-outline-secondary');
+      });
+    }
+    el.classList.remove('btn-outline-secondary');
+    el.classList.add('btn-primary');
+  },
+
+  /** Remove a smart-segment rule row (the parent .segment-rule element). Called with no data-id, so signature is (event). */
+  removeSegmentRule(event) {
+    const el = event.target.closest('.segment-rule');
+    if (el) el.remove();
+  },
+
   // ============================================
   // SMART SEGMENTS (moved from Organisations)
   // ============================================
@@ -2531,7 +2556,7 @@ const crmModule = {
         <option value="contains">contains</option>
       </select>
       <input type="text" class="form-control form-control-sm" style="width:150px;" id="segVal${i}" placeholder="Value...">
-      <button class="btn btn-sm btn-outline-danger" onclick="this.parentElement.remove()"><i class="bi bi-x"></i></button>
+      <button class="btn btn-sm btn-outline-danger" data-action="crmModule.removeSegmentRule"><i class="bi bi-x"></i></button>
     </div>`;
     document.getElementById('smartSegmentRules')?.insertAdjacentHTML('beforeend', ruleHtml);
   },
@@ -2803,13 +2828,11 @@ const crmModule = {
 
   async createMeetingNote() {
     try {
-      // Load organisations for the company dropdown
-      const { data: orgs, error: orgsError } = await STATE.client
-        .from('organisations')
-        .select('id, company_name')
-        .order('company_name');
-
-      if (orgsError) throw orgsError;
+      /* selectAll: justified — populating dropdown; organisations is a bounded business dataset */
+      const orgs = await apiClient.selectAll('organisations', {
+        select: 'id, company_name',
+        sort: { column: 'company_name', ascending: true },
+      });
 
       const orgOptions = (orgs || [])
         .map((o) => `<option value="${o.id}">${utils.escapeHtml(o.company_name)}</option>`)
@@ -2883,7 +2906,7 @@ const crmModule = {
                   </div>
                   <div class="form-check mb-3">
                     <input class="form-check-input" type="checkbox" id="newMeetingFollowUp"
-                           onchange="document.getElementById('newMeetingFollowUpDate').parentElement.style.display = this.checked ? 'block' : 'none';">
+                           data-on-change="crmModule._toggleFollowUpDate">
                     <label class="form-check-label" for="newMeetingFollowUp">Follow-up Required</label>
                   </div>
                   <div class="mb-3" style="display:none;">
@@ -2915,6 +2938,17 @@ const crmModule = {
     } catch (error) {
       console.error('Error opening meeting note form:', error);
       utils.showToast('Error opening meeting note form', 'error');
+    }
+  },
+
+  /**
+   * Toggle follow-up date field visibility (replaces inline onchange handler).
+   * Called via data-on-change; receives (id, value, event).
+   */
+  _toggleFollowUpDate(_id, _value, event) {
+    const el = document.getElementById('newMeetingFollowUpDate');
+    if (el) {
+      el.parentElement.style.display = event.target.checked ? 'block' : 'none';
     }
   },
 
@@ -2977,13 +3011,11 @@ const crmModule = {
 
   async assignSegments() {
     try {
-      // Load segments; use already-loaded organisations
-      const { data: segmentsData, error: segmentsError } = await STATE.client
-        .from('contact_segments')
-        .select('*')
-        .order('segment_name');
-
-      if (segmentsError) throw segmentsError;
+      // selectAll justified: contact_segments is a small lookup table for segment picker dropdown (see pagination documentation)
+      const segmentsData = await apiClient.selectAll('contact_segments', {
+        select: '*',
+        sort: { column: 'segment_name', ascending: true },
+      });
 
       const segments = segmentsData || [];
       const orgs = (STATE.allOrganisations || [])
@@ -3141,7 +3173,7 @@ const crmModule = {
                         (c, i) => `
                       <div class="rounded-circle border ${i === 0 ? 'border-dark border-3' : ''}"
                            style="width: 32px; height: 32px; background: ${c}; cursor: pointer;"
-                           onclick="document.getElementById('newSegmentColor').value = '${c}'; document.querySelectorAll('#newSegmentColorPicker > div').forEach(d => d.classList.remove('border-dark','border-3')); this.classList.add('border-dark','border-3');">
+                           data-action="crmModule.pickSegmentColor" data-color="${c}" data-target="newSegmentColor" data-picker="newSegmentColorPicker">
                       </div>
                     `
                       )
@@ -3156,7 +3188,7 @@ const crmModule = {
                       .map(
                         (ic, i) => `
                       <button type="button" class="btn btn-sm ${i === 0 ? 'btn-primary' : 'btn-outline-secondary'}"
-                              onclick="document.getElementById('newSegmentIcon').value = '${ic}'; document.querySelectorAll('#newSegmentIconPicker > button').forEach(b => { b.classList.remove('btn-primary'); b.classList.add('btn-outline-secondary'); }); this.classList.remove('btn-outline-secondary'); this.classList.add('btn-primary');">
+                              data-action="crmModule.pickSegmentIcon" data-icon="${ic}" data-target="newSegmentIcon" data-picker="newSegmentIconPicker">
                         <i class="bi bi-${ic}"></i>
                       </button>
                     `
@@ -3238,15 +3270,15 @@ const crmModule = {
     }
     if (totalPages > 1) {
       let html = '<nav><ul class="pagination pagination-sm justify-content-center mt-3">';
-      html += `<li class="page-item ${currentPage <= 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); ${goToFn}(${currentPage - 1})">Prev</a></li>`;
+      html += `<li class="page-item ${currentPage <= 1 ? 'disabled' : ''}"><a class="page-link" href="#" data-action="${goToFn}" data-id="${currentPage - 1}" data-prevent-default="true">Prev</a></li>`;
       for (let i = 1; i <= totalPages; i++) {
         if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
-          html += `<li class="page-item ${i === currentPage ? 'active' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); ${goToFn}(${i})">${i}</a></li>`;
+          html += `<li class="page-item ${i === currentPage ? 'active' : ''}"><a class="page-link" href="#" data-action="${goToFn}" data-id="${i}" data-prevent-default="true">${i}</a></li>`;
         } else if (i === currentPage - 3 || i === currentPage + 3) {
           html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
         }
       }
-      html += `<li class="page-item ${currentPage >= totalPages ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); ${goToFn}(${currentPage + 1})">Next</a></li>`;
+      html += `<li class="page-item ${currentPage >= totalPages ? 'disabled' : ''}"><a class="page-link" href="#" data-action="${goToFn}" data-id="${currentPage + 1}" data-prevent-default="true">Next</a></li>`;
       html += '</ul></nav>';
       el.innerHTML = html;
     } else if (el) {

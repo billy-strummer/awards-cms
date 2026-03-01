@@ -17,12 +17,8 @@
  * @type {{ url: string, anonKey: string }}
  */
 const SUPABASE_CONFIG = {
-  url: document.querySelector('meta[name="supabase-url"]')?.content
-    || window.__SUPABASE_URL__
-    || '',
-  anonKey: document.querySelector('meta[name="supabase-anon-key"]')?.content
-    || window.__SUPABASE_ANON_KEY__
-    || ''
+  url: document.querySelector('meta[name="supabase-url"]')?.content || window.__SUPABASE_URL__ || '',
+  anonKey: document.querySelector('meta[name="supabase-anon-key"]')?.content || window.__SUPABASE_ANON_KEY__ || '',
 };
 
 /**
@@ -34,13 +30,13 @@ const STATUS = {
   PENDING: 'Pending',
   APPROVED: 'Approved',
   PUBLISHED: 'Published',
-  REJECTED: 'Rejected'
+  REJECTED: 'Rejected',
 };
 
 // Media Types
 const MEDIA_TYPES = {
   PHOTO: 'photo',
-  VIDEO: 'video'
+  VIDEO: 'video',
 };
 
 // Inactivity Timer (in milliseconds)
@@ -56,34 +52,104 @@ const SECTORS = [
   'INTERIOR FIT-OUT & FINISHING',
   'MECHANICAL, ELECTRICAL & PLUMBING',
   'OUTDOOR & LANDSCAPING',
-  'SPECIALIST TRADES'
+  'SPECIALIST TRADES',
 ];
 
 const REGIONS = [
   // England Counties (38)
-  'Bedfordshire', 'Berkshire', 'Buckinghamshire', 'Cambridgeshire', 'Cheshire',
-  'Cornwall', 'Cumbria', 'Derbyshire', 'Devon', 'Dorset', 'County Durham',
-  'East Riding of Yorkshire', 'Essex', 'Gloucestershire', 'Hampshire',
-  'Herefordshire', 'Hertfordshire', 'Isle of Wight', 'Kent', 'Lancashire',
-  'Leicestershire', 'Lincolnshire', 'Norfolk', 'Northamptonshire',
-  'North Yorkshire', 'Northumberland', 'Nottinghamshire', 'Oxfordshire',
-  'Rutland', 'Shropshire', 'Somerset', 'South Yorkshire', 'Staffordshire',
-  'Suffolk', 'Surrey', 'Sussex', 'Tyne & Wear', 'Warwickshire',
-  'West Yorkshire', 'Wiltshire', 'Worcestershire',
+  'Bedfordshire',
+  'Berkshire',
+  'Buckinghamshire',
+  'Cambridgeshire',
+  'Cheshire',
+  'Cornwall',
+  'Cumbria',
+  'Derbyshire',
+  'Devon',
+  'Dorset',
+  'County Durham',
+  'East Riding of Yorkshire',
+  'Essex',
+  'Gloucestershire',
+  'Hampshire',
+  'Herefordshire',
+  'Hertfordshire',
+  'Isle of Wight',
+  'Kent',
+  'Lancashire',
+  'Leicestershire',
+  'Lincolnshire',
+  'Norfolk',
+  'Northamptonshire',
+  'North Yorkshire',
+  'Northumberland',
+  'Nottinghamshire',
+  'Oxfordshire',
+  'Rutland',
+  'Shropshire',
+  'Somerset',
+  'South Yorkshire',
+  'Staffordshire',
+  'Suffolk',
+  'Surrey',
+  'Sussex',
+  'Tyne & Wear',
+  'Warwickshire',
+  'West Yorkshire',
+  'Wiltshire',
+  'Worcestershire',
   // Scotland (14)
-  'Argyll & Bute', 'Ayrshire', 'Central Scotland', 'Dumfries & Galloway',
-  'Dunbartonshire', 'Fife', 'Grampian', 'Highlands', 'Lanarkshire',
-  'Lothian', 'Renfrewshire', 'Scottish Borders', 'Scottish Islands', 'Tayside',
+  'Argyll & Bute',
+  'Ayrshire',
+  'Central Scotland',
+  'Dumfries & Galloway',
+  'Dunbartonshire',
+  'Fife',
+  'Grampian',
+  'Highlands',
+  'Lanarkshire',
+  'Lothian',
+  'Renfrewshire',
+  'Scottish Borders',
+  'Scottish Islands',
+  'Tayside',
   // Wales (12)
-  'Anglesey', 'Carmarthenshire', 'Ceredigion', 'Conwy', 'Denbighshire',
-  'Flintshire', 'Glamorgan', 'Gwent', 'Gwynedd', 'Pembrokeshire',
-  'Powys', 'Wrexham',
+  'Anglesey',
+  'Carmarthenshire',
+  'Ceredigion',
+  'Conwy',
+  'Denbighshire',
+  'Flintshire',
+  'Glamorgan',
+  'Gwent',
+  'Gwynedd',
+  'Pembrokeshire',
+  'Powys',
+  'Wrexham',
   // Cities (20)
-  'Birmingham', 'Bournemouth', 'Bradford', 'Brighton & Hove', 'Bristol',
-  'Cardiff', 'Coventry', 'Edinburgh', 'Glasgow', 'Leeds', 'Leicester',
-  'Liverpool', 'London North', 'London South', 'London East', 'London West',
-  'Manchester', 'Middlesbrough', 'Newcastle', 'Nottingham', 'Sheffield',
-  'Southampton', 'Swansea'
+  'Birmingham',
+  'Bournemouth',
+  'Bradford',
+  'Brighton & Hove',
+  'Bristol',
+  'Cardiff',
+  'Coventry',
+  'Edinburgh',
+  'Glasgow',
+  'Leeds',
+  'Leicester',
+  'Liverpool',
+  'London North',
+  'London South',
+  'London East',
+  'London West',
+  'Manchester',
+  'Middlesbrough',
+  'Newcastle',
+  'Nottingham',
+  'Sheffield',
+  'Southampton',
+  'Swansea',
 ];
 
 /**
@@ -104,7 +170,7 @@ const STATE = {
   filteredMedia: [],
   allEvents: [],
   allEntries: [],
-  filteredEntries: []
+  filteredEntries: [],
 };
 
 // ============================================
@@ -141,7 +207,7 @@ const ModuleRegistry = {
   /** List all registered module names */
   list() {
     return [...this._modules.keys()];
-  }
+  },
 };
 
 // Register constants via the registry

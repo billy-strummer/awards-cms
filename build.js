@@ -53,14 +53,10 @@ const JS_FILES = [
   'calendar.js',
   'rate-limiting.js',
   'winner-announcements.js',
-  'app.js'
+  'app.js',
 ];
 
-const CSS_FILES = [
-  'styles.css',
-  'modern-theme.css',
-  'assignments-styles.css'
-];
+const CSS_FILES = ['styles.css', 'modern-theme.css', 'assignments-styles.css'];
 
 function ensureDir(dir) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -78,7 +74,7 @@ async function build() {
     console.log('  Lint: passed ✓');
   } catch (lintErr) {
     const output = lintErr.stdout ? lintErr.stdout.toString() : '';
-    const errorCount = (output.match(/\d+ error/)?.[0]) || 'errors found';
+    const errorCount = output.match(/\d+ error/)?.[0] || 'errors found';
     console.warn(`  Lint: ${errorCount} (run "npm run lint:fix" to auto-fix)`);
     // Don't fail build on lint warnings, but log them
   }
@@ -87,7 +83,7 @@ async function build() {
 
   // 1. Bundle JS using esbuild ESM bundler with main.js entry point
   let totalJsSize = 0;
-  JS_FILES.forEach(file => {
+  JS_FILES.forEach((file) => {
     const filePath = path.join(__dirname, file);
     if (fs.existsSync(filePath)) {
       totalJsSize += fs.statSync(filePath).size;
@@ -109,15 +105,17 @@ async function build() {
         outfile: path.join(DIST_DIR, 'app.min.js'),
         drop: ['debugger'],
         sourcemap: false,
-        metafile: true
+        metafile: true,
       });
       const minSize = fs.statSync(path.join(DIST_DIR, 'app.min.js')).size;
       const moduleCount = Object.keys(result.metafile.inputs).length;
-      console.log(`  JS: ${(totalJsSize / 1024).toFixed(0)}KB -> ${(minSize / 1024).toFixed(0)}KB (${((1 - minSize / totalJsSize) * 100).toFixed(0)}% reduction, ${moduleCount} ES modules bundled)`);
+      console.log(
+        `  JS: ${(totalJsSize / 1024).toFixed(0)}KB -> ${(minSize / 1024).toFixed(0)}KB (${((1 - minSize / totalJsSize) * 100).toFixed(0)}% reduction, ${moduleCount} ES modules bundled)`
+      );
     } else {
       // Fallback: concatenate and transform (legacy mode)
       let jsContent = '';
-      JS_FILES.forEach(file => {
+      JS_FILES.forEach((file) => {
         const filePath = path.join(__dirname, file);
         if (fs.existsSync(filePath)) {
           jsContent += `\n/* === ${file} === */\n${fs.readFileSync(filePath, 'utf8')}\n`;
@@ -129,30 +127,34 @@ async function build() {
         minify: true,
         target: 'es2020',
         format: 'iife',
-        drop: ['debugger']
+        drop: ['debugger'],
       });
       fs.writeFileSync(path.join(DIST_DIR, 'app.min.js'), result.code);
       const minSize = result.code.length;
-      console.log(`  JS: ${(totalJsSize / 1024).toFixed(0)}KB -> ${(minSize / 1024).toFixed(0)}KB (${((1 - minSize / totalJsSize) * 100).toFixed(0)}% reduction, legacy IIFE mode)`);
+      console.log(
+        `  JS: ${(totalJsSize / 1024).toFixed(0)}KB -> ${(minSize / 1024).toFixed(0)}KB (${((1 - minSize / totalJsSize) * 100).toFixed(0)}% reduction, legacy IIFE mode)`
+      );
     }
   } catch (e) {
     // Last resort: concatenate without minification
     let jsContent = '';
-    JS_FILES.forEach(file => {
+    JS_FILES.forEach((file) => {
       const filePath = path.join(__dirname, file);
       if (fs.existsSync(filePath)) {
         jsContent += `\n/* === ${file} === */\n${fs.readFileSync(filePath, 'utf8')}\n`;
       }
     });
     fs.writeFileSync(path.join(DIST_DIR, 'app.min.js'), jsContent);
-    console.log(`  JS: ${(totalJsSize / 1024).toFixed(0)}KB (concatenated, not minified - esbuild error: ${e.message})`);
+    console.log(
+      `  JS: ${(totalJsSize / 1024).toFixed(0)}KB (concatenated, not minified - esbuild error: ${e.message})`
+    );
   }
 
   // 2. Concatenate CSS
   let cssContent = '';
   let totalCssSize = 0;
 
-  CSS_FILES.forEach(file => {
+  CSS_FILES.forEach((file) => {
     const filePath = path.join(__dirname, file);
     if (fs.existsSync(filePath)) {
       const content = fs.readFileSync(filePath, 'utf8');
@@ -166,11 +168,13 @@ async function build() {
     const esbuild = require('esbuild');
     const result = await esbuild.transform(cssContent, {
       loader: 'css',
-      minify: true
+      minify: true,
     });
     fs.writeFileSync(path.join(DIST_DIR, 'app.min.css'), result.code);
     const minSize = result.code.length;
-    console.log(`  CSS: ${(totalCssSize / 1024).toFixed(0)}KB -> ${(minSize / 1024).toFixed(0)}KB (${((1 - minSize / totalCssSize) * 100).toFixed(0)}% reduction)`);
+    console.log(
+      `  CSS: ${(totalCssSize / 1024).toFixed(0)}KB -> ${(minSize / 1024).toFixed(0)}KB (${((1 - minSize / totalCssSize) * 100).toFixed(0)}% reduction)`
+    );
   } catch (e) {
     // Fallback: use same filename so HTML references work
     fs.writeFileSync(path.join(DIST_DIR, 'app.min.css'), cssContent);
@@ -198,10 +202,7 @@ async function build() {
     // Inject Supabase environment variables into meta tags
     const supabaseUrl = process.env.SUPABASE_URL || '';
     const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || '';
-    html = html.replace(
-      '<meta name="supabase-url" content="">',
-      `<meta name="supabase-url" content="${supabaseUrl}">`
-    );
+    html = html.replace('<meta name="supabase-url" content="">', `<meta name="supabase-url" content="${supabaseUrl}">`);
     html = html.replace(
       '<meta name="supabase-anon-key" content="">',
       `<meta name="supabase-anon-key" content="${supabaseAnonKey}">`
@@ -229,20 +230,16 @@ async function build() {
     'register.html',
     'payment-success.html',
     'payment-cancelled.html',
-    'upload-documents.html'
+    'upload-documents.html',
   ];
 
   // Also copy shared assets needed by public pages
-  const PUBLIC_ASSETS = [
-    'config.js',
-    'BTA-LOGO-entry.jpg',
-    'BTA-LOGO-no-date.jpg'
-  ];
+  const PUBLIC_ASSETS = ['config.js', 'BTA-LOGO-entry.jpg', 'BTA-LOGO-no-date.jpg'];
 
   const allPublicFiles = [...PUBLIC_PAGES, ...PUBLIC_ASSETS];
   let copiedCount = 0;
 
-  allPublicFiles.forEach(file => {
+  allPublicFiles.forEach((file) => {
     const src = path.join(__dirname, file);
     if (fs.existsSync(src)) {
       fs.copyFileSync(src, path.join(DIST_DIR, file));
@@ -251,11 +248,21 @@ async function build() {
   });
 
   // Copy any JS files referenced by public pages that aren't in the bundle
-  const publicJsFiles = ['vote.js', 'public-voting.js', 'judge-portal.js', 'judge-login.js',
-    'winners-portal.js', 'check-in.js', 'register.js', 'upload-documents.js',
-    'company-profile.js', 'award-nominees.js', 'award_companies.js'];
+  const publicJsFiles = [
+    'vote.js',
+    'public-voting.js',
+    'judge-portal.js',
+    'judge-login.js',
+    'winners-portal.js',
+    'check-in.js',
+    'register.js',
+    'upload-documents.js',
+    'company-profile.js',
+    'award-nominees.js',
+    'award_companies.js',
+  ];
 
-  publicJsFiles.forEach(file => {
+  publicJsFiles.forEach((file) => {
     const src = path.join(__dirname, file);
     if (fs.existsSync(src)) {
       fs.copyFileSync(src, path.join(DIST_DIR, file));
@@ -270,10 +277,10 @@ async function build() {
     buildTime: new Date().toISOString(),
     version: '2.1.0',
     files: {
-      js: JS_FILES.filter(f => fs.existsSync(path.join(__dirname, f))),
-      css: CSS_FILES.filter(f => fs.existsSync(path.join(__dirname, f)))
+      js: JS_FILES.filter((f) => fs.existsSync(path.join(__dirname, f))),
+      css: CSS_FILES.filter((f) => fs.existsSync(path.join(__dirname, f))),
     },
-    sizes: { jsOriginal: totalJsSize, cssOriginal: totalCssSize }
+    sizes: { jsOriginal: totalJsSize, cssOriginal: totalCssSize },
   };
   fs.writeFileSync(path.join(DIST_DIR, 'manifest.json'), JSON.stringify(manifest, null, 2));
 
@@ -282,7 +289,7 @@ async function build() {
   console.log(`Output: ${DIST_DIR}/`);
 }
 
-build().catch(err => {
+build().catch((err) => {
   console.error('Build failed:', err);
   process.exit(1);
 });

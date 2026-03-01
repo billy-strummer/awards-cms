@@ -66,7 +66,7 @@ const emailBuilder = {
     const palette = document.querySelectorAll('.email-block-item');
 
     // Make palette blocks draggable
-    palette.forEach(block => {
+    palette.forEach((block) => {
       block.addEventListener('dragstart', (e) => {
         e.dataTransfer.setData('blockType', block.getAttribute('data-block-type'));
         e.dataTransfer.effectAllowed = 'copy';
@@ -148,7 +148,7 @@ const emailBuilder = {
   _getDragAfterElement(y) {
     const blocks = [...this.canvas.querySelectorAll('.email-block-wrapper:not(.dragging-block)')];
     let closest = { offset: Number.POSITIVE_INFINITY, element: null };
-    blocks.forEach(child => {
+    blocks.forEach((child) => {
       const box = child.getBoundingClientRect();
       const offset = y - box.top - box.height / 2;
       if (offset < 0 && offset > -closest.offset) {
@@ -164,8 +164,10 @@ const emailBuilder = {
   _syncBlocksFromDOM() {
     const domBlocks = this.canvas.querySelectorAll('.email-block-wrapper');
     const blockMap = {};
-    this.blocks.forEach(b => { blockMap[b.id] = b; });
-    this.blocks = Array.from(domBlocks).map(el => {
+    this.blocks.forEach((b) => {
+      blockMap[b.id] = b;
+    });
+    this.blocks = Array.from(domBlocks).map((el) => {
       const id = el.getAttribute('data-block-id');
       return blockMap[id] || { id, type: 'unknown' };
     });
@@ -185,8 +187,11 @@ const emailBuilder = {
 
       const select = document.getElementById('builderOrgSelect');
       if (select) {
-        select.innerHTML = '<option value="">Choose organisation...</option>' +
-          (data || []).map(org => `<option value="${org.id}">${utils.escapeHtml(org.company_name)}</option>`).join('');
+        select.innerHTML =
+          '<option value="">Choose organisation...</option>' +
+          (data || [])
+            .map((org) => `<option value="${org.id}">${utils.escapeHtml(org.company_name)}</option>`)
+            .join('');
 
         select.addEventListener('change', (e) => {
           if (e.target.value) {
@@ -215,21 +220,21 @@ const emailBuilder = {
       // Load awards for this org
       const { data: assignments } = await STATE.client
         .from('award_assignments')
-        .select(`
+        .select(
+          `
           *,
           awards:award_years!award_assignments_award_id_fkey (*)
-        `)
+        `
+        )
         .eq('organisation_id', orgId);
 
-      const awards = (assignments || [])
-        .filter(a => a.awards)
-        .map(a => a.awards);
+      const awards = (assignments || []).filter((a) => a.awards).map((a) => a.awards);
 
       this.currentOrg = { ...org, awards };
 
       // Update any header block logos on canvas with the real org logo
       if (org.logo_url) {
-        this.canvas?.querySelectorAll('.email-block-wrapper img[alt="Logo"]').forEach(img => {
+        this.canvas?.querySelectorAll('.email-block-wrapper img[alt="Logo"]').forEach((img) => {
           img.src = org.logo_url;
         });
         this.updatePreview();
@@ -253,7 +258,7 @@ const emailBuilder = {
       this.canvas.innerHTML = '';
     }
 
-    const blockId = 'block-' + (++this._blockIdCounter) + '-' + Math.random().toString(36).slice(2, 7);
+    const blockId = 'block-' + ++this._blockIdCounter + '-' + Math.random().toString(36).slice(2, 7);
     const blockHTML = this.getBlockHTML(blockType, blockId);
 
     const blockWrapper = document.createElement('div');
@@ -282,20 +287,20 @@ const emailBuilder = {
    */
   getBlockHTML(blockType, blockId) {
     const templates = {
-      'header': this.getHeaderBlock(),
-      'hero': this.getHeroBlock(),
-      'text': this.getTextBlock(),
+      header: this.getHeaderBlock(),
+      hero: this.getHeroBlock(),
+      text: this.getTextBlock(),
       'company-profile': this.getCompanyProfileBlock(),
       'award-list': this.getAwardListBlock(),
-      'button': this.getButtonBlock(),
-      'image': this.getImageBlock(),
-      'video': this.getVideoBlock(),
-      'countdown': this.getCountdownBlock(),
-      'divider': this.getDividerBlock(),
+      button: this.getButtonBlock(),
+      image: this.getImageBlock(),
+      video: this.getVideoBlock(),
+      countdown: this.getCountdownBlock(),
+      divider: this.getDividerBlock(),
       'social-links': this.getSocialLinksBlock(),
-      'richtext': this.getRichTextBlock(blockId),
+      richtext: this.getRichTextBlock(blockId),
       'html-code': this.getHtmlCodeBlock(blockId),
-      'footer': this.getFooterBlock()
+      footer: this.getFooterBlock(),
     };
 
     return templates[blockType] || this.getTextBlock();
@@ -305,7 +310,9 @@ const emailBuilder = {
    * Block Templates
    */
   getHeaderBlock() {
-    const logo = this.currentOrg?.logo_url || `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="250" height="100"><rect width="250" height="100" fill="#e9ecef" rx="8"/><text x="125" y="55" text-anchor="middle" font-family="Arial,sans-serif" font-size="16" fill="#6c757d">Your Logo</text></svg>')}`;
+    const logo =
+      this.currentOrg?.logo_url ||
+      `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="250" height="100"><rect width="250" height="100" fill="#e9ecef" rx="8"/><text x="125" y="55" text-anchor="middle" font-family="Arial,sans-serif" font-size="16" fill="#6c757d">Your Logo</text></svg>')}`;
     return `
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff;">
         <tr>
@@ -382,26 +389,31 @@ const emailBuilder = {
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
               <tr>
                 <td class="mob-profile-img" width="100" valign="top">
-                  ${this.currentOrg.logo_url ?
-                    `<img src="${this.currentOrg.logo_url}" alt="${utils.escapeHtml(this.currentOrg.company_name)}" style="width: 80px; height: 80px; object-fit: contain;">` :
-                    `<div style="width: 80px; height: 80px; background: #dee2e6; border-radius: 4px;"></div>`
+                  ${
+                    this.currentOrg.logo_url
+                      ? `<img src="${this.currentOrg.logo_url}" alt="${utils.escapeHtml(this.currentOrg.company_name)}" style="width: 80px; height: 80px; object-fit: contain;">`
+                      : `<div style="width: 80px; height: 80px; background: #dee2e6; border-radius: 4px;"></div>`
                   }
                 </td>
                 <td class="mob-profile-text" style="padding-left: 20px;">
                   <h3 class="mob-text-lg" style="margin: 0 0 10px 0; font-family: Arial, sans-serif; font-size: 20px; line-height: 26px; color: #212529;">
                     ${utils.escapeHtml(this.currentOrg.company_name)}
                   </h3>
-                  ${this.currentOrg.website ?
-                    `<p class="mob-text-sm" style="margin: 0 0 5px 0; font-family: Arial, sans-serif; font-size: 14px; color: #0d6efd;">
+                  ${
+                    this.currentOrg.website
+                      ? `<p class="mob-text-sm" style="margin: 0 0 5px 0; font-family: Arial, sans-serif; font-size: 14px; color: #0d6efd;">
                       <a href="${this.currentOrg.website}" style="color: #0d6efd; text-decoration: none;">
                         ${utils.escapeHtml(this.currentOrg.website)}
                       </a>
-                    </p>` : ''
+                    </p>`
+                      : ''
                   }
-                  ${this.currentOrg.region ?
-                    `<p class="mob-text-sm" style="margin: 0; font-family: Arial, sans-serif; font-size: 14px; color: #6c757d;">
+                  ${
+                    this.currentOrg.region
+                      ? `<p class="mob-text-sm" style="margin: 0; font-family: Arial, sans-serif; font-size: 14px; color: #6c757d;">
                       📍 ${utils.escapeHtml(this.currentOrg.region)}
-                    </p>` : ''
+                    </p>`
+                      : ''
                   }
                 </td>
               </tr>
@@ -430,7 +442,9 @@ const emailBuilder = {
       `;
     }
 
-    const awardsHTML = this.currentOrg.awards.map(award => `
+    const awardsHTML = this.currentOrg.awards
+      .map(
+        (award) => `
       <tr>
         <td class="mob-pad-sm" style="padding: 15px; border-bottom: 1px solid #e9ecef;">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
@@ -444,17 +458,21 @@ const emailBuilder = {
                 <p class="mob-text-md" style="margin: 0 0 5px 0; font-family: Arial, sans-serif; font-size: 16px; font-weight: bold; color: #212529;">
                   ${utils.escapeHtml(award.award_category)}
                 </p>
-                ${award.sector ?
-                  `<p class="mob-text-sm" style="margin: 0; font-family: Arial, sans-serif; font-size: 14px; color: #6c757d;">
+                ${
+                  award.sector
+                    ? `<p class="mob-text-sm" style="margin: 0; font-family: Arial, sans-serif; font-size: 14px; color: #6c757d;">
                     ${utils.escapeHtml(award.sector)}
-                  </p>` : ''
+                  </p>`
+                    : ''
                 }
               </td>
             </tr>
           </table>
         </td>
       </tr>
-    `).join('');
+    `
+      )
+      .join('');
 
     return `
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
@@ -473,7 +491,7 @@ const emailBuilder = {
   },
 
   getVideoBlock() {
-    const blockId = 'vid-' + (++this._blockIdCounter) + '-' + Math.random().toString(36).slice(2, 7);
+    const blockId = 'vid-' + ++this._blockIdCounter + '-' + Math.random().toString(36).slice(2, 7);
     return `
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
@@ -548,7 +566,7 @@ const emailBuilder = {
   },
 
   getCountdownBlock() {
-    const blockId = 'cd-' + (++this._blockIdCounter) + '-' + Math.random().toString(36).slice(2, 7);
+    const blockId = 'cd-' + ++this._blockIdCounter + '-' + Math.random().toString(36).slice(2, 7);
     // Default to 30 days from now
     const defaultDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     return `
@@ -693,23 +711,23 @@ const emailBuilder = {
             <option value="7">Huge</option>
           </select>
           <div class="richtext-btn-group">
-            <button type="button" data-action="emailBuilder.richTextCmd" data-args='${JSON.stringify(["bold", null, blockId]).replace(/'/g, "&#39;")}' title="Bold"><i class="bi bi-type-bold"></i></button>
-            <button type="button" data-action="emailBuilder.richTextCmd" data-args='${JSON.stringify(["italic", null, blockId]).replace(/'/g, "&#39;")}' title="Italic"><i class="bi bi-type-italic"></i></button>
-            <button type="button" data-action="emailBuilder.richTextCmd" data-args='${JSON.stringify(["underline", null, blockId]).replace(/'/g, "&#39;")}' title="Underline"><i class="bi bi-type-underline"></i></button>
-            <button type="button" data-action="emailBuilder.richTextCmd" data-args='${JSON.stringify(["strikeThrough", null, blockId]).replace(/'/g, "&#39;")}' title="Strikethrough"><i class="bi bi-type-strikethrough"></i></button>
+            <button type="button" data-action="emailBuilder.richTextCmd" data-args='${JSON.stringify(['bold', null, blockId]).replace(/'/g, '&#39;')}' title="Bold"><i class="bi bi-type-bold"></i></button>
+            <button type="button" data-action="emailBuilder.richTextCmd" data-args='${JSON.stringify(['italic', null, blockId]).replace(/'/g, '&#39;')}' title="Italic"><i class="bi bi-type-italic"></i></button>
+            <button type="button" data-action="emailBuilder.richTextCmd" data-args='${JSON.stringify(['underline', null, blockId]).replace(/'/g, '&#39;')}' title="Underline"><i class="bi bi-type-underline"></i></button>
+            <button type="button" data-action="emailBuilder.richTextCmd" data-args='${JSON.stringify(['strikeThrough', null, blockId]).replace(/'/g, '&#39;')}' title="Strikethrough"><i class="bi bi-type-strikethrough"></i></button>
           </div>
           <div class="richtext-btn-group">
-            <button type="button" data-action="emailBuilder.richTextCmd" data-args='${JSON.stringify(["justifyLeft", null, blockId]).replace(/'/g, "&#39;")}' title="Align Left"><i class="bi bi-text-left"></i></button>
-            <button type="button" data-action="emailBuilder.richTextCmd" data-args='${JSON.stringify(["justifyCenter", null, blockId]).replace(/'/g, "&#39;")}' title="Align Center"><i class="bi bi-text-center"></i></button>
-            <button type="button" data-action="emailBuilder.richTextCmd" data-args='${JSON.stringify(["justifyRight", null, blockId]).replace(/'/g, "&#39;")}' title="Align Right"><i class="bi bi-text-right"></i></button>
+            <button type="button" data-action="emailBuilder.richTextCmd" data-args='${JSON.stringify(['justifyLeft', null, blockId]).replace(/'/g, '&#39;')}' title="Align Left"><i class="bi bi-text-left"></i></button>
+            <button type="button" data-action="emailBuilder.richTextCmd" data-args='${JSON.stringify(['justifyCenter', null, blockId]).replace(/'/g, '&#39;')}' title="Align Center"><i class="bi bi-text-center"></i></button>
+            <button type="button" data-action="emailBuilder.richTextCmd" data-args='${JSON.stringify(['justifyRight', null, blockId]).replace(/'/g, '&#39;')}' title="Align Right"><i class="bi bi-text-right"></i></button>
           </div>
           <div class="richtext-btn-group">
-            <button type="button" data-action="emailBuilder.richTextCmd" data-args='${JSON.stringify(["insertUnorderedList", null, blockId]).replace(/'/g, "&#39;")}' title="Bullet List"><i class="bi bi-list-ul"></i></button>
-            <button type="button" data-action="emailBuilder.richTextCmd" data-args='${JSON.stringify(["insertOrderedList", null, blockId]).replace(/'/g, "&#39;")}' title="Numbered List"><i class="bi bi-list-ol"></i></button>
+            <button type="button" data-action="emailBuilder.richTextCmd" data-args='${JSON.stringify(['insertUnorderedList', null, blockId]).replace(/'/g, '&#39;')}' title="Bullet List"><i class="bi bi-list-ul"></i></button>
+            <button type="button" data-action="emailBuilder.richTextCmd" data-args='${JSON.stringify(['insertOrderedList', null, blockId]).replace(/'/g, '&#39;')}' title="Numbered List"><i class="bi bi-list-ol"></i></button>
           </div>
           <div class="richtext-btn-group">
             <button type="button" data-action="emailBuilder.insertLink" data-id="${blockId}" title="Insert Link"><i class="bi bi-link-45deg"></i></button>
-            <button type="button" data-action="emailBuilder.richTextCmd" data-args='${JSON.stringify(["removeFormat", null, blockId]).replace(/'/g, "&#39;")}' title="Clear Formatting"><i class="bi bi-eraser"></i></button>
+            <button type="button" data-action="emailBuilder.richTextCmd" data-args='${JSON.stringify(['removeFormat', null, blockId]).replace(/'/g, '&#39;')}' title="Clear Formatting"><i class="bi bi-eraser"></i></button>
           </div>
           <div class="richtext-btn-group">
             <label title="Text Color" class="richtext-color-label">
@@ -842,7 +860,7 @@ const emailBuilder = {
     const wrapper = document.querySelector(`[data-block-id="${blockId}"]`);
     if (wrapper) {
       wrapper.remove();
-      this.blocks = this.blocks.filter(b => b.id !== blockId);
+      this.blocks = this.blocks.filter((b) => b.id !== blockId);
       this.markUnsavedChanges();
       this.updatePreview();
 
@@ -893,7 +911,7 @@ const emailBuilder = {
     document.execCommand('createLink', false, url);
     // Style the newly created link
     const links = contentDiv.querySelectorAll('a:not([style])');
-    links.forEach(link => {
+    links.forEach((link) => {
       link.style.color = '#0d6efd';
       link.style.textDecoration = 'underline';
     });
@@ -1029,14 +1047,14 @@ const emailBuilder = {
     'spacer-lg': `<table width="100%" cellpadding="0" cellspacing="0" border="0">
   <tr><td style="height: 40px; font-size: 0; line-height: 0;">&nbsp;</td></tr>
 </table>`,
-    'divider': `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+    divider: `<table width="100%" cellpadding="0" cellspacing="0" border="0">
   <tr>
     <td style="padding: 15px 40px;">
       <hr style="border: none; border-top: 1px solid #dddddd; margin: 0;">
     </td>
   </tr>
 </table>`,
-    'heading': `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+    heading: `<table width="100%" cellpadding="0" cellspacing="0" border="0">
   <tr>
     <td style="padding: 10px 40px;">
       <h2 style="font-family: Arial, sans-serif; font-size: 24px; color: #1a1a2e; margin: 0;">
@@ -1045,7 +1063,7 @@ const emailBuilder = {
     </td>
   </tr>
 </table>`,
-    'paragraph': `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+    paragraph: `<table width="100%" cellpadding="0" cellspacing="0" border="0">
   <tr>
     <td style="padding: 10px 40px;">
       <p style="font-family: Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #333333; margin: 0;">
@@ -1054,14 +1072,14 @@ const emailBuilder = {
     </td>
   </tr>
 </table>`,
-    'image': `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+    image: `<table width="100%" cellpadding="0" cellspacing="0" border="0">
   <tr>
     <td style="padding: 10px 40px;" align="center">
       <img src="https://placehold.co/560x200/e8e8e8/666?text=Your+Image" alt="Description" width="560" style="max-width: 100%; height: auto; display: block; border-radius: 4px;">
     </td>
   </tr>
 </table>`,
-    'button': `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+    button: `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
   <tr>
     <td align="center" class="mob-pad" style="padding: 20px 40px;">
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" class="mob-btn-full">
@@ -1086,9 +1104,9 @@ const emailBuilder = {
     </td>
   </tr>
 </table>`,
-    'link': `<a href="https://example.com" target="_blank" style="color: #0d6efd; text-decoration: underline; font-family: Arial, sans-serif;">Link Text</a>`,
+    link: `<a href="https://example.com" target="_blank" style="color: #0d6efd; text-decoration: underline; font-family: Arial, sans-serif;">Link Text</a>`,
     'bold-text': `<strong style="font-weight: bold;">Bold text</strong>`,
-    'preheader': `<div style="display: none; max-height: 0; overflow: hidden; mso-hide: all;">
+    preheader: `<div style="display: none; max-height: 0; overflow: hidden; mso-hide: all;">
   Your preheader text goes here — this shows in inbox previews but not in the email body.
 </div>`,
   },
@@ -1217,7 +1235,7 @@ ${content}
    */
   generateFullHTML() {
     const blocks = Array.from(this.canvas.querySelectorAll('.email-block-wrapper'))
-      .map(wrapper => {
+      .map((wrapper) => {
         // HTML code block: use textarea value as raw HTML
         const htmlEditor = wrapper.querySelector('.email-html-code-editor');
         if (htmlEditor) {
@@ -1231,28 +1249,33 @@ ${content}
         // Standard blocks: strip editor-only controls by cloning and removing
         const clone = wrapper.cloneNode(true);
         // Remove block controls (move/delete/duplicate buttons)
-        clone.querySelectorAll('.email-block-controls').forEach(el => el.remove());
+        clone.querySelectorAll('.email-block-controls').forEach((el) => el.remove());
         // Remove image URL/alt input controls
-        clone.querySelectorAll('.email-image-controls').forEach(el => el.remove());
+        clone.querySelectorAll('.email-image-controls').forEach((el) => el.remove());
         // Remove video URL controls
-        clone.querySelectorAll('.email-video-controls').forEach(el => el.remove());
+        clone.querySelectorAll('.email-video-controls').forEach((el) => el.remove());
         // Remove countdown editing controls
-        clone.querySelectorAll('.email-countdown-controls').forEach(el => el.remove());
+        clone.querySelectorAll('.email-countdown-controls').forEach((el) => el.remove());
         // Remove button editing controls (text/url/color inputs) and their wrapping <tr>
-        clone.querySelectorAll('.email-button-controls').forEach(el => {
+        clone.querySelectorAll('.email-button-controls').forEach((el) => {
           const tr = el.closest('tr');
-          if (tr) tr.remove(); else el.remove();
+          if (tr) tr.remove();
+          else el.remove();
         });
         // Strip contenteditable attributes (not valid in sent emails)
-        clone.querySelectorAll('[contenteditable]').forEach(el => {
+        clone.querySelectorAll('[contenteditable]').forEach((el) => {
           el.removeAttribute('contenteditable');
         });
         // Strip data- attributes used only for editor targeting
-        clone.querySelectorAll('[data-img-target], [data-img-id], [data-alt-id], [data-btn-target], [data-btn-text], [data-btn-url], [data-btn-color], [data-video-link], [data-video-thumb], [data-video-play], [data-video-id], [data-cd-date], [data-cd-label], [data-cd-heading], [data-cd-display], [data-cd-days], [data-cd-hours], [data-cd-mins], [data-cd-secs]').forEach(el => {
-          [...el.attributes].forEach(attr => {
-            if (attr.name.startsWith('data-')) el.removeAttribute(attr.name);
+        clone
+          .querySelectorAll(
+            '[data-img-target], [data-img-id], [data-alt-id], [data-btn-target], [data-btn-text], [data-btn-url], [data-btn-color], [data-video-link], [data-video-thumb], [data-video-play], [data-video-id], [data-cd-date], [data-cd-label], [data-cd-heading], [data-cd-display], [data-cd-days], [data-cd-hours], [data-cd-mins], [data-cd-secs]'
+          )
+          .forEach((el) => {
+            [...el.attributes].forEach((attr) => {
+              if (attr.name.startsWith('data-')) el.removeAttribute(attr.name);
+            });
           });
-        });
         return clone.innerHTML;
       })
       .join('');
@@ -1333,7 +1356,10 @@ ${content}
         textarea.select();
         const ok = document.execCommand('copy');
         document.body.removeChild(textarea);
-        utils.showToast(ok ? 'HTML copied to clipboard!' : 'Copy failed — please copy manually', ok ? 'success' : 'error');
+        utils.showToast(
+          ok ? 'HTML copied to clipboard!' : 'Copy failed — please copy manually',
+          ok ? 'success' : 'error'
+        );
       } catch (fallbackErr) {
         utils.showToast('Copy failed — please use Export HTML instead', 'error');
       }
@@ -1349,10 +1375,10 @@ ${content}
     const doc = parser.parseFromString(html, 'text/html');
 
     // Remove hidden preheader
-    doc.querySelectorAll('div[style*="display:none"], div[style*="display: none"]').forEach(el => el.remove());
+    doc.querySelectorAll('div[style*="display:none"], div[style*="display: none"]').forEach((el) => el.remove());
 
     // Convert links to text with URL
-    doc.querySelectorAll('a').forEach(link => {
+    doc.querySelectorAll('a').forEach((link) => {
       const href = (link.getAttribute('href') || '').trim();
       const text = link.textContent.trim();
       if (href && text && href !== text && !href.startsWith('#') && !href.startsWith('{{')) {
@@ -1361,7 +1387,7 @@ ${content}
     });
 
     // Convert images to alt text
-    doc.querySelectorAll('img').forEach(img => {
+    doc.querySelectorAll('img').forEach((img) => {
       const alt = img.getAttribute('alt');
       if (alt && alt !== 'Image') {
         const textNode = doc.createTextNode(`[Image: ${alt}]`);
@@ -1373,10 +1399,10 @@ ${content}
 
     // Get text content with some formatting
     let text = '';
-    doc.querySelectorAll('h1, h2, h3, h4, h5, h6').forEach(h => {
+    doc.querySelectorAll('h1, h2, h3, h4, h5, h6').forEach((h) => {
       h.textContent = h.textContent.toUpperCase();
     });
-    doc.querySelectorAll('hr, div[style*="height: 1px"]').forEach(el => {
+    doc.querySelectorAll('hr, div[style*="height: 1px"]').forEach((el) => {
       el.textContent = '\n' + '-'.repeat(50) + '\n';
     });
 
@@ -1416,15 +1442,13 @@ ${content}
     const html = this.generateFullHTML();
 
     try {
-      const { error } = await STATE.client
-        .from('email_templates')
-        .insert({
-          name: campaignName,
-          subject: subject,
-          body: html,
-          description: 'Custom Build',
-          is_active: true
-        });
+      const { error } = await STATE.client.from('email_templates').insert({
+        name: campaignName,
+        subject: subject,
+        body: html,
+        description: 'Custom Build',
+        is_active: true,
+      });
 
       if (error) throw error;
 
@@ -1439,7 +1463,14 @@ ${content}
    * Clear canvas
    */
   async clearCanvas() {
-    if (await utils.confirmDialog({ title: 'Clear Canvas', message: 'Are you sure you want to clear all blocks?', confirmText: 'Clear', danger: true })) {
+    if (
+      await utils.confirmDialog({
+        title: 'Clear Canvas',
+        message: 'Are you sure you want to clear all blocks?',
+        confirmText: 'Clear',
+        danger: true,
+      })
+    ) {
       this.blocks = [];
       this.showEmptyState();
       this.updatePreview();
@@ -1452,10 +1483,10 @@ ${content}
   async loadTemplate(templateType) {
     // Show block palette for all modes except client-promotion (which uses content library)
     const palette = document.getElementById('blockPaletteSection');
-    if (palette) palette.style.display = (templateType === 'client-promotion') ? 'none' : 'block';
+    if (palette) palette.style.display = templateType === 'client-promotion' ? 'none' : 'block';
     // Show HTML toolkit only for "I Have HTML" mode
     const toolkit = document.getElementById('htmlToolkitSection');
-    if (toolkit) toolkit.style.display = (templateType === 'paste-html') ? 'block' : 'none';
+    if (toolkit) toolkit.style.display = templateType === 'paste-html' ? 'block' : 'none';
 
     // Blank Canvas: clear everything and reset
     if (!templateType) {
@@ -1490,34 +1521,34 @@ ${content}
     const templates = {
       winner: {
         name: 'Winner Announcement ' + new Date().getFullYear(),
-        subject: '🏆 Congratulations! You\'ve Won {{award_name}}',
-        blocks: ['header', 'hero', 'text', 'company-profile', 'award-list', 'button', 'social-links', 'footer']
+        subject: "🏆 Congratulations! You've Won {{award_name}}",
+        blocks: ['header', 'hero', 'text', 'company-profile', 'award-list', 'button', 'social-links', 'footer'],
       },
       nominee: {
         name: 'Nominee Notification ' + new Date().getFullYear(),
-        subject: '⭐ You\'ve Been Nominated for {{award_name}}',
-        blocks: ['header', 'hero', 'text', 'company-profile', 'button', 'divider', 'text', 'social-links', 'footer']
+        subject: "⭐ You've Been Nominated for {{award_name}}",
+        blocks: ['header', 'hero', 'text', 'company-profile', 'button', 'divider', 'text', 'social-links', 'footer'],
       },
       'event-countdown': {
         name: 'Event Countdown',
         subject: '⏰ Only {{days_left}} Days Until {{event_name}}!',
-        blocks: ['header', 'hero', 'text', 'text', 'button', 'divider', 'text', 'social-links', 'footer']
+        blocks: ['header', 'hero', 'text', 'text', 'button', 'divider', 'text', 'social-links', 'footer'],
       },
       'event-tickets': {
         name: 'Book Event Tickets',
         subject: '🎟️ Secure Your Spot at {{event_name}}',
-        blocks: ['header', 'hero', 'text', 'button', 'divider', 'text', 'image', 'button', 'social-links', 'footer']
+        blocks: ['header', 'hero', 'text', 'button', 'divider', 'text', 'image', 'button', 'social-links', 'footer'],
       },
       general: {
         name: 'General Announcement',
         subject: '📢 Important Update from {{organisation_name}}',
-        blocks: ['header', 'hero', 'text', 'text', 'divider', 'social-links', 'footer']
+        blocks: ['header', 'hero', 'text', 'text', 'divider', 'social-links', 'footer'],
       },
       'client-promotion': {
         name: 'Client Promotion',
         subject: 'Vote for {{company_name}} at the British Trade Awards',
-        isCustomHTML: true
-      }
+        isCustomHTML: true,
+      },
     };
 
     const template = templates[templateType];
@@ -1534,7 +1565,7 @@ ${content}
     document.getElementById('builderSubject').value = template.subject;
 
     // Add blocks based on template
-    template.blocks.forEach(blockType => {
+    template.blocks.forEach((blockType) => {
       this.addBlock(blockType);
     });
 
@@ -1664,7 +1695,7 @@ ${content}
     if (btn) {
       const group = btn.closest('.btn-group');
       if (group) {
-        group.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+        group.querySelectorAll('button').forEach((b) => b.classList.remove('active'));
         btn.classList.add('active');
       }
     }
@@ -1836,7 +1867,7 @@ ${content}
     if (btn) {
       const group = btn.closest('.btn-group');
       if (group) {
-        group.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+        group.querySelectorAll('button').forEach((b) => b.classList.remove('active'));
         btn.classList.add('active');
       }
     }
@@ -1846,7 +1877,7 @@ ${content}
    * Setup variable copy functionality
    */
   setupVariableCopy() {
-    document.querySelectorAll('.variable-tag').forEach(tag => {
+    document.querySelectorAll('.variable-tag').forEach((tag) => {
       tag.style.cursor = 'pointer';
       tag.addEventListener('click', () => {
         navigator.clipboard.writeText(tag.textContent);
@@ -1862,7 +1893,7 @@ ${content}
    * Load "I Have HTML" template — a single large HTML code editor
    */
   loadPasteHtmlTemplate() {
-    const blockId = 'block-' + (++this._blockIdCounter) + '-' + Math.random().toString(36).slice(2, 7);
+    const blockId = 'block-' + ++this._blockIdCounter + '-' + Math.random().toString(36).slice(2, 7);
 
     const blockWrapper = document.createElement('div');
     blockWrapper.className = 'email-block-wrapper';
@@ -2059,7 +2090,8 @@ ${content}
       panel = document.createElement('div');
       panel.id = 'contentLibraryPanel';
       panel.className = 'content-library-panel';
-      panel.style.cssText = 'position: absolute; right: 0; top: 0; width: 300px; height: 100%; background: #f8f9fa; border-left: 1px solid #dee2e6; overflow-y: auto; z-index: 100;';
+      panel.style.cssText =
+        'position: absolute; right: 0; top: 0; width: 300px; height: 100%; background: #f8f9fa; border-left: 1px solid #dee2e6; overflow-y: auto; z-index: 100;';
 
       builderContainer.style.position = 'relative';
       builderContainer.appendChild(panel);
@@ -2079,11 +2111,13 @@ ${content}
     // Load organisations with enhanced profile info
     const { data: orgs, error } = await STATE.client
       .from('award_assignments')
-      .select(`
+      .select(
+        `
         organisation_id,
         enhanced_profile,
         organisations(id, company_name, logo_url, website, description, region, industry)
-      `)
+      `
+      )
       .not('organisations', 'is', null)
       .order('enhanced_profile', { ascending: false });
 
@@ -2094,12 +2128,12 @@ ${content}
 
     // Group by organisation and prioritize enhanced profiles
     const orgMap = new Map();
-    orgs.forEach(item => {
+    orgs.forEach((item) => {
       const org = item.organisations;
       if (!orgMap.has(org.id)) {
         orgMap.set(org.id, {
           ...org,
-          hasEnhancedProfile: item.enhanced_profile || false
+          hasEnhancedProfile: item.enhanced_profile || false,
         });
       } else if (item.enhanced_profile) {
         orgMap.get(org.id).hasEnhancedProfile = true;
@@ -2136,11 +2170,15 @@ ${content}
           <label class="form-label fw-bold">Select Company</label>
           <select class="form-select form-select-sm" id="promotionCompanySelect" data-on-change="emailBuilder.loadCompanyContent">
             <option value="">Choose company...</option>
-            ${organisations.map(org => `
+            ${organisations
+              .map(
+                (org) => `
               <option value="${org.id}">
                 ${org.hasEnhancedProfile ? '✨ ' : ''}${org.company_name}
               </option>
-            `).join('')}
+            `
+              )
+              .join('')}
           </select>
           <small class="text-muted">✨ = Enhanced Profile</small>
         </div>
@@ -2243,15 +2281,24 @@ ${content}
         </div>
 
         <!-- Company Images -->
-        ${companyImages.length > 0 ? `
+        ${
+          companyImages.length > 0
+            ? `
           <h6 class="mb-2 mt-3">📸 Images (${companyImages.length})</h6>
-          ${companyImages.slice(0, 10).map(img => `
+          ${companyImages
+            .slice(0, 10)
+            .map(
+              (img) => `
             <div class="content-item mb-2" draggable="true" data-content-type="image" data-content-value="${utils.escapeHtml(img.file_url)}" style="cursor: move; padding: 8px; border: 1px solid #dee2e6; border-radius: 5px; background: white;">
               <img src="${utils.escapeHtml(img.file_url)}" style="width: 100%; height: 80px; object-fit: cover; border-radius: 3px;">
               <small class="d-block mt-1 text-muted">${utils.escapeHtml(img.title || 'Untitled')}</small>
             </div>
-          `).join('')}
-        ` : '<p class="text-muted"><small>No images in gallery</small></p>'}
+          `
+            )
+            .join('')}
+        `
+            : '<p class="text-muted"><small>No images in gallery</small></p>'
+        }
 
         <!-- Nominee/Winner Badge -->
         <div class="content-item mb-3" draggable="true" data-content-type="badge" data-content-value="${this.promotionMode}" style="cursor: move; padding: 10px; border: 1px solid #dee2e6; border-radius: 5px; background: white;">
@@ -2264,7 +2311,6 @@ ${content}
       this.setupContentDragDrop();
 
       utils.showToast(`Loaded content for ${org.company_name}`, 'success');
-
     } catch (error) {
       console.error('Error loading company content:', error);
       utils.showToast('Error loading company content', 'error');
@@ -2276,7 +2322,7 @@ ${content}
    */
   setupContentDragDrop() {
     // Make content items draggable
-    document.querySelectorAll('.content-item').forEach(item => {
+    document.querySelectorAll('.content-item').forEach((item) => {
       item.addEventListener('dragstart', (e) => {
         const contentType = item.getAttribute('data-content-type');
         const contentValue = item.getAttribute('data-content-value');
@@ -2291,7 +2337,7 @@ ${content}
     });
 
     // Setup drop zones
-    document.querySelectorAll('.drop-zone').forEach(zone => {
+    document.querySelectorAll('.drop-zone').forEach((zone) => {
       zone.addEventListener('dragover', (e) => {
         e.preventDefault();
         zone.classList.add('drag-over');
@@ -2388,11 +2434,14 @@ ${content}
 
       const select = document.getElementById('builderEmailList');
       if (select) {
-        select.innerHTML = '<option value="">Choose email list...</option>' +
-          (lists || []).map(list => {
-            const typeLabel = list.list_type ? ` (${list.list_type})` : '';
-            return `<option value="${list.id}">${utils.escapeHtml(list.list_name)}${typeLabel}</option>`;
-          }).join('');
+        select.innerHTML =
+          '<option value="">Choose email list...</option>' +
+          (lists || [])
+            .map((list) => {
+              const typeLabel = list.list_type ? ` (${list.list_type})` : '';
+              return `<option value="${list.id}">${utils.escapeHtml(list.list_name)}${typeLabel}</option>`;
+            })
+            .join('');
 
         // Only attach the change listener once
         if (!select._listenerAttached) {
@@ -2435,7 +2484,10 @@ ${content}
         return true;
       }
       if (!data?.has_api_key) {
-        utils.showToast('Email sending is not configured. Please add your Resend API key to the cms_config table.', 'error');
+        utils.showToast(
+          'Email sending is not configured. Please add your Resend API key to the cms_config table.',
+          'error'
+        );
         return false;
       }
       return true;
@@ -2478,7 +2530,7 @@ ${content}
         p_html: html,
         p_from_name: fromName,
         p_from_email: fromEmail,
-        p_reply_to: replyTo
+        p_reply_to: replyTo,
       });
 
       if (error) throw error;
@@ -2528,7 +2580,14 @@ ${content}
 
     const listName = document.getElementById('builderEmailList')?.selectedOptions[0]?.text || 'selected list';
 
-    if (!await utils.confirmDialog({ title: 'Send Campaign', message: `Send "${subject}" to ${count || 0} subscribers in "${listName}"?\n\nThis action cannot be undone.`, confirmText: 'Send', danger: false })) {
+    if (
+      !(await utils.confirmDialog({
+        title: 'Send Campaign',
+        message: `Send "${subject}" to ${count || 0} subscribers in "${listName}"?\n\nThis action cannot be undone.`,
+        confirmText: 'Send',
+        danger: false,
+      }))
+    ) {
       return;
     }
 
@@ -2544,7 +2603,7 @@ ${content}
         p_from_name: fromName,
         p_from_email: fromEmail,
         p_reply_to: replyTo,
-        p_campaign_name: campaignName || subject
+        p_campaign_name: campaignName || subject,
       });
 
       if (error) throw error;
@@ -2568,8 +2627,8 @@ ${content}
             reply_to: replyTo,
             list_id: listId,
             list_name: listName,
-            preheader: document.getElementById('builderPreheader')?.value || ''
-          })
+            preheader: document.getElementById('builderPreheader')?.value || '',
+          }),
         });
       } catch (logErr) {
         console.warn('Campaign sent but failed to log:', logErr);
@@ -2577,7 +2636,6 @@ ${content}
 
       // Refresh campaign log
       this.loadCampaignLog();
-
     } catch (error) {
       console.error('Error sending campaign:', error);
       utils.showToast('Failed to send campaign: ' + error.message, 'error');
@@ -2590,7 +2648,7 @@ ${content}
           recipients: listName,
           status: 'Failed',
           total_recipients: count || 0,
-          notes: JSON.stringify({ error: error.message, list_id: listId })
+          notes: JSON.stringify({ error: error.message, list_id: listId }),
         });
         this.loadCampaignLog();
       } catch (logErr) {
@@ -2643,7 +2701,14 @@ ${content}
 
     if (date && time) {
       const dt = new Date(`${date}T${time}`);
-      const opts = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+      const opts = {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      };
       previewEl.innerHTML = `<i class="bi bi-clock me-1"></i>Will send: ${dt.toLocaleDateString('en-GB', opts)}`;
     } else {
       previewEl.textContent = '';
@@ -2694,9 +2759,23 @@ ${content}
       .eq('status', 'active');
 
     const listName = document.getElementById('builderEmailList')?.selectedOptions[0]?.text || 'selected list';
-    const opts = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+    const opts = {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    };
 
-    if (!await utils.confirmDialog({ title: 'Schedule Campaign', message: `Schedule "${subject}" to ${count || 0} subscribers in "${listName}"?\n\nScheduled for: ${scheduledAt.toLocaleDateString('en-GB', opts)}`, confirmText: 'Schedule', danger: false })) {
+    if (
+      !(await utils.confirmDialog({
+        title: 'Schedule Campaign',
+        message: `Schedule "${subject}" to ${count || 0} subscribers in "${listName}"?\n\nScheduled for: ${scheduledAt.toLocaleDateString('en-GB', opts)}`,
+        confirmText: 'Schedule',
+        danger: false,
+      }))
+    ) {
       return;
     }
 
@@ -2721,8 +2800,8 @@ ${content}
             reply_to: replyTo,
             list_id: listId,
             list_name: listName,
-            preheader: document.getElementById('builderPreheader')?.value || ''
-          })
+            preheader: document.getElementById('builderPreheader')?.value || '',
+          }),
         })
         .select()
         .single();
@@ -2742,12 +2821,12 @@ ${content}
    */
   getStatusBadge(status) {
     const badges = {
-      'Sent': '<span class="badge bg-success">Sent</span>',
-      'Scheduled': '<span class="badge bg-primary">Scheduled</span>',
-      'Draft': '<span class="badge bg-secondary">Draft</span>',
-      'Cancelled': '<span class="badge bg-danger">Cancelled</span>',
-      'Sending': '<span class="badge bg-warning text-dark">Sending</span>',
-      'Failed': '<span class="badge bg-danger">Failed</span>'
+      Sent: '<span class="badge bg-success">Sent</span>',
+      Scheduled: '<span class="badge bg-primary">Scheduled</span>',
+      Draft: '<span class="badge bg-secondary">Draft</span>',
+      Cancelled: '<span class="badge bg-danger">Cancelled</span>',
+      Sending: '<span class="badge bg-warning text-dark">Sending</span>',
+      Failed: '<span class="badge bg-danger">Failed</span>',
     };
     return badges[status] || `<span class="badge bg-secondary">${utils.escapeHtml(status || 'Unknown')}</span>`;
   },
@@ -2756,7 +2835,15 @@ ${content}
    * Cancel a scheduled campaign
    */
   async cancelScheduledCampaign(campaignId) {
-    if (!await utils.confirmDialog({ title: 'Cancel Scheduled Campaign', message: 'Cancel this scheduled campaign? This cannot be undone.', confirmText: 'Cancel Campaign', danger: true })) return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Cancel Scheduled Campaign',
+        message: 'Cancel this scheduled campaign? This cannot be undone.',
+        confirmText: 'Cancel Campaign',
+        danger: true,
+      }))
+    )
+      return;
 
     try {
       const { error } = await STATE.client
@@ -2789,7 +2876,11 @@ ${content}
       if (error) throw error;
 
       let notes = {};
-      try { notes = JSON.parse(campaign.notes || '{}'); } catch (e) { console.warn('Failed to parse campaign notes:', e.message); }
+      try {
+        notes = JSON.parse(campaign.notes || '{}');
+      } catch (e) {
+        console.warn('Failed to parse campaign notes:', e.message);
+      }
 
       // Populate campaign settings
       const nameInput = document.getElementById('builderCampaignName');
@@ -2826,7 +2917,7 @@ ${content}
         const innerTable = doc.querySelector('table table');
         const bodyContent = innerTable ? innerTable.innerHTML : doc.body.innerHTML;
 
-        const blockId = 'block-' + (++this._blockIdCounter) + '-' + Math.random().toString(36).slice(2, 7);
+        const blockId = 'block-' + ++this._blockIdCounter + '-' + Math.random().toString(36).slice(2, 7);
         const blockWrapper = document.createElement('div');
         blockWrapper.className = 'email-block-wrapper';
         blockWrapper.setAttribute('data-block-id', blockId);
@@ -2887,13 +2978,39 @@ ${content}
         .limit(100);
 
       const statusBadge = this.getStatusBadge(campaign.status);
-      const created = campaign.created_at ? new Date(campaign.created_at).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
-      const sent = campaign.sent_date ? new Date(campaign.sent_date).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
-      const scheduled = campaign.scheduled_date ? new Date(campaign.scheduled_date).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+      const created = campaign.created_at
+        ? new Date(campaign.created_at).toLocaleString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          })
+        : '-';
+      const sent = campaign.sent_date
+        ? new Date(campaign.sent_date).toLocaleString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          })
+        : '-';
+      const scheduled = campaign.scheduled_date
+        ? new Date(campaign.scheduled_date).toLocaleString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          })
+        : '-';
 
       let recipientRows = '';
       if (logs && logs.length > 0) {
-        recipientRows = logs.map(l => `
+        recipientRows = logs
+          .map(
+            (l) => `
           <tr>
             <td>${utils.escapeHtml(l.email || '-')}</td>
             <td>${this.getRecipientStatusBadge(l.status)}</td>
@@ -2902,7 +3019,9 @@ ${content}
             <td>${l.clicked_at ? new Date(l.clicked_at).toLocaleString('en-GB') : '-'}</td>
             <td>${l.bounce_reason ? `<small class="text-danger">${utils.escapeHtml(l.bounce_reason)}</small>` : '-'}</td>
           </tr>
-        `).join('');
+        `
+          )
+          .join('');
       } else {
         recipientRows = '<tr><td colspan="6" class="text-center text-muted py-3">No recipient data available</td></tr>';
       }
@@ -3003,7 +3122,6 @@ ${content}
       document.getElementById('campaignDetailModal').addEventListener('hidden.bs.modal', function () {
         this.remove();
       });
-
     } catch (error) {
       console.error('Error loading campaign detail:', error);
       utils.showToast('Failed to load campaign details: ' + error.message, 'error');
@@ -3015,14 +3133,14 @@ ${content}
    */
   getRecipientStatusBadge(status) {
     const badges = {
-      'pending': '<span class="badge bg-secondary">Pending</span>',
-      'sent': '<span class="badge bg-info">Sent</span>',
-      'delivered': '<span class="badge bg-success">Delivered</span>',
-      'opened': '<span class="badge bg-primary">Opened</span>',
-      'clicked': '<span class="badge bg-warning text-dark">Clicked</span>',
-      'bounced': '<span class="badge bg-danger">Bounced</span>',
-      'failed': '<span class="badge bg-danger">Failed</span>',
-      'unsubscribed': '<span class="badge bg-dark">Unsubscribed</span>'
+      pending: '<span class="badge bg-secondary">Pending</span>',
+      sent: '<span class="badge bg-info">Sent</span>',
+      delivered: '<span class="badge bg-success">Delivered</span>',
+      opened: '<span class="badge bg-primary">Opened</span>',
+      clicked: '<span class="badge bg-warning text-dark">Clicked</span>',
+      bounced: '<span class="badge bg-danger">Bounced</span>',
+      failed: '<span class="badge bg-danger">Failed</span>',
+      unsubscribed: '<span class="badge bg-dark">Unsubscribed</span>',
     };
     return badges[status] || `<span class="badge bg-secondary">${utils.escapeHtml(status || 'Unknown')}</span>`;
   },
@@ -3039,15 +3157,15 @@ ${content}
     const wrapper = document.querySelector(`[data-block-id="${blockId}"]`);
     if (!wrapper) return;
 
-    const newBlockId = 'block-' + (++this._blockIdCounter) + '-' + Math.random().toString(36).slice(2, 7);
+    const newBlockId = 'block-' + ++this._blockIdCounter + '-' + Math.random().toString(36).slice(2, 7);
     const clone = wrapper.cloneNode(true);
     clone.setAttribute('data-block-id', newBlockId);
 
     // Update any block-specific IDs in the clone
-    clone.querySelectorAll(`[data-block="${blockId}"]`).forEach(el => {
+    clone.querySelectorAll(`[data-block="${blockId}"]`).forEach((el) => {
       el.setAttribute('data-block', newBlockId);
     });
-    clone.querySelectorAll(`[data-for="${blockId}"]`).forEach(el => {
+    clone.querySelectorAll(`[data-for="${blockId}"]`).forEach((el) => {
       el.setAttribute('data-for', newBlockId);
     });
 
@@ -3059,7 +3177,7 @@ ${content}
     wrapper.insertAdjacentElement('afterend', clone);
 
     // Find original block type
-    const originalBlock = this.blocks.find(b => b.id === blockId);
+    const originalBlock = this.blocks.find((b) => b.id === blockId);
     this.blocks.push({ id: newBlockId, type: originalBlock?.type || 'text' });
 
     // Add fresh controls
@@ -3084,7 +3202,7 @@ ${content}
    * Get image block with URL input
    */
   getImageBlock() {
-    const blockId = 'img-' + (++this._blockIdCounter) + '-' + Math.random().toString(36).slice(2, 7);
+    const blockId = 'img-' + ++this._blockIdCounter + '-' + Math.random().toString(36).slice(2, 7);
     return `
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
@@ -3186,9 +3304,7 @@ ${content}
       if (uploadError) throw uploadError;
 
       // Get public URL
-      const { data: urlData } = STATE.client.storage
-        .from('media-gallery')
-        .getPublicUrl(filePath);
+      const { data: urlData } = STATE.client.storage.from('media-gallery').getPublicUrl(filePath);
 
       const publicUrl = urlData.publicUrl;
 
@@ -3204,7 +3320,6 @@ ${content}
       this.markUnsavedChanges();
       this.updatePreview();
       utils.showToast('Image uploaded successfully', 'success');
-
     } catch (error) {
       console.error('Image upload failed:', error);
       if (img) {
@@ -3225,7 +3340,7 @@ ${content}
    * Get button block with editable URL and text
    */
   getButtonBlock() {
-    const blockId = 'btn-' + (++this._blockIdCounter) + '-' + Math.random().toString(36).slice(2, 7);
+    const blockId = 'btn-' + ++this._blockIdCounter + '-' + Math.random().toString(36).slice(2, 7);
     return `
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
@@ -3298,7 +3413,7 @@ ${content}
   saveUndoState() {
     const state = {
       canvasHTML: this.canvas.innerHTML,
-      blocks: JSON.parse(JSON.stringify(this.blocks))
+      blocks: JSON.parse(JSON.stringify(this.blocks)),
     };
     this.undoStack.push(state);
     if (this.undoStack.length > this.maxUndoSteps) {
@@ -3320,7 +3435,7 @@ ${content}
     // Save current state to redo stack
     this.redoStack.push({
       canvasHTML: this.canvas.innerHTML,
-      blocks: JSON.parse(JSON.stringify(this.blocks))
+      blocks: JSON.parse(JSON.stringify(this.blocks)),
     });
 
     const state = this.undoStack.pop();
@@ -3345,7 +3460,7 @@ ${content}
     // Save current state to undo stack
     this.undoStack.push({
       canvasHTML: this.canvas.innerHTML,
-      blocks: JSON.parse(JSON.stringify(this.blocks))
+      blocks: JSON.parse(JSON.stringify(this.blocks)),
     });
 
     const state = this.redoStack.pop();
@@ -3362,12 +3477,12 @@ ${content}
    */
   rewireCanvasEvents() {
     // Clone-replace elements to remove any stale listeners before re-attaching
-    this.canvas.querySelectorAll('.email-richtext-content').forEach(el => {
+    this.canvas.querySelectorAll('.email-richtext-content').forEach((el) => {
       const fresh = el.cloneNode(true);
       el.parentNode.replaceChild(fresh, el);
       fresh.addEventListener('input', () => this.updatePreview());
     });
-    this.canvas.querySelectorAll('[contenteditable="true"]').forEach(el => {
+    this.canvas.querySelectorAll('[contenteditable="true"]').forEach((el) => {
       const fresh = el.cloneNode(true);
       el.parentNode.replaceChild(fresh, el);
       fresh.addEventListener('input', () => {
@@ -3418,13 +3533,11 @@ ${content}
           canvas_html: this.canvas.innerHTML,
           blocks: this.blocks,
           ab_enabled: this.abTestEnabled,
-          ab_variant_b: this.abVariantB
-        })
+          ab_variant_b: this.abVariantB,
+        }),
       };
 
-      const { error } = await STATE.client
-        .from('email_campaigns')
-        .insert(draftData);
+      const { error } = await STATE.client.from('email_campaigns').insert(draftData);
 
       if (error) throw error;
 
@@ -3451,7 +3564,11 @@ ${content}
       if (error) throw error;
 
       let notes = {};
-      try { notes = JSON.parse(campaign.notes || '{}'); } catch (e) { console.warn('Failed to parse campaign notes:', e.message); }
+      try {
+        notes = JSON.parse(campaign.notes || '{}');
+      } catch (e) {
+        console.warn('Failed to parse campaign notes:', e.message);
+      }
 
       // Populate settings
       const nameInput = document.getElementById('builderCampaignName');
@@ -3495,7 +3612,7 @@ ${content}
         // Fallback: load as single HTML code block (same as clone)
         this.blocks = [];
         this.canvas.innerHTML = '';
-        const blockId = 'block-' + (++this._blockIdCounter) + '-' + Math.random().toString(36).slice(2, 7);
+        const blockId = 'block-' + ++this._blockIdCounter + '-' + Math.random().toString(36).slice(2, 7);
         const blockWrapper = document.createElement('div');
         blockWrapper.className = 'email-block-wrapper';
         blockWrapper.setAttribute('data-block-id', blockId);
@@ -3522,7 +3639,6 @@ ${content}
 
       document.getElementById('emailCanvas')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       utils.showToast(`Draft "${campaign.campaign_name}" loaded`, 'success');
-
     } catch (error) {
       console.error('Error loading draft:', error);
       utils.showToast('Failed to load draft: ' + error.message, 'error');
@@ -3611,9 +3727,25 @@ ${content}
     }
 
     // Check body content
-    const spamWords = ['buy now', 'click here', 'free gift', 'no obligation', 'risk free', 'act immediately', 'don\'t delete', 'double your', 'earn extra cash', 'million dollars', 'as seen on', 'order now', 'special promotion', 'this is not spam', 'you have been selected'];
+    const spamWords = [
+      'buy now',
+      'click here',
+      'free gift',
+      'no obligation',
+      'risk free',
+      'act immediately',
+      "don't delete",
+      'double your',
+      'earn extra cash',
+      'million dollars',
+      'as seen on',
+      'order now',
+      'special promotion',
+      'this is not spam',
+      'you have been selected',
+    ];
     const lowerText = text.toLowerCase();
-    spamWords.forEach(word => {
+    spamWords.forEach((word) => {
       if (lowerText.includes(word)) {
         score += 1;
         issues.push({ severity: 'low', text: `Body contains spam phrase: "${word}"` });
@@ -3621,9 +3753,9 @@ ${content}
     });
 
     // Check for excessive caps in body
-    const words = text.split(/\s+/).filter(w => w.length > 3);
-    const capsWords = words.filter(w => w === w.toUpperCase());
-    if (words.length > 0 && (capsWords.length / words.length) > 0.3) {
+    const words = text.split(/\s+/).filter((w) => w.length > 3);
+    const capsWords = words.filter((w) => w === w.toUpperCase());
+    if (words.length > 0 && capsWords.length / words.length > 0.3) {
       score += 2;
       issues.push({ severity: 'medium', text: 'Too many ALL CAPS words in body' });
     }
@@ -3668,12 +3800,20 @@ ${content}
       ratingIcon = 'bi-x-circle-fill';
     }
 
-    const issuesHTML = issues.length > 0
-      ? issues.map(i => {
-          const icon = i.severity === 'high' ? 'bi-x-circle text-danger' : i.severity === 'medium' ? 'bi-exclamation-triangle text-warning' : 'bi-info-circle text-info';
-          return `<li class="mb-1"><i class="bi ${icon} me-2"></i>${i.text}</li>`;
-        }).join('')
-      : '<li class="text-success"><i class="bi bi-check-circle me-2"></i>No issues found!</li>';
+    const issuesHTML =
+      issues.length > 0
+        ? issues
+            .map((i) => {
+              const icon =
+                i.severity === 'high'
+                  ? 'bi-x-circle text-danger'
+                  : i.severity === 'medium'
+                    ? 'bi-exclamation-triangle text-warning'
+                    : 'bi-info-circle text-info';
+              return `<li class="mb-1"><i class="bi ${icon} me-2"></i>${i.text}</li>`;
+            })
+            .join('')
+        : '<li class="text-success"><i class="bi bi-check-circle me-2"></i>No issues found!</li>';
 
     const modalHTML = `
       <div class="modal fade" id="spamCheckModal" tabindex="-1">
@@ -3689,7 +3829,7 @@ ${content}
                 <h4 class="mt-2" style="color: ${ratingColor}">${rating}</h4>
                 <p class="text-muted">Score: ${score}/15 (lower is better)</p>
                 <div class="progress" style="height: 8px;">
-                  <div class="progress-bar" role="progressbar" style="width: ${Math.min(score / 15 * 100, 100)}%; background-color: ${ratingColor}"></div>
+                  <div class="progress-bar" role="progressbar" style="width: ${Math.min((score / 15) * 100, 100)}%; background-color: ${ratingColor}"></div>
                 </div>
               </div>
               <h6 class="mb-2">Issues Found:</h6>
@@ -3707,7 +3847,9 @@ ${content}
     document.body.insertAdjacentHTML('beforeend', modalHTML);
     const modal = new bootstrap.Modal(document.getElementById('spamCheckModal'));
     modal.show();
-    document.getElementById('spamCheckModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+    document.getElementById('spamCheckModal').addEventListener('hidden.bs.modal', function () {
+      this.remove();
+    });
   },
 
   // ==================================================
@@ -3738,10 +3880,22 @@ ${content}
     const replyTo = document.getElementById('builderReplyTo')?.value || fromEmail;
     const splitPercent = parseInt(document.getElementById('abSplitPercent')?.value || '50', 10);
 
-    if (!listId) { utils.showToast('Please select an email list', 'warning'); return; }
-    if (!subjectA) { utils.showToast('Please enter Subject A', 'warning'); return; }
-    if (!subjectB) { utils.showToast('Please enter Subject B (variant)', 'warning'); return; }
-    if (this.blocks.length === 0) { utils.showToast('Please add content first', 'warning'); return; }
+    if (!listId) {
+      utils.showToast('Please select an email list', 'warning');
+      return;
+    }
+    if (!subjectA) {
+      utils.showToast('Please enter Subject A', 'warning');
+      return;
+    }
+    if (!subjectB) {
+      utils.showToast('Please enter Subject B (variant)', 'warning');
+      return;
+    }
+    if (this.blocks.length === 0) {
+      utils.showToast('Please add content first', 'warning');
+      return;
+    }
 
     // Pre-check email config
     const configOk = await this.checkEmailConfig();
@@ -3762,11 +3916,18 @@ ${content}
       return;
     }
 
-    const countA = Math.round(count * splitPercent / 100);
+    const countA = Math.round((count * splitPercent) / 100);
     const countB = count - countA;
     const listName = document.getElementById('builderEmailList')?.selectedOptions[0]?.text || 'selected list';
 
-    if (!await utils.confirmDialog({ title: 'A/B Test Campaign', message: `A/B Test Campaign:\n\nVariant A (${splitPercent}%): "${subjectA}" -> ${countA} recipients\nVariant B (${100 - splitPercent}%): "${subjectB}" -> ${countB} recipients\n\nTotal: ${count} in "${listName}"\n\nProceed?`, confirmText: 'Send', danger: false })) {
+    if (
+      !(await utils.confirmDialog({
+        title: 'A/B Test Campaign',
+        message: `A/B Test Campaign:\n\nVariant A (${splitPercent}%): "${subjectA}" -> ${countA} recipients\nVariant B (${100 - splitPercent}%): "${subjectB}" -> ${countB} recipients\n\nTotal: ${count} in "${listName}"\n\nProceed?`,
+        confirmText: 'Send',
+        danger: false,
+      }))
+    ) {
       return;
     }
 
@@ -3784,7 +3945,7 @@ ${content}
         p_from_email: fromEmail,
         p_reply_to: replyTo,
         p_campaign_name: (campaignName || subjectA) + ' [A]',
-        p_limit: countA
+        p_limit: countA,
       });
 
       if (errorA) {
@@ -3792,11 +3953,15 @@ ${content}
         try {
           await apiClient.insert('email_campaigns', {
             campaign_name: (campaignName || subjectA) + ' [A/B Test - A]',
-            subject: subjectA, recipients: listName, status: 'Failed',
+            subject: subjectA,
+            recipients: listName,
+            status: 'Failed',
             total_recipients: countA,
-            notes: JSON.stringify({ error: errorA.message, list_id: listId, ab_test: true, variant: 'A' })
+            notes: JSON.stringify({ error: errorA.message, list_id: listId, ab_test: true, variant: 'A' }),
           });
-        } catch (e) { /* ignore log error */ }
+        } catch (e) {
+          /* ignore log error */
+        }
         throw new Error('Variant A failed: ' + errorA.message);
       }
 
@@ -3810,25 +3975,41 @@ ${content}
         p_reply_to: replyTo,
         p_campaign_name: (campaignName || subjectB) + ' [B]',
         p_offset: countA,
-        p_limit: countB
+        p_limit: countB,
       });
 
       if (errorB) {
         // A succeeded but B failed - log both with correct status
         try {
           await apiClient.insert('email_campaigns', {
-              campaign_name: (campaignName || subjectA) + ' [A/B Test - A]',
-              subject: subjectA, recipients: listName, status: 'Sent',
-              sent_date: new Date().toISOString(), total_recipients: countA,
-              notes: JSON.stringify({ html, from_name: fromName, from_email: fromEmail, reply_to: replyTo, list_id: listId, ab_test: true, variant: 'A', split: splitPercent })
-            });
+            campaign_name: (campaignName || subjectA) + ' [A/B Test - A]',
+            subject: subjectA,
+            recipients: listName,
+            status: 'Sent',
+            sent_date: new Date().toISOString(),
+            total_recipients: countA,
+            notes: JSON.stringify({
+              html,
+              from_name: fromName,
+              from_email: fromEmail,
+              reply_to: replyTo,
+              list_id: listId,
+              ab_test: true,
+              variant: 'A',
+              split: splitPercent,
+            }),
+          });
           await apiClient.insert('email_campaigns', {
-              campaign_name: (campaignName || subjectB) + ' [A/B Test - B]',
-              subject: subjectB, recipients: listName, status: 'Failed',
-              total_recipients: countB,
-              notes: JSON.stringify({ error: errorB.message, list_id: listId, ab_test: true, variant: 'B' })
-            });
-        } catch (e) { /* ignore log error */ }
+            campaign_name: (campaignName || subjectB) + ' [A/B Test - B]',
+            subject: subjectB,
+            recipients: listName,
+            status: 'Failed',
+            total_recipients: countB,
+            notes: JSON.stringify({ error: errorB.message, list_id: listId, ab_test: true, variant: 'B' }),
+          });
+        } catch (e) {
+          /* ignore log error */
+        }
         throw new Error('Variant A sent but Variant B failed: ' + errorB.message);
       }
 
@@ -3840,7 +4021,16 @@ ${content}
         status: 'Sent',
         sent_date: new Date().toISOString(),
         total_recipients: countA,
-        notes: JSON.stringify({ html, from_name: fromName, from_email: fromEmail, reply_to: replyTo, list_id: listId, ab_test: true, variant: 'A', split: splitPercent })
+        notes: JSON.stringify({
+          html,
+          from_name: fromName,
+          from_email: fromEmail,
+          reply_to: replyTo,
+          list_id: listId,
+          ab_test: true,
+          variant: 'A',
+          split: splitPercent,
+        }),
       });
       await apiClient.insert('email_campaigns', {
         campaign_name: (campaignName || subjectB) + ' [A/B Test - B]',
@@ -3849,7 +4039,16 @@ ${content}
         status: 'Sent',
         sent_date: new Date().toISOString(),
         total_recipients: countB,
-        notes: JSON.stringify({ html, from_name: fromName, from_email: fromEmail, reply_to: replyTo, list_id: listId, ab_test: true, variant: 'B', split: 100 - splitPercent })
+        notes: JSON.stringify({
+          html,
+          from_name: fromName,
+          from_email: fromEmail,
+          reply_to: replyTo,
+          list_id: listId,
+          ab_test: true,
+          variant: 'B',
+          split: 100 - splitPercent,
+        }),
       });
 
       utils.showToast(`A/B test sent! A: ${countA} recipients, B: ${countB} recipients`, 'success');
@@ -3906,9 +4105,7 @@ ${content}
       const offset = this.campaignLogPage * this.campaignLogPageSize;
 
       // Build query for count
-      let countQuery = STATE.client
-        .from('email_campaigns')
-        .select('*', { count: 'exact', head: true });
+      let countQuery = STATE.client.from('email_campaigns').select('*', { count: 'exact', head: true });
 
       if (filter !== 'all') countQuery = countQuery.eq('status', filter);
       if (search) countQuery = countQuery.or(`campaign_name.ilike.%${search}%,subject.ilike.%${search}%`);
@@ -3942,15 +4139,33 @@ ${content}
         return;
       }
 
-      tbody.innerHTML = campaigns.map(c => {
-        const statusBadge = this.getStatusBadge(c.status);
-        const sentDate = c.sent_date ? new Date(c.sent_date).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
-        const scheduledDate = c.scheduled_date ? new Date(c.scheduled_date).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
-        const displayDate = sentDate || scheduledDate || '-';
-        const openRate = c.total_recipients > 0 ? Math.round((c.opened_count || 0) / c.total_recipients * 100) : 0;
-        const clickRate = c.total_recipients > 0 ? Math.round((c.clicked_count || 0) / c.total_recipients * 100) : 0;
+      tbody.innerHTML = campaigns
+        .map((c) => {
+          const statusBadge = this.getStatusBadge(c.status);
+          const sentDate = c.sent_date
+            ? new Date(c.sent_date).toLocaleString('en-GB', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+              })
+            : '';
+          const scheduledDate = c.scheduled_date
+            ? new Date(c.scheduled_date).toLocaleString('en-GB', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+              })
+            : '';
+          const displayDate = sentDate || scheduledDate || '-';
+          const openRate = c.total_recipients > 0 ? Math.round(((c.opened_count || 0) / c.total_recipients) * 100) : 0;
+          const clickRate =
+            c.total_recipients > 0 ? Math.round(((c.clicked_count || 0) / c.total_recipients) * 100) : 0;
 
-        return `
+          return `
           <tr>
             <td class="text-truncate" style="max-width: 150px;" title="${utils.escapeHtml(c.campaign_name || '')}">${utils.escapeHtml(c.campaign_name || 'Untitled')}</td>
             <td class="text-truncate" style="max-width: 180px;" title="${utils.escapeHtml(c.subject || '')}">${utils.escapeHtml(c.subject || '-')}</td>
@@ -3967,10 +4182,10 @@ ${content}
               <button class="btn btn-outline-secondary btn-sm py-0 px-1" data-action="emailBuilder.viewCampaignDetail" data-id="${utils.escapeHtml(c.id)}" title="View Details"><i class="bi bi-eye"></i></button>
             </td>
           </tr>`;
-      }).join('');
+        })
+        .join('');
 
       this.renderCampaignPagination();
-
     } catch (error) {
       console.error('Error loading campaign log:', error);
       utils.showEmptyState('campaignLogBody', 9, 'Failed to load campaign log', 'bi-exclamation-triangle');
@@ -4067,7 +4282,7 @@ ${content}
         subject: document.getElementById('builderSubject')?.value || '',
         preheader: document.getElementById('builderPreheader')?.value || '',
         canvasHTML: this.canvas.innerHTML,
-        blocks: this.blocks
+        blocks: this.blocks,
       };
       localStorage.setItem('emailBuilder_autosave', JSON.stringify(state));
     } catch (e) {
@@ -4092,9 +4307,12 @@ ${content}
         return;
       }
 
-      const timeAgo = age < 60000 ? 'just now' :
-        age < 3600000 ? Math.round(age / 60000) + ' minutes ago' :
-        Math.round(age / 3600000) + ' hours ago';
+      const timeAgo =
+        age < 60000
+          ? 'just now'
+          : age < 3600000
+            ? Math.round(age / 60000) + ' minutes ago'
+            : Math.round(age / 3600000) + ' hours ago';
 
       const campaignInfo = state.campaignName ? ` ("${state.campaignName}")` : '';
 
@@ -4248,7 +4466,7 @@ ${content}
   triggerImageUpload(blockId) {
     const input = document.getElementById('imgUpload-' + blockId);
     if (input) input.click();
-  }
+  },
 };
 
 // Export to window

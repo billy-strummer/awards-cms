@@ -1,5 +1,7 @@
 /* ==================================================== */
 /* SPONSOR PORTAL - Self-Service Sponsor Management     */
+/* selectAll() is intentional for sponsors (small data-  */
+/* set, typically <50 records) — pagination not needed.  */
 /* ==================================================== */
 
 const sponsorPortalModule = {
@@ -136,6 +138,7 @@ const sponsorPortalModule = {
 
   async getImpressionStats(sponsorId) {
     try {
+      /* selectAll: justified — scoped to single sponsor */
       const rows = await apiClient.selectAll('sponsor_impressions', {
         select: 'tracked_at, page',
         filters: { sponsor_id: { eq: sponsorId } },

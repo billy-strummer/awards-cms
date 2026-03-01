@@ -11,5 +11,5 @@ module.exports = {
       '/* [jest-esm-transform] export stripped */'
     );
     return { code: transformed };
-  }
+  },
 };

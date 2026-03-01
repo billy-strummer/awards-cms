@@ -6,6 +6,10 @@ const aiVettingModule = {
   currentFilter: 'all',
   allResults: [],
   isVetting: false,
+  _currentPage: 1,
+  _pageSize: 50,
+  _totalCount: 0,
+  _totalPages: 1,
 
   /**
    * Open AI Vetting Modal
@@ -29,31 +33,41 @@ const aiVettingModule = {
    */
   async loadVettingResults() {
     try {
-      // Get latest vetting results
-      const { data: results, error } = await STATE.client
-        .from('ai_vetting_results')
-        .select('*')
-        .order('vetting_date', { ascending: false });
+      // Build server-side filters based on current filter
+      const filters = {};
+      if (this.currentFilter === 'flagged') {
+        filters.status = { op: 'eq', value: 'flagged' };
+        filters.dismissed = { op: 'is', value: null };
+      } else if (this.currentFilter === 'verified') {
+        filters.status = { op: 'eq', value: 'verified' };
+        filters.dismissed = { op: 'is', value: null };
+      }
 
-      if (error) throw error;
+      // Get paginated results via API proxy
+      const result = await apiClient.select('ai_vetting_results', {
+        filters,
+        sort: { column: 'vetting_date', ascending: false },
+        page: this._currentPage,
+        pageSize: this._pageSize,
+      });
 
-      this.allResults = results || [];
+      this.allResults = result.data || [];
+      this._totalCount = result.count || 0;
+      this._totalPages = result.totalPages || 1;
       this.renderResults();
       this.updateSummaryCards();
 
-      // Get last run info
-      const { data: lastRun } = await STATE.client
-        .from('ai_vetting_runs')
-        .select('*')
-        .order('start_time', { ascending: false })
-        .limit(1)
-        .single();
+      // Get last run info via API proxy (page 1, limit 1)
+      const runResult = await apiClient.select('ai_vetting_runs', {
+        sort: { column: 'start_time', ascending: false },
+        page: 1,
+        pageSize: 1,
+      });
 
-      if (lastRun) {
-        const lastRunTime = new Date(lastRun.start_time).toLocaleString();
+      if (runResult.data && runResult.data.length > 0) {
+        const lastRunTime = new Date(runResult.data[0].start_time).toLocaleString();
         document.getElementById('vettingModalLastRun').textContent = lastRunTime;
       }
-
     } catch (error) {
       console.error('Error loading vetting results:', error);
       utils.showErrorWithRetry(error, 'loading vetting results', () => this.loadVettingResults());
@@ -61,37 +75,65 @@ const aiVettingModule = {
   },
 
   /**
+   * Navigate to a specific page
+   * @param {number} page - Page number
+   * @returns {Promise<void>}
+   */
+  async goToPage(page) {
+    if (page < 1 || page > this._totalPages) return;
+    this._currentPage = page;
+    await this.loadVettingResults();
+  },
+
+  /**
    * Update summary cards
    */
-  updateSummaryCards() {
-    const verified = this.allResults.filter(r => r.status === 'verified' && !r.dismissed).length;
-    const flagged = this.allResults.filter(r => r.status === 'flagged' && !r.dismissed).length;
-    const total = this.allResults.length;
+  async updateSummaryCards() {
+    try {
+      const [totalResult, flaggedResult, verifiedResult] = await Promise.all([
+        apiClient.count('ai_vetting_results'),
+        apiClient.count('ai_vetting_results', {
+          status: { op: 'eq', value: 'flagged' },
+          dismissed: { op: 'is', value: null },
+        }),
+        apiClient.count('ai_vetting_results', {
+          status: { op: 'eq', value: 'verified' },
+          dismissed: { op: 'is', value: null },
+        }),
+      ]);
 
-    document.getElementById('vettingVerifiedCount').textContent = verified;
-    document.getElementById('vettingModalFlaggedCount').textContent = flagged;
-    document.getElementById('vettingTotalCount').textContent = total;
+      const total = totalResult.count || 0;
+      const flagged = flaggedResult.count || 0;
+      const verified = verifiedResult.count || 0;
 
-    // Update filter badges
-    document.getElementById('filterAllCount').textContent = total;
-    document.getElementById('filterFlaggedCount').textContent = flagged;
-    document.getElementById('filterVerifiedCount').textContent = verified;
+      document.getElementById('vettingVerifiedCount').textContent = verified;
+      document.getElementById('vettingModalFlaggedCount').textContent = flagged;
+      document.getElementById('vettingTotalCount').textContent = total;
+
+      // Update filter badges
+      document.getElementById('filterAllCount').textContent = total;
+      document.getElementById('filterFlaggedCount').textContent = flagged;
+      document.getElementById('filterVerifiedCount').textContent = verified;
+    } catch (error) {
+      console.error('Error updating summary cards:', error);
+    }
   },
 
   /**
    * Filter results
    * @param {string} filter - Filter type ('all', 'flagged', 'verified')
    */
-  filterResults(filter) {
+  async filterResults(filter) {
     this.currentFilter = filter;
+    this._currentPage = 1;
 
     // Update button states
-    document.querySelectorAll('.btn-group button').forEach(btn => {
+    document.querySelectorAll('.btn-group button').forEach((btn) => {
       btn.classList.remove('active');
     });
     event.target.closest('button').classList.add('active');
 
-    this.renderResults();
+    await this.loadVettingResults();
   },
 
   /**
@@ -100,13 +142,8 @@ const aiVettingModule = {
   renderResults() {
     const tbody = document.getElementById('vettingResultsTableBody');
 
-    // Filter results based on current filter
-    let filtered = this.allResults;
-    if (this.currentFilter === 'flagged') {
-      filtered = this.allResults.filter(r => r.status === 'flagged' && !r.dismissed);
-    } else if (this.currentFilter === 'verified') {
-      filtered = this.allResults.filter(r => r.status === 'verified' && !r.dismissed);
-    }
+    // Results are already server-side filtered
+    const filtered = this.allResults;
 
     if (filtered.length === 0) {
       tbody.innerHTML = `
@@ -122,22 +159,24 @@ const aiVettingModule = {
       return;
     }
 
-    tbody.innerHTML = filtered.map(result => {
-      const statusBadge = result.status === 'flagged'
-        ? '<span class="badge bg-danger">Flagged</span>'
-        : '<span class="badge bg-success">Verified</span>';
+    tbody.innerHTML = filtered
+      .map((result) => {
+        const statusBadge =
+          result.status === 'flagged'
+            ? '<span class="badge bg-danger">Flagged</span>'
+            : '<span class="badge bg-success">Verified</span>';
 
-      const operationalBadge = result.is_operational
-        ? '<span class="badge bg-success"><i class="bi bi-check-circle"></i></span>'
-        : '<span class="badge bg-danger"><i class="bi bi-x-circle"></i></span>';
+        const operationalBadge = result.is_operational
+          ? '<span class="badge bg-success"><i class="bi bi-check-circle"></i></span>'
+          : '<span class="badge bg-danger"><i class="bi bi-x-circle"></i></span>';
 
-      const categoryBadge = result.category_match
-        ? '<span class="badge bg-success"><i class="bi bi-check-circle"></i></span>'
-        : '<span class="badge bg-warning"><i class="bi bi-exclamation-circle"></i></span>';
+        const categoryBadge = result.category_match
+          ? '<span class="badge bg-success"><i class="bi bi-check-circle"></i></span>'
+          : '<span class="badge bg-warning"><i class="bi bi-exclamation-circle"></i></span>';
 
-      const reputationStars = '⭐'.repeat(result.reputation_score || 0);
+        const reputationStars = '⭐'.repeat(result.reputation_score || 0);
 
-      return `
+        return `
         <tr>
           <td>
             <div class="fw-semibold">${utils.escapeHtml(result.company_name)}</div>
@@ -150,32 +189,49 @@ const aiVettingModule = {
           <td class="text-center" title="Reputation: ${result.reputation_score}/10">${reputationStars}</td>
           <td>
             <div class="small">
-              ${result.ai_recommendation ? `
+              ${
+                result.ai_recommendation
+                  ? `
                 <div class="mb-1"><strong>Recommendation:</strong> ${utils.escapeHtml(result.ai_recommendation)}</div>
-              ` : ''}
-              ${result.recent_news ? `
+              `
+                  : ''
+              }
+              ${
+                result.recent_news
+                  ? `
                 <div class="mb-1"><strong>News:</strong> ${utils.escapeHtml(result.recent_news.substring(0, 100))}...</div>
-              ` : ''}
-              ${result.ownership_changes ? `
+              `
+                  : ''
+              }
+              ${
+                result.ownership_changes
+                  ? `
                 <div><strong>Changes:</strong> ${utils.escapeHtml(result.ownership_changes.substring(0, 100))}...</div>
-              ` : ''}
+              `
+                  : ''
+              }
             </div>
           </td>
           <td class="text-center">
             <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-primary" onclick="aiVettingModule.viewDetails('${result.id}')" title="View full details">
+              <button class="btn btn-outline-primary" data-action="aiVettingModule.viewDetails" data-id="${result.id}" title="View full details">
                 <i class="bi bi-eye"></i>
               </button>
-              ${result.status === 'flagged' ? `
-                <button class="btn btn-outline-success" onclick="aiVettingModule.dismissFlag('${result.id}')" title="Dismiss flag">
+              ${
+                result.status === 'flagged'
+                  ? `
+                <button class="btn btn-outline-success" data-action="aiVettingModule.dismissFlag" data-id="${result.id}" title="Dismiss flag">
                   <i class="bi bi-check"></i>
                 </button>
-              ` : ''}
+              `
+                  : ''
+              }
             </div>
           </td>
         </tr>
       `;
-    }).join('');
+      })
+      .join('');
   },
 
   /**
@@ -193,17 +249,13 @@ const aiVettingModule = {
     document.getElementById('vettingProgressSection').style.display = 'block';
 
     try {
-      // Create vetting run record
-      const { data: vettingRun, error: runError } = await STATE.client
-        .from('ai_vetting_runs')
-        .insert({
-          total_companies: STATE.allOrganisations.length,
-          status: 'running'
-        })
-        .select()
-        .single();
+      // Create vetting run record via API proxy
+      const { data: vettingRunArr } = await apiClient.insert('ai_vetting_runs', {
+        total_companies: STATE.allOrganisations.length,
+        status: 'running',
+      });
 
-      if (runError) throw runError;
+      const vettingRun = vettingRunArr[0];
 
       let vettedCount = 0;
       let flaggedCount = 0;
@@ -228,26 +280,22 @@ const aiVettingModule = {
         }
 
         // Small delay to avoid rate limits
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
 
-      // Update vetting run record
-      await STATE.client
-        .from('ai_vetting_runs')
-        .update({
-          end_time: new Date().toISOString(),
-          companies_vetted: vettedCount,
-          companies_flagged: flaggedCount,
-          status: 'completed'
-        })
-        .eq('id', vettingRun.id);
+      // Update vetting run record via API proxy
+      await apiClient.update('ai_vetting_runs', vettingRun.id, {
+        end_time: new Date().toISOString(),
+        companies_vetted: vettedCount,
+        companies_flagged: flaggedCount,
+        status: 'completed',
+      });
 
       // Reload results
       await this.loadVettingResults();
       await this.updateDashboardCard();
 
       utils.showToast(`Vetting complete! ${flaggedCount} companies flagged.`, 'success');
-
     } catch (error) {
       console.error('Error running vetting:', error);
       utils.showToast('Failed to complete vetting: ' + error.message, 'error');
@@ -271,54 +319,44 @@ const aiVettingModule = {
           companyName: org.company_name,
           website: org.website || '',
           sector: org.sector || '',
-          county: org.region || ''
-        }
+          county: org.region || '',
+        },
       });
 
       if (fnError) throw fnError;
 
       // Determine status
-      const status = (!aiResult.is_operational || !aiResult.category_match || aiResult.reputation_score < 5)
-        ? 'flagged'
-        : 'verified';
+      const status =
+        !aiResult.is_operational || !aiResult.category_match || aiResult.reputation_score < 5 ? 'flagged' : 'verified';
 
-      // Save to database
-      const { data: result, error } = await STATE.client
-        .from('ai_vetting_results')
-        .insert({
-          organisation_id: org.id,
-          company_name: org.company_name,
-          sector: org.sector,
-          is_operational: aiResult.is_operational,
-          category_match: aiResult.category_match,
-          reputation_score: aiResult.reputation_score,
-          recent_news: aiResult.recent_news,
-          ownership_changes: aiResult.ownership_changes,
-          ai_recommendation: aiResult.recommendation,
-          confidence_score: aiResult.confidence_score,
-          status: status,
-          raw_response: aiResult
-        })
-        .select()
-        .single();
+      // Save to database via API proxy
+      const { data: resultArr } = await apiClient.insert('ai_vetting_results', {
+        organisation_id: org.id,
+        company_name: org.company_name,
+        sector: org.sector,
+        is_operational: aiResult.is_operational,
+        category_match: aiResult.category_match,
+        reputation_score: aiResult.reputation_score,
+        recent_news: aiResult.recent_news,
+        ownership_changes: aiResult.ownership_changes,
+        ai_recommendation: aiResult.recommendation,
+        confidence_score: aiResult.confidence_score,
+        status: status,
+        raw_response: aiResult,
+      });
 
-      if (error) throw error;
-
-      return result;
-
+      return resultArr[0];
     } catch (error) {
       console.error(`Error vetting ${org.company_name}:`, error);
 
-      // Save error result
-      await STATE.client
-        .from('ai_vetting_results')
-        .insert({
-          organisation_id: org.id,
-          company_name: org.company_name,
-          sector: org.sector,
-          status: 'needs_review',
-          ai_recommendation: `Error during vetting: ${error.message}`
-        });
+      // Save error result via API proxy
+      await apiClient.insert('ai_vetting_results', {
+        organisation_id: org.id,
+        company_name: org.company_name,
+        sector: org.sector,
+        status: 'needs_review',
+        ai_recommendation: `Error during vetting: ${error.message}`,
+      });
 
       return { status: 'needs_review' };
     }
@@ -330,7 +368,7 @@ const aiVettingModule = {
    * @returns {Promise<void>}
    */
   async viewDetails(resultId) {
-    const result = this.allResults.find(r => r.id === resultId);
+    const result = this.allResults.find((r) => r.id === resultId);
     if (!result) return;
 
     const detailsHtml = `
@@ -359,19 +397,27 @@ const aiVettingModule = {
           <strong>Confidence:</strong> ${(result.confidence_score * 100).toFixed(0)}%
         </div>
 
-        ${result.recent_news ? `
+        ${
+          result.recent_news
+            ? `
           <div class="mb-3">
             <strong>Recent News:</strong>
             <p>${utils.escapeHtml(result.recent_news)}</p>
           </div>
-        ` : ''}
+        `
+            : ''
+        }
 
-        ${result.ownership_changes ? `
+        ${
+          result.ownership_changes
+            ? `
           <div class="mb-3">
             <strong>Ownership Changes:</strong>
             <p>${utils.escapeHtml(result.ownership_changes)}</p>
           </div>
-        ` : ''}
+        `
+            : ''
+        }
 
         <div class="mb-3">
           <strong>AI Recommendation:</strong>
@@ -393,24 +439,26 @@ const aiVettingModule = {
    * @returns {Promise<void>}
    */
   async dismissFlag(resultId) {
-    if (!await utils.confirmDialog({ title: 'Dismiss Flag', message: 'Are you sure you want to dismiss this flag?', confirmText: 'Dismiss', danger: false })) return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Dismiss Flag',
+        message: 'Are you sure you want to dismiss this flag?',
+        confirmText: 'Dismiss',
+        danger: false,
+      }))
+    )
+      return;
 
     try {
-      const { error } = await STATE.client
-        .from('ai_vetting_results')
-        .update({
-          dismissed: true,
-          dismissed_at: new Date().toISOString(),
-          status: 'verified'
-        })
-        .eq('id', resultId);
-
-      if (error) throw error;
+      await apiClient.update('ai_vetting_results', resultId, {
+        dismissed: true,
+        dismissed_at: new Date().toISOString(),
+        status: 'verified',
+      });
 
       await this.loadVettingResults();
       await this.updateDashboardCard();
       utils.showToast('Flag dismissed', 'success');
-
     } catch (error) {
       console.error('Error dismissing flag:', error);
       utils.showToast('Failed to dismiss flag', 'error');
@@ -426,9 +474,20 @@ const aiVettingModule = {
       return;
     }
 
-    const headers = ['Company Name', 'Sector', 'Status', 'Operational', 'Category Match', 'Reputation', 'Recent News', 'Ownership Changes', 'Recommendation', 'Vetted Date'];
+    const headers = [
+      'Company Name',
+      'Sector',
+      'Status',
+      'Operational',
+      'Category Match',
+      'Reputation',
+      'Recent News',
+      'Ownership Changes',
+      'Recommendation',
+      'Vetted Date',
+    ];
 
-    const rows = this.allResults.map(r => [
+    const rows = this.allResults.map((r) => [
       r.company_name,
       r.sector || '',
       r.status,
@@ -438,11 +497,11 @@ const aiVettingModule = {
       r.recent_news || '',
       r.ownership_changes || '',
       r.ai_recommendation || '',
-      new Date(r.vetting_date).toLocaleDateString()
+      new Date(r.vetting_date).toLocaleDateString(),
     ]);
 
     const csv = [headers, ...rows]
-      .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
       .join('\n');
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -463,21 +522,28 @@ const aiVettingModule = {
    */
   async updateDashboardCard() {
     try {
-      const { data: results } = await STATE.client
-        .from('ai_vetting_results')
-        .select('status, dismissed, vetting_date')
-        .order('vetting_date', { ascending: false });
+      const [flaggedResult, latestResult] = await Promise.all([
+        apiClient.count('ai_vetting_results', {
+          status: { op: 'eq', value: 'flagged' },
+          dismissed: { op: 'is', value: null },
+        }),
+        apiClient.select('ai_vetting_results', {
+          select: 'vetting_date',
+          sort: { column: 'vetting_date', ascending: false },
+          page: 1,
+          pageSize: 1,
+        }),
+      ]);
 
-      const flagged = results?.filter(r => r.status === 'flagged' && !r.dismissed).length || 0;
+      const flagged = flaggedResult.count || 0;
       document.getElementById('vettingFlaggedCount').textContent = flagged;
 
       // Update last run time
-      if (results && results.length > 0) {
-        const lastRun = new Date(results[0].vetting_date);
+      if (latestResult.data && latestResult.data.length > 0) {
+        const lastRun = new Date(latestResult.data[0].vetting_date);
         const timeAgo = this.getTimeAgo(lastRun);
         document.getElementById('vettingLastRun').textContent = timeAgo;
       }
-
     } catch (error) {
       console.error('Error updating dashboard card:', error);
     }
@@ -497,7 +563,7 @@ const aiVettingModule = {
       week: 604800,
       day: 86400,
       hour: 3600,
-      minute: 60
+      minute: 60,
     };
 
     for (const [unit, secondsInUnit] of Object.entries(intervals)) {
@@ -508,7 +574,7 @@ const aiVettingModule = {
     }
 
     return 'Just now';
-  }
+  },
 };
 
 // Export to window

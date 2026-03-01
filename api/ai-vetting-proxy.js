@@ -8,7 +8,7 @@
 const { Anthropic } = require('@anthropic-ai/sdk');
 
 const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY
+  apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
 /**
@@ -28,7 +28,10 @@ async function vetCompany({ companyName, website, sector, county }) {
   }
 
   // Sanitise inputs to prevent prompt injection
-  const sanitise = (s) => String(s || '').replace(/[<>{}[\]]/g, '').substring(0, 200);
+  const sanitise = (s) =>
+    String(s || '')
+      .replace(/[<>{}[\]]/g, '')
+      .substring(0, 200);
   const safeCompany = sanitise(companyName);
   const safeWebsite = sanitise(website) || 'Not provided';
   const safeSector = sanitise(sector) || 'Not provided';
@@ -63,7 +66,7 @@ Provide your response in the following JSON format:
   const message = await anthropic.messages.create({
     model: 'claude-sonnet-4-5-20250929',
     max_tokens: 1024,
-    messages: [{ role: 'user', content: prompt }]
+    messages: [{ role: 'user', content: prompt }],
   });
 
   const content = message.content?.[0]?.text;
@@ -94,19 +97,19 @@ async function vetCompanies(companies) {
         company_name: company.companyName,
         organisation_id: company.organisationId,
         ...result,
-        status: result.reputation_score < 4 || !result.is_operational ? 'flagged' : 'clear'
+        status: result.reputation_score < 4 || !result.is_operational ? 'flagged' : 'clear',
       });
     } catch (e) {
       results.push({
         company_name: company.companyName,
         organisation_id: company.organisationId,
         status: 'error',
-        error: e.message
+        error: e.message,
       });
     }
 
     // Rate limit: 200ms delay between calls
-    await new Promise(r => setTimeout(r, 200));
+    await new Promise((r) => setTimeout(r, 200));
   }
 
   return results;

@@ -1758,7 +1758,7 @@ const awardsModule = {
 
       await this.loadAwards();
       utils.showToast(
-        'Award deleted. <a href="#" onclick="event.preventDefault(); utils.undoLastDelete(\'awards\')">Undo</a>',
+        'Award deleted. <a href="#" data-action="utils.undoLastDelete" data-id="awards" data-prevent-default="true">Undo</a>',
         'info'
       );
     } catch (error) {

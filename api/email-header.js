@@ -25,7 +25,11 @@
  * @returns {string} The HTML-escaped string.
  */
 const escHtml = (s) =>
-  String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  String(s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 
 /**
  * Resolve branding fields with sensible defaults.
@@ -35,13 +39,13 @@ const escHtml = (s) =>
  */
 function resolveBranding(branding = {}) {
   return {
-    brandName:      branding.company_name    || process.env.FROM_NAME || 'British Trade Awards',
-    primaryColor:   branding.primary_color   || '#000000',
+    brandName: branding.company_name || process.env.FROM_NAME || 'British Trade Awards',
+    primaryColor: branding.primary_color || '#000000',
     secondaryColor: branding.secondary_color || '#1a1a1a',
-    accentColor:    branding.accent_color    || '#D4AF37',
-    logoUrl:        branding.logo_url        || process.env.BTA_LOGO_URL || '',
-    contactEmail:   branding.email_from      || branding.email_reply_to || process.env.FROM_EMAIL || '',
-    websiteUrl:     branding.custom_domain   || '',
+    accentColor: branding.accent_color || '#D4AF37',
+    logoUrl: branding.logo_url || process.env.BTA_LOGO_URL || '',
+    contactEmail: branding.email_from || branding.email_reply_to || process.env.FROM_EMAIL || '',
+    websiteUrl: branding.custom_domain || '',
   };
 }
 
@@ -60,17 +64,17 @@ function buildEmailHeader(branding = {}, { subtitle = 'Self-Nomination Entry Con
   const safeSubtitle = escHtml(subtitle);
 
   const headerContent = b.logoUrl
-    ? `<table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr>`
-      + `<td style="vertical-align:middle;padding-right:25px;">`
-      + `<img src="${escHtml(b.logoUrl)}" alt="${escHtml(b.brandName)}" style="height:100px;width:auto;display:block;">`
-      + `</td>`
-      + `<td style="vertical-align:middle;">`
-      + `<h1 style="color:${b.accentColor};margin:0;font-size:28px;font-family:Georgia,'Times New Roman',serif;font-weight:900;letter-spacing:3px;text-transform:uppercase;line-height:1.3;text-shadow:0 2px 8px rgba(0,0,0,0.5);">${escHtml(b.brandName)}</h1>`
-      + `<p style="color:${b.accentColor};margin:5px 0 0;font-size:14px;font-family:Arial,Helvetica,sans-serif;letter-spacing:2px;text-transform:uppercase;opacity:0.95;font-weight:300;">${safeSubtitle}</p>`
-      + `</td>`
-      + `</tr></table>`
-    : `<h1 style="color:${b.accentColor};margin:0;font-size:28px;font-family:Georgia,'Times New Roman',serif;font-weight:900;letter-spacing:3px;text-transform:uppercase;text-shadow:0 2px 8px rgba(0,0,0,0.5);">${escHtml(b.brandName)}</h1>`
-      + `<p style="color:${b.accentColor};margin:5px 0 0;font-size:14px;font-family:Arial,Helvetica,sans-serif;letter-spacing:2px;text-transform:uppercase;opacity:0.95;font-weight:300;">${safeSubtitle}</p>`;
+    ? `<table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr>` +
+      `<td style="vertical-align:middle;padding-right:25px;">` +
+      `<img src="${escHtml(b.logoUrl)}" alt="${escHtml(b.brandName)}" style="height:100px;width:auto;display:block;">` +
+      `</td>` +
+      `<td style="vertical-align:middle;">` +
+      `<h1 style="color:${b.accentColor};margin:0;font-size:28px;font-family:Georgia,'Times New Roman',serif;font-weight:900;letter-spacing:3px;text-transform:uppercase;line-height:1.3;text-shadow:0 2px 8px rgba(0,0,0,0.5);">${escHtml(b.brandName)}</h1>` +
+      `<p style="color:${b.accentColor};margin:5px 0 0;font-size:14px;font-family:Arial,Helvetica,sans-serif;letter-spacing:2px;text-transform:uppercase;opacity:0.95;font-weight:300;">${safeSubtitle}</p>` +
+      `</td>` +
+      `</tr></table>`
+    : `<h1 style="color:${b.accentColor};margin:0;font-size:28px;font-family:Georgia,'Times New Roman',serif;font-weight:900;letter-spacing:3px;text-transform:uppercase;text-shadow:0 2px 8px rgba(0,0,0,0.5);">${escHtml(b.brandName)}</h1>` +
+      `<p style="color:${b.accentColor};margin:5px 0 0;font-size:14px;font-family:Arial,Helvetica,sans-serif;letter-spacing:2px;text-transform:uppercase;opacity:0.95;font-weight:300;">${safeSubtitle}</p>`;
 
   return `<div style="background:linear-gradient(135deg,${b.primaryColor} 0%,${b.secondaryColor} 100%);padding:35px 40px;text-align:center;border-bottom:3px solid ${b.accentColor};">
     ${headerContent}

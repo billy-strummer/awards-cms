@@ -5,7 +5,8 @@
 
 const { JSDOM } = require('jsdom');
 
-const dom = new JSDOM(`<!DOCTYPE html><html><body>
+const dom = new JSDOM(
+  `<!DOCTYPE html><html><body>
   <div id="loadingBar" style="display:none;"></div>
   <div id="notificationToast"><span id="toastIcon"></span><span id="toastTitle"></span><span id="toastMessage"></span></div>
   <div id="connectionStatus"><span class="status-icon"></span><span class="status-text"></span></div>
@@ -24,7 +25,9 @@ const dom = new JSDOM(`<!DOCTYPE html><html><body>
   <span id="awardsCount"></span>
   <span id="eventsCount"></span>
   <span id="winnersCount"></span>
-</body></html>`, { url: 'http://localhost' });
+</body></html>`,
+  { url: 'http://localhost' }
+);
 
 global.window = dom.window;
 global.document = dom.window.document;
@@ -33,9 +36,18 @@ global.navigator = dom.window.navigator;
 global.HTMLElement = dom.window.HTMLElement;
 
 global.bootstrap = {
-  Toast: class { show() {} hide() {} },
-  Modal: class { show() {} hide() {} static getInstance() { return { hide() {} }; } },
-  Tooltip: class {}
+  Toast: class {
+    show() {}
+    hide() {}
+  },
+  Modal: class {
+    show() {}
+    hide() {}
+    static getInstance() {
+      return { hide() {} };
+    }
+  },
+  Tooltip: class {},
 };
 
 // Create a mock Supabase client with configurable responses
@@ -44,7 +56,7 @@ const mockAuth = {
   signInWithPassword: jest.fn(),
   signOut: jest.fn(() => Promise.resolve({ error: null })),
   getUser: jest.fn(),
-  onAuthStateChange: jest.fn(() => ({ data: { subscription: { unsubscribe: jest.fn() } } }))
+  onAuthStateChange: jest.fn(() => ({ data: { subscription: { unsubscribe: jest.fn() } } })),
 };
 
 const mockSupabase = {
@@ -57,9 +69,16 @@ const mockSupabase = {
   order: jest.fn(() => mockSupabase),
   range: jest.fn(() => mockSupabase),
   single: jest.fn(() => Promise.resolve({ data: null, error: null })),
-  then: jest.fn(cb => cb({ data: [], error: null })),
+  then: jest.fn((cb) => cb({ data: [], error: null })),
   auth: mockAuth,
-  channel: jest.fn(() => ({ on: jest.fn(function() { return this; }), subscribe: jest.fn(function() { return this; }) }))
+  channel: jest.fn(() => ({
+    on: jest.fn(function () {
+      return this;
+    }),
+    subscribe: jest.fn(function () {
+      return this;
+    }),
+  })),
 };
 
 global.supabase = { createClient: () => mockSupabase };
@@ -157,7 +176,7 @@ describe('Auth - Session Check', () => {
     const mockUser = { email: 'admin@test.com', id: 'user-123' };
     mockAuth.getSession.mockResolvedValue({
       data: { session: { user: mockUser, access_token: 'valid-token' } },
-      error: null
+      error: null,
     });
 
     await authModule.checkSession();
@@ -168,7 +187,7 @@ describe('Auth - Session Check', () => {
   test('checkSession shows login when no session exists', async () => {
     mockAuth.getSession.mockResolvedValue({
       data: { session: null },
-      error: null
+      error: null,
     });
 
     await authModule.checkSession();
@@ -178,7 +197,7 @@ describe('Auth - Session Check', () => {
   test('checkSession shows login on error', async () => {
     mockAuth.getSession.mockResolvedValue({
       data: { session: null },
-      error: new Error('Network error')
+      error: new Error('Network error'),
     });
 
     await authModule.checkSession();
@@ -188,7 +207,7 @@ describe('Auth - Session Check', () => {
   test('checkSession sets up auth state change listener', async () => {
     mockAuth.getSession.mockResolvedValue({
       data: { session: null },
-      error: null
+      error: null,
     });
 
     await authModule.checkSession();
@@ -246,7 +265,7 @@ describe('Auth - Login', () => {
 
     mockAuth.signInWithPassword.mockResolvedValue({
       data: { user: { email: 'test@test.com' } },
-      error: null
+      error: null,
     });
 
     await authModule.handleLogin();
@@ -254,7 +273,7 @@ describe('Auth - Login', () => {
     // After successful login, button state should be restored
     expect(mockAuth.signInWithPassword).toHaveBeenCalledWith({
       email: 'test@test.com',
-      password: 'password123'
+      password: 'password123',
     });
   });
 
@@ -265,7 +284,7 @@ describe('Auth - Login', () => {
 
     mockAuth.signInWithPassword.mockResolvedValue({
       data: { user: mockUser },
-      error: null
+      error: null,
     });
 
     await authModule.handleLogin();
@@ -280,7 +299,7 @@ describe('Auth - Login', () => {
 
     mockAuth.signInWithPassword.mockResolvedValue({
       data: { user: null },
-      error: new Error('Invalid login credentials')
+      error: new Error('Invalid login credentials'),
     });
 
     await authModule.handleLogin();
@@ -296,7 +315,7 @@ describe('Auth - Login', () => {
 
     mockAuth.signInWithPassword.mockResolvedValue({
       data: { user: null },
-      error: new Error('Failed to fetch')
+      error: new Error('Failed to fetch'),
     });
 
     await authModule.handleLogin();
@@ -313,7 +332,7 @@ describe('Auth - Logout', () => {
     STATE.currentUser = { email: 'test@test.com' };
 
     // Add confirm dialog DOM elements that handleLogout needs
-    ['confirmDialogModal', 'confirmDialogTitle', 'confirmDialogBody', 'confirmDialogOk'].forEach(id => {
+    ['confirmDialogModal', 'confirmDialogTitle', 'confirmDialogBody', 'confirmDialogOk'].forEach((id) => {
       if (!document.getElementById(id)) {
         const el = document.createElement('div');
         el.id = id;

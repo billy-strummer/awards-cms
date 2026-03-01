@@ -289,6 +289,14 @@ const seatingEnhancements = {
     }
   },
 
+  promptCustomSection() {
+    const name = prompt('Section name:');
+    if (name) {
+      const color = prompt('Color hex:', '#0d6efd') || '#0d6efd';
+      this.addSection(name, color);
+    }
+  },
+
   async addSection(name, color) {
     const em = window.eventsModule,
       eid = em.currentEventIdTablePlan;
@@ -370,7 +378,7 @@ const seatingEnhancements = {
       if (last)
         last.insertAdjacentHTML(
           'afterend',
-          `<div class="form-check form-switch mb-2 se-access-toggle"><input class="form-check-input" type="checkbox" id="seAccessible" ${acc ? 'checked' : ''} onchange="seatingEnhancements._toggleAccessible(eventsModule,'${tableId}',this.checked)"><label class="form-check-label small" for="seAccessible"><i class="bi bi-universal-access me-1"></i>Wheelchair accessible</label></div>`
+          `<div class="form-check form-switch mb-2 se-access-toggle"><input class="form-check-input" type="checkbox" id="seAccessible" ${acc ? 'checked' : ''} data-on-change="seatingEnhancements._toggleAccessibleFromChange" data-id="${tableId}"><label class="form-check-label small" for="seAccessible"><i class="bi bi-universal-access me-1"></i>Wheelchair accessible</label></div>`
         );
     }
   },
@@ -396,6 +404,13 @@ const seatingEnhancements = {
     } catch (e) {
       utils.showToast('Failed to update', 'error');
     }
+  },
+
+  /**
+   * Wrapper for _toggleAccessible called via data-on-change (receives tableId, value, event).
+   */
+  _toggleAccessibleFromChange(tableId, _value, event) {
+    this._toggleAccessible(eventsModule, tableId, event.target.checked);
   },
 
   _renderTableIcons(em) {
@@ -476,7 +491,7 @@ const seatingEnhancements = {
           <span class="badge bg-secondary">${totalSeats} total seats</span>
           ${unassigned > 0 ? `<span class="badge bg-warning text-dark">${unassigned} unassigned</span>` : ''}
           <button class="btn btn-sm btn-outline-primary" data-action="seatingEnhancements.printSeatingList" title="Print Seating List"><i class="bi bi-printer me-1"></i>Print</button>
-          <button class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('seSeatingListOverlay').remove()"><i class="bi bi-x-lg"></i></button>
+          <button class="btn btn-sm btn-outline-secondary" data-action="seatingEnhancements.closeSeatingList"><i class="bi bi-x-lg"></i></button>
         </div>
       </div>
       <div class="d-flex gap-1 mb-3">
@@ -486,6 +501,11 @@ const seatingEnhancements = {
       <div id="seSlContent">${this._renderSlContent()}</div>
     </div>`;
     document.body.appendChild(ov);
+  },
+
+  closeSeatingList() {
+    const el = document.getElementById('seSeatingListOverlay');
+    if (el) el.remove();
   },
 
   _setSlSort(mode) {
@@ -964,7 +984,7 @@ const seatingEnhancements = {
           <li><a class="dropdown-item" href="#" data-action="seatingEnhancements.addSection" data-prevent-default="true" data-args='["Bar","#20c997"]'><i class="bi bi-cup-straw me-2" style="color:#20c997;"></i>Bar</a></li>
           <li><a class="dropdown-item" href="#" data-action="seatingEnhancements.addSection" data-prevent-default="true" data-args='["General","#6c757d"]'><i class="bi bi-people me-2" style="color:#6c757d;"></i>General</a></li>
           <li><hr class="dropdown-divider"></li>
-          <li><a class="dropdown-item" href="#" onclick="let n=prompt('Section name:');if(n)seatingEnhancements.addSection(n,prompt('Color hex:','#0d6efd')||'#0d6efd');return false"><i class="bi bi-plus-circle text-primary me-2"></i>Custom...</a></li>
+          <li><a class="dropdown-item" href="#" data-action="seatingEnhancements.promptCustomSection" data-prevent-default="true"><i class="bi bi-plus-circle text-primary me-2"></i>Custom...</a></li>
         </ul></div>
       <button class="btn btn-sm btn-outline-secondary" data-action="seatingEnhancements.showDietarySummary" title="Dietary Summary"><i class="bi bi-egg-fried"></i></button>
       <div class="dropdown"><button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" title="Print"><i class="bi bi-printer"></i></button>

@@ -37,7 +37,9 @@ const winnersModule = {
         if (saved.year) document.getElementById('winnerYearFilterSelect').value = saved.year;
         if (saved.award) document.getElementById('winnerAwardFilterSelect').value = saved.award;
         if (saved.search) document.getElementById('winnerSearchBox').value = saved.search;
-      } catch(e) { console.warn('Failed to restore winner filters:', e.message); }
+      } catch (e) {
+        console.warn('Failed to restore winner filters:', e.message);
+      }
 
       // Enable server-side pagination and fetch first page
       this._serverPagination = true;
@@ -51,7 +53,10 @@ const winnersModule = {
         utils.initTableKeyboardNav({
           tableBodyId: 'winnersTableBody',
           searchBoxId: 'winnerSearchBox',
-          onEnter: (row) => { const btn = row.querySelector('.dropdown-toggle'); if (btn) btn.click(); }
+          onEnter: (row) => {
+            const btn = row.querySelector('.dropdown-toggle');
+            if (btn) btn.click();
+          },
         });
       }
 
@@ -59,7 +64,6 @@ const winnersModule = {
 
       // Render saved views dropdown
       this._renderSavedWinnersViews();
-
     } catch (error) {
       console.error('Error loading winners:', error);
       utils.showErrorWithRetry(error, 'loading winners', () => this.loadWinners());
@@ -76,8 +80,8 @@ const winnersModule = {
   _populateFiltersFromConstants() {
     const yearSelect = document.getElementById('winnerYearFilterSelect');
     if (yearSelect) {
-      yearSelect.innerHTML = '<option value="">All Years</option>' +
-        YEARS.map(y => `<option value="${y}">${y}</option>`).join('');
+      yearSelect.innerHTML =
+        '<option value="">All Years</option>' + YEARS.map((y) => `<option value="${y}">${y}</option>`).join('');
     }
   },
 
@@ -109,7 +113,7 @@ const winnersModule = {
         search: search ? { term: search, columns: ['winner_name'] } : undefined,
         sort: { column: this._sortField, ascending: this._sortDir === 'asc' },
         page,
-        pageSize: this._pageSize
+        pageSize: this._pageSize,
       });
     } catch (joinErr) {
       // FK relationship missing - retry without joins
@@ -121,7 +125,7 @@ const winnersModule = {
           search: search ? { term: search, columns: ['winner_name'] } : undefined,
           sort: { column: this._sortField, ascending: this._sortDir === 'asc' },
           page,
-          pageSize: this._pageSize
+          pageSize: this._pageSize,
         });
       } else {
         throw joinErr;
@@ -134,30 +138,39 @@ const winnersModule = {
     const pageData = result.data || [];
 
     // Enrich winners missing award data
-    const missingAwards = pageData.filter(w => w.award_id && !w.awards);
+    const missingAwards = pageData.filter((w) => w.award_id && !w.awards);
     if (missingAwards.length > 0) {
       try {
-        const awardIds = [...new Set(missingAwards.map(w => w.award_id))];
+        const awardIds = [...new Set(missingAwards.map((w) => w.award_id))];
         const { data: awardsData } = await apiClient.select('awards', {
           select: '*',
           filters: { id: { op: 'in', value: awardIds } },
-          pageSize: 1000
+          pageSize: 1000,
         });
         if (awardsData) {
           const awardsMap = {};
-          awardsData.forEach(a => { awardsMap[a.id] = a; });
-          pageData.forEach(w => {
+          awardsData.forEach((a) => {
+            awardsMap[a.id] = a;
+          });
+          pageData.forEach((w) => {
             if (w.award_id && !w.awards && awardsMap[w.award_id]) {
               w.awards = awardsMap[w.award_id];
             }
           });
         }
-      } catch (_e) { /* ignore */ }
+      } catch (_e) {
+        /* ignore */
+      }
     }
 
     STATE.allWinners = pageData;
     STATE.filteredWinners = pageData;
-    this._pagination = { page: result.page, totalPages: result.totalPages, count: result.count, pageSize: result.pageSize };
+    this._pagination = {
+      page: result.page,
+      totalPages: result.totalPages,
+      count: result.count,
+      pageSize: result.pageSize,
+    };
 
     this.renderWinners();
   },
@@ -185,14 +198,12 @@ const winnersModule = {
   populateFilters() {
     // Populate award filter with unique formatted award names
     const awardSelect = document.getElementById('winnerAwardFilterSelect');
-    const uniqueAwards = [...new Set(
-      STATE.allWinners
-        .map(w => utils.formatAwardName(w.awards))
-        .filter(name => name && name !== '-')
-    )].sort();
+    const uniqueAwards = [
+      ...new Set(STATE.allWinners.map((w) => utils.formatAwardName(w.awards)).filter((name) => name && name !== '-')),
+    ].sort();
 
     awardSelect.innerHTML = '<option value="">All Awards</option>';
-    uniqueAwards.forEach(award => {
+    uniqueAwards.forEach((award) => {
       awardSelect.innerHTML += `<option value="${utils.escapeHtml(award)}">${utils.escapeHtml(award)}</option>`;
     });
   },
@@ -206,11 +217,15 @@ const winnersModule = {
     const award = document.getElementById('winnerAwardFilterSelect')?.value || '';
     const search = (document.getElementById('winnerSearchBox')?.value || '').toLowerCase().trim();
 
-    try { localStorage.setItem('winnersFilters', JSON.stringify({ year, award, search })); } catch(e) { console.warn('Failed to save winner filters:', e.message); }
+    try {
+      localStorage.setItem('winnersFilters', JSON.stringify({ year, award, search }));
+    } catch (e) {
+      console.warn('Failed to save winner filters:', e.message);
+    }
 
     // Server-side pagination: send filters to server and re-fetch page 1
     if (this._serverPagination) {
-      this._fetchPage(1).catch(err => {
+      this._fetchPage(1).catch((err) => {
         console.error('Error filtering winners:', err);
         utils.showToast('Error filtering winners: ' + err.message, 'error');
       });
@@ -218,7 +233,7 @@ const winnersModule = {
     }
 
     // Client-side fallback (used by tests and when data is pre-loaded)
-    STATE.filteredWinners = STATE.allWinners.filter(winner => {
+    STATE.filteredWinners = STATE.allWinners.filter((winner) => {
       // Year filter
       if (year && String(winner.awards?.year) !== year) return false;
 
@@ -242,8 +257,8 @@ const winnersModule = {
     if (search && STATE.filteredWinners.length === 0) {
       STATE.filteredWinners = utils.fuzzyFilter(STATE.allWinners, search, ['winner_name']);
       // Also apply non-search filters to fuzzy results
-      if (year) STATE.filteredWinners = STATE.filteredWinners.filter(w => String(w.awards?.year) === year);
-      if (award) STATE.filteredWinners = STATE.filteredWinners.filter(w => utils.formatAwardName(w.awards) === award);
+      if (year) STATE.filteredWinners = STATE.filteredWinners.filter((w) => String(w.awards?.year) === year);
+      if (award) STATE.filteredWinners = STATE.filteredWinners.filter((w) => utils.formatAwardName(w.awards) === award);
     }
 
     // Sort
@@ -286,7 +301,7 @@ const winnersModule = {
 
     // Server-side: re-fetch with new sort order
     if (this._serverPagination) {
-      this._fetchPage(1).catch(err => console.error('Error sorting winners:', err));
+      this._fetchPage(1).catch((err) => console.error('Error sorting winners:', err));
       return;
     }
 
@@ -296,12 +311,13 @@ const winnersModule = {
   _updateSortIndicators() {
     document.querySelectorAll('#winnersTableBody').forEach(() => {});
     const icons = document.querySelectorAll('[data-sort-icon-winners]');
-    icons.forEach(icon => {
+    icons.forEach((icon) => {
       const field = icon.getAttribute('data-sort-icon-winners');
       if (field === this._sortField) {
-        icon.className = this._sortDir === 'asc'
-          ? 'bi bi-caret-up-fill text-primary ms-1 small'
-          : 'bi bi-caret-down-fill text-primary ms-1 small';
+        icon.className =
+          this._sortDir === 'asc'
+            ? 'bi bi-caret-up-fill text-primary ms-1 small'
+            : 'bi bi-caret-down-fill text-primary ms-1 small';
       } else {
         icon.className = 'bi bi-arrow-down-up text-muted ms-1 small';
       }
@@ -332,31 +348,39 @@ const winnersModule = {
     }
 
     if (STATE.filteredWinners.length === 0) {
-      utils.showEnhancedEmptyState('winnersTableBody', 7, { icon: 'bi-trophy', message: 'No winners found', description: 'Winners will appear here once confirmed', actionLabel: 'View Pipeline', actionOnclick: "winnerPipelineModule.init()", isFiltered: STATE.filteredWinners.length === 0 && STATE.allWinners.length > 0 });
+      utils.showEnhancedEmptyState('winnersTableBody', 7, {
+        icon: 'bi-trophy',
+        message: 'No winners found',
+        description: 'Winners will appear here once confirmed',
+        actionLabel: 'View Pipeline',
+        actionAction: 'winnerPipelineModule.init',
+        isFiltered: STATE.filteredWinners.length === 0 && STATE.allWinners.length > 0,
+      });
       return;
     }
 
     const statusConfig = {
-      pending:       { label: 'Pending',       bg: 'bg-secondary',           icon: 'bi-clock',        color: 'text-secondary' },
-      notified:      { label: 'Notified',      bg: 'bg-info',               icon: 'bi-bell',         color: 'text-info' },
-      pack_sent:     { label: 'Pack Sent',     bg: 'bg-primary',            icon: 'bi-send',         color: 'text-primary' },
-      confirmed:     { label: 'Confirmed',     bg: 'bg-success',            icon: 'bi-check-circle', color: 'text-success' },
-      published:     { label: 'Published',     bg: 'bg-warning text-dark',  icon: 'bi-globe',        color: 'text-warning' }
+      pending: { label: 'Pending', bg: 'bg-secondary', icon: 'bi-clock', color: 'text-secondary' },
+      notified: { label: 'Notified', bg: 'bg-info', icon: 'bi-bell', color: 'text-info' },
+      pack_sent: { label: 'Pack Sent', bg: 'bg-primary', icon: 'bi-send', color: 'text-primary' },
+      confirmed: { label: 'Confirmed', bg: 'bg-success', icon: 'bi-check-circle', color: 'text-success' },
+      published: { label: 'Published', bg: 'bg-warning text-dark', icon: 'bi-globe', color: 'text-warning' },
     };
 
-    tbody.innerHTML = pageWinners.map(winner => {
-      const photoCount = winner.winner_media?.filter(m => m.media_type === MEDIA_TYPES.PHOTO).length || 0;
-      const videoCount = winner.winner_media?.filter(m => m.media_type === MEDIA_TYPES.VIDEO).length || 0;
-      const mediaTotal = photoCount + videoCount;
-      const awardDisplay = utils.formatAwardName(winner.awards);
-      const year = winner.awards?.year || 'N/A';
-      const awardId = winner.award_id || '';
-      const status = winner.winner_status || 'pending';
-      const statusInfo = statusConfig[status] || statusConfig.pending;
+    tbody.innerHTML = pageWinners
+      .map((winner) => {
+        const photoCount = winner.winner_media?.filter((m) => m.media_type === MEDIA_TYPES.PHOTO).length || 0;
+        const videoCount = winner.winner_media?.filter((m) => m.media_type === MEDIA_TYPES.VIDEO).length || 0;
+        const mediaTotal = photoCount + videoCount;
+        const awardDisplay = utils.formatAwardName(winner.awards);
+        const year = winner.awards?.year || 'N/A';
+        const awardId = winner.award_id || '';
+        const status = winner.winner_status || 'pending';
+        const statusInfo = statusConfig[status] || statusConfig.pending;
 
-      const winnerChecked = this._selectedWinnerIds.has(winner.id) ? 'checked' : '';
+        const winnerChecked = this._selectedWinnerIds.has(winner.id) ? 'checked' : '';
 
-      return `
+        return `
         <tr class="fade-in">
           <td><input type="checkbox" class="form-check-input winner-checkbox" value="${winner.id}" ${winnerChecked} data-on-check="winnersModule.toggleWinnerSelect" data-id="winner.id"></td>
           <td>
@@ -382,17 +406,23 @@ const winnersModule = {
                 <i class="bi ${statusInfo.icon} me-1"></i>${statusInfo.label}
               </button>
               <ul class="dropdown-menu dropdown-menu-end">
-                ${Object.entries(statusConfig).map(([key, cfg]) => `
+                ${Object.entries(statusConfig)
+                  .map(
+                    ([key, cfg]) => `
                   <li><a class="dropdown-item ${key === status ? 'active' : ''}" href="#" data-action="winnersModule.updateWinnerStatus" data-args='${JSON.stringify([winner.id, key])}' data-prevent-default="true">
                     <i class="bi ${cfg.icon} ${cfg.color} me-2"></i>${cfg.label}
                   </a></li>
-                `).join('')}
+                `
+                  )
+                  .join('')}
               </ul>
             </div>
           </td>
           <td class="text-center">
             <div class="d-flex gap-1 justify-content-center flex-wrap">
-              ${mediaTotal > 0 ? `
+              ${
+                mediaTotal > 0
+                  ? `
               <div class="btn-group btn-group-sm">
                 <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-display="static" title="View Media" aria-label="View media">
                   <i class="bi bi-collection"></i>
@@ -402,7 +432,9 @@ const winnersModule = {
                   <li><a class="dropdown-item" href="#" data-action="winnersModule.viewMedia" data-args='${JSON.stringify([winner.id, MEDIA_TYPES.VIDEO])}' data-prevent-default="true"><i class="bi bi-play-circle text-info me-2"></i>View Videos (${videoCount})</a></li>
                 </ul>
               </div>
-              ` : ''}
+              `
+                  : ''
+              }
               <button
                 class="btn btn-outline-secondary btn-sm"
                 data-action="winnersModule.downloadMediaPack" data-id="winner.id"
@@ -428,14 +460,17 @@ const winnersModule = {
           </td>
         </tr>
       `;
-    }).join('');
+      })
+      .join('');
 
     // Render pagination
     let paginationEl = document.getElementById('winnersPagination');
     if (!paginationEl) {
       paginationEl = document.createElement('div');
       paginationEl.id = 'winnersPagination';
-      const tableParent = document.getElementById('winnersTableBody')?.closest('.table-responsive') || document.getElementById('winnersTableBody')?.parentElement;
+      const tableParent =
+        document.getElementById('winnersTableBody')?.closest('.table-responsive') ||
+        document.getElementById('winnersTableBody')?.parentElement;
       if (tableParent) tableParent.after(paginationEl);
     }
     if (this._serverPagination) {
@@ -456,7 +491,7 @@ const winnersModule = {
         }
         html += `<li class="page-item ${this._currentPage >= totalPages ? 'disabled' : ''}"><a class="page-link" href="#" data-action="winnersModule.goToPage" data-id="${this._currentPage + 1}" data-prevent-default="true">Next</a></li>`;
         html += '</ul></nav>';
-        html += `<div class="text-center text-muted small">Showing ${start+1}-${Math.min(end, STATE.filteredWinners.length)} of ${STATE.filteredWinners.length}</div>`;
+        html += `<div class="text-center text-muted small">Showing ${start + 1}-${Math.min(end, STATE.filteredWinners.length)} of ${STATE.filteredWinners.length}</div>`;
         paginationEl.innerHTML = html;
       } else if (paginationEl) {
         paginationEl.innerHTML = '';
@@ -500,19 +535,21 @@ const winnersModule = {
       // Load assignments for this award with organisation names
       let data;
       try {
+        /* selectAll: justified — scoped to single award */
         const result = await apiClient.selectAll('award_assignments', {
           select: 'id, status, winner_position, organisations(company_name)',
           filters: { award_id: awardId },
-          sort: { column: 'winner_position', ascending: true }
+          sort: { column: 'winner_position', ascending: true },
         });
         data = result;
       } catch (joinErr) {
         // FK relationship missing - retry without joins
         if (joinErr.message?.includes('relationship') || joinErr.message?.includes('schema cache')) {
+          /* selectAll: justified — scoped to single award (FK fallback) */
           const result = await apiClient.selectAll('award_assignments', {
             select: 'id, status, winner_position, organisation_id',
             filters: { award_id: awardId },
-            sort: { column: 'winner_position', ascending: true }
+            sort: { column: 'winner_position', ascending: true },
           });
           data = result;
         } else {
@@ -530,14 +567,16 @@ const winnersModule = {
       }
 
       // Separate into placed winners and remaining nominees
-      const winners = data.filter(a => a.status === 'winner').sort((a, b) => (a.winner_position || 99) - (b.winner_position || 99));
-      const shortlisted = data.filter(a => a.status === 'shortlisted');
-      const nominated = data.filter(a => a.status === 'nominated');
+      const winners = data
+        .filter((a) => a.status === 'winner')
+        .sort((a, b) => (a.winner_position || 99) - (b.winner_position || 99));
+      const shortlisted = data.filter((a) => a.status === 'shortlisted');
+      const nominated = data.filter((a) => a.status === 'nominated');
 
       const positionLabels = {
         1: { label: '1st Place', icon: 'bi-trophy-fill', color: 'warning' },
         2: { label: '2nd Place', icon: 'bi-award-fill', color: 'secondary' },
-        3: { label: '3rd Place', icon: 'bi-award', color: 'dark' }
+        3: { label: '3rd Place', icon: 'bi-award', color: 'dark' },
       };
 
       let html = '';
@@ -545,7 +584,7 @@ const winnersModule = {
       // Placed winners
       if (winners.length > 0) {
         html += '<div class="mb-3">';
-        winners.forEach(w => {
+        winners.forEach((w) => {
           const name = w.organisations?.company_name || 'Unknown';
           const pos = w.winner_position || 1;
           const meta = positionLabels[pos] || { label: `Position ${pos}`, icon: 'bi-award', color: 'info' };
@@ -564,7 +603,7 @@ const winnersModule = {
       if (shortlisted.length > 0) {
         html += `<h6 class="text-muted mt-3 mb-2"><i class="bi bi-star me-1"></i>Shortlisted (${shortlisted.length})</h6>`;
         html += '<ul class="list-group list-group-flush mb-3">';
-        shortlisted.forEach(s => {
+        shortlisted.forEach((s) => {
           const name = s.organisations?.company_name || 'Unknown';
           html += `<li class="list-group-item py-2">${utils.escapeHtml(name)}</li>`;
         });
@@ -575,7 +614,7 @@ const winnersModule = {
       if (nominated.length > 0) {
         html += `<h6 class="text-muted mt-3 mb-2"><i class="bi bi-people me-1"></i>Nominees (${nominated.length})</h6>`;
         html += '<ul class="list-group list-group-flush">';
-        nominated.forEach(n => {
+        nominated.forEach((n) => {
           const name = n.organisations?.company_name || 'Unknown';
           html += `<li class="list-group-item py-2 text-muted">${utils.escapeHtml(name)}</li>`;
         });
@@ -583,7 +622,6 @@ const winnersModule = {
       }
 
       content.innerHTML = html;
-
     } catch (err) {
       console.error('Error loading award placements:', err);
       content.innerHTML = `
@@ -602,20 +640,20 @@ const winnersModule = {
   uploadMedia(winnerId, mediaType) {
     this.currentWinnerId = winnerId;
     this.currentMediaType = mediaType;
-    
-    const winner = STATE.allWinners.find(w => w.id === winnerId);
+
+    const winner = STATE.allWinners.find((w) => w.id === winnerId);
     const modalTitle = document.getElementById('uploadMediaModalLabel');
-    
+
     modalTitle.innerHTML = `
       <i class="bi bi-${mediaType === MEDIA_TYPES.PHOTO ? 'camera' : 'camera-video'} me-2"></i>
       Upload ${mediaType === MEDIA_TYPES.PHOTO ? 'Photo' : 'Video'} - ${utils.escapeHtml(winner.winner_name)}
     `;
-    
+
     // Reset form
     document.getElementById('mediaFile').value = '';
     document.getElementById('mediaCaption').value = '';
     document.getElementById('uploadProgress').classList.add('d-none');
-    
+
     const modal = new bootstrap.Modal(document.getElementById('uploadMediaModal'));
     modal.show();
   },
@@ -629,12 +667,12 @@ const winnersModule = {
     const caption = document.getElementById('mediaCaption').value.trim();
     const uploadBtn = document.getElementById('uploadMediaBtn');
     const progressDiv = document.getElementById('uploadProgress');
-    
+
     if (!fileInput.files || !fileInput.files[0]) {
       utils.showToast('Please select a file', 'warning');
       return;
     }
-    
+
     const file = fileInput.files[0];
 
     // Validate file type
@@ -658,7 +696,7 @@ const winnersModule = {
       utils.showToast(`File too large. Maximum size is ${maxMB}MB.`, 'error');
       return;
     }
-    
+
     try {
       await utils.protectModalDuringSave('uploadMediaModal', async () => {
         uploadBtn.disabled = true;
@@ -676,16 +714,14 @@ const winnersModule = {
         if (uploadError) throw uploadError;
 
         // Get public URL (v2 syntax)
-        const { data: urlData } = STATE.client.storage
-          .from('winner-media')
-          .getPublicUrl(fileName);
+        const { data: urlData } = STATE.client.storage.from('winner-media').getPublicUrl(fileName);
 
         // Insert record into database via apiClient
         await apiClient.insert('winner_media', {
           winner_id: this.currentWinnerId,
           media_type: this.currentMediaType,
           file_url: urlData.publicUrl,
-          caption: caption || null
+          caption: caption || null,
         });
 
         // Close modal and reload
@@ -708,18 +744,18 @@ const winnersModule = {
    * @param {string} mediaType - Media type
    */
   async viewMedia(winnerId, mediaType) {
-    const winner = STATE.allWinners.find(w => w.id === winnerId);
+    const winner = STATE.allWinners.find((w) => w.id === winnerId);
     if (!winner) return;
-    
-    const media = winner.winner_media?.filter(m => m.media_type === mediaType) || [];
-    
+
+    const media = winner.winner_media?.filter((m) => m.media_type === mediaType) || [];
+
     document.getElementById('viewMediaTitle').innerHTML = `
       <i class="bi bi-${mediaType === MEDIA_TYPES.PHOTO ? 'images' : 'play-circle'} me-2"></i>
       ${utils.escapeHtml(winner.winner_name)} - ${mediaType === MEDIA_TYPES.PHOTO ? 'Photos' : 'Videos'}
     `;
-    
+
     const container = document.getElementById('mediaGalleryContent');
-    
+
     if (media.length === 0) {
       container.innerHTML = `
         <div class="col-12">
@@ -730,12 +766,15 @@ const winnersModule = {
         </div>
       `;
     } else {
-      container.innerHTML = media.map(m => `
+      container.innerHTML = media
+        .map(
+          (m) => `
         <div class="col-md-4">
           <div class="card h-100">
-            ${mediaType === MEDIA_TYPES.PHOTO ? 
-              `<img src="${m.file_url}" class="card-img-top" style="height: 200px; object-fit: cover;" alt="${utils.escapeHtml(m.caption || 'Winner photo')}">` :
-              `<video controls class="card-img-top" style="height: 200px; background: #000;">
+            ${
+              mediaType === MEDIA_TYPES.PHOTO
+                ? `<img src="${m.file_url}" class="card-img-top" style="height: 200px; object-fit: cover;" alt="${utils.escapeHtml(m.caption || 'Winner photo')}">`
+                : `<video controls class="card-img-top" style="height: 200px; background: #000;">
                 <source src="${m.file_url}" type="video/mp4">
                 Your browser does not support the video tag.
               </video>`
@@ -748,9 +787,11 @@ const winnersModule = {
             </div>
           </div>
         </div>
-      `).join('');
+      `
+        )
+        .join('');
     }
-    
+
     const modal = new bootstrap.Modal(document.getElementById('viewMediaModal'));
     modal.show();
   },
@@ -760,10 +801,12 @@ const winnersModule = {
    * @param {string} mediaId - Media ID
    */
   async deleteMedia(mediaId) {
-    if (!await utils.confirmDialog({ title: 'Delete Media', message: 'Are you sure you want to delete this media?' })) {
+    if (
+      !(await utils.confirmDialog({ title: 'Delete Media', message: 'Are you sure you want to delete this media?' }))
+    ) {
       return;
     }
-    
+
     try {
       await utils.protectModalDuringSave('viewMediaModal', async () => {
         utils.showLoading();
@@ -774,7 +817,6 @@ const winnersModule = {
         bootstrap.Modal.getInstance(document.getElementById('viewMediaModal'))?.hide();
         utils.showToast('Media deleted successfully!', 'success');
       });
-
     } catch (error) {
       console.error('Error deleting media:', error);
       utils.showToast('Error deleting media: ' + error.message, 'error');
@@ -788,7 +830,12 @@ const winnersModule = {
    * @param {string} winnerId - Winner ID
    */
   async deleteWinner(winnerId) {
-    if (!await utils.confirmDialog({ title: 'Delete Winner', message: 'Are you sure you want to delete this winner? All associated media will also be deleted.' })) {
+    if (
+      !(await utils.confirmDialog({
+        title: 'Delete Winner',
+        message: 'Are you sure you want to delete this winner? All associated media will also be deleted.',
+      }))
+    ) {
       return;
     }
 
@@ -796,14 +843,16 @@ const winnersModule = {
       utils.showLoading();
 
       // Save to trash before deleting
-      const winner = STATE.allWinners?.find(w => w.id === winnerId);
+      const winner = STATE.allWinners?.find((w) => w.id === winnerId);
       if (winner) utils.softDelete('winners', winner);
 
       await apiClient.delete('winners', winnerId);
 
       await this.loadWinners();
-      utils.showToast('Winner deleted. <a href="#" onclick="event.preventDefault(); utils.undoLastDelete(\'winners\')">Undo</a>', 'info');
-
+      utils.showToast(
+        'Winner deleted. <a href="#" data-action="utils.undoLastDelete" data-id="winners" data-prevent-default="true">Undo</a>',
+        'info'
+      );
     } catch (error) {
       console.error('Error deleting winner:', error);
       utils.showToast('Error deleting winner: ' + error.message, 'error');
@@ -822,7 +871,7 @@ const winnersModule = {
   pressReleaseState: {
     allWinners: [],
     filteredWinners: [],
-    selectedWinners: new Set()
+    selectedWinners: new Set(),
   },
 
   /**
@@ -832,10 +881,10 @@ const winnersModule = {
     try {
       utils.showLoading();
 
-      // Load all winners with their media
+      /* selectAll: justified — export generation requires full winner dataset for selection */
       const winners = await apiClient.selectAll('winners', {
         select: '*, awards:award_years!winners_award_id_fkey (*), winner_media (*)',
-        sort: { column: 'created_at', ascending: false }
+        sort: { column: 'created_at', ascending: false },
       });
 
       this.pressReleaseState.allWinners = winners || [];
@@ -848,7 +897,6 @@ const winnersModule = {
 
       // Render winners list
       this.renderPressReleaseWinners();
-
     } catch (error) {
       console.error('Error loading winners for export:', error);
       utils.showToast('Error loading winners: ' + error.message, 'error');
@@ -864,8 +912,8 @@ const winnersModule = {
     if (!year) {
       this.pressReleaseState.filteredWinners = this.pressReleaseState.allWinners;
     } else {
-      this.pressReleaseState.filteredWinners = this.pressReleaseState.allWinners.filter(w =>
-        String(w.awards?.year) === year
+      this.pressReleaseState.filteredWinners = this.pressReleaseState.allWinners.filter(
+        (w) => String(w.awards?.year) === year
       );
     }
     this.renderPressReleaseWinners();
@@ -888,13 +936,14 @@ const winnersModule = {
       return;
     }
 
-    container.innerHTML = winners.map(winner => {
-      const isSelected = this.pressReleaseState.selectedWinners.has(winner.id);
-      const photos = (winner.winner_media || []).filter(m => m.media_type === 'photo');
-      const awardName = winner.awards?.award_name || winner.awards?.award_category || 'No Award';
-      const year = winner.awards?.year || 'N/A';
+    container.innerHTML = winners
+      .map((winner) => {
+        const isSelected = this.pressReleaseState.selectedWinners.has(winner.id);
+        const photos = (winner.winner_media || []).filter((m) => m.media_type === 'photo');
+        const awardName = winner.awards?.award_name || winner.awards?.award_category || 'No Award';
+        const year = winner.awards?.year || 'N/A';
 
-      return `
+        return `
         <div class="card mb-3 ${isSelected ? 'border-success border-2' : ''}">
           <div class="card-body">
             <div class="d-flex align-items-start">
@@ -917,11 +966,15 @@ const winnersModule = {
                   ${isSelected ? '<span class="badge bg-success">Selected</span>' : ''}
                 </div>
 
-                ${isSelected && photos.length > 0 ? `
+                ${
+                  isSelected && photos.length > 0
+                    ? `
                   <div class="mt-3">
                     <label class="form-label small fw-bold">Select Photos to Include:</label>
                     <div class="row g-2">
-                      ${photos.map(photo => `
+                      ${photos
+                        .map(
+                          (photo) => `
                         <div class="col-6 col-md-3">
                           <div class="form-check">
                             <input class="form-check-input" type="checkbox"
@@ -938,16 +991,21 @@ const winnersModule = {
                             </label>
                           </div>
                         </div>
-                      `).join('')}
+                      `
+                        )
+                        .join('')}
                     </div>
                   </div>
-                ` : ''}
+                `
+                    : ''
+                }
               </div>
             </div>
           </div>
         </div>
       `;
-    }).join('');
+      })
+      .join('');
 
     this.updateSelectedCount();
   },
@@ -977,7 +1035,7 @@ const winnersModule = {
    * Select all winners
    */
   selectAllWinners() {
-    this.pressReleaseState.filteredWinners.forEach(w => {
+    this.pressReleaseState.filteredWinners.forEach((w) => {
       this.pressReleaseState.selectedWinners.add(w.id);
     });
     this.renderPressReleaseWinners();
@@ -995,8 +1053,7 @@ const winnersModule = {
    * Update selected count
    */
   updateSelectedCount() {
-    document.getElementById('selectedWinnersCount').textContent =
-      this.pressReleaseState.selectedWinners.size;
+    document.getElementById('selectedWinnersCount').textContent = this.pressReleaseState.selectedWinners.size;
   },
 
   /**
@@ -1015,7 +1072,7 @@ const winnersModule = {
         utils.showLoading();
 
         // Get selected winners with their media
-        const selectedWinnersData = this.pressReleaseState.allWinners.filter(w =>
+        const selectedWinnersData = this.pressReleaseState.allWinners.filter((w) =>
           this.pressReleaseState.selectedWinners.has(w.id)
         );
 
@@ -1035,7 +1092,6 @@ const winnersModule = {
         utils.showToast('Export complete!', 'success');
         bootstrap.Modal.getInstance(document.getElementById('pressReleaseExportModal'))?.hide();
       });
-
     } catch (error) {
       console.error('Error exporting press release:', error);
       utils.showToast('Error exporting: ' + error.message, 'error');
@@ -1050,18 +1106,18 @@ const winnersModule = {
   exportAsCSV(winners) {
     const exportData = [];
 
-    winners.forEach(winner => {
-      const photos = (winner.winner_media || []).filter(m => m.media_type === 'photo');
+    winners.forEach((winner) => {
+      const photos = (winner.winner_media || []).filter((m) => m.media_type === 'photo');
       const awardName = winner.awards?.award_name || winner.awards?.award_category || 'N/A';
       const year = winner.awards?.year || 'N/A';
 
       exportData.push({
         'Winner Name': winner.winner_name || '',
-        'Award': awardName,
-        'Year': year,
+        Award: awardName,
+        Year: year,
         'Photo Count': photos.length,
-        'Photo URLs': photos.map(p => p.media_url).join('; '),
-        'Photo Captions': photos.map(p => p.caption || 'No caption').join('; ')
+        'Photo URLs': photos.map((p) => p.media_url).join('; '),
+        'Photo Captions': photos.map((p) => p.caption || 'No caption').join('; '),
       });
     });
 
@@ -1130,7 +1186,7 @@ const winnersModule = {
 
           const quoteLines = doc.splitTextToSize(winner.judge_quote, 170);
           doc.setTextColor(80, 80, 80);
-          quoteLines.forEach(line => {
+          quoteLines.forEach((line) => {
             if (yPosition > 270) {
               doc.addPage();
               yPosition = 20;
@@ -1153,7 +1209,7 @@ const winnersModule = {
 
           const impactLines = doc.splitTextToSize(winner.impact_statement, 170);
           doc.setTextColor(80, 80, 80);
-          impactLines.forEach(line => {
+          impactLines.forEach((line) => {
             if (yPosition > 270) {
               doc.addPage();
               yPosition = 20;
@@ -1181,7 +1237,6 @@ const winnersModule = {
       doc.save(filename);
 
       utils.showToast('PDF exported successfully!', 'success');
-
     } catch (error) {
       console.error('Error exporting PDF:', error);
       utils.showToast('Error exporting PDF: ' + error.message, 'error');
@@ -1215,8 +1270,8 @@ const winnersModule = {
         <p><strong>Generated:</strong> ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
     `;
 
-    winners.forEach(winner => {
-      const photos = (winner.winner_media || []).filter(m => m.media_type === 'photo');
+    winners.forEach((winner) => {
+      const photos = (winner.winner_media || []).filter((m) => m.media_type === 'photo');
       const awardName = winner.awards?.award_name || winner.awards?.award_category || 'N/A';
       const year = winner.awards?.year || 'N/A';
 
@@ -1227,16 +1282,24 @@ const winnersModule = {
             <strong>Award:</strong> ${utils.escapeHtml(awardName)}<br>
             <strong>Year:</strong> ${year}
           </div>
-          ${photos.length > 0 ? `
+          ${
+            photos.length > 0
+              ? `
             <div class="photos">
-              ${photos.map(photo => `
+              ${photos
+                .map(
+                  (photo) => `
                 <div class="photo-item">
                   <img src="${photo.media_url}" alt="${utils.escapeHtml(photo.caption || 'Photo')}">
                   <div class="caption">${utils.escapeHtml(photo.caption || 'No caption')}</div>
                 </div>
-              `).join('')}
+              `
+                )
+                .join('')}
             </div>
-          ` : '<p><em>No photos available</em></p>'}
+          `
+              : '<p><em>No photos available</em></p>'
+          }
         </div>
       `;
     });
@@ -1268,7 +1331,7 @@ const winnersModule = {
   certificateState: {
     allWinners: [],
     filteredWinners: [],
-    selectedWinners: new Set()
+    selectedWinners: new Set(),
   },
 
   /**
@@ -1278,10 +1341,10 @@ const winnersModule = {
     try {
       utils.showLoading();
 
-      // Load all winners with their awards
+      /* selectAll: justified — certificate generation requires full winner dataset for selection */
       const winners = await apiClient.selectAll('winners', {
         select: '*, awards:award_years!winners_award_id_fkey (*)',
-        sort: { column: 'created_at', ascending: false }
+        sort: { column: 'created_at', ascending: false },
       });
 
       this.certificateState.allWinners = winners || [];
@@ -1294,7 +1357,6 @@ const winnersModule = {
 
       // Render winners list
       this.renderCertificateWinners();
-
     } catch (error) {
       console.error('Error loading winners for certificates:', error);
       utils.showToast('Error loading winners: ' + error.message, 'error');
@@ -1310,8 +1372,8 @@ const winnersModule = {
     if (!year) {
       this.certificateState.filteredWinners = this.certificateState.allWinners;
     } else {
-      this.certificateState.filteredWinners = this.certificateState.allWinners.filter(w =>
-        String(w.awards?.year) === year
+      this.certificateState.filteredWinners = this.certificateState.allWinners.filter(
+        (w) => String(w.awards?.year) === year
       );
     }
     this.renderCertificateWinners();
@@ -1334,12 +1396,13 @@ const winnersModule = {
       return;
     }
 
-    container.innerHTML = winners.map(winner => {
-      const isSelected = this.certificateState.selectedWinners.has(winner.id);
-      const awardName = winner.awards?.award_name || winner.awards?.award_category || 'No Award';
-      const year = winner.awards?.year || 'N/A';
+    container.innerHTML = winners
+      .map((winner) => {
+        const isSelected = this.certificateState.selectedWinners.has(winner.id);
+        const awardName = winner.awards?.award_name || winner.awards?.award_category || 'No Award';
+        const year = winner.awards?.year || 'N/A';
 
-      return `
+        return `
         <div class="card mb-2 ${isSelected ? 'border-primary border-2' : ''}">
           <div class="card-body p-3">
             <div class="d-flex align-items-center">
@@ -1361,7 +1424,8 @@ const winnersModule = {
           </div>
         </div>
       `;
-    }).join('');
+      })
+      .join('');
 
     this.updateCertificateSelectedCount();
   },
@@ -1382,7 +1446,7 @@ const winnersModule = {
    * Select all certificate winners
    */
   selectAllCertificateWinners() {
-    this.certificateState.filteredWinners.forEach(w => {
+    this.certificateState.filteredWinners.forEach((w) => {
       this.certificateState.selectedWinners.add(w.id);
     });
     this.renderCertificateWinners();
@@ -1400,8 +1464,7 @@ const winnersModule = {
    * Update selected count
    */
   updateCertificateSelectedCount() {
-    document.getElementById('selectedCertificateWinnersCount').textContent =
-      this.certificateState.selectedWinners.size;
+    document.getElementById('selectedCertificateWinnersCount').textContent = this.certificateState.selectedWinners.size;
   },
 
   /**
@@ -1416,7 +1479,7 @@ const winnersModule = {
     try {
       // Get first selected winner for preview
       const firstWinnerId = Array.from(this.certificateState.selectedWinners)[0];
-      const winner = this.certificateState.allWinners.find(w => w.id === firstWinnerId);
+      const winner = this.certificateState.allWinners.find((w) => w.id === firstWinnerId);
 
       const brandColor = document.getElementById('brandColor').value;
       const accentColor = document.getElementById('accentColor').value;
@@ -1485,7 +1548,6 @@ const winnersModule = {
       previewContent.innerHTML = previewHTML;
 
       utils.showToast('Preview generated!', 'success');
-
     } catch (error) {
       console.error('Error generating preview:', error);
       utils.showToast('Error generating preview: ' + error.message, 'error');
@@ -1519,7 +1581,7 @@ const winnersModule = {
         const accentColor = document.getElementById('accentColor').value;
 
         // Get selected winners
-        const selectedWinnersData = this.certificateState.allWinners.filter(w =>
+        const selectedWinnersData = this.certificateState.allWinners.filter((w) =>
           this.certificateState.selectedWinners.has(w.id)
         );
 
@@ -1568,13 +1630,15 @@ const winnersModule = {
           }
 
           // Small delay between winners to avoid browser throttling
-          await new Promise(resolve => setTimeout(resolve, 500));
+          await new Promise((resolve) => setTimeout(resolve, 500));
         }
 
-        utils.showToast(`Successfully generated ${generatedCount} assets for ${selectedWinnersData.length} winner(s)!`, 'success');
+        utils.showToast(
+          `Successfully generated ${generatedCount} assets for ${selectedWinnersData.length} winner(s)!`,
+          'success'
+        );
         bootstrap.Modal.getInstance(document.getElementById('certificateGeneratorModal'))?.hide();
       });
-
     } catch (error) {
       console.error('Error generating assets:', error);
       utils.showToast('Error generating assets: ' + error.message, 'error');
@@ -1755,7 +1819,9 @@ const winnersModule = {
     ctx.fillText('CERTIFICATE OF ACHIEVEMENT', canvas.width / 2, 400);
 
     // Certificate text template
-    const template = document.getElementById('certificateText')?.value || 'This is to certify that\n\n{WINNER_NAME}\n\nhas been awarded\n\n{AWARD_NAME}\n\nin recognition of excellence\n\n{YEAR}';
+    const template =
+      document.getElementById('certificateText')?.value ||
+      'This is to certify that\n\n{WINNER_NAME}\n\nhas been awarded\n\n{AWARD_NAME}\n\nin recognition of excellence\n\n{YEAR}';
     const awardName = winner.awards?.award_name || winner.awards?.award_category || 'Excellence';
     const year = winner.awards?.year || new Date().getFullYear();
 
@@ -1765,11 +1831,11 @@ const winnersModule = {
       .replace('{YEAR}', year);
 
     // Split text by lines and render
-    const lines = text.split('\n').filter(line => line.trim());
+    const lines = text.split('\n').filter((line) => line.trim());
     ctx.fillStyle = '#333333';
     let yPos = 600;
 
-    lines.forEach(line => {
+    lines.forEach((line) => {
       if (line === winner.winner_name) {
         // Winner name in larger, bold font
         ctx.font = 'bold 100px Arial';
@@ -1884,7 +1950,7 @@ const winnersModule = {
    * Open media pack download modal for a specific winner
    */
   downloadMediaPack(winnerId) {
-    const winner = STATE.allWinners.find(w => w.id === winnerId);
+    const winner = STATE.allWinners.find((w) => w.id === winnerId);
     if (!winner) {
       utils.showToast('Winner not found', 'error');
       return;
@@ -1894,7 +1960,7 @@ const winnersModule = {
 
     const awardName = winner.awards?.award_name || winner.awards?.award_category || 'N/A';
     const year = winner.awards?.year || 'N/A';
-    const photos = winner.winner_media?.filter(m => m.media_type === MEDIA_TYPES.PHOTO) || [];
+    const photos = winner.winner_media?.filter((m) => m.media_type === MEDIA_TYPES.PHOTO) || [];
 
     document.getElementById('mediaPackWinnerInfo').innerHTML = `
       <div class="d-flex align-items-center">
@@ -1917,7 +1983,7 @@ const winnersModule = {
    * Generate and download media pack for current winner
    */
   async generateMediaPackForWinner() {
-    const winner = STATE.allWinners.find(w => w.id === this.mediaPackWinnerId);
+    const winner = STATE.allWinners.find((w) => w.id === this.mediaPackWinnerId);
     if (!winner) {
       utils.showToast('Winner not found', 'error');
       return;
@@ -1940,7 +2006,7 @@ const winnersModule = {
         const awardName = winner.awards?.award_name || winner.awards?.award_category || 'Award';
         const year = winner.awards?.year || new Date().getFullYear();
         const safeWinnerName = (winner.winner_name || 'winner').replace(/[^a-z0-9]/gi, '_').toLowerCase();
-        const photos = winner.winner_media?.filter(m => m.media_type === MEDIA_TYPES.PHOTO) || [];
+        const photos = winner.winner_media?.filter((m) => m.media_type === MEDIA_TYPES.PHOTO) || [];
 
         // Build HTML media pack document
         let html = `<!DOCTYPE html>
@@ -1997,12 +2063,16 @@ const winnersModule = {
     <h2>Photo Assets</h2>
     <p>${photos.length} high-resolution photo(s) available.</p>
     <div class="photos">
-      ${photos.map(photo => `
+      ${photos
+        .map(
+          (photo) => `
         <div class="photo-item">
           <img src="${photo.file_url}" alt="${utils.escapeHtml(photo.caption || 'Winner photo')}">
           <div class="caption">${utils.escapeHtml(photo.caption || 'No caption')}</div>
         </div>
-      `).join('')}
+      `
+        )
+        .join('')}
     </div>
   </div>`;
         }
@@ -2042,7 +2112,6 @@ const winnersModule = {
         utils.showToast('Media pack downloaded!', 'success');
         bootstrap.Modal.getInstance(document.getElementById('mediaPackDownloadModal'))?.hide();
       });
-
     } catch (error) {
       console.error('Error generating media pack:', error);
       utils.showToast('Error generating media pack: ' + error.message, 'error');
@@ -2061,7 +2130,7 @@ const winnersModule = {
    * Open winner package download modal for a specific winner
    */
   downloadWinnerPackage(winnerId) {
-    const winner = STATE.allWinners.find(w => w.id === winnerId);
+    const winner = STATE.allWinners.find((w) => w.id === winnerId);
     if (!winner) {
       utils.showToast('Winner not found', 'error');
       return;
@@ -2071,7 +2140,7 @@ const winnersModule = {
 
     const awardName = winner.awards?.award_name || winner.awards?.award_category || 'N/A';
     const year = winner.awards?.year || 'N/A';
-    const photos = winner.winner_media?.filter(m => m.media_type === MEDIA_TYPES.PHOTO) || [];
+    const photos = winner.winner_media?.filter((m) => m.media_type === MEDIA_TYPES.PHOTO) || [];
 
     document.getElementById('winnerPackageWinnerInfo').innerHTML = `
       <div class="d-flex align-items-center">
@@ -2094,7 +2163,7 @@ const winnersModule = {
    * Generate and download winner package for current winner
    */
   async generateWinnerPackageForWinner() {
-    const winner = STATE.allWinners.find(w => w.id === this.winnerPackageWinnerId);
+    const winner = STATE.allWinners.find((w) => w.id === this.winnerPackageWinnerId);
     if (!winner) {
       utils.showToast('Winner not found', 'error');
       return;
@@ -2172,7 +2241,7 @@ const winnersModule = {
 
       // Download photos
       if (includePhotos) {
-        const photos = winner.winner_media?.filter(m => m.media_type === MEDIA_TYPES.PHOTO) || [];
+        const photos = winner.winner_media?.filter((m) => m.media_type === MEDIA_TYPES.PHOTO) || [];
         for (const photo of photos) {
           const link = document.createElement('a');
           link.href = photo.file_url;
@@ -2182,13 +2251,12 @@ const winnersModule = {
           link.click();
           document.body.removeChild(link);
           generatedCount++;
-          await new Promise(resolve => setTimeout(resolve, 300));
+          await new Promise((resolve) => setTimeout(resolve, 300));
         }
       }
 
       utils.showToast(`Winner package downloaded! ${generatedCount} file(s) generated.`, 'success');
       bootstrap.Modal.getInstance(document.getElementById('winnerPackageDownloadModal'))?.hide();
-
     } catch (error) {
       console.error('Error generating winner package:', error);
       utils.showToast('Error generating winner package: ' + error.message, 'error');
@@ -2207,7 +2275,7 @@ const winnersModule = {
   yearComparisonState: {
     availableYears: [],
     selectedYears: new Set(),
-    comparisonData: null
+    comparisonData: null,
   },
 
   /**
@@ -2217,15 +2285,15 @@ const winnersModule = {
     try {
       utils.showLoading();
 
-      // Load all winners with awards to get available years
+      /* selectAll: justified — aggregation requires full dataset for year extraction */
       const winners = await apiClient.selectAll('winners', {
         select: '*, awards:award_years!winners_award_id_fkey (*)',
-        sort: { column: 'created_at', ascending: false }
+        sort: { column: 'created_at', ascending: false },
       });
 
       // Extract unique years
       const yearsSet = new Set();
-      winners.forEach(winner => {
+      winners.forEach((winner) => {
         if (winner.awards?.year) {
           yearsSet.add(winner.awards.year);
         }
@@ -2236,7 +2304,9 @@ const winnersModule = {
 
       // Render year selection checkboxes
       const container = document.getElementById('yearSelectionCheckboxes');
-      container.innerHTML = this.yearComparisonState.availableYears.map(year => `
+      container.innerHTML = this.yearComparisonState.availableYears
+        .map(
+          (year) => `
         <div class="col-md-2">
           <div class="form-check">
             <input class="form-check-input" type="checkbox" id="year_${year}" value="${year}"
@@ -2246,7 +2316,9 @@ const winnersModule = {
             </label>
           </div>
         </div>
-      `).join('');
+      `
+        )
+        .join('');
 
       // Hide results section
       document.getElementById('yearComparisonResults').classList.add('d-none');
@@ -2254,7 +2326,6 @@ const winnersModule = {
       // Show modal
       const modal = new bootstrap.Modal(document.getElementById('yearComparisonModal'));
       modal.show();
-
     } catch (error) {
       console.error('Error opening year comparison:', error);
       utils.showToast('Error loading year comparison: ' + error.message, 'error');
@@ -2289,23 +2360,21 @@ const winnersModule = {
 
       const selectedYearsArray = Array.from(this.yearComparisonState.selectedYears).sort();
 
-      // Load winners and awards for selected years
+      /* selectAll: justified — aggregation requires full dataset for year comparison */
       const winners = await apiClient.selectAll('winners', {
-        select: '*, awards:award_years!winners_award_id_fkey (*)'
+        select: '*, awards:award_years!winners_award_id_fkey (*)',
       });
 
       // Filter winners for selected years
-      const filteredWinners = winners.filter(w =>
-        this.yearComparisonState.selectedYears.has(w.awards?.year)
-      );
+      const filteredWinners = winners.filter((w) => this.yearComparisonState.selectedYears.has(w.awards?.year));
 
-      // Load organisations to get sector information
+      /* selectAll: justified — aggregation requires full dataset for sector cross-reference */
       const orgs = await apiClient.selectAll('organisations', {
-        select: '*'
+        select: '*',
       });
 
       // Create organisation lookup map
-      const orgMap = new Map(orgs.map(org => [org.id, org]));
+      const orgMap = new Map(orgs.map((org) => [org.id, org]));
 
       // Perform analysis
       const analysis = this.analyzeYearData(filteredWinners, selectedYearsArray, orgMap);
@@ -2318,7 +2387,6 @@ const winnersModule = {
       document.getElementById('yearComparisonResults').classList.remove('d-none');
 
       utils.showToast('Comparison complete!', 'success');
-
     } catch (error) {
       console.error('Error running year comparison:', error);
       utils.showToast('Error running comparison: ' + error.message, 'error');
@@ -2337,47 +2405,47 @@ const winnersModule = {
       winnersByYear: {},
       returningWinners: [],
       sectorPerformance: {},
-      categoryDistribution: {}
+      categoryDistribution: {},
     };
 
     // Count winners by year
-    years.forEach(year => {
-      analysis.winnersByYear[year] = winners.filter(w => w.awards?.year === year).length;
+    years.forEach((year) => {
+      analysis.winnersByYear[year] = winners.filter((w) => w.awards?.year === year).length;
     });
 
     // Find returning winners (same winner_name in multiple years)
     const winnerNameMap = new Map();
-    winners.forEach(winner => {
+    winners.forEach((winner) => {
       const name = winner.winner_name;
       if (!winnerNameMap.has(name)) {
         winnerNameMap.set(name, []);
       }
       winnerNameMap.get(name).push({
         year: winner.awards?.year,
-        award: winner.awards?.award_name || winner.awards?.award_category
+        award: winner.awards?.award_name || winner.awards?.award_category,
       });
     });
 
     // Filter to only returning winners (appeared in 2+ years)
     winnerNameMap.forEach((records, name) => {
-      const uniqueYears = new Set(records.map(r => r.year));
+      const uniqueYears = new Set(records.map((r) => r.year));
       if (uniqueYears.size >= 2) {
         analysis.returningWinners.push({
           name: name,
           years: Array.from(uniqueYears).sort(),
           count: records.length,
-          awards: records
+          awards: records,
         });
       }
     });
 
     // Analyze sector performance
     const sectorsByYear = {};
-    years.forEach(year => {
+    years.forEach((year) => {
       sectorsByYear[year] = {};
     });
 
-    winners.forEach(winner => {
+    winners.forEach((winner) => {
       const year = winner.awards?.year;
       // Try to find organisation via award relationship
       const award = winner.awards;
@@ -2401,7 +2469,7 @@ const winnersModule = {
     });
 
     // Analyze category distribution
-    winners.forEach(winner => {
+    winners.forEach((winner) => {
       const category = winner.awards?.award_category || 'Unknown';
       const year = winner.awards?.year;
 
@@ -2450,7 +2518,7 @@ const winnersModule = {
 
     let html = '<div class="mb-3">';
 
-    analysis.years.forEach(year => {
+    analysis.years.forEach((year) => {
       const count = analysis.winnersByYear[year] || 0;
       const percentage = maxWinners > 0 ? (count / maxWinners) * 100 : 0;
 
@@ -2500,7 +2568,7 @@ const winnersModule = {
     html += '<th>Awards</th>';
     html += '</tr></thead><tbody>';
 
-    sorted.forEach(winner => {
+    sorted.forEach((winner) => {
       html += `
         <tr>
           <td><strong>${utils.escapeHtml(winner.name)}</strong></td>
@@ -2508,7 +2576,7 @@ const winnersModule = {
           <td><span class="badge bg-success">${winner.count}</span></td>
           <td>
             <ul class="mb-0 small">
-              ${winner.awards.map(a => `<li>${a.year}: ${utils.escapeHtml(a.award || 'N/A')}</li>`).join('')}
+              ${winner.awards.map((a) => `<li>${a.year}: ${utils.escapeHtml(a.award || 'N/A')}</li>`).join('')}
             </ul>
           </td>
         </tr>
@@ -2537,24 +2605,26 @@ const winnersModule = {
 
     let html = '<div class="table-responsive"><table class="table table-hover"><thead><tr>';
     html += '<th>Sector</th>';
-    analysis.years.forEach(year => {
+    analysis.years.forEach((year) => {
       html += `<th class="text-center">${year}</th>`;
     });
     html += '<th class="text-center">Total</th>';
     html += '</tr></thead><tbody>';
 
-    Object.keys(analysis.sectorPerformance).sort().forEach(sector => {
-      const sectorData = analysis.sectorPerformance[sector];
-      const total = Object.values(sectorData).reduce((sum, val) => sum + val, 0);
+    Object.keys(analysis.sectorPerformance)
+      .sort()
+      .forEach((sector) => {
+        const sectorData = analysis.sectorPerformance[sector];
+        const total = Object.values(sectorData).reduce((sum, val) => sum + val, 0);
 
-      html += `<tr><td><strong>${utils.escapeHtml(sector)}</strong></td>`;
-      analysis.years.forEach(year => {
-        const count = sectorData[year] || 0;
-        html += `<td class="text-center">${count > 0 ? `<span class="badge bg-info">${count}</span>` : '-'}</td>`;
+        html += `<tr><td><strong>${utils.escapeHtml(sector)}</strong></td>`;
+        analysis.years.forEach((year) => {
+          const count = sectorData[year] || 0;
+          html += `<td class="text-center">${count > 0 ? `<span class="badge bg-info">${count}</span>` : '-'}</td>`;
+        });
+        html += `<td class="text-center"><strong>${total}</strong></td>`;
+        html += '</tr>';
       });
-      html += `<td class="text-center"><strong>${total}</strong></td>`;
-      html += '</tr>';
-    });
 
     html += '</tbody></table></div>';
     container.innerHTML = html;
@@ -2578,24 +2648,26 @@ const winnersModule = {
 
     let html = '<div class="table-responsive"><table class="table table-hover"><thead><tr>';
     html += '<th>Award Category</th>';
-    analysis.years.forEach(year => {
+    analysis.years.forEach((year) => {
       html += `<th class="text-center">${year}</th>`;
     });
     html += '<th class="text-center">Total</th>';
     html += '</tr></thead><tbody>';
 
-    Object.keys(analysis.categoryDistribution).sort().forEach(category => {
-      const categoryData = analysis.categoryDistribution[category];
-      const total = Object.values(categoryData).reduce((sum, val) => sum + val, 0);
+    Object.keys(analysis.categoryDistribution)
+      .sort()
+      .forEach((category) => {
+        const categoryData = analysis.categoryDistribution[category];
+        const total = Object.values(categoryData).reduce((sum, val) => sum + val, 0);
 
-      html += `<tr><td><strong>${utils.escapeHtml(category)}</strong></td>`;
-      analysis.years.forEach(year => {
-        const count = categoryData[year] || 0;
-        html += `<td class="text-center">${count > 0 ? `<span class="badge bg-primary">${count}</span>` : '-'}</td>`;
+        html += `<tr><td><strong>${utils.escapeHtml(category)}</strong></td>`;
+        analysis.years.forEach((year) => {
+          const count = categoryData[year] || 0;
+          html += `<td class="text-center">${count > 0 ? `<span class="badge bg-primary">${count}</span>` : '-'}</td>`;
+        });
+        html += `<td class="text-center"><strong>${total}</strong></td>`;
+        html += '</tr>';
       });
-      html += `<td class="text-center"><strong>${total}</strong></td>`;
-      html += '</tr>';
-    });
 
     html += '</tbody></table></div>';
     container.innerHTML = html;
@@ -2615,31 +2687,31 @@ const winnersModule = {
 
     // Summary
     exportData.push({
-      'Section': 'Summary',
-      'Metric': 'Total Winners',
-      'Value': analysis.totalWinners
+      Section: 'Summary',
+      Metric: 'Total Winners',
+      Value: analysis.totalWinners,
     });
     exportData.push({
-      'Section': 'Summary',
-      'Metric': 'Returning Winners',
-      'Value': analysis.returningWinners.length
+      Section: 'Summary',
+      Metric: 'Returning Winners',
+      Value: analysis.returningWinners.length,
     });
     exportData.push({
-      'Section': 'Summary',
-      'Metric': 'Years Compared',
-      'Value': analysis.years.join(', ')
+      Section: 'Summary',
+      Metric: 'Years Compared',
+      Value: analysis.years.join(', '),
     });
 
     // Blank row
     exportData.push({});
 
     // Winners by Year
-    exportData.push({ 'Section': 'Winners by Year', 'Metric': '', 'Value': '' });
-    analysis.years.forEach(year => {
+    exportData.push({ Section: 'Winners by Year', Metric: '', Value: '' });
+    analysis.years.forEach((year) => {
       exportData.push({
-        'Section': 'Winners by Year',
-        'Metric': `Year ${year}`,
-        'Value': analysis.winnersByYear[year] || 0
+        Section: 'Winners by Year',
+        Metric: `Year ${year}`,
+        Value: analysis.winnersByYear[year] || 0,
       });
     });
 
@@ -2648,12 +2720,12 @@ const winnersModule = {
 
     // Returning Winners
     if (analysis.returningWinners.length > 0) {
-      exportData.push({ 'Section': 'Returning Winners', 'Metric': '', 'Value': '' });
-      analysis.returningWinners.forEach(winner => {
+      exportData.push({ Section: 'Returning Winners', Metric: '', Value: '' });
+      analysis.returningWinners.forEach((winner) => {
         exportData.push({
-          'Section': 'Returning Winners',
-          'Metric': winner.name,
-          'Value': `Won in ${winner.years.join(', ')} (${winner.count} total)`
+          Section: 'Returning Winners',
+          Metric: winner.name,
+          Value: `Won in ${winner.years.join(', ')} (${winner.count} total)`,
         });
       });
     }
@@ -2693,24 +2765,24 @@ const winnersModule = {
       return;
     }
 
-    const exportData = filteredWinners.map(winner => {
+    const exportData = filteredWinners.map((winner) => {
       const awardName = winner.awards?.award_name || winner.awards?.award_category || 'N/A';
       const year = winner.awards?.year || 'N/A';
-      const photos = winner.winner_media?.filter(m => m.media_type === 'photo') || [];
-      const videos = winner.winner_media?.filter(m => m.media_type === 'video') || [];
+      const photos = winner.winner_media?.filter((m) => m.media_type === 'photo') || [];
+      const videos = winner.winner_media?.filter((m) => m.media_type === 'video') || [];
       const status = winner.winner_status || 'pending';
 
       return {
         'Winner Name': winner.winner_name || '',
-        'Award': awardName,
-        'Year': year,
-        'Status': status.charAt(0).toUpperCase() + status.slice(1),
-        'Score': winner.score || '',
-        'Photos': photos.length,
-        'Videos': videos.length,
+        Award: awardName,
+        Year: year,
+        Status: status.charAt(0).toUpperCase() + status.slice(1),
+        Score: winner.score || '',
+        Photos: photos.length,
+        Videos: videos.length,
         'Impact Statement': winner.impact_statement || '',
         'Judge Quote': winner.judge_quote || '',
-        'Announced Date': winner.announced_date || ''
+        'Announced Date': winner.announced_date || '',
       };
     });
 
@@ -2723,12 +2795,15 @@ const winnersModule = {
    */
   exportFilteredWinnersExcel() {
     const filteredWinners = STATE.filteredWinners || [];
-    if (filteredWinners.length === 0) { utils.showToast('No winners to export', 'warning'); return; }
-    const exportData = filteredWinners.map(winner => {
+    if (filteredWinners.length === 0) {
+      utils.showToast('No winners to export', 'warning');
+      return;
+    }
+    const exportData = filteredWinners.map((winner) => {
       const awardName = winner.awards?.award_name || winner.awards?.award_category || 'N/A';
       const year = winner.awards?.year || 'N/A';
-      const photos = winner.winner_media?.filter(m => m.media_type === 'photo') || [];
-      const videos = winner.winner_media?.filter(m => m.media_type === 'video') || [];
+      const photos = winner.winner_media?.filter((m) => m.media_type === 'photo') || [];
+      const videos = winner.winner_media?.filter((m) => m.media_type === 'video') || [];
       const status = winner.winner_status || 'pending';
       return {
         winner_name: winner.winner_name || '',
@@ -2740,7 +2815,7 @@ const winnersModule = {
         videos: videos.length,
         impact_statement: winner.impact_statement || '',
         judge_quote: winner.judge_quote || '',
-        announced_date: winner.announced_date || ''
+        announced_date: winner.announced_date || '',
       };
     });
     utils.exportToExcel(exportData, `winners_export_${new Date().toISOString().split('T')[0]}`);
@@ -2751,8 +2826,11 @@ const winnersModule = {
    */
   exportFilteredWinnersPDF() {
     const filteredWinners = STATE.filteredWinners || [];
-    if (filteredWinners.length === 0) { utils.showToast('No winners to export', 'warning'); return; }
-    const exportData = filteredWinners.map(winner => {
+    if (filteredWinners.length === 0) {
+      utils.showToast('No winners to export', 'warning');
+      return;
+    }
+    const exportData = filteredWinners.map((winner) => {
       const awardName = winner.awards?.award_name || winner.awards?.award_category || 'N/A';
       const year = winner.awards?.year || 'N/A';
       const status = winner.winner_status || 'pending';
@@ -2762,10 +2840,12 @@ const winnersModule = {
         year: year,
         status: status.charAt(0).toUpperCase() + status.slice(1),
         score: winner.score || '',
-        announced_date: winner.announced_date || ''
+        announced_date: winner.announced_date || '',
       };
     });
-    utils.exportToPrintablePDF(exportData, 'Winners Report', { columns: ['winner_name', 'award', 'year', 'status', 'score', 'announced_date'] });
+    utils.exportToPrintablePDF(exportData, 'Winners Report', {
+      columns: ['winner_name', 'award', 'year', 'status', 'score', 'announced_date'],
+    });
   },
 
   /* ==================================================== */
@@ -2805,7 +2885,10 @@ const winnersModule = {
     reader.onload = (e) => {
       try {
         const text = e.target.result;
-        const lines = text.split('\n').map(line => line.trim()).filter(line => line);
+        const lines = text
+          .split('\n')
+          .map((line) => line.trim())
+          .filter((line) => line);
 
         if (lines.length < 2) {
           utils.showToast('CSV file must have a header row and at least one data row', 'warning');
@@ -2817,8 +2900,8 @@ const winnersModule = {
         const requiredFields = ['winner_name'];
 
         // Check for required fields
-        const hasRequired = requiredFields.every(field =>
-          headers.some(h => h.toLowerCase().replace(/\s+/g, '_') === field)
+        const hasRequired = requiredFields.every((field) =>
+          headers.some((h) => h.toLowerCase().replace(/\s+/g, '_') === field)
         );
 
         if (!hasRequired) {
@@ -2852,12 +2935,14 @@ const winnersModule = {
         const previewRows = rows.slice(0, 5);
         let html = '<table class="table table-sm table-bordered"><thead><tr>';
         const displayHeaders = Object.keys(previewRows[0] || {});
-        displayHeaders.forEach(h => { html += `<th class="small">${utils.escapeHtml(h)}</th>`; });
+        displayHeaders.forEach((h) => {
+          html += `<th class="small">${utils.escapeHtml(h)}</th>`;
+        });
         html += '</tr></thead><tbody>';
 
-        previewRows.forEach(row => {
+        previewRows.forEach((row) => {
           html += '<tr>';
-          displayHeaders.forEach(h => {
+          displayHeaders.forEach((h) => {
             html += `<td class="small">${utils.escapeHtml(row[h] || '')}</td>`;
           });
           html += '</tr>';
@@ -2869,7 +2954,6 @@ const winnersModule = {
 
         html += '</tbody></table>';
         previewBody.innerHTML = html;
-
       } catch (err) {
         console.error('Error parsing CSV:', err);
         utils.showToast('Error parsing CSV file: ' + err.message, 'error');
@@ -2925,7 +3009,7 @@ const winnersModule = {
       for (const row of this.importWinnersData) {
         const winnerData = {
           winner_name: row.winner_name || null,
-          winner_status: row.winner_status || row.status || 'pending'
+          winner_status: row.winner_status || row.status || 'pending',
         };
 
         // Map optional fields
@@ -2959,7 +3043,6 @@ const winnersModule = {
       } else {
         utils.showToast(`Successfully imported ${successCount} winners!`, 'success');
       }
-
     } catch (error) {
       console.error('Error importing winners:', error);
       utils.showToast('Error importing winners: ' + error.message, 'error');
@@ -2982,7 +3065,14 @@ const winnersModule = {
       return;
     }
 
-    if (!await utils.confirmDialog({ title: 'Generate Media Packs', message: `Generate media packs for ${winners.length} winner(s)? This will download multiple files.`, confirmText: 'Generate', danger: false })) {
+    if (
+      !(await utils.confirmDialog({
+        title: 'Generate Media Packs',
+        message: `Generate media packs for ${winners.length} winner(s)? This will download multiple files.`,
+        confirmText: 'Generate',
+        danger: false,
+      }))
+    ) {
       return;
     }
 
@@ -2994,7 +3084,7 @@ const winnersModule = {
         const awardName = winner.awards?.award_name || winner.awards?.award_category || 'Award';
         const year = winner.awards?.year || new Date().getFullYear();
         const safeWinnerName = (winner.winner_name || 'winner').replace(/[^a-z0-9]/gi, '_').toLowerCase();
-        const photos = winner.winner_media?.filter(m => m.media_type === MEDIA_TYPES.PHOTO) || [];
+        const photos = winner.winner_media?.filter((m) => m.media_type === MEDIA_TYPES.PHOTO) || [];
 
         // Build HTML media pack
         const html = `<!DOCTYPE html>
@@ -3030,25 +3120,37 @@ const winnersModule = {
     ${winner.winner_quote ? `<p>"${utils.escapeHtml(winner.winner_quote)}"</p>` : ''}
     ${winner.impact_statement ? `<p><strong>Impact:</strong> ${utils.escapeHtml(winner.impact_statement)}</p>` : ''}
   </div>
-  ${winner.judge_quote ? `
+  ${
+    winner.judge_quote
+      ? `
   <div class="section">
     <h2>Quotable Excerpts</h2>
     <div class="quote">"${utils.escapeHtml(winner.judge_quote)}"</div>
     <p>— ${utils.escapeHtml(winner.winner_name)}, ${utils.escapeHtml(awardName)} Winner ${year}</p>
-  </div>` : ''}
-  ${photos.length > 0 ? `
+  </div>`
+      : ''
+  }
+  ${
+    photos.length > 0
+      ? `
   <div class="section">
     <h2>Photo Assets</h2>
     <p>${photos.length} high-resolution photo(s) available.</p>
     <div class="photos">
-      ${photos.map(photo => `
+      ${photos
+        .map(
+          (photo) => `
         <div class="photo-item">
           <img src="${photo.file_url}" alt="${utils.escapeHtml(photo.caption || 'Winner photo')}">
           <div class="caption">${utils.escapeHtml(photo.caption || 'No caption')}</div>
         </div>
-      `).join('')}
+      `
+        )
+        .join('')}
     </div>
-  </div>` : ''}
+  </div>`
+      : ''
+  }
   <div class="footer">
     <p>This media pack was generated on ${new Date().toLocaleDateString('en-GB')}. For media enquiries, please contact the awards team.</p>
   </div>
@@ -3067,11 +3169,10 @@ const winnersModule = {
         count++;
 
         // Delay between downloads
-        await new Promise(resolve => setTimeout(resolve, 400));
+        await new Promise((resolve) => setTimeout(resolve, 400));
       }
 
       utils.showToast(`Generated ${count} media pack(s)!`, 'success');
-
     } catch (error) {
       console.error('Error generating bulk media packs:', error);
       utils.showToast('Error generating media packs: ' + error.message, 'error');
@@ -3090,7 +3191,14 @@ const winnersModule = {
       return;
     }
 
-    if (!await utils.confirmDialog({ title: 'Generate Winner Packages', message: `Generate winner packages for ${winners.length} winner(s)? This will download multiple files per winner (badge, certificate, banners).`, confirmText: 'Generate', danger: false })) {
+    if (
+      !(await utils.confirmDialog({
+        title: 'Generate Winner Packages',
+        message: `Generate winner packages for ${winners.length} winner(s)? This will download multiple files per winner (badge, certificate, banners).`,
+        confirmText: 'Generate',
+        danger: false,
+      }))
+    ) {
       return;
     }
 
@@ -3108,7 +3216,8 @@ const winnersModule = {
         await this.downloadSVGAsImage(
           this.generateShieldSVG(winner, brandColor, accentColor),
           `${safeWinnerName}_winner_badge.png`,
-          400, 400
+          400,
+          400
         );
         count++;
 
@@ -3116,7 +3225,8 @@ const winnersModule = {
         await this.downloadSVGAsImage(
           this.generateEmailBannerSVG(winner, brandColor, accentColor),
           `${safeWinnerName}_email_banner.png`,
-          600, 150
+          600,
+          150
         );
         count++;
 
@@ -3124,7 +3234,8 @@ const winnersModule = {
         await this.downloadSVGAsImage(
           this.generateWebBannerSVG(winner, brandColor, accentColor),
           `${safeWinnerName}_web_banner.png`,
-          1200, 300
+          1200,
+          300
         );
         count++;
 
@@ -3133,11 +3244,10 @@ const winnersModule = {
         count++;
 
         // Delay between winners
-        await new Promise(resolve => setTimeout(resolve, 600));
+        await new Promise((resolve) => setTimeout(resolve, 600));
       }
 
       utils.showToast(`Generated ${count} assets for ${winners.length} winner(s)!`, 'success');
-
     } catch (error) {
       console.error('Error generating bulk winner packages:', error);
       utils.showToast('Error generating winner packages: ' + error.message, 'error');
@@ -3161,15 +3271,14 @@ const winnersModule = {
       await apiClient.update('winners', winnerId, { winner_status: newStatus });
 
       // Update local state
-      const winner = STATE.allWinners.find(w => w.id === winnerId);
+      const winner = STATE.allWinners.find((w) => w.id === winnerId);
       if (winner) winner.winner_status = newStatus;
 
-      const filteredWinner = STATE.filteredWinners.find(w => w.id === winnerId);
+      const filteredWinner = STATE.filteredWinners.find((w) => w.id === winnerId);
       if (filteredWinner) filteredWinner.winner_status = newStatus;
 
       this.renderWinners();
       utils.showToast(`Status updated to "${newStatus}"`, 'success');
-
     } catch (error) {
       console.error('Error updating winner status:', error);
       utils.showToast('Error updating status: ' + error.message, 'error');
@@ -3196,7 +3305,7 @@ const winnersModule = {
    * @param {boolean} checked - Whether all should be selected
    */
   toggleSelectAllWinners(checked) {
-    document.querySelectorAll('.winner-checkbox').forEach(cb => {
+    document.querySelectorAll('.winner-checkbox').forEach((cb) => {
       cb.checked = checked;
       if (checked) this._selectedWinnerIds.add(cb.value);
       else this._selectedWinnerIds.delete(cb.value);
@@ -3221,7 +3330,7 @@ const winnersModule = {
    */
   clearWinnerSelection() {
     this._selectedWinnerIds.clear();
-    document.querySelectorAll('.winner-checkbox').forEach(cb => cb.checked = false);
+    document.querySelectorAll('.winner-checkbox').forEach((cb) => (cb.checked = false));
     const selectAll = document.getElementById('selectAllWinners');
     if (selectAll) selectAll.checked = false;
     this.updateWinnersBulkBar();
@@ -3233,13 +3342,23 @@ const winnersModule = {
    */
   async bulkDeleteWinners() {
     if (this._selectedWinnerIds.size === 0) return;
-    if (!await utils.confirmDialog({ title: 'Delete Winners', message: `Delete ${this._selectedWinnerIds.size} selected winners? This cannot be undone.` })) return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Delete Winners',
+        message: `Delete ${this._selectedWinnerIds.size} selected winners? This cannot be undone.`,
+      }))
+    )
+      return;
 
     try {
       const ids = [...this._selectedWinnerIds];
-      const result = await utils.runBatchOperation(ids, async (id) => {
-        await apiClient.delete('winners', id);
-      }, 'Deleting winners');
+      const result = await utils.runBatchOperation(
+        ids,
+        async (id) => {
+          await apiClient.delete('winners', id);
+        },
+        'Deleting winners'
+      );
       utils.showToast(`${result.succeeded.length} winner(s) deleted`, 'success');
       this._selectedWinnerIds.clear();
       this.updateWinnersBulkBar();
@@ -3255,15 +3374,15 @@ const winnersModule = {
    */
   bulkExportWinners() {
     if (this._selectedWinnerIds.size === 0) return;
-    const winners = (STATE.filteredWinners || STATE.allWinners || []).filter(w => this._selectedWinnerIds.has(w.id));
+    const winners = (STATE.filteredWinners || STATE.allWinners || []).filter((w) => this._selectedWinnerIds.has(w.id));
     const headers = ['Winner Name', 'Award', 'Year', 'Status'];
-    const rows = winners.map(w => [
+    const rows = winners.map((w) => [
       w.winner_name || '',
-      utils.formatAwardName ? utils.formatAwardName(w.awards) : (w.awards?.award_name || ''),
+      utils.formatAwardName ? utils.formatAwardName(w.awards) : w.awards?.award_name || '',
       w.awards?.year || '',
-      w.winner_status || ''
+      w.winner_status || '',
     ]);
-    const csv = [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const csv = [headers, ...rows].map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -3286,7 +3405,7 @@ const winnersModule = {
     const filters = {
       year: document.getElementById('winnerYearFilterSelect')?.value || '',
       award: document.getElementById('winnerAwardFilterSelect')?.value || '',
-      search: document.getElementById('winnerSearchBox')?.value || ''
+      search: document.getElementById('winnerSearchBox')?.value || '',
     };
     try {
       const views = JSON.parse(localStorage.getItem('winnersSavedViews') || '[]');
@@ -3294,7 +3413,9 @@ const winnersModule = {
       localStorage.setItem('winnersSavedViews', JSON.stringify(views));
       this._renderSavedWinnersViews();
       utils.showToast('View saved: ' + name, 'success');
-    } catch(e) { utils.showToast('Failed to save view', 'warning'); }
+    } catch (e) {
+      utils.showToast('Failed to save view', 'warning');
+    }
   },
 
   _renderSavedWinnersViews() {
@@ -3306,9 +3427,12 @@ const winnersModule = {
         el.innerHTML = '<option value="">No saved views</option>';
         return;
       }
-      el.innerHTML = '<option value="">Load saved view...</option>' +
+      el.innerHTML =
+        '<option value="">Load saved view...</option>' +
         views.map((v, i) => `<option value="${i}">${utils.escapeHtml(v.name)}</option>`).join('');
-    } catch(e) { console.warn('Failed to render saved views:', e.message); }
+    } catch (e) {
+      console.warn('Failed to render saved views:', e.message);
+    }
   },
 
   /**
@@ -3325,7 +3449,9 @@ const winnersModule = {
       if (view.filters.search) document.getElementById('winnerSearchBox').value = view.filters.search;
       this.filterWinners();
       utils.showToast('Loaded view: ' + view.name, 'success');
-    } catch(e) { utils.showToast('Failed to load view', 'warning'); }
+    } catch (e) {
+      utils.showToast('Failed to load view', 'warning');
+    }
   },
 
   /**
@@ -3340,8 +3466,10 @@ const winnersModule = {
       localStorage.setItem('winnersSavedViews', JSON.stringify(views));
       this._renderSavedWinnersViews();
       utils.showToast('Deleted view: ' + name, 'info');
-    } catch(e) { utils.showToast('Failed to delete view', 'warning'); }
-  }
+    } catch (e) {
+      utils.showToast('Failed to delete view', 'warning');
+    }
+  },
 };
 
 // Export to window for global access

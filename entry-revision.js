@@ -1,20 +1,26 @@
 /* ENTRY REVISION MODULE - Revision & Resubmission Flow */
 
 const entryRevisionModule = {
-
   /* 1. REQUEST CHANGES */
   async requestChanges(entryId, feedback) {
     try {
-      const entryResult = await apiClient.select('entries', { select: 'id, entry_number, entry_title, contact_name, contact_email, status', filters: { id: { eq: entryId } }, pageSize: 1 });
+      const entryResult = await apiClient.select('entries', {
+        select: 'id, entry_number, entry_title, contact_name, contact_email, status',
+        filters: { id: { eq: entryId } },
+        pageSize: 1,
+      });
       const entry = entryResult.data?.[0];
       if (!entry) throw new Error('Entry not found');
 
       await apiClient.update('entries', entryId, { status: 'Changes Requested', updated_at: new Date().toISOString() });
 
       await apiClient.insert('entry_revisions', {
-        entry_id: entryId, requested_by: STATE.currentUser?.id ?? null,
-        feedback, status: 'pending',
-        created_at: new Date().toISOString(), updated_at: new Date().toISOString()
+        entry_id: entryId,
+        requested_by: STATE.currentUser?.id ?? null,
+        feedback,
+        status: 'pending',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       });
 
       await this._sendRevisionEmail(entry, feedback);
@@ -36,17 +42,19 @@ const entryRevisionModule = {
           select: 'subject, body',
           filters: { template_type: { eq: 'revision_request' }, is_active: { eq: true } },
           sort: { column: 'is_default', ascending: false },
-          pageSize: 1
+          pageSize: 1,
         });
         tpl = tplResult.data?.[0] || null;
-      } catch (_) { /* template table may not exist */ }
+      } catch (_) {
+        /* template table may not exist */
+      }
 
       if (tpl) {
         const placeholders = {
           CONTACT_NAME: entry.contact_name || '',
-          ENTRY_TITLE:  entry.entry_title || '',
+          ENTRY_TITLE: entry.entry_title || '',
           ENTRY_NUMBER: entry.entry_number || '',
-          FEEDBACK:     feedback || '',
+          FEEDBACK: feedback || '',
         };
         subject = tpl.subject;
         let bodyText = tpl.body;
@@ -65,22 +73,27 @@ const entryRevisionModule = {
       }
 
       await STATE.client.functions.invoke('send-email', {
-        body: { to: entry.contact_email, subject, html }
+        body: { to: entry.contact_email, subject, html },
       });
-    } catch (err) { console.warn('Revision email failed (non-fatal):', err.message); }
+    } catch (err) {
+      console.warn('Revision email failed (non-fatal):', err.message);
+    }
   },
 
   /* 2. REVISION HISTORY */
   async renderRevisionHistory(entryId) {
     try {
       const revisions = await apiClient.selectAll('entry_revisions', {
-        select: '*', filters: { entry_id: { eq: entryId } },
-        sort: { column: 'created_at', ascending: false }
+        select: '*',
+        filters: { entry_id: { eq: entryId } },
+        sort: { column: 'created_at', ascending: false },
       });
       if (!revisions?.length) return '<p class="text-muted fst-italic">No revision history.</p>';
 
       const cls = { pending: 'warning', resubmitted: 'primary', expired: 'secondary' };
-      return `<div class="revision-history">${revisions.map(r => `
+      return `<div class="revision-history">${revisions
+        .map(
+          (r) => `
         <div class="card mb-2 border-start border-4 border-${cls[r.status] || 'secondary'}">
           <div class="card-body py-2 px-3">
             <div class="d-flex justify-content-between mb-1">
@@ -91,7 +104,9 @@ const entryRevisionModule = {
             ${r.response ? `<p class="mb-1"><strong>Response:</strong> ${utils.escapeHtml(r.response)}</p>` : ''}
             ${r.deadline ? `<p class="mb-0 small text-muted">Deadline: ${new Date(r.deadline).toLocaleString('en-GB')}</p>` : ''}
           </div>
-        </div>`).join('')}</div>`;
+        </div>`
+        )
+        .join('')}</div>`;
     } catch (err) {
       return '<p class="text-danger">Could not load revision history.</p>';
     }
@@ -100,14 +115,19 @@ const entryRevisionModule = {
   /* 3. RESUBMISSION FORM */
   async renderResubmitForm(entryId, token) {
     try {
-      const entryResult = await apiClient.select('entries', { select: 'id, entry_number, entry_title, contact_name, status', filters: { id: { eq: entryId } }, pageSize: 1 });
+      const entryResult = await apiClient.select('entries', {
+        select: 'id, entry_number, entry_title, contact_name, status',
+        filters: { id: { eq: entryId } },
+        pageSize: 1,
+      });
       const entry = entryResult.data?.[0];
       if (!entry) return '<p class="text-danger">Entry not found.</p>';
       if (!['Changes Requested', 'Resubmitted'].includes(entry.status))
         return `<div class="alert alert-info">This entry is <strong>${utils.escapeHtml(entry.status)}</strong> and not open for resubmission.</div>`;
 
       const history = await this.renderRevisionHistory(entryId);
-      const eid = utils.escapeHtml(entryId), tok = utils.escapeHtml(token || '');
+      const eid = utils.escapeHtml(entryId),
+        tok = utils.escapeHtml(token || '');
       return `
         <div class="resubmit-form">
           <h5>Resubmit: ${utils.escapeHtml(entry.entry_title)} <small class="text-muted">${utils.escapeHtml(entry.entry_number)}</small></h5>
@@ -136,16 +156,25 @@ const entryRevisionModule = {
 
   async submitResubmission(entryId) {
     const response = document.getElementById('resubmitResponse')?.value?.trim();
-    if (!response) { utils.showToast('Please describe your changes.', 'warning'); return; }
+    if (!response) {
+      utils.showToast('Please describe your changes.', 'warning');
+      return;
+    }
     try {
       const revResult = await apiClient.select('entry_revisions', {
-        select: 'id', filters: { entry_id: { eq: entryId }, status: { eq: 'pending' } },
-        sort: { column: 'created_at', ascending: false }, pageSize: 1
+        select: 'id',
+        filters: { entry_id: { eq: entryId }, status: { eq: 'pending' } },
+        sort: { column: 'created_at', ascending: false },
+        pageSize: 1,
       });
       const rev = revResult.data?.[0];
       if (!rev) throw new Error('No pending revision found');
 
-      await apiClient.update('entry_revisions', rev.id, { response, status: 'resubmitted', updated_at: new Date().toISOString() });
+      await apiClient.update('entry_revisions', rev.id, {
+        response,
+        status: 'resubmitted',
+        updated_at: new Date().toISOString(),
+      });
       await apiClient.update('entries', entryId, { status: 'Resubmitted', updated_at: new Date().toISOString() });
 
       const files = document.getElementById('resubmitFiles')?.files;
@@ -153,18 +182,27 @@ const entryRevisionModule = {
 
       utils.showToast('Entry resubmitted successfully.', 'success');
       document.getElementById('resubmitForm')?.reset();
-    } catch (err) { utils.showToast('Resubmission failed: ' + err.message, 'error'); }
+    } catch (err) {
+      utils.showToast('Resubmission failed: ' + err.message, 'error');
+    }
   },
 
   async _uploadFiles(entryId, files) {
     for (const file of files) {
       const path = `entries/${entryId}/revisions/${Date.now()}_${file.name}`;
       const { error } = await STATE.client.storage.from('entry-files').upload(path, file);
-      if (error) { console.warn('Upload failed:', error.message); continue; }
-      const { data: { publicUrl } } = STATE.client.storage.from('entry-files').getPublicUrl(path);
+      if (error) {
+        console.warn('Upload failed:', error.message);
+        continue;
+      }
+      const {
+        data: { publicUrl },
+      } = STATE.client.storage.from('entry-files').getPublicUrl(path);
       await apiClient.insert('entry_files', {
-        entry_id: entryId, file_name: file.name, file_url: publicUrl,
-        uploaded_at: new Date().toISOString()
+        entry_id: entryId,
+        file_name: file.name,
+        file_url: publicUrl,
+        uploaded_at: new Date().toISOString(),
       });
     }
   },
@@ -174,7 +212,8 @@ const entryRevisionModule = {
     try {
       const entryResult = await apiClient.select('entries', {
         select: '*, organisations(organisation_name), awards:award_years(award_name)',
-        filters: { id: { eq: entryId } }, pageSize: 1
+        filters: { id: { eq: entryId } },
+        pageSize: 1,
       });
       const entry = entryResult.data?.[0];
       if (!entry) return '<p class="text-danger">Could not load entry.</p>';
@@ -182,24 +221,34 @@ const entryRevisionModule = {
       let latest = null;
       try {
         const revsResult = await apiClient.select('entry_revisions', {
-          select: '*', filters: { entry_id: { eq: entryId } },
-          sort: { column: 'created_at', ascending: false }, pageSize: 1
+          select: '*',
+          filters: { entry_id: { eq: entryId } },
+          sort: { column: 'created_at', ascending: false },
+          pageSize: 1,
         });
         latest = revsResult.data?.[0] || null;
-      } catch (_) { /* may not have revisions */ }
+      } catch (_) {
+        /* may not have revisions */
+      }
 
       let files = [];
       try {
         files = await apiClient.selectAll('entry_files', {
           select: 'file_name, file_url, uploaded_at',
           filters: { entry_id: { eq: entryId } },
-          sort: { column: 'uploaded_at', ascending: false }
+          sort: { column: 'uploaded_at', ascending: false },
         });
-      } catch (_) { /* may not have files */ }
+      } catch (_) {
+        /* may not have files */
+      }
 
-      const fileList = (files || []).map(f =>
-        `<li><a href="${utils.escapeHtml(f.file_url)}" target="_blank">${utils.escapeHtml(f.file_name)}</a>
-         <small class="text-muted">${new Date(f.uploaded_at).toLocaleDateString('en-GB')}</small></li>`).join('');
+      const fileList = (files || [])
+        .map(
+          (f) =>
+            `<li><a href="${utils.escapeHtml(f.file_url)}" target="_blank">${utils.escapeHtml(f.file_name)}</a>
+         <small class="text-muted">${new Date(f.uploaded_at).toLocaleDateString('en-GB')}</small></li>`
+        )
+        .join('');
 
       const sc = { Resubmitted: 'primary', 'Changes Requested': 'warning', Approved: 'success', Rejected: 'danger' };
       const eid = utils.escapeHtml(entryId);
@@ -214,7 +263,9 @@ const entryRevisionModule = {
             </div>
             <span class="badge bg-${sc[entry.status] || 'secondary'} fs-6">${utils.escapeHtml(entry.status)}</span>
           </div>
-          ${latest ? `<div class="row g-3 mb-3">
+          ${
+            latest
+              ? `<div class="row g-3 mb-3">
             <div class="col-md-6"><div class="card h-100 border-warning">
               <div class="card-header bg-warning bg-opacity-10 fw-semibold">Requested Changes</div>
               <div class="card-body"><p class="mb-0">${utils.escapeHtml(latest.feedback || '')}</p></div>
@@ -223,14 +274,16 @@ const entryRevisionModule = {
               <div class="card-header bg-primary bg-opacity-10 fw-semibold">Entrant Response</div>
               <div class="card-body"><p class="mb-0">${utils.escapeHtml(latest.response || 'No response yet.')}</p></div>
             </div></div>
-          </div>` : ''}
+          </div>`
+              : ''
+          }
           ${fileList ? `<div class="mb-3"><strong>Files:</strong><ul class="mb-0">${fileList}</ul></div>` : ''}
           <div class="d-flex gap-2">
             <button class="btn btn-success btn-sm"
-              data-action="window.entryRevisionModule._adminDecision" data-args='${JSON.stringify([eid, "Approved"])}'>
+              data-action="window.entryRevisionModule._adminDecision" data-args='${JSON.stringify([eid, 'Approved'])}'>
               <i class="bi bi-check-lg me-1"></i>Approve</button>
             <button class="btn btn-danger btn-sm"
-              data-action="window.entryRevisionModule._adminDecision" data-args='${JSON.stringify([eid, "Rejected"])}'>
+              data-action="window.entryRevisionModule._adminDecision" data-args='${JSON.stringify([eid, 'Rejected'])}'>
               <i class="bi bi-x-lg me-1"></i>Reject</button>
             <button class="btn btn-warning btn-sm"
               data-action="window.entryRevisionModule._showRequestChangesModal" data-id="${eid}">
@@ -254,7 +307,9 @@ const entryRevisionModule = {
   _showRequestChangesModal(entryId) {
     document.getElementById('revChangesModal')?.remove();
     const eid = utils.escapeHtml(entryId);
-    document.body.insertAdjacentHTML('beforeend', `
+    document.body.insertAdjacentHTML(
+      'beforeend',
+      `
       <div class="modal fade" id="revChangesModal" tabindex="-1">
         <div class="modal-dialog"><div class="modal-content">
           <div class="modal-header">
@@ -271,44 +326,72 @@ const entryRevisionModule = {
               data-action="window.entryRevisionModule._submitModalChanges" data-id="${eid}">Send</button>
           </div>
         </div></div>
-      </div>`);
+      </div>`
+    );
     new bootstrap.Modal(document.getElementById('revChangesModal')).show();
   },
 
   async _submitModalChanges(entryId) {
     const feedback = document.getElementById('revChangesFeedback')?.value?.trim();
-    if (!feedback) { utils.showToast('Please enter feedback.', 'warning'); return; }
+    if (!feedback) {
+      utils.showToast('Please enter feedback.', 'warning');
+      return;
+    }
     bootstrap.Modal.getInstance(document.getElementById('revChangesModal'))?.hide();
     await this.requestChanges(entryId, feedback);
   },
 
   /* 6. BULK REQUEST CHANGES */
   async bulkRequestChanges(entryIds, feedback) {
-    if (!Array.isArray(entryIds) || !entryIds.length) { utils.showToast('No entries selected.', 'warning'); return; }
-    if (!feedback?.trim()) { utils.showToast('Feedback is required.', 'warning'); return; }
-    let ok = 0, fail = 0;
+    if (!Array.isArray(entryIds) || !entryIds.length) {
+      utils.showToast('No entries selected.', 'warning');
+      return;
+    }
+    if (!feedback?.trim()) {
+      utils.showToast('Feedback is required.', 'warning');
+      return;
+    }
+    let ok = 0,
+      fail = 0;
     for (const id of entryIds) (await this.requestChanges(id, feedback)) ? ok++ : fail++;
-    utils.showToast(`Changes requested: ${ok} succeeded${fail ? `, ${fail} failed` : ''}.`, fail ? 'warning' : 'success');
+    utils.showToast(
+      `Changes requested: ${ok} succeeded${fail ? `, ${fail} failed` : ''}.`,
+      fail ? 'warning' : 'success'
+    );
   },
 
   /* 7. DEADLINE MANAGEMENT */
   async setRevisionDeadline(entryId, deadline) {
     const dl = new Date(deadline);
-    if (isNaN(dl.getTime())) { utils.showToast('Invalid deadline date.', 'warning'); return; }
+    if (isNaN(dl.getTime())) {
+      utils.showToast('Invalid deadline date.', 'warning');
+      return;
+    }
 
     try {
       const revResult = await apiClient.select('entry_revisions', {
-        select: 'id', filters: { entry_id: { eq: entryId }, status: { eq: 'pending' } },
-        sort: { column: 'created_at', ascending: false }, pageSize: 1
+        select: 'id',
+        filters: { entry_id: { eq: entryId }, status: { eq: 'pending' } },
+        sort: { column: 'created_at', ascending: false },
+        pageSize: 1,
       });
       const rev = revResult.data?.[0];
-      if (!rev) { utils.showToast('No pending revision found.', 'warning'); return; }
+      if (!rev) {
+        utils.showToast('No pending revision found.', 'warning');
+        return;
+      }
 
-      await apiClient.update('entry_revisions', rev.id, { deadline: dl.toISOString(), updated_at: new Date().toISOString() });
+      await apiClient.update('entry_revisions', rev.id, {
+        deadline: dl.toISOString(),
+        updated_at: new Date().toISOString(),
+      });
 
       utils.showToast(`Deadline set: ${dl.toLocaleString('en-GB')}.`, 'success');
       const ms = dl.getTime() - Date.now();
-      if (ms <= 0) { await this._expireRevision(rev.id, entryId); return; }
+      if (ms <= 0) {
+        await this._expireRevision(rev.id, entryId);
+        return;
+      }
       if (ms <= 86_400_000) setTimeout(() => this._expireRevision(rev.id, entryId), ms);
     } catch (err) {
       utils.showToast('Failed to set deadline: ' + err.message, 'error');
@@ -317,16 +400,23 @@ const entryRevisionModule = {
 
   async _expireRevision(revisionId, entryId) {
     try {
-      const revResult = await apiClient.select('entry_revisions', { select: 'status', filters: { id: { eq: revisionId } }, pageSize: 1 });
+      const revResult = await apiClient.select('entry_revisions', {
+        select: 'status',
+        filters: { id: { eq: revisionId } },
+        pageSize: 1,
+      });
       const rev = revResult.data?.[0];
       if (rev?.status !== 'pending') return;
-      await apiClient.update('entry_revisions', revisionId, { status: 'expired', updated_at: new Date().toISOString() });
+      await apiClient.update('entry_revisions', revisionId, {
+        status: 'expired',
+        updated_at: new Date().toISOString(),
+      });
       await apiClient.update('entries', entryId, { status: 'Expired', updated_at: new Date().toISOString() });
       console.warn(`Revision ${revisionId} / entry ${entryId} expired.`);
     } catch (err) {
       console.warn('Expire revision failed:', err.message);
     }
-  }
+  },
 };
 ModuleRegistry.register('entryRevisionModule', entryRevisionModule);
 

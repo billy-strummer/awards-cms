@@ -4,8 +4,8 @@
 
 const documentModule = {
   BUCKET: 'documents',
-  CATEGORIES: ['press_pack','certificate','contract','invoice','logo','photo','legal','compliance','other'],
-  STATUSES: ['draft','pending_approval','approved','rejected','expired'],
+  CATEGORIES: ['press_pack', 'certificate', 'contract', 'invoice', 'logo', 'photo', 'legal', 'compliance', 'other'],
+  STATUSES: ['draft', 'pending_approval', 'approved', 'rejected', 'expired'],
 
   /** @type {boolean} Whether server-side pagination is active */
   _serverPagination: true,
@@ -22,20 +22,26 @@ const documentModule = {
    * Return the Supabase client (used only for storage operations).
    * @returns {Object} Supabase client instance
    */
-  _client() { return STATE.client; },
+  _client() {
+    return STATE.client;
+  },
 
   /**
    * Return the current user object.
    * @returns {Object} Current user
    */
-  _user() { return STATE.currentUser || {}; },
+  _user() {
+    return STATE.currentUser || {};
+  },
 
   /**
    * Extract the file extension from a File object.
    * @param {File} file - The file
    * @returns {string} Lowercase extension
    */
-  _ext(file) { return file.name.split('.').pop().toLowerCase(); },
+  _ext(file) {
+    return file.name.split('.').pop().toLowerCase();
+  },
 
   /**
    * Build a storage path for a file upload.
@@ -92,12 +98,17 @@ const documentModule = {
       search: search ? { term: search, columns: ['title', 'file_name', 'category'] } : undefined,
       sort: { column: 'created_at', ascending: false },
       page,
-      pageSize: this._pagination.pageSize
+      pageSize: this._pagination.pageSize,
     });
 
-    const docs = (result.data || []).map(d => ({ ...d, _source: 'documents' }));
+    const docs = (result.data || []).map((d) => ({ ...d, _source: 'documents' }));
     this._allDocuments = docs;
-    this._pagination = { page: result.page, totalPages: result.totalPages, count: result.count, pageSize: result.pageSize };
+    this._pagination = {
+      page: result.page,
+      totalPages: result.totalPages,
+      count: result.count,
+      pageSize: result.pageSize,
+    };
   },
 
   /**
@@ -147,11 +158,11 @@ const documentModule = {
         <input type="text" id="docSearch" class="form-control form-control-sm w-auto" placeholder="Search documents...">
         <select id="docCategoryFilter" class="form-select form-select-sm w-auto">
           <option value="">All categories</option>
-          ${this.CATEGORIES.map(c => `<option value="${c}">${utils.escapeHtml(c.replace(/_/g,' '))}</option>`).join('')}
+          ${this.CATEGORIES.map((c) => `<option value="${c}">${utils.escapeHtml(c.replace(/_/g, ' '))}</option>`).join('')}
         </select>
         <select id="docStatusFilter" class="form-select form-select-sm w-auto">
           <option value="">All statuses</option>
-          ${this.STATUSES.map(s => `<option value="${s}">${utils.escapeHtml(s.replace(/_/g,' '))}</option>`).join('')}
+          ${this.STATUSES.map((s) => `<option value="${s}">${utils.escapeHtml(s.replace(/_/g, ' '))}</option>`).join('')}
         </select>
       </div>
       <div class="table-responsive">
@@ -180,14 +191,16 @@ const documentModule = {
     if (!tbody) return;
     const docs = this._allDocuments;
     tbody.innerHTML = docs.length
-      ? docs.map(d => this._docRow(d)).join('')
+      ? docs.map((d) => this._docRow(d)).join('')
       : '<tr><td colspan="8" class="text-center text-muted">No documents found</td></tr>';
 
     // Re-attach per-row listeners
-    document.querySelectorAll('.btn-doc-approve').forEach(btn =>
-      btn.addEventListener('click', () => this.approveDocument(btn.dataset.id)));
-    document.querySelectorAll('.btn-doc-delete').forEach(btn =>
-      btn.addEventListener('click', () => this.deleteDocument(btn.dataset.id)));
+    document
+      .querySelectorAll('.btn-doc-approve')
+      .forEach((btn) => btn.addEventListener('click', () => this.approveDocument(btn.dataset.id)));
+    document
+      .querySelectorAll('.btn-doc-delete')
+      .forEach((btn) => btn.addEventListener('click', () => this.deleteDocument(btn.dataset.id)));
 
     if (this._serverPagination) {
       utils.renderServerPagination('docsPagination', this._pagination, 'documentModule._goToPage');
@@ -200,25 +213,36 @@ const documentModule = {
    * @returns {string} HTML table row
    */
   _docRow(d) {
-    const badge = { approved:'success', rejected:'danger', pending_approval:'warning',
-                    draft:'secondary', expired:'dark', entry_file:'info', logo:'info' };
+    const badge = {
+      approved: 'success',
+      rejected: 'danger',
+      pending_approval: 'warning',
+      draft: 'secondary',
+      expired: 'dark',
+      entry_file: 'info',
+      logo: 'info',
+    };
     const status = d.status || 'draft';
     return `<tr data-id="${d.id}" data-source="${d._source}"
-               data-name="${utils.escapeHtml(d.title||d.file_name||'')}"
-               data-category="${d.category||''}" data-status="${status}">
-      <td><a href="${utils.escapeHtml(d.file_url||'#')}" target="_blank" rel="noopener">${utils.escapeHtml(d.title||d.file_name||'—')}</a></td>
-      <td><small class="text-muted">${utils.escapeHtml(d.file_type||'—')}</small></td>
-      <td>${utils.escapeHtml((d.category||'—').replace(/_/g,' '))}</td>
-      <td><small>${utils.escapeHtml(d.linked_entity_type||'—')} ${d.linked_entity_id ? '#'+d.linked_entity_id : ''}</small></td>
-      <td><small>${utils.escapeHtml(d.uploaded_by||'—')}</small></td>
+               data-name="${utils.escapeHtml(d.title || d.file_name || '')}"
+               data-category="${d.category || ''}" data-status="${status}">
+      <td><a href="${utils.escapeHtml(d.file_url || '#')}" target="_blank" rel="noopener">${utils.escapeHtml(d.title || d.file_name || '—')}</a></td>
+      <td><small class="text-muted">${utils.escapeHtml(d.file_type || '—')}</small></td>
+      <td>${utils.escapeHtml((d.category || '—').replace(/_/g, ' '))}</td>
+      <td><small>${utils.escapeHtml(d.linked_entity_type || '—')} ${d.linked_entity_id ? '#' + d.linked_entity_id : ''}</small></td>
+      <td><small>${utils.escapeHtml(d.uploaded_by || '—')}</small></td>
       <td><small>${d.created_at ? new Date(d.created_at).toLocaleDateString('en-GB') : '—'}</small></td>
-      <td><span class="badge bg-${badge[status]||'secondary'}">${status.replace(/_/g,' ')}</span></td>
+      <td><span class="badge bg-${badge[status] || 'secondary'}">${status.replace(/_/g, ' ')}</span></td>
       <td>
-        ${d._source === 'documents' ? `
+        ${
+          d._source === 'documents'
+            ? `
           <button class="btn btn-xs btn-outline-primary btn-doc-approve" data-id="${d.id}" title="Approve">
             <i class="bi bi-check-lg"></i></button>
           <button class="btn btn-xs btn-outline-danger btn-doc-delete" data-id="${d.id}" title="Delete">
-            <i class="bi bi-trash"></i></button>` : ''}
+            <i class="bi bi-trash"></i></button>`
+            : ''
+        }
       </td>
     </tr>`;
   },
@@ -239,10 +263,12 @@ const documentModule = {
     catFilter?.addEventListener('change', refetch);
     stFilter?.addEventListener('change', refetch);
 
-    document.querySelectorAll('.btn-doc-approve').forEach(btn =>
-      btn.addEventListener('click', () => this.approveDocument(btn.dataset.id)));
-    document.querySelectorAll('.btn-doc-delete').forEach(btn =>
-      btn.addEventListener('click', () => this.deleteDocument(btn.dataset.id)));
+    document
+      .querySelectorAll('.btn-doc-approve')
+      .forEach((btn) => btn.addEventListener('click', () => this.approveDocument(btn.dataset.id)));
+    document
+      .querySelectorAll('.btn-doc-delete')
+      .forEach((btn) => btn.addEventListener('click', () => this.deleteDocument(btn.dataset.id)));
   },
 
   /* -------------------------------------------------- */
@@ -260,14 +286,17 @@ const documentModule = {
     const payload = {
       title: metadata.title || file.name,
       category: metadata.category || 'other',
-      file_url: url, file_name: file.name,
+      file_url: url,
+      file_name: file.name,
       file_type: file.type || this._ext(file),
-      file_size: size, status: 'draft',
+      file_size: size,
+      status: 'draft',
       linked_entity_type: metadata.linkedEntityType || null,
       linked_entity_id: metadata.linkedEntityId || null,
       expiry_date: metadata.expiryDate || null,
       uploaded_by: this._user().email || null,
-      created_at: new Date().toISOString(), updated_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     };
     const { data } = await apiClient.insert('documents', payload);
     utils.showToast('Document uploaded', 'success');
@@ -282,16 +311,26 @@ const documentModule = {
   async deleteDocument(id) {
     const row = document.querySelector(`#docLibraryTable tr[data-id="${id}"]`);
     const docName = row?.querySelector('td:nth-child(1)')?.textContent?.trim() || 'this document';
-    if (!await utils.confirmDialog({ title: 'Delete Document', message: `Delete <strong>${utils.escapeHtml(docName)}</strong>? This action cannot be undone.`, confirmText: 'Delete', danger: true })) return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Delete Document',
+        message: `Delete <strong>${utils.escapeHtml(docName)}</strong>? This action cannot be undone.`,
+        confirmText: 'Delete',
+        danger: true,
+      }))
+    )
+      return;
     try {
       await apiClient.delete('documents', id);
     } catch (dbError) {
       console.warn('DB delete for document failed, removing from localStorage:', dbError);
       try {
         const stored = JSON.parse(localStorage.getItem('bta_documents') || '[]');
-        const filtered = stored.filter(d => d.id !== id);
+        const filtered = stored.filter((d) => d.id !== id);
         localStorage.setItem('bta_documents', JSON.stringify(filtered));
-      } catch (e) { /* ignore */ }
+      } catch (e) {
+        /* ignore */
+      }
     }
     row?.remove();
     utils.showToast('Document deleted', 'success');
@@ -326,15 +365,22 @@ const documentModule = {
     const category = doc.data?.category || 'other';
     const { url, size } = await this._uploadToStorage(file, category);
 
-    const history = await this._client().from('document_versions')
-      .select('version_number').eq('document_id', documentId).order('version_number', { ascending: false }).limit(1);
-    const nextVersion = ((history.data?.[0]?.version_number) || 0) + 1;
+    const history = await this._client()
+      .from('document_versions')
+      .select('version_number')
+      .eq('document_id', documentId)
+      .order('version_number', { ascending: false })
+      .limit(1);
+    const nextVersion = (history.data?.[0]?.version_number || 0) + 1;
 
     const { data } = await apiClient.insert('document_versions', {
-      document_id: documentId, version_number: nextVersion,
-      file_url: url, file_size: size,
+      document_id: documentId,
+      version_number: nextVersion,
+      file_url: url,
+      file_size: size,
       uploaded_by: this._user().email || null,
-      notes, created_at: new Date().toISOString()
+      notes,
+      created_at: new Date().toISOString(),
     });
 
     await this.updateDocument(documentId, { file_url: url, file_name: file.name, file_size: size });
@@ -348,8 +394,12 @@ const documentModule = {
    * @returns {Promise<Array>} Array of version records, newest first
    */
   async getVersionHistory(documentId) {
-    const { data, error } = await this._client().from('document_versions')
-      .select('*').eq('document_id', documentId).order('version_number', { ascending: false }).limit(100);
+    const { data, error } = await this._client()
+      .from('document_versions')
+      .select('*')
+      .eq('document_id', documentId)
+      .order('version_number', { ascending: false })
+      .limit(100);
     if (error) throw error;
     return data || [];
   },
@@ -361,9 +411,15 @@ const documentModule = {
    * @returns {Promise<Object>} The version record that was reverted to
    */
   async revertToVersion(documentId, versionId) {
-    const { data: ver, error } = await this._client().from('document_versions')
-      .select('*').eq('id', versionId).single();
-    if (error) { utils.showToast('Version not found', 'error'); throw error; }
+    const { data: ver, error } = await this._client()
+      .from('document_versions')
+      .select('*')
+      .eq('id', versionId)
+      .single();
+    if (error) {
+      utils.showToast('Version not found', 'error');
+      throw error;
+    }
     await this.updateDocument(documentId, { file_url: ver.file_url, file_size: ver.file_size });
     utils.showToast(`Reverted to version ${ver.version_number}`, 'success');
     return ver;
@@ -392,9 +448,13 @@ const documentModule = {
     const now = new Date();
     const cutoff = new Date(now.getTime() + daysAhead * 86400000).toISOString().split('T')[0];
     const today = now.toISOString().split('T')[0];
-    const { data, error } = await this._client().from('documents')
-      .select('*').gte('expiry_date', today).lte('expiry_date', cutoff)
-      .order('expiry_date', { ascending: true }).limit(500);
+    const { data, error } = await this._client()
+      .from('documents')
+      .select('*')
+      .gte('expiry_date', today)
+      .lte('expiry_date', cutoff)
+      .order('expiry_date', { ascending: true })
+      .limit(500);
     if (error) throw error;
     return data || [];
   },
@@ -410,7 +470,8 @@ const documentModule = {
    */
   async submitForApproval(documentId) {
     const { data } = await apiClient.update('documents', documentId, {
-      status: 'pending_approval', updated_at: new Date().toISOString()
+      status: 'pending_approval',
+      updated_at: new Date().toISOString(),
     });
     utils.showToast('Submitted for approval', 'info');
     return data;
@@ -423,11 +484,17 @@ const documentModule = {
    */
   async approveDocument(documentId) {
     const { data } = await apiClient.update('documents', documentId, {
-      status: 'approved', approved_by: this._user().email || null,
-      approved_at: new Date().toISOString(), updated_at: new Date().toISOString()
+      status: 'approved',
+      approved_by: this._user().email || null,
+      approved_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     });
     const row = document.querySelector(`#docLibraryTable tr[data-id="${documentId}"]`);
-    if (row) { row.dataset.status = 'approved'; row.querySelector('.badge').className = 'badge bg-success'; row.querySelector('.badge').textContent = 'approved'; }
+    if (row) {
+      row.dataset.status = 'approved';
+      row.querySelector('.badge').className = 'badge bg-success';
+      row.querySelector('.badge').textContent = 'approved';
+    }
     utils.showToast('Document approved', 'success');
     return data;
   },
@@ -440,7 +507,8 @@ const documentModule = {
    */
   async rejectDocument(documentId, reason = '') {
     const { data } = await apiClient.update('documents', documentId, {
-      status: 'rejected', updated_at: new Date().toISOString()
+      status: 'rejected',
+      updated_at: new Date().toISOString(),
     });
     if (reason) await this.updateDocument(documentId, { rejection_reason: reason });
     utils.showToast('Document rejected', 'warning');
@@ -458,38 +526,61 @@ const documentModule = {
    */
   async buildPressPack(winnerId) {
     const [photos, certs, profiles] = await Promise.all([
-      this._client().from('documents').select('*')
-        .eq('linked_entity_id', winnerId).in('category', ['photo','logo']).eq('status','approved'),
-      this._client().from('documents').select('*')
-        .eq('linked_entity_id', winnerId).eq('category','certificate').eq('status','approved'),
-      this._client().from('documents').select('*')
-        .eq('linked_entity_id', winnerId).eq('category','press_pack').eq('status','approved')
+      this._client()
+        .from('documents')
+        .select('*')
+        .eq('linked_entity_id', winnerId)
+        .in('category', ['photo', 'logo'])
+        .eq('status', 'approved'),
+      this._client()
+        .from('documents')
+        .select('*')
+        .eq('linked_entity_id', winnerId)
+        .eq('category', 'certificate')
+        .eq('status', 'approved'),
+      this._client()
+        .from('documents')
+        .select('*')
+        .eq('linked_entity_id', winnerId)
+        .eq('category', 'press_pack')
+        .eq('status', 'approved'),
     ]);
 
     const all = [
-      ...(photos.data||[]).map(d=>({...d,_section:'Media'})),
-      ...(certs.data||[]).map(d=>({...d,_section:'Certificates'})),
-      ...(profiles.data||[]).map(d=>({...d,_section:'Press Pack'}))
+      ...(photos.data || []).map((d) => ({ ...d, _section: 'Media' })),
+      ...(certs.data || []).map((d) => ({ ...d, _section: 'Certificates' })),
+      ...(profiles.data || []).map((d) => ({ ...d, _section: 'Press Pack' })),
     ];
 
-    const grouped = all.reduce((acc,d)=>{ (acc[d._section]??=[]).push(d); return acc; }, {});
-    const sections = Object.entries(grouped).map(([section, items]) => `
+    const grouped = all.reduce((acc, d) => {
+      (acc[d._section] ??= []).push(d);
+      return acc;
+    }, {});
+    const sections = Object.entries(grouped)
+      .map(
+        ([section, items]) => `
       <h6 class="mt-3 mb-2 text-uppercase fw-bold text-muted">${utils.escapeHtml(section)}</h6>
       <div class="row g-2">
-        ${items.map(d=>`
+        ${items
+          .map(
+            (d) => `
           <div class="col-md-4">
             <div class="card card-body py-2 h-100">
               <div class="d-flex align-items-center gap-2">
                 <i class="bi bi-file-earmark fs-4 text-primary"></i>
                 <div>
                   <a href="${utils.escapeHtml(d.file_url)}" target="_blank" class="fw-semibold text-decoration-none">
-                    ${utils.escapeHtml(d.title||d.file_name)}</a>
-                  <div class="text-muted" style="font-size:.75rem">${utils.escapeHtml(d.file_type||'')}</div>
+                    ${utils.escapeHtml(d.title || d.file_name)}</a>
+                  <div class="text-muted" style="font-size:.75rem">${utils.escapeHtml(d.file_type || '')}</div>
                 </div>
               </div>
             </div>
-          </div>`).join('')}
-      </div>`).join('');
+          </div>`
+          )
+          .join('')}
+      </div>`
+      )
+      .join('');
 
     const modalId = 'pressPackModal';
     document.getElementById(modalId)?.remove();
@@ -541,11 +632,12 @@ const documentModule = {
       }
     }
 
-    const msg = `${results.success.length}/${total} uploaded` +
+    const msg =
+      `${results.success.length}/${total} uploaded` +
       (results.failed.length ? `, ${results.failed.length} failed` : '');
     utils.showToast(msg, results.failed.length ? 'warning' : 'success');
     return results;
-  }
+  },
 };
 ModuleRegistry.register('documentModule', documentModule);
 

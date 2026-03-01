@@ -14,10 +14,7 @@
 
 const { createClient } = require('@supabase/supabase-js');
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
 // ────────────────────────────────────────────
 // CORS helpers
@@ -113,10 +110,21 @@ module.exports = async function handler(req, res) {
 
 async function handleSubmitEntry(req, res) {
   const {
-    companyName, region, sector, contactEmail, contactName,
-    contactPhone, companyWebsite, awardCategory, entryDescription,
-    whyShouldWin, supportingInfo, tradeBodies, accreditations,
-    employeeCount, contactPosition
+    companyName,
+    region,
+    sector,
+    contactEmail,
+    contactName,
+    contactPhone,
+    companyWebsite,
+    awardCategory,
+    entryDescription,
+    whyShouldWin,
+    supportingInfo,
+    tradeBodies,
+    accreditations,
+    employeeCount,
+    contactPosition,
   } = req.body;
 
   // Validate required fields
@@ -173,7 +181,7 @@ async function handleSubmitEntry(req, res) {
         contact_name: safe.contactName,
         contact_phone: safe.contactPhone,
         website: safe.companyWebsite,
-        status: 'active'
+        status: 'active',
       })
       .select()
       .single();
@@ -235,14 +243,10 @@ async function handleSubmitEntry(req, res) {
     award_category: safe.awardCategory,
     sector: safe.sector,
     region: safe.region,
-    is_self_nomination: true
+    is_self_nomination: true,
   };
 
-  const { data: entry, error: entryError } = await supabase
-    .from('entries')
-    .insert(entryPayload)
-    .select()
-    .single();
+  const { data: entry, error: entryError } = await supabase.from('entries').insert(entryPayload).select().single();
 
   if (entryError) {
     // Fallback: try base columns only
@@ -254,14 +258,14 @@ async function handleSubmitEntry(req, res) {
       entry_description: [
         safe.entryDescription,
         safe.whyShouldWin ? '\n\nWhy we should win:\n' + safe.whyShouldWin : '',
-        supportingInformation ? '\n\nSupporting information:\n' + supportingInformation : ''
+        supportingInformation ? '\n\nSupporting information:\n' + supportingInformation : '',
       ].join(''),
       contact_name: safe.contactName,
       contact_email: safe.contactEmail,
       status: 'submitted',
       payment_status: 'pending',
       submission_date: new Date().toISOString(),
-      allow_public_voting: false
+      allow_public_voting: false,
     };
 
     const { data: baseEntry, error: baseError } = await supabase
@@ -277,37 +281,46 @@ async function handleSubmitEntry(req, res) {
 
     // Try setting extended fields (non-blocking)
     try {
-      await supabase.from('entries').update({
-        why_should_win: safe.whyShouldWin,
-        supporting_information: supportingInformation,
-        contact_phone: safe.contactPhone,
-        contact_position: safe.contactPosition,
-        year: currentYear,
-        award_category: safe.awardCategory,
-        sector: safe.sector,
-        region: safe.region,
-        is_self_nomination: true
-      }).eq('id', baseEntry.id);
-    } catch (_e) { /* non-blocking */ }
+      await supabase
+        .from('entries')
+        .update({
+          why_should_win: safe.whyShouldWin,
+          supporting_information: supportingInformation,
+          contact_phone: safe.contactPhone,
+          contact_position: safe.contactPosition,
+          year: currentYear,
+          award_category: safe.awardCategory,
+          sector: safe.sector,
+          region: safe.region,
+          is_self_nomination: true,
+        })
+        .eq('id', baseEntry.id);
+    } catch (_e) {
+      /* non-blocking */
+    }
 
     // Try sending confirmation email
     try {
       await supabase.rpc('send_entry_confirmation_email', { p_entry_id: baseEntry.id });
-    } catch (_e) { /* non-blocking */ }
+    } catch (_e) {
+      /* non-blocking */
+    }
 
     return res.status(200).json({
       success: true,
-      entry: { id: baseEntry.id, entry_number: baseEntry.entry_number }
+      entry: { id: baseEntry.id, entry_number: baseEntry.entry_number },
     });
   }
 
   // Try sending confirmation email
   try {
     await supabase.rpc('send_entry_confirmation_email', { p_entry_id: entry.id });
-  } catch (_e) { /* non-blocking */ }
+  } catch (_e) {
+    /* non-blocking */
+  }
 
   return res.status(200).json({
     success: true,
-    entry: { id: entry.id, entry_number: entry.entry_number }
+    entry: { id: entry.id, entry_number: entry.entry_number },
   });
 }

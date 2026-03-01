@@ -1,5 +1,8 @@
 /* ==================================================== */
 /* TEST DATA MANAGER — Comprehensive coverage for all tabs */
+/* STATE.client.from() is intentional: test data setup    */
+/* requires direct DB access (insert/delete/upsert) that  */
+/* bypasses RLS and validation for test fixture management. */
 /* ==================================================== */
 
 const testDataManager = {
@@ -66,9 +69,8 @@ const testDataManager = {
     const stripped = [];
 
     for (let attempt = 0; attempt < 20; attempt++) {
-      const r = (mode === 'upsert')
-        ? await STATE.client.from(table).upsert(data)
-        : await STATE.client.from(table).insert(data);
+      const r =
+        mode === 'upsert' ? await STATE.client.from(table).upsert(data) : await STATE.client.from(table).insert(data);
 
       if (!r.error) {
         if (stripped.length > 0) {
@@ -104,7 +106,9 @@ const testDataManager = {
       console.warn(label + ': auto-stripping missing column "' + badCol + '", retrying...');
 
       if (Array.isArray(data)) {
-        data.forEach(function(row) { delete row[badCol]; });
+        data.forEach(function (row) {
+          delete row[badCol];
+        });
       } else {
         delete data[badCol];
       }
@@ -117,7 +121,11 @@ const testDataManager = {
    * Safe delete: swallows errors from missing tables/columns
    */
   async _safeDel(promise) {
-    try { await promise; } catch(e) { console.warn('Cleanup skip:', e.message || e); }
+    try {
+      await promise;
+    } catch (e) {
+      console.warn('Cleanup skip:', e.message || e);
+    }
   },
 
   /**
@@ -127,19 +135,19 @@ const testDataManager = {
     const confirmed = await this.showConfirmDialog(
       'Generate Test Data',
       'This will create comprehensive test data for <strong>every tab</strong>:<br>' +
-      '<ul class="mb-0">' +
-      '<li><strong>Dashboard:</strong> Aggregated stats from all below</li>' +
-      '<li><strong>Awards:</strong> 10 award categories with county reference data</li>' +
-      '<li><strong>Organisations:</strong> 30 companies with contacts</li>' +
-      '<li><strong>Winners:</strong> 30 award assignments</li>' +
-      '<li><strong>Entries:</strong> 20 entries with varied statuses + judge scores + public votes</li>' +
-      '<li><strong>Media Gallery:</strong> 2 galleries with 10 media items</li>' +
-      '<li><strong>Events:</strong> 1 event with RSVPs, attendees, tickets, running order</li>' +
-      '<li><strong>Reports:</strong> Scheduled reports + data from entries, payments, judges</li>' +
-      '<li><strong>Marketing:</strong> Sponsors, banners, email templates, email lists, social media posts</li>' +
-      '<li><strong>Payments:</strong> 8 invoices with line items + 5 payments</li>' +
-      '<li><strong>CRM:</strong> 15 contacts, 6 deals, 10 communications, 4 meetings, 3 segments, follow-ups</li>' +
-      '</ul><br>All test data uses <code>TEST_MODE_</code> prefix or fixed UUID ranges.',
+        '<ul class="mb-0">' +
+        '<li><strong>Dashboard:</strong> Aggregated stats from all below</li>' +
+        '<li><strong>Awards:</strong> 10 award categories with county reference data</li>' +
+        '<li><strong>Organisations:</strong> 30 companies with contacts</li>' +
+        '<li><strong>Winners:</strong> 30 award assignments</li>' +
+        '<li><strong>Entries:</strong> 20 entries with varied statuses + judge scores + public votes</li>' +
+        '<li><strong>Media Gallery:</strong> 2 galleries with 10 media items</li>' +
+        '<li><strong>Events:</strong> 1 event with RSVPs, attendees, tickets, running order</li>' +
+        '<li><strong>Reports:</strong> Scheduled reports + data from entries, payments, judges</li>' +
+        '<li><strong>Marketing:</strong> Sponsors, banners, email templates, email lists, social media posts</li>' +
+        '<li><strong>Payments:</strong> 8 invoices with line items + 5 payments</li>' +
+        '<li><strong>CRM:</strong> 15 contacts, 6 deals, 10 communications, 4 meetings, 3 segments, follow-ups</li>' +
+        '</ul><br>All test data uses <code>TEST_MODE_</code> prefix or fixed UUID ranges.',
       'Generate All Test Data'
     );
 
@@ -173,86 +181,279 @@ const testDataManager = {
         if (pfErr.hint) pfMsg += ' Hint: ' + pfErr.hint;
         console.error(pfMsg);
         utils.showToast(pfMsg, 'error');
-        this.showModal('Database Connection Error',
+        this.showModal(
+          'Database Connection Error',
           '<div class="alert alert-danger"><h6>Cannot connect to database</h6>' +
-          '<p>' + pfMsg + '</p>' +
-          '<p>Check that:<br>- You are logged in<br>- Your internet connection is working<br>- The Supabase project is running</p></div>');
+            '<p>' +
+            pfMsg +
+            '</p>' +
+            '<p>Check that:<br>- You are logged in<br>- Your internet connection is working<br>- The Supabase project is running</p></div>'
+        );
         return;
       }
       console.warn('Pre-flight OK: database is accessible');
-    } catch(pfE) {
+    } catch (pfE) {
       console.error('Pre-flight exception:', pfE);
       utils.showToast('Pre-flight FAILED: ' + (pfE.message || pfE), 'error');
       return;
     }
 
     // ===== Step 0: Seed counties reference data if empty =====
-    try { await this.seedCounties(); } catch(e) { this._logErr('Counties seed', e); }
+    try {
+      await this.seedCounties();
+    } catch (e) {
+      this._logErr('Counties seed', e);
+    }
 
     // ===== Step 1: Create test event =====
     utils.showToast('Step 1/15: Creating test event...', 'info');
     try {
-      const evtResult = await this._safeWrite('events', {
-        id: eventId,
-        event_name: 'TEST_MODE_2025 Awards Gala',
-        event_date: '2025-12-15',
-        year: 2025,
-        venue: 'Grand Test Ballroom',
-        description: '[TEST MODE] This is a test event with mock winners for testing the CMS'
-      }, 'Events', 'upsert');
+      const evtResult = await this._safeWrite(
+        'events',
+        {
+          id: eventId,
+          event_name: 'TEST_MODE_2025 Awards Gala',
+          event_date: '2025-12-15',
+          year: 2025,
+          venue: 'Grand Test Ballroom',
+          description: '[TEST MODE] This is a test event with mock winners for testing the CMS',
+        },
+        'Events',
+        'upsert'
+      );
       if (this._logErr('Events', evtResult.error)) errors.push('events');
-    } catch(e) { this._logErr('Events', e); errors.push('events'); }
+    } catch (e) {
+      this._logErr('Events', e);
+      errors.push('events');
+    }
 
     // ===== Step 2: Create 10 test awards =====
     utils.showToast('Step 2/15: Creating test awards...', 'info');
     const awards = [
-      { id: this.uid(this.AWARD_PREFIX, 1), award_name: 'TEST_MODE_Best Innovation', award_category: 'Innovation', sector: 'Technology & Digital', county: 'Greater London', description: 'Excellence in innovation', year: 2025, is_active: true, status: 'Published' },
-      { id: this.uid(this.AWARD_PREFIX, 2), award_name: 'TEST_MODE_Rising Star', award_category: 'Growth', sector: 'Business Services', county: 'Greater Manchester', description: 'Fast growing company', year: 2025, is_active: true, status: 'Published' },
-      { id: this.uid(this.AWARD_PREFIX, 3), award_name: 'TEST_MODE_Export Excellence', award_category: 'International', sector: 'Business Services', county: 'West Midlands', description: 'Outstanding exports', year: 2025, is_active: true, status: 'Published' },
-      { id: this.uid(this.AWARD_PREFIX, 4), award_name: 'TEST_MODE_Sustainability Leader', award_category: 'Environment', sector: 'Environment & Energy', county: 'Bristol', description: 'Green business practices', year: 2025, is_active: true, status: 'Published' },
-      { id: this.uid(this.AWARD_PREFIX, 5), award_name: 'TEST_MODE_Digital Transformation', award_category: 'Technology', sector: 'Technology & Digital', county: 'West Yorkshire', description: 'Digital innovation', year: 2025, is_active: true, status: 'Approved' },
-      { id: this.uid(this.AWARD_PREFIX, 6), award_name: 'TEST_MODE_Best Employer', award_category: 'People', sector: 'People & Culture', county: 'Surrey', description: 'Great workplace', year: 2025, is_active: true, status: 'Approved' },
-      { id: this.uid(this.AWARD_PREFIX, 7), award_name: 'TEST_MODE_Customer Excellence', award_category: 'Service', sector: 'Business Services', county: 'Edinburgh', description: 'Outstanding customer service', year: 2025, is_active: true, status: 'Approved' },
-      { id: this.uid(this.AWARD_PREFIX, 8), award_name: 'TEST_MODE_Manufacturing Excellence', award_category: 'Manufacturing', sector: 'Manufacturing & Engineering', county: 'South Yorkshire', description: 'Quality manufacturing', year: 2025, is_active: true, status: 'Approved' },
-      { id: this.uid(this.AWARD_PREFIX, 9), award_name: 'TEST_MODE_Social Impact', award_category: 'Community', sector: 'People & Culture', county: 'Cardiff', description: 'Community contribution', year: 2025, is_active: true, status: 'Pending' },
-      { id: this.uid(this.AWARD_PREFIX, 10), award_name: 'TEST_MODE_Lifetime Achievement', award_category: 'Special', sector: 'Special Awards', county: 'Belfast', description: 'Career recognition', year: 2025, is_active: true, status: 'Draft' }
+      {
+        id: this.uid(this.AWARD_PREFIX, 1),
+        award_name: 'TEST_MODE_Best Innovation',
+        award_category: 'Innovation',
+        sector: 'Technology & Digital',
+        county: 'Greater London',
+        description: 'Excellence in innovation',
+        year: 2025,
+        is_active: true,
+        status: 'Published',
+      },
+      {
+        id: this.uid(this.AWARD_PREFIX, 2),
+        award_name: 'TEST_MODE_Rising Star',
+        award_category: 'Growth',
+        sector: 'Business Services',
+        county: 'Greater Manchester',
+        description: 'Fast growing company',
+        year: 2025,
+        is_active: true,
+        status: 'Published',
+      },
+      {
+        id: this.uid(this.AWARD_PREFIX, 3),
+        award_name: 'TEST_MODE_Export Excellence',
+        award_category: 'International',
+        sector: 'Business Services',
+        county: 'West Midlands',
+        description: 'Outstanding exports',
+        year: 2025,
+        is_active: true,
+        status: 'Published',
+      },
+      {
+        id: this.uid(this.AWARD_PREFIX, 4),
+        award_name: 'TEST_MODE_Sustainability Leader',
+        award_category: 'Environment',
+        sector: 'Environment & Energy',
+        county: 'Bristol',
+        description: 'Green business practices',
+        year: 2025,
+        is_active: true,
+        status: 'Published',
+      },
+      {
+        id: this.uid(this.AWARD_PREFIX, 5),
+        award_name: 'TEST_MODE_Digital Transformation',
+        award_category: 'Technology',
+        sector: 'Technology & Digital',
+        county: 'West Yorkshire',
+        description: 'Digital innovation',
+        year: 2025,
+        is_active: true,
+        status: 'Approved',
+      },
+      {
+        id: this.uid(this.AWARD_PREFIX, 6),
+        award_name: 'TEST_MODE_Best Employer',
+        award_category: 'People',
+        sector: 'People & Culture',
+        county: 'Surrey',
+        description: 'Great workplace',
+        year: 2025,
+        is_active: true,
+        status: 'Approved',
+      },
+      {
+        id: this.uid(this.AWARD_PREFIX, 7),
+        award_name: 'TEST_MODE_Customer Excellence',
+        award_category: 'Service',
+        sector: 'Business Services',
+        county: 'Edinburgh',
+        description: 'Outstanding customer service',
+        year: 2025,
+        is_active: true,
+        status: 'Approved',
+      },
+      {
+        id: this.uid(this.AWARD_PREFIX, 8),
+        award_name: 'TEST_MODE_Manufacturing Excellence',
+        award_category: 'Manufacturing',
+        sector: 'Manufacturing & Engineering',
+        county: 'South Yorkshire',
+        description: 'Quality manufacturing',
+        year: 2025,
+        is_active: true,
+        status: 'Approved',
+      },
+      {
+        id: this.uid(this.AWARD_PREFIX, 9),
+        award_name: 'TEST_MODE_Social Impact',
+        award_category: 'Community',
+        sector: 'People & Culture',
+        county: 'Cardiff',
+        description: 'Community contribution',
+        year: 2025,
+        is_active: true,
+        status: 'Pending',
+      },
+      {
+        id: this.uid(this.AWARD_PREFIX, 10),
+        award_name: 'TEST_MODE_Lifetime Achievement',
+        award_category: 'Special',
+        sector: 'Special Awards',
+        county: 'Belfast',
+        description: 'Career recognition',
+        year: 2025,
+        is_active: true,
+        status: 'Draft',
+      },
     ];
     try {
       // Try direct table first, fall back to view with delete+insert
       const awardsResult = await this._safeWrite('award_years', awards, 'Awards (award_years)', 'upsert');
       if (awardsResult.error) {
         console.warn('award_years upsert failed, trying awards view:', awardsResult.error.message);
-        try { await STATE.client.from('awards').delete().like('award_name', 'TEST_MODE_%'); } catch(e2) {}
+        try {
+          await STATE.client.from('awards').delete().like('award_name', 'TEST_MODE_%');
+        } catch (e2) {}
         const awardsResult2 = await this._safeWrite('awards', awards, 'Awards (view)', 'insert');
         if (this._logErr('Awards (via view)', awardsResult2.error)) errors.push('awards');
       }
-    } catch(e) { this._logErr('Awards', e); errors.push('awards'); }
+    } catch (e) {
+      this._logErr('Awards', e);
+      errors.push('awards');
+    }
 
     // ===== Step 3: Create 30 test organisations =====
     utils.showToast('Step 3/15: Creating test organisations...', 'info');
     const orgNames = [
-      'Acme Corporation', 'Global Dynamics Ltd', 'TechStart Solutions', 'Green Energy Co', 'Premier Consulting',
-      'Digital First Agency', 'Swift Logistics', 'HealthTech Innovations', 'Financial Services Group', 'EduTech Platform',
-      'Retail Revolution', 'Construction Masters', 'Food & Beverage Co', 'Creative Studios', 'Property Development Ltd',
-      'Automotive Innovations', 'Legal Partners', 'Engineering Solutions', 'Fashion Forward', 'Sports Excellence',
-      'Travel & Tourism', 'Pharma Research', 'Insurance Partners', 'Telecom Services', 'Chemical Industries',
-      'Publishing House', 'Security Systems', 'Agriculture Tech', 'Entertainment Group', 'Environmental Services'
+      'Acme Corporation',
+      'Global Dynamics Ltd',
+      'TechStart Solutions',
+      'Green Energy Co',
+      'Premier Consulting',
+      'Digital First Agency',
+      'Swift Logistics',
+      'HealthTech Innovations',
+      'Financial Services Group',
+      'EduTech Platform',
+      'Retail Revolution',
+      'Construction Masters',
+      'Food & Beverage Co',
+      'Creative Studios',
+      'Property Development Ltd',
+      'Automotive Innovations',
+      'Legal Partners',
+      'Engineering Solutions',
+      'Fashion Forward',
+      'Sports Excellence',
+      'Travel & Tourism',
+      'Pharma Research',
+      'Insurance Partners',
+      'Telecom Services',
+      'Chemical Industries',
+      'Publishing House',
+      'Security Systems',
+      'Agriculture Tech',
+      'Entertainment Group',
+      'Environmental Services',
     ];
     const industries = [
-      'Technology', 'Manufacturing', 'Software', 'Energy', 'Consulting',
-      'Marketing', 'Transport', 'Healthcare', 'Finance', 'Education',
-      'Retail', 'Construction', 'Food', 'Media', 'Real Estate',
-      'Automotive', 'Legal', 'Engineering', 'Fashion', 'Sports',
-      'Tourism', 'Pharmaceutical', 'Insurance', 'Telecommunications', 'Chemical',
-      'Publishing', 'Security', 'Agriculture', 'Entertainment', 'Environment'
+      'Technology',
+      'Manufacturing',
+      'Software',
+      'Energy',
+      'Consulting',
+      'Marketing',
+      'Transport',
+      'Healthcare',
+      'Finance',
+      'Education',
+      'Retail',
+      'Construction',
+      'Food',
+      'Media',
+      'Real Estate',
+      'Automotive',
+      'Legal',
+      'Engineering',
+      'Fashion',
+      'Sports',
+      'Tourism',
+      'Pharmaceutical',
+      'Insurance',
+      'Telecommunications',
+      'Chemical',
+      'Publishing',
+      'Security',
+      'Agriculture',
+      'Entertainment',
+      'Environment',
     ];
     const regions = [
-      'London', 'South East', 'South West', 'East Midlands', 'West Midlands',
-      'North West', 'North East', 'Yorkshire', 'East of England', 'Scotland',
-      'Wales', 'Northern Ireland', 'London', 'South East', 'South West',
-      'East Midlands', 'West Midlands', 'North West', 'North East', 'Yorkshire',
-      'East of England', 'Scotland', 'Wales', 'London', 'South East',
-      'South West', 'East Midlands', 'West Midlands', 'North West', 'North East'
+      'London',
+      'South East',
+      'South West',
+      'East Midlands',
+      'West Midlands',
+      'North West',
+      'North East',
+      'Yorkshire',
+      'East of England',
+      'Scotland',
+      'Wales',
+      'Northern Ireland',
+      'London',
+      'South East',
+      'South West',
+      'East Midlands',
+      'West Midlands',
+      'North West',
+      'North East',
+      'Yorkshire',
+      'East of England',
+      'Scotland',
+      'Wales',
+      'London',
+      'South East',
+      'South West',
+      'East Midlands',
+      'West Midlands',
+      'North West',
+      'North East',
     ];
     const orgs = orgNames.map((name, i) => ({
       id: this.uid(this.ORG_PREFIX, i + 1),
@@ -264,18 +465,29 @@ const testDataManager = {
       contact_name: 'Contact ' + (i + 1),
       email: name.toLowerCase().replace(/[^a-z0-9]/g, '.') + '@example.com',
       website: 'https://' + name.toLowerCase().replace(/[^a-z0-9]/g, '') + '.example.com',
-      contact_phone: '020 ' + String(7000 + i).padStart(4, '0') + ' ' + String(1000 + i * 37).padStart(4, '0')
+      contact_phone: '020 ' + String(7000 + i).padStart(4, '0') + ' ' + String(1000 + i * 37).padStart(4, '0'),
     }));
     try {
       const orgsResult = await this._safeWrite('organisations', orgs, 'Organisations', 'upsert');
       if (this._logErr('Organisations', orgsResult.error)) errors.push('organisations');
-    } catch(e) { this._logErr('Organisations', e); errors.push('organisations'); }
+    } catch (e) {
+      this._logErr('Organisations', e);
+      errors.push('organisations');
+    }
 
     // ===== Step 4: Create 30 award assignments (3 winners per award) =====
     utils.showToast('Step 4/15: Creating test winners...', 'info');
     const winnerOrgIndices = [
-      [1,3,5], [7,10,11], [2,13,24], [4,28,30], [6,8,14],
-      [9,22,26], [21,23,25], [12,16,18], [15,20,29], [17,19,27]
+      [1, 3, 5],
+      [7, 10, 11],
+      [2, 13, 24],
+      [4, 28, 30],
+      [6, 8, 14],
+      [9, 22, 26],
+      [21, 23, 25],
+      [12, 16, 18],
+      [15, 20, 29],
+      [17, 19, 27],
     ];
     const assignments = [];
     let assignIdx = 1;
@@ -286,7 +498,7 @@ const testDataManager = {
           award_id: this.uid(this.AWARD_PREFIX, a + 1),
           organisation_id: this.uid(this.ORG_PREFIX, winnerOrgIndices[a][w]),
           status: 'winner',
-          winner_position: w + 1
+          winner_position: w + 1,
         });
         assignIdx++;
       }
@@ -294,7 +506,10 @@ const testDataManager = {
     try {
       const assignResult = await this._safeWrite('award_assignments', assignments, 'Award assignments', 'upsert');
       if (this._logErr('Award assignments', assignResult.error)) errors.push('award_assignments');
-    } catch(e) { this._logErr('Award assignments', e); errors.push('award_assignments'); }
+    } catch (e) {
+      this._logErr('Award assignments', e);
+      errors.push('award_assignments');
+    }
 
     // ===== Step 4b: Populate winners table =====
     const winners = [];
@@ -306,80 +521,146 @@ const testDataManager = {
         winner_name: orgNames[topOrgIdx - 1],
         award_id: this.uid(this.AWARD_PREFIX, wi + 1),
         organisation_id: this.uid(this.ORG_PREFIX, topOrgIdx),
-        year: 2025
+        year: 2025,
       });
       winnerIdx++;
     }
     try {
       const winnerResult = await this._safeWrite('winners', winners, 'Winners', 'upsert');
       if (this._logErr('Winners', winnerResult.error)) errors.push('winners');
-    } catch(e) { this._logErr('Winners', e); errors.push('winners'); }
+    } catch (e) {
+      this._logErr('Winners', e);
+      errors.push('winners');
+    }
 
     // ===== Step 5: Create event guests (RSVPs) =====
     utils.showToast('Step 5/15: Creating test RSVPs...', 'info');
     try {
-      const guests = orgs.map(function(org) {
+      const guests = orgs.map(function (org) {
         return {
           event_id: eventId,
           guest_name: 'CEO ' + org.company_name.replace('TEST_MODE_', ''),
           guest_email: org.email,
-          rsvp_status: 'confirmed'
+          rsvp_status: 'confirmed',
         };
       });
-      try { await STATE.client.from('event_guests').delete().eq('event_id', eventId); } catch(e2) {}
+      try {
+        await STATE.client.from('event_guests').delete().eq('event_id', eventId);
+      } catch (e2) {}
       const guestResult = await this._safeWrite('event_guests', guests, 'Event guests', 'insert');
       if (this._logErr('Event guests', guestResult.error)) errors.push('event_guests');
-    } catch(e) { this._logErr('Event guests', e); errors.push('event_guests'); }
+    } catch (e) {
+      this._logErr('Event guests', e);
+      errors.push('event_guests');
+    }
 
     // ===== Step 6: Create entries with varied statuses =====
     utils.showToast('Step 6/15: Creating test entries...', 'info');
-    try { await this.generateEntries(awards, orgs); } catch(e) { this._logErr('Entries', e); errors.push('entries'); }
+    try {
+      await this.generateEntries(awards, orgs);
+    } catch (e) {
+      this._logErr('Entries', e);
+      errors.push('entries');
+    }
 
     // ===== Step 7: Create sponsors and banners (Marketing tab) =====
     utils.showToast('Step 7/15: Creating sponsors & banners...', 'info');
-    try { await this.generateMarketingData(); } catch(e) { this._logErr('Marketing', e); errors.push('marketing'); }
+    try {
+      await this.generateMarketingData();
+    } catch (e) {
+      this._logErr('Marketing', e);
+      errors.push('marketing');
+    }
 
     // ===== Step 8: Create CRM data =====
     utils.showToast('Step 8/15: Creating CRM data...', 'info');
-    try { await this.generateCRMData(orgs); } catch(e) { this._logErr('CRM', e); errors.push('crm'); }
+    try {
+      await this.generateCRMData(orgs);
+    } catch (e) {
+      this._logErr('CRM', e);
+      errors.push('crm');
+    }
 
     // ===== Step 9: Create invoices, line items, payments (Payments tab) =====
     utils.showToast('Step 9/15: Creating invoices & payments...', 'info');
-    try { await this.generatePaymentsData(orgs); } catch(e) { this._logErr('Payments', e); errors.push('payments'); }
+    try {
+      await this.generatePaymentsData(orgs);
+    } catch (e) {
+      this._logErr('Payments', e);
+      errors.push('payments');
+    }
 
     // ===== Step 10: Create media gallery data =====
     utils.showToast('Step 10/15: Creating media gallery...', 'info');
-    try { await this.generateMediaData(eventId, orgs, awards); } catch(e) { this._logErr('Media gallery', e); errors.push('media'); }
+    try {
+      await this.generateMediaData(eventId, orgs, awards);
+    } catch (e) {
+      this._logErr('Media gallery', e);
+      errors.push('media');
+    }
 
     // ===== Step 11: Create running order + settings =====
     utils.showToast('Step 11/15: Creating running order...', 'info');
-    try { await this.generateRunningOrder(eventId, awards, orgs, winnerOrgIndices); } catch(e) { this._logErr('Running order', e); errors.push('running_order'); }
+    try {
+      await this.generateRunningOrder(eventId, awards, orgs, winnerOrgIndices);
+    } catch (e) {
+      this._logErr('Running order', e);
+      errors.push('running_order');
+    }
 
     // ===== Step 12: Create event attendees + tickets =====
     utils.showToast('Step 12/15: Creating attendees & tickets...', 'info');
-    try { await this.generateEventExtras(eventId, orgs); } catch(e) { this._logErr('Event extras', e); errors.push('event_extras'); }
+    try {
+      await this.generateEventExtras(eventId, orgs);
+    } catch (e) {
+      this._logErr('Event extras', e);
+      errors.push('event_extras');
+    }
 
     // ===== Step 13: Create email templates, lists, social media posts =====
     utils.showToast('Step 13/15: Creating email & social media data...', 'info');
-    try { await this.generateMarketingExtras(awards, orgs); } catch(e) { this._logErr('Marketing extras', e); errors.push('marketing_extras'); }
+    try {
+      await this.generateMarketingExtras(awards, orgs);
+    } catch (e) {
+      this._logErr('Marketing extras', e);
+      errors.push('marketing_extras');
+    }
 
     // ===== Step 14: Create CRM follow-ups + scheduled reports =====
     utils.showToast('Step 14/15: Creating follow-ups & scheduled reports...', 'info');
-    try { await this.generateExtras(orgs); } catch(e) { this._logErr('Extras', e); errors.push('extras'); }
+    try {
+      await this.generateExtras(orgs);
+    } catch (e) {
+      this._logErr('Extras', e);
+      errors.push('extras');
+    }
 
     // ===== Step 15: Done - show summary =====
     if (errors.length > 0) {
       utils.showToast('Test data generated with ' + errors.length + ' error(s). See details below.', 'warning');
-      const errorHtml = '<div class="alert alert-warning"><h6>Partial Success</h6>' +
-        '<p>Test data was generated but ' + errors.length + ' table(s) had errors:</p>' +
-        '<ul>' + errors.map(function(e) { return '<li><code>' + e + '</code></li>'; }).join('') + '</ul>' +
+      const errorHtml =
+        '<div class="alert alert-warning"><h6>Partial Success</h6>' +
+        '<p>Test data was generated but ' +
+        errors.length +
+        ' table(s) had errors:</p>' +
+        '<ul>' +
+        errors
+          .map(function (e) {
+            return '<li><code>' + e + '</code></li>';
+          })
+          .join('') +
+        '</ul>' +
         '<p class="small">Errors usually mean missing database columns. Run the migration SQL files in Supabase SQL Editor to add missing columns, then try again.</p>' +
         '</div>' +
         '<p>Tables that succeeded should now have test data. Click "Reload Page" to see it.</p>';
-      setTimeout(function() { testDataManager.showModal('Test Data - Partial Success', errorHtml, true); }, 500);
+      setTimeout(function () {
+        testDataManager.showModal('Test Data - Partial Success', errorHtml, true);
+      }, 500);
     } else {
       utils.showToast('Step 15/15: All test data generated! Reload to see it.', 'success');
-      setTimeout(function() { testDataManager.showInfoModal(); }, 1000);
+      setTimeout(function () {
+        testDataManager.showInfoModal();
+      }, 1000);
     }
   },
 
@@ -399,10 +680,18 @@ const testDataManager = {
         entry_number: 'TEST-ENT-' + String(i + 1).padStart(4, '0'),
         organisation_id: orgs[orgIdx].id,
         award_id: awards[awardIdx].id,
-        entry_title: 'TEST_MODE_Entry: ' + orgs[orgIdx].company_name.replace('TEST_MODE_', '') + ' for ' + awards[awardIdx].award_name.replace('TEST_MODE_', ''),
+        entry_title:
+          'TEST_MODE_Entry: ' +
+          orgs[orgIdx].company_name.replace('TEST_MODE_', '') +
+          ' for ' +
+          awards[awardIdx].award_name.replace('TEST_MODE_', ''),
         entry_description: 'This is a test entry #' + (i + 1) + ' demonstrating the awards entry submission process.',
-        why_should_win: 'Outstanding achievements in ' + awards[awardIdx].award_category + ' including significant growth and innovation.',
-        supporting_information: 'Revenue increased 45% year-over-year. Launched 3 new products. Expanded to 5 new markets.',
+        why_should_win:
+          'Outstanding achievements in ' +
+          awards[awardIdx].award_category +
+          ' including significant growth and innovation.',
+        supporting_information:
+          'Revenue increased 45% year-over-year. Launched 3 new products. Expanded to 5 new markets.',
         contact_name: 'Contact Person ' + (i + 1),
         contact_email: 'entry' + (i + 1) + '@example.com',
         contact_phone: '0' + (1234567890 + i),
@@ -411,22 +700,23 @@ const testDataManager = {
         payment_status: payStatuses[i % 3],
         year: 2025,
         is_shortlisted: status === 'shortlisted' || status === 'winner',
-        shortlisted_date: (status === 'shortlisted' || status === 'winner') ? '2025-09-01' : null,
-        submission_date: '2025-0' + Math.min(i % 9 + 1, 9) + '-' + String((i % 28) + 1).padStart(2, '0'),
+        shortlisted_date: status === 'shortlisted' || status === 'winner' ? '2025-09-01' : null,
+        submission_date: '2025-0' + Math.min((i % 9) + 1, 9) + '-' + String((i % 28) + 1).padStart(2, '0'),
         is_self_nomination: i % 4 === 0,
         allow_public_voting: i % 3 === 0,
         is_public: status !== 'draft',
         public_votes: i % 3 === 0 ? Math.floor(Math.random() * 50) + 5 : 0,
-        average_score: status === 'winner' ? 8.5 + Math.random() : (status === 'shortlisted' ? 7.0 + Math.random() * 1.5 : null),
+        average_score:
+          status === 'winner' ? 8.5 + Math.random() : status === 'shortlisted' ? 7.0 + Math.random() * 1.5 : null,
         total_scores: ['under_review', 'shortlisted', 'winner'].includes(status) ? 3 : 0,
-        admin_notes: status === 'rejected' ? '[TEST] Did not meet minimum criteria' : null
+        admin_notes: status === 'rejected' ? '[TEST] Did not meet minimum criteria' : null,
       });
     }
     const entryResult = await this._safeWrite('entries', entries, 'Entries', 'upsert');
     this._logErr('Entries', entryResult.error);
 
     // Judge scores for entries that are under_review, shortlisted, or winner
-    const scoredEntries = entries.filter(function(e) {
+    const scoredEntries = entries.filter(function (e) {
       return ['under_review', 'shortlisted', 'winner'].includes(e.status);
     });
     const judgeNames = ['Judge Alice Smith', 'Judge Bob Jones', 'Judge Carol White'];
@@ -435,27 +725,29 @@ const testDataManager = {
     for (let si = 0; si < scoredEntries.length; si++) {
       const entry = scoredEntries[si];
       for (let j = 0; j < 3; j++) {
-        const base = entry.status === 'winner' ? 8 : (entry.status === 'shortlisted' ? 7 : 6);
+        const base = entry.status === 'winner' ? 8 : entry.status === 'shortlisted' ? 7 : 6;
         scoreRecords.push({
           entry_id: entry.id,
           judge_name: judgeNames[j],
           judge_email: judgeEmails[j],
           is_complete: true,
           has_conflict: false,
-          total_score: base + Math.random() * 2
+          total_score: base + Math.random() * 2,
         });
       }
     }
     if (scoreRecords.length > 0) {
       for (let di = 0; di < scoredEntries.length; di++) {
-        try { await STATE.client.from('judge_scores').delete().eq('entry_id', scoredEntries[di].id); } catch(e3) {}
+        try {
+          await STATE.client.from('judge_scores').delete().eq('entry_id', scoredEntries[di].id);
+        } catch (e3) {}
       }
       const scoreResult = await this._safeWrite('judge_scores', scoreRecords, 'Judge scores', 'insert');
       this._logErr('Judge scores', scoreResult.error);
     }
 
     // Public votes for entries that allow it
-    const votableEntries = entries.filter(function(e) {
+    const votableEntries = entries.filter(function (e) {
       return e.allow_public_voting && e.status !== 'draft';
     });
     const voteRecords = [];
@@ -471,14 +763,16 @@ const testDataManager = {
           voter_name: 'Test Voter ' + voteIdx,
           voter_ip: '192.168.1.' + ((voteIdx % 254) + 1),
           vote_value: 1,
-          email_verified: true
+          email_verified: true,
         });
         voteIdx++;
       }
     }
     if (voteRecords.length > 0) {
       for (let dvi = 0; dvi < votableEntries.length; dvi++) {
-        try { await STATE.client.from('public_votes').delete().eq('entry_id', votableEntries[dvi].id); } catch(e3) {}
+        try {
+          await STATE.client.from('public_votes').delete().eq('entry_id', votableEntries[dvi].id);
+        } catch (e3) {}
       }
       const voteResult = await this._safeWrite('public_votes', voteRecords, 'Public votes', 'insert');
       this._logErr('Public votes', voteResult.error);
@@ -490,21 +784,128 @@ const testDataManager = {
    */
   async generateMarketingData() {
     const sponsors = [
-      { id: this.uid(this.SPONSOR_PREFIX, 1), name: 'TEST_MODE_Platinum Corp', company_name: 'TEST_MODE_Platinum Corp', tier: 'Platinum', sponsorship_amount: 25000, contact_name: 'Sarah Platinum', email: 'sarah@platinumcorp.example.com', website: 'https://example.com/platinum', is_active: true, display_order: 1 },
-      { id: this.uid(this.SPONSOR_PREFIX, 2), name: 'TEST_MODE_Gold Industries', company_name: 'TEST_MODE_Gold Industries', tier: 'Gold', sponsorship_amount: 15000, contact_name: 'James Gold', email: 'james@goldindustries.example.com', website: 'https://example.com/gold', is_active: true, display_order: 2 },
-      { id: this.uid(this.SPONSOR_PREFIX, 3), name: 'TEST_MODE_Silver Solutions', company_name: 'TEST_MODE_Silver Solutions', tier: 'Silver', sponsorship_amount: 7500, contact_name: 'Emma Silver', email: 'emma@silversolutions.example.com', website: 'https://example.com/silver', is_active: true, display_order: 3 },
-      { id: this.uid(this.SPONSOR_PREFIX, 4), name: 'TEST_MODE_Bronze Partners', company_name: 'TEST_MODE_Bronze Partners', tier: 'Bronze', sponsorship_amount: 3500, contact_name: 'Tom Bronze', email: 'tom@bronzepartners.example.com', website: 'https://example.com/bronze', is_active: true, display_order: 4 },
-      { id: this.uid(this.SPONSOR_PREFIX, 5), name: 'TEST_MODE_Community Partner', company_name: 'TEST_MODE_Community Partner', tier: 'Partner', sponsorship_amount: 1000, contact_name: 'Lisa Partner', email: 'lisa@communitypartner.example.com', website: 'https://example.com/partner', is_active: true, display_order: 5 }
+      {
+        id: this.uid(this.SPONSOR_PREFIX, 1),
+        name: 'TEST_MODE_Platinum Corp',
+        company_name: 'TEST_MODE_Platinum Corp',
+        tier: 'Platinum',
+        sponsorship_amount: 25000,
+        contact_name: 'Sarah Platinum',
+        email: 'sarah@platinumcorp.example.com',
+        website: 'https://example.com/platinum',
+        is_active: true,
+        display_order: 1,
+      },
+      {
+        id: this.uid(this.SPONSOR_PREFIX, 2),
+        name: 'TEST_MODE_Gold Industries',
+        company_name: 'TEST_MODE_Gold Industries',
+        tier: 'Gold',
+        sponsorship_amount: 15000,
+        contact_name: 'James Gold',
+        email: 'james@goldindustries.example.com',
+        website: 'https://example.com/gold',
+        is_active: true,
+        display_order: 2,
+      },
+      {
+        id: this.uid(this.SPONSOR_PREFIX, 3),
+        name: 'TEST_MODE_Silver Solutions',
+        company_name: 'TEST_MODE_Silver Solutions',
+        tier: 'Silver',
+        sponsorship_amount: 7500,
+        contact_name: 'Emma Silver',
+        email: 'emma@silversolutions.example.com',
+        website: 'https://example.com/silver',
+        is_active: true,
+        display_order: 3,
+      },
+      {
+        id: this.uid(this.SPONSOR_PREFIX, 4),
+        name: 'TEST_MODE_Bronze Partners',
+        company_name: 'TEST_MODE_Bronze Partners',
+        tier: 'Bronze',
+        sponsorship_amount: 3500,
+        contact_name: 'Tom Bronze',
+        email: 'tom@bronzepartners.example.com',
+        website: 'https://example.com/bronze',
+        is_active: true,
+        display_order: 4,
+      },
+      {
+        id: this.uid(this.SPONSOR_PREFIX, 5),
+        name: 'TEST_MODE_Community Partner',
+        company_name: 'TEST_MODE_Community Partner',
+        tier: 'Partner',
+        sponsorship_amount: 1000,
+        contact_name: 'Lisa Partner',
+        email: 'lisa@communitypartner.example.com',
+        website: 'https://example.com/partner',
+        is_active: true,
+        display_order: 5,
+      },
     ];
     const sponsorResult = await this._safeWrite('sponsors', sponsors, 'Sponsors', 'upsert');
     this._logErr('Sponsors', sponsorResult.error);
 
     const today = new Date().toISOString().split('T')[0];
     const banners = [
-      { id: this.uid(this.BANNER_PREFIX, 1), title: 'TEST_MODE_Awards Now Open', position: 'header', image_url: 'https://placehold.co/728x90?text=Awards+Now+Open', link_url: 'https://example.com/enter', width: 728, height: 90, is_active: true, display_order: 1, impressions: 1250, clicks: 87, start_date: today },
-      { id: this.uid(this.BANNER_PREFIX, 2), title: 'TEST_MODE_Sponsor Spotlight', position: 'sidebar', image_url: 'https://placehold.co/300x250?text=Sponsor+Spotlight', link_url: 'https://example.com/sponsors', width: 300, height: 250, is_active: true, display_order: 2, impressions: 980, clicks: 42, start_date: today },
-      { id: this.uid(this.BANNER_PREFIX, 3), title: 'TEST_MODE_Early Bird Tickets', position: 'footer', image_url: 'https://placehold.co/728x90?text=Early+Bird+Tickets', link_url: 'https://example.com/tickets', width: 728, height: 90, is_active: true, display_order: 3, impressions: 560, clicks: 23, start_date: today },
-      { id: this.uid(this.BANNER_PREFIX, 4), title: 'TEST_MODE_Vote Now', position: 'popup', image_url: 'https://placehold.co/600x400?text=Vote+Now', link_url: 'https://example.com/vote', width: 600, height: 400, is_active: false, display_order: 4, impressions: 320, clicks: 15, start_date: today }
+      {
+        id: this.uid(this.BANNER_PREFIX, 1),
+        title: 'TEST_MODE_Awards Now Open',
+        position: 'header',
+        image_url: 'https://placehold.co/728x90?text=Awards+Now+Open',
+        link_url: 'https://example.com/enter',
+        width: 728,
+        height: 90,
+        is_active: true,
+        display_order: 1,
+        impressions: 1250,
+        clicks: 87,
+        start_date: today,
+      },
+      {
+        id: this.uid(this.BANNER_PREFIX, 2),
+        title: 'TEST_MODE_Sponsor Spotlight',
+        position: 'sidebar',
+        image_url: 'https://placehold.co/300x250?text=Sponsor+Spotlight',
+        link_url: 'https://example.com/sponsors',
+        width: 300,
+        height: 250,
+        is_active: true,
+        display_order: 2,
+        impressions: 980,
+        clicks: 42,
+        start_date: today,
+      },
+      {
+        id: this.uid(this.BANNER_PREFIX, 3),
+        title: 'TEST_MODE_Early Bird Tickets',
+        position: 'footer',
+        image_url: 'https://placehold.co/728x90?text=Early+Bird+Tickets',
+        link_url: 'https://example.com/tickets',
+        width: 728,
+        height: 90,
+        is_active: true,
+        display_order: 3,
+        impressions: 560,
+        clicks: 23,
+        start_date: today,
+      },
+      {
+        id: this.uid(this.BANNER_PREFIX, 4),
+        title: 'TEST_MODE_Vote Now',
+        position: 'popup',
+        image_url: 'https://placehold.co/600x400?text=Vote+Now',
+        link_url: 'https://example.com/vote',
+        width: 600,
+        height: 400,
+        is_active: false,
+        display_order: 4,
+        impressions: 320,
+        clicks: 15,
+        start_date: today,
+      },
     ];
     const bannerResult = await this._safeWrite('banners', banners, 'Banners', 'upsert');
     this._logErr('Banners', bannerResult.error);
@@ -514,17 +915,65 @@ const testDataManager = {
    * Generate CRM data: contacts, communications, deals, meetings, segments
    */
   async generateCRMData(orgs) {
-    const firstNames = ['Alice', 'Bob', 'Charlie', 'Diana', 'Edward', 'Fiona', 'George', 'Hannah', 'Ian', 'Julia', 'Kevin', 'Laura', 'Michael', 'Nora', 'Oliver'];
-    const lastNames = ['Smith', 'Jones', 'Williams', 'Brown', 'Taylor', 'Davies', 'Wilson', 'Evans', 'Thomas', 'Roberts', 'Johnson', 'Walker', 'Wright', 'Thompson', 'White'];
-    const _jobTitles = ['CEO', 'Managing Director', 'Marketing Director', 'CTO', 'CFO', 'Operations Manager', 'Sales Director', 'Head of PR', 'Business Development', 'Partnerships Lead', 'COO', 'Head of Innovation', 'General Manager', 'Commercial Director', 'Strategy Lead'];
+    const firstNames = [
+      'Alice',
+      'Bob',
+      'Charlie',
+      'Diana',
+      'Edward',
+      'Fiona',
+      'George',
+      'Hannah',
+      'Ian',
+      'Julia',
+      'Kevin',
+      'Laura',
+      'Michael',
+      'Nora',
+      'Oliver',
+    ];
+    const lastNames = [
+      'Smith',
+      'Jones',
+      'Williams',
+      'Brown',
+      'Taylor',
+      'Davies',
+      'Wilson',
+      'Evans',
+      'Thomas',
+      'Roberts',
+      'Johnson',
+      'Walker',
+      'Wright',
+      'Thompson',
+      'White',
+    ];
+    const _jobTitles = [
+      'CEO',
+      'Managing Director',
+      'Marketing Director',
+      'CTO',
+      'CFO',
+      'Operations Manager',
+      'Sales Director',
+      'Head of PR',
+      'Business Development',
+      'Partnerships Lead',
+      'COO',
+      'Head of Innovation',
+      'General Manager',
+      'Commercial Director',
+      'Strategy Lead',
+    ];
 
-    const contacts = firstNames.map(function(fn, i) {
+    const contacts = firstNames.map(function (fn, i) {
       return {
         id: testDataManager.uid(testDataManager.CONTACT_PREFIX, i + 1),
         organisation_id: orgs[i].id,
         first_name: fn,
         last_name: lastNames[i],
-        email: fn.toLowerCase() + '.' + lastNames[i].toLowerCase() + '@example.com'
+        email: fn.toLowerCase() + '.' + lastNames[i].toLowerCase() + '@example.com',
       };
     });
     const contactResult = await this._safeWrite('organisation_contacts', contacts, 'Contacts', 'upsert');
@@ -533,12 +982,19 @@ const testDataManager = {
     // Communications (10 records)
     const commTypes = ['email', 'phone', 'meeting', 'email', 'phone', 'linkedin', 'email', 'note', 'email', 'phone'];
     const commSubjects = [
-      'Sponsorship enquiry follow-up', 'Award entry discussion', 'Event tickets confirmation',
-      'Partnership proposal', 'Invoice payment reminder', 'LinkedIn introduction',
-      'Entry submission support', 'Internal note on engagement', 'Thank you for attending', 'Upsell discussion'
+      'Sponsorship enquiry follow-up',
+      'Award entry discussion',
+      'Event tickets confirmation',
+      'Partnership proposal',
+      'Invoice payment reminder',
+      'LinkedIn introduction',
+      'Entry submission support',
+      'Internal note on engagement',
+      'Thank you for attending',
+      'Upsell discussion',
     ];
     const regardingOptions = ['sponsorship', 'award_application', 'event_tickets', 'partnership', 'payment'];
-    const comms = commTypes.map(function(type, i) {
+    const comms = commTypes.map(function (type, i) {
       return {
         id: testDataManager.uid(testDataManager.COMM_PREFIX, i + 1),
         organisation_id: orgs[i].id,
@@ -549,7 +1005,7 @@ const testDataManager = {
         message: 'This is a test ' + type + ' communication regarding ' + commSubjects[i].toLowerCase() + '.',
         regarding: regardingOptions[i % 5],
         follow_up_required: i % 3 === 0,
-        follow_up_date: i % 3 === 0 ? new Date(Date.now() + (i + 1) * 86400000 * 3).toISOString().split('T')[0] : null
+        follow_up_date: i % 3 === 0 ? new Date(Date.now() + (i + 1) * 86400000 * 3).toISOString().split('T')[0] : null,
       };
     });
     const commResult = await this._safeWrite('communications', comms, 'Communications', 'upsert');
@@ -560,7 +1016,7 @@ const testDataManager = {
     const dealTypes = ['sponsorship', 'award_fee', 'event_tickets', 'partnership', 'package_upgrade', 'sponsorship'];
     const dealValues = [25000, 500, 2500, 10000, 1500, 15000];
     const dealProbs = [10, 25, 50, 65, 80, 100];
-    const deals = dealStages.map(function(stage, i) {
+    const deals = dealStages.map(function (stage, i) {
       return {
         id: testDataManager.uid(testDataManager.DEAL_PREFIX, i + 1),
         organisation_id: orgs[i].id,
@@ -573,7 +1029,7 @@ const testDataManager = {
         status: stage === 'closed_won' ? 'won' : 'active',
         expected_close_date: new Date(Date.now() + (i + 1) * 86400000 * 14).toISOString().split('T')[0],
         actual_close_date: stage === 'closed_won' ? new Date().toISOString().split('T')[0] : null,
-        description: 'Test deal for ' + dealTypes[i] + ' with ' + orgs[i].company_name.replace('TEST_MODE_', '')
+        description: 'Test deal for ' + dealTypes[i] + ' with ' + orgs[i].company_name.replace('TEST_MODE_', ''),
       };
     });
     const dealResult = await this._safeWrite('deals', deals, 'Deals', 'upsert');
@@ -581,19 +1037,73 @@ const testDataManager = {
 
     // Meeting notes (4 meetings)
     const meetings = [
-      { id: this.uid(this.MEETING_PREFIX, 1), organisation_id: orgs[0].id, deal_id: deals[0].id, subject: 'TEST_MODE_Platinum Sponsorship Discussion', meeting_type: 'video_call', duration_minutes: 45, notes: 'Discussed platinum tier benefits. Very interested.', follow_up_required: true, follow_up_date: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0] },
-      { id: this.uid(this.MEETING_PREFIX, 2), organisation_id: orgs[3].id, deal_id: deals[3].id, subject: 'TEST_MODE_Partnership Review', meeting_type: 'in_person', duration_minutes: 60, notes: 'Reviewed partnership terms. Need to send revised proposal.', follow_up_required: true, follow_up_date: new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0] },
-      { id: this.uid(this.MEETING_PREFIX, 3), organisation_id: orgs[5].id, subject: 'TEST_MODE_Award Entry Guidance', meeting_type: 'phone', duration_minutes: 20, notes: 'Guided them through the entry process. Will submit next week.', follow_up_required: false },
-      { id: this.uid(this.MEETING_PREFIX, 4), organisation_id: orgs[8].id, subject: 'TEST_MODE_Event Planning Debrief', meeting_type: 'conference', duration_minutes: 90, notes: 'Reviewed last event feedback. Planning improvements for next year.', follow_up_required: false }
+      {
+        id: this.uid(this.MEETING_PREFIX, 1),
+        organisation_id: orgs[0].id,
+        deal_id: deals[0].id,
+        subject: 'TEST_MODE_Platinum Sponsorship Discussion',
+        meeting_type: 'video_call',
+        duration_minutes: 45,
+        notes: 'Discussed platinum tier benefits. Very interested.',
+        follow_up_required: true,
+        follow_up_date: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
+      },
+      {
+        id: this.uid(this.MEETING_PREFIX, 2),
+        organisation_id: orgs[3].id,
+        deal_id: deals[3].id,
+        subject: 'TEST_MODE_Partnership Review',
+        meeting_type: 'in_person',
+        duration_minutes: 60,
+        notes: 'Reviewed partnership terms. Need to send revised proposal.',
+        follow_up_required: true,
+        follow_up_date: new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0],
+      },
+      {
+        id: this.uid(this.MEETING_PREFIX, 3),
+        organisation_id: orgs[5].id,
+        subject: 'TEST_MODE_Award Entry Guidance',
+        meeting_type: 'phone',
+        duration_minutes: 20,
+        notes: 'Guided them through the entry process. Will submit next week.',
+        follow_up_required: false,
+      },
+      {
+        id: this.uid(this.MEETING_PREFIX, 4),
+        organisation_id: orgs[8].id,
+        subject: 'TEST_MODE_Event Planning Debrief',
+        meeting_type: 'conference',
+        duration_minutes: 90,
+        notes: 'Reviewed last event feedback. Planning improvements for next year.',
+        follow_up_required: false,
+      },
     ];
     const meetingResult = await this._safeWrite('meeting_notes', meetings, 'Meetings', 'upsert');
     this._logErr('Meetings', meetingResult.error);
 
     // Contact segments (3 segments)
     const segments = [
-      { id: this.uid(this.SEGMENT_PREFIX, 1), segment_name: 'TEST_MODE_VIP Sponsors', description: 'High-value sponsors (Gold+ tier)', color: '#FFD700', icon: 'bi-star-fill' },
-      { id: this.uid(this.SEGMENT_PREFIX, 2), segment_name: 'TEST_MODE_Active Entrants', description: 'Organisations with active award entries', color: '#28a745', icon: 'bi-file-earmark-check' },
-      { id: this.uid(this.SEGMENT_PREFIX, 3), segment_name: 'TEST_MODE_Past Winners', description: 'Previous award winners', color: '#6f42c1', icon: 'bi-trophy' }
+      {
+        id: this.uid(this.SEGMENT_PREFIX, 1),
+        segment_name: 'TEST_MODE_VIP Sponsors',
+        description: 'High-value sponsors (Gold+ tier)',
+        color: '#FFD700',
+        icon: 'bi-star-fill',
+      },
+      {
+        id: this.uid(this.SEGMENT_PREFIX, 2),
+        segment_name: 'TEST_MODE_Active Entrants',
+        description: 'Organisations with active award entries',
+        color: '#28a745',
+        icon: 'bi-file-earmark-check',
+      },
+      {
+        id: this.uid(this.SEGMENT_PREFIX, 3),
+        segment_name: 'TEST_MODE_Past Winners',
+        description: 'Previous award winners',
+        color: '#6f42c1',
+        icon: 'bi-trophy',
+      },
     ];
     const segResult = await this._safeWrite('contact_segments', segments, 'Segments', 'upsert');
     this._logErr('Segments', segResult.error);
@@ -613,7 +1123,9 @@ const testDataManager = {
       orgSegments.push({ organisation_id: orgs[s3].id, segment_id: segments[2].id });
     }
     for (let ds = 0; ds < segments.length; ds++) {
-      try { await STATE.client.from('organisation_segments').delete().eq('segment_id', segments[ds].id); } catch(e3) {}
+      try {
+        await STATE.client.from('organisation_segments').delete().eq('segment_id', segments[ds].id);
+      } catch (e3) {}
     }
     const orgSegResult = await this._safeWrite('organisation_segments', orgSegments, 'Org segments', 'insert');
     this._logErr('Org segments', orgSegResult.error);
@@ -643,7 +1155,7 @@ const testDataManager = {
         paid_amount: payStatuses[ii] === 'paid' ? amounts[ii] : 0,
         balance_due: payStatuses[ii] === 'paid' ? 0 : amounts[ii],
         currency: 'GBP',
-        notes: '[TEST MODE] Invoice #' + (ii + 1) + ' for ' + types[ii]
+        notes: '[TEST MODE] Invoice #' + (ii + 1) + ' for ' + types[ii],
       });
     }
     const invResult = await this._safeWrite('invoices', invoices, 'Invoices', 'upsert');
@@ -655,24 +1167,52 @@ const testDataManager = {
       const inv = invoices[li];
       if (inv.invoice_type === 'package') {
         lineItems.push(
-          { invoice_id: inv.id, item_name: 'Awards Package', quantity: 1, unit_price: inv.total_amount * 0.8, line_total: inv.total_amount * 0.8 },
-          { invoice_id: inv.id, item_name: 'Additional Guest Tickets', quantity: Math.ceil(inv.total_amount * 0.2 / 50), unit_price: 50, line_total: inv.total_amount * 0.2 }
+          {
+            invoice_id: inv.id,
+            item_name: 'Awards Package',
+            quantity: 1,
+            unit_price: inv.total_amount * 0.8,
+            line_total: inv.total_amount * 0.8,
+          },
+          {
+            invoice_id: inv.id,
+            item_name: 'Additional Guest Tickets',
+            quantity: Math.ceil((inv.total_amount * 0.2) / 50),
+            unit_price: 50,
+            line_total: inv.total_amount * 0.2,
+          }
         );
       } else if (inv.invoice_type === 'entry_fee') {
-        lineItems.push({ invoice_id: inv.id, item_name: 'Award Entry Fee', quantity: 1, unit_price: inv.total_amount, line_total: inv.total_amount });
+        lineItems.push({
+          invoice_id: inv.id,
+          item_name: 'Award Entry Fee',
+          quantity: 1,
+          unit_price: inv.total_amount,
+          line_total: inv.total_amount,
+        });
       } else {
-        lineItems.push({ invoice_id: inv.id, item_name: 'Sponsorship Package', quantity: 1, unit_price: inv.total_amount, line_total: inv.total_amount });
+        lineItems.push({
+          invoice_id: inv.id,
+          item_name: 'Sponsorship Package',
+          quantity: 1,
+          unit_price: inv.total_amount,
+          line_total: inv.total_amount,
+        });
       }
     }
     for (let dli = 0; dli < invoices.length; dli++) {
-      try { await STATE.client.from('invoice_line_items').delete().eq('invoice_id', invoices[dli].id); } catch(e3) {}
+      try {
+        await STATE.client.from('invoice_line_items').delete().eq('invoice_id', invoices[dli].id);
+      } catch (e3) {}
     }
     const liResult = await this._safeWrite('invoice_line_items', lineItems, 'Line items', 'insert');
     this._logErr('Line items', liResult.error);
 
     // Payments for paid invoices
-    const paidInvoices = invoices.filter(function(inv) { return inv.payment_status === 'paid'; });
-    const payments = paidInvoices.map(function(inv, i) {
+    const paidInvoices = invoices.filter(function (inv) {
+      return inv.payment_status === 'paid';
+    });
+    const payments = paidInvoices.map(function (inv, i) {
       return {
         id: testDataManager.uid(testDataManager.PAYMENT_PREFIX, i + 1),
         payment_reference: 'TEST-PAY-2025-' + String(i + 1).padStart(4, '0'),
@@ -682,7 +1222,7 @@ const testDataManager = {
         amount: inv.total_amount,
         payment_method: ['bank_transfer', 'card', 'stripe'][i % 3],
         status: 'completed',
-        notes: '[TEST MODE] Payment for ' + inv.invoice_number
+        notes: '[TEST MODE] Payment for ' + inv.invoice_number,
       };
     });
     const payResult = await this._safeWrite('payments', payments, 'Payments', 'upsert');
@@ -694,8 +1234,20 @@ const testDataManager = {
    */
   async generateMediaData(eventId, orgs, awards) {
     const galleries = [
-      { id: this.uid(this.GALLERY_PREFIX, 1), event_id: eventId, gallery_name: 'TEST_MODE_Awards Ceremony', gallery_description: 'Photos from the main ceremony', display_order: 1 },
-      { id: this.uid(this.GALLERY_PREFIX, 2), event_id: eventId, gallery_name: 'TEST_MODE_Winners Collection', gallery_description: 'Winner announcement photos', display_order: 2 }
+      {
+        id: this.uid(this.GALLERY_PREFIX, 1),
+        event_id: eventId,
+        gallery_name: 'TEST_MODE_Awards Ceremony',
+        gallery_description: 'Photos from the main ceremony',
+        display_order: 1,
+      },
+      {
+        id: this.uid(this.GALLERY_PREFIX, 2),
+        event_id: eventId,
+        gallery_name: 'TEST_MODE_Winners Collection',
+        gallery_description: 'Winner announcement photos',
+        display_order: 2,
+      },
     ];
     const galResult = await this._safeWrite('event_galleries', galleries, 'Galleries', 'upsert');
     this._logErr('Galleries', galResult.error);
@@ -711,7 +1263,7 @@ const testDataManager = {
         organisation_id: orgs[mi].id,
         award_id: awards[mi % 10].id,
         published: mi < 7,
-        display_order: mi + 1
+        display_order: mi + 1,
       });
     }
     const miResult = await this._safeWrite('media_items', mediaItems, 'Media items', 'upsert');
@@ -733,7 +1285,7 @@ const testDataManager = {
         display_order: mg + 1,
         show_in_gallery: true,
         show_on_winner_page: mg < 5,
-        show_on_company_page: true
+        show_on_company_page: true,
       });
     }
     const mgResult = await this._safeWrite('media_gallery', mediaGallery, 'Media gallery', 'upsert');
@@ -757,22 +1309,29 @@ const testDataManager = {
         award_number: '1-' + String(ro + 1).padStart(2, '0'),
         display_order: ro + 1,
         section: 1,
-        status: ro < 3 ? 'completed' : (ro < 6 ? 'announced' : 'pending'),
+        status: ro < 3 ? 'completed' : ro < 6 ? 'announced' : 'pending',
         duration_minutes: 5,
-        notes: ro === 0 ? 'Opening award - extra time for speech' : null
+        notes: ro === 0 ? 'Opening award - extra time for speech' : null,
       });
     }
-    try { await STATE.client.from('running_order').delete().eq('event_id', eventId); } catch(e2) {}
+    try {
+      await STATE.client.from('running_order').delete().eq('event_id', eventId);
+    } catch (e2) {}
     const roResult = await this._safeWrite('running_order', runningOrder, 'Running order', 'insert');
     this._logErr('Running order', roResult.error);
 
     // Running order settings
-    const rosResult = await this._safeWrite('running_order_settings', {
-      id: this.uid(this.RUNNING_PREFIX, 99),
-      event_id: eventId,
-      settings: { time_per_award: 5, break_after: 5, ceremony_type: 'formal' },
-      is_published: false
-    }, 'Running order settings', 'upsert');
+    const rosResult = await this._safeWrite(
+      'running_order_settings',
+      {
+        id: this.uid(this.RUNNING_PREFIX, 99),
+        event_id: eventId,
+        settings: { time_per_award: 5, break_after: 5, ceremony_type: 'formal' },
+        is_published: false,
+      },
+      'Running order settings',
+      'upsert'
+    );
     this._logErr('Running order settings', rosResult.error);
   },
 
@@ -784,36 +1343,36 @@ const testDataManager = {
     if (count && count > 0) return; // already seeded
 
     const counties = [
-      { "Name": 'Greater London', region: 'London' },
-      { "Name": 'Greater Manchester', region: 'North West' },
-      { "Name": 'West Midlands', region: 'West Midlands' },
-      { "Name": 'West Yorkshire', region: 'Yorkshire' },
-      { "Name": 'South Yorkshire', region: 'Yorkshire' },
-      { "Name": 'Surrey', region: 'South East' },
-      { "Name": 'Kent', region: 'South East' },
-      { "Name": 'Essex', region: 'East of England' },
-      { "Name": 'Hampshire', region: 'South East' },
-      { "Name": 'Lancashire', region: 'North West' },
-      { "Name": 'Merseyside', region: 'North West' },
-      { "Name": 'Tyne and Wear', region: 'North East' },
-      { "Name": 'Nottinghamshire', region: 'East Midlands' },
-      { "Name": 'Derbyshire', region: 'East Midlands' },
-      { "Name": 'Devon', region: 'South West' },
-      { "Name": 'Bristol', region: 'South West' },
-      { "Name": 'Somerset', region: 'South West' },
-      { "Name": 'Norfolk', region: 'East of England' },
-      { "Name": 'Suffolk', region: 'East of England' },
-      { "Name": 'Oxfordshire', region: 'South East' },
-      { "Name": 'Cambridgeshire', region: 'East of England' },
-      { "Name": 'Warwickshire', region: 'West Midlands' },
-      { "Name": 'Staffordshire', region: 'West Midlands' },
-      { "Name": 'Edinburgh', region: 'Scotland' },
-      { "Name": 'Glasgow', region: 'Scotland' },
-      { "Name": 'Cardiff', region: 'Wales' },
-      { "Name": 'Swansea', region: 'Wales' },
-      { "Name": 'Belfast', region: 'Northern Ireland' },
-      { "Name": 'Antrim', region: 'Northern Ireland' },
-      { "Name": 'Berkshire', region: 'South East' }
+      { Name: 'Greater London', region: 'London' },
+      { Name: 'Greater Manchester', region: 'North West' },
+      { Name: 'West Midlands', region: 'West Midlands' },
+      { Name: 'West Yorkshire', region: 'Yorkshire' },
+      { Name: 'South Yorkshire', region: 'Yorkshire' },
+      { Name: 'Surrey', region: 'South East' },
+      { Name: 'Kent', region: 'South East' },
+      { Name: 'Essex', region: 'East of England' },
+      { Name: 'Hampshire', region: 'South East' },
+      { Name: 'Lancashire', region: 'North West' },
+      { Name: 'Merseyside', region: 'North West' },
+      { Name: 'Tyne and Wear', region: 'North East' },
+      { Name: 'Nottinghamshire', region: 'East Midlands' },
+      { Name: 'Derbyshire', region: 'East Midlands' },
+      { Name: 'Devon', region: 'South West' },
+      { Name: 'Bristol', region: 'South West' },
+      { Name: 'Somerset', region: 'South West' },
+      { Name: 'Norfolk', region: 'East of England' },
+      { Name: 'Suffolk', region: 'East of England' },
+      { Name: 'Oxfordshire', region: 'South East' },
+      { Name: 'Cambridgeshire', region: 'East of England' },
+      { Name: 'Warwickshire', region: 'West Midlands' },
+      { Name: 'Staffordshire', region: 'West Midlands' },
+      { Name: 'Edinburgh', region: 'Scotland' },
+      { Name: 'Glasgow', region: 'Scotland' },
+      { Name: 'Cardiff', region: 'Wales' },
+      { Name: 'Swansea', region: 'Wales' },
+      { Name: 'Belfast', region: 'Northern Ireland' },
+      { Name: 'Antrim', region: 'Northern Ireland' },
+      { Name: 'Berkshire', region: 'South East' },
     ];
     const countyResult = await this._safeWrite('counties', counties, 'Counties seed', 'insert');
     if (this._logErr('Counties seed', countyResult.error)) return;
@@ -832,28 +1391,64 @@ const testDataManager = {
       attendees.push({
         id: this.uid(this.ATTENDEE_PREFIX, i + 1),
         event_id: eventId,
-        attendee_name: orgs[i].contact_name || ('Attendee ' + (i + 1)),
+        attendee_name: orgs[i].contact_name || 'Attendee ' + (i + 1),
         attendee_email: orgs[i].email,
         organisation_id: orgs[i].id,
         table_number: Math.floor(i / 4) + 1,
         meal_preference: mealPrefs[i % 5],
-        rsvp_status: i < 15 ? 'confirmed' : (i < 18 ? 'pending' : 'declined'),
+        rsvp_status: i < 15 ? 'confirmed' : i < 18 ? 'pending' : 'declined',
         guest_type: guestTypes[i % 5],
         plus_ones: i % 4 === 0 ? 1 : 0,
         checked_in: i < 8,
         check_in_time: i < 8 ? new Date(Date.now() - (20 - i) * 60000).toISOString() : null,
-        notes: i === 0 ? 'VIP - ensure table 1 placement' : null
+        notes: i === 0 ? 'VIP - ensure table 1 placement' : null,
       });
     }
-    try { await STATE.client.from('event_attendees').delete().eq('event_id', eventId); } catch(e2) {}
+    try {
+      await STATE.client.from('event_attendees').delete().eq('event_id', eventId);
+    } catch (e2) {}
     const attResult = await this._safeWrite('event_attendees', attendees, 'Attendees', 'insert');
     this._logErr('Attendees', attResult.error);
 
     // Ticket types (3 types)
     const ticketTypes = [
-      { id: this.uid(this.TICKET_TYPE_PREFIX, 1), event_id: eventId, name: 'TEST_MODE_Standard Ticket', description: 'General admission with dinner', price: 150.00, quantity: 200, sold: 142, early_bird_price: 120.00, includes_table: false, is_active: true },
-      { id: this.uid(this.TICKET_TYPE_PREFIX, 2), event_id: eventId, name: 'TEST_MODE_VIP Table (10)', description: 'Premium table of 10 with champagne reception', price: 2000.00, quantity: 20, sold: 15, early_bird_price: 1750.00, includes_table: true, table_size: 10, is_active: true },
-      { id: this.uid(this.TICKET_TYPE_PREFIX, 3), event_id: eventId, name: 'TEST_MODE_Corporate Package', description: 'Branding, 2 tables, sponsor recognition', price: 5000.00, quantity: 10, sold: 4, includes_table: true, table_size: 10, is_active: true }
+      {
+        id: this.uid(this.TICKET_TYPE_PREFIX, 1),
+        event_id: eventId,
+        name: 'TEST_MODE_Standard Ticket',
+        description: 'General admission with dinner',
+        price: 150.0,
+        quantity: 200,
+        sold: 142,
+        early_bird_price: 120.0,
+        includes_table: false,
+        is_active: true,
+      },
+      {
+        id: this.uid(this.TICKET_TYPE_PREFIX, 2),
+        event_id: eventId,
+        name: 'TEST_MODE_VIP Table (10)',
+        description: 'Premium table of 10 with champagne reception',
+        price: 2000.0,
+        quantity: 20,
+        sold: 15,
+        early_bird_price: 1750.0,
+        includes_table: true,
+        table_size: 10,
+        is_active: true,
+      },
+      {
+        id: this.uid(this.TICKET_TYPE_PREFIX, 3),
+        event_id: eventId,
+        name: 'TEST_MODE_Corporate Package',
+        description: 'Branding, 2 tables, sponsor recognition',
+        price: 5000.0,
+        quantity: 10,
+        sold: 4,
+        includes_table: true,
+        table_size: 10,
+        is_active: true,
+      },
     ];
     const ttResult = await this._safeWrite('event_ticket_types', ticketTypes, 'Ticket types', 'upsert');
     this._logErr('Ticket types', ttResult.error);
@@ -865,20 +1460,86 @@ const testDataManager = {
   async generateMarketingExtras(awards, orgs) {
     // Email templates (5 templates for different use cases)
     const templates = [
-      { id: this.uid(this.TEMPLATE_PREFIX, 1), name: 'TEST_MODE_Entry Confirmation', subject: 'Your award entry has been received', body: '<h2>Thank you for your entry!</h2><p>We have received your submission for {{award_name}}. Your entry number is {{entry_number}}.</p><p>We will be in touch with updates as the judging process progresses.</p>', description: 'Sent when a new entry is submitted', is_active: true, is_default: true },
-      { id: this.uid(this.TEMPLATE_PREFIX, 2), name: 'TEST_MODE_Shortlist Notification', subject: 'Congratulations! You have been shortlisted', body: '<h2>Congratulations {{company_name}}!</h2><p>We are delighted to inform you that your entry for {{award_name}} has been shortlisted.</p><p>The winners will be announced at the Awards Gala on {{event_date}}.</p>', description: 'Sent to shortlisted entrants', is_active: true },
-      { id: this.uid(this.TEMPLATE_PREFIX, 3), name: 'TEST_MODE_Invoice Reminder', subject: 'Payment reminder - Invoice {{invoice_number}}', body: '<h2>Payment Reminder</h2><p>This is a reminder that invoice {{invoice_number}} for {{total_amount}} is due on {{due_date}}.</p><p>Please arrange payment at your earliest convenience.</p>', description: 'Sent for overdue invoices', is_active: true },
-      { id: this.uid(this.TEMPLATE_PREFIX, 4), name: 'TEST_MODE_Event Invitation', subject: 'You are invited to the Awards Gala!', body: '<h2>You are invited!</h2><p>We would be honoured to welcome {{company_name}} to the Awards Gala on {{event_date}} at {{venue}}.</p><p>Please RSVP by clicking the link below.</p>', description: 'Event invitation email', is_active: true },
-      { id: this.uid(this.TEMPLATE_PREFIX, 5), name: 'TEST_MODE_Winner Announcement', subject: 'And the winner is...', body: '<h2>Winner Announcement</h2><p>We are thrilled to announce the winners of this year\'s awards!</p><p>{{winner_list}}</p><p>Congratulations to all our winners and finalists.</p>', description: 'Public winner announcement', is_active: false }
+      {
+        id: this.uid(this.TEMPLATE_PREFIX, 1),
+        name: 'TEST_MODE_Entry Confirmation',
+        subject: 'Your award entry has been received',
+        body: '<h2>Thank you for your entry!</h2><p>We have received your submission for {{award_name}}. Your entry number is {{entry_number}}.</p><p>We will be in touch with updates as the judging process progresses.</p>',
+        description: 'Sent when a new entry is submitted',
+        is_active: true,
+        is_default: true,
+      },
+      {
+        id: this.uid(this.TEMPLATE_PREFIX, 2),
+        name: 'TEST_MODE_Shortlist Notification',
+        subject: 'Congratulations! You have been shortlisted',
+        body: '<h2>Congratulations {{company_name}}!</h2><p>We are delighted to inform you that your entry for {{award_name}} has been shortlisted.</p><p>The winners will be announced at the Awards Gala on {{event_date}}.</p>',
+        description: 'Sent to shortlisted entrants',
+        is_active: true,
+      },
+      {
+        id: this.uid(this.TEMPLATE_PREFIX, 3),
+        name: 'TEST_MODE_Invoice Reminder',
+        subject: 'Payment reminder - Invoice {{invoice_number}}',
+        body: '<h2>Payment Reminder</h2><p>This is a reminder that invoice {{invoice_number}} for {{total_amount}} is due on {{due_date}}.</p><p>Please arrange payment at your earliest convenience.</p>',
+        description: 'Sent for overdue invoices',
+        is_active: true,
+      },
+      {
+        id: this.uid(this.TEMPLATE_PREFIX, 4),
+        name: 'TEST_MODE_Event Invitation',
+        subject: 'You are invited to the Awards Gala!',
+        body: '<h2>You are invited!</h2><p>We would be honoured to welcome {{company_name}} to the Awards Gala on {{event_date}} at {{venue}}.</p><p>Please RSVP by clicking the link below.</p>',
+        description: 'Event invitation email',
+        is_active: true,
+      },
+      {
+        id: this.uid(this.TEMPLATE_PREFIX, 5),
+        name: 'TEST_MODE_Winner Announcement',
+        subject: 'And the winner is...',
+        body: "<h2>Winner Announcement</h2><p>We are thrilled to announce the winners of this year's awards!</p><p>{{winner_list}}</p><p>Congratulations to all our winners and finalists.</p>",
+        description: 'Public winner announcement',
+        is_active: false,
+      },
     ];
     const tplResult = await this._safeWrite('email_templates', templates, 'Email templates', 'upsert');
     this._logErr('Email templates', tplResult.error);
 
     // Email lists (3 lists)
     const emailLists = [
-      { id: this.uid(this.EMAIL_LIST_PREFIX, 1), list_name: 'TEST_MODE_All Entrants 2025', list_type: 'entrants', is_active: true, color: '#007bff', icon: 'bi-file-earmark-text', description: 'All organisations that submitted entries in 2025', subscriber_count: 15, active_subscriber_count: 14 },
-      { id: this.uid(this.EMAIL_LIST_PREFIX, 2), list_name: 'TEST_MODE_Sponsors & Partners', list_type: 'sponsors', is_active: true, color: '#28a745', icon: 'bi-star', description: 'Current sponsors and strategic partners', subscriber_count: 8, active_subscriber_count: 8 },
-      { id: this.uid(this.EMAIL_LIST_PREFIX, 3), list_name: 'TEST_MODE_Event Guests', list_type: 'general', is_active: true, color: '#6f42c1', icon: 'bi-calendar-event', description: 'Invited guests for the awards ceremony', subscriber_count: 20, active_subscriber_count: 18 }
+      {
+        id: this.uid(this.EMAIL_LIST_PREFIX, 1),
+        list_name: 'TEST_MODE_All Entrants 2025',
+        list_type: 'entrants',
+        is_active: true,
+        color: '#007bff',
+        icon: 'bi-file-earmark-text',
+        description: 'All organisations that submitted entries in 2025',
+        subscriber_count: 15,
+        active_subscriber_count: 14,
+      },
+      {
+        id: this.uid(this.EMAIL_LIST_PREFIX, 2),
+        list_name: 'TEST_MODE_Sponsors & Partners',
+        list_type: 'sponsors',
+        is_active: true,
+        color: '#28a745',
+        icon: 'bi-star',
+        description: 'Current sponsors and strategic partners',
+        subscriber_count: 8,
+        active_subscriber_count: 8,
+      },
+      {
+        id: this.uid(this.EMAIL_LIST_PREFIX, 3),
+        list_name: 'TEST_MODE_Event Guests',
+        list_type: 'general',
+        is_active: true,
+        color: '#6f42c1',
+        icon: 'bi-calendar-event',
+        description: 'Invited guests for the awards ceremony',
+        subscriber_count: 20,
+        active_subscriber_count: 18,
+      },
     ];
     const listResult = await this._safeWrite('email_lists', emailLists, 'Email lists', 'upsert');
     this._logErr('Email lists', listResult.error);
@@ -893,7 +1554,7 @@ const testDataManager = {
         last_name: orgs[sl].company_name.replace('TEST_MODE_', ''),
         company_name: orgs[sl].company_name.replace('TEST_MODE_', ''),
         status: sl < 14 ? 'active' : 'unsubscribed',
-        source: 'entry_submission'
+        source: 'entry_submission',
       });
     }
     for (let ss = 0; ss < 5; ss++) {
@@ -902,26 +1563,76 @@ const testDataManager = {
         email: 'sponsor' + (ss + 1) + '@example.com',
         first_name: ['Sarah', 'James', 'Emma', 'Tom', 'Lisa'][ss],
         last_name: ['Platinum', 'Gold', 'Silver', 'Bronze', 'Partner'][ss],
-        company_name: ['Platinum Corp', 'Gold Industries', 'Silver Solutions', 'Bronze Partners', 'Community Partner'][ss],
+        company_name: ['Platinum Corp', 'Gold Industries', 'Silver Solutions', 'Bronze Partners', 'Community Partner'][
+          ss
+        ],
         status: 'active',
-        source: 'manual'
+        source: 'manual',
       });
     }
     // Clear existing test subscribers
     for (let dl = 0; dl < emailLists.length; dl++) {
-      try { await STATE.client.from('email_list_subscribers').delete().eq('list_id', emailLists[dl].id); } catch(e3) {}
+      try {
+        await STATE.client.from('email_list_subscribers').delete().eq('list_id', emailLists[dl].id);
+      } catch (e3) {}
     }
     const subResult = await this._safeWrite('email_list_subscribers', subscribers, 'Email subscribers', 'insert');
     this._logErr('Email subscribers', subResult.error);
 
     // Social media posts (6 posts across different statuses)
     const socialPosts = [
-      { id: this.uid(this.SOCIAL_PREFIX, 1), company_id: orgs[0].id, award_id: awards[0].id, content: 'Congratulations to TEST_MODE_Acme Corporation for winning Best Innovation! #Awards2025', template_type: 'winner_announcement', platforms: ['twitter', 'linkedin'], status: 'published', scheduled_for: new Date(Date.now() - 7 * 86400000).toISOString() },
-      { id: this.uid(this.SOCIAL_PREFIX, 2), company_id: orgs[1].id, award_id: awards[1].id, content: 'Meet our Rising Star finalist: TEST_MODE_Global Dynamics Ltd! #Awards2025 #RisingStar', template_type: 'finalist_spotlight', platforms: ['twitter', 'facebook', 'instagram'], status: 'published', scheduled_for: new Date(Date.now() - 5 * 86400000).toISOString() },
-      { id: this.uid(this.SOCIAL_PREFIX, 3), content: 'Entries are now open for the 2025 Awards! Submit yours today. #Awards2025 #EnterNow', template_type: 'call_for_entries', platforms: ['twitter', 'linkedin', 'facebook'], status: 'scheduled', scheduled_for: new Date(Date.now() + 2 * 86400000).toISOString() },
-      { id: this.uid(this.SOCIAL_PREFIX, 4), content: 'Only 2 weeks until the Awards Gala! Have you got your tickets? #Awards2025 #Countdown', template_type: 'event_promotion', platforms: ['twitter', 'instagram'], status: 'scheduled', scheduled_for: new Date(Date.now() + 5 * 86400000).toISOString() },
-      { id: this.uid(this.SOCIAL_PREFIX, 5), company_id: orgs[3].id, award_id: awards[3].id, content: 'TEST_MODE_Green Energy Co leads the way in sustainability. Read their story. #GreenBusiness', template_type: 'finalist_spotlight', platforms: ['linkedin'], status: 'draft' },
-      { id: this.uid(this.SOCIAL_PREFIX, 6), content: 'Thank you to all our sponsors for making the 2025 Awards possible! #ThankYou #Awards2025', template_type: 'sponsor_thanks', platforms: ['twitter', 'linkedin', 'facebook', 'instagram'], status: 'draft' }
+      {
+        id: this.uid(this.SOCIAL_PREFIX, 1),
+        company_id: orgs[0].id,
+        award_id: awards[0].id,
+        content: 'Congratulations to TEST_MODE_Acme Corporation for winning Best Innovation! #Awards2025',
+        template_type: 'winner_announcement',
+        platforms: ['twitter', 'linkedin'],
+        status: 'published',
+        scheduled_for: new Date(Date.now() - 7 * 86400000).toISOString(),
+      },
+      {
+        id: this.uid(this.SOCIAL_PREFIX, 2),
+        company_id: orgs[1].id,
+        award_id: awards[1].id,
+        content: 'Meet our Rising Star finalist: TEST_MODE_Global Dynamics Ltd! #Awards2025 #RisingStar',
+        template_type: 'finalist_spotlight',
+        platforms: ['twitter', 'facebook', 'instagram'],
+        status: 'published',
+        scheduled_for: new Date(Date.now() - 5 * 86400000).toISOString(),
+      },
+      {
+        id: this.uid(this.SOCIAL_PREFIX, 3),
+        content: 'Entries are now open for the 2025 Awards! Submit yours today. #Awards2025 #EnterNow',
+        template_type: 'call_for_entries',
+        platforms: ['twitter', 'linkedin', 'facebook'],
+        status: 'scheduled',
+        scheduled_for: new Date(Date.now() + 2 * 86400000).toISOString(),
+      },
+      {
+        id: this.uid(this.SOCIAL_PREFIX, 4),
+        content: 'Only 2 weeks until the Awards Gala! Have you got your tickets? #Awards2025 #Countdown',
+        template_type: 'event_promotion',
+        platforms: ['twitter', 'instagram'],
+        status: 'scheduled',
+        scheduled_for: new Date(Date.now() + 5 * 86400000).toISOString(),
+      },
+      {
+        id: this.uid(this.SOCIAL_PREFIX, 5),
+        company_id: orgs[3].id,
+        award_id: awards[3].id,
+        content: 'TEST_MODE_Green Energy Co leads the way in sustainability. Read their story. #GreenBusiness',
+        template_type: 'finalist_spotlight',
+        platforms: ['linkedin'],
+        status: 'draft',
+      },
+      {
+        id: this.uid(this.SOCIAL_PREFIX, 6),
+        content: 'Thank you to all our sponsors for making the 2025 Awards possible! #ThankYou #Awards2025',
+        template_type: 'sponsor_thanks',
+        platforms: ['twitter', 'linkedin', 'facebook', 'instagram'],
+        status: 'draft',
+      },
     ];
     const socialResult = await this._safeWrite('social_media_posts', socialPosts, 'Social media posts', 'upsert');
     this._logErr('Social media posts', socialResult.error);
@@ -933,20 +1644,90 @@ const testDataManager = {
   async generateExtras(orgs) {
     // Organisation follow-ups (CRM > My Tasks)
     const followUps = [
-      { id: this.uid(this.FOLLOWUP_PREFIX, 1), organisation_id: orgs[0].id, company_name: orgs[0].company_name, follow_up_date: new Date(Date.now() + 2 * 86400000).toISOString().split('T')[0], note: 'TEST_MODE_Follow up on platinum sponsorship proposal', completed: false, created_by: 'admin@example.com' },
-      { id: this.uid(this.FOLLOWUP_PREFIX, 2), organisation_id: orgs[2].id, company_name: orgs[2].company_name, follow_up_date: new Date(Date.now() - 1 * 86400000).toISOString().split('T')[0], note: 'TEST_MODE_Chase outstanding entry submission', completed: false, created_by: 'admin@example.com' },
-      { id: this.uid(this.FOLLOWUP_PREFIX, 3), organisation_id: orgs[4].id, company_name: orgs[4].company_name, follow_up_date: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0], note: 'TEST_MODE_Discuss event table requirements', completed: false, created_by: 'admin@example.com' },
-      { id: this.uid(this.FOLLOWUP_PREFIX, 4), organisation_id: orgs[7].id, company_name: orgs[7].company_name, follow_up_date: new Date(Date.now() - 3 * 86400000).toISOString().split('T')[0], note: 'TEST_MODE_Send revised invoice for package upgrade', completed: true, completed_at: new Date().toISOString(), created_by: 'admin@example.com' },
-      { id: this.uid(this.FOLLOWUP_PREFIX, 5), organisation_id: orgs[9].id, company_name: orgs[9].company_name, follow_up_date: new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0], note: 'TEST_MODE_Book photography session for winner profile', completed: false, created_by: 'admin@example.com' }
+      {
+        id: this.uid(this.FOLLOWUP_PREFIX, 1),
+        organisation_id: orgs[0].id,
+        company_name: orgs[0].company_name,
+        follow_up_date: new Date(Date.now() + 2 * 86400000).toISOString().split('T')[0],
+        note: 'TEST_MODE_Follow up on platinum sponsorship proposal',
+        completed: false,
+        created_by: 'admin@example.com',
+      },
+      {
+        id: this.uid(this.FOLLOWUP_PREFIX, 2),
+        organisation_id: orgs[2].id,
+        company_name: orgs[2].company_name,
+        follow_up_date: new Date(Date.now() - 1 * 86400000).toISOString().split('T')[0],
+        note: 'TEST_MODE_Chase outstanding entry submission',
+        completed: false,
+        created_by: 'admin@example.com',
+      },
+      {
+        id: this.uid(this.FOLLOWUP_PREFIX, 3),
+        organisation_id: orgs[4].id,
+        company_name: orgs[4].company_name,
+        follow_up_date: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
+        note: 'TEST_MODE_Discuss event table requirements',
+        completed: false,
+        created_by: 'admin@example.com',
+      },
+      {
+        id: this.uid(this.FOLLOWUP_PREFIX, 4),
+        organisation_id: orgs[7].id,
+        company_name: orgs[7].company_name,
+        follow_up_date: new Date(Date.now() - 3 * 86400000).toISOString().split('T')[0],
+        note: 'TEST_MODE_Send revised invoice for package upgrade',
+        completed: true,
+        completed_at: new Date().toISOString(),
+        created_by: 'admin@example.com',
+      },
+      {
+        id: this.uid(this.FOLLOWUP_PREFIX, 5),
+        organisation_id: orgs[9].id,
+        company_name: orgs[9].company_name,
+        follow_up_date: new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
+        note: 'TEST_MODE_Book photography session for winner profile',
+        completed: false,
+        created_by: 'admin@example.com',
+      },
     ];
     const fuResult = await this._safeWrite('organisation_follow_ups', followUps, 'Follow-ups', 'upsert');
     this._logErr('Follow-ups', fuResult.error);
 
     // Scheduled reports (Reports tab)
     const reports = [
-      { id: this.uid(this.REPORT_PREFIX, 1), name: 'TEST_MODE_Weekly Entry Summary', report_type: 'entries', frequency: 'weekly', recipients: ['admin@example.com'], sections: ['entry_stats', 'status_breakdown'], is_active: true, next_run_at: new Date(Date.now() + 7 * 86400000).toISOString(), created_by: 'admin@example.com' },
-      { id: this.uid(this.REPORT_PREFIX, 2), name: 'TEST_MODE_Monthly Financial Report', report_type: 'financial', frequency: 'monthly', recipients: ['admin@example.com', 'finance@example.com'], sections: ['revenue', 'payments', 'overdue'], is_active: true, next_run_at: new Date(Date.now() + 30 * 86400000).toISOString(), created_by: 'admin@example.com' },
-      { id: this.uid(this.REPORT_PREFIX, 3), name: 'TEST_MODE_Judge Scoring Progress', report_type: 'judging', frequency: 'daily', recipients: ['admin@example.com'], sections: ['judge_progress', 'score_distribution'], is_active: false, created_by: 'admin@example.com' }
+      {
+        id: this.uid(this.REPORT_PREFIX, 1),
+        name: 'TEST_MODE_Weekly Entry Summary',
+        report_type: 'entries',
+        frequency: 'weekly',
+        recipients: ['admin@example.com'],
+        sections: ['entry_stats', 'status_breakdown'],
+        is_active: true,
+        next_run_at: new Date(Date.now() + 7 * 86400000).toISOString(),
+        created_by: 'admin@example.com',
+      },
+      {
+        id: this.uid(this.REPORT_PREFIX, 2),
+        name: 'TEST_MODE_Monthly Financial Report',
+        report_type: 'financial',
+        frequency: 'monthly',
+        recipients: ['admin@example.com', 'finance@example.com'],
+        sections: ['revenue', 'payments', 'overdue'],
+        is_active: true,
+        next_run_at: new Date(Date.now() + 30 * 86400000).toISOString(),
+        created_by: 'admin@example.com',
+      },
+      {
+        id: this.uid(this.REPORT_PREFIX, 3),
+        name: 'TEST_MODE_Judge Scoring Progress',
+        report_type: 'judging',
+        frequency: 'daily',
+        recipients: ['admin@example.com'],
+        sections: ['judge_progress', 'score_distribution'],
+        is_active: false,
+        created_by: 'admin@example.com',
+      },
     ];
     const repResult = await this._safeWrite('scheduled_reports', reports, 'Scheduled reports', 'upsert');
     this._logErr('Scheduled reports', repResult.error);
@@ -959,17 +1740,17 @@ const testDataManager = {
     const confirmResult = await this.showConfirmDialog(
       'Remove All Test Data',
       'This will permanently delete <strong>all</strong> test data including:<br>' +
-      '<ul>' +
-      '<li>Test event, RSVPs, attendees, tickets, running order, table plan</li>' +
-      '<li>Test organisations, contacts, and follow-ups</li>' +
-      '<li>Test awards and award assignments</li>' +
-      '<li>Test entries, judge scores, public votes</li>' +
-      '<li>Test invoices, payments, line items</li>' +
-      '<li>Test sponsors, banners, email templates, email lists, social media posts</li>' +
-      '<li>Test CRM data (communications, deals, meetings, segments)</li>' +
-      '<li>Test media gallery items and scheduled reports</li>' +
-      '</ul>' +
-      '<strong>This action cannot be undone!</strong>',
+        '<ul>' +
+        '<li>Test event, RSVPs, attendees, tickets, running order, table plan</li>' +
+        '<li>Test organisations, contacts, and follow-ups</li>' +
+        '<li>Test awards and award assignments</li>' +
+        '<li>Test entries, judge scores, public votes</li>' +
+        '<li>Test invoices, payments, line items</li>' +
+        '<li>Test sponsors, banners, email templates, email lists, social media posts</li>' +
+        '<li>Test CRM data (communications, deals, meetings, segments)</li>' +
+        '<li>Test media gallery items and scheduled reports</li>' +
+        '</ul>' +
+        '<strong>This action cannot be undone!</strong>',
       'Delete All Test Data',
       'danger'
     );
@@ -982,18 +1763,27 @@ const testDataManager = {
 
       // Get test org IDs
       const { data: testOrgs } = await STATE.client
-        .from('organisations').select('id').like('company_name', 'TEST_MODE_%');
-      const orgIds = (testOrgs || []).map(function(o) { return o.id; });
+        .from('organisations')
+        .select('id')
+        .like('company_name', 'TEST_MODE_%');
+      const orgIds = (testOrgs || []).map(function (o) {
+        return o.id;
+      });
 
       // Get test award IDs
       const { data: testAwards } = await STATE.client
-        .from('award_years').select('id').like('award_name', 'TEST_MODE_%');
-      const awardIds = (testAwards || []).map(function(a) { return a.id; });
+        .from('award_years')
+        .select('id')
+        .like('award_name', 'TEST_MODE_%');
+      const awardIds = (testAwards || []).map(function (a) {
+        return a.id;
+      });
 
       // Get test entry IDs
-      const { data: testEntries } = await STATE.client
-        .from('entries').select('id').like('entry_number', 'TEST-ENT-%');
-      const entryIds = (testEntries || []).map(function(e) { return e.id; });
+      const { data: testEntries } = await STATE.client.from('entries').select('id').like('entry_number', 'TEST-ENT-%');
+      const entryIds = (testEntries || []).map(function (e) {
+        return e.id;
+      });
 
       utils.showToast('Removing test data...', 'info');
       const self = this;
@@ -1014,13 +1804,17 @@ const testDataManager = {
       // D. Email list subscribers (must be before email lists)
       try {
         const { data: testLists } = await STATE.client
-          .from('email_lists').select('id').like('list_name', 'TEST_MODE_%');
+          .from('email_lists')
+          .select('id')
+          .like('list_name', 'TEST_MODE_%');
         if (testLists && testLists.length > 0) {
           for (let els = 0; els < testLists.length; els++) {
             await self._safeDel(STATE.client.from('email_list_subscribers').delete().eq('list_id', testLists[els].id));
           }
         }
-      } catch(e3) { console.warn('Cleanup skip: email_list_subscribers', e3.message); }
+      } catch (e3) {
+        console.warn('Cleanup skip: email_list_subscribers', e3.message);
+      }
 
       await self._safeDel(STATE.client.from('email_lists').delete().like('list_name', 'TEST_MODE_%'));
       await self._safeDel(STATE.client.from('email_templates').delete().like('name', 'TEST_MODE_%'));
@@ -1040,13 +1834,17 @@ const testDataManager = {
 
       try {
         const { data: testSegs } = await STATE.client
-          .from('contact_segments').select('id').like('segment_name', 'TEST_MODE_%');
+          .from('contact_segments')
+          .select('id')
+          .like('segment_name', 'TEST_MODE_%');
         if (testSegs && testSegs.length > 0) {
           for (let os = 0; os < testSegs.length; os++) {
             await self._safeDel(STATE.client.from('organisation_segments').delete().eq('segment_id', testSegs[os].id));
           }
         }
-      } catch(e3) { console.warn('Cleanup skip: organisation_segments', e3.message); }
+      } catch (e3) {
+        console.warn('Cleanup skip: organisation_segments', e3.message);
+      }
 
       await self._safeDel(STATE.client.from('contact_segments').delete().like('segment_name', 'TEST_MODE_%'));
       await self._safeDel(STATE.client.from('meeting_notes').delete().like('subject', 'TEST_MODE_%'));
@@ -1073,13 +1871,17 @@ const testDataManager = {
       // 11. Invoice line items
       try {
         const { data: testInvoices } = await STATE.client
-          .from('invoices').select('id').like('invoice_number', 'TEST-INV-%');
+          .from('invoices')
+          .select('id')
+          .like('invoice_number', 'TEST-INV-%');
         if (testInvoices && testInvoices.length > 0) {
           for (let il = 0; il < testInvoices.length; il++) {
             await self._safeDel(STATE.client.from('invoice_line_items').delete().eq('invoice_id', testInvoices[il].id));
           }
         }
-      } catch(e3) { console.warn('Cleanup skip: invoice_line_items', e3.message); }
+      } catch (e3) {
+        console.warn('Cleanup skip: invoice_line_items', e3.message);
+      }
 
       await self._safeDel(STATE.client.from('invoices').delete().like('invoice_number', 'TEST-INV-%'));
       await self._safeDel(STATE.client.from('sponsors').delete().like('name', 'TEST_MODE_%'));
@@ -1117,16 +1919,17 @@ const testDataManager = {
 
       utils.showToast('All test data removed successfully!', 'success');
 
-      setTimeout(function() {
-        testDataManager.showModal('Test Data Removed',
+      setTimeout(function () {
+        testDataManager.showModal(
+          'Test Data Removed',
           '<div class="alert alert-success">' +
-          '<h6><i class="bi bi-check-circle me-2"></i>Cleanup Complete</h6>' +
-          '<p class="mb-0">All test data has been removed from every tab.</p>' +
-          '</div>' +
-          '<p class="mt-3">Click "Reload Page" to refresh all views.</p>',
-          true);
+            '<h6><i class="bi bi-check-circle me-2"></i>Cleanup Complete</h6>' +
+            '<p class="mb-0">All test data has been removed from every tab.</p>' +
+            '</div>' +
+            '<p class="mt-3">Click "Reload Page" to refresh all views.</p>',
+          true
+        );
       }, 500);
-
     } catch (error) {
       console.error('Error removing test data:', error);
       utils.showToast('Some test data may not have been removed. Check console for details.', 'warning');
@@ -1144,16 +1947,22 @@ const testDataManager = {
 
       const results = await Promise.all([
         STATE.client.from('events').select('*').eq('id', this.EVENT_ID).single(),
-        STATE.client.from('organisations').select('*', { count: 'exact', head: true }).like('company_name', 'TEST_MODE_%'),
+        STATE.client
+          .from('organisations')
+          .select('*', { count: 'exact', head: true })
+          .like('company_name', 'TEST_MODE_%'),
         STATE.client.from('awards').select('*', { count: 'exact', head: true }).like('award_name', 'TEST_MODE_%'),
         STATE.client.from('event_guests').select('*', { count: 'exact', head: true }).eq('event_id', this.EVENT_ID),
         STATE.client.from('entries').select('*', { count: 'exact', head: true }).like('entry_number', 'TEST-ENT-%'),
         STATE.client.from('sponsors').select('*', { count: 'exact', head: true }).like('name', 'TEST_MODE_%'),
         STATE.client.from('banners').select('*', { count: 'exact', head: true }).like('title', 'TEST_MODE_%'),
         STATE.client.from('invoices').select('*', { count: 'exact', head: true }).like('invoice_number', 'TEST-INV-%'),
-        STATE.client.from('organisation_contacts').select('*', { count: 'exact', head: true }).like('id', testDataManager.CONTACT_PREFIX + '%'),
+        STATE.client
+          .from('organisation_contacts')
+          .select('*', { count: 'exact', head: true })
+          .like('id', testDataManager.CONTACT_PREFIX + '%'),
         STATE.client.from('deals').select('*', { count: 'exact', head: true }).like('title', 'TEST_MODE_%'),
-        STATE.client.from('communications').select('*', { count: 'exact', head: true }).like('subject', 'TEST_MODE_%')
+        STATE.client.from('communications').select('*', { count: 'exact', head: true }).like('subject', 'TEST_MODE_%'),
       ]);
 
       const testEvent = results[0].data;
@@ -1181,26 +1990,48 @@ const testDataManager = {
           '<div class="col-md-6">' +
           '<h6>Core Data</h6>' +
           '<ul class="mb-2">' +
-          '<li>Test Event: ' + (testEvent ? '<strong>Yes</strong>' : 'No') + '</li>' +
-          '<li>Organisations: <strong>' + (orgCount || 0) + '</strong></li>' +
-          '<li>Awards: <strong>' + (awardCount || 0) + '</strong></li>' +
-          '<li>RSVPs: <strong>' + (rsvpCount || 0) + '</strong></li>' +
+          '<li>Test Event: ' +
+          (testEvent ? '<strong>Yes</strong>' : 'No') +
+          '</li>' +
+          '<li>Organisations: <strong>' +
+          (orgCount || 0) +
+          '</strong></li>' +
+          '<li>Awards: <strong>' +
+          (awardCount || 0) +
+          '</strong></li>' +
+          '<li>RSVPs: <strong>' +
+          (rsvpCount || 0) +
+          '</strong></li>' +
           '</ul></div>' +
           '<div class="col-md-6">' +
           '<h6>Extended Data</h6>' +
           '<ul class="mb-2">' +
-          '<li>Entries: <strong>' + (entryCount || 0) + '</strong></li>' +
-          '<li>Invoices: <strong>' + (invoiceCount || 0) + '</strong></li>' +
-          '<li>Sponsors: <strong>' + (sponsorCount || 0) + '</strong></li>' +
-          '<li>Banners: <strong>' + (bannerCount || 0) + '</strong></li>' +
+          '<li>Entries: <strong>' +
+          (entryCount || 0) +
+          '</strong></li>' +
+          '<li>Invoices: <strong>' +
+          (invoiceCount || 0) +
+          '</strong></li>' +
+          '<li>Sponsors: <strong>' +
+          (sponsorCount || 0) +
+          '</strong></li>' +
+          '<li>Banners: <strong>' +
+          (bannerCount || 0) +
+          '</strong></li>' +
           '</ul></div></div>' +
           '<div class="row">' +
           '<div class="col-md-6">' +
           '<h6>CRM Data</h6>' +
           '<ul class="mb-2">' +
-          '<li>Contacts: <strong>' + (contactCount || 0) + '</strong></li>' +
-          '<li>Deals: <strong>' + (dealCount || 0) + '</strong></li>' +
-          '<li>Communications: <strong>' + (commCount || 0) + '</strong></li>' +
+          '<li>Contacts: <strong>' +
+          (contactCount || 0) +
+          '</strong></li>' +
+          '<li>Deals: <strong>' +
+          (dealCount || 0) +
+          '</strong></li>' +
+          '<li>Communications: <strong>' +
+          (commCount || 0) +
+          '</strong></li>' +
           '</ul></div>' +
           '<div class="col-md-6">' +
           '<h6>Tabs Covered</h6>' +
@@ -1231,7 +2062,6 @@ const testDataManager = {
       }
 
       this.showModal('Test Data Information', message);
-
     } catch (error) {
       console.error('Error checking test data:', error);
       utils.showToast('Error checking test data', 'error');
@@ -1317,19 +2147,27 @@ const testDataManager = {
   async showConfirmDialog(title, message, confirmText, variant) {
     confirmText = confirmText || 'Confirm';
     variant = variant || 'primary';
-    return new Promise(function(resolve) {
+    return new Promise(function (resolve) {
       const modalHtml =
         '<div class="modal fade" id="confirmModal" tabindex="-1">' +
         '<div class="modal-dialog modal-dialog-centered">' +
         '<div class="modal-content">' +
         '<div class="modal-header">' +
-        '<h5 class="modal-title">' + title + '</h5>' +
+        '<h5 class="modal-title">' +
+        title +
+        '</h5>' +
         '<button type="button" class="btn-close" data-bs-dismiss="modal"></button>' +
         '</div>' +
-        '<div class="modal-body">' + message + '</div>' +
+        '<div class="modal-body">' +
+        message +
+        '</div>' +
         '<div class="modal-footer">' +
         '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>' +
-        '<button type="button" class="btn btn-' + variant + '" id="confirmBtn">' + confirmText + '</button>' +
+        '<button type="button" class="btn btn-' +
+        variant +
+        '" id="confirmBtn">' +
+        confirmText +
+        '</button>' +
         '</div></div></div></div>';
 
       const existingModal = document.getElementById('confirmModal');
@@ -1341,12 +2179,12 @@ const testDataManager = {
       const modal = new bootstrap.Modal(modalEl);
 
       let wasConfirmed = false;
-      document.getElementById('confirmBtn').onclick = function() {
+      document.getElementById('confirmBtn').onclick = function () {
         wasConfirmed = true;
         modal.hide();
       };
 
-      modalEl.addEventListener('hidden.bs.modal', function() {
+      modalEl.addEventListener('hidden.bs.modal', function () {
         modalEl.remove();
         resolve(wasConfirmed);
       });
@@ -1355,20 +2193,30 @@ const testDataManager = {
     });
   },
 
+  reloadPage() {
+    location.reload();
+  },
+
   /**
    * Show info modal
    */
   showModal(title, message, showReloadBtn) {
-    const reloadBtn = showReloadBtn ? '<button type="button" class="btn btn-primary" onclick="location.reload()">Reload Page</button>' : '';
+    const reloadBtn = showReloadBtn
+      ? '<button type="button" class="btn btn-primary" data-action="testDataManager.reloadPage">Reload Page</button>'
+      : '';
     const modalHtml =
       '<div class="modal fade" id="infoModal" tabindex="-1">' +
       '<div class="modal-dialog modal-dialog-centered modal-lg">' +
       '<div class="modal-content">' +
       '<div class="modal-header">' +
-      '<h5 class="modal-title">' + title + '</h5>' +
+      '<h5 class="modal-title">' +
+      title +
+      '</h5>' +
       '<button type="button" class="btn-close" data-bs-dismiss="modal"></button>' +
       '</div>' +
-      '<div class="modal-body">' + message + '</div>' +
+      '<div class="modal-body">' +
+      message +
+      '</div>' +
       '<div class="modal-footer">' +
       reloadBtn +
       '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>' +
@@ -1382,7 +2230,7 @@ const testDataManager = {
     const modal = new bootstrap.Modal(document.getElementById('infoModal'));
     modal.show();
 
-    document.getElementById('infoModal').addEventListener('hidden.bs.modal', function() {
+    document.getElementById('infoModal').addEventListener('hidden.bs.modal', function () {
       this.remove();
     });
   },
@@ -1411,7 +2259,7 @@ const testDataManager = {
             contact_name: 'Test Contact',
             email: 'test@mockcompany.com',
             status: 'active',
-            region: 'London'
+            region: 'London',
           })
           .select()
           .single();
@@ -1433,31 +2281,35 @@ const testDataManager = {
           payment_status: 'unpaid',
           invoice_type: 'package',
           package_type: 'gold',
-          total_amount: 1250.00,
+          total_amount: 1250.0,
           currency: 'GBP',
-          notes: '[TEST MODE] Mock order for testing dashboard notifications'
+          notes: '[TEST MODE] Mock order for testing dashboard notifications',
         })
         .select()
         .single();
 
       if (invoiceError) throw invoiceError;
 
-      await STATE.client
-        .from('invoice_line_items')
-        .insert([
-          { invoice_id: invoice.id, item_name: 'Gold Package', quantity: 1, unit_price: 1000.00, line_total: 1000.00 },
-          { invoice_id: invoice.id, item_name: 'Extra Tickets', quantity: 5, unit_price: 50.00, line_total: 250.00 }
-        ]);
+      await STATE.client.from('invoice_line_items').insert([
+        { invoice_id: invoice.id, item_name: 'Gold Package', quantity: 1, unit_price: 1000.0, line_total: 1000.0 },
+        { invoice_id: invoice.id, item_name: 'Extra Tickets', quantity: 5, unit_price: 50.0, line_total: 250.0 },
+      ]);
 
       utils.hideLoading();
       utils.showToast('Mock order created: ' + invoiceNumber + ' for £1,250.00', 'success');
 
-      setTimeout(async function() {
-        if (await utils.confirmDialog({ title: 'Mock Order Created', message: 'Mock order created! Go to Dashboard to see the notification?', confirmText: 'Go to Dashboard', danger: false })) {
+      setTimeout(async function () {
+        if (
+          await utils.confirmDialog({
+            title: 'Mock Order Created',
+            message: 'Mock order created! Go to Dashboard to see the notification?',
+            confirmText: 'Go to Dashboard',
+            danger: false,
+          })
+        ) {
           document.getElementById('dashboard-tab').click();
         }
       }, 1500);
-
     } catch (error) {
       console.error('Error generating mock order:', error);
       utils.showToast('Failed to generate mock order: ' + error.message, 'error');
@@ -1500,23 +2352,24 @@ const testDataManager = {
       utils.hideLoading();
       utils.showToast('Mock orders removed successfully!', 'success');
 
-      setTimeout(function() {
-        testDataManager.showModal('Mock Orders Removed',
+      setTimeout(function () {
+        testDataManager.showModal(
+          'Mock Orders Removed',
           '<div class="alert alert-success">' +
-          '<h6><i class="bi bi-check-circle me-2"></i>Cleanup Complete</h6>' +
-          '<p class="mb-0">All mock order data has been removed.</p>' +
-          '</div>' +
-          '<p class="mt-3">Click "Reload Page" to refresh all views.</p>',
-          true);
+            '<h6><i class="bi bi-check-circle me-2"></i>Cleanup Complete</h6>' +
+            '<p class="mb-0">All mock order data has been removed.</p>' +
+            '</div>' +
+            '<p class="mt-3">Click "Reload Page" to refresh all views.</p>',
+          true
+        );
       }, 500);
-
     } catch (error) {
       console.error('Error removing mock orders:', error);
       utils.showToast('Failed to remove mock orders: ' + error.message, 'error');
     } finally {
       utils.hideLoading();
     }
-  }
+  },
 };
 
 // Export to window

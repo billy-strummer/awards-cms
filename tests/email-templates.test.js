@@ -5,7 +5,8 @@
 
 const { JSDOM } = require('jsdom');
 
-const dom = new JSDOM(`<!DOCTYPE html><html><head></head><body>
+const dom = new JSDOM(
+  `<!DOCTYPE html><html><head></head><body>
   <div id="loadingBar" style="display:none;"></div>
   <div id="notificationToast"><span id="toastIcon"></span><span id="toastTitle"></span><span id="toastMessage"></span></div>
   <div id="connectionStatus"><span class="status-icon"></span><span class="status-text"></span></div>
@@ -28,7 +29,9 @@ const dom = new JSDOM(`<!DOCTYPE html><html><head></head><body>
   <div id="templateEditor"></div>
   <div id="email-templates-subtab"></div>
   <div id="marketing-tab"></div>
-</body></html>`, { url: 'http://localhost' });
+</body></html>`,
+  { url: 'http://localhost' }
+);
 
 global.window = dom.window;
 global.document = dom.window.document;
@@ -40,17 +43,26 @@ global.URL = { createObjectURL: jest.fn(() => 'blob://mock'), revokeObjectURL: j
 global.window.URL = global.URL;
 
 global.bootstrap = {
-  Toast: class { show() {} hide() {} },
-  Modal: class {
-    show() {} hide() {}
-    static getInstance() { return { hide() {} }; }
+  Toast: class {
+    show() {}
+    hide() {}
   },
-  Tooltip: class {}
+  Modal: class {
+    show() {}
+    hide() {}
+    static getInstance() {
+      return { hide() {} };
+    }
+  },
+  Tooltip: class {},
 };
 
 global.crypto = {
-  getRandomValues: (arr) => { for (let i = 0; i < arr.length; i++) arr[i] = Math.floor(Math.random() * 256); return arr; },
-  randomUUID: () => 'test-uuid-1234-5678-abcd'
+  getRandomValues: (arr) => {
+    for (let i = 0; i < arr.length; i++) arr[i] = Math.floor(Math.random() * 256);
+    return arr;
+  },
+  randomUUID: () => 'test-uuid-1234-5678-abcd',
 };
 
 const mockSupabase = {
@@ -67,16 +79,20 @@ const mockSupabase = {
   limit: jest.fn(() => mockSupabase),
   single: jest.fn(() => Promise.resolve({ data: null, error: null })),
   rpc: jest.fn(() => Promise.resolve({ data: [], error: null })),
-  then: jest.fn(cb => cb({ data: [], error: null })),
+  then: jest.fn((cb) => cb({ data: [], error: null })),
   auth: {
     getSession: jest.fn(() => Promise.resolve({ data: { session: null }, error: null })),
     signInWithPassword: jest.fn(() => Promise.resolve({ data: { user: { email: 'test@test.com' } }, error: null })),
-    signOut: jest.fn(() => Promise.resolve({ error: null }))
+    signOut: jest.fn(() => Promise.resolve({ error: null })),
   },
   channel: jest.fn(() => ({
-    on: jest.fn(function() { return this; }),
-    subscribe: jest.fn(function() { return this; })
-  }))
+    on: jest.fn(function () {
+      return this;
+    }),
+    subscribe: jest.fn(function () {
+      return this;
+    }),
+  })),
 };
 
 global.supabase = { createClient: () => mockSupabase };
@@ -122,7 +138,7 @@ const sampleTemplates = [
     description: 'Sent when a new entry is submitted',
     is_active: true,
     is_default: true,
-    available_placeholders: ['ENTRY_NUMBER', 'CONTACT_NAME', 'COMPANY_NAME']
+    available_placeholders: ['ENTRY_NUMBER', 'CONTACT_NAME', 'COMPANY_NAME'],
   },
   {
     id: 'tpl-2',
@@ -133,7 +149,7 @@ const sampleTemplates = [
     description: 'Reminder for document uploads',
     is_active: true,
     is_default: false,
-    available_placeholders: ['ENTRY_NUMBER', 'CONTACT_NAME']
+    available_placeholders: ['ENTRY_NUMBER', 'CONTACT_NAME'],
   },
   {
     id: 'tpl-3',
@@ -144,7 +160,7 @@ const sampleTemplates = [
     description: null,
     is_active: false,
     is_default: false,
-    available_placeholders: null
+    available_placeholders: null,
   },
   {
     id: 'tpl-4',
@@ -155,7 +171,7 @@ const sampleTemplates = [
     description: 'Sent to winners',
     is_active: true,
     is_default: true,
-    available_placeholders: ['CONTACT_NAME', 'COMPANY_NAME', 'AWARD_NAME']
+    available_placeholders: ['CONTACT_NAME', 'COMPANY_NAME', 'AWARD_NAME'],
   },
   {
     id: 'tpl-5',
@@ -166,7 +182,7 @@ const sampleTemplates = [
     description: 'Event invites',
     is_active: true,
     is_default: false,
-    available_placeholders: ['CONTACT_NAME', 'EVENT_NAME', 'EVENT_DATE']
+    available_placeholders: ['CONTACT_NAME', 'EVENT_NAME', 'EVENT_DATE'],
   },
   {
     id: 'tpl-6',
@@ -177,14 +193,30 @@ const sampleTemplates = [
     description: 'General purpose template',
     is_active: true,
     is_default: false,
-    available_placeholders: ['RECIPIENT_NAME']
-  }
+    available_placeholders: ['RECIPIENT_NAME'],
+  },
 ];
 
 // System templates that should be filtered out of visible list
 const systemTemplates = [
-  { id: 'sys-1', template_name: 'Header', template_type: 'email_header', subject: '', body: '<header>...</header>', is_active: true, is_default: true },
-  { id: 'sys-2', template_name: 'Footer', template_type: 'email_footer', subject: '', body: '<footer>...</footer>', is_active: true, is_default: true }
+  {
+    id: 'sys-1',
+    template_name: 'Header',
+    template_type: 'email_header',
+    subject: '',
+    body: '<header>...</header>',
+    is_active: true,
+    is_default: true,
+  },
+  {
+    id: 'sys-2',
+    template_name: 'Footer',
+    template_type: 'email_footer',
+    subject: '',
+    body: '<footer>...</footer>',
+    is_active: true,
+    is_default: true,
+  },
 ];
 
 // ==========================================
@@ -342,12 +374,21 @@ describe('Email Templates Module - getGroupForType()', () => {
 describe('Email Templates Module - _isAutoTemplate()', () => {
   test('returns true for auto-triggered template types', () => {
     const autoTypes = [
-      'confirmation', 'reminder', 'revision_request',
-      'payment_confirmation', 'payment_failed', 'refund_confirmation', 'payment_reminder',
-      'approval', 'rejection', 'winner_announcement',
-      'judge_assignment', 'judge_reminder', 'deadline_reminder',
+      'confirmation',
+      'reminder',
+      'revision_request',
+      'payment_confirmation',
+      'payment_failed',
+      'refund_confirmation',
+      'payment_reminder',
+      'approval',
+      'rejection',
+      'winner_announcement',
+      'judge_assignment',
+      'judge_reminder',
+      'deadline_reminder',
     ];
-    autoTypes.forEach(type => {
+    autoTypes.forEach((type) => {
       expect(emailTemplatesModule._isAutoTemplate(type)).toBe(true);
     });
   });
@@ -458,7 +499,7 @@ describe('Email Templates Module - renderTemplatesList()', () => {
     emailTemplatesModule.renderTemplatesList();
     const container = document.getElementById('templatesList');
     const html = container.innerHTML;
-    expect(html).toContain('bg-success');  // Active badge
+    expect(html).toContain('bg-success'); // Active badge
     expect(html).toContain('bg-secondary'); // Inactive badge (tpl-3 is inactive)
   });
 
@@ -489,7 +530,7 @@ describe('Email Templates Module - renderTemplatesList()', () => {
     emailTemplatesModule.renderTemplatesList();
     const container = document.getElementById('templatesList');
     const html = container.innerHTML;
-    sampleTemplates.forEach(t => {
+    sampleTemplates.forEach((t) => {
       expect(html).toContain(t.template_name);
     });
   });
@@ -686,16 +727,43 @@ describe('Email Templates Module - _getSampleData()', () => {
   test('returns object with all expected placeholder keys', async () => {
     const data = await emailTemplatesModule._getSampleData();
     const expectedKeys = [
-      'ENTRY_NUMBER', 'CONTACT_NAME', 'COMPANY_NAME', 'AWARD_NAME',
-      'SECTOR', 'REGION', 'UPLOAD_LINK', 'DEADLINE_DATE', 'ANNOUNCEMENT_DATE',
-      'CONTACT_EMAIL', 'ENTRY_TITLE', 'FEEDBACK', 'ERROR_MESSAGE', 'ENTRY_FEE',
-      'PAYMENT_LINK', 'JUDGE_NAME', 'ENTRY_COUNT', 'DEADLINE',
-      'JUDGE_PORTAL_LINK', 'SCORED_COUNT', 'TOTAL_COUNT', 'PENDING_COUNT',
-      'DAYS_LEFT', 'CEREMONY_DATE', 'CEREMONY_VENUE', 'WINNERS_PORTAL_LINK',
-      'EVENT_NAME', 'EVENT_DATE', 'VENUE', 'RSVP_URL', 'TICKET_NUMBER',
-      'RECIPIENT_NAME', 'DEADLINE_TYPE', 'ACTION_REQUIRED', 'ACTION_LINK',
+      'ENTRY_NUMBER',
+      'CONTACT_NAME',
+      'COMPANY_NAME',
+      'AWARD_NAME',
+      'SECTOR',
+      'REGION',
+      'UPLOAD_LINK',
+      'DEADLINE_DATE',
+      'ANNOUNCEMENT_DATE',
+      'CONTACT_EMAIL',
+      'ENTRY_TITLE',
+      'FEEDBACK',
+      'ERROR_MESSAGE',
+      'ENTRY_FEE',
+      'PAYMENT_LINK',
+      'JUDGE_NAME',
+      'ENTRY_COUNT',
+      'DEADLINE',
+      'JUDGE_PORTAL_LINK',
+      'SCORED_COUNT',
+      'TOTAL_COUNT',
+      'PENDING_COUNT',
+      'DAYS_LEFT',
+      'CEREMONY_DATE',
+      'CEREMONY_VENUE',
+      'WINNERS_PORTAL_LINK',
+      'EVENT_NAME',
+      'EVENT_DATE',
+      'VENUE',
+      'RSVP_URL',
+      'TICKET_NUMBER',
+      'RECIPIENT_NAME',
+      'DEADLINE_TYPE',
+      'ACTION_REQUIRED',
+      'ACTION_LINK',
     ];
-    expectedKeys.forEach(key => {
+    expectedKeys.forEach((key) => {
       expect(data).toHaveProperty(key);
       expect(typeof data[key]).toBe('string');
       expect(data[key].length).toBeGreaterThan(0);
@@ -711,10 +779,13 @@ describe('Email Templates Module - _getSampleData()', () => {
   });
 
   test('uses localStorage defaults when available', async () => {
-    localStorage.setItem('emailPlaceholderDefaults', JSON.stringify({
-      CONTACT_NAME: 'Jane Doe',
-      COMPANY_NAME: 'Test Corp'
-    }));
+    localStorage.setItem(
+      'emailPlaceholderDefaults',
+      JSON.stringify({
+        CONTACT_NAME: 'Jane Doe',
+        COMPANY_NAME: 'Test Corp',
+      })
+    );
     const data = await emailTemplatesModule._getSampleData();
     expect(data.CONTACT_NAME).toBe('Jane Doe');
     expect(data.COMPANY_NAME).toBe('Test Corp');
@@ -809,17 +880,19 @@ describe('Email Templates Module - Edge Cases', () => {
   });
 
   test('renderTemplatesList handles templates with null fields', () => {
-    emailTemplatesModule.templates = [{
-      id: 'null-tpl',
-      template_name: null,
-      template_type: null,
-      subject: '',
-      body: '',
-      description: null,
-      is_active: false,
-      is_default: false,
-      available_placeholders: null
-    }];
+    emailTemplatesModule.templates = [
+      {
+        id: 'null-tpl',
+        template_name: null,
+        template_type: null,
+        subject: '',
+        body: '',
+        description: null,
+        is_active: false,
+        is_default: false,
+        available_placeholders: null,
+      },
+    ];
     expect(() => emailTemplatesModule.renderTemplatesList()).not.toThrow();
     const container = document.getElementById('templatesList');
     expect(container.innerHTML).toContain('Untitled');
@@ -828,7 +901,7 @@ describe('Email Templates Module - Edge Cases', () => {
   test('renderTemplateEditor handles template with empty placeholders array', () => {
     const tmpl = {
       ...sampleTemplates[0],
-      available_placeholders: []
+      available_placeholders: [],
     };
     emailTemplatesModule.currentTemplate = tmpl;
     expect(() => emailTemplatesModule.renderTemplateEditor(tmpl)).not.toThrow();
@@ -850,51 +923,57 @@ describe('Email Templates Module - Edge Cases', () => {
   });
 
   test('renderTemplatesList handles template with missing template_name using name fallback', () => {
-    emailTemplatesModule.templates = [{
-      id: 'fallback-tpl',
-      template_name: null,
-      name: 'Fallback Name',
-      template_type: 'general',
-      subject: 'Test',
-      body: 'Test body',
-      is_active: true,
-      is_default: false,
-      available_placeholders: null
-    }];
+    emailTemplatesModule.templates = [
+      {
+        id: 'fallback-tpl',
+        template_name: null,
+        name: 'Fallback Name',
+        template_type: 'general',
+        subject: 'Test',
+        body: 'Test body',
+        is_active: true,
+        is_default: false,
+        available_placeholders: null,
+      },
+    ];
     emailTemplatesModule.renderTemplatesList();
     const container = document.getElementById('templatesList');
     expect(container.innerHTML).toContain('Fallback Name');
   });
 
   test('renderTemplatesList falls back to Untitled when both name fields are null', () => {
-    emailTemplatesModule.templates = [{
-      id: 'no-name-tpl',
-      template_name: null,
-      name: null,
-      template_type: 'general',
-      subject: 'Test',
-      body: 'Test body',
-      is_active: true,
-      is_default: false,
-      available_placeholders: null
-    }];
+    emailTemplatesModule.templates = [
+      {
+        id: 'no-name-tpl',
+        template_name: null,
+        name: null,
+        template_type: 'general',
+        subject: 'Test',
+        body: 'Test body',
+        is_active: true,
+        is_default: false,
+        available_placeholders: null,
+      },
+    ];
     emailTemplatesModule.renderTemplatesList();
     const container = document.getElementById('templatesList');
     expect(container.innerHTML).toContain('Untitled');
   });
 
   test('renderTemplatesList description with quotes is properly escaped', () => {
-    emailTemplatesModule.templates = [{
-      id: 'quote-tpl',
-      template_name: 'Quote Test',
-      template_type: 'general',
-      subject: 'Test',
-      body: 'Test body',
-      description: 'Template with "quotes" inside',
-      is_active: true,
-      is_default: false,
-      available_placeholders: null
-    }];
+    emailTemplatesModule.templates = [
+      {
+        id: 'quote-tpl',
+        template_name: 'Quote Test',
+        template_type: 'general',
+        subject: 'Test',
+        body: 'Test body',
+        description: 'Template with "quotes" inside',
+        is_active: true,
+        is_default: false,
+        available_placeholders: null,
+      },
+    ];
     emailTemplatesModule.renderTemplatesList();
     const container = document.getElementById('templatesList');
     expect(container.innerHTML).toContain('&quot;');
@@ -994,11 +1073,11 @@ describe('Email Templates Module - Group Ordering and Rendering', () => {
     emailTemplatesModule.renderTemplatesList();
     const container = document.getElementById('templatesList');
     const html = container.innerHTML;
-    expect(html).toContain('bi-pencil-square');   // Entry & Submissions
-    expect(html).toContain('bi-credit-card');      // Payments
-    expect(html).toContain('bi-trophy');           // Judging & Results
-    expect(html).toContain('bi-calendar-event');   // Events & Invitations
-    expect(html).toContain('bi-megaphone');         // General
+    expect(html).toContain('bi-pencil-square'); // Entry & Submissions
+    expect(html).toContain('bi-credit-card'); // Payments
+    expect(html).toContain('bi-trophy'); // Judging & Results
+    expect(html).toContain('bi-calendar-event'); // Events & Invitations
+    expect(html).toContain('bi-megaphone'); // General
   });
 });
 
@@ -1006,7 +1085,7 @@ describe('Email Templates Module - revertToDefault()', () => {
   beforeEach(() => {
     emailTemplatesModule.currentTemplate = {
       ...sampleTemplates[0],
-      template_name: 'Entry Confirmation'
+      template_name: 'Entry Confirmation',
     };
     emailTemplatesModule.renderTemplateEditor(emailTemplatesModule.currentTemplate);
   });
@@ -1020,14 +1099,11 @@ describe('Email Templates Module - revertToDefault()', () => {
   test('shows warning toast when template has no defaults', async () => {
     emailTemplatesModule.currentTemplate = {
       ...sampleTemplates[5],
-      template_name: 'Some Custom Template'
+      template_name: 'Some Custom Template',
     };
     const showToastSpy = jest.spyOn(utils, 'showToast');
     await emailTemplatesModule.revertToDefault();
-    expect(showToastSpy).toHaveBeenCalledWith(
-      'No default copy available for this template',
-      'warning'
-    );
+    expect(showToastSpy).toHaveBeenCalledWith('No default copy available for this template', 'warning');
     showToastSpy.mockRestore();
   });
 });

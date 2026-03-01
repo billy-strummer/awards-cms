@@ -3,6 +3,7 @@
     "browser": true,
     "es2020": true
   },
+  "_comment_globals": "These globals are registered by ModuleRegistry.register() which exposes them on window. ESLint needs them declared to avoid no-undef errors. Third-party libs (bootstrap, Stripe, etc.) are loaded via CDN script tags.",
   "globals": {
     "bootstrap": "readonly",
     "supabase": "readonly",

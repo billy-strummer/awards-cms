@@ -676,7 +676,7 @@ const utils = {
    * @param {object} supabaseClient - Supabase client instance
    * @returns {Promise<boolean>} Whether the restore succeeded
    */
-  async restoreFromTrash(table, record, supabaseClient) {
+  async restoreFromTrash(table, record, _supabaseClient) {
     try {
       // Remove internal fields
       const { _deletedAt, _assignmentCounts, _winnerName, _runnerUpName, _actualRegion, _countyName, ...data } = record;

@@ -2696,19 +2696,17 @@ describe('Dashboard Module - exportSalesData()', () => {
   });
 
   test('exports sales data from loaded payments data', async () => {
-    apiClient.selectAll = jest
-      .fn()
-      .mockResolvedValue([
-        {
-          id: 'p1',
-          payment_reference: 'PAY-001',
-          amount: 100,
-          payment_method: 'card',
-          status: 'completed',
-          payment_date: '2026-01-15',
-          organisations: { company_name: 'Test' },
-        },
-      ]);
+    apiClient.selectAll = jest.fn().mockResolvedValue([
+      {
+        id: 'p1',
+        payment_reference: 'PAY-001',
+        amount: 100,
+        payment_method: 'card',
+        status: 'completed',
+        payment_date: '2026-01-15',
+        organisations: { company_name: 'Test' },
+      },
+    ]);
     const toastSpy = jest.spyOn(utils, 'showToast');
     await dashboardModule.exportSalesData();
     expect(toastSpy).toHaveBeenCalledWith('Sales report exported successfully', 'success');

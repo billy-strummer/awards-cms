@@ -4,7 +4,7 @@
  * while still being loadable via `require()` in Jest tests.
  */
 module.exports = {
-  process(sourceText, sourcePath) {
+  process(sourceText, _sourcePath) {
     // Strip export statements (export { foo, bar };) from the end of files
     const transformed = sourceText.replace(
       /^export\s*\{[^}]*\}\s*;?\s*$/gm,

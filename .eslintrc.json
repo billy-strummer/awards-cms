@@ -108,6 +108,7 @@
       }
     ]
   },
+  "ignorePatterns": ["dist/**"],
   "overrides": [
     {
       "files": [

@@ -656,19 +656,17 @@ describe('Settings Module - renderAuditLog', () => {
   });
 
   test('shows "no match" message when filters exclude all', async () => {
-    jest
-      .spyOn(settingsModule, 'getAuditLogs')
-      .mockResolvedValue([
-        {
-          id: '1',
-          timestamp: '2025-01-01',
-          action: 'create',
-          entity: 'award',
-          description: 'Test',
-          entityId: 'a1',
-          user: 'a@b.com',
-        },
-      ]);
+    jest.spyOn(settingsModule, 'getAuditLogs').mockResolvedValue([
+      {
+        id: '1',
+        timestamp: '2025-01-01',
+        action: 'create',
+        entity: 'award',
+        description: 'Test',
+        entityId: 'a1',
+        user: 'a@b.com',
+      },
+    ]);
     document.getElementById('auditLogFilter').value = 'delete';
     document.getElementById('auditEntityFilter').value = '';
     await settingsModule.renderAuditLog();

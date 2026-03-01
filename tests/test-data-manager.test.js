@@ -1878,7 +1878,7 @@ describe('Test Data Manager - removeTestData with email lists and segments', () 
     jest.spyOn(testDataManager, 'showModal').mockImplementation(() => {});
 
     // Return test email lists
-    let fromCallCount = 0;
+    const fromCallCount = 0;
     mockSupabase.from.mockImplementation((table) => {
       const chain = buildChainableMock({ data: [], error: null });
       chain.select.mockReturnValue(chain);

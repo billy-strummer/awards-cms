@@ -2176,7 +2176,7 @@ describe('Organisations Module - exportToCSV()', () => {
   });
 
   test('generates CSV with correct headers', () => {
-    let downloadedContent = null;
+    const downloadedContent = null;
     const origCreateElement = document.createElement.bind(document);
     const mockLink = { href: '', download: '', click: jest.fn() };
     jest.spyOn(document, 'createElement').mockImplementation((tag) => {

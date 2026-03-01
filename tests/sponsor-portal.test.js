@@ -483,20 +483,18 @@ describe('Sponsor Portal - renderContracts', () => {
   });
 
   test('renders contracts table', async () => {
-    apiClient.selectAll = jest
-      .fn()
-      .mockResolvedValue([
-        {
-          id: 'c1',
-          sponsor_id: 's1',
-          start_date: '2026-01-01',
-          end_date: '2026-12-31',
-          amount: 5000,
-          status: 'Active',
-          benefits: 'Logo placement',
-          sponsors: { name: 'Gold Corp', tier: 'Gold' },
-        },
-      ]);
+    apiClient.selectAll = jest.fn().mockResolvedValue([
+      {
+        id: 'c1',
+        sponsor_id: 's1',
+        start_date: '2026-01-01',
+        end_date: '2026-12-31',
+        amount: 5000,
+        status: 'Active',
+        benefits: 'Logo placement',
+        sponsors: { name: 'Gold Corp', tier: 'Gold' },
+      },
+    ]);
     await sponsorPortalModule.renderContracts();
     const el = document.getElementById('sponsorContracts');
     expect(el.innerHTML).toContain('Sponsor Contracts');

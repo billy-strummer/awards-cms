@@ -693,17 +693,15 @@ describe('Winner Pipeline - renderDeliberationPanel', () => {
   });
 
   test('includes correct action buttons for each entry', async () => {
-    jest
-      .spyOn(apiClient, 'selectAll')
-      .mockResolvedValue([
-        {
-          entry_id: 'e-1',
-          rank: 1,
-          avg_score: 90,
-          status: 'shortlisted',
-          entries: { id: 'e-1', entry_title: 'Entry 1', organisation_id: 'org-1' },
-        },
-      ]);
+    jest.spyOn(apiClient, 'selectAll').mockResolvedValue([
+      {
+        entry_id: 'e-1',
+        rank: 1,
+        avg_score: 90,
+        status: 'shortlisted',
+        entries: { id: 'e-1', entry_title: 'Entry 1', organisation_id: 'org-1' },
+      },
+    ]);
 
     await winnerPipelineModule.renderDeliberationPanel('award-1');
 
@@ -866,19 +864,17 @@ describe('Winner Pipeline - renderScoreChart', () => {
     const mockDestroy = jest.fn();
     canvas._chartInstance = { destroy: mockDestroy };
 
-    jest
-      .spyOn(winnerPipelineModule, 'aggregateScores')
-      .mockResolvedValue([
-        {
-          entry_title: 'Entry A',
-          avg_score: 90,
-          min_score: 80,
-          max_score: 95,
-          median_score: 88,
-          judge_count: 3,
-          rank: 1,
-        },
-      ]);
+    jest.spyOn(winnerPipelineModule, 'aggregateScores').mockResolvedValue([
+      {
+        entry_title: 'Entry A',
+        avg_score: 90,
+        min_score: 80,
+        max_score: 95,
+        median_score: 88,
+        judge_count: 3,
+        rank: 1,
+      },
+    ]);
 
     await winnerPipelineModule.renderScoreChart('award-1');
 
@@ -887,19 +883,17 @@ describe('Winner Pipeline - renderScoreChart', () => {
 
   test('truncates long entry titles in chart labels', async () => {
     const longTitle = 'A'.repeat(40);
-    jest
-      .spyOn(winnerPipelineModule, 'aggregateScores')
-      .mockResolvedValue([
-        {
-          entry_title: longTitle,
-          avg_score: 90,
-          min_score: 80,
-          max_score: 95,
-          median_score: 88,
-          judge_count: 3,
-          rank: 1,
-        },
-      ]);
+    jest.spyOn(winnerPipelineModule, 'aggregateScores').mockResolvedValue([
+      {
+        entry_title: longTitle,
+        avg_score: 90,
+        min_score: 80,
+        max_score: 95,
+        median_score: 88,
+        judge_count: 3,
+        rank: 1,
+      },
+    ]);
 
     await winnerPipelineModule.renderScoreChart('award-1');
 
@@ -1026,17 +1020,15 @@ describe('Winner Pipeline - additional branch coverage', () => {
   });
 
   test('renderDeliberationPanel handles unknown badge status with secondary', async () => {
-    jest
-      .spyOn(apiClient, 'selectAll')
-      .mockResolvedValue([
-        {
-          entry_id: 'e-1',
-          rank: 1,
-          avg_score: 90,
-          status: 'unknown_status',
-          entries: { id: 'e-1', entry_title: 'Entry', organisation_id: 'org-1' },
-        },
-      ]);
+    jest.spyOn(apiClient, 'selectAll').mockResolvedValue([
+      {
+        entry_id: 'e-1',
+        rank: 1,
+        avg_score: 90,
+        status: 'unknown_status',
+        entries: { id: 'e-1', entry_title: 'Entry', organisation_id: 'org-1' },
+      },
+    ]);
 
     await winnerPipelineModule.renderDeliberationPanel('award-1');
 
@@ -1076,17 +1068,15 @@ describe('Winner Pipeline - additional branch coverage', () => {
 
   test('renderDeliberationPanel uses currentUser email for note modal', async () => {
     STATE.currentUser = { email: 'test@example.com' };
-    jest
-      .spyOn(apiClient, 'selectAll')
-      .mockResolvedValue([
-        {
-          entry_id: 'e-1',
-          rank: 1,
-          avg_score: 90,
-          status: 'shortlisted',
-          entries: { id: 'e-1', entry_title: 'Entry', organisation_id: 'org-1' },
-        },
-      ]);
+    jest.spyOn(apiClient, 'selectAll').mockResolvedValue([
+      {
+        entry_id: 'e-1',
+        rank: 1,
+        avg_score: 90,
+        status: 'shortlisted',
+        entries: { id: 'e-1', entry_title: 'Entry', organisation_id: 'org-1' },
+      },
+    ]);
 
     await winnerPipelineModule.renderDeliberationPanel('award-1');
 
@@ -1099,17 +1089,15 @@ describe('Winner Pipeline - additional branch coverage', () => {
   test('renderDeliberationPanel uses unknown@user when currentUser is null', async () => {
     const origUser = STATE.currentUser;
     STATE.currentUser = null;
-    jest
-      .spyOn(apiClient, 'selectAll')
-      .mockResolvedValue([
-        {
-          entry_id: 'e-1',
-          rank: 1,
-          avg_score: 90,
-          status: 'shortlisted',
-          entries: { id: 'e-1', entry_title: 'Entry', organisation_id: 'org-1' },
-        },
-      ]);
+    jest.spyOn(apiClient, 'selectAll').mockResolvedValue([
+      {
+        entry_id: 'e-1',
+        rank: 1,
+        avg_score: 90,
+        status: 'shortlisted',
+        entries: { id: 'e-1', entry_title: 'Entry', organisation_id: 'org-1' },
+      },
+    ]);
 
     await winnerPipelineModule.renderDeliberationPanel('award-1');
 

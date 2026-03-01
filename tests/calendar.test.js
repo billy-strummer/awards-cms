@@ -511,11 +511,9 @@ describe('Calendar Module - exportEventICS', () => {
   });
 
   test('exports single event as ICS', async () => {
-    apiClient.select = jest
-      .fn()
-      .mockResolvedValue({
-        data: [{ id: 'ev1', event_name: 'Awards Night', event_date: '2026-06-15', venue: 'Grand Hall' }],
-      });
+    apiClient.select = jest.fn().mockResolvedValue({
+      data: [{ id: 'ev1', event_name: 'Awards Night', event_date: '2026-06-15', venue: 'Grand Hall' }],
+    });
     const exportSpy = jest.spyOn(calendarModule, 'exportICS');
     await calendarModule.exportEventICS('ev1');
     expect(exportSpy).toHaveBeenCalledWith([expect.objectContaining({ type: 'ceremony', label: 'Awards Night' })]);

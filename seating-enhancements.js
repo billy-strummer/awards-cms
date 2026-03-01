@@ -279,6 +279,7 @@ const seatingEnhancements = {
   // === 3. FLOOR SECTIONS ===
   async loadSections(eventId) {
     try {
+      /* selectAll: justified — scoped to single event */
       this._sections = await apiClient.selectAll('seating_sections', {
         select: '*',
         filters: { event_id: { eq: eventId } },

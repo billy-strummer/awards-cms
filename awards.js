@@ -255,6 +255,7 @@ const awardsModule = {
     try {
       let data;
       try {
+        /* selectAll: justified — aggregation requires full dataset for assignment counts per award */
         data = await apiClient.selectAll('award_assignments', {
           select: 'award_id, status, winner_position, organisations(company_name)',
         });
@@ -262,6 +263,7 @@ const awardsModule = {
         // FK relationship missing - retry without joins
         if (joinErr.message?.includes('relationship') || joinErr.message?.includes('schema cache')) {
           console.warn('award_assignments FK relationships not found, loading without joins');
+          /* selectAll: justified — aggregation requires full dataset (FK fallback) */
           data = await apiClient.selectAll('award_assignments', {
             select: 'award_id, status, winner_position',
           });
@@ -1830,6 +1832,7 @@ const awardsModule = {
 
       // Fetch previous year's winners from award_assignments
       const sourceAwardIds = awardsToRoll.map((a) => a.id);
+      /* selectAll: justified — filtered to specific award IDs for year rollover */
       const winnerData = await apiClient.selectAll('award_assignments', {
         select: 'award_id, winner_position, organisations(company_name)',
         filters: {

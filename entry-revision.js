@@ -83,6 +83,7 @@ const entryRevisionModule = {
   /* 2. REVISION HISTORY */
   async renderRevisionHistory(entryId) {
     try {
+      /* selectAll: justified — scoped to single entry */
       const revisions = await apiClient.selectAll('entry_revisions', {
         select: '*',
         filters: { entry_id: { eq: entryId } },
@@ -233,6 +234,7 @@ const entryRevisionModule = {
 
       let files = [];
       try {
+        /* selectAll: justified — scoped to single entry */
         files = await apiClient.selectAll('entry_files', {
           select: 'file_name, file_url, uploaded_at',
           filters: { entry_id: { eq: entryId } },

@@ -12,6 +12,7 @@ const ticketModule = {
     if (!el) return;
     try {
       utils.showLoading();
+      /* selectAll: justified — scoped to single event */
       const types = await apiClient.selectAll('event_ticket_types', {
         select: '*',
         filters: { event_id: { eq: eventId } },
@@ -157,6 +158,7 @@ const ticketModule = {
       utils.showLoading();
       const [eventResult, types] = await Promise.all([
         apiClient.select('events', { select: '*', filters: { id: { eq: eventId } }, pageSize: 1 }),
+        /* selectAll: justified — scoped to single event */
         apiClient.selectAll('event_ticket_types', {
           select: '*',
           filters: { event_id: { eq: eventId } },
@@ -397,6 +399,7 @@ const ticketModule = {
     if (!el) return;
     try {
       utils.showLoading();
+      /* selectAll: justified — scoped to single event */
       const [types, guests] = await Promise.all([
         apiClient.selectAll('event_ticket_types', { select: '*', filters: { event_id: { eq: eventId } } }),
         apiClient.selectAll('event_guests', { select: 'rsvp_status', filters: { event_id: { eq: eventId } } }),
@@ -480,6 +483,7 @@ const ticketModule = {
   async processWaitlist(eventId) {
     try {
       utils.showLoading();
+      /* selectAll: justified — scoped to single event */
       const [types, waitlist, guests] = await Promise.all([
         apiClient.selectAll('event_ticket_types', { select: 'quantity', filters: { event_id: { eq: eventId } } }),
         apiClient.selectAll('event_waitlist', {

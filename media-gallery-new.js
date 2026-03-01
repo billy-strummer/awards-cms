@@ -717,6 +717,7 @@ const mediaGalleryModule = {
       const sectionIds = sections.map((s) => s.id);
       let allPhotos = [];
       if (sectionIds.length > 0) {
+        /* selectAll: justified — scoped to gallery sections for single event */
         const photoResult = await apiClient.selectAll('media_gallery', {
           select: '*, organisations!media_gallery_organisation_id_fkey(company_name)',
           filters: {

@@ -10,12 +10,14 @@ const winnerPipelineModule = {
 
   async aggregateScores(awardId) {
     try {
+      /* selectAll: justified — scoped to single award for score aggregation */
       const entries = await apiClient.selectAll('entries', {
         select: 'id, entry_title, organisation_id',
         filters: { award_id: { eq: awardId } },
       });
       if (!entries?.length) return [];
 
+      /* selectAll: justified — scoped to entries for single award */
       const scores = await apiClient.selectAll('judge_scores', {
         select: 'entry_id, total_score',
         filters: { entry_id: { in: entries.map((e) => e.id) }, is_complete: { eq: true } },
@@ -99,6 +101,7 @@ const winnerPipelineModule = {
     container.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>';
 
     try {
+      /* selectAll: justified — scoped to single award for deliberation */
       const shortlist = await apiClient.selectAll('shortlists', {
         select: '*, entries(id, entry_title, organisation_id)',
         filters: { award_id: { eq: awardId } },
@@ -284,12 +287,14 @@ const winnerPipelineModule = {
     container.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>';
 
     try {
+      /* selectAll: justified — small reference table (active awards for pipeline overview) */
       const awards = await apiClient.selectAll('awards', {
         select: 'id, award_name',
         filters: { status: { eq: 'Active' } },
         sort: { column: 'award_name', ascending: true },
       });
 
+      /* selectAll: justified — aggregation requires full dataset for pipeline status */
       const shortlists = await apiClient.selectAll('shortlists', { select: 'award_id, status' });
       const scores = await apiClient.selectAll('judge_scores', {
         select: 'entry_id, entries(award_id)',

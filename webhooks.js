@@ -38,6 +38,7 @@ const webhooksModule = {
   async fireWebhook(eventType, payload) {
     let hooks;
     try {
+      /* selectAll: justified — small configuration table (webhooks, typically <20 records) */
       hooks = await apiClient.selectAll('webhooks', {
         select: '*',
         filters: { is_active: { eq: true }, events: { contains: [eventType] } },
@@ -119,6 +120,7 @@ const webhooksModule = {
   async retryFailedWebhooks() {
     let logs;
     try {
+      /* selectAll: justified — filtered to failed logs with <3 attempts for retry processing */
       logs = await apiClient.selectAll('webhook_logs', {
         select: '*, webhooks(*)',
         filters: {
@@ -190,6 +192,7 @@ const webhooksModule = {
 
     let hooks;
     try {
+      /* selectAll: justified — small configuration table (webhooks, typically <20 records) */
       hooks = await apiClient.selectAll('webhooks', { select: '*', sort: { column: 'created_at', ascending: false } });
     } catch (err) {
       container.innerHTML = '<p class="text-danger">Failed to load webhooks.</p>';

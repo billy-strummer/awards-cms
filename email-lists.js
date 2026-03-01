@@ -505,7 +505,7 @@ const emailListsModule = {
    * @returns {Promise<void>}
    */
   async openImportModal(listId = null) {
-    // Load active lists for dropdown
+    /* selectAll: justified — small reference table (email lists for dropdown) */
     const lists = await apiClient.selectAll('email_lists', {
       select: 'id, list_name',
       filters: { is_active: true },
@@ -1528,6 +1528,7 @@ const emailListsModule = {
    */
   async exportList(listId) {
     try {
+      /* selectAll: justified — export requires full subscriber list for single list */
       const subscribers = await apiClient.selectAll('email_list_subscribers', {
         select: 'email, first_name, last_name, company_name, status',
         filters: { list_id: listId },

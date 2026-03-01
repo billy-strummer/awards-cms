@@ -421,7 +421,7 @@ describe('Winner Announcements - sendWinnerEmails', () => {
 
   test('sends emails to non-embargoed winners with org email', async () => {
     let selectCallCount = 0;
-    jest.spyOn(apiClient, 'select').mockImplementation(async (table, opts) => {
+    jest.spyOn(apiClient, 'select').mockImplementation(async (_table, _opts) => {
       selectCallCount++;
       if (selectCallCount === 1) {
         // Email template fetch

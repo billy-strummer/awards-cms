@@ -553,7 +553,7 @@ describe('Seating Enhancements - init', () => {
     window.eventsModule = undefined;
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
     // Create a fresh instance by calling init on a temp context
-    const saved = seatingEnhancements.init;
+    const _saved = seatingEnhancements.init;
     seatingEnhancements.init();
     expect(warnSpy).toHaveBeenCalledWith('seatingEnhancements: eventsModule not found');
     window.eventsModule = origEM;
@@ -933,7 +933,7 @@ describe('Seating Enhancements - Keyboard Binding', () => {
 
   test('_bindKeyboard does not double-bind', () => {
     seatingEnhancements._kbBound = true;
-    const listenerCountBefore = document.listeners?.length || 0;
+    const _listenerCountBefore = document.listeners?.length || 0;
     seatingEnhancements._bindKeyboard();
     // Should not add another listener
     expect(seatingEnhancements._kbBound).toBe(true);
@@ -1065,7 +1065,7 @@ describe('Seating Enhancements - Upgrade Seat Dots', () => {
 
   test('_upgradeSeatDots shows seat number for empty seats', () => {
     seatingEnhancements._upgradeSeatDots(eventsModule);
-    const t2Dots = document.querySelectorAll('#tpCanvas .tp-table-el[data-table-id="t2"] .seat-dot');
+    const _t2Dots = document.querySelectorAll('#tpCanvas .tp-table-el[data-table-id="t2"] .seat-dot');
     // t2 has 1 dot in DOM but table has 1 assignment (Dave, seat 1)
     // So all DOM dots may be occupied based on index
   });
@@ -1104,7 +1104,7 @@ describe('Seating Enhancements - Inject Detail Extras', () => {
 
   test('_injectDetailExtras does nothing when detail body is missing', () => {
     const body = document.querySelector('#tpDetailContent .detail-body');
-    const origDisplay = body.style.display;
+    const _origDisplay = body.style.display;
     body.id = 'tempHidden';
     // Since the querySelector won't find the element, it should not throw
     expect(() => seatingEnhancements._injectDetailExtras(eventsModule, 't1')).not.toThrow();

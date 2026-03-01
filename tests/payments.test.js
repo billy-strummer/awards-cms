@@ -2241,3 +2241,1091 @@ describe('Payments Module - filterInvoices fuzzy search fallback', () => {
     expect(paymentsModule.currentInvoices).toBeDefined();
   });
 });
+
+// ==========================================================================
+// ADDITIONAL COVERAGE TESTS
+// ==========================================================================
+
+describe('Payments Module - generateByOrganisationReport()', () => {
+  test('groups invoices by organisation', () => {
+    const invoices = [
+      { total_amount: 100, paid_amount: 80, balance_due: 20, organisations: { company_name: 'Acme Corp' } },
+      { total_amount: 200, paid_amount: 200, balance_due: 0, organisations: { company_name: 'Acme Corp' } },
+      { total_amount: 300, paid_amount: 0, balance_due: 300, organisations: { company_name: 'Best Co' } },
+    ];
+    const html = paymentsModule.generateByOrganisationReport(invoices);
+    expect(html).toContain('Revenue by Organisation');
+    expect(html).toContain('Acme Corp');
+    expect(html).toContain('Best Co');
+    // Acme: total 300, paid 280, outstanding 20
+    expect(html).toContain('300.00');
+    expect(html).toContain('280.00');
+  });
+
+  test('handles invoices with null organisation', () => {
+    const invoices = [{ total_amount: 50, paid_amount: 0, balance_due: 50, organisations: null }];
+    const html = paymentsModule.generateByOrganisationReport(invoices);
+    expect(html).toContain('Unknown');
+  });
+
+  test('handles empty invoices array', () => {
+    const html = paymentsModule.generateByOrganisationReport([]);
+    expect(html).toContain('Revenue by Organisation');
+  });
+});
+
+describe('Payments Module - generateByPackageReport()', () => {
+  test('groups package invoices by package_type', () => {
+    const invoices = [
+      { invoice_type: 'package', package_type: 'Gold', total_amount: 1000, paid_amount: 1000 },
+      { invoice_type: 'package', package_type: 'Silver', total_amount: 500, paid_amount: 250 },
+      { invoice_type: 'package', package_type: 'Gold', total_amount: 1000, paid_amount: 500 },
+      { invoice_type: 'entry_fee', total_amount: 200, paid_amount: 200 },
+    ];
+    const html = paymentsModule.generateByPackageReport(invoices);
+    expect(html).toContain('Revenue by Package Type');
+    expect(html).toContain('Gold');
+    expect(html).toContain('Silver');
+  });
+
+  test('handles package invoices with no package_type', () => {
+    const invoices = [
+      { invoice_type: 'package', package_type: null, total_amount: 100, paid_amount: 0 },
+    ];
+    const html = paymentsModule.generateByPackageReport(invoices);
+    expect(html).toContain('Unspecified');
+  });
+
+  test('returns empty table when no package invoices', () => {
+    const invoices = [
+      { invoice_type: 'entry_fee', total_amount: 100, paid_amount: 100 },
+    ];
+    const html = paymentsModule.generateByPackageReport(invoices);
+    expect(html).toContain('Revenue by Package Type');
+  });
+});
+
+describe('Payments Module - generateByEventReport()', () => {
+  test('shows ticket invoices', () => {
+    const invoices = [
+      {
+        invoice_type: 'tickets',
+        invoice_number: 'INV-T1',
+        total_amount: 200,
+        paid_amount: 200,
+        invoice_date: '2026-01-15',
+        status: 'paid',
+        payment_status: 'paid',
+        organisations: { company_name: 'Event Corp' },
+      },
+    ];
+    const html = paymentsModule.generateByEventReport(invoices);
+    expect(html).toContain('Event/Ticket Revenue');
+    expect(html).toContain('INV-T1');
+    expect(html).toContain('200.00');
+  });
+
+  test('shows empty state when no ticket invoices', () => {
+    const invoices = [
+      { invoice_type: 'entry_fee', total_amount: 100 },
+    ];
+    const html = paymentsModule.generateByEventReport(invoices);
+    expect(html).toContain('No ticket invoices found');
+  });
+
+  test('calculates total ticket revenue correctly', () => {
+    const invoices = [
+      {
+        invoice_type: 'tickets', invoice_number: 'T1', total_amount: 100, paid_amount: 100,
+        invoice_date: '2026-01-01', status: 'paid', payment_status: 'paid', organisations: { company_name: 'A' },
+      },
+      {
+        invoice_type: 'tickets', invoice_number: 'T2', total_amount: 250, paid_amount: 0,
+        invoice_date: '2026-02-01', status: 'sent', payment_status: 'unpaid', organisations: { company_name: 'B' },
+      },
+    ];
+    const html = paymentsModule.generateByEventReport(invoices);
+    expect(html).toContain('350.00'); // total invoiced
+    expect(html).toContain('100.00'); // total paid
+  });
+});
+
+describe('Payments Module - generateReport()', () => {
+  beforeEach(() => {
+    // Add report elements to DOM
+    if (!document.getElementById('reportType')) {
+      const sel = document.createElement('select');
+      sel.id = 'reportType';
+      sel.innerHTML = '<option value="revenue">Revenue</option><option value="outstanding">Outstanding</option><option value="payments">Payments</option><option value="by_org">By Org</option><option value="by_package">By Package</option><option value="by_event">By Event</option>';
+      document.body.appendChild(sel);
+    }
+    if (!document.getElementById('reportStartDate')) {
+      const input = document.createElement('input');
+      input.id = 'reportStartDate';
+      document.body.appendChild(input);
+    }
+    if (!document.getElementById('reportEndDate')) {
+      const input = document.createElement('input');
+      input.id = 'reportEndDate';
+      document.body.appendChild(input);
+    }
+    if (!document.getElementById('reportDisplayArea')) {
+      const div = document.createElement('div');
+      div.id = 'reportDisplayArea';
+      document.body.appendChild(div);
+    }
+    paymentsModule.currentInvoices = JSON.parse(JSON.stringify(sampleInvoices));
+    paymentsModule.currentPayments = JSON.parse(JSON.stringify(samplePayments));
+  });
+
+  test('shows warning when dates are missing', async () => {
+    document.getElementById('reportStartDate').value = '';
+    document.getElementById('reportEndDate').value = '';
+    const toastSpy = jest.spyOn(utils, 'showToast');
+    await paymentsModule.generateReport();
+    expect(toastSpy).toHaveBeenCalledWith('Please select start and end dates', 'warning');
+    toastSpy.mockRestore();
+  });
+
+  test('generates revenue report', async () => {
+    document.getElementById('reportType').value = 'revenue';
+    document.getElementById('reportStartDate').value = '2026-01-01';
+    document.getElementById('reportEndDate').value = '2026-12-31';
+    await paymentsModule.generateReport();
+    const display = document.getElementById('reportDisplayArea');
+    expect(display.innerHTML).toContain('Revenue Summary');
+  });
+
+  test('generates outstanding report', async () => {
+    document.getElementById('reportType').value = 'outstanding';
+    document.getElementById('reportStartDate').value = '2026-01-01';
+    document.getElementById('reportEndDate').value = '2026-12-31';
+    await paymentsModule.generateReport();
+    const display = document.getElementById('reportDisplayArea');
+    expect(display.innerHTML).toContain('Outstanding Invoices');
+  });
+
+  test('generates payments report', async () => {
+    document.getElementById('reportType').value = 'payments';
+    document.getElementById('reportStartDate').value = '2026-01-01';
+    document.getElementById('reportEndDate').value = '2026-12-31';
+    await paymentsModule.generateReport();
+    const display = document.getElementById('reportDisplayArea');
+    expect(display.innerHTML).toContain('Payment History');
+  });
+
+  test('generates by_org report', async () => {
+    document.getElementById('reportType').value = 'by_org';
+    document.getElementById('reportStartDate').value = '2026-01-01';
+    document.getElementById('reportEndDate').value = '2026-12-31';
+    await paymentsModule.generateReport();
+    const display = document.getElementById('reportDisplayArea');
+    expect(display.innerHTML).toContain('Revenue by Organisation');
+  });
+
+  test('generates by_package report', async () => {
+    document.getElementById('reportType').value = 'by_package';
+    document.getElementById('reportStartDate').value = '2026-01-01';
+    document.getElementById('reportEndDate').value = '2026-12-31';
+    await paymentsModule.generateReport();
+    const display = document.getElementById('reportDisplayArea');
+    expect(display.innerHTML).toContain('Revenue by Package Type');
+  });
+
+  test('generates by_event report', async () => {
+    document.getElementById('reportType').value = 'by_event';
+    document.getElementById('reportStartDate').value = '2026-01-01';
+    document.getElementById('reportEndDate').value = '2026-12-31';
+    await paymentsModule.generateReport();
+    const display = document.getElementById('reportDisplayArea');
+    expect(display.innerHTML).toBeTruthy();
+  });
+
+  test('shows unknown message for unrecognized report type', async () => {
+    document.getElementById('reportType').value = 'unknown_type';
+    document.getElementById('reportStartDate').value = '2026-01-01';
+    document.getElementById('reportEndDate').value = '2026-12-31';
+    await paymentsModule.generateReport();
+    const display = document.getElementById('reportDisplayArea');
+    expect(display.innerHTML).toContain('Unknown report type');
+  });
+});
+
+describe('Payments Module - sendOverdueReminders()', () => {
+  beforeEach(() => {
+    if (!document.getElementById('overdueRemindersList')) {
+      const div = document.createElement('div');
+      div.id = 'overdueRemindersList';
+      document.body.appendChild(div);
+    }
+    if (!document.getElementById('overdueRemindersModal')) {
+      const div = document.createElement('div');
+      div.id = 'overdueRemindersModal';
+      document.body.appendChild(div);
+    }
+  });
+
+  test('shows toast when no overdue invoices', () => {
+    paymentsModule.allInvoices = [
+      { id: 'inv-1', status: 'paid', payment_status: 'paid' },
+    ];
+    const toastSpy = jest.spyOn(utils, 'showToast');
+    paymentsModule.sendOverdueReminders();
+    expect(toastSpy).toHaveBeenCalledWith('No overdue invoices found', 'info');
+    toastSpy.mockRestore();
+  });
+
+  test('renders overdue invoices list', () => {
+    paymentsModule.allInvoices = [
+      {
+        id: 'inv-od-1',
+        invoice_number: 'INV-OD-001',
+        status: 'overdue',
+        due_date: '2025-01-01',
+        balance_due: 500,
+        total_amount: 500,
+        organisations: { company_name: 'Overdue Corp' },
+      },
+    ];
+    paymentsModule.sendOverdueReminders();
+    const list = document.getElementById('overdueRemindersList');
+    expect(list.innerHTML).toContain('Overdue Corp');
+    expect(list.innerHTML).toContain('INV-OD-001');
+    expect(list.innerHTML).toContain('500.00');
+    expect(list.innerHTML).toContain('1 overdue invoice');
+  });
+
+  test('renders multiple overdue invoices with plural label', () => {
+    paymentsModule.allInvoices = [
+      {
+        id: 'inv-od-1', invoice_number: 'INV-OD-001', status: 'overdue', due_date: '2025-01-01',
+        balance_due: 100, total_amount: 100, organisations: { company_name: 'A' },
+      },
+      {
+        id: 'inv-od-2', invoice_number: 'INV-OD-002', status: 'overdue', due_date: '2025-06-01',
+        balance_due: 200, total_amount: 200, organisations: { company_name: 'B' },
+      },
+    ];
+    paymentsModule.sendOverdueReminders();
+    const list = document.getElementById('overdueRemindersList');
+    expect(list.innerHTML).toContain('2 overdue invoices');
+  });
+});
+
+describe('Payments Module - toggleAllOverdueCheckboxes()', () => {
+  beforeEach(() => {
+    const container = document.createElement('div');
+    container.innerHTML = `
+      <input type="checkbox" class="overdue-reminder-check" checked>
+      <input type="checkbox" class="overdue-reminder-check" checked>
+      <input type="checkbox" class="overdue-reminder-check" checked>
+    `;
+    document.body.appendChild(container);
+  });
+
+  afterEach(() => {
+    document.querySelectorAll('.overdue-reminder-check').forEach((cb) => cb.parentElement?.remove());
+  });
+
+  test('unchecks all checkboxes when false', () => {
+    paymentsModule.toggleAllOverdueCheckboxes(false);
+    document.querySelectorAll('.overdue-reminder-check').forEach((cb) => {
+      expect(cb.checked).toBe(false);
+    });
+  });
+
+  test('checks all checkboxes when true', () => {
+    paymentsModule.toggleAllOverdueCheckboxes(false);
+    paymentsModule.toggleAllOverdueCheckboxes(true);
+    document.querySelectorAll('.overdue-reminder-check').forEach((cb) => {
+      expect(cb.checked).toBe(true);
+    });
+  });
+});
+
+describe('Payments Module - executeOverdueReminders()', () => {
+  beforeEach(() => {
+    if (!document.getElementById('overdueRemindersModal')) {
+      const div = document.createElement('div');
+      div.id = 'overdueRemindersModal';
+      document.body.appendChild(div);
+    }
+  });
+
+  test('shows toast when no invoices selected', async () => {
+    // Remove any checked checkboxes
+    document.querySelectorAll('.overdue-reminder-check:checked').forEach((cb) => { cb.checked = false; });
+    const toastSpy = jest.spyOn(utils, 'showToast');
+    await paymentsModule.executeOverdueReminders();
+    expect(toastSpy).toHaveBeenCalledWith('No invoices selected', 'warning');
+    toastSpy.mockRestore();
+  });
+});
+
+describe('Payments Module - toggleAllInvoices()', () => {
+  beforeEach(() => {
+    paymentsModule._selectedInvoiceIds = new Set();
+    paymentsModule.currentInvoices = JSON.parse(JSON.stringify(sampleInvoices));
+    paymentsModule._invCurrentPage = 1;
+    paymentsModule._invPageSize = 50;
+    paymentsModule.renderInvoices();
+  });
+
+  test('selects all visible checkboxes', () => {
+    paymentsModule.toggleAllInvoices(true);
+    expect(paymentsModule._selectedInvoiceIds.size).toBe(sampleInvoices.length);
+    const checkboxes = document.querySelectorAll('.invoice-checkbox');
+    checkboxes.forEach((cb) => expect(cb.checked).toBe(true));
+  });
+
+  test('deselects all visible checkboxes', () => {
+    paymentsModule.toggleAllInvoices(true);
+    paymentsModule.toggleAllInvoices(false);
+    expect(paymentsModule._selectedInvoiceIds.size).toBe(0);
+    const checkboxes = document.querySelectorAll('.invoice-checkbox');
+    checkboxes.forEach((cb) => expect(cb.checked).toBe(false));
+  });
+});
+
+describe('Payments Module - _updateInvoiceBulkBar()', () => {
+  beforeEach(() => {
+    const existing = document.getElementById('invoiceBulkBar');
+    if (existing) existing.remove();
+  });
+
+  test('shows bulk bar when items are selected', () => {
+    paymentsModule._selectedInvoiceIds = new Set(['inv-1', 'inv-2']);
+    paymentsModule._updateInvoiceBulkBar();
+    const bar = document.getElementById('invoiceBulkBar');
+    expect(bar).toBeTruthy();
+    expect(bar.style.display).toBe('flex');
+    expect(bar.innerHTML).toContain('2 invoice(s) selected');
+  });
+
+  test('hides bulk bar when no items selected', () => {
+    paymentsModule._selectedInvoiceIds = new Set(['inv-1']);
+    paymentsModule._updateInvoiceBulkBar();
+    paymentsModule._selectedInvoiceIds = new Set();
+    paymentsModule._updateInvoiceBulkBar();
+    const bar = document.getElementById('invoiceBulkBar');
+    expect(bar.style.display).toBe('none');
+  });
+
+  test('shows bulk action buttons', () => {
+    paymentsModule._selectedInvoiceIds = new Set(['inv-1']);
+    paymentsModule._updateInvoiceBulkBar();
+    const bar = document.getElementById('invoiceBulkBar');
+    expect(bar.innerHTML).toContain('Mark Paid');
+    expect(bar.innerHTML).toContain('Mark Sent');
+    expect(bar.innerHTML).toContain('Delete');
+    expect(bar.innerHTML).toContain('Clear');
+  });
+});
+
+describe('Payments Module - bulkUpdateInvoiceStatus()', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('does nothing when no invoices selected', async () => {
+    paymentsModule._selectedInvoiceIds = new Set();
+    utils.confirmDialog = jest.fn();
+    await paymentsModule.bulkUpdateInvoiceStatus('paid');
+    expect(utils.confirmDialog).not.toHaveBeenCalled();
+  });
+
+  test('aborts when user cancels confirmation', async () => {
+    paymentsModule._selectedInvoiceIds = new Set(['inv-1']);
+    utils.confirmDialog = jest.fn().mockResolvedValue(false);
+    apiClient.update = jest.fn();
+    await paymentsModule.bulkUpdateInvoiceStatus('paid');
+    expect(apiClient.update).not.toHaveBeenCalled();
+  });
+
+  test('updates invoices on confirmation', async () => {
+    paymentsModule._selectedInvoiceIds = new Set(['inv-1', 'inv-2']);
+    utils.confirmDialog = jest.fn().mockResolvedValue(true);
+    utils.runBatchOperation = jest.fn().mockResolvedValue({ succeeded: ['inv-1', 'inv-2'], failed: [] });
+    paymentsModule.loadInvoices = jest.fn().mockResolvedValue();
+    paymentsModule.filterInvoices = jest.fn();
+    const toastSpy = jest.spyOn(utils, 'showToast');
+    await paymentsModule.bulkUpdateInvoiceStatus('paid');
+    expect(utils.runBatchOperation).toHaveBeenCalled();
+    expect(paymentsModule._selectedInvoiceIds.size).toBe(0);
+    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('2 invoice(s) updated'), 'success');
+    toastSpy.mockRestore();
+  });
+});
+
+describe('Payments Module - bulkDeleteInvoices()', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('does nothing when no invoices selected', async () => {
+    paymentsModule._selectedInvoiceIds = new Set();
+    utils.confirmDialog = jest.fn();
+    await paymentsModule.bulkDeleteInvoices();
+    expect(utils.confirmDialog).not.toHaveBeenCalled();
+  });
+
+  test('aborts when user cancels confirmation', async () => {
+    paymentsModule._selectedInvoiceIds = new Set(['inv-1']);
+    utils.confirmDialog = jest.fn().mockResolvedValue(false);
+    apiClient.delete = jest.fn();
+    await paymentsModule.bulkDeleteInvoices();
+    expect(apiClient.delete).not.toHaveBeenCalled();
+  });
+
+  test('deletes invoices on confirmation', async () => {
+    paymentsModule._selectedInvoiceIds = new Set(['inv-1', 'inv-2']);
+    utils.confirmDialog = jest.fn().mockResolvedValue(true);
+    utils.runBatchOperation = jest.fn().mockResolvedValue({ succeeded: ['inv-1', 'inv-2'], failed: [] });
+    paymentsModule.loadInvoices = jest.fn().mockResolvedValue();
+    paymentsModule.filterInvoices = jest.fn();
+    const toastSpy = jest.spyOn(utils, 'showToast');
+    await paymentsModule.bulkDeleteInvoices();
+    expect(utils.runBatchOperation).toHaveBeenCalled();
+    expect(paymentsModule._selectedInvoiceIds.size).toBe(0);
+    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('2 invoice(s) deleted'), 'success');
+    toastSpy.mockRestore();
+  });
+
+  test('handles error during bulk delete', async () => {
+    paymentsModule._selectedInvoiceIds = new Set(['inv-1']);
+    utils.confirmDialog = jest.fn().mockResolvedValue(true);
+    utils.runBatchOperation = jest.fn().mockRejectedValue(new Error('Bulk fail'));
+    const toastSpy = jest.spyOn(utils, 'showToast');
+    await paymentsModule.bulkDeleteInvoices();
+    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('Error deleting invoices'), 'error');
+    toastSpy.mockRestore();
+  });
+});
+
+describe('Payments Module - inlineUpdateInvoiceStatus()', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    paymentsModule._serverPagination = false;
+    paymentsModule.allInvoices = JSON.parse(JSON.stringify(sampleInvoices));
+    paymentsModule.currentInvoices = paymentsModule.allInvoices;
+    document.getElementById('invoiceSearchBox').value = '';
+    document.getElementById('invoiceStatusFilter').value = '';
+    document.getElementById('invoiceOrgFilter').value = '';
+    document.getElementById('invoiceMonthFilter').value = '';
+  });
+
+  test('updates local invoice status on success', async () => {
+    apiClient.update = jest.fn().mockResolvedValue({});
+    await paymentsModule.inlineUpdateInvoiceStatus('inv-1', 'paid');
+    const inv = paymentsModule.allInvoices.find((i) => i.id === 'inv-1');
+    expect(inv.status).toBe('paid');
+  });
+
+  test('shows toast on success', async () => {
+    apiClient.update = jest.fn().mockResolvedValue({});
+    const toastSpy = jest.spyOn(utils, 'showToast');
+    await paymentsModule.inlineUpdateInvoiceStatus('inv-1', 'sent');
+    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('Invoice status updated to sent'), 'success');
+    toastSpy.mockRestore();
+  });
+
+  test('shows error toast on failure', async () => {
+    apiClient.update = jest.fn().mockRejectedValue(new Error('Update failed'));
+    const toastSpy = jest.spyOn(utils, 'showToast');
+    await paymentsModule.inlineUpdateInvoiceStatus('inv-1', 'paid');
+    expect(toastSpy).toHaveBeenCalledWith('Failed to update invoice status', 'error');
+    toastSpy.mockRestore();
+  });
+});
+
+describe('Payments Module - deletePayment()', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    // Ensure rbacModule is not defined so the RBAC check is skipped
+    if (typeof global.rbacModule !== 'undefined') delete global.rbacModule;
+  });
+
+  test('aborts when user cancels confirmation', async () => {
+    utils.confirmDialog = jest.fn().mockResolvedValue(false);
+    apiClient.delete = jest.fn();
+    await paymentsModule.deletePayment('pay-1');
+    expect(apiClient.delete).not.toHaveBeenCalled();
+  });
+
+  test('deletes payment and reverses invoice on confirmation', async () => {
+    utils.confirmDialog = jest.fn().mockResolvedValue(true);
+    apiClient.select = jest.fn()
+      .mockResolvedValueOnce({ data: [{ invoice_id: 'inv-1', amount: 100 }] }) // payment details
+      .mockResolvedValueOnce({ data: [{ paid_amount: 500, total_amount: 500 }] }); // invoice details
+    apiClient.delete = jest.fn().mockResolvedValue({});
+    apiClient.update = jest.fn().mockResolvedValue({});
+    paymentsModule.loadPayments = jest.fn().mockResolvedValue();
+    paymentsModule.loadInvoices = jest.fn().mockResolvedValue();
+    paymentsModule.updateStatistics = jest.fn();
+    const toastSpy = jest.spyOn(utils, 'showToast');
+    await paymentsModule.deletePayment('pay-1');
+    expect(apiClient.delete).toHaveBeenCalledWith('payments', 'pay-1');
+    expect(apiClient.update).toHaveBeenCalledWith('invoices', 'inv-1', expect.objectContaining({
+      paid_amount: 400,
+    }));
+    expect(toastSpy).toHaveBeenCalledWith('Payment deleted successfully', 'success');
+    toastSpy.mockRestore();
+  });
+
+  test('handles delete error gracefully', async () => {
+    utils.confirmDialog = jest.fn().mockResolvedValue(true);
+    apiClient.select = jest.fn().mockResolvedValue({ data: [{ invoice_id: null, amount: 50 }] });
+    apiClient.delete = jest.fn().mockRejectedValue(new Error('DB error'));
+    const toastSpy = jest.spyOn(utils, 'showToast');
+    await paymentsModule.deletePayment('pay-1');
+    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to delete payment'), 'error');
+    toastSpy.mockRestore();
+  });
+
+  test('deletes payment without linked invoice', async () => {
+    utils.confirmDialog = jest.fn().mockResolvedValue(true);
+    apiClient.select = jest.fn().mockResolvedValue({ data: [{ invoice_id: null, amount: 50 }] });
+    apiClient.delete = jest.fn().mockResolvedValue({});
+    apiClient.update = jest.fn();
+    paymentsModule.loadPayments = jest.fn().mockResolvedValue();
+    paymentsModule.loadInvoices = jest.fn().mockResolvedValue();
+    paymentsModule.updateStatistics = jest.fn();
+    await paymentsModule.deletePayment('pay-1');
+    expect(apiClient.delete).toHaveBeenCalledWith('payments', 'pay-1');
+    // Should NOT try to update invoice since no invoice_id
+    expect(apiClient.update).not.toHaveBeenCalled();
+  });
+
+  test('RBAC check blocks deletion when user lacks permission', async () => {
+    global.rbacModule = { canPerform: jest.fn().mockReturnValue(false) };
+    const toastSpy = jest.spyOn(utils, 'showToast');
+    await paymentsModule.deletePayment('pay-1');
+    expect(toastSpy).toHaveBeenCalledWith('You do not have permission to delete payments', 'error');
+    toastSpy.mockRestore();
+    delete global.rbacModule;
+  });
+});
+
+describe('Payments Module - loadOrganisationsForFilters()', () => {
+  let origAllOrgs;
+  beforeEach(() => {
+    jest.clearAllMocks();
+    origAllOrgs = STATE.allOrganisations;
+    STATE.allOrganisations = [];
+    window.STATE.allOrganisations = [];
+  });
+
+  afterEach(() => {
+    STATE.allOrganisations = origAllOrgs;
+    window.STATE.allOrganisations = origAllOrgs;
+  });
+
+  test('uses cached organisations when available', async () => {
+    STATE.allOrganisations = [
+      { id: 'org-1', company_name: 'Acme' },
+      { id: 'org-2', company_name: 'Beta' },
+    ];
+    window.STATE.allOrganisations = STATE.allOrganisations;
+    await paymentsModule.loadOrganisationsForFilters();
+    expect(paymentsModule.currentOrganisations.length).toBe(2);
+  });
+
+  test('falls back to apiClient when no cached data', async () => {
+    STATE.allOrganisations = [];
+    window.STATE.allOrganisations = [];
+    apiClient.selectAll = jest.fn().mockResolvedValue([
+      { id: 'org-a', company_name: 'Alpha' },
+    ]);
+    await paymentsModule.loadOrganisationsForFilters();
+    expect(apiClient.selectAll).toHaveBeenCalledWith('organisations', expect.anything());
+    expect(paymentsModule.currentOrganisations.length).toBe(1);
+  });
+
+  test('populates the org filter dropdown', async () => {
+    STATE.allOrganisations = [
+      { id: 'org-1', company_name: 'Acme' },
+    ];
+    window.STATE.allOrganisations = STATE.allOrganisations;
+    await paymentsModule.loadOrganisationsForFilters();
+    const select = document.getElementById('invoiceOrgFilter');
+    expect(select.innerHTML).toContain('Acme');
+    expect(select.innerHTML).toContain('All Organisations');
+  });
+
+  test('handles load error gracefully', async () => {
+    STATE.allOrganisations = [];
+    window.STATE.allOrganisations = [];
+    apiClient.selectAll = jest.fn().mockRejectedValue(new Error('fail'));
+    await paymentsModule.loadOrganisationsForFilters();
+    // Should not throw
+  });
+});
+
+describe('Payments Module - confirmSendInvoice()', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    ['sendInvoiceEmail', 'sendInvoiceCc', 'sendInvoiceSubject', 'sendInvoiceMessage'].forEach((id) => {
+      if (!document.getElementById(id)) {
+        const el = document.createElement(id === 'sendInvoiceMessage' ? 'textarea' : 'input');
+        el.id = id;
+        document.body.appendChild(el);
+      }
+    });
+    if (!document.getElementById('sendInvoiceForm')) {
+      const form = document.createElement('form');
+      form.id = 'sendInvoiceForm';
+      document.body.appendChild(form);
+    }
+    if (!document.getElementById('sendInvoiceModal')) {
+      const div = document.createElement('div');
+      div.id = 'sendInvoiceModal';
+      document.body.appendChild(div);
+    }
+  });
+
+  test('validates form before processing', async () => {
+    const form = document.getElementById('sendInvoiceForm');
+    form.checkValidity = jest.fn().mockReturnValue(false);
+    form.reportValidity = jest.fn();
+    await paymentsModule.confirmSendInvoice();
+    expect(form.reportValidity).toHaveBeenCalled();
+  });
+
+  test('sends invoice and updates status', async () => {
+    const form = document.getElementById('sendInvoiceForm');
+    form.checkValidity = jest.fn().mockReturnValue(true);
+    utils.protectModalDuringSave = jest.fn().mockImplementation(async (_id, fn) => fn());
+    paymentsModule.currentSendInvoiceId = 'inv-1';
+    paymentsModule.currentInvoices = [
+      { id: 'inv-1', organisation_id: 'org-1', invoice_number: 'INV-001' },
+    ];
+    document.getElementById('sendInvoiceEmail').value = 'test@test.com';
+    document.getElementById('sendInvoiceSubject').value = 'Invoice INV-001';
+    document.getElementById('sendInvoiceMessage').value = 'Please pay';
+    apiClient.insert = jest.fn().mockResolvedValue({ data: {} });
+    apiClient.update = jest.fn().mockResolvedValue({});
+    paymentsModule.loadInvoices = jest.fn().mockResolvedValue();
+    const toastSpy = jest.spyOn(utils, 'showToast');
+    await paymentsModule.confirmSendInvoice();
+    expect(apiClient.insert).toHaveBeenCalledWith('communications', expect.objectContaining({
+      type: 'email',
+      direction: 'outbound',
+    }));
+    expect(apiClient.update).toHaveBeenCalledWith('invoices', 'inv-1', expect.objectContaining({
+      status: 'sent',
+    }));
+    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('Invoice email prepared'), 'success');
+    toastSpy.mockRestore();
+  });
+});
+
+describe('Payments Module - copyToClipboard()', () => {
+  test('copies text and shows success toast', async () => {
+    navigator.clipboard = { writeText: jest.fn().mockResolvedValue() };
+    const toastSpy = jest.spyOn(utils, 'showToast');
+    paymentsModule.copyToClipboard('INV-001');
+    await new Promise(process.nextTick);
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith('INV-001');
+    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('Copied to clipboard'), 'success');
+    toastSpy.mockRestore();
+  });
+
+  test('shows error toast on clipboard failure', async () => {
+    navigator.clipboard = { writeText: jest.fn().mockRejectedValue(new Error('Blocked')) };
+    const toastSpy = jest.spyOn(utils, 'showToast');
+    paymentsModule.copyToClipboard('INV-001');
+    await new Promise(process.nextTick);
+    expect(toastSpy).toHaveBeenCalledWith('Failed to copy', 'error');
+    toastSpy.mockRestore();
+  });
+});
+
+describe('Payments Module - exportInvoicesCSV() content', () => {
+  test('creates CSV with correct headers and data', () => {
+    let capturedContent = '';
+    const OrigBlob = global.Blob;
+    global.Blob = class extends OrigBlob {
+      constructor(parts, opts) {
+        super(parts, opts);
+        capturedContent = parts.join('');
+      }
+    };
+    paymentsModule.currentInvoices = [
+      {
+        invoice_number: 'INV-001',
+        organisations: { company_name: 'Test Co' },
+        invoice_date: '2026-01-15',
+        due_date: '2026-02-15',
+        invoice_type: 'entry_fee',
+        total_amount: 500,
+        paid_amount: 500,
+        balance_due: 0,
+        status: 'paid',
+      },
+    ];
+    paymentsModule.exportInvoicesCSV();
+    global.Blob = OrigBlob;
+    expect(capturedContent).toContain('Invoice #');
+    expect(capturedContent).toContain('Organisation');
+    expect(capturedContent).toContain('INV-001');
+    expect(capturedContent).toContain('Test Co');
+    expect(capturedContent).toContain('Entry Fee');
+    expect(capturedContent).toContain('500.00');
+  });
+});
+
+describe('Payments Module - exportPaymentsCSV() content', () => {
+  test('creates CSV with correct headers and data', () => {
+    let capturedContent = '';
+    const OrigBlob = global.Blob;
+    global.Blob = class extends OrigBlob {
+      constructor(parts, opts) {
+        super(parts, opts);
+        capturedContent = parts.join('');
+      }
+    };
+    paymentsModule.currentPayments = [
+      {
+        payment_reference: 'PAY-001',
+        payment_date: '2026-01-20',
+        organisations: { company_name: 'Test Co' },
+        invoices: { invoice_number: 'INV-001' },
+        payment_method: 'card',
+        amount: 500,
+        status: 'completed',
+      },
+    ];
+    paymentsModule.exportPaymentsCSV();
+    global.Blob = OrigBlob;
+    expect(capturedContent).toContain('Reference');
+    expect(capturedContent).toContain('Method');
+    expect(capturedContent).toContain('PAY-001');
+    expect(capturedContent).toContain('Card');
+    expect(capturedContent).toContain('500.00');
+  });
+});
+
+describe('Payments Module - renderInvoices with selected checkboxes', () => {
+  test('renders checked checkboxes for selected invoices', () => {
+    paymentsModule.currentInvoices = JSON.parse(JSON.stringify(sampleInvoices));
+    paymentsModule._invCurrentPage = 1;
+    paymentsModule._invPageSize = 50;
+    paymentsModule._selectedInvoiceIds = new Set(['inv-1', 'inv-3']);
+    paymentsModule._serverPagination = false;
+    paymentsModule.renderInvoices();
+    const checkboxes = document.querySelectorAll('.invoice-checkbox');
+    let checkedCount = 0;
+    checkboxes.forEach((cb) => {
+      if (cb.checked) checkedCount++;
+    });
+    expect(checkedCount).toBe(2);
+  });
+});
+
+describe('Payments Module - renderPayments with various data', () => {
+  test('renders payment with linked invoice number as link', () => {
+    paymentsModule.currentPayments = [
+      {
+        id: 'pay-1',
+        payment_reference: 'PAY-001',
+        payment_date: '2026-01-20',
+        amount: 100,
+        payment_method: 'card',
+        status: 'completed',
+        organisations: { company_name: 'Test Co', id: 'org-1' },
+        invoices: { invoice_number: 'INV-001' },
+        invoice_id: 'inv-1',
+      },
+    ];
+    paymentsModule._payCurrentPage = 1;
+    paymentsModule._payPageSize = 50;
+    paymentsModule.renderPayments();
+    const tbody = document.getElementById('paymentsTableBody');
+    expect(tbody.innerHTML).toContain('INV-001');
+    expect(tbody.innerHTML).toContain('viewInvoice');
+  });
+
+  test('renders N/A for payment without linked invoice', () => {
+    paymentsModule.currentPayments = [
+      {
+        id: 'pay-2',
+        payment_reference: 'PAY-002',
+        payment_date: '2026-01-20',
+        amount: 200,
+        payment_method: 'bank_transfer',
+        status: 'completed',
+        organisations: { company_name: 'Test Co', id: 'org-1' },
+        invoices: null,
+        invoice_id: null,
+      },
+    ];
+    paymentsModule._payCurrentPage = 1;
+    paymentsModule._payPageSize = 50;
+    paymentsModule.renderPayments();
+    const tbody = document.getElementById('paymentsTableBody');
+    expect(tbody.innerHTML).toContain('N/A');
+  });
+});
+
+describe('Payments Module - _downloadCSV edge cases', () => {
+  test('handles empty rows array', () => {
+    expect(() => {
+      paymentsModule._downloadCSV(['Header1', 'Header2'], [], 'empty.csv');
+    }).not.toThrow();
+  });
+
+  test('handles values with newlines', () => {
+    let capturedContent = '';
+    const OrigBlob = global.Blob;
+    global.Blob = class extends OrigBlob {
+      constructor(parts, opts) {
+        super(parts, opts);
+        capturedContent = parts.join('');
+      }
+    };
+    paymentsModule._downloadCSV(['Note'], [['Line1\nLine2']], 'test.csv');
+    global.Blob = OrigBlob;
+    expect(capturedContent).toContain('"Line1\nLine2"');
+  });
+
+  test('handles values with commas', () => {
+    let capturedContent = '';
+    const OrigBlob = global.Blob;
+    global.Blob = class extends OrigBlob {
+      constructor(parts, opts) {
+        super(parts, opts);
+        capturedContent = parts.join('');
+      }
+    };
+    paymentsModule._downloadCSV(['Name'], [['Smith, Jones']], 'test.csv');
+    global.Blob = OrigBlob;
+    expect(capturedContent).toContain('"Smith, Jones"');
+  });
+
+  test('handles values with double quotes', () => {
+    let capturedContent = '';
+    const OrigBlob = global.Blob;
+    global.Blob = class extends OrigBlob {
+      constructor(parts, opts) {
+        super(parts, opts);
+        capturedContent = parts.join('');
+      }
+    };
+    paymentsModule._downloadCSV(['Name'], [['He said "hello"']], 'test.csv');
+    global.Blob = OrigBlob;
+    expect(capturedContent).toContain('He said ""hello""');
+  });
+});
+
+describe('Payments Module - goToPaymentPage()', () => {
+  beforeEach(() => {
+    paymentsModule.currentPayments = JSON.parse(JSON.stringify(samplePayments));
+    paymentsModule._payCurrentPage = 1;
+    paymentsModule._payPageSize = 50;
+  });
+
+  test('sets page correctly', () => {
+    paymentsModule.goToPaymentPage(1);
+    expect(paymentsModule._payCurrentPage).toBe(1);
+  });
+
+  test('clamps to min page', () => {
+    paymentsModule.goToPaymentPage(0);
+    expect(paymentsModule._payCurrentPage).toBe(1);
+  });
+
+  test('clamps to max page for small datasets', () => {
+    paymentsModule.goToPaymentPage(999);
+    expect(paymentsModule._payCurrentPage).toBe(1); // only 1 page with 3 payments
+  });
+});
+
+describe('Payments Module - _accountingConfig management', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    paymentsModule._accountingConfig = {};
+    localStorage.removeItem('orgAccountingConfig');
+  });
+
+  test('_loadAccountingConfig falls back to localStorage', async () => {
+    localStorage.setItem('orgAccountingConfig', JSON.stringify({ provider: 'xero', connected: true }));
+    // Ensure apiClient.select returns no data
+    apiClient.select = jest.fn().mockResolvedValue({ data: [] });
+    await paymentsModule._loadAccountingConfig();
+    expect(paymentsModule._accountingConfig.provider).toBe('xero');
+    expect(paymentsModule._accountingConfig.connected).toBe(true);
+  });
+
+  test('_loadAccountingConfig uses database when available', async () => {
+    apiClient.select = jest.fn().mockResolvedValue({
+      data: [{ value: JSON.stringify({ provider: 'quickbooks', connected: true }) }],
+    });
+    await paymentsModule._loadAccountingConfig();
+    expect(paymentsModule._accountingConfig.provider).toBe('quickbooks');
+  });
+
+  test('_loadAccountingConfig handles invalid localStorage JSON', async () => {
+    localStorage.setItem('orgAccountingConfig', 'invalid-json');
+    apiClient.select = jest.fn().mockRejectedValue(new Error('no db'));
+    await paymentsModule._loadAccountingConfig();
+    expect(paymentsModule._accountingConfig).toEqual({});
+  });
+
+  test('_saveAccountingConfig persists to localStorage', async () => {
+    paymentsModule._accountingConfig = { provider: 'xero', connected: false };
+    apiClient.select = jest.fn().mockResolvedValue({ data: [] });
+    apiClient.insert = jest.fn().mockResolvedValue({});
+    await paymentsModule._saveAccountingConfig();
+    const saved = JSON.parse(localStorage.getItem('orgAccountingConfig'));
+    expect(saved.provider).toBe('xero');
+  });
+
+  test('_saveAccountingConfig updates existing DB record', async () => {
+    paymentsModule._accountingConfig = { provider: 'xero' };
+    apiClient.select = jest.fn().mockResolvedValue({ data: [{ id: 'pref-1' }] });
+    apiClient.update = jest.fn().mockResolvedValue({});
+    await paymentsModule._saveAccountingConfig();
+    expect(apiClient.update).toHaveBeenCalledWith('user_preferences', 'pref-1', expect.objectContaining({
+      value: expect.any(String),
+    }));
+  });
+
+  test('_saveAccountingConfig inserts new DB record when none exists', async () => {
+    paymentsModule._accountingConfig = { provider: 'quickbooks' };
+    apiClient.select = jest.fn().mockResolvedValue({ data: [] });
+    apiClient.insert = jest.fn().mockResolvedValue({});
+    await paymentsModule._saveAccountingConfig();
+    expect(apiClient.insert).toHaveBeenCalledWith('user_preferences', expect.objectContaining({
+      key: 'orgAccountingConfig',
+    }));
+  });
+});
+
+describe('Payments Module - _setAccountingProvider()', () => {
+  test('sets provider and re-renders', async () => {
+    paymentsModule._saveAccountingConfig = jest.fn().mockResolvedValue();
+    paymentsModule.loadAccountingIntegration = jest.fn();
+    await paymentsModule._setAccountingProvider('quickbooks');
+    expect(paymentsModule._accountingConfig.provider).toBe('quickbooks');
+    expect(paymentsModule._saveAccountingConfig).toHaveBeenCalled();
+    expect(paymentsModule.loadAccountingIntegration).toHaveBeenCalled();
+  });
+});
+
+describe('Payments Module - _connectAccounting()', () => {
+  beforeEach(() => {
+    if (!document.getElementById('accountingClientId')) {
+      const input = document.createElement('input');
+      input.id = 'accountingClientId';
+      document.body.appendChild(input);
+    }
+    paymentsModule._accountingConfig = { provider: 'xero' };
+    paymentsModule._saveAccountingConfig = jest.fn().mockResolvedValue();
+    paymentsModule.loadAccountingIntegration = jest.fn();
+  });
+
+  test('shows warning when no client ID', async () => {
+    document.getElementById('accountingClientId').value = '';
+    const toastSpy = jest.spyOn(utils, 'showToast');
+    await paymentsModule._connectAccounting();
+    expect(toastSpy).toHaveBeenCalledWith('Enter a Client ID', 'warning');
+    toastSpy.mockRestore();
+  });
+
+  test('connects and saves config when client ID provided', async () => {
+    document.getElementById('accountingClientId').value = 'my-client-id';
+    const toastSpy = jest.spyOn(utils, 'showToast');
+    await paymentsModule._connectAccounting();
+    expect(paymentsModule._accountingConfig.connected).toBe(true);
+    expect(paymentsModule._accountingConfig.clientId).toBe('my-client-id');
+    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('Connected to'), 'success');
+    toastSpy.mockRestore();
+  });
+});
+
+describe('Payments Module - _disconnectAccounting()', () => {
+  test('aborts when user cancels', async () => {
+    utils.confirmDialog = jest.fn().mockResolvedValue(false);
+    paymentsModule._accountingConfig = { connected: true };
+    await paymentsModule._disconnectAccounting();
+    expect(paymentsModule._accountingConfig.connected).toBe(true);
+  });
+
+  test('disconnects on confirmation', async () => {
+    utils.confirmDialog = jest.fn().mockResolvedValue(true);
+    paymentsModule._accountingConfig = { connected: true };
+    paymentsModule._saveAccountingConfig = jest.fn().mockResolvedValue();
+    paymentsModule.loadAccountingIntegration = jest.fn();
+    await paymentsModule._disconnectAccounting();
+    expect(paymentsModule._accountingConfig.connected).toBe(false);
+    expect(paymentsModule._saveAccountingConfig).toHaveBeenCalled();
+  });
+});
+
+describe('Payments Module - renderInvoices edge cases', () => {
+  test('clamps page when current page exceeds total pages', () => {
+    paymentsModule._serverPagination = false;
+    paymentsModule.currentInvoices = [sampleInvoices[0]];
+    paymentsModule._invCurrentPage = 10;
+    paymentsModule._invPageSize = 50;
+    paymentsModule._selectedInvoiceIds = new Set();
+    paymentsModule.renderInvoices();
+    const tbody = document.getElementById('invoicesTableBody');
+    expect(tbody.querySelectorAll('tr').length).toBe(1);
+  });
+
+  test('pagination clears when only one page', () => {
+    paymentsModule._serverPagination = false;
+    paymentsModule.currentInvoices = [sampleInvoices[0]];
+    paymentsModule._invCurrentPage = 1;
+    paymentsModule._invPageSize = 50;
+    paymentsModule._selectedInvoiceIds = new Set();
+    paymentsModule.renderInvoices();
+    const paginationEl = document.getElementById('invoicesPagination');
+    if (paginationEl) {
+      expect(paginationEl.innerHTML).toBe('');
+    }
+  });
+});
+
+describe('Payments Module - renderPayments edge cases', () => {
+  test('clamps page when current page exceeds total pages', () => {
+    paymentsModule.currentPayments = [samplePayments[0]];
+    paymentsModule._payCurrentPage = 10;
+    paymentsModule._payPageSize = 50;
+    paymentsModule.renderPayments();
+    const tbody = document.getElementById('paymentsTableBody');
+    expect(tbody.querySelectorAll('tr').length).toBe(1);
+  });
+});
+
+describe('Payments Module - filterPayments fuzzy fallback', () => {
+  test('falls back to fuzzy search when exact search finds nothing', () => {
+    paymentsModule.allPayments = [
+      { id: 'p1', payment_reference: 'PAY-2026-001', status: 'completed', payment_date: '2026-01-15', payment_method: 'card' },
+    ];
+    document.getElementById('paymentSearchBox').value = 'xyznotfound';
+    document.getElementById('paymentMethodFilter').value = '';
+    document.getElementById('paymentStatusFilter').value = '';
+    document.getElementById('paymentMonthFilter').value = '';
+    paymentsModule.filterPayments();
+    // Fuzzy search should run; result may or may not match
+    expect(paymentsModule.currentPayments).toBeDefined();
+  });
+
+  test('applies month filter to fuzzy results', () => {
+    paymentsModule.allPayments = [
+      { id: 'p1', payment_reference: 'PAY-2026-001', status: 'completed', payment_date: '2026-01-15', payment_method: 'card' },
+      { id: 'p2', payment_reference: 'PAY-2026-002', status: 'pending', payment_date: '2026-06-15', payment_method: 'bank_transfer' },
+    ];
+    document.getElementById('paymentSearchBox').value = 'xyznotfound';
+    document.getElementById('paymentMethodFilter').value = '';
+    document.getElementById('paymentStatusFilter').value = '';
+    document.getElementById('paymentMonthFilter').value = '2026-01';
+    paymentsModule.filterPayments();
+    // After fuzzy search and month filter, only January payments should remain
+    paymentsModule.currentPayments.forEach((p) => {
+      expect(p.payment_date).toContain('2026-01');
+    });
+  });
+});

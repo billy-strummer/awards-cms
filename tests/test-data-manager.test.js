@@ -612,10 +612,10 @@ describe('Test Data Manager - executeTestDataGeneration', () => {
     jest.spyOn(testDataManager, 'showInfoModal').mockImplementation(() => {});
 
     // Make _safeWrite fail for award_years, succeed for everything else
-    const origSafeWrite = testDataManager._safeWrite.bind(testDataManager);
-    let callCount = 0;
-    jest.spyOn(testDataManager, '_safeWrite').mockImplementation(async (table, data, label, mode) => {
-      callCount++;
+    const _origSafeWrite = testDataManager._safeWrite.bind(testDataManager);
+    let _callCount = 0;
+    jest.spyOn(testDataManager, '_safeWrite').mockImplementation(async (table, _data, _label, _mode) => {
+      _callCount++;
       if (table === 'award_years') {
         return { error: { message: 'view not writable' }, stripped: [] };
       }
@@ -1210,7 +1210,7 @@ describe('Test Data Manager - showTestDataInfo', () => {
     });
 
     // Use a simpler approach - mock the whole method partially
-    const origMethod = testDataManager.showTestDataInfo.bind(testDataManager);
+    const _origMethod = testDataManager.showTestDataInfo.bind(testDataManager);
 
     await testDataManager.showTestDataInfo();
 
@@ -1261,7 +1261,7 @@ describe('Test Data Manager - showManualInstructionsModal', () => {
 
 describe('Test Data Manager - showConfirmDialog', () => {
   test('creates modal and returns a promise', () => {
-    const promise = testDataManager.showConfirmDialog('Title', 'Message', 'OK', 'danger');
+    const _promise = testDataManager.showConfirmDialog('Title', 'Message', 'OK', 'danger');
 
     // Modal should be in DOM
     const modal = document.getElementById('confirmModal');
@@ -1275,7 +1275,7 @@ describe('Test Data Manager - showConfirmDialog', () => {
   });
 
   test('uses defaults for confirmText and variant', () => {
-    const promise = testDataManager.showConfirmDialog('Title', 'Body');
+    const _promise = testDataManager.showConfirmDialog('Title', 'Body');
 
     const modal = document.getElementById('confirmModal');
     expect(modal.innerHTML).toContain('Confirm');
@@ -1555,7 +1555,7 @@ describe('Test Data Manager - executeTestDataGeneration error paths', () => {
 
     // Make _safeWrite throw for events step (1st call) but work for others
     let callNum = 0;
-    jest.spyOn(testDataManager, '_safeWrite').mockImplementation(async (table) => {
+    jest.spyOn(testDataManager, '_safeWrite').mockImplementation(async (_table) => {
       callNum++;
       if (callNum === 1) throw new Error('Events insert failed');
       return { error: null, stripped: [] };
@@ -1583,9 +1583,9 @@ describe('Test Data Manager - executeTestDataGeneration error paths', () => {
     jest.spyOn(testDataManager, 'generateExtras').mockResolvedValue();
     jest.spyOn(testDataManager, 'showModal').mockImplementation(() => {});
 
-    let callNum = 0;
+    let _callNum = 0;
     jest.spyOn(testDataManager, '_safeWrite').mockImplementation(async (table) => {
-      callNum++;
+      _callNum++;
       // 1st = events, 2nd = award_years, 3rd = organisations
       if (table === 'organisations') throw new Error('orgs fail');
       return { error: null, stripped: [] };
@@ -1878,7 +1878,7 @@ describe('Test Data Manager - removeTestData with email lists and segments', () 
     jest.spyOn(testDataManager, 'showModal').mockImplementation(() => {});
 
     // Return test email lists
-    const fromCallCount = 0;
+    const _fromCallCount = 0;
     mockSupabase.from.mockImplementation((table) => {
       const chain = buildChainableMock({ data: [], error: null });
       chain.select.mockReturnValue(chain);
@@ -1913,7 +1913,7 @@ describe('Test Data Manager - removeTestData with email lists and segments', () 
 
     // Make the email lists query throw
     let callCount = 0;
-    const origFrom = mockSupabase.from;
+    const _origFrom = mockSupabase.from;
     mockSupabase.from.mockImplementation((table) => {
       if (table === 'email_lists' && callCount === 0) {
         callCount++;

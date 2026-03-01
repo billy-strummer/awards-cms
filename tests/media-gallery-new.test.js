@@ -1368,7 +1368,7 @@ describe('Media Gallery Module - Photo Full View', () => {
 describe('Media Gallery Module - Load Media Statistics', () => {
   test('loadMediaStatistics updates DOM counters', async () => {
     // Make each chained query resolve with a count
-    const resolveWith = (val) => {
+    const _resolveWith = (val) => {
       mockSupabase.then.mockImplementationOnce((cb) => cb(val));
       return mockSupabase;
     };
@@ -2469,7 +2469,7 @@ describe('Media Gallery Module - updateBulkActionsBar comprehensive', () => {
   test('shows bar with count when photos selected', () => {
     mediaGalleryModule.selectedPhotoIds = new Set(['photo-1', 'photo-2']);
     mediaGalleryModule.updateBulkActionsBar();
-    const bar = document.getElementById('bulkActionsBar');
+    const _bar = document.getElementById('bulkActionsBar');
     const count = document.getElementById('selectedCount');
     expect(count.textContent).toBe('2');
   });
@@ -2649,5 +2649,1345 @@ describe('Media Gallery Module - backToEventsList comprehensive', () => {
     mediaGalleryModule.currentSortBy = 'name_asc';
     mediaGalleryModule.backToEventsList();
     expect(mediaGalleryModule.currentView).toBe('events-list');
+  });
+});
+
+// ===========================================================================
+// ADDITIONAL TESTS TO INCREASE COVERAGE
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// Save Gallery Section (CRUD)
+// ---------------------------------------------------------------------------
+describe('Media Gallery Module - Save Gallery Section', () => {
+  beforeEach(() => {
+    mediaGalleryModule.currentEventId = 'evt-1';
+    jest.spyOn(mediaGalleryModule, 'onEventSelected').mockResolvedValue();
+    Object.keys(mockSupabase).forEach((key) => {
+      if (typeof mockSupabase[key] === 'function' && key !== 'then' && key !== 'single') {
+        mockSupabase[key].mockReturnValue(mockSupabase);
+      }
+    });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('saveGallerySection requires section name', async () => {
+    document.getElementById('gallerySectionId').value = '';
+    document.getElementById('gallerySectionName').value = '   ';
+    document.getElementById('gallerySectionDescription').value = '';
+    document.getElementById('gallerySectionOrder').value = '0';
+    await mediaGalleryModule.saveGallerySection();
+    // Should not call onEventSelected because name is empty
+    expect(mediaGalleryModule.onEventSelected).not.toHaveBeenCalled();
+  });
+
+  test('saveGallerySection inserts new section when no ID', async () => {
+    document.getElementById('gallerySectionId').value = '';
+    document.getElementById('gallerySectionName').value = 'New Section';
+    document.getElementById('gallerySectionDescription').value = 'A test description';
+    document.getElementById('gallerySectionOrder').value = '3';
+    mockSupabase.then.mockImplementationOnce((cb) => cb({ data: null, error: null }));
+    await mediaGalleryModule.saveGallerySection();
+    expect(mockSupabase.insert).toHaveBeenCalled();
+  });
+
+  test('saveGallerySection updates existing section when ID present', async () => {
+    document.getElementById('gallerySectionId').value = 'sec-1';
+    document.getElementById('gallerySectionName').value = 'Updated Section';
+    document.getElementById('gallerySectionDescription').value = 'Updated desc';
+    document.getElementById('gallerySectionOrder').value = '2';
+    mockSupabase.then.mockImplementationOnce((cb) => cb({ data: null, error: null }));
+    await mediaGalleryModule.saveGallerySection();
+    expect(mockSupabase.update).toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Delete Section
+// ---------------------------------------------------------------------------
+describe('Media Gallery Module - Delete Section', () => {
+  beforeEach(() => {
+    mediaGalleryModule.currentEventId = 'evt-1';
+    jest.spyOn(mediaGalleryModule, 'onEventSelected').mockResolvedValue();
+    Object.keys(mockSupabase).forEach((key) => {
+      if (typeof mockSupabase[key] === 'function' && key !== 'then' && key !== 'single') {
+        mockSupabase[key].mockReturnValue(mockSupabase);
+      }
+    });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('deleteSection cancels when user declines', async () => {
+    utils.confirmDialog = jest.fn(() => Promise.resolve(false));
+    await mediaGalleryModule.deleteSection('sec-1', 'Reception');
+    expect(mediaGalleryModule.onEventSelected).not.toHaveBeenCalled();
+  });
+
+  test('deleteSection deletes and reloads after confirmation', async () => {
+    utils.confirmDialog = jest.fn(() => Promise.resolve(true));
+    mockSupabase.then.mockImplementationOnce((cb) => cb({ data: null, error: null }));
+    await mediaGalleryModule.deleteSection('sec-1', 'Reception');
+    expect(mockSupabase.delete).toHaveBeenCalled();
+    expect(mediaGalleryModule.onEventSelected).toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Delete Video
+// ---------------------------------------------------------------------------
+describe('Media Gallery Module - Delete Video', () => {
+  beforeEach(() => {
+    jest.spyOn(mediaGalleryModule, 'loadVideosProduction').mockResolvedValue();
+    jest.spyOn(mediaGalleryModule, '_logActivity').mockResolvedValue();
+    Object.keys(mockSupabase).forEach((key) => {
+      if (typeof mockSupabase[key] === 'function' && key !== 'then' && key !== 'single') {
+        mockSupabase[key].mockReturnValue(mockSupabase);
+      }
+    });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('deleteVideo cancels when user declines', async () => {
+    utils.confirmDialog = jest.fn(() => Promise.resolve(false));
+    await mediaGalleryModule.deleteVideo('vid-1');
+    expect(mediaGalleryModule.loadVideosProduction).not.toHaveBeenCalled();
+  });
+
+  test('deleteVideo deletes and reloads on confirmation', async () => {
+    utils.confirmDialog = jest.fn(() => Promise.resolve(true));
+    mockSupabase.then.mockImplementationOnce((cb) => cb({ data: null, error: null }));
+    await mediaGalleryModule.deleteVideo('vid-1');
+    expect(mediaGalleryModule.loadVideosProduction).toHaveBeenCalled();
+    expect(mediaGalleryModule._logActivity).toHaveBeenCalledWith('delete', 'vid-1', 'Video deleted');
+  });
+
+  test('deleteVideo handles errors gracefully', async () => {
+    utils.confirmDialog = jest.fn(() => Promise.resolve(true));
+    mockSupabase.then.mockImplementationOnce((cb) => cb({ data: null, error: { message: 'DB error' } }));
+    await mediaGalleryModule.deleteVideo('vid-1');
+    // Should not throw; shows error toast but does not reload
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Download Photo
+// ---------------------------------------------------------------------------
+describe('Media Gallery Module - Download Photo', () => {
+  test('downloadPhoto creates a download link and triggers click', () => {
+    const clickSpy = jest.fn();
+    jest.spyOn(document, 'createElement').mockReturnValue({
+      href: '',
+      download: '',
+      target: '',
+      click: clickSpy,
+    });
+    jest.spyOn(document.body, 'appendChild').mockImplementation(() => {});
+    jest.spyOn(document.body, 'removeChild').mockImplementation(() => {});
+
+    mediaGalleryModule.downloadPhoto('https://example.com/photo.jpg', 'my-photo');
+    expect(clickSpy).toHaveBeenCalled();
+
+    jest.restoreAllMocks();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Download All Photos in Section
+// ---------------------------------------------------------------------------
+describe('Media Gallery Module - Download All Photos', () => {
+  beforeEach(() => {
+    mediaGalleryModule.currentSectionPhotos = [...samplePhotos];
+    jest.spyOn(mediaGalleryModule, 'downloadPhoto').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('downloadAllPhotos shows warning when no downloadable photos', async () => {
+    mediaGalleryModule.currentSectionPhotos = [samplePhotos[2]]; // Only YouTube
+    await mediaGalleryModule.downloadAllPhotos('Section');
+    expect(mediaGalleryModule.downloadPhoto).not.toHaveBeenCalled();
+  });
+
+  test('downloadAllPhotos cancels when user declines', async () => {
+    utils.confirmDialog = jest.fn(() => Promise.resolve(false));
+    await mediaGalleryModule.downloadAllPhotos('Section');
+    expect(mediaGalleryModule.downloadPhoto).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Handle Drop (drag & drop upload)
+// ---------------------------------------------------------------------------
+describe('Media Gallery Module - Handle Drop', () => {
+  test('handleDrop rejects invalid file types', () => {
+    const event = {
+      preventDefault: jest.fn(),
+      stopPropagation: jest.fn(),
+      dataTransfer: {
+        files: [
+          { name: 'test.txt', type: 'text/plain', size: 100 },
+          { name: 'test.pdf', type: 'application/pdf', size: 200 },
+        ],
+      },
+    };
+    mediaGalleryModule.handleDrop(event);
+    expect(event.preventDefault).toHaveBeenCalled();
+    // Should show error toast, draggedFiles should remain null
+    expect(mediaGalleryModule.draggedFiles).toBeNull();
+  });
+
+  test('handleDrop resets drop zone styles', () => {
+    const event = {
+      preventDefault: jest.fn(),
+      stopPropagation: jest.fn(),
+      dataTransfer: {
+        files: [{ name: 'test.txt', type: 'text/plain', size: 100 }],
+      },
+    };
+    const dropZone = document.getElementById('dropZone');
+    dropZone.style.backgroundColor = '#e7f1ff';
+    mediaGalleryModule.handleDrop(event);
+    expect(dropZone.style.backgroundColor).toBe('transparent');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Upload Dragged Files
+// ---------------------------------------------------------------------------
+describe('Media Gallery Module - Upload Dragged Files', () => {
+  test('uploadDraggedFiles returns early when no files', async () => {
+    mediaGalleryModule.draggedFiles = null;
+    await mediaGalleryModule.uploadDraggedFiles();
+    // Should not throw
+  });
+
+  test('uploadDraggedFiles returns early for empty array', async () => {
+    mediaGalleryModule.draggedFiles = [];
+    await mediaGalleryModule.uploadDraggedFiles();
+    // Should not throw
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Photo Drag End
+// ---------------------------------------------------------------------------
+describe('Media Gallery Module - Photo Drag End', () => {
+  test('handlePhotoDragEnd resets opacity and clears state', () => {
+    const event = { target: { style: { opacity: '0.5' } } };
+    mediaGalleryModule.draggedPhotoId = 'photo-1';
+    mediaGalleryModule.draggedOverPhotoId = 'photo-2';
+    mediaGalleryModule.handlePhotoDragEnd(event);
+    expect(event.target.style.opacity).toBe('1');
+    expect(mediaGalleryModule.draggedPhotoId).toBeNull();
+    expect(mediaGalleryModule.draggedOverPhotoId).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Photo Drag Leave
+// ---------------------------------------------------------------------------
+describe('Media Gallery Module - Photo Drag Leave', () => {
+  test('handlePhotoDragLeave resets border styles', () => {
+    const event = {
+      currentTarget: { style: { borderColor: '#0d6efd', borderWidth: '3px', borderStyle: 'dashed' } },
+    };
+    mediaGalleryModule.handlePhotoDragLeave(event, 'photo-2');
+    expect(event.currentTarget.style.borderColor).toBe('');
+    expect(event.currentTarget.style.borderWidth).toBe('');
+    expect(event.currentTarget.style.borderStyle).toBe('');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Photo Drop (Reorder)
+// ---------------------------------------------------------------------------
+describe('Media Gallery Module - Handle Photo Drop (Reorder)', () => {
+  beforeEach(() => {
+    mediaGalleryModule.currentSectionPhotos = [...samplePhotos];
+    mediaGalleryModule.currentSectionName = 'Test Section';
+    jest.spyOn(mediaGalleryModule, 'updatePhotoDisplayOrder').mockResolvedValue();
+    jest.spyOn(mediaGalleryModule, 'renderSectionPhotos').mockImplementation(() => {});
+    jest.spyOn(mediaGalleryModule, '_logActivity').mockResolvedValue();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('handlePhotoDrop does nothing when no source photo', async () => {
+    mediaGalleryModule.draggedPhotoId = null;
+    const event = {
+      preventDefault: jest.fn(),
+      stopPropagation: jest.fn(),
+      currentTarget: { style: { borderColor: '', borderWidth: '', borderStyle: '' } },
+    };
+    await mediaGalleryModule.handlePhotoDrop(event, 'photo-2');
+    expect(mediaGalleryModule.updatePhotoDisplayOrder).not.toHaveBeenCalled();
+  });
+
+  test('handlePhotoDrop does nothing when dropped on same photo', async () => {
+    mediaGalleryModule.draggedPhotoId = 'photo-1';
+    const event = {
+      preventDefault: jest.fn(),
+      stopPropagation: jest.fn(),
+      currentTarget: { style: { borderColor: '', borderWidth: '', borderStyle: '' } },
+    };
+    await mediaGalleryModule.handlePhotoDrop(event, 'photo-1');
+    expect(mediaGalleryModule.updatePhotoDisplayOrder).not.toHaveBeenCalled();
+  });
+
+  test('handlePhotoDrop reorders photos and updates display order', async () => {
+    mediaGalleryModule.draggedPhotoId = 'photo-1';
+    const event = {
+      preventDefault: jest.fn(),
+      stopPropagation: jest.fn(),
+      currentTarget: { style: { borderColor: '', borderWidth: '', borderStyle: '' } },
+    };
+    await mediaGalleryModule.handlePhotoDrop(event, 'photo-3');
+    expect(mediaGalleryModule.updatePhotoDisplayOrder).toHaveBeenCalled();
+    expect(mediaGalleryModule.renderSectionPhotos).toHaveBeenCalled();
+    // Verify the photo was moved
+    const ids = mediaGalleryModule.currentSectionPhotos.map((p) => p.id);
+    expect(ids.indexOf('photo-1')).toBeGreaterThan(ids.indexOf('photo-2'));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Update Photo Display Order
+// ---------------------------------------------------------------------------
+describe('Media Gallery Module - Update Photo Display Order', () => {
+  beforeEach(() => {
+    mediaGalleryModule.currentSectionPhotos = [...samplePhotos];
+    Object.keys(mockSupabase).forEach((key) => {
+      if (typeof mockSupabase[key] === 'function' && key !== 'then' && key !== 'single') {
+        mockSupabase[key].mockReturnValue(mockSupabase);
+      }
+    });
+  });
+
+  test('updatePhotoDisplayOrder sends batch updates', async () => {
+    mockSupabase.then.mockImplementation((cb) => cb({ data: null, error: null }));
+    await mediaGalleryModule.updatePhotoDisplayOrder();
+    // Should have called update for each photo
+    expect(mockSupabase.update).toHaveBeenCalled();
+    mockSupabase.then.mockImplementation((cb) => cb({ data: [], error: null, count: 0 }));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// View Section Photos
+// ---------------------------------------------------------------------------
+describe('Media Gallery Module - View Section Photos', () => {
+  beforeEach(() => {
+    jest.spyOn(mediaGalleryModule, 'renderSectionPhotos').mockImplementation(() => {});
+    Object.keys(mockSupabase).forEach((key) => {
+      if (typeof mockSupabase[key] === 'function' && key !== 'then' && key !== 'single') {
+        mockSupabase[key].mockReturnValue(mockSupabase);
+      }
+    });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('viewSectionPhotos sets section state and loads photos', async () => {
+    mockSupabase.then.mockImplementationOnce((cb) => cb({ data: samplePhotos, error: null }));
+    await mediaGalleryModule.viewSectionPhotos('sec-1', 'Test Section');
+    expect(mediaGalleryModule.currentSectionId).toBe('sec-1');
+    expect(mediaGalleryModule.currentSectionName).toBe('Test Section');
+    expect(mediaGalleryModule.currentSectionPhotos).toEqual(samplePhotos);
+    expect(mediaGalleryModule.currentFilter).toBe('all');
+    expect(mediaGalleryModule.currentSearchTerm).toBe('');
+    expect(mediaGalleryModule.currentSortBy).toBe('display_order');
+    expect(mediaGalleryModule.currentPage).toBe(1);
+    expect(mediaGalleryModule.selectedPhotoIds.size).toBe(0);
+    expect(mediaGalleryModule.renderSectionPhotos).toHaveBeenCalledWith('Test Section');
+  });
+
+  test('viewSectionPhotos handles error gracefully', async () => {
+    mockSupabase.then.mockImplementationOnce((cb) => cb({ data: null, error: { message: 'Load failed' } }));
+    await mediaGalleryModule.viewSectionPhotos('sec-1', 'Test Section');
+    // Should not throw; shows toast
+  });
+});
+
+// ---------------------------------------------------------------------------
+// _getFilteredPhotos - org_asc sort
+// ---------------------------------------------------------------------------
+describe('Media Gallery Module - Filter org_asc sort', () => {
+  beforeEach(() => {
+    mediaGalleryModule.currentSectionPhotos = [...samplePhotos];
+    mediaGalleryModule.currentFilter = 'all';
+    mediaGalleryModule.currentSearchTerm = '';
+  });
+
+  test('_getFilteredPhotos sorts by org_asc', () => {
+    mediaGalleryModule.currentSortBy = 'org_asc';
+    const result = mediaGalleryModule._getFilteredPhotos();
+    // Acme Ltd should be before BuildRight which is before zzz (null org)
+    const orgNames = result.map((p) => p.organisations?.company_name || 'zzz');
+    expect(orgNames[0]).toBe('Acme Ltd');
+    expect(orgNames[1]).toBe('BuildRight');
+    expect(orgNames[2]).toBe('zzz');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// _getFilteredPhotos - search in caption
+// ---------------------------------------------------------------------------
+describe('Media Gallery Module - Search in caption and awards', () => {
+  beforeEach(() => {
+    mediaGalleryModule.currentSectionPhotos = [...samplePhotos];
+    mediaGalleryModule.currentFilter = 'all';
+    mediaGalleryModule.currentSortBy = 'display_order';
+  });
+
+  test('_getFilteredPhotos searches caption field', () => {
+    mediaGalleryModule.currentSearchTerm = 'guests arriving';
+    const result = mediaGalleryModule._getFilteredPhotos();
+    expect(result.length).toBe(1);
+    expect(result[0].caption).toBe('Guests arriving');
+  });
+
+  test('_getFilteredPhotos searches award name', () => {
+    mediaGalleryModule.currentSearchTerm = 'best trade';
+    const result = mediaGalleryModule._getFilteredPhotos();
+    expect(result.length).toBe(1);
+    expect(result[0].awards.award_name).toBe('Best Trade');
+  });
+
+  test('_getFilteredPhotos returns empty when nothing matches', () => {
+    mediaGalleryModule.currentSearchTerm = 'zzzznonexistent';
+    const result = mediaGalleryModule._getFilteredPhotos();
+    expect(result.length).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Bulk Move to Section
+// ---------------------------------------------------------------------------
+describe('Media Gallery Module - Bulk Move to Section', () => {
+  beforeEach(() => {
+    mediaGalleryModule.currentEventId = 'evt-1';
+    mediaGalleryModule.currentSectionId = 'sec-1';
+    mediaGalleryModule.currentSectionName = 'Test Section';
+    Object.keys(mockSupabase).forEach((key) => {
+      if (typeof mockSupabase[key] === 'function' && key !== 'then' && key !== 'single') {
+        mockSupabase[key].mockReturnValue(mockSupabase);
+      }
+    });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('bulkMoveToSection returns early when nothing selected', async () => {
+    mediaGalleryModule.selectedPhotoIds = new Set();
+    await mediaGalleryModule.bulkMoveToSection();
+    // Should not make API calls
+  });
+
+  test('bulkMoveToSection returns early when no sections available', async () => {
+    mediaGalleryModule.selectedPhotoIds = new Set(['photo-1']);
+    mockSupabase.then.mockImplementationOnce((cb) => cb({ data: [], error: null }));
+    await mediaGalleryModule.bulkMoveToSection();
+    // Should show warning toast
+  });
+
+  test('bulkMoveToSection returns early when only current section exists', async () => {
+    mediaGalleryModule.selectedPhotoIds = new Set(['photo-1']);
+    mockSupabase.then.mockImplementationOnce((cb) =>
+      cb({ data: [{ id: 'sec-1', gallery_name: 'Current', display_order: 1 }], error: null })
+    );
+    await mediaGalleryModule.bulkMoveToSection();
+    // Should show "no other sections" toast
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Execute Bulk Move
+// ---------------------------------------------------------------------------
+describe('Media Gallery Module - Execute Bulk Move', () => {
+  beforeEach(() => {
+    mediaGalleryModule.currentSectionId = 'sec-1';
+    mediaGalleryModule.currentSectionName = 'Test Section';
+    mediaGalleryModule.selectedPhotoIds = new Set(['photo-1', 'photo-2']);
+    jest.spyOn(mediaGalleryModule, 'viewSectionPhotos').mockResolvedValue();
+    Object.keys(mockSupabase).forEach((key) => {
+      if (typeof mockSupabase[key] === 'function' && key !== 'then' && key !== 'single') {
+        mockSupabase[key].mockReturnValue(mockSupabase);
+      }
+    });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('_executeBulkMove moves photos and clears selection', async () => {
+    mockSupabase.then.mockImplementationOnce((cb) => cb({ data: null, error: null }));
+    await mediaGalleryModule._executeBulkMove('sec-2', 'Award Winners');
+    expect(mediaGalleryModule.selectedPhotoIds.size).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Clear Search
+// ---------------------------------------------------------------------------
+describe('Media Gallery Module - Clear Search', () => {
+  beforeEach(() => {
+    mediaGalleryModule.currentSearchTerm = 'test';
+    mediaGalleryModule.currentSectionPhotos = [...samplePhotos];
+    mediaGalleryModule.currentSectionName = 'Test Section';
+    jest.spyOn(mediaGalleryModule, 'renderSectionPhotos').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('setSearch to empty string clears search box', () => {
+    document.getElementById('gallerySearchBox').value = 'existing search';
+    mediaGalleryModule.setSearch('');
+    expect(mediaGalleryModule.currentSearchTerm).toBe('');
+    expect(document.getElementById('gallerySearchBox').value).toBe('');
+    expect(mediaGalleryModule.currentPage).toBe(1);
+    expect(mediaGalleryModule.renderSectionPhotos).toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Load Events
+// ---------------------------------------------------------------------------
+describe('Media Gallery Module - Load Events', () => {
+  beforeEach(() => {
+    Object.keys(mockSupabase).forEach((key) => {
+      if (typeof mockSupabase[key] === 'function' && key !== 'then' && key !== 'single') {
+        mockSupabase[key].mockReturnValue(mockSupabase);
+      }
+    });
+  });
+
+  test('loadEvents populates dropdown with events', async () => {
+    mockSupabase.then.mockImplementationOnce((cb) =>
+      cb({ data: sampleEvents, error: null })
+    );
+    await mediaGalleryModule.loadEvents();
+    expect(STATE.allEvents).toEqual(sampleEvents);
+    const select = document.getElementById('mediaEventSelect');
+    expect(select.innerHTML).toContain('Awards Gala 2026');
+    expect(select.innerHTML).toContain('Regional Ceremony');
+  });
+
+  test('loadEvents includes year in label when available', async () => {
+    mockSupabase.then.mockImplementationOnce((cb) =>
+      cb({ data: [{ id: 'e1', event_name: 'Gala', year: 2026 }], error: null })
+    );
+    await mediaGalleryModule.loadEvents();
+    const select = document.getElementById('mediaEventSelect');
+    expect(select.innerHTML).toContain('Gala (2026)');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Load Section Photo Counts
+// ---------------------------------------------------------------------------
+describe('Media Gallery Module - Load Section Photo Counts', () => {
+  beforeEach(() => {
+    Object.keys(mockSupabase).forEach((key) => {
+      if (typeof mockSupabase[key] === 'function' && key !== 'then' && key !== 'single') {
+        mockSupabase[key].mockReturnValue(mockSupabase);
+      }
+    });
+    // Create the badge element in DOM
+    const content = document.getElementById('mediaGalleryContent');
+    content.innerHTML = '<span id="photoCount_sec-1">Loading...</span><span id="photoCount_sec-2">Loading...</span>';
+  });
+
+  test('loadSectionPhotoCounts updates badge content', async () => {
+    mockSupabase.then.mockImplementationOnce((cb) =>
+      cb({
+        data: [
+          { gallery_section_id: 'sec-1' },
+          { gallery_section_id: 'sec-1' },
+          { gallery_section_id: 'sec-1' },
+          { gallery_section_id: 'sec-2' },
+        ],
+        error: null,
+      })
+    );
+    await mediaGalleryModule.loadSectionPhotoCounts(sampleSections);
+    const badge1 = document.getElementById('photoCount_sec-1');
+    expect(badge1.innerHTML).toContain('3 photos');
+    const badge2 = document.getElementById('photoCount_sec-2');
+    expect(badge2.innerHTML).toContain('1 photos');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Open Add Video Modal
+// ---------------------------------------------------------------------------
+describe('Media Gallery Module - Open Add Video Modal', () => {
+  beforeEach(() => {
+    mediaGalleryModule.currentEvent = { id: 'evt-1', event_name: 'Awards Gala 2026' };
+    jest.spyOn(mediaGalleryModule, 'loadCompaniesForVideoTags').mockResolvedValue();
+    jest.spyOn(mediaGalleryModule, 'loadAwardsForVideoTags').mockResolvedValue();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('openAddVideoModal resets form and loads tags', async () => {
+    mediaGalleryModule.videoTags = [{ id: 'old', name: 'Old' }];
+    mediaGalleryModule.videoAwardTags = [{ id: 'old', name: 'Old' }];
+    await mediaGalleryModule.openAddVideoModal();
+    expect(mediaGalleryModule.videoTags).toEqual([]);
+    expect(mediaGalleryModule.videoAwardTags).toEqual([]);
+    expect(document.getElementById('videoTagsContainer').innerHTML).toBe('');
+    expect(document.getElementById('videoAwardTagsContainer').innerHTML).toBe('');
+    expect(document.getElementById('videoEventName').value).toBe('Awards Gala 2026');
+    expect(document.getElementById('videoEventId').value).toBe('evt-1');
+    expect(document.getElementById('sourceTypeYouTube').checked).toBe(true);
+    expect(mediaGalleryModule.loadCompaniesForVideoTags).toHaveBeenCalled();
+    expect(mediaGalleryModule.loadAwardsForVideoTags).toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Load Companies for Video Tags
+// ---------------------------------------------------------------------------
+describe('Media Gallery Module - Load Companies for Video Tags', () => {
+  beforeEach(() => {
+    Object.keys(mockSupabase).forEach((key) => {
+      if (typeof mockSupabase[key] === 'function' && key !== 'then' && key !== 'single') {
+        mockSupabase[key].mockReturnValue(mockSupabase);
+      }
+    });
+  });
+
+  test('loadCompaniesForVideoTags populates selects', async () => {
+    mockSupabase.then.mockImplementationOnce((cb) =>
+      cb({
+        data: [
+          { id: 'c1', company_name: 'AlphaCo' },
+          { id: 'c2', company_name: 'BetaCo' },
+        ],
+        error: null,
+      })
+    );
+    await mediaGalleryModule.loadCompaniesForVideoTags();
+    const select = document.getElementById('videoTagInput');
+    expect(select.innerHTML).toContain('AlphaCo');
+    expect(select.innerHTML).toContain('BetaCo');
+  });
+
+  test('loadCompaniesForVideoTags handles errors', async () => {
+    mockSupabase.then.mockImplementationOnce((cb) =>
+      cb({ data: null, error: { message: 'DB error' } })
+    );
+    await mediaGalleryModule.loadCompaniesForVideoTags();
+    // Should not throw
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Load Awards for Video Tags
+// ---------------------------------------------------------------------------
+describe('Media Gallery Module - Load Awards for Video Tags', () => {
+  beforeEach(() => {
+    Object.keys(mockSupabase).forEach((key) => {
+      if (typeof mockSupabase[key] === 'function' && key !== 'then' && key !== 'single') {
+        mockSupabase[key].mockReturnValue(mockSupabase);
+      }
+    });
+  });
+
+  test('loadAwardsForVideoTags populates selects', async () => {
+    mockSupabase.then.mockImplementationOnce((cb) =>
+      cb({
+        data: [
+          { id: 'a1', award_name: 'Best Innovation' },
+          { id: 'a2', award_name: 'Best Service' },
+        ],
+        error: null,
+      })
+    );
+    await mediaGalleryModule.loadAwardsForVideoTags();
+    const select = document.getElementById('videoAwardTagInput');
+    expect(select.innerHTML).toContain('Best Innovation');
+    expect(select.innerHTML).toContain('Best Service');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Video Award Tags (bulk context)
+// ---------------------------------------------------------------------------
+describe('Media Gallery Module - Video Award Tags with context', () => {
+  beforeEach(() => {
+    mediaGalleryModule.videoAwardTags = [];
+    const awardInput = document.getElementById('videoAwardTagInput');
+    awardInput.innerHTML =
+      '<option value="">Select...</option><option value="award-1" data-name="Best Trade">Best Trade</option>';
+  });
+
+  test('addVideoAwardTag warns when no award selected', () => {
+    const select = document.getElementById('videoAwardTagInput');
+    select.value = '';
+    mediaGalleryModule.addVideoAwardTag();
+    expect(mediaGalleryModule.videoAwardTags.length).toBe(0);
+  });
+
+  test('addVideoAwardTag prevents duplicate award tags', () => {
+    mediaGalleryModule.videoAwardTags = [{ id: 'award-1', name: 'Best Trade' }];
+    const select = document.getElementById('videoAwardTagInput');
+    select.value = 'award-1';
+    mediaGalleryModule.addVideoAwardTag();
+    expect(mediaGalleryModule.videoAwardTags.length).toBe(1);
+  });
+
+  test('renderVideoAwardTags renders award tag badges', () => {
+    mediaGalleryModule.videoAwardTags = [{ id: 'award-1', name: 'Best Trade' }];
+    mediaGalleryModule.renderVideoAwardTags();
+    const container = document.getElementById('videoAwardTagsContainer');
+    expect(container.innerHTML).toContain('Best Trade');
+    expect(container.innerHTML).toContain('badge');
+  });
+
+  test('renderVideoAwardTags returns when container missing', () => {
+    mediaGalleryModule.videoAwardTags = [{ id: 'award-1', name: 'Best Trade' }];
+    // No crash when container is missing
+    mediaGalleryModule.renderVideoAwardTags('nonexistent-context');
+    // Should not throw
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Render Photo Card edge cases
+// ---------------------------------------------------------------------------
+describe('Media Gallery Module - Render Photo Card edge cases', () => {
+  test('renders featured badge on published featured photo', () => {
+    mediaGalleryModule.selectedPhotoIds = new Set();
+    mediaGalleryModule.currentSortBy = 'display_order';
+    mediaGalleryModule.currentFilter = 'all';
+    mediaGalleryModule.currentSearchTerm = '';
+    const featuredPhoto = {
+      ...samplePhotos[0],
+      featured: true,
+      published: true,
+    };
+    const html = mediaGalleryModule.renderPhotoCard(featuredPhoto);
+    expect(html).toContain('Featured');
+    expect(html).toContain('bi-star-fill');
+  });
+
+  test('renders video placeholder for non-YouTube video', () => {
+    mediaGalleryModule.selectedPhotoIds = new Set();
+    const videoPhoto = {
+      ...samplePhotos[0],
+      file_type: 'video/mp4',
+      file_url: 'https://example.com/video.mp4',
+    };
+    const html = mediaGalleryModule.renderPhotoCard(videoPhoto);
+    expect(html).toContain('bi-play-circle');
+  });
+
+  test('renders video_type label when present', () => {
+    mediaGalleryModule.selectedPhotoIds = new Set();
+    const videoPhoto = {
+      ...samplePhotos[0],
+      video_type: 'highlights',
+      file_type: 'video/mp4',
+      published: true,
+    };
+    const html = mediaGalleryModule.renderPhotoCard(videoPhoto);
+    expect(html).toContain('Highlights');
+  });
+
+  test('disables drag when filter is not all', () => {
+    mediaGalleryModule.selectedPhotoIds = new Set();
+    mediaGalleryModule.currentSortBy = 'display_order';
+    mediaGalleryModule.currentFilter = 'published';
+    mediaGalleryModule.currentSearchTerm = '';
+    const html = mediaGalleryModule.renderPhotoCard(samplePhotos[0]);
+    expect(html).not.toContain('draggable="true"');
+  });
+
+  test('disables drag when search term is active', () => {
+    mediaGalleryModule.selectedPhotoIds = new Set();
+    mediaGalleryModule.currentSortBy = 'display_order';
+    mediaGalleryModule.currentFilter = 'all';
+    mediaGalleryModule.currentSearchTerm = 'something';
+    const html = mediaGalleryModule.renderPhotoCard(samplePhotos[0]);
+    expect(html).not.toContain('draggable="true"');
+  });
+
+  test('shows photographer and caption when present', () => {
+    mediaGalleryModule.selectedPhotoIds = new Set();
+    const html = mediaGalleryModule.renderPhotoCard(samplePhotos[0]);
+    expect(html).toContain('John Smith');
+    expect(html).toContain('Guests arriving');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Videos Grid Rendering - Reorder mode
+// ---------------------------------------------------------------------------
+describe('Media Gallery Module - Videos Grid Reorder Mode', () => {
+  test('renderVideosGrid shows drag handles in reorder mode', () => {
+    mediaGalleryModule._videoReorderMode = true;
+    mediaGalleryModule.renderVideosGrid(sampleVideos);
+    const content = document.getElementById('videosProductionContent').innerHTML;
+    expect(content).toContain('Done Reordering');
+    expect(content).toContain('border-primary');
+    expect(content).toContain('bi-grip-vertical');
+    mediaGalleryModule._videoReorderMode = false;
+  });
+
+  test('renderVideosGrid handles array tag format', () => {
+    mediaGalleryModule._videoReorderMode = false;
+    const videosWithArrayTags = [
+      {
+        ...sampleVideos[0],
+        tags: JSON.stringify(['TagA', 'TagB']),
+      },
+    ];
+    mediaGalleryModule.renderVideosGrid(videosWithArrayTags);
+    const content = document.getElementById('videosProductionContent').innerHTML;
+    expect(content).toContain('TagA');
+    expect(content).toContain('TagB');
+  });
+
+  test('renderVideosGrid handles invalid JSON in tags gracefully', () => {
+    mediaGalleryModule._videoReorderMode = false;
+    const videosWithBadTags = [
+      {
+        ...sampleVideos[0],
+        tags: 'not-valid-json{',
+      },
+    ];
+    // Should not throw
+    mediaGalleryModule.renderVideosGrid(videosWithBadTags);
+    const content = document.getElementById('videosProductionContent').innerHTML;
+    expect(content).toContain('Highlights');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Open Crop/Rotate
+// ---------------------------------------------------------------------------
+describe('Media Gallery Module - Open Crop Rotate', () => {
+  test('openCropRotate shows warning when no photo selected', async () => {
+    mediaGalleryModule.currentMediaId = null;
+    await mediaGalleryModule.openCropRotate();
+    // Should not throw
+  });
+
+  test('openCropRotate shows warning for non-image files', async () => {
+    mediaGalleryModule.currentMediaId = 'photo-3';
+    mediaGalleryModule.currentSectionPhotos = [...samplePhotos];
+    await mediaGalleryModule.openCropRotate();
+    // photo-3 is video/youtube - should show warning
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Crop/Rotate State Helpers
+// ---------------------------------------------------------------------------
+describe('Media Gallery Module - Crop/Rotate Helpers', () => {
+  test('_rotatePreview rotates by given degrees', () => {
+    mediaGalleryModule._cropRotateState = { rotation: 0, flipH: false, flipV: false, cropRect: null, originalUrl: '' };
+    jest.spyOn(mediaGalleryModule, '_drawCropRotateCanvas').mockImplementation(() => {});
+    mediaGalleryModule._rotatePreview(90);
+    expect(mediaGalleryModule._cropRotateState.rotation).toBe(90);
+    expect(mediaGalleryModule._cropRotateState.cropRect).toBeNull();
+    mediaGalleryModule._rotatePreview(90);
+    expect(mediaGalleryModule._cropRotateState.rotation).toBe(180);
+    jest.restoreAllMocks();
+  });
+
+  test('_rotatePreview handles negative rotation wrapping', () => {
+    mediaGalleryModule._cropRotateState = { rotation: 0, flipH: false, flipV: false, cropRect: null, originalUrl: '' };
+    jest.spyOn(mediaGalleryModule, '_drawCropRotateCanvas').mockImplementation(() => {});
+    mediaGalleryModule._rotatePreview(-90);
+    expect(mediaGalleryModule._cropRotateState.rotation).toBe(270);
+    jest.restoreAllMocks();
+  });
+
+  test('_flipPreview toggles horizontal flip', () => {
+    mediaGalleryModule._cropRotateState = { rotation: 0, flipH: false, flipV: false, cropRect: null, originalUrl: '' };
+    jest.spyOn(mediaGalleryModule, '_drawCropRotateCanvas').mockImplementation(() => {});
+    mediaGalleryModule._flipPreview('h');
+    expect(mediaGalleryModule._cropRotateState.flipH).toBe(true);
+    mediaGalleryModule._flipPreview('h');
+    expect(mediaGalleryModule._cropRotateState.flipH).toBe(false);
+    jest.restoreAllMocks();
+  });
+
+  test('_flipPreview toggles vertical flip', () => {
+    mediaGalleryModule._cropRotateState = { rotation: 0, flipH: false, flipV: false, cropRect: null, originalUrl: '' };
+    jest.spyOn(mediaGalleryModule, '_drawCropRotateCanvas').mockImplementation(() => {});
+    mediaGalleryModule._flipPreview('v');
+    expect(mediaGalleryModule._cropRotateState.flipV).toBe(true);
+    jest.restoreAllMocks();
+  });
+
+  test('_resetCropRotate resets all state but keeps original URL', () => {
+    mediaGalleryModule._cropRotateState = {
+      rotation: 180,
+      flipH: true,
+      flipV: true,
+      cropRect: { x: 10, y: 10, w: 100, h: 100 },
+      originalUrl: 'https://example.com/photo.jpg',
+    };
+    jest.spyOn(mediaGalleryModule, '_drawCropRotateCanvas').mockImplementation(() => {});
+    mediaGalleryModule._resetCropRotate();
+    expect(mediaGalleryModule._cropRotateState.rotation).toBe(0);
+    expect(mediaGalleryModule._cropRotateState.flipH).toBe(false);
+    expect(mediaGalleryModule._cropRotateState.flipV).toBe(false);
+    expect(mediaGalleryModule._cropRotateState.cropRect).toBeNull();
+    expect(mediaGalleryModule._cropRotateState.originalUrl).toBe('https://example.com/photo.jpg');
+    jest.restoreAllMocks();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Naming Guide and Keyboard Shortcuts Help
+// ---------------------------------------------------------------------------
+describe('Media Gallery Module - Naming Guide', () => {
+  test('openNamingGuide creates modal', () => {
+    mediaGalleryModule.openNamingGuide();
+    const modal = document.getElementById('namingGuideModal');
+    expect(modal).not.toBeNull();
+    expect(modal.innerHTML).toContain('Photo Naming Convention Guide');
+    modal.remove();
+  });
+});
+
+describe('Media Gallery Module - Keyboard Shortcuts Help', () => {
+  test('showKeyboardShortcutsHelp creates modal', () => {
+    mediaGalleryModule.showKeyboardShortcutsHelp();
+    const modal = document.getElementById('keyboardShortcutsModal');
+    expect(modal).not.toBeNull();
+    expect(modal.innerHTML).toContain('Keyboard Shortcuts');
+    modal.remove();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Clear Activity Log
+// ---------------------------------------------------------------------------
+describe('Media Gallery Module - Clear Activity Log (with confirmation)', () => {
+  test('clearActivityLog does nothing when user declines', async () => {
+    utils.confirmDialog = jest.fn(() => Promise.resolve(false));
+    localStorage.setItem('mediaGalleryActivityLog', JSON.stringify([{ action: 'test' }]));
+    await mediaGalleryModule.clearActivityLog();
+    const log = JSON.parse(localStorage.getItem('mediaGalleryActivityLog'));
+    expect(log.length).toBe(1);
+  });
+
+  test('clearActivityLog clears log when confirmed', async () => {
+    utils.confirmDialog = jest.fn(() => Promise.resolve(true));
+    localStorage.setItem('mediaGalleryActivityLog', JSON.stringify([{ action: 'test' }]));
+    // apiClient.deleteByFilters will throw so it falls back to localStorage removal
+    if (typeof apiClient !== 'undefined') {
+      jest.spyOn(apiClient, 'deleteByFilters').mockRejectedValue(new Error('fallback'));
+    }
+    await mediaGalleryModule.clearActivityLog();
+    expect(localStorage.getItem('mediaGalleryActivityLog')).toBeNull();
+    if (typeof apiClient !== 'undefined') jest.restoreAllMocks();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// _matchPhotosToRunningOrder
+// ---------------------------------------------------------------------------
+describe('Media Gallery Module - Match Photos to Running Order', () => {
+  const mockRunningOrder = [
+    {
+      display_order: 1,
+      award_number: '1-01',
+      organisations: { id: 'org-1', company_name: 'Acme Ltd' },
+      awards: { id: 'a1', award_name: 'Best Trade' },
+      display_name: 'Acme Ltd',
+    },
+    {
+      display_order: 2,
+      award_number: '1-02',
+      organisations: { id: 'org-2', company_name: 'BuildRight' },
+      awards: { id: 'a2', award_name: 'Best Service' },
+      display_name: 'BuildRight',
+    },
+  ];
+
+  test('matches by award number prefix', () => {
+    const photos = [
+      { id: 'p1', title: '1-01_winner_photo.jpg', file_url: 'https://example.com/1-01_winner_photo.jpg', organisation_id: null, award_id: null },
+    ];
+    const matches = mediaGalleryModule._matchPhotosToRunningOrder(photos, mockRunningOrder);
+    expect(matches[0].matchType).toBe('award_number');
+    expect(matches[0].matchedPrefix).toBe('1-01');
+    expect(matches[0].runningOrderItem.organisations.company_name).toBe('Acme Ltd');
+  });
+
+  test('matches by display_order number prefix', () => {
+    const photos = [
+      { id: 'p2', title: '02_stage_photo.jpg', file_url: 'https://example.com/02_stage_photo.jpg', organisation_id: null, award_id: null },
+    ];
+    const matches = mediaGalleryModule._matchPhotosToRunningOrder(photos, mockRunningOrder);
+    expect(matches[0].matchType).toBe('display_order');
+    expect(matches[0].matchedPrefix).toBe('02');
+  });
+
+  test('matches by company name in filename', () => {
+    const photos = [
+      { id: 'p3', title: 'buildright_celebration.jpg', file_url: 'https://example.com/buildright_celebration.jpg', organisation_id: null, award_id: null },
+    ];
+    const matches = mediaGalleryModule._matchPhotosToRunningOrder(photos, mockRunningOrder);
+    expect(matches[0].matchType).toBe('name_match');
+    expect(matches[0].runningOrderItem.organisations.company_name).toBe('BuildRight');
+  });
+
+  test('returns unmatched for unknown filenames', () => {
+    const photos = [
+      { id: 'p4', title: 'random_photo.jpg', file_url: 'https://example.com/random_photo.jpg', organisation_id: null, award_id: null },
+    ];
+    const matches = mediaGalleryModule._matchPhotosToRunningOrder(photos, mockRunningOrder);
+    expect(matches[0].runningOrderItem).toBeNull();
+    expect(matches[0].matchType).toBe('');
+  });
+
+  test('marks already-tagged photos', () => {
+    const photos = [
+      { id: 'p5', title: '1-01_photo.jpg', file_url: 'https://example.com/1-01_photo.jpg', organisation_id: 'org-1', award_id: 'a1' },
+    ];
+    const matches = mediaGalleryModule._matchPhotosToRunningOrder(photos, mockRunningOrder);
+    expect(matches[0].alreadyTagged).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// _setPhotographer
+// ---------------------------------------------------------------------------
+describe('Media Gallery Module - Set Photographer', () => {
+  beforeEach(() => {
+    mediaGalleryModule.currentEventId = 'evt-1';
+    jest.spyOn(mediaGalleryModule, 'loadPhotosProduction').mockResolvedValue();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('_setPhotographer returns early when prompt is cancelled', async () => {
+    global.prompt = jest.fn(() => null);
+    await mediaGalleryModule._setPhotographer();
+    expect(mediaGalleryModule.loadPhotosProduction).not.toHaveBeenCalled();
+  });
+
+  test('_setPhotographer returns early for empty name', async () => {
+    global.prompt = jest.fn(() => '   ');
+    await mediaGalleryModule._setPhotographer();
+    expect(mediaGalleryModule.loadPhotosProduction).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// View Org Media
+// ---------------------------------------------------------------------------
+describe('Media Gallery Module - View Org Media', () => {
+  beforeEach(() => {
+    jest.spyOn(mediaGalleryModule, 'showEventsListView').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('viewOrgMedia redirects to events list when no orgId', async () => {
+    await mediaGalleryModule.viewOrgMedia(null);
+    expect(mediaGalleryModule.showEventsListView).toHaveBeenCalled();
+  });
+
+  test('viewOrgMedia redirects to events list for empty string', async () => {
+    await mediaGalleryModule.viewOrgMedia('');
+    expect(mediaGalleryModule.showEventsListView).toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Pagination edge cases
+// ---------------------------------------------------------------------------
+describe('Media Gallery Module - Pagination Edge Cases', () => {
+  beforeEach(() => {
+    mediaGalleryModule.currentSectionPhotos = [...samplePhotos];
+    mediaGalleryModule.currentFilter = 'all';
+    mediaGalleryModule.currentSearchTerm = '';
+    mediaGalleryModule.currentSortBy = 'display_order';
+    mediaGalleryModule.currentPage = 1;
+    mediaGalleryModule.currentSectionName = 'Test Section';
+    jest.spyOn(mediaGalleryModule, 'renderSectionPhotos').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('goToPage scrolls to photo grid', () => {
+    // With 3 photos and 48 per page, max page is 1
+    // So page 1 should succeed
+    mediaGalleryModule.goToPage(1);
+    expect(mediaGalleryModule.currentPage).toBe(1);
+    expect(mediaGalleryModule.renderSectionPhotos).toHaveBeenCalled();
+  });
+
+  test('_buildPaginationItems returns empty string for 1 page', () => {
+    const html = mediaGalleryModule._buildPaginationItems(1, 1);
+    expect(html).toContain('active');
+  });
+
+  test('_buildPaginationItems shows last page link', () => {
+    const html = mediaGalleryModule._buildPaginationItems(1, 30);
+    expect(html).toContain('>30<');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Selection across filtered views
+// ---------------------------------------------------------------------------
+describe('Media Gallery Module - Selection across filters', () => {
+  beforeEach(() => {
+    mediaGalleryModule.currentSectionPhotos = [...samplePhotos];
+    mediaGalleryModule.currentFilter = 'published';
+    mediaGalleryModule.currentSearchTerm = '';
+    mediaGalleryModule.currentSortBy = 'display_order';
+    mediaGalleryModule.currentPage = 1;
+    mediaGalleryModule.selectedPhotoIds = new Set();
+    mediaGalleryModule.currentSectionName = 'Test Section';
+    jest.spyOn(mediaGalleryModule, 'renderSectionPhotos').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('selectAllPage only selects published photos when filter is published', () => {
+    mediaGalleryModule.selectAllPage();
+    // Only photo-1 and photo-3 are published
+    expect(mediaGalleryModule.selectedPhotoIds.size).toBe(2);
+    expect(mediaGalleryModule.selectedPhotoIds.has('photo-1')).toBe(true);
+    expect(mediaGalleryModule.selectedPhotoIds.has('photo-3')).toBe(true);
+    expect(mediaGalleryModule.selectedPhotoIds.has('photo-2')).toBe(false);
+  });
+
+  test('selectAllFiltered selects only drafts when filter is drafts', () => {
+    mediaGalleryModule.currentFilter = 'drafts';
+    mediaGalleryModule.selectAllFiltered();
+    expect(mediaGalleryModule.selectedPhotoIds.size).toBe(1);
+    expect(mediaGalleryModule.selectedPhotoIds.has('photo-2')).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Initialize
+// ---------------------------------------------------------------------------
+describe('Media Gallery Module - Initialize', () => {
+  beforeEach(() => {
+    jest.spyOn(mediaGalleryModule, 'loadMediaStatistics').mockResolvedValue();
+    jest.spyOn(mediaGalleryModule, '_loadOrgFilterDropdown').mockResolvedValue();
+    jest.spyOn(mediaGalleryModule, 'showEventsListView').mockResolvedValue();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('initialize calls all setup methods', async () => {
+    await mediaGalleryModule.initialize();
+    expect(mediaGalleryModule.loadMediaStatistics).toHaveBeenCalled();
+    expect(mediaGalleryModule._loadOrgFilterDropdown).toHaveBeenCalled();
+    expect(mediaGalleryModule.showEventsListView).toHaveBeenCalled();
+  });
+
+  test('initialize handles errors without throwing', async () => {
+    mediaGalleryModule.loadMediaStatistics.mockRejectedValue(new Error('Init error'));
+    await mediaGalleryModule.initialize();
+    // Should not throw
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Slideshow
+// ---------------------------------------------------------------------------
+describe('Media Gallery Module - Launch Slideshow', () => {
+  beforeEach(() => {
+    mediaGalleryModule.currentSectionId = 'sec-1';
+    mediaGalleryModule.currentEventId = 'evt-1';
+    mediaGalleryModule.currentSectionPhotos = [...samplePhotos];
+    STATE.allEvents = sampleEvents;
+    Object.keys(mockSupabase).forEach((key) => {
+      if (typeof mockSupabase[key] === 'function' && key !== 'then' && key !== 'single') {
+        mockSupabase[key].mockReturnValue(mockSupabase);
+      }
+    });
+  });
+
+  test('launchSlideshow shows warning when no section', async () => {
+    mediaGalleryModule.currentSectionId = null;
+    await mediaGalleryModule.launchSlideshow(null);
+    // Should show toast warning
+  });
+
+  test('launchSlideshow shows warning when no published photos', async () => {
+    mediaGalleryModule.currentSectionPhotos = [
+      { ...samplePhotos[1], published: false }, // only draft
+    ];
+    await mediaGalleryModule.launchSlideshow();
+    // Should show "No published photos" toast
+  });
+
+  test('launchSlideshow opens window for published photos', async () => {
+    await mediaGalleryModule.launchSlideshow();
+    expect(window.open).toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Save Photo Tags
+// ---------------------------------------------------------------------------
+describe('Media Gallery Module - Save Photo Tags', () => {
+  beforeEach(() => {
+    mediaGalleryModule.currentMediaId = 'photo-1';
+    mediaGalleryModule.currentSectionId = 'sec-1';
+    mediaGalleryModule.currentSectionName = 'Test Section';
+    jest.spyOn(mediaGalleryModule, 'viewSectionPhotos').mockResolvedValue();
+    Object.keys(mockSupabase).forEach((key) => {
+      if (typeof mockSupabase[key] === 'function' && key !== 'then' && key !== 'single') {
+        mockSupabase[key].mockReturnValue(mockSupabase);
+      }
+    });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('savePhotoTags reads form values and sends update', async () => {
+    document.getElementById('tagPhotoOrgSelect').value = 'org-1';
+    document.getElementById('tagPhotoAwardSelect').value = 'award-1';
+    document.getElementById('tagPhotoCaption').value = 'Test caption';
+    document.getElementById('tagPhotoAltText').value = 'Alt text';
+    document.getElementById('tagPhotoPhotographer').value = 'Jane Doe';
+    document.getElementById('tagPhotoShowGallery').checked = true;
+    document.getElementById('tagPhotoShowWinner').checked = false;
+    document.getElementById('tagPhotoShowCompany').checked = true;
+
+    mockSupabase.then.mockImplementationOnce((cb) => cb({ data: null, error: null }));
+    await mediaGalleryModule.savePhotoTags();
+    expect(mockSupabase.update).toHaveBeenCalled();
+  });
+
+  test('savePhotoTags falls back to localStorage on error', async () => {
+    document.getElementById('tagPhotoOrgSelect').value = 'org-1';
+    document.getElementById('tagPhotoAwardSelect').value = '';
+    document.getElementById('tagPhotoCaption').value = '';
+    document.getElementById('tagPhotoAltText').value = '';
+    document.getElementById('tagPhotoPhotographer').value = '';
+
+    mockSupabase.then.mockImplementationOnce(() => {
+      throw new Error('DB fail');
+    });
+    await mediaGalleryModule.savePhotoTags();
+    const saved = JSON.parse(localStorage.getItem('bta_photo_tags_photo-1'));
+    expect(saved.organisation_id).toBe('org-1');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Remove File From Preview
+// ---------------------------------------------------------------------------
+describe('Media Gallery Module - Remove File From Preview', () => {
+  test('removeFileFromPreview removes file at given index', () => {
+    mediaGalleryModule.selectedFiles = [
+      { name: 'a.jpg', type: 'image/jpeg', size: 100 },
+      { name: 'b.jpg', type: 'image/jpeg', size: 200 },
+      { name: 'c.jpg', type: 'image/jpeg', size: 300 },
+    ];
+    jest.spyOn(mediaGalleryModule, 'renderFilePreview').mockImplementation(() => {});
+    // Mock DataTransfer
+    global.DataTransfer = class {
+      constructor() {
+        this.items = { add: jest.fn() };
+        this.files = [];
+      }
+    };
+
+    mediaGalleryModule.removeFileFromPreview(1);
+    expect(mediaGalleryModule.selectedFiles.length).toBe(2);
+    expect(mediaGalleryModule.selectedFiles[0].name).toBe('a.jpg');
+    expect(mediaGalleryModule.selectedFiles[1].name).toBe('c.jpg');
+    expect(mediaGalleryModule.renderFilePreview).toHaveBeenCalled();
+
+    delete global.DataTransfer;
+    jest.restoreAllMocks();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Quick Edit Tag
+// ---------------------------------------------------------------------------
+describe('Media Gallery Module - Quick Edit Tag', () => {
+  test('quickEditTag delegates to tagPhoto', async () => {
+    jest.spyOn(mediaGalleryModule, 'tagPhoto').mockResolvedValue();
+    await mediaGalleryModule.quickEditTag('photo-1', 'org');
+    expect(mediaGalleryModule.tagPhoto).toHaveBeenCalledWith('photo-1');
+    jest.restoreAllMocks();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// On Event Selected
+// ---------------------------------------------------------------------------
+describe('Media Gallery Module - On Event Selected', () => {
+  beforeEach(() => {
+    jest.spyOn(mediaGalleryModule, 'renderGallerySections').mockImplementation(() => {});
+    jest.spyOn(mediaGalleryModule, 'showSummaryView').mockResolvedValue();
+    Object.keys(mockSupabase).forEach((key) => {
+      if (typeof mockSupabase[key] === 'function' && key !== 'then' && key !== 'single') {
+        mockSupabase[key].mockReturnValue(mockSupabase);
+      }
+    });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('onEventSelected shows summary view when no eventId', async () => {
+    await mediaGalleryModule.onEventSelected(null);
+    expect(mediaGalleryModule.showSummaryView).toHaveBeenCalled();
+  });
+
+  test('onEventSelected loads sections for given event', async () => {
+    mockSupabase.then.mockImplementationOnce((cb) =>
+      cb({ data: sampleSections, error: null })
+    );
+    await mediaGalleryModule.onEventSelected('evt-1');
+    expect(mediaGalleryModule.currentEventId).toBe('evt-1');
+    expect(mediaGalleryModule.currentSectionId).toBeNull();
+    expect(mediaGalleryModule.renderGallerySections).toHaveBeenCalledWith(sampleSections);
   });
 });

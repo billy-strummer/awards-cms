@@ -2176,7 +2176,7 @@ describe('Organisations Module - exportToCSV()', () => {
   });
 
   test('generates CSV with correct headers', () => {
-    const downloadedContent = null;
+    const _downloadedContent = null;
     const origCreateElement = document.createElement.bind(document);
     const mockLink = { href: '', download: '', click: jest.fn() };
     jest.spyOn(document, 'createElement').mockImplementation((tag) => {
@@ -2809,7 +2809,7 @@ describe('Organisations Module - _statusFlow', () => {
   });
 
   test('each status has label and next array', () => {
-    Object.entries(orgsModule._statusFlow).forEach(([key, val]) => {
+    Object.entries(orgsModule._statusFlow).forEach(([_key, val]) => {
       expect(val).toHaveProperty('label');
       expect(val).toHaveProperty('next');
       expect(Array.isArray(val.next)).toBe(true);
@@ -4814,7 +4814,7 @@ describe('Organisations Module - _statusFlow completeness', () => {
   });
 
   test('all status entries have labels', () => {
-    Object.entries(orgsModule._statusFlow).forEach(([key, val]) => {
+    Object.entries(orgsModule._statusFlow).forEach(([_key, val]) => {
       expect(val.label).toBeTruthy();
       expect(typeof val.label).toBe('string');
     });
@@ -5704,5 +5704,1351 @@ describe('Organisations Module - _srvGoToPage()', () => {
     await orgsModule._srvGoToPage(2);
     expect(spy).not.toHaveBeenCalled();
     spy.mockRestore();
+  });
+});
+
+// ===========================================================================
+// NEW COVERAGE TESTS — Organisation CRUD, Contacts, Notes, Merge, Import,
+// Bulk Operations, Image Management, Custom Fields, etc.
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// quickUpdateStatus
+// ---------------------------------------------------------------------------
+describe('Organisations Module - quickUpdateStatus()', () => {
+  beforeEach(() => {
+    STATE.allOrganisations = [
+      makeOrg({ id: 'qs1', company_name: 'Quick Status Co', status: 'prospect' }),
+    ];
+    STATE.filteredOrganisations = [...STATE.allOrganisations];
+    mockSupabase.from.mockReturnValue(mockSupabase);
+    mockSupabase.update.mockReturnValue(mockSupabase);
+    mockSupabase.eq.mockReturnValue(Promise.resolve({ data: null, error: null }));
+  });
+
+  test('updates org status in local state on success', async () => {
+    await orgsModule.quickUpdateStatus('qs1', 'entrant');
+    const org = STATE.allOrganisations.find((o) => o.id === 'qs1');
+    expect(org.status).toBe('entrant');
+  });
+
+  test('updates filtered org status too', async () => {
+    await orgsModule.quickUpdateStatus('qs1', 'winner');
+    const fOrg = STATE.filteredOrganisations.find((o) => o.id === 'qs1');
+    expect(fOrg.status).toBe('winner');
+  });
+
+  test('shows error toast when DB update fails', async () => {
+    mockSupabase.eq.mockReturnValue(Promise.resolve({ data: null, error: { message: 'DB error' } }));
+    const spy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    await orgsModule.quickUpdateStatus('qs1', 'winner');
+    expect(spy).toHaveBeenCalledWith(expect.stringContaining('Error'), 'error');
+    spy.mockRestore();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// deleteOrganisation (archive)
+// ---------------------------------------------------------------------------
+describe('Organisations Module - deleteOrganisation()', () => {
+  beforeEach(() => {
+    STATE.allOrganisations = [
+      makeOrg({ id: 'del1', company_name: 'Delete Co', status: 'prospect' }),
+    ];
+    STATE.filteredOrganisations = [...STATE.allOrganisations];
+    orgsModule.selectedOrgs = new Set(['del1']);
+    orgsModule._serverPagination = false;
+    orgsModule._filterMissingField = null;
+    orgsModule._selectedTagFilters = [];
+    orgsModule._lastContactedMap = {};
+    orgsModule._columnVisibility = {};
+    orgsModule._showPhoneColumn = false;
+    orgsModule._currentPage = 1;
+    orgsModule._pageSize = 50;
+    mockSupabase.from.mockReturnValue(mockSupabase);
+    mockSupabase.update.mockReturnValue(mockSupabase);
+    mockSupabase.eq.mockReturnValue(Promise.resolve({ data: null, error: null }));
+    // Reset filter inputs
+    document.getElementById('orgsYearFilter').value = '';
+    document.getElementById('orgsSectorFilter').value = '';
+    document.getElementById('orgsCountyFilter').value = '';
+    document.getElementById('orgsRegionFilter').value = '';
+    document.getElementById('orgsStatusFilter').value = '';
+    document.getElementById('orgsSearchBox').value = '';
+    document.getElementById('orgsTierFilter').value = '';
+    document.getElementById('orgsTagFilter').value = '';
+    document.getElementById('orgsLogoFilter').value = '';
+    document.getElementById('orgsDateFilter').value = '';
+  });
+
+  test('archives org when confirmed', async () => {
+    jest.spyOn(utils, 'confirmDialog').mockResolvedValue(true);
+    jest.spyOn(utils, 'showLoading').mockImplementation(() => {});
+    jest.spyOn(utils, 'hideLoading').mockImplementation(() => {});
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+
+    await orgsModule.deleteOrganisation('del1', 'Delete Co');
+
+    const org = STATE.allOrganisations.find((o) => o.id === 'del1');
+    expect(org.status).toBe('archived');
+    expect(orgsModule.selectedOrgs.has('del1')).toBe(false);
+    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('archived'), 'success');
+
+    utils.confirmDialog.mockRestore();
+    utils.showLoading.mockRestore();
+    utils.hideLoading.mockRestore();
+    toastSpy.mockRestore();
+  });
+
+  test('does nothing when user cancels', async () => {
+    jest.spyOn(utils, 'confirmDialog').mockResolvedValue(false);
+    await orgsModule.deleteOrganisation('del1', 'Delete Co');
+    const org = STATE.allOrganisations.find((o) => o.id === 'del1');
+    expect(org.status).toBe('prospect');
+    utils.confirmDialog.mockRestore();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// restoreOrganisation
+// ---------------------------------------------------------------------------
+describe('Organisations Module - restoreOrganisation()', () => {
+  beforeEach(() => {
+    STATE.allOrganisations = [
+      makeOrg({ id: 'rest1', company_name: 'Restore Co', status: 'archived' }),
+    ];
+    STATE.filteredOrganisations = [...STATE.allOrganisations];
+    orgsModule._serverPagination = false;
+    orgsModule._filterMissingField = null;
+    orgsModule._selectedTagFilters = [];
+    orgsModule._lastContactedMap = {};
+    orgsModule._columnVisibility = {};
+    orgsModule._showPhoneColumn = false;
+    orgsModule._currentPage = 1;
+    orgsModule._pageSize = 50;
+    orgsModule.selectedOrgs = new Set();
+    mockSupabase.from.mockReturnValue(mockSupabase);
+    mockSupabase.update.mockReturnValue(mockSupabase);
+    mockSupabase.eq.mockReturnValue(Promise.resolve({ data: null, error: null }));
+    document.getElementById('orgsYearFilter').value = '';
+    document.getElementById('orgsSectorFilter').value = '';
+    document.getElementById('orgsCountyFilter').value = '';
+    document.getElementById('orgsRegionFilter').value = '';
+    document.getElementById('orgsStatusFilter').value = '';
+    document.getElementById('orgsSearchBox').value = '';
+    document.getElementById('orgsTierFilter').value = '';
+    document.getElementById('orgsTagFilter').value = '';
+    document.getElementById('orgsLogoFilter').value = '';
+    document.getElementById('orgsDateFilter').value = '';
+  });
+
+  test('restores archived org to prospect', async () => {
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    await orgsModule.restoreOrganisation('rest1', 'Restore Co');
+    const org = STATE.allOrganisations.find((o) => o.id === 'rest1');
+    expect(org.status).toBe('prospect');
+    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('restored'), 'success');
+    toastSpy.mockRestore();
+  });
+
+  test('shows error toast on failure', async () => {
+    mockSupabase.eq.mockReturnValue(Promise.resolve({ data: null, error: { message: 'Restore fail' } }));
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    await orgsModule.restoreOrganisation('rest1', 'Restore Co');
+    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('Error'), 'error');
+    toastSpy.mockRestore();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tag management: addTag, removeTag
+// ---------------------------------------------------------------------------
+describe('Organisations Module - Tag Management', () => {
+  beforeEach(() => {
+    STATE.allOrganisations = [
+      makeOrg({ id: 'tag1', company_name: 'Tag Co', tags: ['existing'] }),
+    ];
+    mockSupabase.from.mockReturnValue(mockSupabase);
+    mockSupabase.update.mockReturnValue(mockSupabase);
+    mockSupabase.eq.mockReturnValue(Promise.resolve({ data: null, error: null }));
+    // Create the input element needed by addTag
+    let input = document.getElementById('newTagInput');
+    if (!input) {
+      input = document.createElement('input');
+      input.id = 'newTagInput';
+      document.body.appendChild(input);
+    }
+    // Mock openCompanyProfile to avoid side effects
+    jest.spyOn(orgsModule, 'openCompanyProfile').mockResolvedValue();
+  });
+
+  afterEach(() => {
+    orgsModule.openCompanyProfile.mockRestore();
+  });
+
+  test('addTag adds new tag to org', async () => {
+    document.getElementById('newTagInput').value = 'newtag';
+    await orgsModule.addTag('tag1');
+    const org = STATE.allOrganisations.find((o) => o.id === 'tag1');
+    expect(org.tags).toContain('newtag');
+    expect(org.tags).toContain('existing');
+  });
+
+  test('addTag does nothing when input is empty', async () => {
+    document.getElementById('newTagInput').value = '';
+    const org = STATE.allOrganisations.find((o) => o.id === 'tag1');
+    const originalLength = org.tags.length;
+    await orgsModule.addTag('tag1');
+    expect(org.tags.length).toBe(originalLength);
+  });
+
+  test('addTag shows warning for duplicate tag', async () => {
+    document.getElementById('newTagInput').value = 'existing';
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    await orgsModule.addTag('tag1');
+    expect(toastSpy).toHaveBeenCalledWith('Tag already exists', 'warning');
+    toastSpy.mockRestore();
+  });
+
+  test('removeTag removes tag from org', async () => {
+    await orgsModule.removeTag('tag1', 'existing');
+    const org = STATE.allOrganisations.find((o) => o.id === 'tag1');
+    expect(org.tags).not.toContain('existing');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Contact management: loadOrgContacts, addContact, deleteContact, setPrimaryContact
+// ---------------------------------------------------------------------------
+describe('Organisations Module - Contact Management', () => {
+  beforeEach(() => {
+    STATE.allOrganisations = [
+      makeOrg({ id: 'ct1', company_name: 'Contact Co' }),
+    ];
+    jest.spyOn(orgsModule, 'openCompanyProfile').mockResolvedValue();
+  });
+
+  afterEach(() => {
+    orgsModule.openCompanyProfile.mockRestore();
+  });
+
+  test('loadOrgContacts returns empty array on error', async () => {
+    // apiClient.select is not fully mocked, so this should fail gracefully
+    const contacts = await orgsModule.loadOrgContacts('ct1');
+    expect(Array.isArray(contacts)).toBe(true);
+  });
+
+  test('addContact shows warning when no name provided', async () => {
+    // Create input elements needed by addContact
+    const fields = ['newContactFirstName', 'newContactLastName', 'newContactJobTitle', 'newContactEmailAddr', 'newContactPhoneNum'];
+    fields.forEach((id) => {
+      let el = document.getElementById(id);
+      if (!el) {
+        el = document.createElement('input');
+        el.id = id;
+        document.body.appendChild(el);
+      }
+      el.value = '';
+    });
+    let checkbox = document.getElementById('newContactIsPrimary');
+    if (!checkbox) {
+      checkbox = document.createElement('input');
+      checkbox.id = 'newContactIsPrimary';
+      checkbox.type = 'checkbox';
+      document.body.appendChild(checkbox);
+    }
+    let receiveCheckbox = document.getElementById('newContactReceiveEmails');
+    if (!receiveCheckbox) {
+      receiveCheckbox = document.createElement('input');
+      receiveCheckbox.id = 'newContactReceiveEmails';
+      receiveCheckbox.type = 'checkbox';
+      document.body.appendChild(receiveCheckbox);
+    }
+
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    await orgsModule.addContact('ct1');
+    expect(toastSpy).toHaveBeenCalledWith('Please enter a name', 'warning');
+    toastSpy.mockRestore();
+  });
+
+  test('deleteContact does nothing when user cancels', async () => {
+    jest.spyOn(utils, 'confirmDialog').mockResolvedValue(false);
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    await orgsModule.deleteContact('ct1', 'contact-id');
+    expect(toastSpy).not.toHaveBeenCalledWith('Contact deleted', 'success');
+    utils.confirmDialog.mockRestore();
+    toastSpy.mockRestore();
+  });
+
+  test('renderContactsSection renders primary star icon', () => {
+    const contacts = [
+      { id: 'c1', first_name: 'A', last_name: 'B', is_primary: true, receive_emails: true },
+    ];
+    const html = orgsModule.renderContactsSection('ct1', contacts);
+    expect(html).toContain('bi-star-fill');
+  });
+
+  test('renderContactsSection renders non-primary star icon', () => {
+    const contacts = [
+      { id: 'c1', first_name: 'A', last_name: 'B', is_primary: false, receive_emails: false },
+    ];
+    const html = orgsModule.renderContactsSection('ct1', contacts);
+    expect(html).toContain('bi-star text-muted');
+    expect(html).toContain('bi-x-circle text-muted');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Threaded notes: getThreadedNotes, renderThreadedNotes, addThreadedNote
+// ---------------------------------------------------------------------------
+describe('Organisations Module - Threaded Notes', () => {
+  beforeEach(() => {
+    STATE.allOrganisations = [
+      makeOrg({ id: 'nt1', company_name: 'Notes Co' }),
+    ];
+    jest.spyOn(orgsModule, 'openCompanyProfile').mockResolvedValue();
+  });
+
+  afterEach(() => {
+    orgsModule.openCompanyProfile.mockRestore();
+  });
+
+  test('getThreadedNotes returns empty array on error', async () => {
+    const notes = await orgsModule.getThreadedNotes('nt1');
+    expect(Array.isArray(notes)).toBe(true);
+  });
+
+  test('renderThreadedNotes returns empty message for no notes', () => {
+    const html = orgsModule.renderThreadedNotes([], 'nt1');
+    expect(html).toContain('No notes yet');
+  });
+
+  test('renderThreadedNotes renders pinned note with special styling', () => {
+    const notes = [
+      { id: 'n1', content: 'Pinned note', author: 'admin', pinned: true, created_at: new Date().toISOString() },
+    ];
+    const html = orgsModule.renderThreadedNotes(notes, 'nt1');
+    expect(html).toContain('Pinned note');
+    expect(html).toContain('bg-warning-subtle');
+    expect(html).toContain('bi-pin-fill');
+  });
+
+  test('renderThreadedNotes renders unpinned note', () => {
+    const notes = [
+      { id: 'n2', content: 'Regular note', author: 'user', pinned: false, created_at: new Date().toISOString() },
+    ];
+    const html = orgsModule.renderThreadedNotes(notes, 'nt1');
+    expect(html).toContain('Regular note');
+    expect(html).toContain('bi-chat-left-text');
+  });
+
+  test('addThreadedNote shows warning when content is empty', async () => {
+    let noteInput = document.getElementById('newNoteContent');
+    if (!noteInput) {
+      noteInput = document.createElement('textarea');
+      noteInput.id = 'newNoteContent';
+      document.body.appendChild(noteInput);
+    }
+    noteInput.value = '';
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    await orgsModule.addThreadedNote('nt1');
+    expect(toastSpy).toHaveBeenCalledWith('Enter a note', 'warning');
+    toastSpy.mockRestore();
+  });
+
+  test('deleteThreadedNote does nothing when user cancels', async () => {
+    jest.spyOn(utils, 'confirmDialog').mockResolvedValue(false);
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    await orgsModule.deleteThreadedNote('note-1', 'nt1');
+    expect(toastSpy).not.toHaveBeenCalledWith('Note deleted', 'success');
+    utils.confirmDialog.mockRestore();
+    toastSpy.mockRestore();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Follow-ups: addFollowUp, completeFollowUp, deleteFollowUp
+// ---------------------------------------------------------------------------
+describe('Organisations Module - Follow-ups', () => {
+  beforeEach(() => {
+    STATE.allOrganisations = [
+      makeOrg({ id: 'fu1', company_name: 'FollowUp Co' }),
+    ];
+    jest.spyOn(orgsModule, 'openCompanyProfile').mockResolvedValue();
+  });
+
+  afterEach(() => {
+    orgsModule.openCompanyProfile.mockRestore();
+  });
+
+  test('addFollowUp shows warning when no date selected', async () => {
+    let dateInput = document.getElementById('followUpDate');
+    if (!dateInput) {
+      dateInput = document.createElement('input');
+      dateInput.id = 'followUpDate';
+      document.body.appendChild(dateInput);
+    }
+    dateInput.value = '';
+    let noteInput = document.getElementById('followUpNote');
+    if (!noteInput) {
+      noteInput = document.createElement('input');
+      noteInput.id = 'followUpNote';
+      document.body.appendChild(noteInput);
+    }
+    noteInput.value = 'test note';
+    let assigneeInput = document.getElementById('followUpAssignee');
+    if (!assigneeInput) {
+      assigneeInput = document.createElement('input');
+      assigneeInput.id = 'followUpAssignee';
+      document.body.appendChild(assigneeInput);
+    }
+    assigneeInput.value = '';
+
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    await orgsModule.addFollowUp('fu1');
+    expect(toastSpy).toHaveBeenCalledWith('Select a date', 'warning');
+    toastSpy.mockRestore();
+  });
+
+  test('deleteFollowUp does nothing when user cancels', async () => {
+    jest.spyOn(utils, 'confirmDialog').mockResolvedValue(false);
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    await orgsModule.deleteFollowUp('fu1', 'followup-id');
+    expect(toastSpy).not.toHaveBeenCalledWith('Follow-up deleted', 'success');
+    utils.confirmDialog.mockRestore();
+    toastSpy.mockRestore();
+  });
+
+  test('getFollowUps returns array with mapped fields', async () => {
+    const result = await orgsModule.getFollowUps('fu1');
+    expect(Array.isArray(result)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Custom fields: getCustomFields, saveCustomField, addCustomField, removeCustomField
+// ---------------------------------------------------------------------------
+describe('Organisations Module - Custom Fields', () => {
+  beforeEach(() => {
+    STATE.allOrganisations = [
+      makeOrg({ id: 'cf1', company_name: 'Custom Fields Co' }),
+    ];
+    jest.spyOn(orgsModule, 'openCompanyProfile').mockResolvedValue();
+  });
+
+  afterEach(() => {
+    orgsModule.openCompanyProfile.mockRestore();
+  });
+
+  test('getCustomFields returns empty object on error', async () => {
+    const fields = await orgsModule.getCustomFields('cf1');
+    expect(typeof fields).toBe('object');
+  });
+
+  test('addCustomField shows warning when no field name', async () => {
+    let nameInput = document.getElementById('customFieldName');
+    if (!nameInput) {
+      nameInput = document.createElement('input');
+      nameInput.id = 'customFieldName';
+      document.body.appendChild(nameInput);
+    }
+    nameInput.value = '';
+    let valueInput = document.getElementById('customFieldValue');
+    if (!valueInput) {
+      valueInput = document.createElement('input');
+      valueInput.id = 'customFieldValue';
+      document.body.appendChild(valueInput);
+    }
+    valueInput.value = 'some value';
+
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    await orgsModule.addCustomField('cf1');
+    expect(toastSpy).toHaveBeenCalledWith('Enter a field name', 'warning');
+    toastSpy.mockRestore();
+  });
+
+  test('removeCustomField calls saveCustomField with null value', async () => {
+    const spy = jest.spyOn(orgsModule, 'saveCustomField').mockResolvedValue();
+    await orgsModule.removeCustomField('cf1', 'testField');
+    expect(spy).toHaveBeenCalledWith('cf1', 'testField', null);
+    spy.mockRestore();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Merge: showMergeDuplicatesModal
+// ---------------------------------------------------------------------------
+describe('Organisations Module - Merge Duplicates Modal', () => {
+  beforeEach(() => {
+    STATE.allOrganisations = [
+      makeOrg({ id: 'merge1', company_name: 'Org A', email: 'a@test.com', sector: 'Tech' }),
+      makeOrg({ id: 'merge2', company_name: 'Org B', email: 'b@test.com', sector: 'Finance' }),
+      makeOrg({ id: 'merge3', company_name: 'Org C' }),
+    ];
+    orgsModule.selectedOrgs = new Set();
+  });
+
+  test('shows warning when not exactly 2 orgs selected', () => {
+    orgsModule.selectedOrgs = new Set(['merge1']);
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    orgsModule.showMergeDuplicatesModal();
+    expect(toastSpy).toHaveBeenCalledWith('Select exactly 2 organisations to merge', 'warning');
+    toastSpy.mockRestore();
+  });
+
+  test('shows warning when 3 orgs selected', () => {
+    orgsModule.selectedOrgs = new Set(['merge1', 'merge2', 'merge3']);
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    orgsModule.showMergeDuplicatesModal();
+    expect(toastSpy).toHaveBeenCalledWith('Select exactly 2 organisations to merge', 'warning');
+    toastSpy.mockRestore();
+  });
+
+  test('shows modal when exactly 2 orgs selected', () => {
+    orgsModule.selectedOrgs = new Set(['merge1', 'merge2']);
+    const spy = jest.spyOn(orgsModule, '_showDynamicModal').mockImplementation(() => {});
+    orgsModule.showMergeDuplicatesModal();
+    expect(spy).toHaveBeenCalledWith(
+      'Merge Organisations',
+      expect.stringContaining('Org A'),
+      expect.any(String),
+      expect.any(String)
+    );
+    spy.mockRestore();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// mergeDuplicateGroup helper
+// ---------------------------------------------------------------------------
+describe('Organisations Module - mergeDuplicateGroup()', () => {
+  test('sets selectedOrgs from ids array', () => {
+    orgsModule.selectedOrgs = new Set();
+    jest.spyOn(orgsModule, 'showMergeDuplicatesModal').mockImplementation(() => {});
+    orgsModule.mergeDuplicateGroup(['id1', 'id2']);
+    expect(orgsModule.selectedOrgs.has('id1')).toBe(true);
+    expect(orgsModule.selectedOrgs.has('id2')).toBe(true);
+    orgsModule.showMergeDuplicatesModal.mockRestore();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Bulk operations: bulkDelete, bulkStatusChange, bulkUpdateField
+// ---------------------------------------------------------------------------
+describe('Organisations Module - Bulk Operations', () => {
+  beforeEach(() => {
+    STATE.allOrganisations = [
+      makeOrg({ id: 'bk1', company_name: 'Bulk Co 1', status: 'prospect' }),
+      makeOrg({ id: 'bk2', company_name: 'Bulk Co 2', status: 'prospect' }),
+    ];
+    STATE.filteredOrganisations = [...STATE.allOrganisations];
+    orgsModule.selectedOrgs = new Set();
+    orgsModule._serverPagination = false;
+    orgsModule._filterMissingField = null;
+    orgsModule._selectedTagFilters = [];
+    orgsModule._lastContactedMap = {};
+    orgsModule._columnVisibility = {};
+    orgsModule._showPhoneColumn = false;
+    orgsModule._currentPage = 1;
+    orgsModule._pageSize = 50;
+    document.getElementById('orgsYearFilter').value = '';
+    document.getElementById('orgsSectorFilter').value = '';
+    document.getElementById('orgsCountyFilter').value = '';
+    document.getElementById('orgsRegionFilter').value = '';
+    document.getElementById('orgsStatusFilter').value = '';
+    document.getElementById('orgsSearchBox').value = '';
+    document.getElementById('orgsTierFilter').value = '';
+    document.getElementById('orgsTagFilter').value = '';
+    document.getElementById('orgsLogoFilter').value = '';
+    document.getElementById('orgsDateFilter').value = '';
+    mockSupabase.from.mockReturnValue(mockSupabase);
+    mockSupabase.update.mockReturnValue(mockSupabase);
+    mockSupabase.in = jest.fn(() => Promise.resolve({ data: null, error: null }));
+  });
+
+  test('bulkDelete shows warning when no orgs selected', async () => {
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    await orgsModule.bulkDelete();
+    expect(toastSpy).toHaveBeenCalledWith('No organisations selected', 'warning');
+    toastSpy.mockRestore();
+  });
+
+  test('bulkDelete archives selected orgs when confirmed', async () => {
+    orgsModule.selectedOrgs = new Set(['bk1', 'bk2']);
+    jest.spyOn(utils, 'confirmDialog').mockResolvedValue(true);
+    jest.spyOn(utils, 'showLoading').mockImplementation(() => {});
+    jest.spyOn(utils, 'hideLoading').mockImplementation(() => {});
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+
+    await orgsModule.bulkDelete();
+
+    expect(STATE.allOrganisations.find((o) => o.id === 'bk1').status).toBe('archived');
+    expect(STATE.allOrganisations.find((o) => o.id === 'bk2').status).toBe('archived');
+    expect(orgsModule.selectedOrgs.size).toBe(0);
+    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('2'), 'success');
+
+    utils.confirmDialog.mockRestore();
+    utils.showLoading.mockRestore();
+    utils.hideLoading.mockRestore();
+    toastSpy.mockRestore();
+  });
+
+  test('bulkDelete does nothing when user cancels', async () => {
+    orgsModule.selectedOrgs = new Set(['bk1']);
+    jest.spyOn(utils, 'confirmDialog').mockResolvedValue(false);
+    await orgsModule.bulkDelete();
+    expect(STATE.allOrganisations.find((o) => o.id === 'bk1').status).toBe('prospect');
+    utils.confirmDialog.mockRestore();
+  });
+
+  test('bulkStatusChange shows warning when no orgs selected', async () => {
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    await orgsModule.bulkStatusChange('entrant');
+    expect(toastSpy).toHaveBeenCalledWith('No organisations selected', 'warning');
+    toastSpy.mockRestore();
+  });
+
+  test('bulkStatusChange updates status for selected orgs', async () => {
+    orgsModule.selectedOrgs = new Set(['bk1', 'bk2']);
+    jest.spyOn(utils, 'confirmDialog').mockResolvedValue(true);
+    jest.spyOn(utils, 'showLoading').mockImplementation(() => {});
+    jest.spyOn(utils, 'hideLoading').mockImplementation(() => {});
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+
+    await orgsModule.bulkStatusChange('winner');
+
+    expect(STATE.allOrganisations.find((o) => o.id === 'bk1').status).toBe('winner');
+    expect(STATE.allOrganisations.find((o) => o.id === 'bk2').status).toBe('winner');
+
+    utils.confirmDialog.mockRestore();
+    utils.showLoading.mockRestore();
+    utils.hideLoading.mockRestore();
+    toastSpy.mockRestore();
+  });
+
+  test('bulkUpdateField shows warning when no orgs selected', async () => {
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    await orgsModule.bulkUpdateField('sector', 'Tech');
+    expect(toastSpy).toHaveBeenCalledWith('No organisations selected', 'warning');
+    toastSpy.mockRestore();
+  });
+
+  test('bulkUpdateField updates field for selected orgs when confirmed', async () => {
+    orgsModule.selectedOrgs = new Set(['bk1', 'bk2']);
+    jest.spyOn(utils, 'confirmDialog').mockResolvedValue(true);
+    jest.spyOn(utils, 'showLoading').mockImplementation(() => {});
+    jest.spyOn(utils, 'hideLoading').mockImplementation(() => {});
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+
+    await orgsModule.bulkUpdateField('sector', 'NewSector');
+
+    expect(STATE.allOrganisations.find((o) => o.id === 'bk1').sector).toBe('NewSector');
+    expect(STATE.allOrganisations.find((o) => o.id === 'bk2').sector).toBe('NewSector');
+
+    utils.confirmDialog.mockRestore();
+    utils.showLoading.mockRestore();
+    utils.hideLoading.mockRestore();
+    toastSpy.mockRestore();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Import validation: _validateImportRow, validateImportData
+// ---------------------------------------------------------------------------
+describe('Organisations Module - Import Validation', () => {
+  test('_validateImportRow returns issues for short company name', () => {
+    const issues = orgsModule._validateImportRow({ company_name: 'A' });
+    expect(issues.some((i) => i.includes('too short'))).toBe(true);
+  });
+
+  test('_validateImportRow returns no issues for valid row', () => {
+    const issues = orgsModule._validateImportRow({
+      company_name: 'Valid Company',
+      email: 'valid@test.com',
+      website: 'https://example.com',
+      contact_phone: '01234567890',
+    });
+    expect(issues.length).toBe(0);
+  });
+
+  test('_validateImportRow detects invalid email', () => {
+    const issues = orgsModule._validateImportRow({ company_name: 'Valid Co', email: 'notanemail' });
+    expect(issues.some((i) => i.includes('Invalid email'))).toBe(true);
+  });
+
+  test('_validateImportRow detects invalid phone', () => {
+    const issues = orgsModule._validateImportRow({ company_name: 'Valid Co', contact_phone: '12' });
+    expect(issues.some((i) => i.includes('Invalid phone'))).toBe(true);
+  });
+
+  test('validateImportData detects missing company name', () => {
+    STATE.allOrganisations = [];
+    const issues = orgsModule.validateImportData([{ company_name: '' }]);
+    expect(issues.some((i) => i.severity === 'error' && i.message.includes('Missing company name'))).toBe(true);
+  });
+
+  test('validateImportData detects duplicate with existing org', () => {
+    STATE.allOrganisations = [makeOrg({ company_name: 'Existing Co' })];
+    const issues = orgsModule.validateImportData([{ company_name: 'Existing Co', region: 'London' }]);
+    expect(issues.some((i) => i.severity === 'warning' && i.message.includes('already exists'))).toBe(true);
+  });
+
+  test('validateImportData detects duplicate within import', () => {
+    STATE.allOrganisations = [];
+    const issues = orgsModule.validateImportData([
+      { company_name: 'Duplicate Co', region: 'London' },
+      { company_name: 'Duplicate Co', region: 'London' },
+    ]);
+    expect(issues.some((i) => i.severity === 'warning' && i.message.includes('Duplicate in import'))).toBe(true);
+  });
+
+  test('validateImportData shows info for missing region', () => {
+    STATE.allOrganisations = [];
+    const issues = orgsModule.validateImportData([{ company_name: 'No Region Co' }]);
+    expect(issues.some((i) => i.severity === 'info' && i.message.includes('Missing region'))).toBe(true);
+  });
+
+  test('showImportValidationPreview returns HTML with correct counts', () => {
+    STATE.allOrganisations = [];
+    const rows = [
+      { company_name: 'Good Co', email: 'good@test.com', region: 'London' },
+      { company_name: '', email: 'bad', region: '' },
+    ];
+    const html = orgsModule.showImportValidationPreview(rows);
+    expect(html).toContain('Total Rows');
+    expect(html).toContain('Errors');
+    expect(html).toContain('Warnings');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Import history: _logImportHistory, showImportHistory
+// ---------------------------------------------------------------------------
+describe('Organisations Module - Import History', () => {
+  beforeEach(() => {
+    localStorage.removeItem('orgImportHistory');
+  });
+
+  test('_logImportHistory stores import entry in localStorage', () => {
+    orgsModule._logImportHistory('test.csv', 50, 'Kent');
+    const history = JSON.parse(localStorage.getItem('orgImportHistory'));
+    expect(history.length).toBe(1);
+    expect(history[0].filename).toBe('test.csv');
+    expect(history[0].count).toBe(50);
+    expect(history[0].county).toBe('Kent');
+  });
+
+  test('_logImportHistory caps history at 100 entries', () => {
+    // Insert 101 entries
+    for (let i = 0; i < 101; i++) {
+      orgsModule._logImportHistory(`file${i}.csv`, i, 'Kent');
+    }
+    const history = JSON.parse(localStorage.getItem('orgImportHistory'));
+    expect(history.length).toBe(100);
+  });
+
+  test('showImportHistory renders empty state when no history', () => {
+    const spy = jest.spyOn(orgsModule, '_showDynamicModal').mockImplementation(() => {});
+    orgsModule.showImportHistory();
+    expect(spy).toHaveBeenCalledWith(
+      'Import History',
+      expect.stringContaining('No import history'),
+      expect.any(String)
+    );
+    spy.mockRestore();
+  });
+
+  test('showImportHistory renders table when history exists', () => {
+    localStorage.setItem('orgImportHistory', JSON.stringify([
+      { filename: 'data.csv', count: 25, county: 'Kent', date: new Date().toISOString() },
+    ]));
+    const spy = jest.spyOn(orgsModule, '_showDynamicModal').mockImplementation(() => {});
+    orgsModule.showImportHistory();
+    expect(spy).toHaveBeenCalledWith(
+      'Import History',
+      expect.stringContaining('data.csv'),
+      expect.any(String)
+    );
+    spy.mockRestore();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// toggleImportMergeMode
+// ---------------------------------------------------------------------------
+describe('Organisations Module - toggleImportMergeMode()', () => {
+  test('toggles the _importMergeMode flag', () => {
+    orgsModule._importMergeMode = false;
+    orgsModule.toggleImportMergeMode();
+    expect(orgsModule._importMergeMode).toBe(true);
+    orgsModule.toggleImportMergeMode();
+    expect(orgsModule._importMergeMode).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Segment rules: _matchesSegmentRules
+// ---------------------------------------------------------------------------
+describe('Organisations Module - _matchesSegmentRules()', () => {
+  beforeEach(() => {
+    orgsModule._lastContactedMap = {};
+  });
+
+  test('eq matches exact value (case-insensitive)', () => {
+    const org = makeOrg({ status: 'prospect', tier: 'Gold' });
+    expect(orgsModule._matchesSegmentRules(org, [{ field: 'status', op: 'eq', val: 'Prospect' }])).toBe(true);
+  });
+
+  test('neq does not match same value', () => {
+    const org = makeOrg({ status: 'prospect' });
+    expect(orgsModule._matchesSegmentRules(org, [{ field: 'status', op: 'neq', val: 'prospect' }])).toBe(false);
+  });
+
+  test('neq matches different value', () => {
+    const org = makeOrg({ status: 'prospect' });
+    expect(orgsModule._matchesSegmentRules(org, [{ field: 'status', op: 'neq', val: 'winner' }])).toBe(true);
+  });
+
+  test('gt compares numeric values', () => {
+    const org = makeOrg({ awards_count: 5 });
+    expect(orgsModule._matchesSegmentRules(org, [{ field: 'awards_count', op: 'gt', val: '3' }])).toBe(true);
+    expect(orgsModule._matchesSegmentRules(org, [{ field: 'awards_count', op: 'gt', val: '10' }])).toBe(false);
+  });
+
+  test('lt compares numeric values', () => {
+    const org = makeOrg({ awards_count: 2 });
+    expect(orgsModule._matchesSegmentRules(org, [{ field: 'awards_count', op: 'lt', val: '5' }])).toBe(true);
+    expect(orgsModule._matchesSegmentRules(org, [{ field: 'awards_count', op: 'lt', val: '1' }])).toBe(false);
+  });
+
+  test('contains checks for substring', () => {
+    const org = makeOrg({ sector: 'BUILDING & CONSTRUCTION' });
+    expect(orgsModule._matchesSegmentRules(org, [{ field: 'sector', op: 'contains', val: 'building' }])).toBe(true);
+  });
+
+  test('engagement field uses calculated score', () => {
+    const org = makeOrg({ updated_at: new Date().toISOString() });
+    const result = orgsModule._matchesSegmentRules(org, [{ field: 'engagement', op: 'gt', val: '0' }]);
+    expect(typeof result).toBe('boolean');
+  });
+
+  test('multiple rules must all match (AND logic)', () => {
+    const org = makeOrg({ status: 'prospect', sector: 'Tech' });
+    expect(orgsModule._matchesSegmentRules(org, [
+      { field: 'status', op: 'eq', val: 'prospect' },
+      { field: 'sector', op: 'eq', val: 'Tech' },
+    ])).toBe(true);
+    expect(orgsModule._matchesSegmentRules(org, [
+      { field: 'status', op: 'eq', val: 'prospect' },
+      { field: 'sector', op: 'eq', val: 'Finance' },
+    ])).toBe(false);
+  });
+
+  test('unknown operator returns false', () => {
+    const org = makeOrg({ status: 'prospect' });
+    expect(orgsModule._matchesSegmentRules(org, [{ field: 'status', op: 'xyz', val: 'prospect' }])).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Organisation comparison: showOrgComparison
+// ---------------------------------------------------------------------------
+describe('Organisations Module - showOrgComparison()', () => {
+  beforeEach(() => {
+    STATE.allOrganisations = [
+      makeOrg({ id: 'cmp1', company_name: 'Comp A', sector: 'Tech', region: 'London' }),
+      makeOrg({ id: 'cmp2', company_name: 'Comp B', sector: 'Finance', region: 'East' }),
+    ];
+    orgsModule._lastContactedMap = {};
+    orgsModule.selectedOrgs = new Set();
+  });
+
+  test('shows warning when less than 2 orgs selected', () => {
+    orgsModule.selectedOrgs = new Set(['cmp1']);
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    orgsModule.showOrgComparison();
+    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('2-4'), 'warning');
+    toastSpy.mockRestore();
+  });
+
+  test('shows warning when more than 4 orgs selected', () => {
+    orgsModule.selectedOrgs = new Set(['cmp1', 'cmp2', 'cmp3', 'cmp4', 'cmp5']);
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    orgsModule.showOrgComparison();
+    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('2-4'), 'warning');
+    toastSpy.mockRestore();
+  });
+
+  test('shows comparison modal for 2 selected orgs', () => {
+    orgsModule.selectedOrgs = new Set(['cmp1', 'cmp2']);
+    const spy = jest.spyOn(orgsModule, '_showDynamicModal').mockImplementation(() => {});
+    orgsModule.showOrgComparison();
+    expect(spy).toHaveBeenCalledWith(
+      expect.stringContaining('Compare 2'),
+      expect.stringContaining('Comp A'),
+      expect.any(String),
+      expect.any(String)
+    );
+    spy.mockRestore();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Share link: generateShareLink, revokeShareLink
+// ---------------------------------------------------------------------------
+describe('Organisations Module - Share Links', () => {
+  beforeEach(() => {
+    STATE.allOrganisations = [
+      makeOrg({ id: 'share1', company_name: 'Share Co' }),
+    ];
+    localStorage.removeItem('orgShareTokens');
+  });
+
+  test('generateShareLink stores token in localStorage', () => {
+    const spy = jest.spyOn(orgsModule, '_showDynamicModal').mockImplementation(() => {});
+    orgsModule.generateShareLink('share1');
+    const shares = JSON.parse(localStorage.getItem('orgShareTokens') || '{}');
+    const tokens = Object.keys(shares);
+    expect(tokens.length).toBe(1);
+    expect(shares[tokens[0]].orgId).toBe('share1');
+    expect(shares[tokens[0]].active).toBe(true);
+    spy.mockRestore();
+  });
+
+  test('generateShareLink shows error for unknown org', () => {
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    orgsModule.generateShareLink('nonexistent');
+    expect(toastSpy).toHaveBeenCalledWith('Organisation not found', 'error');
+    toastSpy.mockRestore();
+  });
+
+  test('revokeShareLink removes token from localStorage', () => {
+    localStorage.setItem('orgShareTokens', JSON.stringify({ 'abc123': { orgId: 'share1', active: true } }));
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    orgsModule.revokeShareLink('abc123');
+    const shares = JSON.parse(localStorage.getItem('orgShareTokens'));
+    expect(shares['abc123']).toBeUndefined();
+    toastSpy.mockRestore();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// togglePhoneColumn
+// ---------------------------------------------------------------------------
+describe('Organisations Module - togglePhoneColumn()', () => {
+  beforeEach(() => {
+    orgsModule._showPhoneColumn = false;
+    orgsModule._serverPagination = false;
+    orgsModule._lastContactedMap = {};
+    orgsModule._columnVisibility = {};
+    orgsModule._currentPage = 1;
+    orgsModule._pageSize = 50;
+    orgsModule.selectedOrgs = new Set();
+    STATE.allOrganisations = [makeOrg({ id: 'ph1' })];
+    STATE.filteredOrganisations = [...STATE.allOrganisations];
+  });
+
+  test('toggles _showPhoneColumn flag', () => {
+    expect(orgsModule._showPhoneColumn).toBe(false);
+    orgsModule.togglePhoneColumn();
+    expect(orgsModule._showPhoneColumn).toBe(true);
+    orgsModule.togglePhoneColumn();
+    expect(orgsModule._showPhoneColumn).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// filterByMissingField
+// ---------------------------------------------------------------------------
+describe('Organisations Module - filterByMissingField()', () => {
+  beforeEach(() => {
+    orgsModule._filterMissingField = null;
+    orgsModule._serverPagination = false;
+    orgsModule._selectedTagFilters = [];
+    orgsModule._lastContactedMap = {};
+    orgsModule._columnVisibility = {};
+    orgsModule._showPhoneColumn = false;
+    orgsModule._currentPage = 1;
+    orgsModule._pageSize = 50;
+    orgsModule.selectedOrgs = new Set();
+    STATE.allOrganisations = [
+      makeOrg({ id: 'fm1', email: 'has@email.com' }),
+      makeOrg({ id: 'fm2', email: null }),
+    ];
+    STATE.filteredOrganisations = [...STATE.allOrganisations];
+    document.getElementById('orgsYearFilter').value = '';
+    document.getElementById('orgsSectorFilter').value = '';
+    document.getElementById('orgsCountyFilter').value = '';
+    document.getElementById('orgsRegionFilter').value = '';
+    document.getElementById('orgsStatusFilter').value = '';
+    document.getElementById('orgsSearchBox').value = '';
+    document.getElementById('orgsTierFilter').value = '';
+    document.getElementById('orgsTagFilter').value = '';
+    document.getElementById('orgsLogoFilter').value = '';
+    document.getElementById('orgsDateFilter').value = '';
+  });
+
+  test('sets _filterMissingField and calls filterOrganisations', () => {
+    orgsModule.filterByMissingField('email');
+    expect(orgsModule._filterMissingField).toBe('email');
+    // Should filter down to orgs missing email
+    expect(STATE.filteredOrganisations.length).toBe(1);
+    expect(STATE.filteredOrganisations[0].id).toBe('fm2');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// filterByRegion
+// ---------------------------------------------------------------------------
+describe('Organisations Module - filterByRegion()', () => {
+  beforeEach(() => {
+    orgsModule._serverPagination = false;
+    orgsModule._filterMissingField = null;
+    orgsModule._selectedTagFilters = [];
+    orgsModule._lastContactedMap = {};
+    orgsModule._columnVisibility = {};
+    orgsModule._showPhoneColumn = false;
+    orgsModule._currentPage = 1;
+    orgsModule._pageSize = 50;
+    orgsModule.selectedOrgs = new Set();
+    STATE.allOrganisations = [
+      makeOrg({ id: 'fr1', region: 'South East' }),
+      makeOrg({ id: 'fr2', region: 'East' }),
+    ];
+    STATE.filteredOrganisations = [...STATE.allOrganisations];
+    document.getElementById('orgsYearFilter').value = '';
+    document.getElementById('orgsSectorFilter').value = '';
+    document.getElementById('orgsCountyFilter').value = '';
+    document.getElementById('orgsRegionFilter').value = '';
+    document.getElementById('orgsStatusFilter').value = '';
+    document.getElementById('orgsSearchBox').value = '';
+    document.getElementById('orgsTierFilter').value = '';
+    document.getElementById('orgsTagFilter').value = '';
+    document.getElementById('orgsLogoFilter').value = '';
+    document.getElementById('orgsDateFilter').value = '';
+  });
+
+  test('sets region filter and triggers filtering', () => {
+    orgsModule.filterByRegion('South East');
+    expect(document.getElementById('orgsRegionFilter').value).toBe('South East');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// cancelInlineEdit
+// ---------------------------------------------------------------------------
+describe('Organisations Module - cancelInlineEdit()', () => {
+  test('restores original HTML from data-action delegation (string orgId)', () => {
+    const td = document.createElement('td');
+    td.dataset.originalHtml = '<span>Original Content</span>';
+    td.innerHTML = '<input type="text" />';
+    document.body.appendChild(td);
+
+    orgsModule.cancelInlineEdit('some-org-id', undefined);
+
+    // Since the selector in cancelInlineEdit looks for [data-original-html], it should restore
+    expect(td.innerHTML).toBe('<span>Original Content</span>');
+
+    document.body.removeChild(td);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// _showUndoToast / undoLastInlineEdit
+// ---------------------------------------------------------------------------
+describe('Organisations Module - Undo Inline Edit', () => {
+  beforeEach(() => {
+    STATE.allOrganisations = [
+      makeOrg({ id: 'undo1', company_name: 'Undo Co', email: 'old@test.com' }),
+    ];
+    STATE.filteredOrganisations = [...STATE.allOrganisations];
+    orgsModule._lastInlineEdit = null;
+    orgsModule._serverPagination = false;
+    orgsModule._lastContactedMap = {};
+    orgsModule._columnVisibility = {};
+    orgsModule._showPhoneColumn = false;
+    orgsModule._currentPage = 1;
+    orgsModule._pageSize = 50;
+    orgsModule.selectedOrgs = new Set();
+    mockSupabase.from.mockReturnValue(mockSupabase);
+    mockSupabase.update.mockReturnValue(mockSupabase);
+    mockSupabase.eq.mockReturnValue(Promise.resolve({ data: null, error: null }));
+  });
+
+  test('undoLastInlineEdit shows warning when nothing to undo', async () => {
+    orgsModule._lastInlineEdit = null;
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    await orgsModule.undoLastInlineEdit();
+    expect(toastSpy).toHaveBeenCalledWith('Nothing to undo', 'warning');
+    toastSpy.mockRestore();
+  });
+
+  test('undoLastInlineEdit restores old value', async () => {
+    orgsModule._lastInlineEdit = {
+      orgId: 'undo1',
+      dbField: 'email',
+      oldValue: 'old@test.com',
+      newValue: 'new@test.com',
+    };
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    await orgsModule.undoLastInlineEdit();
+
+    const org = STATE.allOrganisations.find((o) => o.id === 'undo1');
+    expect(org.email).toBe('old@test.com');
+    expect(orgsModule._lastInlineEdit).toBeNull();
+    expect(toastSpy).toHaveBeenCalledWith('Edit undone', 'success');
+    toastSpy.mockRestore();
+  });
+
+  test('_showUndoToast inserts toast HTML into body', () => {
+    document.getElementById('undoToast')?.remove();
+    orgsModule._showUndoToast('email');
+    const toast = document.getElementById('undoToast');
+    expect(toast).toBeTruthy();
+    expect(toast.innerHTML).toContain('email updated');
+    toast.remove();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// SMS templates data
+// ---------------------------------------------------------------------------
+describe('Organisations Module - SMS/WhatsApp Templates', () => {
+  test('_smsTemplates has at least 3 templates', () => {
+    expect(orgsModule._smsTemplates.length).toBeGreaterThanOrEqual(3);
+    orgsModule._smsTemplates.forEach((t) => {
+      expect(t.id).toBeTruthy();
+      expect(t.name).toBeTruthy();
+      expect(t.body).toBeTruthy();
+    });
+  });
+
+  test('_whatsappTemplates has at least 3 templates', () => {
+    expect(orgsModule._whatsappTemplates.length).toBeGreaterThanOrEqual(3);
+    orgsModule._whatsappTemplates.forEach((t) => {
+      expect(t.id).toBeTruthy();
+      expect(t.name).toBeTruthy();
+      expect(t.body).toBeTruthy();
+    });
+  });
+
+  test('openSMSTemplate renders modal with template data', () => {
+    STATE.allOrganisations = [
+      makeOrg({ id: 'sms1', company_name: 'SMS Co', contact_name: 'John', contact_phone: '+447123456789' }),
+    ];
+    const spy = jest.spyOn(orgsModule, '_showDynamicModal').mockImplementation(() => {});
+    orgsModule.openSMSTemplate('sms1');
+    expect(spy).toHaveBeenCalledWith(
+      'SMS / WhatsApp',
+      expect.stringContaining('SMS Templates'),
+      expect.any(String)
+    );
+    spy.mockRestore();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// renderUnifiedTimeline
+// ---------------------------------------------------------------------------
+describe('Organisations Module - renderUnifiedTimeline()', () => {
+  test('returns empty message for no timeline items', () => {
+    const html = orgsModule.renderUnifiedTimeline([]);
+    expect(html).toContain('No activity recorded');
+  });
+
+  test('returns empty message for null timeline', () => {
+    const html = orgsModule.renderUnifiedTimeline(null);
+    expect(html).toContain('No activity recorded');
+  });
+
+  test('renders timeline items correctly', () => {
+    const timeline = [
+      {
+        _type: 'audit',
+        _date: new Date(),
+        _icon: 'bi-clock-history text-muted',
+        _label: 'Status changed to winner',
+        action: 'status_change',
+      },
+      {
+        _type: 'note',
+        _date: new Date(),
+        _icon: 'bi-chat-left-text text-info',
+        _label: 'Note by admin: Test note content',
+      },
+    ];
+    const html = orgsModule.renderUnifiedTimeline(timeline);
+    expect(html).toContain('Status changed to winner');
+    expect(html).toContain('Note by admin');
+    expect(html).toContain('audit');
+    expect(html).toContain('note');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// clearAllTagFilters / toggleTagFilter
+// ---------------------------------------------------------------------------
+describe('Organisations Module - Tag Filter Operations', () => {
+  beforeEach(() => {
+    orgsModule._selectedTagFilters = ['vip', 'premium'];
+    orgsModule._serverPagination = false;
+    orgsModule._filterMissingField = null;
+    orgsModule._lastContactedMap = {};
+    orgsModule._columnVisibility = {};
+    orgsModule._showPhoneColumn = false;
+    orgsModule._currentPage = 1;
+    orgsModule._pageSize = 50;
+    orgsModule.selectedOrgs = new Set();
+    STATE.allOrganisations = [makeOrg({ id: 'tf1', tags: ['vip'] })];
+    STATE.filteredOrganisations = [...STATE.allOrganisations];
+    document.getElementById('orgsYearFilter').value = '';
+    document.getElementById('orgsSectorFilter').value = '';
+    document.getElementById('orgsCountyFilter').value = '';
+    document.getElementById('orgsRegionFilter').value = '';
+    document.getElementById('orgsStatusFilter').value = '';
+    document.getElementById('orgsSearchBox').value = '';
+    document.getElementById('orgsTierFilter').value = '';
+    document.getElementById('orgsTagFilter').value = '';
+    document.getElementById('orgsLogoFilter').value = '';
+    document.getElementById('orgsDateFilter').value = '';
+  });
+
+  test('clearAllTagFilters empties _selectedTagFilters', () => {
+    orgsModule.clearAllTagFilters();
+    expect(orgsModule._selectedTagFilters).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Document management: getDocuments, uploadDocument
+// ---------------------------------------------------------------------------
+describe('Organisations Module - Document Management', () => {
+  test('getDocuments returns empty array on error', async () => {
+    const docs = await orgsModule.getDocuments('doc-org-1');
+    expect(Array.isArray(docs)).toBe(true);
+  });
+
+  test('uploadDocument shows warning when no file selected', async () => {
+    let fileInput = document.getElementById('docUploadInput');
+    if (!fileInput) {
+      fileInput = document.createElement('input');
+      fileInput.id = 'docUploadInput';
+      fileInput.type = 'file';
+      document.body.appendChild(fileInput);
+    }
+    let docTitle = document.getElementById('docTitle');
+    if (!docTitle) {
+      docTitle = document.createElement('input');
+      docTitle.id = 'docTitle';
+      document.body.appendChild(docTitle);
+    }
+    // files is empty by default
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    await orgsModule.uploadDocument('doc-org-1');
+    expect(toastSpy).toHaveBeenCalledWith('Select a file', 'warning');
+    toastSpy.mockRestore();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Sponsorship packages: addSponsorshipPackage, deleteSponsorshipPackage
+// ---------------------------------------------------------------------------
+describe('Organisations Module - Sponsorship Packages', () => {
+  beforeEach(() => {
+    STATE.allOrganisations = [makeOrg({ id: 'sp1', company_name: 'Sponsor Co' })];
+    jest.spyOn(orgsModule, 'openCompanyProfile').mockResolvedValue();
+  });
+
+  afterEach(() => {
+    orgsModule.openCompanyProfile.mockRestore();
+  });
+
+  test('addSponsorshipPackage shows warning when no name', async () => {
+    let nameInput = document.getElementById('spkgName');
+    if (!nameInput) {
+      nameInput = document.createElement('input');
+      nameInput.id = 'spkgName';
+      document.body.appendChild(nameInput);
+    }
+    nameInput.value = '';
+
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    await orgsModule.addSponsorshipPackage('sp1');
+    expect(toastSpy).toHaveBeenCalledWith('Enter package name', 'warning');
+    toastSpy.mockRestore();
+  });
+
+  test('deleteSponsorshipPackage does nothing when cancelled', async () => {
+    jest.spyOn(utils, 'confirmDialog').mockResolvedValue(false);
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    await orgsModule.deleteSponsorshipPackage('pkg-1', 'sp1');
+    expect(toastSpy).not.toHaveBeenCalledWith('Package deleted', 'success');
+    utils.confirmDialog.mockRestore();
+    toastSpy.mockRestore();
+  });
+
+  test('renderSponsorshipPackages shows expiring warning', () => {
+    const renewalDate = new Date(Date.now() + 15 * 86400000).toISOString().split('T')[0];
+    const packages = [
+      { id: 'p1', package_name: 'Expiring Pkg', amount: 1000, status: 'active', renewal_date: renewalDate, benefits: '["Logo placement"]' },
+    ];
+    const html = orgsModule.renderSponsorshipPackages(packages, 'sp1');
+    expect(html).toContain('Renewal');
+    expect(html).toContain('border-warning');
+    expect(html).toContain('Logo placement');
+  });
+
+  test('renderSponsorshipPackages handles invalid benefits JSON', () => {
+    const packages = [
+      { id: 'p1', package_name: 'Test Pkg', amount: 500, status: 'pending', benefits: 'not-json' },
+    ];
+    const html = orgsModule.renderSponsorshipPackages(packages, 'sp1');
+    expect(html).toContain('Test Pkg');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// companiesHouseLookup - org not found
+// ---------------------------------------------------------------------------
+describe('Organisations Module - companiesHouseLookup()', () => {
+  test('shows error when org not found', async () => {
+    STATE.allOrganisations = [];
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    await orgsModule.companiesHouseLookup('nonexistent');
+    expect(toastSpy).toHaveBeenCalledWith('Organisation not found', 'error');
+    toastSpy.mockRestore();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// _applySegmentAsFilter
+// ---------------------------------------------------------------------------
+describe('Organisations Module - _applySegmentAsFilter()', () => {
+  beforeEach(() => {
+    orgsModule._lastSegmentMatches = null;
+    orgsModule._serverPagination = false;
+    orgsModule._lastContactedMap = {};
+    orgsModule._columnVisibility = {};
+    orgsModule._showPhoneColumn = false;
+    orgsModule._currentPage = 1;
+    orgsModule._pageSize = 50;
+    orgsModule.selectedOrgs = new Set();
+  });
+
+  test('does nothing when no segment matches stored', () => {
+    orgsModule._applySegmentAsFilter();
+    // Should not throw
+  });
+
+  test('applies segment matches as filter', () => {
+    const matches = [makeOrg({ id: 'seg1' }), makeOrg({ id: 'seg2' })];
+    orgsModule._lastSegmentMatches = matches;
+    STATE.allOrganisations = [...matches, makeOrg({ id: 'seg3' })];
+    STATE.filteredOrganisations = [...STATE.allOrganisations];
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    orgsModule._applySegmentAsFilter();
+    expect(STATE.filteredOrganisations.length).toBe(2);
+    expect(orgsModule._currentPage).toBe(1);
+    toastSpy.mockRestore();
   });
 });

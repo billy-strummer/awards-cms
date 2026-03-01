@@ -4,15 +4,15 @@
  */
 
 // Mock @supabase/supabase-js before requiring the handler
-const mockSelect = jest.fn();
-const mockInsert = jest.fn();
-const mockEq = jest.fn();
-const mockGte = jest.fn();
-const mockNeq = jest.fn();
-const mockIn = jest.fn();
-const mockOrder = jest.fn();
-const mockLimit = jest.fn();
-const mockSingle = jest.fn();
+const _mockSelect = jest.fn();
+const _mockInsert = jest.fn();
+const _mockEq = jest.fn();
+const _mockGte = jest.fn();
+const _mockNeq = jest.fn();
+const _mockIn = jest.fn();
+const _mockOrder = jest.fn();
+const _mockLimit = jest.fn();
+const _mockSingle = jest.fn();
 
 function chainable(resolveWith = { data: [], error: null, count: 0 }) {
   const obj = {

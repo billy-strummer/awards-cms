@@ -6,15 +6,15 @@
 // The manual mock at __mocks__/@supabase/supabase-js.js is loaded automatically.
 // Get references to the mock functions for assertions.
 const { __mocks__: mocks } = require('@supabase/supabase-js');
-const mockFrom = mocks.mockFrom;
+const _mockFrom = mocks.mockFrom;
 const mockSingle = mocks.mockSingle;
 const mockOrder = mocks.mockOrder;
-const mockSelect = mocks.mockSelect;
+const _mockSelect = mocks.mockSelect;
 const mockInsert = mocks.mockInsert;
-const mockEq = mocks.mockEq;
+const _mockEq = mocks.mockEq;
 const mockCreateSignedUploadUrl = mocks.mockCreateSignedUploadUrl;
-const mockGetPublicUrl = mocks.mockGetPublicUrl;
-const mockStorageFrom = mocks.mockStorageFrom;
+const _mockGetPublicUrl = mocks.mockGetPublicUrl;
+const _mockStorageFrom = mocks.mockStorageFrom;
 
 // Set required env vars
 process.env.SUPABASE_URL = 'https://test.supabase.co';
@@ -78,7 +78,7 @@ describe('Upload Proxy - Rate Limiting', () => {
 
   test('blocks requests over limit', async () => {
     const ip = '10.0.0.99';
-    const res = mockRes();
+    const _res = mockRes();
     // Fire 31 requests from same IP
     for (let i = 0; i < 31; i++) {
       const req = mockReq({ query: { action: 'unknown' }, headers: { 'x-forwarded-for': ip } });

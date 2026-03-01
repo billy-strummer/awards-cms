@@ -464,10 +464,10 @@ describe('Upload Documents - initialize', () => {
   });
 
   test('shows error when no entry ID in URL', async () => {
-    const originalSearch = dom.window.location.search;
+    const _originalSearch = dom.window.location.search;
     // Override entryId path by nulling out the param
     const showErrorSpy = jest.spyOn(uploadApp, 'showError').mockImplementation(() => {});
-    const oldEntryId = uploadApp.entryId;
+    const _oldEntryId = uploadApp.entryId;
     uploadApp.entryId = null;
 
     // Temporarily override to simulate no entry param

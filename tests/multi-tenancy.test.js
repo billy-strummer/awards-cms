@@ -231,7 +231,7 @@ describe('Multi-Tenancy Module - scopeQuery()', () => {
   test('adds tenant filter when tenant is not default', () => {
     tenantModule._currentTenant = { id: 'tenant-123', name: 'Test' };
     const mockQuery = { eq: jest.fn().mockReturnThis() };
-    const result = tenantModule.scopeQuery(mockQuery);
+    const _result = tenantModule.scopeQuery(mockQuery);
     expect(mockQuery.eq).toHaveBeenCalledWith('tenant_id', 'tenant-123');
     tenantModule._currentTenant = null;
   });
@@ -248,7 +248,7 @@ describe('Multi-Tenancy Module - scopeQuery()', () => {
   test('does not add filter when no tenant set', () => {
     tenantModule._currentTenant = null;
     const mockQuery = { eq: jest.fn().mockReturnThis() };
-    const result = tenantModule.scopeQuery(mockQuery);
+    const _result = tenantModule.scopeQuery(mockQuery);
     expect(mockQuery.eq).not.toHaveBeenCalled();
     tenantModule._currentTenant = null;
   });

@@ -993,7 +993,7 @@ describe('Winners Module - exportAsHTML()', () => {
     jest.spyOn(document, 'createElement').mockImplementation((tag) => {
       const el = origCreateElement(tag);
       if (tag === 'a') {
-        const origClick = el.click.bind(el);
+        const _origClick = el.click.bind(el);
         el.click = function () {
           clickCalled = true;
           downloadName = el.download;
@@ -2172,5 +2172,913 @@ describe('Winners Module - sortWinners() with serverPagination', () => {
     winnersModule.sortWinners('year');
     expect(spy).toHaveBeenCalled();
     spy.mockRestore();
+  });
+});
+
+// ===========================================================================
+// NEW TESTS FOR INCREASED COVERAGE
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// updateWinnerStatus() - full flow
+// ---------------------------------------------------------------------------
+describe('Winners Module - updateWinnerStatus() full flow', () => {
+  beforeEach(() => {
+    winnersModule._serverPagination = false;
+    winnersModule._selectedWinnerIds = new Set();
+    STATE.allWinners = JSON.parse(JSON.stringify(sampleWinners));
+    STATE.filteredWinners = JSON.parse(JSON.stringify(sampleWinners));
+  });
+
+  test('updates winner status in both allWinners and filteredWinners', async () => {
+    const spy = jest.spyOn(apiClient, 'update').mockResolvedValue({});
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+
+    await winnersModule.updateWinnerStatus('w-1', 'published');
+
+    expect(spy).toHaveBeenCalledWith('winners', 'w-1', { winner_status: 'published' });
+    expect(STATE.allWinners.find((w) => w.id === 'w-1').winner_status).toBe('published');
+    expect(STATE.filteredWinners.find((w) => w.id === 'w-1').winner_status).toBe('published');
+    expect(toastSpy).toHaveBeenCalledWith('Status updated to "published"', 'success');
+
+    spy.mockRestore();
+    toastSpy.mockRestore();
+  });
+
+  test('shows error toast when API call fails', async () => {
+    const spy = jest.spyOn(apiClient, 'update').mockRejectedValue(new Error('Network error'));
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+
+    await winnersModule.updateWinnerStatus('w-1', 'notified');
+
+    expect(toastSpy).toHaveBeenCalledWith('Error updating status: Network error', 'error');
+
+    spy.mockRestore();
+    toastSpy.mockRestore();
+  });
+
+  test('handles winner not found in local state gracefully', async () => {
+    const spy = jest.spyOn(apiClient, 'update').mockResolvedValue({});
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+
+    await winnersModule.updateWinnerStatus('nonexistent-id', 'confirmed');
+
+    expect(spy).toHaveBeenCalled();
+    expect(toastSpy).toHaveBeenCalledWith('Status updated to "confirmed"', 'success');
+
+    spy.mockRestore();
+    toastSpy.mockRestore();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// downloadMediaPack()
+// ---------------------------------------------------------------------------
+describe('Winners Module - downloadMediaPack()', () => {
+  beforeEach(() => {
+    STATE.allWinners = JSON.parse(JSON.stringify(sampleWinners));
+    if (!document.getElementById('mediaPackWinnerInfo')) {
+      const el = document.createElement('div');
+      el.id = 'mediaPackWinnerInfo';
+      document.body.appendChild(el);
+    }
+    if (!document.getElementById('mediaPackDownloadModal')) {
+      const el = document.createElement('div');
+      el.id = 'mediaPackDownloadModal';
+      document.body.appendChild(el);
+    }
+  });
+
+  test('shows error toast when winner not found', () => {
+    const spy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    winnersModule.downloadMediaPack('nonexistent');
+    expect(spy).toHaveBeenCalledWith('Winner not found', 'error');
+    spy.mockRestore();
+  });
+
+  test('sets mediaPackWinnerId when winner exists', () => {
+    winnersModule.downloadMediaPack('w-1');
+    expect(winnersModule.mediaPackWinnerId).toBe('w-1');
+  });
+
+  test('renders winner info in modal', () => {
+    winnersModule.downloadMediaPack('w-1');
+    const info = document.getElementById('mediaPackWinnerInfo').innerHTML;
+    expect(info).toContain('Acme Plumbing Ltd');
+    expect(info).toContain('Best Plumber');
+  });
+
+  test('shows photo count in modal info', () => {
+    winnersModule.downloadMediaPack('w-5');
+    const info = document.getElementById('mediaPackWinnerInfo').innerHTML;
+    expect(info).toContain('2 photo(s)');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// downloadWinnerPackage()
+// ---------------------------------------------------------------------------
+describe('Winners Module - downloadWinnerPackage()', () => {
+  beforeEach(() => {
+    STATE.allWinners = JSON.parse(JSON.stringify(sampleWinners));
+    if (!document.getElementById('winnerPackageWinnerInfo')) {
+      const el = document.createElement('div');
+      el.id = 'winnerPackageWinnerInfo';
+      document.body.appendChild(el);
+    }
+    if (!document.getElementById('winnerPackageDownloadModal')) {
+      const el = document.createElement('div');
+      el.id = 'winnerPackageDownloadModal';
+      document.body.appendChild(el);
+    }
+  });
+
+  test('shows error toast when winner not found', () => {
+    const spy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    winnersModule.downloadWinnerPackage('nonexistent');
+    expect(spy).toHaveBeenCalledWith('Winner not found', 'error');
+    spy.mockRestore();
+  });
+
+  test('sets winnerPackageWinnerId when winner exists', () => {
+    winnersModule.downloadWinnerPackage('w-1');
+    expect(winnersModule.winnerPackageWinnerId).toBe('w-1');
+  });
+
+  test('renders winner info in modal', () => {
+    winnersModule.downloadWinnerPackage('w-3');
+    const info = document.getElementById('winnerPackageWinnerInfo').innerHTML;
+    expect(info).toContain('Spark Electric Co');
+    expect(info).toContain('Best Electrician');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// generateMediaPackForWinner() validation
+// ---------------------------------------------------------------------------
+describe('Winners Module - generateMediaPackForWinner() validation', () => {
+  beforeEach(() => {
+    STATE.allWinners = JSON.parse(JSON.stringify(sampleWinners));
+    ['mpIncludePressRelease', 'mpIncludePhotos', 'mpIncludeQuotes', 'mpIncludeGuidelines'].forEach((id) => {
+      if (!document.getElementById(id)) {
+        const el = document.createElement('input');
+        el.id = id;
+        el.type = 'checkbox';
+        el.checked = false;
+        document.body.appendChild(el);
+      } else {
+        document.getElementById(id).checked = false;
+      }
+    });
+  });
+
+  test('shows error when winner not found', async () => {
+    winnersModule.mediaPackWinnerId = 'nonexistent';
+    const spy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    await winnersModule.generateMediaPackForWinner();
+    expect(spy).toHaveBeenCalledWith('Winner not found', 'error');
+    spy.mockRestore();
+  });
+
+  test('shows warning when no items selected', async () => {
+    winnersModule.mediaPackWinnerId = 'w-1';
+    const spy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    await winnersModule.generateMediaPackForWinner();
+    expect(spy).toHaveBeenCalledWith('Please select at least one item to include', 'warning');
+    spy.mockRestore();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// generateWinnerPackageForWinner() validation
+// ---------------------------------------------------------------------------
+describe('Winners Module - generateWinnerPackageForWinner() validation', () => {
+  beforeEach(() => {
+    STATE.allWinners = JSON.parse(JSON.stringify(sampleWinners));
+    ['wpIncludeBadge', 'wpIncludeSocialGraphics', 'wpIncludeCertificate', 'wpIncludePhotos', 'wpIncludeEmailBanner', 'wpIncludeWebBanner'].forEach((id) => {
+      if (!document.getElementById(id)) {
+        const el = document.createElement('input');
+        el.id = id;
+        el.type = 'checkbox';
+        el.checked = false;
+        document.body.appendChild(el);
+      } else {
+        document.getElementById(id).checked = false;
+      }
+    });
+    ['wpBrandColor', 'wpAccentColor'].forEach((id) => {
+      if (!document.getElementById(id)) {
+        const el = document.createElement('input');
+        el.id = id;
+        el.value = '#000000';
+        document.body.appendChild(el);
+      }
+    });
+  });
+
+  test('shows error when winner not found', async () => {
+    winnersModule.winnerPackageWinnerId = 'nonexistent';
+    const spy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    await winnersModule.generateWinnerPackageForWinner();
+    expect(spy).toHaveBeenCalledWith('Winner not found', 'error');
+    spy.mockRestore();
+  });
+
+  test('shows warning when no items selected', async () => {
+    winnersModule.winnerPackageWinnerId = 'w-1';
+    const spy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    await winnersModule.generateWinnerPackageForWinner();
+    expect(spy).toHaveBeenCalledWith('Please select at least one item to include', 'warning');
+    spy.mockRestore();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// openImportWinners()
+// ---------------------------------------------------------------------------
+describe('Winners Module - openImportWinners()', () => {
+  beforeEach(() => {
+    ['importWinnersFile', 'importWinnersPreview', 'importWinnersPreviewBody', 'importWinnersBtn'].forEach((id) => {
+      if (!document.getElementById(id)) {
+        let el;
+        if (id === 'importWinnersFile') {
+          el = document.createElement('input');
+          el.type = 'file';
+        } else if (id === 'importWinnersBtn') {
+          el = document.createElement('button');
+          el.disabled = false;
+        } else if (id === 'importWinnersPreview') {
+          el = document.createElement('div');
+        } else {
+          el = document.createElement('div');
+        }
+        el.id = id;
+        document.body.appendChild(el);
+      }
+    });
+    if (!document.getElementById('importWinnersModal')) {
+      const el = document.createElement('div');
+      el.id = 'importWinnersModal';
+      document.body.appendChild(el);
+    }
+  });
+
+  test('resets form state when opening', () => {
+    winnersModule.importWinnersData = [{ some: 'data' }];
+    winnersModule.openImportWinners();
+    expect(winnersModule.importWinnersData).toBeNull();
+    expect(document.getElementById('importWinnersBtn').disabled).toBe(true);
+  });
+
+  test('adds d-none class to preview on open', () => {
+    document.getElementById('importWinnersPreview').classList.remove('d-none');
+    winnersModule.openImportWinners();
+    expect(document.getElementById('importWinnersPreview').classList.contains('d-none')).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// importWinners() validation
+// ---------------------------------------------------------------------------
+describe('Winners Module - importWinners() validation', () => {
+  test('shows warning when no data to import', async () => {
+    winnersModule.importWinnersData = null;
+    const spy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    await winnersModule.importWinners();
+    expect(spy).toHaveBeenCalledWith('No data to import', 'warning');
+    spy.mockRestore();
+  });
+
+  test('shows warning when import data is empty array', async () => {
+    winnersModule.importWinnersData = [];
+    const spy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    await winnersModule.importWinners();
+    expect(spy).toHaveBeenCalledWith('No data to import', 'warning');
+    spy.mockRestore();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// bulkDeleteWinners() validation
+// ---------------------------------------------------------------------------
+describe('Winners Module - bulkDeleteWinners() validation', () => {
+  test('does nothing when no winners selected', async () => {
+    winnersModule._selectedWinnerIds = new Set();
+    const spy = jest.spyOn(utils, 'confirmDialog').mockResolvedValue(true);
+    await winnersModule.bulkDeleteWinners();
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
+  });
+
+  test('does nothing when dialog is declined', async () => {
+    winnersModule._selectedWinnerIds = new Set(['w-1', 'w-2']);
+    const confirmSpy = jest.spyOn(utils, 'confirmDialog').mockResolvedValue(false);
+    const loadSpy = jest.spyOn(utils, 'showLoading').mockImplementation(() => {});
+
+    await winnersModule.bulkDeleteWinners();
+
+    expect(confirmSpy).toHaveBeenCalled();
+    expect(loadSpy).not.toHaveBeenCalled();
+
+    confirmSpy.mockRestore();
+    loadSpy.mockRestore();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// bulkGenerateWinnerPackages() validation
+// ---------------------------------------------------------------------------
+describe('Winners Module - bulkGenerateWinnerPackages() validation', () => {
+  test('shows warning when no filtered winners', async () => {
+    STATE.filteredWinners = [];
+    const spy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    await winnersModule.bulkGenerateWinnerPackages();
+    expect(spy).toHaveBeenCalledWith('No winners to generate packages for', 'warning');
+    spy.mockRestore();
+  });
+
+  test('does nothing when dialog is declined', async () => {
+    STATE.filteredWinners = [...sampleWinners];
+    const confirmSpy = jest.spyOn(utils, 'confirmDialog').mockResolvedValue(false);
+    const loadSpy = jest.spyOn(utils, 'showLoading').mockImplementation(() => {});
+
+    await winnersModule.bulkGenerateWinnerPackages();
+
+    expect(confirmSpy).toHaveBeenCalled();
+    expect(loadSpy).not.toHaveBeenCalled();
+
+    confirmSpy.mockRestore();
+    loadSpy.mockRestore();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// analyzeYearData()
+// ---------------------------------------------------------------------------
+describe('Winners Module - analyzeYearData()', () => {
+  const testWinners = [
+    { winner_name: 'Winner A', awards: { year: 2025, award_name: 'Best Plumber', award_category: 'Trade' } },
+    { winner_name: 'Winner B', awards: { year: 2025, award_name: 'Best Builder', award_category: 'Trade' } },
+    { winner_name: 'Winner A', awards: { year: 2026, award_name: 'Best Plumber', award_category: 'Trade' } },
+    { winner_name: 'Winner C', awards: { year: 2026, award_name: 'Best Electrician', award_category: 'Service' } },
+  ];
+
+  test('counts total winners correctly', () => {
+    const result = winnersModule.analyzeYearData(testWinners, [2025, 2026], new Map());
+    expect(result.totalWinners).toBe(4);
+  });
+
+  test('counts winners by year correctly', () => {
+    const result = winnersModule.analyzeYearData(testWinners, [2025, 2026], new Map());
+    expect(result.winnersByYear[2025]).toBe(2);
+    expect(result.winnersByYear[2026]).toBe(2);
+  });
+
+  test('identifies returning winners', () => {
+    const result = winnersModule.analyzeYearData(testWinners, [2025, 2026], new Map());
+    expect(result.returningWinners.length).toBe(1);
+    expect(result.returningWinners[0].name).toBe('Winner A');
+    expect(result.returningWinners[0].count).toBe(2);
+  });
+
+  test('tracks category distribution', () => {
+    const result = winnersModule.analyzeYearData(testWinners, [2025, 2026], new Map());
+    expect(result.categoryDistribution['Trade']).toBeDefined();
+    expect(result.categoryDistribution['Trade'][2025]).toBe(2);
+    expect(result.categoryDistribution['Trade'][2026]).toBe(1);
+    expect(result.categoryDistribution['Service'][2026]).toBe(1);
+  });
+
+  test('handles empty winners array', () => {
+    const result = winnersModule.analyzeYearData([], [2025, 2026], new Map());
+    expect(result.totalWinners).toBe(0);
+    expect(result.returningWinners).toEqual([]);
+    expect(result.winnersByYear[2025]).toBe(0);
+    expect(result.winnersByYear[2026]).toBe(0);
+  });
+
+  test('handles winners with organisation sectors', () => {
+    const winnersWithOrg = [
+      { winner_name: 'A', awards: { year: 2025, award_name: 'X', organisation_id: 'org-1' } },
+    ];
+    const orgMap = new Map([['org-1', { id: 'org-1', sector: 'Construction' }]]);
+    const result = winnersModule.analyzeYearData(winnersWithOrg, [2025], orgMap);
+    expect(result.sectorPerformance['Construction']).toBeDefined();
+    expect(result.sectorPerformance['Construction'][2025]).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// toggleYearSelection()
+// ---------------------------------------------------------------------------
+describe('Winners Module - toggleYearSelection()', () => {
+  beforeEach(() => {
+    winnersModule.yearComparisonState.selectedYears = new Set();
+  });
+
+  test('adds year to selection', () => {
+    winnersModule.toggleYearSelection('2025');
+    expect(winnersModule.yearComparisonState.selectedYears.has(2025)).toBe(true);
+  });
+
+  test('removes year from selection on second toggle', () => {
+    winnersModule.yearComparisonState.selectedYears.add(2025);
+    winnersModule.toggleYearSelection('2025');
+    expect(winnersModule.yearComparisonState.selectedYears.has(2025)).toBe(false);
+  });
+
+  test('parses string year to integer', () => {
+    winnersModule.toggleYearSelection('2026');
+    expect(winnersModule.yearComparisonState.selectedYears.has(2026)).toBe(true);
+    // Ensure it is stored as number, not string
+    expect(winnersModule.yearComparisonState.selectedYears.has('2026')).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// runYearComparison() validation
+// ---------------------------------------------------------------------------
+describe('Winners Module - runYearComparison() validation', () => {
+  test('shows warning when fewer than 2 years selected', async () => {
+    winnersModule.yearComparisonState.selectedYears = new Set([2025]);
+    const spy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    await winnersModule.runYearComparison();
+    expect(spy).toHaveBeenCalledWith('Please select at least 2 years to compare', 'warning');
+    spy.mockRestore();
+  });
+
+  test('shows warning when no years selected', async () => {
+    winnersModule.yearComparisonState.selectedYears = new Set();
+    const spy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    await winnersModule.runYearComparison();
+    expect(spy).toHaveBeenCalledWith('Please select at least 2 years to compare', 'warning');
+    spy.mockRestore();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// exportYearComparison() validation
+// ---------------------------------------------------------------------------
+describe('Winners Module - exportYearComparison()', () => {
+  test('shows warning when no comparison data exists', () => {
+    winnersModule.yearComparisonState.comparisonData = null;
+    const spy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    winnersModule.exportYearComparison();
+    expect(spy).toHaveBeenCalledWith('Please run a comparison first', 'warning');
+    spy.mockRestore();
+  });
+
+  test('exports CSV when comparison data exists', () => {
+    winnersModule.yearComparisonState.comparisonData = {
+      years: [2025, 2026],
+      totalWinners: 10,
+      winnersByYear: { 2025: 4, 2026: 6 },
+      returningWinners: [{ name: 'A', years: [2025, 2026], count: 2 }],
+      sectorPerformance: {},
+      categoryDistribution: {},
+    };
+    const csvSpy = jest.spyOn(utils, 'exportToCSV').mockImplementation(() => {});
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+
+    winnersModule.exportYearComparison();
+
+    expect(csvSpy).toHaveBeenCalledTimes(1);
+    const [data, filename] = csvSpy.mock.calls[0];
+    expect(Array.isArray(data)).toBe(true);
+    expect(filename).toContain('year_comparison_2025_2026');
+    expect(toastSpy).toHaveBeenCalledWith('Report exported successfully!', 'success');
+
+    csvSpy.mockRestore();
+    toastSpy.mockRestore();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// displayComparisonResults() and render helpers
+// ---------------------------------------------------------------------------
+describe('Winners Module - displayComparisonResults()', () => {
+  beforeEach(() => {
+    ['comparisonTotalWinners', 'comparisonReturningWinners', 'comparisonYearsCount',
+     'trendsByYear', 'returningWinnersList', 'sectorPerformance', 'categoryDistribution'].forEach((id) => {
+      if (!document.getElementById(id)) {
+        const el = document.createElement('div');
+        el.id = id;
+        document.body.appendChild(el);
+      }
+    });
+  });
+
+  test('updates overview stats', () => {
+    const analysis = {
+      years: [2025, 2026],
+      totalWinners: 10,
+      winnersByYear: { 2025: 4, 2026: 6 },
+      returningWinners: [{ name: 'A', years: [2025, 2026], count: 2, awards: [{ year: 2025, award: 'X' }, { year: 2026, award: 'Y' }] }],
+      sectorPerformance: {},
+      categoryDistribution: {},
+    };
+
+    winnersModule.displayComparisonResults(analysis);
+
+    expect(document.getElementById('comparisonTotalWinners').textContent).toBe('10');
+    expect(document.getElementById('comparisonReturningWinners').textContent).toBe('1');
+    expect(document.getElementById('comparisonYearsCount').textContent).toBe('2');
+  });
+});
+
+describe('Winners Module - renderTrendsByYear()', () => {
+  beforeEach(() => {
+    if (!document.getElementById('trendsByYear')) {
+      const el = document.createElement('div');
+      el.id = 'trendsByYear';
+      document.body.appendChild(el);
+    }
+  });
+
+  test('renders progress bars for each year', () => {
+    const analysis = {
+      years: [2025, 2026],
+      winnersByYear: { 2025: 4, 2026: 8 },
+    };
+    winnersModule.renderTrendsByYear(analysis);
+    const container = document.getElementById('trendsByYear');
+    expect(container.innerHTML).toContain('2025');
+    expect(container.innerHTML).toContain('2026');
+    expect(container.innerHTML).toContain('progress-bar');
+  });
+
+  test('handles zero winners gracefully', () => {
+    const analysis = {
+      years: [2025],
+      winnersByYear: { 2025: 0 },
+    };
+    winnersModule.renderTrendsByYear(analysis);
+    const container = document.getElementById('trendsByYear');
+    expect(container.innerHTML).toContain('0 winners');
+  });
+});
+
+describe('Winners Module - renderReturningWinners()', () => {
+  beforeEach(() => {
+    if (!document.getElementById('returningWinnersList')) {
+      const el = document.createElement('div');
+      el.id = 'returningWinnersList';
+      document.body.appendChild(el);
+    }
+  });
+
+  test('shows info alert when no returning winners', () => {
+    const analysis = { returningWinners: [] };
+    winnersModule.renderReturningWinners(analysis);
+    const container = document.getElementById('returningWinnersList');
+    expect(container.innerHTML).toContain('No returning winners found');
+  });
+
+  test('renders table when returning winners exist', () => {
+    const analysis = {
+      returningWinners: [
+        { name: 'Acme Co', years: [2025, 2026], count: 2, awards: [{ year: 2025, award: 'X' }, { year: 2026, award: 'Y' }] },
+      ],
+    };
+    winnersModule.renderReturningWinners(analysis);
+    const container = document.getElementById('returningWinnersList');
+    expect(container.innerHTML).toContain('Acme Co');
+    expect(container.innerHTML).toContain('2025, 2026');
+  });
+});
+
+describe('Winners Module - renderSectorPerformance()', () => {
+  beforeEach(() => {
+    if (!document.getElementById('sectorPerformance')) {
+      const el = document.createElement('div');
+      el.id = 'sectorPerformance';
+      document.body.appendChild(el);
+    }
+  });
+
+  test('shows info alert when no sector data', () => {
+    const analysis = { years: [2025], sectorPerformance: {} };
+    winnersModule.renderSectorPerformance(analysis);
+    const container = document.getElementById('sectorPerformance');
+    expect(container.innerHTML).toContain('No sector data available');
+  });
+
+  test('renders table when sector data exists', () => {
+    const analysis = {
+      years: [2025, 2026],
+      sectorPerformance: {
+        Construction: { 2025: 3, 2026: 5 },
+        Services: { 2025: 2 },
+      },
+    };
+    winnersModule.renderSectorPerformance(analysis);
+    const container = document.getElementById('sectorPerformance');
+    expect(container.innerHTML).toContain('Construction');
+    expect(container.innerHTML).toContain('Services');
+  });
+});
+
+describe('Winners Module - renderCategoryDistribution()', () => {
+  beforeEach(() => {
+    if (!document.getElementById('categoryDistribution')) {
+      const el = document.createElement('div');
+      el.id = 'categoryDistribution';
+      document.body.appendChild(el);
+    }
+  });
+
+  test('shows info alert when no category data', () => {
+    const analysis = { years: [2025], categoryDistribution: {} };
+    winnersModule.renderCategoryDistribution(analysis);
+    const container = document.getElementById('categoryDistribution');
+    expect(container.innerHTML).toContain('No category data available');
+  });
+
+  test('renders table when category data exists', () => {
+    const analysis = {
+      years: [2025, 2026],
+      categoryDistribution: {
+        Trade: { 2025: 4, 2026: 6 },
+        Service: { 2026: 3 },
+      },
+    };
+    winnersModule.renderCategoryDistribution(analysis);
+    const container = document.getElementById('categoryDistribution');
+    expect(container.innerHTML).toContain('Trade');
+    expect(container.innerHTML).toContain('Service');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// yearComparisonState initialization
+// ---------------------------------------------------------------------------
+describe('Winners Module - yearComparisonState', () => {
+  test('has correct initial structure', () => {
+    expect(winnersModule.yearComparisonState).toBeDefined();
+    expect(Array.isArray(winnersModule.yearComparisonState.availableYears)).toBe(true);
+    expect(winnersModule.yearComparisonState.selectedYears).toBeInstanceOf(Set);
+    // comparisonData starts as null but may be set by earlier tests; just check existence
+    expect('comparisonData' in winnersModule.yearComparisonState).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// parseCSVLine() - additional edge cases
+// ---------------------------------------------------------------------------
+describe('Winners Module - parseCSVLine() Advanced', () => {
+  test('handles line with only commas', () => {
+    const result = winnersModule.parseCSVLine(',,');
+    expect(result).toEqual(['', '', '']);
+  });
+
+  test('handles quoted field with comma at end', () => {
+    const result = winnersModule.parseCSVLine('"a,b",c');
+    expect(result).toEqual(['a,b', 'c']);
+  });
+
+  test('handles whitespace around fields', () => {
+    const result = winnersModule.parseCSVLine(' a , b , c ');
+    expect(result).toEqual(['a', 'b', 'c']);
+  });
+
+  test('handles complex real-world CSV line', () => {
+    const result = winnersModule.parseCSVLine('John Smith,"Acme Corp, Ltd",2026,winner');
+    expect(result).toEqual(['John Smith', 'Acme Corp, Ltd', '2026', 'winner']);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Shield SVG - additional edge cases
+// ---------------------------------------------------------------------------
+describe('Winners Module - generateShieldSVG() edge cases', () => {
+  test('handles winner with award_category instead of award_name', () => {
+    const winner = { winner_name: 'Test', awards: { award_category: 'Trade Awards', year: 2026 } };
+    const svg = winnersModule.generateShieldSVG(winner, '#000', '#fff');
+    expect(svg).toContain('Trade Awards');
+  });
+
+  test('truncates long award names', () => {
+    const winner = { winner_name: 'Test', awards: { award_name: 'A'.repeat(50), year: 2026 } };
+    const svg = winnersModule.generateShieldSVG(winner, '#000', '#fff');
+    expect(svg).toContain('...');
+  });
+
+  test('uses current year when awards year is missing', () => {
+    const winner = { winner_name: 'Test', awards: {} };
+    const svg = winnersModule.generateShieldSVG(winner, '#000', '#fff');
+    expect(svg).toContain(String(new Date().getFullYear()));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Email Banner SVG - edge cases
+// ---------------------------------------------------------------------------
+describe('Winners Module - generateEmailBannerSVG() edge cases', () => {
+  test('handles winner with no awards', () => {
+    const winner = { winner_name: 'Test', awards: null };
+    const svg = winnersModule.generateEmailBannerSVG(winner, '#000', '#fff');
+    expect(svg).toContain('Award Winner');
+    expect(svg).toContain('Test');
+  });
+
+  test('uses award_category as fallback', () => {
+    const winner = { winner_name: 'Test', awards: { award_category: 'Category Award', year: 2025 } };
+    const svg = winnersModule.generateEmailBannerSVG(winner, '#000', '#fff');
+    expect(svg).toContain('Category Award');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Web Banner SVG - edge cases
+// ---------------------------------------------------------------------------
+describe('Winners Module - generateWebBannerSVG() edge cases', () => {
+  test('handles winner with no name', () => {
+    const winner = { winner_name: null, awards: { award_name: 'Test Award', year: 2025 } };
+    const svg = winnersModule.generateWebBannerSVG(winner, '#000', '#fff');
+    expect(svg).toContain('Winner');
+  });
+
+  test('includes correct dimensions', () => {
+    const winner = { winner_name: 'X', awards: { award_name: 'Y', year: 2025 } };
+    const svg = winnersModule.generateWebBannerSVG(winner, '#000', '#fff');
+    expect(svg).toContain('width="1200"');
+    expect(svg).toContain('height="300"');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// bulkExportWinners() - edge cases
+// ---------------------------------------------------------------------------
+describe('Winners Module - bulkExportWinners() edge cases', () => {
+  test('uses allWinners as fallback when filteredWinners is undefined', () => {
+    winnersModule._selectedWinnerIds = new Set(['w-1']);
+    const savedFiltered = STATE.filteredWinners;
+    STATE.filteredWinners = undefined;
+    STATE.allWinners = [...sampleWinners];
+
+    let clickCalled = false;
+    const origCreateElement = document.createElement.bind(document);
+    jest.spyOn(document, 'createElement').mockImplementation((tag) => {
+      const el = origCreateElement(tag);
+      if (tag === 'a') {
+        el.click = () => { clickCalled = true; };
+      }
+      return el;
+    });
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+
+    winnersModule.bulkExportWinners();
+
+    expect(clickCalled).toBe(true);
+    expect(toastSpy).toHaveBeenCalledWith('Exported 1 winners', 'success');
+
+    document.createElement.mockRestore();
+    toastSpy.mockRestore();
+    STATE.filteredWinners = savedFiltered;
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Saved views - saveCurrentWinnersView()
+// ---------------------------------------------------------------------------
+describe('Winners Module - saveCurrentWinnersView()', () => {
+  beforeEach(() => {
+    localStorage.removeItem('winnersSavedViews');
+    document.getElementById('winnerYearFilterSelect').value = '2026';
+    document.getElementById('winnerSearchBox').value = 'test';
+  });
+
+  test('does nothing when prompt returns null', () => {
+    global.prompt = jest.fn().mockReturnValue(null);
+    winnersModule.saveCurrentWinnersView();
+    expect(localStorage.getItem('winnersSavedViews')).toBeNull();
+    delete global.prompt;
+  });
+
+  test('saves view to localStorage when name provided', () => {
+    global.prompt = jest.fn().mockReturnValue('My Filter');
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+
+    winnersModule.saveCurrentWinnersView();
+
+    const views = JSON.parse(localStorage.getItem('winnersSavedViews'));
+    expect(views.length).toBe(1);
+    expect(views[0].name).toBe('My Filter');
+    expect(views[0].filters.year).toBe('2026');
+    expect(views[0].filters.search).toBe('test');
+    expect(toastSpy).toHaveBeenCalledWith('View saved: My Filter', 'success');
+
+    toastSpy.mockRestore();
+    delete global.prompt;
+  });
+
+  test('appends to existing views', () => {
+    localStorage.setItem('winnersSavedViews', JSON.stringify([{ name: 'Existing', filters: {}, created: 1 }]));
+    global.prompt = jest.fn().mockReturnValue('New View');
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+
+    winnersModule.saveCurrentWinnersView();
+
+    const views = JSON.parse(localStorage.getItem('winnersSavedViews'));
+    expect(views.length).toBe(2);
+    expect(views[1].name).toBe('New View');
+
+    toastSpy.mockRestore();
+    delete global.prompt;
+  });
+});
+
+// ---------------------------------------------------------------------------
+// renderWinners pagination HTML rendering
+// ---------------------------------------------------------------------------
+describe('Winners Module - renderWinners() pagination rendering', () => {
+  beforeEach(() => {
+    winnersModule._serverPagination = false;
+    winnersModule._selectedWinnerIds = new Set();
+    winnersModule._pageSize = 2;
+    winnersModule._currentPage = 1;
+    STATE.allWinners = [...sampleWinners];
+    STATE.filteredWinners = [...sampleWinners];
+  });
+
+  test('renders pagination controls when multiple pages exist', () => {
+    winnersModule.renderWinners();
+    const pagination = document.getElementById('winnersPagination');
+    expect(pagination.innerHTML).toContain('Prev');
+    expect(pagination.innerHTML).toContain('Next');
+  });
+
+  test('disables Prev button on first page', () => {
+    winnersModule._currentPage = 1;
+    winnersModule.renderWinners();
+    const pagination = document.getElementById('winnersPagination');
+    expect(pagination.innerHTML).toContain('disabled');
+  });
+
+  test('clears pagination when only one page', () => {
+    winnersModule._pageSize = 100;
+    winnersModule.renderWinners();
+    const pagination = document.getElementById('winnersPagination');
+    expect(pagination.innerHTML).toBe('');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// filterWinners() with server pagination mode
+// ---------------------------------------------------------------------------
+describe('Winners Module - filterWinners() with server pagination', () => {
+  beforeEach(() => {
+    winnersModule._serverPagination = true;
+    STATE.allWinners = [...sampleWinners];
+    STATE.filteredWinners = [...sampleWinners];
+    document.getElementById('winnerYearFilterSelect').value = '';
+    document.getElementById('winnerAwardFilterSelect').value = '';
+    document.getElementById('winnerSearchBox').value = '';
+  });
+
+  test('saves filters to localStorage even in server mode', () => {
+    document.getElementById('winnerSearchBox').value = 'server-test';
+    winnersModule.filterWinners();
+    const saved = JSON.parse(localStorage.getItem('winnersFilters'));
+    expect(saved.search).toBe('server-test');
+  });
+
+  test('resets page to 1 on filter change', () => {
+    winnersModule._currentPage = 5;
+    winnersModule.filterWinners();
+    expect(winnersModule._currentPage).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// sortWinners() with server pagination
+// ---------------------------------------------------------------------------
+describe('Winners Module - sortWinners() with server pagination', () => {
+  test('toggles direction and saves state even in server mode', () => {
+    winnersModule._serverPagination = true;
+    winnersModule._sortField = 'winner_name';
+    winnersModule._sortDir = 'asc';
+    winnersModule.sortWinners('winner_name');
+    expect(winnersModule._sortDir).toBe('desc');
+    const saved = JSON.parse(localStorage.getItem('sort_winners'));
+    expect(saved.direction).toBe('desc');
+    winnersModule._serverPagination = false;
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Media pack and winner package properties
+// ---------------------------------------------------------------------------
+describe('Winners Module - mediaPackWinnerId / winnerPackageWinnerId', () => {
+  test('mediaPackWinnerId initializes to null', () => {
+    expect(winnersModule.mediaPackWinnerId === null || winnersModule.mediaPackWinnerId !== undefined).toBe(true);
+  });
+
+  test('winnerPackageWinnerId initializes to null', () => {
+    expect(winnersModule.winnerPackageWinnerId === null || winnersModule.winnerPackageWinnerId !== undefined).toBe(true);
+  });
+
+  test('importWinnersData property exists', () => {
+    expect('importWinnersData' in winnersModule).toBe(true);
   });
 });

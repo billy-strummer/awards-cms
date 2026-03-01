@@ -335,7 +335,7 @@ describe('Ticket Module - saveTicketType success', () => {
   });
 
   test('falls back to localStorage on DB error', async () => {
-    utils.protectModalDuringSave = jest.fn(async (modalId, fn) => {
+    utils.protectModalDuringSave = jest.fn(async (_modalId, _fn) => {
       throw new Error('DB err');
     });
     const toastSpy = jest.spyOn(utils, 'showToast');
@@ -448,7 +448,7 @@ describe('Ticket Module - createTicketCheckout', () => {
       json: () => Promise.resolve({ url: 'https://checkout.stripe.com/session' }),
     });
     // Save and mock location
-    const originalHref = window.location.href;
+    const _originalHref = window.location.href;
 
     await ticketModule.createTicketCheckout('ev1');
     expect(global.fetch).toHaveBeenCalledWith(

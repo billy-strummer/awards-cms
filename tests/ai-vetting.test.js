@@ -326,7 +326,7 @@ describe('AI Vetting Module - loadVettingResults', () => {
         data: [{ start_time: '2026-01-01T10:00:00Z' }],
       });
     const renderSpy = jest.spyOn(aiVettingModule, 'renderResults').mockImplementation();
-    const summarySpy = jest.spyOn(aiVettingModule, 'updateSummaryCards').mockResolvedValue();
+    const _summarySpy = jest.spyOn(aiVettingModule, 'updateSummaryCards').mockResolvedValue();
 
     await aiVettingModule.loadVettingResults();
     expect(aiVettingModule.allResults).toHaveLength(1);
@@ -335,7 +335,7 @@ describe('AI Vetting Module - loadVettingResults', () => {
   });
 
   test('handles error with retry', async () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+    const _consoleSpy = jest.spyOn(console, 'error').mockImplementation();
     apiClient.select = jest.fn().mockRejectedValue(new Error('DB error'));
     const origShowError = utils.showErrorWithRetry;
     utils.showErrorWithRetry = jest.fn();

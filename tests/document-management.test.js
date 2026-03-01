@@ -256,7 +256,7 @@ describe('Document Module - uploadDocument', () => {
     STATE.currentUser = { email: 'user@test.com' };
 
     const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
-    const result = await documentModule.uploadDocument(mockFile, { category: 'contract', title: 'My Contract' });
+    const _result = await documentModule.uploadDocument(mockFile, { category: 'contract', title: 'My Contract' });
     expect(apiClient.insert).toHaveBeenCalledWith(
       'documents',
       expect.objectContaining({
@@ -293,7 +293,7 @@ describe('Document Module - updateDocument', () => {
   test('updates document metadata', async () => {
     apiClient.update = jest.fn().mockResolvedValue({ data: { id: 'doc-1' } });
     const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
-    const result = await documentModule.updateDocument('doc-1', { title: 'Updated Title' });
+    const _result = await documentModule.updateDocument('doc-1', { title: 'Updated Title' });
     expect(apiClient.update).toHaveBeenCalledWith(
       'documents',
       'doc-1',
@@ -345,7 +345,7 @@ describe('Document Module - submitForApproval', () => {
   test('updates status to pending_approval', async () => {
     apiClient.update = jest.fn().mockResolvedValue({ data: { id: 'doc-1', status: 'pending_approval' } });
     const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
-    const result = await documentModule.submitForApproval('doc-1');
+    const _result = await documentModule.submitForApproval('doc-1');
     expect(apiClient.update).toHaveBeenCalledWith(
       'documents',
       'doc-1',

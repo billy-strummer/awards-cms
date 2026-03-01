@@ -132,7 +132,7 @@ const entryFormApp = global.window.entryFormApp;
 // ---------------------------------------------------------------------------
 
 /** Set DOM input values for a given step */
-function fillStep4() {
+function _fillStep4() {
   document.getElementById('companyName').value = 'Acme Builders Ltd';
   document.getElementById('companyWebsite').value = 'https://acme.co.uk';
   document.getElementById('yearsInField').value = '1-5';

@@ -537,7 +537,7 @@ describe('Notifications Module - renderNotificationDropdown', () => {
 describe('Notifications Module - _isPrefEnabled', () => {
   test('returns true when no preference found', async () => {
     // Restore original _isPrefEnabled
-    const originalFn =
+    const _originalFn =
       Object.getPrototypeOf(notificationsModule)._isPrefEnabled ||
       notificationsModule.constructor.prototype?._isPrefEnabled;
     // Directly test from module if needed - use original stored reference

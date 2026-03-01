@@ -428,7 +428,7 @@ describe('GDPR Module - processRequest', () => {
     utils.confirmDialog = jest.fn().mockResolvedValue(true);
     apiClient.update = jest.fn().mockResolvedValue({});
     const exportSpy = jest.spyOn(gdprModule, '_exportEntityData').mockResolvedValue();
-    const loadSpy = jest.spyOn(gdprModule, 'loadPendingRequests').mockResolvedValue();
+    const _loadSpy = jest.spyOn(gdprModule, 'loadPendingRequests').mockResolvedValue();
     const toastSpy = jest.spyOn(utils, 'showToast');
 
     await gdprModule.processRequest('r1', 'export', 'entity-1');

@@ -479,7 +479,7 @@ describe('Automation Scheduler', () => {
 
     test('handles database error gracefully', async () => {
       // Make mockFrom throw to trigger the catch block
-      const originalImpl = mockFrom.getMockImplementation();
+      const _originalImpl = mockFrom.getMockImplementation();
       mockFrom.mockImplementationOnce(() => {
         throw new Error('DB error');
       });

@@ -1209,9 +1209,9 @@ describe('Winner Pipeline - additional branch coverage', () => {
     jest.spyOn(apiClient, 'select').mockResolvedValue({
       data: [{ entry_title: 'Entry', organisation_id: 'org-1' }],
     });
-    let insertCallCount = 0;
-    jest.spyOn(apiClient, 'insert').mockImplementation(async (table, data) => {
-      insertCallCount++;
+    let _insertCallCount = 0;
+    jest.spyOn(apiClient, 'insert').mockImplementation(async (table, _data) => {
+      _insertCallCount++;
       if (table === 'activity_logs') throw new Error('audit log failed');
       return { data: [{}] };
     });

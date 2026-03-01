@@ -2175,7 +2175,7 @@ describe('Email Builder - exportPlainText()', () => {
 
   test('converts HTML to plain text', () => {
     emailBuilder.addBlock('text');
-    const spy = jest.fn();
+    const _spy = jest.fn();
     const origCreateObj = URL.createObjectURL;
     URL.createObjectURL = jest.fn(() => 'blob://mock');
     emailBuilder.exportPlainText();

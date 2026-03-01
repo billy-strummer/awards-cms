@@ -1667,3 +1667,1026 @@ describe('Utils - formatCurrency / noop / misc', () => {
     expect(utils.loadSortState('nonexistentSort')).toBeNull();
   });
 });
+
+// ==========================================
+// NEW TESTS FOR COVERAGE IMPROVEMENT
+// ==========================================
+
+describe('Utils - copyToClipboard()', () => {
+  let origClipboard;
+
+  beforeEach(() => {
+    origClipboard = navigator.clipboard;
+    jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    Object.defineProperty(navigator, 'clipboard', { value: origClipboard, writable: true, configurable: true });
+    utils.showToast.mockRestore();
+  });
+
+  test('uses navigator.clipboard when available', () => {
+    const writeTextMock = jest.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: writeTextMock },
+      writable: true,
+      configurable: true,
+    });
+    utils.copyToClipboard('test text');
+    expect(writeTextMock).toHaveBeenCalledWith('test text');
+  });
+
+  test('calls _fallbackCopy when navigator.clipboard is not available', () => {
+    Object.defineProperty(navigator, 'clipboard', {
+      value: undefined,
+      writable: true,
+      configurable: true,
+    });
+    const spy = jest.spyOn(utils, '_fallbackCopy').mockImplementation(() => {});
+    utils.copyToClipboard('test text');
+    expect(spy).toHaveBeenCalledWith('test text', 'Copied to clipboard!');
+    spy.mockRestore();
+  });
+
+  test('uses custom success message', () => {
+    Object.defineProperty(navigator, 'clipboard', {
+      value: undefined,
+      writable: true,
+      configurable: true,
+    });
+    const spy = jest.spyOn(utils, '_fallbackCopy').mockImplementation(() => {});
+    utils.copyToClipboard('text', 'Custom msg');
+    expect(spy).toHaveBeenCalledWith('text', 'Custom msg');
+    spy.mockRestore();
+  });
+});
+
+describe('Utils - _fallbackCopy()', () => {
+  beforeEach(() => {
+    jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    utils.showToast.mockRestore();
+  });
+
+  test('creates textarea, copies text, and shows success toast', () => {
+    document.execCommand = jest.fn().mockReturnValue(true);
+    utils._fallbackCopy('hello', 'Copied!');
+    expect(document.execCommand).toHaveBeenCalledWith('copy');
+    expect(utils.showToast).toHaveBeenCalledWith('Copied!', 'success');
+  });
+
+  test('shows error toast if execCommand throws', () => {
+    document.execCommand = jest.fn().mockImplementation(() => {
+      throw new Error('Not allowed');
+    });
+    utils._fallbackCopy('hello', 'Copied!');
+    expect(utils.showToast).toHaveBeenCalledWith('Failed to copy to clipboard', 'error');
+  });
+});
+
+describe('Utils - startFormAutoSave()', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    localStorage.removeItem('draft_autoTestForm');
+  });
+
+  afterEach(() => {
+    utils.stopFormAutoSave('autoTestForm');
+    jest.useRealTimers();
+  });
+
+  test('saves form data to localStorage at intervals', () => {
+    const getFormData = jest.fn().mockReturnValue({ field: 'value' });
+    utils.startFormAutoSave('autoTestForm', getFormData, 1000);
+    jest.advanceTimersByTime(1000);
+    expect(getFormData).toHaveBeenCalled();
+    const stored = JSON.parse(localStorage.getItem('draft_autoTestForm'));
+    expect(stored.data.field).toBe('value');
+    expect(stored.savedAt).toBeDefined();
+  });
+
+  test('does not save if getFormData returns null', () => {
+    const getFormData = jest.fn().mockReturnValue(null);
+    utils.startFormAutoSave('autoTestForm', getFormData, 1000);
+    jest.advanceTimersByTime(1000);
+    expect(localStorage.getItem('draft_autoTestForm')).toBeNull();
+  });
+
+  test('handles errors in getFormData gracefully', () => {
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const getFormData = jest.fn().mockImplementation(() => {
+      throw new Error('boom');
+    });
+    utils.startFormAutoSave('autoTestForm', getFormData, 1000);
+    jest.advanceTimersByTime(1000);
+    expect(warnSpy).toHaveBeenCalled();
+    warnSpy.mockRestore();
+  });
+
+  test('replaces previous timer when called again', () => {
+    const fn1 = jest.fn().mockReturnValue({ a: 1 });
+    const fn2 = jest.fn().mockReturnValue({ b: 2 });
+    utils.startFormAutoSave('autoTestForm', fn1, 1000);
+    utils.startFormAutoSave('autoTestForm', fn2, 1000);
+    jest.advanceTimersByTime(1000);
+    expect(fn1).not.toHaveBeenCalled();
+    expect(fn2).toHaveBeenCalled();
+  });
+});
+
+describe('Utils - showDraftRecoveryBanner()', () => {
+  beforeEach(() => {
+    localStorage.removeItem('draft_bannerTestForm');
+  });
+
+  test('returns false when no draft exists', () => {
+    const result = utils.showDraftRecoveryBanner('bannerTestForm', () => {});
+    expect(result).toBe(false);
+  });
+
+  test('returns a banner element when draft exists', () => {
+    localStorage.setItem(
+      'draft_bannerTestForm',
+      JSON.stringify({ data: { x: 1 }, savedAt: Date.now() - 5000 })
+    );
+    const result = utils.showDraftRecoveryBanner('bannerTestForm', () => {});
+    expect(result).toBeTruthy();
+    expect(result.innerHTML).toContain('Unsaved draft found');
+    expect(result.innerHTML).toContain('Restore Draft');
+    expect(result.innerHTML).toContain('Discard');
+  });
+});
+
+describe('Utils - restoreFromTrash()', () => {
+  let originalFetch;
+
+  beforeEach(() => {
+    localStorage.removeItem('trash_testRestoreTable');
+    originalFetch = global.fetch;
+    global.fetch = jest.fn();
+    mockSupabase.auth.getSession.mockResolvedValue({
+      data: { session: { access_token: 'test-token-123' } },
+      error: null,
+    });
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+    mockSupabase.auth.getSession.mockResolvedValue({
+      data: { session: null },
+      error: null,
+    });
+  });
+
+  test('restores record and removes from trash on success', async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ data: [{ id: 'r1' }] }),
+    });
+    // Put an item in trash
+    utils.softDelete('testRestoreTable', { id: 'r1', name: 'Test' });
+    expect(utils.getTrash('testRestoreTable').length).toBe(1);
+    const result = await utils.restoreFromTrash('testRestoreTable', { id: 'r1', name: 'Test', _deletedAt: Date.now() }, STATE.client);
+    expect(result).toBe(true);
+    expect(utils.getTrash('testRestoreTable').length).toBe(0);
+  });
+
+  test('returns false when insert fails', async () => {
+    global.fetch.mockRejectedValue(new Error('insert failed'));
+    const errSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const result = await utils.restoreFromTrash('testRestoreTable', { id: 'r2', _deletedAt: Date.now() }, STATE.client);
+    expect(result).toBe(false);
+    errSpy.mockRestore();
+  });
+});
+
+describe('Utils - undoLastDelete()', () => {
+  let originalFetch;
+
+  beforeEach(() => {
+    localStorage.removeItem('trash_testUndoTable');
+    originalFetch = global.fetch;
+    global.fetch = jest.fn();
+    jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    mockSupabase.auth.getSession.mockResolvedValue({
+      data: { session: { access_token: 'test-token-123' } },
+      error: null,
+    });
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+    utils.showToast.mockRestore();
+    mockSupabase.auth.getSession.mockResolvedValue({
+      data: { session: null },
+      error: null,
+    });
+  });
+
+  test('does nothing if trash is empty', async () => {
+    await utils.undoLastDelete('testUndoTable');
+    expect(utils.showToast).not.toHaveBeenCalled();
+  });
+
+  test('restores last deleted item and shows success toast', async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ data: [{ id: 'u1' }] }),
+    });
+    utils.softDelete('testUndoTable', { id: 'u1', name: 'Item' });
+    await utils.undoLastDelete('testUndoTable');
+    expect(utils.showToast).toHaveBeenCalledWith('Restored successfully', 'success');
+  });
+
+  test('shows error toast when restore fails', async () => {
+    global.fetch.mockRejectedValue(new Error('fail'));
+    const errSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    utils.softDelete('testUndoTable', { id: 'u2', name: 'Item2' });
+    await utils.undoLastDelete('testUndoTable');
+    expect(utils.showToast).toHaveBeenCalledWith('Restore failed', 'error');
+    errSpy.mockRestore();
+  });
+});
+
+describe('Utils - replayPendingQueues()', () => {
+  let originalFetch;
+
+  beforeEach(() => {
+    originalFetch = global.fetch;
+    global.fetch = jest.fn();
+    mockSupabase.auth.getSession.mockResolvedValue({
+      data: { session: { access_token: 'test-token-123' } },
+      error: null,
+    });
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+    localStorage.removeItem('bta_communications_pending');
+    mockSupabase.auth.getSession.mockResolvedValue({
+      data: { session: null },
+      error: null,
+    });
+  });
+
+  test('does nothing when STATE.client is null', async () => {
+    const saved = STATE.client;
+    STATE.client = null;
+    await utils.replayPendingQueues();
+    expect(global.fetch).not.toHaveBeenCalled();
+    STATE.client = saved;
+  });
+
+  test('replays pending items and removes successful ones from localStorage', async () => {
+    localStorage.setItem('bta_communications_pending', JSON.stringify([{ id: 'c1', msg: 'Hello' }]));
+    global.fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ data: [{ id: 'c1' }] }),
+    });
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    await utils.replayPendingQueues();
+    expect(localStorage.getItem('bta_communications_pending')).toBeNull();
+    warnSpy.mockRestore();
+  });
+
+  test('keeps failed items in localStorage', async () => {
+    localStorage.setItem('bta_communications_pending', JSON.stringify([{ id: 'c2', msg: 'Fail' }]));
+    global.fetch.mockRejectedValue(new Error('insert error'));
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    await utils.replayPendingQueues();
+    const remaining = JSON.parse(localStorage.getItem('bta_communications_pending'));
+    expect(remaining.length).toBe(1);
+    warnSpy.mockRestore();
+  });
+});
+
+describe('Utils - renderRecentlyViewed()', () => {
+  beforeEach(() => {
+    localStorage.removeItem('recentlyViewed');
+  });
+
+  test('shows "No recent items" when list is empty', () => {
+    utils.renderRecentlyViewed();
+    const el = document.getElementById('recentlyViewedList');
+    expect(el.innerHTML).toContain('No recent items');
+  });
+
+  test('renders recent items when they exist', () => {
+    utils.trackRecentlyViewed('award', 'a1', 'Best Plumber');
+    utils.renderRecentlyViewed();
+    const el = document.getElementById('recentlyViewedList');
+    expect(el.innerHTML).toContain('Best Plumber');
+  });
+});
+
+describe('Utils - exportToExcel()', () => {
+  beforeEach(() => {
+    jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    global.URL.createObjectURL.mockClear();
+    global.URL.revokeObjectURL.mockClear();
+  });
+
+  afterEach(() => {
+    utils.showToast.mockRestore();
+  });
+
+  test('shows warning toast for empty data', () => {
+    utils.exportToExcel([], 'test');
+    expect(utils.showToast).toHaveBeenCalledWith('No data to export', 'warning');
+  });
+
+  test('shows warning toast for null data', () => {
+    utils.exportToExcel(null, 'test');
+    expect(utils.showToast).toHaveBeenCalledWith('No data to export', 'warning');
+  });
+
+  test('creates download for valid data', () => {
+    const data = [{ name: 'Alice', age: 30 }];
+    utils.exportToExcel(data, 'people');
+    expect(global.URL.createObjectURL).toHaveBeenCalled();
+    expect(utils.showToast).toHaveBeenCalledWith(expect.stringContaining('Exported 1 records'), 'success');
+  });
+
+  test('formats header labels by replacing underscores and capitalizing', () => {
+    let capturedContent = '';
+    const OrigBlob = global.Blob;
+    global.Blob = class extends OrigBlob {
+      constructor(parts, opts) {
+        super(parts, opts);
+        capturedContent = parts.join('');
+      }
+    };
+    const data = [{ first_name: 'Alice', last_name: 'Smith' }];
+    utils.exportToExcel(data, 'test');
+    global.Blob = OrigBlob;
+    expect(capturedContent).toContain('First Name');
+    expect(capturedContent).toContain('Last Name');
+  });
+
+  test('formats date values when formatDates is true', () => {
+    let capturedContent = '';
+    const OrigBlob = global.Blob;
+    global.Blob = class extends OrigBlob {
+      constructor(parts, opts) {
+        super(parts, opts);
+        capturedContent = parts.join('');
+      }
+    };
+    const data = [{ event: 'Test', date: '2026-01-15T12:00:00Z' }];
+    utils.exportToExcel(data, 'test');
+    global.Blob = OrigBlob;
+    expect(capturedContent).toContain('Jan');
+    expect(capturedContent).toContain('2026');
+  });
+
+  test('uses custom columns when provided', () => {
+    let capturedContent = '';
+    const OrigBlob = global.Blob;
+    global.Blob = class extends OrigBlob {
+      constructor(parts, opts) {
+        super(parts, opts);
+        capturedContent = parts.join('');
+      }
+    };
+    const data = [{ name: 'Alice', age: 30, hidden: 'secret' }];
+    utils.exportToExcel(data, 'test', { columns: ['name'] });
+    global.Blob = OrigBlob;
+    expect(capturedContent).toContain('Name');
+    expect(capturedContent).not.toContain('Hidden');
+  });
+});
+
+describe('Utils - exportToPrintablePDF()', () => {
+  let origOpen;
+
+  beforeEach(() => {
+    jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    origOpen = window.open;
+  });
+
+  afterEach(() => {
+    utils.showToast.mockRestore();
+    window.open = origOpen;
+  });
+
+  test('shows warning toast for empty data', () => {
+    utils.exportToPrintablePDF([], 'Report');
+    expect(utils.showToast).toHaveBeenCalledWith('No data to export', 'warning');
+  });
+
+  test('shows error toast when popup is blocked', () => {
+    window.open = jest.fn().mockReturnValue(null);
+    const data = [{ name: 'Alice' }];
+    utils.exportToPrintablePDF(data, 'Report');
+    expect(utils.showToast).toHaveBeenCalledWith(expect.stringContaining('Pop-up blocked'), 'error');
+  });
+
+  test('opens print window with correct content', () => {
+    const mockPrintWindow = {
+      document: {
+        write: jest.fn(),
+        close: jest.fn(),
+      },
+      print: jest.fn(),
+    };
+    window.open = jest.fn().mockReturnValue(mockPrintWindow);
+    const data = [{ name: 'Alice', status: 'Active' }];
+    utils.exportToPrintablePDF(data, 'Test Report');
+    expect(mockPrintWindow.document.write).toHaveBeenCalled();
+    const htmlContent = mockPrintWindow.document.write.mock.calls[0][0];
+    expect(htmlContent).toContain('Test Report');
+    expect(htmlContent).toContain('Alice');
+    expect(htmlContent).toContain('Active');
+  });
+});
+
+describe('Utils - showLoadingWithMinTime() / hideLoadingWithMinTime()', () => {
+  test('showLoadingWithMinTime makes loading bar visible', () => {
+    utils.showLoadingWithMinTime();
+    expect(document.getElementById('loadingBar').style.display).toBe('block');
+  });
+
+  test('hideLoadingWithMinTime hides loading bar after min time', async () => {
+    utils.showLoadingWithMinTime();
+    utils._loadingShowTime = Date.now() - 500; // past min time
+    await utils.hideLoadingWithMinTime();
+    expect(document.getElementById('loadingBar').style.display).toBe('none');
+  });
+});
+
+describe('Utils - initSortableHeaders()', () => {
+  test('does nothing when table not found', () => {
+    expect(() => utils.initSortableHeaders('nonExistentTable', 'name', 'asc', () => {})).not.toThrow();
+  });
+
+  test('adds sort indicators to table headers', () => {
+    const table = document.createElement('table');
+    table.id = 'sortTestTable';
+    table.innerHTML = `
+      <thead>
+        <tr>
+          <th data-sort-field="name">Name</th>
+          <th data-sort-field="date">Date</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    `;
+    document.body.appendChild(table);
+
+    utils.initSortableHeaders('sortTestTable', 'name', 'asc', () => {});
+    const ths = table.querySelectorAll('thead th');
+    expect(ths[0].innerHTML).toContain('sort-indicator');
+    expect(ths[0].innerHTML).toContain('caret-up-fill');
+    expect(ths[1].innerHTML).toContain('sort-indicator');
+
+    table.remove();
+  });
+
+  test('uses down arrow for desc direction', () => {
+    const table = document.createElement('table');
+    table.id = 'sortTestTable2';
+    table.innerHTML = `<thead><tr><th data-sort-field="name">Name</th></tr></thead><tbody></tbody>`;
+    document.body.appendChild(table);
+
+    utils.initSortableHeaders('sortTestTable2', 'name', 'desc', () => {});
+    const th = table.querySelector('thead th');
+    expect(th.innerHTML).toContain('caret-down-fill');
+
+    table.remove();
+  });
+});
+
+describe('Utils - Saved Filter Views', () => {
+  beforeEach(() => {
+    localStorage.removeItem('savedViews_testMod');
+    jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    utils.showToast.mockRestore();
+  });
+
+  test('saveFilterView stores a view in localStorage', () => {
+    utils.saveFilterView('testMod', 'My View', { status: 'Active' });
+    const views = utils.getSavedFilterViews('testMod');
+    expect(views.length).toBe(1);
+    expect(views[0].name).toBe('My View');
+    expect(views[0].filters.status).toBe('Active');
+    expect(views[0].created).toBeDefined();
+  });
+
+  test('getSavedFilterViews returns empty array when no views saved', () => {
+    expect(utils.getSavedFilterViews('noViews')).toEqual([]);
+  });
+
+  test('deleteSavedFilterView removes a view by index', () => {
+    utils.saveFilterView('testMod', 'View A', { x: 1 });
+    utils.saveFilterView('testMod', 'View B', { x: 2 });
+    utils.deleteSavedFilterView('testMod', 0);
+    const views = utils.getSavedFilterViews('testMod');
+    expect(views.length).toBe(1);
+    expect(views[0].name).toBe('View B');
+  });
+
+  test('renderSavedViewsDropdown renders dropdown options', () => {
+    const container = document.createElement('select');
+    container.id = 'testSavedViewsDropdown';
+    document.body.appendChild(container);
+
+    utils.saveFilterView('testMod', 'My View', { status: 'Active' });
+    utils.renderSavedViewsDropdown('testSavedViewsDropdown', 'testMod', () => {});
+    expect(container.innerHTML).toContain('My View');
+    expect(container.innerHTML).toContain('Load saved view');
+
+    container.remove();
+  });
+
+  test('renderSavedViewsDropdown shows "No saved views" when empty', () => {
+    const container = document.createElement('select');
+    container.id = 'testEmptySavedViews';
+    document.body.appendChild(container);
+
+    utils.renderSavedViewsDropdown('testEmptySavedViews', 'emptyMod', () => {});
+    expect(container.innerHTML).toContain('No saved views');
+
+    container.remove();
+  });
+});
+
+describe('Utils - Undo/Redo System', () => {
+  beforeEach(() => {
+    utils._undoStacks = {};
+    utils._redoStacks = {};
+    jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    utils.showToast.mockRestore();
+  });
+
+  test('pushUndo adds to undo stack and clears redo stack', () => {
+    utils.pushUndo('mod1', { description: 'delete record', undoFn: jest.fn(), redoFn: jest.fn() });
+    expect(utils.canUndo('mod1')).toBe(true);
+    expect(utils.canRedo('mod1')).toBe(false);
+  });
+
+  test('undo pops from undo stack and pushes to redo stack', async () => {
+    const undoFn = jest.fn();
+    const redoFn = jest.fn();
+    utils.pushUndo('mod1', { description: 'test change', undoFn, redoFn });
+    await utils.undo('mod1');
+    expect(undoFn).toHaveBeenCalled();
+    expect(utils.canUndo('mod1')).toBe(false);
+    expect(utils.canRedo('mod1')).toBe(true);
+    expect(utils.showToast).toHaveBeenCalledWith('Undo: test change', 'success');
+  });
+
+  test('redo pops from redo stack and pushes to undo stack', async () => {
+    const undoFn = jest.fn();
+    const redoFn = jest.fn();
+    utils.pushUndo('mod1', { description: 'test change', undoFn, redoFn });
+    await utils.undo('mod1');
+    await utils.redo('mod1');
+    expect(redoFn).toHaveBeenCalled();
+    expect(utils.canUndo('mod1')).toBe(true);
+    expect(utils.canRedo('mod1')).toBe(false);
+    expect(utils.showToast).toHaveBeenCalledWith('Redo: test change', 'success');
+  });
+
+  test('undo shows info when nothing to undo', async () => {
+    await utils.undo('emptyMod');
+    expect(utils.showToast).toHaveBeenCalledWith('Nothing to undo', 'info');
+  });
+
+  test('redo shows info when nothing to redo', async () => {
+    await utils.redo('emptyMod');
+    expect(utils.showToast).toHaveBeenCalledWith('Nothing to redo', 'info');
+  });
+
+  test('undo shows error toast when undoFn throws', async () => {
+    utils.pushUndo('mod1', {
+      description: 'fail change',
+      undoFn: jest.fn().mockRejectedValue(new Error('undo failed')),
+      redoFn: jest.fn(),
+    });
+    await utils.undo('mod1');
+    expect(utils.showToast).toHaveBeenCalledWith('Undo failed: undo failed', 'error');
+    // item should be pushed back to undo stack
+    expect(utils.canUndo('mod1')).toBe(true);
+  });
+
+  test('redo shows error toast when redoFn throws', async () => {
+    const undoFn = jest.fn();
+    utils.pushUndo('mod1', {
+      description: 'fail redo',
+      undoFn,
+      redoFn: jest.fn().mockRejectedValue(new Error('redo failed')),
+    });
+    await utils.undo('mod1');
+    await utils.redo('mod1');
+    expect(utils.showToast).toHaveBeenCalledWith('Redo failed: redo failed', 'error');
+    // item should be pushed back to redo stack
+    expect(utils.canRedo('mod1')).toBe(true);
+  });
+
+  test('pushUndo limits stack to 30 items', () => {
+    for (let i = 0; i < 35; i++) {
+      utils.pushUndo('mod1', { description: `change ${i}`, undoFn: jest.fn(), redoFn: jest.fn() });
+    }
+    expect(utils._undoStacks['mod1'].length).toBeLessThanOrEqual(30);
+  });
+
+  test('canUndo returns false for unknown module', () => {
+    expect(utils.canUndo('unknownMod')).toBe(false);
+  });
+
+  test('canRedo returns false for unknown module', () => {
+    expect(utils.canRedo('unknownMod')).toBe(false);
+  });
+});
+
+describe('Utils - _validateField()', () => {
+  test('validates required field - empty value is invalid', () => {
+    const input = document.createElement('input');
+    input.required = true;
+    input.value = '';
+    const wrapper = document.createElement('div');
+    wrapper.appendChild(input);
+    const result = utils._validateField(input);
+    expect(result).toBe(false);
+    expect(input.classList.contains('is-invalid')).toBe(true);
+  });
+
+  test('validates required field - non-empty value is valid', () => {
+    const input = document.createElement('input');
+    input.required = true;
+    input.value = 'hello';
+    const wrapper = document.createElement('div');
+    wrapper.appendChild(input);
+    const result = utils._validateField(input);
+    expect(result).toBe(true);
+    expect(input.classList.contains('is-valid')).toBe(true);
+  });
+
+  test('validates email field', () => {
+    const input = document.createElement('input');
+    input.type = 'email';
+    input.value = 'not-an-email';
+    const wrapper = document.createElement('div');
+    wrapper.appendChild(input);
+    const result = utils._validateField(input);
+    expect(result).toBe(false);
+  });
+
+  test('validates url field', () => {
+    const input = document.createElement('input');
+    input.type = 'url';
+    input.value = 'not-a-url';
+    const wrapper = document.createElement('div');
+    wrapper.appendChild(input);
+    const result = utils._validateField(input);
+    expect(result).toBe(false);
+  });
+
+  test('validates url field with valid url', () => {
+    const input = document.createElement('input');
+    input.type = 'url';
+    input.value = 'https://example.com';
+    const wrapper = document.createElement('div');
+    wrapper.appendChild(input);
+    const result = utils._validateField(input);
+    expect(result).toBe(true);
+  });
+
+  test('validates pattern field', () => {
+    const input = document.createElement('input');
+    input.setAttribute('pattern', '^[A-Z]+$');
+    input.value = 'lowercase';
+    const wrapper = document.createElement('div');
+    wrapper.appendChild(input);
+    const result = utils._validateField(input);
+    expect(result).toBe(false);
+  });
+
+  test('validates minLength field', () => {
+    const input = document.createElement('input');
+    input.minLength = 5;
+    input.value = 'ab';
+    const wrapper = document.createElement('div');
+    wrapper.appendChild(input);
+    const result = utils._validateField(input);
+    expect(result).toBe(false);
+  });
+});
+
+describe('Utils - initInlineValidation()', () => {
+  test('does nothing when form not found', () => {
+    expect(() => utils.initInlineValidation('nonExistentForm')).not.toThrow();
+  });
+
+  test('attaches validation listeners to required inputs', () => {
+    const form = document.createElement('form');
+    form.id = 'testValidateForm';
+    const input = document.createElement('input');
+    input.required = true;
+    form.appendChild(input);
+    document.body.appendChild(form);
+
+    utils.initInlineValidation('testValidateForm');
+    // Simulate blur to trigger validation
+    input.dispatchEvent(new dom.window.Event('blur'));
+    expect(input.classList.contains('is-invalid')).toBe(true);
+
+    form.remove();
+  });
+});
+
+describe('Utils - closeColVisDialog()', () => {
+  test('hides the column visibility dialog', () => {
+    const dialog = document.createElement('div');
+    dialog.id = 'colVisDialog';
+    dialog.style.display = 'block';
+    document.body.appendChild(dialog);
+
+    utils.closeColVisDialog();
+    expect(dialog.style.display).toBe('none');
+
+    dialog.remove();
+  });
+
+  test('does nothing when dialog does not exist', () => {
+    expect(() => utils.closeColVisDialog()).not.toThrow();
+  });
+});
+
+describe('Utils - closeShortcutHelp()', () => {
+  test('removes the shortcut help overlay', () => {
+    const overlay = document.createElement('div');
+    overlay.id = 'shortcutHelpOverlay';
+    document.body.appendChild(overlay);
+
+    utils.closeShortcutHelp();
+    expect(document.getElementById('shortcutHelpOverlay')).toBeNull();
+  });
+
+  test('does nothing when overlay does not exist', () => {
+    expect(() => utils.closeShortcutHelp()).not.toThrow();
+  });
+});
+
+describe('Utils - renderServerPagination()', () => {
+  test('does nothing when container not found', () => {
+    expect(() => utils.renderServerPagination('nonExistent', {}, 'fn')).not.toThrow();
+  });
+
+  test('shows "all records" for single page', () => {
+    const container = document.createElement('div');
+    container.id = 'testPaginationSingle';
+    document.body.appendChild(container);
+
+    utils.renderServerPagination('testPaginationSingle', { page: 1, totalPages: 1, count: 5, pageSize: 50 }, 'module.goToPage');
+    expect(container.innerHTML).toContain('Showing all 5 records');
+
+    container.remove();
+  });
+
+  test('renders pagination controls for multiple pages', () => {
+    const container = document.createElement('div');
+    container.id = 'testPaginationMulti';
+    document.body.appendChild(container);
+
+    utils.renderServerPagination('testPaginationMulti', { page: 2, totalPages: 5, count: 250, pageSize: 50 }, 'module.goToPage');
+    expect(container.innerHTML).toContain('pagination');
+    expect(container.innerHTML).toContain('page-item active');
+    expect(container.innerHTML).toContain('Showing 51');
+    expect(container.innerHTML).toContain('of 250 records');
+
+    container.remove();
+  });
+
+  test('renders empty string when totalPages is 0 and no count', () => {
+    const container = document.createElement('div');
+    container.id = 'testPaginationEmpty';
+    document.body.appendChild(container);
+
+    utils.renderServerPagination('testPaginationEmpty', { page: 1, totalPages: 0, count: 0, pageSize: 50 }, 'fn');
+    expect(container.innerHTML).toBe('');
+
+    container.remove();
+  });
+
+  test('disables previous button on first page', () => {
+    const container = document.createElement('div');
+    container.id = 'testPagFirst';
+    document.body.appendChild(container);
+
+    utils.renderServerPagination('testPagFirst', { page: 1, totalPages: 3, count: 150, pageSize: 50 }, 'fn');
+    expect(container.innerHTML).toContain('page-item disabled');
+
+    container.remove();
+  });
+});
+
+describe('Utils - showToastWithAction()', () => {
+  beforeEach(() => {
+    jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    utils.showToast.mockRestore();
+  });
+
+  test('shows toast with action buttons appended', () => {
+    utils.showToastWithAction('Record deleted', 'success', [
+      { label: 'Undo', action: 'utils.undoLastDelete', id: 'rec-1', class: 'warning' },
+    ]);
+    expect(utils.showToast).toHaveBeenCalled();
+    const msg = utils.showToast.mock.calls[0][0];
+    expect(msg).toContain('Record deleted');
+    expect(msg).toContain('Undo');
+    expect(msg).toContain('data-action');
+  });
+
+  test('shows toast without actions when actions is null', () => {
+    utils.showToastWithAction('Simple message', 'info', null);
+    expect(utils.showToast).toHaveBeenCalledWith('Simple message', 'info');
+  });
+});
+
+describe('Utils - getModifiedByData()', () => {
+  test('returns object with last_modified_by and last_modified_at', () => {
+    STATE.user = { email: 'admin@test.com' };
+    const result = utils.getModifiedByData();
+    expect(result.last_modified_by).toBe('admin@test.com');
+    expect(result.last_modified_at).toBeDefined();
+    expect(typeof result.last_modified_at).toBe('string');
+    STATE.user = null;
+  });
+
+  test('returns "unknown" when no user is set', () => {
+    STATE.user = null;
+    const result = utils.getModifiedByData();
+    expect(result.last_modified_by).toBe('unknown');
+  });
+});
+
+describe('Utils - showColumnVisibilityDialog()', () => {
+  afterEach(() => {
+    const d = document.getElementById('colVisDialog');
+    if (d) d.remove();
+    localStorage.removeItem('colVis_testColTable');
+  });
+
+  test('creates and displays dialog with column checkboxes', () => {
+    const columns = [
+      { key: 'name', label: 'Name' },
+      { key: 'status', label: 'Status' },
+    ];
+    utils.showColumnVisibilityDialog('testColTable', columns);
+    const dialog = document.getElementById('colVisDialog');
+    expect(dialog).toBeTruthy();
+    expect(dialog.style.display).toBe('block');
+    expect(dialog.innerHTML).toContain('Name');
+    expect(dialog.innerHTML).toContain('Status');
+    expect(dialog.innerHTML).toContain('Show/Hide Columns');
+  });
+
+  test('respects saved visibility state from localStorage', () => {
+    localStorage.setItem('colVis_testColTable', JSON.stringify({ status: false }));
+    const columns = [
+      { key: 'name', label: 'Name' },
+      { key: 'status', label: 'Status' },
+    ];
+    utils.showColumnVisibilityDialog('testColTable', columns);
+    const dialog = document.getElementById('colVisDialog');
+    const checkboxes = dialog.querySelectorAll('input[type="checkbox"]');
+    // first should be checked, second should not
+    expect(checkboxes[0].checked).toBe(true);
+    expect(checkboxes[1].checked).toBe(false);
+  });
+});
+
+describe('Utils - applyColumnVisibility()', () => {
+  test('does not throw when no saved state', () => {
+    expect(() => utils.applyColumnVisibility('nonExistent')).not.toThrow();
+  });
+});
+
+describe('Utils - markFormSaved()', () => {
+  test('sets _formSaved and clears _formDirty on modal', () => {
+    const modal = document.createElement('div');
+    modal.id = 'testMarkSavedModal';
+    modal._formDirty = true;
+    modal._formSaved = false;
+    document.body.appendChild(modal);
+
+    utils.markFormSaved('testMarkSavedModal');
+    expect(modal._formSaved).toBe(true);
+    expect(modal._formDirty).toBe(false);
+
+    modal.remove();
+  });
+
+  test('does nothing when modal not found', () => {
+    expect(() => utils.markFormSaved('nonExistentModal')).not.toThrow();
+  });
+});
+
+describe('Utils - hideLoading() minimum display time', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  test('delays hiding when loading was shown recently', () => {
+    utils.showLoading();
+    // Loading was shown just now, so elapsed < 300ms
+    utils.hideLoading();
+    // Bar should still be visible because setTimeout was scheduled
+    expect(document.getElementById('loadingBar').style.display).toBe('block');
+    jest.advanceTimersByTime(300);
+    expect(document.getElementById('loadingBar').style.display).toBe('none');
+  });
+});
+
+describe('Utils - showToast() edge cases', () => {
+  test('handles unknown type by defaulting to info config', () => {
+    utils.showToast('Test msg', 'unknownType');
+    expect(document.getElementById('toastTitle').textContent).toBe('Info');
+  });
+
+  test('info type does not add bg- class to toast', () => {
+    utils.showToast('Info msg', 'info');
+    const toastEl = document.getElementById('notificationToast');
+    // info type should not add bg-info as text-white is only for success/error/warning
+    expect(toastEl.classList.contains('text-white')).toBe(false);
+  });
+});
+
+describe('actionRegistry - change delegation (data-on-change)', () => {
+  test('handles change events with data-on-change', () => {
+    const handler = jest.fn();
+    actionRegistry.register('testChange.handler', handler);
+
+    const select = document.createElement('select');
+    select.setAttribute('data-on-change', 'testChange.handler');
+    select.innerHTML = '<option value="a">A</option><option value="b">B</option>';
+    document.body.appendChild(select);
+
+    select.value = 'b';
+    const changeEvent = new dom.window.Event('change', { bubbles: true });
+    select.dispatchEvent(changeEvent);
+
+    expect(handler).toHaveBeenCalled();
+
+    document.body.removeChild(select);
+    delete actionRegistry._handlers['testChange.handler'];
+  });
+
+  test('handles change events with data-on-change and data-id', () => {
+    const handler = jest.fn();
+    actionRegistry.register('testChangeId.handler', handler);
+
+    const select = document.createElement('select');
+    select.setAttribute('data-on-change', 'testChangeId.handler');
+    select.setAttribute('data-id', 'item-5');
+    select.innerHTML = '<option value="x">X</option>';
+    document.body.appendChild(select);
+
+    const changeEvent = new dom.window.Event('change', { bubbles: true });
+    select.dispatchEvent(changeEvent);
+
+    expect(handler).toHaveBeenCalled();
+    expect(handler.mock.calls[0][0]).toBe('item-5');
+
+    document.body.removeChild(select);
+    delete actionRegistry._handlers['testChangeId.handler'];
+  });
+});
+
+describe('actionRegistry - submit delegation (data-on-submit)', () => {
+  test('handles submit events with data-on-submit', () => {
+    const handler = jest.fn();
+    actionRegistry.register('testSubmit.handler', handler);
+
+    const form = document.createElement('form');
+    form.setAttribute('data-on-submit', 'testSubmit.handler');
+    document.body.appendChild(form);
+
+    const submitEvent = new dom.window.Event('submit', { bubbles: true, cancelable: true });
+    form.dispatchEvent(submitEvent);
+
+    expect(handler).toHaveBeenCalled();
+
+    document.body.removeChild(form);
+    delete actionRegistry._handlers['testSubmit.handler'];
+  });
+});

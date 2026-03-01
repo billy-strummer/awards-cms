@@ -364,7 +364,7 @@ describe('Stripe Frontend - createCheckoutSession Advanced', () => {
 
   test('redirects via URL when stripe instance unavailable but URL returned', async () => {
     stripeFrontend.stripe = null;
-    const origLocation = dom.window.location.href;
+    const _origLocation = dom.window.location.href;
 
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,

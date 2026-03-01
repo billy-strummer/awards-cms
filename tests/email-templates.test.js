@@ -263,7 +263,7 @@ describe('Email Templates Module - Initialization & Structure', () => {
 
   test('currentTemplate is initially null', () => {
     // Reset for a clean check (may have been set by other tests)
-    const freshModule = { ...emailTemplatesModule };
+    const _freshModule = { ...emailTemplatesModule };
     // The module object literal initializes to null
     expect(emailTemplatesModule).toHaveProperty('currentTemplate');
   });
@@ -288,7 +288,7 @@ describe('Email Templates Module - Initialization & Structure', () => {
   });
 
   test('each default template has subject and body', () => {
-    for (const [name, tmpl] of Object.entries(emailTemplatesModule._defaultTemplates)) {
+    for (const [_name, tmpl] of Object.entries(emailTemplatesModule._defaultTemplates)) {
       expect(tmpl).toHaveProperty('subject');
       expect(tmpl).toHaveProperty('body');
       expect(typeof tmpl.subject).toBe('string');
@@ -444,7 +444,7 @@ describe('Email Templates Module - templateGroups', () => {
   });
 
   test('each group has types array and icon string', () => {
-    for (const [name, config] of Object.entries(emailTemplatesModule.templateGroups)) {
+    for (const [_name, config] of Object.entries(emailTemplatesModule.templateGroups)) {
       expect(Array.isArray(config.types)).toBe(true);
       expect(config.types.length).toBeGreaterThan(0);
       expect(typeof config.icon).toBe('string');

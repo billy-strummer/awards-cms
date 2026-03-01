@@ -323,7 +323,7 @@ describe('Calendar Module - _fetchAllItems', () => {
       .mockResolvedValueOnce([])
       .mockRejectedValueOnce(new Error('Some other DB error'));
 
-    const items = await calendarModule._fetchAllItems(5, 2026);
+    const _items = await calendarModule._fetchAllItems(5, 2026);
     expect(toastSpy).toHaveBeenCalledWith('Failed to load calendar data', 'warning');
     consoleSpy.mockRestore();
     toastSpy.mockRestore();
@@ -346,7 +346,7 @@ describe('Calendar Module - _fetchAllItems', () => {
     const toastSpy = jest.spyOn(utils, 'showToast');
     apiClient.selectAll = jest.fn().mockRejectedValue(new Error('Network down'));
 
-    const items = await calendarModule._fetchAllItems(0, 2026);
+    const _items = await calendarModule._fetchAllItems(0, 2026);
     expect(toastSpy).toHaveBeenCalledWith('Failed to load calendar data', 'warning');
     consoleSpy.mockRestore();
     toastSpy.mockRestore();

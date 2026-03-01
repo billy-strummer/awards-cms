@@ -99,6 +99,7 @@ const winnerAnnouncementsModule = {
       let rows = '';
       try {
         const yr = new Date().getFullYear();
+        /* selectAll: justified — filtered to single year for announcement wizard */
         const data = await apiClient.selectAll('winners', {
           select: 'id,winner_name,year,awards:award_years(award_name,award_category),organisations(company_name)',
           filters: { year: { eq: yr } },
@@ -151,6 +152,7 @@ const winnerAnnouncementsModule = {
       if (channels.includes('email')) {
         let opts = '<option value="">-- Select template --</option>';
         try {
+          /* selectAll: justified — small reference table (winner email templates) */
           const data = await apiClient.selectAll('email_templates', {
             select: 'id,name',
             filters: { template_type: { eq: 'winner' } },
@@ -390,6 +392,7 @@ const winnerAnnouncementsModule = {
     if (!el) return;
     el.innerHTML = '<p class="text-muted small">Loading...</p>';
     try {
+      /* selectAll: justified — announcements is a small operational table */
       const data = await apiClient.selectAll('announcements', {
         select: '*,winners(winner_name)',
         sort: { column: 'created_at', ascending: false },
@@ -496,6 +499,7 @@ const winnerAnnouncementsModule = {
   ================================================ */
   async generatePressRelease(winnerIds) {
     try {
+      /* selectAll: justified — filtered to specific winner IDs for press release */
       const data = await apiClient.selectAll('winners', {
         select: '*,awards:award_years(award_name,award_category),organisations(company_name)',
         filters: { id: { in: winnerIds } },

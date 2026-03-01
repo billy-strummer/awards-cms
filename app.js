@@ -1599,9 +1599,10 @@ document.addEventListener('DOMContentLoaded', function () {
   setTimeout(setupRealtimeSync, 3000);
 
   // Real-time presence indicators (LOW-10)
-  window._activeUsers = new Map();
+  // Registered via ModuleRegistry (which also exposes on window for cross-module access)
+  ModuleRegistry.register('_activeUsers', new Map());
 
-  window._initPresence = function () {
+  ModuleRegistry.register('_initPresence', function () {
     if (!STATE.client) return;
     // Guard against duplicate presence subscriptions
     if (window._presenceChannel) {
@@ -1613,7 +1614,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     try {
       const channel = STATE.client.channel('online-users');
-      window._presenceChannel = channel;
+      ModuleRegistry.register('_presenceChannel', channel);
       channel.on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState();
         const users = [];
@@ -1636,9 +1637,9 @@ document.addEventListener('DOMContentLoaded', function () {
     } catch (e) {
       console.warn('Presence not available:', e.message);
     }
-  };
+  });
 
-  window._renderPresenceIndicator = function () {
+  ModuleRegistry.register('_renderPresenceIndicator', function () {
     let el = document.getElementById('presenceIndicator');
     if (!el) {
       el = document.createElement('div');
@@ -1657,7 +1658,7 @@ document.addEventListener('DOMContentLoaded', function () {
       <div class="badge bg-success-subtle text-success border px-2 py-1" title="${names.join(', ')}" style="cursor:pointer;">
         <i class="bi bi-people-fill me-1"></i>${count} online
       </div>`;
-  };
+  });
 
   // Initialize presence after a delay
   setTimeout(() => {
@@ -1725,8 +1726,8 @@ document.addEventListener('DOMContentLoaded', function () {
   // ==========================================
   // STEP 14c: URL Filter State / Deep Linking (MEDIUM-4)
   // ==========================================
-  // URL filter state management
-  window._saveFilterState = function (module, filters) {
+  // URL filter state management -- registered via ModuleRegistry (exposes on window automatically)
+  ModuleRegistry.register('_saveFilterState', function (module, filters) {
     const params = new URLSearchParams(window.location.search);
     Object.entries(filters).forEach(([k, v]) => {
       if (v) params.set(`${module}_${k}`, v);
@@ -1734,9 +1735,9 @@ document.addEventListener('DOMContentLoaded', function () {
     });
     const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '') + window.location.hash;
     history.replaceState(null, '', newUrl);
-  };
+  });
 
-  window._loadFilterState = function (module) {
+  ModuleRegistry.register('_loadFilterState', function (module) {
     const params = new URLSearchParams(window.location.search);
     const filters = {};
     params.forEach((v, k) => {
@@ -1745,7 +1746,7 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     });
     return filters;
-  };
+  });
 
   // ==========================================
   // STEP 15: Data Freshness Timer
@@ -1755,7 +1756,7 @@ document.addEventListener('DOMContentLoaded', function () {
   // ==========================================
   // STEP 16: Save Button Loading States (HIGH-4)
   // ==========================================
-  window._withSaveButton = async (btnSelector, asyncFn) => {
+  ModuleRegistry.register('_withSaveButton', async (btnSelector, asyncFn) => {
     const btn = typeof btnSelector === 'string' ? document.querySelector(btnSelector) : btnSelector;
     if (!btn) return await asyncFn();
     const originalText = btn.innerHTML;
@@ -1767,7 +1768,7 @@ document.addEventListener('DOMContentLoaded', function () {
       btn.disabled = false;
       btn.innerHTML = originalText;
     }
-  };
+  });
 
   // ==========================================
   // STEP 17: Breadcrumb Navigation (MEDIUM-5)

@@ -179,7 +179,9 @@
   // MAIN APPLICATION
   // =====================================================
 
-  // Expose entryFormApp globally for onclick handlers in HTML
+  // Expose entryFormApp globally for onclick handlers in HTML.
+  // NOTE: This is a public-facing page that runs outside the main CMS app and does
+  // not load ModuleRegistry. Direct window.* assignment is intentional here.
   window.entryFormApp = {
     currentStep: 1,
     totalSteps: 8,

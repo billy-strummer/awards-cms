@@ -21,6 +21,9 @@ function _eventProxy(originalEvent, currentTargetEl) {
 const eventsModule = {
   _loading: false,
 
+  // Template gallery sections -- stored on the module instead of window.*
+  _templateGallerySections: [],
+
   // Server-side pagination state
   _serverPagination: true,
   _pagination: { page: 1, totalPages: 1, count: 0, pageSize: 50 },
@@ -266,8 +269,8 @@ const eventsModule = {
           const newEvent = Array.isArray(insertedRows) ? insertedRows[0] : insertedRows;
 
           // Create gallery sections from template if available
-          if (window._templateGallerySections && window._templateGallerySections.length > 0) {
-            const sections = window._templateGallerySections.map((sectionName, index) => ({
+          if (eventsModule._templateGallerySections && eventsModule._templateGallerySections.length > 0) {
+            const sections = eventsModule._templateGallerySections.map((sectionName, index) => ({
               event_id: newEvent.id,
               gallery_name: sectionName,
               gallery_description: '',
@@ -282,7 +285,7 @@ const eventsModule = {
             }
 
             // Clear template sections
-            window._templateGallerySections = [];
+            eventsModule._templateGallerySections = [];
           }
         }
 
@@ -742,7 +745,7 @@ const eventsModule = {
     document.getElementById('saveEventBtn').textContent = 'Add Event';
 
     // Store template gallery sections for later use
-    window._templateGallerySections = template.gallerySections || [];
+    eventsModule._templateGallerySections = template.gallerySections || [];
 
     const modal = new bootstrap.Modal(document.getElementById('eventModal'));
     modal.show();

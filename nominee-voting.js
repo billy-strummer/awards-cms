@@ -434,7 +434,9 @@ const nomineeVoting = {
   },
 };
 
-// Expose globally for tests and external access
+// Expose globally for tests and external access.
+// NOTE: This is a public-facing page that runs outside the main CMS app and does
+// not load ModuleRegistry. Direct window.* assignment is intentional here.
 if (typeof window !== 'undefined') {
   window.nomineeVoting = nomineeVoting;
   window.showPublicToast = showPublicToast;

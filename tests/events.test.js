@@ -829,6 +829,7 @@ describe('Events Module - Filter by Event Status', () => {
     eventsModule._evtCurrentPage = 1;
     eventsModule._sortField = 'event_date';
     eventsModule._sortDir = 'desc';
+    eventsModule._serverPagination = false;
     document.getElementById('eventsSearchBox').value = '';
     document.getElementById('eventsYearFilter').value = '';
     document.getElementById('eventsStatusFilter').value = '';
@@ -898,6 +899,7 @@ describe('Events Module - Search Edge Cases', () => {
     eventsModule._evtCurrentPage = 1;
     eventsModule._sortField = 'event_date';
     eventsModule._sortDir = 'desc';
+    eventsModule._serverPagination = false;
     document.getElementById('eventsSearchBox').value = '';
     document.getElementById('eventsYearFilter').value = '';
     document.getElementById('eventsStatusFilter').value = '';
@@ -959,6 +961,7 @@ describe('Events Module - This Month Filter', () => {
     eventsModule._evtCurrentPage = 1;
     eventsModule._sortField = 'event_date';
     eventsModule._sortDir = 'desc';
+    eventsModule._serverPagination = false;
     document.getElementById('eventsSearchBox').value = '';
     document.getElementById('eventsYearFilter').value = '';
     document.getElementById('eventsStatusFilter').value = '';
@@ -990,6 +993,7 @@ describe('Events Module - Sort Advanced', () => {
     eventsModule._sortField = 'event_date';
     eventsModule._sortDir = 'desc';
     eventsModule._evtCurrentPage = 1;
+    eventsModule._serverPagination = false;
     document.getElementById('eventsSearchBox').value = '';
     document.getElementById('eventsYearFilter').value = '';
     document.getElementById('eventsStatusFilter').value = '';
@@ -1096,6 +1100,7 @@ describe('Events Module - Pagination Advanced', () => {
     }
     eventsModule._evtPageSize = 50;
     eventsModule._evtCurrentPage = 1;
+    eventsModule._serverPagination = false;
     document.getElementById('eventsSearchBox').value = '';
     document.getElementById('eventsYearFilter').value = '';
     document.getElementById('eventsStatusFilter').value = '';
@@ -1403,6 +1408,7 @@ describe('Events Module - Filter Data Issues', () => {
   beforeEach(() => {
     STATE.allEvents = JSON.parse(JSON.stringify(sampleEvents));
     eventsModule._evtCurrentPage = 1;
+    eventsModule._serverPagination = false;
     document.getElementById('eventsSearchBox').value = 'test';
     document.getElementById('eventsYearFilter').value = '2025';
     document.getElementById('eventsStatusFilter').value = 'past';
@@ -1492,6 +1498,7 @@ describe('Events Module - Render Filtered Events Content', () => {
   beforeEach(() => {
     eventsModule._evtCurrentPage = 1;
     eventsModule._evtPageSize = 50;
+    eventsModule._serverPagination = false;
     eventsModule._selectedEvents = new Set();
   });
 
@@ -2265,7 +2272,7 @@ describe('Events Module - saveEvent (full paths)', () => {
     document.getElementById('eventCapacity').value = '';
     document.getElementById('eventDescription').value = '';
     document.getElementById('eventStatus').value = 'draft';
-    window._templateGallerySections = [];
+    eventsModule._templateGallerySections = [];
   });
   afterEach(() => api.restore());
 
@@ -2327,7 +2334,7 @@ describe('Events Module - saveEvent (full paths)', () => {
 
   test('saveEvent creates gallery sections from template for new events', async () => {
     document.getElementById('eventName').value = 'Templated Event';
-    window._templateGallerySections = ['Red Carpet', 'Main Hall', 'VIP'];
+    eventsModule._templateGallerySections = ['Red Carpet', 'Main Hall', 'VIP'];
     const insertMock = jest.fn().mockResolvedValue({ data: [{ id: 'tmpl-id' }] });
     api.restore();
     apiClient.insert = insertMock;
@@ -2342,7 +2349,7 @@ describe('Events Module - saveEvent (full paths)', () => {
     expect(insertMock.mock.calls[1][0]).toBe('event_galleries');
     expect(insertMock.mock.calls[1][1]).toHaveLength(3);
     expect(insertMock.mock.calls[1][1][0].gallery_name).toBe('Red Carpet');
-    expect(window._templateGallerySections).toEqual([]);
+    expect(eventsModule._templateGallerySections).toEqual([]);
     protectSpy.mockRestore();
     loadSpy.mockRestore();
   });
@@ -3304,6 +3311,7 @@ describe('Events Module - Bulk Selection', () => {
 describe('Events Module - resetEventFilters comprehensive', () => {
   beforeEach(() => {
     STATE.allEvents = JSON.parse(JSON.stringify(sampleEvents));
+    eventsModule._serverPagination = false;
     document.getElementById('eventsSearchBox').value = 'test';
     document.getElementById('eventsYearFilter').value = '2025';
     document.getElementById('eventsStatusFilter').value = 'upcoming';

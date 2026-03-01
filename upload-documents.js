@@ -395,7 +395,9 @@ const uploadApp = {
   },
 };
 
-// Register globally for testability and data-action event delegation
+// Register globally for testability and data-action event delegation.
+// Uses ModuleRegistry when available (which also exposes on window);
+// falls back to direct window.* for public-facing contexts without the registry.
 if (typeof ModuleRegistry !== 'undefined') {
   ModuleRegistry.register('uploadApp', uploadApp);
   ModuleRegistry.register('showPublicToast', showPublicToast);

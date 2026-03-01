@@ -124,7 +124,7 @@ const settingsModule = {
     try {
       utils.showLoading();
 
-      // Fetch all data from all tables
+      /* selectAll: justified — full database backup requires complete dataset from every table */
       const tableNames = [
         'awards',
         'organisations',
@@ -294,6 +294,7 @@ const settingsModule = {
    */
   async exportEventsCSV() {
     try {
+      /* selectAll: justified — CSV export requires full dataset */
       const events = await apiClient.selectAll('events', {
         sort: { column: 'event_date', ascending: false },
       });
@@ -326,6 +327,7 @@ const settingsModule = {
    */
   async exportMediaCSV() {
     try {
+      /* selectAll: justified — CSV export requires full dataset */
       const media = await apiClient.selectAll('media_gallery', {
         select: '*, organisations(company_name), awards:award_years(award_category)',
         sort: { column: 'uploaded_at', ascending: false },
@@ -359,6 +361,7 @@ const settingsModule = {
    */
   async exportEntriesCSV() {
     try {
+      /* selectAll: justified — CSV export requires full dataset */
       const entries = await apiClient.selectAll('entries', {
         select: '*, organisations(company_name), awards:award_years(award_category)',
         sort: { column: 'created_at', ascending: false },
@@ -616,6 +619,7 @@ const settingsModule = {
    */
   async loadSeasons() {
     try {
+      /* selectAll: justified — small reference table (award seasons) */
       const allSeasons = await apiClient.selectAll('award_seasons', {
         sort: { column: 'year', ascending: false },
       });

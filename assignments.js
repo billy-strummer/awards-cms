@@ -19,6 +19,7 @@ const assignmentsModule = {
    */
   async getAwardAssignments(awardId) {
     try {
+      /* selectAll: justified — scoped to single award */
       const data = await apiClient.selectAll('award_assignments', {
         select: '*, organisations!award_assignments_organisation_id_fkey (*)',
         filters: { award_id: awardId },
@@ -27,6 +28,7 @@ const assignmentsModule = {
       // Get other nominations for each company
       const orgIds = data.map((a) => a.organisation_id).filter(Boolean);
       if (orgIds.length > 0) {
+        /* selectAll: justified — filtered to known org IDs from single award */
         const otherAssignments = await apiClient.selectAll('award_assignments', {
           select: 'organisation_id, award_id, awards:award_years!award_assignments_award_id_fkey (award_name, year)',
           filters: {
@@ -133,7 +135,7 @@ const assignmentsModule = {
         );
       }
 
-      // Load available organisations (only essential columns)
+      /* selectAll: justified — populating assignment picker; organisations is a bounded business dataset */
       const allOrgs = await apiClient.selectAll('organisations', {
         select: 'id, company_name, email, logo_url',
         sort: { column: 'company_name', ascending: true },

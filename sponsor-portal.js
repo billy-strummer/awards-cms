@@ -160,6 +160,7 @@ const sponsorPortalModule = {
     const el = document.getElementById('tierManagement');
     if (!el) return;
     try {
+      /* selectAll: justified — small reference table (sponsors, typically <50 records) */
       const sponsors = await apiClient.selectAll('sponsors', {
         select: 'id, name, tier, is_active, display_order',
         sort: { column: 'display_order', ascending: true },
@@ -226,6 +227,7 @@ const sponsorPortalModule = {
     const el = document.getElementById('sponsorContracts');
     if (!el) return;
     try {
+      /* selectAll: justified — small reference table (sponsor contracts) */
       const rows = await apiClient.selectAll('sponsor_contracts', {
         select: '*, sponsors(name, tier)',
         sort: { column: 'start_date', ascending: false },
@@ -275,11 +277,13 @@ const sponsorPortalModule = {
   },
 
   async editContract(contractId) {
+    /* selectAll: justified — scoped to single contract by ID */
     const contracts = await apiClient.selectAll('sponsor_contracts', { filters: { id: { eq: contractId } } });
     this.openContractModal(contracts?.[0] || null);
   },
 
   async openContractModal(contract = null) {
+    /* selectAll: justified — small reference table (active sponsors for dropdown) */
     const sponsors = await apiClient.selectAll('sponsors', {
       select: 'id, name',
       filters: { is_active: { eq: true } },
@@ -363,6 +367,7 @@ const sponsorPortalModule = {
     try {
       const filters = { is_active: { eq: true } };
       if (tier) filters.tier = { eq: tier };
+      /* selectAll: justified — small reference table (active sponsors for public widget) */
       const sponsors = await apiClient.selectAll('sponsors', {
         select: 'id, name, logo_url, website, tier',
         filters,

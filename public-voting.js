@@ -246,6 +246,12 @@ const votingSystem = {
    * Setup event listeners
    */
   setupEventListeners() {
+    // Filter nominees by award category
+    const awardFilter = document.getElementById('awardFilter');
+    if (awardFilter) {
+      awardFilter.addEventListener('change', () => this.filterByAward());
+    }
+
     document.getElementById('verificationForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       this.voterEmail = document.getElementById('voterEmail').value;

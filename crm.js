@@ -33,7 +33,7 @@ const crmModule = {
   _kanbanView: false,
 
   // Server-side pagination state (companies)
-  _serverPagination: false,
+  _serverPagination: true,
   _pagination: { page: 1, totalPages: 1, count: 0, pageSize: 50 },
   _fetchId: 0,
   _companiesSortField: 'last_communication_date',

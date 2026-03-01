@@ -3953,7 +3953,7 @@
                           Post Content
                           <small class="text-muted">(Use {{company_name}} and {{award_name}} as placeholders)</small>
                         </label>
-                        <textarea class="form-control" id="smPostContent" rows="5" onkeyup="socialMediaModule.updatePostPreview()" placeholder="Write your post here... Use {{company_name}} and {{award_name}} to insert dynamic content"></textarea>
+                        <textarea class="form-control" id="smPostContent" rows="5" data-on-input="socialMediaModule.updatePostPreview" placeholder="Write your post here... Use {{company_name}} and {{award_name}} to insert dynamic content"></textarea>
                         <div class="form-text">
                           <strong>Available variables:</strong> {{company_name}}, {{award_name}}, {{award_hashtag}}, {{year}}, {{website}}
                         </div>
@@ -7111,7 +7111,7 @@
             class="form-control form-control-lg" 
             id="bulkAddSearchBox" 
             placeholder="Type to search..."
-            onkeyup="assignmentsModule.filterBulkAdd()">
+            data-on-input="assignmentsModule.filterBulkAdd">
         </div>
         
         <div class="alert alert-info">

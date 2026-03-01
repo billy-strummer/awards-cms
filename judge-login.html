@@ -68,7 +68,7 @@
       <div id="loginSuccess" class="alert alert-success d-none" role="alert" aria-live="polite"></div>
 
       <!-- Email/Password Login -->
-      <form id="judgeLoginForm" onsubmit="handleLogin(event)">
+      <form id="judgeLoginForm">
         <div class="mb-3">
           <label for="judgeEmail" class="form-label">Email Address</label>
           <input type="email" class="form-control" id="judgeEmail" required placeholder="your.email@example.com" autocomplete="email">
@@ -87,7 +87,7 @@
 
       <!-- Magic Link Login -->
       <p class="text-muted text-center small mb-2">Or sign in with a magic link</p>
-      <form id="magicLinkForm" onsubmit="handleMagicLink(event)">
+      <form id="magicLinkForm">
         <div class="input-group mb-3">
           <input type="email" class="form-control" id="magicEmail" placeholder="your.email@example.com" required autocomplete="email">
           <button type="submit" class="btn btn-outline-primary" id="magicBtn">
@@ -202,6 +202,10 @@
         btn.innerHTML = '<i class="bi bi-envelope me-1"></i>Send Link';
       }
     }
+
+    // Wire up form submit handlers via addEventListener
+    document.getElementById('judgeLoginForm').addEventListener('submit', handleLogin);
+    document.getElementById('magicLinkForm').addEventListener('submit', handleMagicLink);
   </script>
 
 </body>

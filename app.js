@@ -1575,7 +1575,8 @@ document.addEventListener('DOMContentLoaded', function () {
       }, 2000);
     });
 
-    window._cmsRealtimeChannel = STATE.client
+    // Route through ModuleRegistry (which also exposes on window for auth.js cleanup)
+    ModuleRegistry.register('_cmsRealtimeChannel', STATE.client
       .channel('cms-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'awards' }, () => debouncedHandlers.awards())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'winners' }, () => debouncedHandlers.winners())
@@ -1592,7 +1593,7 @@ document.addEventListener('DOMContentLoaded', function () {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'deals' }, () => debouncedHandlers.deals())
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') console.warn('Realtime subscriptions active');
-      });
+      }));
   }
   // Delay realtime setup until after auth completes
   setTimeout(setupRealtimeSync, 3000);

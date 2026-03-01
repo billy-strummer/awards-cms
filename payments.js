@@ -22,6 +22,13 @@ const paymentsModule = {
   _pagination: { page: 1, totalPages: 1, count: 0, pageSize: 50 },
   _fetchId: 0,
 
+  // Server-side pagination state (payments)
+  _payServerPagination: true,
+  _payPagination: { page: 1, totalPages: 1, count: 0, pageSize: 50 },
+  _payFetchId: 0,
+  _paySortField: 'payment_date',
+  _paySortDir: 'desc',
+
   /* ==================================================== */
   /* INITIALIZATION */
   /* ==================================================== */
@@ -1054,14 +1061,9 @@ const paymentsModule = {
    */
   async loadPayments() {
     try {
-      /* selectAll: justified — client-side filtering/pagination requires full dataset */
-      const data = await apiClient.selectAll('payments', {
-        select: '*, organisations (id, company_name), invoices (invoice_number)',
-        sort: { column: 'payment_date', ascending: false },
-      });
-
-      this.allPayments = data || [];
-      this.filterPayments();
+      // Enable server-side pagination and fetch first page
+      this._payServerPagination = true;
+      await this._fetchPaymentPage(1);
     } catch (error) {
       console.error('Error loading payments:', error);
       utils.showErrorWithRetry(error, 'loading payments', () => this.loadPayments());
@@ -1073,6 +1075,17 @@ const paymentsModule = {
    */
   filterPayments() {
     this._payCurrentPage = 1;
+
+    // Server-side pagination: send filters to server and re-fetch page 1
+    if (this._payServerPagination) {
+      this._fetchPaymentPage(1).catch((err) => {
+        console.error('Error filtering payments:', err);
+        utils.showToast('Error filtering payments: ' + err.message, 'error');
+      });
+      return;
+    }
+
+    // Client-side fallback (used by tests and when data is pre-loaded)
     const search = (document.getElementById('paymentSearchBox')?.value || '').trim().toLowerCase();
     const method = document.getElementById('paymentMethodFilter')?.value || '';
     const status = document.getElementById('paymentStatusFilter')?.value || '';
@@ -1124,18 +1137,125 @@ const paymentsModule = {
   },
 
   /**
+   * Build server-side filters from current payment filter UI state.
+   * @returns {Object} Filters object for apiClient.select
+   */
+  _buildPaymentServerFilters() {
+    const filters = {};
+    const method = document.getElementById('paymentMethodFilter')?.value || '';
+    const status = document.getElementById('paymentStatusFilter')?.value || '';
+    const month = document.getElementById('paymentMonthFilter')?.value || '';
+
+    if (method) {
+      filters.payment_method = method;
+    }
+    if (status) {
+      filters.status = status;
+    }
+    if (month) {
+      filters.payment_date = { op: 'gte', value: month + '-01' };
+      const [y, m] = month.split('-').map(Number);
+      const nextMonth = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;
+      filters['payment_date@lt'] = { op: 'lt', value: nextMonth + '-01' };
+    }
+    return filters;
+  },
+
+  /**
+   * Fetch a specific page of payments from the server with current filters and sort.
+   * @param {number} page - 1-based page number
+   * @returns {Promise<void>}
+   */
+  async _fetchPaymentPage(page) {
+    const fetchId = ++this._payFetchId;
+    const filters = this._buildPaymentServerFilters();
+    const search = (document.getElementById('paymentSearchBox')?.value || '').trim();
+
+    const result = await apiClient.select('payments', {
+      select: '*, organisations (id, company_name), invoices (invoice_number)',
+      filters,
+      search: search ? { term: search, columns: ['payment_reference'] } : undefined,
+      sort: { column: this._paySortField || 'payment_date', ascending: this._paySortDir === 'asc' },
+      page,
+      pageSize: this._payPageSize,
+    });
+
+    // Discard stale responses
+    if (fetchId !== this._payFetchId) return;
+
+    const pageData = result.data || [];
+    this.allPayments = pageData;
+    this.currentPayments = pageData;
+    this._payCurrentPage = result.page || page;
+    this._payPagination = {
+      page: result.page || page,
+      totalPages: result.totalPages || 1,
+      count: result.count || 0,
+      pageSize: result.pageSize || this._payPageSize,
+    };
+
+    // Save current filter state to localStorage
+    try {
+      localStorage.setItem(
+        'paymentFilters',
+        JSON.stringify({
+          search: document.getElementById('paymentSearchBox')?.value || '',
+          method: document.getElementById('paymentMethodFilter')?.value || '',
+          status: document.getElementById('paymentStatusFilter')?.value || '',
+          month: document.getElementById('paymentMonthFilter')?.value || '',
+        })
+      );
+    } catch (e) {
+      console.warn('Failed to save payment filters:', e.message);
+    }
+
+    this.renderPayments();
+    this.updateStatistics();
+  },
+
+  /**
+   * Navigate to a specific payment page (called from server-side pagination controls).
+   * @param {number} page - 1-based page number
+   * @returns {Promise<void>}
+   */
+  async _goToPaymentPage(page) {
+    page = Math.max(1, Math.min(page, this._payPagination.totalPages));
+    if (page === this._payPagination.page) return;
+    try {
+      utils.showLoading();
+      await this._fetchPaymentPage(page);
+    } catch (error) {
+      console.error('Error navigating payment page:', error);
+      utils.showToast('Error loading page: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
    * Render the current page of payments into the table body and update pagination.
    */
   renderPayments() {
     const tbody = document.getElementById('paymentsTableBody');
     if (!tbody) return;
 
-    // Pagination
-    const payTotalPages = Math.ceil(this.currentPayments.length / this._payPageSize);
-    if (this._payCurrentPage > payTotalPages) this._payCurrentPage = payTotalPages || 1;
-    const payStart = (this._payCurrentPage - 1) * this._payPageSize;
-    const payEnd = payStart + this._payPageSize;
-    const pagePayments = this.currentPayments.slice(payStart, payEnd);
+    // Pagination: server-side mode uses data as-is (already a single page), client-side slices
+    let pagePayments;
+    let payTotalPages;
+    let payStart;
+    let payEnd;
+    if (this._payServerPagination) {
+      pagePayments = this.currentPayments;
+      payTotalPages = this._payPagination.totalPages;
+      payStart = (this._payPagination.page - 1) * this._payPagination.pageSize;
+      payEnd = payStart + pagePayments.length;
+    } else {
+      payTotalPages = Math.ceil(this.currentPayments.length / this._payPageSize);
+      if (this._payCurrentPage > payTotalPages) this._payCurrentPage = payTotalPages || 1;
+      payStart = (this._payCurrentPage - 1) * this._payPageSize;
+      payEnd = payStart + this._payPageSize;
+      pagePayments = this.currentPayments.slice(payStart, payEnd);
+    }
 
     if (this.currentPayments.length === 0) {
       utils.showEnhancedEmptyState('paymentsTableBody', 8, {
@@ -1196,7 +1316,10 @@ const paymentsModule = {
       const payTableParent = tbody.closest('.table-responsive') || tbody.parentElement;
       if (payTableParent) payTableParent.after(payPaginationEl);
     }
-    if (payTotalPages > 1) {
+    if (this._payServerPagination && payPaginationEl) {
+      // Use shared server-side pagination renderer
+      utils.renderServerPagination('paymentsPagination', this._payPagination, 'paymentsModule._goToPaymentPage');
+    } else if (payTotalPages > 1) {
       let html = '<nav><ul class="pagination pagination-sm justify-content-center mt-3">';
       html += `<li class="page-item ${this._payCurrentPage <= 1 ? 'disabled' : ''}"><a class="page-link" href="javascript:void(0);" data-action="paymentsModule.goToPaymentPage" data-id="${this._payCurrentPage - 1}">Prev</a></li>`;
       for (let i = 1; i <= payTotalPages; i++) {
@@ -2570,6 +2693,10 @@ const paymentsModule = {
    * @param {number} page - Page number (1-based)
    */
   goToPaymentPage(page) {
+    if (this._payServerPagination) {
+      this._goToPaymentPage(page);
+      return;
+    }
     const totalPages = Math.ceil(this.currentPayments.length / this._payPageSize);
     this._payCurrentPage = Math.max(1, Math.min(page, totalPages));
     this.renderPayments();

@@ -183,7 +183,7 @@
     <div id="searchContainer" style="display:none;">
       <div class="search-input-wrap">
         <i class="bi bi-search search-icon"></i>
-        <input type="text" id="searchInput" placeholder="Type guest name..." oninput="filterGuests()" autofocus aria-label="Search guests">
+        <input type="text" id="searchInput" placeholder="Type guest name..." autofocus aria-label="Search guests">
       </div>
       <div class="guest-list" id="guestList">
         <!-- Populated by JS -->
@@ -555,6 +555,9 @@
       div.textContent = str;
       return div.innerHTML;
     }
+
+    // Wire up search input handler via addEventListener
+    document.getElementById('searchInput').addEventListener('input', filterGuests);
 
     // ---- START ----
     init();

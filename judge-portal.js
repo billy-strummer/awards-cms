@@ -119,6 +119,12 @@ const judgePortal = {
    * @returns {void}
    */
   _attachEventListeners() {
+    // Filter entries by status
+    const entriesFilter = document.getElementById('entriesFilter');
+    if (entriesFilter) {
+      entriesFilter.addEventListener('change', () => this.filterEntries());
+    }
+
     document.body.addEventListener('click', (e) => {
       const actionEl = e.target.closest('[data-action]');
       if (!actionEl) return;

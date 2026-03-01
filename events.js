@@ -22,9 +22,9 @@ const eventsModule = {
   _loading: false,
 
   // Server-side pagination state
-  _serverPagination: false,
-  _srvPagination: { page: 1, totalPages: 1, count: 0, pageSize: 50 },
-  _srvFetchId: 0,
+  _serverPagination: true,
+  _pagination: { page: 1, totalPages: 1, count: 0, pageSize: 50 },
+  _fetchId: 0,
 
   /**
    * Load all events from database
@@ -54,12 +54,12 @@ const eventsModule = {
 
       // Enable server-side pagination and fetch first page
       this._serverPagination = true;
-      await this._srvFetchPage(1);
+      await this._fetchPage(1);
 
       this.updateEventStats();
       this.renderFinancialOverview();
 
-      console.warn(`Loaded events (page 1, total: ${this._srvPagination.count})`);
+      console.warn(`Loaded events (page 1, total: ${this._pagination.count})`);
       utils.trackDataLoad('events');
     } catch (error) {
       console.error('Error loading events:', error);
@@ -105,8 +105,8 @@ const eventsModule = {
   /**
    * Fetch a specific page of events from the server
    */
-  async _srvFetchPage(page) {
-    const fetchId = ++this._srvFetchId;
+  async _fetchPage(page) {
+    const fetchId = ++this._fetchId;
     const filters = this._buildEvtServerFilters();
     const search = document.getElementById('eventsSearchBox')?.value?.trim();
 
@@ -121,11 +121,11 @@ const eventsModule = {
       pageSize: this._evtPageSize || 50,
     });
 
-    if (fetchId !== this._srvFetchId) return;
+    if (fetchId !== this._fetchId) return;
 
     const pageData = result.data || [];
     STATE.allEvents = pageData;
-    this._srvPagination = {
+    this._pagination = {
       page: result.page,
       totalPages: result.totalPages,
       count: result.count,
@@ -139,12 +139,12 @@ const eventsModule = {
   /**
    * Navigate to a specific page (called from pagination controls)
    */
-  async _srvGoToPage(page) {
-    page = Math.max(1, Math.min(page, this._srvPagination.totalPages));
-    if (page === this._srvPagination.page) return;
+  async _goToPage(page) {
+    page = Math.max(1, Math.min(page, this._pagination.totalPages));
+    if (page === this._pagination.page) return;
     try {
       utils.showLoading();
-      await this._srvFetchPage(page);
+      await this._fetchPage(page);
     } catch (error) {
       console.error('Error navigating events page:', error);
       utils.showToast('Error loading page: ' + error.message, 'error');
@@ -11925,7 +11925,7 @@ const eventsModule = {
 
     // Server-side pagination: send filters to server and re-fetch page 1
     if (this._serverPagination) {
-      this._srvFetchPage(1).catch((err) => {
+      this._fetchPage(1).catch((err) => {
         console.error('Error filtering events:', err);
         utils.showToast('Error filtering events: ' + err.message, 'error');
       });
@@ -12006,7 +12006,7 @@ const eventsModule = {
 
     // Server-side: re-fetch with new sort order
     if (this._serverPagination) {
-      this._srvFetchPage(1).catch((err) => console.error('Error sorting events:', err));
+      this._fetchPage(1).catch((err) => console.error('Error sorting events:', err));
       return;
     }
 
@@ -12053,7 +12053,7 @@ const eventsModule = {
     if (!tbody) return;
 
     // Use server total count when in server pagination mode
-    const displayCount = this._serverPagination ? this._srvPagination.count : events.length;
+    const displayCount = this._serverPagination ? this._pagination.count : events.length;
     if (count) count.textContent = displayCount;
 
     // Server-side: data is already one page; client-side: slice locally
@@ -12199,7 +12199,7 @@ const eventsModule = {
       if (tableParent) tableParent.after(paginationEl);
     }
     if (this._serverPagination) {
-      utils.renderServerPagination('eventsPagination', this._srvPagination, 'eventsModule._srvGoToPage');
+      utils.renderServerPagination('eventsPagination', this._pagination, 'eventsModule._goToPage');
     } else {
       const totalPages = Math.ceil(events.length / (this._evtPageSize || 50));
       if (totalPages > 1) {

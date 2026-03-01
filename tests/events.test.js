@@ -285,6 +285,7 @@ describe('Events Module - Filter Logic', () => {
     eventsModule._evtCurrentPage = 1;
     eventsModule._sortField = 'event_date';
     eventsModule._sortDir = 'desc';
+    eventsModule._serverPagination = false;
     // Clear filter inputs
     document.getElementById('eventsSearchBox').value = '';
     document.getElementById('eventsYearFilter').value = '';
@@ -375,6 +376,7 @@ describe('Events Module - Sort Functionality', () => {
     eventsModule._sortField = 'event_date';
     eventsModule._sortDir = 'desc';
     eventsModule._evtCurrentPage = 1;
+    eventsModule._serverPagination = false;
     document.getElementById('eventsSearchBox').value = '';
     document.getElementById('eventsYearFilter').value = '';
     document.getElementById('eventsStatusFilter').value = '';
@@ -431,6 +433,7 @@ describe('Events Module - Pagination Logic', () => {
   beforeEach(() => {
     eventsModule._evtCurrentPage = 1;
     eventsModule._evtPageSize = 50;
+    eventsModule._serverPagination = false;
     document.getElementById('eventsSearchBox').value = '';
     document.getElementById('eventsYearFilter').value = '';
     document.getElementById('eventsStatusFilter').value = '';
@@ -727,6 +730,7 @@ describe('Events Module - Edge Cases', () => {
     eventsModule._evtCurrentPage = 1;
     eventsModule._sortField = 'event_date';
     eventsModule._sortDir = 'desc';
+    eventsModule._serverPagination = false;
     document.getElementById('eventsSearchBox').value = '';
     document.getElementById('eventsYearFilter').value = '';
     document.getElementById('eventsStatusFilter').value = '';
@@ -1988,11 +1992,11 @@ function mockApiClient() {
 // ---------------------------------------------------------------------------
 // SERVER-SIDE PAGINATION
 // ---------------------------------------------------------------------------
-describe('Events Module - Server-Side Pagination (_srvFetchPage)', () => {
+describe('Events Module - Server-Side Pagination (_fetchPage)', () => {
   let api;
   beforeEach(() => {
     api = mockApiClient();
-    eventsModule._srvFetchId = 0;
+    eventsModule._fetchId = 0;
     eventsModule._sortField = 'event_date';
     eventsModule._sortDir = 'desc';
     eventsModule._evtPageSize = 50;
@@ -2003,7 +2007,7 @@ describe('Events Module - Server-Side Pagination (_srvFetchPage)', () => {
   });
   afterEach(() => api.restore());
 
-  test('_srvFetchPage calls apiClient.select with correct table and page', async () => {
+  test('_fetchPage calls apiClient.select with correct table and page', async () => {
     api.restore();
     const selectMock = jest.fn().mockResolvedValue({
       data: [{ id: 'e1', event_name: 'Test' }],
@@ -2014,7 +2018,7 @@ describe('Events Module - Server-Side Pagination (_srvFetchPage)', () => {
     });
     apiClient.select = selectMock;
 
-    await eventsModule._srvFetchPage(1);
+    await eventsModule._fetchPage(1);
 
     expect(selectMock).toHaveBeenCalledWith(
       'events',
@@ -2026,7 +2030,7 @@ describe('Events Module - Server-Side Pagination (_srvFetchPage)', () => {
     );
   });
 
-  test('_srvFetchPage stores pagination metadata', async () => {
+  test('_fetchPage stores pagination metadata', async () => {
     api.restore();
     apiClient.select = jest.fn().mockResolvedValue({
       data: [{ id: 'e1', event_name: 'A' }],
@@ -2035,13 +2039,13 @@ describe('Events Module - Server-Side Pagination (_srvFetchPage)', () => {
       count: 250,
       pageSize: 50,
     });
-    await eventsModule._srvFetchPage(2);
-    expect(eventsModule._srvPagination.page).toBe(2);
-    expect(eventsModule._srvPagination.totalPages).toBe(5);
-    expect(eventsModule._srvPagination.count).toBe(250);
+    await eventsModule._fetchPage(2);
+    expect(eventsModule._pagination.page).toBe(2);
+    expect(eventsModule._pagination.totalPages).toBe(5);
+    expect(eventsModule._pagination.count).toBe(250);
   });
 
-  test('_srvFetchPage discards stale results when fetchId changed', async () => {
+  test('_fetchPage discards stale results when fetchId changed', async () => {
     api.restore();
     let resolveFirst;
     const slowPromise = new Promise((r) => {
@@ -2058,8 +2062,8 @@ describe('Events Module - Server-Side Pagination (_srvFetchPage)', () => {
         pageSize: 50,
       });
 
-    const first = eventsModule._srvFetchPage(1);
-    const second = eventsModule._srvFetchPage(1); // increments fetchId again
+    const first = eventsModule._fetchPage(1);
+    const second = eventsModule._fetchPage(1); // increments fetchId again
 
     resolveFirst({ data: [{ id: 'slow', event_name: 'Slow' }], page: 1, totalPages: 1, count: 1, pageSize: 50 });
     await first;
@@ -2069,26 +2073,26 @@ describe('Events Module - Server-Side Pagination (_srvFetchPage)', () => {
     expect(STATE.allEvents[0].id).toBe('fast');
   });
 
-  test('_srvGoToPage clamps to valid range and does nothing for same page', async () => {
-    eventsModule._srvPagination = { page: 2, totalPages: 3, count: 150, pageSize: 50 };
+  test('_goToPage clamps to valid range and does nothing for same page', async () => {
+    eventsModule._pagination = { page: 2, totalPages: 3, count: 150, pageSize: 50 };
     const spyShow = jest.spyOn(utils, 'showLoading');
-    await eventsModule._srvGoToPage(2); // same page -> no-op
+    await eventsModule._goToPage(2); // same page -> no-op
     expect(spyShow).not.toHaveBeenCalled();
     spyShow.mockRestore();
   });
 
-  test('_srvGoToPage calls _srvFetchPage for a different page', async () => {
-    eventsModule._srvPagination = { page: 1, totalPages: 3, count: 150, pageSize: 50 };
-    const fetchSpy = jest.spyOn(eventsModule, '_srvFetchPage').mockResolvedValue();
-    await eventsModule._srvGoToPage(2);
+  test('_goToPage calls _fetchPage for a different page', async () => {
+    eventsModule._pagination = { page: 1, totalPages: 3, count: 150, pageSize: 50 };
+    const fetchSpy = jest.spyOn(eventsModule, '_fetchPage').mockResolvedValue();
+    await eventsModule._goToPage(2);
     expect(fetchSpy).toHaveBeenCalledWith(2);
     fetchSpy.mockRestore();
   });
 
-  test('_srvGoToPage clamps page above max to totalPages', async () => {
-    eventsModule._srvPagination = { page: 1, totalPages: 3, count: 150, pageSize: 50 };
-    const fetchSpy = jest.spyOn(eventsModule, '_srvFetchPage').mockResolvedValue();
-    await eventsModule._srvGoToPage(10);
+  test('_goToPage clamps page above max to totalPages', async () => {
+    eventsModule._pagination = { page: 1, totalPages: 3, count: 150, pageSize: 50 };
+    const fetchSpy = jest.spyOn(eventsModule, '_fetchPage').mockResolvedValue();
+    await eventsModule._goToPage(10);
     expect(fetchSpy).toHaveBeenCalledWith(3);
     fetchSpy.mockRestore();
   });
@@ -3550,12 +3554,12 @@ describe('Events Module - renderFilteredEvents HTML output', () => {
 // Server pagination edge cases
 // ---------------------------------------------------------------------------
 describe('Events Module - Server Pagination Edge Cases', () => {
-  test('_srvPagination initial state', () => {
+  test('_pagination initial state', () => {
     // Already set by module init
-    expect(eventsModule._srvPagination).toHaveProperty('page');
-    expect(eventsModule._srvPagination).toHaveProperty('totalPages');
-    expect(eventsModule._srvPagination).toHaveProperty('count');
-    expect(eventsModule._srvPagination).toHaveProperty('pageSize');
+    expect(eventsModule._pagination).toHaveProperty('page');
+    expect(eventsModule._pagination).toHaveProperty('totalPages');
+    expect(eventsModule._pagination).toHaveProperty('count');
+    expect(eventsModule._pagination).toHaveProperty('pageSize');
   });
 
   test('_serverPagination flag defaults to false', () => {
@@ -3643,7 +3647,7 @@ describe('Events Module - saveEvent CRUD', () => {
     const insertSpy = jest.spyOn(apiClient, 'insert').mockResolvedValue({
       data: [{ id: 'new-evt-1', event_name: 'New Test Event' }],
     });
-    // loadEvents calls _srvFetchPage which calls apiClient.select
+    // loadEvents calls _fetchPage which calls apiClient.select
     const selectSpy = jest.spyOn(apiClient, 'select').mockResolvedValue({
       data: sampleEvents,
       count: sampleEvents.length,
@@ -3807,7 +3811,7 @@ describe('Events Module - cloneEvent', () => {
 
   test('cloneEvent creates a new event from source', async () => {
     // First call: select source event capacity
-    // Second call: loadEvents -> _srvFetchPage
+    // Second call: loadEvents -> _fetchPage
     const selectSpy = jest.spyOn(apiClient, 'select').mockResolvedValue({
       data: [{ capacity: 500 }],
       count: 1,

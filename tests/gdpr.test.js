@@ -824,6 +824,502 @@ describe('GDPR Module - _renderRequests action click handlers', () => {
   });
 });
 
+describe('GDPR Module - renderGdprPanel early return', () => {
+  test('returns early if gdprPanel container does not exist', () => {
+    const panel = document.getElementById('gdprPanel');
+    panel.id = 'hiddenPanel';
+    expect(() => gdprModule.renderGdprPanel()).not.toThrow();
+    panel.id = 'gdprPanel';
+  });
+});
+
+describe('GDPR Module - searchEntity null data fallbacks', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('handles null result.data for organisation search', async () => {
+    document.getElementById('gdprEntitySearch').value = 'Acme Corp';
+    document.getElementById('gdprEntityType').value = 'organisation';
+    apiClient.select = jest.fn().mockResolvedValue({ data: null });
+
+    await gdprModule.searchEntity();
+    const results = document.getElementById('gdprSearchResults');
+    expect(results.innerHTML).toContain('No results found');
+  });
+
+  test('handles null result.data for contact search', async () => {
+    document.getElementById('gdprEntitySearch').value = 'John';
+    document.getElementById('gdprEntityType').value = 'contact';
+    apiClient.select = jest.fn().mockResolvedValue({ data: null });
+
+    await gdprModule.searchEntity();
+    const results = document.getElementById('gdprSearchResults');
+    expect(results.innerHTML).toContain('No results found');
+  });
+
+  test('handles contact with no email', async () => {
+    document.getElementById('gdprEntitySearch').value = 'John';
+    document.getElementById('gdprEntityType').value = 'contact';
+    apiClient.select = jest.fn().mockResolvedValue({
+      data: [{ id: 'c1', first_name: 'John', last_name: 'Doe', email: null }],
+    });
+
+    await gdprModule.searchEntity();
+    const results = document.getElementById('gdprSearchResults');
+    expect(results.innerHTML).toContain('no email');
+  });
+
+  test('handles organisation with no email', async () => {
+    document.getElementById('gdprEntitySearch').value = 'Acme';
+    document.getElementById('gdprEntityType').value = 'organisation';
+    apiClient.select = jest.fn().mockResolvedValue({
+      data: [{ id: 'org1', company_name: 'Acme Corp', email: null }],
+    });
+
+    await gdprModule.searchEntity();
+    const results = document.getElementById('gdprSearchResults');
+    expect(results.innerHTML).toContain('no email');
+  });
+});
+
+describe('GDPR Module - searchEntity click handler with no matching button', () => {
+  test('clicking non-button element in results does not call selectEntity', async () => {
+    document.getElementById('gdprEntitySearch').value = 'Acme Corp';
+    document.getElementById('gdprEntityType').value = 'organisation';
+    apiClient.select = jest.fn().mockResolvedValue({
+      data: [{ id: 'org1', company_name: 'Acme Corp', email: 'info@acme.com' }],
+    });
+
+    await gdprModule.searchEntity();
+    const results = document.getElementById('gdprSearchResults');
+
+    // Add a non-action element and click it
+    const span = document.createElement('span');
+    span.textContent = 'not a button';
+    results.appendChild(span);
+
+    const selectSpy = jest.spyOn(gdprModule, 'selectEntity');
+    span.click();
+    expect(selectSpy).not.toHaveBeenCalled();
+    selectSpy.mockRestore();
+  });
+});
+
+describe('GDPR Module - loadPendingRequests early return', () => {
+  test('returns early if gdprRequestsTable does not exist', async () => {
+    // Hide the table element
+    const allTbodies = document.querySelectorAll('#gdprRequestsTable');
+    allTbodies.forEach((el) => (el.id = 'hiddenTable'));
+
+    const fetchSpy = jest.spyOn(gdprModule, '_fetchPage');
+    await gdprModule.loadPendingRequests();
+    expect(fetchSpy).not.toHaveBeenCalled();
+    fetchSpy.mockRestore();
+
+    allTbodies.forEach((el) => (el.id = 'gdprRequestsTable'));
+  });
+});
+
+describe('GDPR Module - _renderRequests empty data clears pagination', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    document.querySelectorAll('#gdprRequestsTable').forEach((el) => el.remove());
+    document.querySelectorAll('#gdprPaginationControls').forEach((el) => el.remove());
+    const panel = document.getElementById('gdprPanel');
+    if (panel) panel.innerHTML = '';
+    gdprModule.renderGdprPanel();
+  });
+
+  test('clears pagination controls when data is empty', () => {
+    gdprModule._requestsData = [];
+    gdprModule._renderRequests();
+    const paginationEl = document.getElementById('gdprPaginationControls');
+    expect(paginationEl.innerHTML).toBe('');
+  });
+
+  test('clears pagination controls when data is null', () => {
+    gdprModule._requestsData = null;
+    gdprModule._renderRequests();
+    const paginationEl = document.getElementById('gdprPaginationControls');
+    expect(paginationEl.innerHTML).toBe('');
+  });
+});
+
+describe('GDPR Module - _renderRequests badge fallbacks', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    document.querySelectorAll('#gdprRequestsTable').forEach((el) => el.remove());
+    document.querySelectorAll('#gdprPaginationControls').forEach((el) => el.remove());
+    const panel = document.getElementById('gdprPanel');
+    if (panel) panel.innerHTML = '';
+    gdprModule.renderGdprPanel();
+  });
+
+  test('renders with unknown request_type and status using bg-secondary fallback', () => {
+    gdprModule._requestsData = [
+      {
+        id: 'r-unknown',
+        created_at: '2026-01-15',
+        request_type: 'unknown_type',
+        entity_type: 'organisation',
+        entity_id: 'org-123456',
+        requester_email: 'user@test.com',
+        status: 'unknown_status',
+      },
+    ];
+    gdprModule._pagination = { page: 1, totalPages: 1, count: 1, pageSize: 50 };
+    gdprModule._renderRequests();
+
+    const tbody = document.getElementById('gdprRequestsTable');
+    // Both badges should fall back to bg-secondary
+    const badges = tbody.querySelectorAll('.badge');
+    expect(badges.length).toBe(2);
+    expect(badges[0].classList.contains('bg-secondary')).toBe(true);
+    expect(badges[1].classList.contains('bg-secondary')).toBe(true);
+  });
+
+  test('renders non-pending status without action buttons', () => {
+    gdprModule._requestsData = [
+      {
+        id: 'r-complete',
+        created_at: '2026-01-15',
+        request_type: 'export',
+        entity_type: 'organisation',
+        entity_id: 'org-123456',
+        requester_email: 'user@test.com',
+        status: 'completed',
+      },
+    ];
+    gdprModule._pagination = { page: 1, totalPages: 1, count: 1, pageSize: 50 };
+    gdprModule._renderRequests();
+
+    const tbody = document.getElementById('gdprRequestsTable');
+    expect(tbody.querySelector('[data-action="gdprModule.processRequest"]')).toBeNull();
+    expect(tbody.querySelector('[data-action="gdprModule.rejectRequest"]')).toBeNull();
+  });
+
+  test('renders entity_id as null gracefully', () => {
+    gdprModule._requestsData = [
+      {
+        id: 'r-nullid',
+        created_at: '2026-01-15',
+        request_type: 'delete',
+        entity_type: 'contact',
+        entity_id: null,
+        requester_email: 'user@test.com',
+        status: 'pending',
+      },
+    ];
+    gdprModule._pagination = { page: 1, totalPages: 1, count: 1, pageSize: 50 };
+    gdprModule._renderRequests();
+
+    const tbody = document.getElementById('gdprRequestsTable');
+    expect(tbody.innerHTML).toContain('contact');
+  });
+
+  test('renders all known badge types correctly', () => {
+    gdprModule._requestsData = [
+      {
+        id: 'r-exp',
+        created_at: '2026-01-15',
+        request_type: 'export',
+        entity_type: 'organisation',
+        entity_id: 'org-111111',
+        requester_email: 'a@test.com',
+        status: 'processing',
+      },
+      {
+        id: 'r-del',
+        created_at: '2026-01-15',
+        request_type: 'delete',
+        entity_type: 'contact',
+        entity_id: 'c-222222',
+        requester_email: 'b@test.com',
+        status: 'rejected',
+      },
+      {
+        id: 'r-anon',
+        created_at: '2026-01-15',
+        request_type: 'anonymize',
+        entity_type: 'organisation',
+        entity_id: 'org-333333',
+        requester_email: 'c@test.com',
+        status: 'completed',
+      },
+    ];
+    gdprModule._pagination = { page: 1, totalPages: 1, count: 3, pageSize: 50 };
+    gdprModule._renderRequests();
+
+    const tbody = document.getElementById('gdprRequestsTable');
+    expect(tbody.innerHTML).toContain('bg-info');
+    expect(tbody.innerHTML).toContain('bg-danger');
+    expect(tbody.innerHTML).toContain('bg-warning');
+    expect(tbody.innerHTML).toContain('bg-success');
+    expect(tbody.innerHTML).toContain('bg-secondary');
+  });
+});
+
+describe('GDPR Module - _renderPaginationControls early return', () => {
+  test('returns early if gdprPaginationControls does not exist', () => {
+    const allPags = document.querySelectorAll('#gdprPaginationControls');
+    allPags.forEach((el) => (el.id = 'hiddenPag'));
+
+    expect(() => gdprModule._renderPaginationControls()).not.toThrow();
+
+    allPags.forEach((el) => (el.id = 'gdprPaginationControls'));
+  });
+});
+
+describe('GDPR Module - _renderPaginationControls disabled buttons at last page', () => {
+  beforeEach(() => {
+    let pag = document.getElementById('gdprPaginationControls');
+    if (!pag) {
+      pag = document.createElement('div');
+      pag.id = 'gdprPaginationControls';
+      document.body.appendChild(pag);
+    }
+  });
+
+  test('Next and Last buttons are disabled on last page', () => {
+    gdprModule._pagination = { page: 3, totalPages: 3, count: 120, pageSize: 50 };
+    gdprModule._renderPaginationControls();
+
+    const container = document.getElementById('gdprPaginationControls');
+    const nextBtn = container.querySelector('[data-page="4"]');
+    const lastBtn = container.querySelectorAll('[data-action="gdprModule.goToPage"]')[3]; // Last button
+    expect(nextBtn.disabled).toBe(true);
+    expect(lastBtn.disabled).toBe(true);
+  });
+
+  test('First and Prev buttons are enabled on last page', () => {
+    gdprModule._pagination = { page: 3, totalPages: 3, count: 120, pageSize: 50 };
+    gdprModule._renderPaginationControls();
+
+    const container = document.getElementById('gdprPaginationControls');
+    const firstBtn = container.querySelector('[data-page="1"]');
+    const prevBtn = container.querySelector('[data-page="2"]');
+    expect(firstBtn.disabled).toBe(false);
+    expect(prevBtn.disabled).toBe(false);
+  });
+});
+
+describe('GDPR Module - _exportEntityData null fallbacks', () => {
+  test('handles null org result', async () => {
+    apiClient.select = jest.fn().mockResolvedValue({ data: [] });
+    apiClient.selectAll = jest.fn().mockResolvedValue(null);
+
+    const clickSpy = jest.fn();
+    const originalCreateElement = document.createElement.bind(document);
+    jest.spyOn(document, 'createElement').mockImplementation((tag) => {
+      const el = originalCreateElement(tag);
+      if (tag === 'a') el.click = clickSpy;
+      return el;
+    });
+
+    await gdprModule._exportEntityData('org-none');
+    expect(clickSpy).toHaveBeenCalled();
+    document.createElement.mockRestore();
+  });
+
+  test('handles undefined data from selectAll', async () => {
+    apiClient.select = jest.fn().mockResolvedValue({ data: [{ id: 'org1', company_name: 'Test' }] });
+    apiClient.selectAll = jest.fn().mockResolvedValue(undefined);
+
+    const clickSpy = jest.fn();
+    const originalCreateElement = document.createElement.bind(document);
+    jest.spyOn(document, 'createElement').mockImplementation((tag) => {
+      const el = originalCreateElement(tag);
+      if (tag === 'a') el.click = clickSpy;
+      return el;
+    });
+
+    await gdprModule._exportEntityData('org1');
+    expect(clickSpy).toHaveBeenCalled();
+    document.createElement.mockRestore();
+  });
+});
+
+describe('GDPR Module - runRetentionCleanup null data fallbacks', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('handles null result.data for audit logs deletion', async () => {
+    utils.confirmDialog = jest.fn().mockResolvedValue(true);
+    document.getElementById('retentionAuditLogs').checked = true;
+    document.getElementById('retentionEmailLogs').checked = false;
+    apiClient.deleteByFilters = jest.fn().mockResolvedValue({ data: null });
+    const toastSpy = jest.spyOn(utils, 'showToast');
+
+    await gdprModule.runRetentionCleanup();
+    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('0 records removed'), 'success');
+    toastSpy.mockRestore();
+  });
+
+  test('handles null result.data for email logs deletion', async () => {
+    utils.confirmDialog = jest.fn().mockResolvedValue(true);
+    document.getElementById('retentionAuditLogs').checked = false;
+    document.getElementById('retentionEmailLogs').checked = true;
+    apiClient.deleteByFilters = jest.fn().mockResolvedValue({ data: null });
+    const toastSpy = jest.spyOn(utils, 'showToast');
+
+    await gdprModule.runRetentionCleanup();
+    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('0 records removed'), 'success');
+    toastSpy.mockRestore();
+  });
+
+  test('handles both checkboxes checked with null data', async () => {
+    utils.confirmDialog = jest.fn().mockResolvedValue(true);
+    document.getElementById('retentionAuditLogs').checked = true;
+    document.getElementById('retentionEmailLogs').checked = true;
+    apiClient.deleteByFilters = jest.fn().mockResolvedValue({ data: null });
+    const toastSpy = jest.spyOn(utils, 'showToast');
+
+    await gdprModule.runRetentionCleanup();
+    expect(apiClient.deleteByFilters).toHaveBeenCalledTimes(2);
+    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('0 records removed'), 'success');
+    toastSpy.mockRestore();
+  });
+
+  test('handles undefined result.data for audit logs', async () => {
+    utils.confirmDialog = jest.fn().mockResolvedValue(true);
+    document.getElementById('retentionAuditLogs').checked = true;
+    document.getElementById('retentionEmailLogs').checked = false;
+    apiClient.deleteByFilters = jest.fn().mockResolvedValue({});
+    const toastSpy = jest.spyOn(utils, 'showToast');
+
+    await gdprModule.runRetentionCleanup();
+    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('0 records removed'), 'success');
+    toastSpy.mockRestore();
+  });
+});
+
+describe('GDPR Module - searchEntity with unknown entity type', () => {
+  test('does not query any table for unknown entity type', async () => {
+    document.getElementById('gdprEntitySearch').value = 'Test Search';
+    document.getElementById('gdprEntityType').value = 'unknown_type';
+    apiClient.select = jest.fn().mockResolvedValue({ data: [] });
+
+    await gdprModule.searchEntity();
+    // apiClient.select should NOT have been called because neither branch matched
+    expect(apiClient.select).not.toHaveBeenCalled();
+    const results = document.getElementById('gdprSearchResults');
+    expect(results.innerHTML).toContain('No results found');
+  });
+});
+
+describe('GDPR Module - _renderRequests empty data without pagination element', () => {
+  test('handles missing gdprPaginationControls when data is empty', () => {
+    // Ensure we have a tbody but no pagination element
+    document.querySelectorAll('#gdprRequestsTable').forEach((el) => el.remove());
+    document.querySelectorAll('#gdprPaginationControls').forEach((el) => el.remove());
+    const panel = document.getElementById('gdprPanel');
+    if (panel) panel.innerHTML = '';
+    gdprModule.renderGdprPanel();
+
+    // Now remove the pagination controls that renderGdprPanel created
+    const pagEl = document.getElementById('gdprPaginationControls');
+    if (pagEl) pagEl.id = 'hiddenPaginationForTest';
+
+    gdprModule._requestsData = [];
+    expect(() => gdprModule._renderRequests()).not.toThrow();
+
+    // Restore
+    const hidden = document.querySelector('#hiddenPaginationForTest');
+    if (hidden) hidden.id = 'gdprPaginationControls';
+  });
+});
+
+describe('GDPR Module - _renderRequests action handler with unknown action', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    document.querySelectorAll('#gdprRequestsTable').forEach((el) => el.remove());
+    document.querySelectorAll('#gdprPaginationControls').forEach((el) => el.remove());
+    const panel = document.getElementById('gdprPanel');
+    if (panel) panel.innerHTML = '';
+    gdprModule.renderGdprPanel();
+  });
+
+  test('clicking button with unknown data-action does not call processRequest or rejectRequest', () => {
+    gdprModule._requestsData = [
+      {
+        id: 'r-test',
+        created_at: '2026-01-15',
+        request_type: 'export',
+        entity_type: 'organisation',
+        entity_id: 'org-123456',
+        requester_email: 'user@test.com',
+        status: 'pending',
+      },
+    ];
+    gdprModule._pagination = { page: 1, totalPages: 1, count: 1, pageSize: 50 };
+
+    const processSpy = jest.spyOn(gdprModule, 'processRequest').mockImplementation(() => {});
+    const rejectSpy = jest.spyOn(gdprModule, 'rejectRequest').mockImplementation(() => {});
+    gdprModule._renderRequests();
+
+    const tbody = document.getElementById('gdprRequestsTable');
+    // Add a button with an unknown data-action
+    const unknownBtn = document.createElement('button');
+    unknownBtn.setAttribute('data-action', 'gdprModule.unknownAction');
+    unknownBtn.setAttribute('data-id', 'r-test');
+    tbody.appendChild(unknownBtn);
+    unknownBtn.click();
+
+    expect(processSpy).not.toHaveBeenCalled();
+    expect(rejectSpy).not.toHaveBeenCalled();
+    processSpy.mockRestore();
+    rejectSpy.mockRestore();
+  });
+});
+
+describe('GDPR Module - _renderPaginationControls click on non-button', () => {
+  beforeEach(() => {
+    let pag = document.getElementById('gdprPaginationControls');
+    if (!pag) {
+      pag = document.createElement('div');
+      pag.id = 'gdprPaginationControls';
+      document.body.appendChild(pag);
+    }
+  });
+
+  test('clicking non-button element in pagination container does not call _goToPage', () => {
+    gdprModule._pagination = { page: 1, totalPages: 3, count: 120, pageSize: 50 };
+    gdprModule._renderPaginationControls();
+
+    const goToPageSpy = jest.spyOn(gdprModule, '_goToPage').mockImplementation(() => {});
+    const container = document.getElementById('gdprPaginationControls');
+    // Click on the text element, not a button
+    const textEl = container.querySelector('small');
+    expect(textEl).not.toBeNull();
+    textEl.click();
+
+    expect(goToPageSpy).not.toHaveBeenCalled();
+    goToPageSpy.mockRestore();
+  });
+});
+
+describe('GDPR Module - processRequest with unknown type', () => {
+  test('processes request with unknown type (no special handler)', async () => {
+    utils.confirmDialog = jest.fn().mockResolvedValue(true);
+    apiClient.update = jest.fn().mockResolvedValue({});
+    jest.spyOn(gdprModule, 'loadPendingRequests').mockResolvedValue();
+    const toastSpy = jest.spyOn(utils, 'showToast');
+
+    await gdprModule.processRequest('r1', 'unknown_type', 'entity-1');
+    // Should still complete the request successfully, just without calling any specific handler
+    expect(apiClient.update).toHaveBeenCalledWith(
+      'gdpr_requests',
+      'r1',
+      expect.objectContaining({ status: 'completed' })
+    );
+    expect(toastSpy).toHaveBeenCalledWith('GDPR request processed', 'success');
+    toastSpy.mockRestore();
+    gdprModule.loadPendingRequests.mockRestore();
+  });
+});
+
 describe('GDPR Module - _renderPaginationControls click handler', () => {
   beforeEach(() => {
     let pag = document.getElementById('gdprPaginationControls');

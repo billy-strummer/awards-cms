@@ -1934,3 +1934,343 @@ describe('Test Data Manager - removeTestData with email lists and segments', () 
     expect(utils.hideLoading).toHaveBeenCalled();
   });
 });
+
+// ==========================================================
+// Additional tests for 100% coverage
+// ==========================================================
+
+describe('Test Data Manager - removeTestData organisation_segments catch block', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.useFakeTimers();
+    jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    jest.spyOn(utils, 'showLoading').mockImplementation(() => {});
+    jest.spyOn(utils, 'hideLoading').mockImplementation(() => {});
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+    jest.restoreAllMocks();
+  });
+
+  test('catches organisation_segments cleanup error and continues', async () => {
+    jest.spyOn(testDataManager, 'showConfirmDialog').mockResolvedValue(true);
+    jest.spyOn(testDataManager, '_safeDel').mockResolvedValue();
+    jest.spyOn(testDataManager, 'showModal').mockImplementation(() => {});
+
+    let contactSegmentsCallCount = 0;
+    mockSupabase.from.mockImplementation((table) => {
+      const chain = buildChainableMock({ data: [], error: null });
+      chain.select.mockReturnValue(chain);
+      chain.delete.mockReturnValue(chain);
+      chain.eq.mockReturnValue(chain);
+      chain.in.mockReturnValue(chain);
+      chain.like.mockReturnValue(chain);
+      chain.then = jest.fn((cb) => Promise.resolve({ data: [], error: null }).then(cb));
+
+      if (table === 'contact_segments') {
+        contactSegmentsCallCount++;
+        // The first contact_segments call is inside the try block for organisation_segments
+        if (contactSegmentsCallCount === 1) {
+          return {
+            select: jest.fn(() => ({
+              like: jest.fn(() => {
+                throw new Error('contact_segments query fail');
+              }),
+            })),
+          };
+        }
+      }
+      return chain;
+    });
+
+    await testDataManager.removeTestData();
+
+    expect(console.warn).toHaveBeenCalledWith('Cleanup skip: organisation_segments', 'contact_segments query fail');
+  });
+});
+
+describe('Test Data Manager - removeTestData invoice_line_items catch block', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.useFakeTimers();
+    jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    jest.spyOn(utils, 'showLoading').mockImplementation(() => {});
+    jest.spyOn(utils, 'hideLoading').mockImplementation(() => {});
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+    jest.restoreAllMocks();
+  });
+
+  test('catches invoice_line_items cleanup error and continues', async () => {
+    jest.spyOn(testDataManager, 'showConfirmDialog').mockResolvedValue(true);
+    jest.spyOn(testDataManager, '_safeDel').mockResolvedValue();
+    jest.spyOn(testDataManager, 'showModal').mockImplementation(() => {});
+
+    mockSupabase.from.mockImplementation((table) => {
+      const chain = buildChainableMock({ data: [], error: null });
+      chain.select.mockReturnValue(chain);
+      chain.delete.mockReturnValue(chain);
+      chain.eq.mockReturnValue(chain);
+      chain.in.mockReturnValue(chain);
+      chain.like.mockReturnValue(chain);
+      chain.then = jest.fn((cb) => Promise.resolve({ data: [], error: null }).then(cb));
+
+      if (table === 'invoices') {
+        return {
+          select: jest.fn(() => ({
+            like: jest.fn(() => {
+              throw new Error('invoices query fail');
+            }),
+          })),
+          delete: jest.fn(() => chain),
+        };
+      }
+      return chain;
+    });
+
+    await testDataManager.removeTestData();
+
+    expect(console.warn).toHaveBeenCalledWith('Cleanup skip: invoice_line_items', 'invoices query fail');
+  });
+});
+
+describe('Test Data Manager - removeTestData success setTimeout callback', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.useFakeTimers();
+    jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    jest.spyOn(utils, 'showLoading').mockImplementation(() => {});
+    jest.spyOn(utils, 'hideLoading').mockImplementation(() => {});
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+    jest.restoreAllMocks();
+  });
+
+  test('fires setTimeout callback that calls showModal on success', async () => {
+    jest.spyOn(testDataManager, 'showConfirmDialog').mockResolvedValue(true);
+    jest.spyOn(testDataManager, '_safeDel').mockResolvedValue();
+    jest.spyOn(testDataManager, 'showModal').mockImplementation(() => {});
+
+    const fromChain = buildChainableMock({ data: [], error: null });
+    mockSupabase.from.mockReturnValue(fromChain);
+    fromChain.select.mockReturnValue(fromChain);
+    fromChain.delete.mockReturnValue(fromChain);
+    fromChain.eq.mockReturnValue(fromChain);
+    fromChain.in.mockReturnValue(fromChain);
+    fromChain.like.mockReturnValue(fromChain);
+    fromChain.then = jest.fn((cb) => Promise.resolve({ data: [], error: null }).then(cb));
+
+    await testDataManager.removeTestData();
+
+    // Fire the setTimeout callback (500ms delay in source)
+    jest.advanceTimersByTime(600);
+
+    expect(testDataManager.showModal).toHaveBeenCalledWith(
+      'Test Data Removed',
+      expect.stringContaining('Cleanup Complete'),
+      true
+    );
+  });
+});
+
+describe('Test Data Manager - showConfirmDialog confirm and hidden handlers', () => {
+  afterEach(() => {
+    const modal = document.getElementById('confirmModal');
+    if (modal) modal.remove();
+  });
+
+  test('resolves true when confirm button clicked and modal hidden', async () => {
+    const promise = testDataManager.showConfirmDialog('Title', 'Message', 'OK', 'danger');
+
+    // Simulate confirm button click
+    const confirmBtn = document.getElementById('confirmBtn');
+    expect(confirmBtn).not.toBeNull();
+    confirmBtn.onclick({ });
+
+    // Simulate the hidden.bs.modal event on the modal element
+    const modalEl = document.getElementById('confirmModal');
+    const hiddenEvent = new dom.window.Event('hidden.bs.modal');
+    modalEl.dispatchEvent(hiddenEvent);
+
+    const result = await promise;
+    expect(result).toBe(true);
+  });
+
+  test('resolves false when modal hidden without confirming', async () => {
+    const promise = testDataManager.showConfirmDialog('Title', 'Message');
+
+    // Simulate modal being hidden without clicking confirm
+    const modalEl = document.getElementById('confirmModal');
+    const hiddenEvent = new dom.window.Event('hidden.bs.modal');
+    modalEl.dispatchEvent(hiddenEvent);
+
+    const result = await promise;
+    expect(result).toBe(false);
+  });
+});
+
+describe('Test Data Manager - reloadPage execution', () => {
+  test('invokes location.reload', () => {
+    // In JSDOM, location.reload cannot be redefined via Object.defineProperty.
+    // Instead, we replace the entire location object with a mock, call reloadPage,
+    // and then restore.
+    const originalLocation = global.location;
+    delete global.location;
+    global.location = { reload: jest.fn(), href: 'http://localhost' };
+
+    testDataManager.reloadPage();
+
+    expect(global.location.reload).toHaveBeenCalled();
+
+    // Restore
+    global.location = originalLocation;
+  });
+});
+
+describe('Test Data Manager - showModal hidden.bs.modal handler', () => {
+  test('removes modal element when hidden.bs.modal event fires', () => {
+    testDataManager.showModal('Test Title', '<p>Test content</p>');
+
+    const modalEl = document.getElementById('infoModal');
+    expect(modalEl).not.toBeNull();
+
+    // Dispatch the hidden.bs.modal event
+    const hiddenEvent = new dom.window.Event('hidden.bs.modal');
+    modalEl.dispatchEvent(hiddenEvent);
+
+    // The modal should be removed from the DOM
+    expect(document.getElementById('infoModal')).toBeNull();
+  });
+});
+
+describe('Test Data Manager - generateMockOrder setTimeout callback', () => {
+  let fromChain;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.useFakeTimers();
+    jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    jest.spyOn(utils, 'showLoading').mockImplementation(() => {});
+    jest.spyOn(utils, 'hideLoading').mockImplementation(() => {});
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    fromChain = buildChainableMock({ data: null, error: null });
+    mockSupabase.from.mockReturnValue(fromChain);
+    fromChain.select.mockReturnValue(fromChain);
+    fromChain.eq.mockReturnValue(fromChain);
+    fromChain.insert.mockReturnValue(fromChain);
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+    jest.restoreAllMocks();
+  });
+
+  test('setTimeout callback calls confirmDialog and clicks dashboard tab when confirmed', async () => {
+    // Setup: existing org found, invoice created successfully
+    fromChain.single
+      .mockResolvedValueOnce({
+        data: { id: 'org-existing', company_name: 'TEST_MODE_Mock Company Ltd' },
+        error: null,
+      })
+      .mockResolvedValueOnce({
+        data: { id: 'inv-1' },
+        error: null,
+      });
+
+    const confirmDialogSpy = jest.spyOn(utils, 'confirmDialog').mockResolvedValue(true);
+    const dashboardTab = document.getElementById('dashboard-tab');
+    const clickSpy = jest.spyOn(dashboardTab, 'click').mockImplementation(() => {});
+
+    await testDataManager.generateMockOrder();
+
+    // Fire the setTimeout callback (1500ms delay)
+    jest.advanceTimersByTime(1600);
+
+    // Allow the async function inside setTimeout to complete
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(confirmDialogSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Mock Order Created',
+        confirmText: 'Go to Dashboard',
+      })
+    );
+  });
+
+  test('setTimeout callback does not click tab when dialog dismissed', async () => {
+    fromChain.single
+      .mockResolvedValueOnce({
+        data: { id: 'org-existing', company_name: 'TEST_MODE_Mock Company Ltd' },
+        error: null,
+      })
+      .mockResolvedValueOnce({
+        data: { id: 'inv-1' },
+        error: null,
+      });
+
+    jest.spyOn(utils, 'confirmDialog').mockResolvedValue(false);
+    const dashboardTab = document.getElementById('dashboard-tab');
+    const clickSpy = jest.spyOn(dashboardTab, 'click').mockImplementation(() => {});
+
+    await testDataManager.generateMockOrder();
+
+    // Fire the setTimeout
+    jest.advanceTimersByTime(1600);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(clickSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe('Test Data Manager - removeMockOrders setTimeout callback', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.useFakeTimers();
+    jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    jest.spyOn(utils, 'showLoading').mockImplementation(() => {});
+    jest.spyOn(utils, 'hideLoading').mockImplementation(() => {});
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+    jest.restoreAllMocks();
+  });
+
+  test('fires setTimeout callback that calls showModal after success', async () => {
+    jest.spyOn(testDataManager, 'showModal').mockImplementation(() => {});
+
+    const fromChain = buildChainableMock({ data: [], error: null });
+    mockSupabase.from.mockReturnValue(fromChain);
+    fromChain.select.mockReturnValue(fromChain);
+    fromChain.delete.mockReturnValue(fromChain);
+    fromChain.eq.mockReturnValue(fromChain);
+    fromChain.like.mockReturnValue(fromChain);
+    fromChain.then = jest.fn((cb) => Promise.resolve({ data: [], error: null }).then(cb));
+
+    await testDataManager.removeMockOrders();
+
+    // Fire the setTimeout callback (500ms delay)
+    jest.advanceTimersByTime(600);
+
+    expect(testDataManager.showModal).toHaveBeenCalledWith(
+      'Mock Orders Removed',
+      expect.stringContaining('Cleanup Complete'),
+      true
+    );
+  });
+});

@@ -634,6 +634,39 @@ describe('Judge Automation Module', () => {
       consoleSpy.mockRestore();
     });
 
+    test('logs error when shortlist notification email fails to send', async () => {
+      const entries = [
+        {
+          id: 'e1',
+          average_score: 85,
+          organisations: { company_name: 'Top Corp', email: 'org@corp.com' },
+          awards: { award_name: 'Best A' },
+          judge_scores: [
+            { is_complete: true, total_score: 85, recommendation: 'shortlist' },
+            { is_complete: true, total_score: 85, recommendation: 'shortlist' },
+          ],
+          contact_email: 'fail@corp.com',
+          contact_name: 'Fail Person',
+        },
+      ];
+
+      mockFromResults.push(chainable({ data: entries, error: null }));
+      mockFromResults.push(chainable({ data: null, error: null }));
+
+      mockSendEmail.mockRejectedValueOnce(new Error('SMTP down'));
+
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+      await judgeAutomation.generateShortlist('award-1');
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to send shortlist notification'),
+        'SMTP down'
+      );
+      consoleErrorSpy.mockRestore();
+      consoleLogSpy.mockRestore();
+    });
+
     test('calculates composite score with standard deviation penalty', async () => {
       const entries = [
         {

@@ -535,6 +535,34 @@ describe('Certificates & QR Module', () => {
       consoleSpy.mockRestore();
     });
 
+    test('creates badges directory when it does not exist', async () => {
+      const attendee = {
+        id: 'att-badge-mkdir',
+        attendee_name: 'Dir Person',
+        table_number: 5,
+        contacts: { full_name: 'Dir Person' },
+        events: { event_name: 'Gala 2026', event_date: '2026-06-15' },
+        organisations: { company_name: 'Dir Corp' },
+      };
+
+      mockFromResults.push(chainable({ data: attendee, error: null }));
+      mockFromResults.push(chainable({ data: attendee, error: null }));
+      mockFromResults.push(chainable({ data: null, error: null }));
+
+      mockQRCodeToDataURL.mockResolvedValue('data:image/png;base64,fakeqrdata');
+      mockGetPublicUrl.mockReturnValue({
+        data: { publicUrl: 'https://storage.test.co/qr-codes/qr-ticket.png' },
+      });
+      mockExistsSync.mockReturnValue(false);
+
+      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+      const result = await certificates.generateEventBadge('att-badge-mkdir');
+
+      expect(mockMkdirSync).toHaveBeenCalledWith(expect.any(String), { recursive: true });
+      expect(result).toHaveProperty('filepath');
+      consoleSpy.mockRestore();
+    });
+
     test('generates badge without organisation or table number', async () => {
       const attendee = {
         id: 'att-badge-2',
@@ -735,6 +763,16 @@ describe('Certificates & QR Module', () => {
       expect(result.valid).toBe(false);
       expect(result.message).toBe('Invalid QR code');
     });
+
+    test('returns invalid when attendee is null with no error', async () => {
+      const qrData = JSON.stringify({ id: 'ghost-attendee' });
+      mockFromResults.push(chainable({ data: null, error: null }));
+
+      const result = await certificates.verifyQRCode(qrData);
+
+      expect(result.valid).toBe(false);
+      expect(result.message).toBe('Attendee not found');
+    });
   });
 
   // --- API Endpoints ---
@@ -933,6 +971,16 @@ describe('Certificates & QR Module', () => {
 
       // verifyQRCode catches its own errors, so this should return a valid:false response
       expect(res.body.valid).toBe(false);
+    });
+
+    test('returns 500 when req.body is null', async () => {
+      const req = { body: null };
+      const res = createRes();
+
+      await certificates.verifyQREndpoint(req, res);
+
+      expect(res.statusCode).toBe(500);
+      expect(res.body).toHaveProperty('error');
     });
   });
 });

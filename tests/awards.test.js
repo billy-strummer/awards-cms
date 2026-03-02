@@ -132,6 +132,9 @@ syncWindowToGlobal();
 require('../awards.js');
 syncWindowToGlobal();
 
+// Save original methods that tests may replace with mocks
+const _origLogAwardAudit = awardsModule._logAwardAudit;
+
 // ==========================================
 // SAMPLE DATA
 // ==========================================
@@ -935,8 +938,8 @@ describe('Awards Module - _enrichPageData()', () => {
 
   test('handles winners without explicit position', async () => {
     const origSelect = apiClient.select;
+    // county is null so no county lookup is made; only the assignments select call fires
     apiClient.select = jest.fn()
-      .mockResolvedValueOnce({ data: [] })
       .mockResolvedValueOnce({
         data: [
           { award_id: 'a1', status: 'winner', winner_position: null, organisations: { company_name: 'Solo Winner' } },
@@ -1240,6 +1243,10 @@ describe('Awards Module - viewDetails()', () => {
     bodyEl.id = 'awardDetailsModalBody';
     document.body.appendChild(bodyEl);
 
+    // viewDetails renders nominee status badges via assignmentsModule.getStatusBadge
+    const origAssignmentsModule = global.assignmentsModule;
+    global.assignmentsModule = { getStatusBadge: (status) => `<span class="badge">${status}</span>` };
+
     const origSelect = apiClient.select;
     apiClient.select = jest.fn()
       .mockResolvedValueOnce({
@@ -1252,6 +1259,7 @@ describe('Awards Module - viewDetails()', () => {
     await awardsModule.viewDetails('award-1');
     expect(bodyEl.innerHTML).toContain('Best Plumber');
     apiClient.select = origSelect;
+    global.assignmentsModule = origAssignmentsModule;
     modalEl.remove();
     titleEl.remove();
     bodyEl.remove();
@@ -1352,7 +1360,13 @@ describe('Awards Module - applySeasonDates()', () => {
       }],
     };
 
-    document.getElementById('awardFormSeason').value = 's1';
+    // Add option so setting .value on the <select> actually takes effect
+    const seasonSelect = document.getElementById('awardFormSeason');
+    const opt = document.createElement('option');
+    opt.value = 's1';
+    opt.textContent = 'Season 1';
+    seasonSelect.appendChild(opt);
+    seasonSelect.value = 's1';
     awardsModule.applySeasonDates();
     expect(document.getElementById('awardFormEntryOpen').value).toBe('2026-01-01');
     expect(document.getElementById('awardFormYear').value).toBe('2026');
@@ -1486,8 +1500,14 @@ describe('Awards Module - validateDates()', () => {
 
 describe('Awards Module - saveAward()', () => {
   let formEls;
+  let origLoadAwards;
+  let origLogAwardAudit;
 
   beforeEach(() => {
+    // Save originals so they can be restored
+    origLoadAwards = awardsModule.loadAwards;
+    origLogAwardAudit = awardsModule._logAwardAudit;
+
     const ids = [
       'awardForm', 'awardFormId', 'awardFormName', 'awardFormYear', 'awardFormStatus',
       'awardFormEntryOpen', 'awardFormEntryClose', 'awardFormNomineesAnnouncement',
@@ -1497,6 +1517,12 @@ describe('Awards Module - saveAward()', () => {
     ];
     const selects = ['awardFormCounty', 'awardFormSector'];
     formEls = [];
+
+    // Remove any stale elements left behind by earlier tests
+    [...ids, ...selects, 'awardFormModal'].forEach((id) => {
+      let el;
+      while ((el = document.getElementById(id))) el.remove();
+    });
 
     ids.forEach((id) => {
       let el;
@@ -1538,6 +1564,9 @@ describe('Awards Module - saveAward()', () => {
 
   afterEach(() => {
     formEls.forEach((el) => el.remove());
+    // Restore original methods that tests may have replaced with mocks
+    awardsModule.loadAwards = origLoadAwards;
+    awardsModule._logAwardAudit = origLogAwardAudit;
   });
 
   test('returns if form is invalid', async () => {
@@ -1971,6 +2000,11 @@ describe('Awards Module - showDataQualityDashboard()', () => {
 });
 
 describe('Awards Module - _logAwardAudit()', () => {
+  beforeEach(() => {
+    // Restore the real _logAwardAudit in case earlier tests replaced it with a mock
+    awardsModule._logAwardAudit = _origLogAwardAudit;
+  });
+
   test('inserts audit log entry', async () => {
     const origInsert = apiClient.insert;
     apiClient.insert = jest.fn().mockResolvedValue({});

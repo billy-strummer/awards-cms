@@ -594,3 +594,121 @@ describe('Accessibility Module - Refresh', () => {
     expect(() => a11yModule.init()).not.toThrow();
   });
 });
+
+describe('Accessibility Module - Branch Coverage', () => {
+  test('enhanceButtons skips button with text content and multiple children', () => {
+    // Button that has non-empty text and children.length !== 1 -> both conditions false
+    const btn = document.createElement('button');
+    btn.textContent = 'Save';
+    document.body.appendChild(btn);
+    a11yModule.enhanceButtons();
+    expect(btn.getAttribute('aria-label')).toBeNull();
+    btn.remove();
+  });
+
+  test('enhanceButtons handles icon-only button with unknown icon class (label is null)', () => {
+    const btn = document.createElement('button');
+    const icon = document.createElement('i');
+    icon.className = 'bi bi-unknown-xyz';
+    btn.appendChild(icon);
+    document.body.appendChild(btn);
+    a11yModule.enhanceButtons();
+    // label is null so aria-label should not be set
+    expect(btn.getAttribute('aria-label')).toBeNull();
+    btn.remove();
+  });
+
+  test('enhanceButtons handles button with empty text (first branch true) but no icon', () => {
+    const btn = document.createElement('button');
+    btn.textContent = '   ';
+    document.body.appendChild(btn);
+    a11yModule.enhanceButtons();
+    expect(btn.getAttribute('aria-label')).toBeNull();
+    btn.remove();
+  });
+
+  test('enhanceClickableElements skips element that already has tabindex', () => {
+    const div = document.createElement('div');
+    div.setAttribute('onclick', 'doSomething()');
+    div.setAttribute('tabindex', '5');
+    document.body.appendChild(div);
+    a11yModule.enhanceClickableElements();
+    // tabindex should remain at 5, not be overwritten to 0
+    expect(div.getAttribute('tabindex')).toBe('5');
+    expect(div.getAttribute('role')).toBe('button');
+    div.remove();
+  });
+
+  test('enhanceModals handles modal without a title element', () => {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.id = 'noTitleModal';
+    // No .modal-title child
+    document.body.appendChild(modal);
+    a11yModule.enhanceModals();
+    // aria-labelledby should NOT be set since there's no title
+    expect(modal.getAttribute('aria-labelledby')).toBeNull();
+    // aria-modal should still be set
+    expect(modal.getAttribute('aria-modal')).toBe('true');
+    modal.remove();
+  });
+
+  test('enhanceModals skips modal that already has aria-labelledby', () => {
+    const modal = document.getElementById('testModal');
+    modal.setAttribute('aria-labelledby', 'existing-id');
+    a11yModule.enhanceModals();
+    expect(modal.getAttribute('aria-labelledby')).toBe('existing-id');
+  });
+
+  test('setupKeyboardNav: unrecognized key does not trigger focus/click', () => {
+    const container = document.createElement('ul');
+    container.className = 'nav-tabs';
+    container.innerHTML = '<li><button class="nav-link">A</button></li><li><button class="nav-link">B</button></li>';
+    document.body.appendChild(container);
+
+    const tabs = container.querySelectorAll('.nav-link');
+    const focusSpy0 = jest.fn();
+    const clickSpy0 = jest.fn();
+    const focusSpy1 = jest.fn();
+    const clickSpy1 = jest.fn();
+    tabs[0].focus = focusSpy0;
+    tabs[0].click = clickSpy0;
+    tabs[1].focus = focusSpy1;
+    tabs[1].click = clickSpy1;
+
+    a11yModule.setupKeyboardNav();
+
+    const event = new dom.window.KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    tabs[0].dispatchEvent(event);
+
+    // Neither tab should have been focused/clicked
+    expect(focusSpy0).not.toHaveBeenCalled();
+    expect(clickSpy0).not.toHaveBeenCalled();
+    expect(focusSpy1).not.toHaveBeenCalled();
+    expect(clickSpy1).not.toHaveBeenCalled();
+    container.remove();
+  });
+
+  test('announce does nothing when live region does not exist', () => {
+    const region = document.getElementById('a11y-live-region');
+    if (region) region.remove();
+    // Should not throw
+    expect(() => a11yModule.announce('Test message')).not.toThrow();
+  });
+
+  test('enhanceButtons adds aria-label to delete buttons with onclick', () => {
+    const btn = document.getElementById('deleteBtn');
+    btn.removeAttribute('aria-label');
+    a11yModule.enhanceButtons();
+    expect(btn.getAttribute('aria-label')).toBe('Delete');
+  });
+
+  test('enhanceModals uses existing title id when present', () => {
+    const modal = document.getElementById('testModal');
+    modal.removeAttribute('aria-labelledby');
+    const title = modal.querySelector('.modal-title');
+    title.id = 'my-custom-title-id';
+    a11yModule.enhanceModals();
+    expect(modal.getAttribute('aria-labelledby')).toBe('my-custom-title-id');
+  });
+});

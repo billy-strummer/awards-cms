@@ -759,9 +759,12 @@ describe('openAssignmentsModal (lines 71-107)', () => {
   });
 });
 
+const _realRefreshAssignments = assignmentsModule.refreshAssignments;
+
 describe('refreshAssignments (lines 113-265)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    assignmentsModule.refreshAssignments = _realRefreshAssignments;
     assignmentsModule.currentAwardId = 'aw1';
     jest.useFakeTimers();
   });
@@ -790,9 +793,6 @@ describe('refreshAssignments (lines 113-265)', () => {
       assignmentsModule.constructor.prototype?.refreshAssignments;
     // Just call it directly since we mocked getAwardAssignments
     const contentEl = document.getElementById('assignmentsContent');
-    // We need to call the real refreshAssignments. Let's call it via the module
-    const realRefresh = emailTemplatesModule ? undefined : undefined; // no-op
-    // Actually we can just call it directly since we mocked getAwardAssignments
     await assignmentsModule.refreshAssignments();
 
     expect(contentEl.innerHTML).toContain('Alpha Corp');
@@ -1107,6 +1107,11 @@ describe('_filterEmailList (lines 862-878)', () => {
       { id: 'a2', organisations: { email: 'short@test.com' }, status: 'shortlisted' },
       { id: 'a3', organisations: { email: 'win@test.com' }, status: 'winner' },
     ];
+    global.event = undefined;
+  });
+
+  afterEach(() => {
+    delete global.event;
   });
 
   test('filters by status and updates textarea', () => {
@@ -1132,6 +1137,7 @@ describe('_filterEmailList (lines 862-878)', () => {
     btn1.setAttribute('data-action', 'test');
     const btn2 = document.createElement('button');
     btn2.className = 'btn';
+    btn2.setAttribute('data-action', 'test');
     btnGroup.appendChild(btn1);
     btnGroup.appendChild(btn2);
     document.body.appendChild(btnGroup);

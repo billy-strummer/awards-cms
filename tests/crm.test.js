@@ -307,6 +307,8 @@ describe('CRM Module - Company Filtering', () => {
       { id: '4', company_name: 'Delta Corp', industry: 'Healthcare', segments: null },
       { id: '5', company_name: null, industry: null, segments: '' },
     ];
+    // Use client-side filtering path (bypass server pagination)
+    crmModule._serverPagination = false;
     // Prevent actual DOM rendering errors
     jest.spyOn(crmModule, 'renderCompaniesTable').mockImplementation(() => {});
   });

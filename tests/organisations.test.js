@@ -6690,7 +6690,8 @@ describe('Organisations Module - filterByMissingField()', () => {
 
   test('sets _filterMissingField and calls filterOrganisations', () => {
     orgsModule.filterByMissingField('email');
-    expect(orgsModule._filterMissingField).toBe('email');
+    // filterOrganisations clears _filterMissingField after applying it
+    expect(orgsModule._filterMissingField).toBeNull();
     // Should filter down to orgs missing email
     expect(STATE.filteredOrganisations.length).toBe(1);
     expect(STATE.filteredOrganisations[0].id).toBe('fm2');

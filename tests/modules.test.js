@@ -1,3 +1,4 @@
+/* global judgePortal */
 /**
  * Integration tests for BTA CMS core modules
  * Run with: npx jest tests/modules.test.js
@@ -7,7 +8,8 @@
 const { JSDOM } = require('jsdom');
 
 // Setup minimal DOM before loading modules
-const dom = new JSDOM(`<!DOCTYPE html><html><body>
+const dom = new JSDOM(
+  `<!DOCTYPE html><html><body>
   <div id="loadingBar" style="display:none;"></div>
   <div id="notificationToast"><span id="toastIcon"></span><span id="toastTitle"></span><span id="toastMessage"></span></div>
   <div id="connectionStatus"><span class="status-icon"></span><span class="status-text"></span></div>
@@ -26,7 +28,9 @@ const dom = new JSDOM(`<!DOCTYPE html><html><body>
   <span id="awardsCount"></span>
   <span id="eventsCount"></span>
   <span id="winnersCount"></span>
-</body></html>`, { url: 'http://localhost' });
+</body></html>`,
+  { url: 'http://localhost' }
+);
 
 global.window = dom.window;
 global.document = dom.window.document;
@@ -36,12 +40,18 @@ global.HTMLElement = dom.window.HTMLElement;
 
 // Mock bootstrap
 global.bootstrap = {
-  Toast: class { show() {} hide() {} },
-  Modal: class {
-    show() {} hide() {}
-    static getInstance() { return { hide() {} }; }
+  Toast: class {
+    show() {}
+    hide() {}
   },
-  Tooltip: class {}
+  Modal: class {
+    show() {}
+    hide() {}
+    static getInstance() {
+      return { hide() {} };
+    }
+  },
+  Tooltip: class {},
 };
 
 // Mock supabase
@@ -56,16 +66,20 @@ const mockSupabase = {
   range: jest.fn(() => mockSupabase),
   single: jest.fn(() => Promise.resolve({ data: null, error: null })),
   rpc: jest.fn(() => Promise.resolve({ data: [], error: null })),
-  then: jest.fn(cb => cb({ data: [], error: null })),
+  then: jest.fn((cb) => cb({ data: [], error: null })),
   auth: {
     getSession: jest.fn(() => Promise.resolve({ data: { session: null }, error: null })),
     signInWithPassword: jest.fn(() => Promise.resolve({ data: { user: { email: 'test@test.com' } }, error: null })),
-    signOut: jest.fn(() => Promise.resolve({ error: null }))
+    signOut: jest.fn(() => Promise.resolve({ error: null })),
   },
   channel: jest.fn(() => ({
-    on: jest.fn(function() { return this; }),
-    subscribe: jest.fn(function() { return this; })
-  }))
+    on: jest.fn(function () {
+      return this;
+    }),
+    subscribe: jest.fn(function () {
+      return this;
+    }),
+  })),
 };
 
 global.supabase = { createClient: () => mockSupabase };
@@ -152,7 +166,9 @@ describe('Utils Module', () => {
 
   test('debounce delays execution', (done) => {
     let callCount = 0;
-    const debounced = utils.debounce(() => { callCount++; }, 50);
+    const debounced = utils.debounce(() => {
+      callCount++;
+    }, 50);
     debounced();
     debounced();
     debounced();
@@ -177,10 +193,10 @@ describe('Utils Module', () => {
   });
 
   test('formatAwardName builds correct display name', () => {
-    expect(utils.formatAwardName({ award_name: 'Plumber', county: 'Kent', year: 2026 }))
-      .toBe("Kent's Best Plumber 2026");
-    expect(utils.formatAwardName({ award_name: 'Builder', year: 2025 }))
-      .toBe('Builder 2025');
+    expect(utils.formatAwardName({ award_name: 'Plumber', county: 'Kent', year: 2026 })).toBe(
+      "Kent's Best Plumber 2026"
+    );
+    expect(utils.formatAwardName({ award_name: 'Builder', year: 2025 })).toBe('Builder 2025');
     expect(utils.formatAwardName(null)).toBe('-');
   });
 });
@@ -217,6 +233,19 @@ describe('Config / STATE', () => {
     expect(REGIONS.length).toBeGreaterThan(50);
     expect(REGIONS).toContain('Kent');
     expect(REGIONS).toContain('London North');
+  });
+
+  test('ModuleRegistry.list() returns registered module names', () => {
+    const names = ModuleRegistry.list();
+    expect(Array.isArray(names)).toBe(true);
+    expect(names).toContain('STATE');
+    expect(names).toContain('STATUS');
+    expect(names).toContain('SUPABASE_CONFIG');
+  });
+
+  test('ModuleRegistry.get() returns a registered module', () => {
+    const state = ModuleRegistry.get('STATE');
+    expect(state).toBe(STATE);
   });
 });
 
@@ -268,9 +297,19 @@ describe('RBAC Module', () => {
 describe('Judge Portal - Blind Mode', () => {
   beforeAll(() => {
     // Mock DOM elements needed by judge portal
-    const elements = ['judgeName', 'judgeEmail', 'entriesList', 'totalEntriesCount',
-      'scoredCount', 'pendingCount', 'completionPercent', 'progressBar', 'judgingPanel', 'entriesFilter'];
-    elements.forEach(id => {
+    const elements = [
+      'judgeName',
+      'judgeEmail',
+      'entriesList',
+      'totalEntriesCount',
+      'scoredCount',
+      'pendingCount',
+      'completionPercent',
+      'progressBar',
+      'judgingPanel',
+      'entriesFilter',
+    ];
+    elements.forEach((id) => {
       const el = document.createElement('div');
       el.id = id;
       document.body.appendChild(el);

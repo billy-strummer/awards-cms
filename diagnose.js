@@ -12,17 +12,41 @@
   console.log('Testing each table individually...\n');
 
   const tables = [
-    'events', 'award_years', 'awards', 'organisations', 'award_assignments',
-    'winners', 'entries', 'judge_scores', 'public_votes', 'event_guests',
-    'sponsors', 'banners', 'organisation_contacts', 'communications', 'deals',
-    'meeting_notes', 'contact_segments', 'organisation_segments',
-    'invoices', 'invoice_line_items', 'payments',
-    'event_galleries', 'media_items', 'media_gallery',
-    'running_order', 'running_order_settings',
-    'event_attendees', 'event_ticket_types',
-    'email_templates', 'email_lists', 'email_list_subscribers',
-    'social_media_posts', 'organisation_follow_ups', 'scheduled_reports',
-    'counties'
+    'events',
+    'award_years',
+    'awards',
+    'organisations',
+    'award_assignments',
+    'winners',
+    'entries',
+    'judge_scores',
+    'public_votes',
+    'event_guests',
+    'sponsors',
+    'banners',
+    'organisation_contacts',
+    'communications',
+    'deals',
+    'meeting_notes',
+    'contact_segments',
+    'organisation_segments',
+    'invoices',
+    'invoice_line_items',
+    'payments',
+    'event_galleries',
+    'media_items',
+    'media_gallery',
+    'running_order',
+    'running_order_settings',
+    'event_attendees',
+    'event_ticket_types',
+    'email_templates',
+    'email_lists',
+    'email_list_subscribers',
+    'social_media_posts',
+    'organisation_follow_ups',
+    'scheduled_reports',
+    'counties',
   ];
 
   const results = [];
@@ -30,9 +54,7 @@
   for (let i = 0; i < tables.length; i++) {
     const table = tables[i];
     try {
-      const { _data, error, count } = await STATE.client
-        .from(table)
-        .select('*', { count: 'exact', head: true });
+      const { _data, error, count } = await STATE.client.from(table).select('*', { count: 'exact', head: true });
 
       if (error) {
         results.push({ table: table, status: 'ERROR', message: error.message, code: error.code, hint: error.hint });
@@ -56,10 +78,15 @@
   // Test 1: minimal insert (only columns from migration 000)
   const { error: writeErr1 } = await STATE.client.from('organisations').upsert({
     id: testId,
-    company_name: 'DIAG_TEST_DELETE_ME'
+    company_name: 'DIAG_TEST_DELETE_ME',
   });
   if (writeErr1) {
-    console.log('❌ WRITE TEST (minimal): ' + writeErr1.message + (writeErr1.code ? ' [' + writeErr1.code + ']' : '') + (writeErr1.hint ? ' Hint: ' + writeErr1.hint : ''));
+    console.log(
+      '❌ WRITE TEST (minimal): ' +
+        writeErr1.message +
+        (writeErr1.code ? ' [' + writeErr1.code + ']' : '') +
+        (writeErr1.hint ? ' Hint: ' + writeErr1.hint : '')
+    );
   } else {
     console.log('✅ WRITE TEST (minimal): insert succeeded');
     // Clean up
@@ -72,7 +99,7 @@
     id: testId,
     company_name: 'DIAG_TEST_DELETE_ME',
     description: 'test',
-    status: 'active'
+    status: 'active',
   });
   if (writeErr2) {
     console.log('❌ WRITE TEST (with description+status): ' + writeErr2.message);
@@ -90,7 +117,7 @@
     status: 'draft',
     year: 2025,
     contact_phone: '000',
-    why_should_win: 'test'
+    why_should_win: 'test',
   });
   if (writeErr3) {
     console.log('❌ WRITE TEST (entries + migration 010 cols): ' + writeErr3.message);
@@ -104,14 +131,16 @@
   const { error: writeErr4 } = await STATE.client.from('award_years').upsert({
     id: testId,
     award_name: 'DIAG_TEST_DELETE_ME',
-    year: 2025
+    year: 2025,
   });
   if (writeErr4) {
-    console.log('❌ WRITE TEST (award_years): ' + writeErr4.message + (writeErr4.code ? ' [' + writeErr4.code + ']' : ''));
+    console.log(
+      '❌ WRITE TEST (award_years): ' + writeErr4.message + (writeErr4.code ? ' [' + writeErr4.code + ']' : '')
+    );
     // Try the view instead
     const { error: writeErr4b } = await STATE.client.from('awards').insert({
       id: testId,
-      award_name: 'DIAG_TEST_DELETE_ME'
+      award_name: 'DIAG_TEST_DELETE_ME',
     });
     if (writeErr4b) {
       console.log('❌ WRITE TEST (awards view): ' + writeErr4b.message);
@@ -126,12 +155,16 @@
 
   // Summary
   console.log('\n=== SUMMARY ===');
-  const accessible = results.filter(function(r) { return r.status === 'OK'; });
-  const errors = results.filter(function(r) { return r.status !== 'OK'; });
+  const accessible = results.filter(function (r) {
+    return r.status === 'OK';
+  });
+  const errors = results.filter(function (r) {
+    return r.status !== 'OK';
+  });
   console.log('Accessible tables: ' + accessible.length + '/' + results.length);
   if (errors.length > 0) {
     console.log('Failed tables:');
-    errors.forEach(function(r) {
+    errors.forEach(function (r) {
       console.log('  - ' + r.table + ': ' + r.message);
     });
   }

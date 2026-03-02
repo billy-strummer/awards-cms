@@ -2,13 +2,32 @@
 /* EVENTS MODULE */
 /* ==================================================== */
 
+/**
+ * Create an event proxy that overrides currentTarget while properly binding
+ * native event methods (preventDefault, stopPropagation, etc.) to the
+ * original event object.
+ */
+function _eventProxy(originalEvent, currentTargetEl) {
+  return new Proxy(originalEvent, {
+    get(target, prop) {
+      if (prop === 'currentTarget') return currentTargetEl;
+      const val = target[prop];
+      if (typeof val === 'function') return val.bind(target);
+      return val;
+    },
+  });
+}
+
 const eventsModule = {
   _loading: false,
 
+  // Template gallery sections -- stored on the module instead of window.*
+  _templateGallerySections: [],
+
   // Server-side pagination state
-  _serverPagination: false,
-  _srvPagination: { page: 1, totalPages: 1, count: 0, pageSize: 50 },
-  _srvFetchId: 0,
+  _serverPagination: true,
+  _pagination: { page: 1, totalPages: 1, count: 0, pageSize: 50 },
+  _fetchId: 0,
 
   /**
    * Load all events from database
@@ -32,18 +51,19 @@ const eventsModule = {
         if (saved.year) document.getElementById('eventsYearFilter').value = saved.year;
         if (saved.timeStatus) document.getElementById('eventsStatusFilter').value = saved.timeStatus;
         if (saved.eventStatus) document.getElementById('eventsEventStatusFilter').value = saved.eventStatus;
-      } catch(e) { console.warn('Failed to restore event filters:', e.message); }
+      } catch (e) {
+        console.warn('Failed to restore event filters:', e.message);
+      }
 
       // Enable server-side pagination and fetch first page
       this._serverPagination = true;
-      await this._srvFetchPage(1);
+      await this._fetchPage(1);
 
       this.updateEventStats();
       this.renderFinancialOverview();
 
-      console.warn(`Loaded events (page 1, total: ${this._srvPagination.count})`);
+      console.warn(`Loaded events (page 1, total: ${this._pagination.count})`);
       utils.trackDataLoad('events');
-
     } catch (error) {
       console.error('Error loading events:', error);
       utils.showErrorWithRetry(error, 'loading events', () => this.loadEvents());
@@ -60,8 +80,8 @@ const eventsModule = {
   _populateYearFilterFromConstants() {
     const yearSelect = document.getElementById('eventsYearFilter');
     if (yearSelect) {
-      yearSelect.innerHTML = '<option value="">All Years</option>' +
-        YEARS.map(y => `<option value="${y}">${y}</option>`).join('');
+      yearSelect.innerHTML =
+        '<option value="">All Years</option>' + YEARS.map((y) => `<option value="${y}">${y}</option>`).join('');
     }
   },
 
@@ -88,8 +108,8 @@ const eventsModule = {
   /**
    * Fetch a specific page of events from the server
    */
-  async _srvFetchPage(page) {
-    const fetchId = ++this._srvFetchId;
+  async _fetchPage(page) {
+    const fetchId = ++this._fetchId;
     const filters = this._buildEvtServerFilters();
     const search = document.getElementById('eventsSearchBox')?.value?.trim();
 
@@ -101,14 +121,19 @@ const eventsModule = {
       search: search ? { term: search, columns: ['event_name', 'venue', 'description'] } : undefined,
       sort: { column: sortField, ascending: sortDir === 'asc' },
       page,
-      pageSize: this._evtPageSize || 50
+      pageSize: this._evtPageSize || 50,
     });
 
-    if (fetchId !== this._srvFetchId) return;
+    if (fetchId !== this._fetchId) return;
 
     const pageData = result.data || [];
     STATE.allEvents = pageData;
-    this._srvPagination = { page: result.page, totalPages: result.totalPages, count: result.count, pageSize: result.pageSize };
+    this._pagination = {
+      page: result.page,
+      totalPages: result.totalPages,
+      count: result.count,
+      pageSize: result.pageSize,
+    };
     this._lastFilteredEvents = pageData;
 
     this.renderFilteredEvents(pageData);
@@ -117,12 +142,12 @@ const eventsModule = {
   /**
    * Navigate to a specific page (called from pagination controls)
    */
-  async _srvGoToPage(page) {
-    page = Math.max(1, Math.min(page, this._srvPagination.totalPages));
-    if (page === this._srvPagination.page) return;
+  async _goToPage(page) {
+    page = Math.max(1, Math.min(page, this._pagination.totalPages));
+    if (page === this._pagination.page) return;
     try {
       utils.showLoading();
-      await this._srvFetchPage(page);
+      await this._fetchPage(page);
     } catch (error) {
       console.error('Error navigating events page:', error);
       utils.showToast('Error loading page: ' + error.message, 'error');
@@ -141,7 +166,11 @@ const eventsModule = {
     if (count) count.textContent = events.length;
 
     if (events.length === 0) {
-      utils.showEnhancedEmptyState('eventsTableBody', 11, { icon: 'bi-calendar-event', message: 'No events found', description: 'Create your first event to get started' });
+      utils.showEnhancedEmptyState('eventsTableBody', 11, {
+        icon: 'bi-calendar-event',
+        message: 'No events found',
+        description: 'Create your first event to get started',
+      });
       return;
     }
 
@@ -172,7 +201,7 @@ const eventsModule = {
    * Open edit event modal
    */
   async openEditModal(eventId) {
-    const event = STATE.allEvents.find(e => e.id === eventId);
+    const event = STATE.allEvents.find((e) => e.id === eventId);
     if (!event) return;
 
     document.getElementById('eventModalTitle').textContent = 'Edit Event';
@@ -228,25 +257,24 @@ const eventsModule = {
           venue: eventVenue || null,
           capacity: eventCapacity ? parseInt(eventCapacity) : null,
           description: eventDescription || null,
-          event_status: eventStatus || 'draft'
+          event_status: eventStatus || 'draft',
         };
 
         if (eventId) {
           // Update existing event
           await apiClient.update('events', eventId, eventData);
-
         } else {
           // Insert new event
           const { data: insertedRows } = await apiClient.insert('events', eventData);
           const newEvent = Array.isArray(insertedRows) ? insertedRows[0] : insertedRows;
 
           // Create gallery sections from template if available
-          if (window._templateGallerySections && window._templateGallerySections.length > 0) {
-            const sections = window._templateGallerySections.map((sectionName, index) => ({
+          if (eventsModule._templateGallerySections && eventsModule._templateGallerySections.length > 0) {
+            const sections = eventsModule._templateGallerySections.map((sectionName, index) => ({
               event_id: newEvent.id,
               gallery_name: sectionName,
               gallery_description: '',
-              display_order: index + 1
+              display_order: index + 1,
             }));
 
             try {
@@ -257,7 +285,7 @@ const eventsModule = {
             }
 
             // Clear template sections
-            window._templateGallerySections = [];
+            eventsModule._templateGallerySections = [];
           }
         }
 
@@ -283,7 +311,12 @@ const eventsModule = {
       utils.showToast('You do not have permission to delete events', 'error');
       return;
     }
-    if (!await utils.confirmDialog({ title: 'Delete Event', message: `Are you sure you want to delete "${eventName}"?<br><br>Note: Media associated with this event will NOT be deleted, but will be unlinked from the event.` })) {
+    if (
+      !(await utils.confirmDialog({
+        title: 'Delete Event',
+        message: `Are you sure you want to delete "${eventName}"?<br><br>Note: Media associated with this event will NOT be deleted, but will be unlinked from the event.`,
+      }))
+    ) {
       return;
     }
 
@@ -291,14 +324,16 @@ const eventsModule = {
       utils.showLoading();
 
       // Save to trash before deleting
-      const event = STATE.allEvents?.find(e => e.id === eventId);
+      const event = STATE.allEvents?.find((e) => e.id === eventId);
       if (event) utils.softDelete('events', event);
 
       await apiClient.delete('events', eventId);
 
-      utils.showToast('Event deleted. <a href="#" onclick="event.preventDefault(); utils.undoLastDelete(\'events\')">Undo</a>', 'info');
+      utils.showToast(
+        'Event deleted. <a href="#" data-action="utils.undoLastDelete" data-id="events" data-prevent-default="true">Undo</a>',
+        'info'
+      );
       await this.loadEvents();
-
     } catch (error) {
       console.error('Error deleting event:', error);
       utils.showToast('Error deleting event: ' + error.message, 'error');
@@ -315,7 +350,7 @@ const eventsModule = {
    * Open clone event modal
    */
   async openCloneModal(eventId) {
-    const sourceEvent = STATE.allEvents.find(e => e.id === eventId);
+    const sourceEvent = STATE.allEvents.find((e) => e.id === eventId);
     if (!sourceEvent) return;
 
     // Set source event details
@@ -362,7 +397,7 @@ const eventsModule = {
         const { data: srcEvtRows } = await apiClient.select('events', {
           select: 'capacity',
           filters: { id: sourceEventId },
-          pageSize: 1
+          pageSize: 1,
         });
         const srcEvt = srcEvtRows?.[0] || null;
         const newEventData = {
@@ -372,7 +407,7 @@ const eventsModule = {
           venue: newEventVenue || null,
           description: newEventDescription || null,
           event_status: 'draft',
-          capacity: srcEvt?.capacity || null
+          capacity: srcEvt?.capacity || null,
         };
 
         const { data: insertedEvents } = await apiClient.insert('events', newEventData);
@@ -409,10 +444,10 @@ const eventsModule = {
    */
   async cloneGallerySections(sourceEventId, newEventId) {
     try {
-      // Get all gallery sections from source event
+      /* selectAll: justified — scoped to single event */
       const sections = await apiClient.selectAll('event_galleries', {
         filters: { event_id: sourceEventId },
-        sort: { column: 'display_order', ascending: true }
+        sort: { column: 'display_order', ascending: true },
       });
 
       if (!sections || sections.length === 0) {
@@ -421,17 +456,16 @@ const eventsModule = {
       }
 
       // Create new sections for the new event
-      const newSections = sections.map(section => ({
+      const newSections = sections.map((section) => ({
         event_id: newEventId,
         gallery_name: section.gallery_name,
         gallery_description: section.gallery_description,
-        display_order: section.display_order
+        display_order: section.display_order,
       }));
 
       await apiClient.insert('event_galleries', newSections);
 
       console.warn(`Cloned ${sections.length} gallery section(s)`);
-
     } catch (error) {
       console.error('Error cloning gallery sections:', error);
       // Don't throw - let the event creation succeed even if sections fail
@@ -448,8 +482,9 @@ const eventsModule = {
    */
   async loadTemplates() {
     try {
+      /* selectAll: justified — small reference table (event templates) */
       const data = await apiClient.selectAll('event_templates', {
-        sort: { column: 'created_at', ascending: false }
+        sort: { column: 'created_at', ascending: false },
       });
       return data || [];
     } catch (e) {
@@ -470,8 +505,9 @@ const eventsModule = {
     try {
       await apiClient.deleteByFilters('event_templates', { id_neq: '00000000-0000-0000-0000-000000000000' });
       if (templates.length > 0) {
-        await apiClient.insert('event_templates',
-          templates.map(t => ({ name: t.name, template_data: t, created_by: STATE.currentUser?.email }))
+        await apiClient.insert(
+          'event_templates',
+          templates.map((t) => ({ name: t.name, template_data: t, created_by: STATE.currentUser?.email }))
         );
       }
     } catch (e) {
@@ -519,7 +555,9 @@ const eventsModule = {
       return;
     }
 
-    container.innerHTML = templates.map((template, index) => `
+    container.innerHTML = templates
+      .map(
+        (template, index) => `
       <div class="card mb-3">
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-start">
@@ -532,25 +570,29 @@ const eventsModule = {
                 ${template.venue ? `<i class="bi bi-geo-alt me-1"></i>${utils.escapeHtml(template.venue)}<br>` : ''}
                 ${template.description ? `<i class="bi bi-text-paragraph me-1"></i>${utils.escapeHtml(template.description)}` : ''}
               </p>
-              ${template.gallerySections && template.gallerySections.length > 0 ? `
+              ${
+                template.gallerySections && template.gallerySections.length > 0
+                  ? `
                 <div class="small">
-                  <strong>Gallery Sections:</strong> ${template.gallerySections.map(s => utils.escapeHtml(s)).join(', ')}
+                  <strong>Gallery Sections:</strong> ${template.gallerySections.map((s) => utils.escapeHtml(s)).join(', ')}
                 </div>
-              ` : ''}
+              `
+                  : ''
+              }
             </div>
             <div class="btn-group btn-group-sm ms-3" role="group">
               <button class="btn btn-outline-success btn-icon"
-                onclick="eventsModule.useTemplate(${index})"
+                data-action="eventsModule.useTemplate" data-id="${index}"
                 title="Use Template">
                 <i class="bi bi-play-fill"></i>
               </button>
               <button class="btn btn-outline-primary btn-icon"
-                onclick="eventsModule.editTemplate(${index})"
+                data-action="eventsModule.editTemplate" data-id="${index}"
                 title="Edit">
                 <i class="bi bi-pencil"></i>
               </button>
               <button class="btn btn-outline-danger btn-icon"
-                onclick="eventsModule.deleteTemplate(${index})"
+                data-action="eventsModule.deleteTemplate" data-id="${index}"
                 title="Delete">
                 <i class="bi bi-trash"></i>
               </button>
@@ -558,7 +600,9 @@ const eventsModule = {
           </div>
         </div>
       </div>
-    `).join('');
+    `
+      )
+      .join('');
   },
 
   /**
@@ -585,14 +629,14 @@ const eventsModule = {
 
     if (!template) return;
 
-    document.getElementById('templateFormTitle').innerHTML =
-      '<i class="bi bi-pencil me-2"></i>Edit Template';
+    document.getElementById('templateFormTitle').innerHTML = '<i class="bi bi-pencil me-2"></i>Edit Template';
     document.getElementById('templateId').value = index;
     document.getElementById('templateName').value = template.name || '';
     document.getElementById('templateVenue').value = template.venue || '';
     document.getElementById('templateDescription').value = template.description || '';
-    document.getElementById('templateGallerySections').value =
-      template.gallerySections ? template.gallerySections.join('\n') : '';
+    document.getElementById('templateGallerySections').value = template.gallerySections
+      ? template.gallerySections.join('\n')
+      : '';
 
     document.getElementById('templateFormSection').classList.remove('d-none');
     document.getElementById('templateFormSection').scrollIntoView({ behavior: 'smooth' });
@@ -615,14 +659,17 @@ const eventsModule = {
 
     // Parse gallery sections
     const gallerySections = gallerySectionsText
-      ? gallerySectionsText.split('\n').map(s => s.trim()).filter(s => s.length > 0)
+      ? gallerySectionsText
+          .split('\n')
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0)
       : [];
 
     const template = {
       name,
       venue,
       description,
-      gallerySections
+      gallerySections,
     };
 
     const templates = await this.loadTemplates();
@@ -647,7 +694,12 @@ const eventsModule = {
    * Delete template
    */
   async deleteTemplate(index) {
-    if (!await utils.confirmDialog({ title: 'Delete Template', message: 'Are you sure you want to delete this template?' })) {
+    if (
+      !(await utils.confirmDialog({
+        title: 'Delete Template',
+        message: 'Are you sure you want to delete this template?',
+      }))
+    ) {
       return;
     }
 
@@ -679,7 +731,7 @@ const eventsModule = {
     bootstrap.Modal.getInstance(document.getElementById('eventTemplatesModal')).hide();
 
     // Wait a bit for modal to close
-    await new Promise(resolve => setTimeout(resolve, 300));
+    await new Promise((resolve) => setTimeout(resolve, 300));
 
     // Open add event modal with template data
     document.getElementById('eventModalTitle').textContent = `Add Event (from "${template.name}" template)`;
@@ -693,7 +745,7 @@ const eventsModule = {
     document.getElementById('saveEventBtn').textContent = 'Add Event';
 
     // Store template gallery sections for later use
-    window._templateGallerySections = template.gallerySections || [];
+    eventsModule._templateGallerySections = template.gallerySections || [];
 
     const modal = new bootstrap.Modal(document.getElementById('eventModal'));
     modal.show();
@@ -706,16 +758,35 @@ const eventsModule = {
   /* ==================================================== */
 
   /**
-   * Get attendees for an event from Supabase
+   * Get attendees for an event from Supabase.
+   * Uses paginated apiClient.select() to avoid loading unbounded result sets
+   * in a single request. Collects all pages so callers still receive the
+   * full attendee list for the event.
+   * @param {string} eventId - The event ID to fetch attendees for
+   * @returns {Promise<Array<Object>>} Array of attendee objects
    */
   async getAttendees(eventId) {
     try {
-      const data = await apiClient.selectAll('event_attendees', {
-        filters: { event_id: eventId },
-        sort: { column: 'created_at', ascending: true }
-      });
+      // Paginated fetch: collect all pages of attendees for this event
+      const pageSize = 200;
+      let page = 1;
+      let allRows = [];
+      let totalPages = 1;
+
+      do {
+        const result = await apiClient.select('event_attendees', {
+          filters: { event_id: eventId },
+          sort: { column: 'created_at', ascending: true },
+          page,
+          pageSize,
+        });
+        allRows = allRows.concat(result.data || []);
+        totalPages = result.totalPages || 1;
+        page++;
+      } while (page <= totalPages);
+
       // Map DB column names to JS property names used by the UI
-      return (data || []).map(row => ({
+      return allRows.map((row) => ({
         id: row.id,
         name: row.attendee_name || row.name || '',
         email: row.attendee_email || row.email || '',
@@ -728,7 +799,7 @@ const eventsModule = {
         checkInTime: row.check_in_time || row.checkInTime || null,
         addedAt: row.created_at || row.addedAt || null,
         organisation_id: row.organisation_id || null,
-        table_number: row.table_number || null
+        table_number: row.table_number || null,
       }));
     } catch (e) {
       console.error('Error loading attendees:', e);
@@ -748,7 +819,7 @@ const eventsModule = {
       await apiClient.deleteByFilters('event_attendees', { event_id: eventId });
       if (attendees.length > 0) {
         // Map JS property names to DB column names
-        const rows = attendees.map(a => ({
+        const rows = attendees.map((a) => ({
           event_id: eventId,
           attendee_name: a.name || '',
           attendee_email: a.email || '',
@@ -760,7 +831,7 @@ const eventsModule = {
           checked_in: a.checkedIn || false,
           check_in_time: a.checkInTime || null,
           organisation_id: a.organisation_id || null,
-          table_number: a.table_number || null
+          table_number: a.table_number || null,
         }));
         await apiClient.insert('event_attendees', rows);
       }
@@ -775,12 +846,14 @@ const eventsModule = {
    * Open attendees modal for an event
    */
   async openAttendeesModal(eventId) {
-    const event = STATE.allEvents.find(e => e.id === eventId);
+    const event = STATE.allEvents.find((e) => e.id === eventId);
     if (!event) return;
 
     document.getElementById('attendeesEventId').value = eventId;
     document.getElementById('attendeesEventName').textContent = event.event_name || 'Unnamed Event';
-    document.getElementById('attendeesEventDate').textContent = event.event_date ? new Date(event.event_date).toLocaleDateString() : 'No date set';
+    document.getElementById('attendeesEventDate').textContent = event.event_date
+      ? new Date(event.event_date).toLocaleDateString()
+      : 'No date set';
     document.getElementById('attendeesEventVenue').textContent = event.venue || 'No venue set';
 
     document.getElementById('addAttendeeForm').style.display = 'none';
@@ -811,15 +884,21 @@ const eventsModule = {
     modal.show();
 
     // Refresh table plan unassigned guests when modal closes (attendees may have changed)
-    modalEl.addEventListener('hidden.bs.modal', () => {
-      if (this.currentEventIdTablePlan) {
-        this.loadTablePlan().then(() => {
-          this.renderUnassignedGuests();
-          this.renderCanvasTables();
-          this._updateHeaderBadges();
-        }).catch(() => {});
-      }
-    }, { once: true });
+    modalEl.addEventListener(
+      'hidden.bs.modal',
+      () => {
+        if (this.currentEventIdTablePlan) {
+          this.loadTablePlan()
+            .then(() => {
+              this.renderUnassignedGuests();
+              this.renderCanvasTables();
+              this._updateHeaderBadges();
+            })
+            .catch(() => {});
+        }
+      },
+      { once: true }
+    );
   },
 
   /**
@@ -829,9 +908,9 @@ const eventsModule = {
     const attendees = await this.getAttendees(eventId);
     const tbody = document.getElementById('attendeesTableBody');
 
-    const attending = attendees.filter(a => a.status === 'attending').length;
-    const notAttending = attendees.filter(a => a.status === 'not_attending').length;
-    const maybe = attendees.filter(a => a.status === 'maybe').length;
+    const attending = attendees.filter((a) => a.status === 'attending').length;
+    const notAttending = attendees.filter((a) => a.status === 'not_attending').length;
+    const maybe = attendees.filter((a) => a.status === 'maybe').length;
 
     document.getElementById('attendingCount').textContent = attending;
     document.getElementById('notAttendingCount').textContent = notAttending;
@@ -840,12 +919,14 @@ const eventsModule = {
     this._highlightActiveCard(document.getElementById('attendeeStatusFilter')?.value || '');
 
     // Venue capacity tracker
-    const event = STATE.allEvents.find(e => e.id === eventId);
+    const event = STATE.allEvents.find((e) => e.id === eventId);
     const capacityTracker = document.getElementById('venueCapacityTracker');
     if (capacityTracker && event && event.capacity) {
       const capacity = event.capacity;
-      const totalHeads = attendees.filter(a => a.status === 'attending').reduce((s, a) => s + 1 + (a.plusOnes || 0), 0);
-      const pct = Math.round(totalHeads / capacity * 100);
+      const totalHeads = attendees
+        .filter((a) => a.status === 'attending')
+        .reduce((s, a) => s + 1 + (a.plusOnes || 0), 0);
+      const pct = Math.round((totalHeads / capacity) * 100);
       const remaining = capacity - totalHeads;
       const barColor = pct >= 95 ? 'bg-danger' : pct >= 80 ? 'bg-warning' : pct >= 50 ? 'bg-info' : 'bg-success';
       const badgeColor = pct >= 95 ? 'bg-danger' : pct >= 80 ? 'bg-warning text-dark' : 'bg-success';
@@ -858,15 +939,20 @@ const eventsModule = {
       const bar = document.getElementById('capacityProgressBar');
       bar.style.width = Math.min(pct, 100) + '%';
       bar.className = 'progress-bar ' + barColor;
-      document.getElementById('capacityRemainingText').textContent = remaining > 0
-        ? `${remaining} seat${remaining !== 1 ? 's' : ''} remaining (incl. plus-ones)`
-        : 'Venue is at capacity!';
+      document.getElementById('capacityRemainingText').textContent =
+        remaining > 0
+          ? `${remaining} seat${remaining !== 1 ? 's' : ''} remaining (incl. plus-ones)`
+          : 'Venue is at capacity!';
       const warningEl = document.getElementById('capacityWarningText');
       if (pct >= 100) {
-        warningEl.innerHTML = '<i class="bi bi-exclamation-triangle-fill text-danger me-1"></i><span class="text-danger fw-bold">Over capacity!</span>';
+        warningEl.innerHTML =
+          '<i class="bi bi-exclamation-triangle-fill text-danger me-1"></i><span class="text-danger fw-bold">Over capacity!</span>';
       } else if (pct >= 90) {
-        warningEl.innerHTML = '<i class="bi bi-exclamation-triangle text-warning me-1"></i><span class="text-warning">Almost full</span>';
-      } else { warningEl.textContent = ''; }
+        warningEl.innerHTML =
+          '<i class="bi bi-exclamation-triangle text-warning me-1"></i><span class="text-warning">Almost full</span>';
+      } else {
+        warningEl.textContent = '';
+      }
       capacityTracker.style.display = 'block';
     } else if (capacityTracker) {
       capacityTracker.style.display = 'none';
@@ -876,7 +962,11 @@ const eventsModule = {
     this.renderDietarySummary(attendees);
 
     if (attendees.length === 0) {
-      utils.showEnhancedEmptyState('attendeesTableBody', 8, { icon: 'bi-people', message: 'No attendees yet', description: 'Click "Add Attendee" to start tracking RSVPs' });
+      utils.showEnhancedEmptyState('attendeesTableBody', 8, {
+        icon: 'bi-people',
+        message: 'No attendees yet',
+        description: 'Click "Add Attendee" to start tracking RSVPs',
+      });
       return;
     }
 
@@ -884,20 +974,22 @@ const eventsModule = {
     const filtered = this._filterAttendees(attendees);
 
     const typeBadges = {
-      'vip': '<span class="badge bg-warning text-dark">VIP</span>',
-      'speaker': '<span class="badge bg-primary">Speaker</span>',
-      'sponsor': '<span class="badge bg-info">Sponsor</span>',
-      'media': '<span class="badge bg-purple" style="background:#6f42c1!important;">Media</span>',
-      'staff': '<span class="badge bg-secondary">Staff</span>',
-      'guest': '<span class="badge bg-light text-dark">Guest</span>'
+      vip: '<span class="badge bg-warning text-dark">VIP</span>',
+      speaker: '<span class="badge bg-primary">Speaker</span>',
+      sponsor: '<span class="badge bg-info">Sponsor</span>',
+      media: '<span class="badge bg-purple" style="background:#6f42c1!important;">Media</span>',
+      staff: '<span class="badge bg-secondary">Staff</span>',
+      guest: '<span class="badge bg-light text-dark">Guest</span>',
     };
     const statusBadges = {
-      'attending': '<span class="badge bg-success">Attending</span>',
-      'not_attending': '<span class="badge bg-danger">Not Attending</span>',
-      'maybe': '<span class="badge bg-warning text-dark">Maybe</span>'
+      attending: '<span class="badge bg-success">Attending</span>',
+      not_attending: '<span class="badge bg-danger">Not Attending</span>',
+      maybe: '<span class="badge bg-warning text-dark">Maybe</span>',
     };
 
-    tbody.innerHTML = filtered.map(a => `
+    tbody.innerHTML = filtered
+      .map(
+        (a) => `
       <tr>
         <td class="fw-semibold">
           ${utils.escapeHtml(a.name)}
@@ -911,18 +1003,24 @@ const eventsModule = {
         <td><small class="text-muted">${a.notes ? utils.escapeHtml(a.notes) : '-'}</small></td>
         <td class="text-center">
           <div class="btn-group btn-group-sm">
-            ${a.email ? `<button class="btn btn-outline-info btn-sm"
-              onclick="eventsModule.sendInviteEmail('${a.id}')"
-              title="Send invite" aria-label="Send invite"><i class="bi bi-envelope"></i></button>` : ''}
+            ${
+              a.email
+                ? `<button class="btn btn-outline-info btn-sm"
+              data-action="eventsModule.sendInviteEmail" data-id="a.id"
+              title="Send invite" aria-label="Send invite"><i class="bi bi-envelope"></i></button>`
+                : ''
+            }
             <button class="btn btn-outline-primary btn-sm"
-              onclick="eventsModule.updateAttendeeStatus('${a.id}', '${a.status === 'attending' ? 'not_attending' : 'attending'}')"
+              data-action="eventsModule.updateAttendeeStatus" data-args='${JSON.stringify([a.id, a.status === 'attending' ? 'not_attending' : 'attending'])}'
               title="Toggle RSVP" aria-label="Toggle RSVP"><i class="bi bi-arrow-repeat"></i></button>
             <button class="btn btn-outline-danger btn-sm"
-              onclick="eventsModule.deleteAttendee('${a.id}')" title="Remove" aria-label="Remove attendee"><i class="bi bi-trash"></i></button>
+              data-action="eventsModule.deleteAttendee" data-id="a.id" title="Remove" aria-label="Remove attendee"><i class="bi bi-trash"></i></button>
           </div>
         </td>
       </tr>
-    `).join('');
+    `
+      )
+      .join('');
   },
 
   // ---- DIETARY SUMMARY ----
@@ -932,12 +1030,12 @@ const eventsModule = {
     const content = document.getElementById('dietarySummaryContent');
     if (!card || !content) return;
 
-    const attending = attendees.filter(a => a.status === 'attending');
+    const attending = attendees.filter((a) => a.status === 'attending');
     const dietaryMap = {};
-    attending.forEach(a => {
+    attending.forEach((a) => {
       if (a.dietary && a.dietary.trim()) {
         // Split on commas to handle "Vegetarian, Nut Allergy"
-        a.dietary.split(',').forEach(d => {
+        a.dietary.split(',').forEach((d) => {
           const key = d.trim().toLowerCase();
           if (key) {
             const label = d.trim().charAt(0).toUpperCase() + d.trim().slice(1).toLowerCase();
@@ -954,27 +1052,34 @@ const eventsModule = {
       return;
     }
 
-    const noDietary = attending.length - attending.filter(a => a.dietary && a.dietary.trim()).length;
-    content.innerHTML = entries.map(e =>
-      `<span class="badge bg-outline-secondary border" style="font-size:0.8rem;">${utils.escapeHtml(e.label)} <strong class="ms-1">${e.count}</strong></span>`
-    ).join('') + (noDietary > 0 ? `<span class="badge bg-light text-muted border" style="font-size:0.8rem;">No requirements <strong class="ms-1">${noDietary}</strong></span>` : '');
+    const noDietary = attending.length - attending.filter((a) => a.dietary && a.dietary.trim()).length;
+    content.innerHTML =
+      entries
+        .map(
+          (e) =>
+            `<span class="badge bg-outline-secondary border" style="font-size:0.8rem;">${utils.escapeHtml(e.label)} <strong class="ms-1">${e.count}</strong></span>`
+        )
+        .join('') +
+      (noDietary > 0
+        ? `<span class="badge bg-light text-muted border" style="font-size:0.8rem;">No requirements <strong class="ms-1">${noDietary}</strong></span>`
+        : '');
     card.style.display = 'block';
   },
 
   async exportDietarySummary() {
     const eventId = document.getElementById('attendeesEventId').value;
-    const attendees = (await this.getAttendees(eventId)).filter(a => a.status === 'attending');
-    const event = STATE.allEvents.find(e => e.id === eventId);
+    const attendees = (await this.getAttendees(eventId)).filter((a) => a.status === 'attending');
+    const event = STATE.allEvents.find((e) => e.id === eventId);
     const eventName = event ? event.event_name : 'Event';
 
     const exportData = attendees
-      .filter(a => a.dietary && a.dietary.trim())
-      .map(a => ({
+      .filter((a) => a.dietary && a.dietary.trim())
+      .map((a) => ({
         'Guest Name': a.name,
         'Dietary Requirements': a.dietary,
         'Guest Type': (a.guestType || 'guest').charAt(0).toUpperCase() + (a.guestType || 'guest').slice(1),
         'Plus Ones': a.plusOnes || 0,
-        'Notes': a.notes || ''
+        Notes: a.notes || '',
       }));
 
     if (exportData.length === 0) {
@@ -994,8 +1099,9 @@ const eventsModule = {
     const statusFilter = document.getElementById('attendeeStatusFilter')?.value || '';
     const typeFilter = document.getElementById('attendeeTypeFilter')?.value || '';
 
-    let filtered = attendees.filter(a => {
-      if (search && !(a.name || '').toLowerCase().includes(search) && !(a.email || '').toLowerCase().includes(search)) return false;
+    let filtered = attendees.filter((a) => {
+      if (search && !(a.name || '').toLowerCase().includes(search) && !(a.email || '').toLowerCase().includes(search))
+        return false;
       if (statusFilter && a.status !== statusFilter) return false;
       if (typeFilter && (a.guestType || 'guest') !== typeFilter) return false;
       return true;
@@ -1004,8 +1110,8 @@ const eventsModule = {
     // Fuzzy search fallback
     if (search && filtered.length === 0) {
       filtered = utils.fuzzyFilter(attendees, search, ['name', 'email']);
-      if (statusFilter) filtered = filtered.filter(a => a.status === statusFilter);
-      if (typeFilter) filtered = filtered.filter(a => (a.guestType || 'guest') === typeFilter);
+      if (statusFilter) filtered = filtered.filter((a) => a.status === statusFilter);
+      if (typeFilter) filtered = filtered.filter((a) => (a.guestType || 'guest') === typeFilter);
     }
 
     return filtered;
@@ -1079,19 +1185,23 @@ const eventsModule = {
         const { data } = await apiClient.select('organisations', {
           select: 'id, company_name',
           filters: { company_name_ilike: `%${term}%` },
-          pageSize: 10
+          pageSize: 10,
         });
         if (!data || data.length === 0) {
           resultsEl.innerHTML = '<div class="p-2 text-muted small">No organisations found</div>';
           resultsEl.style.display = 'block';
           return;
         }
-        resultsEl.innerHTML = data.map(o => `
-          <div class="p-2 small" style="cursor:pointer;" onmouseover="this.style.background='#e3f2fd'" onmouseout="this.style.background=''"
-            onclick="eventsModule._selectOrgForAttendee('${o.id}', '${utils.escapeHtml(o.company_name).replace(/'/g, "\\'")}')">
+        resultsEl.innerHTML = data
+          .map(
+            (o) => `
+          <div class="p-2 small hover-highlight" style="cursor:pointer;"
+            data-action="eventsModule._selectOrgForAttendee" data-args='${JSON.stringify([o.id, utils.escapeHtml(o.company_name).replace(/'/g, "\\'")])}'>
             <i class="bi bi-building me-1 text-muted"></i>${utils.escapeHtml(o.company_name)}
           </div>
-        `).join('');
+        `
+          )
+          .join('');
         resultsEl.style.display = 'block';
       } catch (e) {
         console.error('Org search error:', e);
@@ -1125,11 +1235,17 @@ const eventsModule = {
     const attendees = await this.getAttendees(eventId);
     attendees.push({
       id: `attendee_${Date.now()}`,
-      name, email, status, guestType, plusOnes, dietary, notes,
+      name,
+      email,
+      status,
+      guestType,
+      plusOnes,
+      dietary,
+      notes,
       organisation_id: organisationId,
       checkedIn: false,
       checkInTime: null,
-      addedAt: new Date().toISOString()
+      addedAt: new Date().toISOString(),
     });
     this.saveAttendees(eventId, attendees);
 
@@ -1150,7 +1266,7 @@ const eventsModule = {
   async updateAttendeeStatus(attendeeId, newStatus) {
     const eventId = document.getElementById('attendeesEventId').value;
     const attendees = await this.getAttendees(eventId);
-    const attendee = attendees.find(a => a.id === attendeeId);
+    const attendee = attendees.find((a) => a.id === attendeeId);
     if (attendee) {
       attendee.status = newStatus;
       this.saveAttendees(eventId, attendees);
@@ -1161,10 +1277,17 @@ const eventsModule = {
   },
 
   async deleteAttendee(attendeeId) {
-    if (!await utils.confirmDialog({ title: 'Remove Attendee', message: 'Remove this attendee from the list?', confirmText: 'Remove' })) return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Remove Attendee',
+        message: 'Remove this attendee from the list?',
+        confirmText: 'Remove',
+      }))
+    )
+      return;
     const eventId = document.getElementById('attendeesEventId').value;
     let attendees = await this.getAttendees(eventId);
-    attendees = attendees.filter(a => a.id !== attendeeId);
+    attendees = attendees.filter((a) => a.id !== attendeeId);
     this.saveAttendees(eventId, attendees);
     this.renderAttendees(eventId);
     this.renderCheckInTab(eventId);
@@ -1175,10 +1298,10 @@ const eventsModule = {
 
   async renderCheckInTab(eventId) {
     const attendees = await this.getAttendees(eventId);
-    const attending = attendees.filter(a => a.status === 'attending');
-    const checkedIn = attending.filter(a => a.checkedIn);
-    const pending = attending.filter(a => !a.checkedIn);
-    const pct = attending.length > 0 ? Math.round(checkedIn.length / attending.length * 100) : 0;
+    const attending = attendees.filter((a) => a.status === 'attending');
+    const checkedIn = attending.filter((a) => a.checkedIn);
+    const pending = attending.filter((a) => !a.checkedIn);
+    const pct = attending.length > 0 ? Math.round((checkedIn.length / attending.length) * 100) : 0;
 
     const checkedCountEl = document.getElementById('checkInCheckedCount');
     const pendingCountEl = document.getElementById('checkInPendingCount');
@@ -1200,7 +1323,7 @@ const eventsModule = {
     if (!tbody) return;
 
     const search = (document.getElementById('checkInSearch')?.value || '').toLowerCase();
-    const filtered = attending.filter(a => !search || (a.name || '').toLowerCase().includes(search));
+    const filtered = attending.filter((a) => !search || (a.name || '').toLowerCase().includes(search));
 
     // Sort: unchecked first, then checked
     filtered.sort((a, b) => {
@@ -1210,15 +1333,17 @@ const eventsModule = {
     });
 
     const typeBadges = {
-      'vip': '<span class="badge bg-warning text-dark">VIP</span>',
-      'speaker': '<span class="badge bg-primary">Speaker</span>',
-      'sponsor': '<span class="badge bg-info">Sponsor</span>',
-      'media': '<span class="badge bg-purple" style="background:#6f42c1!important;">Media</span>',
-      'staff': '<span class="badge bg-secondary">Staff</span>',
-      'guest': '<span class="badge bg-light text-dark">Guest</span>'
+      vip: '<span class="badge bg-warning text-dark">VIP</span>',
+      speaker: '<span class="badge bg-primary">Speaker</span>',
+      sponsor: '<span class="badge bg-info">Sponsor</span>',
+      media: '<span class="badge bg-purple" style="background:#6f42c1!important;">Media</span>',
+      staff: '<span class="badge bg-secondary">Staff</span>',
+      guest: '<span class="badge bg-light text-dark">Guest</span>',
     };
 
-    tbody.innerHTML = filtered.map(a => `
+    tbody.innerHTML = filtered
+      .map(
+        (a) => `
       <tr class="${a.checkedIn ? 'table-success' : ''}">
         <td class="fw-semibold">
           ${a.checkedIn ? '<i class="bi bi-check-circle-fill text-success me-1"></i>' : '<i class="bi bi-circle text-muted me-1"></i>'}
@@ -1227,42 +1352,59 @@ const eventsModule = {
         </td>
         <td>${typeBadges[a.guestType || 'guest'] || ''}</td>
         <td>${a.dietary ? `<small class="text-muted"><i class="bi bi-egg-fried me-1"></i>${utils.escapeHtml(a.dietary)}</small>` : '-'}</td>
-        <td><small>${a.checkedIn && a.checkInTime ? new Date(a.checkInTime).toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit'}) : '-'}</small></td>
+        <td><small>${a.checkedIn && a.checkInTime ? new Date(a.checkInTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '-'}</small></td>
         <td class="text-center">
-          ${a.checkedIn
-            ? `<button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.toggleCheckIn('${a.id}')"><i class="bi bi-x-circle me-1"></i>Undo</button>`
-            : `<button class="btn btn-sm btn-success" onclick="eventsModule.toggleCheckIn('${a.id}')"><i class="bi bi-check-lg me-1"></i>Check In</button>`
+          ${
+            a.checkedIn
+              ? `<button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.toggleCheckIn" data-id="a.id"><i class="bi bi-x-circle me-1"></i>Undo</button>`
+              : `<button class="btn btn-sm btn-success" data-action="eventsModule.toggleCheckIn" data-id="a.id"><i class="bi bi-check-lg me-1"></i>Check In</button>`
           }
         </td>
       </tr>
-    `).join('');
+    `
+      )
+      .join('');
   },
 
   async toggleCheckIn(attendeeId) {
     const eventId = document.getElementById('attendeesEventId').value;
     const attendees = await this.getAttendees(eventId);
-    const attendee = attendees.find(a => a.id === attendeeId);
+    const attendee = attendees.find((a) => a.id === attendeeId);
     if (attendee) {
       attendee.checkedIn = !attendee.checkedIn;
       attendee.checkInTime = attendee.checkedIn ? new Date().toISOString() : null;
       this.saveAttendees(eventId, attendees);
       this.renderCheckInTab(eventId);
       this.renderAttendees(eventId);
-      utils.showToast(attendee.checkedIn ? `${attendee.name} checked in` : `${attendee.name} check-in undone`, attendee.checkedIn ? 'success' : 'info');
+      utils.showToast(
+        attendee.checkedIn ? `${attendee.name} checked in` : `${attendee.name} check-in undone`,
+        attendee.checkedIn ? 'success' : 'info'
+      );
     }
   },
 
   async checkInAll() {
     const eventId = document.getElementById('attendeesEventId').value;
     const attendees = await this.getAttendees(eventId);
-    const unchecked = attendees.filter(a => a.status === 'attending' && !a.checkedIn);
+    const unchecked = attendees.filter((a) => a.status === 'attending' && !a.checkedIn);
     if (unchecked.length === 0) {
       utils.showToast('All attending guests are already checked in', 'info');
       return;
     }
-    if (!await utils.confirmDialog({ title: 'Bulk Check In', message: `Check in all ${unchecked.length} attending guest(s)?`, confirmText: 'Check In All', danger: false })) return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Bulk Check In',
+        message: `Check in all ${unchecked.length} attending guest(s)?`,
+        confirmText: 'Check In All',
+        danger: false,
+      }))
+    )
+      return;
     const now = new Date().toISOString();
-    unchecked.forEach(a => { a.checkedIn = true; a.checkInTime = now; });
+    unchecked.forEach((a) => {
+      a.checkedIn = true;
+      a.checkInTime = now;
+    });
     this.saveAttendees(eventId, attendees);
     this.renderCheckInTab(eventId);
     this.renderAttendees(eventId);
@@ -1277,7 +1419,7 @@ const eventsModule = {
   // ---- TICKETS TAB ----
 
   async renderTicketsTab(eventId) {
-    const event = STATE.allEvents.find(e => e.id === eventId);
+    const event = STATE.allEvents.find((e) => e.id === eventId);
     if (!event) return;
 
     // Merge localStorage fallback for ticket settings (columns may not exist in DB)
@@ -1289,15 +1431,17 @@ const eventsModule = {
           event.ticket_price = s.ticket_price;
           event.ticket_url = s.ticket_url;
         }
-      } catch (e) { /* ignore */ }
+      } catch (e) {
+        /* ignore */
+      }
     }
 
     const attendees = await this.getAttendees(eventId);
-    const ticketsSold = attendees.filter(a => a.status === 'attending').length;
+    const ticketsSold = attendees.filter((a) => a.status === 'attending').length;
     const price = event.ticket_price || 0;
     const capacity = event.capacity || 0;
     const ticketData = await this._getTicketData(eventId);
-    const issuedCount = ticketData.tickets.filter(t => t.status === 'issued').length;
+    const issuedCount = ticketData.tickets.filter((t) => t.status === 'issued').length;
 
     const priceEl = document.getElementById('ticketPriceDisplay');
     const soldEl = document.getElementById('ticketsSoldCount');
@@ -1326,9 +1470,11 @@ const eventsModule = {
     const issuanceContainer = document.getElementById('ticketIssuanceSection');
     if (!issuanceContainer) return;
 
-    const activeTickets = ticketData.tickets.filter(t => t.status === 'issued');
-    const revokedTickets = ticketData.tickets.filter(t => t.status === 'revoked');
-    const unissued = attendees.filter(a => a.status === 'attending' && !ticketData.tickets.find(t => t.attendeeId === a.id && t.status === 'issued'));
+    const activeTickets = ticketData.tickets.filter((t) => t.status === 'issued');
+    const revokedTickets = ticketData.tickets.filter((t) => t.status === 'revoked');
+    const unissued = attendees.filter(
+      (a) => a.status === 'attending' && !ticketData.tickets.find((t) => t.attendeeId === a.id && t.status === 'issued')
+    );
 
     issuanceContainer.innerHTML = `
       <!-- Ticket Issuance Stats -->
@@ -1343,7 +1489,7 @@ const eventsModule = {
           <h4 class="mb-0 text-danger">${revokedTickets.length}</h4><small class="text-muted">Revoked</small>
         </div></div></div>
         <div class="col-md-3"><div class="card text-center"><div class="card-body py-2">
-          <h4 class="mb-0 text-success">${activeTickets.filter(t => t.checkedIn).length}</h4><small class="text-muted">Checked In</small>
+          <h4 class="mb-0 text-success">${activeTickets.filter((t) => t.checkedIn).length}</h4><small class="text-muted">Checked In</small>
         </div></div></div>
       </div>
 
@@ -1353,16 +1499,16 @@ const eventsModule = {
           <h6 class="card-title"><i class="bi bi-lightning me-2"></i>Batch Issue Tickets</h6>
           <p class="small text-muted mb-2">Issue tickets to groups of attendees. Tickets include unique reference numbers for check-in.</p>
           <div class="d-flex gap-2 flex-wrap">
-            <button class="btn btn-primary btn-sm" onclick="eventsModule.batchIssueTickets('confirmed')">
+            <button class="btn btn-primary btn-sm" data-action="eventsModule.batchIssueTickets" data-id="confirmed">
               <i class="bi bi-people me-1"></i>All Confirmed RSVPs (${unissued.length})
             </button>
-            <button class="btn btn-warning btn-sm" onclick="eventsModule.batchIssueTickets('vip')">
+            <button class="btn btn-warning btn-sm" data-action="eventsModule.batchIssueTickets" data-id="vip">
               <i class="bi bi-star me-1"></i>VIP Guests Only
             </button>
-            <button class="btn btn-outline-primary btn-sm" onclick="eventsModule.emailAllTickets()">
+            <button class="btn btn-outline-primary btn-sm" data-action="eventsModule.emailAllTickets">
               <i class="bi bi-envelope me-1"></i>Email All Tickets
             </button>
-            <button class="btn btn-outline-secondary btn-sm" onclick="eventsModule.exportTicketsList()">
+            <button class="btn btn-outline-secondary btn-sm" data-action="eventsModule.exportTicketsList">
               <i class="bi bi-download me-1"></i>Export Tickets CSV
             </button>
           </div>
@@ -1370,7 +1516,9 @@ const eventsModule = {
       </div>
 
       <!-- Individual Ticket Issue -->
-      ${unissued.length > 0 ? `
+      ${
+        unissued.length > 0
+          ? `
       <div class="card mb-3">
         <div class="card-body">
           <h6 class="card-title"><i class="bi bi-person-plus me-2"></i>Issue Individual Tickets</h6>
@@ -1378,20 +1526,28 @@ const eventsModule = {
             <table class="table table-sm table-hover">
               <thead class="table-light"><tr><th>Name</th><th>Email</th><th>Type</th><th class="text-center">Action</th></tr></thead>
               <tbody>
-                ${unissued.map(a => `<tr>
+                ${unissued
+                  .map(
+                    (a) => `<tr>
                   <td>${utils.escapeHtml(a.name)}</td>
                   <td>${a.email ? utils.escapeHtml(a.email) : '<span class="text-muted">-</span>'}</td>
                   <td><span class="badge bg-secondary">${(a.guestType || 'guest').toUpperCase()}</span></td>
-                  <td class="text-center"><button class="btn btn-sm btn-outline-primary" onclick="eventsModule.issueTicketToAttendee('${a.id}')"><i class="bi bi-ticket-perforated me-1"></i>Issue</button></td>
-                </tr>`).join('')}
+                  <td class="text-center"><button class="btn btn-sm btn-outline-primary" data-action="eventsModule.issueTicketToAttendee" data-id="a.id"><i class="bi bi-ticket-perforated me-1"></i>Issue</button></td>
+                </tr>`
+                  )
+                  .join('')}
               </tbody>
             </table>
           </div>
         </div>
-      </div>` : ''}
+      </div>`
+          : ''
+      }
 
       <!-- Issued Tickets List -->
-      ${ticketData.tickets.length > 0 ? `
+      ${
+        ticketData.tickets.length > 0
+          ? `
       <div class="card">
         <div class="card-body">
           <h6 class="card-title"><i class="bi bi-list-check me-2"></i>Issued Tickets (${ticketData.tickets.length})</h6>
@@ -1399,7 +1555,9 @@ const eventsModule = {
             <table class="table table-sm table-hover">
               <thead class="table-light"><tr><th>Ticket #</th><th>Attendee</th><th>Email</th><th>Type</th><th>Status</th><th>Issued</th><th class="text-center">Actions</th></tr></thead>
               <tbody>
-                ${ticketData.tickets.map(t => `<tr class="${t.status === 'revoked' ? 'text-decoration-line-through text-muted' : ''}">
+                ${ticketData.tickets
+                  .map(
+                    (t) => `<tr class="${t.status === 'revoked' ? 'text-decoration-line-through text-muted' : ''}">
                   <td><code class="small">${utils.escapeHtml(t.ticketNumber)}</code></td>
                   <td>${utils.escapeHtml(t.attendeeName)}</td>
                   <td>${t.attendeeEmail ? utils.escapeHtml(t.attendeeEmail) : '-'}</td>
@@ -1407,17 +1565,25 @@ const eventsModule = {
                   <td><span class="badge bg-${t.status === 'issued' ? 'success' : 'danger'}">${t.status}</span></td>
                   <td class="small">${t.issuedAt ? new Date(t.issuedAt).toLocaleDateString('en-GB') : '-'}</td>
                   <td class="text-center">
-                    ${t.status === 'issued' ? `
-                      <button class="btn btn-sm btn-outline-primary me-1" onclick="eventsModule.resendTicket('${t.id}')" title="Email ticket"><i class="bi bi-envelope"></i></button>
-                      <button class="btn btn-sm btn-outline-danger" onclick="eventsModule.revokeTicket('${t.id}')" title="Revoke"><i class="bi bi-x-circle"></i></button>
-                    ` : '<span class="text-muted small">Revoked</span>'}
+                    ${
+                      t.status === 'issued'
+                        ? `
+                      <button class="btn btn-sm btn-outline-primary me-1" data-action="eventsModule.resendTicket" data-id="t.id" title="Email ticket"><i class="bi bi-envelope"></i></button>
+                      <button class="btn btn-sm btn-outline-danger" data-action="eventsModule.revokeTicket" data-id="t.id" title="Revoke"><i class="bi bi-x-circle"></i></button>
+                    `
+                        : '<span class="text-muted small">Revoked</span>'
+                    }
                   </td>
-                </tr>`).join('')}
+                </tr>`
+                  )
+                  .join('')}
               </tbody>
             </table>
           </div>
         </div>
-      </div>` : '<div class="text-center text-muted py-3"><i class="bi bi-ticket-perforated fs-1 d-block mb-2 opacity-25"></i>No tickets issued yet. Use the batch issue buttons above to get started.</div>'}`;
+      </div>`
+          : '<div class="text-center text-muted py-3"><i class="bi bi-ticket-perforated fs-1 d-block mb-2 opacity-25"></i>No tickets issued yet. Use the batch issue buttons above to get started.</div>'
+      }`;
   },
 
   async saveTicketSettings() {
@@ -1434,8 +1600,11 @@ const eventsModule = {
     }
 
     // Update local state
-    const event = STATE.allEvents.find(e => e.id === eventId);
-    if (event) { event.ticket_price = price; event.ticket_url = url; }
+    const event = STATE.allEvents.find((e) => e.id === eventId);
+    if (event) {
+      event.ticket_price = price;
+      event.ticket_url = url;
+    }
 
     this.renderTicketsTab(eventId);
     utils.showToast('Ticket settings saved', 'success');
@@ -1452,9 +1621,10 @@ const eventsModule = {
 
   async _getTicketData(eventId) {
     try {
+      /* selectAll: justified — scoped to single event */
       const data = await apiClient.selectAll('event_tickets', {
         filters: { event_id: eventId },
-        sort: { column: 'created_at', ascending: true }
+        sort: { column: 'created_at', ascending: true },
       });
       return { tickets: data || [], settings: {} };
     } catch (e) {
@@ -1468,7 +1638,7 @@ const eventsModule = {
     try {
       await apiClient.deleteByFilters('event_tickets', { event_id: eventId });
       if (data.tickets && data.tickets.length > 0) {
-        const rows = data.tickets.map(t => ({
+        const rows = data.tickets.map((t) => ({
           event_id: eventId,
           ticket_number: t.ticketNumber || t.ticket_number,
           attendee_id: t.attendeeId || t.attendee_id,
@@ -1478,7 +1648,7 @@ const eventsModule = {
           status: t.status || 'issued',
           issued_at: t.issuedAt || t.issued_at || new Date().toISOString(),
           revoked_at: t.revokedAt || t.revoked_at || null,
-          sent_at: t.sentAt || t.sent_at || null
+          sent_at: t.sentAt || t.sent_at || null,
         }));
         await apiClient.insert('event_tickets', rows);
       }
@@ -1498,14 +1668,14 @@ const eventsModule = {
 
   async issueTicketToAttendee(attendeeId) {
     const eventId = document.getElementById('attendeesEventId').value;
-    const event = STATE.allEvents.find(e => e.id === eventId);
+    const event = STATE.allEvents.find((e) => e.id === eventId);
     const attendees = await this.getAttendees(eventId);
-    const attendee = attendees.find(a => a.id === attendeeId);
+    const attendee = attendees.find((a) => a.id === attendeeId);
     if (!attendee || !event) return;
 
     const ticketData = await this._getTicketData(eventId);
     // Check if already issued
-    if (ticketData.tickets.find(t => t.attendeeId === attendeeId)) {
+    if (ticketData.tickets.find((t) => t.attendeeId === attendeeId)) {
       utils.showToast('Ticket already issued to this attendee', 'warning');
       return;
     }
@@ -1520,7 +1690,7 @@ const eventsModule = {
       guestType: attendee.guestType || 'guest',
       issuedAt: new Date().toISOString(),
       status: 'issued',
-      checkedIn: false
+      checkedIn: false,
     });
 
     this._saveTicketData(eventId, ticketData);
@@ -1530,34 +1700,45 @@ const eventsModule = {
 
   async batchIssueTickets(filter) {
     const eventId = document.getElementById('attendeesEventId').value;
-    const event = STATE.allEvents.find(e => e.id === eventId);
+    const event = STATE.allEvents.find((e) => e.id === eventId);
     if (!event) return;
 
     const attendees = await this.getAttendees(eventId);
     const ticketData = await this._getTicketData(eventId);
-    const alreadyIssued = new Set(ticketData.tickets.map(t => t.attendeeId));
+    const alreadyIssued = new Set(ticketData.tickets.map((t) => t.attendeeId));
 
     let eligible;
     if (filter === 'confirmed') {
-      eligible = attendees.filter(a => a.status === 'attending' && !alreadyIssued.has(a.id));
+      eligible = attendees.filter((a) => a.status === 'attending' && !alreadyIssued.has(a.id));
     } else if (filter === 'vip') {
-      eligible = attendees.filter(a => (a.guestType === 'vip' || a.vip || a.isVip) && !alreadyIssued.has(a.id));
+      eligible = attendees.filter((a) => (a.guestType === 'vip' || a.vip || a.isVip) && !alreadyIssued.has(a.id));
     } else if (filter === 'winners') {
       // We'll check award data for winners
-      eligible = attendees.filter(a => a._isWinner && !alreadyIssued.has(a.id));
+      eligible = attendees.filter((a) => a._isWinner && !alreadyIssued.has(a.id));
     } else {
-      eligible = attendees.filter(a => !alreadyIssued.has(a.id));
+      eligible = attendees.filter((a) => !alreadyIssued.has(a.id));
     }
 
     if (eligible.length === 0) {
-      utils.showToast(alreadyIssued.size > 0 ? 'All eligible attendees already have tickets' : 'No eligible attendees found', 'warning');
+      utils.showToast(
+        alreadyIssued.size > 0 ? 'All eligible attendees already have tickets' : 'No eligible attendees found',
+        'warning'
+      );
       return;
     }
 
-    if (!await utils.confirmDialog({ title: 'Issue Tickets', message: `Issue tickets to ${eligible.length} attendee(s)?`, confirmText: 'Issue Tickets', danger: false })) return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Issue Tickets',
+        message: `Issue tickets to ${eligible.length} attendee(s)?`,
+        confirmText: 'Issue Tickets',
+        danger: false,
+      }))
+    )
+      return;
 
     let issued = 0;
-    eligible.forEach(attendee => {
+    eligible.forEach((attendee) => {
       const ticketNumber = this._generateTicketNumber(eventId, ticketData.tickets.length + 1);
       ticketData.tickets.push({
         id: 'ticket_' + Date.now() + '_' + issued,
@@ -1568,7 +1749,7 @@ const eventsModule = {
         guestType: attendee.guestType || 'guest',
         issuedAt: new Date().toISOString(),
         status: 'issued',
-        checkedIn: false
+        checkedIn: false,
       });
       issued++;
     });
@@ -1580,9 +1761,10 @@ const eventsModule = {
 
   async revokeTicket(ticketId) {
     const eventId = document.getElementById('attendeesEventId').value;
-    if (!await utils.confirmDialog({ title: 'Revoke Ticket', message: 'Revoke this ticket?', confirmText: 'Revoke' })) return;
+    if (!(await utils.confirmDialog({ title: 'Revoke Ticket', message: 'Revoke this ticket?', confirmText: 'Revoke' })))
+      return;
     const ticketData = await this._getTicketData(eventId);
-    const ticket = ticketData.tickets.find(t => t.id === ticketId);
+    const ticket = ticketData.tickets.find((t) => t.id === ticketId);
     if (ticket) {
       ticket.status = 'revoked';
       ticket.revokedAt = new Date().toISOString();
@@ -1594,16 +1776,17 @@ const eventsModule = {
 
   async resendTicket(ticketId) {
     const eventId = document.getElementById('attendeesEventId').value;
-    const event = STATE.allEvents.find(e => e.id === eventId);
+    const event = STATE.allEvents.find((e) => e.id === eventId);
     const ticketData = await this._getTicketData(eventId);
-    const ticket = ticketData.tickets.find(t => t.id === ticketId);
+    const ticket = ticketData.tickets.find((t) => t.id === ticketId);
     if (!ticket || !ticket.attendeeEmail) {
       utils.showToast('No email address for this ticket holder', 'warning');
       return;
     }
 
     const subject = `Your Ticket: ${event.event_name} - ${ticket.ticketNumber}`;
-    const body = `Dear ${ticket.attendeeName},\n\nPlease find your ticket details below:\n\n` +
+    const body =
+      `Dear ${ticket.attendeeName},\n\nPlease find your ticket details below:\n\n` +
       `Event: ${event.event_name}\n` +
       `Date: ${event.event_date ? new Date(event.event_date).toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'TBC'}\n` +
       `Venue: ${event.venue || 'TBC'}\n` +
@@ -1616,9 +1799,9 @@ const eventsModule = {
 
   async emailAllTickets() {
     const eventId = document.getElementById('attendeesEventId').value;
-    const event = STATE.allEvents.find(e => e.id === eventId);
+    const event = STATE.allEvents.find((e) => e.id === eventId);
     const ticketData = await this._getTicketData(eventId);
-    const activeTickets = ticketData.tickets.filter(t => t.status === 'issued' && t.attendeeEmail);
+    const activeTickets = ticketData.tickets.filter((t) => t.status === 'issued' && t.attendeeEmail);
 
     if (activeTickets.length === 0) {
       utils.showToast('No issued tickets with email addresses', 'warning');
@@ -1626,29 +1809,38 @@ const eventsModule = {
     }
 
     const subject = `Your Ticket: ${event.event_name}`;
-    const body = `Dear Guest,\n\nYour ticket for ${event.event_name} has been confirmed.\n\n` +
+    const body =
+      `Dear Guest,\n\nYour ticket for ${event.event_name} has been confirmed.\n\n` +
       `Date: ${event.event_date ? new Date(event.event_date).toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'TBC'}\n` +
       `Venue: ${event.venue || 'TBC'}\n\n` +
       `Your individual ticket number will be included in your personalised email.\n` +
       `Please present your ticket at the door.\n\nBritish Trade Awards`;
 
-    this._showEmailPreview(subject, body, activeTickets.map(t => t.attendeeEmail), eventId);
+    this._showEmailPreview(
+      subject,
+      body,
+      activeTickets.map((t) => t.attendeeEmail),
+      eventId
+    );
   },
 
   async exportTicketsList() {
     const eventId = document.getElementById('attendeesEventId').value;
-    const event = STATE.allEvents.find(e => e.id === eventId);
+    const event = STATE.allEvents.find((e) => e.id === eventId);
     const ticketData = await this._getTicketData(eventId);
-    if (ticketData.tickets.length === 0) { utils.showToast('No tickets to export', 'warning'); return; }
+    if (ticketData.tickets.length === 0) {
+      utils.showToast('No tickets to export', 'warning');
+      return;
+    }
 
-    const rows = ticketData.tickets.map(t => ({
+    const rows = ticketData.tickets.map((t) => ({
       'Ticket Number': t.ticketNumber,
-      'Attendee': t.attendeeName,
-      'Email': t.attendeeEmail,
-      'Type': (t.guestType || 'guest').toUpperCase(),
-      'Status': t.status,
-      'Issued': t.issuedAt ? new Date(t.issuedAt).toLocaleString('en-GB') : '',
-      'Checked In': t.checkedIn ? 'Yes' : 'No'
+      Attendee: t.attendeeName,
+      Email: t.attendeeEmail,
+      Type: (t.guestType || 'guest').toUpperCase(),
+      Status: t.status,
+      Issued: t.issuedAt ? new Date(t.issuedAt).toLocaleString('en-GB') : '',
+      'Checked In': t.checkedIn ? 'Yes' : 'No',
     }));
 
     utils.exportToCSV(rows, `${event ? event.event_name.replace(/[^a-z0-9]/gi, '_') : 'event'}_tickets.csv`);
@@ -1690,20 +1882,20 @@ const eventsModule = {
       return;
     }
 
-    const event = STATE.allEvents.find(e => e.id === eventId);
+    const event = STATE.allEvents.find((e) => e.id === eventId);
     const eventName = event ? event.event_name : 'Event';
 
-    const exportData = attendees.map(a => ({
-      'Name': a.name,
-      'Email': a.email || '',
-      'Type': (a.guestType || 'guest').charAt(0).toUpperCase() + (a.guestType || 'guest').slice(1),
-      'RSVP Status': (a.status || '').replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()),
+    const exportData = attendees.map((a) => ({
+      Name: a.name,
+      Email: a.email || '',
+      Type: (a.guestType || 'guest').charAt(0).toUpperCase() + (a.guestType || 'guest').slice(1),
+      'RSVP Status': (a.status || '').replace('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
       'Plus Ones': a.plusOnes || 0,
-      'Dietary': a.dietary || '',
-      'Notes': a.notes || '',
+      Dietary: a.dietary || '',
+      Notes: a.notes || '',
       'Checked In': a.checkedIn ? 'Yes' : 'No',
       'Check-In Time': a.checkInTime ? new Date(a.checkInTime).toLocaleString() : '',
-      'Added On': utils.formatDate(a.addedAt)
+      'Added On': utils.formatDate(a.addedAt),
     }));
 
     const filename = `${eventName.replace(/[^a-z0-9]/gi, '_')}_attendees_${new Date().toISOString().split('T')[0]}.csv`;
@@ -1717,8 +1909,8 @@ const eventsModule = {
   async sendInviteEmail(attendeeId) {
     const eventId = document.getElementById('attendeesEventId').value;
     const attendees = await this.getAttendees(eventId);
-    const attendee = attendees.find(a => a.id === attendeeId);
-    const event = STATE.allEvents.find(e => e.id === eventId);
+    const attendee = attendees.find((a) => a.id === attendeeId);
+    const event = STATE.allEvents.find((e) => e.id === eventId);
     if (!attendee || !event) return;
     if (!attendee.email) {
       utils.showToast('No email address for this attendee', 'warning');
@@ -1729,7 +1921,8 @@ const eventsModule = {
 
     // Build email content preview
     const subject = `You're Invited: ${event.event_name}`;
-    const body = `Dear ${attendee.name},\n\nYou are cordially invited to ${event.event_name}.\n\n` +
+    const body =
+      `Dear ${attendee.name},\n\nYou are cordially invited to ${event.event_name}.\n\n` +
       `Date: ${event.event_date ? new Date(event.event_date).toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'TBC'}\n` +
       `Venue: ${event.venue || 'TBC'}\n\n` +
       `Please confirm your attendance by registering here:\n${regLink}\n\n` +
@@ -1741,11 +1934,11 @@ const eventsModule = {
 
   async sendBulkInvites() {
     const eventId = document.getElementById('attendeesEventId').value;
-    const event = STATE.allEvents.find(e => e.id === eventId);
+    const event = STATE.allEvents.find((e) => e.id === eventId);
     if (!event) return;
 
     const attendees = await this.getAttendees(eventId);
-    const uninvited = attendees.filter(a => a.email && !a._inviteSent);
+    const uninvited = attendees.filter((a) => a.email && !a._inviteSent);
     if (uninvited.length === 0) {
       utils.showToast('No attendees with email addresses to invite', 'warning');
       return;
@@ -1753,18 +1946,22 @@ const eventsModule = {
 
     const regLink = `${this._getBaseUrl()}/register.html?event=${eventId}`;
     const subject = `You're Invited: ${event.event_name}`;
-    const body = `Dear Guest,\n\nYou are cordially invited to ${event.event_name}.\n\n` +
+    const body =
+      `Dear Guest,\n\nYou are cordially invited to ${event.event_name}.\n\n` +
       `Date: ${event.event_date ? new Date(event.event_date).toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'TBC'}\n` +
       `Venue: ${event.venue || 'TBC'}\n\n` +
       `Please confirm your attendance by registering here:\n${regLink}\n\n` +
       `We look forward to seeing you there.\n\nBest regards,\nBritish Trade Awards`;
 
-    const emails = uninvited.map(a => a.email);
+    const emails = uninvited.map((a) => a.email);
     this._showEmailPreview(subject, body, emails, eventId);
   },
 
-  _showEmailPreview(subject, body, recipients, eventId) {
-    const recipientStr = recipients.length > 3 ? `${recipients.slice(0, 3).join(', ')} + ${recipients.length - 3} more` : recipients.join(', ');
+  _showEmailPreview(subject, body, recipients, _eventId) {
+    const recipientStr =
+      recipients.length > 3
+        ? `${recipients.slice(0, 3).join(', ')} + ${recipients.length - 3} more`
+        : recipients.join(', ');
     const html = `
       <div class="modal fade" id="emailPreviewModal" tabindex="-1" style="z-index:1070;">
         <div class="modal-dialog modal-lg" style="max-width:700px;">
@@ -1794,9 +1991,9 @@ const eventsModule = {
               </div>
             </div>
             <div class="modal-footer">
-              <button class="btn btn-outline-secondary" onclick="eventsModule._copyEmailContent()"><i class="bi bi-clipboard me-1"></i>Copy Content</button>
-              <button class="btn btn-outline-primary" onclick="eventsModule._downloadMailMerge('${eventId}')"><i class="bi bi-download me-1"></i>Download CSV for Mail Merge</button>
-              <button class="btn btn-primary" onclick="eventsModule._openMailto()"><i class="bi bi-send me-1"></i>Open in Email Client</button>
+              <button class="btn btn-outline-secondary" data-action="eventsModule._copyEmailContent"><i class="bi bi-clipboard me-1"></i>Copy Content</button>
+              <button class="btn btn-outline-primary" data-action="eventsModule._downloadMailMerge" data-id="eventId"><i class="bi bi-download me-1"></i>Download CSV for Mail Merge</button>
+              <button class="btn btn-primary" data-action="eventsModule._openMailto"><i class="bi bi-send me-1"></i>Open in Email Client</button>
             </div>
           </div>
         </div>
@@ -1836,17 +2033,19 @@ const eventsModule = {
 
   async _downloadMailMerge(eventId) {
     const attendees = await this.getAttendees(eventId);
-    const event = STATE.allEvents.find(e => e.id === eventId);
+    const event = STATE.allEvents.find((e) => e.id === eventId);
     const regLink = `${this._getBaseUrl()}/register.html?event=${eventId}`;
-    const rows = attendees.filter(a => a.email).map(a => ({
-      'Name': a.name,
-      'Email': a.email,
-      'Type': a.guestType || 'guest',
-      'Event': event ? event.event_name : '',
-      'Date': event ? event.event_date : '',
-      'Venue': event ? event.venue : '',
-      'Registration Link': regLink
-    }));
+    const rows = attendees
+      .filter((a) => a.email)
+      .map((a) => ({
+        Name: a.name,
+        Email: a.email,
+        Type: a.guestType || 'guest',
+        Event: event ? event.event_name : '',
+        Date: event ? event.event_date : '',
+        Venue: event ? event.venue : '',
+        'Registration Link': regLink,
+      }));
     utils.exportToCSV(rows, `mail_merge_${event ? event.event_name.replace(/[^a-z0-9]/gi, '_') : 'event'}.csv`);
     utils.showToast('Mail merge CSV downloaded', 'success');
   },
@@ -1861,9 +2060,10 @@ const eventsModule = {
 
   async getWaitlist(eventId) {
     try {
+      /* selectAll: justified — scoped to single event */
       const data = await apiClient.selectAll('event_waitlist', {
         filters: { event_id: eventId },
-        sort: { column: 'created_at', ascending: true }
+        sort: { column: 'created_at', ascending: true },
       });
       return data || [];
     } catch (e) {
@@ -1876,7 +2076,7 @@ const eventsModule = {
     try {
       await apiClient.deleteByFilters('event_waitlist', { event_id: eventId });
       if (waitlist.length > 0) {
-        const rows = waitlist.map(w => ({ ...w, event_id: eventId }));
+        const rows = waitlist.map((w) => ({ ...w, event_id: eventId }));
         await apiClient.insert('event_waitlist', rows);
       }
     } catch (e) {
@@ -1899,7 +2099,7 @@ const eventsModule = {
       phone: (phone || '').trim(),
       addedAt: new Date().toISOString(),
       notified: false,
-      promoted: false
+      promoted: false,
     });
     await this._saveWaitlist(eventId, waitlist);
     this.renderWaitlistTab(eventId);
@@ -1908,9 +2108,16 @@ const eventsModule = {
 
   async removeFromWaitlist(wlId) {
     const eventId = document.getElementById('attendeesEventId').value;
-    if (!await utils.confirmDialog({ title: 'Remove from Waitlist', message: 'Remove from waitlist?', confirmText: 'Remove' })) return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Remove from Waitlist',
+        message: 'Remove from waitlist?',
+        confirmText: 'Remove',
+      }))
+    )
+      return;
     let waitlist = await this.getWaitlist(eventId);
-    waitlist = waitlist.filter(w => w.id !== wlId);
+    waitlist = waitlist.filter((w) => w.id !== wlId);
     await this._saveWaitlist(eventId, waitlist);
     this.renderWaitlistTab(eventId);
     utils.showToast('Removed from waitlist', 'success');
@@ -1919,7 +2126,7 @@ const eventsModule = {
   async promoteFromWaitlist(wlId) {
     const eventId = document.getElementById('attendeesEventId').value;
     const waitlist = await this.getWaitlist(eventId);
-    const person = waitlist.find(w => w.id === wlId);
+    const person = waitlist.find((w) => w.id === wlId);
     if (!person) return;
 
     // Add as attendee
@@ -1935,7 +2142,7 @@ const eventsModule = {
       notes: `Promoted from waitlist on ${new Date().toLocaleDateString()}`,
       checkedIn: false,
       checkInTime: null,
-      addedAt: new Date().toISOString()
+      addedAt: new Date().toISOString(),
     });
     this.saveAttendees(eventId, attendees);
 
@@ -1954,14 +2161,16 @@ const eventsModule = {
     if (!container) return;
     const waitlist = await this.getWaitlist(eventId);
     const countEl = document.getElementById('waitlistCount');
-    if (countEl) countEl.textContent = waitlist.filter(w => !w.promoted).length;
+    if (countEl) countEl.textContent = waitlist.filter((w) => !w.promoted).length;
 
     if (waitlist.length === 0) {
       utils.showEmptyState('waitlistTableBody', 6, 'No one on the waitlist', 'bi-person-slash');
       return;
     }
 
-    container.innerHTML = waitlist.map(w => `
+    container.innerHTML = waitlist
+      .map(
+        (w) => `
       <tr class="${w.promoted ? 'table-success' : ''}">
         <td><strong>${utils.escapeHtml(w.name)}</strong></td>
         <td>${utils.escapeHtml(w.email || '-')}</td>
@@ -1969,15 +2178,21 @@ const eventsModule = {
         <td>${new Date(w.addedAt).toLocaleDateString()}</td>
         <td>${w.promoted ? '<span class="badge bg-success">Promoted</span>' : '<span class="badge bg-warning">Waiting</span>'}</td>
         <td class="text-center">
-          ${w.promoted ? '' : `
-            <button class="btn btn-sm btn-success me-1" onclick="eventsModule.promoteFromWaitlist('${w.id}')" title="Promote to attendee">
+          ${
+            w.promoted
+              ? ''
+              : `
+            <button class="btn btn-sm btn-success me-1" data-action="eventsModule.promoteFromWaitlist" data-id="w.id" title="Promote to attendee">
               <i class="bi bi-person-plus"></i>
-            </button>`}
-          <button class="btn btn-sm btn-outline-danger" onclick="eventsModule.removeFromWaitlist('${w.id}')" title="Remove">
+            </button>`
+          }
+          <button class="btn btn-sm btn-outline-danger" data-action="eventsModule.removeFromWaitlist" data-id="w.id" title="Remove">
             <i class="bi bi-trash"></i>
           </button>
         </td>
-      </tr>`).join('');
+      </tr>`
+      )
+      .join('');
   },
 
   // ========================================
@@ -1986,8 +2201,8 @@ const eventsModule = {
 
   async generateNameBadges() {
     const eventId = document.getElementById('attendeesEventId').value;
-    const event = STATE.allEvents.find(e => e.id === eventId);
-    const attendees = (await this.getAttendees(eventId)).filter(a => a.status === 'attending');
+    const event = STATE.allEvents.find((e) => e.id === eventId);
+    const attendees = (await this.getAttendees(eventId)).filter((a) => a.status === 'attending');
 
     if (attendees.length === 0) {
       utils.showToast('No attending guests to generate badges for', 'warning');
@@ -2010,10 +2225,14 @@ const eventsModule = {
     const doc = new jsPDF('p', 'mm', 'a4');
 
     // Badge layout: 2 columns × 4 rows per page = 8 badges per page
-    const badgeW = 90, badgeH = 60;
-    const marginX = 15, marginY = 15;
-    const gapX = 5, gapY = 8;
-    const cols = 2, rows = 4;
+    const badgeW = 90,
+      badgeH = 60;
+    const marginX = 15,
+      marginY = 15;
+    const gapX = 5,
+      gapY = 8;
+    const cols = 2,
+      rows = 4;
     const badgesPerPage = cols * rows;
 
     attendees.forEach((att, idx) => {
@@ -2044,7 +2263,14 @@ const eventsModule = {
       doc.setFont(undefined, 'normal');
       doc.setFontSize(10);
       const typeStr = (att.guestType || 'guest').toUpperCase();
-      const typeColors = { VIP: [220, 53, 69], SPEAKER: [13, 110, 253], SPONSOR: [25, 135, 84], MEDIA: [111, 66, 193], STAFF: [108, 117, 125], GUEST: [13, 202, 240] };
+      const typeColors = {
+        VIP: [220, 53, 69],
+        SPEAKER: [13, 110, 253],
+        SPONSOR: [25, 135, 84],
+        MEDIA: [111, 66, 193],
+        STAFF: [108, 117, 125],
+        GUEST: [13, 202, 240],
+      };
       const tc = typeColors[typeStr] || typeColors.GUEST;
       doc.setTextColor(tc[0], tc[1], tc[2]);
       doc.text(typeStr, x + badgeW / 2, y + 38, { align: 'center' });
@@ -2070,8 +2296,8 @@ const eventsModule = {
 
   async generatePlaceCards() {
     const eventId = document.getElementById('attendeesEventId').value;
-    const event = STATE.allEvents.find(e => e.id === eventId);
-    const attendees = (await this.getAttendees(eventId)).filter(a => a.status === 'attending');
+    const event = STATE.allEvents.find((e) => e.id === eventId);
+    const attendees = (await this.getAttendees(eventId)).filter((a) => a.status === 'attending');
 
     if (attendees.length === 0) {
       utils.showToast('No attending guests to generate place cards for', 'warning');
@@ -2092,10 +2318,14 @@ const eventsModule = {
     const { jsPDF } = window.jspdf;
     // Landscape A4 folded = place card. 2 per row, 3 per page = 6 per page
     const doc = new jsPDF('l', 'mm', 'a4');
-    const cardW = 130, cardH = 80;
-    const marginX = 15, marginY = 12;
-    const gapX = 7, gapY = 7;
-    const cols = 2, rows = 2;
+    const cardW = 130,
+      cardH = 80;
+    const marginX = 15,
+      marginY = 12;
+    const gapX = 7,
+      gapY = 7;
+    const cols = 2,
+      rows = 2;
     const perPage = cols * rows;
 
     attendees.forEach((att, idx) => {
@@ -2154,14 +2384,13 @@ const eventsModule = {
   // ========================================
 
   openShareableSeatingChart() {
-    const eventId = document.getElementById('attendeesEventId')?.value ||
-      this.currentEventIdRunningOrder;
+    const eventId = document.getElementById('attendeesEventId')?.value || this.currentEventIdRunningOrder;
     if (!eventId) {
       utils.showToast('No event selected', 'warning');
       return;
     }
 
-    const event = STATE.allEvents.find(e => e.id === eventId);
+    const event = STATE.allEvents.find((e) => e.id === eventId);
     if (!event) return;
 
     // Build a standalone HTML window with the seating chart
@@ -2176,30 +2405,36 @@ const eventsModule = {
 
   async _buildSeatingChartPage(win, event, eventId) {
     try {
+      /* selectAll: justified — scoped to single event */
       const tables = await apiClient.selectAll('event_tables', {
         filters: { event_id: eventId, is_active: true },
-        sort: { column: 'table_number', ascending: true }
+        sort: { column: 'table_number', ascending: true },
       });
 
+      /* selectAll: justified — scoped to single event */
       const assignments = await apiClient.selectAll('table_assignments', {
-        filters: { event_id: eventId }
+        filters: { event_id: eventId },
       });
 
       const tableList = Array.isArray(tables) ? tables : [];
       const assignList = Array.isArray(assignments) ? assignments : [];
 
-      const tableCards = tableList.map(t => {
-        const seated = assignList.filter(a => a.table_id === t.id);
-        const pct = t.total_seats > 0 ? Math.round(seated.length / t.total_seats * 100) : 0;
-        const guestListHtml = seated.map(s =>
-          `<div style="padding:3px 0;border-bottom:1px solid #eee;font-size:0.85rem;">
+      const tableCards = tableList
+        .map((t) => {
+          const seated = assignList.filter((a) => a.table_id === t.id);
+          const pct = t.total_seats > 0 ? Math.round((seated.length / t.total_seats) * 100) : 0;
+          const guestListHtml = seated
+            .map(
+              (s) =>
+                `<div style="padding:3px 0;border-bottom:1px solid #eee;font-size:0.85rem;">
             ${s.guest_name || 'Guest'}${s.company_name ? ` <span style="color:#6c757d;">- ${s.company_name}</span>` : ''}
             ${s.is_vip ? ' <span style="background:#dc3545;color:white;padding:1px 6px;border-radius:3px;font-size:0.7rem;">VIP</span>' : ''}
             ${s.dietary_requirements ? ` <span style="color:#fd7e14;font-size:0.75rem;">[${s.dietary_requirements}]</span>` : ''}
           </div>`
-        ).join('');
+            )
+            .join('');
 
-        return `<div style="background:white;border-radius:12px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,0.08);break-inside:avoid;">
+          return `<div style="background:white;border-radius:12px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,0.08);break-inside:avoid;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
             <h3 style="margin:0;font-size:1.1rem;">${t.table_name || 'Table ' + t.table_number}</h3>
             <span style="background:${pct >= 100 ? '#dc3545' : pct >= 75 ? '#fd7e14' : '#198754'};color:white;padding:2px 10px;border-radius:12px;font-size:0.8rem;">
@@ -2208,12 +2443,14 @@ const eventsModule = {
           </div>
           <div>${guestListHtml || '<div style="color:#6c757d;font-style:italic;">No guests assigned</div>'}</div>
         </div>`;
-      }).join('');
+        })
+        .join('');
 
       const totalSeated = assignList.length;
       const totalSeats = tableList.reduce((s, t) => s + t.total_seats, 0);
 
-      win.document.write(`<!DOCTYPE html><html><head><title>Seating Chart - ${utils.escapeHtml(event.event_name)}</title>
+      win.document
+        .write(`<!DOCTYPE html><html><head><title>Seating Chart - ${utils.escapeHtml(event.event_name)}</title>
         <style>
           body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; background: #f0f2f5; }
           .header { background: linear-gradient(135deg, #1a1a2e, #16213e); color: white; padding: 30px; text-align: center; }
@@ -2235,10 +2472,10 @@ const eventsModule = {
           <div class="stat"><div class="stat-val">${tableList.length}</div><div>Tables</div></div>
           <div class="stat"><div class="stat-val">${totalSeated}</div><div>Seated</div></div>
           <div class="stat"><div class="stat-val">${totalSeats}</div><div>Total Seats</div></div>
-          <div class="stat"><div class="stat-val">${totalSeats > 0 ? Math.round(totalSeated / totalSeats * 100) : 0}%</div><div>Occupancy</div></div>
+          <div class="stat"><div class="stat-val">${totalSeats > 0 ? Math.round((totalSeated / totalSeats) * 100) : 0}%</div><div>Occupancy</div></div>
         </div>
         <div style="text-align:center;padding:12px;" class="no-print">
-          <button onclick="window.print()" style="padding:8px 24px;background:#0d6efd;color:white;border:none;border-radius:6px;cursor:pointer;font-size:0.9rem;">Print Seating Chart</button>
+          <button data-action="window.print" style="padding:8px 24px;background:#0d6efd;color:white;border:none;border-radius:6px;cursor:pointer;font-size:0.9rem;">Print Seating Chart</button>
         </div>
         <div class="grid">${tableCards}</div>
         <div style="text-align:center;padding:20px;color:#adb5bd;font-size:0.8rem;">Generated ${new Date().toLocaleString()} | British Trade Awards</div>
@@ -2270,17 +2507,22 @@ const eventsModule = {
       try {
         const { data: budgetRows } = await apiClient.select('event_budgets', {
           filters: { event_id: eventId },
-          pageSize: 1
+          pageSize: 1,
         });
         budgetRow = budgetRows?.[0] || null;
-      } catch (e) { budgetErr = e; }
+      } catch (e) {
+        budgetErr = e;
+      }
 
       try {
+        /* selectAll: justified — scoped to single event */
         items = await apiClient.selectAll('event_budget_items', {
           filters: { event_id: eventId },
-          sort: { column: 'created_at', ascending: true }
+          sort: { column: 'created_at', ascending: true },
         });
-      } catch (e) { itemsErr = e; }
+      } catch (e) {
+        itemsErr = e;
+      }
 
       // If both tables errored (likely don't exist), fall back to localStorage
       if (budgetErr && itemsErr) {
@@ -2298,25 +2540,29 @@ const eventsModule = {
     try {
       // Upsert budget total — try update first, insert on failure
       try {
-        await apiClient.updateByFilters('event_budgets', { event_id: eventId }, {
-          total_budget: budget.totalBudget || 0
-        });
+        await apiClient.updateByFilters(
+          'event_budgets',
+          { event_id: eventId },
+          {
+            total_budget: budget.totalBudget || 0,
+          }
+        );
       } catch (upsertErr) {
         await apiClient.insert('event_budgets', {
           event_id: eventId,
-          total_budget: budget.totalBudget || 0
+          total_budget: budget.totalBudget || 0,
         });
       }
       // Replace items
       await apiClient.deleteByFilters('event_budget_items', { event_id: eventId });
       if (budget.items && budget.items.length > 0) {
-        const rows = budget.items.map(item => ({
+        const rows = budget.items.map((item) => ({
           event_id: eventId,
           name: item.name,
           category: item.category,
           estimated_amount: item.estimatedAmount || item.estimated_amount || 0,
           actual_amount: item.actualAmount || item.actual_amount || 0,
-          notes: item.notes
+          notes: item.notes,
         }));
         await apiClient.insert('event_budget_items', rows);
       }
@@ -2353,16 +2599,16 @@ const eventsModule = {
     // Progress bar
     const bar = document.getElementById('budgetProgressBar');
     if (bar && totalBudget > 0) {
-      const pct = Math.min(100, Math.round(totalSpent / totalBudget * 100));
+      const pct = Math.min(100, Math.round((totalSpent / totalBudget) * 100));
       bar.style.width = pct + '%';
       bar.textContent = pct + '%';
       bar.className = `progress-bar ${pct >= 100 ? 'bg-danger' : pct >= 80 ? 'bg-warning' : 'bg-success'}`;
     }
 
     // Revenue vs Costs summary
-    const event = STATE.allEvents.find(e => e.id === eventId);
+    const event = STATE.allEvents.find((e) => e.id === eventId);
     const attendees = await this.getAttendees(eventId);
-    const attending = attendees ? attendees.filter(a => a.status === 'attending').length : 0;
+    const attending = attendees ? attendees.filter((a) => a.status === 'attending').length : 0;
     const ticketPrice = parseFloat(event?.ticket_price) || 0;
     const ticketRevenue = ticketPrice * attending;
     const netPL = ticketRevenue - totalSpent;
@@ -2378,17 +2624,34 @@ const eventsModule = {
       netDisplay.className = `fw-bold ${netPL >= 0 ? 'text-success' : 'text-danger'}`;
     }
 
-    const _categories = ['Venue', 'Catering', 'AV/Production', 'Entertainment', 'Trophies/Awards', 'Print/Stationery', 'Transport', 'Staffing', 'Marketing', 'Gifts/Swag', 'Other'];
+    const _categories = [
+      'Venue',
+      'Catering',
+      'AV/Production',
+      'Entertainment',
+      'Trophies/Awards',
+      'Print/Stationery',
+      'Transport',
+      'Staffing',
+      'Marketing',
+      'Gifts/Swag',
+      'Other',
+    ];
 
     if (items.length === 0) {
-      utils.showEnhancedEmptyState('budgetTableBody', 7, { icon: 'bi-calculator', message: 'No budget items', description: 'Click "Add Item" to start tracking' });
+      utils.showEnhancedEmptyState('budgetTableBody', 7, {
+        icon: 'bi-calculator',
+        message: 'No budget items',
+        description: 'Click "Add Item" to start tracking',
+      });
       return;
     }
 
-    container.innerHTML = items.map((item, idx) => {
-      const diff = (parseFloat(item.actual) || 0) - (parseFloat(item.estimated) || 0);
-      const diffClass = diff > 0 ? 'text-danger' : diff < 0 ? 'text-success' : '';
-      return `<tr>
+    container.innerHTML = items
+      .map((item, idx) => {
+        const diff = (parseFloat(item.actual) || 0) - (parseFloat(item.estimated) || 0);
+        const diffClass = diff > 0 ? 'text-danger' : diff < 0 ? 'text-success' : '';
+        return `<tr>
         <td><strong>${utils.escapeHtml(item.name)}</strong></td>
         <td><span class="badge bg-secondary">${utils.escapeHtml(item.category || 'Other')}</span></td>
         <td>\u00A3${parseFloat(item.estimated || 0).toFixed(2)}</td>
@@ -2396,11 +2659,12 @@ const eventsModule = {
         <td class="${diffClass}">${diff !== 0 ? (diff > 0 ? '+' : '') + '\u00A3' + diff.toFixed(2) : '-'}</td>
         <td>${utils.escapeHtml(item.status || 'Pending')}</td>
         <td class="text-center">
-          <button class="btn btn-sm btn-outline-primary me-1" onclick="eventsModule.editBudgetItem(${idx})" title="Edit"><i class="bi bi-pencil"></i></button>
-          <button class="btn btn-sm btn-outline-danger" onclick="eventsModule.deleteBudgetItem(${idx})" title="Delete"><i class="bi bi-trash"></i></button>
+          <button class="btn btn-sm btn-outline-primary me-1" data-action="eventsModule.editBudgetItem" data-id="${idx}" title="Edit"><i class="bi bi-pencil"></i></button>
+          <button class="btn btn-sm btn-outline-danger" data-action="eventsModule.deleteBudgetItem" data-id="${idx}" title="Delete"><i class="bi bi-trash"></i></button>
         </td>
       </tr>`;
-    }).join('');
+      })
+      .join('');
   },
 
   async saveBudgetTotal() {
@@ -2414,7 +2678,19 @@ const eventsModule = {
 
   addBudgetItem() {
     const _eventId = document.getElementById('attendeesEventId').value;
-    const categories = ['Venue', 'Catering', 'AV/Production', 'Entertainment', 'Trophies/Awards', 'Print/Stationery', 'Transport', 'Staffing', 'Marketing', 'Gifts/Swag', 'Other'];
+    const categories = [
+      'Venue',
+      'Catering',
+      'AV/Production',
+      'Entertainment',
+      'Trophies/Awards',
+      'Print/Stationery',
+      'Transport',
+      'Staffing',
+      'Marketing',
+      'Gifts/Swag',
+      'Other',
+    ];
     const html = `
       <div class="modal fade" id="budgetItemModal" tabindex="-1">
         <div class="modal-dialog">
@@ -2424,7 +2700,7 @@ const eventsModule = {
             <div class="modal-body">
               <div class="mb-3"><label class="form-label">Item Name *</label><input type="text" class="form-control" id="budgetItemName" placeholder="e.g., Venue hire"></div>
               <div class="mb-3"><label class="form-label">Category</label><select class="form-select" id="budgetItemCategory">
-                ${categories.map(c => `<option value="${c}">${c}</option>`).join('')}</select></div>
+                ${categories.map((c) => `<option value="${c}">${c}</option>`).join('')}</select></div>
               <div class="row g-3 mb-3">
                 <div class="col-6"><label class="form-label">Estimated Cost</label><div class="input-group"><span class="input-group-text">\u00A3</span>
                   <input type="number" class="form-control" id="budgetItemEstimated" step="0.01" min="0" placeholder="0.00"></div></div>
@@ -2437,7 +2713,7 @@ const eventsModule = {
             </div>
             <div class="modal-footer">
               <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button class="btn btn-primary" onclick="eventsModule._saveBudgetItem()"><i class="bi bi-save me-1"></i>Save</button>
+              <button class="btn btn-primary" data-action="eventsModule._saveBudgetItem"><i class="bi bi-save me-1"></i>Save</button>
             </div>
           </div>
         </div>
@@ -2474,7 +2750,10 @@ const eventsModule = {
   async _saveBudgetItem() {
     const eventId = document.getElementById('attendeesEventId').value;
     const name = document.getElementById('budgetItemName').value.trim();
-    if (!name) { utils.showToast('Please enter an item name', 'warning'); return; }
+    if (!name) {
+      utils.showToast('Please enter an item name', 'warning');
+      return;
+    }
 
     const budget = await this.getBudget(eventId);
     const item = {
@@ -2483,7 +2762,7 @@ const eventsModule = {
       estimated: parseFloat(document.getElementById('budgetItemEstimated').value) || 0,
       actual: parseFloat(document.getElementById('budgetItemActual').value) || 0,
       status: document.getElementById('budgetItemStatus').value,
-      notes: document.getElementById('budgetItemNotes').value.trim()
+      notes: document.getElementById('budgetItemNotes').value.trim(),
     };
 
     if (this._editBudgetIdx !== null) {
@@ -2499,7 +2778,7 @@ const eventsModule = {
   },
 
   async deleteBudgetItem(idx) {
-    if (!await utils.confirmDialog({ title: 'Delete Budget Item', message: 'Delete this budget item?' })) return;
+    if (!(await utils.confirmDialog({ title: 'Delete Budget Item', message: 'Delete this budget item?' }))) return;
     const eventId = document.getElementById('attendeesEventId').value;
     const budget = await this.getBudget(eventId);
     budget.items.splice(idx, 1);
@@ -2510,18 +2789,21 @@ const eventsModule = {
 
   async exportBudget() {
     const eventId = document.getElementById('attendeesEventId').value;
-    const event = STATE.allEvents.find(e => e.id === eventId);
+    const event = STATE.allEvents.find((e) => e.id === eventId);
     const budget = await this.getBudget(eventId);
-    if (budget.items.length === 0) { utils.showToast('No budget items to export', 'warning'); return; }
+    if (budget.items.length === 0) {
+      utils.showToast('No budget items to export', 'warning');
+      return;
+    }
 
-    const rows = budget.items.map(i => ({
-      'Item': i.name,
-      'Category': i.category || 'Other',
-      'Estimated': i.estimated || 0,
-      'Actual': i.actual || 0,
-      'Variance': ((parseFloat(i.actual) || 0) - (parseFloat(i.estimated) || 0)).toFixed(2),
-      'Status': i.status || 'Pending',
-      'Notes': i.notes || ''
+    const rows = budget.items.map((i) => ({
+      Item: i.name,
+      Category: i.category || 'Other',
+      Estimated: i.estimated || 0,
+      Actual: i.actual || 0,
+      Variance: ((parseFloat(i.actual) || 0) - (parseFloat(i.estimated) || 0)).toFixed(2),
+      Status: i.status || 'Pending',
+      Notes: i.notes || '',
     }));
     utils.exportToCSV(rows, `${event ? event.event_name.replace(/[^a-z0-9]/gi, '_') : 'event'}_budget.csv`);
   },
@@ -2536,15 +2818,16 @@ const eventsModule = {
 
   async getVendors(eventId) {
     try {
+      /* selectAll: justified — scoped to single event */
       const data = await apiClient.selectAll('event_vendors', {
         filters: { event_id: eventId },
-        sort: { column: 'created_at', ascending: true }
+        sort: { column: 'created_at', ascending: true },
       });
-      return (data || []).map(v => ({
+      return (data || []).map((v) => ({
         ...v,
         name: v.name || v.contact_name || v.contactName || '',
         category: v.category || v.vendor_type || v.type || 'Other',
-        status: v.status || 'pending'
+        status: v.status || 'pending',
       }));
     } catch (e) {
       const stored = localStorage.getItem(this._vendorsKey(eventId));
@@ -2556,7 +2839,7 @@ const eventsModule = {
     try {
       await apiClient.deleteByFilters('event_vendors', { event_id: eventId });
       if (vendors.length > 0) {
-        const rows = vendors.map(v => ({
+        const rows = vendors.map((v) => ({
           event_id: eventId,
           contact_name: v.name || v.contact_name || v.contactName,
           company: v.company,
@@ -2565,7 +2848,7 @@ const eventsModule = {
           vendor_type: v.category || v.type || v.vendor_type,
           cost: v.cost || 0,
           status: v.status || 'pending',
-          notes: v.notes
+          notes: v.notes,
         }));
         await apiClient.insert('event_vendors', rows);
       }
@@ -2587,7 +2870,9 @@ const eventsModule = {
     }
 
     const statusColors = { confirmed: 'success', pending: 'warning', cancelled: 'danger', enquired: 'info' };
-    container.innerHTML = vendors.map((v, idx) => `
+    container.innerHTML = vendors
+      .map(
+        (v, idx) => `
       <tr>
         <td><strong>${utils.escapeHtml(v.name)}</strong>${v.company ? `<br><small class="text-muted">${utils.escapeHtml(v.company)}</small>` : ''}</td>
         <td><span class="badge bg-secondary">${utils.escapeHtml(v.category || 'Other')}</span></td>
@@ -2596,14 +2881,29 @@ const eventsModule = {
         <td>${v.cost ? '\u00A3' + parseFloat(v.cost).toFixed(2) : '-'}</td>
         <td><span class="badge bg-${statusColors[v.status] || 'secondary'}">${utils.escapeHtml((v.status || 'pending').charAt(0).toUpperCase() + (v.status || 'pending').slice(1))}</span></td>
         <td class="text-center">
-          <button class="btn btn-sm btn-outline-primary me-1" onclick="eventsModule.editVendor(${idx})" title="Edit"><i class="bi bi-pencil"></i></button>
-          <button class="btn btn-sm btn-outline-danger" onclick="eventsModule.deleteVendor(${idx})" title="Delete"><i class="bi bi-trash"></i></button>
+          <button class="btn btn-sm btn-outline-primary me-1" data-action="eventsModule.editVendor" data-id="${idx}" title="Edit"><i class="bi bi-pencil"></i></button>
+          <button class="btn btn-sm btn-outline-danger" data-action="eventsModule.deleteVendor" data-id="${idx}" title="Delete"><i class="bi bi-trash"></i></button>
         </td>
-      </tr>`).join('');
+      </tr>`
+      )
+      .join('');
   },
 
   addVendor() {
-    const categories = ['Venue', 'Catering', 'AV/Production', 'Entertainment', 'Photography', 'Floristry', 'Transport', 'Printing', 'Trophies/Engraving', 'Security', 'Staffing', 'Other'];
+    const categories = [
+      'Venue',
+      'Catering',
+      'AV/Production',
+      'Entertainment',
+      'Photography',
+      'Floristry',
+      'Transport',
+      'Printing',
+      'Trophies/Engraving',
+      'Security',
+      'Staffing',
+      'Other',
+    ];
     const html = `
       <div class="modal fade" id="vendorModal" tabindex="-1">
         <div class="modal-dialog">
@@ -2616,7 +2916,7 @@ const eventsModule = {
                 <div class="col-6"><label class="form-label">Company</label><input type="text" class="form-control" id="vendorCompany" placeholder="ABC Catering Ltd"></div>
               </div>
               <div class="mb-3"><label class="form-label">Category</label><select class="form-select" id="vendorCategory">
-                ${categories.map(c => `<option value="${c}">${c}</option>`).join('')}</select></div>
+                ${categories.map((c) => `<option value="${c}">${c}</option>`).join('')}</select></div>
               <div class="row g-3 mb-3">
                 <div class="col-6"><label class="form-label">Email</label><input type="email" class="form-control" id="vendorEmail" placeholder="john@example.com"></div>
                 <div class="col-6"><label class="form-label">Phone</label><input type="tel" class="form-control" id="vendorPhone" placeholder="07xxx xxxxxx"></div>
@@ -2631,7 +2931,7 @@ const eventsModule = {
             </div>
             <div class="modal-footer">
               <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button class="btn btn-primary" onclick="eventsModule._saveVendor()"><i class="bi bi-save me-1"></i>Save</button>
+              <button class="btn btn-primary" data-action="eventsModule._saveVendor"><i class="bi bi-save me-1"></i>Save</button>
             </div>
           </div>
         </div>
@@ -2669,7 +2969,10 @@ const eventsModule = {
   async _saveVendor() {
     const eventId = document.getElementById('attendeesEventId').value;
     const name = document.getElementById('vendorName').value.trim();
-    if (!name) { utils.showToast('Please enter a contact name', 'warning'); return; }
+    if (!name) {
+      utils.showToast('Please enter a contact name', 'warning');
+      return;
+    }
 
     const vendors = await this.getVendors(eventId);
     const vendor = {
@@ -2680,7 +2983,7 @@ const eventsModule = {
       phone: document.getElementById('vendorPhone').value.trim(),
       cost: parseFloat(document.getElementById('vendorCost').value) || 0,
       status: document.getElementById('vendorStatus').value,
-      notes: document.getElementById('vendorNotes').value.trim()
+      notes: document.getElementById('vendorNotes').value.trim(),
     };
 
     if (this._editVendorIdx !== null) {
@@ -2696,7 +2999,8 @@ const eventsModule = {
   },
 
   async deleteVendor(idx) {
-    if (!await utils.confirmDialog({ title: 'Remove Vendor', message: 'Remove this vendor?', confirmText: 'Remove' })) return;
+    if (!(await utils.confirmDialog({ title: 'Remove Vendor', message: 'Remove this vendor?', confirmText: 'Remove' })))
+      return;
     const eventId = document.getElementById('attendeesEventId').value;
     const vendors = await this.getVendors(eventId);
     vendors.splice(idx, 1);
@@ -2707,13 +3011,21 @@ const eventsModule = {
 
   async exportVendors() {
     const eventId = document.getElementById('attendeesEventId').value;
-    const event = STATE.allEvents.find(e => e.id === eventId);
+    const event = STATE.allEvents.find((e) => e.id === eventId);
     const vendors = await this.getVendors(eventId);
-    if (vendors.length === 0) { utils.showToast('No vendors to export', 'warning'); return; }
-    const rows = vendors.map(v => ({
-      'Name': v.name, 'Company': v.company || '', 'Category': v.category || '',
-      'Email': v.email || '', 'Phone': v.phone || '', 'Cost': v.cost || 0,
-      'Status': v.status || '', 'Notes': v.notes || ''
+    if (vendors.length === 0) {
+      utils.showToast('No vendors to export', 'warning');
+      return;
+    }
+    const rows = vendors.map((v) => ({
+      Name: v.name,
+      Company: v.company || '',
+      Category: v.category || '',
+      Email: v.email || '',
+      Phone: v.phone || '',
+      Cost: v.cost || 0,
+      Status: v.status || '',
+      Notes: v.notes || '',
     }));
     utils.exportToCSV(rows, `${event ? event.event_name.replace(/[^a-z0-9]/gi, '_') : 'event'}_vendors.csv`);
   },
@@ -2725,16 +3037,22 @@ const eventsModule = {
   async renderSpecialReqsTab(eventId) {
     const container = document.getElementById('specialReqsContent');
     if (!container) return;
-    const attendees = (await this.getAttendees(eventId)).filter(a => a.status === 'attending');
-    const _event = STATE.allEvents.find(e => e.id === eventId);
+    const attendees = (await this.getAttendees(eventId)).filter((a) => a.status === 'attending');
+    const _event = STATE.allEvents.find((e) => e.id === eventId);
     const reqs = this._getSpecialReqs(eventId);
 
     // Accessibility summary
-    const accessNeeds = attendees.filter(a => {
+    const accessNeeds = attendees.filter((a) => {
       const notes = (a.notes || '').toLowerCase();
-      return notes.includes('wheelchair') || notes.includes('accessibility') ||
-             notes.includes('disabled') || notes.includes('mobility') || notes.includes('hearing') ||
-             notes.includes('visual') || notes.includes('step-free');
+      return (
+        notes.includes('wheelchair') ||
+        notes.includes('accessibility') ||
+        notes.includes('disabled') ||
+        notes.includes('mobility') ||
+        notes.includes('hearing') ||
+        notes.includes('visual') ||
+        notes.includes('step-free')
+      );
     });
 
     const reqsSummary = reqs || { parking: 0, photoConsent: { yes: 0, no: 0, notAsked: 0 }, emergencyContact: '' };
@@ -2745,17 +3063,25 @@ const eventsModule = {
         <div class="card-body">
           <h6 class="card-title"><i class="bi bi-universal-access me-2"></i>Accessibility Requirements
             <span class="badge bg-info ms-2">${accessNeeds.length} guest${accessNeeds.length !== 1 ? 's' : ''}</span></h6>
-          ${accessNeeds.length > 0 ? `
+          ${
+            accessNeeds.length > 0
+              ? `
             <div class="table-responsive"><table class="table table-sm">
               <thead><tr><th>Guest</th><th>Type</th><th>Requirement</th></tr></thead>
-              <tbody>${accessNeeds.map(a => `<tr>
+              <tbody>${accessNeeds
+                .map(
+                  (a) => `<tr>
                 <td>${utils.escapeHtml(a.name)}</td>
                 <td><span class="badge bg-secondary">${(a.guestType || 'guest').toUpperCase()}</span></td>
                 <td>${utils.escapeHtml(a.notes)}</td>
-              </tr>`).join('')}</tbody>
+              </tr>`
+                )
+                .join('')}</tbody>
             </table></div>
             <div class="alert alert-warning mb-0"><i class="bi bi-exclamation-triangle me-2"></i>Ensure venue provides: step-free access, accessible toilets, hearing loop, reserved seating near exits.</div>
-          ` : '<p class="text-muted mb-0">No accessibility requirements flagged. Requirements are detected from guest notes (wheelchair, mobility, hearing, etc.)</p>'}
+          `
+              : '<p class="text-muted mb-0">No accessibility requirements flagged. Requirements are detected from guest notes (wheelchair, mobility, hearing, etc.)</p>'
+          }
         </div>
       </div>
 
@@ -2777,7 +3103,7 @@ const eventsModule = {
               <div class="form-control form-control-sm bg-light" id="parkingPassesRemaining">${(reqsSummary.parkingTotal || 0) - (reqsSummary.parkingAllocated || 0)}</div>
             </div>
             <div class="col-md-3">
-              <button class="btn btn-sm btn-primary w-100" onclick="eventsModule.saveSpecialReqs()"><i class="bi bi-save me-1"></i>Save</button>
+              <button class="btn btn-sm btn-primary w-100" data-action="eventsModule.saveSpecialReqs"><i class="bi bi-save me-1"></i>Save</button>
             </div>
           </div>
           <div class="mt-2"><small class="text-muted">
@@ -2838,7 +3164,7 @@ const eventsModule = {
             </div>
           </div>
           <div class="mt-2 text-end">
-            <button class="btn btn-sm btn-primary" onclick="eventsModule.saveSpecialReqs()"><i class="bi bi-save me-1"></i>Save Emergency Info</button>
+            <button class="btn btn-sm btn-primary" data-action="eventsModule.saveSpecialReqs"><i class="bi bi-save me-1"></i>Save Emergency Info</button>
           </div>
         </div>
       </div>
@@ -2870,7 +3196,7 @@ const eventsModule = {
             </div>
           </div>
           <div class="mt-2 text-end">
-            <button class="btn btn-sm btn-primary" onclick="eventsModule.saveSpecialReqs()"><i class="bi bi-save me-1"></i>Save</button>
+            <button class="btn btn-sm btn-primary" data-action="eventsModule.saveSpecialReqs"><i class="bi bi-save me-1"></i>Save</button>
           </div>
         </div>
       </div>`;
@@ -2882,12 +3208,11 @@ const eventsModule = {
 
   async _getSpecialReqs(eventId) {
     try {
-      const { data, error } = await STATE.client
-        .from('event_special_requirements')
-        .select('*')
-        .eq('event_id', eventId)
-        .single();
-      if (error && error.code !== 'PGRST116') throw error;
+      const result = await apiClient.select('event_special_requirements', {
+        filters: { event_id: eventId },
+        pageSize: 1,
+      });
+      const data = result.data?.[0] || null;
       return data || {};
     } catch (e) {
       const stored = localStorage.getItem(this._specialReqsKey(eventId));
@@ -2903,7 +3228,7 @@ const eventsModule = {
       parkingInstructions: document.getElementById('parkingInstructions')?.value || '',
       photoConsent: {
         yes: parseInt(document.getElementById('photoConsentYes')?.textContent) || 0,
-        no: parseInt(document.getElementById('photoConsentNo')?.textContent) || 0
+        no: parseInt(document.getElementById('photoConsentNo')?.textContent) || 0,
       },
       emergencyName: document.getElementById('emergencyContactName')?.value || '',
       emergencyPhone: document.getElementById('emergencyContactPhone')?.value || '',
@@ -2911,13 +3236,14 @@ const eventsModule = {
       firstAider: document.getElementById('firstAider')?.value || '',
       dressCode: document.getElementById('dressCode')?.value || '',
       arrivalTime: document.getElementById('arrivalTime')?.value || '',
-      ceremonyTime: document.getElementById('ceremonyTime')?.value || ''
+      ceremonyTime: document.getElementById('ceremonyTime')?.value || '',
     };
     try {
-      const { error } = await STATE.client
-        .from('event_special_requirements')
-        .upsert({ event_id: eventId, requirements: reqs }, { onConflict: 'event_id' });
-      if (error) throw error;
+      await apiClient.upsert(
+        'event_special_requirements',
+        { event_id: eventId, requirements: reqs },
+        { onConflict: 'event_id' }
+      );
     } catch (e) {
       localStorage.setItem(this._specialReqsKey(eventId), JSON.stringify(reqs));
     }
@@ -2932,12 +3258,12 @@ const eventsModule = {
 
   async getStripePublicKey() {
     try {
-      const { data, error } = await STATE.client
-        .from('user_preferences')
-        .select('value')
-        .eq('key', 'stripe_public_key')
-        .maybeSingle();
-      if (error) throw error;
+      const result = await apiClient.select('user_preferences', {
+        select: 'value',
+        filters: { key: 'stripe_public_key' },
+        pageSize: 1,
+      });
+      const data = result.data?.[0] || null;
       return data?.value || '';
     } catch (e) {
       return localStorage.getItem('bta_stripe_pk') || '';
@@ -2948,10 +3274,11 @@ const eventsModule = {
     const key = document.getElementById('stripePublicKeyInput')?.value?.trim();
     if (key) {
       try {
-        const { error } = await STATE.client
-          .from('user_preferences')
-          .upsert({ key: 'stripe_public_key', value: key, user_email: STATE.currentUser?.email }, { onConflict: 'key' });
-        if (error) throw error;
+        await apiClient.upsert(
+          'user_preferences',
+          { key: 'stripe_public_key', value: key, user_email: STATE.currentUser?.email },
+          { onConflict: 'key' }
+        );
       } catch (e) {
         localStorage.setItem('bta_stripe_pk', key);
       }
@@ -2966,7 +3293,7 @@ const eventsModule = {
   async renderPostEventTab(eventId) {
     const container = document.getElementById('postEventContent');
     if (!container) return;
-    const event = STATE.allEvents.find(e => e.id === eventId);
+    const event = STATE.allEvents.find((e) => e.id === eventId);
     if (!event) return;
 
     const isComplete = event.event_status === 'complete';
@@ -2986,12 +3313,12 @@ const eventsModule = {
         <div class="card-body py-2">
           <h6 class="mb-2"><i class="bi bi-lightning me-2"></i>Quick Actions</h6>
           <div class="d-flex gap-2 flex-wrap">
-            <button class="btn btn-primary btn-sm" onclick="eventsModule.sendThankYouEmails()" title="Opens email compose with thank-you template for all attending guests"><i class="bi bi-envelope-heart me-1"></i>Send Thank You Emails</button>
-            <button class="btn btn-outline-primary btn-sm" onclick="eventsModule.generateAttendanceReport()" title="Downloads attendance report as CSV spreadsheet"><i class="bi bi-download me-1"></i>Download Attendance Report</button>
-            <button class="btn btn-outline-success btn-sm" onclick="eventsModule.generateWinnerPackage()" title="Jump to Winner Highlights section below"><i class="bi bi-stars me-1"></i>Winner Highlights</button>
-            <button class="btn btn-outline-warning btn-sm" onclick="eventsModule.generateWinnersCertificates()" title="Generate PDF certificates for all confirmed winners"><i class="bi bi-file-earmark-pdf me-1"></i>Winner Certificates PDF</button>
-            <button class="btn btn-outline-info btn-sm" onclick="eventsModule.generateSponsorReport()" title="Jump to Sponsor ROI section below"><i class="bi bi-graph-up me-1"></i>Sponsor ROI Report</button>
-            <button class="btn btn-outline-secondary btn-sm" onclick="eventsModule.exportPostEventPack()" title="Downloads all reports (attendance, budget, vendors, debrief, sponsor) as CSV files"><i class="bi bi-file-earmark-zip me-1"></i>Export Full Pack</button>
+            <button class="btn btn-primary btn-sm" data-action="eventsModule.sendThankYouEmails" title="Opens email compose with thank-you template for all attending guests"><i class="bi bi-envelope-heart me-1"></i>Send Thank You Emails</button>
+            <button class="btn btn-outline-primary btn-sm" data-action="eventsModule.generateAttendanceReport" title="Downloads attendance report as CSV spreadsheet"><i class="bi bi-download me-1"></i>Download Attendance Report</button>
+            <button class="btn btn-outline-success btn-sm" data-action="eventsModule.generateWinnerPackage" title="Jump to Winner Highlights section below"><i class="bi bi-stars me-1"></i>Winner Highlights</button>
+            <button class="btn btn-outline-warning btn-sm" data-action="eventsModule.generateWinnersCertificates" title="Generate PDF certificates for all confirmed winners"><i class="bi bi-file-earmark-pdf me-1"></i>Winner Certificates PDF</button>
+            <button class="btn btn-outline-info btn-sm" data-action="eventsModule.generateSponsorReport" title="Jump to Sponsor ROI section below"><i class="bi bi-graph-up me-1"></i>Sponsor ROI Report</button>
+            <button class="btn btn-outline-secondary btn-sm" data-action="eventsModule.exportPostEventPack" title="Downloads all reports (attendance, budget, vendors, debrief, sponsor) as CSV files"><i class="bi bi-file-earmark-zip me-1"></i>Export Full Pack</button>
           </div>
         </div>
       </div>
@@ -3001,7 +3328,7 @@ const eventsModule = {
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <h6 class="card-title mb-0"><i class="bi bi-chat-square-text me-2"></i>Post-Event Survey & Feedback</h6>
-            <button class="btn btn-sm btn-primary" onclick="eventsModule.sendSurveyEmails()"><i class="bi bi-send me-1"></i>Send Survey</button>
+            <button class="btn btn-sm btn-primary" data-action="eventsModule.sendSurveyEmails"><i class="bi bi-send me-1"></i>Send Survey</button>
           </div>
           <div id="surveyConfig">
             <div class="row g-3 mb-3">
@@ -3011,7 +3338,7 @@ const eventsModule = {
               </div>
               <div class="col-md-4">
                 <label class="form-label small">&nbsp;</label>
-                <button class="btn btn-sm btn-outline-primary w-100" onclick="eventsModule.savePostEventData()"><i class="bi bi-save me-1"></i>Save</button>
+                <button class="btn btn-sm btn-outline-primary w-100" data-action="eventsModule.savePostEventData"><i class="bi bi-save me-1"></i>Save</button>
               </div>
             </div>
             <div class="row g-3" id="surveyResponseStats">
@@ -3037,8 +3364,8 @@ const eventsModule = {
           <div class="d-flex justify-content-between align-items-center mb-3">
             <h6 class="card-title mb-0"><i class="bi bi-stars me-2"></i>Winner Highlights & Social Assets</h6>
             <div class="d-flex gap-2">
-              <button class="btn btn-sm btn-outline-primary" onclick="eventsModule.generatePressRelease()"><i class="bi bi-newspaper me-1"></i>Press Release</button>
-              <button class="btn btn-sm btn-outline-success" onclick="eventsModule.generateSocialCards()"><i class="bi bi-share me-1"></i>Social Cards</button>
+              <button class="btn btn-sm btn-outline-primary" data-action="eventsModule.generatePressRelease"><i class="bi bi-newspaper me-1"></i>Press Release</button>
+              <button class="btn btn-sm btn-outline-success" data-action="eventsModule.generateSocialCards"><i class="bi bi-share me-1"></i>Social Cards</button>
             </div>
           </div>
           <div id="winnerHighlightsContent">
@@ -3078,12 +3405,11 @@ const eventsModule = {
 
   async _getPostEventData(eventId) {
     try {
-      const { data, error } = await STATE.client
-        .from('event_post_data')
-        .select('*')
-        .eq('event_id', eventId)
-        .single();
-      if (error && error.code !== 'PGRST116') throw error;
+      const result = await apiClient.select('event_post_data', {
+        filters: { event_id: eventId },
+        pageSize: 1,
+      });
+      const data = result.data?.[0] || null;
       return data?.post_data || {};
     } catch (e) {
       const stored = localStorage.getItem(this._postEventKey(eventId));
@@ -3093,10 +3419,7 @@ const eventsModule = {
 
   async _savePostEventDataStore(eventId, data) {
     try {
-      const { error } = await STATE.client
-        .from('event_post_data')
-        .upsert({ event_id: eventId, post_data: data }, { onConflict: 'event_id' });
-      if (error) throw error;
+      await apiClient.upsert('event_post_data', { event_id: eventId, post_data: data }, { onConflict: 'event_id' });
     } catch (e) {
       localStorage.setItem(this._postEventKey(eventId), JSON.stringify(data));
     }
@@ -3118,9 +3441,9 @@ const eventsModule = {
   async _renderSurveyStats(eventId) {
     const data = await this._getPostEventData(eventId);
     const attendees = await this.getAttendees(eventId);
-    const attending = attendees.filter(a => a.status === 'attending').length;
+    const attending = attendees.filter((a) => a.status === 'attending').length;
     const responses = data.surveyResponses || 0;
-    const rate = attending > 0 ? Math.round(responses / attending * 100) : 0;
+    const rate = attending > 0 ? Math.round((responses / attending) * 100) : 0;
 
     return `
       <div class="col-md-3"><div class="card text-center"><div class="card-body py-2">
@@ -3128,7 +3451,7 @@ const eventsModule = {
       </div></div></div>
       <div class="col-md-3"><div class="card text-center"><div class="card-body py-2">
         <div class="input-group input-group-sm">
-          <input type="number" class="form-control text-center fw-bold" id="surveyResponseCount" value="${responses}" min="0" onchange="eventsModule.savePostEventData()">
+          <input type="number" class="form-control text-center fw-bold" id="surveyResponseCount" value="${responses}" min="0" data-on-change="eventsModule.savePostEventData">
         </div>
         <small class="text-muted">Responses</small>
       </div></div></div>
@@ -3137,7 +3460,7 @@ const eventsModule = {
       </div></div></div>
       <div class="col-md-3"><div class="card text-center"><div class="card-body py-2">
         <div class="input-group input-group-sm">
-          <input type="number" class="form-control text-center fw-bold" id="surveyAvgRating" value="${data.avgRating || ''}" min="1" max="10" step="0.1" placeholder="-" onchange="eventsModule.savePostEventData()">
+          <input type="number" class="form-control text-center fw-bold" id="surveyAvgRating" value="${data.avgRating || ''}" min="1" max="10" step="0.1" placeholder="-" data-on-change="eventsModule.savePostEventData">
           <span class="input-group-text">/10</span>
         </div>
         <small class="text-muted">Avg Rating</small>
@@ -3146,14 +3469,14 @@ const eventsModule = {
 
   async sendSurveyEmails() {
     const eventId = document.getElementById('attendeesEventId').value;
-    const event = STATE.allEvents.find(e => e.id === eventId);
+    const event = STATE.allEvents.find((e) => e.id === eventId);
     const data = await this._getPostEventData(eventId);
     if (!data.surveyUrl) {
       utils.showToast('Please add a survey URL first', 'warning');
       return;
     }
 
-    const attendees = (await this.getAttendees(eventId)).filter(a => a.status === 'attending' && a.email);
+    const attendees = (await this.getAttendees(eventId)).filter((a) => a.status === 'attending' && a.email);
     if (attendees.length === 0) {
       utils.showToast('No attendees with email addresses', 'warning');
       return;
@@ -3162,13 +3485,18 @@ const eventsModule = {
     const subject = `How was ${event.event_name}? We'd love your feedback`;
     const body = `Dear Guest,\n\nThank you for attending ${event.event_name}. We hope you had a wonderful evening.\n\nWe would greatly appreciate your feedback to help us improve future events. It only takes 2 minutes:\n\n${data.surveyUrl}\n\nYour responses are anonymous and will directly shape our upcoming events.\n\nThank you,\nBritish Trade Awards`;
 
-    this._showEmailPreview(subject, body, attendees.map(a => a.email), eventId);
+    this._showEmailPreview(
+      subject,
+      body,
+      attendees.map((a) => a.email),
+      eventId
+    );
   },
 
   async sendThankYouEmails() {
     const eventId = document.getElementById('attendeesEventId').value;
-    const event = STATE.allEvents.find(e => e.id === eventId);
-    const attendees = (await this.getAttendees(eventId)).filter(a => a.status === 'attending' && a.email);
+    const event = STATE.allEvents.find((e) => e.id === eventId);
+    const attendees = (await this.getAttendees(eventId)).filter((a) => a.status === 'attending' && a.email);
 
     if (attendees.length === 0) {
       utils.showToast('No attendees with email addresses', 'warning');
@@ -3178,7 +3506,12 @@ const eventsModule = {
     const subject = `Thank You for Attending ${event.event_name}`;
     const body = `Dear Guest,\n\nThank you for joining us at ${event.event_name}. It was a fantastic evening and we were delighted to have you with us.\n\nPhotos from the event will be available soon in our gallery.\n\nWe look forward to welcoming you to future British Trade Awards events.\n\nWith best wishes,\nBritish Trade Awards Team`;
 
-    this._showEmailPreview(subject, body, attendees.map(a => a.email), eventId);
+    this._showEmailPreview(
+      subject,
+      body,
+      attendees.map((a) => a.email),
+      eventId
+    );
   },
 
   // ========================================
@@ -3187,16 +3520,16 @@ const eventsModule = {
 
   async _renderAttendanceReport(eventId) {
     const attendees = await this.getAttendees(eventId);
-    const event = STATE.allEvents.find(e => e.id === eventId);
-    const attending = attendees.filter(a => a.status === 'attending');
-    const checkedIn = attendees.filter(a => a.checkedIn);
-    const noShows = attending.filter(a => !a.checkedIn);
+    const event = STATE.allEvents.find((e) => e.id === eventId);
+    const attending = attendees.filter((a) => a.status === 'attending');
+    const checkedIn = attendees.filter((a) => a.checkedIn);
+    const noShows = attending.filter((a) => !a.checkedIn);
     const capacity = event?.capacity || 0;
 
     // Check-in time distribution
     const checkInTimes = checkedIn
-      .filter(a => a.checkInTime)
-      .map(a => new Date(a.checkInTime))
+      .filter((a) => a.checkInTime)
+      .map((a) => new Date(a.checkInTime))
       .sort((a, b) => a - b);
 
     let timeDistribution = '';
@@ -3212,7 +3545,7 @@ const eventsModule = {
 
     // Type breakdown
     const typeBreakdown = {};
-    attending.forEach(a => {
+    attending.forEach((a) => {
       const type = (a.guestType || 'guest').toUpperCase();
       typeBreakdown[type] = (typeBreakdown[type] || 0) + 1;
     });
@@ -3237,44 +3570,61 @@ const eventsModule = {
           <h4 class="mb-0 text-info">${totalPlusOnes}</h4><small class="text-muted">Plus-Ones</small>
         </div></div></div>
         <div class="col-md-2"><div class="card text-center bg-light"><div class="card-body py-2">
-          <h4 class="mb-0">${attending.length > 0 ? Math.round(checkedIn.length / attending.length * 100) : 0}%</h4><small class="text-muted">Show Rate</small>
+          <h4 class="mb-0">${attending.length > 0 ? Math.round((checkedIn.length / attending.length) * 100) : 0}%</h4><small class="text-muted">Show Rate</small>
         </div></div></div>
       </div>
 
-      ${capacity > 0 ? `
+      ${
+        capacity > 0
+          ? `
       <div class="mb-3">
         <div class="d-flex justify-content-between mb-1">
           <small>Venue Utilisation</small>
-          <small>${checkedIn.length + totalPlusOnes} / ${capacity} (${Math.round((checkedIn.length + totalPlusOnes) / capacity * 100)}%)</small>
+          <small>${checkedIn.length + totalPlusOnes} / ${capacity} (${Math.round(((checkedIn.length + totalPlusOnes) / capacity) * 100)}%)</small>
         </div>
         <div class="progress" style="height:8px;">
-          <div class="progress-bar bg-success" style="width:${Math.min(100, Math.round((checkedIn.length + totalPlusOnes) / capacity * 100))}%"></div>
+          <div class="progress-bar bg-success" style="width:${Math.min(100, Math.round(((checkedIn.length + totalPlusOnes) / capacity) * 100))}%"></div>
         </div>
-      </div>` : ''}
+      </div>`
+          : ''
+      }
 
       ${timeDistribution ? `<div class="card bg-light mb-3"><div class="card-body py-2"><h6 class="mb-2"><i class="bi bi-clock me-2"></i>Check-In Timeline</h6><div class="row">${timeDistribution}</div></div></div>` : ''}
 
       <div class="card bg-light mb-3"><div class="card-body py-2">
         <h6 class="mb-2"><i class="bi bi-people me-2"></i>Guest Type Breakdown</h6>
         <div class="d-flex gap-3 flex-wrap">
-          ${Object.entries(typeBreakdown).map(([type, count]) => {
-            const colors = { VIP: 'warning', SPEAKER: 'primary', SPONSOR: 'success', MEDIA: 'purple', STAFF: 'secondary', GUEST: 'info' };
-            return `<span class="badge bg-${colors[type] || 'secondary'}" ${type === 'MEDIA' ? 'style="background:#6f42c1!important;"' : ''}>${type}: ${count}</span>`;
-          }).join('')}
+          ${Object.entries(typeBreakdown)
+            .map(([type, count]) => {
+              const colors = {
+                VIP: 'warning',
+                SPEAKER: 'primary',
+                SPONSOR: 'success',
+                MEDIA: 'purple',
+                STAFF: 'secondary',
+                GUEST: 'info',
+              };
+              return `<span class="badge bg-${colors[type] || 'secondary'}" ${type === 'MEDIA' ? 'style="background:#6f42c1!important;"' : ''}>${type}: ${count}</span>`;
+            })
+            .join('')}
         </div>
       </div></div>
 
-      ${noShows.length > 0 ? `
+      ${
+        noShows.length > 0
+          ? `
       <details class="mb-2">
         <summary class="text-danger" style="cursor:pointer;"><strong>${noShows.length} No-Shows</strong> (click to expand)</summary>
         <div class="table-responsive mt-2"><table class="table table-sm"><thead><tr><th>Name</th><th>Email</th><th>Type</th></tr></thead>
-        <tbody>${noShows.map(a => `<tr><td>${utils.escapeHtml(a.name)}</td><td>${a.email || '-'}</td><td>${(a.guestType || 'guest').toUpperCase()}</td></tr>`).join('')}</tbody></table></div>
-      </details>` : ''}`;
+        <tbody>${noShows.map((a) => `<tr><td>${utils.escapeHtml(a.name)}</td><td>${a.email || '-'}</td><td>${(a.guestType || 'guest').toUpperCase()}</td></tr>`).join('')}</tbody></table></div>
+      </details>`
+          : ''
+      }`;
   },
 
   _findPeakCheckInHour(times) {
     const hourCounts = {};
-    times.forEach(t => {
+    times.forEach((t) => {
       const h = t.getHours();
       hourCounts[h] = (hourCounts[h] || 0) + 1;
     });
@@ -3284,19 +3634,19 @@ const eventsModule = {
 
   async generateAttendanceReport() {
     const eventId = document.getElementById('attendeesEventId').value;
-    const event = STATE.allEvents.find(e => e.id === eventId);
+    const event = STATE.allEvents.find((e) => e.id === eventId);
     const attendees = await this.getAttendees(eventId);
 
-    const rows = attendees.map(a => ({
-      'Name': a.name,
-      'Email': a.email || '',
-      'Type': (a.guestType || 'guest').toUpperCase(),
-      'RSVP': a.status || '',
+    const rows = attendees.map((a) => ({
+      Name: a.name,
+      Email: a.email || '',
+      Type: (a.guestType || 'guest').toUpperCase(),
+      RSVP: a.status || '',
       'Plus Ones': a.plusOnes || 0,
       'Checked In': a.checkedIn ? 'Yes' : 'No',
       'Check-In Time': a.checkInTime ? new Date(a.checkInTime).toLocaleString() : '',
-      'Dietary': a.dietary || '',
-      'No Show': a.status === 'attending' && !a.checkedIn ? 'YES' : ''
+      Dietary: a.dietary || '',
+      'No Show': a.status === 'attending' && !a.checkedIn ? 'YES' : '',
     }));
 
     utils.exportToCSV(rows, `${event ? event.event_name.replace(/[^a-z0-9]/gi, '_') : 'event'}_attendance_report.csv`);
@@ -3308,14 +3658,14 @@ const eventsModule = {
   // ========================================
 
   _renderWinnerHighlights(eventId) {
-    const event = STATE.allEvents.find(e => e.id === eventId);
+    const event = STATE.allEvents.find((e) => e.id === eventId);
     if (!event) return '<p class="text-muted">No event data</p>';
 
     return `
       <p class="text-muted mb-3">Generate shareable assets to celebrate your winners and promote the awards.</p>
       <div class="row g-3">
         <div class="col-md-4">
-          <div class="card text-center h-100" style="cursor:pointer;" onclick="eventsModule.generatePressRelease()">
+          <div class="card text-center h-100" style="cursor:pointer;" data-action="eventsModule.generatePressRelease">
             <div class="card-body py-3">
               <i class="bi bi-newspaper display-4 text-primary mb-2 d-block"></i>
               <h6>Press Release</h6>
@@ -3324,7 +3674,7 @@ const eventsModule = {
           </div>
         </div>
         <div class="col-md-4">
-          <div class="card text-center h-100" style="cursor:pointer;" onclick="eventsModule.generateSocialCards()">
+          <div class="card text-center h-100" style="cursor:pointer;" data-action="eventsModule.generateSocialCards">
             <div class="card-body py-3">
               <i class="bi bi-share display-4 text-success mb-2 d-block"></i>
               <h6>Social Media Cards</h6>
@@ -3333,7 +3683,7 @@ const eventsModule = {
           </div>
         </div>
         <div class="col-md-4">
-          <div class="card text-center h-100" style="cursor:pointer;" onclick="eventsModule.generateWinnersCertificates()">
+          <div class="card text-center h-100" style="cursor:pointer;" data-action="eventsModule.generateWinnersCertificates">
             <div class="card-body py-3">
               <i class="bi bi-award display-4 text-warning mb-2 d-block"></i>
               <h6>Winner Certificates</h6>
@@ -3346,21 +3696,30 @@ const eventsModule = {
 
   async generatePressRelease() {
     const eventId = document.getElementById('attendeesEventId').value;
-    const event = STATE.allEvents.find(e => e.id === eventId);
+    const event = STATE.allEvents.find((e) => e.id === eventId);
     if (!event) return;
 
     // Load winners for this event's year
     let winners = [];
     try {
-      const { data } = await STATE.client
-        .from('award_assignments')
-        .select('*, awards:award_years(award_name), organisations(company_name)')
-        .eq('year', event.year)
-        .eq('assignment_type', 'winner');
-      winners = data || [];
-    } catch (e) { console.error(e); }
+      const result = await apiClient.select('award_assignments', {
+        select: '*, awards:award_years(award_name), organisations(company_name)',
+        filters: { year: event.year, assignment_type: 'winner' },
+        pageSize: 1000,
+      });
+      winners = result.data || [];
+    } catch (e) {
+      console.error(e);
+    }
 
-    const dateStr = event.event_date ? new Date(event.event_date).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '[DATE]';
+    const dateStr = event.event_date
+      ? new Date(event.event_date).toLocaleDateString('en-GB', {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+        })
+      : '[DATE]';
 
     let pressRelease = `PRESS RELEASE\nFOR IMMEDIATE RELEASE\n\n`;
     pressRelease += `BRITISH TRADE AWARDS ${event.year || ''} WINNERS ANNOUNCED\n\n`;
@@ -3370,7 +3729,7 @@ const eventsModule = {
 
     if (winners.length > 0) {
       pressRelease += `THE WINNERS:\n\n`;
-      winners.forEach(w => {
+      winners.forEach((w) => {
         pressRelease += `${w.awards?.award_name || 'Award'}: ${w.organisations?.company_name || 'Winner'}\n`;
       });
       pressRelease += `\n`;
@@ -3393,8 +3752,8 @@ const eventsModule = {
               <textarea class="form-control" id="pressReleaseText" rows="25" style="font-family:monospace;font-size:0.85rem;">${utils.escapeHtml(pressRelease)}</textarea>
             </div>
             <div class="modal-footer">
-              <button class="btn btn-outline-secondary" onclick="navigator.clipboard.writeText(document.getElementById('pressReleaseText').value); utils.showToast('Copied to clipboard','success')"><i class="bi bi-clipboard me-1"></i>Copy</button>
-              <button class="btn btn-primary" onclick="const b=new Blob([document.getElementById('pressReleaseText').value],{type:'text/plain'}); const a=document.createElement('a'); const u=URL.createObjectURL(b); a.href=u; a.download='press_release_${event.event_name.replace(/[^a-z0-9]/gi, '_')}.txt'; a.click(); setTimeout(()=>URL.revokeObjectURL(u),1000)"><i class="bi bi-download me-1"></i>Download .txt</button>
+              <button class="btn btn-outline-secondary" data-action="eventsModule.copyPressRelease"><i class="bi bi-clipboard me-1"></i>Copy</button>
+              <button class="btn btn-primary" data-action="eventsModule.downloadPressRelease" data-event-name="${event.event_name.replace(/[^a-z0-9]/gi, '_')}"><i class="bi bi-download me-1"></i>Download .txt</button>
             </div>
           </div>
         </div>
@@ -3407,18 +3766,20 @@ const eventsModule = {
 
   async generateSocialCards() {
     const eventId = document.getElementById('attendeesEventId').value;
-    const event = STATE.allEvents.find(e => e.id === eventId);
+    const event = STATE.allEvents.find((e) => e.id === eventId);
     if (!event) return;
 
     let winners = [];
     try {
-      const { data } = await STATE.client
-        .from('award_assignments')
-        .select('*, awards:award_years(award_name), organisations(company_name)')
-        .eq('year', event.year)
-        .eq('assignment_type', 'winner');
-      winners = data || [];
-    } catch (e) { console.error(e); }
+      const result = await apiClient.select('award_assignments', {
+        select: '*, awards:award_years(award_name), organisations(company_name)',
+        filters: { year: event.year, assignment_type: 'winner' },
+        pageSize: 1000,
+      });
+      winners = result.data || [];
+    } catch (e) {
+      console.error(e);
+    }
 
     if (winners.length === 0) {
       utils.showToast('No winners found for this event year', 'warning');
@@ -3426,21 +3787,25 @@ const eventsModule = {
     }
 
     // Generate social card images using Canvas
-    const cards = winners.map(w => ({
+    const cards = winners.map((w) => ({
       award: w.awards?.award_name || 'Award',
       winner: w.organisations?.company_name || 'Winner',
       event: event.event_name,
-      year: event.year
+      year: event.year,
     }));
 
     // Build preview modal
-    const cardsHtml = cards.map((card, idx) => `
+    const cardsHtml = cards
+      .map(
+        (card, idx) => `
       <div class="col-md-6 mb-3">
         <canvas id="socialCard${idx}" width="1200" height="630" style="width:100%;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.1);"></canvas>
         <div class="text-center mt-1">
-          <button class="btn btn-sm btn-outline-primary" onclick="eventsModule._downloadSocialCard(${idx})"><i class="bi bi-download me-1"></i>Download</button>
+          <button class="btn btn-sm btn-outline-primary" data-action="eventsModule._downloadSocialCard" data-id="${idx}"><i class="bi bi-download me-1"></i>Download</button>
         </div>
-      </div>`).join('');
+      </div>`
+      )
+      .join('');
 
     const html = `
       <div class="modal fade" id="socialCardsModal" tabindex="-1">
@@ -3453,7 +3818,7 @@ const eventsModule = {
               <div class="row">${cardsHtml}</div>
             </div>
             <div class="modal-footer">
-              <button class="btn btn-primary" onclick="eventsModule._downloadAllSocialCards(${cards.length})"><i class="bi bi-download me-1"></i>Download All</button>
+              <button class="btn btn-primary" data-action="eventsModule._downloadAllSocialCards" data-id="${cards.length}"><i class="bi bi-download me-1"></i>Download All</button>
             </div>
           </div>
         </div>
@@ -3552,18 +3917,20 @@ const eventsModule = {
 
   async generateWinnersCertificates() {
     const eventId = document.getElementById('attendeesEventId').value;
-    const event = STATE.allEvents.find(e => e.id === eventId);
+    const event = STATE.allEvents.find((e) => e.id === eventId);
     if (!event) return;
 
     let winners = [];
     try {
-      const { data } = await STATE.client
-        .from('award_assignments')
-        .select('*, awards:award_years(award_name), organisations(company_name)')
-        .eq('year', event.year)
-        .eq('assignment_type', 'winner');
-      winners = data || [];
-    } catch (e) { console.error(e); }
+      const result = await apiClient.select('award_assignments', {
+        select: '*, awards:award_years(award_name), organisations(company_name)',
+        filters: { year: event.year, assignment_type: 'winner' },
+        pageSize: 1000,
+      });
+      winners = result.data || [];
+    } catch (e) {
+      console.error(e);
+    }
 
     if (winners.length === 0) {
       utils.showToast('No winners found', 'warning');
@@ -3633,7 +4000,9 @@ const eventsModule = {
       doc.setFontSize(12);
       doc.setTextColor(120);
       doc.setFont(undefined, 'normal');
-      const dateStr = event.event_date ? new Date(event.event_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+      const dateStr = event.event_date
+        ? new Date(event.event_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+        : '';
       doc.text(`${event.event_name} | ${dateStr}`, 148.5, 160, { align: 'center' });
       if (event.venue) doc.text(event.venue, 148.5, 168, { align: 'center' });
 
@@ -3668,17 +4037,19 @@ const eventsModule = {
   // ========================================
 
   async _renderSponsorReport(eventId) {
-    const event = STATE.allEvents.find(e => e.id === eventId);
+    const event = STATE.allEvents.find((e) => e.id === eventId);
     const attendees = await this.getAttendees(eventId);
-    const attending = attendees.filter(a => a.status === 'attending');
-    const sponsors = attendees.filter(a => a.guestType === 'sponsor');
+    const attending = attendees.filter((a) => a.status === 'attending');
+    const sponsors = attendees.filter((a) => a.guestType === 'sponsor');
     const budget = await this.getBudget(eventId);
     const vendors = await this.getVendors(eventId);
     const data = await this._getPostEventData(eventId);
 
     const totalRevenue = (event?.ticket_price || 0) * attending.length;
     const totalSpent = budget.items ? budget.items.reduce((s, i) => s + (parseFloat(i.actual) || 0), 0) : 0;
-    const _sponsorVendors = vendors.filter(v => v.category === 'Sponsorship' || (v.notes || '').toLowerCase().includes('sponsor'));
+    const _sponsorVendors = vendors.filter(
+      (v) => v.category === 'Sponsorship' || (v.notes || '').toLowerCase().includes('sponsor')
+    );
 
     return `
       <div class="row g-3 mb-3">
@@ -3701,11 +4072,11 @@ const eventsModule = {
           <div class="card"><div class="card-body py-2">
             <h6 class="mb-2"><i class="bi bi-people me-2"></i>Audience Demographics</h6>
             <div class="d-flex gap-3 flex-wrap">
-              <span class="badge bg-warning text-dark">VIPs: ${attendees.filter(a => a.guestType === 'vip').length}</span>
+              <span class="badge bg-warning text-dark">VIPs: ${attendees.filter((a) => a.guestType === 'vip').length}</span>
               <span class="badge bg-success">Sponsors: ${sponsors.length}</span>
-              <span class="badge bg-primary">Speakers: ${attendees.filter(a => a.guestType === 'speaker').length}</span>
-              <span class="badge bg-info">Media: ${attendees.filter(a => a.guestType === 'media').length}</span>
-              <span class="badge bg-secondary">Staff: ${attendees.filter(a => a.guestType === 'staff').length}</span>
+              <span class="badge bg-primary">Speakers: ${attendees.filter((a) => a.guestType === 'speaker').length}</span>
+              <span class="badge bg-info">Media: ${attendees.filter((a) => a.guestType === 'media').length}</span>
+              <span class="badge bg-secondary">Staff: ${attendees.filter((a) => a.guestType === 'staff').length}</span>
             </div>
           </div></div>
         </div>
@@ -3715,17 +4086,17 @@ const eventsModule = {
             <div class="row g-2">
               <div class="col-4">
                 <label class="form-label small mb-0">Social Reach</label>
-                <input type="text" class="form-control form-control-sm" id="sponsorSocialReach" value="${utils.escapeHtml(data.socialReach || '')}" placeholder="e.g., 50K" onchange="eventsModule.savePostEventData()">
+                <input type="text" class="form-control form-control-sm" id="sponsorSocialReach" value="${utils.escapeHtml(data.socialReach || '')}" placeholder="e.g., 50K" data-on-change="eventsModule.savePostEventData">
               </div>
               <div class="col-4">
                 <label class="form-label small mb-0">Press Mentions</label>
-                <input type="number" class="form-control form-control-sm" id="sponsorPressMentions" value="${data.pressMentions || ''}" min="0" onchange="eventsModule.savePostEventData()">
+                <input type="number" class="form-control form-control-sm" id="sponsorPressMentions" value="${data.pressMentions || ''}" min="0" data-on-change="eventsModule.savePostEventData">
               </div>
               <div class="col-4">
                 <label class="form-label small mb-0">Media Value</label>
                 <div class="input-group input-group-sm">
                   <span class="input-group-text">\u00A3</span>
-                  <input type="number" class="form-control" id="sponsorMediaValue" value="${data.mediaValue || ''}" min="0" onchange="eventsModule.savePostEventData()">
+                  <input type="number" class="form-control" id="sponsorMediaValue" value="${data.mediaValue || ''}" min="0" data-on-change="eventsModule.savePostEventData">
                 </div>
               </div>
             </div>
@@ -3734,7 +4105,7 @@ const eventsModule = {
       </div>
 
       <div class="text-end">
-        <button class="btn btn-sm btn-outline-primary" onclick="eventsModule.exportSponsorReport()"><i class="bi bi-download me-1"></i>Export Sponsor Report CSV</button>
+        <button class="btn btn-sm btn-outline-primary" data-action="eventsModule.exportSponsorReport"><i class="bi bi-download me-1"></i>Export Sponsor Report CSV</button>
       </div>`;
   },
 
@@ -3754,32 +4125,36 @@ const eventsModule = {
 
   async exportSponsorReport() {
     const eventId = document.getElementById('attendeesEventId').value;
-    const event = STATE.allEvents.find(e => e.id === eventId);
+    const event = STATE.allEvents.find((e) => e.id === eventId);
     const attendees = await this.getAttendees(eventId);
     const budget = await this.getBudget(eventId);
     const data = await this._getPostEventData(eventId);
 
-    const attending = attendees.filter(a => a.status === 'attending');
+    const attending = attendees.filter((a) => a.status === 'attending');
     const totalRevenue = (event?.ticket_price || 0) * attending.length;
     const totalSpent = budget.items ? budget.items.reduce((s, i) => s + (parseFloat(i.actual) || 0), 0) : 0;
 
-    const rows = [{
-      'Event': event?.event_name || '',
-      'Date': event?.event_date || '',
-      'Venue': event?.venue || '',
-      'Total Attendees': attending.length,
-      'VIPs': attendees.filter(a => a.guestType === 'vip').length,
-      'Sponsors': attendees.filter(a => a.guestType === 'sponsor').length,
-      'Media': attendees.filter(a => a.guestType === 'media').length,
-      'Ticket Revenue': totalRevenue,
-      'Total Costs': totalSpent,
-      'Net P&L': totalRevenue - totalSpent,
-      'Social Reach': data.socialReach || '',
-      'Press Mentions': data.pressMentions || '',
-      'Estimated Media Value': data.mediaValue || '',
-      'Survey Response Rate': data.surveyResponses ? `${Math.round(data.surveyResponses / attending.length * 100)}%` : '',
-      'Average Rating': data.avgRating || ''
-    }];
+    const rows = [
+      {
+        Event: event?.event_name || '',
+        Date: event?.event_date || '',
+        Venue: event?.venue || '',
+        'Total Attendees': attending.length,
+        VIPs: attendees.filter((a) => a.guestType === 'vip').length,
+        Sponsors: attendees.filter((a) => a.guestType === 'sponsor').length,
+        Media: attendees.filter((a) => a.guestType === 'media').length,
+        'Ticket Revenue': totalRevenue,
+        'Total Costs': totalSpent,
+        'Net P&L': totalRevenue - totalSpent,
+        'Social Reach': data.socialReach || '',
+        'Press Mentions': data.pressMentions || '',
+        'Estimated Media Value': data.mediaValue || '',
+        'Survey Response Rate': data.surveyResponses
+          ? `${Math.round((data.surveyResponses / attending.length) * 100)}%`
+          : '',
+        'Average Rating': data.avgRating || '',
+      },
+    ];
 
     utils.exportToCSV(rows, `${event ? event.event_name.replace(/[^a-z0-9]/gi, '_') : 'event'}_sponsor_roi.csv`);
     utils.showToast('Sponsor report exported', 'success');
@@ -3816,8 +4191,8 @@ const eventsModule = {
           <textarea class="form-control form-control-sm" id="debriefNotes" rows="3" placeholder="Any other observations, feedback from team members, or notes for the record...">${utils.escapeHtml(debrief.notes || '')}</textarea>
         </div>
         <div class="col-12 text-end">
-          <button class="btn btn-sm btn-outline-secondary me-2" onclick="eventsModule.exportDebrief()"><i class="bi bi-download me-1"></i>Export Debrief</button>
-          <button class="btn btn-sm btn-primary" onclick="eventsModule.saveDebrief()"><i class="bi bi-save me-1"></i>Save Debrief</button>
+          <button class="btn btn-sm btn-outline-secondary me-2" data-action="eventsModule.exportDebrief"><i class="bi bi-download me-1"></i>Export Debrief</button>
+          <button class="btn btn-sm btn-primary" data-action="eventsModule.saveDebrief"><i class="bi bi-save me-1"></i>Save Debrief</button>
         </div>
       </div>`;
   },
@@ -3830,7 +4205,7 @@ const eventsModule = {
       improve: document.getElementById('debriefImprove')?.value || '',
       ideas: document.getElementById('debriefIdeas')?.value || '',
       actions: document.getElementById('debriefActions')?.value || '',
-      notes: document.getElementById('debriefNotes')?.value || ''
+      notes: document.getElementById('debriefNotes')?.value || '',
     };
 
     // Also save sponsor engagement fields if they exist
@@ -3845,7 +4220,7 @@ const eventsModule = {
 
   async exportDebrief() {
     const eventId = document.getElementById('attendeesEventId').value;
-    const event = STATE.allEvents.find(e => e.id === eventId);
+    const event = STATE.allEvents.find((e) => e.id === eventId);
     const data = await this._getPostEventData(eventId);
     const debrief = data.debrief || {};
 
@@ -3938,8 +4313,8 @@ const eventsModule = {
 
     const itemCount = this.runningOrderItems.length;
     const totalDuration = this.runningOrderItems.reduce((sum, i) => sum + (i.duration_minutes || 3), 0);
-    const completedCount = this.runningOrderItems.filter(i => i.status === 'completed').length;
-    const announcedCount = this.runningOrderItems.filter(i => i.status === 'announced').length;
+    const completedCount = this.runningOrderItems.filter((i) => i.status === 'completed').length;
+    const announcedCount = this.runningOrderItems.filter((i) => i.status === 'announced').length;
 
     const modalHtml = `
       <div class="modal fade" id="runningOrderModal" tabindex="-1" data-bs-backdrop="static">
@@ -3967,7 +4342,7 @@ const eventsModule = {
                     </span>
                   </div>
                   <button class="btn btn-sm ${this.isPublished ? 'btn-outline-primary' : 'btn-success'}"
-                          onclick="eventsModule.togglePublishMode()">
+                          data-action="eventsModule.togglePublishMode">
                     <i class="bi ${this.isPublished ? 'bi-unlock' : 'bi-lock'} me-1"></i>
                     ${this.isPublished ? 'Unpublish' : 'Publish'}
                   </button>
@@ -3987,22 +4362,26 @@ const eventsModule = {
                   <label class="form-label mb-0 small fw-semibold text-nowrap">Start Time:</label>
                   <input type="time" class="form-control form-control-sm" id="roCeremonyStartTime"
                          value="${this._roCeremonyStartTime || ''}"
-                         onchange="eventsModule.setCeremonyStartTime(this.value)"
+                         data-on-change="eventsModule.setCeremonyStartTime"
                          style="width:100px;" ${this.isPublished ? 'disabled' : ''}>
                   <div class="form-check form-switch ms-2 mb-0">
                     <input class="form-check-input" type="checkbox" id="roAutoScheduleToggle"
                            ${this._roAutoSchedule ? 'checked' : ''}
-                           onchange="eventsModule.toggleAutoSchedule(this.checked)"
+                           data-on-change="eventsModule.toggleAutoSchedule"
                            ${this.isPublished ? 'disabled' : ''}>
                     <label class="form-check-label small" for="roAutoScheduleToggle">Auto-schedule</label>
                   </div>
-                  ${this._roAutoSchedule && this._roCeremonyStartTime ? `
-                    <button class="btn btn-sm btn-outline-info ms-1" onclick="eventsModule.recalcAutoSchedule()" title="Recalculate all times">
+                  ${
+                    this._roAutoSchedule && this._roCeremonyStartTime
+                      ? `
+                    <button class="btn btn-sm btn-outline-info ms-1" data-action="eventsModule.recalcAutoSchedule" title="Recalculate all times">
                       <i class="bi bi-calculator me-1"></i>Recalc
                     </button>
-                  ` : ''}
+                  `
+                      : ''
+                  }
                   <div class="ms-auto">
-                    <button class="btn btn-sm btn-dark" onclick="eventsModule.openBackstageView()" title="Open backstage/stage manager view">
+                    <button class="btn btn-sm btn-dark" data-action="eventsModule.openBackstageView" title="Open backstage/stage manager view">
                       <i class="bi bi-display me-1"></i>Backstage View
                     </button>
                   </div>
@@ -4010,41 +4389,41 @@ const eventsModule = {
 
                 <!-- Actions Bar -->
                 <div class="d-flex gap-2 flex-wrap align-items-center mb-2">
-                  <button class="btn btn-sm btn-success" onclick="eventsModule.openAddWinnersChecklist()" ${this.isPublished ? 'disabled' : ''}>
+                  <button class="btn btn-sm btn-success" data-action="eventsModule.openAddWinnersChecklist" ${this.isPublished ? 'disabled' : ''}>
                     <i class="bi bi-trophy me-1"></i>Add Winners
                   </button>
-                  <button class="btn btn-sm btn-primary" onclick="eventsModule.syncFromRSVPs()" ${this.isPublished ? 'disabled' : ''}>
+                  <button class="btn btn-sm btn-primary" data-action="eventsModule.syncFromRSVPs" ${this.isPublished ? 'disabled' : ''}>
                     <i class="bi bi-arrow-repeat me-1"></i>Sync RSVPs
                   </button>
-                  <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.addManualEntry()" ${this.isPublished ? 'disabled' : ''}>
+                  <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.addManualEntry" ${this.isPublished ? 'disabled' : ''}>
                     <i class="bi bi-plus-circle me-1"></i>Add Entry
                   </button>
-                  <button class="btn btn-sm btn-outline-dark" onclick="eventsModule.addSectionBreak()" ${this.isPublished ? 'disabled' : ''}>
+                  <button class="btn btn-sm btn-outline-dark" data-action="eventsModule.addSectionBreak" ${this.isPublished ? 'disabled' : ''}>
                     <i class="bi bi-dash-lg me-1"></i>Add Break
                   </button>
-                  <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.openSectionManager()" title="Manage acts/sections">
+                  <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.openSectionManager" title="Manage acts/sections">
                     <i class="bi bi-palette me-1"></i>Sections
                   </button>
-                  <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.exportRunningOrder()">
+                  <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.exportRunningOrder">
                     <i class="bi bi-download me-1"></i>Export
                   </button>
-                  <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.printRunningOrder()">
+                  <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.printRunningOrder">
                     <i class="bi bi-printer me-1"></i>Print
                   </button>
-                  <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.exportWinnerCards()" title="Print winner cards - 2 per A4 portrait">
+                  <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.exportWinnerCards" title="Print winner cards - 2 per A4 portrait">
                     <i class="bi bi-trophy me-1"></i>Winner Cards
                   </button>
-                  <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.exportEnvelopeLabels()" title="Print envelope labels - 4 per A4 landscape">
+                  <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.exportEnvelopeLabels" title="Print envelope labels - 4 per A4 landscape">
                     <i class="bi bi-envelope me-1"></i>Envelopes
                   </button>
-                  <button class="btn btn-sm btn-outline-warning" id="roUndoBtn" onclick="eventsModule.undoROReorder()" disabled title="Undo last reorder">
+                  <button class="btn btn-sm btn-outline-warning" id="roUndoBtn" data-action="eventsModule.undoROReorder" disabled title="Undo last reorder">
                     <i class="bi bi-arrow-counterclockwise me-1"></i>Undo
                   </button>
                   <div class="ms-auto d-flex align-items-center gap-2">
                     <div class="input-group input-group-sm" style="width:200px;">
                       <span class="input-group-text"><i class="bi bi-search"></i></span>
                       <input type="text" class="form-control" id="roSearchInput" placeholder="Search items..."
-                             oninput="clearTimeout(eventsModule._roSearchTimer); eventsModule._roSearchTimer = setTimeout(() => eventsModule.searchRunningOrder(this.value), 300)">
+                             data-on-input="eventsModule._roSearchDebounced">
                     </div>
                   </div>
                 </div>
@@ -4054,11 +4433,11 @@ const eventsModule = {
               <!-- Tabs: Running Order / Checklist / Cue Sheet -->
               <div class="px-3 pt-2">
                 <ul class="nav nav-tabs nav-tabs-sm" id="roViewTabs" role="tablist" style="font-size:0.8rem;">
-                  <li class="nav-item"><a class="nav-link active" data-ro-tab="main" onclick="eventsModule.switchROTab('main')" style="cursor:pointer;"><i class="bi bi-list-ol me-1"></i>Running Order</a></li>
-                  <li class="nav-item"><a class="nav-link" data-ro-tab="checklist" onclick="eventsModule.switchROTab('checklist')" style="cursor:pointer;"><i class="bi bi-check2-square me-1"></i>Checklist</a></li>
-                  <li class="nav-item"><a class="nav-link" data-ro-tab="cuesheet" onclick="eventsModule.switchROTab('cuesheet')" style="cursor:pointer;"><i class="bi bi-camera-reels me-1"></i>Cue Sheet</a></li>
-                  <li class="nav-item"><a class="nav-link" data-ro-tab="trophies" onclick="eventsModule.switchROTab('trophies')" style="cursor:pointer;"><i class="bi bi-trophy me-1"></i>Trophies</a></li>
-                  <li class="nav-item"><a class="nav-link" data-ro-tab="versions" onclick="eventsModule.switchROTab('versions')" style="cursor:pointer;"><i class="bi bi-clock-history me-1"></i>Versions</a></li>
+                  <li class="nav-item"><a class="nav-link active" data-ro-tab="main" data-action="eventsModule.switchROTab" data-id="main" style="cursor:pointer;"><i class="bi bi-list-ol me-1"></i>Running Order</a></li>
+                  <li class="nav-item"><a class="nav-link" data-ro-tab="checklist" data-action="eventsModule.switchROTab" data-id="checklist" style="cursor:pointer;"><i class="bi bi-check2-square me-1"></i>Checklist</a></li>
+                  <li class="nav-item"><a class="nav-link" data-ro-tab="cuesheet" data-action="eventsModule.switchROTab" data-id="cuesheet" style="cursor:pointer;"><i class="bi bi-camera-reels me-1"></i>Cue Sheet</a></li>
+                  <li class="nav-item"><a class="nav-link" data-ro-tab="trophies" data-action="eventsModule.switchROTab" data-id="trophies" style="cursor:pointer;"><i class="bi bi-trophy me-1"></i>Trophies</a></li>
+                  <li class="nav-item"><a class="nav-link" data-ro-tab="versions" data-action="eventsModule.switchROTab" data-id="versions" style="cursor:pointer;"><i class="bi bi-clock-history me-1"></i>Versions</a></li>
                 </ul>
               </div>
 
@@ -4080,23 +4459,27 @@ const eventsModule = {
                 <!-- Items rendered here -->
               </div>
 
-              ${itemCount === 0 ? `
+              ${
+                itemCount === 0
+                  ? `
                 <div class="text-center py-5">
                   <i class="bi bi-inbox display-4 d-block mb-3 opacity-25"></i>
                   <p class="text-muted">No items in running order yet.</p>
                   <div class="d-flex gap-2 justify-content-center flex-wrap">
-                    <button class="btn btn-success" onclick="eventsModule.openAddWinnersChecklist()">
+                    <button class="btn btn-success" data-action="eventsModule.openAddWinnersChecklist">
                       <i class="bi bi-trophy me-2"></i>Add Winners
                     </button>
-                    <button class="btn btn-primary" onclick="eventsModule.syncFromRSVPs()">
+                    <button class="btn btn-primary" data-action="eventsModule.syncFromRSVPs">
                       <i class="bi bi-arrow-repeat me-2"></i>Sync from RSVPs
                     </button>
-                    <button class="btn btn-outline-secondary" onclick="eventsModule.addManualEntry()">
+                    <button class="btn btn-outline-secondary" data-action="eventsModule.addManualEntry">
                       <i class="bi bi-plus-circle me-2"></i>Add Manual Entry
                     </button>
                   </div>
                 </div>
-              ` : ''}
+              `
+                  : ''
+              }
               </div><!-- /roTabMain -->
 
               <!-- Checklist Tab -->
@@ -4135,7 +4518,7 @@ const eventsModule = {
               </div>
               <div>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" onclick="eventsModule.saveRunningOrder()">
+                <button type="button" class="btn btn-primary" data-action="eventsModule.saveRunningOrder">
                   <i class="bi bi-save me-2"></i>Save Changes
                 </button>
               </div>
@@ -4296,8 +4679,14 @@ const eventsModule = {
 
     // Keyboard shortcuts for modal
     document.getElementById('runningOrderModal').addEventListener('keydown', (e) => {
-      if (e.ctrlKey && e.key === 'z') { e.preventDefault(); this.undoROReorder(); }
-      if (e.ctrlKey && e.key === 's') { e.preventDefault(); this.saveRunningOrder(); }
+      if (e.ctrlKey && e.key === 'z') {
+        e.preventDefault();
+        this.undoROReorder();
+      }
+      if (e.ctrlKey && e.key === 's') {
+        e.preventDefault();
+        this.saveRunningOrder();
+      }
     });
 
     document.getElementById('runningOrderModal').addEventListener('hidden.bs.modal', () => {
@@ -4311,19 +4700,17 @@ const eventsModule = {
   async loadRunningOrder() {
     try {
       // Try with FK joins first, fall back to simple query if relationships missing
-      let items, itemsError;
-      ({ data: items, error: itemsError } = await STATE.client
-        .from('running_order')
-        .select(`
-          *,
-          organisations(company_name, logo_url),
-          awards:award_years(award_name),
-          event_guests(guest_name, guest_email, dietary_requirements)
-        `)
-        .eq('event_id', this.currentEventIdRunningOrder)
-        .order('display_order', { ascending: true }));
-
-      if (itemsError) {
+      let items;
+      try {
+        /* selectAll: justified — scoped to single event */
+        const result = await apiClient.selectAll('running_order', {
+          select:
+            '*, organisations(company_name, logo_url), awards:award_years(award_name), event_guests(guest_name, guest_email, dietary_requirements)',
+          filters: { event_id: this.currentEventIdRunningOrder },
+          sort: { column: 'display_order', ascending: true },
+        });
+        items = result || [];
+      } catch (itemsError) {
         // Table may not exist
         if (itemsError.code === '42P01' || itemsError.message?.includes('does not exist')) {
           this.runningOrderItems = [];
@@ -4335,14 +4722,12 @@ const eventsModule = {
         // FK relationship missing in schema cache - retry without joins
         if (itemsError.message?.includes('relationship') || itemsError.message?.includes('schema cache')) {
           console.warn('Running order FK relationships not found, loading without joins');
-          const fallback = await STATE.client
-            .from('running_order')
-            .select('*')
-            .eq('event_id', this.currentEventIdRunningOrder)
-            .order('display_order', { ascending: true });
-          if (fallback.error) throw fallback.error;
-          items = fallback.data || [];
-          itemsError = null;
+          /* selectAll: justified — scoped to single event (FK fallback) */
+          const fallbackData = await apiClient.selectAll('running_order', {
+            filters: { event_id: this.currentEventIdRunningOrder },
+            sort: { column: 'display_order', ascending: true },
+          });
+          items = fallbackData || [];
         } else {
           throw itemsError;
         }
@@ -4351,15 +4736,11 @@ const eventsModule = {
 
       // Load settings (table may not exist)
       try {
-        const { data: settings, error: settingsError } = await STATE.client
-          .from('running_order_settings')
-          .select('*')
-          .eq('event_id', this.currentEventIdRunningOrder)
-          .single();
-
-        if (settingsError && settingsError.code !== 'PGRST116') {
-          console.warn('Error loading RO settings:', settingsError);
-        }
+        const settingsResult = await apiClient.select('running_order_settings', {
+          filters: { event_id: this.currentEventIdRunningOrder },
+          pageSize: 1,
+        });
+        const settings = settingsResult.data?.[0] || null;
         this.isPublished = settings?.is_published || false;
         this._roCeremonyStartTime = settings?.ceremony_start_time || null;
         this._roAutoSchedule = settings?.auto_schedule || false;
@@ -4420,11 +4801,15 @@ const eventsModule = {
       const sponsor = item.sponsor || '';
 
       // Search filtering
-      const matchesSearch = !search || `${awardName} ${winnerName} ${recipientName} ${notes} ${sponsor}`.toLowerCase().includes(search);
+      const matchesSearch =
+        !search || `${awardName} ${winnerName} ${recipientName} ${notes} ${sponsor}`.toLowerCase().includes(search);
 
-      const statusOpts = ['pending', 'announced', 'completed'].map(s =>
-        `<option value="${s}"${s === status ? ' selected' : ''}>${s.charAt(0).toUpperCase() + s.slice(1)}</option>`
-      ).join('');
+      const statusOpts = ['pending', 'announced', 'completed']
+        .map(
+          (s) =>
+            `<option value="${s}"${s === status ? ' selected' : ''}>${s.charAt(0).toUpperCase() + s.slice(1)}</option>`
+        )
+        .join('');
 
       // Schedule tracking - compare actual vs scheduled
       const scheduleIndicator = this._roGetItemScheduleIndicator(item);
@@ -4433,19 +4818,19 @@ const eventsModule = {
       if (isBreak) {
         presentationNumber++;
         const breakIcons = {
-          'break': 'bi-cup-hot',
-          'speech': 'bi-mic',
-          'entertainment': 'bi-music-note-beamed',
-          'interval': 'bi-pause-circle',
-          'other': 'bi-bookmark'
+          break: 'bi-cup-hot',
+          speech: 'bi-mic',
+          entertainment: 'bi-music-note-beamed',
+          interval: 'bi-pause-circle',
+          other: 'bi-bookmark',
         };
         const breakIcon = breakIcons[itemType] || 'bi-bookmark';
         const breakLabels = {
-          'break': 'BREAK',
-          'speech': 'SPEECH',
-          'entertainment': 'ENTERTAINMENT',
-          'interval': 'INTERVAL',
-          'other': 'OTHER'
+          break: 'BREAK',
+          speech: 'SPEECH',
+          entertainment: 'ENTERTAINMENT',
+          interval: 'INTERVAL',
+          other: 'OTHER',
         };
 
         html += `
@@ -4453,14 +4838,7 @@ const eventsModule = {
              draggable="${!this.isPublished}"
              data-id="${item.id}"
              data-index="${index}"
-             ondragstart="eventsModule.handleDragStart(event)"
-             ondragover="eventsModule.handleDragOver(event)"
-             ondragleave="eventsModule.handleDragLeave(event)"
-             ondrop="eventsModule.handleDrop(event)"
-             ondragend="eventsModule.handleDragEnd(event)"
-             ontouchstart="eventsModule.handleTouchStart(event)"
-             ontouchmove="eventsModule.handleTouchMove(event)"
-             ontouchend="eventsModule.handleTouchEnd(event)">
+             data-drag="ro-item">
           <div class="d-flex align-items-center gap-2 py-2 px-2">
             ${!this.isPublished ? `<div class="ro-drag-handle" title="Drag to reorder"><i class="bi bi-grip-vertical"></i></div>` : '<div style="width:32px;"></div>'}
             <div class="ro-number" style="color:#7e57c2;">
@@ -4469,7 +4847,7 @@ const eventsModule = {
             </div>
             <div class="ro-time">
               <input type="time" value="${scheduledTime}"
-                     onchange="eventsModule.setROItemTime('${item.id}', this.value)"
+                     data-on-change="eventsModule.setROItemTime" data-id="item.id"
                      ${this.isPublished ? 'disabled' : ''}>
               <div class="duration">${duration}m</div>
             </div>
@@ -4482,25 +4860,29 @@ const eventsModule = {
             <div class="ro-sponsor"></div>
             <div class="ro-recipient" style="width:120px;"></div>
             <div class="ro-status">
-              <select onchange="eventsModule.setROItemStatus('${item.id}', this.value)" ${this.isPublished ? 'disabled' : ''}>
+              <select data-on-change="eventsModule.setROItemStatus" data-id="item.id" ${this.isPublished ? 'disabled' : ''}>
                 ${statusOpts}
               </select>
             </div>
             <div class="ro-actions" style="width:140px;">
-              ${!this.isPublished ? `
-                <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.moveROItem('${item.id}', -1)" title="Move up" ${isFirst ? 'disabled' : ''}>
+              ${
+                !this.isPublished
+                  ? `
+                <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.moveROItem" data-args='["${item.id}", -1]' title="Move up" ${isFirst ? 'disabled' : ''}>
                   <i class="bi bi-arrow-up"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.moveROItem('${item.id}', 1)" title="Move down" ${isLast ? 'disabled' : ''}>
+                <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.moveROItem" data-args='["${item.id}", 1]' title="Move down" ${isLast ? 'disabled' : ''}>
                   <i class="bi bi-arrow-down"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-primary" onclick="eventsModule.editRunningOrderItem('${item.id}')" title="Edit">
+                <button class="btn btn-sm btn-outline-primary" data-action="eventsModule.editRunningOrderItem" data-id="item.id" title="Edit">
                   <i class="bi bi-pencil"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-danger" onclick="eventsModule.deleteRunningOrderItem('${item.id}')" title="Delete">
+                <button class="btn btn-sm btn-outline-danger" data-action="eventsModule.deleteRunningOrderItem" data-id="item.id" title="Delete">
                   <i class="bi bi-trash"></i>
                 </button>
-              ` : `<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Locked</span>`}
+              `
+                  : `<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Locked</span>`
+              }
             </div>
           </div>
         </div>`;
@@ -4508,12 +4890,14 @@ const eventsModule = {
       }
 
       // Determine grouping state
-      const isGrouped = item.presentation_group && this.runningOrderItems.filter(
-        i => i.presentation_group === item.presentation_group
-      ).length > 1;
+      const isGrouped =
+        item.presentation_group &&
+        this.runningOrderItems.filter((i) => i.presentation_group === item.presentation_group).length > 1;
       const orgAwardCount = this._roOrgAwardCount(item);
       const isGroupStart = isGrouped && !renderedGroups.has(item.presentation_group);
-      const groupMembers = isGrouped ? this.runningOrderItems.filter(i => i.presentation_group === item.presentation_group) : [];
+      const groupMembers = isGrouped
+        ? this.runningOrderItems.filter((i) => i.presentation_group === item.presentation_group)
+        : [];
 
       // Render group header if this is the first item in a group
       if (isGroupStart) {
@@ -4526,20 +4910,13 @@ const eventsModule = {
              draggable="${!this.isPublished}"
              data-group="${item.presentation_group}"
              data-id="${item.id}"
-             ondragstart="eventsModule.handleDragStart(event)"
-             ondragover="eventsModule.handleDragOver(event)"
-             ondragleave="eventsModule.handleDragLeave(event)"
-             ondrop="eventsModule.handleDrop(event)"
-             ondragend="eventsModule.handleDragEnd(event)"
-             ontouchstart="eventsModule.handleTouchStart(event)"
-             ontouchmove="eventsModule.handleTouchMove(event)"
-             ontouchend="eventsModule.handleTouchEnd(event)">
+             data-drag="ro-item">
           <div class="d-flex align-items-center gap-2 py-2 px-2">
             ${!this.isPublished ? `<div class="ro-drag-handle" title="Drag group to reorder"><i class="bi bi-grip-vertical"></i></div>` : '<div style="width:32px;"></div>'}
             <div class="ro-number">${presentationNumber}<span class="sub">GROUP</span></div>
             <div class="ro-time">
               <input type="time" value="${groupMembers[0]?.scheduled_time || ''}"
-                     onchange="eventsModule.setROItemTime('${item.id}', this.value)"
+                     data-on-change="eventsModule.setROItemTime" data-id="item.id"
                      ${this.isPublished ? 'disabled' : ''}>
               <div class="duration">${groupDuration}m</div>
             </div>
@@ -4549,7 +4926,7 @@ const eventsModule = {
                 <span class="badge bg-info ms-2" style="font-size:0.65rem;">${groupMembers.length} awards together</span>
               </div>
               <div class="ro-winner-name" style="font-size:0.75rem; color:#6c757d;">
-                ${groupMembers.map(m => utils.escapeHtml(m.award_name || 'Award')).join(' &bull; ')}
+                ${groupMembers.map((m) => utils.escapeHtml(m.award_name || 'Award')).join(' &bull; ')}
               </div>
             </div>
             <div class="ro-sponsor">
@@ -4561,22 +4938,26 @@ const eventsModule = {
               ${recipientDietary ? `<small class="text-warning d-block" style="font-size:0.6rem;" title="${utils.escapeHtml(recipientDietary)}"><i class="bi bi-egg-fried"></i> ${utils.escapeHtml(recipientDietary)}</small>` : ''}
             </div>
             <div class="ro-status">
-              <select onchange="eventsModule.setROItemStatus('${item.id}', this.value)" ${this.isPublished ? 'disabled' : ''}>
+              <select data-on-change="eventsModule.setROItemStatus" data-id="item.id" ${this.isPublished ? 'disabled' : ''}>
                 ${statusOpts}
               </select>
             </div>
             <div class="ro-actions" style="width:140px;">
-              ${!this.isPublished ? `
-                <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.moveROItem('${item.id}', -1)" title="Move group up" ${isFirst ? 'disabled' : ''}>
+              ${
+                !this.isPublished
+                  ? `
+                <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.moveROItem" data-args='["${item.id}", -1]' title="Move group up" ${isFirst ? 'disabled' : ''}>
                   <i class="bi bi-arrow-up"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.moveROItem('${item.id}', 1)" title="Move group down" ${isLast ? 'disabled' : ''}>
+                <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.moveROItem" data-args='["${item.id}", 1]' title="Move group down" ${isLast ? 'disabled' : ''}>
                   <i class="bi bi-arrow-down"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-warning" onclick="eventsModule.splitAllPresentation('${item.id}')" title="Split all into separate presentations">
+                <button class="btn btn-sm btn-outline-warning" data-action="eventsModule.splitAllPresentation" data-id="item.id" title="Split all into separate presentations">
                   <i class="bi bi-scissors"></i>
                 </button>
-              ` : `<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Locked</span>`}
+              `
+                  : `<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Locked</span>`
+              }
             </div>
           </div>
         </div>`;
@@ -4603,17 +4984,21 @@ const eventsModule = {
             <div class="ro-recipient" style="width:120px;"></div>
             <div class="ro-status"></div>
             <div class="ro-actions" style="width:140px;">
-              ${!this.isPublished ? `
-                <button class="btn btn-sm btn-outline-primary" onclick="eventsModule.editRunningOrderItem('${item.id}')" title="Edit">
+              ${
+                !this.isPublished
+                  ? `
+                <button class="btn btn-sm btn-outline-primary" data-action="eventsModule.editRunningOrderItem" data-id="item.id" title="Edit">
                   <i class="bi bi-pencil"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-warning" onclick="eventsModule.splitPresentation('${item.id}')" title="Split into separate presentation">
+                <button class="btn btn-sm btn-outline-warning" data-action="eventsModule.splitPresentation" data-id="item.id" title="Split into separate presentation">
                   <i class="bi bi-box-arrow-right"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-danger" onclick="eventsModule.deleteRunningOrderItem('${item.id}')" title="Delete">
+                <button class="btn btn-sm btn-outline-danger" data-action="eventsModule.deleteRunningOrderItem" data-id="item.id" title="Delete">
                   <i class="bi bi-trash"></i>
                 </button>
-              ` : ''}
+              `
+                  : ''
+              }
             </div>
           </div>
         </div>`;
@@ -4627,14 +5012,7 @@ const eventsModule = {
            draggable="${!this.isPublished}"
            data-id="${item.id}"
            data-index="${index}"
-           ondragstart="eventsModule.handleDragStart(event)"
-           ondragover="eventsModule.handleDragOver(event)"
-           ondragleave="eventsModule.handleDragLeave(event)"
-           ondrop="eventsModule.handleDrop(event)"
-           ondragend="eventsModule.handleDragEnd(event)"
-           ontouchstart="eventsModule.handleTouchStart(event)"
-           ontouchmove="eventsModule.handleTouchMove(event)"
-           ontouchend="eventsModule.handleTouchEnd(event)">
+           data-drag="ro-item">
         <div class="d-flex align-items-center gap-2 py-2 px-2">
           ${!this.isPublished ? `<div class="ro-drag-handle" title="Drag to reorder"><i class="bi bi-grip-vertical"></i></div>` : '<div style="width:32px;"></div>'}
           <div class="ro-number">
@@ -4643,7 +5021,7 @@ const eventsModule = {
           </div>
           <div class="ro-time">
             <input type="time" value="${scheduledTime}"
-                   onchange="eventsModule.setROItemTime('${item.id}', this.value)"
+                   data-on-change="eventsModule.setROItemTime" data-id="item.id"
                    ${this.isPublished ? 'disabled' : ''}
                    title="Scheduled time">
             <div class="duration" title="Cumulative: ${cumTime} min">${duration}m ${scheduleIndicator}</div>
@@ -4666,32 +5044,40 @@ const eventsModule = {
             ${recipientDietary ? `<small class="text-warning d-block" style="font-size:0.6rem;" title="${utils.escapeHtml(recipientDietary)}"><i class="bi bi-egg-fried"></i> ${utils.escapeHtml(recipientDietary)}</small>` : ''}
           </div>
           <div class="ro-status">
-            <select onchange="eventsModule.setROItemStatus('${item.id}', this.value)" ${this.isPublished ? 'disabled' : ''}>
+            <select data-on-change="eventsModule.setROItemStatus" data-id="item.id" ${this.isPublished ? 'disabled' : ''}>
               ${statusOpts}
             </select>
           </div>
           <div class="ro-actions" style="width:140px;">
-            ${!this.isPublished ? `
-              <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.moveROItem('${item.id}', -1)" title="Move up" ${isFirst ? 'disabled' : ''}>
+            ${
+              !this.isPublished
+                ? `
+              <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.moveROItem" data-args='["${item.id}", -1]' title="Move up" ${isFirst ? 'disabled' : ''}>
                 <i class="bi bi-arrow-up"></i>
               </button>
-              <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.moveROItem('${item.id}', 1)" title="Move down" ${isLast ? 'disabled' : ''}>
+              <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.moveROItem" data-args='["${item.id}", 1]' title="Move down" ${isLast ? 'disabled' : ''}>
                 <i class="bi bi-arrow-down"></i>
               </button>
-              <button class="btn btn-sm btn-outline-primary" onclick="eventsModule.editRunningOrderItem('${item.id}')" title="Edit">
+              <button class="btn btn-sm btn-outline-primary" data-action="eventsModule.editRunningOrderItem" data-id="item.id" title="Edit">
                 <i class="bi bi-pencil"></i>
               </button>
-              <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.duplicateROItem('${item.id}')" title="Duplicate">
+              <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.duplicateROItem" data-id="item.id" title="Duplicate">
                 <i class="bi bi-copy"></i>
               </button>
-              ${orgAwardCount > 1 && !isGrouped ? `
-              <button class="btn btn-sm btn-outline-info" onclick="eventsModule.groupPresentation('${item.id}')" title="Group all awards for this org into one presentation">
+              ${
+                orgAwardCount > 1 && !isGrouped
+                  ? `
+              <button class="btn btn-sm btn-outline-info" data-action="eventsModule.groupPresentation" data-id="item.id" title="Group all awards for this org into one presentation">
                 <i class="bi bi-collection"></i>
-              </button>` : ''}
-              <button class="btn btn-sm btn-outline-danger" onclick="eventsModule.deleteRunningOrderItem('${item.id}')" title="Delete">
+              </button>`
+                  : ''
+              }
+              <button class="btn btn-sm btn-outline-danger" data-action="eventsModule.deleteRunningOrderItem" data-id="item.id" title="Delete">
                 <i class="bi bi-trash"></i>
               </button>
-            ` : `<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Locked</span>`}
+            `
+                : `<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Locked</span>`
+            }
           </div>
         </div>
       </div>`;
@@ -4699,9 +5085,13 @@ const eventsModule = {
 
     container.innerHTML = html;
 
+    // Bind drag/drop/touch event listeners via delegation
+    this._bindRODragListeners(container);
+
     // Update total badge and presentation count
     const totalBadge = document.querySelector('#runningOrderModal .badge.bg-secondary');
-    if (totalBadge) totalBadge.textContent = `${this.runningOrderItems.length} items, ${presentationNumber} presentations`;
+    if (totalBadge)
+      totalBadge.textContent = `${this.runningOrderItems.length} items, ${presentationNumber} presentations`;
 
     // Update undo button state
     const undoBtn = document.getElementById('roUndoBtn');
@@ -4716,7 +5106,7 @@ const eventsModule = {
   // ============================================
   moveROItem(itemId, direction) {
     if (this.isPublished) return;
-    const idx = this.runningOrderItems.findIndex(i => i.id === itemId);
+    const idx = this.runningOrderItems.findIndex((i) => i.id === itemId);
     if (idx === -1) return;
     const newIdx = idx + direction;
     if (newIdx < 0 || newIdx >= this.runningOrderItems.length) return;
@@ -4745,6 +5135,60 @@ const eventsModule = {
   // ============================================
   // DRAG AND DROP (Enhanced)
   // ============================================
+
+  /**
+   * Bind drag/drop/touch event listeners to the running order container using event delegation.
+   * Called after renderRunningOrderItems sets innerHTML.
+   */
+  _bindRODragListeners(container) {
+    if (!container) return;
+    // Only bind once per container element to avoid duplicate listeners.
+    if (container._roDragBound) return;
+    container._roDragBound = true;
+
+    const sel = '[data-drag="ro-item"]';
+    container.addEventListener('dragstart', (e) => {
+      const item = e.target.closest(sel);
+      if (item) this.handleDragStart(_eventProxy(e, item));
+    });
+    container.addEventListener('dragover', (e) => {
+      const item = e.target.closest(sel);
+      if (item) this.handleDragOver(_eventProxy(e, item));
+    });
+    container.addEventListener('dragleave', (e) => {
+      const item = e.target.closest(sel);
+      if (item) this.handleDragLeave(_eventProxy(e, item));
+    });
+    container.addEventListener('drop', (e) => {
+      const item = e.target.closest(sel);
+      if (item) this.handleDrop(_eventProxy(e, item));
+    });
+    container.addEventListener('dragend', (e) => {
+      const item = e.target.closest(sel);
+      if (item) this.handleDragEnd(_eventProxy(e, item));
+    });
+    container.addEventListener(
+      'touchstart',
+      (e) => {
+        const item = e.target.closest(sel);
+        if (item) this.handleTouchStart(_eventProxy(e, item));
+      },
+      { passive: false }
+    );
+    container.addEventListener(
+      'touchmove',
+      (e) => {
+        const item = e.target.closest(sel);
+        if (item) this.handleTouchMove(_eventProxy(e, item));
+      },
+      { passive: false }
+    );
+    container.addEventListener('touchend', (e) => {
+      const item = e.target.closest(sel);
+      if (item) this.handleTouchEnd(_eventProxy(e, item));
+    });
+  },
+
   handleDragStart(event) {
     if (this.isPublished) return;
     const item = event.currentTarget;
@@ -4769,7 +5213,7 @@ const eventsModule = {
     const container = target.parentElement;
     const afterElement = this.getDragAfterElement(container, event.clientY);
 
-    if (afterElement == null) {
+    if (afterElement === null) {
       container.appendChild(draggable);
     } else {
       container.insertBefore(draggable, afterElement);
@@ -4789,21 +5233,24 @@ const eventsModule = {
     if (this.isPublished) return;
     event.currentTarget.classList.remove('dragging');
     // Remove any drag-over styles
-    document.querySelectorAll('.ro-item').forEach(el => el.classList.remove('drag-placeholder'));
+    document.querySelectorAll('.ro-item').forEach((el) => el.classList.remove('drag-placeholder'));
     this.updateOrderFromDOM();
     if (this._roAutoSave) this._roAutoSaveDebounced();
   },
 
   getDragAfterElement(container, y) {
     const draggableElements = [...container.querySelectorAll('.ro-item:not(.dragging)')];
-    return draggableElements.reduce((closest, child) => {
-      const box = child.getBoundingClientRect();
-      const offset = y - box.top - box.height / 2;
-      if (offset < 0 && offset > closest.offset) {
-        return { offset, element: child };
-      }
-      return closest;
-    }, { offset: Number.NEGATIVE_INFINITY }).element;
+    return draggableElements.reduce(
+      (closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offset = y - box.top - box.height / 2;
+        if (offset < 0 && offset > closest.offset) {
+          return { offset, element: child };
+        }
+        return closest;
+      },
+      { offset: Number.NEGATIVE_INFINITY }
+    ).element;
   },
 
   // ============================================
@@ -4832,7 +5279,7 @@ const eventsModule = {
     if (!container) return;
 
     const afterElement = this.getDragAfterElement(container, touch.clientY);
-    if (afterElement == null) {
+    if (afterElement === null) {
       container.appendChild(this._roTouchItem);
     } else {
       container.insertBefore(this._roTouchItem, afterElement);
@@ -4858,7 +5305,7 @@ const eventsModule = {
     const newOrder = [];
     items.forEach((item, index) => {
       const id = item.dataset.id;
-      const orderItem = this.runningOrderItems.find(i => i.id === id);
+      const orderItem = this.runningOrderItems.find((i) => i.id === id);
       if (orderItem) {
         orderItem.display_order = index + 1;
         orderItem.award_number = `${orderItem.section || 1}-${String(index + 1).padStart(2, '0')}`;
@@ -4883,7 +5330,7 @@ const eventsModule = {
   // UNDO REORDER
   // ============================================
   _roPushUndo() {
-    this._roUndoStack.push(this.runningOrderItems.map(i => ({ ...i })));
+    this._roUndoStack.push(this.runningOrderItems.map((i) => ({ ...i })));
     if (this._roUndoStack.length > 20) this._roUndoStack.shift();
     const undoBtn = document.getElementById('roUndoBtn');
     if (undoBtn) undoBtn.disabled = false;
@@ -4902,20 +5349,31 @@ const eventsModule = {
   searchRunningOrder(term) {
     this._roSearchTerm = term;
     const search = term.toLowerCase();
-    document.querySelectorAll('.ro-item').forEach(el => {
+    document.querySelectorAll('.ro-item').forEach((el) => {
       const id = el.dataset.id;
-      const item = this.runningOrderItems.find(i => i.id === id);
+      const item = this.runningOrderItems.find((i) => i.id === id);
       if (!item) return;
-      const haystack = `${item.award_name || ''} ${item.display_name || ''} ${item.recipient_collecting || ''} ${item.notes || ''}`.toLowerCase();
+      const haystack =
+        `${item.award_name || ''} ${item.display_name || ''} ${item.recipient_collecting || ''} ${item.notes || ''}`.toLowerCase();
       el.classList.toggle('search-hidden', search.length > 0 && !haystack.includes(search));
     });
+  },
+
+  /**
+   * Debounced wrapper for searchRunningOrder, used via data-on-input delegation.
+   * The action registry calls this with (value, event).
+   */
+  _roSearchTimer: null,
+  _roSearchDebounced(value) {
+    clearTimeout(this._roSearchTimer);
+    this._roSearchTimer = setTimeout(() => this.searchRunningOrder(value), 300);
   },
 
   // ============================================
   // SET ITEM STATUS INLINE
   // ============================================
   async setROItemStatus(itemId, newStatus) {
-    const item = this.runningOrderItems.find(i => i.id === itemId);
+    const item = this.runningOrderItems.find((i) => i.id === itemId);
     if (!item) return;
     item.status = newStatus;
     // Update actual_time when announced/completed
@@ -4934,7 +5392,7 @@ const eventsModule = {
   // SET ITEM TIME INLINE
   // ============================================
   async setROItemTime(itemId, time) {
-    const item = this.runningOrderItems.find(i => i.id === itemId);
+    const item = this.runningOrderItems.find((i) => i.id === itemId);
     if (!item) return;
     item.scheduled_time = time;
     try {
@@ -4962,14 +5420,19 @@ const eventsModule = {
    */
   addSectionBreak() {
     const eventId = this.currentEventIdRunningOrder;
-    if (!eventId) { utils.showToast('No event selected', 'warning'); return; }
+    if (!eventId) {
+      utils.showToast('No event selected', 'warning');
+      return;
+    }
 
     // Build position options from current running order
-    const posOpts = this.runningOrderItems.map((item, idx) => {
-      const label = item.award_number ? `${item.award_number} — ` : '';
-      const name = utils.escapeHtml(item.award_name || item.display_name || 'Item ' + (idx + 1));
-      return `<option value="${idx + 1}">${label}${name}</option>`;
-    }).join('');
+    const posOpts = this.runningOrderItems
+      .map((item, idx) => {
+        const label = item.award_number ? `${item.award_number} — ` : '';
+        const name = utils.escapeHtml(item.award_name || item.display_name || 'Item ' + (idx + 1));
+        return `<option value="${idx + 1}">${label}${name}</option>`;
+      })
+      .join('');
 
     const modalHtml = `
       <div class="modal fade" id="addSectionBreakModal" tabindex="-1">
@@ -5020,7 +5483,7 @@ const eventsModule = {
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="button" class="btn text-white" style="background:#7e57c2;" onclick="eventsModule.saveSectionBreak()">
+              <button type="button" class="btn text-white" style="background:#7e57c2;" data-action="eventsModule.saveSectionBreak">
                 <i class="bi bi-plus-circle me-2"></i>Add to Running Order
               </button>
             </div>
@@ -5033,7 +5496,9 @@ const eventsModule = {
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     const modal = new bootstrap.Modal(document.getElementById('addSectionBreakModal'));
     modal.show();
-    document.getElementById('addSectionBreakModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+    document.getElementById('addSectionBreakModal').addEventListener('hidden.bs.modal', function () {
+      this.remove();
+    });
   },
 
   /**
@@ -5055,9 +5520,8 @@ const eventsModule = {
     }
 
     const nextOrder = insertAt + 1;
-    const section = insertAt > 0 && this.runningOrderItems[insertAt - 1]
-      ? (this.runningOrderItems[insertAt - 1].section || 1)
-      : 1;
+    const section =
+      insertAt > 0 && this.runningOrderItems[insertAt - 1] ? this.runningOrderItems[insertAt - 1].section || 1 : 1;
 
     const entryData = {
       event_id: this.currentEventIdRunningOrder,
@@ -5070,7 +5534,7 @@ const eventsModule = {
       scheduled_time: document.getElementById('breakScheduledTime').value || null,
       duration_minutes: parseInt(document.getElementById('breakDuration').value) || 15,
       notes: document.getElementById('breakNotes').value.trim() || null,
-      status: 'pending'
+      status: 'pending',
     };
 
     try {
@@ -5110,15 +5574,19 @@ const eventsModule = {
     this._roCeremonyStartTime = time || null;
     try {
       try {
-        await apiClient.updateByFilters('running_order_settings', { event_id: this.currentEventIdRunningOrder }, {
-          ceremony_start_time: time || null,
-          auto_schedule: this._roAutoSchedule
-        });
+        await apiClient.updateByFilters(
+          'running_order_settings',
+          { event_id: this.currentEventIdRunningOrder },
+          {
+            ceremony_start_time: time || null,
+            auto_schedule: this._roAutoSchedule,
+          }
+        );
       } catch (upsertErr) {
         await apiClient.insert('running_order_settings', {
           event_id: this.currentEventIdRunningOrder,
           ceremony_start_time: time || null,
-          auto_schedule: this._roAutoSchedule
+          auto_schedule: this._roAutoSchedule,
         });
       }
     } catch (error) {
@@ -5136,15 +5604,19 @@ const eventsModule = {
     this._roAutoSchedule = enabled;
     try {
       try {
-        await apiClient.updateByFilters('running_order_settings', { event_id: this.currentEventIdRunningOrder }, {
-          ceremony_start_time: this._roCeremonyStartTime,
-          auto_schedule: enabled
-        });
+        await apiClient.updateByFilters(
+          'running_order_settings',
+          { event_id: this.currentEventIdRunningOrder },
+          {
+            ceremony_start_time: this._roCeremonyStartTime,
+            auto_schedule: enabled,
+          }
+        );
       } catch (upsertErr) {
         await apiClient.insert('running_order_settings', {
           event_id: this.currentEventIdRunningOrder,
           ceremony_start_time: this._roCeremonyStartTime,
-          auto_schedule: enabled
+          auto_schedule: enabled,
         });
       }
     } catch (error) {
@@ -5177,7 +5649,7 @@ const eventsModule = {
       const hours = Math.floor(currentMinutes / 60) % 24;
       const mins = currentMinutes % 60;
       item.scheduled_time = `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
-      currentMinutes += (item.duration_minutes || 3);
+      currentMinutes += item.duration_minutes || 3;
     }
 
     // Save to DB
@@ -5202,7 +5674,7 @@ const eventsModule = {
    * Duplicate a running order item
    */
   async duplicateROItem(itemId) {
-    const item = this.runningOrderItems.find(i => i.id === itemId);
+    const item = this.runningOrderItems.find((i) => i.id === itemId);
     if (!item) return;
 
     const nextOrder = this.runningOrderItems.length + 1;
@@ -5224,7 +5696,7 @@ const eventsModule = {
       notes: item.notes || null,
       special_requirements: item.special_requirements || null,
       status: 'pending',
-      section: section
+      section: section,
     };
 
     try {
@@ -5284,7 +5756,7 @@ const eventsModule = {
 
     // Find the most recently completed item that has both times
     const completedWithTimes = this.runningOrderItems.filter(
-      i => (i.status === 'completed' || i.status === 'announced') && i.actual_time && i.scheduled_time
+      (i) => (i.status === 'completed' || i.status === 'announced') && i.actual_time && i.scheduled_time
     );
 
     if (completedWithTimes.length === 0) {
@@ -5326,7 +5798,7 @@ const eventsModule = {
     }
 
     // Find current item (first non-completed item)
-    let currentIdx = items.findIndex(i => i.status !== 'completed');
+    let currentIdx = items.findIndex((i) => i.status !== 'completed');
     if (currentIdx === -1) currentIdx = items.length - 1;
 
     const backstageHtml = this._buildBackstageHtml(currentIdx);
@@ -5352,8 +5824,14 @@ const eventsModule = {
 
     // Keyboard shortcuts
     document.getElementById('backstageViewModal').addEventListener('keydown', (e) => {
-      if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); this.backstageNext(); }
-      if (e.key === 'ArrowLeft') { e.preventDefault(); this.backstagePrev(); }
+      if (e.key === 'ArrowRight' || e.key === ' ') {
+        e.preventDefault();
+        this.backstageNext();
+      }
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        this.backstagePrev();
+      }
     });
   },
 
@@ -5368,13 +5846,15 @@ const eventsModule = {
     const next = items[currentIdx + 1] || null;
     const _prev = items[currentIdx - 1] || null;
 
-    const completedCount = items.filter(i => i.status === 'completed').length;
+    const completedCount = items.filter((i) => i.status === 'completed').length;
     const totalCount = items.length;
     const progressPct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
     // Schedule tracking
     let scheduleStatus = '';
-    const completedWithTimes = items.filter(i => (i.status === 'completed' || i.status === 'announced') && i.actual_time && i.scheduled_time);
+    const completedWithTimes = items.filter(
+      (i) => (i.status === 'completed' || i.status === 'announced') && i.actual_time && i.scheduled_time
+    );
     if (completedWithTimes.length > 0) {
       const last = completedWithTimes[completedWithTimes.length - 1];
       const scheduled = this._roTimeToMinutes(last.scheduled_time);
@@ -5446,32 +5926,50 @@ const eventsModule = {
                   <div style="font-size:2.5rem; font-weight:700; color:#fff; line-height:1.2; margin-bottom:12px;">
                     ${utils.escapeHtml(current?.award_name || 'N/A')}
                   </div>
-                  ${!currentIsBreak ? `
+                  ${
+                    !currentIsBreak
+                      ? `
                     <div style="font-size:1.6rem; color:#4fc3f7; margin-bottom:8px;">
                       ${utils.escapeHtml(current?.display_name || '')}
                     </div>
-                    ${current?.recipient_collecting ? `
+                    ${
+                      current?.recipient_collecting
+                        ? `
                       <div style="font-size:1.1rem; color:#aaa;">
                         <i class="bi bi-person me-1"></i>Collecting: <strong style="color:#fff;">${utils.escapeHtml(current.recipient_collecting)}</strong>
                         ${current.table_number ? `<span style="margin-left:16px; color:#aaa;"><i class="bi bi-geo-alt me-1"></i>Table ${current.table_number}</span>` : ''}
                       </div>
-                    ` : ''}
-                  ` : ''}
-                  ${current?.cue_notes ? `
+                    `
+                        : ''
+                    }
+                  `
+                      : ''
+                  }
+                  ${
+                    current?.cue_notes
+                      ? `
                     <div style="font-size:0.9rem; color:#4fc3f7; margin-top:10px; padding-top:10px; border-top:1px solid #0f3460; font-family:monospace;">
                       <i class="bi bi-lightning-fill me-1" style="color:#ffc107;"></i>CUE: ${utils.escapeHtml(current.cue_notes)}
                     </div>
-                  ` : ''}
-                  ${current?.notes ? `
+                  `
+                      : ''
+                  }
+                  ${
+                    current?.notes
+                      ? `
                     <div style="font-size:0.9rem; color:#888; margin-top:6px; ${!current.cue_notes ? 'padding-top:10px; border-top:1px solid #0f3460;' : ''}">
                       <i class="bi bi-sticky me-1"></i>${utils.escapeHtml(current.notes)}
                     </div>
-                  ` : ''}
+                  `
+                      : ''
+                  }
                 </div>
               </div>
 
               <!-- Next Item Preview -->
-              ${next ? `
+              ${
+                next
+                  ? `
               <div class="text-center" style="max-width:700px; width:100%; opacity:0.7;">
                 <div class="mb-1" style="color:#aaa; text-transform:uppercase; letter-spacing:2px; font-size:0.75rem;">
                   <i class="bi bi-skip-forward me-1"></i>UP NEXT
@@ -5484,35 +5982,41 @@ const eventsModule = {
                   <div style="font-size:1.4rem; font-weight:600; color:#ccc;">
                     ${utils.escapeHtml(next.award_name || 'N/A')}
                   </div>
-                  ${!nextIsBreak ? `
+                  ${
+                    !nextIsBreak
+                      ? `
                     <div style="font-size:1rem; color:#4fc3f7aa;">
                       ${utils.escapeHtml(next.display_name || '')}
                       ${next.recipient_collecting ? ` - Collecting: ${utils.escapeHtml(next.recipient_collecting)}` : ''}
                     </div>
-                  ` : ''}
+                  `
+                      : ''
+                  }
                 </div>
               </div>
-              ` : '<div style="color:#666; font-size:1.2rem;">This is the last item</div>'}
+              `
+                  : '<div style="color:#666; font-size:1.2rem;">This is the last item</div>'
+              }
             </div>
 
             <!-- Bottom Navigation -->
             <div class="d-flex justify-content-between align-items-center px-4 py-3" style="background:#16213e; border-top:2px solid #0f3460;">
-              <button class="btn btn-outline-light btn-lg" onclick="eventsModule.backstagePrev()" ${currentIdx === 0 ? 'disabled' : ''}>
+              <button class="btn btn-outline-light btn-lg" data-action="eventsModule.backstagePrev" ${currentIdx === 0 ? 'disabled' : ''}>
                 <i class="bi bi-arrow-left me-2"></i>Previous
               </button>
               <div class="text-center">
                 <small style="color:#666;">Use <kbd style="background:#333; padding:2px 8px; border-radius:3px;">&larr;</kbd> <kbd style="background:#333; padding:2px 8px; border-radius:3px;">&rarr;</kbd> arrow keys or <kbd style="background:#333; padding:2px 8px; border-radius:3px;">Space</kbd> to navigate</small>
               </div>
               <div class="d-flex gap-2">
-                <button class="btn btn-warning btn-lg" onclick="eventsModule.backstageMarkStatus('announced')"
+                <button class="btn btn-warning btn-lg" data-action="eventsModule.backstageMarkStatus" data-id="announced"
                         ${current?.status === 'announced' || current?.status === 'completed' ? 'disabled' : ''}>
                   <i class="bi bi-broadcast me-1"></i>Mark Announced
                 </button>
-                <button class="btn btn-success btn-lg" onclick="eventsModule.backstageMarkStatus('completed')"
+                <button class="btn btn-success btn-lg" data-action="eventsModule.backstageMarkStatus" data-id="completed"
                         ${current?.status === 'completed' ? 'disabled' : ''}>
                   <i class="bi bi-check-circle me-1"></i>Mark Complete
                 </button>
-                <button class="btn btn-primary btn-lg" onclick="eventsModule.backstageNext()" ${currentIdx >= items.length - 1 ? 'disabled' : ''}>
+                <button class="btn btn-primary btn-lg" data-action="eventsModule.backstageNext" ${currentIdx >= items.length - 1 ? 'disabled' : ''}>
                   Next<i class="bi bi-arrow-right ms-2"></i>
                 </button>
               </div>
@@ -5527,11 +6031,11 @@ const eventsModule = {
    */
   _getBreakIcon(itemType) {
     const icons = {
-      'break': 'bi-cup-hot',
-      'speech': 'bi-mic',
-      'entertainment': 'bi-music-note-beamed',
-      'interval': 'bi-pause-circle',
-      'other': 'bi-bookmark'
+      break: 'bi-cup-hot',
+      speech: 'bi-mic',
+      entertainment: 'bi-music-note-beamed',
+      interval: 'bi-pause-circle',
+      other: 'bi-bookmark',
     };
     return icons[itemType] || 'bi-bookmark';
   },
@@ -5590,7 +6094,11 @@ const eventsModule = {
   _refreshBackstageView() {
     const clockEl = document.getElementById('backstageClock');
     if (clockEl) {
-      clockEl.textContent = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      clockEl.textContent = new Date().toLocaleTimeString('en-GB', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      });
     }
   },
 
@@ -5603,14 +6111,20 @@ const eventsModule = {
   switchROTab(tab) {
     this._roCurrentTab = tab;
     // Hide all tabs
-    ['Main', 'Checklist', 'Cuesheet', 'Trophies', 'Versions'].forEach(t => {
+    ['Main', 'Checklist', 'Cuesheet', 'Trophies', 'Versions'].forEach((t) => {
       const el = document.getElementById('roTab' + t);
       if (el) el.style.display = 'none';
     });
     // Deactivate all tab links
-    document.querySelectorAll('#roViewTabs .nav-link').forEach(a => a.classList.remove('active'));
+    document.querySelectorAll('#roViewTabs .nav-link').forEach((a) => a.classList.remove('active'));
     // Show selected tab
-    const tabMap = { 'main': 'Main', 'checklist': 'Checklist', 'cuesheet': 'Cuesheet', 'trophies': 'Trophies', 'versions': 'Versions' };
+    const tabMap = {
+      main: 'Main',
+      checklist: 'Checklist',
+      cuesheet: 'Cuesheet',
+      trophies: 'Trophies',
+      versions: 'Versions',
+    };
     const el = document.getElementById('roTab' + tabMap[tab]);
     if (el) el.style.display = 'block';
     // Activate tab link
@@ -5631,17 +6145,23 @@ const eventsModule = {
     const container = document.getElementById('roChecklistContent');
     if (!container) return;
 
-    const awardItems = this.runningOrderItems.filter(i => (i.item_type || 'award') === 'award');
+    const awardItems = this.runningOrderItems.filter((i) => (i.item_type || 'award') === 'award');
     if (awardItems.length === 0) {
-      container.innerHTML = '<div class="text-center py-4 text-muted"><i class="bi bi-check-circle display-4 d-block mb-2 opacity-25"></i><p>No award items to check.</p></div>';
+      container.innerHTML =
+        '<div class="text-center py-4 text-muted"><i class="bi bi-check-circle display-4 d-block mb-2 opacity-25"></i><p>No award items to check.</p></div>';
       return;
     }
 
     // Calculate overall progress
     const totalChecks = awardItems.length * 4;
     const completedChecks = awardItems.reduce((sum, item) => {
-      return sum + (item.checklist_trophy_ready ? 1 : 0) + (item.checklist_recipient_confirmed ? 1 : 0)
-        + (item.checklist_special_reqs_handled ? 1 : 0) + (item.checklist_engraving_correct ? 1 : 0);
+      return (
+        sum +
+        (item.checklist_trophy_ready ? 1 : 0) +
+        (item.checklist_recipient_confirmed ? 1 : 0) +
+        (item.checklist_special_reqs_handled ? 1 : 0) +
+        (item.checklist_engraving_correct ? 1 : 0)
+      );
     }, 0);
     const progressPct = totalChecks > 0 ? Math.round((completedChecks / totalChecks) * 100) : 0;
     const progressColour = progressPct === 100 ? '#198754' : progressPct >= 50 ? '#ffc107' : '#dc3545';
@@ -5673,8 +6193,11 @@ const eventsModule = {
     awardItems.forEach((item, idx) => {
       const awardName = item.award_name || 'TBC';
       const winnerName = item.display_name || 'TBC';
-      const allChecked = item.checklist_trophy_ready && item.checklist_engraving_correct
-        && item.checklist_recipient_confirmed && item.checklist_special_reqs_handled;
+      const allChecked =
+        item.checklist_trophy_ready &&
+        item.checklist_engraving_correct &&
+        item.checklist_recipient_confirmed &&
+        item.checklist_special_reqs_handled;
 
       html += `
         <tr style="${allChecked ? 'background:#f0fff4;' : ''}">
@@ -5686,19 +6209,19 @@ const eventsModule = {
           </td>
           <td class="text-center">
             <input type="checkbox" class="form-check-input" ${item.checklist_trophy_ready ? 'checked' : ''}
-              onchange="eventsModule.updateChecklist('${item.id}', 'checklist_trophy_ready', this.checked)">
+              data-on-change="eventsModule.updateChecklist" data-id="${item.id}" data-args='["checklist_trophy_ready"]'>
           </td>
           <td class="text-center">
             <input type="checkbox" class="form-check-input" ${item.checklist_engraving_correct ? 'checked' : ''}
-              onchange="eventsModule.updateChecklist('${item.id}', 'checklist_engraving_correct', this.checked)">
+              data-on-change="eventsModule.updateChecklist" data-id="${item.id}" data-args='["checklist_engraving_correct"]'>
           </td>
           <td class="text-center">
             <input type="checkbox" class="form-check-input" ${item.checklist_recipient_confirmed ? 'checked' : ''}
-              onchange="eventsModule.updateChecklist('${item.id}', 'checklist_recipient_confirmed', this.checked)">
+              data-on-change="eventsModule.updateChecklist" data-id="${item.id}" data-args='["checklist_recipient_confirmed"]'>
           </td>
           <td class="text-center">
             <input type="checkbox" class="form-check-input" ${item.checklist_special_reqs_handled ? 'checked' : ''}
-              onchange="eventsModule.updateChecklist('${item.id}', 'checklist_special_reqs_handled', this.checked)">
+              data-on-change="eventsModule.updateChecklist" data-id="${item.id}" data-args='["checklist_special_reqs_handled"]'>
           </td>
         </tr>`;
     });
@@ -5708,7 +6231,7 @@ const eventsModule = {
   },
 
   async updateChecklist(itemId, field, value) {
-    const item = this.runningOrderItems.find(i => i.id === itemId);
+    const item = this.runningOrderItems.find((i) => i.id === itemId);
     if (!item) return;
     item[field] = value;
     try {
@@ -5729,9 +6252,10 @@ const eventsModule = {
     const container = document.getElementById('roTrophiesContent');
     if (!container) return;
 
-    const awardItems = this.runningOrderItems.filter(i => (i.item_type || 'award') === 'award');
+    const awardItems = this.runningOrderItems.filter((i) => (i.item_type || 'award') === 'award');
     if (awardItems.length === 0) {
-      container.innerHTML = '<div class="text-center py-4 text-muted"><i class="bi bi-trophy display-4 d-block mb-2 opacity-25"></i><p>No award items to track.</p></div>';
+      container.innerHTML =
+        '<div class="text-center py-4 text-muted"><i class="bi bi-trophy display-4 d-block mb-2 opacity-25"></i><p>No award items to track.</p></div>';
       return;
     }
 
@@ -5740,25 +6264,29 @@ const eventsModule = {
       { key: 'ordered', label: 'Ordered', colour: '#0d6efd', icon: 'bi-cart-check' },
       { key: 'engraved', label: 'Engraved', colour: '#6f42c1', icon: 'bi-pen' },
       { key: 'checked', label: 'Checked', colour: '#fd7e14', icon: 'bi-check-circle' },
-      { key: 'backstage_ready', label: 'Backstage Ready', colour: '#198754', icon: 'bi-check2-all' }
+      { key: 'backstage_ready', label: 'Backstage Ready', colour: '#198754', icon: 'bi-check2-all' },
     ];
 
     // Summary counts
     const counts = {};
-    statuses.forEach(s => counts[s.key] = 0);
-    awardItems.forEach(i => counts[i.trophy_status || 'not_started']++);
+    statuses.forEach((s) => (counts[s.key] = 0));
+    awardItems.forEach((i) => counts[i.trophy_status || 'not_started']++);
 
     const activeFilter = this._trophyFilterStatus;
     let html = `
       <div class="d-flex gap-2 p-3 mb-3 border rounded bg-light flex-wrap align-items-center">
-        <button class="btn btn-sm ${!activeFilter ? 'btn-dark' : 'btn-outline-secondary'}" style="font-size:0.75rem;" onclick="eventsModule._trophyFilterStatus=null;eventsModule.renderTrophiesTab();">
+        <button class="btn btn-sm ${!activeFilter ? 'btn-dark' : 'btn-outline-secondary'}" style="font-size:0.75rem;" data-action="eventsModule.clearTrophyFilter">
           <i class="bi bi-grid me-1"></i>All: ${awardItems.length}
         </button>
-        ${statuses.map(s => `
-          <button class="btn btn-sm" style="font-size:0.75rem; ${activeFilter === s.key ? 'background:' + s.colour + ';color:#fff;border-color:' + s.colour : 'background:transparent;color:' + s.colour + ';border:1px solid ' + s.colour};" onclick="eventsModule._trophyFilterStatus='${s.key}';eventsModule.renderTrophiesTab();">
+        ${statuses
+          .map(
+            (s) => `
+          <button class="btn btn-sm" style="font-size:0.75rem; ${activeFilter === s.key ? 'background:' + s.colour + ';color:#fff;border-color:' + s.colour : 'background:transparent;color:' + s.colour + ';border:1px solid ' + s.colour};" data-action="eventsModule.filterTrophyStatus" data-status="${s.key}">
             <i class="${s.icon} me-1"></i>${s.label}: ${counts[s.key]}
           </button>
-        `).join('')}
+        `
+          )
+          .join('')}
       </div>
       <table class="table table-sm table-hover mb-0" style="font-size:0.82rem;">
         <thead class="table-light">
@@ -5774,7 +6302,7 @@ const eventsModule = {
     `;
 
     const filteredItems = activeFilter
-      ? awardItems.filter(i => (i.trophy_status || 'not_started') === activeFilter)
+      ? awardItems.filter((i) => (i.trophy_status || 'not_started') === activeFilter)
       : awardItems;
 
     if (filteredItems.length === 0) {
@@ -5783,10 +6311,10 @@ const eventsModule = {
 
     filteredItems.forEach((item, idx) => {
       const currentStatus = item.trophy_status || 'not_started';
-      const statusInfo = statuses.find(s => s.key === currentStatus) || statuses[0];
-      const opts = statuses.map(s =>
-        `<option value="${s.key}" ${s.key === currentStatus ? 'selected' : ''}>${s.label}</option>`
-      ).join('');
+      const statusInfo = statuses.find((s) => s.key === currentStatus) || statuses[0];
+      const opts = statuses
+        .map((s) => `<option value="${s.key}" ${s.key === currentStatus ? 'selected' : ''}>${s.label}</option>`)
+        .join('');
 
       html += `
         <tr>
@@ -5796,7 +6324,7 @@ const eventsModule = {
           <td>${utils.escapeHtml(item.recipient_collecting || 'TBC')}</td>
           <td>
             <select class="form-select form-select-sm" style="font-size:0.75rem; border-color:${statusInfo.colour};"
-                    onchange="eventsModule.updateTrophyStatus('${item.id}', this.value)">
+                    data-on-change="eventsModule.updateTrophyStatus" data-id="item.id">
               ${opts}
             </select>
           </td>
@@ -5808,7 +6336,7 @@ const eventsModule = {
   },
 
   async updateTrophyStatus(itemId, status) {
-    const item = this.runningOrderItems.find(i => i.id === itemId);
+    const item = this.runningOrderItems.find((i) => i.id === itemId);
     if (!item) return;
     item.trophy_status = status;
     try {
@@ -5830,18 +6358,19 @@ const eventsModule = {
 
     const items = this.runningOrderItems;
     if (items.length === 0) {
-      container.innerHTML = '<div class="text-center py-4 text-muted"><i class="bi bi-camera-reels display-4 d-block mb-2 opacity-25"></i><p>No items in running order.</p></div>';
+      container.innerHTML =
+        '<div class="text-center py-4 text-muted"><i class="bi bi-camera-reels display-4 d-block mb-2 opacity-25"></i><p>No items in running order.</p></div>';
       return;
     }
 
-    const itemsWithCues = items.filter(i => i.cue_notes);
+    const itemsWithCues = items.filter((i) => i.cue_notes);
     let html = `
       <div class="p-3 mb-3 border rounded bg-light d-flex justify-content-between align-items-center">
         <div>
           <strong>AV / Lighting Cue Sheet</strong>
           <span class="ms-2 text-muted small">${itemsWithCues.length} items with cues out of ${items.length} total</span>
         </div>
-        <button class="btn btn-sm btn-outline-dark" onclick="eventsModule.printCueSheet()">
+        <button class="btn btn-sm btn-outline-dark" data-action="eventsModule.printCueSheet">
           <i class="bi bi-printer me-1"></i>Print Cue Sheet
         </button>
       </div>
@@ -5860,16 +6389,20 @@ const eventsModule = {
         <div class="ro-cue-item ${!hasCue ? 'opacity-50' : ''}">
           <div class="d-flex align-items-start gap-3">
             <div style="width:35px; text-align:center; font-weight:700; color:${isBreak ? '#7e57c2' : '#ffc107'};">
-              ${isBreak ? '<i class="bi bi-' + (this._getBreakIcon(item.item_type)) + '"></i>' : presNum}
+              ${isBreak ? '<i class="bi bi-' + this._getBreakIcon(item.item_type) + '"></i>' : presNum}
             </div>
             <div style="width:55px; font-size:0.78rem; color:#666;">${time}</div>
             <div class="flex-grow-1">
               <div style="font-weight:600; font-size:0.85rem;">${utils.escapeHtml(awardName)}</div>
-              ${hasCue ? `<div class="ro-cue-notes-text"><i class="bi bi-lightning-fill me-1" style="color:#ffc107;"></i>${utils.escapeHtml(cueNotes)}</div>` : `
+              ${
+                hasCue
+                  ? `<div class="ro-cue-notes-text"><i class="bi bi-lightning-fill me-1" style="color:#ffc107;"></i>${utils.escapeHtml(cueNotes)}</div>`
+                  : `
                 <div style="font-size:0.75rem; color:#aaa; font-style:italic;">No cue notes</div>
-              `}
+              `
+              }
             </div>
-            <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.editCueNote('${item.id}')" title="Edit cue note">
+            <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.editCueNote" data-id="item.id" title="Edit cue note">
               <i class="bi bi-pencil"></i>
             </button>
           </div>
@@ -5880,10 +6413,13 @@ const eventsModule = {
   },
 
   async editCueNote(itemId) {
-    const item = this.runningOrderItems.find(i => i.id === itemId);
+    const item = this.runningOrderItems.find((i) => i.id === itemId);
     if (!item) return;
 
-    const newCue = prompt('Enter cue notes for AV/Lighting team:\n(e.g. "Play intro video", "Dim lights", "Spotlight stage left")', item.cue_notes || '');
+    const newCue = prompt(
+      'Enter cue notes for AV/Lighting team:\n(e.g. "Play intro video", "Dim lights", "Spotlight stage left")',
+      item.cue_notes || ''
+    );
     if (newCue === null) return; // cancelled
 
     item.cue_notes = newCue || null;
@@ -5901,11 +6437,14 @@ const eventsModule = {
    */
   printCueSheet() {
     const items = this.runningOrderItems;
-    if (items.length === 0) { utils.showToast('No items', 'warning'); return; }
+    if (items.length === 0) {
+      utils.showToast('No items', 'warning');
+      return;
+    }
 
     let presNum = 0;
     let rows = '';
-    items.forEach(item => {
+    items.forEach((item) => {
       const isBreak = (item.item_type || 'award') !== 'award';
       if (!isBreak) presNum++;
       const time = item.scheduled_time || '';
@@ -5942,8 +6481,12 @@ const eventsModule = {
       <script>window.onload=function(){window.print();};</script></body></html>`;
 
     const win = window.open('', '_blank', 'width=800,height=600');
-    if (win) { win.document.write(printHtml); win.document.close(); }
-    else { utils.showToast('Please allow popups to print', 'warning'); }
+    if (win) {
+      win.document.write(printHtml);
+      win.document.close();
+    } else {
+      utils.showToast('Please allow popups to print', 'warning');
+    }
   },
 
   // ============================================
@@ -5957,11 +6500,12 @@ const eventsModule = {
    */
   async loadSectionConfig() {
     try {
-      const { data: settings } = await STATE.client
-        .from('running_order_settings')
-        .select('section_config')
-        .eq('event_id', this.currentEventIdRunningOrder)
-        .single();
+      const settingsResult = await apiClient.select('running_order_settings', {
+        select: 'section_config',
+        filters: { event_id: this.currentEventIdRunningOrder },
+        pageSize: 1,
+      });
+      const settings = settingsResult.data?.[0] || null;
       this._roSectionConfig = settings?.section_config || [];
     } catch (error) {
       this._roSectionConfig = [];
@@ -5972,16 +6516,15 @@ const eventsModule = {
    * Get section config for a given section number
    */
   getSectionConfig(sectionNum) {
-    return this._roSectionConfig.find(s => s.section === sectionNum) || null;
+    return this._roSectionConfig.find((s) => s.section === sectionNum) || null;
   },
 
   /**
    * Open section manager to define act/section headers
    */
   openSectionManager() {
-    const sections = this._roSectionConfig.length > 0
-      ? this._roSectionConfig
-      : [{ section: 1, name: 'Act 1', colour: '#4caf50' }];
+    const sections =
+      this._roSectionConfig.length > 0 ? this._roSectionConfig : [{ section: 1, name: 'Act 1', colour: '#4caf50' }];
 
     const modalHtml = `
       <div class="modal fade" id="sectionManagerModal" tabindex="-1">
@@ -5994,22 +6537,26 @@ const eventsModule = {
             <div class="modal-body">
               <p class="small text-muted mb-3">Define colour-coded sections to visually group your running order into acts. Assign items to sections using the "Section" field in the item's section number.</p>
               <div id="sectionConfigList">
-                ${sections.map((s, i) => `
+                ${sections
+                  .map(
+                    (s, i) => `
                   <div class="d-flex gap-2 align-items-center mb-2" data-section-idx="${i}">
                     <input type="number" class="form-control form-control-sm" style="width:60px;" value="${s.section}" min="1" placeholder="#">
                     <input type="text" class="form-control form-control-sm" value="${utils.escapeHtml(s.name)}" placeholder="e.g. Act 1: Community Awards">
                     <input type="color" class="form-control form-control-sm form-control-color" value="${s.colour}" style="width:40px; padding:2px;">
-                    <button class="btn btn-sm btn-outline-danger" onclick="this.closest('[data-section-idx]').remove()"><i class="bi bi-trash"></i></button>
+                    <button class="btn btn-sm btn-outline-danger" data-action="eventsModule.removeRunningOrderSection"><i class="bi bi-trash"></i></button>
                   </div>
-                `).join('')}
+                `
+                  )
+                  .join('')}
               </div>
-              <button class="btn btn-sm btn-outline-secondary mt-2" onclick="eventsModule.addSectionConfigRow()">
+              <button class="btn btn-sm btn-outline-secondary mt-2" data-action="eventsModule.addSectionConfigRow">
                 <i class="bi bi-plus me-1"></i>Add Section
               </button>
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="button" class="btn btn-dark" onclick="eventsModule.saveSectionConfig()">
+              <button type="button" class="btn btn-dark" data-action="eventsModule.saveSectionConfig">
                 <i class="bi bi-save me-2"></i>Save Sections
               </button>
             </div>
@@ -6021,7 +6568,9 @@ const eventsModule = {
     if (existing) existing.remove();
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     new bootstrap.Modal(document.getElementById('sectionManagerModal')).show();
-    document.getElementById('sectionManagerModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+    document.getElementById('sectionManagerModal').addEventListener('hidden.bs.modal', function () {
+      this.remove();
+    });
   },
 
   addSectionConfigRow() {
@@ -6030,38 +6579,42 @@ const eventsModule = {
     const idx = list.children.length;
     const colours = ['#4caf50', '#2196f3', '#ff9800', '#e91e63', '#9c27b0', '#00bcd4'];
     const colour = colours[idx % colours.length];
-    list.insertAdjacentHTML('beforeend', `
+    list.insertAdjacentHTML(
+      'beforeend',
+      `
       <div class="d-flex gap-2 align-items-center mb-2" data-section-idx="${idx}">
         <input type="number" class="form-control form-control-sm" style="width:60px;" value="${idx + 1}" min="1" placeholder="#">
         <input type="text" class="form-control form-control-sm" value="" placeholder="e.g. Act ${idx + 1}: Category Name">
         <input type="color" class="form-control form-control-sm form-control-color" value="${colour}" style="width:40px; padding:2px;">
-        <button class="btn btn-sm btn-outline-danger" onclick="this.closest('[data-section-idx]').remove()"><i class="bi bi-trash"></i></button>
+        <button class="btn btn-sm btn-outline-danger" data-action="eventsModule.removeRunningOrderSection"><i class="bi bi-trash"></i></button>
       </div>
-    `);
+    `
+    );
   },
 
   async saveSectionConfig() {
     const rows = document.querySelectorAll('#sectionConfigList [data-section-idx]');
     const config = [];
-    rows.forEach(row => {
+    rows.forEach((row) => {
       const inputs = row.querySelectorAll('input');
       config.push({
         section: parseInt(inputs[0].value) || 1,
         name: inputs[1].value.trim() || `Section ${inputs[0].value}`,
-        colour: inputs[2].value || '#6c757d'
+        colour: inputs[2].value || '#6c757d',
       });
     });
 
     this._roSectionConfig = config;
 
     try {
-      const { error } = await STATE.client
-        .from('running_order_settings')
-        .upsert({
+      await apiClient.upsert(
+        'running_order_settings',
+        {
           event_id: this.currentEventIdRunningOrder,
-          section_config: config
-        }, { onConflict: 'event_id' });
-      if (error) throw error;
+          section_config: config,
+        },
+        { onConflict: 'event_id' }
+      );
     } catch (error) {
       console.warn('DB save for section config failed, using localStorage:', error);
       localStorage.setItem(`bta_ro_section_config_${this.currentEventIdRunningOrder}`, JSON.stringify(config));
@@ -6089,17 +6642,18 @@ const eventsModule = {
             <strong>Version History</strong>
             <span class="ms-2 text-muted small">${this._roVersions.length} saved version(s)</span>
           </div>
-          <button class="btn btn-sm btn-primary" onclick="eventsModule.saveVersion()" ${this.isPublished ? 'disabled' : ''}>
+          <button class="btn btn-sm btn-primary" data-action="eventsModule.saveVersion" ${this.isPublished ? 'disabled' : ''}>
             <i class="bi bi-save me-1"></i>Save Current as Version
           </button>
         </div>
       `;
 
       if (this._roVersions.length === 0) {
-        html += '<div class="text-center py-4 text-muted"><i class="bi bi-clock-history display-4 d-block mb-2 opacity-25"></i><p>No versions saved yet. Save a snapshot before making major changes.</p></div>';
+        html +=
+          '<div class="text-center py-4 text-muted"><i class="bi bi-clock-history display-4 d-block mb-2 opacity-25"></i><p>No versions saved yet. Save a snapshot before making major changes.</p></div>';
       } else {
         html += `<div class="list-group">`;
-        this._roVersions.forEach(v => {
+        this._roVersions.forEach((v) => {
           const itemCount = Array.isArray(v.snapshot) ? v.snapshot.length : 0;
           const date = new Date(v.created_at).toLocaleString();
           html += `
@@ -6109,10 +6663,10 @@ const eventsModule = {
                 <small class="text-muted d-block">v${v.version_number} | ${itemCount} items | ${date}</small>
               </div>
               <div class="d-flex gap-2">
-                <button class="btn btn-sm btn-outline-warning" onclick="eventsModule.restoreVersion('${v.id}')" ${this.isPublished ? 'disabled' : ''} title="Restore this version">
+                <button class="btn btn-sm btn-outline-warning" data-action="eventsModule.restoreVersion" data-id="v.id" ${this.isPublished ? 'disabled' : ''} title="Restore this version">
                   <i class="bi bi-arrow-counterclockwise me-1"></i>Restore
                 </button>
-                <button class="btn btn-sm btn-outline-danger" onclick="eventsModule.deleteVersion('${v.id}')" title="Delete version">
+                <button class="btn btn-sm btn-outline-danger" data-action="eventsModule.deleteVersion" data-id="v.id" title="Delete version">
                   <i class="bi bi-trash"></i>
                 </button>
               </div>
@@ -6127,13 +6681,12 @@ const eventsModule = {
 
   async loadVersions() {
     try {
-      const { data, error } = await STATE.client
-        .from('running_order_versions')
-        .select('*')
-        .eq('event_id', this.currentEventIdRunningOrder)
-        .order('version_number', { ascending: false });
-      if (error) throw error;
-      this._roVersions = data || [];
+      /* selectAll: justified — scoped to single event */
+      const versionsResult = await apiClient.selectAll('running_order_versions', {
+        filters: { event_id: this.currentEventIdRunningOrder },
+        sort: { column: 'version_number', ascending: false },
+      });
+      this._roVersions = versionsResult || [];
     } catch (error) {
       console.error('Error loading versions:', error);
       this._roVersions = [];
@@ -6141,10 +6694,13 @@ const eventsModule = {
   },
 
   async saveVersion() {
-    const name = prompt('Enter a name for this version:', `v${this._roVersions.length + 1} - ${new Date().toLocaleDateString()}`);
+    const name = prompt(
+      'Enter a name for this version:',
+      `v${this._roVersions.length + 1} - ${new Date().toLocaleDateString()}`
+    );
     if (!name) return;
 
-    const snapshot = this.runningOrderItems.map(item => ({
+    const snapshot = this.runningOrderItems.map((item) => ({
       award_name: item.award_name,
       display_name: item.display_name,
       award_number: item.award_number,
@@ -6164,24 +6720,27 @@ const eventsModule = {
       presentation_group: item.presentation_group,
       organisation_id: item.organisation_id,
       award_id: item.award_id,
-      guest_id: item.guest_id
+      guest_id: item.guest_id,
     }));
 
     try {
-      const { error } = await STATE.client
-        .from('running_order_versions')
-        .insert([{
-          event_id: this.currentEventIdRunningOrder,
-          version_name: name,
-          version_number: this._roVersions.length + 1,
-          snapshot: snapshot
-        }]);
-      if (error) throw error;
+      await apiClient.insert('running_order_versions', {
+        event_id: this.currentEventIdRunningOrder,
+        version_name: name,
+        version_number: this._roVersions.length + 1,
+        snapshot: snapshot,
+      });
     } catch (error) {
       console.warn('DB save for version failed, using localStorage:', error);
       const key = `bta_ro_versions_${this.currentEventIdRunningOrder}`;
       const stored = JSON.parse(localStorage.getItem(key) || '[]');
-      stored.push({ id: crypto.randomUUID(), version_name: name, version_number: stored.length + 1, snapshot, created_at: new Date().toISOString() });
+      stored.push({
+        id: crypto.randomUUID(),
+        version_name: name,
+        version_number: stored.length + 1,
+        snapshot,
+        created_at: new Date().toISOString(),
+      });
       localStorage.setItem(key, JSON.stringify(stored));
     }
     utils.showToast('Version saved: ' + name, 'success');
@@ -6189,10 +6748,17 @@ const eventsModule = {
   },
 
   async restoreVersion(versionId) {
-    const version = this._roVersions.find(v => v.id === versionId);
+    const version = this._roVersions.find((v) => v.id === versionId);
     if (!version) return;
 
-    if (!await utils.confirmDialog({ title: 'Restore Version', message: `Restore "${version.version_name}"?<br><br>This will replace the current running order with this saved version. Consider saving the current version first.`, confirmText: 'Restore', danger: false })) {
+    if (
+      !(await utils.confirmDialog({
+        title: 'Restore Version',
+        message: `Restore "${version.version_name}"?<br><br>This will replace the current running order with this saved version. Consider saving the current version first.`,
+        confirmText: 'Restore',
+        danger: false,
+      }))
+    ) {
       return;
     }
 
@@ -6203,9 +6769,9 @@ const eventsModule = {
       await apiClient.deleteByFilters('running_order', { event_id: this.currentEventIdRunningOrder });
 
       // Re-insert from snapshot
-      const items = version.snapshot.map(item => ({
+      const items = version.snapshot.map((item) => ({
         ...item,
-        event_id: this.currentEventIdRunningOrder
+        event_id: this.currentEventIdRunningOrder,
       }));
 
       if (items.length > 0) {
@@ -6225,7 +6791,7 @@ const eventsModule = {
   },
 
   async deleteVersion(versionId) {
-    if (!await utils.confirmDialog({ title: 'Delete Version', message: 'Delete this saved version?' })) return;
+    if (!(await utils.confirmDialog({ title: 'Delete Version', message: 'Delete this saved version?' }))) return;
     try {
       await apiClient.delete('running_order_versions', versionId);
       utils.showToast('Version deleted', 'success');
@@ -6247,7 +6813,7 @@ const eventsModule = {
    * This method provides a quick-assign interface.
    */
   async quickAssignTable(itemId) {
-    const item = this.runningOrderItems.find(i => i.id === itemId);
+    const item = this.runningOrderItems.find((i) => i.id === itemId);
     if (!item) return;
 
     const tableNum = prompt(
@@ -6277,7 +6843,7 @@ const eventsModule = {
    */
   _roGetOrgGroups() {
     const groups = {};
-    this.runningOrderItems.forEach(item => {
+    this.runningOrderItems.forEach((item) => {
       const orgId = item.organisation_id || item.display_name || item.id;
       if (!groups[orgId]) groups[orgId] = [];
       groups[orgId].push(item);
@@ -6289,16 +6855,17 @@ const eventsModule = {
    * Check if an item is part of a group (same org has 2+ awards)
    */
   _roIsGrouped(item) {
-    return item.presentation_group && this.runningOrderItems.filter(
-      i => i.presentation_group === item.presentation_group
-    ).length > 1;
+    return (
+      item.presentation_group &&
+      this.runningOrderItems.filter((i) => i.presentation_group === item.presentation_group).length > 1
+    );
   },
 
   /**
    * Get all items in the same presentation group
    */
   _roGetGroupMembers(groupId) {
-    return this.runningOrderItems.filter(i => i.presentation_group === groupId);
+    return this.runningOrderItems.filter((i) => i.presentation_group === groupId);
   },
 
   /**
@@ -6307,9 +6874,10 @@ const eventsModule = {
   _roOrgAwardCount(item) {
     const orgKey = item.organisation_id || item.display_name;
     if (!orgKey) return 1;
-    return this.runningOrderItems.filter(i =>
-      (i.organisation_id && i.organisation_id === item.organisation_id) ||
-      (!i.organisation_id && i.display_name === item.display_name)
+    return this.runningOrderItems.filter(
+      (i) =>
+        (i.organisation_id && i.organisation_id === item.organisation_id) ||
+        (!i.organisation_id && i.display_name === item.display_name)
     ).length;
   },
 
@@ -6318,7 +6886,7 @@ const eventsModule = {
    * All awards for this org get the same presentation_group and are moved adjacent
    */
   async groupPresentation(itemId) {
-    const item = this.runningOrderItems.find(i => i.id === itemId);
+    const item = this.runningOrderItems.find((i) => i.id === itemId);
     if (!item) return;
 
     this._roPushUndo();
@@ -6327,9 +6895,10 @@ const eventsModule = {
     const groupId = item.organisation_id || `group_${Date.now()}`;
 
     // Find all items for this org
-    const orgItems = this.runningOrderItems.filter(i =>
-      (i.organisation_id && i.organisation_id === item.organisation_id) ||
-      (!i.organisation_id && i.display_name === item.display_name)
+    const orgItems = this.runningOrderItems.filter(
+      (i) =>
+        (i.organisation_id && i.organisation_id === item.organisation_id) ||
+        (!i.organisation_id && i.display_name === item.display_name)
     );
 
     if (orgItems.length < 2) {
@@ -6338,14 +6907,16 @@ const eventsModule = {
     }
 
     // Set the group ID on all of them
-    orgItems.forEach(i => { i.presentation_group = groupId; });
+    orgItems.forEach((i) => {
+      i.presentation_group = groupId;
+    });
 
     // Move all grouped items to be adjacent (after the first one's position)
     const _firstIdx = this.runningOrderItems.indexOf(orgItems[0]);
     const others = orgItems.slice(1);
 
     // Remove others from their current positions
-    others.forEach(oi => {
+    others.forEach((oi) => {
       const idx = this.runningOrderItems.indexOf(oi);
       if (idx > -1) this.runningOrderItems.splice(idx, 1);
     });
@@ -6363,19 +6934,28 @@ const eventsModule = {
     // Persist group IDs
     for (const oi of orgItems) {
       try {
-        await apiClient.update('running_order', oi.id, { presentation_group: groupId, display_order: oi.display_order, award_number: oi.award_number });
-      } catch (e) { console.error('Error grouping:', e); }
+        await apiClient.update('running_order', oi.id, {
+          presentation_group: groupId,
+          display_order: oi.display_order,
+          award_number: oi.award_number,
+        });
+      } catch (e) {
+        console.error('Error grouping:', e);
+      }
     }
 
     this.renderRunningOrderItems();
-    utils.showToast(`Grouped ${orgItems.length} awards for ${item.display_name || 'this organisation'} into one presentation`, 'success');
+    utils.showToast(
+      `Grouped ${orgItems.length} awards for ${item.display_name || 'this organisation'} into one presentation`,
+      'success'
+    );
   },
 
   /**
    * Split: break a grouped item out into its own separate presentation
    */
   async splitPresentation(itemId) {
-    const item = this.runningOrderItems.find(i => i.id === itemId);
+    const item = this.runningOrderItems.find((i) => i.id === itemId);
     if (!item || !item.presentation_group) return;
 
     this._roPushUndo();
@@ -6384,17 +6964,21 @@ const eventsModule = {
     item.presentation_group = null;
 
     // If only one item remains in the old group, clear that one too
-    const remaining = this.runningOrderItems.filter(i => i.presentation_group === oldGroup);
+    const remaining = this.runningOrderItems.filter((i) => i.presentation_group === oldGroup);
     if (remaining.length === 1) {
       remaining[0].presentation_group = null;
       try {
         await apiClient.update('running_order', remaining[0].id, { presentation_group: null });
-      } catch (e) { console.error('Error clearing last group member:', e); }
+      } catch (e) {
+        console.error('Error clearing last group member:', e);
+      }
     }
 
     try {
       await apiClient.update('running_order', itemId, { presentation_group: null });
-    } catch (e) { console.error('Error splitting:', e); }
+    } catch (e) {
+      console.error('Error splitting:', e);
+    }
 
     this._roRecalcNumbers();
     this.renderRunningOrderItems();
@@ -6405,20 +6989,24 @@ const eventsModule = {
    * Split ALL awards for an org back into individual presentations
    */
   async splitAllPresentation(itemId) {
-    const item = this.runningOrderItems.find(i => i.id === itemId);
+    const item = this.runningOrderItems.find((i) => i.id === itemId);
     if (!item || !item.presentation_group) return;
 
     this._roPushUndo();
 
     const groupId = item.presentation_group;
-    const members = this.runningOrderItems.filter(i => i.presentation_group === groupId);
+    const members = this.runningOrderItems.filter((i) => i.presentation_group === groupId);
 
-    members.forEach(m => { m.presentation_group = null; });
+    members.forEach((m) => {
+      m.presentation_group = null;
+    });
 
     for (const m of members) {
       try {
         await apiClient.update('running_order', m.id, { presentation_group: null });
-      } catch (e) { console.error('Error splitting all:', e); }
+      } catch (e) {
+        console.error('Error splitting all:', e);
+      }
     }
 
     this._roRecalcNumbers();
@@ -6431,7 +7019,10 @@ const eventsModule = {
   // ============================================
   async syncFromRSVPs() {
     const eventId = this.currentEventIdRunningOrder;
-    if (!eventId) { utils.showToast('No event selected', 'warning'); return; }
+    if (!eventId) {
+      utils.showToast('No event selected', 'warning');
+      return;
+    }
 
     try {
       utils.showLoading();
@@ -6439,21 +7030,27 @@ const eventsModule = {
       // 1. Get confirmed RSVPs from both event_guests and event_attendees
       let guests = [];
       try {
+        /* selectAll: justified — scoped to single event */
         const eg = await apiClient.selectAll('event_guests', {
           select: 'id, organisation_id, guest_name, guest_email, guest_type',
-          filters: { event_id: eventId, rsvp_status: 'confirmed' }
+          filters: { event_id: eventId, rsvp_status: 'confirmed' },
         });
         if (eg) guests = eg;
-      } catch (e) { /* event_guests may not exist */ }
+      } catch (e) {
+        /* event_guests may not exist */
+      }
 
       // Also pull from event_attendees (admin-added guests with status 'attending')
       try {
+        /* selectAll: justified — scoped to single event */
         const ea = await apiClient.selectAll('event_attendees', {
           select: 'id, organisation_id, attendee_name, attendee_email, guest_type',
-          filters: { event_id: eventId, rsvp_status_in: ['attending', 'confirmed'] }
+          filters: { event_id: eventId, rsvp_status_in: ['attending', 'confirmed'] },
         });
         if (ea) {
-          const existingKeys = new Set(guests.map(g => (g.guest_name || '').toLowerCase() + '|' + (g.guest_email || '').toLowerCase()));
+          const existingKeys = new Set(
+            guests.map((g) => (g.guest_name || '').toLowerCase() + '|' + (g.guest_email || '').toLowerCase())
+          );
           for (const a of ea) {
             const key = (a.attendee_name || '').toLowerCase() + '|' + (a.attendee_email || '').toLowerCase();
             if (!existingKeys.has(key)) {
@@ -6463,12 +7060,14 @@ const eventsModule = {
                 organisation_id: a.organisation_id,
                 guest_name: a.attendee_name,
                 guest_email: a.attendee_email,
-                guest_type: a.guest_type
+                guest_type: a.guest_type,
               });
             }
           }
         }
-      } catch (e) { /* event_attendees may not exist */ }
+      } catch (e) {
+        /* event_attendees may not exist */
+      }
 
       if (guests.length === 0) {
         utils.showToast('No confirmed RSVPs or attending guests found for this event', 'warning');
@@ -6476,14 +7075,15 @@ const eventsModule = {
       }
 
       // 2. Get winner assignments for these organisations
-      const orgIds = [...new Set(guests.map(g => g.organisation_id).filter(Boolean))];
+      const orgIds = [...new Set(guests.map((g) => g.organisation_id).filter(Boolean))];
       const assignMap = {};
       if (orgIds.length > 0) {
+        /* selectAll: justified — scoped to filtered org IDs from single event */
         const assigns = await apiClient.selectAll('award_assignments', {
           select: 'award_id, organisation_id',
-          filters: { organisation_id_in: orgIds, status: 'winner' }
+          filters: { organisation_id_in: orgIds, status: 'winner' },
         });
-        (assigns || []).forEach(a => {
+        (assigns || []).forEach((a) => {
           if (!assignMap[a.organisation_id]) assignMap[a.organisation_id] = [];
           assignMap[a.organisation_id].push(a.award_id);
         });
@@ -6493,31 +7093,33 @@ const eventsModule = {
       const allAwardIds = [...new Set(Object.values(assignMap).flat())];
       const awardMap = {};
       if (allAwardIds.length > 0) {
+        /* selectAll: justified — small reference table, filtered by known IDs */
         const awards = await apiClient.selectAll('awards', {
           select: 'id, award_name',
-          filters: { id_in: allAwardIds }
+          filters: { id_in: allAwardIds },
         });
-        (awards || []).forEach(a => { awardMap[a.id] = a.award_name; });
+        (awards || []).forEach((a) => {
+          awardMap[a.id] = a.award_name;
+        });
       }
 
       // 4. Get org names
       const orgMap = {};
       if (orgIds.length > 0) {
+        /* selectAll: justified — filtered to known org IDs from single event */
         const orgs = await apiClient.selectAll('organisations', {
           select: 'id, company_name',
-          filters: { id_in: orgIds }
+          filters: { id_in: orgIds },
         });
-        (orgs || []).forEach(o => { orgMap[o.id] = o.company_name; });
+        (orgs || []).forEach((o) => {
+          orgMap[o.id] = o.company_name;
+        });
       }
 
       // 5. Build running order entries — skip those already present
-      const existingKeys = new Set(this.runningOrderItems.map(i =>
-        `${i.guest_id || ''}|${i.award_id || ''}`
-      ));
+      const existingKeys = new Set(this.runningOrderItems.map((i) => `${i.guest_id || ''}|${i.award_id || ''}`));
       const existingCount = this.runningOrderItems.length;
-      const section = existingCount > 0
-        ? (this.runningOrderItems[existingCount - 1].section || 1)
-        : 1;
+      const section = existingCount > 0 ? this.runningOrderItems[existingCount - 1].section || 1 : 1;
 
       let added = 0;
       let order = existingCount;
@@ -6535,15 +7137,15 @@ const eventsModule = {
             guest_id: guest.id,
             organisation_id: guest.organisation_id || null,
             award_id: awardId || null,
-            award_name: awardId ? (awardMap[awardId] || '') : '',
-            item_name: awardId ? (awardMap[awardId] || '') : guest.guest_name,
+            award_name: awardId ? awardMap[awardId] || '' : '',
+            item_name: awardId ? awardMap[awardId] || '' : guest.guest_name,
             display_name: orgMap[guest.organisation_id] || guest.guest_name || '',
             recipient_collecting: guest.guest_name || '',
             award_number: awardNum,
             display_order: order,
             section: section,
             duration_minutes: 3,
-            status: 'pending'
+            status: 'pending',
           };
 
           try {
@@ -6555,7 +7157,7 @@ const eventsModule = {
               event_id: eventId,
               item_name: entry.item_name || entry.display_name,
               display_order: order,
-              duration_minutes: 3
+              duration_minutes: 3,
             };
             try {
               await apiClient.insert('running_order', minimal);
@@ -6585,19 +7187,26 @@ const eventsModule = {
     try {
       const newPublishedState = !this.isPublished;
       try {
-        await apiClient.updateByFilters('running_order_settings', { event_id: this.currentEventIdRunningOrder }, {
-          is_published: newPublishedState,
-          published_at: newPublishedState ? new Date().toISOString() : null
-        });
+        await apiClient.updateByFilters(
+          'running_order_settings',
+          { event_id: this.currentEventIdRunningOrder },
+          {
+            is_published: newPublishedState,
+            published_at: newPublishedState ? new Date().toISOString() : null,
+          }
+        );
       } catch (upsertErr) {
         await apiClient.insert('running_order_settings', {
           event_id: this.currentEventIdRunningOrder,
           is_published: newPublishedState,
-          published_at: newPublishedState ? new Date().toISOString() : null
+          published_at: newPublishedState ? new Date().toISOString() : null,
         });
       }
       this.isPublished = newPublishedState;
-      utils.showToast(newPublishedState ? 'Running order published and locked' : 'Running order unlocked for editing', 'success');
+      utils.showToast(
+        newPublishedState ? 'Running order published and locked' : 'Running order unlocked for editing',
+        'success'
+      );
       document.getElementById('runningOrderModal').remove();
       this.createRunningOrderModal();
     } catch (error) {
@@ -6617,13 +7226,16 @@ const eventsModule = {
           display_order: item.display_order,
           award_number: item.award_number,
           presentation_group: item.presentation_group || null,
-          scheduled_time: item.scheduled_time || null
+          scheduled_time: item.scheduled_time || null,
         });
       }
       utils.showToast('Running order saved', 'success');
     } catch (error) {
       console.warn('DB save for running order failed, using localStorage:', error);
-      localStorage.setItem(`bta_running_order_${this.currentEventIdRunningOrder}`, JSON.stringify(this.runningOrderItems));
+      localStorage.setItem(
+        `bta_running_order_${this.currentEventIdRunningOrder}`,
+        JSON.stringify(this.runningOrderItems)
+      );
       utils.showToast('Running order saved locally', 'success');
     } finally {
       utils.hideLoading();
@@ -6644,7 +7256,7 @@ const eventsModule = {
     const renderedGroups = new Set();
     let rows = '';
 
-    this.runningOrderItems.forEach(item => {
+    this.runningOrderItems.forEach((item) => {
       const awardName = item.award_name || item.item_name || (item.awards ? item.awards.award_name : 'N/A');
       const companyName = item.display_name || (item.organisations ? item.organisations.company_name : 'N/A');
       const recipient = item.recipient_collecting || (item.event_guests ? item.event_guests.guest_name : '');
@@ -6657,32 +7269,41 @@ const eventsModule = {
       const itemType = item.item_type || 'award';
       const isBreak = itemType !== 'award';
       const sponsor = item.sponsor || '';
-      const sponsorHtml = sponsor ? `<br><small style="color:#666; font-style:italic;">Sponsored by ${utils.escapeHtml(sponsor)}</small>` : '';
+      const sponsorHtml = sponsor
+        ? `<br><small style="color:#666; font-style:italic;">Sponsored by ${utils.escapeHtml(sponsor)}</small>`
+        : '';
 
       // Section break rendering
       if (isBreak) {
         presNum++;
-        const breakLabels = { 'break': 'BREAK', 'speech': 'SPEECH', 'entertainment': 'ENTERTAINMENT', 'interval': 'INTERVAL', 'other': 'OTHER' };
+        const breakLabels = {
+          break: 'BREAK',
+          speech: 'SPEECH',
+          entertainment: 'ENTERTAINMENT',
+          interval: 'INTERVAL',
+          other: 'OTHER',
+        };
         rows += `<tr style="background:#e3f2fd; font-style:italic;">
           <td class="award-number" style="color:#5e35b1;">${presNum}</td>
           <td class="time-col">${utils.escapeHtml(time)}</td>
           <td class="award-name" colspan="3"><strong>${utils.escapeHtml(awardName)}</strong> <span style="color:#7e57c2; font-size:8pt;">[${breakLabels[itemType] || 'BREAK'}]</span></td>
           <td class="status-col">${statusLabel}</td>
         </tr>`;
-        if (notes) rows += `<tr style="background:#e3f2fd;"><td colspan="6" class="notes"><strong>Notes:</strong> ${utils.escapeHtml(notes)}</td></tr>`;
+        if (notes)
+          rows += `<tr style="background:#e3f2fd;"><td colspan="6" class="notes"><strong>Notes:</strong> ${utils.escapeHtml(notes)}</td></tr>`;
         return;
       }
 
-      const isGrouped = item.presentation_group && this.runningOrderItems.filter(
-        i => i.presentation_group === item.presentation_group
-      ).length > 1;
+      const isGrouped =
+        item.presentation_group &&
+        this.runningOrderItems.filter((i) => i.presentation_group === item.presentation_group).length > 1;
 
       if (isGrouped) {
         const isGroupStart = !renderedGroups.has(item.presentation_group);
         if (isGroupStart) {
           renderedGroups.add(item.presentation_group);
           presNum++;
-          const groupMembers = this.runningOrderItems.filter(i => i.presentation_group === item.presentation_group);
+          const groupMembers = this.runningOrderItems.filter((i) => i.presentation_group === item.presentation_group);
           rows += `<tr style="background:#fffde7;">
             <td class="award-number" rowspan="${groupMembers.length}" style="vertical-align:middle; font-size:14pt;">${presNum}</td>
             <td class="time-col">${utils.escapeHtml(time)}</td>
@@ -6691,14 +7312,16 @@ const eventsModule = {
             <td class="recipient" rowspan="${groupMembers.length}" style="vertical-align:middle;">${utils.escapeHtml(recipient)}</td>
             <td class="status-col">${statusLabel}</td>
           </tr>`;
-          if (notes) rows += `<tr style="background:#fffde7;"><td colspan="3" class="notes"><strong>Notes:</strong> ${utils.escapeHtml(notes)}</td></tr>`;
+          if (notes)
+            rows += `<tr style="background:#fffde7;"><td colspan="3" class="notes"><strong>Notes:</strong> ${utils.escapeHtml(notes)}</td></tr>`;
         } else {
           rows += `<tr style="background:#fffde7;">
             <td class="time-col">${utils.escapeHtml(time)}</td>
             <td class="award-name">${utils.escapeHtml(awardName)}${sponsorHtml}</td>
             <td class="status-col">${statusLabel}</td>
           </tr>`;
-          if (notes) rows += `<tr style="background:#fffde7;"><td colspan="3" class="notes"><strong>Notes:</strong> ${utils.escapeHtml(notes)}</td></tr>`;
+          if (notes)
+            rows += `<tr style="background:#fffde7;"><td colspan="3" class="notes"><strong>Notes:</strong> ${utils.escapeHtml(notes)}</td></tr>`;
         }
       } else {
         presNum++;
@@ -6710,7 +7333,8 @@ const eventsModule = {
           <td class="recipient">${utils.escapeHtml(recipient)}</td>
           <td class="status-col">${statusLabel}</td>
         </tr>`;
-        if (notes) rows += `<tr><td colspan="6" class="notes"><strong>Notes:</strong> ${utils.escapeHtml(notes)}</td></tr>`;
+        if (notes)
+          rows += `<tr><td colspan="6" class="notes"><strong>Notes:</strong> ${utils.escapeHtml(notes)}</td></tr>`;
       }
     });
 
@@ -6761,7 +7385,14 @@ const eventsModule = {
    * Delete Running Order Item
    */
   async deleteRunningOrderItem(itemId) {
-    if (!await utils.confirmDialog({ title: 'Remove Item', message: 'Remove this item from the running order?', confirmText: 'Remove' })) return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Remove Item',
+        message: 'Remove this item from the running order?',
+        confirmText: 'Remove',
+      }))
+    )
+      return;
     try {
       await apiClient.delete('running_order', itemId);
       utils.showToast('Item removed', 'success');
@@ -6781,28 +7412,28 @@ const eventsModule = {
       utils.showToast('No items to export', 'warning');
       return;
     }
-    const exportData = this.runningOrderItems.map(item => {
-      const isGrouped = item.presentation_group && this.runningOrderItems.filter(
-        i => i.presentation_group === item.presentation_group
-      ).length > 1;
+    const exportData = this.runningOrderItems.map((item) => {
+      const isGrouped =
+        item.presentation_group &&
+        this.runningOrderItems.filter((i) => i.presentation_group === item.presentation_group).length > 1;
       return {
-        'Order': item.display_order,
+        Order: item.display_order,
         'Award Number': item.award_number,
-        'Type': item.item_type || 'award',
+        Type: item.item_type || 'award',
         'Award Name': item.award_name || 'TBC',
-        'Winner': item.display_name || 'TBC',
+        Winner: item.display_name || 'TBC',
         'Recipient Collecting': item.recipient_collecting || item.event_guests?.guest_name || 'TBC',
-        'Sponsor': item.sponsor || '',
+        Sponsor: item.sponsor || '',
         'Scheduled Time': item.scheduled_time || '',
         'Actual Time': item.actual_time || '',
         'Duration (min)': item.duration_minutes || 3,
-        'Status': item.status || 'pending',
-        'Presentation': isGrouped ? 'Grouped' : 'Individual',
+        Status: item.status || 'pending',
+        Presentation: isGrouped ? 'Grouped' : 'Individual',
         'Group ID': item.presentation_group || '',
         'Table #': item.table_number || '',
         'Trophy Status': item.trophy_status || '',
         'Cue Notes': item.cue_notes || '',
-        'Notes': item.notes || ''
+        Notes: item.notes || '',
       };
     });
     const filename = `${this.currentEventName.replace(/[^a-z0-9]/gi, '_')}_running_order_${new Date().toISOString().split('T')[0]}.csv`;
@@ -6816,17 +7447,17 @@ const eventsModule = {
    * Award number in top-left corner for sorting reference.
    */
   exportWinnerCards() {
-    const awards = this.runningOrderItems.filter(item => (item.item_type || 'award') === 'award');
+    const awards = this.runningOrderItems.filter((item) => (item.item_type || 'award') === 'award');
     if (awards.length === 0) {
       utils.showToast('No award items to export', 'warning');
       return;
     }
 
-    const cards = awards.map(item => ({
+    const cards = awards.map((item) => ({
       awardName: item.award_name || item.item_name || (item.awards ? item.awards.award_name : 'N/A'),
       companyName: item.display_name || (item.organisations ? item.organisations.company_name : 'N/A'),
       recipient: item.recipient_collecting || (item.event_guests ? item.event_guests.guest_name : 'TBC'),
-      awardNumber: item.award_number || ''
+      awardNumber: item.award_number || '',
     }));
 
     const renderCard = (card) => `<div class="card">
@@ -6881,8 +7512,12 @@ const eventsModule = {
       <script>window.onload=function(){window.print();};<\/script></body></html>`;
 
     const w = window.open('', '_blank', 'width=800,height=1000');
-    if (w) { w.document.write(html); w.document.close(); }
-    else { utils.showToast('Please allow popups to print', 'warning'); }
+    if (w) {
+      w.document.write(html);
+      w.document.close();
+    } else {
+      utils.showToast('Please allow popups to print', 'warning');
+    }
   },
 
   /**
@@ -6890,7 +7525,7 @@ const eventsModule = {
    * Each label shows the category/award name for sticky envelope labels.
    */
   async exportEnvelopeLabels() {
-    const awards = this.runningOrderItems.filter(item => (item.item_type || 'award') === 'award');
+    const awards = this.runningOrderItems.filter((item) => (item.item_type || 'award') === 'award');
     if (awards.length === 0) {
       utils.showToast('No award items to export', 'warning');
       return;
@@ -6902,13 +7537,20 @@ const eventsModule = {
       const tenantId = window.multiTenancy?.getTenantId?.() || 'default';
       const branding = await window.brandingModule?.loadBranding?.(tenantId);
       logoUrl = branding?.logo_url || '';
-    } catch (e) { /* proceed without logo */ }
+    } catch (e) {
+      /* proceed without logo */
+    }
 
     const labels = awards.map((item, idx) => ({
       awardName: item.award_name || item.item_name || (item.awards ? item.awards.award_name : 'N/A'),
       awardNumber: item.award_number || '',
       sponsor: item.sponsor || '',
-      intro: idx === 0 ? 'Our first award is\u2026' : idx === awards.length - 1 ? 'Our final award is\u2026' : 'Our next award is\u2026'
+      intro:
+        idx === 0
+          ? 'Our first award is\u2026'
+          : idx === awards.length - 1
+            ? 'Our final award is\u2026'
+            : 'Our next award is\u2026',
     }));
 
     let pages = '';
@@ -6957,8 +7599,12 @@ const eventsModule = {
       <script>window.onload=function(){window.print();};<\/script></body></html>`;
 
     const w = window.open('', '_blank', 'width=1000,height=800');
-    if (w) { w.document.write(html); w.document.close(); }
-    else { utils.showToast('Please allow popups to print', 'warning'); }
+    if (w) {
+      w.document.write(html);
+      w.document.close();
+    } else {
+      utils.showToast('Please allow popups to print', 'warning');
+    }
   },
 
   // ========================================
@@ -6972,27 +7618,29 @@ const eventsModule = {
    */
   async openAddWinnersChecklist() {
     const eventId = this.currentEventIdRunningOrder;
-    if (!eventId) { utils.showToast('No event selected', 'warning'); return; }
+    if (!eventId) {
+      utils.showToast('No event selected', 'warning');
+      return;
+    }
 
     try {
       utils.showLoading();
 
       // Look up the event year to match awards (awards link to events by year)
-      const event = STATE.allEvents.find(e => e.id === eventId);
+      const event = STATE.allEvents.find((e) => e.id === eventId);
       if (!event || !event.year) {
         utils.showToast('Could not determine event year. Set the year on this event first.', 'warning');
         return;
       }
 
-      // 1. Load all awards for this event's year with their winner assignments
-      const awardsQuery = STATE.client
-        .from('award_years')
-        .select('id, award_name, award_category, sector')
-        .eq('year', event.year)
-        .order('sector', { ascending: true });
-
-      const { data: awards, error: awardsErr } = await awardsQuery;
-      if (awardsErr) throw awardsErr;
+      /* selectAll: justified — scoped to single event year */
+      const awardsResult = await apiClient.selectAll('award_years', {
+        select: 'id, award_name, award_category, sector',
+        filters: { year: event.year },
+        sort: { column: 'sector', ascending: true },
+      });
+      const awards = awardsResult || [];
+      if (!awards) throw new Error('Failed to load awards');
 
       if (!awards || awards.length === 0) {
         utils.showToast(`No awards found for ${event.year}. Add awards first.`, 'warning');
@@ -7000,61 +7648,74 @@ const eventsModule = {
       }
 
       // 2. Load confirmed winners from award_assignments
-      const awardIds = awards.map(a => a.id);
-      const { data: assignments, error: assignErr } = await STATE.client
-        .from('award_assignments')
-        .select('award_id, organisation_id, status, winner_position')
-        .in('award_id', awardIds)
-        .eq('status', 'winner');
-      if (assignErr) throw assignErr;
+      const awardIds = awards.map((a) => a.id);
+      /* selectAll: justified — scoped to awards for single event year */
+      const assignResult = await apiClient.selectAll('award_assignments', {
+        select: 'award_id, organisation_id, status, winner_position',
+        filters: { award_id: { op: 'in', value: awardIds }, status: 'winner' },
+      });
+      const assignments = assignResult || [];
 
       // 3. Load organisation names for winners
-      const orgIds = [...new Set((assignments || []).map(a => a.organisation_id).filter(Boolean))];
+      const orgIds = [...new Set((assignments || []).map((a) => a.organisation_id).filter(Boolean))];
       const orgsMap = {};
       if (orgIds.length > 0) {
-        const { data: orgs } = await STATE.client
-          .from('organisations')
-          .select('id, company_name')
-          .in('id', orgIds);
-        (orgs || []).forEach(o => { orgsMap[o.id] = o.company_name; });
+        /* selectAll: justified — filtered to known org IDs from single event */
+        const orgsResult = await apiClient.selectAll('organisations', {
+          select: 'id, company_name',
+          filters: { id: { op: 'in', value: orgIds } },
+        });
+        (orgsResult || []).forEach((o) => {
+          orgsMap[o.id] = o.company_name;
+        });
       }
 
       // 4. Look up guest contacts per org (for recipient_collecting)
       const guestByOrg = {};
       if (orgIds.length > 0) {
         try {
-          const { data: eg } = await STATE.client
-            .from('event_guests')
-            .select('guest_name, organisation_id')
-            .eq('event_id', event.id)
-            .eq('rsvp_status', 'confirmed')
-            .in('organisation_id', orgIds);
-          (eg || []).forEach(g => { if (g.organisation_id && !guestByOrg[g.organisation_id]) guestByOrg[g.organisation_id] = g.guest_name; });
-        } catch (e) { /* event_guests may not exist */ }
+          /* selectAll: justified — scoped to single event, filtered by org IDs */
+          const egResult = await apiClient.selectAll('event_guests', {
+            select: 'guest_name, organisation_id',
+            filters: { event_id: event.id, rsvp_status: 'confirmed', organisation_id: { op: 'in', value: orgIds } },
+          });
+          (egResult || []).forEach((g) => {
+            if (g.organisation_id && !guestByOrg[g.organisation_id]) guestByOrg[g.organisation_id] = g.guest_name;
+          });
+        } catch (e) {
+          /* event_guests may not exist */
+        }
         try {
-          const { data: ea } = await STATE.client
-            .from('event_attendees')
-            .select('attendee_name, organisation_id')
-            .eq('event_id', event.id)
-            .in('rsvp_status', ['attending', 'confirmed'])
-            .in('organisation_id', orgIds);
-          (ea || []).forEach(a => { if (a.organisation_id && !guestByOrg[a.organisation_id]) guestByOrg[a.organisation_id] = a.attendee_name; });
-        } catch (e) { /* event_attendees may not exist */ }
+          /* selectAll: justified — scoped to single event, filtered by org IDs */
+          const eaResult = await apiClient.selectAll('event_attendees', {
+            select: 'attendee_name, organisation_id',
+            filters: {
+              event_id: event.id,
+              rsvp_status: { op: 'in', value: ['attending', 'confirmed'] },
+              organisation_id: { op: 'in', value: orgIds },
+            },
+          });
+          (eaResult || []).forEach((a) => {
+            if (a.organisation_id && !guestByOrg[a.organisation_id]) guestByOrg[a.organisation_id] = a.attendee_name;
+          });
+        } catch (e) {
+          /* event_attendees may not exist */
+        }
       }
 
       // 5. Build the merged list: award + winner info
-      const existingAwardIds = new Set(this.runningOrderItems.map(i => i.award_id).filter(Boolean));
+      const existingAwardIds = new Set(this.runningOrderItems.map((i) => i.award_id).filter(Boolean));
       const assignmentsByAward = {};
-      (assignments || []).forEach(a => {
+      (assignments || []).forEach((a) => {
         if (!assignmentsByAward[a.award_id]) assignmentsByAward[a.award_id] = [];
         assignmentsByAward[a.award_id].push(a);
       });
 
-      const rows = awards.map(award => {
+      const rows = awards.map((award) => {
         const winners = assignmentsByAward[award.id] || [];
         const topWinner = winners[0];
-        const orgName = topWinner ? (orgsMap[topWinner.organisation_id] || 'Unknown') : null;
-        const recipientName = topWinner ? (guestByOrg[topWinner.organisation_id] || null) : null;
+        const orgName = topWinner ? orgsMap[topWinner.organisation_id] || 'Unknown' : null;
+        const recipientName = topWinner ? guestByOrg[topWinner.organisation_id] || null : null;
         const alreadyInRO = existingAwardIds.has(award.id);
         return {
           awardId: award.id,
@@ -7065,7 +7726,7 @@ const eventsModule = {
           winnerName: orgName,
           winnerOrgId: topWinner?.organisation_id || null,
           recipientName,
-          alreadyInRO
+          alreadyInRO,
         };
       });
 
@@ -7076,8 +7737,8 @@ const eventsModule = {
         return (a.sector + a.category).localeCompare(b.sector + b.category);
       });
 
-      const winnersCount = rows.filter(r => r.hasWinner && !r.alreadyInRO).length;
-      const alreadyCount = rows.filter(r => r.alreadyInRO).length;
+      const winnersCount = rows.filter((r) => r.hasWinner && !r.alreadyInRO).length;
+      const alreadyCount = rows.filter((r) => r.alreadyInRO).length;
 
       // 5. Build modal HTML
       const modalHtml = `
@@ -7096,13 +7757,13 @@ const eventsModule = {
                       ${alreadyCount > 0 ? `<span class="badge bg-secondary ms-1">${alreadyCount}</span> already in running order` : ''}
                     </div>
                     <div class="d-flex gap-2">
-                      <button class="btn btn-sm btn-outline-success" onclick="eventsModule._winnersChecklistSelectAll(true)">Select All Winners</button>
-                      <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule._winnersChecklistSelectAll(false)">Deselect All</button>
+                      <button class="btn btn-sm btn-outline-success" data-action="eventsModule._winnersChecklistSelectAll" data-id="true">Select All Winners</button>
+                      <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule._winnersChecklistSelectAll" data-id="false">Deselect All</button>
                     </div>
                   </div>
                   <div class="input-group input-group-sm">
                     <span class="input-group-text"><i class="bi bi-search"></i></span>
-                    <input type="text" class="form-control" id="winnersChecklistSearch" placeholder="Filter awards..." oninput="eventsModule._filterWinnersChecklist(this.value)">
+                    <input type="text" class="form-control" id="winnersChecklistSearch" placeholder="Filter awards..." data-on-input="eventsModule._filterWinnersChecklist">
                   </div>
                 </div>
                 <div id="winnersChecklistBody" style="max-height:450px; overflow-y:auto;">
@@ -7112,7 +7773,7 @@ const eventsModule = {
               <div class="modal-footer">
                 <span class="text-muted small me-auto" id="winnersSelectedCount">0 selected</span>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-success" id="addWinnersSubmitBtn" onclick="eventsModule._submitWinnersChecklist()" disabled>
+                <button type="button" class="btn btn-success" id="addWinnersSubmitBtn" data-action="eventsModule._submitWinnersChecklist" disabled>
                   <i class="bi bi-plus-circle me-2"></i>Add Selected to Running Order
                 </button>
               </div>
@@ -7128,8 +7789,9 @@ const eventsModule = {
       document.body.insertAdjacentHTML('beforeend', modalHtml);
       const modal = new bootstrap.Modal(document.getElementById('addWinnersChecklistModal'));
       modal.show();
-      document.getElementById('addWinnersChecklistModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
-
+      document.getElementById('addWinnersChecklistModal').addEventListener('hidden.bs.modal', function () {
+        this.remove();
+      });
     } catch (err) {
       console.error('Error loading winners checklist:', err);
       utils.showToast('Failed to load winners: ' + err.message, 'error');
@@ -7160,15 +7822,17 @@ const eventsModule = {
         <div class="winners-checklist-row px-3 py-2 border-bottom d-flex align-items-center gap-2 ${disabled ? 'opacity-50' : ''}" data-idx="${idx}" data-award-name="${utils.escapeHtml(row.awardName.toLowerCase())}" data-sector="${utils.escapeHtml(row.sector.toLowerCase())}">
           <input type="checkbox" class="form-check-input winners-cb" data-idx="${idx}"
                  ${checked} ${disabled ? 'disabled' : ''}
-                 onchange="eventsModule._updateWinnersSelectedCount()">
+                 data-on-change="eventsModule._updateWinnersSelectedCount">
           <div class="flex-grow-1">
             <div class="fw-semibold" style="font-size:0.9rem;">${utils.escapeHtml(row.awardName)}</div>
             <div class="small text-muted">${utils.escapeHtml(row.category)}</div>
           </div>
           <div style="width:200px;" class="text-end">
-            ${row.hasWinner
-              ? `<span class="badge bg-success"><i class="bi bi-trophy-fill me-1"></i>${utils.escapeHtml(row.winnerName)}</span>`
-              : '<span class="badge bg-secondary">No winner confirmed</span>'}
+            ${
+              row.hasWinner
+                ? `<span class="badge bg-success"><i class="bi bi-trophy-fill me-1"></i>${utils.escapeHtml(row.winnerName)}</span>`
+                : '<span class="badge bg-secondary">No winner confirmed</span>'
+            }
           </div>
           <div style="width:100px;" class="text-end">
             ${row.alreadyInRO ? '<span class="badge bg-info">In RO</span>' : ''}
@@ -7179,16 +7843,18 @@ const eventsModule = {
   },
 
   _winnersChecklistSelectAll(selectAll) {
-    document.querySelectorAll('.winners-cb:not(:disabled)').forEach(cb => { cb.checked = selectAll; });
+    document.querySelectorAll('.winners-cb:not(:disabled)').forEach((cb) => {
+      cb.checked = selectAll;
+    });
     this._updateWinnersSelectedCount();
   },
 
   _filterWinnersChecklist(term) {
     const lower = term.toLowerCase();
-    document.querySelectorAll('.winners-checklist-row').forEach(row => {
+    document.querySelectorAll('.winners-checklist-row').forEach((row) => {
       const name = row.dataset.awardName || '';
       const sector = row.dataset.sector || '';
-      row.style.display = (!term || name.includes(lower) || sector.includes(lower)) ? '' : 'none';
+      row.style.display = !term || name.includes(lower) || sector.includes(lower) ? '' : 'none';
     });
   },
 
@@ -7203,19 +7869,20 @@ const eventsModule = {
   async _submitWinnersChecklist() {
     const rows = this._winnersChecklistData || [];
     const selectedIdxs = [];
-    document.querySelectorAll('.winners-cb:checked:not(:disabled)').forEach(cb => {
+    document.querySelectorAll('.winners-cb:checked:not(:disabled)').forEach((cb) => {
       selectedIdxs.push(parseInt(cb.dataset.idx));
     });
 
-    if (selectedIdxs.length === 0) { utils.showToast('No awards selected', 'warning'); return; }
+    if (selectedIdxs.length === 0) {
+      utils.showToast('No awards selected', 'warning');
+      return;
+    }
 
     try {
       utils.showLoading();
       const eventId = this.currentEventIdRunningOrder;
       const existingCount = this.runningOrderItems.length;
-      const section = existingCount > 0
-        ? (this.runningOrderItems[existingCount - 1].section || 1)
-        : 1;
+      const section = existingCount > 0 ? this.runningOrderItems[existingCount - 1].section || 1 : 1;
 
       let added = 0;
       for (let i = 0; i < selectedIdxs.length; i++) {
@@ -7235,7 +7902,7 @@ const eventsModule = {
           display_order: order,
           section: section,
           duration_minutes: 3,
-          status: 'pending'
+          status: 'pending',
         };
 
         try {
@@ -7248,7 +7915,7 @@ const eventsModule = {
               event_id: eventId,
               item_name: row.awardName,
               display_order: order,
-              duration_minutes: 3
+              duration_minutes: 3,
             };
             try {
               await apiClient.insert('running_order', baseEntry);
@@ -7266,7 +7933,6 @@ const eventsModule = {
       bootstrap.Modal.getInstance(document.getElementById('addWinnersChecklistModal'))?.hide();
       await this.loadRunningOrder();
       this.renderRunningOrderItems();
-
     } catch (err) {
       console.error('Error adding winners:', err);
       utils.showToast('Failed to add winners: ' + err.message, 'error');
@@ -7280,12 +7946,14 @@ const eventsModule = {
    */
   addManualEntry() {
     const eventId = this.currentEventIdRunningOrder;
-    if (!eventId) { utils.showToast('No event selected', 'warning'); return; }
+    if (!eventId) {
+      utils.showToast('No event selected', 'warning');
+      return;
+    }
 
     const nextOrder = this.runningOrderItems.length + 1;
-    const section = this.runningOrderItems.length > 0
-      ? (this.runningOrderItems[this.runningOrderItems.length - 1].section || 1)
-      : 1;
+    const section =
+      this.runningOrderItems.length > 0 ? this.runningOrderItems[this.runningOrderItems.length - 1].section || 1 : 1;
     const nextAwardNum = `${section}-${String(nextOrder).padStart(2, '0')}`;
 
     const modalHtml = `
@@ -7322,19 +7990,19 @@ const eventsModule = {
                     <div class="row g-2">
                       <div class="col-md-4">
                         <label class="form-label small mb-1">Sector</label>
-                        <select class="form-select form-select-sm" id="manualSectorFilter" onchange="eventsModule._onManualSectorChange()">
+                        <select class="form-select form-select-sm" id="manualSectorFilter" data-on-change="eventsModule._onManualSectorChange">
                           <option value="">-- Select Sector --</option>
                         </select>
                       </div>
                       <div class="col-md-4">
                         <label class="form-label small mb-1">Category</label>
-                        <select class="form-select form-select-sm" id="manualCategoryFilter" onchange="eventsModule._onManualCategoryChange()" disabled>
+                        <select class="form-select form-select-sm" id="manualCategoryFilter" data-on-change="eventsModule._onManualCategoryChange" disabled>
                           <option value="">-- Select Sector first --</option>
                         </select>
                       </div>
                       <div class="col-md-4">
                         <label class="form-label small mb-1">Award</label>
-                        <select class="form-select form-select-sm" id="manualAwardSelect" onchange="eventsModule._onManualAwardSelect()" disabled>
+                        <select class="form-select form-select-sm" id="manualAwardSelect" data-on-change="eventsModule._onManualAwardSelect" disabled>
                           <option value="">-- Select Category first --</option>
                         </select>
                       </div>
@@ -7373,7 +8041,7 @@ const eventsModule = {
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="button" class="btn btn-primary" onclick="eventsModule.saveManualEntry()">
+              <button type="button" class="btn btn-primary" data-action="eventsModule.saveManualEntry">
                 <i class="bi bi-plus-circle me-2"></i>Add to Running Order
               </button>
             </div>
@@ -7386,7 +8054,9 @@ const eventsModule = {
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     const modal = new bootstrap.Modal(document.getElementById('addManualEntryModal'));
     modal.show();
-    document.getElementById('addManualEntryModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+    document.getElementById('addManualEntryModal').addEventListener('hidden.bs.modal', function () {
+      this.remove();
+    });
 
     // Load awards for this event and populate the sector dropdown
     this._loadAwardsForManualEntry();
@@ -7398,35 +8068,37 @@ const eventsModule = {
   async _loadAwardsForManualEntry() {
     try {
       // Try filtering by event_id first
-      let { data, error } = await STATE.client
-        .from('award_years')
-        .select('id, award_name, award_category, sector, event_id, winner_confirmed, prev_year_winner')
-        .eq('event_id', this.currentEventIdRunningOrder)
-        .order('sector', { ascending: true });
-
-      if (error) throw error;
+      /* selectAll: justified — scoped to single event */
+      let data = await apiClient.selectAll('award_years', {
+        select: 'id, award_name, award_category, sector, event_id, winner_confirmed, prev_year_winner',
+        filters: { event_id: this.currentEventIdRunningOrder },
+        sort: { column: 'sector', ascending: true },
+      });
 
       // If no awards linked to this event, load all active awards instead
       if (!data || data.length === 0) {
-        const fallback = await STATE.client
-          .from('award_years')
-          .select('id, award_name, award_category, sector, event_id, winner_confirmed, prev_year_winner')
-          .eq('is_active', true)
-          .order('sector', { ascending: true });
-        if (!fallback.error && fallback.data) data = fallback.data;
+        /* selectAll: justified — small reference table (active awards) */
+        data = await apiClient.selectAll('award_years', {
+          select: 'id, award_name, award_category, sector, event_id, winner_confirmed, prev_year_winner',
+          filters: { is_active: true },
+          sort: { column: 'sector', ascending: true },
+        });
       }
 
       this._manualEntryAwards = data || [];
 
       // Populate sector dropdown with distinct sectors
-      const sectors = [...new Set(this._manualEntryAwards.map(a => a.sector).filter(Boolean))].sort();
+      const sectors = [...new Set(this._manualEntryAwards.map((a) => a.sector).filter(Boolean))].sort();
       const sectorSelect = document.getElementById('manualSectorFilter');
       if (sectorSelect) {
         if (sectors.length === 0) {
           sectorSelect.innerHTML = '<option value="">No awards found</option>';
         } else {
-          sectorSelect.innerHTML = '<option value="">-- Select Sector (' + sectors.length + ') --</option>' +
-            sectors.map(s => `<option value="${utils.escapeHtml(s)}">${utils.escapeHtml(s)}</option>`).join('');
+          sectorSelect.innerHTML =
+            '<option value="">-- Select Sector (' +
+            sectors.length +
+            ') --</option>' +
+            sectors.map((s) => `<option value="${utils.escapeHtml(s)}">${utils.escapeHtml(s)}</option>`).join('');
         }
       }
     } catch (err) {
@@ -7455,11 +8127,14 @@ const eventsModule = {
       return;
     }
 
-    const filtered = this._manualEntryAwards.filter(a => a.sector === sector);
-    const categories = [...new Set(filtered.map(a => a.award_category).filter(Boolean))].sort();
+    const filtered = this._manualEntryAwards.filter((a) => a.sector === sector);
+    const categories = [...new Set(filtered.map((a) => a.award_category).filter(Boolean))].sort();
 
-    catSelect.innerHTML = '<option value="">-- Select Category (' + categories.length + ') --</option>' +
-      categories.map(c => `<option value="${utils.escapeHtml(c)}">${utils.escapeHtml(c)}</option>`).join('');
+    catSelect.innerHTML =
+      '<option value="">-- Select Category (' +
+      categories.length +
+      ') --</option>' +
+      categories.map((c) => `<option value="${utils.escapeHtml(c)}">${utils.escapeHtml(c)}</option>`).join('');
     catSelect.disabled = false;
   },
 
@@ -7478,19 +8153,25 @@ const eventsModule = {
       return;
     }
 
-    const filtered = this._manualEntryAwards.filter(a => a.sector === sector && a.award_category === category);
+    const filtered = this._manualEntryAwards.filter((a) => a.sector === sector && a.award_category === category);
 
     // Check which awards are already in the running order
-    const existingAwardIds = new Set(this.runningOrderItems.map(i => i.award_id).filter(Boolean));
+    const existingAwardIds = new Set(this.runningOrderItems.map((i) => i.award_id).filter(Boolean));
 
-    awardSelect.innerHTML = '<option value="">-- Select Award (' + filtered.length + ') --</option>' +
-      filtered.map(a => {
-        const alreadyAdded = existingAwardIds.has(a.id);
-        const label = utils.escapeHtml(a.award_name || 'Unnamed Award') +
-          (alreadyAdded ? ' (already in running order)' : '') +
-          (a.winner_confirmed ? ' \u2713' : '');
-        return `<option value="${a.id}" ${alreadyAdded ? 'class="text-muted"' : ''}>${label}</option>`;
-      }).join('');
+    awardSelect.innerHTML =
+      '<option value="">-- Select Award (' +
+      filtered.length +
+      ') --</option>' +
+      filtered
+        .map((a) => {
+          const alreadyAdded = existingAwardIds.has(a.id);
+          const label =
+            utils.escapeHtml(a.award_name || 'Unnamed Award') +
+            (alreadyAdded ? ' (already in running order)' : '') +
+            (a.winner_confirmed ? ' \u2713' : '');
+          return `<option value="${a.id}" ${alreadyAdded ? 'class="text-muted"' : ''}>${label}</option>`;
+        })
+        .join('');
     awardSelect.disabled = false;
   },
 
@@ -7505,7 +8186,7 @@ const eventsModule = {
       return;
     }
 
-    const award = this._manualEntryAwards.find(a => a.id === awardId);
+    const award = this._manualEntryAwards.find((a) => a.id === awardId);
     if (!award) return;
 
     // Auto-fill the award name field
@@ -7523,11 +8204,13 @@ const eventsModule = {
 
   async saveManualEntry() {
     const form = document.getElementById('addManualEntryForm');
-    if (!form.checkValidity()) { form.reportValidity(); return; }
+    if (!form.checkValidity()) {
+      form.reportValidity();
+      return;
+    }
 
-    const section = this.runningOrderItems.length > 0
-      ? (this.runningOrderItems[this.runningOrderItems.length - 1].section || 1)
-      : 1;
+    const section =
+      this.runningOrderItems.length > 0 ? this.runningOrderItems[this.runningOrderItems.length - 1].section || 1 : 1;
     const awardName = document.getElementById('manualAwardName').value.trim();
     const awardId = document.getElementById('manualAwardId').value || null;
 
@@ -7544,7 +8227,7 @@ const eventsModule = {
       duration_minutes: parseInt(document.getElementById('manualDuration').value) || 3,
       sponsor: document.getElementById('manualSponsor').value.trim() || null,
       notes: document.getElementById('manualNotes').value.trim() || null,
-      status: 'pending'
+      status: 'pending',
     };
     if (awardId) entryData.award_id = awardId;
 
@@ -7559,7 +8242,7 @@ const eventsModule = {
             event_id: entryData.event_id,
             item_name: awardName,
             display_order: entryData.display_order,
-            duration_minutes: entryData.duration_minutes
+            duration_minutes: entryData.duration_minutes,
           };
           await apiClient.insert('running_order', baseEntry);
         } else {
@@ -7585,8 +8268,11 @@ const eventsModule = {
    * Edit Running Order Item - Enhanced with time and duration
    */
   async editRunningOrderItem(itemId) {
-    const item = this.runningOrderItems.find(i => i.id === itemId);
-    if (!item) { utils.showToast('Item not found', 'error'); return; }
+    const item = this.runningOrderItems.find((i) => i.id === itemId);
+    if (!item) {
+      utils.showToast('Item not found', 'error');
+      return;
+    }
 
     // Resolve display values using same fallback logic as render
     const resolvedAwardName = item.award_name || item.item_name || (item.awards ? item.awards.award_name : '');
@@ -7628,12 +8314,16 @@ const eventsModule = {
                     </select>
                   </div>
                 </div>
-                ${this._roSectionConfig.length > 0 ? `<div class="mb-3">
+                ${
+                  this._roSectionConfig.length > 0
+                    ? `<div class="mb-3">
                   <label class="form-label">Section / Act</label>
                   <select class="form-select" id="editROSection">
-                    ${this._roSectionConfig.map(s => `<option value="${s.section}" ${(item.section || 1) === s.section ? 'selected' : ''}>${utils.escapeHtml(s.name || 'Section ' + s.section)}</option>`).join('')}
+                    ${this._roSectionConfig.map((s) => `<option value="${s.section}" ${(item.section || 1) === s.section ? 'selected' : ''}>${utils.escapeHtml(s.name || 'Section ' + s.section)}</option>`).join('')}
                   </select>
-                </div>` : ''}
+                </div>`
+                    : ''
+                }
                 <div class="mb-3">
                   <label class="form-label">Award Name</label>
                   <input type="text" class="form-control" id="editROAwardName" value="${utils.escapeHtml(resolvedAwardName)}">
@@ -7682,7 +8372,7 @@ const eventsModule = {
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="button" class="btn btn-success" onclick="eventsModule.updateRunningOrderItem('${itemId}')">
+              <button type="button" class="btn btn-success" data-action="eventsModule.updateRunningOrderItem" data-id="itemId">
                 <i class="bi bi-save me-2"></i>Save Changes
               </button>
             </div>
@@ -7695,7 +8385,9 @@ const eventsModule = {
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     const modal = new bootstrap.Modal(document.getElementById('editRunningOrderModal'));
     modal.show();
-    document.getElementById('editRunningOrderModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+    document.getElementById('editRunningOrderModal').addEventListener('hidden.bs.modal', function () {
+      this.remove();
+    });
   },
 
   async updateRunningOrderItem(itemId) {
@@ -7714,7 +8406,7 @@ const eventsModule = {
       table_number: parseInt(document.getElementById('editROTableNumber').value) || null,
       trophy_status: document.getElementById('editROTrophyStatus').value || 'not_started',
       notes: document.getElementById('editRONotes').value || null,
-      special_requirements: document.getElementById('editROSpecialReqs').value || null
+      special_requirements: document.getElementById('editROSpecialReqs').value || null,
     };
     const sectionEl = document.getElementById('editROSection');
     if (sectionEl) updateData.section = parseInt(sectionEl.value) || 1;
@@ -7728,7 +8420,7 @@ const eventsModule = {
           console.warn('Schema cache miss on running_order update, retrying with base columns');
           const baseUpdate = {
             item_name: awardName,
-            duration_minutes: updateData.duration_minutes
+            duration_minutes: updateData.duration_minutes,
           };
           await apiClient.update('running_order', itemId, baseUpdate);
         } else {
@@ -7765,6 +8457,142 @@ const eventsModule = {
   _selectedTableId: null,
   _canvasZoom: 1,
   _guestSearchTerm: '',
+  /** @type {boolean|null} null = unknown, true = columns exist, false = missing */
+  _eventTableHasPositionCols: null,
+
+  // ---- Table position localStorage helpers (fallback when DB columns missing) ----
+
+  _tablePositionsKey(eventId) {
+    return `table_positions_${eventId || this.currentEventIdTablePlan}`;
+  },
+
+  _loadLocalPositions() {
+    try {
+      const raw = localStorage.getItem(this._tablePositionsKey());
+      return raw ? JSON.parse(raw) : {};
+    } catch { return {}; }
+  },
+
+  _saveLocalPosition(tableId, x, y) {
+    const positions = this._loadLocalPositions();
+    positions[tableId] = { x, y };
+    localStorage.setItem(this._tablePositionsKey(), JSON.stringify(positions));
+  },
+
+  _saveLocalPositionsBatch(entries) {
+    const positions = this._loadLocalPositions();
+    for (const { id, x, y } of entries) {
+      positions[id] = { x, y };
+    }
+    localStorage.setItem(this._tablePositionsKey(), JSON.stringify(positions));
+  },
+
+  _mergeLocalPositions(tables) {
+    const positions = this._loadLocalPositions();
+    for (const t of tables) {
+      if ((!t.position_x && !t.position_y) || this._eventTableHasPositionCols === false) {
+        const saved = positions[t.id];
+        if (saved) {
+          t.position_x = saved.x;
+          t.position_y = saved.y;
+        }
+      }
+    }
+  },
+
+  /**
+   * Insert into event_tables, stripping position columns if they don't exist in DB.
+   * Saves positions to localStorage as fallback.
+   */
+  async _insertEventTable(data) {
+    const posX = data.position_x;
+    const posY = data.position_y;
+
+    if (this._eventTableHasPositionCols === false) {
+      const { position_x, position_y, ...rest } = data;
+      const result = await apiClient.insert('event_tables', rest);
+      // Save positions to localStorage — result may be the inserted row(s)
+      if (result && result.id) {
+        this._saveLocalPosition(result.id, posX, posY);
+      }
+      return result;
+    }
+
+    try {
+      const result = await apiClient.insert('event_tables', data);
+      if (this._eventTableHasPositionCols === null) this._eventTableHasPositionCols = true;
+      return result;
+    } catch (err) {
+      if (err.message?.includes('position_x') || err.message?.includes('schema cache')) {
+        this._eventTableHasPositionCols = false;
+        const { position_x, position_y, ...rest } = data;
+        const result = await apiClient.insert('event_tables', rest);
+        if (result && result.id) {
+          this._saveLocalPosition(result.id, posX, posY);
+        }
+        return result;
+      }
+      throw err;
+    }
+  },
+
+  /**
+   * Batch insert event_tables, stripping position columns if needed.
+   */
+  async _insertEventTablesBatch(rows) {
+    const positionEntries = rows.map(r => ({ position_x: r.position_x, position_y: r.position_y }));
+
+    if (this._eventTableHasPositionCols === false) {
+      const stripped = rows.map(({ position_x, position_y, ...rest }) => rest);
+      const results = await apiClient.insert('event_tables', stripped);
+      // Save positions locally using returned ids
+      if (Array.isArray(results)) {
+        const batch = results.map((r, i) => ({ id: r.id, x: positionEntries[i].position_x, y: positionEntries[i].position_y }));
+        this._saveLocalPositionsBatch(batch);
+      }
+      return results;
+    }
+
+    try {
+      const results = await apiClient.insert('event_tables', rows);
+      if (this._eventTableHasPositionCols === null) this._eventTableHasPositionCols = true;
+      return results;
+    } catch (err) {
+      if (err.message?.includes('position_x') || err.message?.includes('schema cache')) {
+        this._eventTableHasPositionCols = false;
+        const stripped = rows.map(({ position_x, position_y, ...rest }) => rest);
+        const results = await apiClient.insert('event_tables', stripped);
+        if (Array.isArray(results)) {
+          const batch = results.map((r, i) => ({ id: r.id, x: positionEntries[i].position_x, y: positionEntries[i].position_y }));
+          this._saveLocalPositionsBatch(batch);
+        }
+        return results;
+      }
+      throw err;
+    }
+  },
+
+  /**
+   * Update event_tables position, falling back to localStorage if columns missing.
+   */
+  async _updateEventTablePosition(tableId, x, y) {
+    if (this._eventTableHasPositionCols === false) {
+      this._saveLocalPosition(tableId, x, y);
+      return;
+    }
+
+    try {
+      await apiClient.update('event_tables', tableId, { position_x: x, position_y: y });
+      if (this._eventTableHasPositionCols === null) this._eventTableHasPositionCols = true;
+    } catch (err) {
+      if (err.message?.includes('position_x') || err.message?.includes('schema cache')) {
+        this._eventTableHasPositionCols = false;
+        this._saveLocalPosition(tableId, x, y);
+      } else {
+        throw err;
+      }
+    }
+  },
 
   /**
    * Open Table Plan Modal
@@ -7813,7 +8641,7 @@ const eventsModule = {
                 <span class="badge bg-warning text-dark" id="tpUnassignedBadge">${totalGuests} unassigned</span>
               </div>
               <div class="d-flex align-items-center gap-1 flex-shrink-0">
-                <button class="btn btn-sm btn-outline-light" onclick="eventsModule.autoAssignGuests()" title="Auto Assign">
+                <button class="btn btn-sm btn-outline-light" data-action="eventsModule.autoAssignGuests" title="Auto Assign">
                   <i class="bi bi-magic me-1"></i>Auto Assign
                 </button>
                 <div class="btn-group btn-group-sm">
@@ -7821,13 +8649,13 @@ const eventsModule = {
                     <i class="bi bi-download me-1"></i>Export
                   </button>
                   <ul class="dropdown-menu dropdown-menu-end">
-                    <li><a class="dropdown-item" href="#" onclick="eventsModule.exportTablePlanExcel(); return false;"><i class="bi bi-file-earmark-spreadsheet text-success me-2"></i>Export Excel (.xlsx)</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="eventsModule.exportTablePlanPDF(); return false;"><i class="bi bi-printer text-primary me-2"></i>Print Document</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0);" data-action="eventsModule.exportTablePlanExcel"><i class="bi bi-file-earmark-spreadsheet text-success me-2"></i>Export Excel (.xlsx)</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0);" data-action="eventsModule.exportTablePlanPDF"><i class="bi bi-printer text-primary me-2"></i>Print Document</a></li>
                     <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item" href="#" onclick="eventsModule.openTVDisplay(); return false;"><i class="bi bi-tv text-info me-2"></i>TV / Projector Display</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0);" data-action="eventsModule.openTVDisplay"><i class="bi bi-tv text-info me-2"></i>TV / Projector Display</a></li>
                   </ul>
                 </div>
-                <button class="btn btn-sm btn-outline-light" onclick="eventsModule.showTablePlanStats()" title="Stats Summary">
+                <button class="btn btn-sm btn-outline-light" data-action="eventsModule.showTablePlanStats" title="Stats Summary">
                   <i class="bi bi-bar-chart"></i>
                 </button>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
@@ -7864,11 +8692,11 @@ const eventsModule = {
                         <label class="form-label small fw-bold">Table Shape</label>
                         <div class="d-flex gap-2">
                           <label class="btn btn-sm btn-outline-secondary flex-fill active" id="tpShapeRoundLabel">
-                            <input type="radio" name="tpSetupShape" value="round" checked class="d-none" onchange="document.getElementById('tpShapeRoundLabel').classList.add('active');document.getElementById('tpShapeRectLabel').classList.remove('active');">
+                            <input type="radio" name="tpSetupShape" value="round" checked class="d-none" data-on-change="eventsModule._handleTableShapeChange">
                             <i class="bi bi-circle me-1"></i>Round
                           </label>
                           <label class="btn btn-sm btn-outline-secondary flex-fill" id="tpShapeRectLabel">
-                            <input type="radio" name="tpSetupShape" value="rectangular" class="d-none" onchange="document.getElementById('tpShapeRectLabel').classList.add('active');document.getElementById('tpShapeRoundLabel').classList.remove('active');">
+                            <input type="radio" name="tpSetupShape" value="rectangular" class="d-none" data-on-change="eventsModule._handleTableShapeChange">
                             <i class="bi bi-square me-1"></i>Rectangular
                           </label>
                         </div>
@@ -7881,10 +8709,10 @@ const eventsModule = {
                           <option value="circle">Circle / Horseshoe</option>
                         </select>
                       </div>
-                      <button class="btn btn-primary w-100" onclick="eventsModule.generateTableLayout()">
+                      <button class="btn btn-primary w-100" data-action="eventsModule.generateTableLayout">
                         <i class="bi bi-grid-3x3-gap me-1"></i>Generate Layout
                       </button>
-                      ${hasTables ? `<button class="btn btn-sm btn-link text-muted w-100 mt-1" onclick="document.getElementById('tpSetupPanel').style.display='none'; document.getElementById('tpGuestsPanel').style.display='flex';">Cancel</button>` : ''}
+                      ${hasTables ? `<button class="btn btn-sm btn-link text-muted w-100 mt-1" data-action="eventsModule.cancelTableSetup">Cancel</button>` : ''}
                     </div>
                   </div>
 
@@ -7893,7 +8721,7 @@ const eventsModule = {
                     <div class="p-2 border-bottom">
                       <div class="input-group input-group-sm">
                         <span class="input-group-text"><i class="bi bi-search"></i></span>
-                        <input type="text" class="form-control" id="tpGuestSearch" placeholder="Search guests or companies..." oninput="eventsModule.filterGuests(this.value)">
+                        <input type="text" class="form-control" id="tpGuestSearch" placeholder="Search guests or companies..." data-on-input="eventsModule.filterGuests">
                       </div>
                     </div>
 
@@ -7901,18 +8729,18 @@ const eventsModule = {
                     <div class="p-2 border-bottom">
                       <div class="d-flex justify-content-between align-items-center mb-1">
                         <small class="fw-bold text-muted">ROOM ELEMENTS</small>
-                        <button class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="document.getElementById('tpSetupPanel').style.display='block'; document.getElementById('tpGuestsPanel').style.display='none';" title="Room Setup">
+                        <button class="btn btn-sm btn-outline-secondary py-0 px-1" data-action="eventsModule.showRoomSetupPanel" title="Room Setup">
                           <i class="bi bi-gear" style="font-size: 0.75rem;"></i>
                         </button>
                       </div>
                       <div class="d-flex gap-1">
-                        <button class="btn btn-sm btn-outline-dark flex-fill" onclick="eventsModule.addRoomFixture('stage')" title="Add Stage">
+                        <button class="btn btn-sm btn-outline-dark flex-fill" data-action="eventsModule.addRoomFixture" data-id="stage" title="Add Stage">
                           <i class="bi bi-easel me-1"></i>Stage
                         </button>
-                        <button class="btn btn-sm btn-outline-dark flex-fill" onclick="eventsModule.addRoomFixture('photowall')" title="Add Photo Wall">
+                        <button class="btn btn-sm btn-outline-dark flex-fill" data-action="eventsModule.addRoomFixture" data-id="photowall" title="Add Photo Wall">
                           <i class="bi bi-camera me-1"></i>Photo Wall
                         </button>
-                        <button class="btn btn-sm btn-outline-dark flex-fill" onclick="eventsModule.addRoomFixture('av_booth')" title="Add AV Booth">
+                        <button class="btn btn-sm btn-outline-dark flex-fill" data-action="eventsModule.addRoomFixture" data-id="av_booth" title="Add AV Booth">
                           <i class="bi bi-soundwave me-1"></i>AV Booth
                         </button>
                       </div>
@@ -7933,28 +8761,28 @@ const eventsModule = {
                 <div class="flex-grow-1 d-flex flex-column position-relative" style="min-width: 0; overflow: hidden;">
                   <!-- Canvas Toolbar -->
                   <div class="d-flex align-items-center gap-2 p-2 border-bottom bg-white" style="flex-wrap: wrap;">
-                    <button class="btn btn-sm btn-primary" onclick="eventsModule.addNewTable()">
+                    <button class="btn btn-sm btn-primary" data-action="eventsModule.addNewTable">
                       <i class="bi bi-plus-circle me-1"></i>Add Table
                     </button>
                     <div class="vr"></div>
-                    <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.canvasZoom(0.1)" title="Zoom In">
+                    <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.canvasZoom" data-id="0.1" title="Zoom In">
                       <i class="bi bi-zoom-in"></i>
                     </button>
-                    <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.canvasZoom(-0.1)" title="Zoom Out">
+                    <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.canvasZoom" data-id="-0.1" title="Zoom Out">
                       <i class="bi bi-zoom-out"></i>
                     </button>
-                    <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.canvasZoom(0, true)" title="Reset Zoom (100%)">
+                    <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.resetCanvasZoom" title="Reset Zoom (100%)">
                       <i class="bi bi-aspect-ratio"></i>
                     </button>
-                    <small class="text-muted" id="tpZoomLevel" style="cursor:pointer; user-select:none;" onclick="eventsModule.canvasZoom(0, true)" title="Click to reset zoom">100%</small>
-                    <button class="btn btn-sm btn-outline-secondary" onclick="eventsModule.toggleCanvasFullscreen()" title="Fullscreen" id="tpFullscreenBtn">
+                    <small class="text-muted" id="tpZoomLevel" style="cursor:pointer; user-select:none;" data-action="eventsModule.resetCanvasZoom" title="Click to reset zoom">100%</small>
+                    <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.toggleCanvasFullscreen" title="Fullscreen" id="tpFullscreenBtn">
                       <i class="bi bi-arrows-fullscreen"></i>
                     </button>
                     <div class="vr"></div>
-                    <button class="btn btn-sm btn-outline-info" onclick="eventsModule.showTableIndex()" title="Table Index">
+                    <button class="btn btn-sm btn-outline-info" data-action="eventsModule.showTableIndex" title="Table Index">
                       <i class="bi bi-card-list me-1"></i>Index
                     </button>
-                    <button class="btn btn-sm btn-outline-danger" onclick="eventsModule.resetCanvas()" title="Reset Canvas">
+                    <button class="btn btn-sm btn-outline-danger" data-action="eventsModule.resetCanvas" title="Reset Canvas">
                       <i class="bi bi-arrow-counterclockwise me-1"></i>Reset
                     </button>
                     <small class="text-muted"><i class="bi bi-arrows-move me-1"></i>Drag to position. Drop guests onto tables.</small>
@@ -7962,8 +8790,7 @@ const eventsModule = {
 
                   <!-- Canvas (the room) -->
                   <div id="tpCanvasWrapper" class="flex-grow-1 overflow-auto position-relative" style="background: #f0f2f5; background-image: radial-gradient(circle, #d0d0d0 1px, transparent 1px); background-size: 30px 30px;"
-                       ondragover="eventsModule.handleCanvasDragOver(event)"
-                       ondrop="eventsModule.handleCanvasDrop(event)">
+                       data-canvas-drop="true">
                     <div id="tpCanvas" class="position-relative" style="width: 2400px; height: 1600px; transform-origin: 0 0;">
                       <!-- Tables rendered here as absolutely positioned elements -->
                     </div>
@@ -7974,7 +8801,7 @@ const eventsModule = {
                     <div id="tpBottomIndexDragHandle" style="height:6px; cursor:ns-resize; background:linear-gradient(180deg, #dee2e6 0%, #f8f9fa 100%); display:flex; align-items:center; justify-content:center;">
                       <div style="width:36px; height:3px; border-radius:2px; background:#adb5bd;"></div>
                     </div>
-                    <div class="d-flex align-items-center justify-content-between px-3 py-1 bg-light border-bottom" style="cursor:pointer;" onclick="eventsModule.toggleBottomIndex()">
+                    <div class="d-flex align-items-center justify-content-between px-3 py-1 bg-light border-bottom" style="cursor:pointer;" data-action="eventsModule.toggleBottomIndex">
                       <small class="fw-bold text-muted"><i class="bi bi-card-list me-1"></i>TABLE INDEX <span id="tpBottomIndexCount" class="badge bg-info ms-1">0</span></small>
                       <i class="bi bi-chevron-down" id="tpBottomIndexChevron" style="transition:transform 0.3s;"></i>
                     </div>
@@ -7982,9 +8809,9 @@ const eventsModule = {
                       <table class="table table-sm table-hover mb-0" style="font-size:0.78rem;">
                         <thead class="table-light sticky-top">
                           <tr>
-                            <th style="width:30%" class="tp-sortable" data-sort="table" onclick="eventsModule.sortBottomIndex('table')">Table <i class="bi bi-chevron-expand tp-sort-icon"></i></th>
-                            <th style="width:25%" class="tp-sortable" data-sort="guest" onclick="eventsModule.sortBottomIndex('guest')">Guest <i class="bi bi-chevron-expand tp-sort-icon"></i></th>
-                            <th style="width:25%" class="tp-sortable" data-sort="company" onclick="eventsModule.sortBottomIndex('company')">Company <i class="bi bi-chevron-expand tp-sort-icon"></i></th>
+                            <th style="width:30%" class="tp-sortable" data-sort="table" data-action="eventsModule.sortBottomIndex" data-id="table">Table <i class="bi bi-chevron-expand tp-sort-icon"></i></th>
+                            <th style="width:25%" class="tp-sortable" data-sort="guest" data-action="eventsModule.sortBottomIndex" data-id="guest">Guest <i class="bi bi-chevron-expand tp-sort-icon"></i></th>
+                            <th style="width:25%" class="tp-sortable" data-sort="company" data-action="eventsModule.sortBottomIndex" data-id="company">Company <i class="bi bi-chevron-expand tp-sort-icon"></i></th>
                             <th style="width:10%" class="text-center">Seat</th>
                             <th style="width:10%" class="text-center">VIP</th>
                           </tr>
@@ -8169,6 +8996,14 @@ const eventsModule = {
     this.renderCanvasTables();
     this.initBottomIndexDrag();
 
+    // Bind canvas wrapper dragover/drop listeners (for dropping guests onto canvas background)
+    const canvasWrapper = document.getElementById('tpCanvasWrapper');
+    if (canvasWrapper && !canvasWrapper._canvasWrapperBound) {
+      canvasWrapper._canvasWrapperBound = true;
+      canvasWrapper.addEventListener('dragover', (e) => this.handleCanvasDragOver(e));
+      canvasWrapper.addEventListener('drop', (e) => this.handleCanvasDrop(e));
+    }
+
     // Clean up
     document.getElementById('tablePlanModal').addEventListener('hidden.bs.modal', () => {
       document.getElementById('tablePlanModal').remove();
@@ -8180,14 +9015,14 @@ const eventsModule = {
    */
   async loadTablePlan() {
     try {
-      const { data: tables, error: tablesError } = await STATE.client
-        .from('event_tables')
-        .select('*')
-        .eq('event_id', this.currentEventIdTablePlan)
-        .eq('is_active', true)
-        .order('table_number', { ascending: true });
-
-      if (tablesError) {
+      let tables;
+      try {
+        /* selectAll: justified — scoped to single event */
+        tables = await apiClient.selectAll('event_tables', {
+          filters: { event_id: this.currentEventIdTablePlan, is_active: true },
+          sort: { column: 'table_number', ascending: true },
+        });
+      } catch (tablesError) {
         // Table may not exist in database yet
         if (tablesError.code === '42P01' || tablesError.message?.includes('does not exist')) {
           this.tables = [];
@@ -8198,33 +9033,49 @@ const eventsModule = {
       }
       this.tables = tables || [];
 
+      // Detect if DB has position columns by checking the first table row
+      if (this._eventTableHasPositionCols === null && this.tables.length > 0) {
+        this._eventTableHasPositionCols = 'position_x' in this.tables[0];
+      }
+
+      // Merge positions from localStorage if DB columns are missing
+      this._mergeLocalPositions(this.tables);
+
       // Load assignments for each table
       for (const table of this.tables) {
-        const { data: assignments, error: assignError } = await STATE.client
-          .from('table_assignments')
-          .select('*')
-          .eq('table_id', table.id);
-        if (assignError && assignError.code !== '42P01') throw assignError;
-        table.assignments = assignments || [];
+        try {
+          /* selectAll: justified — scoped to single table within single event */
+          const tableAssignments = await apiClient.selectAll('table_assignments', {
+            filters: { table_id: table.id },
+            select: '*, organisations(company_name)',
+          });
+          table.assignments = tableAssignments || [];
+        } catch (assignError) {
+          if (assignError.code !== '42P01') throw assignError;
+          table.assignments = [];
+        }
       }
 
       // Load unassigned guests
       try {
         const assignedGuestIds = new Set();
         for (const t of this.tables) {
-          (t.assignments || []).forEach(a => { if (a.guest_id) assignedGuestIds.add(a.guest_id); });
+          (t.assignments || []).forEach((a) => {
+            if (a.guest_id) assignedGuestIds.add(a.guest_id);
+          });
         }
 
         // Collect guests from event_guests (confirmed RSVPs)
         let allGuests = [];
         try {
-          const guestResult = await STATE.client
-            .from('event_guests')
-            .select('id, guest_name, guest_email, organisation_id, guest_type, plus_ones, rsvp_status, dietary_requirements')
-            .eq('event_id', this.currentEventIdTablePlan)
-            .eq('rsvp_status', 'confirmed');
-          if (!guestResult.error && guestResult.data) {
-            allGuests = guestResult.data.map(g => ({
+          /* selectAll: justified — scoped to single event */
+          const guestResult = await apiClient.selectAll('event_guests', {
+            select:
+              'id, guest_name, guest_email, organisation_id, guest_type, plus_ones, rsvp_status, dietary_requirements',
+            filters: { event_id: this.currentEventIdTablePlan, rsvp_status: 'confirmed' },
+          });
+          if (guestResult && guestResult.length > 0) {
+            allGuests = guestResult.map((g) => ({
               guest_id: g.id,
               guest_name: g.guest_name,
               guest_email: g.guest_email,
@@ -8232,7 +9083,7 @@ const eventsModule = {
               guest_type: g.guest_type || 'guest',
               plus_ones: g.plus_ones || 0,
               rsvp_status: g.rsvp_status,
-              dietary_requirements: g.dietary_requirements || null
+              dietary_requirements: g.dietary_requirements || null,
             }));
           }
         } catch (egErr) {
@@ -8242,15 +9093,20 @@ const eventsModule = {
         // Also pull from event_attendees (status = 'attending') so attendees
         // added via the Attendees modal appear in the table plan
         try {
-          const attResult = await STATE.client
-            .from('event_attendees')
-            .select('id, attendee_name, attendee_email, organisation_id, guest_type, plus_ones, meal_preference, notes')
-            .eq('event_id', this.currentEventIdTablePlan)
-            .in('rsvp_status', ['attending', 'confirmed']);
-          if (!attResult.error && attResult.data) {
+          /* selectAll: justified — scoped to single event */
+          const attData = await apiClient.selectAll('event_attendees', {
+            select: 'id, attendee_name, attendee_email, organisation_id, guest_type, plus_ones, meal_preference, notes',
+            filters: {
+              event_id: this.currentEventIdTablePlan,
+              rsvp_status: { op: 'in', value: ['attending', 'confirmed'] },
+            },
+          });
+          if (attData && attData.length > 0) {
             // Deduplicate: skip if same name+email already present from event_guests
-            const existingKeys = new Set(allGuests.map(g => (g.guest_name || '').toLowerCase() + '|' + (g.guest_email || '').toLowerCase()));
-            for (const a of attResult.data) {
+            const existingKeys = new Set(
+              allGuests.map((g) => (g.guest_name || '').toLowerCase() + '|' + (g.guest_email || '').toLowerCase())
+            );
+            for (const a of attData) {
               const key = (a.attendee_name || '').toLowerCase() + '|' + (a.attendee_email || '').toLowerCase();
               if (!existingKeys.has(key)) {
                 existingKeys.add(key);
@@ -8263,7 +9119,7 @@ const eventsModule = {
                   plus_ones: a.plus_ones || 0,
                   rsvp_status: 'confirmed',
                   dietary_requirements: a.meal_preference || null,
-                  notes: a.notes || null
+                  notes: a.notes || null,
                 });
               }
             }
@@ -8273,19 +9129,23 @@ const eventsModule = {
         }
 
         // Enrich with company name from organisations if possible
-        const orgIds = [...new Set(allGuests.filter(g => g.organisation_id).map(g => g.organisation_id))];
+        const orgIds = [...new Set(allGuests.filter((g) => g.organisation_id).map((g) => g.organisation_id))];
         const orgMap = {};
         if (orgIds.length > 0) {
-          const { data: orgs } = await STATE.client
-            .from('organisations')
-            .select('id, company_name')
-            .in('id', orgIds);
-          if (orgs) orgs.forEach(o => { orgMap[o.id] = o.company_name; });
+          /* selectAll: justified — filtered to known org IDs from single event */
+          const orgsData = await apiClient.selectAll('organisations', {
+            select: 'id, company_name',
+            filters: { id: { op: 'in', value: orgIds } },
+          });
+          if (orgsData)
+            orgsData.forEach((o) => {
+              orgMap[o.id] = o.company_name;
+            });
         }
 
         this.unassignedGuests = allGuests
-          .filter(g => !assignedGuestIds.has(g.guest_id))
-          .map(g => ({ ...g, company_name: orgMap[g.organisation_id] || null }));
+          .filter((g) => !assignedGuestIds.has(g.guest_id))
+          .map((g) => ({ ...g, company_name: orgMap[g.organisation_id] || null }));
       } catch (rpcErr) {
         console.warn('Error loading unassigned guests:', rpcErr);
         this.unassignedGuests = [];
@@ -8293,12 +9153,12 @@ const eventsModule = {
 
       // Load room fixtures (stage, photowall, AV booth)
       try {
-        const { data: fixtures, error: fixturesError } = await STATE.client
-          .from('event_room_fixtures')
-          .select('*')
-          .eq('event_id', this.currentEventIdTablePlan);
+        /* selectAll: justified — scoped to single event */
+        const fixtures = await apiClient.selectAll('event_room_fixtures', {
+          filters: { event_id: this.currentEventIdTablePlan },
+        });
 
-        if (!fixturesError && fixtures) {
+        if (fixtures) {
           this.roomFixtures = fixtures;
         } else {
           // Table may not exist - fall back to localStorage
@@ -8311,10 +9171,25 @@ const eventsModule = {
         const stored = localStorage.getItem(key);
         this.roomFixtures = stored ? JSON.parse(stored) : [];
       }
-
     } catch (error) {
       console.error('Error loading table plan:', error);
       throw error;
+    }
+  },
+
+  /**
+   * Handle table shape radio button change via data-on-change delegation.
+   * Toggles active class on the corresponding label elements.
+   */
+  _handleTableShapeChange(value) {
+    const roundLabel = document.getElementById('tpShapeRoundLabel');
+    const rectLabel = document.getElementById('tpShapeRectLabel');
+    if (value === 'round') {
+      if (roundLabel) roundLabel.classList.add('active');
+      if (rectLabel) rectLabel.classList.remove('active');
+    } else {
+      if (rectLabel) rectLabel.classList.add('active');
+      if (roundLabel) roundLabel.classList.remove('active');
     }
   },
 
@@ -8334,7 +9209,15 @@ const eventsModule = {
 
     // Confirm if tables already exist
     if (this.tables.length > 0) {
-      if (!await utils.confirmDialog({ title: 'Add Tables', message: `This will add ${count} new tables to the existing ${this.tables.length} tables. Continue?`, confirmText: 'Add Tables', danger: false })) return;
+      if (
+        !(await utils.confirmDialog({
+          title: 'Add Tables',
+          message: `This will add ${count} new tables to the existing ${this.tables.length} tables. Continue?`,
+          confirmText: 'Add Tables',
+          danger: false,
+        }))
+      )
+        return;
     }
 
     try {
@@ -8346,21 +9229,17 @@ const eventsModule = {
       // Get starting table number
       const maxNum = this.tables.reduce((max, t) => Math.max(max, t.table_number || 0), 0);
 
-      // Batch insert all tables
+      // Batch insert all tables (resilient to missing position columns)
       const tablesToInsert = positions.map((pos, i) => ({
         event_id: this.currentEventIdTablePlan,
         table_number: maxNum + i + 1,
         total_seats: seats,
         shape: shape,
         position_x: pos.x,
-        position_y: pos.y
+        position_y: pos.y,
       }));
 
-      const { error } = await STATE.client
-        .from('event_tables')
-        .insert(tablesToInsert);
-
-      if (error) throw error;
+      await this._insertEventTablesBatch(tablesToInsert);
 
       utils.showToast(`${count} tables created`, 'success');
 
@@ -8382,7 +9261,6 @@ const eventsModule = {
       const unassignedBadge = document.getElementById('tpUnassignedBadge');
       if (seatedBadge) seatedBadge.textContent = totalSeated + ' seated';
       if (unassignedBadge) unassignedBadge.textContent = this.unassignedGuests.length + ' unassigned';
-
     } catch (error) {
       console.error('Error generating table layout:', error);
       utils.showToast('Failed to generate layout: ' + error.message, 'error');
@@ -8410,7 +9288,7 @@ const eventsModule = {
         const row = Math.floor(i / cols);
         positions.push({
           x: startX + col * spacing,
-          y: startY + row * spacing
+          y: startY + row * spacing,
         });
       }
     } else if (layout === 'banquet') {
@@ -8424,20 +9302,20 @@ const eventsModule = {
         const row = Math.floor(i / 2);
         positions.push({
           x: startX + col * aisleWidth,
-          y: startY + row * spacing
+          y: startY + row * spacing,
         });
       }
     } else if (layout === 'circle') {
       // Circle/horseshoe arrangement
       const centerX = 800;
       const centerY = 700;
-      const radius = Math.max(250, count * spacing / (2 * Math.PI));
+      const radius = Math.max(250, (count * spacing) / (2 * Math.PI));
       for (let i = 0; i < count; i++) {
         // Spread around ~300 degrees (horseshoe, open at bottom)
-        const angle = (Math.PI * 1.2) + (i / (count)) * (Math.PI * 1.6);
+        const angle = Math.PI * 1.2 + (i / count) * (Math.PI * 1.6);
         positions.push({
           x: Math.round(centerX + radius * Math.cos(angle)),
-          y: Math.round(centerY + radius * Math.sin(angle))
+          y: Math.round(centerY + radius * Math.sin(angle)),
         });
       }
     }
@@ -8456,7 +9334,8 @@ const eventsModule = {
     const groups = {};
     for (const g of guests) {
       const key = g.company_name || '__none__';
-      if (!groups[key]) groups[key] = { company_name: g.company_name || null, organisation_id: g.organisation_id || null, guests: [] };
+      if (!groups[key])
+        groups[key] = { company_name: g.company_name || null, organisation_id: g.organisation_id || null, guests: [] };
       groups[key].guests.push(g);
     }
     // Sort: companies with names first, then "No Company"
@@ -8487,57 +9366,91 @@ const eventsModule = {
     // Filter
     let filtered = this.unassignedGuests;
     if (this._guestSearchTerm) {
-      filtered = filtered.filter(g =>
-        (g.guest_name || '').toLowerCase().includes(this._guestSearchTerm) ||
-        (g.company_name || '').toLowerCase().includes(this._guestSearchTerm)
+      filtered = filtered.filter(
+        (g) =>
+          (g.guest_name || '').toLowerCase().includes(this._guestSearchTerm) ||
+          (g.company_name || '').toLowerCase().includes(this._guestSearchTerm)
       );
     }
 
     const groups = this._groupGuestsByCompany(filtered);
 
-    container.innerHTML = groups.map(group => {
-      const companyLabel = group.company_name
-        ? utils.escapeHtml(group.company_name)
-        : '<span class="no-company-label">No Company</span>';
+    container.innerHTML = groups
+      .map((group) => {
+        const companyLabel = group.company_name
+          ? utils.escapeHtml(group.company_name)
+          : '<span class="no-company-label">No Company</span>';
 
-      return `
+        return `
         <div class="company-group">
           <div class="company-header draggable-company"
                draggable="true"
                data-company-name="${utils.escapeHtml(group.company_name || '')}"
                data-organisation-id="${group.organisation_id || ''}"
-               ondragstart="eventsModule.handleCompanyDragStart(event)"
-               ondragend="eventsModule.handleGuestDragEnd(event)"
-               onclick="this.nextElementSibling.classList.toggle('d-none')">
+               data-drag="company-item"
+               data-action="eventsModule.toggleCompanyGuests">
             <span>${companyLabel}</span>
             <span class="badge bg-secondary">${group.guests.length}</span>
           </div>
           <div class="company-guests">
-            ${group.guests.map(guest => {
-              const typeBadge = guest.guest_type && guest.guest_type !== 'guest'
-                ? `<span class="badge bg-${guest.guest_type === 'vip' ? 'warning text-dark' : guest.guest_type === 'speaker' ? 'primary' : guest.guest_type === 'sponsor' ? 'info' : 'secondary'}" style="font-size:0.55rem; padding:1px 4px; margin-left:4px;">${guest.guest_type.toUpperCase()}</span>`
-                : '';
-              const dietaryIcon = guest.dietary_requirements
-                ? `<i class="bi bi-egg-fried text-warning ms-1" style="font-size:0.65rem;" title="${utils.escapeHtml(guest.dietary_requirements)}"></i>`
-                : '';
-              return `
+            ${group.guests
+              .map((guest) => {
+                const typeBadge =
+                  guest.guest_type && guest.guest_type !== 'guest'
+                    ? `<span class="badge bg-${guest.guest_type === 'vip' ? 'warning text-dark' : guest.guest_type === 'speaker' ? 'primary' : guest.guest_type === 'sponsor' ? 'info' : 'secondary'}" style="font-size:0.55rem; padding:1px 4px; margin-left:4px;">${guest.guest_type.toUpperCase()}</span>`
+                    : '';
+                const dietaryIcon = guest.dietary_requirements
+                  ? `<i class="bi bi-egg-fried text-warning ms-1" style="font-size:0.65rem;" title="${utils.escapeHtml(guest.dietary_requirements)}"></i>`
+                  : '';
+                return `
               <div class="guest-chip"
                    draggable="true"
                    data-guest-id="${guest.guest_id}"
                    data-guest-name="${utils.escapeHtml(guest.guest_name)}"
                    data-company-name="${utils.escapeHtml(guest.company_name || '')}"
                    data-organisation-id="${guest.organisation_id || ''}"
-                   ondragstart="eventsModule.handleGuestDragStart(event)"
-                   ondragend="eventsModule.handleGuestDragEnd(event)">
+                   data-drag="guest-item">
                 <i class="bi bi-person-fill text-muted" style="font-size:0.75rem;"></i>
                 <span class="guest-name">${utils.escapeHtml(guest.guest_name)}</span>
                 ${typeBadge}${dietaryIcon}
                 ${guest.plus_ones > 0 ? `<span class="badge bg-info ms-auto" style="font-size:0.6rem;">+${guest.plus_ones}</span>` : ''}
               </div>`;
-            }).join('')}
+              })
+              .join('')}
           </div>
         </div>`;
-    }).join('');
+      })
+      .join('');
+
+    // Bind drag event listeners via delegation on the guest list container
+    this._bindGuestDragListeners(container);
+  },
+
+  /**
+   * Bind drag event listeners for guest chips and company headers using event delegation.
+   * Attaches once per container element.
+   */
+  _bindGuestDragListeners(container) {
+    if (!container || container._guestDragBound) return;
+    container._guestDragBound = true;
+
+    container.addEventListener('dragstart', (e) => {
+      const company = e.target.closest('[data-drag="company-item"]');
+      if (company) {
+        eventsModule.handleCompanyDragStart(_eventProxy(e, company));
+        return;
+      }
+      const guest = e.target.closest('[data-drag="guest-item"]');
+      if (guest) {
+        eventsModule.handleGuestDragStart(_eventProxy(e, guest));
+      }
+    });
+    container.addEventListener('dragend', (e) => {
+      const item = e.target.closest('[data-drag="company-item"], [data-drag="guest-item"]');
+      if (item) {
+        eventsModule.handleGuestDragEnd(_eventProxy(e, item));
+      }
+    });
   },
 
   // ---- CANVAS: Render tables as positioned shapes ----
@@ -8567,12 +9480,21 @@ const eventsModule = {
       // Place seats along the perimeter of rectangle
       const perimeter = 2 * (w + h);
       for (let i = 0; i < seats; i++) {
-        const t = (i + 0.5) / seats * perimeter;
+        const t = ((i + 0.5) / seats) * perimeter;
         let x, y;
-        if (t < w) { x = t; y = -dotSize / 2 - 4; }
-        else if (t < w + h) { x = w + dotSize / 2 - 4; y = t - w; }
-        else if (t < 2 * w + h) { x = w - (t - w - h); y = h + dotSize / 2 - 4; }
-        else { x = -dotSize / 2 - 4; y = h - (t - 2 * w - h); }
+        if (t < w) {
+          x = t;
+          y = -dotSize / 2 - 4;
+        } else if (t < w + h) {
+          x = w + dotSize / 2 - 4;
+          y = t - w;
+        } else if (t < 2 * w + h) {
+          x = w - (t - w - h);
+          y = h + dotSize / 2 - 4;
+        } else {
+          x = -dotSize / 2 - 4;
+          y = h - (t - 2 * w - h);
+        }
         dots.push({ x: x - dotSize / 2, y: y - dotSize / 2 });
       }
     } else {
@@ -8585,7 +9507,7 @@ const eventsModule = {
         const angle = (2 * Math.PI * i) / seats - Math.PI / 2;
         dots.push({
           x: cx + rx * Math.cos(angle) - dotSize / 2,
-          y: cy + ry * Math.sin(angle) - dotSize / 2
+          y: cy + ry * Math.sin(angle) - dotSize / 2,
         });
       }
     }
@@ -8611,7 +9533,7 @@ const eventsModule = {
       sizer.appendChild(canvas);
     }
     if (sizer) {
-      sizer.style.width  = Math.round(2400 * z) + 'px';
+      sizer.style.width = Math.round(2400 * z) + 'px';
       sizer.style.height = Math.round(1600 * z) + 'px';
     }
     const zoomLabel = document.getElementById('tpZoomLevel');
@@ -8631,39 +9553,41 @@ const eventsModule = {
     // Render fixtures (stage, photowall, AV booth)
     const fixturesHtml = this._renderFixtures();
 
-    canvas.innerHTML = fixturesHtml + this.tables.map(table => {
-      const sz = this._getTableSize(table);
-      const assignedCount = table.assignments?.length || 0;
-      const capClass = this._getCapacityClass(assignedCount, table.total_seats);
-      const shapeClass = table.shape || 'round';
-      const selected = table.id === this._selectedTableId ? 'selected' : '';
+    canvas.innerHTML =
+      fixturesHtml +
+      this.tables
+        .map((table) => {
+          const sz = this._getTableSize(table);
+          const assignedCount = table.assignments?.length || 0;
+          const capClass = this._getCapacityClass(assignedCount, table.total_seats);
+          const shapeClass = table.shape || 'round';
+          const selected = table.id === this._selectedTableId ? 'selected' : '';
 
-      // Default positions if not set - spread tables across canvas
-      const idx = this.tables.indexOf(table);
-      const px = table.position_x || 80 + (idx % 6) * 200;
-      const py = table.position_y || 80 + Math.floor(idx / 6) * 200;
+          // Default positions if not set - spread tables across canvas
+          const idx = this.tables.indexOf(table);
+          const px = table.position_x || 80 + (idx % 6) * 200;
+          const py = table.position_y || 80 + Math.floor(idx / 6) * 200;
 
-      // Padding around the table shape for seat dots
-      const pad = 30;
-      const totalW = sz.w + pad * 2;
-      const totalH = sz.h + pad * 2;
+          // Padding around the table shape for seat dots
+          const pad = 30;
+          const totalW = sz.w + pad * 2;
+          const totalH = sz.h + pad * 2;
 
-      // Seat dots
-      const dots = this._seatDotPositions(table.total_seats, shapeClass, sz.w, sz.h);
-      const dotsHtml = dots.map((d, i) => {
-        const occupied = i < assignedCount;
-        return `<div class="seat-dot ${occupied ? 'occupied' : ''}" style="left:${d.x + pad}px; top:${d.y + pad}px;">${occupied ? '' : ''}</div>`;
-      }).join('');
+          // Seat dots
+          const dots = this._seatDotPositions(table.total_seats, shapeClass, sz.w, sz.h);
+          const dotsHtml = dots
+            .map((d, i) => {
+              const occupied = i < assignedCount;
+              return `<div class="seat-dot ${occupied ? 'occupied' : ''}" style="left:${d.x + pad}px; top:${d.y + pad}px;">${occupied ? '' : ''}</div>`;
+            })
+            .join('');
 
-      return `
+          return `
         <div class="tp-table-el ${selected}"
              data-table-id="${table.id}"
              style="left:${px}px; top:${py}px; width:${totalW}px; height:${totalH}px;"
-             onmousedown="eventsModule.startTableDrag(event, '${table.id}')"
-             onclick="eventsModule.selectTable(event, '${table.id}')"
-             ondragover="eventsModule.handleTableDragOver(event)"
-             ondrop="eventsModule.handleTableDrop(event, '${table.id}')"
-             ondragleave="eventsModule.handleTableDragLeave(event)">
+             data-drag="table-item"
+             data-action="eventsModule.selectTable" data-id="${table.id}">
           ${dotsHtml}
           <div class="tp-table-shape ${shapeClass} ${capClass}"
                style="width:${sz.w}px; height:${sz.h}px; margin:${pad}px;">
@@ -8672,10 +9596,76 @@ const eventsModule = {
             <div class="seat-badge">${assignedCount}/${table.total_seats} seats</div>
           </div>
         </div>`;
-    }).join('');
+        })
+        .join('');
+
+    // Bind drag/mousedown event listeners on the canvas for tables and fixtures
+    this._bindCanvasTableListeners(canvas);
 
     // Keep bottom index panel in sync
     this.renderTableIndexPanel();
+  },
+
+  /**
+   * Bind mousedown, dragover, drop, and dragleave listeners on the canvas element
+   * for table elements and fixture elements using event delegation.
+   * Attaches once per canvas element.
+   */
+  _bindCanvasTableListeners(canvas) {
+    if (!canvas || canvas._canvasTableBound) return;
+    canvas._canvasTableBound = true;
+
+    // Mousedown: handles fixture resize, fixture drag, and table drag
+    canvas.addEventListener('mousedown', (e) => {
+      // Fixture resize handles
+      const resizeHandle = e.target.closest('[data-fixture-resize]');
+      if (resizeHandle) {
+        const dir = resizeHandle.getAttribute('data-fixture-resize');
+        const fixtureId = resizeHandle.getAttribute('data-fixture-resize-id');
+        eventsModule.startFixtureResize(e, fixtureId, dir);
+        return;
+      }
+      // Fixture stop-propagation buttons (e.g. remove button)
+      const stopProp = e.target.closest('[data-fixture-stop-prop]');
+      if (stopProp) {
+        e.stopPropagation();
+        return;
+      }
+      // Fixture drag
+      const fixture = e.target.closest('[data-drag="fixture-item"]');
+      if (fixture) {
+        const fixtureId = fixture.getAttribute('data-fixture-id');
+        eventsModule.startFixtureDrag(_eventProxy(e, fixture), fixtureId);
+        return;
+      }
+      // Table drag
+      const table = e.target.closest('[data-drag="table-item"]');
+      if (table) {
+        const tableId = table.getAttribute('data-table-id');
+        eventsModule.startTableDrag(e, tableId);
+      }
+    });
+
+    // Dragover: for guest/company drop onto tables
+    canvas.addEventListener('dragover', (e) => {
+      const table = e.target.closest('[data-drag="table-item"]');
+      if (table) eventsModule.handleTableDragOver(_eventProxy(e, table));
+    });
+
+    // Drop: handle guest/company drop onto tables
+    canvas.addEventListener('drop', (e) => {
+      const table = e.target.closest('[data-drag="table-item"]');
+      if (table) {
+        const tableId = table.getAttribute('data-table-id');
+        eventsModule.handleTableDrop(_eventProxy(e, table), tableId);
+      }
+    });
+
+    // Dragleave: remove hover styles
+    canvas.addEventListener('dragleave', (e) => {
+      const table = e.target.closest('[data-drag="table-item"]');
+      if (table) eventsModule.handleTableDragLeave(_eventProxy(e, table));
+    });
   },
 
   // ==== BOTTOM TABLE INDEX PANEL ====
@@ -8739,12 +9729,13 @@ const eventsModule = {
 
   _updateBottomIndexSortIcons() {
     const ths = document.querySelectorAll('#tpBottomIndex th.tp-sortable');
-    ths.forEach(th => {
+    ths.forEach((th) => {
       const col = th.dataset.sort;
       const icon = th.querySelector('.tp-sort-icon');
       if (col === this._bottomIndexSort.col) {
         th.classList.add('sort-active');
-        if (icon) icon.className = 'bi tp-sort-icon ' + (this._bottomIndexSort.asc ? 'bi-sort-down-alt' : 'bi-sort-down');
+        if (icon)
+          icon.className = 'bi tp-sort-icon ' + (this._bottomIndexSort.asc ? 'bi-sort-down-alt' : 'bi-sort-down');
       } else {
         th.classList.remove('sort-active');
         if (icon) icon.className = 'bi bi-chevron-expand tp-sort-icon';
@@ -8771,16 +9762,16 @@ const eventsModule = {
     this.tables
       .slice()
       .sort((a, b) => a.table_number - b.table_number)
-      .forEach(t => {
+      .forEach((t) => {
         const tableName = t.table_name ? utils.escapeHtml(t.table_name) : 'Table ' + t.table_number;
-        (t.assignments || []).forEach(a => {
+        (t.assignments || []).forEach((a) => {
           rows.push({
             tableName,
             tableNumber: t.table_number,
             guestName: a.guest_name || '',
             companyName: a.company_name || '',
             seatNumber: a.seat_number || '-',
-            isVip: a.is_vip
+            isVip: a.is_vip,
           });
         });
       });
@@ -8799,13 +9790,25 @@ const eventsModule = {
     const dir = asc ? 1 : -1;
     rows.sort((a, b) => {
       let va, vb;
-      if (col === 'table')   { va = a.tableNumber; vb = b.tableNumber; return (va - vb) * dir; }
-      if (col === 'guest')   { va = a.guestName.toLowerCase(); vb = b.guestName.toLowerCase(); }
-      if (col === 'company') { va = a.companyName.toLowerCase(); vb = b.companyName.toLowerCase(); }
+      if (col === 'table') {
+        va = a.tableNumber;
+        vb = b.tableNumber;
+        return (va - vb) * dir;
+      }
+      if (col === 'guest') {
+        va = a.guestName.toLowerCase();
+        vb = b.guestName.toLowerCase();
+      }
+      if (col === 'company') {
+        va = a.companyName.toLowerCase();
+        vb = b.companyName.toLowerCase();
+      }
       return va < vb ? -dir : va > vb ? dir : 0;
     });
 
-    tbody.innerHTML = rows.map(r => `
+    tbody.innerHTML = rows
+      .map(
+        (r) => `
       <tr>
         <td><strong>${r.tableName}</strong></td>
         <td>${utils.escapeHtml(r.guestName)}</td>
@@ -8813,7 +9816,9 @@ const eventsModule = {
         <td class="text-center">${r.seatNumber}</td>
         <td class="text-center">${r.isVip ? '<i class="bi bi-star-fill text-warning"></i>' : ''}</td>
       </tr>
-    `).join('');
+    `
+      )
+      .join('');
 
     this._updateBottomIndexSortIcons();
   },
@@ -8821,9 +9826,16 @@ const eventsModule = {
   // ==== ROOM FIXTURES (Stage, Photo Wall, AV Booth) ====
 
   _fixtureConfig: {
-    stage:     { label: 'Stage',      icon: 'bi-easel',     color: '#6f42c1', bg: '#f3e8ff', defaultW: 400, defaultH: 150 },
-    photowall: { label: 'Photo Wall', icon: 'bi-camera',    color: '#0d6efd', bg: '#e7f1ff', defaultW: 200, defaultH: 80  },
-    av_booth:  { label: 'AV Booth',   icon: 'bi-soundwave', color: '#198754', bg: '#e8f5e9', defaultW: 120, defaultH: 100 }
+    stage: { label: 'Stage', icon: 'bi-easel', color: '#6f42c1', bg: '#f3e8ff', defaultW: 400, defaultH: 150 },
+    photowall: { label: 'Photo Wall', icon: 'bi-camera', color: '#0d6efd', bg: '#e7f1ff', defaultW: 200, defaultH: 80 },
+    av_booth: {
+      label: 'AV Booth',
+      icon: 'bi-soundwave',
+      color: '#198754',
+      bg: '#e8f5e9',
+      defaultW: 120,
+      defaultH: 100,
+    },
   },
 
   /**
@@ -8842,19 +9854,16 @@ const eventsModule = {
       position_x: 100 + this.roomFixtures.length * 50,
       position_y: 50 + this.roomFixtures.length * 30,
       width: config.defaultW,
-      height: config.defaultH
+      height: config.defaultH,
     };
 
     // Try saving to DB first, fall back to localStorage
     try {
-      const { data, error } = await STATE.client
-        .from('event_room_fixtures')
-        .insert([fixture])
-        .select()
-        .single();
+      const { data } = await apiClient.insert('event_room_fixtures', fixture);
+      const insertedFixture = Array.isArray(data) ? data[0] : data;
 
-      if (!error && data) {
-        fixture.id = data.id;
+      if (insertedFixture) {
+        fixture.id = insertedFixture.id;
         this.roomFixtures.push(fixture);
       } else {
         this.roomFixtures.push(fixture);
@@ -8873,30 +9882,36 @@ const eventsModule = {
    * Render all room fixtures as HTML elements
    */
   _renderFixtures() {
-    return this.roomFixtures.map(f => {
-      const config = this._fixtureConfig[f.fixture_type] || this._fixtureConfig.stage;
-      const selected = f.id === this._selectedFixtureId;
-      const label = f.label || config.label;
+    return this.roomFixtures
+      .map((f) => {
+        const config = this._fixtureConfig[f.fixture_type] || this._fixtureConfig.stage;
+        const selected = f.id === this._selectedFixtureId;
+        const label = f.label || config.label;
 
-      return `
+        return `
         <div class="tp-fixture ${selected ? 'tp-fixture-selected' : ''}"
              data-fixture-id="${f.id}"
              style="left:${f.position_x}px; top:${f.position_y}px; width:${f.width}px; height:${f.height}px;
                     background: ${config.bg}; border: 2.5px ${f.fixture_type === 'stage' ? 'double' : 'dashed'} ${config.color};"
-             onmousedown="eventsModule.startFixtureDrag(event, '${f.id}')">
+             data-drag="fixture-item">
           <div class="tp-fixture-label" style="color:${config.color};">
             <i class="bi ${config.icon} me-1"></i>${utils.escapeHtml(label)}
           </div>
-          ${selected ? `<div class="tp-fixture-actions">
-            <button class="btn btn-sm btn-outline-danger py-0 px-1" onmousedown="event.stopPropagation();" onclick="eventsModule.removeFixture('${f.id}')" title="Remove">
+          ${
+            selected
+              ? `<div class="tp-fixture-actions">
+            <button class="btn btn-sm btn-outline-danger py-0 px-1" data-fixture-stop-prop="true" data-action="eventsModule.removeFixture" data-id="f.id" title="Remove">
               <i class="bi bi-trash" style="font-size:0.7rem;"></i>
             </button>
-          </div>` : ''}
-          <div class="tp-fixture-resize-handle tp-resize-se" onmousedown="eventsModule.startFixtureResize(event, '${f.id}', 'se')"></div>
-          <div class="tp-fixture-resize-handle tp-resize-e" onmousedown="eventsModule.startFixtureResize(event, '${f.id}', 'e')"></div>
-          <div class="tp-fixture-resize-handle tp-resize-s" onmousedown="eventsModule.startFixtureResize(event, '${f.id}', 's')"></div>
+          </div>`
+              : ''
+          }
+          <div class="tp-fixture-resize-handle tp-resize-se" data-fixture-resize="se" data-fixture-resize-id="${f.id}"></div>
+          <div class="tp-fixture-resize-handle tp-resize-e" data-fixture-resize="e" data-fixture-resize-id="${f.id}"></div>
+          <div class="tp-fixture-resize-handle tp-resize-s" data-fixture-resize="s" data-fixture-resize-id="${f.id}"></div>
         </div>`;
-    }).join('');
+      })
+      .join('');
   },
 
   /**
@@ -8920,7 +9935,7 @@ const eventsModule = {
       startY: event.clientY,
       origLeft: parseInt(el.style.left) || 0,
       origTop: parseInt(el.style.top) || 0,
-      moved: false
+      moved: false,
     };
 
     const onMove = (e) => {
@@ -8940,7 +9955,7 @@ const eventsModule = {
       if (this._fixtureDrag.moved) {
         const newX = Math.max(0, Math.round(parseInt(this._fixtureDrag.el.style.left)));
         const newY = Math.max(0, Math.round(parseInt(this._fixtureDrag.el.style.top)));
-        const fixture = this.roomFixtures.find(f => f.id === fixtureId);
+        const fixture = this.roomFixtures.find((f) => f.id === fixtureId);
         if (fixture) {
           fixture.position_x = newX;
           fixture.position_y = newY;
@@ -8965,7 +9980,7 @@ const eventsModule = {
     event.preventDefault();
     event.stopPropagation();
 
-    const fixture = this.roomFixtures.find(f => f.id === fixtureId);
+    const fixture = this.roomFixtures.find((f) => f.id === fixtureId);
     if (!fixture) return;
 
     const el = document.querySelector(`[data-fixture-id="${fixtureId}"]`);
@@ -8978,7 +9993,7 @@ const eventsModule = {
       startX: event.clientX,
       startY: event.clientY,
       origW: fixture.width,
-      origH: fixture.height
+      origH: fixture.height,
     };
 
     const onMove = (e) => {
@@ -9004,7 +10019,7 @@ const eventsModule = {
       const newW = Math.max(60, Math.round(parseInt(this._fixtureResize.el.style.width)));
       const newH = Math.max(40, Math.round(parseInt(this._fixtureResize.el.style.height)));
 
-      const fixture = this.roomFixtures.find(f => f.id === fixtureId);
+      const fixture = this.roomFixtures.find((f) => f.id === fixtureId);
       if (fixture) {
         fixture.width = newW;
         fixture.height = newH;
@@ -9023,16 +10038,16 @@ const eventsModule = {
    * Remove a fixture from the canvas
    */
   async removeFixture(fixtureId) {
-    if (!await utils.confirmDialog({ title: 'Remove Element', message: 'Remove this element?', confirmText: 'Remove' })) return;
+    if (
+      !(await utils.confirmDialog({ title: 'Remove Element', message: 'Remove this element?', confirmText: 'Remove' }))
+    )
+      return;
 
-    this.roomFixtures = this.roomFixtures.filter(f => f.id !== fixtureId);
+    this.roomFixtures = this.roomFixtures.filter((f) => f.id !== fixtureId);
     if (this._selectedFixtureId === fixtureId) this._selectedFixtureId = null;
 
     try {
-      await STATE.client
-        .from('event_room_fixtures')
-        .delete()
-        .eq('id', fixtureId);
+      await apiClient.delete('event_room_fixtures', fixtureId);
     } catch (e) {
       // Fall back to localStorage
     }
@@ -9046,19 +10061,16 @@ const eventsModule = {
    */
   async _saveFixture(fixture) {
     try {
-      const { error } = await STATE.client
-        .from('event_room_fixtures')
-        .upsert({
-          id: fixture.id,
-          event_id: fixture.event_id,
-          fixture_type: fixture.fixture_type,
-          label: fixture.label,
-          position_x: fixture.position_x,
-          position_y: fixture.position_y,
-          width: fixture.width,
-          height: fixture.height
-        });
-      if (error) throw error;
+      await apiClient.upsert('event_room_fixtures', {
+        id: fixture.id,
+        event_id: fixture.event_id,
+        fixture_type: fixture.fixture_type,
+        label: fixture.label,
+        position_x: fixture.position_x,
+        position_y: fixture.position_y,
+        width: fixture.width,
+        height: fixture.height,
+      });
     } catch (e) {
       this._saveFixturesToLocalStorage();
     }
@@ -9086,7 +10098,9 @@ const eventsModule = {
     if (document.fullscreenElement) {
       document.exitFullscreen().catch(() => {});
     } else {
-      (target.requestFullscreen || target.webkitRequestFullscreen || target.msRequestFullscreen).call(target).catch(() => {});
+      (target.requestFullscreen || target.webkitRequestFullscreen || target.msRequestFullscreen)
+        .call(target)
+        .catch(() => {});
     }
     // Update icon on change
     const updateIcon = () => {
@@ -9114,7 +10128,7 @@ const eventsModule = {
       startY: event.clientY,
       origLeft: parseInt(el.style.left) || 0,
       origTop: parseInt(el.style.top) || 0,
-      moved: false
+      moved: false,
     };
 
     el.classList.add('dragging-table');
@@ -9142,13 +10156,13 @@ const eventsModule = {
         const newX = Math.max(0, Math.round(parseInt(this._tableDrag.el.style.left)));
         const newY = Math.max(0, Math.round(parseInt(this._tableDrag.el.style.top)));
         try {
-          await STATE.client
-            .from('event_tables')
-            .update({ position_x: newX, position_y: newY })
-            .eq('id', tableId);
+          await this._updateEventTablePosition(tableId, newX, newY);
           // Update local data
-          const t = this.tables.find(t => t.id === tableId);
-          if (t) { t.position_x = newX; t.position_y = newY; }
+          const t = this.tables.find((t) => t.id === tableId);
+          if (t) {
+            t.position_x = newX;
+            t.position_y = newY;
+          }
         } catch (err) {
           console.error('Error saving table position:', err);
         }
@@ -9178,8 +10192,12 @@ const eventsModule = {
     const content = document.getElementById('tpDetailContent');
     if (!panel || !content) return;
 
-    const table = this.tables.find(t => t.id === tableId);
-    if (!table) { panel.style.display = 'none'; this._updateBottomIndexInset(); return; }
+    const table = this.tables.find((t) => t.id === tableId);
+    if (!table) {
+      panel.style.display = 'none';
+      this._updateBottomIndexInset();
+      return;
+    }
 
     const assignedCount = table.assignments?.length || 0;
     const availableSeats = table.total_seats - assignedCount;
@@ -9190,8 +10208,8 @@ const eventsModule = {
     const vipTypes = new Set(['vip', 'sponsor', 'speaker']);
     // Sort: VIP/sponsor companies first, then "No Company" last, then alphabetical
     orgGroupsArr.sort((a, b) => {
-      const aHasVip = a.guests.some(g => vipTypes.has(g.guest_type));
-      const bHasVip = b.guests.some(g => vipTypes.has(g.guest_type));
+      const aHasVip = a.guests.some((g) => vipTypes.has(g.guest_type));
+      const bHasVip = b.guests.some((g) => vipTypes.has(g.guest_type));
       const pa = !a.company_name ? 0 : aHasVip ? 2 : 1;
       const pb = !b.company_name ? 0 : bHasVip ? 2 : 1;
       if (pa !== pb) return pb - pa;
@@ -9200,41 +10218,48 @@ const eventsModule = {
       return (a.company_name || '').localeCompare(b.company_name || '');
     });
 
-    const orgPickerHtml = availableSeats > 0 && orgGroupsArr.length > 0 ? `
+    const orgPickerHtml =
+      availableSeats > 0 && orgGroupsArr.length > 0
+        ? `
       <div class="mb-2">
         <small class="fw-bold text-muted d-block mb-1">ASSIGN ORGANISATION</small>
-        <input type="text" class="form-control form-control-sm mb-1" id="tpOrgSearch" placeholder="Search companies..." oninput="eventsModule._filterOrgPicker(this.value)">
+        <input type="text" class="form-control form-control-sm mb-1" id="tpOrgSearch" placeholder="Search companies..." data-on-input="eventsModule._filterOrgPicker">
         <div id="tpOrgPickerList" style="max-height: 180px; overflow-y: auto;">
-          ${orgGroupsArr.map(grp => {
-            const orgKey = grp.company_name || '__none__';
-            const name = grp.company_name || 'No Company';
-            const guestCount = grp.guests.length;
-            const fitsAll = guestCount <= availableSeats;
-            const hasVip = grp.guests.some(g => vipTypes.has(g.guest_type));
-            const vipBadge = hasVip ? '<span class="badge bg-warning text-dark ms-1" style="font-size:0.65rem;">VIP</span>' : '';
-            return `<div class="tp-org-pick-item d-flex align-items-center justify-content-between p-2 mb-1 rounded border" style="cursor:pointer; font-size:0.82rem; background:${hasVip ? '#fff8e1' : '#f8f9fa'}; transition: background 0.15s; ${hasVip ? 'border-color:#ffc107 !important;' : ''}"
-              onmouseover="this.style.background='#e3f2fd'"
-              onmouseout="this.style.background='${hasVip ? '#fff8e1' : '#f8f9fa'}'"
+          ${orgGroupsArr
+            .map((grp) => {
+              const orgKey = grp.company_name || '__none__';
+              const name = grp.company_name || 'No Company';
+              const guestCount = grp.guests.length;
+              const fitsAll = guestCount <= availableSeats;
+              const hasVip = grp.guests.some((g) => vipTypes.has(g.guest_type));
+              const vipBadge = hasVip
+                ? '<span class="badge bg-warning text-dark ms-1" style="font-size:0.65rem;">VIP</span>'
+                : '';
+              return `<div class="tp-org-pick-item hover-highlight d-flex align-items-center justify-content-between p-2 mb-1 rounded border" style="cursor:pointer; font-size:0.82rem; background:${hasVip ? '#fff8e1' : '#f8f9fa'}; transition: background 0.15s; ${hasVip ? 'border-color:#ffc107 !important;' : ''}"
               data-org-name="${utils.escapeHtml(name).toLowerCase()}"
-              onclick="eventsModule.assignOrgToTable('${table.id}', ${JSON.stringify(orgKey).replace(/'/g, '\\x27')})">
+              data-action="eventsModule.assignOrgToTable" data-table-id="${table.id}" data-org-key="${utils.escapeHtml(JSON.stringify(orgKey))}">
               <div>
                 <div class="fw-medium"><i class="bi bi-building me-1 text-muted"></i>${utils.escapeHtml(name)}${vipBadge}</div>
                 <small class="text-muted">${guestCount} guest${guestCount !== 1 ? 's' : ''}</small>
               </div>
               <span class="badge ${fitsAll ? 'bg-success' : 'bg-warning text-dark'}">${fitsAll ? 'Fits' : guestCount + '/' + availableSeats}</span>
             </div>`;
-          }).join('')}
+            })
+            .join('')}
         </div>
       </div>
       <hr>
-    ` : availableSeats === 0 ? `
+    `
+        : availableSeats === 0
+          ? `
       <div class="alert alert-info py-2 mb-2" style="font-size:0.8rem;"><i class="bi bi-check-circle me-1"></i>Table is full</div>
-    ` : '';
+    `
+          : '';
 
     content.innerHTML = `
       <div class="detail-header">
         <h6 class="mb-0">${table.table_name ? utils.escapeHtml(table.table_name) : 'Table ' + table.table_number}</h6>
-        <button class="btn btn-sm btn-outline-light" onclick="eventsModule.closeTableDetail()">
+        <button class="btn btn-sm btn-outline-light" data-action="eventsModule.closeTableDetail">
           <i class="bi bi-x-lg"></i>
         </button>
       </div>
@@ -9258,17 +10283,17 @@ const eventsModule = {
             </select>
           </div>
         </div>
-        <button class="btn btn-sm btn-primary mb-2" onclick="eventsModule.saveTableProperties('${table.id}')">
+        <button class="btn btn-sm btn-primary mb-2" data-action="eventsModule.saveTableProperties" data-id="table.id">
           <i class="bi bi-check-lg me-1"></i>Save Changes
         </button>
         <div class="d-flex gap-2 mb-2">
-          <button class="btn btn-sm btn-outline-secondary flex-fill" onclick="eventsModule.duplicateTable('${table.id}')">
+          <button class="btn btn-sm btn-outline-secondary flex-fill" data-action="eventsModule.duplicateTable" data-id="table.id">
             <i class="bi bi-copy me-1"></i>Duplicate
           </button>
-          <button class="btn btn-sm btn-outline-warning flex-fill" onclick="eventsModule.clearTable('${table.id}')" ${assignedCount === 0 ? 'disabled' : ''}>
+          <button class="btn btn-sm btn-outline-warning flex-fill" data-action="eventsModule.clearTable" data-id="table.id" ${assignedCount === 0 ? 'disabled' : ''}>
             <i class="bi bi-eraser me-1"></i>Clear All
           </button>
-          <button class="btn btn-sm btn-outline-danger flex-fill" onclick="eventsModule.deleteTable('${table.id}')">
+          <button class="btn btn-sm btn-outline-danger flex-fill" data-action="eventsModule.deleteTable" data-id="table.id">
             <i class="bi bi-trash me-1"></i>Delete
           </button>
         </div>
@@ -9278,26 +10303,39 @@ const eventsModule = {
           <small class="fw-bold text-muted">SEATED GUESTS (${assignedCount}/${table.total_seats})</small>
         </div>
         <div class="flex-grow-1 overflow-auto">
-          ${table.assignments && table.assignments.length > 0 ? table.assignments.map(a => `
+          ${
+            table.assignments && table.assignments.length > 0
+              ? table.assignments
+                  .map(
+                    (a) => `
             <div class="seated-guest">
               <div style="min-width:0;">
                 <div class="fw-medium">${utils.escapeHtml(a.guest_name)}${(() => {
                   const gt = a.guest_type || (a.is_vip ? 'vip' : '');
-                  if (gt === 'vip') return ' <span class="badge bg-warning text-dark" style="font-size:0.55rem; padding:1px 4px;">VIP</span>';
-                  if (gt === 'speaker') return ' <span class="badge bg-info text-dark" style="font-size:0.55rem; padding:1px 4px;">SPEAKER</span>';
-                  if (gt === 'sponsor') return ' <span class="badge bg-success" style="font-size:0.55rem; padding:1px 4px;">SPONSOR</span>';
-                  if (gt === 'media') return ' <span class="badge bg-purple text-white" style="font-size:0.55rem; padding:1px 4px;">MEDIA</span>';
-                  if (gt === 'staff') return ' <span class="badge bg-secondary" style="font-size:0.55rem; padding:1px 4px;">STAFF</span>';
+                  if (gt === 'vip')
+                    return ' <span class="badge bg-warning text-dark" style="font-size:0.55rem; padding:1px 4px;">VIP</span>';
+                  if (gt === 'speaker')
+                    return ' <span class="badge bg-info text-dark" style="font-size:0.55rem; padding:1px 4px;">SPEAKER</span>';
+                  if (gt === 'sponsor')
+                    return ' <span class="badge bg-success" style="font-size:0.55rem; padding:1px 4px;">SPONSOR</span>';
+                  if (gt === 'media')
+                    return ' <span class="badge bg-purple text-white" style="font-size:0.55rem; padding:1px 4px;">MEDIA</span>';
+                  if (gt === 'staff')
+                    return ' <span class="badge bg-secondary" style="font-size:0.55rem; padding:1px 4px;">STAFF</span>';
                   return '';
                 })()}</div>
                 ${a.company_name ? `<small class="text-muted">${utils.escapeHtml(a.company_name)}</small>` : ''}
                 ${a.dietary_requirements ? `<small class="text-warning d-block" style="font-size:0.7rem;"><i class="bi bi-egg-fried me-1"></i>${utils.escapeHtml(a.dietary_requirements)}</small>` : ''}
               </div>
-              <span class="remove-x" onclick="eventsModule.removeGuestFromTable('${a.id}')" title="Remove">
+              <span class="remove-x" data-action="eventsModule.removeGuestFromTable" data-id="a.id" title="Remove">
                 <i class="bi bi-x-circle-fill"></i>
               </span>
             </div>
-          `).join('') : '<p class="text-muted small text-center mt-3">Click a company above or drag guests from the left panel</p>'}
+          `
+                  )
+                  .join('')
+              : '<p class="text-muted small text-center mt-3">Click a company above or drag guests from the left panel</p>'
+          }
         </div>
       </div>
     `;
@@ -9312,7 +10350,7 @@ const eventsModule = {
   _filterOrgPicker(term) {
     const items = document.querySelectorAll('#tpOrgPickerList .tp-org-pick-item');
     const search = (term || '').toLowerCase();
-    items.forEach(el => {
+    items.forEach((el) => {
       const name = el.getAttribute('data-org-name') || '';
       el.style.display = name.includes(search) ? '' : 'none';
     });
@@ -9322,14 +10360,14 @@ const eventsModule = {
    * Assign an entire organisation's guests to a table
    */
   async assignOrgToTable(tableId, orgKey) {
-    const table = this.tables.find(t => t.id === tableId);
+    const table = this.tables.find((t) => t.id === tableId);
     if (!table) return;
 
     const assignedCount = table.assignments?.length || 0;
     const availableSeats = table.total_seats - assignedCount;
 
     // Get guests for this org from unassigned list
-    const guests = this.unassignedGuests.filter(g => {
+    const guests = this.unassignedGuests.filter((g) => {
       const key = g.company_name || '__none__';
       return key === orgKey;
     });
@@ -9341,20 +10379,31 @@ const eventsModule = {
 
     const toAssign = guests.slice(0, availableSeats);
     if (toAssign.length < guests.length) {
-      if (!await utils.confirmDialog({ title: 'Limited Seats', message: `Only ${availableSeats} seat(s) available. Assign ${toAssign.length} of ${guests.length} guests?`, confirmText: 'Assign', danger: false })) return;
+      if (
+        !(await utils.confirmDialog({
+          title: 'Limited Seats',
+          message: `Only ${availableSeats} seat(s) available. Assign ${toAssign.length} of ${guests.length} guests?`,
+          confirmText: 'Assign',
+          danger: false,
+        }))
+      )
+        return;
     }
 
     try {
       // Calculate taken seat numbers to auto-assign
-      const takenSeats = new Set((table.assignments || []).map(a => a.seat_number).filter(Boolean));
+      const takenSeats = new Set((table.assignments || []).map((a) => a.seat_number).filter(Boolean));
       const nextSeat = () => {
         for (let s = 1; s <= table.total_seats + 10; s++) {
-          if (!takenSeats.has(s)) { takenSeats.add(s); return s; }
+          if (!takenSeats.has(s)) {
+            takenSeats.add(s);
+            return s;
+          }
         }
         return null;
       };
 
-      const assignments = toAssign.map(g => ({
+      const assignments = toAssign.map((g) => ({
         event_id: this.currentEventIdTablePlan,
         table_id: tableId,
         guest_id: g.guest_id || g.id,
@@ -9364,25 +10413,27 @@ const eventsModule = {
         seat_number: nextSeat(),
         is_vip: g.guest_type === 'vip' || g.guest_type === 'sponsor' || g.guest_type === 'speaker',
         guest_type: g.guest_type || 'guest',
-        dietary_requirements: g.dietary_requirements || null
+        dietary_requirements: g.dietary_requirements || null,
       }));
 
-      const { error } = await STATE.client
-        .from('table_assignments')
-        .insert(assignments);
-
-      // If batch fails (e.g. FK constraint), fall back to one-by-one
-      if (error) {
-        console.warn('Batch org-assign failed, trying one-by-one:', error.message);
+      try {
+        await apiClient.insert('table_assignments', assignments);
+        utils.showToast(`${toAssign.length} guest(s) assigned`, 'success');
+      } catch (batchErr) {
+        // If batch fails (e.g. FK constraint), fall back to one-by-one
+        console.warn('Batch org-assign failed, trying one-by-one:', batchErr.message);
         let inserted = 0;
         for (const row of assignments) {
-          const res = await STATE.client.from('table_assignments').insert([row]);
-          if (!res.error) inserted++;
+          try {
+            await apiClient.insert('table_assignments', row);
+            inserted++;
+          } catch (_) {}
         }
-        if (inserted === 0) throw error;
-        utils.showToast(`${inserted} of ${assignments.length} guest(s) assigned${inserted < assignments.length ? ' (some failed)' : ''}`, inserted < assignments.length ? 'warning' : 'success');
-      } else {
-        utils.showToast(`${toAssign.length} guest(s) assigned`, 'success');
+        if (inserted === 0) throw batchErr;
+        utils.showToast(
+          `${inserted} of ${assignments.length} guest(s) assigned${inserted < assignments.length ? ' (some failed)' : ''}`,
+          inserted < assignments.length ? 'warning' : 'success'
+        );
       }
 
       await this.loadTablePlan();
@@ -9390,7 +10441,6 @@ const eventsModule = {
       this.renderCanvasTables();
       this.showTableDetail(tableId);
       this._updateHeaderBadges();
-
     } catch (error) {
       console.error('Error assigning org to table:', error);
       utils.showToast('Failed to assign guests: ' + error.message, 'error');
@@ -9411,32 +10461,38 @@ const eventsModule = {
     const shape = document.getElementById('tpEditShape')?.value || 'round';
 
     // Validate seat count vs assigned guests
-    const table = this.tables.find(t => t.id === tableId);
+    const table = this.tables.find((t) => t.id === tableId);
     const assignedCount = table?.assignments?.length || 0;
     if (seats < assignedCount) {
-      utils.showToast(`Cannot reduce to ${seats} seats — ${assignedCount} guest(s) already assigned. Remove guests first.`, 'warning');
+      utils.showToast(
+        `Cannot reduce to ${seats} seats — ${assignedCount} guest(s) already assigned. Remove guests first.`,
+        'warning'
+      );
       return;
     }
 
     try {
-      const { error } = await STATE.client
-        .from('event_tables')
-        .update({ table_name: name, total_seats: seats, shape })
-        .eq('id', tableId);
-      if (error) throw error;
+      await apiClient.update('event_tables', tableId, { table_name: name, total_seats: seats, shape });
     } catch (error) {
       console.warn('DB update for table properties failed, using localStorage:', error);
       const key = `bta_event_tables_${this.currentEventIdRunningOrder || 'unknown'}`;
       const stored = JSON.parse(localStorage.getItem(key) || '[]');
-      const idx = stored.findIndex(t => t.id === tableId);
-      if (idx >= 0) { Object.assign(stored[idx], { table_name: name, total_seats: seats, shape }); }
-      else { stored.push({ id: tableId, table_name: name, total_seats: seats, shape }); }
+      const idx = stored.findIndex((t) => t.id === tableId);
+      if (idx >= 0) {
+        Object.assign(stored[idx], { table_name: name, total_seats: seats, shape });
+      } else {
+        stored.push({ id: tableId, table_name: name, total_seats: seats, shape });
+      }
       localStorage.setItem(key, JSON.stringify(stored));
     }
 
     // Update local
-    const t = this.tables.find(t => t.id === tableId);
-    if (t) { t.table_name = name; t.total_seats = seats; t.shape = shape; }
+    const t = this.tables.find((t) => t.id === tableId);
+    if (t) {
+      t.table_name = name;
+      t.total_seats = seats;
+      t.shape = shape;
+    }
 
     utils.showToast('Table updated', 'success');
     this.renderCanvasTables();
@@ -9453,7 +10509,7 @@ const eventsModule = {
       guest_id: el.dataset.guestId,
       guest_name: el.dataset.guestName,
       company_name: el.dataset.companyName,
-      organisation_id: el.dataset.organisationId
+      organisation_id: el.dataset.organisationId,
     };
     el.classList.add('dragging');
     event.dataTransfer.setData('text/plain', 'guest');
@@ -9464,9 +10520,7 @@ const eventsModule = {
     const el = event.currentTarget;
     const companyName = el.dataset.companyName;
     this.draggedGuestIsCompany = true;
-    this.draggedCompanyGuests = this.unassignedGuests.filter(g =>
-      (g.company_name || '') === (companyName || '')
-    );
+    this.draggedCompanyGuests = this.unassignedGuests.filter((g) => (g.company_name || '') === (companyName || ''));
     this.draggedGuestData = null;
     el.classList.add('dragging');
     event.dataTransfer.setData('text/plain', 'company');
@@ -9501,16 +10555,19 @@ const eventsModule = {
     event.stopPropagation();
     event.currentTarget.classList.remove('drag-over-table');
 
-    const table = this.tables.find(t => t.id === tableId);
+    const table = this.tables.find((t) => t.id === tableId);
     if (!table) return;
 
     const assignedCount = table.assignments?.length || 0;
 
     // Calculate taken seat numbers to auto-assign next available
-    const takenSeats = new Set((table.assignments || []).map(a => a.seat_number).filter(Boolean));
+    const takenSeats = new Set((table.assignments || []).map((a) => a.seat_number).filter(Boolean));
     const _nextSeat = (offset) => {
       for (let s = 1; s <= table.total_seats + offset + 10; s++) {
-        if (!takenSeats.has(s)) { takenSeats.add(s); return s; }
+        if (!takenSeats.has(s)) {
+          takenSeats.add(s);
+          return s;
+        }
       }
       return null;
     };
@@ -9534,28 +10591,37 @@ const eventsModule = {
           seat_number: _nextSeat(i),
           is_vip: g.guest_type === 'vip' || g.guest_type === 'sponsor' || g.guest_type === 'speaker',
           guest_type: g.guest_type || 'guest',
-          dietary_requirements: g.dietary_requirements || null
+          dietary_requirements: g.dietary_requirements || null,
         }));
-        const { error } = await STATE.client.from('table_assignments').insert(rows);
-        // If batch fails (e.g. FK constraint), fall back to one-by-one
-        if (error) {
-          console.warn('Batch insert failed, trying one-by-one:', error.message);
+        let batchInsertOk = true;
+        try {
+          await apiClient.insert('table_assignments', rows);
+        } catch (batchErr2) {
+          batchInsertOk = false;
+          // If batch fails (e.g. FK constraint), fall back to one-by-one
+          console.warn('Batch insert failed, trying one-by-one:', batchErr2.message);
           let inserted = 0;
           for (const row of rows) {
-            const res = await STATE.client.from('table_assignments').insert([row]);
-            if (!res.error) inserted++;
+            try {
+              await apiClient.insert('table_assignments', row);
+              inserted++;
+            } catch (_) {}
           }
-          if (inserted === 0) throw error;
+          if (inserted === 0) throw batchErr2;
           if (inserted < rows.length) {
             utils.showToast(`${inserted} of ${rows.length} guest(s) assigned (some failed)`, 'warning');
           } else {
             utils.showToast(`${inserted} guest(s) assigned to table`, 'success');
           }
-        } else {
+        }
+        if (batchInsertOk) {
           utils.showToast(`${toAssign.length} guest(s) assigned to table`, 'success');
         }
         if (toAssign.length < this.draggedCompanyGuests.length) {
-          utils.showToast(`${this.draggedCompanyGuests.length - toAssign.length} guest(s) didn't fit - table full`, 'warning');
+          utils.showToast(
+            `${this.draggedCompanyGuests.length - toAssign.length} guest(s) didn't fit - table full`,
+            'warning'
+          );
         }
         await this.loadTablePlan();
         this.renderUnassignedGuests();
@@ -9574,23 +10640,22 @@ const eventsModule = {
       }
       try {
         // Look up full guest data for dietary info
-        const fullGuest = this.unassignedGuests.find(g =>
-          (g.guest_id || g.id) === this.draggedGuestData.guest_id);
-        const { error } = await STATE.client
-          .from('table_assignments')
-          .insert([{
-            event_id: this.currentEventIdTablePlan,
-            table_id: tableId,
-            guest_id: this.draggedGuestData.guest_id,
-            guest_name: this.draggedGuestData.guest_name,
-            organisation_id: this.draggedGuestData.organisation_id || null,
-            company_name: this.draggedGuestData.company_name || null,
-            seat_number: _nextSeat(0),
-            is_vip: fullGuest?.guest_type === 'vip' || fullGuest?.guest_type === 'sponsor' || fullGuest?.guest_type === 'speaker',
-            guest_type: fullGuest?.guest_type || 'guest',
-            dietary_requirements: fullGuest?.dietary_requirements || null
-          }]);
-        if (error) throw error;
+        const fullGuest = this.unassignedGuests.find((g) => (g.guest_id || g.id) === this.draggedGuestData.guest_id);
+        await apiClient.insert('table_assignments', {
+          event_id: this.currentEventIdTablePlan,
+          table_id: tableId,
+          guest_id: this.draggedGuestData.guest_id,
+          guest_name: this.draggedGuestData.guest_name,
+          organisation_id: this.draggedGuestData.organisation_id || null,
+          company_name: this.draggedGuestData.company_name || null,
+          seat_number: _nextSeat(0),
+          is_vip:
+            fullGuest?.guest_type === 'vip' ||
+            fullGuest?.guest_type === 'sponsor' ||
+            fullGuest?.guest_type === 'speaker',
+          guest_type: fullGuest?.guest_type || 'guest',
+          dietary_requirements: fullGuest?.dietary_requirements || null,
+        });
         utils.showToast('Guest assigned to table', 'success');
         await this.loadTablePlan();
         this.renderUnassignedGuests();
@@ -9613,8 +10678,9 @@ const eventsModule = {
   async addNewTable() {
     try {
       let nextNumber;
-      const { data: rpcResult, error: numberError } = await STATE.client
-        .rpc('get_next_table_number', { p_event_id: this.currentEventIdTablePlan });
+      const { data: rpcResult, error: numberError } = await STATE.client.rpc('get_next_table_number', {
+        p_event_id: this.currentEventIdTablePlan,
+      });
       if (numberError) {
         // RPC may not exist - compute next table number client-side
         console.warn('get_next_table_number RPC not available, computing locally');
@@ -9631,22 +10697,18 @@ const eventsModule = {
       const cx = Math.round((scrollLeft + 300) / this._canvasZoom);
       const cy = Math.round((scrollTop + 200) / this._canvasZoom);
 
-      const { error } = await STATE.client
-        .from('event_tables')
-        .insert([{
-          event_id: this.currentEventIdTablePlan,
-          table_number: nextNumber,
-          total_seats: 8,
-          shape: 'round',
-          position_x: cx + (this.tables.length % 4) * 180,
-          position_y: cy + Math.floor(this.tables.length % 12 / 4) * 180
-        }]);
-      if (error) throw error;
+      await this._insertEventTable({
+        event_id: this.currentEventIdTablePlan,
+        table_number: nextNumber,
+        total_seats: 8,
+        shape: 'round',
+        position_x: cx + (this.tables.length % 4) * 180,
+        position_y: cy + Math.floor((this.tables.length % 12) / 4) * 180,
+      });
 
       utils.showToast('Table added', 'success');
       await this.loadTablePlan();
       this.renderCanvasTables();
-
     } catch (error) {
       console.error('Error adding table:', error);
       utils.showToast('Failed to add table', 'error');
@@ -9654,28 +10716,21 @@ const eventsModule = {
   },
 
   async deleteTable(tableId) {
-    const table = this.tables.find(t => t.id === tableId);
+    const table = this.tables.find((t) => t.id === tableId);
     const assignedCount = table?.assignments?.length || 0;
-    const msg = assignedCount > 0
-      ? `Delete this table? ${assignedCount} seated guest(s) will be unassigned.`
-      : 'Delete this table?';
-    if (!await utils.confirmDialog({ title: 'Delete Table', message: msg })) return;
+    const msg =
+      assignedCount > 0
+        ? `Delete this table? ${assignedCount} seated guest(s) will be unassigned.`
+        : 'Delete this table?';
+    if (!(await utils.confirmDialog({ title: 'Delete Table', message: msg }))) return;
 
     try {
       // Remove all assignments first to avoid orphaned records
       if (assignedCount > 0) {
-        const { error: clearError } = await STATE.client
-          .from('table_assignments')
-          .delete()
-          .eq('table_id', tableId);
-        if (clearError) throw clearError;
+        await apiClient.deleteByFilters('table_assignments', { table_id: tableId });
       }
 
-      const { error } = await STATE.client
-        .from('event_tables')
-        .delete()
-        .eq('id', tableId);
-      if (error) throw error;
+      await apiClient.delete('event_tables', tableId);
 
       if (this._selectedTableId === tableId) this.closeTableDetail();
       utils.showToast('Table deleted', 'success');
@@ -9691,11 +10746,7 @@ const eventsModule = {
 
   async removeGuestFromTable(assignmentId) {
     try {
-      const { error } = await STATE.client
-        .from('table_assignments')
-        .delete()
-        .eq('id', assignmentId);
-      if (error) throw error;
+      await apiClient.delete('table_assignments', assignmentId);
 
       utils.showToast('Guest removed from table', 'success');
       await this.loadTablePlan();
@@ -9734,12 +10785,12 @@ const eventsModule = {
     }
 
     const tablesWithSpace = this.tables
-      .map(table => ({
+      .map((table) => ({
         ...table,
         assignedCount: table.assignments ? table.assignments.length : 0,
-        availableSeats: table.total_seats - (table.assignments ? table.assignments.length : 0)
+        availableSeats: table.total_seats - (table.assignments ? table.assignments.length : 0),
       }))
-      .filter(t => t.availableSeats > 0)
+      .filter((t) => t.availableSeats > 0)
       .sort((a, b) => b.availableSeats - a.availableSeats);
 
     const totalAvailable = tablesWithSpace.reduce((sum, t) => sum + t.availableSeats, 0);
@@ -9752,7 +10803,14 @@ const eventsModule = {
     const groups = this._groupGuestsByCompany(this.unassignedGuests);
     const guestsToAssign = Math.min(this.unassignedGuests.length, totalAvailable);
 
-    if (!await utils.confirmDialog({ title: 'Auto-Assign Guests', message: `Auto-assign ${guestsToAssign} guest(s) across ${tablesWithSpace.length} table(s)?<br><br>Guests from the same company will be kept together where possible.`, confirmText: 'Auto-Assign', danger: false })) {
+    if (
+      !(await utils.confirmDialog({
+        title: 'Auto-Assign Guests',
+        message: `Auto-assign ${guestsToAssign} guest(s) across ${tablesWithSpace.length} table(s)?<br><br>Guests from the same company will be kept together where possible.`,
+        confirmText: 'Auto-Assign',
+        danger: false,
+      }))
+    ) {
       return;
     }
 
@@ -9765,28 +10823,34 @@ const eventsModule = {
         if (assigned >= guestsToAssign) break;
 
         // Find a table that can fit the whole company
-        let bestTable = tablesWithSpace.find(t => t.availableSeats >= group.guests.length);
-        if (!bestTable) bestTable = tablesWithSpace.find(t => t.availableSeats > 0);
+        let bestTable = tablesWithSpace.find((t) => t.availableSeats >= group.guests.length);
+        if (!bestTable) bestTable = tablesWithSpace.find((t) => t.availableSeats > 0);
         if (!bestTable) break;
 
         for (const guest of group.guests) {
           if (assigned >= guestsToAssign) break;
           // Find table with space (prefer current bestTable)
-          const targetTable = bestTable.availableSeats > 0 ? bestTable : tablesWithSpace.find(t => t.availableSeats > 0);
+          const targetTable =
+            bestTable.availableSeats > 0 ? bestTable : tablesWithSpace.find((t) => t.availableSeats > 0);
           if (!targetTable) break;
 
           // Auto-assign next available seat number
           if (!targetTable._takenSeats) {
-            targetTable._takenSeats = new Set((targetTable.assignments || []).map(a => a.seat_number).filter(Boolean));
+            targetTable._takenSeats = new Set(
+              (targetTable.assignments || []).map((a) => a.seat_number).filter(Boolean)
+            );
           }
           let seatNum = null;
           for (let s = 1; s <= targetTable.total_seats + 10; s++) {
-            if (!targetTable._takenSeats.has(s)) { seatNum = s; targetTable._takenSeats.add(s); break; }
+            if (!targetTable._takenSeats.has(s)) {
+              seatNum = s;
+              targetTable._takenSeats.add(s);
+              break;
+            }
           }
 
-          const { error } = await STATE.client
-            .from('table_assignments')
-            .insert([{
+          try {
+            await apiClient.insert('table_assignments', {
               event_id: this.currentEventIdTablePlan,
               table_id: targetTable.id,
               guest_id: guest.guest_id || guest.id,
@@ -9796,12 +10860,12 @@ const eventsModule = {
               seat_number: seatNum,
               is_vip: guest.guest_type === 'vip' || guest.guest_type === 'sponsor' || guest.guest_type === 'speaker',
               guest_type: guest.guest_type || 'guest',
-              dietary_requirements: guest.dietary_requirements || null
-            }]);
-
-          if (!error) {
+              dietary_requirements: guest.dietary_requirements || null,
+            });
             targetTable.availableSeats--;
             assigned++;
+          } catch (_insertErr) {
+            // Skip this guest if insert fails
           }
         }
       }
@@ -9812,7 +10876,6 @@ const eventsModule = {
       this.renderCanvasTables();
       if (this._selectedTableId) this.showTableDetail(this._selectedTableId);
       this._updateHeaderBadges();
-
     } catch (error) {
       console.error('Error auto-assigning guests:', error);
       utils.showToast('Failed to auto-assign guests: ' + error.message, 'error');
@@ -9846,108 +10909,112 @@ const eventsModule = {
 
       // ---- Sheet 1: By Table Number ----
       const byTableRows = [];
-      sortedTables.forEach(table => {
+      sortedTables.forEach((table) => {
         const label = table.table_name || '';
         if (table.assignments && table.assignments.length > 0) {
           [...table.assignments]
             .sort((a, b) => (a.guest_name || '').localeCompare(b.guest_name || ''))
-            .forEach(a => {
+            .forEach((a) => {
               byTableRows.push({
                 'Table #': table.table_number,
                 'Table Name': label,
-                'Seats': table.total_seats,
-                'Occupied': table.assignments.length,
+                Seats: table.total_seats,
+                Occupied: table.assignments.length,
                 'Guest Name': a.guest_name || '',
-                'Company': a.company_name || '',
+                Company: a.company_name || '',
                 'Seat #': a.seat_number || '',
-                'VIP': a.is_vip ? 'Yes' : '',
-                'Dietary': a.dietary_requirements || '',
-                'Notes': a.notes || ''
+                VIP: a.is_vip ? 'Yes' : '',
+                Dietary: a.dietary_requirements || '',
+                Notes: a.notes || '',
               });
             });
         } else {
           byTableRows.push({
             'Table #': table.table_number,
             'Table Name': label,
-            'Seats': table.total_seats,
-            'Occupied': 0,
+            Seats: table.total_seats,
+            Occupied: 0,
             'Guest Name': '',
-            'Company': '',
+            Company: '',
             'Seat #': '',
-            'VIP': '',
-            'Dietary': '',
-            'Notes': ''
+            VIP: '',
+            Dietary: '',
+            Notes: '',
           });
         }
       });
 
       const ws1 = XLSX.utils.json_to_sheet(byTableRows);
       ws1['!cols'] = [
-        { wch: 8 },   // Table #
-        { wch: 20 },  // Table Name
-        { wch: 6 },   // Seats
-        { wch: 9 },   // Occupied
-        { wch: 28 },  // Guest Name
-        { wch: 28 },  // Company
-        { wch: 7 },   // Seat #
-        { wch: 5 },   // VIP
-        { wch: 20 },  // Dietary
-        { wch: 20 }   // Notes
+        { wch: 8 }, // Table #
+        { wch: 20 }, // Table Name
+        { wch: 6 }, // Seats
+        { wch: 9 }, // Occupied
+        { wch: 28 }, // Guest Name
+        { wch: 28 }, // Company
+        { wch: 7 }, // Seat #
+        { wch: 5 }, // VIP
+        { wch: 20 }, // Dietary
+        { wch: 20 }, // Notes
       ];
       ws1['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: byTableRows.length, c: 9 } }) };
       XLSX.utils.book_append_sheet(wb, ws1, 'By Table');
 
       // ---- Sheet 2: By Company (A-Z) ----
       const allGuests = [];
-      sortedTables.forEach(table => {
-        (table.assignments || []).forEach(a => {
+      sortedTables.forEach((table) => {
+        (table.assignments || []).forEach((a) => {
           allGuests.push({
-            'Company': a.company_name || '',
+            Company: a.company_name || '',
             'Guest Name': a.guest_name || '',
             'Table #': table.table_number,
             'Table Name': table.table_name || '',
             'Seat #': a.seat_number || '',
-            'VIP': a.is_vip ? 'Yes' : '',
-            'Dietary': a.dietary_requirements || ''
+            VIP: a.is_vip ? 'Yes' : '',
+            Dietary: a.dietary_requirements || '',
           });
         });
       });
-      allGuests.sort((a, b) => (a['Company'] || '').localeCompare(b['Company'] || '') || (a['Guest Name'] || '').localeCompare(b['Guest Name'] || ''));
+      allGuests.sort(
+        (a, b) =>
+          (a['Company'] || '').localeCompare(b['Company'] || '') ||
+          (a['Guest Name'] || '').localeCompare(b['Guest Name'] || '')
+      );
 
       const ws2 = XLSX.utils.json_to_sheet(allGuests);
       ws2['!cols'] = [
-        { wch: 28 },  // Company
-        { wch: 28 },  // Guest Name
-        { wch: 8 },   // Table #
-        { wch: 20 },  // Table Name
-        { wch: 7 },   // Seat #
-        { wch: 5 },   // VIP
-        { wch: 20 }   // Dietary
+        { wch: 28 }, // Company
+        { wch: 28 }, // Guest Name
+        { wch: 8 }, // Table #
+        { wch: 20 }, // Table Name
+        { wch: 7 }, // Seat #
+        { wch: 5 }, // VIP
+        { wch: 20 }, // Dietary
       ];
       ws2['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: allGuests.length, c: 6 } }) };
       XLSX.utils.book_append_sheet(wb, ws2, 'By Company');
 
       // ---- Sheet 3: Guest A-Z ----
       const guestAZ = [...allGuests].sort((a, b) => (a['Guest Name'] || '').localeCompare(b['Guest Name'] || ''));
-      const guestRows = guestAZ.map(g => ({
+      const guestRows = guestAZ.map((g) => ({
         'Guest Name': g['Guest Name'],
-        'Company': g['Company'],
+        Company: g['Company'],
         'Table #': g['Table #'],
         'Table Name': g['Table Name'],
         'Seat #': g['Seat #'],
-        'VIP': g['VIP'],
-        'Dietary': g['Dietary']
+        VIP: g['VIP'],
+        Dietary: g['Dietary'],
       }));
 
       const ws3 = XLSX.utils.json_to_sheet(guestRows);
       ws3['!cols'] = [
-        { wch: 28 },  // Guest Name
-        { wch: 28 },  // Company
-        { wch: 8 },   // Table #
-        { wch: 20 },  // Table Name
-        { wch: 7 },   // Seat #
-        { wch: 5 },   // VIP
-        { wch: 20 }   // Dietary
+        { wch: 28 }, // Guest Name
+        { wch: 28 }, // Company
+        { wch: 8 }, // Table #
+        { wch: 20 }, // Table Name
+        { wch: 7 }, // Seat #
+        { wch: 5 }, // VIP
+        { wch: 20 }, // Dietary
       ];
       ws3['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: guestRows.length, c: 6 } }) };
       XLSX.utils.book_append_sheet(wb, ws3, 'Guest A-Z');
@@ -9956,39 +11023,41 @@ const eventsModule = {
       if (this.unassignedGuests.length > 0) {
         const unassignedRows = [...this.unassignedGuests]
           .sort((a, b) => (a.guest_name || '').localeCompare(b.guest_name || ''))
-          .map(g => ({
+          .map((g) => ({
             'Guest Name': g.guest_name || '',
-            'Company': g.company_name || '',
-            'Email': g.guest_email || '',
-            'RSVP Status': g.rsvp_status || ''
+            Company: g.company_name || '',
+            Email: g.guest_email || '',
+            'RSVP Status': g.rsvp_status || '',
           }));
         const ws4 = XLSX.utils.json_to_sheet(unassignedRows);
         ws4['!cols'] = [{ wch: 28 }, { wch: 28 }, { wch: 30 }, { wch: 14 }];
-        ws4['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: unassignedRows.length, c: 3 } }) };
+        ws4['!autofilter'] = {
+          ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: unassignedRows.length, c: 3 } }),
+        };
         XLSX.utils.book_append_sheet(wb, ws4, 'Unassigned');
       }
 
       // ---- Sheet 5: Summary ----
       const totalSeats = sortedTables.reduce((s, t) => s + t.total_seats, 0);
       const totalSeated = sortedTables.reduce((s, t) => s + (t.assignments?.length || 0), 0);
-      const summaryRows = sortedTables.map(t => ({
+      const summaryRows = sortedTables.map((t) => ({
         'Table #': t.table_number,
         'Table Name': t.table_name || '',
-        'Shape': t.shape || 'round',
+        Shape: t.shape || 'round',
         'Total Seats': t.total_seats,
-        'Occupied': t.assignments?.length || 0,
-        'Available': t.total_seats - (t.assignments?.length || 0),
-        'Occupancy %': t.total_seats > 0 ? Math.round((t.assignments?.length || 0) / t.total_seats * 100) : 0
+        Occupied: t.assignments?.length || 0,
+        Available: t.total_seats - (t.assignments?.length || 0),
+        'Occupancy %': t.total_seats > 0 ? Math.round(((t.assignments?.length || 0) / t.total_seats) * 100) : 0,
       }));
       // Add totals row
       summaryRows.push({
         'Table #': '',
         'Table Name': 'TOTAL',
-        'Shape': '',
+        Shape: '',
         'Total Seats': totalSeats,
-        'Occupied': totalSeated,
-        'Available': totalSeats - totalSeated,
-        'Occupancy %': totalSeats > 0 ? Math.round(totalSeated / totalSeats * 100) : 0
+        Occupied: totalSeated,
+        Available: totalSeats - totalSeated,
+        'Occupancy %': totalSeats > 0 ? Math.round((totalSeated / totalSeats) * 100) : 0,
       });
 
       const ws5 = XLSX.utils.json_to_sheet(summaryRows);
@@ -9999,7 +11068,6 @@ const eventsModule = {
       const safeName = (this.currentEventNameTablePlan || 'Event').replace(/[^a-z0-9]/gi, '_');
       XLSX.writeFile(wb, `${safeName}_Table_Plan_${new Date().toISOString().split('T')[0]}.xlsx`);
       utils.showToast('Excel spreadsheet exported successfully', 'success');
-
     } catch (error) {
       console.error('Error exporting Excel:', error);
       utils.showToast('Failed to export spreadsheet: ' + error.message, 'error');
@@ -10014,41 +11082,52 @@ const eventsModule = {
       return;
     }
 
-    const esc = s => utils.escapeHtml(s || '');
+    const esc = (s) => utils.escapeHtml(s || '');
     const eventName = this.currentEventNameTablePlan || 'Event';
-    const dateStr = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const dateStr = new Date().toLocaleDateString('en-GB', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
     const totalSeats = this.tables.reduce((s, t) => s + t.total_seats, 0);
     const totalSeated = this.tables.reduce((s, t) => s + (t.assignments?.length || 0), 0);
-    const occupancyPct = totalSeats > 0 ? Math.round(totalSeated / totalSeats * 100) : 0;
+    const occupancyPct = totalSeats > 0 ? Math.round((totalSeated / totalSeats) * 100) : 0;
 
     // Sort tables by table_number
     const sortedTables = [...this.tables].sort((a, b) => a.table_number - b.table_number);
 
     // Build table cards HTML
-    const tableCardsHtml = sortedTables.map(table => {
-      const assigned = table.assignments?.length || 0;
-      const label = table.table_name
-        ? `${esc(table.table_name)} <span class="table-num">(Table ${table.table_number})</span>`
-        : `Table ${table.table_number}`;
-      const shapeLabel = (table.shape || 'round').charAt(0).toUpperCase() + (table.shape || 'round').slice(1);
+    const tableCardsHtml = sortedTables
+      .map((table) => {
+        const assigned = table.assignments?.length || 0;
+        const label = table.table_name
+          ? `${esc(table.table_name)} <span class="table-num">(Table ${table.table_number})</span>`
+          : `Table ${table.table_number}`;
+        const shapeLabel = (table.shape || 'round').charAt(0).toUpperCase() + (table.shape || 'round').slice(1);
 
-      let guestsHtml = '';
-      if (table.assignments && table.assignments.length > 0) {
-        const sortedGuests = [...table.assignments].sort((a, b) =>
-          (a.guest_name || '').localeCompare(b.guest_name || ''));
-        guestsHtml = sortedGuests.map(a => `
+        let guestsHtml = '';
+        if (table.assignments && table.assignments.length > 0) {
+          const sortedGuests = [...table.assignments].sort((a, b) =>
+            (a.guest_name || '').localeCompare(b.guest_name || '')
+          );
+          guestsHtml = sortedGuests
+            .map(
+              (a) => `
           <tr>
             <td class="guest-name">${esc(a.guest_name)}${a.is_vip ? ' <span class="vip-badge">VIP</span>' : ''}</td>
             <td class="guest-company">${esc(a.company_name)}</td>
             <td class="guest-seat">${a.seat_number || '-'}</td>
             <td class="guest-dietary">${esc(a.dietary_requirements)}</td>
           </tr>
-        `).join('');
-      } else {
-        guestsHtml = '<tr><td colspan="4" class="empty-table">No guests assigned</td></tr>';
-      }
+        `
+            )
+            .join('');
+        } else {
+          guestsHtml = '<tr><td colspan="4" class="empty-table">No guests assigned</td></tr>';
+        }
 
-      return `
+        return `
         <div class="table-card">
           <div class="table-header">
             <div class="table-title">${label}</div>
@@ -10063,12 +11142,13 @@ const eventsModule = {
           ${table.notes ? `<div class="table-notes">Note: ${esc(table.notes)}</div>` : ''}
         </div>
       `;
-    }).join('');
+      })
+      .join('');
 
     // Build alphabetical guest directory
     const allGuests = [];
-    sortedTables.forEach(table => {
-      (table.assignments || []).forEach(a => {
+    sortedTables.forEach((table) => {
+      (table.assignments || []).forEach((a) => {
         allGuests.push({
           name: a.guest_name || '',
           company: a.company_name || '',
@@ -10076,39 +11156,51 @@ const eventsModule = {
           tableName: table.table_name || '',
           seat: a.seat_number || '-',
           vip: a.is_vip,
-          dietary: a.dietary_requirements || ''
+          dietary: a.dietary_requirements || '',
         });
       });
     });
     allGuests.sort((a, b) => a.name.localeCompare(b.name));
 
-    const directoryHtml = allGuests.length > 0 ? allGuests.map(g => `
+    const directoryHtml =
+      allGuests.length > 0
+        ? allGuests
+            .map(
+              (g) => `
       <tr>
         <td class="guest-name">${esc(g.name)}${g.vip ? ' <span class="vip-badge">VIP</span>' : ''}</td>
         <td>${esc(g.company)}</td>
         <td class="table-ref"><strong>${g.tableNum}</strong>${g.tableName ? ` - ${esc(g.tableName)}` : ''}</td>
         <td class="guest-seat">${g.seat}</td>
       </tr>
-    `).join('') : '<tr><td colspan="4">No guests assigned yet</td></tr>';
+    `
+            )
+            .join('')
+        : '<tr><td colspan="4">No guests assigned yet</td></tr>';
 
     // Unassigned guests section
     let unassignedHtml = '';
     if (this.unassignedGuests.length > 0) {
       const sortedUnassigned = [...this.unassignedGuests].sort((a, b) =>
-        (a.guest_name || '').localeCompare(b.guest_name || ''));
+        (a.guest_name || '').localeCompare(b.guest_name || '')
+      );
       unassignedHtml = `
         <div class="section-break"></div>
         <h2 class="section-title unassigned-title">Unassigned Guests (${this.unassignedGuests.length})</h2>
         <table class="directory-table unassigned-table">
           <thead><tr><th>Guest</th><th>Company</th><th>Email</th></tr></thead>
           <tbody>
-            ${sortedUnassigned.map(g => `
+            ${sortedUnassigned
+              .map(
+                (g) => `
               <tr>
                 <td>${esc(g.guest_name)}</td>
                 <td>${esc(g.company_name)}</td>
                 <td>${esc(g.guest_email)}</td>
               </tr>
-            `).join('')}
+            `
+              )
+              .join('')}
           </tbody>
         </table>
       `;
@@ -10242,7 +11334,7 @@ const eventsModule = {
   <div class="print-toolbar no-print">
     <div><strong>Table Plan</strong> &mdash; ${esc(eventName)}</div>
     <div>
-      <button onclick="window.print()">Print / Save as PDF</button>
+      <button data-action="window.print">Print / Save as PDF</button>
     </div>
   </div>
   <div class="content">
@@ -10296,21 +11388,29 @@ const eventsModule = {
     const totalSeated = this.tables.reduce((s, t) => s + (t.assignments?.length || 0), 0);
 
     // Build table cards HTML
-    const tablesHtml = this.tables.map(table => {
-      const assigned = table.assignments?.length || 0;
-      const pct = table.total_seats > 0 ? Math.round(assigned / table.total_seats * 100) : 0;
-      const barColor = assigned >= table.total_seats ? '#dc3545' : assigned >= table.total_seats * 0.75 ? '#fd7e14' : '#0d6efd';
-      const shapeIcon = table.shape === 'rectangular' ? 'bi-square' : 'bi-circle';
-      const label = table.table_name ? utils.escapeHtml(table.table_name) : `Table ${utils.escapeHtml(String(table.table_number || ''))}`;
+    const tablesHtml = this.tables
+      .map((table) => {
+        const assigned = table.assignments?.length || 0;
+        const pct = table.total_seats > 0 ? Math.round((assigned / table.total_seats) * 100) : 0;
+        const barColor =
+          assigned >= table.total_seats ? '#dc3545' : assigned >= table.total_seats * 0.75 ? '#fd7e14' : '#0d6efd';
+        const shapeIcon = table.shape === 'rectangular' ? 'bi-square' : 'bi-circle';
+        const label = table.table_name
+          ? utils.escapeHtml(table.table_name)
+          : `Table ${utils.escapeHtml(String(table.table_number || ''))}`;
 
-      const guestsHtml = (table.assignments || []).map(a => `
+        const guestsHtml = (table.assignments || [])
+          .map(
+            (a) => `
         <div style="padding:6px 12px; border-bottom:1px solid rgba(255,255,255,0.08); display:flex; justify-content:space-between; align-items:center;">
           <span style="font-weight:500;">${utils.escapeHtml(a.guest_name)}</span>
           <span style="font-size:0.75em; opacity:0.6;">${a.company_name ? utils.escapeHtml(a.company_name) : ''}</span>
         </div>
-      `).join('');
+      `
+          )
+          .join('');
 
-      return `
+        return `
         <div style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:12px; overflow:hidden; break-inside:avoid;">
           <div style="padding:14px 16px; background:rgba(255,255,255,0.04); border-bottom:1px solid rgba(255,255,255,0.1); display:flex; justify-content:space-between; align-items:center;">
             <div>
@@ -10325,7 +11425,8 @@ const eventsModule = {
           ${guestsHtml || '<div style="padding:12px; text-align:center; opacity:0.3; font-style:italic;">No guests assigned</div>'}
         </div>
       `;
-    }).join('');
+      })
+      .join('');
 
     // Open a new window with dark-themed display
     const tvWindow = window.open('', '_blank', 'width=1920,height=1080');
@@ -10397,12 +11498,14 @@ const eventsModule = {
     const existing = document.getElementById('tpIndexOverlay');
     if (existing) existing.remove();
 
-    document.body.insertAdjacentHTML('beforeend', `
-      <div id="tpIndexOverlay" style="position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center;" onclick="if(event.target===this)this.remove();">
+    document.body.insertAdjacentHTML(
+      'beforeend',
+      `
+      <div id="tpIndexOverlay" style="position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center;" data-action="eventsModule.closeOverlayOnBackdrop" data-id="tpIndexOverlay">
         <div style="background:white; border-radius:16px; padding:24px; width:700px; max-width:92vw; max-height:85vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <h5 class="mb-0"><i class="bi bi-card-list me-2"></i>Table Index</h5>
-            <button class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('tpIndexOverlay').remove()"><i class="bi bi-x-lg"></i></button>
+            <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.closeOverlay" data-id="tpIndexOverlay"><i class="bi bi-x-lg"></i></button>
           </div>
 
           <!-- Tab nav -->
@@ -10416,9 +11519,9 @@ const eventsModule = {
             <div class="tab-pane fade show active" id="tpIdxByTable">
               <div class="d-flex gap-1 mb-2">
                 <small class="text-muted me-1 align-self-center">Sort by:</small>
-                <button class="btn btn-sm btn-outline-secondary tp-idx-sort-btn" data-tab="byTable" data-col="table" onclick="eventsModule.sortIndexOverlay('byTable','table')">Table <i class="bi bi-sort-down-alt tp-sort-icon"></i></button>
-                <button class="btn btn-sm btn-outline-secondary tp-idx-sort-btn" data-tab="byTable" data-col="seats" onclick="eventsModule.sortIndexOverlay('byTable','seats')">Seats <i class="bi bi-chevron-expand tp-sort-icon"></i></button>
-                <button class="btn btn-sm btn-outline-secondary tp-idx-sort-btn" data-tab="byTable" data-col="company" onclick="eventsModule.sortIndexOverlay('byTable','company')">Company <i class="bi bi-chevron-expand tp-sort-icon"></i></button>
+                <button class="btn btn-sm btn-outline-secondary tp-idx-sort-btn" data-tab="byTable" data-col="table" data-action="eventsModule.sortIndexOverlay" data-args='["byTable","table"]'>Table <i class="bi bi-sort-down-alt tp-sort-icon"></i></button>
+                <button class="btn btn-sm btn-outline-secondary tp-idx-sort-btn" data-tab="byTable" data-col="seats" data-action="eventsModule.sortIndexOverlay" data-args='["byTable","seats"]'>Seats <i class="bi bi-chevron-expand tp-sort-icon"></i></button>
+                <button class="btn btn-sm btn-outline-secondary tp-idx-sort-btn" data-tab="byTable" data-col="company" data-action="eventsModule.sortIndexOverlay" data-args='["byTable","company"]'>Company <i class="bi bi-chevron-expand tp-sort-icon"></i></button>
               </div>
               <div id="tpIdxByTableContent"></div>
             </div>
@@ -10427,9 +11530,9 @@ const eventsModule = {
             <div class="tab-pane fade" id="tpIdxByCompany">
               <table class="table table-sm table-hover" id="tpIdxCompanyTable">
                 <thead><tr>
-                  <th class="tp-idx-co-sort" style="cursor:pointer; user-select:none;" onclick="eventsModule.sortIndexOverlay('byCompany','company')">Company <i class="bi bi-chevron-expand tp-sort-icon"></i></th>
-                  <th class="text-center tp-idx-co-sort" style="cursor:pointer; user-select:none;" onclick="eventsModule.sortIndexOverlay('byCompany','guests')">Guests <i class="bi bi-sort-down tp-sort-icon"></i></th>
-                  <th class="tp-idx-co-sort" style="cursor:pointer; user-select:none;" onclick="eventsModule.sortIndexOverlay('byCompany','tables')">Tables <i class="bi bi-chevron-expand tp-sort-icon"></i></th>
+                  <th class="tp-idx-co-sort" style="cursor:pointer; user-select:none;" data-action="eventsModule.sortIndexOverlay" data-args='["byCompany","company"]'>Company <i class="bi bi-chevron-expand tp-sort-icon"></i></th>
+                  <th class="text-center tp-idx-co-sort" style="cursor:pointer; user-select:none;" data-action="eventsModule.sortIndexOverlay" data-args='["byCompany","guests"]'>Guests <i class="bi bi-sort-down tp-sort-icon"></i></th>
+                  <th class="tp-idx-co-sort" style="cursor:pointer; user-select:none;" data-action="eventsModule.sortIndexOverlay" data-args='["byCompany","tables"]'>Tables <i class="bi bi-chevron-expand tp-sort-icon"></i></th>
                 </tr></thead>
                 <tbody id="tpIdxCompanyBody"></tbody>
               </table>
@@ -10451,7 +11554,8 @@ const eventsModule = {
         .tp-idx-co-sort .tp-sort-icon { font-size: 0.65rem; opacity: 0.5; margin-left: 2px; }
         .tp-idx-co-sort.sort-active .tp-sort-icon { opacity: 1; color: #0d6efd; }
       </style>
-    `);
+    `
+    );
 
     this._renderIndexByTable();
     this._renderIndexByCompany();
@@ -10459,7 +11563,12 @@ const eventsModule = {
 
   sortIndexOverlay(tab, col) {
     const s = this._indexOverlaySort[tab];
-    if (s.col === col) { s.asc = !s.asc; } else { s.col = col; s.asc = true; }
+    if (s.col === col) {
+      s.asc = !s.asc;
+    } else {
+      s.col = col;
+      s.asc = true;
+    }
     if (tab === 'byTable') this._renderIndexByTable();
     else this._renderIndexByCompany();
   },
@@ -10482,51 +11591,62 @@ const eventsModule = {
           const a = t.assignments || [];
           if (a.length === 0) return '';
           const counts = {};
-          a.forEach(x => { const c = x.company_name || ''; counts[c] = (counts[c]||0)+1; });
-          return Object.entries(counts).sort((x,y) => y[1]-x[1])[0][0].toLowerCase();
+          a.forEach((x) => {
+            const c = x.company_name || '';
+            counts[c] = (counts[c] || 0) + 1;
+          });
+          return Object.entries(counts)
+            .sort((x, y) => y[1] - x[1])[0][0]
+            .toLowerCase();
         };
-        const va = topCo(a), vb = topCo(b);
+        const va = topCo(a),
+          vb = topCo(b);
         return va < vb ? -dir : va > vb ? dir : 0;
       }
       return 0;
     });
 
-    container.innerHTML = sorted.map(t => {
-      const assignments = t.assignments || [];
-      if (assignments.length === 0) {
-        return `<div class="tp-idx-table">
+    container.innerHTML = sorted
+      .map((t) => {
+        const assignments = t.assignments || [];
+        if (assignments.length === 0) {
+          return `<div class="tp-idx-table">
           <div class="tp-idx-table-header">
             <span><strong>${t.table_name ? utils.escapeHtml(t.table_name) : 'Table ' + t.table_number}</strong></span>
             <span class="text-muted">0 / ${t.total_seats} seats</span>
           </div>
           <div class="tp-idx-table-body text-muted fst-italic" style="font-size:0.8rem;">Empty</div>
         </div>`;
-      }
-      const byCompany = {};
-      assignments.forEach(a => {
-        const co = a.company_name || 'No Company';
-        if (!byCompany[co]) byCompany[co] = [];
-        byCompany[co].push(a.guest_name);
-      });
-      const companyHtml = Object.entries(byCompany)
-        .sort((a, b) => b[1].length - a[1].length)
-        .map(([company, guests]) => `
+        }
+        const byCompany = {};
+        assignments.forEach((a) => {
+          const co = a.company_name || 'No Company';
+          if (!byCompany[co]) byCompany[co] = [];
+          byCompany[co].push(a.guest_name);
+        });
+        const companyHtml = Object.entries(byCompany)
+          .sort((a, b) => b[1].length - a[1].length)
+          .map(
+            ([company, guests]) => `
           <div class="tp-idx-company">
             <div class="tp-idx-company-label">${utils.escapeHtml(company)} (${guests.length})</div>
-            ${guests.map(g => `<div class="tp-idx-guest">${utils.escapeHtml(g)}</div>`).join('')}
+            ${guests.map((g) => `<div class="tp-idx-guest">${utils.escapeHtml(g)}</div>`).join('')}
           </div>
-        `).join('');
-      return `<div class="tp-idx-table">
+        `
+          )
+          .join('');
+        return `<div class="tp-idx-table">
         <div class="tp-idx-table-header">
           <span><strong>${t.table_name ? utils.escapeHtml(t.table_name) : 'Table ' + t.table_number}</strong></span>
           <span class="${assignments.length >= t.total_seats ? 'text-danger' : 'text-muted'}">${assignments.length} / ${t.total_seats} seats</span>
         </div>
         <div class="tp-idx-table-body">${companyHtml}</div>
       </div>`;
-    }).join('');
+      })
+      .join('');
 
     // Update sort button styles
-    document.querySelectorAll('.tp-idx-sort-btn[data-tab="byTable"]').forEach(btn => {
+    document.querySelectorAll('.tp-idx-sort-btn[data-tab="byTable"]').forEach((btn) => {
       const c = btn.dataset.col;
       const icon = btn.querySelector('.tp-sort-icon');
       if (c === col) {
@@ -10545,8 +11665,8 @@ const eventsModule = {
 
     // Build company data
     const companyTables = {};
-    this.tables.forEach(t => {
-      (t.assignments || []).forEach(a => {
+    this.tables.forEach((t) => {
+      (t.assignments || []).forEach((a) => {
         const co = a.company_name || 'No Company';
         if (!companyTables[co]) companyTables[co] = { count: 0, tables: new Set() };
         companyTables[co].count++;
@@ -10558,7 +11678,9 @@ const eventsModule = {
     const { col, asc } = this._indexOverlaySort.byCompany;
     const dir = asc ? 1 : -1;
     entries.sort((a, b) => {
-      if (col === 'company') { return a[0].toLowerCase() < b[0].toLowerCase() ? -dir : a[0].toLowerCase() > b[0].toLowerCase() ? dir : 0; }
+      if (col === 'company') {
+        return a[0].toLowerCase() < b[0].toLowerCase() ? -dir : a[0].toLowerCase() > b[0].toLowerCase() ? dir : 0;
+      }
       if (col === 'guests') return (a[1].count - b[1].count) * dir;
       if (col === 'tables') return (a[1].tables.size - b[1].tables.size) * dir;
       return 0;
@@ -10567,17 +11689,21 @@ const eventsModule = {
     if (entries.length === 0) {
       tbody.innerHTML = '<tr><td colspan="3" class="text-muted text-center">No guests assigned yet</td></tr>';
     } else {
-      tbody.innerHTML = entries.map(([co, data]) => `
+      tbody.innerHTML = entries
+        .map(
+          ([co, data]) => `
         <tr>
           <td style="font-size:0.82rem;">${utils.escapeHtml(co)}</td>
           <td class="text-center" style="font-size:0.82rem;">${data.count}</td>
           <td style="font-size:0.82rem;">${[...data.tables].join(', ')}</td>
         </tr>
-      `).join('');
+      `
+        )
+        .join('');
     }
 
     // Update header icons
-    document.querySelectorAll('.tp-idx-co-sort').forEach(th => {
+    document.querySelectorAll('.tp-idx-co-sort').forEach((th) => {
       const c = th.textContent.trim().toLowerCase().split(' ')[0];
       const colKey = c === 'company' ? 'company' : c === 'guests' ? 'guests' : 'tables';
       const icon = th.querySelector('.tp-sort-icon');
@@ -10596,14 +11722,14 @@ const eventsModule = {
     const totalSeats = this.tables.reduce((s, t) => s + t.total_seats, 0);
     const totalSeated = this.tables.reduce((s, t) => s + (t.assignments?.length || 0), 0);
     const totalUnassigned = this.unassignedGuests.length;
-    const emptyTables = this.tables.filter(t => (t.assignments?.length || 0) === 0).length;
-    const fullTables = this.tables.filter(t => (t.assignments?.length || 0) >= t.total_seats).length;
-    const occupancyPct = totalSeats > 0 ? Math.round(totalSeated / totalSeats * 100) : 0;
+    const emptyTables = this.tables.filter((t) => (t.assignments?.length || 0) === 0).length;
+    const fullTables = this.tables.filter((t) => (t.assignments?.length || 0) >= t.total_seats).length;
+    const occupancyPct = totalSeats > 0 ? Math.round((totalSeated / totalSeats) * 100) : 0;
 
     // Company breakdown
     const companyMap = {};
-    this.tables.forEach(t => {
-      (t.assignments || []).forEach(a => {
+    this.tables.forEach((t) => {
+      (t.assignments || []).forEach((a) => {
         const company = a.company_name || 'No Company';
         if (!companyMap[company]) companyMap[company] = { seated: 0, tables: new Set() };
         companyMap[company].seated++;
@@ -10614,20 +11740,25 @@ const eventsModule = {
       .sort((a, b) => b[1].seated - a[1].seated)
       .slice(0, 10);
 
-    const companyRows = companySorted.map(([name, data]) =>
-      `<tr><td>${utils.escapeHtml(name)}</td><td class="text-center">${data.seated}</td><td class="text-center">${[...data.tables].sort((a,b)=>a-b).join(', ')}</td></tr>`
-    ).join('');
+    const companyRows = companySorted
+      .map(
+        ([name, data]) =>
+          `<tr><td>${utils.escapeHtml(name)}</td><td class="text-center">${data.seated}</td><td class="text-center">${[...data.tables].sort((a, b) => a - b).join(', ')}</td></tr>`
+      )
+      .join('');
 
     // Show as a modal overlay
     const existingStats = document.getElementById('tpStatsOverlay');
     if (existingStats) existingStats.remove();
 
-    document.body.insertAdjacentHTML('beforeend', `
-      <div id="tpStatsOverlay" style="position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center;" onclick="if(event.target===this)this.remove();">
+    document.body.insertAdjacentHTML(
+      'beforeend',
+      `
+      <div id="tpStatsOverlay" style="position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center;" data-action="eventsModule.closeOverlayOnBackdrop" data-id="tpStatsOverlay">
         <div style="background:white; border-radius:16px; padding:30px; width:560px; max-height:80vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <h5 class="mb-0"><i class="bi bi-bar-chart me-2"></i>Table Plan Stats</h5>
-            <button class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('tpStatsOverlay').remove()"><i class="bi bi-x-lg"></i></button>
+            <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.closeOverlay" data-id="tpStatsOverlay"><i class="bi bi-x-lg"></i></button>
           </div>
 
           <div class="row g-3 mb-4">
@@ -10666,41 +11797,44 @@ const eventsModule = {
             <div class="col-6"><div class="p-2 border rounded text-center"><strong>${fullTables}</strong> <small class="text-muted">Full Tables</small></div></div>
           </div>
 
-          ${companySorted.length > 0 ? `
+          ${
+            companySorted.length > 0
+              ? `
             <h6 class="mb-2"><i class="bi bi-building me-1"></i>Top Companies</h6>
             <table class="table table-sm table-bordered mb-0">
               <thead><tr><th>Company</th><th class="text-center">Guests</th><th class="text-center">Tables</th></tr></thead>
               <tbody>${companyRows}</tbody>
             </table>
-          ` : ''}
+          `
+              : ''
+          }
         </div>
       </div>
-    `);
+    `
+    );
   },
 
   // ---- DUPLICATE TABLE ----
 
   async duplicateTable(tableId) {
-    const source = this.tables.find(t => t.id === tableId);
+    const source = this.tables.find((t) => t.id === tableId);
     if (!source) return;
 
     try {
-      const { data: nextNumber, error: numberError } = await STATE.client
-        .rpc('get_next_table_number', { p_event_id: this.currentEventIdTablePlan });
+      const { data: nextNumber, error: numberError } = await STATE.client.rpc('get_next_table_number', {
+        p_event_id: this.currentEventIdTablePlan,
+      });
       if (numberError) throw numberError;
 
-      const { error } = await STATE.client
-        .from('event_tables')
-        .insert([{
-          event_id: this.currentEventIdTablePlan,
-          table_number: nextNumber,
-          table_name: source.table_name ? source.table_name + ' (copy)' : null,
-          total_seats: source.total_seats,
-          shape: source.shape,
-          position_x: (source.position_x || 100) + 50,
-          position_y: (source.position_y || 100) + 50
-        }]);
-      if (error) throw error;
+      await this._insertEventTable({
+        event_id: this.currentEventIdTablePlan,
+        table_number: nextNumber,
+        table_name: source.table_name ? source.table_name + ' (copy)' : null,
+        total_seats: source.total_seats,
+        shape: source.shape,
+        position_x: (source.position_x || 100) + 50,
+        position_y: (source.position_y || 100) + 50,
+      });
 
       utils.showToast('Table duplicated (empty copy created)', 'success');
       await this.loadTablePlan();
@@ -10727,38 +11861,35 @@ const eventsModule = {
     if (seatedCount > 0) parts.push(`${seatedCount} seated guest(s)`);
     if (fixtureCount > 0) parts.push(`${fixtureCount} room element(s)`);
 
-    if (!await utils.confirmDialog({
-      title: 'Reset Canvas',
-      message: `This will remove ${parts.join(', ')} from the canvas. All guest assignments will be cleared.<br><br>This cannot be undone.`,
-      confirmText: 'Reset Everything'
-    })) return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Reset Canvas',
+        message: `This will remove ${parts.join(', ')} from the canvas. All guest assignments will be cleared.<br><br>This cannot be undone.`,
+        confirmText: 'Reset Everything',
+      }))
+    )
+      return;
 
     try {
       // Delete all assignments first
       if (seatedCount > 0) {
-        const tableIds = this.tables.map(t => t.id);
-        const { error: clearErr } = await STATE.client
-          .from('table_assignments')
-          .delete()
-          .in('table_id', tableIds);
-        if (clearErr) throw clearErr;
+        const tableIds = this.tables.map((t) => t.id);
+        await apiClient.deleteByFilters('table_assignments', { table_id: { op: 'in', value: tableIds } });
       }
 
       // Delete all tables
       if (tableCount > 0) {
-        const { error: tabErr } = await STATE.client
-          .from('event_tables')
-          .delete()
-          .eq('event_id', this.currentEventIdTablePlan);
-        if (tabErr) throw tabErr;
+        await apiClient.deleteByFilters('event_tables', { event_id: this.currentEventIdTablePlan });
       }
 
       // Delete all fixtures
       if (fixtureCount > 0) {
         for (const f of this.roomFixtures) {
           try {
-            await STATE.client.from('event_room_fixtures').delete().eq('id', f.id);
-          } catch (e) { /* continue */ }
+            await apiClient.delete('event_room_fixtures', f.id);
+          } catch (e) {
+            /* continue */
+          }
         }
         this.roomFixtures = [];
         this._saveFixturesToLocalStorage();
@@ -10787,17 +11918,20 @@ const eventsModule = {
   // ---- CLEAR TABLE (remove all guests) ----
 
   async clearTable(tableId) {
-    const table = this.tables.find(t => t.id === tableId);
+    const table = this.tables.find((t) => t.id === tableId);
     if (!table || !table.assignments || table.assignments.length === 0) return;
 
-    if (!await utils.confirmDialog({ title: 'Clear Table', message: `Remove all ${table.assignments.length} guest(s) from this table?`, confirmText: 'Clear Table' })) return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Clear Table',
+        message: `Remove all ${table.assignments.length} guest(s) from this table?`,
+        confirmText: 'Clear Table',
+      }))
+    )
+      return;
 
     try {
-      const { error } = await STATE.client
-        .from('table_assignments')
-        .delete()
-        .eq('table_id', tableId);
-      if (error) throw error;
+      await apiClient.deleteByFilters('table_assignments', { table_id: tableId });
 
       utils.showToast('All guests removed from table', 'success');
       await this.loadTablePlan();
@@ -10825,16 +11959,21 @@ const eventsModule = {
     const thisYear = new Date().getFullYear();
 
     const total = events.length;
-    const upcoming = events.filter(e => e.event_date && e.event_date >= today).length;
-    const thisYearCount = events.filter(e => e.year === thisYear || (e.event_date && e.event_date.startsWith(String(thisYear)))).length;
-    const past = events.filter(e => e.event_date && e.event_date < today).length;
+    const upcoming = events.filter((e) => e.event_date && e.event_date >= today).length;
+    const thisYearCount = events.filter(
+      (e) => e.year === thisYear || (e.event_date && e.event_date.startsWith(String(thisYear)))
+    ).length;
+    const past = events.filter((e) => e.event_date && e.event_date < today).length;
 
     // Data quality: missing date or venue
-    const missingDate = events.filter(e => !e.event_date).length;
-    const missingVenue = events.filter(e => !e.venue).length;
+    const missingDate = events.filter((e) => !e.event_date).length;
+    const missingVenue = events.filter((e) => !e.venue).length;
     const dataIssues = missingDate + missingVenue;
 
-    const el = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
+    const el = (id, val) => {
+      const e = document.getElementById(id);
+      if (e) e.textContent = val;
+    };
     el('eventsTotalCount', total);
     el('eventsUpcomingCount', upcoming);
     el('eventsThisYearCount', thisYearCount);
@@ -10865,14 +12004,14 @@ const eventsModule = {
 
     // Events by status breakdown
     const statusCounts = {};
-    events.forEach(e => {
+    events.forEach((e) => {
       const s = e.event_status || 'draft';
       statusCounts[s] = (statusCounts[s] || 0) + 1;
     });
 
     // Events by month timeline
     const monthCounts = {};
-    events.forEach(e => {
+    events.forEach((e) => {
       if (e.event_date) {
         const m = e.event_date.substring(0, 7); // YYYY-MM
         monthCounts[m] = (monthCounts[m] || 0) + 1;
@@ -10885,7 +12024,8 @@ const eventsModule = {
     let html = '<div class="row g-3 mb-3">';
 
     // Status breakdown
-    html += '<div class="col-md-6"><div class="card"><div class="card-body"><h6 class="card-title small fw-semibold">Events by Status</h6>';
+    html +=
+      '<div class="col-md-6"><div class="card"><div class="card-body"><h6 class="card-title small fw-semibold">Events by Status</h6>';
     const maxStatus = Math.max(...Object.values(statusCounts), 1);
     Object.entries(statusCounts).forEach(([status, count]) => {
       const pct = (count / maxStatus) * 100;
@@ -10898,9 +12038,12 @@ const eventsModule = {
     html += '</div></div></div>';
 
     // Monthly timeline
-    html += '<div class="col-md-6"><div class="card"><div class="card-body"><h6 class="card-title small fw-semibold">Events by Month</h6>';
-    const sortedMonths = Object.entries(monthCounts).sort((a, b) => a[0].localeCompare(b[0])).slice(-12);
-    const maxMonth = Math.max(...sortedMonths.map(m => m[1]), 1);
+    html +=
+      '<div class="col-md-6"><div class="card"><div class="card-body"><h6 class="card-title small fw-semibold">Events by Month</h6>';
+    const sortedMonths = Object.entries(monthCounts)
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .slice(-12);
+    const maxMonth = Math.max(...sortedMonths.map((m) => m[1]), 1);
     sortedMonths.forEach(([month, count]) => {
       const pct = (count / maxMonth) * 100;
       html += `<div class="d-flex align-items-center mb-1 small">
@@ -10921,11 +12064,15 @@ const eventsModule = {
     const timeStatus = document.getElementById('eventsStatusFilter')?.value || '';
     const eventStatus = document.getElementById('eventsEventStatusFilter')?.value || '';
 
-    try { localStorage.setItem('eventsFilters', JSON.stringify({ search, year, timeStatus, eventStatus })); } catch(e) { console.warn('Failed to save event filters:', e.message); }
+    try {
+      localStorage.setItem('eventsFilters', JSON.stringify({ search, year, timeStatus, eventStatus }));
+    } catch (e) {
+      console.warn('Failed to save event filters:', e.message);
+    }
 
     // Server-side pagination: send filters to server and re-fetch page 1
     if (this._serverPagination) {
-      this._srvFetchPage(1).catch(err => {
+      this._fetchPage(1).catch((err) => {
         console.error('Error filtering events:', err);
         utils.showToast('Error filtering events: ' + err.message, 'error');
       });
@@ -10938,7 +12085,7 @@ const eventsModule = {
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
     const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
 
-    let filtered = (STATE.allEvents || []).filter(e => {
+    let filtered = (STATE.allEvents || []).filter((e) => {
       if (search) {
         const haystack = `${e.event_name || ''} ${e.venue || ''} ${e.description || ''}`.toLowerCase();
         if (!haystack.includes(search)) return false;
@@ -10946,24 +12093,30 @@ const eventsModule = {
       if (year && String(e.year) !== year && !(e.event_date && e.event_date.startsWith(year))) return false;
       if (timeStatus === 'upcoming' && (!e.event_date || e.event_date < today)) return false;
       if (timeStatus === 'past' && (!e.event_date || e.event_date >= today)) return false;
-      if (timeStatus === 'this-month' && (!e.event_date || e.event_date < monthStart || e.event_date > monthEnd)) return false;
+      if (timeStatus === 'this-month' && (!e.event_date || e.event_date < monthStart || e.event_date > monthEnd))
+        return false;
       if (eventStatus && (e.event_status || 'draft') !== eventStatus) return false;
       return true;
     });
 
     if (search && filtered.length === 0) {
       filtered = utils.fuzzyFilter(STATE.allEvents || [], search, ['event_name', 'venue', 'description']);
-      if (year) filtered = filtered.filter(e => String(e.year) === year || (e.event_date && e.event_date.startsWith(year)));
-      if (timeStatus === 'upcoming') filtered = filtered.filter(e => e.event_date && e.event_date >= today);
-      if (timeStatus === 'past') filtered = filtered.filter(e => e.event_date && e.event_date < today);
-      if (timeStatus === 'this-month') filtered = filtered.filter(e => e.event_date && e.event_date >= monthStart && e.event_date <= monthEnd);
-      if (eventStatus) filtered = filtered.filter(e => (e.event_status || 'draft') === eventStatus);
+      if (year)
+        filtered = filtered.filter((e) => String(e.year) === year || (e.event_date && e.event_date.startsWith(year)));
+      if (timeStatus === 'upcoming') filtered = filtered.filter((e) => e.event_date && e.event_date >= today);
+      if (timeStatus === 'past') filtered = filtered.filter((e) => e.event_date && e.event_date < today);
+      if (timeStatus === 'this-month')
+        filtered = filtered.filter((e) => e.event_date && e.event_date >= monthStart && e.event_date <= monthEnd);
+      if (eventStatus) filtered = filtered.filter((e) => (e.event_status || 'draft') === eventStatus);
     }
 
     filtered.sort((a, b) => {
       let aVal = a[this._sortField] || '';
       let bVal = b[this._sortField] || '';
-      if (this._sortField === 'year') { aVal = Number(aVal) || 0; bVal = Number(bVal) || 0; }
+      if (this._sortField === 'year') {
+        aVal = Number(aVal) || 0;
+        bVal = Number(bVal) || 0;
+      }
       if (aVal < bVal) return this._sortDir === 'asc' ? -1 : 1;
       if (aVal > bVal) return this._sortDir === 'asc' ? 1 : -1;
       return 0;
@@ -10984,7 +12137,7 @@ const eventsModule = {
     if (eventStatusFilter) eventStatusFilter.value = '';
 
     // Filter to only events missing date or venue
-    const issues = (STATE.allEvents || []).filter(e => !e.event_date || !e.venue);
+    const issues = (STATE.allEvents || []).filter((e) => !e.event_date || !e.venue);
     this.renderFilteredEvents(issues);
   },
 
@@ -11000,7 +12153,7 @@ const eventsModule = {
 
     // Server-side: re-fetch with new sort order
     if (this._serverPagination) {
-      this._srvFetchPage(1).catch(err => console.error('Error sorting events:', err));
+      this._fetchPage(1).catch((err) => console.error('Error sorting events:', err));
       return;
     }
 
@@ -11009,12 +12162,13 @@ const eventsModule = {
 
   _updateSortIndicators() {
     const icons = document.querySelectorAll('[data-sort-icon-events]');
-    icons.forEach(icon => {
+    icons.forEach((icon) => {
       const field = icon.getAttribute('data-sort-icon-events');
       if (field === this._sortField) {
-        icon.className = this._sortDir === 'asc'
-          ? 'bi bi-caret-up-fill text-primary ms-1 small'
-          : 'bi bi-caret-down-fill text-primary ms-1 small';
+        icon.className =
+          this._sortDir === 'asc'
+            ? 'bi bi-caret-up-fill text-primary ms-1 small'
+            : 'bi bi-caret-down-fill text-primary ms-1 small';
       } else {
         icon.className = 'bi bi-arrow-down-up text-muted ms-1 small';
       }
@@ -11022,7 +12176,10 @@ const eventsModule = {
   },
 
   resetEventFilters() {
-    const el = id => { const e = document.getElementById(id); if (e) e.value = ''; };
+    const el = (id) => {
+      const e = document.getElementById(id);
+      if (e) e.value = '';
+    };
     el('eventsSearchBox');
     el('eventsYearFilter');
     el('eventsStatusFilter');
@@ -11043,7 +12200,7 @@ const eventsModule = {
     if (!tbody) return;
 
     // Use server total count when in server pagination mode
-    const displayCount = this._serverPagination ? this._srvPagination.count : events.length;
+    const displayCount = this._serverPagination ? this._pagination.count : events.length;
     if (count) count.textContent = displayCount;
 
     // Server-side: data is already one page; client-side: slice locally
@@ -11071,72 +12228,91 @@ const eventsModule = {
     }
 
     if (events.length === 0) {
-      utils.showEnhancedEmptyState('eventsTableBody', 11, { icon: 'bi-calendar-event', message: 'No events match your filters', description: 'Try adjusting your filters to see more results', isFiltered: true });
+      utils.showEnhancedEmptyState('eventsTableBody', 11, {
+        icon: 'bi-calendar-event',
+        message: 'No events match your filters',
+        description: 'Try adjusting your filters to see more results',
+        isFiltered: true,
+      });
       return;
     }
 
     const statusColors = { draft: 'secondary', confirmed: 'success', cancelled: 'danger', complete: 'info' };
-    const statusIcons = { draft: 'bi-pencil', confirmed: 'bi-check-circle', cancelled: 'bi-x-circle', complete: 'bi-flag' };
+    const statusIcons = {
+      draft: 'bi-pencil',
+      confirmed: 'bi-check-circle',
+      cancelled: 'bi-x-circle',
+      complete: 'bi-flag',
+    };
     const statusOptions = ['draft', 'confirmed', 'cancelled', 'complete'];
 
     // Pre-load award and attendee counts for all events (async, updates DOM when ready)
-    const eventIds = events.map(e => e.id);
+    const eventIds = events.map((e) => e.id);
     this._loadEventAwardCounts(eventIds);
     this._loadEventAttendeeCounts(eventIds);
 
-    tbody.innerHTML = pageEvents.map(event => {
-      // Fix date display to avoid timezone shift + countdown
-      let eventDate;
-      let countdown = '';
-      if (event.event_date) {
-        const parts = event.event_date.split('T')[0].split('-');
-        const d = new Date(parts[0], parts[1] - 1, parts[2]);
-        eventDate = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    tbody.innerHTML = pageEvents
+      .map((event) => {
+        // Fix date display to avoid timezone shift + countdown
+        let eventDate;
+        let countdown = '';
+        if (event.event_date) {
+          const parts = event.event_date.split('T')[0].split('-');
+          const d = new Date(parts[0], parts[1] - 1, parts[2]);
+          eventDate = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 
-        // Countdown
-        const today = new Date(); today.setHours(0, 0, 0, 0);
-        const diff = Math.ceil((d - today) / (1000 * 60 * 60 * 24));
-        if (diff > 0 && diff <= 90) {
-          countdown = `<br><span class="badge bg-${diff <= 7 ? 'danger' : diff <= 30 ? 'warning text-dark' : 'info'}" style="font-size:0.6rem;">${diff}d away</span>`;
-        } else if (diff === 0) {
-          countdown = '<br><span class="badge bg-danger" style="font-size:0.6rem;">TODAY</span>';
+          // Countdown
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const diff = Math.ceil((d - today) / (1000 * 60 * 60 * 24));
+          if (diff > 0 && diff <= 90) {
+            countdown = `<br><span class="badge bg-${diff <= 7 ? 'danger' : diff <= 30 ? 'warning text-dark' : 'info'}" style="font-size:0.6rem;">${diff}d away</span>`;
+          } else if (diff === 0) {
+            countdown = '<br><span class="badge bg-danger" style="font-size:0.6rem;">TODAY</span>';
+          }
+        } else {
+          eventDate = '<span class="text-danger small">No date</span>';
         }
-      } else {
-        eventDate = '<span class="text-danger small">No date</span>';
-      }
 
-      const evtStatus = event.event_status || 'draft';
-      const _color = statusColors[evtStatus] || 'secondary';
-      const icon = statusIcons[evtStatus] || 'bi-circle';
+        const evtStatus = event.event_status || 'draft';
+        const _color = statusColors[evtStatus] || 'secondary';
+        const icon = statusIcons[evtStatus] || 'bi-circle';
 
-      // Clickable status dropdown
-      const statusDropdown = `
+        // Clickable status dropdown
+        const statusDropdown = `
         <div class="btn-group btn-group-sm">
           <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
             <i class="bi ${icon} me-1"></i>${evtStatus.charAt(0).toUpperCase() + evtStatus.slice(1)}
           </button>
           <ul class="dropdown-menu dropdown-menu-end">
-            ${statusOptions.map(s => `
-              <li><a class="dropdown-item ${s === evtStatus ? 'active' : ''}" href="#" onclick="event.preventDefault(); eventsModule.quickSetStatus('${event.id}', '${s}')">
+            ${statusOptions
+              .map(
+                (s) => `
+              <li><a class="dropdown-item ${s === evtStatus ? 'active' : ''}" href="#" data-action="eventsModule.quickSetStatus" data-args='${JSON.stringify([event.id, s])}' data-prevent-default="true">
                 <i class="bi ${statusIcons[s]} me-2"></i>${s.charAt(0).toUpperCase() + s.slice(1)}
               </a></li>
-            `).join('')}
+            `
+              )
+              .join('')}
           </ul>
         </div>`;
 
-      const _capacity = event.capacity || 0;
-      const checked = this._selectedEvents.has(event.id) ? 'checked' : '';
-      const eName = (event.event_name || '').replace(/<[^>]*>/g, '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        const _capacity = event.capacity || 0;
+        const checked = this._selectedEvents.has(event.id) ? 'checked' : '';
+        const eName = (event.event_name || '')
+          .replace(/<[^>]*>/g, '')
+          .replace(/'/g, "\\'")
+          .replace(/"/g, '&quot;');
 
-      // Award counts (from cache or placeholder)
-      const awardData = this._eventAwardCounts?.[event.id] || { total: 0, confirmed: 0, winners: 0 };
+        // Award counts (from cache or placeholder)
+        const awardData = this._eventAwardCounts?.[event.id] || { total: 0, confirmed: 0, winners: 0 };
 
-      // Capacity and attendee cells rendered as placeholders; updated async by _loadEventAttendeeCounts
-      const capacityCell = '<span class="text-muted small">-</span>';
+        // Capacity and attendee cells rendered as placeholders; updated async by _loadEventAttendeeCounts
+        const capacityCell = '<span class="text-muted small">-</span>';
 
-      return `
+        return `
         <tr class="fade-in">
-          <td><input type="checkbox" class="form-check-input event-checkbox" value="${event.id}" ${checked} onchange="eventsModule.toggleEventSelect('${event.id}', this.checked)"></td>
+          <td><input type="checkbox" class="form-check-input event-checkbox" value="${event.id}" ${checked} data-on-check="eventsModule.toggleEventSelect" data-id="event.id"></td>
           <td class="fw-semibold">${utils.escapeHtml(event.event_name)}${!event.venue ? ' <i class="bi bi-exclamation-triangle text-warning small" title="Missing venue"></i>' : ''}</td>
           <td><span class="badge bg-primary">${utils.escapeHtml(String(event.year || '-'))}</span></td>
           <td>${eventDate}${countdown}</td>
@@ -11148,17 +12324,18 @@ const eventsModule = {
           <td class="text-center">${statusDropdown}</td>
           <td class="text-center">
             <div class="btn-group btn-group-sm" role="group">
-              <button class="btn btn-outline-warning btn-icon" onclick="eventsModule.openRunningOrderModal('${event.id}', '${eName}')" title="Running Order" aria-label="Running order"><i class="bi bi-list-ol"></i></button>
-              <button class="btn btn-outline-secondary btn-icon" onclick="eventsModule.openTablePlanModal('${event.id}', '${eName}')" title="Table Plan" aria-label="Table plan"><i class="bi bi-table"></i></button>
-              <button class="btn btn-outline-info btn-icon" onclick="eventsModule.openAttendeesModal('${event.id}')" title="Attendees" aria-label="Attendees"><i class="bi bi-people"></i></button>
-              <button class="btn btn-outline-primary btn-icon" onclick="eventsModule.openEditModal('${event.id}')" title="Edit" aria-label="Edit event"><i class="bi bi-pencil"></i></button>
-              <button class="btn btn-outline-success btn-icon" onclick="eventsModule.openCloneModal('${event.id}')" title="Clone" aria-label="Clone event"><i class="bi bi-files"></i></button>
-              <button class="btn btn-outline-dark btn-icon" onclick="eventsModule.cloneForNextYear('${event.id}')" title="Clone for Next Year" aria-label="Clone for next year"><i class="bi bi-calendar-plus"></i></button>
-              <button class="btn btn-outline-danger btn-icon" onclick="eventsModule.deleteEvent('${event.id}', '${eName}')" title="Delete" aria-label="Delete event"><i class="bi bi-trash"></i></button>
+              <button class="btn btn-outline-warning btn-icon" data-action="eventsModule.openRunningOrderModal" data-args='${JSON.stringify([event.id, eName])}' title="Running Order" aria-label="Running order"><i class="bi bi-list-ol"></i></button>
+              <button class="btn btn-outline-secondary btn-icon" data-action="eventsModule.openTablePlanModal" data-args='${JSON.stringify([event.id, eName])}' title="Table Plan" aria-label="Table plan"><i class="bi bi-table"></i></button>
+              <button class="btn btn-outline-info btn-icon" data-action="eventsModule.openAttendeesModal" data-id="event.id" title="Attendees" aria-label="Attendees"><i class="bi bi-people"></i></button>
+              <button class="btn btn-outline-primary btn-icon" data-action="eventsModule.openEditModal" data-id="event.id" title="Edit" aria-label="Edit event"><i class="bi bi-pencil"></i></button>
+              <button class="btn btn-outline-success btn-icon" data-action="eventsModule.openCloneModal" data-id="event.id" title="Clone" aria-label="Clone event"><i class="bi bi-files"></i></button>
+              <button class="btn btn-outline-dark btn-icon" data-action="eventsModule.cloneForNextYear" data-id="event.id" title="Clone for Next Year" aria-label="Clone for next year"><i class="bi bi-calendar-plus"></i></button>
+              <button class="btn btn-outline-danger btn-icon" data-action="eventsModule.deleteEvent" data-args='${JSON.stringify([event.id, eName])}' title="Delete" aria-label="Delete event"><i class="bi bi-trash"></i></button>
             </div>
           </td>
         </tr>`;
-    }).join('');
+      })
+      .join('');
 
     // Render pagination
     let paginationEl = document.getElementById('eventsPagination');
@@ -11169,7 +12346,7 @@ const eventsModule = {
       if (tableParent) tableParent.after(paginationEl);
     }
     if (this._serverPagination) {
-      utils.renderServerPagination('eventsPagination', this._srvPagination, 'eventsModule._srvGoToPage');
+      utils.renderServerPagination('eventsPagination', this._pagination, 'eventsModule._goToPage');
     } else {
       const totalPages = Math.ceil(events.length / (this._evtPageSize || 50));
       if (totalPages > 1) {
@@ -11177,17 +12354,17 @@ const eventsModule = {
         const pgStart = (cp - 1) * (this._evtPageSize || 50);
         const pgEnd = pgStart + (this._evtPageSize || 50);
         let html = '<nav><ul class="pagination pagination-sm justify-content-center mt-3">';
-        html += `<li class="page-item ${cp <= 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); eventsModule.goToEventsPage(${cp - 1})">Prev</a></li>`;
+        html += `<li class="page-item ${cp <= 1 ? 'disabled' : ''}"><a class="page-link" href="#" data-action="eventsModule.goToEventsPage" data-id="${cp - 1}" data-prevent-default="true">Prev</a></li>`;
         for (let i = 1; i <= totalPages; i++) {
           if (i === 1 || i === totalPages || (i >= cp - 2 && i <= cp + 2)) {
-            html += `<li class="page-item ${i === cp ? 'active' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); eventsModule.goToEventsPage(${i})">${i}</a></li>`;
+            html += `<li class="page-item ${i === cp ? 'active' : ''}"><a class="page-link" href="#" data-action="eventsModule.goToEventsPage" data-id="${i}" data-prevent-default="true">${i}</a></li>`;
           } else if (i === cp - 3 || i === cp + 3) {
             html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
           }
         }
-        html += `<li class="page-item ${cp >= totalPages ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); eventsModule.goToEventsPage(${cp + 1})">Next</a></li>`;
+        html += `<li class="page-item ${cp >= totalPages ? 'disabled' : ''}"><a class="page-link" href="#" data-action="eventsModule.goToEventsPage" data-id="${cp + 1}" data-prevent-default="true">Next</a></li>`;
         html += '</ul></nav>';
-        html += `<div class="text-center text-muted small">Showing ${pgStart+1}-${Math.min(pgEnd, events.length)} of ${events.length}</div>`;
+        html += `<div class="text-center text-muted small">Showing ${pgStart + 1}-${Math.min(pgEnd, events.length)} of ${events.length}</div>`;
         paginationEl.innerHTML = html;
       } else if (paginationEl) {
         paginationEl.innerHTML = '';
@@ -11196,6 +12373,7 @@ const eventsModule = {
   },
 
   goToEventsPage(page) {
+    page = parseInt(page) || 1;
     const events = this._lastFilteredEvents || STATE.allEvents || [];
     const totalPages = Math.ceil(events.length / (this._evtPageSize || 50));
     this._evtCurrentPage = Math.max(1, Math.min(page, totalPages));
@@ -11207,15 +12385,10 @@ const eventsModule = {
    */
   async quickSetStatus(eventId, newStatus) {
     try {
-      const { error } = await STATE.client
-        .from('events')
-        .update({ event_status: newStatus })
-        .eq('id', eventId);
-
-      if (error) throw error;
+      await apiClient.update('events', eventId, { event_status: newStatus });
 
       // Update local state
-      const evt = STATE.allEvents.find(e => e.id === eventId);
+      const evt = STATE.allEvents.find((e) => e.id === eventId);
       if (evt) evt.event_status = newStatus;
 
       utils.showToast(`Event ${newStatus === 'confirmed' ? 'confirmed' : 'set to ' + newStatus}`, 'success');
@@ -11235,50 +12408,60 @@ const eventsModule = {
     if (!eventIds || eventIds.length === 0) return;
 
     // Only fetch for events we haven't cached yet
-    const uncached = eventIds.filter(id => !this._eventAwardCounts[id]);
+    const uncached = eventIds.filter((id) => !this._eventAwardCounts[id]);
     if (uncached.length === 0) return;
 
     try {
       const awardsByEvent = {};
 
       // Try querying award_years by event_id first (requires migration 018)
-      const { data: allAwards, error } = await STATE.client
-        .from('award_years')
-        .select('id, event_id, winner_confirmed')
-        .in('event_id', uncached);
+      let allAwards;
+      let awardsQueryFailed = false;
+      try {
+        /* selectAll: justified — filtered to specific event IDs for progress badges */
+        allAwards = await apiClient.selectAll('award_years', {
+          select: 'id, event_id, winner_confirmed',
+          filters: { event_id: { op: 'in', value: uncached } },
+        });
+      } catch (_e) {
+        awardsQueryFailed = true;
+      }
 
-      if (!error && allAwards) {
-        (allAwards || []).forEach(award => {
+      if (!awardsQueryFailed && allAwards) {
+        (allAwards || []).forEach((award) => {
           if (!awardsByEvent[award.event_id]) awardsByEvent[award.event_id] = [];
           awardsByEvent[award.event_id].push(award);
         });
       } else {
         // Fallback: look up events to get years, then match award_years by year
-        const { data: events } = await STATE.client
-          .from('events')
-          .select('id, year')
-          .in('id', uncached);
+        /* selectAll: justified — filtered to specific event IDs for year lookup */
+        const evResult = await apiClient.selectAll('events', {
+          select: 'id, year',
+          filters: { id: { op: 'in', value: uncached } },
+        });
+        const events = evResult || [];
 
         if (events && events.length > 0) {
-          const years = [...new Set(events.map(e => e.year).filter(Boolean))];
+          const years = [...new Set(events.map((e) => e.year).filter(Boolean))];
           if (years.length > 0) {
-            const { data: awards } = await STATE.client
-              .from('award_years')
-              .select('id, year')
-              .in('year', years);
+            /* selectAll: justified — filtered to specific years for event progress */
+            const awards = await apiClient.selectAll('award_years', {
+              select: 'id, year',
+              filters: { year: { op: 'in', value: years } },
+            });
 
             // Map year back to event_id
             const yearToEvents = {};
-            events.forEach(e => {
+            events.forEach((e) => {
               if (e.year) {
                 if (!yearToEvents[e.year]) yearToEvents[e.year] = [];
                 yearToEvents[e.year].push(e.id);
               }
             });
 
-            (awards || []).forEach(award => {
+            (awards || []).forEach((award) => {
               const eventIdsForYear = yearToEvents[award.year] || [];
-              eventIdsForYear.forEach(eid => {
+              eventIdsForYear.forEach((eid) => {
                 if (!awardsByEvent[eid]) awardsByEvent[eid] = [];
                 awardsByEvent[eid].push(award);
               });
@@ -11287,10 +12470,10 @@ const eventsModule = {
         }
       }
 
-      uncached.forEach(eventId => {
+      uncached.forEach((eventId) => {
         const awards = awardsByEvent[eventId] || [];
         const total = awards.length;
-        const confirmed = awards.filter(a => a.winner_confirmed === true).length;
+        const confirmed = awards.filter((a) => a.winner_confirmed === true).length;
         const winners = confirmed;
 
         this._eventAwardCounts[eventId] = { total, confirmed, winners };
@@ -11323,8 +12506,8 @@ const eventsModule = {
           continue;
         }
         const attendees = await this.getAttendees(eventId);
-        const attending = attendees.filter(a => a.status === 'attending').length;
-        const vipCount = attendees.filter(a => a.vip || a.isVip || a.ticket_type === 'vip').length;
+        const attending = attendees.filter((a) => a.status === 'attending').length;
+        const vipCount = attendees.filter((a) => a.vip || a.isVip || a.ticket_type === 'vip').length;
         this._eventAttendeeCounts[eventId] = { total: attendees.length, attending, vipCount };
         this._updateAttendeeCell(eventId);
       }
@@ -11336,13 +12519,13 @@ const eventsModule = {
   _updateAttendeeCell(eventId) {
     const data = this._eventAttendeeCounts[eventId];
     if (!data) return;
-    const event = (STATE.allEvents || []).find(e => e.id === eventId);
+    const event = (STATE.allEvents || []).find((e) => e.id === eventId);
     const capacity = event?.capacity || 0;
 
     const capCell = document.getElementById(`capacityCell_${eventId}`);
     if (capCell) {
       if (capacity > 0 && data.total > 0) {
-        const pct = Math.round(data.attending / capacity * 100);
+        const pct = Math.round((data.attending / capacity) * 100);
         const color = pct >= 95 ? 'bg-danger' : pct >= 80 ? 'bg-warning' : pct >= 50 ? 'bg-info' : 'bg-success';
         capCell.innerHTML = `<div class="text-center" style="min-width:60px;"><div class="fw-semibold" style="font-size:0.8rem;">${data.attending}<span class="text-muted">/${capacity}</span></div><div class="progress mt-1" style="height:4px;"><div class="progress-bar ${color}" style="width:${Math.min(pct, 100)}%"></div></div></div>`;
       } else if (data.total > 0) {
@@ -11366,7 +12549,7 @@ const eventsModule = {
     const years = new Set();
 
     // Add years from events data
-    (STATE.allEvents || []).forEach(e => {
+    (STATE.allEvents || []).forEach((e) => {
       if (e.year) years.add(e.year);
       if (e.event_date) {
         const y = parseInt(e.event_date.split('-')[0]);
@@ -11381,8 +12564,11 @@ const eventsModule = {
     const sortedYears = [...years].sort((a, b) => b - a);
 
     const currentValue = select.value;
-    select.innerHTML = '<option value="">All Years</option>' +
-      sortedYears.map(y => `<option value="${y}" ${String(y) === currentValue ? 'selected' : ''}>${y}</option>`).join('');
+    select.innerHTML =
+      '<option value="">All Years</option>' +
+      sortedYears
+        .map((y) => `<option value="${y}" ${String(y) === currentValue ? 'selected' : ''}>${y}</option>`)
+        .join('');
   },
 
   // ============================================
@@ -11398,12 +12584,12 @@ const eventsModule = {
   toggleSelectAll(checked) {
     if (checked) {
       // Select all filtered events, not just current page
-      (this.filteredEvents || STATE.allEvents || []).forEach(e => this._selectedEvents.add(e.id));
+      (this.filteredEvents || STATE.allEvents || []).forEach((e) => this._selectedEvents.add(e.id));
     } else {
       this._selectedEvents.clear();
     }
     // Update visible checkboxes to match
-    document.querySelectorAll('.event-checkbox').forEach(cb => {
+    document.querySelectorAll('.event-checkbox').forEach((cb) => {
       cb.checked = checked;
     });
     this._updateBulkBar();
@@ -11412,7 +12598,7 @@ const eventsModule = {
 
   clearEventSelection() {
     this._selectedEvents.clear();
-    document.querySelectorAll('.event-checkbox').forEach(cb => cb.checked = false);
+    document.querySelectorAll('.event-checkbox').forEach((cb) => (cb.checked = false));
     const selectAll = document.getElementById('selectAllEvents');
     if (selectAll) selectAll.checked = false;
     this._updateBulkBar();
@@ -11434,12 +12620,21 @@ const eventsModule = {
   async bulkDelete() {
     const ids = Array.from(this._selectedEvents);
     if (ids.length === 0) return;
-    if (!await utils.confirmDialog({ title: 'Delete Events', message: `Delete ${ids.length} event(s)? This cannot be undone.` })) return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Delete Events',
+        message: `Delete ${ids.length} event(s)? This cannot be undone.`,
+      }))
+    )
+      return;
     try {
-      const result = await utils.runBatchOperation(ids, async (id) => {
-        const { error } = await STATE.client.from('events').delete().eq('id', id);
-        if (error) throw error;
-      }, 'Deleting events');
+      const result = await utils.runBatchOperation(
+        ids,
+        async (id) => {
+          await apiClient.delete('events', id);
+        },
+        'Deleting events'
+      );
       utils.showToast(`${result.succeeded.length} event(s) deleted`, 'success');
       this.clearEventSelection();
       await this.loadEvents();
@@ -11451,22 +12646,33 @@ const eventsModule = {
   async bulkClone() {
     const ids = Array.from(this._selectedEvents);
     if (ids.length === 0) return;
-    if (!await utils.confirmDialog({ title: 'Clone Events', message: `Clone ${ids.length} event(s)?`, confirmText: 'Clone', danger: false })) return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Clone Events',
+        message: `Clone ${ids.length} event(s)?`,
+        confirmText: 'Clone',
+        danger: false,
+      }))
+    )
+      return;
     try {
-      const result = await utils.runBatchOperation(ids, async (id) => {
-        const src = STATE.allEvents.find(e => e.id === id);
-        if (!src) throw new Error('Event not found');
-        const { error } = await STATE.client.from('events').insert([{
-          event_name: src.event_name + ' (Copy)',
-          event_date: src.event_date,
-          year: src.year,
-          venue: src.venue,
-          description: src.description,
-          capacity: src.capacity || null,
-          event_status: 'draft'
-        }]);
-        if (error) throw error;
-      }, 'Cloning events');
+      const result = await utils.runBatchOperation(
+        ids,
+        async (id) => {
+          const src = STATE.allEvents.find((e) => e.id === id);
+          if (!src) throw new Error('Event not found');
+          await apiClient.insert('events', {
+            event_name: src.event_name + ' (Copy)',
+            event_date: src.event_date,
+            year: src.year,
+            venue: src.venue,
+            description: src.description,
+            capacity: src.capacity || null,
+            event_status: 'draft',
+          });
+        },
+        'Cloning events'
+      );
       utils.showToast(`${result.succeeded.length} event(s) cloned`, 'success');
       this.clearEventSelection();
       await this.loadEvents();
@@ -11478,10 +12684,13 @@ const eventsModule = {
   async bulkSetStatus(status) {
     const ids = Array.from(this._selectedEvents);
     if (ids.length === 0) return;
-    await utils.runBatchOperation(ids, async (id) => {
-      const { error } = await STATE.client.from('events').update({ event_status: status }).eq('id', id);
-      if (error) throw error;
-    }, 'Setting event status');
+    await utils.runBatchOperation(
+      ids,
+      async (id) => {
+        await apiClient.update('events', id, { event_status: status });
+      },
+      'Setting event status'
+    );
     this.clearEventSelection();
     await this.loadEvents();
   },
@@ -11501,8 +12710,8 @@ const eventsModule = {
 
   clearSelection() {
     this._selectedEvents.clear();
-    document.querySelectorAll('.event-select-cb').forEach(cb => cb.checked = false);
-    document.querySelectorAll('.event-checkbox').forEach(cb => cb.checked = false);
+    document.querySelectorAll('.event-select-cb').forEach((cb) => (cb.checked = false));
+    document.querySelectorAll('.event-checkbox').forEach((cb) => (cb.checked = false));
     const selectAll = document.getElementById('selectAllEvents');
     if (selectAll) selectAll.checked = false;
     this.updateBulkBar();
@@ -11511,13 +12720,22 @@ const eventsModule = {
 
   async bulkDeleteEvents() {
     if (this._selectedEvents.size === 0) return;
-    if (!await utils.confirmDialog({ title: 'Delete Events', message: `Delete ${this._selectedEvents.size} selected events? This cannot be undone.` })) return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Delete Events',
+        message: `Delete ${this._selectedEvents.size} selected events? This cannot be undone.`,
+      }))
+    )
+      return;
 
     const ids = Array.from(this._selectedEvents);
-    await utils.runBatchOperation(ids, async (id) => {
-      const { error } = await STATE.client.from('events').delete().eq('id', id);
-      if (error) throw error;
-    }, 'Deleting events');
+    await utils.runBatchOperation(
+      ids,
+      async (id) => {
+        await apiClient.delete('events', id);
+      },
+      'Deleting events'
+    );
     this._selectedEvents.clear();
     this.updateBulkBar();
     this._updateBulkBar();
@@ -11526,12 +12744,16 @@ const eventsModule = {
 
   bulkExportEvents() {
     if (this._selectedEvents.size === 0) return;
-    const events = (STATE.allEvents || []).filter(e => this._selectedEvents.has(e.id));
+    const events = (STATE.allEvents || []).filter((e) => this._selectedEvents.has(e.id));
     const headers = ['Event Name', 'Date', 'Venue', 'Status', 'Year'];
-    const rows = events.map(e => [
-      e.event_name || '', e.event_date || '', e.venue || '', e.event_status || '', e.year || ''
+    const rows = events.map((e) => [
+      e.event_name || '',
+      e.event_date || '',
+      e.venue || '',
+      e.event_status || '',
+      e.year || '',
     ]);
-    const csv = [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const csv = [headers, ...rows].map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -11546,7 +12768,10 @@ const eventsModule = {
   // ============================================
   showImportAttendeesModal() {
     const events = STATE.allEvents || [];
-    if (events.length === 0) { utils.showToast('Create an event first', 'warning'); return; }
+    if (events.length === 0) {
+      utils.showToast('Create an event first', 'warning');
+      return;
+    }
     const existingModal = document.getElementById('importAttendeesModal');
     if (existingModal) existingModal.remove();
 
@@ -11556,7 +12781,7 @@ const eventsModule = {
         <div class="modal-body">
           <div class="mb-3"><label class="form-label fw-semibold">Select Event</label>
             <select class="form-select" id="importAttendeesEventId">
-              ${events.map(e => `<option value="${e.id}">${utils.escapeHtml(e.event_name)}</option>`).join('')}
+              ${events.map((e) => `<option value="${e.id}">${utils.escapeHtml(e.event_name)}</option>`).join('')}
             </select></div>
 
           <!-- Format Guide -->
@@ -11582,8 +12807,8 @@ const eventsModule = {
               </div>
               <p class="small mb-1"><strong>Columns can be in any order.</strong> Extra unrecognised columns are ignored. Duplicates (same name + email) are skipped.</p>
               <div class="d-flex gap-2 mt-2">
-                <button class="btn btn-sm btn-outline-primary" onclick="eventsModule._downloadImportTemplate('csv')"><i class="bi bi-download me-1"></i>Download CSV Template</button>
-                <button class="btn btn-sm btn-outline-success" onclick="eventsModule._downloadImportTemplate('xlsx')"><i class="bi bi-download me-1"></i>Download Excel Template</button>
+                <button class="btn btn-sm btn-outline-primary" data-action="eventsModule._downloadImportTemplate" data-id="csv"><i class="bi bi-download me-1"></i>Download CSV Template</button>
+                <button class="btn btn-sm btn-outline-success" data-action="eventsModule._downloadImportTemplate" data-id="xlsx"><i class="bi bi-download me-1"></i>Download Excel Template</button>
               </div>
             </div>
           </div>
@@ -11610,9 +12835,9 @@ const eventsModule = {
           </div>
         </div>
         <div class="modal-footer">
-          <button class="btn btn-outline-info" onclick="eventsModule._previewImport()"><i class="bi bi-eye me-1"></i>Preview</button>
+          <button class="btn btn-outline-info" data-action="eventsModule._previewImport"><i class="bi bi-eye me-1"></i>Preview</button>
           <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button class="btn btn-primary" onclick="eventsModule.executeImportAttendees()"><i class="bi bi-upload me-2"></i>Import</button>
+          <button class="btn btn-primary" data-action="eventsModule.executeImportAttendees"><i class="bi bi-upload me-2"></i>Import</button>
         </div>
       </div></div></div>`;
     document.body.insertAdjacentHTML('beforeend', modalHtml);
@@ -11621,16 +12846,24 @@ const eventsModule = {
 
   _downloadImportTemplate(format) {
     if (format === 'csv') {
-      const csv = 'Name,Email,Status,Type,Plus Ones,Dietary,Phone,Company,Notes\nJohn Smith,john@example.com,attending,guest,0,,,Acme Ltd,\nJane Doe,jane@example.com,attending,vip,1,Vegetarian,07700 123456,Widget Co,Needs front row seating\n';
+      const csv =
+        'Name,Email,Status,Type,Plus Ones,Dietary,Phone,Company,Notes\nJohn Smith,john@example.com,attending,guest,0,,,Acme Ltd,\nJane Doe,jane@example.com,attending,vip,1,Vegetarian,07700 123456,Widget Co,Needs front row seating\n';
       const blob = new Blob([csv], { type: 'text/csv' });
-      const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-      a.download = 'attendees_import_template.csv'; a.click(); URL.revokeObjectURL(a.href);
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'attendees_import_template.csv';
+      a.click();
+      URL.revokeObjectURL(a.href);
     } else {
       // Generate a simple CSV template labelled as .xlsx for user to open in Excel
-      const csv = 'Name,Email,Status,Type,Plus Ones,Dietary,Phone,Company,Notes\nJohn Smith,john@example.com,attending,guest,0,,,Acme Ltd,\nJane Doe,jane@example.com,attending,vip,1,Vegetarian,07700 123456,Widget Co,Needs front row seating\n';
+      const csv =
+        'Name,Email,Status,Type,Plus Ones,Dietary,Phone,Company,Notes\nJohn Smith,john@example.com,attending,guest,0,,,Acme Ltd,\nJane Doe,jane@example.com,attending,vip,1,Vegetarian,07700 123456,Widget Co,Needs front row seating\n';
       const blob = new Blob([csv], { type: 'text/csv' });
-      const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-      a.download = 'attendees_import_template.csv'; a.click(); URL.revokeObjectURL(a.href);
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'attendees_import_template.csv';
+      a.click();
+      URL.revokeObjectURL(a.href);
       utils.showToast('Template downloaded as CSV - open in Excel and save as .xlsx if needed', 'info');
     }
   },
@@ -11667,23 +12900,65 @@ const eventsModule = {
 
     if (!csvText) return null;
 
-    const lines = csvText.split('\n').map(l => l.trim()).filter(l => l);
-    if (lines.length < 2) { utils.showToast('File needs a header row and at least one data row', 'warning'); return null; }
-    if (lines.length > 5001) { utils.showToast('Maximum 5,000 rows allowed per import', 'warning'); return null; }
+    const lines = csvText
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l);
+    if (lines.length < 2) {
+      utils.showToast('File needs a header row and at least one data row', 'warning');
+      return null;
+    }
+    if (lines.length > 5001) {
+      utils.showToast('Maximum 5,000 rows allowed per import', 'warning');
+      return null;
+    }
 
     // Parse header - map columns by name
-    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, '').toLowerCase());
+    const headers = lines[0].split(',').map((h) => h.trim().replace(/^"|"$/g, '').toLowerCase());
     const colMap = {};
     const knownHeaders = {
-      'name': 'name', 'full name': 'name', 'attendee name': 'name', 'first name': 'name', 'fullname': 'name',
-      'email': 'email', 'email address': 'email', 'e-mail': 'email',
-      'status': 'status', 'rsvp': 'status', 'rsvp status': 'status', 'attendance': 'status',
-      'type': 'guestType', 'guest type': 'guestType', 'category': 'guestType', 'ticket type': 'guestType', 'role': 'guestType',
-      'plus ones': 'plusOnes', 'plus-ones': 'plusOnes', 'guests': 'plusOnes', 'additional guests': 'plusOnes', 'plus 1': 'plusOnes', '+1': 'plusOnes',
-      'dietary': 'dietary', 'dietary requirements': 'dietary', 'diet': 'dietary', 'food requirements': 'dietary', 'dietary needs': 'dietary',
-      'phone': 'phone', 'telephone': 'phone', 'mobile': 'phone', 'phone number': 'phone', 'tel': 'phone',
-      'company': 'company', 'organisation': 'company', 'organization': 'company', 'org': 'company', 'company name': 'company',
-      'notes': 'notes', 'comments': 'notes', 'note': 'notes', 'additional info': 'notes'
+      name: 'name',
+      'full name': 'name',
+      'attendee name': 'name',
+      'first name': 'name',
+      fullname: 'name',
+      email: 'email',
+      'email address': 'email',
+      'e-mail': 'email',
+      status: 'status',
+      rsvp: 'status',
+      'rsvp status': 'status',
+      attendance: 'status',
+      type: 'guestType',
+      'guest type': 'guestType',
+      category: 'guestType',
+      'ticket type': 'guestType',
+      role: 'guestType',
+      'plus ones': 'plusOnes',
+      'plus-ones': 'plusOnes',
+      guests: 'plusOnes',
+      'additional guests': 'plusOnes',
+      'plus 1': 'plusOnes',
+      '+1': 'plusOnes',
+      dietary: 'dietary',
+      'dietary requirements': 'dietary',
+      diet: 'dietary',
+      'food requirements': 'dietary',
+      'dietary needs': 'dietary',
+      phone: 'phone',
+      telephone: 'phone',
+      mobile: 'phone',
+      'phone number': 'phone',
+      tel: 'phone',
+      company: 'company',
+      organisation: 'company',
+      organization: 'company',
+      org: 'company',
+      'company name': 'company',
+      notes: 'notes',
+      comments: 'notes',
+      note: 'notes',
+      'additional info': 'notes',
     };
 
     headers.forEach((h, idx) => {
@@ -11707,8 +12982,15 @@ const eventsModule = {
       let current = '';
       let inQuotes = false;
       for (const ch of lines[i]) {
-        if (ch === '"') { inQuotes = !inQuotes; continue; }
-        if (ch === ',' && !inQuotes) { cols.push(current.trim()); current = ''; continue; }
+        if (ch === '"') {
+          inQuotes = !inQuotes;
+          continue;
+        }
+        if (ch === ',' && !inQuotes) {
+          cols.push(current.trim());
+          current = '';
+          continue;
+        }
         current += ch;
       }
       cols.push(current.trim());
@@ -11716,16 +12998,16 @@ const eventsModule = {
       const name = cols[colMap.name] || '';
       if (!name) continue;
 
-      const email = colMap.email !== undefined ? (cols[colMap.email] || '') : '';
+      const email = colMap.email !== undefined ? cols[colMap.email] || '' : '';
       const statusRaw = colMap.status !== undefined ? (cols[colMap.status] || '').toLowerCase() : '';
       const status = validStatuses.includes(statusRaw) ? statusRaw : 'attending';
       const typeRaw = colMap.guestType !== undefined ? (cols[colMap.guestType] || '').toLowerCase() : '';
       const guestType = validTypes.includes(typeRaw) ? typeRaw : 'guest';
-      const plusOnes = colMap.plusOnes !== undefined ? (parseInt(cols[colMap.plusOnes]) || 0) : 0;
-      const dietary = colMap.dietary !== undefined ? (cols[colMap.dietary] || '') : '';
-      const phone = colMap.phone !== undefined ? (cols[colMap.phone] || '') : '';
-      const company = colMap.company !== undefined ? (cols[colMap.company] || '') : '';
-      const notes = colMap.notes !== undefined ? (cols[colMap.notes] || '') : '';
+      const plusOnes = colMap.plusOnes !== undefined ? parseInt(cols[colMap.plusOnes]) || 0 : 0;
+      const dietary = colMap.dietary !== undefined ? cols[colMap.dietary] || '' : '';
+      const phone = colMap.phone !== undefined ? cols[colMap.phone] || '' : '';
+      const company = colMap.company !== undefined ? cols[colMap.company] || '' : '';
+      const notes = colMap.notes !== undefined ? cols[colMap.notes] || '' : '';
 
       rows.push({ name, email, status, guestType, plusOnes, dietary, phone, company, notes });
     }
@@ -11735,7 +13017,10 @@ const eventsModule = {
 
   async _previewImport() {
     const rows = await this._parseImportFile();
-    if (!rows || rows.length === 0) { utils.showToast('No valid data found to preview', 'warning'); return; }
+    if (!rows || rows.length === 0) {
+      utils.showToast('No valid data found to preview', 'warning');
+      return;
+    }
 
     const previewArea = document.getElementById('importPreviewArea');
     const table = document.getElementById('importPreviewTable');
@@ -11743,11 +13028,15 @@ const eventsModule = {
     if (!previewArea || !table) return;
 
     const preview = rows.slice(0, 20);
-    table.querySelector('thead').innerHTML = '<tr><th>Name</th><th>Email</th><th>Status</th><th>Type</th><th>+1s</th><th>Dietary</th><th>Company</th></tr>';
-    table.querySelector('tbody').innerHTML = preview.map(r =>
-      `<tr><td>${utils.escapeHtml(r.name)}</td><td>${utils.escapeHtml(r.email)}</td><td><span class="badge bg-${r.status === 'attending' ? 'success' : r.status === 'maybe' ? 'warning' : 'secondary'}">${r.status}</span></td>
+    table.querySelector('thead').innerHTML =
+      '<tr><th>Name</th><th>Email</th><th>Status</th><th>Type</th><th>+1s</th><th>Dietary</th><th>Company</th></tr>';
+    table.querySelector('tbody').innerHTML = preview
+      .map(
+        (r) =>
+          `<tr><td>${utils.escapeHtml(r.name)}</td><td>${utils.escapeHtml(r.email)}</td><td><span class="badge bg-${r.status === 'attending' ? 'success' : r.status === 'maybe' ? 'warning' : 'secondary'}">${r.status}</span></td>
        <td>${r.guestType}</td><td>${r.plusOnes}</td><td>${utils.escapeHtml(r.dietary)}</td><td>${utils.escapeHtml(r.company)}</td></tr>`
-    ).join('');
+      )
+      .join('');
 
     countEl.textContent = `Showing ${preview.length} of ${rows.length} row(s) to import`;
     previewArea.style.display = 'block';
@@ -11755,12 +13044,18 @@ const eventsModule = {
 
   async executeImportAttendees() {
     const eventId = document.getElementById('importAttendeesEventId')?.value;
-    if (!eventId) { utils.showToast('Select an event', 'warning'); return; }
+    if (!eventId) {
+      utils.showToast('Select an event', 'warning');
+      return;
+    }
 
     const rows = await this._parseImportFile();
-    if (!rows || rows.length === 0) { utils.showToast('No valid data found. Check your file format matches the template.', 'warning'); return; }
+    if (!rows || rows.length === 0) {
+      utils.showToast('No valid data found. Check your file format matches the template.', 'warning');
+      return;
+    }
 
-    const existing = await this.getAttendees(eventId) || [];
+    const existing = (await this.getAttendees(eventId)) || [];
     const skipDuplicates = document.getElementById('importSkipDuplicates')?.checked !== false;
 
     let imported = 0;
@@ -11771,11 +13066,15 @@ const eventsModule = {
 
       // Duplicate check
       if (skipDuplicates) {
-        const isDupe = existing.some(a =>
-          a.name.toLowerCase() === r.name.toLowerCase() &&
-          (r.email ? a.email?.toLowerCase() === r.email.toLowerCase() : true)
+        const isDupe = existing.some(
+          (a) =>
+            a.name.toLowerCase() === r.name.toLowerCase() &&
+            (r.email ? a.email?.toLowerCase() === r.email.toLowerCase() : true)
         );
-        if (isDupe) { skipped++; continue; }
+        if (isDupe) {
+          skipped++;
+          continue;
+        }
       }
 
       existing.push({
@@ -11789,7 +13088,7 @@ const eventsModule = {
         phone: r.phone,
         company: r.company,
         notes: r.notes,
-        addedAt: new Date().toISOString()
+        addedAt: new Date().toISOString(),
       });
       imported++;
     }
@@ -11814,7 +13113,10 @@ const eventsModule = {
   // ============================================
   printRunningOrderStandalone(eventId, eventName) {
     const items = this.runningOrderItems || [];
-    if (items.length === 0) { utils.showToast('No running order items to print', 'warning'); return; }
+    if (items.length === 0) {
+      utils.showToast('No running order items to print', 'warning');
+      return;
+    }
     const printWin = window.open('', '_blank');
     printWin.document.write(`<!DOCTYPE html><html><head><title>Running Order - ${utils.escapeHtml(eventName)}</title>
       <style>body{font-family:Arial,sans-serif;margin:40px;color:#333}h1{text-align:center;margin-bottom:5px}
@@ -11825,9 +13127,16 @@ const eventsModule = {
       @media print{body{margin:20px}}</style></head><body>
       <h1>${utils.escapeHtml(eventName)}</h1><h2>Running Order</h2>
       <table><thead><tr><th class="num">#</th><th>Award</th><th>Recipient</th><th class="time">Time</th><th>Notes</th></tr></thead><tbody>
-      ${items.map((item, i) => `<tr><td class="num">${item.award_number || (i + 1)}</td><td>${utils.escapeHtml(item.award_name || item.display_name || '')}</td>
+      ${items
+        .map(
+          (
+            item,
+            i
+          ) => `<tr><td class="num">${item.award_number || i + 1}</td><td>${utils.escapeHtml(item.award_name || item.display_name || '')}</td>
         <td>${utils.escapeHtml(item.recipient_collecting || '')}</td><td class="time">${item.scheduled_time || '-'}</td>
-        <td>${utils.escapeHtml(item.notes || '')}</td></tr>`).join('')}
+        <td>${utils.escapeHtml(item.notes || '')}</td></tr>`
+        )
+        .join('')}
       </tbody></table><div class="footer">Printed ${new Date().toLocaleString('en-GB')}</div></body></html>`);
     printWin.document.close();
     printWin.print();
@@ -11841,7 +13150,9 @@ const eventsModule = {
     if (events.length === 0) return;
 
     const rows = [];
-    let grandRevenue = 0, grandBudget = 0, grandCosts = 0;
+    let grandRevenue = 0,
+      grandBudget = 0,
+      grandCosts = 0;
 
     for (const e of events) {
       const cachedAttendees = this._eventAttendeeCounts[e.id];
@@ -11862,7 +13173,7 @@ const eventsModule = {
     }
 
     const grandNet = grandRevenue - grandCosts;
-    const margin = grandRevenue > 0 ? Math.round(grandNet / grandRevenue * 100) : 0;
+    const margin = grandRevenue > 0 ? Math.round((grandNet / grandRevenue) * 100) : 0;
 
     // Update summary cards
     const revEl = document.getElementById('financialTotalRevenue');
@@ -11891,18 +13202,20 @@ const eventsModule = {
     const tfoot = document.getElementById('financialBreakdownFoot');
     if (tbody) {
       const statusColors = { draft: 'secondary', confirmed: 'success', cancelled: 'danger', complete: 'info' };
-      tbody.innerHTML = rows.map(r => {
-        const color = statusColors[r.event.event_status || 'draft'] || 'secondary';
-        return `<tr>
+      tbody.innerHTML = rows
+        .map((r) => {
+          const color = statusColors[r.event.event_status || 'draft'] || 'secondary';
+          return `<tr>
           <td class="fw-semibold">${utils.escapeHtml(r.event.event_name)}</td>
           <td>${r.event.year || '-'}</td>
           <td class="text-end ${r.revenue > 0 ? 'text-success' : ''}">${r.revenue > 0 ? '\u00A3' + r.revenue.toFixed(2) : '-'}</td>
           <td class="text-end">${r.totalBudget > 0 ? '\u00A3' + r.totalBudget.toFixed(2) : '-'}</td>
           <td class="text-end ${r.actualCosts > 0 ? 'text-danger' : ''}">${r.actualCosts > 0 ? '\u00A3' + r.actualCosts.toFixed(2) : '-'}</td>
           <td class="text-end fw-bold ${r.netPL >= 0 ? 'text-success' : 'text-danger'}">${r.revenue > 0 || r.actualCosts > 0 ? (r.netPL >= 0 ? '' : '-') + '\u00A3' + Math.abs(r.netPL).toFixed(2) : '-'}</td>
-          <td class="text-center"><span class="badge bg-${color}">${(r.event.event_status || 'draft')}</span></td>
+          <td class="text-center"><span class="badge bg-${color}">${r.event.event_status || 'draft'}</span></td>
         </tr>`;
-      }).join('');
+        })
+        .join('');
     }
     if (tfoot) {
       tfoot.innerHTML = `<tr>
@@ -11918,7 +13231,10 @@ const eventsModule = {
 
   async exportFinancialSummary() {
     const events = STATE.allEvents || [];
-    if (events.length === 0) { utils.showToast('No events', 'warning'); return; }
+    if (events.length === 0) {
+      utils.showToast('No events', 'warning');
+      return;
+    }
 
     const csvRows = [];
     for (const e of events) {
@@ -11930,17 +13246,17 @@ const eventsModule = {
       const actualCosts = budget.items ? budget.items.reduce((s, i) => s + (parseFloat(i.actual) || 0), 0) : 0;
 
       csvRows.push({
-        'Event': e.event_name || '',
-        'Year': e.year || '',
-        'Date': e.event_date || '',
-        'Status': e.event_status || 'draft',
+        Event: e.event_name || '',
+        Year: e.year || '',
+        Date: e.event_date || '',
+        Status: e.event_status || 'draft',
         'Ticket Price': e.ticket_price || 0,
-        'Attending': attending,
+        Attending: attending,
         'Ticket Revenue': revenue,
         'Total Budget': totalBudget,
         'Actual Costs': actualCosts,
         'Net P&L': revenue - actualCosts,
-        'Budget Remaining': totalBudget - actualCosts
+        'Budget Remaining': totalBudget - actualCosts,
       });
     }
 
@@ -11950,17 +13266,30 @@ const eventsModule = {
 
   exportEventsCSV() {
     const events = STATE.allEvents || [];
-    if (events.length === 0) { utils.showToast('No events to export', 'warning'); return; }
+    if (events.length === 0) {
+      utils.showToast('No events to export', 'warning');
+      return;
+    }
     const rows = [['Event Name', 'Year', 'Date', 'Venue', 'Status', 'Description', 'Attendees']];
-    events.forEach(e => {
+    events.forEach((e) => {
       const cachedAttendees = this._eventAttendeeCounts[e.id];
-      rows.push([e.event_name || '', e.year || '', e.event_date || '', e.venue || '', e.event_status || 'draft', e.description || '', cachedAttendees ? cachedAttendees.total : 0]);
+      rows.push([
+        e.event_name || '',
+        e.year || '',
+        e.event_date || '',
+        e.venue || '',
+        e.event_status || 'draft',
+        e.description || '',
+        cachedAttendees ? cachedAttendees.total : 0,
+      ]);
     });
-    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
     a.download = `events_export_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click(); URL.revokeObjectURL(a.href);
+    a.click();
+    URL.revokeObjectURL(a.href);
     utils.showToast('Events exported', 'success');
   },
 
@@ -11969,8 +13298,11 @@ const eventsModule = {
    */
   exportEventsExcel() {
     const events = STATE.allEvents || [];
-    if (events.length === 0) { utils.showToast('No events to export', 'warning'); return; }
-    const exportData = events.map(e => {
+    if (events.length === 0) {
+      utils.showToast('No events to export', 'warning');
+      return;
+    }
+    const exportData = events.map((e) => {
       const cachedAttendees = this._eventAttendeeCounts[e.id];
       return {
         event_name: e.event_name || '',
@@ -11979,7 +13311,7 @@ const eventsModule = {
         venue: e.venue || '',
         status: e.event_status || 'draft',
         description: e.description || '',
-        attendees: cachedAttendees ? cachedAttendees.total : 0
+        attendees: cachedAttendees ? cachedAttendees.total : 0,
       };
     });
     utils.exportToExcel(exportData, `events_export_${new Date().toISOString().split('T')[0]}`);
@@ -11990,8 +13322,11 @@ const eventsModule = {
    */
   exportEventsPDF() {
     const events = STATE.allEvents || [];
-    if (events.length === 0) { utils.showToast('No events to export', 'warning'); return; }
-    const exportData = events.map(e => {
+    if (events.length === 0) {
+      utils.showToast('No events to export', 'warning');
+      return;
+    }
+    const exportData = events.map((e) => {
       const cachedAttendees = this._eventAttendeeCounts[e.id];
       return {
         event_name: e.event_name || '',
@@ -11999,10 +13334,12 @@ const eventsModule = {
         date: e.event_date || '',
         venue: e.venue || '',
         status: e.event_status || 'draft',
-        attendees: cachedAttendees ? cachedAttendees.total : 0
+        attendees: cachedAttendees ? cachedAttendees.total : 0,
       };
     });
-    utils.exportToPrintablePDF(exportData, 'Events Report', { columns: ['event_name', 'year', 'date', 'venue', 'status', 'attendees'] });
+    utils.exportToPrintablePDF(exportData, 'Events Report', {
+      columns: ['event_name', 'year', 'date', 'venue', 'status', 'attendees'],
+    });
   },
 
   // ============================================
@@ -12029,18 +13366,37 @@ const eventsModule = {
 
   calendarPrev() {
     this._calendarMonth--;
-    if (this._calendarMonth < 0) { this._calendarMonth = 11; this._calendarYear--; }
+    if (this._calendarMonth < 0) {
+      this._calendarMonth = 11;
+      this._calendarYear--;
+    }
     this.renderCalendar();
   },
 
   calendarNext() {
     this._calendarMonth++;
-    if (this._calendarMonth > 11) { this._calendarMonth = 0; this._calendarYear++; }
+    if (this._calendarMonth > 11) {
+      this._calendarMonth = 0;
+      this._calendarYear++;
+    }
     this.renderCalendar();
   },
 
   renderCalendar() {
-    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const monthNames = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
     const titleEl = document.getElementById('eventsCalendarTitle');
     const gridEl = document.getElementById('eventsCalendarGrid');
     if (!titleEl || !gridEl) return;
@@ -12053,16 +13409,18 @@ const eventsModule = {
     const todayStr = today.toISOString().split('T')[0];
 
     const monthStr = `${this._calendarYear}-${String(this._calendarMonth + 1).padStart(2, '0')}`;
-    const monthEvents = (STATE.allEvents || []).filter(e => e.event_date && e.event_date.startsWith(monthStr));
+    const monthEvents = (STATE.allEvents || []).filter((e) => e.event_date && e.event_date.startsWith(monthStr));
     const eventsByDay = {};
-    monthEvents.forEach(e => {
+    monthEvents.forEach((e) => {
       const day = parseInt(e.event_date.split('-')[2]);
       if (!eventsByDay[day]) eventsByDay[day] = [];
       eventsByDay[day].push(e);
     });
 
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    let html = dayNames.map(d => `<div class="col text-center small fw-semibold text-muted py-1">${d}</div>`).join('');
+    let html = dayNames
+      .map((d) => `<div class="col text-center small fw-semibold text-muted py-1">${d}</div>`)
+      .join('');
 
     const startDay = firstDay === 0 ? 0 : firstDay;
     for (let i = 0; i < startDay; i++) {
@@ -12073,13 +13431,23 @@ const eventsModule = {
       const dateStr = `${this._calendarYear}-${String(this._calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       const isToday = dateStr === todayStr;
       const dayEvents = eventsByDay[day] || [];
-      const bgClass = isToday ? 'bg-primary bg-opacity-10 border border-primary' : dayEvents.length > 0 ? 'bg-success bg-opacity-10 border border-success' : 'bg-light';
+      const bgClass = isToday
+        ? 'bg-primary bg-opacity-10 border border-primary'
+        : dayEvents.length > 0
+          ? 'bg-success bg-opacity-10 border border-success'
+          : 'bg-light';
 
       html += `<div class="col text-center p-1">
         <div class="rounded p-2 ${bgClass}" style="min-height:70px;">
           <div class="small ${isToday ? 'fw-bold text-primary' : ''}">${day}</div>
-          ${dayEvents.map(e => `<div class="badge bg-primary d-block mt-1 text-truncate" style="font-size:0.65rem; max-width:100%; cursor:pointer;"
-            title="${utils.escapeHtml(e.event_name)}" onclick="eventsModule.openEditModal('${e.id}')">${utils.escapeHtml(e.event_name)}</div>`).join('')}
+          ${dayEvents
+            .map(
+              (
+                e
+              ) => `<div class="badge bg-primary d-block mt-1 text-truncate" style="font-size:0.65rem; max-width:100%; cursor:pointer;"
+            title="${utils.escapeHtml(e.event_name)}" data-action="eventsModule.openEditModal" data-id="e.id">${utils.escapeHtml(e.event_name)}</div>`
+            )
+            .join('')}
         </div>
       </div>`;
 
@@ -12113,26 +13481,27 @@ const eventsModule = {
       { id: 'm11', label: 'Table plan done', done: false, category: 'Day of Event' },
       { id: 'm12', label: 'Name badges printed', done: false, category: 'Day of Event' },
       { id: 'm13', label: 'Post-event survey created', done: false, category: 'Post-Event' },
-      { id: 'm14', label: 'Thank you emails sent', done: false, category: 'Post-Event' }
+      { id: 'm14', label: 'Thank you emails sent', done: false, category: 'Post-Event' },
     ];
   },
 
   async getMilestones(eventId) {
     try {
-      const { data, error } = await STATE.client
-        .from('event_milestones')
-        .select('*')
-        .eq('event_id', eventId)
-        .order('created_at', { ascending: true });
-      if (error) throw error;
-      return (data && data.length > 0) ? data.map(m => ({
-        id: m.milestone_id || m.id,
-        label: m.label || m.title || '',
-        done: m.done ?? m.is_completed ?? false,
-        category: m.category || 'General',
-        custom: m.custom ?? m.is_custom ?? false,
-        completedAt: m.completed_at || null
-      })) : this._getDefaultMilestones();
+      /* selectAll: justified — scoped to single event */
+      const data = await apiClient.selectAll('event_milestones', {
+        filters: { event_id: eventId },
+        sort: { column: 'created_at', ascending: true },
+      });
+      return data && data.length > 0
+        ? data.map((m) => ({
+            id: m.milestone_id || m.id,
+            label: m.label || m.title || '',
+            done: m.done ?? m.is_completed ?? false,
+            category: m.category || 'General',
+            custom: m.custom ?? m.is_custom ?? false,
+            completedAt: m.completed_at || null,
+          }))
+        : this._getDefaultMilestones();
     } catch (e) {
       const stored = localStorage.getItem(this._milestonesKey(eventId));
       return stored ? JSON.parse(stored) : this._getDefaultMilestones();
@@ -12141,17 +13510,17 @@ const eventsModule = {
 
   async _saveMilestones(eventId, milestones) {
     try {
-      await STATE.client.from('event_milestones').delete().eq('event_id', eventId);
+      await apiClient.deleteByFilters('event_milestones', { event_id: eventId });
       if (milestones.length > 0) {
-        const rows = milestones.map(m => ({
-          event_id: eventId, milestone_id: m.id,
+        const rows = milestones.map((m) => ({
+          event_id: eventId,
+          milestone_id: m.id,
           title: m.label || m.title || '',
           is_completed: m.done ?? m.is_completed ?? false,
           is_custom: m.custom ?? m.is_custom ?? false,
-          completed_at: m.completedAt || null
+          completed_at: m.completedAt || null,
         }));
-        const { error } = await STATE.client.from('event_milestones').insert(rows);
-        if (error) throw error;
+        await apiClient.insert('event_milestones', rows);
       }
     } catch (e) {
       localStorage.setItem(this._milestonesKey(eventId), JSON.stringify(milestones));
@@ -12160,7 +13529,7 @@ const eventsModule = {
 
   async toggleMilestone(eventId, milestoneId) {
     const milestones = await this.getMilestones(eventId);
-    const ms = milestones.find(m => m.id === milestoneId);
+    const ms = milestones.find((m) => m.id === milestoneId);
     if (ms) {
       ms.done = !ms.done;
       ms.completedAt = ms.done ? new Date().toISOString() : null;
@@ -12172,7 +13541,10 @@ const eventsModule = {
   async addCustomMilestone(eventId) {
     const input = document.getElementById('newMilestoneInput');
     const label = input?.value?.trim();
-    if (!label) { utils.showToast('Enter a milestone name', 'warning'); return; }
+    if (!label) {
+      utils.showToast('Enter a milestone name', 'warning');
+      return;
+    }
     const milestones = await this.getMilestones(eventId);
     milestones.push({ id: 'mc_' + Date.now(), label, done: false, category: 'Custom', custom: true });
     await this._saveMilestones(eventId, milestones);
@@ -12181,7 +13553,7 @@ const eventsModule = {
   },
 
   async removeCustomMilestone(eventId, milestoneId) {
-    const milestones = (await this.getMilestones(eventId)).filter(m => m.id !== milestoneId);
+    const milestones = (await this.getMilestones(eventId)).filter((m) => m.id !== milestoneId);
     await this._saveMilestones(eventId, milestones);
     this.renderMilestonesPanel(eventId);
   },
@@ -12190,11 +13562,11 @@ const eventsModule = {
     const container = document.getElementById('milestonesContent');
     if (!container) return;
     const milestones = await this.getMilestones(eventId);
-    const done = milestones.filter(m => m.done).length;
+    const done = milestones.filter((m) => m.done).length;
     const total = milestones.length;
-    const pct = total > 0 ? Math.round(done / total * 100) : 0;
+    const pct = total > 0 ? Math.round((done / total) * 100) : 0;
 
-    const categories = [...new Set(milestones.map(m => m.category))];
+    const categories = [...new Set(milestones.map((m) => m.category))];
 
     container.innerHTML = `
       <div class="d-flex justify-content-between align-items-center mb-2">
@@ -12205,23 +13577,32 @@ const eventsModule = {
       <div class="progress mb-3" style="height:6px;">
         <div class="progress-bar bg-success" style="width:${pct}%"></div>
       </div>
-      ${categories.map(cat => `
+      ${categories
+        .map(
+          (cat) => `
         <h6 class="small text-muted mb-1 mt-2">${cat}</h6>
-        ${milestones.filter(m => m.category === cat).map(m => `
+        ${milestones
+          .filter((m) => m.category === cat)
+          .map(
+            (m) => `
           <div class="form-check d-flex align-items-center mb-1">
             <input class="form-check-input me-2" type="checkbox" ${m.done ? 'checked' : ''}
-              onchange="eventsModule.toggleMilestone('${eventId}', '${m.id}')" id="ms_${m.id}">
+              data-on-change="eventsModule.toggleMilestone" data-id="${eventId}" data-args='["${m.id}"]' id="ms_${m.id}">
             <label class="form-check-label small ${m.done ? 'text-decoration-line-through text-muted' : ''}" for="ms_${m.id}">
               ${utils.escapeHtml(m.label)}
               ${m.completedAt ? `<span class="text-success ms-1" style="font-size:0.65rem;">${new Date(m.completedAt).toLocaleDateString('en-GB')}</span>` : ''}
             </label>
-            ${m.custom ? `<button class="btn btn-sm ms-auto p-0 text-danger" onclick="eventsModule.removeCustomMilestone('${eventId}', '${m.id}')" title="Remove"><i class="bi bi-x"></i></button>` : ''}
+            ${m.custom ? `<button class="btn btn-sm ms-auto p-0 text-danger" data-action="eventsModule.removeCustomMilestone" data-args='${JSON.stringify([eventId, m.id])}' title="Remove"><i class="bi bi-x"></i></button>` : ''}
           </div>
-        `).join('')}
-      `).join('')}
+        `
+          )
+          .join('')}
+      `
+        )
+        .join('')}
       <div class="input-group input-group-sm mt-3">
         <input type="text" class="form-control" id="newMilestoneInput" placeholder="Add custom milestone...">
-        <button class="btn btn-outline-primary" onclick="eventsModule.addCustomMilestone('${eventId}')"><i class="bi bi-plus"></i></button>
+        <button class="btn btn-outline-primary" data-action="eventsModule.addCustomMilestone" data-id="eventId"><i class="bi bi-plus"></i></button>
       </div>`;
   },
 
@@ -12229,9 +13610,17 @@ const eventsModule = {
   // CLONE EVENT FOR NEXT YEAR
   // ============================================
   async cloneForNextYear(eventId) {
-    const src = STATE.allEvents.find(e => e.id === eventId);
+    const src = STATE.allEvents.find((e) => e.id === eventId);
     if (!src) return;
-    if (!await utils.confirmDialog({ title: 'Clone Event', message: `Clone "${src.event_name}" for next year?`, confirmText: 'Clone', danger: false })) return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Clone Event',
+        message: `Clone "${src.event_name}" for next year?`,
+        confirmText: 'Clone',
+        danger: false,
+      }))
+    )
+      return;
 
     const nextYear = (parseInt(src.year) || new Date().getFullYear()) + 1;
     let nextDate = null;
@@ -12241,27 +13630,27 @@ const eventsModule = {
     }
 
     try {
-      const { data, error } = await STATE.client.from('events').insert([{
-        event_name: src.event_name.replace(/\d{4}/, nextYear) !== src.event_name
-          ? src.event_name.replace(/\d{4}/, nextYear)
-          : src.event_name + ` ${nextYear}`,
+      const insertRes = await apiClient.insert('events', {
+        event_name:
+          src.event_name.replace(/\d{4}/, nextYear) !== src.event_name
+            ? src.event_name.replace(/\d{4}/, nextYear)
+            : src.event_name + ` ${nextYear}`,
         event_date: nextDate,
         year: nextYear,
         venue: src.venue,
         description: src.description,
         capacity: src.capacity || null,
         ticket_price: src.ticket_price || null,
-        event_status: 'draft'
-      }]).select();
-
-      if (error) throw error;
+        event_status: 'draft',
+      });
+      const data = insertRes.data;
 
       // Copy budget template
       const budget = await this.getBudget(eventId);
       if (budget.items && budget.items.length > 0 && data && data[0]) {
         const newBudget = {
           totalBudget: budget.totalBudget,
-          items: budget.items.map(i => ({ ...i, actual: 0, status: 'Pending' }))
+          items: budget.items.map((i) => ({ ...i, actual: 0, status: 'Pending' })),
         };
         this._saveBudget(data[0].id, newBudget);
       }
@@ -12269,7 +13658,7 @@ const eventsModule = {
       // Copy vendors template
       const vendors = await this.getVendors(eventId);
       if (vendors.length > 0 && data && data[0]) {
-        const newVendors = vendors.map(v => ({ ...v, status: 'Pending', cost: '' }));
+        const newVendors = vendors.map((v) => ({ ...v, status: 'Pending', cost: '' }));
         this._saveVendors(data[0].id, newVendors);
       }
 
@@ -12285,13 +13674,12 @@ const eventsModule = {
   // ============================================
   async _getEventNotes(eventId) {
     try {
-      const { data, error } = await STATE.client
-        .from('events')
-        .select('notes')
-        .eq('id', eventId)
-        .single();
-      if (error) throw error;
-      return data?.notes || '';
+      const result = await apiClient.select('events', {
+        select: 'notes',
+        filters: { id: { eq: eventId } },
+        pageSize: 1,
+      });
+      return result?.data?.[0]?.notes || '';
     } catch (e) {
       return localStorage.getItem(`bta_event_notes_${eventId}`) || '';
     }
@@ -12300,11 +13688,7 @@ const eventsModule = {
   async _saveEventNotes(eventId) {
     const notes = document.getElementById('eventQuickNotes')?.value || '';
     try {
-      const { error } = await STATE.client
-        .from('events')
-        .update({ notes })
-        .eq('id', eventId);
-      if (error) throw error;
+      await apiClient.update('events', eventId, { notes });
     } catch (e) {
       localStorage.setItem(`bta_event_notes_${eventId}`, notes);
     }
@@ -12319,14 +13703,17 @@ const eventsModule = {
       const file = e.target.files[0];
       if (!file) return;
       const text = await file.text();
-      const lines = text.split('\n').filter(l => l.trim());
-      if (lines.length < 2) { utils.showToast('CSV file is empty', 'warning'); return; }
+      const lines = text.split('\n').filter((l) => l.trim());
+      if (lines.length < 2) {
+        utils.showToast('CSV file is empty', 'warning');
+        return;
+      }
 
-      const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/"/g, ''));
+      const headers = lines[0].split(',').map((h) => h.trim().toLowerCase().replace(/"/g, ''));
       const records = [];
 
       for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].match(/(".*?"|[^,]+)/g)?.map(v => v.replace(/^"|"$/g, '').trim()) || [];
+        const values = lines[i].match(/(".*?"|[^,]+)/g)?.map((v) => v.replace(/^"|"$/g, '').trim()) || [];
         const record = {};
         headers.forEach((h, idx) => {
           if (h.includes('name') || h === 'event_name') record.event_name = values[idx];
@@ -12340,15 +13727,28 @@ const eventsModule = {
         if (record.event_name) records.push(record);
       }
 
-      if (records.length === 0) { utils.showToast('No valid records in CSV', 'warning'); return; }
-      if (!await utils.confirmDialog({ title: 'Import Events', message: `Import ${records.length} events from CSV?`, confirmText: 'Import', danger: false })) return;
+      if (records.length === 0) {
+        utils.showToast('No valid records in CSV', 'warning');
+        return;
+      }
+      if (
+        !(await utils.confirmDialog({
+          title: 'Import Events',
+          message: `Import ${records.length} events from CSV?`,
+          confirmText: 'Import',
+          danger: false,
+        }))
+      )
+        return;
 
       try {
         utils.showLoading();
         let imported = 0;
         for (const record of records) {
-          const { error } = await STATE.client.from('events').insert([record]);
-          if (!error) imported++;
+          try {
+            await apiClient.insert('events', record);
+            imported++;
+          } catch (_) {}
           if (utils.showBulkProgress) utils.showBulkProgress(imported, records.length, 'Importing events');
         }
         utils.showToast(`Imported ${imported} of ${records.length} events`, 'success');
@@ -12360,7 +13760,82 @@ const eventsModule = {
       }
     };
     input.click();
-  }
+  },
+
+  /* ==================================================== */
+  /* HELPER METHODS FOR DATA-ACTION DELEGATION */
+  /* ==================================================== */
+
+  /**
+   * Copy press release text to clipboard
+   */
+  copyPressRelease() {
+    const textarea = document.getElementById('pressReleaseText');
+    if (textarea) {
+      navigator.clipboard.writeText(textarea.value);
+      utils.showToast('Copied to clipboard', 'success');
+    }
+  },
+
+  /**
+   * Filter trophies to show all statuses
+   */
+  clearTrophyFilter() {
+    this._trophyFilterStatus = null;
+    this.renderTrophiesTab();
+  },
+
+  /**
+   * Remove a running order section row from the DOM
+   */
+  removeRunningOrderSection(event) {
+    const btn = event.target.closest ? event.target.closest('[data-action]') : event.target;
+    const row = btn.closest('[data-section-idx]');
+    if (row) row.remove();
+  },
+
+  /**
+   * Toggle the room setup/guests panel visibility
+   */
+  showRoomSetupPanel() {
+    document.getElementById('tpSetupPanel').style.display = 'block';
+    document.getElementById('tpGuestsPanel').style.display = 'none';
+  },
+
+  /**
+   * Reset canvas zoom to 100%
+   */
+  resetCanvasZoom() {
+    this.canvasZoom(0, true);
+  },
+
+  /**
+   * Toggle company guest list visibility (table plan sidebar)
+   */
+  toggleCompanyGuests(event) {
+    const el = event.target.closest ? event.target.closest('[data-action]') : event.target;
+    if (el && el.nextElementSibling) {
+      el.nextElementSibling.classList.toggle('d-none');
+    }
+  },
+
+  /**
+   * Close an overlay by clicking its backdrop
+   */
+  closeOverlayOnBackdrop(id, event) {
+    const overlay = document.getElementById(id);
+    if (overlay && event.target === overlay) {
+      overlay.remove();
+    }
+  },
+
+  /**
+   * Close an overlay by its element ID
+   */
+  closeOverlay(id) {
+    const overlay = document.getElementById(id);
+    if (overlay) overlay.remove();
+  },
 };
 
 // Export to window for global access
@@ -12368,3 +13843,5 @@ ModuleRegistry.register('eventsModule', eventsModule);
 
 // Initialize seating enhancements (seat-level assignment, VIP, dietary, place cards, undo/redo)
 if (window.seatingEnhancements) window.seatingEnhancements.init();
+
+export { eventsModule };

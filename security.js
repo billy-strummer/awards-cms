@@ -27,7 +27,7 @@ const securityModule = {
   _generateCsrfToken() {
     const array = new Uint8Array(32);
     crypto.getRandomValues(array);
-    this._csrfToken = Array.from(array, b => b.toString(16).padStart(2, '0')).join('');
+    this._csrfToken = Array.from(array, (b) => b.toString(16).padStart(2, '0')).join('');
     // Store in a meta tag for forms to pick up
     let meta = document.querySelector('meta[name="csrf-token"]');
     if (!meta) {
@@ -63,27 +63,36 @@ const securityModule = {
   // ==========================================
 
   /**
-   * Set CSP headers via meta tag
+   * Set CSP headers via meta tag.
+   *
+   * Security note: style-src requires 'unsafe-inline' because Bootstrap (CDN)
+   * dynamically injects inline styles for tooltips, modals, carousels, etc.
+   * This is a documented Bootstrap limitation with no workaround short of
+   * self-hosting a patched build. The important protection is that script-src
+   * does NOT allow 'unsafe-inline', preventing XSS script injection.
+   *
+   * The primary CSP is also enforced server-side via Vercel headers (vercel.json).
    */
   _setupCSP() {
-    let cspMeta = document.querySelector('meta[http-equiv="Content-Security-Policy"]');
-    if (!cspMeta) {
-      cspMeta = document.createElement('meta');
-      cspMeta.httpEquiv = 'Content-Security-Policy';
-      // Permissive CSP that still blocks inline event handlers from injected content
-      cspMeta.content = [
-        "default-src 'self' https://*.supabase.co",
-        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://js.stripe.com https://browser.sentry-cdn.com https://s3.tradingview.com",
-        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com",
-        "img-src 'self' data: blob: https://*.supabase.co https://i.ytimg.com https://*.tile.openstreetmap.org",
-        "font-src 'self' https://cdn.jsdelivr.net",
-        "connect-src 'self' https://*.supabase.co https://api.resend.com https://*.sentry.io wss://*.supabase.co https://*.tradingview.com wss://*.tradingview.com https://*.tradingview-widget.com wss://*.tradingview-widget.com https://www.youtube.com https://vimeo.com https://api.company-information.service.gov.uk https://*.stripe.com https://*.vercel-scripts.com https://*.vercel-insights.com https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://browser.sentry-cdn.com",
-        "frame-src 'self' https://js.stripe.com https://www.youtube.com https://s3.tradingview.com https://*.tradingview.com https://*.tradingview-widget.com",
-        "object-src 'none'",
-        "base-uri 'self'"
-      ].join('; ');
-      document.head.appendChild(cspMeta);
-    }
+    // Only create a CSP meta tag if one does not already exist in the HTML.
+    // The primary CSP is defined in index.html and should NOT be overridden.
+    const existingCSP = document.querySelector('meta[http-equiv="Content-Security-Policy"]');
+    if (existingCSP) return;
+
+    const cspMeta = document.createElement('meta');
+    cspMeta.httpEquiv = 'Content-Security-Policy';
+    cspMeta.content = [
+      "default-src 'self' https://*.supabase.co",
+      "script-src 'self' https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://js.stripe.com https://browser.sentry-cdn.com https://s3.tradingview.com",
+      "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com",
+      "img-src 'self' data: blob: https://*.supabase.co https://i.ytimg.com https://*.tile.openstreetmap.org",
+      "font-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com",
+      "connect-src 'self' https://*.supabase.co https://api.resend.com https://*.sentry.io wss://*.supabase.co https://*.tradingview.com wss://*.tradingview.com https://*.tradingview-widget.com wss://*.tradingview-widget.com https://www.youtube.com https://vimeo.com https://api.company-information.service.gov.uk https://*.stripe.com https://*.vercel-scripts.com https://*.vercel-insights.com https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://browser.sentry-cdn.com",
+      "frame-src 'self' https://js.stripe.com https://www.youtube.com https://s3.tradingview.com https://*.tradingview.com https://*.tradingview-widget.com",
+      "object-src 'none'",
+      "base-uri 'self'",
+    ].join('; ');
+    document.head.appendChild(cspMeta);
   },
 
   // ==========================================
@@ -110,7 +119,24 @@ const securityModule = {
    */
   sanitizeRichHtml(html) {
     if (!html) return '';
-    const allowedTags = ['b', 'i', 'strong', 'em', 'a', 'br', 'p', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
+    const allowedTags = [
+      'b',
+      'i',
+      'strong',
+      'em',
+      'a',
+      'br',
+      'p',
+      'ul',
+      'ol',
+      'li',
+      'h1',
+      'h2',
+      'h3',
+      'h4',
+      'h5',
+      'h6',
+    ];
     const allowedAttrs = ['href', 'target', 'rel'];
     const div = document.createElement('div');
     div.innerHTML = html;
@@ -118,8 +144,9 @@ const securityModule = {
     // Walk DOM and remove disallowed elements/attributes
     const walk = (node) => {
       const children = Array.from(node.childNodes);
-      children.forEach(child => {
-        if (child.nodeType === 1) { // Element
+      children.forEach((child) => {
+        if (child.nodeType === 1) {
+          // Element
           const tagName = child.tagName.toLowerCase();
           if (!allowedTags.includes(tagName)) {
             // Replace with text content
@@ -127,7 +154,7 @@ const securityModule = {
             node.replaceChild(text, child);
           } else {
             // Remove disallowed attributes
-            Array.from(child.attributes).forEach(attr => {
+            Array.from(child.attributes).forEach((attr) => {
               if (!allowedAttrs.includes(attr.name.toLowerCase())) {
                 child.removeAttribute(attr.name);
               }
@@ -181,7 +208,7 @@ const securityModule = {
 
     const timestamps = this._rateLimitMap.get(action);
     // Remove old entries
-    const recent = timestamps.filter(t => now - t < windowMs);
+    const recent = timestamps.filter((t) => now - t < windowMs);
     this._rateLimitMap.set(action, recent);
 
     if (recent.length >= maxPerMinute) {
@@ -208,7 +235,7 @@ const securityModule = {
       maxSizeMB = 10,
       allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'],
       allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf'],
-      blockSVG = true
+      blockSVG = true,
     } = options;
 
     if (!file) return { valid: false, error: 'No file selected' };
@@ -259,7 +286,9 @@ const securityModule = {
       utils.showToast(result.error, 'error');
     }
     return result.valid;
-  }
+  },
 };
 
 ModuleRegistry.register('securityModule', securityModule);
+
+export { securityModule };

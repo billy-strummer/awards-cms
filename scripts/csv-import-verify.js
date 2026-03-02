@@ -191,7 +191,7 @@ async function main() {
       const assignedAwardIds = new Set((assignments || []).map(a => a.award_id));
 
       const unassigned = awards.filter(a => !assignedAwardIds.has(a.id));
-      const assigned = awards.filter(a => assignedAwardIds.has(a.id));
+      const _assigned = awards.filter(a => assignedAwardIds.has(a.id));
 
       if (unassigned.length === 0) {
         pass(`All ${awards.length} awards have at least one nominee`);

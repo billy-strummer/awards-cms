@@ -10,7 +10,7 @@ const settingsModule = {
     this.applyDensity();
 
     // Initialize all sections independently so one failure doesn't block the rest
-    const safe = (fn) => fn().catch(e => console.error('Settings init error:', e));
+    const safe = (fn) => fn().catch((e) => console.error('Settings init error:', e));
 
     await Promise.all([
       safe(() => this.updateSystemInfo()),
@@ -18,7 +18,7 @@ const settingsModule = {
       safe(() => this.renderAuditLog()),
       safe(async () => {
         if (typeof brandingModule !== 'undefined') {
-          const tenantId = (typeof multiTenancyModule !== 'undefined') ? multiTenancyModule.getTenantId() : 'default';
+          const tenantId = typeof multiTenancyModule !== 'undefined' ? multiTenancyModule.getTenantId() : 'default';
           await brandingModule.renderBrandSettings(tenantId);
           const config = await brandingModule.loadBranding(tenantId);
           brandingModule.applyBranding(config);
@@ -29,7 +29,7 @@ const settingsModule = {
           gdprModule.init();
         }
         return Promise.resolve();
-      })
+      }),
     ]);
 
     this.loadBackupSettings();
@@ -48,13 +48,13 @@ const settingsModule = {
 
     const roleMap = {
       super_admin: { text: 'Super Admin (Full Access)', alertClass: 'alert-success' },
-      admin:       { text: 'Administrator (Full Access)', alertClass: 'alert-success' },
-      editor:      { text: 'Editor (Content Management)', alertClass: 'alert-info' },
-      finance:     { text: 'Finance (Payments & Reports)', alertClass: 'alert-warning' },
-      viewer:      { text: 'Viewer (Read Only)', alertClass: 'alert-secondary' }
+      admin: { text: 'Administrator (Full Access)', alertClass: 'alert-success' },
+      editor: { text: 'Editor (Content Management)', alertClass: 'alert-info' },
+      finance: { text: 'Finance (Payments & Reports)', alertClass: 'alert-warning' },
+      viewer: { text: 'Viewer (Read Only)', alertClass: 'alert-secondary' },
     };
 
-    const currentRole = (typeof rbacModule !== 'undefined' && rbacModule.currentRole) ? rbacModule.currentRole : 'viewer';
+    const currentRole = typeof rbacModule !== 'undefined' && rbacModule.currentRole ? rbacModule.currentRole : 'viewer';
     const info = roleMap[currentRole] || { text: currentRole, alertClass: 'alert-secondary' };
 
     label.textContent = info.text;
@@ -80,11 +80,12 @@ const settingsModule = {
       document.getElementById('systemMediaCount').textContent = mediaCount || 0;
 
       // Calculate total records
-      const totalRecords = (STATE.allAwards?.length || 0) +
-                          (STATE.allOrganisations?.length || 0) +
-                          (STATE.allWinners?.length || 0) +
-                          (eventsCount || 0) +
-                          (mediaCount || 0);
+      const totalRecords =
+        (STATE.allAwards?.length || 0) +
+        (STATE.allOrganisations?.length || 0) +
+        (STATE.allWinners?.length || 0) +
+        (eventsCount || 0) +
+        (mediaCount || 0);
       document.getElementById('totalRecords').textContent = totalRecords.toLocaleString();
 
       // Check database connection status
@@ -123,17 +124,36 @@ const settingsModule = {
     try {
       utils.showLoading();
 
-      // Fetch all data from all tables
+      /* selectAll: justified — full database backup requires complete dataset from every table */
       const tableNames = [
-        'awards', 'organisations', 'winners', 'events',
-        'media_gallery', 'gallery_sections', 'event_templates',
-        'entries', 'organisation_contacts', 'award_assignments',
-        'award_seasons', 'organisation_images', 'organisation_notes',
-        'judge_scores', 'public_votes', 'invoices', 'payments',
-        'certificates', 'sponsors', 'email_templates'
+        'awards',
+        'organisations',
+        'winners',
+        'events',
+        'media_gallery',
+        'gallery_sections',
+        'event_templates',
+        'entries',
+        'organisation_contacts',
+        'award_assignments',
+        'award_seasons',
+        'organisation_images',
+        'organisation_notes',
+        'judge_scores',
+        'public_votes',
+        'invoices',
+        'payments',
+        'certificates',
+        'sponsors',
+        'email_templates',
       ];
       const results = await Promise.all(
-        tableNames.map(t => apiClient.selectAll(t).then(data => data, () => []))
+        tableNames.map((t) =>
+          apiClient.selectAll(t).then(
+            (data) => data,
+            () => []
+          )
+        )
       );
 
       const tables = {};
@@ -147,7 +167,7 @@ const settingsModule = {
         version: '1.2.0',
         exportDate: new Date().toISOString(),
         tables,
-        metadata: { totalRecords: counts }
+        metadata: { totalRecords: counts },
       };
 
       // Create and download file
@@ -192,7 +212,16 @@ const settingsModule = {
       const file = e.target.files[0];
       if (!file) return;
 
-      if (!await utils.confirmDialog({ title: 'Restore Backup', message: 'WARNING: This will overwrite existing data with the backup contents. Are you sure you want to continue?', confirmText: 'Restore', danger: true })) return;
+      if (
+        !(await utils.confirmDialog({
+          title: 'Restore Backup',
+          message:
+            'WARNING: This will overwrite existing data with the backup contents. Are you sure you want to continue?',
+          confirmText: 'Restore',
+          danger: true,
+        }))
+      )
+        return;
 
       try {
         utils.showLoading();
@@ -206,13 +235,26 @@ const settingsModule = {
 
         // Restore tables in dependency order (parents before children)
         const tableOrder = [
-          'awards', 'organisations', 'events', 'event_templates',
-          'award_seasons', 'sponsors', 'email_templates',
-          'winners', 'media_gallery', 'gallery_sections',
-          'entries', 'organisation_contacts', 'award_assignments',
-          'organisation_images', 'organisation_notes',
-          'judge_scores', 'public_votes', 'invoices', 'payments',
-          'certificates'
+          'awards',
+          'organisations',
+          'events',
+          'event_templates',
+          'award_seasons',
+          'sponsors',
+          'email_templates',
+          'winners',
+          'media_gallery',
+          'gallery_sections',
+          'entries',
+          'organisation_contacts',
+          'award_assignments',
+          'organisation_images',
+          'organisation_notes',
+          'judge_scores',
+          'public_votes',
+          'invoices',
+          'payments',
+          'certificates',
         ];
         let restored = 0;
 
@@ -223,12 +265,12 @@ const settingsModule = {
           // Upsert in batches of 500
           for (let i = 0; i < rows.length; i += 500) {
             const batch = rows.slice(i, i + 500);
-            const { error } = await STATE.client.from(table).upsert(batch, { onConflict: 'id', ignoreDuplicates: false });
-            if (error) {
-              console.error(`Restore error for ${table}:`, error);
-              utils.showToast(`Warning: Some ${table} records failed to restore`, 'warning');
-            } else {
+            try {
+              await apiClient.upsert(table, batch, { onConflict: 'id' });
               restored += batch.length;
+            } catch (upsertErr) {
+              console.error(`Restore error for ${table}:`, upsertErr);
+              utils.showToast(`Warning: Some ${table} records failed to restore`, 'warning');
             }
           }
         }
@@ -237,7 +279,6 @@ const settingsModule = {
 
         // Reload data
         window.location.reload();
-
       } catch (error) {
         console.error('Restore error:', error);
         utils.showToast('Failed to restore backup: ' + error.message, 'error');
@@ -253,8 +294,9 @@ const settingsModule = {
    */
   async exportEventsCSV() {
     try {
+      /* selectAll: justified — CSV export requires full dataset */
       const events = await apiClient.selectAll('events', {
-        sort: { column: 'event_date', ascending: false }
+        sort: { column: 'event_date', ascending: false },
       });
 
       if (!events || events.length === 0) {
@@ -262,14 +304,14 @@ const settingsModule = {
         return;
       }
 
-      const exportData = events.map(event => ({
+      const exportData = events.map((event) => ({
         'Event Name': event.event_name || '',
         'Event Date': event.event_date || '',
-        'Year': event.year || '',
-        'Venue': event.venue || '',
-        'Description': event.description || '',
-        'Status': event.event_status || '',
-        'Created At': utils.formatDate(event.created_at)
+        Year: event.year || '',
+        Venue: event.venue || '',
+        Description: event.description || '',
+        Status: event.event_status || '',
+        'Created At': utils.formatDate(event.created_at),
       }));
 
       const filename = `events_export_${new Date().toISOString().split('T')[0]}.csv`;
@@ -285,9 +327,10 @@ const settingsModule = {
    */
   async exportMediaCSV() {
     try {
+      /* selectAll: justified — CSV export requires full dataset */
       const media = await apiClient.selectAll('media_gallery', {
         select: '*, organisations(company_name), awards:award_years(award_category)',
-        sort: { column: 'uploaded_at', ascending: false }
+        sort: { column: 'uploaded_at', ascending: false },
       });
 
       if (!media || media.length === 0) {
@@ -295,14 +338,14 @@ const settingsModule = {
         return;
       }
 
-      const exportData = media.map(item => ({
-        'Title': item.title || '',
+      const exportData = media.map((item) => ({
+        Title: item.title || '',
         'File Type': item.file_type || '',
         'Video Type': item.video_type || '',
-        'Organisation': item.organisations?.company_name || '',
-        'Award': item.awards?.award_category || '',
-        'Published': item.published ? 'Yes' : 'No',
-        'Uploaded At': utils.formatDate(item.uploaded_at)
+        Organisation: item.organisations?.company_name || '',
+        Award: item.awards?.award_category || '',
+        Published: item.published ? 'Yes' : 'No',
+        'Uploaded At': utils.formatDate(item.uploaded_at),
       }));
 
       const filename = `media_gallery_export_${new Date().toISOString().split('T')[0]}.csv`;
@@ -318,9 +361,10 @@ const settingsModule = {
    */
   async exportEntriesCSV() {
     try {
+      /* selectAll: justified — CSV export requires full dataset */
       const entries = await apiClient.selectAll('entries', {
         select: '*, organisations(company_name), awards:award_years(award_category)',
-        sort: { column: 'created_at', ascending: false }
+        sort: { column: 'created_at', ascending: false },
       });
 
       if (!entries || entries.length === 0) {
@@ -328,12 +372,12 @@ const settingsModule = {
         return;
       }
 
-      const exportData = entries.map(entry => ({
-        'Organisation': entry.organisations?.company_name || '',
-        'Award': entry.awards?.award_category || '',
-        'Status': entry.status || '',
-        'Year': entry.year || '',
-        'Submitted At': utils.formatDate(entry.created_at)
+      const exportData = entries.map((entry) => ({
+        Organisation: entry.organisations?.company_name || '',
+        Award: entry.awards?.award_category || '',
+        Status: entry.status || '',
+        Year: entry.year || '',
+        'Submitted At': utils.formatDate(entry.created_at),
       }));
 
       const filename = `entries_export_${new Date().toISOString().split('T')[0]}.csv`;
@@ -422,7 +466,7 @@ const settingsModule = {
       description,
       entity_id: entityId,
       user_email: STATE.currentUser?.email || 'System',
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
     };
 
     try {
@@ -442,16 +486,16 @@ const settingsModule = {
     try {
       const { data } = await apiClient.select('cms_audit_logs', {
         sort: { column: 'created_at', ascending: false },
-        pageSize: 500
+        pageSize: 500,
       });
-      return (data || []).map(log => ({
+      return (data || []).map((log) => ({
         id: log.id,
         timestamp: log.created_at,
         action: log.action,
         entity: log.entity_type,
         description: log.description,
         entityId: log.entity_id,
-        user: log.user_email
+        user: log.user_email,
       }));
     } catch (e) {
       const logs = localStorage.getItem('audit_logs');
@@ -488,11 +532,11 @@ const settingsModule = {
     let filteredLogs = logs;
 
     if (actionFilter) {
-      filteredLogs = filteredLogs.filter(log => log.action === actionFilter);
+      filteredLogs = filteredLogs.filter((log) => log.action === actionFilter);
     }
 
     if (entityFilter) {
-      filteredLogs = filteredLogs.filter(log => log.entity === entityFilter);
+      filteredLogs = filteredLogs.filter((log) => log.entity === entityFilter);
     }
 
     if (filteredLogs.length === 0) {
@@ -508,20 +552,23 @@ const settingsModule = {
     }
 
     const actionBadges = {
-      'create': '<span class="badge bg-success">Created</span>',
-      'update': '<span class="badge bg-primary">Updated</span>',
-      'delete': '<span class="badge bg-danger">Deleted</span>'
+      create: '<span class="badge bg-success">Created</span>',
+      update: '<span class="badge bg-primary">Updated</span>',
+      delete: '<span class="badge bg-danger">Deleted</span>',
     };
 
     const entityIcons = {
-      'award': 'trophy',
-      'organisation': 'building',
-      'winner': 'award',
-      'event': 'calendar-event',
-      'media': 'images'
+      award: 'trophy',
+      organisation: 'building',
+      winner: 'award',
+      event: 'calendar-event',
+      media: 'images',
     };
 
-    tbody.innerHTML = filteredLogs.slice(0, 100).map(log => `
+    tbody.innerHTML = filteredLogs
+      .slice(0, 100)
+      .map(
+        (log) => `
       <tr>
         <td><small>${utils.formatRelativeTime(log.timestamp)}</small></td>
         <td>${actionBadges[log.action] || `<span class="badge bg-secondary">${utils.escapeHtml(log.action)}</span>`}</td>
@@ -531,19 +578,30 @@ const settingsModule = {
         <td><small>${utils.escapeHtml(log.description)}</small></td>
         <td><small>${utils.escapeHtml(log.user)}</small></td>
       </tr>
-    `).join('');
+    `
+      )
+      .join('');
   },
 
   /**
    * Clear audit log
    */
   async clearAuditLog() {
-    if (!await utils.confirmDialog({ title: 'Clear Audit Log', message: 'Are you sure you want to clear the entire audit log? This cannot be undone.', confirmText: 'Clear', danger: true })) {
+    if (
+      !(await utils.confirmDialog({
+        title: 'Clear Audit Log',
+        message: 'Are you sure you want to clear the entire audit log? This cannot be undone.',
+        confirmText: 'Clear',
+        danger: true,
+      }))
+    ) {
       return;
     }
 
     try {
-      await apiClient.deleteByFilters('cms_audit_logs', { id: { op: 'neq', value: '00000000-0000-0000-0000-000000000000' } });
+      await apiClient.deleteByFilters('cms_audit_logs', {
+        id: { op: 'neq', value: '00000000-0000-0000-0000-000000000000' },
+      });
     } catch (e) {
       // ignore
     }
@@ -561,8 +619,9 @@ const settingsModule = {
    */
   async loadSeasons() {
     try {
+      /* selectAll: justified — small reference table (award seasons) */
       const allSeasons = await apiClient.selectAll('award_seasons', {
-        sort: { column: 'year', ascending: false }
+        sort: { column: 'year', ascending: false },
       });
 
       this.allSeasons = allSeasons || [];
@@ -570,7 +629,13 @@ const settingsModule = {
     } catch (error) {
       console.error('Error loading seasons:', error);
       const tbody = document.getElementById('seasonsTableBody');
-      if (tbody) utils.showEmptyState('seasonsTableBody', 10, 'Could not load seasons. Run the migration SQL first.', 'bi-exclamation-triangle');
+      if (tbody)
+        utils.showEmptyState(
+          'seasonsTableBody',
+          10,
+          'Could not load seasons. Run the migration SQL first.',
+          'bi-exclamation-triangle'
+        );
     }
   },
 
@@ -582,18 +647,27 @@ const settingsModule = {
     if (!tbody) return;
 
     if (this.allSeasons.length === 0) {
-      utils.showEnhancedEmptyState('seasonsTableBody', 10, { icon: 'bi-calendar', message: 'No seasons defined yet', description: 'Click "Add Season" to create one' });
+      utils.showEnhancedEmptyState('seasonsTableBody', 10, {
+        icon: 'bi-calendar',
+        message: 'No seasons defined yet',
+        description: 'Click "Add Season" to create one',
+      });
       return;
     }
 
-    const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '<span class="text-muted">-</span>';
+    const formatDate = (d) =>
+      d
+        ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+        : '<span class="text-muted">-</span>';
 
     const statusBadge = (status) => {
       const badges = { upcoming: 'bg-warning text-dark', open: 'bg-success', closed: 'bg-secondary' };
       return `<span class="badge ${badges[status] || 'bg-secondary'}">${(status || 'upcoming').charAt(0).toUpperCase() + (status || 'upcoming').slice(1)}</span>`;
     };
 
-    tbody.innerHTML = this.allSeasons.map(s => `
+    tbody.innerHTML = this.allSeasons
+      .map(
+        (s) => `
       <tr>
         <td class="fw-semibold">${utils.escapeHtml(s.name)}</td>
         <td><span class="badge bg-primary-subtle text-primary">${s.year}</span></td>
@@ -606,19 +680,21 @@ const settingsModule = {
         <td>${s.is_default ? '<span class="badge bg-success">Default</span>' : ''}</td>
         <td class="text-center">
           <div class="btn-group btn-group-sm">
-            <button class="btn btn-outline-warning btn-sm" onclick="settingsModule.editSeason('${s.id}')" title="Edit">
+            <button class="btn btn-outline-warning btn-sm" data-action="settingsModule.editSeason" data-id="${s.id}" title="Edit">
               <i class="bi bi-pencil"></i>
             </button>
-            <button class="btn btn-outline-success btn-sm" onclick="settingsModule.applySeasonToAll('${s.id}')" title="Apply to all awards for this year">
+            <button class="btn btn-outline-success btn-sm" data-action="settingsModule.applySeasonToAll" data-id="${s.id}" title="Apply to all awards for this year">
               <i class="bi bi-calendar-check"></i>
             </button>
-            <button class="btn btn-outline-danger btn-sm" onclick="settingsModule.deleteSeason('${s.id}')" title="Delete">
+            <button class="btn btn-outline-danger btn-sm" data-action="settingsModule.deleteSeason" data-id="${s.id}" title="Delete">
               <i class="bi bi-trash"></i>
             </button>
           </div>
         </td>
       </tr>
-    `).join('');
+    `
+      )
+      .join('');
   },
 
   /**
@@ -649,7 +725,7 @@ const settingsModule = {
    * Edit existing season
    */
   editSeason(seasonId) {
-    const season = this.allSeasons.find(s => s.id === seasonId);
+    const season = this.allSeasons.find((s) => s.id === seasonId);
     if (!season) return;
 
     document.getElementById('seasonFormId').value = season.id;
@@ -698,7 +774,7 @@ const settingsModule = {
       voting_close_date: document.getElementById('seasonFormVotingClose').value || null,
       winners_announcement_date: document.getElementById('seasonFormWinnersAnnouncement').value || null,
       is_default: isDefault,
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
     };
 
     // Validate date order (reuse awardsModule helper if available)
@@ -716,9 +792,7 @@ const settingsModule = {
 
         // If setting as default, unset other defaults first
         if (isDefault) {
-          await apiClient.updateByFilters('award_seasons',
-            { is_default: true },
-            { is_default: false });
+          await apiClient.updateByFilters('award_seasons', { is_default: true }, { is_default: false });
         }
 
         if (id) {
@@ -745,7 +819,15 @@ const settingsModule = {
    * Delete a season
    */
   async deleteSeason(seasonId) {
-    if (!await utils.confirmDialog({ title: 'Delete Season', message: 'Delete this season?', confirmText: 'Delete', danger: true })) return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Delete Season',
+        message: 'Delete this season?',
+        confirmText: 'Delete',
+        danger: true,
+      }))
+    )
+      return;
 
     try {
       utils.showLoading();
@@ -765,10 +847,18 @@ const settingsModule = {
    * Apply season dates to all awards for that year
    */
   async applySeasonToAll(seasonId) {
-    const season = this.allSeasons.find(s => s.id === seasonId);
+    const season = this.allSeasons.find((s) => s.id === seasonId);
     if (!season) return;
 
-    if (!await utils.confirmDialog({ title: 'Apply Season Dates', message: `Apply "${season.name}" dates to ALL awards for ${season.year}?\n\nThis will update all key dates (entries, nominees, judging, voting, winners).`, confirmText: 'Apply', danger: false })) return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Apply Season Dates',
+        message: `Apply "${season.name}" dates to ALL awards for ${season.year}?\n\nThis will update all key dates (entries, nominees, judging, voting, winners).`,
+        confirmText: 'Apply',
+        danger: false,
+      }))
+    )
+      return;
 
     try {
       utils.showLoading();
@@ -781,12 +871,10 @@ const settingsModule = {
         judging_close_date: season.judging_close_date,
         voting_open_date: season.voting_open_date,
         voting_close_date: season.voting_close_date,
-        winners_announcement_date: season.winners_announcement_date
+        winners_announcement_date: season.winners_announcement_date,
       };
 
-      await apiClient.updateByFilters('awards',
-        { year: season.year },
-        updates);
+      await apiClient.updateByFilters('awards', { year: season.year }, updates);
 
       utils.showToast(`Dates applied to all ${season.year} awards!`, 'success');
 
@@ -794,7 +882,6 @@ const settingsModule = {
       if (typeof awardsModule !== 'undefined' && awardsModule.loadAwards) {
         await awardsModule.loadAwards();
       }
-
     } catch (error) {
       console.error('Error applying season:', error);
       utils.showToast('Failed to apply season dates: ' + error.message, 'error');
@@ -825,7 +912,7 @@ const settingsModule = {
           <div class="row g-3">
             <div class="col-md-4">
               <label class="form-label fw-semibold">Layout Density</label>
-              <select class="form-select" id="densitySetting" onchange="settingsModule.saveDensity(this.value)">
+              <select class="form-select" id="densitySetting" data-on-change="settingsModule.saveDensity">
                 <option value="comfortable" ${density === 'comfortable' ? 'selected' : ''}>Comfortable (Default)</option>
                 <option value="compact" ${density === 'compact' ? 'selected' : ''}>Compact</option>
               </select>
@@ -833,7 +920,7 @@ const settingsModule = {
             </div>
             <div class="col-md-4">
               <label class="form-label fw-semibold">Default Landing Tab</label>
-              <select class="form-select" id="defaultTabSetting" onchange="settingsModule.saveDefaultTab(this.value)">
+              <select class="form-select" id="defaultTabSetting" data-on-change="settingsModule.saveDefaultTab">
                 <option value="" ${!defaultTab ? 'selected' : ''}>Dashboard (Default)</option>
                 <option value="awards" ${defaultTab === 'awards' ? 'selected' : ''}>Awards</option>
                 <option value="organisations" ${defaultTab === 'organisations' ? 'selected' : ''}>Organisations</option>
@@ -847,7 +934,7 @@ const settingsModule = {
             </div>
             <div class="col-md-4">
               <label class="form-label fw-semibold">Table Page Size</label>
-              <select class="form-select" id="pageSizeSetting" onchange="settingsModule.savePageSize(this.value)">
+              <select class="form-select" id="pageSizeSetting" data-on-change="settingsModule.savePageSize">
                 <option value="25" ${pageSize === '25' ? 'selected' : ''}>25 per page</option>
                 <option value="50" ${pageSize === '50' ? 'selected' : ''}>50 per page (Default)</option>
                 <option value="100" ${pageSize === '100' ? 'selected' : ''}>100 per page</option>
@@ -883,8 +970,10 @@ const settingsModule = {
   applyDensity() {
     const density = localStorage.getItem('layoutDensity') || 'comfortable';
     document.body.classList.add('density-' + density);
-  }
+  },
 };
 
 // Export to window for global access
 ModuleRegistry.register('settingsModule', settingsModule);
+
+export { settingsModule };

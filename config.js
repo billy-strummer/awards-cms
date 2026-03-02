@@ -1,33 +1,42 @@
+/**
+ * @module config
+ * @description Application configuration, constants, shared state, and module registry.
+ * All data mutations route through /api/data-proxy server-side.
+ */
+
 /* ==================================================== */
 /* CONFIGURATION & CONSTANTS */
 /* ==================================================== */
 
-// Supabase Configuration
-// Credentials are injected via environment-specific meta tags or build-time
-// variables. In production, all data mutations route through /api/data-proxy
-// which uses SUPABASE_SERVICE_KEY server-side (never exposed to the browser).
+/**
+ * Supabase connection configuration.
+ * Credentials are injected via environment-specific meta tags or build-time
+ * variables. The anon key is safe for client-side use — RLS policies restrict
+ * access. All data mutations route through /api/data-proxy which uses
+ * SUPABASE_SERVICE_KEY server-side (never exposed to the browser).
+ * @type {{ url: string, anonKey: string }}
+ */
 const SUPABASE_CONFIG = {
-  url: document.querySelector('meta[name="supabase-url"]')?.content
-    || window.__SUPABASE_URL__
-    || '',
-  anonKey: document.querySelector('meta[name="supabase-anon-key"]')?.content
-    || window.__SUPABASE_ANON_KEY__
-    || ''
+  url: document.querySelector('meta[name="supabase-url"]')?.content || window.__SUPABASE_URL__ || '',
+  anonKey: document.querySelector('meta[name="supabase-anon-key"]')?.content || window.__SUPABASE_ANON_KEY__ || '',
 };
 
-// Status Constants
+/**
+ * Entry/record status constants.
+ * @type {{ DRAFT: string, PENDING: string, APPROVED: string, PUBLISHED: string, REJECTED: string }}
+ */
 const STATUS = {
   DRAFT: 'Draft',
   PENDING: 'Pending',
   APPROVED: 'Approved',
   PUBLISHED: 'Published',
-  REJECTED: 'Rejected'
+  REJECTED: 'Rejected',
 };
 
 // Media Types
 const MEDIA_TYPES = {
   PHOTO: 'photo',
-  VIDEO: 'video'
+  VIDEO: 'video',
 };
 
 // Inactivity Timer (in milliseconds)
@@ -43,37 +52,110 @@ const SECTORS = [
   'INTERIOR FIT-OUT & FINISHING',
   'MECHANICAL, ELECTRICAL & PLUMBING',
   'OUTDOOR & LANDSCAPING',
-  'SPECIALIST TRADES'
+  'SPECIALIST TRADES',
 ];
 
 const REGIONS = [
   // England Counties (38)
-  'Bedfordshire', 'Berkshire', 'Buckinghamshire', 'Cambridgeshire', 'Cheshire',
-  'Cornwall', 'Cumbria', 'Derbyshire', 'Devon', 'Dorset', 'County Durham',
-  'East Riding of Yorkshire', 'Essex', 'Gloucestershire', 'Hampshire',
-  'Herefordshire', 'Hertfordshire', 'Isle of Wight', 'Kent', 'Lancashire',
-  'Leicestershire', 'Lincolnshire', 'Norfolk', 'Northamptonshire',
-  'North Yorkshire', 'Northumberland', 'Nottinghamshire', 'Oxfordshire',
-  'Rutland', 'Shropshire', 'Somerset', 'South Yorkshire', 'Staffordshire',
-  'Suffolk', 'Surrey', 'Sussex', 'Tyne & Wear', 'Warwickshire',
-  'West Yorkshire', 'Wiltshire', 'Worcestershire',
+  'Bedfordshire',
+  'Berkshire',
+  'Buckinghamshire',
+  'Cambridgeshire',
+  'Cheshire',
+  'Cornwall',
+  'Cumbria',
+  'Derbyshire',
+  'Devon',
+  'Dorset',
+  'County Durham',
+  'East Riding of Yorkshire',
+  'Essex',
+  'Gloucestershire',
+  'Hampshire',
+  'Herefordshire',
+  'Hertfordshire',
+  'Isle of Wight',
+  'Kent',
+  'Lancashire',
+  'Leicestershire',
+  'Lincolnshire',
+  'Norfolk',
+  'Northamptonshire',
+  'North Yorkshire',
+  'Northumberland',
+  'Nottinghamshire',
+  'Oxfordshire',
+  'Rutland',
+  'Shropshire',
+  'Somerset',
+  'South Yorkshire',
+  'Staffordshire',
+  'Suffolk',
+  'Surrey',
+  'Sussex',
+  'Tyne & Wear',
+  'Warwickshire',
+  'West Yorkshire',
+  'Wiltshire',
+  'Worcestershire',
   // Scotland (14)
-  'Argyll & Bute', 'Ayrshire', 'Central Scotland', 'Dumfries & Galloway',
-  'Dunbartonshire', 'Fife', 'Grampian', 'Highlands', 'Lanarkshire',
-  'Lothian', 'Renfrewshire', 'Scottish Borders', 'Scottish Islands', 'Tayside',
+  'Argyll & Bute',
+  'Ayrshire',
+  'Central Scotland',
+  'Dumfries & Galloway',
+  'Dunbartonshire',
+  'Fife',
+  'Grampian',
+  'Highlands',
+  'Lanarkshire',
+  'Lothian',
+  'Renfrewshire',
+  'Scottish Borders',
+  'Scottish Islands',
+  'Tayside',
   // Wales (12)
-  'Anglesey', 'Carmarthenshire', 'Ceredigion', 'Conwy', 'Denbighshire',
-  'Flintshire', 'Glamorgan', 'Gwent', 'Gwynedd', 'Pembrokeshire',
-  'Powys', 'Wrexham',
+  'Anglesey',
+  'Carmarthenshire',
+  'Ceredigion',
+  'Conwy',
+  'Denbighshire',
+  'Flintshire',
+  'Glamorgan',
+  'Gwent',
+  'Gwynedd',
+  'Pembrokeshire',
+  'Powys',
+  'Wrexham',
   // Cities (20)
-  'Birmingham', 'Bournemouth', 'Bradford', 'Brighton & Hove', 'Bristol',
-  'Cardiff', 'Coventry', 'Edinburgh', 'Glasgow', 'Leeds', 'Leicester',
-  'Liverpool', 'London North', 'London South', 'London East', 'London West',
-  'Manchester', 'Middlesbrough', 'Newcastle', 'Nottingham', 'Sheffield',
-  'Southampton', 'Swansea'
+  'Birmingham',
+  'Bournemouth',
+  'Bradford',
+  'Brighton & Hove',
+  'Bristol',
+  'Cardiff',
+  'Coventry',
+  'Edinburgh',
+  'Glasgow',
+  'Leeds',
+  'Leicester',
+  'Liverpool',
+  'London North',
+  'London South',
+  'London East',
+  'London West',
+  'Manchester',
+  'Middlesbrough',
+  'Newcastle',
+  'Nottingham',
+  'Sheffield',
+  'Southampton',
+  'Swansea',
 ];
 
-// Application State
+/**
+ * Global application state shared across all modules.
+ * @type {{ client: Object|null, currentUser: Object|null, inactivityTimer: number|null, allAwards: Array, filteredAwards: Array, allOrganisations: Array, filteredOrganisations: Array, allWinners: Array, filteredWinners: Array, allMedia: Array, filteredMedia: Array, allEvents: Array, allEntries: Array, filteredEntries: Array }}
+ */
 const STATE = {
   client: null,
   currentUser: null,
@@ -88,7 +170,7 @@ const STATE = {
   filteredMedia: [],
   allEvents: [],
   allEntries: [],
-  filteredEntries: []
+  filteredEntries: [],
 };
 
 // ============================================
@@ -125,7 +207,7 @@ const ModuleRegistry = {
   /** List all registered module names */
   list() {
     return [...this._modules.keys()];
-  }
+  },
 };
 
 // Register constants via the registry
@@ -140,3 +222,5 @@ ModuleRegistry.register('STATE', STATE);
 // Expose ModuleRegistry globally (works in both browser and Node/test)
 if (typeof globalThis !== 'undefined') globalThis.ModuleRegistry = ModuleRegistry;
 if (typeof window !== 'undefined') window.ModuleRegistry = ModuleRegistry;
+
+export { SUPABASE_CONFIG, STATUS, MEDIA_TYPES, INACTIVITY_TIMEOUT, YEARS, SECTORS, REGIONS, STATE, ModuleRegistry };

@@ -1,0 +1,312 @@
+/**
+ * Public Voting Proxy API
+ *
+ * Lightweight server-side proxy for public voting operations.
+ * This endpoint does NOT require authentication — it is designed
+ * for the public voting pages (public-voting.html, nominee-voting.html).
+ *
+ * All database access goes through SUPABASE_SERVICE_KEY so the
+ * anon key is never exposed to the browser for voting operations.
+ *
+ * Environment Variables Required:
+ *   - SUPABASE_URL
+ *   - SUPABASE_SERVICE_KEY
+ *
+ * Deploy as: Vercel serverless function at /api/voting-proxy
+ */
+
+const { createClient } = require('@supabase/supabase-js');
+
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+
+/** Rate-limit: max votes per email per hour */
+const RATE_LIMIT_MAX = 10;
+const RATE_LIMIT_WINDOW_MS = 3600000; // 1 hour
+
+// ────────────────────────────────────────────
+// CORS helpers
+// ────────────────────────────────────────────
+
+function setCors(res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+}
+
+// ────────────────────────────────────────────
+// Input validation helpers
+// ────────────────────────────────────────────
+
+function isValidEmail(email) {
+  return typeof email === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function isValidUUID(id) {
+  return typeof id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+}
+
+function isValidEntryNumber(num) {
+  // Entry numbers are typically short alphanumeric strings
+  return typeof num === 'string' && /^[A-Za-z0-9_-]{1,50}$/.test(num);
+}
+
+// ────────────────────────────────────────────
+// Action handlers
+// ────────────────────────────────────────────
+
+/**
+ * load_awards — return active awards (id, award_name) ordered by name
+ */
+async function loadAwards() {
+  const { data, error } = await supabase
+    .from('awards')
+    .select('id, award_name')
+    .eq('is_active', true)
+    .order('award_name');
+
+  if (error) throw error;
+  return { awards: data };
+}
+
+/**
+ * load_entries — return public entries with org & award data, max 500
+ */
+async function loadEntries() {
+  const { data, error } = await supabase
+    .from('entries')
+    .select(
+      `
+      *,
+      organisations(company_name, logo_url, website),
+      awards:award_years(award_name, award_category)
+    `
+    )
+    .eq('is_public', true)
+    .eq('allow_public_voting', true)
+    .in('status', ['shortlisted', 'submitted'])
+    .neq('is_deleted', true)
+    .order('public_votes', { ascending: false })
+    .limit(500);
+
+  if (error) throw error;
+  return { entries: data || [] };
+}
+
+/**
+ * check_votes — given voter_email, return entry_ids the user has voted for
+ */
+async function checkVotes({ voter_email }) {
+  if (!isValidEmail(voter_email)) {
+    return { error: 'Invalid email address', status: 400 };
+  }
+
+  const { data, error } = await supabase.from('public_votes').select('entry_id').eq('voter_email', voter_email);
+
+  if (error) throw error;
+  return { entry_ids: (data || []).map((v) => v.entry_id) };
+}
+
+/**
+ * check_rate_limit — return count of votes in the last hour for an email
+ */
+async function checkRateLimit({ voter_email }) {
+  if (!isValidEmail(voter_email)) {
+    return { error: 'Invalid email address', status: 400 };
+  }
+
+  const oneHourAgo = new Date(Date.now() - RATE_LIMIT_WINDOW_MS).toISOString();
+
+  const { count, error } = await supabase
+    .from('public_votes')
+    .select('id', { count: 'exact', head: true })
+    .eq('voter_email', voter_email)
+    .gte('created_at', oneHourAgo);
+
+  if (error) throw error;
+  return { count: count || 0, limit: RATE_LIMIT_MAX };
+}
+
+/**
+ * check_existing_vote — check if a specific entry+email vote already exists
+ */
+async function checkExistingVote({ entry_id, voter_email }) {
+  if (!isValidUUID(entry_id)) {
+    return { error: 'Invalid entry_id', status: 400 };
+  }
+  if (!isValidEmail(voter_email)) {
+    return { error: 'Invalid email address', status: 400 };
+  }
+
+  const { data, error } = await supabase
+    .from('public_votes')
+    .select('id')
+    .eq('entry_id', entry_id)
+    .eq('voter_email', voter_email)
+    .single();
+
+  if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows
+  return { exists: !!data };
+}
+
+/**
+ * submit_vote — insert a vote record after server-side rate-limit check
+ */
+async function submitVote({ entry_id, voter_email, voter_name, voter_ip, verification_token }) {
+  if (!isValidUUID(entry_id)) {
+    return { error: 'Invalid entry_id', status: 400 };
+  }
+  if (!isValidEmail(voter_email)) {
+    return { error: 'Invalid email address', status: 400 };
+  }
+  if (typeof voter_name !== 'string') voter_name = '';
+  if (typeof voter_ip !== 'string') voter_ip = 'unknown';
+  if (typeof verification_token !== 'string' || verification_token.length === 0) {
+    return { error: 'Missing verification_token', status: 400 };
+  }
+
+  // Server-side rate limit enforcement
+  const oneHourAgo = new Date(Date.now() - RATE_LIMIT_WINDOW_MS).toISOString();
+  const { count, error: rlError } = await supabase
+    .from('public_votes')
+    .select('id', { count: 'exact', head: true })
+    .eq('voter_email', voter_email)
+    .gte('created_at', oneHourAgo);
+
+  if (rlError) throw rlError;
+  if ((count || 0) >= RATE_LIMIT_MAX) {
+    return { error: 'Rate limit exceeded. Please try again later.', status: 429 };
+  }
+
+  // Check for duplicate vote
+  const { data: existing, error: dupError } = await supabase
+    .from('public_votes')
+    .select('id')
+    .eq('entry_id', entry_id)
+    .eq('voter_email', voter_email)
+    .single();
+
+  if (dupError && dupError.code !== 'PGRST116') throw dupError;
+  if (existing) {
+    return { error: 'You have already voted for this entry.', status: 409 };
+  }
+
+  // Insert the vote
+  const { error: insertError } = await supabase.from('public_votes').insert([
+    {
+      entry_id,
+      voter_email,
+      voter_name,
+      voter_ip,
+      vote_value: 1,
+      email_verified: false,
+      verification_token,
+      verification_sent_at: new Date().toISOString(),
+    },
+  ]);
+
+  if (insertError) {
+    // Handle unique constraint violation gracefully
+    if (insertError.code === '23505') {
+      return { error: 'You have already voted for this entry.', status: 409 };
+    }
+    throw insertError;
+  }
+
+  return { success: true };
+}
+
+/**
+ * load_entry — load a single entry by entry_number or entry_id
+ */
+async function loadEntry({ entry_number, entry_id }) {
+  let query = supabase
+    .from('entries')
+    .select(
+      `
+      *,
+      organisations(company_name, logo_url, website),
+      awards:award_years(award_name, award_category)
+    `
+    )
+    .eq('is_public', true)
+    .eq('allow_public_voting', true)
+    .in('status', ['shortlisted', 'submitted']);
+
+  if (entry_number) {
+    if (!isValidEntryNumber(entry_number)) {
+      return { error: 'Invalid entry_number', status: 400 };
+    }
+    query = query.eq('entry_number', entry_number);
+  } else if (entry_id) {
+    if (!isValidUUID(entry_id)) {
+      return { error: 'Invalid entry_id', status: 400 };
+    }
+    query = query.eq('id', entry_id);
+  } else {
+    return { error: 'Must provide entry_number or entry_id', status: 400 };
+  }
+
+  const { data, error } = await query.single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return { error: 'Entry not found', status: 404 };
+    }
+    throw error;
+  }
+
+  return { entry: data };
+}
+
+// ────────────────────────────────────────────
+// Action dispatch map
+// ────────────────────────────────────────────
+
+const ACTIONS = {
+  load_awards: loadAwards,
+  load_entries: loadEntries,
+  check_votes: checkVotes,
+  check_rate_limit: checkRateLimit,
+  check_existing_vote: checkExistingVote,
+  submit_vote: submitVote,
+  load_entry: loadEntry,
+};
+
+// ────────────────────────────────────────────
+// Main handler
+// ────────────────────────────────────────────
+
+module.exports = async function handler(req, res) {
+  setCors(res);
+
+  // Handle CORS preflight
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  try {
+    const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+    const { action, ...params } = body || {};
+
+    if (!action || !ACTIONS[action]) {
+      return res.status(400).json({ error: `Unknown action: ${action}` });
+    }
+
+    const result = await ACTIONS[action](params);
+
+    // If the handler returned a status code (validation / rate-limit error)
+    if (result && result.status) {
+      const { status, ...rest } = result;
+      return res.status(status).json(rest);
+    }
+
+    return res.status(200).json(result);
+  } catch (err) {
+    console.error('[voting-proxy] Error:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+};

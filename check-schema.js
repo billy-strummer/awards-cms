@@ -13,10 +13,7 @@ async function checkSchema() {
   console.log('=== CHECKING ORGANISATIONS TABLE COLUMNS ===\n');
 
   // Get a sample record to see what columns exist
-  const { data: orgData, error: orgError } = await supabase
-    .from('organisations')
-    .select('*')
-    .limit(1);
+  const { data: orgData, error: orgError } = await supabase.from('organisations').select('*').limit(1);
 
   if (orgError) {
     console.error('Error fetching organisations:', orgError.message);
@@ -30,10 +27,7 @@ async function checkSchema() {
   console.log('\n=== CHECKING AWARDS TABLE COLUMNS ===\n');
 
   // Get a sample award
-  const { data: awardData, error: awardError } = await supabase
-    .from('awards')
-    .select('*')
-    .limit(1);
+  const { data: awardData, error: awardError } = await supabase.from('awards').select('*').limit(1);
 
   if (awardError) {
     console.error('Error fetching awards:', awardError.message);
@@ -56,7 +50,7 @@ async function checkSchema() {
     console.error('Error:', extError.message);
   } else {
     console.log(`Found ${extensionAwards.length} Extension awards:`);
-    extensionAwards.forEach(award => {
+    extensionAwards.forEach((award) => {
       console.log(`- ${award.award_name} (ID: ${award.id})`);
       console.log(`  Full record:`, JSON.stringify(award, null, 2));
     });

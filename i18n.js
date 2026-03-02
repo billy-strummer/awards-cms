@@ -120,7 +120,7 @@ const i18n = {
     'time.hoursAgo': '{n} hours ago',
     'time.daysAgo': '{n} days ago',
     'time.today': 'Today',
-    'time.yesterday': 'Yesterday'
+    'time.yesterday': 'Yesterday',
   },
 
   /**
@@ -192,9 +192,7 @@ const i18n = {
    */
   t(key, params = {}) {
     const locale = this._currentLocale;
-    let text = this._translations[locale]?.[key]
-      || this._translations[this._fallbackLocale]?.[key]
-      || key;
+    let text = this._translations[locale]?.[key] || this._translations[this._fallbackLocale]?.[key] || key;
 
     // Interpolate {param} placeholders
     for (const [k, v] of Object.entries(params)) {
@@ -216,7 +214,7 @@ const i18n = {
    * Call this after rendering HTML to translate static text
    */
   translatePage() {
-    document.querySelectorAll('[data-i18n]').forEach(el => {
+    document.querySelectorAll('[data-i18n]').forEach((el) => {
       const key = el.getAttribute('data-i18n');
       const translated = this.t(key);
       if (translated !== key) {
@@ -229,7 +227,7 @@ const i18n = {
     });
 
     // Translate aria-labels
-    document.querySelectorAll('[data-i18n-aria]').forEach(el => {
+    document.querySelectorAll('[data-i18n-aria]').forEach((el) => {
       const key = el.getAttribute('data-i18n-aria');
       const translated = this.t(key);
       if (translated !== key) {
@@ -238,7 +236,7 @@ const i18n = {
     });
 
     // Translate titles
-    document.querySelectorAll('[data-i18n-title]').forEach(el => {
+    document.querySelectorAll('[data-i18n-title]').forEach((el) => {
       const key = el.getAttribute('data-i18n-title');
       const translated = this.t(key);
       if (translated !== key) {
@@ -260,7 +258,7 @@ const i18n = {
   formatCurrency(amount, currency = 'GBP') {
     return new Intl.NumberFormat(this._currentLocale, {
       style: 'currency',
-      currency
+      currency,
     }).format(amount);
   },
 
@@ -270,10 +268,14 @@ const i18n = {
   formatDate(date, options = {}) {
     const d = date instanceof Date ? date : new Date(date);
     return new Intl.DateTimeFormat(this._currentLocale, {
-      year: 'numeric', month: 'short', day: 'numeric',
-      ...options
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      ...options,
     }).format(d);
-  }
+  },
 };
 
 ModuleRegistry.register('i18n', i18n);
+
+export { i18n };

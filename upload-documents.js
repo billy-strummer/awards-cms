@@ -2,11 +2,8 @@
 /* UPLOAD DOCUMENTS - File Upload Handler */
 /* ==================================================== */
 
-// Initialize Supabase client for this public page
-const supabase = window.supabase.createClient(
-  SUPABASE_CONFIG.url,
-  SUPABASE_CONFIG.anonKey
-);
+// All reads and writes go through /api/upload-proxy — no direct Supabase
+// access from this public page.
 
 function showPublicToast(msg, type = 'warning') {
   let container = document.getElementById('publicToastContainer');
@@ -21,14 +18,22 @@ function showPublicToast(msg, type = 'warning') {
   toast.style.cssText = `background:${colors[type] || colors.warning};color:${type === 'warning' ? '#000' : '#fff'};padding:12px 20px;margin-bottom:8px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.15);font-size:14px;opacity:0;transition:opacity .3s;`;
   toast.textContent = msg;
   container.appendChild(toast);
-  requestAnimationFrame(() => toast.style.opacity = '1');
-  setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 4000);
+  requestAnimationFrame(() => (toast.style.opacity = '1'));
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    setTimeout(() => toast.remove(), 300);
+  }, 4000);
 }
 
 // HTML escape helper for safe rendering
 function esc(str) {
   if (!str) return '';
-  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 const uploadApp = {
@@ -58,115 +63,82 @@ const uploadApp = {
   },
 
   /**
-   * Load entry details
+   * Load entry details via server-side proxy
    */
   async loadEntryDetails() {
     try {
-      // First fetch the entry without joins (avoids issues if anon role
-      // lacks SELECT on related tables like award_years)
-      const { data: entry, error } = await supabase
-        .from('entries')
-        .select('*')
-        .eq('entry_number', this.entryId)
-        .single();
+      const resp = await fetch(`/api/upload-proxy?action=get_entry&entry_number=${encodeURIComponent(this.entryId)}`);
+      const result = await resp.json();
 
-      if (error) throw error;
-
-      if (!entry) {
-        this.showError('Entry not found. Please check your upload link.');
+      if (!resp.ok || !result.entry) {
+        this.showError(result.error || 'Entry not found. Please check your upload link.');
         return;
       }
 
-      this.entryData = entry;
-
-      // Optionally enrich with organisation and award names
-      let companyName = 'N/A';
-      let awardName = 'N/A';
-
-      if (entry.organisation_id) {
-        try {
-          const { data: org } = await supabase
-            .from('organisations')
-            .select('company_name')
-            .eq('id', entry.organisation_id)
-            .single();
-          if (org) companyName = org.company_name;
-        } catch (e) {
-          console.warn('Could not load organisation:', e);
-        }
-      }
-
-      if (entry.award_id) {
-        try {
-          const { data: award } = await supabase
-            .from('award_years')
-            .select('award_name')
-            .eq('id', entry.award_id)
-            .single();
-          if (award) awardName = award.award_name;
-        } catch (e) {
-          console.warn('Could not load award:', e);
-        }
-      }
+      this.entryData = result.entry;
 
       // Display entry information
       document.getElementById('entryDetails').innerHTML = `
         <table class="table table-sm table-borderless mb-0">
           <tr>
             <td class="text-muted" style="width: 120px;">Entry Number:</td>
-            <td><strong>${esc(entry.entry_number)}</strong></td>
+            <td><strong>${esc(this.entryData.entry_number)}</strong></td>
           </tr>
           <tr>
             <td class="text-muted">Company:</td>
-            <td><strong>${esc(companyName)}</strong></td>
+            <td><strong>${esc(this.entryData.company_name)}</strong></td>
           </tr>
           <tr>
             <td class="text-muted">Award:</td>
-            <td>${esc(awardName)}</td>
+            <td>${esc(this.entryData.award_name)}</td>
           </tr>
           <tr>
             <td class="text-muted">Contact:</td>
-            <td>${esc(entry.contact_name || 'N/A')} ${entry.contact_email ? '(' + esc(entry.contact_email) + ')' : ''}</td>
+            <td>${esc(this.entryData.contact_name)} ${this.entryData.contact_email ? '(' + esc(this.entryData.contact_email) + ')' : ''}</td>
           </tr>
         </table>
       `;
 
       // Load existing files
       await this.loadExistingFiles();
-
     } catch (error) {
       console.error('Error loading entry:', error);
-      this.showError('Failed to load entry details. ' + (error.message || 'Please check your upload link and try again.'));
+      this.showError(
+        'Failed to load entry details. ' + (error.message || 'Please check your upload link and try again.')
+      );
     }
   },
 
   /**
-   * Load existing uploaded files
+   * Load existing uploaded files via server-side proxy
    */
   async loadExistingFiles() {
     try {
-      const { data: files, error } = await supabase
-        .from('entry_files')
-        .select('*')
-        .eq('entry_id', this.entryData.id)
-        .order('upload_date', { ascending: false });
+      const resp = await fetch(
+        `/api/upload-proxy?action=get_existing_files&entry_id=${encodeURIComponent(this.entryData.id)}`
+      );
+      const result = await resp.json();
 
-      if (error) throw error;
+      if (!resp.ok) return;
 
-      if (files && files.length > 0) {
+      const files = result.files || [];
+      if (files.length > 0) {
         const existingFilesHtml = `
           <div class="alert alert-success mb-4">
             <strong><i class="bi bi-check-circle me-2"></i>Previously Uploaded Files (${files.length}):</strong>
             <ul class="mb-0 mt-2">
-              ${files.map(file => `
-                <li>${file.file_name} <small class="text-muted">(${(file.file_size / 1024).toFixed(1)} KB)</small></li>
-              `).join('')}
+              ${files
+                .map(
+                  (file) => `
+                <li>${esc(file.file_name)} <small class="text-muted">(${(file.file_size / 1024).toFixed(1)} KB)</small></li>
+              `
+                )
+                .join('')}
             </ul>
           </div>
         `;
         document.querySelector('.upload-zone').insertAdjacentHTML('beforebegin', existingFilesHtml);
       }
-
     } catch (error) {
       console.error('Error loading existing files:', error);
     }
@@ -240,10 +212,10 @@ const uploadApp = {
       'application/vnd.openxmlformats-officedocument.presentationml.presentation',
       'image/jpeg',
       'image/png',
-      'image/gif'
+      'image/gif',
     ];
 
-    Array.from(fileList).forEach(file => {
+    Array.from(fileList).forEach((file) => {
       // Validate file size
       if (file.size > maxSize) {
         showPublicToast(`File "${file.name}" is too large. Maximum size is 10MB.`);
@@ -257,7 +229,7 @@ const uploadApp = {
       }
 
       // Check for duplicates
-      if (this.files.some(f => f.name === file.name && f.size === file.size)) {
+      if (this.files.some((f) => f.name === file.name && f.size === file.size)) {
         return;
       }
 
@@ -280,20 +252,24 @@ const uploadApp = {
       return;
     }
 
-    fileList.innerHTML = this.files.map((file, index) => `
+    fileList.innerHTML = this.files
+      .map(
+        (file, index) => `
       <div class="file-item" id="file-${index}">
         <div>
           <i class="bi bi-file-earmark me-2"></i>
-          <strong>${file.name}</strong>
+          <strong>${esc(file.name)}</strong>
           <small class="text-muted ms-2">(${(file.size / 1024).toFixed(1)} KB)</small>
         </div>
         <div>
-          <button class="btn btn-sm btn-outline-danger" onclick="uploadApp.removeFile(${index})">
+          <button class="btn btn-sm btn-outline-danger" data-action="uploadApp.removeFile" data-id="${index}">
             <i class="bi bi-trash"></i>
           </button>
         </div>
       </div>
-    `).join('');
+    `
+      )
+      .join('');
   },
 
   /**
@@ -326,7 +302,6 @@ const uploadApp = {
         fileItem.classList.remove('uploading');
         fileItem.classList.add('uploaded');
         fileItem.querySelector('div:last-child').innerHTML = '<i class="bi bi-check-circle-fill text-success"></i>';
-
       } catch (error) {
         console.error(`Error uploading ${file.name}:`, error);
         fileItem.classList.remove('uploading');
@@ -341,44 +316,56 @@ const uploadApp = {
   },
 
   /**
-   * Upload single file
+   * Upload single file via server-side signed URL
    */
   async uploadFile(file, _index) {
-    // Generate unique filename with sanitised name to prevent path traversal
-    const timestamp = Date.now();
-    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').replace(/\.{2,}/g, '.');
-    const filename = `${this.entryData.entry_number}/${timestamp}-${safeName}`;
+    // 1. Get a signed upload URL from the server
+    const tokenResp = await fetch('/api/upload-proxy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'get_upload_token',
+        entry_number: this.entryData.entry_number,
+        file_name: file.name,
+      }),
+    });
 
-    // Upload to Supabase Storage
-    const { data: _uploadData, error: uploadError } = await supabase.storage
-      .from('entry-files')
-      .upload(filename, file, {
-        cacheControl: '3600',
-        upsert: false
-      });
+    const tokenResult = await tokenResp.json();
+    if (!tokenResp.ok || !tokenResult.signedUrl) {
+      throw new Error(tokenResult.error || 'Failed to get upload URL');
+    }
 
-    if (uploadError) throw uploadError;
+    // 2. Upload the file directly to Storage using the signed URL
+    const uploadResp = await fetch(tokenResult.signedUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': file.type },
+      body: file,
+    });
 
-    // Get public URL
-    const { data: urlData } = supabase.storage
-      .from('entry-files')
-      .getPublicUrl(filename);
+    if (!uploadResp.ok) {
+      throw new Error('File upload failed');
+    }
 
-    // Save file metadata to database
-    const { error: dbError } = await supabase
-      .from('entry_files')
-      .insert([{
+    // 3. Save file metadata via the proxy
+    const metaResp = await fetch('/api/upload-proxy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'save_file_metadata',
         entry_id: this.entryData.id,
         file_name: file.name,
-        file_url: urlData.publicUrl,
+        file_url: tokenResult.publicUrl,
         file_type: this.getFileType(file.type),
         file_size: file.size,
         mime_type: file.type,
         uploaded_by: this.entryData.contact_email,
-        is_public: false
-      }]);
+      }),
+    });
 
-    if (dbError) throw dbError;
+    if (!metaResp.ok) {
+      const metaResult = await metaResp.json();
+      throw new Error(metaResult.error || 'Failed to save file metadata');
+    }
 
     this.uploadedFiles.push(file);
   },
@@ -389,9 +376,9 @@ const uploadApp = {
   getFileType(mimeType) {
     if (mimeType.startsWith('image/')) return 'image';
     if (mimeType.includes('pdf')) return 'pdf';
-    if (mimeType.includes('word') || mimeType.includes('document')) return 'document';
-    if (mimeType.includes('excel') || mimeType.includes('sheet')) return 'spreadsheet';
     if (mimeType.includes('powerpoint') || mimeType.includes('presentation')) return 'presentation';
+    if (mimeType.includes('excel') || mimeType.includes('sheet')) return 'spreadsheet';
+    if (mimeType.includes('word') || mimeType.includes('document')) return 'document';
     return 'other';
   },
 
@@ -405,8 +392,21 @@ const uploadApp = {
         <p class="mb-0">${message}</p>
       </div>
     `;
-  }
+  },
 };
+
+// Register globally for testability and data-action event delegation.
+// Uses ModuleRegistry when available (which also exposes on window);
+// falls back to direct window.* for public-facing contexts without the registry.
+if (typeof ModuleRegistry !== 'undefined') {
+  ModuleRegistry.register('uploadApp', uploadApp);
+  ModuleRegistry.register('showPublicToast', showPublicToast);
+  ModuleRegistry.register('esc', esc);
+} else if (typeof window !== 'undefined') {
+  window.uploadApp = uploadApp;
+  window.showPublicToast = showPublicToast;
+  window.esc = esc;
+}
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {

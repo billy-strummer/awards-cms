@@ -3,8 +3,18 @@
 /* ==================================================== */
 
 const marketingModule = {
+  /** @type {Array} Current loaded banners */
   currentBanners: [],
+  /** @type {Array} Current loaded sponsors */
   currentSponsors: [],
+
+  // Server-side pagination state for banners
+  /** @type {boolean} Whether server-side pagination is enabled */
+  _serverPagination: true,
+  /** @type {Object} Banner pagination state */
+  _bannerPagination: { page: 1, totalPages: 1, count: 0, pageSize: 50 },
+  /** @type {Object} Sponsor pagination state */
+  _sponsorPagination: { page: 1, totalPages: 1, count: 0, pageSize: 50 },
 
   /* ==================================================== */
   /* INITIALIZATION */
@@ -16,10 +26,7 @@ const marketingModule = {
   async loadAllData() {
     try {
       utils.showLoading();
-      await Promise.all([
-        this.loadBanners(),
-        this.loadSponsors()
-      ]);
+      await Promise.all([this.loadBanners(), this.loadSponsors()]);
       console.warn('✅ Marketing data loaded');
     } catch (error) {
       console.error('Error loading marketing data:', error);
@@ -34,17 +41,40 @@ const marketingModule = {
   /* ==================================================== */
 
   /**
-   * Load all banners
+   * Fetch a page of banners from the server
+   * @param {number} page - The page number to fetch
+   * @returns {Promise<Array>} The fetched banners
+   */
+  async _fetchBannerPage(page) {
+    this._bannerPagination.page = page;
+    const result = await apiClient.select('banners', {
+      sort: { column: 'display_order', ascending: true },
+      page,
+      pageSize: this._bannerPagination.pageSize,
+    });
+    this._bannerPagination = { ...this._bannerPagination, ...result, page };
+    return result.data;
+  },
+
+  /**
+   * Navigate to a specific page of banners
+   * @param {number} page - Target page number
+   * @returns {void}
+   */
+  _goToBannerPage(page) {
+    this._fetchBannerPage(page).then((data) => {
+      this.currentBanners = data || [];
+      this.renderBanners();
+    });
+  },
+
+  /**
+   * Load all banners with pagination
+   * @returns {Promise<void>}
    */
   async loadBanners() {
     try {
-      const { data, error } = await STATE.client
-        .from('banners')
-        .select('*')
-        .order('display_order', { ascending: true });
-
-      if (error) throw error;
-
+      const data = await this._fetchBannerPage(1);
       this.currentBanners = data || [];
       this.renderBanners();
     } catch (error) {
@@ -59,7 +89,8 @@ const marketingModule = {
   },
 
   /**
-   * Render banners grid
+   * Render banners grid with delegated event handling
+   * @returns {void}
    */
   renderBanners() {
     const container = document.getElementById('bannersGrid');
@@ -76,28 +107,50 @@ const marketingModule = {
 
     container.innerHTML = `
       <div class="row g-4">
-        ${this.currentBanners.map(banner => this.renderBannerCard(banner)).join('')}
+        ${this.currentBanners.map((banner) => this.renderBannerCard(banner)).join('')}
       </div>
     `;
+
+    // Attach delegated click handler for banner actions
+    container.addEventListener('click', (e) => {
+      const actionEl = e.target.closest('[data-action]');
+      if (!actionEl) return;
+      e.preventDefault();
+      const action = actionEl.getAttribute('data-action');
+      const id = actionEl.getAttribute('data-id');
+      switch (action) {
+        case 'marketingModule.viewBannerFull':
+          this.viewBannerFull(actionEl.getAttribute('data-url'), actionEl.getAttribute('data-title'));
+          break;
+        case 'marketingModule.editBanner':
+          this.editBanner(id);
+          break;
+        case 'marketingModule.toggleBannerActive':
+          this.toggleBannerActive(id, actionEl.getAttribute('data-active') === 'true');
+          break;
+        case 'marketingModule.deleteBanner':
+          this.deleteBanner(id);
+          break;
+      }
+    });
   },
 
   /**
    * Render single banner card
    */
   renderBannerCard(banner) {
-    const isActive = banner.is_active &&
-      (!banner.end_date || new Date(banner.end_date) >= new Date());
+    const isActive = banner.is_active && (!banner.end_date || new Date(banner.end_date) >= new Date());
 
-    const statusBadge = isActive ?
-      '<span class="badge bg-success">Active</span>' :
-      '<span class="badge bg-secondary">Inactive</span>';
+    const statusBadge = isActive
+      ? '<span class="badge bg-success">Active</span>'
+      : '<span class="badge bg-secondary">Inactive</span>';
 
     return `
       <div class="col-md-6 col-lg-4">
         <div class="card h-100">
           <img src="${utils.escapeHtml(banner.image_url)}" class="card-img-top" alt="${utils.escapeHtml(banner.title)}"
             style="height: 200px; object-fit: cover; cursor: pointer;"
-            onclick="marketingModule.viewBannerFull('${utils.escapeHtml(banner.image_url).replace(/'/g, "\\'")}', '${utils.escapeHtml(banner.title).replace(/'/g, "\\'")}')">
+            data-action="marketingModule.viewBannerFull" data-url="${utils.escapeHtml(banner.image_url)}" data-title="${utils.escapeHtml(banner.title)}">
           <div class="card-body">
             <div class="d-flex justify-content-between align-items-start mb-2">
               <h6 class="card-title mb-0">${utils.escapeHtml(banner.title)}</h6>
@@ -107,28 +160,32 @@ const marketingModule = {
               <span class="badge bg-primary-subtle text-primary">${utils.escapeHtml(banner.position)}</span>
               ${banner.width && banner.height ? `<span class="ms-2">${banner.width}x${banner.height}px</span>` : ''}
             </p>
-            ${banner.link_url ? `
+            ${
+              banner.link_url
+                ? `
               <p class="card-text small mb-2">
                 <i class="bi bi-link-45deg"></i>
                 <a href="${utils.escapeHtml(banner.link_url)}" target="_blank" class="text-truncate d-inline-block" style="max-width: 200px;">
                   ${utils.escapeHtml(banner.link_url)}
                 </a>
               </p>
-            ` : ''}
+            `
+                : ''
+            }
             <div class="d-flex justify-content-between align-items-center small text-muted mb-3">
               <span><i class="bi bi-eye"></i> ${banner.impressions || 0}</span>
               <span><i class="bi bi-cursor"></i> ${banner.clicks || 0}</span>
               ${banner.start_date ? `<span><i class="bi bi-calendar"></i> ${utils.formatDate(banner.start_date)}</span>` : ''}
             </div>
             <div class="btn-group w-100" role="group">
-              <button class="btn btn-sm btn-outline-primary" onclick="marketingModule.editBanner('${banner.id}')">
+              <button class="btn btn-sm btn-outline-primary" data-action="marketingModule.editBanner" data-id="${banner.id}">
                 <i class="bi bi-pencil"></i> Edit
               </button>
               <button class="btn btn-sm ${isActive ? 'btn-outline-warning' : 'btn-outline-success'}"
-                onclick="marketingModule.toggleBannerActive('${banner.id}', ${!isActive})">
+                data-action="marketingModule.toggleBannerActive" data-id="${banner.id}" data-active="${!isActive}">
                 <i class="bi bi-${isActive ? 'pause' : 'play'}"></i> ${isActive ? 'Pause' : 'Activate'}
               </button>
-              <button class="btn btn-sm btn-outline-danger" onclick="marketingModule.deleteBanner('${banner.id}')">
+              <button class="btn btn-sm btn-outline-danger" data-action="marketingModule.deleteBanner" data-id="${banner.id}">
                 <i class="bi bi-trash"></i>
               </button>
             </div>
@@ -183,11 +240,11 @@ const marketingModule = {
                 <div class="row">
                   <div class="col-md-3 mb-3">
                     <label class="form-label">Width (px)</label>
-                    <input type="number" class="form-control" id="bannerWidth" min="0" value="${isEdit ? (existingBanner.width || '') : ''}">
+                    <input type="number" class="form-control" id="bannerWidth" min="0" value="${isEdit ? existingBanner.width || '' : ''}">
                   </div>
                   <div class="col-md-3 mb-3">
                     <label class="form-label">Height (px)</label>
-                    <input type="number" class="form-control" id="bannerHeight" min="0" value="${isEdit ? (existingBanner.height || '') : ''}">
+                    <input type="number" class="form-control" id="bannerHeight" min="0" value="${isEdit ? existingBanner.height || '' : ''}">
                   </div>
                   <div class="col-md-3 mb-3">
                     <label class="form-label">Start Date</label>
@@ -201,7 +258,7 @@ const marketingModule = {
                 <div class="row">
                   <div class="col-md-6 mb-3">
                     <label class="form-label">Display Order</label>
-                    <input type="number" class="form-control" id="bannerDisplayOrder" min="0" value="${isEdit ? (existingBanner.display_order || 0) : this.currentBanners.length + 1}">
+                    <input type="number" class="form-control" id="bannerDisplayOrder" min="0" value="${isEdit ? existingBanner.display_order || 0 : this.currentBanners.length + 1}">
                   </div>
                   <div class="col-md-6 mb-3">
                     <div class="form-check mt-4">
@@ -214,7 +271,7 @@ const marketingModule = {
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="button" class="btn btn-primary" onclick="marketingModule.saveBanner(${isEdit ? `'${existingBanner.id}'` : 'null'})">
+              <button type="button" class="btn btn-primary" data-action="marketingModule.saveBanner" data-id="${isEdit ? existingBanner.id : ''}">
                 <i class="bi bi-save me-2"></i>${btnText}
               </button>
             </div>
@@ -229,7 +286,9 @@ const marketingModule = {
     const modal = new bootstrap.Modal(document.getElementById('bannerFormModal'));
     modal.show();
     utils.initInlineValidation(document.getElementById('bannerForm'));
-    document.getElementById('bannerFormModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+    document.getElementById('bannerFormModal').addEventListener('hidden.bs.modal', function () {
+      this.remove();
+    });
   },
 
   async saveBanner(bannerId) {
@@ -249,20 +308,16 @@ const marketingModule = {
       start_date: document.getElementById('bannerStartDate').value || null,
       end_date: document.getElementById('bannerEndDate').value || null,
       display_order: parseInt(document.getElementById('bannerDisplayOrder').value) || 0,
-      is_active: document.getElementById('bannerIsActive').checked
+      is_active: document.getElementById('bannerIsActive').checked,
     };
 
     try {
       await utils.protectModalDuringSave('bannerFormModal', async () => {
-        let error;
         if (bannerId) {
-          bannerData.updated_at = new Date().toISOString();
-          ({ error } = await STATE.client.from('banners').update(bannerData).eq('id', bannerId));
+          await apiClient.update('banners', bannerId, bannerData);
         } else {
-          ({ error } = await STATE.client.from('banners').insert([bannerData]));
+          await apiClient.insert('banners', bannerData);
         }
-
-        if (error) throw error;
 
         bootstrap.Modal.getInstance(document.getElementById('bannerFormModal'))?.hide();
         await this.loadBanners();
@@ -273,8 +328,9 @@ const marketingModule = {
       const key = 'bta_banners_pending';
       const stored = JSON.parse(localStorage.getItem(key) || '[]');
       bannerData.id = bannerId || crypto.randomUUID();
-      const idx = stored.findIndex(b => b.id === bannerData.id);
-      if (idx >= 0) stored[idx] = bannerData; else stored.push(bannerData);
+      const idx = stored.findIndex((b) => b.id === bannerData.id);
+      if (idx >= 0) stored[idx] = bannerData;
+      else stored.push(bannerData);
       localStorage.setItem(key, JSON.stringify(stored));
       bootstrap.Modal.getInstance(document.getElementById('bannerFormModal'))?.hide();
       utils.showToast('Banner saved locally', 'success');
@@ -282,7 +338,7 @@ const marketingModule = {
   },
 
   editBanner(bannerId) {
-    const banner = this.currentBanners.find(b => b.id === bannerId);
+    const banner = this.currentBanners.find((b) => b.id === bannerId);
     if (!banner) {
       utils.showToast('Banner not found', 'error');
       return;
@@ -314,15 +370,18 @@ const marketingModule = {
    * Delete banner
    */
   async deleteBanner(bannerId) {
-    if (!await utils.confirmDialog({ title: 'Delete Banner', message: 'Are you sure you want to delete this banner?', confirmText: 'Delete', danger: true })) return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Delete Banner',
+        message: 'Are you sure you want to delete this banner?',
+        confirmText: 'Delete',
+        danger: true,
+      }))
+    )
+      return;
 
     try {
-      const { error } = await STATE.client
-        .from('banners')
-        .delete()
-        .eq('id', bannerId);
-
-      if (error) throw error;
+      await apiClient.delete('banners', bannerId);
 
       utils.showToast('Banner deleted successfully', 'success');
       await this.loadBanners();
@@ -382,26 +441,28 @@ const marketingModule = {
     const tierOrder = ['Platinum', 'Gold', 'Silver', 'Bronze', 'Partner'];
     const sponsorsByTier = {};
 
-    tierOrder.forEach(tier => {
-      sponsorsByTier[tier] = this.currentSponsors.filter(s => s.tier === tier);
+    tierOrder.forEach((tier) => {
+      sponsorsByTier[tier] = this.currentSponsors.filter((s) => s.tier === tier);
     });
 
-    container.innerHTML = tierOrder.map(tier => {
-      const sponsors = sponsorsByTier[tier];
-      if (sponsors.length === 0) return '';
+    container.innerHTML = tierOrder
+      .map((tier) => {
+        const sponsors = sponsorsByTier[tier];
+        if (sponsors.length === 0) return '';
 
-      return `
+        return `
         <div class="mb-5">
           <h5 class="mb-3">
             <span class="badge bg-${this.getTierColor(tier)} me-2">${tier}</span>
             (${sponsors.length})
           </h5>
           <div class="row g-4">
-            ${sponsors.map(sponsor => this.renderSponsorCard(sponsor)).join('')}
+            ${sponsors.map((sponsor) => this.renderSponsorCard(sponsor)).join('')}
           </div>
         </div>
       `;
-    }).join('');
+      })
+      .join('');
   },
 
   /**
@@ -409,11 +470,11 @@ const marketingModule = {
    */
   getTierColor(tier) {
     const colors = {
-      'Platinum': 'secondary',
-      'Gold': 'warning',
-      'Silver': 'light text-dark',
-      'Bronze': 'warning',
-      'Partner': 'primary'
+      Platinum: 'secondary',
+      Gold: 'warning',
+      Silver: 'light text-dark',
+      Bronze: 'warning',
+      Partner: 'primary',
     };
     return colors[tier] || 'secondary';
   },
@@ -422,40 +483,45 @@ const marketingModule = {
    * Render single sponsor card
    */
   renderSponsorCard(sponsor) {
-    const isActive = sponsor.is_active &&
-      (!sponsor.end_date || new Date(sponsor.end_date) >= new Date());
+    const isActive = sponsor.is_active && (!sponsor.end_date || new Date(sponsor.end_date) >= new Date());
 
     return `
       <div class="col-md-6 col-lg-3">
         <div class="card h-100">
           <div class="card-body text-center">
-            ${sponsor.logo_url ?
-              `<img src="${utils.escapeHtml(sponsor.logo_url)}" alt="${utils.escapeHtml(sponsor.company_name)}"
-                class="mb-3" style="max-width: 100%; height: 100px; object-fit: contain;">` :
-              `<div class="mb-3" style="height: 100px; display: flex; align-items: center; justify-content: center; background: #f8f9fa; border-radius: 4px;">
+            ${
+              sponsor.logo_url
+                ? `<img src="${utils.escapeHtml(sponsor.logo_url)}" alt="${utils.escapeHtml(sponsor.company_name)}"
+                class="mb-3" style="max-width: 100%; height: 100px; object-fit: contain;">`
+                : `<div class="mb-3" style="height: 100px; display: flex; align-items: center; justify-content: center; background: #f8f9fa; border-radius: 4px;">
                 <i class="bi bi-building" style="font-size: 3rem; color: #dee2e6;"></i>
               </div>`
             }
             <h6 class="card-title">${utils.escapeHtml(sponsor.company_name)}</h6>
             <span class="badge bg-${this.getTierColor(sponsor.tier)} mb-2">${utils.escapeHtml(sponsor.tier)}</span>
             ${!isActive ? '<span class="badge bg-secondary mb-2">Inactive</span>' : ''}
-            ${sponsor.website ?
-              `<p class="card-text small mb-2">
+            ${
+              sponsor.website
+                ? `<p class="card-text small mb-2">
                 <a href="${utils.escapeHtml(sponsor.website)}" target="_blank" class="text-decoration-none">
                   <i class="bi bi-globe"></i> Visit Website
                 </a>
-              </p>` : ''}
-            ${sponsor.contact_name ?
-              `<p class="card-text small text-muted mb-0">${utils.escapeHtml(sponsor.contact_name)}</p>` : ''}
-            ${sponsor.email ?
-              `<p class="card-text small text-muted mb-2">${utils.escapeHtml(sponsor.email)}</p>` : ''}
+              </p>`
+                : ''
+            }
+            ${
+              sponsor.contact_name
+                ? `<p class="card-text small text-muted mb-0">${utils.escapeHtml(sponsor.contact_name)}</p>`
+                : ''
+            }
+            ${sponsor.email ? `<p class="card-text small text-muted mb-2">${utils.escapeHtml(sponsor.email)}</p>` : ''}
           </div>
           <div class="card-footer bg-transparent">
             <div class="btn-group w-100" role="group">
-              <button class="btn btn-sm btn-outline-primary" onclick="marketingModule.editSponsor('${sponsor.id}')">
+              <button class="btn btn-sm btn-outline-primary" data-action="marketingModule.editSponsor" data-id="${sponsor.id}">
                 <i class="bi bi-pencil"></i>
               </button>
-              <button class="btn btn-sm btn-outline-danger" onclick="marketingModule.deleteSponsor('${sponsor.id}')">
+              <button class="btn btn-sm btn-outline-danger" data-action="marketingModule.deleteSponsor" data-id="${sponsor.id}">
                 <i class="bi bi-trash"></i>
               </button>
             </div>
@@ -530,11 +596,11 @@ const marketingModule = {
                 <div class="row">
                   <div class="col-md-4 mb-3">
                     <label class="form-label">Sponsorship Amount (£)</label>
-                    <input type="number" class="form-control" id="sponsorAmount" min="0" step="0.01" value="${isEdit ? (existingSponsor.sponsorship_amount || '') : ''}">
+                    <input type="number" class="form-control" id="sponsorAmount" min="0" step="0.01" value="${isEdit ? existingSponsor.sponsorship_amount || '' : ''}">
                   </div>
                   <div class="col-md-4 mb-3">
                     <label class="form-label">Display Order</label>
-                    <input type="number" class="form-control" id="sponsorDisplayOrder" min="0" value="${isEdit ? (existingSponsor.display_order || 0) : this.currentSponsors.length + 1}">
+                    <input type="number" class="form-control" id="sponsorDisplayOrder" min="0" value="${isEdit ? existingSponsor.display_order || 0 : this.currentSponsors.length + 1}">
                   </div>
                   <div class="col-md-4 mb-3">
                     <div class="form-check mt-4">
@@ -547,7 +613,7 @@ const marketingModule = {
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="button" class="btn btn-warning" onclick="marketingModule.saveSponsor(${isEdit ? `'${existingSponsor.id}'` : 'null'})">
+              <button type="button" class="btn btn-warning" data-action="marketingModule.saveSponsor" data-id="${isEdit ? existingSponsor.id : ''}">
                 <i class="bi bi-save me-2"></i>${btnText}
               </button>
             </div>
@@ -562,7 +628,9 @@ const marketingModule = {
     const modal = new bootstrap.Modal(document.getElementById('sponsorFormModal'));
     modal.show();
     utils.initInlineValidation(document.getElementById('sponsorForm'));
-    document.getElementById('sponsorFormModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+    document.getElementById('sponsorFormModal').addEventListener('hidden.bs.modal', function () {
+      this.remove();
+    });
   },
 
   async saveSponsor(sponsorId) {
@@ -583,20 +651,16 @@ const marketingModule = {
       description: document.getElementById('sponsorDescription').value || null,
       sponsorship_amount: parseFloat(document.getElementById('sponsorAmount').value) || null,
       display_order: parseInt(document.getElementById('sponsorDisplayOrder').value) || 0,
-      is_active: document.getElementById('sponsorIsActive').checked
+      is_active: document.getElementById('sponsorIsActive').checked,
     };
 
     try {
       await utils.protectModalDuringSave('sponsorFormModal', async () => {
-        let error;
         if (sponsorId) {
-          sponsorData.updated_at = new Date().toISOString();
-          ({ error } = await STATE.client.from('sponsors').update(sponsorData).eq('id', sponsorId));
+          await apiClient.update('sponsors', sponsorId, sponsorData);
         } else {
-          ({ error } = await STATE.client.from('sponsors').insert([sponsorData]));
+          await apiClient.insert('sponsors', sponsorData);
         }
-
-        if (error) throw error;
 
         bootstrap.Modal.getInstance(document.getElementById('sponsorFormModal'))?.hide();
         await this.loadSponsors();
@@ -607,8 +671,9 @@ const marketingModule = {
       const key = 'bta_sponsors_pending';
       const stored = JSON.parse(localStorage.getItem(key) || '[]');
       sponsorData.id = sponsorId || crypto.randomUUID();
-      const idx = stored.findIndex(s => s.id === sponsorData.id);
-      if (idx >= 0) stored[idx] = sponsorData; else stored.push(sponsorData);
+      const idx = stored.findIndex((s) => s.id === sponsorData.id);
+      if (idx >= 0) stored[idx] = sponsorData;
+      else stored.push(sponsorData);
       localStorage.setItem(key, JSON.stringify(stored));
       bootstrap.Modal.getInstance(document.getElementById('sponsorFormModal'))?.hide();
       utils.showToast('Sponsor saved locally', 'success');
@@ -616,7 +681,7 @@ const marketingModule = {
   },
 
   editSponsor(sponsorId) {
-    const sponsor = this.currentSponsors.find(s => s.id === sponsorId);
+    const sponsor = this.currentSponsors.find((s) => s.id === sponsorId);
     if (!sponsor) {
       utils.showToast('Sponsor not found', 'error');
       return;
@@ -625,10 +690,17 @@ const marketingModule = {
   },
 
   async deleteSponsor(sponsorId) {
-    if (!await utils.confirmDialog({ title: 'Delete Sponsor', message: 'Are you sure you want to delete this sponsor?', confirmText: 'Delete', danger: true })) return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Delete Sponsor',
+        message: 'Are you sure you want to delete this sponsor?',
+        confirmText: 'Delete',
+        danger: true,
+      }))
+    )
+      return;
     try {
-      const { error } = await STATE.client.from('sponsors').delete().eq('id', sponsorId);
-      if (error) throw error;
+      await apiClient.delete('sponsors', sponsorId);
       utils.showToast('Sponsor deleted successfully', 'success');
       await this.loadSponsors();
     } catch (error) {
@@ -663,10 +735,10 @@ const marketingModule = {
     if (!container) return;
 
     try {
-      const tenantId = (typeof multiTenancyModule !== 'undefined') ? multiTenancyModule.getTenantId() : 'default';
+      const tenantId = typeof multiTenancyModule !== 'undefined' ? multiTenancyModule.getTenantId() : 'default';
       const config = typeof brandingModule !== 'undefined' ? await brandingModule.loadBranding(tenantId) : {};
 
-      const esc = v => utils.escapeHtml(v || '');
+      const esc = (v) => utils.escapeHtml(v || '');
       const logoHtml = config.logo_url
         ? `<img src="${esc(config.logo_url)}" alt="Logo" style="max-height:80px;max-width:200px;object-fit:contain">`
         : '<span class="text-muted fst-italic">No logo set</span>';
@@ -734,7 +806,7 @@ const marketingModule = {
         </div>
         <div class="alert alert-info mt-4 mb-0">
           <i class="bi bi-info-circle me-2"></i>
-          <strong>How branding is used:</strong> These settings are automatically applied to email templates, campaign headers/footers, certificates, public pages, and event materials. Edit them in <a href="#" onclick="document.getElementById('settings-tab').click(); return false;">Settings</a> to update across the entire CMS.
+          <strong>How branding is used:</strong> These settings are automatically applied to email templates, campaign headers/footers, certificates, public pages, and event materials. Edit them in <a href="#" data-action="marketingModule.goToSettings" data-prevent-default="true">Settings</a> to update across the entire CMS.
         </div>
       `;
     } catch (e) {
@@ -756,38 +828,104 @@ const marketingModule = {
     let defaults = {};
     try {
       if (STATE.client) {
-        const { data } = await STATE.client.from('user_preferences').select('value').eq('key', 'emailPlaceholderDefaults').limit(1);
+        const { data } = await STATE.client
+          .from('user_preferences')
+          .select('value')
+          .eq('key', 'emailPlaceholderDefaults')
+          .limit(1);
         if (data?.[0]) defaults = JSON.parse(data[0].value);
       }
     } catch (e) {
       console.warn('Failed to load placeholder defaults from DB:', e.message);
-      try { defaults = JSON.parse(localStorage.getItem('emailPlaceholderDefaults') || '{}'); } catch (_) {}
+      try {
+        defaults = JSON.parse(localStorage.getItem('emailPlaceholderDefaults') || '{}');
+      } catch (_) {}
     }
 
     let branding = {};
     try {
-      const tenantId = (typeof multiTenancyModule !== 'undefined') ? multiTenancyModule.getTenantId() : 'default';
+      const tenantId = typeof multiTenancyModule !== 'undefined' ? multiTenancyModule.getTenantId() : 'default';
       if (typeof brandingModule !== 'undefined') branding = await brandingModule.loadBranding(tenantId);
     } catch (_) {}
 
     this._placeholderDefaults = defaults;
-    const esc = v => utils.escapeHtml(v || '');
+    const esc = (v) => utils.escapeHtml(v || '');
 
     const placeholders = [
-      { key: 'UPLOAD_LINK', label: 'Upload Link', desc: 'URL where entrants upload supporting documents.', default: defaults.UPLOAD_LINK || 'https://yourdomain.com/upload-documents.html', type: 'global' },
-      { key: 'DEADLINE_DATE', label: 'Deadline Date', desc: 'Entry submission deadline.', default: defaults.DEADLINE_DATE || '31st December 2025', type: 'global' },
-      { key: 'ANNOUNCEMENT_DATE', label: 'Announcement Date', desc: 'Winners announcement date.', default: defaults.ANNOUNCEMENT_DATE || '15th February 2026', type: 'global' },
-      { key: 'CONTACT_EMAIL', label: 'Contact Email', desc: 'Awards contact email address. Linked to branding email settings.', default: defaults.CONTACT_EMAIL || branding.email_reply_to || branding.email_from || 'awards@britishtrade.org', type: 'global' },
-      { key: 'ENTRY_NUMBER', label: 'Entry Number', desc: 'Unique entry reference (e.g. BTA-2025-0001). Replaced per-entry when sending.', default: defaults.ENTRY_NUMBER || 'BTA-2025-0001', type: 'sample' },
-      { key: 'CONTACT_NAME', label: 'Contact Name', desc: 'Entrant contact name. Replaced per-entry when sending.', default: defaults.CONTACT_NAME || 'John Smith', type: 'sample' },
-      { key: 'COMPANY_NAME', label: 'Company Name', desc: 'Entrant company name. Replaced per-entry when sending.', default: defaults.COMPANY_NAME || 'Acme Corporation Ltd', type: 'sample' },
-      { key: 'AWARD_NAME', label: 'Award Name', desc: 'Award category name. Replaced per-entry when sending.', default: defaults.AWARD_NAME || 'Export Excellence Award', type: 'sample' },
-      { key: 'SECTOR', label: 'Sector', desc: 'Business sector. Replaced per-entry when sending.', default: defaults.SECTOR || 'Manufacturing', type: 'sample' },
-      { key: 'REGION', label: 'Region', desc: 'Geographic region. Replaced per-entry when sending.', default: defaults.REGION || 'Greater London', type: 'sample' }
+      {
+        key: 'UPLOAD_LINK',
+        label: 'Upload Link',
+        desc: 'URL where entrants upload supporting documents.',
+        default: defaults.UPLOAD_LINK || 'https://yourdomain.com/upload-documents.html',
+        type: 'global',
+      },
+      {
+        key: 'DEADLINE_DATE',
+        label: 'Deadline Date',
+        desc: 'Entry submission deadline.',
+        default: defaults.DEADLINE_DATE || '31st December 2025',
+        type: 'global',
+      },
+      {
+        key: 'ANNOUNCEMENT_DATE',
+        label: 'Announcement Date',
+        desc: 'Winners announcement date.',
+        default: defaults.ANNOUNCEMENT_DATE || '15th February 2026',
+        type: 'global',
+      },
+      {
+        key: 'CONTACT_EMAIL',
+        label: 'Contact Email',
+        desc: 'Awards contact email address. Linked to branding email settings.',
+        default: defaults.CONTACT_EMAIL || branding.email_reply_to || branding.email_from || 'awards@britishtrade.org',
+        type: 'global',
+      },
+      {
+        key: 'ENTRY_NUMBER',
+        label: 'Entry Number',
+        desc: 'Unique entry reference (e.g. BTA-2025-0001). Replaced per-entry when sending.',
+        default: defaults.ENTRY_NUMBER || 'BTA-2025-0001',
+        type: 'sample',
+      },
+      {
+        key: 'CONTACT_NAME',
+        label: 'Contact Name',
+        desc: 'Entrant contact name. Replaced per-entry when sending.',
+        default: defaults.CONTACT_NAME || 'John Smith',
+        type: 'sample',
+      },
+      {
+        key: 'COMPANY_NAME',
+        label: 'Company Name',
+        desc: 'Entrant company name. Replaced per-entry when sending.',
+        default: defaults.COMPANY_NAME || 'Acme Corporation Ltd',
+        type: 'sample',
+      },
+      {
+        key: 'AWARD_NAME',
+        label: 'Award Name',
+        desc: 'Award category name. Replaced per-entry when sending.',
+        default: defaults.AWARD_NAME || 'Export Excellence Award',
+        type: 'sample',
+      },
+      {
+        key: 'SECTOR',
+        label: 'Sector',
+        desc: 'Business sector. Replaced per-entry when sending.',
+        default: defaults.SECTOR || 'Manufacturing',
+        type: 'sample',
+      },
+      {
+        key: 'REGION',
+        label: 'Region',
+        desc: 'Geographic region. Replaced per-entry when sending.',
+        default: defaults.REGION || 'Greater London',
+        type: 'sample',
+      },
     ];
 
-    const globalPlaceholders = placeholders.filter(p => p.type === 'global');
-    const samplePlaceholders = placeholders.filter(p => p.type === 'sample');
+    const globalPlaceholders = placeholders.filter((p) => p.type === 'global');
+    const samplePlaceholders = placeholders.filter((p) => p.type === 'sample');
 
     container.innerHTML = `
       <form id="placeholderDefaultsForm">
@@ -799,13 +937,17 @@ const marketingModule = {
               </div>
               <div class="card-body">
                 <p class="text-muted small mb-3">These values are used as-is in all emails unless overridden per-entry.</p>
-                ${globalPlaceholders.map(p => `
+                ${globalPlaceholders
+                  .map(
+                    (p) => `
                   <div class="mb-3">
                     <label class="form-label">${p.label} <code class="ms-1">{${p.key}}</code></label>
                     <input type="text" class="form-control" id="ph_${p.key}" value="${esc(p.default)}" placeholder="${p.label}">
                     <small class="form-text text-muted">${p.desc}</small>
                   </div>
-                `).join('')}
+                `
+                  )
+                  .join('')}
               </div>
             </div>
           </div>
@@ -816,20 +958,24 @@ const marketingModule = {
               </div>
               <div class="card-body">
                 <p class="text-muted small mb-3">Sample values used when previewing or test-sending templates. Real values come from entry data.</p>
-                ${samplePlaceholders.map(p => `
+                ${samplePlaceholders
+                  .map(
+                    (p) => `
                   <div class="mb-3">
                     <label class="form-label">${p.label} <code class="ms-1">{${p.key}}</code></label>
                     <input type="text" class="form-control" id="ph_${p.key}" value="${esc(p.default)}" placeholder="${p.label}">
                     <small class="form-text text-muted">${p.desc}</small>
                   </div>
-                `).join('')}
+                `
+                  )
+                  .join('')}
               </div>
             </div>
           </div>
         </div>
         <div class="d-flex gap-2 mt-4">
           <button type="submit" class="btn btn-primary"><i class="bi bi-save me-2"></i>Save Placeholder Defaults</button>
-          <button type="button" class="btn btn-outline-secondary" onclick="marketingModule.resetPlaceholderDefaults()"><i class="bi bi-arrow-counterclockwise me-2"></i>Reset to Defaults</button>
+          <button type="button" class="btn btn-outline-secondary" data-action="marketingModule.resetPlaceholderDefaults"><i class="bi bi-arrow-counterclockwise me-2"></i>Reset to Defaults</button>
         </div>
       </form>
       <div class="card mt-4">
@@ -837,7 +983,7 @@ const marketingModule = {
         <div class="card-body">
           <p class="text-muted small mb-2">Copy and paste these placeholders into your email templates:</p>
           <div class="d-flex flex-wrap gap-2">
-            ${placeholders.map(p => `<span class="badge bg-light text-dark border" style="cursor:pointer" onclick="navigator.clipboard.writeText('{${p.key}}'); utils.showToast('Copied {${p.key}}', 'success')">{${p.key}}</span>`).join('')}
+            ${placeholders.map((p) => `<span class="badge bg-light text-dark border" style="cursor:pointer" data-action="marketingModule.copyPlaceholder" data-key="${p.key}">{${p.key}}</span>`).join('')}
           </div>
         </div>
       </div>
@@ -850,26 +996,65 @@ const marketingModule = {
   },
 
   async savePlaceholderDefaults() {
-    const keys = ['ENTRY_NUMBER', 'CONTACT_NAME', 'COMPANY_NAME', 'AWARD_NAME', 'SECTOR', 'REGION', 'UPLOAD_LINK', 'DEADLINE_DATE', 'ANNOUNCEMENT_DATE', 'CONTACT_EMAIL'];
+    const keys = [
+      'ENTRY_NUMBER',
+      'CONTACT_NAME',
+      'COMPANY_NAME',
+      'AWARD_NAME',
+      'SECTOR',
+      'REGION',
+      'UPLOAD_LINK',
+      'DEADLINE_DATE',
+      'ANNOUNCEMENT_DATE',
+      'CONTACT_EMAIL',
+    ];
     const defaults = {};
-    keys.forEach(k => {
+    keys.forEach((k) => {
       const el = document.getElementById('ph_' + k);
       if (el && el.value.trim()) defaults[k] = el.value.trim();
     });
     try {
-      if (STATE.client) {
-        await STATE.client.from('user_preferences').upsert({ key: 'emailPlaceholderDefaults', value: JSON.stringify(defaults), updated_at: new Date().toISOString() }, { onConflict: 'key' });
-      }
-    } catch (e) { console.warn('Failed to save placeholder defaults to DB:', e.message); }
+      await apiClient.upsert(
+        'user_preferences',
+        { key: 'emailPlaceholderDefaults', value: JSON.stringify(defaults), updated_at: new Date().toISOString() },
+        { onConflict: 'key' }
+      );
+    } catch (e) {
+      console.warn('Failed to save placeholder defaults to DB:', e.message);
+    }
     localStorage.setItem('emailPlaceholderDefaults', JSON.stringify(defaults));
     this._placeholderDefaults = defaults;
     utils.showToast('Placeholder defaults saved', 'success');
   },
 
   resetPlaceholderDefaults() {
-    const dv = { ENTRY_NUMBER: 'BTA-2025-0001', CONTACT_NAME: 'John Smith', COMPANY_NAME: 'Acme Corporation Ltd', AWARD_NAME: 'Export Excellence Award', SECTOR: 'Manufacturing', REGION: 'Greater London', UPLOAD_LINK: 'https://yourdomain.com/upload-documents.html', DEADLINE_DATE: '31st December 2025', ANNOUNCEMENT_DATE: '15th February 2026', CONTACT_EMAIL: 'awards@britishtrade.org' };
-    Object.entries(dv).forEach(([k, v]) => { const el = document.getElementById('ph_' + k); if (el) el.value = v; });
+    const dv = {
+      ENTRY_NUMBER: 'BTA-2025-0001',
+      CONTACT_NAME: 'John Smith',
+      COMPANY_NAME: 'Acme Corporation Ltd',
+      AWARD_NAME: 'Export Excellence Award',
+      SECTOR: 'Manufacturing',
+      REGION: 'Greater London',
+      UPLOAD_LINK: 'https://yourdomain.com/upload-documents.html',
+      DEADLINE_DATE: '31st December 2025',
+      ANNOUNCEMENT_DATE: '15th February 2026',
+      CONTACT_EMAIL: 'awards@britishtrade.org',
+    };
+    Object.entries(dv).forEach(([k, v]) => {
+      const el = document.getElementById('ph_' + k);
+      if (el) el.value = v;
+    });
     utils.showToast('Defaults reset. Click Save to persist.', 'info');
+  },
+
+  /**
+   * Copy a placeholder key to clipboard and show a toast notification.
+   * Used by event delegation for data-action="marketingModule.copyPlaceholder".
+   * @param {string} key - The placeholder key to copy
+   */
+  copyPlaceholder(key) {
+    navigator.clipboard.writeText('{' + key + '}');
+    utils.showToast('Copied {' + key + '}', 'success');
   },
 
   // ============================================
@@ -880,19 +1065,37 @@ const marketingModule = {
   async _loadEmailSequences() {
     try {
       if (typeof STATE !== 'undefined' && STATE.client) {
-        const { data } = await STATE.client.from('user_preferences').select('value').eq('key', 'orgEmailSequences').limit(1);
-        if (data?.[0]) { this._emailSequences = JSON.parse(data[0].value); return; }
+        const { data } = await STATE.client
+          .from('user_preferences')
+          .select('value')
+          .eq('key', 'orgEmailSequences')
+          .limit(1);
+        if (data?.[0]) {
+          this._emailSequences = JSON.parse(data[0].value);
+          return;
+        }
       }
-    } catch (e) { console.warn('Failed to load email sequences from database:', e.message); }
-    try { this._emailSequences = JSON.parse(localStorage.getItem('orgEmailSequences') || '[]'); } catch (e) { console.warn('Failed to parse email sequences from localStorage:', e.message); this._emailSequences = []; }
+    } catch (e) {
+      console.warn('Failed to load email sequences from database:', e.message);
+    }
+    try {
+      this._emailSequences = JSON.parse(localStorage.getItem('orgEmailSequences') || '[]');
+    } catch (e) {
+      console.warn('Failed to parse email sequences from localStorage:', e.message);
+      this._emailSequences = [];
+    }
   },
 
   async _saveEmailSequences() {
     try {
-      if (typeof STATE !== 'undefined' && STATE.client) {
-        await STATE.client.from('user_preferences').upsert({ key: 'orgEmailSequences', value: JSON.stringify(this._emailSequences), updated_at: new Date().toISOString() }, { onConflict: 'key' });
-      }
-    } catch (e) { console.warn('Failed to save email sequences to database:', e.message); }
+      await apiClient.upsert(
+        'user_preferences',
+        { key: 'orgEmailSequences', value: JSON.stringify(this._emailSequences), updated_at: new Date().toISOString() },
+        { onConflict: 'key' }
+      );
+    } catch (e) {
+      console.warn('Failed to save email sequences to database:', e.message);
+    }
     localStorage.setItem('orgEmailSequences', JSON.stringify(this._emailSequences));
   },
 
@@ -908,7 +1111,9 @@ const marketingModule = {
       </div>`;
       return;
     }
-    container.innerHTML = sequences.map((seq, i) => `
+    container.innerHTML = sequences
+      .map(
+        (seq, i) => `
       <div class="card mb-2">
         <div class="card-body py-2">
           <div class="d-flex justify-content-between align-items-center">
@@ -918,12 +1123,14 @@ const marketingModule = {
               <div class="text-muted small">Trigger: ${utils.escapeHtml(seq.trigger)} &middot; ${seq.steps.length} step(s) &middot; ${seq.enrolled || 0} enrolled</div>
             </div>
             <div>
-              <button class="btn btn-sm btn-outline-${seq.active ? 'warning' : 'success'}" onclick="marketingModule.toggleSequence(${i})">${seq.active ? 'Pause' : 'Activate'}</button>
-              <button class="btn btn-sm btn-outline-danger ms-1" onclick="marketingModule.deleteSequence(${i})"><i class="bi bi-trash"></i></button>
+              <button class="btn btn-sm btn-outline-${seq.active ? 'warning' : 'success'}" data-action="marketingModule.toggleSequence" data-index="${i}">${seq.active ? 'Pause' : 'Activate'}</button>
+              <button class="btn btn-sm btn-outline-danger ms-1" data-action="marketingModule.deleteSequence" data-index="${i}"><i class="bi bi-trash"></i></button>
             </div>
           </div>
         </div>
-      </div>`).join('');
+      </div>`
+      )
+      .join('');
   },
 
   showCreateSequence() {
@@ -951,11 +1158,11 @@ const marketingModule = {
             <div class="col-4"><label class="form-label small">Subject</label><input type="text" class="form-control form-control-sm seq-subject" placeholder="Subject..."></div>
             <div class="col-5"><label class="form-label small">Body</label><textarea class="form-control form-control-sm seq-body" rows="2" placeholder="Use {{company_name}}, {{contact_name}}..."></textarea></div>
           </div></div></div>
-          <button class="btn btn-sm btn-outline-secondary mb-3" onclick="marketingModule._addSequenceStep()"><i class="bi bi-plus me-1"></i>Add Step</button>
+          <button class="btn btn-sm btn-outline-secondary mb-3" data-action="marketingModule._addSequenceStep"><i class="bi bi-plus me-1"></i>Add Step</button>
         </div>
         <div class="modal-footer">
           <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button class="btn btn-primary" onclick="marketingModule._saveSequence()"><i class="bi bi-check-circle me-2"></i>Save Sequence</button>
+          <button class="btn btn-primary" data-action="marketingModule._saveSequence"><i class="bi bi-check-circle me-2"></i>Save Sequence</button>
         </div>
       </div></div>
     </div>`;
@@ -964,8 +1171,10 @@ const marketingModule = {
   },
 
   _addSequenceStep() {
-    const c = document.getElementById('seqStepsContainer'); if (!c) return;
-    const s = document.createElement('div'); s.className = 'card mb-2 p-2';
+    const c = document.getElementById('seqStepsContainer');
+    if (!c) return;
+    const s = document.createElement('div');
+    s.className = 'card mb-2 p-2';
     s.innerHTML = `<div class="row g-2"><div class="col-3"><label class="form-label small">Delay (days)</label><input type="number" class="form-control form-control-sm seq-delay" value="3" min="0"></div>
       <div class="col-4"><label class="form-label small">Subject</label><input type="text" class="form-control form-control-sm seq-subject" placeholder="Subject..."></div>
       <div class="col-5"><label class="form-label small">Body</label><textarea class="form-control form-control-sm seq-body" rows="2" placeholder="Use {{company_name}}..."></textarea></div></div>`;
@@ -975,12 +1184,22 @@ const marketingModule = {
   async _saveSequence() {
     const name = document.getElementById('seqName')?.value?.trim();
     const trigger = document.getElementById('seqTrigger')?.value;
-    if (!name) { utils.showToast('Enter a sequence name', 'warning'); return; }
+    if (!name) {
+      utils.showToast('Enter a sequence name', 'warning');
+      return;
+    }
     const steps = [];
     document.querySelectorAll('.seq-delay').forEach((d, i) => {
-      steps.push({ delay: parseInt(d.value) || 0, subject: document.querySelectorAll('.seq-subject')[i]?.value || '', body: document.querySelectorAll('.seq-body')[i]?.value || '' });
+      steps.push({
+        delay: parseInt(d.value) || 0,
+        subject: document.querySelectorAll('.seq-subject')[i]?.value || '',
+        body: document.querySelectorAll('.seq-body')[i]?.value || '',
+      });
     });
-    if (steps.length === 0 || !steps[0].subject) { utils.showToast('Add at least one step with a subject', 'warning'); return; }
+    if (steps.length === 0 || !steps[0].subject) {
+      utils.showToast('Add at least one step with a subject', 'warning');
+      return;
+    }
     this._emailSequences.push({ name, trigger, steps, active: true, enrolled: 0, created: new Date().toISOString() });
     await this._saveEmailSequences();
     utils.showToast('Sequence created', 'success');
@@ -997,12 +1216,54 @@ const marketingModule = {
   },
 
   async deleteSequence(i) {
-    if (!await utils.confirmDialog({ title: 'Delete Sequence', message: 'Delete this email sequence?', confirmText: 'Delete', danger: true })) return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Delete Sequence',
+        message: 'Delete this email sequence?',
+        confirmText: 'Delete',
+        danger: true,
+      }))
+    )
+      return;
     this._emailSequences.splice(i, 1);
     await this._saveEmailSequences();
     this.loadEmailSequences();
-  }
+  },
+
+  goToSettings() {
+    const tab = document.getElementById('settings-tab');
+    if (tab) tab.click();
+  },
 };
+
+// ---------------------------------------------------------------------------
+// Event delegation – handles all data-action clicks for marketingModule
+// ---------------------------------------------------------------------------
+document.addEventListener('click', (e) => {
+  const target = e.target.closest('[data-action]');
+  if (!target) return;
+
+  const action = target.dataset.action;
+  if (!action || !action.startsWith('marketingModule.')) return;
+
+  const method = action.replace('marketingModule.', '');
+  if (typeof marketingModule[method] !== 'function') return;
+
+  e.preventDefault();
+
+  // Determine the argument to pass based on available data attributes
+  if (target.dataset.id !== undefined) {
+    marketingModule[method](target.dataset.id || null);
+  } else if (target.dataset.key !== undefined) {
+    marketingModule[method](target.dataset.key);
+  } else if (target.dataset.index !== undefined) {
+    marketingModule[method](Number(target.dataset.index));
+  } else {
+    marketingModule[method]();
+  }
+});
 
 // Export to window for global access
 ModuleRegistry.register('marketingModule', marketingModule);
+
+export { marketingModule };

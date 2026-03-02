@@ -5,9 +5,14 @@
 /* ==================================================== */
 
 const gdprModule = {
+  // Server-side pagination state
+  _serverPagination: true,
+  _pagination: { page: 1, totalPages: 1, count: 0, pageSize: 50 },
+  _searchTerm: '',
 
   /**
    * Initialize GDPR tools in settings
+   * @returns {void}
    */
   init() {
     this.renderGdprPanel();
@@ -16,6 +21,7 @@ const gdprModule = {
 
   /**
    * Render GDPR panel in settings tab
+   * @returns {void}
    */
   renderGdprPanel() {
     const container = document.getElementById('gdprPanel');
@@ -50,11 +56,11 @@ const gdprModule = {
             <label class="form-label fw-semibold">Search Entity</label>
             <div class="input-group">
               <input type="text" class="form-control" id="gdprEntitySearch" placeholder="Search by name or email..." aria-label="Search entity">
-              <button class="btn btn-outline-primary" onclick="gdprModule.searchEntity()" aria-label="Search"><i class="bi bi-search"></i></button>
+              <button class="btn btn-outline-primary" data-action="gdprModule.searchEntity" aria-label="Search"><i class="bi bi-search"></i></button>
             </div>
             <div id="gdprSearchResults" class="mt-2"></div>
           </div>
-          <button class="btn btn-warning" onclick="gdprModule.submitRequest()" aria-label="Submit GDPR request">
+          <button class="btn btn-warning" data-action="gdprModule.submitRequest" aria-label="Submit GDPR request">
             <i class="bi bi-shield-exclamation me-2"></i>Submit Request
           </button>
         </div>
@@ -69,6 +75,7 @@ const gdprModule = {
             </thead>
             <tbody id="gdprRequestsTable"></tbody>
           </table>
+          <div id="gdprPaginationControls"></div>
         </div>
       </div>
 
@@ -92,7 +99,7 @@ const gdprModule = {
               </div>
             </div>
             <div class="col-md-6">
-              <button class="btn btn-outline-danger btn-sm" onclick="gdprModule.runRetentionCleanup()" aria-label="Run cleanup now">
+              <button class="btn btn-outline-danger btn-sm" data-action="gdprModule.runRetentionCleanup" aria-label="Run cleanup now">
                 <i class="bi bi-trash me-2"></i>Run Cleanup Now
               </button>
             </div>
@@ -100,15 +107,32 @@ const gdprModule = {
         </div>
       </div>
     `;
+
+    // Attach delegated event listeners for data-action buttons
+    container.addEventListener('click', (e) => {
+      const actionEl = e.target.closest('[data-action]');
+      if (!actionEl) return;
+      e.preventDefault();
+      const action = actionEl.getAttribute('data-action');
+      if (action === 'gdprModule.searchEntity') this.searchEntity();
+      else if (action === 'gdprModule.submitRequest') this.submitRequest();
+      else if (action === 'gdprModule.runRetentionCleanup') this.runRetentionCleanup();
+    });
   },
 
   /**
    * Escape special SQL LIKE/ILIKE wildcard characters in user input
+   * @param {string} str - The user input string to escape
+   * @returns {string} Escaped string safe for LIKE queries
    */
   _escapeLike(str) {
     return str.replace(/[%_\\]/g, '\\$&');
   },
 
+  /**
+   * Search for an entity (organisation or contact) by name or email
+   * @returns {Promise<void>}
+   */
   async searchEntity() {
     const term = document.getElementById('gdprEntitySearch').value.trim();
     const entityType = document.getElementById('gdprEntityType').value;
@@ -127,24 +151,43 @@ const gdprModule = {
         const result = await apiClient.select('organisations', {
           select: 'id, company_name, email',
           filters: { or: `company_name.ilike.%${safeTerm}%,email.ilike.%${safeTerm}%` },
-          pageSize: 10
+          pageSize: 10,
         });
-        data = (result.data || []).map(o => ({ id: o.id, label: `${o.company_name} (${o.email || 'no email'})` }));
+        data = (result.data || []).map((o) => ({ id: o.id, label: `${o.company_name} (${o.email || 'no email'})` }));
       } else if (entityType === 'contact') {
         const result = await apiClient.select('organisation_contacts', {
           select: 'id, first_name, last_name, email',
           filters: { or: `email.ilike.%${safeTerm}%,first_name.ilike.%${safeTerm}%,last_name.ilike.%${safeTerm}%` },
-          pageSize: 10
+          pageSize: 10,
         });
-        data = (result.data || []).map(c => ({ id: c.id, label: `${c.first_name} ${c.last_name} (${c.email || 'no email'})` }));
+        data = (result.data || []).map((c) => ({
+          id: c.id,
+          label: `${c.first_name} ${c.last_name} (${c.email || 'no email'})`,
+        }));
       }
 
       if (data.length === 0) {
         resultsDiv.innerHTML = '<small class="text-muted">No results found</small>';
       } else {
-        resultsDiv.innerHTML = data.map(d =>
-          `<button class="btn btn-sm btn-outline-secondary me-1 mb-1" onclick="gdprModule.selectEntity('${d.id}')">${utils.escapeHtml(d.label)}</button>`
-        ).join('');
+        resultsDiv.innerHTML = data
+          .map(
+            (d) =>
+              `<button class="btn btn-sm btn-outline-secondary me-1 mb-1" data-action="gdprModule.selectEntity" data-id="${d.id}">${utils.escapeHtml(d.label)}</button>`
+          )
+          .join('');
+
+        // Attach delegated click handler for entity selection buttons
+        resultsDiv.addEventListener(
+          'click',
+          (e) => {
+            const btn = e.target.closest('[data-action="gdprModule.selectEntity"]');
+            if (btn) {
+              e.preventDefault();
+              this.selectEntity(btn.getAttribute('data-id'));
+            }
+          },
+          { once: false }
+        );
       }
       this._selectedEntityId = null;
     } catch (e) {
@@ -152,12 +195,18 @@ const gdprModule = {
     }
   },
 
+  /** @type {string|null} Currently selected entity ID for GDPR request */
   _selectedEntityId: null,
 
+  /**
+   * Select an entity from search results
+   * @param {string} id - The entity ID to select
+   * @returns {void}
+   */
   selectEntity(id) {
     this._selectedEntityId = id;
-    document.querySelectorAll('#gdprSearchResults button').forEach(btn => btn.classList.remove('btn-primary'));
-    const selected = document.querySelector(`#gdprSearchResults button[onclick*="${id}"]`);
+    document.querySelectorAll('#gdprSearchResults button').forEach((btn) => btn.classList.remove('btn-primary'));
+    const selected = document.querySelector(`#gdprSearchResults button[data-id="${id}"]`);
     if (selected) {
       selected.classList.remove('btn-outline-secondary');
       selected.classList.add('btn-primary');
@@ -165,7 +214,8 @@ const gdprModule = {
   },
 
   /**
-   * Submit a GDPR request
+   * Submit a GDPR request (data export, erasure, or anonymisation)
+   * @returns {Promise<void>}
    */
   async submitRequest() {
     if (typeof rbacModule !== 'undefined' && !rbacModule.canAccess('settings')) {
@@ -188,87 +238,208 @@ const gdprModule = {
     }
 
     try {
-      const { error } = await STATE.client.from('gdpr_requests').insert({
+      await apiClient.insert('gdpr_requests', {
         request_type: requestType,
         entity_type: entityType,
         entity_id: this._selectedEntityId,
         requester_email: requesterEmail,
-        status: 'pending'
+        status: 'pending',
       });
-
-      if (error) throw error;
 
       utils.showToast('GDPR request submitted', 'success');
       this._selectedEntityId = null;
       document.getElementById('gdprEntitySearch').value = '';
       document.getElementById('gdprSearchResults').innerHTML = '';
       this.loadPendingRequests();
-
     } catch (e) {
       utils.showToast('Failed to submit request: ' + e.message, 'error');
     }
   },
 
   /**
-   * Load and render pending GDPR requests
+   * Fetch a specific page of GDPR requests from the server
+   * @param {number} page - The page number to fetch
+   * @returns {Promise<Array>} The fetched page data
+   */
+  async _fetchPage(page) {
+    this._pagination.page = page;
+    const filters = this._buildServerFilters();
+    const result = await apiClient.select('gdpr_requests', {
+      filters,
+      sort: { column: 'created_at', ascending: false },
+      page,
+      pageSize: this._pagination.pageSize,
+    });
+    this._pagination = { ...this._pagination, ...result, page };
+    return result.data;
+  },
+
+  /**
+   * Navigate to a specific page of GDPR requests
+   * @param {number} page - Target page number
+   * @returns {void}
+   */
+  _goToPage(page) {
+    this._fetchPage(page).then(() => this._renderRequests());
+  },
+
+  /**
+   * Build server-side filters from current state
+   * @returns {Object} Filter object for apiClient
+   */
+  _buildServerFilters() {
+    const f = {};
+    // Could add status filters here in future
+    return f;
+  },
+
+  /**
+   * Load and render pending GDPR requests with server-side pagination
+   * @returns {Promise<void>}
    */
   async loadPendingRequests() {
     const tbody = document.getElementById('gdprRequestsTable');
     if (!tbody) return;
 
     try {
-      const { data, error } = await STATE.client
-        .from('gdpr_requests')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(50);
-
-      if (error) throw error;
-
-      if (!data || data.length === 0) {
-        utils.showEmptyState('gdprRequestsTable', 6, 'No GDPR requests', 'bi-shield-check');
-        return;
-      }
-
-      const typeBadges = { export: 'bg-info', delete: 'bg-danger', anonymize: 'bg-warning text-dark' };
-      const statusBadges = { pending: 'bg-warning text-dark', processing: 'bg-info', completed: 'bg-success', rejected: 'bg-secondary' };
-
-      tbody.innerHTML = data.map(r => `
-        <tr>
-          <td><small>${utils.formatDate(r.created_at)}</small></td>
-          <td><span class="badge ${typeBadges[r.request_type] || 'bg-secondary'}">${r.request_type}</span></td>
-          <td><small>${utils.escapeHtml(r.entity_type)} ${r.entity_id ? r.entity_id.slice(0, 8) + '...' : ''}</small></td>
-          <td><small>${utils.escapeHtml(r.requester_email)}</small></td>
-          <td><span class="badge ${statusBadges[r.status] || 'bg-secondary'}">${r.status}</span></td>
-          <td>
-            ${r.status === 'pending' ? `
-              <button class="btn btn-sm btn-outline-success" onclick="gdprModule.processRequest('${r.id}', '${r.request_type}', '${r.entity_id}')" aria-label="Process request">
-                <i class="bi bi-check"></i>
-              </button>
-              <button class="btn btn-sm btn-outline-danger" onclick="gdprModule.rejectRequest('${r.id}')" aria-label="Reject request">
-                <i class="bi bi-x"></i>
-              </button>
-            ` : ''}
-          </td>
-        </tr>
-      `).join('');
-
+      const data = await this._fetchPage(1);
+      this._requestsData = data;
+      this._renderRequests();
     } catch (e) {
       utils.showEmptyState('gdprRequestsTable', 6, 'Failed to load requests', 'bi-exclamation-triangle');
     }
   },
 
   /**
+   * Render GDPR requests table and pagination controls
+   * @returns {void}
+   */
+  _renderRequests() {
+    const tbody = document.getElementById('gdprRequestsTable');
+    if (!tbody) return;
+
+    const data = this._requestsData;
+
+    if (!data || data.length === 0) {
+      utils.showEmptyState('gdprRequestsTable', 6, 'No GDPR requests', 'bi-shield-check');
+      const paginationEl = document.getElementById('gdprPaginationControls');
+      if (paginationEl) paginationEl.innerHTML = '';
+      return;
+    }
+
+    const typeBadges = { export: 'bg-info', delete: 'bg-danger', anonymize: 'bg-warning text-dark' };
+    const statusBadges = {
+      pending: 'bg-warning text-dark',
+      processing: 'bg-info',
+      completed: 'bg-success',
+      rejected: 'bg-secondary',
+    };
+
+    tbody.innerHTML = data
+      .map(
+        (r) => `
+      <tr>
+        <td><small>${utils.formatDate(r.created_at)}</small></td>
+        <td><span class="badge ${typeBadges[r.request_type] || 'bg-secondary'}">${r.request_type}</span></td>
+        <td><small>${utils.escapeHtml(r.entity_type)} ${r.entity_id ? r.entity_id.slice(0, 8) + '...' : ''}</small></td>
+        <td><small>${utils.escapeHtml(r.requester_email)}</small></td>
+        <td><span class="badge ${statusBadges[r.status] || 'bg-secondary'}">${r.status}</span></td>
+        <td>
+          ${
+            r.status === 'pending'
+              ? `
+            <button class="btn btn-sm btn-outline-success" data-action="gdprModule.processRequest" data-id="${r.id}" data-type="${r.request_type}" data-entity="${r.entity_id}" aria-label="Process request">
+              <i class="bi bi-check"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-danger" data-action="gdprModule.rejectRequest" data-id="${r.id}" aria-label="Reject request">
+              <i class="bi bi-x"></i>
+            </button>
+          `
+              : ''
+          }
+        </td>
+      </tr>
+    `
+      )
+      .join('');
+
+    // Attach delegated click handlers for table action buttons
+    tbody.addEventListener('click', (e) => {
+      const actionEl = e.target.closest('[data-action]');
+      if (!actionEl) return;
+      e.preventDefault();
+      const action = actionEl.getAttribute('data-action');
+      const id = actionEl.getAttribute('data-id');
+      if (action === 'gdprModule.processRequest') {
+        this.processRequest(id, actionEl.getAttribute('data-type'), actionEl.getAttribute('data-entity'));
+      } else if (action === 'gdprModule.rejectRequest') {
+        this.rejectRequest(id);
+      }
+    });
+
+    // Render pagination controls
+    this._renderPaginationControls();
+  },
+
+  /**
+   * Render pagination controls for GDPR requests
+   * @returns {void}
+   */
+  _renderPaginationControls() {
+    const container = document.getElementById('gdprPaginationControls');
+    if (!container) return;
+
+    const { page, totalPages, count } = this._pagination;
+    if (totalPages <= 1) {
+      container.innerHTML = count > 0 ? `<small class="text-muted">${count} request(s)</small>` : '';
+      return;
+    }
+
+    container.innerHTML = `
+      <nav aria-label="GDPR requests pagination" class="mt-2">
+        <div class="d-flex justify-content-between align-items-center">
+          <small class="text-muted">${count} request(s) - Page ${page} of ${totalPages}</small>
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-secondary" ${page <= 1 ? 'disabled' : ''} data-action="gdprModule.goToPage" data-page="1">First</button>
+            <button class="btn btn-outline-secondary" ${page <= 1 ? 'disabled' : ''} data-action="gdprModule.goToPage" data-page="${page - 1}">Prev</button>
+            <button class="btn btn-outline-secondary" ${page >= totalPages ? 'disabled' : ''} data-action="gdprModule.goToPage" data-page="${page + 1}">Next</button>
+            <button class="btn btn-outline-secondary" ${page >= totalPages ? 'disabled' : ''} data-action="gdprModule.goToPage" data-page="${totalPages}">Last</button>
+          </div>
+        </div>
+      </nav>
+    `;
+
+    container.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-action="gdprModule.goToPage"]');
+      if (btn && !btn.disabled) {
+        this._goToPage(parseInt(btn.getAttribute('data-page')));
+      }
+    });
+  },
+
+  /**
    * Process a GDPR request (export, delete, or anonymise)
+   * @param {string} requestId - The GDPR request ID
+   * @param {string} requestType - Type of request ('export', 'delete', or 'anonymize')
+   * @param {string} entityId - The entity ID to process
+   * @returns {Promise<void>}
    */
   async processRequest(requestId, requestType, entityId) {
-    if (!await utils.confirmDialog({ title: 'Process GDPR Request', message: `Process this ${requestType} request? This may permanently alter data.`, confirmText: 'Process', danger: true })) return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Process GDPR Request',
+        message: `Process this ${requestType} request? This may permanently alter data.`,
+        confirmText: 'Process',
+        danger: true,
+      }))
+    )
+      return;
 
     try {
       utils.showLoading();
 
       // Mark as processing
-      await STATE.client.from('gdpr_requests').update({ status: 'processing' }).eq('id', requestId);
+      await apiClient.update('gdpr_requests', requestId, { status: 'processing' });
 
       if (requestType === 'export') {
         await this._exportEntityData(entityId);
@@ -280,15 +451,14 @@ const gdprModule = {
       }
 
       // Mark as completed
-      await STATE.client.from('gdpr_requests').update({
+      await apiClient.update('gdpr_requests', requestId, {
         status: 'completed',
         processed_by: STATE.currentUser?.email,
-        processed_at: new Date().toISOString()
-      }).eq('id', requestId);
+        processed_at: new Date().toISOString(),
+      });
 
       utils.showToast('GDPR request processed', 'success');
       this.loadPendingRequests();
-
     } catch (e) {
       utils.showToast('Failed to process: ' + e.message, 'error');
     } finally {
@@ -298,13 +468,17 @@ const gdprModule = {
 
   /**
    * Export all data for an entity as JSON download
+   * @param {string} entityId - The entity (organisation) ID to export
+   * @returns {Promise<void>}
    */
   async _exportEntityData(entityId) {
     try {
-      const { data: org } = await STATE.client.from('organisations').select('*').eq('id', entityId).single();
-      const { data: contacts } = await STATE.client.from('organisation_contacts').select('*').eq('organisation_id', entityId);
-      const { data: assignments } = await STATE.client.from('award_assignments').select('*').eq('organisation_id', entityId);
-      const { data: entries } = await STATE.client.from('entries').select('*').eq('organisation_id', entityId);
+      const orgResult = await apiClient.select('organisations', { filters: { id: entityId }, pageSize: 1 });
+      const org = orgResult.data?.[0] || null;
+      // selectAll justified: GDPR data export intentionally fetches all records for the entity (see pagination documentation)
+      const contacts = await apiClient.selectAll('organisation_contacts', { filters: { organisation_id: entityId } });
+      const assignments = await apiClient.selectAll('award_assignments', { filters: { organisation_id: entityId } });
+      const entries = await apiClient.selectAll('entries', { filters: { organisation_id: entityId } });
 
       const exportData = {
         exportDate: new Date().toISOString(),
@@ -312,7 +486,7 @@ const gdprModule = {
         organisation: org,
         contacts: contacts || [],
         award_assignments: assignments || [],
-        entries: entries || []
+        entries: entries || [],
       };
 
       const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
@@ -329,7 +503,9 @@ const gdprModule = {
   },
 
   /**
-   * Delete all data for an entity
+   * Delete all data for an entity across related tables
+   * @param {string} entityId - The entity (organisation) ID to delete
+   * @returns {Promise<void>}
    */
   async _deleteEntityData(entityId) {
     // Delete in correct order (children first) — abort on failure to prevent orphaned data
@@ -338,11 +514,12 @@ const gdprModule = {
       { table: 'award_assignments', col: 'organisation_id' },
       { table: 'entries', col: 'organisation_id' },
       { table: 'organisation_images', col: 'organisation_id' },
-      { table: 'organisations', col: 'id' }
+      { table: 'organisations', col: 'id' },
     ];
     for (const { table, col } of tables) {
-      const { error } = await STATE.client.from(table).delete().eq(col, entityId);
-      if (error) {
+      try {
+        await apiClient.deleteByFilters(table, { [col]: entityId });
+      } catch (error) {
         throw new Error(`Failed to delete from ${table}: ${error.message}`);
       }
     }
@@ -350,23 +527,43 @@ const gdprModule = {
 
   /**
    * Reject a GDPR request
+   * @param {string} requestId - The GDPR request ID to reject
+   * @returns {Promise<void>}
    */
   async rejectRequest(requestId) {
-    if (!await utils.confirmDialog({ title: 'Reject Request', message: 'Reject this GDPR request?', confirmText: 'Reject', danger: true })) return;
-    await STATE.client.from('gdpr_requests').update({
+    if (
+      !(await utils.confirmDialog({
+        title: 'Reject Request',
+        message: 'Reject this GDPR request?',
+        confirmText: 'Reject',
+        danger: true,
+      }))
+    )
+      return;
+    await apiClient.update('gdpr_requests', requestId, {
       status: 'rejected',
       processed_by: STATE.currentUser?.email,
-      processed_at: new Date().toISOString()
-    }).eq('id', requestId);
+      processed_at: new Date().toISOString(),
+    });
     utils.showToast('Request rejected', 'info');
     this.loadPendingRequests();
   },
 
   /**
-   * Run data retention cleanup
+   * Run data retention cleanup based on configured policies
+   * Deletes old audit logs, email logs, and optionally anonymises voting data
+   * @returns {Promise<void>}
    */
   async runRetentionCleanup() {
-    if (!await utils.confirmDialog({ title: 'Data Retention Cleanup', message: 'Run data retention cleanup? This will permanently delete old logs.', confirmText: 'Run Cleanup', danger: true })) return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Data Retention Cleanup',
+        message: 'Run data retention cleanup? This will permanently delete old logs.',
+        confirmText: 'Run Cleanup',
+        danger: true,
+      }))
+    )
+      return;
 
     try {
       utils.showLoading();
@@ -376,26 +573,32 @@ const gdprModule = {
       if (document.getElementById('retentionAuditLogs')?.checked) {
         const cutoff = new Date();
         cutoff.setFullYear(cutoff.getFullYear() - 2);
-        const { count } = await STATE.client.from('cms_audit_logs').delete({ count: 'exact' }).lt('created_at', cutoff.toISOString());
-        deleted += count || 0;
+        const result = await apiClient.deleteByFilters('cms_audit_logs', {
+          created_at: { op: 'lt', value: cutoff.toISOString() },
+        });
+        deleted += result.data?.length || 0;
       }
 
       // Delete old email logs (>1 year)
       if (document.getElementById('retentionEmailLogs')?.checked) {
         const cutoff = new Date();
         cutoff.setFullYear(cutoff.getFullYear() - 1);
-        const { count } = await STATE.client.from('notification_queue').delete({ count: 'exact' }).lt('created_at', cutoff.toISOString()).eq('status', 'sent');
-        deleted += count || 0;
+        const result = await apiClient.deleteByFilters('notification_queue', {
+          created_at: { op: 'lt', value: cutoff.toISOString() },
+          status: 'sent',
+        });
+        deleted += result.data?.length || 0;
       }
 
       utils.showToast(`Cleanup complete. ${deleted} records removed.`, 'success');
-
     } catch (e) {
       utils.showToast('Cleanup failed: ' + e.message, 'error');
     } finally {
       utils.hideLoading();
     }
-  }
+  },
 };
 
 ModuleRegistry.register('gdprModule', gdprModule);
+
+export { gdprModule };

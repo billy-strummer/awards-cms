@@ -3,43 +3,96 @@
 /* ==================================================== */
 
 const brandingModule = {
-
   /* ---- Presets ---- */
+
+  /**
+   * Return the list of built-in branding presets.
+   * @returns {Array<{id: string, name: string, primary_color: string, secondary_color: string, accent_color: string, font_family: string}>}
+   */
   getPresets() {
     return [
-      { id: 'bta-official',   name: 'BTA Official',   primary_color: '#000000', secondary_color: '#1a1a1a', accent_color: '#D4AF37', font_family: "'Montserrat', sans-serif" },
-      { id: 'classic-blue',   name: 'Classic Blue',    primary_color: '#0d3b6e', secondary_color: '#1a6bb5', accent_color: '#e8a020', font_family: 'Georgia, serif' },
-      { id: 'modern-dark',    name: 'Modern Dark',     primary_color: '#1a1a2e', secondary_color: '#16213e', accent_color: '#e94560', font_family: "'Segoe UI', sans-serif" },
-      { id: 'elegant-gold',   name: 'Elegant Gold',    primary_color: '#2c2c2c', secondary_color: '#4a4a4a', accent_color: '#c9a84c', font_family: "'Palatino Linotype', serif" },
-      { id: 'fresh-green',    name: 'Fresh Green',     primary_color: '#1b5e20', secondary_color: '#2e7d32', accent_color: '#ff8f00', font_family: "'Helvetica Neue', sans-serif" }
+      {
+        id: 'bta-official',
+        name: 'BTA Official',
+        primary_color: '#000000',
+        secondary_color: '#1a1a1a',
+        accent_color: '#D4AF37',
+        font_family: "'Montserrat', sans-serif",
+      },
+      {
+        id: 'classic-blue',
+        name: 'Classic Blue',
+        primary_color: '#0d3b6e',
+        secondary_color: '#1a6bb5',
+        accent_color: '#e8a020',
+        font_family: 'Georgia, serif',
+      },
+      {
+        id: 'modern-dark',
+        name: 'Modern Dark',
+        primary_color: '#1a1a2e',
+        secondary_color: '#16213e',
+        accent_color: '#e94560',
+        font_family: "'Segoe UI', sans-serif",
+      },
+      {
+        id: 'elegant-gold',
+        name: 'Elegant Gold',
+        primary_color: '#2c2c2c',
+        secondary_color: '#4a4a4a',
+        accent_color: '#c9a84c',
+        font_family: "'Palatino Linotype', serif",
+      },
+      {
+        id: 'fresh-green',
+        name: 'Fresh Green',
+        primary_color: '#1b5e20',
+        secondary_color: '#2e7d32',
+        accent_color: '#ff8f00',
+        font_family: "'Helvetica Neue', sans-serif",
+      },
     ];
   },
 
   /* ---- Load / Save ---- */
+
+  /**
+   * Load branding configuration for the given tenant.
+   * @param {string} tenantId - The tenant identifier
+   * @returns {Promise<Object>} Branding configuration object
+   */
   async loadBranding(tenantId) {
     const { data, error } = await STATE.client
-      .from('tenant_branding').select('*').eq('tenant_id', tenantId).maybeSingle();
+      .from('tenant_branding')
+      .select('*')
+      .eq('tenant_id', tenantId)
+      .maybeSingle();
     if (error) throw error;
     return data || {};
   },
 
+  /**
+   * Persist branding configuration for the given tenant via apiClient.
+   * @param {string} tenantId - The tenant identifier
+   * @param {Object} config - Branding configuration fields
+   * @returns {Promise<boolean>} True on success
+   */
   async saveBranding(tenantId, config) {
     try {
-      const { error } = await STATE.client.from('tenant_branding').upsert({
-        tenant_id:       tenantId,
-        logo_url:        config.logo_url        || null,
-        favicon_url:     config.favicon_url     || null,
-        primary_color:   config.primary_color   || '#000000',
+      await apiClient.upsert('tenant_branding', {
+        tenant_id: tenantId,
+        logo_url: config.logo_url || null,
+        favicon_url: config.favicon_url || null,
+        primary_color: config.primary_color || '#000000',
         secondary_color: config.secondary_color || '#1a1a1a',
-        accent_color:    config.accent_color    || '#D4AF37',
-        company_name:    config.company_name    || '',
-        tagline:         config.tagline         || '',
-        email_from:      config.email_from      || '',
-        email_reply_to:  config.email_reply_to  || '',
-        font_family:     config.font_family     || "'Montserrat', sans-serif",
-        updated_at:      new Date().toISOString()
-      }, { onConflict: 'tenant_id' });
-      if (error) throw error;
+        accent_color: config.accent_color || '#D4AF37',
+        company_name: config.company_name || '',
+        tagline: config.tagline || '',
+        email_from: config.email_from || '',
+        email_reply_to: config.email_reply_to || '',
+        font_family: config.font_family || "'Montserrat', sans-serif",
+        updated_at: new Date().toISOString(),
+      });
       utils.showToast('Branding saved.', 'success');
       return true;
     } catch (e) {
@@ -50,17 +103,27 @@ const brandingModule = {
   },
 
   /* ---- Apply to DOM ---- */
+
+  /**
+   * Apply branding configuration to the current page DOM (CSS variables, title, favicon, logo).
+   * @param {Object} config - Branding configuration
+   * @returns {void}
+   */
   applyBranding(config) {
     if (!config || !Object.keys(config).length) return;
     const root = document.documentElement;
-    if (config.primary_color)   root.style.setProperty('--brand-primary',   config.primary_color);
-    if (config.secondary_color) root.style.setProperty('--brand-secondary',  config.secondary_color);
-    if (config.accent_color)    root.style.setProperty('--brand-accent',     config.accent_color);
-    if (config.font_family)     root.style.setProperty('--brand-font',       config.font_family);
-    if (config.company_name)    document.title = config.company_name;
+    if (config.primary_color) root.style.setProperty('--brand-primary', config.primary_color);
+    if (config.secondary_color) root.style.setProperty('--brand-secondary', config.secondary_color);
+    if (config.accent_color) root.style.setProperty('--brand-accent', config.accent_color);
+    if (config.font_family) root.style.setProperty('--brand-font', config.font_family);
+    if (config.company_name) document.title = config.company_name;
     if (config.favicon_url) {
       let link = document.querySelector("link[rel~='icon']");
-      if (!link) { link = document.createElement('link'); link.rel = 'icon'; document.head.appendChild(link); }
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'icon';
+        document.head.appendChild(link);
+      }
       link.href = config.favicon_url;
     }
     if (config.logo_url) {
@@ -70,16 +133,35 @@ const brandingModule = {
   },
 
   /* ---- Logo Upload ---- */
+
+  /**
+   * Upload a logo file to storage for the given tenant.
+   * Falls back to data-URL conversion if the storage bucket does not exist.
+   * @param {string} tenantId - The tenant identifier
+   * @param {File} file - The logo image file
+   * @returns {Promise<string|null>} Public URL of the uploaded logo, or null on failure
+   */
   async uploadLogo(tenantId, file) {
     const maxSize = 5 * 1024 * 1024; // 5MB
-    if (file.size > maxSize) { utils.showToast('Logo file too large. Maximum size is 5MB.', 'error'); return null; }
+    if (file.size > maxSize) {
+      utils.showToast('Logo file too large. Maximum size is 5MB.', 'error');
+      return null;
+    }
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
-    if (!allowedTypes.includes(file.type)) { utils.showToast('Invalid file type. Please upload an image file.', 'error'); return null; }
+    if (!allowedTypes.includes(file.type)) {
+      utils.showToast('Invalid file type. Please upload an image file.', 'error');
+      return null;
+    }
     try {
-      const ext = file.name.split('.').pop().toLowerCase().replace(/[^a-z0-9]/g, '');
+      const ext = file.name
+        .split('.')
+        .pop()
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '');
       const path = `${tenantId}/logo-${Date.now()}.${ext}`;
       const { error } = await STATE.client.storage
-        .from('brand-assets').upload(path, file, { upsert: true, contentType: file.type });
+        .from('brand-assets')
+        .upload(path, file, { upsert: true, contentType: file.type });
       if (error) throw error;
       const { data } = STATE.client.storage.from('brand-assets').getPublicUrl(path);
       utils.showToast('Logo uploaded.', 'success');
@@ -87,7 +169,13 @@ const brandingModule = {
     } catch (e) {
       console.error('uploadLogo:', e);
       // Fallback: convert to data URL if storage bucket doesn't exist
-      if (e.message && (e.message.includes('Bucket not found') || e.message.includes('bucket') || e.message.includes('not found') || e.statusCode === '404')) {
+      if (
+        e.message &&
+        (e.message.includes('Bucket not found') ||
+          e.message.includes('bucket') ||
+          e.message.includes('not found') ||
+          e.statusCode === '404')
+      ) {
         try {
           const dataUrl = await this._fileToDataUrl(file);
           utils.showToast('Logo set (run migration 038 to enable cloud storage).', 'warning');
@@ -101,6 +189,11 @@ const brandingModule = {
     }
   },
 
+  /**
+   * Convert a File object to a base-64 data URL.
+   * @param {File} file - The file to convert
+   * @returns {Promise<string>} Data URL string
+   */
   _fileToDataUrl(file) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -118,63 +211,102 @@ const brandingModule = {
    * If you change the header design, update api/email-header.js FIRST,
    * then mirror the change here.
    */
+
+  /**
+   * Build the inner HTML for a branded email header.
+   * @param {string} logoUrl - URL to the logo image (empty string for text-only)
+   * @param {string} brandName - Company / brand display name
+   * @param {string} accentColor - CSS colour for headings and subtitle
+   * @param {string} [subtitle] - Optional subtitle text
+   * @returns {string} HTML markup
+   */
   _buildEmailHeaderContent(logoUrl, brandName, accentColor, subtitle) {
     const sub = subtitle || 'Self-Nomination Entry Confirmation';
     return logoUrl
-      ? `<table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr>`
-        + `<td style="vertical-align:middle;padding-right:25px;"><img src="${logoUrl}" alt="${brandName}" style="height:100px;width:auto;display:block;"></td>`
-        + `<td style="vertical-align:middle;"><h1 style="color:${accentColor};margin:0;font-size:28px;font-family:Georgia,'Times New Roman',serif;font-weight:900;letter-spacing:3px;text-transform:uppercase;line-height:1.3;text-shadow:0 2px 8px rgba(0,0,0,0.5);">${brandName}</h1>`
-        + `<p style="color:${accentColor};margin:5px 0 0;font-size:14px;font-family:Arial,Helvetica,sans-serif;letter-spacing:2px;text-transform:uppercase;opacity:0.95;font-weight:300;">${sub}</p></td>`
-        + `</tr></table>`
-      : `<h1 style="color:${accentColor};margin:0;font-size:28px;font-family:Georgia,'Times New Roman',serif;font-weight:900;letter-spacing:3px;text-transform:uppercase;text-shadow:0 2px 8px rgba(0,0,0,0.5);">${brandName}</h1>`
-        + `<p style="color:${accentColor};margin:5px 0 0;font-size:14px;font-family:Arial,Helvetica,sans-serif;letter-spacing:2px;text-transform:uppercase;opacity:0.95;font-weight:300;">${sub}</p>`;
+      ? `<table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr>` +
+          `<td style="vertical-align:middle;padding-right:25px;"><img src="${logoUrl}" alt="${brandName}" style="height:100px;width:auto;display:block;"></td>` +
+          `<td style="vertical-align:middle;"><h1 style="color:${accentColor};margin:0;font-size:28px;font-family:Georgia,'Times New Roman',serif;font-weight:900;letter-spacing:3px;text-transform:uppercase;line-height:1.3;text-shadow:0 2px 8px rgba(0,0,0,0.5);">${brandName}</h1>` +
+          `<p style="color:${accentColor};margin:5px 0 0;font-size:14px;font-family:Arial,Helvetica,sans-serif;letter-spacing:2px;text-transform:uppercase;opacity:0.95;font-weight:300;">${sub}</p></td>` +
+          `</tr></table>`
+      : `<h1 style="color:${accentColor};margin:0;font-size:28px;font-family:Georgia,'Times New Roman',serif;font-weight:900;letter-spacing:3px;text-transform:uppercase;text-shadow:0 2px 8px rgba(0,0,0,0.5);">${brandName}</h1>` +
+          `<p style="color:${accentColor};margin:5px 0 0;font-size:14px;font-family:Arial,Helvetica,sans-serif;letter-spacing:2px;text-transform:uppercase;opacity:0.95;font-weight:300;">${sub}</p>`;
   },
 
+  /**
+   * Generate CSS, header HTML, and footer HTML for branded emails.
+   * @param {string} tenantId - The tenant identifier
+   * @param {Object} [config={}] - Branding configuration
+   * @param {Object} [options={}] - Extra options (e.g. subtitle)
+   * @returns {{css: string, header: string, footer: string}}
+   */
   getEmailStyles(tenantId, config = {}, { subtitle } = {}) {
-    const p = config.primary_color   || '#000000';
+    const p = config.primary_color || '#000000';
     const s = config.secondary_color || '#1a1a1a';
-    const a = config.accent_color    || '#D4AF37';
-    const c = this._esc(config.company_name  || 'British Trade Awards');
+    const a = config.accent_color || '#D4AF37';
+    const c = this._esc(config.company_name || 'British Trade Awards');
     const _r = this._esc(config.email_reply_to || config.email_from || '');
     const logoUrl = this._esc(config.logo_url || '');
     const headerContent = this._buildEmailHeaderContent(config.logo_url ? logoUrl : '', c, a, subtitle);
     return {
       css: `.email-header{background:linear-gradient(135deg,${p} 0%,${s} 100%);padding:35px 40px;text-align:center;border-bottom:3px solid ${a}}.email-header img{height:100px;width:auto}.email-btn{background:${a};color:#fff;padding:12px 28px;border-radius:4px;text-decoration:none;font-weight:bold;display:inline-block}.email-footer{background:${s};padding:16px 32px;font-size:12px;color:${a};text-align:center}`,
       header: `<div class="email-header">${headerContent}</div>`,
-      footer: `<div class="email-footer"><p style="margin:0;">&copy; ${c} | <a href="https://${this._esc(config.custom_domain || 'britishtradeawards.com')}" style="color:${a};text-decoration:none;">${this._esc(config.custom_domain || 'britishtradeawards.com')}</a></p></div>`
+      footer: `<div class="email-footer"><p style="margin:0;">&copy; ${c} | <a href="https://${this._esc(config.custom_domain || 'britishtradeawards.com')}" style="color:${a};text-decoration:none;">${this._esc(config.custom_domain || 'britishtradeawards.com')}</a></p></div>`,
     };
   },
 
   /* ---- Public Page Config ---- */
+
+  /**
+   * Build a public-page configuration object from branding settings.
+   * @param {string} tenantId - The tenant identifier
+   * @param {Object} [config={}] - Branding configuration
+   * @returns {Object} Public page config with CSS variable string
+   */
   getPublicPageConfig(tenantId, config = {}) {
     const d = (k, fb) => config[k] || fb;
     return {
       tenantId,
-      company_name:    d('company_name', 'British Trade Awards'),
-      tagline:         d('tagline', ''),
-      logo_url:        d('logo_url', ''),
-      favicon_url:     d('favicon_url', ''),
-      primary_color:   d('primary_color', '#000000'),
+      company_name: d('company_name', 'British Trade Awards'),
+      tagline: d('tagline', ''),
+      logo_url: d('logo_url', ''),
+      favicon_url: d('favicon_url', ''),
+      primary_color: d('primary_color', '#000000'),
       secondary_color: d('secondary_color', '#1a1a1a'),
-      accent_color:    d('accent_color', '#D4AF37'),
-      font_family:     d('font_family', "'Montserrat', sans-serif"),
-      custom_domain:   d('custom_domain', ''),
-      cssVars: `--brand-primary:${d('primary_color','#000000')};--brand-secondary:${d('secondary_color','#1a1a1a')};--brand-accent:${d('accent_color','#D4AF37')};--brand-font:${d('font_family',"'Montserrat', sans-serif")}`
+      accent_color: d('accent_color', '#D4AF37'),
+      font_family: d('font_family', "'Montserrat', sans-serif"),
+      custom_domain: d('custom_domain', ''),
+      cssVars: `--brand-primary:${d('primary_color', '#000000')};--brand-secondary:${d('secondary_color', '#1a1a1a')};--brand-accent:${d('accent_color', '#D4AF37')};--brand-font:${d('font_family', "'Montserrat', sans-serif")}`,
     };
   },
 
   /* ---- Live Preview ---- */
+
+  /**
+   * HTML-escape a string for safe insertion into markup.
+   * @param {string} str - The raw string
+   * @returns {string} Escaped string
+   */
   _esc(str) {
-    return utils && utils.escapeHtml ? utils.escapeHtml(str) : String(str).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[c]);
+    return utils && utils.escapeHtml
+      ? utils.escapeHtml(str)
+      : String(str).replace(
+          /[&<>"']/g,
+          (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]
+        );
   },
 
+  /**
+   * Render a brand-preview card showing navbar, content area and footer.
+   * @param {Object} config - Branding configuration
+   * @returns {string} HTML markup for the preview card
+   */
   renderPreview(config) {
-    const p = config.primary_color   || '#000000';
+    const p = config.primary_color || '#000000';
     const s = config.secondary_color || '#1a1a1a';
-    const a = config.accent_color    || '#D4AF37';
-    const f = config.font_family     || 'inherit';
+    const a = config.accent_color || '#D4AF37';
+    const f = config.font_family || 'inherit';
     const c = this._esc(config.company_name || 'British Trade Awards');
-    const t = this._esc(config.tagline      || 'Recognising Excellence in British Trade');
+    const t = this._esc(config.tagline || 'Recognising Excellence in British Trade');
     const logoUrl = this._esc(config.logo_url || '');
     const logoHtml = config.logo_url
       ? `<img src="${logoUrl}" alt="logo" style="height:36px;object-fit:contain">`
@@ -188,10 +320,16 @@ const brandingModule = {
   },
 
   /* ---- Email Preview (for branding settings page) ---- */
+
+  /**
+   * Render a miniature email preview card for the branding settings page.
+   * @param {Object} config - Branding configuration
+   * @returns {string} HTML markup for the email preview
+   */
   renderEmailPreview(config) {
-    const p = config.primary_color   || '#000000';
+    const p = config.primary_color || '#000000';
     const s = config.secondary_color || '#1a1a1a';
-    const a = config.accent_color    || '#D4AF37';
+    const a = config.accent_color || '#D4AF37';
     const c = this._esc(config.company_name || 'British Trade Awards');
     const logoUrl = this._esc(config.logo_url || '');
     const r = this._esc(config.email_reply_to || config.email_from || '');
@@ -212,9 +350,18 @@ const brandingModule = {
   },
 
   /* ---- Settings Form ---- */
+
+  /**
+   * Render the full branding settings form and previews into the DOM.
+   * @param {string} tenantId - The tenant identifier
+   * @returns {Promise<void>}
+   */
   async renderBrandSettings(tenantId) {
     const container = document.getElementById('brandingSettingsContainer');
-    if (!container) { console.warn('brandingSettingsContainer not found'); return; }
+    if (!container) {
+      console.warn('brandingSettingsContainer not found');
+      return;
+    }
 
     let cur;
     try {
@@ -226,19 +373,31 @@ const brandingModule = {
     }
     const presets = this.getPresets();
     const fontOptions = [
-      ["'Montserrat', sans-serif", 'Montserrat'], ["'Cinzel', serif", 'Cinzel'],
-      ['inherit', 'System Default'], ["'Segoe UI', sans-serif", 'Segoe UI'],
-      ['Georgia, serif', 'Georgia'], ["'Palatino Linotype', serif", 'Palatino'],
-      ["'Helvetica Neue', sans-serif", 'Helvetica Neue'], ["'Arial', sans-serif", 'Arial']
-    ].map(([v, l]) => `<option value="${v}" ${(cur.font_family||"'Montserrat', sans-serif")===v?'selected':''}>${l}</option>`).join('');
+      ["'Montserrat', sans-serif", 'Montserrat'],
+      ["'Cinzel', serif", 'Cinzel'],
+      ['inherit', 'System Default'],
+      ["'Segoe UI', sans-serif", 'Segoe UI'],
+      ['Georgia, serif', 'Georgia'],
+      ["'Palatino Linotype', serif", 'Palatino'],
+      ["'Helvetica Neue', sans-serif", 'Helvetica Neue'],
+      ["'Arial', sans-serif", 'Arial'],
+    ]
+      .map(
+        ([v, l]) =>
+          `<option value="${v}" ${(cur.font_family || "'Montserrat', sans-serif") === v ? 'selected' : ''}>${l}</option>`
+      )
+      .join('');
 
-    const presetItems = presets.map(p =>
-      `<li><a class="dropdown-item branding-preset-btn" href="#" data-preset='${JSON.stringify(p)}'>${p.name}</a></li>`
-    ).join('');
+    const presetItems = presets
+      .map(
+        (p) =>
+          `<li><a class="dropdown-item branding-preset-btn" href="#" data-preset='${JSON.stringify(p)}'>${p.name}</a></li>`
+      )
+      .join('');
 
-    const esc = v => this._esc(v);
+    const esc = (v) => this._esc(v);
     const field = (label, id, type, value, placeholder = '') =>
-      `<div class="mb-3"><label class="form-label">${label}</label><input type="${type}" class="form-control${type==='color'?' form-control-color':''}" id="${id}" value="${esc(value)}"${placeholder?` placeholder="${placeholder}"`:''} ${type==='color'?'style="width:100%"':''}></div>`;
+      `<div class="mb-3"><label class="form-label">${label}</label><input type="${type}" class="form-control${type === 'color' ? ' form-control-color' : ''}" id="${id}" value="${esc(value)}"${placeholder ? ` placeholder="${placeholder}"` : ''} ${type === 'color' ? 'style="width:100%"' : ''}></div>`;
 
     container.innerHTML = `<div class="row g-4">
       <div class="col-lg-7"><div class="card"><div class="card-header d-flex justify-content-between align-items-center">
@@ -247,28 +406,28 @@ const brandingModule = {
         <ul class="dropdown-menu dropdown-menu-end">${presetItems}</ul></div></div>
         <div class="card-body"><form id="brandingForm" novalidate>
           <h6 class="text-muted fw-semibold mb-3">Identity</h6>
-          ${field('Company Name','bf_company_name','text',cur.company_name||'')}
-          ${field('Tagline','bf_tagline','text',cur.tagline||'')}
+          ${field('Company Name', 'bf_company_name', 'text', cur.company_name || '')}
+          ${field('Tagline', 'bf_tagline', 'text', cur.tagline || '')}
           <h6 class="text-muted fw-semibold mt-3 mb-3">Assets</h6>
           <div class="mb-3"><label class="form-label">Logo URL</label>
-            <div class="input-group"><input type="url" class="form-control" id="bf_logo_url" value="${esc(cur.logo_url||'')}" placeholder="https://...">
+            <div class="input-group"><input type="url" class="form-control" id="bf_logo_url" value="${esc(cur.logo_url || '')}" placeholder="https://...">
             <label class="btn btn-outline-secondary mb-0" for="bf_logo_file">Upload</label>
             <input type="file" id="bf_logo_file" class="d-none" accept="image/*"></div></div>
-          ${field('Favicon URL','bf_favicon_url','url',cur.favicon_url||'','https://...')}
+          ${field('Favicon URL', 'bf_favicon_url', 'url', cur.favicon_url || '', 'https://...')}
           <h6 class="text-muted fw-semibold mt-3 mb-3">Colours</h6>
           <div class="row g-3 mb-3">
-            <div class="col-4"><label class="form-label">Primary</label><input type="color" class="form-control form-control-color w-100" id="bf_primary_color" value="${cur.primary_color||'#000000'}"></div>
-            <div class="col-4"><label class="form-label">Secondary</label><input type="color" class="form-control form-control-color w-100" id="bf_secondary_color" value="${cur.secondary_color||'#1a1a1a'}"></div>
-            <div class="col-4"><label class="form-label">Accent</label><input type="color" class="form-control form-control-color w-100" id="bf_accent_color" value="${cur.accent_color||'#D4AF37'}"></div>
+            <div class="col-4"><label class="form-label">Primary</label><input type="color" class="form-control form-control-color w-100" id="bf_primary_color" value="${cur.primary_color || '#000000'}"></div>
+            <div class="col-4"><label class="form-label">Secondary</label><input type="color" class="form-control form-control-color w-100" id="bf_secondary_color" value="${cur.secondary_color || '#1a1a1a'}"></div>
+            <div class="col-4"><label class="form-label">Accent</label><input type="color" class="form-control form-control-color w-100" id="bf_accent_color" value="${cur.accent_color || '#D4AF37'}"></div>
           </div>
           <h6 class="text-muted fw-semibold mt-3 mb-3">Typography</h6>
           <div class="mb-3"><label class="form-label">Font Family</label><select class="form-select" id="bf_font_family">${fontOptions}</select></div>
           <h6 class="text-muted fw-semibold mt-3 mb-3">Email</h6>
-          ${field('From Address','bf_email_from','email',cur.email_from||'')}
-          ${field('Reply-To Address','bf_email_reply_to','email',cur.email_reply_to||'')}
+          ${field('From Address', 'bf_email_from', 'email', cur.email_from || '')}
+          ${field('Reply-To Address', 'bf_email_reply_to', 'email', cur.email_reply_to || '')}
           <h6 class="text-muted fw-semibold mt-3 mb-3">Domain</h6>
           <div class="mb-3"><label class="form-label">Custom Domain <span class="badge bg-secondary">Display only</span></label>
-            <input type="text" class="form-control" id="bf_custom_domain" value="${esc(cur.custom_domain||'')}" readonly>
+            <input type="text" class="form-control" id="bf_custom_domain" value="${esc(cur.custom_domain || '')}" readonly>
             <div class="form-text">Configure via DNS settings. Contact support to change.</div></div>
           <div class="d-flex gap-2 mt-4">
             <button type="submit" class="btn btn-primary">Save Branding</button>
@@ -289,14 +448,31 @@ const brandingModule = {
   },
 
   /* ---- Internal helpers ---- */
+
+  /**
+   * Collect all branding form field values into a config object.
+   * @returns {Object} Branding configuration gathered from the form
+   */
   _collect() {
-    const v = id => (document.getElementById(id) || {}).value || '';
-    return { company_name: v('bf_company_name'), tagline: v('bf_tagline'), logo_url: v('bf_logo_url'),
-      favicon_url: v('bf_favicon_url'), primary_color: v('bf_primary_color'),
-      secondary_color: v('bf_secondary_color'), accent_color: v('bf_accent_color'),
-      font_family: v('bf_font_family'), email_from: v('bf_email_from'), email_reply_to: v('bf_email_reply_to') };
+    const v = (id) => (document.getElementById(id) || {}).value || '';
+    return {
+      company_name: v('bf_company_name'),
+      tagline: v('bf_tagline'),
+      logo_url: v('bf_logo_url'),
+      favicon_url: v('bf_favicon_url'),
+      primary_color: v('bf_primary_color'),
+      secondary_color: v('bf_secondary_color'),
+      accent_color: v('bf_accent_color'),
+      font_family: v('bf_font_family'),
+      email_from: v('bf_email_from'),
+      email_reply_to: v('bf_email_reply_to'),
+    };
   },
 
+  /**
+   * Re-render both preview panels using the current form values.
+   * @returns {void}
+   */
   _refreshPreview() {
     const config = this._collect();
     const panel = document.getElementById('bf_preview_panel');
@@ -305,38 +481,67 @@ const brandingModule = {
     if (emailPanel) emailPanel.innerHTML = this.renderEmailPreview(config);
   },
 
+  /**
+   * Wire up event listeners for the branding settings form.
+   * @param {HTMLElement} container - The container element holding the form
+   * @param {string} tenantId - The tenant identifier
+   * @returns {void}
+   */
   _bindFormEvents(container, tenantId) {
-    ['bf_primary_color','bf_secondary_color','bf_accent_color','bf_font_family','bf_company_name','bf_tagline','bf_logo_url']
-      .forEach(id => { const el = document.getElementById(id); if (el) el.addEventListener('input', () => this._refreshPreview()); });
-
-    const previewBtn = document.getElementById('bf_preview_btn');
-    if (previewBtn) previewBtn.addEventListener('click', () => { this.applyBranding(this._collect()); this._refreshPreview(); });
-
-    const fileInput = document.getElementById('bf_logo_file');
-    if (fileInput) fileInput.addEventListener('change', async e => {
-      const file = e.target.files[0]; if (!file) return;
-      const url = await this.uploadLogo(tenantId, file);
-      if (url) { document.getElementById('bf_logo_url').value = url; this._refreshPreview(); }
+    [
+      'bf_primary_color',
+      'bf_secondary_color',
+      'bf_accent_color',
+      'bf_font_family',
+      'bf_company_name',
+      'bf_tagline',
+      'bf_logo_url',
+    ].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('input', () => this._refreshPreview());
     });
 
-    container.querySelectorAll('.branding-preset-btn').forEach(btn => {
-      btn.addEventListener('click', e => {
+    const previewBtn = document.getElementById('bf_preview_btn');
+    if (previewBtn)
+      previewBtn.addEventListener('click', () => {
+        this.applyBranding(this._collect());
+        this._refreshPreview();
+      });
+
+    const fileInput = document.getElementById('bf_logo_file');
+    if (fileInput)
+      fileInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const url = await this.uploadLogo(tenantId, file);
+        if (url) {
+          document.getElementById('bf_logo_url').value = url;
+          this._refreshPreview();
+        }
+      });
+
+    container.querySelectorAll('.branding-preset-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
         e.preventDefault();
         const preset = JSON.parse(btn.dataset.preset);
-        ['primary_color','secondary_color','accent_color','font_family'].forEach(k => {
-          const el = document.getElementById('bf_' + k); if (el) el.value = preset[k];
+        ['primary_color', 'secondary_color', 'accent_color', 'font_family'].forEach((k) => {
+          const el = document.getElementById('bf_' + k);
+          if (el) el.value = preset[k];
         });
         this._refreshPreview();
       });
     });
 
     const form = document.getElementById('brandingForm');
-    if (form) form.addEventListener('submit', async e => {
-      e.preventDefault();
-      const config = this._collect();
-      const ok = await this.saveBranding(tenantId, config);
-      if (ok) this.applyBranding(config);
-    });
-  }
+    if (form)
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const config = this._collect();
+        const ok = await this.saveBranding(tenantId, config);
+        if (ok) this.applyBranding(config);
+      });
+  },
 };
 ModuleRegistry.register('brandingModule', brandingModule);
+
+export { brandingModule };

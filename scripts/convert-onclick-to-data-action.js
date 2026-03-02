@@ -110,7 +110,6 @@ for (const file of files) {
       if (args.length === 0) {
         return ` data-action="${funcPath}"`;
       }
-      const jsonArgs = JSON.stringify(convertedArgs).replace(/"/g, "'");
       // Use single quotes for data-args since we're inside double-quoted attribute
       return ` data-action="${funcPath}" data-args="${JSON.stringify(convertedArgs).replace(/"/g, '&quot;')}"`;
     }

@@ -1,5 +1,6 @@
 /**
- * Email Automation & Workflow Engine
+ * @module email-automation
+ * Email Automation and Workflow Engine.
  *
  * Features:
  * - Trigger-based email workflows
@@ -14,16 +15,14 @@ const { createClient } = require('@supabase/supabase-js');
 const { Resend } = require('resend');
 const { wrapEmail } = require('./email-header');
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
 // Initialize Resend (replacing SendGrid)
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 /**
- * Load tenant branding from database (cached for 5 minutes)
+ * Load tenant branding from database (cached for 5 minutes).
+ * @returns {Promise<Object>} Branding configuration object.
  */
 let _brandingCache = null;
 let _brandingCacheTime = 0;
@@ -31,15 +30,11 @@ const BRANDING_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 async function loadTenantBranding() {
   const now = Date.now();
-  if (_brandingCache && (now - _brandingCacheTime) < BRANDING_CACHE_TTL) {
+  if (_brandingCache && now - _brandingCacheTime < BRANDING_CACHE_TTL) {
     return _brandingCache;
   }
   try {
-    const { data } = await supabase
-      .from('tenant_branding')
-      .select('*')
-      .eq('tenant_id', 'default')
-      .maybeSingle();
+    const { data } = await supabase.from('tenant_branding').select('*').eq('tenant_id', 'default').maybeSingle();
     _brandingCache = data || {};
     _brandingCacheTime = now;
     return _brandingCache;
@@ -54,18 +49,22 @@ async function loadTenantBranding() {
  * These subtitles appear in the email header below the brand name.
  */
 const HEADER_SUBTITLES = {
-  ENTRY_CONFIRMATION:     'Self-Nomination Entry Confirmation',
-  PAYMENT_REMINDER:       'Payment Reminder',
+  ENTRY_CONFIRMATION: 'Self-Nomination Entry Confirmation',
+  PAYMENT_REMINDER: 'Payment Reminder',
   SHORTLIST_NOTIFICATION: 'Entry Approved/Shortlisted',
-  WINNER_ANNOUNCEMENT:    'Entry Approved',
-  JUDGE_ASSIGNMENT:       'Judging Assignment',
-  JUDGE_REMINDER:         'Judging Reminder',
-  DEADLINE_REMINDER:      'Document Upload Reminder',
+  WINNER_ANNOUNCEMENT: 'Entry Approved',
+  JUDGE_ASSIGNMENT: 'Judging Assignment',
+  JUDGE_REMINDER: 'Judging Reminder',
+  DEADLINE_REMINDER: 'Document Upload Reminder',
 };
 
 /**
  * Email wrapper - delegates to shared email-header.js module.
  * Header/footer are built from branding; subtitle changes per email type.
+ * @param {string} bodyContent - The HTML body content to wrap.
+ * @param {Object} [branding={}] - Tenant branding configuration.
+ * @param {string} [subtitle=''] - Subtitle text for the email header.
+ * @returns {string} Complete branded HTML email document.
  */
 function wrapEmailTemplate(bodyContent, branding = {}, subtitle = '') {
   return wrapEmail(bodyContent, branding, { subtitle });
@@ -76,18 +75,19 @@ function wrapEmailTemplate(bodyContent, branding = {}, subtitle = '') {
  * sendTemplateEmail() tries to load from the DB first using these types.
  */
 const DB_TEMPLATE_TYPE_MAP = {
-  ENTRY_CONFIRMATION:     'confirmation',
-  PAYMENT_REMINDER:       'payment_reminder',
+  ENTRY_CONFIRMATION: 'confirmation',
+  PAYMENT_REMINDER: 'payment_reminder',
   SHORTLIST_NOTIFICATION: 'approval',
-  WINNER_ANNOUNCEMENT:    'winner_announcement',
-  JUDGE_ASSIGNMENT:       'judge_assignment',
-  JUDGE_REMINDER:         'judge_reminder',
-  DEADLINE_REMINDER:      'deadline_reminder',
+  WINNER_ANNOUNCEMENT: 'winner_announcement',
+  JUDGE_ASSIGNMENT: 'judge_assignment',
+  JUDGE_REMINDER: 'judge_reminder',
+  DEADLINE_REMINDER: 'deadline_reminder',
 };
 
 /**
  * Load an active email template from the database by type.
- * Returns { subject, body } or null if none found.
+ * @param {string} templateType - The template type identifier (e.g. 'confirmation', 'winner_announcement').
+ * @returns {Promise<{subject: string, body: string}|null>} Template data or null if none found.
  */
 async function loadDbTemplate(templateType) {
   try {
@@ -100,18 +100,19 @@ async function loadDbTemplate(templateType) {
       .limit(1)
       .single();
     return data;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 /**
- * Convert plain-text template body (from CMS) to styled HTML.
+ * Convert plain-text template body (from CMS) to styled HTML with paragraph wrapping.
+ * @param {string} text - Plain text content to convert.
+ * @returns {string} HTML string with paragraphs and line breaks.
  */
 function textToHtml(text) {
-  const escaped = String(text)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  const html = escaped
-    .replace(/\n\n/g, '</p><p style="margin:0 0 16px 0;">')
-    .replace(/\n/g, '<br>');
+  const escaped = String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const html = escaped.replace(/\n\n/g, '</p><p style="margin:0 0 16px 0;">').replace(/\n/g, '<br>');
   return `<div style="padding:30px 40px;"><p style="margin:0 0 16px 0;">${html}</p></div>`;
 }
 
@@ -150,7 +151,7 @@ const EMAIL_TEMPLATES = {
         <p>Best of luck!</p>
         <p><strong>{{brand_name}} Team</strong></p>
       </div>
-    `
+    `,
   },
 
   PAYMENT_REMINDER: {
@@ -177,11 +178,11 @@ const EMAIL_TEMPLATES = {
 
         <p>If you have any questions, please contact us.</p>
       </div>
-    `
+    `,
   },
 
   SHORTLIST_NOTIFICATION: {
-    subject: '🌟 Congratulations - You\'ve Been Shortlisted!',
+    subject: "🌟 Congratulations - You've Been Shortlisted!",
     body: `
       <div style="padding: 30px 40px;">
         <h1 style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 28px; color: #1a1a1a;">🌟 You've Been Shortlisted!</h1>
@@ -216,7 +217,7 @@ const EMAIL_TEMPLATES = {
         <p>Congratulations once again!</p>
         <p><strong>{{brand_name}} Team</strong></p>
       </div>
-    `
+    `,
   },
 
   WINNER_ANNOUNCEMENT: {
@@ -274,7 +275,7 @@ const EMAIL_TEMPLATES = {
 
         <p><strong>{{brand_name}} Team</strong></p>
       </div>
-    `
+    `,
   },
 
   JUDGE_ASSIGNMENT: {
@@ -307,7 +308,7 @@ const EMAIL_TEMPLATES = {
 
         <p>Thank you for your contribution to the awards!</p>
       </div>
-    `
+    `,
   },
 
   JUDGE_REMINDER: {
@@ -339,7 +340,7 @@ const EMAIL_TEMPLATES = {
 
         <p>Thank you for your time and expertise!</p>
       </div>
-    `
+    `,
   },
 
   DEADLINE_REMINDER: {
@@ -368,8 +369,8 @@ const EMAIL_TEMPLATES = {
           </tr>
         </table>
       </div>
-    `
-  }
+    `,
+  },
 };
 
 /**
@@ -379,6 +380,10 @@ const EMAIL_TEMPLATES = {
  *
  * DB templates use {PLACEHOLDER} syntax (single braces, uppercase).
  * Hardcoded templates use {{placeholder}} syntax (double braces, lowercase).
+ * @param {string} templateKey - The template key (e.g. 'ENTRY_CONFIRMATION', 'WINNER_ANNOUNCEMENT').
+ * @param {string} toEmail - The recipient email address.
+ * @param {Object} variables - Key-value pairs for template placeholder replacement.
+ * @returns {Promise<boolean>} True if the email was sent successfully, false otherwise.
  */
 async function sendTemplateEmail(templateKey, toEmail, variables) {
   try {
@@ -418,7 +423,7 @@ async function sendTemplateEmail(templateKey, toEmail, variables) {
         from: `${brandName} <${fromEmail}>`,
         subject,
         html,
-        ...(branding.email_reply_to ? { reply_to: branding.email_reply_to } : {})
+        ...(branding.email_reply_to ? { reply_to: branding.email_reply_to } : {}),
       });
 
       await logEmailSent(templateKey, toEmail, subject);
@@ -437,7 +442,8 @@ async function sendTemplateEmail(templateKey, toEmail, variables) {
     let subject = template.subject;
     let bodyContent = template.body;
 
-    const escapeHtml = (str) => String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const escapeHtml = (str) =>
+      String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     for (const [key, value] of Object.entries(allVariables)) {
       const regex = new RegExp(`{{${key}}}`, 'g');
       subject = subject.replace(regex, value || '');
@@ -452,13 +458,12 @@ async function sendTemplateEmail(templateKey, toEmail, variables) {
       from: `${brandName} <${fromEmail}>`,
       subject,
       html,
-      ...(branding.email_reply_to ? { reply_to: branding.email_reply_to } : {})
+      ...(branding.email_reply_to ? { reply_to: branding.email_reply_to } : {}),
     });
 
     await logEmailSent(templateKey, toEmail, subject);
     console.log(`✅ Email sent (hardcoded fallback): ${templateKey} to ${toEmail}`);
     return true;
-
   } catch (error) {
     console.error(`❌ Error sending email:`, error);
     await logEmailFailure(templateKey, toEmail, error.message);
@@ -467,7 +472,9 @@ async function sendTemplateEmail(templateKey, toEmail, variables) {
 }
 
 /**
- * Send entry confirmation email
+ * Send entry confirmation email for a submitted entry.
+ * @param {string} entryId - The ID of the entry to confirm.
+ * @returns {Promise<boolean>} True if the email was sent successfully, false otherwise.
  */
 async function sendEntryConfirmation(entryId) {
   try {
@@ -488,11 +495,10 @@ async function sendEntryConfirmation(entryId) {
       judging_start: 'January 15, 2025',
       judging_end: 'TBC',
       shortlist_date: 'February 25, 2025',
-      winner_date: 'TBC'
+      winner_date: 'TBC',
     };
 
     return await sendTemplateEmail('ENTRY_CONFIRMATION', entry.contact_email, variables);
-
   } catch (error) {
     console.error('Error sending entry confirmation:', error);
     return false;
@@ -500,7 +506,8 @@ async function sendEntryConfirmation(entryId) {
 }
 
 /**
- * Send deadline reminders
+ * Send deadline reminders to judges with pending scoring assignments.
+ * @returns {Promise<boolean>} True if reminders were sent successfully, false otherwise.
  */
 async function sendDeadlineReminders() {
   try {
@@ -519,19 +526,14 @@ async function sendDeadlineReminders() {
     }
 
     // Judging deadline reminders
-    const { data: judges } = await supabase
-      .from('contacts')
-      .select('*')
-      .eq('contact_type', 'judge');
+    const { data: judges } = await supabase.from('contacts').select('*').eq('contact_type', 'judge');
 
-    const { data: allScores } = await supabase
-      .from('judge_scores')
-      .select('*');
+    const { data: allScores } = await supabase.from('judge_scores').select('*');
 
     for (const judge of judges || []) {
-      const judgeScores = (allScores || []).filter(s => s.judge_email === judge.email || s.judge_id === judge.id);
+      const judgeScores = (allScores || []).filter((s) => s.judge_email === judge.email || s.judge_id === judge.id);
       const totalAssigned = judgeScores.length || 0;
-      const completed = judgeScores.filter(s => s.is_complete).length || 0;
+      const completed = judgeScores.filter((s) => s.is_complete).length || 0;
       const pending = totalAssigned - completed;
 
       if (pending > 0) {
@@ -542,7 +544,7 @@ async function sendDeadlineReminders() {
           scored_count: completed,
           total_count: totalAssigned,
           pending_count: pending,
-          judge_portal_link: `${process.env.APP_URL || 'https://admin.britishtrade.com'}/judge-portal.html`
+          judge_portal_link: `${process.env.APP_URL || 'https://admin.britishtrade.com'}/judge-portal.html`,
         };
 
         await sendTemplateEmail('JUDGE_REMINDER', judge.email, variables);
@@ -551,7 +553,6 @@ async function sendDeadlineReminders() {
 
     console.log('✅ Deadline reminders sent');
     return true;
-
   } catch (error) {
     console.error('Error sending deadline reminders:', error);
     return false;
@@ -559,15 +560,14 @@ async function sendDeadlineReminders() {
 }
 
 /**
- * Send judge assignments
+ * Send judge assignment notification email with the list of entries to judge.
+ * @param {string} judgeEmail - The email address of the judge.
+ * @param {string[]} entryIds - Array of entry IDs assigned to the judge.
+ * @returns {Promise<boolean>} True if the email was sent successfully, false otherwise.
  */
 async function sendJudgeAssignments(judgeEmail, entryIds) {
   try {
-    const { data: judge } = await supabase
-      .from('contacts')
-      .select('*')
-      .eq('email', judgeEmail)
-      .single();
+    const { data: judge } = await supabase.from('contacts').select('*').eq('email', judgeEmail).single();
 
     if (!judge) throw new Error('Judge not found');
 
@@ -577,20 +577,17 @@ async function sendJudgeAssignments(judgeEmail, entryIds) {
       .select('*, awards:award_years(award_name)')
       .in('id', entryIds);
 
-    const awardList = [...new Set(entries.map(e => e.awards.award_name))]
-      .map(name => `<li>${name}</li>`)
-      .join('');
+    const awardList = [...new Set(entries.map((e) => e.awards.award_name))].map((name) => `<li>${name}</li>`).join('');
 
     const variables = {
       judge_name: judge.full_name || judge.email,
       entry_count: entryIds.length,
       deadline: 'TBC',
       award_list: awardList,
-      judge_portal_link: `${process.env.APP_URL || 'https://admin.britishtrade.com'}/judge-portal.html`
+      judge_portal_link: `${process.env.APP_URL || 'https://admin.britishtrade.com'}/judge-portal.html`,
     };
 
     return await sendTemplateEmail('JUDGE_ASSIGNMENT', judgeEmail, variables);
-
   } catch (error) {
     console.error('Error sending judge assignment:', error);
     return false;
@@ -598,16 +595,15 @@ async function sendJudgeAssignments(judgeEmail, entryIds) {
 }
 
 /**
- * Send winner announcements
+ * Send winner announcement emails to all entries with 'winner' status.
+ * @param {string|null} [awardId=null] - Optional award ID to filter announcements to a specific award.
+ * @returns {Promise<number>} The number of winner announcements sent.
  */
 async function sendWinnerAnnouncements(awardId = null) {
   try {
     console.log('🏆 Sending winner announcements...');
 
-    let query = supabase
-      .from('entries')
-      .select('*, organisations(*), awards:award_years(*)')
-      .eq('status', 'winner');
+    let query = supabase.from('entries').select('*, organisations(*), awards:award_years(*)').eq('status', 'winner');
 
     if (awardId) {
       query = query.eq('award_id', awardId);
@@ -622,7 +618,7 @@ async function sendWinnerAnnouncements(awardId = null) {
         award_name: winner.awards.award_name,
         ceremony_date: 'TBC',
         ceremony_venue: 'The Grand Hall, London',
-        winners_portal_link: `${process.env.APP_URL || 'https://admin.britishtrade.com'}/winners-portal.html`
+        winners_portal_link: `${process.env.APP_URL || 'https://admin.britishtrade.com'}/winners-portal.html`,
       };
 
       await sendTemplateEmail('WINNER_ANNOUNCEMENT', winner.contact_email, variables);
@@ -633,7 +629,6 @@ async function sendWinnerAnnouncements(awardId = null) {
 
     console.log(`✅ Sent ${(winners || []).length} winner announcements`);
     return (winners || []).length;
-
   } catch (error) {
     console.error('Error sending winner announcements:', error);
     return 0;
@@ -641,7 +636,9 @@ async function sendWinnerAnnouncements(awardId = null) {
 }
 
 /**
- * Send shortlist notifications
+ * Send shortlist notification emails to all shortlisted entries.
+ * @param {string|null} [awardId=null] - Optional award ID to filter to a specific award.
+ * @returns {Promise<number>} The number of shortlist notifications sent.
  */
 async function sendShortlistNotifications(awardId = null) {
   try {
@@ -666,7 +663,7 @@ async function sendShortlistNotifications(awardId = null) {
         winner_date: 'TBC',
         ceremony_date: 'TBC',
         ceremony_venue: 'The Grand Hall, London',
-        ceremony_tickets_link: `${process.env.APP_URL || 'https://admin.britishtrade.com'}/tickets`
+        ceremony_tickets_link: `${process.env.APP_URL || 'https://admin.britishtrade.com'}/tickets`,
       };
 
       await sendTemplateEmail('SHORTLIST_NOTIFICATION', entry.contact_email, variables);
@@ -674,7 +671,6 @@ async function sendShortlistNotifications(awardId = null) {
 
     console.log(`✅ Sent ${shortlisted.length} shortlist notifications`);
     return shortlisted.length;
-
   } catch (error) {
     console.error('Error sending shortlist notifications:', error);
     return 0;
@@ -682,36 +678,50 @@ async function sendShortlistNotifications(awardId = null) {
 }
 
 /**
- * Log email sent
+ * Log a successfully sent email to the email_log table.
+ * @param {string} templateKey - The template key used for the email.
+ * @param {string} toEmail - The recipient email address.
+ * @param {string} subject - The email subject line.
+ * @returns {Promise<void>}
  */
 async function logEmailSent(templateKey, toEmail, subject) {
-  await supabase.from('email_log').insert([{
-    template_key: templateKey,
-    recipient_email: toEmail,
-    subject: subject,
-    status: 'sent',
-    sent_at: new Date().toISOString()
-  }]);
+  await supabase.from('email_log').insert([
+    {
+      template_key: templateKey,
+      recipient_email: toEmail,
+      subject: subject,
+      status: 'sent',
+      sent_at: new Date().toISOString(),
+    },
+  ]);
 }
 
 /**
- * Log email failure
+ * Log a failed email send attempt to the email_log table.
+ * @param {string} templateKey - The template key used for the email.
+ * @param {string} toEmail - The intended recipient email address.
+ * @param {string} error - The error message describing the failure.
+ * @returns {Promise<void>}
  */
 async function logEmailFailure(templateKey, toEmail, error) {
-  await supabase.from('email_log').insert([{
-    template_key: templateKey,
-    recipient_email: toEmail,
-    status: 'failed',
-    error_message: error,
-    sent_at: new Date().toISOString()
-  }]);
+  await supabase.from('email_log').insert([
+    {
+      template_key: templateKey,
+      recipient_email: toEmail,
+      status: 'failed',
+      error_message: error,
+      sent_at: new Date().toISOString(),
+    },
+  ]);
 }
 
 /**
- * API Endpoints
+ * API endpoint to send a template email (requires authentication).
+ * POST /api/send-email
+ * @param {Object} req - Express request object with body containing templateKey, toEmail, variables.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>}
  */
-
-// POST /api/send-email (requires authentication)
 async function sendEmailEndpoint(req, res) {
   try {
     // Verify caller is authenticated
@@ -720,7 +730,10 @@ async function sendEmailEndpoint(req, res) {
       return res.status(401).json({ error: 'Authentication required' });
     }
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser(token);
     if (authError || !user) {
       return res.status(401).json({ error: 'Invalid or expired token' });
     }
@@ -766,5 +779,5 @@ module.exports = {
   sendShortlistNotifications,
   sendEmailEndpoint,
   sendDeadlineRemindersEndpoint,
-  sendWinnerAnnouncementsEndpoint
+  sendWinnerAnnouncementsEndpoint,
 };

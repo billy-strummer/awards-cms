@@ -16,7 +16,7 @@ const entriesModule = {
     award: '',
     year: '',
     search: '',
-    selfNom: ''
+    selfNom: '',
   },
 
   // Server-side pagination state
@@ -42,20 +42,36 @@ const entriesModule = {
       // Restore saved filters from localStorage
       try {
         const saved = JSON.parse(localStorage.getItem('entriesFilters') || '{}');
-        if (saved.status) { document.getElementById('entriesStatusFilter').value = saved.status; this.currentFilters.status = saved.status; }
-        if (saved.award) { document.getElementById('entriesAwardFilter').value = saved.award; this.currentFilters.award = saved.award; }
-        if (saved.year) { document.getElementById('entriesYearFilter').value = saved.year; this.currentFilters.year = saved.year; }
-        if (saved.selfNom) { document.getElementById('entriesSelfNomFilter').value = saved.selfNom; this.currentFilters.selfNom = saved.selfNom; }
-        if (saved.search) { document.getElementById('entriesSearchInput').value = saved.search; this.currentFilters.search = saved.search; }
+        if (saved.status) {
+          document.getElementById('entriesStatusFilter').value = saved.status;
+          this.currentFilters.status = saved.status;
+        }
+        if (saved.award) {
+          document.getElementById('entriesAwardFilter').value = saved.award;
+          this.currentFilters.award = saved.award;
+        }
+        if (saved.year) {
+          document.getElementById('entriesYearFilter').value = saved.year;
+          this.currentFilters.year = saved.year;
+        }
+        if (saved.selfNom) {
+          document.getElementById('entriesSelfNomFilter').value = saved.selfNom;
+          this.currentFilters.selfNom = saved.selfNom;
+        }
+        if (saved.search) {
+          document.getElementById('entriesSearchInput').value = saved.search;
+          this.currentFilters.search = saved.search;
+        }
         this.applyFilters();
-      } catch(e) { console.warn('Failed to restore entry filters:', e.message); }
+      } catch (e) {
+        console.warn('Failed to restore entry filters:', e.message);
+      }
 
       // Load stats
       await this.loadStats();
 
       // Render saved views dropdown
       this._renderSavedEntriesViews();
-
     } catch (error) {
       console.error('Error initializing entries module:', error);
       utils.showErrorWithRetry(error, 'loading entries', () => this.initialize());
@@ -73,40 +89,44 @@ const entriesModule = {
     let awards;
     if (STATE.allAwards && STATE.allAwards.length > 0) {
       awards = STATE.allAwards
-        .filter(a => a.status === 'Active')
+        .filter((a) => a.status === 'Active')
         .sort((a, b) => (a.award_name || '').localeCompare(b.award_name || ''));
     } else {
+      /* selectAll: justified — small reference table (active awards for filter dropdown) */
       const result = await apiClient.selectAll('awards', {
         select: 'id, award_name',
         filters: { status: { operator: 'eq', value: 'Active' } },
-        sort: { column: 'award_name', ascending: true }
+        sort: { column: 'award_name', ascending: true },
       });
       awards = result;
     }
 
     const awardFilter = document.getElementById('entriesAwardFilter');
     if (awards && awards.length > 0) {
-      awardFilter.innerHTML = '<option value="">All Awards</option>' +
-        awards.map(award => `<option value="${award.id}">${utils.escapeHtml(award.award_name)}</option>`).join('');
+      awardFilter.innerHTML =
+        '<option value="">All Awards</option>' +
+        awards.map((award) => `<option value="${award.id}">${utils.escapeHtml(award.award_name)}</option>`).join('');
     }
 
     // Years will be populated after entries load (see initialize)
     // For now, try to derive from allEntries if available, otherwise fetch
     let uniqueYears;
     if (this.allEntries && this.allEntries.length > 0) {
-      uniqueYears = [...new Set(this.allEntries.map(e => e.year).filter(Boolean))].sort((a, b) => b - a);
+      uniqueYears = [...new Set(this.allEntries.map((e) => e.year).filter(Boolean))].sort((a, b) => b - a);
     } else {
+      /* selectAll: justified — fetching only year column for distinct-year filter dropdown */
       const years = await apiClient.selectAll('entries', {
         select: 'year',
-        sort: { column: 'year', ascending: false }
+        sort: { column: 'year', ascending: false },
       });
-      uniqueYears = years ? [...new Set(years.map(y => y.year))] : [];
+      uniqueYears = years ? [...new Set(years.map((y) => y.year))] : [];
     }
 
     const yearFilter = document.getElementById('entriesYearFilter');
     if (uniqueYears.length > 0) {
-      yearFilter.innerHTML = '<option value="">All Years</option>' +
-        uniqueYears.map(year => `<option value="${year}">${year}</option>`).join('');
+      yearFilter.innerHTML =
+        '<option value="">All Years</option>' +
+        uniqueYears.map((year) => `<option value="${year}">${year}</option>`).join('');
     }
   },
 
@@ -128,12 +148,14 @@ const entriesModule = {
         utils.initTableKeyboardNav({
           tableBodyId: 'entriesTableBody',
           searchBoxId: 'entriesSearchInput',
-          onEnter: (row) => { const btn = row.querySelector('.dropdown-toggle'); if (btn) btn.click(); }
+          onEnter: (row) => {
+            const btn = row.querySelector('.dropdown-toggle');
+            if (btn) btn.click();
+          },
         });
       }
 
       utils.trackDataLoad('entries');
-
     } catch (error) {
       console.error('Error loading entries:', error);
       throw error;
@@ -178,7 +200,7 @@ const entriesModule = {
       search: search ? { term: search, columns: ['entry_title', 'entry_number'] } : undefined,
       sort: { column: this._sortField, ascending: this._sortDir === 'asc' },
       page,
-      pageSize: this._pageSize
+      pageSize: this._pageSize,
     });
 
     // Discard stale responses
@@ -186,10 +208,17 @@ const entriesModule = {
 
     const pageData = result.data || [];
     this.allEntries = pageData;
-    if (typeof STATE !== 'undefined') { STATE.allEntries = pageData; }
+    if (typeof STATE !== 'undefined') {
+      STATE.allEntries = pageData;
+    }
     this.filteredEntries = pageData;
     this._currentPage = result.page;
-    this._pagination = { page: result.page, totalPages: result.totalPages, count: result.count, pageSize: result.pageSize };
+    this._pagination = {
+      page: result.page,
+      totalPages: result.totalPages,
+      count: result.count,
+      pageSize: result.pageSize,
+    };
 
     this.renderEntries();
   },
@@ -224,7 +253,7 @@ const entriesModule = {
           apiClient.count('entries', { status: 'under_review' }),
           apiClient.count('entries', { status: 'submitted' }),
           apiClient.count('entries', { status: 'shortlisted' }),
-          apiClient.count('entries', { status: 'winner' })
+          apiClient.count('entries', { status: 'winner' }),
         ]);
         document.getElementById('totalEntriesCount').textContent = total.count || 0;
         document.getElementById('pendingEntriesCount').textContent = (pending.count || 0) + (submitted.count || 0);
@@ -234,9 +263,13 @@ const entriesModule = {
         // Client-side fallback
         const entries = this.allEntries || [];
         document.getElementById('totalEntriesCount').textContent = entries.length;
-        document.getElementById('pendingEntriesCount').textContent = entries.filter(e => e.status === 'submitted' || e.status === 'under_review').length;
-        document.getElementById('shortlistedEntriesCount').textContent = entries.filter(e => e.status === 'shortlisted').length;
-        document.getElementById('winnerEntriesCount').textContent = entries.filter(e => e.status === 'winner').length;
+        document.getElementById('pendingEntriesCount').textContent = entries.filter(
+          (e) => e.status === 'submitted' || e.status === 'under_review'
+        ).length;
+        document.getElementById('shortlistedEntriesCount').textContent = entries.filter(
+          (e) => e.status === 'shortlisted'
+        ).length;
+        document.getElementById('winnerEntriesCount').textContent = entries.filter((e) => e.status === 'winner').length;
       }
     } catch (error) {
       console.error('Error loading stats:', error);
@@ -280,26 +313,27 @@ const entriesModule = {
       pageEntries = this.filteredEntries.slice(start, end);
     }
 
-    tbody.innerHTML = pageEntries.map(entry => {
-      const companyName = entry.organisations?.company_name || 'Unknown';
-      const awardName = entry.award_years?.award_name || entry.award_category || 'Unknown';
-      const _statusBadge = this.getStatusBadge(entry.status);
-      const paymentBadge = this.getPaymentBadge(entry.payment_status);
-      const selfNomBadge = entry.is_self_nomination
-        ? '<span class="badge bg-info ms-2" title="Self-Nominated Entry"><i class="bi bi-person-raised-hand me-1"></i>Self-Nom</span>'
-        : '';
-      const scoreDisplay = entry.average_score
-        ? `${entry.average_score.toFixed(1)} <small>(${entry.total_scores || 0})</small>`
-        : '<span class="text-muted">-</span>';
-      const submittedDate = entry.submission_date
-        ? new Date(entry.submission_date).toLocaleDateString()
-        : '<span class="text-muted">Draft</span>';
+    tbody.innerHTML = pageEntries
+      .map((entry) => {
+        const companyName = entry.organisations?.company_name || 'Unknown';
+        const awardName = entry.award_years?.award_name || entry.award_category || 'Unknown';
+        const _statusBadge = this.getStatusBadge(entry.status);
+        const paymentBadge = this.getPaymentBadge(entry.payment_status);
+        const selfNomBadge = entry.is_self_nomination
+          ? '<span class="badge bg-info ms-2" title="Self-Nominated Entry"><i class="bi bi-person-raised-hand me-1"></i>Self-Nom</span>'
+          : '';
+        const scoreDisplay = entry.average_score
+          ? `${entry.average_score.toFixed(1)} <small>(${entry.total_scores || 0})</small>`
+          : '<span class="text-muted">-</span>';
+        const submittedDate = entry.submission_date
+          ? new Date(entry.submission_date).toLocaleDateString()
+          : '<span class="text-muted">Draft</span>';
 
-      return `
+        return `
         <tr>
           <td>
             <input type="checkbox" class="entry-checkbox" value="${entry.id}"
-                   onchange="entriesModule.toggleSelectEntry('${entry.id}')"
+                   data-on-change="entriesModule.toggleSelectEntry" data-id="entry.id"
                    ${this.selectedEntryIds.has(entry.id) ? 'checked' : ''}>
           </td>
           <td><strong>${utils.escapeHtml(entry.entry_number)}</strong></td>
@@ -313,11 +347,14 @@ const entriesModule = {
           </td>
           <td>
             <select class="form-select form-select-sm d-inline-block" style="width:auto; font-size:0.75rem;"
-              onchange="entriesModule.inlineUpdateEntryStatus('${entry.id}', this.value)"
+              data-on-change="entriesModule.inlineUpdateEntryStatus" data-id="entry.id"
               aria-label="Change entry status">
-              ${['draft','submitted','under_review','shortlisted','winner','rejected'].map(s =>
-                `<option value="${s}" ${(entry.status || '').toLowerCase() === s ? 'selected' : ''}>${s === 'under_review' ? 'Under Review' : s.charAt(0).toUpperCase() + s.slice(1)}</option>`
-              ).join('')}
+              ${['draft', 'submitted', 'under_review', 'shortlisted', 'winner', 'rejected']
+                .map(
+                  (s) =>
+                    `<option value="${s}" ${(entry.status || '').toLowerCase() === s ? 'selected' : ''}>${s === 'under_review' ? 'Under Review' : s.charAt(0).toUpperCase() + s.slice(1)}</option>`
+                )
+                .join('')}
             </select>
           </td>
           <td>${scoreDisplay}</td>
@@ -325,23 +362,24 @@ const entriesModule = {
           <td>${submittedDate}</td>
           <td>
             <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-primary" onclick="entriesModule.viewEntry('${entry.id}')" title="View">
+              <button class="btn btn-outline-primary" data-action="entriesModule.viewEntry" data-id="entry.id" title="View">
                 <i class="bi bi-eye"></i>
               </button>
-              <button class="btn btn-outline-secondary" onclick="entriesModule.editEntry('${entry.id}')" title="Edit">
+              <button class="btn btn-outline-secondary" data-action="entriesModule.editEntry" data-id="entry.id" title="Edit">
                 <i class="bi bi-pencil"></i>
               </button>
-              <button class="btn btn-outline-info" onclick="entriesModule.showVotingLink('${entry.id}')" title="Get Voting Link">
+              <button class="btn btn-outline-info" data-action="entriesModule.showVotingLink" data-id="entry.id" title="Get Voting Link">
                 <i class="bi bi-link-45deg"></i>
               </button>
-              <button class="btn btn-outline-danger" onclick="entriesModule.deleteEntry('${entry.id}')" title="Delete">
+              <button class="btn btn-outline-danger" data-action="entriesModule.deleteEntry" data-id="entry.id" title="Delete">
                 <i class="bi bi-trash"></i>
               </button>
             </div>
           </td>
         </tr>
       `;
-    }).join('');
+      })
+      .join('');
 
     // Render pagination controls
     const paginationEl = document.getElementById('entriesPagination');
@@ -352,17 +390,17 @@ const entriesModule = {
       const totalPages = Math.ceil(this.filteredEntries.length / this._pageSize);
       if (totalPages > 1) {
         let html = '<nav><ul class="pagination pagination-sm justify-content-center mt-3">';
-        html += `<li class="page-item ${this._currentPage <= 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); entriesModule.goToEntriesPage(${this._currentPage - 1})">Prev</a></li>`;
+        html += `<li class="page-item ${this._currentPage <= 1 ? 'disabled' : ''}"><a class="page-link" href="javascript:void(0);" data-action="entriesModule.goToEntriesPage" data-id="${this._currentPage - 1}">Prev</a></li>`;
         for (let i = 1; i <= totalPages; i++) {
           if (i === 1 || i === totalPages || (i >= this._currentPage - 2 && i <= this._currentPage + 2)) {
-            html += `<li class="page-item ${i === this._currentPage ? 'active' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); entriesModule.goToEntriesPage(${i})">${i}</a></li>`;
+            html += `<li class="page-item ${i === this._currentPage ? 'active' : ''}"><a class="page-link" href="javascript:void(0);" data-action="entriesModule.goToEntriesPage" data-id="${i}">${i}</a></li>`;
           } else if (i === this._currentPage - 3 || i === this._currentPage + 3) {
             html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
           }
         }
-        html += `<li class="page-item ${this._currentPage >= totalPages ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); entriesModule.goToEntriesPage(${this._currentPage + 1})">Next</a></li>`;
+        html += `<li class="page-item ${this._currentPage >= totalPages ? 'disabled' : ''}"><a class="page-link" href="javascript:void(0);" data-action="entriesModule.goToEntriesPage" data-id="${this._currentPage + 1}">Next</a></li>`;
         html += '</ul></nav>';
-        html += `<div class="text-center text-muted small">Showing ${((this._currentPage-1)*this._pageSize)+1}-${Math.min(this._currentPage*this._pageSize, this.filteredEntries.length)} of ${this.filteredEntries.length}</div>`;
+        html += `<div class="text-center text-muted small">Showing ${(this._currentPage - 1) * this._pageSize + 1}-${Math.min(this._currentPage * this._pageSize, this.filteredEntries.length)} of ${this.filteredEntries.length}</div>`;
         paginationEl.innerHTML = html;
       } else {
         paginationEl.innerHTML = '';
@@ -397,7 +435,7 @@ const entriesModule = {
 
     // Server-side: re-fetch with new sort order
     if (this._serverPagination) {
-      this._fetchPage(1).catch(err => console.error('Error sorting entries:', err));
+      this._fetchPage(1).catch((err) => console.error('Error sorting entries:', err));
       return;
     }
 
@@ -406,12 +444,13 @@ const entriesModule = {
 
   _updateSortIndicators() {
     const icons = document.querySelectorAll('[data-sort-icon-entries]');
-    icons.forEach(icon => {
+    icons.forEach((icon) => {
       const field = icon.getAttribute('data-sort-icon-entries');
       if (field === this._sortField) {
-        icon.className = this._sortDir === 'asc'
-          ? 'bi bi-caret-up-fill text-primary ms-1 small'
-          : 'bi bi-caret-down-fill text-primary ms-1 small';
+        icon.className =
+          this._sortDir === 'asc'
+            ? 'bi bi-caret-up-fill text-primary ms-1 small'
+            : 'bi bi-caret-down-fill text-primary ms-1 small';
       } else {
         icon.className = 'bi bi-arrow-down-up text-muted ms-1 small';
       }
@@ -425,12 +464,12 @@ const entriesModule = {
    */
   getStatusBadge(status) {
     const badges = {
-      'draft': '<span class="badge bg-secondary">Draft</span>',
-      'submitted': '<span class="badge bg-info">Submitted</span>',
-      'under_review': '<span class="badge bg-warning">Under Review</span>',
-      'shortlisted': '<span class="badge bg-primary">Shortlisted</span>',
-      'winner': '<span class="badge bg-success">Winner</span>',
-      'rejected': '<span class="badge bg-danger">Rejected</span>'
+      draft: '<span class="badge bg-secondary">Draft</span>',
+      submitted: '<span class="badge bg-info">Submitted</span>',
+      under_review: '<span class="badge bg-warning">Under Review</span>',
+      shortlisted: '<span class="badge bg-primary">Shortlisted</span>',
+      winner: '<span class="badge bg-success">Winner</span>',
+      rejected: '<span class="badge bg-danger">Rejected</span>',
     };
     return badges[status] || '<span class="badge bg-secondary">Unknown</span>';
   },
@@ -442,10 +481,10 @@ const entriesModule = {
    */
   getPaymentBadge(status) {
     const badges = {
-      'paid': '<span class="badge bg-success">Paid</span>',
-      'pending': '<span class="badge bg-warning">Pending</span>',
-      'refunded': '<span class="badge bg-secondary">Refunded</span>',
-      'waived': '<span class="badge bg-info">Waived</span>'
+      paid: '<span class="badge bg-success">Paid</span>',
+      pending: '<span class="badge bg-warning">Pending</span>',
+      refunded: '<span class="badge bg-secondary">Refunded</span>',
+      waived: '<span class="badge bg-info">Waived</span>',
     };
     return badges[status] || '<span class="badge bg-warning">Pending</span>';
   },
@@ -474,11 +513,15 @@ const entriesModule = {
    * Apply all filters
    */
   applyFilters() {
-    try { localStorage.setItem('entriesFilters', JSON.stringify(this.currentFilters)); } catch(e) { console.warn('Failed to save entry filters:', e.message); }
+    try {
+      localStorage.setItem('entriesFilters', JSON.stringify(this.currentFilters));
+    } catch (e) {
+      console.warn('Failed to save entry filters:', e.message);
+    }
 
     // Server-side pagination: send filters to server and re-fetch page 1
     if (this._serverPagination) {
-      this._fetchPage(1).catch(err => {
+      this._fetchPage(1).catch((err) => {
         console.error('Error filtering entries:', err);
         utils.showToast('Error filtering entries: ' + err.message, 'error');
       });
@@ -486,7 +529,7 @@ const entriesModule = {
     }
 
     // Client-side fallback (used by tests and when data is pre-loaded)
-    this.filteredEntries = this.allEntries.filter(entry => {
+    this.filteredEntries = this.allEntries.filter((entry) => {
       // Status filter (supports comma-separated values, e.g. "submitted,under_review")
       if (this.currentFilters.status) {
         const statuses = this.currentFilters.status.split(',');
@@ -521,10 +564,12 @@ const entriesModule = {
         const entryTitle = (entry.entry_title || '').toLowerCase();
         const entryNumber = (entry.entry_number || '').toLowerCase();
 
-        if (!companyName.includes(searchLower) &&
-            !awardName.includes(searchLower) &&
-            !entryTitle.includes(searchLower) &&
-            !entryNumber.includes(searchLower)) {
+        if (
+          !companyName.includes(searchLower) &&
+          !awardName.includes(searchLower) &&
+          !entryTitle.includes(searchLower) &&
+          !entryNumber.includes(searchLower)
+        ) {
           return false;
         }
       }
@@ -534,13 +579,21 @@ const entriesModule = {
 
     // If search query is active and no exact matches found, try fuzzy search
     if (this.currentFilters.search && this.filteredEntries.length === 0) {
-      this.filteredEntries = utils.fuzzyFilter(this.allEntries, this.currentFilters.search, ['entry_title', 'company_name']);
+      this.filteredEntries = utils.fuzzyFilter(this.allEntries, this.currentFilters.search, [
+        'entry_title',
+        'company_name',
+      ]);
       // Also apply non-search filters to fuzzy results
-      if (this.currentFilters.status) this.filteredEntries = this.filteredEntries.filter(e => e.status === this.currentFilters.status);
-      if (this.currentFilters.award) this.filteredEntries = this.filteredEntries.filter(e => e.award_id === this.currentFilters.award);
-      if (this.currentFilters.year) this.filteredEntries = this.filteredEntries.filter(e => e.year === parseInt(this.currentFilters.year));
-      if (this.currentFilters.selfNom === 'self_nom') this.filteredEntries = this.filteredEntries.filter(e => e.is_self_nomination);
-      if (this.currentFilters.selfNom === 'standard') this.filteredEntries = this.filteredEntries.filter(e => !e.is_self_nomination);
+      if (this.currentFilters.status)
+        this.filteredEntries = this.filteredEntries.filter((e) => e.status === this.currentFilters.status);
+      if (this.currentFilters.award)
+        this.filteredEntries = this.filteredEntries.filter((e) => e.award_id === this.currentFilters.award);
+      if (this.currentFilters.year)
+        this.filteredEntries = this.filteredEntries.filter((e) => e.year === parseInt(this.currentFilters.year));
+      if (this.currentFilters.selfNom === 'self_nom')
+        this.filteredEntries = this.filteredEntries.filter((e) => e.is_self_nomination);
+      if (this.currentFilters.selfNom === 'standard')
+        this.filteredEntries = this.filteredEntries.filter((e) => !e.is_self_nomination);
     }
 
     // Sort
@@ -586,12 +639,12 @@ const entriesModule = {
 
     if (checkbox.checked) {
       // Select all filtered entries, not just current page
-      (this.filteredEntries || []).forEach(e => this.selectedEntryIds.add(e.id));
+      (this.filteredEntries || []).forEach((e) => this.selectedEntryIds.add(e.id));
     } else {
       this.selectedEntryIds.clear();
     }
     // Update visible checkboxes to match
-    entryCheckboxes.forEach(cb => {
+    entryCheckboxes.forEach((cb) => {
       cb.checked = checkbox.checked;
     });
   },
@@ -623,17 +676,22 @@ const entriesModule = {
       const result = await apiClient.select('entries', {
         select: '*, organisations(*), award_years(*), entry_files(*), judge_scores(*)',
         filters: { id: { operator: 'eq', value: entryId } },
-        pageSize: 1
+        pageSize: 1,
       });
 
       const entry = result.data && result.data[0];
       if (!entry) throw new Error('Entry not found');
 
-      utils.trackRecentlyViewed('entry', entryId, (entry.organisations?.company_name || 'Entry') + ' - ' + (entry.award_years?.award_name || entry.award_category || 'Award'));
+      utils.trackRecentlyViewed(
+        'entry',
+        entryId,
+        (entry.organisations?.company_name || 'Entry') +
+          ' - ' +
+          (entry.award_years?.award_name || entry.award_category || 'Award')
+      );
 
       // Show entry details modal
       this.showEntryDetailsModal(entry);
-
     } catch (error) {
       console.error('Error loading entry:', error);
       utils.showToast('Failed to load entry details', 'error');
@@ -768,38 +826,54 @@ const entriesModule = {
                   <h6 class="mb-0"><i class="bi bi-file-text me-2"></i>Entry Details</h6>
                 </div>
                 <div class="card-body">
-                  ${entry.entry_description ? `
+                  ${
+                    entry.entry_description
+                      ? `
                     <div class="mb-3">
                       <h6 class="text-muted">Description</h6>
                       <p class="mb-0">${utils.escapeHtml(entry.entry_description)}</p>
                     </div>
-                  ` : ''}
+                  `
+                      : ''
+                  }
 
-                  ${entry.why_should_win ? `
+                  ${
+                    entry.why_should_win
+                      ? `
                     <div class="mb-3">
                       <h6 class="text-muted">Why Should They Win?</h6>
                       <div class="p-3 bg-light rounded" style="max-height: 400px; overflow-y: auto; white-space: pre-wrap;">${utils.escapeHtml(entry.why_should_win)}</div>
                     </div>
-                  ` : ''}
+                  `
+                      : ''
+                  }
 
-                  ${entry.supporting_information ? `
+                  ${
+                    entry.supporting_information
+                      ? `
                     <div class="mb-3">
                       <h6 class="text-muted">Supporting Information</h6>
                       <div class="p-3 bg-light rounded" style="max-height: 300px; overflow-y: auto; white-space: pre-wrap;">${utils.escapeHtml(entry.supporting_information)}</div>
                     </div>
-                  ` : ''}
+                  `
+                      : ''
+                  }
                 </div>
               </div>
 
               <!-- Supporting Files -->
-              ${entry.entry_files && entry.entry_files.length > 0 ? `
+              ${
+                entry.entry_files && entry.entry_files.length > 0
+                  ? `
                 <div class="card mb-4">
                   <div class="card-header">
                     <h6 class="mb-0"><i class="bi bi-paperclip me-2"></i>Supporting Documents (${entry.entry_files.length})</h6>
                   </div>
                   <div class="card-body">
                     <div class="list-group list-group-flush">
-                      ${entry.entry_files.map(file => `
+                      ${entry.entry_files
+                        .map(
+                          (file) => `
                         <div class="list-group-item d-flex justify-content-between align-items-center">
                           <div>
                             <i class="bi bi-file-earmark-pdf me-2 text-danger"></i>
@@ -810,14 +884,20 @@ const entriesModule = {
                             <i class="bi bi-download"></i> View
                           </a>
                         </div>
-                      `).join('')}
+                      `
+                        )
+                        .join('')}
                     </div>
                   </div>
                 </div>
-              ` : ''}
+              `
+                  : ''
+              }
 
               <!-- Admin Notes -->
-              ${entry.admin_notes ? `
+              ${
+                entry.admin_notes
+                  ? `
                 <div class="card mb-4">
                   <div class="card-header">
                     <h6 class="mb-0"><i class="bi bi-sticky me-2"></i>Admin Notes</h6>
@@ -826,7 +906,9 @@ const entriesModule = {
                     <p class="mb-0">${utils.escapeHtml(entry.admin_notes)}</p>
                   </div>
                 </div>
-              ` : ''}
+              `
+                  : ''
+              }
 
               <!-- Status Change Section -->
               <div class="card">
@@ -856,11 +938,11 @@ const entriesModule = {
 
             </div>
             <div class="modal-footer">
-              <button type="button" class="btn btn-outline-info me-auto" onclick="entriesModule.openUploadLink('${entry.entry_number}')">
+              <button type="button" class="btn btn-outline-info me-auto" data-action="entriesModule.openUploadLink" data-id="entry.entry_number">
                 <i class="bi bi-paperclip me-2"></i>View Upload Link
               </button>
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-              <button type="button" class="btn btn-primary" onclick="entriesModule.updateEntryStatus('${entry.id}')">
+              <button type="button" class="btn btn-primary" data-action="entriesModule.updateEntryStatus" data-id="entry.id">
                 <i class="bi bi-check-lg me-1"></i>Save &amp; Confirm
               </button>
             </div>
@@ -883,7 +965,7 @@ const entriesModule = {
     modal.show();
 
     // Clean up modal when closed
-    document.getElementById('entryDetailsModal').addEventListener('hidden.bs.modal', function() {
+    document.getElementById('entryDetailsModal').addEventListener('hidden.bs.modal', function () {
       this.remove();
     });
   },
@@ -893,15 +975,22 @@ const entriesModule = {
    */
   async quickStatusChange(entryId, newStatus) {
     const statusLabels = {
-      'rejected': 'Reject',
-      'under_review': 'move to Under Review',
-      'shortlisted': 'Approve and Shortlist',
-      'winner': 'mark as Winner'
+      rejected: 'Reject',
+      under_review: 'move to Under Review',
+      shortlisted: 'Approve and Shortlist',
+      winner: 'mark as Winner',
     };
 
     const label = statusLabels[newStatus] || 'change status';
 
-    if (!await utils.confirmDialog({ title: 'Change Entry Status', message: `Are you sure you want to ${label} this entry?`, confirmText: 'Confirm', danger: newStatus === 'rejected' })) {
+    if (
+      !(await utils.confirmDialog({
+        title: 'Change Entry Status',
+        message: `Are you sure you want to ${label} this entry?`,
+        confirmText: 'Confirm',
+        danger: newStatus === 'rejected',
+      }))
+    ) {
       return;
     }
 
@@ -925,18 +1014,17 @@ const entriesModule = {
           const entryResult = await apiClient.select('entries', {
             select: 'admin_notes',
             filters: { id: { operator: 'eq', value: entryId } },
-            pageSize: 1
+            pageSize: 1,
           });
           const entry = entryResult.data && entryResult.data[0];
 
-          updateData.admin_notes = entry?.admin_notes
-            ? `${entry.admin_notes}\n\n${noteEntry}`
-            : noteEntry;
+          updateData.admin_notes = entry?.admin_notes ? `${entry.admin_notes}\n\n${noteEntry}` : noteEntry;
         }
 
         await apiClient.update('entries', entryId, updateData);
 
-        const displayStatus = newStatus === 'under_review' ? 'Under Review' : newStatus.charAt(0).toUpperCase() + newStatus.slice(1);
+        const displayStatus =
+          newStatus === 'under_review' ? 'Under Review' : newStatus.charAt(0).toUpperCase() + newStatus.slice(1);
         utils.showToast(`Entry status updated to ${displayStatus}`, 'success');
 
         // Close modal
@@ -949,7 +1037,6 @@ const entriesModule = {
         await this.loadEntries();
         await this.loadStats();
       });
-
     } catch (error) {
       console.error('Error updating entry status:', error);
       utils.showToast('Failed to update entry status: ' + error.message, 'error');
@@ -984,13 +1071,11 @@ const entriesModule = {
           const entryResult = await apiClient.select('entries', {
             select: 'admin_notes',
             filters: { id: { operator: 'eq', value: entryId } },
-            pageSize: 1
+            pageSize: 1,
           });
           const entry = entryResult.data && entryResult.data[0];
 
-          updateData.admin_notes = entry?.admin_notes
-            ? `${entry.admin_notes}\n\n${noteEntry}`
-            : noteEntry;
+          updateData.admin_notes = entry?.admin_notes ? `${entry.admin_notes}\n\n${noteEntry}` : noteEntry;
         }
 
         await apiClient.update('entries', entryId, updateData);
@@ -1007,7 +1092,6 @@ const entriesModule = {
         await this.loadEntries();
         await this.loadStats();
       });
-
     } catch (error) {
       console.error('Error updating entry status:', error);
       utils.showToast('Failed to update entry status: ' + error.message, 'error');
@@ -1038,7 +1122,7 @@ const entriesModule = {
                 <label class="form-label fw-bold">Upload Link:</label>
                 <div class="input-group">
                   <input type="text" class="form-control" value="${uploadUrl}" id="uploadLinkInput" readonly>
-                  <button class="btn btn-primary" onclick="entriesModule.copyUploadLink('${uploadUrl}')">
+                  <button class="btn btn-primary" data-action="entriesModule.copyUploadLink" data-id="uploadUrl">
                     <i class="bi bi-clipboard"></i> Copy
                   </button>
                 </div>
@@ -1056,7 +1140,7 @@ const entriesModule = {
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-              <button type="button" class="btn btn-primary" onclick="window.open('${uploadUrl}', '_blank')">
+              <button type="button" class="btn btn-primary" data-action="window.open" data-args='${JSON.stringify([uploadUrl, '_blank'])}'>
                 <i class="bi bi-box-arrow-up-right me-2"></i>Open Upload Page
               </button>
             </div>
@@ -1079,7 +1163,7 @@ const entriesModule = {
     modal.show();
 
     // Clean up modal when closed
-    document.getElementById('uploadLinkModal').addEventListener('hidden.bs.modal', function() {
+    document.getElementById('uploadLinkModal').addEventListener('hidden.bs.modal', function () {
       this.remove();
     });
   },
@@ -1111,21 +1195,21 @@ const entriesModule = {
       const entryResult = await apiClient.select('entries', {
         select: '*, organisations(id, company_name), award_years(id, award_name)',
         filters: { id: { operator: 'eq', value: entryId } },
-        pageSize: 1
+        pageSize: 1,
       });
       const entry = entryResult.data && entryResult.data[0];
       if (!entry) throw new Error('Entry not found');
 
-      // Load awards and organisations for dropdowns (in parallel)
+      /* selectAll: justified — small reference tables for edit modal dropdowns */
       const [awards, orgs] = await Promise.all([
         apiClient.selectAll('awards', {
           select: 'id, award_name',
-          sort: { column: 'award_name', ascending: true }
+          sort: { column: 'award_name', ascending: true },
         }),
         apiClient.selectAll('organisations', {
           select: 'id, company_name',
-          sort: { column: 'company_name', ascending: true }
-        })
+          sort: { column: 'company_name', ascending: true },
+        }),
       ]);
 
       const modalHtml = `
@@ -1162,14 +1246,14 @@ const entriesModule = {
                           <label class="form-label">Award</label>
                           <select class="form-select" id="editEntryAward">
                             <option value="">Select award...</option>
-                            ${(awards || []).map(a => `<option value="${a.id}" ${a.id === entry.award_id ? 'selected' : ''}>${utils.escapeHtml(a.award_name)}</option>`).join('')}
+                            ${(awards || []).map((a) => `<option value="${a.id}" ${a.id === entry.award_id ? 'selected' : ''}>${utils.escapeHtml(a.award_name)}</option>`).join('')}
                           </select>
                         </div>
                         <div class="col-md-6 mb-3">
                           <label class="form-label">Organisation</label>
                           <select class="form-select" id="editEntryOrg">
                             <option value="">Select organisation...</option>
-                            ${(orgs || []).map(o => `<option value="${o.id}" ${o.id === entry.organisation_id ? 'selected' : ''}>${utils.escapeHtml(o.company_name)}</option>`).join('')}
+                            ${(orgs || []).map((o) => `<option value="${o.id}" ${o.id === entry.organisation_id ? 'selected' : ''}>${utils.escapeHtml(o.company_name)}</option>`).join('')}
                           </select>
                         </div>
                       </div>
@@ -1263,7 +1347,7 @@ const entriesModule = {
               </div>
               <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="entriesModule.saveEntryEdit('${entry.id}')">
+                <button type="button" class="btn btn-primary" data-action="entriesModule.saveEntryEdit" data-id="entry.id">
                   <i class="bi bi-save me-2"></i>Save Changes
                 </button>
               </div>
@@ -1278,8 +1362,9 @@ const entriesModule = {
       const modal = new bootstrap.Modal(document.getElementById('editEntryModal'));
       modal.show();
       utils.initInlineValidation('editEntryForm');
-      document.getElementById('editEntryModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
-
+      document.getElementById('editEntryModal').addEventListener('hidden.bs.modal', function () {
+        this.remove();
+      });
     } catch (error) {
       console.error('Error loading entry for edit:', error);
       utils.showToast('Failed to load entry: ' + error.message, 'error');
@@ -1309,7 +1394,7 @@ const entriesModule = {
       entry_description: document.getElementById('editEntryDescription').value || null,
       why_should_win: document.getElementById('editEntryWhyWin').value || null,
       supporting_information: document.getElementById('editEntrySupportingInfo').value || null,
-      admin_notes: document.getElementById('editEntryAdminNotes').value || null
+      admin_notes: document.getElementById('editEntryAdminNotes').value || null,
     };
 
     // If status changed to shortlisted, set the shortlisted fields
@@ -1332,7 +1417,7 @@ const entriesModule = {
       localStorage.setItem(`bta_entry_edit_${entryId}`, JSON.stringify(updateData));
       bootstrap.Modal.getInstance(document.getElementById('editEntryModal'))?.hide();
       // Update local state so UI reflects the change
-      const entry = STATE.allEntries?.find(e => e.id === entryId);
+      const entry = STATE.allEntries?.find((e) => e.id === entryId);
       if (entry) Object.assign(entry, updateData);
       utils.showToast('Entry saved locally', 'success');
     }
@@ -1348,7 +1433,12 @@ const entriesModule = {
       utils.showToast('You do not have permission to delete entries', 'error');
       return;
     }
-    if (!await utils.confirmDialog({ title: 'Delete Entry', message: 'Are you sure you want to delete this entry? This action cannot be undone.' })) {
+    if (
+      !(await utils.confirmDialog({
+        title: 'Delete Entry',
+        message: 'Are you sure you want to delete this entry? This action cannot be undone.',
+      }))
+    ) {
       return;
     }
 
@@ -1358,7 +1448,6 @@ const entriesModule = {
       utils.showToast('Entry deleted successfully', 'success');
       await this.loadEntries();
       await this.loadStats();
-
     } catch (error) {
       console.error('Error deleting entry:', error);
       utils.showToast('Failed to delete entry: ' + error.message, 'error');
@@ -1399,9 +1488,10 @@ const entriesModule = {
    */
   async exportEntries() {
     try {
-      const entriesToExport = this.selectedEntryIds.size > 0
-        ? this.filteredEntries.filter(e => this.selectedEntryIds.has(e.id))
-        : this.filteredEntries;
+      const entriesToExport =
+        this.selectedEntryIds.size > 0
+          ? this.filteredEntries.filter((e) => this.selectedEntryIds.has(e.id))
+          : this.filteredEntries;
 
       if (entriesToExport.length === 0) {
         utils.showToast('No entries to export', 'warning');
@@ -1424,10 +1514,10 @@ const entriesModule = {
         'Contact Email',
         'Contact Phone',
         'Year',
-        'Description'
+        'Description',
       ];
 
-      const rows = entriesToExport.map(entry => [
+      const rows = entriesToExport.map((entry) => [
         entry.entry_number || '',
         entry.organisations?.company_name || '',
         entry.award_years?.award_name || entry.award_category || '',
@@ -1442,11 +1532,11 @@ const entriesModule = {
         entry.contact_email || '',
         entry.contact_phone || '',
         entry.year || '',
-        entry.entry_description ? String(entry.entry_description).substring(0, 200) : ''
+        entry.entry_description ? String(entry.entry_description).substring(0, 200) : '',
       ]);
 
       const csv = [headers, ...rows]
-        .map(row => row.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
+        .map((row) => row.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
         .join('\n');
 
       // Download CSV
@@ -1461,7 +1551,6 @@ const entriesModule = {
       window.URL.revokeObjectURL(url);
 
       utils.showToast(`Exported ${entriesToExport.length} entries`, 'success');
-
     } catch (error) {
       console.error('Error exporting entries:', error);
       utils.showToast('Failed to export entries', 'error');
@@ -1472,11 +1561,15 @@ const entriesModule = {
    * Export entries to Excel format
    */
   exportEntriesExcel() {
-    const entriesToExport = this.selectedEntryIds.size > 0
-      ? this.filteredEntries.filter(e => this.selectedEntryIds.has(e.id))
-      : this.filteredEntries;
-    if (entriesToExport.length === 0) { utils.showToast('No entries to export', 'warning'); return; }
-    const exportData = entriesToExport.map(e => ({
+    const entriesToExport =
+      this.selectedEntryIds.size > 0
+        ? this.filteredEntries.filter((e) => this.selectedEntryIds.has(e.id))
+        : this.filteredEntries;
+    if (entriesToExport.length === 0) {
+      utils.showToast('No entries to export', 'warning');
+      return;
+    }
+    const exportData = entriesToExport.map((e) => ({
       entry_number: e.entry_number || '',
       company: e.organisations?.company_name || '',
       award: e.award_years?.award_name || e.award_category || '',
@@ -1486,7 +1579,7 @@ const entriesModule = {
       average_score: e.average_score != null ? e.average_score : '',
       submission_date: e.submission_date || '',
       contact_name: e.contact_name || '',
-      contact_email: e.contact_email || ''
+      contact_email: e.contact_email || '',
     }));
     utils.exportToExcel(exportData, `entries-export-${new Date().toISOString().split('T')[0]}`);
   },
@@ -1495,19 +1588,25 @@ const entriesModule = {
    * Export entries to printable PDF
    */
   exportEntriesPDF() {
-    const entriesToExport = this.selectedEntryIds.size > 0
-      ? this.filteredEntries.filter(e => this.selectedEntryIds.has(e.id))
-      : this.filteredEntries;
-    if (entriesToExport.length === 0) { utils.showToast('No entries to export', 'warning'); return; }
-    const exportData = entriesToExport.map(e => ({
+    const entriesToExport =
+      this.selectedEntryIds.size > 0
+        ? this.filteredEntries.filter((e) => this.selectedEntryIds.has(e.id))
+        : this.filteredEntries;
+    if (entriesToExport.length === 0) {
+      utils.showToast('No entries to export', 'warning');
+      return;
+    }
+    const exportData = entriesToExport.map((e) => ({
       entry_number: e.entry_number || '',
       company: e.organisations?.company_name || '',
       award: e.award_years?.award_name || e.award_category || '',
       status: e.status || '',
       score: e.average_score != null ? e.average_score : '',
-      submitted: e.submission_date || ''
+      submitted: e.submission_date || '',
     }));
-    utils.exportToPrintablePDF(exportData, 'Entries Report', { columns: ['entry_number', 'company', 'award', 'status', 'score', 'submitted'] });
+    utils.exportToPrintablePDF(exportData, 'Entries Report', {
+      columns: ['entry_number', 'company', 'award', 'status', 'score', 'submitted'],
+    });
   },
 
   /**
@@ -1533,37 +1632,37 @@ const entriesModule = {
               <p class="text-muted mb-3">Select an action to apply to <strong>${count}</strong> selected entr${count === 1 ? 'y' : 'ies'}:</p>
 
               <div class="list-group">
-                <button class="list-group-item list-group-item-action d-flex align-items-center" onclick="entriesModule.executeBulkAction('status', 'submitted')">
+                <button class="list-group-item list-group-item-action d-flex align-items-center" data-action="entriesModule.executeBulkAction" data-args='["status", "submitted"]'>
                   <span class="badge bg-info me-3">Status</span>
                   <span>Mark as Submitted</span>
                 </button>
-                <button class="list-group-item list-group-item-action d-flex align-items-center" onclick="entriesModule.executeBulkAction('status', 'under_review')">
+                <button class="list-group-item list-group-item-action d-flex align-items-center" data-action="entriesModule.executeBulkAction" data-args='["status", "under_review"]'>
                   <span class="badge bg-warning me-3">Status</span>
                   <span>Move to Under Review</span>
                 </button>
-                <button class="list-group-item list-group-item-action d-flex align-items-center" onclick="entriesModule.executeBulkAction('status', 'shortlisted')">
+                <button class="list-group-item list-group-item-action d-flex align-items-center" data-action="entriesModule.executeBulkAction" data-args='["status", "shortlisted"]'>
                   <span class="badge bg-primary me-3">Status</span>
                   <span>Mark as Shortlisted</span>
                 </button>
-                <button class="list-group-item list-group-item-action d-flex align-items-center" onclick="entriesModule.executeBulkAction('status', 'winner')">
+                <button class="list-group-item list-group-item-action d-flex align-items-center" data-action="entriesModule.executeBulkAction" data-args='["status", "winner"]'>
                   <span class="badge bg-success me-3">Status</span>
                   <span>Mark as Winner</span>
                 </button>
-                <button class="list-group-item list-group-item-action d-flex align-items-center" onclick="entriesModule.executeBulkAction('status', 'rejected')">
+                <button class="list-group-item list-group-item-action d-flex align-items-center" data-action="entriesModule.executeBulkAction" data-args='["status", "rejected"]'>
                   <span class="badge bg-danger me-3">Status</span>
                   <span>Reject Entries</span>
                 </button>
                 <hr class="my-2">
-                <button class="list-group-item list-group-item-action d-flex align-items-center" onclick="entriesModule.executeBulkAction('payment', 'paid')">
+                <button class="list-group-item list-group-item-action d-flex align-items-center" data-action="entriesModule.executeBulkAction" data-args='["payment", "paid"]'>
                   <span class="badge bg-success me-3">Payment</span>
                   <span>Mark as Paid</span>
                 </button>
-                <button class="list-group-item list-group-item-action d-flex align-items-center" onclick="entriesModule.executeBulkAction('payment', 'waived')">
+                <button class="list-group-item list-group-item-action d-flex align-items-center" data-action="entriesModule.executeBulkAction" data-args='["payment", "waived"]'>
                   <span class="badge bg-info me-3">Payment</span>
                   <span>Waive Payment</span>
                 </button>
                 <hr class="my-2">
-                <button class="list-group-item list-group-item-action d-flex align-items-center text-danger" onclick="entriesModule.executeBulkAction('delete')">
+                <button class="list-group-item list-group-item-action d-flex align-items-center text-danger" data-action="entriesModule.executeBulkAction" data-args='["delete"]'>
                   <span class="badge bg-danger me-3">Delete</span>
                   <span>Delete Selected Entries</span>
                 </button>
@@ -1582,7 +1681,9 @@ const entriesModule = {
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     const modal = new bootstrap.Modal(document.getElementById('bulkActionsModal'));
     modal.show();
-    document.getElementById('bulkActionsModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+    document.getElementById('bulkActionsModal').addEventListener('hidden.bs.modal', function () {
+      this.remove();
+    });
   },
 
   /**
@@ -1607,7 +1708,13 @@ const entriesModule = {
         };
 
         if (actionType === 'delete') {
-          if (!await utils.confirmDialog({ title: 'Delete Entries', message: `Are you sure you want to DELETE ${count} entries? This cannot be undone.` })) return;
+          if (
+            !(await utils.confirmDialog({
+              title: 'Delete Entries',
+              message: `Are you sure you want to DELETE ${count} entries? This cannot be undone.`,
+            }))
+          )
+            return;
 
           try {
             await chunkedApiOperation((chunk) =>
@@ -1621,7 +1728,15 @@ const entriesModule = {
             return;
           }
         } else if (actionType === 'status') {
-          if (!await utils.confirmDialog({ title: 'Change Entry Status', message: `Change status to "${value}" for ${count} entries?`, confirmText: 'Update', danger: false })) return;
+          if (
+            !(await utils.confirmDialog({
+              title: 'Change Entry Status',
+              message: `Change status to "${value}" for ${count} entries?`,
+              confirmText: 'Update',
+              danger: false,
+            }))
+          )
+            return;
 
           try {
             const updateData = { status: value };
@@ -1639,10 +1754,22 @@ const entriesModule = {
             return;
           }
         } else if (actionType === 'payment') {
-          if (!await utils.confirmDialog({ title: 'Change Payment Status', message: `Change payment status to "${value}" for ${count} entries?`, confirmText: 'Update', danger: false })) return;
+          if (
+            !(await utils.confirmDialog({
+              title: 'Change Payment Status',
+              message: `Change payment status to "${value}" for ${count} entries?`,
+              confirmText: 'Update',
+              danger: false,
+            }))
+          )
+            return;
 
           try {
-            await apiClient.updateByFilters('entries', { id: { operator: 'in', value: ids } }, { payment_status: value });
+            await apiClient.updateByFilters(
+              'entries',
+              { id: { operator: 'in', value: ids } },
+              { payment_status: value }
+            );
 
             utils.showToast(`${count} entries payment status updated to ${value}`, 'success');
           } catch (error) {
@@ -1671,7 +1798,7 @@ const entriesModule = {
   async showVotingLink(entryId) {
     try {
       // Get entry details
-      const entry = this.allEntries.find(e => e.id === entryId);
+      const entry = this.allEntries.find((e) => e.id === entryId);
       if (!entry) {
         utils.showToast('Entry not found', 'error');
         return;
@@ -1707,7 +1834,7 @@ const entriesModule = {
                   <label class="form-label fw-bold">Voting Link:</label>
                   <div class="input-group">
                     <input type="text" class="form-control" value="${safeVotingUrl}" id="votingLinkInput" readonly>
-                    <button class="btn btn-primary" onclick="utils.copyToClipboard('${safeVotingUrl}', 'Link copied!')">
+                    <button class="btn btn-primary" data-action="utils.copyToClipboard" data-args='${JSON.stringify([safeVotingUrl, 'Link copied!'])}'>
                       <i class="bi bi-clipboard"></i> Copy
                     </button>
                   </div>
@@ -1723,7 +1850,7 @@ const entriesModule = {
                   <div class="form-check form-switch">
                     <input class="form-check-input" type="checkbox" id="allowPublicVotingToggle"
                            ${entry.allow_public_voting ? 'checked' : ''}
-                           onchange="entriesModule.togglePublicVoting('${entryId}', this.checked)">
+                           data-on-check="entriesModule.togglePublicVoting" data-id="entryId">
                     <label class="form-check-label" for="allowPublicVotingToggle">
                       Allow public voting for this entry
                     </label>
@@ -1731,7 +1858,7 @@ const entriesModule = {
                   <div class="form-check form-switch">
                     <input class="form-check-input" type="checkbox" id="isPublicToggle"
                            ${entry.is_public ? 'checked' : ''}
-                           onchange="entriesModule.togglePublicVisibility('${entryId}', this.checked)">
+                           data-on-check="entriesModule.togglePublicVisibility" data-id="entryId">
                     <label class="form-check-label" for="isPublicToggle">
                       Show entry publicly
                     </label>
@@ -1750,7 +1877,7 @@ const entriesModule = {
               </div>
               <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" onclick="window.open('${safeVotingUrl}', '_blank')">
+                <button type="button" class="btn btn-primary" data-action="window.open" data-args='${JSON.stringify([safeVotingUrl, '_blank'])}'>
                   <i class="bi bi-box-arrow-up-right me-2"></i>Open Voting Page
                 </button>
               </div>
@@ -1773,10 +1900,9 @@ const entriesModule = {
       modal.show();
 
       // Clean up modal when closed
-      document.getElementById('votingLinkModal').addEventListener('hidden.bs.modal', function() {
+      document.getElementById('votingLinkModal').addEventListener('hidden.bs.modal', function () {
         this.remove();
       });
-
     } catch (error) {
       console.error('Error showing voting link:', error);
       utils.showToast('Failed to generate voting link', 'error');
@@ -1818,16 +1944,12 @@ const entriesModule = {
       await apiClient.update('entries', entryId, { allow_public_voting: enabled });
 
       // Update local data
-      const entry = this.allEntries.find(e => e.id === entryId);
+      const entry = this.allEntries.find((e) => e.id === entryId);
       if (entry) {
         entry.allow_public_voting = enabled;
       }
 
-      utils.showToast(
-        enabled ? 'Public voting enabled' : 'Public voting disabled',
-        'success'
-      );
-
+      utils.showToast(enabled ? 'Public voting enabled' : 'Public voting disabled', 'success');
     } catch (error) {
       console.error('Error toggling public voting:', error);
       utils.showToast('Failed to update voting settings', 'error');
@@ -1847,16 +1969,12 @@ const entriesModule = {
       await apiClient.update('entries', entryId, { is_public: isPublic });
 
       // Update local data
-      const entry = this.allEntries.find(e => e.id === entryId);
+      const entry = this.allEntries.find((e) => e.id === entryId);
       if (entry) {
         entry.is_public = isPublic;
       }
 
-      utils.showToast(
-        isPublic ? 'Entry is now public' : 'Entry is now private',
-        'success'
-      );
-
+      utils.showToast(isPublic ? 'Entry is now public' : 'Entry is now private', 'success');
     } catch (error) {
       console.error('Error toggling public visibility:', error);
       utils.showToast('Failed to update visibility', 'error');
@@ -1877,7 +1995,7 @@ const entriesModule = {
       award: document.getElementById('entriesAwardFilter')?.value || '',
       year: document.getElementById('entriesYearFilter')?.value || '',
       selfNom: document.getElementById('entriesSelfNomFilter')?.value || '',
-      search: document.getElementById('entriesSearchInput')?.value || ''
+      search: document.getElementById('entriesSearchInput')?.value || '',
     };
     try {
       const views = JSON.parse(localStorage.getItem('entriesSavedViews') || '[]');
@@ -1885,7 +2003,9 @@ const entriesModule = {
       localStorage.setItem('entriesSavedViews', JSON.stringify(views));
       this._renderSavedEntriesViews();
       utils.showToast('View saved: ' + name, 'success');
-    } catch(e) { utils.showToast('Failed to save view', 'warning'); }
+    } catch (e) {
+      utils.showToast('Failed to save view', 'warning');
+    }
   },
 
   _renderSavedEntriesViews() {
@@ -1897,9 +2017,12 @@ const entriesModule = {
         el.innerHTML = '<option value="">No saved views</option>';
         return;
       }
-      el.innerHTML = '<option value="">Load saved view...</option>' +
+      el.innerHTML =
+        '<option value="">Load saved view...</option>' +
         views.map((v, i) => `<option value="${i}">${utils.escapeHtml(v.name)}</option>`).join('');
-    } catch(e) { console.warn('Failed to render saved views:', e.message); }
+    } catch (e) {
+      console.warn('Failed to render saved views:', e.message);
+    }
   },
 
   loadSavedEntriesView(index) {
@@ -1914,7 +2037,9 @@ const entriesModule = {
       if (view.filters.search) document.getElementById('entriesSearchInput').value = view.filters.search;
       this.filterEntries();
       utils.showToast('Loaded view: ' + view.name, 'success');
-    } catch(e) { utils.showToast('Failed to load view', 'warning'); }
+    } catch (e) {
+      utils.showToast('Failed to load view', 'warning');
+    }
   },
 
   deleteSavedEntriesView(index) {
@@ -1925,7 +2050,9 @@ const entriesModule = {
       localStorage.setItem('entriesSavedViews', JSON.stringify(views));
       this._renderSavedEntriesViews();
       utils.showToast('Deleted view: ' + name, 'info');
-    } catch(e) { utils.showToast('Failed to delete view', 'warning'); }
+    } catch (e) {
+      utils.showToast('Failed to delete view', 'warning');
+    }
   },
 
   /* ==================================================== */
@@ -1942,11 +2069,11 @@ const entriesModule = {
     try {
       await apiClient.update('entries', entryId, { status: newStatus });
       // Update local state
-      const entry = this.allEntries.find(e => e.id === entryId);
+      const entry = this.allEntries.find((e) => e.id === entryId);
       if (entry) entry.status = newStatus;
       this.applyFilters();
       utils.showToast('Status updated to ' + newStatus, 'success');
-    } catch(e) {
+    } catch (e) {
       utils.showToast('Failed to update status', 'error');
     }
   },
@@ -1959,12 +2086,15 @@ const entriesModule = {
       const file = e.target.files[0];
       if (!file) return;
       const text = await file.text();
-      const lines = text.split('\n').filter(l => l.trim());
-      if (lines.length < 2) { utils.showToast('CSV file is empty', 'warning'); return; }
-      const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/"/g, ''));
+      const lines = text.split('\n').filter((l) => l.trim());
+      if (lines.length < 2) {
+        utils.showToast('CSV file is empty', 'warning');
+        return;
+      }
+      const headers = lines[0].split(',').map((h) => h.trim().toLowerCase().replace(/"/g, ''));
       const records = [];
       for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].match(/(".*?"|[^,]+)/g)?.map(v => v.replace(/^"|"$/g, '').trim()) || [];
+        const values = lines[i].match(/(".*?"|[^,]+)/g)?.map((v) => v.replace(/^"|"$/g, '').trim()) || [];
         const record = {};
         headers.forEach((h, idx) => {
           if (h.includes('title') || h === 'entry_title') record.entry_title = values[idx];
@@ -1974,8 +2104,19 @@ const entriesModule = {
         });
         if (record.entry_title || record.entry_number) records.push(record);
       }
-      if (records.length === 0) { utils.showToast('No valid records', 'warning'); return; }
-      if (!await utils.confirmDialog({ title: 'Import Entries', message: `Import ${records.length} entries?`, confirmText: 'Import', danger: false })) return;
+      if (records.length === 0) {
+        utils.showToast('No valid records', 'warning');
+        return;
+      }
+      if (
+        !(await utils.confirmDialog({
+          title: 'Import Entries',
+          message: `Import ${records.length} entries?`,
+          confirmText: 'Import',
+          danger: false,
+        }))
+      )
+        return;
       try {
         utils.showLoading();
         let imported = 0;
@@ -1997,7 +2138,7 @@ const entriesModule = {
       }
     };
     input.click();
-  }
+  },
 };
 
 // Export to window
@@ -2012,3 +2153,5 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+
+export { entriesModule };

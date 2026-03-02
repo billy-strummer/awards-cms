@@ -30,6 +30,9 @@ npm-debug.log*
 # Backups (local)
 backups/
 
+# Claude Code worktrees
+.claude/worktrees/
+
 # Temp files
 *.tmp
 *.bak

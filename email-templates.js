@@ -3,8 +3,16 @@
 /* ==================================================== */
 
 const emailTemplatesModule = {
+  /** @type {Array} Loaded email templates */
   templates: [],
+  /** @type {Object|null} Currently selected template for editing */
   currentTemplate: null,
+
+  // Server-side pagination state
+  /** @type {boolean} Whether server-side pagination is enabled */
+  _serverPagination: true,
+  /** @type {Object} Pagination state */
+  _pagination: { page: 1, totalPages: 1, count: 0, pageSize: 100 },
 
   /**
    * Default template content for reverting edits.
@@ -45,7 +53,7 @@ Please keep your entry reference number safe for future correspondence.
 If you have any questions about your entry or the awards process, please contact us at {CONTACT_EMAIL}
 
 Kind regards,
-The British Trade Awards Team`
+The British Trade Awards Team`,
     },
     'Document Upload Reminder': {
       subject: 'Supporting Documents Reminder - {ENTRY_NUMBER} | British Trade Awards',
@@ -69,7 +77,7 @@ The deadline for all entries and supporting materials is {DEADLINE_DATE}.
 If you have already uploaded your documents, please disregard this message. If you need any assistance, please contact us at {CONTACT_EMAIL}
 
 Kind regards,
-The British Trade Awards Team`
+The British Trade Awards Team`,
     },
     'Changes Requested': {
       subject: 'Action Required: Changes Requested - {ENTRY_TITLE}',
@@ -83,7 +91,7 @@ Feedback:
 Please log in to review the feedback and resubmit your entry.
 
 Kind regards,
-The British Trade Awards Team`
+The British Trade Awards Team`,
     },
 
     // -- Payments --
@@ -102,7 +110,7 @@ You can upload supporting documents at:
 We will be in touch with next steps. Good luck!
 
 Kind regards,
-The British Trade Awards Team`
+The British Trade Awards Team`,
     },
     'Payment Failed': {
       subject: 'Payment Issue: {ENTRY_NUMBER} - British Trade Awards',
@@ -115,7 +123,7 @@ Reason: {ERROR_MESSAGE}
 Please try again or contact us for assistance at {CONTACT_EMAIL}
 
 Kind regards,
-The British Trade Awards Team`
+The British Trade Awards Team`,
     },
     'Refund Confirmation': {
       subject: 'Refund Processed: {ENTRY_NUMBER} - British Trade Awards',
@@ -128,7 +136,7 @@ The refund should appear on your statement within 5-10 business days.
 If you have any questions, please contact us at {CONTACT_EMAIL}
 
 Kind regards,
-The British Trade Awards Team`
+The British Trade Awards Team`,
     },
     'Payment Reminder': {
       subject: 'Payment Pending - Entry {ENTRY_NUMBER}',
@@ -145,7 +153,7 @@ Please complete your payment to confirm your entry:
 If you have any questions, please contact us at {CONTACT_EMAIL}
 
 Kind regards,
-The British Trade Awards Team`
+The British Trade Awards Team`,
     },
 
     // -- Judging & Results --
@@ -167,7 +175,7 @@ Winners will be announced on {ANNOUNCEMENT_DATE}. We will be in touch with furth
 This is a fantastic achievement and a testament to the quality of your work. Well done to you and your team.
 
 Kind regards,
-The British Trade Awards Team`
+The British Trade Awards Team`,
     },
     'Entry Not Shortlisted': {
       subject: 'Your Entry Update - {ENTRY_NUMBER} | British Trade Awards',
@@ -186,7 +194,7 @@ We received an exceptionally high standard of entries this year, making the sele
 We would very much welcome an entry from you again next year and wish you continued success.
 
 Kind regards,
-The British Trade Awards Team`
+The British Trade Awards Team`,
     },
     'Winner Announcement': {
       subject: 'WINNER - {AWARD_NAME}!',
@@ -208,7 +216,7 @@ Awards Ceremony: {CEREMONY_DATE} at {CEREMONY_VENUE}
 We look forward to celebrating with you!
 
 Kind regards,
-The British Trade Awards Team`
+The British Trade Awards Team`,
     },
     'Judge Assignment': {
       subject: 'New Judging Assignment - British Trade Awards',
@@ -226,7 +234,7 @@ Please complete your scoring by the deadline. If you have any questions or confl
 Thank you for your contribution to the awards!
 
 Kind regards,
-The British Trade Awards Team`
+The British Trade Awards Team`,
     },
     'Judge Reminder': {
       subject: 'Judging Deadline Reminder - {DAYS_LEFT} Days Left',
@@ -246,7 +254,7 @@ Please log in to the Judge Portal to continue scoring:
 Thank you for your time and expertise!
 
 Kind regards,
-The British Trade Awards Team`
+The British Trade Awards Team`,
     },
 
     // -- Events --
@@ -265,7 +273,7 @@ Please RSVP at your earliest convenience:
 {RSVP_URL}
 
 Kind regards,
-The British Trade Awards Team`
+The British Trade Awards Team`,
     },
     'Ticket Issued': {
       subject: 'Your Ticket: {EVENT_NAME}',
@@ -280,7 +288,7 @@ Venue: {VENUE}
 Please present this ticket at check-in.
 
 Kind regards,
-The British Trade Awards Team`
+The British Trade Awards Team`,
     },
     'Deadline Reminder': {
       subject: 'Reminder: {DEADLINE_TYPE} Deadline in {DAYS_LEFT} Days',
@@ -294,7 +302,7 @@ Deadline: {DEADLINE_DATE}
 {ACTION_REQUIRED}
 
 Kind regards,
-The British Trade Awards Team`
+The British Trade Awards Team`,
     },
   },
 
@@ -303,28 +311,29 @@ The British Trade Awards Team`
    * These appear below the brand name in the email header.
    */
   _headerSubtitles: {
-    'confirmation':         'Self-Nomination Entry Confirmation',
-    'reminder':             'Document Upload Reminder',
-    'revision_request':     'Action Required',
-    'payment_confirmation': 'Self-Nomination Entry Confirmation',
-    'payment_failed':       'Payment Reminder',
-    'refund_confirmation':  'Refund Confirmation',
-    'payment_reminder':     'Payment Reminder',
-    'approval':             'Entry Approved/Shortlisted',
-    'rejection':            'Entry Not Shortlisted',
-    'winner_announcement':  'Winner Announcement',
-    'judge_assignment':     'Judging Assignment',
-    'judge_reminder':       'Judging Reminder',
-    'event_invitation':     'Event Invitation',
-    'ticket_issued':        'Ticket Issued',
-    'deadline_reminder':    'Deadline Reminder',
-    'general':              'Notification',
-    'notification':         'Notification',
-    'invite':               'Invitation',
+    confirmation: 'Self-Nomination Entry Confirmation',
+    reminder: 'Document Upload Reminder',
+    revision_request: 'Action Required',
+    payment_confirmation: 'Self-Nomination Entry Confirmation',
+    payment_failed: 'Payment Reminder',
+    refund_confirmation: 'Refund Confirmation',
+    payment_reminder: 'Payment Reminder',
+    approval: 'Entry Approved/Shortlisted',
+    rejection: 'Entry Not Shortlisted',
+    winner_announcement: 'Winner Announcement',
+    judge_assignment: 'Judging Assignment',
+    judge_reminder: 'Judging Reminder',
+    event_invitation: 'Event Invitation',
+    ticket_issued: 'Ticket Issued',
+    deadline_reminder: 'Deadline Reminder',
+    general: 'Notification',
+    notification: 'Notification',
+    invite: 'Invitation',
   },
 
   /**
    * Get sample data for preview/test, using saved placeholder defaults from Marketing > Placeholders
+   * @returns {Promise<Object>} Sample placeholder data keyed by placeholder name
    */
   async _getSampleData() {
     let defaults = null;
@@ -333,12 +342,18 @@ The British Trade Awards Team`
     }
     if (!defaults) {
       try {
-        const result = await apiClient.select('user_preferences', { select: 'value', filters: { key: { eq: 'emailPlaceholderDefaults' } }, pageSize: 1 });
+        const result = await apiClient.select('user_preferences', {
+          select: 'value',
+          filters: { key: { eq: 'emailPlaceholderDefaults' } },
+          pageSize: 1,
+        });
         if (result.data?.[0]) defaults = JSON.parse(result.data[0].value);
       } catch (_) {}
     }
     if (!defaults) {
-      try { defaults = JSON.parse(localStorage.getItem('emailPlaceholderDefaults') || 'null'); } catch (_) {}
+      try {
+        defaults = JSON.parse(localStorage.getItem('emailPlaceholderDefaults') || 'null');
+      } catch (_) {}
     }
     return {
       // Entry & Submissions
@@ -387,17 +402,19 @@ The British Trade Awards Team`
 
   /**
    * Get branding config for email styling
+   * @returns {Promise<Object>} Branding configuration object
    */
   async _getBrandingConfig() {
     try {
-      const tenantId = (typeof multiTenancyModule !== 'undefined') ? multiTenancyModule.getTenantId() : 'default';
+      const tenantId = typeof multiTenancyModule !== 'undefined' ? multiTenancyModule.getTenantId() : 'default';
       if (typeof brandingModule !== 'undefined') return await brandingModule.loadBranding(tenantId);
     } catch (_) {}
     return {};
   },
 
   /**
-   * Initialize Email Templates Module
+   * Initialize Email Templates Module - loads templates and shows loading state
+   * @returns {Promise<void>}
    */
   async initialize() {
     try {
@@ -412,20 +429,51 @@ The British Trade Awards Team`
   },
 
   /**
-   * Load all email templates
+   * Fetch a page of email templates from the server
+   * @param {number} page - The page number to fetch
+   * @returns {Promise<Array>} The fetched templates
+   */
+  async _fetchPage(page) {
+    this._pagination.page = page;
+    const result = await apiClient.select('email_templates', {
+      sort: { column: 'template_type', ascending: true },
+      page,
+      pageSize: this._pagination.pageSize,
+    });
+    this._pagination = { ...this._pagination, ...result, page };
+    return result.data;
+  },
+
+  /**
+   * Navigate to a specific page and re-render the template list
+   * @param {number} page - Target page number
+   * @returns {void}
+   */
+  _goToPage(page) {
+    this._fetchPage(page).then((data) => {
+      this.templates = data || [];
+      this.renderTemplatesList();
+    });
+  },
+
+  /**
+   * Build server-side filters from current state
+   * @returns {Object} Filter object for apiClient
+   */
+  _buildServerFilters() {
+    const f = {};
+    return f;
+  },
+
+  /**
+   * Load all email templates with pagination
+   * @returns {Promise<void>}
    */
   async loadTemplates() {
     try {
-      const { data: templates, error } = await STATE.client
-        .from('email_templates')
-        .select('*')
-        .order('template_type', { ascending: true, nullsFirst: false });
-
-      if (error) throw error;
-
-      this.templates = templates || [];
+      const data = await this._fetchPage(1);
+      this.templates = data || [];
       this.renderTemplatesList();
-
     } catch (error) {
       console.error('Error loading templates:', error);
       throw error;
@@ -437,13 +485,27 @@ The British Trade Awards Team`
    */
   // Group definitions: map template_type to a workflow group
   templateGroups: {
-    'Entry & Submissions':  { types: ['confirmation', 'reminder', 'revision_request'], icon: 'bi-pencil-square' },
-    'Payments':             { types: ['payment_confirmation', 'payment_failed', 'refund_confirmation', 'payment_reminder'], icon: 'bi-credit-card' },
-    'Judging & Results':    { types: ['approval', 'rejection', 'winner_announcement', 'judge_assignment', 'judge_reminder'], icon: 'bi-trophy' },
-    'Events & Invitations': { types: ['event_invitation', 'ticket_issued', 'deadline_reminder'], icon: 'bi-calendar-event' },
-    'General':              { types: ['general', 'notification', 'invite'], icon: 'bi-megaphone' },
+    'Entry & Submissions': { types: ['confirmation', 'reminder', 'revision_request'], icon: 'bi-pencil-square' },
+    Payments: {
+      types: ['payment_confirmation', 'payment_failed', 'refund_confirmation', 'payment_reminder'],
+      icon: 'bi-credit-card',
+    },
+    'Judging & Results': {
+      types: ['approval', 'rejection', 'winner_announcement', 'judge_assignment', 'judge_reminder'],
+      icon: 'bi-trophy',
+    },
+    'Events & Invitations': {
+      types: ['event_invitation', 'ticket_issued', 'deadline_reminder'],
+      icon: 'bi-calendar-event',
+    },
+    General: { types: ['general', 'notification', 'invite'], icon: 'bi-megaphone' },
   },
 
+  /**
+   * Get the workflow group name for a given template type
+   * @param {string} type - Template type identifier
+   * @returns {string} Group name (e.g. 'Payments', 'Entry & Submissions')
+   */
   getGroupForType(type) {
     for (const [groupName, config] of Object.entries(this.templateGroups)) {
       if (config.types.includes(type)) return groupName;
@@ -456,21 +518,39 @@ The British Trade Awards Team`
    * (e.g. after payment, on entry submission, by cron jobs).
    * These get an "Auto" badge so admins know editing them affects live emails.
    */
+  /**
+   * Check if a template type is auto-triggered by the system
+   * @param {string} type - Template type identifier
+   * @returns {boolean} Whether the template is automatically sent
+   */
   _isAutoTemplate(type) {
     const autoTypes = [
-      'confirmation', 'reminder', 'revision_request',
-      'payment_confirmation', 'payment_failed', 'refund_confirmation', 'payment_reminder',
-      'approval', 'rejection', 'winner_announcement',
-      'judge_assignment', 'judge_reminder', 'deadline_reminder',
+      'confirmation',
+      'reminder',
+      'revision_request',
+      'payment_confirmation',
+      'payment_failed',
+      'refund_confirmation',
+      'payment_reminder',
+      'approval',
+      'rejection',
+      'winner_announcement',
+      'judge_assignment',
+      'judge_reminder',
+      'deadline_reminder',
     ];
     return autoTypes.includes(type);
   },
 
+  /**
+   * Render the templates sidebar list grouped by workflow stage
+   * @returns {void}
+   */
   renderTemplatesList() {
     const container = document.getElementById('templatesList');
 
     // Filter out system header/footer templates — those come from branding
-    const visible = this.templates.filter(t => !['email_header', 'email_footer'].includes(t.template_type));
+    const visible = this.templates.filter((t) => !['email_header', 'email_footer'].includes(t.template_type));
 
     if (visible.length === 0) {
       container.innerHTML = `
@@ -484,17 +564,24 @@ The British Trade Awards Team`
 
     // Group templates by workflow stage
     const grouped = {};
-    visible.forEach(template => {
+    visible.forEach((template) => {
       const group = this.getGroupForType(template.template_type);
       if (!grouped[group]) grouped[group] = [];
       grouped[group].push(template);
     });
 
     // Render with group headers in a defined order
-    const groupOrder = ['Entry & Submissions', 'Payments', 'Judging & Results', 'Events & Invitations', 'General', 'Other'];
+    const groupOrder = [
+      'Entry & Submissions',
+      'Payments',
+      'Judging & Results',
+      'Events & Invitations',
+      'General',
+      'Other',
+    ];
     let html = '';
 
-    groupOrder.forEach(groupName => {
+    groupOrder.forEach((groupName) => {
       const templates = grouped[groupName];
       if (!templates || templates.length === 0) return;
 
@@ -505,12 +592,13 @@ The British Trade Awards Team`
         </div>
       `;
 
-      html += templates.map(template => {
-        const isAuto = this._isAutoTemplate(template.template_type);
-        const descTip = template.description ? ` title="${template.description.replace(/"/g, '&quot;')}"` : '';
-        return `
+      html += templates
+        .map((template) => {
+          const isAuto = this._isAutoTemplate(template.template_type);
+          const descTip = template.description ? ` title="${template.description.replace(/"/g, '&quot;')}"` : '';
+          return `
         <a href="#" class="list-group-item list-group-item-action ${this.currentTemplate?.id === template.id ? 'active' : ''}"
-           onclick="emailTemplatesModule.selectTemplate('${template.id}'); return false;"${descTip}>
+           data-action="emailTemplatesModule.selectTemplate" data-id="${template.id}"${descTip}>
           <div class="d-flex justify-content-between align-items-start">
             <div>
               <strong>${template.template_name || template.name || 'Untitled'}</strong>
@@ -526,32 +614,48 @@ The British Trade Awards Team`
             </div>
           </div>
         </a>
-      `}).join('');
+      `;
+        })
+        .join('');
     });
 
     container.innerHTML = html;
+
+    // Attach delegated click handler for template selection
+    container.addEventListener('click', (e) => {
+      const actionEl = e.target.closest('[data-action="emailTemplatesModule.selectTemplate"]');
+      if (actionEl) {
+        e.preventDefault();
+        this.selectTemplate(actionEl.getAttribute('data-id'));
+      }
+    });
   },
 
+  /**
+   * Get a human-readable label for a template type
+   * @param {string} type - Template type identifier
+   * @returns {string} Human-readable label
+   */
   getTypeLabel(type) {
     const labels = {
-      'confirmation':         'Entry Confirmation',
-      'reminder':             'Upload Reminder',
-      'revision_request':     'Changes Requested',
-      'payment_confirmation': 'Payment Confirmation',
-      'payment_failed':       'Payment Failed',
-      'refund_confirmation':  'Refund Confirmation',
-      'payment_reminder':     'Payment Reminder',
-      'approval':             'Approved / Shortlisted',
-      'rejection':            'Not Shortlisted',
-      'winner_announcement':  'Winner Announcement',
-      'judge_assignment':     'Judge Assignment',
-      'judge_reminder':       'Judge Reminder',
-      'event_invitation':     'Event Invitation',
-      'ticket_issued':        'Ticket Issued',
-      'deadline_reminder':    'Deadline Reminder',
-      'general':              'General',
-      'notification':         'Notification',
-      'invite':               'Invitation',
+      confirmation: 'Entry Confirmation',
+      reminder: 'Upload Reminder',
+      revision_request: 'Changes Requested',
+      payment_confirmation: 'Payment Confirmation',
+      payment_failed: 'Payment Failed',
+      refund_confirmation: 'Refund Confirmation',
+      payment_reminder: 'Payment Reminder',
+      approval: 'Approved / Shortlisted',
+      rejection: 'Not Shortlisted',
+      winner_announcement: 'Winner Announcement',
+      judge_assignment: 'Judge Assignment',
+      judge_reminder: 'Judge Reminder',
+      event_invitation: 'Event Invitation',
+      ticket_issued: 'Ticket Issued',
+      deadline_reminder: 'Deadline Reminder',
+      general: 'General',
+      notification: 'Notification',
+      invite: 'Invitation',
     };
     return labels[type] || type || '';
   },
@@ -560,7 +664,7 @@ The British Trade Awards Team`
    * Select template for editing
    */
   async selectTemplate(templateId) {
-    const template = this.templates.find(t => t.id === templateId);
+    const template = this.templates.find((t) => t.id === templateId);
     if (!template) return;
 
     this.currentTemplate = template;
@@ -574,23 +678,28 @@ The British Trade Awards Team`
   renderTemplateEditor(template) {
     document.getElementById('editorTitle').textContent = template.template_name;
 
-    const placeholdersList = template.available_placeholders && template.available_placeholders.length > 0
-      ? `
+    const placeholdersList =
+      template.available_placeholders && template.available_placeholders.length > 0
+        ? `
         <div class="alert alert-info">
           <strong><i class="bi bi-info-circle me-2"></i>Available Placeholders:</strong>
           <div class="mt-2">
-            ${template.available_placeholders.map(p => `
+            ${template.available_placeholders
+              .map(
+                (p) => `
               <span class="badge bg-light text-dark me-1 mb-1" style="cursor: pointer;"
-                    onclick="emailTemplatesModule.insertPlaceholder('{${p}}')"
+                    data-action="emailTemplatesModule.insertPlaceholder" data-placeholder="{${p}}"
                     title="Click to insert">
                 {${p}}
               </span>
-            `).join('')}
+            `
+              )
+              .join('')}
           </div>
           <small class="text-muted d-block mt-2">Click a placeholder to insert it at the cursor position</small>
         </div>
       `
-      : '';
+        : '';
 
     const editor = document.getElementById('templateEditor');
     editor.innerHTML = `
@@ -680,30 +789,64 @@ The British Trade Awards Team`
 
         <!-- Action Buttons -->
         <div class="d-flex gap-2 flex-wrap">
-          <button type="button" class="btn btn-primary" onclick="emailTemplatesModule.saveTemplate()">
+          <button type="button" class="btn btn-primary" data-action="emailTemplatesModule.saveTemplate">
             <i class="bi bi-save me-2"></i>Save Template
           </button>
-          <button type="button" class="btn btn-outline-secondary" onclick="emailTemplatesModule.previewTemplate()">
+          <button type="button" class="btn btn-outline-secondary" data-action="emailTemplatesModule.previewTemplate">
             <i class="bi bi-eye me-2"></i>Preview
           </button>
-          <button type="button" class="btn btn-outline-info" onclick="emailTemplatesModule.sendTestEmail()">
+          <button type="button" class="btn btn-outline-info" data-action="emailTemplatesModule.sendTestEmail">
             <i class="bi bi-envelope me-2"></i>Send Test
           </button>
-          ${this._defaultTemplates[template.template_name] ? `
-            <button type="button" class="btn btn-outline-warning" onclick="emailTemplatesModule.revertToDefault()">
+          ${
+            this._defaultTemplates[template.template_name]
+              ? `
+            <button type="button" class="btn btn-outline-warning" data-action="emailTemplatesModule.revertToDefault">
               <i class="bi bi-arrow-counterclockwise me-2"></i>Revert to Default
             </button>
-          ` : ''}
-          <button type="button" class="btn btn-outline-danger ms-auto" onclick="emailTemplatesModule.deleteTemplate('${template.id}')">
+          `
+              : ''
+          }
+          <button type="button" class="btn btn-outline-danger ms-auto" data-action="emailTemplatesModule.deleteTemplate" data-id="${template.id}">
             <i class="bi bi-trash me-2"></i>Delete
           </button>
         </div>
       </form>
     `;
+
+    // Attach delegated click handler for editor action buttons
+    editor.addEventListener('click', (e) => {
+      const actionEl = e.target.closest('[data-action]');
+      if (!actionEl) return;
+      e.preventDefault();
+      const action = actionEl.getAttribute('data-action');
+      const id = actionEl.getAttribute('data-id');
+      switch (action) {
+        case 'emailTemplatesModule.saveTemplate':
+          this.saveTemplate();
+          break;
+        case 'emailTemplatesModule.previewTemplate':
+          this.previewTemplate();
+          break;
+        case 'emailTemplatesModule.sendTestEmail':
+          this.sendTestEmail();
+          break;
+        case 'emailTemplatesModule.revertToDefault':
+          this.revertToDefault();
+          break;
+        case 'emailTemplatesModule.deleteTemplate':
+          this.deleteTemplate(id);
+          break;
+        case 'emailTemplatesModule.insertPlaceholder':
+          this.insertPlaceholder(actionEl.getAttribute('data-placeholder'));
+          break;
+      }
+    });
   },
 
   /**
-   * Insert placeholder at cursor position
+   * Insert placeholder at cursor position in the template body
+   * @param {string} placeholder - The placeholder text to insert
    */
   insertPlaceholder(placeholder) {
     const textarea = document.getElementById('templateBody');
@@ -719,7 +862,8 @@ The British Trade Awards Team`
   },
 
   /**
-   * Save template
+   * Save the currently selected template to the database
+   * @returns {Promise<void>}
    */
   async saveTemplate() {
     let templateData;
@@ -733,15 +877,10 @@ The British Trade Awards Team`
         is_active: document.getElementById('templateActive').checked,
         is_default: document.getElementById('templateDefault').checked,
         updated_at: new Date().toISOString(),
-        last_modified_by: STATE.currentUser?.email || 'admin'
+        last_modified_by: STATE.currentUser?.email || 'admin',
       };
 
-      const { error } = await STATE.client
-        .from('email_templates')
-        .update(templateData)
-        .eq('id', this.currentTemplate.id);
-
-      if (error) throw error;
+      await apiClient.update('email_templates', this.currentTemplate.id, templateData);
     } catch (error) {
       console.warn('DB update for template failed, using localStorage:', error);
       localStorage.setItem(`bta_email_template_${this.currentTemplate.id}`, JSON.stringify(templateData));
@@ -766,12 +905,16 @@ The British Trade Awards Team`
       return;
     }
 
-    if (!await utils.confirmDialog({
-      title: 'Revert to Default',
-      message: 'This will replace the current subject line and email body with the original default copy. Any edits you have made will be lost.<br><br>Are you sure you want to continue?',
-      confirmText: 'Revert',
-      danger: true
-    })) return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Revert to Default',
+        message:
+          'This will replace the current subject line and email body with the original default copy. Any edits you have made will be lost.<br><br>Are you sure you want to continue?',
+        confirmText: 'Revert',
+        danger: true,
+      }))
+    )
+      return;
 
     const subjectEl = document.getElementById('templateSubject');
     const bodyEl = document.getElementById('templateBody');
@@ -796,7 +939,7 @@ The British Trade Awards Team`
     let previewSubject = subject;
     let previewBody = body;
 
-    Object.keys(sampleData).forEach(key => {
+    Object.keys(sampleData).forEach((key) => {
       const placeholder = `{${key}}`;
       const regex = new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
       previewSubject = previewSubject.replace(regex, sampleData[key]);
@@ -859,7 +1002,7 @@ The British Trade Awards Team`
     modal.show();
 
     // Clean up
-    document.getElementById('previewModal').addEventListener('hidden.bs.modal', function() {
+    document.getElementById('previewModal').addEventListener('hidden.bs.modal', function () {
       this.remove();
     });
   },
@@ -885,7 +1028,7 @@ The British Trade Awards Team`
 
     let testSubject = subject;
     let testBody = body;
-    Object.keys(sampleData).forEach(key => {
+    Object.keys(sampleData).forEach((key) => {
       const regex = new RegExp(`\\{${key}\\}`, 'g');
       testSubject = testSubject.replace(regex, sampleData[key]);
       testBody = testBody.replace(regex, sampleData[key]);
@@ -913,7 +1056,7 @@ The British Trade Awards Team`
         p_html: testBody,
         p_from_name: fromName,
         p_from_email: fromEmail,
-        p_reply_to: replyTo
+        p_reply_to: replyTo,
       });
 
       if (error) throw error;
@@ -927,25 +1070,29 @@ The British Trade Awards Team`
   },
 
   /**
-   * Delete template
+   * Delete a template by ID with confirmation
+   * @param {string} templateId - The template ID to delete
+   * @returns {Promise<void>}
    */
   async deleteTemplate(templateId) {
-    const template = (this.templates || []).find(t => t.id === templateId);
+    const template = (this.templates || []).find((t) => t.id === templateId);
     const templateName = template?.template_name || template?.name || template?.subject || 'this template';
     const warningExtra = template?.is_default
       ? '<br><br><em>This is a default template. You can re-create it later if needed.</em>'
       : '';
-    if (!await utils.confirmDialog({ title: 'Delete Template', message: `Delete <strong>${utils.escapeHtml(templateName)}</strong>? This action cannot be undone.${warningExtra}`, confirmText: 'Delete', danger: true })) {
+    if (
+      !(await utils.confirmDialog({
+        title: 'Delete Template',
+        message: `Delete <strong>${utils.escapeHtml(templateName)}</strong>? This action cannot be undone.${warningExtra}`,
+        confirmText: 'Delete',
+        danger: true,
+      }))
+    ) {
       return;
     }
 
     try {
-      const { error } = await STATE.client
-        .from('email_templates')
-        .delete()
-        .eq('id', templateId);
-
-      if (error) throw error;
+      await apiClient.delete('email_templates', templateId);
 
       utils.showToast('Template deleted successfully', 'success');
       this.currentTemplate = null;
@@ -958,7 +1105,6 @@ The British Trade Awards Team`
       document.getElementById('editorTitle').textContent = 'Select a template';
 
       await this.loadTemplates();
-
     } catch (error) {
       console.error('Error deleting template:', error);
       utils.showToast('Failed to delete template: ' + error.message, 'error');
@@ -966,7 +1112,8 @@ The British Trade Awards Team`
   },
 
   /**
-   * Create new template via modal
+   * Open the create new template modal dialog
+   * @returns {void}
    */
   newTemplate() {
     const modalHtml = `
@@ -1053,7 +1200,7 @@ The British Trade Awards Team`
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="button" class="btn btn-primary" onclick="emailTemplatesModule.saveNewTemplate()">
+              <button type="button" class="btn btn-primary" data-action="emailTemplatesModule.saveNewTemplate">
                 <i class="bi bi-save me-2"></i>Create Template
               </button>
             </div>
@@ -1066,12 +1213,23 @@ The British Trade Awards Team`
     if (existing) existing.remove();
 
     document.body.insertAdjacentHTML('beforeend', modalHtml);
-    const modal = new bootstrap.Modal(document.getElementById('newTemplateModal'));
+
+    const modalEl = document.getElementById('newTemplateModal');
+    modalEl.addEventListener('click', (e) => {
+      const actionEl = e.target.closest('[data-action="emailTemplatesModule.saveNewTemplate"]');
+      if (actionEl) {
+        e.preventDefault();
+        this.saveNewTemplate();
+      }
+    });
+
+    const modal = new bootstrap.Modal(modalEl);
     modal.show();
   },
 
   /**
    * Save a new template to the database
+   * @returns {Promise<void>}
    */
   async saveNewTemplate() {
     const form = document.getElementById('newTemplateForm');
@@ -1082,7 +1240,10 @@ The British Trade Awards Team`
 
     const placeholdersRaw = document.getElementById('newTemplatePlaceholders').value;
     const placeholders = placeholdersRaw
-      ? placeholdersRaw.split(',').map(p => p.trim()).filter(p => p)
+      ? placeholdersRaw
+          .split(',')
+          .map((p) => p.trim())
+          .filter((p) => p)
       : [];
 
     const templateData = {
@@ -1097,25 +1258,19 @@ The British Trade Awards Team`
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       created_by: STATE.currentUser?.email || 'admin',
-      last_modified_by: STATE.currentUser?.email || 'admin'
+      last_modified_by: STATE.currentUser?.email || 'admin',
     };
 
     try {
       await utils.protectModalDuringSave('newTemplateModal', async () => {
-        const { data, error } = await STATE.client
-          .from('email_templates')
-          .insert(templateData)
-          .select()
-          .single();
-
-        if (error) throw error;
+        const result = await apiClient.insert('email_templates', templateData);
 
         bootstrap.Modal.getInstance(document.getElementById('newTemplateModal'))?.hide();
         await this.loadTemplates();
 
         // Auto-select the new template
-        if (data?.id) {
-          this.selectTemplate(data.id);
+        if (result.data?.id) {
+          this.selectTemplate(result.data.id);
         }
       });
       utils.showToast('Template created successfully!', 'success');
@@ -1129,7 +1284,7 @@ The British Trade Awards Team`
       bootstrap.Modal.getInstance(document.getElementById('newTemplateModal'))?.hide();
       utils.showToast('Template saved locally', 'success');
     }
-  }
+  },
 };
 
 // Export to window
@@ -1155,3 +1310,5 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+
+export { emailTemplatesModule };

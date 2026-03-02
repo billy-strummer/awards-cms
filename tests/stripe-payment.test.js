@@ -8,35 +8,43 @@ const mockCheckoutCreate = jest.fn();
 const mockWebhooksConstruct = jest.fn();
 const mockSessionRetrieve = jest.fn();
 
-jest.mock('stripe', () => {
-  return jest.fn(() => ({
-    checkout: {
-      sessions: {
-        create: mockCheckoutCreate,
-        retrieve: mockSessionRetrieve
-      }
-    },
-    webhooks: {
-      constructEvent: mockWebhooksConstruct
-    }
-  }));
-}, { virtual: true });
+jest.mock(
+  'stripe',
+  () => {
+    return jest.fn(() => ({
+      checkout: {
+        sessions: {
+          create: mockCheckoutCreate,
+          retrieve: mockSessionRetrieve,
+        },
+      },
+      webhooks: {
+        constructEvent: mockWebhooksConstruct,
+      },
+    }));
+  },
+  { virtual: true }
+);
 
 // Mock Resend
-jest.mock('resend', () => ({
-  Resend: jest.fn(() => ({
-    emails: { send: jest.fn(() => Promise.resolve({ id: 'email-123' })) }
-  }))
-}), { virtual: true });
+jest.mock(
+  'resend',
+  () => ({
+    Resend: jest.fn(() => ({
+      emails: { send: jest.fn(() => Promise.resolve({ id: 'email-123' })) },
+    })),
+  }),
+  { virtual: true }
+);
 
 // Mock Supabase
-const mockSelect = jest.fn();
-const mockInsert = jest.fn();
-const mockUpdate = jest.fn();
-const mockEq = jest.fn();
-const mockSingle = jest.fn();
-const mockOrder = jest.fn();
-const mockLimit = jest.fn();
+const _mockSelect = jest.fn();
+const _mockInsert = jest.fn();
+const _mockUpdate = jest.fn();
+const _mockEq = jest.fn();
+const _mockSingle = jest.fn();
+const _mockOrder = jest.fn();
+const _mockLimit = jest.fn();
 
 function chainable(resolveWith = { data: null, error: null }) {
   const obj = {
@@ -49,7 +57,7 @@ function chainable(resolveWith = { data: null, error: null }) {
     limit: jest.fn(() => obj),
     single: jest.fn(() => Promise.resolve(resolveWith)),
     maybeSingle: jest.fn(() => Promise.resolve(resolveWith)),
-    then: (resolve) => resolve(resolveWith)
+    then: (resolve) => resolve(resolveWith),
   };
   return obj;
 }
@@ -61,17 +69,25 @@ const mockFrom = jest.fn(() => {
   return currentChain;
 });
 
-jest.mock('@supabase/supabase-js', () => ({
-  createClient: jest.fn(() => ({
-    from: mockFrom,
-    auth: { getUser: mockGetUser }
-  }))
-}), { virtual: true });
+jest.mock(
+  '@supabase/supabase-js',
+  () => ({
+    createClient: jest.fn(() => ({
+      from: mockFrom,
+      auth: { getUser: mockGetUser },
+    })),
+  }),
+  { virtual: true }
+);
 
 // Mock email-header
-jest.mock('../api/email-header', () => ({
-  wrapEmail: jest.fn((body) => `<html>${body}</html>`)
-}), { virtual: true });
+jest.mock(
+  '../api/email-header',
+  () => ({
+    wrapEmail: jest.fn((body) => `<html>${body}</html>`),
+  }),
+  { virtual: true }
+);
 
 // Set env vars
 process.env.STRIPE_SECRET_KEY = 'sk_test_123';
@@ -83,8 +99,8 @@ process.env.RESEND_API_KEY = 'test-resend-key';
 const {
   createCheckoutSession,
   handleStripeWebhook,
-  getPaymentStatus,
-  verifyPayment
+  getPaymentStatus: _getPaymentStatus,
+  verifyPayment,
 } = require('../api/stripe-payment');
 
 // ==========================================
@@ -98,9 +114,9 @@ function createReq({ method = 'POST', body = {}, headers = {}, params = {} } = {
     headers: {
       authorization: 'Bearer valid-token',
       origin: 'http://localhost:3000',
-      ...headers
+      ...headers,
     },
-    params
+    params,
   };
 }
 
@@ -109,11 +125,24 @@ function createRes() {
     statusCode: null,
     body: null,
     headers: {},
-    status(code) { res.statusCode = code; return res; },
-    json(data) { res.body = data; return res; },
-    send(data) { res.body = data; return res; },
-    end() { return res; },
-    setHeader(key, value) { res.headers[key] = value; }
+    status(code) {
+      res.statusCode = code;
+      return res;
+    },
+    json(data) {
+      res.body = data;
+      return res;
+    },
+    send(data) {
+      res.body = data;
+      return res;
+    },
+    end() {
+      return res;
+    },
+    setHeader(key, value) {
+      res.headers[key] = value;
+    },
   };
   return res;
 }
@@ -127,7 +156,7 @@ describe('Stripe Payment API - createCheckoutSession', () => {
     jest.clearAllMocks();
     mockGetUser.mockResolvedValue({
       data: { user: { id: 'user-123', email: 'admin@test.com' } },
-      error: null
+      error: null,
     });
   });
 
@@ -142,7 +171,7 @@ describe('Stripe Payment API - createCheckoutSession', () => {
   test('rejects request without Bearer token', async () => {
     const req = createReq({
       body: { entryId: '123', amount: 100 },
-      headers: { authorization: undefined }
+      headers: { authorization: undefined },
     });
     delete req.headers.authorization;
     const res = createRes();
@@ -205,7 +234,7 @@ describe('Stripe Payment API - createCheckoutSession', () => {
     mockCheckoutCreate.mockResolvedValue({
       id: 'cs_123',
       url: 'https://checkout.stripe.com/123',
-      payment_intent: 'pi_123'
+      payment_intent: 'pi_123',
     });
 
     // Use from() for the update call too
@@ -226,7 +255,7 @@ describe('Stripe Payment API - createCheckoutSession', () => {
     mockCheckoutCreate.mockResolvedValue({
       id: 'cs_123',
       url: 'https://checkout.stripe.com/123',
-      payment_intent: 'pi_123'
+      payment_intent: 'pi_123',
     });
 
     mockFrom.mockReturnValueOnce(chainable());
@@ -257,7 +286,7 @@ describe('Stripe Payment API - Webhook', () => {
     });
 
     const req = createReq({
-      headers: { 'stripe-signature': 'invalid-sig' }
+      headers: { 'stripe-signature': 'invalid-sig' },
     });
     const res = createRes();
     await handleStripeWebhook(req, res);
@@ -272,23 +301,25 @@ describe('Stripe Payment API - Webhook', () => {
         object: {
           metadata: { entry_id: 'e-1' },
           payment_intent: 'pi_123',
-          amount_total: 15000
-        }
-      }
+          amount_total: 15000,
+        },
+      },
     });
 
     // Mock the database calls in handleCheckoutSessionCompleted
-    mockFrom.mockReturnValue(chainable({
-      data: {
-        id: 'e-1',
-        entry_number: 'BTA-001',
-        contact_email: 'test@test.com',
-        contact_name: 'Test',
-        entry_title: 'Best Plumber',
-        organisation_id: 'org-1'
-      },
-      error: null
-    }));
+    mockFrom.mockReturnValue(
+      chainable({
+        data: {
+          id: 'e-1',
+          entry_number: 'BTA-001',
+          contact_email: 'test@test.com',
+          contact_name: 'Test',
+          entry_title: 'Best Plumber',
+          organisation_id: 'org-1',
+        },
+        error: null,
+      })
+    );
 
     const req = createReq({ headers: { 'stripe-signature': 'valid-sig' } });
     const res = createRes();
@@ -303,9 +334,9 @@ describe('Stripe Payment API - Webhook', () => {
       data: {
         object: {
           id: 'pi_fail_123',
-          last_payment_error: { message: 'Card declined' }
-        }
-      }
+          last_payment_error: { message: 'Card declined' },
+        },
+      },
     });
 
     mockFrom.mockReturnValue(chainable({ data: [], error: null }));
@@ -323,9 +354,9 @@ describe('Stripe Payment API - Webhook', () => {
       data: {
         object: {
           id: 'ch_123',
-          payment_intent: 'pi_123'
-        }
-      }
+          payment_intent: 'pi_123',
+        },
+      },
     });
 
     mockFrom.mockReturnValue(chainable({ data: [], error: null }));
@@ -340,7 +371,7 @@ describe('Stripe Payment API - Webhook', () => {
   test('handles unknown event types gracefully', async () => {
     mockWebhooksConstruct.mockReturnValue({
       type: 'customer.subscription.created',
-      data: { object: {} }
+      data: { object: {} },
     });
 
     const req = createReq({ headers: { 'stripe-signature': 'valid-sig' } });
@@ -360,7 +391,7 @@ describe('Stripe Payment API - verifyPayment', () => {
     mockSessionRetrieve.mockResolvedValue({
       payment_status: 'paid',
       customer_email: 'buyer@test.com',
-      amount_total: 15000
+      amount_total: 15000,
     });
 
     const req = createReq({ params: { sessionId: 'cs_123' } });

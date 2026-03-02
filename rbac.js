@@ -10,39 +10,88 @@ const rbacModule = {
   ROLES: {
     super_admin: {
       label: 'Super Admin',
-      modules: ['dashboard', 'awards', 'organisations', 'winners', 'entries', 'events', 'media-gallery', 'marketing', 'payments', 'crm', 'settings', 'reports', 'bitcoin'],
-      actions: ['create', 'read', 'update', 'delete', 'export', 'import', 'manage_users', 'manage_roles', 'gdpr', 'backup']
+      modules: [
+        'dashboard',
+        'awards',
+        'organisations',
+        'winners',
+        'entries',
+        'events',
+        'media-gallery',
+        'marketing',
+        'payments',
+        'crm',
+        'settings',
+        'reports',
+        'bitcoin',
+      ],
+      actions: [
+        'create',
+        'read',
+        'update',
+        'delete',
+        'export',
+        'import',
+        'manage_users',
+        'manage_roles',
+        'gdpr',
+        'backup',
+      ],
     },
     admin: {
       label: 'Admin',
-      modules: ['dashboard', 'awards', 'organisations', 'winners', 'entries', 'events', 'media-gallery', 'marketing', 'payments', 'crm', 'settings', 'reports', 'bitcoin'],
-      actions: ['create', 'read', 'update', 'delete', 'export', 'import', 'backup']
+      modules: [
+        'dashboard',
+        'awards',
+        'organisations',
+        'winners',
+        'entries',
+        'events',
+        'media-gallery',
+        'marketing',
+        'payments',
+        'crm',
+        'settings',
+        'reports',
+        'bitcoin',
+      ],
+      actions: ['create', 'read', 'update', 'delete', 'export', 'import', 'backup'],
     },
     editor: {
       label: 'Editor',
-      modules: ['dashboard', 'awards', 'organisations', 'winners', 'entries', 'events', 'media-gallery', 'marketing', 'reports'],
-      actions: ['create', 'read', 'update', 'export']
+      modules: [
+        'dashboard',
+        'awards',
+        'organisations',
+        'winners',
+        'entries',
+        'events',
+        'media-gallery',
+        'marketing',
+        'reports',
+      ],
+      actions: ['create', 'read', 'update', 'export'],
     },
     viewer: {
       label: 'Viewer',
       modules: ['dashboard', 'awards', 'organisations', 'winners', 'entries', 'events', 'media-gallery', 'reports'],
-      actions: ['read', 'export']
+      actions: ['read', 'export'],
     },
     judge: {
       label: 'Judge',
       modules: ['dashboard'],
-      actions: ['read']
+      actions: ['read'],
     },
     marketing: {
       label: 'Marketing',
       modules: ['dashboard', 'marketing', 'media-gallery', 'reports'],
-      actions: ['create', 'read', 'update', 'export']
+      actions: ['create', 'read', 'update', 'export'],
     },
     finance: {
       label: 'Finance',
       modules: ['dashboard', 'payments', 'reports'],
-      actions: ['create', 'read', 'update', 'export']
-    }
+      actions: ['create', 'read', 'update', 'export'],
+    },
   },
 
   /**
@@ -70,7 +119,6 @@ const rbacModule = {
       this.permissions = this.ROLES[this.currentRole] || this.ROLES.viewer;
       this.applyPermissions();
       // Role loaded successfully
-
     } catch (e) {
       console.error('RBAC: Error loading role:', e);
       this.currentRole = 'viewer';
@@ -117,7 +165,7 @@ const rbacModule = {
       'crm-tab': 'crm',
       'settings-tab': 'settings',
       'reports-tab': 'reports',
-      'bitcoin-tab': 'bitcoin'
+      'bitcoin-tab': 'bitcoin',
     };
 
     // Show/hide tabs based on module access
@@ -132,17 +180,19 @@ const rbacModule = {
     });
 
     // Show/hide action buttons based on permissions
-    document.querySelectorAll('[data-rbac-action]').forEach(el => {
+    document.querySelectorAll('[data-rbac-action]').forEach((el) => {
       const action = el.getAttribute('data-rbac-action');
       el.style.display = this.canPerform(action) ? '' : 'none';
     });
 
     // Disable delete buttons for non-delete users
     if (!this.canPerform('delete')) {
-      document.querySelectorAll('.btn-outline-danger[onclick*="delete"], .btn-danger[onclick*="delete"]').forEach(btn => {
-        btn.disabled = true;
-        btn.title = 'You do not have permission to delete';
-      });
+      document
+        .querySelectorAll('.btn-outline-danger[onclick*="delete"], .btn-danger[onclick*="delete"]')
+        .forEach((btn) => {
+          btn.disabled = true;
+          btn.title = 'You do not have permission to delete';
+        });
     }
 
     // Hide settings danger zone for non-admins
@@ -214,7 +264,9 @@ const rbacModule = {
       console.error('RBAC: Error checking admin count:', e);
       return false;
     }
-  }
+  },
 };
 
 ModuleRegistry.register('rbacModule', rbacModule);
+
+export { rbacModule };

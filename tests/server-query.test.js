@@ -5,10 +5,13 @@
 
 const { JSDOM } = require('jsdom');
 
-const dom = new JSDOM(`<!DOCTYPE html><html><body>
+const dom = new JSDOM(
+  `<!DOCTYPE html><html><body>
   <div id="loadingBar" style="display:none;"></div>
   <div id="notificationToast"><span id="toastIcon"></span><span id="toastTitle"></span><span id="toastMessage"></span></div>
-</body></html>`, { url: 'http://localhost' });
+</body></html>`,
+  { url: 'http://localhost' }
+);
 
 global.window = dom.window;
 global.document = dom.window.document;
@@ -17,44 +20,66 @@ global.navigator = dom.window.navigator;
 global.HTMLElement = dom.window.HTMLElement;
 
 global.bootstrap = {
-  Toast: class { show() {} hide() {} },
-  Modal: class { show() {} hide() {} static getInstance() { return { hide() {} }; } },
-  Tooltip: class {}
+  Toast: class {
+    show() {}
+    hide() {}
+  },
+  Modal: class {
+    show() {}
+    hide() {}
+    static getInstance() {
+      return { hide() {} };
+    }
+  },
+  Tooltip: class {},
 };
 
 // Build a chainable mock that records method calls
 function createChainableMock(resolveValue = { data: [], error: null, count: 0 }) {
   const calls = [];
-  const mock = new Proxy({}, {
-    get(target, prop) {
-      if (prop === '_calls') return calls;
-      if (prop === '_setResolve') return (val) => { resolveValue = val; };
-      if (prop === 'then') {
-        // Make it thenable (for await)
-        return (resolve) => resolve(resolveValue);
-      }
-      return (...args) => {
-        calls.push({ method: prop, args });
-        return mock;
-      };
+  const mock = new Proxy(
+    {},
+    {
+      get(target, prop) {
+        if (prop === '_calls') return calls;
+        if (prop === '_setResolve')
+          return (val) => {
+            resolveValue = val;
+          };
+        if (prop === 'then') {
+          // Make it thenable (for await)
+          return (resolve) => resolve(resolveValue);
+        }
+        return (...args) => {
+          calls.push({ method: prop, args });
+          return mock;
+        };
+      },
     }
-  });
+  );
   return mock;
 }
 
 // Setup mock Supabase client
 let lastMock;
 const mockClient = {
-  from: jest.fn((table) => {
+  from: jest.fn((_table) => {
     lastMock = createChainableMock({ data: [], error: null, count: 0 });
     return lastMock;
   }),
   auth: {
     getSession: jest.fn(() => Promise.resolve({ data: { session: null }, error: null })),
     signInWithPassword: jest.fn(),
-    signOut: jest.fn(() => Promise.resolve({ error: null }))
+    signOut: jest.fn(() => Promise.resolve({ error: null })),
   },
-  channel: jest.fn(() => ({ on: jest.fn(function() { return this; }), subscribe: jest.fn(function() { return this; }) }))
+  channel: jest.fn(() => ({
+    on: jest.fn(function () {
+      return this;
+    }),
+    subscribe: jest.fn(function () {
+      return this;
+    }),
+  })),
 };
 
 global.supabase = { createClient: () => mockClient };
@@ -97,16 +122,16 @@ describe('serverQuery', () => {
   });
 
   test('execute applies default pagination (page 1, size 50)', async () => {
-    const result = await serverQuery.execute({ table: 'awards' });
+    await serverQuery.execute({ table: 'awards' });
     // Check that range was called
-    const rangeCalls = lastMock._calls.filter(c => c.method === 'range');
+    const rangeCalls = lastMock._calls.filter((c) => c.method === 'range');
     expect(rangeCalls.length).toBe(1);
     expect(rangeCalls[0].args).toEqual([0, 49]); // page 1, size 50 => range(0, 49)
   });
 
   test('execute applies custom pagination', async () => {
     await serverQuery.execute({ table: 'awards', page: 3, pageSize: 25 });
-    const rangeCalls = lastMock._calls.filter(c => c.method === 'range');
+    const rangeCalls = lastMock._calls.filter((c) => c.method === 'range');
     expect(rangeCalls.length).toBe(1);
     expect(rangeCalls[0].args).toEqual([50, 74]); // page 3, size 25 => range(50, 74)
   });
@@ -114,9 +139,9 @@ describe('serverQuery', () => {
   test('execute applies equality filters', async () => {
     await serverQuery.execute({
       table: 'entries',
-      filters: { status: 'submitted', year: 2026, empty: '' }
+      filters: { status: 'submitted', year: 2026, empty: '' },
     });
-    const eqCalls = lastMock._calls.filter(c => c.method === 'eq');
+    const eqCalls = lastMock._calls.filter((c) => c.method === 'eq');
     // Should have 2 eq calls (empty string is skipped)
     expect(eqCalls.length).toBe(2);
     expect(eqCalls[0].args).toEqual(['status', 'submitted']);
@@ -126,9 +151,9 @@ describe('serverQuery', () => {
   test('execute skips null/undefined/empty filter values', async () => {
     await serverQuery.execute({
       table: 'entries',
-      filters: { a: null, b: undefined, c: '', d: 'valid' }
+      filters: { a: null, b: undefined, c: '', d: 'valid' },
     });
-    const eqCalls = lastMock._calls.filter(c => c.method === 'eq');
+    const eqCalls = lastMock._calls.filter((c) => c.method === 'eq');
     expect(eqCalls.length).toBe(1);
     expect(eqCalls[0].args).toEqual(['d', 'valid']);
   });
@@ -136,9 +161,9 @@ describe('serverQuery', () => {
   test('execute applies search with OR across columns', async () => {
     await serverQuery.execute({
       table: 'organisations',
-      search: { term: 'acme', columns: ['company_name', 'email'] }
+      search: { term: 'acme', columns: ['company_name', 'email'] },
     });
-    const orCalls = lastMock._calls.filter(c => c.method === 'or');
+    const orCalls = lastMock._calls.filter((c) => c.method === 'or');
     expect(orCalls.length).toBe(1);
     expect(orCalls[0].args[0]).toContain('company_name.ilike.%acme%');
     expect(orCalls[0].args[0]).toContain('email.ilike.%acme%');
@@ -147,9 +172,9 @@ describe('serverQuery', () => {
   test('execute applies sorting', async () => {
     await serverQuery.execute({
       table: 'entries',
-      sort: { column: 'created_at', ascending: false }
+      sort: { column: 'created_at', ascending: false },
     });
-    const orderCalls = lastMock._calls.filter(c => c.method === 'order');
+    const orderCalls = lastMock._calls.filter((c) => c.method === 'order');
     expect(orderCalls.length).toBe(1);
     expect(orderCalls[0].args[0]).toBe('created_at');
     expect(orderCalls[0].args[1]).toEqual({ ascending: false });

@@ -27,14 +27,20 @@ const awardsModule = {
       this._populateFiltersFromConstants();
 
       // Restore saved filters from localStorage
-      const lsAwardsFilters = (() => { try { return JSON.parse(localStorage.getItem('awardsFilters') || '{}'); } catch (e) { return {}; } })();
+      const lsAwardsFilters = (() => {
+        try {
+          return JSON.parse(localStorage.getItem('awardsFilters') || '{}');
+        } catch (e) {
+          return {};
+        }
+      })();
       const savedFilters = {
         year: document.getElementById('awardsYearFilterSelect')?.value || lsAwardsFilters.year || '',
         status: document.getElementById('awardsStatusFilterSelect')?.value || lsAwardsFilters.status || '',
         sector: document.getElementById('awardsSectorFilterSelect')?.value || lsAwardsFilters.sector || '',
         region: document.getElementById('awardsRegionFilterSelect')?.value || lsAwardsFilters.region || '',
         county: document.getElementById('awardsCountyFilterSelect')?.value || lsAwardsFilters.county || '',
-        search: document.getElementById('awardsSearchBox')?.value || lsAwardsFilters.search || ''
+        search: document.getElementById('awardsSearchBox')?.value || lsAwardsFilters.search || '',
       };
 
       // Restore filter UI state
@@ -58,7 +64,10 @@ const awardsModule = {
         utils.initTableKeyboardNav({
           tableBodyId: 'awardsTableBody',
           searchBoxId: 'awardsSearchBox',
-          onEnter: (row) => { const btn = row.querySelector('.dropdown-toggle'); if (btn) btn.click(); }
+          onEnter: (row) => {
+            const btn = row.querySelector('.dropdown-toggle');
+            if (btn) btn.click();
+          },
         });
       }
 
@@ -66,7 +75,6 @@ const awardsModule = {
 
       // Render saved views dropdown
       this._renderSavedAwardsViews();
-
     } catch (error) {
       console.error('Error loading awards:', error);
       utils.showErrorWithRetry(error, 'loading awards', () => this.loadAwards());
@@ -84,20 +92,22 @@ const awardsModule = {
     // Year filter
     const yearSelect = document.getElementById('awardsYearFilterSelect');
     if (yearSelect) {
-      yearSelect.innerHTML = '<option value="">All Years</option>' +
-        YEARS.map(y => `<option value="${y}">${y}</option>`).join('');
+      yearSelect.innerHTML =
+        '<option value="">All Years</option>' + YEARS.map((y) => `<option value="${y}">${y}</option>`).join('');
     }
     // Sector filter
     const sectorSelect = document.getElementById('awardsSectorFilterSelect');
     if (sectorSelect) {
-      sectorSelect.innerHTML = '<option value="">All Sectors</option>' +
-        SECTORS.map(s => `<option value="${s}">${utils.escapeHtml(s)}</option>`).join('');
+      sectorSelect.innerHTML =
+        '<option value="">All Sectors</option>' +
+        SECTORS.map((s) => `<option value="${s}">${utils.escapeHtml(s)}</option>`).join('');
     }
     // Region filter
     const regionSelect = document.getElementById('awardsRegionFilterSelect');
     if (regionSelect) {
-      regionSelect.innerHTML = '<option value="">All Regions</option>' +
-        REGIONS.map(r => `<option value="${r}">${utils.escapeHtml(r)}</option>`).join('');
+      regionSelect.innerHTML =
+        '<option value="">All Regions</option>' +
+        REGIONS.map((r) => `<option value="${r}">${utils.escapeHtml(r)}</option>`).join('');
     }
   },
 
@@ -132,9 +142,12 @@ const awardsModule = {
     const result = await apiClient.select('awards', {
       filters,
       search: search ? { term: search, columns: ['award_name', 'county', 'sector', 'description'] } : undefined,
-      sort: { column: this.currentSort.column === 'award_name' ? 'award_name' : this.currentSort.column, ascending: this.currentSort.direction === 'asc' },
+      sort: {
+        column: this.currentSort.column === 'award_name' ? 'award_name' : this.currentSort.column,
+        ascending: this.currentSort.direction === 'asc',
+      },
       page,
-      pageSize: this._pagination.pageSize
+      pageSize: this._pagination.pageSize,
     });
 
     // Discard stale responses
@@ -146,7 +159,12 @@ const awardsModule = {
 
     STATE.allAwards = pageData;
     STATE.filteredAwards = pageData;
-    this._pagination = { page: result.page, totalPages: result.totalPages, count: result.count, pageSize: result.pageSize };
+    this._pagination = {
+      page: result.page,
+      totalPages: result.totalPages,
+      count: result.count,
+      pageSize: result.pageSize,
+    };
 
     this.updateStats();
     this.renderAwards();
@@ -158,23 +176,25 @@ const awardsModule = {
    */
   async _enrichPageData(awards) {
     // Batch lookup regions for counties on this page
-    const uniqueCounties = [...new Set(awards.map(a => a.county).filter(Boolean))];
+    const uniqueCounties = [...new Set(awards.map((a) => a.county).filter(Boolean))];
     const countyRegionMap = {};
     if (uniqueCounties.length > 0) {
       try {
         const { data: countyData } = await apiClient.select('counties', {
           select: 'Name, regions(name)',
           filters: { Name: { op: 'in', value: uniqueCounties } },
-          pageSize: 1000
+          pageSize: 1000,
         });
-        (countyData || []).forEach(c => {
+        (countyData || []).forEach((c) => {
           countyRegionMap[c.Name] = c.regions?.name || null;
         });
-      } catch (_e) { /* ignore — counties table may not exist */ }
+      } catch (_e) {
+        /* ignore — counties table may not exist */
+      }
     }
 
     // Batch lookup assignment counts for awards on this page
-    const awardIds = awards.map(a => a.id).filter(Boolean);
+    const awardIds = awards.map((a) => a.id).filter(Boolean);
     const counts = {};
     const winners = {};
     if (awardIds.length > 0) {
@@ -182,9 +202,9 @@ const awardsModule = {
         const { data: assignments } = await apiClient.select('award_assignments', {
           select: 'award_id, status, winner_position, organisations(company_name)',
           filters: { award_id: { op: 'in', value: awardIds } },
-          pageSize: 1000
+          pageSize: 1000,
         });
-        (assignments || []).forEach(a => {
+        (assignments || []).forEach((a) => {
           if (!counts[a.award_id]) counts[a.award_id] = { total: 0, nominated: 0, shortlisted: 0, winner: 0 };
           counts[a.award_id].total++;
           counts[a.award_id][a.status] = (counts[a.award_id][a.status] || 0) + 1;
@@ -193,12 +213,14 @@ const awardsModule = {
             winners[a.award_id][a.winner_position || 1] = a.organisations?.company_name || 'Winner';
           }
         });
-      } catch (_e) { /* ignore — assignments table may not exist */ }
+      } catch (_e) {
+        /* ignore — assignments table may not exist */
+      }
     }
 
     // Attach enriched data to each award
-    awards.forEach(award => {
-      award._actualRegion = award.county ? (countyRegionMap[award.county] || null) : null;
+    awards.forEach((award) => {
+      award._actualRegion = award.county ? countyRegionMap[award.county] || null : null;
       award._countyName = award.county;
       award._assignmentCounts = counts[award.id] || { total: 0, nominated: 0, shortlisted: 0, winner: 0 };
       const awardWinners = winners[award.id];
@@ -233,15 +255,17 @@ const awardsModule = {
     try {
       let data;
       try {
+        /* selectAll: justified — aggregation requires full dataset for assignment counts per award */
         data = await apiClient.selectAll('award_assignments', {
-          select: 'award_id, status, winner_position, organisations(company_name)'
+          select: 'award_id, status, winner_position, organisations(company_name)',
         });
       } catch (joinErr) {
         // FK relationship missing - retry without joins
         if (joinErr.message?.includes('relationship') || joinErr.message?.includes('schema cache')) {
           console.warn('award_assignments FK relationships not found, loading without joins');
+          /* selectAll: justified — aggregation requires full dataset (FK fallback) */
           data = await apiClient.selectAll('award_assignments', {
-            select: 'award_id, status, winner_position'
+            select: 'award_id, status, winner_position',
           });
         } else {
           throw joinErr;
@@ -251,18 +275,17 @@ const awardsModule = {
       // Count assignments per award and track winners
       const counts = {};
       const winners = {};
-      (data || []).forEach(assignment => {
+      (data || []).forEach((assignment) => {
         if (!counts[assignment.award_id]) {
           counts[assignment.award_id] = {
             total: 0,
             nominated: 0,
             shortlisted: 0,
-            winner: 0
+            winner: 0,
           };
         }
         counts[assignment.award_id].total++;
-        counts[assignment.award_id][assignment.status] =
-          (counts[assignment.award_id][assignment.status] || 0) + 1;
+        counts[assignment.award_id][assignment.status] = (counts[assignment.award_id][assignment.status] || 0) + 1;
 
         // Track winner and runner-up names
         if (assignment.status === 'winner') {
@@ -273,12 +296,12 @@ const awardsModule = {
       });
 
       // Add counts and winner info to awards
-      STATE.allAwards.forEach(award => {
+      STATE.allAwards.forEach((award) => {
         award._assignmentCounts = counts[award.id] || {
           total: 0,
           nominated: 0,
           shortlisted: 0,
-          winner: 0
+          winner: 0,
         };
         const awardWinners = winners[award.id];
         if (awardWinners) {
@@ -286,7 +309,6 @@ const awardsModule = {
           award._runnerUpName = awardWinners[2] || null;
         }
       });
-
     } catch (error) {
       console.error('Error loading assignment counts:', error);
     }
@@ -300,20 +322,22 @@ const awardsModule = {
     const yearSelect = document.getElementById('awardsYearFilterSelect');
 
     if (yearSelect) {
-      const uniqueYears = [...new Set(STATE.allAwards
-        .map(a => {
-          if (typeof a.year === 'string' && a.year.includes('-')) {
-            return parseInt(a.year.split('-')[0]);
-          }
-          return parseInt(a.year);
-        })
-        .filter(y => y && !isNaN(y))
-      )].sort((a, b) => b - a);
+      const uniqueYears = [
+        ...new Set(
+          STATE.allAwards
+            .map((a) => {
+              if (typeof a.year === 'string' && a.year.includes('-')) {
+                return parseInt(a.year.split('-')[0]);
+              }
+              return parseInt(a.year);
+            })
+            .filter((y) => y && !isNaN(y))
+        ),
+      ].sort((a, b) => b - a);
 
-      yearSelect.innerHTML = '<option value="">All Years</option>' +
-        uniqueYears.map(year =>
-          `<option value="${year}">${year}</option>`
-        ).join('');
+      yearSelect.innerHTML =
+        '<option value="">All Years</option>' +
+        uniqueYears.map((year) => `<option value="${year}">${year}</option>`).join('');
     }
   },
 
@@ -324,34 +348,24 @@ const awardsModule = {
   populateFilters() {
     // Populate year filter (2026+)
     this.populateYearFilter();
-    
+
     // Populate sector filter
-    utils.populateFilter(
-      STATE.allAwards,
-      'sector',
-      'awardsSectorFilterSelect',
-      'All Sectors'
-    );
-    
+    utils.populateFilter(STATE.allAwards, 'sector', 'awardsSectorFilterSelect', 'All Sectors');
+
     // Populate county filter
-    utils.populateFilter(
-      STATE.allAwards,
-      'county',
-      'awardsCountyFilterSelect',
-      'All Counties'
-    );
-    
+    utils.populateFilter(STATE.allAwards, 'county', 'awardsCountyFilterSelect', 'All Counties');
+
     // Populate actual region filter
-    const uniqueRegions = [...new Set(STATE.allAwards
-      .map(a => a._actualRegion)
-      .filter(r => r))];
+    const uniqueRegions = [...new Set(STATE.allAwards.map((a) => a._actualRegion).filter((r) => r))];
 
     const regionSelect = document.getElementById('awardsRegionFilterSelect');
     if (regionSelect) {
-      regionSelect.innerHTML = '<option value="">All Regions</option>' +
-        uniqueRegions.sort().map(region =>
-          `<option value="${region}">${region}</option>`
-        ).join('');
+      regionSelect.innerHTML =
+        '<option value="">All Regions</option>' +
+        uniqueRegions
+          .sort()
+          .map((region) => `<option value="${region}">${region}</option>`)
+          .join('');
     }
   },
 
@@ -366,22 +380,24 @@ const awardsModule = {
     if (!countySelect) return;
 
     if (!selectedRegion) {
-      const allCounties = [...new Set(STATE.allAwards
-        .map(a => a.county)
-        .filter(c => c)
-      )].sort();
+      const allCounties = [...new Set(STATE.allAwards.map((a) => a.county).filter((c) => c))].sort();
 
-      countySelect.innerHTML = '<option value="">All Counties</option>' +
-        allCounties.map(c => `<option value="${c}">${utils.escapeHtml(c)}</option>`).join('');
+      countySelect.innerHTML =
+        '<option value="">All Counties</option>' +
+        allCounties.map((c) => `<option value="${c}">${utils.escapeHtml(c)}</option>`).join('');
     } else {
-      const countiesInRegion = [...new Set(STATE.allAwards
-        .filter(a => a._actualRegion === selectedRegion)
-        .map(a => a.county)
-        .filter(c => c)
-      )].sort();
+      const countiesInRegion = [
+        ...new Set(
+          STATE.allAwards
+            .filter((a) => a._actualRegion === selectedRegion)
+            .map((a) => a.county)
+            .filter((c) => c)
+        ),
+      ].sort();
 
-      countySelect.innerHTML = '<option value="">All Counties</option>' +
-        countiesInRegion.map(c => `<option value="${c}">${utils.escapeHtml(c)}</option>`).join('');
+      countySelect.innerHTML =
+        '<option value="">All Counties</option>' +
+        countiesInRegion.map((c) => `<option value="${c}">${utils.escapeHtml(c)}</option>`).join('');
     }
 
     countySelect.value = '';
@@ -420,7 +436,7 @@ const awardsModule = {
 
     // Server-side: re-fetch with new sort order
     if (this._serverPagination) {
-      this._fetchPage(1).catch(err => console.error('Error sorting awards:', err));
+      this._fetchPage(1).catch((err) => console.error('Error sorting awards:', err));
       return;
     }
 
@@ -434,12 +450,13 @@ const awardsModule = {
   _updateSortIndicators() {
     document.querySelectorAll('#awardsTableBody').forEach(() => {});
     const icons = document.querySelectorAll('[data-sort-icon]');
-    icons.forEach(icon => {
+    icons.forEach((icon) => {
       const field = icon.getAttribute('data-sort-icon');
       if (field === this.currentSort.column) {
-        icon.className = this.currentSort.direction === 'asc'
-          ? 'bi bi-caret-up-fill text-primary ms-1 small'
-          : 'bi bi-caret-down-fill text-primary ms-1 small';
+        icon.className =
+          this.currentSort.direction === 'asc'
+            ? 'bi bi-caret-up-fill text-primary ms-1 small'
+            : 'bi bi-caret-down-fill text-primary ms-1 small';
       } else {
         icon.className = 'bi bi-arrow-down-up text-muted ms-1 small';
       }
@@ -508,11 +525,15 @@ const awardsModule = {
     const region = document.getElementById('awardsRegionFilterSelect')?.value || '';
     const search = (document.getElementById('awardsSearchBox')?.value || '').toLowerCase().trim();
 
-    try { localStorage.setItem('awardsFilters', JSON.stringify({ year, status, sector, county, region, search })); } catch(e) { console.warn('Failed to save filter state:', e.message); }
+    try {
+      localStorage.setItem('awardsFilters', JSON.stringify({ year, status, sector, county, region, search }));
+    } catch (e) {
+      console.warn('Failed to save filter state:', e.message);
+    }
 
     // Server-side pagination: send filters to server and re-fetch page 1
     if (this._serverPagination) {
-      this._fetchPage(1).catch(err => {
+      this._fetchPage(1).catch((err) => {
         console.error('Error filtering awards:', err);
         utils.showToast('Error filtering awards: ' + err.message, 'error');
       });
@@ -520,7 +541,7 @@ const awardsModule = {
     }
 
     // Client-side fallback (used by tests and when data is pre-loaded)
-    STATE.filteredAwards = STATE.allAwards.filter(award => {
+    STATE.filteredAwards = STATE.allAwards.filter((award) => {
       if (year) {
         let awardYear;
         if (typeof award.year === 'string' && award.year.includes('-')) {
@@ -536,9 +557,15 @@ const awardsModule = {
       if (region && award._actualRegion !== region) return false;
       if (search) {
         const searchFields = [
-          utils.formatAwardName(award), award.county || '', award.sector || '',
-          award.status || '', award._winnerName || '', award.description || ''
-        ].join(' ').toLowerCase();
+          utils.formatAwardName(award),
+          award.county || '',
+          award.sector || '',
+          award.status || '',
+          award._winnerName || '',
+          award.description || '',
+        ]
+          .join(' ')
+          .toLowerCase();
         if (!searchFields.includes(search)) return false;
       }
       return true;
@@ -546,11 +573,16 @@ const awardsModule = {
 
     if (search && STATE.filteredAwards.length === 0) {
       STATE.filteredAwards = utils.fuzzyFilter(STATE.allAwards, search, ['award_name', 'county']);
-      if (year) STATE.filteredAwards = STATE.filteredAwards.filter(a => { const ay = (typeof a.year === 'string' && a.year.includes('-')) ? a.year.split('-')[0] : a.year; return String(ay) === String(year); });
-      if (status) STATE.filteredAwards = STATE.filteredAwards.filter(a => a.status?.toLowerCase() === status.toLowerCase());
-      if (sector) STATE.filteredAwards = STATE.filteredAwards.filter(a => a.sector === sector);
-      if (county) STATE.filteredAwards = STATE.filteredAwards.filter(a => a.county === county);
-      if (region) STATE.filteredAwards = STATE.filteredAwards.filter(a => a._actualRegion === region);
+      if (year)
+        STATE.filteredAwards = STATE.filteredAwards.filter((a) => {
+          const ay = typeof a.year === 'string' && a.year.includes('-') ? a.year.split('-')[0] : a.year;
+          return String(ay) === String(year);
+        });
+      if (status)
+        STATE.filteredAwards = STATE.filteredAwards.filter((a) => a.status?.toLowerCase() === status.toLowerCase());
+      if (sector) STATE.filteredAwards = STATE.filteredAwards.filter((a) => a.sector === sector);
+      if (county) STATE.filteredAwards = STATE.filteredAwards.filter((a) => a.county === county);
+      if (region) STATE.filteredAwards = STATE.filteredAwards.filter((a) => a._actualRegion === region);
     }
 
     this.applySorting();
@@ -583,7 +615,7 @@ const awardsModule = {
       judgingClose: parseUTC(award.judging_close_date),
       votingOpen: parseUTC(award.voting_open_date),
       votingClose: parseUTC(award.voting_close_date),
-      winnersAnnouncement: parseUTC(award.winners_announcement_date)
+      winnersAnnouncement: parseUTC(award.winners_announcement_date),
     };
 
     if (dates.winnersAnnouncement && now >= dates.winnersAnnouncement) {
@@ -627,41 +659,43 @@ const awardsModule = {
       return;
     }
 
-    tbody.innerHTML = STATE.filteredAwards.map(award => {
-      const counts = award._assignmentCounts || { total: 0, nominated: 0, shortlisted: 0, winner: 0 };
-      const countBadgeClass = counts.total === 0 ? 'zero' :
-                             counts.total < 5 ? 'low' :
-                             counts.total < 15 ? 'medium' : 'high';
+    tbody.innerHTML = STATE.filteredAwards
+      .map((award) => {
+        const counts = award._assignmentCounts || { total: 0, nominated: 0, shortlisted: 0, winner: 0 };
+        const countBadgeClass =
+          counts.total === 0 ? 'zero' : counts.total < 5 ? 'low' : counts.total < 15 ? 'medium' : 'high';
 
-      const fullName = utils.formatAwardName(award);
+        const fullName = utils.formatAwardName(award);
 
-      // Simplified winner display
-      let winnerHtml = '<span class="text-muted small">-</span>';
-      if (award._winnerName) {
-        const prevTitle = award.prev_year_winner ? `\nPrev: ${award.prev_year_winner}` : '';
-        winnerHtml = `
+        // Simplified winner display
+        let winnerHtml = '<span class="text-muted small">-</span>';
+        if (award._winnerName) {
+          const prevTitle = award.prev_year_winner ? `\nPrev: ${award.prev_year_winner}` : '';
+          winnerHtml = `
           <span class="small fw-semibold" title="${utils.escapeHtml(award._winnerName)}${award._runnerUpName ? '\n2nd: ' + utils.escapeHtml(award._runnerUpName) : ''}${prevTitle}">
             <i class="bi bi-trophy-fill text-success me-1"></i>${utils.escapeHtml(award._winnerName)}
           </span>`;
-      } else if (counts.shortlisted > 0) {
-        winnerHtml = `<span class="badge bg-warning text-dark small">${counts.shortlisted} shortlisted</span>`;
-      } else if (award.prev_year_winner) {
-        winnerHtml = `<span class="small text-muted" title="Previous: ${utils.escapeHtml(award.prev_year_winner)}"><i class="bi bi-clock-history me-1"></i>Prev: ${utils.escapeHtml(award.prev_year_winner)}</span>`;
-      }
+        } else if (counts.shortlisted > 0) {
+          winnerHtml = `<span class="badge bg-warning text-dark small">${counts.shortlisted} shortlisted</span>`;
+        } else if (award.prev_year_winner) {
+          winnerHtml = `<span class="small text-muted" title="Previous: ${utils.escapeHtml(award.prev_year_winner)}"><i class="bi bi-clock-history me-1"></i>Prev: ${utils.escapeHtml(award.prev_year_winner)}</span>`;
+        }
 
-      // Phase badge
-      const phase = this.getAwardPhase(award);
-      const phaseHtml = phase.label === '-' ? '<span class="text-muted small">-</span>' :
-        `<span class="badge bg-${phase.color}-subtle text-${phase.color}" style="font-size: 0.7rem;">${phase.icon ? '<i class="bi bi-' + phase.icon + ' me-1"></i>' : ''}${phase.label}</span>`;
+        // Phase badge
+        const phase = this.getAwardPhase(award);
+        const phaseHtml =
+          phase.label === '-'
+            ? '<span class="text-muted small">-</span>'
+            : `<span class="badge bg-${phase.color}-subtle text-${phase.color}" style="font-size: 0.7rem;">${phase.icon ? '<i class="bi bi-' + phase.icon + ' me-1"></i>' : ''}${phase.label}</span>`;
 
-      return `
+        return `
         <tr class="fade-in">
-          <td><input type="checkbox" class="form-check-input award-select-cb" value="${award.id}" onchange="awardsModule.toggleSelection('${award.id}', this.checked)" ${this.selectedAwards.has(award.id) ? 'checked' : ''}></td>
+          <td><input type="checkbox" class="form-check-input award-select-cb" value="${award.id}" data-on-change="awardsModule.toggleSelection" data-id="${award.id}" ${this.selectedAwards.has(award.id) ? 'checked' : ''}></td>
           <td class="text-center"><span class="badge bg-light text-dark">${award.year || '-'}</span></td>
           <td>
             <a href="javascript:void(0);"
                class="text-decoration-none fw-semibold text-primary"
-               onclick="assignmentsModule.openAssignmentsModal('${award.id}', '${utils.escapeHtml(fullName).replace(/'/g, "\\'")}')">
+               data-action="assignmentsModule.openAssignmentsModal" data-args='${JSON.stringify([award.id, fullName]).replace(/'/g, '&#39;')}'>
               ${utils.escapeHtml(fullName)}
             </a>
           </td>
@@ -673,17 +707,20 @@ const awardsModule = {
           </td>
           <td>
             <select class="form-select form-select-sm d-inline-block" style="width:auto; font-size:0.75rem;"
-              onchange="awardsModule.inlineUpdateStatus('${award.id}', this.value)"
+              data-on-change="awardsModule.inlineUpdateStatus" data-id="${award.id}"
               aria-label="Change award status">
-              ${['draft','pending','published','active','archived'].map(s =>
-                `<option value="${s}" ${(award.status || '').toLowerCase() === s ? 'selected' : ''}>${s.charAt(0).toUpperCase() + s.slice(1)}</option>`
-              ).join('')}
+              ${['draft', 'pending', 'published', 'active', 'archived']
+                .map(
+                  (s) =>
+                    `<option value="${s}" ${(award.status || '').toLowerCase() === s ? 'selected' : ''}>${s.charAt(0).toUpperCase() + s.slice(1)}</option>`
+                )
+                .join('')}
             </select>
           </td>
           <td class="text-center">
             <div class="assignment-count-badge ${countBadgeClass}"
               style="cursor: pointer;"
-              onclick="assignmentsModule.openAssignmentsModal('${award.id}', '${utils.escapeHtml(fullName).replace(/'/g, "\\'")}')"
+              data-action="assignmentsModule.openAssignmentsModal" data-args='${JSON.stringify([award.id, fullName]).replace(/'/g, '&#39;')}'
               title="${counts.nominated} nominated, ${counts.shortlisted} shortlisted, ${counts.winner} winner">
               <i class="bi bi-people-fill"></i>
               <span>${counts.total}</span>
@@ -698,38 +735,38 @@ const awardsModule = {
               </button>
               <ul class="dropdown-menu dropdown-menu-end">
                 <li>
-                  <a class="dropdown-item" href="javascript:void(0);" onclick="assignmentsModule.openAssignmentsModal('${award.id}', '${utils.escapeHtml(fullName).replace(/'/g, "\\'")}')">
+                  <a class="dropdown-item" href="javascript:void(0);" data-action="assignmentsModule.openAssignmentsModal" data-args='${JSON.stringify([award.id, fullName]).replace(/'/g, '&#39;')}'>
                     <i class="bi bi-people text-primary me-2"></i>Manage Nominees
                   </a>
                 </li>
                 <li>
-                  <a class="dropdown-item" href="javascript:void(0);" onclick="awardsModule.openEditModal('${award.id}')">
+                  <a class="dropdown-item" href="javascript:void(0);" data-action="awardsModule.openEditModal" data-id="${award.id}">
                     <i class="bi bi-pencil text-warning me-2"></i>Edit Award
                   </a>
                 </li>
                 <li>
-                  <a class="dropdown-item" href="javascript:void(0);" onclick="awardsModule.viewDetails('${award.id}')">
+                  <a class="dropdown-item" href="javascript:void(0);" data-action="awardsModule.viewDetails" data-id="${award.id}">
                     <i class="bi bi-eye text-info me-2"></i>View Details
                   </a>
                 </li>
                 <li>
-                  <a class="dropdown-item" href="javascript:void(0);" onclick="awardsModule.showVisualTimeline('${award.id}')">
+                  <a class="dropdown-item" href="javascript:void(0);" data-action="awardsModule.showVisualTimeline" data-id="${award.id}">
                     <i class="bi bi-calendar-range text-success me-2"></i>Timeline
                   </a>
                 </li>
                 <li>
-                  <a class="dropdown-item" href="javascript:void(0);" onclick="awardsModule.cloneAward('${award.id}')">
+                  <a class="dropdown-item" href="javascript:void(0);" data-action="awardsModule.cloneAward" data-id="${award.id}">
                     <i class="bi bi-copy text-purple me-2" style="color:#6f42c1;"></i>Clone to Year
                   </a>
                 </li>
                 <li>
-                  <a class="dropdown-item" href="javascript:void(0);" onclick="awardsModule.showAwardAuditLog('${award.id}', '${utils.escapeHtml(fullName).replace(/'/g, "\\'")}')">
+                  <a class="dropdown-item" href="javascript:void(0);" data-action="awardsModule.showAwardAuditLog" data-args='${JSON.stringify([award.id, fullName]).replace(/'/g, '&#39;')}'>
                     <i class="bi bi-journal-text text-secondary me-2"></i>Audit Log
                   </a>
                 </li>
                 <li><hr class="dropdown-divider"></li>
                 <li>
-                  <a class="dropdown-item text-danger" href="javascript:void(0);" onclick="awardsModule.deleteAward('${award.id}')">
+                  <a class="dropdown-item text-danger" href="javascript:void(0);" data-action="awardsModule.deleteAward" data-id="${award.id}">
                     <i class="bi bi-trash me-2"></i>Delete
                   </a>
                 </li>
@@ -738,7 +775,8 @@ const awardsModule = {
           </td>
         </tr>
       `;
-    }).join('');
+      })
+      .join('');
 
     this.updateSortIndicators();
 
@@ -760,7 +798,7 @@ const awardsModule = {
    * @param {string} awardId - Award ID
    */
   async viewDetails(awardId) {
-    const award = STATE.allAwards.find(a => a.id === awardId);
+    const award = STATE.allAwards.find((a) => a.id === awardId);
     if (!award) return;
     utils.trackRecentlyViewed('award', awardId, utils.formatAwardName(award));
 
@@ -772,7 +810,7 @@ const awardsModule = {
         select: '*, organisations (id, company_name)',
         filters: { award_id: awardId },
         sort: { column: 'created_at', ascending: false },
-        pageSize: 1000
+        pageSize: 1000,
       });
 
       // Load entries with voting enabled for this award
@@ -780,7 +818,7 @@ const awardsModule = {
         select: '*, organisations (id, company_name)',
         filters: { award_id: awardId, allow_public_voting: true },
         sort: { column: 'vote_count', ascending: false },
-        pageSize: 1000
+        pageSize: 1000,
       });
 
       // Create and show modal
@@ -869,34 +907,52 @@ const awardsModule = {
           </div>
         </div>
 
-        ${award.description ? `
+        ${
+          award.description
+            ? `
           <div class="mb-4">
             <h6 class="text-muted mb-2"><i class="bi bi-file-text me-2"></i>Description</h6>
             <p class="text-muted">${utils.escapeHtml(award.description)}</p>
           </div>
-        ` : ''}
+        `
+            : ''
+        }
 
-        ${award.prev_year_winner ? `
+        ${
+          award.prev_year_winner
+            ? `
           <div class="mb-4">
             <h6 class="text-muted mb-3"><i class="bi bi-clock-history me-2"></i>Previous Year's Results</h6>
             <div class="d-flex flex-wrap gap-2">
               <span class="badge bg-warning text-dark px-3 py-2">
                 <i class="bi bi-trophy-fill me-1"></i>1st: ${utils.escapeHtml(award.prev_year_winner)}
               </span>
-              ${award.prev_year_2nd ? `<span class="badge bg-secondary px-3 py-2">
+              ${
+                award.prev_year_2nd
+                  ? `<span class="badge bg-secondary px-3 py-2">
                 <i class="bi bi-award me-1"></i>2nd: ${utils.escapeHtml(award.prev_year_2nd)}
-              </span>` : ''}
-              ${award.prev_year_3rd ? `<span class="badge bg-dark px-3 py-2">
+              </span>`
+                  : ''
+              }
+              ${
+                award.prev_year_3rd
+                  ? `<span class="badge bg-dark px-3 py-2">
                 <i class="bi bi-award me-1"></i>3rd: ${utils.escapeHtml(award.prev_year_3rd)}
-              </span>` : ''}
+              </span>`
+                  : ''
+              }
             </div>
           </div>
-        ` : ''}
+        `
+            : ''
+        }
 
         <!-- Nominees Tab -->
         <div class="mb-4">
           <h6 class="text-muted mb-3"><i class="bi bi-people me-2"></i>Nominees (${assignments?.length || 0})</h6>
-          ${assignments && assignments.length > 0 ? `
+          ${
+            assignments && assignments.length > 0
+              ? `
             <div class="table-responsive">
               <table class="table table-sm table-hover">
                 <thead>
@@ -908,12 +964,14 @@ const awardsModule = {
                   </tr>
                 </thead>
                 <tbody>
-                  ${assignments.map(assign => `
+                  ${assignments
+                    .map(
+                      (assign) => `
                     <tr>
                       <td>
                         <a href="javascript:void(0);"
                            class="text-decoration-none fw-semibold text-primary"
-                           onclick="orgsModule.openCompanyProfile('${assign.organisations?.id}', '${utils.escapeHtml(assign.organisations?.company_name || '').replace(/'/g, "\\'")}')"
+                           data-action="orgsModule.openCompanyProfile" data-id="${assign.organisations?.id}" data-name="${utils.escapeHtml(assign.organisations?.company_name || '').replace(/'/g, '&#39;')}"
                            title="View company profile">
                           ${utils.escapeHtml(assign.organisations?.company_name || 'N/A')}
                         </a>
@@ -922,20 +980,26 @@ const awardsModule = {
                       <td>${assign.score ? `<strong>${assign.score}</strong>` : '-'}</td>
                       <td>
                         <button class="btn btn-sm btn-outline-primary"
-                          onclick="assignmentsModule.openAssignmentsModal('${award.id}', '${utils.escapeHtml(award.award_name).replace(/'/g, "\\'")}')">
+                          data-action="assignmentsModule.openAssignmentsModal" data-args='${JSON.stringify([award.id, award.award_name]).replace(/'/g, '&#39;')}'>
                           <i class="bi bi-pencil"></i> Manage
                         </button>
                       </td>
                     </tr>
-                  `).join('')}
+                  `
+                    )
+                    .join('')}
                 </tbody>
               </table>
             </div>
-          ` : '<div class="alert alert-info">No nominees assigned yet</div>'}
+          `
+              : '<div class="alert alert-info">No nominees assigned yet</div>'
+          }
         </div>
 
         <!-- Public Voting Links -->
-        ${votingEntries && votingEntries.length > 0 ? `
+        ${
+          votingEntries && votingEntries.length > 0
+            ? `
           <div class="mb-4">
             <h6 class="text-muted mb-3"><i class="bi bi-link-45deg me-2"></i>Public Voting Links (${votingEntries.length})</h6>
             <div class="alert alert-success">
@@ -954,16 +1018,17 @@ const awardsModule = {
                   </tr>
                 </thead>
                 <tbody>
-                  ${votingEntries.map(entry => {
-                    const votingUrl = `${window.location.origin}/vote.html?entry=${encodeURIComponent(entry.entry_number)}`;
-                    const safeVotingUrl = utils.escapeHtml(votingUrl);
-                    return `
+                  ${votingEntries
+                    .map((entry) => {
+                      const votingUrl = `${window.location.origin}/vote.html?entry=${encodeURIComponent(entry.entry_number)}`;
+                      const safeVotingUrl = utils.escapeHtml(votingUrl);
+                      return `
                       <tr>
                         <td><span class="badge bg-primary">${utils.escapeHtml(entry.entry_number)}</span></td>
                         <td>
                           <a href="javascript:void(0);"
                              class="text-decoration-none text-primary"
-                             onclick="orgsModule.openCompanyProfile('${entry.organisations?.id}', '${utils.escapeHtml(entry.organisations?.company_name || '').replace(/'/g, "\\'")}')"
+                             data-action="orgsModule.openCompanyProfile" data-id="${entry.organisations?.id}" data-name="${utils.escapeHtml(entry.organisations?.company_name || '').replace(/'/g, '&#39;')}"
                              title="View company profile">
                             ${utils.escapeHtml(entry.organisations?.company_name || 'N/A')}
                           </a>
@@ -978,7 +1043,7 @@ const awardsModule = {
                           <div class="input-group input-group-sm">
                             <input type="text" class="form-control" value="${safeVotingUrl}" readonly>
                             <button class="btn btn-outline-primary" type="button"
-                              onclick="utils.copyToClipboard('${safeVotingUrl}', 'Link copied!')">
+                              data-action="utils.copyToClipboard" data-value="${safeVotingUrl}" data-message="Link copied!">
                               <i class="bi bi-clipboard"></i>
                             </button>
                             <a href="${safeVotingUrl}" target="_blank" class="btn btn-outline-success">
@@ -988,16 +1053,18 @@ const awardsModule = {
                         </td>
                       </tr>
                     `;
-                  }).join('')}
+                    })
+                    .join('')}
                 </tbody>
               </table>
             </div>
           </div>
-        ` : ''}
+        `
+            : ''
+        }
       `;
 
       modal.show();
-
     } catch (error) {
       console.error('Error loading award details:', error);
       utils.showToast('Error loading award details: ' + error.message, 'error');
@@ -1012,16 +1079,19 @@ const awardsModule = {
    */
   updateStats() {
     const awards = STATE.allAwards;
-    const el = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
+    const el = (id, val) => {
+      const e = document.getElementById(id);
+      if (e) e.textContent = val;
+    };
 
     // Use server total when in paginated mode; page data for breakdowns
     const totalCount = this._serverPagination ? this._pagination.count : awards.length;
     el('statsTotalAwards', totalCount);
-    el('statsActiveAwards', awards.filter(a => a.status?.toLowerCase() === 'active').length);
-    el('statsWithNominees', awards.filter(a => (a._assignmentCounts?.total || 0) > 0).length);
-    el('statsWithWinners', awards.filter(a => (a._assignmentCounts?.winner || 0) > 0).length);
-    el('statsCounties', [...new Set(awards.map(a => a.county).filter(Boolean))].length);
-    el('statsSectors', [...new Set(awards.map(a => a.sector).filter(Boolean))].length);
+    el('statsActiveAwards', awards.filter((a) => a.status?.toLowerCase() === 'active').length);
+    el('statsWithNominees', awards.filter((a) => (a._assignmentCounts?.total || 0) > 0).length);
+    el('statsWithWinners', awards.filter((a) => (a._assignmentCounts?.winner || 0) > 0).length);
+    el('statsCounties', [...new Set(awards.map((a) => a.county).filter(Boolean))].length);
+    el('statsSectors', [...new Set(awards.map((a) => a.sector).filter(Boolean))].length);
   },
 
   /**
@@ -1033,11 +1103,14 @@ const awardsModule = {
     if (!select) return;
 
     const seasons = settingsModule?.allSeasons || [];
-    select.innerHTML = '<option value="">Custom dates...</option>' +
-      seasons.map(s => {
-        const label = `${s.name} (${s.year})`;
-        return `<option value="${s.id}" ${s.is_default ? 'data-default="true"' : ''}>${utils.escapeHtml(label)}</option>`;
-      }).join('');
+    select.innerHTML =
+      '<option value="">Custom dates...</option>' +
+      seasons
+        .map((s) => {
+          const label = `${s.name} (${s.year})`;
+          return `<option value="${s.id}" ${s.is_default ? 'data-default="true"' : ''}>${utils.escapeHtml(label)}</option>`;
+        })
+        .join('');
   },
 
   /**
@@ -1049,7 +1122,7 @@ const awardsModule = {
     if (!seasonId) return;
 
     const seasons = settingsModule?.allSeasons || [];
-    const season = seasons.find(s => s.id === seasonId);
+    const season = seasons.find((s) => s.id === seasonId);
     if (!season) return;
 
     document.getElementById('awardFormEntryOpen').value = season.entry_open_date || '';
@@ -1088,13 +1161,16 @@ const awardsModule = {
 
     // Populate county dropdown from REGIONS
     const countySelect = document.getElementById('awardFormCounty');
-    countySelect.innerHTML = '<option value="">Select County/City...</option>' +
-      REGIONS.sort().map(r => `<option value="${r}">${r}</option>`).join('');
+    countySelect.innerHTML =
+      '<option value="">Select County/City...</option>' +
+      REGIONS.sort()
+        .map((r) => `<option value="${r}">${r}</option>`)
+        .join('');
 
     // Populate sector dropdown
     const sectorSelect = document.getElementById('awardFormSector');
-    sectorSelect.innerHTML = '<option value="">Select Sector...</option>' +
-      SECTORS.map(s => `<option value="${s}">${s}</option>`).join('');
+    sectorSelect.innerHTML =
+      '<option value="">Select Sector...</option>' + SECTORS.map((s) => `<option value="${s}">${s}</option>`).join('');
 
     // Populate season dropdown
     this.populateSeasonDropdown();
@@ -1131,9 +1207,13 @@ const awardsModule = {
     }));
 
     // Stop auto-save when modal is closed
-    document.getElementById('awardFormModal').addEventListener('hidden.bs.modal', () => {
-      utils.stopFormAutoSave('award_new');
-    }, { once: true });
+    document.getElementById('awardFormModal').addEventListener(
+      'hidden.bs.modal',
+      () => {
+        utils.stopFormAutoSave('award_new');
+      },
+      { once: true }
+    );
   },
 
   /**
@@ -1142,7 +1222,7 @@ const awardsModule = {
    * @returns {void}
    */
   openEditModal(awardId) {
-    const award = STATE.allAwards.find(a => a.id === awardId);
+    const award = STATE.allAwards.find((a) => a.id === awardId);
     if (!award) return;
 
     document.getElementById('awardFormId').value = award.id;
@@ -1165,13 +1245,17 @@ const awardsModule = {
 
     // Populate county dropdown
     const countySelect = document.getElementById('awardFormCounty');
-    countySelect.innerHTML = '<option value="">Select County/City...</option>' +
-      REGIONS.sort().map(r => `<option value="${r}" ${r === award.county ? 'selected' : ''}>${r}</option>`).join('');
+    countySelect.innerHTML =
+      '<option value="">Select County/City...</option>' +
+      REGIONS.sort()
+        .map((r) => `<option value="${r}" ${r === award.county ? 'selected' : ''}>${r}</option>`)
+        .join('');
 
     // Populate sector dropdown
     const sectorSelect = document.getElementById('awardFormSector');
-    sectorSelect.innerHTML = '<option value="">Select Sector...</option>' +
-      SECTORS.map(s => `<option value="${s}" ${s === award.sector ? 'selected' : ''}>${s}</option>`).join('');
+    sectorSelect.innerHTML =
+      '<option value="">Select Sector...</option>' +
+      SECTORS.map((s) => `<option value="${s}" ${s === award.sector ? 'selected' : ''}>${s}</option>`).join('');
 
     // Populate season dropdown
     this.populateSeasonDropdown();
@@ -1206,9 +1290,13 @@ const awardsModule = {
     }));
 
     // Stop auto-save when modal is closed
-    document.getElementById('awardFormModal').addEventListener('hidden.bs.modal', () => {
-      utils.stopFormAutoSave(editFormKey);
-    }, { once: true });
+    document.getElementById('awardFormModal').addEventListener(
+      'hidden.bs.modal',
+      () => {
+        utils.stopFormAutoSave(editFormKey);
+      },
+      { once: true }
+    );
   },
 
   /**
@@ -1225,11 +1313,11 @@ const awardsModule = {
       { key: 'judging_close_date', label: 'Judging Closes' },
       { key: 'voting_open_date', label: 'Voting Opens' },
       { key: 'voting_close_date', label: 'Voting Closes' },
-      { key: 'winners_announcement_date', label: 'Winners Announced' }
+      { key: 'winners_announcement_date', label: 'Winners Announced' },
     ];
 
     // Only validate dates that are actually set
-    const setDates = ordered.filter(d => dates[d.key]);
+    const setDates = ordered.filter((d) => dates[d.key]);
 
     for (let i = 0; i < setDates.length - 1; i++) {
       const current = setDates[i];
@@ -1270,7 +1358,7 @@ const awardsModule = {
       description: document.getElementById('awardFormDescription').value.trim() || null,
       prev_year_winner: document.getElementById('awardFormPrevWinner').value.trim() || null,
       prev_year_2nd: document.getElementById('awardFormPrev2nd').value.trim() || null,
-      prev_year_3rd: document.getElementById('awardFormPrev3rd').value.trim() || null
+      prev_year_3rd: document.getElementById('awardFormPrev3rd').value.trim() || null,
     };
 
     // Validate date order
@@ -1289,19 +1377,22 @@ const awardsModule = {
           const dupeFilters = {
             award_name: awardData.award_name,
             county: awardData.county,
-            year: awardData.year
+            year: awardData.year,
           };
           if (id) dupeFilters.id = { op: 'neq', value: id };
 
           const { data: existing } = await apiClient.select('awards', {
             select: 'id',
             filters: dupeFilters,
-            pageSize: 1
+            pageSize: 1,
           });
 
           if (existing && existing.length > 0) {
             utils.hideLoading();
-            utils.showToast(`An award "${awardData.award_name}" already exists for ${awardData.county} in ${awardData.year}`, 'error');
+            utils.showToast(
+              `An award "${awardData.award_name}" already exists for ${awardData.county} in ${awardData.year}`,
+              'error'
+            );
             return;
           }
         }
@@ -1326,14 +1417,18 @@ const awardsModule = {
         if (modal) modal.hide();
 
         // Audit trail
-        this._logAwardAudit(id || 'new', id ? 'updated' : 'created', awardData.award_name,
-          id ? `Award updated: ${awardData.award_name} (${awardData.county}, ${awardData.year})` :
-          `Award created: ${awardData.award_name} (${awardData.county}, ${awardData.year})`);
+        this._logAwardAudit(
+          id || 'new',
+          id ? 'updated' : 'created',
+          awardData.award_name,
+          id
+            ? `Award updated: ${awardData.award_name} (${awardData.county}, ${awardData.year})`
+            : `Award created: ${awardData.award_name} (${awardData.county}, ${awardData.year})`
+        );
 
         utils.showToast(id ? 'Award updated successfully!' : 'Award created successfully!', 'success');
         await this.loadAwards();
       });
-
     } catch (error) {
       console.error('Error saving award:', error);
       utils.showToast('Failed to save award: ' + error.message, 'error');
@@ -1364,12 +1459,12 @@ const awardsModule = {
    */
   toggleSelectAll(checked) {
     if (checked) {
-      STATE.filteredAwards.forEach(a => this.selectedAwards.add(a.id));
+      STATE.filteredAwards.forEach((a) => this.selectedAwards.add(a.id));
     } else {
       this.selectedAwards.clear();
     }
     // Update all checkboxes
-    document.querySelectorAll('.award-select-cb').forEach(cb => {
+    document.querySelectorAll('.award-select-cb').forEach((cb) => {
       cb.checked = checked;
     });
     this.updateBulkToolbar();
@@ -1380,7 +1475,9 @@ const awardsModule = {
    */
   clearSelection() {
     this.selectedAwards.clear();
-    document.querySelectorAll('.award-select-cb').forEach(cb => { cb.checked = false; });
+    document.querySelectorAll('.award-select-cb').forEach((cb) => {
+      cb.checked = false;
+    });
     const selectAll = document.getElementById('awardsSelectAll');
     if (selectAll) selectAll.checked = false;
     this.updateBulkToolbar();
@@ -1411,18 +1508,25 @@ const awardsModule = {
     const count = this.selectedAwards.size;
     if (count === 0) return;
 
-    if (!await utils.confirmDialog({ title: 'Update Award Status', message: `Set ${count} award(s) to "${newStatus}"?`, confirmText: 'Update', danger: false })) return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Update Award Status',
+        message: `Set ${count} award(s) to "${newStatus}"?`,
+        confirmText: 'Update',
+        danger: false,
+      }))
+    )
+      return;
 
     try {
       utils.showLoading();
 
       const ids = [...this.selectedAwards];
-      await Promise.all(ids.map(id => apiClient.update('awards', id, { status: newStatus })));
+      await Promise.all(ids.map((id) => apiClient.update('awards', id, { status: newStatus })));
 
       utils.showToast(`${count} awards set to ${newStatus}`, 'success');
       this.selectedAwards.clear();
       await this.loadAwards();
-
     } catch (error) {
       console.error('Error bulk updating status:', error);
       utils.showToast('Failed to update awards: ' + error.message, 'error');
@@ -1443,8 +1547,20 @@ const awardsModule = {
     const count = this.selectedAwards.size;
     if (count === 0) return;
 
-    if (!await utils.confirmDialog({ title: 'Delete Awards', message: `Delete ${count} award(s)? This cannot be undone.` })) return;
-    if (!await utils.confirmDialog({ title: 'Final Confirmation', message: `Are you absolutely sure? This will permanently delete ${count} award(s) and their assignments.` })) return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Delete Awards',
+        message: `Delete ${count} award(s)? This cannot be undone.`,
+      }))
+    )
+      return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Final Confirmation',
+        message: `Are you absolutely sure? This will permanently delete ${count} award(s) and their assignments.`,
+      }))
+    )
+      return;
 
     try {
       utils.showLoading();
@@ -1452,17 +1568,14 @@ const awardsModule = {
       const ids = [...this.selectedAwards];
 
       // Delete assignments first
-      await Promise.all(ids.map(id =>
-        apiClient.deleteByFilters('award_assignments', { award_id: id })
-      ));
+      await Promise.all(ids.map((id) => apiClient.deleteByFilters('award_assignments', { award_id: id })));
 
       // Then delete awards
-      await Promise.all(ids.map(id => apiClient.delete('awards', id)));
+      await Promise.all(ids.map((id) => apiClient.delete('awards', id)));
 
       utils.showToast(`${count} awards deleted`, 'success');
       this.selectedAwards.clear();
       await this.loadAwards();
-
     } catch (error) {
       console.error('Error bulk deleting:', error);
       utils.showToast('Failed to delete awards: ' + error.message, 'error');
@@ -1483,8 +1596,19 @@ const awardsModule = {
     }
 
     try {
-      const headers = ['Award Name', 'Category', 'County/City', 'Region', 'Sector', 'Year', 'Status', 'Nominees', 'Winner', 'Prev Year Winner'];
-      const rows = awards.map(a => {
+      const headers = [
+        'Award Name',
+        'Category',
+        'County/City',
+        'Region',
+        'Sector',
+        'Year',
+        'Status',
+        'Nominees',
+        'Winner',
+        'Prev Year Winner',
+      ];
+      const rows = awards.map((a) => {
         const counts = a._assignmentCounts || { total: 0 };
         return [
           utils.formatAwardName(a),
@@ -1496,12 +1620,12 @@ const awardsModule = {
           a.status || '',
           counts.total,
           a._winnerName || '',
-          a.prev_year_winner || ''
+          a.prev_year_winner || '',
         ];
       });
 
       const csvContent = [headers, ...rows]
-        .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+        .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
         .join('\n');
 
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -1523,8 +1647,11 @@ const awardsModule = {
    */
   exportAwardsExcel() {
     const awards = STATE.filteredAwards || STATE.allAwards || [];
-    if (awards.length === 0) { utils.showToast('No awards to export', 'warning'); return; }
-    const exportData = awards.map(a => ({
+    if (awards.length === 0) {
+      utils.showToast('No awards to export', 'warning');
+      return;
+    }
+    const exportData = awards.map((a) => ({
       award_name: utils.formatAwardName(a),
       category: a.award_name || '',
       county: a.county || '',
@@ -1534,7 +1661,7 @@ const awardsModule = {
       status: a.status || '',
       nominees: (a._assignmentCounts || { total: 0 }).total,
       winner: a._winnerName || '',
-      prev_year_winner: a.prev_year_winner || ''
+      prev_year_winner: a.prev_year_winner || '',
     }));
     utils.exportToExcel(exportData, `awards-export-${new Date().toISOString().split('T')[0]}`);
   },
@@ -1544,16 +1671,21 @@ const awardsModule = {
    */
   exportAwardsPDF() {
     const awards = STATE.filteredAwards || STATE.allAwards || [];
-    if (awards.length === 0) { utils.showToast('No awards to export', 'warning'); return; }
-    const exportData = awards.map(a => ({
+    if (awards.length === 0) {
+      utils.showToast('No awards to export', 'warning');
+      return;
+    }
+    const exportData = awards.map((a) => ({
       award_name: utils.formatAwardName(a),
       county: a.county || '',
       sector: a.sector || '',
       year: a.year || '',
       status: a.status || '',
-      winner: a._winnerName || ''
+      winner: a._winnerName || '',
     }));
-    utils.exportToPrintablePDF(exportData, 'Awards Report', { columns: ['award_name', 'county', 'sector', 'year', 'status', 'winner'] });
+    utils.exportToPrintablePDF(exportData, 'Awards Report', {
+      columns: ['award_name', 'county', 'sector', 'year', 'status', 'winner'],
+    });
   },
 
   /**
@@ -1566,18 +1698,18 @@ const awardsModule = {
       return;
     }
     const headers = ['Award Name', 'Category', 'Year', 'Status', 'Event', 'Description', 'Created At'];
-    const rows = awards.map(a => [
+    const rows = awards.map((a) => [
       a.award_name || '',
       a.category || '',
       a.year || '',
       a.status || '',
       a.event_name || '',
       (a.description || '').replace(/"/g, '""').replace(/\n/g, ' '),
-      a.created_at || ''
+      a.created_at || '',
     ]);
     let csv = headers.join(',') + '\n';
-    rows.forEach(row => {
-      csv += row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',') + '\n';
+    rows.forEach((row) => {
+      csv += row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',') + '\n';
     });
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -1599,14 +1731,19 @@ const awardsModule = {
       utils.showToast('You do not have permission to delete awards', 'error');
       return;
     }
-    if (!await utils.confirmDialog({ title: 'Delete Award', message: 'Are you sure you want to delete this award? This action cannot be undone.' })) {
+    if (
+      !(await utils.confirmDialog({
+        title: 'Delete Award',
+        message: 'Are you sure you want to delete this award? This action cannot be undone.',
+      }))
+    ) {
       return;
     }
-    
+
     try {
       utils.showLoading();
-      
-      const award = STATE.allAwards.find(a => a.id === awardId);
+
+      const award = STATE.allAwards.find((a) => a.id === awardId);
       if (award) utils.softDelete('awards', award);
 
       // Clean up related records before deleting the award
@@ -1614,11 +1751,18 @@ const awardsModule = {
 
       await apiClient.delete('awards', awardId);
 
-      this._logAwardAudit(awardId, 'deleted', award?.award_name || '', `Award deleted: ${award?.award_name || 'Unknown'}`);
+      this._logAwardAudit(
+        awardId,
+        'deleted',
+        award?.award_name || '',
+        `Award deleted: ${award?.award_name || 'Unknown'}`
+      );
 
       await this.loadAwards();
-      utils.showToast('Award deleted. <a href="#" onclick="event.preventDefault(); utils.undoLastDelete(\'awards\')">Undo</a>', 'info');
-      
+      utils.showToast(
+        'Award deleted. <a href="#" data-action="utils.undoLastDelete" data-id="awards" data-prevent-default="true">Undo</a>',
+        'info'
+      );
     } catch (error) {
       console.error('Error deleting award:', error);
       utils.showToast('Failed to delete award: ' + error.message, 'error');
@@ -1633,7 +1777,7 @@ const awardsModule = {
    */
   async rolloverToNextYear() {
     // Determine source year from current filter or most common year
-    const years = [...new Set((STATE.allAwards || []).map(a => a.year))].sort((a, b) => b - a);
+    const years = [...new Set((STATE.allAwards || []).map((a) => a.year))].sort((a, b) => b - a);
 
     if (years.length === 0) {
       utils.showToast('No awards to roll over', 'warning');
@@ -1644,7 +1788,7 @@ const awardsModule = {
     const targetYear = sourceYear + 1;
 
     // Get awards for the source year
-    const sourceAwards = STATE.allAwards.filter(a => String(a.year) === String(sourceYear));
+    const sourceAwards = STATE.allAwards.filter((a) => String(a.year) === String(sourceYear));
 
     if (sourceAwards.length === 0) {
       utils.showToast(`No awards found for ${sourceYear}`, 'warning');
@@ -1652,7 +1796,7 @@ const awardsModule = {
     }
 
     // Check if target year already has awards
-    const existingTarget = STATE.allAwards.filter(a => String(a.year) === String(targetYear));
+    const existingTarget = STATE.allAwards.filter((a) => String(a.year) === String(targetYear));
 
     let message = `Roll over ${sourceAwards.length} awards from ${sourceYear} to ${targetYear}?\n\n`;
     message += `All copied awards will be set to "Draft" status, ready for vetting.\n`;
@@ -1662,16 +1806,24 @@ const awardsModule = {
       message += `\n\n⚠️ ${targetYear} already has ${existingTarget.length} awards. Only NEW award names (not already in ${targetYear}) will be copied.`;
     }
 
-    if (!await utils.confirmDialog({ title: 'Roll Over Awards', message: message.replace(/\n/g, '<br>'), confirmText: 'Roll Over', danger: false })) return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Roll Over Awards',
+        message: message.replace(/\n/g, '<br>'),
+        confirmText: 'Roll Over',
+        danger: false,
+      }))
+    )
+      return;
 
     try {
       utils.showLoading();
 
       // Get existing award name+county combos for target year to avoid duplicates
-      const existingKeys = new Set(existingTarget.map(a => `${a.award_name}|||${a.county}`));
+      const existingKeys = new Set(existingTarget.map((a) => `${a.award_name}|||${a.county}`));
 
       // Filter out awards that already exist in the target year (same name + county)
-      const awardsToRoll = sourceAwards.filter(a => !existingKeys.has(`${a.award_name}|||${a.county}`));
+      const awardsToRoll = sourceAwards.filter((a) => !existingKeys.has(`${a.award_name}|||${a.county}`));
 
       if (awardsToRoll.length === 0) {
         utils.showToast(`All ${sourceYear} awards already exist in ${targetYear}`, 'info');
@@ -1679,25 +1831,26 @@ const awardsModule = {
       }
 
       // Fetch previous year's winners from award_assignments
-      const sourceAwardIds = awardsToRoll.map(a => a.id);
+      const sourceAwardIds = awardsToRoll.map((a) => a.id);
+      /* selectAll: justified — filtered to specific award IDs for year rollover */
       const winnerData = await apiClient.selectAll('award_assignments', {
         select: 'award_id, winner_position, organisations(company_name)',
         filters: {
           award_id: { op: 'in', value: sourceAwardIds },
-          status: 'winner'
-        }
+          status: 'winner',
+        },
       });
 
       // Build a lookup: award_id -> { 1: 'Company A', 2: 'Company B', 3: 'Company C' }
       const winnersMap = {};
-      (winnerData || []).forEach(w => {
+      (winnerData || []).forEach((w) => {
         if (!winnersMap[w.award_id]) winnersMap[w.award_id] = {};
         const pos = w.winner_position || 1;
         winnersMap[w.award_id][pos] = w.organisations?.company_name || 'Unknown';
       });
 
       // Build new award records — copy structure, clear dates, set Draft, tag prev year results
-      const newAwards = awardsToRoll.map(a => {
+      const newAwards = awardsToRoll.map((a) => {
         const prevWinners = winnersMap[a.id] || {};
         return {
           award_name: a.award_name,
@@ -1716,18 +1869,17 @@ const awardsModule = {
           judging_close_date: null,
           voting_open_date: null,
           voting_close_date: null,
-          winners_announcement_date: null
+          winners_announcement_date: null,
         };
       });
 
       await apiClient.insert('awards', newAwards);
 
-      const withWinners = newAwards.filter(a => a.prev_year_winner).length;
+      const withWinners = newAwards.filter((a) => a.prev_year_winner).length;
       let msg = `${newAwards.length} awards rolled over to ${targetYear} as Draft!`;
       if (withWinners > 0) msg += ` (${withWinners} with previous year results)`;
       utils.showToast(msg, 'success');
       await this.loadAwards();
-
     } catch (error) {
       console.error('Error rolling over awards:', error);
       utils.showToast('Failed to roll over awards: ' + error.message, 'error');
@@ -1754,7 +1906,7 @@ const awardsModule = {
    * Update sort direction indicators in column headers
    */
   updateSortIndicators() {
-    document.querySelectorAll('[data-sort-icon]').forEach(icon => {
+    document.querySelectorAll('[data-sort-icon]').forEach((icon) => {
       icon.className = 'bi bi-arrow-down-up text-muted ms-1 small';
     });
     const activeIcon = document.querySelector(`[data-sort-icon="${this.currentSort.column}"]`);
@@ -1777,11 +1929,14 @@ const awardsModule = {
       return;
     }
 
-    dropdown.innerHTML = seasons.map(s =>
-      `<li><a class="dropdown-item" href="javascript:void(0);" onclick="awardsModule.bulkApplySeasonDates('${s.id}')">
+    dropdown.innerHTML = seasons
+      .map(
+        (s) =>
+          `<li><a class="dropdown-item" href="javascript:void(0);" data-action="awardsModule.bulkApplySeasonDates" data-id="${s.id}">
         <i class="bi bi-calendar-event me-2"></i>${utils.escapeHtml(s.name)} (${s.year})
       </a></li>`
-    ).join('');
+      )
+      .join('');
   },
 
   /**
@@ -1794,10 +1949,18 @@ const awardsModule = {
     if (count === 0) return;
 
     const seasons = (typeof settingsModule !== 'undefined' && settingsModule?.allSeasons) || [];
-    const season = seasons.find(s => s.id === seasonId);
+    const season = seasons.find((s) => s.id === seasonId);
     if (!season) return;
 
-    if (!await utils.confirmDialog({ title: 'Apply Season Dates', message: `Apply "${season.name} (${season.year})" dates to ${count} selected award(s)?`, confirmText: 'Apply', danger: false })) return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Apply Season Dates',
+        message: `Apply "${season.name} (${season.year})" dates to ${count} selected award(s)?`,
+        confirmText: 'Apply',
+        danger: false,
+      }))
+    )
+      return;
 
     try {
       utils.showLoading();
@@ -1811,15 +1974,14 @@ const awardsModule = {
         judging_close_date: season.judging_close_date || null,
         voting_open_date: season.voting_open_date || null,
         voting_close_date: season.voting_close_date || null,
-        winners_announcement_date: season.winners_announcement_date || null
+        winners_announcement_date: season.winners_announcement_date || null,
       };
 
-      await Promise.all(ids.map(id => apiClient.update('awards', id, dateUpdate)));
+      await Promise.all(ids.map((id) => apiClient.update('awards', id, dateUpdate)));
 
       utils.showToast(`Season dates applied to ${count} awards`, 'success');
       this.selectedAwards.clear();
       await this.loadAwards();
-
     } catch (error) {
       console.error('Error applying season dates:', error);
       utils.showToast('Failed to apply season dates: ' + error.message, 'error');
@@ -1837,35 +1999,48 @@ const awardsModule = {
    */
   showDataQualityDashboard() {
     const awards = STATE.allAwards;
-    const active = awards.filter(a => (a.status || 'Draft').toLowerCase() !== 'archived');
+    const active = awards.filter((a) => (a.status || 'Draft').toLowerCase() !== 'archived');
 
     // Calculate quality metrics
-    const missingDates = active.filter(a => !a.entry_open_date || !a.entry_close_date || !a.winners_announcement_date);
-    const noNominees = active.filter(a => (a._assignmentCounts?.total || 0) === 0);
-    const noWinner = active.filter(a => {
+    const missingDates = active.filter(
+      (a) => !a.entry_open_date || !a.entry_close_date || !a.winners_announcement_date
+    );
+    const noNominees = active.filter((a) => (a._assignmentCounts?.total || 0) === 0);
+    const noWinner = active.filter((a) => {
       const phase = this.getAwardPhase(a);
       return phase.label === 'Complete' && (a._assignmentCounts?.winner || 0) === 0;
     });
-    const missingJudgingDates = active.filter(a => !a.judging_open_date || !a.judging_close_date);
-    const missingVotingDates = active.filter(a => !a.voting_open_date || !a.voting_close_date);
-    const draftOnly = active.filter(a => (a.status || 'Draft') === 'Draft');
-    const noPrevWinner = active.filter(a => a.year > 2024 && !a.prev_year_winner);
-    const noDescription = active.filter(a => !a.description);
+    const missingJudgingDates = active.filter((a) => !a.judging_open_date || !a.judging_close_date);
+    const missingVotingDates = active.filter((a) => !a.voting_open_date || !a.voting_close_date);
+    const draftOnly = active.filter((a) => (a.status || 'Draft') === 'Draft');
+    const noPrevWinner = active.filter((a) => a.year > 2024 && !a.prev_year_winner);
+    const noDescription = active.filter((a) => !a.description);
 
     // Overall score
     const totalChecks = active.length * 6; // 6 quality dimensions
-    const issues = missingDates.length + noNominees.length + noWinner.length +
-      missingJudgingDates.length + missingVotingDates.length + noDescription.length;
+    const issues =
+      missingDates.length +
+      noNominees.length +
+      noWinner.length +
+      missingJudgingDates.length +
+      missingVotingDates.length +
+      noDescription.length;
     const qualityScore = totalChecks > 0 ? Math.round(((totalChecks - issues) / totalChecks) * 100) : 100;
     const scoreColor = qualityScore >= 80 ? 'success' : qualityScore >= 50 ? 'warning' : 'danger';
 
     const renderList = (items, limit = 10) => {
-      if (items.length === 0) return '<span class="text-success small"><i class="bi bi-check-circle me-1"></i>All clear</span>';
+      if (items.length === 0)
+        return '<span class="text-success small"><i class="bi bi-check-circle me-1"></i>All clear</span>';
       return `<div style="max-height: 150px; overflow-y: auto;">
-        ${items.slice(0, limit).map(a => `<div class="small py-1 border-bottom">
-          <a href="javascript:void(0);" class="text-primary text-decoration-none" onclick="awardsModule.openEditModal('${a.id}')">${utils.escapeHtml(utils.formatAwardName(a))}</a>
+        ${items
+          .slice(0, limit)
+          .map(
+            (a) => `<div class="small py-1 border-bottom">
+          <a href="javascript:void(0);" class="text-primary text-decoration-none" data-action="awardsModule.openEditModal" data-id="${a.id}">${utils.escapeHtml(utils.formatAwardName(a))}</a>
           <span class="text-muted ms-1">(${a.year})</span>
-        </div>`).join('')}
+        </div>`
+          )
+          .join('')}
         ${items.length > limit ? `<div class="small text-muted mt-1">+${items.length - limit} more</div>` : ''}
       </div>`;
     };
@@ -1968,13 +2143,17 @@ const awardsModule = {
    */
   async _logAwardAudit(awardId, action, awardName, details) {
     try {
-      await apiClient.insert('org_audit_log', [{
-        org_id: awardId,
-        company_name: awardName,
-        action: 'award_' + action,
-        details: details
-      }]);
-    } catch (e) { /* silent - audit is non-critical */ }
+      await apiClient.insert('org_audit_log', [
+        {
+          org_id: awardId,
+          company_name: awardName,
+          action: 'award_' + action,
+          details: details,
+        },
+      ]);
+    } catch (e) {
+      /* silent - audit is non-critical */
+    }
   },
 
   /**
@@ -1988,13 +2167,15 @@ const awardsModule = {
         select: '*',
         filters: {
           org_id: awardId,
-          action: { op: 'ilike', value: 'award_%' }
+          action: { op: 'ilike', value: 'award_%' },
         },
         sort: { column: 'created_at', ascending: false },
-        pageSize: 50
+        pageSize: 50,
       });
       return data || [];
-    } catch (e) { return []; }
+    } catch (e) {
+      return [];
+    }
   },
 
   /**
@@ -2008,24 +2189,26 @@ const awardsModule = {
 
     let html;
     if (log.length === 0) {
-      html = '<div class="alert alert-info"><i class="bi bi-info-circle me-2"></i>No audit history recorded yet for this award.</div>';
+      html =
+        '<div class="alert alert-info"><i class="bi bi-info-circle me-2"></i>No audit history recorded yet for this award.</div>';
     } else {
       html = `<div class="list-group list-group-flush" style="max-height: 400px; overflow-y: auto;">
-        ${log.map(entry => {
-          const date = new Date(entry.created_at);
-          const icons = {
-            'award_created': 'bi-plus-circle text-success',
-            'award_updated': 'bi-pencil text-primary',
-            'award_status_change': 'bi-arrow-repeat text-info',
-            'award_deleted': 'bi-trash text-danger',
-            'award_cloned': 'bi-copy text-purple',
-            'award_nominee_added': 'bi-person-plus text-success',
-            'award_nominee_removed': 'bi-person-dash text-danger',
-            'award_winner_set': 'bi-trophy text-warning'
-          };
-          const icon = icons[entry.action] || 'bi-clock-history text-muted';
-          const timeAgo = this._timeAgo(date);
-          return `<div class="list-group-item px-0 py-2 border-0">
+        ${log
+          .map((entry) => {
+            const date = new Date(entry.created_at);
+            const icons = {
+              award_created: 'bi-plus-circle text-success',
+              award_updated: 'bi-pencil text-primary',
+              award_status_change: 'bi-arrow-repeat text-info',
+              award_deleted: 'bi-trash text-danger',
+              award_cloned: 'bi-copy text-purple',
+              award_nominee_added: 'bi-person-plus text-success',
+              award_nominee_removed: 'bi-person-dash text-danger',
+              award_winner_set: 'bi-trophy text-warning',
+            };
+            const icon = icons[entry.action] || 'bi-clock-history text-muted';
+            const timeAgo = this._timeAgo(date);
+            return `<div class="list-group-item px-0 py-2 border-0">
             <div class="d-flex align-items-start">
               <i class="bi ${icon} me-2 mt-1"></i>
               <div class="flex-grow-1">
@@ -2034,7 +2217,8 @@ const awardsModule = {
               </div>
             </div>
           </div>`;
-        }).join('')}
+          })
+          .join('')}
       </div>`;
     }
 
@@ -2064,10 +2248,15 @@ const awardsModule = {
    * @returns {Promise<void>}
    */
   async cloneAward(awardId) {
-    const award = STATE.allAwards.find(a => a.id === awardId);
-    if (!award) { utils.showToast('Award not found', 'error'); return; }
+    const award = STATE.allAwards.find((a) => a.id === awardId);
+    if (!award) {
+      utils.showToast('Award not found', 'error');
+      return;
+    }
 
-    const targetYear = parseInt(prompt(`Clone "${utils.formatAwardName(award)}" to which year?`, new Date().getFullYear()));
+    const targetYear = parseInt(
+      prompt(`Clone "${utils.formatAwardName(award)}" to which year?`, new Date().getFullYear())
+    );
     if (!targetYear || isNaN(targetYear)) return;
 
     try {
@@ -2077,7 +2266,7 @@ const awardsModule = {
       const { data: existing } = await apiClient.select('awards', {
         select: 'id',
         filters: { award_name: award.award_name, county: award.county, year: targetYear },
-        pageSize: 1
+        pageSize: 1,
       });
 
       if (existing && existing.length > 0) {
@@ -2098,10 +2287,14 @@ const awardsModule = {
         prev_year_2nd: award._runnerUpName || award.prev_year_2nd || null,
         prev_year_3rd: award.prev_year_3rd || null,
         // Clear dates (will be set from season)
-        entry_open_date: null, entry_close_date: null,
-        nominees_announcement_date: null, judging_open_date: null,
-        judging_close_date: null, voting_open_date: null,
-        voting_close_date: null, winners_announcement_date: null
+        entry_open_date: null,
+        entry_close_date: null,
+        nominees_announcement_date: null,
+        judging_open_date: null,
+        judging_close_date: null,
+        voting_open_date: null,
+        voting_close_date: null,
+        winners_announcement_date: null,
       };
 
       await apiClient.insert('awards', [cloneData]);
@@ -2123,41 +2316,68 @@ const awardsModule = {
    */
   async bulkCloneSelected() {
     const count = this.selectedAwards.size;
-    if (count === 0) { utils.showToast('No awards selected', 'warning'); return; }
+    if (count === 0) {
+      utils.showToast('No awards selected', 'warning');
+      return;
+    }
 
     const targetYear = parseInt(prompt(`Clone ${count} selected awards to which year?`, new Date().getFullYear()));
     if (!targetYear || isNaN(targetYear)) return;
 
-    if (!await utils.confirmDialog({ title: 'Clone Awards', message: `Clone ${count} award(s) to ${targetYear}? Existing duplicates will be skipped.`, confirmText: 'Clone', danger: false })) return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Clone Awards',
+        message: `Clone ${count} award(s) to ${targetYear}? Existing duplicates will be skipped.`,
+        confirmText: 'Clone',
+        danger: false,
+      }))
+    )
+      return;
 
     try {
       utils.showLoading();
       let skipped = 0;
       const awardIds = [...this.selectedAwards];
 
-      const result = await utils.runBatchOperation(awardIds, async (awardId) => {
-        const award = STATE.allAwards.find(a => a.id === awardId);
-        if (!award) throw new Error('Award not found');
+      const result = await utils.runBatchOperation(
+        awardIds,
+        async (awardId) => {
+          const award = STATE.allAwards.find((a) => a.id === awardId);
+          if (!award) throw new Error('Award not found');
 
-        const { data: existing } = await apiClient.select('awards', {
-          select: 'id',
-          filters: { award_name: award.award_name, county: award.county, year: targetYear },
-          pageSize: 1
-        });
+          const { data: existing } = await apiClient.select('awards', {
+            select: 'id',
+            filters: { award_name: award.award_name, county: award.county, year: targetYear },
+            pageSize: 1,
+          });
 
-        if (existing && existing.length > 0) { skipped++; return; }
+          if (existing && existing.length > 0) {
+            skipped++;
+            return;
+          }
 
-        await apiClient.insert('awards', [{
-          award_name: award.award_name, county: award.county, sector: award.sector,
-          year: targetYear, status: 'Draft', description: award.description,
-          prev_year_winner: award._winnerName || award.prev_year_winner || null,
-          prev_year_2nd: award._runnerUpName || award.prev_year_2nd || null,
-          prev_year_3rd: award.prev_year_3rd || null
-        }]);
-      }, 'Cloning awards');
+          await apiClient.insert('awards', [
+            {
+              award_name: award.award_name,
+              county: award.county,
+              sector: award.sector,
+              year: targetYear,
+              status: 'Draft',
+              description: award.description,
+              prev_year_winner: award._winnerName || award.prev_year_winner || null,
+              prev_year_2nd: award._runnerUpName || award.prev_year_2nd || null,
+              prev_year_3rd: award.prev_year_3rd || null,
+            },
+          ]);
+        },
+        'Cloning awards'
+      );
 
       this.selectedAwards.clear();
-      utils.showToast(`Cloned ${result.succeeded.length} awards to ${targetYear}${skipped > 0 ? ` (${skipped} skipped as duplicates)` : ''}`, 'success');
+      utils.showToast(
+        `Cloned ${result.succeeded.length} awards to ${targetYear}${skipped > 0 ? ` (${skipped} skipped as duplicates)` : ''}`,
+        'success'
+      );
       await this.loadAwards();
     } catch (error) {
       utils.showToast('Error: ' + error.message, 'error');
@@ -2175,8 +2395,10 @@ const awardsModule = {
    * @returns {void}
    */
   showVisualTimeline(awardId) {
-    const award = awardId ? STATE.allAwards.find(a => a.id === awardId) : null;
-    const awards = award ? [award] : STATE.filteredAwards.filter(a => (a.status || 'Draft').toLowerCase() !== 'archived').slice(0, 30);
+    const award = awardId ? STATE.allAwards.find((a) => a.id === awardId) : null;
+    const awards = award
+      ? [award]
+      : STATE.filteredAwards.filter((a) => (a.status || 'Draft').toLowerCase() !== 'archived').slice(0, 30);
 
     const dateFields = [
       { key: 'entry_open_date', label: 'Entries Open', color: '#0d6efd', icon: 'bi-pencil-square' },
@@ -2186,29 +2408,37 @@ const awardsModule = {
       { key: 'judging_close_date', label: 'Judging Close', color: '#fd7e14', icon: 'bi-clipboard-x' },
       { key: 'voting_open_date', label: 'Voting Open', color: '#0dcaf0', icon: 'bi-hand-thumbs-up' },
       { key: 'voting_close_date', label: 'Voting Close', color: '#20c997', icon: 'bi-stopwatch' },
-      { key: 'winners_announcement_date', label: 'Winners', color: '#198754', icon: 'bi-trophy' }
+      { key: 'winners_announcement_date', label: 'Winners', color: '#198754', icon: 'bi-trophy' },
     ];
 
     // Single award timeline
     if (award) {
       const now = new Date();
-      const allDates = dateFields.filter(df => award[df.key]).map(df => ({
-        ...df, date: new Date(award[df.key]), raw: award[df.key]
-      })).sort((a, b) => a.date - b.date);
+      const allDates = dateFields
+        .filter((df) => award[df.key])
+        .map((df) => ({
+          ...df,
+          date: new Date(award[df.key]),
+          raw: award[df.key],
+        }))
+        .sort((a, b) => a.date - b.date);
 
       const html = `
         <div class="mb-3">
           <h6 class="fw-bold">${utils.escapeHtml(utils.formatAwardName(award))} <span class="badge bg-light text-dark">${award.year}</span></h6>
         </div>
-        ${allDates.length === 0 ? '<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-2"></i>No dates set for this award</div>' :
-          `<div class="position-relative" style="padding-left: 30px;">
+        ${
+          allDates.length === 0
+            ? '<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-2"></i>No dates set for this award</div>'
+            : `<div class="position-relative" style="padding-left: 30px;">
             <div class="position-absolute" style="left: 14px; top: 0; bottom: 0; width: 2px; background: #e9ecef;"></div>
-            ${allDates.map(d => {
-              const isPast = now > d.date;
-              const isToday = d.date.toDateString() === now.toDateString();
-              const daysFromNow = Math.ceil((d.date - now) / 86400000);
-              const daysLabel = isToday ? 'Today' : isPast ? `${Math.abs(daysFromNow)}d ago` : `In ${daysFromNow}d`;
-              return `<div class="d-flex align-items-center mb-3">
+            ${allDates
+              .map((d) => {
+                const isPast = now > d.date;
+                const isToday = d.date.toDateString() === now.toDateString();
+                const daysFromNow = Math.ceil((d.date - now) / 86400000);
+                const daysLabel = isToday ? 'Today' : isPast ? `${Math.abs(daysFromNow)}d ago` : `In ${daysFromNow}d`;
+                return `<div class="d-flex align-items-center mb-3">
                 <div class="position-absolute" style="left: 6px; width: 18px; height: 18px; border-radius: 50%; background: ${isPast ? d.color : '#fff'}; border: 3px solid ${d.color}; z-index: 1;"></div>
                 <div class="flex-grow-1 ms-3">
                   <div class="card ${isToday ? 'border-primary shadow-sm' : isPast ? 'bg-light' : ''}">
@@ -2227,8 +2457,10 @@ const awardsModule = {
                   </div>
                 </div>
               </div>`;
-            }).join('')}
-          </div>`}
+              })
+              .join('')}
+          </div>`
+        }
       `;
 
       this._showDynamicModal('Award Timeline', html, 'bi-calendar-range');
@@ -2239,27 +2471,33 @@ const awardsModule = {
     const html = `
       <div class="mb-3">
         <div class="d-flex gap-2 flex-wrap mb-3">
-          ${dateFields.map(df => `<span class="badge" style="background: ${df.color}; font-size: 0.65rem;"><i class="bi ${df.icon} me-1"></i>${df.label}</span>`).join('')}
+          ${dateFields.map((df) => `<span class="badge" style="background: ${df.color}; font-size: 0.65rem;"><i class="bi ${df.icon} me-1"></i>${df.label}</span>`).join('')}
         </div>
       </div>
       <div style="max-height: 500px; overflow-y: auto;">
         <table class="table table-sm table-hover">
           <thead class="table-light"><tr>
             <th style="width: 25%;">Award</th>
-            ${dateFields.map(df => `<th class="text-center" style="width: 9.375%; font-size: 0.65rem;" title="${df.label}"><i class="bi ${df.icon}" style="color: ${df.color};"></i></th>`).join('')}
+            ${dateFields.map((df) => `<th class="text-center" style="width: 9.375%; font-size: 0.65rem;" title="${df.label}"><i class="bi ${df.icon}" style="color: ${df.color};"></i></th>`).join('')}
           </tr></thead>
           <tbody>
-            ${awards.map(a => `<tr>
+            ${awards
+              .map(
+                (a) => `<tr>
               <td class="small fw-semibold text-truncate" style="max-width: 200px;" title="${utils.escapeHtml(utils.formatAwardName(a))}">${utils.escapeHtml(a.award_name || 'N/A')}<br><span class="text-muted" style="font-size:0.6rem;">${utils.escapeHtml(a.county || '-')}</span></td>
-              ${dateFields.map(df => {
-                const d = a[df.key];
-                const now = new Date();
-                const isPast = d && new Date(d) < now;
-                return `<td class="text-center small ${isPast ? 'text-muted' : ''}" title="${df.label}: ${d || 'Not set'}">
+              ${dateFields
+                .map((df) => {
+                  const d = a[df.key];
+                  const now = new Date();
+                  const isPast = d && new Date(d) < now;
+                  return `<td class="text-center small ${isPast ? 'text-muted' : ''}" title="${df.label}: ${d || 'Not set'}">
                   ${d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '<span class="text-danger">-</span>'}
                 </td>`;
-              }).join('')}
-            </tr>`).join('')}
+                })
+                .join('')}
+            </tr>`
+              )
+              .join('')}
           </tbody>
         </table>
       </div>
@@ -2278,13 +2516,13 @@ const awardsModule = {
   showDuplicateDetection() {
     const dupeMap = new Map();
 
-    STATE.allAwards.forEach(award => {
+    STATE.allAwards.forEach((award) => {
       const key = `${(award.award_name || '').toLowerCase().trim()}|${(award.county || '').toLowerCase().trim()}|${award.year}`;
       if (!dupeMap.has(key)) dupeMap.set(key, []);
       dupeMap.get(key).push(award);
     });
 
-    const exactDupes = Array.from(dupeMap.values()).filter(g => g.length > 1);
+    const exactDupes = Array.from(dupeMap.values()).filter((g) => g.length > 1);
 
     // Fuzzy name matching (same county+year, similar names)
     const fuzzyDupes = [];
@@ -2293,7 +2531,8 @@ const awardsModule = {
 
     for (let i = 0; i < awards.length; i++) {
       for (let j = i + 1; j < awards.length; j++) {
-        const a = awards[i], b = awards[j];
+        const a = awards[i],
+          b = awards[j];
         if (a.year !== b.year) continue;
         if ((a.county || '').toLowerCase() !== (b.county || '').toLowerCase()) continue;
         const key = `${a.id}|${b.id}`;
@@ -2303,7 +2542,9 @@ const awardsModule = {
         const nameB = (b.award_name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
         if (nameA === nameB) continue; // Already caught by exact
 
-        const similar = nameA.includes(nameB) || nameB.includes(nameA) ||
+        const similar =
+          nameA.includes(nameB) ||
+          nameB.includes(nameA) ||
           (nameA.length < 30 && nameB.length < 30 && this._levenshtein(nameA, nameB) <= 3);
 
         if (similar) {
@@ -2326,14 +2567,18 @@ const awardsModule = {
           <h6 class="mb-2 small fw-bold">Exact Group ${idx + 1}: "${utils.escapeHtml(group[0].award_name)}" - ${group[0].county} (${group[0].year})</h6>
           <div class="table-responsive"><table class="table table-sm mb-0">
             <thead><tr><th>Name</th><th>County</th><th>Year</th><th>Status</th><th>Nominees</th><th>Action</th></tr></thead>
-            <tbody>${group.map(a => `<tr>
+            <tbody>${group
+              .map(
+                (a) => `<tr>
               <td class="small">${utils.escapeHtml(a.award_name)}</td>
               <td class="small">${utils.escapeHtml(a.county || '-')}</td>
               <td>${a.year}</td>
               <td>${utils.getStatusBadge(a.status || 'Draft')}</td>
               <td class="text-center">${a._assignmentCounts?.total || 0}</td>
-              <td><button class="btn btn-sm btn-outline-danger" onclick="awardsModule.deleteAward('${a.id}')"><i class="bi bi-trash"></i></button></td>
-            </tr>`).join('')}</tbody>
+              <td><button class="btn btn-sm btn-outline-danger" data-action="awardsModule.deleteAward" data-id="${a.id}"><i class="bi bi-trash"></i></button></td>
+            </tr>`
+              )
+              .join('')}</tbody>
           </table></div>
         </div></div>`;
       });
@@ -2349,8 +2594,8 @@ const awardsModule = {
               <span class="text-muted ms-1">(${a.county}, ${a.year})</span>
             </div>
             <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-primary" onclick="awardsModule.openEditModal('${a.id}')" title="Edit first" aria-label="Edit first award"><i class="bi bi-pencil"></i></button>
-              <button class="btn btn-outline-danger" onclick="awardsModule.deleteAward('${b.id}')" title="Delete second" aria-label="Delete second award"><i class="bi bi-trash"></i></button>
+              <button class="btn btn-outline-primary" data-action="awardsModule.openEditModal" data-id="${a.id}" title="Edit first" aria-label="Edit first award"><i class="bi bi-pencil"></i></button>
+              <button class="btn btn-outline-danger" data-action="awardsModule.deleteAward" data-id="${b.id}" title="Delete second" aria-label="Delete second award"><i class="bi bi-trash"></i></button>
             </div>
           </div>
         </div></div>`;
@@ -2367,13 +2612,15 @@ const awardsModule = {
    * @returns {number} Edit distance
    */
   _levenshtein(a, b) {
-    const m = a.length, n = b.length;
+    const m = a.length,
+      n = b.length;
     const dp = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
     for (let i = 0; i <= m; i++) dp[i][0] = i;
     for (let j = 0; j <= n; j++) dp[0][j] = j;
     for (let i = 1; i <= m; i++) {
       for (let j = 1; j <= n; j++) {
-        dp[i][j] = a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+        dp[i][j] =
+          a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
       }
     }
     return dp[m][n];
@@ -2423,7 +2670,7 @@ const awardsModule = {
       sector: document.getElementById('awardsSectorFilterSelect')?.value || '',
       county: document.getElementById('awardsCountyFilterSelect')?.value || '',
       region: document.getElementById('awardsRegionFilterSelect')?.value || '',
-      search: document.getElementById('awardsSearchBox')?.value || ''
+      search: document.getElementById('awardsSearchBox')?.value || '',
     };
     try {
       const views = JSON.parse(localStorage.getItem('awardsSavedViews') || '[]');
@@ -2431,7 +2678,9 @@ const awardsModule = {
       localStorage.setItem('awardsSavedViews', JSON.stringify(views));
       this._renderSavedAwardsViews();
       utils.showToast('View saved: ' + name, 'success');
-    } catch(e) { utils.showToast('Failed to save view', 'warning'); }
+    } catch (e) {
+      utils.showToast('Failed to save view', 'warning');
+    }
   },
 
   /**
@@ -2447,9 +2696,12 @@ const awardsModule = {
         el.innerHTML = '<option value="">No saved views</option>';
         return;
       }
-      el.innerHTML = '<option value="">Load saved view...</option>' +
+      el.innerHTML =
+        '<option value="">Load saved view...</option>' +
         views.map((v, i) => `<option value="${i}">${utils.escapeHtml(v.name)}</option>`).join('');
-    } catch(e) { console.warn('Failed to render saved views:', e.message); }
+    } catch (e) {
+      console.warn('Failed to render saved views:', e.message);
+    }
   },
 
   /**
@@ -2470,7 +2722,9 @@ const awardsModule = {
       if (view.filters.search) document.getElementById('awardsSearchBox').value = view.filters.search;
       this.filterAwards();
       utils.showToast('Loaded view: ' + view.name, 'success');
-    } catch(e) { utils.showToast('Failed to load view', 'warning'); }
+    } catch (e) {
+      utils.showToast('Failed to load view', 'warning');
+    }
   },
 
   /**
@@ -2486,7 +2740,9 @@ const awardsModule = {
       localStorage.setItem('awardsSavedViews', JSON.stringify(views));
       this._renderSavedAwardsViews();
       utils.showToast('Deleted view: ' + name, 'info');
-    } catch(e) { utils.showToast('Failed to delete view', 'warning'); }
+    } catch (e) {
+      utils.showToast('Failed to delete view', 'warning');
+    }
   },
 
   /* ==================================================== */
@@ -2503,15 +2759,17 @@ const awardsModule = {
     try {
       await apiClient.update('awards', awardId, { status: newStatus });
       // Update local state
-      const award = STATE.allAwards.find(a => a.id === awardId);
+      const award = STATE.allAwards.find((a) => a.id === awardId);
       if (award) award.status = newStatus;
       this.filterAwards();
       utils.showToast('Status updated to ' + newStatus, 'success');
-    } catch(e) {
+    } catch (e) {
       utils.showToast('Failed to update status', 'error');
     }
-  }
+  },
 };
 
 // Export to window for global access
 ModuleRegistry.register('awardsModule', awardsModule);
+
+export { awardsModule };

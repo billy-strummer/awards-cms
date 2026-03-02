@@ -95,10 +95,35 @@
   </div>
 
   <script>
-    const supabase = window.supabase.createClient(
+    const supabaseClient = window.supabase.createClient(
       window.SUPABASE_CONFIG.url,
       window.SUPABASE_CONFIG.anonKey
     );
+
+    async function getAuthToken() {
+      try {
+        const { data } = await supabaseClient.auth.getSession();
+        return data?.session?.access_token || null;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    async function proxyFetch(body) {
+      const token = await getAuthToken();
+      if (!token) throw new Error('Not authenticated');
+      const res = await fetch('/api/data-proxy', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify(body)
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || json.message || 'API error ' + res.status);
+      return json;
+    }
 
     async function loadWinnerData() {
       const params = new URLSearchParams(window.location.search);
@@ -113,13 +138,19 @@
       }
 
       try {
-        let query = supabase.from('winners').select('*, awards:award_years(award_name, award_category, sector, county), organisations(company_name, logo_url)');
-        // Always require token for security; optionally also filter by ID
-        query = query.eq('access_token', token);
-        if (winnerId) query = query.eq('id', winnerId);
+        const filters = { access_token: token };
+        if (winnerId) filters.id = winnerId;
 
-        const { data, error } = await query.single();
-        if (error || !data) throw new Error('Winner not found');
+        const result = await proxyFetch({
+          table: 'winners',
+          operation: 'select',
+          select: '*, awards:award_years(award_name, award_category, sector, county), organisations(company_name, logo_url)',
+          filters: filters,
+          pageSize: 1
+        });
+
+        const data = result.data && result.data.length > 0 ? result.data[0] : null;
+        if (!data) throw new Error('Winner not found');
 
         document.getElementById('awardName').textContent = data.awards?.award_name || 'Award Winner';
         document.getElementById('companyName').textContent = data.organisations?.company_name || '';

@@ -6,7 +6,8 @@
 const { JSDOM } = require('jsdom');
 
 // Setup minimal DOM before loading modules
-const dom = new JSDOM(`<!DOCTYPE html><html><body>
+const dom = new JSDOM(
+  `<!DOCTYPE html><html><body>
   <div id="loadingBar" style="display:none;"></div>
   <div id="notificationToast"><span id="toastIcon"></span><span id="toastTitle"></span><span id="toastMessage"></span></div>
   <div id="connectionStatus"><span class="status-icon"></span><span class="status-text"></span></div>
@@ -47,7 +48,9 @@ const dom = new JSDOM(`<!DOCTYPE html><html><body>
   <button class="btn-outline-danger" onclick="deleteSomething()">Delete Item</button>
   <div id="settingsDangerZone">Danger Zone</div>
   <div id="userRoleBadge"></div>
-</body></html>`, { url: 'http://localhost' });
+</body></html>`,
+  { url: 'http://localhost' }
+);
 
 global.window = dom.window;
 global.document = dom.window.document;
@@ -57,12 +60,18 @@ global.HTMLElement = dom.window.HTMLElement;
 
 // Mock bootstrap
 global.bootstrap = {
-  Toast: class { show() {} hide() {} },
-  Modal: class {
-    show() {} hide() {}
-    static getInstance() { return { hide() {} }; }
+  Toast: class {
+    show() {}
+    hide() {}
   },
-  Tooltip: class {}
+  Modal: class {
+    show() {}
+    hide() {}
+    static getInstance() {
+      return { hide() {} };
+    }
+  },
+  Tooltip: class {},
 };
 
 // Mock Supabase with chainable interface
@@ -79,16 +88,20 @@ const mockSupabase = {
   limit: jest.fn(() => mockSupabase),
   single: jest.fn(() => Promise.resolve({ data: null, error: null })),
   rpc: jest.fn(() => Promise.resolve({ data: [], error: null })),
-  then: jest.fn(cb => cb({ data: [], error: null })),
+  then: jest.fn((cb) => cb({ data: [], error: null })),
   auth: {
     getSession: jest.fn(() => Promise.resolve({ data: { session: null }, error: null })),
     signInWithPassword: jest.fn(() => Promise.resolve({ data: { user: { email: 'test@test.com' } }, error: null })),
-    signOut: jest.fn(() => Promise.resolve({ error: null }))
+    signOut: jest.fn(() => Promise.resolve({ error: null })),
   },
   channel: jest.fn(() => ({
-    on: jest.fn(function() { return this; }),
-    subscribe: jest.fn(function() { return this; })
-  }))
+    on: jest.fn(function () {
+      return this;
+    }),
+    subscribe: jest.fn(function () {
+      return this;
+    }),
+  })),
 };
 
 global.supabase = { createClient: () => mockSupabase };
@@ -152,7 +165,7 @@ describe('RBAC Module - Exports and Structure', () => {
 
   test('rbacModule.ROLES contains all expected role definitions', () => {
     const expectedRoles = ['super_admin', 'admin', 'editor', 'viewer', 'judge', 'marketing', 'finance'];
-    expectedRoles.forEach(role => {
+    expectedRoles.forEach((role) => {
       expect(rbacModule.ROLES[role]).toBeDefined();
       expect(rbacModule.ROLES[role].label).toBeTruthy();
       expect(Array.isArray(rbacModule.ROLES[role].modules)).toBe(true);
@@ -249,13 +262,13 @@ describe('RBAC Module - Role Definitions', () => {
   });
 
   test('all roles include dashboard module', () => {
-    Object.values(rbacModule.ROLES).forEach(role => {
+    Object.values(rbacModule.ROLES).forEach((role) => {
       expect(role.modules).toContain('dashboard');
     });
   });
 
   test('all roles include read action', () => {
-    Object.values(rbacModule.ROLES).forEach(role => {
+    Object.values(rbacModule.ROLES).forEach((role) => {
       expect(role.actions).toContain('read');
     });
   });
@@ -352,10 +365,7 @@ describe('RBAC Module - guard', () => {
   test('guard returns false and shows toast when action is denied', () => {
     rbacModule.permissions = rbacModule.ROLES.viewer;
     expect(rbacModule.guard('delete')).toBe(false);
-    expect(showToastSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Access denied'),
-      'error'
-    );
+    expect(showToastSpy).toHaveBeenCalledWith(expect.stringContaining('Access denied'), 'error');
   });
 
   test('guard returns true when module access is permitted', () => {
@@ -366,10 +376,7 @@ describe('RBAC Module - guard', () => {
   test('guard returns false when module access is denied', () => {
     rbacModule.permissions = rbacModule.ROLES.viewer;
     expect(rbacModule.guard(null, 'settings')).toBe(false);
-    expect(showToastSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Access denied'),
-      'error'
-    );
+    expect(showToastSpy).toHaveBeenCalledWith(expect.stringContaining('Access denied'), 'error');
   });
 
   test('guard checks both action and module when both provided', () => {
@@ -389,10 +396,7 @@ describe('RBAC Module - guard', () => {
     // Judge cannot access settings, so it should fail on module
     const result = rbacModule.guard('read', 'settings');
     expect(result).toBe(false);
-    expect(showToastSpy).toHaveBeenCalledWith(
-      expect.stringContaining('permission to access this module'),
-      'error'
-    );
+    expect(showToastSpy).toHaveBeenCalledWith(expect.stringContaining('permission to access this module'), 'error');
   });
 
   test('guard with no action and no module returns true (no checks to perform)', () => {
@@ -437,9 +441,7 @@ describe('RBAC Module - loadUserRole', () => {
   });
 
   test('loadUserRole defaults to viewer when no role found', async () => {
-    mockSupabase.limit.mockReturnValue(
-      Promise.resolve({ data: [], error: null })
-    );
+    mockSupabase.limit.mockReturnValue(Promise.resolve({ data: [], error: null }));
 
     await rbacModule.loadUserRole('unknown@test.com');
 
@@ -448,9 +450,7 @@ describe('RBAC Module - loadUserRole', () => {
   });
 
   test('loadUserRole defaults to viewer on database error', async () => {
-    mockSupabase.limit.mockReturnValue(
-      Promise.resolve({ data: null, error: new Error('DB connection failed') })
-    );
+    mockSupabase.limit.mockReturnValue(Promise.resolve({ data: null, error: new Error('DB connection failed') }));
 
     await rbacModule.loadUserRole('user@test.com');
 
@@ -506,12 +506,12 @@ describe('RBAC Module - loadUserRole', () => {
 describe('RBAC Module - applyPermissions UI effects', () => {
   beforeEach(() => {
     // Reset tab display states
-    document.querySelectorAll('[id$="-tab"]').forEach(tab => {
+    document.querySelectorAll('[id$="-tab"]').forEach((tab) => {
       const li = tab.closest('li') || tab.parentElement;
       if (li) li.style.display = '';
     });
     // Reset RBAC action button displays
-    document.querySelectorAll('[data-rbac-action]').forEach(el => {
+    document.querySelectorAll('[data-rbac-action]').forEach((el) => {
       el.style.display = '';
     });
     // Reset danger zone
@@ -651,9 +651,7 @@ describe('RBAC Module - ensureAdminExists', () => {
   });
 
   test('ensureAdminExists returns true when other admins exist', async () => {
-    mockSupabase.neq.mockReturnValue(
-      Promise.resolve({ count: 2, error: null })
-    );
+    mockSupabase.neq.mockReturnValue(Promise.resolve({ count: 2, error: null }));
 
     const result = await rbacModule.ensureAdminExists('user@test.com');
     expect(result).toBe(true);
@@ -661,22 +659,15 @@ describe('RBAC Module - ensureAdminExists', () => {
   });
 
   test('ensureAdminExists returns false and shows toast when no other admins', async () => {
-    mockSupabase.neq.mockReturnValue(
-      Promise.resolve({ count: 0, error: null })
-    );
+    mockSupabase.neq.mockReturnValue(Promise.resolve({ count: 0, error: null }));
 
     const result = await rbacModule.ensureAdminExists('lastadmin@test.com');
     expect(result).toBe(false);
-    expect(showToastSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Cannot remove the last admin'),
-      'error'
-    );
+    expect(showToastSpy).toHaveBeenCalledWith(expect.stringContaining('Cannot remove the last admin'), 'error');
   });
 
   test('ensureAdminExists returns false on database error', async () => {
-    mockSupabase.neq.mockReturnValue(
-      Promise.resolve({ count: null, error: new Error('DB error') })
-    );
+    mockSupabase.neq.mockReturnValue(Promise.resolve({ count: null, error: new Error('DB error') }));
 
     const result = await rbacModule.ensureAdminExists('user@test.com');
     expect(result).toBe(false);
@@ -690,9 +681,7 @@ describe('RBAC Module - ensureAdminExists', () => {
   });
 
   test('ensureAdminExists queries with correct filters', async () => {
-    mockSupabase.neq.mockReturnValue(
-      Promise.resolve({ count: 1, error: null })
-    );
+    mockSupabase.neq.mockReturnValue(Promise.resolve({ count: 1, error: null }));
 
     await rbacModule.ensureAdminExists('exclude@test.com');
 
@@ -704,17 +693,17 @@ describe('RBAC Module - ensureAdminExists', () => {
 
 describe('RBAC Module - Cross-Role Access Matrix', () => {
   const sensitiveModules = ['settings', 'payments', 'crm', 'bitcoin'];
-  const destructiveActions = ['delete', 'manage_users', 'manage_roles', 'gdpr'];
+  const _destructiveActions = ['delete', 'manage_users', 'manage_roles', 'gdpr'];
 
   test('only super_admin and admin can access all core modules', () => {
-    sensitiveModules.forEach(mod => {
+    sensitiveModules.forEach((mod) => {
       expect(rbacModule.ROLES.super_admin.modules).toContain(mod);
       expect(rbacModule.ROLES.admin.modules).toContain(mod);
     });
   });
 
   test('viewer, judge, marketing, and finance cannot access settings', () => {
-    ['viewer', 'judge', 'marketing', 'finance'].forEach(role => {
+    ['viewer', 'judge', 'marketing', 'finance'].forEach((role) => {
       expect(rbacModule.ROLES[role].modules).not.toContain('settings');
     });
   });
@@ -723,7 +712,7 @@ describe('RBAC Module - Cross-Role Access Matrix', () => {
     expect(rbacModule.ROLES.super_admin.actions).toContain('manage_users');
     expect(rbacModule.ROLES.super_admin.actions).toContain('manage_roles');
 
-    ['admin', 'editor', 'viewer', 'judge', 'marketing', 'finance'].forEach(role => {
+    ['admin', 'editor', 'viewer', 'judge', 'marketing', 'finance'].forEach((role) => {
       expect(rbacModule.ROLES[role].actions).not.toContain('manage_users');
       expect(rbacModule.ROLES[role].actions).not.toContain('manage_roles');
     });
@@ -733,7 +722,7 @@ describe('RBAC Module - Cross-Role Access Matrix', () => {
     expect(rbacModule.ROLES.super_admin.actions).toContain('delete');
     expect(rbacModule.ROLES.admin.actions).toContain('delete');
 
-    ['editor', 'viewer', 'judge', 'marketing', 'finance'].forEach(role => {
+    ['editor', 'viewer', 'judge', 'marketing', 'finance'].forEach((role) => {
       expect(rbacModule.ROLES[role].actions).not.toContain('delete');
     });
   });
@@ -752,7 +741,7 @@ describe('RBAC Module - Cross-Role Access Matrix', () => {
   });
 
   test('every role label is a non-empty string', () => {
-    Object.entries(rbacModule.ROLES).forEach(([key, role]) => {
+    Object.entries(rbacModule.ROLES).forEach(([_key, role]) => {
       expect(typeof role.label).toBe('string');
       expect(role.label.length).toBeGreaterThan(0);
     });
@@ -781,10 +770,22 @@ describe('RBAC Module - Permission Boundary Tests', () => {
   test('judge cannot access any module except dashboard', () => {
     rbacModule.permissions = rbacModule.ROLES.judge;
 
-    const allModules = ['awards', 'organisations', 'winners', 'entries', 'events',
-      'media-gallery', 'marketing', 'payments', 'crm', 'settings', 'reports', 'bitcoin'];
+    const allModules = [
+      'awards',
+      'organisations',
+      'winners',
+      'entries',
+      'events',
+      'media-gallery',
+      'marketing',
+      'payments',
+      'crm',
+      'settings',
+      'reports',
+      'bitcoin',
+    ];
 
-    allModules.forEach(mod => {
+    allModules.forEach((mod) => {
       expect(rbacModule.canAccess(mod)).toBe(false);
     });
 

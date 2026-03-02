@@ -5,11 +5,14 @@
 
 const { JSDOM } = require('jsdom');
 
-const dom = new JSDOM(`<!DOCTYPE html><html><body>
+const dom = new JSDOM(
+  `<!DOCTYPE html><html><body>
   <div id="loadingBar" style="display:none;"></div>
   <div id="notificationToast"><span id="toastIcon"></span><span id="toastTitle"></span><span id="toastMessage"></span></div>
   <div id="testContainer"></div>
-</body></html>`, { url: 'http://localhost' });
+</body></html>`,
+  { url: 'http://localhost' }
+);
 
 global.window = dom.window;
 global.document = dom.window.document;
@@ -18,20 +21,44 @@ global.navigator = dom.window.navigator;
 global.HTMLElement = dom.window.HTMLElement;
 
 global.bootstrap = {
-  Toast: class { show() {} hide() {} },
-  Modal: class { show() {} hide() {} static getInstance() { return { hide() {} }; } },
-  Tooltip: class {}
+  Toast: class {
+    show() {}
+    hide() {}
+  },
+  Modal: class {
+    show() {}
+    hide() {}
+    static getInstance() {
+      return { hide() {} };
+    }
+  },
+  Tooltip: class {},
 };
 
 const mockSupabase = {
-  from: jest.fn(() => mockSupabase), select: jest.fn(() => mockSupabase),
-  insert: jest.fn(() => mockSupabase), update: jest.fn(() => mockSupabase),
-  delete: jest.fn(() => mockSupabase), eq: jest.fn(() => mockSupabase),
-  order: jest.fn(() => mockSupabase), range: jest.fn(() => mockSupabase),
+  from: jest.fn(() => mockSupabase),
+  select: jest.fn(() => mockSupabase),
+  insert: jest.fn(() => mockSupabase),
+  update: jest.fn(() => mockSupabase),
+  delete: jest.fn(() => mockSupabase),
+  eq: jest.fn(() => mockSupabase),
+  order: jest.fn(() => mockSupabase),
+  range: jest.fn(() => mockSupabase),
   single: jest.fn(() => Promise.resolve({ data: null, error: null })),
-  then: jest.fn(cb => cb({ data: [], error: null })),
-  auth: { getSession: jest.fn(() => Promise.resolve({ data: { session: null }, error: null })), signInWithPassword: jest.fn(), signOut: jest.fn(() => Promise.resolve({ error: null })) },
-  channel: jest.fn(() => ({ on: jest.fn(function() { return this; }), subscribe: jest.fn(function() { return this; }) }))
+  then: jest.fn((cb) => cb({ data: [], error: null })),
+  auth: {
+    getSession: jest.fn(() => Promise.resolve({ data: { session: null }, error: null })),
+    signInWithPassword: jest.fn(),
+    signOut: jest.fn(() => Promise.resolve({ error: null })),
+  },
+  channel: jest.fn(() => ({
+    on: jest.fn(function () {
+      return this;
+    }),
+    subscribe: jest.fn(function () {
+      return this;
+    }),
+  })),
 };
 
 global.supabase = { createClient: () => mockSupabase };
@@ -283,7 +310,9 @@ describe('actionRegistry', () => {
     document.getElementById('testContainer').appendChild(div);
 
     const event = new dom.window.KeyboardEvent('keydown', {
-      key: 'Enter', bubbles: true, cancelable: true
+      key: 'Enter',
+      bubbles: true,
+      cancelable: true,
     });
     div.dispatchEvent(event);
     expect(handler).toHaveBeenCalled();
@@ -301,7 +330,9 @@ describe('actionRegistry', () => {
     document.getElementById('testContainer').appendChild(div);
 
     const event = new dom.window.KeyboardEvent('keydown', {
-      key: ' ', bubbles: true, cancelable: true
+      key: ' ',
+      bubbles: true,
+      cancelable: true,
     });
     div.dispatchEvent(event);
     expect(handler).toHaveBeenCalled();
@@ -319,7 +350,9 @@ describe('actionRegistry', () => {
 
     // Dispatch keydown — this should be ignored by our handler (browser handles it)
     const event = new dom.window.KeyboardEvent('keydown', {
-      key: 'Enter', bubbles: true, cancelable: true
+      key: 'Enter',
+      bubbles: true,
+      cancelable: true,
     });
     btn.dispatchEvent(event);
     // The handler should NOT be called by our keydown listener

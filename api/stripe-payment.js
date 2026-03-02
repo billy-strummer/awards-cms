@@ -1,6 +1,7 @@
 /**
- * Stripe Payment API Endpoints
- * Deploy this as a serverless function or Express.js endpoint
+ * @module stripe-payment
+ * Stripe Payment API Endpoints.
+ * Deploy this as a serverless function or Express.js endpoint.
  *
  * Required Environment Variables:
  * - STRIPE_SECRET_KEY
@@ -17,17 +18,13 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 const APP_URL = process.env.APP_URL || 'https://admin.britishtrade.com';
 const FROM_EMAIL = process.env.FROM_EMAIL || 'awards@britishtradeawards.com';
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
 /**
- * Create Stripe Checkout Session
- * POST /api/create-checkout-session
- */
-/**
- * Verify Supabase JWT from Authorization header
+ * Verify Supabase JWT from Authorization header.
+ * @param {Object} req - Express request object.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<Object|null>} The authenticated user object, or null if authentication fails (401 sent).
  */
 async function verifyAuth(req, res) {
   const authHeader = req.headers.authorization;
@@ -36,7 +33,10 @@ async function verifyAuth(req, res) {
     return null;
   }
   const token = authHeader.replace('Bearer ', '');
-  const { data: { user }, error } = await supabase.auth.getUser(token);
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser(token);
   if (error || !user) {
     res.status(401).json({ error: 'Invalid or expired token' });
     return null;
@@ -44,13 +44,20 @@ async function verifyAuth(req, res) {
   return user;
 }
 
+/**
+ * Create a Stripe Checkout Session for an entry fee payment.
+ * POST /api/create-checkout-session
+ * @param {Object} req - Express request object with body containing entryId, amount, description, email.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>}
+ */
 async function createCheckoutSession(req, res) {
   try {
     const user = await verifyAuth(req, res);
     if (!user) return;
 
     const { entryId, entry_id, amount, description, email } = req.body;
-    const resolvedEntryId = entryId || entry_id;  // Accept both camelCase and snake_case
+    const resolvedEntryId = entryId || entry_id; // Accept both camelCase and snake_case
 
     // Validate inputs
     if (!resolvedEntryId || !amount || typeof amount !== 'number' || amount <= 0) {
@@ -100,12 +107,11 @@ async function createCheckoutSession(req, res) {
       .from('entries')
       .update({
         payment_reference: session.payment_intent || session.id,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
       .eq('id', resolvedEntryId);
 
     res.json({ id: session.id, url: session.url });
-
   } catch (error) {
     console.error('Error creating checkout session:', error);
     res.status(500).json({ error: error.message });
@@ -113,19 +119,18 @@ async function createCheckoutSession(req, res) {
 }
 
 /**
- * Stripe Webhook Handler
+ * Stripe Webhook Handler. Processes checkout, payment, and refund events.
  * POST /api/stripe-webhook
+ * @param {Object} req - Express request object with raw body and stripe-signature header.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>}
  */
 async function handleStripeWebhook(req, res) {
   const sig = req.headers['stripe-signature'];
   let event;
 
   try {
-    event = stripe.webhooks.constructEvent(
-      req.body,
-      sig,
-      process.env.STRIPE_WEBHOOK_SECRET
-    );
+    event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
   } catch (err) {
     console.error('Webhook signature verification failed:', err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
@@ -157,7 +162,10 @@ async function handleStripeWebhook(req, res) {
 }
 
 /**
- * Handle successful checkout session
+ * Handle successful checkout session completion.
+ * Updates entry status, creates invoice record, sends confirmation email, and logs activity.
+ * @param {Object} session - Stripe checkout session object.
+ * @returns {Promise<void>}
  */
 async function handleCheckoutSessionCompleted(session) {
   try {
@@ -171,77 +179,74 @@ async function handleCheckoutSessionCompleted(session) {
         status: 'submitted', // Change from draft to submitted
         submission_date: new Date().toISOString(),
         payment_reference: session.payment_intent,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
       .eq('id', entryId);
 
     if (updateError) throw updateError;
 
     // Create invoice record
-    const { data: entry } = await supabase
-      .from('entries')
-      .select('*')
-      .eq('id', entryId)
-      .single();
+    const { data: entry } = await supabase.from('entries').select('*').eq('id', entryId).single();
 
     if (entry) {
-      await supabase.from('invoices').insert([{
-        organisation_id: entry.organisation_id,
-        invoice_type: 'entry_fee',
-        status: 'paid',
-        total_amount: session.amount_total / 100, // Convert from pence
-        currency: 'GBP',
-        paid_date: new Date().toISOString(),
-        payment_method: 'stripe',
-        payment_reference: session.payment_intent,
-        notes: `Entry ${entry.entry_number} - ${entry.entry_title}`
-      }]);
+      await supabase.from('invoices').insert([
+        {
+          organisation_id: entry.organisation_id,
+          invoice_type: 'entry_fee',
+          status: 'paid',
+          total_amount: session.amount_total / 100, // Convert from pence
+          currency: 'GBP',
+          paid_date: new Date().toISOString(),
+          payment_method: 'stripe',
+          payment_reference: session.payment_intent,
+          notes: `Entry ${entry.entry_number} - ${entry.entry_title}`,
+        },
+      ]);
 
       // Send confirmation email
       await sendEntryConfirmationEmail(entry);
 
       // Log activity
-      await supabase.from('activity_log').insert([{
-        entity_type: 'entry',
-        entity_id: entryId,
-        action: 'payment_completed',
-        details: `Payment received for entry ${entry.entry_number}`,
-        performed_by: entry.contact_email
-      }]);
+      await supabase.from('activity_log').insert([
+        {
+          entity_type: 'entry',
+          entity_id: entryId,
+          action: 'payment_completed',
+          details: `Payment received for entry ${entry.entry_number}`,
+          performed_by: entry.contact_email,
+        },
+      ]);
     }
 
     console.log(`✅ Payment completed for entry ${entryId}`);
-
   } catch (error) {
     console.error('Error handling checkout session:', error);
   }
 }
 
 /**
- * Handle successful payment intent
+ * Handle successful payment intent. Sends confirmation email for matching entries.
+ * @param {Object} paymentIntent - Stripe payment intent object.
+ * @returns {Promise<void>}
  */
 async function handlePaymentIntentSucceeded(paymentIntent) {
   console.log(`Payment succeeded: ${paymentIntent.id}`);
-  const { data: entries } = await supabase
-    .from('entries')
-    .select('*')
-    .eq('payment_reference', paymentIntent.id);
+  const { data: entries } = await supabase.from('entries').select('*').eq('payment_reference', paymentIntent.id);
   if (entries && entries.length > 0) {
     await sendEntryConfirmationEmail(entries[0]);
   }
 }
 
 /**
- * Handle failed payment
+ * Handle failed payment. Sends failure email and logs activity.
+ * @param {Object} paymentIntent - Stripe payment intent object with failure details.
+ * @returns {Promise<void>}
  */
 async function handlePaymentIntentFailed(paymentIntent) {
   console.error(`❌ Payment failed: ${paymentIntent.id}`);
 
   // Try to find entry by payment reference
-  const { data: entries } = await supabase
-    .from('entries')
-    .select('*')
-    .eq('payment_reference', paymentIntent.id);
+  const { data: entries } = await supabase.from('entries').select('*').eq('payment_reference', paymentIntent.id);
 
   if (entries && entries.length > 0) {
     const entry = entries[0];
@@ -250,27 +255,28 @@ async function handlePaymentIntentFailed(paymentIntent) {
     await sendPaymentFailedEmail(entry, paymentIntent.last_payment_error?.message);
 
     // Log activity
-    await supabase.from('activity_log').insert([{
-      entity_type: 'entry',
-      entity_id: entry.id,
-      action: 'payment_failed',
-      details: `Payment failed: ${paymentIntent.last_payment_error?.message}`,
-      performed_by: entry.contact_email
-    }]);
+    await supabase.from('activity_log').insert([
+      {
+        entity_type: 'entry',
+        entity_id: entry.id,
+        action: 'payment_failed',
+        details: `Payment failed: ${paymentIntent.last_payment_error?.message}`,
+        performed_by: entry.contact_email,
+      },
+    ]);
   }
 }
 
 /**
- * Handle refund
+ * Handle charge refund. Updates entry payment status and sends refund confirmation email.
+ * @param {Object} charge - Stripe charge object with refund details.
+ * @returns {Promise<void>}
  */
 async function handleChargeRefunded(charge) {
   console.log(`🔄 Charge refunded: ${charge.id}`);
 
   // Find entry by payment reference
-  const { data: entries } = await supabase
-    .from('entries')
-    .select('*')
-    .eq('payment_reference', charge.payment_intent);
+  const { data: entries } = await supabase.from('entries').select('*').eq('payment_reference', charge.payment_intent);
 
   if (entries && entries.length > 0) {
     const entry = entries[0];
@@ -280,7 +286,7 @@ async function handleChargeRefunded(charge) {
       .from('entries')
       .update({
         payment_status: 'refunded',
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
       .eq('id', entry.id);
 
@@ -291,7 +297,8 @@ async function handleChargeRefunded(charge) {
 
 /**
  * Load an active email template from the database by type.
- * Returns { subject, body } or null if none found.
+ * @param {string} templateType - The template type identifier (e.g. 'payment_confirmation').
+ * @returns {Promise<{subject: string, body: string}|null>} Template data or null if none found.
  */
 async function loadTemplate(templateType) {
   try {
@@ -304,25 +311,29 @@ async function loadTemplate(templateType) {
       .limit(1)
       .single();
     return data;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 /**
  * Load tenant branding for header/footer styling.
+ * @returns {Promise<Object>} Branding configuration object (empty object if not found).
  */
 async function loadBranding() {
   try {
-    const { data } = await supabase
-      .from('tenant_branding')
-      .select('*')
-      .eq('tenant_id', 'default')
-      .maybeSingle();
+    const { data } = await supabase.from('tenant_branding').select('*').eq('tenant_id', 'default').maybeSingle();
     return data || {};
-  } catch { return {}; }
+  } catch {
+    return {};
+  }
 }
 
 /**
  * Replace {PLACEHOLDER} tokens in a string with values from a data object.
+ * @param {string} text - The template string containing {KEY} placeholders.
+ * @param {Object} data - Key-value pairs for placeholder replacement.
+ * @returns {string} The string with all matching placeholders replaced.
  */
 function replacePlaceholders(text, data) {
   let result = text;
@@ -333,14 +344,13 @@ function replacePlaceholders(text, data) {
 }
 
 /**
- * Convert plain-text template body to styled HTML.
+ * Convert plain-text template body to styled HTML with paragraph wrapping.
+ * @param {string} text - Plain text content to convert.
+ * @returns {string} HTML string with paragraphs and line breaks.
  */
 function textToHtml(text) {
-  const escaped = text
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  const html = escaped
-    .replace(/\n\n/g, '</p><p style="margin:0 0 16px 0;">')
-    .replace(/\n/g, '<br>');
+  const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const html = escaped.replace(/\n\n/g, '</p><p style="margin:0 0 16px 0;">').replace(/\n/g, '<br>');
   return `<div style="padding:30px 40px;"><p style="margin:0 0 16px 0;">${html}</p></div>`;
 }
 
@@ -349,16 +359,21 @@ function textToHtml(text) {
  */
 const SUBTITLE_MAP = {
   payment_confirmation: 'Self-Nomination Entry Confirmation',
-  payment_failed:       'Payment Reminder',
-  refund_confirmation:  'Refund Confirmation',
+  payment_failed: 'Payment Reminder',
+  refund_confirmation: 'Refund Confirmation',
 };
 
 /**
  * Send entry confirmation email (after successful payment).
  * Loads editable template from CMS; falls back to hardcoded default.
+ * @param {Object} entry - The entry record from the database.
+ * @returns {Promise<void>}
  */
 async function sendEntryConfirmationEmail(entry) {
-  if (!process.env.RESEND_API_KEY) { console.log('RESEND_API_KEY not set, skipping email'); return; }
+  if (!process.env.RESEND_API_KEY) {
+    console.log('RESEND_API_KEY not set, skipping email');
+    return;
+  }
   try {
     const branding = await loadBranding();
     const contactEmail = branding.email_from || process.env.CONTACT_EMAIL || 'awards@britishtrade.org';
@@ -368,41 +383,49 @@ async function sendEntryConfirmationEmail(entry) {
       ENTRY_NUMBER: entry.entry_number || '',
       CONTACT_NAME: entry.contact_name || '',
       COMPANY_NAME: entry.company_name || '',
-      ENTRY_TITLE:  entry.entry_title || '',
-      UPLOAD_LINK:  uploadLink,
+      ENTRY_TITLE: entry.entry_title || '',
+      UPLOAD_LINK: uploadLink,
       CONTACT_EMAIL: contactEmail,
     };
 
     const tpl = await loadTemplate('payment_confirmation');
     let subject, bodyText;
     if (tpl) {
-      subject  = replacePlaceholders(tpl.subject, placeholders);
+      subject = replacePlaceholders(tpl.subject, placeholders);
       bodyText = replacePlaceholders(tpl.body, placeholders);
     } else {
-      subject  = `Entry Confirmed: ${entry.entry_number || 'Your Submission'} - British Trade Awards`;
+      subject = `Entry Confirmed: ${entry.entry_number || 'Your Submission'} - British Trade Awards`;
       bodyText = `Dear ${entry.contact_name || ''},\n\nThank you for your entry! Your entry ${entry.entry_number || ''} has been received and payment confirmed.\n\nEntry: ${entry.entry_title || ''}\n\nYou can upload supporting documents at:\n${uploadLink}\n\nWe will be in touch with next steps. Good luck!\n\nKind regards,\nThe British Trade Awards Team`;
     }
 
     const bodyHtml = textToHtml(bodyText);
     const html = wrapEmail(bodyHtml, branding, { subject, subtitle: SUBTITLE_MAP.payment_confirmation });
     await resend.emails.send({ from: FROM_EMAIL, to: entry.contact_email, subject, html });
-  } catch (e) { console.error('Error sending confirmation email:', e.message); }
+  } catch (e) {
+    console.error('Error sending confirmation email:', e.message);
+  }
 }
 
 /**
  * Send payment failed email.
  * Loads editable template from CMS; falls back to hardcoded default.
+ * @param {Object} entry - The entry record from the database.
+ * @param {string} [errorMessage] - The payment error message to include.
+ * @returns {Promise<void>}
  */
 async function sendPaymentFailedEmail(entry, errorMessage) {
-  if (!process.env.RESEND_API_KEY) { console.log('RESEND_API_KEY not set, skipping email'); return; }
+  if (!process.env.RESEND_API_KEY) {
+    console.log('RESEND_API_KEY not set, skipping email');
+    return;
+  }
   try {
     const branding = await loadBranding();
     const contactEmail = branding.email_from || process.env.CONTACT_EMAIL || 'awards@britishtrade.org';
 
     const placeholders = {
-      ENTRY_NUMBER:  entry.entry_number || '',
-      CONTACT_NAME:  entry.contact_name || '',
-      COMPANY_NAME:  entry.company_name || '',
+      ENTRY_NUMBER: entry.entry_number || '',
+      CONTACT_NAME: entry.contact_name || '',
+      COMPANY_NAME: entry.company_name || '',
       ERROR_MESSAGE: errorMessage || 'Unknown error',
       CONTACT_EMAIL: contactEmail,
     };
@@ -410,55 +433,67 @@ async function sendPaymentFailedEmail(entry, errorMessage) {
     const tpl = await loadTemplate('payment_failed');
     let subject, bodyText;
     if (tpl) {
-      subject  = replacePlaceholders(tpl.subject, placeholders);
+      subject = replacePlaceholders(tpl.subject, placeholders);
       bodyText = replacePlaceholders(tpl.body, placeholders);
     } else {
-      subject  = `Payment Issue: ${entry.entry_number || 'Your Entry'} - British Trade Awards`;
+      subject = `Payment Issue: ${entry.entry_number || 'Your Entry'} - British Trade Awards`;
       bodyText = `Dear ${entry.contact_name || ''},\n\nWe were unable to process payment for entry ${entry.entry_number || ''}.\n\nReason: ${errorMessage || 'Unknown error'}\n\nPlease try again or contact us for assistance at ${contactEmail}\n\nKind regards,\nThe British Trade Awards Team`;
     }
 
     const bodyHtml = textToHtml(bodyText);
     const html = wrapEmail(bodyHtml, branding, { subject, subtitle: SUBTITLE_MAP.payment_failed });
     await resend.emails.send({ from: FROM_EMAIL, to: entry.contact_email, subject, html });
-  } catch (e) { console.error('Error sending payment failed email:', e.message); }
+  } catch (e) {
+    console.error('Error sending payment failed email:', e.message);
+  }
 }
 
 /**
  * Send refund confirmation email.
  * Loads editable template from CMS; falls back to hardcoded default.
+ * @param {Object} entry - The entry record from the database.
+ * @returns {Promise<void>}
  */
 async function sendRefundConfirmationEmail(entry) {
-  if (!process.env.RESEND_API_KEY) { console.log('RESEND_API_KEY not set, skipping email'); return; }
+  if (!process.env.RESEND_API_KEY) {
+    console.log('RESEND_API_KEY not set, skipping email');
+    return;
+  }
   try {
     const branding = await loadBranding();
     const contactEmail = branding.email_from || process.env.CONTACT_EMAIL || 'awards@britishtrade.org';
 
     const placeholders = {
-      ENTRY_NUMBER:  entry.entry_number || '',
-      CONTACT_NAME:  entry.contact_name || '',
-      COMPANY_NAME:  entry.company_name || '',
+      ENTRY_NUMBER: entry.entry_number || '',
+      CONTACT_NAME: entry.contact_name || '',
+      COMPANY_NAME: entry.company_name || '',
       CONTACT_EMAIL: contactEmail,
     };
 
     const tpl = await loadTemplate('refund_confirmation');
     let subject, bodyText;
     if (tpl) {
-      subject  = replacePlaceholders(tpl.subject, placeholders);
+      subject = replacePlaceholders(tpl.subject, placeholders);
       bodyText = replacePlaceholders(tpl.body, placeholders);
     } else {
-      subject  = `Refund Processed: ${entry.entry_number || 'Your Entry'} - British Trade Awards`;
+      subject = `Refund Processed: ${entry.entry_number || 'Your Entry'} - British Trade Awards`;
       bodyText = `Dear ${entry.contact_name || ''},\n\nA refund has been processed for entry ${entry.entry_number || ''}.\n\nThe refund should appear on your statement within 5-10 business days.\n\nIf you have any questions, please contact us at ${contactEmail}\n\nKind regards,\nThe British Trade Awards Team`;
     }
 
     const bodyHtml = textToHtml(bodyText);
     const html = wrapEmail(bodyHtml, branding, { subject, subtitle: SUBTITLE_MAP.refund_confirmation });
     await resend.emails.send({ from: FROM_EMAIL, to: entry.contact_email, subject, html });
-  } catch (e) { console.error('Error sending refund email:', e.message); }
+  } catch (e) {
+    console.error('Error sending refund email:', e.message);
+  }
 }
 
 /**
- * Get payment status
+ * Get payment status for an entry.
  * GET /api/payment-status/:entryId
+ * @param {Object} req - Express request object with params.entryId.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>}
  */
 async function getPaymentStatus(req, res) {
   try {
@@ -475,9 +510,8 @@ async function getPaymentStatus(req, res) {
     res.json({
       paymentStatus: entry.payment_status,
       entryStatus: entry.status,
-      paymentReference: entry.payment_reference
+      paymentReference: entry.payment_reference,
     });
-
   } catch (error) {
     console.error('Error getting payment status:', error);
     res.status(500).json({ error: error.message });
@@ -485,8 +519,11 @@ async function getPaymentStatus(req, res) {
 }
 
 /**
- * Verify payment session
+ * Verify a Stripe payment session by retrieving its details.
  * GET /api/verify-payment/:sessionId
+ * @param {Object} req - Express request object with params.sessionId.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>}
  */
 async function verifyPayment(req, res) {
   try {
@@ -497,9 +534,8 @@ async function verifyPayment(req, res) {
     res.json({
       paymentStatus: session.payment_status,
       customerEmail: session.customer_email,
-      amountTotal: session.amount_total / 100
+      amountTotal: session.amount_total / 100,
     });
-
   } catch (error) {
     console.error('Error verifying payment:', error);
     res.status(500).json({ error: error.message });
@@ -511,7 +547,7 @@ module.exports = {
   createCheckoutSession,
   handleStripeWebhook,
   getPaymentStatus,
-  verifyPayment
+  verifyPayment,
 };
 
 /**

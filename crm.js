@@ -11,7 +11,7 @@ const crmModule = {
     communications: { type: 'all', regarding: 'all', followUpRequired: 'all' },
     deals: { stage: 'all', type: 'all', status: 'active' },
     meetings: { type: 'all' },
-    segments: {}
+    segments: {},
   },
 
   // Pagination, sorting, selection & view state
@@ -32,14 +32,26 @@ const crmModule = {
   _selectedMeetingIds: new Set(),
   _kanbanView: false,
 
+  // Server-side pagination state (companies)
+  _serverPagination: true,
+  _pagination: { page: 1, totalPages: 1, count: 0, pageSize: 50 },
+  _fetchId: 0,
+  _companiesSortField: 'last_communication_date',
+  _companiesSortDir: 'desc',
+
   // ============================================
   // MAIN LOAD FUNCTION
   // ============================================
+  /**
+   * Load CRM data based on the currently active sub-tab.
+   * Delegates to tab-specific loaders (companies, communications, deals, meetings, segments).
+   * @returns {Promise<void>}
+   */
   async loadAllData() {
     console.warn('🎯 Loading CRM data...');
     try {
       // Load data based on current sub-tab
-      switch(this.currentSubTab) {
+      switch (this.currentSubTab) {
         case 'companies-crm':
           await this.loadCompanies();
           break;
@@ -71,93 +83,168 @@ const crmModule = {
   // ============================================
   // COMPANIES CRM VIEW
   // ============================================
+  /**
+   * Load organisations with CRM summary data and render the companies table.
+   * @returns {Promise<void>}
+   */
   async loadCompanies() {
     console.warn('Loading companies CRM view...');
 
     try {
-      // Load organisations with CRM summary from view
-      const { data: companies, error } = await STATE.client
-        .from('organisations_with_crm_summary')
-        .select('*')
-        .order('last_communication_date', { ascending: false, nullsFirst: false })
-        .limit(1000);
-
-      if (error) throw error;
-
-      // Calculate quick stats
-      const stats = {
-        totalCompanies: companies.length,
-        activeDeals: companies.reduce((sum, c) => sum + (c.active_deals || 0), 0),
-        recentCommunications: companies.filter(c => {
-          if (!c.last_communication_date) return false;
-          const lastComm = new Date(c.last_communication_date);
-          const daysAgo = (Date.now() - lastComm.getTime()) / (1000 * 60 * 60 * 24);
-          return daysAgo <= 7;
-        }).length,
-        pendingFollowUps: companies.reduce((sum, c) => sum + (c.pending_follow_ups || 0), 0)
-      };
-
-      // Update stats display (elements may not exist in all views)
-      const el1 = document.getElementById('totalCompaniesCount');
-      const el2 = document.getElementById('activeDealsCount');
-      const el3 = document.getElementById('recentCommunicationsCount');
-      const el4 = document.getElementById('pendingFollowUpsCount');
-      if (el1) el1.textContent = stats.totalCompanies;
-      if (el2) el2.textContent = stats.activeDeals;
-      if (el3) el3.textContent = stats.recentCommunications;
-      if (el4) el4.textContent = stats.pendingFollowUps;
-
-      // Store full companies list for client-side filtering
-      this.allCompanies = companies;
-
-      // Populate segment filter dropdown from unique segments
-      const segmentFilter = document.getElementById('crmSegmentFilter');
-      if (segmentFilter) {
-        const segments = new Set();
-        companies.forEach(c => {
-          if (c.segments) {
-            c.segments.split(',').forEach(s => {
-              const trimmed = s.trim();
-              if (trimmed) segments.add(trimmed);
-            });
-          }
-        });
-        const currentVal = segmentFilter.value;
-        segmentFilter.innerHTML = '<option value="">All Companies</option>' +
-          [...segments].sort().map(s => `<option value="${utils.escapeHtml(s)}">${utils.escapeHtml(s)}</option>`).join('');
-        segmentFilter.value = currentVal;
-      }
-
-      // Render companies table
-      this.renderCompaniesTable(companies);
-
+      // Enable server-side pagination and fetch first page
+      this._serverPagination = true;
+      await this._fetchCompaniesPage(1);
     } catch (error) {
       console.error('Error loading companies:', error);
       utils.showErrorWithRetry(error, 'loading companies', () => this.loadCompanies());
     }
   },
 
+  /**
+   * Build server-side filters from current companies filter UI state.
+   * @returns {Object} Filters object for apiClient.select
+   */
+  _buildCompaniesServerFilters() {
+    const filters = {};
+    const segmentVal = document.getElementById('crmSegmentFilter')?.value || '';
+    if (segmentVal) {
+      filters.segments = { op: 'ilike', value: `%${segmentVal}%` };
+    }
+    return filters;
+  },
+
+  /**
+   * Fetch a specific page of companies from the server with current filters and sort.
+   * @param {number} page - 1-based page number
+   * @returns {Promise<void>}
+   */
+  async _fetchCompaniesPage(page) {
+    const fetchId = ++this._fetchId;
+    const filters = this._buildCompaniesServerFilters();
+    const search = (document.getElementById('crmCompanySearch')?.value || '').trim();
+
+    const result = await apiClient.select('organisations_with_crm_summary', {
+      select: '*',
+      filters,
+      search: search ? { term: search, columns: ['company_name'] } : undefined,
+      sort: {
+        column: this._companiesSortField || 'last_communication_date',
+        ascending: this._companiesSortDir === 'asc',
+      },
+      page,
+      pageSize: this._crmPageSize,
+    });
+
+    // Discard stale responses
+    if (fetchId !== this._fetchId) return;
+
+    const pageData = result.data || [];
+    this.allCompanies = pageData;
+    this._pagination = {
+      page: result.page || page,
+      totalPages: result.totalPages || 1,
+      count: result.count || 0,
+      pageSize: result.pageSize || this._crmPageSize,
+    };
+
+    // Calculate quick stats from current page data (best effort with paginated data)
+    const stats = {
+      totalCompanies: this._pagination.count,
+      activeDeals: pageData.reduce((sum, c) => sum + (c.active_deals || 0), 0),
+      recentCommunications: pageData.filter((c) => {
+        if (!c.last_communication_date) return false;
+        const lastComm = new Date(c.last_communication_date);
+        const daysAgo = (Date.now() - lastComm.getTime()) / (1000 * 60 * 60 * 24);
+        return daysAgo <= 7;
+      }).length,
+      pendingFollowUps: pageData.reduce((sum, c) => sum + (c.pending_follow_ups || 0), 0),
+    };
+
+    // Update stats display (elements may not exist in all views)
+    const el1 = document.getElementById('totalCompaniesCount');
+    const el2 = document.getElementById('activeDealsCount');
+    const el3 = document.getElementById('recentCommunicationsCount');
+    const el4 = document.getElementById('pendingFollowUpsCount');
+    if (el1) el1.textContent = stats.totalCompanies;
+    if (el2) el2.textContent = stats.activeDeals;
+    if (el3) el3.textContent = stats.recentCommunications;
+    if (el4) el4.textContent = stats.pendingFollowUps;
+
+    // Populate segment filter dropdown from unique segments on current page
+    const segmentFilter = document.getElementById('crmSegmentFilter');
+    if (segmentFilter) {
+      const segments = new Set();
+      pageData.forEach((c) => {
+        if (c.segments) {
+          c.segments.split(',').forEach((s) => {
+            const trimmed = s.trim();
+            if (trimmed) segments.add(trimmed);
+          });
+        }
+      });
+      const currentVal = segmentFilter.value;
+      segmentFilter.innerHTML =
+        '<option value="">All Companies</option>' +
+        [...segments]
+          .sort()
+          .map((s) => `<option value="${utils.escapeHtml(s)}">${utils.escapeHtml(s)}</option>`)
+          .join('');
+      segmentFilter.value = currentVal;
+    }
+
+    // Render companies table
+    this.renderCompaniesTable(pageData);
+  },
+
+  /**
+   * Navigate to a specific companies page (called from server-side pagination controls).
+   * @param {number} page - 1-based page number
+   * @returns {Promise<void>}
+   */
+  async _goToCompaniesPage(page) {
+    page = Math.max(1, Math.min(page, this._pagination.totalPages));
+    if (page === this._pagination.page) return;
+    try {
+      utils.showLoading();
+      await this._fetchCompaniesPage(page);
+    } catch (error) {
+      console.error('Error navigating companies page:', error);
+      utils.showToast('Error loading page: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
+   * Render the companies CRM table with action buttons and pagination.
+   * @param {Array<Object>} companies - Array of organisation records with CRM summary fields
+   */
   renderCompaniesTable(companies) {
     const tbody = document.getElementById('companiesCrmTableBody');
     if (!tbody) return;
 
     if (!companies || companies.length === 0) {
-      utils.showEnhancedEmptyState('companiesCrmTableBody', 8, { icon: 'bi-building', message: 'No companies found', description: 'Companies will appear here once added' });
+      utils.showEnhancedEmptyState('companiesCrmTableBody', 8, {
+        icon: 'bi-building',
+        message: 'No companies found',
+        description: 'Companies will appear here once added',
+      });
       return;
     }
 
-    tbody.innerHTML = companies.map(company => {
-      const lastContact = company.last_communication_date
-        ? new Date(company.last_communication_date).toLocaleDateString()
-        : '<span class="text-muted">Never</span>';
+    tbody.innerHTML = companies
+      .map((company) => {
+        const lastContact = company.last_communication_date
+          ? new Date(company.last_communication_date).toLocaleDateString()
+          : '<span class="text-muted">Never</span>';
 
-      const pipelineValue = company.pipeline_value
-        ? `£${parseFloat(company.pipeline_value).toLocaleString('en-GB', { minimumFractionDigits: 2 })}`
-        : '£0.00';
+        const pipelineValue = company.pipeline_value
+          ? `£${parseFloat(company.pipeline_value).toLocaleString('en-GB', { minimumFractionDigits: 2 })}`
+          : '£0.00';
 
-      const segments = company.segments ? utils.escapeHtml(company.segments) : '<span class="text-muted">None</span>';
+        const segments = company.segments ? utils.escapeHtml(company.segments) : '<span class="text-muted">None</span>';
 
-      return `
+        return `
         <tr>
           <td>
             <strong>${utils.escapeHtml(company.company_name || 'Unknown')}</strong><br>
@@ -169,43 +256,74 @@ const crmModule = {
           <td>${pipelineValue}</td>
           <td>${lastContact}</td>
           <td class="text-center">
-            ${company.pending_follow_ups > 0
-              ? `<span class="badge bg-warning text-dark">${company.pending_follow_ups}</span>`
-              : '<span class="text-muted">-</span>'}
+            ${
+              company.pending_follow_ups > 0
+                ? `<span class="badge bg-warning text-dark">${company.pending_follow_ups}</span>`
+                : '<span class="text-muted">-</span>'
+            }
           </td>
           <td>
             <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-primary" onclick="crmModule.viewCompanyProfile('${company.id}')" title="View Profile" aria-label="View company profile">
+              <button class="btn btn-outline-primary" data-action="crmModule.viewCompanyProfile" data-id="company.id" title="View Profile" aria-label="View company profile">
                 <i class="bi bi-eye"></i>
               </button>
-              <button class="btn btn-outline-success" onclick="crmModule.logCommunication('${company.id}')" title="Log Communication" aria-label="Log communication">
+              <button class="btn btn-outline-success" data-action="crmModule.logCommunication" data-id="company.id" title="Log Communication" aria-label="Log communication">
                 <i class="bi bi-chat-dots"></i>
               </button>
-              <button class="btn btn-outline-info" onclick="crmModule.createDeal('${company.id}')" title="Create Deal" aria-label="Create deal">
+              <button class="btn btn-outline-info" data-action="crmModule.createDeal" data-id="company.id" title="Create Deal" aria-label="Create deal">
                 <i class="bi bi-cash-coin"></i>
               </button>
             </div>
           </td>
         </tr>
       `;
-    }).join('');
+      })
+      .join('');
+
+    // Render pagination controls
+    let paginationEl = document.getElementById('crmCompaniesPagination');
+    if (!paginationEl) {
+      paginationEl = document.createElement('div');
+      paginationEl.id = 'crmCompaniesPagination';
+      const tableParent = tbody.closest('.table-responsive') || tbody.parentElement;
+      if (tableParent) tableParent.after(paginationEl);
+    }
+    if (this._serverPagination && paginationEl) {
+      utils.renderServerPagination('crmCompaniesPagination', this._pagination, 'crmModule._goToCompaniesPage');
+    } else if (paginationEl) {
+      paginationEl.innerHTML = '';
+    }
   },
 
+  /** Apply active filters to the companies list and re-render. */
   filterCompanies() {
+    // Server-side pagination: send filters to server and re-fetch page 1
+    if (this._serverPagination) {
+      this._fetchCompaniesPage(1).catch((err) => {
+        console.error('Error filtering companies:', err);
+        utils.showToast('Error filtering companies: ' + err.message, 'error');
+      });
+      return;
+    }
+
+    // Client-side fallback (used by tests and when data is pre-loaded)
     const searchVal = (document.getElementById('crmCompanySearch')?.value || '').toLowerCase();
     const segmentVal = document.getElementById('crmSegmentFilter')?.value || '';
 
     let filtered = this.allCompanies;
 
     if (searchVal) {
-      filtered = filtered.filter(c =>
-        (c.company_name || '').toLowerCase().includes(searchVal)
-      );
+      filtered = filtered.filter((c) => (c.company_name || '').toLowerCase().includes(searchVal));
     }
 
     if (segmentVal) {
-      filtered = filtered.filter(c =>
-        c.segments && c.segments.split(',').map(s => s.trim()).includes(segmentVal)
+      filtered = filtered.filter(
+        (c) =>
+          c.segments &&
+          c.segments
+            .split(',')
+            .map((s) => s.trim())
+            .includes(segmentVal)
       );
     }
 
@@ -213,7 +331,15 @@ const crmModule = {
     if (searchVal && filtered.length === 0) {
       filtered = utils.fuzzyFilter(this.allCompanies, searchVal, ['company_name', 'contact_name', 'email']);
       // Also apply non-search filters to fuzzy results
-      if (segmentVal) filtered = filtered.filter(c => c.segments && c.segments.split(',').map(s => s.trim()).includes(segmentVal));
+      if (segmentVal)
+        filtered = filtered.filter(
+          (c) =>
+            c.segments &&
+            c.segments
+              .split(',')
+              .map((s) => s.trim())
+              .includes(segmentVal)
+        );
     }
 
     this.renderCompaniesTable(filtered);
@@ -222,6 +348,10 @@ const crmModule = {
   // ============================================
   // COMMUNICATIONS LOG
   // ============================================
+  /**
+   * Load communications log with pagination, filtering, and sorting.
+   * @returns {Promise<void>}
+   */
   async loadCommunications() {
     console.warn('Loading communications...');
 
@@ -234,33 +364,33 @@ const crmModule = {
     this.filters.communications.followUpRequired = followUpEl && followUpEl.value ? followUpEl.value : 'all';
 
     try {
-      let query = STATE.client
-        .from('communications')
-        .select(`
-          *,
-          organisation:organisations(company_name),
-          contact:organisation_contacts(first_name, last_name, email)
-        `)
-        .order('communication_date', { ascending: false });
-
-      // Apply filters
+      const filters = {};
       if (this.filters.communications.type !== 'all') {
-        query = query.eq('type', this.filters.communications.type);
+        filters.type = { eq: this.filters.communications.type };
       }
       if (this.filters.communications.regarding !== 'all') {
-        query = query.eq('regarding', this.filters.communications.regarding);
+        filters.regarding = { eq: this.filters.communications.regarding };
       }
       if (this.filters.communications.followUpRequired !== 'all') {
-        query = query.eq('follow_up_required', this.filters.communications.followUpRequired === 'true');
+        filters.follow_up_required = { eq: this.filters.communications.followUpRequired === 'true' };
       }
 
-      const { data: communications, error } = await query;
+      const result = await apiClient.select('communications', {
+        select:
+          '*, organisation:organisations(company_name), contact:organisation_contacts(first_name, last_name, email)',
+        filters,
+        sort: { column: 'communication_date', ascending: false },
+        page: this._crmCurrentPage,
+        pageSize: this._crmPageSize,
+      });
 
-      if (error) throw error;
-
-      this._communications = communications || [];
+      this._communications = result.data || [];
+      this._commsPagination = {
+        page: result.page || 1,
+        totalPages: result.totalPages || 1,
+        count: result.count || 0,
+      };
       this.renderCommunicationsTable(this._communications);
-
     } catch (error) {
       console.error('Error loading communications:', error);
       utils.showErrorWithRetry(error, 'loading communications', () => this.loadCommunications());
@@ -272,36 +402,39 @@ const crmModule = {
     if (!tbody) return;
 
     if (!communications || communications.length === 0) {
-      utils.showEnhancedEmptyState('communicationsTableBody', 8, { icon: 'bi-chat-dots', message: 'No communications found', description: 'Communications will appear here once logged' });
+      utils.showEnhancedEmptyState('communicationsTableBody', 8, {
+        icon: 'bi-chat-dots',
+        message: 'No communications found',
+        description: 'Communications will appear here once logged',
+      });
       return;
     }
 
-    // Pagination
-    const commTotalPages = Math.ceil(communications.length / this._crmPageSize);
-    if (this._crmCurrentPage > commTotalPages) this._crmCurrentPage = commTotalPages || 1;
-    const commStart = (this._crmCurrentPage - 1) * this._crmPageSize;
-    const commEnd = commStart + this._crmPageSize;
-    const pageComms = communications.slice(commStart, commEnd);
+    // Server-side pagination: data is already the current page
+    const pageComms = communications;
+    const commTotalPages = this._commsPagination?.totalPages || 1;
 
-    tbody.innerHTML = pageComms.map(comm => {
-      const date = new Date(comm.communication_date).toLocaleDateString();
-      const companyName = comm.organisation?.company_name || 'Unknown';
-      const contactName = comm.contact
-        ? `${comm.contact.first_name} ${comm.contact.last_name}`
-        : '<span class="text-muted">N/A</span>';
+    tbody.innerHTML = pageComms
+      .map((comm) => {
+        const date = new Date(comm.communication_date).toLocaleDateString();
+        const companyName = comm.organisation?.company_name || 'Unknown';
+        const contactName = comm.contact
+          ? `${comm.contact.first_name} ${comm.contact.last_name}`
+          : '<span class="text-muted">N/A</span>';
 
-      const typeBadge = this.getTypeBadge(comm.type);
-      const directionBadge = comm.direction === 'inbound'
-        ? '<span class="badge bg-info"><i class="bi bi-arrow-down-left me-1"></i>Inbound</span>'
-        : '<span class="badge bg-primary"><i class="bi bi-arrow-up-right me-1"></i>Outbound</span>';
+        const typeBadge = this.getTypeBadge(comm.type);
+        const directionBadge =
+          comm.direction === 'inbound'
+            ? '<span class="badge bg-info"><i class="bi bi-arrow-down-left me-1"></i>Inbound</span>'
+            : '<span class="badge bg-primary"><i class="bi bi-arrow-up-right me-1"></i>Outbound</span>';
 
-      const followUpBadge = comm.follow_up_required
-        ? `<span class="badge bg-warning text-dark">
+        const followUpBadge = comm.follow_up_required
+          ? `<span class="badge bg-warning text-dark">
              <i class="bi bi-calendar-check me-1"></i>${comm.follow_up_date ? new Date(comm.follow_up_date).toLocaleDateString() : 'ASAP'}
            </span>`
-        : '<span class="text-muted">-</span>';
+          : '<span class="text-muted">-</span>';
 
-      return `
+        return `
         <tr>
           <td>${date}<br><small>${directionBadge}</small></td>
           <td>${typeBadge}</td>
@@ -317,93 +450,115 @@ const crmModule = {
           <td>${followUpBadge}</td>
           <td>
             <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-primary" onclick="crmModule.viewCommunication('${comm.id}')" title="View Details">
+              <button class="btn btn-outline-primary" data-action="crmModule.viewCommunication" data-id="comm.id" title="View Details">
                 <i class="bi bi-eye"></i>
               </button>
-              <button class="btn btn-outline-success" onclick="crmModule.editCommunication('${comm.id}')" title="Edit">
+              <button class="btn btn-outline-success" data-action="crmModule.editCommunication" data-id="comm.id" title="Edit">
                 <i class="bi bi-pencil"></i>
               </button>
-              <button class="btn btn-outline-danger" onclick="crmModule.deleteCommunication('${comm.id}')" title="Delete">
+              <button class="btn btn-outline-danger" data-action="crmModule.deleteCommunication" data-id="comm.id" title="Delete">
                 <i class="bi bi-trash"></i>
               </button>
             </div>
           </td>
         </tr>
       `;
-    }).join('');
+      })
+      .join('');
 
     // Pagination controls
-    this._renderCrmPagination('crmCommsPagination', this._crmCurrentPage, commTotalPages, 'crmModule.goToCrmCommPage', 'communicationsTableBody');
+    this._renderCrmPagination(
+      'crmCommsPagination',
+      this._crmCurrentPage,
+      commTotalPages,
+      'crmModule.goToCrmCommPage',
+      'communicationsTableBody'
+    );
   },
 
-  goToCrmCommPage(page) {
-    const total = Math.ceil((this._communications || []).length / this._crmPageSize);
+  async goToCrmCommPage(page) {
+    page = parseInt(page, 10);
+    const total = this._commsPagination?.totalPages || 1;
     this._crmCurrentPage = Math.max(1, Math.min(page, total));
-    this.renderCommunicationsTable(this._communications);
+    await this.loadCommunications();
   },
 
   getTypeBadge(type) {
     const types = {
-      'email': '<span class="badge bg-primary"><i class="bi bi-envelope me-1"></i>Email</span>',
-      'phone': '<span class="badge bg-success"><i class="bi bi-telephone me-1"></i>Phone</span>',
-      'meeting': '<span class="badge bg-info"><i class="bi bi-calendar-event me-1"></i>Meeting</span>',
-      'note': '<span class="badge bg-secondary"><i class="bi bi-sticky me-1"></i>Note</span>',
-      'text': '<span class="badge bg-warning text-dark"><i class="bi bi-chat-text me-1"></i>Text</span>',
-      'linkedin': '<span class="badge bg-primary"><i class="bi bi-linkedin me-1"></i>LinkedIn</span>'
+      email: '<span class="badge bg-primary"><i class="bi bi-envelope me-1"></i>Email</span>',
+      phone: '<span class="badge bg-success"><i class="bi bi-telephone me-1"></i>Phone</span>',
+      meeting: '<span class="badge bg-info"><i class="bi bi-calendar-event me-1"></i>Meeting</span>',
+      note: '<span class="badge bg-secondary"><i class="bi bi-sticky me-1"></i>Note</span>',
+      text: '<span class="badge bg-warning text-dark"><i class="bi bi-chat-text me-1"></i>Text</span>',
+      linkedin: '<span class="badge bg-primary"><i class="bi bi-linkedin me-1"></i>LinkedIn</span>',
     };
     return types[type] || `<span class="badge bg-secondary">${type}</span>`;
   },
 
+  /**
+   * Format a communication's regarding field as a human-readable label.
+   * @param {string|null} regarding - The regarding field value
+   * @returns {string} Formatted HTML string
+   */
   formatRegarding(regarding) {
     if (!regarding) return '<span class="text-muted">General</span>';
-    return regarding.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    return regarding.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
   },
 
   // ============================================
   // DEAL PIPELINE
   // ============================================
+  /**
+   * Load deal pipeline data with pagination and sorting.
+   * @returns {Promise<void>}
+   */
   async loadDeals() {
     console.warn('Loading deals...');
 
     try {
-      let query = STATE.client
-        .from('deals')
-        .select(`
-          *,
-          organisation:organisations(company_name),
-          contact:organisation_contacts(first_name, last_name)
-        `)
-        .order('created_at', { ascending: false });
-
-      // Apply filters
+      const filters = {};
       if (this.filters.deals.stage !== 'all') {
-        query = query.eq('stage', this.filters.deals.stage);
+        filters.stage = { eq: this.filters.deals.stage };
       }
       if (this.filters.deals.type !== 'all') {
-        query = query.eq('deal_type', this.filters.deals.type);
+        filters.deal_type = { eq: this.filters.deals.type };
       }
       if (this.filters.deals.status !== 'all') {
-        query = query.eq('status', this.filters.deals.status);
+        filters.status = { eq: this.filters.deals.status };
       }
 
-      const { data: deals, error } = await query;
+      const result = await apiClient.select('deals', {
+        select: '*, organisation:organisations(company_name), contact:organisation_contacts(first_name, last_name)',
+        filters,
+        sort: { column: 'created_at', ascending: false },
+        page: this._dealCurrentPage,
+        pageSize: this._dealPageSize,
+      });
 
-      if (error) throw error;
+      const deals = result.data || [];
 
-      // Calculate pipeline stats
-      const activeDeals = deals.filter(d => d.status === 'active');
+      this._dealsPagination = {
+        page: result.page || 1,
+        totalPages: result.totalPages || 1,
+        count: result.count || 0,
+      };
+
+      // Calculate pipeline stats from the current page (best effort)
+      const activeDeals = deals.filter((d) => d.status === 'active');
+      const closedDeals = deals.filter((d) => d.status === 'won' || d.status === 'lost');
       const stats = {
         activeCount: activeDeals.length,
         pipelineValue: activeDeals.reduce((sum, d) => sum + parseFloat(d.deal_value || 0), 0),
-        wonThisMonth: deals.filter(d => {
+        wonThisMonth: deals.filter((d) => {
           if (d.status !== 'won' || !d.actual_close_date) return false;
           const closeDate = new Date(d.actual_close_date);
           const now = new Date();
           return closeDate.getMonth() === now.getMonth() && closeDate.getFullYear() === now.getFullYear();
         }).length,
-        winRate: deals.filter(d => d.status === 'won' || d.status === 'lost').length > 0
-          ? Math.round((deals.filter(d => d.status === 'won').length / deals.filter(d => d.status === 'won' || d.status === 'lost').length) * 100)
-          : 0
+        winRate:
+          closedDeals.length > 0
+            ? Math.round((deals.filter((d) => d.status === 'won').length / closedDeals.length) * 100)
+            : 0,
       };
 
       // Update stats display (elements may not exist in all views)
@@ -416,9 +571,8 @@ const crmModule = {
       if (dEl3) dEl3.textContent = stats.wonThisMonth;
       if (dEl4) dEl4.textContent = `${stats.winRate}%`;
 
-      this._deals = deals || [];
+      this._deals = deals;
       this.renderDealsTable(this._deals);
-
     } catch (error) {
       console.error('Error loading deals:', error);
       utils.showErrorWithRetry(error, 'loading deals', () => this.loadDeals());
@@ -436,28 +590,30 @@ const crmModule = {
     if (!tbody) return;
 
     if (!deals || deals.length === 0) {
-      utils.showEnhancedEmptyState('dealsTableBody', 9, { icon: 'bi-handshake', message: 'No deals found', description: 'Deals will appear here once created' });
+      utils.showEnhancedEmptyState('dealsTableBody', 9, {
+        icon: 'bi-handshake',
+        message: 'No deals found',
+        description: 'Deals will appear here once created',
+      });
       return;
     }
 
-    // Pagination
-    const dealTotalPages = Math.ceil(deals.length / this._dealPageSize);
-    if (this._dealCurrentPage > dealTotalPages) this._dealCurrentPage = dealTotalPages || 1;
-    const dealStart = (this._dealCurrentPage - 1) * this._dealPageSize;
-    const dealEnd = dealStart + this._dealPageSize;
-    const pageDeals = deals.slice(dealStart, dealEnd);
+    // Server-side pagination: data is already the current page
+    const pageDeals = deals;
+    const dealTotalPages = this._dealsPagination?.totalPages || 1;
 
-    tbody.innerHTML = pageDeals.map(deal => {
-      const companyName = deal.organisation?.company_name || 'Unknown';
-      const stageBadge = this.getStageBadge(deal.stage);
-      const statusBadge = this.getStatusBadge(deal.status);
-      const typeBadge = this.getDealTypeBadge(deal.deal_type);
-      const value = `£${parseFloat(deal.deal_value).toLocaleString('en-GB', { minimumFractionDigits: 2 })}`;
-      const expectedClose = deal.expected_close_date
-        ? new Date(deal.expected_close_date).toLocaleDateString()
-        : '<span class="text-muted">TBD</span>';
+    tbody.innerHTML = pageDeals
+      .map((deal) => {
+        const companyName = deal.organisation?.company_name || 'Unknown';
+        const stageBadge = this.getStageBadge(deal.stage);
+        const statusBadge = this.getStatusBadge(deal.status);
+        const typeBadge = this.getDealTypeBadge(deal.deal_type);
+        const value = `£${parseFloat(deal.deal_value).toLocaleString('en-GB', { minimumFractionDigits: 2 })}`;
+        const expectedClose = deal.expected_close_date
+          ? new Date(deal.expected_close_date).toLocaleDateString()
+          : '<span class="text-muted">TBD</span>';
 
-      return `
+        return `
         <tr>
           <td>
             <strong>${utils.escapeHtml(deal.deal_name)}</strong><br>
@@ -479,63 +635,71 @@ const crmModule = {
           <td>${statusBadge}</td>
           <td>
             <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-primary" onclick="crmModule.viewDeal('${deal.id}')" title="View Details">
+              <button class="btn btn-outline-primary" data-action="crmModule.viewDeal" data-id="deal.id" title="View Details">
                 <i class="bi bi-eye"></i>
               </button>
-              <button class="btn btn-outline-success" onclick="crmModule.editDeal('${deal.id}')" title="Edit">
+              <button class="btn btn-outline-success" data-action="crmModule.editDeal" data-id="deal.id" title="Edit">
                 <i class="bi bi-pencil"></i>
               </button>
-              <button class="btn btn-outline-danger" onclick="crmModule.deleteDeal('${deal.id}')" title="Delete">
+              <button class="btn btn-outline-danger" data-action="crmModule.deleteDeal" data-id="deal.id" title="Delete">
                 <i class="bi bi-trash"></i>
               </button>
             </div>
           </td>
         </tr>
       `;
-    }).join('');
+      })
+      .join('');
 
     // Pagination controls
-    this._renderCrmPagination('crmDealsPagination', this._dealCurrentPage, dealTotalPages, 'crmModule.goToCrmDealPage', 'dealsTableBody');
+    this._renderCrmPagination(
+      'crmDealsPagination',
+      this._dealCurrentPage,
+      dealTotalPages,
+      'crmModule.goToCrmDealPage',
+      'dealsTableBody'
+    );
   },
 
-  goToCrmDealPage(page) {
-    const total = Math.ceil((this._deals || []).length / this._dealPageSize);
+  async goToCrmDealPage(page) {
+    page = parseInt(page, 10);
+    const total = this._dealsPagination?.totalPages || 1;
     this._dealCurrentPage = Math.max(1, Math.min(page, total));
-    this.renderDealsTable(this._deals);
+    await this.loadDeals();
   },
 
   getStageBadge(stage) {
     const stages = {
-      'lead': '<span class="badge bg-secondary">Lead</span>',
-      'contacted': '<span class="badge bg-info">Contacted</span>',
-      'qualified': '<span class="badge bg-primary">Qualified</span>',
-      'proposal': '<span class="badge bg-warning text-dark">Proposal</span>',
-      'negotiation': '<span class="badge bg-warning">Negotiation</span>',
-      'closed_won': '<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Won</span>',
-      'closed_lost': '<span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Lost</span>'
+      lead: '<span class="badge bg-secondary">Lead</span>',
+      contacted: '<span class="badge bg-info">Contacted</span>',
+      qualified: '<span class="badge bg-primary">Qualified</span>',
+      proposal: '<span class="badge bg-warning text-dark">Proposal</span>',
+      negotiation: '<span class="badge bg-warning">Negotiation</span>',
+      closed_won: '<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Won</span>',
+      closed_lost: '<span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Lost</span>',
     };
     return stages[stage] || `<span class="badge bg-secondary">${stage}</span>`;
   },
 
   getStatusBadge(status) {
     const statuses = {
-      'active': '<span class="badge bg-success">Active</span>',
-      'won': '<span class="badge bg-success"><i class="bi bi-trophy-fill me-1"></i>Won</span>',
-      'lost': '<span class="badge bg-danger">Lost</span>',
-      'on_hold': '<span class="badge bg-warning text-dark">On Hold</span>',
-      'cancelled': '<span class="badge bg-secondary">Cancelled</span>'
+      active: '<span class="badge bg-success">Active</span>',
+      won: '<span class="badge bg-success"><i class="bi bi-trophy-fill me-1"></i>Won</span>',
+      lost: '<span class="badge bg-danger">Lost</span>',
+      on_hold: '<span class="badge bg-warning text-dark">On Hold</span>',
+      cancelled: '<span class="badge bg-secondary">Cancelled</span>',
     };
     return statuses[status] || `<span class="badge bg-secondary">${status}</span>`;
   },
 
   getDealTypeBadge(type) {
     const types = {
-      'sponsorship': '<span class="badge bg-primary"><i class="bi bi-award me-1"></i>Sponsorship</span>',
-      'award_fee': '<span class="badge bg-info"><i class="bi bi-trophy me-1"></i>Award Fee</span>',
-      'event_tickets': '<span class="badge bg-success"><i class="bi bi-ticket-perforated me-1"></i>Event Tickets</span>',
-      'partnership': '<span class="badge bg-warning text-dark"><i class="bi bi-handshake me-1"></i>Partnership</span>',
-      'package_upgrade': '<span class="badge bg-danger"><i class="bi bi-arrow-up-circle me-1"></i>Package Upgrade</span>',
-      'other': '<span class="badge bg-secondary">Other</span>'
+      sponsorship: '<span class="badge bg-primary"><i class="bi bi-award me-1"></i>Sponsorship</span>',
+      award_fee: '<span class="badge bg-info"><i class="bi bi-trophy me-1"></i>Award Fee</span>',
+      event_tickets: '<span class="badge bg-success"><i class="bi bi-ticket-perforated me-1"></i>Event Tickets</span>',
+      partnership: '<span class="badge bg-warning text-dark"><i class="bi bi-handshake me-1"></i>Partnership</span>',
+      package_upgrade: '<span class="badge bg-danger"><i class="bi bi-arrow-up-circle me-1"></i>Package Upgrade</span>',
+      other: '<span class="badge bg-secondary">Other</span>',
     };
     return types[type] || `<span class="badge bg-secondary">${type}</span>`;
   },
@@ -543,31 +707,34 @@ const crmModule = {
   // ============================================
   // MEETINGS
   // ============================================
+  /**
+   * Load meetings with pagination, sorting, and type filtering.
+   * @returns {Promise<void>}
+   */
   async loadMeetings() {
     console.warn('Loading meetings...');
 
     try {
-      let query = STATE.client
-        .from('meeting_notes')
-        .select(`
-          *,
-          organisation:organisations(company_name),
-          deal:deals(deal_name)
-        `)
-        .order('meeting_date', { ascending: false });
-
-      // Apply filters
+      const filters = {};
       if (this.filters.meetings.type !== 'all') {
-        query = query.eq('meeting_type', this.filters.meetings.type);
+        filters.meeting_type = { eq: this.filters.meetings.type };
       }
 
-      const { data: meetings, error } = await query;
+      const result = await apiClient.select('meeting_notes', {
+        select: '*, organisation:organisations(company_name), deal:deals(deal_name)',
+        filters,
+        sort: { column: 'meeting_date', ascending: false },
+        page: this._meetingCurrentPage,
+        pageSize: this._meetingPageSize,
+      });
 
-      if (error) throw error;
-
-      this._meetings = meetings || [];
+      this._meetings = result.data || [];
+      this._meetingsPagination = {
+        page: result.page || 1,
+        totalPages: result.totalPages || 1,
+        count: result.count || 0,
+      };
       this.renderMeetingsTable(this._meetings);
-
     } catch (error) {
       console.error('Error loading meetings:', error);
       utils.showErrorWithRetry(error, 'loading meetings', () => this.loadMeetings());
@@ -579,37 +746,43 @@ const crmModule = {
     if (!tbody) return;
 
     if (!meetings || meetings.length === 0) {
-      utils.showEnhancedEmptyState('meetingsTableBody', 8, { icon: 'bi-calendar-check', message: 'No meetings found', description: 'Meetings will appear here once scheduled' });
+      utils.showEnhancedEmptyState('meetingsTableBody', 8, {
+        icon: 'bi-calendar-check',
+        message: 'No meetings found',
+        description: 'Meetings will appear here once scheduled',
+      });
       return;
     }
 
-    // Pagination
-    const mtgTotalPages = Math.ceil(meetings.length / this._meetingPageSize);
-    if (this._meetingCurrentPage > mtgTotalPages) this._meetingCurrentPage = mtgTotalPages || 1;
-    const mtgStart = (this._meetingCurrentPage - 1) * this._meetingPageSize;
-    const mtgEnd = mtgStart + this._meetingPageSize;
-    const pageMeetings = meetings.slice(mtgStart, mtgEnd);
+    // Server-side pagination: data is already the current page
+    const pageMeetings = meetings;
+    const mtgTotalPages = this._meetingsPagination?.totalPages || 1;
 
-    tbody.innerHTML = pageMeetings.map(meeting => {
-      const date = new Date(meeting.meeting_date).toLocaleDateString();
-      const time = new Date(meeting.meeting_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      const companyName = meeting.organisation?.company_name || 'Unknown';
-      const typeBadge = this.getMeetingTypeBadge(meeting.meeting_type);
-      const duration = meeting.duration_minutes ? `${meeting.duration_minutes} min` : '<span class="text-muted">N/A</span>';
+    tbody.innerHTML = pageMeetings
+      .map((meeting) => {
+        const date = new Date(meeting.meeting_date).toLocaleDateString();
+        const time = new Date(meeting.meeting_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const companyName = meeting.organisation?.company_name || 'Unknown';
+        const typeBadge = this.getMeetingTypeBadge(meeting.meeting_type);
+        const duration = meeting.duration_minutes
+          ? `${meeting.duration_minutes} min`
+          : '<span class="text-muted">N/A</span>';
 
-      let attendees = '<span class="text-muted">None</span>';
-      try {
-        const attendeesList = JSON.parse(meeting.attendees || '[]');
-        attendees = attendeesList.length > 0 ? `${attendeesList.length} attendees` : attendees;
-      } catch (e) { console.warn('Failed to parse meeting attendees:', e.message); }
+        let attendees = '<span class="text-muted">None</span>';
+        try {
+          const attendeesList = JSON.parse(meeting.attendees || '[]');
+          attendees = attendeesList.length > 0 ? `${attendeesList.length} attendees` : attendees;
+        } catch (e) {
+          console.warn('Failed to parse meeting attendees:', e.message);
+        }
 
-      const followUpBadge = meeting.follow_up_required
-        ? `<span class="badge bg-warning text-dark">
+        const followUpBadge = meeting.follow_up_required
+          ? `<span class="badge bg-warning text-dark">
              <i class="bi bi-calendar-check me-1"></i>${meeting.follow_up_date ? new Date(meeting.follow_up_date).toLocaleDateString() : 'ASAP'}
            </span>`
-        : '<span class="text-muted">-</span>';
+          : '<span class="text-muted">-</span>';
 
-      return `
+        return `
         <tr>
           <td>
             ${date}<br>
@@ -625,37 +798,45 @@ const crmModule = {
           <td>${followUpBadge}</td>
           <td>
             <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-primary" onclick="crmModule.viewMeeting('${meeting.id}')" title="View Details">
+              <button class="btn btn-outline-primary" data-action="crmModule.viewMeeting" data-id="meeting.id" title="View Details">
                 <i class="bi bi-eye"></i>
               </button>
-              <button class="btn btn-outline-success" onclick="crmModule.editMeeting('${meeting.id}')" title="Edit">
+              <button class="btn btn-outline-success" data-action="crmModule.editMeeting" data-id="meeting.id" title="Edit">
                 <i class="bi bi-pencil"></i>
               </button>
-              <button class="btn btn-outline-danger" onclick="crmModule.deleteMeeting('${meeting.id}')" title="Delete">
+              <button class="btn btn-outline-danger" data-action="crmModule.deleteMeeting" data-id="meeting.id" title="Delete">
                 <i class="bi bi-trash"></i>
               </button>
             </div>
           </td>
         </tr>
       `;
-    }).join('');
+      })
+      .join('');
 
     // Pagination controls
-    this._renderCrmPagination('crmMeetingsPagination', this._meetingCurrentPage, mtgTotalPages, 'crmModule.goToCrmMeetingPage', 'meetingsTableBody');
+    this._renderCrmPagination(
+      'crmMeetingsPagination',
+      this._meetingCurrentPage,
+      mtgTotalPages,
+      'crmModule.goToCrmMeetingPage',
+      'meetingsTableBody'
+    );
   },
 
-  goToCrmMeetingPage(page) {
-    const total = Math.ceil((this._meetings || []).length / this._meetingPageSize);
+  async goToCrmMeetingPage(page) {
+    page = parseInt(page, 10);
+    const total = this._meetingsPagination?.totalPages || 1;
     this._meetingCurrentPage = Math.max(1, Math.min(page, total));
-    this.renderMeetingsTable(this._meetings);
+    await this.loadMeetings();
   },
 
   getMeetingTypeBadge(type) {
     const types = {
-      'in_person': '<span class="badge bg-success"><i class="bi bi-person-fill me-1"></i>In Person</span>',
-      'video_call': '<span class="badge bg-primary"><i class="bi bi-camera-video me-1"></i>Video Call</span>',
-      'phone': '<span class="badge bg-info"><i class="bi bi-telephone me-1"></i>Phone</span>',
-      'conference': '<span class="badge bg-warning text-dark"><i class="bi bi-people-fill me-1"></i>Conference</span>'
+      in_person: '<span class="badge bg-success"><i class="bi bi-person-fill me-1"></i>In Person</span>',
+      video_call: '<span class="badge bg-primary"><i class="bi bi-camera-video me-1"></i>Video Call</span>',
+      phone: '<span class="badge bg-info"><i class="bi bi-telephone me-1"></i>Phone</span>',
+      conference: '<span class="badge bg-warning text-dark"><i class="bi bi-people-fill me-1"></i>Conference</span>',
     };
     return types[type] || `<span class="badge bg-secondary">${type}</span>`;
   },
@@ -663,29 +844,27 @@ const crmModule = {
   // ============================================
   // SEGMENTS
   // ============================================
+  /**
+   * Load organisation segments with member counts.
+   * @returns {Promise<void>}
+   */
   async loadSegments() {
     console.warn('Loading segments...');
 
     try {
-      // Load all segments with counts
-      const { data: segments, error } = await STATE.client
-        .from('contact_segments')
-        .select(`
-          *,
-          organisation_segments(count)
-        `)
-        .order('segment_name');
-
-      if (error) throw error;
+      // selectAll justified: contact_segments is a small lookup table for segment management (see pagination documentation)
+      const segments = await apiClient.selectAll('contact_segments', {
+        select: '*, organisation_segments(count)',
+        sort: { column: 'segment_name', ascending: true },
+      });
 
       // Use counts already fetched via the join
-      const segmentsWithCounts = segments.map(segment => ({
+      const segmentsWithCounts = segments.map((segment) => ({
         ...segment,
-        count: segment.organisation_segments?.[0]?.count || 0
+        count: segment.organisation_segments?.[0]?.count || 0,
       }));
 
       this.renderSegments(segmentsWithCounts);
-
     } catch (error) {
       console.error('Error loading segments:', error);
       utils.showErrorWithRetry(error, 'loading segments', () => this.loadSegments());
@@ -701,7 +880,9 @@ const crmModule = {
       return;
     }
 
-    container.innerHTML = segments.map(segment => `
+    container.innerHTML = segments
+      .map(
+        (segment) => `
       <div class="col-md-4 mb-3">
         <div class="card h-100 border-start border-4" style="border-color: ${segment.color} !important;">
           <div class="card-body">
@@ -718,17 +899,19 @@ const crmModule = {
               </span>
             </div>
             <div class="d-flex gap-2">
-              <button class="btn btn-sm btn-outline-primary flex-grow-1" onclick="crmModule.viewSegmentCompanies('${segment.id}', '${utils.escapeHtml(segment.segment_name).replace(/'/g, "\\'")}')">
+              <button class="btn btn-sm btn-outline-primary flex-grow-1" data-action="crmModule.viewSegmentCompanies" data-args='${JSON.stringify([segment.id, utils.escapeHtml(segment.segment_name).replace(/'/g, "\\'")])}'>
                 <i class="bi bi-eye me-1"></i>View Companies
               </button>
-              <button class="btn btn-sm btn-outline-secondary" onclick="crmModule.editSegment('${segment.id}')" title="Edit Segment">
+              <button class="btn btn-sm btn-outline-secondary" data-action="crmModule.editSegment" data-id="segment.id" title="Edit Segment">
                 <i class="bi bi-pencil"></i>
               </button>
             </div>
           </div>
         </div>
       </div>
-    `).join('');
+    `
+      )
+      .join('');
   },
 
   // ============================================
@@ -738,7 +921,7 @@ const crmModule = {
     this.filters[category][filterType] = value;
 
     // Reload data based on category
-    switch(category) {
+    switch (category) {
       case 'communications':
         this.loadCommunications();
         break;
@@ -770,22 +953,30 @@ const crmModule = {
   // ============================================
   // MODAL & ACTION FUNCTIONS
   // ============================================
+  /**
+   * Open the organisation profile modal for a given company.
+   * @param {string} companyId - UUID of the organisation
+   */
   viewCompanyProfile(companyId) {
     // Open the organisation profile modal from organisations.js
     if (typeof orgsModule !== 'undefined' && orgsModule.openCompanyProfile) {
-      const org = (STATE.allOrganisations || []).find(o => o.id === companyId);
+      const org = (STATE.allOrganisations || []).find((o) => o.id === companyId);
       orgsModule.openCompanyProfile(companyId, org?.company_name || '');
     } else {
       utils.showToast('Company profile view not available', 'warning');
     }
   },
 
+  /**
+   * Open the log communication modal, optionally pre-selecting an organisation.
+   * @param {string|null} organisationId - Optional UUID to pre-select
+   * @returns {Promise<void>}
+   */
   async logCommunication(organisationId = null) {
     console.warn('Log communication for:', organisationId);
     try {
-
-    // Create modal
-    const modalHtml = `
+      // Create modal
+      const modalHtml = `
       <div class="modal fade" id="logCommunicationModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
           <div class="modal-content">
@@ -868,7 +1059,7 @@ const crmModule = {
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="button" class="btn btn-primary" onclick="crmModule.saveCommunication()">
+              <button type="button" class="btn btn-primary" data-action="crmModule.saveCommunication">
                 <i class="bi bi-save me-2"></i>Save Communication
               </button>
             </div>
@@ -877,41 +1068,52 @@ const crmModule = {
       </div>
     `;
 
-    // Remove existing modal if any
-    const existingModal = document.getElementById('logCommunicationModal');
-    if (existingModal) existingModal.remove();
+      // Remove existing modal if any
+      const existingModal = document.getElementById('logCommunicationModal');
+      if (existingModal) existingModal.remove();
 
-    // Add modal to page
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
+      // Add modal to page
+      document.body.insertAdjacentHTML('beforeend', modalHtml);
 
-    // Use already-loaded organisations if available
-    const orgs = (STATE.allOrganisations || [])
-      .map(o => ({ id: o.id, company_name: o.company_name }))
-      .sort((a, b) => (a.company_name || '').localeCompare(b.company_name || ''));
+      // Use already-loaded organisations if available
+      const orgs = (STATE.allOrganisations || [])
+        .map((o) => ({ id: o.id, company_name: o.company_name }))
+        .sort((a, b) => (a.company_name || '').localeCompare(b.company_name || ''));
 
-    const orgSelect = document.getElementById('commOrganisation');
-    orgSelect.innerHTML = '<option value="">Select company...</option>' +
-      orgs.map(org => `<option value="${org.id}" ${org.id === organisationId ? 'selected' : ''}>${utils.escapeHtml(org.company_name)}</option>`).join('');
+      const orgSelect = document.getElementById('commOrganisation');
+      orgSelect.innerHTML =
+        '<option value="">Select company...</option>' +
+        orgs
+          .map(
+            (org) =>
+              `<option value="${org.id}" ${org.id === organisationId ? 'selected' : ''}>${utils.escapeHtml(org.company_name)}</option>`
+          )
+          .join('');
 
-    // Show/hide follow-up date field
-    document.getElementById('commFollowUp').addEventListener('change', function() {
-      document.getElementById('followUpDateContainer').style.display = this.checked ? 'block' : 'none';
-    });
+      // Show/hide follow-up date field
+      document.getElementById('commFollowUp').addEventListener('change', function () {
+        document.getElementById('followUpDateContainer').style.display = this.checked ? 'block' : 'none';
+      });
 
-    // Cleanup on close
-    document.getElementById('logCommunicationModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+      // Cleanup on close
+      document.getElementById('logCommunicationModal').addEventListener('hidden.bs.modal', function () {
+        this.remove();
+      });
 
-    // Show modal
-    const modal = new bootstrap.Modal(document.getElementById('logCommunicationModal'));
-    modal.show();
-    utils.initInlineValidation('logCommunicationForm');
-
+      // Show modal
+      const modal = new bootstrap.Modal(document.getElementById('logCommunicationModal'));
+      modal.show();
+      utils.initInlineValidation('logCommunicationForm');
     } catch (error) {
       console.error('Error opening communication modal:', error);
       utils.showToast('Failed to open communication form', 'error');
     }
   },
 
+  /**
+   * Save a new communication log entry from the modal form.
+   * @returns {Promise<void>}
+   */
   async saveCommunication() {
     const form = document.getElementById('logCommunicationForm');
     if (!form.checkValidity()) {
@@ -929,17 +1131,15 @@ const crmModule = {
       message: document.getElementById('commMessage').value,
       communication_date: document.getElementById('commDate').value,
       follow_up_required: document.getElementById('commFollowUp').checked,
-      follow_up_date: document.getElementById('commFollowUp').checked ? document.getElementById('commFollowUpDate').value : null,
-      user_id: STATE.currentUser?.id || 'system'
+      follow_up_date: document.getElementById('commFollowUp').checked
+        ? document.getElementById('commFollowUpDate').value
+        : null,
+      user_id: STATE.currentUser?.id || 'system',
     };
 
     try {
       await utils.protectModalDuringSave('logCommunicationModal', async () => {
-        const { error } = await STATE.client
-          .from('communications')
-          .insert([communicationData]);
-
-        if (error) throw error;
+        await apiClient.insert('communications', communicationData);
 
         bootstrap.Modal.getInstance(document.getElementById('logCommunicationModal')).hide();
       });
@@ -956,11 +1156,16 @@ const crmModule = {
     this.loadCommunications();
   },
 
+  /**
+   * Open the create deal modal, optionally pre-selecting an organisation.
+   * @param {string|null} organisationId - Optional UUID to pre-select
+   * @returns {Promise<void>}
+   */
   async createDeal(organisationId = null) {
     console.warn('Create deal for:', organisationId);
 
     try {
-    const modalHtml = `
+      const modalHtml = `
       <div class="modal fade" id="createDealModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
           <div class="modal-content">
@@ -1033,7 +1238,7 @@ const crmModule = {
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="button" class="btn btn-success" onclick="crmModule.saveDeal()">
+              <button type="button" class="btn btn-success" data-action="crmModule.saveDeal">
                 <i class="bi bi-save me-2"></i>Create Deal
               </button>
             </div>
@@ -1042,47 +1247,58 @@ const crmModule = {
       </div>
     `;
 
-    const existingModal = document.getElementById('createDealModal');
-    if (existingModal) existingModal.remove();
+      const existingModal = document.getElementById('createDealModal');
+      if (existingModal) existingModal.remove();
 
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
+      document.body.insertAdjacentHTML('beforeend', modalHtml);
 
-    // Use already-loaded organisations if available
-    const orgs = (STATE.allOrganisations || [])
-      .map(o => ({ id: o.id, company_name: o.company_name }))
-      .sort((a, b) => (a.company_name || '').localeCompare(b.company_name || ''));
+      // Use already-loaded organisations if available
+      const orgs = (STATE.allOrganisations || [])
+        .map((o) => ({ id: o.id, company_name: o.company_name }))
+        .sort((a, b) => (a.company_name || '').localeCompare(b.company_name || ''));
 
-    const orgSelect = document.getElementById('dealOrganisation');
-    orgSelect.innerHTML = '<option value="">Select company...</option>' +
-      orgs.map(org => `<option value="${org.id}" ${org.id === organisationId ? 'selected' : ''}>${utils.escapeHtml(org.company_name)}</option>`).join('');
+      const orgSelect = document.getElementById('dealOrganisation');
+      orgSelect.innerHTML =
+        '<option value="">Select company...</option>' +
+        orgs
+          .map(
+            (org) =>
+              `<option value="${org.id}" ${org.id === organisationId ? 'selected' : ''}>${utils.escapeHtml(org.company_name)}</option>`
+          )
+          .join('');
 
-    // If org is preselected, load contacts
-    if (organisationId) {
-      const { data: contacts } = await STATE.client
-        .from('organisation_contacts')
-        .select('id, first_name, last_name')
-        .eq('organisation_id', organisationId)
-        .order('first_name');
+      // If org is preselected, load contacts
+      if (organisationId) {
+        /* selectAll: justified — scoped to single organisation */
+        const contactResult = await apiClient.selectAll('organisation_contacts', {
+          select: 'id, first_name, last_name',
+          filters: { organisation_id: { eq: organisationId } },
+          sort: { column: 'first_name', ascending: true },
+        });
+        const contacts = contactResult || [];
 
-      const contactSelect = document.getElementById('dealContact');
-      contactSelect.innerHTML = '<option value="">Select contact (optional)...</option>' +
-        (contacts || []).map(c => `<option value="${c.id}">${utils.escapeHtml(c.first_name + ' ' + c.last_name)}</option>`).join('');
-    }
+        const contactSelect = document.getElementById('dealContact');
+        contactSelect.innerHTML =
+          '<option value="">Select contact (optional)...</option>' +
+          (contacts || [])
+            .map((c) => `<option value="${c.id}">${utils.escapeHtml(c.first_name + ' ' + c.last_name)}</option>`)
+            .join('');
+      }
 
-    const modal = new bootstrap.Modal(document.getElementById('createDealModal'));
-    modal.show();
-    utils.initInlineValidation('createDealForm');
+      const modal = new bootstrap.Modal(document.getElementById('createDealModal'));
+      modal.show();
+      utils.initInlineValidation('createDealForm');
 
-    document.getElementById('createDealModal').addEventListener('hidden.bs.modal', function() {
-      this.remove();
-    });
-
+      document.getElementById('createDealModal').addEventListener('hidden.bs.modal', function () {
+        this.remove();
+      });
     } catch (error) {
       console.error('Error opening create deal modal:', error);
       utils.showToast('Error loading deal form: ' + error.message, 'error');
     }
   },
 
+  /** Save a new deal from the create deal form. @returns {Promise<void>} */
   async saveDeal() {
     const form = document.getElementById('createDealForm');
     if (!form.checkValidity()) {
@@ -1095,21 +1311,25 @@ const crmModule = {
       organisation_id: document.getElementById('dealOrganisation').value,
       deal_type: document.getElementById('dealType').value,
       deal_value: Math.max(0, parseFloat(document.getElementById('dealValue').value) || 0),
-      probability: Math.max(0, Math.min(100, document.getElementById('dealProbability').value !== '' ? parseInt(document.getElementById('dealProbability').value) : 50)),
+      probability: Math.max(
+        0,
+        Math.min(
+          100,
+          document.getElementById('dealProbability').value !== ''
+            ? parseInt(document.getElementById('dealProbability').value)
+            : 50
+        )
+      ),
       stage: document.getElementById('dealStage').value,
       expected_close_date: document.getElementById('dealExpectedClose').value || null,
       contact_id: document.getElementById('dealContact').value || null,
       description: document.getElementById('dealDescription').value,
-      status: 'active'
+      status: 'active',
     };
 
     try {
       await utils.protectModalDuringSave('createDealModal', async () => {
-        const { error } = await STATE.client
-          .from('deals')
-          .insert([dealData]);
-
-        if (error) throw error;
+        await apiClient.insert('deals', dealData);
 
         bootstrap.Modal.getInstance(document.getElementById('createDealModal')).hide();
       });
@@ -1126,21 +1346,19 @@ const crmModule = {
     this.loadDeals();
   },
 
+  /** View communication details in a modal. @param {string} commId - Communication UUID */
   async viewCommunication(commId) {
     console.warn('View communication:', commId);
 
     try {
-      const { data: comm, error } = await STATE.client
-        .from('communications')
-        .select(`
-          *,
-          organisation:organisations(company_name),
-          contact:organisation_contacts(first_name, last_name, email)
-        `)
-        .eq('id', commId)
-        .single();
-
-      if (error) throw error;
+      const commResult = await apiClient.select('communications', {
+        select:
+          '*, organisation:organisations(company_name), contact:organisation_contacts(first_name, last_name, email)',
+        filters: { id: { eq: commId } },
+        pageSize: 1,
+      });
+      const comm = commResult.data?.[0];
+      if (!comm) throw new Error('Communication not found');
 
       const date = new Date(comm.communication_date).toLocaleString();
       const companyName = comm.organisation?.company_name || 'Unknown';
@@ -1170,9 +1388,11 @@ const crmModule = {
                       <tr><td class="text-muted">Company:</td><td><strong>${utils.escapeHtml(companyName)}</strong></td></tr>
                       <tr><td class="text-muted">Contact:</td><td>${utils.escapeHtml(contactName)}</td></tr>
                       ${contactEmail ? `<tr><td class="text-muted">Email:</td><td><a href="mailto:${utils.escapeHtml(contactEmail)}">${utils.escapeHtml(contactEmail)}</a></td></tr>` : ''}
-                      <tr><td class="text-muted">Follow-up:</td><td>${comm.follow_up_required
-                        ? `<span class="badge bg-warning text-dark"><i class="bi bi-calendar-check me-1"></i>${comm.follow_up_date ? new Date(comm.follow_up_date).toLocaleDateString() : 'ASAP'}</span>`
-                        : '<span class="text-muted">None</span>'}</td></tr>
+                      <tr><td class="text-muted">Follow-up:</td><td>${
+                        comm.follow_up_required
+                          ? `<span class="badge bg-warning text-dark"><i class="bi bi-calendar-check me-1"></i>${comm.follow_up_date ? new Date(comm.follow_up_date).toLocaleDateString() : 'ASAP'}</span>`
+                          : '<span class="text-muted">None</span>'
+                      }</td></tr>
                     </table>
                   </div>
                 </div>
@@ -1183,7 +1403,7 @@ const crmModule = {
                 </div>
               </div>
               <div class="modal-footer">
-                <button type="button" class="btn btn-outline-success" onclick="bootstrap.Modal.getInstance(document.getElementById('viewCommunicationModal')).hide(); crmModule.editCommunication('${comm.id}')">
+                <button type="button" class="btn btn-outline-success" data-action="crmModule.dismissAndEditCommunication" data-id="${comm.id}">
                   <i class="bi bi-pencil me-2"></i>Edit
                 </button>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -1198,24 +1418,27 @@ const crmModule = {
       document.body.insertAdjacentHTML('beforeend', modalHtml);
       const modal = new bootstrap.Modal(document.getElementById('viewCommunicationModal'));
       modal.show();
-      document.getElementById('viewCommunicationModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+      document.getElementById('viewCommunicationModal').addEventListener('hidden.bs.modal', function () {
+        this.remove();
+      });
     } catch (error) {
       console.error('Error loading communication:', error);
       utils.showToast('Error loading communication details', 'error');
     }
   },
 
+  /** Open edit modal for a communication. @param {string} commId - Communication UUID */
   async editCommunication(commId) {
     console.warn('Edit communication:', commId);
 
     try {
-      const { data: comm, error } = await STATE.client
-        .from('communications')
-        .select('*')
-        .eq('id', commId)
-        .single();
-
-      if (error) throw error;
+      const result = await apiClient.select('communications', {
+        select: '*',
+        filters: { id: { eq: commId } },
+        pageSize: 1,
+      });
+      const comm = result.data?.[0];
+      if (!comm) throw new Error('Communication not found');
 
       const modalHtml = `
         <div class="modal fade" id="editCommunicationModal" tabindex="-1">
@@ -1286,7 +1509,7 @@ const crmModule = {
               </div>
               <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-success" onclick="crmModule.updateCommunication('${comm.id}')">
+                <button type="button" class="btn btn-success" data-action="crmModule.updateCommunication" data-id="comm.id">
                   <i class="bi bi-save me-2"></i>Save Changes
                 </button>
               </div>
@@ -1299,20 +1522,23 @@ const crmModule = {
       if (existingModal) existingModal.remove();
       document.body.insertAdjacentHTML('beforeend', modalHtml);
 
-      document.getElementById('editCommFollowUp').addEventListener('change', function() {
+      document.getElementById('editCommFollowUp').addEventListener('change', function () {
         document.getElementById('editFollowUpDateContainer').style.display = this.checked ? 'block' : 'none';
       });
 
       const modal = new bootstrap.Modal(document.getElementById('editCommunicationModal'));
       modal.show();
       utils.initInlineValidation('editCommunicationForm');
-      document.getElementById('editCommunicationModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+      document.getElementById('editCommunicationModal').addEventListener('hidden.bs.modal', function () {
+        this.remove();
+      });
     } catch (error) {
       console.error('Error loading communication for edit:', error);
       utils.showToast('Error loading communication', 'error');
     }
   },
 
+  /** Update an existing communication log. @param {string} commId - Communication UUID */
   async updateCommunication(commId) {
     const form = document.getElementById('editCommunicationForm');
     if (!form.checkValidity()) {
@@ -1328,17 +1554,14 @@ const crmModule = {
       message: document.getElementById('editCommMessage').value,
       communication_date: document.getElementById('editCommDate').value,
       follow_up_required: document.getElementById('editCommFollowUp').checked,
-      follow_up_date: document.getElementById('editCommFollowUp').checked ? document.getElementById('editCommFollowUpDate').value : null
+      follow_up_date: document.getElementById('editCommFollowUp').checked
+        ? document.getElementById('editCommFollowUpDate').value
+        : null,
     };
 
     try {
       await utils.protectModalDuringSave('editCommunicationModal', async () => {
-        const { error } = await STATE.client
-          .from('communications')
-          .update(updateData)
-          .eq('id', commId);
-
-        if (error) throw error;
+        await apiClient.update('communications', commId, updateData);
 
         utils.showToast('Communication updated successfully', 'success');
         bootstrap.Modal.getInstance(document.getElementById('editCommunicationModal')).hide();
@@ -1350,18 +1573,19 @@ const crmModule = {
     }
   },
 
+  /** Delete a communication log entry after confirmation. @param {string} commId */
   async deleteCommunication(commId) {
-    if (!await utils.confirmDialog({ title: 'Delete Communication', message: 'Are you sure you want to delete this communication? This action cannot be undone.' })) {
+    if (
+      !(await utils.confirmDialog({
+        title: 'Delete Communication',
+        message: 'Are you sure you want to delete this communication? This action cannot be undone.',
+      }))
+    ) {
       return;
     }
 
     try {
-      const { error } = await STATE.client
-        .from('communications')
-        .delete()
-        .eq('id', commId);
-
-      if (error) throw error;
+      await apiClient.delete('communications', commId);
 
       utils.showToast('Communication deleted successfully', 'success');
       this.loadCommunications();
@@ -1371,21 +1595,19 @@ const crmModule = {
     }
   },
 
+  /** View deal details in a modal. @param {string} dealId - Deal UUID */
   async viewDeal(dealId) {
     console.warn('View deal:', dealId);
 
     try {
-      const { data: deal, error } = await STATE.client
-        .from('deals')
-        .select(`
-          *,
-          organisation:organisations(company_name),
-          contact:organisation_contacts(first_name, last_name, email)
-        `)
-        .eq('id', dealId)
-        .single();
-
-      if (error) throw error;
+      const dealResult = await apiClient.select('deals', {
+        select:
+          '*, organisation:organisations(company_name), contact:organisation_contacts(first_name, last_name, email)',
+        filters: { id: { eq: dealId } },
+        pageSize: 1,
+      });
+      const deal = dealResult.data?.[0];
+      if (!deal) throw new Error('Deal not found');
 
       const companyName = deal.organisation?.company_name || 'Unknown';
       const contactName = deal.contact ? `${deal.contact.first_name} ${deal.contact.last_name}` : 'N/A';
@@ -1439,21 +1661,29 @@ const crmModule = {
                     </div>
                   </div>
                 </div>
-                ${deal.description ? `
+                ${
+                  deal.description
+                    ? `
                   <div class="mb-0">
                     <h6 class="text-muted">Description</h6>
                     <div class="p-3 bg-light rounded" style="white-space: pre-wrap;">${utils.escapeHtml(deal.description)}</div>
                   </div>
-                ` : ''}
-                ${deal.notes ? `
+                `
+                    : ''
+                }
+                ${
+                  deal.notes
+                    ? `
                   <div class="mt-3">
                     <h6 class="text-muted">Notes</h6>
                     <div class="p-3 bg-light rounded" style="white-space: pre-wrap;">${utils.escapeHtml(deal.notes)}</div>
                   </div>
-                ` : ''}
+                `
+                    : ''
+                }
               </div>
               <div class="modal-footer">
-                <button type="button" class="btn btn-outline-success" onclick="bootstrap.Modal.getInstance(document.getElementById('viewDealModal')).hide(); crmModule.editDeal('${deal.id}')">
+                <button type="button" class="btn btn-outline-success" data-action="crmModule.dismissAndEditDeal" data-id="${deal.id}">
                   <i class="bi bi-pencil me-2"></i>Edit
                 </button>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -1468,24 +1698,23 @@ const crmModule = {
       document.body.insertAdjacentHTML('beforeend', modalHtml);
       const modal = new bootstrap.Modal(document.getElementById('viewDealModal'));
       modal.show();
-      document.getElementById('viewDealModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+      document.getElementById('viewDealModal').addEventListener('hidden.bs.modal', function () {
+        this.remove();
+      });
     } catch (error) {
       console.error('Error loading deal:', error);
       utils.showToast('Error loading deal details', 'error');
     }
   },
 
+  /** Open edit modal for a deal. @param {string} dealId - Deal UUID */
   async editDeal(dealId) {
     console.warn('Edit deal:', dealId);
 
     try {
-      const { data: deal, error } = await STATE.client
-        .from('deals')
-        .select('*')
-        .eq('id', dealId)
-        .single();
-
-      if (error) throw error;
+      const result = await apiClient.select('deals', { select: '*', filters: { id: { eq: dealId } }, pageSize: 1 });
+      const deal = result.data?.[0];
+      if (!deal) throw new Error('Deal not found');
 
       const modalHtml = `
         <div class="modal fade" id="editDealModal" tabindex="-1">
@@ -1568,7 +1797,7 @@ const crmModule = {
               </div>
               <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-success" onclick="crmModule.updateDeal('${deal.id}')">
+                <button type="button" class="btn btn-success" data-action="crmModule.updateDeal" data-id="deal.id">
                   <i class="bi bi-save me-2"></i>Save Changes
                 </button>
               </div>
@@ -1583,13 +1812,16 @@ const crmModule = {
       const modal = new bootstrap.Modal(document.getElementById('editDealModal'));
       modal.show();
       utils.initInlineValidation('editDealForm');
-      document.getElementById('editDealModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+      document.getElementById('editDealModal').addEventListener('hidden.bs.modal', function () {
+        this.remove();
+      });
     } catch (error) {
       console.error('Error loading deal for edit:', error);
       utils.showToast('Error loading deal', 'error');
     }
   },
 
+  /** Update an existing deal. @param {string} dealId - Deal UUID */
   async updateDeal(dealId) {
     const form = document.getElementById('editDealForm');
     if (!form.checkValidity()) {
@@ -1601,23 +1833,26 @@ const crmModule = {
       deal_name: document.getElementById('editDealName').value,
       deal_type: document.getElementById('editDealType').value,
       deal_value: Math.max(0, parseFloat(document.getElementById('editDealValue').value) || 0),
-      probability: Math.max(0, Math.min(100, document.getElementById('editDealProbability').value !== '' ? parseInt(document.getElementById('editDealProbability').value) : 50)),
+      probability: Math.max(
+        0,
+        Math.min(
+          100,
+          document.getElementById('editDealProbability').value !== ''
+            ? parseInt(document.getElementById('editDealProbability').value)
+            : 50
+        )
+      ),
       stage: document.getElementById('editDealStage').value,
       status: document.getElementById('editDealStatus').value,
       expected_close_date: document.getElementById('editDealExpectedClose').value || null,
       actual_close_date: document.getElementById('editDealActualClose').value || null,
       description: document.getElementById('editDealDescription').value,
-      notes: document.getElementById('editDealNotes').value
+      notes: document.getElementById('editDealNotes').value,
     };
 
     try {
       await utils.protectModalDuringSave('editDealModal', async () => {
-        const { error } = await STATE.client
-          .from('deals')
-          .update(updateData)
-          .eq('id', dealId);
-
-        if (error) throw error;
+        await apiClient.update('deals', dealId, updateData);
 
         utils.showToast('Deal updated successfully', 'success');
         bootstrap.Modal.getInstance(document.getElementById('editDealModal')).hide();
@@ -1629,18 +1864,19 @@ const crmModule = {
     }
   },
 
+  /** Delete a deal after confirmation. @param {string} dealId - Deal UUID */
   async deleteDeal(dealId) {
-    if (!await utils.confirmDialog({ title: 'Delete Deal', message: 'Are you sure you want to delete this deal? This action cannot be undone.' })) {
+    if (
+      !(await utils.confirmDialog({
+        title: 'Delete Deal',
+        message: 'Are you sure you want to delete this deal? This action cannot be undone.',
+      }))
+    ) {
       return;
     }
 
     try {
-      const { error } = await STATE.client
-        .from('deals')
-        .delete()
-        .eq('id', dealId);
-
-      if (error) throw error;
+      await apiClient.delete('deals', dealId);
 
       utils.showToast('Deal deleted successfully', 'success');
       this.loadDeals();
@@ -1650,28 +1886,29 @@ const crmModule = {
     }
   },
 
+  /** View meeting details in a modal. @param {string} meetingId - Meeting UUID */
   async viewMeeting(meetingId) {
     console.warn('View meeting:', meetingId);
 
     try {
-      const { data: meeting, error } = await STATE.client
-        .from('meeting_notes')
-        .select(`
-          *,
-          organisation:organisations(company_name),
-          deal:deals(deal_name)
-        `)
-        .eq('id', meetingId)
-        .single();
-
-      if (error) throw error;
+      const meetingResult = await apiClient.select('meeting_notes', {
+        select: '*, organisation:organisations(company_name), deal:deals(deal_name)',
+        filters: { id: { eq: meetingId } },
+        pageSize: 1,
+      });
+      const meeting = meetingResult.data?.[0];
+      if (!meeting) throw new Error('Meeting not found');
 
       const date = new Date(meeting.meeting_date).toLocaleDateString();
       const time = new Date(meeting.meeting_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const companyName = meeting.organisation?.company_name || 'N/A';
       const dealName = meeting.deal?.deal_name || 'N/A';
       let attendeesList = [];
-      try { attendeesList = JSON.parse(meeting.attendees || '[]'); } catch (e) { console.warn('Failed to parse meeting attendees for view:', e.message); }
+      try {
+        attendeesList = JSON.parse(meeting.attendees || '[]');
+      } catch (e) {
+        console.warn('Failed to parse meeting attendees for view:', e.message);
+      }
 
       const modalHtml = `
         <div class="modal fade" id="viewMeetingModal" tabindex="-1">
@@ -1696,35 +1933,49 @@ const crmModule = {
                       <tr><td class="text-muted">Company:</td><td>${utils.escapeHtml(companyName)}</td></tr>
                       <tr><td class="text-muted">Related Deal:</td><td>${utils.escapeHtml(dealName)}</td></tr>
                       <tr><td class="text-muted">Location:</td><td>${utils.escapeHtml(meeting.location || 'N/A')}</td></tr>
-                      <tr><td class="text-muted">Follow-up:</td><td>${meeting.follow_up_required
-                        ? `<span class="badge bg-warning text-dark"><i class="bi bi-calendar-check me-1"></i>${meeting.follow_up_date ? new Date(meeting.follow_up_date).toLocaleDateString() : 'ASAP'}</span>`
-                        : '<span class="text-muted">None</span>'}</td></tr>
+                      <tr><td class="text-muted">Follow-up:</td><td>${
+                        meeting.follow_up_required
+                          ? `<span class="badge bg-warning text-dark"><i class="bi bi-calendar-check me-1"></i>${meeting.follow_up_date ? new Date(meeting.follow_up_date).toLocaleDateString() : 'ASAP'}</span>`
+                          : '<span class="text-muted">None</span>'
+                      }</td></tr>
                     </table>
                   </div>
                 </div>
-                ${attendeesList.length > 0 ? `
+                ${
+                  attendeesList.length > 0
+                    ? `
                   <div class="mb-3">
                     <h6 class="text-muted">Attendees</h6>
                     <div class="d-flex flex-wrap gap-2">
-                      ${attendeesList.map(a => `<span class="badge bg-light text-dark border"><i class="bi bi-person me-1"></i>${utils.escapeHtml(a)}</span>`).join('')}
+                      ${attendeesList.map((a) => `<span class="badge bg-light text-dark border"><i class="bi bi-person me-1"></i>${utils.escapeHtml(a)}</span>`).join('')}
                     </div>
                   </div>
-                ` : ''}
-                ${meeting.notes ? `
+                `
+                    : ''
+                }
+                ${
+                  meeting.notes
+                    ? `
                   <div class="mb-3">
                     <h6 class="text-muted">Meeting Notes</h6>
                     <div class="p-3 bg-light rounded" style="white-space: pre-wrap;">${utils.escapeHtml(meeting.notes)}</div>
                   </div>
-                ` : ''}
-                ${meeting.action_items ? `
+                `
+                    : ''
+                }
+                ${
+                  meeting.action_items
+                    ? `
                   <div class="mb-0">
                     <h6 class="text-muted">Action Items</h6>
                     <div class="p-3 bg-light rounded" style="white-space: pre-wrap;">${utils.escapeHtml(meeting.action_items)}</div>
                   </div>
-                ` : ''}
+                `
+                    : ''
+                }
               </div>
               <div class="modal-footer">
-                <button type="button" class="btn btn-outline-success" onclick="bootstrap.Modal.getInstance(document.getElementById('viewMeetingModal')).hide(); crmModule.editMeeting('${meeting.id}')">
+                <button type="button" class="btn btn-outline-success" data-action="crmModule.dismissAndEditMeeting" data-id="${meeting.id}">
                   <i class="bi bi-pencil me-2"></i>Edit
                 </button>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -1739,27 +1990,34 @@ const crmModule = {
       document.body.insertAdjacentHTML('beforeend', modalHtml);
       const modal = new bootstrap.Modal(document.getElementById('viewMeetingModal'));
       modal.show();
-      document.getElementById('viewMeetingModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+      document.getElementById('viewMeetingModal').addEventListener('hidden.bs.modal', function () {
+        this.remove();
+      });
     } catch (error) {
       console.error('Error loading meeting:', error);
       utils.showToast('Error loading meeting details', 'error');
     }
   },
 
+  /** Open edit modal for a meeting. @param {string} meetingId - Meeting UUID */
   async editMeeting(meetingId) {
     console.warn('Edit meeting:', meetingId);
 
     try {
-      const { data: meeting, error } = await STATE.client
-        .from('meeting_notes')
-        .select('*')
-        .eq('id', meetingId)
-        .single();
-
-      if (error) throw error;
+      const meetingResult = await apiClient.select('meeting_notes', {
+        select: '*',
+        filters: { id: { eq: meetingId } },
+        pageSize: 1,
+      });
+      const meeting = meetingResult.data?.[0];
+      if (!meeting) throw new Error('Meeting not found');
 
       let attendeesList = [];
-      try { attendeesList = JSON.parse(meeting.attendees || '[]'); } catch (e) { console.warn('Failed to parse meeting attendees for edit:', e.message); }
+      try {
+        attendeesList = JSON.parse(meeting.attendees || '[]');
+      } catch (e) {
+        console.warn('Failed to parse meeting attendees for edit:', e.message);
+      }
       const meetingDateTime = meeting.meeting_date ? meeting.meeting_date.split('T') : ['', ''];
 
       const modalHtml = `
@@ -1833,7 +2091,7 @@ const crmModule = {
               </div>
               <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-success" onclick="crmModule.updateMeeting('${meeting.id}')">
+                <button type="button" class="btn btn-success" data-action="crmModule.updateMeeting" data-id="meeting.id">
                   <i class="bi bi-save me-2"></i>Save Changes
                 </button>
               </div>
@@ -1846,20 +2104,23 @@ const crmModule = {
       if (existingModal) existingModal.remove();
       document.body.insertAdjacentHTML('beforeend', modalHtml);
 
-      document.getElementById('editMeetingFollowUp').addEventListener('change', function() {
+      document.getElementById('editMeetingFollowUp').addEventListener('change', function () {
         document.getElementById('editMeetingFollowUpDateContainer').style.display = this.checked ? 'block' : 'none';
       });
 
       const modal = new bootstrap.Modal(document.getElementById('editMeetingModal'));
       modal.show();
       utils.initInlineValidation('editMeetingForm');
-      document.getElementById('editMeetingModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+      document.getElementById('editMeetingModal').addEventListener('hidden.bs.modal', function () {
+        this.remove();
+      });
     } catch (error) {
       console.error('Error loading meeting for edit:', error);
       utils.showToast('Error loading meeting', 'error');
     }
   },
 
+  /** Update an existing meeting note. @param {string} meetingId - Meeting UUID */
   async updateMeeting(meetingId) {
     const form = document.getElementById('editMeetingForm');
     if (!form.checkValidity()) {
@@ -1872,7 +2133,12 @@ const crmModule = {
     const meetingDate = dateVal && timeVal ? `${dateVal}T${timeVal}:00` : dateVal || null;
 
     const attendeesRaw = document.getElementById('editMeetingAttendees').value;
-    const attendeesArray = attendeesRaw ? attendeesRaw.split(',').map(a => a.trim()).filter(a => a) : [];
+    const attendeesArray = attendeesRaw
+      ? attendeesRaw
+          .split(',')
+          .map((a) => a.trim())
+          .filter((a) => a)
+      : [];
 
     const updateData = {
       meeting_title: document.getElementById('editMeetingTitle').value,
@@ -1884,17 +2150,14 @@ const crmModule = {
       notes: document.getElementById('editMeetingNotes').value,
       action_items: document.getElementById('editMeetingActions').value,
       follow_up_required: document.getElementById('editMeetingFollowUp').checked,
-      follow_up_date: document.getElementById('editMeetingFollowUp').checked ? document.getElementById('editMeetingFollowUpDate').value : null
+      follow_up_date: document.getElementById('editMeetingFollowUp').checked
+        ? document.getElementById('editMeetingFollowUpDate').value
+        : null,
     };
 
     try {
       await utils.protectModalDuringSave('editMeetingModal', async () => {
-        const { error } = await STATE.client
-          .from('meeting_notes')
-          .update(updateData)
-          .eq('id', meetingId);
-
-        if (error) throw error;
+        await apiClient.update('meeting_notes', meetingId, updateData);
 
         utils.showToast('Meeting updated successfully', 'success');
         bootstrap.Modal.getInstance(document.getElementById('editMeetingModal')).hide();
@@ -1906,18 +2169,19 @@ const crmModule = {
     }
   },
 
+  /** Delete a meeting note after confirmation. @param {string} meetingId - Meeting UUID */
   async deleteMeeting(meetingId) {
-    if (!await utils.confirmDialog({ title: 'Delete Meeting Note', message: 'Are you sure you want to delete this meeting note? This action cannot be undone.' })) {
+    if (
+      !(await utils.confirmDialog({
+        title: 'Delete Meeting Note',
+        message: 'Are you sure you want to delete this meeting note? This action cannot be undone.',
+      }))
+    ) {
       return;
     }
 
     try {
-      const { error } = await STATE.client
-        .from('meeting_notes')
-        .delete()
-        .eq('id', meetingId);
-
-      if (error) throw error;
+      await apiClient.delete('meeting_notes', meetingId);
 
       utils.showToast('Meeting note deleted successfully', 'success');
       this.loadMeetings();
@@ -1927,23 +2191,23 @@ const crmModule = {
     }
   },
 
+  /**
+   * View companies belonging to a segment in a modal.
+   * @param {string} segmentId - Segment UUID
+   * @param {string} segmentName - Segment display name
+   */
   async viewSegmentCompanies(segmentId, segmentName) {
     console.warn('View companies in segment:', segmentName);
 
     try {
-      // Load companies in this segment
-      const { data: assignments, error } = await STATE.client
-        .from('organisation_segments')
-        .select(`
-          *,
-          organisation:organisations(id, company_name, industry, email, phone)
-        `)
-        .eq('segment_id', segmentId)
-        .order('created_at', { ascending: false });
+      // selectAll justified: organisation_segments is a small lookup/join table for segment membership (see pagination documentation)
+      const assignments = await apiClient.selectAll('organisation_segments', {
+        select: '*, organisation:organisations(id, company_name, industry, email, phone)',
+        filters: { segment_id: { eq: segmentId } },
+        sort: { column: 'created_at', ascending: false },
+      });
 
-      if (error) throw error;
-
-      const companies = (assignments || []).filter(a => a.organisation);
+      const companies = (assignments || []).filter((a) => a.organisation);
 
       const modalHtml = `
         <div class="modal fade" id="viewSegmentCompaniesModal" tabindex="-1">
@@ -1954,12 +2218,15 @@ const crmModule = {
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
               </div>
               <div class="modal-body">
-                ${companies.length === 0 ? `
+                ${
+                  companies.length === 0
+                    ? `
                   <div class="text-center py-4">
                     <i class="bi bi-inbox display-4 d-block mb-2 opacity-25"></i>
                     <p class="text-muted">No companies in this segment</p>
                   </div>
-                ` : `
+                `
+                    : `
                   <p class="text-muted mb-3">${companies.length} compan${companies.length === 1 ? 'y' : 'ies'} in this segment</p>
                   <div class="table-responsive">
                     <table class="table table-hover">
@@ -1973,7 +2240,9 @@ const crmModule = {
                         </tr>
                       </thead>
                       <tbody>
-                        ${companies.map(a => `
+                        ${companies
+                          .map(
+                            (a) => `
                           <tr>
                             <td><strong>${utils.escapeHtml(a.organisation.company_name)}</strong></td>
                             <td>${a.organisation.industry ? utils.escapeHtml(a.organisation.industry) : '<span class="text-muted">N/A</span>'}</td>
@@ -1981,20 +2250,23 @@ const crmModule = {
                             <td>${a.organisation.phone ? utils.escapeHtml(a.organisation.phone) : '<span class="text-muted">N/A</span>'}</td>
                             <td>
                               <div class="btn-group btn-group-sm">
-                                <button class="btn btn-outline-primary" onclick="crmModule.viewCompanyProfile('${a.organisation.id}')" title="View Profile">
+                                <button class="btn btn-outline-primary" data-action="crmModule.viewCompanyProfile" data-id="a.organisation.id" title="View Profile">
                                   <i class="bi bi-eye"></i>
                                 </button>
-                                <button class="btn btn-outline-danger" onclick="crmModule.removeFromSegment('${a.id}', '${segmentId}', '${utils.escapeHtml(segmentName).replace(/'/g, "\\'")}')" title="Remove from Segment">
+                                <button class="btn btn-outline-danger" data-action="crmModule.removeFromSegment" data-args='${JSON.stringify([a.id, segmentId, utils.escapeHtml(segmentName).replace(/'/g, "\\'")])}' title="Remove from Segment">
                                   <i class="bi bi-x-circle"></i>
                                 </button>
                               </div>
                             </td>
                           </tr>
-                        `).join('')}
+                        `
+                          )
+                          .join('')}
                       </tbody>
                     </table>
                   </div>
-                `}
+                `
+                }
               </div>
               <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -2009,24 +2281,29 @@ const crmModule = {
       document.body.insertAdjacentHTML('beforeend', modalHtml);
       const modal = new bootstrap.Modal(document.getElementById('viewSegmentCompaniesModal'));
       modal.show();
-      document.getElementById('viewSegmentCompaniesModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+      document.getElementById('viewSegmentCompaniesModal').addEventListener('hidden.bs.modal', function () {
+        this.remove();
+      });
     } catch (error) {
       console.error('Error loading segment companies:', error);
       utils.showToast('Error loading segment companies', 'error');
     }
   },
 
+  /** Remove a company from a segment. @param {string} assignmentId @param {string} segmentId @param {string} segmentName */
   async removeFromSegment(assignmentId, segmentId, segmentName) {
-    if (!await utils.confirmDialog({ title: 'Remove from Segment', message: 'Remove this company from the segment?', confirmText: 'Remove' })) return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Remove from Segment',
+        message: 'Remove this company from the segment?',
+        confirmText: 'Remove',
+      }))
+    )
+      return;
 
     try {
       await utils.protectModalDuringSave('viewSegmentCompaniesModal', async () => {
-        const { error } = await STATE.client
-          .from('organisation_segments')
-          .delete()
-          .eq('id', assignmentId);
-
-        if (error) throw error;
+        await apiClient.delete('organisation_segments', assignmentId);
 
         utils.showToast('Company removed from segment', 'success');
         // Refresh the segment companies view
@@ -2044,16 +2321,38 @@ const crmModule = {
     console.warn('Edit segment:', segmentId);
 
     try {
-      const { data: segment, error } = await STATE.client
-        .from('contact_segments')
-        .select('*')
-        .eq('id', segmentId)
-        .single();
+      const segResult = await apiClient.select('contact_segments', {
+        select: '*',
+        filters: { id: { eq: segmentId } },
+        pageSize: 1,
+      });
+      const segment = segResult.data?.[0];
+      if (!segment) throw new Error('Segment not found');
 
-      if (error) throw error;
-
-      const colors = ['#0d6efd', '#198754', '#dc3545', '#ffc107', '#0dcaf0', '#6f42c1', '#fd7e14', '#20c997', '#d63384', '#6610f2'];
-      const icons = ['tag', 'trophy', 'star', 'people', 'building', 'award', 'cash', 'calendar-event', 'graph-up', 'megaphone'];
+      const colors = [
+        '#0d6efd',
+        '#198754',
+        '#dc3545',
+        '#ffc107',
+        '#0dcaf0',
+        '#6f42c1',
+        '#fd7e14',
+        '#20c997',
+        '#d63384',
+        '#6610f2',
+      ];
+      const icons = [
+        'tag',
+        'trophy',
+        'star',
+        'people',
+        'building',
+        'award',
+        'cash',
+        'calendar-event',
+        'graph-up',
+        'megaphone',
+      ];
 
       const modalHtml = `
         <div class="modal fade" id="editSegmentModal" tabindex="-1">
@@ -2076,24 +2375,32 @@ const crmModule = {
                   <div class="mb-3">
                     <label class="form-label">Color</label>
                     <div class="d-flex flex-wrap gap-2" id="segmentColorPicker">
-                      ${colors.map(c => `
+                      ${colors
+                        .map(
+                          (c) => `
                         <div class="rounded-circle border ${segment.color === c ? 'border-dark border-3' : ''}"
                              style="width: 32px; height: 32px; background: ${c}; cursor: pointer;"
-                             onclick="document.getElementById('editSegmentColor').value = '${c}'; document.querySelectorAll('#segmentColorPicker > div').forEach(d => d.classList.remove('border-dark','border-3')); this.classList.add('border-dark','border-3');">
+                             data-action="crmModule.pickSegmentColor" data-color="${c}" data-target="editSegmentColor" data-picker="segmentColorPicker">
                         </div>
-                      `).join('')}
+                      `
+                        )
+                        .join('')}
                     </div>
                     <input type="hidden" id="editSegmentColor" value="${segment.color || '#0d6efd'}">
                   </div>
                   <div class="mb-3">
                     <label class="form-label">Icon</label>
                     <div class="d-flex flex-wrap gap-2" id="segmentIconPicker">
-                      ${icons.map(ic => `
+                      ${icons
+                        .map(
+                          (ic) => `
                         <button type="button" class="btn btn-sm ${segment.icon === ic ? 'btn-primary' : 'btn-outline-secondary'}"
-                                onclick="document.getElementById('editSegmentIcon').value = '${ic}'; document.querySelectorAll('#segmentIconPicker > button').forEach(b => { b.classList.remove('btn-primary'); b.classList.add('btn-outline-secondary'); }); this.classList.remove('btn-outline-secondary'); this.classList.add('btn-primary');">
+                                data-action="crmModule.pickSegmentIcon" data-icon="${ic}" data-target="editSegmentIcon" data-picker="segmentIconPicker">
                           <i class="bi bi-${ic}"></i>
                         </button>
-                      `).join('')}
+                      `
+                        )
+                        .join('')}
                     </div>
                     <input type="hidden" id="editSegmentIcon" value="${segment.icon || 'tag'}">
                   </div>
@@ -2101,7 +2408,7 @@ const crmModule = {
               </div>
               <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-success" onclick="crmModule.updateSegment('${segment.id}')">
+                <button type="button" class="btn btn-success" data-action="crmModule.updateSegment" data-id="segment.id">
                   <i class="bi bi-save me-2"></i>Save Changes
                 </button>
               </div>
@@ -2115,7 +2422,9 @@ const crmModule = {
       document.body.insertAdjacentHTML('beforeend', modalHtml);
       const modal = new bootstrap.Modal(document.getElementById('editSegmentModal'));
       modal.show();
-      document.getElementById('editSegmentModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+      document.getElementById('editSegmentModal').addEventListener('hidden.bs.modal', function () {
+        this.remove();
+      });
     } catch (error) {
       console.error('Error loading segment for edit:', error);
       utils.showToast('Error loading segment', 'error');
@@ -2133,17 +2442,12 @@ const crmModule = {
       segment_name: document.getElementById('editSegmentName').value,
       description: document.getElementById('editSegmentDescription').value,
       color: document.getElementById('editSegmentColor').value,
-      icon: document.getElementById('editSegmentIcon').value
+      icon: document.getElementById('editSegmentIcon').value,
     };
 
     try {
       await utils.protectModalDuringSave('editSegmentModal', async () => {
-        const { error } = await STATE.client
-          .from('contact_segments')
-          .update(updateData)
-          .eq('id', segmentId);
-
-        if (error) throw error;
+        await apiClient.update('contact_segments', segmentId, updateData);
 
         utils.showToast('Segment updated successfully', 'success');
         bootstrap.Modal.getInstance(document.getElementById('editSegmentModal')).hide();
@@ -2154,6 +2458,86 @@ const crmModule = {
       utils.showToast('Error updating segment: ' + error.message, 'error');
     }
   },
+  // ============================================
+  // DELEGATED-ACTION HELPER METHODS
+  // ============================================
+
+  /** Dismiss the viewCommunicationModal and open edit for the given communication. */
+  dismissAndEditCommunication(commId) {
+    const modalEl = document.getElementById('viewCommunicationModal');
+    if (modalEl) {
+      const instance = bootstrap.Modal.getInstance(modalEl);
+      if (instance) instance.hide();
+    }
+    this.editCommunication(commId);
+  },
+
+  /** Dismiss the viewDealModal and open edit for the given deal. */
+  dismissAndEditDeal(dealId) {
+    const modalEl = document.getElementById('viewDealModal');
+    if (modalEl) {
+      const instance = bootstrap.Modal.getInstance(modalEl);
+      if (instance) instance.hide();
+    }
+    this.editDeal(dealId);
+  },
+
+  /** Dismiss the viewMeetingModal and open edit for the given meeting. */
+  dismissAndEditMeeting(meetingId) {
+    const modalEl = document.getElementById('viewMeetingModal');
+    if (modalEl) {
+      const instance = bootstrap.Modal.getInstance(modalEl);
+      if (instance) instance.hide();
+    }
+    this.editMeeting(meetingId);
+  },
+
+  /**
+   * Pick a segment color from a color swatch.
+   * Called via data-action with no data-id, so signature is (event).
+   * Reads data-color, data-target (hidden input ID), data-picker (container ID) from the clicked element.
+   */
+  pickSegmentColor(event) {
+    const el = event.target.closest('[data-action="crmModule.pickSegmentColor"]');
+    if (!el) return;
+    const color = el.dataset.color;
+    const targetId = el.dataset.target;
+    const pickerId = el.dataset.picker;
+    if (targetId) document.getElementById(targetId).value = color;
+    if (pickerId) {
+      document.querySelectorAll(`#${pickerId} > div`).forEach((d) => d.classList.remove('border-dark', 'border-3'));
+    }
+    el.classList.add('border-dark', 'border-3');
+  },
+
+  /**
+   * Pick a segment icon from an icon button grid.
+   * Called via data-action with no data-id, so signature is (event).
+   * Reads data-icon, data-target (hidden input ID), data-picker (container ID) from the clicked element.
+   */
+  pickSegmentIcon(event) {
+    const el = event.target.closest('[data-action="crmModule.pickSegmentIcon"]');
+    if (!el) return;
+    const icon = el.dataset.icon;
+    const targetId = el.dataset.target;
+    const pickerId = el.dataset.picker;
+    if (targetId) document.getElementById(targetId).value = icon;
+    if (pickerId) {
+      document.querySelectorAll(`#${pickerId} > button`).forEach((b) => {
+        b.classList.remove('btn-primary');
+        b.classList.add('btn-outline-secondary');
+      });
+    }
+    el.classList.remove('btn-outline-secondary');
+    el.classList.add('btn-primary');
+  },
+
+  /** Remove a smart-segment rule row (the parent .segment-rule element). Called with no data-id, so signature is (event). */
+  removeSegmentRule(event) {
+    const el = event.target.closest('.segment-rule');
+    if (el) el.remove();
+  },
+
   // ============================================
   // SMART SEGMENTS (moved from Organisations)
   // ============================================
@@ -2172,7 +2556,7 @@ const crmModule = {
         <option value="contains">contains</option>
       </select>
       <input type="text" class="form-control form-control-sm" style="width:150px;" id="segVal${i}" placeholder="Value...">
-      <button class="btn btn-sm btn-outline-danger" onclick="this.parentElement.remove()"><i class="bi bi-x"></i></button>
+      <button class="btn btn-sm btn-outline-danger" data-action="crmModule.removeSegmentRule"><i class="bi bi-x"></i></button>
     </div>`;
     document.getElementById('smartSegmentRules')?.insertAdjacentHTML('beforeend', ruleHtml);
   },
@@ -2189,40 +2573,61 @@ const crmModule = {
   },
 
   _matchesSegmentRules(org, rules) {
-    return rules.every(r => {
+    return rules.every((r) => {
       let orgVal;
-      if (r.field === 'engagement' && typeof orgsModule !== 'undefined') orgVal = orgsModule.calculateEngagementScore(org);
+      if (r.field === 'engagement' && typeof orgsModule !== 'undefined')
+        orgVal = orgsModule.calculateEngagementScore(org);
       else if (r.field === 'awards_count') orgVal = org.awards_count || 0;
       else orgVal = org[r.field] || '';
 
       const testVal = r.val;
       switch (r.op) {
-        case 'eq': return String(orgVal).toLowerCase() === testVal.toLowerCase();
-        case 'neq': return String(orgVal).toLowerCase() !== testVal.toLowerCase();
-        case 'gt': return Number(orgVal) > Number(testVal);
-        case 'lt': return Number(orgVal) < Number(testVal);
-        case 'contains': return String(orgVal).toLowerCase().includes(testVal.toLowerCase());
-        default: return false;
+        case 'eq':
+          return String(orgVal).toLowerCase() === testVal.toLowerCase();
+        case 'neq':
+          return String(orgVal).toLowerCase() !== testVal.toLowerCase();
+        case 'gt':
+          return Number(orgVal) > Number(testVal);
+        case 'lt':
+          return Number(orgVal) < Number(testVal);
+        case 'contains':
+          return String(orgVal).toLowerCase().includes(testVal.toLowerCase());
+        default:
+          return false;
       }
     });
   },
 
+  /** Apply selected smart segment rules to filter organisations in-memory. */
   applySmartSegment() {
     const rules = this._getSegmentRules();
-    if (rules.length === 0) { utils.showToast('Add at least one rule', 'warning'); return; }
-    const orgs = (typeof STATE !== 'undefined' && STATE.allOrganisations) ? STATE.allOrganisations : [];
-    const matching = orgs.filter(o => this._matchesSegmentRules(o, rules));
+    if (rules.length === 0) {
+      utils.showToast('Add at least one rule', 'warning');
+      return;
+    }
+    const orgs = typeof STATE !== 'undefined' && STATE.allOrganisations ? STATE.allOrganisations : [];
+    const matching = orgs.filter((o) => this._matchesSegmentRules(o, rules));
     this._lastSegmentMatches = matching;
     const resultEl = document.getElementById('smartSegmentResult');
     if (resultEl) {
       resultEl.innerHTML = `<div class="alert alert-info small py-2">
         <strong>${matching.length}</strong> organisations match this segment.
-        <button class="btn btn-sm btn-outline-primary ms-2" onclick="crmModule.applySegmentAsFilter()">View in Organisations Tab</button>
+        <button class="btn btn-sm btn-outline-primary ms-2" data-action="crmModule.applySegmentAsFilter">View in Organisations Tab</button>
       </div>
-      ${matching.length > 0 ? `<div class="table-responsive mt-2"><table class="table table-sm table-hover"><thead><tr><th>Company</th><th>Status</th><th>Sector</th><th>Region</th></tr></thead><tbody>
-        ${matching.slice(0, 50).map(o => `<tr><td>${utils.escapeHtml(o.company_name || '')}</td><td><span class="badge bg-primary">${utils.escapeHtml(o.status || '')}</span></td><td>${utils.escapeHtml(o.sector || '-')}</td><td>${utils.escapeHtml(o.region || '-')}</td></tr>`).join('')}
+      ${
+        matching.length > 0
+          ? `<div class="table-responsive mt-2"><table class="table table-sm table-hover"><thead><tr><th>Company</th><th>Status</th><th>Sector</th><th>Region</th></tr></thead><tbody>
+        ${matching
+          .slice(0, 50)
+          .map(
+            (o) =>
+              `<tr><td>${utils.escapeHtml(o.company_name || '')}</td><td><span class="badge bg-primary">${utils.escapeHtml(o.status || '')}</span></td><td>${utils.escapeHtml(o.sector || '-')}</td><td>${utils.escapeHtml(o.region || '-')}</td></tr>`
+          )
+          .join('')}
         ${matching.length > 50 ? `<tr><td colspan="4" class="text-muted text-center">... and ${matching.length - 50} more</td></tr>` : ''}
-      </tbody></table></div>` : ''}`;
+      </tbody></table></div>`
+          : ''
+      }`;
     }
   },
 
@@ -2237,32 +2642,54 @@ const crmModule = {
     }
     // Navigate to organisations tab
     const orgsTab = document.getElementById('organisations-tab');
-    if (orgsTab) { new bootstrap.Tab(orgsTab).show(); }
+    if (orgsTab) {
+      new bootstrap.Tab(orgsTab).show();
+    }
     utils.showToast(`Showing ${this._lastSegmentMatches.length} segment matches`, 'success');
   },
 
   async _loadSegments() {
     try {
       if (typeof STATE !== 'undefined' && STATE.client) {
-        const { data } = await STATE.client.from('user_preferences').select('value').eq('key', 'orgsSegments').limit(1);
+        const { data } = await apiClient.select('user_preferences', {
+          select: 'value',
+          filters: { key: { eq: 'orgsSegments' } },
+          pageSize: 1,
+        });
         if (data?.[0]) return JSON.parse(data[0].value);
       }
-    } catch (e) { console.warn('Failed to load segments from database:', e.message); }
-    try { return JSON.parse(localStorage.getItem('orgsSegments') || '{}'); } catch (e) { console.warn('Failed to parse segments from localStorage:', e.message); return {}; }
+    } catch (e) {
+      console.warn('Failed to load segments from database:', e.message);
+    }
+    try {
+      return JSON.parse(localStorage.getItem('orgsSegments') || '{}');
+    } catch (e) {
+      console.warn('Failed to parse segments from localStorage:', e.message);
+      return {};
+    }
   },
 
   async _saveSegments(segments) {
     try {
       if (typeof STATE !== 'undefined' && STATE.client) {
-        await STATE.client.from('user_preferences').upsert({ key: 'orgsSegments', value: JSON.stringify(segments), updated_at: new Date().toISOString() }, { onConflict: 'key' });
+        await apiClient.upsert(
+          'user_preferences',
+          { key: 'orgsSegments', value: JSON.stringify(segments), updated_at: new Date().toISOString() },
+          { onConflict: 'key' }
+        );
       }
-    } catch (e) { console.warn('Failed to save segments to database:', e.message); }
+    } catch (e) {
+      console.warn('Failed to save segments to database:', e.message);
+    }
     localStorage.setItem('orgsSegments', JSON.stringify(segments));
   },
 
   async saveSmartSegment() {
     const rules = this._getSegmentRules();
-    if (rules.length === 0) { utils.showToast('Add at least one rule', 'warning'); return; }
+    if (rules.length === 0) {
+      utils.showToast('Add at least one rule', 'warning');
+      return;
+    }
     const name = prompt('Name this segment:');
     if (!name || !name.trim()) return;
     try {
@@ -2270,22 +2697,29 @@ const crmModule = {
       segments[name.trim()] = rules;
       await this._saveSegments(segments);
       utils.showToast(`Segment "${name.trim()}" saved`, 'success');
-    } catch (e) { console.warn('Failed to save smart segment:', e.message); }
+    } catch (e) {
+      console.warn('Failed to save smart segment:', e.message);
+    }
   },
 
   async loadSmartSegments() {
     const segments = await this._loadSegments();
     const names = Object.keys(segments);
-    if (names.length === 0) { utils.showToast('No saved segments', 'info'); return; }
+    if (names.length === 0) {
+      utils.showToast('No saved segments', 'info');
+      return;
+    }
 
     const resultEl = document.getElementById('smartSegmentResult');
     if (resultEl) {
-      resultEl.innerHTML = `<h6 class="fw-semibold mb-2">Saved Segments</h6><div class="list-group">${names.map(n => {
-        const rules = segments[n];
-        return `<a href="#" class="list-group-item list-group-item-action small" onclick="event.preventDefault(); crmModule._loadAndApplySegment('${utils.escapeHtml(n).replace(/'/g, "\\'")}')">
-          <strong>${utils.escapeHtml(n)}</strong> &mdash; ${rules.map(r => `${r.field} ${r.op} "${r.val}"`).join(' AND ')}
+      resultEl.innerHTML = `<h6 class="fw-semibold mb-2">Saved Segments</h6><div class="list-group">${names
+        .map((n) => {
+          const rules = segments[n];
+          return `<a href="#" class="list-group-item list-group-item-action small" data-action="crmModule._loadAndApplySegment" data-id="utils.escapeHtml(n).replace(/'/g, "\\'")" data-prevent-default="true">
+          <strong>${utils.escapeHtml(n)}</strong> &mdash; ${rules.map((r) => `${r.field} ${r.op} "${r.val}"`).join(' AND ')}
         </a>`;
-      }).join('')}</div>`;
+        })
+        .join('')}</div>`;
     }
   },
 
@@ -2294,49 +2728,62 @@ const crmModule = {
       const segments = await this._loadSegments();
       const rules = segments[name];
       if (!rules) return;
-      const orgs = (typeof STATE !== 'undefined' && STATE.allOrganisations) ? STATE.allOrganisations : [];
-      const matching = orgs.filter(o => this._matchesSegmentRules(o, rules));
+      const orgs = typeof STATE !== 'undefined' && STATE.allOrganisations ? STATE.allOrganisations : [];
+      const matching = orgs.filter((o) => this._matchesSegmentRules(o, rules));
       this._lastSegmentMatches = matching;
       const resultEl = document.getElementById('smartSegmentResult');
       if (resultEl) {
         resultEl.innerHTML = `<div class="alert alert-success small py-2">
           <strong>"${utils.escapeHtml(name)}"</strong>: ${matching.length} organisations match.
-          <button class="btn btn-sm btn-outline-primary ms-2" onclick="crmModule.applySegmentAsFilter()">View in Organisations Tab</button>
+          <button class="btn btn-sm btn-outline-primary ms-2" data-action="crmModule.applySegmentAsFilter">View in Organisations Tab</button>
         </div>`;
       }
-    } catch (e) { console.warn('Failed to load and apply segment:', e.message); }
+    } catch (e) {
+      console.warn('Failed to load and apply segment:', e.message);
+    }
   },
 
   // ============================================
   // MY TASKS & FOLLOW-UPS (moved from Organisations)
   // ============================================
+  /** Load and display follow-up tasks for the current user. @returns {Promise<void>} */
   async loadMyTasks() {
     const container = document.getElementById('myTasksContainer');
     if (!container) return;
 
     let followUps = [];
     try {
-      const { data } = await STATE.client.from('organisation_follow_ups').select('*').order('date', { ascending: true });
+      const { data } = await apiClient.select('organisation_follow_ups', {
+        select: '*',
+        sort: { column: 'date', ascending: true },
+      });
       followUps = data || [];
-    } catch (e) { console.warn('Could not load follow-ups:', e); }
+    } catch (e) {
+      console.warn('Could not load follow-ups:', e);
+    }
 
     const today = new Date().toISOString().split('T')[0];
-    const overdue = followUps.filter(f => !f.done && f.date < today);
-    const todayTasks = followUps.filter(f => !f.done && f.date === today);
-    const upcoming = followUps.filter(f => !f.done && f.date > today).slice(0, 20);
-    const completed = followUps.filter(f => f.done).slice(0, 10);
-    const orgs = (typeof STATE !== 'undefined' && STATE.allOrganisations) ? STATE.allOrganisations : [];
+    const overdue = followUps.filter((f) => !f.done && f.date < today);
+    const todayTasks = followUps.filter((f) => !f.done && f.date === today);
+    const upcoming = followUps.filter((f) => !f.done && f.date > today).slice(0, 20);
+    const completed = followUps.filter((f) => f.done).slice(0, 10);
+    const orgs = typeof STATE !== 'undefined' && STATE.allOrganisations ? STATE.allOrganisations : [];
 
     const renderTask = (f, section) => {
-      const org = orgs.find(o => o.id === f.org_id);
+      const org = orgs.find((o) => o.id === f.org_id);
       const orgName = org ? utils.escapeHtml(org.company_name) : 'Unknown';
-      const icons = { overdue: 'bi-exclamation-triangle text-danger', today: 'bi-bell text-warning', completed: 'bi-check-circle text-success', upcoming: 'bi-clock text-info' };
+      const icons = {
+        overdue: 'bi-exclamation-triangle text-danger',
+        today: 'bi-bell text-warning',
+        completed: 'bi-check-circle text-success',
+        upcoming: 'bi-clock text-info',
+      };
       return `<div class="d-flex align-items-center py-2 border-bottom">
         <i class="bi ${icons[section]} me-2 fs-5"></i>
         <div class="flex-grow-1"><div class="fw-semibold small">${utils.escapeHtml(f.note || 'Follow up')}</div>
         <div class="text-muted" style="font-size:0.75rem;">${orgName} &middot; ${new Date(f.date).toLocaleDateString('en-GB')}${f.assignee ? ' &middot; ' + utils.escapeHtml(f.assignee) : ''}</div></div>
-        ${!f.done ? `<button class="btn btn-sm btn-outline-success me-1" onclick="crmModule.completeTask('${f.org_id}','${f.id}')"><i class="bi bi-check"></i></button>` : ''}
-        ${org ? `<button class="btn btn-sm btn-outline-primary" onclick="orgsModule.openCompanyProfile('${f.org_id}','${utils.escapeHtml(orgName).replace(/'/g, "\\'")}')"><i class="bi bi-eye"></i></button>` : ''}
+        ${!f.done ? `<button class="btn btn-sm btn-outline-success me-1" data-action="crmModule.completeTask" data-args='${JSON.stringify([f.org_id, f.id])}'><i class="bi bi-check"></i></button>` : ''}
+        ${org ? `<button class="btn btn-sm btn-outline-primary" data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([f.org_id, utils.escapeHtml(orgName).replace(/'/g, "\\'")])}'><i class="bi bi-eye"></i></button>` : ''}
       </div>`;
     };
 
@@ -2347,16 +2794,16 @@ const crmModule = {
         <div class="col-3"><div class="card border-info"><div class="card-body py-2"><h4 class="text-info mb-0">${upcoming.length}</h4><small class="text-muted">Upcoming</small></div></div></div>
         <div class="col-3"><div class="card border-success"><div class="card-body py-2"><h4 class="text-success mb-0">${completed.length}</h4><small class="text-muted">Done</small></div></div></div>
       </div>
-      ${overdue.length > 0 ? `<h6 class="text-danger fw-bold"><i class="bi bi-exclamation-triangle me-1"></i>Overdue (${overdue.length})</h6>${overdue.map(f => renderTask(f, 'overdue')).join('')}<hr>` : ''}
-      ${todayTasks.length > 0 ? `<h6 class="text-warning fw-bold"><i class="bi bi-bell me-1"></i>Due Today</h6>${todayTasks.map(f => renderTask(f, 'today')).join('')}<hr>` : ''}
-      ${upcoming.length > 0 ? `<h6 class="text-info fw-bold"><i class="bi bi-clock me-1"></i>Upcoming</h6>${upcoming.map(f => renderTask(f, 'upcoming')).join('')}<hr>` : ''}
-      ${completed.length > 0 ? `<h6 class="text-success fw-bold"><i class="bi bi-check-circle me-1"></i>Recently Completed</h6>${completed.map(f => renderTask(f, 'completed')).join('')}` : ''}
-      ${followUps.filter(f => !f.done).length === 0 ? '<div class="text-center py-4"><i class="bi bi-emoji-smile fs-1 d-block mb-2 text-success"></i><p class="text-muted">All caught up!</p></div>' : ''}`;
+      ${overdue.length > 0 ? `<h6 class="text-danger fw-bold"><i class="bi bi-exclamation-triangle me-1"></i>Overdue (${overdue.length})</h6>${overdue.map((f) => renderTask(f, 'overdue')).join('')}<hr>` : ''}
+      ${todayTasks.length > 0 ? `<h6 class="text-warning fw-bold"><i class="bi bi-bell me-1"></i>Due Today</h6>${todayTasks.map((f) => renderTask(f, 'today')).join('')}<hr>` : ''}
+      ${upcoming.length > 0 ? `<h6 class="text-info fw-bold"><i class="bi bi-clock me-1"></i>Upcoming</h6>${upcoming.map((f) => renderTask(f, 'upcoming')).join('')}<hr>` : ''}
+      ${completed.length > 0 ? `<h6 class="text-success fw-bold"><i class="bi bi-check-circle me-1"></i>Recently Completed</h6>${completed.map((f) => renderTask(f, 'completed')).join('')}` : ''}
+      ${followUps.filter((f) => !f.done).length === 0 ? '<div class="text-center py-4"><i class="bi bi-emoji-smile fs-1 d-block mb-2 text-success"></i><p class="text-muted">All caught up!</p></div>' : ''}`;
   },
 
   async completeTask(orgId, followUpId) {
     try {
-      await STATE.client.from('organisation_follow_ups').update({ done: true }).eq('id', followUpId);
+      await apiClient.update('organisation_follow_ups', followUpId, { done: true });
       utils.showToast('Task completed', 'success');
       this.loadMyTasks();
     } catch (e) {
@@ -2381,17 +2828,15 @@ const crmModule = {
 
   async createMeetingNote() {
     try {
-      // Load organisations for the company dropdown
-      const { data: orgs, error: orgsError } = await STATE.client
-        .from('organisations')
-        .select('id, company_name')
-        .order('company_name');
+      /* selectAll: justified — populating dropdown; organisations is a bounded business dataset */
+      const orgs = await apiClient.selectAll('organisations', {
+        select: 'id, company_name',
+        sort: { column: 'company_name', ascending: true },
+      });
 
-      if (orgsError) throw orgsError;
-
-      const orgOptions = (orgs || []).map(o =>
-        `<option value="${o.id}">${utils.escapeHtml(o.company_name)}</option>`
-      ).join('');
+      const orgOptions = (orgs || [])
+        .map((o) => `<option value="${o.id}">${utils.escapeHtml(o.company_name)}</option>`)
+        .join('');
 
       const today = new Date().toISOString().split('T')[0];
 
@@ -2461,7 +2906,7 @@ const crmModule = {
                   </div>
                   <div class="form-check mb-3">
                     <input class="form-check-input" type="checkbox" id="newMeetingFollowUp"
-                           onchange="document.getElementById('newMeetingFollowUpDate').parentElement.style.display = this.checked ? 'block' : 'none';">
+                           data-on-change="crmModule._toggleFollowUpDate">
                     <label class="form-check-label" for="newMeetingFollowUp">Follow-up Required</label>
                   </div>
                   <div class="mb-3" style="display:none;">
@@ -2472,7 +2917,7 @@ const crmModule = {
               </div>
               <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="crmModule.saveMeetingNote()">
+                <button type="button" class="btn btn-primary" data-action="crmModule.saveMeetingNote">
                   <i class="bi bi-save me-2"></i>Save Meeting Note
                 </button>
               </div>
@@ -2487,43 +2932,67 @@ const crmModule = {
       const modal = new bootstrap.Modal(document.getElementById('createMeetingNoteModal'));
       modal.show();
       utils.initInlineValidation('createMeetingNoteForm');
-      document.getElementById('createMeetingNoteModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+      document.getElementById('createMeetingNoteModal').addEventListener('hidden.bs.modal', function () {
+        this.remove();
+      });
     } catch (error) {
       console.error('Error opening meeting note form:', error);
       utils.showToast('Error opening meeting note form', 'error');
     }
   },
 
+  /**
+   * Toggle follow-up date field visibility (replaces inline onchange handler).
+   * Called via data-on-change; receives (id, value, event).
+   */
+  _toggleFollowUpDate(_id, _value, event) {
+    const el = document.getElementById('newMeetingFollowUpDate');
+    if (el) {
+      el.parentElement.style.display = event.target.checked ? 'block' : 'none';
+    }
+  },
+
   async saveMeetingNote() {
     const form = document.getElementById('createMeetingNoteForm');
-    if (!form.checkValidity()) { form.reportValidity(); return; }
+    if (!form.checkValidity()) {
+      form.reportValidity();
+      return;
+    }
 
     const dateVal = document.getElementById('newMeetingDate').value;
     const timeVal = document.getElementById('newMeetingTime').value;
     const meetingDate = timeVal ? `${dateVal}T${timeVal}:00` : `${dateVal}T00:00:00`;
 
     const attendeesRaw = document.getElementById('newMeetingAttendees').value;
-    const attendeesArr = attendeesRaw ? attendeesRaw.split(',').map(a => a.trim()).filter(Boolean) : [];
+    const attendeesArr = attendeesRaw
+      ? attendeesRaw
+          .split(',')
+          .map((a) => a.trim())
+          .filter(Boolean)
+      : [];
 
     const data = {
       meeting_title: document.getElementById('newMeetingTitle').value,
       organisation_id: document.getElementById('newMeetingOrg').value,
       meeting_type: document.getElementById('newMeetingType').value,
       meeting_date: meetingDate,
-      duration_minutes: document.getElementById('newMeetingDuration').value ? parseInt(document.getElementById('newMeetingDuration').value) : null,
+      duration_minutes: document.getElementById('newMeetingDuration').value
+        ? parseInt(document.getElementById('newMeetingDuration').value)
+        : null,
       location: document.getElementById('newMeetingLocation').value,
       attendees: JSON.stringify(attendeesArr),
       notes: document.getElementById('newMeetingNotes').value,
       action_items: document.getElementById('newMeetingActions').value,
       follow_up_required: document.getElementById('newMeetingFollowUp').checked,
-      follow_up_date: document.getElementById('newMeetingFollowUp').checked ? document.getElementById('newMeetingFollowUpDate').value : null,
-      created_by: STATE.currentUser?.email
+      follow_up_date: document.getElementById('newMeetingFollowUp').checked
+        ? document.getElementById('newMeetingFollowUpDate').value
+        : null,
+      created_by: STATE.currentUser?.email,
     };
 
     try {
       await utils.protectModalDuringSave('createMeetingNoteModal', async () => {
-        const { error } = await STATE.client.from('meeting_notes').insert(data);
-        if (error) throw error;
+        await apiClient.insert('meeting_notes', data);
 
         bootstrap.Modal.getInstance(document.getElementById('createMeetingNoteModal')).hide();
       });
@@ -2542,22 +3011,24 @@ const crmModule = {
 
   async assignSegments() {
     try {
-      // Load segments; use already-loaded organisations
-      const { data: segmentsData, error: segmentsError } = await STATE.client
-        .from('contact_segments').select('*').order('segment_name');
-
-      if (segmentsError) throw segmentsError;
+      // selectAll justified: contact_segments is a small lookup table for segment picker dropdown (see pagination documentation)
+      const segmentsData = await apiClient.selectAll('contact_segments', {
+        select: '*',
+        sort: { column: 'segment_name', ascending: true },
+      });
 
       const segments = segmentsData || [];
       const orgs = (STATE.allOrganisations || [])
-        .map(o => ({ id: o.id, company_name: o.company_name }))
+        .map((o) => ({ id: o.id, company_name: o.company_name }))
         .sort((a, b) => (a.company_name || '').localeCompare(b.company_name || ''));
 
-      const orgOptions = orgs.map(o =>
-        `<option value="${o.id}">${utils.escapeHtml(o.company_name)}</option>`
-      ).join('');
+      const orgOptions = orgs
+        .map((o) => `<option value="${o.id}">${utils.escapeHtml(o.company_name)}</option>`)
+        .join('');
 
-      const segmentCheckboxes = segments.map(s => `
+      const segmentCheckboxes = segments
+        .map(
+          (s) => `
         <div class="form-check">
           <input class="form-check-input segment-assign-check" type="checkbox" value="${s.id}" id="segAssign_${s.id}">
           <label class="form-check-label" for="segAssign_${s.id}">
@@ -2565,7 +3036,9 @@ const crmModule = {
             ${utils.escapeHtml(s.segment_name)}
           </label>
         </div>
-      `).join('');
+      `
+        )
+        .join('');
 
       const modalHtml = `
         <div class="modal fade" id="assignSegmentsModal" tabindex="-1">
@@ -2590,7 +3063,7 @@ const crmModule = {
               </div>
               <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="crmModule.saveSegmentAssignments()">
+                <button type="button" class="btn btn-primary" data-action="crmModule.saveSegmentAssignments">
                   <i class="bi bi-save me-2"></i>Assign
                 </button>
               </div>
@@ -2604,7 +3077,9 @@ const crmModule = {
       document.body.insertAdjacentHTML('beforeend', modalHtml);
       const modal = new bootstrap.Modal(document.getElementById('assignSegmentsModal'));
       modal.show();
-      document.getElementById('assignSegmentsModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+      document.getElementById('assignSegmentsModal').addEventListener('hidden.bs.modal', function () {
+        this.remove();
+      });
     } catch (error) {
       console.error('Error opening assign segments:', error);
       utils.showToast('Error loading segments data', 'error');
@@ -2613,27 +3088,32 @@ const crmModule = {
 
   async saveSegmentAssignments() {
     const orgId = document.getElementById('assignSegmentOrg').value;
-    if (!orgId) { utils.showToast('Please select a company', 'warning'); return; }
+    if (!orgId) {
+      utils.showToast('Please select a company', 'warning');
+      return;
+    }
 
     const checked = document.querySelectorAll('.segment-assign-check:checked');
-    if (checked.length === 0) { utils.showToast('Please select at least one segment', 'warning'); return; }
+    if (checked.length === 0) {
+      utils.showToast('Please select at least one segment', 'warning');
+      return;
+    }
 
     try {
       await utils.protectModalDuringSave('assignSegmentsModal', async () => {
-        const assignments = [...checked].map(cb => ({
+        const assignments = [...checked].map((cb) => ({
           organisation_id: orgId,
-          segment_id: cb.value
+          segment_id: cb.value,
         }));
 
-        const { error } = await STATE.client.from('organisation_segments').upsert(assignments, { onConflict: 'organisation_id,segment_id' });
-        if (error) throw error;
+        await apiClient.upsert('organisation_segments', assignments, { onConflict: 'organisation_id,segment_id' });
 
         bootstrap.Modal.getInstance(document.getElementById('assignSegmentsModal')).hide();
       });
     } catch (error) {
       console.warn('DB upsert for segment assignments failed, using localStorage:', error);
       const key = `bta_org_segments_${orgId}`;
-      const stored = [...checked].map(cb => cb.value);
+      const stored = [...checked].map((cb) => cb.value);
       localStorage.setItem(key, JSON.stringify(stored));
       bootstrap.Modal.getInstance(document.getElementById('assignSegmentsModal'))?.hide();
     }
@@ -2642,8 +3122,30 @@ const crmModule = {
   },
 
   async createCustomSegment() {
-    const colors = ['#0d6efd', '#198754', '#dc3545', '#ffc107', '#0dcaf0', '#6f42c1', '#fd7e14', '#20c997', '#d63384', '#6610f2'];
-    const icons = ['tag', 'trophy', 'star', 'people', 'building', 'award', 'cash', 'calendar-event', 'graph-up', 'megaphone'];
+    const colors = [
+      '#0d6efd',
+      '#198754',
+      '#dc3545',
+      '#ffc107',
+      '#0dcaf0',
+      '#6f42c1',
+      '#fd7e14',
+      '#20c997',
+      '#d63384',
+      '#6610f2',
+    ];
+    const icons = [
+      'tag',
+      'trophy',
+      'star',
+      'people',
+      'building',
+      'award',
+      'cash',
+      'calendar-event',
+      'graph-up',
+      'megaphone',
+    ];
 
     const modalHtml = `
       <div class="modal fade" id="createSegmentModal" tabindex="-1">
@@ -2666,24 +3168,32 @@ const crmModule = {
                 <div class="mb-3">
                   <label class="form-label">Color</label>
                   <div class="d-flex flex-wrap gap-2" id="newSegmentColorPicker">
-                    ${colors.map((c, i) => `
+                    ${colors
+                      .map(
+                        (c, i) => `
                       <div class="rounded-circle border ${i === 0 ? 'border-dark border-3' : ''}"
                            style="width: 32px; height: 32px; background: ${c}; cursor: pointer;"
-                           onclick="document.getElementById('newSegmentColor').value = '${c}'; document.querySelectorAll('#newSegmentColorPicker > div').forEach(d => d.classList.remove('border-dark','border-3')); this.classList.add('border-dark','border-3');">
+                           data-action="crmModule.pickSegmentColor" data-color="${c}" data-target="newSegmentColor" data-picker="newSegmentColorPicker">
                       </div>
-                    `).join('')}
+                    `
+                      )
+                      .join('')}
                   </div>
                   <input type="hidden" id="newSegmentColor" value="#0d6efd">
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Icon</label>
                   <div class="d-flex flex-wrap gap-2" id="newSegmentIconPicker">
-                    ${icons.map((ic, i) => `
+                    ${icons
+                      .map(
+                        (ic, i) => `
                       <button type="button" class="btn btn-sm ${i === 0 ? 'btn-primary' : 'btn-outline-secondary'}"
-                              onclick="document.getElementById('newSegmentIcon').value = '${ic}'; document.querySelectorAll('#newSegmentIconPicker > button').forEach(b => { b.classList.remove('btn-primary'); b.classList.add('btn-outline-secondary'); }); this.classList.remove('btn-outline-secondary'); this.classList.add('btn-primary');">
+                              data-action="crmModule.pickSegmentIcon" data-icon="${ic}" data-target="newSegmentIcon" data-picker="newSegmentIconPicker">
                         <i class="bi bi-${ic}"></i>
                       </button>
-                    `).join('')}
+                    `
+                      )
+                      .join('')}
                   </div>
                   <input type="hidden" id="newSegmentIcon" value="tag">
                 </div>
@@ -2691,7 +3201,7 @@ const crmModule = {
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="button" class="btn btn-primary" onclick="crmModule.saveCustomSegment()">
+              <button type="button" class="btn btn-primary" data-action="crmModule.saveCustomSegment">
                 <i class="bi bi-save me-2"></i>Create Segment
               </button>
             </div>
@@ -2705,24 +3215,28 @@ const crmModule = {
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     const modal = new bootstrap.Modal(document.getElementById('createSegmentModal'));
     modal.show();
-    document.getElementById('createSegmentModal').addEventListener('hidden.bs.modal', function() { this.remove(); });
+    document.getElementById('createSegmentModal').addEventListener('hidden.bs.modal', function () {
+      this.remove();
+    });
   },
 
   async saveCustomSegment() {
     const form = document.getElementById('createSegmentForm');
-    if (!form.checkValidity()) { form.reportValidity(); return; }
+    if (!form.checkValidity()) {
+      form.reportValidity();
+      return;
+    }
 
     const data = {
       segment_name: document.getElementById('newSegmentName').value,
       description: document.getElementById('newSegmentDescription').value,
       color: document.getElementById('newSegmentColor').value,
-      icon: document.getElementById('newSegmentIcon').value
+      icon: document.getElementById('newSegmentIcon').value,
     };
 
     try {
       await utils.protectModalDuringSave('createSegmentModal', async () => {
-        const { error } = await STATE.client.from('contact_segments').insert(data);
-        if (error) throw error;
+        await apiClient.insert('contact_segments', data);
 
         bootstrap.Modal.getInstance(document.getElementById('createSegmentModal')).hide();
       });
@@ -2756,15 +3270,15 @@ const crmModule = {
     }
     if (totalPages > 1) {
       let html = '<nav><ul class="pagination pagination-sm justify-content-center mt-3">';
-      html += `<li class="page-item ${currentPage <= 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); ${goToFn}(${currentPage - 1})">Prev</a></li>`;
+      html += `<li class="page-item ${currentPage <= 1 ? 'disabled' : ''}"><a class="page-link" href="#" data-action="${goToFn}" data-id="${currentPage - 1}" data-prevent-default="true">Prev</a></li>`;
       for (let i = 1; i <= totalPages; i++) {
         if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
-          html += `<li class="page-item ${i === currentPage ? 'active' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); ${goToFn}(${i})">${i}</a></li>`;
+          html += `<li class="page-item ${i === currentPage ? 'active' : ''}"><a class="page-link" href="#" data-action="${goToFn}" data-id="${i}" data-prevent-default="true">${i}</a></li>`;
         } else if (i === currentPage - 3 || i === currentPage + 3) {
           html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
         }
       }
-      html += `<li class="page-item ${currentPage >= totalPages ? 'disabled' : ''}"><a class="page-link" href="#" onclick="event.preventDefault(); ${goToFn}(${currentPage + 1})">Next</a></li>`;
+      html += `<li class="page-item ${currentPage >= totalPages ? 'disabled' : ''}"><a class="page-link" href="#" data-action="${goToFn}" data-id="${currentPage + 1}" data-prevent-default="true">Next</a></li>`;
       html += '</ul></nav>';
       el.innerHTML = html;
     } else if (el) {
@@ -2772,6 +3286,7 @@ const crmModule = {
     }
   },
 
+  /** Sort communications table by field, toggling direction. @param {string} field - Column to sort by */
   sortCommunications(field) {
     if (this._crmSortField === field) {
       this._crmSortDir = this._crmSortDir === 'asc' ? 'desc' : 'asc';
@@ -2801,6 +3316,7 @@ const crmModule = {
     this.renderCommunicationsTable(sorted);
   },
 
+  /** Sort deals table by field, toggling direction. @param {string} field */
   sortDeals(field) {
     if (this._dealSortField === field) {
       this._dealSortDir = this._dealSortDir === 'asc' ? 'desc' : 'asc';
@@ -2833,6 +3349,7 @@ const crmModule = {
     this.renderDealsTable(sorted);
   },
 
+  /** Sort meetings table by field, toggling direction. @param {string} field */
   sortMeetings(field) {
     if (this._meetingSortField === field) {
       this._meetingSortDir = this._meetingSortDir === 'asc' ? 'desc' : 'asc';
@@ -2860,22 +3377,37 @@ const crmModule = {
   },
 
   toggleCrmSelect(id, checked, type) {
-    const set = type === 'deal' ? this._selectedDealIds : type === 'meeting' ? this._selectedMeetingIds : this._selectedCrmIds;
-    if (checked) set.add(id); else set.delete(id);
+    const set =
+      type === 'deal' ? this._selectedDealIds : type === 'meeting' ? this._selectedMeetingIds : this._selectedCrmIds;
+    if (checked) set.add(id);
+    else set.delete(id);
   },
 
+  /** Bulk delete selected CRM records. @param {string} type - 'communication'|'deal'|'meeting' */
   async bulkDeleteCrm(type) {
-    const set = type === 'deal' ? this._selectedDealIds : type === 'meeting' ? this._selectedMeetingIds : this._selectedCrmIds;
+    const set =
+      type === 'deal' ? this._selectedDealIds : type === 'meeting' ? this._selectedMeetingIds : this._selectedCrmIds;
     if (set.size === 0) return;
     const table = type === 'deal' ? 'deals' : type === 'meeting' ? 'meeting_notes' : 'communications';
-    if (!await utils.confirmDialog({ title: 'Bulk Delete', message: `Delete ${set.size} ${type} record(s)? This cannot be undone.`, confirmText: 'Delete All', danger: true })) return;
+    if (
+      !(await utils.confirmDialog({
+        title: 'Bulk Delete',
+        message: `Delete ${set.size} ${type} record(s)? This cannot be undone.`,
+        confirmText: 'Delete All',
+        danger: true,
+      }))
+    )
+      return;
     try {
       utils.showLoading();
       const ids = [...set];
-      const result = await utils.runBatchOperation(ids, async (id) => {
-        const { error } = await STATE.client.from(table).delete().eq('id', id);
-        if (error) throw error;
-      }, `Deleting ${type} records`);
+      const result = await utils.runBatchOperation(
+        ids,
+        async (id) => {
+          await apiClient.delete(table, id);
+        },
+        `Deleting ${type} records`
+      );
       utils.showToast(`${result.succeeded.length} ${type} record(s) deleted`, 'success');
       set.clear();
       if (type === 'deal') this.loadDeals();
@@ -2888,10 +3420,14 @@ const crmModule = {
     }
   },
 
+  /** Export CRM data to CSV. @param {string} type - 'communication'|'deal'|'meeting' */
   exportCrmToCSV(type) {
     let data, filename, headers;
     const checkEmpty = (arr, label) => {
-      if (!arr || arr.length === 0) { utils.showToast(`No ${label} to export`, 'warning'); return true; }
+      if (!arr || arr.length === 0) {
+        utils.showToast(`No ${label} to export`, 'warning');
+        return true;
+      }
       return false;
     };
     if (type === 'communications') {
@@ -2899,8 +3435,13 @@ const crmModule = {
       if (checkEmpty(data, 'communications')) return;
       filename = 'crm-communications';
       headers = ['Date', 'Type', 'Company', 'Contact', 'Subject', 'Notes'];
-      const rows = data.map(r => [
-        r.communication_date || '', r.type || '', r.organisation?.company_name || '', r.contact ? `${r.contact.first_name} ${r.contact.last_name}` : '', r.subject || '', (r.message || '').replace(/"/g, '""')
+      const rows = data.map((r) => [
+        r.communication_date || '',
+        r.type || '',
+        r.organisation?.company_name || '',
+        r.contact ? `${r.contact.first_name} ${r.contact.last_name}` : '',
+        r.subject || '',
+        (r.message || '').replace(/"/g, '""'),
       ]);
       this._downloadCSV(headers, rows, filename);
     } else if (type === 'deals') {
@@ -2908,8 +3449,14 @@ const crmModule = {
       if (checkEmpty(data, 'deals')) return;
       filename = 'crm-deals';
       headers = ['Deal Name', 'Company', 'Value', 'Stage', 'Probability', 'Expected Close', 'Created'];
-      const rows = data.map(r => [
-        r.deal_name || '', r.organisation?.company_name || '', r.deal_value || 0, r.stage || '', r.probability || '', r.expected_close_date || '', r.created_at || ''
+      const rows = data.map((r) => [
+        r.deal_name || '',
+        r.organisation?.company_name || '',
+        r.deal_value || 0,
+        r.stage || '',
+        r.probability || '',
+        r.expected_close_date || '',
+        r.created_at || '',
       ]);
       this._downloadCSV(headers, rows, filename);
     } else if (type === 'meetings') {
@@ -2917,8 +3464,13 @@ const crmModule = {
       if (checkEmpty(data, 'meetings')) return;
       filename = 'crm-meetings';
       headers = ['Date', 'Title', 'Company', 'Attendees', 'Location', 'Notes'];
-      const rows = data.map(r => [
-        r.meeting_date || '', r.meeting_title || '', r.organisation?.company_name || '', r.attendees || '', r.location || '', (r.notes || '').replace(/"/g, '""')
+      const rows = data.map((r) => [
+        r.meeting_date || '',
+        r.meeting_title || '',
+        r.organisation?.company_name || '',
+        r.attendees || '',
+        r.location || '',
+        (r.notes || '').replace(/"/g, '""'),
       ]);
       this._downloadCSV(headers, rows, filename);
     }
@@ -2935,7 +3487,7 @@ const crmModule = {
         return `"${str.replace(/"/g, '""')}"`;
       };
       let csv = headers.map(sanitizeCell).join(',') + '\n';
-      rows.forEach(row => {
+      rows.forEach((row) => {
         csv += row.map(sanitizeCell).join(',') + '\n';
       });
       const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
@@ -2959,16 +3511,28 @@ const crmModule = {
   renderKanbanBoard() {
     const deals = this._deals || [];
     const stages = ['prospecting', 'proposal', 'negotiation', 'won', 'lost'];
-    const stageLabels = { prospecting: 'Prospecting', proposal: 'Proposal', negotiation: 'Negotiation', won: 'Won', lost: 'Lost' };
-    const stageColors = { prospecting: 'primary', proposal: 'info', negotiation: 'warning', won: 'success', lost: 'danger' };
+    const stageLabels = {
+      prospecting: 'Prospecting',
+      proposal: 'Proposal',
+      negotiation: 'Negotiation',
+      won: 'Won',
+      lost: 'Lost',
+    };
+    const stageColors = {
+      prospecting: 'primary',
+      proposal: 'info',
+      negotiation: 'warning',
+      won: 'success',
+      lost: 'danger',
+    };
 
     const tbody = document.getElementById('dealsTableBody');
     const container = tbody?.closest('.table-responsive') || tbody?.parentElement;
     if (!container) return;
 
     let html = '<div class="kanban-board">';
-    stages.forEach(stage => {
-      const stageDeals = deals.filter(d => (d.stage || 'prospecting') === stage);
+    stages.forEach((stage) => {
+      const stageDeals = deals.filter((d) => (d.stage || 'prospecting') === stage);
       const totalValue = stageDeals.reduce((sum, d) => sum + (parseFloat(d.deal_value) || 0), 0);
       html += `
         <div class="kanban-column">
@@ -2977,13 +3541,17 @@ const crmModule = {
             <span class="text-muted small">${stageDeals.length} &middot; £${totalValue.toLocaleString()}</span>
           </div>
           ${stageDeals.length === 0 ? '<p class="text-muted small text-center py-3">No deals</p>' : ''}
-          ${stageDeals.map(deal => `
+          ${stageDeals
+            .map(
+              (deal) => `
             <div class="kanban-card" draggable="true" data-deal-id="${deal.id}">
               <div class="fw-semibold small">${utils.escapeHtml(deal.deal_name || 'Untitled')}</div>
               <div class="text-muted" style="font-size:0.75rem;">${utils.escapeHtml(deal.company_name || '')}</div>
               <div class="kanban-deal-value mt-1">£${(parseFloat(deal.deal_value) || 0).toLocaleString()}</div>
             </div>
-          `).join('')}
+          `
+            )
+            .join('')}
         </div>`;
     });
     html += '</div>';
@@ -3004,7 +3572,7 @@ const crmModule = {
       this._crmCurrentPage = Math.max(1, Math.min(page, totalPages));
       this.renderCommunicationsTable(this._communications);
     }
-  }
+  },
 };
 
 // ============================================
@@ -3012,3 +3580,5 @@ const crmModule = {
 // ============================================
 ModuleRegistry.register('crmModule', crmModule);
 console.warn('✅ CRM Module loaded');
+
+export { crmModule };

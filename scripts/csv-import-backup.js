@@ -48,7 +48,7 @@ async function backupTable(tableName, selectQuery) {
   let offset = 0;
   const PAGE_SIZE = 1000;
 
-  while (true) {
+  while (true) { // eslint-disable-line no-constant-condition
     const { data, error } = await supabase
       .from(tableName)
       .select(selectQuery)

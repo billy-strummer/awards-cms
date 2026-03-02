@@ -354,6 +354,219 @@ describe('Accessibility Module - Keyboard Navigation', () => {
   });
 });
 
+describe('Accessibility Module - Clickable Element Keyboard Handling', () => {
+  test('Enter key on clickable div triggers click', () => {
+    const div = document.getElementById('clickableDiv');
+    div.removeAttribute('role');
+    div.removeAttribute('tabindex');
+    div._a11yKeyHandler = false;
+    a11yModule.enhanceClickableElements();
+
+    const clickSpy = jest.fn();
+    div.addEventListener('click', clickSpy);
+
+    const event = new dom.window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+    div.dispatchEvent(event);
+
+    expect(clickSpy).toHaveBeenCalled();
+    div.removeEventListener('click', clickSpy);
+  });
+
+  test('Space key on clickable span triggers click', () => {
+    const span = document.getElementById('clickableSpan');
+    span.removeAttribute('role');
+    span.removeAttribute('tabindex');
+    span._a11yKeyHandler = false;
+    a11yModule.enhanceClickableElements();
+
+    const clickSpy = jest.fn();
+    span.addEventListener('click', clickSpy);
+
+    const event = new dom.window.KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true });
+    span.dispatchEvent(event);
+
+    expect(clickSpy).toHaveBeenCalled();
+    span.removeEventListener('click', clickSpy);
+  });
+
+  test('non-Enter/Space key on clickable element does not trigger click', () => {
+    const div = document.getElementById('clickableDiv');
+    div.removeAttribute('role');
+    div.removeAttribute('tabindex');
+    div._a11yKeyHandler = false;
+    a11yModule.enhanceClickableElements();
+
+    const clickSpy = jest.fn();
+    div.addEventListener('click', clickSpy);
+
+    const event = new dom.window.KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    div.dispatchEvent(event);
+
+    expect(clickSpy).not.toHaveBeenCalled();
+    div.removeEventListener('click', clickSpy);
+  });
+});
+
+describe('Accessibility Module - Tab Keyboard Navigation', () => {
+  test('ArrowRight moves focus to next tab', () => {
+    // Use fresh tab elements to avoid multiple keydown listeners stacking
+    const container = document.createElement('ul');
+    container.className = 'nav-tabs';
+    container.innerHTML = '<li><a class="nav-link" href="#">A</a></li><li><a class="nav-link" href="#">B</a></li><li><a class="nav-link" href="#">C</a></li>';
+    document.body.appendChild(container);
+
+    a11yModule.setupKeyboardNav();
+    const tabs = container.querySelectorAll('.nav-link');
+    const focusSpy = jest.spyOn(tabs[1], 'focus');
+    const clickSpy = jest.spyOn(tabs[1], 'click').mockImplementation(() => {});
+
+    const event = new dom.window.KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true });
+    tabs[0].dispatchEvent(event);
+
+    expect(focusSpy).toHaveBeenCalled();
+    expect(clickSpy).toHaveBeenCalled();
+    focusSpy.mockRestore();
+    clickSpy.mockRestore();
+    container.remove();
+  });
+
+  test('ArrowLeft wraps to last tab from first tab', () => {
+    const container = document.createElement('ul');
+    container.className = 'nav-tabs';
+    container.innerHTML = '<li><a class="nav-link" href="#">A</a></li><li><a class="nav-link" href="#">B</a></li><li><a class="nav-link" href="#">C</a></li>';
+    document.body.appendChild(container);
+
+    a11yModule.setupKeyboardNav();
+    const tabs = container.querySelectorAll('.nav-link');
+    const focusSpy = jest.spyOn(tabs[2], 'focus');
+    const clickSpy = jest.spyOn(tabs[2], 'click').mockImplementation(() => {});
+
+    const event = new dom.window.KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, cancelable: true });
+    tabs[0].dispatchEvent(event);
+
+    expect(focusSpy).toHaveBeenCalled();
+    expect(clickSpy).toHaveBeenCalled();
+    focusSpy.mockRestore();
+    clickSpy.mockRestore();
+    container.remove();
+  });
+
+  test('Home key moves focus to first tab', () => {
+    const container = document.createElement('ul');
+    container.className = 'nav-tabs';
+    container.innerHTML = '<li><a class="nav-link" href="#">A</a></li><li><a class="nav-link" href="#">B</a></li><li><a class="nav-link" href="#">C</a></li>';
+    document.body.appendChild(container);
+
+    a11yModule.setupKeyboardNav();
+    const tabs = container.querySelectorAll('.nav-link');
+    const focusSpy = jest.spyOn(tabs[0], 'focus');
+    const clickSpy = jest.spyOn(tabs[0], 'click').mockImplementation(() => {});
+
+    const event = new dom.window.KeyboardEvent('keydown', { key: 'Home', bubbles: true, cancelable: true });
+    tabs[2].dispatchEvent(event);
+
+    expect(focusSpy).toHaveBeenCalled();
+    expect(clickSpy).toHaveBeenCalled();
+    focusSpy.mockRestore();
+    clickSpy.mockRestore();
+    container.remove();
+  });
+
+  test('End key moves focus to last tab', () => {
+    const container = document.createElement('ul');
+    container.className = 'nav-tabs';
+    container.innerHTML = '<li><a class="nav-link" href="#">A</a></li><li><a class="nav-link" href="#">B</a></li><li><a class="nav-link" href="#">C</a></li>';
+    document.body.appendChild(container);
+
+    a11yModule.setupKeyboardNav();
+    const tabs = container.querySelectorAll('.nav-link');
+    const focusSpy = jest.spyOn(tabs[2], 'focus');
+    const clickSpy = jest.spyOn(tabs[2], 'click').mockImplementation(() => {});
+
+    const event = new dom.window.KeyboardEvent('keydown', { key: 'End', bubbles: true, cancelable: true });
+    tabs[0].dispatchEvent(event);
+
+    expect(focusSpy).toHaveBeenCalled();
+    expect(clickSpy).toHaveBeenCalled();
+    focusSpy.mockRestore();
+    clickSpy.mockRestore();
+    container.remove();
+  });
+});
+
+describe('Accessibility Module - Focus Management (Modal Events)', () => {
+  beforeEach(() => {
+    a11yModule._focusMgmtInit = false;
+  });
+
+  test('show.bs.modal stores the active element as trigger', () => {
+    a11yModule.setupFocusManagement();
+
+    const triggerBtn = document.createElement('button');
+    triggerBtn.id = 'modalTrigger';
+    document.body.appendChild(triggerBtn);
+    triggerBtn.focus();
+
+    const modal = document.getElementById('testModal');
+    const event = new dom.window.Event('show.bs.modal', { bubbles: true });
+    modal.dispatchEvent(event);
+
+    expect(modal._a11yTrigger).toBe(triggerBtn);
+    triggerBtn.remove();
+  });
+
+  test('hidden.bs.modal restores focus to trigger element', () => {
+    jest.useFakeTimers();
+    a11yModule.setupFocusManagement();
+
+    const triggerBtn = document.createElement('button');
+    triggerBtn.id = 'modalTriggerRestore';
+    document.body.appendChild(triggerBtn);
+    const focusSpy = jest.spyOn(triggerBtn, 'focus');
+
+    const modal = document.getElementById('testModal');
+    modal._a11yTrigger = triggerBtn;
+
+    const event = new dom.window.Event('hidden.bs.modal', { bubbles: true });
+    modal.dispatchEvent(event);
+
+    jest.advanceTimersByTime(100);
+
+    expect(focusSpy).toHaveBeenCalled();
+    expect(modal._a11yTrigger).toBeNull();
+
+    focusSpy.mockRestore();
+    triggerBtn.remove();
+    jest.useRealTimers();
+  });
+
+  test('hidden.bs.modal does not focus trigger if trigger removed from DOM', () => {
+    jest.useFakeTimers();
+    a11yModule.setupFocusManagement();
+
+    const triggerBtn = document.createElement('button');
+    document.body.appendChild(triggerBtn);
+    const focusSpy = jest.spyOn(triggerBtn, 'focus');
+
+    const modal = document.getElementById('testModal');
+    modal._a11yTrigger = triggerBtn;
+
+    // Remove trigger from DOM before hidden event
+    triggerBtn.remove();
+
+    const event = new dom.window.Event('hidden.bs.modal', { bubbles: true });
+    modal.dispatchEvent(event);
+
+    jest.advanceTimersByTime(100);
+
+    expect(focusSpy).not.toHaveBeenCalled();
+    expect(modal._a11yTrigger).toBeNull();
+
+    focusSpy.mockRestore();
+    jest.useRealTimers();
+  });
+});
+
 describe('Accessibility Module - Refresh', () => {
   test('refresh does not throw', () => {
     expect(() => a11yModule.refresh()).not.toThrow();

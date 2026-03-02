@@ -98,6 +98,9 @@ syncWindowToGlobal();
 require('../multi-tenancy.js');
 syncWindowToGlobal();
 
+// Save reference to real methods before any test replaces them
+const _realLoadTenants = tenantModule.loadTenants.bind(tenantModule);
+
 describe('Multi-Tenancy Module - Structure', () => {
   test('tenantModule is defined', () => {
     expect(tenantModule).toBeDefined();
@@ -406,5 +409,250 @@ describe('Multi-Tenancy Module - deleteTenant()', () => {
     tenantModule.switchTenant = jest.fn().mockResolvedValue();
     await tenantModule.deleteTenant('t2');
     expect(apiClient.update).toHaveBeenCalledWith('tenants', 't2', { is_active: false });
+  });
+
+  test('shows error toast when delete fails', async () => {
+    utils.confirmDialog = jest.fn().mockResolvedValue(true);
+    apiClient.update = jest.fn().mockRejectedValue(new Error('delete failed'));
+    const toastSpy = jest.spyOn(utils, 'showToast');
+    await tenantModule.deleteTenant('t2');
+    expect(toastSpy).toHaveBeenCalledWith('Failed to delete: delete failed', 'error');
+    toastSpy.mockRestore();
+  });
+});
+
+describe('Multi-Tenancy Module - loadTenants with empty data from API', () => {
+  test('falls back to default tenant when API returns empty array', async () => {
+    // Restore real loadTenants in case prior tests replaced it
+    tenantModule.loadTenants = _realLoadTenants;
+    tenantModule._tenants = [];
+    apiClient.select = jest.fn().mockResolvedValue({ data: [] });
+    await tenantModule.loadTenants();
+    expect(tenantModule._tenants.length).toBe(1);
+    expect(tenantModule._tenants[0].id).toBe('default');
+    expect(tenantModule._tenants[0].name).toBe('British Trade Awards');
+  });
+});
+
+describe('Multi-Tenancy Module - renderTenantSwitcher without existing element', () => {
+  test('returns early when no navbar and no existing switcher', () => {
+    // Remove existing switcher and all navbars
+    const existingSwitcher = document.getElementById('tenantSwitcher');
+    if (existingSwitcher) existingSwitcher.remove();
+    document.querySelectorAll('.navbar-nav, .navbar').forEach((el) => el.remove());
+
+    tenantModule._tenants = [
+      { id: 't1', name: 'Awards A' },
+      { id: 't2', name: 'Awards B' },
+    ];
+    tenantModule._currentTenant = tenantModule._tenants[0];
+
+    tenantModule.renderTenantSwitcher();
+
+    const newSwitcher = document.getElementById('tenantSwitcher');
+    expect(newSwitcher).toBeNull();
+  });
+
+  test('creates switcher in navbar when element does not exist', () => {
+    // Remove any existing switcher
+    const existingSwitcher = document.getElementById('tenantSwitcher');
+    if (existingSwitcher) existingSwitcher.remove();
+
+    // Ensure a navbar exists (the previous test may have removed it)
+    if (!document.querySelector('.navbar-nav') && !document.querySelector('.navbar')) {
+      const nav = document.createElement('nav');
+      nav.className = 'navbar-nav';
+      document.body.appendChild(nav);
+    }
+
+    tenantModule._tenants = [
+      { id: 't1', name: 'Awards A', logo_url: null },
+      { id: 't2', name: 'Awards B', logo_url: null },
+    ];
+    tenantModule._currentTenant = tenantModule._tenants[0];
+
+    tenantModule.renderTenantSwitcher();
+
+    const newSwitcher = document.getElementById('tenantSwitcher');
+    expect(newSwitcher).not.toBeNull();
+    expect(newSwitcher.innerHTML).toContain('Awards A');
+    expect(newSwitcher.innerHTML).toContain('Awards B');
+  });
+});
+
+describe('Multi-Tenancy Module - openManageTenants', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('shows error when no RBAC permission', () => {
+    global.rbacModule = { guard: jest.fn(() => false) };
+    const toastSpy = jest.spyOn(utils, 'showToast');
+    tenantModule.openManageTenants();
+    expect(toastSpy).toHaveBeenCalledWith('Admin permissions required', 'error');
+  });
+
+  test('shows error when rbacModule is null', () => {
+    global.rbacModule = null;
+    const toastSpy = jest.spyOn(utils, 'showToast');
+    tenantModule.openManageTenants();
+    expect(toastSpy).toHaveBeenCalledWith('Admin permissions required', 'error');
+  });
+
+  test('shows existing modal when manageTenantModal exists', () => {
+    global.rbacModule = { guard: jest.fn(() => true) };
+    // Create the modal element
+    const modal = document.createElement('div');
+    modal.id = 'manageTenantModal';
+    const body = document.createElement('div');
+    body.id = 'tenantManagementBody';
+    modal.appendChild(body);
+    document.body.appendChild(modal);
+
+    tenantModule._tenants = [{ id: 'default', name: 'BTA', slug: 'bta', is_active: true }];
+    const renderSpy = jest.spyOn(tenantModule, 'renderTenantManagement');
+
+    tenantModule.openManageTenants();
+
+    expect(renderSpy).toHaveBeenCalled();
+
+    // Cleanup
+    modal.remove();
+  });
+
+  test('creates modal when manageTenantModal does not exist', () => {
+    global.rbacModule = { guard: jest.fn(() => true) };
+    // Remove any existing modal
+    const existing = document.getElementById('manageTenantModal');
+    if (existing) existing.remove();
+
+    tenantModule._tenants = [{ id: 'default', name: 'BTA', slug: 'bta', is_active: true }];
+
+    tenantModule.openManageTenants();
+
+    const modal = document.getElementById('manageTenantModal');
+    expect(modal).not.toBeNull();
+    expect(modal.innerHTML).toContain('Manage Award Programmes');
+
+    // Cleanup
+    modal.remove();
+  });
+});
+
+describe('Multi-Tenancy Module - addTenant', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    // Ensure tenantManagementBody exists
+    if (!document.getElementById('tenantManagementBody')) {
+      const div = document.createElement('div');
+      div.id = 'tenantManagementBody';
+      document.body.appendChild(div);
+    }
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('aborts when user cancels prompt', async () => {
+    global.prompt = jest.fn(() => null);
+    apiClient.insert = jest.fn();
+    await tenantModule.addTenant();
+    expect(apiClient.insert).not.toHaveBeenCalled();
+  });
+
+  test('creates tenant successfully', async () => {
+    global.prompt = jest.fn(() => 'New Awards Programme');
+    apiClient.insert = jest.fn().mockResolvedValue({});
+    jest.spyOn(tenantModule, 'loadTenants').mockResolvedValue();
+    jest.spyOn(tenantModule, 'renderTenantManagement').mockImplementation();
+    jest.spyOn(tenantModule, 'renderTenantSwitcher').mockImplementation();
+    const toastSpy = jest.spyOn(utils, 'showToast');
+
+    await tenantModule.addTenant();
+
+    expect(apiClient.insert).toHaveBeenCalledWith('tenants', {
+      name: 'New Awards Programme',
+      slug: 'new-awards-programme',
+      is_active: true,
+    });
+    expect(toastSpy).toHaveBeenCalledWith('Programme "New Awards Programme" created', 'success');
+  });
+
+  test('shows error toast when insert fails', async () => {
+    global.prompt = jest.fn(() => 'Bad Programme');
+    apiClient.insert = jest.fn().mockRejectedValue(new Error('insert failed'));
+    const toastSpy = jest.spyOn(utils, 'showToast');
+
+    await tenantModule.addTenant();
+
+    expect(toastSpy).toHaveBeenCalledWith('Failed to create programme: insert failed', 'error');
+  });
+});
+
+describe('Multi-Tenancy Module - editTenant', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    tenantModule._tenants = [
+      { id: 't1', name: 'Old Name', slug: 'old-name' },
+    ];
+    // Ensure tenantManagementBody exists
+    if (!document.getElementById('tenantManagementBody')) {
+      const div = document.createElement('div');
+      div.id = 'tenantManagementBody';
+      document.body.appendChild(div);
+    }
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('aborts when tenant not found', async () => {
+    global.prompt = jest.fn();
+    await tenantModule.editTenant('nonexistent');
+    expect(global.prompt).not.toHaveBeenCalled();
+  });
+
+  test('aborts when user cancels prompt', async () => {
+    global.prompt = jest.fn(() => null);
+    apiClient.update = jest.fn();
+    await tenantModule.editTenant('t1');
+    expect(apiClient.update).not.toHaveBeenCalled();
+  });
+
+  test('aborts when name is unchanged', async () => {
+    global.prompt = jest.fn(() => 'Old Name');
+    apiClient.update = jest.fn();
+    await tenantModule.editTenant('t1');
+    expect(apiClient.update).not.toHaveBeenCalled();
+  });
+
+  test('updates tenant name successfully', async () => {
+    global.prompt = jest.fn(() => 'New Name');
+    apiClient.update = jest.fn().mockResolvedValue({});
+    jest.spyOn(tenantModule, 'loadTenants').mockResolvedValue();
+    jest.spyOn(tenantModule, 'renderTenantManagement').mockImplementation();
+    jest.spyOn(tenantModule, 'renderTenantSwitcher').mockImplementation();
+    const toastSpy = jest.spyOn(utils, 'showToast');
+
+    await tenantModule.editTenant('t1');
+
+    expect(apiClient.update).toHaveBeenCalledWith('tenants', 't1', { name: 'New Name' });
+    expect(toastSpy).toHaveBeenCalledWith('Programme updated', 'success');
+  });
+
+  test('shows error toast when update fails', async () => {
+    global.prompt = jest.fn(() => 'New Name');
+    apiClient.update = jest.fn().mockRejectedValue(new Error('update failed'));
+    const toastSpy = jest.spyOn(utils, 'showToast');
+
+    await tenantModule.editTenant('t1');
+
+    expect(toastSpy).toHaveBeenCalledWith('Failed to update: update failed', 'error');
   });
 });

@@ -693,3 +693,561 @@ describe('Assignments Module - updateSelectedCount()', () => {
     expect(() => assignmentsModule.updateSelectedCount()).not.toThrow();
   });
 });
+
+// ==========================================================================
+// ADDITIONAL TESTS — 100 % statement coverage for assignments.js
+// ==========================================================================
+
+describe('getAwardAssignments - other_nominations mapping (lines 43-44)', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  test('enriches assignments with other_nominations when orgIds present', async () => {
+    const assignments = [
+      { id: 'a1', organisation_id: 'org1', organisations: { id: 'org1', company_name: 'A' } },
+      { id: 'a2', organisation_id: 'org2', organisations: { id: 'org2', company_name: 'B' } },
+    ];
+    const otherAssignments = [
+      { organisation_id: 'org1', award_id: 'aw2', awards: { award_name: 'Other Award', year: 2026 } },
+      { organisation_id: 'org1', award_id: 'aw3', awards: { award_name: 'Third Award', year: 2026 } },
+    ];
+    apiClient.selectAll = jest
+      .fn()
+      .mockResolvedValueOnce(assignments)
+      .mockResolvedValueOnce(otherAssignments);
+
+    const result = await assignmentsModule.getAwardAssignments('aw1');
+    expect(result[0].other_nominations).toHaveLength(2);
+    expect(result[0].other_nominations[0]).toEqual({ award_name: 'Other Award', year: 2026 });
+    expect(result[1].other_nominations).toHaveLength(0);
+  });
+});
+
+describe('openAssignmentsModal (lines 71-107)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.useFakeTimers();
+    assignmentsModule.refreshAssignments = jest.fn().mockResolvedValue();
+  });
+
+  afterEach(() => jest.useRealTimers());
+
+  test('sets currentAwardId/Name, shows modal, and calls refreshAssignments', async () => {
+    await assignmentsModule.openAssignmentsModal('aw1', 'Best Plumber');
+    expect(assignmentsModule.currentAwardId).toBe('aw1');
+    expect(assignmentsModule.currentAwardName).toBe('Best Plumber');
+    expect(document.getElementById('assignmentsModalTitle').innerHTML).toContain('Best Plumber');
+    expect(assignmentsModule.refreshAssignments).toHaveBeenCalled();
+  });
+
+  test('adjusts z-index when multiple backdrops exist', async () => {
+    // Create a second backdrop to simulate stacked modals
+    const bd1 = document.createElement('div');
+    bd1.className = 'modal-backdrop';
+    document.body.appendChild(bd1);
+    const bd2 = document.createElement('div');
+    bd2.className = 'modal-backdrop';
+    document.body.appendChild(bd2);
+
+    await assignmentsModule.openAssignmentsModal('aw1', 'Test Award');
+    jest.advanceTimersByTime(200);
+
+    const modalEl = document.getElementById('assignmentsModal');
+    expect(modalEl.style.zIndex).toBe('1061');
+
+    bd1.remove();
+    bd2.remove();
+  });
+});
+
+describe('refreshAssignments (lines 113-265)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    assignmentsModule.currentAwardId = 'aw1';
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => jest.useRealTimers());
+
+  test('renders assignments and available orgs', async () => {
+    const assignments = [
+      {
+        id: 'a1',
+        organisation_id: 'org1',
+        organisations: { id: 'org1', company_name: 'Alpha Corp', email: 'a@a.com', logo_url: null },
+        status: 'nominated',
+        public_vote_count: 5,
+      },
+    ];
+    const allOrgs = [
+      { id: 'org1', company_name: 'Alpha Corp', email: 'a@a.com', logo_url: null },
+      { id: 'org2', company_name: 'Beta Ltd', email: 'b@b.com', logo_url: null },
+    ];
+    assignmentsModule.getAwardAssignments = jest.fn().mockResolvedValue(assignments);
+    apiClient.selectAll = jest.fn().mockResolvedValue(allOrgs);
+
+    // Need to restore refreshAssignments to the real implementation
+    const origRefresh = Object.getPrototypeOf(assignmentsModule).refreshAssignments ||
+      assignmentsModule.constructor.prototype?.refreshAssignments;
+    // Just call it directly since we mocked getAwardAssignments
+    const contentEl = document.getElementById('assignmentsContent');
+    // We need to call the real refreshAssignments. Let's call it via the module
+    const realRefresh = emailTemplatesModule ? undefined : undefined; // no-op
+    // Actually we can just call it directly since we mocked getAwardAssignments
+    await assignmentsModule.refreshAssignments();
+
+    expect(contentEl.innerHTML).toContain('Alpha Corp');
+    expect(contentEl.innerHTML).toContain('Beta Ltd');
+    expect(assignmentsModule.allAssignments).toHaveLength(1);
+    expect(assignmentsModule.availableOrgs).toHaveLength(1); // org2 only
+  });
+
+  test('filters out assignments with missing organisations and warns', async () => {
+    const assignments = [
+      { id: 'a1', organisation_id: 'org1', organisations: { id: 'org1', company_name: 'Valid', email: 'v@v.com' }, status: 'nominated', public_vote_count: 0 },
+      { id: 'a2', organisation_id: 'org2', organisations: null, status: 'nominated', public_vote_count: 0 },
+    ];
+    assignmentsModule.getAwardAssignments = jest.fn().mockResolvedValue(assignments);
+    apiClient.selectAll = jest.fn().mockResolvedValue([]);
+
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    await assignmentsModule.refreshAssignments();
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Found assignment with missing organisation'), expect.anything());
+    expect(warnSpy).toHaveBeenCalledWith('Filtered out', 1, 'assignments with missing organisations');
+    warnSpy.mockRestore();
+  });
+
+  test('renders empty state when no assignments', async () => {
+    assignmentsModule.getAwardAssignments = jest.fn().mockResolvedValue([]);
+    apiClient.selectAll = jest.fn().mockResolvedValue([]);
+    await assignmentsModule.refreshAssignments();
+    const contentEl = document.getElementById('assignmentsContent');
+    expect(contentEl.innerHTML).toContain('No companies assigned yet');
+  });
+
+  test('renders all-assigned alert when no available orgs', async () => {
+    const assignments = [
+      { id: 'a1', organisation_id: 'org1', organisations: { id: 'org1', company_name: 'Only', email: 'o@o.com' }, status: 'nominated', public_vote_count: 0 },
+    ];
+    const allOrgs = [{ id: 'org1', company_name: 'Only', email: 'o@o.com', logo_url: null }];
+    assignmentsModule.getAwardAssignments = jest.fn().mockResolvedValue(assignments);
+    apiClient.selectAll = jest.fn().mockResolvedValue(allOrgs);
+    await assignmentsModule.refreshAssignments();
+    const contentEl = document.getElementById('assignmentsContent');
+    expect(contentEl.innerHTML).toContain('All companies have been assigned');
+  });
+
+  test('shows error alert when refreshAssignments throws', async () => {
+    assignmentsModule.getAwardAssignments = jest.fn().mockRejectedValue(new Error('Fetch fail'));
+    await assignmentsModule.refreshAssignments();
+    const contentEl = document.getElementById('assignmentsContent');
+    expect(contentEl.innerHTML).toContain('Failed to load assignments');
+    expect(contentEl.innerHTML).toContain('Fetch fail');
+  });
+});
+
+describe('filterAssignments - button active state toggle (line 449)', () => {
+  beforeEach(() => {
+    // Set up filter buttons in DOM
+    const container = document.getElementById('assignmentsContent');
+    container.innerHTML = `
+      <button id="filter-all" class="btn active"></button>
+      <button id="filter-self_nomination" class="btn"></button>
+      <button id="filter-previous_winner" class="btn"></button>
+      <button id="filter-new" class="btn"></button>
+    `;
+    assignmentsModule.allAssignments = [
+      { id: 'a1', organisations: { id: 'org1', company_name: 'A', email: 'a@a.com', logo_url: null }, status: 'nominated', nomination_source: 'admin', is_previous_winner: false, public_vote_count: 0 },
+    ];
+  });
+
+  test('removes active from all filter buttons and adds to selected', () => {
+    assignmentsModule.filterAssignments('new');
+    const allBtn = document.getElementById('filter-all');
+    const newBtn = document.getElementById('filter-new');
+    expect(allBtn.classList.contains('active')).toBe(false);
+    expect(newBtn.classList.contains('active')).toBe(true);
+  });
+});
+
+describe('sortAssignments - filter + sort combos (lines 507-539)', () => {
+  beforeEach(() => {
+    assignmentsModule.allAssignments = [
+      { id: 'a1', organisations: { id: 'org1', company_name: 'Alpha', email: 'a@a.com', logo_url: null }, status: 'nominated', nomination_source: 'self_nomination', is_previous_winner: false, public_vote_count: 5, winner_position: 1 },
+      { id: 'a2', organisations: { id: 'org2', company_name: 'Beta', email: 'b@b.com', logo_url: null }, status: 'nominated', nomination_source: 'admin', is_previous_winner: true, public_vote_count: 10, winner_position: 2 },
+      { id: 'a3', organisations: { id: 'org3', company_name: 'Gamma', email: 'g@g.com', logo_url: null }, status: 'nominated', nomination_source: 'admin', is_previous_winner: false, public_vote_count: 3, winner_position: null },
+    ];
+    assignmentsModule.currentSortColumn = 'company';
+    assignmentsModule.currentSortDirection = 'asc';
+  });
+
+  test('sorts with self_nomination filter active', () => {
+    assignmentsModule.currentFilter = 'self_nomination';
+    assignmentsModule.sortAssignments('votes');
+    expect(assignmentsModule.currentSortColumn).toBe('votes');
+  });
+
+  test('sorts with previous_winner filter active', () => {
+    assignmentsModule.currentFilter = 'previous_winner';
+    assignmentsModule.sortAssignments('votes');
+    expect(assignmentsModule.currentSortColumn).toBe('votes');
+  });
+
+  test('sorts with new filter active', () => {
+    assignmentsModule.currentFilter = 'new';
+    assignmentsModule.sortAssignments('votes');
+    expect(assignmentsModule.currentSortColumn).toBe('votes');
+  });
+
+  test('sorts by position column', () => {
+    assignmentsModule.currentFilter = 'all';
+    assignmentsModule.sortAssignments('position');
+    expect(assignmentsModule.currentSortColumn).toBe('position');
+    expect(assignmentsModule.currentSortDirection).toBe('asc');
+  });
+
+  test('sort by default/unknown column returns 0 compare', () => {
+    assignmentsModule.currentFilter = 'all';
+    assignmentsModule.sortAssignments('unknown_col');
+    expect(assignmentsModule.currentSortColumn).toBe('unknown_col');
+  });
+});
+
+describe('assignCompany - awardsModule.loadAwards call (line 586)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    assignmentsModule.currentAwardId = 'aw1';
+    assignmentsModule.refreshAssignments = jest.fn().mockResolvedValue();
+  });
+
+  test('calls awardsModule.loadAwards when available', async () => {
+    apiClient.select = jest.fn().mockResolvedValue({ data: [] });
+    apiClient.insert = jest.fn().mockResolvedValue({});
+    global.awardsModule = { loadAwards: jest.fn().mockResolvedValue() };
+    await assignmentsModule.assignCompany('org1', 'Test Corp');
+    expect(global.awardsModule.loadAwards).toHaveBeenCalled();
+    delete global.awardsModule;
+  });
+});
+
+describe('removeAssignment - awardsModule.loadAwards and error handling (lines 626-630)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    assignmentsModule.currentAssignments = sampleAssignments;
+    assignmentsModule.refreshAssignments = jest.fn().mockResolvedValue();
+  });
+
+  test('calls awardsModule.loadAwards after successful removal', async () => {
+    utils.confirmDialog = jest.fn().mockResolvedValue(true);
+    apiClient.delete = jest.fn().mockResolvedValue({});
+    global.awardsModule = { loadAwards: jest.fn().mockResolvedValue() };
+    await assignmentsModule.removeAssignment('a1');
+    expect(global.awardsModule.loadAwards).toHaveBeenCalled();
+    delete global.awardsModule;
+  });
+
+  test('shows error toast when delete fails', async () => {
+    utils.confirmDialog = jest.fn().mockResolvedValue(true);
+    apiClient.delete = jest.fn().mockRejectedValue(new Error('Delete fail'));
+    const toastSpy = jest.spyOn(utils, 'showToast');
+    await assignmentsModule.removeAssignment('a1');
+    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to remove assignment'), 'error');
+    toastSpy.mockRestore();
+  });
+});
+
+describe('changeStatus - awardsModule._logAwardAudit (line 675)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    assignmentsModule.refreshAssignments = jest.fn().mockResolvedValue();
+    assignmentsModule.currentAwardId = 'aw1';
+    assignmentsModule.currentAwardName = 'Best Plumber';
+    assignmentsModule._cachedAssignments = [
+      { id: 'a1', organisations: { company_name: 'TestCo' } },
+    ];
+  });
+
+  test('calls awardsModule._logAwardAudit on status change', async () => {
+    apiClient.update = jest.fn().mockResolvedValue({});
+    global.awardsModule = { _logAwardAudit: jest.fn() };
+    await assignmentsModule.changeStatus('a1', 'shortlisted');
+    expect(global.awardsModule._logAwardAudit).toHaveBeenCalledWith(
+      'aw1',
+      'status_change',
+      'Best Plumber',
+      expect.stringContaining('TestCo')
+    );
+    delete global.awardsModule;
+  });
+
+  test('calls awardsModule._logAwardAudit with winner_set for winner status', async () => {
+    apiClient.update = jest.fn().mockResolvedValue({});
+    global.awardsModule = { _logAwardAudit: jest.fn() };
+    await assignmentsModule.changeStatus('a1', 'winner');
+    expect(global.awardsModule._logAwardAudit).toHaveBeenCalledWith(
+      'aw1',
+      'winner_set',
+      'Best Plumber',
+      expect.stringContaining('TestCo')
+    );
+    delete global.awardsModule;
+  });
+});
+
+describe('emailAllAssigned - full modal rendering (lines 782-877)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    assignmentsModule.currentAwardId = 'aw1';
+    assignmentsModule.currentAwardName = 'Best Plumber';
+    assignmentsModule._cachedAssignments = [
+      { id: 'a1', organisations: { id: 'org1', company_name: 'TestCo', email: 'test@test.com' }, status: 'nominated' },
+      { id: 'a2', organisations: { id: 'org2', company_name: 'Other', email: 'other@other.com' }, status: 'shortlisted' },
+    ];
+  });
+
+  afterEach(() => {
+    const modal = document.getElementById('dynamicAssignModal');
+    if (modal) modal.remove();
+  });
+
+  test('renders email modal with unique emails and status filters', () => {
+    assignmentsModule.emailAllAssigned();
+    const modal = document.getElementById('dynamicAssignModal');
+    expect(modal).not.toBeNull();
+    expect(modal.innerHTML).toContain('test@test.com');
+    expect(modal.innerHTML).toContain('other@other.com');
+    expect(modal.innerHTML).toContain('Email Nominees');
+    expect(modal.innerHTML).toContain('Shortlisted');
+    expect(modal.innerHTML).toContain('Winners');
+    expect(modal.innerHTML).toContain('Nominated');
+  });
+
+  test('removes existing modal before creating new one', () => {
+    assignmentsModule.emailAllAssigned();
+    assignmentsModule.emailAllAssigned();
+    const modals = document.querySelectorAll('#dynamicAssignModal');
+    expect(modals.length).toBe(1);
+  });
+
+  test('deduplicates emails', () => {
+    assignmentsModule._cachedAssignments = [
+      { id: 'a1', organisations: { id: 'org1', company_name: 'A', email: 'same@test.com' }, status: 'nominated' },
+      { id: 'a2', organisations: { id: 'org2', company_name: 'B', email: 'same@test.com' }, status: 'nominated' },
+    ];
+    assignmentsModule.emailAllAssigned();
+    const textarea = document.getElementById('nomineeEmailList');
+    expect(textarea.value).toBe('same@test.com');
+  });
+});
+
+describe('_copyEmails (lines 838-843)', () => {
+  beforeEach(() => {
+    // Create the nomineeEmailList element
+    let el = document.getElementById('nomineeEmailList');
+    if (!el) {
+      el = document.createElement('textarea');
+      el.id = 'nomineeEmailList';
+      document.body.appendChild(el);
+    }
+    el.value = 'a@a.com; b@b.com';
+    // Mock clipboard
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: jest.fn().mockResolvedValue() },
+      writable: true,
+      configurable: true,
+    });
+  });
+
+  test('copies email list to clipboard', () => {
+    const toastSpy = jest.spyOn(utils, 'showToast');
+    assignmentsModule._copyEmails();
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith('a@a.com; b@b.com');
+    expect(toastSpy).toHaveBeenCalledWith('Emails copied to clipboard!', 'success');
+    toastSpy.mockRestore();
+  });
+
+  test('does nothing when textarea not found', () => {
+    document.getElementById('nomineeEmailList').remove();
+    expect(() => assignmentsModule._copyEmails()).not.toThrow();
+  });
+});
+
+describe('_openEmailClient (lines 850-854)', () => {
+  beforeEach(() => {
+    let el = document.getElementById('nomineeEmailList');
+    if (!el) {
+      el = document.createElement('textarea');
+      el.id = 'nomineeEmailList';
+      document.body.appendChild(el);
+    }
+    el.value = 'a@a.com; b@b.com';
+    global.window.open = jest.fn();
+  });
+
+  test('opens mailto link with BCC', () => {
+    assignmentsModule._openEmailClient();
+    expect(window.open).toHaveBeenCalledWith(expect.stringContaining('mailto:?bcc='));
+  });
+
+  test('does nothing when textarea not found', () => {
+    document.getElementById('nomineeEmailList').remove();
+    expect(() => assignmentsModule._openEmailClient()).not.toThrow();
+  });
+});
+
+describe('_filterEmailList (lines 862-878)', () => {
+  beforeEach(() => {
+    let el = document.getElementById('nomineeEmailList');
+    if (!el) {
+      el = document.createElement('textarea');
+      el.id = 'nomineeEmailList';
+      document.body.appendChild(el);
+    }
+    assignmentsModule._cachedAssignments = [
+      { id: 'a1', organisations: { email: 'nom@test.com' }, status: 'nominated' },
+      { id: 'a2', organisations: { email: 'short@test.com' }, status: 'shortlisted' },
+      { id: 'a3', organisations: { email: 'win@test.com' }, status: 'winner' },
+    ];
+  });
+
+  test('filters by status and updates textarea', () => {
+    assignmentsModule._filterEmailList('winner');
+    const textarea = document.getElementById('nomineeEmailList');
+    expect(textarea.value).toBe('win@test.com');
+  });
+
+  test('shows all when status is "all"', () => {
+    assignmentsModule._filterEmailList('all');
+    const textarea = document.getElementById('nomineeEmailList');
+    expect(textarea.value).toContain('nom@test.com');
+    expect(textarea.value).toContain('short@test.com');
+    expect(textarea.value).toContain('win@test.com');
+  });
+
+  test('handles button active state toggle', () => {
+    // Create fake button group to test btn.closest logic
+    const btnGroup = document.createElement('div');
+    btnGroup.className = 'btn-group';
+    const btn1 = document.createElement('button');
+    btn1.className = 'btn active';
+    btn1.setAttribute('data-action', 'test');
+    const btn2 = document.createElement('button');
+    btn2.className = 'btn';
+    btnGroup.appendChild(btn1);
+    btnGroup.appendChild(btn2);
+    document.body.appendChild(btnGroup);
+
+    // Simulate the event object
+    global.event = { target: btn2 };
+    assignmentsModule._filterEmailList('nominated');
+    expect(btn1.classList.contains('active')).toBe(false);
+    delete global.event;
+    btnGroup.remove();
+  });
+});
+
+describe('filterBulkAdd (lines 913-922)', () => {
+  beforeEach(() => {
+    let searchBox = document.getElementById('bulkAddSearchBox');
+    if (!searchBox) {
+      searchBox = document.createElement('input');
+      searchBox.id = 'bulkAddSearchBox';
+      document.body.appendChild(searchBox);
+    }
+    let list = document.getElementById('bulkAddCompanyList');
+    if (!list) {
+      list = document.createElement('div');
+      list.id = 'bulkAddCompanyList';
+      document.body.appendChild(list);
+    }
+    list.innerHTML = `
+      <div class="bulk-add-item" data-name="alpha corp">Alpha</div>
+      <div class="bulk-add-item" data-name="beta ltd">Beta</div>
+    `;
+  });
+
+  test('filters items by search value', () => {
+    document.getElementById('bulkAddSearchBox').value = 'alpha';
+    assignmentsModule.filterBulkAdd();
+    const items = document.querySelectorAll('.bulk-add-item');
+    expect(items[0].style.display).toBe('');
+    expect(items[1].style.display).toBe('none');
+  });
+
+  test('shows all items when search is empty', () => {
+    document.getElementById('bulkAddSearchBox').value = '';
+    assignmentsModule.filterBulkAdd();
+    const items = document.querySelectorAll('.bulk-add-item');
+    expect(items[0].style.display).toBe('');
+    expect(items[1].style.display).toBe('');
+  });
+
+  test('returns early when list element not found', () => {
+    document.getElementById('bulkAddCompanyList').remove();
+    expect(() => assignmentsModule.filterBulkAdd()).not.toThrow();
+  });
+});
+
+describe('addSelectedCompanies (lines 928-956)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    assignmentsModule.currentAwardId = 'aw1';
+    assignmentsModule.bulkAssignCompanies = jest.fn().mockResolvedValue();
+    assignmentsModule.refreshAssignments = jest.fn().mockResolvedValue();
+  });
+
+  test('warns when no checkboxes selected', async () => {
+    // Clear any existing checkboxes
+    document.querySelectorAll('.bulk-add-check').forEach((el) => el.remove());
+    const toastSpy = jest.spyOn(utils, 'showToast');
+    await assignmentsModule.addSelectedCompanies();
+    expect(toastSpy).toHaveBeenCalledWith('No companies selected', 'warning');
+    toastSpy.mockRestore();
+  });
+
+  test('bulk assigns selected companies and closes modal', async () => {
+    // Create checked checkboxes
+    const cb1 = document.createElement('input');
+    cb1.type = 'checkbox';
+    cb1.className = 'bulk-add-check';
+    cb1.checked = true;
+    cb1.value = 'org1';
+    document.body.appendChild(cb1);
+
+    const cb2 = document.createElement('input');
+    cb2.type = 'checkbox';
+    cb2.className = 'bulk-add-check';
+    cb2.checked = true;
+    cb2.value = 'org2';
+    document.body.appendChild(cb2);
+
+    // Create mock modal element
+    const addModal = document.createElement('div');
+    addModal.id = 'addCompanyModal';
+    document.body.appendChild(addModal);
+
+    await assignmentsModule.addSelectedCompanies();
+
+    expect(assignmentsModule.bulkAssignCompanies).toHaveBeenCalledWith('aw1', ['org1', 'org2']);
+    expect(assignmentsModule.refreshAssignments).toHaveBeenCalled();
+
+    cb1.remove();
+    cb2.remove();
+    addModal.remove();
+  });
+
+  test('handles error during addSelectedCompanies', async () => {
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.className = 'bulk-add-check';
+    cb.checked = true;
+    cb.value = 'org1';
+    document.body.appendChild(cb);
+
+    assignmentsModule.bulkAssignCompanies = jest.fn().mockRejectedValue(new Error('Bulk fail'));
+    const toastSpy = jest.spyOn(utils, 'showToast');
+    await assignmentsModule.addSelectedCompanies();
+    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('Error adding companies'), 'error');
+    toastSpy.mockRestore();
+    cb.remove();
+  });
+});

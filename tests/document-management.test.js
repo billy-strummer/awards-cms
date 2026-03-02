@@ -715,3 +715,245 @@ describe('Document Module - pagination state', () => {
     expect(documentModule._pagination).toHaveProperty('pageSize');
   });
 });
+
+describe('Document Module - _goToPage error handling', () => {
+  test('logs error and shows toast when _fetchPage fails', async () => {
+    documentModule._pagination = { page: 1, totalPages: 3, count: 100, pageSize: 50 };
+    apiClient.select = jest.fn().mockRejectedValue(new Error('Network error'));
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+
+    const container = document.getElementById('documentLibraryContainer');
+    container.innerHTML = `<table id="docLibraryTable"><tbody></tbody></table><div id="docsPagination"></div>`;
+
+    await documentModule._goToPage(2);
+    expect(consoleSpy).toHaveBeenCalledWith('Error navigating document page:', expect.any(Error));
+    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('Error loading page'), 'error');
+    consoleSpy.mockRestore();
+    toastSpy.mockRestore();
+  });
+});
+
+describe('Document Module - _attachLibraryListeners refetch callback', () => {
+  test('triggers refetch on search input event', async () => {
+    // Set up the full library DOM with filter elements
+    const container = document.getElementById('documentLibraryContainer');
+    container.innerHTML = `
+      <input type="text" id="docSearch" class="form-control">
+      <select id="docCategoryFilter"><option value="">All</option></select>
+      <select id="docStatusFilter"><option value="">All</option></select>
+      <table id="docLibraryTable"><tbody></tbody></table>
+      <div id="docsPagination"></div>
+    `;
+
+    apiClient.select = jest.fn().mockResolvedValue({
+      data: [],
+      page: 1,
+      totalPages: 1,
+      count: 0,
+      pageSize: 50,
+    });
+
+    documentModule._pagination = { page: 2, totalPages: 3, count: 100, pageSize: 50 };
+    documentModule._attachLibraryListeners();
+
+    // Trigger input event on search to invoke the debounced refetch
+    const searchEl = document.getElementById('docSearch');
+    searchEl.value = 'test';
+    searchEl.dispatchEvent(new dom.window.Event('input'));
+
+    // Wait for debounce (300ms) + async fetch
+    await new Promise((r) => setTimeout(r, 400));
+
+    // Verify refetch was called (page reset to 1)
+    expect(documentModule._pagination.page).toBe(1);
+  });
+});
+
+describe('Document Module - uploadVersion', () => {
+  test('uploads a new version and increments version number', async () => {
+    // Mock the client chain for doc category query
+    mockChain.from.mockReturnValue(mockChain);
+    mockChain.select.mockReturnValue(mockChain);
+    mockChain.eq.mockReturnValue(mockChain);
+    mockChain.single.mockResolvedValue({ data: { category: 'contract' }, error: null });
+    mockChain.order.mockReturnValue(mockChain);
+    mockChain.limit.mockResolvedValue({ data: [{ version_number: 2 }], error: null });
+
+    // Mock storage upload
+    mockStorageBucket.upload.mockResolvedValue({ data: {}, error: null });
+    mockStorageBucket.getPublicUrl.mockReturnValue({ data: { publicUrl: 'https://cdn.example.com/v3.pdf' } });
+
+    // Mock apiClient.insert for version record
+    apiClient.insert = jest.fn().mockResolvedValue({ data: { id: 'ver-3', version_number: 3 } });
+    // Mock apiClient.update for document update
+    apiClient.update = jest.fn().mockResolvedValue({ data: { id: 'doc-1' } });
+
+    STATE.currentUser = { email: 'user@test.com' };
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+
+    const file = { name: 'updated.pdf', size: 9999, type: 'application/pdf' };
+    const result = await documentModule.uploadVersion('doc-1', file, 'Bug fixes');
+
+    expect(apiClient.insert).toHaveBeenCalledWith(
+      'document_versions',
+      expect.objectContaining({
+        document_id: 'doc-1',
+        version_number: 3,
+        uploaded_by: 'user@test.com',
+        notes: 'Bug fixes',
+      })
+    );
+    expect(toastSpy).toHaveBeenCalledWith('Version 3 uploaded', 'success');
+    toastSpy.mockRestore();
+  });
+
+  test('defaults to version 1 when no previous versions exist', async () => {
+    mockChain.from.mockReturnValue(mockChain);
+    mockChain.select.mockReturnValue(mockChain);
+    mockChain.eq.mockReturnValue(mockChain);
+    mockChain.single.mockResolvedValue({ data: { category: 'other' }, error: null });
+    mockChain.order.mockReturnValue(mockChain);
+    mockChain.limit.mockResolvedValue({ data: [], error: null });
+
+    mockStorageBucket.upload.mockResolvedValue({ data: {}, error: null });
+    mockStorageBucket.getPublicUrl.mockReturnValue({ data: { publicUrl: 'https://cdn.example.com/v1.pdf' } });
+
+    apiClient.insert = jest.fn().mockResolvedValue({ data: { id: 'ver-1', version_number: 1 } });
+    apiClient.update = jest.fn().mockResolvedValue({ data: { id: 'doc-1' } });
+
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    const file = { name: 'first.pdf', size: 100, type: 'application/pdf' };
+    await documentModule.uploadVersion('doc-1', file);
+
+    expect(apiClient.insert).toHaveBeenCalledWith(
+      'document_versions',
+      expect.objectContaining({
+        version_number: 1,
+        notes: '',
+      })
+    );
+    expect(toastSpy).toHaveBeenCalledWith('Version 1 uploaded', 'success');
+    toastSpy.mockRestore();
+  });
+});
+
+describe('Document Module - approveDocument with DOM row', () => {
+  test('updates badge in the DOM when row exists', async () => {
+    // Set up table with a row for the document
+    const container = document.getElementById('documentLibraryContainer');
+    container.innerHTML = `
+      <table id="docLibraryTable">
+        <tbody>
+          <tr data-id="doc-approve-1" data-status="pending_approval">
+            <td>Doc Name</td>
+            <td><span class="badge bg-warning">pending approval</span></td>
+          </tr>
+        </tbody>
+      </table>
+    `;
+
+    STATE.currentUser = { email: 'admin@test.com' };
+    apiClient.update = jest.fn().mockResolvedValue({ data: { id: 'doc-approve-1', status: 'approved' } });
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+
+    await documentModule.approveDocument('doc-approve-1');
+
+    const row = document.querySelector('#docLibraryTable tr[data-id="doc-approve-1"]');
+    expect(row.dataset.status).toBe('approved');
+    expect(row.querySelector('.badge').className).toBe('badge bg-success');
+    expect(row.querySelector('.badge').textContent).toBe('approved');
+    toastSpy.mockRestore();
+  });
+});
+
+describe('Document Module - buildPressPack', () => {
+  test('builds press pack modal and returns documents', async () => {
+    // Mock 3 parallel queries for photos, certs, profiles
+    const photoData = [
+      { id: 'p1', title: 'Photo 1', file_url: 'https://cdn.example.com/photo1.jpg', file_type: 'image/jpeg', file_name: 'photo1.jpg' },
+    ];
+    const certData = [
+      { id: 'c1', title: 'Certificate 1', file_url: 'https://cdn.example.com/cert1.pdf', file_type: 'application/pdf', file_name: 'cert1.pdf' },
+    ];
+    const profileData = [
+      { id: 'pp1', title: 'Profile 1', file_url: 'https://cdn.example.com/profile1.pdf', file_type: 'application/pdf', file_name: 'profile1.pdf' },
+    ];
+
+    // The mockChain.then is used for the final resolved promise in the chain
+    // We need to mock the full chain for each of the 3 parallel queries
+    let callCount = 0;
+    mockChain.from.mockReturnValue(mockChain);
+    mockChain.select.mockReturnValue(mockChain);
+    mockChain.eq.mockReturnValue(mockChain);
+    mockChain.in.mockReturnValue(mockChain);
+    mockChain.then.mockImplementation((cb) => {
+      callCount++;
+      if (callCount === 1) return Promise.resolve(cb({ data: photoData, error: null }));
+      if (callCount === 2) return Promise.resolve(cb({ data: certData, error: null }));
+      return Promise.resolve(cb({ data: profileData, error: null }));
+    });
+
+    const result = await documentModule.buildPressPack('winner-123');
+
+    expect(result.winnerId).toBe('winner-123');
+    expect(result.documents.length).toBe(3);
+    expect(result.documents[0]._section).toBe('Media');
+    expect(result.documents[1]._section).toBe('Certificates');
+    expect(result.documents[2]._section).toBe('Press Pack');
+
+    // Check that modal was added to DOM
+    const modal = document.getElementById('pressPackModal');
+    expect(modal).toBeTruthy();
+    expect(modal.innerHTML).toContain('Press Pack');
+    expect(modal.innerHTML).toContain('winner-123');
+    expect(modal.innerHTML).toContain('3 document(s)');
+
+    // Clean up
+    modal.remove();
+    callCount = 0;
+    mockChain.then.mockImplementation((cb) => cb({ data: [], error: null }));
+  });
+
+  test('shows empty message when no approved documents', async () => {
+    mockChain.from.mockReturnValue(mockChain);
+    mockChain.select.mockReturnValue(mockChain);
+    mockChain.eq.mockReturnValue(mockChain);
+    mockChain.in.mockReturnValue(mockChain);
+    mockChain.then.mockImplementation((cb) => Promise.resolve(cb({ data: [], error: null })));
+
+    const result = await documentModule.buildPressPack('winner-empty');
+
+    expect(result.winnerId).toBe('winner-empty');
+    expect(result.documents.length).toBe(0);
+
+    const modal = document.getElementById('pressPackModal');
+    expect(modal).toBeTruthy();
+    expect(modal.innerHTML).toContain('No approved documents found');
+    expect(modal.innerHTML).toContain('0 document(s)');
+
+    modal.remove();
+  });
+
+  test('removes existing modal before creating new one', async () => {
+    // Create a pre-existing modal
+    const existingModal = document.createElement('div');
+    existingModal.id = 'pressPackModal';
+    existingModal.innerHTML = 'old modal';
+    document.body.appendChild(existingModal);
+
+    mockChain.from.mockReturnValue(mockChain);
+    mockChain.select.mockReturnValue(mockChain);
+    mockChain.eq.mockReturnValue(mockChain);
+    mockChain.in.mockReturnValue(mockChain);
+    mockChain.then.mockImplementation((cb) => Promise.resolve(cb({ data: [], error: null })));
+
+    await documentModule.buildPressPack('winner-replace');
+
+    const modals = document.querySelectorAll('#pressPackModal');
+    expect(modals.length).toBe(1);
+    expect(modals[0].innerHTML).not.toContain('old modal');
+
+    modals[0].remove();
+  });
+});

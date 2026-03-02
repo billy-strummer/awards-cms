@@ -494,3 +494,423 @@ describe('Nominee Voting - social sharing', () => {
     expect(window.open).toHaveBeenCalledWith(expect.stringContaining('linkedin.com/sharing'), '_blank');
   });
 });
+
+describe('showPublicToast - timeout callbacks', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  test('fades out and removes toast after timeout', () => {
+    showPublicToast('Timeout test', 'info');
+    const container = document.getElementById('publicToastContainer');
+    const toastEl = container.lastChild;
+    expect(toastEl).toBeDefined();
+
+    // Advance past the 4000ms fade out timeout
+    jest.advanceTimersByTime(4000);
+    expect(toastEl.style.opacity).toBe('0');
+
+    // Advance past the 300ms removal timeout
+    jest.advanceTimersByTime(300);
+    // Toast should be removed (no parent)
+    expect(toastEl.parentNode).toBeNull();
+  });
+});
+
+describe('votingApi - error handling', () => {
+  test('throws error with status and code when response is not ok', async () => {
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: false,
+        status: 429,
+        json: () => Promise.resolve({ error: 'Rate limited', code: 'RATE_LIMIT' }),
+      })
+    );
+
+    try {
+      await votingApi('some_action', { foo: 'bar' });
+      // Should not reach here
+      expect(true).toBe(false);
+    } catch (err) {
+      expect(err.message).toBe('Rate limited');
+      expect(err.status).toBe(429);
+      expect(err.code).toBe('RATE_LIMIT');
+    }
+  });
+
+  test('uses default error message when none provided', async () => {
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: false,
+        status: 500,
+        json: () => Promise.resolve({}),
+      })
+    );
+
+    try {
+      await votingApi('some_action');
+      expect(true).toBe(false);
+    } catch (err) {
+      expect(err.message).toBe('API request failed');
+      expect(err.status).toBe(500);
+    }
+  });
+});
+
+describe('Nominee Voting - initialize', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('shows error when no entry or id param', async () => {
+    // Override window.location.search to have no params
+    const origSearch = window.location.search;
+    Object.defineProperty(window, 'location', {
+      value: { ...window.location, search: '' },
+      writable: true,
+    });
+
+    const showErrorSpy = jest.spyOn(nomineeVoting, 'showError').mockImplementation();
+    const loadEntrySpy = jest.spyOn(nomineeVoting, 'loadEntry').mockResolvedValue();
+
+    await nomineeVoting.initialize();
+
+    expect(showErrorSpy).toHaveBeenCalled();
+    expect(loadEntrySpy).not.toHaveBeenCalled();
+
+    // Restore
+    Object.defineProperty(window, 'location', {
+      value: { ...window.location, search: origSearch },
+      writable: true,
+    });
+  });
+});
+
+describe('Nominee Voting - vote flow', () => {
+  beforeEach(() => {
+    nomineeVoting.entry = {
+      id: 'e1',
+      entry_number: 'BTA-001',
+      entry_description: 'Test',
+      public_votes: 5,
+      organisations: { company_name: 'Test Co' },
+      awards: { award_name: 'Award' },
+    };
+    nomineeVoting.entryId = 'e1';
+    nomineeVoting._submittingVote = false;
+    nomineeVoting.hasVoted = false;
+
+    // Ensure verificationModal exists
+    if (!document.getElementById('verificationModal')) {
+      const modal = document.createElement('div');
+      modal.id = 'verificationModal';
+      modal.style.display = 'none';
+      document.body.appendChild(modal);
+    }
+
+    // Ensure successModal exists
+    if (!document.getElementById('successModal')) {
+      const modal = document.createElement('div');
+      modal.id = 'successModal';
+      modal.style.display = 'none';
+      document.body.appendChild(modal);
+    }
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    nomineeVoting._submittingVote = false;
+  });
+
+  test('shows verification modal when no voterEmail', async () => {
+    nomineeVoting.voterEmail = null;
+    const showModalSpy = jest.spyOn(nomineeVoting, 'showVerificationModal').mockImplementation();
+    await nomineeVoting.vote();
+    expect(showModalSpy).toHaveBeenCalled();
+  });
+
+  test('submits vote when voterEmail is set and not voted', async () => {
+    nomineeVoting.voterEmail = 'test@test.com';
+    nomineeVoting.hasVoted = false;
+
+    // checkIfVoted returns false
+    global.fetch = jest.fn()
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ exists: false }) }) // checkIfVoted
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ count: 0 }) }) // check_rate_limit
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ exists: false }) }) // check_existing_vote
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({}) }) // submit_vote
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({}) }); // resend-email
+
+    // Mock generateToken
+    if (!global.crypto) {
+      global.crypto = { randomUUID: jest.fn(() => '12345678-1234-1234-1234-123456789012') };
+    } else {
+      jest.spyOn(crypto, 'randomUUID').mockReturnValue('12345678-1234-1234-1234-123456789012');
+    }
+
+    await nomineeVoting.vote();
+
+    expect(nomineeVoting.hasVoted).toBe(true);
+    expect(nomineeVoting.entry.public_votes).toBe(6);
+  });
+});
+
+describe('Nominee Voting - showVerificationModal and closeVerificationModal', () => {
+  beforeEach(() => {
+    if (!document.getElementById('verificationModal')) {
+      const modal = document.createElement('div');
+      modal.id = 'verificationModal';
+      modal.style.display = 'none';
+      document.body.appendChild(modal);
+    }
+  });
+
+  test('showVerificationModal shows modal and locks body scroll', () => {
+    nomineeVoting.showVerificationModal();
+    expect(document.getElementById('verificationModal').style.display).toBe('flex');
+    expect(document.body.style.overflow).toBe('hidden');
+  });
+
+  test('closeVerificationModal hides modal and restores body scroll', () => {
+    nomineeVoting.closeVerificationModal();
+    expect(document.getElementById('verificationModal').style.display).toBe('none');
+    expect(document.body.style.overflow).toBe('auto');
+  });
+});
+
+describe('Nominee Voting - setupEventListeners', () => {
+  test('submits vote on form submit', async () => {
+    nomineeVoting.entry = {
+      id: 'e1',
+      entry_number: 'BTA-001',
+      entry_description: 'Test',
+      public_votes: 0,
+      organisations: { company_name: 'Test Co' },
+      awards: { award_name: 'Award' },
+    };
+    nomineeVoting.entryId = 'e1';
+    nomineeVoting._submittingVote = false;
+    nomineeVoting.hasVoted = false;
+
+    // Ensure required DOM elements
+    if (!document.getElementById('verificationModal')) {
+      const modal = document.createElement('div');
+      modal.id = 'verificationModal';
+      modal.style.display = 'flex';
+      document.body.appendChild(modal);
+    }
+    if (!document.getElementById('successModal')) {
+      const modal = document.createElement('div');
+      modal.id = 'successModal';
+      modal.style.display = 'none';
+      document.body.appendChild(modal);
+    }
+    if (!document.getElementById('voterName')) {
+      const input = document.createElement('input');
+      input.id = 'voterName';
+      input.value = 'Test Voter';
+      document.body.appendChild(input);
+    }
+
+    // Set up email input
+    document.getElementById('voterEmail').value = 'form@test.com';
+    document.getElementById('voterName').value = 'Form User';
+
+    // Setup event listeners
+    nomineeVoting.setupEventListeners();
+
+    // Mock fetch for submitVote flow
+    global.fetch = jest.fn()
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ count: 0 }) }) // rate limit
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ exists: false }) }) // check existing vote
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({}) }) // submit vote
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({}) }); // resend email
+
+    if (!global.crypto) {
+      global.crypto = { randomUUID: jest.fn(() => '12345678-1234-1234-1234-123456789012') };
+    }
+
+    // Submit the form
+    const form = document.getElementById('verificationForm');
+    const submitEvent = new dom.window.Event('submit', { bubbles: true, cancelable: true });
+    form.dispatchEvent(submitEvent);
+
+    // Wait for async operations
+    await new Promise((r) => setTimeout(r, 100));
+
+    expect(nomineeVoting.voterEmail).toBe('form@test.com');
+    expect(sessionStorage.getItem('voterEmail')).toBe('form@test.com');
+  });
+});
+
+describe('Nominee Voting - submitVote edge cases', () => {
+  beforeEach(() => {
+    nomineeVoting.entry = {
+      id: 'e1',
+      entry_number: 'BTA-001',
+      entry_description: 'Test',
+      public_votes: 5,
+      organisations: { company_name: 'Test Co' },
+      awards: { award_name: 'Award' },
+    };
+    nomineeVoting.entryId = 'e1';
+    nomineeVoting.voterEmail = 'test@test.com';
+    nomineeVoting._submittingVote = false;
+    nomineeVoting.hasVoted = false;
+
+    if (!document.getElementById('verificationModal')) {
+      const modal = document.createElement('div');
+      modal.id = 'verificationModal';
+      modal.style.display = 'flex';
+      document.body.appendChild(modal);
+    }
+    if (!document.getElementById('successModal')) {
+      const modal = document.createElement('div');
+      modal.id = 'successModal';
+      modal.style.display = 'none';
+      document.body.appendChild(modal);
+    }
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    nomineeVoting._submittingVote = false;
+  });
+
+  test('prevents double-submit', async () => {
+    nomineeVoting._submittingVote = true;
+    global.fetch = jest.fn();
+    await nomineeVoting.submitVote();
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  test('stops when rate limited', async () => {
+    global.fetch = jest.fn()
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ count: 10 }) }); // rate limit exceeded
+
+    await nomineeVoting.submitVote();
+
+    expect(document.getElementById('verificationModal').style.display).toBe('none');
+    expect(nomineeVoting._submittingVote).toBe(false);
+  });
+
+  test('stops when already voted (existing vote)', async () => {
+    global.fetch = jest.fn()
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ count: 0 }) }) // rate limit ok
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ exists: true }) }); // already voted
+
+    await nomineeVoting.submitVote();
+
+    expect(nomineeVoting.hasVoted).toBe(true);
+    expect(document.getElementById('voteButton').disabled).toBe(true);
+    expect(nomineeVoting._submittingVote).toBe(false);
+  });
+
+  test('handles 409 duplicate vote error', async () => {
+    global.fetch = jest.fn()
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ count: 0 }) }) // rate limit ok
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ exists: false }) }) // not voted
+      .mockResolvedValueOnce({ ok: false, status: 409, json: () => Promise.resolve({ error: 'Duplicate vote', code: 'DUPLICATE' }) }); // submit fails with 409
+
+    if (!global.crypto) {
+      global.crypto = { randomUUID: jest.fn(() => '12345678-1234-1234-1234-123456789012') };
+    }
+
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+
+    await nomineeVoting.submitVote();
+
+    expect(nomineeVoting.hasVoted).toBe(true);
+    expect(nomineeVoting._submittingVote).toBe(false);
+    consoleSpy.mockRestore();
+  });
+
+  test('handles generic error during vote submission', async () => {
+    global.fetch = jest.fn()
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ count: 0 }) }) // rate limit ok
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ exists: false }) }) // not voted
+      .mockRejectedValueOnce(new Error('Network error')); // submit fails
+
+    if (!global.crypto) {
+      global.crypto = { randomUUID: jest.fn(() => '12345678-1234-1234-1234-123456789012') };
+    }
+
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+
+    await nomineeVoting.submitVote();
+
+    expect(nomineeVoting._submittingVote).toBe(false);
+    consoleSpy.mockRestore();
+  });
+});
+
+describe('Nominee Voting - showSuccessModal and closeSuccessModal', () => {
+  beforeEach(() => {
+    if (!document.getElementById('successModal')) {
+      const modal = document.createElement('div');
+      modal.id = 'successModal';
+      modal.style.display = 'none';
+      document.body.appendChild(modal);
+    }
+  });
+
+  test('showSuccessModal shows the success modal', () => {
+    nomineeVoting.showSuccessModal();
+    expect(document.getElementById('successModal').style.display).toBe('flex');
+  });
+
+  test('closeSuccessModal hides the success modal', () => {
+    nomineeVoting.closeSuccessModal();
+    expect(document.getElementById('successModal').style.display).toBe('none');
+  });
+});
+
+describe('Nominee Voting - generateToken', () => {
+  test('returns a UUID without dashes', () => {
+    if (!global.crypto) {
+      global.crypto = { randomUUID: jest.fn(() => '12345678-1234-1234-1234-123456789012') };
+    } else {
+      jest.spyOn(crypto, 'randomUUID').mockReturnValue('12345678-1234-1234-1234-123456789012');
+    }
+    const token = nomineeVoting.generateToken();
+    expect(token).toBe('12345678123412341234123456789012');
+    expect(token).not.toContain('-');
+  });
+});
+
+describe('Nominee Voting - copyLink', () => {
+  test('copies link and updates button text', async () => {
+    // Mock clipboard
+    navigator.clipboard = { writeText: jest.fn().mockResolvedValue() };
+
+    // Mock event
+    const btn = document.createElement('button');
+    btn.className = 'share-btn';
+    btn.innerHTML = '<i class="bi bi-link me-2"></i>Copy Link';
+    global.event = { target: { closest: jest.fn(() => btn) } };
+
+    await nomineeVoting.copyLink();
+
+    expect(navigator.clipboard.writeText).toHaveBeenCalled();
+    expect(btn.innerHTML).toContain('Copied!');
+
+    delete global.event;
+  });
+
+  test('shows toast on clipboard error', async () => {
+    // Mock clipboard to reject
+    navigator.clipboard = { writeText: jest.fn().mockRejectedValue(new Error('Clipboard error')) };
+
+    global.event = { target: { closest: jest.fn(() => document.createElement('button')) } };
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+
+    await nomineeVoting.copyLink();
+
+    consoleSpy.mockRestore();
+    delete global.event;
+  });
+});

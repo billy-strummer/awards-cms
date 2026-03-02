@@ -520,3 +520,349 @@ describe('Rate Limiting Module - getAllowList()', () => {
     STATE.client = origClient;
   });
 });
+
+describe('Rate Limiting Module - logRequest error handling', () => {
+  test('catches and warns when insert throws', async () => {
+    STATE.client = mockSupabase;
+    global.fetch = jest.fn(() => Promise.reject(new Error('insert fail')));
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    await rateLimitModule.logRequest('/api/test', 'POST', 500, 200, '1.2.3.4');
+    expect(warnSpy).toHaveBeenCalledWith('rateLimitModule.logRequest:', expect.any(String));
+    warnSpy.mockRestore();
+    global.fetch = jest.fn(() =>
+      Promise.resolve({ ok: true, json: () => Promise.resolve({ data: null, error: null }) })
+    );
+  });
+});
+
+describe('Rate Limiting Module - renderUsageDashboard range button click', () => {
+  test('clicking range button toggles active class and reloads data', async () => {
+    STATE.client = mockSupabase;
+    // Mock apiClient.select for _loadDashboardData
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ data: [], error: null, count: 0 }),
+      })
+    );
+    apiClient.select = jest.fn().mockResolvedValue({ data: [] });
+    apiClient.count = jest.fn().mockResolvedValue({ count: 0 });
+
+    const el = document.getElementById('usageDashboard');
+    await rateLimitModule.renderUsageDashboard('usageDashboard');
+
+    // Find the 7d button and click it
+    const buttons = el.querySelectorAll('#rl-range-btns button');
+    expect(buttons.length).toBe(3);
+
+    // Initially 24h is active
+    expect(buttons[0].classList.contains('active')).toBe(true);
+
+    // Click 7d button
+    buttons[1].click();
+    await new Promise((r) => setTimeout(r, 50));
+
+    // 7d should now be active, 24h should not
+    expect(buttons[1].classList.contains('active')).toBe(true);
+    expect(buttons[0].classList.contains('active')).toBe(false);
+  });
+});
+
+describe('Rate Limiting Module - _loadDashboardData error handling', () => {
+  test('catches and warns when data loading fails', async () => {
+    STATE.client = mockSupabase;
+    apiClient.select = jest.fn().mockRejectedValue(new Error('Dashboard load fail'));
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    await rateLimitModule._loadDashboardData('24h');
+
+    expect(warnSpy).toHaveBeenCalledWith('rateLimitModule dashboard:', 'Dashboard load fail');
+    warnSpy.mockRestore();
+  });
+});
+
+describe('Rate Limiting Module - _renderAlerts', () => {
+  test('renders alert rows from database', async () => {
+    // Set up the DOM element
+    const el = document.getElementById('rl-alerts-list');
+    el.innerHTML = '';
+
+    STATE.client = {
+      ...mockSupabase,
+      from: jest.fn(() => ({
+        select: jest.fn().mockReturnThis(),
+        order: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        then: jest.fn((cb) =>
+          Promise.resolve(
+            cb({
+              data: [
+                {
+                  endpoint: '/api/vote',
+                  ip_address: '1.1.1.1',
+                  actual_count: 50,
+                  threshold: 10,
+                  window_minutes: 1,
+                },
+              ],
+              error: null,
+            })
+          )
+        ),
+      })),
+    };
+
+    await rateLimitModule._renderAlerts();
+
+    expect(el.innerHTML).toContain('/api/vote');
+    expect(el.innerHTML).toContain('1.1.1.1');
+    expect(el.innerHTML).toContain('50/10');
+    STATE.client = mockSupabase;
+  });
+
+  test('shows "No recent alerts" when no data', async () => {
+    const el = document.getElementById('rl-alerts-list');
+    el.innerHTML = '';
+
+    STATE.client = {
+      ...mockSupabase,
+      from: jest.fn(() => ({
+        select: jest.fn().mockReturnThis(),
+        order: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        then: jest.fn((cb) =>
+          Promise.resolve(cb({ data: [], error: null }))
+        ),
+      })),
+    };
+
+    await rateLimitModule._renderAlerts();
+
+    expect(el.innerHTML).toContain('No recent alerts');
+    STATE.client = mockSupabase;
+  });
+
+  test('shows "Unavailable" when query throws', async () => {
+    const el = document.getElementById('rl-alerts-list');
+    el.innerHTML = '';
+
+    const mockAlertChain = {
+      select: jest.fn().mockReturnThis(),
+      order: jest.fn().mockReturnThis(),
+      limit: jest.fn(() => Promise.reject(new Error('DB error'))),
+    };
+    STATE.client = {
+      ...mockSupabase,
+      from: jest.fn(() => mockAlertChain),
+    };
+
+    await rateLimitModule._renderAlerts();
+
+    expect(el.innerHTML).toContain('Unavailable');
+    STATE.client = mockSupabase;
+  });
+
+  test('returns early when element not found or STATE.client is null', async () => {
+    const el = document.getElementById('rl-alerts-list');
+    el.id = 'hidden';
+    await rateLimitModule._renderAlerts();
+    el.id = 'rl-alerts-list';
+
+    const origClient = STATE.client;
+    STATE.client = null;
+    await rateLimitModule._renderAlerts();
+    STATE.client = origClient;
+  });
+});
+
+describe('Rate Limiting Module - checkAlerts error handling', () => {
+  test('catches and warns when checkAlerts throws', async () => {
+    const mockAlertCheckChain = {
+      select: jest.fn().mockReturnThis(),
+      gte: jest.fn(() => Promise.reject(new Error('Alert check fail'))),
+    };
+    STATE.client = {
+      ...mockSupabase,
+      from: jest.fn(() => mockAlertCheckChain),
+    };
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    await rateLimitModule.checkAlerts();
+
+    expect(warnSpy).toHaveBeenCalledWith('rateLimitModule.checkAlerts:', 'Alert check fail');
+    warnSpy.mockRestore();
+    STATE.client = mockSupabase;
+  });
+});
+
+describe('Rate Limiting Module - unblockIP error handling', () => {
+  test('shows error toast when unblock fails', async () => {
+    STATE.client = mockSupabase;
+    global.fetch = jest.fn(() =>
+      Promise.resolve({ ok: false, json: () => Promise.resolve({ error: 'Delete fail' }) })
+    );
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+
+    await rateLimitModule.unblockIP('5.5.5.5');
+
+    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('Unblock failed'), 'error');
+    toastSpy.mockRestore();
+    global.fetch = jest.fn(() =>
+      Promise.resolve({ ok: true, json: () => Promise.resolve({ data: null, error: null }) })
+    );
+  });
+});
+
+describe('Rate Limiting Module - renderRateLimitConfig', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    STATE.client = mockSupabase;
+    global.fetch = jest.fn(() =>
+      Promise.resolve({ ok: true, json: () => Promise.resolve({ data: [], error: null }) })
+    );
+  });
+
+  test('renders config form into container', async () => {
+    apiClient.select = jest.fn().mockResolvedValue({
+      data: [
+        { id: 'cfg-1', endpoint: '/api/vote', max_requests: 5, window_seconds: 3600 },
+      ],
+    });
+
+    await rateLimitModule.renderRateLimitConfig('rl-config-container');
+
+    const el = document.getElementById('rl-config-container');
+    expect(el.innerHTML).toContain('Rate Limit Configuration');
+    expect(el.innerHTML).toContain('/api/vote');
+    expect(el.innerHTML).toContain('5');
+    expect(el.innerHTML).toContain('3600');
+  });
+
+  test('returns early when container not found', async () => {
+    apiClient.select = jest.fn();
+    await rateLimitModule.renderRateLimitConfig('nonexistent-container');
+    // select should still be called because STATE.client exists
+    // but the function should return early before that
+    // Actually, it checks el first, so select should not be called
+  });
+
+  test('handles form submission to add new config', async () => {
+    apiClient.select = jest.fn().mockResolvedValue({ data: [] });
+    apiClient.insert = jest.fn().mockResolvedValue({ data: { id: 'cfg-new' } });
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+
+    await rateLimitModule.renderRateLimitConfig('rl-config-container');
+
+    const el = document.getElementById('rl-config-container');
+    const epInput = el.querySelector('#rl-cfg-ep');
+    const maxInput = el.querySelector('#rl-cfg-max');
+    const winInput = el.querySelector('#rl-cfg-win');
+
+    epInput.value = '/api/new';
+    maxInput.value = '100';
+    winInput.value = '60';
+
+    // Submit the form
+    const form = el.querySelector('#rl-config-form');
+    form.dispatchEvent(new dom.window.Event('submit', { cancelable: true }));
+
+    await new Promise((r) => setTimeout(r, 100));
+
+    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('Limit saved'), 'success');
+    expect(rateLimitModule._defaults['/api/new']).toEqual({ max: 100, windowMs: 60000 });
+    toastSpy.mockRestore();
+  });
+
+  test('handles form submission error', async () => {
+    apiClient.select = jest.fn().mockResolvedValue({ data: [] });
+    apiClient.insert = jest.fn().mockRejectedValue(new Error('Insert fail'));
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+
+    await rateLimitModule.renderRateLimitConfig('rl-config-container');
+
+    const el = document.getElementById('rl-config-container');
+    el.querySelector('#rl-cfg-ep').value = '/api/fail';
+    el.querySelector('#rl-cfg-max').value = '10';
+    el.querySelector('#rl-cfg-win').value = '30';
+
+    const form = el.querySelector('#rl-config-form');
+    form.dispatchEvent(new dom.window.Event('submit', { cancelable: true }));
+
+    await new Promise((r) => setTimeout(r, 100));
+
+    expect(toastSpy).toHaveBeenCalledWith('Insert fail', 'error');
+    toastSpy.mockRestore();
+  });
+
+  test('skips submission when required fields are empty', async () => {
+    apiClient.select = jest.fn().mockResolvedValue({ data: [] });
+    apiClient.insert = jest.fn();
+
+    await rateLimitModule.renderRateLimitConfig('rl-config-container');
+
+    const el = document.getElementById('rl-config-container');
+    el.querySelector('#rl-cfg-ep').value = '';
+    el.querySelector('#rl-cfg-max').value = '';
+    el.querySelector('#rl-cfg-win').value = '';
+
+    const form = el.querySelector('#rl-config-form');
+    form.dispatchEvent(new dom.window.Event('submit', { cancelable: true }));
+
+    await new Promise((r) => setTimeout(r, 100));
+
+    expect(apiClient.insert).not.toHaveBeenCalled();
+  });
+
+  test('handles delete button click for config', async () => {
+    apiClient.select = jest.fn().mockResolvedValue({
+      data: [
+        { id: 'cfg-del', endpoint: '/api/delete-me', max_requests: 5, window_seconds: 60 },
+      ],
+    });
+    apiClient.delete = jest.fn().mockResolvedValue({});
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+
+    await rateLimitModule.renderRateLimitConfig('rl-config-container');
+
+    const el = document.getElementById('rl-config-container');
+    const delBtn = el.querySelector('.rl-del');
+    expect(delBtn).toBeTruthy();
+
+    delBtn.click();
+    await new Promise((r) => setTimeout(r, 100));
+
+    expect(toastSpy).toHaveBeenCalledWith('Config removed', 'info');
+    toastSpy.mockRestore();
+  });
+
+  test('handles delete button click error', async () => {
+    apiClient.select = jest.fn().mockResolvedValue({
+      data: [
+        { id: 'cfg-err', endpoint: '/api/err', max_requests: 10, window_seconds: 120 },
+      ],
+    });
+    apiClient.delete = jest.fn().mockRejectedValue(new Error('Delete config fail'));
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+
+    await rateLimitModule.renderRateLimitConfig('rl-config-container');
+
+    const el = document.getElementById('rl-config-container');
+    const delBtn = el.querySelector('.rl-del');
+    delBtn.click();
+    await new Promise((r) => setTimeout(r, 100));
+
+    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to delete config'), 'error');
+    toastSpy.mockRestore();
+  });
+
+  test('renders with empty data when STATE.client is null', async () => {
+    const origClient = STATE.client;
+    STATE.client = null;
+
+    await rateLimitModule.renderRateLimitConfig('rl-config-container');
+
+    const el = document.getElementById('rl-config-container');
+    expect(el.innerHTML).toContain('Rate Limit Configuration');
+    STATE.client = origClient;
+  });
+});

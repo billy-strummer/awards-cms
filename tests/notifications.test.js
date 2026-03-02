@@ -189,6 +189,14 @@ describe('Notifications Module - _fetchAndRender', () => {
     await notificationsModule._fetchAndRender();
     expect(notificationsModule._unreadCount).toBe(0);
   });
+
+  test('logs error on fetch failure', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+    apiClient.select = jest.fn().mockRejectedValue(new Error('Network error'));
+    await notificationsModule._fetchAndRender();
+    expect(consoleSpy).toHaveBeenCalledWith('Notifications fetch error:', 'Network error');
+    consoleSpy.mockRestore();
+  });
 });
 
 describe('Notifications Module - Notification Helpers', () => {
@@ -534,47 +542,46 @@ describe('Notifications Module - renderNotificationDropdown', () => {
   });
 });
 
-describe('Notifications Module - _isPrefEnabled', () => {
-  test('returns true when no preference found', async () => {
-    // Restore original _isPrefEnabled
-    const _originalFn =
-      Object.getPrototypeOf(notificationsModule)._isPrefEnabled ||
-      notificationsModule.constructor.prototype?._isPrefEnabled;
-    // Directly test from module if needed - use original stored reference
+describe('Notifications Module - _isPrefEnabled (real implementation)', () => {
+  // Store the original _isPrefEnabled so we can restore mocked versions
+  const originalIsPrefEnabled = notificationsModule._isPrefEnabled;
+
+  beforeEach(() => {
+    // Ensure the real implementation is in place
+    notificationsModule._isPrefEnabled = originalIsPrefEnabled;
+  });
+
+  afterEach(() => {
+    notificationsModule._isPrefEnabled = originalIsPrefEnabled;
+  });
+
+  test('returns true when no preference found (empty data)', async () => {
     apiClient.select = jest.fn().mockResolvedValue({ data: [] });
-    // Call the real implementation via a bound copy
-    const realIsPrefEnabled = async (email, type) => {
-      try {
-        const { data } = await apiClient.select('notification_preferences', {
-          select: 'enabled',
-          filters: { user_email: email, type },
-          pageSize: 1,
-        });
-        return data?.[0] ? data[0].enabled : true;
-      } catch {
-        return true;
-      }
-    };
-    const result = await realIsPrefEnabled('user@test.com', 'judge_assigned');
+    const result = await notificationsModule._isPrefEnabled('user@test.com', 'judge_assigned');
+    expect(result).toBe(true);
+    expect(apiClient.select).toHaveBeenCalledWith('notification_preferences', expect.objectContaining({
+      select: 'enabled',
+      filters: { user_email: 'user@test.com', type: 'judge_assigned' },
+      pageSize: 1,
+    }));
+  });
+
+  test('returns the enabled value when preference exists', async () => {
+    apiClient.select = jest.fn().mockResolvedValue({ data: [{ enabled: false }] });
+    const result = await notificationsModule._isPrefEnabled('user@test.com', 'judge_assigned');
+    expect(result).toBe(false);
+  });
+
+  test('returns true when preference is enabled', async () => {
+    apiClient.select = jest.fn().mockResolvedValue({ data: [{ enabled: true }] });
+    const result = await notificationsModule._isPrefEnabled('user@test.com', 'scores_due');
     expect(result).toBe(true);
   });
 
-  test('returns false when pref is disabled', async () => {
-    apiClient.select = jest.fn().mockResolvedValue({ data: [{ enabled: false }] });
-    const realIsPrefEnabled = async (email, type) => {
-      try {
-        const { data } = await apiClient.select('notification_preferences', {
-          select: 'enabled',
-          filters: { user_email: email, type },
-          pageSize: 1,
-        });
-        return data?.[0] ? data[0].enabled : true;
-      } catch {
-        return true;
-      }
-    };
-    const result = await realIsPrefEnabled('user@test.com', 'judge_assigned');
-    expect(result).toBe(false);
+  test('returns true on error (catch branch)', async () => {
+    apiClient.select = jest.fn().mockRejectedValue(new Error('DB error'));
+    const result = await notificationsModule._isPrefEnabled('user@test.com', 'judge_assigned');
+    expect(result).toBe(true);
   });
 });
 
@@ -650,6 +657,36 @@ describe('Notifications Module - _subscribeRealtime', () => {
     expect(STATE.client.channel).toHaveBeenCalledWith('notifications');
     expect(notificationsModule._realtimeChannel).toBeDefined();
   });
+
+  test('realtime callback increments unread count, updates badge and shows toast', () => {
+    let capturedCallback = null;
+    const mockChannel = {
+      on: jest.fn(function (_event, _filter, cb) {
+        capturedCallback = cb;
+        return this;
+      }),
+      subscribe: jest.fn(function () {
+        return this;
+      }),
+    };
+    STATE.client.channel = jest.fn(() => mockChannel);
+
+    notificationsModule._unreadCount = 3;
+    const badgeSpy = jest.spyOn(notificationsModule, '_updateBadge').mockImplementation(() => {});
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+
+    notificationsModule._subscribeRealtime();
+
+    expect(capturedCallback).not.toBeNull();
+    capturedCallback({ new: { message: 'Test message', title: 'Test title' } });
+
+    expect(notificationsModule._unreadCount).toBe(4);
+    expect(badgeSpy).toHaveBeenCalled();
+    expect(toastSpy).toHaveBeenCalledWith('Test message', 'info', 'Test title');
+
+    badgeSpy.mockRestore();
+    toastSpy.mockRestore();
+  });
 });
 
 describe('Notifications Module - init', () => {
@@ -661,6 +698,29 @@ describe('Notifications Module - init', () => {
     expect(injectSpy).not.toHaveBeenCalled();
     STATE.currentUser = origUser;
     injectSpy.mockRestore();
+  });
+
+  test('initializes bell, fetches, sets interval, and subscribes when user is logged in', async () => {
+    const origSetInterval = global.setInterval;
+    global.setInterval = jest.fn(() => 12345);
+
+    const injectSpy = jest.spyOn(notificationsModule, '_injectBell').mockImplementation(() => {});
+    const fetchSpy = jest.spyOn(notificationsModule, '_fetchAndRender').mockResolvedValue();
+    const subscribeSpy = jest.spyOn(notificationsModule, '_subscribeRealtime').mockImplementation(() => {});
+
+    STATE.currentUser = { email: 'admin@test.com' };
+    await notificationsModule.init();
+
+    expect(injectSpy).toHaveBeenCalled();
+    expect(fetchSpy).toHaveBeenCalled();
+    expect(global.setInterval).toHaveBeenCalled();
+    expect(subscribeSpy).toHaveBeenCalled();
+    expect(notificationsModule._pollInterval).toBe(12345);
+
+    injectSpy.mockRestore();
+    fetchSpy.mockRestore();
+    subscribeSpy.mockRestore();
+    global.setInterval = origSetInterval;
   });
 });
 

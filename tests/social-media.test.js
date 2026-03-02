@@ -2804,13 +2804,13 @@ describe('Social Media Module - editScheduledPost() success path', () => {
     mockSupabase.eq.mockReturnValue(mockSupabase);
 
     // Mock scrollIntoView which JSDOM does not support
-    Element.prototype.scrollIntoView = jest.fn();
+    dom.window.Element.prototype.scrollIntoView = jest.fn();
   });
 
   afterEach(() => {
     showToastSpy.mockRestore();
     mockSupabase.single.mockReturnValue(Promise.resolve({ data: null, error: null }));
-    delete Element.prototype.scrollIntoView;
+    delete dom.window.Element.prototype.scrollIntoView;
   });
 
   test('shows success toast after loading post for editing', async () => {
@@ -2847,13 +2847,13 @@ describe('Social Media Module - reusePost() success path', () => {
     mockSupabase.eq.mockReturnValue(mockSupabase);
 
     // Mock scrollIntoView which JSDOM does not support
-    Element.prototype.scrollIntoView = jest.fn();
+    dom.window.Element.prototype.scrollIntoView = jest.fn();
   });
 
   afterEach(() => {
     showToastSpy.mockRestore();
     mockSupabase.single.mockReturnValue(Promise.resolve({ data: null, error: null }));
-    delete Element.prototype.scrollIntoView;
+    delete dom.window.Element.prototype.scrollIntoView;
   });
 
   test('shows success toast after loading post for reuse', async () => {
@@ -2879,13 +2879,41 @@ describe('Social Media Module - reusePost() success path', () => {
 });
 
 describe('Social Media Module - showEditingIndicator(true) creates banner', () => {
+  let origParent;
+  let cardDiv;
+
   beforeEach(() => {
+    const existing = document.getElementById('editingBanner');
+    if (existing) existing.remove();
+
+    // Move smPostContent into a .card structure so showEditingIndicator can find it
+    const smPostContent = document.getElementById('smPostContent');
+    origParent = smPostContent.parentNode;
+    cardDiv = document.createElement('div');
+    cardDiv.className = 'card';
+    const cardHeader = document.createElement('div');
+    cardHeader.className = 'card-header';
+    cardHeader.textContent = 'Post Header';
+    const cardBody = document.createElement('div');
+    cardBody.className = 'card-body';
+    cardBody.appendChild(smPostContent);
+    cardDiv.appendChild(cardHeader);
+    cardDiv.appendChild(cardBody);
+    origParent.appendChild(cardDiv);
+  });
+
+  afterEach(() => {
+    // Restore smPostContent to its original location
+    const smPostContent = document.getElementById('smPostContent');
+    if (cardDiv && cardDiv.parentNode) {
+      origParent.appendChild(smPostContent);
+      cardDiv.remove();
+    }
     const existing = document.getElementById('editingBanner');
     if (existing) existing.remove();
   });
 
   test('creates banner when show=true and no existing banner', () => {
-    // The smPostContent element is inside a .card > .card-body in the test DOM
     socialMediaModule.showEditingIndicator(true);
 
     const banner = document.getElementById('editingBanner');
@@ -2961,8 +2989,11 @@ describe('Social Media Module - bulkGenerate() full success path', () => {
       { id: 'a2', organisations: { id: 'org-2', company_name: 'Beta Ltd', logo_url: null, website: null } },
     ];
 
-    // Mock the chain: from('award_assignments').select(...).eq(...).eq(...)
-    mockSupabase.eq.mockReturnValueOnce(Promise.resolve({ data: assignments, error: null }));
+    // Mock the chain: from('award_assignments').select(...).eq('award_id',...).eq('status',...)
+    // First .eq() returns mockSupabase, second .eq() returns the data
+    mockSupabase.eq
+      .mockReturnValueOnce(mockSupabase)
+      .mockReturnValueOnce(Promise.resolve({ data: assignments, error: null }));
 
     // Mock the insert for posts
     mockSupabase.then.mockImplementationOnce((cb) => cb({ data: [], error: null }));
@@ -2976,7 +3007,9 @@ describe('Social Media Module - bulkGenerate() full success path', () => {
   });
 
   test('shows warning when no assignments found', async () => {
-    mockSupabase.eq.mockReturnValueOnce(Promise.resolve({ data: [], error: null }));
+    mockSupabase.eq
+      .mockReturnValueOnce(mockSupabase)
+      .mockReturnValueOnce(Promise.resolve({ data: [], error: null }));
 
     await socialMediaModule.bulkGenerate();
 
@@ -2995,7 +3028,9 @@ describe('Social Media Module - bulkGenerate() full success path', () => {
     const assignments = [
       { id: 'a1', organisations: { id: 'org-1', company_name: 'Acme Corp', logo_url: null, website: null } },
     ];
-    mockSupabase.eq.mockReturnValueOnce(Promise.resolve({ data: assignments, error: null }));
+    mockSupabase.eq
+      .mockReturnValueOnce(mockSupabase)
+      .mockReturnValueOnce(Promise.resolve({ data: assignments, error: null }));
 
     await socialMediaModule.bulkGenerate();
 
@@ -3003,7 +3038,9 @@ describe('Social Media Module - bulkGenerate() full success path', () => {
   });
 
   test('shows error toast when assignment fetch fails', async () => {
-    mockSupabase.eq.mockReturnValueOnce(Promise.resolve({ data: null, error: { message: 'DB error' } }));
+    mockSupabase.eq
+      .mockReturnValueOnce(mockSupabase)
+      .mockReturnValueOnce(Promise.resolve({ data: null, error: { message: 'DB error' } }));
 
     await socialMediaModule.bulkGenerate();
 
@@ -3019,7 +3056,9 @@ describe('Social Media Module - bulkGenerate() full success path', () => {
     const assignments = [
       { id: 'a1', organisations: { id: 'org-1', company_name: 'Acme Corp', logo_url: null, website: null } },
     ];
-    mockSupabase.eq.mockReturnValueOnce(Promise.resolve({ data: assignments, error: null }));
+    mockSupabase.eq
+      .mockReturnValueOnce(mockSupabase)
+      .mockReturnValueOnce(Promise.resolve({ data: assignments, error: null }));
     mockSupabase.then.mockImplementationOnce((cb) => cb({ data: [], error: null }));
 
     await socialMediaModule.bulkGenerate();
@@ -3035,7 +3074,9 @@ describe('Social Media Module - bulkGenerate() full success path', () => {
       { id: 'a1', organisations: null },
       { id: 'a2', organisations: { id: 'org-2', company_name: 'Beta Ltd', logo_url: null, website: null } },
     ];
-    mockSupabase.eq.mockReturnValueOnce(Promise.resolve({ data: assignments, error: null }));
+    mockSupabase.eq
+      .mockReturnValueOnce(mockSupabase)
+      .mockReturnValueOnce(Promise.resolve({ data: assignments, error: null }));
     mockSupabase.then.mockImplementationOnce((cb) => cb({ data: [], error: null }));
 
     await socialMediaModule.bulkGenerate();
@@ -3050,7 +3091,9 @@ describe('Social Media Module - bulkGenerate() full success path', () => {
     const assignments = [
       { id: 'a1', organisations: null },
     ];
-    mockSupabase.eq.mockReturnValueOnce(Promise.resolve({ data: assignments, error: null }));
+    mockSupabase.eq
+      .mockReturnValueOnce(mockSupabase)
+      .mockReturnValueOnce(Promise.resolve({ data: assignments, error: null }));
 
     await socialMediaModule.bulkGenerate();
 
@@ -3061,7 +3104,9 @@ describe('Social Media Module - bulkGenerate() full success path', () => {
     const assignments = [
       { id: 'a1', organisations: { id: 'org-1', company_name: 'Acme Corp', logo_url: null, website: null } },
     ];
-    mockSupabase.eq.mockReturnValueOnce(Promise.resolve({ data: assignments, error: null }));
+    mockSupabase.eq
+      .mockReturnValueOnce(mockSupabase)
+      .mockReturnValueOnce(Promise.resolve({ data: assignments, error: null }));
     mockSupabase.then.mockImplementationOnce((cb) => cb({ data: null, error: { message: 'Insert failed' } }));
 
     await socialMediaModule.bulkGenerate();
@@ -3073,12 +3118,20 @@ describe('Social Media Module - bulkGenerate() full success path', () => {
   });
 
   test('shows error with invalid template type', async () => {
-    document.getElementById('bulkTemplateType').value = 'invalid_template';
+    // Add an option for 'invalid_template' so the select element accepts the value
+    const templateSelect = document.getElementById('bulkTemplateType');
+    const opt = document.createElement('option');
+    opt.value = 'invalid_template';
+    opt.textContent = 'Invalid';
+    templateSelect.appendChild(opt);
+    templateSelect.value = 'invalid_template';
 
     const assignments = [
       { id: 'a1', organisations: { id: 'org-1', company_name: 'Acme Corp', logo_url: null, website: null } },
     ];
-    mockSupabase.eq.mockReturnValueOnce(Promise.resolve({ data: assignments, error: null }));
+    mockSupabase.eq
+      .mockReturnValueOnce(mockSupabase)
+      .mockReturnValueOnce(Promise.resolve({ data: assignments, error: null }));
 
     await socialMediaModule.bulkGenerate();
 

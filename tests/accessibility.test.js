@@ -412,84 +412,90 @@ describe('Accessibility Module - Tab Keyboard Navigation', () => {
     // Use fresh tab elements to avoid multiple keydown listeners stacking
     const container = document.createElement('ul');
     container.className = 'nav-tabs';
-    container.innerHTML = '<li><a class="nav-link" href="#">A</a></li><li><a class="nav-link" href="#">B</a></li><li><a class="nav-link" href="#">C</a></li>';
+    container.innerHTML = '<li><button class="nav-link">A</button></li><li><button class="nav-link">B</button></li><li><button class="nav-link">C</button></li>';
     document.body.appendChild(container);
 
-    a11yModule.setupKeyboardNav();
     const tabs = container.querySelectorAll('.nav-link');
-    const focusSpy = jest.spyOn(tabs[1], 'focus');
-    const clickSpy = jest.spyOn(tabs[1], 'click').mockImplementation(() => {});
+    // Replace native focus/click with spies before setupKeyboardNav to avoid
+    // JSDOM setTimeout recursion triggered by native .focus()/.click()
+    const focusSpy = jest.fn();
+    const clickSpy = jest.fn();
+    tabs[1].focus = focusSpy;
+    tabs[1].click = clickSpy;
+
+    a11yModule.setupKeyboardNav();
 
     const event = new dom.window.KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true });
     tabs[0].dispatchEvent(event);
 
     expect(focusSpy).toHaveBeenCalled();
     expect(clickSpy).toHaveBeenCalled();
-    focusSpy.mockRestore();
-    clickSpy.mockRestore();
     container.remove();
   });
 
   test('ArrowLeft wraps to last tab from first tab', () => {
     const container = document.createElement('ul');
     container.className = 'nav-tabs';
-    container.innerHTML = '<li><a class="nav-link" href="#">A</a></li><li><a class="nav-link" href="#">B</a></li><li><a class="nav-link" href="#">C</a></li>';
+    container.innerHTML = '<li><button class="nav-link">A</button></li><li><button class="nav-link">B</button></li><li><button class="nav-link">C</button></li>';
     document.body.appendChild(container);
 
-    a11yModule.setupKeyboardNav();
     const tabs = container.querySelectorAll('.nav-link');
-    const focusSpy = jest.spyOn(tabs[2], 'focus');
-    const clickSpy = jest.spyOn(tabs[2], 'click').mockImplementation(() => {});
+    const focusSpy = jest.fn();
+    const clickSpy = jest.fn();
+    tabs[2].focus = focusSpy;
+    tabs[2].click = clickSpy;
+
+    a11yModule.setupKeyboardNav();
 
     const event = new dom.window.KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, cancelable: true });
     tabs[0].dispatchEvent(event);
 
     expect(focusSpy).toHaveBeenCalled();
     expect(clickSpy).toHaveBeenCalled();
-    focusSpy.mockRestore();
-    clickSpy.mockRestore();
     container.remove();
   });
 
   test('Home key moves focus to first tab', () => {
     const container = document.createElement('ul');
     container.className = 'nav-tabs';
-    container.innerHTML = '<li><a class="nav-link" href="#">A</a></li><li><a class="nav-link" href="#">B</a></li><li><a class="nav-link" href="#">C</a></li>';
+    container.innerHTML = '<li><button class="nav-link">A</button></li><li><button class="nav-link">B</button></li><li><button class="nav-link">C</button></li>';
     document.body.appendChild(container);
 
-    a11yModule.setupKeyboardNav();
     const tabs = container.querySelectorAll('.nav-link');
-    const focusSpy = jest.spyOn(tabs[0], 'focus');
-    const clickSpy = jest.spyOn(tabs[0], 'click').mockImplementation(() => {});
+    const focusSpy = jest.fn();
+    const clickSpy = jest.fn();
+    tabs[0].focus = focusSpy;
+    tabs[0].click = clickSpy;
+
+    a11yModule.setupKeyboardNav();
 
     const event = new dom.window.KeyboardEvent('keydown', { key: 'Home', bubbles: true, cancelable: true });
     tabs[2].dispatchEvent(event);
 
     expect(focusSpy).toHaveBeenCalled();
     expect(clickSpy).toHaveBeenCalled();
-    focusSpy.mockRestore();
-    clickSpy.mockRestore();
     container.remove();
   });
 
   test('End key moves focus to last tab', () => {
     const container = document.createElement('ul');
     container.className = 'nav-tabs';
-    container.innerHTML = '<li><a class="nav-link" href="#">A</a></li><li><a class="nav-link" href="#">B</a></li><li><a class="nav-link" href="#">C</a></li>';
+    container.innerHTML = '<li><button class="nav-link">A</button></li><li><button class="nav-link">B</button></li><li><button class="nav-link">C</button></li>';
     document.body.appendChild(container);
 
-    a11yModule.setupKeyboardNav();
     const tabs = container.querySelectorAll('.nav-link');
-    const focusSpy = jest.spyOn(tabs[2], 'focus');
-    const clickSpy = jest.spyOn(tabs[2], 'click').mockImplementation(() => {});
+    const focusSpy = jest.fn();
+    const clickSpy = jest.fn();
+    tabs[2].focus = focusSpy;
+    tabs[2].click = clickSpy;
+
+    a11yModule.setupKeyboardNav();
 
     const event = new dom.window.KeyboardEvent('keydown', { key: 'End', bubbles: true, cancelable: true });
     tabs[0].dispatchEvent(event);
 
     expect(focusSpy).toHaveBeenCalled();
     expect(clickSpy).toHaveBeenCalled();
-    focusSpy.mockRestore();
-    clickSpy.mockRestore();
     container.remove();
   });
 });
@@ -505,13 +511,25 @@ describe('Accessibility Module - Focus Management (Modal Events)', () => {
     const triggerBtn = document.createElement('button');
     triggerBtn.id = 'modalTrigger';
     document.body.appendChild(triggerBtn);
-    triggerBtn.focus();
+
+    // Simulate focus by overriding document.activeElement to avoid JSDOM
+    // setTimeout recursion triggered by native .focus() in this test environment
+    const origDescriptor = Object.getOwnPropertyDescriptor(dom.window.Document.prototype, 'activeElement')
+      || Object.getOwnPropertyDescriptor(Document.prototype, 'activeElement');
+    Object.defineProperty(document, 'activeElement', { value: triggerBtn, configurable: true });
 
     const modal = document.getElementById('testModal');
     const event = new dom.window.Event('show.bs.modal', { bubbles: true });
     modal.dispatchEvent(event);
 
     expect(modal._a11yTrigger).toBe(triggerBtn);
+
+    // Restore activeElement
+    if (origDescriptor) {
+      Object.defineProperty(document, 'activeElement', origDescriptor);
+    } else {
+      delete document.activeElement;
+    }
     triggerBtn.remove();
   });
 

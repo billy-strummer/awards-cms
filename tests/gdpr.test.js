@@ -624,12 +624,13 @@ describe('GDPR Module - _fetchPage and _goToPage', () => {
       count: 0,
       totalPages: 1,
     });
-    gdprModule._renderRequests = jest.fn();
+    const renderSpy = jest.spyOn(gdprModule, '_renderRequests').mockImplementation(() => {});
 
     gdprModule._goToPage(1);
     // Wait for promise
     await new Promise((r) => setTimeout(r, 50));
-    expect(gdprModule._renderRequests).toHaveBeenCalled();
+    expect(renderSpy).toHaveBeenCalled();
+    renderSpy.mockRestore();
   });
 });
 

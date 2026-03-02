@@ -616,3 +616,127 @@ describe('Entry Revision Module - _submitModalChanges()', () => {
     expect(entryRevisionModule.requestChanges).toHaveBeenCalledWith('e1', 'Fix the images');
   });
 });
+
+// ==========================================================================
+// ADDITIONAL TESTS — 100% statement coverage for entry-revision.js
+// ==========================================================================
+
+describe('Entry Revision Module - _uploadFiles()', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('uploads files successfully and inserts into entry_files', async () => {
+    const mockUpload = jest.fn().mockResolvedValue({ error: null });
+    const mockGetPublicUrl = jest.fn().mockReturnValue({ data: { publicUrl: 'https://cdn.example.com/test.pdf' } });
+    STATE.client.storage.from = jest.fn().mockReturnValue({
+      upload: mockUpload,
+      getPublicUrl: mockGetPublicUrl,
+    });
+    apiClient.insert = jest.fn().mockResolvedValue({});
+
+    const fakeFiles = [
+      { name: 'doc1.pdf' },
+      { name: 'doc2.png' },
+    ];
+
+    await entryRevisionModule._uploadFiles('e1', fakeFiles);
+
+    expect(mockUpload).toHaveBeenCalledTimes(2);
+    expect(mockGetPublicUrl).toHaveBeenCalledTimes(2);
+    expect(apiClient.insert).toHaveBeenCalledTimes(2);
+    expect(apiClient.insert).toHaveBeenCalledWith(
+      'entry_files',
+      expect.objectContaining({
+        entry_id: 'e1',
+        file_name: 'doc1.pdf',
+        file_url: 'https://cdn.example.com/test.pdf',
+      })
+    );
+  });
+
+  test('skips insert when upload fails and continues to next file', async () => {
+    const mockUpload = jest.fn()
+      .mockResolvedValueOnce({ error: { message: 'Too large' } })
+      .mockResolvedValueOnce({ error: null });
+    const mockGetPublicUrl = jest.fn().mockReturnValue({ data: { publicUrl: 'https://cdn.example.com/ok.pdf' } });
+    STATE.client.storage.from = jest.fn().mockReturnValue({
+      upload: mockUpload,
+      getPublicUrl: mockGetPublicUrl,
+    });
+    apiClient.insert = jest.fn().mockResolvedValue({});
+
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const fakeFiles = [
+      { name: 'bad.pdf' },
+      { name: 'good.pdf' },
+    ];
+
+    await entryRevisionModule._uploadFiles('e1', fakeFiles);
+
+    expect(mockUpload).toHaveBeenCalledTimes(2);
+    // getPublicUrl only called for the successful upload
+    expect(mockGetPublicUrl).toHaveBeenCalledTimes(1);
+    // insert only called for the successful upload
+    expect(apiClient.insert).toHaveBeenCalledTimes(1);
+    expect(apiClient.insert).toHaveBeenCalledWith(
+      'entry_files',
+      expect.objectContaining({ file_name: 'good.pdf' })
+    );
+    expect(warnSpy).toHaveBeenCalledWith('Upload failed:', 'Too large');
+    warnSpy.mockRestore();
+  });
+});
+
+describe('Entry Revision Module - renderRevisionReview() with files', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('renders file list when files exist', async () => {
+    apiClient.select = jest
+      .fn()
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 'e1',
+            entry_number: 'BTA-001',
+            entry_title: 'Best Innovation',
+            status: 'Resubmitted',
+            organisations: { organisation_name: 'Test Corp' },
+            awards: { award_name: 'Best Test' },
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        data: [{ id: 'r1', feedback: 'Fix images', response: 'Done', created_at: '2026-01-15T10:00:00Z' }],
+      });
+    apiClient.selectAll = jest.fn().mockResolvedValue([
+      { file_name: 'report.pdf', file_url: 'https://cdn.example.com/report.pdf', uploaded_at: '2026-01-16T10:00:00Z' },
+      { file_name: 'photo.png', file_url: 'https://cdn.example.com/photo.png', uploaded_at: '2026-01-16T11:00:00Z' },
+    ]);
+
+    const html = await entryRevisionModule.renderRevisionReview('e1');
+    expect(html).toContain('<li>');
+    expect(html).toContain('report.pdf');
+    expect(html).toContain('https://cdn.example.com/report.pdf');
+    expect(html).toContain('photo.png');
+    expect(html).toContain('Files:');
+  });
+});
+
+describe('Entry Revision Module - _expireRevision() error path', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('logs warning when _expireRevision fails', async () => {
+    apiClient.select = jest.fn().mockRejectedValue(new Error('Connection lost'));
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    await entryRevisionModule._expireRevision('r1', 'e1');
+
+    expect(warnSpy).toHaveBeenCalledWith('Expire revision failed:', 'Connection lost');
+    warnSpy.mockRestore();
+  });
+});

@@ -281,8 +281,20 @@ describe('Reporting Module - exportRevenueReport', () => {
     };
     apiClient.selectAll = jest
       .fn()
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([{ amount: 100, payment_date: '2026-03-01' }]);
+      .mockResolvedValueOnce([
+        {
+          invoice_number: 'INV-001',
+          total_amount: 100,
+          paid_amount: 50,
+          payment_status: 'partial',
+          created_at: '2026-03-01',
+          organisations: { company_name: 'Acme' },
+        },
+      ])
+      .mockResolvedValueOnce([
+        { amount: 100, payment_date: '2026-03-01' },
+        { amount: 200, payment_date: '2026-07-15' },
+      ]);
     const toastSpy = jest.spyOn(utils, 'showToast');
     await reportingModule.exportRevenueReport('pdf');
     expect(toastSpy).toHaveBeenCalledWith('Revenue report exported', 'success');
@@ -353,7 +365,16 @@ describe('Reporting Module - exportJudgeProgress', () => {
         }
       },
     };
-    apiClient.selectAll = jest.fn().mockResolvedValue([]);
+    apiClient.selectAll = jest.fn().mockResolvedValue([
+      {
+        judge_email: 'judge@test.com',
+        total_score: 80,
+        innovation_score: 8,
+        impact_score: 7,
+        quality_score: 9,
+        presentation_score: 6,
+      },
+    ]);
     const toastSpy = jest.spyOn(utils, 'showToast');
     await reportingModule.exportJudgeProgress('pdf');
     expect(toastSpy).toHaveBeenCalledWith('Judge progress exported', 'success');
@@ -411,7 +432,18 @@ describe('Reporting Module - exportVotingTrends', () => {
         }
       },
     };
-    apiClient.selectAll = jest.fn().mockResolvedValue([]);
+    apiClient.selectAll = jest.fn().mockResolvedValue([
+      {
+        entry_id: 'e1',
+        created_at: '2026-03-01T10:00:00Z',
+        entries: { award_years: { award_name: 'Best Innovation' } },
+      },
+      {
+        entry_id: 'e2',
+        created_at: '2026-03-02T10:00:00Z',
+        entries: { award_years: { award_name: 'Best Service' } },
+      },
+    ]);
     const toastSpy = jest.spyOn(utils, 'showToast');
     await reportingModule.exportVotingTrends('pdf');
     expect(toastSpy).toHaveBeenCalledWith('Voting trends exported', 'success');
@@ -475,7 +507,16 @@ describe('Reporting Module - exportSponsorROI', () => {
         }
       },
     };
-    apiClient.selectAll = jest.fn().mockResolvedValue([]);
+    apiClient.selectAll = jest.fn().mockResolvedValue([
+      {
+        name: 'Gold Sponsor',
+        company_name: 'Gold Corp',
+        tier: 'Gold',
+        website: 'https://gold.com',
+        contact_name: 'Jo',
+        created_at: '2025-01-01',
+      },
+    ]);
     const toastSpy = jest.spyOn(utils, 'showToast');
     await reportingModule.exportSponsorROI('pdf');
     expect(toastSpy).toHaveBeenCalledWith('Sponsor ROI exported', 'success');
@@ -629,6 +670,25 @@ describe('Reporting Module - scheduleEmailReport', () => {
     toastSpy.mockRestore();
     localStorage.removeItem('bta_scheduled_reports');
   });
+
+  test('handles localStorage failure in fallback', async () => {
+    apiClient.insert = jest.fn().mockRejectedValue(new Error('DB unavailable'));
+    const origParse = JSON.parse;
+    JSON.parse = jest.fn(() => {
+      throw new Error('Storage full');
+    });
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const result = await reportingModule.scheduleEmailReport({
+      name: 'Broken Report',
+      recipients: 'admin@test.com',
+    });
+    expect(result).toBe(false);
+    expect(warnSpy).toHaveBeenCalledWith('Failed to save scheduled report:', 'Storage full');
+    JSON.parse = origParse;
+    warnSpy.mockRestore();
+    errorSpy.mockRestore();
+  });
 });
 
 describe('Reporting Module - generateBoardReport', () => {
@@ -663,7 +723,10 @@ describe('Reporting Module - generateBoardReport', () => {
       .mockResolvedValueOnce([{ id: 'js1', judge_email: 'judge@test.com' }])
       .mockResolvedValueOnce([{ id: 'v1', created_at: '2026-01-01' }])
       .mockResolvedValueOnce([{ id: 's1', tier: 'Gold' }])
-      .mockResolvedValueOnce([{ id: 'p1', amount: 5000, payment_date: '2026-01-15' }]);
+      .mockResolvedValueOnce([
+        { id: 'p1', amount: 5000, payment_date: '2026-01-15' },
+        { id: 'p2', amount: 3000, payment_date: '2026-07-20' },
+      ]);
 
     const toastSpy = jest.spyOn(utils, 'showToast');
     await reportingModule.generateBoardReport();

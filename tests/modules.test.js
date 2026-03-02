@@ -234,6 +234,19 @@ describe('Config / STATE', () => {
     expect(REGIONS).toContain('Kent');
     expect(REGIONS).toContain('London North');
   });
+
+  test('ModuleRegistry.list() returns registered module names', () => {
+    const names = ModuleRegistry.list();
+    expect(Array.isArray(names)).toBe(true);
+    expect(names).toContain('STATE');
+    expect(names).toContain('STATUS');
+    expect(names).toContain('SUPABASE_CONFIG');
+  });
+
+  test('ModuleRegistry.get() returns a registered module', () => {
+    const state = ModuleRegistry.get('STATE');
+    expect(state).toBe(STATE);
+  });
 });
 
 describe('RBAC Module', () => {

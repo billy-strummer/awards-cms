@@ -744,6 +744,25 @@ describe('Sponsor Portal - calculateROI', () => {
     consoleSpy.mockRestore();
   });
 
+  test('returns fallback object when apiClient.select rejects', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+    apiClient.selectAll = jest.fn().mockResolvedValue([]);
+    apiClient.select = jest.fn().mockRejectedValue(new Error('DB connection lost'));
+
+    const roi = await sponsorPortalModule.calculateROI('s1');
+
+    expect(consoleSpy).toHaveBeenCalledWith('calculateROI:', expect.any(Error));
+    expect(roi).toEqual({
+      totalImpressions: 0,
+      estimatedClicks: 0,
+      costPerImpression: 'N/A',
+      costPerClick: 'N/A',
+      totalSpend: 0,
+      stats: {},
+    });
+    consoleSpy.mockRestore();
+  });
+
   test('handles no active contract', async () => {
     apiClient.selectAll = jest.fn().mockResolvedValue([{ tracked_at: new Date().toISOString(), page: '/home' }]);
     apiClient.select = jest.fn().mockResolvedValue({ data: [] });

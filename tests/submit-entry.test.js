@@ -1167,3 +1167,165 @@ describe('populateRegions', () => {
     expect(values).toContain('London North');
   });
 });
+
+// ============================================================
+// 10. Coverage: showPublicToast setTimeout fade-out (lines 173-174)
+// ============================================================
+
+describe('showPublicToast — timer-based fade-out and removal', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    // Remove any leftover toast container
+    const existing = document.getElementById('publicToastContainer');
+    if (existing) existing.remove();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  test('toast opacity fades to 0 after 4000ms and element is removed after 300ms more', () => {
+    // Trigger showPublicToast indirectly via a validation failure that calls it
+    document.getElementById('region').value = '';
+    entryFormApp.validateStep(1); // calls showPublicToast('Please select your county or city')
+
+    // requestAnimationFrame is mocked as setTimeout(cb, 0), advance past it
+    jest.advanceTimersByTime(0);
+
+    const container = document.getElementById('publicToastContainer');
+    expect(container).not.toBeNull();
+    const toast = container.querySelector('div');
+    expect(toast).not.toBeNull();
+    expect(toast.style.opacity).toBe('1');
+
+    // Advance 4000ms to trigger the outer setTimeout (lines 173-174)
+    jest.advanceTimersByTime(4000);
+    expect(toast.style.opacity).toBe('0');
+
+    // Advance another 300ms to trigger the inner setTimeout (toast.remove())
+    jest.advanceTimersByTime(300);
+    expect(container.contains(toast)).toBe(false);
+  });
+});
+
+// ============================================================
+// 11. Coverage: Choices constructor branch (line 306)
+// ============================================================
+
+describe('populateRegions — Choices.js integration (line 306)', () => {
+  test('instantiates Choices when global Choices is defined', () => {
+    // Define a mock Choices constructor on the window
+    const mockInstance = { destroy: jest.fn() };
+    global.window.Choices = jest.fn().mockReturnValue(mockInstance);
+    // Also expose on global so the typeof check inside the IIFE sees it
+    global.Choices = global.window.Choices;
+
+    entryFormApp.populateRegions();
+
+    expect(global.window.Choices).toHaveBeenCalledWith(
+      '#region',
+      expect.objectContaining({
+        searchEnabled: true,
+        shouldSort: false,
+      })
+    );
+    expect(entryFormApp.regionChoicesInstance).toBe(mockInstance);
+
+    // Clean up
+    delete global.Choices;
+    global.window.Choices = undefined;
+    entryFormApp.regionChoicesInstance = null;
+  });
+});
+
+// ============================================================
+// 12. Coverage: character counter input handler (lines 335-337)
+// ============================================================
+
+describe('setupCharCounters — input event updates counter text (lines 335-337)', () => {
+  beforeEach(() => {
+    resetApp();
+    entryFormApp.setupCharCounters();
+  });
+
+  test('updates descCharCount when entryDescription receives input', () => {
+    const el = document.getElementById('entryDescription');
+    const counter = document.getElementById('descCharCount');
+
+    el.value = 'Hello World'; // 11 chars
+    el.dispatchEvent(new dom.window.Event('input'));
+
+    expect(counter.textContent).toBe('11 / 1,000');
+  });
+
+  test('updates whyCharCount when whyShouldWin receives input', () => {
+    const el = document.getElementById('whyShouldWin');
+    const counter = document.getElementById('whyCharCount');
+
+    el.value = 'A'.repeat(50);
+    el.dispatchEvent(new dom.window.Event('input'));
+
+    expect(counter.textContent).toBe('50 / 2,000');
+  });
+
+  test('updates supportCharCount when supportingInfo receives input', () => {
+    const el = document.getElementById('supportingInfo');
+    const counter = document.getElementById('supportCharCount');
+
+    el.value = 'Test';
+    el.dispatchEvent(new dom.window.Event('input'));
+
+    expect(counter.textContent).toBe('4 / 1,500');
+  });
+
+  test('adds warn class when text exceeds 90% of max', () => {
+    const el = document.getElementById('entryDescription');
+    const counter = document.getElementById('descCharCount');
+
+    // 901 chars exceeds 90% of 1000
+    el.value = 'X'.repeat(901);
+    el.dispatchEvent(new dom.window.Event('input'));
+
+    expect(counter.classList.contains('warn')).toBe(true);
+  });
+});
+
+// ============================================================
+// 13. Coverage: Enter keydown on award-option (line 414)
+// ============================================================
+
+describe('buildCategoryList — Enter key handler on award options (line 414)', () => {
+  beforeEach(() => {
+    resetApp();
+    entryFormApp.formData = { region: 'Kent', sector: 'OUTDOOR & LANDSCAPING' };
+    entryFormApp.buildCategoryList();
+  });
+
+  test('pressing Enter on an award option triggers click and selects the category', () => {
+    const options = document.querySelectorAll('.award-option');
+    const firstOpt = options[0];
+
+    // Dispatch a keydown event with key='Enter'
+    const keydownEvent = new dom.window.KeyboardEvent('keydown', {
+      key: 'Enter',
+      bubbles: true,
+    });
+    firstOpt.dispatchEvent(keydownEvent);
+
+    expect(entryFormApp.selectedAwardCategory).toBe('Decking Company');
+    expect(firstOpt.classList.contains('selected')).toBe(true);
+  });
+
+  test('pressing a non-Enter key does NOT trigger selection', () => {
+    const options = document.querySelectorAll('.award-option');
+    const firstOpt = options[0];
+
+    const keydownEvent = new dom.window.KeyboardEvent('keydown', {
+      key: 'Space',
+      bubbles: true,
+    });
+    firstOpt.dispatchEvent(keydownEvent);
+
+    expect(entryFormApp.selectedAwardCategory).toBeNull();
+  });
+});

@@ -144,6 +144,25 @@ syncWindowToGlobal();
 require('../payments.js');
 syncWindowToGlobal();
 
+// Save original method references so tests that mock them can restore afterwards
+const _origLoadInvoices = paymentsModule.loadInvoices;
+const _origLoadPayments = paymentsModule.loadPayments;
+const _origLoadOrganisationsForFilters = paymentsModule.loadOrganisationsForFilters;
+const _origFilterInvoices = paymentsModule.filterInvoices;
+const _origFilterPayments = paymentsModule.filterPayments;
+const _origUpdateStatistics = paymentsModule.updateStatistics;
+const _origFetchInvoicePage = paymentsModule._fetchInvoicePage;
+
+function _restoreOriginalMethods() {
+  paymentsModule.loadInvoices = _origLoadInvoices;
+  paymentsModule.loadPayments = _origLoadPayments;
+  paymentsModule.loadOrganisationsForFilters = _origLoadOrganisationsForFilters;
+  paymentsModule.filterInvoices = _origFilterInvoices;
+  paymentsModule.filterPayments = _origFilterPayments;
+  paymentsModule.updateStatistics = _origUpdateStatistics;
+  paymentsModule._fetchInvoicePage = _origFetchInvoicePage;
+}
+
 // ==========================================
 // SAMPLE DATA
 // ==========================================
@@ -510,6 +529,7 @@ describe('Payments Module - filterPayments()', () => {
   beforeEach(() => {
     paymentsModule.allPayments = [...samplePayments];
     paymentsModule.currentPayments = [];
+    paymentsModule._payServerPagination = false;
     document.getElementById('paymentSearchBox').value = '';
     document.getElementById('paymentMethodFilter').value = '';
     document.getElementById('paymentStatusFilter').value = '';
@@ -692,7 +712,11 @@ describe('Payments Module - Edge Cases', () => {
 
   test('filterPayments handles empty allPayments', () => {
     paymentsModule.allPayments = [];
+    paymentsModule._payServerPagination = false;
     document.getElementById('paymentSearchBox').value = '';
+    document.getElementById('paymentMethodFilter').value = '';
+    document.getElementById('paymentStatusFilter').value = '';
+    document.getElementById('paymentMonthFilter').value = '';
     paymentsModule.filterPayments();
     expect(paymentsModule.currentPayments).toEqual([]);
   });
@@ -898,6 +922,7 @@ describe('Payments Module - Payment Filtering Advanced', () => {
     paymentsModule.currentPayments = [...paymentsModule.allPayments];
     paymentsModule._payCurrentPage = 1;
     paymentsModule._payPageSize = 50;
+    paymentsModule._payServerPagination = false;
     document.getElementById('paymentSearchBox').value = '';
     document.getElementById('paymentMethodFilter').value = '';
     document.getElementById('paymentStatusFilter').value = '';
@@ -1152,6 +1177,7 @@ describe('Payments Module - Payment Pagination Advanced', () => {
     paymentsModule.currentPayments = manyPayments;
     paymentsModule._payCurrentPage = 1;
     paymentsModule._payPageSize = 50;
+    paymentsModule._payServerPagination = false;
   });
 
   test('goToPaymentPage with negative page clamps to 1', () => {
@@ -1656,6 +1682,10 @@ describe('Payments Module - _goToInvoicePage()', () => {
     paymentsModule._fetchInvoicePage = jest.fn().mockResolvedValue();
   });
 
+  afterEach(() => {
+    _restoreOriginalMethods();
+  });
+
   test('clamps page to valid range (min)', async () => {
     paymentsModule._pagination = { page: 3, totalPages: 5, count: 250, pageSize: 50 };
     await paymentsModule._goToInvoicePage(0);
@@ -1977,13 +2007,19 @@ describe('Payments Module - loadPayments()', () => {
     const mockPayments = [
       { id: 'p1', payment_reference: 'PAY-001', amount: 100, status: 'completed', payment_date: '2026-01-15' },
     ];
-    apiClient.selectAll = jest.fn().mockResolvedValue(mockPayments);
+    apiClient.select = jest.fn().mockResolvedValue({
+      data: mockPayments,
+      page: 1,
+      totalPages: 1,
+      count: mockPayments.length,
+      pageSize: 50,
+    });
     await paymentsModule.loadPayments();
     expect(paymentsModule.allPayments).toEqual(mockPayments);
   });
 
   test('handles load error', async () => {
-    apiClient.selectAll = jest.fn().mockRejectedValue(new Error('DB error'));
+    apiClient.select = jest.fn().mockRejectedValue(new Error('DB error'));
     await paymentsModule.loadPayments();
     // Should not throw, error is caught internally
   });
@@ -2036,6 +2072,10 @@ describe('Payments Module - deleteInvoice()', () => {
     jest.clearAllMocks();
     paymentsModule.allInvoices = [{ id: 'inv-1', invoice_number: 'INV-001' }];
     paymentsModule.currentInvoices = paymentsModule.allInvoices;
+  });
+
+  afterEach(() => {
+    _restoreOriginalMethods();
   });
 
   test('aborts when user cancels confirmation', async () => {
@@ -2161,6 +2201,10 @@ describe('Payments Module - loadAllData()', () => {
     paymentsModule.filterInvoices = jest.fn();
     paymentsModule.filterPayments = jest.fn();
     paymentsModule.updateStatistics = jest.fn();
+  });
+
+  afterEach(() => {
+    _restoreOriginalMethods();
   });
 
   test('calls all load functions', async () => {
@@ -2627,6 +2671,10 @@ describe('Payments Module - bulkUpdateInvoiceStatus()', () => {
     jest.clearAllMocks();
   });
 
+  afterEach(() => {
+    _restoreOriginalMethods();
+  });
+
   test('does nothing when no invoices selected', async () => {
     paymentsModule._selectedInvoiceIds = new Set();
     utils.confirmDialog = jest.fn();
@@ -2660,6 +2708,10 @@ describe('Payments Module - bulkUpdateInvoiceStatus()', () => {
 describe('Payments Module - bulkDeleteInvoices()', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    _restoreOriginalMethods();
   });
 
   test('does nothing when no invoices selected', async () => {
@@ -2743,6 +2795,10 @@ describe('Payments Module - deletePayment()', () => {
     jest.clearAllMocks();
     // Ensure rbacModule is not defined so the RBAC check is skipped
     if (typeof global.rbacModule !== 'undefined') delete global.rbacModule;
+  });
+
+  afterEach(() => {
+    _restoreOriginalMethods();
   });
 
   test('aborts when user cancels confirmation', async () => {
@@ -2881,6 +2937,10 @@ describe('Payments Module - confirmSendInvoice()', () => {
       div.id = 'sendInvoiceModal';
       document.body.appendChild(div);
     }
+  });
+
+  afterEach(() => {
+    _restoreOriginalMethods();
   });
 
   test('validates form before processing', async () => {

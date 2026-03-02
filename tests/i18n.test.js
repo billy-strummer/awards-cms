@@ -249,4 +249,25 @@ describe('i18n Module - loadLocale', () => {
     const result = await i18n.loadLocale('es', '/locales/es.json');
     expect(result).toBe(false);
   });
+
+  test('retry callback in showErrorWithRetry re-invokes loadLocale', async () => {
+    // First call fails, second call succeeds
+    global.fetch = jest.fn()
+      .mockResolvedValueOnce({ ok: false, status: 500 })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ 'nav.dashboard': 'Panel' }),
+      });
+
+    // Mock showErrorWithRetry to invoke the retry callback (2nd argument)
+    utils.showErrorWithRetry = jest.fn(async (_msg, retryFn) => {
+      await retryFn();
+    });
+
+    const result = await i18n.loadLocale('pt', '/locales/pt.json');
+    expect(result).toBe(false);
+    expect(utils.showErrorWithRetry).toHaveBeenCalled();
+    // The retry succeeded, so the locale should now be registered
+    expect(i18n._translations.pt['nav.dashboard']).toBe('Panel');
+  });
 });

@@ -100,6 +100,7 @@ syncWindowToGlobal();
 
 // Save reference to real methods before any test replaces them
 const _realLoadTenants = tenantModule.loadTenants.bind(tenantModule);
+const _realRenderTenantSwitcher = tenantModule.renderTenantSwitcher.bind(tenantModule);
 
 describe('Multi-Tenancy Module - Structure', () => {
   test('tenantModule is defined', () => {
@@ -454,6 +455,9 @@ describe('Multi-Tenancy Module - renderTenantSwitcher without existing element',
   });
 
   test('creates switcher in navbar when element does not exist', () => {
+    // Restore real renderTenantSwitcher in case prior tests replaced it
+    tenantModule.renderTenantSwitcher = _realRenderTenantSwitcher;
+
     // Remove any existing switcher
     const existingSwitcher = document.getElementById('tenantSwitcher');
     if (existingSwitcher) existingSwitcher.remove();

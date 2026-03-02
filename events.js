@@ -8457,6 +8457,142 @@ const eventsModule = {
   _selectedTableId: null,
   _canvasZoom: 1,
   _guestSearchTerm: '',
+  /** @type {boolean|null} null = unknown, true = columns exist, false = missing */
+  _eventTableHasPositionCols: null,
+
+  // ---- Table position localStorage helpers (fallback when DB columns missing) ----
+
+  _tablePositionsKey(eventId) {
+    return `table_positions_${eventId || this.currentEventIdTablePlan}`;
+  },
+
+  _loadLocalPositions() {
+    try {
+      const raw = localStorage.getItem(this._tablePositionsKey());
+      return raw ? JSON.parse(raw) : {};
+    } catch { return {}; }
+  },
+
+  _saveLocalPosition(tableId, x, y) {
+    const positions = this._loadLocalPositions();
+    positions[tableId] = { x, y };
+    localStorage.setItem(this._tablePositionsKey(), JSON.stringify(positions));
+  },
+
+  _saveLocalPositionsBatch(entries) {
+    const positions = this._loadLocalPositions();
+    for (const { id, x, y } of entries) {
+      positions[id] = { x, y };
+    }
+    localStorage.setItem(this._tablePositionsKey(), JSON.stringify(positions));
+  },
+
+  _mergeLocalPositions(tables) {
+    const positions = this._loadLocalPositions();
+    for (const t of tables) {
+      if ((!t.position_x && !t.position_y) || this._eventTableHasPositionCols === false) {
+        const saved = positions[t.id];
+        if (saved) {
+          t.position_x = saved.x;
+          t.position_y = saved.y;
+        }
+      }
+    }
+  },
+
+  /**
+   * Insert into event_tables, stripping position columns if they don't exist in DB.
+   * Saves positions to localStorage as fallback.
+   */
+  async _insertEventTable(data) {
+    const posX = data.position_x;
+    const posY = data.position_y;
+
+    if (this._eventTableHasPositionCols === false) {
+      const { position_x, position_y, ...rest } = data;
+      const result = await apiClient.insert('event_tables', rest);
+      // Save positions to localStorage — result may be the inserted row(s)
+      if (result && result.id) {
+        this._saveLocalPosition(result.id, posX, posY);
+      }
+      return result;
+    }
+
+    try {
+      const result = await apiClient.insert('event_tables', data);
+      if (this._eventTableHasPositionCols === null) this._eventTableHasPositionCols = true;
+      return result;
+    } catch (err) {
+      if (err.message?.includes('position_x') || err.message?.includes('schema cache')) {
+        this._eventTableHasPositionCols = false;
+        const { position_x, position_y, ...rest } = data;
+        const result = await apiClient.insert('event_tables', rest);
+        if (result && result.id) {
+          this._saveLocalPosition(result.id, posX, posY);
+        }
+        return result;
+      }
+      throw err;
+    }
+  },
+
+  /**
+   * Batch insert event_tables, stripping position columns if needed.
+   */
+  async _insertEventTablesBatch(rows) {
+    const positionEntries = rows.map(r => ({ position_x: r.position_x, position_y: r.position_y }));
+
+    if (this._eventTableHasPositionCols === false) {
+      const stripped = rows.map(({ position_x, position_y, ...rest }) => rest);
+      const results = await apiClient.insert('event_tables', stripped);
+      // Save positions locally using returned ids
+      if (Array.isArray(results)) {
+        const batch = results.map((r, i) => ({ id: r.id, x: positionEntries[i].position_x, y: positionEntries[i].position_y }));
+        this._saveLocalPositionsBatch(batch);
+      }
+      return results;
+    }
+
+    try {
+      const results = await apiClient.insert('event_tables', rows);
+      if (this._eventTableHasPositionCols === null) this._eventTableHasPositionCols = true;
+      return results;
+    } catch (err) {
+      if (err.message?.includes('position_x') || err.message?.includes('schema cache')) {
+        this._eventTableHasPositionCols = false;
+        const stripped = rows.map(({ position_x, position_y, ...rest }) => rest);
+        const results = await apiClient.insert('event_tables', stripped);
+        if (Array.isArray(results)) {
+          const batch = results.map((r, i) => ({ id: r.id, x: positionEntries[i].position_x, y: positionEntries[i].position_y }));
+          this._saveLocalPositionsBatch(batch);
+        }
+        return results;
+      }
+      throw err;
+    }
+  },
+
+  /**
+   * Update event_tables position, falling back to localStorage if columns missing.
+   */
+  async _updateEventTablePosition(tableId, x, y) {
+    if (this._eventTableHasPositionCols === false) {
+      this._saveLocalPosition(tableId, x, y);
+      return;
+    }
+
+    try {
+      await apiClient.update('event_tables', tableId, { position_x: x, position_y: y });
+      if (this._eventTableHasPositionCols === null) this._eventTableHasPositionCols = true;
+    } catch (err) {
+      if (err.message?.includes('position_x') || err.message?.includes('schema cache')) {
+        this._eventTableHasPositionCols = false;
+        this._saveLocalPosition(tableId, x, y);
+      } else {
+        throw err;
+      }
+    }
+  },
 
   /**
    * Open Table Plan Modal
@@ -8897,6 +9033,14 @@ const eventsModule = {
       }
       this.tables = tables || [];
 
+      // Detect if DB has position columns by checking the first table row
+      if (this._eventTableHasPositionCols === null && this.tables.length > 0) {
+        this._eventTableHasPositionCols = 'position_x' in this.tables[0];
+      }
+
+      // Merge positions from localStorage if DB columns are missing
+      this._mergeLocalPositions(this.tables);
+
       // Load assignments for each table
       for (const table of this.tables) {
         try {
@@ -9085,7 +9229,7 @@ const eventsModule = {
       // Get starting table number
       const maxNum = this.tables.reduce((max, t) => Math.max(max, t.table_number || 0), 0);
 
-      // Batch insert all tables
+      // Batch insert all tables (resilient to missing position columns)
       const tablesToInsert = positions.map((pos, i) => ({
         event_id: this.currentEventIdTablePlan,
         table_number: maxNum + i + 1,
@@ -9095,7 +9239,7 @@ const eventsModule = {
         position_y: pos.y,
       }));
 
-      await apiClient.insert('event_tables', tablesToInsert);
+      await this._insertEventTablesBatch(tablesToInsert);
 
       utils.showToast(`${count} tables created`, 'success');
 
@@ -10012,7 +10156,7 @@ const eventsModule = {
         const newX = Math.max(0, Math.round(parseInt(this._tableDrag.el.style.left)));
         const newY = Math.max(0, Math.round(parseInt(this._tableDrag.el.style.top)));
         try {
-          await apiClient.update('event_tables', tableId, { position_x: newX, position_y: newY });
+          await this._updateEventTablePosition(tableId, newX, newY);
           // Update local data
           const t = this.tables.find((t) => t.id === tableId);
           if (t) {
@@ -10553,7 +10697,7 @@ const eventsModule = {
       const cx = Math.round((scrollLeft + 300) / this._canvasZoom);
       const cy = Math.round((scrollTop + 200) / this._canvasZoom);
 
-      await apiClient.insert('event_tables', {
+      await this._insertEventTable({
         event_id: this.currentEventIdTablePlan,
         table_number: nextNumber,
         total_seats: 8,
@@ -11682,7 +11826,7 @@ const eventsModule = {
       });
       if (numberError) throw numberError;
 
-      await apiClient.insert('event_tables', {
+      await this._insertEventTable({
         event_id: this.currentEventIdTablePlan,
         table_number: nextNumber,
         table_name: source.table_name ? source.table_name + ' (copy)' : null,

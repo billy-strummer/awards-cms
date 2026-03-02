@@ -567,12 +567,11 @@ describe('Nominee Voting - initialize', () => {
   });
 
   test('shows error when no entry or id param', async () => {
-    // Override window.location.search to have no params
-    const origSearch = window.location.search;
-    Object.defineProperty(window, 'location', {
-      value: { ...window.location, search: '' },
-      writable: true,
-    });
+    // Mock URLSearchParams to return empty params (no 'entry' or 'id')
+    const OriginalURLSearchParams = global.URLSearchParams;
+    global.URLSearchParams = jest.fn(() => ({
+      get: jest.fn(() => null),
+    }));
 
     const showErrorSpy = jest.spyOn(nomineeVoting, 'showError').mockImplementation();
     const loadEntrySpy = jest.spyOn(nomineeVoting, 'loadEntry').mockResolvedValue();
@@ -583,10 +582,7 @@ describe('Nominee Voting - initialize', () => {
     expect(loadEntrySpy).not.toHaveBeenCalled();
 
     // Restore
-    Object.defineProperty(window, 'location', {
-      value: { ...window.location, search: origSearch },
-      writable: true,
-    });
+    global.URLSearchParams = OriginalURLSearchParams;
   });
 });
 

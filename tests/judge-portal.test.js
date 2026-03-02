@@ -1636,8 +1636,11 @@ describe('Judge Portal - _attachEventListeners click delegation', () => {
 describe('Judge Portal - saveScore validation failure', () => {
   test('returns early when a score is out of bounds', async () => {
     judgePortal.currentEntry = { id: 'entry-1' };
-    // Set a score out-of-range (> maxScore of 10)
-    document.getElementById('innovation_score').value = '15';
+    const slider = document.getElementById('innovation_score');
+    // Widen the range attribute so jsdom doesn't clamp, then set out-of-range value
+    slider.setAttribute('max', '100');
+    slider.value = '15';
+
     document.getElementById('impact_score').value = '7';
     document.getElementById('quality_score').value = '6';
     document.getElementById('presentation_score').value = '8';
@@ -1646,11 +1649,12 @@ describe('Judge Portal - saveScore validation failure', () => {
 
     await judgePortal.saveScore(false);
 
-    // upsert should NOT have been called because validation failed
+    // upsert should NOT have been called because validation failed (val > maxScore 10)
     expect(upsertSpy).not.toHaveBeenCalled();
 
-    // Reset slider value
-    document.getElementById('innovation_score').value = '5';
+    // Reset slider value and max
+    slider.setAttribute('max', '10');
+    slider.value = '5';
     upsertSpy.mockRestore();
   });
 });

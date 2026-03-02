@@ -2274,3 +2274,256 @@ describe('Test Data Manager - removeMockOrders setTimeout callback', () => {
     );
   });
 });
+
+describe('Test Data Manager - executeTestDataGeneration _safeWrite error pushes', () => {
+  let fromChain, toastSpy;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.useFakeTimers();
+    toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    fromChain = buildChainableMock({ data: [], error: null, count: 0 });
+    mockSupabase.from.mockReturnValue(fromChain);
+    fromChain.upsert.mockResolvedValue({ error: null });
+    fromChain.insert.mockResolvedValue({ error: null });
+    fromChain.delete.mockReturnValue(fromChain);
+    fromChain.eq.mockReturnValue(fromChain);
+    fromChain.like.mockReturnValue(fromChain);
+    fromChain.then = jest.fn((cb) => Promise.resolve({ data: [], error: null }).then(cb));
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+    jest.restoreAllMocks();
+  });
+
+  test('pushes errors when _safeWrite returns errors for events, orgs, assignments, winners, guests', async () => {
+    fromChain.select.mockReturnValue(fromChain);
+    fromChain.limit.mockReturnValue(Promise.resolve({ data: [{ id: 'x' }], error: null }));
+
+    jest.spyOn(testDataManager, 'seedCounties').mockResolvedValue();
+    jest.spyOn(testDataManager, 'generateEntries').mockResolvedValue();
+    jest.spyOn(testDataManager, 'generateMarketingData').mockResolvedValue();
+    jest.spyOn(testDataManager, 'generateCRMData').mockResolvedValue();
+    jest.spyOn(testDataManager, 'generatePaymentsData').mockResolvedValue();
+    jest.spyOn(testDataManager, 'generateMediaData').mockResolvedValue();
+    jest.spyOn(testDataManager, 'generateRunningOrder').mockResolvedValue();
+    jest.spyOn(testDataManager, 'generateEventExtras').mockResolvedValue();
+    jest.spyOn(testDataManager, 'generateMarketingExtras').mockResolvedValue();
+    jest.spyOn(testDataManager, 'generateExtras').mockResolvedValue();
+    jest.spyOn(testDataManager, 'showModal').mockImplementation(() => {});
+
+    // Make _safeWrite return errors for specific tables to hit all errors.push() paths
+    jest.spyOn(testDataManager, '_safeWrite').mockImplementation(async (table) => {
+      if (
+        table === 'events' ||
+        table === 'organisations' ||
+        table === 'award_assignments' ||
+        table === 'winners' ||
+        table === 'event_guests'
+      ) {
+        return { error: { message: table + ' write failed' }, stripped: [] };
+      }
+      return { error: null, stripped: [] };
+    });
+
+    await testDataManager.executeTestDataGeneration();
+
+    // Should report errors for each failed step
+    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('error(s)'), 'warning');
+  });
+
+  test('pushes awards error when both award_years and awards view fallback fail', async () => {
+    fromChain.select.mockReturnValue(fromChain);
+    fromChain.limit.mockReturnValue(Promise.resolve({ data: [{ id: 'x' }], error: null }));
+
+    jest.spyOn(testDataManager, 'seedCounties').mockResolvedValue();
+    jest.spyOn(testDataManager, 'generateEntries').mockResolvedValue();
+    jest.spyOn(testDataManager, 'generateMarketingData').mockResolvedValue();
+    jest.spyOn(testDataManager, 'generateCRMData').mockResolvedValue();
+    jest.spyOn(testDataManager, 'generatePaymentsData').mockResolvedValue();
+    jest.spyOn(testDataManager, 'generateMediaData').mockResolvedValue();
+    jest.spyOn(testDataManager, 'generateRunningOrder').mockResolvedValue();
+    jest.spyOn(testDataManager, 'generateEventExtras').mockResolvedValue();
+    jest.spyOn(testDataManager, 'generateMarketingExtras').mockResolvedValue();
+    jest.spyOn(testDataManager, 'generateExtras').mockResolvedValue();
+    jest.spyOn(testDataManager, 'showModal').mockImplementation(() => {});
+
+    // Make _safeWrite fail for both award_years and awards tables
+    jest.spyOn(testDataManager, '_safeWrite').mockImplementation(async (table) => {
+      if (table === 'award_years' || table === 'awards') {
+        return { error: { message: table + ' write failed' }, stripped: [] };
+      }
+      return { error: null, stripped: [] };
+    });
+
+    await testDataManager.executeTestDataGeneration();
+
+    // Should have errors for awards
+    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('error(s)'), 'warning');
+  });
+});
+
+describe('Test Data Manager - showTestDataInfo with non-null counts', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    jest.spyOn(utils, 'showLoading').mockImplementation(() => {});
+    jest.spyOn(utils, 'hideLoading').mockImplementation(() => {});
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('shows test data with all non-null counts (covers || 0 true branches)', async () => {
+    jest.spyOn(testDataManager, 'showModal').mockImplementation(() => {});
+
+    // Mock Promise.all to return non-null counts for all fields
+    jest.spyOn(Promise, 'all').mockResolvedValueOnce([
+      { data: { id: testDataManager.EVENT_ID, event_name: 'Test Event' } }, // event (truthy)
+      { count: 30 }, // orgCount
+      { count: 10 }, // awardCount
+      { count: 25 }, // rsvpCount
+      { count: 20 }, // entryCount
+      { count: 5 },  // sponsorCount
+      { count: 4 },  // bannerCount
+      { count: 8 },  // invoiceCount
+      { count: 15 }, // contactCount
+      { count: 6 },  // dealCount
+      { count: 10 }, // commCount
+    ]);
+
+    await testDataManager.showTestDataInfo();
+
+    expect(testDataManager.showModal).toHaveBeenCalledWith(
+      'Test Data Information',
+      expect.stringContaining('Test Data Active')
+    );
+    // Verify the actual counts appear (not 0 fallbacks)
+    const callArgs = testDataManager.showModal.mock.calls[0][1];
+    expect(callArgs).toContain('<strong>Yes</strong>');
+    expect(callArgs).toContain('<strong>30</strong>');
+    expect(callArgs).toContain('<strong>10</strong>');
+    expect(callArgs).toContain('<strong>25</strong>');
+    expect(callArgs).toContain('<strong>20</strong>');
+    expect(callArgs).toContain('<strong>8</strong>');
+    expect(callArgs).toContain('<strong>5</strong>');
+    expect(callArgs).toContain('<strong>4</strong>');
+    expect(callArgs).toContain('<strong>15</strong>');
+    expect(callArgs).toContain('<strong>6</strong>');
+  });
+
+  test('shows test data with null event but non-zero counts (covers testEvent falsy branch)', async () => {
+    jest.spyOn(testDataManager, 'showModal').mockImplementation(() => {});
+
+    // Mock Promise.all: null event but orgs > 0 so hasTestData = true
+    jest.spyOn(Promise, 'all').mockResolvedValueOnce([
+      { data: null },  // event null
+      { count: 5 },    // orgCount > 0 so hasTestData = true
+      { count: 0 },    // awardCount
+      { count: null },  // rsvpCount null -> || 0 fires
+      { count: null },  // entryCount null
+      { count: null },  // sponsorCount null
+      { count: null },  // bannerCount null
+      { count: null },  // invoiceCount null
+      { count: null },  // contactCount null
+      { count: null },  // dealCount null
+      { count: null },  // commCount null
+    ]);
+
+    await testDataManager.showTestDataInfo();
+
+    expect(testDataManager.showModal).toHaveBeenCalledWith(
+      'Test Data Information',
+      expect.stringContaining('Test Data Active')
+    );
+    // testEvent is null so should show 'No' not '<strong>Yes</strong>'
+    const callArgs = testDataManager.showModal.mock.calls[0][1];
+    expect(callArgs).toContain('No');
+    expect(callArgs).not.toContain('<strong>Yes</strong>');
+  });
+});
+
+describe('Test Data Manager - _safeWrite error.details and error.hint falsy branches', () => {
+  let fromChain;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    fromChain = buildChainableMock({ data: [], error: null });
+    mockSupabase.from.mockReturnValue(fromChain);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('handles error with no details or hint fields (covers || empty string fallbacks)', async () => {
+    // Return an error with only message, no details or hint
+    fromChain.upsert.mockResolvedValue({
+      error: { message: 'some unknown error' },
+    });
+
+    const result = await testDataManager._safeWrite('test_table', [{ id: 1 }], 'Test', 'upsert');
+
+    // Should return with error since it cannot match any column pattern
+    expect(result.error).toBeTruthy();
+  });
+
+  test('handles error with null message, details and hint', async () => {
+    // Error object with all null values
+    fromChain.upsert.mockResolvedValue({
+      error: { message: null, details: null, hint: null },
+    });
+
+    const result = await testDataManager._safeWrite('test_table', [{ id: 1 }], 'Test', 'upsert');
+
+    expect(result.error).toBeTruthy();
+  });
+});
+
+describe('Test Data Manager - executeTestDataGeneration pre-flight without code/hint', () => {
+  let fromChain, toastSpy;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    fromChain = buildChainableMock({ data: [], error: null, count: 0 });
+    mockSupabase.from.mockReturnValue(fromChain);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('pre-flight error without code or hint (covers falsy branches for pfErr.code and pfErr.hint)', async () => {
+    fromChain.select.mockReturnValue(fromChain);
+    fromChain.limit.mockReturnValue(
+      Promise.resolve({ data: null, error: { message: 'connection refused' } })
+    );
+    jest.spyOn(testDataManager, 'showModal').mockImplementation(() => {});
+
+    await testDataManager.executeTestDataGeneration();
+
+    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('Pre-flight FAILED'), 'error');
+    // The message should not contain '[code:' or 'Hint:' since they are absent
+  });
+
+  test('pre-flight exception with falsy message (covers pfE fallback)', async () => {
+    fromChain.select.mockReturnValue(fromChain);
+    fromChain.limit.mockRejectedValue('string error');
+
+    await testDataManager.executeTestDataGeneration();
+
+    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('string error'), 'error');
+  });
+});

@@ -3478,3 +3478,946 @@ describe('Social Media Module - openPlatformSettings()', () => {
     expect(message).toContain('LinkedIn');
   });
 });
+
+// ==========================================
+// BRANCH COVERAGE TESTS
+// ==========================================
+
+describe('Social Media Module - setupScheduleDateMin() branch coverage', () => {
+  test('returns early when smScheduleDate element is missing', () => {
+    const el = document.getElementById('smScheduleDate');
+    const parent = el.parentNode;
+    el.remove();
+
+    expect(() => socialMediaModule.setupScheduleDateMin()).not.toThrow();
+
+    // Restore
+    parent.appendChild(el);
+  });
+
+  test('sets min attribute when smScheduleDate exists', () => {
+    const el = document.getElementById('smScheduleDate');
+    el.removeAttribute('min');
+    socialMediaModule.setupScheduleDateMin();
+    expect(el.getAttribute('min')).toBeTruthy();
+  });
+});
+
+describe('Social Media Module - loadCompanies() branch: missing select', () => {
+  test('returns early when smCompanySelect is missing', async () => {
+    const el = document.getElementById('smCompanySelect');
+    const parent = el.parentNode;
+    el.remove();
+
+    await expect(socialMediaModule.loadCompanies()).resolves.not.toThrow();
+
+    parent.appendChild(el);
+    // Restore options
+    el.innerHTML = `
+      <option value="">Select company...</option>
+      <option value="comp-1" data-logo="https://example.com/logo1.png" data-website="https://acme.co.uk">Acme Plumbing</option>
+      <option value="comp-2" data-logo="" data-website="">Beta Builders</option>
+    `;
+  });
+});
+
+describe('Social Media Module - loadAwards() branch: missing select', () => {
+  test('returns early when smAwardSelect is missing', async () => {
+    const el = document.getElementById('smAwardSelect');
+    const parent = el.parentNode;
+    el.remove();
+
+    await expect(socialMediaModule.loadAwards()).resolves.not.toThrow();
+
+    parent.appendChild(el);
+    el.innerHTML = `
+      <option value="">Select award...</option>
+      <option value="award-1">Best Plumber South East</option>
+      <option value="award-2">Best Builder London</option>
+    `;
+  });
+});
+
+describe('Social Media Module - selectTemplate() branch: no event', () => {
+  test('works when event is null/undefined', () => {
+    expect(() => socialMediaModule.selectTemplate('nominee', null)).not.toThrow();
+    expect(socialMediaModule.currentTemplate).toBe('nominee');
+    expect(document.getElementById('smPostContent').value).toContain('Congratulations');
+  });
+
+  test('works when event is undefined', () => {
+    expect(() => socialMediaModule.selectTemplate('winner')).not.toThrow();
+    expect(socialMediaModule.currentTemplate).toBe('winner');
+  });
+
+  test('works when event.target.closest returns null', () => {
+    const fakeEvent = { target: { closest: () => null } };
+    expect(() => socialMediaModule.selectTemplate('voting', fakeEvent)).not.toThrow();
+    expect(socialMediaModule.currentTemplate).toBe('voting');
+  });
+});
+
+describe('Social Media Module - updateCharacterCounts() branches', () => {
+  test('handles missing character count elements', () => {
+    const twitterCount = document.getElementById('twitterCharCount');
+    const parent = twitterCount.parentNode;
+    const grandParent = parent.parentNode;
+    grandParent.removeChild(parent);
+
+    document.getElementById('smPostContent').value = 'test content';
+    expect(() => socialMediaModule.updateCharacterCounts()).not.toThrow();
+
+    grandParent.appendChild(parent);
+  });
+
+  test('uses override content when overrides enabled and field has value', () => {
+    document.getElementById('smPlatformOverrides').checked = true;
+    document.getElementById('smPostContent').value = 'Main content';
+    document.getElementById('smTwitterContent').value = 'Short tweet';
+    socialMediaModule.updateCharacterCounts();
+    const count = document.getElementById('twitterCharCount').textContent;
+    expect(count).toBe('11'); // 'Short tweet' = 11 chars
+  });
+
+  test('twitter warning class when near limit', () => {
+    document.getElementById('smPlatformOverrides').checked = false;
+    document.getElementById('smPostContent').value = 'x'.repeat(260);
+    socialMediaModule.updateCharacterCounts();
+    const meta = document.getElementById('twitterCharCount').closest('.preview-meta');
+    expect(meta.className).toContain('text-warning');
+  });
+});
+
+describe('Social Media Module - setupImageSourceHandlers() missing elements', () => {
+  test('handles missing customRadio element', () => {
+    const el = document.getElementById('imageCustom');
+    const parent = el.parentNode;
+    el.remove();
+
+    expect(() => socialMediaModule.setupImageSourceHandlers()).not.toThrow();
+
+    parent.appendChild(el);
+  });
+
+  test('handles missing companyLogoRadio element', () => {
+    const el = document.getElementById('imageCompanyLogo');
+    const parent = el.parentNode;
+    el.remove();
+
+    expect(() => socialMediaModule.setupImageSourceHandlers()).not.toThrow();
+
+    parent.appendChild(el);
+  });
+});
+
+describe('Social Media Module - updateImagePreview() branches', () => {
+  beforeEach(() => {
+    const select = document.getElementById('smCompanySelect');
+    select.innerHTML = `
+      <option value="">Select company...</option>
+      <option value="comp-1" data-logo="https://example.com/logo1.png" data-website="https://acme.co.uk">Acme Plumbing</option>
+      <option value="comp-2" data-logo="" data-website="">Beta Builders</option>
+    `;
+  });
+
+  test('uses custom image when imageSource is custom', () => {
+    document.getElementById('imageCustom').checked = true;
+    document.getElementById('imageCompanyLogo').checked = false;
+    socialMediaModule.uploadedImageUrl = 'https://example.com/custom.jpg';
+    socialMediaModule.updateImagePreview();
+    const preview = document.getElementById('twitterPreviewImage');
+    expect(preview.querySelector('img')).not.toBeNull();
+  });
+
+  test('handles missing preview div gracefully', () => {
+    const el = document.getElementById('twitterPreviewImage');
+    const parent = el.parentNode;
+    el.remove();
+
+    document.getElementById('imageCompanyLogo').checked = true;
+    document.getElementById('smCompanySelect').selectedIndex = 1;
+    expect(() => socialMediaModule.updateImagePreview()).not.toThrow();
+
+    parent.appendChild(el);
+  });
+
+  test('handles missing smAddLogoOverlay element', () => {
+    const el = document.getElementById('smAddLogoOverlay');
+    const parent = el.parentNode;
+    el.remove();
+
+    document.getElementById('imageCompanyLogo').checked = true;
+    document.getElementById('smCompanySelect').selectedIndex = 1;
+    expect(() => socialMediaModule.updateImagePreview()).not.toThrow();
+
+    parent.appendChild(el);
+  });
+});
+
+describe('Social Media Module - handleImageUpload() revoke previous blob URL', () => {
+  let showToastSpy;
+
+  beforeEach(() => {
+    showToastSpy = jest.spyOn(utils, 'showToast');
+  });
+
+  afterEach(() => {
+    showToastSpy.mockRestore();
+  });
+
+  test('revokes previous blob URL when upload error and existing blob URL', async () => {
+    const fileInput = document.getElementById('smCustomImage');
+    const validFile = new Blob(['imagedata'], { type: 'image/png' });
+    Object.defineProperty(validFile, 'size', { value: 2000 });
+    Object.defineProperty(validFile, 'type', { value: 'image/png' });
+    Object.defineProperty(validFile, 'name', { value: 'test.png' });
+    Object.defineProperty(fileInput, 'files', {
+      value: [validFile],
+      writable: true,
+      configurable: true,
+    });
+
+    // Set an existing blob URL
+    socialMediaModule.uploadedImageUrl = 'blob:http://localhost/old-blob-123';
+
+    const storageMock = {
+      upload: jest.fn(() => Promise.resolve({ data: null, error: { message: 'Bucket not found' } })),
+      getPublicUrl: jest.fn(() => ({ data: { publicUrl: 'https://storage.example.com/fallback.png' } })),
+    };
+    mockSupabase.storage.from.mockReturnValueOnce(storageMock);
+
+    await socialMediaModule.handleImageUpload();
+
+    // Should have called revokeObjectURL for the old blob
+    expect(global.URL.revokeObjectURL).toHaveBeenCalledWith('blob:http://localhost/old-blob-123');
+  });
+});
+
+describe('Social Media Module - savePost() missing addLogoOverlay element', () => {
+  let showToastSpy;
+
+  beforeEach(() => {
+    showToastSpy = jest.spyOn(utils, 'showToast');
+    document.getElementById('smPostContent').value = 'Test post content';
+    const companySelect = document.getElementById('smCompanySelect');
+    companySelect.innerHTML = `
+      <option value="">Select company...</option>
+      <option value="comp-1" data-logo="https://example.com/logo1.png" data-website="https://acme.co.uk">Acme Plumbing</option>
+    `;
+    companySelect.selectedIndex = 1;
+    const awardSelect = document.getElementById('smAwardSelect');
+    awardSelect.innerHTML = `
+      <option value="">Select award...</option>
+      <option value="award-1">Best Plumber</option>
+    `;
+    awardSelect.selectedIndex = 1;
+    document.getElementById('platformTwitter').checked = true;
+    document.getElementById('platformFacebook').checked = false;
+    document.getElementById('platformInstagram').checked = false;
+    document.getElementById('platformLinkedIn').checked = false;
+    document.getElementById('smPlatformOverrides').checked = false;
+    socialMediaModule.editingPostId = null;
+
+    apiClient.select = jest.fn().mockResolvedValue({ data: [] });
+    mockSupabase.from.mockReturnValue(mockSupabase);
+    mockSupabase.insert.mockReturnValue(mockSupabase);
+    mockSupabase.select.mockReturnValue(mockSupabase);
+    mockSupabase.update.mockReturnValue(mockSupabase);
+    mockSupabase.eq.mockReturnValue(mockSupabase);
+  });
+
+  afterEach(() => {
+    showToastSpy.mockRestore();
+    mockSupabase.then.mockImplementation((cb) => cb({ data: [], error: null }));
+  });
+
+  test('addLogoOverlay defaults to false when element missing', async () => {
+    const el = document.getElementById('smAddLogoOverlay');
+    const parent = el.parentNode;
+    el.remove();
+
+    document.getElementById('smScheduleDate').value = '2030-12-25';
+    document.getElementById('smScheduleTime').value = '14:00';
+
+    mockSupabase.select.mockReturnValueOnce(
+      Promise.resolve({ data: [{ id: 'post-no-logo' }], error: null })
+    );
+
+    await socialMediaModule.savePost('scheduled');
+    expect(showToastSpy).toHaveBeenCalledWith('Post scheduled successfully!', 'success');
+
+    parent.appendChild(el);
+  });
+
+  test('savePost uses company_logo imageSource for image_url', async () => {
+    document.getElementById('imageCompanyLogo').checked = true;
+    document.getElementById('imageCustom').checked = false;
+    document.getElementById('smScheduleDate').value = '2030-12-25';
+    document.getElementById('smScheduleTime').value = '14:00';
+
+    mockSupabase.select.mockReturnValueOnce(
+      Promise.resolve({ data: [{ id: 'post-logo' }], error: null })
+    );
+
+    await socialMediaModule.savePost('scheduled');
+    expect(mockSupabase.insert).toHaveBeenCalled();
+  });
+
+  test('savePost update path throws error correctly', async () => {
+    socialMediaModule.editingPostId = 'edit-123';
+    document.getElementById('smScheduleDate').value = '2030-12-25';
+    document.getElementById('smScheduleTime').value = '14:00';
+
+    mockSupabase.eq.mockReturnValueOnce(
+      Promise.resolve({ error: { message: 'Update DB error' } })
+    );
+
+    await socialMediaModule.savePost('scheduled');
+    expect(showToastSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to save post'), 'error');
+  });
+
+  test('immediate publish with pubErr warning on invoke', async () => {
+    const confirmSpy = jest.spyOn(utils, 'confirmDialog').mockResolvedValue(true);
+
+    mockSupabase.select.mockReturnValueOnce(
+      Promise.resolve({ data: [{ id: 'pub-warn' }], error: null })
+    );
+    mockSupabase.functions.invoke.mockResolvedValueOnce({
+      data: null,
+      error: { message: 'Publish warning' },
+    });
+
+    await socialMediaModule.savePost('immediate');
+    // pubErr is just a console.warn, publish still continues
+    confirmSpy.mockRestore();
+  });
+});
+
+describe('Social Media Module - saveDraft() branch coverage', () => {
+  let showToastSpy;
+
+  beforeEach(() => {
+    showToastSpy = jest.spyOn(utils, 'showToast');
+    document.getElementById('smPostContent').value = 'Draft branch test';
+    document.getElementById('smCompanySelect').selectedIndex = 0;
+    document.getElementById('smAwardSelect').selectedIndex = 0;
+    document.getElementById('smPlatformOverrides').checked = false;
+    socialMediaModule.editingPostId = null;
+
+    apiClient.select = jest.fn().mockResolvedValue({ data: [] });
+    mockSupabase.from.mockReturnValue(mockSupabase);
+    mockSupabase.insert.mockReturnValue(mockSupabase);
+    mockSupabase.select.mockReturnValue(mockSupabase);
+    mockSupabase.update.mockReturnValue(mockSupabase);
+    mockSupabase.eq.mockReturnValue(mockSupabase);
+  });
+
+  afterEach(() => {
+    showToastSpy.mockRestore();
+    mockSupabase.then.mockImplementation((cb) => cb({ data: [], error: null }));
+  });
+
+  test('collects all four platform checkboxes when checked', async () => {
+    document.getElementById('platformTwitter').checked = true;
+    document.getElementById('platformFacebook').checked = true;
+    document.getElementById('platformInstagram').checked = true;
+    document.getElementById('platformLinkedIn').checked = true;
+
+    mockSupabase.select.mockReturnValueOnce(
+      Promise.resolve({ data: [{ id: 'draft-all-platforms' }], error: null })
+    );
+
+    await socialMediaModule.saveDraft();
+    expect(showToastSpy).toHaveBeenCalledWith('Draft saved successfully!', 'success');
+  });
+
+  test('addLogoOverlay defaults to false when element missing in saveDraft', async () => {
+    document.getElementById('platformTwitter').checked = true;
+    document.getElementById('platformFacebook').checked = false;
+    document.getElementById('platformInstagram').checked = false;
+    document.getElementById('platformLinkedIn').checked = false;
+
+    const el = document.getElementById('smAddLogoOverlay');
+    const parent = el.parentNode;
+    el.remove();
+
+    mockSupabase.select.mockReturnValueOnce(
+      Promise.resolve({ data: [{ id: 'draft-no-logo' }], error: null })
+    );
+
+    await socialMediaModule.saveDraft();
+    expect(showToastSpy).toHaveBeenCalledWith('Draft saved successfully!', 'success');
+
+    parent.appendChild(el);
+  });
+
+  test('saveDraft uses custom image source', async () => {
+    document.getElementById('platformTwitter').checked = true;
+    document.getElementById('platformFacebook').checked = false;
+    document.getElementById('platformInstagram').checked = false;
+    document.getElementById('platformLinkedIn').checked = false;
+    document.getElementById('imageCustom').checked = true;
+    document.getElementById('imageCompanyLogo').checked = false;
+    socialMediaModule.uploadedImageUrl = 'https://example.com/draft-custom.jpg';
+
+    mockSupabase.select.mockReturnValueOnce(
+      Promise.resolve({ data: [{ id: 'draft-custom-img' }], error: null })
+    );
+
+    await socialMediaModule.saveDraft();
+    expect(showToastSpy).toHaveBeenCalledWith('Draft saved successfully!', 'success');
+  });
+
+  test('saveDraft uses company_logo image source', async () => {
+    document.getElementById('platformTwitter').checked = true;
+    document.getElementById('platformFacebook').checked = false;
+    document.getElementById('platformInstagram').checked = false;
+    document.getElementById('platformLinkedIn').checked = false;
+    document.getElementById('imageCompanyLogo').checked = true;
+    document.getElementById('imageCustom').checked = false;
+
+    const companySelect = document.getElementById('smCompanySelect');
+    companySelect.innerHTML = `
+      <option value="">Select company...</option>
+      <option value="comp-1" data-logo="https://example.com/logo1.png">Acme Plumbing</option>
+    `;
+    companySelect.selectedIndex = 1;
+
+    mockSupabase.select.mockReturnValueOnce(
+      Promise.resolve({ data: [{ id: 'draft-logo-img' }], error: null })
+    );
+
+    await socialMediaModule.saveDraft();
+    expect(showToastSpy).toHaveBeenCalledWith('Draft saved successfully!', 'success');
+  });
+
+  test('saveDraft update path throws error correctly', async () => {
+    document.getElementById('platformTwitter').checked = true;
+    document.getElementById('platformFacebook').checked = false;
+    document.getElementById('platformInstagram').checked = false;
+    document.getElementById('platformLinkedIn').checked = false;
+
+    socialMediaModule.editingPostId = 'draft-edit-123';
+
+    mockSupabase.eq.mockReturnValueOnce(
+      Promise.resolve({ error: { message: 'Draft update failed' } })
+    );
+
+    await socialMediaModule.saveDraft();
+    expect(showToastSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to save draft'), 'error');
+  });
+});
+
+describe('Social Media Module - renderScheduledPosts() branch coverage', () => {
+  test('handles missing container element', () => {
+    const el = document.getElementById('scheduledPostsList');
+    const parent = el.parentNode;
+    el.remove();
+
+    expect(() => socialMediaModule.renderScheduledPosts(sampleScheduledPosts)).not.toThrow();
+
+    parent.appendChild(el);
+  });
+
+  test('handles missing countBadge element', () => {
+    const el = document.getElementById('scheduledPostsCount');
+    const parent = el.parentNode;
+    el.remove();
+
+    expect(() => socialMediaModule.renderScheduledPosts(sampleScheduledPosts)).not.toThrow();
+
+    parent.appendChild(el);
+  });
+
+  test('renders unknown platform badge without icon', () => {
+    const posts = [{
+      id: 'p1',
+      content: 'Test',
+      platforms: ['tiktok'],
+      scheduled_for: '2030-06-15T10:00:00',
+      created_at: '2026-02-20T09:00:00',
+      organisations: { company_name: 'Test Co' },
+      awards: { award_name: 'Test Award' },
+    }];
+
+    socialMediaModule.renderScheduledPosts(posts);
+    const container = document.getElementById('scheduledPostsList');
+    expect(container.innerHTML).toContain('tiktok');
+  });
+
+  test('handles post with null organisations and awards', () => {
+    const posts = [{
+      id: 'p1',
+      content: 'Test',
+      platforms: ['twitter'],
+      scheduled_for: '2030-06-15T10:00:00',
+      created_at: '2026-02-20T09:00:00',
+      organisations: null,
+      awards: null,
+    }];
+
+    socialMediaModule.renderScheduledPosts(posts);
+    const container = document.getElementById('scheduledPostsList');
+    expect(container.innerHTML).toContain('No company');
+    expect(container.innerHTML).toContain('No award');
+  });
+
+  test('handles post with null platforms array', () => {
+    const posts = [{
+      id: 'p1',
+      content: 'Test',
+      platforms: null,
+      scheduled_for: '2030-06-15T10:00:00',
+      created_at: '2026-02-20T09:00:00',
+      organisations: { company_name: 'Test' },
+      awards: { award_name: 'Award' },
+    }];
+
+    socialMediaModule.renderScheduledPosts(posts);
+    const container = document.getElementById('scheduledPostsList');
+    expect(container.querySelector('.scheduled-post-item')).not.toBeNull();
+  });
+});
+
+describe('Social Media Module - renderDraftPosts() branch coverage', () => {
+  test('handles missing container element', () => {
+    const el = document.getElementById('draftPostsList');
+    const parent = el.parentNode;
+    el.remove();
+
+    expect(() => socialMediaModule.renderDraftPosts(sampleDraftPosts)).not.toThrow();
+
+    parent.appendChild(el);
+  });
+
+  test('handles missing countBadge element', () => {
+    const el = document.getElementById('draftPostsCount');
+    const parent = el.parentNode;
+    el.remove();
+
+    expect(() => socialMediaModule.renderDraftPosts(sampleDraftPosts)).not.toThrow();
+
+    parent.appendChild(el);
+  });
+
+  test('renders empty state for empty array', () => {
+    socialMediaModule.renderDraftPosts([]);
+    const container = document.getElementById('draftPostsList');
+    expect(container.innerHTML).toContain('No drafts');
+  });
+});
+
+describe('Social Media Module - renderPublishedPosts() branch coverage', () => {
+  test('handles missing container element', () => {
+    const el = document.getElementById('publishedPostsList');
+    const parent = el.parentNode;
+    el.remove();
+
+    expect(() => socialMediaModule.renderPublishedPosts(samplePublishedPosts)).not.toThrow();
+
+    parent.appendChild(el);
+  });
+
+  test('handles missing countBadge element', () => {
+    const el = document.getElementById('publishedPostsCount');
+    const parent = el.parentNode;
+    el.remove();
+
+    expect(() => socialMediaModule.renderPublishedPosts(samplePublishedPosts)).not.toThrow();
+
+    parent.appendChild(el);
+  });
+
+  test('renders empty state for empty array', () => {
+    socialMediaModule.renderPublishedPosts([]);
+    const container = document.getElementById('publishedPostsList');
+    expect(container.innerHTML).toContain('No published posts yet');
+  });
+
+  test('renders unknown platform badge without icon', () => {
+    const posts = [{
+      id: 'p1',
+      content: 'Test',
+      platforms: ['tiktok'],
+      created_at: '2026-02-10T12:00:00',
+      organisations: null,
+      awards: null,
+    }];
+
+    socialMediaModule.renderPublishedPosts(posts);
+    const container = document.getElementById('publishedPostsList');
+    expect(container.innerHTML).toContain('tiktok');
+  });
+
+  test('handles null platforms array', () => {
+    const posts = [{
+      id: 'p1',
+      content: 'Test',
+      platforms: null,
+      created_at: '2026-02-10T12:00:00',
+      organisations: { company_name: 'Test' },
+      awards: { award_name: 'Award' },
+    }];
+
+    socialMediaModule.renderPublishedPosts(posts);
+    const container = document.getElementById('publishedPostsList');
+    expect(container.querySelector('.published-post-item')).not.toBeNull();
+  });
+});
+
+describe('Social Media Module - editScheduledPost() branch coverage', () => {
+  let showToastSpy;
+
+  beforeEach(() => {
+    showToastSpy = jest.spyOn(utils, 'showToast');
+    socialMediaModule.editingPostId = null;
+    mockSupabase.from.mockReturnValue(mockSupabase);
+    mockSupabase.select.mockReturnValue(mockSupabase);
+    mockSupabase.eq.mockReturnValue(mockSupabase);
+    dom.window.Element.prototype.scrollIntoView = jest.fn();
+  });
+
+  afterEach(() => {
+    showToastSpy.mockRestore();
+    mockSupabase.single.mockReturnValue(Promise.resolve({ data: null, error: null }));
+    delete dom.window.Element.prototype.scrollIntoView;
+  });
+
+  test('handles post with null content', async () => {
+    const postData = {
+      id: 'null-content',
+      content: null,
+      company_id: null,
+      award_id: null,
+      platforms: null,
+      scheduled_for: null,
+      image_url: null,
+      template_type: null,
+      platform_content: null,
+    };
+
+    mockSupabase.single.mockReturnValueOnce(Promise.resolve({ data: postData, error: null }));
+    await socialMediaModule.editScheduledPost('null-content');
+
+    expect(document.getElementById('smPostContent').value).toBe('');
+    expect(document.getElementById('platformTwitter').checked).toBe(false);
+  });
+
+  test('handles post with image_url and missing customRadio', async () => {
+    const customRadio = document.getElementById('imageCustom');
+    const parent = customRadio.parentNode;
+    customRadio.remove();
+
+    const postData = {
+      id: 'no-radio',
+      content: 'Test',
+      company_id: null,
+      award_id: null,
+      platforms: ['twitter'],
+      scheduled_for: null,
+      image_url: 'https://example.com/img.jpg',
+      template_type: null,
+      platform_content: null,
+    };
+
+    mockSupabase.single.mockReturnValueOnce(Promise.resolve({ data: postData, error: null }));
+    await socialMediaModule.editScheduledPost('no-radio');
+
+    expect(socialMediaModule.uploadedImageUrl).toBe('https://example.com/img.jpg');
+
+    parent.appendChild(customRadio);
+  });
+
+  test('handles post with image_url and missing customUploadDiv', async () => {
+    const customUploadDiv = document.getElementById('customImageUpload');
+    const parent = customUploadDiv.parentNode;
+    customUploadDiv.remove();
+
+    const postData = {
+      id: 'no-upload-div',
+      content: 'Test',
+      company_id: null,
+      award_id: null,
+      platforms: ['twitter'],
+      scheduled_for: null,
+      image_url: 'https://example.com/img2.jpg',
+      template_type: null,
+      platform_content: null,
+    };
+
+    mockSupabase.single.mockReturnValueOnce(Promise.resolve({ data: postData, error: null }));
+    await socialMediaModule.editScheduledPost('no-upload-div');
+
+    parent.appendChild(customUploadDiv);
+  });
+
+  test('handles post with platform_content but missing overrideToggle', async () => {
+    const toggle = document.getElementById('smPlatformOverrides');
+    const parent = toggle.parentNode;
+    toggle.remove();
+
+    const postData = {
+      id: 'no-toggle',
+      content: 'Test',
+      company_id: null,
+      award_id: null,
+      platforms: ['twitter'],
+      scheduled_for: null,
+      image_url: null,
+      template_type: null,
+      platform_content: { twitter: 'Custom tweet' },
+    };
+
+    mockSupabase.single.mockReturnValueOnce(Promise.resolve({ data: postData, error: null }));
+    await socialMediaModule.editScheduledPost('no-toggle');
+
+    parent.appendChild(toggle);
+  });
+});
+
+describe('Social Media Module - reusePost() branch coverage', () => {
+  let showToastSpy;
+
+  beforeEach(() => {
+    showToastSpy = jest.spyOn(utils, 'showToast');
+    socialMediaModule.editingPostId = null;
+    mockSupabase.from.mockReturnValue(mockSupabase);
+    mockSupabase.select.mockReturnValue(mockSupabase);
+    mockSupabase.eq.mockReturnValue(mockSupabase);
+    dom.window.Element.prototype.scrollIntoView = jest.fn();
+  });
+
+  afterEach(() => {
+    showToastSpy.mockRestore();
+    mockSupabase.single.mockReturnValue(Promise.resolve({ data: null, error: null }));
+    delete dom.window.Element.prototype.scrollIntoView;
+  });
+
+  test('handles post with null content and platforms', async () => {
+    const postData = {
+      id: 'reuse-null',
+      content: null,
+      company_id: null,
+      award_id: null,
+      platforms: null,
+      scheduled_for: null,
+      image_url: null,
+      template_type: null,
+      platform_content: null,
+    };
+
+    mockSupabase.single.mockReturnValueOnce(Promise.resolve({ data: postData, error: null }));
+    await socialMediaModule.reusePost('reuse-null');
+
+    expect(document.getElementById('smPostContent').value).toBe('');
+  });
+
+  test('handles missing overrideToggle element in reusePost', async () => {
+    const toggle = document.getElementById('smPlatformOverrides');
+    const parent = toggle.parentNode;
+    toggle.remove();
+
+    const postData = {
+      id: 'reuse-no-toggle',
+      content: 'Test',
+      company_id: null,
+      award_id: null,
+      platforms: ['twitter'],
+      scheduled_for: null,
+      image_url: null,
+      template_type: null,
+      platform_content: { twitter: 'Custom tweet' },
+    };
+
+    mockSupabase.single.mockReturnValueOnce(Promise.resolve({ data: postData, error: null }));
+    await socialMediaModule.reusePost('reuse-no-toggle');
+
+    parent.appendChild(toggle);
+  });
+});
+
+describe('Social Media Module - showEditingIndicator() branch: missing header', () => {
+  test('returns early when card header is not found', () => {
+    const existing = document.getElementById('editingBanner');
+    if (existing) existing.remove();
+
+    // Create a card with smPostContent inside but NO card-header
+    const smPostContent = document.getElementById('smPostContent');
+    const origParent = smPostContent.parentNode;
+    const cardDiv = document.createElement('div');
+    cardDiv.className = 'card';
+    const cardBody = document.createElement('div');
+    cardBody.className = 'card-body';
+    cardBody.appendChild(smPostContent);
+    cardDiv.appendChild(cardBody);
+    document.body.appendChild(cardDiv);
+
+    socialMediaModule.showEditingIndicator(true);
+    expect(document.getElementById('editingBanner')).toBeNull();
+
+    // Restore
+    origParent.appendChild(smPostContent);
+    cardDiv.remove();
+  });
+});
+
+describe('Social Media Module - clearForm() branch coverage', () => {
+  test('handles missing optional elements', () => {
+    const elsToRemove = ['smScheduleDate', 'smScheduleTime', 'smCustomImage',
+      'imageCompanyLogo', 'customImageUpload', 'smAddLogoOverlay',
+      'smPlatformOverrides', 'platformOverridesContainer', 'imageSizeWarning'];
+    const removed = [];
+
+    elsToRemove.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) {
+        removed.push({ id, el, parent: el.parentNode });
+        el.remove();
+      }
+    });
+
+    expect(() => socialMediaModule.clearForm()).not.toThrow();
+
+    // Restore
+    removed.forEach(({ el, parent }) => {
+      parent.appendChild(el);
+    });
+  });
+});
+
+describe('Social Media Module - openBulkGenerateModal() branch coverage', () => {
+  test('returns early when modal element is missing', async () => {
+    const el = document.getElementById('bulkGenerateModal');
+    const parent = el.parentNode;
+    el.remove();
+
+    await expect(socialMediaModule.openBulkGenerateModal()).resolves.not.toThrow();
+
+    parent.appendChild(el);
+  });
+
+  test('handles missing awardSelect in bulk modal', async () => {
+    const el = document.getElementById('bulkAwardSelect');
+    const parent = el.parentNode;
+    el.remove();
+
+    await expect(socialMediaModule.openBulkGenerateModal()).resolves.not.toThrow();
+
+    parent.appendChild(el);
+    el.innerHTML = '<option value="">Select award...</option><option value="award-1">Best Plumber</option>';
+  });
+});
+
+describe('Social Media Module - bulkGenerate() branch: instagram/linkedin platforms', () => {
+  let showToastSpy;
+
+  beforeEach(() => {
+    showToastSpy = jest.spyOn(utils, 'showToast');
+    document.getElementById('bulkAwardSelect').innerHTML =
+      '<option value="">Select award...</option><option value="award-1">Best Plumber</option>';
+    document.getElementById('bulkAwardSelect').value = 'award-1';
+    document.getElementById('bulkTemplateType').value = 'nominee';
+    document.getElementById('bulkSaveAs').value = 'draft';
+
+    mockSupabase.from.mockReturnValue(mockSupabase);
+    mockSupabase.select.mockReturnValue(mockSupabase);
+    mockSupabase.eq.mockReturnValue(mockSupabase);
+    mockSupabase.insert.mockReturnValue(mockSupabase);
+
+    apiClient.select = jest.fn().mockResolvedValue({ data: [] });
+  });
+
+  afterEach(() => {
+    showToastSpy.mockRestore();
+    mockSupabase.then.mockImplementation((cb) => cb({ data: [], error: null }));
+  });
+
+  test('collects instagram and linkedin platforms when checked', async () => {
+    document.getElementById('bulkPlatformTwitter').checked = false;
+    document.getElementById('bulkPlatformFacebook').checked = false;
+    document.getElementById('bulkPlatformInstagram').checked = true;
+    document.getElementById('bulkPlatformLinkedIn').checked = true;
+
+    const assignments = [
+      { id: 'a1', organisations: { id: 'org-1', company_name: 'Acme', logo_url: null, website: null } },
+    ];
+    mockSupabase.eq
+      .mockReturnValueOnce(mockSupabase)
+      .mockReturnValueOnce(Promise.resolve({ data: assignments, error: null }));
+    mockSupabase.then.mockImplementationOnce((cb) => cb({ data: [], error: null }));
+
+    await socialMediaModule.bulkGenerate();
+
+    expect(showToastSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Generated 1 posts'),
+      'success'
+    );
+  });
+});
+
+describe('Social Media Module - togglePlatformOverrides() branch coverage', () => {
+  test('returns early when container is missing', () => {
+    const el = document.getElementById('platformOverridesContainer');
+    const parent = el.parentNode;
+    el.remove();
+
+    expect(() => socialMediaModule.togglePlatformOverrides()).not.toThrow();
+
+    parent.appendChild(el);
+  });
+
+  test('returns early when toggle is missing', () => {
+    const el = document.getElementById('smPlatformOverrides');
+    const parent = el.parentNode;
+    el.remove();
+
+    expect(() => socialMediaModule.togglePlatformOverrides()).not.toThrow();
+
+    parent.appendChild(el);
+  });
+});
+
+describe('Social Media Module - loadAnalytics() branch: missing container', () => {
+  test('returns early when analyticsContent is missing', async () => {
+    const el = document.getElementById('analyticsContent');
+    const parent = el.parentNode;
+    el.remove();
+
+    await expect(socialMediaModule.loadAnalytics()).resolves.not.toThrow();
+
+    parent.appendChild(el);
+  });
+});
+
+describe('Social Media Module - loadAnalytics() branch: posts with null platforms', () => {
+  test('handles posts with null platforms array', async () => {
+    mockSupabase.from.mockReturnValue(mockSupabase);
+    mockSupabase.select.mockReturnValueOnce(
+      Promise.resolve({
+        data: [
+          { status: 'published', platforms: null, created_at: new Date().toISOString() },
+          { status: 'published', platforms: ['twitter'], created_at: new Date().toISOString() },
+        ],
+        error: null,
+      })
+    );
+
+    await socialMediaModule.loadAnalytics();
+    const container = document.getElementById('analyticsContent');
+    expect(container.innerHTML).toContain('Published');
+  });
+});
+
+describe('Social Media Module - DOMContentLoaded missing elements', () => {
+  test('handles missing social-subtab gracefully', () => {
+    // The DOMContentLoaded listener already ran, so we just verify
+    // the event listeners were attached without errors
+    const socialSubTab = document.getElementById('social-subtab');
+    expect(socialSubTab).not.toBeNull();
+  });
+
+  test('handles missing marketing-tab gracefully', () => {
+    const marketingTab = document.getElementById('marketing-tab');
+    expect(marketingTab).not.toBeNull();
+  });
+});

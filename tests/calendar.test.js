@@ -698,6 +698,21 @@ describe('Calendar Module - renderUpcomingWidget', () => {
     consoleSpy.mockRestore();
   });
 
+  test('re-throws non-relationship invoice errors', async () => {
+    apiClient.select = jest
+      .fn()
+      .mockResolvedValueOnce({ data: [] })
+      .mockResolvedValueOnce({ data: [] })
+      .mockRejectedValueOnce(new Error('network timeout'));
+    apiClient.selectAll = jest.fn().mockResolvedValue([]);
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+
+    await calendarModule.renderUpcomingWidget('upcomingWidget');
+    const container = document.getElementById('upcomingWidget');
+    expect(container.innerHTML).toContain('Failed to load upcoming items');
+    consoleSpy.mockRestore();
+  });
+
   test('retries invoice without FK join on relationship error', async () => {
     apiClient.select = jest
       .fn()

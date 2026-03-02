@@ -2220,8 +2220,8 @@ describe('Social Media Module - initialize()', () => {
 
   test('shows error toast on initialization failure', async () => {
     socialMediaModule.initialized = false;
-    // Make loadCompanies fail
-    mockSupabase.order.mockReturnValueOnce(Promise.resolve({ data: null, error: { message: 'Companies load error' } }));
+    // Make loadScheduledPosts throw an error that propagates to initialize()'s catch block
+    const loadSpy = jest.spyOn(socialMediaModule, 'loadScheduledPosts').mockRejectedValueOnce(new Error('Network failure'));
 
     await socialMediaModule.initialize();
 
@@ -2229,6 +2229,7 @@ describe('Social Media Module - initialize()', () => {
       expect.stringContaining('Failed to load social media manager'),
       'error'
     );
+    loadSpy.mockRestore();
   });
 });
 
@@ -2612,9 +2613,16 @@ describe('Social Media Module - validateImageDimensions() additional', () => {
 
 describe('Social Media Module - updateImagePreview() additional scenarios', () => {
   beforeEach(() => {
+    // Restore smCompanySelect options (earlier tests may have replaced them via loadCompanies)
+    const select = document.getElementById('smCompanySelect');
+    select.innerHTML = `
+      <option value="">Select company...</option>
+      <option value="comp-1" data-logo="https://example.com/logo1.png" data-website="https://acme.co.uk">Acme Plumbing</option>
+      <option value="comp-2" data-logo="" data-website="">Beta Builders</option>
+    `;
     document.getElementById('imageCompanyLogo').checked = true;
     document.getElementById('imageCustom').checked = false;
-    document.getElementById('smCompanySelect').selectedIndex = 0;
+    select.selectedIndex = 0;
     document.getElementById('smAddLogoOverlay').checked = false;
     socialMediaModule.uploadedImageUrl = null;
     ['twitterPreviewImage', 'facebookPreviewImage', 'instagramPreviewImage', 'linkedinPreviewImage'].forEach((id) => {

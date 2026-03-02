@@ -2831,6 +2831,8 @@ describe('Media Gallery Module - Download All Photos', () => {
 // ---------------------------------------------------------------------------
 describe('Media Gallery Module - Handle Drop', () => {
   test('handleDrop rejects invalid file types', () => {
+    // Ensure draggedFiles starts as null so we can verify it stays unchanged
+    mediaGalleryModule.draggedFiles = null;
     const event = {
       preventDefault: jest.fn(),
       stopPropagation: jest.fn(),
@@ -3901,7 +3903,14 @@ describe('Media Gallery Module - Save Photo Tags', () => {
   });
 
   test('savePhotoTags falls back to localStorage on error', async () => {
-    document.getElementById('tagPhotoOrgSelect').value = 'org-1';
+    // Add an option so JSDOM allows setting the select value
+    const orgSelect = document.getElementById('tagPhotoOrgSelect');
+    const orgOption = document.createElement('option');
+    orgOption.value = 'org-1';
+    orgOption.textContent = 'Org 1';
+    orgSelect.appendChild(orgOption);
+
+    orgSelect.value = 'org-1';
     document.getElementById('tagPhotoAwardSelect').value = '';
     document.getElementById('tagPhotoCaption').value = '';
     document.getElementById('tagPhotoAltText').value = '';
@@ -3913,6 +3922,9 @@ describe('Media Gallery Module - Save Photo Tags', () => {
     await mediaGalleryModule.savePhotoTags();
     const saved = JSON.parse(localStorage.getItem('bta_photo_tags_photo-1'));
     expect(saved.organisation_id).toBe('org-1');
+
+    // Clean up added option
+    orgOption.remove();
   });
 });
 
@@ -3927,6 +3939,16 @@ describe('Media Gallery Module - Remove File From Preview', () => {
       { name: 'c.jpg', type: 'image/jpeg', size: 300 },
     ];
     jest.spyOn(mediaGalleryModule, 'renderFilePreview').mockImplementation(() => {});
+
+    // Mock the file input's files setter so JSDOM doesn't reject non-FileList values
+    const fileInput = document.getElementById('sectionPhotosFile');
+    let storedFiles = null;
+    Object.defineProperty(fileInput, 'files', {
+      get: () => storedFiles,
+      set: (val) => { storedFiles = val; },
+      configurable: true,
+    });
+
     // Mock DataTransfer
     global.DataTransfer = class {
       constructor() {

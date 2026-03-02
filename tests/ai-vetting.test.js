@@ -659,3 +659,190 @@ describe('AI Vetting Module - renderResults edge cases', () => {
     expect(html).toContain('dismissFlag');
   });
 });
+
+describe('AI Vetting Module - openVettingModal', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('opens modal, hides config alert, loads results and updates dashboard', async () => {
+    const loadSpy = jest.spyOn(aiVettingModule, 'loadVettingResults').mockResolvedValue();
+    const dashSpy = jest.spyOn(aiVettingModule, 'updateDashboardCard').mockResolvedValue();
+
+    await aiVettingModule.openVettingModal();
+
+    expect(document.getElementById('vettingConfigAlert').style.display).toBe('none');
+    expect(loadSpy).toHaveBeenCalled();
+    expect(dashSpy).toHaveBeenCalled();
+  });
+});
+
+describe('AI Vetting Module - loadVettingResults with flagged filter', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('passes flagged filters when currentFilter is flagged', async () => {
+    aiVettingModule.currentFilter = 'flagged';
+    apiClient.select = jest
+      .fn()
+      .mockResolvedValueOnce({
+        data: [{ id: 'r1', company_name: 'Flagged Co', status: 'flagged', vetting_date: '2026-01-01' }],
+        count: 1,
+        totalPages: 1,
+      })
+      .mockResolvedValueOnce({ data: [] });
+    jest.spyOn(aiVettingModule, 'renderResults').mockImplementation();
+    jest.spyOn(aiVettingModule, 'updateSummaryCards').mockResolvedValue();
+
+    await aiVettingModule.loadVettingResults();
+
+    expect(apiClient.select).toHaveBeenCalledWith(
+      'ai_vetting_results',
+      expect.objectContaining({
+        filters: {
+          status: { op: 'eq', value: 'flagged' },
+          dismissed: { op: 'is', value: null },
+        },
+      })
+    );
+    aiVettingModule.currentFilter = 'all';
+  });
+});
+
+describe('AI Vetting Module - filterResults', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('updates filter, resets page, updates buttons, and loads results', async () => {
+    // Create button elements for querySelectorAll
+    const btnGroup = document.createElement('div');
+    btnGroup.className = 'btn-group';
+    const btn1 = document.createElement('button');
+    btn1.classList.add('active');
+    btnGroup.appendChild(btn1);
+    const btn2 = document.createElement('button');
+    btnGroup.appendChild(btn2);
+    document.body.appendChild(btnGroup);
+
+    // Mock event.target
+    global.event = { target: { closest: jest.fn(() => btn2) } };
+
+    const loadSpy = jest.spyOn(aiVettingModule, 'loadVettingResults').mockResolvedValue();
+
+    await aiVettingModule.filterResults('flagged');
+
+    expect(aiVettingModule.currentFilter).toBe('flagged');
+    expect(aiVettingModule._currentPage).toBe(1);
+    expect(loadSpy).toHaveBeenCalled();
+    expect(btn1.classList.contains('active')).toBe(false);
+
+    // Cleanup
+    document.body.removeChild(btnGroup);
+    delete global.event;
+    aiVettingModule.currentFilter = 'all';
+  });
+});
+
+describe('AI Vetting Module - runVetting full flow', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    aiVettingModule.isVetting = false;
+
+    // Add missing DOM elements needed by runVetting
+    const progressBar = document.createElement('div');
+    progressBar.id = 'vettingProgressBar';
+    progressBar.style.width = '0%';
+    document.body.appendChild(progressBar);
+
+    const progressCount = document.createElement('span');
+    progressCount.id = 'vettingProgressCount';
+    document.body.appendChild(progressCount);
+
+    const progressText = document.createElement('span');
+    progressText.id = 'vettingProgressText';
+    document.body.appendChild(progressText);
+
+    const currentCompany = document.createElement('span');
+    currentCompany.id = 'vettingCurrentCompany';
+    document.body.appendChild(currentCompany);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    aiVettingModule.isVetting = false;
+    // Remove added elements
+    ['vettingProgressBar', 'vettingProgressCount', 'vettingProgressText', 'vettingCurrentCompany'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.remove();
+    });
+  });
+
+  test('runs full vetting process successfully', async () => {
+    STATE.allOrganisations = [
+      { id: 'org1', company_name: 'Corp A', website: 'https://a.com', sector: 'Tech', region: 'London' },
+      { id: 'org2', company_name: 'Corp B', website: '', sector: 'Retail', region: '' },
+    ];
+
+    apiClient.insert = jest.fn().mockResolvedValue({ data: [{ id: 'run-1' }] });
+    apiClient.update = jest.fn().mockResolvedValue({});
+
+    jest.spyOn(aiVettingModule, 'vetSingleCompany')
+      .mockResolvedValueOnce({ status: 'flagged' })
+      .mockResolvedValueOnce({ status: 'verified' });
+
+    jest.spyOn(aiVettingModule, 'loadVettingResults').mockResolvedValue();
+    jest.spyOn(aiVettingModule, 'updateDashboardCard').mockResolvedValue();
+    const toastSpy = jest.spyOn(utils, 'showToast');
+
+    // Speed up setTimeout
+    jest.useFakeTimers();
+    const runPromise = aiVettingModule.runVetting();
+    // Advance all timers for the delays
+    jest.runAllTimers();
+    jest.useRealTimers();
+    await runPromise;
+
+    expect(apiClient.insert).toHaveBeenCalledWith(
+      'ai_vetting_runs',
+      expect.objectContaining({ total_companies: 2, status: 'running' })
+    );
+    expect(apiClient.update).toHaveBeenCalledWith(
+      'ai_vetting_runs',
+      'run-1',
+      expect.objectContaining({ companies_vetted: 2, companies_flagged: 1, status: 'completed' })
+    );
+    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('1 companies flagged'), 'success');
+    expect(aiVettingModule.isVetting).toBe(false);
+    expect(document.getElementById('runVettingBtn').disabled).toBe(false);
+    expect(document.getElementById('vettingProgressSection').style.display).toBe('none');
+  });
+
+  test('handles error during vetting run', async () => {
+    STATE.allOrganisations = [{ id: 'org1', company_name: 'Corp A' }];
+
+    apiClient.insert = jest.fn().mockRejectedValue(new Error('DB insert failed'));
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+    const toastSpy = jest.spyOn(utils, 'showToast');
+
+    await aiVettingModule.runVetting();
+
+    expect(consoleSpy).toHaveBeenCalled();
+    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to complete vetting'), 'error');
+    expect(aiVettingModule.isVetting).toBe(false);
+    expect(document.getElementById('runVettingBtn').disabled).toBe(false);
+  });
+});

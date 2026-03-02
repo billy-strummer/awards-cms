@@ -1522,3 +1522,135 @@ describe('Judge Portal - updateProgress edge cases', () => {
     expect(document.getElementById('completionPercent').textContent).toBe('33%');
   });
 });
+
+// ============================
+// showPortalToast - cover container creation and timeout branches
+// (showPortalToast is module-scoped, so we trigger it via nextEntry)
+// ============================
+describe('Judge Portal - showPortalToast via nextEntry', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  test('creates portalToastContainer when none exists and removes toast after timeout', () => {
+    // Remove the existing container so the creation branch (lines 29-32) is hit
+    const existing = document.getElementById('portalToastContainer');
+    if (existing) existing.remove();
+    expect(document.getElementById('portalToastContainer')).toBeNull();
+
+    // Trigger showPortalToast indirectly via nextEntry at the last entry
+    judgePortal.assignedEntries = [{ id: 'e1', hasScored: false }];
+    judgePortal.currentEntry = { id: 'e1' };
+    const origSelect = judgePortal.selectEntry;
+    judgePortal.selectEntry = jest.fn();
+    judgePortal.nextEntry();
+    judgePortal.selectEntry = origSelect;
+
+    // Container should now be created (lines 29-32)
+    const container = document.getElementById('portalToastContainer');
+    expect(container).not.toBeNull();
+    expect(container.style.position).toBe('fixed');
+
+    // A toast div should exist inside the container
+    const toast = container.querySelector('div');
+    expect(toast).not.toBeNull();
+
+    // After 4000ms the opacity should be set to '0' (line 41)
+    jest.advanceTimersByTime(4000);
+    expect(toast.style.opacity).toBe('0');
+
+    // After another 300ms the toast element should be removed (line 42)
+    jest.advanceTimersByTime(300);
+    expect(container.contains(toast)).toBe(false);
+  });
+});
+
+// ============================
+// _attachEventListeners - cover delegated click handler branches
+// ============================
+describe('Judge Portal - _attachEventListeners click delegation', () => {
+  beforeEach(() => {
+    judgePortal.selectEntry = jest.fn();
+    judgePortal.saveScore = jest.fn();
+    judgePortal.nextEntry = jest.fn();
+    judgePortal._goToPage = jest.fn();
+    judgePortal._attachEventListeners();
+  });
+
+  test('handles judgePortal.selectEntry action', () => {
+    const btn = document.createElement('button');
+    btn.setAttribute('data-action', 'judgePortal.selectEntry');
+    btn.setAttribute('data-id', 'entry-99');
+    document.body.appendChild(btn);
+    btn.click();
+    expect(judgePortal.selectEntry).toHaveBeenCalledWith('entry-99');
+    btn.remove();
+  });
+
+  test('handles judgePortal.saveScore action', () => {
+    const btn = document.createElement('button');
+    btn.setAttribute('data-action', 'judgePortal.saveScore');
+    btn.setAttribute('data-complete', 'true');
+    document.body.appendChild(btn);
+    btn.click();
+    expect(judgePortal.saveScore).toHaveBeenCalledWith(true);
+    btn.remove();
+  });
+
+  test('handles judgePortal.nextEntry action', () => {
+    const btn = document.createElement('button');
+    btn.setAttribute('data-action', 'judgePortal.nextEntry');
+    document.body.appendChild(btn);
+    btn.click();
+    expect(judgePortal.nextEntry).toHaveBeenCalled();
+    btn.remove();
+  });
+
+  test('handles judgePortal.goToPage action', () => {
+    const btn = document.createElement('button');
+    btn.setAttribute('data-action', 'judgePortal.goToPage');
+    btn.setAttribute('data-page', '3');
+    document.body.appendChild(btn);
+    btn.click();
+    expect(judgePortal._goToPage).toHaveBeenCalledWith(3);
+    btn.remove();
+  });
+
+  test('ignores clicks without data-action', () => {
+    const btn = document.createElement('button');
+    document.body.appendChild(btn);
+    btn.click();
+    expect(judgePortal.selectEntry).not.toHaveBeenCalled();
+    expect(judgePortal.saveScore).not.toHaveBeenCalled();
+    btn.remove();
+  });
+});
+
+// ============================
+// saveScore - validation failure branch (score out of bounds)
+// ============================
+describe('Judge Portal - saveScore validation failure', () => {
+  test('returns early when a score is out of bounds', async () => {
+    judgePortal.currentEntry = { id: 'entry-1' };
+    // Set a score out-of-range (> maxScore of 10)
+    document.getElementById('innovation_score').value = '15';
+    document.getElementById('impact_score').value = '7';
+    document.getElementById('quality_score').value = '6';
+    document.getElementById('presentation_score').value = '8';
+
+    const upsertSpy = jest.spyOn(apiClient, 'upsert').mockResolvedValue();
+
+    await judgePortal.saveScore(false);
+
+    // upsert should NOT have been called because validation failed
+    expect(upsertSpy).not.toHaveBeenCalled();
+
+    // Reset slider value
+    document.getElementById('innovation_score').value = '5';
+    upsertSpy.mockRestore();
+  });
+});

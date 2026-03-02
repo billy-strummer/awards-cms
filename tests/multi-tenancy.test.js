@@ -743,22 +743,13 @@ describe('Multi-Tenancy Module - switchTenant updates tenantBrandName', () => {
       document.body.appendChild(sw);
     }
 
-    // Mock window.location.reload safely for jsdom
-    const originalReload = window.location.reload;
-    Object.defineProperty(window.location, 'reload', {
-      configurable: true,
-      value: jest.fn(),
-    });
+    // Mock window.location.reload (same approach as the existing switchTenant test)
+    delete window.location;
+    window.location = { reload: jest.fn() };
 
     await tenantModule.switchTenant('t2');
 
     expect(brandEl.textContent).toBe('Awards B');
-
-    // Restore
-    Object.defineProperty(window.location, 'reload', {
-      configurable: true,
-      value: originalReload,
-    });
   });
 });
 

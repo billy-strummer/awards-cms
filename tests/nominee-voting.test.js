@@ -909,4 +909,216 @@ describe('Nominee Voting - copyLink', () => {
     consoleSpy.mockRestore();
     delete global.event;
   });
+
+  test('restores original button text after timeout', async () => {
+    jest.useFakeTimers();
+
+    // Mock clipboard
+    navigator.clipboard = { writeText: jest.fn().mockResolvedValue() };
+
+    // Mock event
+    const btn = document.createElement('button');
+    btn.className = 'share-btn';
+    btn.innerHTML = '<i class="bi bi-link me-2"></i>Copy Link';
+    global.event = { target: { closest: jest.fn(() => btn) } };
+
+    await nomineeVoting.copyLink();
+
+    expect(btn.innerHTML).toContain('Copied!');
+
+    // Advance past the 2000ms timeout to restore original text
+    jest.advanceTimersByTime(2000);
+    expect(btn.innerHTML).toContain('Copy Link');
+
+    jest.useRealTimers();
+    delete global.event;
+  });
+});
+
+// ==========================================================================
+// ADDITIONAL COVERAGE TESTS — branch, statement, and function coverage
+// ==========================================================================
+
+describe('showPublicToast - unknown type fallback', () => {
+  test('falls back to warning color for unknown toast type', () => {
+    showPublicToast('Unknown type message', 'nonexistent_type');
+    const container = document.getElementById('publicToastContainer');
+    const toastEl = container.lastChild;
+    // Should use colors.warning (#ffc107) as fallback and '#fff' for text color
+    expect(toastEl.style.background).toBe('rgb(255, 193, 7)');
+    expect(toastEl.textContent).toBe('Unknown type message');
+  });
+});
+
+describe('Nominee Voting - loadEntry with neither entryNumber nor entryId', () => {
+  afterEach(() => {
+    nomineeVoting.showError = _originalShowError;
+    nomineeVoting.displayEntry = _originalDisplayEntry;
+  });
+
+  test('sends empty params when both entryNumber and entryId are falsy', async () => {
+    const mockEntry = {
+      id: 'e10',
+      entry_number: 'BTA-010',
+      entry_description: 'Test',
+      public_votes: 0,
+      organisations: { company_name: 'Test' },
+      awards: { award_name: 'Test' },
+    };
+    global.fetch = jest.fn(() =>
+      Promise.resolve({ ok: true, json: () => Promise.resolve({ entry: mockEntry }) })
+    );
+    nomineeVoting.displayEntry = jest.fn();
+    nomineeVoting.voterEmail = null;
+    await nomineeVoting.loadEntry(null, null);
+    // fetch should have been called with empty params (no entry_number or entry_id)
+    const callBody = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(callBody).not.toHaveProperty('entry_number');
+    expect(callBody).not.toHaveProperty('entry_id');
+  });
+});
+
+describe('Nominee Voting - displayEntry missing OG meta tags', () => {
+  test('handles missing og:title meta tag', () => {
+    // Remove og:title meta tag temporarily
+    const ogTitle = document.querySelector('meta[property="og:title"]');
+    const ogDesc = document.querySelector('meta[property="og:description"]');
+    const ogTitleParent = ogTitle?.parentNode;
+    const ogDescParent = ogDesc?.parentNode;
+    if (ogTitle) ogTitle.remove();
+    if (ogDesc) ogDesc.remove();
+
+    nomineeVoting.entry = {
+      id: 'e-meta',
+      entry_description: 'Test description',
+      organisations: { company_name: 'Meta Co', logo_url: null },
+      awards: { award_name: 'Meta Award' },
+    };
+    nomineeVoting.hasVoted = false;
+
+    // Should not throw even without OG meta tags
+    expect(() => nomineeVoting.displayEntry()).not.toThrow();
+
+    // Restore meta tags
+    if (ogTitleParent) {
+      const newOgTitle = document.createElement('meta');
+      newOgTitle.setAttribute('property', 'og:title');
+      newOgTitle.content = '';
+      document.head.appendChild(newOgTitle);
+    }
+    if (ogDescParent) {
+      const newOgDesc = document.createElement('meta');
+      newOgDesc.setAttribute('property', 'og:description');
+      newOgDesc.content = '';
+      document.head.appendChild(newOgDesc);
+    }
+  });
+});
+
+describe('Nominee Voting - displayEntry missing entry_description', () => {
+  test('does not update description when entry_description is falsy', () => {
+    document.getElementById('entryDescription').textContent = 'old value';
+    nomineeVoting.entry = {
+      id: 'e-nodesc',
+      entry_description: null,
+      organisations: { company_name: 'No Desc Co', logo_url: null },
+      awards: { award_name: 'Award' },
+    };
+    nomineeVoting.hasVoted = false;
+    nomineeVoting.displayEntry();
+    // entry_description is falsy so the description should remain unchanged
+    expect(document.getElementById('entryDescription').textContent).toBe('old value');
+  });
+
+  test('uses fallback og:description when entry_description is falsy', () => {
+    nomineeVoting.entry = {
+      id: 'e-og-fallback',
+      entry_description: '',
+      organisations: { company_name: 'OG Co', logo_url: null },
+      awards: { award_name: 'Award' },
+    };
+    nomineeVoting.hasVoted = false;
+    nomineeVoting.displayEntry();
+    const ogDesc = document.querySelector('meta[property="og:description"]');
+    if (ogDesc) {
+      // When entry_description is falsy, substring returns '' so fallback is used
+      expect(ogDesc.content).toBe('Cast your vote for this nominee');
+    }
+  });
+});
+
+describe('Nominee Voting - setupEventListeners voterName empty', () => {
+  test('does not store voterName when empty', async () => {
+    nomineeVoting.entry = {
+      id: 'e1',
+      entry_number: 'BTA-001',
+      entry_description: 'Test',
+      public_votes: 0,
+      organisations: { company_name: 'Test Co' },
+      awards: { award_name: 'Award' },
+    };
+    nomineeVoting.entryId = 'e1';
+    nomineeVoting._submittingVote = false;
+    nomineeVoting.hasVoted = false;
+
+    if (!document.getElementById('verificationModal')) {
+      const modal = document.createElement('div');
+      modal.id = 'verificationModal';
+      modal.style.display = 'flex';
+      document.body.appendChild(modal);
+    }
+    if (!document.getElementById('successModal')) {
+      const modal = document.createElement('div');
+      modal.id = 'successModal';
+      modal.style.display = 'none';
+      document.body.appendChild(modal);
+    }
+
+    // Set email but leave name empty
+    document.getElementById('voterEmail').value = 'noname@test.com';
+    const voterNameEl = document.getElementById('voterName');
+    if (voterNameEl) voterNameEl.value = '';
+
+    // Clear sessionStorage voterName
+    sessionStorage.removeItem('voterName');
+
+    nomineeVoting.setupEventListeners();
+
+    global.fetch = jest.fn()
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ count: 0 }) })
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ exists: false }) })
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({}) })
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({}) });
+
+    if (!global.crypto) {
+      global.crypto = { randomUUID: jest.fn(() => '12345678-1234-1234-1234-123456789012') };
+    }
+
+    const form = document.getElementById('verificationForm');
+    const submitEvent = new dom.window.Event('submit', { bubbles: true, cancelable: true });
+    form.dispatchEvent(submitEvent);
+
+    await new Promise((r) => setTimeout(r, 100));
+
+    // voterName should NOT have been stored (empty string is falsy)
+    expect(sessionStorage.getItem('voterName')).toBeNull();
+  });
+});
+
+describe('Nominee Voting - sendVerificationEmail with missing org/award data', () => {
+  test('uses fallback values when organisations and awards are null', async () => {
+    nomineeVoting.voterEmail = 'voter@test.com';
+    nomineeVoting.entry = {
+      organisations: null,
+      awards: null,
+      entry_number: null,
+    };
+    global.fetch = jest.fn(() => Promise.resolve({ ok: true }));
+    await nomineeVoting.sendVerificationEmail();
+
+    const callBody = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(callBody.templateData.company_name).toBe('N/A');
+    expect(callBody.templateData.award_name).toBe('British Trade Awards');
+    expect(callBody.templateData.entry_number).toBe('');
+  });
 });

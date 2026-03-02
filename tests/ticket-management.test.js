@@ -855,3 +855,684 @@ describe('Ticket Module - processRefund', () => {
     toastSpy.mockRestore();
   });
 });
+
+/* ============================================================== */
+/* ADDITIONAL TESTS — Covering remaining uncovered lines/branches */
+/* ============================================================== */
+
+describe('Ticket Module - initTicketPurchase input event handler (lines 199-203)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('recalculates total when ticket quantity input fires input event', async () => {
+    apiClient.select = jest.fn().mockResolvedValue({
+      data: [{ id: 'ev1', event_name: 'Gala Night', event_date: '2026-06-15', venue: 'Grand Hall' }],
+    });
+    apiClient.selectAll = jest.fn().mockResolvedValue(sampleTicketTypes);
+    await ticketModule.initTicketPurchase('ev1');
+
+    const el = document.getElementById('ticketPurchaseContainer');
+    const qtyInputs = el.querySelectorAll('.ticket-qty');
+    expect(qtyInputs.length).toBeGreaterThan(0);
+
+    // Set a quantity and fire the input event
+    qtyInputs[0].value = '3';
+    qtyInputs[0].dispatchEvent(new dom.window.Event('input'));
+
+    const totalEl = document.getElementById('ticketTotal');
+    expect(totalEl).toBeTruthy();
+    // The first ticket type has early_bird_price=79 with future deadline so price=79
+    // 3 * 79 = 237
+    expect(totalEl.textContent).toContain('237.00');
+  });
+
+  test('handles zero and empty quantity inputs correctly', async () => {
+    apiClient.select = jest.fn().mockResolvedValue({
+      data: [{ id: 'ev1', event_name: 'Gala Night', event_date: '2026-06-15', venue: 'Grand Hall' }],
+    });
+    apiClient.selectAll = jest.fn().mockResolvedValue(sampleTicketTypes);
+    await ticketModule.initTicketPurchase('ev1');
+
+    const el = document.getElementById('ticketPurchaseContainer');
+    const qtyInputs = el.querySelectorAll('.ticket-qty');
+
+    // Set all to 0
+    qtyInputs.forEach((inp) => (inp.value = '0'));
+    qtyInputs[0].dispatchEvent(new dom.window.Event('input'));
+
+    const totalEl = document.getElementById('ticketTotal');
+    expect(totalEl.textContent).toContain('0.00');
+  });
+});
+
+describe('Ticket Module - createTicketCheckout with stripeFrontend (lines 249-250)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    const el = document.getElementById('ticketPurchaseContainer');
+    el.innerHTML = `
+      <input type="number" class="ticket-qty" value="2" data-type-id="tt1" data-price="99" data-name="Standard">
+    `;
+  });
+
+  test('uses stripeFrontend.stripe.redirectToCheckout when sessionId is returned', async () => {
+    const redirectMock = jest.fn().mockResolvedValue({ error: null });
+    const sfObj = { stripe: { redirectToCheckout: redirectMock } };
+    global.window.stripeFrontend = sfObj;
+    global.stripeFrontend = sfObj;
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ sessionId: 'sess_123', url: 'https://checkout.stripe.com/session' }),
+    });
+
+    await ticketModule.createTicketCheckout('ev1');
+    expect(redirectMock).toHaveBeenCalledWith({ sessionId: 'sess_123' });
+    delete global.window.stripeFrontend;
+    delete global.stripeFrontend;
+  });
+
+  test('throws when stripeFrontend.stripe.redirectToCheckout returns error', async () => {
+    const redirectMock = jest.fn().mockResolvedValue({ error: { message: 'Redirect failed' } });
+    const sfObj = { stripe: { redirectToCheckout: redirectMock } };
+    global.window.stripeFrontend = sfObj;
+    global.stripeFrontend = sfObj;
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ sessionId: 'sess_123' }),
+    });
+    const toastSpy = jest.spyOn(utils, 'showToast');
+
+    await ticketModule.createTicketCheckout('ev1');
+    expect(redirectMock).toHaveBeenCalled();
+    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('Checkout error'), 'error');
+    toastSpy.mockRestore();
+    delete global.window.stripeFrontend;
+    delete global.stripeFrontend;
+  });
+
+  test('falls back to window.location.href when no stripeFrontend and url is returned', async () => {
+    delete global.window.stripeFrontend;
+    delete global.stripeFrontend;
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ url: 'https://checkout.stripe.com/session' }),
+    });
+
+    // No stripeFrontend means else-if url branch
+    await ticketModule.createTicketCheckout('ev1');
+    expect(global.fetch).toHaveBeenCalled();
+  });
+});
+
+describe('Ticket Module - generateETicket with QR code (lines 308-316)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('generates QR code when window.QRCode is available', async () => {
+    // Replace setTimeout with an immediate version to avoid timer issues
+    const origSetTimeout = global.setTimeout;
+    global.setTimeout = (fn, _delay) => { fn(); return 0; };
+
+    apiClient.select = jest.fn().mockResolvedValue({
+      data: [
+        {
+          id: 'g1',
+          guest_name: 'John Doe',
+          guest_type: 'VIP',
+          table_number: 'T5',
+          seat_number: '3',
+          dietary_requirements: 'Vegetarian',
+          events: { event_name: 'Gala Night', event_date: '2026-06-15', venue: 'Grand Hall' },
+        },
+      ],
+    });
+
+    const saveMock = jest.fn();
+    const addImageMock = jest.fn();
+    global.window.jspdf = {
+      jsPDF: class {
+        constructor() {}
+        setFillColor() {}
+        rect() {}
+        setTextColor() {}
+        setFontSize() {}
+        setFont() {}
+        text() {}
+        setDrawColor() {}
+        line() {}
+        addImage(...args) { addImageMock(...args); }
+        save(...args) { saveMock(...args); }
+      },
+    };
+
+    // Mock QRCode constructor
+    global.window.QRCode = function(_canvas, _opts) {};
+    global.window.QRCode.CorrectLevel = { M: 1 };
+
+    // Mock canvas.toDataURL since JSDOM doesn't support it
+    const origCreateElement = document.createElement.bind(document);
+    jest.spyOn(document, 'createElement').mockImplementation((tag) => {
+      const el = origCreateElement(tag);
+      if (tag === 'canvas') {
+        el.toDataURL = jest.fn().mockReturnValue('data:image/png;base64,fake');
+      }
+      return el;
+    });
+
+    await ticketModule.generateETicket('g1');
+
+    expect(addImageMock).toHaveBeenCalledWith('data:image/png;base64,fake', 'PNG', 100, 50, 38, 38);
+    expect(saveMock).toHaveBeenCalledWith('bta-ticket-g1.pdf');
+
+    document.createElement.mockRestore();
+    delete global.window.QRCode;
+    delete global.window.jspdf;
+    global.setTimeout = origSetTimeout;
+  });
+});
+
+describe('Ticket Module - generateETicket without optional fields (branch coverage)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('handles guest with no table_number, no dietary, no seat, no events fields', async () => {
+    apiClient.select = jest.fn().mockResolvedValue({
+      data: [
+        {
+          id: 'g2',
+          guest_name: null,
+          guest_type: null,
+          table_number: null,
+          seat_number: null,
+          dietary_requirements: null,
+          events: null,
+        },
+      ],
+    });
+
+    const textCalls = [];
+    global.window.jspdf = {
+      jsPDF: class {
+        constructor() {}
+        setFillColor() {}
+        rect() {}
+        setTextColor() {}
+        setFontSize() {}
+        setFont() {}
+        text(...args) { textCalls.push(args); }
+        setDrawColor() {}
+        line() {}
+        addImage() {}
+        save() {}
+      },
+    };
+
+    // No QRCode to skip that branch
+    delete global.window.QRCode;
+
+    const toastSpy = jest.spyOn(utils, 'showToast');
+    await ticketModule.generateETicket('g2');
+    expect(toastSpy).toHaveBeenCalledWith('E-ticket downloaded.', 'success');
+
+    // Verify fallback values were used
+    const eventNameCall = textCalls.find((c) => c[0] === 'Event');
+    expect(eventNameCall).toBeTruthy();
+    const venueCall = textCalls.find((c) => c[0] === 'Venue: TBC');
+    expect(venueCall).toBeTruthy();
+    const guestNameCall = textCalls.find((c) => c[0] === '-');
+    expect(guestNameCall).toBeTruthy();
+    const guestTypeCall = textCalls.find((c) => c[0] === 'Type: Guest');
+    expect(guestTypeCall).toBeTruthy();
+
+    toastSpy.mockRestore();
+    delete global.window.jspdf;
+  });
+});
+
+describe('Ticket Module - saveTicketType localStorage update existing entry (line 117-118)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    document.getElementById('ttId').value = 'existing-id';
+    document.getElementById('ttName').value = 'Updated Ticket';
+    document.getElementById('ttPrice').value = '150';
+    document.getElementById('ttQty').value = '25';
+    document.getElementById('ttDesc').value = 'Updated desc';
+    document.getElementById('ttEbPrice').value = '';
+    document.getElementById('ttEbDl').value = '';
+    document.getElementById('ttTable').checked = true;
+  });
+
+  afterEach(() => {
+    localStorage.removeItem('bta_ticket_types_ev1');
+    jest.restoreAllMocks();
+  });
+
+  test('updates existing entry in localStorage when DB save fails', async () => {
+    // Pre-populate localStorage with an entry that has the same ID
+    const existing = [{ id: 'existing-id', name: 'Old Ticket', price: 100, quantity: 10 }];
+    localStorage.setItem('bta_ticket_types_ev1', JSON.stringify(existing));
+
+    utils.protectModalDuringSave = jest.fn(async (_modalId, _fn) => {
+      throw new Error('DB err');
+    });
+    const toastSpy = jest.spyOn(utils, 'showToast');
+
+    await ticketModule.saveTicketType('ev1');
+
+    const stored = JSON.parse(localStorage.getItem('bta_ticket_types_ev1') || '[]');
+    expect(stored.length).toBe(1);
+    expect(stored[0].name).toBe('Updated Ticket');
+    expect(stored[0].price).toBe(150);
+    expect(stored[0].id).toBe('existing-id');
+    expect(toastSpy).toHaveBeenCalledWith('Ticket type saved locally', 'success');
+    toastSpy.mockRestore();
+  });
+});
+
+describe('Ticket Module - renderTicketTypes with null types (branch coverage)', () => {
+  test('handles null response from selectAll', async () => {
+    apiClient.selectAll = jest.fn().mockResolvedValue(null);
+    await ticketModule.renderTicketTypes('ev1');
+    const el = document.getElementById('ticketTypesContainer');
+    expect(el.innerHTML).toContain('No ticket types defined');
+  });
+});
+
+describe('Ticket Module - initTicketPurchase with null types and empty rows (branch coverage)', () => {
+  test('handles null types response', async () => {
+    apiClient.select = jest.fn().mockResolvedValue({
+      data: [{ id: 'ev1', event_name: 'Gala', event_date: '2026-06-15', venue: null }],
+    });
+    apiClient.selectAll = jest.fn().mockResolvedValue(null);
+    await ticketModule.initTicketPurchase('ev1');
+    const el = document.getElementById('ticketPurchaseContainer');
+    expect(el.innerHTML).toContain('No tickets available');
+  });
+
+  test('handles event with null venue', async () => {
+    apiClient.select = jest.fn().mockResolvedValue({
+      data: [{ id: 'ev1', event_name: 'Gala', event_date: '2026-06-15', venue: null }],
+    });
+    apiClient.selectAll = jest.fn().mockResolvedValue(sampleTicketTypes);
+    await ticketModule.initTicketPurchase('ev1');
+    const el = document.getElementById('ticketPurchaseContainer');
+    expect(el.innerHTML).toContain('Gala');
+  });
+});
+
+describe('Ticket Module - _openTTModal branch coverage for null fields', () => {
+  test('opens modal for editing ticket with null optional fields', () => {
+    const tt = JSON.stringify({
+      id: 'tt-null',
+      name: 'Basic',
+      price: 50,
+      quantity: 10,
+      description: null,
+      early_bird_price: null,
+      early_bird_deadline: null,
+      includes_table: false,
+    });
+    ticketModule._openTTModal('ev1', tt);
+    expect(document.getElementById('ttModalTitle').textContent).toBe('Edit Ticket Type');
+    expect(document.getElementById('ttDesc').value).toBe('');
+    expect(document.getElementById('ttEbPrice').value).toBe('');
+    expect(document.getElementById('ttEbDl').value).toBe('');
+    expect(document.getElementById('ttTable').checked).toBe(false);
+  });
+});
+
+describe('Ticket Module - renderTicketTypes with types missing description (branch coverage)', () => {
+  test('handles ticket type with null description', async () => {
+    const types = [
+      {
+        id: 'tt-nodesc',
+        name: 'No Desc',
+        price: 50,
+        quantity: 10,
+        description: null,
+        event_id: 'ev1',
+        includes_table: false,
+        early_bird_price: null,
+        early_bird_deadline: null,
+      },
+    ];
+    apiClient.selectAll = jest.fn().mockResolvedValue(types);
+    await ticketModule.renderTicketTypes('ev1');
+    const el = document.getElementById('ticketTypesContainer');
+    expect(el.innerHTML).toContain('No Desc');
+  });
+});
+
+describe('Ticket Module - renderTicketDashboard branch coverage', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    let el = document.getElementById('ticketDashboardContainer');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'ticketDashboardContainer';
+      document.body.appendChild(el);
+    }
+  });
+
+  afterEach(() => {
+    const el = document.getElementById('ticketDashboardContainer');
+    if (el) el.remove();
+  });
+
+  test('renders dashboard with early bird pricing active', async () => {
+    apiClient.selectAll = jest
+      .fn()
+      .mockResolvedValueOnce([
+        {
+          id: 'tt1',
+          name: 'Standard',
+          price: 99,
+          quantity: 100,
+          includes_table: true,
+          early_bird_price: 79,
+          early_bird_deadline: '2027-01-01',
+        },
+      ])
+      .mockResolvedValueOnce([
+        { rsvp_status: 'confirmed' },
+        { rsvp_status: 'pending' },
+      ]);
+
+    await ticketModule.renderTicketDashboard('ev1');
+    const el = document.getElementById('ticketDashboardContainer');
+    expect(el.innerHTML).toContain('Capacity');
+    expect(el.innerHTML).toContain('Yes');
+  });
+
+  test('renders dashboard with null types and guests', async () => {
+    apiClient.selectAll = jest
+      .fn()
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null);
+
+    await ticketModule.renderTicketDashboard('ev1');
+    const el = document.getElementById('ticketDashboardContainer');
+    expect(el.innerHTML).toContain('No ticket types defined');
+    expect(el.innerHTML).toContain('0');
+  });
+});
+
+describe('Ticket Module - renderGuestPreferences branch coverage', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    let el = document.getElementById('guestPreferencesContainer');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'guestPreferencesContainer';
+      document.body.appendChild(el);
+    }
+  });
+
+  afterEach(() => {
+    const el = document.getElementById('guestPreferencesContainer');
+    if (el) el.remove();
+  });
+
+  test('renders with null dietary and null notes', async () => {
+    apiClient.select = jest.fn().mockResolvedValue({
+      data: [{ id: 'g1', guest_name: 'Bob', dietary_requirements: null, notes: null }],
+    });
+    await ticketModule.renderGuestPreferences('g1');
+    const el = document.getElementById('guestPreferencesContainer');
+    expect(el.innerHTML).toContain('Bob');
+    // None should be selected by default when dietary is null
+    expect(el.innerHTML).toContain('selected');
+  });
+});
+
+describe('Ticket Module - processWaitlist branch coverage', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('handles null types, waitlist, and guests', async () => {
+    apiClient.selectAll = jest
+      .fn()
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null);
+    const toastSpy = jest.spyOn(utils, 'showToast');
+
+    await ticketModule.processWaitlist('ev1');
+    expect(toastSpy).toHaveBeenCalledWith('No available spots.', 'info');
+    toastSpy.mockRestore();
+  });
+});
+
+describe('Ticket Module - createTicketCheckout with no sessionId and no url', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    const el = document.getElementById('ticketPurchaseContainer');
+    el.innerHTML = `
+      <input type="number" class="ticket-qty" value="1" data-type-id="tt1" data-price="99" data-name="Standard">
+    `;
+  });
+
+  test('does nothing when response has no sessionId and no url', async () => {
+    delete global.window.stripeFrontend;
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({}),
+    });
+
+    // Should not throw
+    await ticketModule.createTicketCheckout('ev1');
+    expect(global.fetch).toHaveBeenCalled();
+  });
+
+  test('handles response with error message when checkout fails', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      json: () => Promise.resolve({}),
+    });
+    const toastSpy = jest.spyOn(utils, 'showToast');
+    await ticketModule.createTicketCheckout('ev1');
+    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('Checkout error'), 'error');
+    toastSpy.mockRestore();
+  });
+});
+
+describe('Ticket Module - initTicketPurchase early bird price in purchase UI', () => {
+  test('uses regular price when early bird deadline is in the past', async () => {
+    const pastDeadlineTypes = [
+      {
+        id: 'tt-past',
+        name: 'Past EB',
+        price: 100,
+        quantity: 50,
+        description: null,
+        event_id: 'ev1',
+        includes_table: true,
+        early_bird_price: 80,
+        early_bird_deadline: '2020-01-01',
+      },
+    ];
+    apiClient.select = jest.fn().mockResolvedValue({
+      data: [{ id: 'ev1', event_name: 'Gala', event_date: '2026-06-15', venue: 'Hall' }],
+    });
+    apiClient.selectAll = jest.fn().mockResolvedValue(pastDeadlineTypes);
+    await ticketModule.initTicketPurchase('ev1');
+    const el = document.getElementById('ticketPurchaseContainer');
+    // Should show 100.00 not 80.00
+    expect(el.innerHTML).toContain('100.00');
+    expect(el.innerHTML).toContain('Table');
+  });
+});
+
+describe('Ticket Module - renderTicketTypes early bird with past deadline', () => {
+  test('does not show EB badge when early bird deadline is in the past', async () => {
+    const pastEBTypes = [
+      {
+        id: 'tt-pasteb',
+        name: 'Past Deadline Type',
+        price: 100,
+        quantity: 50,
+        description: 'desc',
+        event_id: 'ev1',
+        includes_table: false,
+        early_bird_price: 80,
+        early_bird_deadline: '2020-01-01',
+      },
+    ];
+    apiClient.selectAll = jest.fn().mockResolvedValue(pastEBTypes);
+    await ticketModule.renderTicketTypes('ev1');
+    const el = document.getElementById('ticketTypesContainer');
+    expect(el.innerHTML).toContain('Past Deadline Type');
+    // The EB badge contains "badge bg-warning" - should not appear for past deadlines
+    expect(el.innerHTML).not.toContain('badge bg-warning');
+    expect(el.innerHTML).not.toContain('80.00');
+  });
+});
+
+describe('Ticket Module - additional branch coverage for || fallbacks', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('ticket total handles invalid/missing price and value in qty inputs (line 201 fallbacks)', async () => {
+    apiClient.select = jest.fn().mockResolvedValue({
+      data: [{ id: 'ev1', event_name: 'Gala', event_date: '2026-06-15', venue: 'Hall' }],
+    });
+    // Provide a ticket type with no early_bird to get data-price from t.price
+    apiClient.selectAll = jest.fn().mockResolvedValue([
+      {
+        id: 'tt-x',
+        name: 'Test',
+        price: 50,
+        quantity: 10,
+        description: '',
+        event_id: 'ev1',
+        includes_table: false,
+        early_bird_price: null,
+        early_bird_deadline: null,
+      },
+    ]);
+    await ticketModule.initTicketPurchase('ev1');
+
+    const el = document.getElementById('ticketPurchaseContainer');
+    const qtyInputs = el.querySelectorAll('.ticket-qty');
+    expect(qtyInputs.length).toBe(1);
+
+    // Set invalid values to trigger || 0 fallbacks
+    qtyInputs[0].dataset.price = 'invalid';
+    qtyInputs[0].value = 'abc';
+    qtyInputs[0].dispatchEvent(new dom.window.Event('input'));
+
+    const totalEl = document.getElementById('ticketTotal');
+    expect(totalEl.textContent).toContain('0.00');
+  });
+
+  test('generateETicket with guest having table_number but no seat_number (line 302)', async () => {
+    apiClient.select = jest.fn().mockResolvedValue({
+      data: [
+        {
+          id: 'g3',
+          guest_name: 'Alice',
+          guest_type: 'Standard',
+          table_number: 'T10',
+          seat_number: null,
+          dietary_requirements: null,
+          events: { event_name: 'Gala', event_date: '2026-06-15', venue: 'Hall' },
+        },
+      ],
+    });
+    const textCalls = [];
+    global.window.jspdf = {
+      jsPDF: class {
+        constructor() {}
+        setFillColor() {}
+        rect() {}
+        setTextColor() {}
+        setFontSize() {}
+        setFont() {}
+        text(...args) { textCalls.push(args); }
+        setDrawColor() {}
+        line() {}
+        addImage() {}
+        save() {}
+      },
+    };
+    delete global.window.QRCode;
+
+    await ticketModule.generateETicket('g3');
+    const tableCall = textCalls.find((c) => typeof c[0] === 'string' && c[0].includes('Table: T10'));
+    expect(tableCall).toBeTruthy();
+    expect(tableCall[0]).toContain('Seat: -');
+    delete global.window.jspdf;
+  });
+
+  test('renderTicketDashboard with ticket type having null quantity (line 407)', async () => {
+    let el = document.getElementById('ticketDashboardContainer');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'ticketDashboardContainer';
+      document.body.appendChild(el);
+    }
+    apiClient.selectAll = jest
+      .fn()
+      .mockResolvedValueOnce([
+        { id: 'tt1', name: 'Nullqty', price: 99, quantity: null, includes_table: false, early_bird_price: null, early_bird_deadline: null },
+      ])
+      .mockResolvedValueOnce([{ rsvp_status: 'confirmed' }]);
+
+    await ticketModule.renderTicketDashboard('ev1');
+    el = document.getElementById('ticketDashboardContainer');
+    expect(el.innerHTML).toContain('Capacity');
+    el.remove();
+  });
+
+  test('renderTicketDashboard with ticket type having null/NaN price (line 412)', async () => {
+    let el = document.getElementById('ticketDashboardContainer');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'ticketDashboardContainer';
+      document.body.appendChild(el);
+    }
+    apiClient.selectAll = jest
+      .fn()
+      .mockResolvedValueOnce([
+        { id: 'tt1', name: 'BadPrice', price: null, quantity: 10, includes_table: false, early_bird_price: null, early_bird_deadline: null },
+      ])
+      .mockResolvedValueOnce([{ rsvp_status: 'confirmed' }]);
+
+    await ticketModule.renderTicketDashboard('ev1');
+    el = document.getElementById('ticketDashboardContainer');
+    expect(el.innerHTML).toContain('Estimated Revenue');
+    el.remove();
+  });
+
+  test('processWaitlist with ticket type having null quantity (line 499)', async () => {
+    apiClient.selectAll = jest
+      .fn()
+      .mockResolvedValueOnce([{ quantity: null }])
+      .mockResolvedValueOnce([{ id: 'w1' }])
+      .mockResolvedValueOnce([]);
+    const toastSpy = jest.spyOn(utils, 'showToast');
+
+    await ticketModule.processWaitlist('ev1');
+    // capacity = 0, available = 0
+    expect(toastSpy).toHaveBeenCalledWith('No available spots.', 'info');
+    toastSpy.mockRestore();
+  });
+
+  test('processWaitlist with null waitlist and available spots (line 505 || fallback)', async () => {
+    apiClient.selectAll = jest
+      .fn()
+      .mockResolvedValueOnce([{ quantity: 100 }])   // types: capacity = 100
+      .mockResolvedValueOnce(null)                    // waitlist: null triggers || []
+      .mockResolvedValueOnce([]);                     // guests: 0, so available = 100
+    const toastSpy = jest.spyOn(utils, 'showToast');
+
+    await ticketModule.processWaitlist('ev1');
+    // available = 100, waitlist is null so (null || []).length === 0 => "Waitlist is empty."
+    expect(toastSpy).toHaveBeenCalledWith('Waitlist is empty.', 'info');
+    toastSpy.mockRestore();
+  });
+});

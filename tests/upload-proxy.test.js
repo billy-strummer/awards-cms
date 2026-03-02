@@ -434,3 +434,18 @@ describe('Upload Proxy - get_upload_token', () => {
     expect(res.body.path).not.toContain('..');
   });
 });
+
+describe('Upload Proxy - Internal Server Error', () => {
+  test('returns 500 when handler throws unexpected error', async () => {
+    _mockFrom.mockImplementationOnce(() => {
+      throw new Error('Unexpected crash');
+    });
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+    const req = mockReq({ query: { action: 'get_entry', entry_number: 'BTA-2025-0001' }, headers: { 'x-forwarded-for': '10.0.9.1' } });
+    const res = mockRes();
+    await handler(req, res);
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.body.error).toBe('Internal server error');
+    consoleSpy.mockRestore();
+  });
+});

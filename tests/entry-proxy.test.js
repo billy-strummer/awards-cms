@@ -410,4 +410,25 @@ describe('Entry Proxy API', () => {
     expect(res.body.success).toBe(true);
     expect(res.body.entry.id).toBe('entry-fallback');
   });
+
+  test('returns 500 when both extended and fallback entry inserts fail', async () => {
+    // Org lookup
+    mockFromResults.push(chainable({ data: [{ id: 'org-1' }], error: null }));
+    // Award match
+    mockFromResults.push(chainable({ data: [], error: null }));
+    // Entry number gen
+    mockFromResults.push(chainable({ data: [], error: null }));
+    // First entry insert fails (extended columns)
+    mockFromResults.push(chainable({ data: null, error: { message: 'column does not exist' } }));
+    // Fallback entry insert also fails
+    mockFromResults.push(chainable({ data: null, error: { message: 'DB write failed' } }));
+
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+    const req = createReq({ body: validEntryBody() });
+    const res = createRes();
+    await handler(req, res);
+    expect(res.statusCode).toBe(500);
+    expect(res.body.error).toContain('Could not save your entry');
+    consoleSpy.mockRestore();
+  });
 });

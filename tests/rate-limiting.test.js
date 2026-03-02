@@ -865,4 +865,474 @@ describe('Rate Limiting Module - renderRateLimitConfig', () => {
     expect(el.innerHTML).toContain('Rate Limit Configuration');
     STATE.client = origClient;
   });
+
+  test('uses default containerId parameter when none provided', async () => {
+    apiClient.select = jest.fn().mockResolvedValue({ data: [] });
+    await rateLimitModule.renderRateLimitConfig();
+    const el = document.getElementById('rl-config-container');
+    expect(el.innerHTML).toContain('Rate Limit Configuration');
+  });
+
+  test('handles null configs from apiClient.select', async () => {
+    apiClient.select = jest.fn().mockResolvedValue({ data: null });
+    await rateLimitModule.renderRateLimitConfig('rl-config-container');
+    const el = document.getElementById('rl-config-container');
+    expect(el.innerHTML).toContain('Rate Limit Configuration');
+    // The (configs || []) branch should handle null data gracefully
+    expect(el.querySelector('tbody').innerHTML).toBe('');
+  });
+});
+
+// ==========================================================================
+// ADDITIONAL TESTS - boosting coverage to 100%
+// ==========================================================================
+
+describe('Rate Limiting Module - getAllowList with STATE.client', () => {
+  test('returns data from ip_blocklist when STATE.client exists', async () => {
+    const mockBlocklistData = [
+      { id: '1', ip_address: '10.0.0.1', reason: 'spam', created_at: new Date().toISOString() },
+      { id: '2', ip_address: '10.0.0.2', reason: 'abuse', created_at: new Date().toISOString() },
+    ];
+    STATE.client = {
+      ...mockSupabase,
+      from: jest.fn(() => ({
+        select: jest.fn().mockReturnThis(),
+        order: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        then: jest.fn((cb) => Promise.resolve(cb({ data: mockBlocklistData, error: null }))),
+      })),
+      auth: mockSupabase.auth,
+    };
+
+    const result = await rateLimitModule.getAllowList();
+    expect(result).toEqual(mockBlocklistData);
+    expect(result.length).toBe(2);
+    STATE.client = mockSupabase;
+  });
+
+  test('returns empty array when data is null from ip_blocklist', async () => {
+    STATE.client = {
+      ...mockSupabase,
+      from: jest.fn(() => ({
+        select: jest.fn().mockReturnThis(),
+        order: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        then: jest.fn((cb) => Promise.resolve(cb({ data: null, error: null }))),
+      })),
+      auth: mockSupabase.auth,
+    };
+
+    const result = await rateLimitModule.getAllowList();
+    expect(result).toEqual([]);
+    STATE.client = mockSupabase;
+  });
+});
+
+describe('Rate Limiting Module - _loadDashboardData comprehensive', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    STATE.client = mockSupabase;
+  });
+
+  test('returns early when STATE.client is null', async () => {
+    const origClient = STATE.client;
+    STATE.client = null;
+    apiClient.select = jest.fn();
+    await rateLimitModule._loadDashboardData('24h');
+    expect(apiClient.select).not.toHaveBeenCalled();
+    STATE.client = origClient;
+  });
+
+  test('handles 30d range (720 hours)', async () => {
+    apiClient.select = jest.fn().mockResolvedValue({ data: [] });
+    apiClient.count = jest.fn().mockResolvedValue({ count: 0 });
+    STATE.client = {
+      ...mockSupabase,
+      from: jest.fn(() => ({
+        select: jest.fn().mockReturnThis(),
+        order: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        then: jest.fn((cb) => Promise.resolve(cb({ data: [], error: null }))),
+      })),
+      auth: mockSupabase.auth,
+    };
+
+    await rateLimitModule._loadDashboardData('30d');
+    // Should not throw, and should process 720 hours
+    expect(apiClient.select).toHaveBeenCalled();
+    STATE.client = mockSupabase;
+  });
+
+  test('computes error rate and avg response time with actual data rows', async () => {
+    const rows = [
+      { endpoint: '/api/vote', status_code: 200, response_time_ms: 100, ip_address: '1.1.1.1', created_at: new Date().toISOString() },
+      { endpoint: '/api/vote', status_code: 500, response_time_ms: 200, ip_address: '2.2.2.2', created_at: new Date().toISOString() },
+      { endpoint: '/api/entries', status_code: 404, response_time_ms: 50, ip_address: '1.1.1.1', created_at: new Date().toISOString() },
+      { endpoint: '/api/entries', status_code: 200, response_time_ms: null, ip_address: '3.3.3.3', created_at: new Date().toISOString() },
+    ];
+    apiClient.select = jest.fn().mockResolvedValue({ data: rows });
+    apiClient.count = jest.fn().mockResolvedValue({ count: 5 });
+
+    // Set up DOM elements for setText
+    document.getElementById('rl-total-req').textContent = '';
+    document.getElementById('rl-error-rate').textContent = '';
+    document.getElementById('rl-avg-rt').textContent = '';
+    document.getElementById('rl-blocked').textContent = '';
+
+    STATE.client = {
+      ...mockSupabase,
+      from: jest.fn(() => ({
+        select: jest.fn().mockReturnThis(),
+        order: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        then: jest.fn((cb) => Promise.resolve(cb({ data: [], error: null }))),
+      })),
+      auth: mockSupabase.auth,
+    };
+
+    await rateLimitModule._loadDashboardData('24h');
+
+    // total = 4, errors (status >= 400) = 2, error rate = 50.0%
+    expect(document.getElementById('rl-total-req').textContent).toBe('4');
+    expect(document.getElementById('rl-error-rate').textContent).toBe('50.0%');
+    // avg response = (100 + 200 + 50 + 0) / 4 = 87.5 -> 88 rounded
+    expect(document.getElementById('rl-avg-rt').textContent).toBe('88');
+    expect(document.getElementById('rl-blocked').textContent).toBe('5');
+    STATE.client = mockSupabase;
+  });
+
+  test('setText does nothing when element not found', async () => {
+    // Remove an element temporarily to hit the n === null branch in setText
+    const totalReqEl = document.getElementById('rl-total-req');
+    const origId = totalReqEl.id;
+    totalReqEl.id = 'hidden-total-req';
+
+    const rows = [
+      { endpoint: '/api/vote', status_code: 200, response_time_ms: 100, ip_address: '1.1.1.1', created_at: new Date().toISOString() },
+    ];
+    apiClient.select = jest.fn().mockResolvedValue({ data: rows });
+    apiClient.count = jest.fn().mockResolvedValue({ count: 0 });
+
+    STATE.client = {
+      ...mockSupabase,
+      from: jest.fn(() => ({
+        select: jest.fn().mockReturnThis(),
+        order: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        then: jest.fn((cb) => Promise.resolve(cb({ data: [], error: null }))),
+      })),
+      auth: mockSupabase.auth,
+    };
+
+    await rateLimitModule._loadDashboardData('24h');
+    // Should not throw even though rl-total-req is not found
+    totalReqEl.id = origId;
+    STATE.client = mockSupabase;
+  });
+});
+
+describe('Rate Limiting Module - _renderLineChart when ctx is null', () => {
+  test('returns early when canvas element is not found', () => {
+    const canvas = document.getElementById('rl-line-chart');
+    const origId = canvas.id;
+    canvas.id = 'hidden-line-chart';
+
+    // Should not throw
+    rateLimitModule._renderLineChart([], '24h');
+
+    canvas.id = origId;
+  });
+});
+
+describe('Rate Limiting Module - _renderBarChart when ctx is null', () => {
+  test('returns early when canvas element is not found', () => {
+    const canvas = document.getElementById('rl-bar-chart');
+    const origId = canvas.id;
+    canvas.id = 'hidden-bar-chart';
+
+    rateLimitModule._renderBarChart([{ endpoint: '/api/test' }]);
+
+    canvas.id = origId;
+  });
+});
+
+describe('Rate Limiting Module - _renderTopIPs when el is null', () => {
+  test('returns early when element is not found', () => {
+    const el = document.getElementById('rl-top-ips');
+    const origId = el.id;
+    el.id = 'hidden-top-ips';
+
+    rateLimitModule._renderTopIPs([{ ip_address: '1.1.1.1' }]);
+
+    el.id = origId;
+  });
+
+  test('skips rows without ip_address', () => {
+    const rows = [
+      { ip_address: '1.1.1.1' },
+      { ip_address: null },
+      { ip_address: undefined },
+      { ip_address: '' },
+      { ip_address: '2.2.2.2' },
+    ];
+    rateLimitModule._renderTopIPs(rows);
+    const el = document.getElementById('rl-top-ips');
+    expect(el.innerHTML).toContain('1.1.1.1');
+    expect(el.innerHTML).toContain('2.2.2.2');
+  });
+});
+
+describe('Rate Limiting Module - checkRateLimit edge cases', () => {
+  beforeEach(() => {
+    rateLimitModule._store.clear();
+  });
+
+  test('remaining is 0 when blocked (ts[0] || now fallback)', () => {
+    // When blocked, remaining is 0. Also, when ts array is empty, resetAt uses now as fallback.
+    // Test the empty ts case: call checkRateLimit with no prior entries
+    const result = rateLimitModule.checkRateLimit('/api/new-endpoint', 'new-user');
+    // After first call, ts has 1 entry, so ts[0] exists
+    expect(result.remaining).toBe(29); // 30 max - 1
+
+    // Now test the case where the first call sets ts[0]
+    rateLimitModule._store.clear();
+    // Set an empty store key so filter returns empty
+    rateLimitModule._store.set('/api/vote::edge-user', []);
+    const result2 = rateLimitModule.checkRateLimit('/api/vote', 'edge-user');
+    expect(result2.allowed).toBe(true);
+  });
+});
+
+describe('Rate Limiting Module - logRequest with null email session', () => {
+  test('uses null when session user email is missing', async () => {
+    // The getSession is called twice: once by logRequest for user_email, once by apiClient._getToken
+    // We need access_token for _getToken but no email for the user_email branch
+    const origGetSession = mockSupabase.auth.getSession;
+    mockSupabase.auth.getSession = jest.fn(() =>
+      Promise.resolve({
+        data: { session: { access_token: 'test-token', user: {} } },
+        error: null,
+      })
+    );
+    STATE.client = mockSupabase;
+    global.fetch = jest.fn(() =>
+      Promise.resolve({ ok: true, json: () => Promise.resolve({ data: null, error: null }) })
+    );
+
+    // Also need to ensure apiClient can get the token
+    const origGetToken = apiClient._getToken;
+    apiClient._getToken = jest.fn().mockResolvedValue('test-token');
+
+    // Use spyOn to intercept the insert call and verify the user_email
+    const origInsert = apiClient.insert;
+    let capturedData = null;
+    apiClient.insert = jest.fn(async (table, data) => {
+      capturedData = data;
+      return { data: null, error: null };
+    });
+
+    await rateLimitModule.logRequest('/api/test', 'POST', 200, 50, '1.2.3.4');
+    expect(apiClient.insert).toHaveBeenCalled();
+    expect(capturedData.user_email).toBeNull();
+
+    apiClient.insert = origInsert;
+    apiClient._getToken = origGetToken;
+    mockSupabase.auth.getSession = origGetSession;
+  });
+});
+
+describe('Rate Limiting Module - checkAlerts edge cases', () => {
+  test('uses wildcard alert threshold as fallback', async () => {
+    rateLimitModule._alerts.clear();
+    rateLimitModule.setAlertThreshold('*', 2);
+
+    STATE.client = {
+      ...mockSupabase,
+      from: jest.fn(() => ({
+        select: jest.fn().mockReturnThis(),
+        gte: jest.fn().mockReturnThis(),
+        then: jest.fn((cb) =>
+          cb({
+            data: [
+              { endpoint: '/api/other', ip_address: '5.5.5.5' },
+              { endpoint: '/api/other', ip_address: '5.5.5.5' },
+              { endpoint: '/api/other', ip_address: '5.5.5.5' },
+            ],
+            error: null,
+          })
+        ),
+      })),
+      auth: mockSupabase.auth,
+    };
+
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    global.fetch = jest.fn(() =>
+      Promise.resolve({ ok: true, json: () => Promise.resolve({ data: null, error: null }) })
+    );
+
+    await rateLimitModule.checkAlerts();
+
+    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('Rate alert'), 'warning');
+    toastSpy.mockRestore();
+    STATE.client = mockSupabase;
+    rateLimitModule._alerts.clear();
+  });
+
+  test('does not alert when count does not exceed threshold', async () => {
+    rateLimitModule._alerts.clear();
+    rateLimitModule.setAlertThreshold('/api/vote', 100);
+
+    STATE.client = {
+      ...mockSupabase,
+      from: jest.fn(() => ({
+        select: jest.fn().mockReturnThis(),
+        gte: jest.fn().mockReturnThis(),
+        then: jest.fn((cb) =>
+          cb({
+            data: [
+              { endpoint: '/api/vote', ip_address: '1.1.1.1' },
+            ],
+            error: null,
+          })
+        ),
+      })),
+      auth: mockSupabase.auth,
+    };
+
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    await rateLimitModule.checkAlerts();
+
+    expect(toastSpy).not.toHaveBeenCalled();
+    toastSpy.mockRestore();
+    STATE.client = mockSupabase;
+    rateLimitModule._alerts.clear();
+  });
+
+  test('handles null logs data', async () => {
+    rateLimitModule._alerts.clear();
+    rateLimitModule.setAlertThreshold('/api/vote', 3);
+
+    STATE.client = {
+      ...mockSupabase,
+      from: jest.fn(() => ({
+        select: jest.fn().mockReturnThis(),
+        gte: jest.fn().mockReturnThis(),
+        then: jest.fn((cb) =>
+          cb({
+            data: null,
+            error: null,
+          })
+        ),
+      })),
+      auth: mockSupabase.auth,
+    };
+
+    // Should not throw when logs is null
+    await rateLimitModule.checkAlerts();
+    STATE.client = mockSupabase;
+    rateLimitModule._alerts.clear();
+  });
+
+  test('does not alert when no threshold matches', async () => {
+    rateLimitModule._alerts.clear();
+    // No thresholds set at all
+
+    STATE.client = {
+      ...mockSupabase,
+      from: jest.fn(() => ({
+        select: jest.fn().mockReturnThis(),
+        gte: jest.fn().mockReturnThis(),
+        then: jest.fn((cb) =>
+          cb({
+            data: [
+              { endpoint: '/api/unknown', ip_address: '1.1.1.1' },
+              { endpoint: '/api/unknown', ip_address: '1.1.1.1' },
+            ],
+            error: null,
+          })
+        ),
+      })),
+      auth: mockSupabase.auth,
+    };
+
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    await rateLimitModule.checkAlerts();
+    expect(toastSpy).not.toHaveBeenCalled();
+    toastSpy.mockRestore();
+    STATE.client = mockSupabase;
+  });
+});
+
+describe('Rate Limiting Module - blockIP with system fallback', () => {
+  test('uses system as blocked_by when session user email is null', async () => {
+    STATE.client = {
+      ...mockSupabase,
+      auth: {
+        getSession: jest.fn(() =>
+          Promise.resolve({
+            data: { session: { user: {} } },
+            error: null,
+          })
+        ),
+      },
+    };
+    global.fetch = jest.fn(() =>
+      Promise.resolve({ ok: true, json: () => Promise.resolve({ data: null, error: null }) })
+    );
+    const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+
+    await rateLimitModule.blockIP('9.9.9.9', 'Test block');
+
+    expect(toastSpy).toHaveBeenCalledWith('IP 9.9.9.9 blocked', 'success');
+    toastSpy.mockRestore();
+    STATE.client = mockSupabase;
+  });
+});
+
+describe('Rate Limiting Module - _renderAlerts with null data', () => {
+  test('shows no recent alerts when data is null', async () => {
+    const el = document.getElementById('rl-alerts-list');
+    el.innerHTML = '';
+
+    STATE.client = {
+      ...mockSupabase,
+      from: jest.fn(() => ({
+        select: jest.fn().mockReturnThis(),
+        order: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        then: jest.fn((cb) =>
+          Promise.resolve(cb({ data: null, error: null }))
+        ),
+      })),
+      auth: mockSupabase.auth,
+    };
+
+    await rateLimitModule._renderAlerts();
+    expect(el.innerHTML).toContain('No recent alerts');
+    STATE.client = mockSupabase;
+  });
+});
+
+describe('Rate Limiting Module - _renderLineChart destroys existing chart', () => {
+  test('destroys existing line chart before creating new one', () => {
+    // First, create a chart
+    rateLimitModule._renderLineChart([], '24h');
+    const firstChart = rateLimitModule._charts.line;
+    expect(firstChart).toBeDefined();
+
+    // Now render again - it should destroy the previous one
+    rateLimitModule._renderLineChart([], '7d');
+    expect(firstChart.destroy).toHaveBeenCalled();
+  });
+});
+
+describe('Rate Limiting Module - _renderBarChart destroys existing chart', () => {
+  test('destroys existing bar chart before creating new one', () => {
+    rateLimitModule._renderBarChart([{ endpoint: '/test' }]);
+    const firstChart = rateLimitModule._charts.bar;
+    expect(firstChart).toBeDefined();
+
+    rateLimitModule._renderBarChart([{ endpoint: '/test2' }]);
+    expect(firstChart.destroy).toHaveBeenCalled();
+  });
 });

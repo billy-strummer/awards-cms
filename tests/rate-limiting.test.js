@@ -1002,10 +1002,13 @@ describe('Rate Limiting Module - _loadDashboardData comprehensive', () => {
   });
 
   test('setText does nothing when element not found', async () => {
-    // Remove an element temporarily to hit the n === null branch in setText
-    const totalReqEl = document.getElementById('rl-total-req');
-    const origId = totalReqEl.id;
-    totalReqEl.id = 'hidden-total-req';
+    // Remove ALL elements with id rl-total-req from the DOM to ensure getElementById returns null
+    let el;
+    const removed = [];
+    while ((el = document.getElementById('rl-total-req'))) {
+      removed.push({ el, parent: el.parentNode });
+      el.parentNode.removeChild(el);
+    }
 
     const rows = [
       { endpoint: '/api/vote', status_code: 200, response_time_ms: 100, ip_address: '1.1.1.1', created_at: new Date().toISOString() },
@@ -1026,45 +1029,58 @@ describe('Rate Limiting Module - _loadDashboardData comprehensive', () => {
 
     await rateLimitModule._loadDashboardData('24h');
     // Should not throw even though rl-total-req is not found
-    totalReqEl.id = origId;
+
+    // Restore elements
+    removed.forEach(({ el: removedEl, parent }) => parent.appendChild(removedEl));
     STATE.client = mockSupabase;
   });
 });
 
 describe('Rate Limiting Module - _renderLineChart when ctx is null', () => {
   test('returns early when canvas element is not found', () => {
-    const canvas = document.getElementById('rl-line-chart');
-    const origId = canvas.id;
-    canvas.id = 'hidden-line-chart';
+    // Remove ALL elements with id rl-line-chart from the DOM
+    let el;
+    const removed = [];
+    while ((el = document.getElementById('rl-line-chart'))) {
+      removed.push({ el, parent: el.parentNode });
+      el.parentNode.removeChild(el);
+    }
 
-    // Should not throw
+    // Should not throw - early return because ctx is null
     rateLimitModule._renderLineChart([], '24h');
 
-    canvas.id = origId;
+    // Restore elements
+    removed.forEach(({ el, parent }) => parent.appendChild(el));
   });
 });
 
 describe('Rate Limiting Module - _renderBarChart when ctx is null', () => {
   test('returns early when canvas element is not found', () => {
-    const canvas = document.getElementById('rl-bar-chart');
-    const origId = canvas.id;
-    canvas.id = 'hidden-bar-chart';
+    let el;
+    const removed = [];
+    while ((el = document.getElementById('rl-bar-chart'))) {
+      removed.push({ el, parent: el.parentNode });
+      el.parentNode.removeChild(el);
+    }
 
     rateLimitModule._renderBarChart([{ endpoint: '/api/test' }]);
 
-    canvas.id = origId;
+    removed.forEach(({ el, parent }) => parent.appendChild(el));
   });
 });
 
 describe('Rate Limiting Module - _renderTopIPs when el is null', () => {
   test('returns early when element is not found', () => {
-    const el = document.getElementById('rl-top-ips');
-    const origId = el.id;
-    el.id = 'hidden-top-ips';
+    let el;
+    const removed = [];
+    while ((el = document.getElementById('rl-top-ips'))) {
+      removed.push({ el, parent: el.parentNode });
+      el.parentNode.removeChild(el);
+    }
 
     rateLimitModule._renderTopIPs([{ ip_address: '1.1.1.1' }]);
 
-    el.id = origId;
+    removed.forEach(({ el, parent }) => parent.appendChild(el));
   });
 
   test('skips rows without ip_address', () => {

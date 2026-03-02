@@ -522,6 +522,44 @@ describe('Voting Proxy API', () => {
     expect(res.body.error).toContain('Must provide');
   });
 
+  test('submit_vote returns 500 on non-duplicate insert error', async () => {
+    // Rate limit check OK
+    mockFrom.mockReturnValueOnce(chainable({ data: null, error: null, count: 0 }));
+    // Duplicate check returns no rows
+    mockFrom.mockReturnValueOnce(chainable({ data: null, error: { code: 'PGRST116' } }));
+    // Insert returns a non-unique constraint error
+    mockFrom.mockReturnValueOnce(chainable({ data: null, error: { code: '42P01', message: 'relation does not exist' } }));
+
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+    const req = createReq({
+      body: {
+        action: 'submit_vote',
+        entry_id: VALID_UUID,
+        voter_email: 'user@test.com',
+        verification_token: 'tok',
+      },
+    });
+    const res = createRes();
+    await handler(req, res);
+    expect(res.statusCode).toBe(500);
+    expect(res.body.error).toBe('Internal server error');
+    consoleSpy.mockRestore();
+  });
+
+  test('load_entry returns 500 on non-PGRST116 db error', async () => {
+    mockFrom.mockReturnValueOnce(chainable({ data: null, error: { code: '42P01', message: 'relation missing' } }));
+
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+    const req = createReq({
+      body: { action: 'load_entry', entry_id: VALID_UUID },
+    });
+    const res = createRes();
+    await handler(req, res);
+    expect(res.statusCode).toBe(500);
+    expect(res.body.error).toBe('Internal server error');
+    consoleSpy.mockRestore();
+  });
+
   // --- String body parsing ---
 
   test('handles JSON string body', async () => {

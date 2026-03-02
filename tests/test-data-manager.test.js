@@ -2418,22 +2418,23 @@ describe('Test Data Manager - showTestDataInfo with non-null counts', () => {
     expect(callArgs).toContain('<strong>6</strong>');
   });
 
-  test('shows test data with null event but non-zero counts (covers testEvent falsy branch)', async () => {
+  test('shows test data with null event and null orgCount (covers all || 0 falsy branches)', async () => {
     jest.spyOn(testDataManager, 'showModal').mockImplementation(() => {});
 
-    // Mock Promise.all: null event but orgs > 0 so hasTestData = true
+    // Mock Promise.all: null event, null orgCount, but awardCount > 0 so hasTestData = true
+    // All other counts are null to trigger every || 0 fallback
     jest.spyOn(Promise, 'all').mockResolvedValueOnce([
-      { data: null },  // event null
-      { count: 5 },    // orgCount > 0 so hasTestData = true
-      { count: 0 },    // awardCount
-      { count: null },  // rsvpCount null -> || 0 fires
-      { count: null },  // entryCount null
-      { count: null },  // sponsorCount null
-      { count: null },  // bannerCount null
-      { count: null },  // invoiceCount null
-      { count: null },  // contactCount null
-      { count: null },  // dealCount null
-      { count: null },  // commCount null
+      { data: null },   // event null -> testEvent falsy
+      { count: null },   // orgCount null -> || 0 fires
+      { count: 3 },      // awardCount > 0 -> hasTestData = true
+      { count: null },   // rsvpCount null -> || 0 fires
+      { count: null },   // entryCount null
+      { count: null },   // sponsorCount null
+      { count: null },   // bannerCount null
+      { count: null },   // invoiceCount null
+      { count: null },   // contactCount null
+      { count: null },   // dealCount null
+      { count: null },   // commCount null
     ]);
 
     await testDataManager.showTestDataInfo();
@@ -2446,6 +2447,8 @@ describe('Test Data Manager - showTestDataInfo with non-null counts', () => {
     const callArgs = testDataManager.showModal.mock.calls[0][1];
     expect(callArgs).toContain('No');
     expect(callArgs).not.toContain('<strong>Yes</strong>');
+    // orgCount is null, so it should fall back to 0
+    expect(callArgs).toContain('Organisations: <strong>0</strong>');
   });
 });
 
@@ -2525,5 +2528,101 @@ describe('Test Data Manager - executeTestDataGeneration pre-flight without code/
     await testDataManager.executeTestDataGeneration();
 
     expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('string error'), 'error');
+  });
+
+  test('pre-flight error with falsy message falls back to JSON.stringify', async () => {
+    fromChain.select.mockReturnValue(fromChain);
+    fromChain.limit.mockReturnValue(
+      Promise.resolve({ data: null, error: { code: 'AUTH_ERROR' } })
+    );
+    jest.spyOn(testDataManager, 'showModal').mockImplementation(() => {});
+
+    await testDataManager.executeTestDataGeneration();
+
+    // pfErr.message is undefined/falsy, so JSON.stringify(pfErr) is used
+    expect(toastSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Pre-flight FAILED'),
+      'error'
+    );
+  });
+});
+
+describe('Test Data Manager - generateEventExtras with falsy contact_name', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const fromChain = buildChainableMock({ data: [], error: null });
+    mockSupabase.from.mockReturnValue(fromChain);
+    fromChain.delete.mockReturnValue(fromChain);
+    fromChain.eq.mockReturnValue(Promise.resolve({ data: null, error: null }));
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('uses fallback attendee name when contact_name is falsy', async () => {
+    jest.spyOn(testDataManager, '_safeWrite').mockResolvedValue({ error: null, stripped: [] });
+
+    // Create orgs where some have no contact_name
+    const orgs = Array.from({ length: 20 }, (_, i) => ({
+      id: testDataManager.uid(testDataManager.ORG_PREFIX, i + 1),
+      company_name: 'TEST_MODE_Org ' + i,
+      contact_name: i % 2 === 0 ? null : 'Contact ' + i, // every other org has no contact_name
+      email: `org${i}@example.com`,
+    }));
+
+    await testDataManager.generateEventExtras('event-1', orgs);
+
+    const attCall = testDataManager._safeWrite.mock.calls.find((c) => c[0] === 'event_attendees');
+    const attendees = attCall[1];
+
+    // Org at index 0 has null contact_name -> should use 'Attendee 1'
+    expect(attendees[0].attendee_name).toBe('Attendee 1');
+    // Org at index 1 has contact_name -> should use 'Contact 1'
+    expect(attendees[1].attendee_name).toBe('Contact 1');
+  });
+});
+
+describe('Test Data Manager - removeTestData with null data from queries', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.useFakeTimers();
+    jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    jest.spyOn(utils, 'showLoading').mockImplementation(() => {});
+    jest.spyOn(utils, 'hideLoading').mockImplementation(() => {});
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+    jest.restoreAllMocks();
+  });
+
+  test('handles null data from organisations, award_years, and entries queries (covers || [] fallbacks)', async () => {
+    jest.spyOn(testDataManager, 'showConfirmDialog').mockResolvedValue(true);
+    jest.spyOn(testDataManager, '_safeDel').mockResolvedValue();
+    jest.spyOn(testDataManager, 'showModal').mockImplementation(() => {});
+
+    // Return null data for all three queries that use || []
+    mockSupabase.from.mockImplementation((table) => {
+      const chain = buildChainableMock({ data: null, error: null });
+      chain.select.mockReturnValue(chain);
+      chain.delete.mockReturnValue(chain);
+      chain.eq.mockReturnValue(chain);
+      chain.in.mockReturnValue(chain);
+      chain.like.mockReturnValue(chain);
+      // Return null data to trigger the || [] fallback
+      chain.then = jest.fn((cb) => Promise.resolve({ data: null, error: null }).then(cb));
+      return chain;
+    });
+
+    await testDataManager.removeTestData();
+
+    // Should succeed without errors, using empty arrays from || [] fallbacks
+    expect(utils.showToast).toHaveBeenCalledWith('All test data removed successfully!', 'success');
   });
 });

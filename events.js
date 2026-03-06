@@ -12436,59 +12436,39 @@ const eventsModule = {
     try {
       const awardsByEvent = {};
 
-      // Try querying award_years by event_id first (requires migration 018)
-      let allAwards;
-      let awardsQueryFailed = false;
-      try {
-        /* selectAll: justified — filtered to specific event IDs for progress badges */
-        allAwards = await apiClient.selectAll('award_years', {
-          select: 'id, event_id, winner_confirmed',
-          filters: { event_id: { op: 'in', value: uncached } },
-        });
-      } catch (_e) {
-        awardsQueryFailed = true;
-      }
+      // Look up events to get years, then match award_years by year
+      /* selectAll: justified — filtered to specific event IDs for year lookup */
+      const evResult = await apiClient.selectAll('events', {
+        select: 'id, year',
+        filters: { id: { op: 'in', value: uncached } },
+      });
+      const events = evResult || [];
 
-      if (!awardsQueryFailed && allAwards) {
-        (allAwards || []).forEach((award) => {
-          if (!awardsByEvent[award.event_id]) awardsByEvent[award.event_id] = [];
-          awardsByEvent[award.event_id].push(award);
-        });
-      } else {
-        // Fallback: look up events to get years, then match award_years by year
-        /* selectAll: justified — filtered to specific event IDs for year lookup */
-        const evResult = await apiClient.selectAll('events', {
-          select: 'id, year',
-          filters: { id: { op: 'in', value: uncached } },
-        });
-        const events = evResult || [];
+      if (events && events.length > 0) {
+        const years = [...new Set(events.map((e) => e.year).filter(Boolean))];
+        if (years.length > 0) {
+          /* selectAll: justified — filtered to specific years for event progress */
+          const awards = await apiClient.selectAll('award_years', {
+            select: 'id, year, winner_confirmed',
+            filters: { year: { op: 'in', value: years } },
+          });
 
-        if (events && events.length > 0) {
-          const years = [...new Set(events.map((e) => e.year).filter(Boolean))];
-          if (years.length > 0) {
-            /* selectAll: justified — filtered to specific years for event progress */
-            const awards = await apiClient.selectAll('award_years', {
-              select: 'id, year',
-              filters: { year: { op: 'in', value: years } },
+          // Map year back to event_id
+          const yearToEvents = {};
+          events.forEach((e) => {
+            if (e.year) {
+              if (!yearToEvents[e.year]) yearToEvents[e.year] = [];
+              yearToEvents[e.year].push(e.id);
+            }
+          });
+
+          (awards || []).forEach((award) => {
+            const eventIdsForYear = yearToEvents[award.year] || [];
+            eventIdsForYear.forEach((eid) => {
+              if (!awardsByEvent[eid]) awardsByEvent[eid] = [];
+              awardsByEvent[eid].push(award);
             });
-
-            // Map year back to event_id
-            const yearToEvents = {};
-            events.forEach((e) => {
-              if (e.year) {
-                if (!yearToEvents[e.year]) yearToEvents[e.year] = [];
-                yearToEvents[e.year].push(e.id);
-              }
-            });
-
-            (awards || []).forEach((award) => {
-              const eventIdsForYear = yearToEvents[award.year] || [];
-              eventIdsForYear.forEach((eid) => {
-                if (!awardsByEvent[eid]) awardsByEvent[eid] = [];
-                awardsByEvent[eid].push(award);
-              });
-            });
-          }
+          });
         }
       }
 

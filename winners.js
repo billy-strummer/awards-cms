@@ -45,7 +45,7 @@ const winnersModule = {
       this._serverPagination = true;
       await this._fetchPage(1);
 
-      console.warn(`Loaded winners (page 1, total: ${this._pagination.count})`);
+      console.debug(`Loaded winners (page 1, total: ${this._pagination.count})`);
 
       // Initialise reusable keyboard navigation (once)
       if (!this._keyboardNavInit) {

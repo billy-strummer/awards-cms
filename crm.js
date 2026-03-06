@@ -48,7 +48,7 @@ const crmModule = {
    * @returns {Promise<void>}
    */
   async loadAllData() {
-    console.warn('🎯 Loading CRM data...');
+    console.debug('Loading CRM data...');
     try {
       // Load data based on current sub-tab
       switch (this.currentSubTab) {
@@ -88,7 +88,7 @@ const crmModule = {
    * @returns {Promise<void>}
    */
   async loadCompanies() {
-    console.warn('Loading companies CRM view...');
+    console.debug('Loading companies CRM view...');
 
     try {
       // Enable server-side pagination and fetch first page
@@ -353,7 +353,7 @@ const crmModule = {
    * @returns {Promise<void>}
    */
   async loadCommunications() {
-    console.warn('Loading communications...');
+    console.debug('Loading communications...');
 
     // Read filter values from DOM
     const typeEl = document.getElementById('communicationTypeFilter');
@@ -513,7 +513,7 @@ const crmModule = {
    * @returns {Promise<void>}
    */
   async loadDeals() {
-    console.warn('Loading deals...');
+    console.debug('Loading deals...');
 
     try {
       const filters = {};
@@ -712,7 +712,7 @@ const crmModule = {
    * @returns {Promise<void>}
    */
   async loadMeetings() {
-    console.warn('Loading meetings...');
+    console.debug('Loading meetings...');
 
     try {
       const filters = {};
@@ -849,7 +849,7 @@ const crmModule = {
    * @returns {Promise<void>}
    */
   async loadSegments() {
-    console.warn('Loading segments...');
+    console.debug('Loading segments...');
 
     try {
       // selectAll justified: contact_segments is a small lookup table for segment management (see pagination documentation)

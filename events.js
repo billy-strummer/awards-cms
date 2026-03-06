@@ -62,7 +62,7 @@ const eventsModule = {
       this.updateEventStats();
       this.renderFinancialOverview();
 
-      console.warn(`Loaded events (page 1, total: ${this._pagination.count})`);
+      console.debug(`Loaded events (page 1, total: ${this._pagination.count})`);
       utils.trackDataLoad('events');
     } catch (error) {
       console.error('Error loading events:', error);
@@ -279,7 +279,7 @@ const eventsModule = {
 
             try {
               await apiClient.insert('event_galleries', sections);
-              console.warn(`Created ${sections.length} gallery sections from template`);
+              console.debug(`Created ${sections.length} gallery sections from template`);
             } catch (galErr) {
               console.warn('Failed to create gallery sections from template:', galErr.message);
             }
@@ -465,7 +465,7 @@ const eventsModule = {
 
       await apiClient.insert('event_galleries', newSections);
 
-      console.warn(`Cloned ${sections.length} gallery section(s)`);
+      console.debug(`Cloned ${sections.length} gallery section(s)`);
     } catch (error) {
       console.error('Error cloning gallery sections:', error);
       // Don't throw - let the event creation succeed even if sections fail

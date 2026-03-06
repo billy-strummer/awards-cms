@@ -28,7 +28,7 @@ const emailListsModule = {
    * @returns {Promise<void>}
    */
   async loadAllData() {
-    console.warn('Loading email lists data...');
+    console.debug('Loading email lists data...');
     try {
       await this.loadEmailLists();
       await this.loadStats();

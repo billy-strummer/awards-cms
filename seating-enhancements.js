@@ -61,7 +61,7 @@ const seatingEnhancements = {
         .filter((a) => !before.has(a.id))
         .forEach((a) => self._pushUndo({ type: 'assign', data: { ...a } }));
     };
-    console.warn('seatingEnhancements initialised');
+    console.debug('seatingEnhancements initialised');
   },
 
   // === 1. SEAT-LEVEL ASSIGNMENT ===

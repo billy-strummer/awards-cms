@@ -200,8 +200,10 @@ const nomineeVoting = {
    * Show error state
    */
   showError() {
-    document.getElementById('loadingState').style.display = 'none';
-    document.getElementById('errorState').style.display = 'block';
+    const loading = document.getElementById('loadingState');
+    const error = document.getElementById('errorState');
+    if (loading) loading.style.display = 'none';
+    if (error) error.style.display = 'block';
   },
 
   /**
@@ -443,9 +445,11 @@ if (typeof window !== 'undefined') {
   window.votingApi = votingApi;
 }
 
-// Initialize on page load
-document.addEventListener('DOMContentLoaded', () => {
-  nomineeVoting.initialize();
-});
+// Initialize on page load — only on vote.html (not the admin bundle)
+if (document.getElementById('loadingState') && document.getElementById('errorState')) {
+  document.addEventListener('DOMContentLoaded', () => {
+    nomineeVoting.initialize();
+  });
+}
 
 export { nomineeVoting };

@@ -193,10 +193,10 @@ async function build() {
       '<!-- Custom Styles -->\n  <link rel="stylesheet" href="app.min.css">\n</head>'
     );
 
-    // Replace app script block: everything from <!-- Application Scripts --> to <script src="app.js">
-    // Keep only one bundled script tag
+    // Replace app script block: everything from <!-- Application Scripts --> to the last
+    // bundled script (btc-module.js follows app.js). Keep only one bundled script tag.
     html = html.replace(
-      /\s*<!-- Application Scripts[\s\S]*?<script src="app\.js"><\/script>/,
+      /\s*<!-- Application Scripts[\s\S]*?<script src="btc-module\.js"><\/script>/,
       '\n  <script type="module" src="app.min.js"></script>'
     );
 

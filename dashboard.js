@@ -64,7 +64,7 @@ const dashboardModule = {
       // Update tab count badges
       updateTabCounts();
 
-      console.warn('Dashboard data loaded');
+      console.debug('Dashboard data loaded');
     } catch (error) {
       console.error('Error loading dashboard data:', error);
       utils.showErrorWithRetry(error, 'loading dashboard', () => this.loadAllData());

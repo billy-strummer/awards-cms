@@ -27,7 +27,7 @@ const marketingModule = {
     try {
       utils.showLoading();
       await Promise.all([this.loadBanners(), this.loadSponsors()]);
-      console.warn('✅ Marketing data loaded');
+      console.debug('Marketing data loaded');
     } catch (error) {
       console.error('Error loading marketing data:', error);
       utils.showToast('Failed to load marketing data', 'error');

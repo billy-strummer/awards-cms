@@ -16,7 +16,7 @@ const tenantModule = {
     await this.loadTenants();
     this.restoreLastTenant();
     this.renderTenantSwitcher();
-    console.warn(`Multi-tenancy initialized (tenant: ${this._currentTenant?.name || 'default'})`);
+    console.debug(`Multi-tenancy initialized (tenant: ${this._currentTenant?.name || 'default'})`);
   },
 
   /**

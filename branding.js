@@ -109,6 +109,23 @@ const brandingModule = {
    * @param {Object} config - Branding configuration
    * @returns {void}
    */
+  /**
+   * Check whether a URL looks like a valid image source (data URI, blob, or
+   * path/URL ending with a known image extension).
+   * @param {string} url
+   * @returns {boolean}
+   */
+  _isImageUrl(url) {
+    if (!url || typeof url !== 'string') return false;
+    if (url.startsWith('data:image/') || url.startsWith('blob:')) return true;
+    try {
+      const { pathname } = new URL(url, window.location.origin);
+      return /\.(png|jpe?g|gif|webp|svg|ico|avif|bmp)$/i.test(pathname);
+    } catch {
+      return false;
+    }
+  },
+
   applyBranding(config) {
     if (!config || !Object.keys(config).length) return;
     const root = document.documentElement;
@@ -117,7 +134,7 @@ const brandingModule = {
     if (config.accent_color) root.style.setProperty('--brand-accent', config.accent_color);
     if (config.font_family) root.style.setProperty('--brand-font', config.font_family);
     if (config.company_name) document.title = config.company_name;
-    if (config.favicon_url) {
+    if (config.favicon_url && this._isImageUrl(config.favicon_url)) {
       let link = document.querySelector("link[rel~='icon']");
       if (!link) {
         link = document.createElement('link');
@@ -126,7 +143,7 @@ const brandingModule = {
       }
       link.href = config.favicon_url;
     }
-    if (config.logo_url) {
+    if (config.logo_url && this._isImageUrl(config.logo_url)) {
       const navLogo = document.getElementById('navbarLogo') || document.querySelector('.navbar-brand img');
       if (navLogo) navLogo.src = config.logo_url;
     }

@@ -114,6 +114,8 @@ const ALLOWED_TABLES = new Set([
   'user_roles',
   'organisations_with_crm_summary',
   'ai_vetting_results',
+  'event_templates',
+  'social_media_templates',
 ]);
 
 /** Tables that can be mutated (insert/update/delete/upsert) */
@@ -191,6 +193,8 @@ const MUTABLE_TABLES = new Set([
   'notification_preferences',
   'communications',
   'deals',
+  'event_templates',
+  'social_media_templates',
 ]);
 
 /** Maximum page size to prevent abuse */
@@ -235,6 +239,8 @@ const ROLE_PERMISSIONS = {
       'event_attendees',
       'event_budgets',
       'event_budget_items',
+      'sponsors',
+      'event_templates',
     ]),
   },
   viewer: {
@@ -265,6 +271,9 @@ const ROLE_PERMISSIONS = {
       'event_galleries',
       'organisation_notes',
       'user_preferences',
+      'sponsors',
+      'social_media_posts',
+      'social_media_templates',
     ]),
   },
   finance: {

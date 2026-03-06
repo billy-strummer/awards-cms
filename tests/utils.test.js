@@ -8,7 +8,7 @@ const { JSDOM } = require('jsdom');
 // Setup minimal DOM before loading modules
 const dom = new JSDOM(
   `<!DOCTYPE html><html><head></head><body>
-  <div id="loadingBar" style="display:none;"></div>
+  <div id="loadingBar" class="loading-bar d-none"></div>
   <div id="notificationToast"><span id="toastIcon"></span><span id="toastTitle"></span><span id="toastMessage"></span></div>
   <div id="connectionStatus"><span class="status-icon"></span><span class="status-text"></span></div>
   <div id="loginPage"></div>
@@ -611,14 +611,14 @@ describe('Utils - debounce()', () => {
 describe('Utils - showLoading() / hideLoading()', () => {
   test('showLoading makes loading bar visible', () => {
     utils.showLoading();
-    expect(document.getElementById('loadingBar').style.display).toBe('block');
+    expect(document.getElementById('loadingBar').classList.contains('d-none')).toBe(false);
   });
 
   test('hideLoading hides loading bar', () => {
     utils.showLoading();
     utils._loadingShowTime = Date.now() - 500; // ensure past min time
     utils.hideLoading();
-    expect(document.getElementById('loadingBar').style.display).toBe('none');
+    expect(document.getElementById('loadingBar').classList.contains('d-none')).toBe(true);
   });
 });
 
@@ -1807,10 +1807,7 @@ describe('Utils - showDraftRecoveryBanner()', () => {
   });
 
   test('returns a banner element when draft exists', () => {
-    localStorage.setItem(
-      'draft_bannerTestForm',
-      JSON.stringify({ data: { x: 1 }, savedAt: Date.now() - 5000 })
-    );
+    localStorage.setItem('draft_bannerTestForm', JSON.stringify({ data: { x: 1 }, savedAt: Date.now() - 5000 }));
     const result = utils.showDraftRecoveryBanner('bannerTestForm', () => {});
     expect(result).toBeTruthy();
     expect(result.innerHTML).toContain('Unsaved draft found');
@@ -1849,7 +1846,11 @@ describe('Utils - restoreFromTrash()', () => {
     // Put an item in trash
     utils.softDelete('testRestoreTable', { id: 'r1', name: 'Test' });
     expect(utils.getTrash('testRestoreTable').length).toBe(1);
-    const result = await utils.restoreFromTrash('testRestoreTable', { id: 'r1', name: 'Test', _deletedAt: Date.now() }, STATE.client);
+    const result = await utils.restoreFromTrash(
+      'testRestoreTable',
+      { id: 'r1', name: 'Test', _deletedAt: Date.now() },
+      STATE.client
+    );
     expect(result).toBe(true);
     expect(utils.getTrash('testRestoreTable').length).toBe(0);
   });
@@ -2108,14 +2109,14 @@ describe('Utils - exportToPrintablePDF()', () => {
 describe('Utils - showLoadingWithMinTime() / hideLoadingWithMinTime()', () => {
   test('showLoadingWithMinTime makes loading bar visible', () => {
     utils.showLoadingWithMinTime();
-    expect(document.getElementById('loadingBar').style.display).toBe('block');
+    expect(document.getElementById('loadingBar').classList.contains('d-none')).toBe(false);
   });
 
   test('hideLoadingWithMinTime hides loading bar after min time', async () => {
     utils.showLoadingWithMinTime();
     utils._loadingShowTime = Date.now() - 500; // past min time
     await utils.hideLoadingWithMinTime();
-    expect(document.getElementById('loadingBar').style.display).toBe('none');
+    expect(document.getElementById('loadingBar').classList.contains('d-none')).toBe(true);
   });
 });
 
@@ -2449,7 +2450,11 @@ describe('Utils - renderServerPagination()', () => {
     container.id = 'testPaginationSingle';
     document.body.appendChild(container);
 
-    utils.renderServerPagination('testPaginationSingle', { page: 1, totalPages: 1, count: 5, pageSize: 50 }, 'module.goToPage');
+    utils.renderServerPagination(
+      'testPaginationSingle',
+      { page: 1, totalPages: 1, count: 5, pageSize: 50 },
+      'module.goToPage'
+    );
     expect(container.innerHTML).toContain('Showing all 5 records');
 
     container.remove();
@@ -2460,7 +2465,11 @@ describe('Utils - renderServerPagination()', () => {
     container.id = 'testPaginationMulti';
     document.body.appendChild(container);
 
-    utils.renderServerPagination('testPaginationMulti', { page: 2, totalPages: 5, count: 250, pageSize: 50 }, 'module.goToPage');
+    utils.renderServerPagination(
+      'testPaginationMulti',
+      { page: 2, totalPages: 5, count: 250, pageSize: 50 },
+      'module.goToPage'
+    );
     expect(container.innerHTML).toContain('pagination');
     expect(container.innerHTML).toContain('page-item active');
     expect(container.innerHTML).toContain('Showing 51');
@@ -2611,9 +2620,9 @@ describe('Utils - hideLoading() minimum display time', () => {
     // Loading was shown just now, so elapsed < 300ms
     utils.hideLoading();
     // Bar should still be visible because setTimeout was scheduled
-    expect(document.getElementById('loadingBar').style.display).toBe('block');
+    expect(document.getElementById('loadingBar').classList.contains('d-none')).toBe(false);
     jest.advanceTimersByTime(300);
-    expect(document.getElementById('loadingBar').style.display).toBe('none');
+    expect(document.getElementById('loadingBar').classList.contains('d-none')).toBe(true);
   });
 });
 

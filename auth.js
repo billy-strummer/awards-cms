@@ -311,8 +311,8 @@ const authModule = {
    */
   showLogin() {
     this.hideSplash();
-    document.getElementById('loginPage').style.display = 'block';
-    document.getElementById('dashboardPage').style.display = 'none';
+    document.getElementById('loginPage').classList.remove('d-none');
+    document.getElementById('dashboardPage').classList.add('d-none');
     document.getElementById('loginEmail').focus();
   },
 
@@ -322,8 +322,8 @@ const authModule = {
    */
   async showDashboard() {
     this.hideSplash();
-    document.getElementById('loginPage').style.display = 'none';
-    document.getElementById('dashboardPage').style.display = 'block';
+    document.getElementById('loginPage').classList.add('d-none');
+    document.getElementById('dashboardPage').classList.remove('d-none');
 
     // Set user email in navbar
     if (STATE.currentUser) {

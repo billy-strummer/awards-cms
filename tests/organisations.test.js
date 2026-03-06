@@ -13,8 +13,8 @@ const dom = new JSDOM(
   <div id="loadingBar" style="display:none;"></div>
   <div id="notificationToast"><span id="toastIcon"></span><span id="toastTitle"></span><span id="toastMessage"></span></div>
   <div id="connectionStatus"><span class="status-icon"></span><span class="status-text"></span></div>
-  <div id="loginPage" style="display:none;"></div>
-  <div id="dashboardPage" style="display:none;"></div>
+  <div id="loginPage" class="d-none"></div>
+  <div id="dashboardPage" class="d-none"></div>
   <div id="splashScreen" style="display:none;"></div>
   <div id="userEmail"></div>
   <input id="loginEmail" value="" />
@@ -5717,9 +5717,7 @@ describe('Organisations Module - _srvGoToPage()', () => {
 // ---------------------------------------------------------------------------
 describe('Organisations Module - quickUpdateStatus()', () => {
   beforeEach(() => {
-    STATE.allOrganisations = [
-      makeOrg({ id: 'qs1', company_name: 'Quick Status Co', status: 'prospect' }),
-    ];
+    STATE.allOrganisations = [makeOrg({ id: 'qs1', company_name: 'Quick Status Co', status: 'prospect' })];
     STATE.filteredOrganisations = [...STATE.allOrganisations];
     mockSupabase.from.mockReturnValue(mockSupabase);
     mockSupabase.update.mockReturnValue(mockSupabase);
@@ -5752,9 +5750,7 @@ describe('Organisations Module - quickUpdateStatus()', () => {
 // ---------------------------------------------------------------------------
 describe('Organisations Module - deleteOrganisation()', () => {
   beforeEach(() => {
-    STATE.allOrganisations = [
-      makeOrg({ id: 'del1', company_name: 'Delete Co', status: 'prospect' }),
-    ];
+    STATE.allOrganisations = [makeOrg({ id: 'del1', company_name: 'Delete Co', status: 'prospect' })];
     STATE.filteredOrganisations = [...STATE.allOrganisations];
     orgsModule.selectedOrgs = new Set(['del1']);
     orgsModule._serverPagination = false;
@@ -5814,9 +5810,7 @@ describe('Organisations Module - deleteOrganisation()', () => {
 // ---------------------------------------------------------------------------
 describe('Organisations Module - restoreOrganisation()', () => {
   beforeEach(() => {
-    STATE.allOrganisations = [
-      makeOrg({ id: 'rest1', company_name: 'Restore Co', status: 'archived' }),
-    ];
+    STATE.allOrganisations = [makeOrg({ id: 'rest1', company_name: 'Restore Co', status: 'archived' })];
     STATE.filteredOrganisations = [...STATE.allOrganisations];
     orgsModule._serverPagination = false;
     orgsModule._filterMissingField = null;
@@ -5865,9 +5859,7 @@ describe('Organisations Module - restoreOrganisation()', () => {
 // ---------------------------------------------------------------------------
 describe('Organisations Module - Tag Management', () => {
   beforeEach(() => {
-    STATE.allOrganisations = [
-      makeOrg({ id: 'tag1', company_name: 'Tag Co', tags: ['existing'] }),
-    ];
+    STATE.allOrganisations = [makeOrg({ id: 'tag1', company_name: 'Tag Co', tags: ['existing'] })];
     mockSupabase.from.mockReturnValue(mockSupabase);
     mockSupabase.update.mockReturnValue(mockSupabase);
     mockSupabase.eq.mockReturnValue(Promise.resolve({ data: null, error: null }));
@@ -5922,9 +5914,7 @@ describe('Organisations Module - Tag Management', () => {
 // ---------------------------------------------------------------------------
 describe('Organisations Module - Contact Management', () => {
   beforeEach(() => {
-    STATE.allOrganisations = [
-      makeOrg({ id: 'ct1', company_name: 'Contact Co' }),
-    ];
+    STATE.allOrganisations = [makeOrg({ id: 'ct1', company_name: 'Contact Co' })];
     jest.spyOn(orgsModule, 'openCompanyProfile').mockResolvedValue();
   });
 
@@ -5940,7 +5930,13 @@ describe('Organisations Module - Contact Management', () => {
 
   test('addContact shows warning when no name provided', async () => {
     // Create input elements needed by addContact
-    const fields = ['newContactFirstName', 'newContactLastName', 'newContactJobTitle', 'newContactEmailAddr', 'newContactPhoneNum'];
+    const fields = [
+      'newContactFirstName',
+      'newContactLastName',
+      'newContactJobTitle',
+      'newContactEmailAddr',
+      'newContactPhoneNum',
+    ];
     fields.forEach((id) => {
       let el = document.getElementById(id);
       if (!el) {
@@ -5981,17 +5977,13 @@ describe('Organisations Module - Contact Management', () => {
   });
 
   test('renderContactsSection renders primary star icon', () => {
-    const contacts = [
-      { id: 'c1', first_name: 'A', last_name: 'B', is_primary: true, receive_emails: true },
-    ];
+    const contacts = [{ id: 'c1', first_name: 'A', last_name: 'B', is_primary: true, receive_emails: true }];
     const html = orgsModule.renderContactsSection('ct1', contacts);
     expect(html).toContain('bi-star-fill');
   });
 
   test('renderContactsSection renders non-primary star icon', () => {
-    const contacts = [
-      { id: 'c1', first_name: 'A', last_name: 'B', is_primary: false, receive_emails: false },
-    ];
+    const contacts = [{ id: 'c1', first_name: 'A', last_name: 'B', is_primary: false, receive_emails: false }];
     const html = orgsModule.renderContactsSection('ct1', contacts);
     expect(html).toContain('bi-star text-muted');
     expect(html).toContain('bi-x-circle text-muted');
@@ -6003,9 +5995,7 @@ describe('Organisations Module - Contact Management', () => {
 // ---------------------------------------------------------------------------
 describe('Organisations Module - Threaded Notes', () => {
   beforeEach(() => {
-    STATE.allOrganisations = [
-      makeOrg({ id: 'nt1', company_name: 'Notes Co' }),
-    ];
+    STATE.allOrganisations = [makeOrg({ id: 'nt1', company_name: 'Notes Co' })];
     jest.spyOn(orgsModule, 'openCompanyProfile').mockResolvedValue();
   });
 
@@ -6071,9 +6061,7 @@ describe('Organisations Module - Threaded Notes', () => {
 // ---------------------------------------------------------------------------
 describe('Organisations Module - Follow-ups', () => {
   beforeEach(() => {
-    STATE.allOrganisations = [
-      makeOrg({ id: 'fu1', company_name: 'FollowUp Co' }),
-    ];
+    STATE.allOrganisations = [makeOrg({ id: 'fu1', company_name: 'FollowUp Co' })];
     jest.spyOn(orgsModule, 'openCompanyProfile').mockResolvedValue();
   });
 
@@ -6130,9 +6118,7 @@ describe('Organisations Module - Follow-ups', () => {
 // ---------------------------------------------------------------------------
 describe('Organisations Module - Custom Fields', () => {
   beforeEach(() => {
-    STATE.allOrganisations = [
-      makeOrg({ id: 'cf1', company_name: 'Custom Fields Co' }),
-    ];
+    STATE.allOrganisations = [makeOrg({ id: 'cf1', company_name: 'Custom Fields Co' })];
     jest.spyOn(orgsModule, 'openCompanyProfile').mockResolvedValue();
   });
 
@@ -6459,16 +6445,13 @@ describe('Organisations Module - Import History', () => {
   });
 
   test('showImportHistory renders table when history exists', () => {
-    localStorage.setItem('orgImportHistory', JSON.stringify([
-      { filename: 'data.csv', count: 25, county: 'Kent', date: new Date().toISOString() },
-    ]));
+    localStorage.setItem(
+      'orgImportHistory',
+      JSON.stringify([{ filename: 'data.csv', count: 25, county: 'Kent', date: new Date().toISOString() }])
+    );
     const spy = jest.spyOn(orgsModule, '_showDynamicModal').mockImplementation(() => {});
     orgsModule.showImportHistory();
-    expect(spy).toHaveBeenCalledWith(
-      'Import History',
-      expect.stringContaining('data.csv'),
-      expect.any(String)
-    );
+    expect(spy).toHaveBeenCalledWith('Import History', expect.stringContaining('data.csv'), expect.any(String));
     spy.mockRestore();
   });
 });
@@ -6534,14 +6517,18 @@ describe('Organisations Module - _matchesSegmentRules()', () => {
 
   test('multiple rules must all match (AND logic)', () => {
     const org = makeOrg({ status: 'prospect', sector: 'Tech' });
-    expect(orgsModule._matchesSegmentRules(org, [
-      { field: 'status', op: 'eq', val: 'prospect' },
-      { field: 'sector', op: 'eq', val: 'Tech' },
-    ])).toBe(true);
-    expect(orgsModule._matchesSegmentRules(org, [
-      { field: 'status', op: 'eq', val: 'prospect' },
-      { field: 'sector', op: 'eq', val: 'Finance' },
-    ])).toBe(false);
+    expect(
+      orgsModule._matchesSegmentRules(org, [
+        { field: 'status', op: 'eq', val: 'prospect' },
+        { field: 'sector', op: 'eq', val: 'Tech' },
+      ])
+    ).toBe(true);
+    expect(
+      orgsModule._matchesSegmentRules(org, [
+        { field: 'status', op: 'eq', val: 'prospect' },
+        { field: 'sector', op: 'eq', val: 'Finance' },
+      ])
+    ).toBe(false);
   });
 
   test('unknown operator returns false', () => {
@@ -6598,9 +6585,7 @@ describe('Organisations Module - showOrgComparison()', () => {
 // ---------------------------------------------------------------------------
 describe('Organisations Module - Share Links', () => {
   beforeEach(() => {
-    STATE.allOrganisations = [
-      makeOrg({ id: 'share1', company_name: 'Share Co' }),
-    ];
+    STATE.allOrganisations = [makeOrg({ id: 'share1', company_name: 'Share Co' })];
     localStorage.removeItem('orgShareTokens');
   });
 
@@ -6623,7 +6608,7 @@ describe('Organisations Module - Share Links', () => {
   });
 
   test('revokeShareLink removes token from localStorage', () => {
-    localStorage.setItem('orgShareTokens', JSON.stringify({ 'abc123': { orgId: 'share1', active: true } }));
+    localStorage.setItem('orgShareTokens', JSON.stringify({ abc123: { orgId: 'share1', active: true } }));
     const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
     orgsModule.revokeShareLink('abc123');
     const shares = JSON.parse(localStorage.getItem('orgShareTokens'));
@@ -6671,10 +6656,7 @@ describe('Organisations Module - filterByMissingField()', () => {
     orgsModule._currentPage = 1;
     orgsModule._pageSize = 50;
     orgsModule.selectedOrgs = new Set();
-    STATE.allOrganisations = [
-      makeOrg({ id: 'fm1', email: 'has@email.com' }),
-      makeOrg({ id: 'fm2', email: null }),
-    ];
+    STATE.allOrganisations = [makeOrg({ id: 'fm1', email: 'has@email.com' }), makeOrg({ id: 'fm2', email: null })];
     STATE.filteredOrganisations = [...STATE.allOrganisations];
     document.getElementById('orgsYearFilter').value = '';
     document.getElementById('orgsSectorFilter').value = '';
@@ -6712,10 +6694,7 @@ describe('Organisations Module - filterByRegion()', () => {
     orgsModule._currentPage = 1;
     orgsModule._pageSize = 50;
     orgsModule.selectedOrgs = new Set();
-    STATE.allOrganisations = [
-      makeOrg({ id: 'fr1', region: 'South East' }),
-      makeOrg({ id: 'fr2', region: 'East' }),
-    ];
+    STATE.allOrganisations = [makeOrg({ id: 'fr1', region: 'South East' }), makeOrg({ id: 'fr2', region: 'East' })];
     STATE.filteredOrganisations = [...STATE.allOrganisations];
     document.getElementById('orgsYearFilter').value = '';
     document.getElementById('orgsSectorFilter').value = '';
@@ -6759,9 +6738,7 @@ describe('Organisations Module - cancelInlineEdit()', () => {
 // ---------------------------------------------------------------------------
 describe('Organisations Module - Undo Inline Edit', () => {
   beforeEach(() => {
-    STATE.allOrganisations = [
-      makeOrg({ id: 'undo1', company_name: 'Undo Co', email: 'old@test.com' }),
-    ];
+    STATE.allOrganisations = [makeOrg({ id: 'undo1', company_name: 'Undo Co', email: 'old@test.com' })];
     STATE.filteredOrganisations = [...STATE.allOrganisations];
     orgsModule._lastInlineEdit = null;
     orgsModule._serverPagination = false;
@@ -6839,11 +6816,7 @@ describe('Organisations Module - SMS/WhatsApp Templates', () => {
     ];
     const spy = jest.spyOn(orgsModule, '_showDynamicModal').mockImplementation(() => {});
     orgsModule.openSMSTemplate('sms1');
-    expect(spy).toHaveBeenCalledWith(
-      'SMS / WhatsApp',
-      expect.stringContaining('SMS Templates'),
-      expect.any(String)
-    );
+    expect(spy).toHaveBeenCalledWith('SMS / WhatsApp', expect.stringContaining('SMS Templates'), expect.any(String));
     spy.mockRestore();
   });
 });
@@ -6991,7 +6964,14 @@ describe('Organisations Module - Sponsorship Packages', () => {
   test('renderSponsorshipPackages shows expiring warning', () => {
     const renewalDate = new Date(Date.now() + 15 * 86400000).toISOString().split('T')[0];
     const packages = [
-      { id: 'p1', package_name: 'Expiring Pkg', amount: 1000, status: 'active', renewal_date: renewalDate, benefits: '["Logo placement"]' },
+      {
+        id: 'p1',
+        package_name: 'Expiring Pkg',
+        amount: 1000,
+        status: 'active',
+        renewal_date: renewalDate,
+        benefits: '["Logo placement"]',
+      },
     ];
     const html = orgsModule.renderSponsorshipPackages(packages, 'sp1');
     expect(html).toContain('Renewal');
@@ -7000,9 +6980,7 @@ describe('Organisations Module - Sponsorship Packages', () => {
   });
 
   test('renderSponsorshipPackages handles invalid benefits JSON', () => {
-    const packages = [
-      { id: 'p1', package_name: 'Test Pkg', amount: 500, status: 'pending', benefits: 'not-json' },
-    ];
+    const packages = [{ id: 'p1', package_name: 'Test Pkg', amount: 500, status: 'pending', benefits: 'not-json' }];
     const html = orgsModule.renderSponsorshipPackages(packages, 'sp1');
     expect(html).toContain('Test Pkg');
   });

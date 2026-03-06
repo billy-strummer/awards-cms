@@ -101,7 +101,7 @@ const utils = {
    */
   showLoading() {
     this._loadingShowTime = Date.now();
-    document.getElementById('loadingBar').style.display = 'block';
+    document.getElementById('loadingBar').classList.remove('d-none');
   },
 
   /**
@@ -112,10 +112,10 @@ const utils = {
     const minTime = 300;
     if (elapsed < minTime) {
       setTimeout(() => {
-        document.getElementById('loadingBar').style.display = 'none';
+        document.getElementById('loadingBar').classList.add('d-none');
       }, minTime - elapsed);
     } else {
-      document.getElementById('loadingBar').style.display = 'none';
+      document.getElementById('loadingBar').classList.add('d-none');
     }
   },
 
@@ -1839,7 +1839,7 @@ const utils = {
    */
   showLoadingWithMinTime() {
     this._loadingShowTime = Date.now();
-    document.getElementById('loadingBar').style.display = 'block';
+    document.getElementById('loadingBar').classList.remove('d-none');
   },
 
   /**
@@ -1851,7 +1851,7 @@ const utils = {
     if (elapsed < minTime) {
       await new Promise((r) => setTimeout(r, minTime - elapsed));
     }
-    document.getElementById('loadingBar').style.display = 'none';
+    document.getElementById('loadingBar').classList.add('d-none');
   },
 
   /* ==================================================== */

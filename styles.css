@@ -3642,6 +3642,21 @@ mark.search-highlight {
     box-shadow 0.15s,
     transform 0.15s;
 }
+.u-card-hover:hover {
+  transform: translateY(-2px);
+}
+.u-card-hover-success:hover {
+  box-shadow: 0 4px 12px rgba(25, 135, 84, 0.25);
+}
+.u-card-hover-danger:hover {
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.25);
+}
+.u-card-hover-warning:hover {
+  box-shadow: 0 4px 12px rgba(255, 193, 7, 0.25);
+}
+.u-card-hover-info:hover {
+  box-shadow: 0 4px 12px rgba(13, 202, 240, 0.25);
+}
 .u-text-2xl {
   font-size: 2rem;
 }

@@ -21,7 +21,7 @@ jest.mock(
 
 // Mock email-header
 jest.mock(
-  '../api/email-header',
+  '../api/_lib/email-header',
   () => ({
     wrapEmail: jest.fn((body) => `<html><body>${body}</body></html>`),
   }),
@@ -480,7 +480,12 @@ describe('Resend Email - sendCampaignEmail', () => {
     // Campaign lookup
     mockFromResults.push(
       chainable({
-        data: { id: 'camp-batch', list_id: 'list-batch', subject: 'Batch Test', html_content: '<p>Hi {first_name}</p>' },
+        data: {
+          id: 'camp-batch',
+          list_id: 'list-batch',
+          subject: 'Batch Test',
+          html_content: '<p>Hi {first_name}</p>',
+        },
         error: null,
       })
     );
@@ -596,7 +601,7 @@ describe('Resend Email - wrapEmailTemplate', () => {
   });
 
   test('passes subtitle to wrapEmail', () => {
-    const { wrapEmail } = require('../api/email-header');
+    const { wrapEmail } = require('../api/_lib/email-header');
     wrapEmailTemplate('Subject', '<p>Body</p>', '', {}, 'Test Subtitle');
     expect(wrapEmail).toHaveBeenCalledWith('<p>Body</p>', {}, expect.objectContaining({ subtitle: 'Test Subtitle' }));
   });

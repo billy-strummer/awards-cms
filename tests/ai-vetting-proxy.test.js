@@ -22,7 +22,7 @@ jest.mock(
 // Set env vars before requiring module
 process.env.ANTHROPIC_API_KEY = 'test-api-key';
 
-const { vetCompany, vetCompanies } = require('../api/ai-vetting-proxy');
+const { vetCompany, vetCompanies } = require('../api/_lib/ai-vetting-proxy');
 
 // ==========================================
 // TESTS

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://*.supabase.co; script-src 'self' https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://js.stripe.com https://browser.sentry-cdn.com https://s3.tradingview.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com; img-src 'self' data: blob: https://*.supabase.co https://i.ytimg.com https://*.tile.openstreetmap.org; font-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; connect-src 'self' https://*.supabase.co https://api.resend.com https://*.sentry.io wss://*.supabase.co https://*.tradingview.com wss://*.tradingview.com https://*.tradingview-widget.com wss://*.tradingview-widget.com https://www.youtube.com https://vimeo.com https://api.company-information.service.gov.uk https://*.stripe.com https://*.vercel-scripts.com https://*.vercel-insights.com https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://browser.sentry-cdn.com; frame-src 'self' https://js.stripe.com https://www.youtube.com https://s3.tradingview.com https://*.tradingview.com https://*.tradingview-widget.com; object-src 'none'; base-uri 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://*.supabase.co; script-src 'self' https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://js.stripe.com https://browser.sentry-cdn.com https://s3.tradingview.com https://cdn.sheetjs.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com; img-src 'self' data: blob: https://*.supabase.co https://i.ytimg.com https://*.tile.openstreetmap.org; font-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; connect-src 'self' https://*.supabase.co https://api.resend.com https://*.sentry.io wss://*.supabase.co https://*.tradingview.com wss://*.tradingview.com https://*.tradingview-widget.com wss://*.tradingview-widget.com https://www.youtube.com https://vimeo.com https://api.company-information.service.gov.uk https://*.stripe.com https://*.vercel-scripts.com https://*.vercel-insights.com https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://browser.sentry-cdn.com; frame-src 'self' https://js.stripe.com https://www.youtube.com https://s3.tradingview.com https://*.tradingview.com https://*.tradingview-widget.com; object-src 'none'; base-uri 'self'">
   <!-- Supabase credentials — injected per environment, never hardcoded -->
   <meta name="supabase-url" content="">
   <meta name="supabase-anon-key" content="">
@@ -7483,7 +7483,7 @@
           <!-- Stats Cards -->
           <div class="row g-3 mb-4">
             <div class="col-md-3">
-              <div class="card text-center" class="u-card-hover" data-action="eventsModule.filterByCard" data-args="[&quot;attending&quot;]" onmouseover="this.style.boxShadow='0 4px 12px rgba(25,135,84,0.25)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow=''; this.style.transform=''">
+              <div class="card text-center u-card-hover u-card-hover-success" data-action="eventsModule.filterByCard" data-args="[&quot;attending&quot;]">
                 <div class="card-body py-2">
                   <h3 class="mb-0 text-success" id="attendingCount">0</h3>
                   <small class="text-muted">Attending</small>
@@ -7491,7 +7491,7 @@
               </div>
             </div>
             <div class="col-md-3">
-              <div class="card text-center" class="u-card-hover" data-action="eventsModule.filterByCard" data-args="[&quot;not_attending&quot;]" onmouseover="this.style.boxShadow='0 4px 12px rgba(220,53,69,0.25)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow=''; this.style.transform=''">
+              <div class="card text-center u-card-hover u-card-hover-danger" data-action="eventsModule.filterByCard" data-args="[&quot;not_attending&quot;]">
                 <div class="card-body py-2">
                   <h3 class="mb-0 text-danger" id="notAttendingCount">0</h3>
                   <small class="text-muted">Not Attending</small>
@@ -7499,7 +7499,7 @@
               </div>
             </div>
             <div class="col-md-3">
-              <div class="card text-center" class="u-card-hover" data-action="eventsModule.filterByCard" data-args="[&quot;maybe&quot;]" onmouseover="this.style.boxShadow='0 4px 12px rgba(255,193,7,0.25)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow=''; this.style.transform=''">
+              <div class="card text-center u-card-hover u-card-hover-warning" data-action="eventsModule.filterByCard" data-args="[&quot;maybe&quot;]">
                 <div class="card-body py-2">
                   <h3 class="mb-0 text-warning" id="maybeCount">0</h3>
                   <small class="text-muted">Maybe</small>
@@ -7507,7 +7507,7 @@
               </div>
             </div>
             <div class="col-md-3">
-              <div class="card text-center" class="u-card-hover" data-action="eventsModule.filterByCard" data-args="[&quot;&quot;]" onmouseover="this.style.boxShadow='0 4px 12px rgba(13,202,240,0.25)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow=''; this.style.transform=''">
+              <div class="card text-center u-card-hover u-card-hover-info" data-action="eventsModule.filterByCard" data-args="[&quot;&quot;]">
                 <div class="card-body py-2">
                   <h3 class="mb-0 text-info" id="totalAttendeesCount">0</h3>
                   <small class="text-muted">Total</small>

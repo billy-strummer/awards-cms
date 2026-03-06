@@ -7,7 +7,7 @@
 
 const { Resend } = require('resend');
 const { createClient } = require('@supabase/supabase-js');
-const { wrapEmail } = require('./email-header');
+const { wrapEmail } = require('./_lib/email-header');
 require('dotenv').config();
 
 const resend = new Resend(process.env.RESEND_API_KEY);

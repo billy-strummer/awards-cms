@@ -585,7 +585,7 @@ const mediaGalleryModule = {
                   const sectionPublished = sectionPhotos.filter((p) => p.published !== false).length;
                   return `
           <div class="card mb-3">
-            <div class="card-header d-flex justify-content-between align-items-center" style="cursor:pointer;" data-action="mediaGalleryModule.viewSectionPhotos" data-args='${JSON.stringify([section.id, utils.escapeHtml(section.gallery_name)])}'>
+            <div class="card-header d-flex justify-content-between align-items-center" style="cursor:pointer;" data-action="mediaGalleryModule.viewSectionPhotos" data-args='${JSON.stringify([section.id, section.gallery_name]).replace(/'/g, '&#39;')}'>
               <div>
                 <h6 class="mb-0"><i class="bi bi-folder me-2"></i>${utils.escapeHtml(section.gallery_name)}
                   <span class="badge bg-primary ms-2">${sectionPhotos.length}</span>
@@ -594,7 +594,7 @@ const mediaGalleryModule = {
                 ${section.gallery_description ? `<small class="text-muted">${utils.escapeHtml(section.gallery_description)}</small>` : ''}
               </div>
               <div class="d-flex gap-2">
-                <button class="btn btn-sm btn-outline-primary" data-action="mediaGalleryModule.viewSectionPhotos" data-args='${JSON.stringify([section.id, section.gallery_name])}' data-stop-propagation="true"><i class="bi bi-images me-1"></i>Open</button>
+                <button class="btn btn-sm btn-outline-primary" data-action="mediaGalleryModule.viewSectionPhotos" data-args='${JSON.stringify([section.id, section.gallery_name]).replace(/'/g, '&#39;')}' data-stop-propagation="true"><i class="bi bi-images me-1"></i>Open</button>
                 <button class="btn btn-sm btn-outline-secondary" data-action="mediaGalleryModule.editSection" data-id="${section.id}" data-stop-propagation="true"><i class="bi bi-pencil"></i></button>
               </div>
             </div>
@@ -1882,7 +1882,7 @@ const mediaGalleryModule = {
                     </a>
                   </li>
                   <li>
-                    <a class="dropdown-item text-danger" href="#" data-action="mediaGalleryModule.deleteSection" data-args='${JSON.stringify([section.id, section.gallery_name])}' data-prevent-default="true">
+                    <a class="dropdown-item text-danger" href="#" data-action="mediaGalleryModule.deleteSection" data-args='${JSON.stringify([section.id, section.gallery_name]).replace(/'/g, '&#39;')}' data-prevent-default="true">
                       <i class="bi bi-trash me-2"></i>Delete
                     </a>
                   </li>
@@ -1896,7 +1896,7 @@ const mediaGalleryModule = {
               <span class="badge bg-info" id="photoCount_${section.id}">
                 <i class="bi bi-camera me-1"></i>Loading...
               </span>
-              <button class="btn btn-sm btn-outline-primary" data-action="mediaGalleryModule.viewSectionPhotos" data-args='${JSON.stringify([section.id, utils.escapeHtml(section.gallery_name).replace(/'/g, "\\'")])}'>
+              <button class="btn btn-sm btn-outline-primary" data-action="mediaGalleryModule.viewSectionPhotos" data-args='${JSON.stringify([section.id, utils.escapeHtml(section.gallery_name).replace(/'/g, '&#39;')])}'>
                 <i class="bi bi-eye me-1"></i>View Photos
               </button>
             </div>
@@ -2184,7 +2184,7 @@ const mediaGalleryModule = {
             <button class="btn btn-sm btn-outline-secondary" data-action="mediaGalleryModule.viewActivityLog" title="View activity log">
               <i class="bi bi-clock-history me-1"></i>Log
             </button>
-            <button class="btn btn-sm btn-outline-secondary" data-action="mediaGalleryModule.downloadAllPhotos" data-id="utils.escapeHtml(sectionName).replace(/'/g, "\\'")">
+            <button class="btn btn-sm btn-outline-secondary" data-action="mediaGalleryModule.downloadAllPhotos" data-id="utils.escapeHtml(sectionName).replace(/'/g, '&#39;')">
               <i class="bi bi-download me-1"></i>Download All
             </button>
             <button class="btn btn-sm btn-outline-success" data-action="mediaGalleryModule.launchSlideshow" title="Launch slideshow of published photos">
@@ -7083,7 +7083,7 @@ const mediaGalleryModule = {
               .map(
                 (s) => `
               <button class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
-                data-action="mediaGalleryModule._executeBulkMove" data-args='${JSON.stringify([s.id, utils.escapeHtml(s.gallery_name).replace(/'/g, "\\'")])}'>
+                data-action="mediaGalleryModule._executeBulkMove" data-args='${JSON.stringify([s.id, utils.escapeHtml(s.gallery_name).replace(/'/g, '&#39;')])}'>
                 <span><i class="bi bi-folder me-2"></i>${utils.escapeHtml(s.gallery_name)}</span>
                 <i class="bi bi-arrow-right"></i>
               </button>

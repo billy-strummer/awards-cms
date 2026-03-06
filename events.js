@@ -1196,7 +1196,7 @@ const eventsModule = {
           .map(
             (o) => `
           <div class="p-2 small hover-highlight" style="cursor:pointer;"
-            data-action="eventsModule._selectOrgForAttendee" data-args='${JSON.stringify([o.id, utils.escapeHtml(o.company_name).replace(/'/g, "\\'")])}'>
+            data-action="eventsModule._selectOrgForAttendee" data-args='${JSON.stringify([o.id, o.company_name || '']).replace(/'/g, '&#39;')}'>
             <i class="bi bi-building me-1 text-muted"></i>${utils.escapeHtml(o.company_name)}
           </div>
         `
@@ -12321,10 +12321,8 @@ const eventsModule = {
 
         const _capacity = event.capacity || 0;
         const checked = this._selectedEvents.has(event.id) ? 'checked' : '';
-        const eName = (event.event_name || '')
-          .replace(/<[^>]*>/g, '')
-          .replace(/'/g, "\\'")
-          .replace(/"/g, '&quot;');
+        const eNameRaw = (event.event_name || '').replace(/<[^>]*>/g, '');
+        const eName = eNameRaw.replace(/"/g, '&quot;');
 
         // Award counts (from cache or placeholder)
         const awardData = this._eventAwardCounts?.[event.id] || { total: 0, confirmed: 0, winners: 0 };
@@ -12346,13 +12344,13 @@ const eventsModule = {
           <td class="text-center">${statusDropdown}</td>
           <td class="text-center">
             <div class="btn-group btn-group-sm" role="group">
-              <button class="btn btn-outline-warning btn-icon" data-action="eventsModule.openRunningOrderModal" data-args='${JSON.stringify([event.id, eName])}' title="Running Order" aria-label="Running order"><i class="bi bi-list-ol"></i></button>
-              <button class="btn btn-outline-secondary btn-icon" data-action="eventsModule.openTablePlanModal" data-args='${JSON.stringify([event.id, eName])}' title="Table Plan" aria-label="Table plan"><i class="bi bi-table"></i></button>
+              <button class="btn btn-outline-warning btn-icon" data-action="eventsModule.openRunningOrderModal" data-args='${JSON.stringify([event.id, eNameRaw]).replace(/'/g, '&#39;')}' title="Running Order" aria-label="Running order"><i class="bi bi-list-ol"></i></button>
+              <button class="btn btn-outline-secondary btn-icon" data-action="eventsModule.openTablePlanModal" data-args='${JSON.stringify([event.id, eNameRaw]).replace(/'/g, '&#39;')}' title="Table Plan" aria-label="Table plan"><i class="bi bi-table"></i></button>
               <button class="btn btn-outline-info btn-icon" data-action="eventsModule.openAttendeesModal" data-id="${event.id}" title="Attendees" aria-label="Attendees"><i class="bi bi-people"></i></button>
               <button class="btn btn-outline-primary btn-icon" data-action="eventsModule.openEditModal" data-id="${event.id}" title="Edit" aria-label="Edit event"><i class="bi bi-pencil"></i></button>
               <button class="btn btn-outline-success btn-icon" data-action="eventsModule.openCloneModal" data-id="${event.id}" title="Clone" aria-label="Clone event"><i class="bi bi-files"></i></button>
               <button class="btn btn-outline-dark btn-icon" data-action="eventsModule.cloneForNextYear" data-id="${event.id}" title="Clone for Next Year" aria-label="Clone for next year"><i class="bi bi-calendar-plus"></i></button>
-              <button class="btn btn-outline-danger btn-icon" data-action="eventsModule.deleteEvent" data-args='${JSON.stringify([event.id, eName])}' title="Delete" aria-label="Delete event"><i class="bi bi-trash"></i></button>
+              <button class="btn btn-outline-danger btn-icon" data-action="eventsModule.deleteEvent" data-args='${JSON.stringify([event.id, eNameRaw]).replace(/'/g, '&#39;')}' title="Delete" aria-label="Delete event"><i class="bi bi-trash"></i></button>
             </div>
           </td>
         </tr>`;

@@ -320,7 +320,7 @@ const paymentsModule = {
             invoice.organisations?.id && invoice.organisations?.company_name
               ? `<a href="#"
                 class="text-decoration-none text-primary fw-semibold"
-                data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([invoice.organisations.id, utils.escapeHtml(invoice.organisations.company_name).replace(/'/g, "\\'")])}'
+                data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([invoice.organisations.id, utils.escapeHtml(invoice.organisations.company_name).replace(/'/g, '&#39;')])}'
                 title="View company profile">
                 ${utils.escapeHtml(invoice.organisations.company_name)}
              </a>`
@@ -1285,7 +1285,7 @@ const paymentsModule = {
             payment.organisations?.id && payment.organisations?.company_name
               ? `<a href="#"
                 class="text-decoration-none text-primary fw-semibold"
-                data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([payment.organisations.id, utils.escapeHtml(payment.organisations.company_name).replace(/'/g, "\\'")])}'
+                data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([payment.organisations.id, utils.escapeHtml(payment.organisations.company_name).replace(/'/g, '&#39;')])}'
                 title="View company profile">
                 ${utils.escapeHtml(payment.organisations.company_name)}
              </a>`

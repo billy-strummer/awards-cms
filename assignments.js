@@ -330,7 +330,7 @@ const assignmentsModule = {
             }
             <a href="#"
                class="text-decoration-none fw-semibold text-primary"
-               data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([org.id, org.company_name])}'
+               data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([org.id, org.company_name]).replace(/'/g, '&#39;')}'
                title="View company profile">
               ${utils.escapeHtml(org.company_name)}
             </a>
@@ -370,7 +370,7 @@ const assignmentsModule = {
               </ul>
             </div>
             <button class="btn btn-outline-secondary btn-sm"
-              data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([org.id, org.company_name])}'
+              data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([org.id, org.company_name]).replace(/'/g, '&#39;')}'
               title="View Profile">
               <i class="bi bi-eye"></i>
             </button>
@@ -409,7 +409,7 @@ const assignmentsModule = {
             </div>
             <button
               class="btn btn-sm btn-primary"
-              data-action="assignmentsModule.assignCompany" data-args='${JSON.stringify([org.id, org.company_name])}'>
+              data-action="assignmentsModule.assignCompany" data-args='${JSON.stringify([org.id, org.company_name]).replace(/'/g, '&#39;')}'>
               <i class="bi bi-plus-lg"></i> Add
             </button>
           </div>

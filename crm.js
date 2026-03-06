@@ -899,7 +899,7 @@ const crmModule = {
               </span>
             </div>
             <div class="d-flex gap-2">
-              <button class="btn btn-sm btn-outline-primary flex-grow-1" data-action="crmModule.viewSegmentCompanies" data-args='${JSON.stringify([segment.id, utils.escapeHtml(segment.segment_name).replace(/'/g, "\\'")])}'>
+              <button class="btn btn-sm btn-outline-primary flex-grow-1" data-action="crmModule.viewSegmentCompanies" data-args='${JSON.stringify([segment.id, utils.escapeHtml(segment.segment_name).replace(/'/g, '&#39;')])}'>
                 <i class="bi bi-eye me-1"></i>View Companies
               </button>
               <button class="btn btn-sm btn-outline-secondary" data-action="crmModule.editSegment" data-id="${segment.id}" title="Edit Segment">
@@ -2253,7 +2253,7 @@ const crmModule = {
                                 <button class="btn btn-outline-primary" data-action="crmModule.viewCompanyProfile" data-id="a.organisation.id" title="View Profile">
                                   <i class="bi bi-eye"></i>
                                 </button>
-                                <button class="btn btn-outline-danger" data-action="crmModule.removeFromSegment" data-args='${JSON.stringify([a.id, segmentId, utils.escapeHtml(segmentName).replace(/'/g, "\\'")])}' title="Remove from Segment">
+                                <button class="btn btn-outline-danger" data-action="crmModule.removeFromSegment" data-args='${JSON.stringify([a.id, segmentId, utils.escapeHtml(segmentName).replace(/'/g, '&#39;')])}' title="Remove from Segment">
                                   <i class="bi bi-x-circle"></i>
                                 </button>
                               </div>
@@ -2715,7 +2715,7 @@ const crmModule = {
       resultEl.innerHTML = `<h6 class="fw-semibold mb-2">Saved Segments</h6><div class="list-group">${names
         .map((n) => {
           const rules = segments[n];
-          return `<a href="#" class="list-group-item list-group-item-action small" data-action="crmModule._loadAndApplySegment" data-id="utils.escapeHtml(n).replace(/'/g, "\\'")" data-prevent-default="true">
+          return `<a href="#" class="list-group-item list-group-item-action small" data-action="crmModule._loadAndApplySegment" data-id="${utils.escapeHtml(n)}" data-prevent-default="true">
           <strong>${utils.escapeHtml(n)}</strong> &mdash; ${rules.map((r) => `${r.field} ${r.op} "${r.val}"`).join(' AND ')}
         </a>`;
         })
@@ -2783,7 +2783,7 @@ const crmModule = {
         <div class="flex-grow-1"><div class="fw-semibold small">${utils.escapeHtml(f.note || 'Follow up')}</div>
         <div class="text-muted" style="font-size:0.75rem;">${orgName} &middot; ${new Date(f.date).toLocaleDateString('en-GB')}${f.assignee ? ' &middot; ' + utils.escapeHtml(f.assignee) : ''}</div></div>
         ${!f.done ? `<button class="btn btn-sm btn-outline-success me-1" data-action="crmModule.completeTask" data-args='${JSON.stringify([f.org_id, f.id])}'><i class="bi bi-check"></i></button>` : ''}
-        ${org ? `<button class="btn btn-sm btn-outline-primary" data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([f.org_id, utils.escapeHtml(orgName).replace(/'/g, "\\'")])}'><i class="bi bi-eye"></i></button>` : ''}
+        ${org ? `<button class="btn btn-sm btn-outline-primary" data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([f.org_id, utils.escapeHtml(orgName).replace(/'/g, '&#39;')])}'><i class="bi bi-eye"></i></button>` : ''}
       </div>`;
     };
 

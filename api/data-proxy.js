@@ -97,6 +97,9 @@ const ALLOWED_TABLES = new Set([
   'table_assignments',
   'event_room_fixtures',
   'event_milestones',
+  'event_attendees',
+  'event_budgets',
+  'event_budget_items',
   'meeting_notes',
   'organisation_segments',
   'contact_segments',
@@ -174,6 +177,9 @@ const MUTABLE_TABLES = new Set([
   'table_assignments',
   'event_room_fixtures',
   'event_milestones',
+  'event_attendees',
+  'event_budgets',
+  'event_budget_items',
   'meeting_notes',
   'organisation_segments',
   'contact_segments',
@@ -226,6 +232,9 @@ const ROLE_PERMISSIONS = {
       'winner_announcements',
       'calendar_events',
       'user_preferences',
+      'event_attendees',
+      'event_budgets',
+      'event_budget_items',
     ]),
   },
   viewer: {
@@ -260,7 +269,14 @@ const ROLE_PERMISSIONS = {
   },
   finance: {
     read: '*',
-    write: new Set(['invoices', 'payments', 'sponsorship_packages', 'user_preferences']),
+    write: new Set([
+      'invoices',
+      'payments',
+      'sponsorship_packages',
+      'user_preferences',
+      'event_budgets',
+      'event_budget_items',
+    ]),
   },
 };
 

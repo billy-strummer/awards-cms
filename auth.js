@@ -25,9 +25,6 @@ const authModule = {
       STATE.client = supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
 
       this.updateConnectionStatus(true);
-
-      // Test connection immediately
-      this.testConnection();
     } catch (error) {
       console.error('❌ Failed to initialize Supabase:', error);
       console.error('Error details:', {

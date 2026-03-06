@@ -4421,3 +4421,284 @@ describe('Social Media Module - DOMContentLoaded missing elements', () => {
     expect(marketingTab).not.toBeNull();
   });
 });
+
+describe('Social Media Module - updatePostPreview() missing preview element branch', () => {
+  test('skips missing preview elements gracefully', () => {
+    // Remove one preview element to trigger the `if (!el) continue` branch
+    const el = document.getElementById('twitterPreviewText');
+    const parent = el.parentNode;
+    el.remove();
+
+    document.getElementById('smPostContent').value = 'Test content';
+    expect(() => socialMediaModule.updatePostPreview()).not.toThrow();
+
+    parent.appendChild(el);
+  });
+
+  test('uses override field content when overrides enabled', () => {
+    document.getElementById('smPlatformOverrides').checked = true;
+    document.getElementById('smPostContent').value = 'Main content';
+    document.getElementById('smTwitterContent').value = 'Custom Twitter';
+
+    socialMediaModule.updatePostPreview();
+
+    const twitterPreview = document.getElementById('twitterPreviewText');
+    expect(twitterPreview.innerHTML).toContain('Custom Twitter');
+  });
+
+  test('updateImagePreview with no image source selected', () => {
+    // Uncheck both image source radios
+    document.getElementById('imageCompanyLogo').checked = false;
+    document.getElementById('imageCustom').checked = false;
+    socialMediaModule.uploadedImageUrl = null;
+
+    expect(() => socialMediaModule.updateImagePreview()).not.toThrow();
+  });
+});
+
+describe('Social Media Module - updateCharacterCounts() missing meta branch', () => {
+  test('returns early when meta element is missing', () => {
+    // Restore company/award selects for processPlaceholders
+    const companySelect = document.getElementById('smCompanySelect');
+    companySelect.innerHTML = `
+      <option value="">Select company...</option>
+      <option value="comp-1" data-logo="https://example.com/logo1.png" data-website="https://acme.co.uk">Acme</option>
+    `;
+    companySelect.selectedIndex = 0;
+    const awardSelect = document.getElementById('smAwardSelect');
+    awardSelect.innerHTML = `
+      <option value="">Select award...</option>
+      <option value="award-1">Best</option>
+    `;
+    awardSelect.selectedIndex = 0;
+
+    // Remove the meta wrapper and put twitterCharCount as a standalone element
+    const origCount = document.getElementById('twitterCharCount');
+    const origMeta = origCount.closest('.preview-meta');
+    const origMetaParent = origMeta.parentNode;
+
+    // Remove the meta element entirely (removes the count element too)
+    origMeta.remove();
+
+    // Create a standalone count element not inside a preview-meta
+    const orphanCount = document.createElement('span');
+    orphanCount.id = 'twitterCharCount';
+    origMetaParent.appendChild(orphanCount);
+
+    document.getElementById('smPostContent').value = 'Test';
+    document.getElementById('smPlatformOverrides').checked = false;
+    expect(() => socialMediaModule.updateCharacterCounts()).not.toThrow();
+    // Count should be set (processPlaceholders('Test') returns 'Test' = 4 chars)
+    expect(orphanCount.textContent).toBe('4');
+
+    // Restore: remove orphan and put original meta back
+    orphanCount.remove();
+    origMetaParent.appendChild(origMeta);
+  });
+});
+
+describe('Social Media Module - setupImageSourceHandlers() unchecked radio branches', () => {
+  test('custom radio change fires but radio is not checked', () => {
+    const customRadio = document.getElementById('imageCustom');
+    const customUpload = document.getElementById('customImageUpload');
+    customUpload.style.display = 'none';
+
+    socialMediaModule.setupImageSourceHandlers();
+
+    customRadio.checked = false;
+    customRadio.dispatchEvent(new dom.window.Event('change'));
+    // Should NOT change display to block since checked is false
+    expect(customUpload.style.display).toBe('none');
+  });
+
+  test('company logo radio change fires but radio is not checked', () => {
+    const companyLogoRadio = document.getElementById('imageCompanyLogo');
+    const customUpload = document.getElementById('customImageUpload');
+    customUpload.style.display = 'block';
+
+    socialMediaModule.setupImageSourceHandlers();
+
+    companyLogoRadio.checked = false;
+    companyLogoRadio.dispatchEvent(new dom.window.Event('change'));
+    // Should NOT change display to none since checked is false
+    expect(customUpload.style.display).toBe('block');
+  });
+});
+
+describe('Social Media Module - savePost() imageSource neither company nor custom', () => {
+  let showToastSpy;
+
+  beforeEach(() => {
+    showToastSpy = jest.spyOn(utils, 'showToast');
+    document.getElementById('smPostContent').value = 'Test post';
+    const companySelect = document.getElementById('smCompanySelect');
+    companySelect.innerHTML = `
+      <option value="">Select company...</option>
+      <option value="comp-1" data-logo="https://example.com/logo1.png">Acme</option>
+    `;
+    companySelect.selectedIndex = 1;
+    const awardSelect = document.getElementById('smAwardSelect');
+    awardSelect.innerHTML = `
+      <option value="">Select award...</option>
+      <option value="award-1">Best</option>
+    `;
+    awardSelect.selectedIndex = 1;
+    document.getElementById('platformTwitter').checked = true;
+    document.getElementById('platformFacebook').checked = false;
+    document.getElementById('platformInstagram').checked = false;
+    document.getElementById('platformLinkedIn').checked = false;
+    document.getElementById('smPlatformOverrides').checked = false;
+    socialMediaModule.editingPostId = null;
+    // Uncheck both image source radios
+    document.getElementById('imageCompanyLogo').checked = false;
+    document.getElementById('imageCustom').checked = false;
+
+    apiClient.select = jest.fn().mockResolvedValue({ data: [] });
+    mockSupabase.from.mockReturnValue(mockSupabase);
+    mockSupabase.insert.mockReturnValue(mockSupabase);
+    mockSupabase.select.mockReturnValue(mockSupabase);
+  });
+
+  afterEach(() => {
+    showToastSpy.mockRestore();
+    mockSupabase.then.mockImplementation((cb) => cb({ data: [], error: null }));
+    // Restore radio state
+    document.getElementById('imageCompanyLogo').checked = true;
+  });
+
+  test('imageUrl stays null when no image source checked', async () => {
+    document.getElementById('smScheduleDate').value = '2030-12-25';
+    document.getElementById('smScheduleTime').value = '14:00';
+
+    mockSupabase.select.mockReturnValueOnce(
+      Promise.resolve({ data: [{ id: 'no-img' }], error: null })
+    );
+
+    await socialMediaModule.savePost('scheduled');
+    expect(showToastSpy).toHaveBeenCalledWith('Post scheduled successfully!', 'success');
+  });
+});
+
+describe('Social Media Module - saveDraft() imageSource neither company nor custom', () => {
+  let showToastSpy;
+
+  beforeEach(() => {
+    showToastSpy = jest.spyOn(utils, 'showToast');
+    document.getElementById('smPostContent').value = 'Draft test';
+    document.getElementById('platformTwitter').checked = true;
+    document.getElementById('platformFacebook').checked = false;
+    document.getElementById('platformInstagram').checked = false;
+    document.getElementById('platformLinkedIn').checked = false;
+    document.getElementById('smPlatformOverrides').checked = false;
+    socialMediaModule.editingPostId = null;
+    document.getElementById('imageCompanyLogo').checked = false;
+    document.getElementById('imageCustom').checked = false;
+
+    apiClient.select = jest.fn().mockResolvedValue({ data: [] });
+    mockSupabase.from.mockReturnValue(mockSupabase);
+    mockSupabase.insert.mockReturnValue(mockSupabase);
+    mockSupabase.select.mockReturnValue(mockSupabase);
+  });
+
+  afterEach(() => {
+    showToastSpy.mockRestore();
+    mockSupabase.then.mockImplementation((cb) => cb({ data: [], error: null }));
+    document.getElementById('imageCompanyLogo').checked = true;
+  });
+
+  test('imageUrl stays null when no image source checked in draft', async () => {
+    mockSupabase.select.mockReturnValueOnce(
+      Promise.resolve({ data: [{ id: 'draft-no-img' }], error: null })
+    );
+
+    await socialMediaModule.saveDraft();
+    expect(showToastSpy).toHaveBeenCalledWith('Draft saved successfully!', 'success');
+  });
+});
+
+describe('Social Media Module - loadDraftPosts() null data branch', () => {
+  test('handles null data from apiClient', async () => {
+    apiClient.select = jest.fn().mockResolvedValue({ data: null });
+
+    await socialMediaModule.loadDraftPosts();
+
+    const container = document.getElementById('draftPostsList');
+    expect(container.innerHTML).toContain('No drafts');
+  });
+});
+
+describe('Social Media Module - loadPublishedPosts() null data branch', () => {
+  test('handles null data from apiClient', async () => {
+    apiClient.select = jest.fn().mockResolvedValue({ data: null });
+
+    await socialMediaModule.loadPublishedPosts();
+
+    const container = document.getElementById('publishedPostsList');
+    expect(container.innerHTML).toContain('No published posts yet');
+  });
+});
+
+describe('Social Media Module - loadAnalytics() unknown platform in published posts', () => {
+  test('skips unknown platform keys in platformCounts', async () => {
+    mockSupabase.from.mockReturnValue(mockSupabase);
+    mockSupabase.select.mockReturnValueOnce(
+      Promise.resolve({
+        data: [
+          { status: 'published', platforms: ['twitter', 'tiktok'], created_at: new Date().toISOString() },
+        ],
+        error: null,
+      })
+    );
+
+    await socialMediaModule.loadAnalytics();
+    const container = document.getElementById('analyticsContent');
+    // Should still render properly despite unknown 'tiktok' platform
+    expect(container.innerHTML).toContain('Published');
+  });
+});
+
+describe('Social Media Module - bulkGenerate() saveAs scheduled branch', () => {
+  let showToastSpy;
+
+  beforeEach(() => {
+    showToastSpy = jest.spyOn(utils, 'showToast');
+    document.getElementById('bulkAwardSelect').innerHTML =
+      '<option value="">Select award...</option><option value="award-1">Best Plumber</option>';
+    document.getElementById('bulkAwardSelect').value = 'award-1';
+    document.getElementById('bulkTemplateType').value = 'nominee';
+    document.getElementById('bulkPlatformTwitter').checked = true;
+    document.getElementById('bulkPlatformFacebook').checked = false;
+    document.getElementById('bulkPlatformInstagram').checked = false;
+    document.getElementById('bulkPlatformLinkedIn').checked = false;
+    document.getElementById('bulkSaveAs').value = 'scheduled';
+
+    mockSupabase.from.mockReturnValue(mockSupabase);
+    mockSupabase.select.mockReturnValue(mockSupabase);
+    mockSupabase.eq.mockReturnValue(mockSupabase);
+    mockSupabase.insert.mockReturnValue(mockSupabase);
+
+    apiClient.select = jest.fn().mockResolvedValue({ data: [] });
+  });
+
+  afterEach(() => {
+    showToastSpy.mockRestore();
+    mockSupabase.then.mockImplementation((cb) => cb({ data: [], error: null }));
+  });
+
+  test('uses scheduled text in success message', async () => {
+    const assignments = [
+      { id: 'a1', organisations: { id: 'org-1', company_name: 'Acme', logo_url: null, website: null } },
+    ];
+    mockSupabase.eq
+      .mockReturnValueOnce(mockSupabase)
+      .mockReturnValueOnce(Promise.resolve({ data: assignments, error: null }));
+    mockSupabase.then.mockImplementationOnce((cb) => cb({ data: [], error: null }));
+
+    await socialMediaModule.bulkGenerate();
+
+    expect(showToastSpy).toHaveBeenCalledWith(
+      expect.stringContaining('as scheduled'),
+      'success'
+    );
+  });
+});

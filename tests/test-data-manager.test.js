@@ -2421,12 +2421,12 @@ describe('Test Data Manager - showTestDataInfo with non-null counts', () => {
   test('shows test data with null event and null orgCount (covers all || 0 falsy branches)', async () => {
     jest.spyOn(testDataManager, 'showModal').mockImplementation(() => {});
 
-    // Mock Promise.all: null event, null orgCount, but awardCount > 0 so hasTestData = true
-    // All other counts are null to trigger every || 0 fallback
+    // Mock Promise.all: null event, orgCount > 0 so hasTestData = true, awardCount null
+    // Most counts are null to trigger || 0 fallback branches
     jest.spyOn(Promise, 'all').mockResolvedValueOnce([
       { data: null },   // event null -> testEvent falsy
-      { count: null },   // orgCount null -> || 0 fires
-      { count: 3 },      // awardCount > 0 -> hasTestData = true
+      { count: 5 },     // orgCount > 0 -> hasTestData = true (but orgCount is truthy so || 0 not hit here)
+      { count: null },   // awardCount null -> || 0 fires (covers branch 2000)
       { count: null },   // rsvpCount null -> || 0 fires
       { count: null },   // entryCount null
       { count: null },   // sponsorCount null
@@ -2447,8 +2447,32 @@ describe('Test Data Manager - showTestDataInfo with non-null counts', () => {
     const callArgs = testDataManager.showModal.mock.calls[0][1];
     expect(callArgs).toContain('No');
     expect(callArgs).not.toContain('<strong>Yes</strong>');
-    // orgCount is null, so it should fall back to 0
+  });
+
+  test('shows test data with testEvent truthy but all counts null (covers all || 0 fallbacks)', async () => {
+    jest.spyOn(testDataManager, 'showModal').mockImplementation(() => {});
+
+    // testEvent is truthy so hasTestData = true, but all counts are null
+    jest.spyOn(Promise, 'all').mockResolvedValueOnce([
+      { data: { id: 'test-event' } }, // event truthy
+      { count: null },   // orgCount null -> || 0 fires
+      { count: null },   // awardCount null -> || 0 fires
+      { count: null },   // rsvpCount null
+      { count: null },   // entryCount null
+      { count: null },   // sponsorCount null
+      { count: null },   // bannerCount null
+      { count: null },   // invoiceCount null
+      { count: null },   // contactCount null
+      { count: null },   // dealCount null
+      { count: null },   // commCount null
+    ]);
+
+    await testDataManager.showTestDataInfo();
+
+    const callArgs = testDataManager.showModal.mock.calls[0][1];
+    expect(callArgs).toContain('<strong>Yes</strong>');
     expect(callArgs).toContain('Organisations: <strong>0</strong>');
+    expect(callArgs).toContain('Awards: <strong>0</strong>');
   });
 });
 

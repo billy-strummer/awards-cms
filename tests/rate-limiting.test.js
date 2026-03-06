@@ -1104,18 +1104,33 @@ describe('Rate Limiting Module - checkRateLimit edge cases', () => {
   });
 
   test('remaining is 0 when blocked (ts[0] || now fallback)', () => {
-    // When blocked, remaining is 0. Also, when ts array is empty, resetAt uses now as fallback.
-    // Test the empty ts case: call checkRateLimit with no prior entries
     const result = rateLimitModule.checkRateLimit('/api/new-endpoint', 'new-user');
-    // After first call, ts has 1 entry, so ts[0] exists
     expect(result.remaining).toBe(29); // 30 max - 1
 
-    // Now test the case where the first call sets ts[0]
     rateLimitModule._store.clear();
-    // Set an empty store key so filter returns empty
     rateLimitModule._store.set('/api/vote::edge-user', []);
     const result2 = rateLimitModule.checkRateLimit('/api/vote', 'edge-user');
     expect(result2.allowed).toBe(true);
+  });
+
+  test('uses now as fallback for resetAt when ts is empty and blocked (max=0)', () => {
+    // Create a config with max: 0 so allowed is always false (ts.length=0 is not < 0)
+    // and ts remains empty, triggering ts[0] || now
+    const origDefaults = { ...rateLimitModule._defaults };
+    rateLimitModule._defaults['/api/zero'] = { max: 0, windowMs: 60000 };
+
+    const before = Date.now();
+    const result = rateLimitModule.checkRateLimit('/api/zero', 'user-zero');
+    const after = Date.now();
+
+    expect(result.allowed).toBe(false);
+    expect(result.remaining).toBe(0);
+    // resetAt should be approximately now + 60000 (since ts[0] is undefined, falls back to now)
+    expect(result.resetAt.getTime()).toBeGreaterThanOrEqual(before + 60000);
+    expect(result.resetAt.getTime()).toBeLessThanOrEqual(after + 60000);
+
+    // Restore
+    rateLimitModule._defaults = origDefaults;
   });
 });
 

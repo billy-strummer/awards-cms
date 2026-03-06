@@ -353,6 +353,9 @@ const crmModule = {
    * @returns {Promise<void>}
    */
   async loadCommunications() {
+    // Prevent concurrent/repeated calls while already loading
+    if (this._loadingCommunications) return;
+    this._loadingCommunications = true;
     console.debug('Loading communications...');
 
     // Read filter values from DOM
@@ -394,6 +397,8 @@ const crmModule = {
     } catch (error) {
       console.error('Error loading communications:', error);
       utils.showErrorWithRetry(error, 'loading communications', () => this.loadCommunications());
+    } finally {
+      this._loadingCommunications = false;
     }
   },
 
@@ -513,6 +518,8 @@ const crmModule = {
    * @returns {Promise<void>}
    */
   async loadDeals() {
+    if (this._loadingDeals) return;
+    this._loadingDeals = true;
     console.debug('Loading deals...');
 
     try {
@@ -576,6 +583,8 @@ const crmModule = {
     } catch (error) {
       console.error('Error loading deals:', error);
       utils.showErrorWithRetry(error, 'loading deals', () => this.loadDeals());
+    } finally {
+      this._loadingDeals = false;
     }
   },
 
@@ -918,6 +927,10 @@ const crmModule = {
   // FILTER FUNCTIONS
   // ============================================
   applyFilter(category, filterType, value) {
+    // Strip trailing Event arg that the action registry may append
+    if (value instanceof Event) value = undefined;
+    if (filterType instanceof Event) return;
+    if (!this.filters[category]) return;
     this.filters[category][filterType] = value;
 
     // Reload data based on category
@@ -973,6 +986,14 @@ const crmModule = {
    * @returns {Promise<void>}
    */
   async logCommunication(organisationId = null) {
+    // Guard against receiving an Event object from the action registry
+    // when invoked from a button without data-id
+    if (
+      organisationId instanceof Event ||
+      (organisationId && typeof organisationId === 'object' && organisationId.target)
+    ) {
+      organisationId = null;
+    }
     console.warn('Log communication for:', organisationId);
     try {
       // Create modal

@@ -2727,8 +2727,20 @@ const actionRegistry = {
       const handler = this._resolve(actionName);
       if (!handler) return;
       const id = el.getAttribute('data-id');
+      const argsJson = el.getAttribute('data-args');
+      let extraArgs = [];
+      if (argsJson) {
+        try {
+          const parsed = JSON.parse(argsJson);
+          extraArgs = Array.isArray(parsed) ? parsed : [parsed];
+        } catch (_e) {
+          extraArgs = [];
+        }
+      }
       if (id) {
-        handler(id, el.value, event);
+        handler(id, ...extraArgs, el.value, event);
+      } else if (extraArgs.length > 0) {
+        handler(...extraArgs, el.value, event);
       } else {
         handler(el.value, event);
       }

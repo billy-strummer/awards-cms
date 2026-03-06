@@ -13,8 +13,8 @@ const dom = new JSDOM(
   <div id="loadingBar" style="display:none;"></div>
   <div id="notificationToast"><span id="toastIcon"></span><span id="toastTitle"></span><span id="toastMessage"></span></div>
   <div id="connectionStatus"><span class="status-icon"></span><span class="status-text"></span></div>
-  <div id="loginPage" style="display:none;"></div>
-  <div id="dashboardPage" style="display:none;"></div>
+  <div id="loginPage" class="d-none"></div>
+  <div id="dashboardPage" class="d-none"></div>
   <div id="splashScreen" style="display:block;"></div>
   <div id="userEmail"></div>
   <form id="loginForm">

@@ -1327,7 +1327,9 @@ document.addEventListener('DOMContentLoaded', function () {
   // STEP 8: Check for existing session
   // ==========================================
   authModule.checkSession().then(() => {
-    authModule.testConnection();
+    if (STATE.currentUser) {
+      authModule.testConnection();
+    }
   });
 
   // Safety timeout: if splash screen is still visible after 10s, force show login

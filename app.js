@@ -1328,7 +1328,9 @@ document.addEventListener('DOMContentLoaded', function () {
   // ==========================================
   authModule.checkSession().then(() => {
     if (STATE.currentUser) {
-      authModule.testConnection();
+      // Small delay lets the Supabase session fully hydrate so _getToken()
+      // can retrieve the access token reliably.
+      setTimeout(() => authModule.testConnection(), 500);
     }
   });
 

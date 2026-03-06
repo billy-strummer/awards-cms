@@ -423,7 +423,7 @@ function validateQueryParams(body) {
     }
   }
 
-  if (operation === 'insert' && (!data || typeof data !== 'object')) {
+  if ((operation === 'insert' || operation === 'upsert') && (!data || typeof data !== 'object')) {
     errors.push('"data" is required for insert/upsert operations');
   }
 

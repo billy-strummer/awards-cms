@@ -971,6 +971,25 @@ const settingsModule = {
     const density = localStorage.getItem('layoutDensity') || 'comfortable';
     document.body.classList.add('density-' + density);
   },
+
+  /**
+   * Navigate to the Settings tab and scroll to branding settings.
+   * Used by data-action="settingsModule.scrollToBranding" in the marketing tab.
+   */
+  scrollToBranding() {
+    const settingsTab = document.getElementById('settings-tab');
+    if (settingsTab) {
+      const tab = new bootstrap.Tab(settingsTab);
+      tab.show();
+    }
+    // Wait for tab transition to complete before scrolling
+    setTimeout(() => {
+      const brandingContainer = document.getElementById('brandingSettingsContainer');
+      if (brandingContainer) {
+        brandingContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 300);
+  },
 };
 
 // Export to window for global access

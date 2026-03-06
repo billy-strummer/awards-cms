@@ -860,6 +860,17 @@ document.addEventListener('DOMContentLoaded', function () {
   if (typeof actionRegistry !== 'undefined') actionRegistry.init();
 
   // ==========================================
+  // STEP 1d: Fix aria-hidden focus trap in Bootstrap modals
+  // ==========================================
+  // When a modal hides, blur the focused element inside it first so that
+  // aria-hidden="true" is not applied to an ancestor of the focused element.
+  document.addEventListener('hide.bs.modal', (e) => {
+    if (e.target.contains(document.activeElement)) {
+      document.activeElement.blur();
+    }
+  });
+
+  // ==========================================
   // STEP 2: Set up event listeners
   // ==========================================
 

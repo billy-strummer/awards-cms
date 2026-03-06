@@ -2668,7 +2668,9 @@ const actionRegistry = {
       const actionName = el.getAttribute('data-action');
       if (!actionName) return;
 
-      if (el.getAttribute('data-prevent-default') === 'true') {
+      // Always prevent default on anchor elements used as action buttons
+      // (avoids CSP violations from javascript: hrefs and # navigation)
+      if (el.tagName === 'A' || el.getAttribute('data-prevent-default') === 'true') {
         event.preventDefault();
       }
       if (el.getAttribute('data-stop-propagation') === 'true') {

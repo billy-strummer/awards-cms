@@ -390,15 +390,15 @@ const entriesModule = {
       const totalPages = Math.ceil(this.filteredEntries.length / this._pageSize);
       if (totalPages > 1) {
         let html = '<nav><ul class="pagination pagination-sm justify-content-center mt-3">';
-        html += `<li class="page-item ${this._currentPage <= 1 ? 'disabled' : ''}"><a class="page-link" href="javascript:void(0);" data-action="entriesModule.goToEntriesPage" data-id="${this._currentPage - 1}">Prev</a></li>`;
+        html += `<li class="page-item ${this._currentPage <= 1 ? 'disabled' : ''}"><a class="page-link" href="#" data-action="entriesModule.goToEntriesPage" data-id="${this._currentPage - 1}">Prev</a></li>`;
         for (let i = 1; i <= totalPages; i++) {
           if (i === 1 || i === totalPages || (i >= this._currentPage - 2 && i <= this._currentPage + 2)) {
-            html += `<li class="page-item ${i === this._currentPage ? 'active' : ''}"><a class="page-link" href="javascript:void(0);" data-action="entriesModule.goToEntriesPage" data-id="${i}">${i}</a></li>`;
+            html += `<li class="page-item ${i === this._currentPage ? 'active' : ''}"><a class="page-link" href="#" data-action="entriesModule.goToEntriesPage" data-id="${i}">${i}</a></li>`;
           } else if (i === this._currentPage - 3 || i === this._currentPage + 3) {
             html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
           }
         }
-        html += `<li class="page-item ${this._currentPage >= totalPages ? 'disabled' : ''}"><a class="page-link" href="javascript:void(0);" data-action="entriesModule.goToEntriesPage" data-id="${this._currentPage + 1}">Next</a></li>`;
+        html += `<li class="page-item ${this._currentPage >= totalPages ? 'disabled' : ''}"><a class="page-link" href="#" data-action="entriesModule.goToEntriesPage" data-id="${this._currentPage + 1}">Next</a></li>`;
         html += '</ul></nav>';
         html += `<div class="text-center text-muted small">Showing ${(this._currentPage - 1) * this._pageSize + 1}-${Math.min(this._currentPage * this._pageSize, this.filteredEntries.length)} of ${this.filteredEntries.length}</div>`;
         paginationEl.innerHTML = html;

@@ -8671,10 +8671,10 @@ const eventsModule = {
                     <i class="bi bi-download me-1"></i>Export
                   </button>
                   <ul class="dropdown-menu dropdown-menu-end">
-                    <li><a class="dropdown-item" href="javascript:void(0);" data-action="eventsModule.exportTablePlanExcel"><i class="bi bi-file-earmark-spreadsheet text-success me-2"></i>Export Excel (.xlsx)</a></li>
-                    <li><a class="dropdown-item" href="javascript:void(0);" data-action="eventsModule.exportTablePlanPDF"><i class="bi bi-printer text-primary me-2"></i>Print Document</a></li>
+                    <li><a class="dropdown-item" href="#" data-action="eventsModule.exportTablePlanExcel"><i class="bi bi-file-earmark-spreadsheet text-success me-2"></i>Export Excel (.xlsx)</a></li>
+                    <li><a class="dropdown-item" href="#" data-action="eventsModule.exportTablePlanPDF"><i class="bi bi-printer text-primary me-2"></i>Print Document</a></li>
                     <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item" href="javascript:void(0);" data-action="eventsModule.openTVDisplay"><i class="bi bi-tv text-info me-2"></i>TV / Projector Display</a></li>
+                    <li><a class="dropdown-item" href="#" data-action="eventsModule.openTVDisplay"><i class="bi bi-tv text-info me-2"></i>TV / Projector Display</a></li>
                   </ul>
                 </div>
                 <button class="btn btn-sm btn-outline-light" data-action="eventsModule.showTablePlanStats" title="Stats Summary">

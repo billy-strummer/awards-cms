@@ -1305,7 +1305,7 @@ const orgsModule = {
                         ? org.tags
                             .map(
                               (t) =>
-                                `<span class="badge bg-secondary me-1 mb-1">${utils.escapeHtml(t)} <a href="javascript:void(0);" class="text-white ms-1" data-action="orgsModule.removeTag" data-args='${JSON.stringify([org.id, utils.escapeHtml(t).replace(/'/g, "\\'")])}'><i class="bi bi-x-circle-fill"></i></a></span>`
+                                `<span class="badge bg-secondary me-1 mb-1">${utils.escapeHtml(t)} <a href="#" class="text-white ms-1" data-action="orgsModule.removeTag" data-args='${JSON.stringify([org.id, utils.escapeHtml(t).replace(/'/g, "\\'")])}'><i class="bi bi-x-circle-fill"></i></a></span>`
                             )
                             .join('')
                         : '<span class="text-muted small">No tags</span>'
@@ -1385,7 +1385,7 @@ const orgsModule = {
                     <tr>
                       <td><span class="badge bg-primary-subtle text-primary">${award.year}</span></td>
                       <td>
-                        <a href="javascript:void(0);"
+                        <a href="#"
                            class="text-decoration-none fw-semibold text-primary"
                            data-action="assignmentsModule.openAssignmentsModal" data-args='${JSON.stringify([award.id, utils.escapeHtml(utils.formatAwardName(award)).replace(/'/g, "\\'")])}'>
                           ${utils.escapeHtml(utils.formatAwardName(award))}
@@ -1396,7 +1396,7 @@ const orgsModule = {
                       <td>
                         ${
                           ['bronze', 'silver', 'gold'].includes(award.package_type)
-                            ? `<a href="javascript:void(0);"
+                            ? `<a href="#"
                               data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([org.id, utils.escapeHtml(org.company_name).replace(/'/g, "\\'")])}'>
                               ${orgsModule.getPackageBadge(award.package_type)}
                            </a>`
@@ -6078,7 +6078,7 @@ const orgsModule = {
         ]
           .map(
             (item) => `
-          <a href="javascript:void(0);" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+          <a href="#" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
              data-action="orgsModule.filterByMissingField" data-id="${item.field}">
             <span><i class="bi ${item.icon} me-2"></i>${item.label}</span>
             <span class="badge ${item.count > 0 ? 'bg-warning text-dark' : 'bg-success'}">${item.count}</span>
@@ -6799,7 +6799,7 @@ const orgsModule = {
             : `<div class="me-2 d-flex align-items-center justify-content-center rounded" style="width:30px;height:21px;background:#f5f5f5;border:1px solid #e0e0e0;"><i class="bi bi-building text-muted" style="font-size:0.6rem;"></i></div>`
         }
         <div class="flex-grow-1">
-          <a href="javascript:void(0);" class="small fw-semibold text-primary text-decoration-none"
+          <a href="#" class="small fw-semibold text-primary text-decoration-none"
             data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([r.org?.id, utils.escapeHtml(r.org?.company_name || '').replace(/'/g, "\\'")])}'>${utils.escapeHtml(r.org?.company_name || 'Unknown')}</a>
           <span class="badge bg-light text-muted ms-1" style="font-size:0.6rem;">${typeLabels[r.type] || r.type}${r.direction === 'incoming' ? ' (of this)' : ''}</span>
         </div>
@@ -6930,7 +6930,7 @@ const orgsModule = {
                         <div class="card-body p-2">
                           <div class="d-flex align-items-center mb-1">
                             ${org.logo_url ? `<img src="${org.logo_url}" class="me-1 rounded" style="width:24px;height:17px;object-fit:contain;">` : ''}
-                            <a href="javascript:void(0);" class="small fw-semibold text-primary text-decoration-none text-truncate"
+                            <a href="#" class="small fw-semibold text-primary text-decoration-none text-truncate"
                               data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([org.id, utils.escapeHtml(org.company_name || '').replace(/'/g, "\\'")])}'
                               style="max-width: 150px;">${utils.escapeHtml(org.company_name || 'N/A')}</a>
                           </div>

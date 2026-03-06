@@ -693,7 +693,7 @@ const awardsModule = {
           <td><input type="checkbox" class="form-check-input award-select-cb" value="${award.id}" data-on-change="awardsModule.toggleSelection" data-id="${award.id}" ${this.selectedAwards.has(award.id) ? 'checked' : ''}></td>
           <td class="text-center"><span class="badge bg-light text-dark">${award.year || '-'}</span></td>
           <td>
-            <a href="javascript:void(0);"
+            <a href="#"
                class="text-decoration-none fw-semibold text-primary"
                data-action="assignmentsModule.openAssignmentsModal" data-args='${JSON.stringify([award.id, fullName]).replace(/'/g, '&#39;')}'>
               ${utils.escapeHtml(fullName)}
@@ -735,38 +735,38 @@ const awardsModule = {
               </button>
               <ul class="dropdown-menu dropdown-menu-end">
                 <li>
-                  <a class="dropdown-item" href="javascript:void(0);" data-action="assignmentsModule.openAssignmentsModal" data-args='${JSON.stringify([award.id, fullName]).replace(/'/g, '&#39;')}'>
+                  <a class="dropdown-item" href="#" data-action="assignmentsModule.openAssignmentsModal" data-args='${JSON.stringify([award.id, fullName]).replace(/'/g, '&#39;')}'>
                     <i class="bi bi-people text-primary me-2"></i>Manage Nominees
                   </a>
                 </li>
                 <li>
-                  <a class="dropdown-item" href="javascript:void(0);" data-action="awardsModule.openEditModal" data-id="${award.id}">
+                  <a class="dropdown-item" href="#" data-action="awardsModule.openEditModal" data-id="${award.id}">
                     <i class="bi bi-pencil text-warning me-2"></i>Edit Award
                   </a>
                 </li>
                 <li>
-                  <a class="dropdown-item" href="javascript:void(0);" data-action="awardsModule.viewDetails" data-id="${award.id}">
+                  <a class="dropdown-item" href="#" data-action="awardsModule.viewDetails" data-id="${award.id}">
                     <i class="bi bi-eye text-info me-2"></i>View Details
                   </a>
                 </li>
                 <li>
-                  <a class="dropdown-item" href="javascript:void(0);" data-action="awardsModule.showVisualTimeline" data-id="${award.id}">
+                  <a class="dropdown-item" href="#" data-action="awardsModule.showVisualTimeline" data-id="${award.id}">
                     <i class="bi bi-calendar-range text-success me-2"></i>Timeline
                   </a>
                 </li>
                 <li>
-                  <a class="dropdown-item" href="javascript:void(0);" data-action="awardsModule.cloneAward" data-id="${award.id}">
+                  <a class="dropdown-item" href="#" data-action="awardsModule.cloneAward" data-id="${award.id}">
                     <i class="bi bi-copy text-purple me-2" style="color:#6f42c1;"></i>Clone to Year
                   </a>
                 </li>
                 <li>
-                  <a class="dropdown-item" href="javascript:void(0);" data-action="awardsModule.showAwardAuditLog" data-args='${JSON.stringify([award.id, fullName]).replace(/'/g, '&#39;')}'>
+                  <a class="dropdown-item" href="#" data-action="awardsModule.showAwardAuditLog" data-args='${JSON.stringify([award.id, fullName]).replace(/'/g, '&#39;')}'>
                     <i class="bi bi-journal-text text-secondary me-2"></i>Audit Log
                   </a>
                 </li>
                 <li><hr class="dropdown-divider"></li>
                 <li>
-                  <a class="dropdown-item text-danger" href="javascript:void(0);" data-action="awardsModule.deleteAward" data-id="${award.id}">
+                  <a class="dropdown-item text-danger" href="#" data-action="awardsModule.deleteAward" data-id="${award.id}">
                     <i class="bi bi-trash me-2"></i>Delete
                   </a>
                 </li>
@@ -969,7 +969,7 @@ const awardsModule = {
                       (assign) => `
                     <tr>
                       <td>
-                        <a href="javascript:void(0);"
+                        <a href="#"
                            class="text-decoration-none fw-semibold text-primary"
                            data-action="orgsModule.openCompanyProfile" data-id="${assign.organisations?.id}" data-name="${utils.escapeHtml(assign.organisations?.company_name || '').replace(/'/g, '&#39;')}"
                            title="View company profile">
@@ -1026,7 +1026,7 @@ const awardsModule = {
                       <tr>
                         <td><span class="badge bg-primary">${utils.escapeHtml(entry.entry_number)}</span></td>
                         <td>
-                          <a href="javascript:void(0);"
+                          <a href="#"
                              class="text-decoration-none text-primary"
                              data-action="orgsModule.openCompanyProfile" data-id="${entry.organisations?.id}" data-name="${utils.escapeHtml(entry.organisations?.company_name || '').replace(/'/g, '&#39;')}"
                              title="View company profile">
@@ -1932,7 +1932,7 @@ const awardsModule = {
     dropdown.innerHTML = seasons
       .map(
         (s) =>
-          `<li><a class="dropdown-item" href="javascript:void(0);" data-action="awardsModule.bulkApplySeasonDates" data-id="${s.id}">
+          `<li><a class="dropdown-item" href="#" data-action="awardsModule.bulkApplySeasonDates" data-id="${s.id}">
         <i class="bi bi-calendar-event me-2"></i>${utils.escapeHtml(s.name)} (${s.year})
       </a></li>`
       )
@@ -2036,7 +2036,7 @@ const awardsModule = {
           .slice(0, limit)
           .map(
             (a) => `<div class="small py-1 border-bottom">
-          <a href="javascript:void(0);" class="text-primary text-decoration-none" data-action="awardsModule.openEditModal" data-id="${a.id}">${utils.escapeHtml(utils.formatAwardName(a))}</a>
+          <a href="#" class="text-primary text-decoration-none" data-action="awardsModule.openEditModal" data-id="${a.id}">${utils.escapeHtml(utils.formatAwardName(a))}</a>
           <span class="text-muted ms-1">(${a.year})</span>
         </div>`
           )

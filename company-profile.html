@@ -343,7 +343,7 @@
             const escapedAwardName = award.award_name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
             return `
             <tr>
-              <td><a href="javascript:void(0);" data-action="viewCompaniesInAward" data-id="${escapedAwardName}" class="text-decoration-none">${award.award_name || ''}</a></td>
+              <td><a href="#" data-action="viewCompaniesInAward" data-id="${escapedAwardName}" class="text-decoration-none">${award.award_name || ''}</a></td>
               <td>${award.year || ''}</td>
               <td>${award.sector || ''}</td>
               <td>${award.region || ''}</td>
@@ -353,7 +353,7 @@
                   '<span class="badge bg-info">NOMINEE</span>'}
               </td>
               <td>
-                <a href="javascript:void(0);" data-action="viewNominees" data-args='["${award.id}","${escapedAwardName}"]' class="btn btn-sm btn-link p-0">
+                <a href="#" data-action="viewNominees" data-args='["${award.id}","${escapedAwardName}"]' class="btn btn-sm btn-link p-0">
                   <i class="bi bi-eye"></i>
                 </a>
               </td>

@@ -710,10 +710,7 @@ describe('getAwardAssignments - other_nominations mapping (lines 43-44)', () => 
       { organisation_id: 'org1', award_id: 'aw2', awards: { award_name: 'Other Award', year: 2026 } },
       { organisation_id: 'org1', award_id: 'aw3', awards: { award_name: 'Third Award', year: 2026 } },
     ];
-    apiClient.selectAll = jest
-      .fn()
-      .mockResolvedValueOnce(assignments)
-      .mockResolvedValueOnce(otherAssignments);
+    apiClient.selectAll = jest.fn().mockResolvedValueOnce(assignments).mockResolvedValueOnce(otherAssignments);
 
     const result = await assignmentsModule.getAwardAssignments('aw1');
     expect(result[0].other_nominations).toHaveLength(2);
@@ -760,6 +757,7 @@ describe('openAssignmentsModal (lines 71-107)', () => {
 });
 
 const _realRefreshAssignments = assignmentsModule.refreshAssignments;
+const _realGetAwardAssignments = assignmentsModule.getAwardAssignments;
 
 describe('refreshAssignments (lines 113-265)', () => {
   beforeEach(() => {
@@ -789,7 +787,8 @@ describe('refreshAssignments (lines 113-265)', () => {
     apiClient.selectAll = jest.fn().mockResolvedValue(allOrgs);
 
     // Need to restore refreshAssignments to the real implementation
-    const origRefresh = Object.getPrototypeOf(assignmentsModule).refreshAssignments ||
+    const origRefresh =
+      Object.getPrototypeOf(assignmentsModule).refreshAssignments ||
       assignmentsModule.constructor.prototype?.refreshAssignments;
     // Just call it directly since we mocked getAwardAssignments
     const contentEl = document.getElementById('assignmentsContent');
@@ -803,7 +802,13 @@ describe('refreshAssignments (lines 113-265)', () => {
 
   test('filters out assignments with missing organisations and warns', async () => {
     const assignments = [
-      { id: 'a1', organisation_id: 'org1', organisations: { id: 'org1', company_name: 'Valid', email: 'v@v.com' }, status: 'nominated', public_vote_count: 0 },
+      {
+        id: 'a1',
+        organisation_id: 'org1',
+        organisations: { id: 'org1', company_name: 'Valid', email: 'v@v.com' },
+        status: 'nominated',
+        public_vote_count: 0,
+      },
       { id: 'a2', organisation_id: 'org2', organisations: null, status: 'nominated', public_vote_count: 0 },
     ];
     assignmentsModule.getAwardAssignments = jest.fn().mockResolvedValue(assignments);
@@ -811,7 +816,10 @@ describe('refreshAssignments (lines 113-265)', () => {
 
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
     await assignmentsModule.refreshAssignments();
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Found assignment with missing organisation'), expect.anything());
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Found assignment with missing organisation'),
+      expect.anything()
+    );
     expect(warnSpy).toHaveBeenCalledWith('Filtered out', 1, 'assignments with missing organisations');
     warnSpy.mockRestore();
   });
@@ -826,7 +834,13 @@ describe('refreshAssignments (lines 113-265)', () => {
 
   test('renders all-assigned alert when no available orgs', async () => {
     const assignments = [
-      { id: 'a1', organisation_id: 'org1', organisations: { id: 'org1', company_name: 'Only', email: 'o@o.com' }, status: 'nominated', public_vote_count: 0 },
+      {
+        id: 'a1',
+        organisation_id: 'org1',
+        organisations: { id: 'org1', company_name: 'Only', email: 'o@o.com' },
+        status: 'nominated',
+        public_vote_count: 0,
+      },
     ];
     const allOrgs = [{ id: 'org1', company_name: 'Only', email: 'o@o.com', logo_url: null }];
     assignmentsModule.getAwardAssignments = jest.fn().mockResolvedValue(assignments);
@@ -856,7 +870,14 @@ describe('filterAssignments - button active state toggle (line 449)', () => {
       <button id="filter-new" class="btn"></button>
     `;
     assignmentsModule.allAssignments = [
-      { id: 'a1', organisations: { id: 'org1', company_name: 'A', email: 'a@a.com', logo_url: null }, status: 'nominated', nomination_source: 'admin', is_previous_winner: false, public_vote_count: 0 },
+      {
+        id: 'a1',
+        organisations: { id: 'org1', company_name: 'A', email: 'a@a.com', logo_url: null },
+        status: 'nominated',
+        nomination_source: 'admin',
+        is_previous_winner: false,
+        public_vote_count: 0,
+      },
     ];
   });
 
@@ -872,9 +893,33 @@ describe('filterAssignments - button active state toggle (line 449)', () => {
 describe('sortAssignments - filter + sort combos (lines 507-539)', () => {
   beforeEach(() => {
     assignmentsModule.allAssignments = [
-      { id: 'a1', organisations: { id: 'org1', company_name: 'Alpha', email: 'a@a.com', logo_url: null }, status: 'nominated', nomination_source: 'self_nomination', is_previous_winner: false, public_vote_count: 5, winner_position: 1 },
-      { id: 'a2', organisations: { id: 'org2', company_name: 'Beta', email: 'b@b.com', logo_url: null }, status: 'nominated', nomination_source: 'admin', is_previous_winner: true, public_vote_count: 10, winner_position: 2 },
-      { id: 'a3', organisations: { id: 'org3', company_name: 'Gamma', email: 'g@g.com', logo_url: null }, status: 'nominated', nomination_source: 'admin', is_previous_winner: false, public_vote_count: 3, winner_position: null },
+      {
+        id: 'a1',
+        organisations: { id: 'org1', company_name: 'Alpha', email: 'a@a.com', logo_url: null },
+        status: 'nominated',
+        nomination_source: 'self_nomination',
+        is_previous_winner: false,
+        public_vote_count: 5,
+        winner_position: 1,
+      },
+      {
+        id: 'a2',
+        organisations: { id: 'org2', company_name: 'Beta', email: 'b@b.com', logo_url: null },
+        status: 'nominated',
+        nomination_source: 'admin',
+        is_previous_winner: true,
+        public_vote_count: 10,
+        winner_position: 2,
+      },
+      {
+        id: 'a3',
+        organisations: { id: 'org3', company_name: 'Gamma', email: 'g@g.com', logo_url: null },
+        status: 'nominated',
+        nomination_source: 'admin',
+        is_previous_winner: false,
+        public_vote_count: 3,
+        winner_position: null,
+      },
     ];
     assignmentsModule.currentSortColumn = 'company';
     assignmentsModule.currentSortDirection = 'asc';
@@ -961,9 +1006,7 @@ describe('changeStatus - awardsModule._logAwardAudit (line 675)', () => {
     assignmentsModule.refreshAssignments = jest.fn().mockResolvedValue();
     assignmentsModule.currentAwardId = 'aw1';
     assignmentsModule.currentAwardName = 'Best Plumber';
-    assignmentsModule._cachedAssignments = [
-      { id: 'a1', organisations: { company_name: 'TestCo' } },
-    ];
+    assignmentsModule._cachedAssignments = [{ id: 'a1', organisations: { company_name: 'TestCo' } }];
   });
 
   test('calls awardsModule._logAwardAudit on status change', async () => {
@@ -1000,7 +1043,11 @@ describe('emailAllAssigned - full modal rendering (lines 782-877)', () => {
     assignmentsModule.currentAwardName = 'Best Plumber';
     assignmentsModule._cachedAssignments = [
       { id: 'a1', organisations: { id: 'org1', company_name: 'TestCo', email: 'test@test.com' }, status: 'nominated' },
-      { id: 'a2', organisations: { id: 'org2', company_name: 'Other', email: 'other@other.com' }, status: 'shortlisted' },
+      {
+        id: 'a2',
+        organisations: { id: 'org2', company_name: 'Other', email: 'other@other.com' },
+        status: 'shortlisted',
+      },
     ];
   });
 
@@ -1286,7 +1333,12 @@ describe('sortAssignments - early return when no listContainer (line 500)', () =
 describe('sortAssignments - toggle from desc to asc (line 491 else branch)', () => {
   beforeEach(() => {
     assignmentsModule.allAssignments = [
-      { id: 'a1', organisations: { id: 'org1', company_name: 'Alpha', email: 'a@a.com', logo_url: null }, status: 'nominated', public_vote_count: 5 },
+      {
+        id: 'a1',
+        organisations: { id: 'org1', company_name: 'Alpha', email: 'a@a.com', logo_url: null },
+        status: 'nominated',
+        public_vote_count: 5,
+      },
     ];
     assignmentsModule.currentFilter = 'all';
   });
@@ -1333,23 +1385,21 @@ describe('updateSelectedCount - element present (line 966)', () => {
 });
 
 describe('getAwardAssignments - null/falsy fallback branches', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    assignmentsModule.getAwardAssignments = _realGetAwardAssignments;
+  });
 
   test('handles null otherAssignments (line 42 || fallback)', async () => {
-    const assignments = [
-      { id: 'a1', organisation_id: 'org1', organisations: { id: 'org1', company_name: 'A' } },
-    ];
-    apiClient.selectAll = jest.fn()
-      .mockResolvedValueOnce(assignments)
-      .mockResolvedValueOnce(null); // otherAssignments is null
+    const assignments = [{ id: 'a1', organisation_id: 'org1', organisations: { id: 'org1', company_name: 'A' } }];
+    apiClient.selectAll = jest.fn().mockResolvedValueOnce(assignments).mockResolvedValueOnce(null); // otherAssignments is null
 
     const result = await assignmentsModule.getAwardAssignments('aw1');
     expect(result[0].other_nominations).toEqual([]);
   });
 
   test('handles null data from first selectAll (line 50 || fallback)', async () => {
-    apiClient.selectAll = jest.fn()
-      .mockResolvedValueOnce(null); // data is null — no orgIds, skip second call
+    apiClient.selectAll = jest.fn().mockResolvedValueOnce(null); // data is null — no orgIds, skip second call
 
     const result = await assignmentsModule.getAwardAssignments('aw1');
     expect(result).toEqual([]);
@@ -1361,9 +1411,7 @@ describe('getAwardAssignments - null/falsy fallback branches', () => {
       { id: 'a2', organisation_id: 'org2', organisations: { id: 'org2' } },
     ];
     // Both org IDs are truthy, so a second selectAll call happens
-    apiClient.selectAll = jest.fn()
-      .mockResolvedValueOnce(assignments)
-      .mockResolvedValueOnce([]);
+    apiClient.selectAll = jest.fn().mockResolvedValueOnce(assignments).mockResolvedValueOnce([]);
 
     const result = await assignmentsModule.getAwardAssignments('aw1');
     // Should not throw; both sort to empty string
@@ -1371,11 +1419,8 @@ describe('getAwardAssignments - null/falsy fallback branches', () => {
   });
 
   test('handles empty orgIds (no second selectAll call)', async () => {
-    const assignments = [
-      { id: 'a1', organisation_id: null, organisations: { id: 'org1', company_name: 'A' } },
-    ];
-    apiClient.selectAll = jest.fn()
-      .mockResolvedValueOnce(assignments);
+    const assignments = [{ id: 'a1', organisation_id: null, organisations: { id: 'org1', company_name: 'A' } }];
+    apiClient.selectAll = jest.fn().mockResolvedValueOnce(assignments);
 
     const result = await assignmentsModule.getAwardAssignments('aw1');
     // selectAll called only once since orgIds is empty after filter(Boolean)
@@ -1409,9 +1454,7 @@ describe('removeAssignment - company_name fallbacks (lines 603-604)', () => {
   });
 
   test('uses company_name from assignment when organisations missing', async () => {
-    assignmentsModule.currentAssignments = [
-      { id: 'a1', company_name: 'Fallback Name' },
-    ];
+    assignmentsModule.currentAssignments = [{ id: 'a1', company_name: 'Fallback Name' }];
     utils.confirmDialog = jest.fn().mockResolvedValue(true);
     apiClient.delete = jest.fn().mockResolvedValue({});
 
@@ -1424,9 +1467,7 @@ describe('removeAssignment - company_name fallbacks (lines 603-604)', () => {
   });
 
   test('uses "this company" when no name available', async () => {
-    assignmentsModule.currentAssignments = [
-      { id: 'a1' },
-    ];
+    assignmentsModule.currentAssignments = [{ id: 'a1' }];
     utils.confirmDialog = jest.fn().mockResolvedValue(true);
     apiClient.delete = jest.fn().mockResolvedValue({});
 
@@ -1583,8 +1624,18 @@ describe('sortAssignments - sort comparisons with null values (lines 527-528, 53
 
   test('sorts by company with null organisation names', () => {
     assignmentsModule.allAssignments = [
-      { id: 'a1', organisations: null, status: 'nominated', public_vote_count: 5 },
-      { id: 'a2', organisations: { id: 'org2', company_name: 'Beta', email: 'b@b.com', logo_url: null }, status: 'nominated', public_vote_count: 10 },
+      {
+        id: 'a1',
+        organisations: { id: 'org1', company_name: '', email: 'a@a.com', logo_url: null },
+        status: 'nominated',
+        public_vote_count: 5,
+      },
+      {
+        id: 'a2',
+        organisations: { id: 'org2', company_name: 'Beta', email: 'b@b.com', logo_url: null },
+        status: 'nominated',
+        public_vote_count: 10,
+      },
     ];
     assignmentsModule.sortAssignments('company');
     expect(assignmentsModule.currentSortColumn).toBe('company');
@@ -1592,8 +1643,18 @@ describe('sortAssignments - sort comparisons with null values (lines 527-528, 53
 
   test('sorts by votes with null public_vote_count', () => {
     assignmentsModule.allAssignments = [
-      { id: 'a1', organisations: { id: 'org1', company_name: 'A', email: 'a@a.com', logo_url: null }, status: 'nominated', public_vote_count: null },
-      { id: 'a2', organisations: { id: 'org2', company_name: 'B', email: 'b@b.com', logo_url: null }, status: 'nominated', public_vote_count: 10 },
+      {
+        id: 'a1',
+        organisations: { id: 'org1', company_name: 'A', email: 'a@a.com', logo_url: null },
+        status: 'nominated',
+        public_vote_count: null,
+      },
+      {
+        id: 'a2',
+        organisations: { id: 'org2', company_name: 'B', email: 'b@b.com', logo_url: null },
+        status: 'nominated',
+        public_vote_count: 10,
+      },
     ];
     assignmentsModule.currentSortColumn = 'company';
     assignmentsModule.sortAssignments('votes');
@@ -1602,8 +1663,18 @@ describe('sortAssignments - sort comparisons with null values (lines 527-528, 53
 
   test('sorts by position with null winner_position', () => {
     assignmentsModule.allAssignments = [
-      { id: 'a1', organisations: { id: 'org1', company_name: 'A', email: 'a@a.com', logo_url: null }, status: 'nominated', winner_position: null },
-      { id: 'a2', organisations: { id: 'org2', company_name: 'B', email: 'b@b.com', logo_url: null }, status: 'nominated', winner_position: 2 },
+      {
+        id: 'a1',
+        organisations: { id: 'org1', company_name: 'A', email: 'a@a.com', logo_url: null },
+        status: 'nominated',
+        winner_position: null,
+      },
+      {
+        id: 'a2',
+        organisations: { id: 'org2', company_name: 'B', email: 'b@b.com', logo_url: null },
+        status: 'nominated',
+        winner_position: 2,
+      },
     ];
     assignmentsModule.currentSortColumn = 'company';
     assignmentsModule.sortAssignments('position');

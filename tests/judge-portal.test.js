@@ -238,9 +238,9 @@ describe('Judge Portal - renderEntriesList', () => {
 });
 
 describe('Judge Portal - logout', () => {
-  test('removes judgeEmail from localStorage', () => {
+  test('removes judgeEmail from localStorage', async () => {
     localStorage.setItem('judgeEmail', 'judge@test.com');
-    judgePortal.logout();
+    await judgePortal.logout();
     expect(localStorage.getItem('judgeEmail')).toBeNull();
   });
 });
@@ -353,29 +353,29 @@ describe('Judge Portal - HTML escaping (via getCompanyDisplay)', () => {
 // getJudgeFromSession
 // ============================
 describe('Judge Portal - getJudgeFromSession', () => {
-  test('returns email from STATE.client.auth session', () => {
-    mockSupabase.auth.getSession.mockReturnValueOnce({
-      data: { session: { user: { email: 'state-judge@test.com' } } },
-    });
-    const email = judgePortal.getJudgeFromSession();
+  test('returns email from STATE.client.auth session', async () => {
+    mockSupabase.auth.getSession.mockReturnValueOnce(
+      Promise.resolve({ data: { session: { user: { email: 'state-judge@test.com' } } } })
+    );
+    const email = await judgePortal.getJudgeFromSession();
     expect(email).toBe('state-judge@test.com');
   });
 
-  test('falls back to localStorage when STATE session missing', () => {
+  test('falls back to localStorage when STATE session missing', async () => {
     const origGetSession = mockSupabase.auth.getSession;
-    mockSupabase.auth.getSession = jest.fn(() => ({ data: { session: null } }));
+    mockSupabase.auth.getSession = jest.fn(() => Promise.resolve({ data: { session: null } }));
     localStorage.setItem('judgeEmail', 'local-judge@test.com');
-    const email = judgePortal.getJudgeFromSession();
+    const email = await judgePortal.getJudgeFromSession();
     expect(email).toBe('local-judge@test.com');
     mockSupabase.auth.getSession = origGetSession;
     localStorage.removeItem('judgeEmail');
   });
 
-  test('returns null when no session and no localStorage', () => {
+  test('returns null when no session and no localStorage', async () => {
     const origGetSession = mockSupabase.auth.getSession;
-    mockSupabase.auth.getSession = jest.fn(() => ({ data: { session: null } }));
+    mockSupabase.auth.getSession = jest.fn(() => Promise.resolve({ data: { session: null } }));
     localStorage.removeItem('judgeEmail');
-    const email = judgePortal.getJudgeFromSession();
+    const email = await judgePortal.getJudgeFromSession();
     expect(email).toBeNull();
     mockSupabase.auth.getSession = origGetSession;
   });
@@ -1312,7 +1312,8 @@ describe('Judge Portal - initialize', () => {
     }));
     apiClient.select = jest.fn((table) => {
       if (table === 'user_roles') return Promise.resolve({ data: [{ email: 'judge@test.com', role: 'judge' }] });
-      if (table === 'organisation_contacts') return Promise.resolve({ data: [{ first_name: 'John', last_name: 'Doe' }] });
+      if (table === 'organisation_contacts')
+        return Promise.resolve({ data: [{ first_name: 'John', last_name: 'Doe' }] });
       return Promise.resolve({ data: [] });
     });
     await judgePortal.initialize();
@@ -1404,18 +1405,14 @@ describe('Judge Portal - _goToPage', () => {
   });
 
   test('clamps page to minimum of 1', async () => {
-    mockSupabase.then.mockImplementation((cb) =>
-      cb({ data: [], error: null, count: 250 })
-    );
+    mockSupabase.then.mockImplementation((cb) => cb({ data: [], error: null, count: 250 }));
     judgePortal._goToPage(-5);
     await new Promise((r) => setTimeout(r, 50));
     expect(judgePortal._pagination.page).toBe(1);
   });
 
   test('clamps page to maximum of totalPages', async () => {
-    mockSupabase.then.mockImplementation((cb) =>
-      cb({ data: [], error: null, count: 250 })
-    );
+    mockSupabase.then.mockImplementation((cb) => cb({ data: [], error: null, count: 250 }));
     judgePortal._goToPage(999);
     await new Promise((r) => setTimeout(r, 50));
     expect(judgePortal._pagination.page).toBe(5);
@@ -1423,9 +1420,7 @@ describe('Judge Portal - _goToPage', () => {
 
   test('handles fetch error in _goToPage', async () => {
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-    mockSupabase.then.mockImplementation((cb) =>
-      cb({ data: null, error: { message: 'Server error' } })
-    );
+    mockSupabase.then.mockImplementation((cb) => cb({ data: null, error: { message: 'Server error' } }));
     judgePortal._goToPage(2);
     await new Promise((r) => setTimeout(r, 50));
     expect(consoleSpy).toHaveBeenCalled();
@@ -1459,9 +1454,7 @@ describe('Judge Portal - loadAssignedEntries', () => {
 
   test('handles load error gracefully', async () => {
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-    mockSupabase.then.mockImplementation((cb) =>
-      cb({ data: null, error: { message: 'Network failure' } })
-    );
+    mockSupabase.then.mockImplementation((cb) => cb({ data: null, error: { message: 'Network failure' } }));
     await judgePortal.loadAssignedEntries();
     expect(consoleSpy).toHaveBeenCalled();
     consoleSpy.mockRestore();
@@ -1484,9 +1477,9 @@ describe('Judge Portal - _attachEventListeners', () => {
 // logout - additional
 // ============================
 describe('Judge Portal - logout redirect', () => {
-  test('redirects to judge login page', () => {
+  test('redirects to judge login page', async () => {
     localStorage.setItem('judgeEmail', 'judge@test.com');
-    judgePortal.logout();
+    await judgePortal.logout();
     // In jsdom, window.location.href assignment does not actually navigate.
     // Verify the logout behavior by checking localStorage is cleared,
     // confirming the logout function executed the redirect code path.
@@ -1499,11 +1492,7 @@ describe('Judge Portal - logout redirect', () => {
 // ============================
 describe('Judge Portal - updateProgress edge cases', () => {
   test('shows 100% when all entries scored', () => {
-    judgePortal.assignedEntries = [
-      { hasScored: true },
-      { hasScored: true },
-      { hasScored: true },
-    ];
+    judgePortal.assignedEntries = [{ hasScored: true }, { hasScored: true }, { hasScored: true }];
     judgePortal.updateProgress();
     expect(document.getElementById('scoredCount').textContent).toBe('3');
     expect(document.getElementById('pendingCount').textContent).toBe('0');
@@ -1512,11 +1501,7 @@ describe('Judge Portal - updateProgress edge cases', () => {
   });
 
   test('rounds percentage correctly', () => {
-    judgePortal.assignedEntries = [
-      { hasScored: true },
-      { hasScored: false },
-      { hasScored: false },
-    ];
+    judgePortal.assignedEntries = [{ hasScored: true }, { hasScored: false }, { hasScored: false }];
     judgePortal.updateProgress();
     // 1/3 = 33.33% rounds to 33%
     expect(document.getElementById('completionPercent').textContent).toBe('33%');
@@ -1646,26 +1631,16 @@ describe('Judge Portal - saveScore validation failure', () => {
     document.getElementById('quality_score').value = '6';
     document.getElementById('presentation_score').value = '8';
 
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    // Clear any previous mock call counts on upsert
+    mockSupabase.upsert.mockClear();
 
     await judgePortal.saveScore(false);
 
-    // Check if an error was caught (meaning showPortalToast threw or the validation path triggered an error)
-    if (consoleSpy.mock.calls.length > 0) {
-      // If an error was caught, lines 731-732 were attempted but showPortalToast errored
-      // The catch block at line 790-792 was hit, which also counts as coverage
-      expect(consoleSpy).toHaveBeenCalled();
-    } else {
-      // showPortalToast should have been called creating a toast with validation error
-      const toastContainer = document.getElementById('portalToastContainer');
-      expect(toastContainer).not.toBeNull();
-      const toasts = toastContainer.querySelectorAll('div');
-      expect(toasts.length).toBeGreaterThan(0);
-    }
+    // Validation should have failed due to negative score, so upsert should NOT have been called
+    expect(mockSupabase.upsert).not.toHaveBeenCalled();
 
     // Restore the slider
     delete slider.value;
     slider.setAttribute('value', '5');
-    consoleSpy.mockRestore();
   });
 });

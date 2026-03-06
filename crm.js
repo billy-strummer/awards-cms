@@ -3579,6 +3579,6 @@ const crmModule = {
 // INITIALIZATION
 // ============================================
 ModuleRegistry.register('crmModule', crmModule);
-console.warn('✅ CRM Module loaded');
+console.debug('CRM Module loaded');
 
 export { crmModule };

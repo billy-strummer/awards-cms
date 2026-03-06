@@ -1590,7 +1590,7 @@ const emailListsModule = {
 // ============================================
 // INITIALIZATION
 // ============================================
-console.warn('Email Lists Module loaded');
+console.debug('Email Lists Module loaded');
 ModuleRegistry.register('emailListsModule', emailListsModule);
 
 export { emailListsModule };

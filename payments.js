@@ -66,7 +66,7 @@ const paymentsModule = {
       }
 
       this.updateStatistics();
-      console.warn('Payments data loaded');
+      console.debug('Payments data loaded');
       utils.trackDataLoad('payments');
     } catch (error) {
       console.error('Error loading payments data:', error);

@@ -605,9 +605,7 @@ describe('Multi-Tenancy Module - addTenant', () => {
 describe('Multi-Tenancy Module - editTenant', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    tenantModule._tenants = [
-      { id: 't1', name: 'Old Name', slug: 'old-name' },
-    ];
+    tenantModule._tenants = [{ id: 't1', name: 'Old Name', slug: 'old-name' }];
     // Ensure tenantManagementBody exists
     if (!document.getElementById('tenantManagementBody')) {
       const div = document.createElement('div');
@@ -678,15 +676,15 @@ describe('Multi-Tenancy Module - init() with null currentTenant', () => {
       // Keep _currentTenant null so the fallback 'default' is used
     });
     const renderSpy = jest.spyOn(tenantModule, 'renderTenantSwitcher').mockImplementation();
-    const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+    const debugSpy = jest.spyOn(console, 'debug').mockImplementation();
 
     await tenantModule.init();
 
-    expect(warnSpy).toHaveBeenCalledWith('Multi-tenancy initialized (tenant: default)');
+    expect(debugSpy).toHaveBeenCalledWith('Multi-tenancy initialized (tenant: default)');
     loadSpy.mockRestore();
     restoreSpy.mockRestore();
     renderSpy.mockRestore();
-    warnSpy.mockRestore();
+    debugSpy.mockRestore();
   });
 });
 

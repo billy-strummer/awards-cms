@@ -239,5 +239,5 @@ const _COUNTY_TO_REGION = {
   Belfast: 'Northern Ireland',
 };
 
-console.log('✅ Script loaded successfully');
+console.debug('Script loaded successfully');
 console.log('⏳ Ready to process CSV file...\n');

@@ -110,6 +110,7 @@ const ALLOWED_TABLES = new Set([
   'deals',
   'user_roles',
   'organisations_with_crm_summary',
+  'ai_vetting_results',
 ]);
 
 /** Tables that can be mutated (insert/update/delete/upsert) */

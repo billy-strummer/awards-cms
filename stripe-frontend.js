@@ -16,9 +16,9 @@ const stripeFrontend = {
     const pk = this.getPublishableKey();
     if (pk && typeof Stripe !== 'undefined') {
       this.stripe = Stripe(pk);
-      console.warn('Stripe.js initialized');
+      console.debug('Stripe.js initialized');
     } else {
-      console.warn('Stripe.js not loaded or no publishable key set');
+      console.debug('Stripe.js not loaded or no publishable key set');
     }
   },
 

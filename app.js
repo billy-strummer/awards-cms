@@ -838,7 +838,7 @@ ModuleRegistry.register('reportsAnalytics', reportsAnalytics);
 
 // Wait for DOM to be fully loaded before initializing
 document.addEventListener('DOMContentLoaded', function () {
-  console.warn('🚀 Initializing British Trade Awards Admin...');
+  console.debug('Initializing British Trade Awards Admin...');
 
   // ==========================================
   // STEP 1: Initialize Supabase
@@ -1306,7 +1306,7 @@ document.addEventListener('DOMContentLoaded', function () {
         return event;
       },
     });
-    console.warn('Sentry error monitoring initialized');
+    console.debug('Sentry error monitoring initialized');
   }
 
   // Global error handler
@@ -1366,7 +1366,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Use setTimeout to ensure loadEventEnd is populated after the load event completes
     setTimeout(() => {
       const pageLoadTime = performance.now();
-      console.warn(`📊 Page loaded in ${Math.round(pageLoadTime)}ms`);
+      console.debug(`Page loaded in ${Math.round(pageLoadTime)}ms`);
     }, 0);
   });
 
@@ -1605,7 +1605,7 @@ document.addEventListener('DOMContentLoaded', function () {
         )
         .on('postgres_changes', { event: '*', schema: 'public', table: 'deals' }, () => debouncedHandlers.deals())
         .subscribe((status) => {
-          if (status === 'SUBSCRIBED') console.warn('Realtime subscriptions active');
+          if (status === 'SUBSCRIBED') console.debug('Realtime subscriptions active');
         })
     );
   }
@@ -1851,7 +1851,7 @@ document.addEventListener('DOMContentLoaded', function () {
   // ==========================================
   // INITIALIZATION COMPLETE
   // ==========================================
-  console.warn('✅ Application initialized successfully');
+  console.debug('Application initialized successfully');
 });
 
 // ==========================================
@@ -1888,6 +1888,6 @@ if ('serviceWorker' in navigator) {
 }
 */
 
-console.warn('📱 British Trade Awards Admin - Version 2.0');
+console.debug('British Trade Awards Admin - Version 2.0');
 
 export { reportsScheduler };

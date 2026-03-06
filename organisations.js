@@ -7482,11 +7482,11 @@ const orgsModule = {
         })
         .subscribe((status) => {
           if (status === 'SUBSCRIBED') {
-            console.warn('Organisations realtime: subscribed');
+            console.debug('Organisations realtime: subscribed');
           }
         });
     } catch (e) {
-      console.warn('Realtime subscription failed:', e.message);
+      console.debug('Realtime subscription failed:', e.message);
     }
   },
 

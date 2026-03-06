@@ -56,7 +56,7 @@ const emailBuilder = {
     const palette = document.getElementById('blockPaletteSection');
     if (palette) palette.style.display = 'block';
     this.initialized = true;
-    console.warn('✅ Email Builder initialized');
+    console.debug('Email Builder initialized');
   },
 
   /**

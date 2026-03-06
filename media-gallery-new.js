@@ -6942,37 +6942,63 @@ const mediaGalleryModule = {
           <button id="nextBtn">Next &#9654;</button>
         </div>
       </div>
-      <script>
-        const photos = ${JSON.stringify(photos.map((p) => ({ url: p.file_url, title: p.title || '', photographer: p.photographer || '', org: '' })))};
-        let current = 0;
-        let autoplayTimer = null;
-
-        function showSlide(idx) {
-          current = ((idx % photos.length) + photos.length) % photos.length;
-          document.getElementById('slideImg').src = photos[current].url;
-          document.getElementById('slideTitle').textContent = photos[current].title;
-          document.getElementById('slideInfo').textContent = photos[current].photographer ? 'Photo: ' + photos[current].photographer : '';
-          document.getElementById('slideCounter').textContent = (current + 1) + ' / ' + photos.length;
-        }
-        function nextSlide() { showSlide(current + 1); }
-        function prevSlide() { showSlide(current - 1); }
-        function toggleAutoplay() {
-          if (autoplayTimer) { clearInterval(autoplayTimer); autoplayTimer = null; document.getElementById('playBtn').innerHTML = '&#9654; Play'; }
-          else { autoplayTimer = setInterval(nextSlide, 4000); document.getElementById('playBtn').innerHTML = '&#9646;&#9646; Pause'; }
-        }
-        document.getElementById('navPrev').addEventListener('click', prevSlide);
-        document.getElementById('navNext').addEventListener('click', nextSlide);
-        document.getElementById('prevBtn').addEventListener('click', prevSlide);
-        document.getElementById('playBtn').addEventListener('click', toggleAutoplay);
-        document.getElementById('nextBtn').addEventListener('click', nextSlide);
-        document.addEventListener('keydown', function(e) {
-          if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); nextSlide(); }
-          if (e.key === 'ArrowLeft') prevSlide();
-          if (e.key === 'Escape') window.close();
-          if (e.key === 'f') { document.documentElement.requestFullscreen?.(); }
-        });
-      <\/script></body></html>`);
+      </body></html>`);
     slideshowWin.document.close();
+
+    // Set up slideshow controls programmatically (CSP-safe, no inline script)
+    const slideshowPhotos = photos.map((p) => ({
+      url: p.file_url,
+      title: p.title || '',
+      photographer: p.photographer || '',
+      org: '',
+    }));
+    slideshowWin.onload = function () {
+      const doc = slideshowWin.document;
+      let current = 0;
+      let autoplayTimer = null;
+
+      function showSlide(idx) {
+        current = ((idx % slideshowPhotos.length) + slideshowPhotos.length) % slideshowPhotos.length;
+        doc.getElementById('slideImg').src = slideshowPhotos[current].url;
+        doc.getElementById('slideTitle').textContent = slideshowPhotos[current].title;
+        doc.getElementById('slideInfo').textContent = slideshowPhotos[current].photographer
+          ? 'Photo: ' + slideshowPhotos[current].photographer
+          : '';
+        doc.getElementById('slideCounter').textContent = current + 1 + ' / ' + slideshowPhotos.length;
+      }
+      function nextSlide() {
+        showSlide(current + 1);
+      }
+      function prevSlide() {
+        showSlide(current - 1);
+      }
+      function toggleAutoplay() {
+        if (autoplayTimer) {
+          clearInterval(autoplayTimer);
+          autoplayTimer = null;
+          doc.getElementById('playBtn').innerHTML = '&#9654; Play';
+        } else {
+          autoplayTimer = setInterval(nextSlide, 4000);
+          doc.getElementById('playBtn').innerHTML = '&#9646;&#9646; Pause';
+        }
+      }
+      doc.getElementById('navPrev').addEventListener('click', prevSlide);
+      doc.getElementById('navNext').addEventListener('click', nextSlide);
+      doc.getElementById('prevBtn').addEventListener('click', prevSlide);
+      doc.getElementById('playBtn').addEventListener('click', toggleAutoplay);
+      doc.getElementById('nextBtn').addEventListener('click', nextSlide);
+      doc.addEventListener('keydown', function (e) {
+        if (e.key === 'ArrowRight' || e.key === ' ') {
+          e.preventDefault();
+          nextSlide();
+        }
+        if (e.key === 'ArrowLeft') prevSlide();
+        if (e.key === 'Escape') slideshowWin.close();
+        if (e.key === 'f') {
+          doc.documentElement.requestFullscreen?.();
+        }
+      });
+    };
   },
 
   // ============================================

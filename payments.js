@@ -907,12 +907,15 @@ const paymentsModule = {
     <button data-action="window.print" style="padding:10px 30px; background:#0d6efd; color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:1rem;">Print Invoice</button>
   </div>
 
-  <script>window.onload = function() { window.print(); }</script>
+
 </body>
 </html>`;
         const printWindow = window.open('', '_blank');
         printWindow.document.write(printHtml);
         printWindow.document.close();
+        printWindow.onload = function () {
+          printWindow.print();
+        };
       };
     } catch (error) {
       console.error('Error viewing invoice:', error);

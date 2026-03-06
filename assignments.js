@@ -221,7 +221,7 @@ const assignmentsModule = {
                 class="form-control"
                 id="assignmentSearchBox"
                 placeholder="Search companies..."
-                onkeyup="assignmentsModule.filterAvailableCompanies()">
+                data-on-input="assignmentsModule.filterAvailableCompanies">
             </div>
 
             <div id="availableCompaniesList" style="max-height: 300px; overflow-y: auto;">

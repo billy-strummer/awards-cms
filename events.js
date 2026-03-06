@@ -6478,12 +6478,15 @@ const eventsModule = {
       <table><thead><tr><th style="width:40px;">#</th><th style="width:60px;">Time</th><th>Item</th><th>Cue / Direction</th></tr></thead>
       <tbody>${rows}</tbody></table>
       <div class="footer">Printed: ${new Date().toLocaleString()}</div>
-      <script>window.onload=function(){window.print();};</script></body></html>`;
+      </body></html>`;
 
     const win = window.open('', '_blank', 'width=800,height=600');
     if (win) {
       win.document.write(printHtml);
       win.document.close();
+      win.onload = function () {
+        win.print();
+      };
     } else {
       utils.showToast('Please allow popups to print', 'warning');
     }
@@ -7370,12 +7373,15 @@ const eventsModule = {
       </tr></thead><tbody>${rows}</tbody></table>
       <div class="footer"><p>Total: ${this.runningOrderItems.length} awards in ${presNum} presentations | Est. duration: ${cumMin} minutes</p>
       <p>Awards CMS - Running Order</p></div>
-      <script>window.onload=function(){window.print();};</script></body></html>`;
+      </body></html>`;
 
     const printWindow = window.open('', '_blank', 'width=900,height=600');
     if (printWindow) {
       printWindow.document.write(printContent);
       printWindow.document.close();
+      printWindow.onload = function () {
+        printWindow.print();
+      };
     } else {
       utils.showToast('Please allow popups to print', 'warning');
     }
@@ -7509,12 +7515,15 @@ const eventsModule = {
           .cut-line { border-top: 1px dashed #ccc; }
         }
       </style></head><body>${pages}
-      <script>window.onload=function(){window.print();};<\/script></body></html>`;
+      </body></html>`;
 
     const w = window.open('', '_blank', 'width=800,height=1000');
     if (w) {
       w.document.write(html);
       w.document.close();
+      w.onload = function () {
+        w.print();
+      };
     } else {
       utils.showToast('Please allow popups to print', 'warning');
     }
@@ -7596,12 +7605,15 @@ const eventsModule = {
           .label { border-style: dashed; }
         }
       </style></head><body>${pages}
-      <script>window.onload=function(){window.print();};<\/script></body></html>`;
+      </body></html>`;
 
     const w = window.open('', '_blank', 'width=1000,height=800');
     if (w) {
       w.document.write(html);
       w.document.close();
+      w.onload = function () {
+        w.print();
+      };
     } else {
       utils.showToast('Please allow popups to print', 'warning');
     }
@@ -8470,7 +8482,9 @@ const eventsModule = {
     try {
       const raw = localStorage.getItem(this._tablePositionsKey());
       return raw ? JSON.parse(raw) : {};
-    } catch { return {}; }
+    } catch {
+      return {};
+    }
   },
 
   _saveLocalPosition(tableId, x, y) {
@@ -8540,14 +8554,18 @@ const eventsModule = {
    * Batch insert event_tables, stripping position columns if needed.
    */
   async _insertEventTablesBatch(rows) {
-    const positionEntries = rows.map(r => ({ position_x: r.position_x, position_y: r.position_y }));
+    const positionEntries = rows.map((r) => ({ position_x: r.position_x, position_y: r.position_y }));
 
     if (this._eventTableHasPositionCols === false) {
       const stripped = rows.map(({ position_x, position_y, ...rest }) => rest);
       const results = await apiClient.insert('event_tables', stripped);
       // Save positions locally using returned ids
       if (Array.isArray(results)) {
-        const batch = results.map((r, i) => ({ id: r.id, x: positionEntries[i].position_x, y: positionEntries[i].position_y }));
+        const batch = results.map((r, i) => ({
+          id: r.id,
+          x: positionEntries[i].position_x,
+          y: positionEntries[i].position_y,
+        }));
         this._saveLocalPositionsBatch(batch);
       }
       return results;
@@ -8563,7 +8581,11 @@ const eventsModule = {
         const stripped = rows.map(({ position_x, position_y, ...rest }) => rest);
         const results = await apiClient.insert('event_tables', stripped);
         if (Array.isArray(results)) {
-          const batch = results.map((r, i) => ({ id: r.id, x: positionEntries[i].position_x, y: positionEntries[i].position_y }));
+          const batch = results.map((r, i) => ({
+            id: r.id,
+            x: positionEntries[i].position_x,
+            y: positionEntries[i].position_y,
+          }));
           this._saveLocalPositionsBatch(batch);
         }
         return results;

@@ -470,6 +470,41 @@ describe('Resend Email - sendCampaignEmail', () => {
     expect(result.sent).toBe(1);
     expect(result.failed).toBe(1);
   });
+
+  test('delays between batches when more than 10 subscribers', async () => {
+    const subscribers = [];
+    for (let i = 0; i < 11; i++) {
+      subscribers.push({ email: `sub${i}@test.com`, first_name: `User${i}`, last_name: '' });
+    }
+
+    // Campaign lookup
+    mockFromResults.push(
+      chainable({
+        data: { id: 'camp-batch', list_id: 'list-batch', subject: 'Batch Test', html_content: '<p>Hi {first_name}</p>' },
+        error: null,
+      })
+    );
+    // Subscribers
+    mockFromResults.push(chainable({ data: subscribers, error: null }));
+    // Update campaign status to sending
+    mockFromResults.push(chainable({ data: null, error: null }));
+
+    // All email sends succeed
+    mockEmailsSend.mockResolvedValue({ data: { id: 'batch-ok' }, error: null });
+
+    // Log entries for all 11 subscribers
+    for (let i = 0; i < 11; i++) {
+      mockFromResults.push(chainable({ data: null, error: null }));
+    }
+
+    // Update campaign final status
+    mockFromResults.push(chainable({ data: null, error: null }));
+
+    const result = await sendCampaignEmail('camp-batch');
+    expect(result.success).toBe(true);
+    expect(result.sent).toBe(11);
+    expect(result.total).toBe(11);
+  }, 10000);
 });
 
 describe('Resend Email - processNotificationQueue', () => {

@@ -376,14 +376,507 @@ describe('Auth - Connection Status', () => {
 });
 
 describe('Auth - Inactivity Timer', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    STATE.currentUser = { email: 'test@test.com' };
+    STATE.client = mockSupabase;
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+    authModule.clearInactivityTimer();
+  });
+
   test('startInactivityTimer sets up timer', () => {
     expect(typeof authModule.startInactivityTimer).toBe('function');
-    // Should not throw
     expect(() => authModule.startInactivityTimer()).not.toThrow();
   });
 
   test('clearInactivityTimer clears timer', () => {
     expect(typeof authModule.clearInactivityTimer).toBe('function');
     expect(() => authModule.clearInactivityTimer()).not.toThrow();
+  });
+
+  test('startInactivityTimer calls handleLogout(true) on timeout', () => {
+    const logoutSpy = jest.spyOn(authModule, 'handleLogout').mockResolvedValue();
+    authModule.startInactivityTimer();
+    jest.advanceTimersByTime(INACTIVITY_TIMEOUT + 100);
+    expect(logoutSpy).toHaveBeenCalledWith(true);
+    logoutSpy.mockRestore();
+  });
+
+  test('resetInactivityTimer restarts timer when user is logged in', () => {
+    const startSpy = jest.spyOn(authModule, 'startInactivityTimer');
+    authModule.resetInactivityTimer();
+    expect(startSpy).toHaveBeenCalled();
+    startSpy.mockRestore();
+  });
+
+  test('resetInactivityTimer does nothing when no user is logged in', () => {
+    STATE.currentUser = null;
+    const startSpy = jest.spyOn(authModule, 'startInactivityTimer');
+    authModule.resetInactivityTimer();
+    expect(startSpy).not.toHaveBeenCalled();
+    startSpy.mockRestore();
+  });
+
+  test('clearInactivityTimer clears existing timer and sets to null', () => {
+    authModule.startInactivityTimer();
+    expect(STATE.inactivityTimer).not.toBeNull();
+    authModule.clearInactivityTimer();
+    expect(STATE.inactivityTimer).toBeNull();
+  });
+});
+
+describe('Auth - testConnection', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    STATE.client = mockSupabase;
+  });
+
+  test('testConnection handles error from count', async () => {
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+    global.apiClient = { count: jest.fn().mockResolvedValue({ error: { message: 'table empty' } }) };
+    await authModule.testConnection();
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Connection test warning'), 'table empty');
+    warnSpy.mockRestore();
+  });
+
+  test('testConnection handles "Failed to fetch" error', async () => {
+    global.apiClient = { count: jest.fn().mockRejectedValue(new Error('Failed to fetch data')) };
+    const toastSpy = jest.spyOn(utils, 'showToast');
+    await authModule.testConnection();
+    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('Cannot reach Supabase'), 'error');
+    toastSpy.mockRestore();
+  });
+
+  test('testConnection handles non-fetch error silently', async () => {
+    global.apiClient = { count: jest.fn().mockRejectedValue(new Error('some other error')) };
+    const errSpy = jest.spyOn(console, 'error').mockImplementation();
+    await authModule.testConnection();
+    expect(errSpy).toHaveBeenCalledWith(expect.stringContaining('Connection test failed'), expect.any(Error));
+    errSpy.mockRestore();
+  });
+});
+
+describe('Auth - checkSession onAuthStateChange', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    STATE.client = mockSupabase;
+    STATE.currentUser = null;
+  });
+
+  test('SIGNED_OUT event clears user and shows login', async () => {
+    let authCallback;
+    mockAuth.onAuthStateChange.mockImplementation((cb) => {
+      authCallback = cb;
+      return { data: { subscription: { unsubscribe: jest.fn() } } };
+    });
+    mockAuth.getSession.mockResolvedValue({ data: { session: null }, error: null });
+
+    await authModule.checkSession();
+
+    // Set user first so we can test it gets cleared
+    STATE.currentUser = { email: 'test@test.com' };
+    const showLoginSpy = jest.spyOn(authModule, 'showLogin');
+
+    authCallback('SIGNED_OUT', null);
+
+    expect(STATE.currentUser).toBeNull();
+    expect(showLoginSpy).toHaveBeenCalled();
+    showLoginSpy.mockRestore();
+  });
+
+  test('TOKEN_REFRESHED event updates user and reloads RBAC', async () => {
+    let authCallback;
+    mockAuth.onAuthStateChange.mockImplementation((cb) => {
+      authCallback = cb;
+      return { data: { subscription: { unsubscribe: jest.fn() } } };
+    });
+    mockAuth.getSession.mockResolvedValue({ data: { session: null }, error: null });
+
+    await authModule.checkSession();
+
+    const mockUser = { email: 'refreshed@test.com' };
+    authCallback('TOKEN_REFRESHED', { user: mockUser });
+
+    expect(STATE.currentUser).toEqual(mockUser);
+    expect(rbacModule.loadUserRole).toHaveBeenCalledWith('refreshed@test.com');
+  });
+
+  test('null session event clears user and shows login', async () => {
+    let authCallback;
+    mockAuth.onAuthStateChange.mockImplementation((cb) => {
+      authCallback = cb;
+      return { data: { subscription: { unsubscribe: jest.fn() } } };
+    });
+    mockAuth.getSession.mockResolvedValue({ data: { session: null }, error: null });
+
+    await authModule.checkSession();
+
+    STATE.currentUser = { email: 'test@test.com' };
+    authCallback('OTHER_EVENT', null);
+
+    expect(STATE.currentUser).toBeNull();
+  });
+});
+
+describe('Auth - handleLogin error branches', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    STATE.currentUser = null;
+    STATE.client = mockSupabase;
+    document.getElementById('loginEmail').value = 'test@test.com';
+    document.getElementById('loginPassword').value = 'password123';
+    document.getElementById('loginError').classList.add('d-none');
+    document.getElementById('loginBtn').disabled = false;
+    document.getElementById('loginBtn').innerHTML = 'Sign In';
+  });
+
+  test('handleLogin shows "Email not confirmed" error', async () => {
+    mockAuth.signInWithPassword.mockResolvedValue({
+      data: { user: null },
+      error: new Error('Email not confirmed'),
+    });
+
+    await authModule.handleLogin();
+
+    const errorDiv = document.getElementById('loginError');
+    expect(errorDiv.textContent).toContain('confirm your email');
+  });
+
+  test('handleLogin shows generic error message', async () => {
+    mockAuth.signInWithPassword.mockResolvedValue({
+      data: { user: null },
+      error: new Error('Something weird happened'),
+    });
+
+    await authModule.handleLogin();
+
+    const errorDiv = document.getElementById('loginError');
+    expect(errorDiv.textContent).toBe('Something weird happened');
+  });
+
+  test('handleLogin restores button state after error', async () => {
+    mockAuth.signInWithPassword.mockResolvedValue({
+      data: { user: null },
+      error: new Error('Login failed'),
+    });
+
+    await authModule.handleLogin();
+
+    const loginBtn = document.getElementById('loginBtn');
+    expect(loginBtn.disabled).toBe(false);
+    expect(loginBtn.innerHTML).toContain('Sign In');
+  });
+});
+
+describe('Auth - handleLogout', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    STATE.client = mockSupabase;
+    STATE.currentUser = { email: 'test@test.com' };
+
+    // Ensure needed DOM elements
+    ['confirmDialogModal', 'confirmDialogTitle', 'confirmDialogBody', 'confirmDialogOk'].forEach((id) => {
+      if (!document.getElementById(id)) {
+        const el = document.createElement('div');
+        el.id = id;
+        document.body.appendChild(el);
+      }
+    });
+  });
+
+  test('handleLogout(true) bypasses confirmation and logs out', async () => {
+    mockAuth.signOut.mockResolvedValue({ error: null });
+
+    await authModule.handleLogout(true);
+
+    expect(mockAuth.signOut).toHaveBeenCalled();
+    expect(STATE.currentUser).toBeNull();
+  });
+
+  test('handleLogout clears all cached data arrays', async () => {
+    STATE.allAwards = [{ id: 1 }];
+    STATE.filteredAwards = [{ id: 1 }];
+    STATE.allOrganisations = [{ id: 2 }];
+    STATE.filteredOrganisations = [{ id: 2 }];
+    STATE.allWinners = [{ id: 3 }];
+    STATE.filteredWinners = [{ id: 3 }];
+    STATE.allEvents = [{ id: 4 }];
+    mockAuth.signOut.mockResolvedValue({ error: null });
+
+    await authModule.handleLogout(true);
+
+    expect(STATE.allAwards).toEqual([]);
+    expect(STATE.filteredAwards).toEqual([]);
+    expect(STATE.allOrganisations).toEqual([]);
+    expect(STATE.filteredOrganisations).toEqual([]);
+    expect(STATE.allWinners).toEqual([]);
+    expect(STATE.filteredWinners).toEqual([]);
+    expect(STATE.allEvents).toEqual([]);
+  });
+
+  test('handleLogout clears form fields', async () => {
+    document.getElementById('loginEmail').value = 'test@test.com';
+    document.getElementById('loginPassword').value = 'secret';
+    mockAuth.signOut.mockResolvedValue({ error: null });
+
+    await authModule.handleLogout(true);
+
+    expect(document.getElementById('loginEmail').value).toBe('');
+    expect(document.getElementById('loginPassword').value).toBe('');
+  });
+
+  test('handleLogout force logs out when signOut fails', async () => {
+    mockAuth.signOut.mockResolvedValue({ error: new Error('Network error') });
+
+    await authModule.handleLogout(true);
+
+    expect(STATE.currentUser).toBeNull();
+  });
+
+  test('handleLogout cleans up entriesModule arrays', async () => {
+    global.entriesModule = { allEntries: [{ id: 1 }], filteredEntries: [{ id: 1 }] };
+    mockAuth.signOut.mockResolvedValue({ error: null });
+
+    await authModule.handleLogout(true);
+
+    expect(global.entriesModule.allEntries).toEqual([]);
+    expect(global.entriesModule.filteredEntries).toEqual([]);
+    delete global.entriesModule;
+  });
+
+  test('handleLogout cleans up notification poll interval', async () => {
+    global.notificationsModule = { _pollInterval: setInterval(() => {}, 10000) };
+    mockAuth.signOut.mockResolvedValue({ error: null });
+
+    await authModule.handleLogout(true);
+
+    expect(global.notificationsModule._pollInterval).toBeNull();
+    delete global.notificationsModule;
+  });
+
+  test('handleLogout cleans up freshness timer', async () => {
+    utils._freshnessTimerId = setInterval(() => {}, 10000);
+    mockAuth.signOut.mockResolvedValue({ error: null });
+
+    await authModule.handleLogout(true);
+
+    expect(utils._freshnessTimerId).toBeNull();
+  });
+
+  test('handleLogout cleans up emailBuilder autosave timer', async () => {
+    global.emailBuilder = { autosaveTimer: setInterval(() => {}, 10000) };
+    mockAuth.signOut.mockResolvedValue({ error: null });
+
+    await authModule.handleLogout(true);
+
+    expect(global.emailBuilder.autosaveTimer).toBeNull();
+    delete global.emailBuilder;
+  });
+
+  test('handleLogout removes realtime channels', async () => {
+    const removeSpy = jest.fn();
+    STATE.client.removeChannel = removeSpy;
+    window._cmsRealtimeChannel = { id: 'cms' };
+    window._presenceChannel = { id: 'presence' };
+    mockAuth.signOut.mockResolvedValue({ error: null });
+
+    await authModule.handleLogout(true);
+
+    expect(removeSpy).toHaveBeenCalledWith({ id: 'cms' });
+    expect(removeSpy).toHaveBeenCalledWith({ id: 'presence' });
+    expect(window._cmsRealtimeChannel).toBeNull();
+    expect(window._presenceChannel).toBeNull();
+  });
+
+  test('handleLogout cleans up notification realtime channel', async () => {
+    const removeSpy = jest.fn();
+    STATE.client.removeChannel = removeSpy;
+    global.notificationsModule = { _realtimeChannel: { id: 'notif' } };
+    mockAuth.signOut.mockResolvedValue({ error: null });
+
+    await authModule.handleLogout(true);
+
+    expect(removeSpy).toHaveBeenCalledWith({ id: 'notif' });
+    expect(global.notificationsModule._realtimeChannel).toBeNull();
+    delete global.notificationsModule;
+  });
+
+  test('handleLogout cleans up orgs realtime channel', async () => {
+    const removeSpy = jest.fn();
+    STATE.client.removeChannel = removeSpy;
+    global.orgsModule._realtimeChannel = { id: 'orgs' };
+    mockAuth.signOut.mockResolvedValue({ error: null });
+
+    await authModule.handleLogout(true);
+
+    expect(removeSpy).toHaveBeenCalledWith({ id: 'orgs' });
+    expect(global.orgsModule._realtimeChannel).toBeNull();
+  });
+
+  test('handleLogout returns if user cancels confirmation', async () => {
+    jest.spyOn(utils, 'confirmDialog').mockResolvedValue(false);
+
+    await authModule.handleLogout(false);
+
+    expect(mockAuth.signOut).not.toHaveBeenCalled();
+    utils.confirmDialog.mockRestore();
+  });
+});
+
+describe('Auth - showDashboard branding', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    STATE.client = mockSupabase;
+    STATE.currentUser = { email: 'test@test.com' };
+  });
+
+  test('showDashboard applies branding when brandingModule is available', async () => {
+    const mockConfig = { primaryColor: '#000' };
+    global.brandingModule = {
+      loadBranding: jest.fn().mockResolvedValue(mockConfig),
+      applyBranding: jest.fn(),
+    };
+    global.multiTenancyModule = { getTenantId: jest.fn().mockReturnValue('tenant-1') };
+    jest.spyOn(utils, 'replayPendingQueues').mockResolvedValue();
+
+    await authModule.showDashboard();
+
+    expect(global.brandingModule.loadBranding).toHaveBeenCalledWith('tenant-1');
+    expect(global.brandingModule.applyBranding).toHaveBeenCalledWith(mockConfig);
+    delete global.brandingModule;
+    delete global.multiTenancyModule;
+    utils.replayPendingQueues.mockRestore();
+  });
+
+  test('showDashboard handles branding error gracefully', async () => {
+    global.brandingModule = {
+      loadBranding: jest.fn().mockRejectedValue(new Error('branding fail')),
+      applyBranding: jest.fn(),
+    };
+    jest.spyOn(utils, 'replayPendingQueues').mockResolvedValue();
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+    await authModule.showDashboard();
+
+    expect(warnSpy).toHaveBeenCalledWith('Branding not applied:', 'branding fail');
+    delete global.brandingModule;
+    utils.replayPendingQueues.mockRestore();
+    warnSpy.mockRestore();
+  });
+});
+
+describe('Auth - Health Check', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.useFakeTimers();
+    STATE.client = mockSupabase;
+    STATE.currentUser = { email: 'test@test.com' };
+    authModule._consecutiveFailures = 0;
+    authModule._healthCheckInterval = null;
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+    authModule.stopHealthCheck();
+  });
+
+  test('startHealthCheck sets up interval', () => {
+    authModule.startHealthCheck();
+    expect(authModule._healthCheckInterval).not.toBeNull();
+  });
+
+  test('stopHealthCheck clears interval', () => {
+    authModule.startHealthCheck();
+    authModule.stopHealthCheck();
+    expect(authModule._healthCheckInterval).toBeNull();
+  });
+
+  test('_runHealthCheck does nothing without currentUser', async () => {
+    STATE.currentUser = null;
+    global.apiClient = { count: jest.fn() };
+    await authModule._runHealthCheck();
+    expect(global.apiClient.count).not.toHaveBeenCalled();
+  });
+
+  test('_runHealthCheck does nothing without client', async () => {
+    STATE.client = null;
+    global.apiClient = { count: jest.fn() };
+    await authModule._runHealthCheck();
+    expect(global.apiClient.count).not.toHaveBeenCalled();
+    STATE.client = mockSupabase;
+  });
+
+  test('_runHealthCheck restores connection after previous failure', async () => {
+    global.apiClient = { count: jest.fn().mockResolvedValue({}) };
+    jest.spyOn(utils, 'replayPendingQueues').mockResolvedValue();
+    const connSpy = jest.spyOn(authModule, 'updateConnectionStatus');
+
+    authModule._consecutiveFailures = 3;
+    await authModule._runHealthCheck();
+
+    expect(authModule._consecutiveFailures).toBe(0);
+    expect(connSpy).toHaveBeenCalledWith(true);
+    connSpy.mockRestore();
+    utils.replayPendingQueues.mockRestore();
+  });
+
+  test('_runHealthCheck tracks consecutive failures', async () => {
+    global.apiClient = { count: jest.fn().mockRejectedValue(new Error('offline')) };
+
+    await authModule._runHealthCheck();
+    expect(authModule._consecutiveFailures).toBe(1);
+  });
+
+  test('_runHealthCheck shows disconnected after 2 consecutive failures', async () => {
+    global.apiClient = { count: jest.fn().mockRejectedValue(new Error('offline')) };
+    const connSpy = jest.spyOn(authModule, 'updateConnectionStatus');
+    const toastSpy = jest.spyOn(utils, 'showToast');
+
+    authModule._consecutiveFailures = 1;
+    await authModule._runHealthCheck();
+
+    expect(authModule._consecutiveFailures).toBe(2);
+    expect(connSpy).toHaveBeenCalledWith(false);
+    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('Connection to database lost'), 'warning');
+    connSpy.mockRestore();
+    toastSpy.mockRestore();
+  });
+
+  test('_runHealthCheck does not re-show toast after 3rd failure', async () => {
+    global.apiClient = { count: jest.fn().mockRejectedValue(new Error('offline')) };
+    const toastSpy = jest.spyOn(utils, 'showToast');
+
+    authModule._consecutiveFailures = 2;
+    await authModule._runHealthCheck();
+
+    expect(authModule._consecutiveFailures).toBe(3);
+    // Toast should NOT be called because _consecutiveFailures !== 2
+    expect(toastSpy).not.toHaveBeenCalledWith(expect.stringContaining('Connection to database lost'), 'warning');
+    toastSpy.mockRestore();
+  });
+
+  test('_onVisibilityChange triggers health check when page becomes visible', () => {
+    const runSpy = jest.spyOn(authModule, '_runHealthCheck').mockImplementation();
+    Object.defineProperty(document, 'hidden', { value: false, writable: true, configurable: true });
+    STATE.currentUser = { email: 'test@test.com' };
+
+    authModule._onVisibilityChange();
+
+    expect(runSpy).toHaveBeenCalled();
+    runSpy.mockRestore();
+  });
+
+  test('_onVisibilityChange does nothing when page is hidden', () => {
+    const runSpy = jest.spyOn(authModule, '_runHealthCheck').mockImplementation();
+    Object.defineProperty(document, 'hidden', { value: true, writable: true, configurable: true });
+
+    authModule._onVisibilityChange();
+
+    expect(runSpy).not.toHaveBeenCalled();
+    runSpy.mockRestore();
+    Object.defineProperty(document, 'hidden', { value: false, writable: true, configurable: true });
   });
 });

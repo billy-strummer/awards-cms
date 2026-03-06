@@ -101,6 +101,7 @@ syncWindowToGlobal();
 // Save reference to real methods before any test replaces them
 const _realLoadTenants = tenantModule.loadTenants.bind(tenantModule);
 const _realRenderTenantSwitcher = tenantModule.renderTenantSwitcher.bind(tenantModule);
+const _realSwitchTenant = tenantModule.switchTenant.bind(tenantModule);
 
 describe('Multi-Tenancy Module - Structure', () => {
   test('tenantModule is defined', () => {
@@ -725,6 +726,7 @@ describe('Multi-Tenancy Module - restoreLastTenant with empty tenants', () => {
 describe('Multi-Tenancy Module - switchTenant updates tenantBrandName', () => {
   test('updates tenantBrandName element textContent when it exists', async () => {
     // Branch 8[1]: line 112-113 — the assignment when textContent exists
+    tenantModule.switchTenant = _realSwitchTenant;
     tenantModule.renderTenantSwitcher = _realRenderTenantSwitcher;
     tenantModule._tenants = [
       { id: 't1', name: 'Awards A' },
@@ -743,9 +745,14 @@ describe('Multi-Tenancy Module - switchTenant updates tenantBrandName', () => {
       document.body.appendChild(sw);
     }
 
-    // Mock window.location.reload (same approach as the existing switchTenant test)
-    delete window.location;
-    window.location = { reload: jest.fn() };
+    // Ensure window.location is a mock with reload (prior switchTenant test may have
+    // already replaced it; if so, just update reload; otherwise replace it)
+    try {
+      window.location.reload = jest.fn();
+    } catch (_e) {
+      delete window.location;
+      window.location = { reload: jest.fn() };
+    }
 
     await tenantModule.switchTenant('t2');
 

@@ -54,6 +54,7 @@ const JS_FILES = [
   'rate-limiting.js',
   'winner-announcements.js',
   'app.js',
+  'btc-module.js',
 ];
 
 const CSS_FILES = ['styles.css', 'modern-theme.css', 'assignments-styles.css'];

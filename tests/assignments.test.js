@@ -710,10 +710,7 @@ describe('getAwardAssignments - other_nominations mapping (lines 43-44)', () => 
       { organisation_id: 'org1', award_id: 'aw2', awards: { award_name: 'Other Award', year: 2026 } },
       { organisation_id: 'org1', award_id: 'aw3', awards: { award_name: 'Third Award', year: 2026 } },
     ];
-    apiClient.selectAll = jest
-      .fn()
-      .mockResolvedValueOnce(assignments)
-      .mockResolvedValueOnce(otherAssignments);
+    apiClient.selectAll = jest.fn().mockResolvedValueOnce(assignments).mockResolvedValueOnce(otherAssignments);
 
     const result = await assignmentsModule.getAwardAssignments('aw1');
     expect(result[0].other_nominations).toHaveLength(2);
@@ -760,6 +757,7 @@ describe('openAssignmentsModal (lines 71-107)', () => {
 });
 
 const _realRefreshAssignments = assignmentsModule.refreshAssignments;
+const _realGetAwardAssignments = assignmentsModule.getAwardAssignments;
 
 describe('refreshAssignments (lines 113-265)', () => {
   beforeEach(() => {
@@ -789,7 +787,8 @@ describe('refreshAssignments (lines 113-265)', () => {
     apiClient.selectAll = jest.fn().mockResolvedValue(allOrgs);
 
     // Need to restore refreshAssignments to the real implementation
-    const origRefresh = Object.getPrototypeOf(assignmentsModule).refreshAssignments ||
+    const origRefresh =
+      Object.getPrototypeOf(assignmentsModule).refreshAssignments ||
       assignmentsModule.constructor.prototype?.refreshAssignments;
     // Just call it directly since we mocked getAwardAssignments
     const contentEl = document.getElementById('assignmentsContent');
@@ -803,7 +802,13 @@ describe('refreshAssignments (lines 113-265)', () => {
 
   test('filters out assignments with missing organisations and warns', async () => {
     const assignments = [
-      { id: 'a1', organisation_id: 'org1', organisations: { id: 'org1', company_name: 'Valid', email: 'v@v.com' }, status: 'nominated', public_vote_count: 0 },
+      {
+        id: 'a1',
+        organisation_id: 'org1',
+        organisations: { id: 'org1', company_name: 'Valid', email: 'v@v.com' },
+        status: 'nominated',
+        public_vote_count: 0,
+      },
       { id: 'a2', organisation_id: 'org2', organisations: null, status: 'nominated', public_vote_count: 0 },
     ];
     assignmentsModule.getAwardAssignments = jest.fn().mockResolvedValue(assignments);
@@ -811,7 +816,10 @@ describe('refreshAssignments (lines 113-265)', () => {
 
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
     await assignmentsModule.refreshAssignments();
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Found assignment with missing organisation'), expect.anything());
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Found assignment with missing organisation'),
+      expect.anything()
+    );
     expect(warnSpy).toHaveBeenCalledWith('Filtered out', 1, 'assignments with missing organisations');
     warnSpy.mockRestore();
   });
@@ -826,7 +834,13 @@ describe('refreshAssignments (lines 113-265)', () => {
 
   test('renders all-assigned alert when no available orgs', async () => {
     const assignments = [
-      { id: 'a1', organisation_id: 'org1', organisations: { id: 'org1', company_name: 'Only', email: 'o@o.com' }, status: 'nominated', public_vote_count: 0 },
+      {
+        id: 'a1',
+        organisation_id: 'org1',
+        organisations: { id: 'org1', company_name: 'Only', email: 'o@o.com' },
+        status: 'nominated',
+        public_vote_count: 0,
+      },
     ];
     const allOrgs = [{ id: 'org1', company_name: 'Only', email: 'o@o.com', logo_url: null }];
     assignmentsModule.getAwardAssignments = jest.fn().mockResolvedValue(assignments);
@@ -856,7 +870,14 @@ describe('filterAssignments - button active state toggle (line 449)', () => {
       <button id="filter-new" class="btn"></button>
     `;
     assignmentsModule.allAssignments = [
-      { id: 'a1', organisations: { id: 'org1', company_name: 'A', email: 'a@a.com', logo_url: null }, status: 'nominated', nomination_source: 'admin', is_previous_winner: false, public_vote_count: 0 },
+      {
+        id: 'a1',
+        organisations: { id: 'org1', company_name: 'A', email: 'a@a.com', logo_url: null },
+        status: 'nominated',
+        nomination_source: 'admin',
+        is_previous_winner: false,
+        public_vote_count: 0,
+      },
     ];
   });
 
@@ -872,9 +893,33 @@ describe('filterAssignments - button active state toggle (line 449)', () => {
 describe('sortAssignments - filter + sort combos (lines 507-539)', () => {
   beforeEach(() => {
     assignmentsModule.allAssignments = [
-      { id: 'a1', organisations: { id: 'org1', company_name: 'Alpha', email: 'a@a.com', logo_url: null }, status: 'nominated', nomination_source: 'self_nomination', is_previous_winner: false, public_vote_count: 5, winner_position: 1 },
-      { id: 'a2', organisations: { id: 'org2', company_name: 'Beta', email: 'b@b.com', logo_url: null }, status: 'nominated', nomination_source: 'admin', is_previous_winner: true, public_vote_count: 10, winner_position: 2 },
-      { id: 'a3', organisations: { id: 'org3', company_name: 'Gamma', email: 'g@g.com', logo_url: null }, status: 'nominated', nomination_source: 'admin', is_previous_winner: false, public_vote_count: 3, winner_position: null },
+      {
+        id: 'a1',
+        organisations: { id: 'org1', company_name: 'Alpha', email: 'a@a.com', logo_url: null },
+        status: 'nominated',
+        nomination_source: 'self_nomination',
+        is_previous_winner: false,
+        public_vote_count: 5,
+        winner_position: 1,
+      },
+      {
+        id: 'a2',
+        organisations: { id: 'org2', company_name: 'Beta', email: 'b@b.com', logo_url: null },
+        status: 'nominated',
+        nomination_source: 'admin',
+        is_previous_winner: true,
+        public_vote_count: 10,
+        winner_position: 2,
+      },
+      {
+        id: 'a3',
+        organisations: { id: 'org3', company_name: 'Gamma', email: 'g@g.com', logo_url: null },
+        status: 'nominated',
+        nomination_source: 'admin',
+        is_previous_winner: false,
+        public_vote_count: 3,
+        winner_position: null,
+      },
     ];
     assignmentsModule.currentSortColumn = 'company';
     assignmentsModule.currentSortDirection = 'asc';
@@ -961,9 +1006,7 @@ describe('changeStatus - awardsModule._logAwardAudit (line 675)', () => {
     assignmentsModule.refreshAssignments = jest.fn().mockResolvedValue();
     assignmentsModule.currentAwardId = 'aw1';
     assignmentsModule.currentAwardName = 'Best Plumber';
-    assignmentsModule._cachedAssignments = [
-      { id: 'a1', organisations: { company_name: 'TestCo' } },
-    ];
+    assignmentsModule._cachedAssignments = [{ id: 'a1', organisations: { company_name: 'TestCo' } }];
   });
 
   test('calls awardsModule._logAwardAudit on status change', async () => {
@@ -1000,7 +1043,11 @@ describe('emailAllAssigned - full modal rendering (lines 782-877)', () => {
     assignmentsModule.currentAwardName = 'Best Plumber';
     assignmentsModule._cachedAssignments = [
       { id: 'a1', organisations: { id: 'org1', company_name: 'TestCo', email: 'test@test.com' }, status: 'nominated' },
-      { id: 'a2', organisations: { id: 'org2', company_name: 'Other', email: 'other@other.com' }, status: 'shortlisted' },
+      {
+        id: 'a2',
+        organisations: { id: 'org2', company_name: 'Other', email: 'other@other.com' },
+        status: 'shortlisted',
+      },
     ];
   });
 
@@ -1190,6 +1237,478 @@ describe('filterBulkAdd (lines 913-922)', () => {
   test('returns early when list element not found', () => {
     document.getElementById('bulkAddCompanyList').remove();
     expect(() => assignmentsModule.filterBulkAdd()).not.toThrow();
+  });
+});
+
+// ==========================================================================
+// COVERAGE BOOST — tooltip setTimeout, sortAssignments early-return,
+// updateSelectedCount with element, and branch fallbacks
+// ==========================================================================
+
+describe('refreshAssignments - tooltip setTimeout callback (lines 248-254)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    assignmentsModule.refreshAssignments = _realRefreshAssignments;
+    assignmentsModule.currentAwardId = 'aw1';
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => jest.useRealTimers());
+
+  test('initialises tooltips inside setTimeout callback', async () => {
+    const assignments = [
+      {
+        id: 'a1',
+        organisation_id: 'org1',
+        organisations: { id: 'org1', company_name: 'Alpha Corp', email: 'a@a.com', logo_url: null },
+        status: 'nominated',
+        public_vote_count: 5,
+      },
+    ];
+    const allOrgs = [
+      { id: 'org1', company_name: 'Alpha Corp', email: 'a@a.com', logo_url: null },
+      { id: 'org2', company_name: 'Beta Ltd', email: 'b@b.com', logo_url: null },
+    ];
+    assignmentsModule.getAwardAssignments = jest.fn().mockResolvedValue(assignments);
+    apiClient.selectAll = jest.fn().mockResolvedValue(allOrgs);
+
+    await assignmentsModule.refreshAssignments();
+
+    // Inject an element with data-bs-toggle="tooltip" so the setTimeout body can run
+    const contentEl = document.getElementById('assignmentsContent');
+    const tooltipEl = document.createElement('span');
+    tooltipEl.setAttribute('data-bs-toggle', 'tooltip');
+    contentEl.appendChild(tooltipEl);
+
+    // Provide getInstance that returns an object with dispose()
+    const disposeSpy = jest.fn();
+    bootstrap.Tooltip.getInstance = jest.fn().mockReturnValue({ dispose: disposeSpy });
+
+    jest.advanceTimersByTime(200);
+
+    expect(bootstrap.Tooltip.getInstance).toHaveBeenCalledWith(tooltipEl);
+    expect(disposeSpy).toHaveBeenCalled();
+  });
+
+  test('handles tooltip element with no existing instance', async () => {
+    assignmentsModule.getAwardAssignments = jest.fn().mockResolvedValue([]);
+    apiClient.selectAll = jest.fn().mockResolvedValue([]);
+
+    await assignmentsModule.refreshAssignments();
+
+    // Inject tooltip trigger with no existing instance
+    const contentEl = document.getElementById('assignmentsContent');
+    const tooltipEl = document.createElement('span');
+    tooltipEl.setAttribute('data-bs-toggle', 'tooltip');
+    contentEl.appendChild(tooltipEl);
+
+    bootstrap.Tooltip.getInstance = jest.fn().mockReturnValue(null);
+
+    jest.advanceTimersByTime(200);
+
+    expect(bootstrap.Tooltip.getInstance).toHaveBeenCalled();
+  });
+});
+
+describe('sortAssignments - early return when no listContainer (line 500)', () => {
+  test('returns early when assignedCompaniesList is missing', () => {
+    // Remove the element from DOM
+    const existing = document.getElementById('assignedCompaniesList');
+    if (existing) existing.remove();
+
+    assignmentsModule.allAssignments = sampleAssignments;
+    assignmentsModule.currentFilter = 'all';
+    assignmentsModule.currentSortColumn = 'company';
+    assignmentsModule.currentSortDirection = 'asc';
+
+    expect(() => assignmentsModule.sortAssignments('votes')).not.toThrow();
+
+    // Restore element
+    const newEl = document.createElement('tbody');
+    newEl.id = 'assignedCompaniesList';
+    document.body.appendChild(newEl);
+  });
+});
+
+describe('sortAssignments - toggle from desc to asc (line 491 else branch)', () => {
+  beforeEach(() => {
+    assignmentsModule.allAssignments = [
+      {
+        id: 'a1',
+        organisations: { id: 'org1', company_name: 'Alpha', email: 'a@a.com', logo_url: null },
+        status: 'nominated',
+        public_vote_count: 5,
+      },
+    ];
+    assignmentsModule.currentFilter = 'all';
+  });
+
+  test('toggles from desc back to asc on same column', () => {
+    assignmentsModule.currentSortColumn = 'company';
+    assignmentsModule.currentSortDirection = 'desc';
+    assignmentsModule.sortAssignments('company');
+    expect(assignmentsModule.currentSortDirection).toBe('asc');
+  });
+});
+
+describe('updateSelectedCount - element present (line 966)', () => {
+  test('updates count when element exists and checkboxes are checked', () => {
+    // Create the count element
+    let countEl = document.getElementById('assignSelectedCount');
+    if (!countEl) {
+      countEl = document.createElement('span');
+      countEl.id = 'assignSelectedCount';
+      document.body.appendChild(countEl);
+    }
+    countEl.textContent = '0';
+
+    // Create checked checkboxes
+    const cb1 = document.createElement('input');
+    cb1.type = 'checkbox';
+    cb1.className = 'bulk-add-check';
+    cb1.checked = true;
+    document.body.appendChild(cb1);
+
+    const cb2 = document.createElement('input');
+    cb2.type = 'checkbox';
+    cb2.className = 'bulk-add-check';
+    cb2.checked = true;
+    document.body.appendChild(cb2);
+
+    assignmentsModule.updateSelectedCount();
+    expect(countEl.textContent).toBe('2');
+
+    cb1.remove();
+    cb2.remove();
+    countEl.remove();
+  });
+});
+
+describe('getAwardAssignments - null/falsy fallback branches', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    assignmentsModule.getAwardAssignments = _realGetAwardAssignments;
+  });
+
+  test('handles null otherAssignments (line 42 || fallback)', async () => {
+    const assignments = [{ id: 'a1', organisation_id: 'org1', organisations: { id: 'org1', company_name: 'A' } }];
+    apiClient.selectAll = jest.fn().mockResolvedValueOnce(assignments).mockResolvedValueOnce(null); // otherAssignments is null
+
+    const result = await assignmentsModule.getAwardAssignments('aw1');
+    expect(result[0].other_nominations).toEqual([]);
+  });
+
+  test('handles null data from first selectAll (line 50 || fallback)', async () => {
+    apiClient.selectAll = jest.fn().mockResolvedValueOnce(null); // data is null — no orgIds, skip second call
+
+    const result = await assignmentsModule.getAwardAssignments('aw1');
+    expect(result).toEqual([]);
+  });
+
+  test('handles assignments with missing company_name (lines 51-52 || fallbacks)', async () => {
+    const assignments = [
+      { id: 'a1', organisation_id: 'org1', organisations: { id: 'org1', company_name: null } },
+      { id: 'a2', organisation_id: 'org2', organisations: { id: 'org2' } },
+    ];
+    // Both org IDs are truthy, so a second selectAll call happens
+    apiClient.selectAll = jest.fn().mockResolvedValueOnce(assignments).mockResolvedValueOnce([]);
+
+    const result = await assignmentsModule.getAwardAssignments('aw1');
+    // Should not throw; both sort to empty string
+    expect(result).toHaveLength(2);
+  });
+
+  test('handles empty orgIds (no second selectAll call)', async () => {
+    const assignments = [{ id: 'a1', organisation_id: null, organisations: { id: 'org1', company_name: 'A' } }];
+    apiClient.selectAll = jest.fn().mockResolvedValueOnce(assignments);
+
+    const result = await assignmentsModule.getAwardAssignments('aw1');
+    // selectAll called only once since orgIds is empty after filter(Boolean)
+    expect(apiClient.selectAll).toHaveBeenCalledTimes(1);
+    expect(result).toHaveLength(1);
+  });
+});
+
+describe('refreshAssignments - null allOrgs fallback (line 146)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    assignmentsModule.refreshAssignments = _realRefreshAssignments;
+    assignmentsModule.currentAwardId = 'aw1';
+    jest.useFakeTimers();
+  });
+  afterEach(() => jest.useRealTimers());
+
+  test('handles null allOrgs response', async () => {
+    assignmentsModule.getAwardAssignments = jest.fn().mockResolvedValue([]);
+    apiClient.selectAll = jest.fn().mockResolvedValue(null);
+
+    await assignmentsModule.refreshAssignments();
+    expect(assignmentsModule.availableOrgs).toEqual([]);
+  });
+});
+
+describe('removeAssignment - company_name fallbacks (lines 603-604)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    assignmentsModule.refreshAssignments = jest.fn().mockResolvedValue();
+  });
+
+  test('uses company_name from assignment when organisations missing', async () => {
+    assignmentsModule.currentAssignments = [{ id: 'a1', company_name: 'Fallback Name' }];
+    utils.confirmDialog = jest.fn().mockResolvedValue(true);
+    apiClient.delete = jest.fn().mockResolvedValue({});
+
+    await assignmentsModule.removeAssignment('a1');
+    expect(utils.confirmDialog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringContaining('Fallback Name'),
+      })
+    );
+  });
+
+  test('uses "this company" when no name available', async () => {
+    assignmentsModule.currentAssignments = [{ id: 'a1' }];
+    utils.confirmDialog = jest.fn().mockResolvedValue(true);
+    apiClient.delete = jest.fn().mockResolvedValue({});
+
+    await assignmentsModule.removeAssignment('a1');
+    expect(utils.confirmDialog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringContaining('this company'),
+      })
+    );
+  });
+
+  test('uses "this company" when assignment not found in currentAssignments', async () => {
+    assignmentsModule.currentAssignments = [];
+    utils.confirmDialog = jest.fn().mockResolvedValue(true);
+    apiClient.delete = jest.fn().mockResolvedValue({});
+
+    await assignmentsModule.removeAssignment('nonexistent');
+    expect(utils.confirmDialog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringContaining('this company'),
+      })
+    );
+  });
+});
+
+describe('changeStatus - branch fallbacks (lines 673, 678)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    assignmentsModule.refreshAssignments = jest.fn().mockResolvedValue();
+    assignmentsModule.currentAwardId = 'aw1';
+  });
+
+  test('uses empty string when currentAwardName is null (line 678 fallback)', async () => {
+    apiClient.update = jest.fn().mockResolvedValue({});
+    assignmentsModule.currentAwardName = null;
+    assignmentsModule._cachedAssignments = [{ id: 'a1', organisations: { company_name: 'TestCo' } }];
+    global.awardsModule = { _logAwardAudit: jest.fn() };
+
+    await assignmentsModule.changeStatus('a1', 'shortlisted');
+    expect(global.awardsModule._logAwardAudit).toHaveBeenCalledWith('aw1', 'status_change', '', expect.any(String));
+    delete global.awardsModule;
+  });
+
+  test('uses empty companyName when assignment not in cache (line 673 fallback)', async () => {
+    apiClient.update = jest.fn().mockResolvedValue({});
+    assignmentsModule.currentAwardName = 'Award';
+    assignmentsModule._cachedAssignments = [];
+    global.awardsModule = { _logAwardAudit: jest.fn() };
+
+    await assignmentsModule.changeStatus('nonexistent', 'shortlisted');
+    expect(global.awardsModule._logAwardAudit).toHaveBeenCalledWith('aw1', 'status_change', 'Award', ' → Shortlisted');
+    delete global.awardsModule;
+  });
+});
+
+describe('emailAllAssigned - fallback branches (lines 768, 783)', () => {
+  afterEach(() => {
+    const modal = document.getElementById('dynamicAssignModal');
+    if (modal) modal.remove();
+  });
+
+  test('uses empty array when _cachedAssignments is null (line 768 fallback)', () => {
+    assignmentsModule.currentAwardId = 'aw1';
+    assignmentsModule._cachedAssignments = null;
+    const toastSpy = jest.spyOn(utils, 'showToast');
+    assignmentsModule.emailAllAssigned();
+    expect(toastSpy).toHaveBeenCalledWith('No nominees to email', 'warning');
+    toastSpy.mockRestore();
+  });
+
+  test('uses "Award" when currentAwardName is null (line 783 fallback)', () => {
+    assignmentsModule.currentAwardId = 'aw1';
+    assignmentsModule.currentAwardName = null;
+    assignmentsModule._cachedAssignments = [
+      { id: 'a1', organisations: { id: 'org1', company_name: 'Co', email: 'c@c.com' }, status: 'nominated' },
+    ];
+    assignmentsModule.emailAllAssigned();
+    const modal = document.getElementById('dynamicAssignModal');
+    expect(modal.innerHTML).toContain('Award');
+  });
+});
+
+describe('_filterEmailList - fallback branches (line 873)', () => {
+  beforeEach(() => {
+    let el = document.getElementById('nomineeEmailList');
+    if (!el) {
+      el = document.createElement('textarea');
+      el.id = 'nomineeEmailList';
+      document.body.appendChild(el);
+    }
+  });
+
+  test('uses empty array when _cachedAssignments is null (line 873 fallback)', () => {
+    assignmentsModule._cachedAssignments = null;
+    global.event = undefined;
+    assignmentsModule._filterEmailList('all');
+    const textarea = document.getElementById('nomineeEmailList');
+    expect(textarea.value).toBe('');
+  });
+});
+
+describe('filterBulkAdd - fallback when searchBox is missing (line 919)', () => {
+  test('uses empty string when bulkAddSearchBox is missing', () => {
+    const existing = document.getElementById('bulkAddSearchBox');
+    if (existing) existing.remove();
+
+    let list = document.getElementById('bulkAddCompanyList');
+    if (!list) {
+      list = document.createElement('div');
+      list.id = 'bulkAddCompanyList';
+      document.body.appendChild(list);
+    }
+    list.innerHTML = '<div class="bulk-add-item" data-name="alpha">Alpha</div>';
+
+    expect(() => assignmentsModule.filterBulkAdd()).not.toThrow();
+
+    // All items should be visible since empty string matches everything
+    const items = list.querySelectorAll('.bulk-add-item');
+    expect(items[0].style.display).toBe('');
+  });
+});
+
+describe('filterAvailableCompanies - card without data-company-name (line 430 fallback)', () => {
+  beforeEach(() => {
+    let input = document.getElementById('assignmentSearchBox');
+    if (!input) {
+      input = document.createElement('input');
+      input.id = 'assignmentSearchBox';
+      document.body.appendChild(input);
+    }
+    let container = document.getElementById('availableCompaniesList');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'availableCompaniesList';
+      document.body.appendChild(container);
+    }
+    container.innerHTML = '<div class="available-company-card">No Attr</div>';
+  });
+
+  test('handles card with missing data-company-name attribute', () => {
+    document.getElementById('assignmentSearchBox').value = 'test';
+    assignmentsModule.filterAvailableCompanies();
+    const card = document.querySelector('.available-company-card');
+    expect(card.style.display).toBe('none');
+  });
+});
+
+describe('sortAssignments - sort comparisons with null values (lines 527-528, 536)', () => {
+  beforeEach(() => {
+    assignmentsModule.currentFilter = 'all';
+    assignmentsModule.currentSortColumn = 'votes'; // different from target to avoid toggle
+    assignmentsModule.currentSortDirection = 'asc';
+  });
+
+  test('sorts by company with null organisation names', () => {
+    assignmentsModule.allAssignments = [
+      {
+        id: 'a1',
+        organisations: { id: 'org1', company_name: '', email: 'a@a.com', logo_url: null },
+        status: 'nominated',
+        public_vote_count: 5,
+      },
+      {
+        id: 'a2',
+        organisations: { id: 'org2', company_name: 'Beta', email: 'b@b.com', logo_url: null },
+        status: 'nominated',
+        public_vote_count: 10,
+      },
+    ];
+    assignmentsModule.sortAssignments('company');
+    expect(assignmentsModule.currentSortColumn).toBe('company');
+  });
+
+  test('sorts by votes with null public_vote_count', () => {
+    assignmentsModule.allAssignments = [
+      {
+        id: 'a1',
+        organisations: { id: 'org1', company_name: 'A', email: 'a@a.com', logo_url: null },
+        status: 'nominated',
+        public_vote_count: null,
+      },
+      {
+        id: 'a2',
+        organisations: { id: 'org2', company_name: 'B', email: 'b@b.com', logo_url: null },
+        status: 'nominated',
+        public_vote_count: 10,
+      },
+    ];
+    assignmentsModule.currentSortColumn = 'company';
+    assignmentsModule.sortAssignments('votes');
+    expect(assignmentsModule.currentSortColumn).toBe('votes');
+  });
+
+  test('sorts by position with null winner_position', () => {
+    assignmentsModule.allAssignments = [
+      {
+        id: 'a1',
+        organisations: { id: 'org1', company_name: 'A', email: 'a@a.com', logo_url: null },
+        status: 'nominated',
+        winner_position: null,
+      },
+      {
+        id: 'a2',
+        organisations: { id: 'org2', company_name: 'B', email: 'b@b.com', logo_url: null },
+        status: 'nominated',
+        winner_position: 2,
+      },
+    ];
+    assignmentsModule.currentSortColumn = 'company';
+    assignmentsModule.sortAssignments('position');
+    expect(assignmentsModule.currentSortColumn).toBe('position');
+  });
+});
+
+describe('renderAssignedCompany - contact_phone branch (line 313-316)', () => {
+  test('renders phone link when contact_phone is present', () => {
+    const assignment = {
+      id: 'a1',
+      organisations: { id: 'org1', company_name: 'PhoneCo', email: null, contact_phone: '555-1234', logo_url: null },
+      status: 'nominated',
+      public_vote_count: 0,
+    };
+    const html = assignmentsModule.renderAssignedCompany(assignment);
+    expect(html).toContain('tel:');
+    expect(html).toContain('555-1234');
+  });
+});
+
+describe('assignCompany - null existingCheck fallback (line 567)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    assignmentsModule.currentAwardId = 'aw1';
+    assignmentsModule.refreshAssignments = jest.fn().mockResolvedValue();
+  });
+
+  test('handles null data from select (existingCheck?.[ 0] is null)', async () => {
+    apiClient.select = jest.fn().mockResolvedValue({ data: null });
+    apiClient.insert = jest.fn().mockResolvedValue({});
+
+    await assignmentsModule.assignCompany('org1', 'Test Corp');
+    expect(apiClient.insert).toHaveBeenCalled();
   });
 });
 

@@ -72,7 +72,7 @@ const judgePortal = {
    */
   async initialize() {
     // Check if judge is logged in
-    const judgeEmail = this.getJudgeFromSession();
+    const judgeEmail = await this.getJudgeFromSession();
     if (!judgeEmail) {
       window.location.href = '/judge-login.html';
       return;
@@ -149,14 +149,18 @@ const judgePortal = {
 
   /**
    * Get judge from session - uses shared STATE.client auth session with localStorage fallback
-   * @returns {string|null} Judge email address or null
+   * @returns {Promise<string|null>} Judge email address or null
    */
-  getJudgeFromSession() {
+  async getJudgeFromSession() {
     // Prefer shared STATE.client session if available
     if (typeof STATE !== 'undefined' && STATE.client?.auth?.getSession) {
-      const session = STATE.client.auth.getSession();
-      if (session?.data?.session?.user?.email) {
-        return session.data.session.user.email;
+      try {
+        const { data: { session } } = await STATE.client.auth.getSession();
+        if (session?.user?.email) {
+          return session.user.email;
+        }
+      } catch (e) {
+        console.warn('Session check failed:', e.message);
       }
     }
     return localStorage.getItem('judgeEmail') || null;
@@ -825,9 +829,17 @@ const judgePortal = {
 
   /**
    * Logout the current judge and redirect to login page
-   * @returns {void}
+   * @returns {Promise<void>}
    */
-  logout() {
+  async logout() {
+    // Sign out from Supabase to invalidate the session token
+    if (typeof STATE !== 'undefined' && STATE.client?.auth?.signOut) {
+      try {
+        await STATE.client.auth.signOut();
+      } catch (e) {
+        console.warn('Sign out error:', e.message);
+      }
+    }
     localStorage.removeItem('judgeEmail');
     window.location.href = '/judge-login.html';
   },

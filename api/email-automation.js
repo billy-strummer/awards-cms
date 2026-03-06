@@ -13,7 +13,7 @@
 
 const { createClient } = require('@supabase/supabase-js');
 const { Resend } = require('resend');
-const { wrapEmail } = require('./email-header');
+const { wrapEmail } = require('./_lib/email-header');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 

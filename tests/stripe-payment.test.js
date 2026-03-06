@@ -82,7 +82,7 @@ jest.mock(
 
 // Mock email-header
 jest.mock(
-  '../api/email-header',
+  '../api/_lib/email-header',
   () => ({
     wrapEmail: jest.fn((body) => `<html>${body}</html>`),
   }),

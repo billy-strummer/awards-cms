@@ -3,7 +3,7 @@
  * Run with: npx jest tests/email-header.test.js
  */
 
-const { escHtml, resolveBranding, buildEmailHeader, buildEmailFooter, wrapEmail } = require('../api/email-header');
+const { escHtml, resolveBranding, buildEmailHeader, buildEmailFooter, wrapEmail } = require('../api/_lib/email-header');
 
 // ==========================================
 // TESTS

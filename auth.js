@@ -51,6 +51,12 @@ const authModule = {
         // Don't show toast for this - it might just be empty table
       }
     } catch (error) {
+      // "Not authenticated" can happen when the session is still hydrating
+      // after page load — this is not a real connectivity problem.
+      if (error.message.includes('Not authenticated')) {
+        console.warn('⚠️ Connection test skipped: session still hydrating');
+        return;
+      }
       console.error('❌ Connection test failed:', error);
       if (error.message.includes('Failed to fetch')) {
         utils.showToast('Cannot reach Supabase servers. Check your network connection and firewall settings.', 'error');

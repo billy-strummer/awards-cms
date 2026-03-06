@@ -192,7 +192,7 @@ const mediaGalleryModule = {
                   </p>
                   ${photo.caption ? `<p class="small text-muted mb-2">${utils.escapeHtml(photo.caption)}</p>` : ''}
                   <button class="btn btn-sm btn-primary w-100"
-                          data-action="mediaGalleryModule.editPhotoTags" data-id="photo.id">
+                          data-action="mediaGalleryModule.editPhotoTags" data-id="${photo.id}">
                     <i class="bi bi-tags me-1"></i>Add Tags
                   </button>
                 </div>
@@ -378,7 +378,7 @@ const mediaGalleryModule = {
 
         return `
         <div class="col-md-6 col-lg-4">
-          <div class="card h-100" style="cursor: pointer;" data-action="mediaGalleryModule.showEventContentsView" data-id="event.id">
+          <div class="card h-100" style="cursor: pointer;" data-action="mediaGalleryModule.showEventContentsView" data-id="${event.id}">
             <div class="card-body">
               <div class="d-flex justify-content-between align-items-start mb-3">
                 <h5 class="card-title mb-0">
@@ -977,13 +977,13 @@ const mediaGalleryModule = {
                 </div>
                 <div class="card-footer bg-transparent">
                   <div class="btn-group btn-group-sm w-100">
-                    <button class="btn btn-outline-primary" data-action="mediaGalleryModule.viewVideo" data-id="video.id" title="View">
+                    <button class="btn btn-outline-primary" data-action="mediaGalleryModule.viewVideo" data-id="${video.id}" title="View">
                       <i class="bi bi-eye"></i>
                     </button>
-                    <button class="btn btn-outline-secondary" data-action="mediaGalleryModule.editVideo" data-id="video.id" title="Edit">
+                    <button class="btn btn-outline-secondary" data-action="mediaGalleryModule.editVideo" data-id="${video.id}" title="Edit">
                       <i class="bi bi-pencil"></i>
                     </button>
-                    <button class="btn btn-outline-danger" data-action="mediaGalleryModule.deleteVideo" data-id="video.id" title="Delete">
+                    <button class="btn btn-outline-danger" data-action="mediaGalleryModule.deleteVideo" data-id="${video.id}" title="Delete">
                       <i class="bi bi-trash"></i>
                     </button>
                   </div>
@@ -3209,7 +3209,7 @@ const mediaGalleryModule = {
             </div>
 
             <div class="btn-group btn-group-sm w-100 mt-2">
-              <button class="btn btn-outline-primary" data-action="mediaGalleryModule.tagPhoto" data-id="photo.id" title="Tag">
+              <button class="btn btn-outline-primary" data-action="mediaGalleryModule.tagPhoto" data-id="${photo.id}" title="Tag">
                 <i class="bi bi-tag"></i>
               </button>
               <button class="btn ${photo.featured ? 'btn-warning' : 'btn-outline-warning'}" data-action="mediaGalleryModule.toggleFeatured" data-args='${JSON.stringify([photo.id, !photo.featured])}' title="${photo.featured ? 'Unfeature' : 'Feature'}">
@@ -3229,7 +3229,7 @@ const mediaGalleryModule = {
                 title="${isPublished ? 'Unpublish' : 'Publish'}">
                 <i class="bi bi-${isPublished ? 'eye-slash' : 'eye'}"></i>
               </button>
-              <button class="btn btn-outline-danger" data-action="mediaGalleryModule.deletePhoto" data-id="photo.id" title="Delete">
+              <button class="btn btn-outline-danger" data-action="mediaGalleryModule.deletePhoto" data-id="${photo.id}" title="Delete">
                 <i class="bi bi-trash"></i>
               </button>
             </div>
@@ -6849,10 +6849,10 @@ const mediaGalleryModule = {
                     <td>${v.organisations?.company_name ? utils.escapeHtml(v.organisations.company_name) : '<span class="text-muted">-</span>'}</td>
                     <td><span class="badge bg-danger">${v.status === 'broken' ? `HTTP ${v.httpStatus}` : 'Network Error'}</span></td>
                     <td>
-                      <button class="btn btn-sm btn-outline-danger" data-action="mediaGalleryModule.deleteVideo" data-id="v.id" title="Delete broken video">
+                      <button class="btn btn-sm btn-outline-danger" data-action="mediaGalleryModule.deleteVideo" data-id="${v.id}" title="Delete broken video">
                         <i class="bi bi-trash"></i>
                       </button>
-                      <button class="btn btn-sm btn-outline-secondary" data-action="mediaGalleryModule.editVideo" data-id="v.id" title="Edit/fix video">
+                      <button class="btn btn-sm btn-outline-secondary" data-action="mediaGalleryModule.editVideo" data-id="${v.id}" title="Edit/fix video">
                         <i class="bi bi-pencil"></i>
                       </button>
                     </td>

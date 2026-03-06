@@ -308,7 +308,7 @@ const paymentsModule = {
       .map(
         (invoice) => `
       <tr>
-        <td><input type="checkbox" class="form-check-input invoice-checkbox" value="${invoice.id}" ${this._selectedInvoiceIds.has(invoice.id) ? 'checked' : ''} data-on-check="paymentsModule.toggleInvoiceSelect" data-id="invoice.id"></td>
+        <td><input type="checkbox" class="form-check-input invoice-checkbox" value="${invoice.id}" ${this._selectedInvoiceIds.has(invoice.id) ? 'checked' : ''} data-on-check="paymentsModule.toggleInvoiceSelect" data-id="${invoice.id}"></td>
         <td>
           <strong>${utils.escapeHtml(invoice.invoice_number)}</strong>
           <button class="btn btn-link btn-sm p-0 ms-1" data-action="paymentsModule.copyToClipboard" data-id="${utils.escapeHtml(invoice.invoice_number)}" data-stop-propagation="true" title="Copy invoice number" aria-label="Copy invoice number">
@@ -335,7 +335,7 @@ const paymentsModule = {
         <td class="text-danger">&pound;${parseFloat(invoice.balance_due || 0).toFixed(2)}</td>
         <td>
           <select class="form-select form-select-sm d-inline-block" style="width:auto; font-size:0.75rem;"
-            data-on-change="paymentsModule.inlineUpdateInvoiceStatus" data-id="invoice.id"
+            data-on-change="paymentsModule.inlineUpdateInvoiceStatus" data-id="${invoice.id}"
             aria-label="Change invoice status">
             ${['draft', 'sent', 'viewed', 'paid', 'partially_paid', 'overdue', 'cancelled']
               .map(
@@ -347,16 +347,16 @@ const paymentsModule = {
         </td>
         <td>
           <div class="btn-group btn-group-sm" role="group">
-            <button class="btn btn-outline-primary" data-action="paymentsModule.viewInvoice" data-id="invoice.id" title="View" aria-label="View invoice">
+            <button class="btn btn-outline-primary" data-action="paymentsModule.viewInvoice" data-id="${invoice.id}" title="View" aria-label="View invoice">
               <i class="bi bi-eye"></i>
             </button>
-            <button class="btn btn-outline-success" data-action="paymentsModule.recordPaymentForInvoice" data-id="invoice.id" title="Record Payment" aria-label="Record payment">
+            <button class="btn btn-outline-success" data-action="paymentsModule.recordPaymentForInvoice" data-id="${invoice.id}" title="Record Payment" aria-label="Record payment">
               <i class="bi bi-cash"></i>
             </button>
-            <button class="btn btn-outline-secondary" data-action="paymentsModule.sendInvoice" data-id="invoice.id" title="Send" aria-label="Send invoice">
+            <button class="btn btn-outline-secondary" data-action="paymentsModule.sendInvoice" data-id="${invoice.id}" title="Send" aria-label="Send invoice">
               <i class="bi bi-envelope"></i>
             </button>
-            <button class="btn btn-outline-danger" data-action="paymentsModule.deleteInvoice" data-id="invoice.id" title="Delete" aria-label="Delete invoice">
+            <button class="btn btn-outline-danger" data-action="paymentsModule.deleteInvoice" data-id="${invoice.id}" title="Delete" aria-label="Delete invoice">
               <i class="bi bi-trash"></i>
             </button>
           </div>
@@ -1298,10 +1298,10 @@ const paymentsModule = {
         <td>${this.getPaymentStatusBadge(payment.status)}</td>
         <td>
           <div class="btn-group btn-group-sm" role="group">
-            <button class="btn btn-outline-primary" data-action="paymentsModule.viewPayment" data-id="payment.id" title="View" aria-label="View payment">
+            <button class="btn btn-outline-primary" data-action="paymentsModule.viewPayment" data-id="${payment.id}" title="View" aria-label="View payment">
               <i class="bi bi-eye"></i>
             </button>
-            <button class="btn btn-outline-danger" data-action="paymentsModule.deletePayment" data-id="payment.id" title="Delete" aria-label="Delete payment">
+            <button class="btn btn-outline-danger" data-action="paymentsModule.deletePayment" data-id="${payment.id}" title="Delete" aria-label="Delete payment">
               <i class="bi bi-trash"></i>
             </button>
           </div>

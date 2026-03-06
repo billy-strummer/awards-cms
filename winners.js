@@ -382,7 +382,7 @@ const winnersModule = {
 
         return `
         <tr class="fade-in">
-          <td><input type="checkbox" class="form-check-input winner-checkbox" value="${winner.id}" ${winnerChecked} data-on-check="winnersModule.toggleWinnerSelect" data-id="winner.id"></td>
+          <td><input type="checkbox" class="form-check-input winner-checkbox" value="${winner.id}" ${winnerChecked} data-on-check="winnersModule.toggleWinnerSelect" data-id="${winner.id}"></td>
           <td>
             <div class="fw-semibold">${utils.escapeHtml(winner.winner_name || 'N/A')}</div>
           </td>
@@ -437,21 +437,21 @@ const winnersModule = {
               }
               <button
                 class="btn btn-outline-secondary btn-sm"
-                data-action="winnersModule.downloadMediaPack" data-id="winner.id"
+                data-action="winnersModule.downloadMediaPack" data-id="${winner.id}"
                 title="Download Media Pack"
                 aria-label="Download media pack">
                 <i class="bi bi-newspaper"></i>
               </button>
               <button
                 class="btn btn-outline-primary btn-sm"
-                data-action="winnersModule.downloadWinnerPackage" data-id="winner.id"
+                data-action="winnersModule.downloadWinnerPackage" data-id="${winner.id}"
                 title="Download Winner Package"
                 aria-label="Download winner package">
                 <i class="bi bi-gift"></i>
               </button>
               <button
                 class="btn btn-outline-danger btn-sm"
-                data-action="winnersModule.deleteWinner" data-id="winner.id"
+                data-action="winnersModule.deleteWinner" data-id="${winner.id}"
                 title="Delete Winner"
                 aria-label="Delete winner">
                 <i class="bi bi-trash"></i>
@@ -781,7 +781,7 @@ const winnersModule = {
             }
             <div class="card-body">
               <p class="card-text small mb-3">${utils.escapeHtml(m.caption || 'No caption')}</p>
-              <button class="btn btn-sm btn-danger w-100" data-action="winnersModule.deleteMedia" data-id="m.id">
+              <button class="btn btn-sm btn-danger w-100" data-action="winnersModule.deleteMedia" data-id="${m.id}">
                 <i class="bi bi-trash me-1"></i> Delete
               </button>
             </div>
@@ -951,7 +951,7 @@ const winnersModule = {
                 <input class="form-check-input" type="checkbox"
                   id="winner_${winner.id}"
                   ${isSelected ? 'checked' : ''}
-                  data-on-change="winnersModule.toggleWinnerSelection" data-id="winner.id">
+                  data-on-change="winnersModule.toggleWinnerSelection" data-id="${winner.id}">
               </div>
               <div class="flex-grow-1">
                 <div class="d-flex justify-content-between align-items-start mb-2">
@@ -1410,7 +1410,7 @@ const winnersModule = {
                 <input class="form-check-input" type="checkbox"
                   id="cert_winner_${winner.id}"
                   ${isSelected ? 'checked' : ''}
-                  data-on-change="winnersModule.toggleCertificateWinnerSelection" data-id="winner.id">
+                  data-on-change="winnersModule.toggleCertificateWinnerSelection" data-id="${winner.id}">
               </div>
               <div class="flex-grow-1">
                 <h6 class="mb-1">${utils.escapeHtml(winner.winner_name || 'Unnamed Winner')}</h6>

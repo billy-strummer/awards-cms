@@ -1006,7 +1006,7 @@ const eventsModule = {
             ${
               a.email
                 ? `<button class="btn btn-outline-info btn-sm"
-              data-action="eventsModule.sendInviteEmail" data-id="a.id"
+              data-action="eventsModule.sendInviteEmail" data-id="${a.id}"
               title="Send invite" aria-label="Send invite"><i class="bi bi-envelope"></i></button>`
                 : ''
             }
@@ -1014,7 +1014,7 @@ const eventsModule = {
               data-action="eventsModule.updateAttendeeStatus" data-args='${JSON.stringify([a.id, a.status === 'attending' ? 'not_attending' : 'attending'])}'
               title="Toggle RSVP" aria-label="Toggle RSVP"><i class="bi bi-arrow-repeat"></i></button>
             <button class="btn btn-outline-danger btn-sm"
-              data-action="eventsModule.deleteAttendee" data-id="a.id" title="Remove" aria-label="Remove attendee"><i class="bi bi-trash"></i></button>
+              data-action="eventsModule.deleteAttendee" data-id="${a.id}" title="Remove" aria-label="Remove attendee"><i class="bi bi-trash"></i></button>
           </div>
         </td>
       </tr>
@@ -1356,8 +1356,8 @@ const eventsModule = {
         <td class="text-center">
           ${
             a.checkedIn
-              ? `<button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.toggleCheckIn" data-id="a.id"><i class="bi bi-x-circle me-1"></i>Undo</button>`
-              : `<button class="btn btn-sm btn-success" data-action="eventsModule.toggleCheckIn" data-id="a.id"><i class="bi bi-check-lg me-1"></i>Check In</button>`
+              ? `<button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.toggleCheckIn" data-id="${a.id}"><i class="bi bi-x-circle me-1"></i>Undo</button>`
+              : `<button class="btn btn-sm btn-success" data-action="eventsModule.toggleCheckIn" data-id="${a.id}"><i class="bi bi-check-lg me-1"></i>Check In</button>`
           }
         </td>
       </tr>
@@ -1532,7 +1532,7 @@ const eventsModule = {
                   <td>${utils.escapeHtml(a.name)}</td>
                   <td>${a.email ? utils.escapeHtml(a.email) : '<span class="text-muted">-</span>'}</td>
                   <td><span class="badge bg-secondary">${(a.guestType || 'guest').toUpperCase()}</span></td>
-                  <td class="text-center"><button class="btn btn-sm btn-outline-primary" data-action="eventsModule.issueTicketToAttendee" data-id="a.id"><i class="bi bi-ticket-perforated me-1"></i>Issue</button></td>
+                  <td class="text-center"><button class="btn btn-sm btn-outline-primary" data-action="eventsModule.issueTicketToAttendee" data-id="${a.id}"><i class="bi bi-ticket-perforated me-1"></i>Issue</button></td>
                 </tr>`
                   )
                   .join('')}
@@ -1568,8 +1568,8 @@ const eventsModule = {
                     ${
                       t.status === 'issued'
                         ? `
-                      <button class="btn btn-sm btn-outline-primary me-1" data-action="eventsModule.resendTicket" data-id="t.id" title="Email ticket"><i class="bi bi-envelope"></i></button>
-                      <button class="btn btn-sm btn-outline-danger" data-action="eventsModule.revokeTicket" data-id="t.id" title="Revoke"><i class="bi bi-x-circle"></i></button>
+                      <button class="btn btn-sm btn-outline-primary me-1" data-action="eventsModule.resendTicket" data-id="${t.id}" title="Email ticket"><i class="bi bi-envelope"></i></button>
+                      <button class="btn btn-sm btn-outline-danger" data-action="eventsModule.revokeTicket" data-id="${t.id}" title="Revoke"><i class="bi bi-x-circle"></i></button>
                     `
                         : '<span class="text-muted small">Revoked</span>'
                     }
@@ -2182,11 +2182,11 @@ const eventsModule = {
             w.promoted
               ? ''
               : `
-            <button class="btn btn-sm btn-success me-1" data-action="eventsModule.promoteFromWaitlist" data-id="w.id" title="Promote to attendee">
+            <button class="btn btn-sm btn-success me-1" data-action="eventsModule.promoteFromWaitlist" data-id="${w.id}" title="Promote to attendee">
               <i class="bi bi-person-plus"></i>
             </button>`
           }
-          <button class="btn btn-sm btn-outline-danger" data-action="eventsModule.removeFromWaitlist" data-id="w.id" title="Remove">
+          <button class="btn btn-sm btn-outline-danger" data-action="eventsModule.removeFromWaitlist" data-id="${w.id}" title="Remove">
             <i class="bi bi-trash"></i>
           </button>
         </td>
@@ -4847,7 +4847,7 @@ const eventsModule = {
             </div>
             <div class="ro-time">
               <input type="time" value="${scheduledTime}"
-                     data-on-change="eventsModule.setROItemTime" data-id="item.id"
+                     data-on-change="eventsModule.setROItemTime" data-id="${item.id}"
                      ${this.isPublished ? 'disabled' : ''}>
               <div class="duration">${duration}m</div>
             </div>
@@ -4860,7 +4860,7 @@ const eventsModule = {
             <div class="ro-sponsor"></div>
             <div class="ro-recipient" style="width:120px;"></div>
             <div class="ro-status">
-              <select data-on-change="eventsModule.setROItemStatus" data-id="item.id" ${this.isPublished ? 'disabled' : ''}>
+              <select data-on-change="eventsModule.setROItemStatus" data-id="${item.id}" ${this.isPublished ? 'disabled' : ''}>
                 ${statusOpts}
               </select>
             </div>
@@ -4874,10 +4874,10 @@ const eventsModule = {
                 <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.moveROItem" data-args='["${item.id}", 1]' title="Move down" ${isLast ? 'disabled' : ''}>
                   <i class="bi bi-arrow-down"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-primary" data-action="eventsModule.editRunningOrderItem" data-id="item.id" title="Edit">
+                <button class="btn btn-sm btn-outline-primary" data-action="eventsModule.editRunningOrderItem" data-id="${item.id}" title="Edit">
                   <i class="bi bi-pencil"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-danger" data-action="eventsModule.deleteRunningOrderItem" data-id="item.id" title="Delete">
+                <button class="btn btn-sm btn-outline-danger" data-action="eventsModule.deleteRunningOrderItem" data-id="${item.id}" title="Delete">
                   <i class="bi bi-trash"></i>
                 </button>
               `
@@ -4916,7 +4916,7 @@ const eventsModule = {
             <div class="ro-number">${presentationNumber}<span class="sub">GROUP</span></div>
             <div class="ro-time">
               <input type="time" value="${groupMembers[0]?.scheduled_time || ''}"
-                     data-on-change="eventsModule.setROItemTime" data-id="item.id"
+                     data-on-change="eventsModule.setROItemTime" data-id="${item.id}"
                      ${this.isPublished ? 'disabled' : ''}>
               <div class="duration">${groupDuration}m</div>
             </div>
@@ -4938,7 +4938,7 @@ const eventsModule = {
               ${recipientDietary ? `<small class="text-warning d-block" style="font-size:0.6rem;" title="${utils.escapeHtml(recipientDietary)}"><i class="bi bi-egg-fried"></i> ${utils.escapeHtml(recipientDietary)}</small>` : ''}
             </div>
             <div class="ro-status">
-              <select data-on-change="eventsModule.setROItemStatus" data-id="item.id" ${this.isPublished ? 'disabled' : ''}>
+              <select data-on-change="eventsModule.setROItemStatus" data-id="${item.id}" ${this.isPublished ? 'disabled' : ''}>
                 ${statusOpts}
               </select>
             </div>
@@ -4952,7 +4952,7 @@ const eventsModule = {
                 <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.moveROItem" data-args='["${item.id}", 1]' title="Move group down" ${isLast ? 'disabled' : ''}>
                   <i class="bi bi-arrow-down"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-warning" data-action="eventsModule.splitAllPresentation" data-id="item.id" title="Split all into separate presentations">
+                <button class="btn btn-sm btn-outline-warning" data-action="eventsModule.splitAllPresentation" data-id="${item.id}" title="Split all into separate presentations">
                   <i class="bi bi-scissors"></i>
                 </button>
               `
@@ -4987,13 +4987,13 @@ const eventsModule = {
               ${
                 !this.isPublished
                   ? `
-                <button class="btn btn-sm btn-outline-primary" data-action="eventsModule.editRunningOrderItem" data-id="item.id" title="Edit">
+                <button class="btn btn-sm btn-outline-primary" data-action="eventsModule.editRunningOrderItem" data-id="${item.id}" title="Edit">
                   <i class="bi bi-pencil"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-warning" data-action="eventsModule.splitPresentation" data-id="item.id" title="Split into separate presentation">
+                <button class="btn btn-sm btn-outline-warning" data-action="eventsModule.splitPresentation" data-id="${item.id}" title="Split into separate presentation">
                   <i class="bi bi-box-arrow-right"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-danger" data-action="eventsModule.deleteRunningOrderItem" data-id="item.id" title="Delete">
+                <button class="btn btn-sm btn-outline-danger" data-action="eventsModule.deleteRunningOrderItem" data-id="${item.id}" title="Delete">
                   <i class="bi bi-trash"></i>
                 </button>
               `
@@ -5021,7 +5021,7 @@ const eventsModule = {
           </div>
           <div class="ro-time">
             <input type="time" value="${scheduledTime}"
-                   data-on-change="eventsModule.setROItemTime" data-id="item.id"
+                   data-on-change="eventsModule.setROItemTime" data-id="${item.id}"
                    ${this.isPublished ? 'disabled' : ''}
                    title="Scheduled time">
             <div class="duration" title="Cumulative: ${cumTime} min">${duration}m ${scheduleIndicator}</div>
@@ -5044,7 +5044,7 @@ const eventsModule = {
             ${recipientDietary ? `<small class="text-warning d-block" style="font-size:0.6rem;" title="${utils.escapeHtml(recipientDietary)}"><i class="bi bi-egg-fried"></i> ${utils.escapeHtml(recipientDietary)}</small>` : ''}
           </div>
           <div class="ro-status">
-            <select data-on-change="eventsModule.setROItemStatus" data-id="item.id" ${this.isPublished ? 'disabled' : ''}>
+            <select data-on-change="eventsModule.setROItemStatus" data-id="${item.id}" ${this.isPublished ? 'disabled' : ''}>
               ${statusOpts}
             </select>
           </div>
@@ -5058,21 +5058,21 @@ const eventsModule = {
               <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.moveROItem" data-args='["${item.id}", 1]' title="Move down" ${isLast ? 'disabled' : ''}>
                 <i class="bi bi-arrow-down"></i>
               </button>
-              <button class="btn btn-sm btn-outline-primary" data-action="eventsModule.editRunningOrderItem" data-id="item.id" title="Edit">
+              <button class="btn btn-sm btn-outline-primary" data-action="eventsModule.editRunningOrderItem" data-id="${item.id}" title="Edit">
                 <i class="bi bi-pencil"></i>
               </button>
-              <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.duplicateROItem" data-id="item.id" title="Duplicate">
+              <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.duplicateROItem" data-id="${item.id}" title="Duplicate">
                 <i class="bi bi-copy"></i>
               </button>
               ${
                 orgAwardCount > 1 && !isGrouped
                   ? `
-              <button class="btn btn-sm btn-outline-info" data-action="eventsModule.groupPresentation" data-id="item.id" title="Group all awards for this org into one presentation">
+              <button class="btn btn-sm btn-outline-info" data-action="eventsModule.groupPresentation" data-id="${item.id}" title="Group all awards for this org into one presentation">
                 <i class="bi bi-collection"></i>
               </button>`
                   : ''
               }
-              <button class="btn btn-sm btn-outline-danger" data-action="eventsModule.deleteRunningOrderItem" data-id="item.id" title="Delete">
+              <button class="btn btn-sm btn-outline-danger" data-action="eventsModule.deleteRunningOrderItem" data-id="${item.id}" title="Delete">
                 <i class="bi bi-trash"></i>
               </button>
             `
@@ -6324,7 +6324,7 @@ const eventsModule = {
           <td>${utils.escapeHtml(item.recipient_collecting || 'TBC')}</td>
           <td>
             <select class="form-select form-select-sm" style="font-size:0.75rem; border-color:${statusInfo.colour};"
-                    data-on-change="eventsModule.updateTrophyStatus" data-id="item.id">
+                    data-on-change="eventsModule.updateTrophyStatus" data-id="${item.id}">
               ${opts}
             </select>
           </td>
@@ -6402,7 +6402,7 @@ const eventsModule = {
               `
               }
             </div>
-            <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.editCueNote" data-id="item.id" title="Edit cue note">
+            <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.editCueNote" data-id="${item.id}" title="Edit cue note">
               <i class="bi bi-pencil"></i>
             </button>
           </div>
@@ -6666,10 +6666,10 @@ const eventsModule = {
                 <small class="text-muted d-block">v${v.version_number} | ${itemCount} items | ${date}</small>
               </div>
               <div class="d-flex gap-2">
-                <button class="btn btn-sm btn-outline-warning" data-action="eventsModule.restoreVersion" data-id="v.id" ${this.isPublished ? 'disabled' : ''} title="Restore this version">
+                <button class="btn btn-sm btn-outline-warning" data-action="eventsModule.restoreVersion" data-id="${v.id}" ${this.isPublished ? 'disabled' : ''} title="Restore this version">
                   <i class="bi bi-arrow-counterclockwise me-1"></i>Restore
                 </button>
-                <button class="btn btn-sm btn-outline-danger" data-action="eventsModule.deleteVersion" data-id="v.id" title="Delete version">
+                <button class="btn btn-sm btn-outline-danger" data-action="eventsModule.deleteVersion" data-id="${v.id}" title="Delete version">
                   <i class="bi bi-trash"></i>
                 </button>
               </div>
@@ -9922,7 +9922,7 @@ const eventsModule = {
           ${
             selected
               ? `<div class="tp-fixture-actions">
-            <button class="btn btn-sm btn-outline-danger py-0 px-1" data-fixture-stop-prop="true" data-action="eventsModule.removeFixture" data-id="f.id" title="Remove">
+            <button class="btn btn-sm btn-outline-danger py-0 px-1" data-fixture-stop-prop="true" data-action="eventsModule.removeFixture" data-id="${f.id}" title="Remove">
               <i class="bi bi-trash" style="font-size:0.7rem;"></i>
             </button>
           </div>`
@@ -10305,17 +10305,17 @@ const eventsModule = {
             </select>
           </div>
         </div>
-        <button class="btn btn-sm btn-primary mb-2" data-action="eventsModule.saveTableProperties" data-id="table.id">
+        <button class="btn btn-sm btn-primary mb-2" data-action="eventsModule.saveTableProperties" data-id="${table.id}">
           <i class="bi bi-check-lg me-1"></i>Save Changes
         </button>
         <div class="d-flex gap-2 mb-2">
-          <button class="btn btn-sm btn-outline-secondary flex-fill" data-action="eventsModule.duplicateTable" data-id="table.id">
+          <button class="btn btn-sm btn-outline-secondary flex-fill" data-action="eventsModule.duplicateTable" data-id="${table.id}">
             <i class="bi bi-copy me-1"></i>Duplicate
           </button>
-          <button class="btn btn-sm btn-outline-warning flex-fill" data-action="eventsModule.clearTable" data-id="table.id" ${assignedCount === 0 ? 'disabled' : ''}>
+          <button class="btn btn-sm btn-outline-warning flex-fill" data-action="eventsModule.clearTable" data-id="${table.id}" ${assignedCount === 0 ? 'disabled' : ''}>
             <i class="bi bi-eraser me-1"></i>Clear All
           </button>
-          <button class="btn btn-sm btn-outline-danger flex-fill" data-action="eventsModule.deleteTable" data-id="table.id">
+          <button class="btn btn-sm btn-outline-danger flex-fill" data-action="eventsModule.deleteTable" data-id="${table.id}">
             <i class="bi bi-trash me-1"></i>Delete
           </button>
         </div>
@@ -10349,7 +10349,7 @@ const eventsModule = {
                 ${a.company_name ? `<small class="text-muted">${utils.escapeHtml(a.company_name)}</small>` : ''}
                 ${a.dietary_requirements ? `<small class="text-warning d-block" style="font-size:0.7rem;"><i class="bi bi-egg-fried me-1"></i>${utils.escapeHtml(a.dietary_requirements)}</small>` : ''}
               </div>
-              <span class="remove-x" data-action="eventsModule.removeGuestFromTable" data-id="a.id" title="Remove">
+              <span class="remove-x" data-action="eventsModule.removeGuestFromTable" data-id="${a.id}" title="Remove">
                 <i class="bi bi-x-circle-fill"></i>
               </span>
             </div>
@@ -12334,7 +12334,7 @@ const eventsModule = {
 
         return `
         <tr class="fade-in">
-          <td><input type="checkbox" class="form-check-input event-checkbox" value="${event.id}" ${checked} data-on-check="eventsModule.toggleEventSelect" data-id="event.id"></td>
+          <td><input type="checkbox" class="form-check-input event-checkbox" value="${event.id}" ${checked} data-on-check="eventsModule.toggleEventSelect" data-id="${event.id}"></td>
           <td class="fw-semibold">${utils.escapeHtml(event.event_name)}${!event.venue ? ' <i class="bi bi-exclamation-triangle text-warning small" title="Missing venue"></i>' : ''}</td>
           <td><span class="badge bg-primary">${utils.escapeHtml(String(event.year || '-'))}</span></td>
           <td>${eventDate}${countdown}</td>
@@ -12348,10 +12348,10 @@ const eventsModule = {
             <div class="btn-group btn-group-sm" role="group">
               <button class="btn btn-outline-warning btn-icon" data-action="eventsModule.openRunningOrderModal" data-args='${JSON.stringify([event.id, eName])}' title="Running Order" aria-label="Running order"><i class="bi bi-list-ol"></i></button>
               <button class="btn btn-outline-secondary btn-icon" data-action="eventsModule.openTablePlanModal" data-args='${JSON.stringify([event.id, eName])}' title="Table Plan" aria-label="Table plan"><i class="bi bi-table"></i></button>
-              <button class="btn btn-outline-info btn-icon" data-action="eventsModule.openAttendeesModal" data-id="event.id" title="Attendees" aria-label="Attendees"><i class="bi bi-people"></i></button>
-              <button class="btn btn-outline-primary btn-icon" data-action="eventsModule.openEditModal" data-id="event.id" title="Edit" aria-label="Edit event"><i class="bi bi-pencil"></i></button>
-              <button class="btn btn-outline-success btn-icon" data-action="eventsModule.openCloneModal" data-id="event.id" title="Clone" aria-label="Clone event"><i class="bi bi-files"></i></button>
-              <button class="btn btn-outline-dark btn-icon" data-action="eventsModule.cloneForNextYear" data-id="event.id" title="Clone for Next Year" aria-label="Clone for next year"><i class="bi bi-calendar-plus"></i></button>
+              <button class="btn btn-outline-info btn-icon" data-action="eventsModule.openAttendeesModal" data-id="${event.id}" title="Attendees" aria-label="Attendees"><i class="bi bi-people"></i></button>
+              <button class="btn btn-outline-primary btn-icon" data-action="eventsModule.openEditModal" data-id="${event.id}" title="Edit" aria-label="Edit event"><i class="bi bi-pencil"></i></button>
+              <button class="btn btn-outline-success btn-icon" data-action="eventsModule.openCloneModal" data-id="${event.id}" title="Clone" aria-label="Clone event"><i class="bi bi-files"></i></button>
+              <button class="btn btn-outline-dark btn-icon" data-action="eventsModule.cloneForNextYear" data-id="${event.id}" title="Clone for Next Year" aria-label="Clone for next year"><i class="bi bi-calendar-plus"></i></button>
               <button class="btn btn-outline-danger btn-icon" data-action="eventsModule.deleteEvent" data-args='${JSON.stringify([event.id, eName])}' title="Delete" aria-label="Delete event"><i class="bi bi-trash"></i></button>
             </div>
           </td>
@@ -13447,7 +13447,7 @@ const eventsModule = {
               (
                 e
               ) => `<div class="badge bg-primary d-block mt-1 text-truncate" style="font-size:0.65rem; max-width:100%; cursor:pointer;"
-            title="${utils.escapeHtml(e.event_name)}" data-action="eventsModule.openEditModal" data-id="e.id">${utils.escapeHtml(e.event_name)}</div>`
+            title="${utils.escapeHtml(e.event_name)}" data-action="eventsModule.openEditModal" data-id="${e.id}">${utils.escapeHtml(e.event_name)}</div>`
             )
             .join('')}
         </div>

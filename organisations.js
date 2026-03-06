@@ -780,7 +780,7 @@ const orgsModule = {
         <td class="text-center">
           <input type="checkbox" class="form-check-input"
                  ${isSelected ? 'checked' : ''}
-                 data-on-change="orgsModule.toggleOrgSelection" data-id="org.id">
+                 data-on-change="orgsModule.toggleOrgSelection" data-id="${org.id}">
         </td>
         <td>
           <div class="d-flex align-items-center">
@@ -855,7 +855,7 @@ const orgsModule = {
         <td class="text-center" style="${cv('status')}">
           <select class="form-select form-select-sm border-0 p-0 text-center"
                   style="font-size: 0.75rem; background-position: right 0.25rem center; padding-right: 1.2rem !important; cursor: pointer;"
-                  data-on-change="orgsModule.quickUpdateStatus" data-id="org.id"
+                  data-on-change="orgsModule.quickUpdateStatus" data-id="${org.id}"
                   title="Click to change status">
             ${this._getStatusOptions(org.status || 'prospect')
               .map(
@@ -1076,15 +1076,15 @@ const orgsModule = {
                   </div>`
                 }
                 <input type="file" id="logoUploadInput" class="form-control form-control-sm mb-2"
-                  accept="image/*" data-on-file-change="orgsModule.validateAndUploadLogo" data-id="org.id">
+                  accept="image/*" data-on-file-change="orgsModule.validateAndUploadLogo" data-id="${org.id}">
                 <button type="button" class="btn btn-sm btn-outline-primary w-100 mb-2"
-                  data-action="orgsModule.openLogoGalleryModal" data-id="org.id">
+                  data-action="orgsModule.openLogoGalleryModal" data-id="${org.id}">
                   <i class="bi bi-images me-1"></i>Choose from Media Gallery
                 </button>
                 ${
                   org.website
                     ? `<button type="button" class="btn btn-sm btn-outline-success w-100 mb-2"
-                    data-action="orgsModule.fetchLogoFromWebsite" data-id="org.id">
+                    data-action="orgsModule.fetchLogoFromWebsite" data-id="${org.id}">
                     <i class="bi bi-globe me-1"></i>Fetch from Website
                   </button>`
                     : ''
@@ -1163,7 +1163,7 @@ const orgsModule = {
                     rows="3" style="display: none;" placeholder="e.g., London, Southeast England, National">${utils.escapeHtml(org.catchment_area || '')}</textarea>
                 </div>
                 <hr class="my-2">
-                <button class="btn btn-sm btn-outline-info w-100" data-action="orgsModule.companiesHouseLookup" data-id="org.id">
+                <button class="btn btn-sm btn-outline-info w-100" data-action="orgsModule.companiesHouseLookup" data-id="${org.id}">
                   <i class="bi bi-bank me-1"></i>Companies House Lookup
                 </button>
               </div>
@@ -1200,8 +1200,8 @@ const orgsModule = {
                 <hr class="my-2">
                 <div class="input-group input-group-sm">
                   <input type="text" class="form-control" id="newNoteContent" placeholder="Add a note..."
-                    data-on-keyenter="orgsModule.addThreadedNote" data-id="org.id">
-                  <button class="btn btn-primary" data-action="orgsModule.addThreadedNote" data-id="org.id"><i class="bi bi-send"></i></button>
+                    data-on-keyenter="orgsModule.addThreadedNote" data-id="${org.id}">
+                  <button class="btn btn-primary" data-action="orgsModule.addThreadedNote" data-id="${org.id}"><i class="bi bi-send"></i></button>
                 </div>
               </div>
             </div>
@@ -1312,8 +1312,8 @@ const orgsModule = {
                     }
                   </div>
                   <div class="input-group input-group-sm mt-2">
-                    <input type="text" class="form-control" id="newTagInput" placeholder="Add tag..." data-on-keyenter="orgsModule.addTag" data-id="org.id">
-                    <button class="btn btn-outline-primary" data-action="orgsModule.addTag" data-id="org.id"><i class="bi bi-plus"></i></button>
+                    <input type="text" class="form-control" id="newTagInput" placeholder="Add tag..." data-on-keyenter="orgsModule.addTag" data-id="${org.id}">
+                    <button class="btn btn-outline-primary" data-action="orgsModule.addTag" data-id="${org.id}"><i class="bi bi-plus"></i></button>
                   </div>
                 </div>
               </div>
@@ -1542,7 +1542,7 @@ const orgsModule = {
                 </div>
 
                 <div class="d-flex gap-2">
-                  <button type="button" class="btn btn-primary" data-action="orgsModule.saveWinnerProfile" data-id="org.id">
+                  <button type="button" class="btn btn-primary" data-action="orgsModule.saveWinnerProfile" data-id="${org.id}">
                     <i class="bi bi-save me-2"></i>Save Profile
                   </button>
                   <button type="button" class="btn btn-secondary" data-action="orgsModule.cancelWinnerProfile" data-args='${JSON.stringify([org.id, utils.escapeHtml(org.company_name || '').replace(/'/g, "\\'")])}'>
@@ -1558,7 +1558,7 @@ const orgsModule = {
         <div class="mt-4">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <h6 class="text-muted mb-0"><i class="bi bi-images me-2"></i>Company Images for Marketing (${(companyImages || []).length})</h6>
-            <button type="button" class="btn btn-sm btn-primary" data-action="orgsModule.openUploadImagesModal" data-id="org.id">
+            <button type="button" class="btn btn-sm btn-primary" data-action="orgsModule.openUploadImagesModal" data-id="${org.id}">
               <i class="bi bi-cloud-upload me-1"></i>Upload Images
             </button>
           </div>
@@ -6942,9 +6942,9 @@ const orgsModule = {
                         )
                         .join('') +
                       (remaining > 0
-                        ? `<button class="btn btn-sm btn-outline-secondary w-100 mt-1" data-action="orgsModule.expandKanbanColumn" data-id="stage.key"><i class="bi bi-chevron-down me-1"></i>Show ${remaining} more</button>`
+                        ? `<button class="btn btn-sm btn-outline-secondary w-100 mt-1" data-action="orgsModule.expandKanbanColumn" data-id="${stage.key}"><i class="bi bi-chevron-down me-1"></i>Show ${remaining} more</button>`
                         : isExpanded && stageOrgs.length > 30
-                          ? `<button class="btn btn-sm btn-outline-secondary w-100 mt-1" data-action="orgsModule.collapseKanbanColumn" data-id="stage.key"><i class="bi bi-chevron-up me-1"></i>Show less</button>`
+                          ? `<button class="btn btn-sm btn-outline-secondary w-100 mt-1" data-action="orgsModule.collapseKanbanColumn" data-id="${stage.key}"><i class="bi bi-chevron-up me-1"></i>Show less</button>`
                           : '')
                     );
                   })()}
@@ -7685,7 +7685,7 @@ const orgsModule = {
             return `<div class="col-6">
             <div class="form-check form-switch">
               <input class="form-check-input" type="checkbox" id="colVis_${c.key}" ${checked}
-                     data-on-check="orgsModule.toggleColumnVisibility" data-id="c.key">
+                     data-on-check="orgsModule.toggleColumnVisibility" data-id="${c.key}">
               <label class="form-check-label small" for="colVis_${c.key}">${c.label}</label>
             </div>
           </div>`;
@@ -8975,7 +8975,7 @@ const orgsModule = {
           .map(
             (
               o
-            ) => `<div class="border rounded px-2 py-1 small"><a href="#" class="text-primary text-decoration-none" data-action="orgsModule.openCompanyProfile" data-id="o.id">${utils.escapeHtml(o.company_name)}</a>
+            ) => `<div class="border rounded px-2 py-1 small"><a href="#" class="text-primary text-decoration-none" data-action="orgsModule.openCompanyProfile" data-id="${o.id}">${utils.escapeHtml(o.company_name)}</a>
         <span class="text-muted ms-1">${utils.escapeHtml(o.region || '')}</span></div>`
           )
           .join('')}
@@ -9325,7 +9325,7 @@ const orgsModule = {
           ${org.email ? `<div style="font-size:12px;"><i class="bi bi-envelope"></i> ${utils.escapeHtml(org.email)}</div>` : ''}
           ${org.phone ? `<div style="font-size:12px;"><i class="bi bi-telephone"></i> ${utils.escapeHtml(org.phone)}</div>` : ''}
           ${org.website ? `<div style="font-size:12px;"><i class="bi bi-globe"></i> <a href="${utils.escapeHtml(org.website)}" target="_blank">${utils.escapeHtml(org.website)}</a></div>` : ''}
-          <div style="margin-top:8px;"><button class="btn btn-sm btn-primary" style="font-size:11px;" data-action="orgsModule.openCompanyProfile" data-id="org.id"><i class="bi bi-eye me-1"></i>View Profile</button></div>
+          <div style="margin-top:8px;"><button class="btn btn-sm btn-primary" style="font-size:11px;" data-action="orgsModule.openCompanyProfile" data-id="${org.id}"><i class="bi bi-eye me-1"></i>View Profile</button></div>
         </div>`);
         this._mapMarkers.push(marker);
         plotted++;

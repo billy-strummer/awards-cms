@@ -264,13 +264,13 @@ const crmModule = {
           </td>
           <td>
             <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-primary" data-action="crmModule.viewCompanyProfile" data-id="company.id" title="View Profile" aria-label="View company profile">
+              <button class="btn btn-outline-primary" data-action="crmModule.viewCompanyProfile" data-id="${company.id}" title="View Profile" aria-label="View company profile">
                 <i class="bi bi-eye"></i>
               </button>
-              <button class="btn btn-outline-success" data-action="crmModule.logCommunication" data-id="company.id" title="Log Communication" aria-label="Log communication">
+              <button class="btn btn-outline-success" data-action="crmModule.logCommunication" data-id="${company.id}" title="Log Communication" aria-label="Log communication">
                 <i class="bi bi-chat-dots"></i>
               </button>
-              <button class="btn btn-outline-info" data-action="crmModule.createDeal" data-id="company.id" title="Create Deal" aria-label="Create deal">
+              <button class="btn btn-outline-info" data-action="crmModule.createDeal" data-id="${company.id}" title="Create Deal" aria-label="Create deal">
                 <i class="bi bi-cash-coin"></i>
               </button>
             </div>
@@ -450,13 +450,13 @@ const crmModule = {
           <td>${followUpBadge}</td>
           <td>
             <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-primary" data-action="crmModule.viewCommunication" data-id="comm.id" title="View Details">
+              <button class="btn btn-outline-primary" data-action="crmModule.viewCommunication" data-id="${comm.id}" title="View Details">
                 <i class="bi bi-eye"></i>
               </button>
-              <button class="btn btn-outline-success" data-action="crmModule.editCommunication" data-id="comm.id" title="Edit">
+              <button class="btn btn-outline-success" data-action="crmModule.editCommunication" data-id="${comm.id}" title="Edit">
                 <i class="bi bi-pencil"></i>
               </button>
-              <button class="btn btn-outline-danger" data-action="crmModule.deleteCommunication" data-id="comm.id" title="Delete">
+              <button class="btn btn-outline-danger" data-action="crmModule.deleteCommunication" data-id="${comm.id}" title="Delete">
                 <i class="bi bi-trash"></i>
               </button>
             </div>
@@ -635,13 +635,13 @@ const crmModule = {
           <td>${statusBadge}</td>
           <td>
             <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-primary" data-action="crmModule.viewDeal" data-id="deal.id" title="View Details">
+              <button class="btn btn-outline-primary" data-action="crmModule.viewDeal" data-id="${deal.id}" title="View Details">
                 <i class="bi bi-eye"></i>
               </button>
-              <button class="btn btn-outline-success" data-action="crmModule.editDeal" data-id="deal.id" title="Edit">
+              <button class="btn btn-outline-success" data-action="crmModule.editDeal" data-id="${deal.id}" title="Edit">
                 <i class="bi bi-pencil"></i>
               </button>
-              <button class="btn btn-outline-danger" data-action="crmModule.deleteDeal" data-id="deal.id" title="Delete">
+              <button class="btn btn-outline-danger" data-action="crmModule.deleteDeal" data-id="${deal.id}" title="Delete">
                 <i class="bi bi-trash"></i>
               </button>
             </div>
@@ -798,13 +798,13 @@ const crmModule = {
           <td>${followUpBadge}</td>
           <td>
             <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-primary" data-action="crmModule.viewMeeting" data-id="meeting.id" title="View Details">
+              <button class="btn btn-outline-primary" data-action="crmModule.viewMeeting" data-id="${meeting.id}" title="View Details">
                 <i class="bi bi-eye"></i>
               </button>
-              <button class="btn btn-outline-success" data-action="crmModule.editMeeting" data-id="meeting.id" title="Edit">
+              <button class="btn btn-outline-success" data-action="crmModule.editMeeting" data-id="${meeting.id}" title="Edit">
                 <i class="bi bi-pencil"></i>
               </button>
-              <button class="btn btn-outline-danger" data-action="crmModule.deleteMeeting" data-id="meeting.id" title="Delete">
+              <button class="btn btn-outline-danger" data-action="crmModule.deleteMeeting" data-id="${meeting.id}" title="Delete">
                 <i class="bi bi-trash"></i>
               </button>
             </div>
@@ -902,7 +902,7 @@ const crmModule = {
               <button class="btn btn-sm btn-outline-primary flex-grow-1" data-action="crmModule.viewSegmentCompanies" data-args='${JSON.stringify([segment.id, utils.escapeHtml(segment.segment_name).replace(/'/g, "\\'")])}'>
                 <i class="bi bi-eye me-1"></i>View Companies
               </button>
-              <button class="btn btn-sm btn-outline-secondary" data-action="crmModule.editSegment" data-id="segment.id" title="Edit Segment">
+              <button class="btn btn-sm btn-outline-secondary" data-action="crmModule.editSegment" data-id="${segment.id}" title="Edit Segment">
                 <i class="bi bi-pencil"></i>
               </button>
             </div>
@@ -1509,7 +1509,7 @@ const crmModule = {
               </div>
               <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-success" data-action="crmModule.updateCommunication" data-id="comm.id">
+                <button type="button" class="btn btn-success" data-action="crmModule.updateCommunication" data-id="${comm.id}">
                   <i class="bi bi-save me-2"></i>Save Changes
                 </button>
               </div>
@@ -1797,7 +1797,7 @@ const crmModule = {
               </div>
               <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-success" data-action="crmModule.updateDeal" data-id="deal.id">
+                <button type="button" class="btn btn-success" data-action="crmModule.updateDeal" data-id="${deal.id}">
                   <i class="bi bi-save me-2"></i>Save Changes
                 </button>
               </div>
@@ -2091,7 +2091,7 @@ const crmModule = {
               </div>
               <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-success" data-action="crmModule.updateMeeting" data-id="meeting.id">
+                <button type="button" class="btn btn-success" data-action="crmModule.updateMeeting" data-id="${meeting.id}">
                   <i class="bi bi-save me-2"></i>Save Changes
                 </button>
               </div>
@@ -2408,7 +2408,7 @@ const crmModule = {
               </div>
               <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-success" data-action="crmModule.updateSegment" data-id="segment.id">
+                <button type="button" class="btn btn-success" data-action="crmModule.updateSegment" data-id="${segment.id}">
                   <i class="bi bi-save me-2"></i>Save Changes
                 </button>
               </div>

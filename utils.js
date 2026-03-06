@@ -2707,6 +2707,7 @@ const actionRegistry = {
     // Also handle keyboard activation (Enter/Space) for non-button elements
     document.addEventListener('keydown', (event) => {
       if (event.key !== 'Enter' && event.key !== ' ') return;
+      if (!event.target || !event.target.closest) return;
       const el = event.target.closest('[data-action]');
       if (!el) return;
       if (el.tagName === 'BUTTON' || el.tagName === 'A' || el.tagName === 'INPUT') return; // browser handles these
@@ -2716,6 +2717,7 @@ const actionRegistry = {
 
     // Handle change events (select, checkbox, radio, file inputs)
     document.addEventListener('change', (event) => {
+      if (!event.target || !event.target.closest) return;
       const el = event.target.closest('[data-on-change]');
       if (!el) return;
       const actionName = el.getAttribute('data-on-change');
@@ -2732,6 +2734,7 @@ const actionRegistry = {
 
     // Handle input events (text fields, ranges, etc.)
     document.addEventListener('input', (event) => {
+      if (!event.target || !event.target.closest) return;
       const el = event.target.closest('[data-on-input]');
       if (!el) return;
       const actionName = el.getAttribute('data-on-input');
@@ -2743,6 +2746,7 @@ const actionRegistry = {
 
     // Handle submit events (forms)
     document.addEventListener('submit', (event) => {
+      if (!event.target || !event.target.closest) return;
       const form = event.target.closest('[data-on-submit]');
       if (!form) return;
       event.preventDefault();
@@ -2785,6 +2789,7 @@ const actionRegistry = {
     // Handle Enter key on input fields (data-on-keyenter)
     document.addEventListener('keydown', (event) => {
       if (event.key !== 'Enter') return;
+      if (!event.target || !event.target.closest) return;
       const el = event.target.closest('[data-on-keyenter]');
       if (!el) return;
       event.preventDefault();
@@ -2815,6 +2820,7 @@ const actionRegistry = {
     // Handle Escape key on input fields (data-on-keyescape)
     document.addEventListener('keydown', (event) => {
       if (event.key !== 'Escape') return;
+      if (!event.target || !event.target.closest) return;
       const el = event.target.closest('[data-on-keyescape]');
       if (!el) return;
       const actionName = el.getAttribute('data-on-keyescape');
@@ -2843,6 +2849,7 @@ const actionRegistry = {
 
     // Handle change events for checkboxes (passes el.checked instead of el.value)
     document.addEventListener('change', (event) => {
+      if (!event.target || !event.target.closest) return;
       const el = event.target.closest('[data-on-check]');
       if (!el) return;
       const actionName = el.getAttribute('data-on-check');
@@ -2859,6 +2866,7 @@ const actionRegistry = {
 
     // Handle change events for file inputs (passes the element itself)
     document.addEventListener('change', (event) => {
+      if (!event.target || !event.target.closest) return;
       const el = event.target.closest('[data-on-file-change]');
       if (!el) return;
       const actionName = el.getAttribute('data-on-file-change');
@@ -2875,6 +2883,7 @@ const actionRegistry = {
 
     // Handle mouseover events (data-on-mouseover)
     document.addEventListener('mouseover', (event) => {
+      if (!event.target || !event.target.closest) return;
       const el = event.target.closest('[data-on-mouseover]');
       if (!el) return;
       const actionName = el.getAttribute('data-on-mouseover');
@@ -2886,6 +2895,7 @@ const actionRegistry = {
 
     // Handle mouseout events (data-on-mouseout)
     document.addEventListener('mouseout', (event) => {
+      if (!event.target || !event.target.closest) return;
       const el = event.target.closest('[data-on-mouseout]');
       if (!el) return;
       const actionName = el.getAttribute('data-on-mouseout');
@@ -2897,6 +2907,7 @@ const actionRegistry = {
 
     // Handle blur events (data-on-blur)
     document.addEventListener('focusout', (event) => {
+      if (!event.target || !event.target.closest) return;
       const el = event.target.closest('[data-on-blur]');
       if (!el) return;
       const actionName = el.getAttribute('data-on-blur');
@@ -2932,6 +2943,7 @@ const actionRegistry = {
     document.addEventListener(
       'mouseenter',
       (event) => {
+        if (!event.target || !event.target.closest) return;
         const el = event.target.closest('[data-on-mouseenter]');
         if (!el) return;
         const actionName = el.getAttribute('data-on-mouseenter');
@@ -2952,6 +2964,7 @@ const actionRegistry = {
     document.addEventListener(
       'mouseleave',
       (event) => {
+        if (!event.target || !event.target.closest) return;
         const el = event.target.closest('[data-on-mouseleave]');
         if (!el) return;
         const actionName = el.getAttribute('data-on-mouseleave');

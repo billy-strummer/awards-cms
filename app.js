@@ -1326,7 +1326,9 @@ document.addEventListener('DOMContentLoaded', function () {
   // ==========================================
   // STEP 8: Check for existing session
   // ==========================================
-  authModule.checkSession();
+  authModule.checkSession().then(() => {
+    authModule.testConnection();
+  });
 
   // Safety timeout: if splash screen is still visible after 10s, force show login
   setTimeout(() => {
@@ -1357,9 +1359,11 @@ document.addEventListener('DOMContentLoaded', function () {
   // ==========================================
   // Log page load performance
   window.addEventListener('load', () => {
-    const perfData = performance.timing;
-    const pageLoadTime = perfData.loadEventEnd - perfData.navigationStart;
-    console.warn(`📊 Page loaded in ${pageLoadTime}ms`);
+    // Use setTimeout to ensure loadEventEnd is populated after the load event completes
+    setTimeout(() => {
+      const pageLoadTime = performance.now();
+      console.warn(`📊 Page loaded in ${Math.round(pageLoadTime)}ms`);
+    }, 0);
   });
 
   // ==========================================

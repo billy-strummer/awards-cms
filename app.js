@@ -938,6 +938,7 @@ document.addEventListener('DOMContentLoaded', function () {
   // When a dropdown opens inside a table, elevate its row so the menu
   // renders above buttons/badges in every other row.
   document.addEventListener('show.bs.dropdown', function (e) {
+    if (!e.target || !e.target.closest) return;
     const tr = e.target.closest('.table-responsive tr');
     if (tr) {
       tr.classList.add('dropdown-row-active');
@@ -946,6 +947,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   });
   document.addEventListener('hide.bs.dropdown', function (e) {
+    if (!e.target || !e.target.closest) return;
     const tr = e.target.closest('.table-responsive tr');
     if (tr) {
       tr.classList.remove('dropdown-row-active');
@@ -965,6 +967,7 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
   function handleStatCardAction(e) {
+    if (!e.target || !e.target.closest) return;
     const card = e.target.closest('[data-stat-filter]');
     if (!card) return;
 
@@ -1005,7 +1008,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
   document.addEventListener('click', handleStatCardAction);
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter' || e.key === ' ') {
+    if ((e.key === 'Enter' || e.key === ' ') && e.target && e.target.closest) {
       const card = e.target.closest('[data-stat-filter]');
       if (card) {
         e.preventDefault();
@@ -1576,24 +1579,27 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Route through ModuleRegistry (which also exposes on window for auth.js cleanup)
-    ModuleRegistry.register('_cmsRealtimeChannel', STATE.client
-      .channel('cms-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'awards' }, () => debouncedHandlers.awards())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'winners' }, () => debouncedHandlers.winners())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'entries' }, () => debouncedHandlers.entries())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => debouncedHandlers.events())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'invoices' }, () => debouncedHandlers.invoices())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'organisations' }, () =>
-        debouncedHandlers.organisations()
-      )
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'payments' }, () => debouncedHandlers.payments())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'communications' }, () =>
-        debouncedHandlers.communications()
-      )
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'deals' }, () => debouncedHandlers.deals())
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') console.warn('Realtime subscriptions active');
-      }));
+    ModuleRegistry.register(
+      '_cmsRealtimeChannel',
+      STATE.client
+        .channel('cms-realtime')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'awards' }, () => debouncedHandlers.awards())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'winners' }, () => debouncedHandlers.winners())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'entries' }, () => debouncedHandlers.entries())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => debouncedHandlers.events())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'invoices' }, () => debouncedHandlers.invoices())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'organisations' }, () =>
+          debouncedHandlers.organisations()
+        )
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'payments' }, () => debouncedHandlers.payments())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'communications' }, () =>
+          debouncedHandlers.communications()
+        )
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'deals' }, () => debouncedHandlers.deals())
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') console.warn('Realtime subscriptions active');
+        })
+    );
   }
   // Delay realtime setup until after auth completes
   setTimeout(setupRealtimeSync, 3000);

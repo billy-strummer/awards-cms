@@ -1240,6 +1240,7 @@ const marketingModule = {
 // Event delegation – handles all data-action clicks for marketingModule
 // ---------------------------------------------------------------------------
 document.addEventListener('click', (e) => {
+  if (!e.target || !e.target.closest) return;
   const target = e.target.closest('[data-action]');
   if (!target) return;
 

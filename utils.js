@@ -2661,6 +2661,7 @@ const actionRegistry = {
    */
   init() {
     document.addEventListener('click', (event) => {
+      if (!event.target || !event.target.closest) return;
       const el = event.target.closest('[data-action]');
       if (!el) return;
 
@@ -2754,6 +2755,7 @@ const actionRegistry = {
 
     // Handle dblclick events (inline edit, etc.)
     document.addEventListener('dblclick', (event) => {
+      if (!event.target || !event.target.closest) return;
       const el = event.target.closest('[data-on-dblclick]');
       if (!el) return;
       const actionName = el.getAttribute('data-on-dblclick');
@@ -2911,6 +2913,7 @@ const actionRegistry = {
 
     // Handle mousedown events (data-on-mousedown)
     document.addEventListener('mousedown', (event) => {
+      if (!event.target || !event.target.closest) return;
       const el = event.target.closest('[data-on-mousedown]');
       if (!el) return;
       const actionName = el.getAttribute('data-on-mousedown');

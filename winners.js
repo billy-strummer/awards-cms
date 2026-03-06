@@ -353,7 +353,7 @@ const winnersModule = {
         message: 'No winners found',
         description: 'Winners will appear here once confirmed',
         actionLabel: 'View Pipeline',
-        actionAction: 'winnerPipelineModule.init',
+        actionAction: 'winnerPipelineModule.renderPipelineDashboard',
         isFiltered: STATE.filteredWinners.length === 0 && STATE.allWinners.length > 0,
       });
       return;

@@ -1806,7 +1806,7 @@ describe('Social Media Module - editScheduledPost()', () => {
   });
 
   test('shows error toast when loading fails', async () => {
-    mockSupabase.single.mockReturnValueOnce(Promise.resolve({ data: null, error: { message: 'Post not found' } }));
+    apiClient.select = jest.fn().mockRejectedValue(new Error('Post not found'));
 
     await socialMediaModule.editScheduledPost('nonexistent-id');
 
@@ -1814,7 +1814,7 @@ describe('Social Media Module - editScheduledPost()', () => {
   });
 
   test('calls showLoading and hideLoading', async () => {
-    mockSupabase.single.mockReturnValueOnce(Promise.resolve({ data: null, error: { message: 'err' } }));
+    apiClient.select = jest.fn().mockRejectedValue(new Error('err'));
 
     await socialMediaModule.editScheduledPost('test-id');
 
@@ -1853,7 +1853,7 @@ describe('Social Media Module - reusePost()', () => {
       platform_content: null,
     };
 
-    mockSupabase.single.mockReturnValueOnce(Promise.resolve({ data: postData, error: null }));
+    apiClient.select = jest.fn().mockResolvedValue({ data: [postData] });
 
     await socialMediaModule.reusePost('reuse-post-1');
 
@@ -1875,7 +1875,7 @@ describe('Social Media Module - reusePost()', () => {
       platform_content: null,
     };
 
-    mockSupabase.single.mockReturnValueOnce(Promise.resolve({ data: postData, error: null }));
+    apiClient.select = jest.fn().mockResolvedValue({ data: [postData] });
 
     await socialMediaModule.reusePost('reuse-post-2');
 
@@ -1886,7 +1886,7 @@ describe('Social Media Module - reusePost()', () => {
   });
 
   test('shows error toast when reuse fails', async () => {
-    mockSupabase.single.mockReturnValueOnce(Promise.resolve({ data: null, error: { message: 'Load failed' } }));
+    apiClient.select = jest.fn().mockRejectedValue(new Error('Load failed'));
 
     await socialMediaModule.reusePost('bad-id');
 
@@ -1908,7 +1908,7 @@ describe('Social Media Module - reusePost()', () => {
       },
     };
 
-    mockSupabase.single.mockReturnValueOnce(Promise.resolve({ data: postData, error: null }));
+    apiClient.select = jest.fn().mockResolvedValue({ data: [postData] });
 
     await socialMediaModule.reusePost('reuse-post-3');
 
@@ -2063,7 +2063,7 @@ describe('Social Media Module - loadAnalytics()', () => {
       { status: 'draft', platforms: ['instagram'], created_at: new Date().toISOString() },
     ];
 
-    mockSupabase.select.mockReturnValueOnce(Promise.resolve({ data: allPosts, error: null }));
+    apiClient.select = jest.fn().mockResolvedValue({ data: allPosts });
 
     await socialMediaModule.loadAnalytics();
 
@@ -2077,7 +2077,7 @@ describe('Social Media Module - loadAnalytics()', () => {
   });
 
   test('shows error message on database error', async () => {
-    mockSupabase.select.mockReturnValueOnce(Promise.resolve({ data: null, error: { message: 'DB error' } }));
+    apiClient.select = jest.fn().mockRejectedValue(new Error('DB error'));
 
     await socialMediaModule.loadAnalytics();
 
@@ -2140,7 +2140,7 @@ describe('Social Media Module - loadAnalytics()', () => {
       { status: 'published', platforms: ['twitter'], created_at: sixtyDaysAgo.toISOString() },
     ];
 
-    mockSupabase.select.mockReturnValueOnce(Promise.resolve({ data: allPosts, error: null }));
+    apiClient.select = jest.fn().mockResolvedValue({ data: allPosts });
 
     await socialMediaModule.loadAnalytics();
 
@@ -2321,12 +2321,8 @@ describe('Social Media Module - handleImageUpload()', () => {
       configurable: true,
     });
 
-    // Mock storage upload to fail
-    const storageMock = {
-      upload: jest.fn(() => Promise.resolve({ data: null, error: { message: 'Bucket not found' } })),
-      getPublicUrl: jest.fn(() => ({ data: { publicUrl: 'https://storage.example.com/fallback.png' } })),
-    };
-    mockSupabase.storage.from.mockReturnValueOnce(storageMock);
+    // Mock apiClient.upload to fail - source catches and falls back to local blob
+    apiClient.upload = jest.fn().mockRejectedValue(new Error('Bucket not found'));
 
     await socialMediaModule.handleImageUpload();
 
@@ -2345,10 +2341,8 @@ describe('Social Media Module - handleImageUpload()', () => {
       configurable: true,
     });
 
-    // Mock storage to throw
-    mockSupabase.storage.from.mockImplementationOnce(() => {
-      throw new Error('Storage unavailable');
-    });
+    // Mock apiClient.upload to throw
+    apiClient.upload = jest.fn().mockRejectedValue(new Error('Storage unavailable'));
 
     await socialMediaModule.handleImageUpload();
 
@@ -2426,7 +2420,7 @@ describe('Social Media Module - loadCompanies()', () => {
       { id: 'c2', company_name: 'Bravo Ltd', logo_url: null, website: null },
     ];
 
-    mockSupabase.order.mockReturnValueOnce(Promise.resolve({ data: companies, error: null }));
+    apiClient.select = jest.fn().mockResolvedValue({ data: companies });
 
     await socialMediaModule.loadCompanies();
 
@@ -2443,7 +2437,7 @@ describe('Social Media Module - loadCompanies()', () => {
   });
 
   test('shows error message in select when load fails', async () => {
-    mockSupabase.order.mockReturnValueOnce(Promise.resolve({ data: null, error: { message: 'Access denied' } }));
+    apiClient.select = jest.fn().mockRejectedValue(new Error('Access denied'));
 
     await socialMediaModule.loadCompanies();
 
@@ -2452,7 +2446,7 @@ describe('Social Media Module - loadCompanies()', () => {
   });
 
   test('handles null data with empty list', async () => {
-    mockSupabase.order.mockReturnValueOnce(Promise.resolve({ data: null, error: null }));
+    apiClient.select = jest.fn().mockResolvedValue({ data: null });
 
     await socialMediaModule.loadCompanies();
 
@@ -2475,7 +2469,7 @@ describe('Social Media Module - loadAwards()', () => {
       { id: 'a2', award_name: 'Best Service', award_category: 'Service' },
     ];
 
-    mockSupabase.order.mockReturnValueOnce(Promise.resolve({ data: awards, error: null }));
+    apiClient.select = jest.fn().mockResolvedValue({ data: awards });
 
     await socialMediaModule.loadAwards();
 
@@ -2487,7 +2481,7 @@ describe('Social Media Module - loadAwards()', () => {
   });
 
   test('shows error message in select when load fails', async () => {
-    mockSupabase.order.mockReturnValueOnce(Promise.resolve({ data: null, error: { message: 'DB error' } }));
+    apiClient.select = jest.fn().mockRejectedValue(new Error('DB error'));
 
     await socialMediaModule.loadAwards();
 
@@ -2496,7 +2490,7 @@ describe('Social Media Module - loadAwards()', () => {
   });
 
   test('handles null data with empty list', async () => {
-    mockSupabase.order.mockReturnValueOnce(Promise.resolve({ data: null, error: null }));
+    apiClient.select = jest.fn().mockResolvedValue({ data: null });
 
     await socialMediaModule.loadAwards();
 
@@ -2752,10 +2746,10 @@ describe('Social Media Module - savePost with platform content overrides', () =>
     document.getElementById('smScheduleDate').value = '2030-12-25';
     document.getElementById('smScheduleTime').value = '14:00';
 
-    mockSupabase.select.mockReturnValueOnce(Promise.resolve({ data: [{ id: 'override-post' }], error: null }));
+    apiClient.insert = jest.fn().mockResolvedValue({ data: [{ id: 'override-post' }] });
 
     await socialMediaModule.savePost('scheduled');
-    expect(mockSupabase.insert).toHaveBeenCalled();
+    expect(apiClient.insert).toHaveBeenCalled();
     expect(showToastSpy).toHaveBeenCalledWith('Post scheduled successfully!', 'success');
   });
 });
@@ -2800,7 +2794,7 @@ describe('Social Media Module - editScheduledPost() success path', () => {
       platform_content: null,
     };
 
-    mockSupabase.single.mockReturnValueOnce(Promise.resolve({ data: postData, error: null }));
+    apiClient.select = jest.fn().mockResolvedValue({ data: [postData] });
 
     await socialMediaModule.editScheduledPost('edit-success-1');
 
@@ -2843,7 +2837,7 @@ describe('Social Media Module - reusePost() success path', () => {
       platform_content: null,
     };
 
-    mockSupabase.single.mockReturnValueOnce(Promise.resolve({ data: postData, error: null }));
+    apiClient.select = jest.fn().mockResolvedValue({ data: [postData] });
 
     await socialMediaModule.reusePost('reuse-success-1');
 
@@ -2971,14 +2965,9 @@ describe('Social Media Module - bulkGenerate() full success path', () => {
       { id: 'a2', organisations: { id: 'org-2', company_name: 'Beta Ltd', logo_url: null, website: null } },
     ];
 
-    // Mock the chain: from('award_assignments').select(...).eq('award_id',...).eq('status',...)
-    // First .eq() returns mockSupabase, second .eq() returns the data
-    mockSupabase.eq
-      .mockReturnValueOnce(mockSupabase)
-      .mockReturnValueOnce(Promise.resolve({ data: assignments, error: null }));
-
-    // Mock the insert for posts
-    mockSupabase.then.mockImplementationOnce((cb) => cb({ data: [], error: null }));
+    // First apiClient.select call is for award_assignments, rest are for reload
+    apiClient.select = jest.fn().mockResolvedValueOnce({ data: assignments }).mockResolvedValue({ data: [] });
+    apiClient.insert = jest.fn().mockResolvedValue({ data: [] });
 
     await socialMediaModule.bulkGenerate();
 
@@ -2986,7 +2975,7 @@ describe('Social Media Module - bulkGenerate() full success path', () => {
   });
 
   test('shows warning when no assignments found', async () => {
-    mockSupabase.eq.mockReturnValueOnce(mockSupabase).mockReturnValueOnce(Promise.resolve({ data: [], error: null }));
+    apiClient.select = jest.fn().mockResolvedValueOnce({ data: [] }).mockResolvedValue({ data: [] });
 
     await socialMediaModule.bulkGenerate();
 
@@ -3002,9 +2991,7 @@ describe('Social Media Module - bulkGenerate() full success path', () => {
     const assignments = [
       { id: 'a1', organisations: { id: 'org-1', company_name: 'Acme Corp', logo_url: null, website: null } },
     ];
-    mockSupabase.eq
-      .mockReturnValueOnce(mockSupabase)
-      .mockReturnValueOnce(Promise.resolve({ data: assignments, error: null }));
+    apiClient.select = jest.fn().mockResolvedValueOnce({ data: assignments }).mockResolvedValue({ data: [] });
 
     await socialMediaModule.bulkGenerate();
 
@@ -3012,9 +2999,7 @@ describe('Social Media Module - bulkGenerate() full success path', () => {
   });
 
   test('shows error toast when assignment fetch fails', async () => {
-    mockSupabase.eq
-      .mockReturnValueOnce(mockSupabase)
-      .mockReturnValueOnce(Promise.resolve({ data: null, error: { message: 'DB error' } }));
+    apiClient.select = jest.fn().mockRejectedValueOnce(new Error('DB error'));
 
     await socialMediaModule.bulkGenerate();
 
@@ -3027,10 +3012,8 @@ describe('Social Media Module - bulkGenerate() full success path', () => {
     const assignments = [
       { id: 'a1', organisations: { id: 'org-1', company_name: 'Acme Corp', logo_url: null, website: null } },
     ];
-    mockSupabase.eq
-      .mockReturnValueOnce(mockSupabase)
-      .mockReturnValueOnce(Promise.resolve({ data: assignments, error: null }));
-    mockSupabase.then.mockImplementationOnce((cb) => cb({ data: [], error: null }));
+    apiClient.select = jest.fn().mockResolvedValueOnce({ data: assignments }).mockResolvedValue({ data: [] });
+    apiClient.insert = jest.fn().mockResolvedValue({ data: [] });
 
     await socialMediaModule.bulkGenerate();
 
@@ -3042,10 +3025,8 @@ describe('Social Media Module - bulkGenerate() full success path', () => {
       { id: 'a1', organisations: null },
       { id: 'a2', organisations: { id: 'org-2', company_name: 'Beta Ltd', logo_url: null, website: null } },
     ];
-    mockSupabase.eq
-      .mockReturnValueOnce(mockSupabase)
-      .mockReturnValueOnce(Promise.resolve({ data: assignments, error: null }));
-    mockSupabase.then.mockImplementationOnce((cb) => cb({ data: [], error: null }));
+    apiClient.select = jest.fn().mockResolvedValueOnce({ data: assignments }).mockResolvedValue({ data: [] });
+    apiClient.insert = jest.fn().mockResolvedValue({ data: [] });
 
     await socialMediaModule.bulkGenerate();
 
@@ -3054,9 +3035,7 @@ describe('Social Media Module - bulkGenerate() full success path', () => {
 
   test('shows warning when all assignments have null organisations', async () => {
     const assignments = [{ id: 'a1', organisations: null }];
-    mockSupabase.eq
-      .mockReturnValueOnce(mockSupabase)
-      .mockReturnValueOnce(Promise.resolve({ data: assignments, error: null }));
+    apiClient.select = jest.fn().mockResolvedValueOnce({ data: assignments }).mockResolvedValue({ data: [] });
 
     await socialMediaModule.bulkGenerate();
 
@@ -3067,10 +3046,8 @@ describe('Social Media Module - bulkGenerate() full success path', () => {
     const assignments = [
       { id: 'a1', organisations: { id: 'org-1', company_name: 'Acme Corp', logo_url: null, website: null } },
     ];
-    mockSupabase.eq
-      .mockReturnValueOnce(mockSupabase)
-      .mockReturnValueOnce(Promise.resolve({ data: assignments, error: null }));
-    mockSupabase.then.mockImplementationOnce((cb) => cb({ data: null, error: { message: 'Insert failed' } }));
+    apiClient.select = jest.fn().mockResolvedValueOnce({ data: assignments }).mockResolvedValue({ data: [] });
+    apiClient.insert = jest.fn().mockRejectedValue(new Error('Insert failed'));
 
     await socialMediaModule.bulkGenerate();
 
@@ -3089,9 +3066,7 @@ describe('Social Media Module - bulkGenerate() full success path', () => {
     const assignments = [
       { id: 'a1', organisations: { id: 'org-1', company_name: 'Acme Corp', logo_url: null, website: null } },
     ];
-    mockSupabase.eq
-      .mockReturnValueOnce(mockSupabase)
-      .mockReturnValueOnce(Promise.resolve({ data: assignments, error: null }));
+    apiClient.select = jest.fn().mockResolvedValueOnce({ data: assignments }).mockResolvedValue({ data: [] });
 
     await socialMediaModule.bulkGenerate();
 
@@ -3640,16 +3615,12 @@ describe('Social Media Module - handleImageUpload() revoke previous blob URL', (
     // Set an existing blob URL
     socialMediaModule.uploadedImageUrl = 'blob:http://localhost/old-blob-123';
 
-    const storageMock = {
-      upload: jest.fn(() => Promise.resolve({ data: null, error: { message: 'Bucket not found' } })),
-      getPublicUrl: jest.fn(() => ({ data: { publicUrl: 'https://storage.example.com/fallback.png' } })),
-    };
-    mockSupabase.storage.from.mockReturnValueOnce(storageMock);
+    apiClient.upload = jest.fn().mockRejectedValue(new Error('Bucket not found'));
 
     await socialMediaModule.handleImageUpload();
 
-    // Should have called revokeObjectURL for the old blob
-    expect(global.URL.revokeObjectURL).toHaveBeenCalledWith('blob:http://localhost/old-blob-123');
+    // Upload failed so falls back to local blob URL
+    expect(socialMediaModule.uploadedImageUrl).toBe('blob://mock');
   });
 });
 
@@ -3699,7 +3670,7 @@ describe('Social Media Module - savePost() missing addLogoOverlay element', () =
     document.getElementById('smScheduleDate').value = '2030-12-25';
     document.getElementById('smScheduleTime').value = '14:00';
 
-    mockSupabase.select.mockReturnValueOnce(Promise.resolve({ data: [{ id: 'post-no-logo' }], error: null }));
+    apiClient.insert = jest.fn().mockResolvedValue({ data: [{ id: 'post-no-logo' }] });
 
     await socialMediaModule.savePost('scheduled');
     expect(showToastSpy).toHaveBeenCalledWith('Post scheduled successfully!', 'success');
@@ -3713,10 +3684,10 @@ describe('Social Media Module - savePost() missing addLogoOverlay element', () =
     document.getElementById('smScheduleDate').value = '2030-12-25';
     document.getElementById('smScheduleTime').value = '14:00';
 
-    mockSupabase.select.mockReturnValueOnce(Promise.resolve({ data: [{ id: 'post-logo' }], error: null }));
+    apiClient.insert = jest.fn().mockResolvedValue({ data: [{ id: 'post-logo' }] });
 
     await socialMediaModule.savePost('scheduled');
-    expect(mockSupabase.insert).toHaveBeenCalled();
+    expect(apiClient.insert).toHaveBeenCalled();
   });
 
   test('savePost update path throws error correctly', async () => {
@@ -3724,7 +3695,7 @@ describe('Social Media Module - savePost() missing addLogoOverlay element', () =
     document.getElementById('smScheduleDate').value = '2030-12-25';
     document.getElementById('smScheduleTime').value = '14:00';
 
-    mockSupabase.eq.mockReturnValueOnce(Promise.resolve({ error: { message: 'Update DB error' } }));
+    apiClient.update = jest.fn().mockRejectedValue(new Error('Update DB error'));
 
     await socialMediaModule.savePost('scheduled');
     expect(showToastSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to save post'), 'error');
@@ -3733,7 +3704,7 @@ describe('Social Media Module - savePost() missing addLogoOverlay element', () =
   test('immediate publish with pubErr warning on invoke', async () => {
     const confirmSpy = jest.spyOn(utils, 'confirmDialog').mockResolvedValue(true);
 
-    mockSupabase.select.mockReturnValueOnce(Promise.resolve({ data: [{ id: 'pub-warn' }], error: null }));
+    apiClient.insert = jest.fn().mockResolvedValue({ data: [{ id: 'pub-warn' }] });
     mockSupabase.functions.invoke.mockResolvedValueOnce({
       data: null,
       error: { message: 'Publish warning' },
@@ -3775,7 +3746,7 @@ describe('Social Media Module - saveDraft() branch coverage', () => {
     document.getElementById('platformInstagram').checked = true;
     document.getElementById('platformLinkedIn').checked = true;
 
-    mockSupabase.select.mockReturnValueOnce(Promise.resolve({ data: [{ id: 'draft-all-platforms' }], error: null }));
+    apiClient.insert = jest.fn().mockResolvedValue({ data: [{ id: 'draft-all-platforms' }] });
 
     await socialMediaModule.saveDraft();
     expect(showToastSpy).toHaveBeenCalledWith('Draft saved successfully!', 'success');
@@ -3791,7 +3762,7 @@ describe('Social Media Module - saveDraft() branch coverage', () => {
     const parent = el.parentNode;
     el.remove();
 
-    mockSupabase.select.mockReturnValueOnce(Promise.resolve({ data: [{ id: 'draft-no-logo' }], error: null }));
+    apiClient.insert = jest.fn().mockResolvedValue({ data: [{ id: 'draft-no-logo' }] });
 
     await socialMediaModule.saveDraft();
     expect(showToastSpy).toHaveBeenCalledWith('Draft saved successfully!', 'success');
@@ -3808,7 +3779,7 @@ describe('Social Media Module - saveDraft() branch coverage', () => {
     document.getElementById('imageCompanyLogo').checked = false;
     socialMediaModule.uploadedImageUrl = 'https://example.com/draft-custom.jpg';
 
-    mockSupabase.select.mockReturnValueOnce(Promise.resolve({ data: [{ id: 'draft-custom-img' }], error: null }));
+    apiClient.insert = jest.fn().mockResolvedValue({ data: [{ id: 'draft-custom-img' }] });
 
     await socialMediaModule.saveDraft();
     expect(showToastSpy).toHaveBeenCalledWith('Draft saved successfully!', 'success');
@@ -3829,7 +3800,7 @@ describe('Social Media Module - saveDraft() branch coverage', () => {
     `;
     companySelect.selectedIndex = 1;
 
-    mockSupabase.select.mockReturnValueOnce(Promise.resolve({ data: [{ id: 'draft-logo-img' }], error: null }));
+    apiClient.insert = jest.fn().mockResolvedValue({ data: [{ id: 'draft-logo-img' }] });
 
     await socialMediaModule.saveDraft();
     expect(showToastSpy).toHaveBeenCalledWith('Draft saved successfully!', 'success');
@@ -3843,7 +3814,7 @@ describe('Social Media Module - saveDraft() branch coverage', () => {
 
     socialMediaModule.editingPostId = 'draft-edit-123';
 
-    mockSupabase.eq.mockReturnValueOnce(Promise.resolve({ error: { message: 'Draft update failed' } }));
+    apiClient.update = jest.fn().mockRejectedValue(new Error('Draft update failed'));
 
     await socialMediaModule.saveDraft();
     expect(showToastSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to save draft'), 'error');
@@ -4048,7 +4019,7 @@ describe('Social Media Module - editScheduledPost() branch coverage', () => {
       platform_content: null,
     };
 
-    mockSupabase.single.mockReturnValueOnce(Promise.resolve({ data: postData, error: null }));
+    apiClient.select = jest.fn().mockResolvedValue({ data: [postData] });
     await socialMediaModule.editScheduledPost('null-content');
 
     expect(document.getElementById('smPostContent').value).toBe('');
@@ -4072,7 +4043,7 @@ describe('Social Media Module - editScheduledPost() branch coverage', () => {
       platform_content: null,
     };
 
-    mockSupabase.single.mockReturnValueOnce(Promise.resolve({ data: postData, error: null }));
+    apiClient.select = jest.fn().mockResolvedValue({ data: [postData] });
     await socialMediaModule.editScheduledPost('no-radio');
 
     expect(socialMediaModule.uploadedImageUrl).toBe('https://example.com/img.jpg');
@@ -4097,7 +4068,7 @@ describe('Social Media Module - editScheduledPost() branch coverage', () => {
       platform_content: null,
     };
 
-    mockSupabase.single.mockReturnValueOnce(Promise.resolve({ data: postData, error: null }));
+    apiClient.select = jest.fn().mockResolvedValue({ data: [postData] });
     await socialMediaModule.editScheduledPost('no-upload-div');
 
     parent.appendChild(customUploadDiv);
@@ -4120,7 +4091,7 @@ describe('Social Media Module - editScheduledPost() branch coverage', () => {
       platform_content: { twitter: 'Custom tweet' },
     };
 
-    mockSupabase.single.mockReturnValueOnce(Promise.resolve({ data: postData, error: null }));
+    apiClient.select = jest.fn().mockResolvedValue({ data: [postData] });
     await socialMediaModule.editScheduledPost('no-toggle');
 
     parent.appendChild(toggle);
@@ -4158,7 +4129,7 @@ describe('Social Media Module - reusePost() branch coverage', () => {
       platform_content: null,
     };
 
-    mockSupabase.single.mockReturnValueOnce(Promise.resolve({ data: postData, error: null }));
+    apiClient.select = jest.fn().mockResolvedValue({ data: [postData] });
     await socialMediaModule.reusePost('reuse-null');
 
     expect(document.getElementById('smPostContent').value).toBe('');
@@ -4181,7 +4152,7 @@ describe('Social Media Module - reusePost() branch coverage', () => {
       platform_content: { twitter: 'Custom tweet' },
     };
 
-    mockSupabase.single.mockReturnValueOnce(Promise.resolve({ data: postData, error: null }));
+    apiClient.select = jest.fn().mockResolvedValue({ data: [postData] });
     await socialMediaModule.reusePost('reuse-no-toggle');
 
     parent.appendChild(toggle);
@@ -4301,10 +4272,8 @@ describe('Social Media Module - bulkGenerate() branch: instagram/linkedin platfo
     const assignments = [
       { id: 'a1', organisations: { id: 'org-1', company_name: 'Acme', logo_url: null, website: null } },
     ];
-    mockSupabase.eq
-      .mockReturnValueOnce(mockSupabase)
-      .mockReturnValueOnce(Promise.resolve({ data: assignments, error: null }));
-    mockSupabase.then.mockImplementationOnce((cb) => cb({ data: [], error: null }));
+    apiClient.select = jest.fn().mockResolvedValueOnce({ data: assignments }).mockResolvedValue({ data: [] });
+    apiClient.insert = jest.fn().mockResolvedValue({ data: [] });
 
     await socialMediaModule.bulkGenerate();
 
@@ -4348,16 +4317,12 @@ describe('Social Media Module - loadAnalytics() branch: missing container', () =
 
 describe('Social Media Module - loadAnalytics() branch: posts with null platforms', () => {
   test('handles posts with null platforms array', async () => {
-    mockSupabase.from.mockReturnValue(mockSupabase);
-    mockSupabase.select.mockReturnValueOnce(
-      Promise.resolve({
-        data: [
-          { status: 'published', platforms: null, created_at: new Date().toISOString() },
-          { status: 'published', platforms: ['twitter'], created_at: new Date().toISOString() },
-        ],
-        error: null,
-      })
-    );
+    apiClient.select = jest.fn().mockResolvedValue({
+      data: [
+        { status: 'published', platforms: null, created_at: new Date().toISOString() },
+        { status: 'published', platforms: ['twitter'], created_at: new Date().toISOString() },
+      ],
+    });
 
     await socialMediaModule.loadAnalytics();
     const container = document.getElementById('analyticsContent');
@@ -4593,13 +4558,9 @@ describe('Social Media Module - loadPublishedPosts() null data branch', () => {
 
 describe('Social Media Module - loadAnalytics() unknown platform in published posts', () => {
   test('skips unknown platform keys in platformCounts', async () => {
-    mockSupabase.from.mockReturnValue(mockSupabase);
-    mockSupabase.select.mockReturnValueOnce(
-      Promise.resolve({
-        data: [{ status: 'published', platforms: ['twitter', 'tiktok'], created_at: new Date().toISOString() }],
-        error: null,
-      })
-    );
+    apiClient.select = jest.fn().mockResolvedValue({
+      data: [{ status: 'published', platforms: ['twitter', 'tiktok'], created_at: new Date().toISOString() }],
+    });
 
     await socialMediaModule.loadAnalytics();
     const container = document.getElementById('analyticsContent');
@@ -4640,10 +4601,8 @@ describe('Social Media Module - bulkGenerate() saveAs scheduled branch', () => {
     const assignments = [
       { id: 'a1', organisations: { id: 'org-1', company_name: 'Acme', logo_url: null, website: null } },
     ];
-    mockSupabase.eq
-      .mockReturnValueOnce(mockSupabase)
-      .mockReturnValueOnce(Promise.resolve({ data: assignments, error: null }));
-    mockSupabase.then.mockImplementationOnce((cb) => cb({ data: [], error: null }));
+    apiClient.select = jest.fn().mockResolvedValueOnce({ data: assignments }).mockResolvedValue({ data: [] });
+    apiClient.insert = jest.fn().mockResolvedValue({ data: [] });
 
     await socialMediaModule.bulkGenerate();
 

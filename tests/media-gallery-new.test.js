@@ -269,7 +269,6 @@ syncWindowToGlobal();
 // ==========================================
 const _apiClient = global.apiClient || window.apiClient;
 
-// Keep originals so individual tests can spy and override
 const apiClientMethods = [
   'select',
   'selectAll',
@@ -285,19 +284,28 @@ const apiClientMethods = [
   'getPublicUrl',
   'storageDelete',
 ];
-apiClientMethods.forEach((method) => {
-  if (_apiClient && typeof _apiClient[method] === 'function') {
-    jest.spyOn(_apiClient, method).mockResolvedValue({ data: [], error: null, count: 0 });
-  }
-});
 
 // ==========================================
-// Global beforeEach — reset mockSupabase.then to prevent mock leaking between tests
+// Global beforeEach — reset mockSupabase.then AND re-apply apiClient mocks every test
+// (jest.restoreAllMocks() in afterEach blocks removes jest.spyOn mocks)
 // ==========================================
 beforeEach(() => {
   // Reset .then to its safe default so unconsumed mockImplementationOnce calls
   // from previous tests don't bleed into later ones.
   mockSupabase.then.mockImplementation((cb) => cb({ data: [], error: null, count: 0 }));
+
+  // Re-apply apiClient spies (they get removed by jest.restoreAllMocks in afterEach)
+  apiClientMethods.forEach((method) => {
+    if (_apiClient && typeof _apiClient[method] === 'function') {
+      // If already a mock/spy, just reset its resolved value
+      if (typeof _apiClient[method].mockResolvedValue === 'function') {
+        _apiClient[method].mockResolvedValue({ data: [], error: null, count: 0 });
+      } else {
+        // Re-spy on the original method
+        jest.spyOn(_apiClient, method).mockResolvedValue({ data: [], error: null, count: 0 });
+      }
+    }
+  });
 });
 
 // ==========================================
@@ -3256,6 +3264,15 @@ describe('Media Gallery Module - Load Section Photo Counts', () => {
   });
 
   test('loadSectionPhotoCounts updates badge content', async () => {
+    console.log('DEBUG: STATE.client === mockSupabase:', STATE.client === mockSupabase);
+    console.log('DEBUG: STATE.client.then === mockSupabase.then:', STATE.client.then === mockSupabase.then);
+    console.log('DEBUG: STATE.client.from === mockSupabase.from:', STATE.client.from === mockSupabase.from);
+    const chain = STATE.client
+      .from('media_gallery')
+      .select('gallery_section_id')
+      .in('gallery_section_id', ['sec-1', 'sec-2']);
+    console.log('DEBUG: chain === mockSupabase:', chain === mockSupabase);
+    console.log('DEBUG: chain.then === mockSupabase.then:', chain.then === mockSupabase.then);
     mockSupabase.then.mockImplementationOnce((cb) =>
       cb({
         data: [

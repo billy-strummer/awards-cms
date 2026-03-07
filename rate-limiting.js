@@ -260,12 +260,12 @@ const rateLimitModule = {
     const el = document.getElementById('rl-alerts-list');
     if (!el || !STATE?.client) return;
     try {
-      const { data } = await STATE.client
-        .from('rate_limit_alerts')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(6);
-      el.innerHTML = (data || []).length
+      const result = await apiClient.select('rate_limit_alerts', {
+        sort: { column: 'created_at', ascending: false },
+        pageSize: 6,
+      });
+      const data = result?.data || [];
+      el.innerHTML = data.length
         ? data
             .map(
               (a) =>
@@ -295,10 +295,11 @@ const rateLimitModule = {
     if (!STATE?.client) return;
     const since = new Date(Date.now() - 60000).toISOString();
     try {
-      const { data: logs } = await STATE.client
-        .from('api_request_logs')
-        .select('endpoint, ip_address')
-        .gte('created_at', since);
+      const { data: logs } = await apiClient.select('api_request_logs', {
+        columns: 'endpoint, ip_address',
+        filters: { created_at: { gte: since } },
+        pageSize: 5000,
+      });
       const counts = {};
       (logs || []).forEach((r) => {
         const k = `${r.endpoint}::${r.ip_address}`;
@@ -370,12 +371,11 @@ const rateLimitModule = {
    */
   async getAllowList() {
     if (!STATE?.client) return [];
-    const { data } = await STATE.client
-      .from('ip_blocklist')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(1000);
-    return data || [];
+    const result = await apiClient.select('ip_blocklist', {
+      sort: { column: 'created_at', ascending: false },
+      pageSize: 1000,
+    });
+    return result?.data || [];
   },
 
   /**

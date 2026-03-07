@@ -62,13 +62,12 @@ const brandingModule = {
    * @returns {Promise<Object>} Branding configuration object
    */
   async loadBranding(tenantId) {
-    const { data, error } = await STATE.client
-      .from('tenant_branding')
-      .select('*')
-      .eq('tenant_id', tenantId)
-      .maybeSingle();
-    if (error) throw error;
-    return data || {};
+    const result = await apiClient.select('tenant_branding', {
+      select: '*',
+      filters: { tenant_id: { operator: 'eq', value: tenantId } },
+      pageSize: 1,
+    });
+    return (result.data && result.data[0]) || {};
   },
 
   /**

@@ -201,30 +201,17 @@ const judgePortal = {
   async _fetchPage(page) {
     this._pagination.page = page;
 
-    // Use STATE.client for complex joins (select with nested relations)
-    const {
-      data: entries,
-      error,
-      count,
-    } = await STATE.client
-      .from('entries')
-      .select(
-        `
-        *,
-        organisations(company_name, logo_url),
-        awards:award_years(award_name, award_category),
-        entry_files(*),
-        judge_scores!judge_scores_entry_id_fkey(*)
-      `,
-        { count: 'exact' }
-      )
-      .eq('status', 'submitted')
-      .order('submission_date', { ascending: true })
-      .range((page - 1) * this._pagination.pageSize, page * this._pagination.pageSize - 1);
+    const result = await apiClient.select('entries', {
+      select:
+        '*, organisations(company_name, logo_url), awards:award_years(award_name, award_category), entry_files(*), judge_scores!judge_scores_entry_id_fkey(*)',
+      filters: { status: 'submitted' },
+      sort: { column: 'submission_date', ascending: true },
+      page,
+      pageSize: this._pagination.pageSize,
+    });
 
-    if (error) throw error;
-
-    const totalCount = count || 0;
+    const entries = result.data;
+    const totalCount = result.count || 0;
     this._pagination = {
       ...this._pagination,
       page,

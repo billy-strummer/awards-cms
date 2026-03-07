@@ -1414,24 +1414,14 @@ describe('Media Gallery Module - Photo Full View', () => {
 
 describe('Media Gallery Module - Load Media Statistics', () => {
   test('loadMediaStatistics updates DOM counters', async () => {
-    // Make each chained query resolve with a count
-    const _resolveWith = (val) => {
-      mockSupabase.then.mockImplementationOnce((cb) => cb(val));
-      return mockSupabase;
-    };
-
-    // Reset all mocks for chaining
-    Object.keys(mockSupabase).forEach((key) => {
-      if (typeof mockSupabase[key] === 'function' && key !== 'then') {
-        mockSupabase[key].mockReturnValue(mockSupabase);
-      }
-    });
-
-    mockSupabase.then
-      .mockImplementationOnce((cb) => cb({ count: 150, data: null, error: null })) // totalPhotos
-      .mockImplementationOnce((cb) => cb({ count: 25, data: null, error: null })) // totalVideos
-      .mockImplementationOnce((cb) => cb({ count: 30, data: null, error: null })) // untaggedPhotos
-      .mockImplementationOnce((cb) => cb({ data: [{ event_id: 'e1' }, { event_id: 'e2' }], error: null })); // eventsWithMedia
+    _apiClient.count
+      .mockResolvedValueOnce({ count: 150 }) // totalPhotos
+      .mockResolvedValueOnce({ count: 25 }) // totalVideos
+      .mockResolvedValueOnce({ count: 30 }); // untaggedPhotos
+    _apiClient.select.mockResolvedValueOnce({
+      data: [{ event_id: 'e1' }, { event_id: 'e2' }],
+      error: null,
+    }); // eventsWithMedia
 
     await mediaGalleryModule.loadMediaStatistics();
 
@@ -1492,22 +1482,15 @@ describe('Media Gallery Module - Back to Events', () => {
 
 describe('Media Gallery Module - Event Contents View', () => {
   beforeEach(() => {
-    // Reset supabase mock chain
-    Object.keys(mockSupabase).forEach((key) => {
-      if (typeof mockSupabase[key] === 'function' && key !== 'then' && key !== 'single') {
-        mockSupabase[key].mockReturnValue(mockSupabase);
-      }
-    });
-    mockSupabase.single.mockResolvedValue({
-      data: { id: 'evt-1', event_name: 'Awards Gala 2026' },
+    // apiClient.select for event details
+    _apiClient.select.mockResolvedValue({
+      data: [{ id: 'evt-1', event_name: 'Awards Gala 2026' }],
       error: null,
     });
   });
 
   test('showEventContentsView sets view state', async () => {
-    mockSupabase.then
-      .mockImplementationOnce((cb) => cb({ count: 50, data: null, error: null }))
-      .mockImplementationOnce((cb) => cb({ count: 10, data: null, error: null }));
+    _apiClient.count.mockResolvedValueOnce({ count: 50 }).mockResolvedValueOnce({ count: 10 });
 
     mediaGalleryModule.currentEventId = 'evt-1';
     await mediaGalleryModule.showEventContentsView('evt-1');
@@ -1517,9 +1500,7 @@ describe('Media Gallery Module - Event Contents View', () => {
   });
 
   test('showEventContentsView updates photo/video counts', async () => {
-    mockSupabase.then
-      .mockImplementationOnce((cb) => cb({ count: 42, data: null, error: null }))
-      .mockImplementationOnce((cb) => cb({ count: 7, data: null, error: null }));
+    _apiClient.count.mockResolvedValueOnce({ count: 42 }).mockResolvedValueOnce({ count: 7 });
 
     mediaGalleryModule.currentEventId = 'evt-1';
     await mediaGalleryModule.showEventContentsView('evt-1');
@@ -1928,8 +1909,8 @@ describe('Media Gallery Module - Open Add Section Modal', () => {
 
 describe('Media Gallery Module - Edit Section Modal', () => {
   test('editSection loads section and sets edit mode', async () => {
-    mockSupabase.single.mockResolvedValueOnce({
-      data: { id: 'sec-1', gallery_name: 'Reception', gallery_description: 'Pre-dinner drinks', display_order: 1 },
+    _apiClient.select.mockResolvedValueOnce({
+      data: [{ id: 'sec-1', gallery_name: 'Reception', gallery_description: 'Pre-dinner drinks', display_order: 1 }],
       error: null,
     });
     await mediaGalleryModule.editSection('sec-1');
@@ -1942,9 +1923,9 @@ describe('Media Gallery Module - Edit Section Modal', () => {
   });
 
   test('editSection handles errors gracefully', async () => {
-    mockSupabase.single.mockResolvedValueOnce({
-      data: null,
-      error: { message: 'Not found' },
+    _apiClient.select.mockResolvedValueOnce({
+      data: [],
+      error: null,
     });
     await mediaGalleryModule.editSection('nonexistent');
     // Should not throw
@@ -1962,14 +1943,14 @@ describe('Media Gallery Module - Load Videos Production', () => {
   });
 
   test('loadVideosProduction shows empty state for no videos', async () => {
-    mockSupabase.then.mockImplementationOnce((cb) => cb({ data: [], error: null }));
+    _apiClient.select.mockResolvedValueOnce({ data: [], error: null });
     await mediaGalleryModule.loadVideosProduction();
     const content = document.getElementById('videosProductionContent').innerHTML;
     expect(content).toContain('No videos yet');
   });
 
   test('loadVideosProduction renders videos grid when data exists', async () => {
-    mockSupabase.then.mockImplementationOnce((cb) => cb({ data: sampleVideos, error: null }));
+    _apiClient.select.mockResolvedValueOnce({ data: sampleVideos, error: null });
     jest.spyOn(mediaGalleryModule, 'renderVideosGrid').mockImplementation(() => {});
     await mediaGalleryModule.loadVideosProduction();
     expect(mediaGalleryModule.renderVideosGrid).toHaveBeenCalledWith(sampleVideos);
@@ -1977,7 +1958,7 @@ describe('Media Gallery Module - Load Videos Production', () => {
   });
 
   test('loadVideosProduction shows error on failure', async () => {
-    mockSupabase.then.mockImplementationOnce((cb) => cb({ data: null, error: { message: 'Network error' } }));
+    _apiClient.select.mockRejectedValueOnce(new Error('Network error'));
     await mediaGalleryModule.loadVideosProduction();
     const content = document.getElementById('videosProductionContent').innerHTML;
     expect(content).toContain('Error loading videos');
@@ -2080,7 +2061,7 @@ describe('Media Gallery Module - On Event Selected', () => {
   });
 
   test('onEventSelected loads gallery sections for event', async () => {
-    mockSupabase.then.mockImplementationOnce((cb) => cb({ data: sampleSections, error: null }));
+    _apiClient.select.mockResolvedValueOnce({ data: sampleSections, error: null });
     await mediaGalleryModule.onEventSelected('evt-1');
     expect(mediaGalleryModule.currentEventId).toBe('evt-1');
     expect(mediaGalleryModule.renderGallerySections).toHaveBeenCalledWith(sampleSections);
@@ -2089,31 +2070,21 @@ describe('Media Gallery Module - On Event Selected', () => {
   test('onEventSelected unregisters keyboard shortcuts', async () => {
     mediaGalleryModule._keyboardShortcutsActive = true;
     mediaGalleryModule._registerKeyboardShortcuts();
-    mockSupabase.then.mockImplementationOnce((cb) => cb({ data: [], error: null }));
+    _apiClient.select.mockResolvedValueOnce({ data: [], error: null });
     await mediaGalleryModule.onEventSelected('evt-1');
     // _unregisterKeyboardShortcuts should have been called
   });
 });
 
 describe('Media Gallery Module - Load Events', () => {
-  beforeEach(() => {
-    Object.keys(mockSupabase).forEach((key) => {
-      if (typeof mockSupabase[key] === 'function' && key !== 'then' && key !== 'single') {
-        mockSupabase[key].mockReturnValue(mockSupabase);
-      }
-    });
-  });
-
   test('loadEvents populates event dropdown', async () => {
-    mockSupabase.then.mockImplementationOnce((cb) =>
-      cb({
-        data: [
-          { id: 'evt-1', event_name: 'Gala', year: 2026 },
-          { id: 'evt-2', event_name: 'Regional', year: null },
-        ],
-        error: null,
-      })
-    );
+    _apiClient.select.mockResolvedValueOnce({
+      data: [
+        { id: 'evt-1', event_name: 'Gala', year: 2026 },
+        { id: 'evt-2', event_name: 'Regional', year: null },
+      ],
+      error: null,
+    });
 
     await mediaGalleryModule.loadEvents();
 
@@ -3024,11 +2995,10 @@ describe('Media Gallery Module - Update Photo Display Order', () => {
   });
 
   test('updatePhotoDisplayOrder sends batch updates', async () => {
-    mockSupabase.then.mockImplementation((cb) => cb({ data: null, error: null }));
+    _apiClient.update.mockResolvedValue({ data: null, error: null });
     await mediaGalleryModule.updatePhotoDisplayOrder();
     // Should have called update for each photo
-    expect(mockSupabase.update).toHaveBeenCalled();
-    mockSupabase.then.mockImplementation((cb) => cb({ data: [], error: null, count: 0 }));
+    expect(_apiClient.update).toHaveBeenCalled();
   });
 });
 
@@ -3050,7 +3020,7 @@ describe('Media Gallery Module - View Section Photos', () => {
   });
 
   test('viewSectionPhotos sets section state and loads photos', async () => {
-    mockSupabase.then.mockImplementationOnce((cb) => cb({ data: samplePhotos, error: null }));
+    _apiClient.select.mockResolvedValueOnce({ data: samplePhotos, error: null });
     await mediaGalleryModule.viewSectionPhotos('sec-1', 'Test Section');
     expect(mediaGalleryModule.currentSectionId).toBe('sec-1');
     expect(mediaGalleryModule.currentSectionName).toBe('Test Section');
@@ -3064,7 +3034,7 @@ describe('Media Gallery Module - View Section Photos', () => {
   });
 
   test('viewSectionPhotos handles error gracefully', async () => {
-    mockSupabase.then.mockImplementationOnce((cb) => cb({ data: null, error: { message: 'Load failed' } }));
+    _apiClient.select.mockRejectedValueOnce(new Error('Load failed'));
     await mediaGalleryModule.viewSectionPhotos('sec-1', 'Test Section');
     // Should not throw; shows toast
   });
@@ -3220,16 +3190,8 @@ describe('Media Gallery Module - Clear Search', () => {
 // Load Events
 // ---------------------------------------------------------------------------
 describe('Media Gallery Module - Load Events', () => {
-  beforeEach(() => {
-    Object.keys(mockSupabase).forEach((key) => {
-      if (typeof mockSupabase[key] === 'function' && key !== 'then' && key !== 'single') {
-        mockSupabase[key].mockReturnValue(mockSupabase);
-      }
-    });
-  });
-
   test('loadEvents populates dropdown with events', async () => {
-    mockSupabase.then.mockImplementationOnce((cb) => cb({ data: sampleEvents, error: null }));
+    _apiClient.select.mockResolvedValueOnce({ data: sampleEvents, error: null });
     await mediaGalleryModule.loadEvents();
     expect(STATE.allEvents).toEqual(sampleEvents);
     const select = document.getElementById('mediaEventSelect');
@@ -3238,9 +3200,10 @@ describe('Media Gallery Module - Load Events', () => {
   });
 
   test('loadEvents includes year in label when available', async () => {
-    mockSupabase.then.mockImplementationOnce((cb) =>
-      cb({ data: [{ id: 'e1', event_name: 'Gala', year: 2026 }], error: null })
-    );
+    _apiClient.select.mockResolvedValueOnce({
+      data: [{ id: 'e1', event_name: 'Gala', year: 2026 }],
+      error: null,
+    });
     await mediaGalleryModule.loadEvents();
     const select = document.getElementById('mediaEventSelect');
     expect(select.innerHTML).toContain('Gala (2026)');
@@ -3252,28 +3215,21 @@ describe('Media Gallery Module - Load Events', () => {
 // ---------------------------------------------------------------------------
 describe('Media Gallery Module - Load Section Photo Counts', () => {
   beforeEach(() => {
-    Object.keys(mockSupabase).forEach((key) => {
-      if (typeof mockSupabase[key] === 'function' && key !== 'then' && key !== 'single') {
-        mockSupabase[key].mockReturnValue(mockSupabase);
-      }
-    });
     // Create the badge element in DOM
     const content = document.getElementById('mediaGalleryContent');
     content.innerHTML = '<span id="photoCount_sec-1">Loading...</span><span id="photoCount_sec-2">Loading...</span>';
   });
 
   test('loadSectionPhotoCounts updates badge content', async () => {
-    mockSupabase.then.mockImplementationOnce((cb) =>
-      cb({
-        data: [
-          { gallery_section_id: 'sec-1' },
-          { gallery_section_id: 'sec-1' },
-          { gallery_section_id: 'sec-1' },
-          { gallery_section_id: 'sec-2' },
-        ],
-        error: null,
-      })
-    );
+    _apiClient.select.mockResolvedValueOnce({
+      data: [
+        { gallery_section_id: 'sec-1' },
+        { gallery_section_id: 'sec-1' },
+        { gallery_section_id: 'sec-1' },
+        { gallery_section_id: 'sec-2' },
+      ],
+      error: null,
+    });
     await mediaGalleryModule.loadSectionPhotoCounts(sampleSections);
     const badge1 = document.getElementById('photoCount_sec-1');
     expect(badge1.innerHTML).toContain('3 photos');
@@ -3316,24 +3272,14 @@ describe('Media Gallery Module - Open Add Video Modal', () => {
 // Load Companies for Video Tags
 // ---------------------------------------------------------------------------
 describe('Media Gallery Module - Load Companies for Video Tags', () => {
-  beforeEach(() => {
-    Object.keys(mockSupabase).forEach((key) => {
-      if (typeof mockSupabase[key] === 'function' && key !== 'then' && key !== 'single') {
-        mockSupabase[key].mockReturnValue(mockSupabase);
-      }
-    });
-  });
-
   test('loadCompaniesForVideoTags populates selects', async () => {
-    mockSupabase.then.mockImplementationOnce((cb) =>
-      cb({
-        data: [
-          { id: 'c1', company_name: 'AlphaCo' },
-          { id: 'c2', company_name: 'BetaCo' },
-        ],
-        error: null,
-      })
-    );
+    _apiClient.select.mockResolvedValueOnce({
+      data: [
+        { id: 'c1', company_name: 'AlphaCo' },
+        { id: 'c2', company_name: 'BetaCo' },
+      ],
+      error: null,
+    });
     await mediaGalleryModule.loadCompaniesForVideoTags();
     const select = document.getElementById('videoTagInput');
     expect(select.innerHTML).toContain('AlphaCo');
@@ -3341,7 +3287,7 @@ describe('Media Gallery Module - Load Companies for Video Tags', () => {
   });
 
   test('loadCompaniesForVideoTags handles errors', async () => {
-    mockSupabase.then.mockImplementationOnce((cb) => cb({ data: null, error: { message: 'DB error' } }));
+    _apiClient.select.mockRejectedValueOnce(new Error('DB error'));
     await mediaGalleryModule.loadCompaniesForVideoTags();
     // Should not throw
   });
@@ -3351,24 +3297,14 @@ describe('Media Gallery Module - Load Companies for Video Tags', () => {
 // Load Awards for Video Tags
 // ---------------------------------------------------------------------------
 describe('Media Gallery Module - Load Awards for Video Tags', () => {
-  beforeEach(() => {
-    Object.keys(mockSupabase).forEach((key) => {
-      if (typeof mockSupabase[key] === 'function' && key !== 'then' && key !== 'single') {
-        mockSupabase[key].mockReturnValue(mockSupabase);
-      }
-    });
-  });
-
   test('loadAwardsForVideoTags populates selects', async () => {
-    mockSupabase.then.mockImplementationOnce((cb) =>
-      cb({
-        data: [
-          { id: 'a1', award_name: 'Best Innovation' },
-          { id: 'a2', award_name: 'Best Service' },
-        ],
-        error: null,
-      })
-    );
+    _apiClient.select.mockResolvedValueOnce({
+      data: [
+        { id: 'a1', award_name: 'Best Innovation' },
+        { id: 'a2', award_name: 'Best Service' },
+      ],
+      error: null,
+    });
     await mediaGalleryModule.loadAwardsForVideoTags();
     const select = document.getElementById('videoAwardTagInput');
     expect(select.innerHTML).toContain('Best Innovation');
@@ -3968,9 +3904,12 @@ describe('Media Gallery Module - Save Photo Tags', () => {
     document.getElementById('tagPhotoShowWinner').checked = false;
     document.getElementById('tagPhotoShowCompany').checked = true;
 
-    mockSupabase.then.mockImplementationOnce((cb) => cb({ data: null, error: null }));
+    _apiClient.update.mockResolvedValueOnce({ data: null, error: null });
+    // viewSectionPhotos is called after save; mock it to avoid side effects
+    jest.spyOn(mediaGalleryModule, 'viewSectionPhotos').mockResolvedValue();
     await mediaGalleryModule.savePhotoTags();
-    expect(mockSupabase.update).toHaveBeenCalled();
+    expect(_apiClient.update).toHaveBeenCalled();
+    jest.restoreAllMocks();
   });
 
   test('savePhotoTags falls back to localStorage on error', async () => {
@@ -4075,7 +4014,7 @@ describe('Media Gallery Module - On Event Selected', () => {
   });
 
   test('onEventSelected loads sections for given event', async () => {
-    mockSupabase.then.mockImplementationOnce((cb) => cb({ data: sampleSections, error: null }));
+    _apiClient.select.mockResolvedValueOnce({ data: sampleSections, error: null });
     await mediaGalleryModule.onEventSelected('evt-1');
     expect(mediaGalleryModule.currentEventId).toBe('evt-1');
     expect(mediaGalleryModule.currentSectionId).toBeNull();

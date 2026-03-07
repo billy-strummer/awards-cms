@@ -951,19 +951,9 @@ describe('Rate Limiting Module - _loadDashboardData comprehensive', () => {
         created_at: new Date().toISOString(),
       },
     ];
+    STATE.client = mockSupabase;
     apiClient.select = jest.fn().mockResolvedValue({ data: rows });
     apiClient.count = jest.fn().mockResolvedValue({ count: 0 });
-
-    STATE.client = {
-      ...mockSupabase,
-      from: jest.fn(() => ({
-        select: jest.fn().mockReturnThis(),
-        order: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockReturnThis(),
-        then: jest.fn((cb) => Promise.resolve(cb({ data: [], error: null }))),
-      })),
-      auth: mockSupabase.auth,
-    };
 
     await rateLimitModule._loadDashboardData('24h');
     // Should not throw even though rl-total-req is not found

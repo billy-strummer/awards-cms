@@ -179,8 +179,20 @@ async function checkConflict(judge, entry) {
     }
   }
 
-  // TODO: Check custom conflict declarations
-  // Check if judge has declared conflicts in their profile
+  // Check if judge has previously declared a conflict for this entry's organisation
+  if (entry.id && judge.email) {
+    const { data: declared } = await supabase
+      .from('judge_scores')
+      .select('conflict_declared')
+      .eq('judge_email', judge.email)
+      .eq('entry_id', entry.id)
+      .eq('conflict_declared', true)
+      .limit(1);
+
+    if (declared && declared.length > 0) {
+      return true;
+    }
+  }
 
   return false;
 }

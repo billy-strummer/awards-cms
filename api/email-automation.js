@@ -520,9 +520,37 @@ async function sendDeadlineReminders() {
     for (const daysLeft of reminders) {
       const targetDate = new Date(now);
       targetDate.setDate(targetDate.getDate() + daysLeft);
+      const targetDateStr = targetDate.toISOString().split('T')[0];
 
-      // Get entries in draft status near deadline
-      // TODO: Implement based on your deadline structure
+      // Find award seasons closing on this target date
+      const { data: closingSeasons } = await supabase
+        .from('award_years')
+        .select('id, name, entry_close_date')
+        .eq('entry_close_date', targetDateStr);
+
+      if (!closingSeasons || closingSeasons.length === 0) continue;
+
+      for (const season of closingSeasons) {
+        // Get draft entries for this season to remind them to submit
+        const { data: draftEntries } = await supabase
+          .from('entries')
+          .select('id, contact_name, contact_email, organisations(company_name)')
+          .eq('award_id', season.id)
+          .eq('status', 'draft');
+
+        for (const entry of draftEntries || []) {
+          const variables = {
+            contact_name: entry.contact_name,
+            company_name: entry.organisations?.company_name || '',
+            award_name: season.name,
+            days_left: String(daysLeft),
+            deadline: season.entry_close_date,
+            submit_link: `${process.env.APP_URL || 'https://admin.britishtrade.com'}/submit-entry.html`,
+          };
+
+          await sendTemplateEmail('ENTRY_DEADLINE_REMINDER', entry.contact_email, variables);
+        }
+      }
     }
 
     // Judging deadline reminders
@@ -623,8 +651,28 @@ async function sendWinnerAnnouncements(awardId = null) {
 
       await sendTemplateEmail('WINNER_ANNOUNCEMENT', winner.contact_email, variables);
 
-      // Also send social media auto-posts
-      // TODO: Integrate with social-media.js
+      // Auto-post winner announcement to social media
+      try {
+        const postContent = `Congratulations to ${winner.organisations?.company_name || winner.contact_name} for winning ${winner.awards?.award_name || 'a British Trade Award'}! 🏆 #BritishTradeAwards #Winners`;
+        const { data: socialPost } = await supabase
+          .from('social_media_posts')
+          .insert({
+            content: postContent,
+            platforms: ['twitter', 'linkedin', 'facebook'],
+            status: 'scheduled',
+            scheduled_for: new Date().toISOString(),
+            post_type: 'winner_announcement',
+          })
+          .select('id')
+          .single();
+
+        if (socialPost) {
+          const { publishToSocialMedia } = require('./social-media-api');
+          await publishToSocialMedia(socialPost.id);
+        }
+      } catch (socialError) {
+        console.error('Social media auto-post failed (non-blocking):', socialError.message);
+      }
     }
 
     console.log(`✅ Sent ${(winners || []).length} winner announcements`);

@@ -3,7 +3,7 @@
 **Purpose:** Step-by-step plan to complete the CMS. Check off items as completed. If a session gets cut off, the next session reads this file and continues from where it left off.
 
 **Last updated:** 2026-03-07
-**Current phase:** Phase 9 - Polish (almost done)
+**Current phase:** COMPLETE ✅
 
 ---
 
@@ -142,7 +142,7 @@ Fix what's broken before building new things. This ensures a stable base.
 
 ---
 
-## Phase 6: Complete Social Media & Marketing ✅ MOSTLY DONE
+## Phase 6: Complete Social Media & Marketing ✅ DONE
 
 ### 6.1 Social Media Integration ✅ Already implemented
 - [x] Platform posting API (api/social-media-api.js) — Twitter, LinkedIn, Facebook, Instagram
@@ -189,20 +189,21 @@ Fix what's broken before building new things. This ensures a stable base.
 
 ## Phase 9: Polish & Production Readiness
 
-### 9.1 Security ✅ Mostly done
+### 9.1 Security ✅ Done
 - [x] API routes check authentication (data-proxy validates JWT)
 - [x] Input validation on API endpoints (sanitization in proxies)
 - [x] Rate limiting on public endpoints (rate-limiting.js)
 - [x] GDPR compliance (gdpr.js — data export, anonymization)
 - [x] CSP headers in vercel.json — all API endpoints registered
 - [x] Migrated 4 files from STATE.client to apiClient (security improvement)
+- [x] Fixed voting-proxy rate-limit column name bug (created_at → voted_at)
 
-### 9.2 Testing
-- [x] 65 test suites pass (6376+ tests, 0 failures after Phase 1 fixes)
-- [ ] Fix 16 media-gallery tests broken by apiClient migration (in progress)
-- [ ] Verify all tests still pass after all changes
+### 9.2 Testing ✅ Done
+- [x] 65 test suites pass (6381 tests, 0 failures)
+- [x] Fixed 16 media-gallery tests broken by apiClient migration
+- [x] Full test suite verified: 65/65 suites, 6381 passed, 3 skipped, 0 failures
 
-### 9.3 Performance & UX ✅ Mostly done
+### 9.3 Performance & UX ✅ Done
 - [x] Build output optimized (3MB → 2MB JS, 33% reduction)
 - [x] Loading states on async operations
 - [x] Error handling with user-friendly messages
@@ -235,3 +236,18 @@ _When a session ends, update this section with what was done and what's next._
 - **Infra**: Registered all 11 API endpoints in vercel.json
 - **Remaining**: 16 media-gallery tests need fixing after apiClient migration
 - Next action: Fix remaining media-gallery test failures, then final validation
+
+**2026-03-07 — Session 2: Final Fixes**
+- Fixed all 16 media-gallery-new.test.js failures (apiClient mock updates)
+- Fixed voting-proxy.js rate-limit bug (wrong column name: created_at → voted_at)
+- Verified: 65/65 test suites pass (6381 tests, 0 failures)
+- Verified: Build passes (0 lint errors, 2071KB JS, 58KB CSS)
+- **Status: CMS is complete and production-ready**
+
+### Deployment Checklist
+- [ ] Set environment variables in Vercel (see .env.example)
+- [ ] Run all SQL migrations in Supabase (migrations/ directory, in order)
+- [ ] Configure Stripe webhook endpoint → /api/stripe-payment
+- [ ] Configure social media API credentials (Twitter, LinkedIn, Facebook)
+- [ ] Set up Sentry DSN for error monitoring
+- [ ] Deploy to Vercel: `vercel --prod`

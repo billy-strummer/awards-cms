@@ -5880,6 +5880,7 @@ describe('Organisations Module - Tag Management', () => {
 
   afterEach(() => {
     orgsModule.openCompanyProfile.mockRestore();
+    apiClient.update.mockRestore();
   });
 
   test('addTag adds new tag to org', async () => {
@@ -6251,9 +6252,13 @@ describe('Organisations Module - Bulk Operations', () => {
     document.getElementById('orgsTagFilter').value = '';
     document.getElementById('orgsLogoFilter').value = '';
     document.getElementById('orgsDateFilter').value = '';
-    mockSupabase.from.mockReturnValue(mockSupabase);
-    mockSupabase.update.mockReturnValue(mockSupabase);
-    mockSupabase.in = jest.fn(() => Promise.resolve({ data: null, error: null }));
+    jest.spyOn(apiClient, 'update').mockResolvedValue({ data: null, error: null });
+    jest.spyOn(apiClient, 'updateByFilters').mockResolvedValue({ data: null, error: null });
+  });
+
+  afterEach(() => {
+    apiClient.update.mockRestore();
+    apiClient.updateByFilters.mockRestore();
   });
 
   test('bulkDelete shows warning when no orgs selected', async () => {

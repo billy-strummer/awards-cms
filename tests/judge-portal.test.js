@@ -1183,7 +1183,7 @@ describe('Judge Portal - saveScore', () => {
   });
 
   test('handles upsert error gracefully', async () => {
-    mockSupabase.upsert.mockResolvedValue({ error: { message: 'DB error' } });
+    apiClient.upsert.mockRejectedValue(new Error('DB error'));
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
     await judgePortal.saveScore(true);
     expect(consoleSpy).toHaveBeenCalled();

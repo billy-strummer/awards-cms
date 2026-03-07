@@ -1471,7 +1471,7 @@ describe('Social Media Module - savePost() successful insert', () => {
   test('immediate post proceeds when user confirms', async () => {
     const confirmSpy = jest.spyOn(utils, 'confirmDialog').mockResolvedValue(true);
 
-    mockSupabase.select.mockReturnValueOnce(Promise.resolve({ data: [{ id: 'pub-new-1' }], error: null }));
+    apiClient.insert = jest.fn().mockResolvedValue({ data: [{ id: 'pub-new-1' }] });
     // Mock the functions.invoke call for publish
     mockSupabase.functions.invoke.mockResolvedValueOnce({ data: {}, error: null });
 
@@ -1483,7 +1483,7 @@ describe('Social Media Module - savePost() successful insert', () => {
   test('immediate post shows warning when some platforms fail', async () => {
     const confirmSpy = jest.spyOn(utils, 'confirmDialog').mockResolvedValue(true);
 
-    mockSupabase.select.mockReturnValueOnce(Promise.resolve({ data: [{ id: 'pub-new-2' }], error: null }));
+    apiClient.insert = jest.fn().mockResolvedValue({ data: [{ id: 'pub-new-2' }] });
     mockSupabase.functions.invoke.mockResolvedValueOnce({
       data: { errors: [{ platform: 'twitter' }] },
       error: null,
@@ -1497,7 +1497,7 @@ describe('Social Media Module - savePost() successful insert', () => {
   test('immediate post handles publish API not available gracefully', async () => {
     const confirmSpy = jest.spyOn(utils, 'confirmDialog').mockResolvedValue(true);
 
-    mockSupabase.select.mockReturnValueOnce(Promise.resolve({ data: [{ id: 'pub-new-3' }], error: null }));
+    apiClient.insert = jest.fn().mockResolvedValue({ data: [{ id: 'pub-new-3' }] });
     mockSupabase.functions.invoke.mockRejectedValueOnce(new Error('Edge function not deployed'));
 
     await socialMediaModule.savePost('immediate');
@@ -1511,10 +1511,10 @@ describe('Social Media Module - savePost() successful insert', () => {
     document.getElementById('smScheduleDate').value = '2030-12-25';
     document.getElementById('smScheduleTime').value = '14:00';
 
-    mockSupabase.select.mockReturnValueOnce(Promise.resolve({ data: [{ id: 'new-post-override' }], error: null }));
+    apiClient.insert = jest.fn().mockResolvedValue({ data: [{ id: 'new-post-override' }] });
 
     await socialMediaModule.savePost('scheduled');
-    expect(mockSupabase.insert).toHaveBeenCalled();
+    expect(apiClient.insert).toHaveBeenCalled();
   });
 
   test('uses custom image URL when custom image source selected', async () => {
@@ -1524,10 +1524,10 @@ describe('Social Media Module - savePost() successful insert', () => {
     document.getElementById('smScheduleDate').value = '2030-12-25';
     document.getElementById('smScheduleTime').value = '14:00';
 
-    mockSupabase.select.mockReturnValueOnce(Promise.resolve({ data: [{ id: 'custom-img-post' }], error: null }));
+    apiClient.insert = jest.fn().mockResolvedValue({ data: [{ id: 'custom-img-post' }] });
 
     await socialMediaModule.savePost('scheduled');
-    expect(mockSupabase.insert).toHaveBeenCalled();
+    expect(apiClient.insert).toHaveBeenCalled();
   });
 });
 
@@ -1575,7 +1575,7 @@ describe('Social Media Module - saveDraft()', () => {
   });
 
   test('inserts new draft successfully', async () => {
-    mockSupabase.select.mockReturnValueOnce(Promise.resolve({ data: [{ id: 'draft-new-1' }], error: null }));
+    apiClient.insert = jest.fn().mockResolvedValue({ data: [{ id: 'draft-new-1' }] });
 
     await socialMediaModule.saveDraft();
     expect(showToastSpy).toHaveBeenCalledWith('Draft saved successfully!', 'success');
@@ -1584,7 +1584,7 @@ describe('Social Media Module - saveDraft()', () => {
   test('updates existing draft when editingPostId is set', async () => {
     socialMediaModule.editingPostId = 'existing-draft-1';
 
-    mockSupabase.eq.mockReturnValueOnce(Promise.resolve({ error: null }));
+    apiClient.update = jest.fn().mockResolvedValue({ data: [] });
 
     await socialMediaModule.saveDraft();
     expect(showToastSpy).toHaveBeenCalledWith('Draft updated successfully!', 'success');
@@ -1592,7 +1592,7 @@ describe('Social Media Module - saveDraft()', () => {
   });
 
   test('shows error toast on database error', async () => {
-    mockSupabase.select.mockReturnValueOnce(Promise.resolve({ data: null, error: { message: 'Draft insert failed' } }));
+    apiClient.insert = jest.fn().mockRejectedValue(new Error('Draft insert failed'));
 
     await socialMediaModule.saveDraft();
     expect(showToastSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to save draft'), 'error');
@@ -1603,7 +1603,7 @@ describe('Social Media Module - saveDraft()', () => {
     document.getElementById('imageCompanyLogo').checked = false;
     socialMediaModule.uploadedImageUrl = 'https://example.com/draft-img.jpg';
 
-    mockSupabase.select.mockReturnValueOnce(Promise.resolve({ data: [{ id: 'draft-img' }], error: null }));
+    apiClient.insert = jest.fn().mockResolvedValue({ data: [{ id: 'draft-img' }] });
 
     await socialMediaModule.saveDraft();
     expect(showToastSpy).toHaveBeenCalledWith('Draft saved successfully!', 'success');
@@ -1613,17 +1613,17 @@ describe('Social Media Module - saveDraft()', () => {
     document.getElementById('smPlatformOverrides').checked = true;
     document.getElementById('smTwitterContent').value = 'Twitter draft';
 
-    mockSupabase.select.mockReturnValueOnce(Promise.resolve({ data: [{ id: 'draft-override' }], error: null }));
+    apiClient.insert = jest.fn().mockResolvedValue({ data: [{ id: 'draft-override' }] });
 
     await socialMediaModule.saveDraft();
-    expect(mockSupabase.insert).toHaveBeenCalled();
+    expect(apiClient.insert).toHaveBeenCalled();
   });
 
   test('saves draft without company or award selected', async () => {
     document.getElementById('smCompanySelect').selectedIndex = 0;
     document.getElementById('smAwardSelect').selectedIndex = 0;
 
-    mockSupabase.select.mockReturnValueOnce(Promise.resolve({ data: [{ id: 'draft-no-company' }], error: null }));
+    apiClient.insert = jest.fn().mockResolvedValue({ data: [{ id: 'draft-no-company' }] });
 
     await socialMediaModule.saveDraft();
     expect(showToastSpy).toHaveBeenCalledWith('Draft saved successfully!', 'success');
@@ -1651,13 +1651,13 @@ describe('Social Media Module - deleteScheduledPost()', () => {
     const confirmSpy = jest.spyOn(utils, 'confirmDialog').mockResolvedValue(false);
 
     await socialMediaModule.deleteScheduledPost('post-1');
-    expect(mockSupabase.delete).not.toHaveBeenCalled();
+    expect(apiClient.delete).not.toHaveBeenCalled();
     confirmSpy.mockRestore();
   });
 
   test('deletes post and shows success toast when confirmed', async () => {
     const confirmSpy = jest.spyOn(utils, 'confirmDialog').mockResolvedValue(true);
-    mockSupabase.eq.mockReturnValueOnce(Promise.resolve({ error: null }));
+    apiClient.delete = jest.fn().mockResolvedValue({ data: [] });
 
     await socialMediaModule.deleteScheduledPost('post-1');
     expect(showToastSpy).toHaveBeenCalledWith('Post deleted successfully', 'success');
@@ -1666,7 +1666,7 @@ describe('Social Media Module - deleteScheduledPost()', () => {
 
   test('shows error toast when delete fails', async () => {
     const confirmSpy = jest.spyOn(utils, 'confirmDialog').mockResolvedValue(true);
-    mockSupabase.eq.mockReturnValueOnce(Promise.resolve({ error: { message: 'Delete failed' } }));
+    apiClient.delete = jest.fn().mockRejectedValue(new Error('Delete failed'));
 
     await socialMediaModule.deleteScheduledPost('post-1');
     expect(showToastSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to delete post'), 'error');
@@ -1727,7 +1727,7 @@ describe('Social Media Module - editScheduledPost()', () => {
       platform_content: null,
     };
 
-    mockSupabase.single.mockReturnValueOnce(Promise.resolve({ data: postData, error: null }));
+    apiClient.select = jest.fn().mockResolvedValue({ data: [postData] });
 
     await socialMediaModule.editScheduledPost('edit-post-1');
 
@@ -1752,7 +1752,7 @@ describe('Social Media Module - editScheduledPost()', () => {
       platform_content: null,
     };
 
-    mockSupabase.single.mockReturnValueOnce(Promise.resolve({ data: postData, error: null }));
+    apiClient.select = jest.fn().mockResolvedValue({ data: [postData] });
 
     await socialMediaModule.editScheduledPost('edit-post-2');
 

@@ -1454,25 +1454,32 @@ describe('Utils - actionRegistry', () => {
 });
 
 describe('Utils - serverQuery', () => {
+  let originalFetch;
+
   beforeEach(() => {
     jest.clearAllMocks();
-    // Reset chainable mock
-    mockSupabase.from.mockReturnValue(mockSupabase);
-    mockSupabase.select.mockReturnValue(mockSupabase);
-    mockSupabase.eq.mockReturnValue(mockSupabase);
-    mockSupabase.order.mockReturnValue(mockSupabase);
-    mockSupabase.range.mockReturnValue(mockSupabase);
-    mockSupabase.ilike.mockReturnValue(mockSupabase);
-    // Add .or method to mock
-    mockSupabase.or = jest.fn(() => mockSupabase);
-    // Make the mock thenable to resolve the query
-    mockSupabase.then = jest.fn((cb) => {
-      return Promise.resolve(cb({ data: [{ id: 1 }], error: null, count: 1 }));
+    originalFetch = global.fetch;
+    global.fetch = jest.fn();
+    // serverQuery routes through apiClient which needs a valid auth token
+    mockSupabase.auth.getSession.mockResolvedValue({
+      data: { session: { access_token: 'test-token-123' } },
+      error: null,
     });
-    // Make the mock actually return via await
-    // serverQuery uses `await query` so we need the mock to be a promise
-    const promiseMock = Promise.resolve({ data: [{ id: 1 }], error: null, count: 1 });
-    mockSupabase.range.mockReturnValue(promiseMock);
+    // Default successful fetch response
+    global.fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ data: [{ id: 1 }], count: 1, page: 1, pageSize: 50, totalPages: 1 }),
+    });
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+    // Restore getSession to default (null session) so later tests aren't affected
+    mockSupabase.auth.getSession.mockResolvedValue({
+      data: { session: null },
+      error: null,
+    });
   });
 
   test('serverQuery.execute builds a query with filters', async () => {
@@ -1483,7 +1490,16 @@ describe('Utils - serverQuery', () => {
       pageSize: 50,
     });
 
-    expect(mockSupabase.from).toHaveBeenCalledWith('entries');
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/data-proxy',
+      expect.objectContaining({
+        method: 'POST',
+        body: expect.stringContaining('"table":"entries"'),
+      })
+    );
+    // Verify the filters were sent in the request body
+    const callBody = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(callBody.filters).toEqual(expect.objectContaining({ status: 'submitted' }));
     expect(result.data).toBeDefined();
   });
 
@@ -1495,14 +1511,15 @@ describe('Utils - serverQuery', () => {
       pageSize: 10,
     });
 
-    expect(mockSupabase.order).toHaveBeenCalled();
+    const callBody = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(callBody.sort).toEqual({ column: 'created_at', ascending: false });
   });
 
   test('serverQuery.execute throws when client not initialized', async () => {
     const savedClient = STATE.client;
     STATE.client = null;
 
-    await expect(serverQuery.execute({ table: 'entries' })).rejects.toThrow('Supabase client not initialized');
+    await expect(serverQuery.execute({ table: 'entries' })).rejects.toThrow('Not authenticated');
 
     STATE.client = savedClient;
   });
@@ -1515,18 +1532,18 @@ describe('Utils - serverQuery', () => {
       pageSize: 50,
     });
 
-    // eq should only be called for 'status' (the non-null/empty value)
-    // The call count includes potential calls from select setup, so just verify 'status' was used
-    const eqCalls = mockSupabase.eq.mock.calls;
-    const statusCall = eqCalls.find((call) => call[0] === 'status');
-    expect(statusCall).toBeTruthy();
-    expect(statusCall[1]).toBe('submitted');
+    // serverQuery passes filters to apiClient.select which sends them via fetch
+    const callBody = JSON.parse(global.fetch.mock.calls[0][1].body);
+    // The filters object is passed as-is; verify status is included
+    expect(callBody.filters).toEqual(expect.objectContaining({ status: 'submitted' }));
   });
 
   test('serverQuery.execute throws when query returns an error', async () => {
-    mockSupabase.range.mockReturnValue(
-      Promise.resolve({ data: null, error: { message: 'Permission denied' }, count: 0 })
-    );
+    global.fetch.mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: () => Promise.resolve({ error: 'Permission denied' }),
+    });
 
     await expect(serverQuery.execute({ table: 'entries', page: 1, pageSize: 50 })).rejects.toBeTruthy();
   });

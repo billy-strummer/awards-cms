@@ -793,6 +793,11 @@ async function executeQuery(body, user) {
     // Apply filters (supports eq, neq, gt, gte, lt, lte, like, ilike, in, is)
     query = applyFilters(query, filters);
 
+    // Apply raw OR filter (e.g. "organisation_id.is.null,award_id.is.null")
+    if (body.or) {
+      query = query.or(body.or);
+    }
+
     // Apply full-text search (OR across multiple columns via ilike)
     if (search && search.term && search.columns && search.columns.length > 0) {
       const safeTerm = search.term.replace(/[%_\\]/g, (c) => '\\' + c);

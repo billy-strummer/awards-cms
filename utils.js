@@ -3134,6 +3134,7 @@ const apiClient = {
       select: options.select || '*',
       filters: options.filters || {},
       search: options.search || undefined,
+      or: options.or || undefined,
       sort: options.sort || undefined,
       page: options.page || 1,
       pageSize: options.pageSize || 50,
@@ -3147,8 +3148,14 @@ const apiClient = {
    * @param {Object} [filters]
    * @returns {Promise<{count: number}>}
    */
-  async count(table, filters = {}) {
-    return this._call({ table, operation: 'count', filters, tenantId: this._getTenantId() });
+  async count(table, filters = {}, options = {}) {
+    return this._call({
+      table,
+      operation: 'count',
+      filters,
+      or: options.or || undefined,
+      tenantId: this._getTenantId(),
+    });
   },
 
   /**

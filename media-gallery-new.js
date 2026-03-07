@@ -57,29 +57,24 @@ const mediaGalleryModule = {
   async loadMediaStatistics() {
     try {
       // Get total photos count
-      const { count: totalPhotos } = await STATE.client
-        .from('media_items')
-        .select('*', { count: 'exact', head: true })
-        .eq('media_type', 'image');
+      const { count: totalPhotos } = await apiClient.count('media_items', { media_type: 'image' });
 
       // Get total videos count
-      const { count: totalVideos } = await STATE.client
-        .from('media_items')
-        .select('*', { count: 'exact', head: true })
-        .eq('media_type', 'video');
+      const { count: totalVideos } = await apiClient.count('media_items', { media_type: 'video' });
 
       // Get untagged photos count (photos without organisation_id or award_id)
-      const { count: untaggedPhotos } = await STATE.client
-        .from('media_items')
-        .select('*', { count: 'exact', head: true })
-        .eq('media_type', 'image')
-        .or('organisation_id.is.null,award_id.is.null');
+      const { count: untaggedPhotos } = await apiClient.count(
+        'media_items',
+        { media_type: 'image' },
+        { or: 'organisation_id.is.null,award_id.is.null' }
+      );
 
       // Get events with media
-      const { data: eventsWithMedia } = await STATE.client
-        .from('media_items')
-        .select('event_id')
-        .not('event_id', 'is', null);
+      const { data: eventsWithMedia } = await apiClient.select('media_items', {
+        select: 'event_id',
+        filters: { event_id: { neq: null } },
+        pageSize: 10000,
+      });
 
       const uniqueEvents = new Set(eventsWithMedia?.map((m) => m.event_id));
 
@@ -121,21 +116,14 @@ const mediaGalleryModule = {
       utils.showLoading();
 
       // Load untagged photos
-      const { data: untagged, error } = await STATE.client
-        .from('media_items')
-        .select(
-          `
-          *,
-          organisations(company_name),
-          awards:award_years(award_name),
-          events(event_name)
-        `
-        )
-        .eq('media_type', 'image')
-        .or('organisation_id.is.null,award_id.is.null')
-        .order('uploaded_at', { ascending: false });
-
-      if (error) throw error;
+      const untaggedResult = await apiClient.select('media_items', {
+        select: '*, organisations(company_name), awards:award_years(award_name), events(event_name)',
+        filters: { media_type: 'image' },
+        or: 'organisation_id.is.null,award_id.is.null',
+        sort: { column: 'uploaded_at', ascending: false },
+        pageSize: 10000,
+      });
+      const untagged = untaggedResult.data;
 
       if (!untagged || untagged.length === 0) {
         utils.showToast('No untagged photos found! All photos are tagged.', 'success');
@@ -219,12 +207,13 @@ const mediaGalleryModule = {
   async editPhotoTags(photoId) {
     // Load full photo details
     try {
-      const { data: photo, error } = await STATE.client
-        .from('media_items')
-        .select('*, organisations(company_name), awards:award_years(award_name)')
-        .eq('id', photoId)
-        .single();
-      if (error) throw error;
+      const photoResult = await apiClient.select('media_items', {
+        select: '*, organisations(company_name), awards:award_years(award_name)',
+        filters: { id: photoId },
+        pageSize: 1,
+      });
+      const photo = photoResult.data?.[0];
+      if (!photo) throw new Error('Photo not found');
 
       // Use already-loaded orgs and awards for dropdowns
       const orgs = (STATE.allOrganisations || [])
@@ -288,11 +277,7 @@ const mediaGalleryModule = {
 
     try {
       await utils.protectModalDuringSave('editPhotoTagsModal', async () => {
-        const { error } = await STATE.client
-          .from('media_items')
-          .update({ title, organisation_id: orgId, award_id: awardId })
-          .eq('id', photoId);
-        if (error) throw error;
+        await apiClient.update('media_items', photoId, { title, organisation_id: orgId, award_id: awardId });
 
         bootstrap.Modal.getInstance(document.getElementById('editPhotoTagsModal'))?.hide();
         utils.showToast('Photo tags updated', 'success');
@@ -314,14 +299,12 @@ const mediaGalleryModule = {
     document.getElementById('eventsListView').style.display = 'block';
 
     try {
-      const { data: events, error } = await STATE.client
-        .from('events')
-        .select('*')
-        .order('event_date', { ascending: false });
+      const eventsResult = await apiClient.select('events', {
+        sort: { column: 'event_date', ascending: false },
+        pageSize: 10000,
+      });
 
-      if (error) throw error;
-
-      await this.renderEventsList(events || []);
+      await this.renderEventsList(eventsResult.data || []);
     } catch (error) {
       console.error('Error loading events:', error);
       document.getElementById('eventsListContainer').innerHTML = `
@@ -351,17 +334,15 @@ const mediaGalleryModule = {
     // Get media counts for each event
     const eventsWithCounts = await Promise.all(
       events.map(async (event) => {
-        const { count: photoCount } = await STATE.client
-          .from('media_items')
-          .select('*', { count: 'exact', head: true })
-          .eq('event_id', event.id)
-          .eq('media_type', 'image');
+        const { count: photoCount } = await apiClient.count('media_items', {
+          event_id: event.id,
+          media_type: 'image',
+        });
 
-        const { count: videoCount } = await STATE.client
-          .from('media_items')
-          .select('*', { count: 'exact', head: true })
-          .eq('event_id', event.id)
-          .eq('media_type', 'video');
+        const { count: videoCount } = await apiClient.count('media_items', {
+          event_id: event.id,
+          media_type: 'video',
+        });
 
         return {
           ...event,
@@ -431,29 +412,26 @@ const mediaGalleryModule = {
 
     try {
       // Load event details
-      const { data: event, error } = await STATE.client
-        .from('events')
-        .select('*')
-        .eq('id', this.currentEventId)
-        .single();
-
-      if (error) throw error;
+      const eventResult = await apiClient.select('events', {
+        filters: { id: this.currentEventId },
+        pageSize: 1,
+      });
+      const event = eventResult.data?.[0];
+      if (!event) throw new Error('Event not found');
 
       this.currentEvent = event;
       document.getElementById('eventContentsTitle').textContent = event.event_name;
 
       // Load and display counts
-      const { count: photoCount } = await STATE.client
-        .from('media_items')
-        .select('*', { count: 'exact', head: true })
-        .eq('event_id', this.currentEventId)
-        .eq('media_type', 'image');
+      const { count: photoCount } = await apiClient.count('media_items', {
+        event_id: this.currentEventId,
+        media_type: 'image',
+      });
 
-      const { count: videoCount } = await STATE.client
-        .from('media_items')
-        .select('*', { count: 'exact', head: true })
-        .eq('event_id', this.currentEventId)
-        .eq('media_type', 'video');
+      const { count: videoCount } = await apiClient.count('media_items', {
+        event_id: this.currentEventId,
+        media_type: 'video',
+      });
 
       document.getElementById('eventPhotosCount').textContent = photoCount || 0;
       document.getElementById('eventVideosCount').textContent = videoCount || 0;
@@ -487,36 +465,40 @@ const mediaGalleryModule = {
 
     try {
       // Load all gallery sections for this event
-      const { data: sections, error: secError } = await STATE.client
-        .from('event_galleries')
-        .select('*')
-        .eq('event_id', this.currentEventId)
-        .order('display_order');
-      if (secError) throw secError;
+      const secResult = await apiClient.select('event_galleries', {
+        filters: { event_id: this.currentEventId },
+        sort: { column: 'display_order', ascending: true },
+        pageSize: 1000,
+      });
+      const sections = secResult.data || [];
 
       // Load all photos across all sections for stats
       const sectionIds = (sections || []).map((s) => s.id);
       let allPhotos = [];
       if (sectionIds.length > 0) {
-        let photos, pError;
-        ({ data: photos, error: pError } = await STATE.client
-          .from('media_gallery')
-          .select(
-            '*, organisations!media_gallery_organisation_id_fkey(*), awards:award_years!media_gallery_award_id_fkey(*)'
-          )
-          .in('gallery_section_id', sectionIds)
-          .order('display_order'));
-        // Fall back if FK relationships missing
-        if (pError && (pError.message?.includes('relationship') || pError.message?.includes('schema cache'))) {
-          console.warn('Media gallery FK relationships not found, loading without joins');
-          ({ data: photos, error: pError } = await STATE.client
-            .from('media_gallery')
-            .select('*')
-            .in('gallery_section_id', sectionIds)
-            .order('display_order'));
+        try {
+          const photosResult = await apiClient.select('media_gallery', {
+            select:
+              '*, organisations!media_gallery_organisation_id_fkey(*), awards:award_years!media_gallery_award_id_fkey(*)',
+            filters: { gallery_section_id: { in: sectionIds } },
+            sort: { column: 'display_order', ascending: true },
+            pageSize: 10000,
+          });
+          allPhotos = photosResult.data || [];
+        } catch (fkErr) {
+          // Fall back if FK relationships missing
+          if (fkErr.message?.includes('relationship') || fkErr.message?.includes('schema cache')) {
+            console.warn('Media gallery FK relationships not found, loading without joins');
+            const fallbackResult = await apiClient.select('media_gallery', {
+              filters: { gallery_section_id: { in: sectionIds } },
+              sort: { column: 'display_order', ascending: true },
+              pageSize: 10000,
+            });
+            allPhotos = fallbackResult.data || [];
+          } else {
+            throw fkErr;
+          }
         }
-        if (pError) throw pError;
-        allPhotos = photos || [];
       }
 
       const published = allPhotos.filter((p) => p.published !== false).length;
@@ -836,25 +818,28 @@ const mediaGalleryModule = {
 
     try {
       // Try with FK joins first, fall back if relationships missing
-      let videos, error;
-      ({ data: videos, error } = await STATE.client
-        .from('media_items')
-        .select('*, organisations(company_name), awards:award_years(award_name)')
-        .eq('event_id', this.currentEventId)
-        .eq('media_type', 'video')
-        .order('created_at', { ascending: false }));
-
-      if (error && (error.message?.includes('relationship') || error.message?.includes('schema cache'))) {
-        console.warn('Media items FK relationships not found, loading without joins');
-        ({ data: videos, error } = await STATE.client
-          .from('media_items')
-          .select('*')
-          .eq('event_id', this.currentEventId)
-          .eq('media_type', 'video')
-          .order('created_at', { ascending: false }));
+      let videos;
+      try {
+        const videosResult = await apiClient.select('media_items', {
+          select: '*, organisations(company_name), awards:award_years(award_name)',
+          filters: { event_id: this.currentEventId, media_type: 'video' },
+          sort: { column: 'created_at', ascending: false },
+          pageSize: 10000,
+        });
+        videos = videosResult.data;
+      } catch (fkErr) {
+        if (fkErr.message?.includes('relationship') || fkErr.message?.includes('schema cache')) {
+          console.warn('Media items FK relationships not found, loading without joins');
+          const fallbackResult = await apiClient.select('media_items', {
+            filters: { event_id: this.currentEventId, media_type: 'video' },
+            sort: { column: 'created_at', ascending: false },
+            pageSize: 10000,
+          });
+          videos = fallbackResult.data;
+        } else {
+          throw fkErr;
+        }
       }
-
-      if (error) throw error;
 
       if (!videos || videos.length === 0) {
         container.innerHTML = `
@@ -1055,13 +1040,13 @@ const mediaGalleryModule = {
    */
   async loadCompaniesForVideoTags() {
     try {
-      const { data: companies, error } = await STATE.client
-        .from('organisations')
-        .select('id, company_name')
-        .eq('status', 'active')
-        .order('company_name');
-
-      if (error) throw error;
+      const companiesResult = await apiClient.select('organisations', {
+        select: 'id, company_name',
+        filters: { status: 'active' },
+        sort: { column: 'company_name', ascending: true },
+        pageSize: 10000,
+      });
+      const companies = companiesResult.data;
 
       const options =
         '<option value="">Select a company...</option>' +
@@ -1087,13 +1072,13 @@ const mediaGalleryModule = {
    */
   async loadAwardsForVideoTags() {
     try {
-      const { data: awards, error } = await STATE.client
-        .from('awards')
-        .select('id, award_name')
-        .eq('is_active', true)
-        .order('award_name');
-
-      if (error) throw error;
+      const awardsResult = await apiClient.select('awards', {
+        select: 'id, award_name',
+        filters: { is_active: true },
+        sort: { column: 'award_name', ascending: true },
+        pageSize: 10000,
+      });
+      const awards = awardsResult.data;
 
       const options =
         '<option value="">Select an award...</option>' +
@@ -1542,14 +1527,12 @@ const mediaGalleryModule = {
    * Load events for event selector
    */
   async loadEvents() {
-    const { data: events, error } = await STATE.client
-      .from('events')
-      .select('*')
-      .order('event_date', { ascending: false });
+    const eventsResult = await apiClient.select('events', {
+      sort: { column: 'event_date', ascending: false },
+      pageSize: 10000,
+    });
 
-    if (error) throw error;
-
-    STATE.allEvents = events || [];
+    STATE.allEvents = eventsResult.data || [];
 
     // Populate event dropdown (if it exists)
     const eventSelect = document.getElementById('mediaEventSelect');
@@ -1588,24 +1571,25 @@ const mediaGalleryModule = {
       if (eventSelectEl) eventSelectEl.value = '';
 
       // Load all events
-      const { data: events, error: eventsError } = await STATE.client
-        .from('events')
-        .select('*')
-        .order('event_date', { ascending: false });
-
-      if (eventsError) throw eventsError;
+      const eventsResult = await apiClient.select('events', {
+        sort: { column: 'event_date', ascending: false },
+        pageSize: 10000,
+      });
+      const events = eventsResult.data;
 
       // Load all gallery sections with photo counts
       const summaryData = [];
 
       for (const event of events || []) {
-        const { data: sections, error: sectionsError } = await STATE.client
-          .from('event_galleries')
-          .select('*')
-          .eq('event_id', event.id)
-          .order('display_order', { ascending: true });
-
-        if (sectionsError) {
+        let sections;
+        try {
+          const sectionsResult = await apiClient.select('event_galleries', {
+            filters: { event_id: event.id },
+            sort: { column: 'display_order', ascending: true },
+            pageSize: 1000,
+          });
+          sections = sectionsResult.data;
+        } catch (sectionsError) {
           console.error('Error loading sections for event:', event.id, sectionsError);
           continue;
         }
@@ -1613,18 +1597,19 @@ const mediaGalleryModule = {
         // Count photos for each section
         const sectionsWithCounts = [];
         for (const section of sections || []) {
-          const { count, error: countError } = await STATE.client
-            .from('media_gallery')
-            .select('*', { count: 'exact', head: true })
-            .eq('gallery_section_id', section.id);
-
-          if (countError) {
+          let count = 0;
+          try {
+            const countResult = await apiClient.count('media_gallery', {
+              gallery_section_id: section.id,
+            });
+            count = countResult.count || 0;
+          } catch (countError) {
             console.error('Error counting photos for section:', section.id, countError);
           }
 
           sectionsWithCounts.push({
             ...section,
-            photoCount: count || 0,
+            photoCount: count,
           });
         }
 
@@ -1757,15 +1742,13 @@ const mediaGalleryModule = {
       utils.showLoading();
 
       // Load gallery sections for this event
-      const { data: sections, error } = await STATE.client
-        .from('event_galleries')
-        .select('*')
-        .eq('event_id', eventId)
-        .order('display_order', { ascending: true });
+      const sectionsResult = await apiClient.select('event_galleries', {
+        filters: { event_id: eventId },
+        sort: { column: 'display_order', ascending: true },
+        pageSize: 1000,
+      });
 
-      if (error) throw error;
-
-      this.renderGallerySections(sections || []);
+      this.renderGallerySections(sectionsResult.data || []);
     } catch (error) {
       console.error('Error loading gallery sections:', error);
       utils.showToast('Failed to load gallery sections: ' + error.message, 'error');
@@ -1819,10 +1802,12 @@ const mediaGalleryModule = {
       const sectionIds = sections.map((s) => s.id);
 
       // Single batch query instead of N+1 loop
-      const { data: items, error } = await STATE.client
-        .from('media_gallery')
-        .select('gallery_section_id')
-        .in('gallery_section_id', sectionIds);
+      const itemsResult = await apiClient.select('media_gallery', {
+        select: 'gallery_section_id',
+        filters: { gallery_section_id: { in: sectionIds } },
+        pageSize: 10000,
+      });
+      const items = itemsResult.data;
 
       // Count per section in memory
       const countsBySection = {};
@@ -1834,7 +1819,7 @@ const mediaGalleryModule = {
         const count = countsBySection[section.id] || 0;
         const badge = document.getElementById(`photoCount_${section.id}`);
         if (badge) {
-          badge.innerHTML = `<i class="bi bi-camera me-1"></i>${error ? '?' : count} photos`;
+          badge.innerHTML = `<i class="bi bi-camera me-1"></i>${count} photos`;
         }
       });
     } catch (err) {
@@ -1910,13 +1895,12 @@ const mediaGalleryModule = {
    */
   async editSection(sectionId) {
     try {
-      const { data: section, error } = await STATE.client
-        .from('event_galleries')
-        .select('*')
-        .eq('id', sectionId)
-        .single();
-
-      if (error) throw error;
+      const sectionResult = await apiClient.select('event_galleries', {
+        filters: { id: sectionId },
+        pageSize: 1,
+      });
+      const section = sectionResult.data?.[0];
+      if (!section) throw new Error('Section not found');
 
       document.getElementById('gallerySectionModalTitle').textContent = 'Edit Gallery Section';
       document.getElementById('gallerySectionId').value = section.id;
@@ -2021,20 +2005,14 @@ const mediaGalleryModule = {
       utils.showLoading();
 
       // Load photos for this section, ordered by display_order (fallback to uploaded_at)
-      const { data: photos, error } = await STATE.client
-        .from('media_gallery')
-        .select(
-          `
-          *,
-          organisations!media_gallery_organisation_id_fkey (*),
-          awards:award_years!media_gallery_award_id_fkey (*)
-        `
-        )
-        .eq('gallery_section_id', sectionId)
-        .order('display_order', { ascending: true, nullsFirst: false })
-        .order('uploaded_at', { ascending: false });
-
-      if (error) throw error;
+      const photosResult = await apiClient.select('media_gallery', {
+        select:
+          '*, organisations!media_gallery_organisation_id_fkey(*), awards:award_years!media_gallery_award_id_fkey(*)',
+        filters: { gallery_section_id: sectionId },
+        sort: { column: 'display_order', ascending: true },
+        pageSize: 10000,
+      });
+      const photos = photosResult.data;
 
       // Store photos for filtering
       this.currentSectionPhotos = photos || [];
@@ -2673,12 +2651,7 @@ const mediaGalleryModule = {
         if (awardVal === '__clear__') updateData.award_id = null;
         else if (awardVal) updateData.award_id = awardVal;
 
-        const { error } = await STATE.client
-          .from('media_gallery')
-          .update(updateData)
-          .in('id', [...this.selectedPhotoIds]);
-
-        if (error) throw error;
+        await apiClient.updateByFilters('media_gallery', { id: { in: [...this.selectedPhotoIds] } }, updateData);
 
         bootstrap.Modal.getInstance(document.getElementById('bulkTagModal'))?.hide();
         const tagCount = this.selectedPhotoIds.size;
@@ -3811,12 +3784,7 @@ const mediaGalleryModule = {
       utils.showLoading();
       const count = this.selectedPhotoIds.size;
 
-      const { error } = await STATE.client
-        .from('media_gallery')
-        .update({ published: true })
-        .in('id', [...this.selectedPhotoIds]);
-
-      if (error) throw error;
+      await apiClient.updateByFilters('media_gallery', { id: { in: [...this.selectedPhotoIds] } }, { published: true });
 
       utils.showToast(`${count} photo(s) published`, 'success');
       this._logActivity('bulk_publish', null, `${count} photos published`);
@@ -3853,12 +3821,11 @@ const mediaGalleryModule = {
       utils.showLoading();
       const count = this.selectedPhotoIds.size;
 
-      const { error } = await STATE.client
-        .from('media_gallery')
-        .update({ published: false })
-        .in('id', [...this.selectedPhotoIds]);
-
-      if (error) throw error;
+      await apiClient.updateByFilters(
+        'media_gallery',
+        { id: { in: [...this.selectedPhotoIds] } },
+        { published: false }
+      );
 
       utils.showToast(`${count} photo(s) unpublished`, 'success');
       this._logActivity('bulk_unpublish', null, `${count} photos unpublished`);
@@ -3984,15 +3951,14 @@ const mediaGalleryModule = {
 
     try {
       // Load current photo data including visibility flags and metadata
-      const { data: photo, error: photoError } = await STATE.client
-        .from('media_gallery')
-        .select(
-          'organisation_id, award_id, caption, alt_text, photographer, show_in_gallery, show_on_winner_page, show_on_company_page'
-        )
-        .eq('id', photoId)
-        .single();
-
-      if (photoError) throw photoError;
+      const photoResult = await apiClient.select('media_gallery', {
+        select:
+          'organisation_id, award_id, caption, alt_text, photographer, show_in_gallery, show_on_winner_page, show_on_company_page',
+        filters: { id: photoId },
+        pageSize: 1,
+      });
+      const photo = photoResult.data?.[0];
+      if (!photo) throw new Error('Photo not found');
 
       // Populate dropdowns
       await this.populateTagDropdowns();
@@ -4152,12 +4118,7 @@ const mediaGalleryModule = {
     try {
       utils.showLoading();
 
-      const { error } = await STATE.client
-        .from('media_gallery')
-        .update({ published: newPublishState })
-        .eq('id', photoId);
-
-      if (error) throw error;
+      await apiClient.update('media_gallery', photoId, { published: newPublishState });
 
       utils.showToast(`Photo ${newPublishState ? 'published' : 'unpublished'} successfully!`, 'success');
 
@@ -4591,17 +4552,16 @@ const mediaGalleryModule = {
   async viewActivityLog() {
     let log = [];
     try {
-      let query = STATE.client
-        .from('cms_audit_logs')
-        .select('*')
-        .eq('entity', 'media_gallery')
-        .order('created_at', { ascending: false })
-        .limit(500);
+      const auditFilters = { entity: 'media_gallery' };
       if (this.currentEventId) {
-        query = query.eq('metadata->>eventId', this.currentEventId);
+        auditFilters['metadata->>eventId'] = this.currentEventId;
       }
-      const { data, error } = await query;
-      if (error) throw error;
+      const auditResult = await apiClient.select('cms_audit_logs', {
+        filters: auditFilters,
+        sort: { column: 'created_at', ascending: false },
+        pageSize: 500,
+      });
+      const data = auditResult.data;
       log = (data || []).map((row) => ({
         timestamp: row.created_at,
         action: row.metadata?.originalAction || row.action,

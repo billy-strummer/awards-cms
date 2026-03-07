@@ -1898,10 +1898,10 @@ describe('Email Builder - saveTemplate', () => {
   test('saveTemplate calls Supabase insert with correct data', async () => {
     document.getElementById('builderCampaignName').value = 'Test Template';
     document.getElementById('builderSubject').value = 'Test Subject';
-    mockSupabase.insert.mockReturnValueOnce(Promise.resolve({ error: null }));
+    const insertSpy = jest.spyOn(apiClient, 'insert').mockResolvedValueOnce({ data: [] });
     await emailBuilder.saveTemplate();
-    expect(mockSupabase.from).toHaveBeenCalledWith('email_templates');
-    expect(mockSupabase.insert).toHaveBeenCalledWith(
+    expect(insertSpy).toHaveBeenCalledWith(
+      'email_templates',
       expect.objectContaining({
         name: 'Test Template',
         subject: 'Test Subject',
@@ -1909,6 +1909,7 @@ describe('Email Builder - saveTemplate', () => {
         is_active: true,
       })
     );
+    insertSpy.mockRestore();
   });
 
   test('saveTemplate handles Supabase errors', async () => {

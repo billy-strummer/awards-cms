@@ -2510,110 +2510,51 @@ const serverQuery = {
       customFilters = [],
     } = options;
 
-    if (!STATE.client) throw new Error('Supabase client not initialized');
-
-    let query = STATE.client.from(table).select(select, { count: 'exact' });
-
-    // Apply equality filters
-    for (const [key, value] of Object.entries(filters)) {
-      if (value !== null && value !== undefined && value !== '') {
-        query = query.eq(key, value);
-      }
-    }
-
-    // Apply search (OR across multiple columns using ilike)
-    if (search && search.term && search.columns && search.columns.length > 0) {
-      const searchTerm = `%${search.term}%`;
-      const orClause = search.columns.map((col) => `${col}.ilike.${searchTerm}`).join(',');
-      query = query.or(orClause);
-    }
-
-    // Apply custom filters (e.g., .neq(), .in(), .gte(), etc.)
+    // Convert customFilters to data-proxy filter format
+    const mergedFilters = { ...filters };
     for (const cf of customFilters) {
       if (cf.method && cf.args) {
-        query = query[cf.method](...cf.args);
+        const [column, value] = cf.args;
+        // Map Supabase method names to data-proxy operator format
+        mergedFilters[`${column}@${cf.method}`] = value;
       }
     }
 
-    // Apply sorting
-    if (sort && sort.column) {
-      query = query.order(sort.column, { ascending: sort.ascending !== false });
-    }
-
-    // Apply pagination
-    const from = (page - 1) * pageSize;
-    const to = from + pageSize - 1;
-    query = query.range(from, to);
-
-    const { data, error, count } = await query;
-    if (error) throw error;
-
-    return {
-      data: data || [],
-      count: count || 0,
+    return apiClient.select(table, {
+      select,
+      filters: mergedFilters,
+      search,
+      sort,
       page,
       pageSize,
-      totalPages: Math.ceil((count || 0) / pageSize),
-    };
+    });
   },
 
   /**
    * Load ALL records using server-side pagination (for modules that need full datasets).
-   * More efficient than the old while-loop pattern because it uses exact count
-   * to calculate total pages upfront.
+   * Routes through apiClient for RBAC and tenant isolation.
    * @param {Object} options - Same as execute but without page/pageSize
    * @param {number} [batchSize=1000] - Records per batch
    * @returns {Promise<Array>} All matching records
    */
   async loadAll(options, batchSize = 1000) {
-    if (!STATE.client) throw new Error('Supabase client not initialized');
-
     const { table, select = '*', filters = {}, sort = null, customFilters = [] } = options;
 
-    // First, get the total count
-    let countQuery = STATE.client.from(table).select(select, { count: 'exact', head: true });
-
-    for (const [key, value] of Object.entries(filters)) {
-      if (value !== null && value !== undefined && value !== '') {
-        countQuery = countQuery.eq(key, value);
-      }
-    }
+    // Convert customFilters to data-proxy filter format
+    const mergedFilters = { ...filters };
     for (const cf of customFilters) {
-      if (cf.method && cf.args) countQuery = countQuery[cf.method](...cf.args);
+      if (cf.method && cf.args) {
+        const [column, value] = cf.args;
+        mergedFilters[`${column}@${cf.method}`] = value;
+      }
     }
 
-    const { count, error: countError } = await countQuery;
-    if (countError) throw countError;
-    if (!count || count === 0) return [];
-
-    // Fetch in parallel batches
-    const totalPages = Math.ceil(count / batchSize);
-    const promises = [];
-    for (let page = 0; page < totalPages; page++) {
-      const from = page * batchSize;
-      const to = from + batchSize - 1;
-
-      let q = STATE.client.from(table).select(select).range(from, to);
-      for (const [key, value] of Object.entries(filters)) {
-        if (value !== null && value !== undefined && value !== '') q = q.eq(key, value);
-      }
-      for (const cf of customFilters) {
-        if (cf.method && cf.args) q = q[cf.method](...cf.args);
-      }
-      if (sort && sort.column) {
-        q = q.order(sort.column, { ascending: sort.ascending !== false });
-      }
-      promises.push(q);
-    }
-
-    const results = await Promise.all(promises);
-    let allData = [];
-    for (const result of results) {
-      if (result.error) throw result.error;
-      if (result.data) allData = allData.concat(result.data);
-    }
-
-    return allData;
+    return apiClient.selectAll(table, {
+      select,
+      filters: mergedFilters,
+      sort,
+      batchSize,
+    });
   },
 };
 
@@ -3170,6 +3111,17 @@ const apiClient = {
   },
 
   /**
+   * Get the current tenant ID for server-side tenant isolation.
+   * @returns {string|undefined}
+   */
+  _getTenantId() {
+    if (typeof tenantModule !== 'undefined' && tenantModule.getTenantId) {
+      return tenantModule.getTenantId();
+    }
+    return undefined;
+  },
+
+  /**
    * Select records via the server-side proxy.
    * @param {string} table
    * @param {Object} [options]
@@ -3185,6 +3137,7 @@ const apiClient = {
       sort: options.sort || undefined,
       page: options.page || 1,
       pageSize: options.pageSize || 50,
+      tenantId: this._getTenantId(),
     });
   },
 
@@ -3195,7 +3148,7 @@ const apiClient = {
    * @returns {Promise<{count: number}>}
    */
   async count(table, filters = {}) {
-    return this._call({ table, operation: 'count', filters });
+    return this._call({ table, operation: 'count', filters, tenantId: this._getTenantId() });
   },
 
   /**
@@ -3205,7 +3158,7 @@ const apiClient = {
    * @returns {Promise<{data: Array}>}
    */
   async insert(table, data) {
-    return this._call({ table, operation: 'insert', data });
+    return this._call({ table, operation: 'insert', data, tenantId: this._getTenantId() });
   },
 
   /**
@@ -3216,7 +3169,7 @@ const apiClient = {
    * @returns {Promise<{data: Array}>}
    */
   async update(table, id, data) {
-    return this._call({ table, operation: 'update', id, data });
+    return this._call({ table, operation: 'update', id, data, tenantId: this._getTenantId() });
   },
 
   /**
@@ -3227,7 +3180,7 @@ const apiClient = {
    * @returns {Promise<{data: Array}>}
    */
   async updateByFilters(table, filters, data) {
-    return this._call({ table, operation: 'update', filters, data });
+    return this._call({ table, operation: 'update', filters, data, tenantId: this._getTenantId() });
   },
 
   /**
@@ -3237,7 +3190,7 @@ const apiClient = {
    * @returns {Promise<{data: Array}>}
    */
   async delete(table, id) {
-    return this._call({ table, operation: 'delete', id });
+    return this._call({ table, operation: 'delete', id, tenantId: this._getTenantId() });
   },
 
   /**
@@ -3247,7 +3200,7 @@ const apiClient = {
    * @returns {Promise<{data: Array}>}
    */
   async deleteByFilters(table, filters) {
-    return this._call({ table, operation: 'delete', filters });
+    return this._call({ table, operation: 'delete', filters, tenantId: this._getTenantId() });
   },
 
   /**
@@ -3264,7 +3217,60 @@ const apiClient = {
       operation: 'upsert',
       data,
       onConflict: options.onConflict || undefined,
+      tenantId: this._getTenantId(),
     });
+  },
+
+  /**
+   * Call an RPC function via the server-side proxy.
+   * @param {string} rpcName - The RPC function name
+   * @param {Object} [rpcParams={}] - Parameters to pass to the RPC function
+   * @returns {Promise<{data: *}>}
+   */
+  async rpc(rpcName, rpcParams = {}) {
+    return this._call({ operation: 'rpc', rpcName, rpcParams });
+  },
+
+  /**
+   * Upload a file to Supabase Storage via the server-side proxy.
+   * @param {string} bucket - Storage bucket name
+   * @param {string} path - File path within the bucket
+   * @param {File|Blob} file - The file to upload
+   * @param {Object} [options={}]
+   * @param {string} [options.contentType] - MIME type override
+   * @returns {Promise<{publicUrl: string, path: string}>}
+   */
+  async upload(bucket, path, file, options = {}) {
+    // Convert file to base64 for transmission via JSON
+    const arrayBuffer = await file.arrayBuffer();
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+    return this._call({
+      operation: 'storage_upload',
+      bucket,
+      path,
+      fileBase64: base64,
+      contentType: options.contentType || file.type || 'application/octet-stream',
+    });
+  },
+
+  /**
+   * Get a public URL for a storage object via the server-side proxy.
+   * @param {string} bucket - Storage bucket name
+   * @param {string} path - File path within the bucket
+   * @returns {Promise<{publicUrl: string}>}
+   */
+  async getPublicUrl(bucket, path) {
+    return this._call({ operation: 'storage_url', bucket, path });
+  },
+
+  /**
+   * Delete files from storage via the server-side proxy.
+   * @param {string} bucket - Storage bucket name
+   * @param {string[]} paths - Array of file paths to delete
+   * @returns {Promise<{deleted: number}>}
+   */
+  async storageDelete(bucket, paths) {
+    return this._call({ operation: 'storage_delete', bucket, paths });
   },
 
   /**

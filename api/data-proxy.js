@@ -30,6 +30,80 @@ const supabaseAuth = createClient(
 );
 
 // ============================================
+// TENANT-SCOPED TABLES
+// ============================================
+
+/** Tables that require tenant_id isolation when a tenant context is provided */
+const TENANT_SCOPED_TABLES = new Set([
+  'award_years',
+  'organisations',
+  'events',
+  'winners',
+  'entries',
+  'invoices',
+  'payments',
+  'award_assignments',
+  'contacts',
+  'sponsors',
+  'sponsorship_packages',
+  'email_campaigns',
+  'email_lists',
+  'email_list_members',
+  'email_list_subscribers',
+  'media_gallery',
+  'media_items',
+  'event_galleries',
+  'social_media_posts',
+  'banners',
+]);
+
+// ============================================
+// ALLOWED RPC FUNCTIONS
+// ============================================
+
+/** RPC functions that can be called via the proxy, mapped to required minimum role */
+const ALLOWED_RPCS = {
+  anonymize_organisation: 'super_admin',
+  send_test_email: 'admin',
+  check_email_config: 'admin',
+  send_campaign_emails: 'admin',
+  generate_invoice_number: 'editor',
+  generate_payment_reference: 'editor',
+  get_next_table_number: 'editor',
+};
+
+/** Role hierarchy for RPC permission checks (higher index = more privilege) */
+const ROLE_HIERARCHY = ['viewer', 'judge', 'marketing', 'finance', 'editor', 'admin', 'super_admin'];
+
+/**
+ * Check if a role meets the minimum required role level.
+ * @param {string} userRole - The user's current role.
+ * @param {string} requiredRole - The minimum role required.
+ * @returns {boolean}
+ */
+function hasMinimumRole(userRole, requiredRole) {
+  const userLevel = ROLE_HIERARCHY.indexOf(userRole);
+  const requiredLevel = ROLE_HIERARCHY.indexOf(requiredRole);
+  if (userLevel === -1 || requiredLevel === -1) return false;
+  return userLevel >= requiredLevel;
+}
+
+// ============================================
+// ALLOWED STORAGE BUCKETS
+// ============================================
+
+/** Storage buckets that authenticated users can upload to, mapped to required minimum role */
+const ALLOWED_STORAGE_BUCKETS = {
+  media: 'editor',
+  'media-gallery': 'editor',
+  'brand-assets': 'admin',
+  'sponsor-assets': 'editor',
+  'organisation-logos': 'editor',
+  'winner-media': 'editor',
+  'entry-files': 'editor',
+};
+
+// ============================================
 // ALLOWED TABLES & OPERATIONS
 // ============================================
 
@@ -422,22 +496,17 @@ const ROLE_PERMISSIONS = {
 const READ_ONLY_TABLES = new Set(['activity_log', 'counties', 'regions']);
 
 /**
- * Fetch user role from user_preferences or a roles table.
+ * Fetch user role from user_roles table (canonical source of truth).
  * Falls back to 'viewer' if no role is found.
- * @param {string} userId - The user ID to look up.
+ * @param {string} userEmail - The user's email address.
  * @returns {Promise<string>} The user's role string (defaults to 'viewer').
  */
-async function getUserRole(userId) {
+async function getUserRole(userEmail) {
   try {
-    const { data } = await supabase
-      .from('user_preferences')
-      .select('value')
-      .eq('user_id', userId)
-      .eq('key', 'role')
-      .maybeSingle();
-    return data?.value || 'viewer';
+    const { data } = await supabase.from('user_roles').select('role').eq('email', userEmail).limit(1).maybeSingle();
+    return (data?.role || 'viewer').toLowerCase();
   } catch (err) {
-    console.error(`[data-proxy] Failed to fetch role for user ${userId}:`, err.message);
+    console.error(`[data-proxy] Failed to fetch role for user ${userEmail}:`, err.message);
     return 'viewer';
   }
 }
@@ -515,7 +584,12 @@ async function verifyAuth(req, res) {
 function validateQueryParams(body) {
   const errors = [];
 
-  const { table, operation, select, filters, sort, page, pageSize, data, id, search } = body;
+  const { table, operation, select, filters, sort, page, pageSize, data, id, search, tenantId } = body;
+
+  // RPC and storage operations have their own validation
+  if (operation === 'rpc' || operation === 'storage_upload' || operation === 'storage_url') {
+    return errors;
+  }
 
   if (!table || typeof table !== 'string') {
     errors.push('Missing or invalid "table" parameter');
@@ -525,6 +599,13 @@ function validateQueryParams(body) {
 
   if (!operation || !['select', 'insert', 'update', 'delete', 'count', 'upsert'].includes(operation)) {
     errors.push('Operation must be one of: select, insert, update, delete, count, upsert');
+  }
+
+  // Validate tenantId format if provided
+  if (tenantId && typeof tenantId === 'string' && tenantId !== 'default') {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tenantId)) {
+      errors.push('"tenantId" must be a valid UUID or "default"');
+    }
   }
 
   if (['insert', 'update', 'delete', 'upsert'].includes(operation) && table && !MUTABLE_TABLES.has(table)) {
@@ -681,7 +762,28 @@ function applyFilters(query, filters) {
  * @throws {Error} If the operation is unsupported or the Supabase query fails.
  */
 async function executeQuery(body, user) {
-  const { table, operation, select = '*', filters = {}, sort, page = 1, pageSize = 50, data, id, search } = body;
+  const {
+    table,
+    operation,
+    select = '*',
+    filters = {},
+    sort,
+    page = 1,
+    pageSize = 50,
+    data,
+    id,
+    search,
+    tenantId,
+  } = body;
+
+  // Server-side tenant isolation: auto-scope queries to the current tenant
+  const isTenantScoped = TENANT_SCOPED_TABLES.has(table) && tenantId && tenantId !== 'default';
+  if (isTenantScoped) {
+    // For reads, inject tenant_id filter
+    if (['select', 'count'].includes(operation)) {
+      filters.tenant_id = tenantId;
+    }
+  }
 
   // SELECT / COUNT
   if (operation === 'select' || operation === 'count') {
@@ -728,10 +830,11 @@ async function executeQuery(body, user) {
 
   // INSERT
   if (operation === 'insert') {
-    // Inject audit fields
+    // Inject audit fields and tenant_id
     const insertData = Array.isArray(data) ? data : [data];
     const enriched = insertData.map((row) => ({
       ...row,
+      ...(isTenantScoped ? { tenant_id: tenantId } : {}),
       created_at: row.created_at || new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }));
@@ -751,6 +854,7 @@ async function executeQuery(body, user) {
     const upsertData = Array.isArray(data) ? data : [data];
     const enriched = upsertData.map((row) => ({
       ...row,
+      ...(isTenantScoped ? { tenant_id: tenantId } : {}),
       updated_at: new Date().toISOString(),
     }));
     const upsertOpts = {};
@@ -776,6 +880,11 @@ async function executeQuery(body, user) {
       query = applyFilters(query, filters);
     }
 
+    // Enforce tenant isolation on updates
+    if (isTenantScoped) {
+      query = query.eq('tenant_id', tenantId);
+    }
+
     const { data: result, error } = await query.select();
     if (error) throw error;
 
@@ -792,6 +901,11 @@ async function executeQuery(body, user) {
       query = query.eq('id', id);
     } else {
       query = applyFilters(query, filters);
+    }
+
+    // Enforce tenant isolation on deletes
+    if (isTenantScoped) {
+      query = query.eq('tenant_id', tenantId);
     }
 
     const { data: result, error } = await query.select();
@@ -891,6 +1005,115 @@ function checkRateLimit(userId) {
 }
 
 // ============================================
+// RPC EXECUTION
+// ============================================
+
+/**
+ * Execute a validated RPC call via Supabase.
+ * @param {Object} body - The request body with rpcName and rpcParams.
+ * @param {Object} user - The authenticated user object.
+ * @returns {Promise<Object>} RPC result with data.
+ */
+async function executeRpc(body, user) {
+  const { rpcName, rpcParams = {} } = body;
+
+  if (!rpcName || typeof rpcName !== 'string') {
+    throw new Error('Missing or invalid "rpcName" parameter');
+  }
+
+  if (!ALLOWED_RPCS[rpcName]) {
+    throw new Error(`RPC function "${rpcName}" is not allowed`);
+  }
+
+  const { data, error } = await supabase.rpc(rpcName, rpcParams);
+  if (error) throw error;
+
+  // Log RPC calls
+  await logActivity('_rpc', rpcName, user, data ? [data] : [], { rpcParams });
+
+  return { data };
+}
+
+// ============================================
+// STORAGE PROXY
+// ============================================
+
+/**
+ * Handle authenticated storage upload.
+ * @param {Object} body - The request body with bucket and path.
+ * @param {Object} req - The raw request (for reading file data from body).
+ * @returns {Promise<Object>} Upload result with publicUrl.
+ */
+async function executeStorageUpload(body) {
+  const { bucket, path: storagePath, fileBase64, contentType } = body;
+
+  if (!bucket || !storagePath || !fileBase64) {
+    throw new Error('Missing required storage upload parameters: bucket, path, fileBase64');
+  }
+
+  if (!ALLOWED_STORAGE_BUCKETS[bucket]) {
+    throw new Error(`Storage bucket "${bucket}" is not allowed`);
+  }
+
+  const fileBuffer = Buffer.from(fileBase64, 'base64');
+  const { error: uploadError } = await supabase.storage
+    .from(bucket)
+    .upload(storagePath, fileBuffer, { contentType: contentType || 'application/octet-stream', upsert: true });
+
+  if (uploadError) throw uploadError;
+
+  const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(storagePath);
+
+  return { publicUrl: urlData.publicUrl, path: storagePath };
+}
+
+/**
+ * Delete files from Supabase Storage.
+ * @param {Object} body - The request body with bucket and paths array.
+ * @returns {Promise<Object>} Delete result with count.
+ */
+async function executeStorageDelete(body) {
+  const { bucket, paths } = body;
+
+  if (!bucket || !Array.isArray(paths) || paths.length === 0) {
+    throw new Error('Missing required parameters: bucket, paths (array)');
+  }
+
+  if (!ALLOWED_STORAGE_BUCKETS[bucket]) {
+    throw new Error(`Storage bucket "${bucket}" is not allowed`);
+  }
+
+  if (paths.length > 100) {
+    throw new Error('Cannot delete more than 100 files at once');
+  }
+
+  const { error } = await supabase.storage.from(bucket).remove(paths);
+  if (error) throw error;
+
+  return { deleted: paths.length };
+}
+
+/**
+ * Get a public URL for a storage object.
+ * @param {Object} body - The request body with bucket and path.
+ * @returns {Object} The public URL.
+ */
+function executeStorageUrl(body) {
+  const { bucket, path: storagePath } = body;
+
+  if (!bucket || !storagePath) {
+    throw new Error('Missing required parameters: bucket, path');
+  }
+
+  if (!ALLOWED_STORAGE_BUCKETS[bucket]) {
+    throw new Error(`Storage bucket "${bucket}" is not allowed`);
+  }
+
+  const { data } = supabase.storage.from(bucket).getPublicUrl(storagePath);
+  return { publicUrl: data.publicUrl };
+}
+
+// ============================================
 // MAIN HANDLER
 // ============================================
 
@@ -948,13 +1171,67 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: 'Request body must be a JSON object' });
     }
 
+    // 4. RBAC check (use email for role lookup - matches client-side user_roles table)
+    const role = await getUserRole(user.email);
+
+    // 5. Handle RPC operations
+    if (body.operation === 'rpc') {
+      const requiredRole = ALLOWED_RPCS[body.rpcName];
+      if (!requiredRole) {
+        return res.status(400).json({ error: `RPC function "${body.rpcName}" is not allowed` });
+      }
+      if (!hasMinimumRole(role, requiredRole)) {
+        return res.status(403).json({
+          error: 'Forbidden',
+          message: `Role "${role}" cannot call RPC "${body.rpcName}" (requires ${requiredRole})`,
+        });
+      }
+      const rpcResult = await executeRpc(body, user);
+      return res.status(200).json(rpcResult);
+    }
+
+    // 6. Handle storage operations
+    if (body.operation === 'storage_upload') {
+      const requiredRole = ALLOWED_STORAGE_BUCKETS[body.bucket];
+      if (!requiredRole) {
+        return res.status(400).json({ error: `Storage bucket "${body.bucket}" is not allowed` });
+      }
+      if (!hasMinimumRole(role, requiredRole)) {
+        return res.status(403).json({
+          error: 'Forbidden',
+          message: `Role "${role}" cannot upload to bucket "${body.bucket}"`,
+        });
+      }
+      const uploadResult = await executeStorageUpload(body);
+      return res.status(200).json(uploadResult);
+    }
+
+    if (body.operation === 'storage_url') {
+      const urlResult = executeStorageUrl(body);
+      return res.status(200).json(urlResult);
+    }
+
+    if (body.operation === 'storage_delete') {
+      const requiredRole = ALLOWED_STORAGE_BUCKETS[body.bucket];
+      if (!requiredRole) {
+        return res.status(400).json({ error: `Storage bucket "${body.bucket}" is not allowed` });
+      }
+      if (!hasMinimumRole(role, requiredRole)) {
+        return res.status(403).json({
+          error: 'Forbidden',
+          message: `Role "${role}" cannot delete from bucket "${body.bucket}"`,
+        });
+      }
+      const deleteResult = await executeStorageDelete(body);
+      return res.status(200).json(deleteResult);
+    }
+
+    // 7. Validate standard query params
     const validationErrors = validateQueryParams(body);
     if (validationErrors.length > 0) {
       return res.status(400).json({ error: 'Validation failed', details: validationErrors });
     }
 
-    // 4. RBAC check
-    const role = await getUserRole(user.id);
     if (!checkPermission(role, body.table, body.operation)) {
       return res.status(403).json({
         error: 'Forbidden',
@@ -962,7 +1239,7 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // 5. Execute
+    // 8. Execute standard query
     const result = await executeQuery(body, user);
     return res.status(200).json(result);
   } catch (error) {

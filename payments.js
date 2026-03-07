@@ -634,9 +634,8 @@ const paymentsModule = {
         // Generate invoice number
         let invoiceNumber;
         try {
-          const { data: invoiceNumberData, error: genError } = await STATE.client.rpc('generate_invoice_number');
-          if (genError) throw genError;
-          invoiceNumber = invoiceNumberData;
+          const genResult = await apiClient.rpc('generate_invoice_number');
+          invoiceNumber = genResult.data;
         } catch (e) {
           // Fallback: generate client-side if RPC doesn't exist
           const year = new Date().getFullYear();
@@ -1489,9 +1488,8 @@ const paymentsModule = {
         // Generate payment reference
         let paymentReference;
         try {
-          const { data: refData, error: refError } = await STATE.client.rpc('generate_payment_reference');
-          if (refError) throw refError;
-          paymentReference = refData;
+          const refResult = await apiClient.rpc('generate_payment_reference');
+          paymentReference = refResult.data;
         } catch (e) {
           // Fallback: generate client-side
           const year = new Date().getFullYear();

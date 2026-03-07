@@ -101,17 +101,17 @@ const rbacModule = {
    */
   async loadUserRole(userEmail) {
     try {
-      const { data, error } = await STATE.client
-        .from('user_roles')
-        .select('role, email')
-        .eq('email', userEmail)
-        .limit(1);
+      const result = await apiClient.select('user_roles', {
+        select: 'role, email',
+        filters: { email: userEmail },
+        pageSize: 1,
+      });
 
-      const row = data?.[0];
-      if (error || !row) {
+      const row = result.data?.[0];
+      if (!row) {
         // Default to viewer (most restrictive) when no role found for safety
         this.currentRole = 'viewer';
-        if (!error) console.warn('No role found for user, defaulting to viewer');
+        console.warn('No role found for user, defaulting to viewer');
       } else {
         this.currentRole = (row.role || 'viewer').toLowerCase();
       }
@@ -249,13 +249,11 @@ const rbacModule = {
    */
   async ensureAdminExists(excludeEmail) {
     try {
-      const { count, error } = await STATE.client
-        .from('user_roles')
-        .select('id', { count: 'exact', head: true })
-        .eq('role', 'super_admin')
-        .neq('email', excludeEmail);
-      if (error) throw error;
-      if (count === 0) {
+      const result = await apiClient.count('user_roles', {
+        role: 'super_admin',
+        'email@neq': excludeEmail,
+      });
+      if (result.count === 0) {
         utils.showToast('Cannot remove the last admin. At least one admin must remain.', 'error');
         return false;
       }

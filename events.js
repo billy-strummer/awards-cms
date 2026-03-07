@@ -10701,16 +10701,16 @@ const eventsModule = {
   async addNewTable() {
     try {
       let nextNumber;
-      const { data: rpcResult, error: numberError } = await STATE.client.rpc('get_next_table_number', {
-        p_event_id: this.currentEventIdTablePlan,
-      });
-      if (numberError) {
+      try {
+        const rpcResult = await apiClient.rpc('get_next_table_number', {
+          p_event_id: this.currentEventIdTablePlan,
+        });
+        nextNumber = rpcResult.data;
+      } catch (_rpcErr) {
         // RPC may not exist - compute next table number client-side
         console.warn('get_next_table_number RPC not available, computing locally');
         const maxNum = this.tables.reduce((max, t) => Math.max(max, t.table_number || 0), 0);
         nextNumber = maxNum + 1;
-      } else {
-        nextNumber = rpcResult;
       }
 
       // Place new table in a visible spot on the canvas
@@ -11844,10 +11844,10 @@ const eventsModule = {
     if (!source) return;
 
     try {
-      const { data: nextNumber, error: numberError } = await STATE.client.rpc('get_next_table_number', {
+      const rpcResult = await apiClient.rpc('get_next_table_number', {
         p_event_id: this.currentEventIdTablePlan,
       });
-      if (numberError) throw numberError;
+      const nextNumber = rpcResult.data;
 
       await this._insertEventTable({
         event_id: this.currentEventIdTablePlan,

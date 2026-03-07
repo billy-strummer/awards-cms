@@ -988,17 +988,12 @@ const orgsModule = {
       if (!org) throw new Error('Organisation not found');
 
       // Fetch related awards through award_assignments using explicit FK
-      const { data: assignments, error: awardsError } = await STATE.client
-        .from('award_assignments')
-        .select(
-          `
-          status,
-          awards:award_years!award_assignments_award_id_fkey (*)
-        `
-        )
-        .eq('organisation_id', orgId);
-
-      if (awardsError) throw awardsError;
+      const assignmentsResult = await apiClient.select('award_assignments', {
+        select: 'status, awards:award_years!award_assignments_award_id_fkey (*)',
+        filters: { organisation_id: orgId },
+        pageSize: 1000,
+      });
+      const assignments = assignmentsResult.data;
 
       // Extract and sort awards, using assignment status instead of award status
       const awards = (assignments || [])
@@ -1012,31 +1007,46 @@ const orgsModule = {
         .sort((a, b) => (b.year || 0) - (a.year || 0));
 
       // Fetch media gallery items tagged to this organisation
-      const { data: taggedMedia, error: mediaError } = await STATE.client
-        .from('media_gallery')
-        .select('*')
-        .eq('organisation_id', orgId)
-        .order('created_at', { ascending: false });
-
-      if (mediaError) console.error('Error loading tagged media:', mediaError);
+      let taggedMedia = [];
+      try {
+        const mediaResult = await apiClient.select('media_gallery', {
+          select: '*',
+          filters: { organisation_id: orgId },
+          sort: { column: 'created_at', ascending: false },
+          pageSize: 1000,
+        });
+        taggedMedia = mediaResult.data;
+      } catch (mediaError) {
+        console.error('Error loading tagged media:', mediaError);
+      }
 
       // Fetch company images for marketing
-      const { data: companyImages, error: imagesError } = await STATE.client
-        .from('organisation_images')
-        .select('*')
-        .eq('organisation_id', orgId)
-        .order('display_order', { ascending: true });
-
-      if (imagesError) console.error('Error loading company images:', imagesError);
+      let companyImages = [];
+      try {
+        const imagesResult = await apiClient.select('organisation_images', {
+          select: '*',
+          filters: { organisation_id: orgId },
+          sort: { column: 'display_order', ascending: true },
+          pageSize: 1000,
+        });
+        companyImages = imagesResult.data;
+      } catch (imagesError) {
+        console.error('Error loading company images:', imagesError);
+      }
 
       // Fetch invoices for this organisation
-      const { data: invoices, error: invoicesError } = await STATE.client
-        .from('invoices')
-        .select('*')
-        .eq('organisation_id', orgId)
-        .order('created_at', { ascending: false });
-
-      if (invoicesError) console.error('Error loading invoices:', invoicesError);
+      let invoices = [];
+      try {
+        const invoicesResult = await apiClient.select('invoices', {
+          select: '*',
+          filters: { organisation_id: orgId },
+          sort: { column: 'created_at', ascending: false },
+          pageSize: 1000,
+        });
+        invoices = invoicesResult.data;
+      } catch (invoicesError) {
+        console.error('Error loading invoices:', invoicesError);
+      }
 
       const invoicesSummary = {
         count: (invoices || []).length,
@@ -1046,19 +1056,18 @@ const orgsModule = {
       };
 
       // Fetch entries with public voting enabled for this organisation
-      const { data: votingEntries, error: entriesError } = await STATE.client
-        .from('entries')
-        .select(
-          `
-          *,
-          award_years (award_name, year)
-        `
-        )
-        .eq('organisation_id', orgId)
-        .eq('allow_public_voting', true)
-        .order('created_at', { ascending: false });
-
-      if (entriesError) console.error('Error loading voting entries:', entriesError);
+      let votingEntries = [];
+      try {
+        const entriesResult = await apiClient.select('entries', {
+          select: '*, award_years (award_name, year)',
+          filters: { organisation_id: orgId, allow_public_voting: true },
+          sort: { column: 'created_at', ascending: false },
+          pageSize: 1000,
+        });
+        votingEntries = entriesResult.data;
+      } catch (entriesError) {
+        console.error('Error loading voting entries:', entriesError);
+      }
 
       // Render profile
       contentDiv.innerHTML = `
@@ -2021,25 +2030,16 @@ const orgsModule = {
           const fileName = `logos/${orgId}/${timestamp}.${fileExt}`;
 
           // Upload to Supabase Storage
-          const { data: _uploadData, error: uploadError } = await STATE.client.storage
-            .from('organisation-logos')
-            .upload(fileName, file, {
-              cacheControl: '3600',
-              upsert: false,
-            });
-
-          if (uploadError) throw uploadError;
+          await apiClient.upload('organisation-logos', fileName, file, {
+            cacheControl: '3600',
+            upsert: false,
+          });
 
           // Get public URL
-          const { data: urlData } = STATE.client.storage.from('organisation-logos').getPublicUrl(fileName);
+          const { data: urlData } = apiClient.getPublicUrl('organisation-logos', fileName);
 
           // Update organisation record with logo URL
-          const { error: updateError } = await STATE.client
-            .from('organisations')
-            .update({ logo_url: urlData.publicUrl })
-            .eq('id', orgId);
-
-          if (updateError) throw updateError;
+          await apiClient.update('organisations', orgId, { logo_url: urlData.publicUrl });
 
           utils.showToast('Logo uploaded successfully!', 'success');
 
@@ -2082,12 +2082,7 @@ const orgsModule = {
     try {
       utils.showLoading();
 
-      const { error } = await STATE.client
-        .from('organisations')
-        .update({ winner_profile_status: status })
-        .eq('id', orgId);
-
-      if (error) throw error;
+      await apiClient.update('organisations', orgId, { winner_profile_status: status });
 
       utils.showToast(`Winner profile ${status === 'published' ? 'published' : 'saved as draft'}!`, 'success');
 
@@ -2121,9 +2116,7 @@ const orgsModule = {
     try {
       utils.showLoading();
 
-      const { error } = await STATE.client.from('organisations').update(profileData).eq('id', orgId);
-
-      if (error) throw error;
+      await apiClient.update('organisations', orgId, profileData);
     } catch (error) {
       console.warn('DB update for winner profile failed, using localStorage:', error);
       localStorage.setItem(`bta_winner_profile_${orgId}`, JSON.stringify(profileData));
@@ -2182,12 +2175,12 @@ const orgsModule = {
 
     try {
       // Fetch all media from media gallery
-      const { data: allMedia, error } = await STATE.client
-        .from('media_gallery')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
+      const mediaResult = await apiClient.select('media_gallery', {
+        select: '*',
+        sort: { column: 'created_at', ascending: false },
+        pageSize: 1000,
+      });
+      const allMedia = mediaResult.data;
 
       // Filter images only (no videos) and check dimensions
       const imageMedia = (allMedia || []).filter((m) => m.file_url && m.file_url.match(/\.(jpg|jpeg|png|gif|webp)$/i));
@@ -2296,9 +2289,7 @@ const orgsModule = {
       utils.showLoading();
 
       // Update organisation record with logo URL
-      const { error } = await STATE.client.from('organisations').update({ logo_url: fileUrl }).eq('id', orgId);
-
-      if (error) throw error;
+      await apiClient.update('organisations', orgId, { logo_url: fileUrl });
 
       utils.showToast('Logo updated successfully!', 'success');
 
@@ -2379,9 +2370,7 @@ const orgsModule = {
       }
 
       // Update the organisation's logo_url
-      const { error } = await STATE.client.from('organisations').update({ logo_url: logoUrl }).eq('id', orgId);
-
-      if (error) throw error;
+      await apiClient.update('organisations', orgId, { logo_url: logoUrl });
 
       utils.showToast('Logo fetched successfully from website!', 'success');
 
@@ -2462,27 +2451,19 @@ const orgsModule = {
             const fileName = `company-images/${this.currentOrgIdForImages}/${timestamp}_${randomSuffix}_${file.name}`;
 
             // Upload file to Supabase Storage
-            const { data: _uploadData, error: uploadError } = await STATE.client.storage
-              .from('media-gallery')
-              .upload(fileName, file);
-
-            if (uploadError) throw uploadError;
+            await apiClient.upload('media-gallery', fileName, file);
 
             // Get public URL
-            const { data: urlData } = STATE.client.storage.from('media-gallery').getPublicUrl(fileName);
+            const { data: urlData } = apiClient.getPublicUrl('media-gallery', fileName);
 
             // Insert record into organisation_images table
-            const { error: dbError } = await STATE.client.from('organisation_images').insert([
-              {
-                organisation_id: this.currentOrgIdForImages,
-                file_url: urlData.publicUrl,
-                title: title || file.name,
-                caption: caption || null,
-                display_order: successCount,
-              },
-            ]);
-
-            if (dbError) throw dbError;
+            await apiClient.insert('organisation_images', {
+              organisation_id: this.currentOrgIdForImages,
+              file_url: urlData.publicUrl,
+              title: title || file.name,
+              caption: caption || null,
+              display_order: successCount,
+            });
 
             successCount++;
           } catch (error) {
@@ -2534,25 +2515,25 @@ const orgsModule = {
       utils.showLoading();
 
       // Get image details to delete from storage
-      const { data: image, error: fetchError } = await STATE.client
-        .from('organisation_images')
-        .select('file_url')
-        .eq('id', imageId)
-        .single();
-
-      if (fetchError) throw fetchError;
+      const imageResult = await apiClient.select('organisation_images', {
+        select: 'file_url',
+        filters: { id: imageId },
+        pageSize: 1,
+      });
+      const image = imageResult.data[0];
 
       // Delete from database
-      const { error: deleteError } = await STATE.client.from('organisation_images').delete().eq('id', imageId);
-
-      if (deleteError) throw deleteError;
+      await apiClient.delete('organisation_images', imageId);
 
       // Extract file path from URL and delete from storage
       if (image && image.file_url) {
         const urlParts = image.file_url.split('/storage/v1/object/public/media-gallery/');
         if (urlParts.length > 1) {
-          const filePath = urlParts[1];
-          await STATE.client.storage.from('media-gallery').remove([filePath]);
+          try {
+            await apiClient.storageDelete('media-gallery', [urlParts[1]]);
+          } catch (storageErr) {
+            console.warn('Storage cleanup failed:', storageErr);
+          }
         }
       }
 
@@ -2643,9 +2624,7 @@ const orgsModule = {
         };
 
         // Update in database
-        const { error } = await STATE.client.from('organisations').update(updatedData).eq('id', orgId);
-
-        if (error) throw error;
+        await apiClient.update('organisations', orgId, updatedData);
 
         // Update local state
         const orgIndex = STATE.allOrganisations.findIndex((o) => o.id === orgId);
@@ -2737,18 +2716,13 @@ const orgsModule = {
       utils.showLoading();
 
       // Load invoices with line items
-      const { data: invoices, error } = await STATE.client
-        .from('invoices')
-        .select(
-          `
-          *,
-          invoice_line_items (*)
-        `
-        )
-        .eq('organisation_id', orgId)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
+      const invoicesResult = await apiClient.select('invoices', {
+        select: '*, invoice_line_items (*)',
+        filters: { organisation_id: orgId },
+        sort: { column: 'created_at', ascending: false },
+        pageSize: 1000,
+      });
+      const invoices = invoicesResult.data;
 
       // Create and show modal
       let modal = bootstrap.Modal.getInstance(document.getElementById('organisationInvoicesModal'));
@@ -2960,9 +2934,7 @@ const orgsModule = {
       await utils.protectModalDuringSave('addNewOrgModal', async () => {
         utils.showLoading();
 
-        const { error } = await STATE.client.from('organisations').insert([companyData]);
-
-        if (error) throw error;
+        await apiClient.insert('organisations', companyData);
 
         utils.showToast('Company added successfully!', 'success');
         bootstrap.Modal.getInstance(document.getElementById('addNewOrgModal'))?.hide();
@@ -3455,9 +3427,7 @@ const orgsModule = {
       const org = STATE.allOrganisations.find((o) => o.id === orgId);
       const oldStatus = org?.status || 'prospect';
 
-      const { error } = await STATE.client.from('organisations').update({ status: newStatus }).eq('id', orgId);
-
-      if (error) throw error;
+      await apiClient.update('organisations', orgId, { status: newStatus });
 
       // Update local state
       if (org) org.status = newStatus;
@@ -3491,9 +3461,7 @@ const orgsModule = {
     try {
       utils.showLoading();
 
-      const { error } = await STATE.client.from('organisations').update({ status: 'archived' }).eq('id', orgId);
-
-      if (error) throw error;
+      await apiClient.update('organisations', orgId, { status: 'archived' });
 
       // Log the action
       this._logAudit(orgId, 'archived', companyName, 'Organisation archived');
@@ -3517,9 +3485,7 @@ const orgsModule = {
 
   async restoreOrganisation(orgId, companyName) {
     try {
-      const { error } = await STATE.client.from('organisations').update({ status: 'prospect' }).eq('id', orgId);
-
-      if (error) throw error;
+      await apiClient.update('organisations', orgId, { status: 'prospect' });
 
       this._logAudit(orgId, 'restored', companyName, 'Organisation restored from archive');
 
@@ -3611,9 +3577,7 @@ const orgsModule = {
       utils.showLoading();
       const orgIds = Array.from(this.selectedOrgs);
 
-      const { error } = await STATE.client.from('organisations').update({ status: 'archived' }).in('id', orgIds);
-
-      if (error) throw error;
+      await apiClient.updateByFilters('organisations', { 'id@in': orgIds }, { status: 'archived' });
 
       // Update local state
       orgIds.forEach((id) => {
@@ -3657,9 +3621,7 @@ const orgsModule = {
       utils.showLoading();
       const orgIds = Array.from(this.selectedOrgs);
 
-      const { error } = await STATE.client.from('organisations').update({ status: newStatus }).in('id', orgIds);
-
-      if (error) throw error;
+      await apiClient.updateByFilters('organisations', { 'id@in': orgIds }, { status: newStatus });
 
       orgIds.forEach((id) => {
         const org = STATE.allOrganisations.find((o) => o.id === id);
@@ -3680,9 +3642,7 @@ const orgsModule = {
 
   async updateOrgStatus(orgId, newStatus) {
     try {
-      const { error } = await STATE.client.from('organisations').update({ status: newStatus }).eq('id', orgId);
-
-      if (error) throw error;
+      await apiClient.update('organisations', orgId, { status: newStatus });
 
       // Update local state
       const org = STATE.allOrganisations.find((o) => o.id === orgId);
@@ -3736,9 +3696,13 @@ const orgsModule = {
   async _logAudit(orgId, action, companyName, details) {
     try {
       const performedBy = await this._getCurrentUserEmail();
-      await STATE.client
-        .from('org_audit_log')
-        .insert([{ org_id: orgId, company_name: companyName, action, details, performed_by: performedBy }]);
+      await apiClient.insert('org_audit_log', {
+        org_id: orgId,
+        company_name: companyName,
+        action,
+        details,
+        performed_by: performedBy,
+      });
     } catch (e) {
       console.warn('Failed to write audit log to Supabase:', e.message);
     }
@@ -3759,11 +3723,15 @@ const orgsModule = {
 
   async getAuditLog(orgId) {
     try {
-      let query = STATE.client.from('org_audit_log').select('*').order('created_at', { ascending: false }).limit(50);
-      if (orgId) query = query.eq('org_id', orgId);
-      const { data, error } = await query;
-      if (error) throw error;
-      return (data || []).map((e) => ({ ...e, timestamp: e.created_at }));
+      const filters = {};
+      if (orgId) filters.org_id = orgId;
+      const result = await apiClient.select('org_audit_log', {
+        select: '*',
+        filters,
+        sort: { column: 'created_at', ascending: false },
+        pageSize: 50,
+      });
+      return (result.data || []).map((e) => ({ ...e, timestamp: e.created_at }));
     } catch (e) {
       console.warn('Failed to read audit log from Supabase:', e.message);
       return [];
@@ -3979,13 +3947,11 @@ const orgsModule = {
   async _logComms(orgId, templateId, companyName) {
     try {
       const template = this._emailTemplates.find((t) => t.id === templateId);
-      await STATE.client.from('organisation_comms_log').insert([
-        {
-          organisation_id: orgId,
-          template_id: templateId,
-          template_name: template?.name || templateId,
-        },
-      ]);
+      await apiClient.insert('organisation_comms_log', {
+        organisation_id: orgId,
+        template_id: templateId,
+        template_name: template?.name || templateId,
+      });
 
       this._logAudit(orgId, 'email_sent', companyName, `Email sent: ${template?.name || templateId}`);
     } catch (e) {
@@ -3995,15 +3961,15 @@ const orgsModule = {
 
   async getCommsHistory(orgId) {
     try {
-      let query = STATE.client
-        .from('organisation_comms_log')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(50);
-      if (orgId) query = query.eq('organisation_id', orgId);
-      const { data, error } = await query;
-      if (error) throw error;
-      return (data || []).map((e) => ({ ...e, timestamp: e.created_at, templateName: e.template_name }));
+      const filters = {};
+      if (orgId) filters.organisation_id = orgId;
+      const result = await apiClient.select('organisation_comms_log', {
+        select: '*',
+        filters,
+        sort: { column: 'created_at', ascending: false },
+        pageSize: 50,
+      });
+      return (result.data || []).map((e) => ({ ...e, timestamp: e.created_at, templateName: e.template_name }));
     } catch (e) {
       console.warn('Failed to read comms history from Supabase:', e.message);
       return [];
@@ -4050,9 +4016,7 @@ const orgsModule = {
       }
 
       const newTags = [...currentTags, tag];
-      const { error } = await STATE.client.from('organisations').update({ tags: newTags }).eq('id', orgId);
-
-      if (error) throw error;
+      await apiClient.update('organisations', orgId, { tags: newTags });
 
       if (org) org.tags = newTags;
       input.value = '';
@@ -4069,9 +4033,7 @@ const orgsModule = {
       const org = STATE.allOrganisations.find((o) => o.id === orgId);
       const newTags = (org?.tags || []).filter((t) => t !== tag);
 
-      const { error } = await STATE.client.from('organisations').update({ tags: newTags }).eq('id', orgId);
-
-      if (error) throw error;
+      await apiClient.update('organisations', orgId, { tags: newTags });
 
       if (org) org.tags = newTags;
       utils.showToast(`Tag "${tag}" removed`, 'success');
@@ -4131,12 +4093,7 @@ const orgsModule = {
     const oldValue = org ? org[dbField] || '' : '';
 
     try {
-      const { error } = await STATE.client
-        .from('organisations')
-        .update({ [dbField]: newValue || null })
-        .eq('id', orgId);
-
-      if (error) throw error;
+      await apiClient.update('organisations', orgId, { [dbField]: newValue || null });
     } catch (error) {
       console.warn('DB update for inline edit failed, using localStorage:', error);
       const key = `bta_org_edits_${orgId}`;
@@ -4184,12 +4141,7 @@ const orgsModule = {
     }
 
     try {
-      const { error } = await STATE.client
-        .from('organisations')
-        .update({ [edit.dbField]: edit.oldValue || null })
-        .eq('id', edit.orgId);
-
-      if (error) throw error;
+      await apiClient.update('organisations', edit.orgId, { [edit.dbField]: edit.oldValue || null });
 
       const org = STATE.allOrganisations.find((o) => o.id === edit.orgId);
       if (org) org[edit.dbField] = edit.oldValue || null;
@@ -4232,12 +4184,7 @@ const orgsModule = {
       utils.showLoading();
       const orgIds = Array.from(this.selectedOrgs);
 
-      const { error } = await STATE.client
-        .from('organisations')
-        .update({ [field]: value || null })
-        .in('id', orgIds);
-
-      if (error) throw error;
+      await apiClient.updateByFilters('organisations', { 'id@in': orgIds }, { [field]: value || null });
 
       orgIds.forEach((id) => {
         const org = STATE.allOrganisations.find((o) => o.id === id);
@@ -4350,7 +4297,7 @@ const orgsModule = {
         }
 
         if (logoUrl) {
-          await STATE.client.from('organisations').update({ logo_url: logoUrl }).eq('id', org.id);
+          await apiClient.update('organisations', org.id, { logo_url: logoUrl });
           org.logo_url = logoUrl;
           successCount++;
         } else {
@@ -4774,13 +4721,12 @@ const orgsModule = {
 
       for (let i = 0; i < records.length; i += batchSize) {
         const batch = records.slice(i, i + batchSize);
-        const { error } = await STATE.client.from('organisations').insert(batch);
-
-        if (error) {
-          console.error('Batch import error:', error);
-          errorCount += batch.length;
-        } else {
+        try {
+          await apiClient.insert('organisations', batch);
           successCount += batch.length;
+        } catch (batchErr) {
+          console.error('Batch import error:', batchErr);
+          errorCount += batch.length;
         }
       }
 
@@ -4999,26 +4945,18 @@ const orgsModule = {
       );
 
       try {
-        const { error } = await STATE.client.from('user_preferences').upsert(
-          {
-            key: 'orgsFilterPresets',
-            value: JSON.stringify(presets),
-            user_email: STATE.currentUser?.email,
-          },
-          { onConflict: 'key' }
-        );
-        if (error) throw error;
+        await apiClient.upsert('user_preferences', {
+          key: 'orgsFilterPresets',
+          value: JSON.stringify(presets),
+          user_email: STATE.currentUser?.email,
+        });
 
         // Also keep saved views in sync in Supabase
-        const { error: viewsError } = await STATE.client.from('user_preferences').upsert(
-          {
-            key: 'orgsSavedViews',
-            value: JSON.stringify(savedViews),
-            user_email: STATE.currentUser?.email,
-          },
-          { onConflict: 'key' }
-        );
-        if (viewsError) throw viewsError;
+        await apiClient.upsert('user_preferences', {
+          key: 'orgsSavedViews',
+          value: JSON.stringify(savedViews),
+          user_email: STATE.currentUser?.email,
+        });
       } catch (saveErr) {
         // Fallback to localStorage
         localStorage.setItem('orgsFilterPresets', JSON.stringify(presets));
@@ -5120,15 +5058,11 @@ const orgsModule = {
       delete presets[name];
 
       try {
-        const { error } = await STATE.client.from('user_preferences').upsert(
-          {
-            key: 'orgsFilterPresets',
-            value: JSON.stringify(presets),
-            user_email: STATE.currentUser?.email,
-          },
-          { onConflict: 'key' }
-        );
-        if (error) throw error;
+        await apiClient.upsert('user_preferences', {
+          key: 'orgsFilterPresets',
+          value: JSON.stringify(presets),
+          user_email: STATE.currentUser?.email,
+        });
       } catch (saveErr) {
         localStorage.setItem('orgsFilterPresets', JSON.stringify(presets));
       }
@@ -5173,13 +5107,13 @@ const orgsModule = {
   // ============================================
   async loadOrgContacts(orgId) {
     try {
-      const { data, error } = await STATE.client
-        .from('organisation_contacts')
-        .select('*')
-        .eq('organisation_id', orgId)
-        .order('is_primary', { ascending: false });
-      if (error) throw error;
-      return data || [];
+      const result = await apiClient.select('organisation_contacts', {
+        select: '*',
+        filters: { organisation_id: orgId },
+        sort: { column: 'is_primary', ascending: false },
+        pageSize: 1000,
+      });
+      return result.data || [];
     } catch (e) {
       console.error('Error loading contacts:', e);
       return [];
@@ -5372,9 +5306,8 @@ const orgsModule = {
       utils.showLoading('Uploading document...');
       const timestamp = Date.now();
       const fileName = `documents/${orgId}/${timestamp}_${file.name}`;
-      const { error: uploadError } = await STATE.client.storage.from('media-gallery').upload(fileName, file);
-      if (uploadError) throw uploadError;
-      const { data: urlData } = STATE.client.storage.from('media-gallery').getPublicUrl(fileName);
+      await apiClient.upload('media-gallery', fileName, file);
+      const { data: urlData } = apiClient.getPublicUrl('media-gallery', fileName);
 
       // Store in organisation_documents or fallback to localStorage
       try {
@@ -8165,12 +8098,12 @@ const orgsModule = {
       // Load existing views from Supabase
       let views = {};
       try {
-        const { data, error } = await STATE.client
-          .from('user_preferences')
-          .select('value')
-          .eq('key', 'orgsSavedViews')
-          .maybeSingle();
-        if (error) throw error;
+        const result = await apiClient.select('user_preferences', {
+          select: 'value',
+          filters: { key: 'orgsSavedViews' },
+          pageSize: 1,
+        });
+        const data = result.data?.[0];
         if (data?.value) {
           views = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
         }
@@ -8198,15 +8131,11 @@ const orgsModule = {
       };
 
       try {
-        const { error } = await STATE.client.from('user_preferences').upsert(
-          {
-            key: 'orgsSavedViews',
-            value: JSON.stringify(views),
-            user_email: STATE.currentUser?.email,
-          },
-          { onConflict: 'key' }
-        );
-        if (error) throw error;
+        await apiClient.upsert('user_preferences', {
+          key: 'orgsSavedViews',
+          value: JSON.stringify(views),
+          user_email: STATE.currentUser?.email,
+        });
       } catch (saveErr) {
         // Fallback to localStorage
         localStorage.setItem('orgsSavedViews', JSON.stringify(views));
@@ -8221,12 +8150,12 @@ const orgsModule = {
   async showSavedViews() {
     let views = {};
     try {
-      const { data, error } = await STATE.client
-        .from('user_preferences')
-        .select('value')
-        .eq('key', 'orgsSavedViews')
-        .maybeSingle();
-      if (error) throw error;
+      const result = await apiClient.select('user_preferences', {
+        select: 'value',
+        filters: { key: 'orgsSavedViews' },
+        pageSize: 1,
+      });
+      const data = result.data?.[0];
       if (data?.value) {
         views = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
       }
@@ -8275,12 +8204,12 @@ const orgsModule = {
   async loadView(name) {
     let views = {};
     try {
-      const { data, error } = await STATE.client
-        .from('user_preferences')
-        .select('value')
-        .eq('key', 'orgsSavedViews')
-        .maybeSingle();
-      if (error) throw error;
+      const result = await apiClient.select('user_preferences', {
+        select: 'value',
+        filters: { key: 'orgsSavedViews' },
+        pageSize: 1,
+      });
+      const data = result.data?.[0];
       if (data?.value) {
         views = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
       }
@@ -8348,12 +8277,12 @@ const orgsModule = {
       // Load existing views from Supabase
       let views = {};
       try {
-        const { data, error } = await STATE.client
-          .from('user_preferences')
-          .select('value')
-          .eq('key', 'orgsSavedViews')
-          .maybeSingle();
-        if (error) throw error;
+        const result = await apiClient.select('user_preferences', {
+          select: 'value',
+          filters: { key: 'orgsSavedViews' },
+          pageSize: 1,
+        });
+        const data = result.data?.[0];
         if (data?.value) {
           views = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
         }
@@ -8364,15 +8293,11 @@ const orgsModule = {
       delete views[name];
 
       try {
-        const { error } = await STATE.client.from('user_preferences').upsert(
-          {
-            key: 'orgsSavedViews',
-            value: JSON.stringify(views),
-            user_email: STATE.currentUser?.email,
-          },
-          { onConflict: 'key' }
-        );
-        if (error) throw error;
+        await apiClient.upsert('user_preferences', {
+          key: 'orgsSavedViews',
+          value: JSON.stringify(views),
+          user_email: STATE.currentUser?.email,
+        });
       } catch (saveErr) {
         localStorage.setItem('orgsSavedViews', JSON.stringify(views));
       }

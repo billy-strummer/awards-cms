@@ -708,21 +708,14 @@ const winnersModule = {
         const timestamp = Date.now();
         const fileName = `${this.currentWinnerId}/${this.currentMediaType}/${timestamp}_${file.name}`;
 
-        // Upload file to Supabase Storage (v2 syntax)
-        const { data: _uploadData, error: uploadError } = await STATE.client.storage
-          .from('winner-media')
-          .upload(fileName, file);
-
-        if (uploadError) throw uploadError;
-
-        // Get public URL (v2 syntax)
-        const { data: urlData } = STATE.client.storage.from('winner-media').getPublicUrl(fileName);
+        // Upload file to storage via server-side proxy
+        const uploadResult = await apiClient.upload('winner-media', fileName, file);
 
         // Insert record into database via apiClient
         await apiClient.insert('winner_media', {
           winner_id: this.currentWinnerId,
           media_type: this.currentMediaType,
-          file_url: urlData.publicUrl,
+          file_url: uploadResult.publicUrl,
           caption: caption || null,
         });
 

@@ -1050,7 +1050,7 @@ The British Trade Awards Team`,
     try {
       utils.showToast('Sending test email...', 'info');
 
-      const { data, error } = await STATE.client.rpc('send_test_email', {
+      const result = await apiClient.rpc('send_test_email', {
         p_to: email,
         p_subject: testSubject,
         p_html: testBody,
@@ -1059,8 +1059,7 @@ The British Trade Awards Team`,
         p_reply_to: replyTo,
       });
 
-      if (error) throw error;
-      if (data && !data.success) throw new Error(data.error || 'Send failed');
+      if (result.data && !result.data.success) throw new Error(result.data.error || 'Send failed');
 
       utils.showToast(`Test email sent to ${email}!`, 'success');
     } catch (error) {

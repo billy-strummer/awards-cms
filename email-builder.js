@@ -1442,15 +1442,13 @@ ${content}
     const html = this.generateFullHTML();
 
     try {
-      const { error } = await STATE.client.from('email_templates').insert({
+      await apiClient.insert('email_templates', {
         name: campaignName,
         subject: subject,
         body: html,
         description: 'Custom Build',
         is_active: true,
       });
-
-      if (error) throw error;
 
       utils.showToast('Template saved successfully!', 'success');
     } catch (error) {
@@ -2480,13 +2478,8 @@ ${content}
    */
   async checkEmailConfig() {
     try {
-      const { data, error } = await STATE.client.rpc('check_email_config');
-      if (error) {
-        // If the function doesn't exist yet, warn but don't block
-        console.warn('check_email_config RPC not available:', error.message);
-        return true;
-      }
-      if (!data?.has_api_key) {
+      const result = await apiClient.rpc('check_email_config');
+      if (!result.data?.has_api_key) {
         utils.showToast(
           'Email sending is not configured. Please add your Resend API key to the cms_config table.',
           'error'
@@ -2527,7 +2520,7 @@ ${content}
     try {
       utils.showToast('Sending test email...', 'info');
 
-      const { data, error } = await STATE.client.rpc('send_test_email', {
+      const result = await apiClient.rpc('send_test_email', {
         p_to: email,
         p_subject: subject,
         p_html: html,
@@ -2536,8 +2529,7 @@ ${content}
         p_reply_to: replyTo,
       });
 
-      if (error) throw error;
-      if (data && !data.success) throw new Error(data.error || 'Send failed');
+      if (result.data && !result.data.success) throw new Error(result.data.error || 'Send failed');
 
       utils.showToast(`Test email sent to ${email}!`, 'success');
     } catch (error) {
@@ -2599,7 +2591,7 @@ ${content}
     try {
       utils.showToast('Sending campaign... this may take a moment.', 'info');
 
-      const { data, error } = await STATE.client.rpc('send_campaign_emails', {
+      const result = await apiClient.rpc('send_campaign_emails', {
         p_list_id: listId,
         p_subject: subject,
         p_html: html,
@@ -2609,10 +2601,9 @@ ${content}
         p_campaign_name: campaignName || subject,
       });
 
-      if (error) throw error;
-      if (data && !data.success) throw new Error(data.error || 'Campaign send failed');
+      if (result.data && !result.data.success) throw new Error(result.data.error || 'Campaign send failed');
 
-      utils.showToast(`Campaign sent to ${data?.sent || count} recipients!`, 'success');
+      utils.showToast(`Campaign sent to ${result.data?.sent || count} recipients!`, 'success');
 
       // Log the campaign with full data for cloning
       try {
@@ -2622,7 +2613,7 @@ ${content}
           recipients: listName,
           status: 'Sent',
           sent_date: new Date().toISOString(),
-          total_recipients: data?.sent || count || 0,
+          total_recipients: result.data?.sent || count || 0,
           notes: JSON.stringify({
             html,
             from_name: fromName,
@@ -3300,14 +3291,10 @@ ${content}
       const filePath = `email-builder/${timestamp}_${randomSuffix}_${safeFileName}`;
 
       // Upload to Supabase storage (media-gallery bucket)
-      const { error: uploadError } = await STATE.client.storage
-        .from('media-gallery')
-        .upload(filePath, file, { cacheControl: '3600' });
-
-      if (uploadError) throw uploadError;
+      await apiClient.upload('media-gallery', filePath, file);
 
       // Get public URL
-      const { data: urlData } = STATE.client.storage.from('media-gallery').getPublicUrl(filePath);
+      const urlData = await apiClient.getPublicUrl('media-gallery', filePath);
 
       const publicUrl = urlData.publicUrl;
 
@@ -3540,9 +3527,7 @@ ${content}
         }),
       };
 
-      const { error } = await STATE.client.from('email_campaigns').insert(draftData);
-
-      if (error) throw error;
+      await apiClient.insert('email_campaigns', draftData);
 
       this.hasUnsavedChanges = false;
       utils.showToast('Draft saved successfully!', 'success');
@@ -3558,13 +3543,13 @@ ${content}
    */
   async loadDraft(campaignId) {
     try {
-      const { data: campaign, error } = await STATE.client
-        .from('email_campaigns')
-        .select('*')
-        .eq('id', campaignId)
-        .single();
+      const result = await apiClient.select('email_campaigns', {
+        filters: { id: campaignId },
+        pageSize: 1,
+      });
 
-      if (error) throw error;
+      const campaign = result.data?.[0];
+      if (!campaign) throw new Error('Campaign not found');
 
       let notes = {};
       try {
@@ -3904,13 +3889,11 @@ ${content}
     const configOk = await this.checkEmailConfig();
     if (!configOk) return;
 
-    const { count, error: countError } = await STATE.client
-      .from('email_list_subscribers')
-      .select('id', { count: 'exact', head: true })
-      .eq('list_id', listId)
-      .eq('status', 'active');
-
-    if (countError) {
+    let count;
+    try {
+      const countResult = await apiClient.count('email_list_subscribers', { list_id: listId, status: 'active' });
+      count = countResult.count;
+    } catch (countError) {
       utils.showToast('Failed to get subscriber count: ' + countError.message, 'error');
       return;
     }
@@ -3940,18 +3923,18 @@ ${content}
       utils.showToast('Sending A/B test campaign...', 'info');
 
       // Send variant A first
-      const { data: _dataA, error: errorA } = await STATE.client.rpc('send_campaign_emails', {
-        p_list_id: listId,
-        p_subject: subjectA,
-        p_html: html,
-        p_from_name: fromName,
-        p_from_email: fromEmail,
-        p_reply_to: replyTo,
-        p_campaign_name: (campaignName || subjectA) + ' [A]',
-        p_limit: countA,
-      });
-
-      if (errorA) {
+      try {
+        await apiClient.rpc('send_campaign_emails', {
+          p_list_id: listId,
+          p_subject: subjectA,
+          p_html: html,
+          p_from_name: fromName,
+          p_from_email: fromEmail,
+          p_reply_to: replyTo,
+          p_campaign_name: (campaignName || subjectA) + ' [A]',
+          p_limit: countA,
+        });
+      } catch (errorA) {
         // Log failed A variant
         try {
           await apiClient.insert('email_campaigns', {
@@ -3969,19 +3952,19 @@ ${content}
       }
 
       // Only send variant B if A succeeded
-      const { data: _dataB, error: errorB } = await STATE.client.rpc('send_campaign_emails', {
-        p_list_id: listId,
-        p_subject: subjectB,
-        p_html: html,
-        p_from_name: fromName,
-        p_from_email: fromEmail,
-        p_reply_to: replyTo,
-        p_campaign_name: (campaignName || subjectB) + ' [B]',
-        p_offset: countA,
-        p_limit: countB,
-      });
-
-      if (errorB) {
+      try {
+        await apiClient.rpc('send_campaign_emails', {
+          p_list_id: listId,
+          p_subject: subjectB,
+          p_html: html,
+          p_from_name: fromName,
+          p_from_email: fromEmail,
+          p_reply_to: replyTo,
+          p_campaign_name: (campaignName || subjectB) + ' [B]',
+          p_offset: countA,
+          p_limit: countB,
+        });
+      } catch (errorB) {
         // A succeeded but B failed - log both with correct status
         try {
           await apiClient.insert('email_campaigns', {
@@ -4107,28 +4090,24 @@ ${content}
       const search = this.campaignLogSearch || '';
       const offset = this.campaignLogPage * this.campaignLogPageSize;
 
-      // Build query for count
-      let countQuery = STATE.client.from('email_campaigns').select('*', { count: 'exact', head: true });
+      // Build filters
+      const filters = {};
+      if (filter !== 'all') filters.status = filter;
 
-      if (filter !== 'all') countQuery = countQuery.eq('status', filter);
-      if (search) countQuery = countQuery.or(`campaign_name.ilike.%${search}%,subject.ilike.%${search}%`);
+      const searchOption = search ? { term: search, columns: ['campaign_name', 'subject'] } : undefined;
 
-      const { count: totalCount } = await countQuery;
-      this.campaignLogTotal = totalCount || 0;
+      // Single query for both count and data
+      const pageNum = Math.floor(offset / this.campaignLogPageSize) + 1;
+      const result = await apiClient.select('email_campaigns', {
+        filters,
+        search: searchOption,
+        sort: { column: 'created_at', ascending: false },
+        page: pageNum,
+        pageSize: this.campaignLogPageSize,
+      });
 
-      // Build data query
-      let query = STATE.client
-        .from('email_campaigns')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .range(offset, offset + this.campaignLogPageSize - 1);
-
-      if (filter !== 'all') query = query.eq('status', filter);
-      if (search) query = query.or(`campaign_name.ilike.%${search}%,subject.ilike.%${search}%`);
-
-      const { data: campaigns, error } = await query;
-
-      if (error) throw error;
+      this.campaignLogTotal = result.count || 0;
+      const campaigns = result.data;
 
       if (!campaigns || campaigns.length === 0) {
         tbody.innerHTML = `

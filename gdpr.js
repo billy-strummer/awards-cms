@@ -447,7 +447,7 @@ const gdprModule = {
         await this._deleteEntityData(entityId);
       } else if (requestType === 'anonymize') {
         // Use the database function
-        await STATE.client.rpc('anonymize_organisation', { p_org_id: entityId });
+        await apiClient.rpc('anonymize_organisation', { p_org_id: entityId });
       }
 
       // Mark as completed

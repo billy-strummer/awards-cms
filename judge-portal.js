@@ -155,7 +155,9 @@ const judgePortal = {
     // Prefer shared STATE.client session if available
     if (typeof STATE !== 'undefined' && STATE.client?.auth?.getSession) {
       try {
-        const { data: { session } } = await STATE.client.auth.getSession();
+        const {
+          data: { session },
+        } = await STATE.client.auth.getSession();
         if (session?.user?.email) {
           return session.user.email;
         }
@@ -771,12 +773,10 @@ const judgePortal = {
         scored_at: new Date().toISOString(),
       };
 
-      // Upsert score (update if exists, insert if new) - use STATE.client for upsert with onConflict
-      const { error } = await STATE.client.from('judge_scores').upsert([scoreData], {
+      // Upsert score (update if exists, insert if new) via server-side proxy
+      await apiClient.upsert('judge_scores', scoreData, {
         onConflict: 'entry_id,judge_email',
       });
-
-      if (error) throw error;
 
       showPortalToast(
         isComplete ? 'Score submitted successfully!' : 'Score saved as draft',

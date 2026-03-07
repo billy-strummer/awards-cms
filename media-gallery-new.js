@@ -1304,16 +1304,9 @@ const mediaGalleryModule = {
           const fileName = `videos/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
 
           try {
-            const { data: _uploadData, error: uploadError } = await STATE.client.storage
-              .from('media')
-              .upload(fileName, file, {
-                cacheControl: '3600',
-                upsert: false,
-              });
+            await apiClient.upload('media', fileName, file);
 
-            if (uploadError) throw uploadError;
-
-            const { data: urlData } = STATE.client.storage.from('media').getPublicUrl(fileName);
+            const urlData = await apiClient.getPublicUrl('media', fileName);
 
             fileUrl = urlData.publicUrl;
             thumbnailUrl = fileUrl; // Use video URL as placeholder thumbnail
@@ -1351,9 +1344,7 @@ const mediaGalleryModule = {
         };
 
         // Insert into database
-        const { _data, error } = await STATE.client.from('media_items').insert([videoData]).select();
-
-        if (error) throw error;
+        await apiClient.insert('media_items', videoData);
 
         // Close modal
         const modal = bootstrap.Modal.getInstance(document.getElementById('addVideoModal'));
@@ -1375,9 +1366,9 @@ const mediaGalleryModule = {
    */
   async viewVideo(videoId) {
     try {
-      const { data: video, error } = await STATE.client.from('media_items').select('*').eq('id', videoId).single();
-
-      if (error) throw error;
+      const result = await apiClient.select('media_items', { filters: { id: videoId }, pageSize: 1 });
+      const video = result.data[0];
+      if (!video) throw new Error('Video not found');
 
       let playerHTML = '';
       if (video.youtube_id) {
@@ -1421,9 +1412,9 @@ const mediaGalleryModule = {
 
   async editVideo(videoId) {
     try {
-      const { data: video, error } = await STATE.client.from('media_items').select('*').eq('id', videoId).single();
-
-      if (error) throw error;
+      const result = await apiClient.select('media_items', { filters: { id: videoId }, pageSize: 1 });
+      const video = result.data[0];
+      if (!video) throw new Error('Video not found');
 
       const modalHTML = `
         <div class="modal fade" id="editVideoModal" tabindex="-1">
@@ -1493,12 +1484,7 @@ const mediaGalleryModule = {
           return;
         }
 
-        const { error } = await STATE.client
-          .from('media_items')
-          .update({ title, description, status })
-          .eq('id', videoId);
-
-        if (error) throw error;
+        await apiClient.update('media_items', videoId, { title, description, status });
 
         bootstrap.Modal.getInstance(document.getElementById('editVideoModal'))?.hide();
         utils.showToast('Video updated successfully', 'success');
@@ -1527,9 +1513,7 @@ const mediaGalleryModule = {
       return;
 
     try {
-      const { error } = await STATE.client.from('media_items').delete().eq('id', videoId);
-
-      if (error) throw error;
+      await apiClient.delete('media_items', videoId);
 
       utils.showToast('Video deleted successfully', 'success');
       this._logActivity('delete', videoId, 'Video deleted');
@@ -1974,17 +1958,13 @@ const mediaGalleryModule = {
           display_order: displayOrder,
         };
 
-        let error;
-
         if (sectionId) {
           // Update
-          ({ error } = await STATE.client.from('event_galleries').update(sectionData).eq('id', sectionId));
+          await apiClient.update('event_galleries', sectionId, sectionData);
         } else {
           // Insert
-          ({ error } = await STATE.client.from('event_galleries').insert([sectionData]));
+          await apiClient.insert('event_galleries', sectionData);
         }
-
-        if (error) throw error;
 
         // Close modal and reload
         bootstrap.Modal.getInstance(document.getElementById('gallerySectionModal'))?.hide();
@@ -2018,9 +1998,7 @@ const mediaGalleryModule = {
     try {
       utils.showLoading();
 
-      const { error } = await STATE.client.from('event_galleries').delete().eq('id', sectionId);
-
-      if (error) throw error;
+      await apiClient.delete('event_galleries', sectionId);
 
       utils.showToast('Section deleted successfully!', 'success');
       await this.onEventSelected(this.currentEventId);
@@ -3064,28 +3042,22 @@ const mediaGalleryModule = {
           const fileName = `gallery-sections/${this.currentSectionId}/${timestamp}_${randomSuffix}_${file.name}`;
 
           // Upload to storage
-          const { error: uploadError } = await STATE.client.storage.from('media-gallery').upload(fileName, file);
-
-          if (uploadError) throw uploadError;
+          await apiClient.upload('media-gallery', fileName, file);
 
           // Get public URL
-          const { data: urlData } = STATE.client.storage.from('media-gallery').getPublicUrl(fileName);
+          const urlData = await apiClient.getPublicUrl('media-gallery', fileName);
 
           // Insert into database
-          const { error: dbError } = await STATE.client.from('media_gallery').insert([
-            {
-              gallery_section_id: this.currentSectionId,
-              event_id: this.currentEventId,
-              file_url: urlData.publicUrl,
-              file_type: file.type,
-              title: file.name,
-              organisation_id: null,
-              award_id: null,
-              published: published,
-            },
-          ]);
-
-          if (dbError) throw dbError;
+          await apiClient.insert('media_gallery', {
+            gallery_section_id: this.currentSectionId,
+            event_id: this.currentEventId,
+            file_url: urlData.publicUrl,
+            file_type: file.type,
+            title: file.name,
+            organisation_id: null,
+            award_id: null,
+            published: published,
+          });
 
           successCount++;
         }
@@ -3450,12 +3422,10 @@ const mediaGalleryModule = {
           const fileName = `gallery-sections/${this.currentSectionId}/${timestamp}_${randomSuffix}_${file.name}`;
 
           // Upload to storage
-          const { error: uploadError } = await STATE.client.storage.from('media-gallery').upload(fileName, file);
-
-          if (uploadError) throw uploadError;
+          await apiClient.upload('media-gallery', fileName, file);
 
           // Get public URL
-          const { data: urlData } = STATE.client.storage.from('media-gallery').getPublicUrl(fileName);
+          const urlData = await apiClient.getPublicUrl('media-gallery', fileName);
 
           // Prepare media record
           const isVideo = file.type.startsWith('video/');
@@ -3476,9 +3446,7 @@ const mediaGalleryModule = {
           }
 
           // Insert into database
-          const { error: dbError } = await STATE.client.from('media_gallery').insert([mediaRecord]);
-
-          if (dbError) throw dbError;
+          await apiClient.insert('media_gallery', mediaRecord);
 
           successCount++;
         }
@@ -3547,20 +3515,16 @@ const mediaGalleryModule = {
         utils.showLoading();
 
         // Insert into database
-        const { error } = await STATE.client.from('media_gallery').insert([
-          {
-            gallery_section_id: this.currentSectionId,
-            event_id: this.currentEventId,
-            file_url: cleanVideoId,
-            file_type: 'video/youtube',
-            title: title || 'YouTube Video',
-            organisation_id: null,
-            award_id: null,
-            published: published,
-          },
-        ]);
-
-        if (error) throw error;
+        await apiClient.insert('media_gallery', {
+          gallery_section_id: this.currentSectionId,
+          event_id: this.currentEventId,
+          file_url: cleanVideoId,
+          file_type: 'video/youtube',
+          title: title || 'YouTube Video',
+          organisation_id: null,
+          award_id: null,
+          published: published,
+        });
 
         utils.showToast('YouTube video added successfully!', 'success');
 
@@ -3644,9 +3608,7 @@ const mediaGalleryModule = {
     }
 
     try {
-      const { error } = await STATE.client.from('media_gallery').update({ title: newTitle }).eq('id', photoId);
-
-      if (error) throw error;
+      await apiClient.update('media_gallery', photoId, { title: newTitle });
 
       element.setAttribute('data-original-title', newTitle);
       utils.showToast('Title updated', 'success');
@@ -3771,14 +3733,9 @@ const mediaGalleryModule = {
     }));
 
     // Batch update display_order using Promise.all instead of sequential loop
-    const results = await Promise.all(
-      updates.map((update) =>
-        STATE.client.from('media_gallery').update({ display_order: update.display_order }).eq('id', update.id)
-      )
+    await Promise.all(
+      updates.map((update) => apiClient.update('media_gallery', update.id, { display_order: update.display_order }))
     );
-
-    const errorResult = results.find((res) => res.error);
-    if (errorResult) throw errorResult.error;
   },
 
   /**
@@ -3994,17 +3951,12 @@ const mediaGalleryModule = {
         .filter(Boolean);
 
       // Delete from database in a single query
-      const { error } = await STATE.client
-        .from('media_gallery')
-        .delete()
-        .in('id', [...this.selectedPhotoIds]);
-
-      if (error) throw error;
+      await apiClient.deleteByFilters('media_gallery', { id: { in: [...this.selectedPhotoIds] } });
 
       // Clean up storage files (best-effort, don't fail if storage cleanup fails)
       if (storagePaths.length > 0) {
         try {
-          await STATE.client.storage.from('media-gallery').remove(storagePaths);
+          await apiClient.storageDelete('media-gallery', storagePaths);
         } catch (storageErr) {
           console.warn('Storage cleanup failed (files may be orphaned):', storageErr);
         }
@@ -4072,23 +4024,28 @@ const mediaGalleryModule = {
    */
   async populateTagDropdowns() {
     // Load organisations
-    const { data: orgs } = await STATE.client.from('organisations').select('id, company_name').order('company_name');
+    const orgsResult = await apiClient.select('organisations', {
+      select: 'id, company_name',
+      sort: { column: 'company_name', ascending: true },
+      pageSize: 1000,
+    });
 
     const orgSelect = document.getElementById('tagPhotoOrgSelect');
     orgSelect.innerHTML = '<option value="">None</option>';
-    (orgs || []).forEach((org) => {
+    (orgsResult.data || []).forEach((org) => {
       orgSelect.innerHTML += `<option value="${org.id}">${utils.escapeHtml(org.company_name)}</option>`;
     });
 
     // Load awards
-    const { data: awards } = await STATE.client
-      .from('awards')
-      .select('id, award_name, award_category')
-      .order('award_name');
+    const awardsResult = await apiClient.select('awards', {
+      select: 'id, award_name, award_category',
+      sort: { column: 'award_name', ascending: true },
+      pageSize: 1000,
+    });
 
     const awardSelect = document.getElementById('tagPhotoAwardSelect');
     awardSelect.innerHTML = '<option value="">None</option>';
-    (awards || []).forEach((award) => {
+    (awardsResult.data || []).forEach((award) => {
       const label = award.award_name || award.award_category || 'Unknown';
       awardSelect.innerHTML += `<option value="${award.id}">${utils.escapeHtml(label)}</option>`;
     });
@@ -4122,9 +4079,7 @@ const mediaGalleryModule = {
       await utils.protectModalDuringSave('tagPhotoModal', async () => {
         utils.showLoading();
 
-        const { error } = await STATE.client.from('media_gallery').update(photoTags).eq('id', this.currentMediaId);
-
-        if (error) throw error;
+        await apiClient.update('media_gallery', this.currentMediaId, photoTags);
 
         // Close modal and reload
         bootstrap.Modal.getInstance(document.getElementById('tagPhotoModal'))?.hide();
@@ -4165,16 +4120,14 @@ const mediaGalleryModule = {
       const photo = this.currentSectionPhotos.find((p) => p.id === photoId);
       const fileUrl = photo?.file_url || '';
 
-      const { error } = await STATE.client.from('media_gallery').delete().eq('id', photoId);
-
-      if (error) throw error;
+      await apiClient.delete('media_gallery', photoId);
 
       // Clean up storage file (best-effort)
       if (fileUrl && photo?.file_type !== 'video/youtube') {
         try {
           const pathMatch = fileUrl.match(/media-gallery\/(.+)$/);
           if (pathMatch) {
-            await STATE.client.storage.from('media-gallery').remove([pathMatch[1]]);
+            await apiClient.storageDelete('media-gallery', [pathMatch[1]]);
           }
         } catch (storageErr) {
           console.warn('Storage cleanup failed:', storageErr);
@@ -4222,8 +4175,7 @@ const mediaGalleryModule = {
    */
   async toggleFeatured(photoId, newState) {
     try {
-      const { error } = await STATE.client.from('media_gallery').update({ featured: newState }).eq('id', photoId);
-      if (error) throw error;
+      await apiClient.update('media_gallery', photoId, { featured: newState });
 
       utils.showToast(newState ? 'Photo featured!' : 'Photo unfeatured', 'success');
       await this.viewSectionPhotos(this.currentSectionId, this.currentSectionName);
@@ -4561,23 +4513,17 @@ const mediaGalleryModule = {
         const fileName = `${timestamp}_${randomSuffix}_edited.jpg`;
         const filePath = `${this.currentEventId}/${this.currentSectionId}/${fileName}`;
 
-        const { error: uploadError } = await STATE.client.storage
-          .from('media-gallery')
-          .upload(filePath, blob, { contentType: 'image/jpeg' });
+        await apiClient.upload('media-gallery', filePath, blob, { contentType: 'image/jpeg' });
 
-        if (uploadError) throw uploadError;
-
-        const {
-          data: { publicUrl },
-        } = STATE.client.storage.from('media-gallery').getPublicUrl(filePath);
+        const urlResult = await apiClient.getPublicUrl('media-gallery', filePath);
+        const publicUrl = urlResult.publicUrl;
 
         // Update database record with new URL
-        const { error: updateError } = await STATE.client
-          .from('media_gallery')
-          .update({ file_url: publicUrl, file_type: 'image/jpeg', file_size: blob.size })
-          .eq('id', photoId);
-
-        if (updateError) throw updateError;
+        await apiClient.update('media_gallery', photoId, {
+          file_url: publicUrl,
+          file_type: 'image/jpeg',
+          file_size: blob.size,
+        });
 
         bootstrap.Modal.getInstance(document.getElementById('cropRotateModal'))?.hide();
         utils.showToast('Photo updated with crop/rotate changes!', 'success');
@@ -4747,9 +4693,13 @@ const mediaGalleryModule = {
     const select = document.getElementById('mediaOrgFilter');
     if (!select) return;
     try {
-      const { data: orgs } = await STATE.client.from('organisations').select('id, company_name').order('company_name');
+      const orgsResult = await apiClient.select('organisations', {
+        select: 'id, company_name',
+        sort: { column: 'company_name', ascending: true },
+        pageSize: 1000,
+      });
       select.innerHTML = '<option value="">View all media for org...</option>';
-      (orgs || []).forEach((org) => {
+      (orgsResult.data || []).forEach((org) => {
         select.innerHTML += `<option value="${org.id}">${utils.escapeHtml(org.company_name)}</option>`;
       });
     } catch (e) {
@@ -5567,12 +5517,11 @@ const mediaGalleryModule = {
           }
 
           if (Object.keys(updateData).length > 0) {
-            const { error } = await STATE.client.from('media_gallery').update(updateData).eq('id', m.photo.id);
-
-            if (error) {
-              console.error(`Error tagging photo ${m.photo.id}:`, error);
-            } else {
+            try {
+              await apiClient.update('media_gallery', m.photo.id, updateData);
               taggedCount++;
+            } catch (tagError) {
+              console.error(`Error tagging photo ${m.photo.id}:`, tagError);
             }
           }
         }
@@ -6243,7 +6192,7 @@ const mediaGalleryModule = {
 
     try {
       for (let i = 0; i < this._currentVideos.length; i++) {
-        await STATE.client.from('media_items').update({ display_order: i }).eq('id', this._currentVideos[i].id);
+        await apiClient.update('media_items', this._currentVideos[i].id, { display_order: i });
       }
       utils.showToast('Video order saved!', 'success');
       this._logActivity('reorder', null, 'Videos reordered');
@@ -7247,30 +7196,26 @@ const mediaGalleryModule = {
           const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
           const fileName = `gallery/${eventId}/${timestamp}_${safeName}`;
 
-          const { error: uploadError } = await STATE.client.storage
-            .from('media')
-            .upload(fileName, file, { cacheControl: '3600', upsert: false });
-
-          if (uploadError) {
-            console.error('Upload error for', file.name, uploadError);
+          try {
+            await apiClient.upload('media', fileName, file);
+          } catch (uploadErr) {
+            console.error('Upload error for', file.name, uploadErr);
             continue;
           }
 
-          const { data: urlData } = STATE.client.storage.from('media').getPublicUrl(fileName);
+          const urlData = await apiClient.getPublicUrl('media', fileName);
 
-          const { error: dbError } = await STATE.client.from('media_gallery').insert([
-            {
+          try {
+            await apiClient.insert('media_gallery', {
               event_id: eventId,
               file_url: urlData.publicUrl,
               file_type: file.type,
               title: title || file.name,
               caption: caption || null,
               published: true,
-            },
-          ]);
-
-          if (dbError) {
-            console.error('DB error for', file.name, dbError);
+            });
+          } catch (dbErr) {
+            console.error('DB error for', file.name, dbErr);
             continue;
           }
           successCount++;
@@ -7320,13 +7265,12 @@ const mediaGalleryModule = {
     const year = document.getElementById('quickEventYear').value || new Date().getFullYear();
 
     try {
-      const { data, error } = await STATE.client
-        .from('events')
-        .insert([{ event_name: name, event_date: eventDate || null, year: parseInt(year) }])
-        .select('id, event_name')
-        .single();
-
-      if (error) throw error;
+      const result = await apiClient.insert('events', {
+        event_name: name,
+        event_date: eventDate || null,
+        year: parseInt(year),
+      });
+      const data = result.data[0];
 
       // Add to the event select and select it
       const select = document.getElementById('uploadEventSelect');

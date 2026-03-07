@@ -328,9 +328,9 @@ const assignmentsModule = {
                 color: white; border-radius: 4px; display: flex; align-items: center; justify-content: center;
                 font-weight: 600; font-size: 0.75rem; margin-right: 8px;">${org.company_name.charAt(0)}</div>`
             }
-            <a href="javascript:void(0);"
+            <a href="#"
                class="text-decoration-none fw-semibold text-primary"
-               data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([org.id, org.company_name])}'
+               data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([org.id, org.company_name]).replace(/'/g, '&#39;')}'
                title="View company profile">
               ${utils.escapeHtml(org.company_name)}
             </a>
@@ -362,15 +362,15 @@ const assignmentsModule = {
                 <i class="bi bi-trophy"></i>
               </button>
               <ul class="dropdown-menu dropdown-menu-end">
-                <li><a class="dropdown-item" href="javascript:void(0);" data-action="assignmentsModule.setWinnerPosition" data-args='${JSON.stringify([assignment.id, 1])}'><i class="bi bi-star-fill me-2" style="color: #ffd700;"></i>1st Place (Gold)</a></li>
-                <li><a class="dropdown-item" href="javascript:void(0);" data-action="assignmentsModule.setWinnerPosition" data-args='${JSON.stringify([assignment.id, 2])}'><i class="bi bi-star-fill me-2" style="color: #c0c0c0;"></i>2nd Place (Silver)</a></li>
-                <li><a class="dropdown-item" href="javascript:void(0);" data-action="assignmentsModule.setWinnerPosition" data-args='${JSON.stringify([assignment.id, 3])}'><i class="bi bi-star-fill me-2" style="color: #cd7f32;"></i>3rd Place (Bronze)</a></li>
+                <li><a class="dropdown-item" href="#" data-action="assignmentsModule.setWinnerPosition" data-args='${JSON.stringify([assignment.id, 1])}'><i class="bi bi-star-fill me-2" style="color: #ffd700;"></i>1st Place (Gold)</a></li>
+                <li><a class="dropdown-item" href="#" data-action="assignmentsModule.setWinnerPosition" data-args='${JSON.stringify([assignment.id, 2])}'><i class="bi bi-star-fill me-2" style="color: #c0c0c0;"></i>2nd Place (Silver)</a></li>
+                <li><a class="dropdown-item" href="#" data-action="assignmentsModule.setWinnerPosition" data-args='${JSON.stringify([assignment.id, 3])}'><i class="bi bi-star-fill me-2" style="color: #cd7f32;"></i>3rd Place (Bronze)</a></li>
                 <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item" href="javascript:void(0);" data-action="assignmentsModule.changeStatus" data-args='${JSON.stringify([assignment.id, 'winner'])}'><i class="bi bi-trophy me-2 text-success"></i>Winner (no position)</a></li>
+                <li><a class="dropdown-item" href="#" data-action="assignmentsModule.changeStatus" data-args='${JSON.stringify([assignment.id, 'winner'])}'><i class="bi bi-trophy me-2 text-success"></i>Winner (no position)</a></li>
               </ul>
             </div>
             <button class="btn btn-outline-secondary btn-sm"
-              data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([org.id, org.company_name])}'
+              data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([org.id, org.company_name]).replace(/'/g, '&#39;')}'
               title="View Profile">
               <i class="bi bi-eye"></i>
             </button>
@@ -409,7 +409,7 @@ const assignmentsModule = {
             </div>
             <button
               class="btn btn-sm btn-primary"
-              data-action="assignmentsModule.assignCompany" data-args='${JSON.stringify([org.id, org.company_name])}'>
+              data-action="assignmentsModule.assignCompany" data-args='${JSON.stringify([org.id, org.company_name]).replace(/'/g, '&#39;')}'>
               <i class="bi bi-plus-lg"></i> Add
             </button>
           </div>

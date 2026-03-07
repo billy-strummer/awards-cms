@@ -97,6 +97,9 @@ const ALLOWED_TABLES = new Set([
   'table_assignments',
   'event_room_fixtures',
   'event_milestones',
+  'event_attendees',
+  'event_budgets',
+  'event_budget_items',
   'meeting_notes',
   'organisation_segments',
   'contact_segments',
@@ -111,6 +114,37 @@ const ALLOWED_TABLES = new Set([
   'user_roles',
   'organisations_with_crm_summary',
   'ai_vetting_results',
+  'ai_vetting_runs',
+  'event_templates',
+  'social_media_templates',
+  'email_lists_with_stats',
+  'invoice_line_items',
+  'winner_media',
+  'webhook_logs',
+  'event_ticket_types',
+  'event_tickets',
+  'event_guests',
+  'event_waitlist',
+  'event_tables',
+  'event_vendors',
+  'event_special_requirements',
+  'event_post_data',
+  'seating_sections',
+  'running_order',
+  'running_order_settings',
+  'running_order_versions',
+  'announcements',
+  'activity_logs',
+  'award_seasons',
+  'calendar_feeds',
+  'deliberation_notes',
+  'document_versions',
+  'email_import_batches',
+  'email_list_subscribers',
+  'record_notes',
+  'scheduled_reports',
+  'sponsor_contracts',
+  'sponsor_impressions',
 ]);
 
 /** Tables that can be mutated (insert/update/delete/upsert) */
@@ -174,6 +208,9 @@ const MUTABLE_TABLES = new Set([
   'table_assignments',
   'event_room_fixtures',
   'event_milestones',
+  'event_attendees',
+  'event_budgets',
+  'event_budget_items',
   'meeting_notes',
   'organisation_segments',
   'contact_segments',
@@ -185,6 +222,36 @@ const MUTABLE_TABLES = new Set([
   'notification_preferences',
   'communications',
   'deals',
+  'event_templates',
+  'social_media_templates',
+  'ai_vetting_runs',
+  'invoice_line_items',
+  'winner_media',
+  'webhook_logs',
+  'event_ticket_types',
+  'event_tickets',
+  'event_guests',
+  'event_waitlist',
+  'event_tables',
+  'event_vendors',
+  'event_special_requirements',
+  'event_post_data',
+  'seating_sections',
+  'running_order',
+  'running_order_settings',
+  'running_order_versions',
+  'announcements',
+  'activity_logs',
+  'award_seasons',
+  'calendar_feeds',
+  'deliberation_notes',
+  'document_versions',
+  'email_import_batches',
+  'email_list_subscribers',
+  'record_notes',
+  'scheduled_reports',
+  'sponsor_contracts',
+  'sponsor_impressions',
 ]);
 
 /** Maximum page size to prevent abuse */
@@ -226,6 +293,11 @@ const ROLE_PERMISSIONS = {
       'winner_announcements',
       'calendar_events',
       'user_preferences',
+      'event_attendees',
+      'event_budgets',
+      'event_budget_items',
+      'sponsors',
+      'event_templates',
     ]),
   },
   viewer: {
@@ -256,11 +328,21 @@ const ROLE_PERMISSIONS = {
       'event_galleries',
       'organisation_notes',
       'user_preferences',
+      'sponsors',
+      'social_media_posts',
+      'social_media_templates',
     ]),
   },
   finance: {
     read: '*',
-    write: new Set(['invoices', 'payments', 'sponsorship_packages', 'user_preferences']),
+    write: new Set([
+      'invoices',
+      'payments',
+      'sponsorship_packages',
+      'user_preferences',
+      'event_budgets',
+      'event_budget_items',
+    ]),
   },
 };
 
@@ -407,7 +489,7 @@ function validateQueryParams(body) {
     }
   }
 
-  if (operation === 'insert' && (!data || typeof data !== 'object')) {
+  if ((operation === 'insert' || operation === 'upsert') && (!data || typeof data !== 'object')) {
     errors.push('"data" is required for insert/upsert operations');
   }
 
@@ -436,43 +518,70 @@ function validateQueryParams(body) {
  * @returns {Object} The query builder with filters applied.
  */
 function applyFilters(query, filters) {
-  for (const [key, value] of Object.entries(filters)) {
+  for (const [rawKey, value] of Object.entries(filters)) {
     if (value === null || value === undefined || value === '') continue;
 
-    if (typeof value === 'object' && value.op) {
-      switch (value.op) {
-        case 'neq':
-          query = query.neq(key, value.value);
-          break;
-        case 'gt':
-          query = query.gt(key, value.value);
-          break;
-        case 'gte':
-          query = query.gte(key, value.value);
-          break;
-        case 'lt':
-          query = query.lt(key, value.value);
-          break;
-        case 'lte':
-          query = query.lte(key, value.value);
-          break;
-        case 'like':
-          query = query.like(key, value.value);
-          break;
-        case 'ilike':
-          query = query.ilike(key, value.value);
-          break;
-        case 'in':
-          query = query.in(key, value.value);
-          break;
-        case 'is':
-          query = query.is(key, value.value);
-          break;
-        default:
-          query = query.eq(key, value);
+    // Support "column@op" key syntax (e.g. "invoice_date@lt")
+    let key = rawKey;
+    let embeddedOp = null;
+    const atIdx = rawKey.indexOf('@');
+    if (atIdx > 0) {
+      key = rawKey.substring(0, atIdx);
+      embeddedOp = rawKey.substring(atIdx + 1);
+    }
+
+    // Determine the operator and operand
+    let op = embeddedOp || null;
+    let operand = value;
+
+    if (typeof value === 'object' && !Array.isArray(value)) {
+      if (value.op) {
+        // Explicit { op, value } format
+        op = op || value.op;
+        operand = value.value;
+      } else {
+        // Shorthand { eq: val } / { gte: val } format (op is the key)
+        const shorthandOps = ['eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'like', 'ilike', 'in', 'is'];
+        const foundOp = shorthandOps.find((o) => o in value);
+        if (foundOp) {
+          op = op || foundOp;
+          operand = value[foundOp];
+        }
       }
-    } else {
-      query = query.eq(key, value);
+    }
+
+    // Apply the filter
+    switch (op) {
+      case 'neq':
+        query = query.neq(key, operand);
+        break;
+      case 'gt':
+        query = query.gt(key, operand);
+        break;
+      case 'gte':
+        query = query.gte(key, operand);
+        break;
+      case 'lt':
+        query = query.lt(key, operand);
+        break;
+      case 'lte':
+        query = query.lte(key, operand);
+        break;
+      case 'like':
+        query = query.like(key, operand);
+        break;
+      case 'ilike':
+        query = query.ilike(key, operand);
+        break;
+      case 'in':
+        query = query.in(key, operand);
+        break;
+      case 'is':
+        query = query.is(key, operand);
+        break;
+      case 'eq':
+      default:
+        query = query.eq(key, operand);
     }
   }
   return query;

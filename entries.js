@@ -333,7 +333,7 @@ const entriesModule = {
         <tr>
           <td>
             <input type="checkbox" class="entry-checkbox" value="${entry.id}"
-                   data-on-change="entriesModule.toggleSelectEntry" data-id="entry.id"
+                   data-on-change="entriesModule.toggleSelectEntry" data-id="${entry.id}"
                    ${this.selectedEntryIds.has(entry.id) ? 'checked' : ''}>
           </td>
           <td><strong>${utils.escapeHtml(entry.entry_number)}</strong></td>
@@ -347,7 +347,7 @@ const entriesModule = {
           </td>
           <td>
             <select class="form-select form-select-sm d-inline-block" style="width:auto; font-size:0.75rem;"
-              data-on-change="entriesModule.inlineUpdateEntryStatus" data-id="entry.id"
+              data-on-change="entriesModule.inlineUpdateEntryStatus" data-id="${entry.id}"
               aria-label="Change entry status">
               ${['draft', 'submitted', 'under_review', 'shortlisted', 'winner', 'rejected']
                 .map(
@@ -362,16 +362,16 @@ const entriesModule = {
           <td>${submittedDate}</td>
           <td>
             <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-primary" data-action="entriesModule.viewEntry" data-id="entry.id" title="View">
+              <button class="btn btn-outline-primary" data-action="entriesModule.viewEntry" data-id="${entry.id}" title="View">
                 <i class="bi bi-eye"></i>
               </button>
-              <button class="btn btn-outline-secondary" data-action="entriesModule.editEntry" data-id="entry.id" title="Edit">
+              <button class="btn btn-outline-secondary" data-action="entriesModule.editEntry" data-id="${entry.id}" title="Edit">
                 <i class="bi bi-pencil"></i>
               </button>
-              <button class="btn btn-outline-info" data-action="entriesModule.showVotingLink" data-id="entry.id" title="Get Voting Link">
+              <button class="btn btn-outline-info" data-action="entriesModule.showVotingLink" data-id="${entry.id}" title="Get Voting Link">
                 <i class="bi bi-link-45deg"></i>
               </button>
-              <button class="btn btn-outline-danger" data-action="entriesModule.deleteEntry" data-id="entry.id" title="Delete">
+              <button class="btn btn-outline-danger" data-action="entriesModule.deleteEntry" data-id="${entry.id}" title="Delete">
                 <i class="bi bi-trash"></i>
               </button>
             </div>
@@ -390,15 +390,15 @@ const entriesModule = {
       const totalPages = Math.ceil(this.filteredEntries.length / this._pageSize);
       if (totalPages > 1) {
         let html = '<nav><ul class="pagination pagination-sm justify-content-center mt-3">';
-        html += `<li class="page-item ${this._currentPage <= 1 ? 'disabled' : ''}"><a class="page-link" href="javascript:void(0);" data-action="entriesModule.goToEntriesPage" data-id="${this._currentPage - 1}">Prev</a></li>`;
+        html += `<li class="page-item ${this._currentPage <= 1 ? 'disabled' : ''}"><a class="page-link" href="#" data-action="entriesModule.goToEntriesPage" data-id="${this._currentPage - 1}">Prev</a></li>`;
         for (let i = 1; i <= totalPages; i++) {
           if (i === 1 || i === totalPages || (i >= this._currentPage - 2 && i <= this._currentPage + 2)) {
-            html += `<li class="page-item ${i === this._currentPage ? 'active' : ''}"><a class="page-link" href="javascript:void(0);" data-action="entriesModule.goToEntriesPage" data-id="${i}">${i}</a></li>`;
+            html += `<li class="page-item ${i === this._currentPage ? 'active' : ''}"><a class="page-link" href="#" data-action="entriesModule.goToEntriesPage" data-id="${i}">${i}</a></li>`;
           } else if (i === this._currentPage - 3 || i === this._currentPage + 3) {
             html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
           }
         }
-        html += `<li class="page-item ${this._currentPage >= totalPages ? 'disabled' : ''}"><a class="page-link" href="javascript:void(0);" data-action="entriesModule.goToEntriesPage" data-id="${this._currentPage + 1}">Next</a></li>`;
+        html += `<li class="page-item ${this._currentPage >= totalPages ? 'disabled' : ''}"><a class="page-link" href="#" data-action="entriesModule.goToEntriesPage" data-id="${this._currentPage + 1}">Next</a></li>`;
         html += '</ul></nav>';
         html += `<div class="text-center text-muted small">Showing ${(this._currentPage - 1) * this._pageSize + 1}-${Math.min(this._currentPage * this._pageSize, this.filteredEntries.length)} of ${this.filteredEntries.length}</div>`;
         paginationEl.innerHTML = html;
@@ -938,11 +938,11 @@ const entriesModule = {
 
             </div>
             <div class="modal-footer">
-              <button type="button" class="btn btn-outline-info me-auto" data-action="entriesModule.openUploadLink" data-id="entry.entry_number">
+              <button type="button" class="btn btn-outline-info me-auto" data-action="entriesModule.openUploadLink" data-id="${entry.entry_number}">
                 <i class="bi bi-paperclip me-2"></i>View Upload Link
               </button>
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-              <button type="button" class="btn btn-primary" data-action="entriesModule.updateEntryStatus" data-id="entry.id">
+              <button type="button" class="btn btn-primary" data-action="entriesModule.updateEntryStatus" data-id="${entry.id}">
                 <i class="bi bi-check-lg me-1"></i>Save &amp; Confirm
               </button>
             </div>
@@ -1347,7 +1347,7 @@ const entriesModule = {
               </div>
               <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" data-action="entriesModule.saveEntryEdit" data-id="entry.id">
+                <button type="button" class="btn btn-primary" data-action="entriesModule.saveEntryEdit" data-id="${entry.id}">
                   <i class="bi bi-save me-2"></i>Save Changes
                 </button>
               </div>

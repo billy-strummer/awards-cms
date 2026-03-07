@@ -239,6 +239,14 @@ const a11yModule = {
       e.target._a11yTrigger = document.activeElement;
     });
 
+    // Blur focused element inside modal before aria-hidden is applied
+    // (prevents "Blocked aria-hidden on a focused element" browser warning)
+    document.addEventListener('hide.bs.modal', (e) => {
+      if (e.target.contains(document.activeElement)) {
+        document.activeElement.blur();
+      }
+    });
+
     document.addEventListener('hidden.bs.modal', (e) => {
       const trigger = e.target._a11yTrigger;
       if (trigger && document.body.contains(trigger)) {

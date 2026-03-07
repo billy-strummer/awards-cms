@@ -2,6 +2,31 @@
 /* SOCIAL MEDIA MANAGER MODULE */
 /* ==================================================== */
 
+/**
+ * Strip columns that don't exist in the DB schema and retry the operation.
+ * Handles PGRST204 errors from Supabase when migrations haven't been applied.
+ */
+function stripUnknownColumn(data, errorMessage) {
+  const match = errorMessage && errorMessage.match(/Could not find the '(\w+)' column/);
+  if (match) {
+    const col = match[1];
+    if (Array.isArray(data)) {
+      return {
+        column: col,
+        cleaned: data.map((row) => {
+          const copy = { ...row };
+          delete copy[col];
+          return copy;
+        }),
+      };
+    }
+    const copy = { ...data };
+    delete copy[col];
+    return { column: col, cleaned: copy };
+  }
+  return null;
+}
+
 const socialMediaModule = {
   currentTemplate: null,
   selectedCompany: null,
@@ -519,16 +544,34 @@ Vote now: {{website}}
 
       // If editing, update instead of insert
       if (this.editingPostId) {
-        const { error } = await STATE.client.from('social_media_posts').update(postData).eq('id', this.editingPostId);
-
-        if (error) throw error;
+        let { error } = await STATE.client.from('social_media_posts').update(postData).eq('id', this.editingPostId);
+        if (error) {
+          const fix = stripUnknownColumn(postData, error.message);
+          if (fix) {
+            const retry = await STATE.client
+              .from('social_media_posts')
+              .update(fix.cleaned)
+              .eq('id', this.editingPostId);
+            if (retry.error) throw retry.error;
+          } else {
+            throw error;
+          }
+        }
 
         this.editingPostId = null;
         utils.showToast('Post updated successfully!', 'success');
       } else {
-        const { data, error } = await STATE.client.from('social_media_posts').insert([postData]).select();
-
-        if (error) throw error;
+        let { data, error } = await STATE.client.from('social_media_posts').insert([postData]).select();
+        if (error) {
+          const fix = stripUnknownColumn([postData], error.message);
+          if (fix) {
+            const retry = await STATE.client.from('social_media_posts').insert(fix.cleaned).select();
+            if (retry.error) throw retry.error;
+            data = retry.data;
+          } else {
+            throw error;
+          }
+        }
 
         if (postType === 'immediate' && data?.[0]?.id) {
           // Trigger server-side publish via Edge Function
@@ -618,15 +661,32 @@ Vote now: {{website}}
       };
 
       if (this.editingPostId) {
-        const { error } = await STATE.client.from('social_media_posts').update(draftData).eq('id', this.editingPostId);
-
-        if (error) throw error;
+        let { error } = await STATE.client.from('social_media_posts').update(draftData).eq('id', this.editingPostId);
+        if (error) {
+          const fix = stripUnknownColumn(draftData, error.message);
+          if (fix) {
+            const retry = await STATE.client
+              .from('social_media_posts')
+              .update(fix.cleaned)
+              .eq('id', this.editingPostId);
+            if (retry.error) throw retry.error;
+          } else {
+            throw error;
+          }
+        }
         this.editingPostId = null;
         utils.showToast('Draft updated successfully!', 'success');
       } else {
-        const { _data, error } = await STATE.client.from('social_media_posts').insert([draftData]).select();
-
-        if (error) throw error;
+        let { _data, error } = await STATE.client.from('social_media_posts').insert([draftData]).select();
+        if (error) {
+          const fix = stripUnknownColumn([draftData], error.message);
+          if (fix) {
+            const retry = await STATE.client.from('social_media_posts').insert(fix.cleaned).select();
+            if (retry.error) throw retry.error;
+          } else {
+            throw error;
+          }
+        }
         utils.showToast('Draft saved successfully!', 'success');
       }
 
@@ -1245,9 +1305,16 @@ Vote now: {{website}}
           return;
         }
 
-        const { error: insertError } = await STATE.client.from('social_media_posts').insert(posts);
-
-        if (insertError) throw insertError;
+        let { error: insertError } = await STATE.client.from('social_media_posts').insert(posts);
+        if (insertError) {
+          const fix = stripUnknownColumn(posts, insertError.message);
+          if (fix) {
+            const retry = await STATE.client.from('social_media_posts').insert(fix.cleaned);
+            if (retry.error) throw retry.error;
+          } else {
+            throw insertError;
+          }
+        }
 
         // Close modal
         const modal = bootstrap.Modal.getInstance(document.getElementById('bulkGenerateModal'));

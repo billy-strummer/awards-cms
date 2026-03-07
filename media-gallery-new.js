@@ -192,7 +192,7 @@ const mediaGalleryModule = {
                   </p>
                   ${photo.caption ? `<p class="small text-muted mb-2">${utils.escapeHtml(photo.caption)}</p>` : ''}
                   <button class="btn btn-sm btn-primary w-100"
-                          data-action="mediaGalleryModule.editPhotoTags" data-id="photo.id">
+                          data-action="mediaGalleryModule.editPhotoTags" data-id="${photo.id}">
                     <i class="bi bi-tags me-1"></i>Add Tags
                   </button>
                 </div>
@@ -378,7 +378,7 @@ const mediaGalleryModule = {
 
         return `
         <div class="col-md-6 col-lg-4">
-          <div class="card h-100" style="cursor: pointer;" data-action="mediaGalleryModule.showEventContentsView" data-id="event.id">
+          <div class="card h-100" style="cursor: pointer;" data-action="mediaGalleryModule.showEventContentsView" data-id="${event.id}">
             <div class="card-body">
               <div class="d-flex justify-content-between align-items-start mb-3">
                 <h5 class="card-title mb-0">
@@ -585,7 +585,7 @@ const mediaGalleryModule = {
                   const sectionPublished = sectionPhotos.filter((p) => p.published !== false).length;
                   return `
           <div class="card mb-3">
-            <div class="card-header d-flex justify-content-between align-items-center" style="cursor:pointer;" data-action="mediaGalleryModule.viewSectionPhotos" data-args='${JSON.stringify([section.id, utils.escapeHtml(section.gallery_name)])}'>
+            <div class="card-header d-flex justify-content-between align-items-center" style="cursor:pointer;" data-action="mediaGalleryModule.viewSectionPhotos" data-args='${JSON.stringify([section.id, section.gallery_name]).replace(/'/g, '&#39;')}'>
               <div>
                 <h6 class="mb-0"><i class="bi bi-folder me-2"></i>${utils.escapeHtml(section.gallery_name)}
                   <span class="badge bg-primary ms-2">${sectionPhotos.length}</span>
@@ -594,7 +594,7 @@ const mediaGalleryModule = {
                 ${section.gallery_description ? `<small class="text-muted">${utils.escapeHtml(section.gallery_description)}</small>` : ''}
               </div>
               <div class="d-flex gap-2">
-                <button class="btn btn-sm btn-outline-primary" data-action="mediaGalleryModule.viewSectionPhotos" data-args='${JSON.stringify([section.id, section.gallery_name])}' data-stop-propagation="true"><i class="bi bi-images me-1"></i>Open</button>
+                <button class="btn btn-sm btn-outline-primary" data-action="mediaGalleryModule.viewSectionPhotos" data-args='${JSON.stringify([section.id, section.gallery_name]).replace(/'/g, '&#39;')}' data-stop-propagation="true"><i class="bi bi-images me-1"></i>Open</button>
                 <button class="btn btn-sm btn-outline-secondary" data-action="mediaGalleryModule.editSection" data-id="${section.id}" data-stop-propagation="true"><i class="bi bi-pencil"></i></button>
               </div>
             </div>
@@ -977,13 +977,13 @@ const mediaGalleryModule = {
                 </div>
                 <div class="card-footer bg-transparent">
                   <div class="btn-group btn-group-sm w-100">
-                    <button class="btn btn-outline-primary" data-action="mediaGalleryModule.viewVideo" data-id="video.id" title="View">
+                    <button class="btn btn-outline-primary" data-action="mediaGalleryModule.viewVideo" data-id="${video.id}" title="View">
                       <i class="bi bi-eye"></i>
                     </button>
-                    <button class="btn btn-outline-secondary" data-action="mediaGalleryModule.editVideo" data-id="video.id" title="Edit">
+                    <button class="btn btn-outline-secondary" data-action="mediaGalleryModule.editVideo" data-id="${video.id}" title="Edit">
                       <i class="bi bi-pencil"></i>
                     </button>
-                    <button class="btn btn-outline-danger" data-action="mediaGalleryModule.deleteVideo" data-id="video.id" title="Delete">
+                    <button class="btn btn-outline-danger" data-action="mediaGalleryModule.deleteVideo" data-id="${video.id}" title="Delete">
                       <i class="bi bi-trash"></i>
                     </button>
                   </div>
@@ -1882,7 +1882,7 @@ const mediaGalleryModule = {
                     </a>
                   </li>
                   <li>
-                    <a class="dropdown-item text-danger" href="#" data-action="mediaGalleryModule.deleteSection" data-args='${JSON.stringify([section.id, section.gallery_name])}' data-prevent-default="true">
+                    <a class="dropdown-item text-danger" href="#" data-action="mediaGalleryModule.deleteSection" data-args='${JSON.stringify([section.id, section.gallery_name]).replace(/'/g, '&#39;')}' data-prevent-default="true">
                       <i class="bi bi-trash me-2"></i>Delete
                     </a>
                   </li>
@@ -1896,7 +1896,7 @@ const mediaGalleryModule = {
               <span class="badge bg-info" id="photoCount_${section.id}">
                 <i class="bi bi-camera me-1"></i>Loading...
               </span>
-              <button class="btn btn-sm btn-outline-primary" data-action="mediaGalleryModule.viewSectionPhotos" data-args='${JSON.stringify([section.id, utils.escapeHtml(section.gallery_name).replace(/'/g, "\\'")])}'>
+              <button class="btn btn-sm btn-outline-primary" data-action="mediaGalleryModule.viewSectionPhotos" data-args='${JSON.stringify([section.id, utils.escapeHtml(section.gallery_name).replace(/'/g, '&#39;')])}'>
                 <i class="bi bi-eye me-1"></i>View Photos
               </button>
             </div>
@@ -2184,7 +2184,7 @@ const mediaGalleryModule = {
             <button class="btn btn-sm btn-outline-secondary" data-action="mediaGalleryModule.viewActivityLog" title="View activity log">
               <i class="bi bi-clock-history me-1"></i>Log
             </button>
-            <button class="btn btn-sm btn-outline-secondary" data-action="mediaGalleryModule.downloadAllPhotos" data-id="utils.escapeHtml(sectionName).replace(/'/g, "\\'")">
+            <button class="btn btn-sm btn-outline-secondary" data-action="mediaGalleryModule.downloadAllPhotos" data-id="utils.escapeHtml(sectionName).replace(/'/g, '&#39;')">
               <i class="bi bi-download me-1"></i>Download All
             </button>
             <button class="btn btn-sm btn-outline-success" data-action="mediaGalleryModule.launchSlideshow" title="Launch slideshow of published photos">
@@ -3209,7 +3209,7 @@ const mediaGalleryModule = {
             </div>
 
             <div class="btn-group btn-group-sm w-100 mt-2">
-              <button class="btn btn-outline-primary" data-action="mediaGalleryModule.tagPhoto" data-id="photo.id" title="Tag">
+              <button class="btn btn-outline-primary" data-action="mediaGalleryModule.tagPhoto" data-id="${photo.id}" title="Tag">
                 <i class="bi bi-tag"></i>
               </button>
               <button class="btn ${photo.featured ? 'btn-warning' : 'btn-outline-warning'}" data-action="mediaGalleryModule.toggleFeatured" data-args='${JSON.stringify([photo.id, !photo.featured])}' title="${photo.featured ? 'Unfeature' : 'Feature'}">
@@ -3229,7 +3229,7 @@ const mediaGalleryModule = {
                 title="${isPublished ? 'Unpublish' : 'Publish'}">
                 <i class="bi bi-${isPublished ? 'eye-slash' : 'eye'}"></i>
               </button>
-              <button class="btn btn-outline-danger" data-action="mediaGalleryModule.deletePhoto" data-id="photo.id" title="Delete">
+              <button class="btn btn-outline-danger" data-action="mediaGalleryModule.deletePhoto" data-id="${photo.id}" title="Delete">
                 <i class="bi bi-trash"></i>
               </button>
             </div>
@@ -6849,10 +6849,10 @@ const mediaGalleryModule = {
                     <td>${v.organisations?.company_name ? utils.escapeHtml(v.organisations.company_name) : '<span class="text-muted">-</span>'}</td>
                     <td><span class="badge bg-danger">${v.status === 'broken' ? `HTTP ${v.httpStatus}` : 'Network Error'}</span></td>
                     <td>
-                      <button class="btn btn-sm btn-outline-danger" data-action="mediaGalleryModule.deleteVideo" data-id="v.id" title="Delete broken video">
+                      <button class="btn btn-sm btn-outline-danger" data-action="mediaGalleryModule.deleteVideo" data-id="${v.id}" title="Delete broken video">
                         <i class="bi bi-trash"></i>
                       </button>
-                      <button class="btn btn-sm btn-outline-secondary" data-action="mediaGalleryModule.editVideo" data-id="v.id" title="Edit/fix video">
+                      <button class="btn btn-sm btn-outline-secondary" data-action="mediaGalleryModule.editVideo" data-id="${v.id}" title="Edit/fix video">
                         <i class="bi bi-pencil"></i>
                       </button>
                     </td>
@@ -7083,7 +7083,7 @@ const mediaGalleryModule = {
               .map(
                 (s) => `
               <button class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
-                data-action="mediaGalleryModule._executeBulkMove" data-args='${JSON.stringify([s.id, utils.escapeHtml(s.gallery_name).replace(/'/g, "\\'")])}'>
+                data-action="mediaGalleryModule._executeBulkMove" data-args='${JSON.stringify([s.id, utils.escapeHtml(s.gallery_name).replace(/'/g, '&#39;')])}'>
                 <span><i class="bi bi-folder me-2"></i>${utils.escapeHtml(s.gallery_name)}</span>
                 <i class="bi bi-arrow-right"></i>
               </button>

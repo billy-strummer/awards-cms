@@ -48,7 +48,7 @@ const crmModule = {
    * @returns {Promise<void>}
    */
   async loadAllData() {
-    console.warn('🎯 Loading CRM data...');
+    console.debug('Loading CRM data...');
     try {
       // Load data based on current sub-tab
       switch (this.currentSubTab) {
@@ -88,7 +88,7 @@ const crmModule = {
    * @returns {Promise<void>}
    */
   async loadCompanies() {
-    console.warn('Loading companies CRM view...');
+    console.debug('Loading companies CRM view...');
 
     try {
       // Enable server-side pagination and fetch first page
@@ -264,13 +264,13 @@ const crmModule = {
           </td>
           <td>
             <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-primary" data-action="crmModule.viewCompanyProfile" data-id="company.id" title="View Profile" aria-label="View company profile">
+              <button class="btn btn-outline-primary" data-action="crmModule.viewCompanyProfile" data-id="${company.id}" title="View Profile" aria-label="View company profile">
                 <i class="bi bi-eye"></i>
               </button>
-              <button class="btn btn-outline-success" data-action="crmModule.logCommunication" data-id="company.id" title="Log Communication" aria-label="Log communication">
+              <button class="btn btn-outline-success" data-action="crmModule.logCommunication" data-id="${company.id}" title="Log Communication" aria-label="Log communication">
                 <i class="bi bi-chat-dots"></i>
               </button>
-              <button class="btn btn-outline-info" data-action="crmModule.createDeal" data-id="company.id" title="Create Deal" aria-label="Create deal">
+              <button class="btn btn-outline-info" data-action="crmModule.createDeal" data-id="${company.id}" title="Create Deal" aria-label="Create deal">
                 <i class="bi bi-cash-coin"></i>
               </button>
             </div>
@@ -353,7 +353,10 @@ const crmModule = {
    * @returns {Promise<void>}
    */
   async loadCommunications() {
-    console.warn('Loading communications...');
+    // Prevent concurrent/repeated calls while already loading
+    if (this._loadingCommunications) return;
+    this._loadingCommunications = true;
+    console.debug('Loading communications...');
 
     // Read filter values from DOM
     const typeEl = document.getElementById('communicationTypeFilter');
@@ -394,6 +397,8 @@ const crmModule = {
     } catch (error) {
       console.error('Error loading communications:', error);
       utils.showErrorWithRetry(error, 'loading communications', () => this.loadCommunications());
+    } finally {
+      this._loadingCommunications = false;
     }
   },
 
@@ -450,13 +455,13 @@ const crmModule = {
           <td>${followUpBadge}</td>
           <td>
             <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-primary" data-action="crmModule.viewCommunication" data-id="comm.id" title="View Details">
+              <button class="btn btn-outline-primary" data-action="crmModule.viewCommunication" data-id="${comm.id}" title="View Details">
                 <i class="bi bi-eye"></i>
               </button>
-              <button class="btn btn-outline-success" data-action="crmModule.editCommunication" data-id="comm.id" title="Edit">
+              <button class="btn btn-outline-success" data-action="crmModule.editCommunication" data-id="${comm.id}" title="Edit">
                 <i class="bi bi-pencil"></i>
               </button>
-              <button class="btn btn-outline-danger" data-action="crmModule.deleteCommunication" data-id="comm.id" title="Delete">
+              <button class="btn btn-outline-danger" data-action="crmModule.deleteCommunication" data-id="${comm.id}" title="Delete">
                 <i class="bi bi-trash"></i>
               </button>
             </div>
@@ -513,7 +518,9 @@ const crmModule = {
    * @returns {Promise<void>}
    */
   async loadDeals() {
-    console.warn('Loading deals...');
+    if (this._loadingDeals) return;
+    this._loadingDeals = true;
+    console.debug('Loading deals...');
 
     try {
       const filters = {};
@@ -576,6 +583,8 @@ const crmModule = {
     } catch (error) {
       console.error('Error loading deals:', error);
       utils.showErrorWithRetry(error, 'loading deals', () => this.loadDeals());
+    } finally {
+      this._loadingDeals = false;
     }
   },
 
@@ -635,13 +644,13 @@ const crmModule = {
           <td>${statusBadge}</td>
           <td>
             <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-primary" data-action="crmModule.viewDeal" data-id="deal.id" title="View Details">
+              <button class="btn btn-outline-primary" data-action="crmModule.viewDeal" data-id="${deal.id}" title="View Details">
                 <i class="bi bi-eye"></i>
               </button>
-              <button class="btn btn-outline-success" data-action="crmModule.editDeal" data-id="deal.id" title="Edit">
+              <button class="btn btn-outline-success" data-action="crmModule.editDeal" data-id="${deal.id}" title="Edit">
                 <i class="bi bi-pencil"></i>
               </button>
-              <button class="btn btn-outline-danger" data-action="crmModule.deleteDeal" data-id="deal.id" title="Delete">
+              <button class="btn btn-outline-danger" data-action="crmModule.deleteDeal" data-id="${deal.id}" title="Delete">
                 <i class="bi bi-trash"></i>
               </button>
             </div>
@@ -712,7 +721,7 @@ const crmModule = {
    * @returns {Promise<void>}
    */
   async loadMeetings() {
-    console.warn('Loading meetings...');
+    console.debug('Loading meetings...');
 
     try {
       const filters = {};
@@ -798,13 +807,13 @@ const crmModule = {
           <td>${followUpBadge}</td>
           <td>
             <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-primary" data-action="crmModule.viewMeeting" data-id="meeting.id" title="View Details">
+              <button class="btn btn-outline-primary" data-action="crmModule.viewMeeting" data-id="${meeting.id}" title="View Details">
                 <i class="bi bi-eye"></i>
               </button>
-              <button class="btn btn-outline-success" data-action="crmModule.editMeeting" data-id="meeting.id" title="Edit">
+              <button class="btn btn-outline-success" data-action="crmModule.editMeeting" data-id="${meeting.id}" title="Edit">
                 <i class="bi bi-pencil"></i>
               </button>
-              <button class="btn btn-outline-danger" data-action="crmModule.deleteMeeting" data-id="meeting.id" title="Delete">
+              <button class="btn btn-outline-danger" data-action="crmModule.deleteMeeting" data-id="${meeting.id}" title="Delete">
                 <i class="bi bi-trash"></i>
               </button>
             </div>
@@ -849,7 +858,7 @@ const crmModule = {
    * @returns {Promise<void>}
    */
   async loadSegments() {
-    console.warn('Loading segments...');
+    console.debug('Loading segments...');
 
     try {
       // selectAll justified: contact_segments is a small lookup table for segment management (see pagination documentation)
@@ -899,10 +908,10 @@ const crmModule = {
               </span>
             </div>
             <div class="d-flex gap-2">
-              <button class="btn btn-sm btn-outline-primary flex-grow-1" data-action="crmModule.viewSegmentCompanies" data-args='${JSON.stringify([segment.id, utils.escapeHtml(segment.segment_name).replace(/'/g, "\\'")])}'>
+              <button class="btn btn-sm btn-outline-primary flex-grow-1" data-action="crmModule.viewSegmentCompanies" data-args='${JSON.stringify([segment.id, utils.escapeHtml(segment.segment_name).replace(/'/g, '&#39;')])}'>
                 <i class="bi bi-eye me-1"></i>View Companies
               </button>
-              <button class="btn btn-sm btn-outline-secondary" data-action="crmModule.editSegment" data-id="segment.id" title="Edit Segment">
+              <button class="btn btn-sm btn-outline-secondary" data-action="crmModule.editSegment" data-id="${segment.id}" title="Edit Segment">
                 <i class="bi bi-pencil"></i>
               </button>
             </div>
@@ -918,6 +927,10 @@ const crmModule = {
   // FILTER FUNCTIONS
   // ============================================
   applyFilter(category, filterType, value) {
+    // Strip trailing Event arg that the action registry may append
+    if (value instanceof Event) value = undefined;
+    if (filterType instanceof Event) return;
+    if (!this.filters[category]) return;
     this.filters[category][filterType] = value;
 
     // Reload data based on category
@@ -973,6 +986,14 @@ const crmModule = {
    * @returns {Promise<void>}
    */
   async logCommunication(organisationId = null) {
+    // Guard against receiving an Event object from the action registry
+    // when invoked from a button without data-id
+    if (
+      organisationId instanceof Event ||
+      (organisationId && typeof organisationId === 'object' && organisationId.target)
+    ) {
+      organisationId = null;
+    }
     console.warn('Log communication for:', organisationId);
     try {
       // Create modal
@@ -1509,7 +1530,7 @@ const crmModule = {
               </div>
               <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-success" data-action="crmModule.updateCommunication" data-id="comm.id">
+                <button type="button" class="btn btn-success" data-action="crmModule.updateCommunication" data-id="${comm.id}">
                   <i class="bi bi-save me-2"></i>Save Changes
                 </button>
               </div>
@@ -1797,7 +1818,7 @@ const crmModule = {
               </div>
               <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-success" data-action="crmModule.updateDeal" data-id="deal.id">
+                <button type="button" class="btn btn-success" data-action="crmModule.updateDeal" data-id="${deal.id}">
                   <i class="bi bi-save me-2"></i>Save Changes
                 </button>
               </div>
@@ -2091,7 +2112,7 @@ const crmModule = {
               </div>
               <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-success" data-action="crmModule.updateMeeting" data-id="meeting.id">
+                <button type="button" class="btn btn-success" data-action="crmModule.updateMeeting" data-id="${meeting.id}">
                   <i class="bi bi-save me-2"></i>Save Changes
                 </button>
               </div>
@@ -2253,7 +2274,7 @@ const crmModule = {
                                 <button class="btn btn-outline-primary" data-action="crmModule.viewCompanyProfile" data-id="a.organisation.id" title="View Profile">
                                   <i class="bi bi-eye"></i>
                                 </button>
-                                <button class="btn btn-outline-danger" data-action="crmModule.removeFromSegment" data-args='${JSON.stringify([a.id, segmentId, utils.escapeHtml(segmentName).replace(/'/g, "\\'")])}' title="Remove from Segment">
+                                <button class="btn btn-outline-danger" data-action="crmModule.removeFromSegment" data-args='${JSON.stringify([a.id, segmentId, utils.escapeHtml(segmentName).replace(/'/g, '&#39;')])}' title="Remove from Segment">
                                   <i class="bi bi-x-circle"></i>
                                 </button>
                               </div>
@@ -2408,7 +2429,7 @@ const crmModule = {
               </div>
               <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-success" data-action="crmModule.updateSegment" data-id="segment.id">
+                <button type="button" class="btn btn-success" data-action="crmModule.updateSegment" data-id="${segment.id}">
                   <i class="bi bi-save me-2"></i>Save Changes
                 </button>
               </div>
@@ -2715,7 +2736,7 @@ const crmModule = {
       resultEl.innerHTML = `<h6 class="fw-semibold mb-2">Saved Segments</h6><div class="list-group">${names
         .map((n) => {
           const rules = segments[n];
-          return `<a href="#" class="list-group-item list-group-item-action small" data-action="crmModule._loadAndApplySegment" data-id="utils.escapeHtml(n).replace(/'/g, "\\'")" data-prevent-default="true">
+          return `<a href="#" class="list-group-item list-group-item-action small" data-action="crmModule._loadAndApplySegment" data-id="${utils.escapeHtml(n)}" data-prevent-default="true">
           <strong>${utils.escapeHtml(n)}</strong> &mdash; ${rules.map((r) => `${r.field} ${r.op} "${r.val}"`).join(' AND ')}
         </a>`;
         })
@@ -2783,7 +2804,7 @@ const crmModule = {
         <div class="flex-grow-1"><div class="fw-semibold small">${utils.escapeHtml(f.note || 'Follow up')}</div>
         <div class="text-muted" style="font-size:0.75rem;">${orgName} &middot; ${new Date(f.date).toLocaleDateString('en-GB')}${f.assignee ? ' &middot; ' + utils.escapeHtml(f.assignee) : ''}</div></div>
         ${!f.done ? `<button class="btn btn-sm btn-outline-success me-1" data-action="crmModule.completeTask" data-args='${JSON.stringify([f.org_id, f.id])}'><i class="bi bi-check"></i></button>` : ''}
-        ${org ? `<button class="btn btn-sm btn-outline-primary" data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([f.org_id, utils.escapeHtml(orgName).replace(/'/g, "\\'")])}'><i class="bi bi-eye"></i></button>` : ''}
+        ${org ? `<button class="btn btn-sm btn-outline-primary" data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([f.org_id, utils.escapeHtml(orgName).replace(/'/g, '&#39;')])}'><i class="bi bi-eye"></i></button>` : ''}
       </div>`;
     };
 

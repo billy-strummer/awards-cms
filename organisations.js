@@ -769,7 +769,7 @@ const orgsModule = {
         const awardsCount = org.awards_count || 0;
         const escapedName = (org.company_name || '')
           .replace(/<[^>]*>/g, '')
-          .replace(/'/g, "\\'")
+          .replace(/'/g, '&#39;')
           .replace(/"/g, '&quot;');
         const tierColors = { Bronze: '#CD7F32', Silver: '#C0C0C0', Gold: '#FFD700', Platinum: '#E5E4E2' };
         const tierColor = tierColors[org.tier] || '';
@@ -780,7 +780,7 @@ const orgsModule = {
         <td class="text-center">
           <input type="checkbox" class="form-check-input"
                  ${isSelected ? 'checked' : ''}
-                 data-on-change="orgsModule.toggleOrgSelection" data-id="org.id">
+                 data-on-change="orgsModule.toggleOrgSelection" data-id="${org.id}">
         </td>
         <td>
           <div class="d-flex align-items-center">
@@ -855,7 +855,7 @@ const orgsModule = {
         <td class="text-center" style="${cv('status')}">
           <select class="form-select form-select-sm border-0 p-0 text-center"
                   style="font-size: 0.75rem; background-position: right 0.25rem center; padding-right: 1.2rem !important; cursor: pointer;"
-                  data-on-change="orgsModule.quickUpdateStatus" data-id="org.id"
+                  data-on-change="orgsModule.quickUpdateStatus" data-id="${org.id}"
                   title="Click to change status">
             ${this._getStatusOptions(org.status || 'prospect')
               .map(
@@ -1076,15 +1076,15 @@ const orgsModule = {
                   </div>`
                 }
                 <input type="file" id="logoUploadInput" class="form-control form-control-sm mb-2"
-                  accept="image/*" data-on-file-change="orgsModule.validateAndUploadLogo" data-id="org.id">
+                  accept="image/*" data-on-file-change="orgsModule.validateAndUploadLogo" data-id="${org.id}">
                 <button type="button" class="btn btn-sm btn-outline-primary w-100 mb-2"
-                  data-action="orgsModule.openLogoGalleryModal" data-id="org.id">
+                  data-action="orgsModule.openLogoGalleryModal" data-id="${org.id}">
                   <i class="bi bi-images me-1"></i>Choose from Media Gallery
                 </button>
                 ${
                   org.website
                     ? `<button type="button" class="btn btn-sm btn-outline-success w-100 mb-2"
-                    data-action="orgsModule.fetchLogoFromWebsite" data-id="org.id">
+                    data-action="orgsModule.fetchLogoFromWebsite" data-id="${org.id}">
                     <i class="bi bi-globe me-1"></i>Fetch from Website
                   </button>`
                     : ''
@@ -1163,7 +1163,7 @@ const orgsModule = {
                     rows="3" style="display: none;" placeholder="e.g., London, Southeast England, National">${utils.escapeHtml(org.catchment_area || '')}</textarea>
                 </div>
                 <hr class="my-2">
-                <button class="btn btn-sm btn-outline-info w-100" data-action="orgsModule.companiesHouseLookup" data-id="org.id">
+                <button class="btn btn-sm btn-outline-info w-100" data-action="orgsModule.companiesHouseLookup" data-id="${org.id}">
                   <i class="bi bi-bank me-1"></i>Companies House Lookup
                 </button>
               </div>
@@ -1200,8 +1200,8 @@ const orgsModule = {
                 <hr class="my-2">
                 <div class="input-group input-group-sm">
                   <input type="text" class="form-control" id="newNoteContent" placeholder="Add a note..."
-                    data-on-keyenter="orgsModule.addThreadedNote" data-id="org.id">
-                  <button class="btn btn-primary" data-action="orgsModule.addThreadedNote" data-id="org.id"><i class="bi bi-send"></i></button>
+                    data-on-keyenter="orgsModule.addThreadedNote" data-id="${org.id}">
+                  <button class="btn btn-primary" data-action="orgsModule.addThreadedNote" data-id="${org.id}"><i class="bi bi-send"></i></button>
                 </div>
               </div>
             </div>
@@ -1305,15 +1305,15 @@ const orgsModule = {
                         ? org.tags
                             .map(
                               (t) =>
-                                `<span class="badge bg-secondary me-1 mb-1">${utils.escapeHtml(t)} <a href="javascript:void(0);" class="text-white ms-1" data-action="orgsModule.removeTag" data-args='${JSON.stringify([org.id, utils.escapeHtml(t).replace(/'/g, "\\'")])}'><i class="bi bi-x-circle-fill"></i></a></span>`
+                                `<span class="badge bg-secondary me-1 mb-1">${utils.escapeHtml(t)} <a href="#" class="text-white ms-1" data-action="orgsModule.removeTag" data-args='${JSON.stringify([org.id, utils.escapeHtml(t).replace(/'/g, '&#39;')])}'><i class="bi bi-x-circle-fill"></i></a></span>`
                             )
                             .join('')
                         : '<span class="text-muted small">No tags</span>'
                     }
                   </div>
                   <div class="input-group input-group-sm mt-2">
-                    <input type="text" class="form-control" id="newTagInput" placeholder="Add tag..." data-on-keyenter="orgsModule.addTag" data-id="org.id">
-                    <button class="btn btn-outline-primary" data-action="orgsModule.addTag" data-id="org.id"><i class="bi bi-plus"></i></button>
+                    <input type="text" class="form-control" id="newTagInput" placeholder="Add tag..." data-on-keyenter="orgsModule.addTag" data-id="${org.id}">
+                    <button class="btn btn-outline-primary" data-action="orgsModule.addTag" data-id="${org.id}"><i class="bi bi-plus"></i></button>
                   </div>
                 </div>
               </div>
@@ -1350,7 +1350,7 @@ const orgsModule = {
                   </div>
                   <div class="col-md-4 text-end">
                     <button type="button" class="btn btn-primary"
-                      data-action="orgsModule.viewOrganisationInvoices" data-args='${JSON.stringify([org.id, utils.escapeHtml(org.company_name).replace(/'/g, "\\'")])}'>
+                      data-action="orgsModule.viewOrganisationInvoices" data-args='${JSON.stringify([org.id, utils.escapeHtml(org.company_name).replace(/'/g, '&#39;')])}'>
                       <i class="bi bi-file-earmark-text me-2"></i>View All Invoices
                     </button>
                   </div>
@@ -1385,9 +1385,9 @@ const orgsModule = {
                     <tr>
                       <td><span class="badge bg-primary-subtle text-primary">${award.year}</span></td>
                       <td>
-                        <a href="javascript:void(0);"
+                        <a href="#"
                            class="text-decoration-none fw-semibold text-primary"
-                           data-action="assignmentsModule.openAssignmentsModal" data-args='${JSON.stringify([award.id, utils.escapeHtml(utils.formatAwardName(award)).replace(/'/g, "\\'")])}'>
+                           data-action="assignmentsModule.openAssignmentsModal" data-args='${JSON.stringify([award.id, utils.escapeHtml(utils.formatAwardName(award)).replace(/'/g, '&#39;')])}'>
                           ${utils.escapeHtml(utils.formatAwardName(award))}
                         </a>
                       </td>
@@ -1396,8 +1396,8 @@ const orgsModule = {
                       <td>
                         ${
                           ['bronze', 'silver', 'gold'].includes(award.package_type)
-                            ? `<a href="javascript:void(0);"
-                              data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([org.id, utils.escapeHtml(org.company_name).replace(/'/g, "\\'")])}'>
+                            ? `<a href="#"
+                              data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([org.id, utils.escapeHtml(org.company_name).replace(/'/g, '&#39;')])}'>
                               ${orgsModule.getPackageBadge(award.package_type)}
                            </a>`
                             : '<span class="text-muted">-</span>'
@@ -1542,10 +1542,10 @@ const orgsModule = {
                 </div>
 
                 <div class="d-flex gap-2">
-                  <button type="button" class="btn btn-primary" data-action="orgsModule.saveWinnerProfile" data-id="org.id">
+                  <button type="button" class="btn btn-primary" data-action="orgsModule.saveWinnerProfile" data-id="${org.id}">
                     <i class="bi bi-save me-2"></i>Save Profile
                   </button>
-                  <button type="button" class="btn btn-secondary" data-action="orgsModule.cancelWinnerProfile" data-args='${JSON.stringify([org.id, utils.escapeHtml(org.company_name || '').replace(/'/g, "\\'")])}'>
+                  <button type="button" class="btn btn-secondary" data-action="orgsModule.cancelWinnerProfile" data-args='${JSON.stringify([org.id, utils.escapeHtml(org.company_name || '').replace(/'/g, '&#39;')])}'>
                     <i class="bi bi-x-circle me-2"></i>Cancel
                   </button>
                 </div>
@@ -1558,7 +1558,7 @@ const orgsModule = {
         <div class="mt-4">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <h6 class="text-muted mb-0"><i class="bi bi-images me-2"></i>Company Images for Marketing (${(companyImages || []).length})</h6>
-            <button type="button" class="btn btn-sm btn-primary" data-action="orgsModule.openUploadImagesModal" data-id="org.id">
+            <button type="button" class="btn btn-sm btn-primary" data-action="orgsModule.openUploadImagesModal" data-id="${org.id}">
               <i class="bi bi-cloud-upload me-1"></i>Upload Images
             </button>
           </div>
@@ -1973,7 +1973,7 @@ const orgsModule = {
           <div class="d-flex align-items-center mb-1">
             <span class="small fw-semibold me-2" style="width: 120px;">${utils.escapeHtml(name)}:</span>
             <span class="small flex-grow-1">${utils.escapeHtml(value)}</span>
-            <button class="btn btn-sm btn-outline-danger py-0" data-action="orgsModule.removeCustomField" data-args='${JSON.stringify([orgId, utils.escapeHtml(name).replace(/'/g, "\\'")])}'><i class="bi bi-x"></i></button>
+            <button class="btn btn-sm btn-outline-danger py-0" data-action="orgsModule.removeCustomField" data-args='${JSON.stringify([orgId, utils.escapeHtml(name).replace(/'/g, '&#39;')])}'><i class="bi bi-x"></i></button>
           </div>
         `
           )
@@ -3890,7 +3890,7 @@ const orgsModule = {
             <td class="small">${utils.escapeHtml(org.email || '-')}</td>
             <td><span class="badge bg-secondary">${org.status || 'prospect'}</span></td>
             <td class="text-center">${org.awards_count || 0}</td>
-            <td><button class="btn btn-sm btn-outline-danger" data-action="orgsModule.deleteOrganisation" data-args='${JSON.stringify([org.id, utils.escapeHtml(org.company_name).replace(/'/g, "\\'")])}'>Archive</button></td>
+            <td><button class="btn btn-sm btn-outline-danger" data-action="orgsModule.deleteOrganisation" data-args='${JSON.stringify([org.id, utils.escapeHtml(org.company_name).replace(/'/g, '&#39;')])}'>Archive</button></td>
           </tr>`
             )
             .join('')}
@@ -3953,7 +3953,7 @@ const orgsModule = {
             .replace(/{contact_name}/g, org.contact_name || 'Sir/Madam');
           return `<a href="mailto:${org.email || ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}"
                    class="list-group-item list-group-item-action"
-                   data-action="orgsModule._logComms" data-args='${JSON.stringify([orgId, t.id, utils.escapeHtml(org.company_name || '').replace(/'/g, "\\'")])}'>
+                   data-action="orgsModule._logComms" data-args='${JSON.stringify([orgId, t.id, utils.escapeHtml(org.company_name || '').replace(/'/g, '&#39;')])}'>
           <div class="d-flex justify-content-between align-items-center">
             <div>
               <h6 class="mb-1">${t.name}</h6>
@@ -6078,7 +6078,7 @@ const orgsModule = {
         ]
           .map(
             (item) => `
-          <a href="javascript:void(0);" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+          <a href="#" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
              data-action="orgsModule.filterByMissingField" data-id="${item.field}">
             <span><i class="bi ${item.icon} me-2"></i>${item.label}</span>
             <span class="badge ${item.count > 0 ? 'bg-warning text-dark' : 'bg-success'}">${item.count}</span>
@@ -6799,8 +6799,8 @@ const orgsModule = {
             : `<div class="me-2 d-flex align-items-center justify-content-center rounded" style="width:30px;height:21px;background:#f5f5f5;border:1px solid #e0e0e0;"><i class="bi bi-building text-muted" style="font-size:0.6rem;"></i></div>`
         }
         <div class="flex-grow-1">
-          <a href="javascript:void(0);" class="small fw-semibold text-primary text-decoration-none"
-            data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([r.org?.id, utils.escapeHtml(r.org?.company_name || '').replace(/'/g, "\\'")])}'>${utils.escapeHtml(r.org?.company_name || 'Unknown')}</a>
+          <a href="#" class="small fw-semibold text-primary text-decoration-none"
+            data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([r.org?.id, utils.escapeHtml(r.org?.company_name || '').replace(/'/g, '&#39;')])}'>${utils.escapeHtml(r.org?.company_name || 'Unknown')}</a>
           <span class="badge bg-light text-muted ms-1" style="font-size:0.6rem;">${typeLabels[r.type] || r.type}${r.direction === 'incoming' ? ' (of this)' : ''}</span>
         </div>
         <button class="btn btn-sm btn-outline-danger py-0" data-action="orgsModule.removeRelationship" data-args='${JSON.stringify([r.id, orgId])}'><i class="bi bi-x"></i></button>
@@ -6930,8 +6930,8 @@ const orgsModule = {
                         <div class="card-body p-2">
                           <div class="d-flex align-items-center mb-1">
                             ${org.logo_url ? `<img src="${org.logo_url}" class="me-1 rounded" style="width:24px;height:17px;object-fit:contain;">` : ''}
-                            <a href="javascript:void(0);" class="small fw-semibold text-primary text-decoration-none text-truncate"
-                              data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([org.id, utils.escapeHtml(org.company_name || '').replace(/'/g, "\\'")])}'
+                            <a href="#" class="small fw-semibold text-primary text-decoration-none text-truncate"
+                              data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([org.id, utils.escapeHtml(org.company_name || '').replace(/'/g, '&#39;')])}'
                               style="max-width: 150px;">${utils.escapeHtml(org.company_name || 'N/A')}</a>
                           </div>
                           <div class="text-muted" style="font-size: 0.65rem;">${utils.escapeHtml(org.sector || '-')} &middot; ${utils.escapeHtml(org.county || '-')}</div>
@@ -6942,9 +6942,9 @@ const orgsModule = {
                         )
                         .join('') +
                       (remaining > 0
-                        ? `<button class="btn btn-sm btn-outline-secondary w-100 mt-1" data-action="orgsModule.expandKanbanColumn" data-id="stage.key"><i class="bi bi-chevron-down me-1"></i>Show ${remaining} more</button>`
+                        ? `<button class="btn btn-sm btn-outline-secondary w-100 mt-1" data-action="orgsModule.expandKanbanColumn" data-id="${stage.key}"><i class="bi bi-chevron-down me-1"></i>Show ${remaining} more</button>`
                         : isExpanded && stageOrgs.length > 30
-                          ? `<button class="btn btn-sm btn-outline-secondary w-100 mt-1" data-action="orgsModule.collapseKanbanColumn" data-id="stage.key"><i class="bi bi-chevron-up me-1"></i>Show less</button>`
+                          ? `<button class="btn btn-sm btn-outline-secondary w-100 mt-1" data-action="orgsModule.collapseKanbanColumn" data-id="${stage.key}"><i class="bi bi-chevron-up me-1"></i>Show less</button>`
                           : '')
                     );
                   })()}
@@ -7635,7 +7635,7 @@ const orgsModule = {
             ${all
               .map((f) => {
                 const isOverdue = f.date < today;
-                const safeName = utils.escapeHtml((f.companyName || '').replace(/'/g, "\\'"));
+                const safeName = utils.escapeHtml((f.companyName || '').replace(/'/g, '&#39;'));
                 return `<tr class="${isOverdue ? 'table-danger' : 'table-warning'}">
                 <td><a href="#" class="text-decoration-none" data-action="orgsModule.closeModalAndOpenProfile" data-args='${JSON.stringify([f.orgId, safeName])}' data-prevent-default="true">${utils.escapeHtml(f.companyName || 'Unknown')}</a></td>
                 <td class="small">${f.date || '-'}</td>
@@ -7685,7 +7685,7 @@ const orgsModule = {
             return `<div class="col-6">
             <div class="form-check form-switch">
               <input class="form-check-input" type="checkbox" id="colVis_${c.key}" ${checked}
-                     data-on-check="orgsModule.toggleColumnVisibility" data-id="c.key">
+                     data-on-check="orgsModule.toggleColumnVisibility" data-id="${c.key}">
               <label class="form-check-label small" for="colVis_${c.key}">${c.label}</label>
             </div>
           </div>`;
@@ -8249,8 +8249,8 @@ const orgsModule = {
             }</div>
           </div>
           <div class="d-flex gap-1">
-            <button class="btn btn-sm btn-primary" data-action="orgsModule.loadView" data-id="utils.escapeHtml(n).replace(/'/g, "\\'")"><i class="bi bi-box-arrow-in-right"></i></button>
-            <button class="btn btn-sm btn-outline-danger" data-action="orgsModule.deleteView" data-id="utils.escapeHtml(n).replace(/'/g, "\\'")"><i class="bi bi-trash"></i></button>
+            <button class="btn btn-sm btn-primary" data-action="orgsModule.loadView" data-id="utils.escapeHtml(n).replace(/'/g, '&#39;')"><i class="bi bi-box-arrow-in-right"></i></button>
+            <button class="btn btn-sm btn-outline-danger" data-action="orgsModule.deleteView" data-id="utils.escapeHtml(n).replace(/'/g, '&#39;')"><i class="bi bi-trash"></i></button>
           </div>
         </div>`
           )
@@ -8975,7 +8975,7 @@ const orgsModule = {
           .map(
             (
               o
-            ) => `<div class="border rounded px-2 py-1 small"><a href="#" class="text-primary text-decoration-none" data-action="orgsModule.openCompanyProfile" data-id="o.id">${utils.escapeHtml(o.company_name)}</a>
+            ) => `<div class="border rounded px-2 py-1 small"><a href="#" class="text-primary text-decoration-none" data-action="orgsModule.openCompanyProfile" data-id="${o.id}">${utils.escapeHtml(o.company_name)}</a>
         <span class="text-muted ms-1">${utils.escapeHtml(o.region || '')}</span></div>`
           )
           .join('')}
@@ -9325,7 +9325,7 @@ const orgsModule = {
           ${org.email ? `<div style="font-size:12px;"><i class="bi bi-envelope"></i> ${utils.escapeHtml(org.email)}</div>` : ''}
           ${org.phone ? `<div style="font-size:12px;"><i class="bi bi-telephone"></i> ${utils.escapeHtml(org.phone)}</div>` : ''}
           ${org.website ? `<div style="font-size:12px;"><i class="bi bi-globe"></i> <a href="${utils.escapeHtml(org.website)}" target="_blank">${utils.escapeHtml(org.website)}</a></div>` : ''}
-          <div style="margin-top:8px;"><button class="btn btn-sm btn-primary" style="font-size:11px;" data-action="orgsModule.openCompanyProfile" data-id="org.id"><i class="bi bi-eye me-1"></i>View Profile</button></div>
+          <div style="margin-top:8px;"><button class="btn btn-sm btn-primary" style="font-size:11px;" data-action="orgsModule.openCompanyProfile" data-id="${org.id}"><i class="bi bi-eye me-1"></i>View Profile</button></div>
         </div>`);
         this._mapMarkers.push(marker);
         plotted++;

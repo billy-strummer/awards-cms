@@ -308,7 +308,7 @@ const paymentsModule = {
       .map(
         (invoice) => `
       <tr>
-        <td><input type="checkbox" class="form-check-input invoice-checkbox" value="${invoice.id}" ${this._selectedInvoiceIds.has(invoice.id) ? 'checked' : ''} data-on-check="paymentsModule.toggleInvoiceSelect" data-id="invoice.id"></td>
+        <td><input type="checkbox" class="form-check-input invoice-checkbox" value="${invoice.id}" ${this._selectedInvoiceIds.has(invoice.id) ? 'checked' : ''} data-on-check="paymentsModule.toggleInvoiceSelect" data-id="${invoice.id}"></td>
         <td>
           <strong>${utils.escapeHtml(invoice.invoice_number)}</strong>
           <button class="btn btn-link btn-sm p-0 ms-1" data-action="paymentsModule.copyToClipboard" data-id="${utils.escapeHtml(invoice.invoice_number)}" data-stop-propagation="true" title="Copy invoice number" aria-label="Copy invoice number">
@@ -318,9 +318,9 @@ const paymentsModule = {
         <td>
           ${
             invoice.organisations?.id && invoice.organisations?.company_name
-              ? `<a href="javascript:void(0);"
+              ? `<a href="#"
                 class="text-decoration-none text-primary fw-semibold"
-                data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([invoice.organisations.id, utils.escapeHtml(invoice.organisations.company_name).replace(/'/g, "\\'")])}'
+                data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([invoice.organisations.id, utils.escapeHtml(invoice.organisations.company_name).replace(/'/g, '&#39;')])}'
                 title="View company profile">
                 ${utils.escapeHtml(invoice.organisations.company_name)}
              </a>`
@@ -335,7 +335,7 @@ const paymentsModule = {
         <td class="text-danger">&pound;${parseFloat(invoice.balance_due || 0).toFixed(2)}</td>
         <td>
           <select class="form-select form-select-sm d-inline-block" style="width:auto; font-size:0.75rem;"
-            data-on-change="paymentsModule.inlineUpdateInvoiceStatus" data-id="invoice.id"
+            data-on-change="paymentsModule.inlineUpdateInvoiceStatus" data-id="${invoice.id}"
             aria-label="Change invoice status">
             ${['draft', 'sent', 'viewed', 'paid', 'partially_paid', 'overdue', 'cancelled']
               .map(
@@ -347,16 +347,16 @@ const paymentsModule = {
         </td>
         <td>
           <div class="btn-group btn-group-sm" role="group">
-            <button class="btn btn-outline-primary" data-action="paymentsModule.viewInvoice" data-id="invoice.id" title="View" aria-label="View invoice">
+            <button class="btn btn-outline-primary" data-action="paymentsModule.viewInvoice" data-id="${invoice.id}" title="View" aria-label="View invoice">
               <i class="bi bi-eye"></i>
             </button>
-            <button class="btn btn-outline-success" data-action="paymentsModule.recordPaymentForInvoice" data-id="invoice.id" title="Record Payment" aria-label="Record payment">
+            <button class="btn btn-outline-success" data-action="paymentsModule.recordPaymentForInvoice" data-id="${invoice.id}" title="Record Payment" aria-label="Record payment">
               <i class="bi bi-cash"></i>
             </button>
-            <button class="btn btn-outline-secondary" data-action="paymentsModule.sendInvoice" data-id="invoice.id" title="Send" aria-label="Send invoice">
+            <button class="btn btn-outline-secondary" data-action="paymentsModule.sendInvoice" data-id="${invoice.id}" title="Send" aria-label="Send invoice">
               <i class="bi bi-envelope"></i>
             </button>
-            <button class="btn btn-outline-danger" data-action="paymentsModule.deleteInvoice" data-id="invoice.id" title="Delete" aria-label="Delete invoice">
+            <button class="btn btn-outline-danger" data-action="paymentsModule.deleteInvoice" data-id="${invoice.id}" title="Delete" aria-label="Delete invoice">
               <i class="bi bi-trash"></i>
             </button>
           </div>
@@ -379,15 +379,15 @@ const paymentsModule = {
       utils.renderServerPagination('invoicesPagination', this._pagination, 'paymentsModule._goToInvoicePage');
     } else if (totalPages > 1) {
       let html = '<nav><ul class="pagination pagination-sm justify-content-center mt-3">';
-      html += `<li class="page-item ${this._invCurrentPage <= 1 ? 'disabled' : ''}"><a class="page-link" href="javascript:void(0);" data-action="paymentsModule.goToInvoicePage" data-id="${this._invCurrentPage - 1}">Prev</a></li>`;
+      html += `<li class="page-item ${this._invCurrentPage <= 1 ? 'disabled' : ''}"><a class="page-link" href="#" data-action="paymentsModule.goToInvoicePage" data-id="${this._invCurrentPage - 1}">Prev</a></li>`;
       for (let i = 1; i <= totalPages; i++) {
         if (i === 1 || i === totalPages || (i >= this._invCurrentPage - 2 && i <= this._invCurrentPage + 2)) {
-          html += `<li class="page-item ${i === this._invCurrentPage ? 'active' : ''}"><a class="page-link" href="javascript:void(0);" data-action="paymentsModule.goToInvoicePage" data-id="${i}">${i}</a></li>`;
+          html += `<li class="page-item ${i === this._invCurrentPage ? 'active' : ''}"><a class="page-link" href="#" data-action="paymentsModule.goToInvoicePage" data-id="${i}">${i}</a></li>`;
         } else if (i === this._invCurrentPage - 3 || i === this._invCurrentPage + 3) {
           html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
         }
       }
-      html += `<li class="page-item ${this._invCurrentPage >= totalPages ? 'disabled' : ''}"><a class="page-link" href="javascript:void(0);" data-action="paymentsModule.goToInvoicePage" data-id="${this._invCurrentPage + 1}">Next</a></li>`;
+      html += `<li class="page-item ${this._invCurrentPage >= totalPages ? 'disabled' : ''}"><a class="page-link" href="#" data-action="paymentsModule.goToInvoicePage" data-id="${this._invCurrentPage + 1}">Next</a></li>`;
       html += '</ul></nav>';
       html += `<div class="text-center text-muted small">Showing ${invStart + 1}-${Math.min(invEnd, this.currentInvoices.length)} of ${this.currentInvoices.length}</div>`;
       paginationEl.innerHTML = html;
@@ -1283,9 +1283,9 @@ const paymentsModule = {
         <td>
           ${
             payment.organisations?.id && payment.organisations?.company_name
-              ? `<a href="javascript:void(0);"
+              ? `<a href="#"
                 class="text-decoration-none text-primary fw-semibold"
-                data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([payment.organisations.id, utils.escapeHtml(payment.organisations.company_name).replace(/'/g, "\\'")])}'
+                data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([payment.organisations.id, utils.escapeHtml(payment.organisations.company_name).replace(/'/g, '&#39;')])}'
                 title="View company profile">
                 ${utils.escapeHtml(payment.organisations.company_name)}
              </a>`
@@ -1298,10 +1298,10 @@ const paymentsModule = {
         <td>${this.getPaymentStatusBadge(payment.status)}</td>
         <td>
           <div class="btn-group btn-group-sm" role="group">
-            <button class="btn btn-outline-primary" data-action="paymentsModule.viewPayment" data-id="payment.id" title="View" aria-label="View payment">
+            <button class="btn btn-outline-primary" data-action="paymentsModule.viewPayment" data-id="${payment.id}" title="View" aria-label="View payment">
               <i class="bi bi-eye"></i>
             </button>
-            <button class="btn btn-outline-danger" data-action="paymentsModule.deletePayment" data-id="payment.id" title="Delete" aria-label="Delete payment">
+            <button class="btn btn-outline-danger" data-action="paymentsModule.deletePayment" data-id="${payment.id}" title="Delete" aria-label="Delete payment">
               <i class="bi bi-trash"></i>
             </button>
           </div>
@@ -1324,15 +1324,15 @@ const paymentsModule = {
       utils.renderServerPagination('paymentsPagination', this._payPagination, 'paymentsModule._goToPaymentPage');
     } else if (payTotalPages > 1) {
       let html = '<nav><ul class="pagination pagination-sm justify-content-center mt-3">';
-      html += `<li class="page-item ${this._payCurrentPage <= 1 ? 'disabled' : ''}"><a class="page-link" href="javascript:void(0);" data-action="paymentsModule.goToPaymentPage" data-id="${this._payCurrentPage - 1}">Prev</a></li>`;
+      html += `<li class="page-item ${this._payCurrentPage <= 1 ? 'disabled' : ''}"><a class="page-link" href="#" data-action="paymentsModule.goToPaymentPage" data-id="${this._payCurrentPage - 1}">Prev</a></li>`;
       for (let i = 1; i <= payTotalPages; i++) {
         if (i === 1 || i === payTotalPages || (i >= this._payCurrentPage - 2 && i <= this._payCurrentPage + 2)) {
-          html += `<li class="page-item ${i === this._payCurrentPage ? 'active' : ''}"><a class="page-link" href="javascript:void(0);" data-action="paymentsModule.goToPaymentPage" data-id="${i}">${i}</a></li>`;
+          html += `<li class="page-item ${i === this._payCurrentPage ? 'active' : ''}"><a class="page-link" href="#" data-action="paymentsModule.goToPaymentPage" data-id="${i}">${i}</a></li>`;
         } else if (i === this._payCurrentPage - 3 || i === this._payCurrentPage + 3) {
           html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
         }
       }
-      html += `<li class="page-item ${this._payCurrentPage >= payTotalPages ? 'disabled' : ''}"><a class="page-link" href="javascript:void(0);" data-action="paymentsModule.goToPaymentPage" data-id="${this._payCurrentPage + 1}">Next</a></li>`;
+      html += `<li class="page-item ${this._payCurrentPage >= payTotalPages ? 'disabled' : ''}"><a class="page-link" href="#" data-action="paymentsModule.goToPaymentPage" data-id="${this._payCurrentPage + 1}">Next</a></li>`;
       html += '</ul></nav>';
       html += `<div class="text-center text-muted small">Showing ${payStart + 1}-${Math.min(payEnd, this.currentPayments.length)} of ${this.currentPayments.length}</div>`;
       payPaginationEl.innerHTML = html;

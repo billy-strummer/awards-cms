@@ -860,6 +860,17 @@ document.addEventListener('DOMContentLoaded', function () {
   if (typeof actionRegistry !== 'undefined') actionRegistry.init();
 
   // ==========================================
+  // STEP 1d: Fix aria-hidden focus trap in Bootstrap modals
+  // ==========================================
+  // When a modal hides, blur the focused element inside it first so that
+  // aria-hidden="true" is not applied to an ancestor of the focused element.
+  document.addEventListener('hide.bs.modal', (e) => {
+    if (e.target.contains(document.activeElement)) {
+      document.activeElement.blur();
+    }
+  });
+
+  // ==========================================
   // STEP 2: Set up event listeners
   // ==========================================
 
@@ -1349,9 +1360,9 @@ document.addEventListener('DOMContentLoaded', function () {
   // Pause/resume activity tracking when tab is hidden/visible
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
-      console.warn('👁️ Page hidden - pausing activity tracking');
+      console.debug('Page hidden - pausing activity tracking');
     } else {
-      console.warn('👁️ Page visible - resuming activity tracking');
+      console.debug('Page visible - resuming activity tracking');
       if (STATE.currentUser) {
         authModule.resetInactivityTimer();
       }
@@ -1377,7 +1388,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const marketingTab = document.getElementById('marketing-tab');
   if (marketingTab) {
     marketingTab.addEventListener('shown.bs.tab', () => {
-      console.warn('📢 Marketing tab opened');
+      console.debug('Marketing tab opened');
       if (typeof marketingModule !== 'undefined') {
         marketingModule.loadAllData();
         // Load branding overview if branding subtab is active (default)
@@ -1413,7 +1424,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const emailBuilderSubTab = document.getElementById('email-builder-subtab');
   if (emailBuilderSubTab) {
     emailBuilderSubTab.addEventListener('shown.bs.tab', () => {
-      console.warn('✉️ Email Builder opened');
+      console.debug('Email Builder opened');
       if (typeof emailBuilder !== 'undefined' && !emailBuilder.initialized) {
         emailBuilder.init();
       }
@@ -1424,7 +1435,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const emailListsSubTab = document.getElementById('email-lists-subtab');
   if (emailListsSubTab) {
     emailListsSubTab.addEventListener('shown.bs.tab', () => {
-      console.warn('📧 Email Lists opened');
+      console.debug('Email Lists opened');
       if (typeof emailListsModule !== 'undefined') {
         emailListsModule.loadAllData();
       }
@@ -1455,7 +1466,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const paymentsTab = document.getElementById('payments-tab');
   if (paymentsTab) {
     paymentsTab.addEventListener('shown.bs.tab', () => {
-      console.warn('💳 Payments tab opened');
+      console.debug('Payments tab opened');
       if (typeof paymentsModule !== 'undefined') {
         paymentsModule.loadAllData();
       }
@@ -1466,7 +1477,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const crmTab = document.getElementById('crm-tab');
   if (crmTab) {
     crmTab.addEventListener('shown.bs.tab', () => {
-      console.warn('🎯 CRM tab opened');
+      console.debug('CRM tab opened');
       if (typeof crmModule !== 'undefined') {
         crmModule.loadAllData();
       }
@@ -1696,7 +1707,7 @@ document.addEventListener('DOMContentLoaded', function () {
       };
       const config = refreshMap[tabId];
       if (config && utils.isDataStale(config.key)) {
-        console.warn('Auto-refreshing stale data for', config.key);
+        console.debug('Auto-refreshing stale data for', config.key);
         config.fn();
       }
 

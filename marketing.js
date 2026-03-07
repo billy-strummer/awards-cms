@@ -116,6 +116,7 @@ const marketingModule = {
       const actionEl = e.target.closest('[data-action]');
       if (!actionEl) return;
       e.preventDefault();
+      e.stopPropagation(); // Prevent actionRegistry from double-handling
       const action = actionEl.getAttribute('data-action');
       const id = actionEl.getAttribute('data-id');
       switch (action) {

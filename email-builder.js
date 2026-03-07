@@ -1584,7 +1584,7 @@ ${content}
   customizeTemplateContent(templateType) {
     const textBlocks = this.canvas.querySelectorAll('[contenteditable="true"]');
 
-    console.warn('Customizing template:', templateType, 'Found text blocks:', textBlocks.length);
+    console.debug('Customizing template:', templateType, 'Found text blocks:', textBlocks.length);
 
     switch (templateType) {
       case 'winner':
@@ -1649,7 +1649,7 @@ ${content}
         break;
     }
 
-    console.warn('Template customization complete');
+    console.debug('Template customization complete');
 
     // Customize button text based on template
     const buttons = this.canvas.querySelectorAll('a[style*="background"]');
@@ -1937,7 +1937,7 @@ ${content}
   },
 
   async loadClientPromotionTemplate() {
-    console.warn('Loading Client Promotion template...');
+    console.debug('Loading Client Promotion template...');
 
     // Update campaign settings
     const nameEl = document.getElementById('builderCampaignName');

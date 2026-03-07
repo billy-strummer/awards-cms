@@ -2668,7 +2668,9 @@ const actionRegistry = {
       const actionName = el.getAttribute('data-action');
       if (!actionName) return;
 
-      if (el.getAttribute('data-prevent-default') === 'true') {
+      // Always prevent default on anchor elements used as action buttons
+      // (avoids CSP violations from javascript: hrefs and # navigation)
+      if (el.tagName === 'A' || el.getAttribute('data-prevent-default') === 'true') {
         event.preventDefault();
       }
       if (el.getAttribute('data-stop-propagation') === 'true') {
@@ -2725,8 +2727,20 @@ const actionRegistry = {
       const handler = this._resolve(actionName);
       if (!handler) return;
       const id = el.getAttribute('data-id');
+      const argsJson = el.getAttribute('data-args');
+      let extraArgs = [];
+      if (argsJson) {
+        try {
+          const parsed = JSON.parse(argsJson);
+          extraArgs = Array.isArray(parsed) ? parsed : [parsed];
+        } catch (_e) {
+          extraArgs = [];
+        }
+      }
       if (id) {
-        handler(id, el.value, event);
+        handler(id, ...extraArgs, el.value, event);
+      } else if (extraArgs.length > 0) {
+        handler(...extraArgs, el.value, event);
       } else {
         handler(el.value, event);
       }

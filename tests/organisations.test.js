@@ -5719,9 +5719,11 @@ describe('Organisations Module - quickUpdateStatus()', () => {
   beforeEach(() => {
     STATE.allOrganisations = [makeOrg({ id: 'qs1', company_name: 'Quick Status Co', status: 'prospect' })];
     STATE.filteredOrganisations = [...STATE.allOrganisations];
-    mockSupabase.from.mockReturnValue(mockSupabase);
-    mockSupabase.update.mockReturnValue(mockSupabase);
-    mockSupabase.eq.mockReturnValue(Promise.resolve({ data: null, error: null }));
+    jest.spyOn(apiClient, 'update').mockResolvedValue({ data: null, error: null });
+  });
+
+  afterEach(() => {
+    apiClient.update.mockRestore();
   });
 
   test('updates org status in local state on success', async () => {
@@ -5737,7 +5739,7 @@ describe('Organisations Module - quickUpdateStatus()', () => {
   });
 
   test('shows error toast when DB update fails', async () => {
-    mockSupabase.eq.mockReturnValue(Promise.resolve({ data: null, error: { message: 'DB error' } }));
+    apiClient.update.mockRejectedValue(new Error('DB error'));
     const spy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
     await orgsModule.quickUpdateStatus('qs1', 'winner');
     expect(spy).toHaveBeenCalledWith(expect.stringContaining('Error'), 'error');
@@ -5761,9 +5763,7 @@ describe('Organisations Module - deleteOrganisation()', () => {
     orgsModule._showPhoneColumn = false;
     orgsModule._currentPage = 1;
     orgsModule._pageSize = 50;
-    mockSupabase.from.mockReturnValue(mockSupabase);
-    mockSupabase.update.mockReturnValue(mockSupabase);
-    mockSupabase.eq.mockReturnValue(Promise.resolve({ data: null, error: null }));
+    jest.spyOn(apiClient, 'update').mockResolvedValue({ data: null, error: null });
     // Reset filter inputs
     document.getElementById('orgsYearFilter').value = '';
     document.getElementById('orgsSectorFilter').value = '';
@@ -5775,6 +5775,10 @@ describe('Organisations Module - deleteOrganisation()', () => {
     document.getElementById('orgsTagFilter').value = '';
     document.getElementById('orgsLogoFilter').value = '';
     document.getElementById('orgsDateFilter').value = '';
+  });
+
+  afterEach(() => {
+    apiClient.update.mockRestore();
   });
 
   test('archives org when confirmed', async () => {
@@ -5821,9 +5825,7 @@ describe('Organisations Module - restoreOrganisation()', () => {
     orgsModule._currentPage = 1;
     orgsModule._pageSize = 50;
     orgsModule.selectedOrgs = new Set();
-    mockSupabase.from.mockReturnValue(mockSupabase);
-    mockSupabase.update.mockReturnValue(mockSupabase);
-    mockSupabase.eq.mockReturnValue(Promise.resolve({ data: null, error: null }));
+    jest.spyOn(apiClient, 'update').mockResolvedValue({ data: null, error: null });
     document.getElementById('orgsYearFilter').value = '';
     document.getElementById('orgsSectorFilter').value = '';
     document.getElementById('orgsCountyFilter').value = '';
@@ -5836,6 +5838,10 @@ describe('Organisations Module - restoreOrganisation()', () => {
     document.getElementById('orgsDateFilter').value = '';
   });
 
+  afterEach(() => {
+    apiClient.update.mockRestore();
+  });
+
   test('restores archived org to prospect', async () => {
     const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
     await orgsModule.restoreOrganisation('rest1', 'Restore Co');
@@ -5846,7 +5852,7 @@ describe('Organisations Module - restoreOrganisation()', () => {
   });
 
   test('shows error toast on failure', async () => {
-    mockSupabase.eq.mockReturnValue(Promise.resolve({ data: null, error: { message: 'Restore fail' } }));
+    apiClient.update.mockRejectedValue(new Error('Restore fail'));
     const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
     await orgsModule.restoreOrganisation('rest1', 'Restore Co');
     expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('Error'), 'error');
@@ -5860,9 +5866,7 @@ describe('Organisations Module - restoreOrganisation()', () => {
 describe('Organisations Module - Tag Management', () => {
   beforeEach(() => {
     STATE.allOrganisations = [makeOrg({ id: 'tag1', company_name: 'Tag Co', tags: ['existing'] })];
-    mockSupabase.from.mockReturnValue(mockSupabase);
-    mockSupabase.update.mockReturnValue(mockSupabase);
-    mockSupabase.eq.mockReturnValue(Promise.resolve({ data: null, error: null }));
+    jest.spyOn(apiClient, 'update').mockResolvedValue({ data: null, error: null });
     // Create the input element needed by addTag
     let input = document.getElementById('newTagInput');
     if (!input) {

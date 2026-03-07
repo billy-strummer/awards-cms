@@ -1146,13 +1146,19 @@ describe('Judge Portal - saveScore', () => {
     mockSupabase.upsert.mockClear();
     mockSupabase.upsert.mockResolvedValue({ error: null });
     mockSupabase.then.mockImplementation((cb) => cb({ data: [], error: null, count: 0 }));
+
+    // Mock apiClient.upsert (used by saveScore instead of direct Supabase calls)
+    apiClient.upsert = jest.fn(() => Promise.resolve({ data: [] }));
+    // Mock apiClient.select for loadAssignedEntries called after save
+    apiClient.select = jest.fn(() => Promise.resolve({ data: [] }));
   });
 
   test('submits score as complete', async () => {
     await judgePortal.saveScore(true);
-    expect(mockSupabase.from).toHaveBeenCalledWith('judge_scores');
-    expect(mockSupabase.upsert).toHaveBeenCalled();
-    const upsertArg = mockSupabase.upsert.mock.calls[0][0][0];
+    expect(apiClient.upsert).toHaveBeenCalledWith('judge_scores', expect.any(Object), {
+      onConflict: 'entry_id,judge_email',
+    });
+    const upsertArg = apiClient.upsert.mock.calls[0][1];
     expect(upsertArg.entry_id).toBe('e1');
     expect(upsertArg.judge_email).toBe('judge@test.com');
     expect(upsertArg.is_complete).toBe(true);
@@ -1162,8 +1168,8 @@ describe('Judge Portal - saveScore', () => {
 
   test('saves score as draft', async () => {
     await judgePortal.saveScore(false);
-    expect(mockSupabase.upsert).toHaveBeenCalled();
-    const upsertArg = mockSupabase.upsert.mock.calls[0][0][0];
+    expect(apiClient.upsert).toHaveBeenCalled();
+    const upsertArg = apiClient.upsert.mock.calls[0][1];
     expect(upsertArg.is_complete).toBe(false);
   });
 

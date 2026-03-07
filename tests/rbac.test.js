@@ -638,11 +638,6 @@ describe('RBAC Module - ensureAdminExists', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    STATE.client = mockSupabase;
-    mockSupabase.from.mockReturnValue(mockSupabase);
-    mockSupabase.select.mockReturnValue(mockSupabase);
-    mockSupabase.eq.mockReturnValue(mockSupabase);
-    mockSupabase.neq.mockReturnValue(mockSupabase);
     showToastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
   });
 
@@ -651,7 +646,7 @@ describe('RBAC Module - ensureAdminExists', () => {
   });
 
   test('ensureAdminExists returns true when other admins exist', async () => {
-    mockSupabase.neq.mockReturnValue(Promise.resolve({ count: 2, error: null }));
+    global.apiClient = { count: jest.fn().mockResolvedValue({ count: 2 }) };
 
     const result = await rbacModule.ensureAdminExists('user@test.com');
     expect(result).toBe(true);
@@ -659,7 +654,7 @@ describe('RBAC Module - ensureAdminExists', () => {
   });
 
   test('ensureAdminExists returns false and shows toast when no other admins', async () => {
-    mockSupabase.neq.mockReturnValue(Promise.resolve({ count: 0, error: null }));
+    global.apiClient = { count: jest.fn().mockResolvedValue({ count: 0 }) };
 
     const result = await rbacModule.ensureAdminExists('lastadmin@test.com');
     expect(result).toBe(false);
@@ -667,27 +662,28 @@ describe('RBAC Module - ensureAdminExists', () => {
   });
 
   test('ensureAdminExists returns false on database error', async () => {
-    mockSupabase.neq.mockReturnValue(Promise.resolve({ count: null, error: new Error('DB error') }));
+    global.apiClient = { count: jest.fn().mockRejectedValue(new Error('DB error')) };
 
     const result = await rbacModule.ensureAdminExists('user@test.com');
     expect(result).toBe(false);
   });
 
   test('ensureAdminExists returns false on exception', async () => {
-    mockSupabase.neq.mockRejectedValue(new Error('Network error'));
+    global.apiClient = { count: jest.fn().mockRejectedValue(new Error('Network error')) };
 
     const result = await rbacModule.ensureAdminExists('user@test.com');
     expect(result).toBe(false);
   });
 
   test('ensureAdminExists queries with correct filters', async () => {
-    mockSupabase.neq.mockReturnValue(Promise.resolve({ count: 1, error: null }));
+    global.apiClient = { count: jest.fn().mockResolvedValue({ count: 1 }) };
 
     await rbacModule.ensureAdminExists('exclude@test.com');
 
-    expect(mockSupabase.from).toHaveBeenCalledWith('user_roles');
-    expect(mockSupabase.eq).toHaveBeenCalledWith('role', 'super_admin');
-    expect(mockSupabase.neq).toHaveBeenCalledWith('email', 'exclude@test.com');
+    expect(global.apiClient.count).toHaveBeenCalledWith('user_roles', {
+      role: 'super_admin',
+      'email@neq': 'exclude@test.com',
+    });
   });
 });
 

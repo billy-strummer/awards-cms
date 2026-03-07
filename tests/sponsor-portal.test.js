@@ -331,12 +331,7 @@ describe('Sponsor Portal - renderSponsorDashboard', () => {
 describe('Sponsor Portal - uploadSponsorAsset success', () => {
   test('uploads valid file', async () => {
     const file = { name: 'logo.png', size: 500000, type: 'image/png' };
-    STATE.client.storage = {
-      from: jest.fn(() => ({
-        upload: jest.fn(() => Promise.resolve({ error: null })),
-        getPublicUrl: jest.fn(() => ({ data: { publicUrl: 'https://cdn.example.com/uploaded.png' } })),
-      })),
-    };
+    apiClient.upload = jest.fn().mockResolvedValue({ publicUrl: 'https://cdn.example.com/uploaded.png' });
     apiClient.update = jest.fn().mockResolvedValue({});
     const toastSpy = jest.spyOn(utils, 'showToast');
 
@@ -348,12 +343,7 @@ describe('Sponsor Portal - uploadSponsorAsset success', () => {
 
   test('handles upload storage error', async () => {
     const file = { name: 'logo.png', size: 500000, type: 'image/png' };
-    STATE.client.storage = {
-      from: jest.fn(() => ({
-        upload: jest.fn(() => Promise.resolve({ error: new Error('Storage full') })),
-        getPublicUrl: jest.fn(),
-      })),
-    };
+    apiClient.upload = jest.fn().mockRejectedValue(new Error('Storage full'));
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
     const toastSpy = jest.spyOn(utils, 'showToast');
 

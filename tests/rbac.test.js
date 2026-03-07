@@ -406,22 +406,21 @@ describe('RBAC Module - guard', () => {
 });
 
 describe('RBAC Module - loadUserRole', () => {
+  let savedApiClient;
+
   beforeEach(() => {
     jest.clearAllMocks();
     rbacModule.currentRole = null;
     rbacModule.permissions = {};
-    STATE.client = mockSupabase;
-    // Reset the mock chain
-    mockSupabase.from.mockReturnValue(mockSupabase);
-    mockSupabase.select.mockReturnValue(mockSupabase);
-    mockSupabase.eq.mockReturnValue(mockSupabase);
-    mockSupabase.limit.mockReturnValue(mockSupabase);
+    savedApiClient = global.apiClient;
+  });
+
+  afterEach(() => {
+    global.apiClient = savedApiClient;
   });
 
   test('loadUserRole sets role from database result', async () => {
-    mockSupabase.limit.mockReturnValue(
-      Promise.resolve({ data: [{ role: 'admin', email: 'admin@test.com' }], error: null })
-    );
+    global.apiClient = { select: jest.fn().mockResolvedValue({ data: [{ role: 'admin', email: 'admin@test.com' }] }) };
 
     await rbacModule.loadUserRole('admin@test.com');
 
@@ -430,9 +429,7 @@ describe('RBAC Module - loadUserRole', () => {
   });
 
   test('loadUserRole normalizes role to lowercase', async () => {
-    mockSupabase.limit.mockReturnValue(
-      Promise.resolve({ data: [{ role: 'EDITOR', email: 'user@test.com' }], error: null })
-    );
+    global.apiClient = { select: jest.fn().mockResolvedValue({ data: [{ role: 'EDITOR', email: 'user@test.com' }] }) };
 
     await rbacModule.loadUserRole('user@test.com');
 
@@ -441,7 +438,7 @@ describe('RBAC Module - loadUserRole', () => {
   });
 
   test('loadUserRole defaults to viewer when no role found', async () => {
-    mockSupabase.limit.mockReturnValue(Promise.resolve({ data: [], error: null }));
+    global.apiClient = { select: jest.fn().mockResolvedValue({ data: [] }) };
 
     await rbacModule.loadUserRole('unknown@test.com');
 
@@ -450,7 +447,7 @@ describe('RBAC Module - loadUserRole', () => {
   });
 
   test('loadUserRole defaults to viewer on database error', async () => {
-    mockSupabase.limit.mockReturnValue(Promise.resolve({ data: null, error: new Error('DB connection failed') }));
+    global.apiClient = { select: jest.fn().mockResolvedValue({ data: null }) };
 
     await rbacModule.loadUserRole('user@test.com');
 
@@ -459,7 +456,7 @@ describe('RBAC Module - loadUserRole', () => {
   });
 
   test('loadUserRole defaults to viewer on exception', async () => {
-    mockSupabase.limit.mockRejectedValue(new Error('Network timeout'));
+    global.apiClient = { select: jest.fn().mockRejectedValue(new Error('Network timeout')) };
 
     await rbacModule.loadUserRole('user@test.com');
 
@@ -468,9 +465,7 @@ describe('RBAC Module - loadUserRole', () => {
   });
 
   test('loadUserRole defaults to viewer when role field is null', async () => {
-    mockSupabase.limit.mockReturnValue(
-      Promise.resolve({ data: [{ role: null, email: 'user@test.com' }], error: null })
-    );
+    global.apiClient = { select: jest.fn().mockResolvedValue({ data: [{ role: null, email: 'user@test.com' }] }) };
 
     await rbacModule.loadUserRole('user@test.com');
 
@@ -479,9 +474,9 @@ describe('RBAC Module - loadUserRole', () => {
   });
 
   test('loadUserRole falls back to viewer permissions for unknown role string', async () => {
-    mockSupabase.limit.mockReturnValue(
-      Promise.resolve({ data: [{ role: 'nonexistent_role', email: 'user@test.com' }], error: null })
-    );
+    global.apiClient = {
+      select: jest.fn().mockResolvedValue({ data: [{ role: 'nonexistent_role', email: 'user@test.com' }] }),
+    };
 
     await rbacModule.loadUserRole('user@test.com');
 
@@ -492,9 +487,7 @@ describe('RBAC Module - loadUserRole', () => {
 
   test('loadUserRole calls applyPermissions after setting role', async () => {
     const applySpy = jest.spyOn(rbacModule, 'applyPermissions').mockImplementation(() => {});
-    mockSupabase.limit.mockReturnValue(
-      Promise.resolve({ data: [{ role: 'admin', email: 'admin@test.com' }], error: null })
-    );
+    global.apiClient = { select: jest.fn().mockResolvedValue({ data: [{ role: 'admin', email: 'admin@test.com' }] }) };
 
     await rbacModule.loadUserRole('admin@test.com');
 

@@ -1175,7 +1175,7 @@ describe('Judge Portal - saveScore', () => {
 
   test('includes feedback data', async () => {
     await judgePortal.saveScore(false);
-    const upsertArg = mockSupabase.upsert.mock.calls[0][0][0];
+    const upsertArg = apiClient.upsert.mock.calls[0][1];
     expect(upsertArg.strengths).toBe('Good innovation');
     expect(upsertArg.weaknesses).toBe('Needs better UX');
     expect(upsertArg.comments).toBe('Overall solid entry');
@@ -1194,7 +1194,7 @@ describe('Judge Portal - saveScore', () => {
     document.getElementById('declareConflict').checked = true;
     global.confirm = jest.fn(() => true);
     await judgePortal.saveScore(true);
-    const upsertArg = mockSupabase.upsert.mock.calls[0][0][0];
+    const upsertArg = apiClient.upsert.mock.calls[0][1];
     expect(upsertArg.has_conflict).toBe(true);
     delete global.confirm;
   });
@@ -1214,7 +1214,7 @@ describe('Judge Portal - saveScore', () => {
     await judgePortal.saveScore(false);
     // confirm should NOT be called for draft saves
     expect(global.confirm).not.toHaveBeenCalled();
-    expect(mockSupabase.upsert).toHaveBeenCalled();
+    expect(apiClient.upsert).toHaveBeenCalled();
     delete global.confirm;
   });
 });

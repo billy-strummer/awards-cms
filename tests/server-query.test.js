@@ -177,6 +177,7 @@ describe('serverQuery', () => {
   });
 
   test('execute throws on missing client', async () => {
+    selectSpy.mockRestore();
     const originalClient = STATE.client;
     STATE.client = null;
     // With no client, _getToken returns null, so apiClient._call throws "Not authenticated"
@@ -210,6 +211,8 @@ describe('serverQuery.loadAll', () => {
   });
 
   test('throws on missing client', async () => {
+    selectAllSpy.mockRestore();
+    selectSpy.mockRestore();
     const originalClient = STATE.client;
     STATE.client = null;
     // With no client, _getToken returns null, so apiClient._call throws "Not authenticated"

@@ -1454,15 +1454,13 @@ describe('Media Gallery Module - Clear Activity Log', () => {
 
 describe('Media Gallery Module - Org Filter Dropdown', () => {
   test('_loadOrgFilterDropdown populates select', async () => {
-    mockSupabase.then.mockImplementationOnce((cb) =>
-      cb({
-        data: [
-          { id: 'org-1', company_name: 'Acme Ltd' },
-          { id: 'org-2', company_name: 'BuildRight' },
-        ],
-        error: null,
-      })
-    );
+    _apiClient.select.mockResolvedValueOnce({
+      data: [
+        { id: 'org-1', company_name: 'Acme Ltd' },
+        { id: 'org-2', company_name: 'BuildRight' },
+      ],
+      error: null,
+    });
 
     await mediaGalleryModule._loadOrgFilterDropdown();
     const select = document.getElementById('mediaOrgFilter');
@@ -2736,9 +2734,9 @@ describe('Media Gallery Module - Save Gallery Section', () => {
     document.getElementById('gallerySectionName').value = 'New Section';
     document.getElementById('gallerySectionDescription').value = 'A test description';
     document.getElementById('gallerySectionOrder').value = '3';
-    mockSupabase.then.mockImplementationOnce((cb) => cb({ data: null, error: null }));
+    _apiClient.insert.mockResolvedValueOnce({ data: null, error: null });
     await mediaGalleryModule.saveGallerySection();
-    expect(mockSupabase.insert).toHaveBeenCalled();
+    expect(_apiClient.insert).toHaveBeenCalled();
   });
 
   test('saveGallerySection updates existing section when ID present', async () => {
@@ -2746,9 +2744,9 @@ describe('Media Gallery Module - Save Gallery Section', () => {
     document.getElementById('gallerySectionName').value = 'Updated Section';
     document.getElementById('gallerySectionDescription').value = 'Updated desc';
     document.getElementById('gallerySectionOrder').value = '2';
-    mockSupabase.then.mockImplementationOnce((cb) => cb({ data: null, error: null }));
+    _apiClient.update.mockResolvedValueOnce({ data: null, error: null });
     await mediaGalleryModule.saveGallerySection();
-    expect(mockSupabase.update).toHaveBeenCalled();
+    expect(_apiClient.update).toHaveBeenCalled();
   });
 });
 
@@ -2778,9 +2776,9 @@ describe('Media Gallery Module - Delete Section', () => {
 
   test('deleteSection deletes and reloads after confirmation', async () => {
     utils.confirmDialog = jest.fn(() => Promise.resolve(true));
-    mockSupabase.then.mockImplementationOnce((cb) => cb({ data: null, error: null }));
+    _apiClient.delete.mockResolvedValueOnce({ data: null, error: null });
     await mediaGalleryModule.deleteSection('sec-1', 'Reception');
-    expect(mockSupabase.delete).toHaveBeenCalled();
+    expect(_apiClient.delete).toHaveBeenCalled();
     expect(mediaGalleryModule.onEventSelected).toHaveBeenCalled();
   });
 });
@@ -3989,9 +3987,7 @@ describe('Media Gallery Module - Save Photo Tags', () => {
     document.getElementById('tagPhotoAltText').value = '';
     document.getElementById('tagPhotoPhotographer').value = '';
 
-    mockSupabase.then.mockImplementationOnce(() => {
-      throw new Error('DB fail');
-    });
+    _apiClient.update.mockRejectedValueOnce(new Error('DB fail'));
     await mediaGalleryModule.savePhotoTags();
     const saved = JSON.parse(localStorage.getItem('bta_photo_tags_photo-1'));
     expect(saved.organisation_id).toBe('org-1');

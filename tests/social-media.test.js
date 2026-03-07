@@ -1773,7 +1773,7 @@ describe('Social Media Module - editScheduledPost()', () => {
       platform_content: null,
     };
 
-    mockSupabase.single.mockReturnValueOnce(Promise.resolve({ data: postData, error: null }));
+    apiClient.select = jest.fn().mockResolvedValue({ data: [postData] });
 
     await socialMediaModule.editScheduledPost('edit-post-3');
 
@@ -1796,7 +1796,7 @@ describe('Social Media Module - editScheduledPost()', () => {
       },
     };
 
-    mockSupabase.single.mockReturnValueOnce(Promise.resolve({ data: postData, error: null }));
+    apiClient.select = jest.fn().mockResolvedValue({ data: [postData] });
 
     await socialMediaModule.editScheduledPost('edit-post-4');
 

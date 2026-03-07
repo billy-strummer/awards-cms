@@ -263,6 +263,44 @@ require('../media-gallery-new.js');
 syncWindowToGlobal();
 
 // ==========================================
+// apiClient MOCK — many source functions now use apiClient (via /api/data-proxy)
+// instead of STATE.client (direct Supabase). Stub all apiClient methods so tests
+// can control their return values per-test via mockResolvedValueOnce / jest.spyOn.
+// ==========================================
+const _apiClient = global.apiClient || window.apiClient;
+
+// Keep originals so individual tests can spy and override
+const apiClientMethods = [
+  'select',
+  'selectAll',
+  'count',
+  'insert',
+  'update',
+  'updateByFilters',
+  'delete',
+  'deleteByFilters',
+  'upsert',
+  'rpc',
+  'upload',
+  'getPublicUrl',
+  'storageDelete',
+];
+apiClientMethods.forEach((method) => {
+  if (_apiClient && typeof _apiClient[method] === 'function') {
+    jest.spyOn(_apiClient, method).mockResolvedValue({ data: [], error: null, count: 0 });
+  }
+});
+
+// ==========================================
+// Global beforeEach — reset mockSupabase.then to prevent mock leaking between tests
+// ==========================================
+beforeEach(() => {
+  // Reset .then to its safe default so unconsumed mockImplementationOnce calls
+  // from previous tests don't bleed into later ones.
+  mockSupabase.then.mockImplementation((cb) => cb({ data: [], error: null, count: 0 }));
+});
+
+// ==========================================
 // SAMPLE DATA
 // ==========================================
 const sampleEvents = [
@@ -3184,9 +3222,7 @@ describe('Media Gallery Module - Load Events', () => {
   });
 
   test('loadEvents populates dropdown with events', async () => {
-    mockSupabase.then.mockImplementationOnce((cb) =>
-      cb({ data: sampleEvents, error: null })
-    );
+    mockSupabase.then.mockImplementationOnce((cb) => cb({ data: sampleEvents, error: null }));
     await mediaGalleryModule.loadEvents();
     expect(STATE.allEvents).toEqual(sampleEvents);
     const select = document.getElementById('mediaEventSelect');
@@ -3298,9 +3334,7 @@ describe('Media Gallery Module - Load Companies for Video Tags', () => {
   });
 
   test('loadCompaniesForVideoTags handles errors', async () => {
-    mockSupabase.then.mockImplementationOnce((cb) =>
-      cb({ data: null, error: { message: 'DB error' } })
-    );
+    mockSupabase.then.mockImplementationOnce((cb) => cb({ data: null, error: { message: 'DB error' } }));
     await mediaGalleryModule.loadCompaniesForVideoTags();
     // Should not throw
   });
@@ -3637,7 +3671,13 @@ describe('Media Gallery Module - Match Photos to Running Order', () => {
 
   test('matches by award number prefix', () => {
     const photos = [
-      { id: 'p1', title: '1-01_winner_photo.jpg', file_url: 'https://example.com/1-01_winner_photo.jpg', organisation_id: null, award_id: null },
+      {
+        id: 'p1',
+        title: '1-01_winner_photo.jpg',
+        file_url: 'https://example.com/1-01_winner_photo.jpg',
+        organisation_id: null,
+        award_id: null,
+      },
     ];
     const matches = mediaGalleryModule._matchPhotosToRunningOrder(photos, mockRunningOrder);
     expect(matches[0].matchType).toBe('award_number');
@@ -3647,7 +3687,13 @@ describe('Media Gallery Module - Match Photos to Running Order', () => {
 
   test('matches by display_order number prefix', () => {
     const photos = [
-      { id: 'p2', title: '02_stage_photo.jpg', file_url: 'https://example.com/02_stage_photo.jpg', organisation_id: null, award_id: null },
+      {
+        id: 'p2',
+        title: '02_stage_photo.jpg',
+        file_url: 'https://example.com/02_stage_photo.jpg',
+        organisation_id: null,
+        award_id: null,
+      },
     ];
     const matches = mediaGalleryModule._matchPhotosToRunningOrder(photos, mockRunningOrder);
     expect(matches[0].matchType).toBe('display_order');
@@ -3656,7 +3702,13 @@ describe('Media Gallery Module - Match Photos to Running Order', () => {
 
   test('matches by company name in filename', () => {
     const photos = [
-      { id: 'p3', title: 'buildright_celebration.jpg', file_url: 'https://example.com/buildright_celebration.jpg', organisation_id: null, award_id: null },
+      {
+        id: 'p3',
+        title: 'buildright_celebration.jpg',
+        file_url: 'https://example.com/buildright_celebration.jpg',
+        organisation_id: null,
+        award_id: null,
+      },
     ];
     const matches = mediaGalleryModule._matchPhotosToRunningOrder(photos, mockRunningOrder);
     expect(matches[0].matchType).toBe('name_match');
@@ -3665,7 +3717,13 @@ describe('Media Gallery Module - Match Photos to Running Order', () => {
 
   test('returns unmatched for unknown filenames', () => {
     const photos = [
-      { id: 'p4', title: 'random_photo.jpg', file_url: 'https://example.com/random_photo.jpg', organisation_id: null, award_id: null },
+      {
+        id: 'p4',
+        title: 'random_photo.jpg',
+        file_url: 'https://example.com/random_photo.jpg',
+        organisation_id: null,
+        award_id: null,
+      },
     ];
     const matches = mediaGalleryModule._matchPhotosToRunningOrder(photos, mockRunningOrder);
     expect(matches[0].runningOrderItem).toBeNull();
@@ -3674,7 +3732,13 @@ describe('Media Gallery Module - Match Photos to Running Order', () => {
 
   test('marks already-tagged photos', () => {
     const photos = [
-      { id: 'p5', title: '1-01_photo.jpg', file_url: 'https://example.com/1-01_photo.jpg', organisation_id: 'org-1', award_id: 'a1' },
+      {
+        id: 'p5',
+        title: '1-01_photo.jpg',
+        file_url: 'https://example.com/1-01_photo.jpg',
+        organisation_id: 'org-1',
+        award_id: 'a1',
+      },
     ];
     const matches = mediaGalleryModule._matchPhotosToRunningOrder(photos, mockRunningOrder);
     expect(matches[0].alreadyTagged).toBe(true);
@@ -3945,7 +4009,9 @@ describe('Media Gallery Module - Remove File From Preview', () => {
     let storedFiles = null;
     Object.defineProperty(fileInput, 'files', {
       get: () => storedFiles,
-      set: (val) => { storedFiles = val; },
+      set: (val) => {
+        storedFiles = val;
+      },
       configurable: true,
     });
 
@@ -4004,9 +4070,7 @@ describe('Media Gallery Module - On Event Selected', () => {
   });
 
   test('onEventSelected loads sections for given event', async () => {
-    mockSupabase.then.mockImplementationOnce((cb) =>
-      cb({ data: sampleSections, error: null })
-    );
+    mockSupabase.then.mockImplementationOnce((cb) => cb({ data: sampleSections, error: null }));
     await mediaGalleryModule.onEventSelected('evt-1');
     expect(mediaGalleryModule.currentEventId).toBe('evt-1');
     expect(mediaGalleryModule.currentSectionId).toBeNull();

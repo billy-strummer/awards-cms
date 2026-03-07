@@ -1478,7 +1478,7 @@ document.addEventListener('DOMContentLoaded', function () {
   if (crmTab) {
     crmTab.addEventListener('shown.bs.tab', () => {
       console.debug('CRM tab opened');
-      if (typeof crmModule !== 'undefined') {
+      if (typeof crmModule !== 'undefined' && STATE.currentUser) {
         crmModule.loadAllData();
       }
     });

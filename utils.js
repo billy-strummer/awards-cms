@@ -770,12 +770,18 @@ const utils = {
 
         let synced = 0;
         const remaining = [];
-        for (const item of stored) {
+        for (let i = 0; i < stored.length; i++) {
           try {
-            await apiClient.insert(table, [item]);
+            await apiClient.insert(table, [stored[i]]);
             synced++;
-          } catch (_insertErr) {
-            remaining.push(item);
+          } catch (insertErr) {
+            // Don't retry items that failed due to permission errors (403)
+            if (insertErr.message && insertErr.message.includes('Forbidden')) {
+              console.warn(`Skipping pending ${table} items: insufficient permissions`);
+              remaining.push(...stored.slice(i));
+              break;
+            }
+            remaining.push(stored[i]);
           }
         }
         if (synced > 0) {

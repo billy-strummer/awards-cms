@@ -1964,6 +1964,28 @@ describe('Utils - replayPendingQueues()', () => {
     expect(remaining.length).toBe(1);
     warnSpy.mockRestore();
   });
+
+  test('stops retrying and keeps remaining items on 403 Forbidden', async () => {
+    localStorage.setItem(
+      'bta_communications_pending',
+      JSON.stringify([
+        { id: 'c3', msg: 'First' },
+        { id: 'c4', msg: 'Second' },
+      ])
+    );
+    global.fetch.mockResolvedValue({
+      ok: false,
+      status: 403,
+      json: () => Promise.resolve({ error: 'Forbidden', message: 'Role "viewer" cannot insert on "communications"' }),
+    });
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    await utils.replayPendingQueues();
+    const remaining = JSON.parse(localStorage.getItem('bta_communications_pending'));
+    expect(remaining.length).toBe(2);
+    // Should only make one request, not two (early break on 403)
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    warnSpy.mockRestore();
+  });
 });
 
 describe('Utils - renderRecentlyViewed()', () => {

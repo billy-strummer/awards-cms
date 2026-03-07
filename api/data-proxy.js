@@ -298,6 +298,11 @@ const ROLE_PERMISSIONS = {
       'event_budget_items',
       'sponsors',
       'event_templates',
+      'communications',
+      'deals',
+      'meeting_notes',
+      'banners',
+      'media_videos',
     ]),
   },
   viewer: {
@@ -331,6 +336,8 @@ const ROLE_PERMISSIONS = {
       'sponsors',
       'social_media_posts',
       'social_media_templates',
+      'banners',
+      'media_videos',
     ]),
   },
   finance: {

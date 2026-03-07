@@ -1016,15 +1016,54 @@ const paymentsModule = {
         utils.showLoading();
 
         const recipientEmail = document.getElementById('sendInvoiceEmail').value;
-        const _cc = document.getElementById('sendInvoiceCc').value;
+        const cc = document.getElementById('sendInvoiceCc').value;
         const subject = document.getElementById('sendInvoiceSubject').value;
         const message = document.getElementById('sendInvoiceMessage').value;
 
-        // Log communication in the database
         const invoice = this.currentInvoices.find((i) => i.id === this.currentSendInvoiceId);
 
         if (invoice) {
-          // Log to communications table
+          // Load line items for the email template
+          let lineItems = [];
+          try {
+            const result = await apiClient.select('invoice_line_items', { invoice_id: invoice.id });
+            lineItems = result.data || [];
+          } catch (_e) {
+            /* proceed without line items */
+          }
+
+          // Send invoice email via API
+          try {
+            const response = await fetch('/api/resend-email', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'send-invoice',
+                to: recipientEmail,
+                subject,
+                message,
+                cc: cc || undefined,
+                invoice: {
+                  invoice_number: invoice.invoice_number,
+                  total_amount: invoice.total_amount,
+                  tax_amount: invoice.tax_amount,
+                  due_date: invoice.due_date,
+                  line_items: lineItems,
+                },
+              }),
+            });
+
+            const result = await response.json();
+            if (!result.success) {
+              throw new Error(result.error || 'Failed to send email');
+            }
+          } catch (emailError) {
+            console.error('Email send failed:', emailError);
+            utils.showToast('Email delivery failed: ' + emailError.message, 'error');
+            return;
+          }
+
+          // Log to communications table (only after successful send)
           try {
             await apiClient.insert('communications', {
               organisation_id: invoice.organisation_id,
@@ -1047,10 +1086,7 @@ const paymentsModule = {
         }
 
         bootstrap.Modal.getInstance(document.getElementById('sendInvoiceModal'))?.hide();
-        utils.showToast(
-          `Invoice email prepared for ${recipientEmail}. Note: Email delivery requires SendGrid API configuration.`,
-          'success'
-        );
+        utils.showToast(`Invoice email sent to ${recipientEmail}`, 'success');
 
         await this.loadInvoices();
       });

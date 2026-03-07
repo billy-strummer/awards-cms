@@ -2333,17 +2333,13 @@ describe('Payments Module - generateByPackageReport()', () => {
   });
 
   test('handles package invoices with no package_type', () => {
-    const invoices = [
-      { invoice_type: 'package', package_type: null, total_amount: 100, paid_amount: 0 },
-    ];
+    const invoices = [{ invoice_type: 'package', package_type: null, total_amount: 100, paid_amount: 0 }];
     const html = paymentsModule.generateByPackageReport(invoices);
     expect(html).toContain('Unspecified');
   });
 
   test('returns empty table when no package invoices', () => {
-    const invoices = [
-      { invoice_type: 'entry_fee', total_amount: 100, paid_amount: 100 },
-    ];
+    const invoices = [{ invoice_type: 'entry_fee', total_amount: 100, paid_amount: 100 }];
     const html = paymentsModule.generateByPackageReport(invoices);
     expect(html).toContain('Revenue by Package Type');
   });
@@ -2370,9 +2366,7 @@ describe('Payments Module - generateByEventReport()', () => {
   });
 
   test('shows empty state when no ticket invoices', () => {
-    const invoices = [
-      { invoice_type: 'entry_fee', total_amount: 100 },
-    ];
+    const invoices = [{ invoice_type: 'entry_fee', total_amount: 100 }];
     const html = paymentsModule.generateByEventReport(invoices);
     expect(html).toContain('No ticket invoices found');
   });
@@ -2380,12 +2374,24 @@ describe('Payments Module - generateByEventReport()', () => {
   test('calculates total ticket revenue correctly', () => {
     const invoices = [
       {
-        invoice_type: 'tickets', invoice_number: 'T1', total_amount: 100, paid_amount: 100,
-        invoice_date: '2026-01-01', status: 'paid', payment_status: 'paid', organisations: { company_name: 'A' },
+        invoice_type: 'tickets',
+        invoice_number: 'T1',
+        total_amount: 100,
+        paid_amount: 100,
+        invoice_date: '2026-01-01',
+        status: 'paid',
+        payment_status: 'paid',
+        organisations: { company_name: 'A' },
       },
       {
-        invoice_type: 'tickets', invoice_number: 'T2', total_amount: 250, paid_amount: 0,
-        invoice_date: '2026-02-01', status: 'sent', payment_status: 'unpaid', organisations: { company_name: 'B' },
+        invoice_type: 'tickets',
+        invoice_number: 'T2',
+        total_amount: 250,
+        paid_amount: 0,
+        invoice_date: '2026-02-01',
+        status: 'sent',
+        payment_status: 'unpaid',
+        organisations: { company_name: 'B' },
       },
     ];
     const html = paymentsModule.generateByEventReport(invoices);
@@ -2400,7 +2406,8 @@ describe('Payments Module - generateReport()', () => {
     if (!document.getElementById('reportType')) {
       const sel = document.createElement('select');
       sel.id = 'reportType';
-      sel.innerHTML = '<option value="revenue">Revenue</option><option value="outstanding">Outstanding</option><option value="payments">Payments</option><option value="by_org">By Org</option><option value="by_package">By Package</option><option value="by_event">By Event</option>';
+      sel.innerHTML =
+        '<option value="revenue">Revenue</option><option value="outstanding">Outstanding</option><option value="payments">Payments</option><option value="by_org">By Org</option><option value="by_package">By Package</option><option value="by_event">By Event</option>';
       document.body.appendChild(sel);
     }
     if (!document.getElementById('reportStartDate')) {
@@ -2510,9 +2517,7 @@ describe('Payments Module - sendOverdueReminders()', () => {
   });
 
   test('shows toast when no overdue invoices', () => {
-    paymentsModule.allInvoices = [
-      { id: 'inv-1', status: 'paid', payment_status: 'paid' },
-    ];
+    paymentsModule.allInvoices = [{ id: 'inv-1', status: 'paid', payment_status: 'paid' }];
     const toastSpy = jest.spyOn(utils, 'showToast');
     paymentsModule.sendOverdueReminders();
     expect(toastSpy).toHaveBeenCalledWith('No overdue invoices found', 'info');
@@ -2542,12 +2547,22 @@ describe('Payments Module - sendOverdueReminders()', () => {
   test('renders multiple overdue invoices with plural label', () => {
     paymentsModule.allInvoices = [
       {
-        id: 'inv-od-1', invoice_number: 'INV-OD-001', status: 'overdue', due_date: '2025-01-01',
-        balance_due: 100, total_amount: 100, organisations: { company_name: 'A' },
+        id: 'inv-od-1',
+        invoice_number: 'INV-OD-001',
+        status: 'overdue',
+        due_date: '2025-01-01',
+        balance_due: 100,
+        total_amount: 100,
+        organisations: { company_name: 'A' },
       },
       {
-        id: 'inv-od-2', invoice_number: 'INV-OD-002', status: 'overdue', due_date: '2025-06-01',
-        balance_due: 200, total_amount: 200, organisations: { company_name: 'B' },
+        id: 'inv-od-2',
+        invoice_number: 'INV-OD-002',
+        status: 'overdue',
+        due_date: '2025-06-01',
+        balance_due: 200,
+        total_amount: 200,
+        organisations: { company_name: 'B' },
       },
     ];
     paymentsModule.sendOverdueReminders();
@@ -2598,7 +2613,9 @@ describe('Payments Module - executeOverdueReminders()', () => {
 
   test('shows toast when no invoices selected', async () => {
     // Remove any checked checkboxes
-    document.querySelectorAll('.overdue-reminder-check:checked').forEach((cb) => { cb.checked = false; });
+    document.querySelectorAll('.overdue-reminder-check:checked').forEach((cb) => {
+      cb.checked = false;
+    });
     const toastSpy = jest.spyOn(utils, 'showToast');
     await paymentsModule.executeOverdueReminders();
     expect(toastSpy).toHaveBeenCalledWith('No invoices selected', 'warning');
@@ -2810,7 +2827,8 @@ describe('Payments Module - deletePayment()', () => {
 
   test('deletes payment and reverses invoice on confirmation', async () => {
     utils.confirmDialog = jest.fn().mockResolvedValue(true);
-    apiClient.select = jest.fn()
+    apiClient.select = jest
+      .fn()
       .mockResolvedValueOnce({ data: [{ invoice_id: 'inv-1', amount: 100 }] }) // payment details
       .mockResolvedValueOnce({ data: [{ paid_amount: 500, total_amount: 500 }] }); // invoice details
     apiClient.delete = jest.fn().mockResolvedValue({});
@@ -2821,9 +2839,13 @@ describe('Payments Module - deletePayment()', () => {
     const toastSpy = jest.spyOn(utils, 'showToast');
     await paymentsModule.deletePayment('pay-1');
     expect(apiClient.delete).toHaveBeenCalledWith('payments', 'pay-1');
-    expect(apiClient.update).toHaveBeenCalledWith('invoices', 'inv-1', expect.objectContaining({
-      paid_amount: 400,
-    }));
+    expect(apiClient.update).toHaveBeenCalledWith(
+      'invoices',
+      'inv-1',
+      expect.objectContaining({
+        paid_amount: 400,
+      })
+    );
     expect(toastSpy).toHaveBeenCalledWith('Payment deleted successfully', 'success');
     toastSpy.mockRestore();
   });
@@ -2889,18 +2911,14 @@ describe('Payments Module - loadOrganisationsForFilters()', () => {
   test('falls back to apiClient when no cached data', async () => {
     STATE.allOrganisations = [];
     window.STATE.allOrganisations = [];
-    apiClient.selectAll = jest.fn().mockResolvedValue([
-      { id: 'org-a', company_name: 'Alpha' },
-    ]);
+    apiClient.selectAll = jest.fn().mockResolvedValue([{ id: 'org-a', company_name: 'Alpha' }]);
     await paymentsModule.loadOrganisationsForFilters();
     expect(apiClient.selectAll).toHaveBeenCalledWith('organisations', expect.anything());
     expect(paymentsModule.currentOrganisations.length).toBe(1);
   });
 
   test('populates the org filter dropdown', async () => {
-    STATE.allOrganisations = [
-      { id: 'org-1', company_name: 'Acme' },
-    ];
+    STATE.allOrganisations = [{ id: 'org-1', company_name: 'Acme' }];
     window.STATE.allOrganisations = STATE.allOrganisations;
     await paymentsModule.loadOrganisationsForFilters();
     const select = document.getElementById('invoiceOrgFilter');
@@ -2956,25 +2974,40 @@ describe('Payments Module - confirmSendInvoice()', () => {
     form.checkValidity = jest.fn().mockReturnValue(true);
     utils.protectModalDuringSave = jest.fn().mockImplementation(async (_id, fn) => fn());
     paymentsModule.currentSendInvoiceId = 'inv-1';
-    paymentsModule.currentInvoices = [
-      { id: 'inv-1', organisation_id: 'org-1', invoice_number: 'INV-001' },
-    ];
+    paymentsModule.currentInvoices = [{ id: 'inv-1', organisation_id: 'org-1', invoice_number: 'INV-001' }];
     document.getElementById('sendInvoiceEmail').value = 'test@test.com';
     document.getElementById('sendInvoiceSubject').value = 'Invoice INV-001';
     document.getElementById('sendInvoiceMessage').value = 'Please pay';
+    apiClient.select = jest.fn().mockResolvedValue({ data: [] });
     apiClient.insert = jest.fn().mockResolvedValue({ data: {} });
     apiClient.update = jest.fn().mockResolvedValue({});
+    global.fetch = jest.fn().mockResolvedValue({
+      json: () => Promise.resolve({ success: true, id: 'email-123' }),
+    });
     paymentsModule.loadInvoices = jest.fn().mockResolvedValue();
     const toastSpy = jest.spyOn(utils, 'showToast');
     await paymentsModule.confirmSendInvoice();
-    expect(apiClient.insert).toHaveBeenCalledWith('communications', expect.objectContaining({
-      type: 'email',
-      direction: 'outbound',
-    }));
-    expect(apiClient.update).toHaveBeenCalledWith('invoices', 'inv-1', expect.objectContaining({
-      status: 'sent',
-    }));
-    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('Invoice email prepared'), 'success');
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/resend-email',
+      expect.objectContaining({
+        method: 'POST',
+      })
+    );
+    expect(apiClient.insert).toHaveBeenCalledWith(
+      'communications',
+      expect.objectContaining({
+        type: 'email',
+        direction: 'outbound',
+      })
+    );
+    expect(apiClient.update).toHaveBeenCalledWith(
+      'invoices',
+      'inv-1',
+      expect.objectContaining({
+        status: 'sent',
+      })
+    );
+    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('Invoice email sent'), 'success');
     toastSpy.mockRestore();
   });
 });
@@ -3245,9 +3278,13 @@ describe('Payments Module - _accountingConfig management', () => {
     apiClient.select = jest.fn().mockResolvedValue({ data: [{ id: 'pref-1' }] });
     apiClient.update = jest.fn().mockResolvedValue({});
     await paymentsModule._saveAccountingConfig();
-    expect(apiClient.update).toHaveBeenCalledWith('user_preferences', 'pref-1', expect.objectContaining({
-      value: expect.any(String),
-    }));
+    expect(apiClient.update).toHaveBeenCalledWith(
+      'user_preferences',
+      'pref-1',
+      expect.objectContaining({
+        value: expect.any(String),
+      })
+    );
   });
 
   test('_saveAccountingConfig inserts new DB record when none exists', async () => {
@@ -3255,9 +3292,12 @@ describe('Payments Module - _accountingConfig management', () => {
     apiClient.select = jest.fn().mockResolvedValue({ data: [] });
     apiClient.insert = jest.fn().mockResolvedValue({});
     await paymentsModule._saveAccountingConfig();
-    expect(apiClient.insert).toHaveBeenCalledWith('user_preferences', expect.objectContaining({
-      key: 'orgAccountingConfig',
-    }));
+    expect(apiClient.insert).toHaveBeenCalledWith(
+      'user_preferences',
+      expect.objectContaining({
+        key: 'orgAccountingConfig',
+      })
+    );
   });
 });
 
@@ -3362,7 +3402,13 @@ describe('Payments Module - renderPayments edge cases', () => {
 describe('Payments Module - filterPayments fuzzy fallback', () => {
   test('falls back to fuzzy search when exact search finds nothing', () => {
     paymentsModule.allPayments = [
-      { id: 'p1', payment_reference: 'PAY-2026-001', status: 'completed', payment_date: '2026-01-15', payment_method: 'card' },
+      {
+        id: 'p1',
+        payment_reference: 'PAY-2026-001',
+        status: 'completed',
+        payment_date: '2026-01-15',
+        payment_method: 'card',
+      },
     ];
     document.getElementById('paymentSearchBox').value = 'xyznotfound';
     document.getElementById('paymentMethodFilter').value = '';
@@ -3375,8 +3421,20 @@ describe('Payments Module - filterPayments fuzzy fallback', () => {
 
   test('applies month filter to fuzzy results', () => {
     paymentsModule.allPayments = [
-      { id: 'p1', payment_reference: 'PAY-2026-001', status: 'completed', payment_date: '2026-01-15', payment_method: 'card' },
-      { id: 'p2', payment_reference: 'PAY-2026-002', status: 'pending', payment_date: '2026-06-15', payment_method: 'bank_transfer' },
+      {
+        id: 'p1',
+        payment_reference: 'PAY-2026-001',
+        status: 'completed',
+        payment_date: '2026-01-15',
+        payment_method: 'card',
+      },
+      {
+        id: 'p2',
+        payment_reference: 'PAY-2026-002',
+        status: 'pending',
+        payment_date: '2026-06-15',
+        payment_method: 'bank_transfer',
+      },
     ];
     document.getElementById('paymentSearchBox').value = 'xyznotfound';
     document.getElementById('paymentMethodFilter').value = '';

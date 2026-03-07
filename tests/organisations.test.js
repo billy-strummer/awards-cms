@@ -6757,9 +6757,11 @@ describe('Organisations Module - Undo Inline Edit', () => {
     orgsModule._currentPage = 1;
     orgsModule._pageSize = 50;
     orgsModule.selectedOrgs = new Set();
-    mockSupabase.from.mockReturnValue(mockSupabase);
-    mockSupabase.update.mockReturnValue(mockSupabase);
-    mockSupabase.eq.mockReturnValue(Promise.resolve({ data: null, error: null }));
+    jest.spyOn(apiClient, 'update').mockResolvedValue({ data: null, error: null });
+  });
+
+  afterEach(() => {
+    apiClient.update.mockRestore();
   });
 
   test('undoLastInlineEdit shows warning when nothing to undo', async () => {

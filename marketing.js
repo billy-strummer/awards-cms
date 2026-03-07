@@ -719,11 +719,17 @@ const marketingModule = {
    * View banner full screen
    */
   viewBannerFull(imageUrl, title) {
-    const modal = new bootstrap.Modal(document.getElementById('viewImageFullModal'));
-    document.getElementById('viewImageFullTitle').textContent = title;
-    document.getElementById('viewImageFullContent').innerHTML = `
+    const modalEl = document.getElementById('viewImageFullModal');
+    if (!modalEl) return;
+    const modal = new bootstrap.Modal(modalEl);
+    const titleEl = document.getElementById('viewImageFullTitle');
+    const contentEl = document.getElementById('viewImageFullContent');
+    if (titleEl) titleEl.textContent = title;
+    if (contentEl) {
+      contentEl.innerHTML = `
       <img src="${utils.escapeHtml(imageUrl)}" alt="${utils.escapeHtml(title)}" class="img-fluid" style="max-height: 70vh;">
     `;
+    }
     modal.show();
   },
 

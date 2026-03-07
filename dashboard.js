@@ -86,16 +86,23 @@ const dashboardModule = {
     const totalWinners = STATE.allWinners.length;
 
     // Update stat cards
-    document.getElementById('totalAwards').textContent = totalAwards;
-    document.getElementById('pendingAwards').textContent = pendingAwards;
-    document.getElementById('totalOrgs').textContent = totalOrgs;
-    document.getElementById('totalWinners').textContent = totalWinners;
+    const totalAwardsEl = document.getElementById('totalAwards');
+    if (totalAwardsEl) totalAwardsEl.textContent = totalAwards;
+    const pendingAwardsEl = document.getElementById('pendingAwards');
+    if (pendingAwardsEl) pendingAwardsEl.textContent = pendingAwards;
+    const totalOrgsEl = document.getElementById('totalOrgs');
+    if (totalOrgsEl) totalOrgsEl.textContent = totalOrgs;
+    const totalWinnersEl = document.getElementById('totalWinners');
+    if (totalWinnersEl) totalWinnersEl.textContent = totalWinners;
 
     // Update reports tab stats
-    if (document.getElementById('reportsTotal')) {
-      document.getElementById('reportsTotal').textContent = totalAwards;
-      document.getElementById('reportsTotalOrgs').textContent = totalOrgs;
-      document.getElementById('reportsTotalWinners').textContent = totalWinners;
+    const reportsTotalEl = document.getElementById('reportsTotal');
+    if (reportsTotalEl) {
+      reportsTotalEl.textContent = totalAwards;
+      const reportsTotalOrgsEl = document.getElementById('reportsTotalOrgs');
+      if (reportsTotalOrgsEl) reportsTotalOrgsEl.textContent = totalOrgs;
+      const reportsTotalWinnersEl = document.getElementById('reportsTotalWinners');
+      if (reportsTotalWinnersEl) reportsTotalWinnersEl.textContent = totalWinners;
     }
 
     // Load and update additional stats
@@ -226,7 +233,8 @@ const dashboardModule = {
     try {
       // Compute from loaded events data so counts match the events table
       const events = STATE.allEvents || [];
-      document.getElementById('totalEvents').textContent = events.length;
+      const totalEventsEl = document.getElementById('totalEvents');
+      if (totalEventsEl) totalEventsEl.textContent = events.length;
 
       // Get upcoming events count (next 30 days)
       const today = new Date().toISOString().split('T')[0];
@@ -234,7 +242,8 @@ const dashboardModule = {
       const upcomingCount = events.filter(
         (e) => e.event_date && e.event_date >= today && e.event_date <= futureDate
       ).length;
-      document.getElementById('upcomingEvents').textContent = upcomingCount;
+      const upcomingEventsEl = document.getElementById('upcomingEvents');
+      if (upcomingEventsEl) upcomingEventsEl.textContent = upcomingCount;
     } catch (error) {
       console.error('Error loading extended stats:', error);
     }
@@ -1937,12 +1946,18 @@ const dashboardModule = {
       const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
       // Update UI
-      document.getElementById('salesTotalRevenue').textContent = `£${totalRevenue.toFixed(2)}`;
-      document.getElementById('salesPendingAmount').textContent = `£${pendingAmount.toFixed(2)}`;
-      document.getElementById('salesPendingCount').textContent = pendingInvoices.length;
-      document.getElementById('salesTotalOrders').textContent = totalOrders;
-      document.getElementById('salesPaidCount').textContent = paidInvoices.length;
-      document.getElementById('salesAvgOrder').textContent = `£${avgOrderValue.toFixed(2)}`;
+      const salesTotalRevenueEl = document.getElementById('salesTotalRevenue');
+      if (salesTotalRevenueEl) salesTotalRevenueEl.textContent = `£${totalRevenue.toFixed(2)}`;
+      const salesPendingAmountEl = document.getElementById('salesPendingAmount');
+      if (salesPendingAmountEl) salesPendingAmountEl.textContent = `£${pendingAmount.toFixed(2)}`;
+      const salesPendingCountEl = document.getElementById('salesPendingCount');
+      if (salesPendingCountEl) salesPendingCountEl.textContent = pendingInvoices.length;
+      const salesTotalOrdersEl = document.getElementById('salesTotalOrders');
+      if (salesTotalOrdersEl) salesTotalOrdersEl.textContent = totalOrders;
+      const salesPaidCountEl = document.getElementById('salesPaidCount');
+      if (salesPaidCountEl) salesPaidCountEl.textContent = paidInvoices.length;
+      const salesAvgOrderEl = document.getElementById('salesAvgOrder');
+      if (salesAvgOrderEl) salesAvgOrderEl.textContent = `£${avgOrderValue.toFixed(2)}`;
     } catch (error) {
       console.error('Error loading sales summary:', error);
       throw error;

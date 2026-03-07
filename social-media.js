@@ -208,7 +208,7 @@ Vote now: {{website}}
     const companySelect = document.getElementById('smCompanySelect');
     const awardSelect = document.getElementById('smAwardSelect');
 
-    const selectedCompanyOption = companySelect.options[companySelect.selectedIndex];
+    const selectedCompanyOption = companySelect ? companySelect.options[companySelect.selectedIndex] : null;
     const companyName =
       selectedCompanyOption && selectedCompanyOption.value ? selectedCompanyOption.text.trim() : '{{company_name}}';
     const companyWebsite =
@@ -312,7 +312,7 @@ Vote now: {{website}}
     const customRadio = document.getElementById('imageCustom');
     const customUploadDiv = document.getElementById('customImageUpload');
 
-    if (customRadio) {
+    if (customRadio && customUploadDiv) {
       customRadio.addEventListener('change', () => {
         if (customRadio.checked) {
           customUploadDiv.style.display = 'block';
@@ -320,7 +320,7 @@ Vote now: {{website}}
       });
     }
 
-    if (companyLogoRadio) {
+    if (companyLogoRadio && customUploadDiv) {
       companyLogoRadio.addEventListener('change', () => {
         if (companyLogoRadio.checked) {
           customUploadDiv.style.display = 'none';

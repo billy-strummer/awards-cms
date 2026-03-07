@@ -519,10 +519,12 @@ const winnersModule = {
     if (!awardId) return;
 
     const content = document.getElementById('awardPlacementsContent');
-    document.getElementById('awardPlacementsModalTitle').textContent = awardName || 'Award Placements';
+    const titleEl = document.getElementById('awardPlacementsModalTitle');
+    if (titleEl) titleEl.textContent = awardName || 'Award Placements';
 
     // Show loading state
-    content.innerHTML = `
+    if (content)
+      content.innerHTML = `
       <div class="text-center py-4">
         <div class="spinner-border text-primary" role="status"></div>
         <p class="mt-2 text-muted">Loading placements...</p>
@@ -749,7 +751,9 @@ const winnersModule = {
 
     const media = winner.winner_media?.filter((m) => m.media_type === mediaType) || [];
 
-    document.getElementById('viewMediaTitle').innerHTML = `
+    const viewMediaTitleEl = document.getElementById('viewMediaTitle');
+    if (viewMediaTitleEl)
+      viewMediaTitleEl.innerHTML = `
       <i class="bi bi-${mediaType === MEDIA_TYPES.PHOTO ? 'images' : 'play-circle'} me-2"></i>
       ${utils.escapeHtml(winner.winner_name)} - ${mediaType === MEDIA_TYPES.PHOTO ? 'Photos' : 'Videos'}
     `;
@@ -1053,7 +1057,8 @@ const winnersModule = {
    * Update selected count
    */
   updateSelectedCount() {
-    document.getElementById('selectedWinnersCount').textContent = this.pressReleaseState.selectedWinners.size;
+    const el = document.getElementById('selectedWinnersCount');
+    if (el) el.textContent = this.pressReleaseState.selectedWinners.size;
   },
 
   /**
@@ -1464,7 +1469,8 @@ const winnersModule = {
    * Update selected count
    */
   updateCertificateSelectedCount() {
-    document.getElementById('selectedCertificateWinnersCount').textContent = this.certificateState.selectedWinners.size;
+    const el = document.getElementById('selectedCertificateWinnersCount');
+    if (el) el.textContent = this.certificateState.selectedWinners.size;
   },
 
   /**
@@ -1962,7 +1968,9 @@ const winnersModule = {
     const year = winner.awards?.year || 'N/A';
     const photos = winner.winner_media?.filter((m) => m.media_type === MEDIA_TYPES.PHOTO) || [];
 
-    document.getElementById('mediaPackWinnerInfo').innerHTML = `
+    const mediaPackInfoEl = document.getElementById('mediaPackWinnerInfo');
+    if (mediaPackInfoEl)
+      mediaPackInfoEl.innerHTML = `
       <div class="d-flex align-items-center">
         <div>
           <h6 class="mb-1">${utils.escapeHtml(winner.winner_name || 'Unnamed Winner')}</h6>
@@ -2142,7 +2150,9 @@ const winnersModule = {
     const year = winner.awards?.year || 'N/A';
     const photos = winner.winner_media?.filter((m) => m.media_type === MEDIA_TYPES.PHOTO) || [];
 
-    document.getElementById('winnerPackageWinnerInfo').innerHTML = `
+    const winnerPkgInfoEl = document.getElementById('winnerPackageWinnerInfo');
+    if (winnerPkgInfoEl)
+      winnerPkgInfoEl.innerHTML = `
       <div class="d-flex align-items-center">
         <div>
           <h6 class="mb-1">${utils.escapeHtml(winner.winner_name || 'Unnamed Winner')}</h6>
@@ -2490,9 +2500,12 @@ const winnersModule = {
    */
   displayComparisonResults(analysis) {
     // Update overview stats
-    document.getElementById('comparisonTotalWinners').textContent = analysis.totalWinners;
-    document.getElementById('comparisonReturningWinners').textContent = analysis.returningWinners.length;
-    document.getElementById('comparisonYearsCount').textContent = analysis.years.length;
+    const totalEl = document.getElementById('comparisonTotalWinners');
+    const returningEl = document.getElementById('comparisonReturningWinners');
+    const yearsEl = document.getElementById('comparisonYearsCount');
+    if (totalEl) totalEl.textContent = analysis.totalWinners;
+    if (returningEl) returningEl.textContent = analysis.returningWinners.length;
+    if (yearsEl) yearsEl.textContent = analysis.years.length;
 
     // Render trends by year
     this.renderTrendsByYear(analysis);
@@ -2856,10 +2869,14 @@ const winnersModule = {
    * Open import winners modal
    */
   openImportWinners() {
-    document.getElementById('importWinnersFile').value = '';
-    document.getElementById('importWinnersPreview').classList.add('d-none');
-    document.getElementById('importWinnersPreviewBody').innerHTML = '';
-    document.getElementById('importWinnersBtn').disabled = true;
+    const importFileEl = document.getElementById('importWinnersFile');
+    const importPreviewEl = document.getElementById('importWinnersPreview');
+    const importPreviewBodyEl = document.getElementById('importWinnersPreviewBody');
+    const importBtnEl = document.getElementById('importWinnersBtn');
+    if (importFileEl) importFileEl.value = '';
+    if (importPreviewEl) importPreviewEl.classList.add('d-none');
+    if (importPreviewBodyEl) importPreviewBodyEl.innerHTML = '';
+    if (importBtnEl) importBtnEl.disabled = true;
     this.importWinnersData = null;
 
     const modal = new bootstrap.Modal(document.getElementById('importWinnersModal'));
@@ -2928,8 +2945,10 @@ const winnersModule = {
         const previewDiv = document.getElementById('importWinnersPreview');
         const previewBody = document.getElementById('importWinnersPreviewBody');
         previewDiv.classList.remove('d-none');
-        document.getElementById('importWinnersBtn').disabled = false;
-        document.getElementById('importWinnersCount').textContent = rows.length;
+        const importBtn = document.getElementById('importWinnersBtn');
+        const importCountEl = document.getElementById('importWinnersCount');
+        if (importBtn) importBtn.disabled = false;
+        if (importCountEl) importCountEl.textContent = rows.length;
 
         // Show first 5 rows as preview
         const previewRows = rows.slice(0, 5);

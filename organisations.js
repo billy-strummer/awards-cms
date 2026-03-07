@@ -2578,10 +2578,14 @@ const orgsModule = {
    */
   viewImageFull(imageUrl, title) {
     const modal = new bootstrap.Modal(document.getElementById('viewImageFullModal'));
-    document.getElementById('viewImageFullTitle').textContent = title;
-    document.getElementById('viewImageFullContent').innerHTML = `
-      <img src="${imageUrl}" alt="${utils.escapeHtml(title)}" class="img-fluid" style="max-height: 70vh;">
-    `;
+    const titleEl = document.getElementById('viewImageFullTitle');
+    if (titleEl) titleEl.textContent = title;
+    const contentEl = document.getElementById('viewImageFullContent');
+    if (contentEl) {
+      contentEl.innerHTML = `
+        <img src="${imageUrl}" alt="${utils.escapeHtml(title)}" class="img-fluid" style="max-height: 70vh;">
+      `;
+    }
     modal.show();
   },
 
@@ -4641,17 +4645,25 @@ const orgsModule = {
 
     const mappedFields = [...new Set(Object.values(this._csvColumnMap))];
 
-    document.getElementById('csvPreviewCount').textContent = previewRows.length;
-    document.getElementById('csvNewCount').textContent = `${newCount} new`;
-    document.getElementById('csvDuplicateCount').textContent = `${dupCount} duplicates`;
+    const csvPreviewCountEl = document.getElementById('csvPreviewCount');
+    if (csvPreviewCountEl) csvPreviewCountEl.textContent = previewRows.length;
+    const csvNewCountEl = document.getElementById('csvNewCount');
+    if (csvNewCountEl) csvNewCountEl.textContent = `${newCount} new`;
+    const csvDuplicateCountEl = document.getElementById('csvDuplicateCount');
+    if (csvDuplicateCountEl) csvDuplicateCountEl.textContent = `${dupCount} duplicates`;
 
-    document.getElementById('csvPreviewHeader').innerHTML =
-      '<th>#</th>' + mappedFields.map((f) => `<th>${f.replace(/_/g, ' ')}</th>`).join('') + '<th>Status</th>';
+    const csvPreviewHeaderEl = document.getElementById('csvPreviewHeader');
+    if (csvPreviewHeaderEl) {
+      csvPreviewHeaderEl.innerHTML =
+        '<th>#</th>' + mappedFields.map((f) => `<th>${f.replace(/_/g, ' ')}</th>`).join('') + '<th>Status</th>';
+    }
 
-    document.getElementById('csvPreviewBody').innerHTML = previewRows
-      .map((item, i) => {
-        const issues = this._validateImportRow(item.record);
-        return `<tr class="${item.isDuplicate ? 'table-warning' : ''} ${issues.length > 0 ? 'table-danger' : ''}">
+    const csvPreviewBodyEl = document.getElementById('csvPreviewBody');
+    if (csvPreviewBodyEl)
+      csvPreviewBodyEl.innerHTML = previewRows
+        .map((item, i) => {
+          const issues = this._validateImportRow(item.record);
+          return `<tr class="${item.isDuplicate ? 'table-warning' : ''} ${issues.length > 0 ? 'table-danger' : ''}">
         <td class="small">${i + 1}</td>
         ${mappedFields.map((f) => `<td class="small">${utils.escapeHtml(item.record[f] || '-')}</td>`).join('')}
         <td>
@@ -4663,8 +4675,8 @@ const orgsModule = {
           ${issues.length > 0 ? `<span class="badge bg-danger ms-1" title="${utils.escapeHtml(issues.join(', '))}">Issues: ${issues.length}</span>` : ''}
         </td>
       </tr>`;
-      })
-      .join('');
+        })
+        .join('');
 
     // Enable import button
     const importBtn = document.getElementById('csvImportBtn');

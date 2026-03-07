@@ -1332,7 +1332,8 @@ const emailListsModule = {
       return;
     }
 
-    const email = document.getElementById('subEmail').value.trim();
+    const emailEl = document.getElementById('subEmail');
+    const email = emailEl ? emailEl.value.trim() : '';
     if (!email || !email.includes('@')) {
       utils.showToast('Please enter a valid email address', 'warning');
       return;
@@ -1341,9 +1342,9 @@ const emailListsModule = {
     const subData = {
       list_id: listId,
       email: email,
-      first_name: document.getElementById('subFirstName').value.trim() || null,
-      last_name: document.getElementById('subLastName').value.trim() || null,
-      company_name: document.getElementById('subCompanyName').value.trim() || null,
+      first_name: document.getElementById('subFirstName')?.value.trim() || null,
+      last_name: document.getElementById('subLastName')?.value.trim() || null,
+      company_name: document.getElementById('subCompanyName')?.value.trim() || null,
       status: 'active',
       source: 'manual',
     };

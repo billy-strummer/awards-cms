@@ -292,7 +292,7 @@ const eventsModule = {
         utils.showToast(`Event ${eventId ? 'updated' : 'added'} successfully!`, 'success');
 
         // Close modal and reload
-        bootstrap.Modal.getInstance(document.getElementById('eventModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('eventModal'))?.hide();
         await this.loadEvents();
       });
     } catch (error) {
@@ -421,7 +421,7 @@ const eventsModule = {
         }
 
         // Close modal and reload
-        bootstrap.Modal.getInstance(document.getElementById('cloneEventModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('cloneEventModal'))?.hide();
         await this.loadEvents();
 
         // Show success summary
@@ -728,7 +728,7 @@ const eventsModule = {
     if (!template) return;
 
     // Close templates modal
-    bootstrap.Modal.getInstance(document.getElementById('eventTemplatesModal')).hide();
+    bootstrap.Modal.getInstance(document.getElementById('eventTemplatesModal'))?.hide();
 
     // Wait a bit for modal to close
     await new Promise((resolve) => setTimeout(resolve, 300));
@@ -2771,7 +2771,7 @@ const eventsModule = {
       budget.items.push(item);
     }
     this._saveBudget(eventId, budget);
-    bootstrap.Modal.getInstance(document.getElementById('budgetItemModal')).hide();
+    bootstrap.Modal.getInstance(document.getElementById('budgetItemModal'))?.hide();
     this.renderBudgetTab(eventId);
     utils.showToast(this._editBudgetIdx !== null ? 'Budget item updated' : 'Budget item added', 'success');
     this._editBudgetIdx = null;
@@ -2992,7 +2992,7 @@ const eventsModule = {
       vendors.push(vendor);
     }
     this._saveVendors(eventId, vendors);
-    bootstrap.Modal.getInstance(document.getElementById('vendorModal')).hide();
+    bootstrap.Modal.getInstance(document.getElementById('vendorModal'))?.hide();
     this.renderVendorsTab(eventId);
     utils.showToast(this._editVendorIdx !== null ? 'Vendor updated' : 'Vendor added', 'success');
     this._editVendorIdx = null;
@@ -6080,8 +6080,9 @@ const eventsModule = {
     const temp = document.createElement('div');
     temp.innerHTML = newHtml;
     const newContent = temp.querySelector('.modal-content');
-    if (newContent) {
-      modal.querySelector('.modal-content').innerHTML = newContent.innerHTML;
+    const modalContent = modal.querySelector('.modal-content');
+    if (newContent && modalContent) {
+      modalContent.innerHTML = newContent.innerHTML;
     }
 
     // Re-attach keyboard shortcuts
@@ -8440,7 +8441,7 @@ const eventsModule = {
         }
       }
       utils.showToast('Item updated', 'success');
-      bootstrap.Modal.getInstance(document.getElementById('editRunningOrderModal')).hide();
+      bootstrap.Modal.getInstance(document.getElementById('editRunningOrderModal'))?.hide();
       await this.loadRunningOrder();
       this.renderRunningOrderItems();
     } catch (error) {
@@ -13028,9 +13029,12 @@ const eventsModule = {
     if (!previewArea || !table) return;
 
     const preview = rows.slice(0, 20);
-    table.querySelector('thead').innerHTML =
+    const thead = table.querySelector('thead');
+    const tbody = table.querySelector('tbody');
+    if (!thead || !tbody) return;
+    thead.innerHTML =
       '<tr><th>Name</th><th>Email</th><th>Status</th><th>Type</th><th>+1s</th><th>Dietary</th><th>Company</th></tr>';
-    table.querySelector('tbody').innerHTML = preview
+    tbody.innerHTML = preview
       .map(
         (r) =>
           `<tr><td>${utils.escapeHtml(r.name)}</td><td>${utils.escapeHtml(r.email)}</td><td><span class="badge bg-${r.status === 'attending' ? 'success' : r.status === 'maybe' ? 'warning' : 'secondary'}">${r.status}</span></td>

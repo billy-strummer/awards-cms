@@ -45,6 +45,7 @@ const utils = {
    */
   showToast(message, type = 'info', title = null) {
     const toastEl = document.getElementById('notificationToast');
+    if (!toastEl) return;
     const toastIcon = document.getElementById('toastIcon');
     const toastTitle = document.getElementById('toastTitle');
     const toastMessage = document.getElementById('toastMessage');
@@ -77,7 +78,7 @@ const utils = {
 
     // Reset classes
     toastEl.className = 'toast';
-    toastIcon.className = `bi ${settings.icon} me-2`;
+    if (toastIcon) toastIcon.className = `bi ${settings.icon} me-2`;
 
     // Add type-specific class
     if (type === 'success' || type === 'error' || type === 'warning') {
@@ -85,8 +86,8 @@ const utils = {
     }
 
     // Set content
-    toastTitle.textContent = settings.title;
-    toastMessage.innerHTML = message;
+    if (toastTitle) toastTitle.textContent = settings.title;
+    if (toastMessage) toastMessage.innerHTML = message;
 
     // Show toast
     const toast = new bootstrap.Toast(toastEl, {
@@ -403,6 +404,7 @@ const utils = {
    */
   showEmptyState(tableBodyId, colspan, message = 'No data found', icon = 'bi-inbox') {
     const tbody = document.getElementById(tableBodyId);
+    if (!tbody) return;
     tbody.innerHTML = `
       <tr>
         <td colspan="${colspan}" class="text-center py-5">
@@ -422,6 +424,7 @@ const utils = {
    */
   showTableLoading(tableBodyId, colspan) {
     const tbody = document.getElementById(tableBodyId);
+    if (!tbody) return;
     tbody.innerHTML = `
       <tr>
         <td colspan="${colspan}" class="text-center py-5">
@@ -443,6 +446,7 @@ const utils = {
    */
   populateFilter(data, key, selectId, placeholder = 'All') {
     const select = document.getElementById(selectId);
+    if (!select) return;
     const uniqueValues = this.getUniqueValues(data, key);
 
     select.innerHTML = `<option value="">${placeholder}</option>`;
@@ -2109,8 +2113,9 @@ const utils = {
       };
     }
     if (msg.includes('401') || msg.includes('unauthorized')) {
-      // Auto-logout on session expiry
-      if (typeof authModule !== 'undefined' && STATE.currentUser) {
+      // Auto-logout on session expiry (guard against multiple rapid 401s)
+      if (typeof authModule !== 'undefined' && STATE.currentUser && !STATE._loggingOut) {
+        STATE._loggingOut = true;
         setTimeout(() => authModule.handleLogout(true), 500);
       }
       return { message: 'Session expired. Logging you out...', type: 'warning', isNetwork: false, canRetry: false };

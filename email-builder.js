@@ -1914,9 +1914,12 @@ ${content}
     this.blocks.push({ id: blockId, type: 'html-code' });
     this.addBlockControls(blockWrapper, blockId);
 
-    document.getElementById('builderCampaignName').value = '';
-    document.getElementById('builderSubject').value = '';
-    document.getElementById('builderPreheader').value = '';
+    const nameEl = document.getElementById('builderCampaignName');
+    const subjectEl = document.getElementById('builderSubject');
+    const preheaderEl = document.getElementById('builderPreheader');
+    if (nameEl) nameEl.value = '';
+    if (subjectEl) subjectEl.value = '';
+    if (preheaderEl) preheaderEl.value = '';
 
     // Auto-switch to preview after user pastes HTML
     const textarea = blockWrapper.querySelector('.email-html-code-editor');

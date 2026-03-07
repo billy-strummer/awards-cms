@@ -282,6 +282,7 @@ const entriesModule = {
   renderEntries() {
     const tbody = document.getElementById('entriesTableBody');
     const countSpan = document.getElementById('entriesTableCount');
+    if (!tbody || !countSpan) return;
 
     // Use server total count when in server pagination mode
     const displayCount = this._serverPagination ? this._pagination.count : this.filteredEntries.length;
@@ -1051,8 +1052,11 @@ const entriesModule = {
   async updateEntryStatus(entryId) {
     try {
       await utils.protectModalDuringSave('entryDetailsModal', async () => {
-        const newStatus = document.getElementById('newEntryStatus').value;
-        const notes = document.getElementById('statusChangeNotes').value;
+        const newStatusEl = document.getElementById('newEntryStatus');
+        const notesEl = document.getElementById('statusChangeNotes');
+        if (!newStatusEl || !notesEl) return;
+        const newStatus = newStatusEl.value;
+        const notes = notesEl.value;
 
         const updateData = { status: newStatus };
 
@@ -1373,12 +1377,15 @@ const entriesModule = {
 
   async saveEntryEdit(entryId) {
     const form = document.getElementById('editEntryForm');
+    if (!form) return;
     if (!form.checkValidity()) {
       form.reportValidity();
       return;
     }
 
-    const newStatus = document.getElementById('editEntryStatus').value;
+    const editEntryStatusEl = document.getElementById('editEntryStatus');
+    if (!editEntryStatusEl) return;
+    const newStatus = editEntryStatusEl.value;
     const updateData = {
       entry_title: document.getElementById('editEntryTitle').value,
       award_id: document.getElementById('editEntryAward').value || null,
@@ -2083,12 +2090,17 @@ const entriesModule = {
     input.type = 'file';
     input.accept = '.csv';
     input.onchange = async (e) => {
+      if (!e.target.files || e.target.files.length === 0) return;
       const file = e.target.files[0];
       if (!file) return;
       const text = await file.text();
       const lines = text.split('\n').filter((l) => l.trim());
-      if (lines.length < 2) {
+      if (!lines.length) {
         utils.showToast('CSV file is empty', 'warning');
+        return;
+      }
+      if (lines.length < 2) {
+        utils.showToast('CSV file has no data rows', 'warning');
         return;
       }
       const headers = lines[0].split(',').map((h) => h.trim().toLowerCase().replace(/"/g, ''));

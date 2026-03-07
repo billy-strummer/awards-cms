@@ -145,6 +145,7 @@ const ALLOWED_TABLES = new Set([
   'scheduled_reports',
   'sponsor_contracts',
   'sponsor_impressions',
+  'media_videos',
 ]);
 
 /** Tables that can be mutated (insert/update/delete/upsert) */
@@ -252,6 +253,7 @@ const MUTABLE_TABLES = new Set([
   'scheduled_reports',
   'sponsor_contracts',
   'sponsor_impressions',
+  'media_videos',
 ]);
 
 /** Maximum page size to prevent abuse */
@@ -283,26 +285,78 @@ const ROLE_PERMISSIONS = {
       'contacts',
       'email_templates',
       'email_campaigns',
+      'email_lists',
+      'email_list_members',
+      'email_list_subscribers',
+      'email_import_batches',
       'media',
+      'media_items',
+      'media_gallery',
+      'media_videos',
       'organisation_notes',
       'organisation_documents',
+      'organisation_custom_fields',
+      'organisation_follow_ups',
+      'organisation_relationships',
+      'organisation_comms_log',
       'organisation_contacts',
+      'organisation_images',
+      'organisation_segments',
       'org_activity_notes',
+      'org_audit_log',
       'event_galleries',
-      'entry_revisions',
-      'winner_announcements',
-      'calendar_events',
-      'user_preferences',
       'event_attendees',
       'event_budgets',
       'event_budget_items',
-      'sponsors',
+      'event_tables',
+      'event_tickets',
+      'event_ticket_types',
+      'event_guests',
+      'event_waitlist',
+      'event_vendors',
+      'event_milestones',
+      'event_room_fixtures',
+      'event_post_data',
+      'event_special_requirements',
       'event_templates',
+      'entry_revisions',
+      'entry_files',
+      'winner_announcements',
+      'winner_media',
+      'calendar_events',
+      'user_preferences',
+      'sponsors',
+      'sponsor_contracts',
       'communications',
       'deals',
       'meeting_notes',
+      'contact_segments',
       'banners',
-      'media_videos',
+      'running_order',
+      'running_order_settings',
+      'running_order_versions',
+      'table_assignments',
+      'seating_sections',
+      'seating_tables',
+      'seating_assignments',
+      'invoices',
+      'invoice_line_items',
+      'payments',
+      'documents',
+      'document_versions',
+      'shortlists',
+      'announcements',
+      'deliberation_notes',
+      'record_notes',
+      'notifications',
+      'notification_preferences',
+      'social_media_posts',
+      'social_media_templates',
+      'scheduled_reports',
+      'ai_vetting_results',
+      'ai_vetting_runs',
+      'activity_logs',
+      'cms_audit_logs',
     ]),
   },
   viewer: {
@@ -329,26 +383,37 @@ const ROLE_PERMISSIONS = {
       'email_campaigns',
       'email_lists',
       'email_list_members',
+      'email_list_subscribers',
+      'email_import_batches',
       'media',
+      'media_items',
+      'media_gallery',
+      'media_videos',
       'event_galleries',
       'organisation_notes',
       'user_preferences',
       'sponsors',
+      'sponsor_contracts',
+      'sponsor_impressions',
       'social_media_posts',
       'social_media_templates',
       'banners',
-      'media_videos',
+      'winner_announcements',
+      'winner_media',
+      'announcements',
     ]),
   },
   finance: {
     read: '*',
     write: new Set([
       'invoices',
+      'invoice_line_items',
       'payments',
       'sponsorship_packages',
       'user_preferences',
       'event_budgets',
       'event_budget_items',
+      'communications',
     ]),
   },
 };
@@ -371,7 +436,8 @@ async function getUserRole(userId) {
       .eq('key', 'role')
       .maybeSingle();
     return data?.value || 'viewer';
-  } catch {
+  } catch (err) {
+    console.error(`[data-proxy] Failed to fetch role for user ${userId}:`, err.message);
     return 'viewer';
   }
 }
@@ -414,7 +480,7 @@ function checkPermission(role, table, operation) {
  * @returns {Promise<Object|null>} The authenticated user object, or null if authentication fails.
  */
 async function verifyAuth(req, res) {
-  const authHeader = req.headers.authorization;
+  const authHeader = req.headers?.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     res.status(401).json({ error: 'Authentication required' });
     return null;
@@ -471,11 +537,18 @@ function validateQueryParams(body) {
 
   if (filters && typeof filters !== 'object') {
     errors.push('"filters" must be an object');
+  } else if (filters) {
+    const invalidKeys = Object.keys(filters).filter((k) => !/^[a-zA-Z_][a-zA-Z0-9_.]*$/.test(k));
+    if (invalidKeys.length > 0) {
+      errors.push(`Invalid filter column names: ${invalidKeys.join(', ')}`);
+    }
   }
 
   if (sort) {
     if (typeof sort !== 'object' || !sort.column || typeof sort.column !== 'string') {
       errors.push('"sort" must have a valid "column" string');
+    } else if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(sort.column)) {
+      errors.push('"sort.column" must be a valid column name (alphanumeric and underscores only)');
     }
   }
 
@@ -493,6 +566,8 @@ function validateQueryParams(body) {
     }
     if (!Array.isArray(search.columns) || search.columns.length === 0) {
       errors.push('"search.columns" must be a non-empty array of column names');
+    } else if (search.columns.some((col) => typeof col !== 'string' || !/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(col))) {
+      errors.push('"search.columns" must contain valid column names (alphanumeric and underscores only)');
     }
   }
 
@@ -754,7 +829,8 @@ async function logActivity(table, action, user, result, context = {}) {
     if (context.id) detailParts.push(`target_id=${context.id}`);
     if (recordIds.length > 0) detailParts.push(`affected=[${recordIds.join(',')}]`);
     if (context.filters && Object.keys(context.filters).length > 0) {
-      detailParts.push(`filters=${JSON.stringify(context.filters)}`);
+      const filtersStr = JSON.stringify(context.filters);
+      detailParts.push(`filters=${filtersStr.length > 500 ? filtersStr.substring(0, 500) + '...' : filtersStr}`);
     }
 
     await supabase.from('activity_log').insert([

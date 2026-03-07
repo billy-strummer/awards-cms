@@ -787,16 +787,21 @@ const paymentsModule = {
       `;
 
       // Wire up footer buttons
-      document.getElementById('viewInvoiceRecordPaymentBtn').onclick = () => {
-        bootstrap.Modal.getInstance(document.getElementById('viewInvoiceModal'))?.hide();
-        this.recordPaymentForInvoice(invoiceId);
-      };
+      const recordPaymentBtn = document.getElementById('viewInvoiceRecordPaymentBtn');
+      if (recordPaymentBtn) {
+        recordPaymentBtn.onclick = () => {
+          bootstrap.Modal.getInstance(document.getElementById('viewInvoiceModal'))?.hide();
+          this.recordPaymentForInvoice(invoiceId);
+        };
+      }
 
-      document.getElementById('viewInvoicePrintBtn').onclick = () => {
-        const inv = invoice;
-        const items = lineItems;
-        const statusClass = (inv.status || 'draft').toLowerCase();
-        const printHtml = `
+      const printBtn = document.getElementById('viewInvoicePrintBtn');
+      if (printBtn)
+        printBtn.onclick = () => {
+          const inv = invoice;
+          const items = lineItems;
+          const statusClass = (inv.status || 'draft').toLowerCase();
+          const printHtml = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -910,13 +915,17 @@ const paymentsModule = {
 
 </body>
 </html>`;
-        const printWindow = window.open('', '_blank');
-        printWindow.document.write(printHtml);
-        printWindow.document.close();
-        printWindow.onload = function () {
-          printWindow.print();
+          const printWindow = window.open('', '_blank');
+          if (printWindow) {
+            printWindow.document.write(printHtml);
+            printWindow.document.close();
+            printWindow.onload = function () {
+              printWindow.print();
+            };
+          } else {
+            utils.showToast('Unable to open print window. Please allow popups for this site.', 'error');
+          }
         };
-      };
     } catch (error) {
       console.error('Error viewing invoice:', error);
       utils.showToast('Failed to load invoice details: ' + error.message, 'error');
@@ -2839,8 +2848,8 @@ const paymentsModule = {
     input.type = 'file';
     input.accept = '.csv';
     input.onchange = async (e) => {
+      if (!e.target.files || e.target.files.length === 0) return;
       const file = e.target.files[0];
-      if (!file) return;
       const text = await file.text();
       const lines = text.split('\n').filter((l) => l.trim());
       if (lines.length < 2) {

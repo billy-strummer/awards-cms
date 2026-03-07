@@ -290,8 +290,9 @@ const apiClientMethods = [
 // (jest.restoreAllMocks() in afterEach blocks removes jest.spyOn mocks)
 // ==========================================
 beforeEach(() => {
-  // Reset .then to its safe default so unconsumed mockImplementationOnce calls
-  // from previous tests don't bleed into later ones.
+  // Clear unconsumed mockImplementationOnce calls AND reset default implementation
+  // mockReset clears the once queue; then we re-set the default.
+  mockSupabase.then.mockReset();
   mockSupabase.then.mockImplementation((cb) => cb({ data: [], error: null, count: 0 }));
 
   // Re-apply apiClient spies (they get removed by jest.restoreAllMocks in afterEach)
@@ -3264,15 +3265,6 @@ describe('Media Gallery Module - Load Section Photo Counts', () => {
   });
 
   test('loadSectionPhotoCounts updates badge content', async () => {
-    console.log('DEBUG: STATE.client === mockSupabase:', STATE.client === mockSupabase);
-    console.log('DEBUG: STATE.client.then === mockSupabase.then:', STATE.client.then === mockSupabase.then);
-    console.log('DEBUG: STATE.client.from === mockSupabase.from:', STATE.client.from === mockSupabase.from);
-    const chain = STATE.client
-      .from('media_gallery')
-      .select('gallery_section_id')
-      .in('gallery_section_id', ['sec-1', 'sec-2']);
-    console.log('DEBUG: chain === mockSupabase:', chain === mockSupabase);
-    console.log('DEBUG: chain.then === mockSupabase.then:', chain.then === mockSupabase.then);
     mockSupabase.then.mockImplementationOnce((cb) =>
       cb({
         data: [

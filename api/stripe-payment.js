@@ -15,7 +15,7 @@ const { createClient } = require('@supabase/supabase-js');
 const { Resend } = require('resend');
 const { wrapEmail } = require('./_lib/email-header');
 const resend = new Resend(process.env.RESEND_API_KEY);
-const APP_URL = process.env.APP_URL || 'https://admin.britishtrade.com';
+const APP_URL = process.env.APP_URL || 'https://admin.britishtradeawards.com';
 const FROM_EMAIL = process.env.FROM_EMAIL || 'awards@britishtradeawards.com';
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);

@@ -231,6 +231,7 @@ async function build() {
     'register.html',
     'payment-success.html',
     'payment-cancelled.html',
+    'submit-entry-payment.html',
     'upload-documents.html',
   ];
 
@@ -261,6 +262,7 @@ async function build() {
     'company-profile.js',
     'award-nominees.js',
     'award_companies.js',
+    'submit-entry-payment.js',
   ];
 
   publicJsFiles.forEach((file) => {

@@ -32,7 +32,7 @@ const supabaseAuth = createClient(
 );
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-const APP_URL = process.env.APP_URL || 'https://admin.britishtrade.com';
+const APP_URL = process.env.APP_URL || 'https://admin.britishtradeawards.com';
 
 /**
  * Verify the caller's Supabase JWT.

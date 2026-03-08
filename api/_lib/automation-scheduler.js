@@ -183,7 +183,7 @@ async function sendPaymentReminders() {
           entry_number: invoice.invoice_number,
           entry_title: `Invoice ${invoice.invoice_number}`,
           entry_fee: String(parseFloat(invoice.total_amount || 0).toFixed(2)),
-          payment_link: `${process.env.APP_URL || 'https://admin.britishtrade.com'}/payment?invoice=${invoice.id}`,
+          payment_link: `${process.env.APP_URL || 'https://admin.britishtradeawards.com'}/payment?invoice=${invoice.id}`,
           days_overdue: String(daysOverdue),
         });
       }

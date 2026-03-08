@@ -24,23 +24,29 @@ const resend = new Resend(process.env.RESEND_API_KEY);
  * Load tenant branding from database (cached for 5 minutes).
  * @returns {Promise<Object>} Branding configuration object.
  */
-let _brandingCache = null;
-let _brandingCacheTime = 0;
+/** @type {Map<string, {data: Object, time: number}>} */
+const _brandingCacheMap = new Map();
 const BRANDING_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
-async function loadTenantBranding() {
+/**
+ * Load tenant branding from database (cached for 5 minutes per tenant).
+ * @param {string} [tenantId='default'] - The tenant identifier.
+ * @returns {Promise<Object>} Branding configuration object.
+ */
+async function loadTenantBranding(tenantId = 'default') {
   const now = Date.now();
-  if (_brandingCache && now - _brandingCacheTime < BRANDING_CACHE_TTL) {
-    return _brandingCache;
+  const cached = _brandingCacheMap.get(tenantId);
+  if (cached && now - cached.time < BRANDING_CACHE_TTL) {
+    return cached.data;
   }
   try {
-    const { data } = await supabase.from('tenant_branding').select('*').eq('tenant_id', 'default').maybeSingle();
-    _brandingCache = data || {};
-    _brandingCacheTime = now;
-    return _brandingCache;
+    const { data } = await supabase.from('tenant_branding').select('*').eq('tenant_id', tenantId).maybeSingle();
+    const branding = data || {};
+    _brandingCacheMap.set(tenantId, { data: branding, time: now });
+    return branding;
   } catch (e) {
     console.error('Failed to load tenant branding:', e);
-    return _brandingCache || {};
+    return cached?.data || {};
   }
 }
 
@@ -383,12 +389,14 @@ const EMAIL_TEMPLATES = {
  * @param {string} templateKey - The template key (e.g. 'ENTRY_CONFIRMATION', 'WINNER_ANNOUNCEMENT').
  * @param {string} toEmail - The recipient email address.
  * @param {Object} variables - Key-value pairs for template placeholder replacement.
+ * @param {Object} [options] - Additional options.
+ * @param {string} [options.tenantId='default'] - Tenant identifier for branding isolation.
  * @returns {Promise<boolean>} True if the email was sent successfully, false otherwise.
  */
-async function sendTemplateEmail(templateKey, toEmail, variables) {
+async function sendTemplateEmail(templateKey, toEmail, variables, { tenantId = 'default' } = {}) {
   try {
     // Load tenant branding
-    const branding = await loadTenantBranding();
+    const branding = await loadTenantBranding(tenantId);
     const brandName = branding.company_name || process.env.FROM_NAME || 'British Trade Awards';
 
     const subtitle = HEADER_SUBTITLES[templateKey] || '';
@@ -486,16 +494,21 @@ async function sendEntryConfirmation(entryId) {
 
     if (!entry) throw new Error('Entry not found');
 
+    // Fetch key dates from the award season
+    const awardSeason = entry.awards || {};
+    const formatDate = (d) =>
+      d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : 'TBC';
+
     const variables = {
       contact_name: entry.contact_name,
       entry_number: entry.entry_number,
       company_name: entry.organisations.company_name,
       award_name: entry.awards.award_name,
       entry_title: entry.entry_title,
-      judging_start: 'January 15, 2025',
-      judging_end: 'TBC',
-      shortlist_date: 'February 25, 2025',
-      winner_date: 'TBC',
+      judging_start: formatDate(awardSeason.judging_start_date),
+      judging_end: formatDate(awardSeason.judging_end_date),
+      shortlist_date: formatDate(awardSeason.shortlist_date),
+      winner_date: formatDate(awardSeason.winner_announcement_date),
     };
 
     return await sendTemplateEmail('ENTRY_CONFIRMATION', entry.contact_email, variables);
@@ -565,10 +578,25 @@ async function sendDeadlineReminders() {
       const pending = totalAssigned - completed;
 
       if (pending > 0) {
+        // Get nearest judging deadline from active awards
+        const { data: activeAwards } = await supabase
+          .from('award_years')
+          .select('judging_end_date')
+          .eq('is_active', true)
+          .not('judging_end_date', 'is', null)
+          .order('judging_end_date', { ascending: true })
+          .limit(1);
+        const judgingDeadline = activeAwards?.[0]?.judging_end_date;
+        const daysLeft = judgingDeadline
+          ? Math.max(0, Math.ceil((new Date(judgingDeadline) - now) / (1000 * 60 * 60 * 24)))
+          : null;
+        const formatDate = (d) =>
+          d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : 'TBC';
+
         const variables = {
           judge_name: judge.full_name,
-          days_left: '7', // Calculate actual days
-          deadline: 'TBC',
+          days_left: daysLeft !== null ? String(daysLeft) : 'TBC',
+          deadline: formatDate(judgingDeadline),
           scored_count: completed,
           total_count: totalAssigned,
           pending_count: pending,
@@ -607,10 +635,30 @@ async function sendJudgeAssignments(judgeEmail, entryIds) {
 
     const awardList = [...new Set(entries.map((e) => e.awards.award_name))].map((name) => `<li>${name}</li>`).join('');
 
+    // Get judging deadline from the associated award season
+    const awardIds = [...new Set(entries.map((e) => e.award_id).filter(Boolean))];
+    let judgingDeadline = 'TBC';
+    if (awardIds.length > 0) {
+      const { data: awardData } = await supabase
+        .from('award_years')
+        .select('judging_end_date')
+        .in('id', awardIds)
+        .not('judging_end_date', 'is', null)
+        .order('judging_end_date', { ascending: true })
+        .limit(1);
+      if (awardData?.[0]?.judging_end_date) {
+        judgingDeadline = new Date(awardData[0].judging_end_date).toLocaleDateString('en-GB', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+        });
+      }
+    }
+
     const variables = {
       judge_name: judge.full_name || judge.email,
       entry_count: entryIds.length,
-      deadline: 'TBC',
+      deadline: judgingDeadline,
       award_list: awardList,
       judge_portal_link: `${process.env.APP_URL || 'https://admin.britishtrade.com'}/judge-portal.html`,
     };
@@ -639,13 +687,24 @@ async function sendWinnerAnnouncements(awardId = null) {
 
     const { data: winners } = await query;
 
+    // Fetch upcoming ceremony event details
+    const { data: ceremonyEvent } = await supabase
+      .from('events')
+      .select('event_date, venue, name')
+      .ilike('name', '%ceremony%')
+      .order('event_date', { ascending: false })
+      .limit(1);
+    const ceremony = ceremonyEvent?.[0];
+    const formatDate = (d) =>
+      d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : 'TBC';
+
     for (const winner of winners || []) {
       const variables = {
         contact_name: winner.contact_name,
         company_name: winner.organisations.company_name,
         award_name: winner.awards.award_name,
-        ceremony_date: 'TBC',
-        ceremony_venue: 'The Grand Hall, London',
+        ceremony_date: formatDate(ceremony?.event_date),
+        ceremony_venue: ceremony?.venue || 'TBC',
         winners_portal_link: `${process.env.APP_URL || 'https://admin.britishtrade.com'}/winners-portal.html`,
       };
 
@@ -703,14 +762,33 @@ async function sendShortlistNotifications(awardId = null) {
 
     const { data: shortlisted } = await query;
 
+    // Fetch upcoming ceremony event and award season details
+    const { data: ceremonyEvent } = await supabase
+      .from('events')
+      .select('event_date, venue, name')
+      .ilike('name', '%ceremony%')
+      .order('event_date', { ascending: false })
+      .limit(1);
+    const ceremony = ceremonyEvent?.[0];
+    const formatDate = (d) =>
+      d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : 'TBC';
+
+    // Get winner announcement date from the active award season
+    const { data: activeSeason } = await supabase
+      .from('award_years')
+      .select('winner_announcement_date')
+      .eq('is_active', true)
+      .not('winner_announcement_date', 'is', null)
+      .limit(1);
+
     for (const entry of shortlisted || []) {
       const variables = {
         contact_name: entry.contact_name,
         company_name: entry.organisations.company_name,
         award_name: entry.awards.award_name,
-        winner_date: 'TBC',
-        ceremony_date: 'TBC',
-        ceremony_venue: 'The Grand Hall, London',
+        winner_date: formatDate(activeSeason?.[0]?.winner_announcement_date),
+        ceremony_date: formatDate(ceremony?.event_date),
+        ceremony_venue: ceremony?.venue || 'TBC',
         ceremony_tickets_link: `${process.env.APP_URL || 'https://admin.britishtrade.com'}/tickets`,
       };
 
@@ -732,7 +810,7 @@ async function sendShortlistNotifications(awardId = null) {
  * @param {string} subject - The email subject line.
  * @returns {Promise<void>}
  */
-async function logEmailSent(templateKey, toEmail, subject) {
+async function logEmailSent(templateKey, toEmail, subject, tenantId = 'default') {
   await supabase.from('email_log').insert([
     {
       template_key: templateKey,
@@ -740,6 +818,7 @@ async function logEmailSent(templateKey, toEmail, subject) {
       subject: subject,
       status: 'sent',
       sent_at: new Date().toISOString(),
+      ...(tenantId !== 'default' ? { tenant_id: tenantId } : {}),
     },
   ]);
 }
@@ -751,7 +830,7 @@ async function logEmailSent(templateKey, toEmail, subject) {
  * @param {string} error - The error message describing the failure.
  * @returns {Promise<void>}
  */
-async function logEmailFailure(templateKey, toEmail, error) {
+async function logEmailFailure(templateKey, toEmail, error, tenantId = 'default') {
   await supabase.from('email_log').insert([
     {
       template_key: templateKey,
@@ -759,6 +838,7 @@ async function logEmailFailure(templateKey, toEmail, error) {
       status: 'failed',
       error_message: error,
       sent_at: new Date().toISOString(),
+      ...(tenantId !== 'default' ? { tenant_id: tenantId } : {}),
     },
   ]);
 }

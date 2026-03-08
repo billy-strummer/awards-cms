@@ -21,12 +21,14 @@ jest.mock(
 const mockSendDeadlineReminders = jest.fn();
 const mockSendWinnerAnnouncements = jest.fn();
 const mockSendShortlistNotifications = jest.fn();
+const mockSendTemplateEmail = jest.fn().mockResolvedValue(true);
 jest.mock(
   '../api/email-automation',
   () => ({
     sendDeadlineReminders: mockSendDeadlineReminders,
     sendWinnerAnnouncements: mockSendWinnerAnnouncements,
     sendShortlistNotifications: mockSendShortlistNotifications,
+    sendTemplateEmail: mockSendTemplateEmail,
   }),
   { virtual: true }
 );
@@ -270,7 +272,7 @@ describe('Automation Scheduler', () => {
       await scheduler.sendPaymentReminders();
 
       expect(consoleSpy).toHaveBeenCalledWith('Found 1 overdue invoices');
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Payment reminder logged for invoice INV-001'));
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Payment reminder sent for invoice INV-001'));
       consoleSpy.mockRestore();
     });
 
@@ -294,9 +296,9 @@ describe('Automation Scheduler', () => {
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
       await scheduler.sendPaymentReminders();
 
-      // Should not log "Payment reminder logged" since we skip
+      // Should not log "Payment reminder sent" since we skip
       const reminderCalls = consoleSpy.mock.calls.filter(
-        (c) => typeof c[0] === 'string' && c[0].includes('Payment reminder logged')
+        (c) => typeof c[0] === 'string' && c[0].includes('Payment reminder sent')
       );
       expect(reminderCalls).toHaveLength(0);
       consoleSpy.mockRestore();
@@ -346,7 +348,7 @@ describe('Automation Scheduler', () => {
 
       // Only inv-4 should get a reminder
       const reminderCalls = consoleSpy.mock.calls.filter(
-        (c) => typeof c[0] === 'string' && c[0].includes('Payment reminder logged')
+        (c) => typeof c[0] === 'string' && c[0].includes('Payment reminder sent')
       );
       expect(reminderCalls).toHaveLength(1);
       expect(reminderCalls[0][0]).toContain('INV-004');

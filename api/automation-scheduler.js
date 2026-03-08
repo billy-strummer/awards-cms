@@ -9,7 +9,7 @@
  */
 
 const cron = require('node-cron');
-const { sendDeadlineReminders, sendWinnerAnnouncements } = require('./email-automation');
+const { sendDeadlineReminders, sendWinnerAnnouncements, sendTemplateEmail } = require('./email-automation');
 const { assignJudgesToEntries, generateAllShortlists } = require('./judge-automation');
 const { generateAllWinnerCertificates } = require('./certificates-qr');
 
@@ -174,6 +174,20 @@ async function sendPaymentReminders() {
         continue; // Skip - already reminded recently
       }
 
+      // Send payment reminder email
+      const recipientEmail = invoice.organisations?.email;
+      if (recipientEmail) {
+        const daysOverdue = Math.ceil((new Date(today) - new Date(invoice.due_date)) / (1000 * 60 * 60 * 24));
+        await sendTemplateEmail('PAYMENT_REMINDER', recipientEmail, {
+          contact_name: invoice.organisations?.company_name || 'Customer',
+          entry_number: invoice.invoice_number,
+          entry_title: `Invoice ${invoice.invoice_number}`,
+          entry_fee: String(parseFloat(invoice.total_amount || 0).toFixed(2)),
+          payment_link: `${process.env.APP_URL || 'https://admin.britishtrade.com'}/payment?invoice=${invoice.id}`,
+          days_overdue: String(daysOverdue),
+        });
+      }
+
       // Log payment reminder
       await supabase.from('payment_reminders').insert({
         invoice_id: invoice.id,
@@ -184,7 +198,7 @@ async function sendPaymentReminders() {
       });
 
       console.log(
-        `Payment reminder logged for invoice ${invoice.invoice_number} (${invoice.organisations?.company_name})`
+        `Payment reminder sent for invoice ${invoice.invoice_number} (${invoice.organisations?.company_name})`
       );
     }
   } catch (error) {

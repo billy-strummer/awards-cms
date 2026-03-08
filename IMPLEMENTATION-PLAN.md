@@ -259,6 +259,33 @@ _When a session ends, update this section with what was done and what's next._
 - **Verified**: 65/65 test suites pass (6381 tests, 0 failures), build passes (0 lint errors, 2072KB JS, 58KB CSS)
 - **Status: CMS is 100% complete — all gaps closed, production-ready**
 
+**2026-03-08 — Session 4: Deep Audit & Bug Fixes**
+- **Thorough audit** of entire codebase with 4 parallel analysis agents covering: code gaps, test quality, API implementations, and frontend completeness
+- **Overall assessment**: ~75-80% production-ready (code is complete, but needs real integration testing against live services)
+- **Bugs fixed**:
+  1. **email-automation.js**: Replaced hardcoded dates/venues with DB queries
+     - `sendEntryConfirmation()`: Now queries `award_years` for judging_start_date, judging_end_date, shortlist_date, winner_announcement_date
+     - `sendDeadlineReminders()`: Now queries `award_years` for actual judging deadline and calculates real days_left
+     - `sendJudgeAssignments()`: Now queries `award_years` for judging_end_date
+     - `sendWinnerAnnouncements()`: Now queries `events` table for ceremony date/venue
+     - `sendShortlistNotifications()`: Now queries `events` + `award_years` for ceremony and announcement dates
+  2. **automation-scheduler.js**: Payment reminders now actually send emails via `sendTemplateEmail()` (previously only logged to DB)
+  3. **winners.js**: Implemented `togglePhotoSelection()` with `excludedPhotos` Map tracking, integrated with press release export
+  4. **email-automation.js**: Added multi-tenant support to branding cache (per-tenant caching), `sendTemplateEmail()` accepts `tenantId` option, email logs include tenant_id
+- **Tests updated**: Fixed mocks in `email-automation.test.js` (added `not`, `ilike`, `gte`, `lt` chain methods + `events`/`award_years` mock responses) and `automation-scheduler.test.js` (added `sendTemplateEmail` mock, updated console assertions)
+- **Verified**: 65/65 test suites pass (6381 tests, 0 failures), build passes (0 lint errors, 2072KB JS, 58KB CSS)
+
+### Remaining Items for Production Readiness
+- [ ] Set up real Supabase instance and run all 75 SQL migration files (no automated runner — manual ordering needed)
+- [ ] Configure all environment variables (SUPABASE_URL, SUPABASE_SERVICE_KEY, SUPABASE_ANON_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, RESEND_API_KEY, ANTHROPIC_API_KEY, FROM_EMAIL, FROM_NAME, APP_URL, social media OAuth credentials)
+- [ ] Test Stripe integration with test keys (webhooks, checkout sessions)
+- [ ] Test email sending with real Resend API key
+- [ ] Test social media OAuth flows per platform (credentials may be outdated for Twitter/X)
+- [ ] Verify DB schema matches all migration files (social-media.js has `stripUnknownColumn()` workaround for missing columns)
+- [ ] Add E2E/integration tests (currently all 6381 tests are unit tests with mocks — ~40% test real business logic, ~60% test mock setup)
+- [ ] Create migration runner script with dependency ordering
+- [ ] Set up CI/CD pipeline (GitHub Actions → Vercel)
+
 ### Deployment Checklist
 - [ ] Set environment variables in Vercel (see .env.example)
 - [ ] Run all SQL migrations in Supabase (migrations/ directory, in order)

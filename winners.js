@@ -869,6 +869,8 @@ const winnersModule = {
     allWinners: [],
     filteredWinners: [],
     selectedWinners: new Set(),
+    /** @type {Map<string, Set<string>>} Map of winnerId → Set of excluded photoIds */
+    excludedPhotos: new Map(),
   },
 
   /**
@@ -887,6 +889,7 @@ const winnersModule = {
       this.pressReleaseState.allWinners = winners || [];
       this.pressReleaseState.filteredWinners = this.pressReleaseState.allWinners;
       this.pressReleaseState.selectedWinners.clear();
+      this.pressReleaseState.excludedPhotos.clear();
 
       // Show modal
       const modal = new bootstrap.Modal(document.getElementById('pressReleaseExportModal'));
@@ -970,13 +973,14 @@ const winnersModule = {
                     <label class="form-label small fw-bold">Select Photos to Include:</label>
                     <div class="row g-2">
                       ${photos
-                        .map(
-                          (photo) => `
+                        .map((photo) => {
+                          const isPhotoExcluded = this.pressReleaseState.excludedPhotos.get(winner.id)?.has(photo.id);
+                          return `
                         <div class="col-6 col-md-3">
                           <div class="form-check">
                             <input class="form-check-input" type="checkbox"
                               id="photo_${photo.id}"
-                              checked
+                              ${isPhotoExcluded ? '' : 'checked'}
                               data-on-change="winnersModule.togglePhotoSelection" data-args='${JSON.stringify([winner.id, photo.id])}'>
                             <label class="form-check-label small" for="photo_${photo.id}">
                               <img src="${photo.media_url}" alt="${photo.caption || 'Photo'}"
@@ -988,8 +992,8 @@ const winnersModule = {
                             </label>
                           </div>
                         </div>
-                      `
-                        )
+                      `;
+                        })
                         .join('')}
                     </div>
                   </div>
@@ -1020,12 +1024,33 @@ const winnersModule = {
   },
 
   /**
-   * Toggle photo selection (placeholder for now)
-   * @param {string} _winnerId - Winner ID
-   * @param {string} _photoId - Photo ID
+   * Toggle photo selection for press release export.
+   * Photos are included by default; toggling off adds them to the excluded set.
+   * @param {string} winnerId - Winner ID
+   * @param {string} photoId - Photo ID
    */
-  togglePhotoSelection(_winnerId, _photoId) {
-    // This will be used to track which photos to include
+  togglePhotoSelection(winnerId, photoId) {
+    if (!this.pressReleaseState.excludedPhotos.has(winnerId)) {
+      this.pressReleaseState.excludedPhotos.set(winnerId, new Set());
+    }
+    const excluded = this.pressReleaseState.excludedPhotos.get(winnerId);
+    if (excluded.has(photoId)) {
+      excluded.delete(photoId);
+    } else {
+      excluded.add(photoId);
+    }
+  },
+
+  /**
+   * Get selected photos for a winner (all photos minus excluded ones).
+   * @param {Object} winner - Winner object with winner_media array
+   * @returns {Array} Filtered photos
+   */
+  getSelectedPhotos(winner) {
+    const photos = (winner.winner_media || []).filter((m) => m.media_type === 'photo');
+    const excluded = this.pressReleaseState.excludedPhotos.get(winner.id);
+    if (!excluded || excluded.size === 0) return photos;
+    return photos.filter((p) => !excluded.has(p.id));
   },
 
   /**
@@ -1105,7 +1130,7 @@ const winnersModule = {
     const exportData = [];
 
     winners.forEach((winner) => {
-      const photos = (winner.winner_media || []).filter((m) => m.media_type === 'photo');
+      const photos = this.getSelectedPhotos(winner);
       const awardName = winner.awards?.award_name || winner.awards?.award_category || 'N/A';
       const year = winner.awards?.year || 'N/A';
 

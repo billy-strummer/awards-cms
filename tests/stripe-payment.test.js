@@ -53,6 +53,7 @@ function chainable(resolveWith = { data: null, error: null }) {
     update: jest.fn(() => obj),
     delete: jest.fn(() => obj),
     eq: jest.fn(() => obj),
+    in: jest.fn(() => obj),
     order: jest.fn(() => obj),
     limit: jest.fn(() => obj),
     single: jest.fn(() => Promise.resolve(resolveWith)),
@@ -360,6 +361,113 @@ describe('Stripe Payment API - Webhook', () => {
     });
 
     mockFrom.mockReturnValue(chainable({ data: [], error: null }));
+
+    const req = createReq({ headers: { 'stripe-signature': 'valid-sig' } });
+    const res = createRes();
+    await handleStripeWebhook(req, res);
+
+    expect(res.body).toEqual({ received: true });
+  });
+
+  test('handles charge.succeeded event and updates entry', async () => {
+    mockWebhooksConstruct.mockReturnValue({
+      type: 'charge.succeeded',
+      data: {
+        object: {
+          id: 'ch_3T8ne2HMboF95sMo0KSa0nEg',
+          payment_intent: 'pi_123',
+          amount: 9500,
+        },
+      },
+    });
+
+    mockFrom.mockReturnValue(
+      chainable({
+        data: [
+          {
+            id: 'e-1',
+            entry_number: 'BTA-001',
+            contact_email: 'test@test.com',
+            contact_name: 'Test',
+            entry_title: 'Best Plumber',
+            organisation_id: 'org-1',
+            payment_status: 'pending',
+            status: 'draft',
+          },
+        ],
+        error: null,
+      })
+    );
+
+    const req = createReq({ headers: { 'stripe-signature': 'valid-sig' } });
+    const res = createRes();
+    await handleStripeWebhook(req, res);
+
+    expect(res.body).toEqual({ received: true });
+  });
+
+  test('handles charge.succeeded skips already-paid entry', async () => {
+    mockWebhooksConstruct.mockReturnValue({
+      type: 'charge.succeeded',
+      data: {
+        object: {
+          id: 'ch_already_paid',
+          payment_intent: 'pi_456',
+          amount: 9500,
+        },
+      },
+    });
+
+    mockFrom.mockReturnValue(
+      chainable({
+        data: [
+          {
+            id: 'e-2',
+            entry_number: 'BTA-002',
+            contact_email: 'test@test.com',
+            payment_status: 'paid',
+            status: 'submitted',
+          },
+        ],
+        error: null,
+      })
+    );
+
+    const req = createReq({ headers: { 'stripe-signature': 'valid-sig' } });
+    const res = createRes();
+    await handleStripeWebhook(req, res);
+
+    expect(res.body).toEqual({ received: true });
+  });
+
+  test('handles payment_intent.succeeded and updates entry status', async () => {
+    mockWebhooksConstruct.mockReturnValue({
+      type: 'payment_intent.succeeded',
+      data: {
+        object: {
+          id: 'pi_789',
+          amount: 9500,
+        },
+      },
+    });
+
+    mockFrom.mockReturnValue(
+      chainable({
+        data: [
+          {
+            id: 'e-3',
+            entry_number: 'BTA-003',
+            contact_email: 'test@test.com',
+            contact_name: 'Test User',
+            entry_title: 'Best Builder',
+            organisation_id: 'org-2',
+            payment_status: 'pending',
+            status: 'draft',
+          },
+        ],
+        error: null,
+      })
+    );
 
     const req = createReq({ headers: { 'stripe-signature': 'valid-sig' } });
     const res = createRes();

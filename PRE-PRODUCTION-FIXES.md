@@ -44,7 +44,7 @@
 - **Severity:** CRITICAL
 - **Status:** [x] DONE
 - **Problem:** `success_url` and `cancel_url` use `req.headers.origin` (client-controlled). An attacker can set the Origin header to a malicious domain, causing Stripe to redirect the user there after payment. This is an open redirect vulnerability.
-- **Fix:** Replace `req.headers.origin` with `process.env.APP_URL` (already defined in `.env` as `https://admin.britishtrade.com`). Fall back to a hardcoded safe default if env var is missing.
+- **Fix:** Replace `req.headers.origin` with `process.env.APP_URL` (already defined in `.env` as `https://admin.britishtradeawards.com`). Fall back to a hardcoded safe default if env var is missing.
 - **File:** `api/stripe-payment.js`
 - **Lines:** ~96-97 where `success_url` and `cancel_url` are constructed.
 

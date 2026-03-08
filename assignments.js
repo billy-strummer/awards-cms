@@ -963,7 +963,7 @@ const assignmentsModule = {
   updateSelectedCount() {
     const count = document.querySelectorAll('.bulk-add-check:checked').length;
     const el = document.getElementById('assignSelectedCount');
-    if (el) el.textContent = count;
+    if (el) el.textContent = String(count);
   },
 };
 

@@ -855,15 +855,18 @@ describe('Awards Module - _fetchPage()', () => {
     const firstPromise = new Promise((r) => {
       resolveFirst = r;
     });
-    apiClient.select = jest.fn()
+    apiClient.select = jest
+      .fn()
       .mockImplementationOnce(() => firstPromise)
-      .mockImplementationOnce(() => Promise.resolve({
-        data: [sampleAwards[0]],
-        page: 1,
-        totalPages: 1,
-        count: 1,
-        pageSize: 50,
-      }));
+      .mockImplementationOnce(() =>
+        Promise.resolve({
+          data: [sampleAwards[0]],
+          page: 1,
+          totalPages: 1,
+          count: 1,
+          pageSize: 50,
+        })
+      );
 
     // First call
     const p1 = awardsModule._fetchPage(1);
@@ -889,7 +892,8 @@ describe('Awards Module - _fetchPage()', () => {
 describe('Awards Module - _enrichPageData()', () => {
   test('enriches awards with region and assignment data', async () => {
     const origSelect = apiClient.select;
-    apiClient.select = jest.fn()
+    apiClient.select = jest
+      .fn()
       .mockResolvedValueOnce({ data: [{ Name: 'Kent', regions: { name: 'South East' } }] })
       .mockResolvedValueOnce({
         data: [
@@ -916,9 +920,7 @@ describe('Awards Module - _enrichPageData()', () => {
 
   test('handles error in county lookup', async () => {
     const origSelect = apiClient.select;
-    apiClient.select = jest.fn()
-      .mockRejectedValueOnce(new Error('counties error'))
-      .mockResolvedValueOnce({ data: [] });
+    apiClient.select = jest.fn().mockRejectedValueOnce(new Error('counties error')).mockResolvedValueOnce({ data: [] });
     const awards = [{ id: 'a1', county: 'Kent' }];
     await awardsModule._enrichPageData(awards);
     expect(awards[0]._actualRegion).toBeNull();
@@ -927,7 +929,8 @@ describe('Awards Module - _enrichPageData()', () => {
 
   test('handles error in assignment lookup', async () => {
     const origSelect = apiClient.select;
-    apiClient.select = jest.fn()
+    apiClient.select = jest
+      .fn()
       .mockResolvedValueOnce({ data: [] })
       .mockRejectedValueOnce(new Error('assignments error'));
     const awards = [{ id: 'a1', county: null }];
@@ -939,12 +942,11 @@ describe('Awards Module - _enrichPageData()', () => {
   test('handles winners without explicit position', async () => {
     const origSelect = apiClient.select;
     // county is null so no county lookup is made; only the assignments select call fires
-    apiClient.select = jest.fn()
-      .mockResolvedValueOnce({
-        data: [
-          { award_id: 'a1', status: 'winner', winner_position: null, organisations: { company_name: 'Solo Winner' } },
-        ],
-      });
+    apiClient.select = jest.fn().mockResolvedValueOnce({
+      data: [
+        { award_id: 'a1', status: 'winner', winner_position: null, organisations: { company_name: 'Solo Winner' } },
+      ],
+    });
     const awards = [{ id: 'a1', county: null }];
     await awardsModule._enrichPageData(awards);
     expect(awards[0]._winnerName).toBe('Solo Winner');
@@ -1003,11 +1005,10 @@ describe('Awards Module - loadAssignmentCounts()', () => {
   test('falls back when FK relationship error occurs', async () => {
     STATE.allAwards = [{ id: 'a1' }];
     const origSelectAll = apiClient.selectAll;
-    apiClient.selectAll = jest.fn()
+    apiClient.selectAll = jest
+      .fn()
       .mockRejectedValueOnce(new Error('relationship not found'))
-      .mockResolvedValueOnce([
-        { award_id: 'a1', status: 'nominated', winner_position: null },
-      ]);
+      .mockResolvedValueOnce([{ award_id: 'a1', status: 'nominated', winner_position: null }]);
     const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
     await awardsModule.loadAssignmentCounts();
     expect(STATE.allAwards[0]._assignmentCounts.total).toBe(1);
@@ -1060,7 +1061,7 @@ describe('Awards Module - filterAwards() fuzzy fallback', () => {
   });
 
   test('uses fuzzy filter when exact search finds nothing', () => {
-    document.getElementById('awardsSearchBox').value = 'plumbr';  // near-match
+    document.getElementById('awardsSearchBox').value = 'plumbr'; // near-match
     document.getElementById('awardsYearFilterSelect').value = '';
     document.getElementById('awardsStatusFilterSelect').value = '';
     document.getElementById('awardsSectorFilterSelect').value = '';
@@ -1197,8 +1198,17 @@ describe('Awards Module - renderAwards() server-side pagination', () => {
   test('renders winner html variations', () => {
     STATE.filteredAwards = [
       { ...sampleAwards[0], _winnerName: 'Winner', _runnerUpName: 'Runner', prev_year_winner: 'Prev' },
-      { ...sampleAwards[1], _winnerName: null, _assignmentCounts: { total: 5, nominated: 3, shortlisted: 2, winner: 0 } },
-      { ...sampleAwards[2], _winnerName: null, _assignmentCounts: { total: 0, nominated: 0, shortlisted: 0, winner: 0 }, prev_year_winner: 'OldWinner' },
+      {
+        ...sampleAwards[1],
+        _winnerName: null,
+        _assignmentCounts: { total: 5, nominated: 3, shortlisted: 2, winner: 0 },
+      },
+      {
+        ...sampleAwards[2],
+        _winnerName: null,
+        _assignmentCounts: { total: 0, nominated: 0, shortlisted: 0, winner: 0 },
+        prev_year_winner: 'OldWinner',
+      },
     ];
     awardsModule._serverPagination = false;
     awardsModule.renderAwards();
@@ -1248,12 +1258,21 @@ describe('Awards Module - viewDetails()', () => {
     global.assignmentsModule = { getStatusBadge: (status) => `<span class="badge">${status}</span>` };
 
     const origSelect = apiClient.select;
-    apiClient.select = jest.fn()
+    apiClient.select = jest
+      .fn()
       .mockResolvedValueOnce({
         data: [{ organisations: { id: 'org-1', company_name: 'Test Co' }, status: 'nominated', score: 80 }],
       })
       .mockResolvedValueOnce({
-        data: [{ entry_number: 'E-001', organisations: { id: 'org-1', company_name: 'Test Co' }, entry_title: 'Test', vote_count: 5, allow_public_voting: true }],
+        data: [
+          {
+            entry_number: 'E-001',
+            organisations: { id: 'org-1', company_name: 'Test Co' },
+            entry_title: 'Test',
+            vote_count: 5,
+            allow_public_voting: true,
+          },
+        ],
       });
 
     await awardsModule.viewDetails('award-1');
@@ -1288,7 +1307,14 @@ describe('Awards Module - updateStats()', () => {
     awardsModule._pagination = { page: 1, totalPages: 1, count: 100, pageSize: 50 };
     STATE.allAwards = [...sampleAwards];
     // Create stats elements
-    const els = ['statsTotalAwards', 'statsActiveAwards', 'statsWithNominees', 'statsWithWinners', 'statsCounties', 'statsSectors'];
+    const els = [
+      'statsTotalAwards',
+      'statsActiveAwards',
+      'statsWithNominees',
+      'statsWithWinners',
+      'statsCounties',
+      'statsSectors',
+    ];
     const created = els.map((id) => {
       let el = document.getElementById(id);
       if (!el) {
@@ -1307,7 +1333,14 @@ describe('Awards Module - updateStats()', () => {
   test('uses array length in non-paginated mode', () => {
     awardsModule._serverPagination = false;
     STATE.allAwards = [...sampleAwards];
-    const els = ['statsTotalAwards', 'statsActiveAwards', 'statsWithNominees', 'statsWithWinners', 'statsCounties', 'statsSectors'];
+    const els = [
+      'statsTotalAwards',
+      'statsActiveAwards',
+      'statsWithNominees',
+      'statsWithWinners',
+      'statsCounties',
+      'statsSectors',
+    ];
     const created = els.map((id) => {
       const el = document.createElement('span');
       el.id = id;
@@ -1341,7 +1374,18 @@ describe('Awards Module - populateSeasonDropdown()', () => {
 describe('Awards Module - applySeasonDates()', () => {
   test('applies season dates to form fields', () => {
     // Create all required form fields
-    const fields = ['awardFormSeason', 'awardFormEntryOpen', 'awardFormEntryClose', 'awardFormNomineesAnnouncement', 'awardFormJudgingOpen', 'awardFormJudgingClose', 'awardFormVotingOpen', 'awardFormVotingClose', 'awardFormWinnersAnnouncement', 'awardFormYear'];
+    const fields = [
+      'awardFormSeason',
+      'awardFormEntryOpen',
+      'awardFormEntryClose',
+      'awardFormNomineesAnnouncement',
+      'awardFormJudgingOpen',
+      'awardFormJudgingClose',
+      'awardFormVotingOpen',
+      'awardFormVotingClose',
+      'awardFormWinnersAnnouncement',
+      'awardFormYear',
+    ];
     const created = fields.map((id) => {
       const el = id === 'awardFormSeason' ? document.createElement('select') : document.createElement('input');
       el.id = id;
@@ -1350,14 +1394,21 @@ describe('Awards Module - applySeasonDates()', () => {
     });
 
     global.settingsModule = {
-      allSeasons: [{
-        id: 's1', name: 'Season 1', year: 2026,
-        entry_open_date: '2026-01-01', entry_close_date: '2026-03-01',
-        nominees_announcement_date: '2026-04-01',
-        judging_open_date: '2026-05-01', judging_close_date: '2026-06-01',
-        voting_open_date: '2026-07-01', voting_close_date: '2026-08-01',
-        winners_announcement_date: '2026-09-01',
-      }],
+      allSeasons: [
+        {
+          id: 's1',
+          name: 'Season 1',
+          year: 2026,
+          entry_open_date: '2026-01-01',
+          entry_close_date: '2026-03-01',
+          nominees_announcement_date: '2026-04-01',
+          judging_open_date: '2026-05-01',
+          judging_close_date: '2026-06-01',
+          voting_open_date: '2026-07-01',
+          voting_close_date: '2026-08-01',
+          winners_announcement_date: '2026-09-01',
+        },
+      ],
     };
 
     // Add option so setting .value on the <select> actually takes effect
@@ -1384,11 +1435,23 @@ describe('Awards Module - openCreateModal()', () => {
   test('opens create modal and sets form fields', () => {
     // Create required form elements
     const fieldIds = [
-      'awardFormId', 'awardFormName', 'awardFormYear', 'awardFormStatus',
-      'awardFormEntryOpen', 'awardFormEntryClose', 'awardFormNomineesAnnouncement',
-      'awardFormJudgingOpen', 'awardFormJudgingClose', 'awardFormVotingOpen',
-      'awardFormVotingClose', 'awardFormWinnersAnnouncement', 'awardFormDescription',
-      'awardFormPrevWinner', 'awardFormPrev2nd', 'awardFormPrev3rd', 'awardFormModalTitle',
+      'awardFormId',
+      'awardFormName',
+      'awardFormYear',
+      'awardFormStatus',
+      'awardFormEntryOpen',
+      'awardFormEntryClose',
+      'awardFormNomineesAnnouncement',
+      'awardFormJudgingOpen',
+      'awardFormJudgingClose',
+      'awardFormVotingOpen',
+      'awardFormVotingClose',
+      'awardFormWinnersAnnouncement',
+      'awardFormDescription',
+      'awardFormPrevWinner',
+      'awardFormPrev2nd',
+      'awardFormPrev3rd',
+      'awardFormModalTitle',
     ];
     const selectIds = ['awardFormCounty', 'awardFormSector', 'awardFormSeason'];
     const allIds = [...fieldIds, ...selectIds];
@@ -1429,11 +1492,23 @@ describe('Awards Module - openCreateModal()', () => {
 describe('Awards Module - openEditModal()', () => {
   test('opens edit modal with existing award data', () => {
     const fieldIds = [
-      'awardFormId', 'awardFormName', 'awardFormYear', 'awardFormStatus',
-      'awardFormEntryOpen', 'awardFormEntryClose', 'awardFormNomineesAnnouncement',
-      'awardFormJudgingOpen', 'awardFormJudgingClose', 'awardFormVotingOpen',
-      'awardFormVotingClose', 'awardFormWinnersAnnouncement', 'awardFormDescription',
-      'awardFormPrevWinner', 'awardFormPrev2nd', 'awardFormPrev3rd', 'awardFormModalTitle',
+      'awardFormId',
+      'awardFormName',
+      'awardFormYear',
+      'awardFormStatus',
+      'awardFormEntryOpen',
+      'awardFormEntryClose',
+      'awardFormNomineesAnnouncement',
+      'awardFormJudgingOpen',
+      'awardFormJudgingClose',
+      'awardFormVotingOpen',
+      'awardFormVotingClose',
+      'awardFormWinnersAnnouncement',
+      'awardFormDescription',
+      'awardFormPrevWinner',
+      'awardFormPrev2nd',
+      'awardFormPrev3rd',
+      'awardFormModalTitle',
     ];
     const selectIds = ['awardFormCounty', 'awardFormSector', 'awardFormSeason'];
     const allIds = [...fieldIds, ...selectIds];
@@ -1509,11 +1584,23 @@ describe('Awards Module - saveAward()', () => {
     origLogAwardAudit = awardsModule._logAwardAudit;
 
     const ids = [
-      'awardForm', 'awardFormId', 'awardFormName', 'awardFormYear', 'awardFormStatus',
-      'awardFormEntryOpen', 'awardFormEntryClose', 'awardFormNomineesAnnouncement',
-      'awardFormJudgingOpen', 'awardFormJudgingClose', 'awardFormVotingOpen',
-      'awardFormVotingClose', 'awardFormWinnersAnnouncement', 'awardFormDescription',
-      'awardFormPrevWinner', 'awardFormPrev2nd', 'awardFormPrev3rd',
+      'awardForm',
+      'awardFormId',
+      'awardFormName',
+      'awardFormYear',
+      'awardFormStatus',
+      'awardFormEntryOpen',
+      'awardFormEntryClose',
+      'awardFormNomineesAnnouncement',
+      'awardFormJudgingOpen',
+      'awardFormJudgingClose',
+      'awardFormVotingOpen',
+      'awardFormVotingClose',
+      'awardFormWinnersAnnouncement',
+      'awardFormDescription',
+      'awardFormPrevWinner',
+      'awardFormPrev2nd',
+      'awardFormPrev3rd',
     ];
     const selects = ['awardFormCounty', 'awardFormSector'];
     formEls = [];
@@ -1530,7 +1617,12 @@ describe('Awards Module - saveAward()', () => {
         el = document.createElement('form');
         el.checkValidity = jest.fn().mockReturnValue(true);
         el.reportValidity = jest.fn();
-      } else if (id === 'awardFormDescription' || id === 'awardFormPrevWinner' || id === 'awardFormPrev2nd' || id === 'awardFormPrev3rd') {
+      } else if (
+        id === 'awardFormDescription' ||
+        id === 'awardFormPrevWinner' ||
+        id === 'awardFormPrev2nd' ||
+        id === 'awardFormPrev3rd'
+      ) {
         el = document.createElement('textarea');
       } else {
         el = document.createElement('input');
@@ -1609,7 +1701,11 @@ describe('Awards Module - saveAward()', () => {
     awardsModule._logAwardAudit = jest.fn().mockResolvedValue();
 
     await awardsModule.saveAward();
-    expect(apiClient.update).toHaveBeenCalledWith('awards', 'existing-1', expect.objectContaining({ award_name: 'Test Award' }));
+    expect(apiClient.update).toHaveBeenCalledWith(
+      'awards',
+      'existing-1',
+      expect.objectContaining({ award_name: 'Test Award' })
+    );
 
     apiClient.select = origSelect;
     apiClient.update = origUpdate;
@@ -1894,9 +1990,9 @@ describe('Awards Module - rolloverToNextYear()', () => {
     utils.confirmDialog = jest.fn().mockResolvedValue(true);
     const origSelectAll = apiClient.selectAll;
     const origInsert = apiClient.insert;
-    apiClient.selectAll = jest.fn().mockResolvedValue([
-      { award_id: 'award-1', winner_position: 1, organisations: { company_name: 'Winner Co' } },
-    ]);
+    apiClient.selectAll = jest
+      .fn()
+      .mockResolvedValue([{ award_id: 'award-1', winner_position: 1, organisations: { company_name: 'Winner Co' } }]);
     apiClient.insert = jest.fn().mockResolvedValue({});
     awardsModule.loadAwards = jest.fn().mockResolvedValue();
 
@@ -1971,10 +2067,15 @@ describe('Awards Module - bulkApplySeasonDates()', () => {
   test('applies season dates to selected awards', async () => {
     awardsModule.selectedAwards = new Set(['award-1']);
     global.settingsModule = {
-      allSeasons: [{
-        id: 's1', name: 'Season 1', year: 2026,
-        entry_open_date: '2026-01-01', entry_close_date: '2026-03-01',
-      }],
+      allSeasons: [
+        {
+          id: 's1',
+          name: 'Season 1',
+          year: 2026,
+          entry_open_date: '2026-01-01',
+          entry_close_date: '2026-03-01',
+        },
+      ],
     };
     utils.confirmDialog = jest.fn().mockResolvedValue(true);
     const origUpdate = apiClient.update;
@@ -2140,11 +2241,13 @@ describe('Awards Module - bulkCloneSelected()', () => {
 
 describe('Awards Module - showVisualTimeline()', () => {
   test('shows single award timeline', () => {
-    STATE.allAwards = [{
-      ...sampleAwards[0],
-      entry_open_date: new Date(Date.now() - 86400000 * 5).toISOString(),
-      entry_close_date: new Date(Date.now() + 86400000 * 30).toISOString(),
-    }];
+    STATE.allAwards = [
+      {
+        ...sampleAwards[0],
+        entry_open_date: new Date(Date.now() - 86400000 * 5).toISOString(),
+        entry_close_date: new Date(Date.now() + 86400000 * 30).toISOString(),
+      },
+    ];
     expect(() => awardsModule.showVisualTimeline('award-1')).not.toThrow();
     const modal = document.getElementById('dynamicAwardModal');
     if (modal) modal.remove();
@@ -2175,10 +2278,7 @@ describe('Awards Module - showDuplicateDetection()', () => {
   });
 
   test('detects exact duplicates', () => {
-    STATE.allAwards = [
-      sampleAwards[0],
-      { ...sampleAwards[0], id: 'dupe-1' },
-    ];
+    STATE.allAwards = [sampleAwards[0], { ...sampleAwards[0], id: 'dupe-1' }];
     awardsModule.showDuplicateDetection();
     const modal = document.getElementById('dynamicAwardModal');
     expect(modal).toBeDefined();
@@ -2252,9 +2352,22 @@ describe('Awards Module - Saved Views', () => {
   });
 
   test('loadSavedAwardsView applies filters from saved view', () => {
-    localStorage.setItem('awardsSavedViews', JSON.stringify([
-      { name: 'Test', filters: { year: '2026', status: 'draft', sector: 'BUILDING & CONSTRUCTION', region: 'South East', county: 'Kent', search: 'test' } },
-    ]));
+    localStorage.setItem(
+      'awardsSavedViews',
+      JSON.stringify([
+        {
+          name: 'Test',
+          filters: {
+            year: '2026',
+            status: 'draft',
+            sector: 'BUILDING & CONSTRUCTION',
+            region: 'South East',
+            county: 'Kent',
+            search: 'test',
+          },
+        },
+      ])
+    );
     awardsModule.loadSavedAwardsView(0);
     expect(document.getElementById('awardsYearFilterSelect').value).toBe('2026');
   });
@@ -2265,10 +2378,13 @@ describe('Awards Module - Saved Views', () => {
   });
 
   test('deleteSavedAwardsView removes a view', () => {
-    localStorage.setItem('awardsSavedViews', JSON.stringify([
-      { name: 'Test 1', filters: {} },
-      { name: 'Test 2', filters: {} },
-    ]));
+    localStorage.setItem(
+      'awardsSavedViews',
+      JSON.stringify([
+        { name: 'Test 1', filters: {} },
+        { name: 'Test 2', filters: {} },
+      ])
+    );
     awardsModule.deleteSavedAwardsView(0);
     const views = JSON.parse(localStorage.getItem('awardsSavedViews'));
     expect(views.length).toBe(1);
@@ -2276,9 +2392,7 @@ describe('Awards Module - Saved Views', () => {
   });
 
   test('_renderSavedAwardsViews with saved views', () => {
-    localStorage.setItem('awardsSavedViews', JSON.stringify([
-      { name: 'View 1', filters: {} },
-    ]));
+    localStorage.setItem('awardsSavedViews', JSON.stringify([{ name: 'View 1', filters: {} }]));
     awardsModule._renderSavedAwardsViews();
     const el = document.getElementById('awardsSavedViewsList');
     expect(el.innerHTML).toContain('View 1');

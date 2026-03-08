@@ -559,11 +559,14 @@ describe('Notifications Module - _isPrefEnabled (real implementation)', () => {
     apiClient.select = jest.fn().mockResolvedValue({ data: [] });
     const result = await notificationsModule._isPrefEnabled('user@test.com', 'judge_assigned');
     expect(result).toBe(true);
-    expect(apiClient.select).toHaveBeenCalledWith('notification_preferences', expect.objectContaining({
-      select: 'enabled',
-      filters: { user_email: 'user@test.com', type: 'judge_assigned' },
-      pageSize: 1,
-    }));
+    expect(apiClient.select).toHaveBeenCalledWith(
+      'notification_preferences',
+      expect.objectContaining({
+        select: 'enabled',
+        filters: { user_email: 'user@test.com', type: 'judge_assigned' },
+        pageSize: 1,
+      })
+    );
   });
 
   test('returns the enabled value when preference exists', async () => {

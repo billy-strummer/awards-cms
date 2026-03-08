@@ -262,14 +262,16 @@ const entriesModule = {
       } else {
         // Client-side fallback
         const entries = this.allEntries || [];
-        document.getElementById('totalEntriesCount').textContent = entries.length;
-        document.getElementById('pendingEntriesCount').textContent = entries.filter(
-          (e) => e.status === 'submitted' || e.status === 'under_review'
-        ).length;
-        document.getElementById('shortlistedEntriesCount').textContent = entries.filter(
-          (e) => e.status === 'shortlisted'
-        ).length;
-        document.getElementById('winnerEntriesCount').textContent = entries.filter((e) => e.status === 'winner').length;
+        document.getElementById('totalEntriesCount').textContent = String(entries.length);
+        document.getElementById('pendingEntriesCount').textContent = String(
+          entries.filter((e) => e.status === 'submitted' || e.status === 'under_review').length
+        );
+        document.getElementById('shortlistedEntriesCount').textContent = String(
+          entries.filter((e) => e.status === 'shortlisted').length
+        );
+        document.getElementById('winnerEntriesCount').textContent = String(
+          entries.filter((e) => e.status === 'winner').length
+        );
       }
     } catch (error) {
       console.error('Error loading stats:', error);
@@ -286,7 +288,7 @@ const entriesModule = {
 
     // Use server total count when in server pagination mode
     const displayCount = this._serverPagination ? this._pagination.count : this.filteredEntries.length;
-    countSpan.textContent = displayCount;
+    countSpan.textContent = String(displayCount);
 
     if (this.filteredEntries.length === 0) {
       tbody.innerHTML = `

@@ -2355,7 +2355,14 @@ describe('Winners Module - generateMediaPackForWinner() validation', () => {
 describe('Winners Module - generateWinnerPackageForWinner() validation', () => {
   beforeEach(() => {
     STATE.allWinners = JSON.parse(JSON.stringify(sampleWinners));
-    ['wpIncludeBadge', 'wpIncludeSocialGraphics', 'wpIncludeCertificate', 'wpIncludePhotos', 'wpIncludeEmailBanner', 'wpIncludeWebBanner'].forEach((id) => {
+    [
+      'wpIncludeBadge',
+      'wpIncludeSocialGraphics',
+      'wpIncludeCertificate',
+      'wpIncludePhotos',
+      'wpIncludeEmailBanner',
+      'wpIncludeWebBanner',
+    ].forEach((id) => {
       if (!document.getElementById(id)) {
         const el = document.createElement('input');
         el.id = id;
@@ -2558,9 +2565,7 @@ describe('Winners Module - analyzeYearData()', () => {
   });
 
   test('handles winners with organisation sectors', () => {
-    const winnersWithOrg = [
-      { winner_name: 'A', awards: { year: 2025, award_name: 'X', organisation_id: 'org-1' } },
-    ];
+    const winnersWithOrg = [{ winner_name: 'A', awards: { year: 2025, award_name: 'X', organisation_id: 'org-1' } }];
     const orgMap = new Map([['org-1', { id: 'org-1', sector: 'Construction' }]]);
     const result = winnersModule.analyzeYearData(winnersWithOrg, [2025], orgMap);
     expect(result.sectorPerformance['Construction']).toBeDefined();
@@ -2658,8 +2663,15 @@ describe('Winners Module - exportYearComparison()', () => {
 // ---------------------------------------------------------------------------
 describe('Winners Module - displayComparisonResults()', () => {
   beforeEach(() => {
-    ['comparisonTotalWinners', 'comparisonReturningWinners', 'comparisonYearsCount',
-     'trendsByYear', 'returningWinnersList', 'sectorPerformance', 'categoryDistribution'].forEach((id) => {
+    [
+      'comparisonTotalWinners',
+      'comparisonReturningWinners',
+      'comparisonYearsCount',
+      'trendsByYear',
+      'returningWinnersList',
+      'sectorPerformance',
+      'categoryDistribution',
+    ].forEach((id) => {
       if (!document.getElementById(id)) {
         const el = document.createElement('div');
         el.id = id;
@@ -2673,7 +2685,17 @@ describe('Winners Module - displayComparisonResults()', () => {
       years: [2025, 2026],
       totalWinners: 10,
       winnersByYear: { 2025: 4, 2026: 6 },
-      returningWinners: [{ name: 'A', years: [2025, 2026], count: 2, awards: [{ year: 2025, award: 'X' }, { year: 2026, award: 'Y' }] }],
+      returningWinners: [
+        {
+          name: 'A',
+          years: [2025, 2026],
+          count: 2,
+          awards: [
+            { year: 2025, award: 'X' },
+            { year: 2026, award: 'Y' },
+          ],
+        },
+      ],
       sectorPerformance: {},
       categoryDistribution: {},
     };
@@ -2737,7 +2759,15 @@ describe('Winners Module - renderReturningWinners()', () => {
   test('renders table when returning winners exist', () => {
     const analysis = {
       returningWinners: [
-        { name: 'Acme Co', years: [2025, 2026], count: 2, awards: [{ year: 2025, award: 'X' }, { year: 2026, award: 'Y' }] },
+        {
+          name: 'Acme Co',
+          years: [2025, 2026],
+          count: 2,
+          awards: [
+            { year: 2025, award: 'X' },
+            { year: 2026, award: 'Y' },
+          ],
+        },
       ],
     };
     winnersModule.renderReturningWinners(analysis);
@@ -2921,7 +2951,9 @@ describe('Winners Module - bulkExportWinners() edge cases', () => {
     jest.spyOn(document, 'createElement').mockImplementation((tag) => {
       const el = origCreateElement(tag);
       if (tag === 'a') {
-        el.click = () => { clickCalled = true; };
+        el.click = () => {
+          clickCalled = true;
+        };
       }
       return el;
     });
@@ -3075,7 +3107,9 @@ describe('Winners Module - mediaPackWinnerId / winnerPackageWinnerId', () => {
   });
 
   test('winnerPackageWinnerId initializes to null', () => {
-    expect(winnersModule.winnerPackageWinnerId === null || winnersModule.winnerPackageWinnerId !== undefined).toBe(true);
+    expect(winnersModule.winnerPackageWinnerId === null || winnersModule.winnerPackageWinnerId !== undefined).toBe(
+      true
+    );
   });
 
   test('importWinnersData property exists', () => {

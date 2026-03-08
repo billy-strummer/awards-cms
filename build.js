@@ -166,8 +166,8 @@ async function build() {
 
   // Try esbuild for CSS minification
   try {
-    const esbuild = require('esbuild');
-    const result = await esbuild.transform(cssContent, {
+    const esbuildCss = require('esbuild');
+    const result = await esbuildCss.transform(cssContent, {
       loader: 'css',
       minify: true,
     });

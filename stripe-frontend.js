@@ -124,7 +124,7 @@ const stripeFrontend = {
     container.innerHTML = `
       <button class="btn btn-success" data-action="stripeFrontend.createCheckoutSession" data-id="${entryId}" data-amount="${amount}" data-description="Entry Fee"
               aria-label="Pay entry fee of ${amount} pounds">
-        <i class="bi bi-credit-card me-2"></i>Pay &pound;${parseFloat(amount).toFixed(2)}
+        <i class="bi bi-credit-card me-2"></i>Pay &pound;${parseFloat(String(amount)).toFixed(2)}
       </button>
       <button class="btn btn-outline-secondary ms-2" data-action="stripeFrontend.checkPaymentStatus" data-id="${entryId}"
               aria-label="Check payment status">

@@ -681,14 +681,14 @@ const emailListsModule = {
   /**
    * Preview a CSV file showing its first few rows
    * @param {File} file - The CSV file to preview
-   * @returns {void}
+   * @returns {Promise<void>}
    */
   async previewCSV(file) {
     if (!file) return;
 
     const reader = new FileReader();
     reader.onload = (e) => {
-      const text = e.target.result;
+      const text = /** @type {string} */ (e.target.result);
       const lines = text.split('\n').filter((line) => line.trim());
       const hasHeader = document.getElementById('csvHasHeader').checked;
 
@@ -811,7 +811,7 @@ const emailListsModule = {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => {
-        const text = e.target.result;
+        const text = /** @type {string} */ (e.target.result);
         const lines = text.split('\n').filter((line) => line.trim());
         const hasHeader = document.getElementById('csvHasHeader').checked;
 
@@ -1259,7 +1259,7 @@ const emailListsModule = {
   /**
    * Open the add single subscriber modal
    * @param {string} listId - The list ID to add the subscriber to
-   * @returns {void}
+   * @returns {Promise<void>}
    */
   async addSubscriber(listId) {
     const modalHtml = `

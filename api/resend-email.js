@@ -248,7 +248,8 @@ async function sendCampaignEmail(campaignId) {
         if (r.status === 'fulfilled' && r.value.success) sent++;
         else {
           failed++;
-          errors.push(r.reason?.message || r.value?.error || 'Unknown');
+          // @ts-ignore - TS doesn't narrow PromiseSettledResult well
+          errors.push(/** @type {any} */ (r).reason?.message || /** @type {any} */ (r).value?.error || 'Unknown');
         }
       });
 
@@ -405,7 +406,7 @@ async function sendInvoiceEmail({ to, subject, message, cc, invoice }) {
   const html = wrapEmailTemplate(subject, bodyHtml, '', {}, 'Invoice');
 
   const emailOpts = { to, subject, html, tags: [{ name: 'template', value: 'invoice' }] };
-  if (cc) emailOpts.to = [to, cc];
+  if (cc) emailOpts.to = /** @type {any} */ ([to, cc]);
 
   return sendEmail(emailOpts);
 }

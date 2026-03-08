@@ -692,9 +692,9 @@ const orgsModule = {
       totalFiltered = this._srvPagination.count;
       const from = (this._srvPagination.page - 1) * this._srvPagination.pageSize + 1;
       const to = Math.min(this._srvPagination.page * this._srvPagination.pageSize, totalFiltered);
-      if (count) count.textContent = totalFiltered;
+      if (count) count.textContent = String(totalFiltered);
       if (showing) showing.textContent = pageOrgs.length > 0 ? `${from}-${to}` : '0';
-      if (total) total.textContent = totalFiltered;
+      if (total) total.textContent = String(totalFiltered);
     } else {
       totalFiltered = STATE.filteredOrganisations.length;
       const totalPages = Math.max(1, Math.ceil(totalFiltered / this._pageSize));
@@ -2062,7 +2062,7 @@ const orgsModule = {
         inputElement.value = '';
       };
 
-      img.src = e.target.result;
+      img.src = /** @type {string} */ (e.target.result);
     };
 
     reader.onerror = () => {
@@ -2282,7 +2282,7 @@ const orgsModule = {
    * Set logo from media gallery
    * @param {string} orgId - Organisation ID
    * @param {string} fileUrl - URL of the selected image
-   * @param {string} mediaId - Media ID
+   * @param {string} _mediaId - Media ID
    */
   async setLogoFromGallery(orgId, fileUrl, _mediaId) {
     try {
@@ -2316,7 +2316,7 @@ const orgsModule = {
    * Fetch company logo from their website URL
    * @param {string} orgId - Organisation ID
    * @param {string} [websiteUrl] - Company website URL (optional, looked up from state)
-   * @param {string} [companyName] - Company name (optional)
+   * @param {string} [_companyName] - Company name (optional)
    */
   async fetchLogoFromWebsite(orgId, websiteUrl, _companyName) {
     try {
@@ -2572,7 +2572,7 @@ const orgsModule = {
 
   /**
    * Enable edit mode for organisation profile
-   * @param {string} orgId - Organisation ID
+   * @param {string} _orgId - Organisation ID
    */
   enableEditMode(_orgId) {
     // Hide view elements and show edit elements
@@ -2981,7 +2981,7 @@ const orgsModule = {
     const bar = document.getElementById('bulkActionsBar');
     const countEl = document.getElementById('selectedCount');
     if (bar && countEl) {
-      countEl.textContent = this.selectedOrgs.size;
+      countEl.textContent = String(this.selectedOrgs.size);
       bar.style.display = this.selectedOrgs.size > 0 ? 'block' : 'none';
     }
   },
@@ -7017,7 +7017,10 @@ const orgsModule = {
       });
       const data = result.data || [];
       // Sort pinned first, then by created_at descending (apiClient only supports single sort)
-      data.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || new Date(b.created_at) - new Date(a.created_at));
+      data.sort(
+        (a, b) =>
+          (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || Number(new Date(b.created_at)) - Number(new Date(a.created_at))
+      );
       return data;
     } catch (e) {
       return [];

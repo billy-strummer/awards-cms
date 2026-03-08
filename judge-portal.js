@@ -279,7 +279,7 @@ const judgePortal = {
     const container = document.getElementById('entriesList');
     const totalCount = document.getElementById('totalEntriesCount');
 
-    totalCount.textContent = this._pagination.count;
+    totalCount.textContent = String(this._pagination.count);
 
     if (this.assignedEntries.length === 0) {
       container.innerHTML = `
@@ -808,8 +808,8 @@ const judgePortal = {
     const pending = this.assignedEntries.length - scored;
     const percent = this.assignedEntries.length > 0 ? Math.round((scored / this.assignedEntries.length) * 100) : 0;
 
-    document.getElementById('scoredCount').textContent = scored;
-    document.getElementById('pendingCount').textContent = pending;
+    document.getElementById('scoredCount').textContent = String(scored);
+    document.getElementById('pendingCount').textContent = String(pending);
     document.getElementById('completionPercent').textContent = percent + '%';
     document.getElementById('progressBar').style.width = percent + '%';
   },

@@ -165,10 +165,10 @@ const crmModule = {
     const el2 = document.getElementById('activeDealsCount');
     const el3 = document.getElementById('recentCommunicationsCount');
     const el4 = document.getElementById('pendingFollowUpsCount');
-    if (el1) el1.textContent = stats.totalCompanies;
-    if (el2) el2.textContent = stats.activeDeals;
-    if (el3) el3.textContent = stats.recentCommunications;
-    if (el4) el4.textContent = stats.pendingFollowUps;
+    if (el1) el1.textContent = String(stats.totalCompanies);
+    if (el2) el2.textContent = String(stats.activeDeals);
+    if (el3) el3.textContent = String(stats.recentCommunications);
+    if (el4) el4.textContent = String(stats.pendingFollowUps);
 
     // Populate segment filter dropdown from unique segments on current page
     const segmentFilter = document.getElementById('crmSegmentFilter');
@@ -988,8 +988,10 @@ const crmModule = {
   async logCommunication(organisationId = null) {
     // Guard against receiving an Event object from the action registry
     // when invoked from a button without data-id
+    // @ts-ignore - guard against Event objects from action registry
     if (
-      organisationId instanceof Event ||
+      /** @type {any} */ (organisationId) instanceof Event ||
+      // @ts-ignore
       (organisationId && typeof organisationId === 'object' && organisationId.target)
     ) {
       organisationId = null;

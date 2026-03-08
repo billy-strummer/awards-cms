@@ -86,10 +86,10 @@ const mediaGalleryModule = {
       if (totalVideosEl) totalVideosEl.textContent = totalVideos || 0;
 
       const untaggedPhotosEl = document.getElementById('untaggedPhotosCountGallery');
-      if (untaggedPhotosEl) untaggedPhotosEl.textContent = untaggedPhotos || 0;
+      if (untaggedPhotosEl) untaggedPhotosEl.textContent = String(untaggedPhotos || 0);
 
       const eventsWithMediaEl = document.getElementById('totalEventsWithMediaCount');
-      if (eventsWithMediaEl) eventsWithMediaEl.textContent = uniqueEvents.size || 0;
+      if (eventsWithMediaEl) eventsWithMediaEl.textContent = String(uniqueEvents.size || 0);
 
       // Update dashboard main media card (total photos + videos)
       const totalMediaEl = document.getElementById('totalMediaItems');
@@ -2070,10 +2070,10 @@ const mediaGalleryModule = {
         filteredPhotos.sort((a, b) => (b.title || '').localeCompare(a.title || ''));
         break;
       case 'date_newest':
-        filteredPhotos.sort((a, b) => new Date(b.uploaded_at || 0) - new Date(a.uploaded_at || 0));
+        filteredPhotos.sort((a, b) => Number(new Date(b.uploaded_at || 0)) - Number(new Date(a.uploaded_at || 0)));
         break;
       case 'date_oldest':
-        filteredPhotos.sort((a, b) => new Date(a.uploaded_at || 0) - new Date(b.uploaded_at || 0));
+        filteredPhotos.sort((a, b) => Number(new Date(a.uploaded_at || 0)) - Number(new Date(b.uploaded_at || 0)));
         break;
       case 'org_asc':
         filteredPhotos.sort((a, b) =>
@@ -2500,10 +2500,10 @@ const mediaGalleryModule = {
         filtered.sort((a, b) => (b.title || '').localeCompare(a.title || ''));
         break;
       case 'date_newest':
-        filtered.sort((a, b) => new Date(b.uploaded_at || 0) - new Date(a.uploaded_at || 0));
+        filtered.sort((a, b) => Number(new Date(b.uploaded_at || 0)) - Number(new Date(a.uploaded_at || 0)));
         break;
       case 'date_oldest':
-        filtered.sort((a, b) => new Date(a.uploaded_at || 0) - new Date(b.uploaded_at || 0));
+        filtered.sort((a, b) => Number(new Date(a.uploaded_at || 0)) - Number(new Date(b.uploaded_at || 0)));
         break;
       case 'org_asc':
         filtered.sort((a, b) =>
@@ -2955,7 +2955,7 @@ const mediaGalleryModule = {
 
     // Store files and show publish prompt modal
     this.draggedFiles = validFiles;
-    document.getElementById('dragDropFileCount').textContent = validFiles.length;
+    document.getElementById('dragDropFileCount').textContent = String(validFiles.length);
     document.getElementById('dragDropFileCountText').textContent =
       `${validFiles.length} file${validFiles.length > 1 ? 's' : ''}`;
     document.getElementById('dragDropPublished').checked = true;
@@ -3236,7 +3236,7 @@ const mediaGalleryModule = {
     }
 
     document.getElementById('filePreviewContainer').classList.remove('d-none');
-    countSpan.textContent = this.selectedFiles.length;
+    countSpan.textContent = String(this.selectedFiles.length);
 
     container.innerHTML = '';
 
@@ -3749,7 +3749,7 @@ const mediaGalleryModule = {
 
     if (this.selectedPhotoIds.size > 0) {
       bar.classList.remove('d-none');
-      countSpan.textContent = this.selectedPhotoIds.size;
+      countSpan.textContent = String(this.selectedPhotoIds.size);
     } else {
       bar.classList.add('d-none');
     }
@@ -5785,7 +5785,7 @@ const mediaGalleryModule = {
             <p class="mb-2 text-muted small">Preview (actual photos will keep original resolution):</p>
             <img src="${canvas.toDataURL()}" class="img-fluid rounded border" alt="Watermark Preview">`;
         };
-        watermark.src = e.target.result;
+        watermark.src = /** @type {string} */ (e.target.result);
       };
       reader.readAsDataURL(fileInput.files[0]);
     };

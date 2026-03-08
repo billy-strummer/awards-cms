@@ -1468,7 +1468,7 @@ const paymentsModule = {
         unpaidInvoices
           .map(
             (inv) =>
-              `<option value="${inv.id}">${inv.invoice_number} - ${inv.organisations?.company_name} (&pound;${parseFloat(inv.total_amount - inv.paid_amount).toFixed(2)} due)</option>`
+              `<option value="${inv.id}">${inv.invoice_number} - ${inv.organisations?.company_name} (&pound;${parseFloat(String(inv.total_amount - inv.paid_amount)).toFixed(2)} due)</option>`
           )
           .join('');
 
@@ -1952,9 +1952,9 @@ const paymentsModule = {
     const overdueInvoicesEl = document.getElementById('overdueInvoicesCount');
     const totalOutstandingEl = document.getElementById('totalOutstandingAmount');
 
-    if (totalInvoicesEl) totalInvoicesEl.textContent = totalInvoices;
-    if (paidInvoicesEl) paidInvoicesEl.textContent = paidInvoices;
-    if (overdueInvoicesEl) overdueInvoicesEl.textContent = overdueInvoices;
+    if (totalInvoicesEl) totalInvoicesEl.textContent = String(totalInvoices);
+    if (paidInvoicesEl) paidInvoicesEl.textContent = String(paidInvoices);
+    if (overdueInvoicesEl) overdueInvoicesEl.textContent = String(overdueInvoices);
     if (totalOutstandingEl) totalOutstandingEl.textContent = `\u00A3${totalOutstanding.toFixed(2)}`;
 
     const totalPayments = this.currentPayments.length;
@@ -1971,7 +1971,7 @@ const paymentsModule = {
     const totalPaymentsAmtEl = document.getElementById('totalPaymentsAmount');
     const monthlyPaymentsEl = document.getElementById('monthlyPaymentsAmount');
 
-    if (totalPaymentsEl) totalPaymentsEl.textContent = totalPayments;
+    if (totalPaymentsEl) totalPaymentsEl.textContent = String(totalPayments);
     if (totalPaymentsAmtEl) totalPaymentsAmtEl.textContent = `\u00A3${totalReceived.toFixed(2)}`;
     if (monthlyPaymentsEl) monthlyPaymentsEl.textContent = `\u00A3${monthlyTotal.toFixed(2)}`;
   },
@@ -2377,7 +2377,7 @@ const paymentsModule = {
 
     overdueInvoices.forEach((inv) => {
       const dueDate = inv.due_date ? new Date(inv.due_date) : null;
-      const daysOverdue = dueDate ? Math.floor((now - dueDate) / (1000 * 60 * 60 * 24)) : 0;
+      const daysOverdue = dueDate ? Math.floor((Number(now) - Number(dueDate)) / (1000 * 60 * 60 * 24)) : 0;
       const companyName = inv.organisations?.company_name || 'N/A';
       const amount = parseFloat(inv.balance_due || inv.total_amount || 0).toFixed(2);
 

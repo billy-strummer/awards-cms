@@ -972,7 +972,10 @@ describe('Ticket Module - generateETicket with QR code (lines 308-316)', () => {
   test('generates QR code when window.QRCode is available', async () => {
     // Replace setTimeout with an immediate version to avoid timer issues
     const origSetTimeout = global.setTimeout;
-    global.setTimeout = (fn, _delay) => { fn(); return 0; };
+    global.setTimeout = (fn, _delay) => {
+      fn();
+      return 0;
+    };
 
     apiClient.select = jest.fn().mockResolvedValue({
       data: [
@@ -1001,13 +1004,17 @@ describe('Ticket Module - generateETicket with QR code (lines 308-316)', () => {
         text() {}
         setDrawColor() {}
         line() {}
-        addImage(...args) { addImageMock(...args); }
-        save(...args) { saveMock(...args); }
+        addImage(...args) {
+          addImageMock(...args);
+        }
+        save(...args) {
+          saveMock(...args);
+        }
       },
     };
 
     // Mock QRCode constructor
-    global.window.QRCode = function(_canvas, _opts) {};
+    global.window.QRCode = function (_canvas, _opts) {};
     global.window.QRCode.CorrectLevel = { M: 1 };
 
     // Mock canvas.toDataURL since JSDOM doesn't support it
@@ -1061,7 +1068,9 @@ describe('Ticket Module - generateETicket without optional fields (branch covera
         setTextColor() {}
         setFontSize() {}
         setFont() {}
-        text(...args) { textCalls.push(args); }
+        text(...args) {
+          textCalls.push(args);
+        }
         setDrawColor() {}
         line() {}
         addImage() {}
@@ -1235,10 +1244,7 @@ describe('Ticket Module - renderTicketDashboard branch coverage', () => {
           early_bird_deadline: '2027-01-01',
         },
       ])
-      .mockResolvedValueOnce([
-        { rsvp_status: 'confirmed' },
-        { rsvp_status: 'pending' },
-      ]);
+      .mockResolvedValueOnce([{ rsvp_status: 'confirmed' }, { rsvp_status: 'pending' }]);
 
     await ticketModule.renderTicketDashboard('ev1');
     const el = document.getElementById('ticketDashboardContainer');
@@ -1247,10 +1253,7 @@ describe('Ticket Module - renderTicketDashboard branch coverage', () => {
   });
 
   test('renders dashboard with null types and guests', async () => {
-    apiClient.selectAll = jest
-      .fn()
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce(null);
+    apiClient.selectAll = jest.fn().mockResolvedValueOnce(null).mockResolvedValueOnce(null);
 
     await ticketModule.renderTicketDashboard('ev1');
     const el = document.getElementById('ticketDashboardContainer');
@@ -1293,11 +1296,7 @@ describe('Ticket Module - processWaitlist branch coverage', () => {
   });
 
   test('handles null types, waitlist, and guests', async () => {
-    apiClient.selectAll = jest
-      .fn()
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce(null);
+    apiClient.selectAll = jest.fn().mockResolvedValueOnce(null).mockResolvedValueOnce(null).mockResolvedValueOnce(null);
     const toastSpy = jest.spyOn(utils, 'showToast');
 
     await ticketModule.processWaitlist('ev1');
@@ -1452,7 +1451,9 @@ describe('Ticket Module - additional branch coverage for || fallbacks', () => {
         setTextColor() {}
         setFontSize() {}
         setFont() {}
-        text(...args) { textCalls.push(args); }
+        text(...args) {
+          textCalls.push(args);
+        }
         setDrawColor() {}
         line() {}
         addImage() {}
@@ -1478,7 +1479,15 @@ describe('Ticket Module - additional branch coverage for || fallbacks', () => {
     apiClient.selectAll = jest
       .fn()
       .mockResolvedValueOnce([
-        { id: 'tt1', name: 'Nullqty', price: 99, quantity: null, includes_table: false, early_bird_price: null, early_bird_deadline: null },
+        {
+          id: 'tt1',
+          name: 'Nullqty',
+          price: 99,
+          quantity: null,
+          includes_table: false,
+          early_bird_price: null,
+          early_bird_deadline: null,
+        },
       ])
       .mockResolvedValueOnce([{ rsvp_status: 'confirmed' }]);
 
@@ -1498,7 +1507,15 @@ describe('Ticket Module - additional branch coverage for || fallbacks', () => {
     apiClient.selectAll = jest
       .fn()
       .mockResolvedValueOnce([
-        { id: 'tt1', name: 'BadPrice', price: null, quantity: 10, includes_table: false, early_bird_price: null, early_bird_deadline: null },
+        {
+          id: 'tt1',
+          name: 'BadPrice',
+          price: null,
+          quantity: 10,
+          includes_table: false,
+          early_bird_price: null,
+          early_bird_deadline: null,
+        },
       ])
       .mockResolvedValueOnce([{ rsvp_status: 'confirmed' }]);
 
@@ -1525,9 +1542,9 @@ describe('Ticket Module - additional branch coverage for || fallbacks', () => {
   test('processWaitlist with null waitlist and available spots (line 505 || fallback)', async () => {
     apiClient.selectAll = jest
       .fn()
-      .mockResolvedValueOnce([{ quantity: 100 }])   // types: capacity = 100
-      .mockResolvedValueOnce(null)                    // waitlist: null triggers || []
-      .mockResolvedValueOnce([]);                     // guests: 0, so available = 100
+      .mockResolvedValueOnce([{ quantity: 100 }]) // types: capacity = 100
+      .mockResolvedValueOnce(null) // waitlist: null triggers || []
+      .mockResolvedValueOnce([]); // guests: 0, so available = 100
     const toastSpy = jest.spyOn(utils, 'showToast');
 
     await ticketModule.processWaitlist('ev1');

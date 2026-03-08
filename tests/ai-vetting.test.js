@@ -800,7 +800,8 @@ describe('AI Vetting Module - runVetting full flow', () => {
     apiClient.insert = jest.fn().mockResolvedValue({ data: [{ id: 'run-1' }] });
     apiClient.update = jest.fn().mockResolvedValue({});
 
-    jest.spyOn(aiVettingModule, 'vetSingleCompany')
+    jest
+      .spyOn(aiVettingModule, 'vetSingleCompany')
       .mockResolvedValueOnce({ status: 'flagged' })
       .mockResolvedValueOnce({ status: 'verified' });
 

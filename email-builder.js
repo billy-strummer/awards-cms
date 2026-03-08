@@ -625,7 +625,7 @@ const emailBuilder = {
     if (dateInput && daysEl) {
       const target = new Date(dateInput.value + 'T00:00:00');
       const now = new Date();
-      const diff = Math.max(0, target - now);
+      const diff = Math.max(0, Number(target) - Number(now));
       const days = Math.floor(diff / (1000 * 60 * 60 * 24));
       const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
       const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
@@ -2703,7 +2703,7 @@ ${content}
         hour: '2-digit',
         minute: '2-digit',
       };
-      previewEl.innerHTML = `<i class="bi bi-clock me-1"></i>Will send: ${dt.toLocaleDateString('en-GB', opts)}`;
+      previewEl.innerHTML = `<i class="bi bi-clock me-1"></i>Will send: ${dt.toLocaleDateString('en-GB', /** @type {any} */ (opts))}`;
     } else {
       previewEl.textContent = '';
     }
@@ -2765,7 +2765,7 @@ ${content}
     if (
       !(await utils.confirmDialog({
         title: 'Schedule Campaign',
-        message: `Schedule "${subject}" to ${count || 0} subscribers in "${listName}"?\n\nScheduled for: ${scheduledAt.toLocaleDateString('en-GB', opts)}`,
+        message: `Schedule "${subject}" to ${count || 0} subscribers in "${listName}"?\n\nScheduled for: ${scheduledAt.toLocaleDateString('en-GB', /** @type {any} */ (opts))}`,
         confirmText: 'Schedule',
         danger: false,
       }))
@@ -2802,7 +2802,10 @@ ${content}
 
       if (error) throw error;
 
-      utils.showToast(`Campaign scheduled for ${scheduledAt.toLocaleDateString('en-GB', opts)}`, 'success');
+      utils.showToast(
+        `Campaign scheduled for ${scheduledAt.toLocaleDateString('en-GB', /** @type {any} */ (opts))}`,
+        'success'
+      );
       this.loadCampaignLog();
     } catch (error) {
       console.error('Error scheduling campaign:', error);
@@ -3168,7 +3171,7 @@ ${content}
     if (controls) controls.remove();
 
     // Insert after original
-    wrapper.insertAdjacentElement('afterend', clone);
+    wrapper.insertAdjacentElement('afterend', /** @type {Element} */ (clone));
 
     // Find original block type
     const originalBlock = this.blocks.find((b) => b.id === blockId);

@@ -66,7 +66,7 @@ async function assignJudgesToEntries(awardId = null) {
 
     if (!entries || entries.length === 0) {
       console.log('ℹ️ No entries found that need judging');
-      return { assigned: 0, conflicts: 0 };
+      return { assigned: 0, conflicts: 0, totalEntries: 0, totalJudges: 0 };
     }
 
     console.log(`📝 Found ${entries.length} entries to assign`);
@@ -484,12 +484,16 @@ async function getJudgingStatistics(awardId = null) {
       totalScores += completeScores.length;
     });
 
-    stats.averageScoresPerEntry = entries.length > 0 ? (totalScores / entries.length).toFixed(2) : 0;
+    /** @type {any} */
+    const avgScores = entries.length > 0 ? (totalScores / entries.length).toFixed(2) : 0;
+    stats.averageScoresPerEntry = avgScores;
 
-    stats.completionRate =
+    /** @type {any} */
+    const completionRate =
       entries.length > 0 ? ((stats.entriesFullyJudged / entries.length) * 100).toFixed(1) + '%' : '0%';
+    stats.completionRate = completionRate;
 
-    return stats;
+    return /** @type {any} */ (stats);
   } catch (error) {
     console.error('Error getting judging statistics:', error);
     throw error;

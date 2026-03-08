@@ -312,9 +312,9 @@ const reportsAnalytics = {
     const years = new Set();
     [...awards, ...winners, ...orgs, ...entries].forEach((r) => {
       const y = this._getYear(r);
-      if (y && y.length === 4 && !isNaN(y)) years.add(y);
+      if (y && y.length === 4 && !isNaN(Number(y))) years.add(y);
     });
-    const sortedYears = [...years].sort((a, b) => b - a);
+    const sortedYears = [...years].sort((a, b) => Number(b) - Number(a));
     select.innerHTML =
       '<option value="all">All Years</option>' +
       sortedYears
@@ -520,7 +520,7 @@ const reportsAnalytics = {
     const addYears = (arr) =>
       arr.forEach((r) => {
         const y = this._getYear(r);
-        if (y && y.length === 4 && !isNaN(y)) yearSet.add(y);
+        if (y && y.length === 4 && !isNaN(Number(y))) yearSet.add(y);
       });
     addYears(awards);
     addYears(winners);
@@ -936,7 +936,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
       // Save preference
       const isDark = document.body.classList.contains('dark-mode');
-      localStorage.setItem('darkMode', isDark);
+      localStorage.setItem('darkMode', String(isDark));
 
       utils.showToast(isDark ? 'Dark mode enabled' : 'Light mode enabled', 'info');
     });
@@ -1008,7 +1008,8 @@ document.addEventListener('DOMContentLoaded', function () {
       // e.g. "callback:eventsModule.filterDataIssues"
       const fn = spec.replace('callback:', '');
       const parts = fn.split('.');
-      let obj = window;
+      // @ts-ignore - dynamic window property access
+      let obj = /** @type {any} */ (window);
       for (const p of parts.slice(0, -1)) obj = obj[p];
       if (obj && typeof obj[parts[parts.length - 1]] === 'function') {
         obj[parts[parts.length - 1]]();
@@ -1048,7 +1049,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Close menu when clicking outside
     document.addEventListener('click', (e) => {
-      if (!quickActionsBtn.contains(e.target) && !quickActionsMenu.contains(e.target)) {
+      if (
+        !quickActionsBtn.contains(/** @type {Node} */ (e.target)) &&
+        !quickActionsMenu.contains(/** @type {Node} */ (e.target))
+      ) {
         quickActionsMenu.style.display = 'none';
         quickActionsBtn.classList.remove('active');
       }

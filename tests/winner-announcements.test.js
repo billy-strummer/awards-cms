@@ -1491,13 +1491,15 @@ describe('Winner Announcements - sendWinnerEmails edge cases', () => {
         return { data: [{ id: 'tmpl-1', subject: 'Congrats {winner_name}!', body: '<p>You won!</p>' }] };
       }
       return {
-        data: [{
-          id: 'w-1',
-          winner_name: 'Jane',
-          year: 2026,
-          organisations: { company_name: 'Acme', email: 'acme@test.com' },
-          awards: { award_name: 'Award', award_category: 'Cat' },
-        }],
+        data: [
+          {
+            id: 'w-1',
+            winner_name: 'Jane',
+            year: 2026,
+            organisations: { company_name: 'Acme', email: 'acme@test.com' },
+            awards: { award_name: 'Award', award_category: 'Cat' },
+          },
+        ],
       };
     });
     jest.spyOn(winnerAnnouncementsModule, 'checkEmbargo').mockResolvedValue(false);
@@ -1515,10 +1517,13 @@ describe('Winner Announcements - sendWinnerEmails edge cases', () => {
 
     expect(consoleSpy).toHaveBeenCalledWith('Email failed for', 'w-1', expect.any(Error));
     // _logAnnouncement should still be called even if fetch fails
-    expect(apiClient.insert).toHaveBeenCalledWith('announcements', expect.objectContaining({
-      winner_id: 'w-1',
-      channel: 'email',
-    }));
+    expect(apiClient.insert).toHaveBeenCalledWith(
+      'announcements',
+      expect.objectContaining({
+        winner_id: 'w-1',
+        channel: 'email',
+      })
+    );
 
     consoleSpy.mockRestore();
   });
@@ -1531,13 +1536,15 @@ describe('Winner Announcements - sendWinnerEmails edge cases', () => {
         return { data: [{ id: 'tmpl-1', subject: 'Congrats!', body: '<p>Body</p>' }] };
       }
       return {
-        data: [{
-          id: 'w-1',
-          winner_name: 'Jane',
-          year: 2026,
-          organisations: { company_name: 'Acme', email: null },
-          awards: { award_name: 'Award', award_category: 'Cat' },
-        }],
+        data: [
+          {
+            id: 'w-1',
+            winner_name: 'Jane',
+            year: 2026,
+            organisations: { company_name: 'Acme', email: null },
+            awards: { award_name: 'Award', award_category: 'Cat' },
+          },
+        ],
       };
     });
     jest.spyOn(winnerAnnouncementsModule, 'checkEmbargo').mockResolvedValue(false);
@@ -1552,11 +1559,14 @@ describe('Winner Announcements - sendWinnerEmails edge cases', () => {
     // fetch should NOT be called for winner without email
     expect(global.fetch).not.toHaveBeenCalled();
     // But log should still happen
-    expect(apiClient.insert).toHaveBeenCalledWith('announcements', expect.objectContaining({
-      winner_id: 'w-1',
-      channel: 'email',
-      status: 'sent',
-    }));
+    expect(apiClient.insert).toHaveBeenCalledWith(
+      'announcements',
+      expect.objectContaining({
+        winner_id: 'w-1',
+        channel: 'email',
+        status: 'sent',
+      })
+    );
   });
 
   test('throws when winner not found in database', async () => {
@@ -1582,16 +1592,26 @@ describe('Winner Announcements - sendWinnerEmails edge cases', () => {
     jest.spyOn(apiClient, 'select').mockImplementation(async () => {
       selectCallCount++;
       if (selectCallCount === 1) {
-        return { data: [{ id: 'tmpl-1', subject: 'Hi {winner_name}', body: '<p>{award_name} in {category} for {organisation} {year}</p>' }] };
+        return {
+          data: [
+            {
+              id: 'tmpl-1',
+              subject: 'Hi {winner_name}',
+              body: '<p>{award_name} in {category} for {organisation} {year}</p>',
+            },
+          ],
+        };
       }
       return {
-        data: [{
-          id: 'w-1',
-          winner_name: 'Jane',
-          year: 2026,
-          organisations: { company_name: 'Acme', email: 'acme@test.com' },
-          awards: { award_name: 'Best Award', award_category: 'Tech' },
-        }],
+        data: [
+          {
+            id: 'w-1',
+            winner_name: 'Jane',
+            year: 2026,
+            organisations: { company_name: 'Acme', email: 'acme@test.com' },
+            awards: { award_name: 'Best Award', award_category: 'Tech' },
+          },
+        ],
       };
     });
     jest.spyOn(winnerAnnouncementsModule, 'checkEmbargo').mockResolvedValue(false);
@@ -1603,13 +1623,16 @@ describe('Winner Announcements - sendWinnerEmails edge cases', () => {
 
     await winnerAnnouncementsModule.sendWinnerEmails(['w-1'], 'tmpl-1', '2026-06-01T12:00:00.000Z');
 
-    expect(apiClient.insert).toHaveBeenCalledWith('announcements', expect.objectContaining({
-      winner_id: 'w-1',
-      channel: 'email',
-      status: 'scheduled',
-      scheduled_for: '2026-06-01T12:00:00.000Z',
-      sent_at: null,
-    }));
+    expect(apiClient.insert).toHaveBeenCalledWith(
+      'announcements',
+      expect.objectContaining({
+        winner_id: 'w-1',
+        channel: 'email',
+        status: 'scheduled',
+        scheduled_for: '2026-06-01T12:00:00.000Z',
+        sent_at: null,
+      })
+    );
   });
 });
 
@@ -1948,23 +1971,23 @@ describe('Winner Announcements - createSocialPosts edge cases', () => {
       return { succeeded: items, failed: [] };
     });
 
-    await expect(
-      winnerAnnouncementsModule.createSocialPosts(['w-1'], ['twitter'])
-    ).rejects.toThrow('Winner not found');
+    await expect(winnerAnnouncementsModule.createSocialPosts(['w-1'], ['twitter'])).rejects.toThrow('Winner not found');
   });
 
   test('uses winner_name as company fallback when org company_name is missing', async () => {
     jest.spyOn(winnerAnnouncementsModule, 'checkEmbargo').mockResolvedValue(false);
     jest.spyOn(apiClient, 'select').mockResolvedValue({
-      data: [{
-        id: 'w-1',
-        winner_name: 'John Smith',
-        year: 2026,
-        organisation_id: 'org-1',
-        award_id: 'aw-1',
-        awards: { award_name: 'Best Award' },
-        organisations: { company_name: null },
-      }],
+      data: [
+        {
+          id: 'w-1',
+          winner_name: 'John Smith',
+          year: 2026,
+          organisation_id: 'org-1',
+          award_id: 'aw-1',
+          awards: { award_name: 'Best Award' },
+          organisations: { company_name: null },
+        },
+      ],
     });
     jest.spyOn(apiClient, 'insert').mockResolvedValue({ data: [{}] });
     jest.spyOn(utils, 'runBatchOperation').mockImplementation(async (items, fn) => {
@@ -1981,15 +2004,17 @@ describe('Winner Announcements - createSocialPosts edge cases', () => {
   test('uses current year when winner year is missing', async () => {
     jest.spyOn(winnerAnnouncementsModule, 'checkEmbargo').mockResolvedValue(false);
     jest.spyOn(apiClient, 'select').mockResolvedValue({
-      data: [{
-        id: 'w-1',
-        winner_name: 'Test',
-        year: null,
-        organisation_id: 'org-1',
-        award_id: 'aw-1',
-        awards: { award_name: 'Award' },
-        organisations: { company_name: 'Corp' },
-      }],
+      data: [
+        {
+          id: 'w-1',
+          winner_name: 'Test',
+          year: null,
+          organisation_id: 'org-1',
+          award_id: 'aw-1',
+          awards: { award_name: 'Award' },
+          organisations: { company_name: 'Corp' },
+        },
+      ],
     });
     jest.spyOn(apiClient, 'insert').mockResolvedValue({ data: [{}] });
     jest.spyOn(utils, 'runBatchOperation').mockImplementation(async (items, fn) => {

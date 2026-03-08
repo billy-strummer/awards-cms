@@ -528,7 +528,9 @@ describe('Voting Proxy API', () => {
     // Duplicate check returns no rows
     mockFrom.mockReturnValueOnce(chainable({ data: null, error: { code: 'PGRST116' } }));
     // Insert returns a non-unique constraint error
-    mockFrom.mockReturnValueOnce(chainable({ data: null, error: { code: '42P01', message: 'relation does not exist' } }));
+    mockFrom.mockReturnValueOnce(
+      chainable({ data: null, error: { code: '42P01', message: 'relation does not exist' } })
+    );
 
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
     const req = createReq({

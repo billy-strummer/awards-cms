@@ -412,7 +412,8 @@ describe('Accessibility Module - Tab Keyboard Navigation', () => {
     // Use fresh tab elements to avoid multiple keydown listeners stacking
     const container = document.createElement('ul');
     container.className = 'nav-tabs';
-    container.innerHTML = '<li><button class="nav-link">A</button></li><li><button class="nav-link">B</button></li><li><button class="nav-link">C</button></li>';
+    container.innerHTML =
+      '<li><button class="nav-link">A</button></li><li><button class="nav-link">B</button></li><li><button class="nav-link">C</button></li>';
     document.body.appendChild(container);
 
     const tabs = container.querySelectorAll('.nav-link');
@@ -436,7 +437,8 @@ describe('Accessibility Module - Tab Keyboard Navigation', () => {
   test('ArrowLeft wraps to last tab from first tab', () => {
     const container = document.createElement('ul');
     container.className = 'nav-tabs';
-    container.innerHTML = '<li><button class="nav-link">A</button></li><li><button class="nav-link">B</button></li><li><button class="nav-link">C</button></li>';
+    container.innerHTML =
+      '<li><button class="nav-link">A</button></li><li><button class="nav-link">B</button></li><li><button class="nav-link">C</button></li>';
     document.body.appendChild(container);
 
     const tabs = container.querySelectorAll('.nav-link');
@@ -458,7 +460,8 @@ describe('Accessibility Module - Tab Keyboard Navigation', () => {
   test('Home key moves focus to first tab', () => {
     const container = document.createElement('ul');
     container.className = 'nav-tabs';
-    container.innerHTML = '<li><button class="nav-link">A</button></li><li><button class="nav-link">B</button></li><li><button class="nav-link">C</button></li>';
+    container.innerHTML =
+      '<li><button class="nav-link">A</button></li><li><button class="nav-link">B</button></li><li><button class="nav-link">C</button></li>';
     document.body.appendChild(container);
 
     const tabs = container.querySelectorAll('.nav-link');
@@ -480,7 +483,8 @@ describe('Accessibility Module - Tab Keyboard Navigation', () => {
   test('End key moves focus to last tab', () => {
     const container = document.createElement('ul');
     container.className = 'nav-tabs';
-    container.innerHTML = '<li><button class="nav-link">A</button></li><li><button class="nav-link">B</button></li><li><button class="nav-link">C</button></li>';
+    container.innerHTML =
+      '<li><button class="nav-link">A</button></li><li><button class="nav-link">B</button></li><li><button class="nav-link">C</button></li>';
     document.body.appendChild(container);
 
     const tabs = container.querySelectorAll('.nav-link');
@@ -514,8 +518,9 @@ describe('Accessibility Module - Focus Management (Modal Events)', () => {
 
     // Simulate focus by overriding document.activeElement to avoid JSDOM
     // setTimeout recursion triggered by native .focus() in this test environment
-    const origDescriptor = Object.getOwnPropertyDescriptor(dom.window.Document.prototype, 'activeElement')
-      || Object.getOwnPropertyDescriptor(Document.prototype, 'activeElement');
+    const origDescriptor =
+      Object.getOwnPropertyDescriptor(dom.window.Document.prototype, 'activeElement') ||
+      Object.getOwnPropertyDescriptor(Document.prototype, 'activeElement');
     Object.defineProperty(document, 'activeElement', { value: triggerBtn, configurable: true });
 
     const modal = document.getElementById('testModal');

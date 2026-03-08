@@ -220,6 +220,7 @@ ModuleRegistry.register('SECTORS', SECTORS);
 ModuleRegistry.register('REGIONS', REGIONS);
 ModuleRegistry.register('STATE', STATE);
 // Expose ModuleRegistry globally (works in both browser and Node/test)
+// @ts-ignore
 if (typeof globalThis !== 'undefined') globalThis.ModuleRegistry = ModuleRegistry;
 if (typeof window !== 'undefined') window.ModuleRegistry = ModuleRegistry;
 

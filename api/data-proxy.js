@@ -1046,7 +1046,6 @@ async function executeRpc(body, user) {
 /**
  * Handle authenticated storage upload.
  * @param {Object} body - The request body with bucket and path.
- * @param {Object} req - The raw request (for reading file data from body).
  * @returns {Promise<Object>} Upload result with publicUrl.
  */
 async function executeStorageUpload(body) {

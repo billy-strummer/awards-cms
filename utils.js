@@ -147,7 +147,7 @@ const utils = {
     const date = this.safeDate ? this.safeDate(dateString) : new Date(dateString);
     if (!date || isNaN(date.getTime())) return '-';
     const now = new Date();
-    const diffInSeconds = Math.floor((now - date) / 1000);
+    const diffInSeconds = Math.floor((Number(now) - Number(date)) / 1000);
 
     if (diffInSeconds < 60) {
       return 'Just now';
@@ -254,11 +254,11 @@ const utils = {
 
   /**
    * Show styled Bootstrap confirmation dialog
-   * @param {Object} options - Dialog options
-   * @param {string} options.title - Dialog title
-   * @param {string} options.message - Dialog message
-   * @param {string} options.confirmText - Text for confirm button
-   * @param {boolean} options.danger - Whether to use danger styling
+   * @param {Object} [options] - Dialog options
+   * @param {string} [options.title] - Dialog title
+   * @param {string} [options.message] - Dialog message
+   * @param {string} [options.confirmText] - Text for confirm button
+   * @param {boolean} [options.danger] - Whether to use danger styling
    * @returns {Promise<boolean>} User's choice
    */
   confirmDialog({ title = 'Confirm', message = 'Are you sure?', confirmText = 'Delete', danger = true } = {}) {
@@ -462,9 +462,9 @@ const utils = {
    * @param {string} options.tableBodyId - ID of the <tbody> element
    * @param {string} options.searchBoxId - ID of the search input element
    * @param {Function} [options.onEnter] - Called with (row, index) when Enter is pressed on a highlighted row
-   * @param {Function} [options.onAdd] - Called when the add shortcut is triggered
+   * @param {Function} [options._onAdd] - Called when the add shortcut is triggered
    */
-  initTableKeyboardNav({ tableBodyId, searchBoxId, onEnter, _onAdd }) {
+  initTableKeyboardNav({ tableBodyId, searchBoxId, onEnter, _onAdd: /** @type {Function} */ _onAdd }) {
     let selectedIdx = -1;
 
     const getRows = () => document.getElementById(tableBodyId)?.querySelectorAll('tr') || [];
@@ -677,7 +677,7 @@ const utils = {
    * Restore a trashed record back into the database
    * @param {string} table - Table name
    * @param {object} record - The trashed record
-   * @param {object} supabaseClient - Supabase client instance
+   * @param {object} _supabaseClient - Supabase client instance
    * @returns {Promise<boolean>} Whether the restore succeeded
    */
   async restoreFromTrash(table, record, _supabaseClient) {
@@ -2172,7 +2172,7 @@ const utils = {
    * @param {Array} items - Items to process
    * @param {Function} processFn - Async function(item, index) to process each item
    * @param {string} label - Operation label for progress display
-   * @returns {Object} { succeeded: [], failed: [] }
+   * @returns {Promise<Object>} { succeeded: [], failed: [] }
    */
   async runBatchOperation(items, processFn, label = 'Processing') {
     const succeeded = [];
@@ -2274,7 +2274,7 @@ const utils = {
     const input = document.getElementById(inputId);
     if (!input) return;
     const debouncedHandler = this.debounce(handler, delay);
-    input.addEventListener('input', debouncedHandler);
+    input.addEventListener('input', /** @type {EventListener} */ (debouncedHandler));
     return debouncedHandler;
   },
 
@@ -2598,6 +2598,7 @@ const actionRegistry = {
 
     // Try dotted path on window (e.g. "awardsModule.openCreateModal")
     const parts = actionName.split('.');
+    /** @type {any} */
     let obj = window;
     for (let i = 0; i < parts.length - 1; i++) {
       obj = obj[parts[i]];

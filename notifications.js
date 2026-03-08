@@ -19,7 +19,7 @@ const notificationsModule = {
     if (!STATE.currentUser?.email) return;
     this._injectBell();
     await this._fetchAndRender();
-    this._pollInterval = setInterval(() => this._fetchAndRender(), 60000);
+    this._pollInterval = /** @type {any} */ (setInterval(() => this._fetchAndRender(), 60000));
     this._subscribeRealtime();
   },
 
@@ -54,7 +54,7 @@ const notificationsModule = {
     const badge = document.getElementById('notifBadge');
     if (!badge) return;
     if (this._unreadCount > 0) {
-      badge.textContent = this._unreadCount > 99 ? '99+' : this._unreadCount;
+      badge.textContent = this._unreadCount > 99 ? '99+' : String(this._unreadCount);
       badge.classList.remove('d-none');
     } else {
       badge.classList.add('d-none');

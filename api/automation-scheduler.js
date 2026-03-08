@@ -85,7 +85,7 @@ cron.schedule(
       }
 
       const now = new Date();
-      const daysUntilDeadline = Math.ceil((judgingDeadline - now) / (1000 * 60 * 60 * 24));
+      const daysUntilDeadline = Math.ceil((Number(judgingDeadline) - Number(now)) / (1000 * 60 * 60 * 24));
 
       if (daysUntilDeadline <= 7 && daysUntilDeadline > 0) {
         console.log(`Judging deadline in ${daysUntilDeadline} days`);

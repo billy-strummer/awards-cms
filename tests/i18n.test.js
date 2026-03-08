@@ -252,7 +252,8 @@ describe('i18n Module - loadLocale', () => {
 
   test('retry callback in showErrorWithRetry re-invokes loadLocale', async () => {
     // First call fails, second call succeeds
-    global.fetch = jest.fn()
+    global.fetch = jest
+      .fn()
       .mockResolvedValueOnce({ ok: false, status: 500 })
       .mockResolvedValueOnce({
         ok: true,

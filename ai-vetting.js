@@ -555,7 +555,7 @@ const aiVettingModule = {
    * @returns {string} Human-readable relative time (e.g. "2 hours ago")
    */
   getTimeAgo(date) {
-    const seconds = Math.floor((new Date() - date) / 1000);
+    const seconds = Math.floor((Number(new Date()) - Number(date)) / 1000);
 
     const intervals = {
       year: 31536000,

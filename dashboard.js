@@ -118,10 +118,10 @@ const dashboardModule = {
   renderTrendIndicator(current, previous) {
     if (!previous || previous === 0) return '';
     const change = (((current - previous) / previous) * 100).toFixed(1);
-    const up = change > 0;
+    const up = Number(change) > 0;
     const color = up ? 'text-success' : 'text-danger';
     const icon = up ? 'bi-arrow-up-short' : 'bi-arrow-down-short';
-    return `<span class="${color} small ms-1"><i class="bi ${icon}"></i>${Math.abs(change)}%</span>`;
+    return `<span class="${color} small ms-1"><i class="bi ${icon}"></i>${Math.abs(Number(change))}%</span>`;
   },
 
   /**
@@ -353,7 +353,7 @@ const dashboardModule = {
         ) {
           pending = paymentsModule.allInvoices
             .filter((i) => ['pending', 'unpaid'].includes(i.payment_status) && i.status === 'sent')
-            .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            .sort((a, b) => Number(new Date(b.created_at)) - Number(new Date(a.created_at)));
         } else {
           try {
             // selectAll justified: aggregating all pending invoices to compute total value for user notification (see pagination documentation)
@@ -449,7 +449,7 @@ const dashboardModule = {
 
       // Use in-memory data for awards, organisations, events
       const recentAwards = [...(STATE.allAwards || [])]
-        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .sort((a, b) => Number(new Date(b.created_at)) - Number(new Date(a.created_at)))
         .slice(0, 5);
 
       recentAwards.forEach((award) => {
@@ -464,7 +464,7 @@ const dashboardModule = {
       });
 
       const recentOrgs = [...(STATE.allOrganisations || [])]
-        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .sort((a, b) => Number(new Date(b.created_at)) - Number(new Date(a.created_at)))
         .slice(0, 3);
 
       recentOrgs.forEach((org) => {
@@ -499,7 +499,7 @@ const dashboardModule = {
       }
 
       const recentEvents = [...(STATE.allEvents || [])]
-        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .sort((a, b) => Number(new Date(b.created_at)) - Number(new Date(a.created_at)))
         .slice(0, 2);
 
       recentEvents.forEach((event) => {
@@ -514,7 +514,7 @@ const dashboardModule = {
       });
 
       // Sort all activities by time (most recent first)
-      activities.sort((a, b) => new Date(b.time || 0) - new Date(a.time || 0));
+      activities.sort((a, b) => Number(new Date(b.time || 0)) - Number(new Date(a.time || 0)));
 
       // Take only the 10 most recent
       const recentActivities = activities.slice(0, 10);
@@ -957,7 +957,7 @@ const dashboardModule = {
    */
   async getCompaniesByRecentActivity() {
     return STATE.allOrganisations
-      .sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at))
+      .sort((a, b) => Number(new Date(b.updated_at || b.created_at)) - Number(new Date(a.updated_at || a.created_at)))
       .slice(0, 5);
   },
 
@@ -975,7 +975,9 @@ const dashboardModule = {
    * Get newest companies
    */
   async getNewestCompanies() {
-    return STATE.allOrganisations.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 5);
+    return STATE.allOrganisations
+      .sort((a, b) => Number(new Date(b.created_at)) - Number(new Date(a.created_at)))
+      .slice(0, 5);
   },
 
   /**
@@ -1534,12 +1536,12 @@ const dashboardModule = {
     }
 
     const percentChange = (((currentValue - previousValue) / previousValue) * 100).toFixed(1);
-    const absChange = Math.abs(percentChange);
+    const absChange = Math.abs(Number(percentChange));
 
-    if (percentChange > 0) {
+    if (Number(percentChange) > 0) {
       element.innerHTML = `<i class="bi bi-arrow-up"></i>${absChange}% vs last year`;
       element.className = 'stat-growth positive';
-    } else if (percentChange < 0) {
+    } else if (Number(percentChange) < 0) {
       element.innerHTML = `<i class="bi bi-arrow-down"></i>${absChange}% vs last year`;
       element.className = 'stat-growth negative';
     } else {
@@ -1569,7 +1571,7 @@ const dashboardModule = {
         title: 'Awards with Winners',
         value: `${awardsWithWinners}/${totalAwards}`,
         percentage: awardCompletionRate,
-        level: awardCompletionRate >= 80 ? 'high' : awardCompletionRate >= 50 ? 'medium' : 'low',
+        level: Number(awardCompletionRate) >= 80 ? 'high' : Number(awardCompletionRate) >= 50 ? 'medium' : 'low',
       });
 
       // Organisations with complete data
@@ -1583,7 +1585,7 @@ const dashboardModule = {
         title: 'Complete Organisation Profiles',
         value: `${completeOrgs}/${totalOrgs}`,
         percentage: orgCompletionRate,
-        level: orgCompletionRate >= 80 ? 'high' : orgCompletionRate >= 50 ? 'medium' : 'low',
+        level: Number(orgCompletionRate) >= 80 ? 'high' : Number(orgCompletionRate) >= 50 ? 'medium' : 'low',
       });
 
       // Tagged media (only fetch columns needed for counting)
@@ -1597,7 +1599,7 @@ const dashboardModule = {
         title: 'Tagged Media Files',
         value: `${taggedMedia}/${totalMedia}`,
         percentage: mediaTaggingRate,
-        level: mediaTaggingRate >= 80 ? 'high' : mediaTaggingRate >= 50 ? 'medium' : 'low',
+        level: Number(mediaTaggingRate) >= 80 ? 'high' : Number(mediaTaggingRate) >= 50 ? 'medium' : 'low',
       });
 
       // Render metrics
@@ -1645,7 +1647,7 @@ const dashboardModule = {
       // Use already-loaded STATE.allEvents
       const upcomingEvents = (STATE.allEvents || [])
         .filter((e) => e.event_date && e.event_date >= todayStr && e.event_date <= futureDateStr)
-        .sort((a, b) => new Date(a.event_date) - new Date(b.event_date))
+        .sort((a, b) => Number(new Date(a.event_date)) - Number(new Date(b.event_date)))
         .slice(0, 5);
 
       if (!upcomingEvents || upcomingEvents.length === 0) {
@@ -1662,7 +1664,7 @@ const dashboardModule = {
       container.innerHTML = upcomingEvents
         .map((event) => {
           const eventDate = new Date(event.event_date);
-          const daysUntil = Math.ceil((eventDate - today) / (1000 * 60 * 60 * 24));
+          const daysUntil = Math.ceil((Number(eventDate) - Number(today)) / (1000 * 60 * 60 * 24));
 
           let urgency, badge;
           if (daysUntil <= 7) {
@@ -2026,7 +2028,7 @@ const dashboardModule = {
     try {
       const invoices = allInvoices
         .filter((i) => i.payment_status === 'unpaid' || i.payment_status === 'partial')
-        .sort((a, b) => new Date(a.due_date || 0) - new Date(b.due_date || 0))
+        .sort((a, b) => Number(new Date(a.due_date || 0)) - Number(new Date(b.due_date || 0)))
         .slice(0, 20);
 
       if (!invoices || invoices.length === 0) {
@@ -2314,14 +2316,14 @@ const dashboardModule = {
       const pendingAwards = awards.filter((a) => a.status === STATUS.DRAFT || a.status === STATUS.PENDING).length;
       const categories = [...new Set(awards.map((a) => a.category).filter((c) => c))];
 
-      document.getElementById('summaryTotalAwards').textContent = totalAwards;
-      document.getElementById('summaryActiveAwards').textContent = activeAwards;
-      document.getElementById('summaryPendingAwards').textContent = pendingAwards;
-      document.getElementById('summaryAwardCategories').textContent = categories.length;
+      document.getElementById('summaryTotalAwards').textContent = String(totalAwards);
+      document.getElementById('summaryActiveAwards').textContent = String(activeAwards);
+      document.getElementById('summaryPendingAwards').textContent = String(pendingAwards);
+      document.getElementById('summaryAwardCategories').textContent = String(categories.length);
 
       // Recent awards table
       const recentAwards = [...awards]
-        .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+        .sort((a, b) => Number(new Date(b.created_at || 0)) - Number(new Date(a.created_at || 0)))
         .slice(0, 10);
 
       const tbody = document.getElementById('summaryRecentAwardsTable');
@@ -2397,14 +2399,14 @@ const dashboardModule = {
       thisMonth.setDate(1);
       const newThisMonth = orgs.filter((o) => o.created_at && new Date(o.created_at) >= thisMonth).length;
 
-      document.getElementById('summaryTotalOrgs').textContent = totalOrgs;
-      document.getElementById('summaryOrgWinners').textContent = winnersCount;
-      document.getElementById('summaryOrgSectors').textContent = sectors.length;
-      document.getElementById('summaryOrgNewMonth').textContent = newThisMonth;
+      document.getElementById('summaryTotalOrgs').textContent = String(totalOrgs);
+      document.getElementById('summaryOrgWinners').textContent = String(winnersCount);
+      document.getElementById('summaryOrgSectors').textContent = String(sectors.length);
+      document.getElementById('summaryOrgNewMonth').textContent = String(newThisMonth);
 
       // Recent organisations table
       const recentOrgs = [...orgs]
-        .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+        .sort((a, b) => Number(new Date(b.created_at || 0)) - Number(new Date(a.created_at || 0)))
         .slice(0, 10);
 
       const tbody = document.getElementById('summaryRecentOrgsTable');
@@ -2490,10 +2492,10 @@ const dashboardModule = {
       const years = [...new Set(winners.map((w) => w.award_year).filter((y) => y))];
       const avgPerYear = years.length > 0 ? Math.round(totalWinners / years.length) : 0;
 
-      document.getElementById('summaryTotalWinners').textContent = totalWinners;
-      document.getElementById('summaryWinnersThisYear').textContent = winnersThisYear;
-      document.getElementById('summaryMultiWinners').textContent = multiWinners;
-      document.getElementById('summaryAvgWinnersYear').textContent = avgPerYear;
+      document.getElementById('summaryTotalWinners').textContent = String(totalWinners);
+      document.getElementById('summaryWinnersThisYear').textContent = String(winnersThisYear);
+      document.getElementById('summaryMultiWinners').textContent = String(multiWinners);
+      document.getElementById('summaryAvgWinnersYear').textContent = String(avgPerYear);
 
       // Recent winners table
       const recentWinners = winners.slice(0, 10);
@@ -2529,7 +2531,7 @@ const dashboardModule = {
 
       const byYear = document.getElementById('summaryWinnersByYear');
       byYear.innerHTML = Object.entries(yearCounts)
-        .sort((a, b) => b[0] - a[0])
+        .sort((a, b) => Number(b[0]) - Number(a[0]))
         .map(([year, count]) => {
           const maxCount = Math.max(...Object.values(yearCounts));
           const percentage = maxCount > 0 ? ((count / maxCount) * 100).toFixed(0) : 0;
@@ -2562,7 +2564,7 @@ const dashboardModule = {
     try {
       // Use already-loaded events data
       const events = [...(STATE.allEvents || [])].sort(
-        (a, b) => new Date(b.event_date || 0) - new Date(a.event_date || 0)
+        (a, b) => Number(new Date(b.event_date || 0)) - Number(new Date(a.event_date || 0))
       );
 
       const totalEvents = events.length;
@@ -2580,10 +2582,10 @@ const dashboardModule = {
           ? Math.round(eventsWithCapacity.reduce((sum, e) => sum + (e.capacity || 0), 0) / eventsWithCapacity.length)
           : 0;
 
-      document.getElementById('summaryTotalEvents').textContent = totalEvents;
-      document.getElementById('summaryUpcomingEvents').textContent = upcomingEvents;
-      document.getElementById('summaryPastEvents').textContent = pastEvents;
-      document.getElementById('summaryAvgAttendance').textContent = avgAttendance;
+      document.getElementById('summaryTotalEvents').textContent = String(totalEvents);
+      document.getElementById('summaryUpcomingEvents').textContent = String(upcomingEvents);
+      document.getElementById('summaryPastEvents').textContent = String(pastEvents);
+      document.getElementById('summaryAvgAttendance').textContent = String(avgAttendance);
 
       // Upcoming events table
       const upcoming = events?.filter((e) => e.event_date && e.event_date >= today).slice(0, 10) || [];
@@ -2672,10 +2674,10 @@ const dashboardModule = {
         const uniqueEvents = new Set(items.filter((m) => m.event_id).map((m) => m.event_id));
 
         // Update modal elements
-        document.getElementById('modalTotalPhotosCount').textContent = totalPhotos || 0;
-        document.getElementById('modalTotalVideosCount').textContent = totalVideos || 0;
-        document.getElementById('modalUntaggedPhotosCount').textContent = untaggedPhotos || 0;
-        document.getElementById('modalEventsWithMediaCount').textContent = uniqueEvents.size || 0;
+        document.getElementById('modalTotalPhotosCount').textContent = String(totalPhotos || 0);
+        document.getElementById('modalTotalVideosCount').textContent = String(totalVideos || 0);
+        document.getElementById('modalUntaggedPhotosCount').textContent = String(untaggedPhotos || 0);
+        document.getElementById('modalEventsWithMediaCount').textContent = String(uniqueEvents.size || 0);
       } catch (error) {
         console.error('Error loading media gallery statistics:', error);
         utils.showToast('Failed to load media gallery statistics', 'error');

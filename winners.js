@@ -1021,8 +1021,8 @@ const winnersModule = {
 
   /**
    * Toggle photo selection (placeholder for now)
-   * @param {string} winnerId - Winner ID
-   * @param {string} photoId - Photo ID
+   * @param {string} _winnerId - Winner ID
+   * @param {string} _photoId - Photo ID
    */
   togglePhotoSelection(_winnerId, _photoId) {
     // This will be used to track which photos to include
@@ -1051,7 +1051,7 @@ const winnersModule = {
    */
   updateSelectedCount() {
     const el = document.getElementById('selectedWinnersCount');
-    if (el) el.textContent = this.pressReleaseState.selectedWinners.size;
+    if (el) el.textContent = String(this.pressReleaseState.selectedWinners.size);
   },
 
   /**
@@ -1463,7 +1463,7 @@ const winnersModule = {
    */
   updateCertificateSelectedCount() {
     const el = document.getElementById('selectedCertificateWinnersCount');
-    if (el) el.textContent = this.certificateState.selectedWinners.size;
+    if (el) el.textContent = String(this.certificateState.selectedWinners.size);
   },
 
   /**
@@ -2894,7 +2894,7 @@ const winnersModule = {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        const text = e.target.result;
+        const text = /** @type {string} */ (e.target.result);
         const lines = text
           .split('\n')
           .map((line) => line.trim())
@@ -2941,7 +2941,7 @@ const winnersModule = {
         const importBtn = document.getElementById('importWinnersBtn');
         const importCountEl = document.getElementById('importWinnersCount');
         if (importBtn) importBtn.disabled = false;
-        if (importCountEl) importCountEl.textContent = rows.length;
+        if (importCountEl) importCountEl.textContent = String(rows.length);
 
         // Show first 5 rows as preview
         const previewRows = rows.slice(0, 5);
@@ -3332,7 +3332,7 @@ const winnersModule = {
     const bar = document.getElementById('winnersBulkBar');
     const count = document.getElementById('winnersBulkCount');
     if (bar && count) {
-      count.textContent = this._selectedWinnerIds.size;
+      count.textContent = String(this._selectedWinnerIds.size);
       bar.classList.toggle('d-none', this._selectedWinnerIds.size === 0);
     }
   },

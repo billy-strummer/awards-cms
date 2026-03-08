@@ -16,6 +16,17 @@ British Trade Awards CMS - a web-based admin system for managing awards ceremoni
 - Tests: Jest (`npm test`)
 - Deployment: Vercel
 
+## IMPORTANT: Vercel Hobby Plan Limit
+
+> **CLAUDE: DO NOT add more API files to `/api/`.** Vercel Hobby plan allows a maximum of **12 serverless functions**. We are currently at exactly **12/12**. If you need to add a new API endpoint, either:
+> 1. Add it as a new `action` inside an existing handler (e.g., `data-proxy.js` or another relevant file)
+> 2. Place utility/internal modules in `api/_lib/` (Vercel ignores this directory)
+> 3. Merge two related endpoints into one file
+>
+> **Never** create a new `.js` file directly in `/api/` without removing or consolidating another first.
+>
+> `automation-scheduler.js` was moved to `api/_lib/` to stay within the limit.
+
 ## Key Files & Structure
 
 ```

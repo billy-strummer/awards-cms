@@ -34,9 +34,6 @@
     "api/social-media-api.js": {
       "maxDuration": 30
     },
-    "api/automation-scheduler.js": {
-      "maxDuration": 30
-    },
     "api/resend-email.js": {
       "maxDuration": 30
     },

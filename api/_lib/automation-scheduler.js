@@ -9,9 +9,9 @@
  */
 
 const cron = require('node-cron');
-const { sendDeadlineReminders, sendWinnerAnnouncements, sendTemplateEmail } = require('./email-automation');
-const { assignJudgesToEntries, generateAllShortlists } = require('./judge-automation');
-const { generateAllWinnerCertificates } = require('./certificates-qr');
+const { sendDeadlineReminders, sendWinnerAnnouncements, sendTemplateEmail } = require('../email-automation');
+const { assignJudgesToEntries, generateAllShortlists } = require('../judge-automation');
+const { generateAllWinnerCertificates } = require('../certificates-qr');
 
 // Supabase client for scheduler queries
 const { createClient } = require('@supabase/supabase-js');
@@ -370,14 +370,14 @@ async function triggerShortlistGeneration(awardId = null) {
     let results;
 
     if (awardId) {
-      const { generateShortlist } = require('./judge-automation');
+      const { generateShortlist } = require('../judge-automation');
       const shortlist = await generateShortlist(awardId);
       results = [{ awardId, shortlistCount: shortlist.length }];
     } else {
       results = await generateAllShortlists();
     }
 
-    const { sendShortlistNotifications } = require('./email-automation');
+    const { sendShortlistNotifications } = require('../email-automation');
     await sendShortlistNotifications(awardId);
 
     console.log('Shortlists generated and notifications sent');
@@ -491,12 +491,10 @@ module.exports = async function handler(req, res) {
         await generateWeeklyStats();
         return res.json({ success: true, action: 'weekly-stats' });
       default:
-        return res
-          .status(400)
-          .json({
-            error:
-              'Invalid action. Use: winner-announcements, judge-assignments, shortlist-generation, payment-reminders, judge-progress, weekly-stats',
-          });
+        return res.status(400).json({
+          error:
+            'Invalid action. Use: winner-announcements, judge-assignments, shortlist-generation, payment-reminders, judge-progress, weekly-stats',
+        });
     }
   } catch (error) {
     console.error('Automation error:', error);

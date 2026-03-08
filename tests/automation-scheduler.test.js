@@ -105,7 +105,7 @@ jest.mock(
 process.env.SUPABASE_URL = 'https://test.supabase.co';
 process.env.SUPABASE_SERVICE_KEY = 'test-service-key';
 
-const scheduler = require('../api/automation-scheduler');
+const scheduler = require('../api/_lib/automation-scheduler');
 
 // ==========================================
 // TESTS

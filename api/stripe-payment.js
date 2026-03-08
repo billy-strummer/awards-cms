@@ -133,7 +133,7 @@ async function handleStripeWebhook(req, res) {
     event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
   } catch (err) {
     console.error('Webhook signature verification failed:', err.message);
-    return res.status(400).send(`Webhook Error: ${err.message}`);
+    return res.status(400).json({ error: `Webhook Error: ${err.message}` });
   }
 
   // Handle the event
@@ -630,6 +630,11 @@ async function createPublicCheckout(req, res) {
  * GET  ?action=verify-payment&sessionId=... → verifyPayment
  */
 module.exports = async function handler(req, res) {
+  // Guard: return a clear JSON error when Stripe is not configured
+  if (!process.env.STRIPE_SECRET_KEY) {
+    return res.status(503).json({ error: 'Stripe is not configured. Set STRIPE_SECRET_KEY in environment variables.' });
+  }
+
   const action = req.query.action || req.body?.action;
 
   if (req.method === 'POST' && action === 'webhook') {

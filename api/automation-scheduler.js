@@ -463,16 +463,55 @@ function startScheduler() {
   console.log('Judging checks: 10:00 AM GMT');
 }
 
-module.exports = {
-  startScheduler,
-  setupAutomationEndpoints,
-  triggerWinnerAnnouncements,
-  triggerJudgeAssignments,
-  triggerShortlistGeneration,
-  sendPaymentReminders,
-  sendJudgeProgressReports,
-  generateWeeklyStats,
+/**
+ * Vercel serverless handler — routes by query action.
+ * Can be triggered by Vercel Cron or manual API calls.
+ */
+module.exports = async function handler(req, res) {
+  const action = req.query.action || req.body?.action;
+
+  try {
+    switch (action) {
+      case 'winner-announcements':
+        await triggerWinnerAnnouncements();
+        return res.json({ success: true, action: 'winner-announcements' });
+      case 'judge-assignments':
+        await triggerJudgeAssignments(req.body?.awardId);
+        return res.json({ success: true, action: 'judge-assignments' });
+      case 'shortlist-generation':
+        await triggerShortlistGeneration(req.body?.awardId);
+        return res.json({ success: true, action: 'shortlist-generation' });
+      case 'payment-reminders':
+        await sendPaymentReminders();
+        return res.json({ success: true, action: 'payment-reminders' });
+      case 'judge-progress':
+        await sendJudgeProgressReports();
+        return res.json({ success: true, action: 'judge-progress' });
+      case 'weekly-stats':
+        await generateWeeklyStats();
+        return res.json({ success: true, action: 'weekly-stats' });
+      default:
+        return res
+          .status(400)
+          .json({
+            error:
+              'Invalid action. Use: winner-announcements, judge-assignments, shortlist-generation, payment-reminders, judge-progress, weekly-stats',
+          });
+    }
+  } catch (error) {
+    console.error('Automation error:', error);
+    return res.status(500).json({ error: error.message });
+  }
 };
+
+module.exports.startScheduler = startScheduler;
+module.exports.setupAutomationEndpoints = setupAutomationEndpoints;
+module.exports.triggerWinnerAnnouncements = triggerWinnerAnnouncements;
+module.exports.triggerJudgeAssignments = triggerJudgeAssignments;
+module.exports.triggerShortlistGeneration = triggerShortlistGeneration;
+module.exports.sendPaymentReminders = sendPaymentReminders;
+module.exports.sendJudgeProgressReports = sendJudgeProgressReports;
+module.exports.generateWeeklyStats = generateWeeklyStats;
 
 // Start scheduler if running directly
 if (require.main === module) {

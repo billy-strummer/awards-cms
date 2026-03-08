@@ -898,14 +898,34 @@ async function sendWinnerAnnouncementsEndpoint(req, res) {
   }
 }
 
-module.exports = {
-  sendTemplateEmail,
-  sendEntryConfirmation,
-  sendDeadlineReminders,
-  sendJudgeAssignments,
-  sendWinnerAnnouncements,
-  sendShortlistNotifications,
-  sendEmailEndpoint,
-  sendDeadlineRemindersEndpoint,
-  sendWinnerAnnouncementsEndpoint,
+/**
+ * Vercel serverless handler — routes by query action.
+ */
+module.exports = async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const action = req.query.action || req.body?.action;
+
+  switch (action) {
+    case 'send-email':
+      return sendEmailEndpoint(req, res);
+    case 'send-deadline-reminders':
+      return sendDeadlineRemindersEndpoint(req, res);
+    case 'send-winner-announcements':
+      return sendWinnerAnnouncementsEndpoint(req, res);
+    default:
+      return sendEmailEndpoint(req, res);
+  }
 };
+
+module.exports.sendTemplateEmail = sendTemplateEmail;
+module.exports.sendEntryConfirmation = sendEntryConfirmation;
+module.exports.sendDeadlineReminders = sendDeadlineReminders;
+module.exports.sendJudgeAssignments = sendJudgeAssignments;
+module.exports.sendWinnerAnnouncements = sendWinnerAnnouncements;
+module.exports.sendShortlistNotifications = sendShortlistNotifications;
+module.exports.sendEmailEndpoint = sendEmailEndpoint;
+module.exports.sendDeadlineRemindersEndpoint = sendDeadlineRemindersEndpoint;
+module.exports.sendWinnerAnnouncementsEndpoint = sendWinnerAnnouncementsEndpoint;

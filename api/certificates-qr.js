@@ -604,16 +604,41 @@ async function verifyQREndpoint(req, res) {
   }
 }
 
-module.exports = {
-  generateWinnerCertificate,
-  generateAllWinnerCertificates,
-  generateEventTicketQR,
-  generateEventBadge,
-  generateAllEventBadges,
-  verifyQRCode,
-  generateCertificateEndpoint,
-  generateAllCertificatesEndpoint,
-  generateQRTicketEndpoint,
-  generateBadgeEndpoint,
-  verifyQREndpoint,
+/**
+ * Vercel serverless handler — routes by query action.
+ */
+module.exports = async function handler(req, res) {
+  const action = req.query.action || req.body?.action;
+
+  switch (action) {
+    case 'generate-certificate':
+      return generateCertificateEndpoint(req, res);
+    case 'generate-all-certificates':
+      return generateAllCertificatesEndpoint(req, res);
+    case 'generate-qr-ticket':
+      return generateQRTicketEndpoint(req, res);
+    case 'generate-badge':
+      return generateBadgeEndpoint(req, res);
+    case 'verify-qr':
+      return verifyQREndpoint(req, res);
+    default:
+      return res
+        .status(400)
+        .json({
+          error:
+            'Invalid action. Use: generate-certificate, generate-all-certificates, generate-qr-ticket, generate-badge, verify-qr',
+        });
+  }
 };
+
+module.exports.generateWinnerCertificate = generateWinnerCertificate;
+module.exports.generateAllWinnerCertificates = generateAllWinnerCertificates;
+module.exports.generateEventTicketQR = generateEventTicketQR;
+module.exports.generateEventBadge = generateEventBadge;
+module.exports.generateAllEventBadges = generateAllEventBadges;
+module.exports.verifyQRCode = verifyQRCode;
+module.exports.generateCertificateEndpoint = generateCertificateEndpoint;
+module.exports.generateAllCertificatesEndpoint = generateAllCertificatesEndpoint;
+module.exports.generateQRTicketEndpoint = generateQRTicketEndpoint;
+module.exports.generateBadgeEndpoint = generateBadgeEndpoint;
+module.exports.verifyQREndpoint = verifyQREndpoint;

@@ -568,13 +568,33 @@ async function getJudgingStatsEndpoint(req, res) {
   }
 }
 
-module.exports = {
-  assignJudgesToEntries,
-  generateShortlist,
-  generateAllShortlists,
-  getJudgingStatistics,
-  assignJudgesEndpoint,
-  generateShortlistEndpoint,
-  generateAllShortlistsEndpoint,
-  getJudgingStatsEndpoint,
+/**
+ * Vercel serverless handler — routes by query action.
+ */
+module.exports = async function handler(req, res) {
+  const action = req.query.action || req.body?.action;
+
+  switch (action) {
+    case 'assign-judges':
+      return assignJudgesEndpoint(req, res);
+    case 'generate-shortlist':
+      return generateShortlistEndpoint(req, res);
+    case 'generate-all-shortlists':
+      return generateAllShortlistsEndpoint(req, res);
+    case 'stats':
+      return getJudgingStatsEndpoint(req, res);
+    default:
+      return res
+        .status(400)
+        .json({ error: 'Invalid action. Use: assign-judges, generate-shortlist, generate-all-shortlists, stats' });
+  }
 };
+
+module.exports.assignJudgesToEntries = assignJudgesToEntries;
+module.exports.generateShortlist = generateShortlist;
+module.exports.generateAllShortlists = generateAllShortlists;
+module.exports.getJudgingStatistics = getJudgingStatistics;
+module.exports.assignJudgesEndpoint = assignJudgesEndpoint;
+module.exports.generateShortlistEndpoint = generateShortlistEndpoint;
+module.exports.generateAllShortlistsEndpoint = generateAllShortlistsEndpoint;
+module.exports.getJudgingStatsEndpoint = getJudgingStatsEndpoint;

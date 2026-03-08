@@ -819,12 +819,14 @@
     if (el.dataset.preventDefault === 'true') e.preventDefault();
     var actionName = el.dataset.action;
     var parts = actionName.split('.');
-    var target = window;
+    var ctx = window;
+    var fn = window;
     for (var i = 0; i < parts.length; i++) {
-      target = target[parts[i]];
-      if (!target) return;
+      ctx = fn;
+      fn = fn[parts[i]];
+      if (!fn) return;
     }
-    if (typeof target !== 'function') return;
+    if (typeof fn !== 'function') return;
     var args = [];
     if (el.dataset.args) {
       try {
@@ -833,6 +835,6 @@
         return;
       }
     }
-    target.apply(null, args);
+    fn.apply(ctx, args);
   });
 })(); // end IIFE

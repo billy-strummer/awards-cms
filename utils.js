@@ -780,7 +780,12 @@ const utils = {
             synced++;
           } catch (insertErr) {
             // Don't retry items that failed due to permission errors (403)
-            if (insertErr.message && insertErr.message.includes('Forbidden')) {
+            if (
+              insertErr.message &&
+              (insertErr.message.includes('Forbidden') ||
+                insertErr.message.includes('cannot') ||
+                insertErr.message.includes('permission'))
+            ) {
               console.warn(`Skipping pending ${table} items: insufficient permissions`);
               remaining.push(...stored.slice(i));
               break;
@@ -3105,7 +3110,7 @@ const apiClient = {
     }
 
     if (!res.ok) {
-      const errorMsg = json.error || json.message || (json.details && json.details[0]) || `API error ${res.status}`;
+      const errorMsg = json.message || json.error || (json.details && json.details[0]) || `API error ${res.status}`;
       throw new Error(errorMsg);
     }
     return json;

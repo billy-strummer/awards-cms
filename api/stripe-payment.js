@@ -21,6 +21,23 @@ const FROM_EMAIL = process.env.FROM_EMAIL || 'awards@britishtradeawards.com';
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
 /**
+ * Generate a unique invoice number (INV-YYYY-NNNNN).
+ * @returns {Promise<string>}
+ */
+async function generateInvoiceNumber() {
+  const year = new Date().getFullYear();
+  const prefix = `INV-${year}-`;
+  const { data } = await supabase
+    .from('invoices')
+    .select('invoice_number')
+    .like('invoice_number', `${prefix}%`)
+    .order('invoice_number', { ascending: false })
+    .limit(1);
+  const lastNum = data && data.length > 0 ? parseInt(data[0].invoice_number.replace(prefix, ''), 10) || 0 : 0;
+  return `${prefix}${String(lastNum + 1).padStart(5, '0')}`;
+}
+
+/**
  * Verify Supabase JWT from Authorization header.
  * @param {Object} req - Express request object.
  * @param {Object} res - Express response object.
@@ -193,13 +210,20 @@ async function handleCheckoutSessionCompleted(session) {
     const { data: entry } = await supabase.from('entries').select('*').eq('id', entryId).single();
 
     if (entry) {
+      const invoiceNumber = await generateInvoiceNumber();
       await supabase.from('invoices').insert([
         {
+          invoice_number: invoiceNumber,
           organisation_id: entry.organisation_id,
           invoice_type: 'entry_fee',
           status: 'paid',
+          payment_status: 'paid',
           total_amount: session.amount_total / 100, // Convert from pence
+          paid_amount: session.amount_total / 100,
+          balance_due: 0,
           currency: 'GBP',
+          invoice_date: new Date().toISOString().split('T')[0],
+          due_date: new Date().toISOString().split('T')[0],
           paid_date: new Date().toISOString(),
           payment_method: 'stripe',
           payment_reference: session.payment_intent,
@@ -257,13 +281,20 @@ async function handlePaymentIntentSucceeded(paymentIntent) {
 
         // Create invoice record
         const amountPaid = paymentIntent.amount ? paymentIntent.amount / 100 : 95;
+        const piInvoiceNumber = await generateInvoiceNumber();
         await supabase.from('invoices').insert([
           {
+            invoice_number: piInvoiceNumber,
             organisation_id: entry.organisation_id,
             invoice_type: 'entry_fee',
             status: 'paid',
+            payment_status: 'paid',
             total_amount: amountPaid,
+            paid_amount: amountPaid,
+            balance_due: 0,
             currency: 'GBP',
+            invoice_date: new Date().toISOString().split('T')[0],
+            due_date: new Date().toISOString().split('T')[0],
             paid_date: new Date().toISOString(),
             payment_method: 'stripe',
             payment_reference: paymentIntent.id,
@@ -367,13 +398,20 @@ async function handleChargeSucceeded(charge) {
 
     // Create invoice record
     const amountPaid = charge.amount ? charge.amount / 100 : 95;
+    const chInvoiceNumber = await generateInvoiceNumber();
     await supabase.from('invoices').insert([
       {
+        invoice_number: chInvoiceNumber,
         organisation_id: entry.organisation_id,
         invoice_type: 'entry_fee',
         status: 'paid',
+        payment_status: 'paid',
         total_amount: amountPaid,
+        paid_amount: amountPaid,
+        balance_due: 0,
         currency: 'GBP',
+        invoice_date: new Date().toISOString().split('T')[0],
+        due_date: new Date().toISOString().split('T')[0],
         paid_date: new Date().toISOString(),
         payment_method: 'stripe',
         payment_reference: paymentIntentId,

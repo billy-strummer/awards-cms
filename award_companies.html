@@ -53,7 +53,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js"></script>
+  <script type="module" src="config.js"></script>
 
   <script>
     const supabaseClient = window.supabase.createClient(
@@ -183,6 +183,21 @@
 
     // Initialize
     loadCompaniesPage();
+  </script>
+
+  <script>
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest('[data-action]');
+    if (!el) return;
+    e.preventDefault();
+    var parts = el.dataset.action.split('.');
+    var ctx = window, fn = window;
+    for (var i = 0; i < parts.length; i++) { ctx = fn; fn = fn[parts[i]]; if (!fn) return; }
+    if (typeof fn !== 'function') return;
+    var args = [];
+    if (el.dataset.args) { try { args = JSON.parse(el.dataset.args); } catch (_e) { return; } }
+    fn.apply(ctx, args);
+  });
   </script>
 
 </body>

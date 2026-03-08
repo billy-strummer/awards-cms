@@ -817,4 +817,29 @@
   document.addEventListener('DOMContentLoaded', function () {
     entryFormApp.initialize();
   });
+
+  // Lightweight event delegation for data-action buttons (public pages
+  // don't load the admin actionRegistry from utils.js)
+  document.addEventListener('click', function (e) {
+    const el = e.target.closest('[data-action]');
+    if (!el) return;
+    if (el.dataset.preventDefault === 'true') e.preventDefault();
+    const actionName = el.dataset.action;
+    const parts = actionName.split('.');
+    var target = window;
+    for (var i = 0; i < parts.length; i++) {
+      target = target[parts[i]];
+      if (!target) return;
+    }
+    if (typeof target !== 'function') return;
+    var args = [];
+    if (el.dataset.args) {
+      try {
+        args = JSON.parse(el.dataset.args);
+      } catch (_e) {
+        return;
+      }
+    }
+    target.apply(null, args);
+  });
 })();

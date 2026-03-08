@@ -166,7 +166,7 @@ describe('Stripe Frontend - createCheckoutSession', () => {
     await stripeFrontend.createCheckoutSession('e1', 99.99, 'Entry Fee');
 
     expect(fetch).toHaveBeenCalledWith(
-      '/api/create-checkout-session',
+      '/api/stripe-payment?action=create-checkout-session',
       expect.objectContaining({
         method: 'POST',
         headers: expect.objectContaining({ 'Content-Type': 'application/json' }),
@@ -492,7 +492,10 @@ describe('Stripe Frontend - checkPaymentStatus Advanced', () => {
     });
 
     await stripeFrontend.checkPaymentStatus('entry-99');
-    expect(fetch).toHaveBeenCalledWith('/api/payment-status/entry-99', expect.any(Object));
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/stripe-payment?action=payment-status&entryId=entry-99',
+      expect.any(Object)
+    );
   });
 
   test('includes authorization header', async () => {
@@ -657,7 +660,10 @@ describe('Stripe Frontend - apiBase Configuration', () => {
     });
 
     await stripeFrontend.createCheckoutSession('e1', 50.0, 'Fee');
-    expect(fetch).toHaveBeenCalledWith('https://api.custom.com/create-checkout-session', expect.any(Object));
+    expect(fetch).toHaveBeenCalledWith(
+      'https://api.custom.com/stripe-payment?action=create-checkout-session',
+      expect.any(Object)
+    );
 
     stripeFrontend.apiBase = original;
   });
@@ -672,7 +678,10 @@ describe('Stripe Frontend - apiBase Configuration', () => {
     });
 
     await stripeFrontend.checkPaymentStatus('e1');
-    expect(fetch).toHaveBeenCalledWith('https://api.custom.com/payment-status/e1', expect.any(Object));
+    expect(fetch).toHaveBeenCalledWith(
+      'https://api.custom.com/stripe-payment?action=payment-status&entryId=e1',
+      expect.any(Object)
+    );
 
     stripeFrontend.apiBase = original;
   });

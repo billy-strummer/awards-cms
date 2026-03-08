@@ -43,7 +43,7 @@ const stripeFrontend = {
     try {
       utils.showLoading();
 
-      const response = await fetch(`${this.apiBase}/create-checkout-session`, {
+      const response = await fetch(`${this.apiBase}/stripe-payment?action=create-checkout-session`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -87,7 +87,7 @@ const stripeFrontend = {
    */
   async checkPaymentStatus(entryId) {
     try {
-      const response = await fetch(`${this.apiBase}/payment-status/${entryId}`, {
+      const response = await fetch(`${this.apiBase}/stripe-payment?action=payment-status&entryId=${entryId}`, {
         headers: {
           Authorization: `Bearer ${(await STATE.client.auth.getSession()).data.session?.access_token}`,
         },

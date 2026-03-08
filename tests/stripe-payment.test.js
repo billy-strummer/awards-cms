@@ -265,7 +265,7 @@ describe('Stripe Payment API - createCheckoutSession', () => {
     await createCheckoutSession(req, res);
 
     expect(res.statusCode).toBeNull(); // 200 default
-    expect(res.body).toHaveProperty('id', 'cs_123');
+    expect(res.body).toHaveProperty('sessionId', 'cs_123');
     expect(res.body).toHaveProperty('url');
 
     // Verify amount converted to pence

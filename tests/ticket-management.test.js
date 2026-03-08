@@ -452,7 +452,7 @@ describe('Ticket Module - createTicketCheckout', () => {
 
     await ticketModule.createTicketCheckout('ev1');
     expect(global.fetch).toHaveBeenCalledWith(
-      '/api/stripe-payment.js',
+      '/api/stripe-payment?action=create-checkout-session',
       expect.objectContaining({
         method: 'POST',
       })

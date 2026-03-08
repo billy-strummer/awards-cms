@@ -549,8 +549,82 @@ async function verifyPayment(req, res) {
 }
 
 /**
+ * Create a public Stripe Checkout Session for entry fee payment.
+ * No auth required — validates entry exists by ID and is unpaid.
+ * POST ?action=public-checkout
+ * @param {Object} req - Request with body containing entry_id and amount.
+ * @param {Object} res - Response object.
+ * @returns {Promise<void>}
+ */
+async function createPublicCheckout(req, res) {
+  try {
+    const { entry_id, amount } = req.body;
+
+    if (!entry_id) {
+      return res.status(400).json({ error: 'Missing entry_id' });
+    }
+
+    // Validate amount (default to 95 GBP if not provided)
+    const payAmount = typeof amount === 'number' && amount > 0 ? amount : 95;
+
+    // Look up the entry
+    const { data: entry, error: entryError } = await supabase.from('entries').select('*').eq('id', entry_id).single();
+
+    if (entryError || !entry) {
+      return res.status(404).json({ error: 'Entry not found' });
+    }
+
+    // Don't allow double-payment
+    if (entry.payment_status === 'paid') {
+      return res.status(400).json({ error: 'Entry has already been paid' });
+    }
+
+    // Create Stripe checkout session
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price_data: {
+            currency: 'gbp',
+            product_data: {
+              name: 'British Trade Awards Entry Fee',
+              description: `Entry ${entry.entry_number}`,
+            },
+            unit_amount: Math.round(payAmount * 100), // Convert to pence
+          },
+          quantity: 1,
+        },
+      ],
+      mode: 'payment',
+      success_url: `${APP_URL}/payment-success.html?session_id={CHECKOUT_SESSION_ID}&entry=${entry.entry_number}`,
+      cancel_url: `${APP_URL}/submit-entry-payment.html?cancelled=true`,
+      customer_email: entry.contact_email,
+      metadata: {
+        entry_id: entry_id,
+        entry_number: entry.entry_number,
+      },
+    });
+
+    // Store payment reference
+    await supabase
+      .from('entries')
+      .update({
+        payment_reference: session.payment_intent || session.id,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', entry_id);
+
+    res.json({ sessionId: session.id, url: session.url });
+  } catch (error) {
+    console.error('Error creating public checkout session:', error);
+    res.status(500).json({ error: 'An internal error occurred' });
+  }
+}
+
+/**
  * Vercel serverless handler — routes by query action or HTTP method.
  * POST ?action=create-checkout-session → createCheckoutSession
+ * POST ?action=public-checkout        → createPublicCheckout (no auth)
  * POST ?action=webhook              → handleStripeWebhook
  * GET  ?action=payment-status&entryId=... → getPaymentStatus
  * GET  ?action=verify-payment&sessionId=... → verifyPayment
@@ -560,6 +634,10 @@ module.exports = async function handler(req, res) {
 
   if (req.method === 'POST' && action === 'webhook') {
     return handleStripeWebhook(req, res);
+  }
+
+  if (req.method === 'POST' && action === 'public-checkout') {
+    return createPublicCheckout(req, res);
   }
 
   if (req.method === 'POST' && (action === 'create-checkout-session' || !action)) {
@@ -581,6 +659,7 @@ module.exports = async function handler(req, res) {
 
 // Named exports for internal use and testing
 module.exports.createCheckoutSession = createCheckoutSession;
+module.exports.createPublicCheckout = createPublicCheckout;
 module.exports.handleStripeWebhook = handleStripeWebhook;
 module.exports.getPaymentStatus = getPaymentStatus;
 module.exports.verifyPayment = verifyPayment;

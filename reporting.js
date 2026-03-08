@@ -329,8 +329,20 @@ const reportingModule = {
       const data = await apiClient.selectAll('sponsors', {
         select: 'name, company_name, tier, website, contact_name, created_at',
       });
-      const val = { Platinum: 15000, Gold: 8000, Silver: 4000, Bronze: 2000, Partner: 1000 };
-      const imp = { Platinum: 50000, Gold: 30000, Silver: 15000, Bronze: 7500, Partner: 3000 };
+      // Load sponsor tier values from settings, fall back to defaults
+      let val = { Platinum: 15000, Gold: 8000, Silver: 4000, Bronze: 2000, Partner: 1000 };
+      let imp = { Platinum: 50000, Gold: 30000, Silver: 15000, Bronze: 7500, Partner: 3000 };
+      try {
+        const settings = await apiClient.select('settings', { filters: { key: 'sponsor_roi_values' }, limit: 1 });
+        if (settings?.data?.[0]?.value) {
+          const parsed =
+            typeof settings.data[0].value === 'string' ? JSON.parse(settings.data[0].value) : settings.data[0].value;
+          if (parsed.values) val = { ...val, ...parsed.values };
+          if (parsed.impressions) imp = { ...imp, ...parsed.impressions };
+        }
+      } catch (_) {
+        /* use defaults */
+      }
       const rows = (data || [])
         .map((s) => ({
           company: s.name || s.company_name || 'Unknown',

@@ -1679,7 +1679,7 @@ const crmModule = {
                     <div class="card">
                       <div class="card-body text-center">
                         <h6 class="text-muted mb-1">Expected Close</h6>
-                        <h5 class="mb-0">${deal.expected_close_date ? new Date(deal.expected_close_date).toLocaleDateString() : 'TBD'}</h5>
+                        <h5 class="mb-0">${deal.expected_close_date ? new Date(deal.expected_close_date).toLocaleDateString() : '<span class="text-warning">Not set</span>'}</h5>
                       </div>
                     </div>
                   </div>

@@ -36,20 +36,30 @@ The code is well-structured and feature-complete. All 65 test suites pass (6,381
 
 ---
 
+## Remaining Issues — Fixed in Session 5
+
+### A. Database Migration Runner Missing — FIXED
+- **Created:** `scripts/run-migrations.js` with dependency ordering (8 phases), dry-run mode, and per-file execution
+- **Created:** `database-social-media-posts-setup.sql` — the missing `social_media_posts` table migration
+
+### B. Social Media Schema Column Mismatch — FIXED
+- **Removed:** `stripUnknownColumn()` function and all 5 try/catch workarounds from `social-media.js`
+- **Created:** Proper `social_media_posts` migration with all columns the frontend expects
+
+### D. Environment Variable Documentation — Already existed
+- `.env.example` was already present with all required variables
+
+### F. Instagram Requires Image — FIXED
+- **Added:** Frontend validation in `social-media.js` that warns users when Instagram is selected without an image
+- **Improved:** Error message in `api/social-media-api.js` to be more helpful
+
+### G. CRM Deal Dates Show "TBD" — FIXED
+- **Changed:** `crm.js` now shows "Not set" with warning styling instead of unhelpful "TBD"
+
+### H. Hardcoded Sponsor ROI Values — FIXED
+- **Changed:** `reporting.js` now loads tier values from `settings` table (key: `sponsor_roi_values`), falling back to defaults
+
 ## Remaining Issues (Not Yet Fixed)
-
-### Critical — Must Fix Before Production
-
-#### A. Database Migration Runner Missing
-- **Files:** 75 `database-*.sql` files in root directory
-- **Issue:** No automated migration runner, no dependency ordering, no versioning
-- **Risk:** Manual deployment may skip or mis-order migrations
-- **Fix:** Create a numbered migration system or use a tool like `dbmate`/`flyway`
-
-#### B. Social Media Schema Column Mismatch
-- **File:** `social-media.js` lines 9-28
-- **Issue:** Runtime `stripUnknownColumn()` function works around missing DB columns (PGRST204 errors)
-- **Fix:** Ensure all `database-*.sql` migrations are applied; remove the workaround once schema is complete
 
 ### Moderate — Should Fix
 
@@ -58,31 +68,10 @@ The code is well-structured and feature-complete. All 65 test suites pass (6,381
 - **Impact:** Zero confidence in: Stripe payment flow, Resend email delivery, Supabase query correctness, social media OAuth, full user workflows
 - **Fix:** Add Playwright/Cypress E2E tests for critical paths (entry submission → payment → email confirmation)
 
-#### D. Environment Variable Documentation
-- **Issue:** No `.env.example` file listing all required variables
-- **Fix:** Create `.env.example` with all ~15 required env vars and descriptions
-
 #### E. Social Media API Compatibility
 - **File:** `api/social-media-api.js`
 - **Issue:** Twitter/X API has changed; OAuth flows untested against real APIs
 - **Fix:** Test each platform's OAuth flow and posting with real test credentials
-
-### Minor
-
-#### F. Instagram Requires Image
-- **File:** `api/social-media-api.js` lines 257-296
-- **Issue:** Instagram posts fail if no image is provided; no fallback mechanism
-- **Fix:** Add validation in the scheduling UI or generate a default image
-
-#### G. CRM Deal Dates Show "TBD"
-- **File:** `crm.js` line 1682
-- **Issue:** Deals without expected_close_date show "TBD" — not actionable
-- **Fix:** Either require the field or show a more helpful default
-
-#### H. Hardcoded Sponsor ROI Values
-- **File:** `reporting.js` lines 332-333
-- **Issue:** Sponsor tier values are hardcoded (`Platinum: 15000`, `Gold: 8000`, etc.)
-- **Fix:** Make configurable per tenant/season via settings
 
 ---
 

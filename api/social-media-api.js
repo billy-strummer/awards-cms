@@ -258,7 +258,7 @@ async function postToInstagram(content, imageUrl) {
   const accessToken = process.env.FACEBOOK_PAGE_TOKEN;
   const igAccountId = process.env.INSTAGRAM_ACCOUNT_ID;
   if (!accessToken || !igAccountId) throw new Error('Instagram API credentials not configured');
-  if (!imageUrl) throw new Error('Instagram requires an image');
+  if (!imageUrl) throw new Error('Instagram requires an image — provide an image URL or skip this platform');
 
   // Step 1: Create media container
   const containerRes = await fetch(`https://graph.facebook.com/v18.0/${igAccountId}/media`, {

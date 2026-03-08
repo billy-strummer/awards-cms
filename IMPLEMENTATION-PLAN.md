@@ -275,20 +275,27 @@ _When a session ends, update this section with what was done and what's next._
 - **Tests updated**: Fixed mocks in `email-automation.test.js` (added `not`, `ilike`, `gte`, `lt` chain methods + `events`/`award_years` mock responses) and `automation-scheduler.test.js` (added `sendTemplateEmail` mock, updated console assertions)
 - **Verified**: 65/65 test suites pass (6381 tests, 0 failures), build passes (0 lint errors, 2072KB JS, 58KB CSS)
 
+**2026-03-08 — Session 5: Systematic Issue Resolution**
+- **Migration runner**: Created `scripts/run-migrations.js` with 8-phase dependency ordering, dry-run mode, --only flag, and --skip-test option
+- **Social media schema**: Created `database-social-media-posts-setup.sql` with all columns the frontend expects (company_id, award_id, content, platform_content, template_type, platforms, image_url, add_logo_overlay, status, scheduled_for, published_at, publish_results, publish_errors)
+- **stripUnknownColumn removed**: Deleted the workaround function and all 5 try/catch blocks in `social-media.js` that used it
+- **Instagram validation**: Added frontend check in `social-media.js` — warns user when Instagram is selected without an image
+- **CRM deal dates**: Changed "TBD" to "Not set" with warning styling in `crm.js`
+- **Sponsor ROI**: Made configurable in `reporting.js` — loads from `settings` table (key: `sponsor_roi_values`), falls back to defaults
+- **Verified**: 65/65 test suites pass (6381 tests, 0 failures), build passes (0 lint errors, 2072KB JS, 58KB CSS)
+
 ### Remaining Items for Production Readiness
-- [ ] Set up real Supabase instance and run all 75 SQL migration files (no automated runner — manual ordering needed)
-- [ ] Configure all environment variables (SUPABASE_URL, SUPABASE_SERVICE_KEY, SUPABASE_ANON_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, RESEND_API_KEY, ANTHROPIC_API_KEY, FROM_EMAIL, FROM_NAME, APP_URL, social media OAuth credentials)
+- [ ] Set up real Supabase instance and run migrations: `node scripts/run-migrations.js`
+- [ ] Configure all environment variables (see `.env.example`)
 - [ ] Test Stripe integration with test keys (webhooks, checkout sessions)
 - [ ] Test email sending with real Resend API key
 - [ ] Test social media OAuth flows per platform (credentials may be outdated for Twitter/X)
-- [ ] Verify DB schema matches all migration files (social-media.js has `stripUnknownColumn()` workaround for missing columns)
-- [ ] Add E2E/integration tests (currently all 6381 tests are unit tests with mocks — ~40% test real business logic, ~60% test mock setup)
-- [ ] Create migration runner script with dependency ordering
+- [ ] Add E2E/integration tests (currently all 6381 tests are unit tests with mocks)
 - [ ] Set up CI/CD pipeline (GitHub Actions → Vercel)
 
 ### Deployment Checklist
 - [ ] Set environment variables in Vercel (see .env.example)
-- [ ] Run all SQL migrations in Supabase (migrations/ directory, in order)
+- [ ] Run migrations: `node scripts/run-migrations.js` (or run SQL files manually in phase order)
 - [ ] Configure Stripe webhook endpoint → /api/stripe-payment
 - [ ] Configure social media API credentials (Twitter, LinkedIn, Facebook)
 - [ ] Set up Sentry DSN for error monitoring

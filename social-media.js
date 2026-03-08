@@ -2,31 +2,6 @@
 /* SOCIAL MEDIA MANAGER MODULE */
 /* ==================================================== */
 
-/**
- * Strip columns that don't exist in the DB schema and retry the operation.
- * Handles PGRST204 errors from Supabase when migrations haven't been applied.
- */
-function stripUnknownColumn(data, errorMessage) {
-  const match = errorMessage && errorMessage.match(/Could not find the '(\w+)' column/);
-  if (match) {
-    const col = match[1];
-    if (Array.isArray(data)) {
-      return {
-        column: col,
-        cleaned: data.map((row) => {
-          const copy = { ...row };
-          delete copy[col];
-          return copy;
-        }),
-      };
-    }
-    const copy = { ...data };
-    delete copy[col];
-    return { column: col, cleaned: copy };
-  }
-  return null;
-}
-
 const socialMediaModule = {
   currentTemplate: null,
   selectedCompany: null,
@@ -508,6 +483,12 @@ Vote now: {{website}}
         imageUrl = this.uploadedImageUrl;
       }
 
+      // Instagram requires an image — warn user if none provided
+      if (platforms.includes('instagram') && !imageUrl) {
+        utils.showToast('Instagram requires an image. Please add an image or deselect Instagram.', 'warning');
+        return;
+      }
+
       // Build platform-specific content if overrides are enabled
       const platformContent = {};
       const overrideToggle = document.getElementById('smPlatformOverrides');
@@ -533,33 +514,14 @@ Vote now: {{website}}
 
       // If editing, update instead of insert
       if (this.editingPostId) {
-        try {
-          await apiClient.update('social_media_posts', this.editingPostId, postData);
-        } catch (updateErr) {
-          const fix = stripUnknownColumn(postData, updateErr.message);
-          if (fix) {
-            await apiClient.update('social_media_posts', this.editingPostId, fix.cleaned);
-          } else {
-            throw updateErr;
-          }
-        }
+        await apiClient.update('social_media_posts', this.editingPostId, postData);
 
         this.editingPostId = null;
         utils.showToast('Post updated successfully!', 'success');
       } else {
         let data;
-        try {
-          const result = await apiClient.insert('social_media_posts', postData);
-          data = result.data;
-        } catch (insertErr) {
-          const fix = stripUnknownColumn([postData], insertErr.message);
-          if (fix) {
-            const result = await apiClient.insert('social_media_posts', fix.cleaned);
-            data = result.data;
-          } else {
-            throw insertErr;
-          }
-        }
+        const result = await apiClient.insert('social_media_posts', postData);
+        data = result.data;
 
         if (postType === 'immediate' && data?.[0]?.id) {
           // Trigger server-side publish via Vercel API
@@ -653,29 +615,11 @@ Vote now: {{website}}
       };
 
       if (this.editingPostId) {
-        try {
-          await apiClient.update('social_media_posts', this.editingPostId, draftData);
-        } catch (updateErr) {
-          const fix = stripUnknownColumn(draftData, updateErr.message);
-          if (fix) {
-            await apiClient.update('social_media_posts', this.editingPostId, fix.cleaned);
-          } else {
-            throw updateErr;
-          }
-        }
+        await apiClient.update('social_media_posts', this.editingPostId, draftData);
         this.editingPostId = null;
         utils.showToast('Draft updated successfully!', 'success');
       } else {
-        try {
-          await apiClient.insert('social_media_posts', draftData);
-        } catch (insertErr) {
-          const fix = stripUnknownColumn([draftData], insertErr.message);
-          if (fix) {
-            await apiClient.insert('social_media_posts', fix.cleaned);
-          } else {
-            throw insertErr;
-          }
-        }
+        await apiClient.insert('social_media_posts', draftData);
         utils.showToast('Draft saved successfully!', 'success');
       }
 
@@ -1287,16 +1231,7 @@ Vote now: {{website}}
           return;
         }
 
-        try {
-          await apiClient.insert('social_media_posts', posts);
-        } catch (insertError) {
-          const fix = stripUnknownColumn(posts, insertError.message);
-          if (fix) {
-            await apiClient.insert('social_media_posts', fix.cleaned);
-          } else {
-            throw insertError;
-          }
-        }
+        await apiClient.insert('social_media_posts', posts);
 
         // Close modal
         const modal = bootstrap.Modal.getInstance(document.getElementById('bulkGenerateModal'));

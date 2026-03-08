@@ -757,6 +757,17 @@ function applyFilters(query, filters) {
 // ============================================
 
 /**
+ * Check if an error indicates that the tenant_id column does not exist.
+ * @param {Error|Object} error - The error from Supabase.
+ * @returns {boolean} True if the error is about a missing tenant_id column.
+ */
+function isMissingTenantColumn(error) {
+  if (!error) return false;
+  const msg = (error.message || error.details || '').toLowerCase();
+  return msg.includes('tenant_id') && (msg.includes('does not exist') || msg.includes('not exist'));
+}
+
+/**
  * Execute a validated Supabase query (select, insert, update, or delete).
  * @param {Object} body - The validated request body with table, operation, filters, etc.
  * @param {Object} user - The authenticated user object from JWT verification.
@@ -764,6 +775,18 @@ function applyFilters(query, filters) {
  * @throws {Error} If the operation is unsupported or the Supabase query fails.
  */
 async function executeQuery(body, user) {
+  try {
+    return await _executeQuery(body, user, true);
+  } catch (err) {
+    // If the error is about a missing tenant_id column, retry without tenant scoping
+    if (isMissingTenantColumn(err)) {
+      return await _executeQuery(body, user, false);
+    }
+    throw err;
+  }
+}
+
+async function _executeQuery(body, user, enableTenantScope) {
   const {
     table,
     operation,
@@ -779,7 +802,7 @@ async function executeQuery(body, user) {
   } = body;
 
   // Server-side tenant isolation: auto-scope queries to the current tenant
-  const isTenantScoped = TENANT_SCOPED_TABLES.has(table) && tenantId && tenantId !== 'default';
+  const isTenantScoped = enableTenantScope && TENANT_SCOPED_TABLES.has(table) && tenantId && tenantId !== 'default';
   if (isTenantScoped) {
     // For reads, inject tenant_id filter
     if (['select', 'count'].includes(operation)) {

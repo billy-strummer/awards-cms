@@ -17,6 +17,37 @@ const fs = require('fs');
 const path = require('path');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+const supabaseAuth = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_KEY
+);
+
+/**
+ * Verify the caller's Supabase JWT.
+ * Returns the authenticated user or sends 401 and returns null.
+ */
+async function verifyAuth(req, res) {
+  const authHeader = req.headers?.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    res.status(401).json({ error: 'Authentication required' });
+    return null;
+  }
+  const token = authHeader.replace('Bearer ', '');
+  try {
+    const {
+      data: { user },
+      error,
+    } = await supabaseAuth.auth.getUser(token);
+    if (error || !user) {
+      res.status(401).json({ error: 'Invalid or expired token' });
+      return null;
+    }
+    return user;
+  } catch (_err) {
+    res.status(401).json({ error: 'Token verification failed' });
+    return null;
+  }
+}
 
 /**
  * Generate a PDF winner certificate for an entry and upload it to Supabase storage.
@@ -608,6 +639,10 @@ async function verifyQREndpoint(req, res) {
  * Vercel serverless handler — routes by query action.
  */
 module.exports = async function handler(req, res) {
+  // Verify authentication for all actions
+  const user = await verifyAuth(req, res);
+  if (!user) return;
+
   const action = req.query.action || req.body?.action;
 
   switch (action) {
@@ -622,12 +657,10 @@ module.exports = async function handler(req, res) {
     case 'verify-qr':
       return verifyQREndpoint(req, res);
     default:
-      return res
-        .status(400)
-        .json({
-          error:
-            'Invalid action. Use: generate-certificate, generate-all-certificates, generate-qr-ticket, generate-badge, verify-qr',
-        });
+      return res.status(400).json({
+        error:
+          'Invalid action. Use: generate-certificate, generate-all-certificates, generate-qr-ticket, generate-badge, verify-qr',
+      });
   }
 };
 

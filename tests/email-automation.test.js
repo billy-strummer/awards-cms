@@ -81,6 +81,7 @@ process.env.RESEND_API_KEY = 'test-resend-key';
 process.env.FROM_EMAIL = 'test@awards.com';
 process.env.FROM_NAME = 'Test Awards';
 
+const emailAutomationHandler = require('../api/email-automation');
 const {
   sendTemplateEmail,
   sendEntryConfirmation,
@@ -91,16 +92,17 @@ const {
   sendEmailEndpoint,
   sendDeadlineRemindersEndpoint,
   sendWinnerAnnouncementsEndpoint,
-} = require('../api/email-automation');
+} = emailAutomationHandler;
 
 // ==========================================
 // HELPERS
 // ==========================================
 
-function createReq({ method = 'POST', body = {}, headers = {} } = {}) {
+function createReq({ method = 'POST', body = {}, headers = {}, query = {} } = {}) {
   return {
     method,
     body,
+    query,
     headers: {
       authorization: 'Bearer valid-token',
       origin: 'http://localhost',
@@ -497,10 +499,11 @@ describe('Email Automation - sendEmailEndpoint', () => {
   });
 
   test('rejects unauthenticated requests', async () => {
-    const req = createReq({ headers: { authorization: undefined } });
+    const req = createReq({ headers: { authorization: undefined }, body: { action: 'send-email' } });
+    req.method = 'POST';
     delete req.headers.authorization;
     const res = createRes();
-    await sendEmailEndpoint(req, res);
+    await emailAutomationHandler(req, res);
     expect(res.statusCode).toBe(401);
     expect(res.body.error).toContain('Authentication required');
   });
@@ -508,9 +511,10 @@ describe('Email Automation - sendEmailEndpoint', () => {
   test('rejects invalid token', async () => {
     mockGetUser.mockResolvedValue({ data: { user: null }, error: { message: 'invalid' } });
 
-    const req = createReq();
+    const req = createReq({ body: { action: 'send-email' } });
+    req.method = 'POST';
     const res = createRes();
-    await sendEmailEndpoint(req, res);
+    await emailAutomationHandler(req, res);
     expect(res.statusCode).toBe(401);
     expect(res.body.error).toContain('Invalid');
   });

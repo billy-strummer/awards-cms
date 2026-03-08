@@ -2397,6 +2397,12 @@
                 <i class="bi bi-list-ul me-2"></i>Winners List
               </h5>
               <div class="d-flex gap-2 align-items-center flex-wrap">
+                <button class="btn btn-warning btn-sm" data-action="winnerPipelineModule.renderPipelineDashboard">
+                  <i class="bi bi-funnel me-1"></i>Pipeline
+                </button>
+                <button class="btn btn-purple btn-sm" data-action="winnerAnnouncementsModule.renderAnnouncementsDashboard" style="background-color:#6f42c1;border-color:#6f42c1;color:#fff">
+                  <i class="bi bi-megaphone me-1"></i>Announcements
+                </button>
                 <button class="btn btn-info btn-sm" data-action="winnersModule.openYearComparison">
                   <i class="bi bi-bar-chart-line me-1"></i>Year Comparison
                 </button>
@@ -3230,6 +3236,14 @@
             <p class="section-subtitle">Plan, manage, and track award ceremonies and events<span id="eventsFreshness" class="ms-2"></span></p>
           </div>
 
+          <!-- Calendar View Toggle -->
+          <div class="mb-3">
+            <button class="btn btn-outline-primary btn-sm" data-action="calendarModule.renderCalendar" title="Show calendar view of events and deadlines">
+              <i class="bi bi-calendar3 me-1"></i>Calendar View
+            </button>
+          </div>
+          <div id="calendarContainer" class="mb-4 d-none"></div>
+
           <!-- Quick Stats -->
           <div class="row g-3 mb-4">
             <div class="col-6 col-md-3 col-lg">
@@ -3848,9 +3862,14 @@
             <div class="tab-pane fade" id="sponsors-content" role="tabpanel">
               <div class="d-flex justify-content-between align-items-center mb-4">
                 <h4><i class="bi bi-award me-2"></i>Sponsors & Partners</h4>
-                <button class="btn btn-primary" data-action="marketingModule.openAddSponsorModal">
-                  <i class="bi bi-plus-lg me-2"></i>Add Sponsor
-                </button>
+                <div class="d-flex gap-2">
+                  <button class="btn btn-outline-info" data-action="sponsorPortalModule.renderSponsorDashboard">
+                    <i class="bi bi-speedometer2 me-2"></i>Sponsor Portal
+                  </button>
+                  <button class="btn btn-primary" data-action="marketingModule.openAddSponsorModal">
+                    <i class="bi bi-plus-lg me-2"></i>Add Sponsor
+                  </button>
+                </div>
               </div>
 
               <div id="sponsorsGrid">
@@ -7471,6 +7490,9 @@
                   <li><a class="dropdown-item" href="#" data-action="eventsModule.openShareableSeatingChart"><i class="bi bi-share text-purple me-2" style="color:#6f42c1;"></i>Shareable Seating Chart</a></li>
                 </ul>
               </div>
+              <button class="btn btn-outline-warning btn-sm" data-action="ticketModule.renderTicketDashboard" title="Manage tickets, QR codes, and refunds">
+                <i class="bi bi-ticket-perforated me-1"></i>Tickets
+              </button>
               <button class="btn btn-outline-info btn-sm" data-action="eventsModule.sendBulkInvites" title="Send invitation email to all guests">
                 <i class="bi bi-envelope me-1"></i>Send Invites
               </button>

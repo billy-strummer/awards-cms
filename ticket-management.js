@@ -229,11 +229,10 @@ const ticketModule = {
     }
     try {
       utils.showLoading();
-      const res = await fetch('/api/stripe-payment.js', {
+      const res = await fetch('/api/stripe-payment?action=create-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          action: 'create-checkout',
           eventId,
           tickets,
           success_url: `${window.location.origin}/ticket-success?event=${eventId}`,
@@ -545,11 +544,10 @@ const ticketModule = {
         rsvp_status: 'cancelled',
         updated_at: new Date().toISOString(),
       });
-      const res = await fetch('/api/stripe-payment.js', {
+      const res = await fetch('/api/stripe-payment?action=refund', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          action: 'refund',
           ticketId,
           guestEmail: guest.guest_email,
           guestName: guest.guest_name,

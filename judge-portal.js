@@ -155,7 +155,9 @@ const judgePortal = {
     // Prefer shared STATE.client session if available
     if (typeof STATE !== 'undefined' && STATE.client?.auth?.getSession) {
       try {
-        const { data: { session } } = await STATE.client.auth.getSession();
+        const {
+          data: { session },
+        } = await STATE.client.auth.getSession();
         if (session?.user?.email) {
           return session.user.email;
         }
@@ -199,30 +201,17 @@ const judgePortal = {
   async _fetchPage(page) {
     this._pagination.page = page;
 
-    // Use STATE.client for complex joins (select with nested relations)
-    const {
-      data: entries,
-      error,
-      count,
-    } = await STATE.client
-      .from('entries')
-      .select(
-        `
-        *,
-        organisations(company_name, logo_url),
-        awards:award_years(award_name, award_category),
-        entry_files(*),
-        judge_scores!judge_scores_entry_id_fkey(*)
-      `,
-        { count: 'exact' }
-      )
-      .eq('status', 'submitted')
-      .order('submission_date', { ascending: true })
-      .range((page - 1) * this._pagination.pageSize, page * this._pagination.pageSize - 1);
+    const result = await apiClient.select('entries', {
+      select:
+        '*, organisations(company_name, logo_url), awards:award_years(award_name, award_category), entry_files(*), judge_scores!judge_scores_entry_id_fkey(*)',
+      filters: { status: 'submitted' },
+      sort: { column: 'submission_date', ascending: true },
+      page,
+      pageSize: this._pagination.pageSize,
+    });
 
-    if (error) throw error;
-
-    const totalCount = count || 0;
+    const entries = result.data;
+    const totalCount = result.count || 0;
     this._pagination = {
       ...this._pagination,
       page,
@@ -290,7 +279,7 @@ const judgePortal = {
     const container = document.getElementById('entriesList');
     const totalCount = document.getElementById('totalEntriesCount');
 
-    totalCount.textContent = this._pagination.count;
+    totalCount.textContent = String(this._pagination.count);
 
     if (this.assignedEntries.length === 0) {
       container.innerHTML = `
@@ -771,12 +760,10 @@ const judgePortal = {
         scored_at: new Date().toISOString(),
       };
 
-      // Upsert score (update if exists, insert if new) - use STATE.client for upsert with onConflict
-      const { error } = await STATE.client.from('judge_scores').upsert([scoreData], {
+      // Upsert score (update if exists, insert if new) via server-side proxy
+      await apiClient.upsert('judge_scores', scoreData, {
         onConflict: 'entry_id,judge_email',
       });
-
-      if (error) throw error;
 
       showPortalToast(
         isComplete ? 'Score submitted successfully!' : 'Score saved as draft',
@@ -821,8 +808,8 @@ const judgePortal = {
     const pending = this.assignedEntries.length - scored;
     const percent = this.assignedEntries.length > 0 ? Math.round((scored / this.assignedEntries.length) * 100) : 0;
 
-    document.getElementById('scoredCount').textContent = scored;
-    document.getElementById('pendingCount').textContent = pending;
+    document.getElementById('scoredCount').textContent = String(scored);
+    document.getElementById('pendingCount').textContent = String(pending);
     document.getElementById('completionPercent').textContent = percent + '%';
     document.getElementById('progressBar').style.width = percent + '%';
   },

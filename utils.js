@@ -45,6 +45,7 @@ const utils = {
    */
   showToast(message, type = 'info', title = null) {
     const toastEl = document.getElementById('notificationToast');
+    if (!toastEl) return;
     const toastIcon = document.getElementById('toastIcon');
     const toastTitle = document.getElementById('toastTitle');
     const toastMessage = document.getElementById('toastMessage');
@@ -77,7 +78,7 @@ const utils = {
 
     // Reset classes
     toastEl.className = 'toast';
-    toastIcon.className = `bi ${settings.icon} me-2`;
+    if (toastIcon) toastIcon.className = `bi ${settings.icon} me-2`;
 
     // Add type-specific class
     if (type === 'success' || type === 'error' || type === 'warning') {
@@ -85,8 +86,8 @@ const utils = {
     }
 
     // Set content
-    toastTitle.textContent = settings.title;
-    toastMessage.innerHTML = message;
+    if (toastTitle) toastTitle.textContent = settings.title;
+    if (toastMessage) toastMessage.innerHTML = message;
 
     // Show toast
     const toast = new bootstrap.Toast(toastEl, {
@@ -146,7 +147,7 @@ const utils = {
     const date = this.safeDate ? this.safeDate(dateString) : new Date(dateString);
     if (!date || isNaN(date.getTime())) return '-';
     const now = new Date();
-    const diffInSeconds = Math.floor((now - date) / 1000);
+    const diffInSeconds = Math.floor((Number(now) - Number(date)) / 1000);
 
     if (diffInSeconds < 60) {
       return 'Just now';
@@ -253,11 +254,11 @@ const utils = {
 
   /**
    * Show styled Bootstrap confirmation dialog
-   * @param {Object} options - Dialog options
-   * @param {string} options.title - Dialog title
-   * @param {string} options.message - Dialog message
-   * @param {string} options.confirmText - Text for confirm button
-   * @param {boolean} options.danger - Whether to use danger styling
+   * @param {Object} [options] - Dialog options
+   * @param {string} [options.title] - Dialog title
+   * @param {string} [options.message] - Dialog message
+   * @param {string} [options.confirmText] - Text for confirm button
+   * @param {boolean} [options.danger] - Whether to use danger styling
    * @returns {Promise<boolean>} User's choice
    */
   confirmDialog({ title = 'Confirm', message = 'Are you sure?', confirmText = 'Delete', danger = true } = {}) {
@@ -403,6 +404,7 @@ const utils = {
    */
   showEmptyState(tableBodyId, colspan, message = 'No data found', icon = 'bi-inbox') {
     const tbody = document.getElementById(tableBodyId);
+    if (!tbody) return;
     tbody.innerHTML = `
       <tr>
         <td colspan="${colspan}" class="text-center py-5">
@@ -422,6 +424,7 @@ const utils = {
    */
   showTableLoading(tableBodyId, colspan) {
     const tbody = document.getElementById(tableBodyId);
+    if (!tbody) return;
     tbody.innerHTML = `
       <tr>
         <td colspan="${colspan}" class="text-center py-5">
@@ -443,6 +446,7 @@ const utils = {
    */
   populateFilter(data, key, selectId, placeholder = 'All') {
     const select = document.getElementById(selectId);
+    if (!select) return;
     const uniqueValues = this.getUniqueValues(data, key);
 
     select.innerHTML = `<option value="">${placeholder}</option>`;
@@ -458,9 +462,9 @@ const utils = {
    * @param {string} options.tableBodyId - ID of the <tbody> element
    * @param {string} options.searchBoxId - ID of the search input element
    * @param {Function} [options.onEnter] - Called with (row, index) when Enter is pressed on a highlighted row
-   * @param {Function} [options.onAdd] - Called when the add shortcut is triggered
+   * @param {Function} [options._onAdd] - Called when the add shortcut is triggered
    */
-  initTableKeyboardNav({ tableBodyId, searchBoxId, onEnter, _onAdd }) {
+  initTableKeyboardNav({ tableBodyId, searchBoxId, onEnter, _onAdd: /** @type {Function} */ _onAdd }) {
     let selectedIdx = -1;
 
     const getRows = () => document.getElementById(tableBodyId)?.querySelectorAll('tr') || [];
@@ -673,7 +677,7 @@ const utils = {
    * Restore a trashed record back into the database
    * @param {string} table - Table name
    * @param {object} record - The trashed record
-   * @param {object} supabaseClient - Supabase client instance
+   * @param {object} _supabaseClient - Supabase client instance
    * @returns {Promise<boolean>} Whether the restore succeeded
    */
   async restoreFromTrash(table, record, _supabaseClient) {
@@ -770,12 +774,18 @@ const utils = {
 
         let synced = 0;
         const remaining = [];
-        for (const item of stored) {
+        for (let i = 0; i < stored.length; i++) {
           try {
-            await apiClient.insert(table, [item]);
+            await apiClient.insert(table, [stored[i]]);
             synced++;
-          } catch (_insertErr) {
-            remaining.push(item);
+          } catch (insertErr) {
+            // Don't retry items that failed due to permission errors (403)
+            if (insertErr.message && insertErr.message.includes('Forbidden')) {
+              console.warn(`Skipping pending ${table} items: insufficient permissions`);
+              remaining.push(...stored.slice(i));
+              break;
+            }
+            remaining.push(stored[i]);
           }
         }
         if (synced > 0) {
@@ -2103,8 +2113,9 @@ const utils = {
       };
     }
     if (msg.includes('401') || msg.includes('unauthorized')) {
-      // Auto-logout on session expiry
-      if (typeof authModule !== 'undefined' && STATE.currentUser) {
+      // Auto-logout on session expiry (guard against multiple rapid 401s)
+      if (typeof authModule !== 'undefined' && STATE.currentUser && !STATE._loggingOut) {
+        STATE._loggingOut = true;
         setTimeout(() => authModule.handleLogout(true), 500);
       }
       return { message: 'Session expired. Logging you out...', type: 'warning', isNetwork: false, canRetry: false };
@@ -2161,7 +2172,7 @@ const utils = {
    * @param {Array} items - Items to process
    * @param {Function} processFn - Async function(item, index) to process each item
    * @param {string} label - Operation label for progress display
-   * @returns {Object} { succeeded: [], failed: [] }
+   * @returns {Promise<Object>} { succeeded: [], failed: [] }
    */
   async runBatchOperation(items, processFn, label = 'Processing') {
     const succeeded = [];
@@ -2263,7 +2274,7 @@ const utils = {
     const input = document.getElementById(inputId);
     if (!input) return;
     const debouncedHandler = this.debounce(handler, delay);
-    input.addEventListener('input', debouncedHandler);
+    input.addEventListener('input', /** @type {EventListener} */ (debouncedHandler));
     return debouncedHandler;
   },
 
@@ -2499,110 +2510,51 @@ const serverQuery = {
       customFilters = [],
     } = options;
 
-    if (!STATE.client) throw new Error('Supabase client not initialized');
-
-    let query = STATE.client.from(table).select(select, { count: 'exact' });
-
-    // Apply equality filters
-    for (const [key, value] of Object.entries(filters)) {
-      if (value !== null && value !== undefined && value !== '') {
-        query = query.eq(key, value);
-      }
-    }
-
-    // Apply search (OR across multiple columns using ilike)
-    if (search && search.term && search.columns && search.columns.length > 0) {
-      const searchTerm = `%${search.term}%`;
-      const orClause = search.columns.map((col) => `${col}.ilike.${searchTerm}`).join(',');
-      query = query.or(orClause);
-    }
-
-    // Apply custom filters (e.g., .neq(), .in(), .gte(), etc.)
+    // Convert customFilters to data-proxy filter format
+    const mergedFilters = { ...filters };
     for (const cf of customFilters) {
       if (cf.method && cf.args) {
-        query = query[cf.method](...cf.args);
+        const [column, value] = cf.args;
+        // Map Supabase method names to data-proxy operator format
+        mergedFilters[`${column}@${cf.method}`] = value;
       }
     }
 
-    // Apply sorting
-    if (sort && sort.column) {
-      query = query.order(sort.column, { ascending: sort.ascending !== false });
-    }
-
-    // Apply pagination
-    const from = (page - 1) * pageSize;
-    const to = from + pageSize - 1;
-    query = query.range(from, to);
-
-    const { data, error, count } = await query;
-    if (error) throw error;
-
-    return {
-      data: data || [],
-      count: count || 0,
+    return apiClient.select(table, {
+      select,
+      filters: mergedFilters,
+      search,
+      sort,
       page,
       pageSize,
-      totalPages: Math.ceil((count || 0) / pageSize),
-    };
+    });
   },
 
   /**
    * Load ALL records using server-side pagination (for modules that need full datasets).
-   * More efficient than the old while-loop pattern because it uses exact count
-   * to calculate total pages upfront.
+   * Routes through apiClient for RBAC and tenant isolation.
    * @param {Object} options - Same as execute but without page/pageSize
    * @param {number} [batchSize=1000] - Records per batch
    * @returns {Promise<Array>} All matching records
    */
   async loadAll(options, batchSize = 1000) {
-    if (!STATE.client) throw new Error('Supabase client not initialized');
-
     const { table, select = '*', filters = {}, sort = null, customFilters = [] } = options;
 
-    // First, get the total count
-    let countQuery = STATE.client.from(table).select(select, { count: 'exact', head: true });
-
-    for (const [key, value] of Object.entries(filters)) {
-      if (value !== null && value !== undefined && value !== '') {
-        countQuery = countQuery.eq(key, value);
-      }
-    }
+    // Convert customFilters to data-proxy filter format
+    const mergedFilters = { ...filters };
     for (const cf of customFilters) {
-      if (cf.method && cf.args) countQuery = countQuery[cf.method](...cf.args);
+      if (cf.method && cf.args) {
+        const [column, value] = cf.args;
+        mergedFilters[`${column}@${cf.method}`] = value;
+      }
     }
 
-    const { count, error: countError } = await countQuery;
-    if (countError) throw countError;
-    if (!count || count === 0) return [];
-
-    // Fetch in parallel batches
-    const totalPages = Math.ceil(count / batchSize);
-    const promises = [];
-    for (let page = 0; page < totalPages; page++) {
-      const from = page * batchSize;
-      const to = from + batchSize - 1;
-
-      let q = STATE.client.from(table).select(select).range(from, to);
-      for (const [key, value] of Object.entries(filters)) {
-        if (value !== null && value !== undefined && value !== '') q = q.eq(key, value);
-      }
-      for (const cf of customFilters) {
-        if (cf.method && cf.args) q = q[cf.method](...cf.args);
-      }
-      if (sort && sort.column) {
-        q = q.order(sort.column, { ascending: sort.ascending !== false });
-      }
-      promises.push(q);
-    }
-
-    const results = await Promise.all(promises);
-    let allData = [];
-    for (const result of results) {
-      if (result.error) throw result.error;
-      if (result.data) allData = allData.concat(result.data);
-    }
-
-    return allData;
+    return apiClient.selectAll(table, {
+      select,
+      filters: mergedFilters,
+      sort,
+      batchSize,
+    });
   },
 };
 
@@ -2646,6 +2598,7 @@ const actionRegistry = {
 
     // Try dotted path on window (e.g. "awardsModule.openCreateModal")
     const parts = actionName.split('.');
+    /** @type {any} */
     let obj = window;
     for (let i = 0; i < parts.length - 1; i++) {
       obj = obj[parts[i]];
@@ -3159,6 +3112,17 @@ const apiClient = {
   },
 
   /**
+   * Get the current tenant ID for server-side tenant isolation.
+   * @returns {string|undefined}
+   */
+  _getTenantId() {
+    if (typeof tenantModule !== 'undefined' && tenantModule.getTenantId) {
+      return tenantModule.getTenantId();
+    }
+    return undefined;
+  },
+
+  /**
    * Select records via the server-side proxy.
    * @param {string} table
    * @param {Object} [options]
@@ -3171,9 +3135,11 @@ const apiClient = {
       select: options.select || '*',
       filters: options.filters || {},
       search: options.search || undefined,
+      or: options.or || undefined,
       sort: options.sort || undefined,
       page: options.page || 1,
       pageSize: options.pageSize || 50,
+      tenantId: this._getTenantId(),
     });
   },
 
@@ -3183,8 +3149,14 @@ const apiClient = {
    * @param {Object} [filters]
    * @returns {Promise<{count: number}>}
    */
-  async count(table, filters = {}) {
-    return this._call({ table, operation: 'count', filters });
+  async count(table, filters = {}, options = {}) {
+    return this._call({
+      table,
+      operation: 'count',
+      filters,
+      or: options.or || undefined,
+      tenantId: this._getTenantId(),
+    });
   },
 
   /**
@@ -3194,7 +3166,7 @@ const apiClient = {
    * @returns {Promise<{data: Array}>}
    */
   async insert(table, data) {
-    return this._call({ table, operation: 'insert', data });
+    return this._call({ table, operation: 'insert', data, tenantId: this._getTenantId() });
   },
 
   /**
@@ -3205,7 +3177,7 @@ const apiClient = {
    * @returns {Promise<{data: Array}>}
    */
   async update(table, id, data) {
-    return this._call({ table, operation: 'update', id, data });
+    return this._call({ table, operation: 'update', id, data, tenantId: this._getTenantId() });
   },
 
   /**
@@ -3216,7 +3188,7 @@ const apiClient = {
    * @returns {Promise<{data: Array}>}
    */
   async updateByFilters(table, filters, data) {
-    return this._call({ table, operation: 'update', filters, data });
+    return this._call({ table, operation: 'update', filters, data, tenantId: this._getTenantId() });
   },
 
   /**
@@ -3226,7 +3198,7 @@ const apiClient = {
    * @returns {Promise<{data: Array}>}
    */
   async delete(table, id) {
-    return this._call({ table, operation: 'delete', id });
+    return this._call({ table, operation: 'delete', id, tenantId: this._getTenantId() });
   },
 
   /**
@@ -3236,7 +3208,7 @@ const apiClient = {
    * @returns {Promise<{data: Array}>}
    */
   async deleteByFilters(table, filters) {
-    return this._call({ table, operation: 'delete', filters });
+    return this._call({ table, operation: 'delete', filters, tenantId: this._getTenantId() });
   },
 
   /**
@@ -3253,7 +3225,60 @@ const apiClient = {
       operation: 'upsert',
       data,
       onConflict: options.onConflict || undefined,
+      tenantId: this._getTenantId(),
     });
+  },
+
+  /**
+   * Call an RPC function via the server-side proxy.
+   * @param {string} rpcName - The RPC function name
+   * @param {Object} [rpcParams={}] - Parameters to pass to the RPC function
+   * @returns {Promise<{data: *}>}
+   */
+  async rpc(rpcName, rpcParams = {}) {
+    return this._call({ operation: 'rpc', rpcName, rpcParams });
+  },
+
+  /**
+   * Upload a file to Supabase Storage via the server-side proxy.
+   * @param {string} bucket - Storage bucket name
+   * @param {string} path - File path within the bucket
+   * @param {File|Blob} file - The file to upload
+   * @param {Object} [options={}]
+   * @param {string} [options.contentType] - MIME type override
+   * @returns {Promise<{publicUrl: string, path: string}>}
+   */
+  async upload(bucket, path, file, options = {}) {
+    // Convert file to base64 for transmission via JSON
+    const arrayBuffer = await file.arrayBuffer();
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+    return this._call({
+      operation: 'storage_upload',
+      bucket,
+      path,
+      fileBase64: base64,
+      contentType: options.contentType || file.type || 'application/octet-stream',
+    });
+  },
+
+  /**
+   * Get a public URL for a storage object via the server-side proxy.
+   * @param {string} bucket - Storage bucket name
+   * @param {string} path - File path within the bucket
+   * @returns {Promise<{publicUrl: string}>}
+   */
+  async getPublicUrl(bucket, path) {
+    return this._call({ operation: 'storage_url', bucket, path });
+  },
+
+  /**
+   * Delete files from storage via the server-side proxy.
+   * @param {string} bucket - Storage bucket name
+   * @param {string[]} paths - Array of file paths to delete
+   * @returns {Promise<{deleted: number}>}
+   */
+  async storageDelete(bucket, paths) {
+    return this._call({ operation: 'storage_delete', bucket, paths });
   },
 
   /**

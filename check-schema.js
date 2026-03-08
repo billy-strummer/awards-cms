@@ -2,6 +2,7 @@
 
 // Quick script to check actual database schema
 const { createClient } = require('@supabase/supabase-js');
+// @ts-ignore
 require('dotenv').config();
 
 const supabase = createClient(

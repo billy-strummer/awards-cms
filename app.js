@@ -99,7 +99,11 @@ const reportsScheduler = {
    */
   showCreateReport() {
     const existingModal = document.getElementById('createScheduledReportModal');
-    if (existingModal) existingModal.remove();
+    if (existingModal) {
+      const instance = bootstrap.Modal.getInstance(existingModal);
+      if (instance && typeof instance.dispose === 'function') instance.dispose();
+      existingModal.remove();
+    }
 
     const modalHtml = `<div class="modal fade" id="createScheduledReportModal" tabindex="-1">
       <div class="modal-dialog"><div class="modal-content">
@@ -308,9 +312,9 @@ const reportsAnalytics = {
     const years = new Set();
     [...awards, ...winners, ...orgs, ...entries].forEach((r) => {
       const y = this._getYear(r);
-      if (y && y.length === 4 && !isNaN(y)) years.add(y);
+      if (y && y.length === 4 && !isNaN(Number(y))) years.add(y);
     });
-    const sortedYears = [...years].sort((a, b) => b - a);
+    const sortedYears = [...years].sort((a, b) => Number(b) - Number(a));
     select.innerHTML =
       '<option value="all">All Years</option>' +
       sortedYears
@@ -516,7 +520,7 @@ const reportsAnalytics = {
     const addYears = (arr) =>
       arr.forEach((r) => {
         const y = this._getYear(r);
-        if (y && y.length === 4 && !isNaN(y)) yearSet.add(y);
+        if (y && y.length === 4 && !isNaN(Number(y))) yearSet.add(y);
       });
     addYears(awards);
     addYears(winners);
@@ -932,7 +936,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
       // Save preference
       const isDark = document.body.classList.contains('dark-mode');
-      localStorage.setItem('darkMode', isDark);
+      localStorage.setItem('darkMode', String(isDark));
 
       utils.showToast(isDark ? 'Dark mode enabled' : 'Light mode enabled', 'info');
     });
@@ -941,8 +945,10 @@ document.addEventListener('DOMContentLoaded', function () {
   if (localStorage.getItem('darkMode') === 'true') {
     document.body.classList.add('dark-mode');
     const icon = document.querySelector('#darkModeToggle i');
-    icon.classList.remove('bi-moon');
-    icon.classList.add('bi-sun');
+    if (icon) {
+      icon.classList.remove('bi-moon');
+      icon.classList.add('bi-sun');
+    }
   }
 
   // --- Table dropdown z-index fix ---
@@ -1002,7 +1008,8 @@ document.addEventListener('DOMContentLoaded', function () {
       // e.g. "callback:eventsModule.filterDataIssues"
       const fn = spec.replace('callback:', '');
       const parts = fn.split('.');
-      let obj = window;
+      // @ts-ignore - dynamic window property access
+      let obj = /** @type {any} */ (window);
       for (const p of parts.slice(0, -1)) obj = obj[p];
       if (obj && typeof obj[parts[parts.length - 1]] === 'function') {
         obj[parts[parts.length - 1]]();
@@ -1042,7 +1049,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Close menu when clicking outside
     document.addEventListener('click', (e) => {
-      if (!quickActionsBtn.contains(e.target) && !quickActionsMenu.contains(e.target)) {
+      if (
+        !quickActionsBtn.contains(/** @type {Node} */ (e.target)) &&
+        !quickActionsMenu.contains(/** @type {Node} */ (e.target))
+      ) {
         quickActionsMenu.style.display = 'none';
         quickActionsBtn.classList.remove('active');
       }
@@ -1106,7 +1116,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const winnersTab = document.getElementById('winners-tab');
   if (winnersTab)
     winnersTab.addEventListener('click', () => {
-      if (STATE.allWinners.length === 0) {
+      if (!STATE.allWinners || STATE.allWinners.length === 0) {
         winnersModule.loadWinners();
       }
     });
@@ -1126,7 +1136,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const eventsTab = document.getElementById('events-tab');
   if (eventsTab)
     eventsTab.addEventListener('click', () => {
-      if (STATE.allEvents.length === 0) {
+      if (!STATE.allEvents || STATE.allEvents.length === 0) {
         eventsModule.loadEvents();
       }
     });
@@ -1218,11 +1228,11 @@ document.addEventListener('DOMContentLoaded', function () {
         const tabId = activeTab.id;
 
         if (tabId === 'awards-tab') {
-          document.getElementById('awardsSearchBox').focus();
+          document.getElementById('awardsSearchBox')?.focus();
         } else if (tabId === 'organisations-tab') {
-          document.getElementById('orgsSearchBox').focus();
+          document.getElementById('orgsSearchBox')?.focus();
         } else if (tabId === 'winners-tab') {
-          document.getElementById('winnerSearchBox').focus();
+          document.getElementById('winnerSearchBox')?.focus();
         }
       }
     }
@@ -1242,7 +1252,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const tag = e.target.tagName;
     if (e.key === '?' && !e.ctrlKey && !e.metaKey && tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT') {
       e.preventDefault();
-      new bootstrap.Modal(document.getElementById('shortcutsHelpModal')).show();
+      const helpModalEl = document.getElementById('shortcutsHelpModal');
+      if (helpModalEl) new bootstrap.Modal(helpModalEl).show();
     }
   });
 
@@ -1389,7 +1400,7 @@ document.addEventListener('DOMContentLoaded', function () {
   if (marketingTab) {
     marketingTab.addEventListener('shown.bs.tab', () => {
       console.debug('Marketing tab opened');
-      if (typeof marketingModule !== 'undefined') {
+      if (typeof marketingModule !== 'undefined' && STATE.currentUser) {
         marketingModule.loadAllData();
         // Load branding overview if branding subtab is active (default)
         const brandingSubTab = document.getElementById('branding-subtab');
@@ -1467,7 +1478,7 @@ document.addEventListener('DOMContentLoaded', function () {
   if (paymentsTab) {
     paymentsTab.addEventListener('shown.bs.tab', () => {
       console.debug('Payments tab opened');
-      if (typeof paymentsModule !== 'undefined') {
+      if (typeof paymentsModule !== 'undefined' && STATE.currentUser) {
         paymentsModule.loadAllData();
       }
     });
@@ -1478,7 +1489,7 @@ document.addEventListener('DOMContentLoaded', function () {
   if (crmTab) {
     crmTab.addEventListener('shown.bs.tab', () => {
       console.debug('CRM tab opened');
-      if (typeof crmModule !== 'undefined') {
+      if (typeof crmModule !== 'undefined' && STATE.currentUser) {
         crmModule.loadAllData();
       }
     });
@@ -1547,7 +1558,8 @@ document.addEventListener('DOMContentLoaded', function () {
       {
         table: 'entries',
         handler: () => {
-          if (typeof entriesModule !== 'undefined' && entriesModule.allEntries.length > 0) entriesModule.loadEntries();
+          if (typeof entriesModule !== 'undefined' && entriesModule.allEntries && entriesModule.allEntries.length > 0)
+            entriesModule.loadEntries();
         },
       },
       {

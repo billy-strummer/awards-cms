@@ -111,7 +111,7 @@ async function createCheckoutSession(req, res) {
       })
       .eq('id', resolvedEntryId);
 
-    res.json({ id: session.id, url: session.url });
+    res.json({ sessionId: session.id, url: session.url });
   } catch (error) {
     console.error('Error creating checkout session:', error);
     res.status(500).json({ error: error.message });
@@ -542,13 +542,42 @@ async function verifyPayment(req, res) {
   }
 }
 
-// Export functions for serverless deployment or Express routes
-module.exports = {
-  createCheckoutSession,
-  handleStripeWebhook,
-  getPaymentStatus,
-  verifyPayment,
+/**
+ * Vercel serverless handler — routes by query action or HTTP method.
+ * POST ?action=create-checkout-session → createCheckoutSession
+ * POST ?action=webhook              → handleStripeWebhook
+ * GET  ?action=payment-status&entryId=... → getPaymentStatus
+ * GET  ?action=verify-payment&sessionId=... → verifyPayment
+ */
+module.exports = async function handler(req, res) {
+  const action = req.query.action || req.body?.action;
+
+  if (req.method === 'POST' && action === 'webhook') {
+    return handleStripeWebhook(req, res);
+  }
+
+  if (req.method === 'POST' && (action === 'create-checkout-session' || !action)) {
+    return createCheckoutSession(req, res);
+  }
+
+  if (req.method === 'GET' && action === 'payment-status') {
+    req.params = { entryId: req.query.entryId };
+    return getPaymentStatus(req, res);
+  }
+
+  if (req.method === 'GET' && action === 'verify-payment') {
+    req.params = { sessionId: req.query.sessionId };
+    return verifyPayment(req, res);
+  }
+
+  res.status(400).json({ error: 'Invalid action or method' });
 };
+
+// Named exports for internal use and testing
+module.exports.createCheckoutSession = createCheckoutSession;
+module.exports.handleStripeWebhook = handleStripeWebhook;
+module.exports.getPaymentStatus = getPaymentStatus;
+module.exports.verifyPayment = verifyPayment;
 
 /**
  * Example Express.js setup:

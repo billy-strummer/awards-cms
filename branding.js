@@ -62,13 +62,12 @@ const brandingModule = {
    * @returns {Promise<Object>} Branding configuration object
    */
   async loadBranding(tenantId) {
-    const { data, error } = await STATE.client
-      .from('tenant_branding')
-      .select('*')
-      .eq('tenant_id', tenantId)
-      .maybeSingle();
-    if (error) throw error;
-    return data || {};
+    const result = await apiClient.select('tenant_branding', {
+      select: '*',
+      filters: { tenant_id: { operator: 'eq', value: tenantId } },
+      pageSize: 1,
+    });
+    return (result.data && result.data[0]) || {};
   },
 
   /**
@@ -176,13 +175,9 @@ const brandingModule = {
         .toLowerCase()
         .replace(/[^a-z0-9]/g, '');
       const path = `${tenantId}/logo-${Date.now()}.${ext}`;
-      const { error } = await STATE.client.storage
-        .from('brand-assets')
-        .upload(path, file, { upsert: true, contentType: file.type });
-      if (error) throw error;
-      const { data } = STATE.client.storage.from('brand-assets').getPublicUrl(path);
+      const uploadResult = await apiClient.upload('brand-assets', path, file, { contentType: file.type });
       utils.showToast('Logo uploaded.', 'success');
-      return data.publicUrl;
+      return uploadResult.publicUrl;
     } catch (e) {
       console.error('uploadLogo:', e);
       // Fallback: convert to data URL if storage bucket doesn't exist
@@ -214,7 +209,7 @@ const brandingModule = {
   _fileToDataUrl(file) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
+      reader.onload = () => resolve(/** @type {string} */ (reader.result));
       reader.onerror = reject;
       reader.readAsDataURL(file);
     });

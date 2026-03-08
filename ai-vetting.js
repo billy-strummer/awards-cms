@@ -314,16 +314,23 @@ const aiVettingModule = {
   async vetSingleCompany(org) {
     try {
       // Call server-side proxy (keeps API key on server)
-      const { data: aiResult, error: fnError } = await STATE.client.functions.invoke('vet-company', {
-        body: {
+      const token = await apiClient._getToken();
+      const vetRes = await fetch('/api/ai-vetting', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          action: 'vet-single',
           companyName: org.company_name,
           website: org.website || '',
           sector: org.sector || '',
           county: org.region || '',
-        },
+        }),
       });
-
-      if (fnError) throw fnError;
+      if (!vetRes.ok) {
+        const errBody = await vetRes.json().catch(() => ({}));
+        throw new Error(errBody.error || `AI vetting failed (${vetRes.status})`);
+      }
+      const aiResult = await vetRes.json();
 
       // Determine status
       const status =
@@ -555,7 +562,7 @@ const aiVettingModule = {
    * @returns {string} Human-readable relative time (e.g. "2 hours ago")
    */
   getTimeAgo(date) {
-    const seconds = Math.floor((new Date() - date) / 1000);
+    const seconds = Math.floor((Number(new Date()) - Number(date)) / 1000);
 
     const intervals = {
       year: 31536000,

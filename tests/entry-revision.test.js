@@ -280,36 +280,36 @@ describe('Entry Revision Module - _sendRevisionEmail()', () => {
 
   test('sends email with default template when no custom template exists', async () => {
     apiClient.select = jest.fn().mockResolvedValue({ data: [] });
+    apiClient._getToken = jest.fn().mockResolvedValue('test-token');
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ success: true }) });
     await entryRevisionModule._sendRevisionEmail(sampleEntry, 'Fix typos');
-    expect(mockFunctionsInvoke).toHaveBeenCalledWith(
-      'send-email',
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/resend-email',
       expect.objectContaining({
-        body: expect.objectContaining({
-          to: 'john@example.com',
-          subject: expect.stringContaining('Action Required'),
-        }),
+        method: 'POST',
+        body: expect.stringContaining('john@example.com'),
       })
     );
+    const body = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(body.action).toBe('send');
+    expect(body.subject).toContain('Action Required');
   });
 
   test('sends email with custom template when available', async () => {
     apiClient.select = jest.fn().mockResolvedValue({
       data: [{ subject: 'Changes for {ENTRY_TITLE}', body: 'Dear {CONTACT_NAME}, fix: {FEEDBACK}' }],
     });
+    apiClient._getToken = jest.fn().mockResolvedValue('test-token');
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ success: true }) });
     await entryRevisionModule._sendRevisionEmail(sampleEntry, 'Please update images');
-    expect(mockFunctionsInvoke).toHaveBeenCalledWith(
-      'send-email',
-      expect.objectContaining({
-        body: expect.objectContaining({
-          subject: expect.stringContaining('Best Innovation'),
-        }),
-      })
-    );
+    const body = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(body.subject).toContain('Best Innovation');
   });
 
   test('handles email send failure gracefully', async () => {
     apiClient.select = jest.fn().mockResolvedValue({ data: [] });
-    mockFunctionsInvoke.mockRejectedValueOnce(new Error('Email service down'));
+    apiClient._getToken = jest.fn().mockResolvedValue('test-token');
+    global.fetch = jest.fn().mockRejectedValue(new Error('Email service down'));
     await expect(entryRevisionModule._sendRevisionEmail(sampleEntry, 'Fix it')).resolves.not.toThrow();
   });
 });
@@ -627,23 +627,15 @@ describe('Entry Revision Module - _uploadFiles()', () => {
   });
 
   test('uploads files successfully and inserts into entry_files', async () => {
-    const mockUpload = jest.fn().mockResolvedValue({ error: null });
-    const mockGetPublicUrl = jest.fn().mockReturnValue({ data: { publicUrl: 'https://cdn.example.com/test.pdf' } });
-    STATE.client.storage.from = jest.fn().mockReturnValue({
-      upload: mockUpload,
-      getPublicUrl: mockGetPublicUrl,
-    });
+    const mockUpload = jest.fn().mockResolvedValue({ publicUrl: 'https://cdn.example.com/test.pdf' });
+    apiClient.upload = mockUpload;
     apiClient.insert = jest.fn().mockResolvedValue({});
 
-    const fakeFiles = [
-      { name: 'doc1.pdf' },
-      { name: 'doc2.png' },
-    ];
+    const fakeFiles = [{ name: 'doc1.pdf' }, { name: 'doc2.png' }];
 
     await entryRevisionModule._uploadFiles('e1', fakeFiles);
 
     expect(mockUpload).toHaveBeenCalledTimes(2);
-    expect(mockGetPublicUrl).toHaveBeenCalledTimes(2);
     expect(apiClient.insert).toHaveBeenCalledTimes(2);
     expect(apiClient.insert).toHaveBeenCalledWith(
       'entry_files',
@@ -656,33 +648,22 @@ describe('Entry Revision Module - _uploadFiles()', () => {
   });
 
   test('skips insert when upload fails and continues to next file', async () => {
-    const mockUpload = jest.fn()
-      .mockResolvedValueOnce({ error: { message: 'Too large' } })
-      .mockResolvedValueOnce({ error: null });
-    const mockGetPublicUrl = jest.fn().mockReturnValue({ data: { publicUrl: 'https://cdn.example.com/ok.pdf' } });
-    STATE.client.storage.from = jest.fn().mockReturnValue({
-      upload: mockUpload,
-      getPublicUrl: mockGetPublicUrl,
-    });
+    const mockUpload = jest
+      .fn()
+      .mockRejectedValueOnce({ message: 'Too large' })
+      .mockResolvedValueOnce({ publicUrl: 'https://cdn.example.com/ok.pdf' });
+    apiClient.upload = mockUpload;
     apiClient.insert = jest.fn().mockResolvedValue({});
 
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-    const fakeFiles = [
-      { name: 'bad.pdf' },
-      { name: 'good.pdf' },
-    ];
+    const fakeFiles = [{ name: 'bad.pdf' }, { name: 'good.pdf' }];
 
     await entryRevisionModule._uploadFiles('e1', fakeFiles);
 
     expect(mockUpload).toHaveBeenCalledTimes(2);
-    // getPublicUrl only called for the successful upload
-    expect(mockGetPublicUrl).toHaveBeenCalledTimes(1);
     // insert only called for the successful upload
     expect(apiClient.insert).toHaveBeenCalledTimes(1);
-    expect(apiClient.insert).toHaveBeenCalledWith(
-      'entry_files',
-      expect.objectContaining({ file_name: 'good.pdf' })
-    );
+    expect(apiClient.insert).toHaveBeenCalledWith('entry_files', expect.objectContaining({ file_name: 'good.pdf' }));
     expect(warnSpy).toHaveBeenCalledWith('Upload failed:', 'Too large');
     warnSpy.mockRestore();
   });

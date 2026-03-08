@@ -519,10 +519,12 @@ const winnersModule = {
     if (!awardId) return;
 
     const content = document.getElementById('awardPlacementsContent');
-    document.getElementById('awardPlacementsModalTitle').textContent = awardName || 'Award Placements';
+    const titleEl = document.getElementById('awardPlacementsModalTitle');
+    if (titleEl) titleEl.textContent = awardName || 'Award Placements';
 
     // Show loading state
-    content.innerHTML = `
+    if (content)
+      content.innerHTML = `
       <div class="text-center py-4">
         <div class="spinner-border text-primary" role="status"></div>
         <p class="mt-2 text-muted">Loading placements...</p>
@@ -706,21 +708,14 @@ const winnersModule = {
         const timestamp = Date.now();
         const fileName = `${this.currentWinnerId}/${this.currentMediaType}/${timestamp}_${file.name}`;
 
-        // Upload file to Supabase Storage (v2 syntax)
-        const { data: _uploadData, error: uploadError } = await STATE.client.storage
-          .from('winner-media')
-          .upload(fileName, file);
-
-        if (uploadError) throw uploadError;
-
-        // Get public URL (v2 syntax)
-        const { data: urlData } = STATE.client.storage.from('winner-media').getPublicUrl(fileName);
+        // Upload file to storage via server-side proxy
+        const uploadResult = await apiClient.upload('winner-media', fileName, file);
 
         // Insert record into database via apiClient
         await apiClient.insert('winner_media', {
           winner_id: this.currentWinnerId,
           media_type: this.currentMediaType,
-          file_url: urlData.publicUrl,
+          file_url: uploadResult.publicUrl,
           caption: caption || null,
         });
 
@@ -749,7 +744,9 @@ const winnersModule = {
 
     const media = winner.winner_media?.filter((m) => m.media_type === mediaType) || [];
 
-    document.getElementById('viewMediaTitle').innerHTML = `
+    const viewMediaTitleEl = document.getElementById('viewMediaTitle');
+    if (viewMediaTitleEl)
+      viewMediaTitleEl.innerHTML = `
       <i class="bi bi-${mediaType === MEDIA_TYPES.PHOTO ? 'images' : 'play-circle'} me-2"></i>
       ${utils.escapeHtml(winner.winner_name)} - ${mediaType === MEDIA_TYPES.PHOTO ? 'Photos' : 'Videos'}
     `;
@@ -872,6 +869,8 @@ const winnersModule = {
     allWinners: [],
     filteredWinners: [],
     selectedWinners: new Set(),
+    /** @type {Map<string, Set<string>>} Map of winnerId → Set of excluded photoIds */
+    excludedPhotos: new Map(),
   },
 
   /**
@@ -890,6 +889,7 @@ const winnersModule = {
       this.pressReleaseState.allWinners = winners || [];
       this.pressReleaseState.filteredWinners = this.pressReleaseState.allWinners;
       this.pressReleaseState.selectedWinners.clear();
+      this.pressReleaseState.excludedPhotos.clear();
 
       // Show modal
       const modal = new bootstrap.Modal(document.getElementById('pressReleaseExportModal'));
@@ -973,13 +973,14 @@ const winnersModule = {
                     <label class="form-label small fw-bold">Select Photos to Include:</label>
                     <div class="row g-2">
                       ${photos
-                        .map(
-                          (photo) => `
+                        .map((photo) => {
+                          const isPhotoExcluded = this.pressReleaseState.excludedPhotos.get(winner.id)?.has(photo.id);
+                          return `
                         <div class="col-6 col-md-3">
                           <div class="form-check">
                             <input class="form-check-input" type="checkbox"
                               id="photo_${photo.id}"
-                              checked
+                              ${isPhotoExcluded ? '' : 'checked'}
                               data-on-change="winnersModule.togglePhotoSelection" data-args='${JSON.stringify([winner.id, photo.id])}'>
                             <label class="form-check-label small" for="photo_${photo.id}">
                               <img src="${photo.media_url}" alt="${photo.caption || 'Photo'}"
@@ -991,8 +992,8 @@ const winnersModule = {
                             </label>
                           </div>
                         </div>
-                      `
-                        )
+                      `;
+                        })
                         .join('')}
                     </div>
                   </div>
@@ -1023,12 +1024,33 @@ const winnersModule = {
   },
 
   /**
-   * Toggle photo selection (placeholder for now)
+   * Toggle photo selection for press release export.
+   * Photos are included by default; toggling off adds them to the excluded set.
    * @param {string} winnerId - Winner ID
    * @param {string} photoId - Photo ID
    */
-  togglePhotoSelection(_winnerId, _photoId) {
-    // This will be used to track which photos to include
+  togglePhotoSelection(winnerId, photoId) {
+    if (!this.pressReleaseState.excludedPhotos.has(winnerId)) {
+      this.pressReleaseState.excludedPhotos.set(winnerId, new Set());
+    }
+    const excluded = this.pressReleaseState.excludedPhotos.get(winnerId);
+    if (excluded.has(photoId)) {
+      excluded.delete(photoId);
+    } else {
+      excluded.add(photoId);
+    }
+  },
+
+  /**
+   * Get selected photos for a winner (all photos minus excluded ones).
+   * @param {Object} winner - Winner object with winner_media array
+   * @returns {Array} Filtered photos
+   */
+  getSelectedPhotos(winner) {
+    const photos = (winner.winner_media || []).filter((m) => m.media_type === 'photo');
+    const excluded = this.pressReleaseState.excludedPhotos.get(winner.id);
+    if (!excluded || excluded.size === 0) return photos;
+    return photos.filter((p) => !excluded.has(p.id));
   },
 
   /**
@@ -1053,7 +1075,8 @@ const winnersModule = {
    * Update selected count
    */
   updateSelectedCount() {
-    document.getElementById('selectedWinnersCount').textContent = this.pressReleaseState.selectedWinners.size;
+    const el = document.getElementById('selectedWinnersCount');
+    if (el) el.textContent = String(this.pressReleaseState.selectedWinners.size);
   },
 
   /**
@@ -1107,7 +1130,7 @@ const winnersModule = {
     const exportData = [];
 
     winners.forEach((winner) => {
-      const photos = (winner.winner_media || []).filter((m) => m.media_type === 'photo');
+      const photos = this.getSelectedPhotos(winner);
       const awardName = winner.awards?.award_name || winner.awards?.award_category || 'N/A';
       const year = winner.awards?.year || 'N/A';
 
@@ -1464,7 +1487,8 @@ const winnersModule = {
    * Update selected count
    */
   updateCertificateSelectedCount() {
-    document.getElementById('selectedCertificateWinnersCount').textContent = this.certificateState.selectedWinners.size;
+    const el = document.getElementById('selectedCertificateWinnersCount');
+    if (el) el.textContent = String(this.certificateState.selectedWinners.size);
   },
 
   /**
@@ -1962,7 +1986,9 @@ const winnersModule = {
     const year = winner.awards?.year || 'N/A';
     const photos = winner.winner_media?.filter((m) => m.media_type === MEDIA_TYPES.PHOTO) || [];
 
-    document.getElementById('mediaPackWinnerInfo').innerHTML = `
+    const mediaPackInfoEl = document.getElementById('mediaPackWinnerInfo');
+    if (mediaPackInfoEl)
+      mediaPackInfoEl.innerHTML = `
       <div class="d-flex align-items-center">
         <div>
           <h6 class="mb-1">${utils.escapeHtml(winner.winner_name || 'Unnamed Winner')}</h6>
@@ -2142,7 +2168,9 @@ const winnersModule = {
     const year = winner.awards?.year || 'N/A';
     const photos = winner.winner_media?.filter((m) => m.media_type === MEDIA_TYPES.PHOTO) || [];
 
-    document.getElementById('winnerPackageWinnerInfo').innerHTML = `
+    const winnerPkgInfoEl = document.getElementById('winnerPackageWinnerInfo');
+    if (winnerPkgInfoEl)
+      winnerPkgInfoEl.innerHTML = `
       <div class="d-flex align-items-center">
         <div>
           <h6 class="mb-1">${utils.escapeHtml(winner.winner_name || 'Unnamed Winner')}</h6>
@@ -2490,9 +2518,12 @@ const winnersModule = {
    */
   displayComparisonResults(analysis) {
     // Update overview stats
-    document.getElementById('comparisonTotalWinners').textContent = analysis.totalWinners;
-    document.getElementById('comparisonReturningWinners').textContent = analysis.returningWinners.length;
-    document.getElementById('comparisonYearsCount').textContent = analysis.years.length;
+    const totalEl = document.getElementById('comparisonTotalWinners');
+    const returningEl = document.getElementById('comparisonReturningWinners');
+    const yearsEl = document.getElementById('comparisonYearsCount');
+    if (totalEl) totalEl.textContent = analysis.totalWinners;
+    if (returningEl) returningEl.textContent = analysis.returningWinners.length;
+    if (yearsEl) yearsEl.textContent = analysis.years.length;
 
     // Render trends by year
     this.renderTrendsByYear(analysis);
@@ -2856,10 +2887,14 @@ const winnersModule = {
    * Open import winners modal
    */
   openImportWinners() {
-    document.getElementById('importWinnersFile').value = '';
-    document.getElementById('importWinnersPreview').classList.add('d-none');
-    document.getElementById('importWinnersPreviewBody').innerHTML = '';
-    document.getElementById('importWinnersBtn').disabled = true;
+    const importFileEl = document.getElementById('importWinnersFile');
+    const importPreviewEl = document.getElementById('importWinnersPreview');
+    const importPreviewBodyEl = document.getElementById('importWinnersPreviewBody');
+    const importBtnEl = document.getElementById('importWinnersBtn');
+    if (importFileEl) importFileEl.value = '';
+    if (importPreviewEl) importPreviewEl.classList.add('d-none');
+    if (importPreviewBodyEl) importPreviewBodyEl.innerHTML = '';
+    if (importBtnEl) importBtnEl.disabled = true;
     this.importWinnersData = null;
 
     const modal = new bootstrap.Modal(document.getElementById('importWinnersModal'));
@@ -2884,7 +2919,7 @@ const winnersModule = {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        const text = e.target.result;
+        const text = /** @type {string} */ (e.target.result);
         const lines = text
           .split('\n')
           .map((line) => line.trim())
@@ -2928,8 +2963,10 @@ const winnersModule = {
         const previewDiv = document.getElementById('importWinnersPreview');
         const previewBody = document.getElementById('importWinnersPreviewBody');
         previewDiv.classList.remove('d-none');
-        document.getElementById('importWinnersBtn').disabled = false;
-        document.getElementById('importWinnersCount').textContent = rows.length;
+        const importBtn = document.getElementById('importWinnersBtn');
+        const importCountEl = document.getElementById('importWinnersCount');
+        if (importBtn) importBtn.disabled = false;
+        if (importCountEl) importCountEl.textContent = String(rows.length);
 
         // Show first 5 rows as preview
         const previewRows = rows.slice(0, 5);
@@ -3320,7 +3357,7 @@ const winnersModule = {
     const bar = document.getElementById('winnersBulkBar');
     const count = document.getElementById('winnersBulkCount');
     if (bar && count) {
-      count.textContent = this._selectedWinnerIds.size;
+      count.textContent = String(this._selectedWinnerIds.size);
       bar.classList.toggle('d-none', this._selectedWinnerIds.size === 0);
     }
   },

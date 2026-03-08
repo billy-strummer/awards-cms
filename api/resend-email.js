@@ -248,7 +248,8 @@ async function sendCampaignEmail(campaignId) {
         if (r.status === 'fulfilled' && r.value.success) sent++;
         else {
           failed++;
-          errors.push(r.reason?.message || r.value?.error || 'Unknown');
+          // @ts-ignore - TS doesn't narrow PromiseSettledResult well
+          errors.push(/** @type {any} */ (r).reason?.message || /** @type {any} */ (r).value?.error || 'Unknown');
         }
       });
 
@@ -359,11 +360,127 @@ async function processNotificationQueue() {
   return { processed, total: pending.length };
 }
 
-module.exports = {
-  sendEmail,
-  sendTemplatedEmail,
-  sendCampaignEmail,
-  sendTestEmail,
-  processNotificationQueue,
-  wrapEmailTemplate,
+/**
+ * Send an invoice email with branded formatting.
+ * @param {Object} options - Invoice email options.
+ * @param {string} options.to - Recipient email address.
+ * @param {string} options.subject - Email subject line.
+ * @param {string} options.message - Email body message text.
+ * @param {string} [options.cc] - CC email address.
+ * @param {Object} options.invoice - Invoice data for template.
+ * @returns {Promise<{success: boolean, id?: string, error?: string}>} Send result.
+ */
+async function sendInvoiceEmail({ to, subject, message, cc, invoice }) {
+  const lineItemsHtml = (invoice.line_items || [])
+    .map(
+      (item) =>
+        `<tr><td style="padding:8px;border-bottom:1px solid #eee">${item.description || ''}</td>` +
+        `<td style="padding:8px;border-bottom:1px solid #eee;text-align:center">${item.quantity || 1}</td>` +
+        `<td style="padding:8px;border-bottom:1px solid #eee;text-align:right">&pound;${parseFloat(item.unit_price || 0).toFixed(2)}</td>` +
+        `<td style="padding:8px;border-bottom:1px solid #eee;text-align:right">&pound;${parseFloat(item.total || 0).toFixed(2)}</td></tr>`
+    )
+    .join('');
+
+  const bodyHtml = `
+    <h2>Invoice ${invoice.invoice_number || ''}</h2>
+    <p>${message.replace(/\n/g, '<br>')}</p>
+    <table style="width:100%;border-collapse:collapse;margin:20px 0">
+      <thead>
+        <tr style="background:#f5f5f5">
+          <th style="padding:8px;text-align:left">Description</th>
+          <th style="padding:8px;text-align:center">Qty</th>
+          <th style="padding:8px;text-align:right">Unit Price</th>
+          <th style="padding:8px;text-align:right">Total</th>
+        </tr>
+      </thead>
+      <tbody>${lineItemsHtml}</tbody>
+      <tfoot>
+        ${invoice.tax_amount ? `<tr><td colspan="3" style="padding:8px;text-align:right"><strong>Tax:</strong></td><td style="padding:8px;text-align:right">&pound;${parseFloat(invoice.tax_amount).toFixed(2)}</td></tr>` : ''}
+        <tr><td colspan="3" style="padding:8px;text-align:right"><strong>Total:</strong></td><td style="padding:8px;text-align:right"><strong>&pound;${parseFloat(invoice.total_amount || 0).toFixed(2)}</strong></td></tr>
+      </tfoot>
+    </table>
+    ${invoice.due_date ? `<p><strong>Due Date:</strong> ${new Date(invoice.due_date).toLocaleDateString('en-GB')}</p>` : ''}
+    ${invoice.payment_url ? `<a href="${invoice.payment_url}" style="display:inline-block;background:#0d6efd;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;margin:16px 0">Pay Now</a>` : ''}
+  `;
+
+  const html = wrapEmailTemplate(subject, bodyHtml, '', {}, 'Invoice');
+
+  const emailOpts = { to, subject, html, tags: [{ name: 'template', value: 'invoice' }] };
+  if (cc) emailOpts.to = /** @type {any} */ ([to, cc]);
+
+  return sendEmail(emailOpts);
+}
+
+/**
+ * Vercel serverless handler for email operations.
+ * Supports: send-invoice, send-templated, send-campaign, send-test, process-queue
+ */
+module.exports = async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const { action } = req.body;
+
+  try {
+    switch (action) {
+      case 'send-invoice': {
+        const { to, subject, message, cc, invoice } = req.body;
+        if (!to || !subject || !invoice) {
+          return res.status(400).json({ error: 'Missing required fields: to, subject, invoice' });
+        }
+        const result = await sendInvoiceEmail({ to, subject, message, cc, invoice });
+        return res.status(result.success ? 200 : 500).json(result);
+      }
+      case 'send-templated': {
+        const { to, templateType, data } = req.body;
+        if (!to || !templateType) {
+          return res.status(400).json({ error: 'Missing required fields: to, templateType' });
+        }
+        const result = await sendTemplatedEmail({ to, templateType, data });
+        return res.status(result.success ? 200 : 500).json(result);
+      }
+      case 'send-campaign': {
+        const { campaignId } = req.body;
+        if (!campaignId) {
+          return res.status(400).json({ error: 'Missing required field: campaignId' });
+        }
+        const result = await sendCampaignEmail(campaignId);
+        return res.status(result.success ? 200 : 500).json(result);
+      }
+      case 'send-test': {
+        const { to, subject: testSubject, htmlContent } = req.body;
+        if (!to || !testSubject) {
+          return res.status(400).json({ error: 'Missing required fields: to, subject' });
+        }
+        const result = await sendTestEmail(to, testSubject, htmlContent);
+        return res.status(result.success ? 200 : 500).json(result);
+      }
+      case 'send': {
+        const { to: sendTo, subject: sendSubject, message: sendMessage } = req.body;
+        if (!sendTo || !sendSubject) {
+          return res.status(400).json({ error: 'Missing required fields: to, subject' });
+        }
+        const result = await sendEmail({ to: sendTo, subject: sendSubject, html: sendMessage });
+        return res.status(result.success ? 200 : 500).json(result);
+      }
+      case 'process-queue': {
+        const result = await processNotificationQueue();
+        return res.status(200).json(result);
+      }
+      default:
+        return res.status(400).json({ error: `Unknown action: ${action}` });
+    }
+  } catch (error) {
+    console.error('Email API error:', error);
+    return res.status(500).json({ error: error.message });
+  }
 };
+
+module.exports.sendEmail = sendEmail;
+module.exports.sendTemplatedEmail = sendTemplatedEmail;
+module.exports.sendCampaignEmail = sendCampaignEmail;
+module.exports.sendTestEmail = sendTestEmail;
+module.exports.processNotificationQueue = processNotificationQueue;
+module.exports.sendInvoiceEmail = sendInvoiceEmail;
+module.exports.wrapEmailTemplate = wrapEmailTemplate;

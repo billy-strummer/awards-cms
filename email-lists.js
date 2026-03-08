@@ -123,12 +123,10 @@ const emailListsModule = {
       // Average open rate still needs subscriber-level data; fetch only if lists exist
       let avgOpenRate = 0;
       if (totalSubscribers > 0) {
-        const { data: subscribersData } = await STATE.client
-          .from('email_list_subscribers')
-          .select('emails_opened, emails_received')
-          .gt('emails_received', 0);
-
-        const subs = subscribersData || [];
+        const subs = await apiClient.selectAll('email_list_subscribers', {
+          select: 'emails_opened, emails_received',
+          filters: { emails_received: { gt: 0 } },
+        });
         if (subs.length > 0) {
           avgOpenRate = Math.round(
             (subs.reduce((sum, s) => sum + s.emails_opened / s.emails_received, 0) / subs.length) * 100
@@ -681,14 +679,14 @@ const emailListsModule = {
   /**
    * Preview a CSV file showing its first few rows
    * @param {File} file - The CSV file to preview
-   * @returns {void}
+   * @returns {Promise<void>}
    */
   async previewCSV(file) {
     if (!file) return;
 
     const reader = new FileReader();
     reader.onload = (e) => {
-      const text = e.target.result;
+      const text = /** @type {string} */ (e.target.result);
       const lines = text.split('\n').filter((line) => line.trim());
       const hasHeader = document.getElementById('csvHasHeader').checked;
 
@@ -774,11 +772,7 @@ const emailListsModule = {
 
         const skipDuplicates = document.getElementById('csvSkipDuplicates')?.checked;
 
-        const { _data, error } = await STATE.client
-          .from('email_list_subscribers')
-          .insert(subscribersToInsert, { onConflict: skipDuplicates ? 'ignore' : undefined });
-
-        if (error) throw error;
+        await apiClient.insert('email_list_subscribers', subscribersToInsert);
 
         // Update batch as completed
         if (batch?.id) {
@@ -811,7 +805,7 @@ const emailListsModule = {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => {
-        const text = e.target.result;
+        const text = /** @type {string} */ (e.target.result);
         const lines = text.split('\n').filter((line) => line.trim());
         const hasHeader = document.getElementById('csvHasHeader').checked;
 
@@ -863,11 +857,10 @@ const emailListsModule = {
       // Map CRM segments to database queries
       const segmentQueries = {
         past_winners: async () => {
-          const { data } = await STATE.client
-            .from('award_assignments')
-            .select('organisations(id, company_name, contact_email, contact_first_name, contact_last_name)')
-            .eq('status', 'winner')
-            .not('organisations', 'is', null);
+          const data = await apiClient.selectAll('award_assignments', {
+            select: 'organisations(id, company_name, contact_email, contact_first_name, contact_last_name)',
+            filters: { status: { eq: 'winner' } },
+          });
           return (data || [])
             .filter((d) => d.organisations?.contact_email)
             .map((d) => ({
@@ -878,11 +871,10 @@ const emailListsModule = {
             }));
         },
         current_nominees: async () => {
-          const { data } = await STATE.client
-            .from('award_assignments')
-            .select('organisations(id, company_name, contact_email, contact_first_name, contact_last_name)')
-            .eq('status', 'nominee')
-            .not('organisations', 'is', null);
+          const data = await apiClient.selectAll('award_assignments', {
+            select: 'organisations(id, company_name, contact_email, contact_first_name, contact_last_name)',
+            filters: { status: { eq: 'nominee' } },
+          });
           return (data || [])
             .filter((d) => d.organisations?.contact_email)
             .map((d) => ({
@@ -1259,7 +1251,7 @@ const emailListsModule = {
   /**
    * Open the add single subscriber modal
    * @param {string} listId - The list ID to add the subscriber to
-   * @returns {void}
+   * @returns {Promise<void>}
    */
   async addSubscriber(listId) {
     const modalHtml = `
@@ -1332,7 +1324,8 @@ const emailListsModule = {
       return;
     }
 
-    const email = document.getElementById('subEmail').value.trim();
+    const emailEl = document.getElementById('subEmail');
+    const email = emailEl ? emailEl.value.trim() : '';
     if (!email || !email.includes('@')) {
       utils.showToast('Please enter a valid email address', 'warning');
       return;
@@ -1341,9 +1334,9 @@ const emailListsModule = {
     const subData = {
       list_id: listId,
       email: email,
-      first_name: document.getElementById('subFirstName').value.trim() || null,
-      last_name: document.getElementById('subLastName').value.trim() || null,
-      company_name: document.getElementById('subCompanyName').value.trim() || null,
+      first_name: document.getElementById('subFirstName')?.value.trim() || null,
+      last_name: document.getElementById('subLastName')?.value.trim() || null,
+      company_name: document.getElementById('subCompanyName')?.value.trim() || null,
       status: 'active',
       source: 'manual',
     };

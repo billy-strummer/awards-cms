@@ -1,3 +1,4 @@
+// @ts-ignore
 require('dotenv').config();
 
 /**
@@ -22,6 +23,7 @@ require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 const fs = require('fs');
 const path = require('path');
+// @ts-ignore
 const _csv = require('csv-parser');
 
 // CSV File Path Validation

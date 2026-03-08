@@ -1146,13 +1146,19 @@ describe('Judge Portal - saveScore', () => {
     mockSupabase.upsert.mockClear();
     mockSupabase.upsert.mockResolvedValue({ error: null });
     mockSupabase.then.mockImplementation((cb) => cb({ data: [], error: null, count: 0 }));
+
+    // Mock apiClient.upsert (used by saveScore instead of direct Supabase calls)
+    apiClient.upsert = jest.fn(() => Promise.resolve({ data: [] }));
+    // Mock apiClient.select for loadAssignedEntries called after save
+    apiClient.select = jest.fn(() => Promise.resolve({ data: [] }));
   });
 
   test('submits score as complete', async () => {
     await judgePortal.saveScore(true);
-    expect(mockSupabase.from).toHaveBeenCalledWith('judge_scores');
-    expect(mockSupabase.upsert).toHaveBeenCalled();
-    const upsertArg = mockSupabase.upsert.mock.calls[0][0][0];
+    expect(apiClient.upsert).toHaveBeenCalledWith('judge_scores', expect.any(Object), {
+      onConflict: 'entry_id,judge_email',
+    });
+    const upsertArg = apiClient.upsert.mock.calls[0][1];
     expect(upsertArg.entry_id).toBe('e1');
     expect(upsertArg.judge_email).toBe('judge@test.com');
     expect(upsertArg.is_complete).toBe(true);
@@ -1162,14 +1168,14 @@ describe('Judge Portal - saveScore', () => {
 
   test('saves score as draft', async () => {
     await judgePortal.saveScore(false);
-    expect(mockSupabase.upsert).toHaveBeenCalled();
-    const upsertArg = mockSupabase.upsert.mock.calls[0][0][0];
+    expect(apiClient.upsert).toHaveBeenCalled();
+    const upsertArg = apiClient.upsert.mock.calls[0][1];
     expect(upsertArg.is_complete).toBe(false);
   });
 
   test('includes feedback data', async () => {
     await judgePortal.saveScore(false);
-    const upsertArg = mockSupabase.upsert.mock.calls[0][0][0];
+    const upsertArg = apiClient.upsert.mock.calls[0][1];
     expect(upsertArg.strengths).toBe('Good innovation');
     expect(upsertArg.weaknesses).toBe('Needs better UX');
     expect(upsertArg.comments).toBe('Overall solid entry');
@@ -1177,7 +1183,7 @@ describe('Judge Portal - saveScore', () => {
   });
 
   test('handles upsert error gracefully', async () => {
-    mockSupabase.upsert.mockResolvedValue({ error: { message: 'DB error' } });
+    apiClient.upsert.mockRejectedValue(new Error('DB error'));
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
     await judgePortal.saveScore(true);
     expect(consoleSpy).toHaveBeenCalled();
@@ -1188,7 +1194,7 @@ describe('Judge Portal - saveScore', () => {
     document.getElementById('declareConflict').checked = true;
     global.confirm = jest.fn(() => true);
     await judgePortal.saveScore(true);
-    const upsertArg = mockSupabase.upsert.mock.calls[0][0][0];
+    const upsertArg = apiClient.upsert.mock.calls[0][1];
     expect(upsertArg.has_conflict).toBe(true);
     delete global.confirm;
   });
@@ -1208,7 +1214,7 @@ describe('Judge Portal - saveScore', () => {
     await judgePortal.saveScore(false);
     // confirm should NOT be called for draft saves
     expect(global.confirm).not.toHaveBeenCalled();
-    expect(mockSupabase.upsert).toHaveBeenCalled();
+    expect(apiClient.upsert).toHaveBeenCalled();
     delete global.confirm;
   });
 });
@@ -1347,11 +1353,6 @@ describe('Judge Portal - initialize', () => {
 describe('Judge Portal - _fetchPage', () => {
   beforeEach(() => {
     judgePortal._pagination = { page: 1, totalPages: 1, count: 0, pageSize: 50 };
-    mockSupabase.from.mockReturnValue(mockSupabase);
-    mockSupabase.select.mockReturnValue(mockSupabase);
-    mockSupabase.eq.mockReturnValue(mockSupabase);
-    mockSupabase.order.mockReturnValue(mockSupabase);
-    mockSupabase.range.mockReturnValue(mockSupabase);
   });
 
   test('fetches entries and updates pagination', async () => {
@@ -1359,7 +1360,7 @@ describe('Judge Portal - _fetchPage', () => {
       { id: 'e1', entry_title: 'Entry 1' },
       { id: 'e2', entry_title: 'Entry 2' },
     ];
-    mockSupabase.then.mockImplementation((cb) => cb({ data: mockEntries, error: null, count: 100 }));
+    apiClient.select = jest.fn(() => Promise.resolve({ data: mockEntries, count: 100 }));
 
     const entries = await judgePortal._fetchPage(2);
     expect(entries).toEqual(mockEntries);
@@ -1369,12 +1370,12 @@ describe('Judge Portal - _fetchPage', () => {
   });
 
   test('throws on error', async () => {
-    mockSupabase.then.mockImplementation((cb) => cb({ data: null, error: { message: 'Fetch failed' } }));
+    apiClient.select = jest.fn(() => Promise.reject({ message: 'Fetch failed' }));
     await expect(judgePortal._fetchPage(1)).rejects.toEqual({ message: 'Fetch failed' });
   });
 
   test('returns empty array when data is null', async () => {
-    mockSupabase.then.mockImplementation((cb) => cb({ data: null, error: null, count: 0 }));
+    apiClient.select = jest.fn(() => Promise.resolve({ data: null, count: 0 }));
     const entries = await judgePortal._fetchPage(1);
     expect(entries).toEqual([]);
   });
@@ -1387,17 +1388,10 @@ describe('Judge Portal - _goToPage', () => {
   beforeEach(() => {
     judgePortal.currentJudge = { email: 'judge@test.com', name: 'Judge' };
     judgePortal._pagination = { page: 1, totalPages: 5, count: 250, pageSize: 50 };
-    mockSupabase.from.mockReturnValue(mockSupabase);
-    mockSupabase.select.mockReturnValue(mockSupabase);
-    mockSupabase.eq.mockReturnValue(mockSupabase);
-    mockSupabase.order.mockReturnValue(mockSupabase);
-    mockSupabase.range.mockReturnValue(mockSupabase);
   });
 
   test('navigates to a valid page', async () => {
-    mockSupabase.then.mockImplementation((cb) =>
-      cb({ data: [{ id: 'e1', judge_scores: [] }], error: null, count: 250 })
-    );
+    apiClient.select = jest.fn(() => Promise.resolve({ data: [{ id: 'e1', judge_scores: [] }], count: 250 }));
     judgePortal._goToPage(3);
     // Wait for the async operation
     await new Promise((r) => setTimeout(r, 50));
@@ -1405,14 +1399,14 @@ describe('Judge Portal - _goToPage', () => {
   });
 
   test('clamps page to minimum of 1', async () => {
-    mockSupabase.then.mockImplementation((cb) => cb({ data: [], error: null, count: 250 }));
+    apiClient.select = jest.fn(() => Promise.resolve({ data: [], count: 250 }));
     judgePortal._goToPage(-5);
     await new Promise((r) => setTimeout(r, 50));
     expect(judgePortal._pagination.page).toBe(1);
   });
 
   test('clamps page to maximum of totalPages', async () => {
-    mockSupabase.then.mockImplementation((cb) => cb({ data: [], error: null, count: 250 }));
+    apiClient.select = jest.fn(() => Promise.resolve({ data: [], count: 250 }));
     judgePortal._goToPage(999);
     await new Promise((r) => setTimeout(r, 50));
     expect(judgePortal._pagination.page).toBe(5);
@@ -1420,7 +1414,7 @@ describe('Judge Portal - _goToPage', () => {
 
   test('handles fetch error in _goToPage', async () => {
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-    mockSupabase.then.mockImplementation((cb) => cb({ data: null, error: { message: 'Server error' } }));
+    apiClient.select = jest.fn(() => Promise.reject(new Error('Server error')));
     judgePortal._goToPage(2);
     await new Promise((r) => setTimeout(r, 50));
     expect(consoleSpy).toHaveBeenCalled();
@@ -1435,18 +1429,13 @@ describe('Judge Portal - loadAssignedEntries', () => {
   beforeEach(() => {
     judgePortal.currentJudge = { email: 'judge@test.com', name: 'Judge' };
     judgePortal._pagination = { page: 1, totalPages: 1, count: 0, pageSize: 50 };
-    mockSupabase.from.mockReturnValue(mockSupabase);
-    mockSupabase.select.mockReturnValue(mockSupabase);
-    mockSupabase.eq.mockReturnValue(mockSupabase);
-    mockSupabase.order.mockReturnValue(mockSupabase);
-    mockSupabase.range.mockReturnValue(mockSupabase);
   });
 
   test('loads and enriches entries', async () => {
     const entries = [
       { id: 'e1', entry_title: 'Test', judge_scores: [{ judge_email: 'judge@test.com', total_score: 25 }] },
     ];
-    mockSupabase.then.mockImplementation((cb) => cb({ data: entries, error: null, count: 1 }));
+    apiClient.select = jest.fn(() => Promise.resolve({ data: entries, count: 1 }));
     await judgePortal.loadAssignedEntries();
     expect(judgePortal.assignedEntries.length).toBe(1);
     expect(judgePortal.assignedEntries[0].hasScored).toBe(true);
@@ -1454,7 +1443,7 @@ describe('Judge Portal - loadAssignedEntries', () => {
 
   test('handles load error gracefully', async () => {
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-    mockSupabase.then.mockImplementation((cb) => cb({ data: null, error: { message: 'Network failure' } }));
+    apiClient.select = jest.fn(() => Promise.reject(new Error('Network failure')));
     await judgePortal.loadAssignedEntries();
     expect(consoleSpy).toHaveBeenCalled();
     consoleSpy.mockRestore();

@@ -255,7 +255,7 @@ const eventsModule = {
           event_date: eventDate || null,
           year: eventYear ? parseInt(eventYear) : null,
           venue: eventVenue || null,
-          capacity: eventCapacity ? parseInt(eventCapacity) : null,
+          capacity: eventCapacity ? eventCapacity : null,
           description: eventDescription || null,
           event_status: eventStatus || 'draft',
         };
@@ -292,7 +292,7 @@ const eventsModule = {
         utils.showToast(`Event ${eventId ? 'updated' : 'added'} successfully!`, 'success');
 
         // Close modal and reload
-        bootstrap.Modal.getInstance(document.getElementById('eventModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('eventModal'))?.hide();
         await this.loadEvents();
       });
     } catch (error) {
@@ -421,7 +421,7 @@ const eventsModule = {
         }
 
         // Close modal and reload
-        bootstrap.Modal.getInstance(document.getElementById('cloneEventModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('cloneEventModal'))?.hide();
         await this.loadEvents();
 
         // Show success summary
@@ -728,7 +728,7 @@ const eventsModule = {
     if (!template) return;
 
     // Close templates modal
-    bootstrap.Modal.getInstance(document.getElementById('eventTemplatesModal')).hide();
+    bootstrap.Modal.getInstance(document.getElementById('eventTemplatesModal'))?.hide();
 
     // Wait a bit for modal to close
     await new Promise((resolve) => setTimeout(resolve, 300));
@@ -912,10 +912,10 @@ const eventsModule = {
     const notAttending = attendees.filter((a) => a.status === 'not_attending').length;
     const maybe = attendees.filter((a) => a.status === 'maybe').length;
 
-    document.getElementById('attendingCount').textContent = attending;
-    document.getElementById('notAttendingCount').textContent = notAttending;
-    document.getElementById('maybeCount').textContent = maybe;
-    document.getElementById('totalAttendeesCount').textContent = attendees.length;
+    document.getElementById('attendingCount').textContent = String(attending);
+    document.getElementById('notAttendingCount').textContent = String(notAttending);
+    document.getElementById('maybeCount').textContent = String(maybe);
+    document.getElementById('totalAttendeesCount').textContent = String(attendees.length);
     this._highlightActiveCard(document.getElementById('attendeeStatusFilter')?.value || '');
 
     // Venue capacity tracker
@@ -1308,14 +1308,14 @@ const eventsModule = {
     const progressBar = document.getElementById('checkInProgressBar');
     const badge = document.getElementById('checkedInBadge');
 
-    if (checkedCountEl) checkedCountEl.textContent = checkedIn.length;
-    if (pendingCountEl) pendingCountEl.textContent = pending.length;
+    if (checkedCountEl) checkedCountEl.textContent = String(checkedIn.length);
+    if (pendingCountEl) pendingCountEl.textContent = String(pending.length);
     if (progressBar) {
       progressBar.style.width = pct + '%';
       progressBar.textContent = pct + '%';
     }
     if (badge) {
-      badge.textContent = checkedIn.length;
+      badge.textContent = String(checkedIn.length);
       badge.style.display = checkedIn.length > 0 ? 'inline' : 'none';
     }
 
@@ -1452,9 +1452,9 @@ const eventsModule = {
     const copyBtn = document.getElementById('ticketUrlCopyBtn');
 
     if (priceEl) priceEl.textContent = price > 0 ? `\u00A3${parseFloat(price).toFixed(2)}` : 'Free';
-    if (soldEl) soldEl.textContent = ticketsSold;
+    if (soldEl) soldEl.textContent = String(ticketsSold);
     if (revenueEl) revenueEl.textContent = price > 0 ? `\u00A3${(ticketsSold * price).toFixed(2)}` : '-';
-    if (remainingEl) remainingEl.textContent = capacity > 0 ? Math.max(0, capacity - ticketsSold) : '-';
+    if (remainingEl) remainingEl.textContent = capacity > 0 ? String(Math.max(0, capacity - ticketsSold)) : '-';
     if (priceInput) priceInput.value = price || '';
     if (urlInput) urlInput.value = event.ticket_url || '';
     if (copyBtn) copyBtn.style.display = event.ticket_url ? 'block' : 'none';
@@ -2771,7 +2771,7 @@ const eventsModule = {
       budget.items.push(item);
     }
     this._saveBudget(eventId, budget);
-    bootstrap.Modal.getInstance(document.getElementById('budgetItemModal')).hide();
+    bootstrap.Modal.getInstance(document.getElementById('budgetItemModal'))?.hide();
     this.renderBudgetTab(eventId);
     utils.showToast(this._editBudgetIdx !== null ? 'Budget item updated' : 'Budget item added', 'success');
     this._editBudgetIdx = null;
@@ -2992,7 +2992,7 @@ const eventsModule = {
       vendors.push(vendor);
     }
     this._saveVendors(eventId, vendors);
-    bootstrap.Modal.getInstance(document.getElementById('vendorModal')).hide();
+    bootstrap.Modal.getInstance(document.getElementById('vendorModal'))?.hide();
     this.renderVendorsTab(eventId);
     utils.showToast(this._editVendorIdx !== null ? 'Vendor updated' : 'Vendor added', 'success');
     this._editVendorIdx = null;
@@ -3039,7 +3039,7 @@ const eventsModule = {
     if (!container) return;
     const attendees = (await this.getAttendees(eventId)).filter((a) => a.status === 'attending');
     const _event = STATE.allEvents.find((e) => e.id === eventId);
-    const reqs = this._getSpecialReqs(eventId);
+    const reqs = await this._getSpecialReqs(eventId);
 
     // Accessibility summary
     const accessNeeds = attendees.filter((a) => {
@@ -3530,7 +3530,7 @@ const eventsModule = {
     const checkInTimes = checkedIn
       .filter((a) => a.checkInTime)
       .map((a) => new Date(a.checkInTime))
-      .sort((a, b) => a - b);
+      .sort((a, b) => Number(a) - Number(b));
 
     let timeDistribution = '';
     if (checkInTimes.length > 0) {
@@ -6080,8 +6080,9 @@ const eventsModule = {
     const temp = document.createElement('div');
     temp.innerHTML = newHtml;
     const newContent = temp.querySelector('.modal-content');
-    if (newContent) {
-      modal.querySelector('.modal-content').innerHTML = newContent.innerHTML;
+    const modalContent = modal.querySelector('.modal-content');
+    if (newContent && modalContent) {
+      modalContent.innerHTML = newContent.innerHTML;
     }
 
     // Re-attach keyboard shortcuts
@@ -8440,7 +8441,7 @@ const eventsModule = {
         }
       }
       utils.showToast('Item updated', 'success');
-      bootstrap.Modal.getInstance(document.getElementById('editRunningOrderModal')).hide();
+      bootstrap.Modal.getInstance(document.getElementById('editRunningOrderModal'))?.hide();
       await this.loadRunningOrder();
       this.renderRunningOrderItems();
     } catch (error) {
@@ -9374,7 +9375,7 @@ const eventsModule = {
 
     // Update count badge
     const countBadge = document.getElementById('tpUnassignedCount');
-    if (countBadge) countBadge.textContent = this.unassignedGuests.length;
+    if (countBadge) countBadge.textContent = String(this.unassignedGuests.length);
 
     if (this.unassignedGuests.length === 0) {
       container.innerHTML = `
@@ -9805,7 +9806,7 @@ const eventsModule = {
     }
 
     panel.style.display = '';
-    if (countBadge) countBadge.textContent = rows.length;
+    if (countBadge) countBadge.textContent = String(rows.length);
 
     // Apply sort
     const { col, asc } = this._bottomIndexSort;
@@ -10700,16 +10701,16 @@ const eventsModule = {
   async addNewTable() {
     try {
       let nextNumber;
-      const { data: rpcResult, error: numberError } = await STATE.client.rpc('get_next_table_number', {
-        p_event_id: this.currentEventIdTablePlan,
-      });
-      if (numberError) {
+      try {
+        const rpcResult = await apiClient.rpc('get_next_table_number', {
+          p_event_id: this.currentEventIdTablePlan,
+        });
+        nextNumber = rpcResult.data;
+      } catch (_rpcErr) {
         // RPC may not exist - compute next table number client-side
         console.warn('get_next_table_number RPC not available, computing locally');
         const maxNum = this.tables.reduce((max, t) => Math.max(max, t.table_number || 0), 0);
         nextNumber = maxNum + 1;
-      } else {
-        nextNumber = rpcResult;
       }
 
       // Place new table in a visible spot on the canvas
@@ -11843,10 +11844,10 @@ const eventsModule = {
     if (!source) return;
 
     try {
-      const { data: nextNumber, error: numberError } = await STATE.client.rpc('get_next_table_number', {
+      const rpcResult = await apiClient.rpc('get_next_table_number', {
         p_event_id: this.currentEventIdTablePlan,
       });
-      if (numberError) throw numberError;
+      const nextNumber = rpcResult.data;
 
       await this._insertEventTable({
         event_id: this.currentEventIdTablePlan,
@@ -12286,7 +12287,7 @@ const eventsModule = {
           // Countdown
           const today = new Date();
           today.setHours(0, 0, 0, 0);
-          const diff = Math.ceil((d - today) / (1000 * 60 * 60 * 24));
+          const diff = Math.ceil((Number(d) - Number(today)) / (1000 * 60 * 60 * 24));
           if (diff > 0 && diff <= 90) {
             countdown = `<br><span class="badge bg-${diff <= 7 ? 'danger' : diff <= 30 ? 'warning text-dark' : 'info'}" style="font-size:0.6rem;">${diff}d away</span>`;
           } else if (diff === 0) {
@@ -12611,7 +12612,7 @@ const eventsModule = {
     if (this._selectedEvents.size > 0) {
       bar.style.display = 'flex';
       bar.style.setProperty('display', 'flex', 'important');
-      if (countEl) countEl.textContent = this._selectedEvents.size;
+      if (countEl) countEl.textContent = String(this._selectedEvents.size);
     } else {
       bar.style.setProperty('display', 'none', 'important');
     }
@@ -12703,7 +12704,7 @@ const eventsModule = {
     const bar = document.getElementById('eventsBulkBar');
     const count = document.getElementById('eventsBulkCount');
     if (bar && count) {
-      count.textContent = this._selectedEvents.size;
+      count.textContent = String(this._selectedEvents.size);
       bar.classList.toggle('d-none', this._selectedEvents.size === 0);
     }
   },
@@ -13028,9 +13029,12 @@ const eventsModule = {
     if (!previewArea || !table) return;
 
     const preview = rows.slice(0, 20);
-    table.querySelector('thead').innerHTML =
+    const thead = table.querySelector('thead');
+    const tbody = table.querySelector('tbody');
+    if (!thead || !tbody) return;
+    thead.innerHTML =
       '<tr><th>Name</th><th>Email</th><th>Status</th><th>Type</th><th>+1s</th><th>Dietary</th><th>Company</th></tr>';
-    table.querySelector('tbody').innerHTML = preview
+    tbody.innerHTML = preview
       .map(
         (r) =>
           `<tr><td>${utils.escapeHtml(r.name)}</td><td>${utils.escapeHtml(r.email)}</td><td><span class="badge bg-${r.status === 'attending' ? 'success' : r.status === 'maybe' ? 'warning' : 'secondary'}">${r.status}</span></td>

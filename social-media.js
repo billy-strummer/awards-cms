@@ -2,31 +2,6 @@
 /* SOCIAL MEDIA MANAGER MODULE */
 /* ==================================================== */
 
-/**
- * Strip columns that don't exist in the DB schema and retry the operation.
- * Handles PGRST204 errors from Supabase when migrations haven't been applied.
- */
-function stripUnknownColumn(data, errorMessage) {
-  const match = errorMessage && errorMessage.match(/Could not find the '(\w+)' column/);
-  if (match) {
-    const col = match[1];
-    if (Array.isArray(data)) {
-      return {
-        column: col,
-        cleaned: data.map((row) => {
-          const copy = { ...row };
-          delete copy[col];
-          return copy;
-        }),
-      };
-    }
-    const copy = { ...data };
-    delete copy[col];
-    return { column: col, cleaned: copy };
-  }
-  return null;
-}
-
 const socialMediaModule = {
   currentTemplate: null,
   selectedCompany: null,
@@ -128,13 +103,13 @@ Vote now: {{website}}
     const select = document.getElementById('smCompanySelect');
     if (!select) return;
     try {
-      const { data: companies, error } = await STATE.client
-        .from('organisations')
-        .select('id, company_name, logo_url, website')
-        .eq('status', 'active')
-        .order('company_name');
-
-      if (error) throw error;
+      const result = await apiClient.select('organisations', {
+        select: 'id, company_name, logo_url, website',
+        filters: { status: { op: 'eq', value: 'active' } },
+        sort: { column: 'company_name', ascending: true },
+        pageSize: 1000,
+      });
+      const companies = result.data;
 
       select.innerHTML = '<option value="">Select company...</option>';
       (companies || []).forEach((company) => {
@@ -155,13 +130,13 @@ Vote now: {{website}}
     const select = document.getElementById('smAwardSelect');
     if (!select) return;
     try {
-      const { data: awards, error } = await STATE.client
-        .from('awards')
-        .select('id, award_name, award_category')
-        .eq('is_active', true)
-        .order('award_name');
-
-      if (error) throw error;
+      const result = await apiClient.select('awards', {
+        select: 'id, award_name, award_category',
+        filters: { is_active: { op: 'eq', value: true } },
+        sort: { column: 'award_name', ascending: true },
+        pageSize: 1000,
+      });
+      const awards = result.data;
 
       select.innerHTML = '<option value="">Select award...</option>';
       (awards || []).forEach((award) => {
@@ -208,7 +183,7 @@ Vote now: {{website}}
     const companySelect = document.getElementById('smCompanySelect');
     const awardSelect = document.getElementById('smAwardSelect');
 
-    const selectedCompanyOption = companySelect.options[companySelect.selectedIndex];
+    const selectedCompanyOption = companySelect ? companySelect.options[companySelect.selectedIndex] : null;
     const companyName =
       selectedCompanyOption && selectedCompanyOption.value ? selectedCompanyOption.text.trim() : '{{company_name}}';
     const companyWebsite =
@@ -312,7 +287,7 @@ Vote now: {{website}}
     const customRadio = document.getElementById('imageCustom');
     const customUploadDiv = document.getElementById('customImageUpload');
 
-    if (customRadio) {
+    if (customRadio && customUploadDiv) {
       customRadio.addEventListener('change', () => {
         if (customRadio.checked) {
           customUploadDiv.style.display = 'block';
@@ -320,7 +295,7 @@ Vote now: {{website}}
       });
     }
 
-    if (companyLogoRadio) {
+    if (companyLogoRadio && customUploadDiv) {
       companyLogoRadio.addEventListener('change', () => {
         if (companyLogoRadio.checked) {
           customUploadDiv.style.display = 'none';
@@ -407,23 +382,12 @@ Vote now: {{website}}
       // Upload to Supabase storage
       const fileName = `social-media/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
 
-      const { _data, error } = await STATE.client.storage.from('media').upload(fileName, file, {
-        cacheControl: '3600',
-        upsert: false,
-      });
+      await apiClient.upload('media', fileName, file);
 
-      if (error) {
-        // Fallback to local preview if storage bucket doesn't exist
-        console.warn('Storage upload failed, using local preview:', error.message);
-        // Revoke any previous blob URL to prevent memory leak
-        if (this.uploadedImageUrl?.startsWith('blob:')) URL.revokeObjectURL(this.uploadedImageUrl);
-        this.uploadedImageUrl = URL.createObjectURL(file);
-      } else {
-        // Get public URL
-        const { data: urlData } = STATE.client.storage.from('media').getPublicUrl(fileName);
+      // Get public URL
+      const urlData = await apiClient.getPublicUrl('media', fileName);
 
-        this.uploadedImageUrl = urlData.publicUrl;
-      }
+      this.uploadedImageUrl = urlData.publicUrl;
 
       this.updateImagePreview();
       this.validateImageDimensions(this.uploadedImageUrl);
@@ -519,6 +483,12 @@ Vote now: {{website}}
         imageUrl = this.uploadedImageUrl;
       }
 
+      // Instagram requires an image — warn user if none provided
+      if (platforms.includes('instagram') && !imageUrl) {
+        utils.showToast('Instagram requires an image. Please add an image or deselect Instagram.', 'warning');
+        return;
+      }
+
       // Build platform-specific content if overrides are enabled
       const platformContent = {};
       const overrideToggle = document.getElementById('smPlatformOverrides');
@@ -544,43 +514,27 @@ Vote now: {{website}}
 
       // If editing, update instead of insert
       if (this.editingPostId) {
-        let { error } = await STATE.client.from('social_media_posts').update(postData).eq('id', this.editingPostId);
-        if (error) {
-          const fix = stripUnknownColumn(postData, error.message);
-          if (fix) {
-            const retry = await STATE.client
-              .from('social_media_posts')
-              .update(fix.cleaned)
-              .eq('id', this.editingPostId);
-            if (retry.error) throw retry.error;
-          } else {
-            throw error;
-          }
-        }
+        await apiClient.update('social_media_posts', this.editingPostId, postData);
 
         this.editingPostId = null;
         utils.showToast('Post updated successfully!', 'success');
       } else {
-        let { data, error } = await STATE.client.from('social_media_posts').insert([postData]).select();
-        if (error) {
-          const fix = stripUnknownColumn([postData], error.message);
-          if (fix) {
-            const retry = await STATE.client.from('social_media_posts').insert(fix.cleaned).select();
-            if (retry.error) throw retry.error;
-            data = retry.data;
-          } else {
-            throw error;
-          }
-        }
+        let data;
+        const result = await apiClient.insert('social_media_posts', postData);
+        data = result.data;
 
         if (postType === 'immediate' && data?.[0]?.id) {
-          // Trigger server-side publish via Edge Function
+          // Trigger server-side publish via Vercel API
           try {
-            const { data: publishResult, error: pubErr } = await STATE.client.functions.invoke('publish-social-post', {
-              body: { postId: data[0].id },
+            const token = await apiClient._getToken();
+            const pubRes = await fetch('/api/social-media-api', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ action: 'publish', postId: data[0].id }),
             });
-            if (pubErr) console.warn('Auto-publish failed, post saved:', pubErr);
-            if (publishResult?.errors?.length > 0) {
+            const publishResult = await pubRes.json();
+            if (!pubRes.ok) console.warn('Auto-publish failed, post saved:', publishResult.error);
+            else if (publishResult?.errors?.length > 0) {
               utils.showToast(
                 `Published with warnings: ${publishResult.errors.map((e) => e.platform).join(', ')} failed`,
                 'warning'
@@ -661,32 +615,11 @@ Vote now: {{website}}
       };
 
       if (this.editingPostId) {
-        let { error } = await STATE.client.from('social_media_posts').update(draftData).eq('id', this.editingPostId);
-        if (error) {
-          const fix = stripUnknownColumn(draftData, error.message);
-          if (fix) {
-            const retry = await STATE.client
-              .from('social_media_posts')
-              .update(fix.cleaned)
-              .eq('id', this.editingPostId);
-            if (retry.error) throw retry.error;
-          } else {
-            throw error;
-          }
-        }
+        await apiClient.update('social_media_posts', this.editingPostId, draftData);
         this.editingPostId = null;
         utils.showToast('Draft updated successfully!', 'success');
       } else {
-        let { _data, error } = await STATE.client.from('social_media_posts').insert([draftData]).select();
-        if (error) {
-          const fix = stripUnknownColumn([draftData], error.message);
-          if (fix) {
-            const retry = await STATE.client.from('social_media_posts').insert(fix.cleaned).select();
-            if (retry.error) throw retry.error;
-          } else {
-            throw error;
-          }
-        }
+        await apiClient.insert('social_media_posts', draftData);
         utils.showToast('Draft saved successfully!', 'success');
       }
 
@@ -856,9 +789,8 @@ Vote now: {{website}}
     try {
       utils.showLoading();
 
-      const { data: post, error } = await STATE.client.from('social_media_posts').select('*').eq('id', postId).single();
-
-      if (error) throw error;
+      const result = await apiClient.select('social_media_posts', { filters: { id: postId }, pageSize: 1 });
+      const post = result.data[0];
 
       // Set editing mode
       this.editingPostId = postId;
@@ -978,9 +910,7 @@ Vote now: {{website}}
       return;
 
     try {
-      const { error } = await STATE.client.from('social_media_posts').delete().eq('id', postId);
-
-      if (error) throw error;
+      await apiClient.delete('social_media_posts', postId);
 
       utils.showToast('Post deleted successfully', 'success');
       await Promise.all([this.loadScheduledPosts(), this.loadDraftPosts(), this.loadPublishedPosts()]);
@@ -1143,9 +1073,8 @@ Vote now: {{website}}
     try {
       utils.showLoading();
 
-      const { data: post, error } = await STATE.client.from('social_media_posts').select('*').eq('id', postId).single();
-
-      if (error) throw error;
+      const result = await apiClient.select('social_media_posts', { filters: { id: postId }, pageSize: 1 });
+      const post = result.data[0];
 
       // Do NOT set editingPostId - this creates a new post
       document.getElementById('smPostContent').value = post.content || '';
@@ -1243,18 +1172,15 @@ Vote now: {{website}}
 
         // Fetch nominees/winners for this award from assignments
         const statusFilter = templateType === 'winner' ? 'winner' : 'nominated';
-        const { data: assignments, error } = await STATE.client
-          .from('award_assignments')
-          .select(
-            `
-            *,
-            organisations:organisation_id(id, company_name, logo_url, website)
-          `
-          )
-          .eq('award_id', awardId)
-          .eq('status', statusFilter);
-
-        if (error) throw error;
+        const assignResult = await apiClient.select('award_assignments', {
+          select: '*, organisations:organisation_id(id, company_name, logo_url, website)',
+          filters: {
+            award_id: { op: 'eq', value: awardId },
+            status: { op: 'eq', value: statusFilter },
+          },
+          pageSize: 1000,
+        });
+        const assignments = assignResult.data;
 
         if (!assignments || assignments.length === 0) {
           utils.showToast(`No ${statusFilter} companies found for this award`, 'warning');
@@ -1305,16 +1231,7 @@ Vote now: {{website}}
           return;
         }
 
-        let { error: insertError } = await STATE.client.from('social_media_posts').insert(posts);
-        if (insertError) {
-          const fix = stripUnknownColumn(posts, insertError.message);
-          if (fix) {
-            const retry = await STATE.client.from('social_media_posts').insert(fix.cleaned);
-            if (retry.error) throw retry.error;
-          } else {
-            throw insertError;
-          }
-        }
+        await apiClient.insert('social_media_posts', posts);
 
         // Close modal
         const modal = bootstrap.Modal.getInstance(document.getElementById('bulkGenerateModal'));
@@ -1463,13 +1380,11 @@ Vote now: {{website}}
 
     try {
       // Count posts by status
-      const { data: allPosts, error } = await STATE.client
-        .from('social_media_posts')
-        .select('status, platforms, created_at');
-
-      if (error) throw error;
-
-      const posts = allPosts || [];
+      const analyticsResult = await apiClient.select('social_media_posts', {
+        select: 'status, platforms, created_at',
+        pageSize: 10000,
+      });
+      const posts = analyticsResult.data || [];
       const published = posts.filter((p) => p.status === 'published');
       const scheduled = posts.filter((p) => p.status === 'scheduled');
       const drafts = posts.filter((p) => p.status === 'draft');

@@ -871,13 +871,31 @@ describe('Document Module - buildPressPack', () => {
   test('builds press pack modal and returns documents', async () => {
     // Mock 3 parallel queries for photos, certs, profiles
     const photoData = [
-      { id: 'p1', title: 'Photo 1', file_url: 'https://cdn.example.com/photo1.jpg', file_type: 'image/jpeg', file_name: 'photo1.jpg' },
+      {
+        id: 'p1',
+        title: 'Photo 1',
+        file_url: 'https://cdn.example.com/photo1.jpg',
+        file_type: 'image/jpeg',
+        file_name: 'photo1.jpg',
+      },
     ];
     const certData = [
-      { id: 'c1', title: 'Certificate 1', file_url: 'https://cdn.example.com/cert1.pdf', file_type: 'application/pdf', file_name: 'cert1.pdf' },
+      {
+        id: 'c1',
+        title: 'Certificate 1',
+        file_url: 'https://cdn.example.com/cert1.pdf',
+        file_type: 'application/pdf',
+        file_name: 'cert1.pdf',
+      },
     ];
     const profileData = [
-      { id: 'pp1', title: 'Profile 1', file_url: 'https://cdn.example.com/profile1.pdf', file_type: 'application/pdf', file_name: 'profile1.pdf' },
+      {
+        id: 'pp1',
+        title: 'Profile 1',
+        file_url: 'https://cdn.example.com/profile1.pdf',
+        file_type: 'application/pdf',
+        file_name: 'profile1.pdf',
+      },
     ];
 
     // The mockChain.then is used for the final resolved promise in the chain

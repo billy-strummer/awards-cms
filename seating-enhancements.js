@@ -85,7 +85,7 @@ const seatingEnhancements = {
           dot.addEventListener('mouseenter', () => this._showSeatTooltip(dot, guest, sn));
           dot.addEventListener('mouseleave', () => this._hideSeatTooltip());
         } else {
-          dot.textContent = sn;
+          dot.textContent = String(sn);
           dot.title = `Seat ${sn} (empty)`;
         }
         dot.onclick = (e) => {
@@ -160,7 +160,7 @@ const seatingEnhancements = {
     document.addEventListener(
       'mousedown',
       (e) => {
-        if (!p.contains(e.target)) this._closeSeatPopup();
+        if (!p.contains(/** @type {Node} */ (e.target))) this._closeSeatPopup();
       },
       { once: true }
     );

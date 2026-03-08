@@ -70,17 +70,18 @@ const authModule = {
    */
   updateConnectionStatus(connected) {
     const statusEl = document.getElementById('connectionStatus');
+    if (!statusEl) return;
     const icon = statusEl.querySelector('.status-icon');
     const text = statusEl.querySelector('.status-text');
 
     if (connected) {
       statusEl.className = 'connection-status connected';
-      icon.className = 'bi bi-wifi status-icon';
-      text.textContent = 'Connected';
+      if (icon) icon.className = 'bi bi-wifi status-icon';
+      if (text) text.textContent = 'Connected';
     } else {
       statusEl.className = 'connection-status disconnected';
-      icon.className = 'bi bi-wifi-off status-icon';
-      text.textContent = 'Disconnected';
+      if (icon) icon.className = 'bi bi-wifi-off status-icon';
+      if (text) text.textContent = 'Disconnected';
     }
   },
 
@@ -121,7 +122,7 @@ const authModule = {
           STATE.currentUser = session.user;
           // Reload RBAC on token refresh
           if (typeof rbacModule !== 'undefined') {
-            rbacModule.loadUserRole(session.user.email);
+            rbacModule.loadUserRole(session.user.email).catch((e) => console.warn('RBAC reload failed:', e.message));
           }
         }
       });

@@ -454,11 +454,11 @@ describe('GDPR Module - processRequest', () => {
   test('processes anonymize request via RPC', async () => {
     utils.confirmDialog = jest.fn().mockResolvedValue(true);
     apiClient.update = jest.fn().mockResolvedValue({});
-    STATE.client.rpc = jest.fn().mockResolvedValue({ data: null, error: null });
+    apiClient.rpc = jest.fn().mockResolvedValue({ data: null, error: null });
     jest.spyOn(gdprModule, 'loadPendingRequests').mockResolvedValue();
 
     await gdprModule.processRequest('r1', 'anonymize', 'entity-1');
-    expect(STATE.client.rpc).toHaveBeenCalledWith('anonymize_organisation', { p_org_id: 'entity-1' });
+    expect(apiClient.rpc).toHaveBeenCalledWith('anonymize_organisation', { p_org_id: 'entity-1' });
   });
 
   test('shows error on process failure', async () => {

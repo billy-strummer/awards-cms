@@ -315,6 +315,7 @@ const calendarModule = {
       'PRODID:-//British Trade Awards//CMS//EN',
       'CALSCALE:GREGORIAN',
       'METHOD:PUBLISH',
+      // @ts-ignore
       items.map((i) => this._buildVEvent(i)).join('\r\n'),
       'END:VCALENDAR',
     ].join('\r\n');

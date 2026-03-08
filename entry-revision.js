@@ -72,8 +72,11 @@ const entryRevisionModule = {
 <p>Please log in to resubmit your entry.</p>`;
       }
 
-      await STATE.client.functions.invoke('send-email', {
-        body: { to: entry.contact_email, subject, html },
+      const token = await apiClient._getToken();
+      await fetch('/api/resend-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action: 'send', to: entry.contact_email, subject, message: html }),
       });
     } catch (err) {
       console.warn('Revision email failed (non-fatal):', err.message);
@@ -191,14 +194,14 @@ const entryRevisionModule = {
   async _uploadFiles(entryId, files) {
     for (const file of files) {
       const path = `entries/${entryId}/revisions/${Date.now()}_${file.name}`;
-      const { error } = await STATE.client.storage.from('entry-files').upload(path, file);
-      if (error) {
-        console.warn('Upload failed:', error.message);
+      let publicUrl;
+      try {
+        const uploadResult = await apiClient.upload('entry-files', path, file);
+        publicUrl = uploadResult.publicUrl;
+      } catch (uploadErr) {
+        console.warn('Upload failed:', uploadErr.message);
         continue;
       }
-      const {
-        data: { publicUrl },
-      } = STATE.client.storage.from('entry-files').getPublicUrl(path);
       await apiClient.insert('entry_files', {
         entry_id: entryId,
         file_name: file.name,

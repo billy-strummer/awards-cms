@@ -600,7 +600,7 @@ const assignmentsModule = {
    */
   async removeAssignment(assignmentId) {
     // Find the assignment to show context in confirmation
-    const assignment = (this.currentAssignments || []).find((a) => a.id === assignmentId);
+    const assignment = (this.allAssignments || []).find((a) => a.id === assignmentId);
     const companyName = assignment?.organisations?.company_name || assignment?.company_name || 'this company';
     if (
       !(await utils.confirmDialog({
@@ -963,7 +963,7 @@ const assignmentsModule = {
   updateSelectedCount() {
     const count = document.querySelectorAll('.bulk-add-check:checked').length;
     const el = document.getElementById('assignSelectedCount');
-    if (el) el.textContent = count;
+    if (el) el.textContent = String(count);
   },
 };
 

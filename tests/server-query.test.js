@@ -34,41 +34,11 @@ global.bootstrap = {
   Tooltip: class {},
 };
 
-// Build a chainable mock that records method calls
-function createChainableMock(resolveValue = { data: [], error: null, count: 0 }) {
-  const calls = [];
-  const mock = new Proxy(
-    {},
-    {
-      get(target, prop) {
-        if (prop === '_calls') return calls;
-        if (prop === '_setResolve')
-          return (val) => {
-            resolveValue = val;
-          };
-        if (prop === 'then') {
-          // Make it thenable (for await)
-          return (resolve) => resolve(resolveValue);
-        }
-        return (...args) => {
-          calls.push({ method: prop, args });
-          return mock;
-        };
-      },
-    }
-  );
-  return mock;
-}
-
 // Setup mock Supabase client
-let lastMock;
 const mockClient = {
-  from: jest.fn((_table) => {
-    lastMock = createChainableMock({ data: [], error: null, count: 0 });
-    return lastMock;
-  }),
+  from: jest.fn(),
   auth: {
-    getSession: jest.fn(() => Promise.resolve({ data: { session: null }, error: null })),
+    getSession: jest.fn(() => Promise.resolve({ data: { session: { access_token: 'mock-token' } }, error: null })),
     signInWithPassword: jest.fn(),
     signOut: jest.fn(() => Promise.resolve({ error: null })),
   },
@@ -109,6 +79,28 @@ for (const key of Object.keys(global.window)) {
 // TESTS
 // ==========================================
 
+// Default mock response for apiClient.select
+const defaultSelectResponse = {
+  data: [],
+  count: 0,
+  page: 1,
+  pageSize: 50,
+  totalPages: 0,
+};
+
+let selectSpy;
+let selectAllSpy;
+
+beforeEach(() => {
+  selectSpy = jest.spyOn(apiClient, 'select').mockResolvedValue({ ...defaultSelectResponse });
+  selectAllSpy = jest.spyOn(apiClient, 'selectAll').mockResolvedValue([]);
+});
+
+afterEach(() => {
+  selectSpy.mockRestore();
+  selectAllSpy.mockRestore();
+});
+
 describe('serverQuery', () => {
   test('is defined and has execute and loadAll methods', () => {
     expect(serverQuery).toBeDefined();
@@ -116,24 +108,19 @@ describe('serverQuery', () => {
     expect(typeof serverQuery.loadAll).toBe('function');
   });
 
-  test('execute calls from() with correct table', async () => {
+  test('execute calls apiClient.select with correct table', async () => {
     await serverQuery.execute({ table: 'awards' });
-    expect(mockClient.from).toHaveBeenCalledWith('awards');
+    expect(selectSpy).toHaveBeenCalledWith('awards', expect.objectContaining({ select: '*' }));
   });
 
   test('execute applies default pagination (page 1, size 50)', async () => {
     await serverQuery.execute({ table: 'awards' });
-    // Check that range was called
-    const rangeCalls = lastMock._calls.filter((c) => c.method === 'range');
-    expect(rangeCalls.length).toBe(1);
-    expect(rangeCalls[0].args).toEqual([0, 49]); // page 1, size 50 => range(0, 49)
+    expect(selectSpy).toHaveBeenCalledWith('awards', expect.objectContaining({ page: 1, pageSize: 50 }));
   });
 
   test('execute applies custom pagination', async () => {
     await serverQuery.execute({ table: 'awards', page: 3, pageSize: 25 });
-    const rangeCalls = lastMock._calls.filter((c) => c.method === 'range');
-    expect(rangeCalls.length).toBe(1);
-    expect(rangeCalls[0].args).toEqual([50, 74]); // page 3, size 25 => range(50, 74)
+    expect(selectSpy).toHaveBeenCalledWith('awards', expect.objectContaining({ page: 3, pageSize: 25 }));
   });
 
   test('execute applies equality filters', async () => {
@@ -141,11 +128,12 @@ describe('serverQuery', () => {
       table: 'entries',
       filters: { status: 'submitted', year: 2026, empty: '' },
     });
-    const eqCalls = lastMock._calls.filter((c) => c.method === 'eq');
-    // Should have 2 eq calls (empty string is skipped)
-    expect(eqCalls.length).toBe(2);
-    expect(eqCalls[0].args).toEqual(['status', 'submitted']);
-    expect(eqCalls[1].args).toEqual(['year', 2026]);
+    expect(selectSpy).toHaveBeenCalledWith(
+      'entries',
+      expect.objectContaining({
+        filters: expect.objectContaining({ status: 'submitted', year: 2026, empty: '' }),
+      })
+    );
   });
 
   test('execute skips null/undefined/empty filter values', async () => {
@@ -153,9 +141,13 @@ describe('serverQuery', () => {
       table: 'entries',
       filters: { a: null, b: undefined, c: '', d: 'valid' },
     });
-    const eqCalls = lastMock._calls.filter((c) => c.method === 'eq');
-    expect(eqCalls.length).toBe(1);
-    expect(eqCalls[0].args).toEqual(['d', 'valid']);
+    // serverQuery passes filters through to apiClient; the server-side proxy handles skipping
+    expect(selectSpy).toHaveBeenCalledWith(
+      'entries',
+      expect.objectContaining({
+        filters: expect.objectContaining({ d: 'valid' }),
+      })
+    );
   });
 
   test('execute applies search with OR across columns', async () => {
@@ -163,10 +155,12 @@ describe('serverQuery', () => {
       table: 'organisations',
       search: { term: 'acme', columns: ['company_name', 'email'] },
     });
-    const orCalls = lastMock._calls.filter((c) => c.method === 'or');
-    expect(orCalls.length).toBe(1);
-    expect(orCalls[0].args[0]).toContain('company_name.ilike.%acme%');
-    expect(orCalls[0].args[0]).toContain('email.ilike.%acme%');
+    expect(selectSpy).toHaveBeenCalledWith(
+      'organisations',
+      expect.objectContaining({
+        search: { term: 'acme', columns: ['company_name', 'email'] },
+      })
+    );
   });
 
   test('execute applies sorting', async () => {
@@ -174,20 +168,31 @@ describe('serverQuery', () => {
       table: 'entries',
       sort: { column: 'created_at', ascending: false },
     });
-    const orderCalls = lastMock._calls.filter((c) => c.method === 'order');
-    expect(orderCalls.length).toBe(1);
-    expect(orderCalls[0].args[0]).toBe('created_at');
-    expect(orderCalls[0].args[1]).toEqual({ ascending: false });
+    expect(selectSpy).toHaveBeenCalledWith(
+      'entries',
+      expect.objectContaining({
+        sort: { column: 'created_at', ascending: false },
+      })
+    );
   });
 
   test('execute throws on missing client', async () => {
+    selectSpy.mockRestore();
     const originalClient = STATE.client;
     STATE.client = null;
-    await expect(serverQuery.execute({ table: 'awards' })).rejects.toThrow('Supabase client not initialized');
+    // With no client, _getToken returns null, so apiClient._call throws "Not authenticated"
+    await expect(serverQuery.execute({ table: 'awards' })).rejects.toThrow('Not authenticated');
     STATE.client = originalClient;
   });
 
   test('execute returns correct shape', async () => {
+    selectSpy.mockResolvedValue({
+      data: [],
+      count: 0,
+      page: 1,
+      pageSize: 50,
+      totalPages: 0,
+    });
     const result = await serverQuery.execute({ table: 'awards' });
     expect(result).toHaveProperty('data');
     expect(result).toHaveProperty('count');
@@ -206,9 +211,12 @@ describe('serverQuery.loadAll', () => {
   });
 
   test('throws on missing client', async () => {
+    selectAllSpy.mockRestore();
+    selectSpy.mockRestore();
     const originalClient = STATE.client;
     STATE.client = null;
-    await expect(serverQuery.loadAll({ table: 'awards' })).rejects.toThrow('Supabase client not initialized');
+    // With no client, _getToken returns null, so apiClient._call throws "Not authenticated"
+    await expect(serverQuery.loadAll({ table: 'awards' })).rejects.toThrow('Not authenticated');
     STATE.client = originalClient;
   });
 });

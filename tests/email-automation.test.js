@@ -32,7 +32,12 @@ function chainable(resolveWith = { data: null, error: null }) {
     insert: jest.fn(() => obj),
     update: jest.fn(() => obj),
     eq: jest.fn(() => obj),
+    neq: jest.fn(() => obj),
     in: jest.fn(() => obj),
+    not: jest.fn(() => obj),
+    ilike: jest.fn(() => obj),
+    gte: jest.fn(() => obj),
+    lt: jest.fn(() => obj),
     order: jest.fn(() => obj),
     limit: jest.fn(() => obj),
     single: jest.fn(() => Promise.resolve(resolveWith)),
@@ -307,6 +312,10 @@ describe('Email Automation - sendWinnerAnnouncements', () => {
   });
 
   test('sends announcements to all winners', async () => {
+    mockTableResponses['events'] = chainable({
+      data: [{ event_date: '2026-06-15', venue: 'The Grand Hall' }],
+      error: null,
+    });
     mockTableResponses['entries'] = chainable({
       data: [
         {
@@ -356,6 +365,11 @@ describe('Email Automation - sendShortlistNotifications', () => {
   });
 
   test('sends notifications to shortlisted entries', async () => {
+    mockTableResponses['events'] = chainable({
+      data: [{ event_date: '2026-06-15', venue: 'The Grand Hall' }],
+      error: null,
+    });
+    mockTableResponses['award_years'] = chainable({ data: [{ winner_announcement_date: '2026-05-01' }], error: null });
     mockTableResponses['entries'] = chainable({
       data: [
         {
@@ -427,6 +441,7 @@ describe('Email Automation - sendDeadlineReminders', () => {
   });
 
   test('sends reminders to judges with pending entries', async () => {
+    mockTableResponses['award_years'] = chainable({ data: [], error: null });
     mockTableResponses['contacts'] = chainable({
       data: [
         {

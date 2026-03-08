@@ -1454,7 +1454,7 @@ describe('removeAssignment - company_name fallbacks (lines 603-604)', () => {
   });
 
   test('uses company_name from assignment when organisations missing', async () => {
-    assignmentsModule.currentAssignments = [{ id: 'a1', company_name: 'Fallback Name' }];
+    assignmentsModule.allAssignments = [{ id: 'a1', company_name: 'Fallback Name' }];
     utils.confirmDialog = jest.fn().mockResolvedValue(true);
     apiClient.delete = jest.fn().mockResolvedValue({});
 
@@ -1467,7 +1467,7 @@ describe('removeAssignment - company_name fallbacks (lines 603-604)', () => {
   });
 
   test('uses "this company" when no name available', async () => {
-    assignmentsModule.currentAssignments = [{ id: 'a1' }];
+    assignmentsModule.allAssignments = [{ id: 'a1' }];
     utils.confirmDialog = jest.fn().mockResolvedValue(true);
     apiClient.delete = jest.fn().mockResolvedValue({});
 
@@ -1479,8 +1479,8 @@ describe('removeAssignment - company_name fallbacks (lines 603-604)', () => {
     );
   });
 
-  test('uses "this company" when assignment not found in currentAssignments', async () => {
-    assignmentsModule.currentAssignments = [];
+  test('uses "this company" when assignment not found in allAssignments', async () => {
+    assignmentsModule.allAssignments = [];
     utils.confirmDialog = jest.fn().mockResolvedValue(true);
     apiClient.delete = jest.fn().mockResolvedValue({});
 

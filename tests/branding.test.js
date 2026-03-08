@@ -105,6 +105,16 @@ syncWindowToGlobal();
 require('../branding.js');
 syncWindowToGlobal();
 
+// Replace the real apiClient with jest mocks after modules are loaded
+global.apiClient = {
+  ...global.apiClient,
+  select: jest.fn(() => Promise.resolve({ data: [], error: null })),
+  upsert: jest.fn(() => Promise.resolve({ data: null, error: null })),
+  upload: jest.fn(() => Promise.resolve({ publicUrl: 'https://cdn.example.com/logo.png' })),
+};
+// Also update window so branding.js sees the mock via the global scope
+global.window.apiClient = global.apiClient;
+
 describe('Branding Module - Structure', () => {
   test('brandingModule is defined', () => {
     expect(brandingModule).toBeDefined();
@@ -213,6 +223,57 @@ describe('Branding Module - getPublicPageConfig', () => {
   test('overrides defaults with provided config', () => {
     const config = brandingModule.getPublicPageConfig('t1', { company_name: 'Custom Awards' });
     expect(config.company_name).toBe('Custom Awards');
+  });
+});
+
+describe('Branding Module - loadBranding', () => {
+  beforeEach(() => {
+    global.apiClient.select.mockClear();
+  });
+
+  test('calls apiClient.select with correct params', async () => {
+    global.apiClient.select.mockResolvedValue({ data: [{ primary_color: '#ff0000' }], error: null });
+    const result = await brandingModule.loadBranding('t1');
+    expect(global.apiClient.select).toHaveBeenCalledWith('tenant_branding', {
+      select: '*',
+      filters: { tenant_id: { operator: 'eq', value: 't1' } },
+      pageSize: 1,
+    });
+    expect(result.primary_color).toBe('#ff0000');
+  });
+
+  test('returns empty object when no data', async () => {
+    global.apiClient.select.mockResolvedValue({ data: [], error: null });
+    const result = await brandingModule.loadBranding('t1');
+    expect(result).toEqual({});
+  });
+
+  test('returns empty object when data is null', async () => {
+    global.apiClient.select.mockResolvedValue({ data: null, error: null });
+    const result = await brandingModule.loadBranding('t1');
+    expect(result).toEqual({});
+  });
+});
+
+describe('Branding Module - saveBranding', () => {
+  beforeEach(() => {
+    global.apiClient.upsert.mockClear();
+  });
+
+  test('calls apiClient.upsert and returns true on success', async () => {
+    global.apiClient.upsert.mockResolvedValue({ data: null, error: null });
+    const result = await brandingModule.saveBranding('t1', { primary_color: '#ff0000' });
+    expect(global.apiClient.upsert).toHaveBeenCalledWith(
+      'tenant_branding',
+      expect.objectContaining({ tenant_id: 't1', primary_color: '#ff0000' })
+    );
+    expect(result).toBe(true);
+  });
+
+  test('returns false on error', async () => {
+    global.apiClient.upsert.mockRejectedValue(new Error('DB error'));
+    const result = await brandingModule.saveBranding('t1', {});
+    expect(result).toBe(false);
   });
 });
 

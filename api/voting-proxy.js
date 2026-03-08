@@ -120,7 +120,7 @@ async function checkRateLimit({ voter_email }) {
     .from('public_votes')
     .select('id', { count: 'exact', head: true })
     .eq('voter_email', voter_email)
-    .gte('created_at', oneHourAgo);
+    .gte('voted_at', oneHourAgo);
 
   if (error) throw error;
   return { count: count || 0, limit: RATE_LIMIT_MAX };
@@ -170,7 +170,7 @@ async function submitVote({ entry_id, voter_email, voter_name, voter_ip, verific
     .from('public_votes')
     .select('id', { count: 'exact', head: true })
     .eq('voter_email', voter_email)
-    .gte('created_at', oneHourAgo);
+    .gte('voted_at', oneHourAgo);
 
   if (rlError) throw rlError;
   if ((count || 0) >= RATE_LIMIT_MAX) {

@@ -108,14 +108,10 @@ const sponsorPortalModule = {
     }
     try {
       const path = `${sponsorId}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
-      const { error: upErr } = await STATE.client.storage
-        .from('sponsor-assets')
-        .upload(path, file, { upsert: true, contentType: file.type });
-      if (upErr) throw upErr;
-      const { data: urlData } = STATE.client.storage.from('sponsor-assets').getPublicUrl(path);
-      await apiClient.update('sponsors', sponsorId, { logo_url: urlData.publicUrl });
+      const uploadResult = await apiClient.upload('sponsor-assets', path, file, { contentType: file.type });
+      await apiClient.update('sponsors', sponsorId, { logo_url: uploadResult.publicUrl });
       utils.showToast('Asset uploaded successfully', 'success');
-      return urlData.publicUrl;
+      return uploadResult.publicUrl;
     } catch (err) {
       console.error('uploadSponsorAsset:', err);
       utils.showToast('Upload failed: ' + err.message, 'error');

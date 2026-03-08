@@ -410,8 +410,8 @@ const settingsModule = {
     const weeklyBackup = document.getElementById('weeklyBackup').checked;
     const monthlyBackup = document.getElementById('monthlyBackup').checked;
 
-    localStorage.setItem('weeklyBackupReminder', weeklyBackup);
-    localStorage.setItem('monthlyBackupReminder', monthlyBackup);
+    localStorage.setItem('weeklyBackupReminder', String(weeklyBackup));
+    localStorage.setItem('monthlyBackupReminder', String(monthlyBackup));
 
     utils.showToast('Backup settings updated', 'success');
   },
@@ -428,7 +428,7 @@ const settingsModule = {
 
     const lastBackupDate = new Date(lastBackup);
     const now = new Date();
-    const daysSinceBackup = Math.floor((now - lastBackupDate) / (1000 * 60 * 60 * 24));
+    const daysSinceBackup = Math.floor((Number(now) - Number(lastBackupDate)) / (1000 * 60 * 60 * 24));
 
     if (weeklyEnabled && daysSinceBackup >= 7) {
       this.showBackupReminder('weekly', daysSinceBackup);

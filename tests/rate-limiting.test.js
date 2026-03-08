@@ -473,29 +473,19 @@ describe('Rate Limiting Module - checkAlerts()', () => {
     jest.clearAllMocks();
     rateLimitModule._alerts.clear();
     rateLimitModule.setAlertThreshold('/api/vote', 3);
-    STATE.client = {
-      ...mockSupabase,
-      from: jest.fn(() => ({
-        select: jest.fn().mockReturnThis(),
-        gte: jest.fn().mockReturnThis(),
-        order: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockReturnThis(),
-        then: jest.fn((cb) =>
-          cb({
-            data: [
-              { endpoint: '/api/vote', ip_address: '1.1.1.1' },
-              { endpoint: '/api/vote', ip_address: '1.1.1.1' },
-              { endpoint: '/api/vote', ip_address: '1.1.1.1' },
-              { endpoint: '/api/vote', ip_address: '1.1.1.1' },
-            ],
-            error: null,
-          })
-        ),
-      })),
-    };
+    STATE.client = mockSupabase;
   });
 
   test('triggers alert when threshold exceeded', async () => {
+    apiClient.select = jest.fn().mockResolvedValue({
+      data: [
+        { endpoint: '/api/vote', ip_address: '1.1.1.1' },
+        { endpoint: '/api/vote', ip_address: '1.1.1.1' },
+        { endpoint: '/api/vote', ip_address: '1.1.1.1' },
+        { endpoint: '/api/vote', ip_address: '1.1.1.1' },
+      ],
+    });
+    apiClient.insert = jest.fn().mockResolvedValue({ data: null, error: null });
     const toastSpy = jest.spyOn(utils, 'showToast');
     await rateLimitModule.checkAlerts();
     expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('Rate alert'), 'warning');
@@ -524,14 +514,11 @@ describe('Rate Limiting Module - getAllowList()', () => {
 describe('Rate Limiting Module - logRequest error handling', () => {
   test('catches and warns when insert throws', async () => {
     STATE.client = mockSupabase;
-    global.fetch = jest.fn(() => Promise.reject(new Error('insert fail')));
+    apiClient.insert = jest.fn().mockRejectedValue(new Error('insert fail'));
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
     await rateLimitModule.logRequest('/api/test', 'POST', 500, 200, '1.2.3.4');
     expect(warnSpy).toHaveBeenCalledWith('rateLimitModule.logRequest:', expect.any(String));
     warnSpy.mockRestore();
-    global.fetch = jest.fn(() =>
-      Promise.resolve({ ok: true, json: () => Promise.resolve({ data: null, error: null }) })
-    );
   });
 });
 
@@ -587,30 +574,18 @@ describe('Rate Limiting Module - _renderAlerts', () => {
     const el = document.getElementById('rl-alerts-list');
     el.innerHTML = '';
 
-    STATE.client = {
-      ...mockSupabase,
-      from: jest.fn(() => ({
-        select: jest.fn().mockReturnThis(),
-        order: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockReturnThis(),
-        then: jest.fn((cb) =>
-          Promise.resolve(
-            cb({
-              data: [
-                {
-                  endpoint: '/api/vote',
-                  ip_address: '1.1.1.1',
-                  actual_count: 50,
-                  threshold: 10,
-                  window_minutes: 1,
-                },
-              ],
-              error: null,
-            })
-          )
-        ),
-      })),
-    };
+    STATE.client = mockSupabase;
+    apiClient.select = jest.fn().mockResolvedValue({
+      data: [
+        {
+          endpoint: '/api/vote',
+          ip_address: '1.1.1.1',
+          actual_count: 50,
+          threshold: 10,
+          window_minutes: 1,
+        },
+      ],
+    });
 
     await rateLimitModule._renderAlerts();
 
@@ -624,17 +599,8 @@ describe('Rate Limiting Module - _renderAlerts', () => {
     const el = document.getElementById('rl-alerts-list');
     el.innerHTML = '';
 
-    STATE.client = {
-      ...mockSupabase,
-      from: jest.fn(() => ({
-        select: jest.fn().mockReturnThis(),
-        order: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockReturnThis(),
-        then: jest.fn((cb) =>
-          Promise.resolve(cb({ data: [], error: null }))
-        ),
-      })),
-    };
+    STATE.client = mockSupabase;
+    apiClient.select = jest.fn().mockResolvedValue({ data: [] });
 
     await rateLimitModule._renderAlerts();
 
@@ -646,15 +612,8 @@ describe('Rate Limiting Module - _renderAlerts', () => {
     const el = document.getElementById('rl-alerts-list');
     el.innerHTML = '';
 
-    const mockAlertChain = {
-      select: jest.fn().mockReturnThis(),
-      order: jest.fn().mockReturnThis(),
-      limit: jest.fn(() => Promise.reject(new Error('DB error'))),
-    };
-    STATE.client = {
-      ...mockSupabase,
-      from: jest.fn(() => mockAlertChain),
-    };
+    STATE.client = mockSupabase;
+    apiClient.select = jest.fn().mockRejectedValue(new Error('DB error'));
 
     await rateLimitModule._renderAlerts();
 
@@ -677,14 +636,8 @@ describe('Rate Limiting Module - _renderAlerts', () => {
 
 describe('Rate Limiting Module - checkAlerts error handling', () => {
   test('catches and warns when checkAlerts throws', async () => {
-    const mockAlertCheckChain = {
-      select: jest.fn().mockReturnThis(),
-      gte: jest.fn(() => Promise.reject(new Error('Alert check fail'))),
-    };
-    STATE.client = {
-      ...mockSupabase,
-      from: jest.fn(() => mockAlertCheckChain),
-    };
+    STATE.client = mockSupabase;
+    apiClient.select = jest.fn().mockRejectedValue(new Error('Alert check fail'));
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
 
     await rateLimitModule.checkAlerts();
@@ -698,9 +651,7 @@ describe('Rate Limiting Module - checkAlerts error handling', () => {
 describe('Rate Limiting Module - unblockIP error handling', () => {
   test('shows error toast when unblock fails', async () => {
     STATE.client = mockSupabase;
-    global.fetch = jest.fn(() =>
-      Promise.resolve({ ok: false, json: () => Promise.resolve({ error: 'Delete fail' }) })
-    );
+    global.fetch = jest.fn(() => Promise.resolve({ ok: false, json: () => Promise.resolve({ error: 'Delete fail' }) }));
     const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
 
     await rateLimitModule.unblockIP('5.5.5.5');
@@ -717,16 +668,12 @@ describe('Rate Limiting Module - renderRateLimitConfig', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     STATE.client = mockSupabase;
-    global.fetch = jest.fn(() =>
-      Promise.resolve({ ok: true, json: () => Promise.resolve({ data: [], error: null }) })
-    );
+    global.fetch = jest.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve({ data: [], error: null }) }));
   });
 
   test('renders config form into container', async () => {
     apiClient.select = jest.fn().mockResolvedValue({
-      data: [
-        { id: 'cfg-1', endpoint: '/api/vote', max_requests: 5, window_seconds: 3600 },
-      ],
+      data: [{ id: 'cfg-1', endpoint: '/api/vote', max_requests: 5, window_seconds: 3600 }],
     });
 
     await rateLimitModule.renderRateLimitConfig('rl-config-container');
@@ -815,9 +762,7 @@ describe('Rate Limiting Module - renderRateLimitConfig', () => {
 
   test('handles delete button click for config', async () => {
     apiClient.select = jest.fn().mockResolvedValue({
-      data: [
-        { id: 'cfg-del', endpoint: '/api/delete-me', max_requests: 5, window_seconds: 60 },
-      ],
+      data: [{ id: 'cfg-del', endpoint: '/api/delete-me', max_requests: 5, window_seconds: 60 }],
     });
     apiClient.delete = jest.fn().mockResolvedValue({});
     const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
@@ -837,9 +782,7 @@ describe('Rate Limiting Module - renderRateLimitConfig', () => {
 
   test('handles delete button click error', async () => {
     apiClient.select = jest.fn().mockResolvedValue({
-      data: [
-        { id: 'cfg-err', endpoint: '/api/err', max_requests: 10, window_seconds: 120 },
-      ],
+      data: [{ id: 'cfg-err', endpoint: '/api/err', max_requests: 10, window_seconds: 120 }],
     });
     apiClient.delete = jest.fn().mockRejectedValue(new Error('Delete config fail'));
     const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
@@ -893,16 +836,8 @@ describe('Rate Limiting Module - getAllowList with STATE.client', () => {
       { id: '1', ip_address: '10.0.0.1', reason: 'spam', created_at: new Date().toISOString() },
       { id: '2', ip_address: '10.0.0.2', reason: 'abuse', created_at: new Date().toISOString() },
     ];
-    STATE.client = {
-      ...mockSupabase,
-      from: jest.fn(() => ({
-        select: jest.fn().mockReturnThis(),
-        order: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockReturnThis(),
-        then: jest.fn((cb) => Promise.resolve(cb({ data: mockBlocklistData, error: null }))),
-      })),
-      auth: mockSupabase.auth,
-    };
+    STATE.client = mockSupabase;
+    apiClient.select = jest.fn().mockResolvedValue({ data: mockBlocklistData });
 
     const result = await rateLimitModule.getAllowList();
     expect(result).toEqual(mockBlocklistData);
@@ -911,16 +846,8 @@ describe('Rate Limiting Module - getAllowList with STATE.client', () => {
   });
 
   test('returns empty array when data is null from ip_blocklist', async () => {
-    STATE.client = {
-      ...mockSupabase,
-      from: jest.fn(() => ({
-        select: jest.fn().mockReturnThis(),
-        order: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockReturnThis(),
-        then: jest.fn((cb) => Promise.resolve(cb({ data: null, error: null }))),
-      })),
-      auth: mockSupabase.auth,
-    };
+    STATE.client = mockSupabase;
+    apiClient.select = jest.fn().mockResolvedValue({ data: null });
 
     const result = await rateLimitModule.getAllowList();
     expect(result).toEqual([]);
@@ -944,18 +871,9 @@ describe('Rate Limiting Module - _loadDashboardData comprehensive', () => {
   });
 
   test('handles 30d range (720 hours)', async () => {
+    STATE.client = mockSupabase;
     apiClient.select = jest.fn().mockResolvedValue({ data: [] });
     apiClient.count = jest.fn().mockResolvedValue({ count: 0 });
-    STATE.client = {
-      ...mockSupabase,
-      from: jest.fn(() => ({
-        select: jest.fn().mockReturnThis(),
-        order: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockReturnThis(),
-        then: jest.fn((cb) => Promise.resolve(cb({ data: [], error: null }))),
-      })),
-      auth: mockSupabase.auth,
-    };
 
     await rateLimitModule._loadDashboardData('30d');
     // Should not throw, and should process 720 hours
@@ -965,11 +883,36 @@ describe('Rate Limiting Module - _loadDashboardData comprehensive', () => {
 
   test('computes error rate and avg response time with actual data rows', async () => {
     const rows = [
-      { endpoint: '/api/vote', status_code: 200, response_time_ms: 100, ip_address: '1.1.1.1', created_at: new Date().toISOString() },
-      { endpoint: '/api/vote', status_code: 500, response_time_ms: 200, ip_address: '2.2.2.2', created_at: new Date().toISOString() },
-      { endpoint: '/api/entries', status_code: 404, response_time_ms: 50, ip_address: '1.1.1.1', created_at: new Date().toISOString() },
-      { endpoint: '/api/entries', status_code: 200, response_time_ms: null, ip_address: '3.3.3.3', created_at: new Date().toISOString() },
+      {
+        endpoint: '/api/vote',
+        status_code: 200,
+        response_time_ms: 100,
+        ip_address: '1.1.1.1',
+        created_at: new Date().toISOString(),
+      },
+      {
+        endpoint: '/api/vote',
+        status_code: 500,
+        response_time_ms: 200,
+        ip_address: '2.2.2.2',
+        created_at: new Date().toISOString(),
+      },
+      {
+        endpoint: '/api/entries',
+        status_code: 404,
+        response_time_ms: 50,
+        ip_address: '1.1.1.1',
+        created_at: new Date().toISOString(),
+      },
+      {
+        endpoint: '/api/entries',
+        status_code: 200,
+        response_time_ms: null,
+        ip_address: '3.3.3.3',
+        created_at: new Date().toISOString(),
+      },
     ];
+    STATE.client = mockSupabase;
     apiClient.select = jest.fn().mockResolvedValue({ data: rows });
     apiClient.count = jest.fn().mockResolvedValue({ count: 5 });
 
@@ -978,17 +921,6 @@ describe('Rate Limiting Module - _loadDashboardData comprehensive', () => {
     document.getElementById('rl-error-rate').textContent = '';
     document.getElementById('rl-avg-rt').textContent = '';
     document.getElementById('rl-blocked').textContent = '';
-
-    STATE.client = {
-      ...mockSupabase,
-      from: jest.fn(() => ({
-        select: jest.fn().mockReturnThis(),
-        order: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockReturnThis(),
-        then: jest.fn((cb) => Promise.resolve(cb({ data: [], error: null }))),
-      })),
-      auth: mockSupabase.auth,
-    };
 
     await rateLimitModule._loadDashboardData('24h');
 
@@ -1011,21 +943,17 @@ describe('Rate Limiting Module - _loadDashboardData comprehensive', () => {
     }
 
     const rows = [
-      { endpoint: '/api/vote', status_code: 200, response_time_ms: 100, ip_address: '1.1.1.1', created_at: new Date().toISOString() },
+      {
+        endpoint: '/api/vote',
+        status_code: 200,
+        response_time_ms: 100,
+        ip_address: '1.1.1.1',
+        created_at: new Date().toISOString(),
+      },
     ];
+    STATE.client = mockSupabase;
     apiClient.select = jest.fn().mockResolvedValue({ data: rows });
     apiClient.count = jest.fn().mockResolvedValue({ count: 0 });
-
-    STATE.client = {
-      ...mockSupabase,
-      from: jest.fn(() => ({
-        select: jest.fn().mockReturnThis(),
-        order: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockReturnThis(),
-        then: jest.fn((cb) => Promise.resolve(cb({ data: [], error: null }))),
-      })),
-      auth: mockSupabase.auth,
-    };
 
     await rateLimitModule._loadDashboardData('24h');
     // Should not throw even though rl-total-req is not found
@@ -1177,29 +1105,17 @@ describe('Rate Limiting Module - checkAlerts edge cases', () => {
     rateLimitModule._alerts.clear();
     rateLimitModule.setAlertThreshold('*', 2);
 
-    STATE.client = {
-      ...mockSupabase,
-      from: jest.fn(() => ({
-        select: jest.fn().mockReturnThis(),
-        gte: jest.fn().mockReturnThis(),
-        then: jest.fn((cb) =>
-          cb({
-            data: [
-              { endpoint: '/api/other', ip_address: '5.5.5.5' },
-              { endpoint: '/api/other', ip_address: '5.5.5.5' },
-              { endpoint: '/api/other', ip_address: '5.5.5.5' },
-            ],
-            error: null,
-          })
-        ),
-      })),
-      auth: mockSupabase.auth,
-    };
+    STATE.client = mockSupabase;
+    apiClient.select = jest.fn().mockResolvedValue({
+      data: [
+        { endpoint: '/api/other', ip_address: '5.5.5.5' },
+        { endpoint: '/api/other', ip_address: '5.5.5.5' },
+        { endpoint: '/api/other', ip_address: '5.5.5.5' },
+      ],
+    });
+    apiClient.insert = jest.fn().mockResolvedValue({ data: null, error: null });
 
     const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
-    global.fetch = jest.fn(() =>
-      Promise.resolve({ ok: true, json: () => Promise.resolve({ data: null, error: null }) })
-    );
 
     await rateLimitModule.checkAlerts();
 
@@ -1213,22 +1129,10 @@ describe('Rate Limiting Module - checkAlerts edge cases', () => {
     rateLimitModule._alerts.clear();
     rateLimitModule.setAlertThreshold('/api/vote', 100);
 
-    STATE.client = {
-      ...mockSupabase,
-      from: jest.fn(() => ({
-        select: jest.fn().mockReturnThis(),
-        gte: jest.fn().mockReturnThis(),
-        then: jest.fn((cb) =>
-          cb({
-            data: [
-              { endpoint: '/api/vote', ip_address: '1.1.1.1' },
-            ],
-            error: null,
-          })
-        ),
-      })),
-      auth: mockSupabase.auth,
-    };
+    STATE.client = mockSupabase;
+    apiClient.select = jest.fn().mockResolvedValue({
+      data: [{ endpoint: '/api/vote', ip_address: '1.1.1.1' }],
+    });
 
     const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
     await rateLimitModule.checkAlerts();
@@ -1243,20 +1147,8 @@ describe('Rate Limiting Module - checkAlerts edge cases', () => {
     rateLimitModule._alerts.clear();
     rateLimitModule.setAlertThreshold('/api/vote', 3);
 
-    STATE.client = {
-      ...mockSupabase,
-      from: jest.fn(() => ({
-        select: jest.fn().mockReturnThis(),
-        gte: jest.fn().mockReturnThis(),
-        then: jest.fn((cb) =>
-          cb({
-            data: null,
-            error: null,
-          })
-        ),
-      })),
-      auth: mockSupabase.auth,
-    };
+    STATE.client = mockSupabase;
+    apiClient.select = jest.fn().mockResolvedValue({ data: null });
 
     // Should not throw when logs is null
     await rateLimitModule.checkAlerts();
@@ -1268,23 +1160,13 @@ describe('Rate Limiting Module - checkAlerts edge cases', () => {
     rateLimitModule._alerts.clear();
     // No thresholds set at all
 
-    STATE.client = {
-      ...mockSupabase,
-      from: jest.fn(() => ({
-        select: jest.fn().mockReturnThis(),
-        gte: jest.fn().mockReturnThis(),
-        then: jest.fn((cb) =>
-          cb({
-            data: [
-              { endpoint: '/api/unknown', ip_address: '1.1.1.1' },
-              { endpoint: '/api/unknown', ip_address: '1.1.1.1' },
-            ],
-            error: null,
-          })
-        ),
-      })),
-      auth: mockSupabase.auth,
-    };
+    STATE.client = mockSupabase;
+    apiClient.select = jest.fn().mockResolvedValue({
+      data: [
+        { endpoint: '/api/unknown', ip_address: '1.1.1.1' },
+        { endpoint: '/api/unknown', ip_address: '1.1.1.1' },
+      ],
+    });
 
     const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
     await rateLimitModule.checkAlerts();
@@ -1325,18 +1207,8 @@ describe('Rate Limiting Module - _renderAlerts with null data', () => {
     const el = document.getElementById('rl-alerts-list');
     el.innerHTML = '';
 
-    STATE.client = {
-      ...mockSupabase,
-      from: jest.fn(() => ({
-        select: jest.fn().mockReturnThis(),
-        order: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockReturnThis(),
-        then: jest.fn((cb) =>
-          Promise.resolve(cb({ data: null, error: null }))
-        ),
-      })),
-      auth: mockSupabase.auth,
-    };
+    STATE.client = mockSupabase;
+    apiClient.select = jest.fn().mockResolvedValue({ data: null });
 
     await rateLimitModule._renderAlerts();
     expect(el.innerHTML).toContain('No recent alerts');

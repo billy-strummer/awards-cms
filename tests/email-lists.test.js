@@ -137,6 +137,11 @@ syncWindowToGlobal();
 require('../email-lists.js');
 syncWindowToGlobal();
 
+// Suppress async logging after tests end (viewSubscribers may fire late)
+afterAll(() => {
+  jest.restoreAllMocks();
+});
+
 // ==========================================
 // SAMPLE DATA
 // ==========================================
@@ -919,8 +924,8 @@ describe('Email Lists Module - loadStats() computation', () => {
   test('updates stat counts from currentLists data', async () => {
     emailListsModule.currentLists = [...sampleLists];
 
-    // For the subscriber open rate query, return empty (no subscriber-level data)
-    mockSupabase.then.mockImplementation((cb) => cb({ data: [], error: null }));
+    // Mock apiClient.selectAll for subscriber open rate query
+    apiClient.selectAll = jest.fn().mockResolvedValue([]);
 
     await emailListsModule.loadStats();
 
@@ -1538,11 +1543,7 @@ describe('Email Lists Module - exportList()', () => {
   });
 
   test('exportList handles API error', async () => {
-    global.fetch.mockResolvedValue({
-      ok: false,
-      status: 500,
-      json: () => Promise.resolve({ error: 'Server error' }),
-    });
+    apiClient.selectAll = jest.fn().mockRejectedValue(new Error('Server error'));
 
     const showToastSpy = jest.spyOn(utils, 'showToast');
 
@@ -2076,18 +2077,7 @@ describe('Email Lists Module - openImportModal()', () => {
   });
 
   test('openImportModal creates modal with import tabs', async () => {
-    global.fetch.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: () =>
-        Promise.resolve({
-          data: [{ id: 'list-1', list_name: 'Test List' }],
-          count: 1,
-          page: 1,
-          pageSize: 1000,
-          totalPages: 1,
-        }),
-    });
+    apiClient.selectAll = jest.fn().mockResolvedValue([{ id: 'list-1', list_name: 'Test List' }]);
 
     await emailListsModule.openImportModal('list-1');
 
@@ -2100,21 +2090,10 @@ describe('Email Lists Module - openImportModal()', () => {
   });
 
   test('openImportModal pre-selects list when listId provided', async () => {
-    global.fetch.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: () =>
-        Promise.resolve({
-          data: [
-            { id: 'list-1', list_name: 'Test List' },
-            { id: 'list-2', list_name: 'Other List' },
-          ],
-          count: 2,
-          page: 1,
-          pageSize: 1000,
-          totalPages: 1,
-        }),
-    });
+    apiClient.selectAll = jest.fn().mockResolvedValue([
+      { id: 'list-1', list_name: 'Test List' },
+      { id: 'list-2', list_name: 'Other List' },
+    ]);
 
     await emailListsModule.openImportModal('list-1');
 
@@ -2124,18 +2103,7 @@ describe('Email Lists Module - openImportModal()', () => {
   });
 
   test('openImportModal removes existing modal before creating new one', async () => {
-    global.fetch.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: () =>
-        Promise.resolve({
-          data: [],
-          count: 0,
-          page: 1,
-          pageSize: 1000,
-          totalPages: 0,
-        }),
-    });
+    apiClient.selectAll = jest.fn().mockResolvedValue([]);
 
     await emailListsModule.openImportModal();
     await emailListsModule.openImportModal();

@@ -2096,7 +2096,7 @@ describe('Test Data Manager - showConfirmDialog confirm and hidden handlers', ()
     // Simulate confirm button click
     const confirmBtn = document.getElementById('confirmBtn');
     expect(confirmBtn).not.toBeNull();
-    confirmBtn.onclick({ });
+    confirmBtn.onclick({});
 
     // Simulate the hidden.bs.modal event on the modal element
     const modalEl = document.getElementById('confirmModal');
@@ -2390,11 +2390,11 @@ describe('Test Data Manager - showTestDataInfo with non-null counts', () => {
       { count: 10 }, // awardCount
       { count: 25 }, // rsvpCount
       { count: 20 }, // entryCount
-      { count: 5 },  // sponsorCount
-      { count: 4 },  // bannerCount
-      { count: 8 },  // invoiceCount
+      { count: 5 }, // sponsorCount
+      { count: 4 }, // bannerCount
+      { count: 8 }, // invoiceCount
       { count: 15 }, // contactCount
-      { count: 6 },  // dealCount
+      { count: 6 }, // dealCount
       { count: 10 }, // commCount
     ]);
 
@@ -2424,17 +2424,17 @@ describe('Test Data Manager - showTestDataInfo with non-null counts', () => {
     // Mock Promise.all: null event, orgCount > 0 so hasTestData = true, awardCount null
     // Most counts are null to trigger || 0 fallback branches
     jest.spyOn(Promise, 'all').mockResolvedValueOnce([
-      { data: null },   // event null -> testEvent falsy
-      { count: 5 },     // orgCount > 0 -> hasTestData = true (but orgCount is truthy so || 0 not hit here)
-      { count: null },   // awardCount null -> || 0 fires (covers branch 2000)
-      { count: null },   // rsvpCount null -> || 0 fires
-      { count: null },   // entryCount null
-      { count: null },   // sponsorCount null
-      { count: null },   // bannerCount null
-      { count: null },   // invoiceCount null
-      { count: null },   // contactCount null
-      { count: null },   // dealCount null
-      { count: null },   // commCount null
+      { data: null }, // event null -> testEvent falsy
+      { count: 5 }, // orgCount > 0 -> hasTestData = true (but orgCount is truthy so || 0 not hit here)
+      { count: null }, // awardCount null -> || 0 fires (covers branch 2000)
+      { count: null }, // rsvpCount null -> || 0 fires
+      { count: null }, // entryCount null
+      { count: null }, // sponsorCount null
+      { count: null }, // bannerCount null
+      { count: null }, // invoiceCount null
+      { count: null }, // contactCount null
+      { count: null }, // dealCount null
+      { count: null }, // commCount null
     ]);
 
     await testDataManager.showTestDataInfo();
@@ -2455,16 +2455,16 @@ describe('Test Data Manager - showTestDataInfo with non-null counts', () => {
     // testEvent is truthy so hasTestData = true, but all counts are null
     jest.spyOn(Promise, 'all').mockResolvedValueOnce([
       { data: { id: 'test-event' } }, // event truthy
-      { count: null },   // orgCount null -> || 0 fires
-      { count: null },   // awardCount null -> || 0 fires
-      { count: null },   // rsvpCount null
-      { count: null },   // entryCount null
-      { count: null },   // sponsorCount null
-      { count: null },   // bannerCount null
-      { count: null },   // invoiceCount null
-      { count: null },   // contactCount null
-      { count: null },   // dealCount null
-      { count: null },   // commCount null
+      { count: null }, // orgCount null -> || 0 fires
+      { count: null }, // awardCount null -> || 0 fires
+      { count: null }, // rsvpCount null
+      { count: null }, // entryCount null
+      { count: null }, // sponsorCount null
+      { count: null }, // bannerCount null
+      { count: null }, // invoiceCount null
+      { count: null }, // contactCount null
+      { count: null }, // dealCount null
+      { count: null }, // commCount null
     ]);
 
     await testDataManager.showTestDataInfo();
@@ -2534,9 +2534,7 @@ describe('Test Data Manager - executeTestDataGeneration pre-flight without code/
 
   test('pre-flight error without code or hint (covers falsy branches for pfErr.code and pfErr.hint)', async () => {
     fromChain.select.mockReturnValue(fromChain);
-    fromChain.limit.mockReturnValue(
-      Promise.resolve({ data: null, error: { message: 'connection refused' } })
-    );
+    fromChain.limit.mockReturnValue(Promise.resolve({ data: null, error: { message: 'connection refused' } }));
     jest.spyOn(testDataManager, 'showModal').mockImplementation(() => {});
 
     await testDataManager.executeTestDataGeneration();
@@ -2556,18 +2554,13 @@ describe('Test Data Manager - executeTestDataGeneration pre-flight without code/
 
   test('pre-flight error with falsy message falls back to JSON.stringify', async () => {
     fromChain.select.mockReturnValue(fromChain);
-    fromChain.limit.mockReturnValue(
-      Promise.resolve({ data: null, error: { code: 'AUTH_ERROR' } })
-    );
+    fromChain.limit.mockReturnValue(Promise.resolve({ data: null, error: { code: 'AUTH_ERROR' } }));
     jest.spyOn(testDataManager, 'showModal').mockImplementation(() => {});
 
     await testDataManager.executeTestDataGeneration();
 
     // pfErr.message is undefined/falsy, so JSON.stringify(pfErr) is used
-    expect(toastSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Pre-flight FAILED'),
-      'error'
-    );
+    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('Pre-flight FAILED'), 'error');
   });
 });
 

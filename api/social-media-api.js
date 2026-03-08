@@ -258,7 +258,7 @@ async function postToInstagram(content, imageUrl) {
   const accessToken = process.env.FACEBOOK_PAGE_TOKEN;
   const igAccountId = process.env.INSTAGRAM_ACCOUNT_ID;
   if (!accessToken || !igAccountId) throw new Error('Instagram API credentials not configured');
-  if (!imageUrl) throw new Error('Instagram requires an image');
+  if (!imageUrl) throw new Error('Instagram requires an image — provide an image URL or skip this platform');
 
   // Step 1: Create media container
   const containerRes = await fetch(`https://graph.facebook.com/v18.0/${igAccountId}/media`, {
@@ -388,11 +388,68 @@ async function processScheduledPosts() {
   return { processed };
 }
 
-module.exports = {
-  postToTwitter,
-  postToLinkedIn,
-  postToFacebook,
-  postToInstagram,
-  publishToSocialMedia,
-  processScheduledPosts,
+// ==========================================
+// Vercel serverless handler
+// ==========================================
+
+const { createClient: createAuthClient } = require('@supabase/supabase-js');
+
+/**
+ * Vercel serverless handler for social media operations.
+ * Supports: publish (publish a post), process-scheduled (process due scheduled posts)
+ */
+module.exports = async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  // Verify authentication
+  const authHeader = req.headers?.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  const token = authHeader.replace('Bearer ', '');
+  const supabaseAuth = createAuthClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_KEY
+  );
+  const {
+    data: { user },
+    error: authError,
+  } = await supabaseAuth.auth.getUser(token);
+  if (authError || !user) {
+    return res.status(401).json({ error: 'Invalid or expired token' });
+  }
+
+  const { action } = req.body;
+
+  try {
+    switch (action) {
+      case 'publish': {
+        const { postId } = req.body;
+        if (!postId) {
+          return res.status(400).json({ error: 'Missing required field: postId' });
+        }
+        const result = await publishToSocialMedia(postId);
+        return res.status(200).json(result);
+      }
+      case 'process-scheduled': {
+        const result = await processScheduledPosts();
+        return res.status(200).json(result);
+      }
+      default:
+        return res.status(400).json({ error: `Unknown action: ${action}` });
+    }
+  } catch (error) {
+    console.error('Social media API error:', error);
+    return res.status(500).json({ error: error.message });
+  }
 };
+
+module.exports.postToTwitter = postToTwitter;
+module.exports.postToLinkedIn = postToLinkedIn;
+module.exports.postToFacebook = postToFacebook;
+module.exports.postToInstagram = postToInstagram;
+module.exports.publishToSocialMedia = publishToSocialMedia;
+module.exports.processScheduledPosts = processScheduledPosts;

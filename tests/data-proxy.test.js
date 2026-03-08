@@ -40,6 +40,7 @@ function chainable(resolveWith = { data: [], error: null, count: 0 }) {
     or: mockOr.mockReturnThis(),
     order: mockOrder.mockReturnThis(),
     range: mockRange.mockReturnThis(),
+    limit: jest.fn(),
     maybeSingle: jest.fn(),
     then: (resolve) => resolve(resolveWith),
   };
@@ -57,9 +58,9 @@ function chainable(resolveWith = { data: [], error: null, count: 0 }) {
 
 let currentChain;
 const mockFrom = jest.fn((table) => {
-  // Return admin role when querying user_preferences for RBAC
-  if (table === 'user_preferences') {
-    currentChain = chainable({ data: { value: 'admin' }, error: null, count: 1 });
+  // Return admin role when querying user_roles for RBAC
+  if (table === 'user_roles') {
+    currentChain = chainable({ data: { role: 'admin' }, error: null, count: 1 });
   } else {
     currentChain = chainable();
   }

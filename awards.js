@@ -1495,7 +1495,7 @@ const awardsModule = {
       toolbar.style.display = count > 0 ? 'flex' : 'none';
       toolbar.style.setProperty('display', count > 0 ? 'flex' : 'none', 'important');
     }
-    if (countEl) countEl.textContent = count;
+    if (countEl) countEl.textContent = String(count);
     if (count > 0) this.populateBulkSeasonDropdown();
   },
 
@@ -2255,7 +2255,7 @@ const awardsModule = {
     }
 
     const targetYear = parseInt(
-      prompt(`Clone "${utils.formatAwardName(award)}" to which year?`, new Date().getFullYear())
+      prompt(`Clone "${utils.formatAwardName(award)}" to which year?`, String(new Date().getFullYear()))
     );
     if (!targetYear || isNaN(targetYear)) return;
 
@@ -2321,7 +2321,9 @@ const awardsModule = {
       return;
     }
 
-    const targetYear = parseInt(prompt(`Clone ${count} selected awards to which year?`, new Date().getFullYear()));
+    const targetYear = parseInt(
+      prompt(`Clone ${count} selected awards to which year?`, String(new Date().getFullYear()))
+    );
     if (!targetYear || isNaN(targetYear)) return;
 
     if (
@@ -2421,7 +2423,7 @@ const awardsModule = {
           date: new Date(award[df.key]),
           raw: award[df.key],
         }))
-        .sort((a, b) => a.date - b.date);
+        .sort((a, b) => Number(a.date) - Number(b.date));
 
       const html = `
         <div class="mb-3">
@@ -2436,7 +2438,7 @@ const awardsModule = {
               .map((d) => {
                 const isPast = now > d.date;
                 const isToday = d.date.toDateString() === now.toDateString();
-                const daysFromNow = Math.ceil((d.date - now) / 86400000);
+                const daysFromNow = Math.ceil((Number(d.date) - Number(now)) / 86400000);
                 const daysLabel = isToday ? 'Today' : isPast ? `${Math.abs(daysFromNow)}d ago` : `In ${daysFromNow}d`;
                 return `<div class="d-flex align-items-center mb-3">
                 <div class="position-absolute" style="left: 6px; width: 18px; height: 18px; border-radius: 50%; background: ${isPast ? d.color : '#fff'}; border: 3px solid ${d.color}; z-index: 1;"></div>

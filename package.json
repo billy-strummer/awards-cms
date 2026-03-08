@@ -9,13 +9,21 @@
     "format:check": "prettier --check '*.js' 'api/*.js' 'tests/*.js'",
     "test": "jest tests/ --forceExit",
     "test:coverage": "jest tests/ --forceExit --coverage",
-    "typecheck": "npx -p typescript tsc --project jsconfig.json --noEmit --allowJs --checkJs",
+    "typecheck": "node typecheck.js",
     "validate": "npm run lint && npm run format:check && npm run typecheck && npm run test && npm run build",
     "build": "node build.js",
     "prepare": "husky"
   },
   "dependencies": {
-    "esbuild": "^0.27.3"
+    "@anthropic-ai/sdk": "^0.39.0",
+    "@supabase/supabase-js": "^2.49.4",
+    "dotenv": "^16.4.7",
+    "esbuild": "^0.27.3",
+    "node-cron": "^3.0.3",
+    "pdfkit": "^0.16.0",
+    "qrcode": "^1.5.4",
+    "resend": "^4.1.2",
+    "stripe": "^17.7.0"
   },
   "devDependencies": {
     "cssnano": "^7.1.2",

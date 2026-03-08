@@ -66,7 +66,7 @@ async function assignJudgesToEntries(awardId = null) {
 
     if (!entries || entries.length === 0) {
       console.log('ℹ️ No entries found that need judging');
-      return { assigned: 0, conflicts: 0 };
+      return { assigned: 0, conflicts: 0, totalEntries: 0, totalJudges: 0 };
     }
 
     console.log(`📝 Found ${entries.length} entries to assign`);
@@ -179,8 +179,20 @@ async function checkConflict(judge, entry) {
     }
   }
 
-  // TODO: Check custom conflict declarations
-  // Check if judge has declared conflicts in their profile
+  // Check if judge has previously declared a conflict for this entry's organisation
+  if (entry.id && judge.email) {
+    const { data: declared } = await supabase
+      .from('judge_scores')
+      .select('conflict_declared')
+      .eq('judge_email', judge.email)
+      .eq('entry_id', entry.id)
+      .eq('conflict_declared', true)
+      .limit(1);
+
+    if (declared && declared.length > 0) {
+      return true;
+    }
+  }
 
   return false;
 }
@@ -472,12 +484,16 @@ async function getJudgingStatistics(awardId = null) {
       totalScores += completeScores.length;
     });
 
-    stats.averageScoresPerEntry = entries.length > 0 ? (totalScores / entries.length).toFixed(2) : 0;
+    /** @type {any} */
+    const avgScores = entries.length > 0 ? (totalScores / entries.length).toFixed(2) : 0;
+    stats.averageScoresPerEntry = avgScores;
 
-    stats.completionRate =
+    /** @type {any} */
+    const completionRate =
       entries.length > 0 ? ((stats.entriesFullyJudged / entries.length) * 100).toFixed(1) + '%' : '0%';
+    stats.completionRate = completionRate;
 
-    return stats;
+    return /** @type {any} */ (stats);
   } catch (error) {
     console.error('Error getting judging statistics:', error);
     throw error;
@@ -552,13 +568,33 @@ async function getJudgingStatsEndpoint(req, res) {
   }
 }
 
-module.exports = {
-  assignJudgesToEntries,
-  generateShortlist,
-  generateAllShortlists,
-  getJudgingStatistics,
-  assignJudgesEndpoint,
-  generateShortlistEndpoint,
-  generateAllShortlistsEndpoint,
-  getJudgingStatsEndpoint,
+/**
+ * Vercel serverless handler — routes by query action.
+ */
+module.exports = async function handler(req, res) {
+  const action = req.query.action || req.body?.action;
+
+  switch (action) {
+    case 'assign-judges':
+      return assignJudgesEndpoint(req, res);
+    case 'generate-shortlist':
+      return generateShortlistEndpoint(req, res);
+    case 'generate-all-shortlists':
+      return generateAllShortlistsEndpoint(req, res);
+    case 'stats':
+      return getJudgingStatsEndpoint(req, res);
+    default:
+      return res
+        .status(400)
+        .json({ error: 'Invalid action. Use: assign-judges, generate-shortlist, generate-all-shortlists, stats' });
+  }
 };
+
+module.exports.assignJudgesToEntries = assignJudgesToEntries;
+module.exports.generateShortlist = generateShortlist;
+module.exports.generateAllShortlists = generateAllShortlists;
+module.exports.getJudgingStatistics = getJudgingStatistics;
+module.exports.assignJudgesEndpoint = assignJudgesEndpoint;
+module.exports.generateShortlistEndpoint = generateShortlistEndpoint;
+module.exports.generateAllShortlistsEndpoint = generateAllShortlistsEndpoint;
+module.exports.getJudgingStatsEndpoint = getJudgingStatsEndpoint;

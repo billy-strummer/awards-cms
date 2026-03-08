@@ -406,22 +406,21 @@ describe('RBAC Module - guard', () => {
 });
 
 describe('RBAC Module - loadUserRole', () => {
+  let savedApiClient;
+
   beforeEach(() => {
     jest.clearAllMocks();
     rbacModule.currentRole = null;
     rbacModule.permissions = {};
-    STATE.client = mockSupabase;
-    // Reset the mock chain
-    mockSupabase.from.mockReturnValue(mockSupabase);
-    mockSupabase.select.mockReturnValue(mockSupabase);
-    mockSupabase.eq.mockReturnValue(mockSupabase);
-    mockSupabase.limit.mockReturnValue(mockSupabase);
+    savedApiClient = global.apiClient;
+  });
+
+  afterEach(() => {
+    global.apiClient = savedApiClient;
   });
 
   test('loadUserRole sets role from database result', async () => {
-    mockSupabase.limit.mockReturnValue(
-      Promise.resolve({ data: [{ role: 'admin', email: 'admin@test.com' }], error: null })
-    );
+    global.apiClient = { select: jest.fn().mockResolvedValue({ data: [{ role: 'admin', email: 'admin@test.com' }] }) };
 
     await rbacModule.loadUserRole('admin@test.com');
 
@@ -430,9 +429,7 @@ describe('RBAC Module - loadUserRole', () => {
   });
 
   test('loadUserRole normalizes role to lowercase', async () => {
-    mockSupabase.limit.mockReturnValue(
-      Promise.resolve({ data: [{ role: 'EDITOR', email: 'user@test.com' }], error: null })
-    );
+    global.apiClient = { select: jest.fn().mockResolvedValue({ data: [{ role: 'EDITOR', email: 'user@test.com' }] }) };
 
     await rbacModule.loadUserRole('user@test.com');
 
@@ -441,7 +438,7 @@ describe('RBAC Module - loadUserRole', () => {
   });
 
   test('loadUserRole defaults to viewer when no role found', async () => {
-    mockSupabase.limit.mockReturnValue(Promise.resolve({ data: [], error: null }));
+    global.apiClient = { select: jest.fn().mockResolvedValue({ data: [] }) };
 
     await rbacModule.loadUserRole('unknown@test.com');
 
@@ -450,7 +447,7 @@ describe('RBAC Module - loadUserRole', () => {
   });
 
   test('loadUserRole defaults to viewer on database error', async () => {
-    mockSupabase.limit.mockReturnValue(Promise.resolve({ data: null, error: new Error('DB connection failed') }));
+    global.apiClient = { select: jest.fn().mockResolvedValue({ data: null }) };
 
     await rbacModule.loadUserRole('user@test.com');
 
@@ -459,7 +456,7 @@ describe('RBAC Module - loadUserRole', () => {
   });
 
   test('loadUserRole defaults to viewer on exception', async () => {
-    mockSupabase.limit.mockRejectedValue(new Error('Network timeout'));
+    global.apiClient = { select: jest.fn().mockRejectedValue(new Error('Network timeout')) };
 
     await rbacModule.loadUserRole('user@test.com');
 
@@ -468,9 +465,7 @@ describe('RBAC Module - loadUserRole', () => {
   });
 
   test('loadUserRole defaults to viewer when role field is null', async () => {
-    mockSupabase.limit.mockReturnValue(
-      Promise.resolve({ data: [{ role: null, email: 'user@test.com' }], error: null })
-    );
+    global.apiClient = { select: jest.fn().mockResolvedValue({ data: [{ role: null, email: 'user@test.com' }] }) };
 
     await rbacModule.loadUserRole('user@test.com');
 
@@ -479,9 +474,9 @@ describe('RBAC Module - loadUserRole', () => {
   });
 
   test('loadUserRole falls back to viewer permissions for unknown role string', async () => {
-    mockSupabase.limit.mockReturnValue(
-      Promise.resolve({ data: [{ role: 'nonexistent_role', email: 'user@test.com' }], error: null })
-    );
+    global.apiClient = {
+      select: jest.fn().mockResolvedValue({ data: [{ role: 'nonexistent_role', email: 'user@test.com' }] }),
+    };
 
     await rbacModule.loadUserRole('user@test.com');
 
@@ -492,9 +487,7 @@ describe('RBAC Module - loadUserRole', () => {
 
   test('loadUserRole calls applyPermissions after setting role', async () => {
     const applySpy = jest.spyOn(rbacModule, 'applyPermissions').mockImplementation(() => {});
-    mockSupabase.limit.mockReturnValue(
-      Promise.resolve({ data: [{ role: 'admin', email: 'admin@test.com' }], error: null })
-    );
+    global.apiClient = { select: jest.fn().mockResolvedValue({ data: [{ role: 'admin', email: 'admin@test.com' }] }) };
 
     await rbacModule.loadUserRole('admin@test.com');
 
@@ -638,11 +631,6 @@ describe('RBAC Module - ensureAdminExists', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    STATE.client = mockSupabase;
-    mockSupabase.from.mockReturnValue(mockSupabase);
-    mockSupabase.select.mockReturnValue(mockSupabase);
-    mockSupabase.eq.mockReturnValue(mockSupabase);
-    mockSupabase.neq.mockReturnValue(mockSupabase);
     showToastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
   });
 
@@ -651,7 +639,7 @@ describe('RBAC Module - ensureAdminExists', () => {
   });
 
   test('ensureAdminExists returns true when other admins exist', async () => {
-    mockSupabase.neq.mockReturnValue(Promise.resolve({ count: 2, error: null }));
+    global.apiClient = { count: jest.fn().mockResolvedValue({ count: 2 }) };
 
     const result = await rbacModule.ensureAdminExists('user@test.com');
     expect(result).toBe(true);
@@ -659,7 +647,7 @@ describe('RBAC Module - ensureAdminExists', () => {
   });
 
   test('ensureAdminExists returns false and shows toast when no other admins', async () => {
-    mockSupabase.neq.mockReturnValue(Promise.resolve({ count: 0, error: null }));
+    global.apiClient = { count: jest.fn().mockResolvedValue({ count: 0 }) };
 
     const result = await rbacModule.ensureAdminExists('lastadmin@test.com');
     expect(result).toBe(false);
@@ -667,27 +655,28 @@ describe('RBAC Module - ensureAdminExists', () => {
   });
 
   test('ensureAdminExists returns false on database error', async () => {
-    mockSupabase.neq.mockReturnValue(Promise.resolve({ count: null, error: new Error('DB error') }));
+    global.apiClient = { count: jest.fn().mockRejectedValue(new Error('DB error')) };
 
     const result = await rbacModule.ensureAdminExists('user@test.com');
     expect(result).toBe(false);
   });
 
   test('ensureAdminExists returns false on exception', async () => {
-    mockSupabase.neq.mockRejectedValue(new Error('Network error'));
+    global.apiClient = { count: jest.fn().mockRejectedValue(new Error('Network error')) };
 
     const result = await rbacModule.ensureAdminExists('user@test.com');
     expect(result).toBe(false);
   });
 
   test('ensureAdminExists queries with correct filters', async () => {
-    mockSupabase.neq.mockReturnValue(Promise.resolve({ count: 1, error: null }));
+    global.apiClient = { count: jest.fn().mockResolvedValue({ count: 1 }) };
 
     await rbacModule.ensureAdminExists('exclude@test.com');
 
-    expect(mockSupabase.from).toHaveBeenCalledWith('user_roles');
-    expect(mockSupabase.eq).toHaveBeenCalledWith('role', 'super_admin');
-    expect(mockSupabase.neq).toHaveBeenCalledWith('email', 'exclude@test.com');
+    expect(global.apiClient.count).toHaveBeenCalledWith('user_roles', {
+      role: 'super_admin',
+      'email@neq': 'exclude@test.com',
+    });
   });
 });
 

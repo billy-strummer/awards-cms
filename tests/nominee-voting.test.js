@@ -521,6 +521,7 @@ describe('showPublicToast - timeout callbacks', () => {
   });
 });
 
+/* global votingApi */
 describe('votingApi - error handling', () => {
   test('throws error with status and code when response is not ok', async () => {
     global.fetch = jest.fn(() =>
@@ -634,7 +635,8 @@ describe('Nominee Voting - vote flow', () => {
     nomineeVoting.hasVoted = false;
 
     // checkIfVoted returns false
-    global.fetch = jest.fn()
+    global.fetch = jest
+      .fn()
       .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ exists: false }) }) // checkIfVoted
       .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ count: 0 }) }) // check_rate_limit
       .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ exists: false }) }) // check_existing_vote
@@ -720,7 +722,8 @@ describe('Nominee Voting - setupEventListeners', () => {
     nomineeVoting.setupEventListeners();
 
     // Mock fetch for submitVote flow
-    global.fetch = jest.fn()
+    global.fetch = jest
+      .fn()
       .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ count: 0 }) }) // rate limit
       .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ exists: false }) }) // check existing vote
       .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({}) }) // submit vote
@@ -785,8 +788,7 @@ describe('Nominee Voting - submitVote edge cases', () => {
   });
 
   test('stops when rate limited', async () => {
-    global.fetch = jest.fn()
-      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ count: 10 }) }); // rate limit exceeded
+    global.fetch = jest.fn().mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ count: 10 }) }); // rate limit exceeded
 
     await nomineeVoting.submitVote();
 
@@ -795,7 +797,8 @@ describe('Nominee Voting - submitVote edge cases', () => {
   });
 
   test('stops when already voted (existing vote)', async () => {
-    global.fetch = jest.fn()
+    global.fetch = jest
+      .fn()
       .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ count: 0 }) }) // rate limit ok
       .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ exists: true }) }); // already voted
 
@@ -807,10 +810,15 @@ describe('Nominee Voting - submitVote edge cases', () => {
   });
 
   test('handles 409 duplicate vote error', async () => {
-    global.fetch = jest.fn()
+    global.fetch = jest
+      .fn()
       .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ count: 0 }) }) // rate limit ok
       .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ exists: false }) }) // not voted
-      .mockResolvedValueOnce({ ok: false, status: 409, json: () => Promise.resolve({ error: 'Duplicate vote', code: 'DUPLICATE' }) }); // submit fails with 409
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 409,
+        json: () => Promise.resolve({ error: 'Duplicate vote', code: 'DUPLICATE' }),
+      }); // submit fails with 409
 
     if (!global.crypto) {
       global.crypto = { randomUUID: jest.fn(() => '12345678-1234-1234-1234-123456789012') };
@@ -826,7 +834,8 @@ describe('Nominee Voting - submitVote edge cases', () => {
   });
 
   test('handles generic error during vote submission', async () => {
-    global.fetch = jest.fn()
+    global.fetch = jest
+      .fn()
       .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ count: 0 }) }) // rate limit ok
       .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ exists: false }) }) // not voted
       .mockRejectedValueOnce(new Error('Network error')); // submit fails
@@ -965,9 +974,7 @@ describe('Nominee Voting - loadEntry with neither entryNumber nor entryId', () =
       organisations: { company_name: 'Test' },
       awards: { award_name: 'Test' },
     };
-    global.fetch = jest.fn(() =>
-      Promise.resolve({ ok: true, json: () => Promise.resolve({ entry: mockEntry }) })
-    );
+    global.fetch = jest.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve({ entry: mockEntry }) }));
     nomineeVoting.displayEntry = jest.fn();
     nomineeVoting.voterEmail = null;
     await nomineeVoting.loadEntry(null, null);
@@ -1084,7 +1091,8 @@ describe('Nominee Voting - setupEventListeners voterName empty', () => {
 
     nomineeVoting.setupEventListeners();
 
-    global.fetch = jest.fn()
+    global.fetch = jest
+      .fn()
       .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ count: 0 }) })
       .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ exists: false }) })
       .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({}) })

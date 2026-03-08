@@ -62,7 +62,7 @@ const testDataManager = {
    * @param {object|array} records - Data to write
    * @param {string} label - Human-readable label for logging
    * @param {string} mode - 'upsert' or 'insert'
-   * @returns {{error: object|null, stripped: string[]}}
+   * @returns {Promise<{error: object|null, stripped: string[]}>}
    */
   async _safeWrite(table, records, label, mode) {
     const data = JSON.parse(JSON.stringify(records)); // deep copy to avoid mutating originals

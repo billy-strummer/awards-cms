@@ -165,10 +165,10 @@ const crmModule = {
     const el2 = document.getElementById('activeDealsCount');
     const el3 = document.getElementById('recentCommunicationsCount');
     const el4 = document.getElementById('pendingFollowUpsCount');
-    if (el1) el1.textContent = stats.totalCompanies;
-    if (el2) el2.textContent = stats.activeDeals;
-    if (el3) el3.textContent = stats.recentCommunications;
-    if (el4) el4.textContent = stats.pendingFollowUps;
+    if (el1) el1.textContent = String(stats.totalCompanies);
+    if (el2) el2.textContent = String(stats.activeDeals);
+    if (el3) el3.textContent = String(stats.recentCommunications);
+    if (el4) el4.textContent = String(stats.pendingFollowUps);
 
     // Populate segment filter dropdown from unique segments on current page
     const segmentFilter = document.getElementById('crmSegmentFilter');
@@ -988,8 +988,10 @@ const crmModule = {
   async logCommunication(organisationId = null) {
     // Guard against receiving an Event object from the action registry
     // when invoked from a button without data-id
+    // @ts-ignore - guard against Event objects from action registry
     if (
-      organisationId instanceof Event ||
+      /** @type {any} */ (organisationId) instanceof Event ||
+      // @ts-ignore
       (organisationId && typeof organisationId === 'object' && organisationId.target)
     ) {
       organisationId = null;
@@ -1162,7 +1164,7 @@ const crmModule = {
       await utils.protectModalDuringSave('logCommunicationModal', async () => {
         await apiClient.insert('communications', communicationData);
 
-        bootstrap.Modal.getInstance(document.getElementById('logCommunicationModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('logCommunicationModal'))?.hide();
       });
     } catch (error) {
       console.warn('DB insert for communication failed, using localStorage:', error);
@@ -1352,7 +1354,7 @@ const crmModule = {
       await utils.protectModalDuringSave('createDealModal', async () => {
         await apiClient.insert('deals', dealData);
 
-        bootstrap.Modal.getInstance(document.getElementById('createDealModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('createDealModal'))?.hide();
       });
     } catch (error) {
       console.warn('DB insert for deal failed, using localStorage:', error);
@@ -1585,7 +1587,7 @@ const crmModule = {
         await apiClient.update('communications', commId, updateData);
 
         utils.showToast('Communication updated successfully', 'success');
-        bootstrap.Modal.getInstance(document.getElementById('editCommunicationModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('editCommunicationModal'))?.hide();
       });
       this.loadCommunications();
     } catch (error) {
@@ -1677,7 +1679,7 @@ const crmModule = {
                     <div class="card">
                       <div class="card-body text-center">
                         <h6 class="text-muted mb-1">Expected Close</h6>
-                        <h5 class="mb-0">${deal.expected_close_date ? new Date(deal.expected_close_date).toLocaleDateString() : 'TBD'}</h5>
+                        <h5 class="mb-0">${deal.expected_close_date ? new Date(deal.expected_close_date).toLocaleDateString() : '<span class="text-warning">Not set</span>'}</h5>
                       </div>
                     </div>
                   </div>
@@ -1876,7 +1878,7 @@ const crmModule = {
         await apiClient.update('deals', dealId, updateData);
 
         utils.showToast('Deal updated successfully', 'success');
-        bootstrap.Modal.getInstance(document.getElementById('editDealModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('editDealModal'))?.hide();
       });
       this.loadDeals();
     } catch (error) {
@@ -2039,7 +2041,8 @@ const crmModule = {
       } catch (e) {
         console.warn('Failed to parse meeting attendees for edit:', e.message);
       }
-      const meetingDateTime = meeting.meeting_date ? meeting.meeting_date.split('T') : ['', ''];
+      const meetingDateParts = meeting.meeting_date ? meeting.meeting_date.split('T') : [];
+      const meetingDateTime = [meetingDateParts[0] || '', meetingDateParts[1] || ''];
 
       const modalHtml = `
         <div class="modal fade" id="editMeetingModal" tabindex="-1">
@@ -2181,7 +2184,7 @@ const crmModule = {
         await apiClient.update('meeting_notes', meetingId, updateData);
 
         utils.showToast('Meeting updated successfully', 'success');
-        bootstrap.Modal.getInstance(document.getElementById('editMeetingModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('editMeetingModal'))?.hide();
       });
       this.loadMeetings();
     } catch (error) {
@@ -2271,7 +2274,7 @@ const crmModule = {
                             <td>${a.organisation.phone ? utils.escapeHtml(a.organisation.phone) : '<span class="text-muted">N/A</span>'}</td>
                             <td>
                               <div class="btn-group btn-group-sm">
-                                <button class="btn btn-outline-primary" data-action="crmModule.viewCompanyProfile" data-id="a.organisation.id" title="View Profile">
+                                <button class="btn btn-outline-primary" data-action="crmModule.viewCompanyProfile" data-id="${a.organisation.id}" title="View Profile">
                                   <i class="bi bi-eye"></i>
                                 </button>
                                 <button class="btn btn-outline-danger" data-action="crmModule.removeFromSegment" data-args='${JSON.stringify([a.id, segmentId, utils.escapeHtml(segmentName).replace(/'/g, '&#39;')])}' title="Remove from Segment">
@@ -2328,7 +2331,7 @@ const crmModule = {
 
         utils.showToast('Company removed from segment', 'success');
         // Refresh the segment companies view
-        bootstrap.Modal.getInstance(document.getElementById('viewSegmentCompaniesModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('viewSegmentCompaniesModal'))?.hide();
         this.viewSegmentCompanies(segmentId, segmentName);
         this.loadSegments();
       });
@@ -2471,7 +2474,7 @@ const crmModule = {
         await apiClient.update('contact_segments', segmentId, updateData);
 
         utils.showToast('Segment updated successfully', 'success');
-        bootstrap.Modal.getInstance(document.getElementById('editSegmentModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('editSegmentModal'))?.hide();
         this.loadSegments();
       });
     } catch (error) {
@@ -3015,7 +3018,7 @@ const crmModule = {
       await utils.protectModalDuringSave('createMeetingNoteModal', async () => {
         await apiClient.insert('meeting_notes', data);
 
-        bootstrap.Modal.getInstance(document.getElementById('createMeetingNoteModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('createMeetingNoteModal'))?.hide();
       });
     } catch (error) {
       console.warn('DB insert for meeting note failed, using localStorage:', error);
@@ -3129,7 +3132,7 @@ const crmModule = {
 
         await apiClient.upsert('organisation_segments', assignments, { onConflict: 'organisation_id,segment_id' });
 
-        bootstrap.Modal.getInstance(document.getElementById('assignSegmentsModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('assignSegmentsModal'))?.hide();
       });
     } catch (error) {
       console.warn('DB upsert for segment assignments failed, using localStorage:', error);
@@ -3259,7 +3262,7 @@ const crmModule = {
       await utils.protectModalDuringSave('createSegmentModal', async () => {
         await apiClient.insert('contact_segments', data);
 
-        bootstrap.Modal.getInstance(document.getElementById('createSegmentModal')).hide();
+        bootstrap.Modal.getInstance(document.getElementById('createSegmentModal'))?.hide();
       });
     } catch (error) {
       console.warn('DB insert for custom segment failed, using localStorage:', error);

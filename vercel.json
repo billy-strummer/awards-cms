@@ -12,6 +12,33 @@
     },
     "api/email-automation.js": {
       "maxDuration": 30
+    },
+    "api/entry-proxy.js": {
+      "maxDuration": 30
+    },
+    "api/voting-proxy.js": {
+      "maxDuration": 30
+    },
+    "api/upload-proxy.js": {
+      "maxDuration": 30
+    },
+    "api/registration-proxy.js": {
+      "maxDuration": 30
+    },
+    "api/judge-automation.js": {
+      "maxDuration": 30
+    },
+    "api/certificates-qr.js": {
+      "maxDuration": 30
+    },
+    "api/social-media-api.js": {
+      "maxDuration": 30
+    },
+    "api/resend-email.js": {
+      "maxDuration": 30
+    },
+    "api/ai-vetting.js": {
+      "maxDuration": 60
     }
   },
   "headers": [

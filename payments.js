@@ -634,9 +634,8 @@ const paymentsModule = {
         // Generate invoice number
         let invoiceNumber;
         try {
-          const { data: invoiceNumberData, error: genError } = await STATE.client.rpc('generate_invoice_number');
-          if (genError) throw genError;
-          invoiceNumber = invoiceNumberData;
+          const genResult = await apiClient.rpc('generate_invoice_number');
+          invoiceNumber = genResult.data;
         } catch (e) {
           // Fallback: generate client-side if RPC doesn't exist
           const year = new Date().getFullYear();
@@ -787,16 +786,21 @@ const paymentsModule = {
       `;
 
       // Wire up footer buttons
-      document.getElementById('viewInvoiceRecordPaymentBtn').onclick = () => {
-        bootstrap.Modal.getInstance(document.getElementById('viewInvoiceModal'))?.hide();
-        this.recordPaymentForInvoice(invoiceId);
-      };
+      const recordPaymentBtn = document.getElementById('viewInvoiceRecordPaymentBtn');
+      if (recordPaymentBtn) {
+        recordPaymentBtn.onclick = () => {
+          bootstrap.Modal.getInstance(document.getElementById('viewInvoiceModal'))?.hide();
+          this.recordPaymentForInvoice(invoiceId);
+        };
+      }
 
-      document.getElementById('viewInvoicePrintBtn').onclick = () => {
-        const inv = invoice;
-        const items = lineItems;
-        const statusClass = (inv.status || 'draft').toLowerCase();
-        const printHtml = `
+      const printBtn = document.getElementById('viewInvoicePrintBtn');
+      if (printBtn)
+        printBtn.onclick = () => {
+          const inv = invoice;
+          const items = lineItems;
+          const statusClass = (inv.status || 'draft').toLowerCase();
+          const printHtml = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -910,13 +914,17 @@ const paymentsModule = {
 
 </body>
 </html>`;
-        const printWindow = window.open('', '_blank');
-        printWindow.document.write(printHtml);
-        printWindow.document.close();
-        printWindow.onload = function () {
-          printWindow.print();
+          const printWindow = window.open('', '_blank');
+          if (printWindow) {
+            printWindow.document.write(printHtml);
+            printWindow.document.close();
+            printWindow.onload = function () {
+              printWindow.print();
+            };
+          } else {
+            utils.showToast('Unable to open print window. Please allow popups for this site.', 'error');
+          }
         };
-      };
     } catch (error) {
       console.error('Error viewing invoice:', error);
       utils.showToast('Failed to load invoice details: ' + error.message, 'error');
@@ -1008,15 +1016,54 @@ const paymentsModule = {
         utils.showLoading();
 
         const recipientEmail = document.getElementById('sendInvoiceEmail').value;
-        const _cc = document.getElementById('sendInvoiceCc').value;
+        const cc = document.getElementById('sendInvoiceCc').value;
         const subject = document.getElementById('sendInvoiceSubject').value;
         const message = document.getElementById('sendInvoiceMessage').value;
 
-        // Log communication in the database
         const invoice = this.currentInvoices.find((i) => i.id === this.currentSendInvoiceId);
 
         if (invoice) {
-          // Log to communications table
+          // Load line items for the email template
+          let lineItems = [];
+          try {
+            const result = await apiClient.select('invoice_line_items', { invoice_id: invoice.id });
+            lineItems = result.data || [];
+          } catch (_e) {
+            /* proceed without line items */
+          }
+
+          // Send invoice email via API
+          try {
+            const response = await fetch('/api/resend-email', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'send-invoice',
+                to: recipientEmail,
+                subject,
+                message,
+                cc: cc || undefined,
+                invoice: {
+                  invoice_number: invoice.invoice_number,
+                  total_amount: invoice.total_amount,
+                  tax_amount: invoice.tax_amount,
+                  due_date: invoice.due_date,
+                  line_items: lineItems,
+                },
+              }),
+            });
+
+            const result = await response.json();
+            if (!result.success) {
+              throw new Error(result.error || 'Failed to send email');
+            }
+          } catch (emailError) {
+            console.error('Email send failed:', emailError);
+            utils.showToast('Email delivery failed: ' + emailError.message, 'error');
+            return;
+          }
+
+          // Log to communications table (only after successful send)
           try {
             await apiClient.insert('communications', {
               organisation_id: invoice.organisation_id,
@@ -1039,10 +1086,7 @@ const paymentsModule = {
         }
 
         bootstrap.Modal.getInstance(document.getElementById('sendInvoiceModal'))?.hide();
-        utils.showToast(
-          `Invoice email prepared for ${recipientEmail}. Note: Email delivery requires SendGrid API configuration.`,
-          'success'
-        );
+        utils.showToast(`Invoice email sent to ${recipientEmail}`, 'success');
 
         await this.loadInvoices();
       });
@@ -1424,7 +1468,7 @@ const paymentsModule = {
         unpaidInvoices
           .map(
             (inv) =>
-              `<option value="${inv.id}">${inv.invoice_number} - ${inv.organisations?.company_name} (&pound;${parseFloat(inv.total_amount - inv.paid_amount).toFixed(2)} due)</option>`
+              `<option value="${inv.id}">${inv.invoice_number} - ${inv.organisations?.company_name} (&pound;${parseFloat(String(inv.total_amount - inv.paid_amount)).toFixed(2)} due)</option>`
           )
           .join('');
 
@@ -1480,9 +1524,8 @@ const paymentsModule = {
         // Generate payment reference
         let paymentReference;
         try {
-          const { data: refData, error: refError } = await STATE.client.rpc('generate_payment_reference');
-          if (refError) throw refError;
-          paymentReference = refData;
+          const refResult = await apiClient.rpc('generate_payment_reference');
+          paymentReference = refResult.data;
         } catch (e) {
           // Fallback: generate client-side
           const year = new Date().getFullYear();
@@ -1909,9 +1952,9 @@ const paymentsModule = {
     const overdueInvoicesEl = document.getElementById('overdueInvoicesCount');
     const totalOutstandingEl = document.getElementById('totalOutstandingAmount');
 
-    if (totalInvoicesEl) totalInvoicesEl.textContent = totalInvoices;
-    if (paidInvoicesEl) paidInvoicesEl.textContent = paidInvoices;
-    if (overdueInvoicesEl) overdueInvoicesEl.textContent = overdueInvoices;
+    if (totalInvoicesEl) totalInvoicesEl.textContent = String(totalInvoices);
+    if (paidInvoicesEl) paidInvoicesEl.textContent = String(paidInvoices);
+    if (overdueInvoicesEl) overdueInvoicesEl.textContent = String(overdueInvoices);
     if (totalOutstandingEl) totalOutstandingEl.textContent = `\u00A3${totalOutstanding.toFixed(2)}`;
 
     const totalPayments = this.currentPayments.length;
@@ -1928,7 +1971,7 @@ const paymentsModule = {
     const totalPaymentsAmtEl = document.getElementById('totalPaymentsAmount');
     const monthlyPaymentsEl = document.getElementById('monthlyPaymentsAmount');
 
-    if (totalPaymentsEl) totalPaymentsEl.textContent = totalPayments;
+    if (totalPaymentsEl) totalPaymentsEl.textContent = String(totalPayments);
     if (totalPaymentsAmtEl) totalPaymentsAmtEl.textContent = `\u00A3${totalReceived.toFixed(2)}`;
     if (monthlyPaymentsEl) monthlyPaymentsEl.textContent = `\u00A3${monthlyTotal.toFixed(2)}`;
   },
@@ -2334,7 +2377,7 @@ const paymentsModule = {
 
     overdueInvoices.forEach((inv) => {
       const dueDate = inv.due_date ? new Date(inv.due_date) : null;
-      const daysOverdue = dueDate ? Math.floor((now - dueDate) / (1000 * 60 * 60 * 24)) : 0;
+      const daysOverdue = dueDate ? Math.floor((Number(now) - Number(dueDate)) / (1000 * 60 * 60 * 24)) : 0;
       const companyName = inv.organisations?.company_name || 'N/A';
       const amount = parseFloat(inv.balance_due || inv.total_amount || 0).toFixed(2);
 
@@ -2839,8 +2882,8 @@ const paymentsModule = {
     input.type = 'file';
     input.accept = '.csv';
     input.onchange = async (e) => {
+      if (!e.target.files || e.target.files.length === 0) return;
       const file = e.target.files[0];
-      if (!file) return;
       const text = await file.text();
       const lines = text.split('\n').filter((l) => l.trim());
       if (lines.length < 2) {

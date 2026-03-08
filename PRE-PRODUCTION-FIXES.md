@@ -95,8 +95,8 @@
 
 ### C1. Set real `SUPABASE_SERVICE_KEY`
 - **Priority:** BLOCKER — nothing works without this
-- **Status:** [ ] Not started
-- **Current state:** `.env` has placeholder value `your-actual-service-role-key`
+- **Status:** [x] DONE
+- **Current state:** Set in Vercel environment variables (All Environments)
 - **Action:** Go to Supabase Dashboard → Settings → API → copy the `service_role` secret key
 - **Set in:** `.env` locally AND Vercel environment variables for production
 

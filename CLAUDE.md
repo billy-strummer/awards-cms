@@ -100,6 +100,65 @@ Build passes (0 lint errors, 2072KB JS, 58KB CSS). 65/65 test suites pass (6381 
 - Configure Stripe webhook endpoint → /api/stripe-payment
 - Configure social media API credentials per platform (env vars)
 
+### Missing Credentials & Where to Get Them
+
+> **CLAUDE REMINDER:** If the user asks whether anything is still missing, refer them to this section.
+
+#### C: E2E/Integration Tests — 3 services needed
+
+**1. Supabase (database)**
+
+| Variable | Status | Where to find it |
+|---|---|---|
+| `SUPABASE_URL` | Already set in `.env` | You have this |
+| `SUPABASE_ANON_KEY` | Already set in `.env` | You have this |
+| `SUPABASE_SERVICE_KEY` | **Placeholder** (`your-actual-service-role-key`) | Supabase Dashboard → Settings → API → `service_role` key (secret) |
+
+**2. Stripe (payments)**
+
+| Variable | Where to find it |
+|---|---|
+| `STRIPE_SECRET_KEY` | Stripe Dashboard → Developers → API keys → Secret key (use `sk_test_` for testing) |
+| `STRIPE_PUBLISHABLE_KEY` | Same page → Publishable key (`pk_test_` for testing) |
+| `STRIPE_WEBHOOK_SECRET` | Stripe Dashboard → Developers → Webhooks → Add endpoint (point to `/api/stripe-payment`), then reveal signing secret |
+| `STRIPE_PRICE_ID` | Stripe Dashboard → Products → Create a product → copy Price ID (`price_...`) |
+
+**3. Resend (email)**
+
+| Variable | Where to find it |
+|---|---|
+| `RESEND_API_KEY` | resend.com → Dashboard → API Keys → Create API Key |
+
+#### E: Social Media API Compatibility — 4 platforms
+
+**Twitter/X**
+
+| Variable | Where to find it |
+|---|---|
+| `TWITTER_BEARER_TOKEN` | developer.x.com → Projects & Apps → your app → Keys and Tokens → Bearer Token |
+
+**LinkedIn**
+
+| Variable | Where to find it |
+|---|---|
+| `LINKEDIN_ACCESS_TOKEN` | linkedin.com/developers → your app → Auth tab → generate OAuth 2.0 token (requires `w_organization_social` scope) |
+| `LINKEDIN_ORG_ID` | LinkedIn company page URL — the numeric ID (e.g., `linkedin.com/company/12345678` → `12345678`) |
+
+**Facebook**
+
+| Variable | Where to find it |
+|---|---|
+| `FACEBOOK_PAGE_TOKEN` | developers.facebook.com → your app → Graph API Explorer → select Page → Get Page Access Token (needs `pages_manage_posts` permission) |
+| `FACEBOOK_PAGE_ID` | Facebook Page → About → Page ID (numeric) |
+
+**Instagram**
+
+| Variable | Where to find it |
+|---|---|
+| `INSTAGRAM_ACCOUNT_ID` | Same Facebook app — Graph API: `GET /{page-id}?fields=instagram_business_account` → returns the IG account ID. Requires the FB Page to be linked to an Instagram Business account. |
+
+**Quick start recommendation:** For testing, use Stripe test mode keys (`sk_test_`/`pk_test_`) and Resend's free tier. Fill in the real `SUPABASE_SERVICE_KEY` from your Supabase dashboard first — that alone unblocks most E2E tests. Social media can wait until you're ready to post for real.
+
 ## Commands
 
 ```bash

@@ -340,6 +340,11 @@ const authModule = {
     // Load initial data
     dashboardModule.loadAllData();
 
+    // Initialize notifications bell icon
+    if (typeof notificationsModule !== 'undefined') {
+      notificationsModule.init();
+    }
+
     // Apply saved branding immediately
     if (typeof brandingModule !== 'undefined') {
       try {

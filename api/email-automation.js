@@ -852,19 +852,7 @@ async function logEmailFailure(templateKey, toEmail, error, tenantId = 'default'
  */
 async function sendEmailEndpoint(req, res) {
   try {
-    // Verify caller is authenticated
-    const authHeader = req.headers.authorization;
-    if (!authHeader?.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
-    const token = authHeader.replace('Bearer ', '');
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser(token);
-    if (authError || !user) {
-      return res.status(401).json({ error: 'Invalid or expired token' });
-    }
+    // Auth is verified at the handler level
 
     const { templateKey, toEmail, variables } = req.body;
     if (!templateKey || !toEmail) {
@@ -904,6 +892,20 @@ async function sendWinnerAnnouncementsEndpoint(req, res) {
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  // Verify authentication for all actions
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+  const token = authHeader.replace('Bearer ', '');
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser(token);
+  if (authError || !user) {
+    return res.status(401).json({ error: 'Invalid or expired token' });
   }
 
   const action = req.query.action || req.body?.action;

@@ -93,8 +93,8 @@ async function createCheckoutSession(req, res) {
         },
       ],
       mode: 'payment',
-      success_url: `${req.headers.origin}/submit-entry-success.html?session_id={CHECKOUT_SESSION_ID}&entry=${entry.entry_number}`,
-      cancel_url: `${req.headers.origin}/submit-entry.html?cancelled=true`,
+      success_url: `${APP_URL}/submit-entry-success.html?session_id={CHECKOUT_SESSION_ID}&entry=${entry.entry_number}`,
+      cancel_url: `${APP_URL}/submit-entry.html?cancelled=true`,
       customer_email: email || entry.contact_email,
       metadata: {
         entry_id: resolvedEntryId,
@@ -114,7 +114,7 @@ async function createCheckoutSession(req, res) {
     res.json({ sessionId: session.id, url: session.url });
   } catch (error) {
     console.error('Error creating checkout session:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'An internal error occurred' });
   }
 }
 
@@ -497,6 +497,9 @@ async function sendRefundConfirmationEmail(entry) {
  */
 async function getPaymentStatus(req, res) {
   try {
+    const user = await verifyAuth(req, res);
+    if (!user) return;
+
     const { entryId } = req.params;
 
     const { data: entry, error } = await supabase
@@ -514,7 +517,7 @@ async function getPaymentStatus(req, res) {
     });
   } catch (error) {
     console.error('Error getting payment status:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'An internal error occurred' });
   }
 }
 
@@ -527,6 +530,9 @@ async function getPaymentStatus(req, res) {
  */
 async function verifyPayment(req, res) {
   try {
+    const user = await verifyAuth(req, res);
+    if (!user) return;
+
     const { sessionId } = req.params;
 
     const session = await stripe.checkout.sessions.retrieve(sessionId);
@@ -538,7 +544,7 @@ async function verifyPayment(req, res) {
     });
   } catch (error) {
     console.error('Error verifying payment:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'An internal error occurred' });
   }
 }
 

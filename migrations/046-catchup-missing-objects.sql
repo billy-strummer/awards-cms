@@ -975,6 +975,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP FUNCTION IF EXISTS get_unassigned_guests(UUID);
 CREATE OR REPLACE FUNCTION get_unassigned_guests(p_event_id UUID)
 RETURNS TABLE (
   guest_id UUID,

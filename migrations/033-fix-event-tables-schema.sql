@@ -143,7 +143,8 @@ RETURNS INTEGER AS $$
   WHERE event_id = p_event_id;
 $$ LANGUAGE sql;
 
--- Get unassigned guests for an event
+-- Get unassigned guests for an event (drop first - return type changed)
+DROP FUNCTION IF EXISTS get_unassigned_guests(UUID);
 CREATE OR REPLACE FUNCTION get_unassigned_guests(p_event_id UUID)
 RETURNS TABLE (
   id UUID,

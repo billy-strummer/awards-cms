@@ -107,7 +107,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 7. Create function to get unassigned guests for an event
+-- 7. Create function to get unassigned guests for an event (drop first - return type may differ)
+DROP FUNCTION IF EXISTS get_unassigned_guests(UUID);
 CREATE OR REPLACE FUNCTION get_unassigned_guests(p_event_id UUID)
 RETURNS TABLE (
   guest_id UUID,

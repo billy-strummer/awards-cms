@@ -291,7 +291,7 @@ describe('Stripe Payment API - Webhook', () => {
     const res = createRes();
     await handleStripeWebhook(req, res);
     expect(res.statusCode).toBe(400);
-    expect(res.body).toContain('Webhook Error');
+    expect(res.body.error).toContain('Webhook Error');
   });
 
   test('handles checkout.session.completed event', async () => {

@@ -59,11 +59,23 @@ const stripeFrontend = {
       });
 
       if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error || 'Failed to create checkout session');
+        let errMsg = 'Failed to create checkout session';
+        try {
+          const err = await response.json();
+          errMsg = err.error || errMsg;
+        } catch {
+          errMsg = 'Payment service is temporarily unavailable. Please try again later.';
+        }
+        throw new Error(errMsg);
       }
 
-      const { sessionId, url } = await response.json();
+      let checkoutData;
+      try {
+        checkoutData = await response.json();
+      } catch {
+        throw new Error('Payment service returned an invalid response.');
+      }
+      const { sessionId, url } = checkoutData;
 
       // Redirect to Stripe Checkout
       if (this.stripe && sessionId) {

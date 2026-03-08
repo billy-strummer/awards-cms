@@ -775,7 +775,12 @@
           }),
         });
 
-        const checkoutData = await checkoutRes.json();
+        let checkoutData;
+        try {
+          checkoutData = await checkoutRes.json();
+        } catch {
+          throw new Error('Payment service is temporarily unavailable. Please try again later.');
+        }
 
         if (!checkoutRes.ok) {
           throw new Error(checkoutData.error || 'Failed to create checkout session');

@@ -102,7 +102,7 @@
 
 ### C2. Run database migrations
 - **Priority:** BLOCKER — no tables exist yet
-- **Status:** [ ] Not started
+- **Status:** [x] DONE
 - **Action:** Either run `node scripts/run-migrations.js` (requires service key from C1) or paste SQL files into Supabase Dashboard → SQL Editor in this order:
   1. `database-schema.sql` (core tables — must be first)
   2. `database-events-setup.sql`

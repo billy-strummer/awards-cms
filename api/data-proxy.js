@@ -1249,10 +1249,12 @@ module.exports = async function handler(req, res) {
     const result = await executeQuery(body, user);
     return res.status(200).json(result);
   } catch (error) {
-    console.error('[data-proxy] Error:', error.message);
+    console.error('[data-proxy] Error:', error.message, error.details || '', error.hint || '');
     return res.status(500).json({
       error: 'Internal server error',
-      message: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      message: error.message || 'Unknown error',
+      hint: error.hint || undefined,
+      details: error.details || undefined,
     });
   }
 };

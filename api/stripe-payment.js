@@ -21,6 +21,23 @@ const FROM_EMAIL = process.env.FROM_EMAIL || 'awards@britishtradeawards.com';
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
 /**
+ * Generate a unique invoice number (INV-YYYY-NNNNN).
+ * @returns {Promise<string>}
+ */
+async function generateInvoiceNumber() {
+  const year = new Date().getFullYear();
+  const prefix = `INV-${year}-`;
+  const { data } = await supabase
+    .from('invoices')
+    .select('invoice_number')
+    .like('invoice_number', `${prefix}%`)
+    .order('invoice_number', { ascending: false })
+    .limit(1);
+  const lastNum = data && data.length > 0 ? parseInt(data[0].invoice_number.replace(prefix, ''), 10) || 0 : 0;
+  return `${prefix}${String(lastNum + 1).padStart(5, '0')}`;
+}
+
+/**
  * Verify Supabase JWT from Authorization header.
  * @param {Object} req - Express request object.
  * @param {Object} res - Express response object.
@@ -150,6 +167,10 @@ async function handleStripeWebhook(req, res) {
       await handlePaymentIntentFailed(event.data.object);
       break;
 
+    case 'charge.succeeded':
+      await handleChargeSucceeded(event.data.object);
+      break;
+
     case 'charge.refunded':
       await handleChargeRefunded(event.data.object);
       break;
@@ -189,13 +210,20 @@ async function handleCheckoutSessionCompleted(session) {
     const { data: entry } = await supabase.from('entries').select('*').eq('id', entryId).single();
 
     if (entry) {
+      const invoiceNumber = await generateInvoiceNumber();
       await supabase.from('invoices').insert([
         {
+          invoice_number: invoiceNumber,
           organisation_id: entry.organisation_id,
           invoice_type: 'entry_fee',
           status: 'paid',
+          payment_status: 'paid',
           total_amount: session.amount_total / 100, // Convert from pence
+          paid_amount: session.amount_total / 100,
+          balance_due: 0,
           currency: 'GBP',
+          invoice_date: new Date().toISOString().split('T')[0],
+          due_date: new Date().toISOString().split('T')[0],
           paid_date: new Date().toISOString(),
           payment_method: 'stripe',
           payment_reference: session.payment_intent,
@@ -216,6 +244,9 @@ async function handleCheckoutSessionCompleted(session) {
           performed_by: entry.contact_email,
         },
       ]);
+
+      // Create admin notification
+      await createPaymentNotification(entry, session.amount_total / 100);
     }
 
     console.log(`✅ Payment completed for entry ${entryId}`);
@@ -231,9 +262,65 @@ async function handleCheckoutSessionCompleted(session) {
  */
 async function handlePaymentIntentSucceeded(paymentIntent) {
   console.log(`Payment succeeded: ${paymentIntent.id}`);
-  const { data: entries } = await supabase.from('entries').select('*').eq('payment_reference', paymentIntent.id);
-  if (entries && entries.length > 0) {
-    await sendEntryConfirmationEmail(entries[0]);
+  try {
+    const { data: entries } = await supabase.from('entries').select('*').eq('payment_reference', paymentIntent.id);
+    if (entries && entries.length > 0) {
+      const entry = entries[0];
+
+      // Update entry status if not already paid (checkout.session.completed may have handled it)
+      if (entry.payment_status !== 'paid') {
+        await supabase
+          .from('entries')
+          .update({
+            payment_status: 'paid',
+            status: entry.status === 'draft' ? 'submitted' : entry.status,
+            submission_date: entry.submission_date || new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', entry.id);
+
+        // Create invoice record
+        const amountPaid = paymentIntent.amount ? paymentIntent.amount / 100 : 95;
+        const piInvoiceNumber = await generateInvoiceNumber();
+        await supabase.from('invoices').insert([
+          {
+            invoice_number: piInvoiceNumber,
+            organisation_id: entry.organisation_id,
+            invoice_type: 'entry_fee',
+            status: 'paid',
+            payment_status: 'paid',
+            total_amount: amountPaid,
+            paid_amount: amountPaid,
+            balance_due: 0,
+            currency: 'GBP',
+            invoice_date: new Date().toISOString().split('T')[0],
+            due_date: new Date().toISOString().split('T')[0],
+            paid_date: new Date().toISOString(),
+            payment_method: 'stripe',
+            payment_reference: paymentIntent.id,
+            notes: `Entry ${entry.entry_number} - ${entry.entry_title}`,
+          },
+        ]);
+
+        // Log activity
+        await supabase.from('activity_log').insert([
+          {
+            entity_type: 'entry',
+            entity_id: entry.id,
+            action: 'payment_completed',
+            details: `Payment received for entry ${entry.entry_number} (via payment_intent)`,
+            performed_by: entry.contact_email,
+          },
+        ]);
+
+        // Create admin notification
+        await createPaymentNotification(entry, amountPaid);
+      }
+
+      await sendEntryConfirmationEmail(entry);
+    }
+  } catch (error) {
+    console.error('Error handling payment intent succeeded:', error);
   }
 }
 
@@ -264,6 +351,126 @@ async function handlePaymentIntentFailed(paymentIntent) {
         performed_by: entry.contact_email,
       },
     ]);
+  }
+}
+
+/**
+ * Handle successful charge event. Finds entry by payment_intent and updates status.
+ * This catches payments that may not trigger checkout.session.completed (e.g. direct charges).
+ * @param {Object} charge - Stripe charge object.
+ * @returns {Promise<void>}
+ */
+async function handleChargeSucceeded(charge) {
+  console.log(`Charge succeeded: ${charge.id}`);
+  try {
+    const paymentIntentId = charge.payment_intent;
+    if (!paymentIntentId) {
+      console.log('Charge has no payment_intent, skipping');
+      return;
+    }
+
+    // Find entry by payment reference (payment_intent ID)
+    const { data: entries } = await supabase.from('entries').select('*').eq('payment_reference', paymentIntentId);
+
+    if (!entries || entries.length === 0) {
+      console.log(`No entry found for payment_intent ${paymentIntentId}`);
+      return;
+    }
+
+    const entry = entries[0];
+
+    // Only update if not already marked as paid
+    if (entry.payment_status === 'paid') {
+      console.log(`Entry ${entry.entry_number} already marked as paid, skipping`);
+      return;
+    }
+
+    // Update entry status
+    await supabase
+      .from('entries')
+      .update({
+        payment_status: 'paid',
+        status: entry.status === 'draft' ? 'submitted' : entry.status,
+        submission_date: entry.submission_date || new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', entry.id);
+
+    // Create invoice record
+    const amountPaid = charge.amount ? charge.amount / 100 : 95;
+    const chInvoiceNumber = await generateInvoiceNumber();
+    await supabase.from('invoices').insert([
+      {
+        invoice_number: chInvoiceNumber,
+        organisation_id: entry.organisation_id,
+        invoice_type: 'entry_fee',
+        status: 'paid',
+        payment_status: 'paid',
+        total_amount: amountPaid,
+        paid_amount: amountPaid,
+        balance_due: 0,
+        currency: 'GBP',
+        invoice_date: new Date().toISOString().split('T')[0],
+        due_date: new Date().toISOString().split('T')[0],
+        paid_date: new Date().toISOString(),
+        payment_method: 'stripe',
+        payment_reference: paymentIntentId,
+        notes: `Entry ${entry.entry_number} - ${entry.entry_title}`,
+      },
+    ]);
+
+    // Log activity
+    await supabase.from('activity_log').insert([
+      {
+        entity_type: 'entry',
+        entity_id: entry.id,
+        action: 'payment_completed',
+        details: `Payment received for entry ${entry.entry_number} (via charge)`,
+        performed_by: entry.contact_email,
+      },
+    ]);
+
+    // Create admin notification
+    await createPaymentNotification(entry, amountPaid);
+
+    // Send confirmation email
+    await sendEntryConfirmationEmail(entry);
+
+    console.log(`✅ Charge processed for entry ${entry.entry_number}`);
+  } catch (error) {
+    console.error('Error handling charge succeeded:', error);
+  }
+}
+
+/**
+ * Create an admin notification for a received payment.
+ * Inserts into the notifications table so the CMS bell icon shows the alert.
+ * @param {Object} entry - The entry record.
+ * @param {number} amount - The payment amount in pounds.
+ * @returns {Promise<void>}
+ */
+async function createPaymentNotification(entry, amount) {
+  try {
+    // Notify all admin users by inserting a notification without user_email filter
+    // This uses a generic admin notification approach
+    const { data: admins } = await supabase.from('users').select('email').in('role', ['admin', 'super_admin']);
+
+    const notifications = (admins || []).map((admin) => ({
+      user_email: admin.email,
+      title: 'Payment Received',
+      message: `£${amount.toFixed(2)} payment received for entry ${entry.entry_number || 'N/A'} - ${entry.entry_title || 'Untitled'}`,
+      entity_type: 'entry',
+      entity_id: entry.id,
+      is_read: false,
+      created_at: new Date().toISOString(),
+    }));
+
+    if (notifications.length > 0) {
+      await supabase.from('notifications').insert(notifications);
+    }
+  } catch (error) {
+    // Non-critical — log but don't fail the payment flow
+    console.error('Error creating payment notification:', error);
   }
 }
 

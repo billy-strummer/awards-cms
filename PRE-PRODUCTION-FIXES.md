@@ -44,7 +44,7 @@
 - **Severity:** CRITICAL
 - **Status:** [x] DONE
 - **Problem:** `success_url` and `cancel_url` use `req.headers.origin` (client-controlled). An attacker can set the Origin header to a malicious domain, causing Stripe to redirect the user there after payment. This is an open redirect vulnerability.
-- **Fix:** Replace `req.headers.origin` with `process.env.APP_URL` (already defined in `.env` as `https://admin.britishtrade.com`). Fall back to a hardcoded safe default if env var is missing.
+- **Fix:** Replace `req.headers.origin` with `process.env.APP_URL` (already defined in `.env` as `https://admin.britishtradeawards.com`). Fall back to a hardcoded safe default if env var is missing.
 - **File:** `api/stripe-payment.js`
 - **Lines:** ~96-97 where `success_url` and `cancel_url` are constructed.
 
@@ -95,14 +95,14 @@
 
 ### C1. Set real `SUPABASE_SERVICE_KEY`
 - **Priority:** BLOCKER — nothing works without this
-- **Status:** [ ] Not started
-- **Current state:** `.env` has placeholder value `your-actual-service-role-key`
+- **Status:** [x] DONE
+- **Current state:** Set in Vercel environment variables (All Environments)
 - **Action:** Go to Supabase Dashboard → Settings → API → copy the `service_role` secret key
 - **Set in:** `.env` locally AND Vercel environment variables for production
 
 ### C2. Run database migrations
 - **Priority:** BLOCKER — no tables exist yet
-- **Status:** [ ] Not started
+- **Status:** [x] DONE
 - **Action:** Either run `node scripts/run-migrations.js` (requires service key from C1) or paste SQL files into Supabase Dashboard → SQL Editor in this order:
   1. `database-schema.sql` (core tables — must be first)
   2. `database-events-setup.sql`

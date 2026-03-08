@@ -195,7 +195,7 @@ const entriesModule = {
     const search = this.currentFilters.search?.trim();
 
     const result = await apiClient.select('entries', {
-      select: '*, organisations(company_name, logo_url), award_years(award_name, sector, county)',
+      select: '*, organisations(company_name, logo_url), awards:award_years(award_name, sector, county)',
       filters,
       search: search ? { term: search, columns: ['entry_title', 'entry_number'] } : undefined,
       sort: { column: this._sortField, ascending: this._sortDir === 'asc' },
@@ -319,7 +319,7 @@ const entriesModule = {
     tbody.innerHTML = pageEntries
       .map((entry) => {
         const companyName = entry.organisations?.company_name || 'Unknown';
-        const awardName = entry.award_years?.award_name || entry.award_category || 'Unknown';
+        const awardName = entry.awards?.award_name || entry.award_category || 'Unknown';
         const _statusBadge = this.getStatusBadge(entry.status);
         const paymentBadge = this.getPaymentBadge(entry.payment_status);
         const selfNomBadge = entry.is_self_nomination
@@ -563,7 +563,7 @@ const entriesModule = {
       if (this.currentFilters.search) {
         const searchLower = this.currentFilters.search;
         const companyName = (entry.organisations?.company_name || '').toLowerCase();
-        const awardName = (entry.award_years?.award_name || entry.award_category || '').toLowerCase();
+        const awardName = (entry.awards?.award_name || entry.award_category || '').toLowerCase();
         const entryTitle = (entry.entry_title || '').toLowerCase();
         const entryNumber = (entry.entry_number || '').toLowerCase();
 
@@ -609,8 +609,8 @@ const entriesModule = {
         aVal = (a.organisations?.company_name || '').toLowerCase();
         bVal = (b.organisations?.company_name || '').toLowerCase();
       } else if (this._sortField === 'award') {
-        aVal = (a.award_years?.award_name || a.award_category || '').toLowerCase();
-        bVal = (b.award_years?.award_name || b.award_category || '').toLowerCase();
+        aVal = (a.awards?.award_name || a.award_category || '').toLowerCase();
+        bVal = (b.awards?.award_name || b.award_category || '').toLowerCase();
       } else if (this._sortField === 'status') {
         aVal = (a.status || '').toLowerCase();
         bVal = (b.status || '').toLowerCase();
@@ -677,7 +677,7 @@ const entriesModule = {
   async viewEntry(entryId) {
     try {
       const result = await apiClient.select('entries', {
-        select: '*, organisations(*), award_years(*), entry_files(*), judge_scores(*)',
+        select: '*, organisations(*), awards:award_years(*), entry_files(*), judge_scores(*)',
         filters: { id: { operator: 'eq', value: entryId } },
         pageSize: 1,
       });
@@ -690,7 +690,7 @@ const entriesModule = {
         entryId,
         (entry.organisations?.company_name || 'Entry') +
           ' - ' +
-          (entry.award_years?.award_name || entry.award_category || 'Award')
+          (entry.awards?.award_name || entry.award_category || 'Award')
       );
 
       // Show entry details modal
@@ -768,15 +768,15 @@ const entriesModule = {
                       <table class="table table-sm table-borderless mb-0">
                         <tr>
                           <td class="text-muted">Award:</td>
-                          <td><strong>${utils.escapeHtml(entry.award_years?.award_name || entry.award_category || 'N/A')}</strong></td>
+                          <td><strong>${utils.escapeHtml(entry.awards?.award_name || entry.award_category || 'N/A')}</strong></td>
                         </tr>
                         <tr>
                           <td class="text-muted">Sector:</td>
-                          <td>${utils.escapeHtml(entry.award_years?.sector || entry.sector || 'N/A')}</td>
+                          <td>${utils.escapeHtml(entry.awards?.sector || entry.sector || 'N/A')}</td>
                         </tr>
                         <tr>
                           <td class="text-muted">County/City:</td>
-                          <td>${utils.escapeHtml(entry.award_years?.county || entry.region || 'N/A')}</td>
+                          <td>${utils.escapeHtml(entry.awards?.county || entry.region || 'N/A')}</td>
                         </tr>
                         <tr>
                           <td class="text-muted">Entry Type:</td>
@@ -1199,7 +1199,7 @@ const entriesModule = {
   async editEntry(entryId) {
     try {
       const entryResult = await apiClient.select('entries', {
-        select: '*, organisations(id, company_name), award_years(id, award_name)',
+        select: '*, organisations(id, company_name), awards:award_years(id, award_name)',
         filters: { id: { operator: 'eq', value: entryId } },
         pageSize: 1,
       });
@@ -1529,7 +1529,7 @@ const entriesModule = {
       const rows = entriesToExport.map((entry) => [
         entry.entry_number || '',
         entry.organisations?.company_name || '',
-        entry.award_years?.award_name || entry.award_category || '',
+        entry.awards?.award_name || entry.award_category || '',
         entry.entry_title || '',
         entry.status || '',
         entry.payment_status || '',
@@ -1581,7 +1581,7 @@ const entriesModule = {
     const exportData = entriesToExport.map((e) => ({
       entry_number: e.entry_number || '',
       company: e.organisations?.company_name || '',
-      award: e.award_years?.award_name || e.award_category || '',
+      award: e.awards?.award_name || e.award_category || '',
       entry_title: e.entry_title || '',
       status: e.status || '',
       payment_status: e.payment_status || '',
@@ -1608,7 +1608,7 @@ const entriesModule = {
     const exportData = entriesToExport.map((e) => ({
       entry_number: e.entry_number || '',
       company: e.organisations?.company_name || '',
-      award: e.award_years?.award_name || e.award_category || '',
+      award: e.awards?.award_name || e.award_category || '',
       status: e.status || '',
       score: e.average_score != null ? e.average_score : '',
       submitted: e.submission_date || '',

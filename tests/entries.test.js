@@ -152,7 +152,7 @@ const sampleEntries = [
     submission_date: '2026-01-15',
     public_votes: 12,
     organisations: { company_name: 'Acme Plumbing Ltd' },
-    award_years: { award_name: 'Best Plumber', sector: 'MEP', county: 'Kent' },
+    awards: { award_name: 'Best Plumber', sector: 'MEP', county: 'Kent' },
     contact_name: 'John Smith',
     contact_email: 'john@acme.com',
   },
@@ -170,7 +170,7 @@ const sampleEntries = [
     submission_date: '2026-02-01',
     public_votes: 0,
     organisations: { company_name: 'BuildCo' },
-    award_years: { award_name: 'Top Builder', sector: 'Construction', county: 'London' },
+    awards: { award_name: 'Top Builder', sector: 'Construction', county: 'London' },
     contact_name: 'Jane Doe',
     contact_email: 'jane@buildco.com',
   },
@@ -188,7 +188,7 @@ const sampleEntries = [
     submission_date: '2025-11-20',
     public_votes: 45,
     organisations: { company_name: 'GreenTech Solutions' },
-    award_years: { award_name: 'Best Plumber', sector: 'Energy', county: 'Surrey' },
+    awards: { award_name: 'Best Plumber', sector: 'Energy', county: 'Surrey' },
     contact_name: 'Bob Green',
     contact_email: 'bob@greentech.com',
   },
@@ -206,7 +206,7 @@ const sampleEntries = [
     submission_date: '2026-01-20',
     public_votes: 100,
     organisations: { company_name: 'Spark Electric' },
-    award_years: { award_name: 'Outstanding Electrician', sector: 'MEP', county: 'Essex' },
+    awards: { award_name: 'Outstanding Electrician', sector: 'MEP', county: 'Essex' },
     contact_name: 'Alice Sparks',
     contact_email: 'alice@spark.com',
   },
@@ -224,7 +224,7 @@ const sampleEntries = [
     submission_date: '2026-01-05',
     public_votes: 0,
     organisations: { company_name: 'Failed Co' },
-    award_years: { award_name: 'Top Builder', sector: 'Construction', county: 'Kent' },
+    awards: { award_name: 'Top Builder', sector: 'Construction', county: 'Kent' },
     contact_name: 'Bad Entry',
     contact_email: 'bad@failed.com',
   },
@@ -657,7 +657,7 @@ describe('Entries Module - Edge Cases', () => {
         status: 'draft',
         payment_status: null,
         organisations: null,
-        award_years: null,
+        awards: null,
         is_self_nomination: false,
         average_score: null,
         total_scores: 0,
@@ -679,7 +679,7 @@ describe('Entries Module - Edge Cases', () => {
         status: 'submitted',
         payment_status: 'pending',
         organisations: { company_name: '<img onerror=alert(1)>' },
-        award_years: { award_name: 'Normal Award' },
+        awards: { award_name: 'Normal Award' },
         is_self_nomination: false,
         average_score: null,
         total_scores: 0,
@@ -705,7 +705,7 @@ describe('Entries Module - Edge Cases', () => {
         year: null,
         is_self_nomination: null,
         organisations: null,
-        award_years: null,
+        awards: null,
         submission_date: null,
       },
     ];
@@ -940,7 +940,7 @@ describe('Entries Module - Sort by Various Fields', () => {
     entriesModule._sortField = 'award';
     entriesModule._sortDir = 'asc';
     entriesModule.applyFilters();
-    const awards = entriesModule.filteredEntries.map((e) => (e.award_years?.award_name || '').toLowerCase());
+    const awards = entriesModule.filteredEntries.map((e) => (e.awards?.award_name || '').toLowerCase());
     for (let i = 0; i < awards.length - 1; i++) {
       expect(awards[i] <= awards[i + 1]).toBe(true);
     }
@@ -1170,7 +1170,7 @@ describe('Entries Module - XSS Prevention', () => {
       {
         ...sampleEntries[0],
         id: 'xss-award',
-        award_years: { award_name: '<div onmouseover="alert(1)">hack</div>' },
+        awards: { award_name: '<div onmouseover="alert(1)">hack</div>' },
       },
     ];
     entriesModule.renderEntries();
@@ -1287,7 +1287,7 @@ describe('Entries Module - Null Safety', () => {
         status: null,
         payment_status: null,
         organisations: null,
-        award_years: null,
+        awards: null,
         is_self_nomination: null,
         average_score: null,
         total_scores: null,
@@ -1318,7 +1318,7 @@ describe('Entries Module - Null Safety', () => {
         status: 'draft',
         payment_status: 'pending',
         organisations: {},
-        award_years: {},
+        awards: {},
         is_self_nomination: false,
         average_score: null,
         total_scores: 0,

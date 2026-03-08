@@ -1472,11 +1472,12 @@ describe('Social Media Module - savePost() successful insert', () => {
     const confirmSpy = jest.spyOn(utils, 'confirmDialog').mockResolvedValue(true);
 
     apiClient.insert = jest.fn().mockResolvedValue({ data: [{ id: 'pub-new-1' }] });
-    // Mock the functions.invoke call for publish
-    mockSupabase.functions.invoke.mockResolvedValueOnce({ data: {}, error: null });
+    apiClient._getToken = jest.fn().mockResolvedValue('test-token');
+    // Mock the fetch call for publish via Vercel API
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ results: [], errors: [] }) });
 
     await socialMediaModule.savePost('immediate');
-    expect(mockSupabase.functions.invoke).toHaveBeenCalled();
+    expect(global.fetch).toHaveBeenCalledWith('/api/social-media-api', expect.anything());
     confirmSpy.mockRestore();
   });
 
@@ -1484,9 +1485,10 @@ describe('Social Media Module - savePost() successful insert', () => {
     const confirmSpy = jest.spyOn(utils, 'confirmDialog').mockResolvedValue(true);
 
     apiClient.insert = jest.fn().mockResolvedValue({ data: [{ id: 'pub-new-2' }] });
-    mockSupabase.functions.invoke.mockResolvedValueOnce({
-      data: { errors: [{ platform: 'twitter' }] },
-      error: null,
+    apiClient._getToken = jest.fn().mockResolvedValue('test-token');
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ errors: [{ platform: 'twitter' }], results: [], status: 'partial' }),
     });
 
     await socialMediaModule.savePost('immediate');
@@ -1498,7 +1500,8 @@ describe('Social Media Module - savePost() successful insert', () => {
     const confirmSpy = jest.spyOn(utils, 'confirmDialog').mockResolvedValue(true);
 
     apiClient.insert = jest.fn().mockResolvedValue({ data: [{ id: 'pub-new-3' }] });
-    mockSupabase.functions.invoke.mockRejectedValueOnce(new Error('Edge function not deployed'));
+    apiClient._getToken = jest.fn().mockResolvedValue('test-token');
+    global.fetch = jest.fn().mockRejectedValue(new Error('API not deployed'));
 
     await socialMediaModule.savePost('immediate');
     expect(showToastSpy).toHaveBeenCalledWith(expect.stringContaining('Configure API keys'), 'info');

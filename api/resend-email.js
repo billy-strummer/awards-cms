@@ -456,6 +456,14 @@ module.exports = async function handler(req, res) {
         const result = await sendTestEmail(to, testSubject, htmlContent);
         return res.status(result.success ? 200 : 500).json(result);
       }
+      case 'send': {
+        const { to: sendTo, subject: sendSubject, message: sendMessage } = req.body;
+        if (!sendTo || !sendSubject) {
+          return res.status(400).json({ error: 'Missing required fields: to, subject' });
+        }
+        const result = await sendEmail({ to: sendTo, subject: sendSubject, html: sendMessage });
+        return res.status(result.success ? 200 : 500).json(result);
+      }
       case 'process-queue': {
         const result = await processNotificationQueue();
         return res.status(200).json(result);

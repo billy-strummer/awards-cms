@@ -178,12 +178,10 @@ const emailBuilder = {
    */
   async loadOrganisations() {
     try {
-      const { data, error } = await STATE.client
-        .from('organisations')
-        .select('id, company_name')
-        .order('company_name', { ascending: true });
-
-      if (error) throw error;
+      const data = await apiClient.selectAll('organisations', {
+        select: 'id, company_name',
+        sort: { column: 'company_name', ascending: true },
+      });
 
       const select = document.getElementById('builderOrgSelect');
       if (select) {
@@ -209,26 +207,21 @@ const emailBuilder = {
    */
   async loadOrganisationData(orgId) {
     try {
-      const { data: org, error: orgError } = await STATE.client
-        .from('organisations')
-        .select('*')
-        .eq('id', orgId)
-        .single();
-
-      if (orgError) throw orgError;
+      const orgResult = await apiClient.select('organisations', {
+        filters: { id: { eq: orgId } },
+        pageSize: 1,
+      });
+      const org = orgResult.data?.[0];
+      if (!org) throw new Error('Organisation not found');
 
       // Load awards for this org
-      const { data: assignments } = await STATE.client
-        .from('award_assignments')
-        .select(
-          `
-          *,
-          awards:award_years!award_assignments_award_id_fkey (*)
-        `
-        )
-        .eq('organisation_id', orgId);
+      const assignmentResult = await apiClient.select('award_assignments', {
+        select: '*, awards:award_years!award_assignments_award_id_fkey (*)',
+        filters: { organisation_id: { eq: orgId } },
+        pageSize: 1000,
+      });
 
-      const awards = (assignments || []).filter((a) => a.awards).map((a) => a.awards);
+      const awards = (assignmentResult.data || []).filter((a) => a.awards).map((a) => a.awards);
 
       this.currentOrg = { ...org, awards };
 
@@ -2110,22 +2103,19 @@ ${content}
    */
   async loadContentLibraryContent(panel) {
     // Load organisations with enhanced profile info
-    const { data: orgs, error } = await STATE.client
-      .from('award_assignments')
-      .select(
-        `
-        organisation_id,
-        enhanced_profile,
-        organisations(id, company_name, logo_url, website, description, region, industry)
-      `
-      )
-      .not('organisations', 'is', null)
-      .order('enhanced_profile', { ascending: false });
-
-    if (error) {
+    let orgs;
+    try {
+      orgs = await apiClient.selectAll('award_assignments', {
+        select:
+          'organisation_id, enhanced_profile, organisations(id, company_name, logo_url, website, description, region, industry)',
+        sort: { column: 'enhanced_profile', ascending: false },
+      });
+    } catch (error) {
       console.error('Error loading organisations:', error);
       return;
     }
+    // Filter out rows where the organisations join returned null
+    orgs = (orgs || []).filter((item) => item.organisations);
 
     // Group by organisation and prioritize enhanced profiles
     const orgMap = new Map();
@@ -2234,27 +2224,29 @@ ${content}
 
     try {
       // Load company details
-      const { data: org, error: orgError } = await STATE.client
-        .from('organisations')
-        .select('*')
-        .eq('id', orgId)
-        .single();
-
-      if (orgError) throw orgError;
+      const orgResult = await apiClient.select('organisations', {
+        filters: { id: { eq: orgId } },
+        pageSize: 1,
+      });
+      const org = orgResult.data?.[0];
+      if (!org) throw new Error('Organisation not found');
 
       this.selectedCompany = org;
 
       // Load company images from media gallery
-      const { data: images, error: imgError } = await STATE.client
-        .from('media_gallery')
-        .select('*')
-        .eq('organisation_id', orgId)
-        .in('file_type', ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'])
-        .eq('published', true)
-        .order('uploaded_at', { ascending: false });
-
-      if (imgError) console.warn('Failed to load company images:', imgError);
-      const companyImages = images || [];
+      let companyImages = [];
+      try {
+        companyImages = await apiClient.selectAll('media_gallery', {
+          filters: {
+            organisation_id: { eq: orgId },
+            file_type: { in: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'] },
+            published: { eq: true },
+          },
+          sort: { column: 'uploaded_at', ascending: false },
+        });
+      } catch (imgError) {
+        console.warn('Failed to load company images:', imgError);
+      }
 
       // Display draggable content items
       const container = document.getElementById('companyContentItems');
@@ -2425,13 +2417,11 @@ ${content}
    */
   async loadEmailLists() {
     try {
-      const { data: lists, error } = await STATE.client
-        .from('email_lists')
-        .select('id, list_name, list_type, is_active')
-        .eq('is_active', true)
-        .order('list_name', { ascending: true });
-
-      if (error) throw error;
+      const lists = await apiClient.selectAll('email_lists', {
+        select: 'id, list_name, list_type, is_active',
+        filters: { is_active: { eq: true } },
+        sort: { column: 'list_name', ascending: true },
+      });
 
       const select = document.getElementById('builderEmailList');
       if (select) {
@@ -2450,14 +2440,14 @@ ${content}
           select.addEventListener('change', async (e) => {
             const countEl = document.getElementById('builderListCount');
             if (e.target.value && countEl) {
-              const { count, error: countErr } = await STATE.client
-                .from('email_list_subscribers')
-                .select('id', { count: 'exact', head: true })
-                .eq('list_id', e.target.value)
-                .eq('status', 'active');
-
-              if (!countErr) {
-                countEl.textContent = `${count || 0} active subscribers`;
+              try {
+                const result = await apiClient.count('email_list_subscribers', {
+                  list_id: { eq: e.target.value },
+                  status: { eq: 'active' },
+                });
+                countEl.textContent = `${result.count || 0} active subscribers`;
+              } catch (_countErr) {
+                // Ignore count errors
               }
             } else if (countEl) {
               countEl.textContent = '';
@@ -2567,18 +2557,18 @@ ${content}
     if (!configOk) return;
 
     // Get subscriber count for confirmation
-    const { count } = await STATE.client
-      .from('email_list_subscribers')
-      .select('id', { count: 'exact', head: true })
-      .eq('list_id', listId)
-      .eq('status', 'active');
+    const countResult = await apiClient.count('email_list_subscribers', {
+      list_id: { eq: listId },
+      status: { eq: 'active' },
+    });
+    const count = countResult.count || 0;
 
     const listName = document.getElementById('builderEmailList')?.selectedOptions[0]?.text || 'selected list';
 
     if (
       !(await utils.confirmDialog({
         title: 'Send Campaign',
-        message: `Send "${subject}" to ${count || 0} subscribers in "${listName}"?\n\nThis action cannot be undone.`,
+        message: `Send "${subject}" to ${count} subscribers in "${listName}"?\n\nThis action cannot be undone.`,
         confirmText: 'Send',
         danger: false,
       }))
@@ -2746,11 +2736,11 @@ ${content}
     }
 
     // Get subscriber count for confirmation
-    const { count } = await STATE.client
-      .from('email_list_subscribers')
-      .select('id', { count: 'exact', head: true })
-      .eq('list_id', listId)
-      .eq('status', 'active');
+    const countResult = await apiClient.count('email_list_subscribers', {
+      list_id: { eq: listId },
+      status: { eq: 'active' },
+    });
+    const count = countResult.count || 0;
 
     const listName = document.getElementById('builderEmailList')?.selectedOptions[0]?.text || 'selected list';
     const opts = {
@@ -2778,29 +2768,23 @@ ${content}
     try {
       utils.showToast('Scheduling campaign...', 'info');
 
-      const { _data, error } = await STATE.client
-        .from('email_campaigns')
-        .insert({
-          campaign_name: campaignName || subject,
-          subject: subject,
-          recipients: listName,
-          status: 'Scheduled',
-          scheduled_date: scheduledAt.toISOString(),
-          total_recipients: count || 0,
-          notes: JSON.stringify({
-            html,
-            from_name: fromName,
-            from_email: fromEmail,
-            reply_to: replyTo,
-            list_id: listId,
-            list_name: listName,
-            preheader: document.getElementById('builderPreheader')?.value || '',
-          }),
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
+      await apiClient.insert('email_campaigns', {
+        campaign_name: campaignName || subject,
+        subject: subject,
+        recipients: listName,
+        status: 'Scheduled',
+        scheduled_date: scheduledAt.toISOString(),
+        total_recipients: count || 0,
+        notes: JSON.stringify({
+          html,
+          from_name: fromName,
+          from_email: fromEmail,
+          reply_to: replyTo,
+          list_id: listId,
+          list_name: listName,
+          preheader: document.getElementById('builderPreheader')?.value || '',
+        }),
+      });
 
       utils.showToast(
         `Campaign scheduled for ${scheduledAt.toLocaleDateString('en-GB', /** @type {any} */ (opts))}`,
@@ -2843,13 +2827,11 @@ ${content}
       return;
 
     try {
-      const { error } = await STATE.client
-        .from('email_campaigns')
-        .update({ status: 'Cancelled' })
-        .eq('id', campaignId)
-        .eq('status', 'Scheduled');
-
-      if (error) throw error;
+      await apiClient.updateByFilters(
+        'email_campaigns',
+        { id: { eq: campaignId }, status: { eq: 'Scheduled' } },
+        { status: 'Cancelled' }
+      );
 
       utils.showToast('Scheduled campaign cancelled', 'info');
       this.loadCampaignLog();
@@ -2864,13 +2846,12 @@ ${content}
    */
   async cloneCampaign(campaignId) {
     try {
-      const { data: campaign, error } = await STATE.client
-        .from('email_campaigns')
-        .select('*')
-        .eq('id', campaignId)
-        .single();
-
-      if (error) throw error;
+      const campaignResult = await apiClient.select('email_campaigns', {
+        filters: { id: { eq: campaignId } },
+        pageSize: 1,
+      });
+      const campaign = campaignResult.data?.[0];
+      if (!campaign) throw new Error('Campaign not found');
 
       let notes = {};
       try {
@@ -2958,21 +2939,20 @@ ${content}
    */
   async viewCampaignDetail(campaignId) {
     try {
-      const { data: campaign, error: campError } = await STATE.client
-        .from('email_campaigns')
-        .select('*')
-        .eq('id', campaignId)
-        .single();
-
-      if (campError) throw campError;
+      const campResult = await apiClient.select('email_campaigns', {
+        filters: { id: { eq: campaignId } },
+        pageSize: 1,
+      });
+      const campaign = campResult.data?.[0];
+      if (!campaign) throw new Error('Campaign not found');
 
       // Try to load recipient-level logs
-      const { data: logs, error: _logError } = await STATE.client
-        .from('email_campaign_recipients')
-        .select('*')
-        .eq('campaign_id', campaignId)
-        .order('sent_at', { ascending: false })
-        .limit(100);
+      const logResult = await apiClient.select('email_campaign_recipients', {
+        filters: { campaign_id: { eq: campaignId } },
+        sort: { column: 'sent_at', ascending: false },
+        pageSize: 100,
+      });
+      const logs = logResult.data || [];
 
       const statusBadge = this.getStatusBadge(campaign.status);
       const created = campaign.created_at

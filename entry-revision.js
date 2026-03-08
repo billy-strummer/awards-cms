@@ -72,8 +72,11 @@ const entryRevisionModule = {
 <p>Please log in to resubmit your entry.</p>`;
       }
 
-      await STATE.client.functions.invoke('send-email', {
-        body: { to: entry.contact_email, subject, html },
+      const token = await apiClient._getToken();
+      await fetch('/api/resend-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action: 'send', to: entry.contact_email, subject, message: html }),
       });
     } catch (err) {
       console.warn('Revision email failed (non-fatal):', err.message);

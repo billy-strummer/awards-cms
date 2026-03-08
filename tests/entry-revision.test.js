@@ -280,36 +280,36 @@ describe('Entry Revision Module - _sendRevisionEmail()', () => {
 
   test('sends email with default template when no custom template exists', async () => {
     apiClient.select = jest.fn().mockResolvedValue({ data: [] });
+    apiClient._getToken = jest.fn().mockResolvedValue('test-token');
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ success: true }) });
     await entryRevisionModule._sendRevisionEmail(sampleEntry, 'Fix typos');
-    expect(mockFunctionsInvoke).toHaveBeenCalledWith(
-      'send-email',
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/resend-email',
       expect.objectContaining({
-        body: expect.objectContaining({
-          to: 'john@example.com',
-          subject: expect.stringContaining('Action Required'),
-        }),
+        method: 'POST',
+        body: expect.stringContaining('john@example.com'),
       })
     );
+    const body = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(body.action).toBe('send');
+    expect(body.subject).toContain('Action Required');
   });
 
   test('sends email with custom template when available', async () => {
     apiClient.select = jest.fn().mockResolvedValue({
       data: [{ subject: 'Changes for {ENTRY_TITLE}', body: 'Dear {CONTACT_NAME}, fix: {FEEDBACK}' }],
     });
+    apiClient._getToken = jest.fn().mockResolvedValue('test-token');
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ success: true }) });
     await entryRevisionModule._sendRevisionEmail(sampleEntry, 'Please update images');
-    expect(mockFunctionsInvoke).toHaveBeenCalledWith(
-      'send-email',
-      expect.objectContaining({
-        body: expect.objectContaining({
-          subject: expect.stringContaining('Best Innovation'),
-        }),
-      })
-    );
+    const body = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(body.subject).toContain('Best Innovation');
   });
 
   test('handles email send failure gracefully', async () => {
     apiClient.select = jest.fn().mockResolvedValue({ data: [] });
-    mockFunctionsInvoke.mockRejectedValueOnce(new Error('Email service down'));
+    apiClient._getToken = jest.fn().mockResolvedValue('test-token');
+    global.fetch = jest.fn().mockRejectedValue(new Error('Email service down'));
     await expect(entryRevisionModule._sendRevisionEmail(sampleEntry, 'Fix it')).resolves.not.toThrow();
   });
 });

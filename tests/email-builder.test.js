@@ -1932,17 +1932,17 @@ describe('Email Builder - loadOrganisations', () => {
   });
 
   test('loadOrganisations queries organisations table', async () => {
-    mockSupabase.order.mockReturnValueOnce(
-      Promise.resolve({
-        data: [
-          { id: 'org-1', company_name: 'Org A' },
-          { id: 'org-2', company_name: 'Org B' },
-        ],
-        error: null,
+    apiClient.selectAll = jest.fn().mockResolvedValue([
+      { id: 'org-1', company_name: 'Org A' },
+      { id: 'org-2', company_name: 'Org B' },
+    ]);
+    await emailBuilder.loadOrganisations();
+    expect(apiClient.selectAll).toHaveBeenCalledWith(
+      'organisations',
+      expect.objectContaining({
+        select: 'id, company_name',
       })
     );
-    await emailBuilder.loadOrganisations();
-    expect(mockSupabase.from).toHaveBeenCalledWith('organisations');
     const select = document.getElementById('builderOrgSelect');
     expect(select.innerHTML).toContain('Org A');
     expect(select.innerHTML).toContain('Org B');
@@ -1950,12 +1950,7 @@ describe('Email Builder - loadOrganisations', () => {
 
   test('loadOrganisations handles error gracefully', async () => {
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    mockSupabase.order.mockReturnValueOnce(
-      Promise.resolve({
-        data: null,
-        error: { message: 'Network error' },
-      })
-    );
+    apiClient.selectAll = jest.fn().mockRejectedValue(new Error('Network error'));
     await emailBuilder.loadOrganisations();
     expect(consoleSpy).toHaveBeenCalledWith('Error loading organisations:', expect.anything());
     consoleSpy.mockRestore();

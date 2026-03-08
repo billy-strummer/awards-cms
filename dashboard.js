@@ -282,22 +282,16 @@ const dashboardModule = {
     setTimeout(async () => {
       try {
         // Load untagged photos
-        const { data: untagged, error } = await STATE.client
-          .from('media_gallery')
-          .select(
-            `
-            *,
-            organisations!media_gallery_organisation_id_fkey (*),
-            awards:award_years!media_gallery_award_id_fkey (*)
-          `
-          )
-          .or('organisation_id.is.null,award_id.is.null')
-          .order('uploaded_at', { ascending: false });
+        const untagged = await apiClient.selectAll('media_gallery', {
+          select:
+            '*, organisations!media_gallery_organisation_id_fkey (*), awards:award_years!media_gallery_award_id_fkey (*)',
+          sort: { column: 'uploaded_at', ascending: false },
+        });
+        // Filter to only untagged items (missing organisation or award)
+        const filtered = (untagged || []).filter((p) => !p.organisation_id || !p.award_id);
 
-        if (error) throw error;
-
-        if (untagged && untagged.length > 0) {
-          utils.showToast(`Found ${untagged.length} untagged photo(s)`, 'info');
+        if (filtered && filtered.length > 0) {
+          utils.showToast(`Found ${filtered.length} untagged photo(s)`, 'info');
         } else {
           utils.showToast('All photos are tagged!', 'success');
         }
@@ -479,11 +473,11 @@ const dashboardModule = {
       });
 
       // Media not in global state — query DB
-      const { data: recentMedia } = await STATE.client
-        .from('media_gallery')
-        .select('*')
-        .order('uploaded_at', { ascending: false })
-        .limit(3);
+      const mediaResult = await apiClient.select('media_gallery', {
+        sort: { column: 'uploaded_at', ascending: false },
+        pageSize: 3,
+      });
+      const recentMedia = mediaResult.data;
 
       if (recentMedia) {
         recentMedia.forEach((media) => {
@@ -592,10 +586,14 @@ const dashboardModule = {
       }
 
       // Check for untagged photos
-      const { count: untaggedCount } = await STATE.client
-        .from('media_gallery')
-        .select('*', { count: 'exact', head: true })
-        .or('organisation_id.is.null,award_id.is.null');
+      const untaggedResult = await apiClient.count(
+        'media_gallery',
+        {},
+        {
+          or: 'organisation_id.is.null,award_id.is.null',
+        }
+      );
+      const untaggedCount = untaggedResult.count || 0;
 
       if (untaggedCount > 0) {
         notifications.push({
@@ -2661,11 +2659,9 @@ const dashboardModule = {
     if (typeof mediaGalleryModule !== 'undefined' && mediaGalleryModule.loadMediaStatistics) {
       try {
         // Single query for all media stats instead of 4 separate queries
-        const { data: mediaItems } = await STATE.client
-          .from('media_items')
-          .select('media_type, organisation_id, award_id, event_id');
-
-        const items = mediaItems || [];
+        const items = await apiClient.selectAll('media_items', {
+          select: 'media_type, organisation_id, award_id, event_id',
+        });
         const totalPhotos = items.filter((m) => m.media_type === 'image').length;
         const totalVideos = items.filter((m) => m.media_type === 'video').length;
         const untaggedPhotos = items.filter(

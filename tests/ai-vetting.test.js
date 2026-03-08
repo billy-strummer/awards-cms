@@ -533,21 +533,22 @@ describe('AI Vetting Module - vetSingleCompany', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     STATE.client = mockSupabase;
-    STATE.client.functions = { invoke: jest.fn() };
+    apiClient._getToken = jest.fn().mockResolvedValue('test-token');
   });
 
   test('vets company and returns flagged result', async () => {
-    STATE.client.functions.invoke = jest.fn().mockResolvedValue({
-      data: {
-        is_operational: false,
-        category_match: true,
-        reputation_score: 3,
-        recent_news: 'Troubled',
-        ownership_changes: 'New owner',
-        recommendation: 'Review',
-        confidence_score: 0.7,
-      },
-      error: null,
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          is_operational: false,
+          category_match: true,
+          reputation_score: 3,
+          recent_news: 'Troubled',
+          ownership_changes: 'New owner',
+          recommendation: 'Review',
+          confidence_score: 0.7,
+        }),
     });
     apiClient.insert = jest.fn().mockResolvedValue({
       data: [{ id: 'vr1', status: 'flagged' }],
@@ -572,17 +573,18 @@ describe('AI Vetting Module - vetSingleCompany', () => {
   });
 
   test('vets company and returns verified result', async () => {
-    STATE.client.functions.invoke = jest.fn().mockResolvedValue({
-      data: {
-        is_operational: true,
-        category_match: true,
-        reputation_score: 8,
-        recent_news: 'Growing',
-        ownership_changes: '',
-        recommendation: 'Approved',
-        confidence_score: 0.95,
-      },
-      error: null,
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          is_operational: true,
+          category_match: true,
+          reputation_score: 8,
+          recent_news: 'Growing',
+          ownership_changes: '',
+          recommendation: 'Approved',
+          confidence_score: 0.95,
+        }),
     });
     apiClient.insert = jest.fn().mockResolvedValue({
       data: [{ id: 'vr2', status: 'verified' }],
@@ -595,9 +597,9 @@ describe('AI Vetting Module - vetSingleCompany', () => {
 
   test('handles function invoke error', async () => {
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-    STATE.client.functions.invoke = jest.fn().mockResolvedValue({
-      data: null,
-      error: new Error('Function error'),
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      json: () => Promise.resolve({ error: 'Function error' }),
     });
     apiClient.insert = jest.fn().mockResolvedValue({ data: [{}] });
 

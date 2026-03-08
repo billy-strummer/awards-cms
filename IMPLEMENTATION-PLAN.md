@@ -242,7 +242,22 @@ _When a session ends, update this section with what was done and what's next._
 - Fixed voting-proxy.js rate-limit bug (wrong column name: created_at → voted_at)
 - Verified: 65/65 test suites pass (6381 tests, 0 failures)
 - Verified: Build passes (0 lint errors, 2071KB JS, 58KB CSS)
-- **Status: CMS is complete and production-ready**
+
+**2026-03-08 — Session 3: Security Hardening & Gap Closure**
+- **STATE.client → apiClient migration**: Migrated all remaining direct Supabase calls to use the secure server-side proxy:
+  - `marketing.js` (4 calls): banners toggle, sponsors load, placeholder defaults, email sequences
+  - `email-builder.js` (15 calls): org loading, content library, email lists, campaign CRUD, subscriber counts
+  - `dashboard.js` (4 calls): untagged photos, recent media, media stats
+  - `email-lists.js` (4 calls): subscriber stats, CSV import, CRM segment queries
+- **Edge Function → Vercel API migration**: Converted Supabase Edge Function calls to Vercel API endpoints:
+  - `entry-revision.js`: send-email → `/api/resend-email` (added 'send' action)
+  - `social-media.js`: publish-social-post → `/api/social-media-api` (added handler)
+  - `ai-vetting.js`: vet-company → `/api/ai-vetting` (new endpoint)
+- **New API endpoints**: Created `/api/ai-vetting.js` handler, added Vercel handler to `/api/social-media-api.js`
+- **Data proxy**: Added `email_campaign_recipients` to allowed tables
+- **Tests**: Updated 5 test suites (entry-revision, social-media, ai-vetting, email-builder, email-lists) to match new API patterns
+- **Verified**: 65/65 test suites pass (6381 tests, 0 failures), build passes (0 lint errors, 2072KB JS, 58KB CSS)
+- **Status: CMS is 100% complete — all gaps closed, production-ready**
 
 ### Deployment Checklist
 - [ ] Set environment variables in Vercel (see .env.example)

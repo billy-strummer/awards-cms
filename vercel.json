@@ -39,6 +39,9 @@
     },
     "api/resend-email.js": {
       "maxDuration": 30
+    },
+    "api/ai-vetting.js": {
+      "maxDuration": 60
     }
   },
   "headers": [

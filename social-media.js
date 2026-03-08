@@ -562,13 +562,17 @@ Vote now: {{website}}
         }
 
         if (postType === 'immediate' && data?.[0]?.id) {
-          // Trigger server-side publish via Edge Function
+          // Trigger server-side publish via Vercel API
           try {
-            const { data: publishResult, error: pubErr } = await STATE.client.functions.invoke('publish-social-post', {
-              body: { postId: data[0].id },
+            const token = await apiClient._getToken();
+            const pubRes = await fetch('/api/social-media-api', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ action: 'publish', postId: data[0].id }),
             });
-            if (pubErr) console.warn('Auto-publish failed, post saved:', pubErr);
-            if (publishResult?.errors?.length > 0) {
+            const publishResult = await pubRes.json();
+            if (!pubRes.ok) console.warn('Auto-publish failed, post saved:', publishResult.error);
+            else if (publishResult?.errors?.length > 0) {
               utils.showToast(
                 `Published with warnings: ${publishResult.errors.map((e) => e.platform).join(', ')} failed`,
                 'warning'

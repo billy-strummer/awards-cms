@@ -352,12 +352,7 @@ const marketingModule = {
    */
   async toggleBannerActive(bannerId, isActive) {
     try {
-      const { error } = await STATE.client
-        .from('banners')
-        .update({ is_active: isActive, updated_at: new Date().toISOString() })
-        .eq('id', bannerId);
-
-      if (error) throw error;
+      await apiClient.update('banners', bannerId, { is_active: isActive, updated_at: new Date().toISOString() });
 
       utils.showToast(`Banner ${isActive ? 'activated' : 'paused'}`, 'success');
       await this.loadBanners();
@@ -401,15 +396,11 @@ const marketingModule = {
    */
   async loadSponsors() {
     try {
-      const { data, error } = await STATE.client
-        .from('sponsors')
-        .select('*')
-        .order('tier', { ascending: true })
-        .order('display_order', { ascending: true, nullsFirst: false });
+      const result = await apiClient.selectAll('sponsors', {
+        sort: { column: 'tier', ascending: true },
+      });
 
-      if (error) throw error;
-
-      this.currentSponsors = data || [];
+      this.currentSponsors = result || [];
       this.renderSponsors();
     } catch (error) {
       console.error('Error loading sponsors:', error);
@@ -834,14 +825,12 @@ const marketingModule = {
 
     let defaults = {};
     try {
-      if (STATE.client) {
-        const { data } = await STATE.client
-          .from('user_preferences')
-          .select('value')
-          .eq('key', 'emailPlaceholderDefaults')
-          .limit(1);
-        if (data?.[0]) defaults = JSON.parse(data[0].value);
-      }
+      const result = await apiClient.select('user_preferences', {
+        select: 'value',
+        filters: { key: { eq: 'emailPlaceholderDefaults' } },
+        pageSize: 1,
+      });
+      if (result.data?.[0]) defaults = JSON.parse(result.data[0].value);
     } catch (e) {
       console.warn('Failed to load placeholder defaults from DB:', e.message);
       try {
@@ -1071,16 +1060,14 @@ const marketingModule = {
 
   async _loadEmailSequences() {
     try {
-      if (typeof STATE !== 'undefined' && STATE.client) {
-        const { data } = await STATE.client
-          .from('user_preferences')
-          .select('value')
-          .eq('key', 'orgEmailSequences')
-          .limit(1);
-        if (data?.[0]) {
-          this._emailSequences = JSON.parse(data[0].value);
-          return;
-        }
+      const result = await apiClient.select('user_preferences', {
+        select: 'value',
+        filters: { key: { eq: 'orgEmailSequences' } },
+        pageSize: 1,
+      });
+      if (result.data?.[0]) {
+        this._emailSequences = JSON.parse(result.data[0].value);
+        return;
       }
     } catch (e) {
       console.warn('Failed to load email sequences from database:', e.message);

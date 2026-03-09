@@ -233,6 +233,7 @@ async function build() {
     'payment-cancelled.html',
     'submit-entry-payment.html',
     'upload-documents.html',
+    'nominate.html',
   ];
 
   // Also copy shared assets needed by public pages
@@ -263,6 +264,7 @@ async function build() {
     'award-nominees.js',
     'award_companies.js',
     'submit-entry-payment.js',
+    'nominate.js',
   ];
 
   publicJsFiles.forEach((file) => {

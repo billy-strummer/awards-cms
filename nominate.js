@@ -24,7 +24,7 @@
 
   const NOMINATION_CATEGORIES = [
     {
-      name: 'Industry Leadership',
+      name: 'Above & Beyond',
       description: 'Recognising outstanding leadership within the trade industry',
       icon: 'bi-star-fill',
     },

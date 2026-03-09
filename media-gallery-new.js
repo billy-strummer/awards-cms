@@ -69,11 +69,10 @@ const mediaGalleryModule = {
         { or: 'organisation_id.is.null,award_id.is.null' }
       );
 
-      // Get events with media
-      const { data: eventsWithMedia } = await apiClient.select('media_items', {
+      // Get events with media — use count-friendly approach via selectAll
+      const eventsWithMedia = await apiClient.selectAll('media_items', {
         select: 'event_id',
         filters: { event_id: { neq: null } },
-        pageSize: 10000,
       });
 
       const uniqueEvents = new Set(eventsWithMedia?.map((m) => m.event_id));

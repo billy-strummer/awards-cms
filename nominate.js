@@ -235,6 +235,49 @@
         step3Title.textContent = 'About the nominee';
         step3Subtitle.textContent = 'Tell us about the person you are nominating';
       }
+
+      // Adapt "years in trade" label and options based on category
+      var yearsLabel = document.getElementById('yearsLabel');
+      var yearsSelect = document.getElementById('nomineeYearsInTrade');
+      if (yearsLabel && yearsSelect) {
+        var config = this.getYearsFieldConfig(categoryName);
+        yearsLabel.innerHTML = config.label + ' <small class="text-muted">(optional)</small>';
+        yearsSelect.innerHTML =
+          '<option value="">Select...</option>' +
+          config.options
+            .map(function (opt) {
+              return '<option value="' + opt + '">' + opt + '</option>';
+            })
+            .join('');
+      }
+    },
+
+    // --------------------------------------------------
+    // Get contextual label & options for years field
+    // --------------------------------------------------
+    getYearsFieldConfig: function (categoryName) {
+      switch (categoryName) {
+        case 'Apprentice of The Year':
+          return {
+            label: 'Time in apprenticeship',
+            options: ['Under 6 months', '6-12 months', '1-2 years', '2-3 years', '3+ years'],
+          };
+        case 'Young Tradesperson of the Year':
+          return {
+            label: 'Years in the trade',
+            options: ['Under 1 year', '1-2 years', '2-3 years', '3-5 years', '5+ years'],
+          };
+        case 'Lifetime Achievement':
+          return {
+            label: 'Years in the industry',
+            options: ['10-19 years', '20-29 years', '30-39 years', '40+ years'],
+          };
+        default:
+          return {
+            label: 'Years in the trade',
+            options: ['Under 1 year', '1-3 years', '4-9 years', '10-19 years', '20+ years'],
+          };
+      }
     },
 
     // --------------------------------------------------

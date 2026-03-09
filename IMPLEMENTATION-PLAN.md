@@ -286,7 +286,7 @@ _When a session ends, update this section with what was done and what's next._
 
 ### Remaining Items for Production Readiness
 - [ ] Set up real Supabase instance and run migrations: `node scripts/run-migrations.js`
-- [ ] Configure all environment variables (see `.env.example`)
+- [x] Configure all environment variables (see `.env.example`) — done in Vercel
 - [ ] Test Stripe integration with test keys (webhooks, checkout sessions)
 - [ ] Test email sending with real Resend API key
 - [ ] Test social media OAuth flows per platform (credentials may be outdated for Twitter/X)
@@ -294,9 +294,9 @@ _When a session ends, update this section with what was done and what's next._
 - [ ] Set up CI/CD pipeline (GitHub Actions → Vercel)
 
 ### Deployment Checklist
-- [ ] Set environment variables in Vercel (see .env.example)
+- [x] Set environment variables in Vercel (see .env.example) — all 12 vars configured (Supabase, Stripe, Resend, FROM_EMAIL/NAME, APP_URL)
 - [ ] Run migrations: `node scripts/run-migrations.js` (or run SQL files manually in phase order)
-- [ ] Configure Stripe webhook endpoint → /api/stripe-payment
+- [x] Configure Stripe webhook endpoint → /api/stripe-payment
 - [ ] Configure social media API credentials (Twitter, LinkedIn, Facebook)
 - [ ] Set up Sentry DSN for error monitoring
 - [ ] Deploy to Vercel: `vercel --prod`

@@ -6,48 +6,107 @@
  */
 
 const { createClient } = require('@supabase/supabase-js');
+const crypto = require('crypto');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
 // ==========================================
-// Twitter/X API v2
+// Twitter/X API v2 (OAuth 1.0a User Context)
 // ==========================================
 
 /**
- * Post a tweet to Twitter/X via the v2 API.
+ * Build an OAuth 1.0a Authorization header for Twitter API requests.
+ * Twitter v2 POST endpoints require OAuth 1.0a User Context, NOT Bearer Token.
+ * @param {string} method - HTTP method (GET, POST, etc.).
+ * @param {string} url - The full request URL.
+ * @param {Object} [extraParams={}] - Additional parameters for the signature base string.
+ * @returns {string} The OAuth Authorization header value.
+ */
+function buildOAuth1Header(method, url, extraParams = {}) {
+  const consumerKey = process.env.TWITTER_API_KEY;
+  const consumerSecret = process.env.TWITTER_API_SECRET;
+  const accessToken = process.env.TWITTER_ACCESS_TOKEN;
+  const tokenSecret = process.env.TWITTER_ACCESS_TOKEN_SECRET;
+
+  if (!consumerKey || !consumerSecret || !accessToken || !tokenSecret) {
+    throw new Error(
+      'Twitter OAuth 1.0a credentials not configured. Set TWITTER_API_KEY, TWITTER_API_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET.'
+    );
+  }
+
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+  const nonce = crypto.randomBytes(16).toString('hex');
+
+  const oauthParams = {
+    oauth_consumer_key: consumerKey,
+    oauth_nonce: nonce,
+    oauth_signature_method: 'HMAC-SHA1',
+    oauth_timestamp: timestamp,
+    oauth_token: accessToken,
+    oauth_version: '1.0',
+    ...extraParams,
+  };
+
+  // Sort and encode parameters for signature base string
+  const sortedParams = Object.keys(oauthParams)
+    .sort()
+    .map((k) => `${encodeURIComponent(k)}=${encodeURIComponent(oauthParams[k])}`)
+    .join('&');
+
+  const baseString = `${method.toUpperCase()}&${encodeURIComponent(url)}&${encodeURIComponent(sortedParams)}`;
+  const signingKey = `${encodeURIComponent(consumerSecret)}&${encodeURIComponent(tokenSecret)}`;
+  const signature = crypto.createHmac('sha1', signingKey).update(baseString).digest('base64');
+
+  oauthParams.oauth_signature = signature;
+  // Remove extra params from OAuth header (they go in the body, not the header)
+  for (const key of Object.keys(extraParams)) delete oauthParams[key];
+
+  const headerStr = Object.keys(oauthParams)
+    .sort()
+    .map((k) => `${encodeURIComponent(k)}="${encodeURIComponent(oauthParams[k])}"`)
+    .join(', ');
+
+  return `OAuth ${headerStr}`;
+}
+
+/**
+ * Post a tweet to Twitter/X via the v2 API using OAuth 1.0a.
  * @param {string} content - The text content of the tweet.
  * @param {string|null} [imageUrl=null] - Optional image URL to attach.
  * @returns {Promise<{platform: string, postId: string, url: string}>} The posted tweet details.
- * @throws {Error} If the Twitter API token is not configured or the API returns an error.
+ * @throws {Error} If Twitter OAuth credentials are not configured or the API returns an error.
  */
 async function postToTwitter(content, imageUrl = null) {
-  const token = process.env.TWITTER_BEARER_TOKEN;
-  if (!token) throw new Error('Twitter API token not configured');
-
-  const headers = {
-    Authorization: `Bearer ${token}`,
-    'Content-Type': 'application/json',
-  };
+  // Validate content length
+  if (content && content.length > 280) {
+    throw new Error(`Tweet exceeds 280 character limit (${content.length} chars)`);
+  }
 
   let mediaId = null;
   if (imageUrl) {
-    mediaId = await uploadTwitterMedia(imageUrl, token);
+    mediaId = await uploadTwitterMedia(imageUrl);
   }
 
-  const body = { text: content };
+  const tweetBody = { text: content };
   if (mediaId) {
-    body.media = { media_ids: [mediaId] };
+    tweetBody.media = { media_ids: [mediaId] };
   }
 
-  const res = await fetch('https://api.twitter.com/2/tweets', {
+  const url = 'https://api.twitter.com/2/tweets';
+  const authHeader = buildOAuth1Header('POST', url);
+
+  const res = await fetch(url, {
     method: 'POST',
-    headers,
-    body: JSON.stringify(body),
+    headers: {
+      Authorization: authHeader,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(tweetBody),
   });
 
   if (!res.ok) {
-    const err = await res.json();
-    throw new Error(`Twitter API error: ${err.detail || res.statusText}`);
+    const err = await res.json().catch(() => ({}));
+    throw new Error(`Twitter API error: ${err.detail || err.title || res.statusText}`);
   }
 
   const data = await res.json();
@@ -55,23 +114,25 @@ async function postToTwitter(content, imageUrl = null) {
 }
 
 /**
- * Upload media to Twitter via the v1.1 media upload endpoint.
+ * Upload media to Twitter via the v1.1 media upload endpoint using OAuth 1.0a.
  * @param {string} imageUrl - The URL of the image to upload.
- * @param {string} token - Twitter bearer token for authentication.
  * @returns {Promise<string>} The media ID string for use in tweets.
  * @throws {Error} If the media upload fails.
  */
-async function uploadTwitterMedia(imageUrl, token) {
+async function uploadTwitterMedia(imageUrl) {
   // Download image
   const imgRes = await fetch(imageUrl);
   const buffer = Buffer.from(await imgRes.arrayBuffer());
   const base64 = buffer.toString('base64');
 
-  // Upload via v1.1 media endpoint (still required for v2 tweets)
-  const uploadRes = await fetch('https://upload.twitter.com/1.1/media/upload.json', {
+  const url = 'https://upload.twitter.com/1.1/media/upload.json';
+  const params = { media_data: base64 };
+  const authHeader = buildOAuth1Header('POST', url, params);
+
+  const uploadRes = await fetch(url, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${token}`,
+      Authorization: authHeader,
       'Content-Type': 'application/x-www-form-urlencoded',
     },
     body: `media_data=${encodeURIComponent(base64)}`,
@@ -183,12 +244,13 @@ async function uploadLinkedInImage(imageUrl, accessToken, orgId) {
   // Download and re-upload image
   const imgRes = await fetch(imageUrl);
   const buffer = Buffer.from(await imgRes.arrayBuffer());
+  const contentType = imgRes.headers.get('content-type') || 'image/png';
 
   await fetch(uploadUrl, {
     method: 'PUT',
     headers: {
       Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'image/png',
+      'Content-Type': contentType,
     },
     body: buffer,
   });

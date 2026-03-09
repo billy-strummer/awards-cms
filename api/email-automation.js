@@ -16,6 +16,10 @@ const { Resend } = require('resend');
 const { wrapEmail } = require('./_lib/email-header');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+const supabaseAuth = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_KEY
+);
 
 // Initialize Resend (replacing SendGrid)
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -82,6 +86,7 @@ function wrapEmailTemplate(bodyContent, branding = {}, subtitle = '') {
  */
 const DB_TEMPLATE_TYPE_MAP = {
   ENTRY_CONFIRMATION: 'confirmation',
+  ENTRY_DEADLINE_REMINDER: 'entry_deadline_reminder',
   PAYMENT_REMINDER: 'payment_reminder',
   SHORTLIST_NOTIFICATION: 'approval',
   WINNER_ANNOUNCEMENT: 'winner_announcement',
@@ -128,6 +133,22 @@ function textToHtml(text) {
  * The {{brand_name}} placeholder is replaced with the tenant's company name.
  */
 const EMAIL_TEMPLATES = {
+  ENTRY_DEADLINE_REMINDER: {
+    subject: '⏰ Entry Deadline Approaching - {{award_name}}',
+    body: `
+      <div style="padding: 30px 40px;">
+        <h1 style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 28px; color: #1a1a1a;">Entry Deadline Reminder</h1>
+        <p>Dear {{contact_name}},</p>
+        <p>This is a reminder that the entry deadline for <strong>{{award_name}}</strong> is approaching.</p>
+        <div style="background: #fff3cd; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ffc107;">
+          <p style="margin: 0;"><strong>Days remaining:</strong> {{days_left}}</p>
+          <p style="margin: 5px 0 0;"><strong>Deadline:</strong> {{deadline}}</p>
+        </div>
+        <p>Don't miss your chance to be recognised. Submit your entry today!</p>
+        <a href="{{submit_link}}" style="display:inline-block;background:#0d6efd;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;margin:16px 0">Submit Entry</a>
+        <p><strong>{{brand_name}} Team</strong></p>
+      </div>`,
+  },
   ENTRY_CONFIRMATION: {
     subject: '✅ Entry Confirmed - {{entry_number}}',
     body: `
@@ -903,7 +924,7 @@ module.exports = async function handler(req, res) {
   const {
     data: { user },
     error: authError,
-  } = await supabase.auth.getUser(token);
+  } = await supabaseAuth.auth.getUser(token);
   if (authError || !user) {
     return res.status(401).json({ error: 'Invalid or expired token' });
   }
@@ -918,7 +939,7 @@ module.exports = async function handler(req, res) {
     case 'send-winner-announcements':
       return sendWinnerAnnouncementsEndpoint(req, res);
     default:
-      return sendEmailEndpoint(req, res);
+      return res.status(400).json({ error: `Unknown action: ${action || 'none'}` });
   }
 };
 

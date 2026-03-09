@@ -176,18 +176,17 @@ const gdprModule = {
           )
           .join('');
 
-        // Attach delegated click handler for entity selection buttons
-        resultsDiv.addEventListener(
-          'click',
-          (e) => {
+        // Attach delegated click handler for entity selection buttons (avoid listener stacking)
+        if (!resultsDiv._gdprSearchBound) {
+          resultsDiv._gdprSearchBound = true;
+          resultsDiv.addEventListener('click', (e) => {
             const btn = e.target.closest('[data-action="gdprModule.selectEntity"]');
             if (btn) {
               e.preventDefault();
               this.selectEntity(btn.getAttribute('data-id'));
             }
-          },
-          { once: false }
-        );
+          });
+        }
       }
       this._selectedEntityId = null;
     } catch (e) {
@@ -363,19 +362,22 @@ const gdprModule = {
       )
       .join('');
 
-    // Attach delegated click handlers for table action buttons
-    tbody.addEventListener('click', (e) => {
-      const actionEl = e.target.closest('[data-action]');
-      if (!actionEl) return;
-      e.preventDefault();
-      const action = actionEl.getAttribute('data-action');
-      const id = actionEl.getAttribute('data-id');
-      if (action === 'gdprModule.processRequest') {
-        this.processRequest(id, actionEl.getAttribute('data-type'), actionEl.getAttribute('data-entity'));
-      } else if (action === 'gdprModule.rejectRequest') {
-        this.rejectRequest(id);
-      }
-    });
+    // Attach delegated click handlers for table action buttons (avoid listener stacking)
+    if (!tbody._gdprClickBound) {
+      tbody._gdprClickBound = true;
+      tbody.addEventListener('click', (e) => {
+        const actionEl = e.target.closest('[data-action]');
+        if (!actionEl) return;
+        e.preventDefault();
+        const action = actionEl.getAttribute('data-action');
+        const id = actionEl.getAttribute('data-id');
+        if (action === 'gdprModule.processRequest') {
+          this.processRequest(id, actionEl.getAttribute('data-type'), actionEl.getAttribute('data-entity'));
+        } else if (action === 'gdprModule.rejectRequest') {
+          this.rejectRequest(id);
+        }
+      });
+    }
 
     // Render pagination controls
     this._renderPaginationControls();
@@ -409,12 +411,15 @@ const gdprModule = {
       </nav>
     `;
 
-    container.addEventListener('click', (e) => {
-      const btn = e.target.closest('[data-action="gdprModule.goToPage"]');
-      if (btn && !btn.disabled) {
-        this._goToPage(parseInt(btn.getAttribute('data-page')));
-      }
-    });
+    if (!container._gdprPageBound) {
+      container._gdprPageBound = true;
+      container.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-action="gdprModule.goToPage"]');
+        if (btn && !btn.disabled) {
+          this._goToPage(parseInt(btn.getAttribute('data-page')));
+        }
+      });
+    }
   },
 
   /**

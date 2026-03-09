@@ -16,15 +16,49 @@
 const { createClient } = require('@supabase/supabase-js');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+const supabaseAuth = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_KEY
+);
 
 // ────────────────────────────────────────────
 // CORS helpers
 // ────────────────────────────────────────────
 
+const ALLOWED_ORIGIN = process.env.APP_URL || 'https://admin.britishtradeawards.com';
+
 function setCors(res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+}
+
+// ────────────────────────────────────────────
+// Authentication
+// ────────────────────────────────────────────
+
+async function verifyAuth(req, res) {
+  const authHeader = req.headers?.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    res.status(401).json({ error: 'Authentication required' });
+    return null;
+  }
+  const token = authHeader.replace('Bearer ', '');
+  try {
+    const {
+      data: { user },
+      error,
+    } = await supabaseAuth.auth.getUser(token);
+    if (error || !user) {
+      res.status(401).json({ error: 'Invalid or expired token' });
+      return null;
+    }
+    return user;
+  } catch (_err) {
+    res.status(401).json({ error: 'Token verification failed' });
+    return null;
+  }
 }
 
 // ────────────────────────────────────────────
@@ -67,6 +101,10 @@ module.exports = async function handler(req, res) {
   if (!checkRateLimit(ip)) {
     return res.status(429).json({ error: 'Too many requests. Please try again later.' });
   }
+
+  // Verify authentication for all actions
+  const user = await verifyAuth(req, res);
+  if (!user) return;
 
   const { action } = req.method === 'GET' ? req.query : req.body || {};
 

@@ -63,9 +63,6 @@ const orgsModule = {
       // Subscribe to realtime changes
       this._subscribeToRealtimeChanges();
 
-      // NEW: Calculate and display dashboard stats
-      await this.calculateDashboardStats();
-
       // Show overdue follow-up alert on page load
       this._showFollowUpAlert();
 
@@ -91,6 +88,9 @@ const orgsModule = {
       this._serverPagination = true;
       await this._srvFetchPage(1);
 
+      // Calculate dashboard stats AFTER first page is loaded
+      await this.calculateDashboardStats();
+
       this.populateSectorSuggestions();
       utils.trackDataLoad('organisations');
     } catch (error) {
@@ -114,7 +114,7 @@ const orgsModule = {
   // ============================================
   async calculateDashboardStats() {
     try {
-      const totalCount = STATE.allOrganisations.length;
+      const totalCount = this._srvPagination?.count || STATE.allOrganisations.length;
 
       // Count organisations with award assignments (already computed during load)
       const activeNominees = STATE.allOrganisations.filter((o) => o.awards_count > 0).length;

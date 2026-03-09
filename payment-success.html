@@ -32,10 +32,17 @@
       <a href="/" class="btn btn-gold px-4">Return to Dashboard</a>
     </div>
   </div>
-  <script type="module" src="config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script>
+  <script type="module">
+    import './config.js';
     (async function() {
+      // Wait for config to be available
+      let retries = 0;
+      while (!window.SUPABASE_CONFIG && retries < 20) {
+        await new Promise(r => setTimeout(r, 100));
+        retries++;
+      }
+
       const params = new URLSearchParams(window.location.search);
       const entryId = params.get('entry');
       const sessionId = params.get('session_id');
@@ -43,7 +50,7 @@
       const infoEl = document.getElementById('entryInfo');
 
       // Verify payment actually occurred via Stripe session or DB record
-      if (sessionId || entryId) {
+      if ((sessionId || entryId) && window.SUPABASE_CONFIG) {
         try {
           const supabase = window.supabase.createClient(
             window.SUPABASE_CONFIG.url, window.SUPABASE_CONFIG.anonKey

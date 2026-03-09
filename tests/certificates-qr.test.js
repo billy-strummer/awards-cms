@@ -227,9 +227,7 @@ describe('Certificates & QR Module', () => {
       consoleSpy.mockRestore();
     });
 
-    test('creates directory if it does not exist', async () => {
-      mockExistsSync.mockReturnValue(false);
-
+    test('writes certificate to /tmp directory', async () => {
       const entry = {
         id: 'entry-3',
         entry_number: 'BTA-2026-0003',
@@ -242,9 +240,9 @@ describe('Certificates & QR Module', () => {
       mockFromResults.push(chainable({ data: null, error: null }));
 
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-      await certificates.generateWinnerCertificate('entry-3');
+      const result = await certificates.generateWinnerCertificate('entry-3');
 
-      expect(mockMkdirSync).toHaveBeenCalledWith(expect.any(String), { recursive: true });
+      expect(result.filepath).toContain('/tmp/');
       consoleSpy.mockRestore();
     });
 
@@ -535,7 +533,7 @@ describe('Certificates & QR Module', () => {
       consoleSpy.mockRestore();
     });
 
-    test('creates badges directory when it does not exist', async () => {
+    test('writes badge to /tmp directory', async () => {
       const attendee = {
         id: 'att-badge-mkdir',
         attendee_name: 'Dir Person',
@@ -553,13 +551,12 @@ describe('Certificates & QR Module', () => {
       mockGetPublicUrl.mockReturnValue({
         data: { publicUrl: 'https://storage.test.co/qr-codes/qr-ticket.png' },
       });
-      mockExistsSync.mockReturnValue(false);
 
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
       const result = await certificates.generateEventBadge('att-badge-mkdir');
 
-      expect(mockMkdirSync).toHaveBeenCalledWith(expect.any(String), { recursive: true });
       expect(result).toHaveProperty('filepath');
+      expect(result.filepath).toContain('/tmp/');
       consoleSpy.mockRestore();
     });
 

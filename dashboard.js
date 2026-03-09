@@ -77,13 +77,26 @@ const dashboardModule = {
    * Update dashboard statistics
    */
   async updateStats() {
-    // Count statistics
-    const totalAwards = STATE.allAwards.length;
-    const pendingAwards = STATE.allAwards.filter(
-      (a) => a.status === STATUS.DRAFT || a.status === STATUS.PENDING
-    ).length;
-    const totalOrgs = STATE.allOrganisations.length;
-    const totalWinners = STATE.allWinners.length;
+    // Fetch accurate total counts from the server (STATE arrays only contain current page)
+    let totalAwards, pendingAwards, totalOrgs, totalWinners;
+    try {
+      const [awardsResult, orgsResult, winnersResult] = await Promise.all([
+        apiClient.select('award_years', { select: 'id, status', page: 1, pageSize: 1 }),
+        apiClient.select('organisations', { select: 'id', page: 1, pageSize: 1 }),
+        apiClient.select('winners', { select: 'id', page: 1, pageSize: 1 }),
+      ]);
+      totalAwards = awardsResult.count || STATE.allAwards.length;
+      totalOrgs = orgsResult.count || STATE.allOrganisations.length;
+      totalWinners = winnersResult.count || STATE.allWinners.length;
+      // Pending awards still uses local data as a reasonable approximation
+      pendingAwards = STATE.allAwards.filter((a) => a.status === STATUS.DRAFT || a.status === STATUS.PENDING).length;
+    } catch (_e) {
+      // Fallback to local state if server count fails
+      totalAwards = STATE.allAwards.length;
+      pendingAwards = STATE.allAwards.filter((a) => a.status === STATUS.DRAFT || a.status === STATUS.PENDING).length;
+      totalOrgs = STATE.allOrganisations.length;
+      totalWinners = STATE.allWinners.length;
+    }
 
     // Update stat cards
     const totalAwardsEl = document.getElementById('totalAwards');

@@ -13,6 +13,7 @@
  */
 
 const { createClient } = require('@supabase/supabase-js');
+const { sendEmail, wrapEmailTemplate } = require('./resend-email');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
@@ -328,6 +329,43 @@ async function handleSubmitEntry(req, res) {
 }
 
 // ────────────────────────────────────────────
+// Send nomination confirmation email (non-blocking)
+// ────────────────────────────────────────────
+
+async function sendNominationConfirmationEmail(nominatorEmail, nominatorName, nomineeName, awardCategory, entryNumber) {
+  try {
+    const esc = (s) =>
+      String(s || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+
+    const bodyHtml = `
+      <h2>Nomination Received</h2>
+      <p>Dear ${esc(nominatorName)},</p>
+      <p>Thank you for nominating <strong>${esc(nomineeName)}</strong> for the <strong>${esc(awardCategory)}</strong> award.</p>
+      <p><strong>Reference Number:</strong> ${esc(entryNumber)}</p>
+      <p>Our team will review your nomination. We appreciate you taking the time to recognise excellence in the trade industry.</p>
+      <p>If you have any questions, please don&rsquo;t hesitate to get in touch.</p>
+      <p>Kind regards,<br>The British Trade Awards Team</p>
+    `;
+
+    const subject = `Nomination Received: ${awardCategory} - ${entryNumber}`;
+    const html = wrapEmailTemplate(subject, bodyHtml, '', {}, 'Nomination Confirmation');
+
+    await sendEmail({
+      to: nominatorEmail,
+      subject,
+      html,
+      tags: [{ name: 'template', value: 'nomination_confirmation' }],
+    });
+  } catch (err) {
+    console.error('Nomination confirmation email failed:', err);
+    // Non-blocking — don't fail the submission
+  }
+}
+
 // Handle nomination submission
 // ────────────────────────────────────────────
 
@@ -541,11 +579,31 @@ async function handleSubmitNomination(req, res) {
       /* non-blocking */
     }
 
+    // Send confirmation email (non-blocking)
+    const fallbackNominee = isNewBusiness ? safe.businessName : safe.nomineeName;
+    sendNominationConfirmationEmail(
+      safe.nominatorEmail,
+      safe.nominatorName,
+      fallbackNominee,
+      safe.awardCategory,
+      baseEntry.entry_number
+    );
+
     return res.status(200).json({
       success: true,
       entry: { id: baseEntry.id, entry_number: baseEntry.entry_number },
     });
   }
+
+  // Send confirmation email (non-blocking)
+  const nomineDisplay = isNewBusiness ? safe.businessName : safe.nomineeName;
+  sendNominationConfirmationEmail(
+    safe.nominatorEmail,
+    safe.nominatorName,
+    nomineDisplay,
+    safe.awardCategory,
+    entry.entry_number
+  );
 
   return res.status(200).json({
     success: true,

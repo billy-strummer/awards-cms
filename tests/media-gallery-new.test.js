@@ -1418,10 +1418,7 @@ describe('Media Gallery Module - Load Media Statistics', () => {
       .mockResolvedValueOnce({ count: 150 }) // totalPhotos
       .mockResolvedValueOnce({ count: 25 }) // totalVideos
       .mockResolvedValueOnce({ count: 30 }); // untaggedPhotos
-    _apiClient.select.mockResolvedValueOnce({
-      data: [{ event_id: 'e1' }, { event_id: 'e2' }],
-      error: null,
-    }); // eventsWithMedia
+    _apiClient.selectAll.mockResolvedValueOnce([{ event_id: 'e1' }, { event_id: 'e2' }]); // eventsWithMedia
 
     await mediaGalleryModule.loadMediaStatistics();
 

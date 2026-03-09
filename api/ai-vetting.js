@@ -53,6 +53,9 @@ module.exports = async function handler(req, res) {
         if (!companies || !Array.isArray(companies)) {
           return res.status(400).json({ error: 'Missing required field: companies (array)' });
         }
+        if (companies.length > 50) {
+          return res.status(400).json({ error: 'Batch size limited to 50 companies' });
+        }
         const results = await vetCompanies(companies);
         return res.status(200).json({ results });
       }
@@ -61,6 +64,6 @@ module.exports = async function handler(req, res) {
     }
   } catch (error) {
     console.error('AI vetting API error:', error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: 'An internal error occurred' });
   }
 };

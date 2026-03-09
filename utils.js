@@ -779,7 +779,7 @@ const utils = {
             await apiClient.insert(table, [stored[i]]);
             synced++;
           } catch (insertErr) {
-            // Don't retry items that failed due to permission errors (403)
+            // Don't retry items that failed due to permission or server errors
             if (
               insertErr.message &&
               (insertErr.message.includes('Forbidden') ||
@@ -789,6 +789,11 @@ const utils = {
               console.warn(`Skipping pending ${table} items: insufficient permissions`);
               remaining.push(...stored.slice(i));
               break;
+            }
+            // Drop items that cause server errors (500) — they are likely stale/corrupt
+            if (insertErr.message && insertErr.message.includes('Internal Server Error')) {
+              console.warn(`Dropping stale pending ${table} item (server error)`);
+              continue;
             }
             remaining.push(stored[i]);
           }

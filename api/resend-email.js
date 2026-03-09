@@ -8,7 +8,14 @@
 const { Resend } = require('resend');
 const { createClient } = require('@supabase/supabase-js');
 const { wrapEmail } = require('./_lib/email-header');
-require('dotenv').config();
+// Load .env only in local development (Vercel injects env vars in production)
+if (process.env.NODE_ENV !== 'production') {
+  try {
+    require('dotenv').config();
+  } catch (_) {
+    /* dotenv optional */
+  }
+}
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -144,9 +151,18 @@ async function sendTemplatedEmail({ to, templateType, data }) {
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;');
+  const sanitizeUrl = (url) => {
+    const s = String(url || '#');
+    if (/^https?:\/\//i.test(s)) return esc(s);
+    return '#';
+  };
   const safeData = {};
   for (const [key, value] of Object.entries(data || {})) {
-    safeData[key] = typeof value === 'string' ? esc(value) : value;
+    if (typeof value === 'string' && key.endsWith('_url')) {
+      safeData[key] = sanitizeUrl(value);
+    } else {
+      safeData[key] = typeof value === 'string' ? esc(value) : value;
+    }
   }
   const d = safeData;
   const templates = {
@@ -157,7 +173,7 @@ async function sendTemplatedEmail({ to, templateType, data }) {
         <p>This prestigious award recognizes your outstanding achievements and contributions to your industry.</p>
         ${d.event_name ? `<h3>Event Details</h3><ul><li><strong>Event:</strong> ${d.event_name}</li><li><strong>Date:</strong> ${d.event_date}</li><li><strong>Venue:</strong> ${d.venue}</li></ul>` : ''}
         <p>We look forward to celebrating your success!</p>
-        <a href="${data.confirm_url || '#'}" class="btn">Confirm Attendance</a>`,
+        <a href="${d.confirm_url || '#'}" class="btn">Confirm Attendance</a>`,
     },
     event_invitation: {
       subject: `You're Invited: ${d.event_name}`,
@@ -165,7 +181,7 @@ async function sendTemplatedEmail({ to, templateType, data }) {
         <p>You are cordially invited to attend the <strong>${d.event_name}</strong>.</p>
         <ul><li><strong>Date:</strong> ${d.event_date}</li><li><strong>Venue:</strong> ${d.venue}</li></ul>
         <p>We would be honoured by your presence at this special occasion.</p>
-        <a href="${data.rsvp_url || '#'}" class="btn">RSVP Now</a>`,
+        <a href="${d.rsvp_url || '#'}" class="btn">RSVP Now</a>`,
     },
     entry_confirmation: {
       subject: `Entry Received: ${d.award_category}`,
@@ -178,7 +194,7 @@ async function sendTemplatedEmail({ to, templateType, data }) {
       subject: `Payment Reminder: Invoice ${d.invoice_number}`,
       body: `<h2>Payment Reminder</h2>
         <p>This is a reminder that invoice <strong>${d.invoice_number}</strong> for <strong>&pound;${d.amount}</strong> is due on <strong>${d.due_date}</strong>.</p>
-        <a href="${data.payment_url || '#'}" class="btn">Pay Now</a>`,
+        <a href="${d.payment_url || '#'}" class="btn">Pay Now</a>`,
     },
     shortlist_notification: {
       subject: `Congratulations! You've Been Shortlisted for ${d.award_category}`,
@@ -191,7 +207,7 @@ async function sendTemplatedEmail({ to, templateType, data }) {
       body: `<h2>Judging Assignment</h2>
         <p>You have been assigned <strong>${d.entry_count || 0}</strong> entries to judge for the British Trade Awards ${d.year}.</p>
         <p>Please complete your scoring by <strong>${d.deadline || 'the deadline'}</strong>.</p>
-        <a href="${data.portal_url || '#'}" class="btn">Open Judge Portal</a>`,
+        <a href="${d.portal_url || '#'}" class="btn">Open Judge Portal</a>`,
     },
     ticket_issued: {
       subject: `Your Ticket: ${d.event_name}`,
@@ -260,10 +276,16 @@ async function sendCampaignEmail(campaignId) {
 
       const results = await Promise.allSettled(
         batch.map(async (sub) => {
+          const escHtml = (s) =>
+            String(s || '')
+              .replace(/&/g, '&amp;')
+              .replace(/</g, '&lt;')
+              .replace(/>/g, '&gt;')
+              .replace(/"/g, '&quot;');
           let body = campaign.html_content || campaign.body || '';
-          body = body.replace(/\{first_name\}/g, sub.first_name || '');
-          body = body.replace(/\{last_name\}/g, sub.last_name || '');
-          body = body.replace(/\{email\}/g, sub.email || '');
+          body = body.replace(/\{first_name\}/g, escHtml(sub.first_name));
+          body = body.replace(/\{last_name\}/g, escHtml(sub.last_name));
+          body = body.replace(/\{email\}/g, escHtml(sub.email));
 
           const html = await wrapEmailTemplate(campaign.subject, body);
           return sendEmail({
@@ -380,7 +402,8 @@ async function processNotificationQueue() {
         .eq('id', notification.id);
       processed++;
     } else {
-      const newStatus = notification.attempts + 1 >= notification.max_attempts ? 'failed' : 'pending';
+      const maxAttempts = notification.max_attempts || 3;
+      const newStatus = notification.attempts + 1 >= maxAttempts ? 'failed' : 'pending';
       await supabase
         .from('notification_queue')
         .update({ status: newStatus, last_error: result.error })
@@ -431,7 +454,7 @@ async function sendInvoiceEmail({ to, subject, message, cc, invoice }) {
       </tfoot>
     </table>
     ${invoice.due_date ? `<p><strong>Due Date:</strong> ${new Date(invoice.due_date).toLocaleDateString('en-GB')}</p>` : ''}
-    ${invoice.payment_url ? `<a href="${invoice.payment_url}" style="display:inline-block;background:#0d6efd;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;margin:16px 0">Pay Now</a>` : ''}
+    ${invoice.payment_url && /^https?:\/\//i.test(invoice.payment_url) ? `<a href="${String(invoice.payment_url).replace(/&/g, '&amp;').replace(/"/g, '&quot;')}" style="display:inline-block;background:#0d6efd;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;margin:16px 0">Pay Now</a>` : ''}
   `;
 
   const html = wrapEmailTemplate(subject, bodyHtml, '', {}, 'Invoice');
@@ -508,7 +531,7 @@ module.exports = async function handler(req, res) {
     }
   } catch (error) {
     console.error('Email API error:', error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: 'An internal error occurred' });
   }
 };
 

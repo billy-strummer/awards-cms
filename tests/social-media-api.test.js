@@ -62,6 +62,7 @@ function mockFetchResponse(ok, data, statusText = 'OK') {
     json: jest.fn().mockResolvedValue(data),
     text: jest.fn().mockResolvedValue(typeof data === 'string' ? data : JSON.stringify(data)),
     arrayBuffer: jest.fn().mockResolvedValue(new ArrayBuffer(8)),
+    headers: { get: jest.fn((name) => (name === 'content-type' ? 'image/png' : null)) },
   };
 }
 
@@ -76,6 +77,10 @@ describe('Social Media API Module', () => {
     mockFromCallIndex = 0;
     // Reset env vars for each test
     delete process.env.TWITTER_BEARER_TOKEN;
+    delete process.env.TWITTER_API_KEY;
+    delete process.env.TWITTER_API_SECRET;
+    delete process.env.TWITTER_ACCESS_TOKEN;
+    delete process.env.TWITTER_ACCESS_TOKEN_SECRET;
     delete process.env.LINKEDIN_ACCESS_TOKEN;
     delete process.env.LINKEDIN_ORG_ID;
     delete process.env.FACEBOOK_PAGE_TOKEN;
@@ -87,7 +92,10 @@ describe('Social Media API Module', () => {
 
   describe('postToTwitter', () => {
     test('posts a text-only tweet successfully', async () => {
-      process.env.TWITTER_BEARER_TOKEN = 'test-twitter-token';
+      process.env.TWITTER_API_KEY = 'test-api-key';
+      process.env.TWITTER_API_SECRET = 'test-api-secret';
+      process.env.TWITTER_ACCESS_TOKEN = 'test-access-token';
+      process.env.TWITTER_ACCESS_TOKEN_SECRET = 'test-access-token-secret';
 
       mockFetch.mockResolvedValueOnce(mockFetchResponse(true, { data: { id: 'tweet-123' } }));
 
@@ -101,14 +109,17 @@ describe('Social Media API Module', () => {
         expect.objectContaining({
           method: 'POST',
           headers: expect.objectContaining({
-            Authorization: 'Bearer test-twitter-token',
+            Authorization: expect.stringContaining('OAuth'),
           }),
         })
       );
     });
 
     test('posts a tweet with image', async () => {
-      process.env.TWITTER_BEARER_TOKEN = 'test-twitter-token';
+      process.env.TWITTER_API_KEY = 'test-api-key';
+      process.env.TWITTER_API_SECRET = 'test-api-secret';
+      process.env.TWITTER_ACCESS_TOKEN = 'test-access-token';
+      process.env.TWITTER_ACCESS_TOKEN_SECRET = 'test-access-token-secret';
 
       // Image download
       mockFetch.mockResolvedValueOnce(mockFetchResponse(true, {}));
@@ -123,12 +134,15 @@ describe('Social Media API Module', () => {
       expect(mockFetch).toHaveBeenCalledTimes(3);
     });
 
-    test('throws when Twitter token is not configured', async () => {
-      await expect(socialMedia.postToTwitter('test')).rejects.toThrow('Twitter API token not configured');
+    test('throws when Twitter OAuth credentials are not configured', async () => {
+      await expect(socialMedia.postToTwitter('test')).rejects.toThrow('Twitter OAuth 1.0a credentials not configured');
     });
 
     test('throws when Twitter API returns error', async () => {
-      process.env.TWITTER_BEARER_TOKEN = 'test-token';
+      process.env.TWITTER_API_KEY = 'test-api-key';
+      process.env.TWITTER_API_SECRET = 'test-api-secret';
+      process.env.TWITTER_ACCESS_TOKEN = 'test-access-token';
+      process.env.TWITTER_ACCESS_TOKEN_SECRET = 'test-access-token-secret';
 
       mockFetch.mockResolvedValueOnce(mockFetchResponse(false, { detail: 'Rate limit exceeded' }, 'Too Many Requests'));
 
@@ -136,7 +150,10 @@ describe('Social Media API Module', () => {
     });
 
     test('throws with statusText when no detail in error', async () => {
-      process.env.TWITTER_BEARER_TOKEN = 'test-token';
+      process.env.TWITTER_API_KEY = 'test-api-key';
+      process.env.TWITTER_API_SECRET = 'test-api-secret';
+      process.env.TWITTER_ACCESS_TOKEN = 'test-access-token';
+      process.env.TWITTER_ACCESS_TOKEN_SECRET = 'test-access-token-secret';
 
       mockFetch.mockResolvedValueOnce(mockFetchResponse(false, {}, 'Forbidden'));
 
@@ -144,7 +161,10 @@ describe('Social Media API Module', () => {
     });
 
     test('throws when media upload fails', async () => {
-      process.env.TWITTER_BEARER_TOKEN = 'test-token';
+      process.env.TWITTER_API_KEY = 'test-api-key';
+      process.env.TWITTER_API_SECRET = 'test-api-secret';
+      process.env.TWITTER_ACCESS_TOKEN = 'test-access-token';
+      process.env.TWITTER_ACCESS_TOKEN_SECRET = 'test-access-token-secret';
 
       // Image download succeeds
       mockFetch.mockResolvedValueOnce(mockFetchResponse(true, {}));
@@ -357,7 +377,10 @@ describe('Social Media API Module', () => {
 
   describe('publishToSocialMedia', () => {
     test('publishes to all configured platforms', async () => {
-      process.env.TWITTER_BEARER_TOKEN = 'test-twitter';
+      process.env.TWITTER_API_KEY = 'test-api-key';
+      process.env.TWITTER_API_SECRET = 'test-api-secret';
+      process.env.TWITTER_ACCESS_TOKEN = 'test-access-token';
+      process.env.TWITTER_ACCESS_TOKEN_SECRET = 'test-access-token-secret';
       process.env.LINKEDIN_ACCESS_TOKEN = 'test-linkedin';
       process.env.LINKEDIN_ORG_ID = 'org-1';
       process.env.FACEBOOK_PAGE_TOKEN = 'test-fb';
@@ -389,7 +412,10 @@ describe('Social Media API Module', () => {
     });
 
     test('uses platform-specific content when available', async () => {
-      process.env.TWITTER_BEARER_TOKEN = 'test-twitter';
+      process.env.TWITTER_API_KEY = 'test-api-key';
+      process.env.TWITTER_API_SECRET = 'test-api-secret';
+      process.env.TWITTER_ACCESS_TOKEN = 'test-access-token';
+      process.env.TWITTER_ACCESS_TOKEN_SECRET = 'test-access-token-secret';
 
       const post = {
         id: 'post-2',
@@ -414,7 +440,10 @@ describe('Social Media API Module', () => {
     });
 
     test('returns partial status when some platforms fail', async () => {
-      process.env.TWITTER_BEARER_TOKEN = 'test-twitter';
+      process.env.TWITTER_API_KEY = 'test-api-key';
+      process.env.TWITTER_API_SECRET = 'test-api-secret';
+      process.env.TWITTER_ACCESS_TOKEN = 'test-access-token';
+      process.env.TWITTER_ACCESS_TOKEN_SECRET = 'test-access-token-secret';
       process.env.FACEBOOK_PAGE_TOKEN = 'test-fb';
       process.env.FACEBOOK_PAGE_ID = 'page-1';
 
@@ -540,7 +569,10 @@ describe('Social Media API Module', () => {
 
   describe('processScheduledPosts', () => {
     test('processes scheduled posts that are due', async () => {
-      process.env.TWITTER_BEARER_TOKEN = 'test-twitter';
+      process.env.TWITTER_API_KEY = 'test-api-key';
+      process.env.TWITTER_API_SECRET = 'test-api-secret';
+      process.env.TWITTER_ACCESS_TOKEN = 'test-access-token';
+      process.env.TWITTER_ACCESS_TOKEN_SECRET = 'test-access-token-secret';
 
       const posts = [{ id: 'sched-1' }, { id: 'sched-2' }];
 

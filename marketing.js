@@ -111,29 +111,32 @@ const marketingModule = {
       </div>
     `;
 
-    // Attach delegated click handler for banner actions
-    container.addEventListener('click', (e) => {
-      const actionEl = e.target.closest('[data-action]');
-      if (!actionEl) return;
-      e.preventDefault();
-      e.stopPropagation(); // Prevent actionRegistry from double-handling
-      const action = actionEl.getAttribute('data-action');
-      const id = actionEl.getAttribute('data-id');
-      switch (action) {
-        case 'marketingModule.viewBannerFull':
-          this.viewBannerFull(actionEl.getAttribute('data-url'), actionEl.getAttribute('data-title'));
-          break;
-        case 'marketingModule.editBanner':
-          this.editBanner(id);
-          break;
-        case 'marketingModule.toggleBannerActive':
-          this.toggleBannerActive(id, actionEl.getAttribute('data-active') === 'true');
-          break;
-        case 'marketingModule.deleteBanner':
-          this.deleteBanner(id);
-          break;
-      }
-    });
+    // Attach delegated click handler for banner actions (avoid listener stacking)
+    if (!container._bannerClickBound) {
+      container._bannerClickBound = true;
+      container.addEventListener('click', (e) => {
+        const actionEl = e.target.closest('[data-action]');
+        if (!actionEl) return;
+        e.preventDefault();
+        e.stopPropagation(); // Prevent actionRegistry from double-handling
+        const action = actionEl.getAttribute('data-action');
+        const id = actionEl.getAttribute('data-id');
+        switch (action) {
+          case 'marketingModule.viewBannerFull':
+            this.viewBannerFull(actionEl.getAttribute('data-url'), actionEl.getAttribute('data-title'));
+            break;
+          case 'marketingModule.editBanner':
+            this.editBanner(id);
+            break;
+          case 'marketingModule.toggleBannerActive':
+            this.toggleBannerActive(id, actionEl.getAttribute('data-active') === 'true');
+            break;
+          case 'marketingModule.deleteBanner':
+            this.deleteBanner(id);
+            break;
+        }
+      });
+    }
   },
 
   /**

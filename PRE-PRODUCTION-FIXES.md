@@ -128,7 +128,7 @@
 
 ### C3. Set up Stripe (payments)
 - **Priority:** HIGH — payments won't process without this
-- **Status:** [ ] Not started
+- **Status:** [x] DONE
 - **Action:**
   1. Go to Stripe Dashboard → Developers → API keys
   2. Copy test keys: `sk_test_...` and `pk_test_...` (use test mode first)
@@ -144,7 +144,7 @@
 
 ### C4. Set up Resend (email)
 - **Priority:** HIGH — no emails will send without this
-- **Status:** [ ] Not started
+- **Status:** [x] DONE
 - **Action:**
   1. Sign up at resend.com
   2. Verify your sending domain (add DNS records they provide)

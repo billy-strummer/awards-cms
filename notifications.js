@@ -66,6 +66,7 @@ const notificationsModule = {
    * @private
    */
   _subscribeRealtime() {
+    if (!STATE.currentUser?.email) return;
     const email = STATE.currentUser.email;
     this._realtimeChannel = STATE.client
       .channel('notifications')
@@ -126,7 +127,9 @@ const notificationsModule = {
    * @param {number} page - The page number to navigate to
    */
   _goToPage(page) {
-    this._fetchPage(page).then(() => this.renderNotificationDropdown());
+    this._fetchPage(page)
+      .then(() => this.renderNotificationDropdown())
+      .catch((e) => console.error('Notification page fetch error:', e.message));
   },
 
   /**

@@ -191,11 +191,14 @@ const emailBuilder = {
             .map((org) => `<option value="${org.id}">${utils.escapeHtml(org.company_name)}</option>`)
             .join('');
 
-        select.addEventListener('change', (e) => {
-          if (e.target.value) {
-            this.loadOrganisationData(e.target.value);
-          }
-        });
+        if (!select._orgChangeBound) {
+          select._orgChangeBound = true;
+          select.addEventListener('change', (e) => {
+            if (e.target.value) {
+              this.loadOrganisationData(e.target.value);
+            }
+          });
+        }
       }
     } catch (error) {
       console.error('Error loading organisations:', error);

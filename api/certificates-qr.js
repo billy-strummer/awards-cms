@@ -79,15 +79,9 @@ async function generateWinnerCertificate(entryId, outputPath = null) {
       margin: 50,
     });
 
-    // Set output
+    // Set output — use /tmp for serverless environments
     const filename = `certificate-${entry.entry_number}.pdf`;
-    const filepath = outputPath || path.join(__dirname, '../certificates', filename);
-
-    // Ensure directory exists
-    const dir = path.dirname(filepath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
+    const filepath = outputPath || path.join('/tmp', filename);
 
     const stream = fs.createWriteStream(filepath);
     doc.pipe(stream);
@@ -136,7 +130,9 @@ async function generateWinnerCertificate(entryId, outputPath = null) {
       .fontSize(16)
       .font('Helvetica')
       .fillColor('#444')
-      .text('at the British Trade Awards 2025', 0, 420, { align: 'center' });
+      .text(`at the British Trade Awards ${entry.awards?.year || new Date().getFullYear()}`, 0, 420, {
+        align: 'center',
+      });
 
     // Date
     const awardDate = new Date().toLocaleDateString('en-GB', {
@@ -358,13 +354,7 @@ async function generateEventBadge(attendeeId) {
     });
 
     const filename = `badge-${attendee.id}.pdf`;
-    const filepath = path.join(__dirname, '../badges', filename);
-
-    // Ensure directory exists
-    const dir = path.dirname(filepath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
+    const filepath = path.join('/tmp', filename);
 
     const stream = fs.createWriteStream(filepath);
     doc.pipe(stream);
@@ -382,7 +372,7 @@ async function generateEventBadge(attendeeId) {
       .fillColor('#FFFFFF')
       .text('British Trade Awards', 0, 25, { align: 'center' });
 
-    doc.fontSize(10).font('Helvetica').text('2025', 0, 45, { align: 'center' });
+    doc.fontSize(10).font('Helvetica').text(String(new Date().getFullYear()), 0, 45, { align: 'center' });
 
     // Attendee name
     doc

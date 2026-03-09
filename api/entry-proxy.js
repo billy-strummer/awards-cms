@@ -99,6 +99,8 @@ module.exports = async function handler(req, res) {
     switch (action) {
       case 'submit_entry':
         return await handleSubmitEntry(req, res);
+      case 'submit_nomination':
+        return await handleSubmitNomination(req, res);
       default:
         return res.status(400).json({ error: `Unknown action: ${action}` });
     }
@@ -317,6 +319,232 @@ async function handleSubmitEntry(req, res) {
     await supabase.rpc('send_entry_confirmation_email', { p_entry_id: entry.id });
   } catch (_e) {
     /* non-blocking */
+  }
+
+  return res.status(200).json({
+    success: true,
+    entry: { id: entry.id, entry_number: entry.entry_number },
+  });
+}
+
+// ────────────────────────────────────────────
+// Handle nomination submission
+// ────────────────────────────────────────────
+
+async function handleSubmitNomination(req, res) {
+  const {
+    awardCategory,
+    region,
+    nominationReason,
+    supportingInfo,
+    nominatorName,
+    nominatorCompany,
+    nominatorRelationship,
+    nominatorEmail,
+    nominatorPhone,
+    // Person nomination fields
+    nomineeName,
+    nomineeRole,
+    nomineeCompany,
+    nomineeYearsInTrade,
+    // Business nomination fields (New Business of the Year)
+    businessName,
+    businessOwner,
+    businessDescription,
+    businessWebsite,
+    businessYearsTrading,
+    businessEmployees,
+  } = req.body;
+
+  const isNewBusiness = awardCategory === 'New Business of the Year';
+
+  // Validate required fields
+  if (!awardCategory || typeof awardCategory !== 'string') {
+    return res.status(400).json({ error: 'Award category is required' });
+  }
+  if (!nominatorEmail || !isValidEmail(nominatorEmail)) {
+    return res.status(400).json({ error: 'Valid email address is required' });
+  }
+  if (!nominatorName || typeof nominatorName !== 'string' || nominatorName.trim().length < 2) {
+    return res.status(400).json({ error: 'Your name is required' });
+  }
+  if (!nominationReason || typeof nominationReason !== 'string' || nominationReason.trim().length < 10) {
+    return res.status(400).json({ error: 'Nomination reason is required (min 10 characters)' });
+  }
+
+  if (isNewBusiness) {
+    if (!businessName || typeof businessName !== 'string' || businessName.trim().length < 2) {
+      return res.status(400).json({ error: 'Business name is required (min 2 characters)' });
+    }
+    if (!businessOwner || typeof businessOwner !== 'string' || businessOwner.trim().length < 2) {
+      return res.status(400).json({ error: 'Business owner name is required' });
+    }
+  } else {
+    if (!nomineeName || typeof nomineeName !== 'string' || nomineeName.trim().length < 2) {
+      return res.status(400).json({ error: 'Nominee name is required (min 2 characters)' });
+    }
+    if (!nomineeCompany || typeof nomineeCompany !== 'string' || nomineeCompany.trim().length < 2) {
+      return res.status(400).json({ error: 'Nominee company is required' });
+    }
+  }
+
+  // Sanitize inputs
+  const safe = {
+    awardCategory: sanitizeString(awardCategory, 200),
+    region: sanitizeString(region || '', 100),
+    nominationReason: sanitizeString(nominationReason, 5000),
+    supportingInfo: sanitizeString(supportingInfo || '', 5000) || null,
+    nominatorName: sanitizeString(nominatorName, 200),
+    nominatorCompany: sanitizeString(nominatorCompany || '', 200) || null,
+    nominatorRelationship: sanitizeString(nominatorRelationship || '', 100) || null,
+    nominatorEmail: sanitizeString(nominatorEmail, 200),
+    nominatorPhone: sanitizeString(nominatorPhone || '', 50) || null,
+    nomineeName: sanitizeString(nomineeName || '', 200),
+    nomineeRole: sanitizeString(nomineeRole || '', 200) || null,
+    nomineeCompany: sanitizeString(nomineeCompany || '', 200),
+    nomineeYearsInTrade: sanitizeString(nomineeYearsInTrade || '', 50) || null,
+    businessName: sanitizeString(businessName || '', 200),
+    businessOwner: sanitizeString(businessOwner || '', 200),
+    businessDescription: sanitizeString(businessDescription || '', 1000) || null,
+    businessWebsite: sanitizeString(businessWebsite || '', 500) || null,
+    businessYearsTrading: sanitizeString(businessYearsTrading || '', 50) || null,
+    businessEmployees: sanitizeString(businessEmployees || '', 50) || null,
+  };
+
+  // Determine the "company name" and "contact name" for the entry record
+  const companyName = isNewBusiness ? safe.businessName : safe.nomineeCompany;
+  const nomineePerson = isNewBusiness ? safe.businessOwner : safe.nomineeName;
+
+  // 1. Find or create organisation for the nominee's company
+  let organisationId = null;
+  const { data: existingOrgs } = await supabase
+    .from('organisations')
+    .select('id')
+    .ilike('company_name', companyName)
+    .limit(1);
+
+  if (existingOrgs && existingOrgs.length > 0) {
+    organisationId = existingOrgs[0].id;
+  } else {
+    const { data: newOrg, error: orgError } = await supabase
+      .from('organisations')
+      .insert({
+        company_name: companyName,
+        region: safe.region,
+        contact_name: nomineePerson,
+        website: isNewBusiness ? safe.businessWebsite : null,
+        status: 'active',
+      })
+      .select()
+      .single();
+
+    if (orgError) {
+      console.error('Organisation creation failed:', orgError);
+      return res.status(500).json({ error: 'Could not save nomination details. Please try again.' });
+    }
+    organisationId = newOrg.id;
+  }
+
+  // 2. Generate entry number
+  const entryNumber = await generateEntryNumber();
+
+  // 3. Build supporting information block
+  const supportParts = [];
+  if (isNewBusiness) {
+    if (safe.businessDescription) supportParts.push('Business Description: ' + safe.businessDescription);
+    if (safe.businessYearsTrading) supportParts.push('Years Trading: ' + safe.businessYearsTrading);
+    if (safe.businessEmployees) supportParts.push('Employees: ' + safe.businessEmployees);
+    if (safe.businessWebsite) supportParts.push('Website: ' + safe.businessWebsite);
+  } else {
+    if (safe.nomineeRole) supportParts.push('Role: ' + safe.nomineeRole);
+    if (safe.nomineeYearsInTrade) supportParts.push('Years in Trade: ' + safe.nomineeYearsInTrade);
+  }
+  supportParts.push(
+    'Nominator: ' + safe.nominatorName + (safe.nominatorCompany ? ' (' + safe.nominatorCompany + ')' : '')
+  );
+  if (safe.nominatorRelationship) supportParts.push('Relationship: ' + safe.nominatorRelationship);
+  if (safe.supportingInfo) supportParts.push('Supporting Info: ' + safe.supportingInfo);
+  const supportingInformation = supportParts.join('\n\n') || null;
+
+  // 4. Create entry
+  const currentYear = new Date().getFullYear();
+  const entryTitle = isNewBusiness
+    ? safe.businessName + ' - ' + safe.awardCategory
+    : safe.nomineeName + ' - ' + safe.awardCategory;
+
+  const entryPayload = {
+    entry_number: entryNumber,
+    organisation_id: organisationId,
+    entry_title: entryTitle,
+    entry_description: safe.nominationReason,
+    contact_name: safe.nominatorName,
+    contact_email: safe.nominatorEmail,
+    status: 'submitted',
+    payment_status: 'pending',
+    submission_date: new Date().toISOString(),
+    allow_public_voting: false,
+    why_should_win: safe.nominationReason,
+    supporting_information: supportingInformation,
+    contact_phone: safe.nominatorPhone,
+    year: currentYear,
+    award_category: safe.awardCategory,
+    region: safe.region,
+    is_self_nomination: false,
+  };
+
+  const { data: entry, error: entryError } = await supabase.from('entries').insert(entryPayload).select().single();
+
+  if (entryError) {
+    // Fallback: try base columns only
+    const fallbackPayload = {
+      entry_number: entryNumber,
+      organisation_id: organisationId,
+      entry_title: entryTitle,
+      entry_description: [
+        safe.nominationReason,
+        supportingInformation ? '\n\nSupporting information:\n' + supportingInformation : '',
+      ].join(''),
+      contact_name: safe.nominatorName,
+      contact_email: safe.nominatorEmail,
+      status: 'submitted',
+      payment_status: 'pending',
+      submission_date: new Date().toISOString(),
+      allow_public_voting: false,
+    };
+
+    const { data: baseEntry, error: baseError } = await supabase
+      .from('entries')
+      .insert(fallbackPayload)
+      .select()
+      .single();
+
+    if (baseError) {
+      console.error('Nomination entry creation failed:', baseError);
+      return res.status(500).json({ error: 'Could not save your nomination. Please try again.' });
+    }
+
+    // Try setting extended fields (non-blocking)
+    try {
+      await supabase
+        .from('entries')
+        .update({
+          why_should_win: safe.nominationReason,
+          supporting_information: supportingInformation,
+          contact_phone: safe.nominatorPhone,
+          year: currentYear,
+          award_category: safe.awardCategory,
+          region: safe.region,
+          is_self_nomination: false,
+        })
+        .eq('id', baseEntry.id);
+    } catch (_e) {
+      /* non-blocking */
+    }
+
+    return res.status(200).json({
+      success: true,
+      entry: { id: baseEntry.id, entry_number: baseEntry.entry_number },
+    });
   }
 
   return res.status(200).json({

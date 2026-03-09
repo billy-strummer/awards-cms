@@ -820,7 +820,15 @@ async function _executeQuery(body, user, enableTenantScope) {
 
     // Apply raw OR filter (e.g. "organisation_id.is.null,award_id.is.null")
     if (body.or) {
-      query = query.or(body.or);
+      // Validate OR clause: only allow safe column.operator.value patterns
+      const orStr = String(body.or);
+      const safeOrPattern =
+        /^[a-zA-Z_][a-zA-Z0-9_]*\.(eq|neq|gt|gte|lt|lte|like|ilike|is|in|not)\.[^,]+(,[a-zA-Z_][a-zA-Z0-9_]*\.(eq|neq|gt|gte|lt|lte|like|ilike|is|in|not)\.[^,]+)*$/;
+      if (safeOrPattern.test(orStr)) {
+        query = query.or(orStr);
+      } else {
+        throw new Error('Invalid or clause format');
+      }
     }
 
     // Apply full-text search (OR across multiple columns via ilike)
@@ -977,7 +985,7 @@ async function logActivity(table, action, user, result, context = {}) {
       detailParts.push(`filters=${filtersStr.length > 500 ? filtersStr.substring(0, 500) + '...' : filtersStr}`);
     }
 
-    await supabase.from('activity_log').insert([
+    await supabase.from('activity_logs').insert([
       {
         entity_type: table,
         action: `proxy_${action}`,

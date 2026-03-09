@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nominate Someone - British Trade Awards</title>
+  <link rel="icon" href="BTA-LOGO-entry.jpg" type="image/jpeg">
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+
+  <!-- Premium Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Choices.js for searchable dropdown -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js@10.2.0/public/assets/styles/choices.min.css">
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    :root {
+      --primary-color: #000000;
+      --secondary-color: #1a1a1a;
+      --gold-color: #D4AF37;
+      --gold-light: #F4E5B8;
+      --gold-dark: #B8941F;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      background: #000000;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      position: relative;
+      overflow-x: hidden;
+      font-family: 'Montserrat', sans-serif;
+    }
+
+    body::before,
+    body::after {
+      content: '';
+      position: fixed;
+      top: 0;
+      width: 50%;
+      height: 100%;
+      background-image: url('BTA-LOGO-no-date.jpg');
+      background-size: contain;
+      background-repeat: no-repeat;
+      opacity: 0.08;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    body::before {
+      left: -10%;
+      background-position: right center;
+    }
+
+    body::after {
+      right: -10%;
+      background-position: left center;
+    }
+
+    .entry-container {
+      max-width: 720px;
+      width: 100%;
+      position: relative;
+      z-index: 1;
+    }
+
+    .entry-card {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(212, 175, 55, 0.3);
+      overflow: hidden;
+      animation: slideIn 0.4s ease-out;
+      border: 2px solid var(--gold-color);
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .card-header-custom {
+      background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
+      color: var(--gold-color);
+      padding: 35px 40px;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 25px;
+      border-bottom: 3px solid var(--gold-color);
+    }
+
+    .card-header-custom img {
+      height: 100px;
+      width: auto;
+      filter: drop-shadow(0 0 10px rgba(212, 175, 55, 0.5));
+    }
+
+    .card-header-custom h1 {
+      font-family: 'Cinzel', serif;
+      font-size: 2rem;
+      font-weight: 900;
+      margin: 0;
+      line-height: 1.3;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+      letter-spacing: 3px;
+      text-transform: uppercase;
+    }
+
+    .card-header-custom .subtitle {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 300;
+      letter-spacing: 2px;
+      margin-top: 5px;
+      opacity: 0.95;
+      text-transform: uppercase;
+    }
+
+    /* Tablet breakpoint */
+    @media (max-width: 768px) {
+      .progress-step-wrap { min-width: 0; flex: 1; }
+      .step-label { font-size: 0.55rem; }
+      .form-section { padding: 30px 24px !important; }
+      .step-question { font-size: 1.4rem !important; }
+      .review-label { min-width: 100px; }
+    }
+
+    /* Mobile breakpoint */
+    @media (max-width: 576px) {
+      .card-header-custom {
+        flex-direction: column;
+        gap: 15px;
+        padding: 25px 20px;
+      }
+      .card-header-custom h1 { font-size: 1.4rem; letter-spacing: 2px; }
+      .card-header-custom .subtitle { font-size: 0.8rem; letter-spacing: 1px; }
+      .card-header-custom img { height: 70px; }
+      .form-section { padding: 30px 20px !important; }
+      .step-question { font-size: 1.2rem !important; }
+      .step-subtitle { font-size: 0.85rem !important; }
+      .progress-bar-wrapper { padding: 16px 12px 8px; }
+      .progress-step-wrap { min-width: 0; }
+      .step-label { display: none; }
+      .review-row { flex-direction: column; gap: 2px; }
+      .review-value { text-align: left; }
+      .review-label { min-width: auto; }
+      .review-section { padding: 16px; }
+    }
+
+    /* Progress bar */
+    .progress-bar-wrapper {
+      padding: 20px 30px 10px;
+      background: #fafafa;
+      position: relative;
+      z-index: 1;
+    }
+
+    .progress-steps {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: relative;
+    }
+
+    .progress-steps::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: #dee2e6;
+      transform: translateY(-50%);
+      z-index: 0;
+    }
+
+    .progress-track {
+      position: absolute;
+      top: 50%;
+      left: 0;
+      height: 2px;
+      background: var(--gold-color);
+      transform: translateY(-50%);
+      z-index: 1;
+      transition: width 0.4s ease;
+    }
+
+    .progress-dot {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #dee2e6;
+      border: 2px solid #ccc;
+      position: relative;
+      z-index: 2;
+      transition: all 0.3s;
+    }
+
+    .progress-dot.active {
+      background: var(--gold-color);
+      border-color: var(--gold-dark);
+      transform: scale(1.4);
+      box-shadow: 0 0 12px rgba(212, 175, 55, 0.6);
+    }
+
+    .progress-dot.completed {
+      background: var(--gold-dark);
+      border-color: var(--gold-color);
+    }
+
+    .step-label {
+      font-size: 0.65rem;
+      color: #999;
+      text-align: center;
+      margin-top: 6px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .step-label.active { color: var(--gold-dark); font-weight: 600; }
+    .step-label.completed { color: #666; }
+
+    .progress-step-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 48px;
+    }
+
+    /* Form sections */
+    .form-section {
+      padding: 40px;
+      min-height: 380px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .step-question {
+      font-family: 'Cinzel', serif;
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #1a1a1a;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+
+    .step-subtitle {
+      font-size: 0.95rem;
+      color: #777;
+      text-align: center;
+      margin-bottom: 28px;
+      font-weight: 400;
+    }
+
+    .form-step { display: none; }
+    .form-step.active { display: block; animation: fadeIn 0.35s ease-out; }
+
+    /* Form controls */
+    .form-control-lg, .form-select-lg {
+      font-size: 1.05rem;
+      padding: 14px 16px;
+      border-radius: 10px;
+      border: 2px solid #dee2e6;
+      transition: border-color 0.3s;
+    }
+
+    .form-control-lg:focus, .form-select-lg:focus {
+      border-color: var(--gold-color);
+      box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.15);
+    }
+
+    textarea.form-control-lg {
+      min-height: 120px;
+      resize: vertical;
+    }
+
+    .char-count {
+      font-size: 0.8rem;
+      color: #999;
+      text-align: right;
+      margin-top: 4px;
+    }
+
+    .char-count.warn { color: #dc3545; }
+
+    .field-hint {
+      font-size: 0.82rem;
+      color: #888;
+      margin-top: 6px;
+      line-height: 1.4;
+    }
+
+    label.form-label {
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: #333;
+      margin-bottom: 6px;
+    }
+
+    .required-star { color: #dc3545; }
+
+    /* Buttons */
+    .btn-next, .btn-submit {
+      background: linear-gradient(135deg, var(--gold-dark) 0%, var(--gold-color) 100%);
+      border: none;
+      color: #000000;
+      padding: 14px 50px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      border-radius: 10px;
+      transition: all 0.3s;
+      width: 100%;
+      margin-top: 25px;
+      box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .btn-next:hover, .btn-submit:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(212, 175, 55, 0.6);
+      background: linear-gradient(135deg, var(--gold-color) 0%, var(--gold-light) 100%);
+    }
+
+    .btn-next:disabled, .btn-submit:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-back {
+      background: transparent;
+      border: 2px solid var(--gold-color);
+      color: var(--gold-dark);
+      padding: 11px 40px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      border-radius: 10px;
+      transition: all 0.3s;
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    .btn-back:hover {
+      background: var(--gold-color);
+      color: #000000;
+      border-color: var(--gold-dark);
+    }
+
+    /* Award category cards */
+    .award-option {
+      border: 2px solid #e8e8e8;
+      padding: 14px 16px;
+      border-radius: 10px;
+      margin-bottom: 6px;
+      cursor: pointer;
+      transition: all 0.25s;
+      background: white;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-height: 48px;
+    }
+
+    .award-option:hover {
+      border-color: var(--gold-color);
+      background: #fffdf5;
+      transform: translateX(4px);
+    }
+
+    .award-option.selected {
+      border-color: var(--gold-dark);
+      background: linear-gradient(135deg, var(--gold-light) 0%, #fff9e6 100%);
+      box-shadow: 0 3px 12px rgba(212, 175, 55, 0.25);
+    }
+
+    .award-option .award-check {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 2px solid #ccc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: all 0.25s;
+    }
+
+    .award-option.selected .award-check {
+      background: var(--gold-color);
+      border-color: var(--gold-dark);
+      color: #000;
+    }
+
+    .award-option .award-name {
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: #333;
+    }
+
+    .award-option.selected .award-name {
+      font-weight: 600;
+      color: #1a1a1a;
+    }
+
+    .award-option .award-desc {
+      font-size: 0.78rem;
+      color: #888;
+      margin-top: 2px;
+    }
+
+    .award-option.selected .award-desc {
+      color: #666;
+    }
+
+    /* Review section */
+    .review-section {
+      background: #fafafa;
+      border-radius: 12px;
+      padding: 24px;
+      border: 1px solid #eee;
+    }
+
+    .review-group {
+      margin-bottom: 16px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .review-group:last-child {
+      margin-bottom: 0;
+      padding-bottom: 0;
+      border-bottom: none;
+    }
+
+    .review-group-title {
+      font-family: 'Cinzel', serif;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--gold-dark);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 10px;
+    }
+
+    .review-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 4px 0;
+      gap: 12px;
+    }
+
+    .review-label {
+      font-size: 0.85rem;
+      color: #777;
+      font-weight: 500;
+      min-width: 120px;
+      flex-shrink: 0;
+    }
+
+    .review-value {
+      font-size: 0.9rem;
+      color: #1a1a1a;
+      font-weight: 500;
+      text-align: right;
+      word-break: break-word;
+    }
+
+    .review-text-block {
+      font-size: 0.88rem;
+      color: #333;
+      line-height: 1.6;
+      margin-top: 6px;
+      background: white;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid #eee;
+      white-space: pre-wrap;
+    }
+
+    .review-edit-btn {
+      font-size: 0.78rem;
+      color: var(--gold-dark);
+      cursor: pointer;
+      text-decoration: underline;
+      font-weight: 600;
+    }
+
+    .review-edit-btn:hover { color: #000; }
+
+    /* Success */
+    .success-message {
+      text-align: center;
+      padding: 50px 20px;
+    }
+
+    .success-icon {
+      font-size: 4.5rem;
+      color: var(--gold-color);
+      margin-bottom: 20px;
+      text-shadow: 0 0 20px rgba(212, 175, 55, 0.5);
+    }
+
+    .success-ref {
+      display: inline-block;
+      background: linear-gradient(135deg, #000, #1a1a1a);
+      color: var(--gold-color);
+      padding: 10px 24px;
+      border-radius: 8px;
+      font-size: 1.2rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      margin-top: 10px;
+    }
+
+    /* Choices.js theme */
+    .choices__inner {
+      background: white;
+      border: 2px solid #dee2e6;
+      border-radius: 10px;
+      padding: 10px 15px;
+      font-size: 1.05rem;
+      min-height: 50px;
+    }
+
+    .choices__input { font-size: 1rem; margin-bottom: 0; }
+    .choices__input::placeholder { color: #999; font-style: italic; }
+    .choices[data-type*=select-one] .choices__inner { padding-bottom: 10px; }
+
+    .choices__list--dropdown {
+      border: 2px solid var(--gold-color);
+      border-radius: 10px;
+      margin-top: 5px;
+      box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
+      z-index: 10;
+    }
+
+    .choices__list--dropdown .choices__item--selectable.is-highlighted {
+      background-color: var(--gold-light);
+    }
+
+    .choices__list--dropdown .choices__group {
+      color: var(--gold-dark);
+      font-weight: 600;
+      border-bottom: 1px solid var(--gold-color);
+    }
+
+    .is-focused .choices__inner { border-color: var(--gold-color); }
+    .choices__list--single .choices__item { color: #1a1a1a; }
+
+    /* Terms checkbox */
+    .terms-check {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin-top: 20px;
+      padding: 14px;
+      background: #fafafa;
+      border-radius: 10px;
+      border: 1px solid #eee;
+    }
+
+    .terms-check input[type="checkbox"] {
+      width: 24px;
+      height: 24px;
+      margin-top: 2px;
+      accent-color: var(--gold-color);
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+
+    .terms-check label {
+      font-size: 0.85rem;
+      color: #555;
+      line-height: 1.5;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="entry-container">
+    <div class="entry-card">
+
+      <!-- Header -->
+      <div class="card-header-custom">
+        <img src="BTA-LOGO-entry.jpg" alt="British Trade Awards Logo">
+        <div>
+          <h1>British Trade Awards</h1>
+          <div class="subtitle">Industry Leadership Nomination Form</div>
+        </div>
+      </div>
+
+      <!-- Progress Bar -->
+      <div class="progress-bar-wrapper" id="progressWrapper" role="navigation" aria-label="Form progress">
+        <div class="progress-steps" id="progressSteps">
+          <div class="progress-track" id="progressTrack" style="width: 0%"></div>
+          <!-- Dots generated by JS -->
+        </div>
+      </div>
+
+      <!-- Form Steps -->
+      <form id="nominationForm" novalidate aria-label="Nomination submission form">
+
+        <!-- Step 1: Award Category -->
+        <div class="form-step active" id="step1">
+          <div class="form-section">
+            <h2 class="step-question">Which award are you nominating for?</h2>
+            <p class="step-subtitle">Select the category that best fits your nominee</p>
+            <div id="categoryList">
+              <!-- Categories rendered by JS -->
+            </div>
+            <button type="button" class="btn btn-next" id="step1NextBtn" data-action="nominateApp.nextStep" data-args="[1]" style="display: none;">
+              Next <i class="bi bi-arrow-right ms-2"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 2: Region -->
+        <div class="form-step" id="step2">
+          <div class="form-section">
+            <h2 class="step-question">Where is the nominee based?</h2>
+            <p class="step-subtitle">Select the county or city they operate in</p>
+            <select class="form-select form-select-lg" id="region" required>
+            </select>
+            <button type="button" class="btn btn-next" data-action="nominateApp.nextStep" data-args="[2]">
+              Next <i class="bi bi-arrow-right ms-2"></i>
+            </button>
+            <button type="button" class="btn btn-back" data-action="nominateApp.prevStep" data-args="[2]">
+              <i class="bi bi-arrow-left me-2"></i>Back
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 3: Nominee Details (Person) -->
+        <div class="form-step" id="step3">
+          <div class="form-section">
+            <h2 class="step-question" id="step3Title">About the nominee</h2>
+            <p class="step-subtitle" id="step3Subtitle">Tell us about the person you are nominating</p>
+
+            <!-- Person fields (shown for all except New Business) -->
+            <div id="personFields">
+              <div class="mb-3">
+                <label class="form-label" for="nomineeName">Nominee's full name <span class="required-star">*</span></label>
+                <input type="text" class="form-control form-control-lg" id="nomineeName"
+                  placeholder="e.g. Jane Smith" required autocomplete="off">
+              </div>
+              <div class="mb-3">
+                <label class="form-label" for="nomineeRole">Their role / job title <span class="required-star">*</span></label>
+                <input type="text" class="form-control form-control-lg" id="nomineeRole"
+                  placeholder="e.g. Lead Electrician, Apprentice Plumber, Director" required autocomplete="off">
+              </div>
+              <div class="mb-3">
+                <label class="form-label" for="nomineeCompany">Their company / employer <span class="required-star">*</span></label>
+                <input type="text" class="form-control form-control-lg" id="nomineeCompany"
+                  placeholder="e.g. Smith & Sons Electrical Ltd" required autocomplete="off">
+              </div>
+              <div class="mb-3">
+                <label class="form-label" for="nomineeYearsInTrade">Years in the trade <small class="text-muted">(optional)</small></label>
+                <select class="form-select form-select-lg" id="nomineeYearsInTrade">
+                  <option value="">Select...</option>
+                  <option value="Under 1 year">Under 1 year</option>
+                  <option value="1-3 years">1-3 years</option>
+                  <option value="4-9 years">4-9 years</option>
+                  <option value="10-19 years">10-19 years</option>
+                  <option value="20+ years">20+ years</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Business fields (shown for New Business of the Year only) -->
+            <div id="businessFields" style="display: none;">
+              <div class="mb-3">
+                <label class="form-label" for="businessName">Business name <span class="required-star">*</span></label>
+                <input type="text" class="form-control form-control-lg" id="businessName"
+                  placeholder="e.g. GreenBuild Solutions Ltd" required autocomplete="off">
+              </div>
+              <div class="mb-3">
+                <label class="form-label" for="businessOwner">Owner / founder name <span class="required-star">*</span></label>
+                <input type="text" class="form-control form-control-lg" id="businessOwner"
+                  placeholder="e.g. John Williams" required autocomplete="off">
+              </div>
+              <div class="mb-3">
+                <label class="form-label" for="businessDescription">What does the business do? <span class="required-star">*</span></label>
+                <textarea class="form-control form-control-lg" id="businessDescription" rows="2"
+                  placeholder="Briefly describe the services they offer..." maxlength="500"></textarea>
+                <div class="char-count" id="bizDescCharCount">0 / 500</div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label" for="businessWebsite">Website <small class="text-muted">(optional)</small></label>
+                <input type="url" class="form-control form-control-lg" id="businessWebsite"
+                  placeholder="https://www.theirbusiness.co.uk" autocomplete="off">
+              </div>
+              <div class="mb-3">
+                <label class="form-label" for="businessYearsTrading">Years trading <span class="required-star">*</span></label>
+                <select class="form-select form-select-lg" id="businessYearsTrading" required>
+                  <option value="">Select...</option>
+                  <option value="Under 1 year">Under 1 year</option>
+                  <option value="1-2 years">1-2 years</option>
+                  <option value="2-3 years">2-3 years</option>
+                  <option value="3-5 years">3-5 years</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label class="form-label" for="businessEmployees">Number of employees <small class="text-muted">(optional)</small></label>
+                <select class="form-select form-select-lg" id="businessEmployees">
+                  <option value="">Select...</option>
+                  <option value="Sole trader">Sole trader</option>
+                  <option value="2-5">2-5</option>
+                  <option value="6-10">6-10</option>
+                  <option value="11-25">11-25</option>
+                  <option value="26-50">26-50</option>
+                  <option value="51+">51+</option>
+                </select>
+              </div>
+            </div>
+
+            <button type="button" class="btn btn-next" data-action="nominateApp.nextStep" data-args="[3]">
+              Next <i class="bi bi-arrow-right ms-2"></i>
+            </button>
+            <button type="button" class="btn btn-back" data-action="nominateApp.prevStep" data-args="[3]">
+              <i class="bi bi-arrow-left me-2"></i>Back
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 4: Why They Deserve It -->
+        <div class="form-step" id="step4">
+          <div class="form-section">
+            <h2 class="step-question">Why do they deserve this award?</h2>
+            <p class="step-subtitle">Tell us what makes this nominee stand out</p>
+            <div class="mb-3">
+              <label class="form-label" for="nominationReason">Your nomination reason <span class="required-star">*</span></label>
+              <textarea class="form-control form-control-lg" id="nominationReason" rows="5"
+                placeholder="Describe their achievements, skills, impact on the trade, community contribution, or anything else that makes them exceptional..." maxlength="2000"></textarea>
+              <div class="char-count" id="reasonCharCount">0 / 2,000</div>
+              <div class="field-hint"><i class="bi bi-lightbulb me-1"></i>Consider mentioning specific examples, projects, mentoring, community work, or customer impact.</div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="supportingInfo">Supporting information <small class="text-muted">(optional)</small></label>
+              <textarea class="form-control form-control-lg" id="supportingInfo" rows="3"
+                placeholder="Links to reviews, social media, news articles, or any other evidence supporting your nomination..." maxlength="1500"></textarea>
+              <div class="char-count" id="supportCharCount">0 / 1,500</div>
+            </div>
+            <button type="button" class="btn btn-next" data-action="nominateApp.nextStep" data-args="[4]">
+              Next <i class="bi bi-arrow-right ms-2"></i>
+            </button>
+            <button type="button" class="btn btn-back" data-action="nominateApp.prevStep" data-args="[4]">
+              <i class="bi bi-arrow-left me-2"></i>Back
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 5: Your Details (Nominator) -->
+        <div class="form-step" id="step5">
+          <div class="form-section">
+            <h2 class="step-question">Your details</h2>
+            <p class="step-subtitle">So we can contact you about this nomination</p>
+            <fieldset>
+              <legend class="visually-hidden">Nominator Information</legend>
+              <div class="mb-3">
+                <label class="form-label" for="nominatorName">Your full name <span class="required-star">*</span></label>
+                <input type="text" class="form-control form-control-lg" id="nominatorName"
+                  placeholder="Your full name" required autocomplete="name">
+              </div>
+              <div class="mb-3">
+                <label class="form-label" for="nominatorCompany">Your company <small class="text-muted">(optional)</small></label>
+                <input type="text" class="form-control form-control-lg" id="nominatorCompany"
+                  placeholder="e.g. ABC Construction Ltd" autocomplete="organization">
+              </div>
+              <div class="mb-3">
+                <label class="form-label" for="nominatorRelationship">Your relationship to the nominee <span class="required-star">*</span></label>
+                <select class="form-select form-select-lg" id="nominatorRelationship" required>
+                  <option value="">Select...</option>
+                  <option value="Colleague">Colleague</option>
+                  <option value="Employer">Employer</option>
+                  <option value="Employee">Employee</option>
+                  <option value="Client / Customer">Client / Customer</option>
+                  <option value="Supplier">Supplier</option>
+                  <option value="Industry peer">Industry peer</option>
+                  <option value="Friend / Family">Friend / Family</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label class="form-label" for="nominatorEmail">Your email address <span class="required-star">*</span></label>
+                <input type="email" class="form-control form-control-lg" id="nominatorEmail"
+                  placeholder="you@example.co.uk" required autocomplete="email">
+              </div>
+              <div class="mb-3">
+                <label class="form-label" for="nominatorPhone">Your phone number <span class="required-star">*</span></label>
+                <input type="tel" class="form-control form-control-lg" id="nominatorPhone"
+                  placeholder="e.g. 07700 900000" required autocomplete="tel">
+              </div>
+            </fieldset>
+            <button type="button" class="btn btn-next" data-action="nominateApp.nextStep" data-args="[5]">
+              Review Nomination <i class="bi bi-arrow-right ms-2"></i>
+            </button>
+            <button type="button" class="btn btn-back" data-action="nominateApp.prevStep" data-args="[5]">
+              <i class="bi bi-arrow-left me-2"></i>Back
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 6: Review & Submit -->
+        <div class="form-step" id="step6">
+          <div class="form-section">
+            <h2 class="step-question">Review your nomination</h2>
+            <p class="step-subtitle">Please check all details before submitting</p>
+            <div id="reviewContent" class="review-section text-start">
+            </div>
+            <div class="terms-check" id="termsWrap">
+              <input type="checkbox" id="termsCheckbox">
+              <label for="termsCheckbox">
+                I confirm the information provided is accurate and I consent to being contacted by the British Trade Awards regarding this nomination. I understand the nominee will be reviewed by the judging panel.
+              </label>
+            </div>
+            <button type="button" class="btn btn-submit" id="submitBtn" data-action="nominateApp.submitNomination" disabled>
+              <i class="bi bi-trophy me-2"></i>Submit Nomination
+            </button>
+            <button type="button" class="btn btn-back" data-action="nominateApp.prevStep" data-args="[6]">
+              <i class="bi bi-arrow-left me-2"></i>Back to Edit
+            </button>
+          </div>
+        </div>
+
+        <!-- Success Message -->
+        <div class="form-step" id="stepSuccess">
+          <div class="form-section success-message">
+            <div class="success-icon">
+              <i class="bi bi-trophy-fill"></i>
+            </div>
+            <h2 class="mb-3" style="font-family:'Cinzel',serif; font-weight:700;">Nomination Submitted!</h2>
+            <p class="text-muted mb-4">Thank you for your nomination for the British Trade Awards. We'll be in touch soon with next steps.</p>
+            <div>
+              <p class="mb-1" style="font-size:0.9rem; color:#777;">Your Nomination Reference</p>
+              <div class="success-ref" id="nominationReference"></div>
+            </div>
+            <p class="mt-4" style="font-size:0.85rem; color:#999;">A confirmation email has been sent to your email address.</p>
+          </div>
+        </div>
+
+      </form>
+
+    </div>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Choices.js for searchable dropdown -->
+  <script src="https://cdn.jsdelivr.net/npm/choices.js@10.2.0/public/assets/scripts/choices.min.js"></script>
+
+  <!-- Configuration (provides REGIONS, SUPABASE_CONFIG) -->
+  <script type="module" src="config.js"></script>
+
+  <!-- Nomination Form Logic -->
+  <script src="nominate.js"></script>
+
+</body>
+</html>

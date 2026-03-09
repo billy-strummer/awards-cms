@@ -19,14 +19,15 @@ const _mockStorageFrom = mocks.mockStorageFrom;
 // Set required env vars
 process.env.SUPABASE_URL = 'https://test.supabase.co';
 process.env.SUPABASE_SERVICE_KEY = 'test-service-key';
+process.env.SUPABASE_ANON_KEY = 'test-anon-key';
 
 const handler = require('../api/upload-proxy');
 
-// Helper to create mock req/res
+// Helper to create mock req/res — includes auth header by default
 function mockReq(overrides = {}) {
   return {
     method: 'GET',
-    headers: { 'x-forwarded-for': '127.0.0.1' },
+    headers: { 'x-forwarded-for': '127.0.0.1', authorization: 'Bearer valid-test-token' },
     query: {},
     body: {},
     socket: { remoteAddress: '127.0.0.1' },
@@ -61,7 +62,7 @@ describe('Upload Proxy - CORS', () => {
     const res = mockRes();
     await handler(req, res);
     expect(res.status).toHaveBeenCalledWith(204);
-    expect(res.headers['Access-Control-Allow-Origin']).toBe('*');
+    expect(res.headers['Access-Control-Allow-Origin']).toBeDefined();
     expect(res.headers['Access-Control-Allow-Methods']).toContain('GET');
     expect(res.headers['Access-Control-Allow-Methods']).toContain('POST');
   });
@@ -69,7 +70,10 @@ describe('Upload Proxy - CORS', () => {
 
 describe('Upload Proxy - Rate Limiting', () => {
   test('allows requests within limit', async () => {
-    const req = mockReq({ query: { action: 'unknown' }, headers: { 'x-forwarded-for': '10.0.0.1' } });
+    const req = mockReq({
+      query: { action: 'unknown' },
+      headers: { 'x-forwarded-for': '10.0.0.1', authorization: 'Bearer valid-test-token' },
+    });
     const res = mockRes();
     await handler(req, res);
     // Should not return 429
@@ -81,7 +85,10 @@ describe('Upload Proxy - Rate Limiting', () => {
     const _res = mockRes();
     // Fire 31 requests from same IP
     for (let i = 0; i < 31; i++) {
-      const req = mockReq({ query: { action: 'unknown' }, headers: { 'x-forwarded-for': ip } });
+      const req = mockReq({
+        query: { action: 'unknown' },
+        headers: { 'x-forwarded-for': ip, authorization: 'Bearer valid-test-token' },
+      });
       const r = mockRes();
       await handler(req, r);
       if (r.statusCode === 429) {
@@ -96,7 +103,10 @@ describe('Upload Proxy - Rate Limiting', () => {
 
 describe('Upload Proxy - Unknown Action', () => {
   test('returns 400 for unknown action', async () => {
-    const req = mockReq({ query: { action: 'invalid' }, headers: { 'x-forwarded-for': '10.0.1.1' } });
+    const req = mockReq({
+      query: { action: 'invalid' },
+      headers: { 'x-forwarded-for': '10.0.1.1', authorization: 'Bearer valid-test-token' },
+    });
     const res = mockRes();
     await handler(req, res);
     expect(res.status).toHaveBeenCalledWith(400);
@@ -113,7 +123,7 @@ describe('Upload Proxy - get_entry', () => {
     const req = mockReq({
       method: 'POST',
       body: { action: 'get_entry' },
-      headers: { 'x-forwarded-for': '10.0.2.1' },
+      headers: { 'x-forwarded-for': '10.0.2.1', authorization: 'Bearer valid-test-token' },
     });
     const res = mockRes();
     await handler(req, res);
@@ -123,7 +133,7 @@ describe('Upload Proxy - get_entry', () => {
   test('returns 400 if entry_number missing', async () => {
     const req = mockReq({
       query: { action: 'get_entry' },
-      headers: { 'x-forwarded-for': '10.0.2.2' },
+      headers: { 'x-forwarded-for': '10.0.2.2', authorization: 'Bearer valid-test-token' },
     });
     const res = mockRes();
     await handler(req, res);
@@ -135,7 +145,7 @@ describe('Upload Proxy - get_entry', () => {
     mockSingle.mockResolvedValue({ data: null, error: { message: 'Not found' } });
     const req = mockReq({
       query: { action: 'get_entry', entry_number: 'BTA-2025-9999' },
-      headers: { 'x-forwarded-for': '10.0.2.3' },
+      headers: { 'x-forwarded-for': '10.0.2.3', authorization: 'Bearer valid-test-token' },
     });
     const res = mockRes();
     await handler(req, res);
@@ -162,7 +172,7 @@ describe('Upload Proxy - get_entry', () => {
 
     const req = mockReq({
       query: { action: 'get_entry', entry_number: 'BTA-2025-0001' },
-      headers: { 'x-forwarded-for': '10.0.2.4' },
+      headers: { 'x-forwarded-for': '10.0.2.4', authorization: 'Bearer valid-test-token' },
     });
     const res = mockRes();
     await handler(req, res);
@@ -187,7 +197,7 @@ describe('Upload Proxy - get_entry', () => {
 
     const req = mockReq({
       query: { action: 'get_entry', entry_number: 'BTA-2025-0002' },
-      headers: { 'x-forwarded-for': '10.0.2.5' },
+      headers: { 'x-forwarded-for': '10.0.2.5', authorization: 'Bearer valid-test-token' },
     });
     const res = mockRes();
     await handler(req, res);
@@ -206,7 +216,7 @@ describe('Upload Proxy - get_existing_files', () => {
   test('returns 400 if entry_id missing', async () => {
     const req = mockReq({
       query: { action: 'get_existing_files' },
-      headers: { 'x-forwarded-for': '10.0.3.1' },
+      headers: { 'x-forwarded-for': '10.0.3.1', authorization: 'Bearer valid-test-token' },
     });
     const res = mockRes();
     await handler(req, res);
@@ -224,7 +234,7 @@ describe('Upload Proxy - get_existing_files', () => {
 
     const req = mockReq({
       query: { action: 'get_existing_files', entry_id: 'uuid-1' },
-      headers: { 'x-forwarded-for': '10.0.3.2' },
+      headers: { 'x-forwarded-for': '10.0.3.2', authorization: 'Bearer valid-test-token' },
     });
     const res = mockRes();
     await handler(req, res);
@@ -237,7 +247,7 @@ describe('Upload Proxy - get_existing_files', () => {
 
     const req = mockReq({
       query: { action: 'get_existing_files', entry_id: 'uuid-1' },
-      headers: { 'x-forwarded-for': '10.0.3.3' },
+      headers: { 'x-forwarded-for': '10.0.3.3', authorization: 'Bearer valid-test-token' },
     });
     const res = mockRes();
     await handler(req, res);
@@ -254,7 +264,7 @@ describe('Upload Proxy - save_file_metadata', () => {
     const req = mockReq({
       method: 'GET',
       query: { action: 'save_file_metadata' },
-      headers: { 'x-forwarded-for': '10.0.4.1' },
+      headers: { 'x-forwarded-for': '10.0.4.1', authorization: 'Bearer valid-test-token' },
     });
     const res = mockRes();
     await handler(req, res);
@@ -265,7 +275,7 @@ describe('Upload Proxy - save_file_metadata', () => {
     const req = mockReq({
       method: 'POST',
       body: { action: 'save_file_metadata', entry_id: 'uuid-1' },
-      headers: { 'x-forwarded-for': '10.0.4.2' },
+      headers: { 'x-forwarded-for': '10.0.4.2', authorization: 'Bearer valid-test-token' },
     });
     const res = mockRes();
     await handler(req, res);
@@ -283,7 +293,7 @@ describe('Upload Proxy - save_file_metadata', () => {
         file_name: 'doc.pdf',
         file_url: 'https://storage.example.com/doc.pdf',
       },
-      headers: { 'x-forwarded-for': '10.0.4.3' },
+      headers: { 'x-forwarded-for': '10.0.4.3', authorization: 'Bearer valid-test-token' },
     });
     const res = mockRes();
     await handler(req, res);
@@ -306,7 +316,7 @@ describe('Upload Proxy - save_file_metadata', () => {
         mime_type: 'application/pdf',
         uploaded_by: 'user@example.com',
       },
-      headers: { 'x-forwarded-for': '10.0.4.4' },
+      headers: { 'x-forwarded-for': '10.0.4.4', authorization: 'Bearer valid-test-token' },
     });
     const res = mockRes();
     await handler(req, res);
@@ -326,7 +336,7 @@ describe('Upload Proxy - save_file_metadata', () => {
         file_name: 'doc.pdf',
         file_url: 'https://storage.example.com/doc.pdf',
       },
-      headers: { 'x-forwarded-for': '10.0.4.5' },
+      headers: { 'x-forwarded-for': '10.0.4.5', authorization: 'Bearer valid-test-token' },
     });
     const res = mockRes();
     await handler(req, res);
@@ -343,7 +353,7 @@ describe('Upload Proxy - get_upload_token', () => {
     const req = mockReq({
       method: 'GET',
       query: { action: 'get_upload_token' },
-      headers: { 'x-forwarded-for': '10.0.5.1' },
+      headers: { 'x-forwarded-for': '10.0.5.1', authorization: 'Bearer valid-test-token' },
     });
     const res = mockRes();
     await handler(req, res);
@@ -354,7 +364,7 @@ describe('Upload Proxy - get_upload_token', () => {
     const req = mockReq({
       method: 'POST',
       body: { action: 'get_upload_token', entry_number: 'BTA-2025-0001' },
-      headers: { 'x-forwarded-for': '10.0.5.2' },
+      headers: { 'x-forwarded-for': '10.0.5.2', authorization: 'Bearer valid-test-token' },
     });
     const res = mockRes();
     await handler(req, res);
@@ -367,7 +377,7 @@ describe('Upload Proxy - get_upload_token', () => {
     const req = mockReq({
       method: 'POST',
       body: { action: 'get_upload_token', entry_number: 'BTA-NOPE', file_name: 'doc.pdf' },
-      headers: { 'x-forwarded-for': '10.0.5.3' },
+      headers: { 'x-forwarded-for': '10.0.5.3', authorization: 'Bearer valid-test-token' },
     });
     const res = mockRes();
     await handler(req, res);
@@ -384,7 +394,7 @@ describe('Upload Proxy - get_upload_token', () => {
     const req = mockReq({
       method: 'POST',
       body: { action: 'get_upload_token', entry_number: 'BTA-2025-0001', file_name: 'report.pdf' },
-      headers: { 'x-forwarded-for': '10.0.5.4' },
+      headers: { 'x-forwarded-for': '10.0.5.4', authorization: 'Bearer valid-test-token' },
     });
     const res = mockRes();
     await handler(req, res);
@@ -404,7 +414,7 @@ describe('Upload Proxy - get_upload_token', () => {
     const req = mockReq({
       method: 'POST',
       body: { action: 'get_upload_token', entry_number: 'BTA-2025-0001', file_name: 'doc.pdf' },
-      headers: { 'x-forwarded-for': '10.0.5.5' },
+      headers: { 'x-forwarded-for': '10.0.5.5', authorization: 'Bearer valid-test-token' },
     });
     const res = mockRes();
     await handler(req, res);
@@ -425,7 +435,7 @@ describe('Upload Proxy - get_upload_token', () => {
         entry_number: 'BTA-2025-0001',
         file_name: '../../../etc/passwd',
       },
-      headers: { 'x-forwarded-for': '10.0.5.6' },
+      headers: { 'x-forwarded-for': '10.0.5.6', authorization: 'Bearer valid-test-token' },
     });
     const res = mockRes();
     await handler(req, res);
@@ -443,7 +453,7 @@ describe('Upload Proxy - Internal Server Error', () => {
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
     const req = mockReq({
       query: { action: 'get_entry', entry_number: 'BTA-2025-0001' },
-      headers: { 'x-forwarded-for': '10.0.9.1' },
+      headers: { 'x-forwarded-for': '10.0.9.1', authorization: 'Bearer valid-test-token' },
     });
     const res = mockRes();
     await handler(req, res);

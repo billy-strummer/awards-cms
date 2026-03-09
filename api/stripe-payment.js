@@ -19,6 +19,10 @@ const APP_URL = process.env.APP_URL || 'https://admin.britishtradeawards.com';
 const FROM_EMAIL = process.env.FROM_EMAIL || 'awards@britishtradeawards.com';
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+const supabaseAuth = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_KEY
+);
 
 /**
  * Generate a unique invoice number (INV-YYYY-NNNNN).
@@ -53,7 +57,7 @@ async function verifyAuth(req, res) {
   const {
     data: { user },
     error,
-  } = await supabase.auth.getUser(token);
+  } = await supabaseAuth.auth.getUser(token);
   if (error || !user) {
     res.status(401).json({ error: 'Invalid or expired token' });
     return null;
@@ -147,7 +151,9 @@ async function handleStripeWebhook(req, res) {
   let event;
 
   try {
-    event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+    // Vercel may parse body as JSON object; Stripe needs raw body (string/Buffer)
+    const rawBody = typeof req.body === 'string' || Buffer.isBuffer(req.body) ? req.body : JSON.stringify(req.body);
+    event = stripe.webhooks.constructEvent(rawBody, sig, process.env.STRIPE_WEBHOOK_SECRET);
   } catch (err) {
     console.error('Webhook signature verification failed:', err.message);
     return res.status(400).json({ error: `Webhook Error: ${err.message}` });
@@ -235,7 +241,7 @@ async function handleCheckoutSessionCompleted(session) {
       await sendEntryConfirmationEmail(entry);
 
       // Log activity
-      await supabase.from('activity_log').insert([
+      await supabase.from('activity_logs').insert([
         {
           entity_type: 'entry',
           entity_id: entryId,
@@ -267,7 +273,7 @@ async function handlePaymentIntentSucceeded(paymentIntent) {
     if (entries && entries.length > 0) {
       const entry = entries[0];
 
-      // Update entry status if not already paid (checkout.session.completed may have handled it)
+      // Only process if not already handled by checkout.session.completed
       if (entry.payment_status !== 'paid') {
         await supabase
           .from('entries')
@@ -279,31 +285,43 @@ async function handlePaymentIntentSucceeded(paymentIntent) {
           })
           .eq('id', entry.id);
 
-        // Create invoice record
-        const amountPaid = paymentIntent.amount ? paymentIntent.amount / 100 : 95;
-        const piInvoiceNumber = await generateInvoiceNumber();
-        await supabase.from('invoices').insert([
-          {
-            invoice_number: piInvoiceNumber,
-            organisation_id: entry.organisation_id,
-            invoice_type: 'entry_fee',
-            status: 'paid',
-            payment_status: 'paid',
-            total_amount: amountPaid,
-            paid_amount: amountPaid,
-            balance_due: 0,
-            currency: 'GBP',
-            invoice_date: new Date().toISOString().split('T')[0],
-            due_date: new Date().toISOString().split('T')[0],
-            paid_date: new Date().toISOString(),
-            payment_method: 'stripe',
-            payment_reference: paymentIntent.id,
-            notes: `Entry ${entry.entry_number} - ${entry.entry_title}`,
-          },
-        ]);
+        // Check if invoice already exists for this payment reference to avoid duplicates
+        const { data: existingInvoice } = await supabase
+          .from('invoices')
+          .select('id')
+          .eq('payment_reference', paymentIntent.id)
+          .limit(1);
+
+        if (!existingInvoice || existingInvoice.length === 0) {
+          const amountPaid = paymentIntent.amount ? paymentIntent.amount / 100 : 95;
+          const piInvoiceNumber = await generateInvoiceNumber();
+          await supabase.from('invoices').insert([
+            {
+              invoice_number: piInvoiceNumber,
+              organisation_id: entry.organisation_id,
+              invoice_type: 'entry_fee',
+              status: 'paid',
+              payment_status: 'paid',
+              total_amount: amountPaid,
+              paid_amount: amountPaid,
+              balance_due: 0,
+              currency: 'GBP',
+              invoice_date: new Date().toISOString().split('T')[0],
+              due_date: new Date().toISOString().split('T')[0],
+              paid_date: new Date().toISOString(),
+              payment_method: 'stripe',
+              payment_reference: paymentIntent.id,
+              notes: `Entry ${entry.entry_number} - ${entry.entry_title}`,
+            },
+          ]);
+
+          // Create admin notification
+          const amountForNotification = paymentIntent.amount ? paymentIntent.amount / 100 : 95;
+          await createPaymentNotification(entry, amountForNotification);
+        }
 
         // Log activity
-        await supabase.from('activity_log').insert([
+        await supabase.from('activity_logs').insert([
           {
             entity_type: 'entry',
             entity_id: entry.id,
@@ -313,11 +331,8 @@ async function handlePaymentIntentSucceeded(paymentIntent) {
           },
         ]);
 
-        // Create admin notification
-        await createPaymentNotification(entry, amountPaid);
+        await sendEntryConfirmationEmail(entry);
       }
-
-      await sendEntryConfirmationEmail(entry);
     }
   } catch (error) {
     console.error('Error handling payment intent succeeded:', error);
@@ -342,7 +357,7 @@ async function handlePaymentIntentFailed(paymentIntent) {
     await sendPaymentFailedEmail(entry, paymentIntent.last_payment_error?.message);
 
     // Log activity
-    await supabase.from('activity_log').insert([
+    await supabase.from('activity_logs').insert([
       {
         entity_type: 'entry',
         entity_id: entry.id,
@@ -420,7 +435,7 @@ async function handleChargeSucceeded(charge) {
     ]);
 
     // Log activity
-    await supabase.from('activity_log').insert([
+    await supabase.from('activity_logs').insert([
       {
         entity_type: 'entry',
         entity_id: entry.id,
@@ -453,7 +468,7 @@ async function createPaymentNotification(entry, amount) {
   try {
     // Notify all admin users by inserting a notification without user_email filter
     // This uses a generic admin notification approach
-    const { data: admins } = await supabase.from('users').select('email').in('role', ['admin', 'super_admin']);
+    const { data: admins } = await supabase.from('user_roles').select('email').in('role', ['admin', 'super_admin']);
 
     const notifications = (admins || []).map((admin) => ({
       user_email: admin.email,
@@ -763,8 +778,26 @@ async function verifyPayment(req, res) {
  * @param {Object} res - Response object.
  * @returns {Promise<void>}
  */
+// Simple rate limiting for public checkout
+const publicCheckoutLimits = new Map();
+function checkPublicCheckoutRate(ip) {
+  const now = Date.now();
+  const entry = publicCheckoutLimits.get(ip);
+  if (!entry || now - entry.start > 60000) {
+    publicCheckoutLimits.set(ip, { start: now, count: 1 });
+    return true;
+  }
+  entry.count++;
+  return entry.count <= 5; // Max 5 checkout sessions per minute per IP
+}
+
 async function createPublicCheckout(req, res) {
   try {
+    const ip = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
+    if (!checkPublicCheckoutRate(ip)) {
+      return res.status(429).json({ error: 'Too many requests. Please try again later.' });
+    }
+
     const { entry_id, amount } = req.body;
 
     if (!entry_id) {

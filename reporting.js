@@ -386,8 +386,8 @@ const reportingModule = {
         apiClient.selectAll('sponsors', { select: 'id, tier' }),
         apiClient.selectAll('payments', { select: 'id, amount, payment_date' }),
       ]);
-      const totalRev = pmts.reduce((s, p) => s + parseFloat(p.amount || 0), 0);
-      const uniqueJudges = new Set(judgeScores.map((s) => s.judge_email)).size;
+      const totalRev = (pmts || []).reduce((s, p) => s + parseFloat(p.amount || 0), 0);
+      const uniqueJudges = new Set((judgeScores || []).map((s) => s.judge_email)).size;
 
       const doc = new jspdf.jsPDF();
 
@@ -412,11 +412,11 @@ const reportingModule = {
       doc.addPage();
       let y = this._pdfHdr(doc, 'Executive Summary');
       const statusCounts = {};
-      entries.forEach((e) => {
+      (entries || []).forEach((e) => {
         statusCounts[e.status || 'draft'] = (statusCounts[e.status || 'draft'] || 0) + 1;
       });
       const tierCounts = {};
-      sponsors.forEach((s) => {
+      (sponsors || []).forEach((s) => {
         tierCounts[s.tier || 'Unknown'] = (tierCounts[s.tier || 'Unknown'] || 0) + 1;
       });
       y = this._pdfTbl(

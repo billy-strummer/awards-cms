@@ -302,6 +302,7 @@ describe('Email Templates Module - Initialization & Structure', () => {
 describe('Email Templates Module - getTypeLabel()', () => {
   test('returns correct label for known types', () => {
     expect(emailTemplatesModule.getTypeLabel('confirmation')).toBe('Entry Confirmation');
+    expect(emailTemplatesModule.getTypeLabel('nomination_confirmation')).toBe('Nomination Confirmation');
     expect(emailTemplatesModule.getTypeLabel('reminder')).toBe('Upload Reminder');
     expect(emailTemplatesModule.getTypeLabel('revision_request')).toBe('Changes Requested');
     expect(emailTemplatesModule.getTypeLabel('payment_confirmation')).toBe('Payment Confirmation');
@@ -334,6 +335,7 @@ describe('Email Templates Module - getTypeLabel()', () => {
 describe('Email Templates Module - getGroupForType()', () => {
   test('maps entry types to Entry & Submissions', () => {
     expect(emailTemplatesModule.getGroupForType('confirmation')).toBe('Entry & Submissions');
+    expect(emailTemplatesModule.getGroupForType('nomination_confirmation')).toBe('Entry & Submissions');
     expect(emailTemplatesModule.getGroupForType('reminder')).toBe('Entry & Submissions');
     expect(emailTemplatesModule.getGroupForType('revision_request')).toBe('Entry & Submissions');
   });
@@ -375,6 +377,7 @@ describe('Email Templates Module - _isAutoTemplate()', () => {
   test('returns true for auto-triggered template types', () => {
     const autoTypes = [
       'confirmation',
+      'nomination_confirmation',
       'reminder',
       'revision_request',
       'payment_confirmation',
@@ -386,7 +389,12 @@ describe('Email Templates Module - _isAutoTemplate()', () => {
       'winner_announcement',
       'judge_assignment',
       'judge_reminder',
+      'event_invitation',
+      'ticket_issued',
       'deadline_reminder',
+      'general',
+      'notification',
+      'invite',
     ];
     autoTypes.forEach((type) => {
       expect(emailTemplatesModule._isAutoTemplate(type)).toBe(true);
@@ -394,11 +402,7 @@ describe('Email Templates Module - _isAutoTemplate()', () => {
   });
 
   test('returns false for non-auto template types', () => {
-    expect(emailTemplatesModule._isAutoTemplate('general')).toBe(false);
-    expect(emailTemplatesModule._isAutoTemplate('notification')).toBe(false);
-    expect(emailTemplatesModule._isAutoTemplate('invite')).toBe(false);
-    expect(emailTemplatesModule._isAutoTemplate('event_invitation')).toBe(false);
-    expect(emailTemplatesModule._isAutoTemplate('ticket_issued')).toBe(false);
+    expect(emailTemplatesModule._isAutoTemplate('some_custom_type')).toBe(false);
   });
 
   test('returns false for unknown types', () => {
@@ -413,6 +417,7 @@ describe('Email Templates Module - _headerSubtitles', () => {
   test('contains subtitles for all expected template types', () => {
     const subtitles = emailTemplatesModule._headerSubtitles;
     expect(subtitles['confirmation']).toBe('Self-Nomination Entry Confirmation');
+    expect(subtitles['nomination_confirmation']).toBe('Nomination Confirmation');
     expect(subtitles['reminder']).toBe('Document Upload Reminder');
     expect(subtitles['revision_request']).toBe('Action Required');
     expect(subtitles['payment_confirmation']).toBe('Self-Nomination Entry Confirmation');
@@ -649,8 +654,14 @@ describe('Email Templates Module - renderTemplateEditor()', () => {
   });
 
   test('does not render revert button for templates without defaults', () => {
-    // "General Notification" is not in _defaultTemplates
-    emailTemplatesModule.renderTemplateEditor(sampleTemplates[5]);
+    // A template whose name is not in _defaultTemplates
+    const customTemplate = {
+      ...sampleTemplates[0],
+      id: 'custom-tpl',
+      template_name: 'My Custom Template',
+      template_type: 'confirmation',
+    };
+    emailTemplatesModule.renderTemplateEditor(customTemplate);
     const editor = document.getElementById('templateEditor');
     expect(editor.innerHTML).not.toContain('Revert to Default');
   });

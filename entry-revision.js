@@ -302,10 +302,111 @@ const entryRevisionModule = {
 
   async _adminDecision(entryId, status) {
     try {
+      if (status === 'Rejected') {
+        const confirmed = await utils.confirmDialog({
+          title: 'Reject Entry',
+          message:
+            'This will mark the entry as rejected and an automatic email response will be sent to the recipient notifying them of the decision.',
+          confirmText: 'Reject & Send Email',
+          danger: true,
+        });
+        if (!confirmed) return;
+      }
+
+      if (status === 'Approved') {
+        const confirmed = await utils.confirmDialog({
+          title: 'Approve Entry',
+          message: 'This will mark the entry as approved. Do you wish to proceed?',
+          confirmText: 'Approve',
+          danger: false,
+        });
+        if (!confirmed) return;
+      }
+
       await apiClient.update('entries', entryId, { status, updated_at: new Date().toISOString() });
       utils.showToast(`Entry marked as ${status}.`, 'success');
+
+      if (status === 'Rejected') {
+        await this._sendRejectionEmail(entryId);
+      }
     } catch (err) {
       utils.showToast('Update failed: ' + err.message, 'error');
+    }
+  },
+
+  async _sendRejectionEmail(entryId) {
+    try {
+      const entryResult = await apiClient.select('entries', {
+        select: 'id, entry_number, entry_title, contact_name, contact_email, award_id',
+        filters: { id: { eq: entryId } },
+        pageSize: 1,
+      });
+      const entry = entryResult.data?.[0];
+      if (!entry?.contact_email) return;
+
+      // Try to get award name
+      let awardName = '';
+      if (entry.award_id) {
+        try {
+          const awardResult = await apiClient.select('awards', {
+            select: 'award_name',
+            filters: { id: { eq: entry.award_id } },
+            pageSize: 1,
+          });
+          awardName = awardResult.data?.[0]?.award_name || '';
+        } catch (_) {
+          /* non-fatal */
+        }
+      }
+
+      // Try to load editable template from CMS
+      let subject, html;
+      let tpl = null;
+      try {
+        const tplResult = await apiClient.select('email_templates', {
+          select: 'subject, body',
+          filters: { template_type: { eq: 'rejection' }, is_active: { eq: true } },
+          sort: { column: 'is_default', ascending: false },
+          pageSize: 1,
+        });
+        tpl = tplResult.data?.[0] || null;
+      } catch (_) {
+        /* template table may not exist */
+      }
+
+      if (tpl) {
+        const placeholders = {
+          CONTACT_NAME: entry.contact_name || '',
+          COMPANY_NAME: entry.contact_name || '',
+          ENTRY_NUMBER: entry.entry_number || '',
+          ENTRY_TITLE: entry.entry_title || '',
+          AWARD_NAME: awardName,
+        };
+        subject = tpl.subject;
+        let bodyText = tpl.body;
+        for (const [key, value] of Object.entries(placeholders)) {
+          const regex = new RegExp(`\\{${key}\\}`, 'g');
+          subject = subject.replace(regex, utils.escapeHtml(value));
+          bodyText = bodyText.replace(regex, utils.escapeHtml(value));
+        }
+        html = bodyText.replace(/\n/g, '<br>');
+      } else {
+        subject = `Your Entry Update - ${entry.entry_number}`;
+        html = `<p>Dear ${utils.escapeHtml(entry.contact_name)},</p>
+<p>Thank you for entering the <strong>${utils.escapeHtml(awardName)}</strong> category.</p>
+<p>After careful consideration by our judging panel, we regret to inform you that your entry has not been selected for the shortlist on this occasion.</p>
+<p>We received an exceptionally high standard of entries this year. We would welcome an entry from you again next year.</p>
+<p>Kind regards,<br>British Trade Awards Team</p>`;
+      }
+
+      const token = await apiClient._getToken();
+      await fetch('/api/resend-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action: 'send', to: entry.contact_email, subject, message: html }),
+      });
+    } catch (err) {
+      console.warn('Rejection email failed (non-fatal):', err.message);
     }
   },
 
@@ -342,6 +443,16 @@ const entryRevisionModule = {
       utils.showToast('Please enter feedback.', 'warning');
       return;
     }
+
+    const confirmed = await utils.confirmDialog({
+      title: 'Request Changes',
+      message:
+        'An automatic email response will be sent to the recipient with your feedback, requesting them to revise their entry.',
+      confirmText: 'Send Revision Request',
+      danger: false,
+    });
+    if (!confirmed) return;
+
     bootstrap.Modal.getInstance(document.getElementById('revChangesModal'))?.hide();
     await this.requestChanges(entryId, feedback);
   },

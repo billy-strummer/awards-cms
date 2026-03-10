@@ -55,6 +55,29 @@ If you have any questions about your entry or the awards process, please contact
 Kind regards,
 The British Trade Awards Team`,
     },
+    'Nomination Confirmation': {
+      subject: 'Nomination Received - {ENTRY_NUMBER} | British Trade Awards',
+      body: `Dear {CONTACT_NAME},
+
+Thank you for submitting your nomination for the British Trade Awards. We are pleased to confirm that your nomination has been received and is now being processed.
+
+Nomination Details:
+- Reference: {ENTRY_NUMBER}
+- Nominee: {NOMINEE_NAME}
+- Category: {AWARD_NAME}
+
+What Happens Next:
+1. Our team will review your nomination to ensure all details are complete.
+2. Shortlisted nominations will be assessed by our independent judging panel.
+3. Winners will be announced at the awards ceremony.
+
+Please keep your nomination reference number {ENTRY_NUMBER} safe for future correspondence.
+
+If you have any questions, please contact us at {CONTACT_EMAIL}
+
+Kind regards,
+The British Trade Awards Team`,
+    },
     'Document Upload Reminder': {
       subject: 'Supporting Documents Reminder - {ENTRY_NUMBER} | British Trade Awards',
       body: `Dear {CONTACT_NAME},
@@ -312,6 +335,7 @@ The British Trade Awards Team`,
    */
   _headerSubtitles: {
     confirmation: 'Self-Nomination Entry Confirmation',
+    nomination_confirmation: 'Nomination Confirmation',
     reminder: 'Document Upload Reminder',
     revision_request: 'Action Required',
     payment_confirmation: 'Self-Nomination Entry Confirmation',
@@ -485,7 +509,10 @@ The British Trade Awards Team`,
    */
   // Group definitions: map template_type to a workflow group
   templateGroups: {
-    'Entry & Submissions': { types: ['confirmation', 'reminder', 'revision_request'], icon: 'bi-pencil-square' },
+    'Entry & Submissions': {
+      types: ['confirmation', 'nomination_confirmation', 'reminder', 'revision_request'],
+      icon: 'bi-pencil-square',
+    },
     Payments: {
       types: ['payment_confirmation', 'payment_failed', 'refund_confirmation', 'payment_reminder'],
       icon: 'bi-credit-card',
@@ -526,6 +553,7 @@ The British Trade Awards Team`,
   _isAutoTemplate(type) {
     const autoTypes = [
       'confirmation',
+      'nomination_confirmation',
       'reminder',
       'revision_request',
       'payment_confirmation',
@@ -537,7 +565,12 @@ The British Trade Awards Team`,
       'winner_announcement',
       'judge_assignment',
       'judge_reminder',
+      'event_invitation',
+      'ticket_issued',
       'deadline_reminder',
+      'general',
+      'notification',
+      'invite',
     ];
     return autoTypes.includes(type);
   },
@@ -639,6 +672,7 @@ The British Trade Awards Team`,
   getTypeLabel(type) {
     const labels = {
       confirmation: 'Entry Confirmation',
+      nomination_confirmation: 'Nomination Confirmation',
       reminder: 'Upload Reminder',
       revision_request: 'Changes Requested',
       payment_confirmation: 'Payment Confirmation',
@@ -715,6 +749,7 @@ The British Trade Awards Team`,
             <select class="form-select" id="templateType" required>
               <optgroup label="Entry & Submissions">
                 <option value="confirmation" ${template.template_type === 'confirmation' ? 'selected' : ''}>Entry Confirmation</option>
+                <option value="nomination_confirmation" ${template.template_type === 'nomination_confirmation' ? 'selected' : ''}>Nomination Confirmation</option>
                 <option value="reminder" ${template.template_type === 'reminder' ? 'selected' : ''}>Upload Reminder</option>
                 <option value="revision_request" ${template.template_type === 'revision_request' ? 'selected' : ''}>Changes Requested</option>
               </optgroup>
@@ -1135,6 +1170,7 @@ The British Trade Awards Team`,
                     <select class="form-select" id="newTemplateType" required>
                       <optgroup label="Entry & Submissions">
                         <option value="confirmation">Entry Confirmation</option>
+                        <option value="nomination_confirmation">Nomination Confirmation</option>
                         <option value="reminder">Upload Reminder</option>
                         <option value="revision_request">Changes Requested</option>
                       </optgroup>

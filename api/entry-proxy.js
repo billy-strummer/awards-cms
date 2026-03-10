@@ -13,7 +13,7 @@
  */
 
 const { createClient } = require('@supabase/supabase-js');
-const { sendEmail, wrapEmailTemplate } = require('./resend-email');
+const { sendEntryConfirmation, sendNominationConfirmation } = require('./email-automation');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
@@ -302,12 +302,8 @@ async function handleSubmitEntry(req, res) {
       /* non-blocking */
     }
 
-    // Try sending confirmation email
-    try {
-      await supabase.rpc('send_entry_confirmation_email', { p_entry_id: baseEntry.id });
-    } catch (_e) {
-      /* non-blocking */
-    }
+    // Send confirmation email (non-blocking)
+    sendEntryConfirmation(baseEntry.id).catch(() => {});
 
     return res.status(200).json({
       success: true,
@@ -315,55 +311,13 @@ async function handleSubmitEntry(req, res) {
     });
   }
 
-  // Try sending confirmation email
-  try {
-    await supabase.rpc('send_entry_confirmation_email', { p_entry_id: entry.id });
-  } catch (_e) {
-    /* non-blocking */
-  }
+  // Send confirmation email (non-blocking)
+  sendEntryConfirmation(entry.id).catch(() => {});
 
   return res.status(200).json({
     success: true,
     entry: { id: entry.id, entry_number: entry.entry_number },
   });
-}
-
-// ────────────────────────────────────────────
-// Send nomination confirmation email (non-blocking)
-// ────────────────────────────────────────────
-
-async function sendNominationConfirmationEmail(nominatorEmail, nominatorName, nomineeName, awardCategory, entryNumber) {
-  try {
-    const esc = (s) =>
-      String(s || '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
-
-    const bodyHtml = `
-      <h2>Nomination Received</h2>
-      <p>Dear ${esc(nominatorName)},</p>
-      <p>Thank you for nominating <strong>${esc(nomineeName)}</strong> for the <strong>${esc(awardCategory)}</strong> award.</p>
-      <p><strong>Reference Number:</strong> ${esc(entryNumber)}</p>
-      <p>Our team will review your nomination. We appreciate you taking the time to recognise excellence in the trade industry.</p>
-      <p>If you have any questions, please don&rsquo;t hesitate to get in touch.</p>
-      <p>Kind regards,<br>The British Trade Awards Team</p>
-    `;
-
-    const subject = `Nomination Received: ${awardCategory} - ${entryNumber}`;
-    const html = wrapEmailTemplate(subject, bodyHtml, '', {}, 'Nomination Confirmation');
-
-    await sendEmail({
-      to: nominatorEmail,
-      subject,
-      html,
-      tags: [{ name: 'template', value: 'nomination_confirmation' }],
-    });
-  } catch (err) {
-    console.error('Nomination confirmation email failed:', err);
-    // Non-blocking — don't fail the submission
-  }
 }
 
 // Handle nomination submission
@@ -581,13 +535,13 @@ async function handleSubmitNomination(req, res) {
 
     // Send confirmation email (non-blocking)
     const fallbackNominee = isNewBusiness ? safe.businessName : safe.nomineeName;
-    sendNominationConfirmationEmail(
-      safe.nominatorEmail,
-      safe.nominatorName,
-      fallbackNominee,
-      safe.awardCategory,
-      baseEntry.entry_number
-    );
+    sendNominationConfirmation(safe.nominatorEmail, {
+      contact_name: safe.nominatorName,
+      nominee_name: fallbackNominee,
+      award_name: safe.awardCategory,
+      entry_number: baseEntry.entry_number,
+      region: safe.region || '',
+    }).catch(() => {});
 
     return res.status(200).json({
       success: true,
@@ -597,13 +551,13 @@ async function handleSubmitNomination(req, res) {
 
   // Send confirmation email (non-blocking)
   const nomineDisplay = isNewBusiness ? safe.businessName : safe.nomineeName;
-  sendNominationConfirmationEmail(
-    safe.nominatorEmail,
-    safe.nominatorName,
-    nomineDisplay,
-    safe.awardCategory,
-    entry.entry_number
-  );
+  sendNominationConfirmation(safe.nominatorEmail, {
+    contact_name: safe.nominatorName,
+    nominee_name: nomineDisplay,
+    award_name: safe.awardCategory,
+    entry_number: entry.entry_number,
+    region: safe.region || '',
+  }).catch(() => {});
 
   return res.status(200).json({
     success: true,

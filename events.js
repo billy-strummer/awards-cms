@@ -1794,7 +1794,7 @@ const eventsModule = {
       `Guest Type: ${(ticket.guestType || 'guest').toUpperCase()}\n\n` +
       `Please present this ticket number at the door. We look forward to seeing you.\n\nBritish Trade Awards`;
 
-    this._showEmailPreview(subject, body, [ticket.attendeeEmail], eventId);
+    this._showEmailPreview(subject, body, [ticket.attendeeEmail], eventId, 'ticket_issued');
   },
 
   async emailAllTickets() {
@@ -1820,7 +1820,8 @@ const eventsModule = {
       subject,
       body,
       activeTickets.map((t) => t.attendeeEmail),
-      eventId
+      eventId,
+      'ticket_issued'
     );
   },
 
@@ -1929,7 +1930,7 @@ const eventsModule = {
       `We look forward to seeing you there.\n\nBest regards,\nBritish Trade Awards`;
 
     // Open compose modal
-    this._showEmailPreview(subject, body, [attendee.email], eventId);
+    this._showEmailPreview(subject, body, [attendee.email], eventId, 'event_invitation');
   },
 
   async sendBulkInvites() {
@@ -1954,10 +1955,10 @@ const eventsModule = {
       `We look forward to seeing you there.\n\nBest regards,\nBritish Trade Awards`;
 
     const emails = uninvited.map((a) => a.email);
-    this._showEmailPreview(subject, body, emails, eventId);
+    this._showEmailPreview(subject, body, emails, eventId, 'event_invitation');
   },
 
-  _showEmailPreview(subject, body, recipients, _eventId) {
+  _showEmailPreview(subject, body, recipients, _eventId, templateType) {
     const recipientStr =
       recipients.length > 3
         ? `${recipients.slice(0, 3).join(', ')} + ${recipients.length - 3} more`
@@ -1967,7 +1968,7 @@ const eventsModule = {
         <div class="modal-dialog modal-lg" style="max-width:700px;">
           <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-              <h5 class="modal-title"><i class="bi bi-envelope me-2"></i>Send Invitation Email</h5>
+              <h5 class="modal-title"><i class="bi bi-envelope me-2"></i>Send Email</h5>
               <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -1986,14 +1987,13 @@ const eventsModule = {
               </div>
               <div class="alert alert-info mb-0">
                 <i class="bi bi-info-circle me-2"></i>
-                <strong>Send via:</strong> This will open your default email client with the composed message.
-                For bulk sends, use the <code>mailto:</code> link or copy content for your email marketing tool.
+                Use <strong>Send via Resend</strong> to send branded emails through the system, or <strong>Open in Email Client</strong> to compose manually.
               </div>
             </div>
             <div class="modal-footer">
               <button class="btn btn-outline-secondary" data-action="eventsModule._copyEmailContent"><i class="bi bi-clipboard me-1"></i>Copy Content</button>
-              <button class="btn btn-outline-primary" data-action="eventsModule._downloadMailMerge" data-id="eventId"><i class="bi bi-download me-1"></i>Download CSV for Mail Merge</button>
-              <button class="btn btn-primary" data-action="eventsModule._openMailto"><i class="bi bi-send me-1"></i>Open in Email Client</button>
+              <button class="btn btn-outline-primary" data-action="eventsModule._openMailto"><i class="bi bi-envelope me-1"></i>Open in Email Client</button>
+              <button class="btn btn-primary" data-action="eventsModule._sendViaSystem"><i class="bi bi-send me-1"></i>Send via Resend</button>
             </div>
           </div>
         </div>
@@ -2004,6 +2004,7 @@ const eventsModule = {
     if (old) old.remove();
     document.body.insertAdjacentHTML('beforeend', html);
     this._emailRecipients = recipients;
+    this._emailTemplateType = templateType || null;
     const emailModalEl = document.getElementById('emailPreviewModal');
     const modal = new bootstrap.Modal(emailModalEl);
     // Ensure backdrop stacks above the attendees modal
@@ -2015,6 +2016,7 @@ const eventsModule = {
   },
 
   _emailRecipients: [],
+  _emailTemplateType: null,
 
   _openMailto() {
     const subject = encodeURIComponent(document.getElementById('emailSubjectInput').value);
@@ -2022,6 +2024,70 @@ const eventsModule = {
     const emails = this._emailRecipients.join(',');
     window.open(`mailto:${emails}?subject=${subject}&body=${body}`, '_self');
     utils.showToast('Email client opened', 'success');
+  },
+
+  async _sendViaSystem() {
+    const subject = document.getElementById('emailSubjectInput').value;
+    const body = document.getElementById('emailBodyInput').value;
+    const recipients = this._emailRecipients;
+    if (!recipients.length) {
+      utils.showToast('No recipients', 'warning');
+      return;
+    }
+
+    const recipientCount = recipients.length;
+    const confirmed = await utils.confirmDialog({
+      title: 'Send Email',
+      message: `An automatic email response will be sent to ${recipientCount} recipient${recipientCount > 1 ? 's' : ''}. The email will use your branded template and be delivered via Resend.`,
+      confirmText: `Send to ${recipientCount} Recipient${recipientCount > 1 ? 's' : ''}`,
+      danger: false,
+    });
+    if (!confirmed) return;
+
+    const sendBtn = document.querySelector('[data-action="eventsModule._sendViaSystem"]');
+    if (sendBtn) {
+      sendBtn.disabled = true;
+      sendBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Sending...';
+    }
+
+    try {
+      const token = await apiClient._getToken();
+      let sent = 0;
+      let failed = 0;
+
+      for (const email of recipients) {
+        try {
+          const res = await fetch('/api/resend-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ action: 'send', to: email, subject, message: body.replace(/\n/g, '<br>') }),
+          });
+          if (res.ok) {
+            sent++;
+          } else {
+            failed++;
+          }
+        } catch (_) {
+          failed++;
+        }
+      }
+
+      const modal = bootstrap.Modal.getInstance(document.getElementById('emailPreviewModal'));
+      if (modal) modal.hide();
+
+      if (failed === 0) {
+        utils.showToast(`${sent} email${sent > 1 ? 's' : ''} sent successfully`, 'success');
+      } else {
+        utils.showToast(`${sent} sent, ${failed} failed`, 'warning');
+      }
+    } catch (err) {
+      utils.showToast('Send failed: ' + err.message, 'error');
+    } finally {
+      if (sendBtn) {
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = '<i class="bi bi-send me-1"></i>Send via Resend';
+      }
+    }
   },
 
   _copyEmailContent() {

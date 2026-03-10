@@ -248,6 +248,14 @@ describe('Entry Revision Module - setRevisionDeadline', () => {
 });
 
 describe('Entry Revision Module - _adminDecision', () => {
+  beforeEach(() => {
+    jest.spyOn(utils, 'confirmDialog').mockResolvedValue(true);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   test('updates entry status on admin decision', async () => {
     apiClient.update = jest.fn().mockResolvedValue({});
     await entryRevisionModule._adminDecision('e1', 'Approved');
@@ -256,8 +264,17 @@ describe('Entry Revision Module - _adminDecision', () => {
 
   test('updates entry status to Rejected', async () => {
     apiClient.update = jest.fn().mockResolvedValue({});
+    entryRevisionModule._sendRejectionEmail = jest.fn().mockResolvedValue();
     await entryRevisionModule._adminDecision('e1', 'Rejected');
     expect(apiClient.update).toHaveBeenCalledWith('entries', 'e1', expect.objectContaining({ status: 'Rejected' }));
+    expect(entryRevisionModule._sendRejectionEmail).toHaveBeenCalledWith('e1');
+  });
+
+  test('does not proceed when confirmation is cancelled', async () => {
+    utils.confirmDialog.mockResolvedValue(false);
+    apiClient.update = jest.fn().mockResolvedValue({});
+    await entryRevisionModule._adminDecision('e1', 'Rejected');
+    expect(apiClient.update).not.toHaveBeenCalled();
   });
 
   test('shows error toast on failure', async () => {
@@ -595,6 +612,7 @@ describe('Entry Revision Module - _showRequestChangesModal()', () => {
 describe('Entry Revision Module - _submitModalChanges()', () => {
   beforeEach(() => {
     entryRevisionModule._showRequestChangesModal('e1');
+    jest.spyOn(utils, 'confirmDialog').mockResolvedValue(true);
   });
 
   afterEach(() => {
@@ -614,6 +632,14 @@ describe('Entry Revision Module - _submitModalChanges()', () => {
     jest.spyOn(entryRevisionModule, 'requestChanges').mockResolvedValue(true);
     await entryRevisionModule._submitModalChanges('e1');
     expect(entryRevisionModule.requestChanges).toHaveBeenCalledWith('e1', 'Fix the images');
+  });
+
+  test('does not send when confirmation is cancelled', async () => {
+    document.getElementById('revChangesFeedback').value = 'Fix the images';
+    utils.confirmDialog.mockResolvedValue(false);
+    jest.spyOn(entryRevisionModule, 'requestChanges').mockResolvedValue(true);
+    await entryRevisionModule._submitModalChanges('e1');
+    expect(entryRevisionModule.requestChanges).not.toHaveBeenCalled();
   });
 });
 

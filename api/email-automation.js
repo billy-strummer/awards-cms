@@ -60,12 +60,20 @@ async function loadTenantBranding(tenantId = 'default') {
  */
 const HEADER_SUBTITLES = {
   ENTRY_CONFIRMATION: 'Self-Nomination Entry Confirmation',
+  NOMINATION_CONFIRMATION: 'Nomination Confirmation',
   PAYMENT_REMINDER: 'Payment Reminder',
   SHORTLIST_NOTIFICATION: 'Entry Approved/Shortlisted',
   WINNER_ANNOUNCEMENT: 'Entry Approved',
   JUDGE_ASSIGNMENT: 'Judging Assignment',
   JUDGE_REMINDER: 'Judging Reminder',
   DEADLINE_REMINDER: 'Document Upload Reminder',
+  REVISION_REQUEST: 'Action Required',
+  REJECTION: 'Entry Update',
+  EVENT_INVITATION: 'Event Invitation',
+  TICKET_ISSUED: 'Ticket Issued',
+  GENERAL: 'Notification',
+  NOTIFICATION: 'Notification',
+  INVITE: 'Invitation',
 };
 
 /**
@@ -86,6 +94,7 @@ function wrapEmailTemplate(bodyContent, branding = {}, subtitle = '') {
  */
 const DB_TEMPLATE_TYPE_MAP = {
   ENTRY_CONFIRMATION: 'confirmation',
+  NOMINATION_CONFIRMATION: 'nomination_confirmation',
   ENTRY_DEADLINE_REMINDER: 'entry_deadline_reminder',
   PAYMENT_REMINDER: 'payment_reminder',
   SHORTLIST_NOTIFICATION: 'approval',
@@ -93,6 +102,13 @@ const DB_TEMPLATE_TYPE_MAP = {
   JUDGE_ASSIGNMENT: 'judge_assignment',
   JUDGE_REMINDER: 'judge_reminder',
   DEADLINE_REMINDER: 'deadline_reminder',
+  REVISION_REQUEST: 'revision_request',
+  REJECTION: 'rejection',
+  EVENT_INVITATION: 'event_invitation',
+  TICKET_ISSUED: 'ticket_issued',
+  GENERAL: 'general',
+  NOTIFICATION: 'notification',
+  INVITE: 'invite',
 };
 
 /**
@@ -177,6 +193,37 @@ const EMAIL_TEMPLATES = {
 
         <p>Best of luck!</p>
         <p><strong>{{brand_name}} Team</strong></p>
+      </div>
+    `,
+  },
+
+  NOMINATION_CONFIRMATION: {
+    subject: 'Nomination Received - {{entry_number}} | {{brand_name}}',
+    body: `
+      <div style="padding: 30px 40px;">
+        <h1 style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 28px; color: #1a1a1a;">Nomination Confirmation</h1>
+        <p>Dear {{contact_name}},</p>
+        <p>Thank you for submitting your nomination for the {{brand_name}}. We are pleased to confirm that your nomination has been received and is now being processed.</p>
+
+        <div style="background: #fffdf5; border-left: 4px solid #D4AF37; padding: 16px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+          <h3 style="margin: 0 0 12px; color: #1a1a1a; font-size: 16px;">Nomination Details</h3>
+          <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
+            <tr><td style="padding: 4px 8px; color: #6c757d; width: 120px;">Reference:</td><td style="padding: 4px 8px; font-weight: 600;">{{entry_number}}</td></tr>
+            <tr><td style="padding: 4px 8px; color: #6c757d;">Nominee:</td><td style="padding: 4px 8px;">{{nominee_name}}</td></tr>
+            <tr><td style="padding: 4px 8px; color: #6c757d;">Category:</td><td style="padding: 4px 8px;">{{award_name}}</td></tr>
+          </table>
+        </div>
+
+        <h3 style="color: #1a1a1a; font-size: 16px;">What Happens Next</h3>
+        <ol style="padding-left: 20px;">
+          <li style="margin-bottom: 8px;">Our team will review your nomination to ensure all details are complete.</li>
+          <li style="margin-bottom: 8px;">Shortlisted nominations will be assessed by our independent judging panel.</li>
+          <li style="margin-bottom: 8px;">Winners will be announced at the awards ceremony.</li>
+        </ol>
+
+        <p>Please keep your nomination reference number <strong>{{entry_number}}</strong> safe for future correspondence.</p>
+
+        <p style="margin-top: 24px;">Kind regards,<br><strong>{{brand_name}} Team</strong></p>
       </div>
     `,
   },
@@ -398,6 +445,170 @@ const EMAIL_TEMPLATES = {
       </div>
     `,
   },
+
+  REVISION_REQUEST: {
+    subject: '📝 Action Required: Changes Requested - {{entry_title}}',
+    body: `
+      <div style="padding: 30px 40px;">
+        <h1 style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 28px; color: #1a1a1a;">Changes Requested</h1>
+        <p>Dear {{contact_name}},</p>
+
+        <p>Your entry <strong>{{entry_title}}</strong> ({{entry_number}}) requires some changes before it can proceed to the judging stage.</p>
+
+        <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+          <h3 style="margin-top: 0; color: #856404;">Feedback from our team:</h3>
+          <p style="margin-bottom: 0;">{{feedback}}</p>
+        </div>
+
+        <p>Please review the feedback and update your entry at your earliest convenience.</p>
+
+        <table cellpadding="0" cellspacing="0" border="0" style="margin: 20px 0;">
+          <tr>
+            <td style="background: #0d6efd; border-radius: 6px;">
+              <a href="{{action_link}}" style="color: #ffffff; padding: 12px 24px; text-decoration: none; display: inline-block; font-family: Arial, sans-serif; font-weight: bold;">
+                Review & Update Entry
+              </a>
+            </td>
+          </tr>
+        </table>
+
+        <p>If you have any questions, please contact us.</p>
+        <p><strong>{{brand_name}} Team</strong></p>
+      </div>
+    `,
+  },
+
+  REJECTION: {
+    subject: 'Your Entry Update - {{entry_number}} | {{brand_name}}',
+    body: `
+      <div style="padding: 30px 40px;">
+        <h1 style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 28px; color: #1a1a1a;">Entry Update</h1>
+        <p>Dear {{contact_name}},</p>
+
+        <p>Thank you for entering <strong>{{company_name}}</strong> into the <strong>{{award_name}}</strong> category at the {{brand_name}}.</p>
+
+        <div style="background: #f8f9fa; padding: 15px 20px; border-radius: 8px; margin: 20px 0;">
+          <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
+            <tr><td style="padding: 4px 8px; color: #6c757d; width: 120px;">Reference:</td><td style="padding: 4px 8px;">{{entry_number}}</td></tr>
+            <tr><td style="padding: 4px 8px; color: #6c757d;">Company:</td><td style="padding: 4px 8px;">{{company_name}}</td></tr>
+            <tr><td style="padding: 4px 8px; color: #6c757d;">Category:</td><td style="padding: 4px 8px;">{{award_name}}</td></tr>
+          </table>
+        </div>
+
+        <p>After careful consideration by our judging panel, we regret to inform you that your entry has not been selected for the shortlist on this occasion.</p>
+
+        <p>We received an exceptionally high standard of entries this year, making the selection process extremely competitive. Not being shortlisted is in no way a reflection on the quality of your business or the work you do.</p>
+
+        <p>We would very much welcome an entry from you again next year and wish you continued success.</p>
+
+        <p>Kind regards,<br><strong>{{brand_name}} Team</strong></p>
+      </div>
+    `,
+  },
+
+  EVENT_INVITATION: {
+    subject: "✉️ You're Invited: {{event_name}}",
+    body: `
+      <div style="padding: 30px 40px;">
+        <h1 style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 28px; color: #1a1a1a;">You're Invited!</h1>
+        <p>Dear {{contact_name}},</p>
+
+        <p>You are cordially invited to attend the <strong>{{event_name}}</strong>.</p>
+
+        <div style="background: #f0f4ff; border-left: 4px solid #0d6efd; padding: 16px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+          <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
+            <tr><td style="padding: 4px 8px; color: #6c757d; width: 80px;">Date:</td><td style="padding: 4px 8px; font-weight: 600;">{{event_date}}</td></tr>
+            <tr><td style="padding: 4px 8px; color: #6c757d;">Venue:</td><td style="padding: 4px 8px;">{{venue}}</td></tr>
+          </table>
+        </div>
+
+        <p>We would be honoured by your presence at this special occasion.</p>
+
+        <table cellpadding="0" cellspacing="0" border="0" style="margin: 20px 0;">
+          <tr>
+            <td style="background: #0d6efd; border-radius: 6px;">
+              <a href="{{rsvp_link}}" style="color: #ffffff; padding: 12px 24px; text-decoration: none; display: inline-block; font-family: Arial, sans-serif; font-weight: bold;">
+                RSVP Now
+              </a>
+            </td>
+          </tr>
+        </table>
+
+        <p><strong>{{brand_name}} Team</strong></p>
+      </div>
+    `,
+  },
+
+  TICKET_ISSUED: {
+    subject: '🎟️ Your Ticket: {{event_name}}',
+    body: `
+      <div style="padding: 30px 40px;">
+        <h1 style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 28px; color: #1a1a1a;">Your Ticket</h1>
+        <p>Dear {{contact_name}},</p>
+
+        <p>Your ticket for <strong>{{event_name}}</strong> has been issued.</p>
+
+        <div style="background: #f0f4ff; border-left: 4px solid #0d6efd; padding: 16px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+          <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
+            <tr><td style="padding: 4px 8px; color: #6c757d; width: 120px;">Ticket No:</td><td style="padding: 4px 8px; font-weight: 600;">{{ticket_number}}</td></tr>
+            <tr><td style="padding: 4px 8px; color: #6c757d;">Event:</td><td style="padding: 4px 8px;">{{event_name}}</td></tr>
+            <tr><td style="padding: 4px 8px; color: #6c757d;">Date:</td><td style="padding: 4px 8px;">{{event_date}}</td></tr>
+            <tr><td style="padding: 4px 8px; color: #6c757d;">Venue:</td><td style="padding: 4px 8px;">{{venue}}</td></tr>
+          </table>
+        </div>
+
+        <p>Please present this ticket at check-in. You may also receive a QR code closer to the event date.</p>
+
+        <p><strong>{{brand_name}} Team</strong></p>
+      </div>
+    `,
+  },
+
+  GENERAL: {
+    subject: '{{subject_line}}',
+    body: `
+      <div style="padding: 30px 40px;">
+        <p>Dear {{recipient_name}},</p>
+        <p>{{message_body}}</p>
+        <p>Kind regards,<br><strong>{{brand_name}} Team</strong></p>
+      </div>
+    `,
+  },
+
+  NOTIFICATION: {
+    subject: '🔔 {{subject_line}} - {{brand_name}}',
+    body: `
+      <div style="padding: 30px 40px;">
+        <h1 style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 28px; color: #1a1a1a;">{{subject_line}}</h1>
+        <p>Dear {{recipient_name}},</p>
+        <p>{{message_body}}</p>
+        <p><strong>{{brand_name}} Team</strong></p>
+      </div>
+    `,
+  },
+
+  INVITE: {
+    subject: '✉️ {{subject_line}} - {{brand_name}}',
+    body: `
+      <div style="padding: 30px 40px;">
+        <h1 style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 28px; color: #1a1a1a;">You're Invited</h1>
+        <p>Dear {{recipient_name}},</p>
+        <p>{{message_body}}</p>
+
+        <table cellpadding="0" cellspacing="0" border="0" style="margin: 20px 0;">
+          <tr>
+            <td style="background: #0d6efd; border-radius: 6px;">
+              <a href="{{action_link}}" style="color: #ffffff; padding: 12px 24px; text-decoration: none; display: inline-block; font-family: Arial, sans-serif; font-weight: bold;">
+                {{action_button_text}}
+              </a>
+            </td>
+          </tr>
+        </table>
+
+        <p><strong>{{brand_name}} Team</strong></p>
+      </div>
+    `,
+  },
 };
 
 /**
@@ -535,6 +746,126 @@ async function sendEntryConfirmation(entryId) {
     return await sendTemplateEmail('ENTRY_CONFIRMATION', entry.contact_email, variables);
   } catch (error) {
     console.error('Error sending entry confirmation:', error);
+    return false;
+  }
+}
+
+/**
+ * Send nomination confirmation email.
+ * @param {string} toEmail - Nominator's email address.
+ * @param {Object} variables - Template variables (contact_name, nominee_name, award_name, entry_number, region).
+ * @returns {Promise<boolean>} True if the email was sent successfully, false otherwise.
+ */
+async function sendNominationConfirmation(toEmail, variables) {
+  try {
+    return await sendTemplateEmail('NOMINATION_CONFIRMATION', toEmail, variables);
+  } catch (error) {
+    console.error('Error sending nomination confirmation:', error);
+    return false;
+  }
+}
+
+/**
+ * Send revision request email when an entry needs changes.
+ * @param {string} toEmail - Entrant's email address.
+ * @param {Object} variables - Template variables (contact_name, entry_title, entry_number, feedback, action_link).
+ * @returns {Promise<boolean>} True if the email was sent successfully.
+ */
+async function sendRevisionRequest(toEmail, variables) {
+  try {
+    return await sendTemplateEmail('REVISION_REQUEST', toEmail, variables);
+  } catch (error) {
+    console.error('Error sending revision request:', error);
+    return false;
+  }
+}
+
+/**
+ * Send rejection/not-shortlisted email.
+ * @param {string} toEmail - Entrant's email address.
+ * @param {Object} variables - Template variables (contact_name, company_name, award_name, entry_number).
+ * @returns {Promise<boolean>} True if the email was sent successfully.
+ */
+async function sendRejection(toEmail, variables) {
+  try {
+    return await sendTemplateEmail('REJECTION', toEmail, variables);
+  } catch (error) {
+    console.error('Error sending rejection email:', error);
+    return false;
+  }
+}
+
+/**
+ * Send event invitation email.
+ * @param {string} toEmail - Invitee's email address.
+ * @param {Object} variables - Template variables (contact_name, event_name, event_date, venue, rsvp_link).
+ * @returns {Promise<boolean>} True if the email was sent successfully.
+ */
+async function sendEventInvitation(toEmail, variables) {
+  try {
+    return await sendTemplateEmail('EVENT_INVITATION', toEmail, variables);
+  } catch (error) {
+    console.error('Error sending event invitation:', error);
+    return false;
+  }
+}
+
+/**
+ * Send ticket issued email.
+ * @param {string} toEmail - Attendee's email address.
+ * @param {Object} variables - Template variables (contact_name, event_name, event_date, venue, ticket_number).
+ * @returns {Promise<boolean>} True if the email was sent successfully.
+ */
+async function sendTicketIssued(toEmail, variables) {
+  try {
+    return await sendTemplateEmail('TICKET_ISSUED', toEmail, variables);
+  } catch (error) {
+    console.error('Error sending ticket issued email:', error);
+    return false;
+  }
+}
+
+/**
+ * Send a general-purpose email.
+ * @param {string} toEmail - Recipient's email address.
+ * @param {Object} variables - Template variables (recipient_name, subject_line, message_body).
+ * @returns {Promise<boolean>} True if the email was sent successfully.
+ */
+async function sendGeneral(toEmail, variables) {
+  try {
+    return await sendTemplateEmail('GENERAL', toEmail, variables);
+  } catch (error) {
+    console.error('Error sending general email:', error);
+    return false;
+  }
+}
+
+/**
+ * Send a system notification email.
+ * @param {string} toEmail - Recipient's email address.
+ * @param {Object} variables - Template variables (recipient_name, subject_line, message_body).
+ * @returns {Promise<boolean>} True if the email was sent successfully.
+ */
+async function sendNotification(toEmail, variables) {
+  try {
+    return await sendTemplateEmail('NOTIFICATION', toEmail, variables);
+  } catch (error) {
+    console.error('Error sending notification email:', error);
+    return false;
+  }
+}
+
+/**
+ * Send an invitation email.
+ * @param {string} toEmail - Invitee's email address.
+ * @param {Object} variables - Template variables (recipient_name, subject_line, message_body, action_link, action_button_text).
+ * @returns {Promise<boolean>} True if the email was sent successfully.
+ */
+async function sendInvite(toEmail, variables) {
+  try {
+    return await sendTemplateEmail('INVITE', toEmail, variables);
+  } catch (error) {
+    console.error('Error sending invite email:', error);
     return false;
   }
 }
@@ -945,6 +1276,14 @@ module.exports = async function handler(req, res) {
 
 module.exports.sendTemplateEmail = sendTemplateEmail;
 module.exports.sendEntryConfirmation = sendEntryConfirmation;
+module.exports.sendNominationConfirmation = sendNominationConfirmation;
+module.exports.sendRevisionRequest = sendRevisionRequest;
+module.exports.sendRejection = sendRejection;
+module.exports.sendEventInvitation = sendEventInvitation;
+module.exports.sendTicketIssued = sendTicketIssued;
+module.exports.sendGeneral = sendGeneral;
+module.exports.sendNotification = sendNotification;
+module.exports.sendInvite = sendInvite;
 module.exports.sendDeadlineReminders = sendDeadlineReminders;
 module.exports.sendJudgeAssignments = sendJudgeAssignments;
 module.exports.sendWinnerAnnouncements = sendWinnerAnnouncements;

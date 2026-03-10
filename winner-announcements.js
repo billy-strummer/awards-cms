@@ -325,7 +325,7 @@ const winnerAnnouncementsModule = {
         const to = w.organisations?.email;
         if (to) {
           try {
-            await fetch('/api/resend-email.js', {
+            await fetch('/api/resend-email', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ to, subject: sub, html: body }),

@@ -2888,10 +2888,10 @@ describe('Organisations Module - updateCountyFilterByRegion()', () => {
     ];
     // Simulate cached DB data used by the updated updateCountyFilterByRegion
     orgsModule._cachedCounties = [
-      { Name: 'Kent', regions: { name: 'South East' } },
-      { Name: 'Surrey', regions: { name: 'South East' } },
-      { Name: 'London', regions: { name: 'London' } },
-      { Name: 'Essex', regions: { name: 'East' } },
+      { Name: 'Kent', region: 'South East', _regionName: 'South East' },
+      { Name: 'Surrey', region: 'South East', _regionName: 'South East' },
+      { Name: 'London', region: 'London', _regionName: 'London' },
+      { Name: 'Essex', region: 'East', _regionName: 'East' },
     ];
   });
 
@@ -5282,9 +5282,9 @@ describe('Organisations Module - updateCountyFilterByRegion()', () => {
     ];
     // Simulate cached DB data used by the updated updateCountyFilterByRegion
     orgsModule._cachedCounties = [
-      { Name: 'Kent', regions: { name: 'South East' } },
-      { Name: 'Essex', regions: { name: 'East' } },
-      { Name: 'Surrey', regions: { name: 'South East' } },
+      { Name: 'Kent', region: 'South East', _regionName: 'South East' },
+      { Name: 'Essex', region: 'East', _regionName: 'East' },
+      { Name: 'Surrey', region: 'South East', _regionName: 'South East' },
     ];
   });
 

@@ -370,9 +370,13 @@ const awardsModule = {
       }
       if (!this._cachedCounties) {
         const { data: counties } = await apiClient.select('counties', {
-          select: 'id, Name, region_id, regions(name)',
+          select: 'id, Name, region, region_id, regions(name)',
           sort: { column: 'Name', ascending: true },
           pageSize: 5000,
+        });
+        // Normalise: prefer FK join name, fall back to text region column
+        (counties || []).forEach((c) => {
+          c._regionName = c.regions?.name || c.region || null;
         });
         this._cachedCounties = counties || [];
       }
@@ -404,7 +408,7 @@ const awardsModule = {
 
     let counties = this._cachedCounties || [];
     if (selectedRegion) {
-      counties = counties.filter((c) => c.regions?.name === selectedRegion);
+      counties = counties.filter((c) => c._regionName === selectedRegion);
     }
 
     const current = countySelect.value;

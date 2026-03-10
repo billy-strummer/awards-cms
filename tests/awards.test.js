@@ -670,11 +670,11 @@ describe('Awards Module - updateCountyFilterByRegion()', () => {
     document.getElementById('awardsRegionFilterSelect').value = '';
     // Simulate cached DB data used by the updated updateCountyFilterByRegion
     awardsModule._cachedCounties = [
-      { Name: 'Kent', regions: { name: 'South East' } },
-      { Name: 'Surrey', regions: { name: 'South East' } },
-      { Name: 'Essex', regions: { name: 'East' } },
-      { Name: 'London North', regions: { name: 'London' } },
-      { Name: 'Devon', regions: { name: 'South West' } },
+      { Name: 'Kent', region: 'South East', _regionName: 'South East' },
+      { Name: 'Surrey', region: 'South East', _regionName: 'South East' },
+      { Name: 'Essex', region: 'East', _regionName: 'East' },
+      { Name: 'London North', region: 'London', _regionName: 'London' },
+      { Name: 'Devon', region: 'South West', _regionName: 'South West' },
     ];
   });
 

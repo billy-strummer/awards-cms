@@ -329,8 +329,52 @@ const orgsModule = {
 
       // Populate county dropdown (respects current region selection)
       this.updateCountyFilterByRegion();
+
+      // Also update the Add Company and CSV import county dropdowns
+      this._populateFormCountyDropdowns();
     } catch (e) {
       console.warn('Could not load regions/counties from DB:', e.message);
+    }
+  },
+
+  /**
+   * Populate the Add Company and CSV import county dropdowns from cached DB data.
+   * Groups counties by region for a better UX.
+   */
+  _populateFormCountyDropdowns() {
+    const counties = this._cachedCounties || [];
+    if (!counties.length) return;
+
+    // Group counties by region
+    const grouped = {};
+    counties.forEach((c) => {
+      const region = c._regionName || 'Other';
+      if (!grouped[region]) grouped[region] = [];
+      grouped[region].push(c.Name);
+    });
+
+    // Build optgroup HTML
+    const optgroupHtml = Object.keys(grouped)
+      .sort()
+      .map(
+        (region) =>
+          `<optgroup label="${utils.escapeHtml(region)}">${grouped[region]
+            .sort()
+            .map((n) => `<option value="${utils.escapeHtml(n)}">${utils.escapeHtml(n)}</option>`)
+            .join('')}</optgroup>`
+      )
+      .join('');
+
+    // Update Add Company county dropdown
+    const addSelect = document.getElementById('newCompanyCounty');
+    if (addSelect) {
+      addSelect.innerHTML = '<option value="">-- Select --</option>' + optgroupHtml;
+    }
+
+    // Update CSV import county dropdown
+    const csvSelect = document.getElementById('csvCountySelect');
+    if (csvSelect) {
+      csvSelect.innerHTML = '<option value="">-- Select County or City --</option>' + optgroupHtml;
     }
   },
 
@@ -1158,7 +1202,7 @@ const orgsModule = {
                   </span>
                   <select class="form-select form-select-sm edit-mode" id="editRegion" style="display: none;">
                     <option value="">Select Region</option>
-                    ${REGIONS.map((r) => `<option value="${r}" ${org.region === r ? 'selected' : ''}>${r}</option>`).join('')}
+                    ${(this._cachedRegions || []).map((r) => `<option value="${utils.escapeHtml(r.name)}" ${org.region === r.name ? 'selected' : ''}>${utils.escapeHtml(r.name)}</option>`).join('')}
                   </select>
                 </div>
                 <div class="mb-2">

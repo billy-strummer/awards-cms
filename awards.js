@@ -1174,13 +1174,14 @@ const awardsModule = {
     document.getElementById('awardFormPrev3rd').value = '';
     document.getElementById('awardFormModalTitle').innerHTML = '<i class="bi bi-plus-lg me-2"></i>Add Award';
 
-    // Populate county dropdown from REGIONS
+    // Populate county dropdown from cached DB data (falls back to REGIONS constant)
     const countySelect = document.getElementById('awardFormCounty');
+    const countyNames = this._cachedCounties?.length
+      ? this._cachedCounties.map((c) => c.Name).sort()
+      : [...REGIONS].sort();
     countySelect.innerHTML =
       '<option value="">Select County/City...</option>' +
-      REGIONS.sort()
-        .map((r) => `<option value="${r}">${r}</option>`)
-        .join('');
+      countyNames.map((r) => `<option value="${r}">${utils.escapeHtml(r)}</option>`).join('');
 
     // Populate sector dropdown
     const sectorSelect = document.getElementById('awardFormSector');
@@ -1258,12 +1259,15 @@ const awardsModule = {
     document.getElementById('awardFormPrev3rd').value = award.prev_year_3rd || '';
     document.getElementById('awardFormModalTitle').innerHTML = '<i class="bi bi-pencil me-2"></i>Edit Award';
 
-    // Populate county dropdown
+    // Populate county dropdown from cached DB data (falls back to REGIONS constant)
     const countySelect = document.getElementById('awardFormCounty');
+    const editCountyNames = this._cachedCounties?.length
+      ? this._cachedCounties.map((c) => c.Name).sort()
+      : [...REGIONS].sort();
     countySelect.innerHTML =
       '<option value="">Select County/City...</option>' +
-      REGIONS.sort()
-        .map((r) => `<option value="${r}" ${r === award.county ? 'selected' : ''}>${r}</option>`)
+      editCountyNames
+        .map((r) => `<option value="${r}" ${r === award.county ? 'selected' : ''}>${utils.escapeHtml(r)}</option>`)
         .join('');
 
     // Populate sector dropdown

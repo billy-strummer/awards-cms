@@ -175,22 +175,22 @@ const sampleTemplates = [
   },
   {
     id: 'tpl-5',
-    template_name: 'Event Invitation',
-    template_type: 'event_invitation',
-    subject: "You're Invited: {EVENT_NAME}",
-    body: 'Dear {CONTACT_NAME},\n\nYou are invited.',
-    description: 'Event invites',
+    template_name: 'Nomination Confirmation',
+    template_type: 'nomination_confirmation',
+    subject: 'Nomination Received - {ENTRY_NUMBER}',
+    body: 'Dear {CONTACT_NAME},\n\nThank you for your nomination.',
+    description: 'Sent after nomination submission',
     is_active: true,
     is_default: false,
-    available_placeholders: ['CONTACT_NAME', 'EVENT_NAME', 'EVENT_DATE'],
+    available_placeholders: ['CONTACT_NAME', 'ENTRY_NUMBER', 'NOMINEE_NAME', 'AWARD_NAME'],
   },
   {
     id: 'tpl-6',
-    template_name: 'General Notification',
-    template_type: 'general',
-    subject: 'Notification',
-    body: 'Hello {RECIPIENT_NAME},\n\nThis is a notification.',
-    description: 'General purpose template',
+    template_name: 'Deadline Reminder',
+    template_type: 'deadline_reminder',
+    subject: 'Deadline Approaching',
+    body: 'Hello {RECIPIENT_NAME},\n\nThis is a reminder.',
+    description: 'Deadline reminder template',
     is_active: true,
     is_default: false,
     available_placeholders: ['RECIPIENT_NAME'],
@@ -302,23 +302,17 @@ describe('Email Templates Module - Initialization & Structure', () => {
 describe('Email Templates Module - getTypeLabel()', () => {
   test('returns correct label for known types', () => {
     expect(emailTemplatesModule.getTypeLabel('confirmation')).toBe('Entry Confirmation');
+    expect(emailTemplatesModule.getTypeLabel('nomination_confirmation')).toBe('Nomination Confirmation');
     expect(emailTemplatesModule.getTypeLabel('reminder')).toBe('Upload Reminder');
-    expect(emailTemplatesModule.getTypeLabel('revision_request')).toBe('Changes Requested');
     expect(emailTemplatesModule.getTypeLabel('payment_confirmation')).toBe('Payment Confirmation');
     expect(emailTemplatesModule.getTypeLabel('payment_failed')).toBe('Payment Failed');
     expect(emailTemplatesModule.getTypeLabel('refund_confirmation')).toBe('Refund Confirmation');
     expect(emailTemplatesModule.getTypeLabel('payment_reminder')).toBe('Payment Reminder');
     expect(emailTemplatesModule.getTypeLabel('approval')).toBe('Approved / Shortlisted');
-    expect(emailTemplatesModule.getTypeLabel('rejection')).toBe('Not Shortlisted');
     expect(emailTemplatesModule.getTypeLabel('winner_announcement')).toBe('Winner Announcement');
     expect(emailTemplatesModule.getTypeLabel('judge_assignment')).toBe('Judge Assignment');
     expect(emailTemplatesModule.getTypeLabel('judge_reminder')).toBe('Judge Reminder');
-    expect(emailTemplatesModule.getTypeLabel('event_invitation')).toBe('Event Invitation');
-    expect(emailTemplatesModule.getTypeLabel('ticket_issued')).toBe('Ticket Issued');
     expect(emailTemplatesModule.getTypeLabel('deadline_reminder')).toBe('Deadline Reminder');
-    expect(emailTemplatesModule.getTypeLabel('general')).toBe('General');
-    expect(emailTemplatesModule.getTypeLabel('notification')).toBe('Notification');
-    expect(emailTemplatesModule.getTypeLabel('invite')).toBe('Invitation');
   });
 
   test('returns the type string itself for unknown types', () => {
@@ -334,8 +328,8 @@ describe('Email Templates Module - getTypeLabel()', () => {
 describe('Email Templates Module - getGroupForType()', () => {
   test('maps entry types to Entry & Submissions', () => {
     expect(emailTemplatesModule.getGroupForType('confirmation')).toBe('Entry & Submissions');
+    expect(emailTemplatesModule.getGroupForType('nomination_confirmation')).toBe('Entry & Submissions');
     expect(emailTemplatesModule.getGroupForType('reminder')).toBe('Entry & Submissions');
-    expect(emailTemplatesModule.getGroupForType('revision_request')).toBe('Entry & Submissions');
   });
 
   test('maps payment types to Payments', () => {
@@ -347,22 +341,13 @@ describe('Email Templates Module - getGroupForType()', () => {
 
   test('maps judging types to Judging & Results', () => {
     expect(emailTemplatesModule.getGroupForType('approval')).toBe('Judging & Results');
-    expect(emailTemplatesModule.getGroupForType('rejection')).toBe('Judging & Results');
     expect(emailTemplatesModule.getGroupForType('winner_announcement')).toBe('Judging & Results');
     expect(emailTemplatesModule.getGroupForType('judge_assignment')).toBe('Judging & Results');
     expect(emailTemplatesModule.getGroupForType('judge_reminder')).toBe('Judging & Results');
   });
 
-  test('maps event types to Events & Invitations', () => {
-    expect(emailTemplatesModule.getGroupForType('event_invitation')).toBe('Events & Invitations');
-    expect(emailTemplatesModule.getGroupForType('ticket_issued')).toBe('Events & Invitations');
-    expect(emailTemplatesModule.getGroupForType('deadline_reminder')).toBe('Events & Invitations');
-  });
-
-  test('maps general types to General', () => {
-    expect(emailTemplatesModule.getGroupForType('general')).toBe('General');
-    expect(emailTemplatesModule.getGroupForType('notification')).toBe('General');
-    expect(emailTemplatesModule.getGroupForType('invite')).toBe('General');
+  test('maps deadline reminder to Events & Reminders', () => {
+    expect(emailTemplatesModule.getGroupForType('deadline_reminder')).toBe('Events & Reminders');
   });
 
   test('returns Other for unrecognized types', () => {
@@ -375,14 +360,13 @@ describe('Email Templates Module - _isAutoTemplate()', () => {
   test('returns true for auto-triggered template types', () => {
     const autoTypes = [
       'confirmation',
+      'nomination_confirmation',
       'reminder',
-      'revision_request',
       'payment_confirmation',
       'payment_failed',
       'refund_confirmation',
       'payment_reminder',
       'approval',
-      'rejection',
       'winner_announcement',
       'judge_assignment',
       'judge_reminder',
@@ -394,11 +378,7 @@ describe('Email Templates Module - _isAutoTemplate()', () => {
   });
 
   test('returns false for non-auto template types', () => {
-    expect(emailTemplatesModule._isAutoTemplate('general')).toBe(false);
-    expect(emailTemplatesModule._isAutoTemplate('notification')).toBe(false);
-    expect(emailTemplatesModule._isAutoTemplate('invite')).toBe(false);
-    expect(emailTemplatesModule._isAutoTemplate('event_invitation')).toBe(false);
-    expect(emailTemplatesModule._isAutoTemplate('ticket_issued')).toBe(false);
+    expect(emailTemplatesModule._isAutoTemplate('some_custom_type')).toBe(false);
   });
 
   test('returns false for unknown types', () => {
@@ -413,23 +393,17 @@ describe('Email Templates Module - _headerSubtitles', () => {
   test('contains subtitles for all expected template types', () => {
     const subtitles = emailTemplatesModule._headerSubtitles;
     expect(subtitles['confirmation']).toBe('Self-Nomination Entry Confirmation');
+    expect(subtitles['nomination_confirmation']).toBe('Nomination Confirmation');
     expect(subtitles['reminder']).toBe('Document Upload Reminder');
-    expect(subtitles['revision_request']).toBe('Action Required');
     expect(subtitles['payment_confirmation']).toBe('Self-Nomination Entry Confirmation');
     expect(subtitles['payment_failed']).toBe('Payment Reminder');
     expect(subtitles['refund_confirmation']).toBe('Refund Confirmation');
     expect(subtitles['payment_reminder']).toBe('Payment Reminder');
     expect(subtitles['approval']).toBe('Entry Approved/Shortlisted');
-    expect(subtitles['rejection']).toBe('Entry Not Shortlisted');
     expect(subtitles['winner_announcement']).toBe('Winner Announcement');
     expect(subtitles['judge_assignment']).toBe('Judging Assignment');
     expect(subtitles['judge_reminder']).toBe('Judging Reminder');
-    expect(subtitles['event_invitation']).toBe('Event Invitation');
-    expect(subtitles['ticket_issued']).toBe('Ticket Issued');
     expect(subtitles['deadline_reminder']).toBe('Deadline Reminder');
-    expect(subtitles['general']).toBe('Notification');
-    expect(subtitles['notification']).toBe('Notification');
-    expect(subtitles['invite']).toBe('Invitation');
   });
 });
 
@@ -439,8 +413,7 @@ describe('Email Templates Module - templateGroups', () => {
     expect(groups).toHaveProperty('Entry & Submissions');
     expect(groups).toHaveProperty('Payments');
     expect(groups).toHaveProperty('Judging & Results');
-    expect(groups).toHaveProperty('Events & Invitations');
-    expect(groups).toHaveProperty('General');
+    expect(groups).toHaveProperty('Events & Reminders');
   });
 
   test('each group has types array and icon string', () => {
@@ -473,8 +446,7 @@ describe('Email Templates Module - renderTemplatesList()', () => {
     expect(html).toContain('Entry &amp; Submissions');
     expect(html).toContain('Payments');
     expect(html).toContain('Judging &amp; Results');
-    expect(html).toContain('Events &amp; Invitations');
-    expect(html).toContain('General');
+    expect(html).toContain('Events &amp; Reminders');
   });
 
   test('shows empty state when no templates exist', () => {
@@ -649,8 +621,14 @@ describe('Email Templates Module - renderTemplateEditor()', () => {
   });
 
   test('does not render revert button for templates without defaults', () => {
-    // "General Notification" is not in _defaultTemplates
-    emailTemplatesModule.renderTemplateEditor(sampleTemplates[5]);
+    // A template whose name is not in _defaultTemplates
+    const customTemplate = {
+      ...sampleTemplates[0],
+      id: 'custom-tpl',
+      template_name: 'My Custom Template',
+      template_type: 'confirmation',
+    };
+    emailTemplatesModule.renderTemplateEditor(customTemplate);
     const editor = document.getElementById('templateEditor');
     expect(editor.innerHTML).not.toContain('Revert to Default');
   });
@@ -1049,11 +1027,9 @@ describe('Email Templates Module - Group Ordering and Rendering', () => {
     const paymentsPos = html.indexOf('Payments');
     const judgingPos = html.indexOf('Judging');
     const eventsPos = html.indexOf('Events');
-    const generalPos = html.indexOf('General');
     expect(entryPos).toBeLessThan(paymentsPos);
     expect(paymentsPos).toBeLessThan(judgingPos);
     expect(judgingPos).toBeLessThan(eventsPos);
-    expect(eventsPos).toBeLessThan(generalPos);
   });
 
   test('does not render empty group headers', () => {
@@ -1076,8 +1052,7 @@ describe('Email Templates Module - Group Ordering and Rendering', () => {
     expect(html).toContain('bi-pencil-square'); // Entry & Submissions
     expect(html).toContain('bi-credit-card'); // Payments
     expect(html).toContain('bi-trophy'); // Judging & Results
-    expect(html).toContain('bi-calendar-event'); // Events & Invitations
-    expect(html).toContain('bi-megaphone'); // General
+    expect(html).toContain('bi-calendar-event'); // Events & Reminders
   });
 });
 

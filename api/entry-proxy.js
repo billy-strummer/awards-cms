@@ -13,7 +13,7 @@
  */
 
 const { createClient } = require('@supabase/supabase-js');
-const { sendEmail, wrapEmailTemplate } = require('./resend-email');
+const { sendEntryConfirmation, sendNominationConfirmation } = require('./email-automation');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
@@ -302,12 +302,8 @@ async function handleSubmitEntry(req, res) {
       /* non-blocking */
     }
 
-    // Try sending confirmation email
-    try {
-      await supabase.rpc('send_entry_confirmation_email', { p_entry_id: baseEntry.id });
-    } catch (_e) {
-      /* non-blocking */
-    }
+    // Send confirmation email (non-blocking)
+    sendEntryConfirmation(baseEntry.id).catch(() => {});
 
     return res.status(200).json({
       success: true,
@@ -315,92 +311,13 @@ async function handleSubmitEntry(req, res) {
     });
   }
 
-  // Try sending confirmation email
-  try {
-    await supabase.rpc('send_entry_confirmation_email', { p_entry_id: entry.id });
-  } catch (_e) {
-    /* non-blocking */
-  }
+  // Send confirmation email (non-blocking)
+  sendEntryConfirmation(entry.id).catch(() => {});
 
   return res.status(200).json({
     success: true,
     entry: { id: entry.id, entry_number: entry.entry_number },
   });
-}
-
-// ────────────────────────────────────────────
-// Send nomination confirmation email (non-blocking)
-// ────────────────────────────────────────────
-
-async function sendNominationConfirmationEmail(
-  nominatorEmail,
-  nominatorName,
-  nomineeName,
-  awardCategory,
-  entryNumber,
-  region
-) {
-  try {
-    const esc = (s) =>
-      String(s || '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
-
-    const subject = `Nomination Received - ${entryNumber} | British Trade Awards`;
-
-    const bodyHtml =
-      '<div style="padding:32px;color:#333;line-height:1.6;font-size:15px;font-family:Arial,Helvetica,sans-serif;">' +
-      '<h2 style="color:#1a1a1a;margin-top:0;font-family:Georgia,\'Times New Roman\',serif;">Nomination Confirmation</h2>' +
-      '<p>Dear ' +
-      esc(nominatorName) +
-      ',</p>' +
-      '<p>Thank you for submitting your nomination for the British Trade Awards. We are pleased to confirm that your nomination has been received and is now being processed.</p>' +
-      // Details box with gold left border
-      '<div style="background:#fffdf5;border-left:4px solid #D4AF37;padding:16px 20px;margin:20px 0;border-radius:0 8px 8px 0;">' +
-      '<h3 style="margin:0 0 12px;color:#1a1a1a;font-size:16px;font-family:Georgia,\'Times New Roman\',serif;">Nomination Details</h3>' +
-      '<table style="width:100%;font-size:14px;border-collapse:collapse;">' +
-      '<tr><td style="padding:4px 8px;color:#6c757d;width:120px;">Reference:</td><td style="padding:4px 8px;font-weight:600;">' +
-      esc(entryNumber) +
-      '</td></tr>' +
-      '<tr><td style="padding:4px 8px;color:#6c757d;">Nominee:</td><td style="padding:4px 8px;">' +
-      esc(nomineeName) +
-      '</td></tr>' +
-      '<tr><td style="padding:4px 8px;color:#6c757d;">Category:</td><td style="padding:4px 8px;">' +
-      esc(awardCategory) +
-      '</td></tr>' +
-      (region
-        ? '<tr><td style="padding:4px 8px;color:#6c757d;">Region:</td><td style="padding:4px 8px;">' +
-          esc(region) +
-          '</td></tr>'
-        : '') +
-      '</table></div>' +
-      // What happens next
-      '<h3 style="color:#1a1a1a;font-size:16px;font-family:Georgia,\'Times New Roman\',serif;">What Happens Next</h3>' +
-      '<ol style="padding-left:20px;">' +
-      '<li style="margin-bottom:8px;">Our team will review your nomination to ensure all details are complete.</li>' +
-      '<li style="margin-bottom:8px;">Shortlisted nominations will be assessed by our independent judging panel.</li>' +
-      '<li style="margin-bottom:8px;">Winners will be announced at the awards ceremony.</li>' +
-      '</ol>' +
-      '<p>Please keep your nomination reference number <strong>' +
-      esc(entryNumber) +
-      '</strong> safe for future correspondence.</p>' +
-      '<p style="margin-top:24px;">Kind regards,<br><strong>The British Trade Awards Team</strong></p>' +
-      '</div>';
-
-    const html = wrapEmailTemplate(subject, bodyHtml, '', {}, 'Nomination Confirmation');
-
-    await sendEmail({
-      to: nominatorEmail,
-      subject,
-      html,
-      tags: [{ name: 'template', value: 'nomination_confirmation' }],
-    });
-  } catch (err) {
-    console.error('Nomination confirmation email failed:', err);
-    // Non-blocking — don't fail the submission
-  }
 }
 
 // Handle nomination submission
@@ -618,14 +535,13 @@ async function handleSubmitNomination(req, res) {
 
     // Send confirmation email (non-blocking)
     const fallbackNominee = isNewBusiness ? safe.businessName : safe.nomineeName;
-    sendNominationConfirmationEmail(
-      safe.nominatorEmail,
-      safe.nominatorName,
-      fallbackNominee,
-      safe.awardCategory,
-      baseEntry.entry_number,
-      safe.region
-    );
+    sendNominationConfirmation(safe.nominatorEmail, {
+      contact_name: safe.nominatorName,
+      nominee_name: fallbackNominee,
+      award_name: safe.awardCategory,
+      entry_number: baseEntry.entry_number,
+      region: safe.region || '',
+    }).catch(() => {});
 
     return res.status(200).json({
       success: true,
@@ -635,14 +551,13 @@ async function handleSubmitNomination(req, res) {
 
   // Send confirmation email (non-blocking)
   const nomineDisplay = isNewBusiness ? safe.businessName : safe.nomineeName;
-  sendNominationConfirmationEmail(
-    safe.nominatorEmail,
-    safe.nominatorName,
-    nomineDisplay,
-    safe.awardCategory,
-    entry.entry_number,
-    safe.region
-  );
+  sendNominationConfirmation(safe.nominatorEmail, {
+    contact_name: safe.nominatorName,
+    nominee_name: nomineDisplay,
+    award_name: safe.awardCategory,
+    entry_number: entry.entry_number,
+    region: safe.region || '',
+  }).catch(() => {});
 
   return res.status(200).json({
     success: true,

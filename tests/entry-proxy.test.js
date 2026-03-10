@@ -53,6 +53,16 @@ jest.mock(
   { virtual: false }
 );
 
+// Mock email-automation to avoid Resend SDK instantiation
+jest.mock(
+  '../api/email-automation',
+  () => ({
+    sendEntryConfirmation: jest.fn(() => Promise.resolve(true)),
+    sendNominationConfirmation: jest.fn(() => Promise.resolve(true)),
+  }),
+  { virtual: false }
+);
+
 // Set env vars
 process.env.SUPABASE_URL = 'https://test.supabase.co';
 process.env.SUPABASE_SERVICE_KEY = 'test-service-key';

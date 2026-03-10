@@ -60,6 +60,7 @@ async function loadTenantBranding(tenantId = 'default') {
  */
 const HEADER_SUBTITLES = {
   ENTRY_CONFIRMATION: 'Self-Nomination Entry Confirmation',
+  NOMINATION_CONFIRMATION: 'Nomination Confirmation',
   PAYMENT_REMINDER: 'Payment Reminder',
   SHORTLIST_NOTIFICATION: 'Entry Approved/Shortlisted',
   WINNER_ANNOUNCEMENT: 'Entry Approved',
@@ -86,6 +87,7 @@ function wrapEmailTemplate(bodyContent, branding = {}, subtitle = '') {
  */
 const DB_TEMPLATE_TYPE_MAP = {
   ENTRY_CONFIRMATION: 'confirmation',
+  NOMINATION_CONFIRMATION: 'nomination_confirmation',
   ENTRY_DEADLINE_REMINDER: 'entry_deadline_reminder',
   PAYMENT_REMINDER: 'payment_reminder',
   SHORTLIST_NOTIFICATION: 'approval',
@@ -177,6 +179,37 @@ const EMAIL_TEMPLATES = {
 
         <p>Best of luck!</p>
         <p><strong>{{brand_name}} Team</strong></p>
+      </div>
+    `,
+  },
+
+  NOMINATION_CONFIRMATION: {
+    subject: 'Nomination Received - {{entry_number}} | {{brand_name}}',
+    body: `
+      <div style="padding: 30px 40px;">
+        <h1 style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 28px; color: #1a1a1a;">Nomination Confirmation</h1>
+        <p>Dear {{contact_name}},</p>
+        <p>Thank you for submitting your nomination for the {{brand_name}}. We are pleased to confirm that your nomination has been received and is now being processed.</p>
+
+        <div style="background: #fffdf5; border-left: 4px solid #D4AF37; padding: 16px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+          <h3 style="margin: 0 0 12px; color: #1a1a1a; font-size: 16px;">Nomination Details</h3>
+          <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
+            <tr><td style="padding: 4px 8px; color: #6c757d; width: 120px;">Reference:</td><td style="padding: 4px 8px; font-weight: 600;">{{entry_number}}</td></tr>
+            <tr><td style="padding: 4px 8px; color: #6c757d;">Nominee:</td><td style="padding: 4px 8px;">{{nominee_name}}</td></tr>
+            <tr><td style="padding: 4px 8px; color: #6c757d;">Category:</td><td style="padding: 4px 8px;">{{award_name}}</td></tr>
+          </table>
+        </div>
+
+        <h3 style="color: #1a1a1a; font-size: 16px;">What Happens Next</h3>
+        <ol style="padding-left: 20px;">
+          <li style="margin-bottom: 8px;">Our team will review your nomination to ensure all details are complete.</li>
+          <li style="margin-bottom: 8px;">Shortlisted nominations will be assessed by our independent judging panel.</li>
+          <li style="margin-bottom: 8px;">Winners will be announced at the awards ceremony.</li>
+        </ol>
+
+        <p>Please keep your nomination reference number <strong>{{entry_number}}</strong> safe for future correspondence.</p>
+
+        <p style="margin-top: 24px;">Kind regards,<br><strong>{{brand_name}} Team</strong></p>
       </div>
     `,
   },
@@ -535,6 +568,21 @@ async function sendEntryConfirmation(entryId) {
     return await sendTemplateEmail('ENTRY_CONFIRMATION', entry.contact_email, variables);
   } catch (error) {
     console.error('Error sending entry confirmation:', error);
+    return false;
+  }
+}
+
+/**
+ * Send nomination confirmation email.
+ * @param {string} toEmail - Nominator's email address.
+ * @param {Object} variables - Template variables (contact_name, nominee_name, award_name, entry_number, region).
+ * @returns {Promise<boolean>} True if the email was sent successfully, false otherwise.
+ */
+async function sendNominationConfirmation(toEmail, variables) {
+  try {
+    return await sendTemplateEmail('NOMINATION_CONFIRMATION', toEmail, variables);
+  } catch (error) {
+    console.error('Error sending nomination confirmation:', error);
     return false;
   }
 }
@@ -945,6 +993,7 @@ module.exports = async function handler(req, res) {
 
 module.exports.sendTemplateEmail = sendTemplateEmail;
 module.exports.sendEntryConfirmation = sendEntryConfirmation;
+module.exports.sendNominationConfirmation = sendNominationConfirmation;
 module.exports.sendDeadlineReminders = sendDeadlineReminders;
 module.exports.sendJudgeAssignments = sendJudgeAssignments;
 module.exports.sendWinnerAnnouncements = sendWinnerAnnouncements;

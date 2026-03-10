@@ -55,6 +55,29 @@ If you have any questions about your entry or the awards process, please contact
 Kind regards,
 The British Trade Awards Team`,
     },
+    'Nomination Confirmation': {
+      subject: 'Nomination Received - {ENTRY_NUMBER} | British Trade Awards',
+      body: `Dear {CONTACT_NAME},
+
+Thank you for submitting your nomination for the British Trade Awards. We are pleased to confirm that your nomination has been received and is now being processed.
+
+Nomination Details:
+- Reference: {ENTRY_NUMBER}
+- Nominee: {NOMINEE_NAME}
+- Category: {AWARD_NAME}
+
+What Happens Next:
+1. Our team will review your nomination to ensure all details are complete.
+2. Shortlisted nominations will be assessed by our independent judging panel.
+3. Winners will be announced at the awards ceremony.
+
+Please keep your nomination reference number {ENTRY_NUMBER} safe for future correspondence.
+
+If you have any questions, please contact us at {CONTACT_EMAIL}
+
+Kind regards,
+The British Trade Awards Team`,
+    },
     'Document Upload Reminder': {
       subject: 'Supporting Documents Reminder - {ENTRY_NUMBER} | British Trade Awards',
       body: `Dear {CONTACT_NAME},
@@ -312,23 +335,17 @@ The British Trade Awards Team`,
    */
   _headerSubtitles: {
     confirmation: 'Self-Nomination Entry Confirmation',
+    nomination_confirmation: 'Nomination Confirmation',
     reminder: 'Document Upload Reminder',
-    revision_request: 'Action Required',
     payment_confirmation: 'Self-Nomination Entry Confirmation',
     payment_failed: 'Payment Reminder',
     refund_confirmation: 'Refund Confirmation',
     payment_reminder: 'Payment Reminder',
     approval: 'Entry Approved/Shortlisted',
-    rejection: 'Entry Not Shortlisted',
     winner_announcement: 'Winner Announcement',
     judge_assignment: 'Judging Assignment',
     judge_reminder: 'Judging Reminder',
-    event_invitation: 'Event Invitation',
-    ticket_issued: 'Ticket Issued',
     deadline_reminder: 'Deadline Reminder',
-    general: 'Notification',
-    notification: 'Notification',
-    invite: 'Invitation',
   },
 
   /**
@@ -485,20 +502,19 @@ The British Trade Awards Team`,
    */
   // Group definitions: map template_type to a workflow group
   templateGroups: {
-    'Entry & Submissions': { types: ['confirmation', 'reminder', 'revision_request'], icon: 'bi-pencil-square' },
+    'Entry & Submissions': { types: ['confirmation', 'nomination_confirmation', 'reminder'], icon: 'bi-pencil-square' },
     Payments: {
       types: ['payment_confirmation', 'payment_failed', 'refund_confirmation', 'payment_reminder'],
       icon: 'bi-credit-card',
     },
     'Judging & Results': {
-      types: ['approval', 'rejection', 'winner_announcement', 'judge_assignment', 'judge_reminder'],
+      types: ['approval', 'winner_announcement', 'judge_assignment', 'judge_reminder'],
       icon: 'bi-trophy',
     },
-    'Events & Invitations': {
-      types: ['event_invitation', 'ticket_issued', 'deadline_reminder'],
+    'Events & Reminders': {
+      types: ['deadline_reminder'],
       icon: 'bi-calendar-event',
     },
-    General: { types: ['general', 'notification', 'invite'], icon: 'bi-megaphone' },
   },
 
   /**
@@ -526,14 +542,13 @@ The British Trade Awards Team`,
   _isAutoTemplate(type) {
     const autoTypes = [
       'confirmation',
+      'nomination_confirmation',
       'reminder',
-      'revision_request',
       'payment_confirmation',
       'payment_failed',
       'refund_confirmation',
       'payment_reminder',
       'approval',
-      'rejection',
       'winner_announcement',
       'judge_assignment',
       'judge_reminder',
@@ -571,14 +586,7 @@ The British Trade Awards Team`,
     });
 
     // Render with group headers in a defined order
-    const groupOrder = [
-      'Entry & Submissions',
-      'Payments',
-      'Judging & Results',
-      'Events & Invitations',
-      'General',
-      'Other',
-    ];
+    const groupOrder = ['Entry & Submissions', 'Payments', 'Judging & Results', 'Events & Reminders', 'Other'];
     let html = '';
 
     groupOrder.forEach((groupName) => {
@@ -639,23 +647,17 @@ The British Trade Awards Team`,
   getTypeLabel(type) {
     const labels = {
       confirmation: 'Entry Confirmation',
+      nomination_confirmation: 'Nomination Confirmation',
       reminder: 'Upload Reminder',
-      revision_request: 'Changes Requested',
       payment_confirmation: 'Payment Confirmation',
       payment_failed: 'Payment Failed',
       refund_confirmation: 'Refund Confirmation',
       payment_reminder: 'Payment Reminder',
       approval: 'Approved / Shortlisted',
-      rejection: 'Not Shortlisted',
       winner_announcement: 'Winner Announcement',
       judge_assignment: 'Judge Assignment',
       judge_reminder: 'Judge Reminder',
-      event_invitation: 'Event Invitation',
-      ticket_issued: 'Ticket Issued',
       deadline_reminder: 'Deadline Reminder',
-      general: 'General',
-      notification: 'Notification',
-      invite: 'Invitation',
     };
     return labels[type] || type || '';
   },
@@ -715,8 +717,8 @@ The British Trade Awards Team`,
             <select class="form-select" id="templateType" required>
               <optgroup label="Entry & Submissions">
                 <option value="confirmation" ${template.template_type === 'confirmation' ? 'selected' : ''}>Entry Confirmation</option>
+                <option value="nomination_confirmation" ${template.template_type === 'nomination_confirmation' ? 'selected' : ''}>Nomination Confirmation</option>
                 <option value="reminder" ${template.template_type === 'reminder' ? 'selected' : ''}>Upload Reminder</option>
-                <option value="revision_request" ${template.template_type === 'revision_request' ? 'selected' : ''}>Changes Requested</option>
               </optgroup>
               <optgroup label="Payments">
                 <option value="payment_confirmation" ${template.template_type === 'payment_confirmation' ? 'selected' : ''}>Payment Confirmation</option>
@@ -726,20 +728,12 @@ The British Trade Awards Team`,
               </optgroup>
               <optgroup label="Judging & Results">
                 <option value="approval" ${template.template_type === 'approval' ? 'selected' : ''}>Approved / Shortlisted</option>
-                <option value="rejection" ${template.template_type === 'rejection' ? 'selected' : ''}>Not Shortlisted</option>
                 <option value="winner_announcement" ${template.template_type === 'winner_announcement' ? 'selected' : ''}>Winner Announcement</option>
                 <option value="judge_assignment" ${template.template_type === 'judge_assignment' ? 'selected' : ''}>Judge Assignment</option>
                 <option value="judge_reminder" ${template.template_type === 'judge_reminder' ? 'selected' : ''}>Judge Reminder</option>
               </optgroup>
-              <optgroup label="Events & Invitations">
-                <option value="event_invitation" ${template.template_type === 'event_invitation' ? 'selected' : ''}>Event Invitation</option>
-                <option value="ticket_issued" ${template.template_type === 'ticket_issued' ? 'selected' : ''}>Ticket Issued</option>
+              <optgroup label="Events & Reminders">
                 <option value="deadline_reminder" ${template.template_type === 'deadline_reminder' ? 'selected' : ''}>Deadline Reminder</option>
-              </optgroup>
-              <optgroup label="General">
-                <option value="general" ${template.template_type === 'general' ? 'selected' : ''}>General</option>
-                <option value="notification" ${template.template_type === 'notification' ? 'selected' : ''}>Notification</option>
-                <option value="invite" ${template.template_type === 'invite' ? 'selected' : ''}>Invitation</option>
               </optgroup>
             </select>
           </div>

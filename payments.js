@@ -38,6 +38,7 @@ const paymentsModule = {
    * @returns {Promise<void>}
    */
   async loadAllData() {
+    if (!STATE.currentUser) return;
     try {
       utils.showLoading();
       await Promise.all([this.loadInvoices(), this.loadPayments(), this.loadOrganisationsForFilters()]);

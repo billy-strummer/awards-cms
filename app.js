@@ -1718,7 +1718,7 @@ document.addEventListener('DOMContentLoaded', function () {
         'payments-tab': { key: 'payments', fn: () => paymentsModule?.loadAllData() },
       };
       const config = refreshMap[tabId];
-      if (config && utils.isDataStale(config.key)) {
+      if (config && utils.isDataStale(config.key) && STATE.currentUser) {
         console.debug('Auto-refreshing stale data for', config.key);
         config.fn();
       }

@@ -620,11 +620,13 @@ describe('Awards Module - _populateFiltersFromConstants()', () => {
     expect(sectorSelect.innerHTML).toContain('BUILDING');
   });
 
-  test('populates region filter from REGIONS constant', () => {
-    awardsModule._populateFiltersFromConstants();
+  test('does not populate region filter (now loaded from DB)', () => {
     const regionSelect = document.getElementById('awardsRegionFilterSelect');
+    regionSelect.innerHTML = '<option value="">All Regions</option>';
+    awardsModule._populateFiltersFromConstants();
+    // Region filter is no longer populated from constants — it's loaded from DB
     expect(regionSelect.innerHTML).toContain('All Regions');
-    expect(regionSelect.innerHTML).toContain('Kent');
+    expect(regionSelect.querySelectorAll('option').length).toBe(1);
   });
 });
 
@@ -666,6 +668,14 @@ describe('Awards Module - updateCountyFilterByRegion()', () => {
   beforeEach(() => {
     STATE.allAwards = [...sampleAwards];
     document.getElementById('awardsRegionFilterSelect').value = '';
+    // Simulate cached DB data used by the updated updateCountyFilterByRegion
+    awardsModule._cachedCounties = [
+      { Name: 'Kent', regions: { name: 'South East' } },
+      { Name: 'Surrey', regions: { name: 'South East' } },
+      { Name: 'Essex', regions: { name: 'East' } },
+      { Name: 'London North', regions: { name: 'London' } },
+      { Name: 'Devon', regions: { name: 'South West' } },
+    ];
   });
 
   test('shows all counties when no region selected', () => {
@@ -682,7 +692,8 @@ describe('Awards Module - updateCountyFilterByRegion()', () => {
     expect(countySelect.innerHTML).toContain('Surrey');
   });
 
-  test('resets county selection', () => {
+  test('resets county selection when no cached data', () => {
+    awardsModule._cachedCounties = [];
     const countySelect = document.getElementById('awardsCountyFilterSelect');
     countySelect.value = 'Kent';
     awardsModule.updateCountyFilterByRegion();

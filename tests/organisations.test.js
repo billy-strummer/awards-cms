@@ -963,36 +963,20 @@ describe('Organisations Module - populateFilters()', () => {
     ];
   });
 
-  test('populates sector filter with unique sorted values', () => {
-    orgsModule.populateFilters();
-    const sectorSelect = document.getElementById('orgsSectorFilter');
-    const options = Array.from(sectorSelect.querySelectorAll('option'));
-    const values = options.map((o) => o.value).filter((v) => v !== '');
-    expect(values).toEqual(['BUILDING', 'PLUMBING']);
-  });
-
-  test('populates county filter with unique sorted values', () => {
-    orgsModule.populateFilters();
-    const countySelect = document.getElementById('orgsCountyFilter');
-    const options = Array.from(countySelect.querySelectorAll('option'));
-    const values = options.map((o) => o.value).filter((v) => v !== '');
-    expect(values).toEqual(['Essex', 'Kent']);
-  });
-
-  test('populates region filter with unique sorted values', () => {
-    orgsModule.populateFilters();
-    const regionSelect = document.getElementById('orgsRegionFilter');
-    const options = Array.from(regionSelect.querySelectorAll('option'));
-    const values = options.map((o) => o.value).filter((v) => v !== '');
-    expect(values).toEqual(['East', 'South East']);
-  });
-
   test('populates tag filter with unique sorted tags from all orgs', () => {
     orgsModule.populateFilters();
     const tagSelect = document.getElementById('orgsTagFilter');
     const options = Array.from(tagSelect.querySelectorAll('option'));
     const values = options.map((o) => o.value).filter((v) => v !== '');
     expect(values).toEqual(['premium', 'vip']);
+  });
+
+  test('sector, region, and county filters are now DB-driven (not populated by populateFilters)', () => {
+    // These filters are now populated by populateSectorFilter() and populateRegionAndCountyFilters()
+    // which fetch from the database. populateFilters() only handles tags and presets.
+    orgsModule.populateFilters();
+    // Should not throw
+    expect(true).toBe(true);
   });
 });
 
@@ -1763,39 +1747,9 @@ describe('Organisations Module - Export Advanced', () => {
 });
 
 describe('Organisations Module - Populate Filters Advanced', () => {
-  test('populates with many unique sectors', () => {
-    STATE.allOrganisations = [
-      makeOrg({ sector: 'BUILDING' }),
-      makeOrg({ sector: 'PLUMBING' }),
-      makeOrg({ sector: 'ELECTRICAL' }),
-      makeOrg({ sector: 'HEATING' }),
-      makeOrg({ sector: 'ROOFING' }),
-    ];
-    orgsModule.populateFilters();
-    const sectorSelect = document.getElementById('orgsSectorFilter');
-    const values = Array.from(sectorSelect.querySelectorAll('option'))
-      .map((o) => o.value)
-      .filter((v) => v !== '');
-    expect(values.length).toBe(5);
-    // Check sorted
-    for (let i = 0; i < values.length - 1; i++) {
-      expect(values[i] <= values[i + 1]).toBe(true);
-    }
-  });
-
-  test('filters out empty/null sectors', () => {
-    STATE.allOrganisations = [
-      makeOrg({ sector: 'BUILDING' }),
-      makeOrg({ sector: null }),
-      makeOrg({ sector: '' }),
-      makeOrg({ sector: 'PLUMBING' }),
-    ];
-    orgsModule.populateFilters();
-    const sectorSelect = document.getElementById('orgsSectorFilter');
-    const values = Array.from(sectorSelect.querySelectorAll('option'))
-      .map((o) => o.value)
-      .filter((v) => v !== '');
-    expect(values).toEqual(['BUILDING', 'PLUMBING']);
+  test('populateFilters does not throw with null data', () => {
+    STATE.allOrganisations = [makeOrg({ sector: null, county: null, region: null, tags: null })];
+    expect(() => orgsModule.populateFilters()).not.toThrow();
   });
 
   test('handles all orgs with same tag', () => {
@@ -2931,6 +2885,13 @@ describe('Organisations Module - updateCountyFilterByRegion()', () => {
       makeOrg({ county: 'Surrey', region: 'South East' }),
       makeOrg({ county: 'London', region: 'London' }),
       makeOrg({ county: 'Essex', region: 'East' }),
+    ];
+    // Simulate cached DB data used by the updated updateCountyFilterByRegion
+    orgsModule._cachedCounties = [
+      { Name: 'Kent', regions: { name: 'South East' } },
+      { Name: 'Surrey', regions: { name: 'South East' } },
+      { Name: 'London', regions: { name: 'London' } },
+      { Name: 'Essex', regions: { name: 'East' } },
     ];
   });
 
@@ -5319,6 +5280,12 @@ describe('Organisations Module - updateCountyFilterByRegion()', () => {
       makeOrg({ county: 'Essex', region: 'East' }),
       makeOrg({ county: 'Surrey', region: 'South East' }),
     ];
+    // Simulate cached DB data used by the updated updateCountyFilterByRegion
+    orgsModule._cachedCounties = [
+      { Name: 'Kent', regions: { name: 'South East' } },
+      { Name: 'Essex', regions: { name: 'East' } },
+      { Name: 'Surrey', regions: { name: 'South East' } },
+    ];
   });
 
   test('shows all counties when no region selected', () => {
@@ -5440,27 +5407,6 @@ describe('Organisations Module - populateFilters()', () => {
     ];
   });
 
-  test('populates sector filter with unique sorted values', () => {
-    orgsModule.populateFilters();
-    const html = document.getElementById('orgsSectorFilter').innerHTML;
-    expect(html).toContain('Finance');
-    expect(html).toContain('Tech');
-  });
-
-  test('populates county filter with unique sorted values', () => {
-    orgsModule.populateFilters();
-    const html = document.getElementById('orgsCountyFilter').innerHTML;
-    expect(html).toContain('Essex');
-    expect(html).toContain('Kent');
-  });
-
-  test('populates region filter with unique sorted values', () => {
-    orgsModule.populateFilters();
-    const html = document.getElementById('orgsRegionFilter').innerHTML;
-    expect(html).toContain('East');
-    expect(html).toContain('South East');
-  });
-
   test('populates tag filter with unique sorted values', () => {
     orgsModule.populateFilters();
     const tagSelect = document.getElementById('orgsTagFilter');
@@ -5469,6 +5415,11 @@ describe('Organisations Module - populateFilters()', () => {
       expect(html).toContain('premium');
       expect(html).toContain('vip');
     }
+  });
+
+  test('does not throw with any data', () => {
+    // Sector, region, and county are now DB-driven via separate methods
+    expect(() => orgsModule.populateFilters()).not.toThrow();
   });
 });
 

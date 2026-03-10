@@ -91,6 +91,7 @@ const orgsModule = {
       // Calculate dashboard stats AFTER first page is loaded
       await this.calculateDashboardStats();
 
+      this.populateRegionAndCountyFilters();
       this.populateSectorFilter();
       this.populateSectorSuggestions();
       utils.trackDataLoad('organisations');
@@ -226,35 +227,9 @@ const orgsModule = {
    * Populate filter dropdowns with unique values (Enhanced)
    */
   populateFilters() {
-    // Populate sector filter
-    const sectors = [...new Set(STATE.allOrganisations.map((o) => o.sector).filter((s) => s))].sort();
-
-    const sectorSelect = document.getElementById('orgsSectorFilter');
-    if (sectorSelect) {
-      sectorSelect.innerHTML =
-        '<option value="">All</option>' +
-        sectors.map((s) => `<option value="${s}">${utils.escapeHtml(s)}</option>`).join('');
-    }
-
-    // Populate county filter
-    const counties = [...new Set(STATE.allOrganisations.map((o) => o.county).filter((c) => c))].sort();
-
-    const countySelect = document.getElementById('orgsCountyFilter');
-    if (countySelect) {
-      countySelect.innerHTML =
-        '<option value="">All</option>' +
-        counties.map((c) => `<option value="${c}">${utils.escapeHtml(c)}</option>`).join('');
-    }
-
-    // Populate region filter
-    const regions = [...new Set(STATE.allOrganisations.map((o) => o.region).filter((r) => r))].sort();
-
-    const regionSelect = document.getElementById('orgsRegionFilter');
-    if (regionSelect) {
-      regionSelect.innerHTML =
-        '<option value="">All Regions</option>' +
-        regions.map((r) => `<option value="${r}">${utils.escapeHtml(r)}</option>`).join('');
-    }
+    // Sector, region, and county filters are populated from DB
+    // via populateSectorFilter() and populateRegionAndCountyFilters().
+    // This method handles tag filter and saved presets.
 
     // Populate tag filter
     const allTags = new Set();
@@ -314,7 +289,49 @@ const orgsModule = {
   },
 
   /**
-   * Update county dropdown based on selected region
+   * Fetch regions and counties from the database and populate both filter dropdowns.
+   * Caches the data so subsequent calls (e.g. region change) don't re-fetch.
+   */
+  async populateRegionAndCountyFilters() {
+    try {
+      if (!this._cachedRegions) {
+        const { data: regions } = await apiClient.select('regions', {
+          select: 'id, name',
+          sort: { column: 'name', ascending: true },
+          pageSize: 500,
+        });
+        this._cachedRegions = regions || [];
+      }
+      if (!this._cachedCounties) {
+        const { data: counties } = await apiClient.select('counties', {
+          select: 'id, Name, region_id, regions(name)',
+          sort: { column: 'Name', ascending: true },
+          pageSize: 5000,
+        });
+        this._cachedCounties = counties || [];
+      }
+
+      // Populate region dropdown
+      const regionSelect = document.getElementById('orgsRegionFilter');
+      if (regionSelect) {
+        const current = regionSelect.value;
+        regionSelect.innerHTML =
+          '<option value="">All Regions</option>' +
+          this._cachedRegions
+            .map((r) => `<option value="${utils.escapeHtml(r.name)}">${utils.escapeHtml(r.name)}</option>`)
+            .join('');
+        if (current) regionSelect.value = current;
+      }
+
+      // Populate county dropdown (respects current region selection)
+      this.updateCountyFilterByRegion();
+    } catch (e) {
+      console.warn('Could not load regions/counties from DB:', e.message);
+    }
+  },
+
+  /**
+   * Update county dropdown based on selected region using cached DB data
    */
   updateCountyFilterByRegion() {
     const selectedRegion = document.getElementById('orgsRegionFilter')?.value || '';
@@ -322,31 +339,16 @@ const orgsModule = {
 
     if (!countySelect) return;
 
-    if (!selectedRegion) {
-      // No region selected - show all counties
-      const allCounties = [...new Set(STATE.allOrganisations.map((o) => o.county).filter((c) => c))].sort();
-
-      countySelect.innerHTML =
-        '<option value="">All Counties</option>' +
-        allCounties.map((c) => `<option value="${c}">${utils.escapeHtml(c)}</option>`).join('');
-    } else {
-      // Region selected - show only counties in that region
-      const countiesInRegion = [
-        ...new Set(
-          STATE.allOrganisations
-            .filter((o) => o.region === selectedRegion)
-            .map((o) => o.county)
-            .filter((c) => c)
-        ),
-      ].sort();
-
-      countySelect.innerHTML =
-        '<option value="">All Counties</option>' +
-        countiesInRegion.map((c) => `<option value="${c}">${utils.escapeHtml(c)}</option>`).join('');
+    let counties = this._cachedCounties || [];
+    if (selectedRegion) {
+      counties = counties.filter((c) => c.regions?.name === selectedRegion);
     }
 
-    // Reset county selection
-    countySelect.value = '';
+    const current = countySelect.value;
+    countySelect.innerHTML =
+      '<option value="">All Counties</option>' +
+      counties.map((c) => `<option value="${utils.escapeHtml(c.Name)}">${utils.escapeHtml(c.Name)}</option>`).join('');
+    if (current) countySelect.value = current;
   },
 
   /**
@@ -359,12 +361,7 @@ const orgsModule = {
         '<option value="">All</option>' +
         SECTORS.map((s) => `<option value="${utils.escapeHtml(s)}">${utils.escapeHtml(s)}</option>`).join('');
     }
-    const regionSelect = document.getElementById('orgsRegionFilter');
-    if (regionSelect) {
-      regionSelect.innerHTML =
-        '<option value="">All Regions</option>' +
-        REGIONS.map((r) => `<option value="${utils.escapeHtml(r)}">${utils.escapeHtml(r)}</option>`).join('');
-    }
+    // Region & County filters are populated from DB via populateRegionAndCountyFilters()
   },
 
   /**

@@ -216,7 +216,9 @@ async function main() {
   console.log('CHECK 6: Organisation data quality');
   console.log('-'.repeat(50));
   {
-    const { data: orgs, error: oErr } = await supabase.from('organisations').select('id, company_name, email, region');
+    const { data: orgs, error: oErr } = await supabase
+      .from('organisations')
+      .select('id, company_name, email, county_city');
 
     if (oErr) {
       fail(`Could not query: ${oErr.message}`);

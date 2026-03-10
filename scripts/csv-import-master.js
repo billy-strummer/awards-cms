@@ -699,7 +699,7 @@ async function loadExistingAwards() {
 }
 
 async function loadExistingOrganisations() {
-  const { data, error } = await supabase.from('organisations').select('id, company_name, email, region');
+  const { data, error } = await supabase.from('organisations').select('id, company_name, email, county_city');
 
   if (error) throw new Error(`Failed to load organisations: ${error.message}`);
   return data || [];

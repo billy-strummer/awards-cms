@@ -1196,6 +1196,7 @@ const dashboardModule = {
    */
   async renderWinnersYearChart() {
     const canvas = document.getElementById('winnersYearChart');
+    if (!canvas) return;
     this._destroyChart('winnersYear');
 
     if (!STATE.allWinners || STATE.allWinners.length === 0) {
@@ -1274,6 +1275,7 @@ const dashboardModule = {
    */
   async renderCategoryChart() {
     const canvas = document.getElementById('categoryChart');
+    if (!canvas) return;
     this._destroyChart('category');
 
     if (!STATE.allAwards || STATE.allAwards.length === 0) {
@@ -1340,6 +1342,7 @@ const dashboardModule = {
    */
   async renderSectorChart() {
     const canvas = document.getElementById('sectorChart');
+    if (!canvas) return;
     this._destroyChart('sector');
 
     if (!STATE.allAwards || STATE.allAwards.length === 0) {
@@ -1412,6 +1415,7 @@ const dashboardModule = {
    */
   async renderRegionChart() {
     const canvas = document.getElementById('regionChart');
+    if (!canvas) return;
     this._destroyChart('region');
 
     if (!STATE.allAwards || STATE.allAwards.length === 0) {

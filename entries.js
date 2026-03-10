@@ -1225,7 +1225,7 @@ const entriesModule = {
     }
 
     const token = await apiClient._getToken();
-    await fetch('/api/email-automation', {
+    const resp = await fetch('/api/email-automation', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1240,6 +1240,9 @@ const entriesModule = {
         html,
       }),
     });
+    if (!resp.ok) {
+      console.warn('Shortlist email failed:', resp.status);
+    }
   },
 
   /**

@@ -1060,7 +1060,7 @@ const assignmentsModule = {
           };
         }
 
-        await fetch('/api/email-automation?action=send-email', {
+        const resp = await fetch('/api/email-automation?action=send-email', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1068,6 +1068,7 @@ const assignmentsModule = {
           },
           body: JSON.stringify({ templateKey, toEmail: org.email, variables }),
         });
+        if (!resp.ok) throw new Error(`Email failed: ${resp.status}`);
 
         sent++;
       } catch (_) {

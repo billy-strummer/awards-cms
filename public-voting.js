@@ -360,7 +360,7 @@ const votingSystem = {
    */
   async sendVerificationEmail() {
     try {
-      await fetch('/api/resend-email', {
+      const resp = await fetch('/api/resend-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -374,6 +374,9 @@ const votingSystem = {
           },
         }),
       });
+      if (!resp.ok) {
+        console.warn('Vote confirmation email failed:', resp.status);
+      }
     } catch (e) {
       console.warn('Email service unavailable:', e.message);
     }

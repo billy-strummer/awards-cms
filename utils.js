@@ -1420,7 +1420,7 @@ const utils = {
         table_name: tableName,
         record_id: recordId,
         note: noteText,
-        created_by: STATE.user?.email || 'unknown',
+        created_by: STATE.currentUser?.email || 'unknown',
         created_at: new Date().toISOString(),
       });
       utils.showToast('Note added', 'success');
@@ -1478,7 +1478,7 @@ const utils = {
    */
   getModifiedByData() {
     return {
-      last_modified_by: STATE.user?.email || 'unknown',
+      last_modified_by: STATE.currentUser?.email || 'unknown',
       last_modified_at: new Date().toISOString(),
     };
   },

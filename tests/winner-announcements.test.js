@@ -451,7 +451,7 @@ describe('Winner Announcements - sendWinnerEmails', () => {
     await winnerAnnouncementsModule.sendWinnerEmails(['w-1'], 'tmpl-1');
 
     expect(global.fetch).toHaveBeenCalledWith(
-      '/api/resend-email.js',
+      '/api/resend-email',
       expect.objectContaining({
         method: 'POST',
       })

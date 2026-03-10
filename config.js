@@ -171,6 +171,7 @@ const STATE = {
   allEvents: [],
   allEntries: [],
   filteredEntries: [],
+  _loggingOut: false,
 };
 
 // ============================================

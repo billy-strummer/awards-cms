@@ -10,6 +10,9 @@ const dashboardModule = {
     try {
       utils.showLoading();
 
+      // Apply saved widget visibility/order config
+      this.applyWidgetConfig();
+
       // Load awards, organisations and winners in parallel (allSettled so partial data still loads)
       const [awardsRes, orgsRes, winnersRes] = await Promise.allSettled([
         awardsModule.loadAwards(),
@@ -1193,6 +1196,7 @@ const dashboardModule = {
    */
   async renderWinnersYearChart() {
     const canvas = document.getElementById('winnersYearChart');
+    if (!canvas) return;
     this._destroyChart('winnersYear');
 
     if (!STATE.allWinners || STATE.allWinners.length === 0) {
@@ -1271,6 +1275,7 @@ const dashboardModule = {
    */
   async renderCategoryChart() {
     const canvas = document.getElementById('categoryChart');
+    if (!canvas) return;
     this._destroyChart('category');
 
     if (!STATE.allAwards || STATE.allAwards.length === 0) {
@@ -1337,6 +1342,7 @@ const dashboardModule = {
    */
   async renderSectorChart() {
     const canvas = document.getElementById('sectorChart');
+    if (!canvas) return;
     this._destroyChart('sector');
 
     if (!STATE.allAwards || STATE.allAwards.length === 0) {
@@ -1409,6 +1415,7 @@ const dashboardModule = {
    */
   async renderRegionChart() {
     const canvas = document.getElementById('regionChart');
+    if (!canvas) return;
     this._destroyChart('region');
 
     if (!STATE.allAwards || STATE.allAwards.length === 0) {
@@ -3060,6 +3067,276 @@ const dashboardModule = {
       console.error('Error loading geo distribution:', error);
       if (geoWidget) geoWidget.innerHTML = '<p class="text-muted small">Error loading data</p>';
     }
+  },
+
+  // ============================================
+  // CUSTOMISABLE DASHBOARD
+  // ============================================
+
+  _defaultWidgetOrder: [
+    'stats-cards',
+    'stats-extended',
+    'media-ai',
+    'awards-summary',
+    'award-categories',
+    'geo-distribution',
+    'completion-deadlines',
+    'recent-orders',
+    'top-companies',
+    'charts',
+    'activity-notifications',
+  ],
+
+  _getWidgetConfig() {
+    try {
+      const saved = localStorage.getItem('dashboardWidgetConfig');
+      if (saved) return JSON.parse(saved);
+    } catch (_) {}
+    return null;
+  },
+
+  _saveWidgetConfig(config) {
+    localStorage.setItem('dashboardWidgetConfig', JSON.stringify(config));
+  },
+
+  applyWidgetConfig() {
+    const config = this._getWidgetConfig();
+    if (!config) return;
+
+    const container = document.querySelector('#dashboard .container-fluid');
+    if (!container) return;
+
+    const widgets = container.querySelectorAll('[data-dashboard-widget]');
+    const widgetMap = {};
+    widgets.forEach((w) => {
+      widgetMap[w.getAttribute('data-dashboard-widget')] = w;
+    });
+
+    // Apply visibility
+    if (config.hidden) {
+      Object.keys(widgetMap).forEach((key) => {
+        widgetMap[key].style.display = config.hidden.includes(key) ? 'none' : '';
+      });
+    }
+
+    // Apply order — move widgets to match saved order
+    if (config.order && config.order.length > 0) {
+      // Find the insertion reference point (right after the section-header)
+      const header = container.querySelector('.section-header');
+      if (!header) return;
+
+      const orderedKeys = config.order;
+      // Also include any widgets not in the saved order (new widgets added since config was saved)
+      Object.keys(widgetMap).forEach((key) => {
+        if (!orderedKeys.includes(key)) orderedKeys.push(key);
+      });
+
+      let insertAfter = header;
+      orderedKeys.forEach((key) => {
+        const widget = widgetMap[key];
+        if (widget && insertAfter.nextSibling !== widget) {
+          insertAfter.after(widget);
+        }
+        if (widget) insertAfter = widget;
+      });
+    }
+  },
+
+  openCustomiseModal() {
+    const config = this._getWidgetConfig() || {
+      order: [...this._defaultWidgetOrder],
+      hidden: [],
+    };
+
+    const widgets = document.querySelectorAll('#dashboard [data-dashboard-widget]');
+    const allWidgets = [];
+    const currentOrder = config.order || this._defaultWidgetOrder;
+    const hiddenSet = new Set(config.hidden || []);
+
+    // Build list in current order
+    currentOrder.forEach((key) => {
+      const el = document.querySelector(`[data-dashboard-widget="${key}"]`);
+      if (el) {
+        allWidgets.push({ key, label: el.getAttribute('data-widget-label') || key });
+      }
+    });
+    // Add any new widgets not in saved order
+    widgets.forEach((w) => {
+      const key = w.getAttribute('data-dashboard-widget');
+      if (!allWidgets.find((aw) => aw.key === key)) {
+        allWidgets.push({ key, label: w.getAttribute('data-widget-label') || key });
+      }
+    });
+
+    const modalHtml = `
+      <div class="modal fade" id="dashboardCustomiseModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title"><i class="bi bi-sliders me-2"></i>Customise Dashboard</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <p class="text-muted small mb-3">Drag to reorder widgets. Toggle visibility with the checkboxes.</p>
+              <ul id="dashboardWidgetList" class="list-group">
+                ${allWidgets
+                  .map(
+                    (w, i) => `
+                  <li class="list-group-item d-flex align-items-center gap-2" data-widget-key="${w.key}" draggable="true">
+                    <i class="bi bi-grip-vertical text-muted" style="cursor: grab;"></i>
+                    <div class="form-check form-switch flex-grow-1 mb-0">
+                      <input class="form-check-input dashboard-widget-toggle" type="checkbox" id="wt_${w.key}"
+                             value="${w.key}" ${!hiddenSet.has(w.key) ? 'checked' : ''}>
+                      <label class="form-check-label" for="wt_${w.key}">${w.label}</label>
+                    </div>
+                    <div class="btn-group btn-group-sm">
+                      <button class="btn btn-outline-secondary btn-sm" onclick="dashboardModule._moveWidget('${w.key}', -1)" title="Move Up" ${i === 0 ? 'disabled' : ''}>
+                        <i class="bi bi-chevron-up"></i>
+                      </button>
+                      <button class="btn btn-outline-secondary btn-sm" onclick="dashboardModule._moveWidget('${w.key}', 1)" title="Move Down" ${i === allWidgets.length - 1 ? 'disabled' : ''}>
+                        <i class="bi bi-chevron-down"></i>
+                      </button>
+                    </div>
+                  </li>`
+                  )
+                  .join('')}
+              </ul>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-outline-secondary" data-action="dashboardModule.resetWidgetConfig">
+                <i class="bi bi-arrow-counterclockwise me-1"></i>Reset to Default
+              </button>
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="button" class="btn btn-primary" data-action="dashboardModule.saveWidgetConfig">
+                <i class="bi bi-check-lg me-1"></i>Save Layout
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+
+    // Remove existing modal if any
+    const existing = document.getElementById('dashboardCustomiseModal');
+    if (existing) existing.remove();
+
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+    // Set up drag and drop
+    this._initWidgetDragDrop();
+
+    const modal = new bootstrap.Modal(document.getElementById('dashboardCustomiseModal'));
+    modal.show();
+  },
+
+  _initWidgetDragDrop() {
+    const list = document.getElementById('dashboardWidgetList');
+    if (!list) return;
+
+    let dragItem = null;
+
+    list.querySelectorAll('li').forEach((item) => {
+      item.addEventListener('dragstart', (e) => {
+        dragItem = item;
+        item.classList.add('opacity-50');
+        e.dataTransfer.effectAllowed = 'move';
+      });
+
+      item.addEventListener('dragend', () => {
+        if (dragItem) dragItem.classList.remove('opacity-50');
+        dragItem = null;
+        list.querySelectorAll('li').forEach((li) => li.classList.remove('border-primary'));
+      });
+
+      item.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        item.classList.add('border-primary');
+      });
+
+      item.addEventListener('dragleave', () => {
+        item.classList.remove('border-primary');
+      });
+
+      item.addEventListener('drop', (e) => {
+        e.preventDefault();
+        item.classList.remove('border-primary');
+        if (dragItem && dragItem !== item) {
+          const allItems = [...list.querySelectorAll('li')];
+          const dragIdx = allItems.indexOf(dragItem);
+          const dropIdx = allItems.indexOf(item);
+          if (dragIdx < dropIdx) {
+            item.after(dragItem);
+          } else {
+            item.before(dragItem);
+          }
+          this._updateMoveButtons();
+        }
+      });
+    });
+  },
+
+  _moveWidget(key, direction) {
+    const list = document.getElementById('dashboardWidgetList');
+    if (!list) return;
+
+    const items = [...list.querySelectorAll('li')];
+    const idx = items.findIndex((li) => li.getAttribute('data-widget-key') === key);
+    if (idx === -1) return;
+
+    const targetIdx = idx + direction;
+    if (targetIdx < 0 || targetIdx >= items.length) return;
+
+    if (direction === -1) {
+      items[idx].previousElementSibling.before(items[idx]);
+    } else {
+      items[idx].nextElementSibling.after(items[idx]);
+    }
+    this._updateMoveButtons();
+  },
+
+  _updateMoveButtons() {
+    const list = document.getElementById('dashboardWidgetList');
+    if (!list) return;
+
+    const items = [...list.querySelectorAll('li')];
+    items.forEach((li, i) => {
+      const btns = li.querySelectorAll('.btn-group .btn');
+      if (btns[0]) btns[0].disabled = i === 0;
+      if (btns[1]) btns[1].disabled = i === items.length - 1;
+    });
+  },
+
+  saveWidgetConfig() {
+    const list = document.getElementById('dashboardWidgetList');
+    if (!list) return;
+
+    const order = [];
+    const hidden = [];
+
+    list.querySelectorAll('li').forEach((li) => {
+      const key = li.getAttribute('data-widget-key');
+      order.push(key);
+      const toggle = li.querySelector('.dashboard-widget-toggle');
+      if (toggle && !toggle.checked) hidden.push(key);
+    });
+
+    this._saveWidgetConfig({ order, hidden });
+    this.applyWidgetConfig();
+
+    bootstrap.Modal.getInstance(document.getElementById('dashboardCustomiseModal'))?.hide();
+    utils.showToast('Dashboard layout saved', 'success');
+  },
+
+  resetWidgetConfig() {
+    localStorage.removeItem('dashboardWidgetConfig');
+
+    // Show all widgets and restore default order
+    document.querySelectorAll('#dashboard [data-dashboard-widget]').forEach((w) => {
+      w.style.display = '';
+    });
+
+    bootstrap.Modal.getInstance(document.getElementById('dashboardCustomiseModal'))?.hide();
+    utils.showToast('Dashboard reset to default layout', 'success');
   },
 };
 

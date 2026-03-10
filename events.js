@@ -7610,7 +7610,7 @@ const eventsModule = {
     // Fetch logo from tenant branding
     let logoUrl = '';
     try {
-      const tenantId = window.multiTenancy?.getTenantId?.() || 'default';
+      const tenantId = window.tenantModule?.getTenantId?.() || 'default';
       const branding = await window.brandingModule?.loadBranding?.(tenantId);
       logoUrl = branding?.logo_url || '';
     } catch (e) {
@@ -13845,6 +13845,30 @@ const eventsModule = {
       navigator.clipboard.writeText(textarea.value);
       utils.showToast('Copied to clipboard', 'success');
     }
+  },
+
+  downloadPressRelease(_eventId, event) {
+    const textarea = document.getElementById('pressReleaseText');
+    if (!textarea) return;
+    const el = event?.target?.closest?.('[data-event-name]');
+    const name = el?.getAttribute('data-event-name') || 'press-release';
+    const blob = new Blob([textarea.value], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${name}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+    utils.showToast('Press release downloaded', 'success');
+  },
+
+  filterTrophyStatus(status) {
+    this._trophyFilterStatus = status;
+    this.renderTrophiesTab();
+  },
+
+  cancelTableSetup() {
+    this.renderTablePlanTab();
   },
 
   /**

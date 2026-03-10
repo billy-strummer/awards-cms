@@ -4072,7 +4072,8 @@ const orgsModule = {
 
     // Store original HTML for cancel
     td.dataset.originalHtml = originalHtml;
-    td.querySelector('input').focus();
+    const input = td.querySelector('input');
+    if (input) input.focus();
   },
 
   // Last inline edit for undo support
@@ -9326,6 +9327,30 @@ const orgsModule = {
     if (el) el.value = region;
     this.filterOrganisations();
     bootstrap.Modal.getInstance(document.getElementById('dynamicOrgModal'))?.hide();
+  },
+
+  /** Helper for data-action: filter by status from dashboard card */
+  filterByStatus(status) {
+    const el = document.getElementById('orgsStatusFilter');
+    if (el) el.value = status;
+    this.filterOrganisations();
+  },
+
+  /** Helper for data-action: filter by date threshold from dashboard card */
+  filterByDate(dateType) {
+    if (dateType === 'stale') {
+      // Filter for orgs not updated in 6+ months
+      this._filterMissingField = null;
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+      this.filteredOrganisations = (STATE.allOrganisations || []).filter((org) => {
+        const updated = new Date(org.updated_at || org.created_at);
+        return updated < sixMonthsAgo;
+      });
+      this.renderOrganisations();
+      return;
+    }
+    this.filterOrganisations();
   },
 
   /** Helper for data-action: close modal and open company profile */

@@ -1822,7 +1822,7 @@ document.addEventListener('DOMContentLoaded', function () {
       if (tabContent) tabContent.parentElement.insertBefore(bc, tabContent);
     }
     const label = tabName.charAt(0).toUpperCase() + tabName.slice(1);
-    bc.innerHTML = `<ol class="breadcrumb mb-0 bg-transparent p-0"><li class="breadcrumb-item"><a href="#" data-action="app.navigateDashboard">Dashboard</a></li><li class="breadcrumb-item active" aria-current="page">${label}</li></ol>`;
+    bc.innerHTML = `<ol class="breadcrumb mb-0 bg-transparent p-0"><li class="breadcrumb-item"><a href="#" data-action="dashboardModule.navigateToSection" data-args='["dashboard"]' data-prevent-default="true">Dashboard</a></li><li class="breadcrumb-item active" aria-current="page">${label}</li></ol>`;
   };
 
   // ==========================================

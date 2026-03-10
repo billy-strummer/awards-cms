@@ -881,8 +881,9 @@ async function _executeQuery(body, user, enableTenantScope) {
 
     if (error) throw error;
 
-    // Log the activity
+    // Log the activity and dispatch webhooks
     await logActivity(table, 'insert', user, result, {});
+    dispatchWebhooks(table, 'insert', user, result).catch(() => {});
 
     return { data: result };
   }
@@ -900,6 +901,7 @@ async function _executeQuery(body, user, enableTenantScope) {
     const { data: result, error } = await supabase.from(table).upsert(enriched, upsertOpts).select();
     if (error) throw error;
     await logActivity(table, 'upsert', user, result, {});
+    dispatchWebhooks(table, 'update', user, result).catch(() => {});
     return { data: result };
   }
 
@@ -927,6 +929,7 @@ async function _executeQuery(body, user, enableTenantScope) {
     if (error) throw error;
 
     await logActivity(table, 'update', user, result, { id, filters });
+    dispatchWebhooks(table, 'update', user, result).catch(() => {});
 
     return { data: result };
   }
@@ -950,6 +953,7 @@ async function _executeQuery(body, user, enableTenantScope) {
     if (error) throw error;
 
     await logActivity(table, 'delete', user, result, { id, filters });
+    dispatchWebhooks(table, 'delete', user, result).catch(() => {});
 
     return { data: result };
   }
@@ -996,6 +1000,101 @@ async function logActivity(table, action, user, result, context = {}) {
   } catch (e) {
     // Don't fail the main operation if logging fails
     console.error('Activity log error:', e.message);
+  }
+}
+
+// ============================================
+// OUTBOUND WEBHOOK DISPATCH
+// ============================================
+
+/**
+ * Fire outbound webhooks for data mutations (insert/update/delete).
+ * Runs asynchronously — never blocks the main response.
+ * @param {string} table - The table that was modified.
+ * @param {string} action - insert, update, or delete.
+ * @param {Object} user - The authenticated user.
+ * @param {Array|Object} result - The affected records.
+ */
+async function dispatchWebhooks(table, action, user, result) {
+  try {
+    const eventType = `${table}.${action === 'insert' ? 'created' : action === 'delete' ? 'deleted' : 'updated'}`;
+
+    // Fetch active webhooks that match this event
+    const { data: webhooks, error } = await supabase
+      .from('webhooks')
+      .select('id, name, url, secret, events')
+      .eq('active', true);
+
+    if (error || !webhooks || webhooks.length === 0) return;
+
+    const matching = webhooks.filter((wh) => wh.events && (wh.events.includes('*') || wh.events.includes(eventType)));
+    if (matching.length === 0) return;
+
+    const payload = JSON.stringify({
+      event: eventType,
+      timestamp: new Date().toISOString(),
+      table,
+      action,
+      performed_by: user.email,
+      data: Array.isArray(result) ? result.slice(0, 10) : result,
+    });
+
+    // Fire all matching webhooks concurrently
+    await Promise.allSettled(
+      matching.map(async (wh) => {
+        let statusCode = 0;
+        let responseBody = '';
+        try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 10000);
+
+          const headers = {
+            'Content-Type': 'application/json',
+            'X-Webhook-Event': eventType,
+            'User-Agent': 'AwardsCMS-Webhook/1.0',
+          };
+          if (wh.secret) {
+            // Simple HMAC-like signature using the secret
+            const crypto = require('crypto');
+            const signature = crypto.createHmac('sha256', wh.secret).update(payload).digest('hex');
+            headers['X-Webhook-Signature'] = `sha256=${signature}`;
+          }
+
+          const resp = await fetch(wh.url, {
+            method: 'POST',
+            headers,
+            body: payload,
+            signal: controller.signal,
+          });
+          clearTimeout(timeout);
+
+          statusCode = resp.status;
+          responseBody = await resp.text().catch(() => '');
+          if (responseBody.length > 500) responseBody = responseBody.substring(0, 500);
+
+          // Update last triggered timestamp
+          await supabase.from('webhooks').update({ last_triggered_at: new Date().toISOString() }).eq('id', wh.id);
+        } catch (err) {
+          responseBody = err.message || 'Connection error';
+        }
+
+        // Log delivery
+        await supabase
+          .from('webhook_logs')
+          .insert([
+            {
+              webhook_id: wh.id,
+              webhook_name: wh.name,
+              event_type: eventType,
+              status_code: statusCode,
+              response_body: responseBody,
+            },
+          ])
+          .catch(() => {});
+      })
+    );
+  } catch (err) {
+    console.error('Webhook dispatch error:', err.message);
   }
 }
 

@@ -2568,16 +2568,16 @@ describe('Utils - showToastWithAction()', () => {
 
 describe('Utils - getModifiedByData()', () => {
   test('returns object with last_modified_by and last_modified_at', () => {
-    STATE.user = { email: 'admin@test.com' };
+    STATE.currentUser = { email: 'admin@test.com' };
     const result = utils.getModifiedByData();
     expect(result.last_modified_by).toBe('admin@test.com');
     expect(result.last_modified_at).toBeDefined();
     expect(typeof result.last_modified_at).toBe('string');
-    STATE.user = null;
+    STATE.currentUser = null;
   });
 
   test('returns "unknown" when no user is set', () => {
-    STATE.user = null;
+    STATE.currentUser = null;
     const result = utils.getModifiedByData();
     expect(result.last_modified_by).toBe('unknown');
   });

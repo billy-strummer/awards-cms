@@ -4067,6 +4067,12 @@ ${content}
   /**
    * Load campaign log with search and pagination
    */
+  resetAndLoadCampaignLog() {
+    this.campaignLogPage = 0;
+    this.campaignLogSearch = '';
+    this.loadCampaignLog();
+  },
+
   async loadCampaignLog() {
     const tbody = document.getElementById('campaignLogBody');
     if (!tbody) return;

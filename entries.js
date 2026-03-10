@@ -986,11 +986,18 @@ const entriesModule = {
 
     const label = statusLabels[newStatus] || 'change status';
 
+    const emailNote =
+      newStatus === 'rejected'
+        ? '\n\nAn automatic email response will be sent to the recipient notifying them of the decision.'
+        : newStatus === 'shortlisted'
+          ? '\n\nAn automatic email response will be sent to the recipient notifying them they have been shortlisted.'
+          : '';
+
     if (
       !(await utils.confirmDialog({
         title: 'Change Entry Status',
-        message: `Are you sure you want to ${label} this entry?`,
-        confirmText: 'Confirm',
+        message: `Are you sure you want to ${label} this entry?${emailNote}`,
+        confirmText: emailNote ? `${statusLabels[newStatus]} & Send Email` : 'Confirm',
         danger: newStatus === 'rejected',
       }))
     ) {
@@ -1029,6 +1036,21 @@ const entriesModule = {
         const displayStatus =
           newStatus === 'under_review' ? 'Under Review' : newStatus.charAt(0).toUpperCase() + newStatus.slice(1);
         utils.showToast(`Entry status updated to ${displayStatus}`, 'success');
+
+        // Send auto email for rejection or shortlisting
+        if (newStatus === 'rejected' && window.entryRevisionModule) {
+          try {
+            await window.entryRevisionModule._sendRejectionEmail(entryId);
+          } catch (emailErr) {
+            console.warn('Rejection email failed (non-fatal):', emailErr.message);
+          }
+        } else if (newStatus === 'shortlisted') {
+          try {
+            await this._sendShortlistEmail(entryId);
+          } catch (emailErr) {
+            console.warn('Shortlist email failed (non-fatal):', emailErr.message);
+          }
+        }
 
         // Close modal
         const modal = bootstrap.Modal.getInstance(document.getElementById('entryDetailsModal'));
@@ -1084,9 +1106,44 @@ const entriesModule = {
           updateData.admin_notes = entry?.admin_notes ? `${entry.admin_notes}\n\n${noteEntry}` : noteEntry;
         }
 
+        // Show confirmation with email notice for rejection/shortlisting
+        const emailNote =
+          newStatus === 'rejected'
+            ? '\n\nAn automatic email response will be sent to the recipient notifying them of the decision.'
+            : newStatus === 'shortlisted'
+              ? '\n\nAn automatic email response will be sent to the recipient notifying them they have been shortlisted.'
+              : '';
+
+        if (
+          emailNote &&
+          !(await utils.confirmDialog({
+            title: 'Confirm Status Change',
+            message: `Change status to "${newStatus}"?${emailNote}`,
+            confirmText: 'Confirm & Send Email',
+            danger: newStatus === 'rejected',
+          }))
+        ) {
+          return;
+        }
+
         await apiClient.update('entries', entryId, updateData);
 
         utils.showToast('Entry status updated successfully', 'success');
+
+        // Send auto email for rejection or shortlisting
+        if (newStatus === 'rejected' && window.entryRevisionModule) {
+          try {
+            await window.entryRevisionModule._sendRejectionEmail(entryId);
+          } catch (emailErr) {
+            console.warn('Rejection email failed (non-fatal):', emailErr.message);
+          }
+        } else if (newStatus === 'shortlisted') {
+          try {
+            await this._sendShortlistEmail(entryId);
+          } catch (emailErr) {
+            console.warn('Shortlist email failed (non-fatal):', emailErr.message);
+          }
+        }
 
         // Close modal
         const modal = bootstrap.Modal.getInstance(document.getElementById('entryDetailsModal'));
@@ -1101,6 +1158,90 @@ const entriesModule = {
     } catch (error) {
       console.error('Error updating entry status:', error);
       utils.showToast('Failed to update entry status: ' + error.message, 'error');
+    }
+  },
+
+  /**
+   * Send shortlist notification email for a single entry.
+   */
+  async _sendShortlistEmail(entryId) {
+    const entryResult = await apiClient.select('entries', {
+      select: 'id, entry_number, entry_title, contact_name, contact_email, award_id',
+      filters: { id: { eq: entryId } },
+      pageSize: 1,
+    });
+    const entry = entryResult.data?.[0];
+    if (!entry?.contact_email) return;
+
+    let awardName = '';
+    if (entry.award_id) {
+      try {
+        const awardResult = await apiClient.select('awards', {
+          select: 'award_name',
+          filters: { id: { eq: entry.award_id } },
+          pageSize: 1,
+        });
+        awardName = awardResult.data?.[0]?.award_name || '';
+      } catch (_) {
+        /* non-fatal */
+      }
+    }
+
+    // Try to load editable template from CMS
+    let subject, html;
+    let tpl = null;
+    try {
+      const tplResult = await apiClient.select('email_templates', {
+        select: 'subject, body',
+        filters: { template_type: { eq: 'approval' }, is_active: { eq: true } },
+        sort: { column: 'is_default', ascending: false },
+        pageSize: 1,
+      });
+      tpl = tplResult.data?.[0];
+    } catch (_) {
+      /* fallback to default */
+    }
+
+    const replacements = {
+      '{{contact_name}}': entry.contact_name || 'Entrant',
+      '{{entry_title}}': entry.entry_title || '',
+      '{{entry_number}}': entry.entry_number || '',
+      '{{award_name}}': awardName,
+    };
+
+    if (tpl) {
+      subject = tpl.subject || 'Your Entry Has Been Shortlisted';
+      html = tpl.body || '';
+      for (const [key, val] of Object.entries(replacements)) {
+        subject = subject.split(key).join(val);
+        html = html.split(key).join(val);
+      }
+    } else {
+      subject = `Congratulations – Your Entry Has Been Shortlisted`;
+      html = `<p>Dear ${entry.contact_name || 'Entrant'},</p>
+<p>We are pleased to inform you that your entry <strong>${entry.entry_title || entry.entry_number || ''}</strong>${awardName ? ` for <strong>${awardName}</strong>` : ''} has been shortlisted.</p>
+<p>Further details about the next steps will follow shortly.</p>
+<p>Kind regards,<br>The Awards Team</p>`;
+    }
+
+    const token = await apiClient._getToken();
+    const resp = await fetch('/api/email-automation', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        action: 'sendTemplate',
+        templateKey: 'SHORTLIST_NOTIFICATION',
+        toEmail: entry.contact_email,
+        toName: entry.contact_name,
+        subject,
+        html,
+      }),
+    });
+    if (!resp.ok) {
+      console.warn('Shortlist email failed:', resp.status);
     }
   },
 
@@ -1737,12 +1878,19 @@ const entriesModule = {
             return;
           }
         } else if (actionType === 'status') {
+          const bulkEmailNote =
+            value === 'rejected'
+              ? `\n\nAutomatic rejection emails will be sent to all ${count} recipients.`
+              : value === 'shortlisted'
+                ? `\n\nAutomatic shortlist notification emails will be sent to all ${count} recipients.`
+                : '';
+
           if (
             !(await utils.confirmDialog({
               title: 'Change Entry Status',
-              message: `Change status to "${value}" for ${count} entries?`,
-              confirmText: 'Update',
-              danger: false,
+              message: `Change status to "${value}" for ${count} entries?${bulkEmailNote}`,
+              confirmText: bulkEmailNote ? 'Update & Send Emails' : 'Update',
+              danger: value === 'rejected',
             }))
           )
             return;
@@ -1757,6 +1905,31 @@ const entriesModule = {
             await apiClient.updateByFilters('entries', { id: { operator: 'in', value: ids } }, updateData);
 
             utils.showToast(`${count} entries updated to ${value}`, 'success');
+
+            // Send auto emails for rejection or shortlisting
+            if (value === 'rejected' && window.entryRevisionModule) {
+              let emailCount = 0;
+              for (const id of ids) {
+                try {
+                  await window.entryRevisionModule._sendRejectionEmail(id);
+                  emailCount++;
+                } catch (_) {
+                  /* non-fatal */
+                }
+              }
+              if (emailCount > 0) utils.showToast(`${emailCount} rejection email(s) sent`, 'info');
+            } else if (value === 'shortlisted') {
+              let emailCount = 0;
+              for (const id of ids) {
+                try {
+                  await this._sendShortlistEmail(id);
+                  emailCount++;
+                } catch (_) {
+                  /* non-fatal */
+                }
+              }
+              if (emailCount > 0) utils.showToast(`${emailCount} shortlist email(s) sent`, 'info');
+            }
           } catch (error) {
             console.error('Error bulk status update:', error);
             utils.showToast('Failed to update entries: ' + error.message, 'error');

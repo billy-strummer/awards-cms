@@ -160,6 +160,9 @@ const assignmentsModule = {
                 <i class="bi bi-people-fill me-2 text-success"></i>
                 Assigned Companies (<span id="assignedCount">${validAssignments.length}</span>)
               </h5>
+              <button class="btn btn-sm btn-outline-primary" data-action="assignmentsModule.openBatchEmailModal" title="Send decision emails to all shortlisted, winners and rejected nominees">
+                <i class="bi bi-envelope-check me-1"></i>Send Decision Emails
+              </button>
             </div>
 
             ${
@@ -875,6 +878,229 @@ const assignmentsModule = {
     const emails = [...new Set(filtered.map((a) => a.organisations?.email).filter(Boolean))];
     const textarea = document.getElementById('nomineeEmailList');
     if (textarea) textarea.value = emails.join('; ');
+  },
+
+  /**
+   * Open the batch decision email modal showing counts of nominees per status
+   * that will receive emails when the admin clicks Send.
+   */
+  async openBatchEmailModal() {
+    const assignments = this._cachedAssignments || [];
+    const awardName = this.currentAwardName || 'this award';
+
+    const shortlisted = assignments.filter((a) => a.status === 'shortlisted' && a.organisations?.email);
+    const winners = assignments.filter((a) => a.status === 'winner' && a.organisations?.email);
+    const rejected = assignments.filter((a) => a.status === 'rejected' && a.organisations?.email);
+
+    const totalRecipients = shortlisted.length + winners.length + rejected.length;
+
+    if (totalRecipients === 0) {
+      utils.showToast(
+        'No nominees with a decision status (shortlisted, winner or rejected) to email. Change statuses first, then send.',
+        'warning'
+      );
+      return;
+    }
+
+    document.getElementById('batchEmailModal')?.remove();
+
+    const modalHtml = `
+      <div class="modal fade" id="batchEmailModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+              <h5 class="modal-title"><i class="bi bi-envelope-check me-2"></i>Send Decision Emails</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <p class="text-muted mb-3">Send notification emails to all nominees whose status has been decided for <strong>${utils.escapeHtml(awardName)}</strong>.</p>
+
+              <div class="list-group mb-3">
+                ${
+                  shortlisted.length > 0
+                    ? `<label class="list-group-item d-flex align-items-center">
+                    <input class="form-check-input me-2" type="checkbox" id="batchShortlisted" checked>
+                    <span class="badge bg-warning text-dark me-2">Shortlisted</span>
+                    <span>${shortlisted.length} nominee${shortlisted.length !== 1 ? 's' : ''}</span>
+                  </label>`
+                    : ''
+                }
+                ${
+                  winners.length > 0
+                    ? `<label class="list-group-item d-flex align-items-center">
+                    <input class="form-check-input me-2" type="checkbox" id="batchWinners" checked>
+                    <span class="badge bg-success me-2">Winners</span>
+                    <span>${winners.length} nominee${winners.length !== 1 ? 's' : ''}</span>
+                  </label>`
+                    : ''
+                }
+                ${
+                  rejected.length > 0
+                    ? `<label class="list-group-item d-flex align-items-center">
+                    <input class="form-check-input me-2" type="checkbox" id="batchRejected" checked>
+                    <span class="badge bg-danger me-2">Rejected</span>
+                    <span>${rejected.length} nominee${rejected.length !== 1 ? 's' : ''}</span>
+                  </label>`
+                    : ''
+                }
+              </div>
+
+              <div class="alert alert-info mb-0">
+                <i class="bi bi-info-circle me-2"></i>
+                <strong>${totalRecipients}</strong> email${totalRecipients !== 1 ? 's' : ''} will be sent using the configured email templates. Nominees with status "Nominated" will not receive an email.
+              </div>
+
+              <div id="batchEmailProgress" class="mt-3" style="display:none;">
+                <div class="progress">
+                  <div class="progress-bar progress-bar-striped progress-bar-animated" id="batchEmailProgressBar" role="progressbar" style="width: 0%">0%</div>
+                </div>
+                <small class="text-muted mt-1 d-block" id="batchEmailStatus">Sending...</small>
+              </div>
+            </div>
+            <div class="modal-footer" id="batchEmailFooter">
+              <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button class="btn btn-primary" id="batchEmailSendBtn" data-action="assignmentsModule._executeBatchEmails">
+                <i class="bi bi-send me-1"></i>Send Decision Emails
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    new bootstrap.Modal(document.getElementById('batchEmailModal')).show();
+  },
+
+  /**
+   * Execute the batch email send from the modal, respecting checkbox selections.
+   */
+  async _executeBatchEmails() {
+    const assignments = this._cachedAssignments || [];
+    const awardName = this.currentAwardName || '';
+
+    // Determine which statuses to include based on checkboxes
+    const includeShortlisted = document.getElementById('batchShortlisted')?.checked ?? false;
+    const includeWinners = document.getElementById('batchWinners')?.checked ?? false;
+    const includeRejected = document.getElementById('batchRejected')?.checked ?? false;
+
+    const recipients = [];
+    if (includeShortlisted) {
+      recipients.push(
+        ...assignments
+          .filter((a) => a.status === 'shortlisted' && a.organisations?.email)
+          .map((a) => ({ ...a, _emailType: 'shortlisted' }))
+      );
+    }
+    if (includeWinners) {
+      recipients.push(
+        ...assignments
+          .filter((a) => a.status === 'winner' && a.organisations?.email)
+          .map((a) => ({ ...a, _emailType: 'winner' }))
+      );
+    }
+    if (includeRejected) {
+      recipients.push(
+        ...assignments
+          .filter((a) => a.status === 'rejected' && a.organisations?.email)
+          .map((a) => ({ ...a, _emailType: 'rejected' }))
+      );
+    }
+
+    if (recipients.length === 0) {
+      utils.showToast('No recipients selected', 'warning');
+      return;
+    }
+
+    // Disable send button and show progress
+    const sendBtn = document.getElementById('batchEmailSendBtn');
+    if (sendBtn) sendBtn.disabled = true;
+    const progressDiv = document.getElementById('batchEmailProgress');
+    const progressBar = document.getElementById('batchEmailProgressBar');
+    const statusText = document.getElementById('batchEmailStatus');
+    if (progressDiv) progressDiv.style.display = 'block';
+
+    let sent = 0;
+    let failed = 0;
+    const total = recipients.length;
+
+    const token = await apiClient._getToken();
+
+    for (const recipient of recipients) {
+      const org = recipient.organisations;
+      const emailType = recipient._emailType;
+
+      try {
+        let templateKey, subject, variables;
+
+        if (emailType === 'rejected') {
+          templateKey = 'REJECTION';
+          subject = `Your Nomination Update – ${awardName}`;
+          variables = {
+            CONTACT_NAME: org.company_name,
+            COMPANY_NAME: org.company_name,
+            AWARD_NAME: awardName,
+          };
+        } else if (emailType === 'shortlisted') {
+          templateKey = 'SHORTLIST_NOTIFICATION';
+          subject = `Congratulations – You Have Been Shortlisted for ${awardName}`;
+          variables = {
+            CONTACT_NAME: org.company_name,
+            COMPANY_NAME: org.company_name,
+            AWARD_NAME: awardName,
+          };
+        } else if (emailType === 'winner') {
+          templateKey = 'WINNER_ANNOUNCEMENT';
+          subject = `Congratulations – You Are a Winner! ${awardName}`;
+          variables = {
+            CONTACT_NAME: org.company_name,
+            COMPANY_NAME: org.company_name,
+            AWARD_NAME: awardName,
+            WINNER_POSITION: recipient.winner_position || '',
+          };
+        }
+
+        const resp = await fetch('/api/email-automation?action=send-email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ templateKey, toEmail: org.email, variables }),
+        });
+        if (!resp.ok) throw new Error(`Email failed: ${resp.status}`);
+
+        sent++;
+      } catch (_) {
+        failed++;
+      }
+
+      // Update progress
+      const pct = Math.round(((sent + failed) / total) * 100);
+      if (progressBar) {
+        progressBar.style.width = `${pct}%`;
+        progressBar.textContent = `${pct}%`;
+      }
+      if (statusText) statusText.textContent = `Sent ${sent}/${total}${failed > 0 ? ` (${failed} failed)` : ''}...`;
+    }
+
+    // Done
+    if (statusText) statusText.textContent = `Complete: ${sent} sent, ${failed} failed`;
+    if (progressBar) {
+      progressBar.classList.remove('progress-bar-animated');
+      progressBar.classList.add(failed > 0 ? 'bg-warning' : 'bg-success');
+    }
+
+    // Replace footer with done button
+    const footer = document.getElementById('batchEmailFooter');
+    if (footer) {
+      footer.innerHTML = `<button class="btn btn-primary" data-bs-dismiss="modal">Done</button>`;
+    }
+
+    utils.showToast(
+      `Decision emails sent: ${sent} delivered${failed > 0 ? `, ${failed} failed` : ''}`,
+      sent > 0 ? 'success' : 'error'
+    );
   },
 
   /**

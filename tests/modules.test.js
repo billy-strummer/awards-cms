@@ -232,7 +232,7 @@ describe('Config / STATE', () => {
   test('REGIONS array has UK regions', () => {
     expect(REGIONS.length).toBeGreaterThan(50);
     expect(REGIONS).toContain('Kent');
-    expect(REGIONS).toContain('London North');
+    expect(REGIONS).toContain('London');
   });
 
   test('ModuleRegistry.list() returns registered module names', () => {

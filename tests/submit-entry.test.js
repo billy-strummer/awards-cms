@@ -110,7 +110,7 @@ global.window.REGIONS = [
   'Kent',
   'Lancashire',
   'Birmingham',
-  'London North',
+  'London',
   'Manchester',
 ];
 
@@ -1164,7 +1164,7 @@ describe('populateRegions', () => {
     const values = Array.from(cityOptions).map((o) => o.value);
     expect(values).toContain('Birmingham');
     expect(values).toContain('Manchester');
-    expect(values).toContain('London North');
+    expect(values).toContain('London');
   });
 });
 

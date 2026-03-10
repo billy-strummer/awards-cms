@@ -1343,18 +1343,18 @@ const testDataManager = {
     if (count && count > 0) return; // already seeded
 
     const counties = [
-      { Name: 'Greater London', region: 'London' },
-      { Name: 'Greater Manchester', region: 'North West' },
-      { Name: 'West Midlands', region: 'West Midlands' },
-      { Name: 'West Yorkshire', region: 'Yorkshire' },
-      { Name: 'South Yorkshire', region: 'Yorkshire' },
+      { Name: 'London', region: 'London' },
+      { Name: 'Manchester', region: 'North West' },
+      { Name: 'Birmingham', region: 'West Midlands' },
+      { Name: 'West Yorkshire', region: 'Yorkshire and the Humber' },
+      { Name: 'South Yorkshire', region: 'Yorkshire and the Humber' },
       { Name: 'Surrey', region: 'South East' },
       { Name: 'Kent', region: 'South East' },
       { Name: 'Essex', region: 'East of England' },
       { Name: 'Hampshire', region: 'South East' },
       { Name: 'Lancashire', region: 'North West' },
-      { Name: 'Merseyside', region: 'North West' },
-      { Name: 'Tyne and Wear', region: 'North East' },
+      { Name: 'Liverpool', region: 'North West' },
+      { Name: 'Tyne & Wear', region: 'North East' },
       { Name: 'Nottinghamshire', region: 'East Midlands' },
       { Name: 'Derbyshire', region: 'East Midlands' },
       { Name: 'Devon', region: 'South West' },
@@ -1370,8 +1370,8 @@ const testDataManager = {
       { Name: 'Glasgow', region: 'Scotland' },
       { Name: 'Cardiff', region: 'Wales' },
       { Name: 'Swansea', region: 'Wales' },
-      { Name: 'Belfast', region: 'Northern Ireland' },
-      { Name: 'Antrim', region: 'Northern Ireland' },
+      { Name: 'East Sussex', region: 'South East' },
+      { Name: 'West Sussex', region: 'South East' },
       { Name: 'Berkshire', region: 'South East' },
     ];
     const countyResult = await this._safeWrite('counties', counties, 'Counties seed', 'insert');

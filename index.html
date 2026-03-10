@@ -840,7 +840,7 @@
                       <div class="py-1 border-top" data-county="Devon">Devon</div>
                       <div class="py-1 border-top" data-county="Dorset">Dorset</div>
                       <div class="py-1 border-top" data-county="County Durham">County Durham</div>
-                      <div class="py-1 border-top" data-county="East Riding of Yorkshire">East Riding of Yorkshire</div>
+                      <div class="py-1 border-top" data-county="East Yorkshire">East Yorkshire</div>
                       <div class="py-1 border-top" data-county="Essex">Essex</div>
                       <div class="py-1 border-top" data-county="Gloucestershire">Gloucestershire</div>
                       <div class="py-1 border-top" data-county="Hampshire">Hampshire</div>
@@ -864,7 +864,8 @@
                       <div class="py-1 border-top" data-county="Staffordshire">Staffordshire</div>
                       <div class="py-1 border-top" data-county="Suffolk">Suffolk</div>
                       <div class="py-1 border-top" data-county="Surrey">Surrey</div>
-                      <div class="py-1 border-top" data-county="Sussex">Sussex</div>
+                      <div class="py-1 border-top" data-county="East Sussex">East Sussex</div>
+                      <div class="py-1 border-top" data-county="West Sussex">West Sussex</div>
                       <div class="py-1 border-top" data-county="Tyne & Wear">Tyne & Wear</div>
                       <div class="py-1 border-top" data-county="Warwickshire">Warwickshire</div>
                       <div class="py-1 border-top" data-county="West Yorkshire">West Yorkshire</div>
@@ -2016,17 +2017,17 @@
                       <option>Bedfordshire</option><option>Berkshire</option><option>Buckinghamshire</option>
                       <option>Cambridgeshire</option><option>Cheshire</option><option>Cornwall</option>
                       <option>Cumbria</option><option>Derbyshire</option><option>Devon</option>
-                      <option>Dorset</option><option>County Durham</option><option>East Riding of Yorkshire</option>
-                      <option>Essex</option><option>Gloucestershire</option><option>Hampshire</option>
-                      <option>Herefordshire</option><option>Hertfordshire</option><option>Isle of Wight</option>
-                      <option>Kent</option><option>Lancashire</option><option>Leicestershire</option>
-                      <option>Lincolnshire</option><option>Norfolk</option><option>Northamptonshire</option>
-                      <option>North Yorkshire</option><option>Northumberland</option><option>Nottinghamshire</option>
-                      <option>Oxfordshire</option><option>Rutland</option><option>Shropshire</option>
-                      <option>Somerset</option><option>South Yorkshire</option><option>Staffordshire</option>
-                      <option>Suffolk</option><option>Surrey</option><option>Sussex</option>
-                      <option>Tyne & Wear</option><option>Warwickshire</option><option>West Yorkshire</option>
-                      <option>Wiltshire</option><option>Worcestershire</option>
+                      <option>Dorset</option><option>County Durham</option><option>East Sussex</option>
+                      <option>East Yorkshire</option><option>Essex</option><option>Gloucestershire</option>
+                      <option>Hampshire</option><option>Herefordshire</option><option>Hertfordshire</option>
+                      <option>Isle of Wight</option><option>Kent</option><option>Lancashire</option>
+                      <option>Leicestershire</option><option>Lincolnshire</option><option>Norfolk</option>
+                      <option>Northamptonshire</option><option>Northumberland</option><option>North Yorkshire</option>
+                      <option>Nottinghamshire</option><option>Oxfordshire</option><option>Rutland</option>
+                      <option>Shropshire</option><option>Somerset</option><option>South Yorkshire</option>
+                      <option>Staffordshire</option><option>Suffolk</option><option>Surrey</option>
+                      <option>Tyne & Wear</option><option>Warwickshire</option><option>West Sussex</option>
+                      <option>West Yorkshire</option><option>Wiltshire</option><option>Worcestershire</option>
                     </optgroup>
                     <optgroup label="Scotland">
                       <option>Argyll & Bute</option><option>Ayrshire</option><option>Central Scotland</option>
@@ -2036,12 +2037,13 @@
                       <option>Scottish Islands</option><option>Tayside</option>
                     </optgroup>
                     <optgroup label="Wales">
-                      <option>Anglesey</option><option>Carmarthenshire</option><option>Ceredigion</option>
-                      <option>Conwy</option><option>Denbighshire</option><option>Flintshire</option>
-                      <option>Glamorgan</option><option>Gwent</option><option>Gwynedd</option>
-                      <option>Pembrokeshire</option><option>Powys</option><option>Wrexham</option>
+                      <option>Anglesey</option><option>Cardiff</option><option>Carmarthenshire</option>
+                      <option>Ceredigion</option><option>Conwy</option><option>Denbighshire</option>
+                      <option>Flintshire</option><option>Glamorgan</option><option>Gwent</option>
+                      <option>Gwynedd</option><option>Pembrokeshire</option><option>Powys</option>
+                      <option>Swansea</option><option>Wrexham</option>
                     </optgroup>
-                    <optgroup label="Cities">
+                    <optgroup label="UK Cities Top 20">
                       <option>Birmingham</option><option>Bournemouth</option><option>Bradford</option>
                       <option>Brighton & Hove</option><option>Bristol</option><option>Cardiff</option>
                       <option>Coventry</option><option>Edinburgh</option><option>Glasgow</option>
@@ -2123,36 +2125,37 @@
                     <div class="col-md-8">
                       <select class="form-select" id="csvCountySelect" required>
                         <option value="">-- Select County or City --</option>
-                        <optgroup label="England Counties (38)">
+                        <optgroup label="England Counties">
                           <option>Bedfordshire</option><option>Berkshire</option><option>Buckinghamshire</option>
                           <option>Cambridgeshire</option><option>Cheshire</option><option>Cornwall</option>
                           <option>Cumbria</option><option>Derbyshire</option><option>Devon</option>
-                          <option>Dorset</option><option>County Durham</option><option>East Riding of Yorkshire</option>
-                          <option>Essex</option><option>Gloucestershire</option><option>Hampshire</option>
-                          <option>Herefordshire</option><option>Hertfordshire</option><option>Isle of Wight</option>
-                          <option>Kent</option><option>Lancashire</option><option>Leicestershire</option>
-                          <option>Lincolnshire</option><option>Norfolk</option><option>Northamptonshire</option>
-                          <option>North Yorkshire</option><option>Northumberland</option><option>Nottinghamshire</option>
-                          <option>Oxfordshire</option><option>Rutland</option><option>Shropshire</option>
-                          <option>Somerset</option><option>South Yorkshire</option><option>Staffordshire</option>
-                          <option>Suffolk</option><option>Surrey</option><option>Sussex</option>
-                          <option>Tyne & Wear</option><option>Warwickshire</option><option>West Yorkshire</option>
-                          <option>Wiltshire</option><option>Worcestershire</option>
+                          <option>Dorset</option><option>County Durham</option><option>East Sussex</option>
+                          <option>East Yorkshire</option><option>Essex</option><option>Gloucestershire</option>
+                          <option>Hampshire</option><option>Herefordshire</option><option>Hertfordshire</option>
+                          <option>Isle of Wight</option><option>Kent</option><option>Lancashire</option>
+                          <option>Leicestershire</option><option>Lincolnshire</option><option>Norfolk</option>
+                          <option>Northamptonshire</option><option>Northumberland</option><option>North Yorkshire</option>
+                          <option>Nottinghamshire</option><option>Oxfordshire</option><option>Rutland</option>
+                          <option>Shropshire</option><option>Somerset</option><option>South Yorkshire</option>
+                          <option>Staffordshire</option><option>Suffolk</option><option>Surrey</option>
+                          <option>Tyne & Wear</option><option>Warwickshire</option><option>West Sussex</option>
+                          <option>West Yorkshire</option><option>Wiltshire</option><option>Worcestershire</option>
                         </optgroup>
-                        <optgroup label="Scotland (14)">
+                        <optgroup label="Scotland">
                           <option>Argyll & Bute</option><option>Ayrshire</option><option>Central Scotland</option>
                           <option>Dumfries & Galloway</option><option>Dunbartonshire</option><option>Fife</option>
                           <option>Grampian</option><option>Highlands</option><option>Lanarkshire</option>
                           <option>Lothian</option><option>Renfrewshire</option><option>Scottish Borders</option>
                           <option>Scottish Islands</option><option>Tayside</option>
                         </optgroup>
-                        <optgroup label="Wales (12)">
-                          <option>Anglesey</option><option>Carmarthenshire</option><option>Ceredigion</option>
-                          <option>Conwy</option><option>Denbighshire</option><option>Flintshire</option>
-                          <option>Glamorgan</option><option>Gwent</option><option>Gwynedd</option>
-                          <option>Pembrokeshire</option><option>Powys</option><option>Wrexham</option>
+                        <optgroup label="Wales">
+                          <option>Anglesey</option><option>Cardiff</option><option>Carmarthenshire</option>
+                          <option>Ceredigion</option><option>Conwy</option><option>Denbighshire</option>
+                          <option>Flintshire</option><option>Glamorgan</option><option>Gwent</option>
+                          <option>Gwynedd</option><option>Pembrokeshire</option><option>Powys</option>
+                          <option>Swansea</option><option>Wrexham</option>
                         </optgroup>
-                        <optgroup label="Cities (20)">
+                        <optgroup label="UK Cities Top 20">
                           <option>Birmingham</option><option>Bournemouth</option><option>Bradford</option>
                           <option>Brighton & Hove</option><option>Bristol</option><option>Cardiff</option>
                           <option>Coventry</option><option>Edinburgh</option><option>Glasgow</option>

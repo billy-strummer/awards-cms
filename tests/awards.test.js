@@ -673,7 +673,7 @@ describe('Awards Module - updateCountyFilterByRegion()', () => {
       { Name: 'Kent', region: 'South East', _regionName: 'South East' },
       { Name: 'Surrey', region: 'South East', _regionName: 'South East' },
       { Name: 'Essex', region: 'East', _regionName: 'East' },
-      { Name: 'London North', region: 'London', _regionName: 'London' },
+      { Name: 'London', region: 'London', _regionName: 'London' },
       { Name: 'Devon', region: 'South West', _regionName: 'South West' },
     ];
   });

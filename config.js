@@ -56,7 +56,7 @@ const SECTORS = [
 ];
 
 const REGIONS = [
-  // England Counties (38)
+  // England Counties (42)
   'Bedfordshire',
   'Berkshire',
   'Buckinghamshire',
@@ -68,7 +68,8 @@ const REGIONS = [
   'Devon',
   'Dorset',
   'County Durham',
-  'East Riding of Yorkshire',
+  'East Sussex',
+  'East Yorkshire',
   'Essex',
   'Gloucestershire',
   'Hampshire',
@@ -81,8 +82,8 @@ const REGIONS = [
   'Lincolnshire',
   'Norfolk',
   'Northamptonshire',
-  'North Yorkshire',
   'Northumberland',
+  'North Yorkshire',
   'Nottinghamshire',
   'Oxfordshire',
   'Rutland',
@@ -92,9 +93,9 @@ const REGIONS = [
   'Staffordshire',
   'Suffolk',
   'Surrey',
-  'Sussex',
   'Tyne & Wear',
   'Warwickshire',
+  'West Sussex',
   'West Yorkshire',
   'Wiltshire',
   'Worcestershire',
@@ -113,8 +114,9 @@ const REGIONS = [
   'Scottish Borders',
   'Scottish Islands',
   'Tayside',
-  // Wales (12)
+  // Wales (14)
   'Anglesey',
+  'Cardiff',
   'Carmarthenshire',
   'Ceredigion',
   'Conwy',
@@ -125,8 +127,9 @@ const REGIONS = [
   'Gwynedd',
   'Pembrokeshire',
   'Powys',
+  'Swansea',
   'Wrexham',
-  // Cities (20)
+  // UK Cities Top 20 by Population
   'Birmingham',
   'Bournemouth',
   'Bradford',
@@ -139,12 +142,9 @@ const REGIONS = [
   'Leeds',
   'Leicester',
   'Liverpool',
-  'London North',
-  'London South',
-  'London East',
-  'London West',
+  'London',
   'Manchester',
-  'Middlesbrough',
+  'Middlesborough',
   'Newcastle',
   'Nottingham',
   'Sheffield',

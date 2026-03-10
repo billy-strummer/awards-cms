@@ -82,6 +82,7 @@ const _COUNTY_TO_REGION = {
   Oxfordshire: 'South East',
   Surrey: 'South East',
   'West Sussex': 'South East',
+  Sussex: 'South East',
   'Brighton & Hove': 'South East',
   'Isle of Wight': 'South East',
 
@@ -137,9 +138,11 @@ const _COUNTY_TO_REGION = {
   'Tyne and Wear': 'North East',
   Newcastle: 'North East',
   Middlesbrough: 'North East',
+  Middlesborough: 'North East',
 
   // Yorkshire and the Humber
   'East Riding of Yorkshire': 'Yorkshire and the Humber',
+  'East Yorkshire': 'Yorkshire and the Humber',
   'North Yorkshire': 'Yorkshire and the Humber',
   'South Yorkshire': 'Yorkshire and the Humber',
   'West Yorkshire': 'Yorkshire and the Humber',

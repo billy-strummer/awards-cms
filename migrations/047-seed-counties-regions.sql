@@ -24,7 +24,6 @@ INSERT INTO regions (name) VALUES
 ON CONFLICT DO NOTHING;
 
 -- Insert all counties/cities with their region mappings
--- Uses ON CONFLICT on Name to avoid duplicates if some already exist
 DO $$
 DECLARE
   county_data JSONB := '[
@@ -39,7 +38,8 @@ DECLARE
     {"name": "Devon", "region": "South West"},
     {"name": "Dorset", "region": "South West"},
     {"name": "County Durham", "region": "North East"},
-    {"name": "East Riding of Yorkshire", "region": "Yorkshire and the Humber"},
+    {"name": "East Sussex", "region": "South East"},
+    {"name": "East Yorkshire", "region": "Yorkshire and the Humber"},
     {"name": "Essex", "region": "East of England"},
     {"name": "Gloucestershire", "region": "South West"},
     {"name": "Hampshire", "region": "South East"},
@@ -52,8 +52,8 @@ DECLARE
     {"name": "Lincolnshire", "region": "East Midlands"},
     {"name": "Norfolk", "region": "East of England"},
     {"name": "Northamptonshire", "region": "East Midlands"},
-    {"name": "North Yorkshire", "region": "Yorkshire and the Humber"},
     {"name": "Northumberland", "region": "North East"},
+    {"name": "North Yorkshire", "region": "Yorkshire and the Humber"},
     {"name": "Nottinghamshire", "region": "East Midlands"},
     {"name": "Oxfordshire", "region": "South East"},
     {"name": "Rutland", "region": "East Midlands"},
@@ -63,9 +63,9 @@ DECLARE
     {"name": "Staffordshire", "region": "West Midlands"},
     {"name": "Suffolk", "region": "East of England"},
     {"name": "Surrey", "region": "South East"},
-    {"name": "Sussex", "region": "South East"},
     {"name": "Tyne & Wear", "region": "North East"},
     {"name": "Warwickshire", "region": "West Midlands"},
+    {"name": "West Sussex", "region": "South East"},
     {"name": "West Yorkshire", "region": "Yorkshire and the Humber"},
     {"name": "Wiltshire", "region": "South West"},
     {"name": "Worcestershire", "region": "West Midlands"},
@@ -84,6 +84,7 @@ DECLARE
     {"name": "Scottish Islands", "region": "Scotland"},
     {"name": "Tayside", "region": "Scotland"},
     {"name": "Anglesey", "region": "Wales"},
+    {"name": "Cardiff", "region": "Wales"},
     {"name": "Carmarthenshire", "region": "Wales"},
     {"name": "Ceredigion", "region": "Wales"},
     {"name": "Conwy", "region": "Wales"},
@@ -94,13 +95,13 @@ DECLARE
     {"name": "Gwynedd", "region": "Wales"},
     {"name": "Pembrokeshire", "region": "Wales"},
     {"name": "Powys", "region": "Wales"},
+    {"name": "Swansea", "region": "Wales"},
     {"name": "Wrexham", "region": "Wales"},
     {"name": "Birmingham", "region": "West Midlands"},
     {"name": "Bournemouth", "region": "South West"},
     {"name": "Bradford", "region": "Yorkshire and the Humber"},
     {"name": "Brighton & Hove", "region": "South East"},
     {"name": "Bristol", "region": "South West"},
-    {"name": "Cardiff", "region": "Wales"},
     {"name": "Coventry", "region": "West Midlands"},
     {"name": "Edinburgh", "region": "Scotland"},
     {"name": "Glasgow", "region": "Scotland"},
@@ -109,7 +110,7 @@ DECLARE
     {"name": "Liverpool", "region": "North West"},
     {"name": "London", "region": "London"},
     {"name": "Manchester", "region": "North West"},
-    {"name": "Middlesbrough", "region": "North East"},
+    {"name": "Middlesborough", "region": "North East"},
     {"name": "Newcastle", "region": "North East"},
     {"name": "Nottingham", "region": "East Midlands"},
     {"name": "Sheffield", "region": "Yorkshire and the Humber"},
@@ -130,12 +131,6 @@ BEGIN
     ON CONFLICT DO NOTHING;
   END LOOP;
 END $$;
-
--- Also handle the variant spelling "Middlesborough" (used in some HTML forms)
--- by inserting it as an alias if it doesn't exist
-INSERT INTO counties ("Name", region, region_id)
-SELECT 'Middlesborough', 'North East', id FROM regions WHERE name = 'North East' LIMIT 1
-WHERE NOT EXISTS (SELECT 1 FROM counties WHERE "Name" = 'Middlesborough');
 
 -- Reload PostgREST schema cache
 NOTIFY pgrst, 'reload schema';

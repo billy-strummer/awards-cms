@@ -303,7 +303,7 @@ const sampleOrganisations = [
     contact_phone: '01234567890',
     website: 'https://acme.com',
     contact_name: 'John',
-    region: 'South East',
+    county_city: 'South East',
     sector: 'MEP',
     awards_count: 3,
     catchment_area: 'Kent',
@@ -318,7 +318,7 @@ const sampleOrganisations = [
     contact_phone: null,
     website: null,
     contact_name: null,
-    region: 'East',
+    county_city: 'East',
     sector: 'Construction',
     awards_count: 0,
     catchment_area: 'Essex',
@@ -333,7 +333,7 @@ const sampleOrganisations = [
     contact_phone: '09876543210',
     website: 'https://spark.com',
     contact_name: 'Jane',
-    region: 'London',
+    county_city: 'London',
     sector: 'MEP',
     awards_count: 5,
     catchment_area: 'London',
@@ -350,7 +350,7 @@ const sampleOrganisations = [
     contact_phone: '07777777777',
     website: null,
     contact_name: 'Bob',
-    region: 'South West',
+    county_city: 'South West',
     sector: 'Landscaping',
     awards_count: 1,
     catchment_area: 'Devon',
@@ -842,7 +842,7 @@ describe('Dashboard Module - renderCompanyRow()', () => {
     last_payment: '2026-02-01',
     email: 'test@corp.com',
     website: 'https://testcorp.com',
-    region: 'South East',
+    county_city: 'South East',
     updated_at: '2026-02-10',
     created_at: '2024-01-01',
     status: 'active',
@@ -1782,7 +1782,7 @@ describe('Dashboard Module - renderCompanyRow() comprehensive', () => {
   });
 
   test('renders recent-activity row', () => {
-    const org = { company_name: 'ActiveCo', updated_at: '2024-01-15', region: 'Kent', status: 'active' };
+    const org = { company_name: 'ActiveCo', updated_at: '2024-01-15', county_city: 'Kent', status: 'active' };
     const html = dashboardModule.renderCompanyRow(org, 0, 'recent-activity');
     expect(html).toContain('ActiveCo');
     expect(html).toContain('Kent');
@@ -1790,7 +1790,7 @@ describe('Dashboard Module - renderCompanyRow() comprehensive', () => {
   });
 
   test('renders highest-revenue row', () => {
-    const org = { company_name: 'RevenueCo', annual_revenue: 500000, employee_count: 50, region: 'London' };
+    const org = { company_name: 'RevenueCo', annual_revenue: 500000, employee_count: 50, county_city: 'London' };
     const html = dashboardModule.renderCompanyRow(org, 0, 'highest-revenue');
     expect(html).toContain('RevenueCo');
     expect(html).toContain('500,000');
@@ -1798,14 +1798,19 @@ describe('Dashboard Module - renderCompanyRow() comprehensive', () => {
   });
 
   test('renders newest-members row', () => {
-    const org = { company_name: 'NewCo', created_at: '2024-06-01', region: 'Essex', status: 'active' };
+    const org = { company_name: 'NewCo', created_at: '2024-06-01', county_city: 'Essex', status: 'active' };
     const html = dashboardModule.renderCompanyRow(org, 0, 'newest-members');
     expect(html).toContain('NewCo');
     expect(html).toContain('Essex');
   });
 
   test('renders default row for unknown metric', () => {
-    const org = { company_name: 'DefaultCo', email: 'test@test.com', website: 'http://example.com', region: 'Surrey' };
+    const org = {
+      company_name: 'DefaultCo',
+      email: 'test@test.com',
+      website: 'http://example.com',
+      county_city: 'Surrey',
+    };
     const html = dashboardModule.renderCompanyRow(org, 0, 'unknown-metric');
     expect(html).toContain('DefaultCo');
     expect(html).toContain('test@test.com');
@@ -1813,7 +1818,7 @@ describe('Dashboard Module - renderCompanyRow() comprehensive', () => {
   });
 
   test('handles N/A values gracefully', () => {
-    const org = { company_name: null, email: null, website: null, region: null };
+    const org = { company_name: null, email: null, website: null, county_city: null };
     const html = dashboardModule.renderCompanyRow(org, 0, 'unknown-metric');
     expect(html).toContain('N/A');
   });
@@ -2019,7 +2024,7 @@ describe('Dashboard Module - exportOrganisationsCSV() edge cases', () => {
         contact_phone: '123',
         email: 'j@test.com',
         website: 'http://test.com',
-        region: 'Kent',
+        county_city: 'Kent',
         address: '123 Street',
         created_at: '2024-01-01',
       },
@@ -2600,8 +2605,8 @@ describe('Dashboard Module - updateCountyCoverage()', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     STATE.allOrganisations = [
-      { id: 'o1', catchment_area: 'Kent', region: 'South East' },
-      { id: 'o2', catchment_area: 'Essex', region: 'East' },
+      { id: 'o1', catchment_area: 'Kent', county_city: 'South East' },
+      { id: 'o2', catchment_area: 'Essex', county_city: 'East' },
     ];
     STATE.allAwards = [{ id: 'a1', county: 'Kent' }];
     STATE.allWinners = [];
@@ -2626,9 +2631,9 @@ describe('Dashboard Module - loadGeoDistribution()', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     STATE.allOrganisations = [
-      { id: 'o1', region: 'South East', catchment_area: 'Kent' },
-      { id: 'o2', region: 'London', catchment_area: 'London' },
-      { id: 'o3', region: 'South East', catchment_area: 'Surrey' },
+      { id: 'o1', county_city: 'South East', catchment_area: 'Kent' },
+      { id: 'o2', county_city: 'London', catchment_area: 'London' },
+      { id: 'o3', county_city: 'South East', catchment_area: 'Surrey' },
     ];
   });
 
@@ -2888,7 +2893,7 @@ describe('Dashboard Module - renderCompanyRow() edge cases', () => {
 
   test('renders newest-members with created_at', () => {
     const html = dashboardModule.renderCompanyRow(
-      { company_name: 'New Co', created_at: '2026-02-01T00:00:00Z', region: 'London', status: 'active' },
+      { company_name: 'New Co', created_at: '2026-02-01T00:00:00Z', county_city: 'London', status: 'active' },
       0,
       'newest-members'
     );

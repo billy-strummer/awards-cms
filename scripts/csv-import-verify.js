@@ -16,7 +16,10 @@ require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') }
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY;
-if (!SUPABASE_URL || !SUPABASE_KEY) { console.error('Missing SUPABASE_URL or SUPABASE_SERVICE_KEY. See .env.example'); process.exit(1); }
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  console.error('Missing SUPABASE_URL or SUPABASE_SERVICE_KEY. See .env.example');
+  process.exit(1);
+}
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -51,9 +54,7 @@ async function main() {
   console.log('CHECK 1: Duplicate award assignments (same company + same award)');
   console.log('-'.repeat(50));
   {
-    const { data, error } = await supabase
-      .from('award_assignments')
-      .select('id, award_id, organisation_id');
+    const { data, error } = await supabase.from('award_assignments').select('id, award_id, organisation_id');
 
     if (error) {
       fail(`Could not query assignments: ${error.message}`);
@@ -61,7 +62,7 @@ async function main() {
       const seen = new Map();
       const dupes = [];
 
-      data.forEach(a => {
+      data.forEach((a) => {
         const key = `${a.award_id}_${a.organisation_id}`;
         if (seen.has(key)) {
           dupes.push(key);
@@ -83,9 +84,7 @@ async function main() {
   console.log('CHECK 2: Duplicate organisations (case-insensitive)');
   console.log('-'.repeat(50));
   {
-    const { data, error } = await supabase
-      .from('organisations')
-      .select('id, company_name');
+    const { data, error } = await supabase.from('organisations').select('id, company_name');
 
     if (error) {
       fail(`Could not query organisations: ${error.message}`);
@@ -93,7 +92,7 @@ async function main() {
       const seen = new Map();
       const dupes = [];
 
-      data.forEach(o => {
+      data.forEach((o) => {
         const key = o.company_name.trim().toLowerCase();
         if (seen.has(key)) {
           dupes.push({ name1: seen.get(key), name2: o.company_name });
@@ -106,7 +105,7 @@ async function main() {
         pass(`No duplicate organisations (${data.length} total)`);
       } else {
         fail(`Found ${dupes.length} duplicate organisation name(s):`);
-        dupes.slice(0, 10).forEach(d => {
+        dupes.slice(0, 10).forEach((d) => {
           console.log(`          "${d.name1}" / "${d.name2}"`);
         });
         if (dupes.length > 10) console.log(`          ... and ${dupes.length - 10} more`);
@@ -119,9 +118,7 @@ async function main() {
   console.log('CHECK 3: Duplicate awards (same name + year)');
   console.log('-'.repeat(50));
   {
-    const { data, error } = await supabase
-      .from('awards')
-      .select('id, award_name, year');
+    const { data, error } = await supabase.from('awards').select('id, award_name, year');
 
     if (error) {
       fail(`Could not query awards: ${error.message}`);
@@ -129,7 +126,7 @@ async function main() {
       const seen = new Map();
       const dupes = [];
 
-      data.forEach(a => {
+      data.forEach((a) => {
         const key = `${a.award_name.trim().toLowerCase()}_${a.year}`;
         if (seen.has(key)) {
           dupes.push(a.award_name);
@@ -142,7 +139,7 @@ async function main() {
         pass(`No duplicate awards (${data.length} total)`);
       } else {
         fail(`Found ${dupes.length} duplicate award(s):`);
-        dupes.forEach(d => console.log(`          "${d}"`));
+        dupes.forEach((d) => console.log(`          "${d}"`));
       }
     }
   }
@@ -159,8 +156,8 @@ async function main() {
     if (aErr) {
       fail(`Could not query: ${aErr.message}`);
     } else {
-      const orphanedAward = assignments.filter(a => !a.awards);
-      const orphanedOrg = assignments.filter(a => !a.organisations);
+      const orphanedAward = assignments.filter((a) => !a.awards);
+      const orphanedOrg = assignments.filter((a) => !a.organisations);
 
       if (orphanedAward.length === 0 && orphanedOrg.length === 0) {
         pass('No orphaned assignments');
@@ -184,25 +181,23 @@ async function main() {
     if (awErr) {
       fail(`Could not query awards: ${awErr.message}`);
     } else {
-      const { data: assignments } = await supabase
-        .from('award_assignments')
-        .select('award_id');
+      const { data: assignments } = await supabase.from('award_assignments').select('award_id');
 
-      const assignedAwardIds = new Set((assignments || []).map(a => a.award_id));
+      const assignedAwardIds = new Set((assignments || []).map((a) => a.award_id));
 
-      const unassigned = awards.filter(a => !assignedAwardIds.has(a.id));
-      const _assigned = awards.filter(a => assignedAwardIds.has(a.id));
+      const unassigned = awards.filter((a) => !assignedAwardIds.has(a.id));
+      const _assigned = awards.filter((a) => assignedAwardIds.has(a.id));
 
       if (unassigned.length === 0) {
         pass(`All ${awards.length} awards have at least one nominee`);
       } else {
         warn(`${unassigned.length}/${awards.length} awards have NO nominees:`);
-        unassigned.forEach(a => console.log(`          - ${a.award_name}`));
+        unassigned.forEach((a) => console.log(`          - ${a.award_name}`));
       }
 
       // Count nominees per award
       const awardCounts = {};
-      (assignments || []).forEach(a => {
+      (assignments || []).forEach((a) => {
         awardCounts[a.award_id] = (awardCounts[a.award_id] || 0) + 1;
       });
 
@@ -221,16 +216,14 @@ async function main() {
   console.log('CHECK 6: Organisation data quality');
   console.log('-'.repeat(50));
   {
-    const { data: orgs, error: oErr } = await supabase
-      .from('organisations')
-      .select('id, company_name, email, region');
+    const { data: orgs, error: oErr } = await supabase.from('organisations').select('id, company_name, email, region');
 
     if (oErr) {
       fail(`Could not query: ${oErr.message}`);
     } else {
-      const noEmail = orgs.filter(o => !o.email);
-      const noRegion = orgs.filter(o => !o.region);
-      const noName = orgs.filter(o => !o.company_name || o.company_name.trim() === '');
+      const noEmail = orgs.filter((o) => !o.email);
+      const noRegion = orgs.filter((o) => !o.county_city);
+      const noName = orgs.filter((o) => !o.company_name || o.company_name.trim() === '');
 
       if (noName.length === 0) {
         pass('All organisations have names');
@@ -259,15 +252,13 @@ async function main() {
   console.log('CHECK 7: Assignment status distribution');
   console.log('-'.repeat(50));
   {
-    const { data, error } = await supabase
-      .from('award_assignments')
-      .select('status');
+    const { data, error } = await supabase.from('award_assignments').select('status');
 
     if (error) {
       fail(`Could not query: ${error.message}`);
     } else {
       const statusCounts = {};
-      data.forEach(a => {
+      data.forEach((a) => {
         const s = a.status || 'null';
         statusCounts[s] = (statusCounts[s] || 0) + 1;
       });
@@ -294,7 +285,7 @@ async function main() {
       fail(`Could not query: ${error.message}`);
     } else {
       const orgCounts = {};
-      data.forEach(a => {
+      data.forEach((a) => {
         const id = a.organisation_id;
         if (!orgCounts[id]) {
           orgCounts[id] = { name: a.organisations?.company_name || 'Unknown', count: 0 };
@@ -303,14 +294,14 @@ async function main() {
       });
 
       const excessive = Object.values(orgCounts)
-        .filter(o => o.count > 15)
+        .filter((o) => o.count > 15)
         .sort((a, b) => b.count - a.count);
 
       if (excessive.length === 0) {
         pass('No companies with > 15 assignments');
       } else {
         warn(`${excessive.length} companies have > 15 assignments:`);
-        excessive.forEach(o => {
+        excessive.forEach((o) => {
           console.log(`          ${o.name}: ${o.count} assignments`);
         });
       }
@@ -339,7 +330,7 @@ async function main() {
   console.log('='.repeat(70));
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error('FATAL ERROR:', err.message);
   process.exit(1);
 });

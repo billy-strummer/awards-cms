@@ -114,7 +114,8 @@ module.exports = async function handler(req, res) {
 async function handleSubmitEntry(req, res) {
   const {
     companyName,
-    region,
+    county_city,
+    region, // backward compat alias for county_city
     sector,
     contactEmail,
     contactName,
@@ -129,6 +130,7 @@ async function handleSubmitEntry(req, res) {
     employeeCount,
     contactPosition,
   } = req.body;
+  const countyCity = county_city || region; // prefer new field name, fall back to old
 
   // Validate required fields
   if (!companyName || typeof companyName !== 'string' || companyName.trim().length < 2) {
@@ -147,7 +149,7 @@ async function handleSubmitEntry(req, res) {
   // Sanitize inputs
   const safe = {
     companyName: sanitizeString(companyName, 200),
-    region: sanitizeString(region, 100),
+    countyCity: sanitizeString(countyCity, 100),
     sector: sanitizeString(sector, 200),
     contactEmail: sanitizeString(contactEmail, 200),
     contactName: sanitizeString(contactName, 200),
@@ -178,7 +180,7 @@ async function handleSubmitEntry(req, res) {
       .from('organisations')
       .insert({
         company_name: safe.companyName,
-        region: safe.region,
+        county_city: safe.countyCity,
         sector: safe.sector,
         email: safe.contactEmail,
         contact_name: safe.contactName,
@@ -203,7 +205,7 @@ async function handleSubmitEntry(req, res) {
     .select('id')
     .eq('award_name', safe.awardCategory)
     .eq('sector', safe.sector)
-    .eq('county', safe.region)
+    .eq('county', safe.countyCity)
     .eq('status', 'Active')
     .order('year', { ascending: false })
     .limit(1);
@@ -245,7 +247,7 @@ async function handleSubmitEntry(req, res) {
     year: currentYear,
     award_category: safe.awardCategory,
     sector: safe.sector,
-    region: safe.region,
+    county_city: safe.countyCity,
     is_self_nomination: true,
   };
 
@@ -294,7 +296,7 @@ async function handleSubmitEntry(req, res) {
           year: currentYear,
           award_category: safe.awardCategory,
           sector: safe.sector,
-          region: safe.region,
+          county_city: safe.countyCity,
           is_self_nomination: true,
         })
         .eq('id', baseEntry.id);
@@ -326,7 +328,8 @@ async function handleSubmitEntry(req, res) {
 async function handleSubmitNomination(req, res) {
   const {
     awardCategory,
-    region,
+    county_city: nomCountyCity,
+    region: nomRegion, // backward compat alias
     nominationReason,
     supportingInfo,
     nominatorName,
@@ -347,6 +350,7 @@ async function handleSubmitNomination(req, res) {
     businessYearsTrading,
     businessEmployees,
   } = req.body;
+  const nomCountyCityValue = nomCountyCity || nomRegion; // prefer new field name
 
   const isNewBusiness = awardCategory === 'New Business of the Year';
 
@@ -383,7 +387,7 @@ async function handleSubmitNomination(req, res) {
   // Sanitize inputs
   const safe = {
     awardCategory: sanitizeString(awardCategory, 200),
-    region: sanitizeString(region || '', 100),
+    countyCity: sanitizeString(nomCountyCityValue || '', 100),
     nominationReason: sanitizeString(nominationReason, 5000),
     supportingInfo: sanitizeString(supportingInfo || '', 5000) || null,
     nominatorName: sanitizeString(nominatorName, 200),
@@ -422,7 +426,7 @@ async function handleSubmitNomination(req, res) {
       .from('organisations')
       .insert({
         company_name: companyName,
-        region: safe.region,
+        county_city: safe.countyCity,
         contact_name: nomineePerson,
         website: isNewBusiness ? safe.businessWebsite : null,
         status: 'active',
@@ -480,7 +484,7 @@ async function handleSubmitNomination(req, res) {
     contact_phone: safe.nominatorPhone,
     year: currentYear,
     award_category: safe.awardCategory,
-    region: safe.region,
+    county_city: safe.countyCity,
     is_self_nomination: false,
   };
 
@@ -525,7 +529,7 @@ async function handleSubmitNomination(req, res) {
           contact_phone: safe.nominatorPhone,
           year: currentYear,
           award_category: safe.awardCategory,
-          region: safe.region,
+          county_city: safe.countyCity,
           is_self_nomination: false,
         })
         .eq('id', baseEntry.id);
@@ -540,7 +544,7 @@ async function handleSubmitNomination(req, res) {
       nominee_name: fallbackNominee,
       award_name: safe.awardCategory,
       entry_number: baseEntry.entry_number,
-      region: safe.region || '',
+      county_city: safe.countyCity || '',
     }).catch(() => {});
 
     return res.status(200).json({
@@ -556,7 +560,7 @@ async function handleSubmitNomination(req, res) {
     nominee_name: nomineDisplay,
     award_name: safe.awardCategory,
     entry_number: entry.entry_number,
-    region: safe.region || '',
+    county_city: safe.countyCity || '',
   }).catch(() => {});
 
   return res.status(200).json({

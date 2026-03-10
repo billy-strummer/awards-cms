@@ -2372,7 +2372,7 @@ describe('Awards Module - Saved Views', () => {
             year: '2026',
             status: 'draft',
             sector: 'BUILDING & CONSTRUCTION',
-            region: 'South East',
+            county_city: 'South East',
             county: 'Kent',
             search: 'test',
           },

@@ -460,7 +460,7 @@ const testDataManager = {
       company_name: 'TEST_MODE_' + name,
       sector: industries[i],
       description: 'Test organisation #' + (i + 1),
-      region: regions[i],
+      county_city: regions[i],
       status: 'active',
       contact_name: 'Contact ' + (i + 1),
       email: name.toLowerCase().replace(/[^a-z0-9]/g, '.') + '@example.com',
@@ -2259,7 +2259,7 @@ const testDataManager = {
             contact_name: 'Test Contact',
             email: 'test@mockcompany.com',
             status: 'active',
-            region: 'London',
+            county_city: 'London',
           })
           .select()
           .single();

@@ -559,7 +559,7 @@ describe('AI Vetting Module - vetSingleCompany', () => {
       company_name: 'Flagged Corp',
       website: 'https://flagged.com',
       sector: 'Tech',
-      region: 'London',
+      county_city: 'London',
     };
     const result = await aiVettingModule.vetSingleCompany(org);
     expect(result.status).toBe('flagged');
@@ -590,7 +590,7 @@ describe('AI Vetting Module - vetSingleCompany', () => {
       data: [{ id: 'vr2', status: 'verified' }],
     });
 
-    const org = { id: 'org2', company_name: 'Good Corp', website: '', sector: 'Retail', region: '' };
+    const org = { id: 'org2', company_name: 'Good Corp', website: '', sector: 'Retail', county_city: '' };
     const result = await aiVettingModule.vetSingleCompany(org);
     expect(result.status).toBe('verified');
   });
@@ -795,8 +795,8 @@ describe('AI Vetting Module - runVetting full flow', () => {
 
   test('runs full vetting process successfully', async () => {
     STATE.allOrganisations = [
-      { id: 'org1', company_name: 'Corp A', website: 'https://a.com', sector: 'Tech', region: 'London' },
-      { id: 'org2', company_name: 'Corp B', website: '', sector: 'Retail', region: '' },
+      { id: 'org1', company_name: 'Corp A', website: 'https://a.com', sector: 'Tech', county_city: 'London' },
+      { id: 'org2', company_name: 'Corp B', website: '', sector: 'Retail', county_city: '' },
     ];
 
     apiClient.insert = jest.fn().mockResolvedValue({ data: [{ id: 'run-1' }] });

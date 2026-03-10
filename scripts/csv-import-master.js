@@ -470,12 +470,12 @@ const COLUMN_ALIASES = {
   full_address: 'address',
   business_contact_address: 'address',
 
-  // region
-  region: 'region',
-  county: 'region',
-  county_city: 'region',
-  county_cty: 'region',
-  area: 'region',
+  // county_city
+  region: 'county_city',
+  county: 'county_city',
+  county_city: 'county_city',
+  county_cty: 'county_city',
+  area: 'county_city',
 
   // sector
   sector: 'sector',
@@ -795,7 +795,7 @@ async function processFiles(options) {
       const row = normalizeColumnNames(rawRow);
 
       // Normalize fields
-      row.region = normalizeRegion(row.region);
+      row.county_city = normalizeRegion(row.county_city);
       row.sector = normalizeSector(row.sector);
       row.email = normalizeEmail(row.email);
       row.phone = normalizePhone(row.phone);
@@ -890,12 +890,12 @@ async function processFiles(options) {
   for (const entry of unique) {
     const { row } = entry;
 
-    // row.region holds the county/city from the CSV (after normalization)
-    const awardMatch = matchAward(row.award_category, row.region, awards);
+    // row.county_city holds the county/city from the CSV (after normalization)
+    const awardMatch = matchAward(row.award_category, row.county_city, awards);
     const orgMatch = matchOrganisation(row.organisation, organisations);
 
     if (!awardMatch) {
-      unmatchedAwards.add(`${row.award_category} [${row.region || 'no county'}]`);
+      unmatchedAwards.add(`${row.award_category} [${row.county_city || 'no county'}]`);
     }
 
     if (!orgMatch) {
@@ -1008,7 +1008,7 @@ async function processFiles(options) {
     if (newOrgsNeeded.size > 0) {
       console.log('  NOTE: The following organisations will be auto-created on import:');
       [...newOrgsNeeded.entries()].slice(0, 10).forEach(([_key, row]) => {
-        console.log(`    + "${row.organisation}" (${row.region || 'no region'}, ${row.email || 'no email'})`);
+        console.log(`    + "${row.organisation}" (${row.county_city || 'no region'}, ${row.email || 'no email'})`);
       });
       if (newOrgsNeeded.size > 10) {
         console.log(`    ... and ${newOrgsNeeded.size - 10} more`);
@@ -1050,7 +1050,7 @@ async function processFiles(options) {
         contact_name: row.contact_name || null,
         website: row.website || null,
         address: row.address || null,
-        region: row.region || null,
+        county_city: row.county_city || null,
         catchment_area: row.catchment_area || null,
       };
 
@@ -1073,10 +1073,10 @@ async function processFiles(options) {
     // Re-process unmatched entries now that orgs exist
     for (const entry of unique) {
       const { row } = entry;
-      if (!matchAward(row.award_category, row.region, awards)) continue;
+      if (!matchAward(row.award_category, row.county_city, awards)) continue;
       const orgMatch = matchOrganisation(row.organisation, organisations);
       if (!orgMatch) continue;
-      const awardMatch = matchAward(row.award_category, row.region, awards);
+      const awardMatch = matchAward(row.award_category, row.county_city, awards);
 
       const alreadyQueued = readyToImport.find((r) => r.awardId === awardMatch.id && r.orgId === orgMatch.id);
 

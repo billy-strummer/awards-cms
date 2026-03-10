@@ -437,7 +437,7 @@ describe('Email Builder Module - Block Templates (getBlockHTML)', () => {
       company_name: 'Test Corp',
       logo_url: 'https://example.com/logo.png',
       website: 'https://testcorp.com',
-      region: 'South East',
+      county_city: 'South East',
     };
     const html = emailBuilder.getBlockHTML('company-profile', 'test-id');
     expect(html).toContain('Test Corp');
@@ -1297,7 +1297,7 @@ describe('Email Builder Module - Edge Cases', () => {
       company_name: 'Minimal Corp',
       logo_url: null,
       website: null,
-      region: null,
+      county_city: null,
     };
     const html = emailBuilder.getBlockHTML('company-profile', 'test-id');
     expect(html).toContain('Minimal Corp');
@@ -1366,7 +1366,7 @@ describe('Email Builder Module - Edge Cases', () => {
       company_name: '<script>alert("xss")</script>',
       logo_url: null,
       website: null,
-      region: null,
+      county_city: null,
     };
     const html = emailBuilder.getBlockHTML('company-profile', 'test-id');
     expect(html).not.toContain('<script>');
@@ -1973,7 +1973,7 @@ describe('Email Builder - company-profile and award-list blocks with org data', 
       company_name: 'Test Corp',
       logo_url: 'https://example.com/logo.png',
       website: 'https://testcorp.com',
-      region: 'London',
+      county_city: 'London',
     };
     const html = emailBuilder.getBlockHTML('company-profile', 'cp-2');
     expect(html).toContain('Test Corp');

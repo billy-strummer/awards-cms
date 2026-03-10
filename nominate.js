@@ -281,13 +281,13 @@
     },
 
     // --------------------------------------------------
-    // Populate regions dropdown from config.js REGIONS
+    // Populate county/city dropdown from config.js COUNTIES_CITIES
     // --------------------------------------------------
     populateRegions: function () {
       var self = this;
-      var regionSelect = document.getElementById('region');
-      if (!window.REGIONS || window.REGIONS.length === 0) {
-        console.warn('No regions found in config');
+      var regionSelect = document.getElementById('county_city');
+      if (!window.COUNTIES_CITIES && !window.REGIONS) {
+        console.warn('No counties/cities found in config');
         return;
       }
 
@@ -314,10 +314,11 @@
         'Swansea',
       ];
 
-      var counties = window.REGIONS.filter(function (r) {
+      var allCountiesCities = window.COUNTIES_CITIES || window.REGIONS || [];
+      var counties = allCountiesCities.filter(function (r) {
         return cities.indexOf(r) === -1;
       });
-      var cityList = window.REGIONS.filter(function (r) {
+      var cityList = allCountiesCities.filter(function (r) {
         return cities.indexOf(r) !== -1;
       });
 
@@ -342,7 +343,7 @@
       regionSelect.innerHTML = html;
 
       if (typeof Choices !== 'undefined') {
-        this.regionChoicesInstance = new Choices('#region', {
+        this.regionChoicesInstance = new Choices('#county_city', {
           searchEnabled: true,
           searchFloor: 1,
           searchPlaceholderValue: 'Type to search...',
@@ -471,7 +472,7 @@
           return true;
         }
         case 2: {
-          var region = document.getElementById('region').value;
+          var region = document.getElementById('county_city').value;
           if (!region) {
             showPublicToast("Please select the nominee's county or city");
             return false;
@@ -589,7 +590,7 @@
           this.formData.awardCategory = this.selectedCategory;
           break;
         case 2:
-          this.formData.region = document.getElementById('region').value;
+          this.formData.county_city = document.getElementById('county_city').value;
           break;
         case 3:
           if (this.selectedCategory === 'New Business of the Year') {
@@ -673,7 +674,7 @@
         '<div class="review-group">' +
         '<div class="review-group-title">Nomination <span class="review-edit-btn float-end" data-action="nominateApp.goToStep" data-args="[1]">Edit</span></div>' +
         row('Award Category', d.awardCategory) +
-        row('Region', d.region) +
+        row('County / City', d.county_city) +
         '</div>' +
         nomineeSection +
         '<div class="review-group">' +
@@ -717,7 +718,7 @@
       var payload = {
         action: 'submit_nomination',
         awardCategory: d.awardCategory,
-        region: d.region,
+        county_city: d.county_city,
         nominationReason: d.nominationReason,
         supportingInfo: d.supportingInfo,
         nominatorName: d.nominatorName,

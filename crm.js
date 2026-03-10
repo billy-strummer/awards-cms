@@ -2571,7 +2571,7 @@ const crmModule = {
     const i = this._segmentRuleCount++;
     const ruleHtml = `<div class="segment-rule d-flex gap-2 align-items-center mb-2">
       <select class="form-select form-select-sm" style="width:auto;" id="segField${i}">
-        <option value="tier">Tier</option><option value="status">Status</option><option value="region">Region</option>
+        <option value="tier">Tier</option><option value="status">Status</option><option value="county_city">Region</option>
         <option value="sector">Sector</option><option value="awards_count">Awards Count</option><option value="engagement">Engagement Score</option>
       </select>
       <select class="form-select form-select-sm" style="width:auto;" id="segOp${i}">
@@ -2645,7 +2645,7 @@ const crmModule = {
           .slice(0, 50)
           .map(
             (o) =>
-              `<tr><td>${utils.escapeHtml(o.company_name || '')}</td><td><span class="badge bg-primary">${utils.escapeHtml(o.status || '')}</span></td><td>${utils.escapeHtml(o.sector || '-')}</td><td>${utils.escapeHtml(o.region || '-')}</td></tr>`
+              `<tr><td>${utils.escapeHtml(o.company_name || '')}</td><td><span class="badge bg-primary">${utils.escapeHtml(o.status || '')}</span></td><td>${utils.escapeHtml(o.sector || '-')}</td><td>${utils.escapeHtml(o.county_city || '-')}</td></tr>`
           )
           .join('')}
         ${matching.length > 50 ? `<tr><td colspan="4" class="text-muted text-center">... and ${matching.length - 50} more</td></tr>` : ''}

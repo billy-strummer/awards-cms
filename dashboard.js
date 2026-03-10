@@ -875,7 +875,7 @@ const dashboardModule = {
             <td><span class="badge bg-info">${rank}</span></td>
             <td><strong>${companyName}</strong></td>
             <td>${org.updated_at ? new Date(org.updated_at).toLocaleDateString() : 'N/A'}</td>
-            <td>${utils.escapeHtml(org.region || 'N/A')}</td>
+            <td>${utils.escapeHtml(org.county_city || 'N/A')}</td>
             <td><span class="badge bg-success">${org.status || 'active'}</span></td>
           </tr>
         `;
@@ -887,7 +887,7 @@ const dashboardModule = {
             <td><strong>${companyName}</strong></td>
             <td class="fw-bold">£${(org.annual_revenue || 0).toLocaleString()}</td>
             <td>${org.employee_count || 'N/A'}</td>
-            <td>${utils.escapeHtml(org.region || 'N/A')}</td>
+            <td>${utils.escapeHtml(org.county_city || 'N/A')}</td>
           </tr>
         `;
 
@@ -897,7 +897,7 @@ const dashboardModule = {
             <td><span class="badge bg-secondary">${rank}</span></td>
             <td><strong>${companyName}</strong></td>
             <td>${org.created_at ? new Date(org.created_at).toLocaleDateString() : 'N/A'}</td>
-            <td>${utils.escapeHtml(org.region || 'N/A')}</td>
+            <td>${utils.escapeHtml(org.county_city || 'N/A')}</td>
             <td><span class="badge bg-success">${org.status || 'active'}</span></td>
           </tr>
         `;
@@ -909,7 +909,7 @@ const dashboardModule = {
             <td><strong>${companyName}</strong></td>
             <td>${utils.escapeHtml(org.email || 'N/A')}</td>
             <td>${org.website ? `<a href="${org.website}" target="_blank">${utils.escapeHtml(org.website)}</a>` : 'N/A'}</td>
-            <td>${utils.escapeHtml(org.region || 'N/A')}</td>
+            <td>${utils.escapeHtml(org.county_city || 'N/A')}</td>
           </tr>
         `;
     }
@@ -1048,7 +1048,7 @@ const dashboardModule = {
         </td>
         <td>
           <span class="badge bg-success-subtle text-success">
-            <i class="bi bi-geo-alt me-1"></i>${utils.escapeHtml(org.region || '-')}
+            <i class="bi bi-geo-alt me-1"></i>${utils.escapeHtml(org.county_city || '-')}
           </span>
         </td>
       </tr>
@@ -1095,7 +1095,7 @@ const dashboardModule = {
       'Contact Phone': org.contact_phone || '',
       Email: org.email || '',
       Website: org.website || '',
-      Region: org.region || '',
+      Region: org.county_city || '',
       Address: org.address || '',
       'Created At': utils.formatDate(org.created_at),
     }));
@@ -2441,7 +2441,7 @@ const dashboardModule = {
           <tr>
             <td>${utils.escapeHtml(org.company_name || 'Untitled')}</td>
             <td>${utils.escapeHtml(org.sector || 'N/A')}</td>
-            <td>${utils.escapeHtml(org.region || 'N/A')}</td>
+            <td>${utils.escapeHtml(org.county_city || 'N/A')}</td>
             <td><span class="badge bg-primary">${org.awards_count || 0}</span></td>
             <td>${org.created_at ? new Date(org.created_at).toLocaleDateString() : 'N/A'}</td>
           </tr>

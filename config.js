@@ -55,7 +55,7 @@ const SECTORS = [
   'SPECIALIST TRADES',
 ];
 
-const REGIONS = [
+const COUNTIES_CITIES = [
   // England Counties (42)
   'Bedfordshire',
   'Berkshire',
@@ -218,11 +218,26 @@ ModuleRegistry.register('MEDIA_TYPES', MEDIA_TYPES);
 ModuleRegistry.register('INACTIVITY_TIMEOUT', INACTIVITY_TIMEOUT);
 ModuleRegistry.register('YEARS', YEARS);
 ModuleRegistry.register('SECTORS', SECTORS);
-ModuleRegistry.register('REGIONS', REGIONS);
+ModuleRegistry.register('COUNTIES_CITIES', COUNTIES_CITIES);
+// Backward compat alias — some modules still reference REGIONS
+ModuleRegistry.register('REGIONS', COUNTIES_CITIES);
 ModuleRegistry.register('STATE', STATE);
 // Expose ModuleRegistry globally (works in both browser and Node/test)
 // @ts-ignore
 if (typeof globalThis !== 'undefined') globalThis.ModuleRegistry = ModuleRegistry;
 if (typeof window !== 'undefined') window.ModuleRegistry = ModuleRegistry;
 
-export { SUPABASE_CONFIG, STATUS, MEDIA_TYPES, INACTIVITY_TIMEOUT, YEARS, SECTORS, REGIONS, STATE, ModuleRegistry };
+// REGIONS kept as backward-compat alias for COUNTIES_CITIES
+const REGIONS = COUNTIES_CITIES;
+export {
+  SUPABASE_CONFIG,
+  STATUS,
+  MEDIA_TYPES,
+  INACTIVITY_TIMEOUT,
+  YEARS,
+  SECTORS,
+  COUNTIES_CITIES,
+  REGIONS,
+  STATE,
+  ModuleRegistry,
+};

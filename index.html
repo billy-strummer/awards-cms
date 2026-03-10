@@ -1279,7 +1279,7 @@
             <button class="btn btn-primary btn-lg rounded-circle shadow-lg" id="quickActionsBtn" title="Quick Actions">
               <i class="bi bi-plus-lg"></i>
             </button>
-            <div class="quick-actions-menu" id="quickActionsMenu" class="d-none">
+            <div class="quick-actions-menu d-none" id="quickActionsMenu">
               <div class="quick-action-item" data-action="dashboardModule.quickAddAward">
                 <i class="bi bi-trophy-fill text-primary"></i>
                 <span>Add Award</span>
@@ -1586,11 +1586,11 @@
               </div>
               <div class="col">
                 <h6 class="text-muted mb-1 small">Missing Email</h6>
-                <h3 class="mb-0 fw-bold text-warning" id="orgsMissingEmail" class="u-pointer" title="Click to filter" data-action="orgsModule.filterByMissingField" data-id="email">0</h3>
+                <h3 class="mb-0 fw-bold text-warning u-pointer" id="orgsMissingEmail" title="Click to filter" data-action="orgsModule.filterByMissingField" data-id="email">0</h3>
               </div>
               <div class="col">
                 <h6 class="text-muted mb-1 small">Missing Logo</h6>
-                <h3 class="mb-0 fw-bold text-warning" id="orgsMissingLogo" class="u-pointer" title="Click to filter" data-action="orgsModule.filterByMissingField" data-id="logo_url">0</h3>
+                <h3 class="mb-0 fw-bold text-warning u-pointer" id="orgsMissingLogo" title="Click to filter" data-action="orgsModule.filterByMissingField" data-id="logo_url">0</h3>
               </div>
               <div class="col u-pointer" title="Click to filter sponsors" data-action="orgsModule.filterByStatus" data-id="sponsor">
                 <h6 class="text-muted mb-1 small">Sponsors</h6>
@@ -1598,7 +1598,7 @@
               </div>
               <div class="col">
                 <h6 class="text-muted mb-1 small">At Risk</h6>
-                <h3 class="mb-0 fw-bold text-danger" id="orgsAtRiskCount" class="u-pointer" title="Click to filter stale" data-action="orgsModule.filterByDate" data-id="stale">0</h3>
+                <h3 class="mb-0 fw-bold text-danger u-pointer" id="orgsAtRiskCount" title="Click to filter stale" data-action="orgsModule.filterByDate" data-id="stale">0</h3>
               </div>
               <div class="col">
                 <h6 class="text-muted mb-1 small">Avg Engagement</h6>
@@ -1610,11 +1610,11 @@
               </div>
               <div class="col">
                 <h6 class="text-muted mb-1 small">Overdue</h6>
-                <h3 class="mb-0 fw-bold text-danger" id="orgsOverdueCount" class="u-pointer" title="Click to view overdue follow-ups" data-action="orgsModule.showOverdueFollowUps">0</h3>
+                <h3 class="mb-0 fw-bold text-danger u-pointer" id="orgsOverdueCount" title="Click to view overdue follow-ups" data-action="orgsModule.showOverdueFollowUps">0</h3>
               </div>
               <div class="col">
                 <h6 class="text-muted mb-1 small">Due Soon</h6>
-                <h3 class="mb-0 fw-bold text-warning" id="orgsDueSoonCount" class="u-pointer" title="Click to view upcoming follow-ups" data-action="orgsModule.showOverdueFollowUps">0</h3>
+                <h3 class="mb-0 fw-bold text-warning u-pointer" id="orgsDueSoonCount" title="Click to view upcoming follow-ups" data-action="orgsModule.showOverdueFollowUps">0</h3>
               </div>
               <div class="col">
                 <h6 class="text-muted mb-1 small">Last Updated</h6>
@@ -2863,7 +2863,7 @@
                     <div class="col-md-6">
                       <div class="form-check card p-3 u-pointer">
                         <input class="form-check-input" type="radio" name="videoSourceType" id="sourceTypeYouTube" value="youtube" checked aria-label="Source type YouTube" data-on-change="mediaGalleryModule.toggleVideoSourceFields" data-id="youtube">
-                        <label class="form-check-label w-100" for="sourceTypeYouTube" class="u-pointer">
+                        <label class="form-check-label w-100 u-pointer" for="sourceTypeYouTube">
                           <i class="bi bi-youtube text-danger fs-4 d-block mb-2"></i>
                           <strong>YouTube Link</strong>
                           <small class="d-block text-muted">Embed a YouTube video</small>
@@ -2873,7 +2873,7 @@
                     <div class="col-md-6">
                       <div class="form-check card p-3 u-pointer">
                         <input class="form-check-input" type="radio" name="videoSourceType" id="sourceTypeUpload" value="upload" aria-label="Source type upload" data-on-change="mediaGalleryModule.toggleVideoSourceFields" data-id="upload">
-                        <label class="form-check-label w-100" for="sourceTypeUpload" class="u-pointer">
+                        <label class="form-check-label w-100 u-pointer" for="sourceTypeUpload">
                           <i class="bi bi-cloud-upload text-primary fs-4 d-block mb-2"></i>
                           <strong>Upload Video File</strong>
                           <small class="d-block text-muted">Upload from your device</small>
@@ -4540,7 +4540,7 @@
                     </div>
 
                     <!-- Draggable Blocks (shown for Blank Canvas) -->
-                    <div class="mb-4" id="blockPaletteSection" class="d-none">
+                    <div class="mb-4 d-none" id="blockPaletteSection">
                       <hr>
                       <h6 class="mb-3"><i class="bi bi-grid-3x3-gap me-2"></i>Drag Blocks</h6>
 
@@ -4591,7 +4591,7 @@
                     </div>
 
                     <!-- HTML Toolkit (shown for "I Have HTML" mode) -->
-                    <div class="mb-4" id="htmlToolkitSection" class="d-none">
+                    <div class="mb-4 d-none" id="htmlToolkitSection">
                       <hr>
                       <h6 class="mb-3"><i class="bi bi-tools me-2"></i>HTML Toolkit</h6>
 
@@ -4797,10 +4797,10 @@
                         <button class="btn btn-warning btn-sm" id="btnSendCampaign" data-action="emailBuilder.sendCampaign">
                           <i class="bi bi-send-fill me-1"></i>Send to List
                         </button>
-                        <button class="btn btn-primary btn-sm" id="btnScheduleCampaign" class="d-none" data-action="emailBuilder.scheduleCampaign">
+                        <button class="btn btn-primary btn-sm d-none" id="btnScheduleCampaign" data-action="emailBuilder.scheduleCampaign">
                           <i class="bi bi-clock-fill me-1"></i>Schedule Campaign
                         </button>
-                        <button class="btn btn-info btn-sm" id="btnABCampaign" class="d-none" data-action="emailBuilder.sendABCampaign">
+                        <button class="btn btn-info btn-sm d-none" id="btnABCampaign" data-action="emailBuilder.sendABCampaign">
                           <i class="bi bi-diagram-2 me-1"></i>Send A/B Test
                         </button>
                       </div>
@@ -6462,13 +6462,13 @@
             <button type="button" class="btn btn-outline-secondary btn-sm" id="printProfileBtn" title="Print / PDF Profile">
               <i class="bi bi-printer me-1"></i>Print
             </button>
-            <button type="button" class="btn btn-primary btn-sm" id="editOrgBtn" class="d-none">
+            <button type="button" class="btn btn-primary btn-sm d-none" id="editOrgBtn">
               <i class="bi bi-pencil me-1"></i>Edit
             </button>
-            <button type="button" class="btn btn-success btn-sm" id="saveOrgBtn" class="d-none">
+            <button type="button" class="btn btn-success btn-sm d-none" id="saveOrgBtn">
               <i class="bi bi-check-lg me-1"></i>Save
             </button>
-            <button type="button" class="btn btn-secondary btn-sm" id="cancelEditOrgBtn" class="d-none">
+            <button type="button" class="btn btn-secondary btn-sm d-none" id="cancelEditOrgBtn">
               <i class="bi bi-x-lg me-1"></i>Cancel
             </button>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -6862,7 +6862,7 @@
                 </select>
               </div>
             </div>
-            <div class="row mb-3" id="customDiscountRow" class="d-none">
+            <div class="row mb-3 d-none" id="customDiscountRow">
               <div class="col-md-12">
                 <label for="invoiceDiscountCustom" class="form-label">Custom Discount (%)</label>
                 <input type="number" class="form-control" id="invoiceDiscountCustom" min="0" max="100" step="0.01" placeholder="Enter custom discount percentage">
@@ -7135,7 +7135,7 @@
               <input type="text" class="form-control" id="mediaCaption" placeholder="Add a caption">
             </div>
             <div id="uploadProgress" class="progress d-none mb-3">
-              <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" class="u-w-full"></div>
+              <div class="progress-bar progress-bar-striped progress-bar-animated u-w-full" role="progressbar"></div>
             </div>
           </form>
         </div>
@@ -7349,7 +7349,7 @@
               <textarea class="form-control" id="uploadCaption" rows="2" placeholder="Optional description"></textarea>
             </div>
             <div id="uploadFileProgress" class="progress d-none mb-3">
-              <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" class="u-w-full"></div>
+              <div class="progress-bar progress-bar-striped progress-bar-animated u-w-full" role="progressbar"></div>
             </div>
           </form>
         </div>
@@ -7714,15 +7714,15 @@
             <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#attendeesTab">
               <i class="bi bi-people me-1"></i>Attendees</a></li>
             <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#checkInTab">
-              <i class="bi bi-qr-code me-1"></i>Check-In <span class="badge bg-success ms-1" id="checkedInBadge" class="d-none">0</span></a></li>
+              <i class="bi bi-qr-code me-1"></i>Check-In <span class="badge bg-success ms-1 d-none" id="checkedInBadge">0</span></a></li>
             <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#ticketsTab">
               <i class="bi bi-ticket-perforated me-1"></i>Tickets</a></li>
             <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#waitlistTab">
-              <i class="bi bi-hourglass me-1"></i>Waitlist <span class="badge bg-warning ms-1" id="waitlistBadge" class="d-none">0</span></a></li>
+              <i class="bi bi-hourglass me-1"></i>Waitlist <span class="badge bg-warning ms-1 d-none" id="waitlistBadge">0</span></a></li>
             <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#budgetTab">
               <i class="bi bi-wallet2 me-1"></i>Budget</a></li>
             <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#vendorsTab">
-              <i class="bi bi-truck me-1"></i>Vendors <span class="badge bg-secondary ms-1" id="vendorBadge" class="d-none">0</span></a></li>
+              <i class="bi bi-truck me-1"></i>Vendors <span class="badge bg-secondary ms-1 d-none" id="vendorBadge">0</span></a></li>
             <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#specialReqsTab">
               <i class="bi bi-shield-check me-1"></i>Requirements</a></li>
             <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#milestonesTab">
@@ -7953,7 +7953,7 @@
                     </div>
                     <div class="col-md-2">
                       <label class="form-label small">&nbsp;</label>
-                      <button class="btn btn-sm btn-outline-secondary w-100" id="ticketUrlCopyBtn" data-action="eventsModule.copyTicketUrl" class="d-none">
+                      <button class="btn btn-sm btn-outline-secondary w-100 d-none" id="ticketUrlCopyBtn" data-action="eventsModule.copyTicketUrl">
                         <i class="bi bi-link-45deg me-1"></i>Copy Link
                       </button>
                     </div>
@@ -8332,7 +8332,7 @@
               <small class="text-muted">Select multiple files. Supported: Images (JPEG, PNG, GIF, WebP) and Videos (MP4, MOV, AVI, WebM). Max 4.5MB per file.</small>
             </div>
 
-            <div class="mb-3" id="videoTypeContainer" class="d-none">
+            <div class="mb-3 d-none" id="videoTypeContainer">
               <label for="sectionVideoType" class="form-label">Video Type (for videos only)</label>
               <select class="form-select" id="sectionVideoType">
                 <option value="">Select video type...</option>
@@ -8376,7 +8376,7 @@
               </div>
             </div>
             <div id="sectionPhotosProgress" class="progress d-none mb-3">
-              <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" class="u-w-full"></div>
+              <div class="progress-bar progress-bar-striped progress-bar-animated u-w-full" role="progressbar"></div>
             </div>
           </form>
         </div>
@@ -8561,7 +8561,7 @@
             <div class="mt-2"><small class="text-warning"><i class="bi bi-lightning me-1"></i><strong>Tip:</strong> Prefix filenames with running order numbers (e.g., <code>1-01_winner.jpg</code>) to enable bulk auto-tagging.</small></div>
           </div>
           <div id="dragDropProgress" class="progress d-none mt-3">
-            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" class="u-w-full"></div>
+            <div class="progress-bar progress-bar-striped progress-bar-animated u-w-full" role="progressbar"></div>
           </div>
         </div>
         <div class="modal-footer">

@@ -109,8 +109,8 @@ const tenantModule = {
 
     // Update UI
     this.renderTenantSwitcher();
-    document.getElementById('tenantBrandName')?.textContent &&
-      (document.getElementById('tenantBrandName').textContent = tenant.name);
+    const brandNameEl = document.getElementById('tenantBrandName');
+    if (brandNameEl) brandNameEl.textContent = tenant.name;
 
     // Reload data for new tenant context
     utils.showToast(`Switched to ${tenant.name}`, 'info');

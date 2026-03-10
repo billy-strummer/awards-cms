@@ -561,6 +561,10 @@ const winnerAnnouncementsModule = {
       utils.showToast('Press release error: ' + e.message, 'error');
     }
   },
+  /** Alias for data-action referenced in winners tab */
+  async renderAnnouncementsDashboard() {
+    await this.renderAnnouncementLog();
+  },
 };
 ModuleRegistry.register('winnerAnnouncementsModule', winnerAnnouncementsModule);
 

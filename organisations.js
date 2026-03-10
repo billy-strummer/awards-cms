@@ -9329,6 +9329,30 @@ const orgsModule = {
     bootstrap.Modal.getInstance(document.getElementById('dynamicOrgModal'))?.hide();
   },
 
+  /** Helper for data-action: filter by status from dashboard card */
+  filterByStatus(status) {
+    const el = document.getElementById('orgsStatusFilter');
+    if (el) el.value = status;
+    this.filterOrganisations();
+  },
+
+  /** Helper for data-action: filter by date threshold from dashboard card */
+  filterByDate(dateType) {
+    if (dateType === 'stale') {
+      // Filter for orgs not updated in 6+ months
+      this._filterMissingField = null;
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+      this.filteredOrganisations = (STATE.allOrganisations || []).filter((org) => {
+        const updated = new Date(org.updated_at || org.created_at);
+        return updated < sixMonthsAgo;
+      });
+      this.renderOrganisations();
+      return;
+    }
+    this.filterOrganisations();
+  },
+
   /** Helper for data-action: close modal and open company profile */
   closeModalAndOpenProfile(orgId, name) {
     document.getElementById('dynamicOrgModal')?.querySelector('.btn-close')?.click();

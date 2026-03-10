@@ -36,6 +36,8 @@ const settingsModule = {
     this.checkBackupReminders();
     this.renderUxSettings();
     this.renderCurrentUserRole();
+    this.loadMfaStatus();
+    this.loadWebhooks();
   },
 
   /**
@@ -989,6 +991,438 @@ const settingsModule = {
         brandingContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     }, 300);
+  },
+
+  // ============================================
+  // TWO-FACTOR AUTHENTICATION (MFA / TOTP)
+  // ============================================
+
+  _mfaFactorId: null,
+
+  async loadMfaStatus() {
+    const container = document.getElementById('mfaSetupContainer');
+    if (!container || !STATE.client) return;
+
+    try {
+      const { data, error } = await STATE.client.auth.mfa.listFactors();
+      if (error) throw error;
+
+      const totpFactors = data.totp || [];
+      const verifiedFactor = totpFactors.find((f) => f.status === 'verified');
+
+      if (verifiedFactor) {
+        this._mfaFactorId = verifiedFactor.id;
+        container.innerHTML = `
+          <div class="d-flex align-items-center justify-content-between">
+            <div>
+              <span class="badge bg-success me-2"><i class="bi bi-shield-fill-check me-1"></i>Enabled</span>
+              <span class="text-muted small">Two-factor authentication is active on your account</span>
+            </div>
+            <button class="btn btn-outline-danger btn-sm" data-action="settingsModule.disableMfa">
+              <i class="bi bi-shield-x me-1"></i>Disable 2FA
+            </button>
+          </div>`;
+      } else {
+        this._mfaFactorId = null;
+        container.innerHTML = `
+          <div class="d-flex align-items-center justify-content-between">
+            <div>
+              <span class="badge bg-warning text-dark me-2"><i class="bi bi-shield-exclamation me-1"></i>Not Enabled</span>
+              <span class="text-muted small">Protect your account with an authenticator app</span>
+            </div>
+            <button class="btn btn-primary btn-sm" data-action="settingsModule.enrollMfa">
+              <i class="bi bi-shield-plus me-1"></i>Enable 2FA
+            </button>
+          </div>`;
+      }
+    } catch (err) {
+      console.error('MFA status check error:', err);
+      container.innerHTML = `<p class="text-muted small">Could not load MFA status. ${err.message || ''}</p>`;
+    }
+  },
+
+  async enrollMfa() {
+    const container = document.getElementById('mfaSetupContainer');
+    if (!container || !STATE.client) return;
+
+    try {
+      container.innerHTML =
+        '<div class="text-center py-3"><div class="spinner-border spinner-border-sm"></div> Setting up...</div>';
+
+      const { data, error } = await STATE.client.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'Awards CMS' });
+      if (error) throw error;
+
+      this._mfaFactorId = data.id;
+
+      container.innerHTML = `
+        <div class="row align-items-start">
+          <div class="col-md-5 text-center">
+            <p class="fw-semibold mb-2">Scan this QR code with your authenticator app</p>
+            <img src="${data.totp.qr_code}" alt="MFA QR Code" class="img-fluid border rounded mb-2" style="max-width: 200px;">
+            <p class="text-muted small">Or enter this secret manually:</p>
+            <code class="user-select-all small">${data.totp.secret}</code>
+          </div>
+          <div class="col-md-7">
+            <p class="fw-semibold mb-2">Enter the 6-digit code from your app</p>
+            <div class="input-group mb-3" style="max-width: 300px;">
+              <input type="text" class="form-control form-control-lg text-center" id="mfaVerifyCode"
+                     placeholder="000000" maxlength="6" pattern="[0-9]{6}" autocomplete="one-time-code">
+              <button class="btn btn-primary" data-action="settingsModule.verifyMfaEnrollment">
+                <i class="bi bi-check-lg me-1"></i>Verify
+              </button>
+            </div>
+            <p class="text-muted small">After scanning, your authenticator app will generate a 6-digit code. Enter it above to complete setup.</p>
+            <button class="btn btn-outline-secondary btn-sm" data-action="settingsModule.cancelMfaEnrollment">Cancel</button>
+          </div>
+        </div>`;
+    } catch (err) {
+      console.error('MFA enroll error:', err);
+      utils.showToast('Failed to start MFA setup: ' + (err.message || 'Unknown error'), 'error');
+      this.loadMfaStatus();
+    }
+  },
+
+  async verifyMfaEnrollment() {
+    const code = (document.getElementById('mfaVerifyCode')?.value || '').trim();
+    if (!code || code.length !== 6) {
+      utils.showToast('Please enter a valid 6-digit code', 'warning');
+      return;
+    }
+
+    try {
+      const { data, error } = await STATE.client.auth.mfa.challengeAndVerify({
+        factorId: this._mfaFactorId,
+        code: code,
+      });
+      if (error) throw error;
+
+      utils.showToast('Two-factor authentication enabled successfully!', 'success');
+      if (typeof settingsModule !== 'undefined' && settingsModule.logAction) {
+        settingsModule.logAction('mfa_enabled', 'user', 'Enabled two-factor authentication');
+      }
+      this.loadMfaStatus();
+    } catch (err) {
+      console.error('MFA verify error:', err);
+      utils.showToast('Verification failed: ' + (err.message || 'Invalid code'), 'error');
+    }
+  },
+
+  async cancelMfaEnrollment() {
+    if (this._mfaFactorId) {
+      try {
+        await STATE.client.auth.mfa.unenroll({ factorId: this._mfaFactorId });
+      } catch (_) {
+        // Ignore — factor wasn't verified yet
+      }
+    }
+    this._mfaFactorId = null;
+    this.loadMfaStatus();
+  },
+
+  async disableMfa() {
+    if (
+      !(await utils.confirmDialog({
+        title: 'Disable 2FA',
+        message: 'Are you sure you want to disable two-factor authentication? This will make your account less secure.',
+        confirmText: 'Disable 2FA',
+        danger: true,
+      }))
+    ) {
+      return;
+    }
+
+    try {
+      const { error } = await STATE.client.auth.mfa.unenroll({ factorId: this._mfaFactorId });
+      if (error) throw error;
+
+      utils.showToast('Two-factor authentication disabled', 'warning');
+      if (typeof settingsModule !== 'undefined' && settingsModule.logAction) {
+        settingsModule.logAction('mfa_disabled', 'user', 'Disabled two-factor authentication');
+      }
+      this._mfaFactorId = null;
+      this.loadMfaStatus();
+    } catch (err) {
+      console.error('MFA disable error:', err);
+      utils.showToast('Failed to disable 2FA: ' + (err.message || 'Unknown error'), 'error');
+    }
+  },
+
+  // ============================================
+  // OUTBOUND WEBHOOKS
+  // ============================================
+
+  allWebhooks: [],
+
+  async loadWebhooks() {
+    try {
+      const { data, error } = await apiClient.select('webhooks', {
+        order: 'created_at',
+        ascending: false,
+      });
+      if (error) throw error;
+      this.allWebhooks = data || [];
+      this.renderWebhooks();
+      this.loadWebhookLogs();
+    } catch (err) {
+      console.error('Error loading webhooks:', err);
+      const tbody = document.getElementById('webhooksTableBody');
+      if (tbody)
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">Failed to load webhooks</td></tr>';
+    }
+  },
+
+  renderWebhooks() {
+    const tbody = document.getElementById('webhooksTableBody');
+    if (!tbody) return;
+
+    if (this.allWebhooks.length === 0) {
+      tbody.innerHTML =
+        '<tr><td colspan="6" class="text-center text-muted py-3">No webhooks configured. Click "Add Webhook" to get started.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = this.allWebhooks
+      .map(
+        (wh) => `
+      <tr>
+        <td class="fw-semibold">${utils.escapeHtml(wh.name || 'Unnamed')}</td>
+        <td><code class="small">${utils.escapeHtml((wh.url || '').substring(0, 50))}${(wh.url || '').length > 50 ? '...' : ''}</code></td>
+        <td>${(wh.events || [])
+          .map((e) => `<span class="badge bg-secondary me-1">${utils.escapeHtml(e)}</span>`)
+          .join('')}</td>
+        <td>${wh.active ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Inactive</span>'}</td>
+        <td class="small text-muted">${wh.last_triggered_at ? new Date(wh.last_triggered_at).toLocaleString() : 'Never'}</td>
+        <td class="text-center">
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-primary" data-action="settingsModule.editWebhook" data-id="${wh.id}" title="Edit">
+              <i class="bi bi-pencil"></i>
+            </button>
+            <button class="btn btn-outline-info" data-action="settingsModule.testWebhook" data-id="${wh.id}" title="Test">
+              <i class="bi bi-send"></i>
+            </button>
+            <button class="btn btn-outline-danger" data-action="settingsModule.deleteWebhook" data-id="${wh.id}" title="Delete">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+        </td>
+      </tr>`
+      )
+      .join('');
+  },
+
+  async loadWebhookLogs() {
+    const container = document.getElementById('webhookLogsContainer');
+    if (!container) return;
+
+    try {
+      const { data, error } = await apiClient.select('webhook_logs', {
+        order: 'created_at',
+        ascending: false,
+        limit: 10,
+      });
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        container.innerHTML = '<p class="text-muted">No recent deliveries</p>';
+        return;
+      }
+
+      container.innerHTML = `
+        <div class="table-responsive">
+          <table class="table table-sm table-hover">
+            <thead class="table-light">
+              <tr><th>Time</th><th>Event</th><th>Webhook</th><th>Status</th><th>Response</th></tr>
+            </thead>
+            <tbody>
+              ${data
+                .map(
+                  (log) => `
+                <tr>
+                  <td class="text-muted">${new Date(log.created_at).toLocaleString()}</td>
+                  <td><span class="badge bg-secondary">${utils.escapeHtml(log.event_type || '')}</span></td>
+                  <td>${utils.escapeHtml(log.webhook_name || '')}</td>
+                  <td>${
+                    log.status_code >= 200 && log.status_code < 300
+                      ? `<span class="badge bg-success">${log.status_code}</span>`
+                      : `<span class="badge bg-danger">${log.status_code || 'Error'}</span>`
+                  }</td>
+                  <td class="text-muted small">${utils.escapeHtml((log.response_body || '').substring(0, 80))}</td>
+                </tr>`
+                )
+                .join('')}
+            </tbody>
+          </table>
+        </div>`;
+    } catch (err) {
+      console.error('Error loading webhook logs:', err);
+      container.innerHTML = '<p class="text-muted">Failed to load delivery logs</p>';
+    }
+  },
+
+  openWebhookModal() {
+    document.getElementById('webhookFormId').value = '';
+    document.getElementById('webhookFormName').value = '';
+    document.getElementById('webhookFormUrl').value = '';
+    document.getElementById('webhookFormSecret').value = '';
+    document.getElementById('webhookFormActive').checked = true;
+    document.querySelectorAll('.webhook-event-check').forEach((cb) => (cb.checked = false));
+    document.getElementById('webhookFormModalTitle').innerHTML = '<i class="bi bi-broadcast me-2"></i>Add Webhook';
+
+    const modal = new bootstrap.Modal(document.getElementById('webhookFormModal'));
+    modal.show();
+  },
+
+  editWebhook(webhookId) {
+    const wh = this.allWebhooks.find((w) => w.id === webhookId);
+    if (!wh) return;
+
+    document.getElementById('webhookFormId').value = wh.id;
+    document.getElementById('webhookFormName').value = wh.name || '';
+    document.getElementById('webhookFormUrl').value = wh.url || '';
+    document.getElementById('webhookFormSecret').value = wh.secret || '';
+    document.getElementById('webhookFormActive').checked = wh.active !== false;
+    document.getElementById('webhookFormModalTitle').innerHTML = '<i class="bi bi-broadcast me-2"></i>Edit Webhook';
+
+    // Set event checkboxes
+    const events = wh.events || [];
+    document.querySelectorAll('.webhook-event-check').forEach((cb) => {
+      cb.checked = events.includes(cb.value);
+    });
+
+    const modal = new bootstrap.Modal(document.getElementById('webhookFormModal'));
+    modal.show();
+  },
+
+  async saveWebhook() {
+    const id = document.getElementById('webhookFormId').value;
+    const name = document.getElementById('webhookFormName').value.trim();
+    const url = document.getElementById('webhookFormUrl').value.trim();
+    const secret = document.getElementById('webhookFormSecret').value.trim();
+    const active = document.getElementById('webhookFormActive').checked;
+    const events = [];
+    document.querySelectorAll('.webhook-event-check:checked').forEach((cb) => events.push(cb.value));
+
+    if (!name || !url) {
+      utils.showToast('Name and URL are required', 'warning');
+      return;
+    }
+
+    if (events.length === 0) {
+      utils.showToast('Please select at least one event', 'warning');
+      return;
+    }
+
+    try {
+      let urlObj;
+      try {
+        urlObj = new URL(url);
+      } catch (_) {
+        utils.showToast('Please enter a valid URL', 'warning');
+        return;
+      }
+      if (urlObj.protocol !== 'https:') {
+        utils.showToast('Webhook URL must use HTTPS', 'warning');
+        return;
+      }
+    } catch (_) {
+      // Validation handled above
+    }
+
+    const payload = {
+      name,
+      url,
+      secret: secret || this._generateWebhookSecret(),
+      active,
+      events,
+    };
+
+    try {
+      if (id) {
+        const { error } = await apiClient.update('webhooks', id, payload);
+        if (error) throw error;
+        utils.showToast('Webhook updated', 'success');
+      } else {
+        const { error } = await apiClient.insert('webhooks', payload);
+        if (error) throw error;
+        utils.showToast('Webhook created', 'success');
+      }
+
+      bootstrap.Modal.getInstance(document.getElementById('webhookFormModal'))?.hide();
+      this.loadWebhooks();
+      this.logAction(id ? 'update' : 'create', 'webhook', `${id ? 'Updated' : 'Created'} webhook: ${name}`);
+    } catch (err) {
+      console.error('Error saving webhook:', err);
+      utils.showToast('Failed to save webhook: ' + (err.message || 'Unknown error'), 'error');
+    }
+  },
+
+  async deleteWebhook(webhookId) {
+    const wh = this.allWebhooks.find((w) => w.id === webhookId);
+    if (
+      !(await utils.confirmDialog({
+        title: 'Delete Webhook',
+        message: `Delete webhook "${wh?.name || 'Unknown'}"? This cannot be undone.`,
+        confirmText: 'Delete',
+        danger: true,
+      }))
+    ) {
+      return;
+    }
+
+    try {
+      const { error } = await apiClient.delete('webhooks', webhookId);
+      if (error) throw error;
+      utils.showToast('Webhook deleted', 'success');
+      this.logAction('delete', 'webhook', `Deleted webhook: ${wh?.name || webhookId}`);
+      this.loadWebhooks();
+    } catch (err) {
+      console.error('Error deleting webhook:', err);
+      utils.showToast('Failed to delete webhook', 'error');
+    }
+  },
+
+  async testWebhook(webhookId) {
+    const wh = this.allWebhooks.find((w) => w.id === webhookId);
+    if (!wh) return;
+
+    utils.showToast('Sending test webhook...', 'info');
+
+    try {
+      const testPayload = {
+        event: 'test',
+        timestamp: new Date().toISOString(),
+        data: { message: 'This is a test webhook from Awards CMS' },
+      };
+
+      const response = await fetch(wh.url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Webhook-Secret': wh.secret || '',
+          'X-Webhook-Event': 'test',
+        },
+        body: JSON.stringify(testPayload),
+        signal: AbortSignal.timeout(10000),
+      });
+
+      if (response.ok) {
+        utils.showToast(`Test webhook delivered successfully (${response.status})`, 'success');
+      } else {
+        utils.showToast(`Test webhook returned status ${response.status}`, 'warning');
+      }
+    } catch (err) {
+      console.error('Test webhook failed:', err);
+      utils.showToast('Test webhook failed: ' + (err.message || 'Connection error'), 'error');
+    }
+  },
+
+  _generateWebhookSecret() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let result = 'whsec_';
+    for (let i = 0; i < 32; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
   },
 };
 

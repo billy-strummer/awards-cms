@@ -302,6 +302,27 @@ const entryRevisionModule = {
 
   async _adminDecision(entryId, status) {
     try {
+      if (status === 'Rejected') {
+        const confirmed = await utils.confirmDialog({
+          title: 'Reject Entry',
+          message:
+            'This will mark the entry as rejected and an automatic email response will be sent to the recipient notifying them of the decision.',
+          confirmText: 'Reject & Send Email',
+          danger: true,
+        });
+        if (!confirmed) return;
+      }
+
+      if (status === 'Approved') {
+        const confirmed = await utils.confirmDialog({
+          title: 'Approve Entry',
+          message: 'This will mark the entry as approved. Do you wish to proceed?',
+          confirmText: 'Approve',
+          danger: false,
+        });
+        if (!confirmed) return;
+      }
+
       await apiClient.update('entries', entryId, { status, updated_at: new Date().toISOString() });
       utils.showToast(`Entry marked as ${status}.`, 'success');
 
@@ -422,6 +443,16 @@ const entryRevisionModule = {
       utils.showToast('Please enter feedback.', 'warning');
       return;
     }
+
+    const confirmed = await utils.confirmDialog({
+      title: 'Request Changes',
+      message:
+        'An automatic email response will be sent to the recipient with your feedback, requesting them to revise their entry.',
+      confirmText: 'Send Revision Request',
+      danger: false,
+    });
+    if (!confirmed) return;
+
     bootstrap.Modal.getInstance(document.getElementById('revChangesModal'))?.hide();
     await this.requestChanges(entryId, feedback);
   },

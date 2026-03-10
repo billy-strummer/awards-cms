@@ -2035,6 +2035,15 @@ const eventsModule = {
       return;
     }
 
+    const recipientCount = recipients.length;
+    const confirmed = await utils.confirmDialog({
+      title: 'Send Email',
+      message: `An automatic email response will be sent to ${recipientCount} recipient${recipientCount > 1 ? 's' : ''}. The email will use your branded template and be delivered via Resend.`,
+      confirmText: `Send to ${recipientCount} Recipient${recipientCount > 1 ? 's' : ''}`,
+      danger: false,
+    });
+    if (!confirmed) return;
+
     const sendBtn = document.querySelector('[data-action="eventsModule._sendViaSystem"]');
     if (sendBtn) {
       sendBtn.disabled = true;

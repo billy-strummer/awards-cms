@@ -91,6 +91,7 @@ const orgsModule = {
       // Calculate dashboard stats AFTER first page is loaded
       await this.calculateDashboardStats();
 
+      this.populateSectorFilter();
       this.populateSectorSuggestions();
       utils.trackDataLoad('organisations');
     } catch (error) {
@@ -3084,6 +3085,33 @@ const orgsModule = {
         const iconClass = this.sortDirection === 'asc' ? 'bi-arrow-up' : 'bi-arrow-down';
         activeIcon.className = `bi ${iconClass} text-primary ms-1 small`;
       }
+    }
+  },
+
+  /**
+   * Fetch all distinct sectors from the database and populate the sector filter dropdown.
+   * Merges hardcoded SECTORS constant with actual data so the filter includes every sector
+   * that exists in the organisations table (matching how the Awards tab works).
+   */
+  async populateSectorFilter() {
+    try {
+      const { data } = await apiClient.select('organisations', {
+        select: 'sector',
+        pageSize: 10000,
+      });
+      const dbSectors = (data || []).map((o) => o.sector).filter(Boolean);
+      const allSectors = [...new Set([...SECTORS, ...dbSectors])].sort();
+
+      const sectorSelect = document.getElementById('orgsSectorFilter');
+      if (sectorSelect) {
+        const current = sectorSelect.value;
+        sectorSelect.innerHTML =
+          '<option value="">All</option>' +
+          allSectors.map((s) => `<option value="${utils.escapeHtml(s)}">${utils.escapeHtml(s)}</option>`).join('');
+        if (current) sectorSelect.value = current;
+      }
+    } catch (e) {
+      console.warn('Could not load sector filter from DB:', e.message);
     }
   },
 

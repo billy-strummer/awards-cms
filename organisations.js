@@ -4072,7 +4072,8 @@ const orgsModule = {
 
     // Store original HTML for cancel
     td.dataset.originalHtml = originalHtml;
-    td.querySelector('input').focus();
+    const input = td.querySelector('input');
+    if (input) input.focus();
   },
 
   // Last inline edit for undo support

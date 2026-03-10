@@ -126,6 +126,12 @@ const btcModule = {
     this.createChart();
   },
 
+  switchAndRenderWatchlist(symbol) {
+    this.switchSymbol(symbol);
+    this.renderWatchlist();
+    this.renderMarketOverview();
+  },
+
   renderWatchlist() {
     const el = document.getElementById('btcWatchlist');
     if (!el) return;

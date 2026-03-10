@@ -2412,6 +2412,10 @@ const mediaGalleryModule = {
   /**
    * Set search term
    */
+  clearSearch() {
+    this.setSearch('');
+  },
+
   setSearch(term) {
     this.currentSearchTerm = term;
     this.currentPage = 1;
@@ -4929,7 +4933,8 @@ const mediaGalleryModule = {
 
   _printNamingGuide() {
     const modal = document.getElementById('namingGuideModal');
-    const content = modal.querySelector('.modal-body').innerHTML;
+    const modalBody = modal?.querySelector('.modal-body');
+    const content = modalBody ? modalBody.innerHTML : '';
     const win = window.open('', '_blank');
     win.document.write(`<!DOCTYPE html><html><head><title>Photo Naming Guide</title>
       <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">

@@ -137,7 +137,8 @@ const uploadApp = {
             </ul>
           </div>
         `;
-        document.querySelector('.upload-zone').insertAdjacentHTML('beforebegin', existingFilesHtml);
+        const uploadZone = document.querySelector('.upload-zone');
+        if (uploadZone) uploadZone.insertAdjacentHTML('beforebegin', existingFilesHtml);
       }
     } catch (error) {
       console.error('Error loading existing files:', error);
@@ -386,12 +387,15 @@ const uploadApp = {
    * Show error message
    */
   showError(message) {
-    document.querySelector('.upload-section').innerHTML = `
-      <div class="alert alert-danger">
-        <h5><i class="bi bi-exclamation-triangle me-2"></i>Error</h5>
-        <p class="mb-0">${message}</p>
-      </div>
-    `;
+    const uploadSection = document.querySelector('.upload-section');
+    if (uploadSection) {
+      uploadSection.innerHTML = `
+        <div class="alert alert-danger">
+          <h5><i class="bi bi-exclamation-triangle me-2"></i>Error</h5>
+          <p class="mb-0">${message}</p>
+        </div>
+      `;
+    }
   },
 };
 

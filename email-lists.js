@@ -728,7 +728,8 @@ const emailListsModule = {
     }
 
     // Determine which import method is active
-    const activeTab = document.querySelector('#importMethodTabs .nav-link.active').id;
+    const activeTabEl = document.querySelector('#importMethodTabs .nav-link.active');
+    const activeTab = activeTabEl ? activeTabEl.id : 'importCSVTab';
 
     try {
       await utils.protectModalDuringSave('importModal', async () => {

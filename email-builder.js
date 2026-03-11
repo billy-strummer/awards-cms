@@ -352,7 +352,7 @@ const emailBuilder = {
         <tr>
           <td class="mob-pad" style="padding: 30px 40px; text-align: center; background-color: #f8f9fa;">
             <h1 class="mob-hero-heading" style="margin: 0 0 15px 0; font-family: Arial, sans-serif; font-size: 32px; line-height: 38px; color: #212529;">
-              ${this.currentOrg?.company_name || 'Congratulations {{company_name}}!'}
+              ${utils.escapeHtml(this.currentOrg?.company_name || 'Congratulations {{company_name}}!')}
             </h1>
             <p class="mob-text-md" style="margin: 0; font-family: Arial, sans-serif; font-size: 16px; line-height: 24px; color: #6c757d;">
               Winner of the British Trade Awards ${new Date().getFullYear()}
@@ -418,7 +418,7 @@ const emailBuilder = {
                   ${
                     this.currentOrg.website
                       ? `<p class="mob-text-sm" style="margin: 0 0 5px 0; font-family: Arial, sans-serif; font-size: 14px; color: #0d6efd;">
-                      <a href="${this.currentOrg.website}" style="color: #0d6efd; text-decoration: none;">
+                      <a href="${utils.escapeHtml(this.currentOrg.website)}" style="color: #0d6efd; text-decoration: none;">
                         ${utils.escapeHtml(this.currentOrg.website)}
                       </a>
                     </p>`

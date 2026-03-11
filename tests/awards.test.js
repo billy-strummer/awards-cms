@@ -29,8 +29,8 @@ const dom = new JSDOM(
   <select id="awardsYearFilterSelect"><option value="">All Years</option><option value="2026">2026</option><option value="2025">2025</option></select>
   <select id="awardsStatusFilterSelect"><option value="">All</option><option value="published">Published</option><option value="draft">Draft</option><option value="active">Active</option><option value="pending">Pending</option><option value="archived">Archived</option></select>
   <select id="awardsSectorFilterSelect"><option value="">All Sectors</option><option value="MECHANICAL, ELECTRICAL &amp; PLUMBING">MEP</option><option value="BUILDING &amp; CONSTRUCTION">Building</option><option value="CARPENTRY &amp; JOINERY">Carpentry</option><option value="OUTDOOR &amp; LANDSCAPING">Landscaping</option></select>
-  <select id="awardsRegionFilterSelect"><option value="">All Regions</option><option value="South East">South East</option><option value="East">East</option><option value="London">London</option><option value="South West">South West</option></select>
-  <select id="awardsCountyFilterSelect"><option value="">All Counties</option><option value="Kent">Kent</option><option value="Essex">Essex</option><option value="London">London</option><option value="Surrey">Surrey</option><option value="Devon">Devon</option></select>
+  <select id="awardsRegionFilterSelect"><option value="">All Regions</option><option value="South East">South East</option><option value="East of England">East of England</option><option value="Greater London">Greater London</option><option value="South West">South West</option></select>
+  <select id="awardsCountyFilterSelect"><option value="">All Counties</option><option value="Kent">Kent</option><option value="Essex">Essex</option><option value="London, North">London, North</option><option value="Surrey">Surrey</option><option value="Devon">Devon</option></select>
   <input id="awardsSearchBox" value="" />
   <input type="checkbox" id="selectAllAwards" />
   <select id="awardsSavedViewsList"><option value="">No saved views</option></select>

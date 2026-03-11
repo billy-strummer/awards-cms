@@ -17,7 +17,7 @@ const dom = new JSDOM(
 
   <!-- Step 1 – Region -->
   <div id="step1" class="form-step active">
-    <select id="county_city"><option value="">Select your county or city</option><option value="Kent">Kent</option><option value="Lancashire">Lancashire</option><option value="London">London</option></select>
+    <select id="county_city"><option value="">Select your county or city</option><option value="Kent">Kent</option><option value="Lancashire">Lancashire</option><option value="London, North">London, North</option></select>
   </div>
 
   <!-- Step 2 – Sector -->
@@ -110,7 +110,8 @@ global.window.REGIONS = [
   'Kent',
   'Lancashire',
   'Birmingham',
-  'London',
+  'London, North',
+  'London, South',
   'Manchester',
 ];
 
@@ -1169,7 +1170,7 @@ describe('populateRegions', () => {
     const values = Array.from(cityOptions).map((o) => o.value);
     expect(values).toContain('Birmingham');
     expect(values).toContain('Manchester');
-    expect(values).toContain('London');
+    expect(values).toContain('London, North');
   });
 });
 

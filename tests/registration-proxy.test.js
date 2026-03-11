@@ -10,6 +10,7 @@ function chainable(resolveWith = { data: null, error: null }) {
     insert: jest.fn(() => obj),
     update: jest.fn(() => obj),
     eq: jest.fn(() => obj),
+    in: jest.fn(() => obj),
     single: jest.fn(() => Promise.resolve(resolveWith)),
     maybeSingle: jest.fn(() => Promise.resolve(resolveWith)),
     then: (resolve) => resolve(resolveWith),
@@ -197,6 +198,8 @@ describe('Registration Proxy API', () => {
   test('register_guest succeeds with valid single guest', async () => {
     // Event lookup
     mockFromResults.push(chainable({ data: { id: VALID_UUID, max_capacity: 100 }, error: null }));
+    // Capacity count check
+    mockFromResults.push(chainable({ count: 5, error: null }));
     // Guest insert
     const insertedGuests = [{ id: 'g-1', guest_name: 'Alice Smith', guest_email: 'alice@test.com' }];
     mockFromResults.push(chainable({ data: insertedGuests, error: null }));
@@ -218,6 +221,8 @@ describe('Registration Proxy API', () => {
   test('register_guest succeeds with multiple guests', async () => {
     // Event lookup
     mockFromResults.push(chainable({ data: { id: VALID_UUID, max_capacity: 200 }, error: null }));
+    // Capacity count check
+    mockFromResults.push(chainable({ count: 10, error: null }));
     // Guest insert
     const insertedGuests = [
       { id: 'g-1', guest_name: 'Alice', guest_email: 'alice@test.com' },
@@ -349,6 +354,8 @@ describe('Registration Proxy API', () => {
   test('register_guest returns 500 when insert fails', async () => {
     // Event lookup
     mockFromResults.push(chainable({ data: { id: VALID_UUID, max_capacity: 100 }, error: null }));
+    // Capacity count check
+    mockFromResults.push(chainable({ count: 5, error: null }));
     // Guest insert fails
     mockFromResults.push(chainable({ data: null, error: { message: 'insert failed' } }));
 
@@ -368,6 +375,8 @@ describe('Registration Proxy API', () => {
   test('register_guest accepts optional guest fields', async () => {
     // Event lookup
     mockFromResults.push(chainable({ data: { id: VALID_UUID, max_capacity: 100 }, error: null }));
+    // Capacity count check
+    mockFromResults.push(chainable({ count: 5, error: null }));
     // Guest insert
     const insertedGuests = [{ id: 'g-1', guest_name: 'Alice', guest_email: 'alice@test.com' }];
     mockFromResults.push(chainable({ data: insertedGuests, error: null }));

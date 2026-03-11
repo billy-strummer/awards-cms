@@ -120,7 +120,7 @@ const mediaGalleryModule = {
         filters: { media_type: 'image' },
         or: 'organisation_id.is.null,award_id.is.null',
         sort: { column: 'uploaded_at', ascending: false },
-        pageSize: 10000,
+        pageSize: 1000,
       });
       const untagged = untaggedResult.data;
 
@@ -300,7 +300,7 @@ const mediaGalleryModule = {
     try {
       const eventsResult = await apiClient.select('events', {
         sort: { column: 'event_date', ascending: false },
-        pageSize: 10000,
+        pageSize: 1000,
       });
 
       await this.renderEventsList(eventsResult.data || []);
@@ -481,7 +481,7 @@ const mediaGalleryModule = {
               '*, organisations!media_gallery_organisation_id_fkey(*), awards:award_years!media_gallery_award_id_fkey(*)',
             filters: { gallery_section_id: { in: sectionIds } },
             sort: { column: 'display_order', ascending: true },
-            pageSize: 10000,
+            pageSize: 1000,
           });
           allPhotos = photosResult.data || [];
         } catch (fkErr) {
@@ -491,7 +491,7 @@ const mediaGalleryModule = {
             const fallbackResult = await apiClient.select('media_gallery', {
               filters: { gallery_section_id: { in: sectionIds } },
               sort: { column: 'display_order', ascending: true },
-              pageSize: 10000,
+              pageSize: 1000,
             });
             allPhotos = fallbackResult.data || [];
           } else {
@@ -823,7 +823,7 @@ const mediaGalleryModule = {
           select: '*, organisations(company_name), awards:award_years(award_name)',
           filters: { event_id: this.currentEventId, media_type: 'video' },
           sort: { column: 'created_at', ascending: false },
-          pageSize: 10000,
+          pageSize: 1000,
         });
         videos = videosResult.data;
       } catch (fkErr) {
@@ -832,7 +832,7 @@ const mediaGalleryModule = {
           const fallbackResult = await apiClient.select('media_items', {
             filters: { event_id: this.currentEventId, media_type: 'video' },
             sort: { column: 'created_at', ascending: false },
-            pageSize: 10000,
+            pageSize: 1000,
           });
           videos = fallbackResult.data;
         } else {
@@ -1043,7 +1043,7 @@ const mediaGalleryModule = {
         select: 'id, company_name',
         filters: { status: 'active' },
         sort: { column: 'company_name', ascending: true },
-        pageSize: 10000,
+        pageSize: 1000,
       });
       const companies = companiesResult.data;
 
@@ -1075,7 +1075,7 @@ const mediaGalleryModule = {
         select: 'id, award_name',
         filters: { is_active: true },
         sort: { column: 'award_name', ascending: true },
-        pageSize: 10000,
+        pageSize: 1000,
       });
       const awards = awardsResult.data;
 
@@ -1528,7 +1528,7 @@ const mediaGalleryModule = {
   async loadEvents() {
     const eventsResult = await apiClient.select('events', {
       sort: { column: 'event_date', ascending: false },
-      pageSize: 10000,
+      pageSize: 1000,
     });
 
     STATE.allEvents = eventsResult.data || [];
@@ -1572,7 +1572,7 @@ const mediaGalleryModule = {
       // Load all events
       const eventsResult = await apiClient.select('events', {
         sort: { column: 'event_date', ascending: false },
-        pageSize: 10000,
+        pageSize: 1000,
       });
       const events = eventsResult.data;
 
@@ -1804,7 +1804,7 @@ const mediaGalleryModule = {
       const itemsResult = await apiClient.select('media_gallery', {
         select: 'gallery_section_id',
         filters: { gallery_section_id: { in: sectionIds } },
-        pageSize: 10000,
+        pageSize: 1000,
       });
       const items = itemsResult.data;
 
@@ -2009,7 +2009,7 @@ const mediaGalleryModule = {
           '*, organisations!media_gallery_organisation_id_fkey(*), awards:award_years!media_gallery_award_id_fkey(*)',
         filters: { gallery_section_id: sectionId },
         sort: { column: 'display_order', ascending: true },
-        pageSize: 10000,
+        pageSize: 1000,
       });
       const photos = photosResult.data;
 
@@ -4695,7 +4695,7 @@ const mediaGalleryModule = {
           '*, event_galleries(gallery_name, event_id), awards:award_years!media_gallery_award_id_fkey(award_name)',
         filters: { organisation_id: orgId },
         sort: { column: 'uploaded_at', ascending: false },
-        pageSize: 10000,
+        pageSize: 1000,
       });
       const photos = photosResult.data;
 
@@ -4704,7 +4704,7 @@ const mediaGalleryModule = {
         select: '*, awards:award_years(award_name), events(event_name)',
         filters: { organisation_id: orgId, media_type: 'video' },
         sort: { column: 'created_at', ascending: false },
-        pageSize: 10000,
+        pageSize: 1000,
       });
       const videos = videosResult.data;
 
@@ -4959,7 +4959,7 @@ const mediaGalleryModule = {
         select: '*, organisations(company_name), awards:award_years(award_name)',
         filters: { event_id: this.currentEventId },
         sort: { column: 'display_order', ascending: true },
-        pageSize: 10000,
+        pageSize: 1000,
       });
       const roItems = roResult.data;
 
@@ -5116,7 +5116,7 @@ const mediaGalleryModule = {
         select: '*, organisations(id, company_name), awards:award_years(id, award_name)',
         filters: { event_id: this.currentEventId },
         sort: { column: 'display_order', ascending: true },
-        pageSize: 10000,
+        pageSize: 1000,
       });
       const roItems = roResult.data;
 
@@ -5142,7 +5142,7 @@ const mediaGalleryModule = {
           select: 'id, title, file_url, file_type, organisation_id, award_id, gallery_section_id',
           filters: { gallery_section_id: { in: sectionIds } },
           sort: { column: 'uploaded_at', ascending: true },
-          pageSize: 10000,
+          pageSize: 1000,
         });
         photos = photosResult.data || [];
       }
@@ -5981,7 +5981,7 @@ const mediaGalleryModule = {
       const orgMediaResult = await apiClient.select('media_gallery', {
         select: 'organisation_id, organisations!media_gallery_organisation_id_fkey(company_name)',
         filters: { organisation_id: { neq: null } },
-        pageSize: 10000,
+        pageSize: 1000,
       });
       const orgMedia = orgMediaResult.data;
 
@@ -6086,7 +6086,7 @@ const mediaGalleryModule = {
         select: '*, organisations(company_name), awards:award_years(award_name)',
         filters: { event_id: this.currentEventId, media_type: 'video' },
         sort: { column: 'display_order', ascending: true },
-        pageSize: 10000,
+        pageSize: 1000,
       });
       const videos = videosResult.data;
 
@@ -6306,7 +6306,7 @@ const mediaGalleryModule = {
       select: 'id, company_name',
       filters: { status: 'active' },
       sort: { column: 'company_name', ascending: true },
-      pageSize: 10000,
+      pageSize: 1000,
     });
     const orgs = orgsResult.data;
 
@@ -6339,7 +6339,7 @@ const mediaGalleryModule = {
         select:
           'id, file_url, title, caption, organisations!media_gallery_organisation_id_fkey(company_name), awards:award_years!media_gallery_award_id_fkey(award_name)',
         filters: { organisation_id: orgId },
-        pageSize: 10000,
+        pageSize: 1000,
       });
       const photos = photosResult.data;
 
@@ -6348,7 +6348,7 @@ const mediaGalleryModule = {
         select:
           'id, title, youtube_id, file_url, thumbnail_url, organisations(company_name), awards:award_years(award_name)',
         filters: { organisation_id: orgId, media_type: 'video' },
-        pageSize: 10000,
+        pageSize: 1000,
       });
       const videos = videosResult.data;
 
@@ -6462,7 +6462,7 @@ const mediaGalleryModule = {
     const eventsResult = await apiClient.select('events', {
       select: 'id, event_name, event_date',
       sort: { column: 'event_date', ascending: false },
-      pageSize: 10000,
+      pageSize: 1000,
     });
     const events = eventsResult.data;
 
@@ -6485,7 +6485,7 @@ const mediaGalleryModule = {
       select: 'id, company_name',
       filters: { status: 'active' },
       sort: { column: 'company_name', ascending: true },
-      pageSize: 10000,
+      pageSize: 1000,
     });
     const orgs = orgsResult.data;
 
@@ -6698,7 +6698,7 @@ const mediaGalleryModule = {
       const videosResult = await apiClient.select('media_items', {
         select: 'id, title, youtube_id, event_id, organisation_id, organisations(company_name)',
         filters: { media_type: 'video', youtube_id: { neq: null } },
-        pageSize: 10000,
+        pageSize: 1000,
       });
       const videos = videosResult.data;
 
@@ -6811,7 +6811,7 @@ const mediaGalleryModule = {
       const slideshowResult = await apiClient.select('media_gallery', {
         filters: { gallery_section_id: section, published: true },
         sort: { column: 'display_order', ascending: true },
-        pageSize: 10000,
+        pageSize: 1000,
       });
       photos = slideshowResult.data || [];
     } else {

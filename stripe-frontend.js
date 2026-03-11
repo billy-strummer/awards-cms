@@ -51,7 +51,7 @@ const stripeFrontend = {
         },
         body: JSON.stringify({
           entry_id: entryId,
-          amount: Math.round(amount * 100), // Convert to pence
+          amount, // Amount in GBP — server converts to pence
           description: description || 'British Trade Awards Entry Fee',
           success_url: `${window.location.origin}/payment-success?entry=${entryId}`,
           cancel_url: `${window.location.origin}/payment-cancelled?entry=${entryId}`,

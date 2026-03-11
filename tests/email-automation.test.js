@@ -36,6 +36,7 @@ function chainable(resolveWith = { data: null, error: null }) {
     in: jest.fn(() => obj),
     not: jest.fn(() => obj),
     ilike: jest.fn(() => obj),
+    or: jest.fn(() => obj),
     gte: jest.fn(() => obj),
     lt: jest.fn(() => obj),
     order: jest.fn(() => obj),

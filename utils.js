@@ -38,6 +38,27 @@ const utils = {
   },
 
   /**
+   * Generic slider label updater for range inputs.
+   * Reads the slider's current value and writes it to the target label element.
+   * HTML usage: data-on-input="utils.updateSliderLabel" data-id="labelElementId" data-args='{"suffix":"%"}'
+   * @param {Event} event - The input event from the range slider.
+   */
+  updateSliderLabel(event) {
+    const input = event?.target || event;
+    const labelId = input?.getAttribute?.('data-id');
+    if (!labelId) return;
+    const label = document.getElementById(labelId);
+    if (!label) return;
+    let args = {};
+    try {
+      args = JSON.parse(input.getAttribute('data-args') || '{}');
+    } catch (_) {
+      /* ignore */
+    }
+    label.textContent = `${input.value}${args.suffix || ''}`;
+  },
+
+  /**
    * Show a toast notification
    * @param {string} message - The message to display
    * @param {string} type - Type of notification: 'success', 'error', 'warning', 'info'
@@ -223,6 +244,11 @@ const utils = {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML.replace(/"/g, '&quot;');
+  },
+
+  toTitleCase(str) {
+    if (!str) return '';
+    return str.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
   },
 
   /**

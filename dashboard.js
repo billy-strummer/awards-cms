@@ -2440,7 +2440,7 @@ const dashboardModule = {
             (org) => `
           <tr>
             <td>${utils.escapeHtml(org.company_name || 'Untitled')}</td>
-            <td>${utils.escapeHtml(org.sector || 'N/A')}</td>
+            <td>${utils.escapeHtml(utils.toTitleCase(org.sector) || 'N/A')}</td>
             <td>${utils.escapeHtml(org.county_city || 'N/A')}</td>
             <td><span class="badge bg-primary">${org.awards_count || 0}</span></td>
             <td>${org.created_at ? new Date(org.created_at).toLocaleDateString() : 'N/A'}</td>

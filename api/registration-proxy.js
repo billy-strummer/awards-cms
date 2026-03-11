@@ -116,7 +116,7 @@ async function handleRegisterGuest(req, res) {
     if (!guest.guest_name || typeof guest.guest_name !== 'string' || guest.guest_name.trim().length < 2) {
       return res.status(400).json({ error: 'Guest name is required (min 2 characters)' });
     }
-    if (!guest.guest_email || !isValidEmail(guest.guest_email)) {
+    if (guest.guest_email && !isValidEmail(guest.guest_email)) {
       return res.status(400).json({ error: `Invalid email for guest: ${guest.guest_name}` });
     }
 
@@ -143,6 +143,28 @@ async function handleRegisterGuest(req, res) {
 
   if (!event) {
     return res.status(404).json({ error: 'Event not found' });
+  }
+
+  // Enforce max_capacity if set
+  if (event.max_capacity && event.max_capacity > 0) {
+    const { count: currentGuests, error: countError } = await supabase
+      .from('event_guests')
+      .select('id', { count: 'exact', head: true })
+      .eq('event_id', eventId)
+      .in('status', ['registered', 'confirmed', 'checked_in']);
+
+    if (countError) {
+      console.error('Error checking capacity:', countError);
+      return res.status(500).json({ error: 'Failed to check event capacity' });
+    }
+
+    if ((currentGuests || 0) + sanitizedGuests.length > event.max_capacity) {
+      const remaining = Math.max(0, event.max_capacity - (currentGuests || 0));
+      return res.status(409).json({
+        error: `Event is at capacity. Only ${remaining} spot${remaining !== 1 ? 's' : ''} remaining.`,
+        remaining,
+      });
+    }
   }
 
   // Insert guests

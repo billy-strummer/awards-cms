@@ -805,7 +805,7 @@ const paymentsModule = {
 <!DOCTYPE html>
 <html>
 <head>
-<title>Invoice ${inv.invoice_number}</title>
+<title>Invoice ${utils.escapeHtml(inv.invoice_number)}</title>
 <style>
   body { font-family: Arial, sans-serif; padding: 40px; color: #333; max-width: 800px; margin: 0 auto; }
   .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; border-bottom: 3px solid #0d6efd; padding-bottom: 20px; }
@@ -1027,7 +1027,9 @@ const paymentsModule = {
           // Load line items for the email template
           let lineItems = [];
           try {
-            const result = await apiClient.select('invoice_line_items', { invoice_id: invoice.id });
+            const result = await apiClient.select('invoice_line_items', {
+              filters: { invoice_id: { eq: invoice.id } },
+            });
             lineItems = result.data || [];
           } catch (_e) {
             /* proceed without line items */
@@ -1035,9 +1037,10 @@ const paymentsModule = {
 
           // Send invoice email via API
           try {
+            const invoiceEmailToken = await apiClient._getToken();
             const response = await fetch('/api/resend-email', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${invoiceEmailToken}` },
               body: JSON.stringify({
                 action: 'send-invoice',
                 to: recipientEmail,
@@ -1469,7 +1472,7 @@ const paymentsModule = {
         unpaidInvoices
           .map(
             (inv) =>
-              `<option value="${inv.id}">${inv.invoice_number} - ${inv.organisations?.company_name} (&pound;${parseFloat(String(inv.total_amount - inv.paid_amount)).toFixed(2)} due)</option>`
+              `<option value="${inv.id}">${utils.escapeHtml(inv.invoice_number)} - ${utils.escapeHtml(inv.organisations?.company_name || '')} (&pound;${parseFloat(String(inv.total_amount - inv.paid_amount)).toFixed(2)} due)</option>`
           )
           .join('');
 
@@ -2105,8 +2108,8 @@ const paymentsModule = {
               .map(
                 (inv) => `
               <tr>
-                <td>${inv.invoice_number}</td>
-                <td>${inv.organisations?.company_name || 'N/A'}</td>
+                <td>${utils.escapeHtml(inv.invoice_number)}</td>
+                <td>${utils.escapeHtml(inv.organisations?.company_name || 'N/A')}</td>
                 <td>${new Date(inv.due_date).toLocaleDateString()}</td>
                 <td>&pound;${parseFloat(inv.total_amount).toFixed(2)}</td>
                 <td class="text-danger fw-bold">&pound;${parseFloat(inv.balance_due).toFixed(2)}</td>
@@ -2327,8 +2330,8 @@ const paymentsModule = {
               .map(
                 (inv) => `
               <tr>
-                <td>${inv.invoice_number}</td>
-                <td>${inv.organisations?.company_name || 'N/A'}</td>
+                <td>${utils.escapeHtml(inv.invoice_number)}</td>
+                <td>${utils.escapeHtml(inv.organisations?.company_name || 'N/A')}</td>
                 <td>${new Date(inv.invoice_date).toLocaleDateString()}</td>
                 <td>&pound;${parseFloat(inv.total_amount).toFixed(2)}</td>
                 <td>${this.getInvoiceStatusBadge(inv.status, inv.payment_status)}</td>
@@ -2685,16 +2688,21 @@ const paymentsModule = {
   _runAccountingSync() {
     utils.showToast('Syncing...', 'info');
     setTimeout(async () => {
-      this._accountingConfig.lastSync = new Date().toISOString();
-      this._accountingConfig.syncHistory = this._accountingConfig.syncHistory || [];
-      this._accountingConfig.syncHistory.unshift({
-        date: new Date().toISOString(),
-        status: 'success',
-        details: `Synced ${Math.floor(Math.random() * 20) + 5} invoices, ${Math.floor(Math.random() * 10) + 1} payments`,
-      });
-      await this._saveAccountingConfig();
-      utils.showToast('Sync complete', 'success');
-      this.loadAccountingIntegration();
+      try {
+        this._accountingConfig.lastSync = new Date().toISOString();
+        this._accountingConfig.syncHistory = this._accountingConfig.syncHistory || [];
+        this._accountingConfig.syncHistory.unshift({
+          date: new Date().toISOString(),
+          status: 'success',
+          details: `Synced ${Math.floor(Math.random() * 20) + 5} invoices, ${Math.floor(Math.random() * 10) + 1} payments`,
+        });
+        await this._saveAccountingConfig();
+        utils.showToast('Sync complete', 'success');
+        this.loadAccountingIntegration();
+      } catch (err) {
+        console.error('Accounting sync failed:', err);
+        utils.showToast('Sync failed: ' + err.message, 'error');
+      }
     }, 1500);
   },
 

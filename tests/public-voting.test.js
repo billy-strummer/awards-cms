@@ -735,25 +735,21 @@ describe('votingSystem.submitVote()', () => {
 // 10. votingSystem.sendVerificationEmail()
 // ===========================================================================
 describe('votingSystem.sendVerificationEmail()', () => {
-  test('sends POST to /api/resend-email with correct payload', async () => {
+  test('sends POST to /api/voting-proxy with correct payload', async () => {
     votingSystem.voterEmail = 'voter@test.com';
     votingSystem.currentVote = { company_name: 'Acme', award_name: 'Best Innovation' };
-    global.fetch = mockFetchOk({ id: 'email-123' });
+    global.fetch = mockFetchOk({ success: true });
 
     await votingSystem.sendVerificationEmail();
 
-    expect(global.fetch).toHaveBeenCalledWith('/api/resend-email', {
+    expect(global.fetch).toHaveBeenCalledWith('/api/voting-proxy', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        to: 'voter@test.com',
-        subject: 'Vote Confirmation - British Trade Awards',
-        template: 'entry_confirmation',
-        templateData: {
-          voter_email: 'voter@test.com',
-          company_name: 'Acme',
-          award_name: 'Best Innovation',
-        },
+        action: 'send_vote_confirmation',
+        voter_email: 'voter@test.com',
+        company_name: 'Acme',
+        award_name: 'Best Innovation',
       }),
     });
   });
@@ -766,8 +762,8 @@ describe('votingSystem.sendVerificationEmail()', () => {
     await votingSystem.sendVerificationEmail();
 
     const body = JSON.parse(global.fetch.mock.calls[0][1].body);
-    expect(body.templateData.company_name).toBe('N/A');
-    expect(body.templateData.award_name).toBe('British Trade Awards');
+    expect(body.company_name).toBe('N/A');
+    expect(body.award_name).toBe('British Trade Awards');
   });
 
   test('does not throw when email service fails', async () => {

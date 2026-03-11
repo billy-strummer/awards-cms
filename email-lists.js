@@ -773,7 +773,11 @@ const emailListsModule = {
 
         const skipDuplicates = document.getElementById('csvSkipDuplicates')?.checked;
 
-        await apiClient.insert('email_list_subscribers', subscribersToInsert);
+        if (skipDuplicates) {
+          await apiClient.upsert('email_list_subscribers', subscribersToInsert, { onConflict: 'list_id,email' });
+        } else {
+          await apiClient.insert('email_list_subscribers', subscribersToInsert);
+        }
 
         // Update batch as completed
         if (batch?.id) {

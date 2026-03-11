@@ -6,7 +6,7 @@
   'use strict';
 
   // Entry fee amount in GBP
-  var ENTRY_FEE = 95;
+  const ENTRY_FEE = 95;
 
   // API proxy for entry submission (no direct DB access)
   async function entryApi(payload) {
@@ -829,15 +829,15 @@
     if (el.dataset.preventDefault === 'true') e.preventDefault();
     const actionName = el.dataset.action;
     const parts = actionName.split('.');
-    var ctx = window;
-    var fn = window;
-    for (var i = 0; i < parts.length; i++) {
+    let ctx = window;
+    let fn = window;
+    for (let i = 0; i < parts.length; i++) {
       ctx = fn;
       fn = fn[parts[i]];
       if (!fn) return;
     }
     if (typeof fn !== 'function') return;
-    var args = [];
+    let args = [];
     if (el.dataset.args) {
       try {
         args = JSON.parse(el.dataset.args);

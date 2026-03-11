@@ -360,18 +360,14 @@ const votingSystem = {
    */
   async sendVerificationEmail() {
     try {
-      const resp = await fetch('/api/resend-email', {
+      const resp = await fetch('/api/voting-proxy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          to: this.voterEmail,
-          subject: 'Vote Confirmation - British Trade Awards',
-          template: 'entry_confirmation',
-          templateData: {
-            voter_email: this.voterEmail,
-            company_name: this.currentVote?.company_name || 'N/A',
-            award_name: this.currentVote?.award_name || 'British Trade Awards',
-          },
+          action: 'send_vote_confirmation',
+          voter_email: this.voterEmail,
+          company_name: this.currentVote?.company_name || 'N/A',
+          award_name: this.currentVote?.award_name || 'British Trade Awards',
         }),
       });
       if (!resp.ok) {

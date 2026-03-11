@@ -919,14 +919,17 @@ async function sendDeadlineReminders() {
     }
 
     // Judging deadline reminders
-    const { data: judges } = await supabase.from('contacts').select('*').eq('contact_type', 'judge');
-
-    const { data: allScores } = await supabase.from('judge_scores').select('*');
+    const { data: judges } = await supabase.from('contacts').select('id, full_name, email').eq('contact_type', 'judge');
 
     for (const judge of judges || []) {
-      const judgeScores = (allScores || []).filter((s) => s.judge_email === judge.email || s.judge_id === judge.id);
-      const totalAssigned = judgeScores.length || 0;
-      const completed = judgeScores.filter((s) => s.is_complete).length || 0;
+      // Fetch scores only for this judge instead of loading entire table
+      const { data: judgeScores } = await supabase
+        .from('judge_scores')
+        .select('id, is_complete, judge_email, judge_id')
+        .or(`judge_email.eq.${judge.email},judge_id.eq.${judge.id}`);
+      const scores = judgeScores || [];
+      const totalAssigned = scores.length;
+      const completed = scores.filter((s) => s.is_complete).length;
       const pending = totalAssigned - completed;
 
       if (pending > 0) {
@@ -1113,6 +1116,10 @@ async function sendShortlistNotifications(awardId = null) {
     }
 
     const { data: shortlisted } = await query;
+    if (!shortlisted || shortlisted.length === 0) {
+      console.log('No shortlisted entries to notify');
+      return 0;
+    }
 
     // Fetch upcoming ceremony event and award season details
     const { data: ceremonyEvent } = await supabase
@@ -1265,6 +1272,18 @@ module.exports = async function handler(req, res) {
   switch (action) {
     case 'send-email':
       return sendEmailEndpoint(req, res);
+    case 'sendTemplate': {
+      const { templateKey, toEmail, toName, subject: customSubject, html: customHtml, variables } = req.body;
+      if (!templateKey || !toEmail) {
+        return res.status(400).json({ error: 'Missing templateKey or toEmail' });
+      }
+      const vars = variables || {};
+      if (toName) vars.contact_name = vars.contact_name || toName;
+      if (customSubject) vars.subject_line = vars.subject_line || customSubject;
+      if (customHtml) vars.message_body = vars.message_body || customHtml;
+      const result = await sendTemplateEmail(templateKey, toEmail, vars);
+      return res.json({ success: result });
+    }
     case 'send-deadline-reminders':
       return sendDeadlineRemindersEndpoint(req, res);
     case 'send-winner-announcements':

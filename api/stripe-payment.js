@@ -411,28 +411,36 @@ async function handleChargeSucceeded(charge) {
       })
       .eq('id', entry.id);
 
-    // Create invoice record
+    // Create invoice record (only if one doesn't already exist for this payment)
     const amountPaid = charge.amount ? charge.amount / 100 : 95;
-    const chInvoiceNumber = await generateInvoiceNumber();
-    await supabase.from('invoices').insert([
-      {
-        invoice_number: chInvoiceNumber,
-        organisation_id: entry.organisation_id,
-        invoice_type: 'entry_fee',
-        status: 'paid',
-        payment_status: 'paid',
-        total_amount: amountPaid,
-        paid_amount: amountPaid,
-        balance_due: 0,
-        currency: 'GBP',
-        invoice_date: new Date().toISOString().split('T')[0],
-        due_date: new Date().toISOString().split('T')[0],
-        paid_date: new Date().toISOString(),
-        payment_method: 'stripe',
-        payment_reference: paymentIntentId,
-        notes: `Entry ${entry.entry_number} - ${entry.entry_title}`,
-      },
-    ]);
+    const { data: existingChargeInvoice } = await supabase
+      .from('invoices')
+      .select('id')
+      .eq('payment_reference', paymentIntentId)
+      .limit(1);
+
+    if (!existingChargeInvoice || existingChargeInvoice.length === 0) {
+      const chInvoiceNumber = await generateInvoiceNumber();
+      await supabase.from('invoices').insert([
+        {
+          invoice_number: chInvoiceNumber,
+          organisation_id: entry.organisation_id,
+          invoice_type: 'entry_fee',
+          status: 'paid',
+          payment_status: 'paid',
+          total_amount: amountPaid,
+          paid_amount: amountPaid,
+          balance_due: 0,
+          currency: 'GBP',
+          invoice_date: new Date().toISOString().split('T')[0],
+          due_date: new Date().toISOString().split('T')[0],
+          paid_date: new Date().toISOString(),
+          payment_method: 'stripe',
+          payment_reference: paymentIntentId,
+          notes: `Entry ${entry.entry_number} - ${entry.entry_title}`,
+        },
+      ]);
+    }
 
     // Log activity
     await supabase.from('activity_logs').insert([
@@ -598,7 +606,7 @@ async function sendEntryConfirmationEmail(entry) {
   }
   try {
     const branding = await loadBranding();
-    const contactEmail = branding.email_from || process.env.CONTACT_EMAIL || 'awards@britishtrade.org';
+    const contactEmail = branding.email_from || process.env.CONTACT_EMAIL || 'awards@britishtradeawards.com';
     const uploadLink = `${APP_URL}/upload-documents.html?entry=${entry.entry_number || entry.id}`;
 
     const placeholders = {
@@ -642,7 +650,7 @@ async function sendPaymentFailedEmail(entry, errorMessage) {
   }
   try {
     const branding = await loadBranding();
-    const contactEmail = branding.email_from || process.env.CONTACT_EMAIL || 'awards@britishtrade.org';
+    const contactEmail = branding.email_from || process.env.CONTACT_EMAIL || 'awards@britishtradeawards.com';
 
     const placeholders = {
       ENTRY_NUMBER: entry.entry_number || '',
@@ -683,7 +691,7 @@ async function sendRefundConfirmationEmail(entry) {
   }
   try {
     const branding = await loadBranding();
-    const contactEmail = branding.email_from || process.env.CONTACT_EMAIL || 'awards@britishtrade.org';
+    const contactEmail = branding.email_from || process.env.CONTACT_EMAIL || 'awards@britishtradeawards.com';
 
     const placeholders = {
       ENTRY_NUMBER: entry.entry_number || '',
@@ -862,14 +870,138 @@ async function createPublicCheckout(req, res) {
 }
 
 /**
+ * Create a Stripe Checkout Session for event ticket purchases.
+ * POST ?action=event-checkout
+ * @param {Object} req - Request with body containing eventId, tickets array, success_url, cancel_url.
+ * @param {Object} res - Response object.
+ * @returns {Promise<void>}
+ */
+async function createEventCheckout(req, res) {
+  try {
+    const user = await verifyAuth(req, res);
+    if (!user) return;
+
+    const { eventId, tickets, success_url, cancel_url } = req.body;
+
+    if (!eventId || !Array.isArray(tickets) || tickets.length === 0) {
+      return res.status(400).json({ error: 'Missing eventId or tickets' });
+    }
+
+    // Look up the event
+    const { data: event, error: eventError } = await supabase
+      .from('events')
+      .select('event_name, event_date, venue')
+      .eq('id', eventId)
+      .single();
+
+    if (eventError || !event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    // Build line items from tickets
+    const line_items = tickets.map((t) => ({
+      price_data: {
+        currency: 'gbp',
+        product_data: {
+          name: t.name || `Event Ticket - ${event.event_name}`,
+          description: t.description || `${event.event_name} - ${event.event_date || ''}`,
+        },
+        unit_amount: Math.round((t.price || 0) * 100),
+      },
+      quantity: t.quantity || 1,
+    }));
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items,
+      mode: 'payment',
+      success_url: success_url || `${APP_URL}/ticket-success.html?session_id={CHECKOUT_SESSION_ID}&event=${eventId}`,
+      cancel_url: cancel_url || `${APP_URL}/events.html`,
+      metadata: {
+        event_id: eventId,
+        ticket_data: JSON.stringify(tickets.slice(0, 5)), // Store first 5 for reference
+      },
+    });
+
+    res.json({ sessionId: session.id, url: session.url });
+  } catch (error) {
+    console.error('Error creating event checkout session:', error);
+    res.status(500).json({ error: 'An internal error occurred' });
+  }
+}
+
+/**
+ * Process a refund for a ticket / payment.
+ * POST ?action=refund
+ * Looks up the guest's payment_intent from their ticket record and issues a Stripe refund.
+ * @param {Object} req - Request with body containing ticketId, guestEmail, guestName.
+ * @param {Object} res - Response object.
+ * @returns {Promise<void>}
+ */
+async function processRefund(req, res) {
+  try {
+    const user = await verifyAuth(req, res);
+    if (!user) return;
+
+    const { ticketId, payment_intent, payment_reference } = req.body;
+
+    // Determine the payment_intent to refund
+    let refundTarget = payment_intent || payment_reference;
+
+    if (!refundTarget && ticketId) {
+      // Try to find payment reference from the guest record
+      const { data: guest } = await supabase
+        .from('event_guests')
+        .select('payment_reference, payment_intent')
+        .eq('id', ticketId)
+        .single();
+
+      refundTarget = guest?.payment_intent || guest?.payment_reference;
+    }
+
+    if (!refundTarget) {
+      return res.status(400).json({ error: 'No payment reference found for refund. Manual refund may be required.' });
+    }
+
+    // Issue Stripe refund
+    const refund = await stripe.refunds.create({
+      payment_intent: refundTarget,
+    });
+
+    // Log the refund
+    await supabase.from('activity_logs').insert([
+      {
+        entity_type: 'payment',
+        action: 'refund_processed',
+        details: `Refund ${refund.id} for payment ${refundTarget}`,
+        performed_by: user.email,
+      },
+    ]);
+
+    res.json({ success: true, refundId: refund.id, status: refund.status });
+  } catch (error) {
+    console.error('Error processing refund:', error);
+    res.status(500).json({ error: error.message || 'Refund failed' });
+  }
+}
+
+/**
  * Vercel serverless handler — routes by query action or HTTP method.
  * POST ?action=create-checkout-session → createCheckoutSession
- * POST ?action=public-checkout        → createPublicCheckout (no auth)
- * POST ?action=webhook              → handleStripeWebhook
+ * POST ?action=event-checkout          → createEventCheckout
+ * POST ?action=public-checkout         → createPublicCheckout (no auth)
+ * POST ?action=refund                  → processRefund
+ * POST ?action=webhook                 → handleStripeWebhook
  * GET  ?action=payment-status&entryId=... → getPaymentStatus
  * GET  ?action=verify-payment&sessionId=... → verifyPayment
  */
 module.exports = async function handler(req, res) {
+  // CORS headers for public-facing actions (public-checkout, webhook)
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  if (req.method === 'OPTIONS') return res.status(204).end();
+
   // Guard: return a clear JSON error when Stripe is not configured
   if (!process.env.STRIPE_SECRET_KEY) {
     return res.status(503).json({ error: 'Stripe is not configured. Set STRIPE_SECRET_KEY in environment variables.' });
@@ -883,6 +1015,14 @@ module.exports = async function handler(req, res) {
 
   if (req.method === 'POST' && action === 'public-checkout') {
     return createPublicCheckout(req, res);
+  }
+
+  if (req.method === 'POST' && action === 'event-checkout') {
+    return createEventCheckout(req, res);
+  }
+
+  if (req.method === 'POST' && action === 'refund') {
+    return processRefund(req, res);
   }
 
   if (req.method === 'POST' && (action === 'create-checkout-session' || !action)) {
@@ -905,6 +1045,8 @@ module.exports = async function handler(req, res) {
 // Named exports for internal use and testing
 module.exports.createCheckoutSession = createCheckoutSession;
 module.exports.createPublicCheckout = createPublicCheckout;
+module.exports.createEventCheckout = createEventCheckout;
+module.exports.processRefund = processRefund;
 module.exports.handleStripeWebhook = handleStripeWebhook;
 module.exports.getPaymentStatus = getPaymentStatus;
 module.exports.verifyPayment = verifyPayment;

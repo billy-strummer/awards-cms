@@ -325,10 +325,11 @@ const winnerAnnouncementsModule = {
         const to = w.organisations?.email;
         if (to) {
           try {
+            const emailToken = await apiClient._getToken();
             await fetch('/api/resend-email', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ to, subject: sub, html: body }),
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${emailToken}` },
+              body: JSON.stringify({ action: 'send', to, subject: sub, message: body }),
             });
           } catch (e) {
             console.error('Email failed for', id, e);

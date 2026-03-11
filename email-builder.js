@@ -32,6 +32,26 @@ const emailBuilder = {
   _reorderDragId: null,
 
   /**
+   * Update A/B variant B subject line from the input field.
+   */
+  setAbVariantB() {
+    const input = document.getElementById('abVariantB');
+    if (input) this.abVariantB = input.value;
+  },
+
+  /**
+   * Update A/B split label when the range slider changes.
+   */
+  updateAbSplit() {
+    const slider = document.getElementById('abSplitPercent');
+    const label = document.getElementById('abSplitLabel');
+    if (slider && label) {
+      const val = parseInt(slider.value, 10);
+      label.textContent = `${val}/${100 - val}`;
+    }
+  },
+
+  /**
    * Initialize email builder
    */
   init() {
@@ -332,7 +352,7 @@ const emailBuilder = {
         <tr>
           <td class="mob-pad" style="padding: 30px 40px; text-align: center; background-color: #f8f9fa;">
             <h1 class="mob-hero-heading" style="margin: 0 0 15px 0; font-family: Arial, sans-serif; font-size: 32px; line-height: 38px; color: #212529;">
-              ${this.currentOrg?.company_name || 'Congratulations {{company_name}}!'}
+              ${utils.escapeHtml(this.currentOrg?.company_name || 'Congratulations {{company_name}}!')}
             </h1>
             <p class="mob-text-md" style="margin: 0; font-family: Arial, sans-serif; font-size: 16px; line-height: 24px; color: #6c757d;">
               Winner of the British Trade Awards ${new Date().getFullYear()}
@@ -398,7 +418,7 @@ const emailBuilder = {
                   ${
                     this.currentOrg.website
                       ? `<p class="mob-text-sm" style="margin: 0 0 5px 0; font-family: Arial, sans-serif; font-size: 14px; color: #0d6efd;">
-                      <a href="${this.currentOrg.website}" style="color: #0d6efd; text-decoration: none;">
+                      <a href="${utils.escapeHtml(this.currentOrg.website)}" style="color: #0d6efd; text-decoration: none;">
                         ${utils.escapeHtml(this.currentOrg.website)}
                       </a>
                     </p>`
@@ -457,7 +477,7 @@ const emailBuilder = {
                 ${
                   award.sector
                     ? `<p class="mob-text-sm" style="margin: 0; font-family: Arial, sans-serif; font-size: 14px; color: #6c757d;">
-                    ${utils.escapeHtml(award.sector)}
+                    ${utils.escapeHtml(utils.toTitleCase(award.sector))}
                   </p>`
                     : ''
                 }
@@ -2594,9 +2614,9 @@ ${content}
         p_campaign_name: campaignName || subject,
       });
 
-      if (result.data && !result.data.success) throw new Error(result.data.error || 'Campaign send failed');
+      if (!result.data || !result.data.success) throw new Error(result.data?.error || 'Campaign send failed');
 
-      utils.showToast(`Campaign sent to ${result.data?.sent || count} recipients!`, 'success');
+      utils.showToast(`Campaign sent to ${result.data.sent || count} recipients!`, 'success');
 
       // Log the campaign with full data for cloning
       try {

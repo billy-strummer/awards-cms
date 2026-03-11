@@ -182,7 +182,7 @@ const aiVettingModule = {
             <div class="fw-semibold">${utils.escapeHtml(result.company_name)}</div>
             <small class="text-muted">${new Date(result.vetting_date).toLocaleDateString()}</small>
           </td>
-          <td>${utils.escapeHtml(result.sector || 'N/A')}</td>
+          <td>${utils.escapeHtml(utils.toTitleCase(result.sector) || 'N/A')}</td>
           <td class="text-center">${statusBadge}</td>
           <td class="text-center">${operationalBadge}</td>
           <td class="text-center">${categoryBadge}</td>
@@ -381,7 +381,7 @@ const aiVettingModule = {
     const detailsHtml = `
       <div class="modal-body">
         <h5>${utils.escapeHtml(result.company_name)}</h5>
-        <p class="text-muted">${utils.escapeHtml(result.sector || 'N/A')}</p>
+        <p class="text-muted">${utils.escapeHtml(utils.toTitleCase(result.sector) || 'N/A')}</p>
         <hr>
 
         <div class="mb-3">

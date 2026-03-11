@@ -229,13 +229,14 @@ const ticketModule = {
     }
     try {
       utils.showLoading();
-      const res = await fetch('/api/stripe-payment?action=create-checkout-session', {
+      const token = await apiClient._getToken();
+      const res = await fetch('/api/stripe-payment?action=event-checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           eventId,
           tickets,
-          success_url: `${window.location.origin}/ticket-success?event=${eventId}`,
+          success_url: `${window.location.origin}/ticket-success.html?event=${eventId}`,
           cancel_url: window.location.href,
         }),
       });
@@ -544,11 +545,13 @@ const ticketModule = {
         rsvp_status: 'cancelled',
         updated_at: new Date().toISOString(),
       });
+      const refundToken = await apiClient._getToken();
       const res = await fetch('/api/stripe-payment?action=refund', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${refundToken}` },
         body: JSON.stringify({
           ticketId,
+          payment_reference: guest.payment_reference,
           guestEmail: guest.guest_email,
           guestName: guest.guest_name,
         }),

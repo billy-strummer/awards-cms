@@ -609,6 +609,26 @@ async function generateBadgeEndpoint(req, res) {
 }
 
 /**
+ * API endpoint to generate badges for all confirmed attendees of an event.
+ * POST /api/certificates-qr?action=generate-all-badges
+ * @param {Object} req - Express request object with body.eventId.
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>}
+ */
+async function generateAllBadgesEndpoint(req, res) {
+  try {
+    const { eventId } = req.body;
+    if (!eventId) {
+      return res.status(400).json({ error: 'eventId is required' });
+    }
+    const results = await generateAllEventBadges(eventId);
+    res.json({ success: true, results });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+}
+
+/**
  * API endpoint to verify a QR code at event check-in.
  * POST /api/verify-qr
  * @param {Object} req - Express request object with body.qrData.
@@ -646,10 +666,12 @@ module.exports = async function handler(req, res) {
       return generateBadgeEndpoint(req, res);
     case 'verify-qr':
       return verifyQREndpoint(req, res);
+    case 'generate-all-badges':
+      return generateAllBadgesEndpoint(req, res);
     default:
       return res.status(400).json({
         error:
-          'Invalid action. Use: generate-certificate, generate-all-certificates, generate-qr-ticket, generate-badge, verify-qr',
+          'Invalid action. Use: generate-certificate, generate-all-certificates, generate-qr-ticket, generate-badge, generate-all-badges, verify-qr',
       });
   }
 };
@@ -665,3 +687,4 @@ module.exports.generateAllCertificatesEndpoint = generateAllCertificatesEndpoint
 module.exports.generateQRTicketEndpoint = generateQRTicketEndpoint;
 module.exports.generateBadgeEndpoint = generateBadgeEndpoint;
 module.exports.verifyQREndpoint = verifyQREndpoint;
+module.exports.generateAllBadgesEndpoint = generateAllBadgesEndpoint;

@@ -815,20 +815,20 @@
   // Lightweight event delegation for data-action buttons (public pages
   // don't load the admin actionRegistry from utils.js)
   document.addEventListener('click', function (e) {
-    var el = e.target.closest('[data-action]');
+    const el = e.target.closest('[data-action]');
     if (!el) return;
     if (el.dataset.preventDefault === 'true') e.preventDefault();
-    var actionName = el.dataset.action;
-    var parts = actionName.split('.');
-    var ctx = window;
-    var fn = window;
-    for (var i = 0; i < parts.length; i++) {
+    const actionName = el.dataset.action;
+    const parts = actionName.split('.');
+    let ctx = window;
+    let fn = window;
+    for (let i = 0; i < parts.length; i++) {
       ctx = fn;
       fn = fn[parts[i]];
       if (!fn) return;
     }
     if (typeof fn !== 'function') return;
-    var args = [];
+    let args = [];
     if (el.dataset.args) {
       try {
         args = JSON.parse(el.dataset.args);

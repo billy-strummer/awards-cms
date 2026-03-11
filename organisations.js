@@ -306,7 +306,7 @@ const orgsModule = {
         const { data: counties } = await apiClient.select('counties', {
           select: 'id, Name, region, region_id, regions(name)',
           sort: { column: 'Name', ascending: true },
-          pageSize: 5000,
+          pageSize: 1000,
         });
         // Normalise: prefer FK join name, fall back to text region column
         (counties || []).forEach((c) => {
@@ -407,7 +407,9 @@ const orgsModule = {
     if (sectorSelect) {
       sectorSelect.innerHTML =
         '<option value="">All</option>' +
-        SECTORS.map((s) => `<option value="${utils.escapeHtml(s)}">${utils.escapeHtml(s)}</option>`).join('');
+        SECTORS.map(
+          (s) => `<option value="${utils.escapeHtml(s)}">${utils.escapeHtml(utils.toTitleCase(s))}</option>`
+        ).join('');
     }
     // Region & County filters are populated from DB via populateRegionAndCountyFilters()
   },
@@ -848,7 +850,7 @@ const orgsModule = {
         </td>
         <td style="${cv('sector')}cursor: pointer;" data-on-dblclick="orgsModule.startInlineEdit" data-args='${JSON.stringify([org.id, 'sector', org.sector || ''])}' title="Double-click to edit">
           <span class="badge bg-info-subtle text-info small">
-            ${utils.escapeHtml(org.sector || '-')}
+            ${utils.escapeHtml(utils.toTitleCase(org.sector) || '-')}
           </span>
         </td>
         <td style="${cv('county')}">
@@ -1446,7 +1448,7 @@ const orgsModule = {
                           ${utils.escapeHtml(utils.formatAwardName(award))}
                         </a>
                       </td>
-                      <td><span class="badge bg-info-subtle text-info">${utils.escapeHtml(award.sector)}</span></td>
+                      <td><span class="badge bg-info-subtle text-info">${utils.escapeHtml(utils.toTitleCase(award.sector))}</span></td>
                       <td>${utils.getStatusBadge(award.status)}</td>
                       <td>
                         ${
@@ -2566,7 +2568,7 @@ const orgsModule = {
         filters: { id: imageId },
         pageSize: 1,
       });
-      const image = imageResult.data[0];
+      const image = imageResult.data?.[0];
 
       // Delete from database
       await apiClient.delete('organisation_images', imageId);
@@ -3142,7 +3144,7 @@ const orgsModule = {
     try {
       const { data } = await apiClient.select('organisations', {
         select: 'sector',
-        pageSize: 10000,
+        pageSize: 1000,
       });
       const dbSectors = (data || []).map((o) => o.sector).filter(Boolean);
       const allSectors = [...new Set([...SECTORS, ...dbSectors])].sort();
@@ -3152,7 +3154,9 @@ const orgsModule = {
         const current = sectorSelect.value;
         sectorSelect.innerHTML =
           '<option value="">All</option>' +
-          allSectors.map((s) => `<option value="${utils.escapeHtml(s)}">${utils.escapeHtml(s)}</option>`).join('');
+          allSectors
+            .map((s) => `<option value="${utils.escapeHtml(s)}">${utils.escapeHtml(utils.toTitleCase(s))}</option>`)
+            .join('');
         if (current) sectorSelect.value = current;
       }
     } catch (e) {
@@ -4283,7 +4287,9 @@ const orgsModule = {
       // Combine global SECTORS with any existing custom sectors
       const existingSectors = [...new Set(STATE.allOrganisations.map((o) => o.sector).filter(Boolean))];
       const allSectors = [...new Set([...SECTORS, ...existingSectors])].sort();
-      options = allSectors.map((s) => `<option value="${s}">${utils.escapeHtml(s)}</option>`).join('');
+      options = allSectors
+        .map((s) => `<option value="${s}">${utils.escapeHtml(utils.toTitleCase(s))}</option>`)
+        .join('');
     } else if (field === 'county_city') {
       options = REGIONS.map((r) => `<option value="${r}">${utils.escapeHtml(r)}</option>`).join('');
     } else if (field === 'tier') {
@@ -5823,7 +5829,7 @@ const orgsModule = {
           <label class="form-label fw-semibold">Select Award</label>
           <select class="form-select" id="bulkAssignAwardSelect">
             <option value="">-- Select Award --</option>
-            ${(awards || []).map((a) => `<option value="${a.id}">${utils.escapeHtml(a.year + ' - ' + (a.award_name || a.county + ' ' + a.sector))}</option>`).join('')}
+            ${(awards || []).map((a) => `<option value="${a.id}">${utils.escapeHtml(a.year + ' - ' + (a.award_name || a.county + ' ' + utils.toTitleCase(a.sector)))}</option>`).join('')}
           </select>
         </div>
         <div class="mb-3">
@@ -6227,7 +6233,7 @@ const orgsModule = {
               .map(
                 ([sector, count]) => `
               <div class="d-flex align-items-center mb-2">
-                <span class="small text-truncate me-2" style="width: 120px;" title="${utils.escapeHtml(sector)}">${utils.escapeHtml(sector)}</span>
+                <span class="small text-truncate me-2" style="width: 120px;" title="${utils.escapeHtml(utils.toTitleCase(sector))}">${utils.escapeHtml(utils.toTitleCase(sector))}</span>
                 <div class="flex-grow-1"><div class="progress" style="height: 20px;">
                   <div class="progress-bar bg-info" style="width: ${(count / maxSectorCount) * 100}%">${count}</div>
                 </div></div>
@@ -6317,7 +6323,7 @@ const orgsModule = {
               ${winRates
                 .map(
                   (d) => `<tr>
-                <td class="small fw-semibold">${utils.escapeHtml(d.sector)}</td>
+                <td class="small fw-semibold">${utils.escapeHtml(utils.toTitleCase(d.sector))}</td>
                 <td class="small">${d.total}</td>
                 <td class="small">${d.winners}</td>
                 <td class="small fw-bold ${d.rate >= 50 ? 'text-success' : d.rate >= 25 ? 'text-warning' : 'text-muted'}">${d.rate}%</td>
@@ -6953,7 +6959,7 @@ const orgsModule = {
                               data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([org.id, utils.escapeHtml(org.company_name || '').replace(/'/g, '&#39;')])}'
                               style="max-width: 150px;">${utils.escapeHtml(org.company_name || 'N/A')}</a>
                           </div>
-                          <div class="text-muted" style="font-size: 0.65rem;">${utils.escapeHtml(org.sector || '-')} &middot; ${utils.escapeHtml(org.county || '-')}</div>
+                          <div class="text-muted" style="font-size: 0.65rem;">${utils.escapeHtml(utils.toTitleCase(org.sector) || '-')} &middot; ${utils.escapeHtml(org.county || '-')}</div>
                           ${org.tier ? `<span class="badge" style="font-size:0.55rem;background:${{ Bronze: '#CD7F32', Silver: '#C0C0C0', Gold: '#FFD700', Platinum: '#E5E4E2' }[org.tier] || '#ccc'}">${org.tier}</span>` : ''}
                         </div>
                       </div>
@@ -7817,7 +7823,7 @@ const orgsModule = {
   <div class="grid">
     <div class="field"><span class="label">Status:</span><div class="value"><span class="badge" style="background:#e9ecef;">${utils.escapeHtml(org.status || 'prospect')}</span></div></div>
     <div class="field"><span class="label">Tier:</span><div class="value"><span class="badge" style="background:#fff3cd;">${utils.escapeHtml(org.tier || 'N/A')}</span></div></div>
-    <div class="field"><span class="label">Sector:</span><div class="value">${utils.escapeHtml(org.sector || 'N/A')}</div></div>
+    <div class="field"><span class="label">Sector:</span><div class="value">${utils.escapeHtml(utils.toTitleCase(org.sector) || 'N/A')}</div></div>
     <div class="field"><span class="label">Region:</span><div class="value">${utils.escapeHtml(org.county_city || 'N/A')}</div></div>
     <div class="field"><span class="label">County:</span><div class="value">${utils.escapeHtml(org.county || 'N/A')}</div></div>
     <div class="field"><span class="label">Address:</span><div class="value">${utils.escapeHtml(org.address || 'N/A')}</div></div>
@@ -9340,7 +9346,7 @@ const orgsModule = {
         marker.bindPopup(`<div style="min-width:220px;">
           <strong style="font-size:14px;">${utils.escapeHtml(org.company_name)}</strong><br>
           <span class="badge" style="background:${color};color:white;font-size:10px;">${org.status || 'prospect'}</span>
-          ${org.sector ? `<span class="badge bg-light text-dark ms-1" style="font-size:10px;">${utils.escapeHtml(org.sector)}</span>` : ''}
+          ${org.sector ? `<span class="badge bg-light text-dark ms-1" style="font-size:10px;">${utils.escapeHtml(utils.toTitleCase(org.sector))}</span>` : ''}
           <hr style="margin:6px 0;">
           ${org.county_city ? `<div style="font-size:12px;"><i class="bi bi-geo-alt"></i> ${utils.escapeHtml(org.county_city)}${org.county ? ', ' + utils.escapeHtml(org.county) : ''}</div>` : ''}
           ${org.email ? `<div style="font-size:12px;"><i class="bi bi-envelope"></i> ${utils.escapeHtml(org.email)}</div>` : ''}

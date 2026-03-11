@@ -6,7 +6,6 @@
   <title>Event Registration</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://js.stripe.com/v3/"></script>
   <style>
     :root { --brand-primary: #1a1a2e; --brand-accent: #0d6efd; }
@@ -217,13 +216,9 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script type="module" src="config.js"></script>
   <script>
     // ---- CONFIG ----
-    const SUPABASE_URL = window.SUPABASE_CONFIG.url;
-    const SUPABASE_ANON_KEY = window.SUPABASE_CONFIG.anonKey;
-
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const API_BASE = '/api/registration-proxy';
 
     let currentEvent = null;
     let selectedPackage = null;
@@ -274,16 +269,18 @@
       }
 
       try {
-        const { data: event, error } = await supabase
-          .from('events')
-          .select('*')
-          .eq('id', eventId)
-          .single();
+        const res = await fetch(API_BASE, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'get_event', eventId }),
+        });
+        const result = await res.json();
 
-        if (error || !event) {
-          showError('Event not found or registration is closed.');
+        if (!res.ok || !result.success || !result.event) {
+          showError(result.error || 'Event not found or registration is closed.');
           return;
         }
+        const event = result.event;
 
         if (event.event_status === 'cancelled') {
           showError('This event has been cancelled.');
@@ -573,12 +570,17 @@
         notes: g.isPrimary ? [g.company ? `Company: ${g.company}` : '', g.notes || '', `Package: ${packageName}`].filter(Boolean).join(' | ') : null
       }));
 
-      const { data: insertedGuests, error } = await supabase
-        .from('event_guests')
-        .insert(guestRows)
-        .select();
+      const regRes = await fetch(API_BASE, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'register_guest', eventId: currentEvent.id, guests: guestRows }),
+      });
+      const regResult = await regRes.json();
 
-      if (error) throw error;
+      if (!regRes.ok || !regResult.success) {
+        throw new Error(regResult.error || 'Registration failed');
+      }
+      const insertedGuests = regResult.guests || [];
 
       registrationId = insertedGuests[0]?.id;
 

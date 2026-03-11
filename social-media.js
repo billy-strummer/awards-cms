@@ -519,9 +519,8 @@ Vote now: {{website}}
         this.editingPostId = null;
         utils.showToast('Post updated successfully!', 'success');
       } else {
-        let data;
         const result = await apiClient.insert('social_media_posts', postData);
-        data = result.data;
+        const data = result.data;
 
         if (postType === 'immediate' && data?.[0]?.id) {
           // Trigger server-side publish via Vercel API
@@ -1382,7 +1381,7 @@ Vote now: {{website}}
       // Count posts by status
       const analyticsResult = await apiClient.select('social_media_posts', {
         select: 'status, platforms, created_at',
-        pageSize: 10000,
+        pageSize: 1000,
       });
       const posts = analyticsResult.data || [];
       const published = posts.filter((p) => p.status === 'published');

@@ -103,7 +103,7 @@ const awardsModule = {
     if (sectorSelect) {
       sectorSelect.innerHTML =
         '<option value="">All Sectors</option>' +
-        SECTORS.map((s) => `<option value="${s}">${utils.escapeHtml(s)}</option>`).join('');
+        SECTORS.map((s) => `<option value="${s}">${utils.escapeHtml(utils.toTitleCase(s))}</option>`).join('');
     }
     // Region & County filters are populated from DB via populateRegionAndCountyFilters()
   },
@@ -372,7 +372,7 @@ const awardsModule = {
         const { data: counties } = await apiClient.select('counties', {
           select: 'id, Name, region, region_id, regions(name)',
           sort: { column: 'Name', ascending: true },
-          pageSize: 5000,
+          pageSize: 1000,
         });
         // Normalise: prefer FK join name, fall back to text region column
         (counties || []).forEach((c) => {
@@ -717,7 +717,7 @@ const awardsModule = {
           <td><span class="small">${utils.escapeHtml(award.county || '-')}</span></td>
           <td>
             <span class="badge bg-info-subtle text-info" style="font-size: 0.7rem;">
-              ${utils.escapeHtml(award.sector || '-')}
+              ${utils.escapeHtml(utils.toTitleCase(award.sector) || '-')}
             </span>
           </td>
           <td>
@@ -871,7 +871,7 @@ const awardsModule = {
               </tr>
               <tr>
                 <th>Sector:</th>
-                <td><span class="badge bg-info-subtle text-info">${utils.escapeHtml(award.sector || 'N/A')}</span></td>
+                <td><span class="badge bg-info-subtle text-info">${utils.escapeHtml(utils.toTitleCase(award.sector) || 'N/A')}</span></td>
               </tr>
               <tr>
                 <th>Status:</th>
@@ -1186,7 +1186,8 @@ const awardsModule = {
     // Populate sector dropdown
     const sectorSelect = document.getElementById('awardFormSector');
     sectorSelect.innerHTML =
-      '<option value="">Select Sector...</option>' + SECTORS.map((s) => `<option value="${s}">${s}</option>`).join('');
+      '<option value="">Select Sector...</option>' +
+      SECTORS.map((s) => `<option value="${s}">${utils.toTitleCase(s)}</option>`).join('');
 
     // Populate season dropdown
     this.populateSeasonDropdown();
@@ -1274,7 +1275,9 @@ const awardsModule = {
     const sectorSelect = document.getElementById('awardFormSector');
     sectorSelect.innerHTML =
       '<option value="">Select Sector...</option>' +
-      SECTORS.map((s) => `<option value="${s}" ${s === award.sector ? 'selected' : ''}>${s}</option>`).join('');
+      SECTORS.map(
+        (s) => `<option value="${s}" ${s === award.sector ? 'selected' : ''}>${utils.toTitleCase(s)}</option>`
+      ).join('');
 
     // Populate season dropdown
     this.populateSeasonDropdown();

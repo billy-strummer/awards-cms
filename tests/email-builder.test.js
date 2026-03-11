@@ -463,7 +463,7 @@ describe('Email Builder Module - Block Templates (getBlockHTML)', () => {
     const html = emailBuilder.getBlockHTML('award-list', 'test-id');
     expect(html).toContain('2025');
     expect(html).toContain('Best Plumber');
-    expect(html).toContain('MEP');
+    expect(html).toContain('Mep');
     expect(html).toContain('2024');
     expect(html).toContain('Best Builder');
     expect(html).toContain('Award History');

@@ -8590,7 +8590,7 @@ const eventsModule = {
     const posY = data.position_y;
 
     if (this._eventTableHasPositionCols === false) {
-      const { position_x, position_y, ...rest } = data;
+      const { position_x: _px, position_y: _py, ...rest } = data;
       const result = await apiClient.insert('event_tables', rest);
       // Save positions to localStorage — result may be the inserted row(s)
       if (result && result.id) {
@@ -8606,7 +8606,7 @@ const eventsModule = {
     } catch (err) {
       if (err.message?.includes('position_x') || err.message?.includes('schema cache')) {
         this._eventTableHasPositionCols = false;
-        const { position_x, position_y, ...rest } = data;
+        const { position_x: _px2, position_y: _py2, ...rest } = data;
         const result = await apiClient.insert('event_tables', rest);
         if (result && result.id) {
           this._saveLocalPosition(result.id, posX, posY);
@@ -8624,7 +8624,7 @@ const eventsModule = {
     const positionEntries = rows.map((r) => ({ position_x: r.position_x, position_y: r.position_y }));
 
     if (this._eventTableHasPositionCols === false) {
-      const stripped = rows.map(({ position_x, position_y, ...rest }) => rest);
+      const stripped = rows.map(({ position_x: _px, position_y: _py, ...rest }) => rest);
       const results = await apiClient.insert('event_tables', stripped);
       // Save positions locally using returned ids
       if (Array.isArray(results)) {
@@ -8645,7 +8645,7 @@ const eventsModule = {
     } catch (err) {
       if (err.message?.includes('position_x') || err.message?.includes('schema cache')) {
         this._eventTableHasPositionCols = false;
-        const stripped = rows.map(({ position_x, position_y, ...rest }) => rest);
+        const stripped = rows.map(({ position_x: _px, position_y: _py, ...rest }) => rest);
         const results = await apiClient.insert('event_tables', stripped);
         if (Array.isArray(results)) {
           const batch = results.map((r, i) => ({
@@ -12389,7 +12389,6 @@ const eventsModule = {
         const _capacity = event.capacity || 0;
         const checked = this._selectedEvents.has(event.id) ? 'checked' : '';
         const eNameRaw = (event.event_name || '').replace(/<[^>]*>/g, '');
-        const eName = eNameRaw.replace(/"/g, '&quot;');
 
         // Award counts (from cache or placeholder)
         const awardData = this._eventAwardCounts?.[event.id] || { total: 0, confirmed: 0, winners: 0 };

@@ -1027,7 +1027,9 @@ const paymentsModule = {
           // Load line items for the email template
           let lineItems = [];
           try {
-            const result = await apiClient.select('invoice_line_items', { invoice_id: invoice.id });
+            const result = await apiClient.select('invoice_line_items', {
+              filters: { invoice_id: { eq: invoice.id } },
+            });
             lineItems = result.data || [];
           } catch (_e) {
             /* proceed without line items */
@@ -1035,9 +1037,10 @@ const paymentsModule = {
 
           // Send invoice email via API
           try {
+            const invoiceEmailToken = await apiClient._getToken();
             const response = await fetch('/api/resend-email', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${invoiceEmailToken}` },
               body: JSON.stringify({
                 action: 'send-invoice',
                 to: recipientEmail,

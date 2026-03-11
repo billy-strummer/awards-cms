@@ -102,11 +102,17 @@ module.exports = async function handler(req, res) {
     return res.status(429).json({ error: 'Too many requests. Please try again later.' });
   }
 
-  // Verify authentication for all actions
-  const user = await verifyAuth(req, res);
-  if (!user) return;
-
   const { action } = req.method === 'GET' ? req.query : req.body || {};
+
+  // Public document upload actions — authenticated by entry_number (known only to the entrant).
+  // These are called from upload-documents.html which is a public page.
+  const publicActions = ['get_entry', 'get_existing_files', 'save_file_metadata', 'get_upload_token'];
+
+  if (!publicActions.includes(action)) {
+    // Non-public actions require authentication
+    const user = await verifyAuth(req, res);
+    if (!user) return;
+  }
 
   try {
     switch (action) {

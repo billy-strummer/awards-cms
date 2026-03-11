@@ -452,7 +452,7 @@ describe('Nominee Voting - sendVerificationEmail()', () => {
     global.fetch = jest.fn(() => Promise.resolve({ ok: true }));
     await nomineeVoting.sendVerificationEmail();
     expect(global.fetch).toHaveBeenCalledWith(
-      '/api/resend-email',
+      '/api/voting-proxy',
       expect.objectContaining({
         method: 'POST',
       })
@@ -1125,8 +1125,8 @@ describe('Nominee Voting - sendVerificationEmail with missing org/award data', (
     await nomineeVoting.sendVerificationEmail();
 
     const callBody = JSON.parse(global.fetch.mock.calls[0][1].body);
-    expect(callBody.templateData.company_name).toBe('N/A');
-    expect(callBody.templateData.award_name).toBe('British Trade Awards');
-    expect(callBody.templateData.entry_number).toBe('');
+    expect(callBody.company_name).toBe('N/A');
+    expect(callBody.award_name).toBe('British Trade Awards');
+    expect(callBody.entry_number).toBe('');
   });
 });

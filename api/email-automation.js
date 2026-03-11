@@ -1113,6 +1113,10 @@ async function sendShortlistNotifications(awardId = null) {
     }
 
     const { data: shortlisted } = await query;
+    if (!shortlisted || shortlisted.length === 0) {
+      console.log('No shortlisted entries to notify');
+      return 0;
+    }
 
     // Fetch upcoming ceremony event and award season details
     const { data: ceremonyEvent } = await supabase
@@ -1265,6 +1269,18 @@ module.exports = async function handler(req, res) {
   switch (action) {
     case 'send-email':
       return sendEmailEndpoint(req, res);
+    case 'sendTemplate': {
+      const { templateKey, toEmail, toName, subject: customSubject, html: customHtml, variables } = req.body;
+      if (!templateKey || !toEmail) {
+        return res.status(400).json({ error: 'Missing templateKey or toEmail' });
+      }
+      const vars = variables || {};
+      if (toName) vars.contact_name = vars.contact_name || toName;
+      if (customSubject) vars.subject_line = vars.subject_line || customSubject;
+      if (customHtml) vars.message_body = vars.message_body || customHtml;
+      const result = await sendTemplateEmail(templateKey, toEmail, vars);
+      return res.json({ success: result });
+    }
     case 'send-deadline-reminders':
       return sendDeadlineRemindersEndpoint(req, res);
     case 'send-winner-announcements':

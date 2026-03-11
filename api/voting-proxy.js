@@ -258,6 +258,60 @@ async function loadEntry({ entry_number, entry_id }) {
   return { entry: data };
 }
 
+/**
+ * send_vote_confirmation — send a confirmation email after voting (no auth required).
+ * Rate-limited: only sends if the voter has a vote in the last 5 minutes.
+ */
+async function sendVoteConfirmation({ voter_email, company_name, award_name, entry_number }) {
+  if (!isValidEmail(voter_email)) {
+    return { error: 'Invalid email address', status: 400 };
+  }
+
+  // Security: only send if there's a recent vote from this email (prevents abuse)
+  const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+  const { count, error: checkErr } = await supabase
+    .from('public_votes')
+    .select('id', { count: 'exact', head: true })
+    .eq('voter_email', voter_email)
+    .gte('voted_at', fiveMinAgo);
+
+  if (checkErr) throw checkErr;
+  if (!count || count === 0) {
+    return { error: 'No recent vote found for this email', status: 400 };
+  }
+
+  // Send via Resend if configured
+  if (!process.env.RESEND_API_KEY) {
+    return { success: true, skipped: true, reason: 'RESEND_API_KEY not configured' };
+  }
+
+  try {
+    const { Resend } = require('resend');
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    const fromEmail = process.env.FROM_EMAIL || 'awards@britishtradeawards.com';
+    const fromName = process.env.FROM_NAME || 'British Trade Awards';
+
+    await resend.emails.send({
+      from: `${fromName} <${fromEmail}>`,
+      to: [voter_email],
+      subject: 'Vote Confirmation - British Trade Awards',
+      html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
+        <h2 style="color:#1a237e">Thank You for Voting!</h2>
+        <p>Your vote has been recorded for <strong>${(company_name || 'the nominee').replace(/</g, '&lt;')}</strong>${award_name ? ` in the <strong>${award_name.replace(/</g, '&lt;')}</strong> category` : ''}.</p>
+        ${entry_number ? `<p>Entry reference: ${entry_number.replace(/</g, '&lt;')}</p>` : ''}
+        <p>Thank you for participating in the British Trade Awards!</p>
+        <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
+        <p style="color:#666;font-size:12px">British Trade Awards</p>
+      </div>`,
+    });
+
+    return { success: true };
+  } catch (e) {
+    console.error('Vote confirmation email failed:', e.message);
+    return { success: true, email_error: e.message }; // Don't fail the vote flow
+  }
+}
+
 // ────────────────────────────────────────────
 // Action dispatch map
 // ────────────────────────────────────────────
@@ -270,6 +324,7 @@ const ACTIONS = {
   check_existing_vote: checkExistingVote,
   submit_vote: submitVote,
   load_entry: loadEntry,
+  send_vote_confirmation: sendVoteConfirmation,
 };
 
 // ────────────────────────────────────────────

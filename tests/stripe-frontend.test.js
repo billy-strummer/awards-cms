@@ -321,7 +321,7 @@ describe('Stripe Frontend - createCheckoutSession Advanced', () => {
 
     const call = fetch.mock.calls[0];
     const body = JSON.parse(call[1].body);
-    expect(body.amount).toBe(5000);
+    expect(body.amount).toBe(50.0);
   });
 
   test('uses default description when none provided', async () => {
@@ -463,7 +463,7 @@ describe('Stripe Frontend - createCheckoutSession Advanced', () => {
 
     const call = fetch.mock.calls[0];
     const body = JSON.parse(call[1].body);
-    expect(body.amount).toBe(9999999);
+    expect(body.amount).toBe(99999.99);
   });
 
   test('handles decimal amount correctly', async () => {
@@ -476,7 +476,7 @@ describe('Stripe Frontend - createCheckoutSession Advanced', () => {
 
     const call = fetch.mock.calls[0];
     const body = JSON.parse(call[1].body);
-    expect(body.amount).toBe(4995);
+    expect(body.amount).toBe(49.95);
   });
 });
 

@@ -32,6 +32,26 @@ const emailBuilder = {
   _reorderDragId: null,
 
   /**
+   * Update A/B variant B subject line from the input field.
+   */
+  setAbVariantB() {
+    const input = document.getElementById('abVariantB');
+    if (input) this.abVariantB = input.value;
+  },
+
+  /**
+   * Update A/B split label when the range slider changes.
+   */
+  updateAbSplit() {
+    const slider = document.getElementById('abSplitPercent');
+    const label = document.getElementById('abSplitLabel');
+    if (slider && label) {
+      const val = parseInt(slider.value, 10);
+      label.textContent = `${val}/${100 - val}`;
+    }
+  },
+
+  /**
    * Initialize email builder
    */
   init() {

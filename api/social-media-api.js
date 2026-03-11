@@ -9,6 +9,10 @@ const { createClient } = require('@supabase/supabase-js');
 const crypto = require('crypto');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+const supabaseAuth = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_KEY
+);
 
 // ==========================================
 // Twitter/X API v2 (OAuth 1.0a User Context)
@@ -277,14 +281,14 @@ async function postToFacebook(content, imageUrl = null) {
   let endpoint, body;
 
   if (imageUrl) {
-    endpoint = `https://graph.facebook.com/v18.0/${pageId}/photos`;
+    endpoint = `https://graph.facebook.com/v21.0/${pageId}/photos`;
     body = new URLSearchParams({
       message: content,
       url: imageUrl,
       access_token: pageToken,
     });
   } else {
-    endpoint = `https://graph.facebook.com/v18.0/${pageId}/feed`;
+    endpoint = `https://graph.facebook.com/v21.0/${pageId}/feed`;
     body = new URLSearchParams({
       message: content,
       access_token: pageToken,
@@ -323,7 +327,7 @@ async function postToInstagram(content, imageUrl) {
   if (!imageUrl) throw new Error('Instagram requires an image — provide an image URL or skip this platform');
 
   // Step 1: Create media container
-  const containerRes = await fetch(`https://graph.facebook.com/v18.0/${igAccountId}/media`, {
+  const containerRes = await fetch(`https://graph.facebook.com/v21.0/${igAccountId}/media`, {
     method: 'POST',
     body: new URLSearchParams({
       image_url: imageUrl,
@@ -340,7 +344,7 @@ async function postToInstagram(content, imageUrl) {
   const container = await containerRes.json();
 
   // Step 2: Publish media container
-  const publishRes = await fetch(`https://graph.facebook.com/v18.0/${igAccountId}/media_publish`, {
+  const publishRes = await fetch(`https://graph.facebook.com/v21.0/${igAccountId}/media_publish`, {
     method: 'POST',
     body: new URLSearchParams({
       creation_id: container.id,
@@ -454,8 +458,6 @@ async function processScheduledPosts() {
 // Vercel serverless handler
 // ==========================================
 
-const { createClient: createAuthClient } = require('@supabase/supabase-js');
-
 /**
  * Vercel serverless handler for social media operations.
  * Supports: publish (publish a post), process-scheduled (process due scheduled posts)
@@ -472,10 +474,6 @@ module.exports = async function handler(req, res) {
   }
 
   const token = authHeader.replace('Bearer ', '');
-  const supabaseAuth = createAuthClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_KEY
-  );
   const {
     data: { user },
     error: authError,

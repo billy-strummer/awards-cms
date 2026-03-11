@@ -927,8 +927,9 @@ async function sendDeadlineReminders() {
         .from('judge_scores')
         .select('id, is_complete, judge_email, judge_id')
         .or(`judge_email.eq.${judge.email},judge_id.eq.${judge.id}`);
-      const totalAssigned = judgeScores.length || 0;
-      const completed = judgeScores.filter((s) => s.is_complete).length || 0;
+      const scores = judgeScores || [];
+      const totalAssigned = scores.length;
+      const completed = scores.filter((s) => s.is_complete).length;
       const pending = totalAssigned - completed;
 
       if (pending > 0) {

@@ -591,7 +591,12 @@ function validateQueryParams(body) {
   const { table, operation, select, filters, sort, page, pageSize, data, id, search, tenantId } = body;
 
   // RPC and storage operations have their own validation
-  if (operation === 'rpc' || operation === 'storage_upload' || operation === 'storage_url') {
+  if (
+    operation === 'rpc' ||
+    operation === 'storage_upload' ||
+    operation === 'storage_url' ||
+    operation === 'storage_delete'
+  ) {
     return errors;
   }
 
@@ -839,9 +844,13 @@ async function _executeQuery(body, user, enableTenantScope) {
 
     // Apply full-text search (OR across multiple columns via ilike)
     if (search && search.term && search.columns && search.columns.length > 0) {
-      const safeTerm = search.term.replace(/[%_\\]/g, (c) => '\\' + c);
-      const orClause = search.columns.map((col) => `${col}.ilike.%${safeTerm}%`).join(',');
-      query = query.or(orClause);
+      const safeColPattern = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+      const safeCols = search.columns.filter((col) => safeColPattern.test(col));
+      if (safeCols.length > 0) {
+        const safeTerm = search.term.replace(/[%_\\]/g, (c) => '\\' + c);
+        const orClause = safeCols.map((col) => `${col}.ilike.%${safeTerm}%`).join(',');
+        query = query.or(orClause);
+      }
     }
 
     // Apply sorting

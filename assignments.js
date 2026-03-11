@@ -1031,11 +1031,10 @@ const assignmentsModule = {
       const emailType = recipient._emailType;
 
       try {
-        let templateKey, subject, variables;
+        let templateKey, variables;
 
         if (emailType === 'rejected') {
           templateKey = 'REJECTION';
-          subject = `Your Nomination Update – ${awardName}`;
           variables = {
             CONTACT_NAME: org.company_name,
             COMPANY_NAME: org.company_name,
@@ -1043,7 +1042,6 @@ const assignmentsModule = {
           };
         } else if (emailType === 'shortlisted') {
           templateKey = 'SHORTLIST_NOTIFICATION';
-          subject = `Congratulations – You Have Been Shortlisted for ${awardName}`;
           variables = {
             CONTACT_NAME: org.company_name,
             COMPANY_NAME: org.company_name,
@@ -1051,7 +1049,6 @@ const assignmentsModule = {
           };
         } else if (emailType === 'winner') {
           templateKey = 'WINNER_ANNOUNCEMENT';
-          subject = `Congratulations – You Are a Winner! ${awardName}`;
           variables = {
             CONTACT_NAME: org.company_name,
             COMPANY_NAME: org.company_name,

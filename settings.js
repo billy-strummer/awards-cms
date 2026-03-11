@@ -1090,7 +1090,7 @@ const settingsModule = {
     }
 
     try {
-      const { data, error } = await STATE.client.auth.mfa.challengeAndVerify({
+      const { data: _mfaData, error } = await STATE.client.auth.mfa.challengeAndVerify({
         factorId: this._mfaFactorId,
         code: code,
       });

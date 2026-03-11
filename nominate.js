@@ -70,7 +70,7 @@
   // =====================================================
   function showPublicToast(msg, type) {
     type = type || 'warning';
-    var container = document.getElementById('publicToastContainer');
+    let container = document.getElementById('publicToastContainer');
     if (!container) {
       container = document.createElement('div');
       container.id = 'publicToastContainer';
@@ -80,9 +80,9 @@
         'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:99999;max-width:400px;width:calc(100% - 40px);';
       document.body.appendChild(container);
     }
-    var colors = { warning: '#ffc107', error: '#dc3545', success: '#28a745', info: '#17a2b8' };
-    var textColors = { warning: '#000', error: '#fff', success: '#fff', info: '#fff' };
-    var toast = document.createElement('div');
+    const colors = { warning: '#ffc107', error: '#dc3545', success: '#28a745', info: '#17a2b8' };
+    const textColors = { warning: '#000', error: '#fff', success: '#fff', info: '#fff' };
+    const toast = document.createElement('div');
     toast.style.cssText =
       'background:' +
       (colors[type] || colors.warning) +
@@ -132,13 +132,13 @@
     // Build progress bar dots from stepLabels
     // --------------------------------------------------
     buildProgressBar: function () {
-      var container = document.getElementById('progressSteps');
-      var track = document.getElementById('progressTrack');
+      const container = document.getElementById('progressSteps');
+      const track = document.getElementById('progressTrack');
       container.innerHTML = '';
       container.appendChild(track);
 
       this.stepLabels.forEach(function (label, i) {
-        var wrap = document.createElement('div');
+        const wrap = document.createElement('div');
         wrap.className = 'progress-step-wrap';
         wrap.innerHTML =
           '<div class="progress-dot" data-step="' +
@@ -157,8 +157,8 @@
     // Build the nomination category list
     // --------------------------------------------------
     buildCategoryList: function () {
-      var self = this;
-      var container = document.getElementById('categoryList');
+      const self = this;
+      const container = document.getElementById('categoryList');
 
       container.innerHTML = NOMINATION_CATEGORIES.map(function (cat, idx) {
         return (
@@ -184,7 +184,7 @@
 
       container.querySelectorAll('.award-option').forEach(function (opt) {
         opt.addEventListener('click', function () {
-          var idx = parseInt(opt.dataset.categoryIndex);
+          const idx = parseInt(opt.dataset.categoryIndex);
           self.selectCategory(NOMINATION_CATEGORIES[idx].name, opt);
         });
         opt.addEventListener('keydown', function (e) {
@@ -199,12 +199,12 @@
     selectCategory: function (categoryName, element) {
       document.querySelectorAll('#categoryList .award-option').forEach(function (opt) {
         opt.classList.remove('selected');
-        var icon = opt.querySelector('.bi-check');
+        const icon = opt.querySelector('.bi-check');
         if (icon) icon.style.display = 'none';
       });
 
       element.classList.add('selected');
-      var icon = element.querySelector('.bi-check');
+      const icon = element.querySelector('.bi-check');
       if (icon) icon.style.display = 'block';
 
       this.selectedCategory = categoryName;
@@ -218,11 +218,11 @@
     // Toggle nominee fields based on category
     // --------------------------------------------------
     updateNomineeFields: function (categoryName) {
-      var isNewBusiness = categoryName === 'New Business of the Year';
-      var personFields = document.getElementById('personFields');
-      var businessFields = document.getElementById('businessFields');
-      var step3Title = document.getElementById('step3Title');
-      var step3Subtitle = document.getElementById('step3Subtitle');
+      const isNewBusiness = categoryName === 'New Business of the Year';
+      const personFields = document.getElementById('personFields');
+      const businessFields = document.getElementById('businessFields');
+      const step3Title = document.getElementById('step3Title');
+      const step3Subtitle = document.getElementById('step3Subtitle');
 
       if (isNewBusiness) {
         personFields.style.display = 'none';
@@ -237,10 +237,10 @@
       }
 
       // Adapt "years in trade" label and options based on category
-      var yearsLabel = document.getElementById('yearsLabel');
-      var yearsSelect = document.getElementById('nomineeYearsInTrade');
+      const yearsLabel = document.getElementById('yearsLabel');
+      const yearsSelect = document.getElementById('nomineeYearsInTrade');
       if (yearsLabel && yearsSelect) {
-        var config = this.getYearsFieldConfig(categoryName);
+        const config = this.getYearsFieldConfig(categoryName);
         yearsLabel.innerHTML = config.label + ' <small class="text-muted">(optional)</small>';
         yearsSelect.innerHTML =
           '<option value="">Select...</option>' +
@@ -284,14 +284,14 @@
     // Populate county/city dropdown from config.js COUNTIES_CITIES
     // --------------------------------------------------
     populateRegions: function () {
-      var self = this;
-      var regionSelect = document.getElementById('county_city');
+      const self = this;
+      const regionSelect = document.getElementById('county_city');
       if (!window.COUNTIES_CITIES && !window.REGIONS) {
         console.warn('No counties/cities found in config');
         return;
       }
 
-      var cities = [
+      const cities = [
         'Birmingham',
         'Bournemouth',
         'Bradford',
@@ -317,15 +317,15 @@
         'Swansea',
       ];
 
-      var allCountiesCities = window.COUNTIES_CITIES || window.REGIONS || [];
-      var counties = allCountiesCities.filter(function (r) {
+      const allCountiesCities = window.COUNTIES_CITIES || window.REGIONS || [];
+      const counties = allCountiesCities.filter(function (r) {
         return cities.indexOf(r) === -1;
       });
-      var cityList = allCountiesCities.filter(function (r) {
+      const cityList = allCountiesCities.filter(function (r) {
         return cities.indexOf(r) !== -1;
       });
 
-      var html = '<option value="" placeholder>Select county or city</option>';
+      let html = '<option value="" placeholder>Select county or city</option>';
 
       if (counties.length > 0) {
         html += '<optgroup label="Counties">';
@@ -364,18 +364,18 @@
     // Setup character counters
     // --------------------------------------------------
     setupCharCounters: function () {
-      var counters = [
+      const counters = [
         { field: 'nominationReason', display: 'reasonCharCount', max: 2000 },
         { field: 'supportingInfo', display: 'supportCharCount', max: 1500 },
         { field: 'businessDescription', display: 'bizDescCharCount', max: 500 },
       ];
 
       counters.forEach(function (c) {
-        var el = document.getElementById(c.field);
-        var counter = document.getElementById(c.display);
+        const el = document.getElementById(c.field);
+        const counter = document.getElementById(c.display);
         if (el && counter) {
           el.addEventListener('input', function () {
-            var len = el.value.length;
+            const len = el.value.length;
             counter.textContent = len.toLocaleString() + ' / ' + c.max.toLocaleString();
             counter.classList.toggle('warn', len > c.max * 0.9);
           });
@@ -387,8 +387,8 @@
     // Setup terms checkbox
     // --------------------------------------------------
     setupTermsCheckbox: function () {
-      var checkbox = document.getElementById('termsCheckbox');
-      var submitBtn = document.getElementById('submitBtn');
+      const checkbox = document.getElementById('termsCheckbox');
+      const submitBtn = document.getElementById('submitBtn');
       if (checkbox && submitBtn) {
         checkbox.addEventListener('change', function () {
           submitBtn.disabled = !checkbox.checked;
@@ -418,7 +418,7 @@
       document.querySelectorAll('.form-step').forEach(function (s) {
         s.classList.remove('active');
       });
-      var target = document.getElementById('step' + stepNum);
+      const target = document.getElementById('step' + stepNum);
       if (target) {
         target.classList.add('active');
       }
@@ -431,9 +431,9 @@
     // Update progress bar
     // --------------------------------------------------
     updateProgressIndicator: function (stepNum) {
-      var dots = document.querySelectorAll('.progress-dot');
-      var labels = document.querySelectorAll('.step-label');
-      var track = document.getElementById('progressTrack');
+      const dots = document.querySelectorAll('.progress-dot');
+      const labels = document.querySelectorAll('.step-label');
+      const track = document.getElementById('progressTrack');
 
       dots.forEach(function (dot, i) {
         dot.classList.remove('active', 'completed');
@@ -452,11 +452,11 @@
       });
 
       if (track && this.totalSteps > 1) {
-        var pct = ((stepNum - 1) / (this.totalSteps - 1)) * 100;
+        const pct = ((stepNum - 1) / (this.totalSteps - 1)) * 100;
         track.style.width = pct + '%';
       }
 
-      var wrapper = document.getElementById('progressWrapper');
+      const wrapper = document.getElementById('progressWrapper');
       if (wrapper) {
         wrapper.style.display = stepNum > this.totalSteps ? 'none' : '';
       }
@@ -475,7 +475,7 @@
           return true;
         }
         case 2: {
-          var region = document.getElementById('county_city').value;
+          const region = document.getElementById('county_city').value;
           if (!region) {
             showPublicToast("Please select the nominee's county or city");
             return false;
@@ -483,9 +483,9 @@
           return true;
         }
         case 3: {
-          var isNewBusiness = this.selectedCategory === 'New Business of the Year';
+          const isNewBusiness = this.selectedCategory === 'New Business of the Year';
           if (isNewBusiness) {
-            var bizName = document.getElementById('businessName').value.trim();
+            const bizName = document.getElementById('businessName').value.trim();
             if (!bizName) {
               showPublicToast('Please enter the business name');
               return false;
@@ -494,12 +494,12 @@
               showPublicToast('Business name must be at least 2 characters');
               return false;
             }
-            var bizOwner = document.getElementById('businessOwner').value.trim();
+            const bizOwner = document.getElementById('businessOwner').value.trim();
             if (!bizOwner) {
               showPublicToast('Please enter the owner / founder name');
               return false;
             }
-            var bizDesc = document.getElementById('businessDescription').value.trim();
+            const bizDesc = document.getElementById('businessDescription').value.trim();
             if (!bizDesc) {
               showPublicToast('Please describe what the business does');
               return false;
@@ -508,13 +508,13 @@
               showPublicToast('Please provide a more detailed description (at least 10 characters)');
               return false;
             }
-            var bizYears = document.getElementById('businessYearsTrading').value;
+            const bizYears = document.getElementById('businessYearsTrading').value;
             if (!bizYears) {
               showPublicToast('Please select years trading');
               return false;
             }
           } else {
-            var name = document.getElementById('nomineeName').value.trim();
+            const name = document.getElementById('nomineeName').value.trim();
             if (!name) {
               showPublicToast("Please enter the nominee's name");
               return false;
@@ -523,12 +523,12 @@
               showPublicToast('Name must be at least 2 characters');
               return false;
             }
-            var role = document.getElementById('nomineeRole').value.trim();
+            const role = document.getElementById('nomineeRole').value.trim();
             if (!role) {
               showPublicToast("Please enter the nominee's role or job title");
               return false;
             }
-            var company = document.getElementById('nomineeCompany').value.trim();
+            const company = document.getElementById('nomineeCompany').value.trim();
             if (!company) {
               showPublicToast("Please enter the nominee's company or employer");
               return false;
@@ -537,7 +537,7 @@
           return true;
         }
         case 4: {
-          var reason = document.getElementById('nominationReason').value.trim();
+          const reason = document.getElementById('nominationReason').value.trim();
           if (!reason) {
             showPublicToast('Please tell us why they deserve this award');
             return false;
@@ -549,10 +549,10 @@
           return true;
         }
         case 5: {
-          var nomName = document.getElementById('nominatorName').value.trim();
-          var nomEmail = document.getElementById('nominatorEmail').value.trim();
-          var nomPhone = document.getElementById('nominatorPhone').value.trim();
-          var nomRelationship = document.getElementById('nominatorRelationship').value;
+          const nomName = document.getElementById('nominatorName').value.trim();
+          const nomEmail = document.getElementById('nominatorEmail').value.trim();
+          const nomPhone = document.getElementById('nominatorPhone').value.trim();
+          const nomRelationship = document.getElementById('nominatorRelationship').value;
           if (!nomName) {
             showPublicToast('Please enter your name');
             return false;
@@ -628,12 +628,12 @@
     // Show review
     // --------------------------------------------------
     showReview: function () {
-      var d = this.formData;
-      var reviewContent = document.getElementById('reviewContent');
-      var self = this;
-      var isNewBusiness = d.awardCategory === 'New Business of the Year';
+      const d = this.formData;
+      const reviewContent = document.getElementById('reviewContent');
+      const self = this;
+      const isNewBusiness = d.awardCategory === 'New Business of the Year';
 
-      var row = function (label, value) {
+      const row = function (label, value) {
         return value
           ? '<div class="review-row"><span class="review-label">' +
               label +
@@ -643,13 +643,13 @@
           : '';
       };
 
-      var textBlock = function (text) {
+      const textBlock = function (text) {
         return text
           ? '<div class="review-text-block">' + self.escapeHtml(text) + '</div>'
           : '<div class="review-text-block" style="color:#999; font-style:italic;">Not provided</div>';
       };
 
-      var nomineeSection;
+      let nomineeSection;
       if (isNewBusiness) {
         nomineeSection =
           '<div class="review-group">' +
@@ -698,8 +698,8 @@
         '</div>';
 
       // Reset terms
-      var checkbox = document.getElementById('termsCheckbox');
-      var submitBtn = document.getElementById('submitBtn');
+      const checkbox = document.getElementById('termsCheckbox');
+      const submitBtn = document.getElementById('submitBtn');
       if (checkbox) checkbox.checked = false;
       if (submitBtn) submitBtn.disabled = true;
     },
@@ -708,17 +708,16 @@
     // Submit nomination
     // --------------------------------------------------
     submitNomination: function () {
-      var self = this;
-      var submitBtn = document.getElementById('submitBtn');
-      var originalText = submitBtn.innerHTML;
+      const submitBtn = document.getElementById('submitBtn');
+      const originalText = submitBtn.innerHTML;
 
       submitBtn.disabled = true;
       submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Submitting...';
 
-      var d = this.formData;
-      var isNewBusiness = d.awardCategory === 'New Business of the Year';
+      const d = this.formData;
+      const isNewBusiness = d.awardCategory === 'New Business of the Year';
 
-      var payload = {
+      const payload = {
         action: 'submit_nomination',
         awardCategory: d.awardCategory,
         county_city: d.county_city,
@@ -747,14 +746,14 @@
 
       nominationApi(payload)
         .then(function (result) {
-          var entryNumber = result.entry.entry_number;
+          const entryNumber = result.entry.entry_number;
           document.getElementById('nominationReference').textContent = entryNumber;
           document.querySelectorAll('.form-step').forEach(function (s) {
             s.classList.remove('active');
           });
           document.getElementById('stepSuccess').classList.add('active');
 
-          var wrapper = document.getElementById('progressWrapper');
+          const wrapper = document.getElementById('progressWrapper');
           if (wrapper) wrapper.style.display = 'none';
 
           window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -772,13 +771,13 @@
     // --------------------------------------------------
     escapeHtml: function (text) {
       if (!text) return '';
-      var div = document.createElement('div');
+      const div = document.createElement('div');
       div.textContent = text;
       return div.innerHTML;
     },
   };
 
-  var nominateApp = window.nominateApp;
+  const nominateApp = window.nominateApp;
 
   // Initialize on page load
   document.addEventListener('DOMContentLoaded', function () {
@@ -787,20 +786,20 @@
 
   // Lightweight event delegation for data-action buttons
   document.addEventListener('click', function (e) {
-    var el = e.target.closest('[data-action]');
+    const el = e.target.closest('[data-action]');
     if (!el) return;
     if (el.dataset.preventDefault === 'true') e.preventDefault();
-    var actionName = el.dataset.action;
-    var parts = actionName.split('.');
-    var ctx = window;
-    var fn = window;
-    for (var i = 0; i < parts.length; i++) {
+    const actionName = el.dataset.action;
+    const parts = actionName.split('.');
+    let ctx = window;
+    let fn = window;
+    for (let i = 0; i < parts.length; i++) {
       ctx = fn;
       fn = fn[parts[i]];
       if (!fn) return;
     }
     if (typeof fn !== 'function') return;
-    var args = [];
+    let args = [];
     if (el.dataset.args) {
       try {
         args = JSON.parse(el.dataset.args);

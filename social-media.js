@@ -519,9 +519,8 @@ Vote now: {{website}}
         this.editingPostId = null;
         utils.showToast('Post updated successfully!', 'success');
       } else {
-        let data;
         const result = await apiClient.insert('social_media_posts', postData);
-        data = result.data;
+        const data = result.data;
 
         if (postType === 'immediate' && data?.[0]?.id) {
           // Trigger server-side publish via Vercel API

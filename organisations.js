@@ -306,7 +306,7 @@ const orgsModule = {
         const { data: counties } = await apiClient.select('counties', {
           select: 'id, Name, region, region_id, regions(name)',
           sort: { column: 'Name', ascending: true },
-          pageSize: 5000,
+          pageSize: 1000,
         });
         // Normalise: prefer FK join name, fall back to text region column
         (counties || []).forEach((c) => {
@@ -3142,7 +3142,7 @@ const orgsModule = {
     try {
       const { data } = await apiClient.select('organisations', {
         select: 'sector',
-        pageSize: 10000,
+        pageSize: 1000,
       });
       const dbSectors = (data || []).map((o) => o.sector).filter(Boolean);
       const allSectors = [...new Set([...SECTORS, ...dbSectors])].sort();

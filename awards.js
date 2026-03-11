@@ -372,7 +372,7 @@ const awardsModule = {
         const { data: counties } = await apiClient.select('counties', {
           select: 'id, Name, region, region_id, regions(name)',
           sort: { column: 'Name', ascending: true },
-          pageSize: 5000,
+          pageSize: 1000,
         });
         // Normalise: prefer FK join name, fall back to text region column
         (counties || []).forEach((c) => {

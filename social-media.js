@@ -1382,7 +1382,7 @@ Vote now: {{website}}
       // Count posts by status
       const analyticsResult = await apiClient.select('social_media_posts', {
         select: 'status, platforms, created_at',
-        pageSize: 10000,
+        pageSize: 1000,
       });
       const posts = analyticsResult.data || [];
       const published = posts.filter((p) => p.status === 'published');

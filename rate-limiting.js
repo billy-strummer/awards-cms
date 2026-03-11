@@ -132,7 +132,7 @@ const rateLimitModule = {
     try {
       const result = await apiClient.select('api_request_logs', {
         filters: { created_at: { gte: since } },
-        pageSize: 5000,
+        pageSize: 1000,
       });
       const rows = result?.data || [];
       const total = rows.length;
@@ -298,7 +298,7 @@ const rateLimitModule = {
       const { data: logs } = await apiClient.select('api_request_logs', {
         columns: 'endpoint, ip_address',
         filters: { created_at: { gte: since } },
-        pageSize: 5000,
+        pageSize: 1000,
       });
       const counts = {};
       (logs || []).forEach((r) => {

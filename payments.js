@@ -2685,16 +2685,21 @@ const paymentsModule = {
   _runAccountingSync() {
     utils.showToast('Syncing...', 'info');
     setTimeout(async () => {
-      this._accountingConfig.lastSync = new Date().toISOString();
-      this._accountingConfig.syncHistory = this._accountingConfig.syncHistory || [];
-      this._accountingConfig.syncHistory.unshift({
-        date: new Date().toISOString(),
-        status: 'success',
-        details: `Synced ${Math.floor(Math.random() * 20) + 5} invoices, ${Math.floor(Math.random() * 10) + 1} payments`,
-      });
-      await this._saveAccountingConfig();
-      utils.showToast('Sync complete', 'success');
-      this.loadAccountingIntegration();
+      try {
+        this._accountingConfig.lastSync = new Date().toISOString();
+        this._accountingConfig.syncHistory = this._accountingConfig.syncHistory || [];
+        this._accountingConfig.syncHistory.unshift({
+          date: new Date().toISOString(),
+          status: 'success',
+          details: `Synced ${Math.floor(Math.random() * 20) + 5} invoices, ${Math.floor(Math.random() * 10) + 1} payments`,
+        });
+        await this._saveAccountingConfig();
+        utils.showToast('Sync complete', 'success');
+        this.loadAccountingIntegration();
+      } catch (err) {
+        console.error('Accounting sync failed:', err);
+        utils.showToast('Sync failed: ' + err.message, 'error');
+      }
     }, 1500);
   },
 

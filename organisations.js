@@ -2566,7 +2566,7 @@ const orgsModule = {
         filters: { id: imageId },
         pageSize: 1,
       });
-      const image = imageResult.data[0];
+      const image = imageResult.data?.[0];
 
       // Delete from database
       await apiClient.delete('organisation_images', imageId);

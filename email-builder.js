@@ -2594,9 +2594,9 @@ ${content}
         p_campaign_name: campaignName || subject,
       });
 
-      if (result.data && !result.data.success) throw new Error(result.data.error || 'Campaign send failed');
+      if (!result.data || !result.data.success) throw new Error(result.data?.error || 'Campaign send failed');
 
-      utils.showToast(`Campaign sent to ${result.data?.sent || count} recipients!`, 'success');
+      utils.showToast(`Campaign sent to ${result.data.sent || count} recipients!`, 'success');
 
       // Log the campaign with full data for cloning
       try {

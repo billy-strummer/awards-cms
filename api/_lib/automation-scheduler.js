@@ -232,6 +232,7 @@ async function sendJudgeProgressReports() {
       const { count: scoredEntries } = await supabase
         .from('judge_scores')
         .select('id', { count: 'exact', head: true })
+        .eq('award_id', award.id)
         .eq('status', 'submitted');
 
       const progress = totalEntries > 0 ? ((scoredEntries / totalEntries) * 100).toFixed(1) : 0;

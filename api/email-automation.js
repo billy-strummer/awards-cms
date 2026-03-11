@@ -919,12 +919,14 @@ async function sendDeadlineReminders() {
     }
 
     // Judging deadline reminders
-    const { data: judges } = await supabase.from('contacts').select('*').eq('contact_type', 'judge');
-
-    const { data: allScores } = await supabase.from('judge_scores').select('*');
+    const { data: judges } = await supabase.from('contacts').select('id, full_name, email').eq('contact_type', 'judge');
 
     for (const judge of judges || []) {
-      const judgeScores = (allScores || []).filter((s) => s.judge_email === judge.email || s.judge_id === judge.id);
+      // Fetch scores only for this judge instead of loading entire table
+      const { data: judgeScores } = await supabase
+        .from('judge_scores')
+        .select('id, is_complete, judge_email, judge_id')
+        .or(`judge_email.eq.${judge.email},judge_id.eq.${judge.id}`);
       const totalAssigned = judgeScores.length || 0;
       const completed = judgeScores.filter((s) => s.is_complete).length || 0;
       const pending = totalAssigned - completed;

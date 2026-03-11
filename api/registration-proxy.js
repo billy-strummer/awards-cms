@@ -145,6 +145,28 @@ async function handleRegisterGuest(req, res) {
     return res.status(404).json({ error: 'Event not found' });
   }
 
+  // Enforce max_capacity if set
+  if (event.max_capacity && event.max_capacity > 0) {
+    const { count: currentGuests, error: countError } = await supabase
+      .from('event_guests')
+      .select('id', { count: 'exact', head: true })
+      .eq('event_id', eventId)
+      .in('status', ['registered', 'confirmed', 'checked_in']);
+
+    if (countError) {
+      console.error('Error checking capacity:', countError);
+      return res.status(500).json({ error: 'Failed to check event capacity' });
+    }
+
+    if ((currentGuests || 0) + sanitizedGuests.length > event.max_capacity) {
+      const remaining = Math.max(0, event.max_capacity - (currentGuests || 0));
+      return res.status(409).json({
+        error: `Event is at capacity. Only ${remaining} spot${remaining !== 1 ? 's' : ''} remaining.`,
+        remaining,
+      });
+    }
+  }
+
   // Insert guests
   const { data: insertedGuests, error } = await supabase
     .from('event_guests')

@@ -2645,7 +2645,7 @@ const crmModule = {
           .slice(0, 50)
           .map(
             (o) =>
-              `<tr><td>${utils.escapeHtml(o.company_name || '')}</td><td><span class="badge bg-primary">${utils.escapeHtml(o.status || '')}</span></td><td>${utils.escapeHtml(o.sector || '-')}</td><td>${utils.escapeHtml(o.county_city || '-')}</td></tr>`
+              `<tr><td>${utils.escapeHtml(o.company_name || '')}</td><td><span class="badge bg-primary">${utils.escapeHtml(o.status || '')}</span></td><td>${utils.escapeHtml(utils.toTitleCase(o.sector) || '-')}</td><td>${utils.escapeHtml(o.county_city || '-')}</td></tr>`
           )
           .join('')}
         ${matching.length > 50 ? `<tr><td colspan="4" class="text-muted text-center">... and ${matching.length - 50} more</td></tr>` : ''}

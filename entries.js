@@ -772,7 +772,7 @@ const entriesModule = {
                         </tr>
                         <tr>
                           <td class="text-muted">Sector:</td>
-                          <td>${utils.escapeHtml(entry.awards?.sector || entry.sector || 'N/A')}</td>
+                          <td>${utils.escapeHtml(utils.toTitleCase(entry.awards?.sector || entry.sector) || 'N/A')}</td>
                         </tr>
                         <tr>
                           <td class="text-muted">County/City:</td>

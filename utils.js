@@ -246,6 +246,11 @@ const utils = {
     return div.innerHTML.replace(/"/g, '&quot;');
   },
 
+  toTitleCase(str) {
+    if (!str) return '';
+    return str.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+  },
+
   /**
    * Debounce function calls
    * @param {Function} func - Function to debounce

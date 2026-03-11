@@ -1527,7 +1527,7 @@ describe('Utils - serverQuery', () => {
   test('serverQuery.execute skips null/empty filter values', async () => {
     await serverQuery.execute({
       table: 'entries',
-      filters: { status: 'submitted', year: null, region: '', name: undefined },
+      filters: { status: 'submitted', year: null, county_city: '', name: undefined },
       page: 1,
       pageSize: 50,
     });

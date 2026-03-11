@@ -718,7 +718,11 @@ function applyFilters(query, filters) {
     // Apply the filter
     switch (op) {
       case 'neq':
-        query = query.neq(key, operand);
+        if (operand === null || operand === undefined) {
+          query = query.not(key, 'is', null);
+        } else {
+          query = query.neq(key, operand);
+        }
         break;
       case 'gt':
         query = query.gt(key, operand);

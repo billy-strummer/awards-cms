@@ -55,101 +55,114 @@ const SECTORS = [
   'SPECIALIST TRADES',
 ];
 
-const REGIONS = [
-  // England Counties (38)
+const COUNTIES_CITIES = [
+  // East of England
   'Bedfordshire',
+  'Cambridgeshire',
+  'Essex',
+  'Hertfordshire',
+  'Norfolk',
+  'Suffolk',
+  // East Midlands
+  'Derbyshire',
+  'Lincolnshire',
+  'Leicestershire',
+  'Northamptonshire',
+  'Nottinghamshire',
+  'Rutland',
+  'Leicester',
+  'Nottingham',
+  // Greater London
+  'London, North',
+  'London, South',
+  'London, East',
+  'London, West',
+  // North East
+  'Northumberland',
+  'Tyne & Wear',
+  'County Durham',
+  'North Yorkshire',
+  'East Yorkshire',
+  'South Yorkshire',
+  'West Yorkshire',
+  'Bradford',
+  'Leeds',
+  'Middlesborough',
+  'Newcastle',
+  'Sheffield',
+  // North West
+  'Cheshire',
+  'Cumbria',
+  'Lancashire',
+  'Liverpool',
+  'Manchester',
+  // South East
   'Berkshire',
   'Buckinghamshire',
-  'Cambridgeshire',
-  'Cheshire',
-  'Cornwall',
-  'Cumbria',
-  'Derbyshire',
-  'Devon',
-  'Dorset',
-  'County Durham',
-  'East Riding of Yorkshire',
-  'Essex',
-  'Gloucestershire',
   'Hampshire',
-  'Herefordshire',
-  'Hertfordshire',
   'Isle of Wight',
   'Kent',
-  'Lancashire',
-  'Leicestershire',
-  'Lincolnshire',
-  'Norfolk',
-  'Northamptonshire',
-  'North Yorkshire',
-  'Northumberland',
-  'Nottinghamshire',
   'Oxfordshire',
-  'Rutland',
-  'Shropshire',
-  'Somerset',
-  'South Yorkshire',
-  'Staffordshire',
-  'Suffolk',
   'Surrey',
-  'Sussex',
-  'Tyne & Wear',
-  'Warwickshire',
-  'West Yorkshire',
+  'East Sussex',
+  'West Sussex',
+  'Brighton & Hove',
+  'Southampton',
+  // South West
+  'Cornwall',
+  'Dorset',
+  'Devon',
+  'Gloucestershire',
+  'Somerset',
   'Wiltshire',
+  'Bristol',
+  'Bournemouth',
+  // West Midlands
+  'Staffordshire',
+  'Warwickshire',
+  'Shropshire',
+  'Herefordshire',
   'Worcestershire',
-  // Scotland (14)
-  'Argyll & Bute',
-  'Ayrshire',
-  'Central Scotland',
-  'Dumfries & Galloway',
-  'Dunbartonshire',
-  'Fife',
-  'Grampian',
-  'Highlands',
-  'Lanarkshire',
-  'Lothian',
-  'Renfrewshire',
-  'Scottish Borders',
-  'Scottish Islands',
-  'Tayside',
-  // Wales (12)
+  'Birmingham',
+  'Coventry',
+  // Wales, NW (Gwynedd)
+  'Gwynedd',
   'Anglesey',
-  'Carmarthenshire',
-  'Ceredigion',
+  // Wales, NE (Clwyd)
   'Conwy',
   'Denbighshire',
   'Flintshire',
-  'Glamorgan',
-  'Gwent',
-  'Gwynedd',
+  'Wrexham',
+  // Wales, Mid & West
+  'Ceredigion',
+  'Carmarthenshire',
   'Pembrokeshire',
   'Powys',
-  'Wrexham',
-  // Cities (20)
-  'Birmingham',
-  'Bournemouth',
-  'Bradford',
-  'Brighton & Hove',
-  'Bristol',
+  // Wales, South
+  'Gwent',
+  'Glamorgan',
   'Cardiff',
-  'Coventry',
-  'Edinburgh',
-  'Glasgow',
-  'Leeds',
-  'Leicester',
-  'Liverpool',
-  'London North',
-  'London South',
-  'London East',
-  'London West',
-  'Manchester',
-  'Middlesbrough',
-  'Newcastle',
-  'Nottingham',
-  'Sheffield',
-  'Southampton',
   'Swansea',
+  // Scotland, North
+  'Grampian',
+  'Highlands',
+  'Islands',
+  'Tayside',
+  // Scotland, Central
+  'Central Scotland',
+  'Fife',
+  'Lothian',
+  'Edinburgh',
+  // Scotland, West
+  'Argyll & Bute',
+  'Dunbartonshire',
+  'Lanarkshire',
+  'Renfrewshire',
+  'Glasgow',
+  // Scotland, South
+  'Ayrshire',
+  'Dumfries & Galloway',
+  'Scottish Borders',
 ];
 
 /**
@@ -218,11 +231,26 @@ ModuleRegistry.register('MEDIA_TYPES', MEDIA_TYPES);
 ModuleRegistry.register('INACTIVITY_TIMEOUT', INACTIVITY_TIMEOUT);
 ModuleRegistry.register('YEARS', YEARS);
 ModuleRegistry.register('SECTORS', SECTORS);
-ModuleRegistry.register('REGIONS', REGIONS);
+ModuleRegistry.register('COUNTIES_CITIES', COUNTIES_CITIES);
+// Backward compat alias — some modules still reference REGIONS
+ModuleRegistry.register('REGIONS', COUNTIES_CITIES);
 ModuleRegistry.register('STATE', STATE);
 // Expose ModuleRegistry globally (works in both browser and Node/test)
 // @ts-ignore
 if (typeof globalThis !== 'undefined') globalThis.ModuleRegistry = ModuleRegistry;
 if (typeof window !== 'undefined') window.ModuleRegistry = ModuleRegistry;
 
-export { SUPABASE_CONFIG, STATUS, MEDIA_TYPES, INACTIVITY_TIMEOUT, YEARS, SECTORS, REGIONS, STATE, ModuleRegistry };
+// REGIONS kept as backward-compat alias for COUNTIES_CITIES
+const REGIONS = COUNTIES_CITIES;
+export {
+  SUPABASE_CONFIG,
+  STATUS,
+  MEDIA_TYPES,
+  INACTIVITY_TIMEOUT,
+  YEARS,
+  SECTORS,
+  COUNTIES_CITIES,
+  REGIONS,
+  STATE,
+  ModuleRegistry,
+};

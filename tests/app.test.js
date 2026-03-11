@@ -475,7 +475,7 @@ const sampleOrgs = [
     company_name: 'Acme Plumbing',
     status: 'prospect',
     sector: 'MEP',
-    region: 'South East',
+    county_city: 'South East',
     tier: 'Gold',
     created_at: '2025-01-10T10:00:00Z',
   },
@@ -484,7 +484,7 @@ const sampleOrgs = [
     company_name: 'BuildRight Ltd',
     status: 'entrant',
     sector: 'Construction',
-    region: 'East',
+    county_city: 'East',
     tier: 'Silver',
     created_at: '2025-06-15T10:00:00Z',
   },
@@ -493,7 +493,7 @@ const sampleOrgs = [
     company_name: 'Spark Electric',
     status: 'winner',
     sector: 'MEP',
-    region: 'London',
+    county_city: 'London',
     tier: 'Platinum',
     created_at: '2026-01-01T10:00:00Z',
   },
@@ -502,7 +502,7 @@ const sampleOrgs = [
     company_name: 'Garden Masters',
     status: 'shortlisted',
     sector: 'Landscaping',
-    region: 'South West',
+    county_city: 'South West',
     tier: 'Bronze',
     created_at: '2024-03-01T10:00:00Z',
   },
@@ -511,7 +511,7 @@ const sampleOrgs = [
     company_name: 'Top Builders',
     status: 'nominee',
     sector: 'Construction',
-    region: 'North',
+    county_city: 'North',
     tier: 'None',
     created_at: '2026-02-01T10:00:00Z',
   },
@@ -520,7 +520,7 @@ const sampleOrgs = [
     company_name: 'Archived Co',
     status: 'archived',
     sector: 'Other',
-    region: 'Unknown',
+    county_city: 'Unknown',
     created_at: '2023-05-01T10:00:00Z',
   },
 ];
@@ -1793,9 +1793,9 @@ describe('App Module - URL Filter State Management', () => {
   test('_loadFilterState reads params for module', () => {
     if (typeof window._loadFilterState === 'function') {
       // Save first, then load
-      window._saveFilterState('orgs', { region: 'London' });
+      window._saveFilterState('orgs', { county_city: 'London' });
       const filters = window._loadFilterState('orgs');
-      expect(filters.region).toBe('London');
+      expect(filters.county_city).toBe('London');
     }
   });
 
@@ -2967,16 +2967,16 @@ describe('App Module - _saveFilterState and _loadFilterState edge cases', () => 
   test('_saveFilterState handles multiple modules without conflict', () => {
     if (typeof window._saveFilterState === 'function') {
       window._saveFilterState('awards', { year: '2026' });
-      window._saveFilterState('orgs', { region: 'London' });
+      window._saveFilterState('orgs', { county_city: 'London' });
 
       const awardsFilters = window._loadFilterState('awards');
       const orgsFilters = window._loadFilterState('orgs');
 
       expect(awardsFilters.year).toBe('2026');
-      expect(orgsFilters.region).toBe('London');
+      expect(orgsFilters.county_city).toBe('London');
       // Clean up
       window._saveFilterState('awards', { year: '' });
-      window._saveFilterState('orgs', { region: '' });
+      window._saveFilterState('orgs', { county_city: '' });
     }
   });
 

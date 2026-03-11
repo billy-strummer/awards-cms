@@ -94,18 +94,22 @@ END $$;
 
 -- Insert standard UK regions
 INSERT INTO regions (name) VALUES
-  ('East Midlands'),
   ('East of England'),
-  ('London'),
+  ('East Midlands'),
+  ('Greater London'),
   ('North East'),
   ('North West'),
-  ('Northern Ireland'),
-  ('Scotland'),
   ('South East'),
   ('South West'),
-  ('Wales'),
   ('West Midlands'),
-  ('Yorkshire and the Humber')
+  ('Wales, NW (Gwynedd)'),
+  ('Wales, NE (Clwyd)'),
+  ('Wales, Mid & West'),
+  ('Wales, South'),
+  ('Scotland, North'),
+  ('Scotland, Central'),
+  ('Scotland, West'),
+  ('Scotland, South')
 ON CONFLICT DO NOTHING;
 
 -- 7. Ensure all tables have proper GRANTs

@@ -31,7 +31,10 @@ require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') }
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY;
-if (!SUPABASE_URL || !SUPABASE_KEY) { console.error('Missing SUPABASE_URL or SUPABASE_SERVICE_KEY. See .env.example'); process.exit(1); }
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  console.error('Missing SUPABASE_URL or SUPABASE_SERVICE_KEY. See .env.example');
+  process.exit(1);
+}
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -43,155 +46,269 @@ const AWARD_YEAR = '2026';
 
 const COUNTY_TO_REGION = {
   // England - East
-  'norfolk': 'Norfolk',
-  'suffolk': 'Suffolk',
-  'essex': 'Essex',
-  'cambridgeshire': 'Cambridgeshire',
-  'bedfordshire': 'Bedfordshire',
-  'hertfordshire': 'Hertfordshire',
+  norfolk: 'Norfolk',
+  suffolk: 'Suffolk',
+  essex: 'Essex',
+  cambridgeshire: 'Cambridgeshire',
+  bedfordshire: 'Bedfordshire',
+  hertfordshire: 'Hertfordshire',
 
   // England - South East
-  'kent': 'Kent',
-  'surrey': 'Surrey',
-  'sussex': 'Sussex',
-  'east sussex': 'Sussex',
-  'west sussex': 'Sussex',
-  'berkshire': 'Berkshire',
-  'buckinghamshire': 'Buckinghamshire',
-  'oxfordshire': 'Oxfordshire',
-  'hampshire': 'Hampshire',
+  kent: 'Kent',
+  surrey: 'Surrey',
+  sussex: 'East Sussex',
+  'east sussex': 'East Sussex',
+  'west sussex': 'West Sussex',
+  berkshire: 'Berkshire',
+  buckinghamshire: 'Buckinghamshire',
+  oxfordshire: 'Oxfordshire',
+  hampshire: 'Hampshire',
   'isle of wight': 'Isle of Wight',
 
   // England - South West
-  'devon': 'Devon',
-  'cornwall': 'Cornwall',
-  'somerset': 'Somerset',
-  'dorset': 'Dorset',
-  'wiltshire': 'Wiltshire',
-  'gloucestershire': 'Gloucestershire',
-  'bristol': 'Bristol',
+  devon: 'Devon',
+  cornwall: 'Cornwall',
+  somerset: 'Somerset',
+  dorset: 'Dorset',
+  wiltshire: 'Wiltshire',
+  gloucestershire: 'Gloucestershire',
+  bristol: 'Bristol',
 
   // England - West Midlands
-  'herefordshire': 'Herefordshire',
-  'worcestershire': 'Worcestershire',
-  'shropshire': 'Shropshire',
-  'staffordshire': 'Staffordshire',
-  'warwickshire': 'Warwickshire',
+  herefordshire: 'Herefordshire',
+  worcestershire: 'Worcestershire',
+  shropshire: 'Shropshire',
+  staffordshire: 'Staffordshire',
+  warwickshire: 'Warwickshire',
   'west midlands': 'Birmingham',
-  'birmingham': 'Birmingham',
-  'coventry': 'Coventry',
+  birmingham: 'Birmingham',
+  coventry: 'Coventry',
 
   // England - East Midlands
-  'derbyshire': 'Derbyshire',
-  'nottinghamshire': 'Nottinghamshire',
-  'nottingham': 'Nottingham',
-  'lincolnshire': 'Lincolnshire',
-  'leicestershire': 'Leicestershire',
-  'leicester': 'Leicester',
-  'northamptonshire': 'Northamptonshire',
-  'rutland': 'Rutland',
+  derbyshire: 'Derbyshire',
+  nottinghamshire: 'Nottinghamshire',
+  nottingham: 'Nottingham',
+  lincolnshire: 'Lincolnshire',
+  leicestershire: 'Leicestershire',
+  leicester: 'Leicester',
+  northamptonshire: 'Northamptonshire',
+  rutland: 'Rutland',
 
   // England - North West
-  'lancashire': 'Lancashire',
-  'cheshire': 'Cheshire',
-  'cumbria': 'Cumbria',
+  lancashire: 'Lancashire',
+  cheshire: 'Cheshire',
+  cumbria: 'Cumbria',
   'greater manchester': 'Manchester',
-  'manchester': 'Manchester',
-  'merseyside': 'Liverpool',
-  'liverpool': 'Liverpool',
+  manchester: 'Manchester',
+  merseyside: 'Liverpool',
+  liverpool: 'Liverpool',
 
   // England - North East
   'county durham': 'County Durham',
-  'durham': 'County Durham',
-  'northumberland': 'Northumberland',
-  'tyne and wear': 'Newcastle upon Tyne',
-  'newcastle': 'Newcastle upon Tyne',
+  durham: 'County Durham',
+  northumberland: 'Northumberland',
+  'tyne and wear': 'Tyne & Wear',
+  'tyne & wear': 'Tyne & Wear',
+  newcastle: 'Newcastle upon Tyne',
   'newcastle upon tyne': 'Newcastle upon Tyne',
+  middlesbrough: 'Middlesborough',
+  middlesborough: 'Middlesborough',
 
   // England - Yorkshire
-  'north yorkshire': 'Yorkshire (combined)',
+  'north yorkshire': 'North Yorkshire',
   'south yorkshire': 'South Yorkshire',
-  'west yorkshire': 'Leeds',
-  'east yorkshire': 'Hull',
-  'east riding of yorkshire': 'Hull',
-  'yorkshire': 'Yorkshire (combined)',
-  'leeds': 'Leeds',
-  'sheffield': 'Sheffield',
-  'hull': 'Hull',
-  'bradford': 'Bradford',
+  'west yorkshire': 'West Yorkshire',
+  'east yorkshire': 'East Yorkshire',
+  'east riding of yorkshire': 'East Yorkshire',
+  yorkshire: 'North Yorkshire',
+  leeds: 'Leeds',
+  sheffield: 'Sheffield',
+  hull: 'Hull',
+  bradford: 'Bradford',
+
+  // England - London
+  london: 'London',
+  'greater london': 'London',
+  'london north': 'London',
+  'london south': 'London',
+  'london east': 'London',
+  'london west': 'London',
 
   // England - South Coast Cities
-  'bournemouth': 'Bournemouth',
-  'brighton': 'Brighton & Hove',
+  bournemouth: 'Bournemouth',
+  brighton: 'Brighton & Hove',
   'brighton and hove': 'Brighton & Hove',
   'brighton & hove': 'Brighton & Hove',
-  'southampton': 'Southampton',
+  southampton: 'Southampton',
 
   // Scotland
-  'edinburgh': 'Edinburgh',
-  'glasgow': 'Glasgow',
-  'scottish borders': 'Edinburgh',
-  'midlothian': 'Edinburgh',
-  'east lothian': 'Edinburgh',
-  'west lothian': 'Edinburgh',
-  'fife': 'Edinburgh',
-  'stirling': 'Glasgow',
-  'renfrewshire': 'Glasgow',
-  'lanarkshire': 'Glasgow',
-  'ayrshire': 'Glasgow',
-  'aberdeen': 'Edinburgh',
-  'dundee': 'Edinburgh',
-  'highlands': 'Edinburgh',
-  'scotland': 'Edinburgh',
+  edinburgh: 'Edinburgh',
+  glasgow: 'Glasgow',
+  'scottish borders': 'Scottish Borders',
+  midlothian: 'Lothian',
+  'east lothian': 'Lothian',
+  'west lothian': 'Lothian',
+  lothian: 'Lothian',
+  fife: 'Fife',
+  stirling: 'Central Scotland',
+  'central scotland': 'Central Scotland',
+  renfrewshire: 'Renfrewshire',
+  lanarkshire: 'Lanarkshire',
+  'north lanarkshire': 'Lanarkshire',
+  'south lanarkshire': 'Lanarkshire',
+  ayrshire: 'Ayrshire',
+  'east ayrshire': 'Ayrshire',
+  'north ayrshire': 'Ayrshire',
+  'south ayrshire': 'Ayrshire',
+  aberdeen: 'Grampian',
+  aberdeenshire: 'Grampian',
+  grampian: 'Grampian',
+  dundee: 'Tayside',
+  tayside: 'Tayside',
+  'perth and kinross': 'Tayside',
+  highlands: 'Highlands',
+  highland: 'Highlands',
+  'argyll & bute': 'Argyll & Bute',
+  'argyll and bute': 'Argyll & Bute',
+  'dumfries & galloway': 'Dumfries & Galloway',
+  'dumfries and galloway': 'Dumfries & Galloway',
+  dunbartonshire: 'Dunbartonshire',
+  'east dunbartonshire': 'Dunbartonshire',
+  'west dunbartonshire': 'Dunbartonshire',
+  islands: 'Islands',
+  'scottish islands': 'Islands',
+  orkney: 'Islands',
+  shetland: 'Islands',
+  'western isles': 'Islands',
+  scotland: 'Edinburgh',
 
   // Wales
-  'cardiff': 'Cardiff',
-  'swansea': 'Cardiff',
-  'newport': 'Cardiff',
-  'wales': 'Cardiff',
-  'powys': 'Cardiff',
-  'gwynedd': 'Cardiff',
-  'ceredigion': 'Cardiff',
-  'pembrokeshire': 'Cardiff',
-  'carmarthenshire': 'Cardiff',
-  'monmouthshire': 'Cardiff',
-  'glamorgan': 'Cardiff',
-  'vale of glamorgan': 'Cardiff',
-  'caerphilly': 'Cardiff',
-  'rhondda cynon taf': 'Cardiff',
-  'bridgend': 'Cardiff',
-  'neath port talbot': 'Cardiff',
-  'wrexham': 'Cardiff',
-  'flintshire': 'Cardiff',
-  'denbighshire': 'Cardiff',
-  'conwy': 'Cardiff',
-
-  // Northern Ireland
-  'belfast': 'Belfast',
-  'northern ireland': 'Belfast',
-  'antrim': 'Belfast',
-  'down': 'Belfast',
-  'armagh': 'Belfast',
-  'tyrone': 'Belfast',
-  'fermanagh': 'Belfast',
-  'londonderry': 'Belfast',
-  'derry': 'Belfast'
+  cardiff: 'Cardiff',
+  swansea: 'Swansea',
+  newport: 'Gwent',
+  wales: 'Cardiff',
+  powys: 'Powys',
+  gwynedd: 'Gwynedd',
+  ceredigion: 'Ceredigion',
+  pembrokeshire: 'Pembrokeshire',
+  carmarthenshire: 'Carmarthenshire',
+  monmouthshire: 'Gwent',
+  glamorgan: 'Glamorgan',
+  'vale of glamorgan': 'Glamorgan',
+  caerphilly: 'Gwent',
+  'rhondda cynon taf': 'Glamorgan',
+  bridgend: 'Glamorgan',
+  'neath port talbot': 'Glamorgan',
+  wrexham: 'Wrexham',
+  flintshire: 'Flintshire',
+  denbighshire: 'Denbighshire',
+  conwy: 'Conwy',
+  anglesey: 'Anglesey',
 };
 
-// Valid regions from the CMS config
+// Valid counties/cities from the CMS config
 const VALID_REGIONS = [
-  'Bedfordshire', 'Belfast', 'Berkshire', 'Birmingham', 'Bournemouth',
-  'Bradford', 'Brighton & Hove', 'Bristol', 'Buckinghamshire', 'Cambridgeshire',
-  'Cardiff', 'Cheshire', 'Cornwall', 'County Durham', 'Coventry',
-  'Cumbria', 'Derbyshire', 'Devon', 'Dorset', 'Edinburgh',
-  'Essex', 'Glasgow', 'Gloucestershire', 'Hampshire', 'Herefordshire',
-  'Hertfordshire', 'Hull', 'Isle of Wight', 'Kent', 'Lancashire',
-  'Leeds', 'Leicester', 'Leicestershire', 'Lincolnshire', 'Liverpool',
-  'Manchester', 'Newcastle upon Tyne', 'Norfolk', 'Northamptonshire',
-  'Northumberland', 'Nottingham', 'Nottinghamshire', 'Oxfordshire',
-  'Rutland', 'Sheffield', 'Shropshire', 'Somerset', 'South Yorkshire',
-  'Southampton', 'Staffordshire', 'Suffolk', 'Surrey', 'Sussex',
-  'Warwickshire', 'Wiltshire', 'Worcestershire', 'Yorkshire (combined)'
+  // East of England
+  'Bedfordshire',
+  'Cambridgeshire',
+  'Essex',
+  'Hertfordshire',
+  'Norfolk',
+  'Suffolk',
+  // East Midlands
+  'Derbyshire',
+  'Lincolnshire',
+  'Leicestershire',
+  'Northamptonshire',
+  'Nottinghamshire',
+  'Rutland',
+  'Leicester',
+  'Nottingham',
+  // Greater London
+  'London, North',
+  'London, South',
+  'London, East',
+  'London, West',
+  // North East
+  'Northumberland',
+  'Tyne & Wear',
+  'County Durham',
+  'North Yorkshire',
+  'East Yorkshire',
+  'South Yorkshire',
+  'West Yorkshire',
+  'Bradford',
+  'Leeds',
+  'Middlesborough',
+  'Newcastle',
+  'Sheffield',
+  // North West
+  'Cheshire',
+  'Cumbria',
+  'Lancashire',
+  'Liverpool',
+  'Manchester',
+  // South East
+  'Berkshire',
+  'Buckinghamshire',
+  'Hampshire',
+  'Isle of Wight',
+  'Kent',
+  'Oxfordshire',
+  'Surrey',
+  'East Sussex',
+  'West Sussex',
+  'Brighton & Hove',
+  'Southampton',
+  // South West
+  'Cornwall',
+  'Dorset',
+  'Devon',
+  'Gloucestershire',
+  'Somerset',
+  'Wiltshire',
+  'Bristol',
+  'Bournemouth',
+  // West Midlands
+  'Staffordshire',
+  'Warwickshire',
+  'Shropshire',
+  'Herefordshire',
+  'Worcestershire',
+  'Birmingham',
+  'Coventry',
+  // Wales
+  'Gwynedd',
+  'Anglesey',
+  'Conwy',
+  'Denbighshire',
+  'Flintshire',
+  'Wrexham',
+  'Ceredigion',
+  'Carmarthenshire',
+  'Pembrokeshire',
+  'Powys',
+  'Gwent',
+  'Glamorgan',
+  'Cardiff',
+  'Swansea',
+  // Scotland
+  'Grampian',
+  'Highlands',
+  'Islands',
+  'Tayside',
+  'Central Scotland',
+  'Fife',
+  'Lothian',
+  'Edinburgh',
+  'Argyll & Bute',
+  'Dunbartonshire',
+  'Lanarkshire',
+  'Renfrewshire',
+  'Glasgow',
+  'Ayrshire',
+  'Dumfries & Galloway',
+  'Scottish Borders',
 ];
 
 // Valid sectors from the CMS config
@@ -202,7 +319,7 @@ const VALID_SECTORS = [
   'INTERIOR FIT-OUT & FINISHING',
   'MECHANICAL, ELECTRICAL & PLUMBING',
   'OUTDOOR & LANDSCAPING',
-  'SPECIALIST TRADES'
+  'SPECIALIST TRADES',
 ];
 
 // ============================================
@@ -224,7 +341,12 @@ function parseCSV(content) {
   const delimiter = detectDelimiter(lines[0]);
 
   // Parse header line, handling quoted fields
-  const headers = parseCSVLine(lines[0], delimiter).map(h => h.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_'));
+  const headers = parseCSVLine(lines[0], delimiter).map((h) =>
+    h
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9_]/g, '_')
+  );
 
   const rows = [];
   for (let i = 1; i < lines.length; i++) {
@@ -247,7 +369,7 @@ function parseCSV(content) {
 function parseCSVLine(line, delimiter) {
   if (delimiter === '\t') {
     // TSV: split on tabs, still handle quoted fields
-    return line.split('\t').map(field => {
+    return line.split('\t').map((field) => {
       field = field.trim();
       if (field.startsWith('"') && field.endsWith('"')) {
         field = field.slice(1, -1).replace(/""/g, '"');
@@ -296,97 +418,98 @@ function parseCSVLine(line, delimiter) {
 // Map various CSV column names to our standardized names
 const COLUMN_ALIASES = {
   // award_category
-  'award_category': 'award_category',
-  'award': 'award_category',
-  'award_name': 'award_category',
-  'category': 'award_category',
+  award_category: 'award_category',
+  award: 'award_category',
+  award_name: 'award_category',
+  category: 'award_category',
 
   // organisation
-  'organisation': 'organisation',
-  'organization': 'organisation',
-  'company': 'organisation',
-  'company_name': 'organisation',
-  'business': 'organisation',
-  'business_name': 'organisation',
-  'org': 'organisation',
-  'org_name': 'organisation',
+  organisation: 'organisation',
+  organization: 'organisation',
+  company: 'organisation',
+  company_name: 'organisation',
+  business: 'organisation',
+  business_name: 'organisation',
+  org: 'organisation',
+  org_name: 'organisation',
 
   // contact_name
-  'contact_name': 'contact_name',
-  'contact': 'contact_name',
-  'name': 'contact_name',
-  'full_name': 'contact_name',
-  'person': 'contact_name',
+  contact_name: 'contact_name',
+  contact: 'contact_name',
+  name: 'contact_name',
+  full_name: 'contact_name',
+  person: 'contact_name',
 
   // email
-  'email': 'email',
-  'email_address': 'email',
-  'e_mail': 'email',
-  'direct_email': 'email',
+  email: 'email',
+  email_address: 'email',
+  e_mail: 'email',
+  direct_email: 'email',
 
   // phone
-  'phone': 'phone',
-  'telephone': 'phone',
-  'tel': 'phone',
-  'phone_number': 'phone',
-  'mobile': 'phone',
+  phone: 'phone',
+  telephone: 'phone',
+  tel: 'phone',
+  phone_number: 'phone',
+  mobile: 'phone',
 
   // website
-  'website': 'website',
-  'web': 'website',
-  'url': 'website',
-  'site': 'website',
-  'website_url': 'website',
+  website: 'website',
+  web: 'website',
+  url: 'website',
+  site: 'website',
+  website_url: 'website',
 
   // address
-  'address': 'address',
-  'location': 'address',
-  'full_address': 'address',
-  'business_contact_address': 'address',
+  address: 'address',
+  location: 'address',
+  full_address: 'address',
+  business_contact_address: 'address',
 
-  // region
-  'region': 'region',
-  'county': 'region',
-  'county_city': 'region',
-  'area': 'region',
+  // county_city
+  region: 'county_city',
+  county: 'county_city',
+  county_city: 'county_city',
+  county_cty: 'county_city',
+  area: 'county_city',
 
   // sector
-  'sector': 'sector',
-  'industry': 'sector',
-  'trade': 'sector',
+  sector: 'sector',
+  industry: 'sector',
+  trade: 'sector',
 
   // catchment_area
-  'catchment_area': 'catchment_area',
-  'catchment': 'catchment_area',
+  catchment_area: 'catchment_area',
+  catchment: 'catchment_area',
 
   // nomination fields
-  'nomination_date': 'nomination_date',
-  'date': 'nomination_date',
-  'nominated_date': 'nomination_date',
+  nomination_date: 'nomination_date',
+  date: 'nomination_date',
+  nominated_date: 'nomination_date',
 
-  'nomination_source': 'nomination_source',
-  'source': 'nomination_source',
-  'nominated_by': 'nomination_source',
+  nomination_source: 'nomination_source',
+  source: 'nomination_source',
+  nominated_by: 'nomination_source',
 
   // winner fields
-  'is_previous_winner': 'is_previous_winner',
-  'previous_winner': 'is_previous_winner',
-  'past_winner': 'is_previous_winner',
+  is_previous_winner: 'is_previous_winner',
+  previous_winner: 'is_previous_winner',
+  past_winner: 'is_previous_winner',
 
-  'winner_position': 'winner_position',
-  'position': 'winner_position',
-  'place': 'winner_position',
-  'rank': 'winner_position',
+  winner_position: 'winner_position',
+  position: 'winner_position',
+  place: 'winner_position',
+  rank: 'winner_position',
 
-  'actual_winner': 'actual_winner',
-  'winner': 'actual_winner',
-  'is_winner': 'actual_winner',
+  actual_winner: 'actual_winner',
+  winner: 'actual_winner',
+  is_winner: 'actual_winner',
 
   // notes
-  'notes': 'notes',
-  'comments': 'notes',
-  'note': 'notes',
-  'description': 'notes'
+  notes: 'notes',
+  comments: 'notes',
+  note: 'notes',
+  description: 'notes',
 };
 
 function normalizeColumnNames(row) {
@@ -420,7 +543,7 @@ function normalizeRegion(regionOrCounty) {
   }
 
   // Check if it's already a valid region (case-insensitive)
-  const directMatch = VALID_REGIONS.find(r => r.toLowerCase() === input);
+  const directMatch = VALID_REGIONS.find((r) => r.toLowerCase() === input);
   if (directMatch) return directMatch;
 
   // Fuzzy match - check if input contains a valid region name
@@ -439,7 +562,7 @@ function normalizeSector(sector) {
   const input = sector.trim().toUpperCase();
 
   // Direct match
-  const match = VALID_SECTORS.find(s => s === input);
+  const match = VALID_SECTORS.find((s) => s === input);
   if (match) return match;
 
   // Partial match
@@ -510,21 +633,23 @@ function validateRow(row, lineNum, _fileName) {
 
 function createDeduplicationKey(row) {
   // Primary key: normalised organisation + award_category
-  const org = (row.organisation || '').trim().toLowerCase()
+  const org = (row.organisation || '')
+    .trim()
+    .toLowerCase()
     .replace(/\s+/g, ' ')
     .replace(/^the\s+/i, '')
     .replace(/\s*(ltd|limited|plc|inc|llp|llc)\s*\.?\s*$/i, '')
     .trim();
 
-  const award = (row.award_category || '').trim().toLowerCase()
-    .replace(/\s+/g, ' ')
-    .trim();
+  const award = (row.award_category || '').trim().toLowerCase().replace(/\s+/g, ' ').trim();
 
   return `${org}|||${award}`;
 }
 
 function createOrgKey(orgName) {
-  return (orgName || '').trim().toLowerCase()
+  return (orgName || '')
+    .trim()
+    .toLowerCase()
     .replace(/\s+/g, ' ')
     .replace(/^the\s+/i, '')
     .replace(/\s*(ltd|limited|plc|inc|llp|llc)\s*\.?\s*$/i, '')
@@ -544,7 +669,7 @@ function detectDuplicates(allRows) {
       duplicates.push({
         duplicate: entry,
         original: original,
-        key: key
+        key: key,
       });
     } else {
       seen.set(key, entry);
@@ -570,18 +695,14 @@ async function loadExistingAwards() {
 }
 
 async function loadExistingOrganisations() {
-  const { data, error } = await supabase
-    .from('organisations')
-    .select('id, company_name, email, region');
+  const { data, error } = await supabase.from('organisations').select('id, company_name, email, county_city');
 
   if (error) throw new Error(`Failed to load organisations: ${error.message}`);
   return data || [];
 }
 
 async function loadExistingAssignments() {
-  const { data, error } = await supabase
-    .from('award_assignments')
-    .select('id, award_id, organisation_id');
+  const { data, error } = await supabase.from('award_assignments').select('id, award_id, organisation_id');
 
   if (error) throw new Error(`Failed to load assignments: ${error.message}`);
   return data || [];
@@ -593,24 +714,21 @@ function matchAward(awardName, countyOrCity, awards) {
 
   if (normalisedCounty) {
     // Match on award_name + county (awards are per-county/city in this CMS)
-    const exactMatch = awards.find(a =>
-      a.award_name.trim().toLowerCase() === normalisedName &&
-      (a.county || '').trim().toLowerCase() === normalisedCounty
+    const exactMatch = awards.find(
+      (a) =>
+        a.award_name.trim().toLowerCase() === normalisedName &&
+        (a.county || '').trim().toLowerCase() === normalisedCounty
     );
     if (exactMatch) return exactMatch;
   }
 
   // Fallback: match on award_name only (if no county specified or no match found)
-  return awards.find(a =>
-    a.award_name.trim().toLowerCase() === normalisedName
-  );
+  return awards.find((a) => a.award_name.trim().toLowerCase() === normalisedName);
 }
 
 function matchOrganisation(orgName, organisations) {
   const normalised = orgName.trim().toLowerCase();
-  return organisations.find(o =>
-    o.company_name.trim().toLowerCase() === normalised
-  );
+  return organisations.find((o) => o.company_name.trim().toLowerCase() === normalised);
 }
 
 // ============================================
@@ -636,10 +754,11 @@ async function processFiles(options) {
       console.error(`ERROR: Folder not found: ${folderPath}`);
       process.exit(1);
     }
-    csvFiles = fs.readdirSync(folderPath)
-      .filter(f => f.toLowerCase().endsWith('.csv') || f.toLowerCase().endsWith('.tsv'))
+    csvFiles = fs
+      .readdirSync(folderPath)
+      .filter((f) => f.toLowerCase().endsWith('.csv') || f.toLowerCase().endsWith('.tsv'))
       .sort()
-      .map(f => path.join(folderPath, f));
+      .map((f) => path.join(folderPath, f));
   }
 
   if (csvFiles.length === 0) {
@@ -672,7 +791,7 @@ async function processFiles(options) {
       const row = normalizeColumnNames(rawRow);
 
       // Normalize fields
-      row.region = normalizeRegion(row.region);
+      row.county_city = normalizeRegion(row.county_city);
       row.sector = normalizeSector(row.sector);
       row.email = normalizeEmail(row.email);
       row.phone = normalizePhone(row.phone);
@@ -692,10 +811,10 @@ async function processFiles(options) {
       fileWarnings += warnings.length;
 
       if (errors.length > 0) {
-        errors.forEach(e => console.log(`  ERROR [${fileName}] ${e}`));
+        errors.forEach((e) => console.log(`  ERROR [${fileName}] ${e}`));
       }
       if (warnings.length > 0) {
-        warnings.forEach(w => console.log(`  WARN  [${fileName}] ${w}`));
+        warnings.forEach((w) => console.log(`  WARN  [${fileName}] ${w}`));
       }
 
       // Only add rows without critical errors
@@ -709,7 +828,7 @@ async function processFiles(options) {
       total: rawRows.length,
       valid: rawRows.length - fileErrors,
       errors: fileErrors,
-      warnings: fileWarnings
+      warnings: fileWarnings,
     });
 
     totalErrors += fileErrors;
@@ -767,12 +886,12 @@ async function processFiles(options) {
   for (const entry of unique) {
     const { row } = entry;
 
-    // row.region holds the county/city from the CSV (after normalization)
-    const awardMatch = matchAward(row.award_category, row.region, awards);
+    // row.county_city holds the county/city from the CSV (after normalization)
+    const awardMatch = matchAward(row.award_category, row.county_city, awards);
     const orgMatch = matchOrganisation(row.organisation, organisations);
 
     if (!awardMatch) {
-      unmatchedAwards.add(`${row.award_category} [${row.region || 'no county'}]`);
+      unmatchedAwards.add(`${row.award_category} [${row.county_city || 'no county'}]`);
     }
 
     if (!orgMatch) {
@@ -786,9 +905,7 @@ async function processFiles(options) {
 
     if (awardMatch && orgMatch) {
       // Check if this assignment already exists in DB
-      const exists = existingAssignments.find(
-        a => a.award_id === awardMatch.id && a.organisation_id === orgMatch.id
-      );
+      const exists = existingAssignments.find((a) => a.award_id === awardMatch.id && a.organisation_id === orgMatch.id);
 
       if (exists && !clearFirst) {
         alreadyAssigned.push(entry);
@@ -798,7 +915,7 @@ async function processFiles(options) {
           awardId: awardMatch.id,
           orgId: orgMatch.id,
           awardName: awardMatch.award_name,
-          orgName: orgMatch.company_name
+          orgName: orgMatch.company_name,
         });
       }
     }
@@ -807,10 +924,13 @@ async function processFiles(options) {
   // Report unmatched awards
   if (unmatchedAwards.size > 0) {
     console.log(`  UNMATCHED AWARDS (${unmatchedAwards.size}):`);
-    [...unmatchedAwards].sort().forEach(a => {
+    [...unmatchedAwards].sort().forEach((a) => {
       console.log(`    - ${a}`);
       // Suggest closest match from existing awards (name + county)
-      const suggestion = findClosestMatch(a, awards.map(aw => `${aw.award_name} [${aw.county || 'no county'}]`));
+      const suggestion = findClosestMatch(
+        a,
+        awards.map((aw) => `${aw.award_name} [${aw.county || 'no county'}]`)
+      );
       if (suggestion) console.log(`      Did you mean: ${suggestion}?`);
     });
     console.log();
@@ -820,16 +940,22 @@ async function processFiles(options) {
   if (unmatchedOrgs.size > 0) {
     console.log(`  UNMATCHED ORGANISATIONS (${unmatchedOrgs.size}):`);
     if (unmatchedOrgs.size <= 50) {
-      [...unmatchedOrgs].sort().forEach(o => {
+      [...unmatchedOrgs].sort().forEach((o) => {
         console.log(`    - "${o}"`);
-        const suggestion = findClosestMatch(o, organisations.map(org => org.company_name));
+        const suggestion = findClosestMatch(
+          o,
+          organisations.map((org) => org.company_name)
+        );
         if (suggestion) console.log(`      Did you mean: "${suggestion}"?`);
       });
     } else {
       console.log(`    (Too many to list - showing first 20)`);
-      [...unmatchedOrgs].sort().slice(0, 20).forEach(o => {
-        console.log(`    - "${o}"`);
-      });
+      [...unmatchedOrgs]
+        .sort()
+        .slice(0, 20)
+        .forEach((o) => {
+          console.log(`    - "${o}"`);
+        });
       console.log(`    ... and ${unmatchedOrgs.size - 20} more`);
     }
     console.log();
@@ -839,7 +965,7 @@ async function processFiles(options) {
   if (alreadyAssigned.length > 0) {
     console.log(`  ALREADY ASSIGNED (${alreadyAssigned.length}):`);
     if (alreadyAssigned.length <= 20) {
-      alreadyAssigned.forEach(e => {
+      alreadyAssigned.forEach((e) => {
         console.log(`    - "${e.row.organisation}" already assigned to "${e.row.award_category}"`);
       });
     } else {
@@ -878,7 +1004,7 @@ async function processFiles(options) {
     if (newOrgsNeeded.size > 0) {
       console.log('  NOTE: The following organisations will be auto-created on import:');
       [...newOrgsNeeded.entries()].slice(0, 10).forEach(([_key, row]) => {
-        console.log(`    + "${row.organisation}" (${row.region || 'no region'}, ${row.email || 'no email'})`);
+        console.log(`    + "${row.organisation}" (${row.county_city || 'no region'}, ${row.email || 'no email'})`);
       });
       if (newOrgsNeeded.size > 10) {
         console.log(`    ... and ${newOrgsNeeded.size - 10} more`);
@@ -920,8 +1046,8 @@ async function processFiles(options) {
         contact_name: row.contact_name || null,
         website: row.website || null,
         address: row.address || null,
-        region: row.region || null,
-        catchment_area: row.catchment_area || null
+        county_city: row.county_city || null,
+        catchment_area: row.catchment_area || null,
       };
 
       const { data: newOrg, error: orgError } = await supabase
@@ -943,14 +1069,12 @@ async function processFiles(options) {
     // Re-process unmatched entries now that orgs exist
     for (const entry of unique) {
       const { row } = entry;
-      if (!matchAward(row.award_category, row.region, awards)) continue;
+      if (!matchAward(row.award_category, row.county_city, awards)) continue;
       const orgMatch = matchOrganisation(row.organisation, organisations);
       if (!orgMatch) continue;
-      const awardMatch = matchAward(row.award_category, row.region, awards);
+      const awardMatch = matchAward(row.award_category, row.county_city, awards);
 
-      const alreadyQueued = readyToImport.find(
-        r => r.awardId === awardMatch.id && r.orgId === orgMatch.id
-      );
+      const alreadyQueued = readyToImport.find((r) => r.awardId === awardMatch.id && r.orgId === orgMatch.id);
 
       if (!alreadyQueued) {
         readyToImport.push({
@@ -958,7 +1082,7 @@ async function processFiles(options) {
           awardId: awardMatch.id,
           orgId: orgMatch.id,
           awardName: awardMatch.award_name,
-          orgName: orgMatch.company_name
+          orgName: orgMatch.company_name,
         });
       }
     }
@@ -979,7 +1103,7 @@ async function processFiles(options) {
   for (let i = 0; i < readyToImport.length; i += BATCH_SIZE) {
     const batch = readyToImport.slice(i, i + BATCH_SIZE);
 
-    const records = batch.map(entry => ({
+    const records = batch.map((entry) => ({
       award_id: entry.awardId,
       organisation_id: entry.orgId,
       status: 'nominated',
@@ -989,13 +1113,10 @@ async function processFiles(options) {
       is_previous_winner: parseBool(entry.row.is_previous_winner),
       winner_position: parseInt(entry.row.winner_position) || null,
       public_vote_count: 0,
-      actual_winner: parseBool(entry.row.actual_winner)
+      actual_winner: parseBool(entry.row.actual_winner),
     }));
 
-    const { data, error } = await supabase
-      .from('award_assignments')
-      .insert(records)
-      .select('id');
+    const { data, error } = await supabase.from('award_assignments').insert(records).select('id');
 
     if (error) {
       console.error(`  ERROR importing batch ${Math.floor(i / BATCH_SIZE) + 1}: ${error.message}`);
@@ -1003,13 +1124,10 @@ async function processFiles(options) {
 
       // Try one-by-one for this batch to identify the bad record
       for (const record of records) {
-        const { error: singleError } = await supabase
-          .from('award_assignments')
-          .insert(record)
-          .select('id');
+        const { error: singleError } = await supabase.from('award_assignments').insert(record).select('id');
 
         if (singleError) {
-          const entry = batch.find(b => b.awardId === record.award_id && b.orgId === record.organisation_id);
+          const entry = batch.find((b) => b.awardId === record.award_id && b.orgId === record.organisation_id);
           console.error(`    Failed: "${entry?.orgName}" + "${entry?.awardName}": ${singleError.message}`);
         } else {
           imported++;
@@ -1017,7 +1135,7 @@ async function processFiles(options) {
         }
       }
     } else {
-      imported += (data ? data.length : batch.length);
+      imported += data ? data.length : batch.length;
     }
 
     // Progress
@@ -1066,7 +1184,7 @@ function findClosestMatch(input, candidates) {
     const candidateWords = candidateLower.split(/\s+/);
     let overlap = 0;
     for (const w of inputWords) {
-      if (candidateWords.some(cw => cw.includes(w) || w.includes(cw))) {
+      if (candidateWords.some((cw) => cw.includes(w) || w.includes(cw))) {
         overlap++;
       }
     }
@@ -1116,7 +1234,7 @@ async function main() {
     folder: null,
     file: null,
     doImport: args.includes('--import'),
-    clearFirst: args.includes('--clear-first')
+    clearFirst: args.includes('--clear-first'),
   };
 
   const folderIdx = args.indexOf('--folder');

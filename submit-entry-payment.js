@@ -247,12 +247,12 @@
     },
 
     // --------------------------------------------------
-    // Populate regions dropdown from config.js REGIONS
+    // Populate county/city dropdown from config.js COUNTIES_CITIES
     // --------------------------------------------------
     populateRegions() {
-      const regionSelect = document.getElementById('region');
-      if (!window.REGIONS || window.REGIONS.length === 0) {
-        console.warn('No regions found in config');
+      const regionSelect = document.getElementById('county_city');
+      if (!window.COUNTIES_CITIES && !window.REGIONS) {
+        console.warn('No counties/cities found in config');
         return;
       }
 
@@ -269,12 +269,9 @@
         'Leeds',
         'Leicester',
         'Liverpool',
-        'London North',
-        'London South',
-        'London East',
-        'London West',
+        'London',
         'Manchester',
-        'Middlesbrough',
+        'Middlesborough',
         'Newcastle',
         'Nottingham',
         'Sheffield',
@@ -282,8 +279,9 @@
         'Swansea',
       ];
 
-      const counties = window.REGIONS.filter((r) => !cities.includes(r));
-      const cityList = window.REGIONS.filter((r) => cities.includes(r));
+      const allCountiesCities = window.COUNTIES_CITIES || window.REGIONS || [];
+      const counties = allCountiesCities.filter((r) => !cities.includes(r));
+      const cityList = allCountiesCities.filter((r) => cities.includes(r));
 
       let html = '<option value="" placeholder>Select your county or city</option>';
 
@@ -306,7 +304,7 @@
       regionSelect.innerHTML = html;
 
       if (typeof Choices !== 'undefined') {
-        this.regionChoicesInstance = new Choices('#region', {
+        this.regionChoicesInstance = new Choices('#county_city', {
           searchEnabled: true,
           searchFloor: 1,
           searchPlaceholderValue: 'Type to search...',
@@ -369,29 +367,29 @@
     // --------------------------------------------------
     buildCategoryList() {
       const awardsList = document.getElementById('awardsList');
-      const region = this.formData.region || '';
+      const countyCity = this.formData.county_city || '';
       const sector = this.formData.sector || '';
 
-      if (!region || !sector) {
+      if (!countyCity || !sector) {
         awardsList.innerHTML = '<div class="alert alert-warning">Please complete the previous steps first.</div>';
         return;
       }
 
-      const categories = this.getCategoriesForRegion(region);
+      const categories = this.getCategoriesForRegion(countyCity);
       const sectorCategories = categories[sector] || [];
 
       if (sectorCategories.length === 0) {
         awardsList.innerHTML = `
         <div class="alert alert-warning">
           <i class="bi bi-exclamation-triangle me-2"></i>
-          No award categories found for <strong>${this.escapeHtml(this.toTitleCase(sector))}</strong> in <strong>${this.escapeHtml(region)}</strong>.
+          No award categories found for <strong>${this.escapeHtml(this.toTitleCase(sector))}</strong> in <strong>${this.escapeHtml(countyCity)}</strong>.
         </div>`;
         return;
       }
 
       const subtitle = document.getElementById('step3Subtitle');
       if (subtitle) {
-        subtitle.textContent = `${sectorCategories.length} categories available for ${this.toTitleCase(sector)} in ${region}`;
+        subtitle.textContent = `${sectorCategories.length} categories available for ${this.toTitleCase(sector)} in ${countyCity}`;
       }
 
       awardsList.innerHTML = sectorCategories
@@ -513,7 +511,7 @@
     validateStep(stepNum) {
       switch (stepNum) {
         case 1: {
-          const region = document.getElementById('region').value;
+          const region = document.getElementById('county_city').value;
           if (!region) {
             showPublicToast('Please select your county or city');
             return false;
@@ -613,7 +611,7 @@
     saveStepData(stepNum) {
       switch (stepNum) {
         case 1:
-          this.formData.region = document.getElementById('region').value;
+          this.formData.county_city = document.getElementById('county_city').value;
           break;
         case 2:
           this.formData.sector = document.getElementById('sector').value;
@@ -668,7 +666,7 @@
           Award Details
           <span class="review-edit-btn float-end" data-action="entryFormApp.goToStep" data-args="[1]">Edit</span>
         </div>
-        ${row('Region', d.region)}
+        ${row('County / City', d.county_city)}
         ${row('Sector', this.toTitleCase(d.sector || ''))}
         ${row('Category', d.awardCategory)}
       </div>
@@ -745,7 +743,7 @@
         const result = await entryApi({
           action: 'submit_entry',
           companyName: this.formData.companyName,
-          region: this.formData.region,
+          county_city: this.formData.county_city,
           sector: this.formData.sector,
           contactEmail: this.formData.contactEmail,
           contactName: this.formData.contactName,

@@ -432,7 +432,7 @@ describe('CRM Module - Rendering Edge Cases', () => {
 
 describe('CRM Module - Smart Segment Rule Matching', () => {
   test('_matchesSegmentRules matches eq operator (case-insensitive)', () => {
-    const org = { status: 'Active', sector: 'Tech', region: 'Kent' };
+    const org = { status: 'Active', sector: 'Tech', county_city: 'Kent' };
     const rules = [{ field: 'status', op: 'eq', val: 'active' }];
     expect(crmModule._matchesSegmentRules(org, rules)).toBe(true);
   });
@@ -1259,7 +1259,7 @@ describe('CRM Module - _getSegmentRules', () => {
         <input id="segVal0" value="Active" />
       </div>
       <div class="segment-rule">
-        <select id="segField1"><option value="region" selected>Region</option></select>
+        <select id="segField1"><option value="county_city" selected>Region</option></select>
         <select id="segOp1"><option value="contains" selected>contains</option></select>
         <input id="segVal1" value="London" />
       </div>
@@ -1268,7 +1268,7 @@ describe('CRM Module - _getSegmentRules', () => {
     const rules = crmModule._getSegmentRules();
     expect(rules).toEqual([
       { field: 'status', op: 'eq', val: 'Active' },
-      { field: 'region', op: 'contains', val: 'London' },
+      { field: 'county_city', op: 'contains', val: 'London' },
     ]);
 
     smartContent.innerHTML = '';

@@ -29,8 +29,8 @@ const dom = new JSDOM(
   <select id="awardsYearFilterSelect"><option value="">All Years</option><option value="2026">2026</option><option value="2025">2025</option></select>
   <select id="awardsStatusFilterSelect"><option value="">All</option><option value="published">Published</option><option value="draft">Draft</option><option value="active">Active</option><option value="pending">Pending</option><option value="archived">Archived</option></select>
   <select id="awardsSectorFilterSelect"><option value="">All Sectors</option><option value="MECHANICAL, ELECTRICAL &amp; PLUMBING">MEP</option><option value="BUILDING &amp; CONSTRUCTION">Building</option><option value="CARPENTRY &amp; JOINERY">Carpentry</option><option value="OUTDOOR &amp; LANDSCAPING">Landscaping</option></select>
-  <select id="awardsRegionFilterSelect"><option value="">All Regions</option><option value="South East">South East</option><option value="East">East</option><option value="London">London</option><option value="South West">South West</option></select>
-  <select id="awardsCountyFilterSelect"><option value="">All Counties</option><option value="Kent">Kent</option><option value="Essex">Essex</option><option value="London">London</option><option value="Surrey">Surrey</option><option value="Devon">Devon</option></select>
+  <select id="awardsRegionFilterSelect"><option value="">All Regions</option><option value="South East">South East</option><option value="East of England">East of England</option><option value="Greater London">Greater London</option><option value="South West">South West</option></select>
+  <select id="awardsCountyFilterSelect"><option value="">All Counties</option><option value="Kent">Kent</option><option value="Essex">Essex</option><option value="London, North">London, North</option><option value="Surrey">Surrey</option><option value="Devon">Devon</option></select>
   <input id="awardsSearchBox" value="" />
   <input type="checkbox" id="selectAllAwards" />
   <select id="awardsSavedViewsList"><option value="">No saved views</option></select>
@@ -620,11 +620,13 @@ describe('Awards Module - _populateFiltersFromConstants()', () => {
     expect(sectorSelect.innerHTML).toContain('BUILDING');
   });
 
-  test('populates region filter from REGIONS constant', () => {
-    awardsModule._populateFiltersFromConstants();
+  test('does not populate region filter (now loaded from DB)', () => {
     const regionSelect = document.getElementById('awardsRegionFilterSelect');
+    regionSelect.innerHTML = '<option value="">All Regions</option>';
+    awardsModule._populateFiltersFromConstants();
+    // Region filter is no longer populated from constants — it's loaded from DB
     expect(regionSelect.innerHTML).toContain('All Regions');
-    expect(regionSelect.innerHTML).toContain('Kent');
+    expect(regionSelect.querySelectorAll('option').length).toBe(1);
   });
 });
 
@@ -666,6 +668,14 @@ describe('Awards Module - updateCountyFilterByRegion()', () => {
   beforeEach(() => {
     STATE.allAwards = [...sampleAwards];
     document.getElementById('awardsRegionFilterSelect').value = '';
+    // Simulate cached DB data used by the updated updateCountyFilterByRegion
+    awardsModule._cachedCounties = [
+      { Name: 'Kent', region: 'South East', _regionName: 'South East' },
+      { Name: 'Surrey', region: 'South East', _regionName: 'South East' },
+      { Name: 'Essex', region: 'East', _regionName: 'East' },
+      { Name: 'London', region: 'London', _regionName: 'London' },
+      { Name: 'Devon', region: 'South West', _regionName: 'South West' },
+    ];
   });
 
   test('shows all counties when no region selected', () => {
@@ -682,7 +692,8 @@ describe('Awards Module - updateCountyFilterByRegion()', () => {
     expect(countySelect.innerHTML).toContain('Surrey');
   });
 
-  test('resets county selection', () => {
+  test('resets county selection when no cached data', () => {
+    awardsModule._cachedCounties = [];
     const countySelect = document.getElementById('awardsCountyFilterSelect');
     countySelect.value = 'Kent';
     awardsModule.updateCountyFilterByRegion();
@@ -2361,7 +2372,7 @@ describe('Awards Module - Saved Views', () => {
             year: '2026',
             status: 'draft',
             sector: 'BUILDING & CONSTRUCTION',
-            region: 'South East',
+            county_city: 'South East',
             county: 'Kent',
             search: 'test',
           },

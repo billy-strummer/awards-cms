@@ -405,9 +405,9 @@ const emailBuilder = {
                       : ''
                   }
                   ${
-                    this.currentOrg.region
+                    this.currentOrg.county_city
                       ? `<p class="mob-text-sm" style="margin: 0; font-family: Arial, sans-serif; font-size: 14px; color: #6c757d;">
-                      📍 ${utils.escapeHtml(this.currentOrg.region)}
+                      📍 ${utils.escapeHtml(this.currentOrg.county_city)}
                     </p>`
                       : ''
                   }

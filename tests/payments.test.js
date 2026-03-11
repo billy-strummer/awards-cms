@@ -2195,6 +2195,7 @@ describe('Payments Module - exportPaymentsPDF()', () => {
 describe('Payments Module - loadAllData()', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    STATE.currentUser = { id: 'test-user' };
     paymentsModule.loadInvoices = jest.fn().mockResolvedValue();
     paymentsModule.loadPayments = jest.fn().mockResolvedValue();
     paymentsModule.loadOrganisationsForFilters = jest.fn().mockResolvedValue();

@@ -182,7 +182,7 @@ const reportsScheduler = {
     });
     const regions = {};
     orgs.forEach((o) => {
-      const reg = o.region || 'Unknown';
+      const reg = o.county_city || 'Unknown';
       regions[reg] = (regions[reg] || 0) + 1;
     });
     let preview = `<h5>${utils.escapeHtml(r.name)}</h5><p class="text-muted small">Preview generated ${new Date().toLocaleString('en-GB')}</p><hr>`;
@@ -447,7 +447,7 @@ const reportsAnalytics = {
 
     const counts = {};
     orgs.forEach((o) => {
-      const r = o.region || 'Unknown';
+      const r = o.county_city || 'Unknown';
       counts[r] = (counts[r] || 0) + 1;
     });
     const sorted = Object.entries(counts)
@@ -749,7 +749,7 @@ const reportsAnalytics = {
     // Build region breakdown
     const regionCounts = {};
     orgs.forEach((o) => {
-      const r = o.region || 'Unknown';
+      const r = o.county_city || 'Unknown';
       regionCounts[r] = (regionCounts[r] || 0) + 1;
     });
     const regionRows = Object.entries(regionCounts)
@@ -1718,7 +1718,7 @@ document.addEventListener('DOMContentLoaded', function () {
         'payments-tab': { key: 'payments', fn: () => paymentsModule?.loadAllData() },
       };
       const config = refreshMap[tabId];
-      if (config && utils.isDataStale(config.key)) {
+      if (config && utils.isDataStale(config.key) && STATE.currentUser) {
         console.debug('Auto-refreshing stale data for', config.key);
         config.fn();
       }

@@ -17,7 +17,7 @@ const dom = new JSDOM(
 
   <!-- Step 1 – Region -->
   <div id="step1" class="form-step active">
-    <select id="region"><option value="">Select your county or city</option></select>
+    <select id="county_city"><option value="">Select your county or city</option><option value="Kent">Kent</option><option value="Lancashire">Lancashire</option><option value="London, North">London, North</option></select>
   </div>
 
   <!-- Step 2 – Sector -->
@@ -110,7 +110,8 @@ global.window.REGIONS = [
   'Kent',
   'Lancashire',
   'Birmingham',
-  'London North',
+  'London, North',
+  'London, South',
   'Manchester',
 ];
 
@@ -274,7 +275,7 @@ describe('entryApi — API proxy to /api/entry-proxy', () => {
     resetApp();
     entryFormApp.formData = {
       companyName: 'Acme',
-      region: 'Kent',
+      county_city: 'Kent',
       sector: 'BUILDING & CONSTRUCTION',
       contactEmail: 'a@b.com',
       contactName: 'Jo',
@@ -307,7 +308,7 @@ describe('entryApi — API proxy to /api/entry-proxy', () => {
     const body = JSON.parse(global.fetch.mock.calls[0][1].body);
     expect(body.action).toBe('submit_entry');
     expect(body.companyName).toBe('Acme');
-    expect(body.region).toBe('Kent');
+    expect(body.county_city).toBe('Kent');
     expect(body.awardCategory).toBe('Roofing Company');
   });
 
@@ -368,7 +369,7 @@ describe('Step navigation', () => {
 
   test('nextStep does NOT advance when validation fails', async () => {
     entryFormApp.goToStep(1);
-    document.getElementById('region').value = ''; // empty = invalid
+    document.getElementById('county_city').value = ''; // empty = invalid
     await entryFormApp.nextStep(1);
     // Should stay on step 1 because region is empty
     expect(entryFormApp.currentStep).toBe(1);
@@ -401,12 +402,12 @@ describe('validateStep — Step 1 (Region)', () => {
   beforeEach(resetApp);
 
   test('fails when region is empty', () => {
-    document.getElementById('region').value = '';
+    document.getElementById('county_city').value = '';
     expect(entryFormApp.validateStep(1)).toBe(false);
   });
 
   test('passes when region is selected', () => {
-    document.getElementById('region').value = 'Kent';
+    document.getElementById('county_city').value = 'Kent';
     expect(entryFormApp.validateStep(1)).toBe(true);
   });
 });
@@ -586,7 +587,7 @@ describe('submitEntry', () => {
     global.fetch.mockReset();
     entryFormApp.formData = {
       companyName: 'Test Co',
-      region: 'Kent',
+      county_city: 'Kent',
       sector: 'BUILDING & CONSTRUCTION',
       contactEmail: 'test@test.com',
       contactName: 'John',
@@ -721,7 +722,7 @@ describe('buildCategoryList', () => {
   beforeEach(resetApp);
 
   test('shows warning when region or sector is missing', () => {
-    entryFormApp.formData = { region: '', sector: '' };
+    entryFormApp.formData = { county_city: '', sector: '' };
     entryFormApp.buildCategoryList();
     const list = document.getElementById('awardsList');
     expect(list.innerHTML).toContain('alert');
@@ -729,14 +730,14 @@ describe('buildCategoryList', () => {
   });
 
   test('shows warning for unknown sector', () => {
-    entryFormApp.formData = { region: 'Kent', sector: 'NONEXISTENT SECTOR' };
+    entryFormApp.formData = { county_city: 'Kent', sector: 'NONEXISTENT SECTOR' };
     entryFormApp.buildCategoryList();
     const list = document.getElementById('awardsList');
     expect(list.innerHTML).toContain('No award categories found');
   });
 
   test('renders award options for a valid sector + region', () => {
-    entryFormApp.formData = { region: 'Kent', sector: 'BUILDING & CONSTRUCTION' };
+    entryFormApp.formData = { county_city: 'Kent', sector: 'BUILDING & CONSTRUCTION' };
     entryFormApp.buildCategoryList();
     const options = document.querySelectorAll('.award-option');
     // STANDARD_CATEGORIES for BUILDING & CONSTRUCTION has 12 categories
@@ -745,19 +746,19 @@ describe('buildCategoryList', () => {
 
   test('resets selectedAwardCategory on build', () => {
     entryFormApp.selectedAwardCategory = 'Old Category';
-    entryFormApp.formData = { region: 'Kent', sector: 'BUILDING & CONSTRUCTION' };
+    entryFormApp.formData = { county_city: 'Kent', sector: 'BUILDING & CONSTRUCTION' };
     entryFormApp.buildCategoryList();
     expect(entryFormApp.selectedAwardCategory).toBeNull();
   });
 
   test('hides step3NextBtn on build', () => {
-    entryFormApp.formData = { region: 'Kent', sector: 'BUILDING & CONSTRUCTION' };
+    entryFormApp.formData = { county_city: 'Kent', sector: 'BUILDING & CONSTRUCTION' };
     entryFormApp.buildCategoryList();
     expect(document.getElementById('step3NextBtn').style.display).toBe('none');
   });
 
   test('updates step3Subtitle with count and sector/region', () => {
-    entryFormApp.formData = { region: 'Kent', sector: 'SPECIALIST TRADES' };
+    entryFormApp.formData = { county_city: 'Kent', sector: 'SPECIALIST TRADES' };
     entryFormApp.buildCategoryList();
     const subtitle = document.getElementById('step3Subtitle').textContent;
     expect(subtitle).toContain('8'); // 8 categories in SPECIALIST TRADES (standard)
@@ -765,7 +766,7 @@ describe('buildCategoryList', () => {
   });
 
   test('renders fewer categories for small counties', () => {
-    entryFormApp.formData = { region: 'Rutland', sector: 'SPECIALIST TRADES' };
+    entryFormApp.formData = { county_city: 'Rutland', sector: 'SPECIALIST TRADES' };
     entryFormApp.buildCategoryList();
     const options = document.querySelectorAll('.award-option');
     // SMALL_CATEGORIES for SPECIALIST TRADES has 5 categories
@@ -776,7 +777,7 @@ describe('buildCategoryList', () => {
 describe('selectCategory', () => {
   beforeEach(() => {
     resetApp();
-    entryFormApp.formData = { region: 'Kent', sector: 'BUILDING & CONSTRUCTION' };
+    entryFormApp.formData = { county_city: 'Kent', sector: 'BUILDING & CONSTRUCTION' };
     entryFormApp.buildCategoryList();
   });
 
@@ -873,9 +874,14 @@ describe('saveStepData', () => {
   beforeEach(resetApp);
 
   test('step 1 saves region', () => {
-    document.getElementById('region').value = 'Kent';
+    const sel = document.getElementById('county_city');
+    // Ensure option exists (DOMContentLoaded/populateRegions may not have run yet)
+    if (![...sel.options].some((o) => o.value === 'Kent')) {
+      sel.innerHTML += '<option value="Kent">Kent</option>';
+    }
+    sel.value = 'Kent';
     entryFormApp.saveStepData(1);
-    expect(entryFormApp.formData.region).toBe('Kent');
+    expect(entryFormApp.formData.county_city).toBe('Kent');
   });
 
   test('step 2 saves sector', () => {
@@ -936,7 +942,7 @@ describe('Dynamic category rendering per region', () => {
   beforeEach(resetApp);
 
   test('small county Ceredigion gets SMALL_CATEGORIES', () => {
-    entryFormApp.formData = { region: 'Ceredigion', sector: 'CARPENTRY & JOINERY' };
+    entryFormApp.formData = { county_city: 'Ceredigion', sector: 'CARPENTRY & JOINERY' };
     entryFormApp.buildCategoryList();
     const options = document.querySelectorAll('.award-option');
     // SMALL_CATEGORIES CARPENTRY & JOINERY: 2 items
@@ -944,7 +950,7 @@ describe('Dynamic category rendering per region', () => {
   });
 
   test('small county Herefordshire gets combined Carpentry & Joinery Company', () => {
-    entryFormApp.formData = { region: 'Herefordshire', sector: 'CARPENTRY & JOINERY' };
+    entryFormApp.formData = { county_city: 'Herefordshire', sector: 'CARPENTRY & JOINERY' };
     entryFormApp.buildCategoryList();
     const names = Array.from(document.querySelectorAll('.award-name')).map((e) => e.textContent);
     expect(names).toContain('Carpentry & Joinery Company');
@@ -952,7 +958,7 @@ describe('Dynamic category rendering per region', () => {
   });
 
   test('standard region gets full category list with separate entries', () => {
-    entryFormApp.formData = { region: 'Lancashire', sector: 'CARPENTRY & JOINERY' };
+    entryFormApp.formData = { county_city: 'Lancashire', sector: 'CARPENTRY & JOINERY' };
     entryFormApp.buildCategoryList();
     const names = Array.from(document.querySelectorAll('.award-name')).map((e) => e.textContent);
     expect(names).toContain('Cabinet Maker');
@@ -964,7 +970,7 @@ describe('Dynamic category rendering per region', () => {
   });
 
   test('clicking an award option sets selectedAwardCategory via event handler', () => {
-    entryFormApp.formData = { region: 'Kent', sector: 'OUTDOOR & LANDSCAPING' };
+    entryFormApp.formData = { county_city: 'Kent', sector: 'OUTDOOR & LANDSCAPING' };
     entryFormApp.buildCategoryList();
     const options = document.querySelectorAll('.award-option');
     // Simulate click on first option
@@ -1048,7 +1054,7 @@ describe('showReview', () => {
   beforeEach(() => {
     resetApp();
     entryFormApp.formData = {
-      region: 'Kent',
+      county_city: 'Kent',
       sector: 'BUILDING & CONSTRUCTION',
       awardCategory: 'Roofing Company',
       companyName: 'Acme Roofing',
@@ -1148,7 +1154,7 @@ describe('populateSectors', () => {
 describe('populateRegions', () => {
   test('populates region select with grouped options', () => {
     entryFormApp.populateRegions();
-    const select = document.getElementById('region');
+    const select = document.getElementById('county_city');
     const optgroups = select.querySelectorAll('optgroup');
     // Should have Counties and Cities groups
     expect(optgroups.length).toBe(2);
@@ -1164,7 +1170,7 @@ describe('populateRegions', () => {
     const values = Array.from(cityOptions).map((o) => o.value);
     expect(values).toContain('Birmingham');
     expect(values).toContain('Manchester');
-    expect(values).toContain('London North');
+    expect(values).toContain('London, North');
   });
 });
 
@@ -1186,7 +1192,7 @@ describe('showPublicToast — timer-based fade-out and removal', () => {
 
   test('toast opacity fades to 0 after 4000ms and element is removed after 300ms more', () => {
     // Trigger showPublicToast indirectly via a validation failure that calls it
-    document.getElementById('region').value = '';
+    document.getElementById('county_city').value = '';
     entryFormApp.validateStep(1); // calls showPublicToast('Please select your county or city')
 
     // requestAnimationFrame is mocked as setTimeout(cb, 0), advance past it
@@ -1223,7 +1229,7 @@ describe('populateRegions — Choices.js integration (line 306)', () => {
     entryFormApp.populateRegions();
 
     expect(global.window.Choices).toHaveBeenCalledWith(
-      '#region',
+      '#county_city',
       expect.objectContaining({
         searchEnabled: true,
         shouldSort: false,
@@ -1297,7 +1303,7 @@ describe('setupCharCounters — input event updates counter text (lines 335-337)
 describe('buildCategoryList — Enter key handler on award options (line 414)', () => {
   beforeEach(() => {
     resetApp();
-    entryFormApp.formData = { region: 'Kent', sector: 'OUTDOOR & LANDSCAPING' };
+    entryFormApp.formData = { county_city: 'Kent', sector: 'OUTDOOR & LANDSCAPING' };
     entryFormApp.buildCategoryList();
   });
 

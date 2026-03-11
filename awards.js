@@ -71,6 +71,9 @@ const awardsModule = {
         });
       }
 
+      // Populate region & county filters from DB (non-blocking)
+      this.populateRegionAndCountyFilters();
+
       utils.trackDataLoad('awards');
 
       // Render saved views dropdown
@@ -102,13 +105,7 @@ const awardsModule = {
         '<option value="">All Sectors</option>' +
         SECTORS.map((s) => `<option value="${s}">${utils.escapeHtml(s)}</option>`).join('');
     }
-    // Region filter
-    const regionSelect = document.getElementById('awardsRegionFilterSelect');
-    if (regionSelect) {
-      regionSelect.innerHTML =
-        '<option value="">All Regions</option>' +
-        REGIONS.map((r) => `<option value="${r}">${utils.escapeHtml(r)}</option>`).join('');
-    }
+    // Region & County filters are populated from DB via populateRegionAndCountyFilters()
   },
 
   /**
@@ -351,56 +348,74 @@ const awardsModule = {
 
     // Populate sector filter
     utils.populateFilter(STATE.allAwards, 'sector', 'awardsSectorFilterSelect', 'All Sectors');
-
-    // Populate county filter
-    utils.populateFilter(STATE.allAwards, 'county', 'awardsCountyFilterSelect', 'All Counties');
-
-    // Populate actual region filter
-    const uniqueRegions = [...new Set(STATE.allAwards.map((a) => a._actualRegion).filter((r) => r))];
-
-    const regionSelect = document.getElementById('awardsRegionFilterSelect');
-    if (regionSelect) {
-      regionSelect.innerHTML =
-        '<option value="">All Regions</option>' +
-        uniqueRegions
-          .sort()
-          .map((region) => `<option value="${region}">${region}</option>`)
-          .join('');
-    }
   },
 
   /**
    * Update county dropdown based on selected region
    * @returns {void}
    */
+  /**
+   * Fetch regions and counties from the database and populate both filter dropdowns.
+   * Caches the data so subsequent calls (e.g. region change) don't re-fetch.
+   */
+  async populateRegionAndCountyFilters() {
+    try {
+      if (!this._cachedRegions) {
+        const { data: regions } = await apiClient.select('regions', {
+          select: 'id, name',
+          sort: { column: 'name', ascending: true },
+          pageSize: 500,
+        });
+        this._cachedRegions = regions || [];
+      }
+      if (!this._cachedCounties) {
+        const { data: counties } = await apiClient.select('counties', {
+          select: 'id, Name, region, region_id, regions(name)',
+          sort: { column: 'Name', ascending: true },
+          pageSize: 5000,
+        });
+        // Normalise: prefer FK join name, fall back to text region column
+        (counties || []).forEach((c) => {
+          c._regionName = c.regions?.name || c.region || null;
+        });
+        this._cachedCounties = counties || [];
+      }
+
+      // Populate region dropdown
+      const regionSelect = document.getElementById('awardsRegionFilterSelect');
+      if (regionSelect) {
+        const current = regionSelect.value;
+        regionSelect.innerHTML =
+          '<option value="">All Regions</option>' +
+          this._cachedRegions
+            .map((r) => `<option value="${utils.escapeHtml(r.name)}">${utils.escapeHtml(r.name)}</option>`)
+            .join('');
+        if (current) regionSelect.value = current;
+      }
+
+      // Populate county dropdown (respects current region selection)
+      this.updateCountyFilterByRegion();
+    } catch (e) {
+      console.warn('Could not load regions/counties from DB:', e.message);
+    }
+  },
+
   updateCountyFilterByRegion() {
     const selectedRegion = document.getElementById('awardsRegionFilterSelect')?.value || '';
     const countySelect = document.getElementById('awardsCountyFilterSelect');
 
     if (!countySelect) return;
 
-    if (!selectedRegion) {
-      const allCounties = [...new Set(STATE.allAwards.map((a) => a.county).filter((c) => c))].sort();
-
-      countySelect.innerHTML =
-        '<option value="">All Counties</option>' +
-        allCounties.map((c) => `<option value="${c}">${utils.escapeHtml(c)}</option>`).join('');
-    } else {
-      const countiesInRegion = [
-        ...new Set(
-          STATE.allAwards
-            .filter((a) => a._actualRegion === selectedRegion)
-            .map((a) => a.county)
-            .filter((c) => c)
-        ),
-      ].sort();
-
-      countySelect.innerHTML =
-        '<option value="">All Counties</option>' +
-        countiesInRegion.map((c) => `<option value="${c}">${utils.escapeHtml(c)}</option>`).join('');
+    let counties = this._cachedCounties || [];
+    if (selectedRegion) {
+      counties = counties.filter((c) => c._regionName === selectedRegion);
     }
 
-    countySelect.value = '';
+    const current = countySelect.value;
+    countySelect.innerHTML =
+      '<option value="">All Counties</option>' +
+      counties.map((c) => `<option value="${utils.escapeHtml(c.Name)}">${utils.escapeHtml(c.Name)}</option>`).join('');
+    if (current) countySelect.value = current;
   },
 
   /**
@@ -1159,13 +1174,14 @@ const awardsModule = {
     document.getElementById('awardFormPrev3rd').value = '';
     document.getElementById('awardFormModalTitle').innerHTML = '<i class="bi bi-plus-lg me-2"></i>Add Award';
 
-    // Populate county dropdown from REGIONS
+    // Populate county dropdown from cached DB data (falls back to REGIONS constant)
     const countySelect = document.getElementById('awardFormCounty');
+    const countyNames = this._cachedCounties?.length
+      ? this._cachedCounties.map((c) => c.Name).sort()
+      : [...REGIONS].sort();
     countySelect.innerHTML =
       '<option value="">Select County/City...</option>' +
-      REGIONS.sort()
-        .map((r) => `<option value="${r}">${r}</option>`)
-        .join('');
+      countyNames.map((r) => `<option value="${r}">${utils.escapeHtml(r)}</option>`).join('');
 
     // Populate sector dropdown
     const sectorSelect = document.getElementById('awardFormSector');
@@ -1243,12 +1259,15 @@ const awardsModule = {
     document.getElementById('awardFormPrev3rd').value = award.prev_year_3rd || '';
     document.getElementById('awardFormModalTitle').innerHTML = '<i class="bi bi-pencil me-2"></i>Edit Award';
 
-    // Populate county dropdown
+    // Populate county dropdown from cached DB data (falls back to REGIONS constant)
     const countySelect = document.getElementById('awardFormCounty');
+    const editCountyNames = this._cachedCounties?.length
+      ? this._cachedCounties.map((c) => c.Name).sort()
+      : [...REGIONS].sort();
     countySelect.innerHTML =
       '<option value="">Select County/City...</option>' +
-      REGIONS.sort()
-        .map((r) => `<option value="${r}" ${r === award.county ? 'selected' : ''}>${r}</option>`)
+      editCountyNames
+        .map((r) => `<option value="${r}" ${r === award.county ? 'selected' : ''}>${utils.escapeHtml(r)}</option>`)
         .join('');
 
     // Populate sector dropdown

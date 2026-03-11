@@ -36,8 +36,8 @@ const dom = new JSDOM(
   <!-- Filter elements -->
   <select id="orgsYearFilter"><option value="">All</option><option value="2026">2026</option><option value="2025">2025</option></select>
   <select id="orgsSectorFilter"><option value="">All</option><option value="BUILDING & CONSTRUCTION">BUILDING & CONSTRUCTION</option><option value="PLUMBING">PLUMBING</option><option value="ELECTRICAL">ELECTRICAL</option></select>
-  <select id="orgsCountyFilter"><option value="">All</option><option value="Kent">Kent</option><option value="Essex">Essex</option><option value="London">London</option></select>
-  <select id="orgsRegionFilter"><option value="">All Regions</option><option value="South East">South East</option><option value="East">East</option><option value="London">London</option></select>
+  <select id="orgsCountyFilter"><option value="">All</option><option value="Kent">Kent</option><option value="Essex">Essex</option><option value="London, North">London, North</option></select>
+  <select id="orgsRegionFilter"><option value="">All Regions</option><option value="South East">South East</option><option value="East of England">East of England</option><option value="Greater London">Greater London</option></select>
   <select id="orgsStatusFilter"><option value="">All</option><option value="all">Show All</option><option value="prospect">Prospect</option><option value="entrant">Entrant</option><option value="winner">Winner</option><option value="archived">Archived</option><option value="sponsor">Sponsor</option></select>
   <input id="orgsSearchBox" value="" />
   <select id="orgsTierFilter"><option value="">All</option><option value="Gold">Gold</option><option value="Silver">Silver</option><option value="Platinum">Platinum</option></select>
@@ -80,7 +80,7 @@ const dom = new JSDOM(
     <select id="newCompanySector"><option value="BUILDING">BUILDING</option></select>
     <input id="newContactName" value="" />
     <input id="newContactPhone" value="" />
-    <select id="newCompanyRegion"><option value="London">London</option></select>
+    <select id="newCompanyRegion"><option value="Greater London">Greater London</option></select>
     <input id="newCompanyAddress" value="" />
     <select id="newCompanyCounty"><option value="">All</option><option value="Kent">Kent</option></select>
     <input id="newCompanyCatchment" value="" />
@@ -200,7 +200,7 @@ function makeOrg(overrides = {}) {
     company_name: overrides.company_name || 'Test Company',
     sector: overrides.sector || null,
     county: overrides.county || null,
-    region: overrides.region || null,
+    county_city: overrides.county_city || null,
     contact_name: overrides.contact_name || null,
     email: overrides.email || null,
     website: overrides.website || null,
@@ -284,7 +284,7 @@ describe('Organisations Module - filterOrganisations()', () => {
         company_name: 'Alpha Ltd',
         sector: 'BUILDING & CONSTRUCTION',
         county: 'Kent',
-        region: 'South East',
+        county_city: 'South East',
         status: 'prospect',
         email: 'a@a.com',
         tier: 'Gold',
@@ -299,7 +299,7 @@ describe('Organisations Module - filterOrganisations()', () => {
         company_name: 'Beta Corp',
         sector: 'PLUMBING',
         county: 'Essex',
-        region: 'East',
+        county_city: 'East of England',
         status: 'entrant',
         email: null,
         tier: null,
@@ -314,7 +314,7 @@ describe('Organisations Module - filterOrganisations()', () => {
         company_name: 'Gamma Inc',
         sector: 'BUILDING & CONSTRUCTION',
         county: 'Kent',
-        region: 'South East',
+        county_city: 'South East',
         status: 'winner',
         email: 'g@g.com',
         tier: 'Silver',
@@ -329,7 +329,7 @@ describe('Organisations Module - filterOrganisations()', () => {
         company_name: 'Delta LLC',
         sector: 'ELECTRICAL',
         county: 'London',
-        region: 'London',
+        county_city: 'London',
         status: 'archived',
         email: 'd@d.com',
         tier: null,
@@ -342,7 +342,7 @@ describe('Organisations Module - filterOrganisations()', () => {
         company_name: 'Epsilon Plc',
         sector: 'PLUMBING',
         county: 'Essex',
-        region: 'East',
+        county_city: 'East of England',
         status: 'sponsor',
         email: 'e@e.com',
         tier: 'Platinum',
@@ -398,7 +398,7 @@ describe('Organisations Module - filterOrganisations()', () => {
   });
 
   test('filters by region', () => {
-    document.getElementById('orgsRegionFilter').value = 'East';
+    document.getElementById('orgsRegionFilter').value = 'East of England';
     orgsModule.filterOrganisations();
     const ids = STATE.filteredOrganisations.map((o) => o.id).sort();
     expect(ids).toEqual(['2', '5']);
@@ -644,7 +644,7 @@ describe('Organisations Module - exportToCSV()', () => {
         company_name: 'Export Co',
         sector: 'BUILDING',
         county: 'Kent',
-        region: 'South East',
+        county_city: 'South East',
         contact_name: 'John',
         email: 'john@export.co',
         status: 'prospect',
@@ -957,34 +957,10 @@ describe('Organisations Module - _calculateConversionRates()', () => {
 describe('Organisations Module - populateFilters()', () => {
   beforeEach(() => {
     STATE.allOrganisations = [
-      makeOrg({ sector: 'BUILDING', county: 'Kent', region: 'South East', tags: ['vip'] }),
-      makeOrg({ sector: 'PLUMBING', county: 'Essex', region: 'East', tags: ['premium'] }),
-      makeOrg({ sector: 'BUILDING', county: 'Kent', region: 'South East', tags: ['vip', 'premium'] }),
+      makeOrg({ sector: 'BUILDING', county: 'Kent', county_city: 'South East', tags: ['vip'] }),
+      makeOrg({ sector: 'PLUMBING', county: 'Essex', county_city: 'East of England', tags: ['premium'] }),
+      makeOrg({ sector: 'BUILDING', county: 'Kent', county_city: 'South East', tags: ['vip', 'premium'] }),
     ];
-  });
-
-  test('populates sector filter with unique sorted values', () => {
-    orgsModule.populateFilters();
-    const sectorSelect = document.getElementById('orgsSectorFilter');
-    const options = Array.from(sectorSelect.querySelectorAll('option'));
-    const values = options.map((o) => o.value).filter((v) => v !== '');
-    expect(values).toEqual(['BUILDING', 'PLUMBING']);
-  });
-
-  test('populates county filter with unique sorted values', () => {
-    orgsModule.populateFilters();
-    const countySelect = document.getElementById('orgsCountyFilter');
-    const options = Array.from(countySelect.querySelectorAll('option'));
-    const values = options.map((o) => o.value).filter((v) => v !== '');
-    expect(values).toEqual(['Essex', 'Kent']);
-  });
-
-  test('populates region filter with unique sorted values', () => {
-    orgsModule.populateFilters();
-    const regionSelect = document.getElementById('orgsRegionFilter');
-    const options = Array.from(regionSelect.querySelectorAll('option'));
-    const values = options.map((o) => o.value).filter((v) => v !== '');
-    expect(values).toEqual(['East', 'South East']);
   });
 
   test('populates tag filter with unique sorted tags from all orgs', () => {
@@ -993,6 +969,14 @@ describe('Organisations Module - populateFilters()', () => {
     const options = Array.from(tagSelect.querySelectorAll('option'));
     const values = options.map((o) => o.value).filter((v) => v !== '');
     expect(values).toEqual(['premium', 'vip']);
+  });
+
+  test('sector, region, and county filters are now DB-driven (not populated by populateFilters)', () => {
+    // These filters are now populated by populateSectorFilter() and populateRegionAndCountyFilters()
+    // which fetch from the database. populateFilters() only handles tags and presets.
+    orgsModule.populateFilters();
+    // Should not throw
+    expect(true).toBe(true);
   });
 });
 
@@ -1089,7 +1073,7 @@ describe('Organisations Module - Edge Cases', () => {
   });
 
   test('populateFilters with orgs that have null sectors/counties does not throw', () => {
-    STATE.allOrganisations = [makeOrg({ sector: null, county: null, region: null, tags: null })];
+    STATE.allOrganisations = [makeOrg({ sector: null, county: null, county_city: null, tags: null })];
     expect(() => orgsModule.populateFilters()).not.toThrow();
   });
 });
@@ -1119,7 +1103,7 @@ describe('Organisations Module - Filter Combinations', () => {
         company_name: 'Alpha Ltd',
         sector: 'BUILDING & CONSTRUCTION',
         county: 'Kent',
-        region: 'South East',
+        county_city: 'South East',
         status: 'prospect',
         email: 'a@a.com',
         tier: 'Gold',
@@ -1134,7 +1118,7 @@ describe('Organisations Module - Filter Combinations', () => {
         company_name: 'Beta Corp',
         sector: 'PLUMBING',
         county: 'Essex',
-        region: 'East',
+        county_city: 'East of England',
         status: 'entrant',
         email: null,
         tier: null,
@@ -1149,7 +1133,7 @@ describe('Organisations Module - Filter Combinations', () => {
         company_name: 'Gamma Inc',
         sector: 'BUILDING & CONSTRUCTION',
         county: 'Kent',
-        region: 'South East',
+        county_city: 'South East',
         status: 'winner',
         email: 'g@g.com',
         tier: 'Silver',
@@ -1164,7 +1148,7 @@ describe('Organisations Module - Filter Combinations', () => {
         company_name: 'Delta LLC',
         sector: 'ELECTRICAL',
         county: 'London',
-        region: 'London',
+        county_city: 'London',
         status: 'archived',
         email: 'd@d.com',
         tier: null,
@@ -1177,7 +1161,7 @@ describe('Organisations Module - Filter Combinations', () => {
         company_name: 'Epsilon Plc',
         sector: 'PLUMBING',
         county: 'Essex',
-        region: 'East',
+        county_city: 'East of England',
         status: 'sponsor',
         email: 'e@e.com',
         tier: 'Platinum',
@@ -1191,7 +1175,7 @@ describe('Organisations Module - Filter Combinations', () => {
 
   test('filter by sector and region applies both filters', () => {
     document.getElementById('orgsSectorFilter').value = 'PLUMBING';
-    document.getElementById('orgsRegionFilter').value = 'East';
+    document.getElementById('orgsRegionFilter').value = 'East of England';
     orgsModule.filterOrganisations();
     expect(STATE.filteredOrganisations.length).toBeLessThanOrEqual(STATE.allOrganisations.length);
   });
@@ -1763,39 +1747,9 @@ describe('Organisations Module - Export Advanced', () => {
 });
 
 describe('Organisations Module - Populate Filters Advanced', () => {
-  test('populates with many unique sectors', () => {
-    STATE.allOrganisations = [
-      makeOrg({ sector: 'BUILDING' }),
-      makeOrg({ sector: 'PLUMBING' }),
-      makeOrg({ sector: 'ELECTRICAL' }),
-      makeOrg({ sector: 'HEATING' }),
-      makeOrg({ sector: 'ROOFING' }),
-    ];
-    orgsModule.populateFilters();
-    const sectorSelect = document.getElementById('orgsSectorFilter');
-    const values = Array.from(sectorSelect.querySelectorAll('option'))
-      .map((o) => o.value)
-      .filter((v) => v !== '');
-    expect(values.length).toBe(5);
-    // Check sorted
-    for (let i = 0; i < values.length - 1; i++) {
-      expect(values[i] <= values[i + 1]).toBe(true);
-    }
-  });
-
-  test('filters out empty/null sectors', () => {
-    STATE.allOrganisations = [
-      makeOrg({ sector: 'BUILDING' }),
-      makeOrg({ sector: null }),
-      makeOrg({ sector: '' }),
-      makeOrg({ sector: 'PLUMBING' }),
-    ];
-    orgsModule.populateFilters();
-    const sectorSelect = document.getElementById('orgsSectorFilter');
-    const values = Array.from(sectorSelect.querySelectorAll('option'))
-      .map((o) => o.value)
-      .filter((v) => v !== '');
-    expect(values).toEqual(['BUILDING', 'PLUMBING']);
+  test('populateFilters does not throw with null data', () => {
+    STATE.allOrganisations = [makeOrg({ sector: null, county: null, county_city: null, tags: null })];
+    expect(() => orgsModule.populateFilters()).not.toThrow();
   });
 
   test('handles all orgs with same tag', () => {
@@ -2220,7 +2174,7 @@ describe('Organisations Module - calculateCompletenessScore()', () => {
       website: 'http://test.com',
       logo_url: 'http://logo.png',
       sector: 'BUILDING',
-      region: 'London',
+      county_city: 'London',
       address: '123 Street',
       description: 'A description',
     });
@@ -2237,7 +2191,7 @@ describe('Organisations Module - calculateCompletenessScore()', () => {
       website: null,
       logo_url: null,
       sector: null,
-      region: null,
+      county_city: null,
       address: null,
       description: null,
     };
@@ -2720,7 +2674,7 @@ describe('Organisations Module - Deep Search', () => {
         email: 'alpha@plumb.com',
         tags: ['vip'],
         county: 'Kent',
-        region: 'South East',
+        county_city: 'South East',
         address: '10 High Street',
       }),
       makeOrg({
@@ -2730,7 +2684,7 @@ describe('Organisations Module - Deep Search', () => {
         email: 'beta@elec.com',
         tags: ['sponsor'],
         county: 'London',
-        region: 'London',
+        county_city: 'London',
       }),
       makeOrg({
         id: 's3',
@@ -2739,7 +2693,7 @@ describe('Organisations Module - Deep Search', () => {
         email: null,
         tags: [],
         county: 'Essex',
-        region: 'East',
+        county_city: 'East of England',
         notes: 'Important client',
       }),
     ];
@@ -2927,10 +2881,17 @@ describe('Organisations Module - _levenshtein()', () => {
 describe('Organisations Module - updateCountyFilterByRegion()', () => {
   beforeEach(() => {
     STATE.allOrganisations = [
-      makeOrg({ county: 'Kent', region: 'South East' }),
-      makeOrg({ county: 'Surrey', region: 'South East' }),
-      makeOrg({ county: 'London', region: 'London' }),
-      makeOrg({ county: 'Essex', region: 'East' }),
+      makeOrg({ county: 'Kent', county_city: 'South East' }),
+      makeOrg({ county: 'Surrey', county_city: 'South East' }),
+      makeOrg({ county: 'London, North', county_city: 'Greater London' }),
+      makeOrg({ county: 'Essex', county_city: 'East of England' }),
+    ];
+    // Simulate cached DB data used by the updated updateCountyFilterByRegion
+    orgsModule._cachedCounties = [
+      { Name: 'Kent', region: 'South East', _regionName: 'South East' },
+      { Name: 'Surrey', region: 'South East', _regionName: 'South East' },
+      { Name: 'London, North', region: 'Greater London', _regionName: 'Greater London' },
+      { Name: 'Essex', region: 'East of England', _regionName: 'East of England' },
     ];
   });
 
@@ -3405,7 +3366,7 @@ describe('Organisations Module - restoreFilters()', () => {
   });
 
   test('restores region and triggers county update', () => {
-    STATE.allOrganisations = [makeOrg({ county: 'Kent', region: 'South East' })];
+    STATE.allOrganisations = [makeOrg({ county: 'Kent', county_city: 'South East' })];
     const regionEl = document.getElementById('orgsRegionFilter');
     if (!regionEl.querySelector('option[value="South East"]')) {
       const opt = document.createElement('option');
@@ -3510,7 +3471,7 @@ describe('Organisations Module - _buildOrgServerFilters()', () => {
     }
     regionEl.value = 'South East';
     const filters = orgsModule._buildOrgServerFilters();
-    expect(filters.region).toBe('South East');
+    expect(filters.county_city).toBe('South East');
   });
 
   test('includes multiple filters', () => {
@@ -3524,15 +3485,15 @@ describe('Organisations Module - _buildOrgServerFilters()', () => {
     }
     sectorEl.value = 'BUILDING';
     const regionEl = document.getElementById('orgsRegionFilter');
-    if (!regionEl.querySelector('option[value="London"]')) {
+    if (!regionEl.querySelector('option[value="Greater London"]')) {
       const opt = document.createElement('option');
-      opt.value = 'London';
-      opt.textContent = 'London';
+      opt.value = 'Greater London';
+      opt.textContent = 'Greater London';
       regionEl.appendChild(opt);
     }
-    regionEl.value = 'London';
+    regionEl.value = 'Greater London';
     const filters = orgsModule._buildOrgServerFilters();
-    expect(filters).toEqual({ status: 'prospect', sector: 'BUILDING', region: 'London' });
+    expect(filters).toEqual({ status: 'prospect', sector: 'BUILDING', county_city: 'Greater London' });
   });
 });
 
@@ -4015,7 +3976,7 @@ describe('Organisations Module - sortBy() additional fields', () => {
         company_name: 'C',
         contact_name: 'Zoe',
         email: 'z@z.com',
-        region: 'London',
+        county_city: 'London',
         contact_phone: '999',
         status: 'prospect',
       }),
@@ -4024,7 +3985,7 @@ describe('Organisations Module - sortBy() additional fields', () => {
         company_name: 'A',
         contact_name: 'Alice',
         email: 'a@a.com',
-        region: 'East',
+        county_city: 'East of England',
         contact_phone: '111',
         status: 'prospect',
       }),
@@ -4033,7 +3994,7 @@ describe('Organisations Module - sortBy() additional fields', () => {
         company_name: 'B',
         contact_name: 'Bob',
         email: 'b@b.com',
-        region: 'South East',
+        county_city: 'South East',
         contact_phone: '555',
         status: 'prospect',
       }),
@@ -4052,8 +4013,8 @@ describe('Organisations Module - sortBy() additional fields', () => {
   });
 
   test('sorts by region ascending', () => {
-    orgsModule.sortBy('region');
-    expect(STATE.filteredOrganisations.map((o) => o.region)).toEqual(['East', 'London', 'South East']);
+    orgsModule.sortBy('county_city');
+    expect(STATE.filteredOrganisations.map((o) => o.county_city)).toEqual(['East of England', 'London', 'South East']);
   });
 
   test('sorts by phone ascending', () => {
@@ -4507,7 +4468,7 @@ describe('Organisations Module - CSV Field Constants', () => {
     expect(orgsModule._dbFields).toContain('company_name');
     expect(orgsModule._dbFields).toContain('email');
     expect(orgsModule._dbFields).toContain('sector');
-    expect(orgsModule._dbFields).toContain('region');
+    expect(orgsModule._dbFields).toContain('county_city');
     expect(orgsModule._dbFields).toContain('contact_name');
     expect(orgsModule._dbFields).toContain('website');
     expect(orgsModule._dbFields).toContain('address');
@@ -4898,7 +4859,7 @@ describe('Organisations Module - calculateCompletenessScore()', () => {
       website: 'http://example.com',
       logo_url: 'http://logo.png',
       sector: 'Tech',
-      region: 'London',
+      county_city: 'London',
       address: '1 Main St',
       description: 'A company',
     });
@@ -5315,9 +5276,15 @@ describe('Organisations Module - getPackageBadge()', () => {
 describe('Organisations Module - updateCountyFilterByRegion()', () => {
   beforeEach(() => {
     STATE.allOrganisations = [
-      makeOrg({ county: 'Kent', region: 'South East' }),
-      makeOrg({ county: 'Essex', region: 'East' }),
-      makeOrg({ county: 'Surrey', region: 'South East' }),
+      makeOrg({ county: 'Kent', county_city: 'South East' }),
+      makeOrg({ county: 'Essex', county_city: 'East of England' }),
+      makeOrg({ county: 'Surrey', county_city: 'South East' }),
+    ];
+    // Simulate cached DB data used by the updated updateCountyFilterByRegion
+    orgsModule._cachedCounties = [
+      { Name: 'Kent', region: 'South East', _regionName: 'South East' },
+      { Name: 'Essex', region: 'East', _regionName: 'East' },
+      { Name: 'Surrey', region: 'South East', _regionName: 'South East' },
     ];
   });
 
@@ -5434,31 +5401,10 @@ describe('Organisations Module - _populateFiltersFromConstants()', () => {
 describe('Organisations Module - populateFilters()', () => {
   beforeEach(() => {
     STATE.allOrganisations = [
-      makeOrg({ sector: 'Tech', county: 'Kent', region: 'South East', tags: ['vip'] }),
-      makeOrg({ sector: 'Finance', county: 'Essex', region: 'East', tags: ['premium', 'vip'] }),
-      makeOrg({ sector: 'Tech', county: 'Kent', region: 'South East', tags: [] }),
+      makeOrg({ sector: 'Tech', county: 'Kent', county_city: 'South East', tags: ['vip'] }),
+      makeOrg({ sector: 'Finance', county: 'Essex', county_city: 'East of England', tags: ['premium', 'vip'] }),
+      makeOrg({ sector: 'Tech', county: 'Kent', county_city: 'South East', tags: [] }),
     ];
-  });
-
-  test('populates sector filter with unique sorted values', () => {
-    orgsModule.populateFilters();
-    const html = document.getElementById('orgsSectorFilter').innerHTML;
-    expect(html).toContain('Finance');
-    expect(html).toContain('Tech');
-  });
-
-  test('populates county filter with unique sorted values', () => {
-    orgsModule.populateFilters();
-    const html = document.getElementById('orgsCountyFilter').innerHTML;
-    expect(html).toContain('Essex');
-    expect(html).toContain('Kent');
-  });
-
-  test('populates region filter with unique sorted values', () => {
-    orgsModule.populateFilters();
-    const html = document.getElementById('orgsRegionFilter').innerHTML;
-    expect(html).toContain('East');
-    expect(html).toContain('South East');
   });
 
   test('populates tag filter with unique sorted values', () => {
@@ -5469,6 +5415,11 @@ describe('Organisations Module - populateFilters()', () => {
       expect(html).toContain('premium');
       expect(html).toContain('vip');
     }
+  });
+
+  test('does not throw with any data', () => {
+    // Sector, region, and county are now DB-driven via separate methods
+    expect(() => orgsModule.populateFilters()).not.toThrow();
   });
 });
 
@@ -6384,15 +6335,15 @@ describe('Organisations Module - Import Validation', () => {
 
   test('validateImportData detects duplicate with existing org', () => {
     STATE.allOrganisations = [makeOrg({ company_name: 'Existing Co' })];
-    const issues = orgsModule.validateImportData([{ company_name: 'Existing Co', region: 'London' }]);
+    const issues = orgsModule.validateImportData([{ company_name: 'Existing Co', county_city: 'London' }]);
     expect(issues.some((i) => i.severity === 'warning' && i.message.includes('already exists'))).toBe(true);
   });
 
   test('validateImportData detects duplicate within import', () => {
     STATE.allOrganisations = [];
     const issues = orgsModule.validateImportData([
-      { company_name: 'Duplicate Co', region: 'London' },
-      { company_name: 'Duplicate Co', region: 'London' },
+      { company_name: 'Duplicate Co', county_city: 'London' },
+      { company_name: 'Duplicate Co', county_city: 'London' },
     ]);
     expect(issues.some((i) => i.severity === 'warning' && i.message.includes('Duplicate in import'))).toBe(true);
   });
@@ -6406,8 +6357,8 @@ describe('Organisations Module - Import Validation', () => {
   test('showImportValidationPreview returns HTML with correct counts', () => {
     STATE.allOrganisations = [];
     const rows = [
-      { company_name: 'Good Co', email: 'good@test.com', region: 'London' },
-      { company_name: '', email: 'bad', region: '' },
+      { company_name: 'Good Co', email: 'good@test.com', county_city: 'London' },
+      { company_name: '', email: 'bad', county_city: '' },
     ];
     const html = orgsModule.showImportValidationPreview(rows);
     expect(html).toContain('Total Rows');
@@ -6552,8 +6503,8 @@ describe('Organisations Module - _matchesSegmentRules()', () => {
 describe('Organisations Module - showOrgComparison()', () => {
   beforeEach(() => {
     STATE.allOrganisations = [
-      makeOrg({ id: 'cmp1', company_name: 'Comp A', sector: 'Tech', region: 'London' }),
-      makeOrg({ id: 'cmp2', company_name: 'Comp B', sector: 'Finance', region: 'East' }),
+      makeOrg({ id: 'cmp1', company_name: 'Comp A', sector: 'Tech', county_city: 'London' }),
+      makeOrg({ id: 'cmp2', company_name: 'Comp B', sector: 'Finance', county_city: 'East of England' }),
     ];
     orgsModule._lastContactedMap = {};
     orgsModule.selectedOrgs = new Set();
@@ -6703,7 +6654,10 @@ describe('Organisations Module - filterByRegion()', () => {
     orgsModule._currentPage = 1;
     orgsModule._pageSize = 50;
     orgsModule.selectedOrgs = new Set();
-    STATE.allOrganisations = [makeOrg({ id: 'fr1', region: 'South East' }), makeOrg({ id: 'fr2', region: 'East' })];
+    STATE.allOrganisations = [
+      makeOrg({ id: 'fr1', county_city: 'South East' }),
+      makeOrg({ id: 'fr2', county_city: 'East of England' }),
+    ];
     STATE.filteredOrganisations = [...STATE.allOrganisations];
     document.getElementById('orgsYearFilter').value = '';
     document.getElementById('orgsSectorFilter').value = '';

@@ -91,6 +91,8 @@ const orgsModule = {
       // Calculate dashboard stats AFTER first page is loaded
       await this.calculateDashboardStats();
 
+      this.populateRegionAndCountyFilters();
+      this.populateSectorFilter();
       this.populateSectorSuggestions();
       utils.trackDataLoad('organisations');
     } catch (error) {
@@ -225,35 +227,9 @@ const orgsModule = {
    * Populate filter dropdowns with unique values (Enhanced)
    */
   populateFilters() {
-    // Populate sector filter
-    const sectors = [...new Set(STATE.allOrganisations.map((o) => o.sector).filter((s) => s))].sort();
-
-    const sectorSelect = document.getElementById('orgsSectorFilter');
-    if (sectorSelect) {
-      sectorSelect.innerHTML =
-        '<option value="">All</option>' +
-        sectors.map((s) => `<option value="${s}">${utils.escapeHtml(s)}</option>`).join('');
-    }
-
-    // Populate county filter
-    const counties = [...new Set(STATE.allOrganisations.map((o) => o.county).filter((c) => c))].sort();
-
-    const countySelect = document.getElementById('orgsCountyFilter');
-    if (countySelect) {
-      countySelect.innerHTML =
-        '<option value="">All</option>' +
-        counties.map((c) => `<option value="${c}">${utils.escapeHtml(c)}</option>`).join('');
-    }
-
-    // Populate region filter
-    const regions = [...new Set(STATE.allOrganisations.map((o) => o.region).filter((r) => r))].sort();
-
-    const regionSelect = document.getElementById('orgsRegionFilter');
-    if (regionSelect) {
-      regionSelect.innerHTML =
-        '<option value="">All Regions</option>' +
-        regions.map((r) => `<option value="${r}">${utils.escapeHtml(r)}</option>`).join('');
-    }
+    // Sector, region, and county filters are populated from DB
+    // via populateSectorFilter() and populateRegionAndCountyFilters().
+    // This method handles tag filter and saved presets.
 
     // Populate tag filter
     const allTags = new Set();
@@ -313,7 +289,97 @@ const orgsModule = {
   },
 
   /**
-   * Update county dropdown based on selected region
+   * Fetch regions and counties from the database and populate both filter dropdowns.
+   * Caches the data so subsequent calls (e.g. region change) don't re-fetch.
+   */
+  async populateRegionAndCountyFilters() {
+    try {
+      if (!this._cachedRegions) {
+        const { data: regions } = await apiClient.select('regions', {
+          select: 'id, name',
+          sort: { column: 'name', ascending: true },
+          pageSize: 500,
+        });
+        this._cachedRegions = regions || [];
+      }
+      if (!this._cachedCounties) {
+        const { data: counties } = await apiClient.select('counties', {
+          select: 'id, Name, region, region_id, regions(name)',
+          sort: { column: 'Name', ascending: true },
+          pageSize: 5000,
+        });
+        // Normalise: prefer FK join name, fall back to text region column
+        (counties || []).forEach((c) => {
+          c._regionName = c.regions?.name || c.region || null;
+        });
+        this._cachedCounties = counties || [];
+      }
+
+      // Populate region dropdown
+      const regionSelect = document.getElementById('orgsRegionFilter');
+      if (regionSelect) {
+        const current = regionSelect.value;
+        regionSelect.innerHTML =
+          '<option value="">All Regions</option>' +
+          this._cachedRegions
+            .map((r) => `<option value="${utils.escapeHtml(r.name)}">${utils.escapeHtml(r.name)}</option>`)
+            .join('');
+        if (current) regionSelect.value = current;
+      }
+
+      // Populate county dropdown (respects current region selection)
+      this.updateCountyFilterByRegion();
+
+      // Also update the Add Company and CSV import county dropdowns
+      this._populateFormCountyDropdowns();
+    } catch (e) {
+      console.warn('Could not load regions/counties from DB:', e.message);
+    }
+  },
+
+  /**
+   * Populate the Add Company and CSV import county dropdowns from cached DB data.
+   * Groups counties by region for a better UX.
+   */
+  _populateFormCountyDropdowns() {
+    const counties = this._cachedCounties || [];
+    if (!counties.length) return;
+
+    // Group counties by region
+    const grouped = {};
+    counties.forEach((c) => {
+      const region = c._regionName || 'Other';
+      if (!grouped[region]) grouped[region] = [];
+      grouped[region].push(c.Name);
+    });
+
+    // Build optgroup HTML
+    const optgroupHtml = Object.keys(grouped)
+      .sort()
+      .map(
+        (region) =>
+          `<optgroup label="${utils.escapeHtml(region)}">${grouped[region]
+            .sort()
+            .map((n) => `<option value="${utils.escapeHtml(n)}">${utils.escapeHtml(n)}</option>`)
+            .join('')}</optgroup>`
+      )
+      .join('');
+
+    // Update Add Company county dropdown
+    const addSelect = document.getElementById('newCompanyCounty');
+    if (addSelect) {
+      addSelect.innerHTML = '<option value="">-- Select --</option>' + optgroupHtml;
+    }
+
+    // Update CSV import county dropdown
+    const csvSelect = document.getElementById('csvCountySelect');
+    if (csvSelect) {
+      csvSelect.innerHTML = '<option value="">-- Select County or City --</option>' + optgroupHtml;
+    }
+  },
+
+  /**
+   * Update county dropdown based on selected region using cached DB data
    */
   updateCountyFilterByRegion() {
     const selectedRegion = document.getElementById('orgsRegionFilter')?.value || '';
@@ -321,31 +387,16 @@ const orgsModule = {
 
     if (!countySelect) return;
 
-    if (!selectedRegion) {
-      // No region selected - show all counties
-      const allCounties = [...new Set(STATE.allOrganisations.map((o) => o.county).filter((c) => c))].sort();
-
-      countySelect.innerHTML =
-        '<option value="">All Counties</option>' +
-        allCounties.map((c) => `<option value="${c}">${utils.escapeHtml(c)}</option>`).join('');
-    } else {
-      // Region selected - show only counties in that region
-      const countiesInRegion = [
-        ...new Set(
-          STATE.allOrganisations
-            .filter((o) => o.region === selectedRegion)
-            .map((o) => o.county)
-            .filter((c) => c)
-        ),
-      ].sort();
-
-      countySelect.innerHTML =
-        '<option value="">All Counties</option>' +
-        countiesInRegion.map((c) => `<option value="${c}">${utils.escapeHtml(c)}</option>`).join('');
+    let counties = this._cachedCounties || [];
+    if (selectedRegion) {
+      counties = counties.filter((c) => c._regionName === selectedRegion);
     }
 
-    // Reset county selection
-    countySelect.value = '';
+    const current = countySelect.value;
+    countySelect.innerHTML =
+      '<option value="">All Counties</option>' +
+      counties.map((c) => `<option value="${utils.escapeHtml(c.Name)}">${utils.escapeHtml(c.Name)}</option>`).join('');
+    if (current) countySelect.value = current;
   },
 
   /**
@@ -358,12 +409,7 @@ const orgsModule = {
         '<option value="">All</option>' +
         SECTORS.map((s) => `<option value="${utils.escapeHtml(s)}">${utils.escapeHtml(s)}</option>`).join('');
     }
-    const regionSelect = document.getElementById('orgsRegionFilter');
-    if (regionSelect) {
-      regionSelect.innerHTML =
-        '<option value="">All Regions</option>' +
-        REGIONS.map((r) => `<option value="${utils.escapeHtml(r)}">${utils.escapeHtml(r)}</option>`).join('');
-    }
+    // Region & County filters are populated from DB via populateRegionAndCountyFilters()
   },
 
   /**
@@ -379,7 +425,7 @@ const orgsModule = {
     if (status && status !== 'all') filters.status = status;
     if (sector) filters.sector = sector;
     if (county) filters.county = county;
-    if (region) filters.region = region;
+    if (region) filters.county_city = region;
     return filters;
   },
 
@@ -490,7 +536,7 @@ const orgsModule = {
         const award = awardMap[awardId];
         const awardCounty = award?.county || null;
         org.county = awardCounty || org.catchment_area || org.county || null;
-        org.region = org.county ? countyToRegion[org.county] || org.region || null : org.region || null;
+        org.county_city = org.county ? countyToRegion[org.county] || org.county_city || null : org.county_city || null;
         org.sector = award?.sector || org.sector || null;
         org.year = award?.year || org.year || null;
         org.awards_count = orgAwardsCount[org.id] || 0;
@@ -586,7 +632,7 @@ const orgsModule = {
       if (county && org.county !== county) return false;
 
       // Region filter
-      if (region && org.region !== region) return false;
+      if (region && org.county_city !== region) return false;
 
       // Tier filter
       if (tier && (org.tier || '') !== tier) return false;
@@ -629,7 +675,7 @@ const orgsModule = {
           org.notes,
           org.county,
           org.sector,
-          org.region,
+          org.county_city,
           org.catchment_area,
           org.address,
           orgStatus,
@@ -662,7 +708,7 @@ const orgsModule = {
         STATE.filteredOrganisations = STATE.filteredOrganisations.filter((o) => (o.status || 'prospect') === status);
       if (sector) STATE.filteredOrganisations = STATE.filteredOrganisations.filter((o) => o.sector === sector);
       if (county) STATE.filteredOrganisations = STATE.filteredOrganisations.filter((o) => o.county === county);
-      if (region) STATE.filteredOrganisations = STATE.filteredOrganisations.filter((o) => o.region === region);
+      if (region) STATE.filteredOrganisations = STATE.filteredOrganisations.filter((o) => o.county_city === region);
       if (tier) STATE.filteredOrganisations = STATE.filteredOrganisations.filter((o) => (o.tier || '') === tier);
     }
 
@@ -724,7 +770,7 @@ const orgsModule = {
       email: 5,
       tier: 6,
       tags: 7,
-      region: 8,
+      county_city: 8,
       status: 9,
       awards: 10,
       updated: 11,
@@ -847,9 +893,9 @@ const orgsModule = {
               : '<span class="text-muted small">-</span>'
           }
         </td>
-        <td style="${cv('region')}">
+        <td style="${cv('county_city')}">
           <span class="badge bg-success-subtle text-success small">
-            ${utils.escapeHtml(org.region || '-')}
+            ${utils.escapeHtml(org.county_city || '-')}
           </span>
         </td>
         <td class="text-center" style="${cv('status')}">
@@ -1152,11 +1198,11 @@ const orgsModule = {
                 <div class="mb-2">
                   <strong>Region:</strong>
                   <span class="view-mode" id="viewRegion">
-                    <span class="badge bg-success-subtle text-success">${utils.escapeHtml(org.region || 'N/A')}</span>
+                    <span class="badge bg-success-subtle text-success">${utils.escapeHtml(org.county_city || 'N/A')}</span>
                   </span>
                   <select class="form-select form-select-sm edit-mode" id="editRegion" style="display: none;">
                     <option value="">Select Region</option>
-                    ${REGIONS.map((r) => `<option value="${r}" ${org.region === r ? 'selected' : ''}>${r}</option>`).join('')}
+                    ${(this._cachedRegions || []).map((r) => `<option value="${utils.escapeHtml(r.name)}" ${org.county_city === r.name ? 'selected' : ''}>${utils.escapeHtml(r.name)}</option>`).join('')}
                   </select>
                 </div>
                 <div class="mb-2">
@@ -2600,7 +2646,7 @@ const orgsModule = {
           email: document.getElementById('editEmail').value.trim(),
           contact_phone: document.getElementById('editPhone').value.trim(),
           website: document.getElementById('editWebsite').value.trim(),
-          region: document.getElementById('editRegion').value,
+          county_city: document.getElementById('editRegion').value,
           address: document.getElementById('editAddress').value.trim(),
           catchment_area: document.getElementById('editCatchmentArea').value.trim(),
           // Extended fields
@@ -2924,7 +2970,7 @@ const orgsModule = {
       contact_phone: document.getElementById('newContactPhone').value.trim() || null,
       email: email || null,
       website: website,
-      region: document.getElementById('newCompanyRegion').value,
+      county_city: document.getElementById('newCompanyRegion').value,
       address: document.getElementById('newCompanyAddress').value.trim() || null,
       catchment_area: selectedCounty || document.getElementById('newCompanyCatchment').value.trim() || null,
       status: 'prospect',
@@ -3033,9 +3079,9 @@ const orgsModule = {
           valA = (a.email || '').toLowerCase();
           valB = (b.email || '').toLowerCase();
           break;
-        case 'region':
-          valA = (a.region || '').toLowerCase();
-          valB = (b.region || '').toLowerCase();
+        case 'county_city':
+          valA = (a.county_city || '').toLowerCase();
+          valB = (b.county_city || '').toLowerCase();
           break;
         case 'status':
           valA = (a.status || 'prospect').toLowerCase();
@@ -3084,6 +3130,33 @@ const orgsModule = {
         const iconClass = this.sortDirection === 'asc' ? 'bi-arrow-up' : 'bi-arrow-down';
         activeIcon.className = `bi ${iconClass} text-primary ms-1 small`;
       }
+    }
+  },
+
+  /**
+   * Fetch all distinct sectors from the database and populate the sector filter dropdown.
+   * Merges hardcoded SECTORS constant with actual data so the filter includes every sector
+   * that exists in the organisations table (matching how the Awards tab works).
+   */
+  async populateSectorFilter() {
+    try {
+      const { data } = await apiClient.select('organisations', {
+        select: 'sector',
+        pageSize: 10000,
+      });
+      const dbSectors = (data || []).map((o) => o.sector).filter(Boolean);
+      const allSectors = [...new Set([...SECTORS, ...dbSectors])].sort();
+
+      const sectorSelect = document.getElementById('orgsSectorFilter');
+      if (sectorSelect) {
+        const current = sectorSelect.value;
+        sectorSelect.innerHTML =
+          '<option value="">All</option>' +
+          allSectors.map((s) => `<option value="${utils.escapeHtml(s)}">${utils.escapeHtml(s)}</option>`).join('');
+        if (current) sectorSelect.value = current;
+      }
+    } catch (e) {
+      console.warn('Could not load sector filter from DB:', e.message);
     }
   },
 
@@ -3149,7 +3222,7 @@ const orgsModule = {
             `"${(org.company_name || '').replace(/"/g, '""')}"`,
             `"${(org.sector || '').replace(/"/g, '""')}"`,
             `"${(org.county || '').replace(/"/g, '""')}"`,
-            `"${(org.region || '').replace(/"/g, '""')}"`,
+            `"${(org.county_city || '').replace(/"/g, '""')}"`,
             `"${(org.contact_name || '').replace(/"/g, '""')}"`,
             `"${(org.email || '').replace(/"/g, '""')}"`,
             `"${(org.contact_phone || '').replace(/"/g, '""')}"`,
@@ -4211,7 +4284,7 @@ const orgsModule = {
       const existingSectors = [...new Set(STATE.allOrganisations.map((o) => o.sector).filter(Boolean))];
       const allSectors = [...new Set([...SECTORS, ...existingSectors])].sort();
       options = allSectors.map((s) => `<option value="${s}">${utils.escapeHtml(s)}</option>`).join('');
-    } else if (field === 'region') {
+    } else if (field === 'county_city') {
       options = REGIONS.map((r) => `<option value="${r}">${utils.escapeHtml(r)}</option>`).join('');
     } else if (field === 'tier') {
       options = ['Bronze', 'Silver', 'Gold', 'Platinum'].map((t) => `<option value="${t}">${t}</option>`).join('');
@@ -4343,8 +4416,8 @@ const orgsModule = {
     'county/city': 'county',
     location: 'county',
     city: 'county',
-    region: 'region',
-    area: 'region',
+    region: 'county_city',
+    area: 'county_city',
     contact_name: 'contact_name',
     'contact name': 'contact_name',
     contact: 'contact_name',
@@ -4386,7 +4459,7 @@ const orgsModule = {
   _dbFields: [
     'company_name',
     'sector',
-    'region',
+    'county_city',
     'contact_name',
     'email',
     'contact_phone',
@@ -5825,7 +5898,7 @@ const orgsModule = {
       'contact_phone',
       'website',
       'sector',
-      'region',
+      'county_city',
       'address',
       'catchment_area',
       'description',
@@ -5876,7 +5949,7 @@ const orgsModule = {
       'contact_phone',
       'website',
       'sector',
-      'region',
+      'county_city',
       'address',
       'catchment_area',
       'description',
@@ -5949,7 +6022,7 @@ const orgsModule = {
       'website',
       'logo_url',
       'sector',
-      'region',
+      'county_city',
       'address',
       'description',
     ];
@@ -6093,7 +6166,7 @@ const orgsModule = {
     // Regional distribution
     const regionCounts = {};
     orgs.forEach((o) => {
-      if (o.region) regionCounts[o.region] = (regionCounts[o.region] || 0) + 1;
+      if (o.county_city) regionCounts[o.county_city] = (regionCounts[o.county_city] || 0) + 1;
     });
     const topRegions = Object.entries(regionCounts).sort((a, b) => b[1] - a[1]);
     const maxRegionCount = topRegions[0]?.[1] || 1;
@@ -6380,7 +6453,7 @@ const orgsModule = {
           org.company_name,
           org.sector,
           org.county,
-          org.region,
+          org.county_city,
           org.contact_name,
           org.email,
           org.contact_phone,
@@ -6430,13 +6503,13 @@ const orgsModule = {
       company_name: org.company_name || '',
       sector: org.sector || '',
       county: org.county || '',
-      region: org.region || '',
+      county_city: org.county_city || '',
       contact_name: org.contact_name || '',
       email: org.email || '',
       status: org.status || 'prospect',
     }));
     utils.exportToPrintablePDF(exportData, 'Organisations Report', {
-      columns: ['company_name', 'sector', 'county', 'region', 'contact_name', 'email', 'status'],
+      columns: ['company_name', 'sector', 'county', 'county_city', 'contact_name', 'email', 'status'],
     });
   },
 
@@ -7208,7 +7281,7 @@ const orgsModule = {
     const regions = {};
     const counties = {};
     STATE.filteredOrganisations.forEach((org) => {
-      const r = org.region || 'Unknown';
+      const r = org.county_city || 'Unknown';
       const c = org.county || 'Unknown';
       regions[r] = (regions[r] || 0) + 1;
       counties[c] = (counties[c] || 0) + 1;
@@ -7617,7 +7690,7 @@ const orgsModule = {
       { key: 'email', label: 'Email' },
       { key: 'tier', label: 'Tier' },
       { key: 'tags', label: 'Tags' },
-      { key: 'region', label: 'Region' },
+      { key: 'county_city', label: 'Region' },
       { key: 'status', label: 'Status' },
       { key: 'awards', label: 'Awards' },
       { key: 'updated', label: 'Updated' },
@@ -7683,7 +7756,7 @@ const orgsModule = {
       'email',
       'tier',
       'tags',
-      'region',
+      'county_city',
       'status',
       'awards',
       'updated',
@@ -7745,7 +7818,7 @@ const orgsModule = {
     <div class="field"><span class="label">Status:</span><div class="value"><span class="badge" style="background:#e9ecef;">${utils.escapeHtml(org.status || 'prospect')}</span></div></div>
     <div class="field"><span class="label">Tier:</span><div class="value"><span class="badge" style="background:#fff3cd;">${utils.escapeHtml(org.tier || 'N/A')}</span></div></div>
     <div class="field"><span class="label">Sector:</span><div class="value">${utils.escapeHtml(org.sector || 'N/A')}</div></div>
-    <div class="field"><span class="label">Region:</span><div class="value">${utils.escapeHtml(org.region || 'N/A')}</div></div>
+    <div class="field"><span class="label">Region:</span><div class="value">${utils.escapeHtml(org.county_city || 'N/A')}</div></div>
     <div class="field"><span class="label">County:</span><div class="value">${utils.escapeHtml(org.county || 'N/A')}</div></div>
     <div class="field"><span class="label">Address:</span><div class="value">${utils.escapeHtml(org.address || 'N/A')}</div></div>
     <div class="field"><span class="label">Tags:</span><div class="value">${(org.tags || []).map((t) => utils.escapeHtml(t)).join(', ') || 'None'}</div></div>
@@ -8323,7 +8396,7 @@ const orgsModule = {
       <div id="segmentRules">
         <div class="segment-rule d-flex gap-2 align-items-center mb-2">
           <select class="form-select form-select-sm" style="width:auto;" id="segField0">
-            <option value="tier">Tier</option><option value="status">Status</option><option value="region">Region</option>
+            <option value="tier">Tier</option><option value="status">Status</option><option value="county_city">Region</option>
             <option value="sector">Sector</option><option value="awards_count">Awards Count</option><option value="engagement">Engagement Score</option>
           </select>
           <select class="form-select form-select-sm" style="width:auto;" id="segOp0">
@@ -8352,7 +8425,7 @@ const orgsModule = {
     const i = this._segmentRuleCount++;
     const ruleHtml = `<div class="segment-rule d-flex gap-2 align-items-center mb-2">
       <select class="form-select form-select-sm" style="width:auto;" id="segField${i}">
-        <option value="tier">Tier</option><option value="status">Status</option><option value="region">Region</option>
+        <option value="tier">Tier</option><option value="status">Status</option><option value="county_city">Region</option>
         <option value="sector">Sector</option><option value="awards_count">Awards Count</option><option value="engagement">Engagement Score</option>
       </select>
       <select class="form-select form-select-sm" style="width:auto;" id="segOp${i}">
@@ -8462,7 +8535,7 @@ const orgsModule = {
       { key: 'status', label: 'Status' },
       { key: 'tier', label: 'Tier' },
       { key: 'sector', label: 'Sector' },
-      { key: 'region', label: 'Region' },
+      { key: 'county_city', label: 'Region' },
       { key: 'county', label: 'County' },
       { key: 'contact_name', label: 'Contact' },
       { key: 'email', label: 'Email' },
@@ -8806,7 +8879,7 @@ const orgsModule = {
       if (k && seen.has(k))
         issues.push({ row: r, severity: 'warning', message: `Duplicate in import: "${row.company_name}"` });
       if (k) seen.add(k);
-      if (!row.region?.trim()) issues.push({ row: r, severity: 'info', message: 'Missing region' });
+      if (!row.county_city?.trim()) issues.push({ row: r, severity: 'info', message: 'Missing region' });
     });
     return issues;
   },
@@ -8917,7 +8990,7 @@ const orgsModule = {
             (
               o
             ) => `<div class="border rounded px-2 py-1 small"><a href="#" class="text-primary text-decoration-none" data-action="orgsModule.openCompanyProfile" data-id="${o.id}">${utils.escapeHtml(o.company_name)}</a>
-        <span class="text-muted ms-1">${utils.escapeHtml(o.region || '')}</span></div>`
+        <span class="text-muted ms-1">${utils.escapeHtml(o.county_city || '')}</span></div>`
           )
           .join('')}
         <button class="btn btn-sm btn-outline-warning" data-action="orgsModule.mergeDuplicateGroup" data-args='${JSON.stringify(g.map((o) => o.id))}'>
@@ -9005,6 +9078,7 @@ const orgsModule = {
   _mapViewActive: false,
 
   _UK_LOCATIONS: {
+    'Greater London': [51.507, -0.128],
     London: [51.507, -0.128],
     'South East': [51.28, 0.52],
     'South West': [50.82, -3.0],
@@ -9013,11 +9087,16 @@ const orgsModule = {
     'West Midlands': [52.48, -1.9],
     'North West': [53.5, -2.5],
     'North East': [54.97, -1.6],
-    'Yorkshire and the Humber': [53.93, -1.1],
-    Yorkshire: [53.93, -1.1],
+    'Wales, NW (Gwynedd)': [52.88, -4.07],
+    'Wales, NE (Clwyd)': [53.18, -3.43],
+    'Wales, Mid & West': [52.07, -4.3],
+    'Wales, South': [51.58, -3.3],
     Wales: [52.13, -3.63],
+    'Scotland, North': [57.48, -4.22],
+    'Scotland, Central': [56.07, -3.47],
+    'Scotland, West': [55.95, -4.53],
+    'Scotland, South': [55.2, -4.0],
     Scotland: [56.49, -4.2],
-    'Northern Ireland': [54.6, -6.7],
     'South East England': [51.28, 0.52],
     'South West England': [50.82, -3.0],
     East: [52.2, 0.9],
@@ -9090,7 +9169,7 @@ const orgsModule = {
     Preston: [53.763, -2.703],
     Lancaster: [54.047, -2.801],
     Carlisle: [54.893, -2.933],
-    Middlesbrough: [54.574, -1.235],
+    Middlesborough: [54.574, -1.235],
     Durham: [54.775, -1.585],
     Darlington: [54.524, -1.553],
     Blackpool: [53.818, -3.036],
@@ -9104,7 +9183,8 @@ const orgsModule = {
     Kent: [51.28, 0.77],
     Surrey: [51.25, -0.38],
     Essex: [51.73, 0.47],
-    Sussex: [50.92, -0.28],
+    'East Sussex': [50.92, -0.08],
+    'West Sussex': [50.92, -0.48],
     Hampshire: [51.05, -1.15],
     Berkshire: [51.45, -1.08],
     Dorset: [50.75, -2.25],
@@ -9155,7 +9235,7 @@ const orgsModule = {
 
   _getOrgCoords(org) {
     const c = org.county?.trim(),
-      r = org.region?.trim();
+      r = org.county_city?.trim();
     if (c && this._UK_LOCATIONS[c]) return this._UK_LOCATIONS[c];
     if (r && this._UK_LOCATIONS[r]) return this._UK_LOCATIONS[r];
     if (c) {
@@ -9262,7 +9342,7 @@ const orgsModule = {
           <span class="badge" style="background:${color};color:white;font-size:10px;">${org.status || 'prospect'}</span>
           ${org.sector ? `<span class="badge bg-light text-dark ms-1" style="font-size:10px;">${utils.escapeHtml(org.sector)}</span>` : ''}
           <hr style="margin:6px 0;">
-          ${org.region ? `<div style="font-size:12px;"><i class="bi bi-geo-alt"></i> ${utils.escapeHtml(org.region)}${org.county ? ', ' + utils.escapeHtml(org.county) : ''}</div>` : ''}
+          ${org.county_city ? `<div style="font-size:12px;"><i class="bi bi-geo-alt"></i> ${utils.escapeHtml(org.county_city)}${org.county ? ', ' + utils.escapeHtml(org.county) : ''}</div>` : ''}
           ${org.email ? `<div style="font-size:12px;"><i class="bi bi-envelope"></i> ${utils.escapeHtml(org.email)}</div>` : ''}
           ${org.phone ? `<div style="font-size:12px;"><i class="bi bi-telephone"></i> ${utils.escapeHtml(org.phone)}</div>` : ''}
           ${org.website ? `<div style="font-size:12px;"><i class="bi bi-globe"></i> <a href="${utils.escapeHtml(org.website)}" target="_blank">${utils.escapeHtml(org.website)}</a></div>` : ''}

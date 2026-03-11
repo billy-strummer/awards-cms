@@ -121,7 +121,7 @@ function validEntryBody(overrides = {}) {
     contactEmail: 'test@example.com',
     contactName: 'John Smith',
     entryDescription: 'This is a test entry description that is long enough.',
-    region: 'Kent',
+    county_city: 'Kent',
     sector: 'Plumbing',
     awardCategory: 'Best Plumber',
     ...overrides,

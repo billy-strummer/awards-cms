@@ -776,7 +776,7 @@ const entriesModule = {
                         </tr>
                         <tr>
                           <td class="text-muted">County/City:</td>
-                          <td>${utils.escapeHtml(entry.awards?.county || entry.region || 'N/A')}</td>
+                          <td>${utils.escapeHtml(entry.awards?.county || entry.county_city || 'N/A')}</td>
                         </tr>
                         <tr>
                           <td class="text-muted">Entry Type:</td>

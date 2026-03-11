@@ -323,7 +323,7 @@ const aiVettingModule = {
           companyName: org.company_name,
           website: org.website || '',
           sector: org.sector || '',
-          county: org.region || '',
+          county: org.county_city || '',
         }),
       });
       if (!vetRes.ok) {

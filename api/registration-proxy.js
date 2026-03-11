@@ -116,7 +116,7 @@ async function handleRegisterGuest(req, res) {
     if (!guest.guest_name || typeof guest.guest_name !== 'string' || guest.guest_name.trim().length < 2) {
       return res.status(400).json({ error: 'Guest name is required (min 2 characters)' });
     }
-    if (!guest.guest_email || !isValidEmail(guest.guest_email)) {
+    if (guest.guest_email && !isValidEmail(guest.guest_email)) {
       return res.status(400).json({ error: `Invalid email for guest: ${guest.guest_name}` });
     }
 

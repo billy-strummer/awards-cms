@@ -805,7 +805,7 @@ const paymentsModule = {
 <!DOCTYPE html>
 <html>
 <head>
-<title>Invoice ${inv.invoice_number}</title>
+<title>Invoice ${utils.escapeHtml(inv.invoice_number)}</title>
 <style>
   body { font-family: Arial, sans-serif; padding: 40px; color: #333; max-width: 800px; margin: 0 auto; }
   .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; border-bottom: 3px solid #0d6efd; padding-bottom: 20px; }
@@ -1469,7 +1469,7 @@ const paymentsModule = {
         unpaidInvoices
           .map(
             (inv) =>
-              `<option value="${inv.id}">${inv.invoice_number} - ${inv.organisations?.company_name} (&pound;${parseFloat(String(inv.total_amount - inv.paid_amount)).toFixed(2)} due)</option>`
+              `<option value="${inv.id}">${utils.escapeHtml(inv.invoice_number)} - ${utils.escapeHtml(inv.organisations?.company_name || '')} (&pound;${parseFloat(String(inv.total_amount - inv.paid_amount)).toFixed(2)} due)</option>`
           )
           .join('');
 
@@ -2105,8 +2105,8 @@ const paymentsModule = {
               .map(
                 (inv) => `
               <tr>
-                <td>${inv.invoice_number}</td>
-                <td>${inv.organisations?.company_name || 'N/A'}</td>
+                <td>${utils.escapeHtml(inv.invoice_number)}</td>
+                <td>${utils.escapeHtml(inv.organisations?.company_name || 'N/A')}</td>
                 <td>${new Date(inv.due_date).toLocaleDateString()}</td>
                 <td>&pound;${parseFloat(inv.total_amount).toFixed(2)}</td>
                 <td class="text-danger fw-bold">&pound;${parseFloat(inv.balance_due).toFixed(2)}</td>
@@ -2327,8 +2327,8 @@ const paymentsModule = {
               .map(
                 (inv) => `
               <tr>
-                <td>${inv.invoice_number}</td>
-                <td>${inv.organisations?.company_name || 'N/A'}</td>
+                <td>${utils.escapeHtml(inv.invoice_number)}</td>
+                <td>${utils.escapeHtml(inv.organisations?.company_name || 'N/A')}</td>
                 <td>${new Date(inv.invoice_date).toLocaleDateString()}</td>
                 <td>&pound;${parseFloat(inv.total_amount).toFixed(2)}</td>
                 <td>${this.getInvoiceStatusBadge(inv.status, inv.payment_status)}</td>

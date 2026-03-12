@@ -1351,16 +1351,34 @@ const winnersModule = {
   /* ==================================================== */
 
   /**
-   * State for certificate generator
+   * State for certificate template editor
    */
   certificateState: {
     allWinners: [],
     filteredWinners: [],
     selectedWinners: new Set(),
+    // Template editor state
+    templateId: null,
+    fields: [],
+    selectedFieldIndex: -1,
+    backgroundPdfUrl: null,
+    backgroundImage: null,
+    customFonts: [],
+    pageWidth: 842,
+    pageHeight: 595,
+    zoom: 1,
+    undoStack: [],
+    redoStack: [],
+    isDragging: false,
+    dragStartX: 0,
+    dragStartY: 0,
+    dragFieldStartX: 0,
+    dragFieldStartY: 0,
+    snapGrid: 10,
   },
 
   /**
-   * Open certificate generator modal
+   * Open certificate template editor modal
    */
   async openCertificateGenerator() {
     try {
@@ -1379,15 +1397,28 @@ const winnersModule = {
       // Populate year filter from DB
       utils.populateYearFilterFromDB('certificateYearFilter');
 
+      // Load available templates
+      await this._loadTemplateList();
+
       // Show modal
       const modal = new bootstrap.Modal(document.getElementById('certificateGeneratorModal'));
       modal.show();
 
+      // Initialize canvas
+      this._initCertEditorCanvas();
+
       // Render winners list
       this.renderCertificateWinners();
+
+      // Setup background upload handler
+      const bgInput = document.getElementById('certBgUpload');
+      if (bgInput && !bgInput._certHandler) {
+        bgInput._certHandler = true;
+        bgInput.addEventListener('change', () => this._handleBgUpload());
+      }
     } catch (error) {
-      console.error('Error loading winners for certificates:', error);
-      utils.showToast('Error loading winners: ' + error.message, 'error');
+      console.error('Error loading certificate editor:', error);
+      utils.showToast('Error loading certificate editor: ' + error.message, 'error');
     } finally {
       utils.hideLoading();
     }
@@ -1408,19 +1439,14 @@ const winnersModule = {
   },
 
   /**
-   * Render winners list for certificate generation
+   * Render winners list for certificate generation (compact for side panel)
    */
   renderCertificateWinners() {
     const container = document.getElementById('certificateWinnersList');
     const winners = this.certificateState.filteredWinners;
 
     if (winners.length === 0) {
-      container.innerHTML = `
-        <div class="text-center py-5 text-muted">
-          <i class="bi bi-inbox display-4 d-block mb-2 opacity-25"></i>
-          <p>No winners found for selected year</p>
-        </div>
-      `;
+      container.innerHTML = '<div class="text-center py-3 text-muted small">No winners found</div>';
       return;
     }
 
@@ -1428,39 +1454,22 @@ const winnersModule = {
       .map((winner) => {
         const isSelected = this.certificateState.selectedWinners.has(winner.id);
         const awardName = winner.awards?.award_name || winner.awards?.award_category || 'No Award';
-        const year = winner.awards?.year || 'N/A';
-
         return `
-        <div class="card mb-2 ${isSelected ? 'border-primary border-2' : ''}">
-          <div class="card-body p-3">
-            <div class="d-flex align-items-center">
-              <div class="form-check me-3">
-                <input class="form-check-input" type="checkbox"
-                  id="cert_winner_${winner.id}"
-                  ${isSelected ? 'checked' : ''}
-                  data-on-change="winnersModule.toggleCertificateWinnerSelection" data-id="${winner.id}">
-              </div>
-              <div class="flex-grow-1">
-                <h6 class="mb-1">${utils.escapeHtml(winner.winner_name || 'Unnamed Winner')}</h6>
-                <div class="text-muted small">
-                  <i class="bi bi-trophy me-1"></i>${utils.escapeHtml(awardName)}
-                  <span class="ms-2"><i class="bi bi-calendar me-1"></i>${year}</span>
-                </div>
-              </div>
-              ${isSelected ? '<span class="badge bg-primary">Selected</span>' : ''}
-            </div>
+        <div class="d-flex align-items-center p-2 rounded mb-1 ${isSelected ? 'bg-primary bg-opacity-10 border border-primary' : 'bg-white border'}">
+          <input class="form-check-input me-2 flex-shrink-0" type="checkbox"
+            ${isSelected ? 'checked' : ''}
+            data-on-change="winnersModule.toggleCertificateWinnerSelection" data-id="${winner.id}">
+          <div class="small flex-grow-1 text-truncate">
+            <div class="fw-bold text-truncate">${utils.escapeHtml(winner.winner_name || 'Unnamed')}</div>
+            <div class="text-muted text-truncate">${utils.escapeHtml(awardName)}</div>
           </div>
-        </div>
-      `;
+        </div>`;
       })
       .join('');
 
     this.updateCertificateSelectedCount();
   },
 
-  /**
-   * Toggle certificate winner selection
-   */
   toggleCertificateWinnerSelection(winnerId) {
     if (this.certificateState.selectedWinners.has(winnerId)) {
       this.certificateState.selectedWinners.delete(winnerId);
@@ -1470,210 +1479,766 @@ const winnersModule = {
     this.renderCertificateWinners();
   },
 
-  /**
-   * Select all certificate winners
-   */
   selectAllCertificateWinners() {
-    this.certificateState.filteredWinners.forEach((w) => {
-      this.certificateState.selectedWinners.add(w.id);
-    });
+    this.certificateState.filteredWinners.forEach((w) => this.certificateState.selectedWinners.add(w.id));
     this.renderCertificateWinners();
   },
 
-  /**
-   * Deselect all certificate winners
-   */
   deselectAllCertificateWinners() {
     this.certificateState.selectedWinners.clear();
     this.renderCertificateWinners();
   },
 
-  /**
-   * Update selected count
-   */
   updateCertificateSelectedCount() {
     const el = document.getElementById('selectedCertificateWinnersCount');
     if (el) el.textContent = String(this.certificateState.selectedWinners.size);
   },
 
+  /* ---- Template CRUD ---- */
+
+  async _loadTemplateList() {
+    try {
+      const templates = await apiClient.selectAll('certificate_templates', {
+        select: 'id,name',
+        sort: { column: 'updated_at', ascending: false },
+      });
+      const sel = document.getElementById('certTemplateSelect');
+      if (!sel) return;
+      sel.innerHTML =
+        '<option value="">-- Select Template --</option>' +
+        (templates || [])
+          .map((t) => `<option value="${t.id}">${utils.escapeHtml(t.name || 'Untitled')}</option>`)
+          .join('');
+    } catch (e) {
+      console.warn('Could not load templates:', e.message);
+    }
+  },
+
+  async loadCertTemplate(templateId) {
+    if (!templateId) {
+      this._resetCertEditor();
+      return;
+    }
+    try {
+      utils.showLoading();
+      const template = await apiClient.selectOne('certificate_templates', templateId);
+      const st = this.certificateState;
+      st.templateId = template.id;
+      st.fields = template.fields_json || [];
+      st.customFonts = template.custom_fonts_json || [];
+      st.backgroundPdfUrl = template.background_pdf_url || null;
+      st.pageWidth = template.page_width || 842;
+      st.pageHeight = template.page_height || 595;
+      st.selectedFieldIndex = -1;
+      st.undoStack = [];
+      st.redoStack = [];
+
+      document.getElementById('certTemplateName').value = template.name || '';
+
+      // Update font dropdown with custom fonts
+      this._updateFontDropdown();
+      this._renderFieldList();
+      this._hideFieldProps();
+
+      // Load background image for canvas preview
+      if (st.backgroundPdfUrl) {
+        document.getElementById('certBgStatus').textContent = 'Background loaded';
+        await this._loadBgImageForPreview(st.backgroundPdfUrl);
+      } else {
+        st.backgroundImage = null;
+        document.getElementById('certBgStatus').textContent = '';
+      }
+      this._renderFontList();
+      this._drawCertCanvas();
+    } catch (error) {
+      utils.showToast('Error loading template: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  _resetCertEditor() {
+    const st = this.certificateState;
+    st.templateId = null;
+    st.fields = [];
+    st.selectedFieldIndex = -1;
+    st.backgroundPdfUrl = null;
+    st.backgroundImage = null;
+    st.customFonts = [];
+    st.undoStack = [];
+    st.redoStack = [];
+    document.getElementById('certTemplateName').value = '';
+    document.getElementById('certBgStatus').textContent = '';
+    this._renderFieldList();
+    this._renderFontList();
+    this._hideFieldProps();
+    this._drawCertCanvas();
+  },
+
+  newCertTemplate() {
+    document.getElementById('certTemplateSelect').value = '';
+    this._resetCertEditor();
+    document.getElementById('certTemplateName').focus();
+  },
+
+  async saveCertTemplate() {
+    const st = this.certificateState;
+    const name = document.getElementById('certTemplateName').value.trim();
+    if (!name) {
+      utils.showToast('Please enter a template name', 'warning');
+      return;
+    }
+
+    const payload = {
+      name,
+      fields_json: st.fields,
+      custom_fonts_json: st.customFonts,
+      background_pdf_url: st.backgroundPdfUrl,
+      page_width: st.pageWidth,
+      page_height: st.pageHeight,
+      orientation: st.pageWidth > st.pageHeight ? 'landscape' : 'portrait',
+    };
+
+    try {
+      utils.showLoading();
+      let saved;
+      if (st.templateId) {
+        saved = await apiClient.update('certificate_templates', st.templateId, payload);
+      } else {
+        saved = await apiClient.insert('certificate_templates', payload);
+      }
+      st.templateId = saved.id;
+      utils.showToast('Template saved!', 'success');
+      await this._loadTemplateList();
+      document.getElementById('certTemplateSelect').value = saved.id;
+    } catch (error) {
+      utils.showToast('Error saving template: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /* ---- Background Upload ---- */
+
+  async _handleBgUpload() {
+    const input = document.getElementById('certBgUpload');
+    const file = input?.files?.[0];
+    if (!file) return;
+
+    try {
+      utils.showLoading();
+      const filename = `bg-${Date.now()}-${file.name}`;
+      const url = await this._uploadToStorage('certificate-assets', `backgrounds/${filename}`, file);
+      this.certificateState.backgroundPdfUrl = url;
+      document.getElementById('certBgStatus').textContent = 'Background uploaded';
+      await this._loadBgImageForPreview(url);
+      this._drawCertCanvas();
+    } catch (error) {
+      utils.showToast('Error uploading background: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  removeCertBg() {
+    this.certificateState.backgroundPdfUrl = null;
+    this.certificateState.backgroundImage = null;
+    document.getElementById('certBgStatus').textContent = '';
+    document.getElementById('certBgUpload').value = '';
+    this._drawCertCanvas();
+  },
+
+  async _loadBgImageForPreview(pdfUrl) {
+    // For canvas preview, render first page of PDF as image using a simple approach:
+    // We load the PDF URL directly. If it's a PDF we can't render natively in canvas,
+    // we'll show a placeholder. For production, PDF.js would be used.
+    // For now, treat uploaded PDFs as images if they're actually images,
+    // or show a grey background with "PDF Background" label.
+    try {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = pdfUrl;
+      });
+      this.certificateState.backgroundImage = img;
+    } catch {
+      // PDF can't be loaded as image directly - create a placeholder
+      this.certificateState.backgroundImage = null;
+    }
+  },
+
+  async _uploadToStorage(bucket, path, file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('bucket', bucket);
+    formData.append('path', path);
+
+    const resp = await fetch('/api/upload-proxy', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${(await window.supabaseClient?.auth?.getSession())?.data?.session?.access_token || ''}`,
+      },
+      body: formData,
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.error || 'Upload failed');
+    }
+
+    const result = await resp.json();
+    return result.url || result.publicUrl;
+  },
+
+  /* ---- Custom Font Upload ---- */
+
+  async uploadCertFont() {
+    const input = document.getElementById('certFontUpload');
+    const file = input?.files?.[0];
+    if (!file) {
+      utils.showToast('Please select a font file', 'warning');
+      return;
+    }
+
+    try {
+      utils.showLoading();
+      const fontName = file.name.replace(/\.(ttf|otf|woff2?)/i, '');
+      const filename = `font-${Date.now()}-${file.name}`;
+      const url = await this._uploadToStorage('certificate-assets', `fonts/${filename}`, file);
+      this.certificateState.customFonts.push({ name: fontName, url });
+      this._renderFontList();
+      this._updateFontDropdown();
+      input.value = '';
+      utils.showToast('Font uploaded: ' + fontName, 'success');
+    } catch (error) {
+      utils.showToast('Error uploading font: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  _renderFontList() {
+    const container = document.getElementById('certFontList');
+    if (!container) return;
+    const fonts = this.certificateState.customFonts;
+    if (fonts.length === 0) {
+      container.innerHTML = '<span class="text-muted">No custom fonts</span>';
+      return;
+    }
+    container.innerHTML = fonts
+      .map(
+        (f, i) =>
+          `<div class="d-flex justify-content-between align-items-center mb-1">
+            <span>${utils.escapeHtml(f.name)}</span>
+            <button class="btn btn-sm btn-link text-danger p-0" data-action="winnersModule.removeCertFont" data-index="${i}">
+              <i class="bi bi-x"></i>
+            </button>
+          </div>`
+      )
+      .join('');
+  },
+
+  removeCertFont(index) {
+    this.certificateState.customFonts.splice(index, 1);
+    this._renderFontList();
+    this._updateFontDropdown();
+  },
+
+  _updateFontDropdown() {
+    const sel = document.getElementById('certFieldFontFamily');
+    if (!sel) return;
+    const standard = ['Helvetica', 'TimesRoman', 'Courier'];
+    const custom = this.certificateState.customFonts.map((f) => f.name);
+    sel.innerHTML =
+      standard.map((f) => `<option value="${f}">${f}</option>`).join('') +
+      custom.map((f) => `<option value="${utils.escapeHtml(f)}">${utils.escapeHtml(f)}</option>`).join('');
+  },
+
+  /* ---- Text Fields Management ---- */
+
+  _pushUndo() {
+    this.certificateState.undoStack.push(JSON.stringify(this.certificateState.fields));
+    this.certificateState.redoStack = [];
+    if (this.certificateState.undoStack.length > 50) this.certificateState.undoStack.shift();
+  },
+
+  certEditorUndo() {
+    const st = this.certificateState;
+    if (st.undoStack.length === 0) return;
+    st.redoStack.push(JSON.stringify(st.fields));
+    st.fields = JSON.parse(st.undoStack.pop());
+    st.selectedFieldIndex = -1;
+    this._renderFieldList();
+    this._hideFieldProps();
+    this._drawCertCanvas();
+  },
+
+  certEditorRedo() {
+    const st = this.certificateState;
+    if (st.redoStack.length === 0) return;
+    st.undoStack.push(JSON.stringify(st.fields));
+    st.fields = JSON.parse(st.redoStack.pop());
+    st.selectedFieldIndex = -1;
+    this._renderFieldList();
+    this._hideFieldProps();
+    this._drawCertCanvas();
+  },
+
+  addCertField() {
+    this._pushUndo();
+    const st = this.certificateState;
+    st.fields.push({
+      text: '{WINNER_NAME}',
+      x: Math.round(st.pageWidth / 4),
+      y: Math.round(st.pageHeight / 2),
+      width: Math.round(st.pageWidth / 2),
+      fontSize: 36,
+      fontFamily: 'Helvetica',
+      color: '#000000',
+      align: 'center',
+      bold: false,
+    });
+    st.selectedFieldIndex = st.fields.length - 1;
+    this._renderFieldList();
+    this._showFieldProps();
+    this._drawCertCanvas();
+  },
+
+  deleteCertField() {
+    const st = this.certificateState;
+    if (st.selectedFieldIndex < 0) return;
+    this._pushUndo();
+    st.fields.splice(st.selectedFieldIndex, 1);
+    st.selectedFieldIndex = -1;
+    this._renderFieldList();
+    this._hideFieldProps();
+    this._drawCertCanvas();
+  },
+
+  _selectField(index) {
+    this.certificateState.selectedFieldIndex = index;
+    this._renderFieldList();
+    this._showFieldProps();
+    this._drawCertCanvas();
+  },
+
+  _renderFieldList() {
+    const container = document.getElementById('certFieldList');
+    if (!container) return;
+    const fields = this.certificateState.fields;
+    const sel = this.certificateState.selectedFieldIndex;
+
+    if (fields.length === 0) {
+      container.innerHTML =
+        '<div class="text-muted small text-center py-3">No fields yet. Click "Add Field" to start.</div>';
+      return;
+    }
+
+    container.innerHTML = fields
+      .map((f, i) => {
+        const label = (f.text || 'Empty').substring(0, 25);
+        return `
+        <div class="d-flex align-items-center p-1 rounded mb-1 cursor-pointer ${i === sel ? 'bg-primary text-white' : 'bg-white border'}"
+             onclick="winnersModule._selectField(${i})" style="cursor:pointer">
+          <i class="bi bi-fonts me-2"></i>
+          <span class="small text-truncate">${utils.escapeHtml(label)}</span>
+        </div>`;
+      })
+      .join('');
+  },
+
+  _showFieldProps() {
+    const st = this.certificateState;
+    const field = st.fields[st.selectedFieldIndex];
+    if (!field) return;
+
+    document.getElementById('certFieldProps').style.display = '';
+    document.getElementById('certFieldText').value = field.text || '';
+    document.getElementById('certFieldX').value = Math.round(field.x || 0);
+    document.getElementById('certFieldY').value = Math.round(field.y || 0);
+    document.getElementById('certFieldWidth').value = Math.round(field.width || 200);
+    document.getElementById('certFieldFontSize').value = field.fontSize || 24;
+    document.getElementById('certFieldColor').value = field.color || '#000000';
+    document.getElementById('certFieldAlign').value = field.align || 'left';
+    document.getElementById('certFieldBold').checked = !!field.bold;
+
+    const fontSel = document.getElementById('certFieldFontFamily');
+    if (fontSel) fontSel.value = field.fontFamily || 'Helvetica';
+
+    // Setup property change handlers (only once)
+    if (!this._certPropsHandlersBound) {
+      this._certPropsHandlersBound = true;
+      const updateField = () => this._updateSelectedFieldFromProps();
+      [
+        'certFieldText',
+        'certFieldX',
+        'certFieldY',
+        'certFieldWidth',
+        'certFieldFontSize',
+        'certFieldColor',
+        'certFieldAlign',
+        'certFieldFontFamily',
+      ].forEach((id) => {
+        document.getElementById(id)?.addEventListener('input', updateField);
+      });
+      document.getElementById('certFieldBold')?.addEventListener('change', updateField);
+    }
+  },
+
+  _hideFieldProps() {
+    const el = document.getElementById('certFieldProps');
+    if (el) el.style.display = 'none';
+  },
+
+  _updateSelectedFieldFromProps() {
+    const st = this.certificateState;
+    const field = st.fields[st.selectedFieldIndex];
+    if (!field) return;
+
+    this._pushUndo();
+    field.text = document.getElementById('certFieldText').value;
+    field.x = parseInt(document.getElementById('certFieldX').value, 10) || 0;
+    field.y = parseInt(document.getElementById('certFieldY').value, 10) || 0;
+    field.width = parseInt(document.getElementById('certFieldWidth').value, 10) || 200;
+    field.fontSize = parseInt(document.getElementById('certFieldFontSize').value, 10) || 24;
+    field.color = document.getElementById('certFieldColor').value;
+    field.align = document.getElementById('certFieldAlign').value;
+    field.fontFamily = document.getElementById('certFieldFontFamily').value;
+    field.bold = document.getElementById('certFieldBold').checked;
+
+    this._drawCertCanvas();
+  },
+
+  /* ---- Canvas Editor ---- */
+
+  _initCertEditorCanvas() {
+    const canvas = document.getElementById('certEditorCanvas');
+    if (!canvas || canvas._certInit) return;
+    canvas._certInit = true;
+
+    canvas.addEventListener('mousedown', (e) => this._certCanvasMouseDown(e));
+    canvas.addEventListener('mousemove', (e) => this._certCanvasMouseMove(e));
+    canvas.addEventListener('mouseup', () => this._certCanvasMouseUp());
+    canvas.addEventListener('mouseleave', () => this._certCanvasMouseUp());
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      if (!document.getElementById('certificateGeneratorModal')?.classList.contains('show')) return;
+      if (e.ctrlKey && e.key === 'z') {
+        e.preventDefault();
+        this.certEditorUndo();
+      }
+      if (e.ctrlKey && e.key === 'y') {
+        e.preventDefault();
+        this.certEditorRedo();
+      }
+    });
+
+    this._drawCertCanvas();
+  },
+
+  _certCanvasMouseDown(e) {
+    const canvas = document.getElementById('certEditorCanvas');
+    const rect = canvas.getBoundingClientRect();
+    const st = this.certificateState;
+    const zoom = st.zoom;
+    const mx = (e.clientX - rect.left) / zoom;
+    const my = (e.clientY - rect.top) / zoom;
+
+    // Check if clicked on a field (reverse order for topmost)
+    let hit = -1;
+    for (let i = st.fields.length - 1; i >= 0; i--) {
+      const f = st.fields[i];
+      const fh = (f.fontSize || 24) + 8;
+      const fw = f.width || 200;
+      if (mx >= f.x && mx <= f.x + fw && my >= f.y && my <= f.y + fh) {
+        hit = i;
+        break;
+      }
+    }
+
+    if (hit >= 0) {
+      st.selectedFieldIndex = hit;
+      st.isDragging = true;
+      st.dragStartX = mx;
+      st.dragStartY = my;
+      st.dragFieldStartX = st.fields[hit].x;
+      st.dragFieldStartY = st.fields[hit].y;
+      this._pushUndo();
+      this._renderFieldList();
+      this._showFieldProps();
+      this._drawCertCanvas();
+      canvas.style.cursor = 'grabbing';
+    } else {
+      st.selectedFieldIndex = -1;
+      this._renderFieldList();
+      this._hideFieldProps();
+      this._drawCertCanvas();
+    }
+  },
+
+  _certCanvasMouseMove(e) {
+    const st = this.certificateState;
+    if (!st.isDragging || st.selectedFieldIndex < 0) return;
+
+    const canvas = document.getElementById('certEditorCanvas');
+    const rect = canvas.getBoundingClientRect();
+    const mx = (e.clientX - rect.left) / st.zoom;
+    const my = (e.clientY - rect.top) / st.zoom;
+
+    const dx = mx - st.dragStartX;
+    const dy = my - st.dragStartY;
+
+    let newX = st.dragFieldStartX + dx;
+    let newY = st.dragFieldStartY + dy;
+
+    // Snap to grid
+    if (document.getElementById('certSnapToGrid')?.checked) {
+      const grid = st.snapGrid;
+      newX = Math.round(newX / grid) * grid;
+      newY = Math.round(newY / grid) * grid;
+    }
+
+    // Clamp to page bounds
+    newX = Math.max(0, Math.min(newX, st.pageWidth - 50));
+    newY = Math.max(0, Math.min(newY, st.pageHeight - 20));
+
+    const field = st.fields[st.selectedFieldIndex];
+    field.x = newX;
+    field.y = newY;
+
+    // Update property inputs
+    document.getElementById('certFieldX').value = Math.round(newX);
+    document.getElementById('certFieldY').value = Math.round(newY);
+
+    this._drawCertCanvas();
+  },
+
+  _certCanvasMouseUp() {
+    const st = this.certificateState;
+    st.isDragging = false;
+    const canvas = document.getElementById('certEditorCanvas');
+    if (canvas) canvas.style.cursor = 'default';
+  },
+
+  _drawCertCanvas() {
+    const canvas = document.getElementById('certEditorCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const st = this.certificateState;
+    const zoom = st.zoom;
+
+    canvas.width = st.pageWidth * zoom;
+    canvas.height = st.pageHeight * zoom;
+
+    ctx.save();
+    ctx.scale(zoom, zoom);
+
+    // Background
+    if (st.backgroundImage) {
+      ctx.drawImage(st.backgroundImage, 0, 0, st.pageWidth, st.pageHeight);
+    } else if (st.backgroundPdfUrl) {
+      // PDF background placeholder
+      ctx.fillStyle = '#f0f0f0';
+      ctx.fillRect(0, 0, st.pageWidth, st.pageHeight);
+      ctx.fillStyle = '#999';
+      ctx.font = '16px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(
+        'PDF Background (preview unavailable - will render in final output)',
+        st.pageWidth / 2,
+        st.pageHeight / 2
+      );
+    } else {
+      // White page with light border
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, st.pageWidth, st.pageHeight);
+      ctx.strokeStyle = '#ccc';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(0, 0, st.pageWidth, st.pageHeight);
+    }
+
+    // Draw grid if snap enabled
+    if (document.getElementById('certSnapToGrid')?.checked) {
+      ctx.strokeStyle = 'rgba(0,0,0,0.04)';
+      ctx.lineWidth = 0.5;
+      const grid = st.snapGrid;
+      for (let x = grid; x < st.pageWidth; x += grid) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, st.pageHeight);
+        ctx.stroke();
+      }
+      for (let y = grid; y < st.pageHeight; y += grid) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(st.pageWidth, y);
+        ctx.stroke();
+      }
+    }
+
+    // Draw fields
+    st.fields.forEach((field, i) => {
+      const isSelected = i === st.selectedFieldIndex;
+      const fontSize = field.fontSize || 24;
+      const fw = field.width || 200;
+      const fh = fontSize + 8;
+
+      // Selection highlight
+      if (isSelected) {
+        ctx.strokeStyle = '#0d6efd';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 4]);
+        ctx.strokeRect(field.x - 2, field.y - 2, fw + 4, fh + 4);
+        ctx.setLineDash([]);
+      }
+
+      // Field background (slight transparency)
+      ctx.fillStyle = isSelected ? 'rgba(13,110,253,0.05)' : 'rgba(0,0,0,0.02)';
+      ctx.fillRect(field.x, field.y, fw, fh);
+
+      // Text
+      const style = field.bold ? 'bold ' : '';
+      ctx.font = `${style}${fontSize}px ${field.fontFamily || 'sans-serif'}`;
+      ctx.fillStyle = field.color || '#000000';
+      ctx.textAlign = field.align || 'left';
+
+      let textX = field.x;
+      if (field.align === 'center') textX = field.x + fw / 2;
+      else if (field.align === 'right') textX = field.x + fw;
+
+      // Show placeholder text with substitution preview
+      const displayText = (field.text || '')
+        .replace(/\{WINNER_NAME\}/g, 'Sample Winner')
+        .replace(/\{AWARD_NAME\}/g, 'Best Innovation')
+        .replace(/\{YEAR\}/g, String(new Date().getFullYear()))
+        .replace(/\{DATE\}/g, 'January 2026')
+        .replace(/\{COMPANY\}/g, 'Sample Company');
+
+      ctx.fillText(displayText, textX, field.y + fontSize, fw);
+      ctx.textAlign = 'left'; // reset
+    });
+
+    ctx.restore();
+  },
+
+  /* ---- Zoom Controls ---- */
+
+  certEditorZoomIn() {
+    this.certificateState.zoom = Math.min(3, this.certificateState.zoom + 0.25);
+    document.getElementById('certEditorZoomLevel').textContent = Math.round(this.certificateState.zoom * 100) + '%';
+    this._drawCertCanvas();
+  },
+
+  certEditorZoomOut() {
+    this.certificateState.zoom = Math.max(0.25, this.certificateState.zoom - 0.25);
+    document.getElementById('certEditorZoomLevel').textContent = Math.round(this.certificateState.zoom * 100) + '%';
+    this._drawCertCanvas();
+  },
+
+  certEditorZoomFit() {
+    const wrap = document.getElementById('certEditorCanvasWrap');
+    if (!wrap) return;
+    const st = this.certificateState;
+    const scaleX = (wrap.clientWidth - 40) / st.pageWidth;
+    const scaleY = (wrap.clientHeight - 40) / st.pageHeight;
+    st.zoom = Math.min(scaleX, scaleY, 2);
+    document.getElementById('certEditorZoomLevel').textContent = Math.round(st.zoom * 100) + '%';
+    this._drawCertCanvas();
+  },
+
+  /* ---- Preview & Generate ---- */
+
+  async previewCertificate() {
+    const st = this.certificateState;
+    if (!st.templateId) {
+      utils.showToast('Please save the template first', 'warning');
+      return;
+    }
+
+    try {
+      utils.showLoading();
+      const resp = await fetch('/api/certificates-qr?action=preview-certificate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${(await window.supabaseClient?.auth?.getSession())?.data?.session?.access_token || ''}`,
+        },
+        body: JSON.stringify({ templateId: st.templateId }),
+      });
+
+      const result = await resp.json();
+      if (!result.success) throw new Error(result.error || 'Preview failed');
+
+      // Open PDF in new tab
+      const pdfBlob = this._base64ToBlob(result.pdfBase64, 'application/pdf');
+      const url = URL.createObjectURL(pdfBlob);
+      window.open(url, '_blank');
+    } catch (error) {
+      utils.showToast('Preview error: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  async generateCertificates() {
+    const st = this.certificateState;
+    if (!st.templateId) {
+      utils.showToast('Please save the template first', 'warning');
+      return;
+    }
+    if (st.selectedWinners.size === 0) {
+      utils.showToast('Please select at least one winner', 'warning');
+      return;
+    }
+
+    try {
+      utils.showLoading();
+      const winnerIds = Array.from(st.selectedWinners);
+      const resp = await fetch('/api/certificates-qr?action=generate-bulk-certificates', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${(await window.supabaseClient?.auth?.getSession())?.data?.session?.access_token || ''}`,
+        },
+        body: JSON.stringify({ winnerIds, templateId: st.templateId }),
+      });
+
+      const result = await resp.json();
+      if (!result.success) throw new Error(result.error || 'Generation failed');
+
+      const successes = result.results.filter((r) => r.success).length;
+      utils.showToast(`Generated ${successes}/${winnerIds.length} certificates!`, 'success');
+    } catch (error) {
+      utils.showToast('Error generating certificates: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  _base64ToBlob(base64, mime) {
+    const bytes = atob(base64);
+    const arr = new Uint8Array(bytes.length);
+    for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+    return new Blob([arr], { type: mime });
+  },
+
+  /* ---- Legacy Asset Previews (kept for shields/banners) ---- */
+
   /**
    * Preview assets
    */
   async previewAssets() {
-    if (this.certificateState.selectedWinners.size === 0) {
-      utils.showToast('Please select at least one winner', 'warning');
-      return;
-    }
-
-    try {
-      // Get first selected winner for preview
-      const firstWinnerId = Array.from(this.certificateState.selectedWinners)[0];
-      const winner = this.certificateState.allWinners.find((w) => w.id === firstWinnerId);
-
-      const brandColor = document.getElementById('brandColor').value;
-      const accentColor = document.getElementById('accentColor').value;
-
-      const previewSection = document.getElementById('assetPreviewSection');
-      const previewContent = document.getElementById('assetPreviewContent');
-
-      previewSection.classList.remove('d-none');
-
-      // Generate preview HTML
-      let previewHTML = `<h6 class="mb-3">Preview for ${utils.escapeHtml(winner.winner_name)}</h6>`;
-      previewHTML += `<div class="row g-3">`;
-
-      // Shield preview
-      if (document.getElementById('assetTypeShield').checked) {
-        const shieldSVG = this.generateShieldSVG(winner, brandColor, accentColor);
-        previewHTML += `
-          <div class="col-md-6">
-            <div class="card">
-              <div class="card-header bg-light">
-                <small class="fw-bold">Winner Shield/Logo</small>
-              </div>
-              <div class="card-body text-center bg-white p-4">
-                ${shieldSVG}
-              </div>
-            </div>
-          </div>
-        `;
-      }
-
-      // Email banner preview
-      if (document.getElementById('assetTypeEmailBanner').checked) {
-        const emailBannerSVG = this.generateEmailBannerSVG(winner, brandColor, accentColor);
-        previewHTML += `
-          <div class="col-md-6">
-            <div class="card">
-              <div class="card-header bg-light">
-                <small class="fw-bold">Email Signature Banner (600x150px)</small>
-              </div>
-              <div class="card-body bg-white p-0">
-                ${emailBannerSVG}
-              </div>
-            </div>
-          </div>
-        `;
-      }
-
-      // Website banner preview
-      if (document.getElementById('assetTypeWebBanner').checked) {
-        const webBannerSVG = this.generateWebBannerSVG(winner, brandColor, accentColor);
-        previewHTML += `
-          <div class="col-md-12">
-            <div class="card">
-              <div class="card-header bg-light">
-                <small class="fw-bold">Website Banner (1200x300px)</small>
-              </div>
-              <div class="card-body bg-white p-0">
-                ${webBannerSVG}
-              </div>
-            </div>
-          </div>
-        `;
-      }
-
-      previewHTML += `</div>`;
-      previewContent.innerHTML = previewHTML;
-
-      utils.showToast('Preview generated!', 'success');
-    } catch (error) {
-      console.error('Error generating preview:', error);
-      utils.showToast('Error generating preview: ' + error.message, 'error');
-    }
+    // Legacy preview method — no-op since certificate editor replaced this modal
   },
 
   /**
-   * Generate and download all assets
+   * Generate assets — delegates to certificate template generator
    */
   async generateAssets() {
-    if (this.certificateState.selectedWinners.size === 0) {
-      utils.showToast('Please select at least one winner', 'warning');
-      return;
-    }
-
-    const generateCert = document.getElementById('assetTypeCertificate').checked;
-    const generateShield = document.getElementById('assetTypeShield').checked;
-    const generateEmail = document.getElementById('assetTypeEmailBanner').checked;
-    const generateWeb = document.getElementById('assetTypeWebBanner').checked;
-
-    if (!generateCert && !generateShield && !generateEmail && !generateWeb) {
-      utils.showToast('Please select at least one asset type', 'warning');
-      return;
-    }
-
-    try {
-      await utils.protectModalDuringSave('certificateGeneratorModal', async () => {
-        utils.showLoading();
-
-        const brandColor = document.getElementById('brandColor').value;
-        const accentColor = document.getElementById('accentColor').value;
-
-        // Get selected winners
-        const selectedWinnersData = this.certificateState.allWinners.filter((w) =>
-          this.certificateState.selectedWinners.has(w.id)
-        );
-
-        let generatedCount = 0;
-
-        for (const winner of selectedWinnersData) {
-          const safeWinnerName = winner.winner_name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-
-          // Generate PDF Certificate
-          if (generateCert) {
-            await this.generateCertificatePDF(winner, brandColor, accentColor);
-            generatedCount++;
-          }
-
-          // Generate Shield
-          if (generateShield) {
-            await this.downloadSVGAsImage(
-              this.generateShieldSVG(winner, brandColor, accentColor),
-              `${safeWinnerName}_shield.png`,
-              400,
-              400
-            );
-            generatedCount++;
-          }
-
-          // Generate Email Banner
-          if (generateEmail) {
-            await this.downloadSVGAsImage(
-              this.generateEmailBannerSVG(winner, brandColor, accentColor),
-              `${safeWinnerName}_email_banner.png`,
-              600,
-              150
-            );
-            generatedCount++;
-          }
-
-          // Generate Web Banner
-          if (generateWeb) {
-            await this.downloadSVGAsImage(
-              this.generateWebBannerSVG(winner, brandColor, accentColor),
-              `${safeWinnerName}_web_banner.png`,
-              1200,
-              300
-            );
-            generatedCount++;
-          }
-
-          // Small delay between winners to avoid browser throttling
-          await new Promise((resolve) => setTimeout(resolve, 500));
-        }
-
-        utils.showToast(
-          `Successfully generated ${generatedCount} assets for ${selectedWinnersData.length} winner(s)!`,
-          'success'
-        );
-        bootstrap.Modal.getInstance(document.getElementById('certificateGeneratorModal'))?.hide();
-      });
-    } catch (error) {
-      console.error('Error generating assets:', error);
-      utils.showToast('Error generating assets: ' + error.message, 'error');
-    } finally {
-      utils.hideLoading();
-    }
+    return this.generateCertificates();
   },
 
   /**
@@ -1818,113 +2383,10 @@ const winnersModule = {
   },
 
   /**
-   * Generate PDF Certificate
+   * Legacy generateCertificatePDF — no-op, use template editor instead
    */
-  async generateCertificatePDF(winner, brandColor, accentColor) {
-    // Create certificate using HTML canvas
-    const canvas = document.createElement('canvas');
-    canvas.width = 2480; // A4 at 300 DPI (landscape)
-    canvas.height = 1754;
-    const ctx = canvas.getContext('2d');
-
-    // Background
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Border
-    ctx.strokeStyle = brandColor;
-    ctx.lineWidth = 20;
-    ctx.strokeRect(100, 100, canvas.width - 200, canvas.height - 200);
-
-    // Inner decorative border
-    ctx.strokeStyle = accentColor;
-    ctx.lineWidth = 5;
-    ctx.strokeRect(150, 150, canvas.width - 300, canvas.height - 300);
-
-    // Title
-    ctx.fillStyle = brandColor;
-    ctx.font = 'bold 120px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText('CERTIFICATE OF ACHIEVEMENT', canvas.width / 2, 400);
-
-    // Certificate text template
-    const template =
-      document.getElementById('certificateText')?.value ||
-      'This is to certify that\n\n{WINNER_NAME}\n\nhas been awarded\n\n{AWARD_NAME}\n\nin recognition of excellence\n\n{YEAR}';
-    const awardName = winner.awards?.award_name || winner.awards?.award_category || 'Excellence';
-    const year = winner.awards?.year || new Date().getFullYear();
-
-    const text = template
-      .replace('{WINNER_NAME}', winner.winner_name || 'Winner')
-      .replace('{AWARD_NAME}', awardName)
-      .replace('{YEAR}', year);
-
-    // Split text by lines and render
-    const lines = text.split('\n').filter((line) => line.trim());
-    ctx.fillStyle = '#333333';
-    let yPos = 600;
-
-    lines.forEach((line) => {
-      if (line === winner.winner_name) {
-        // Winner name in larger, bold font
-        ctx.font = 'bold 100px Arial';
-        ctx.fillStyle = brandColor;
-      } else if (line === awardName) {
-        // Award name in medium, bold font
-        ctx.font = 'bold 80px Arial';
-        ctx.fillStyle = accentColor;
-      } else {
-        // Regular text
-        ctx.font = '60px Arial';
-        ctx.fillStyle = '#555555';
-      }
-      ctx.fillText(line, canvas.width / 2, yPos);
-      yPos += 100;
-    });
-
-    // Organizer name
-    const organizerName = document.getElementById('organizerName')?.value || 'British Trade Awards';
-    ctx.font = 'bold 50px Arial';
-    ctx.fillStyle = '#333333';
-    ctx.fillText(organizerName, canvas.width / 2, canvas.height - 300);
-
-    // Signature name (if provided)
-    const signatureName = document.getElementById('signatureName')?.value || '';
-    if (signatureName) {
-      ctx.font = 'italic 40px Arial';
-      ctx.fillStyle = '#666666';
-      ctx.fillText(signatureName, canvas.width / 2, canvas.height - 230);
-
-      // Signature line
-      ctx.strokeStyle = '#999999';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(canvas.width / 2 - 300, canvas.height - 250);
-      ctx.lineTo(canvas.width / 2 + 300, canvas.height - 250);
-      ctx.stroke();
-    }
-
-    // Date
-    const dateStr = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
-    ctx.font = '40px Arial';
-    ctx.fillStyle = '#888888';
-    ctx.fillText(dateStr, canvas.width / 2, canvas.height - 150);
-
-    // Convert canvas to blob and download
-    return new Promise((resolve) => {
-      canvas.toBlob((blob) => {
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        const safeWinnerName = winner.winner_name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-        link.href = url;
-        link.download = `${safeWinnerName}_certificate.png`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-        resolve();
-      }, 'image/png');
-    });
+  async generateCertificatePDF() {
+    // Replaced by template-based certificate generation
   },
 
   /**

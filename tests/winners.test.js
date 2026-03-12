@@ -2042,13 +2042,13 @@ describe('Winners Module - renderCertificateWinners()', () => {
     expect(container.innerHTML).toContain('Superior Builders');
   });
 
-  test('shows Selected badge for selected certificate winners', () => {
+  test('highlights selected certificate winners', () => {
     winnersModule.certificateState.filteredWinners = [...sampleWinners];
     winnersModule.certificateState.selectedWinners.add('w-1');
     winnersModule.renderCertificateWinners();
     const container = document.getElementById('certificateWinnersList');
     expect(container.innerHTML).toContain('border-primary');
-    expect(container.innerHTML).toContain('Selected');
+    expect(container.innerHTML).toContain('bg-primary');
   });
 });
 
@@ -2069,12 +2069,10 @@ describe('Winners Module - exportFilteredWinners()', () => {
 // previewAssets validation
 // ---------------------------------------------------------------------------
 describe('Winners Module - previewAssets() validation', () => {
-  test('shows warning when no winners selected', async () => {
-    winnersModule.certificateState.selectedWinners = new Set();
-    const spy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+  test('is a no-op (legacy method replaced by template editor)', async () => {
+    // previewAssets is now a no-op; certificate preview uses previewCertificate
     await winnersModule.previewAssets();
-    expect(spy).toHaveBeenCalledWith('Please select at least one winner', 'warning');
-    spy.mockRestore();
+    // Should complete without error
   });
 });
 
@@ -2082,11 +2080,12 @@ describe('Winners Module - previewAssets() validation', () => {
 // generateAssets validation
 // ---------------------------------------------------------------------------
 describe('Winners Module - generateAssets() validation', () => {
-  test('shows warning when no winners selected', async () => {
+  test('shows warning when template not saved', async () => {
+    winnersModule.certificateState.templateId = null;
     winnersModule.certificateState.selectedWinners = new Set();
     const spy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
     await winnersModule.generateAssets();
-    expect(spy).toHaveBeenCalledWith('Please select at least one winner', 'warning');
+    expect(spy).toHaveBeenCalledWith('Please save the template first', 'warning');
     spy.mockRestore();
   });
 });

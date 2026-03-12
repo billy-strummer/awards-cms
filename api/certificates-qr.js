@@ -3,13 +3,15 @@
  * Certificate Generation and QR Code System.
  *
  * Features:
- * - PDF certificate generation for winners
+ * - Template-based PDF certificate generation (pdf-lib overlay on uploaded backgrounds)
+ * - Custom font embedding via fontkit
  * - QR code generation for event tickets and badges
- * - Automated certificate email delivery
  * - Badge printing system
- * - Digital certificate downloads
+ * - PDF and PNG output for certificates
  */
 
+const { PDFDocument: PDFLib, rgb, StandardFonts } = require('pdf-lib');
+const fontkit = require('@pdf-lib/fontkit');
 const PDFDocument = require('pdfkit');
 const QRCode = require('qrcode');
 const { createClient } = require('@supabase/supabase-js');
@@ -50,201 +52,285 @@ async function verifyAuth(req, res) {
 }
 
 /**
- * Generate a PDF winner certificate for an entry and upload it to Supabase storage.
- * @param {string} entryId - The ID of the winning entry.
- * @param {string|null} [outputPath=null] - Optional custom file path for the PDF output.
- * @returns {Promise<{filepath: string, publicUrl: string, filename: string}>} Certificate file details.
- * @throws {Error} If the entry is not found, is not a winner, or upload fails.
+ * Parse a hex color string to pdf-lib rgb values.
+ * @param {string} hex - Hex color string (e.g. '#FF0000' or 'FF0000').
+ * @returns {{r: number, g: number, b: number}} RGB values in 0-1 range.
  */
-async function generateWinnerCertificate(entryId, outputPath = null) {
-  try {
-    console.log(`📜 Generating certificate for entry ${entryId}...`);
-
-    // Get entry and winner details
-    const { data: entry, error } = await supabase
-      .from('entries')
-      .select('*, organisations(*), awards:award_years(*)')
-      .eq('id', entryId)
-      .single();
-
-    if (error) throw error;
-    if (entry.status !== 'winner') {
-      throw new Error('Entry is not a winner');
-    }
-
-    // Create PDF
-    const doc = new PDFDocument({
-      size: 'A4',
-      layout: 'landscape',
-      margin: 50,
-    });
-
-    // Set output — use /tmp for serverless environments
-    const filename = `certificate-${entry.entry_number}.pdf`;
-    const filepath = outputPath || path.join('/tmp', filename);
-
-    const stream = fs.createWriteStream(filepath);
-    doc.pipe(stream);
-
-    // Add border
-    doc
-      .rect(40, 40, doc.page.width - 80, doc.page.height - 80)
-      .lineWidth(3)
-      .strokeColor('#FFD700')
-      .stroke();
-
-    doc
-      .rect(50, 50, doc.page.width - 100, doc.page.height - 100)
-      .lineWidth(1)
-      .strokeColor('#FFD700')
-      .stroke();
-
-    // Add logo (if available)
-    // doc.image('path/to/logo.png', 350, 70, { width: 100 });
-
-    // Title
-    doc.fontSize(48).font('Helvetica-Bold').fillColor('#1a1a1a').text('CERTIFICATE', 0, 120, { align: 'center' });
-
-    doc.fontSize(20).font('Helvetica').fillColor('#666').text('OF EXCELLENCE', 0, 180, { align: 'center' });
-
-    // Presented to
-    doc.fontSize(14).fillColor('#999').text('This certificate is proudly presented to', 0, 250, { align: 'center' });
-
-    // Company name
-    doc
-      .fontSize(36)
-      .font('Helvetica-Bold')
-      .fillColor('#1a1a1a')
-      .text(entry.organisations.company_name, 0, 290, { align: 'center' });
-
-    // Award details
-    doc.fontSize(18).font('Helvetica').fillColor('#444').text('For winning the', 0, 350, { align: 'center' });
-
-    doc
-      .fontSize(24)
-      .font('Helvetica-Bold')
-      .fillColor('#FFD700')
-      .text(entry.awards.award_name, 0, 380, { align: 'center' });
-
-    doc
-      .fontSize(16)
-      .font('Helvetica')
-      .fillColor('#444')
-      .text(`at the British Trade Awards ${entry.awards?.year || new Date().getFullYear()}`, 0, 420, {
-        align: 'center',
-      });
-
-    // Date
-    const awardDate = new Date().toLocaleDateString('en-GB', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    });
-
-    doc.fontSize(12).fillColor('#666').text(awardDate, 0, 480, { align: 'center' });
-
-    // Signature line
-    doc.moveTo(250, 530).lineTo(550, 530).stroke();
-
-    doc.fontSize(10).text('Chief Executive Officer', 0, 540, { align: 'center' });
-
-    // Certificate ID
-    doc
-      .fontSize(8)
-      .fillColor('#999')
-      .text(`Certificate ID: ${entry.entry_number}`, 0, doc.page.height - 80, { align: 'center' });
-
-    // Trophy icon (text-based)
-    doc.fontSize(48).text('🏆', 0, 70, { align: 'center' });
-
-    // Finalize PDF
-    doc.end();
-
-    await new Promise((resolve, reject) => {
-      stream.on('finish', resolve);
-      stream.on('error', reject);
-    });
-
-    console.log(`✅ Certificate generated: ${filepath}`);
-
-    // Upload to Supabase storage
-    const { data: _uploadData, error: uploadError } = await supabase.storage
-      .from('certificates')
-      .upload(filename, fs.readFileSync(filepath), {
-        contentType: 'application/pdf',
-        upsert: true,
-      });
-
-    if (uploadError) throw uploadError;
-
-    // Get public URL
-    const { data: urlData } = supabase.storage.from('certificates').getPublicUrl(filename);
-
-    // Update entry with certificate URL
-    await supabase
-      .from('entries')
-      .update({
-        certificate_url: urlData.publicUrl,
-      })
-      .eq('id', entryId);
-
-    return {
-      filepath,
-      publicUrl: urlData.publicUrl,
-      filename,
-    };
-  } catch (error) {
-    console.error('Error generating certificate:', error);
-    throw error;
-  }
+function hexToRgb(hex) {
+  const h = hex.replace('#', '');
+  return {
+    r: parseInt(h.substring(0, 2), 16) / 255,
+    g: parseInt(h.substring(2, 4), 16) / 255,
+    b: parseInt(h.substring(4, 6), 16) / 255,
+  };
 }
 
 /**
- * Generate PDF certificates for all entries with 'winner' status.
- * @returns {Promise<Array<{entryId: string, entryNumber: string, company?: string, success: boolean, url?: string, error?: string}>>} Results for each winner.
- * @throws {Error} If a database error occurs.
+ * Substitute placeholders in text with winner data.
+ * @param {string} text - Text with placeholders like {WINNER_NAME}, {AWARD_NAME}, {YEAR}, {DATE}, {COMPANY}.
+ * @param {Object} winner - Winner record with joined award data.
+ * @returns {string} Text with placeholders replaced.
  */
-async function generateAllWinnerCertificates() {
-  try {
-    console.log('📜 Generating certificates for all winners...');
+function substitutePlaceholders(text, winner) {
+  const awardName = winner.awards?.award_name || winner.awards?.award_category || '';
+  const year = winner.awards?.year || new Date().getFullYear();
+  const company = winner.company_name || winner.organisation_name || '';
+  const date = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  return (text || '')
+    .replace(/\{WINNER_NAME\}/g, winner.winner_name || '')
+    .replace(/\{AWARD_NAME\}/g, awardName)
+    .replace(/\{YEAR\}/g, String(year))
+    .replace(/\{DATE\}/g, date)
+    .replace(/\{COMPANY\}/g, company);
+}
 
-    const { data: winners, error } = await supabase
-      .from('entries')
-      .select('id, entry_number, organisations(company_name), awards:award_years(award_name)')
-      .eq('status', 'winner');
+/**
+ * Fetch a file from a URL as a Buffer.
+ * @param {string} url - The URL to fetch.
+ * @returns {Promise<Buffer>} The file content.
+ */
+async function fetchFileBuffer(url) {
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error(`Failed to fetch ${url}: ${resp.status}`);
+  const arrayBuffer = await resp.arrayBuffer();
+  return Buffer.from(arrayBuffer);
+}
 
-    if (error) throw error;
+/**
+ * Load a template from DB with its background PDF and custom fonts.
+ * @param {string} templateId - The template ID.
+ * @returns {Promise<Object>} Template data with background bytes and font buffers.
+ */
+async function loadTemplate(templateId) {
+  const { data: template, error } = await supabase
+    .from('certificate_templates')
+    .select('*')
+    .eq('id', templateId)
+    .single();
 
-    const results = [];
+  if (error) throw new Error('Template not found: ' + error.message);
 
-    for (const winner of winners) {
-      try {
-        const result = await generateWinnerCertificate(winner.id);
-        results.push({
-          entryId: winner.id,
-          entryNumber: winner.entry_number,
-          company: winner.organisations.company_name,
-          success: true,
-          url: result.publicUrl,
-        });
-        console.log(`✅ ${winner.entry_number}: ${winner.organisations.company_name}`);
-      } catch (err) {
-        console.error(`❌ ${winner.entry_number}: ${err.message}`);
-        results.push({
-          entryId: winner.id,
-          entryNumber: winner.entry_number,
-          success: false,
-          error: err.message,
-        });
+  // Load background PDF if set
+  let backgroundBytes = null;
+  if (template.background_pdf_url) {
+    backgroundBytes = await fetchFileBuffer(template.background_pdf_url);
+  }
+
+  // Load custom fonts
+  const fontBuffers = {};
+  const customFonts = template.custom_fonts_json || [];
+  for (const font of customFonts) {
+    if (font.url && font.name) {
+      fontBuffers[font.name] = await fetchFileBuffer(font.url);
+    }
+  }
+
+  return { template, backgroundBytes, fontBuffers };
+}
+
+/**
+ * Generate a certificate PDF by overlaying text fields on a template background.
+ * @param {Object} winner - Winner record with joined award data.
+ * @param {Object} templateData - Result from loadTemplate().
+ * @returns {Promise<Uint8Array>} The final PDF bytes.
+ */
+async function renderCertificatePDF(winner, templateData) {
+  const { template, backgroundBytes, fontBuffers } = templateData;
+  const fields = template.fields_json || [];
+  const pageWidth = template.page_width || 842;
+  const pageHeight = template.page_height || 595;
+
+  let pdfDoc;
+  if (backgroundBytes) {
+    // Load existing background PDF and overlay text
+    pdfDoc = await PDFLib.load(backgroundBytes);
+  } else {
+    // Create blank document
+    pdfDoc = await PDFLib.create();
+    pdfDoc.addPage([pageWidth, pageHeight]);
+  }
+
+  // Register fontkit for custom font embedding
+  pdfDoc.registerFontkit(fontkit);
+
+  // Pre-embed fonts used by fields
+  const embeddedFonts = {};
+  for (const field of fields) {
+    const fontName = field.fontFamily || 'Helvetica';
+    if (!embeddedFonts[fontName]) {
+      if (fontBuffers[fontName]) {
+        embeddedFonts[fontName] = await pdfDoc.embedFont(fontBuffers[fontName]);
+      } else {
+        // Fall back to standard fonts
+        const stdFont = StandardFonts[fontName] || StandardFonts.Helvetica;
+        embeddedFonts[fontName] = await pdfDoc.embedFont(stdFont);
       }
     }
-
-    console.log(`\n✅ Generated ${results.filter((r) => r.success).length}/${winners.length} certificates`);
-    return results;
-  } catch (error) {
-    console.error('Error generating all certificates:', error);
-    throw error;
   }
+
+  // Get first page
+  const page = pdfDoc.getPages()[0];
+  const { height: actualHeight } = page.getSize();
+
+  // Draw each text field
+  for (const field of fields) {
+    const text = substitutePlaceholders(field.text || '', winner);
+    const fontName = field.fontFamily || 'Helvetica';
+    const font = embeddedFonts[fontName];
+    const fontSize = field.fontSize || 24;
+    const color = hexToRgb(field.color || '#000000');
+
+    // Convert from top-left origin (editor) to bottom-left origin (PDF)
+    const y = actualHeight - (field.y || 0) - fontSize;
+
+    const drawOptions = {
+      x: field.x || 0,
+      y,
+      size: fontSize,
+      font,
+      color: rgb(color.r, color.g, color.b),
+    };
+
+    // Handle alignment by measuring text width
+    if (field.align === 'center') {
+      const textWidth = font.widthOfTextAtSize(text, fontSize);
+      const fieldWidth = field.width || pageWidth;
+      drawOptions.x = (field.x || 0) + (fieldWidth - textWidth) / 2;
+    } else if (field.align === 'right') {
+      const textWidth = font.widthOfTextAtSize(text, fontSize);
+      const fieldWidth = field.width || pageWidth;
+      drawOptions.x = (field.x || 0) + fieldWidth - textWidth;
+    }
+
+    page.drawText(text, drawOptions);
+  }
+
+  return pdfDoc.save();
+}
+
+/**
+ * Generate a certificate for a single winner using a template.
+ * @param {string} winnerId - The winner ID.
+ * @param {string} templateId - The certificate template ID.
+ * @param {string} [format='pdf'] - Output format: 'pdf' or 'png'.
+ * @returns {Promise<{publicUrl: string, filename: string}>} Certificate file details.
+ */
+async function generateWinnerCertificate(winnerId, templateId, format = 'pdf') {
+  console.log(`Generating certificate for winner ${winnerId}...`);
+
+  // Get winner with award data
+  const { data: winner, error } = await supabase
+    .from('winners')
+    .select('*, awards:award_years!winners_award_id_fkey(*)')
+    .eq('id', winnerId)
+    .single();
+
+  if (error) throw new Error('Winner not found: ' + error.message);
+
+  // Load template
+  const templateData = await loadTemplate(templateId);
+
+  // Render PDF
+  const pdfBytes = await renderCertificatePDF(winner, templateData);
+
+  const safeName = (winner.winner_name || 'winner').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+  const filename = `certificate-${safeName}-${winnerId.slice(0, 8)}.pdf`;
+
+  // Upload PDF to Supabase storage
+  const { error: uploadError } = await supabase.storage
+    .from('certificate-assets')
+    .upload(`generated/${filename}`, Buffer.from(pdfBytes), {
+      contentType: 'application/pdf',
+      upsert: true,
+    });
+
+  if (uploadError) throw uploadError;
+
+  const { data: urlData } = supabase.storage.from('certificate-assets').getPublicUrl(`generated/${filename}`);
+
+  // Update winner record with certificate URL
+  await supabase.from('winners').update({ certificate_url: urlData.publicUrl }).eq('id', winnerId);
+
+  return {
+    publicUrl: urlData.publicUrl,
+    filename,
+  };
+}
+
+/**
+ * Generate certificates for multiple winners using a template.
+ * @param {string[]} winnerIds - Array of winner IDs.
+ * @param {string} templateId - The certificate template ID.
+ * @param {string} [format='pdf'] - Output format.
+ * @returns {Promise<Array<{winnerId: string, success: boolean, url?: string, error?: string}>>} Results for each winner.
+ */
+async function generateBulkCertificates(winnerIds, templateId, format = 'pdf') {
+  console.log(`Generating certificates for ${winnerIds.length} winners...`);
+
+  // Pre-load template once for all winners
+  const templateData = await loadTemplate(templateId);
+
+  const results = [];
+  for (const winnerId of winnerIds) {
+    try {
+      const { data: winner, error } = await supabase
+        .from('winners')
+        .select('*, awards:award_years!winners_award_id_fkey(*)')
+        .eq('id', winnerId)
+        .single();
+
+      if (error) throw error;
+
+      const pdfBytes = await renderCertificatePDF(winner, templateData);
+
+      const safeName = (winner.winner_name || 'winner').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+      const filename = `certificate-${safeName}-${winnerId.slice(0, 8)}.pdf`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('certificate-assets')
+        .upload(`generated/${filename}`, Buffer.from(pdfBytes), {
+          contentType: 'application/pdf',
+          upsert: true,
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage.from('certificate-assets').getPublicUrl(`generated/${filename}`);
+
+      await supabase.from('winners').update({ certificate_url: urlData.publicUrl }).eq('id', winnerId);
+
+      results.push({ winnerId, winnerName: winner.winner_name, success: true, url: urlData.publicUrl });
+    } catch (err) {
+      results.push({ winnerId, success: false, error: err.message });
+    }
+  }
+
+  console.log(`Generated ${results.filter((r) => r.success).length}/${winnerIds.length} certificates`);
+  return results;
+}
+
+/**
+ * Preview a certificate with sample data (does not save).
+ * @param {string} templateId - The template ID.
+ * @param {Object} [sampleData] - Optional sample winner data for preview.
+ * @returns {Promise<string>} Base64-encoded PDF.
+ */
+async function previewCertificate(templateId, sampleData) {
+  const templateData = await loadTemplate(templateId);
+
+  const sampleWinner = sampleData || {
+    winner_name: 'Sample Winner Name',
+    company_name: 'Sample Company Ltd',
+    organisation_name: 'Sample Company Ltd',
+    awards: {
+      award_name: 'Best Innovation Award',
+      award_category: 'Innovation',
+      year: new Date().getFullYear(),
+    },
+  };
+
+  const pdfBytes = await renderCertificatePDF(sampleWinner, templateData);
+  return Buffer.from(pdfBytes).toString('base64');
 }
 
 /**
@@ -542,16 +628,15 @@ async function verifyQRCode(qrData) {
 }
 
 /**
- * API endpoint to generate a winner certificate.
- * POST /api/generate-certificate
- * @param {Object} req - Express request object with body.entryId.
- * @param {Object} res - Express response object.
- * @returns {Promise<void>}
+ * API endpoint to generate a single winner certificate.
  */
 async function generateCertificateEndpoint(req, res) {
   try {
-    const { entryId } = req.body;
-    const result = await generateWinnerCertificate(entryId);
+    const { winnerId, templateId, format } = req.body;
+    if (!winnerId || !templateId) {
+      return res.status(400).json({ error: 'winnerId and templateId are required' });
+    }
+    const result = await generateWinnerCertificate(winnerId, templateId, format);
     res.json({ success: true, ...result });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -559,16 +644,32 @@ async function generateCertificateEndpoint(req, res) {
 }
 
 /**
- * API endpoint to generate certificates for all winners.
- * POST /api/generate-all-certificates
- * @param {Object} req - Express request object.
- * @param {Object} res - Express response object.
- * @returns {Promise<void>}
+ * API endpoint to generate certificates for multiple winners.
  */
-async function generateAllCertificatesEndpoint(req, res) {
+async function generateBulkCertificatesEndpoint(req, res) {
   try {
-    const results = await generateAllWinnerCertificates();
+    const { winnerIds, templateId, format } = req.body;
+    if (!winnerIds?.length || !templateId) {
+      return res.status(400).json({ error: 'winnerIds array and templateId are required' });
+    }
+    const results = await generateBulkCertificates(winnerIds, templateId, format);
     res.json({ success: true, results });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+}
+
+/**
+ * API endpoint to preview a certificate with sample data.
+ */
+async function previewCertificateEndpoint(req, res) {
+  try {
+    const { templateId, sampleData } = req.body;
+    if (!templateId) {
+      return res.status(400).json({ error: 'templateId is required' });
+    }
+    const base64Pdf = await previewCertificate(templateId, sampleData);
+    res.json({ success: true, pdfBase64: base64Pdf });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -658,8 +759,10 @@ module.exports = async function handler(req, res) {
   switch (action) {
     case 'generate-certificate':
       return generateCertificateEndpoint(req, res);
-    case 'generate-all-certificates':
-      return generateAllCertificatesEndpoint(req, res);
+    case 'generate-bulk-certificates':
+      return generateBulkCertificatesEndpoint(req, res);
+    case 'preview-certificate':
+      return previewCertificateEndpoint(req, res);
     case 'generate-qr-ticket':
       return generateQRTicketEndpoint(req, res);
     case 'generate-badge':
@@ -671,19 +774,24 @@ module.exports = async function handler(req, res) {
     default:
       return res.status(400).json({
         error:
-          'Invalid action. Use: generate-certificate, generate-all-certificates, generate-qr-ticket, generate-badge, generate-all-badges, verify-qr',
+          'Invalid action. Use: generate-certificate, generate-bulk-certificates, preview-certificate, generate-qr-ticket, generate-badge, generate-all-badges, verify-qr',
       });
   }
 };
 
 module.exports.generateWinnerCertificate = generateWinnerCertificate;
-module.exports.generateAllWinnerCertificates = generateAllWinnerCertificates;
+module.exports.generateBulkCertificates = generateBulkCertificates;
+module.exports.previewCertificate = previewCertificate;
+module.exports.renderCertificatePDF = renderCertificatePDF;
+module.exports.hexToRgb = hexToRgb;
+module.exports.substitutePlaceholders = substitutePlaceholders;
 module.exports.generateEventTicketQR = generateEventTicketQR;
 module.exports.generateEventBadge = generateEventBadge;
 module.exports.generateAllEventBadges = generateAllEventBadges;
 module.exports.verifyQRCode = verifyQRCode;
 module.exports.generateCertificateEndpoint = generateCertificateEndpoint;
-module.exports.generateAllCertificatesEndpoint = generateAllCertificatesEndpoint;
+module.exports.generateBulkCertificatesEndpoint = generateBulkCertificatesEndpoint;
+module.exports.previewCertificateEndpoint = previewCertificateEndpoint;
 module.exports.generateQRTicketEndpoint = generateQRTicketEndpoint;
 module.exports.generateBadgeEndpoint = generateBadgeEndpoint;
 module.exports.verifyQREndpoint = verifyQREndpoint;

@@ -2156,20 +2156,12 @@ describe('Events Module - _buildEvtServerFilters', () => {
 // _populateYearFilterFromConstants
 // ---------------------------------------------------------------------------
 describe('Events Module - _populateYearFilterFromConstants', () => {
-  test('populates year select from YEARS constant', () => {
-    eventsModule._populateYearFilterFromConstants();
+  test('is a no-op (year filter now populated from DB in loadEvents)', () => {
     const select = document.getElementById('eventsYearFilter');
-    const options = select.querySelectorAll('option');
-    // First option should be "All Years"
-    expect(options[0].textContent).toBe('All Years');
-    expect(options[0].value).toBe('');
-    // Remaining options match YEARS global
-    const yearValues = Array.from(options)
-      .slice(1)
-      .map((o) => o.value);
-    YEARS.forEach((y) => {
-      expect(yearValues).toContain(String(y));
-    });
+    const before = select.innerHTML;
+    eventsModule._populateYearFilterFromConstants();
+    // No-op — year filter is populated from DB in loadEvents
+    expect(select.innerHTML).toBe(before);
   });
 });
 

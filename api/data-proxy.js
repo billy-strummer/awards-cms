@@ -222,6 +222,7 @@ const ALLOWED_TABLES = new Set([
   'sponsor_contracts',
   'sponsor_impressions',
   'media_videos',
+  'certificate_templates',
 ]);
 
 /** Tables that can be mutated (insert/update/delete/upsert) */
@@ -332,6 +333,7 @@ const MUTABLE_TABLES = new Set([
   'sponsor_contracts',
   'sponsor_impressions',
   'media_videos',
+  'certificate_templates',
 ]);
 
 /** Maximum page size to prevent abuse */

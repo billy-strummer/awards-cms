@@ -506,11 +506,12 @@ describe('Winners Module - populateFilters()', () => {
 });
 
 describe('Winners Module - _populateFiltersFromConstants()', () => {
-  test('populates year filter from YEARS constant', () => {
-    winnersModule._populateFiltersFromConstants();
+  test('is a no-op (year filter now populated from DB)', () => {
     const yearSelect = document.getElementById('winnerYearFilterSelect');
-    expect(yearSelect.innerHTML).toContain('All Years');
-    expect(yearSelect.innerHTML).toContain('2026');
+    const before = yearSelect.innerHTML;
+    winnersModule._populateFiltersFromConstants();
+    // _populateFiltersFromConstants is now a no-op — year filter comes from DB
+    expect(yearSelect.innerHTML).toBe(before);
   });
 });
 
@@ -1343,17 +1344,10 @@ describe('Winners Module - _buildServerFilters() Advanced', () => {
 // _populateFiltersFromConstants()
 // ---------------------------------------------------------------------------
 describe('Winners Module - _populateFiltersFromConstants() Advanced', () => {
-  test('year options match YEARS constant', () => {
+  test('is a no-op (year filter now populated from DB)', () => {
     winnersModule._populateFiltersFromConstants();
-    const yearSelect = document.getElementById('winnerYearFilterSelect');
-    const options = Array.from(yearSelect.querySelectorAll('option'));
-    // First option is "All Years"
-    expect(options[0].value).toBe('');
-    // Remaining options should match YEARS (as string values)
-    const yearValues = options.slice(1).map((o) => o.value);
-    YEARS.forEach((y) => {
-      expect(yearValues).toContain(String(y));
-    });
+    // No-op — year filter is now populated from DB via utils.populateYearFilterFromDB
+    expect(typeof winnersModule._populateFiltersFromConstants).toBe('function');
   });
 });
 
@@ -2048,13 +2042,13 @@ describe('Winners Module - renderCertificateWinners()', () => {
     expect(container.innerHTML).toContain('Superior Builders');
   });
 
-  test('shows Selected badge for selected certificate winners', () => {
+  test('highlights selected certificate winners', () => {
     winnersModule.certificateState.filteredWinners = [...sampleWinners];
     winnersModule.certificateState.selectedWinners.add('w-1');
     winnersModule.renderCertificateWinners();
     const container = document.getElementById('certificateWinnersList');
     expect(container.innerHTML).toContain('border-primary');
-    expect(container.innerHTML).toContain('Selected');
+    expect(container.innerHTML).toContain('bg-primary');
   });
 });
 
@@ -2075,12 +2069,10 @@ describe('Winners Module - exportFilteredWinners()', () => {
 // previewAssets validation
 // ---------------------------------------------------------------------------
 describe('Winners Module - previewAssets() validation', () => {
-  test('shows warning when no winners selected', async () => {
-    winnersModule.certificateState.selectedWinners = new Set();
-    const spy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+  test('is a no-op (legacy method replaced by template editor)', async () => {
+    // previewAssets is now a no-op; certificate preview uses previewCertificate
     await winnersModule.previewAssets();
-    expect(spy).toHaveBeenCalledWith('Please select at least one winner', 'warning');
-    spy.mockRestore();
+    // Should complete without error
   });
 });
 
@@ -2088,11 +2080,12 @@ describe('Winners Module - previewAssets() validation', () => {
 // generateAssets validation
 // ---------------------------------------------------------------------------
 describe('Winners Module - generateAssets() validation', () => {
-  test('shows warning when no winners selected', async () => {
+  test('shows warning when template not saved', async () => {
+    winnersModule.certificateState.templateId = null;
     winnersModule.certificateState.selectedWinners = new Set();
     const spy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
     await winnersModule.generateAssets();
-    expect(spy).toHaveBeenCalledWith('Please select at least one winner', 'warning');
+    expect(spy).toHaveBeenCalledWith('Please save the template first', 'warning');
     spy.mockRestore();
   });
 });

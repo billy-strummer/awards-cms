@@ -1668,11 +1668,7 @@
             </label>
             <select class="form-select form-select-sm" id="orgsYearFilter"
                     data-on-change="orgsModule.filterOrganisations">
-              <option value="">All</option>
-              <option value="2026" selected>2026</option>
-              <option value="2025">2025</option>
-              <option value="2024">2024</option>
-              <option value="2023">2023</option>
+              <option value="">All Years</option>
             </select>
           </div>
 
@@ -1693,7 +1689,7 @@
               <i class="bi bi-geo-alt me-1"></i>Region
             </label>
             <select class="form-select form-select-sm" id="orgsRegionFilter"
-                    data-on-change="orgsModule.updateCountyFilterByRegion">
+                    data-on-change="orgsModule.onRegionFilterChange">
               <option value="">All Regions</option>
             </select>
           </div>
@@ -2342,10 +2338,6 @@
                 </label>
                 <select class="form-select" id="winnerYearFilterSelect">
                   <option value="">All Years</option>
-                  <option value="2026" selected>2026</option>
-                  <option value="2025">2025</option>
-                  <option value="2024">2024</option>
-                  <option value="2023">2023</option>
                 </select>
               </div>
               
@@ -2413,6 +2405,9 @@
                 </button>
                 <button class="btn btn-info btn-sm" data-action="winnersModule.openYearComparison">
                   <i class="bi bi-bar-chart-line me-1"></i>Year Comparison
+                </button>
+                <button class="btn btn-outline-primary btn-sm" data-action="winnersModule.openCertificateGenerator">
+                  <i class="bi bi-award-fill me-1"></i>Certificate Editor
                 </button>
                 <button class="btn btn-secondary btn-sm" data-action="winnersModule.bulkGenerateMediaPacks">
                   <i class="bi bi-newspaper me-1"></i>Bulk Media Packs
@@ -8630,10 +8625,6 @@
               <label class="form-label fw-bold">Filter by Year:</label>
               <select class="form-select" id="pressReleaseYearFilter" data-on-change="winnersModule.filterPressReleaseWinners">
                 <option value="">All Years</option>
-                <option value="2025">2025</option>
-                <option value="2024">2024</option>
-                <option value="2023">2023</option>
-                <option value="2022">2022</option>
               </select>
             </div>
             <div class="col-md-6">
@@ -8683,152 +8674,211 @@
     </div>
   </div>
 
-  <!-- Certificate & Assets Generator Modal -->
+  <!-- Certificate Template Editor Modal -->
   <div class="modal fade" id="certificateGeneratorModal" tabindex="-1" aria-labelledby="certificateGeneratorModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl">
+    <div class="modal-dialog modal-fullscreen">
       <div class="modal-content">
-        <div class="modal-header bg-primary text-white">
+        <div class="modal-header bg-primary text-white py-2">
           <h5 class="modal-title" id="certificateGeneratorModalLabel">
-            <i class="bi bi-award-fill me-2"></i>Generate Certificates & Winner Assets
+            <i class="bi bi-award-fill me-2"></i>Certificate Template Editor
           </h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          <div class="d-flex align-items-center gap-2">
+            <select class="form-select form-select-sm bg-white" id="certTemplateSelect" style="width:200px" data-on-change="winnersModule.loadCertTemplate">
+              <option value="">-- Select Template --</option>
+            </select>
+            <button class="btn btn-sm btn-outline-light" data-action="winnersModule.newCertTemplate" title="New Template">
+              <i class="bi bi-plus-lg"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-light" data-action="winnersModule.saveCertTemplate" title="Save Template">
+              <i class="bi bi-save me-1"></i>Save
+            </button>
+            <button type="button" class="btn-close btn-close-white ms-2" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
         </div>
-        <div class="modal-body p-4">
-          <div class="alert alert-success">
-            <i class="bi bi-info-circle me-2"></i>
-            Generate professional certificates, winner shields/logos, email signature banners, and website banners for your award winners.
-          </div>
-
-          <!-- Year Filter -->
-          <div class="row mb-4">
-            <div class="col-md-6">
-              <label class="form-label fw-bold">Filter by Year:</label>
-              <select class="form-select" id="certificateYearFilter" data-on-change="winnersModule.filterCertificateWinners">
-                <option value="">All Years</option>
-                <option value="2025">2025</option>
-                <option value="2024">2024</option>
-                <option value="2023">2023</option>
-                <option value="2022">2022</option>
-              </select>
+        <div class="modal-body p-0 d-flex" style="overflow:hidden">
+          <!-- Left: Field List & Properties Panel -->
+          <div class="border-end bg-light d-flex flex-column" style="width:320px;min-width:320px">
+            <!-- Template Info -->
+            <div class="p-3 border-bottom">
+              <label class="form-label fw-bold small mb-1">Template Name</label>
+              <input type="text" class="form-control form-control-sm" id="certTemplateName" placeholder="My Certificate Template">
             </div>
-            <div class="col-md-6">
-              <label class="form-label fw-bold">Asset Types to Generate:</label>
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" id="assetTypeCertificate" checked>
-                <label class="form-check-label" for="assetTypeCertificate">
-                  <i class="bi bi-file-earmark-pdf me-1"></i>PDF Certificate
-                </label>
-              </div>
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" id="assetTypeShield" checked>
-                <label class="form-check-label" for="assetTypeShield">
-                  <i class="bi bi-shield-fill-check me-1"></i>Winner Shield/Logo
-                </label>
-              </div>
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" id="assetTypeEmailBanner" checked>
-                <label class="form-check-label" for="assetTypeEmailBanner">
-                  <i class="bi bi-envelope me-1"></i>Email Signature Banner
-                </label>
-              </div>
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" id="assetTypeWebBanner" checked>
-                <label class="form-check-label" for="assetTypeWebBanner">
-                  <i class="bi bi-globe me-1"></i>Website Banner
-                </label>
-              </div>
-            </div>
-          </div>
 
-          <!-- Customization Options -->
-          <div class="card mb-4">
-            <div class="card-header bg-light">
-              <h6 class="mb-0"><i class="bi bi-palette me-2"></i>Customization Options</h6>
-            </div>
-            <div class="card-body">
-              <div class="row">
-                <div class="col-md-6 mb-3">
-                  <label for="brandColor" class="form-label">Brand Color:</label>
-                  <input type="color" class="form-control form-control-color" id="brandColor" value="#0d6efd" title="Choose your brand color">
-                </div>
-                <div class="col-md-6 mb-3">
-                  <label for="accentColor" class="form-label">Accent Color:</label>
-                  <input type="color" class="form-control form-control-color" id="accentColor" value="#ffc107" title="Choose your accent color">
-                </div>
-                <div class="col-md-12 mb-3">
-                  <label for="certificateText" class="form-label">Certificate Text Template:</label>
-                  <textarea class="form-control" id="certificateText" rows="3">This is to certify that
-
-{WINNER_NAME}
-
-has been awarded
-
-{AWARD_NAME}
-
-in recognition of excellence
-
-{YEAR}</textarea>
-                  <small class="text-muted">Use {WINNER_NAME}, {AWARD_NAME}, {YEAR} as placeholders</small>
-                </div>
-                <div class="col-md-6 mb-3">
-                  <label for="organizerName" class="form-label">Organizer Name:</label>
-                  <input type="text" class="form-control" id="organizerName" value="British Trade Awards" placeholder="Organization name">
-                </div>
-                <div class="col-md-6 mb-3">
-                  <label for="signatureName" class="form-label">Signature Name:</label>
-                  <input type="text" class="form-control" id="signatureName" value="" placeholder="e.g., John Smith, Director">
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Winners Selection -->
-          <div class="mb-3">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-              <h6 class="mb-0">
-                <i class="bi bi-check2-square me-2"></i>Select Winners (<span id="selectedCertificateWinnersCount">0</span> selected)
-              </h6>
-              <div>
-                <button class="btn btn-sm btn-outline-primary" data-action="winnersModule.selectAllCertificateWinners">
-                  <i class="bi bi-check-all me-1"></i>Select All
-                </button>
-                <button class="btn btn-sm btn-outline-secondary" data-action="winnersModule.deselectAllCertificateWinners">
-                  <i class="bi bi-x-circle me-1"></i>Clear All
+            <!-- Background Upload -->
+            <div class="p-3 border-bottom">
+              <label class="form-label fw-bold small mb-1">Background PDF</label>
+              <div class="d-flex gap-2">
+                <input type="file" class="form-control form-control-sm" id="certBgUpload" accept=".pdf">
+                <button class="btn btn-sm btn-outline-danger" data-action="winnersModule.removeCertBg" title="Remove background">
+                  <i class="bi bi-trash"></i>
                 </button>
               </div>
+              <div id="certBgStatus" class="small text-muted mt-1"></div>
             </div>
 
-            <div id="certificateWinnersList" class="u-scroll-y-400">
-              <!-- Winners list will be populated by JavaScript -->
-              <div class="text-center py-5 text-muted">
-                <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+            <!-- Custom Font Upload -->
+            <div class="p-3 border-bottom">
+              <label class="form-label fw-bold small mb-1">Custom Fonts</label>
+              <div class="d-flex gap-2 mb-2">
+                <input type="file" class="form-control form-control-sm" id="certFontUpload" accept=".ttf,.otf,.woff,.woff2">
+                <button class="btn btn-sm btn-outline-primary" data-action="winnersModule.uploadCertFont" title="Upload font">
+                  <i class="bi bi-upload"></i>
+                </button>
+              </div>
+              <div id="certFontList" class="small"></div>
+            </div>
+
+            <!-- Text Fields -->
+            <div class="p-3 border-bottom">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <label class="form-label fw-bold small mb-0">Text Fields</label>
+                <button class="btn btn-sm btn-outline-primary" data-action="winnersModule.addCertField">
+                  <i class="bi bi-plus me-1"></i>Add Field
+                </button>
+              </div>
+              <div id="certFieldList" class="u-scroll-y-200">
+                <div class="text-muted small text-center py-3">No fields yet. Click "Add Field" to start.</div>
+              </div>
+            </div>
+
+            <!-- Selected Field Properties -->
+            <div class="p-3 flex-grow-1 overflow-auto" id="certFieldProps" style="display:none">
+              <h6 class="small fw-bold mb-2"><i class="bi bi-sliders me-1"></i>Field Properties</h6>
+              <div class="mb-2">
+                <label class="form-label small mb-0">Text / Placeholder</label>
+                <input type="text" class="form-control form-control-sm" id="certFieldText" placeholder="{WINNER_NAME}">
+                <div class="small text-muted mt-1">Use: {WINNER_NAME}, {AWARD_NAME}, {YEAR}, {DATE}, {COMPANY}</div>
+              </div>
+              <div class="row g-2 mb-2">
+                <div class="col-6">
+                  <label class="form-label small mb-0">X</label>
+                  <input type="number" class="form-control form-control-sm" id="certFieldX" min="0">
+                </div>
+                <div class="col-6">
+                  <label class="form-label small mb-0">Y</label>
+                  <input type="number" class="form-control form-control-sm" id="certFieldY" min="0">
+                </div>
+              </div>
+              <div class="row g-2 mb-2">
+                <div class="col-6">
+                  <label class="form-label small mb-0">Width</label>
+                  <input type="number" class="form-control form-control-sm" id="certFieldWidth" min="0">
+                </div>
+                <div class="col-6">
+                  <label class="form-label small mb-0">Font Size</label>
+                  <input type="number" class="form-control form-control-sm" id="certFieldFontSize" min="6" max="200">
+                </div>
+              </div>
+              <div class="row g-2 mb-2">
+                <div class="col-6">
+                  <label class="form-label small mb-0">Font</label>
+                  <select class="form-select form-select-sm" id="certFieldFontFamily">
+                    <option value="Helvetica">Helvetica</option>
+                    <option value="TimesRoman">Times Roman</option>
+                    <option value="Courier">Courier</option>
+                  </select>
+                </div>
+                <div class="col-6">
+                  <label class="form-label small mb-0">Align</label>
+                  <select class="form-select form-select-sm" id="certFieldAlign">
+                    <option value="left">Left</option>
+                    <option value="center">Center</option>
+                    <option value="right">Right</option>
+                  </select>
+                </div>
+              </div>
+              <div class="row g-2 mb-2">
+                <div class="col-6">
+                  <label class="form-label small mb-0">Color</label>
+                  <input type="color" class="form-control form-control-sm form-control-color" id="certFieldColor" value="#000000">
+                </div>
+                <div class="col-6">
+                  <label class="form-label small mb-0">Bold</label>
+                  <div class="form-check form-switch mt-1">
+                    <input class="form-check-input" type="checkbox" id="certFieldBold">
+                  </div>
+                </div>
+              </div>
+              <button class="btn btn-sm btn-outline-danger w-100 mt-2" data-action="winnersModule.deleteCertField">
+                <i class="bi bi-trash me-1"></i>Delete Field
+              </button>
+            </div>
+          </div>
+
+          <!-- Center: Canvas Preview -->
+          <div class="flex-grow-1 d-flex flex-column" style="overflow:hidden">
+            <!-- Toolbar -->
+            <div class="d-flex align-items-center gap-2 px-3 py-2 border-bottom bg-white">
+              <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-secondary" data-action="winnersModule.certEditorUndo" title="Undo (Ctrl+Z)">
+                  <i class="bi bi-arrow-counterclockwise"></i>
+                </button>
+                <button class="btn btn-outline-secondary" data-action="winnersModule.certEditorRedo" title="Redo (Ctrl+Y)">
+                  <i class="bi bi-arrow-clockwise"></i>
+                </button>
+              </div>
+              <div class="vr"></div>
+              <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-secondary" data-action="winnersModule.certEditorZoomOut" title="Zoom Out">
+                  <i class="bi bi-zoom-out"></i>
+                </button>
+                <span class="btn btn-outline-secondary disabled" id="certEditorZoomLevel">100%</span>
+                <button class="btn btn-outline-secondary" data-action="winnersModule.certEditorZoomIn" title="Zoom In">
+                  <i class="bi bi-zoom-in"></i>
+                </button>
+                <button class="btn btn-outline-secondary" data-action="winnersModule.certEditorZoomFit" title="Fit to View">
+                  <i class="bi bi-fullscreen"></i>
+                </button>
+              </div>
+              <div class="vr"></div>
+              <div class="form-check form-switch small mb-0">
+                <input class="form-check-input" type="checkbox" id="certSnapToGrid" checked>
+                <label class="form-check-label" for="certSnapToGrid">Snap to Grid</label>
+              </div>
+              <div class="ms-auto d-flex gap-2">
+                <button class="btn btn-sm btn-outline-info" data-action="winnersModule.previewCertificate" title="Preview with sample data">
+                  <i class="bi bi-eye me-1"></i>Preview PDF
+                </button>
+              </div>
+            </div>
+            <!-- Canvas area -->
+            <div id="certEditorCanvasWrap" class="flex-grow-1 position-relative" style="overflow:auto;background:#e9ecef">
+              <canvas id="certEditorCanvas" style="cursor:default;display:block;margin:auto"></canvas>
+            </div>
+          </div>
+
+          <!-- Right: Generate Panel -->
+          <div class="border-start bg-light d-flex flex-column" style="width:300px;min-width:300px">
+            <div class="p-3 border-bottom">
+              <h6 class="small fw-bold mb-2"><i class="bi bi-printer me-1"></i>Generate Certificates</h6>
+              <div class="mb-2">
+                <label class="form-label small mb-1">Filter by Year</label>
+                <select class="form-select form-select-sm" id="certificateYearFilter" data-on-change="winnersModule.filterCertificateWinners">
+                  <option value="">All Years</option>
+                </select>
+              </div>
+            </div>
+            <div class="p-3 border-bottom">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="small fw-bold">Winners (<span id="selectedCertificateWinnersCount">0</span> selected)</span>
+                <div>
+                  <button class="btn btn-sm btn-link p-0 me-2" data-action="winnersModule.selectAllCertificateWinners">All</button>
+                  <button class="btn btn-sm btn-link p-0" data-action="winnersModule.deselectAllCertificateWinners">None</button>
+                </div>
+              </div>
+            </div>
+            <div id="certificateWinnersList" class="flex-grow-1 p-2" style="overflow-y:auto">
+              <div class="text-center py-5 text-muted small">
+                <i class="bi bi-hourglass-split d-block mb-2 opacity-25" style="font-size:2rem"></i>
                 Loading winners...
               </div>
             </div>
-          </div>
-
-          <!-- Preview Section -->
-          <div id="assetPreviewSection" class="card d-none">
-            <div class="card-header bg-light">
-              <h6 class="mb-0"><i class="bi bi-eye me-2"></i>Preview</h6>
-            </div>
-            <div class="card-body">
-              <div id="assetPreviewContent" class="text-center">
-                <!-- Preview will be rendered here -->
-              </div>
+            <div class="p-3 border-top">
+              <button class="btn btn-primary w-100" data-action="winnersModule.generateCertificates">
+                <i class="bi bi-download me-1"></i>Generate Certificates
+              </button>
             </div>
           </div>
-        </div>
-        <div class="modal-footer bg-light">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-            <i class="bi bi-x-lg me-1"></i>Cancel
-          </button>
-          <button type="button" class="btn btn-outline-primary" data-action="winnersModule.previewAssets">
-            <i class="bi bi-eye me-1"></i>Preview
-          </button>
-          <button type="button" class="btn btn-primary" data-action="winnersModule.generateAssets">
-            <i class="bi bi-download me-1"></i>Generate & Download
-          </button>
         </div>
       </div>
     </div>

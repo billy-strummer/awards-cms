@@ -71,8 +71,10 @@ const awardsModule = {
         });
       }
 
-      // Populate region & county filters from DB (non-blocking)
+      // Populate filter dropdowns from DB (non-blocking)
       this.populateRegionAndCountyFilters();
+      utils.populateYearFilterFromDB('awardsYearFilterSelect', { selectCurrent: true });
+      this._populateSectorFilterFromDB();
 
       utils.trackDataLoad('awards');
 
@@ -92,20 +94,29 @@ const awardsModule = {
    * Populate filter dropdowns from known constants (no full dataset required)
    */
   _populateFiltersFromConstants() {
-    // Year filter
-    const yearSelect = document.getElementById('awardsYearFilterSelect');
-    if (yearSelect) {
-      yearSelect.innerHTML =
-        '<option value="">All Years</option>' + YEARS.map((y) => `<option value="${y}">${y}</option>`).join('');
+    // All filters are now populated from DB after data loads
+  },
+
+  /**
+   * Populate sector filter dropdown from distinct values in the awards table.
+   */
+  async _populateSectorFilterFromDB() {
+    try {
+      const { data } = await apiClient.select('awards', { select: 'sector', pageSize: 1000 });
+      const sectors = [...new Set((data || []).map((a) => a.sector).filter(Boolean))].sort();
+      const sectorSelect = document.getElementById('awardsSectorFilterSelect');
+      if (sectorSelect) {
+        const current = sectorSelect.value;
+        sectorSelect.innerHTML =
+          '<option value="">All Sectors</option>' +
+          sectors
+            .map((s) => `<option value="${utils.escapeHtml(s)}">${utils.escapeHtml(utils.toTitleCase(s))}</option>`)
+            .join('');
+        if (current) sectorSelect.value = current;
+      }
+    } catch (e) {
+      console.warn('Could not load sector filter from DB:', e.message);
     }
-    // Sector filter
-    const sectorSelect = document.getElementById('awardsSectorFilterSelect');
-    if (sectorSelect) {
-      sectorSelect.innerHTML =
-        '<option value="">All Sectors</option>' +
-        SECTORS.map((s) => `<option value="${s}">${utils.escapeHtml(utils.toTitleCase(s))}</option>`).join('');
-    }
-    // Region & County filters are populated from DB via populateRegionAndCountyFilters()
   },
 
   /**
@@ -116,12 +127,22 @@ const awardsModule = {
     const year = document.getElementById('awardsYearFilterSelect')?.value;
     const status = document.getElementById('awardsStatusFilterSelect')?.value;
     const sector = document.getElementById('awardsSectorFilterSelect')?.value;
+    const region = document.getElementById('awardsRegionFilterSelect')?.value;
     const county = document.getElementById('awardsCountyFilterSelect')?.value;
 
     if (year) filters.year = year;
     if (status) filters.status = status;
     if (sector) filters.sector = sector;
-    if (county) filters.county = county;
+
+    // Region is not a column on awards — translate to county IN [...] using cached data
+    if (region && !county && this._cachedCounties) {
+      const countiesInRegion = this._cachedCounties.filter((c) => c._regionName === region).map((c) => c.Name);
+      if (countiesInRegion.length > 0) {
+        filters.county = { op: 'in', value: countiesInRegion };
+      }
+    } else if (county) {
+      filters.county = county;
+    }
 
     return filters;
   },

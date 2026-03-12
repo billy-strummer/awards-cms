@@ -62,6 +62,9 @@ const eventsModule = {
       this.updateEventStats();
       this.renderFinancialOverview();
 
+      // Populate year filter from database
+      utils.populateYearFilterFromDB('eventsYearFilter');
+
       console.debug(`Loaded events (page 1, total: ${this._pagination.count})`);
       utils.trackDataLoad('events');
     } catch (error) {
@@ -78,11 +81,7 @@ const eventsModule = {
    * Populate year filter from YEARS constant
    */
   _populateYearFilterFromConstants() {
-    const yearSelect = document.getElementById('eventsYearFilter');
-    if (yearSelect) {
-      yearSelect.innerHTML =
-        '<option value="">All Years</option>' + YEARS.map((y) => `<option value="${y}">${y}</option>`).join('');
-    }
+    // No-op — year filter is now populated from DB after data loads (see loadEvents)
   },
 
   /**

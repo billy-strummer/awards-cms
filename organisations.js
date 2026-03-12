@@ -94,6 +94,7 @@ const orgsModule = {
       this.populateRegionAndCountyFilters();
       this.populateSectorFilter();
       this.populateSectorSuggestions();
+      utils.populateYearFilterFromDB('orgsYearFilter', { selectCurrent: true });
       utils.trackDataLoad('organisations');
     } catch (error) {
       console.error('Error loading organisations:', error);
@@ -381,6 +382,11 @@ const orgsModule = {
   /**
    * Update county dropdown based on selected region using cached DB data
    */
+  onRegionFilterChange() {
+    this.updateCountyFilterByRegion();
+    this.filterOrganisations();
+  },
+
   updateCountyFilterByRegion() {
     const selectedRegion = document.getElementById('orgsRegionFilter')?.value || '';
     const countySelect = document.getElementById('orgsCountyFilter');
@@ -424,6 +430,8 @@ const orgsModule = {
     const county = document.getElementById('orgsCountyFilter')?.value;
     const region = document.getElementById('orgsRegionFilter')?.value;
 
+    // Note: year is not a column on organisations — it is derived from linked
+    // awards during enrichment, so year filtering is applied post-fetch in _srvFetchPage.
     if (status && status !== 'all') filters.status = status;
     if (sector) filters.sector = sector;
     if (county) filters.county = county;
@@ -452,10 +460,17 @@ const orgsModule = {
 
     if (fetchId !== this._srvFetchId) return;
 
-    const pageData = result.data || [];
+    let pageData = result.data || [];
 
-    // Enrich page data with award assignments
+    // Enrich page data with award assignments (sets org.year from linked awards)
     await this._enrichOrgPageData(pageData);
+
+    // Year filter is applied post-fetch because year is derived from linked awards,
+    // not stored directly on the organisations table.
+    const year = document.getElementById('orgsYearFilter')?.value;
+    if (year) {
+      pageData = pageData.filter((org) => !org.year || String(org.year) === String(year));
+    }
 
     STATE.allOrganisations = pageData;
     STATE.filteredOrganisations = pageData;
@@ -3142,12 +3157,15 @@ const orgsModule = {
    */
   async populateSectorFilter() {
     try {
-      const { data } = await apiClient.select('organisations', {
-        select: 'sector',
-        pageSize: 1000,
-      });
-      const dbSectors = (data || []).map((o) => o.sector).filter(Boolean);
-      const allSectors = [...new Set([...SECTORS, ...dbSectors])].sort();
+      // Fetch sectors from both organisations and awards tables for complete coverage
+      const [{ data: orgData }, { data: awardData }] = await Promise.all([
+        apiClient.select('organisations', { select: 'sector', pageSize: 1000 }),
+        apiClient.select('awards', { select: 'sector', pageSize: 1000 }),
+      ]);
+      const dbSectors = [...(orgData || []).map((o) => o.sector), ...(awardData || []).map((a) => a.sector)].filter(
+        Boolean
+      );
+      const allSectors = [...new Set(dbSectors)].sort();
 
       const sectorSelect = document.getElementById('orgsSectorFilter');
       if (sectorSelect) {

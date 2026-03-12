@@ -7,7 +7,51 @@
 // Mocks
 // ==========================================
 
-// Mock pdfkit
+// Mock pdf-lib
+const mockDrawText = jest.fn();
+const mockGetPages = jest.fn(() => [
+  {
+    drawText: mockDrawText,
+    getSize: () => ({ width: 842, height: 595 }),
+  },
+]);
+const mockEmbedFont = jest.fn(() => ({
+  widthOfTextAtSize: jest.fn(() => 100),
+}));
+const mockAddPage = jest.fn(() => ({
+  drawText: mockDrawText,
+  getSize: () => ({ width: 842, height: 595 }),
+}));
+const mockSave = jest.fn(() => new Uint8Array([37, 80, 68, 70])); // %PDF
+const mockRegisterFontkit = jest.fn();
+
+jest.mock(
+  'pdf-lib',
+  () => ({
+    PDFDocument: {
+      create: jest.fn(async () => ({
+        addPage: mockAddPage,
+        getPages: mockGetPages,
+        embedFont: mockEmbedFont,
+        registerFontkit: mockRegisterFontkit,
+        save: mockSave,
+      })),
+      load: jest.fn(async () => ({
+        getPages: mockGetPages,
+        embedFont: mockEmbedFont,
+        registerFontkit: mockRegisterFontkit,
+        save: mockSave,
+      })),
+    },
+    rgb: jest.fn((r, g, b) => ({ r, g, b })),
+    StandardFonts: { Helvetica: 'Helvetica', TimesRoman: 'TimesRoman', Courier: 'Courier' },
+  }),
+  { virtual: true }
+);
+
+jest.mock('@pdf-lib/fontkit', () => ({}), { virtual: true });
+
+// Mock pdfkit (still used for badges)
 const mockPdfEnd = jest.fn();
 const mockPdfPipe = jest.fn();
 const mockPdfRect = jest.fn().mockReturnThis();
@@ -181,224 +225,179 @@ describe('Certificates & QR Module', () => {
     });
   });
 
+  // --- Helper function tests ---
+
+  describe('hexToRgb', () => {
+    test('converts hex to RGB values', () => {
+      const result = certificates.hexToRgb('#FF0000');
+      expect(result.r).toBeCloseTo(1);
+      expect(result.g).toBeCloseTo(0);
+      expect(result.b).toBeCloseTo(0);
+    });
+
+    test('handles hex without hash', () => {
+      const result = certificates.hexToRgb('00FF00');
+      expect(result.g).toBeCloseTo(1);
+    });
+  });
+
+  describe('substitutePlaceholders', () => {
+    test('replaces all placeholders', () => {
+      const winner = {
+        winner_name: 'Test Winner',
+        company_name: 'Test Co',
+        awards: { award_name: 'Best Award', year: 2026 },
+      };
+      const text = '{WINNER_NAME} won {AWARD_NAME} in {YEAR} for {COMPANY}';
+      const result = certificates.substitutePlaceholders(text, winner);
+      expect(result).toContain('Test Winner');
+      expect(result).toContain('Best Award');
+      expect(result).toContain('2026');
+      expect(result).toContain('Test Co');
+    });
+
+    test('handles missing data gracefully', () => {
+      const winner = {};
+      const result = certificates.substitutePlaceholders('{WINNER_NAME}', winner);
+      expect(result).toBe('');
+    });
+  });
+
   // --- generateWinnerCertificate ---
 
   describe('generateWinnerCertificate', () => {
-    test('generates certificate for a valid winner entry', async () => {
-      const entry = {
-        id: 'entry-1',
-        entry_number: 'BTA-2026-0001',
-        status: 'winner',
-        organisations: { company_name: 'Test Corp' },
-        awards: { award_name: 'Best Exporter' },
+    test('generates certificate for a valid winner with template', async () => {
+      const winner = {
+        id: 'winner-1',
+        winner_name: 'Test Corp',
+        awards: { award_name: 'Best Exporter', year: 2026 },
       };
 
-      // DB fetch entry
-      mockFromResults.push(chainable({ data: entry, error: null }));
-      // Update entry with certificate URL
+      const template = {
+        id: 'tpl-1',
+        name: 'Default',
+        fields_json: [
+          { text: '{WINNER_NAME}', x: 100, y: 200, fontSize: 36, fontFamily: 'Helvetica', color: '#000000' },
+        ],
+        custom_fonts_json: [],
+        background_pdf_url: null,
+        page_width: 842,
+        page_height: 595,
+      };
+
+      // 1. Fetch winner, 2. Fetch template, 3. Update winner
+      mockFromResults.push(chainable({ data: winner, error: null }));
+      mockFromResults.push(chainable({ data: template, error: null }));
       mockFromResults.push(chainable({ data: null, error: null }));
 
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-      const result = await certificates.generateWinnerCertificate('entry-1');
+      const result = await certificates.generateWinnerCertificate('winner-1', 'tpl-1');
 
-      expect(result).toHaveProperty('filepath');
       expect(result).toHaveProperty('publicUrl');
       expect(result).toHaveProperty('filename');
-      expect(result.filename).toBe('certificate-BTA-2026-0001.pdf');
+      expect(result.filename).toContain('certificate-');
       consoleSpy.mockRestore();
     });
 
-    test('generates certificate with custom output path', async () => {
-      const entry = {
-        id: 'entry-2',
-        entry_number: 'BTA-2026-0002',
-        status: 'winner',
-        organisations: { company_name: 'Custom Corp' },
-        awards: { award_name: 'Best Innovation' },
-      };
-
-      mockFromResults.push(chainable({ data: entry, error: null }));
-      mockFromResults.push(chainable({ data: null, error: null }));
-
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-      const result = await certificates.generateWinnerCertificate('entry-2', '/tmp/custom.pdf');
-
-      expect(result.filepath).toBe('/tmp/custom.pdf');
-      consoleSpy.mockRestore();
-    });
-
-    test('writes certificate to /tmp directory', async () => {
-      const entry = {
-        id: 'entry-3',
-        entry_number: 'BTA-2026-0003',
-        status: 'winner',
-        organisations: { company_name: 'Dir Corp' },
-        awards: { award_name: 'Best Service' },
-      };
-
-      mockFromResults.push(chainable({ data: entry, error: null }));
-      mockFromResults.push(chainable({ data: null, error: null }));
-
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-      const result = await certificates.generateWinnerCertificate('entry-3');
-
-      expect(result.filepath).toContain('/tmp/');
-      consoleSpy.mockRestore();
-    });
-
-    test('throws when entry is not found (DB error)', async () => {
+    test('throws when winner is not found (DB error)', async () => {
       mockFromResults.push(chainable({ data: null, error: new Error('not found') }));
 
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-
-      await expect(certificates.generateWinnerCertificate('bad-id')).rejects.toThrow();
-
-      consoleErrorSpy.mockRestore();
+      await expect(certificates.generateWinnerCertificate('bad-id', 'tpl-1')).rejects.toThrow();
       consoleSpy.mockRestore();
     });
 
-    test('throws when entry status is not winner', async () => {
-      const entry = {
-        id: 'entry-4',
-        status: 'submitted',
-        organisations: { company_name: 'Not Winner Corp' },
-        awards: { award_name: 'Test' },
-      };
+    test('throws when template is not found', async () => {
+      const winner = { id: 'w-1', winner_name: 'Test', awards: {} };
+      mockFromResults.push(chainable({ data: winner, error: null }));
+      mockFromResults.push(chainable({ data: null, error: new Error('Template not found') }));
 
-      mockFromResults.push(chainable({ data: entry, error: null }));
-
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-
-      await expect(certificates.generateWinnerCertificate('entry-4')).rejects.toThrow('Entry is not a winner');
-
-      consoleErrorSpy.mockRestore();
+      await expect(certificates.generateWinnerCertificate('w-1', 'bad-tpl')).rejects.toThrow('Template not found');
       consoleSpy.mockRestore();
     });
 
     test('throws when upload fails', async () => {
-      const entry = {
-        id: 'entry-5',
-        entry_number: 'BTA-2026-0005',
-        status: 'winner',
-        organisations: { company_name: 'Upload Fail Corp' },
-        awards: { award_name: 'Test' },
+      const winner = { id: 'w-2', winner_name: 'Upload Fail', awards: { award_name: 'Test' } };
+      const template = {
+        id: 'tpl-1',
+        fields_json: [],
+        custom_fonts_json: [],
+        background_pdf_url: null,
+        page_width: 842,
+        page_height: 595,
       };
 
-      mockFromResults.push(chainable({ data: entry, error: null }));
+      mockFromResults.push(chainable({ data: winner, error: null }));
+      mockFromResults.push(chainable({ data: template, error: null }));
       mockUpload.mockResolvedValue({ data: null, error: new Error('Upload failed') });
 
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-
-      await expect(certificates.generateWinnerCertificate('entry-5')).rejects.toThrow('Upload failed');
-
-      consoleErrorSpy.mockRestore();
+      await expect(certificates.generateWinnerCertificate('w-2', 'tpl-1')).rejects.toThrow('Upload failed');
       consoleSpy.mockRestore();
     });
   });
 
-  // --- generateAllWinnerCertificates ---
+  // --- generateBulkCertificates ---
 
-  describe('generateAllWinnerCertificates', () => {
-    test('generates certificates for all winners', async () => {
-      const winners = [
-        {
-          id: 'w1',
-          entry_number: 'BTA-001',
-          organisations: { company_name: 'Alpha Corp' },
-          awards: { award_name: 'Best A' },
-        },
-        {
-          id: 'w2',
-          entry_number: 'BTA-002',
-          organisations: { company_name: 'Beta Corp' },
-          awards: { award_name: 'Best B' },
-        },
-      ];
+  describe('generateBulkCertificates', () => {
+    test('generates certificates for multiple winners', async () => {
+      const template = {
+        id: 'tpl-1',
+        fields_json: [
+          { text: '{WINNER_NAME}', x: 100, y: 200, fontSize: 36, fontFamily: 'Helvetica', color: '#000000' },
+        ],
+        custom_fonts_json: [],
+        background_pdf_url: null,
+        page_width: 842,
+        page_height: 595,
+      };
 
-      // 1. Fetch all winners
-      mockFromResults.push(chainable({ data: winners, error: null }));
-
-      // For each winner, generateWinnerCertificate will be called
-      // Winner 1: entry fetch + update
+      // 1. Fetch template
+      mockFromResults.push(chainable({ data: template, error: null }));
+      // Winner 1: fetch + update
       mockFromResults.push(
-        chainable({
-          data: { ...winners[0], status: 'winner' },
-          error: null,
-        })
+        chainable({ data: { id: 'w1', winner_name: 'Alpha Corp', awards: { award_name: 'Best A' } }, error: null })
       );
       mockFromResults.push(chainable({ data: null, error: null }));
-
-      // Winner 2: entry fetch + update
+      // Winner 2: fetch + update
       mockFromResults.push(
-        chainable({
-          data: { ...winners[1], status: 'winner' },
-          error: null,
-        })
+        chainable({ data: { id: 'w2', winner_name: 'Beta Corp', awards: { award_name: 'Best B' } }, error: null })
       );
       mockFromResults.push(chainable({ data: null, error: null }));
 
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
-      const results = await certificates.generateAllWinnerCertificates();
+      const results = await certificates.generateBulkCertificates(['w1', 'w2'], 'tpl-1');
 
       expect(results).toHaveLength(2);
       expect(results[0].success).toBe(true);
-      expect(results[0].entryNumber).toBe('BTA-001');
       expect(results[1].success).toBe(true);
       consoleSpy.mockRestore();
-      consoleErrorSpy.mockRestore();
     });
 
     test('handles mixed success and failure', async () => {
-      const winners = [
-        {
-          id: 'w1',
-          entry_number: 'BTA-001',
-          organisations: { company_name: 'Good Corp' },
-          awards: { award_name: 'Best A' },
-        },
-        {
-          id: 'w2',
-          entry_number: 'BTA-002',
-          organisations: { company_name: 'Fail Corp' },
-          awards: { award_name: 'Best B' },
-        },
-      ];
+      const template = {
+        id: 'tpl-1',
+        fields_json: [],
+        custom_fonts_json: [],
+        background_pdf_url: null,
+        page_width: 842,
+        page_height: 595,
+      };
 
-      // 1. Fetch all winners
-      mockFromResults.push(chainable({ data: winners, error: null }));
-
+      mockFromResults.push(chainable({ data: template, error: null }));
       // Winner 1: succeeds
-      mockFromResults.push(chainable({ data: { ...winners[0], status: 'winner' }, error: null }));
+      mockFromResults.push(chainable({ data: { id: 'w1', winner_name: 'Good Corp', awards: {} }, error: null }));
       mockFromResults.push(chainable({ data: null, error: null }));
-
-      // Winner 2: entry fetch fails
+      // Winner 2: fetch fails
       mockFromResults.push(chainable({ data: null, error: new Error('DB error') }));
 
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
-      const results = await certificates.generateAllWinnerCertificates();
+      const results = await certificates.generateBulkCertificates(['w1', 'w2'], 'tpl-1');
 
       expect(results).toHaveLength(2);
       expect(results[0].success).toBe(true);
       expect(results[1].success).toBe(false);
-      expect(results[1].error).toBeDefined();
-      consoleSpy.mockRestore();
-      consoleErrorSpy.mockRestore();
-    });
-
-    test('throws when fetching winners fails', async () => {
-      mockFromResults.push(chainable({ data: null, error: new Error('DB error') }));
-
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-
-      await expect(certificates.generateAllWinnerCertificates()).rejects.toThrow('DB error');
-
-      consoleErrorSpy.mockRestore();
       consoleSpy.mockRestore();
     });
   });
@@ -776,73 +775,111 @@ describe('Certificates & QR Module', () => {
 
   describe('generateCertificateEndpoint', () => {
     test('returns success when certificate is generated', async () => {
-      const entry = {
-        id: 'ep-1',
-        entry_number: 'BTA-EP-001',
-        status: 'winner',
-        organisations: { company_name: 'EP Corp' },
-        awards: { award_name: 'Best EP' },
+      const winner = { id: 'ep-1', winner_name: 'EP Corp', awards: { award_name: 'Best EP' } };
+      const template = {
+        id: 'tpl-1',
+        fields_json: [],
+        custom_fonts_json: [],
+        background_pdf_url: null,
+        page_width: 842,
+        page_height: 595,
       };
 
-      mockFromResults.push(chainable({ data: entry, error: null }));
+      // Fetch winner + fetch template + update winner
+      mockFromResults.push(chainable({ data: winner, error: null }));
+      mockFromResults.push(chainable({ data: template, error: null }));
       mockFromResults.push(chainable({ data: null, error: null }));
 
-      const req = createReq({ entryId: 'ep-1' });
+      const req = createReq({ winnerId: 'ep-1', templateId: 'tpl-1' });
       const res = createRes();
 
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
       await certificates.generateCertificateEndpoint(req, res);
 
       expect(res.body.success).toBe(true);
-      expect(res.body).toHaveProperty('filepath');
+      expect(res.body).toHaveProperty('publicUrl');
       consoleSpy.mockRestore();
+    });
+
+    test('returns 400 when winnerId or templateId missing', async () => {
+      const req = createReq({ winnerId: 'ep-1' });
+      const res = createRes();
+
+      await certificates.generateCertificateEndpoint(req, res);
+
+      expect(res.statusCode).toBe(400);
+      expect(res.body.error).toContain('required');
     });
 
     test('returns 500 on error', async () => {
       mockFromResults.push(chainable({ data: null, error: new Error('Not found') }));
 
-      const req = createReq({ entryId: 'bad-id' });
+      const req = createReq({ winnerId: 'bad-id', templateId: 'tpl-1' });
       const res = createRes();
 
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
       await certificates.generateCertificateEndpoint(req, res);
 
       expect(res.statusCode).toBe(500);
       expect(res.body.error).toBeDefined();
       consoleSpy.mockRestore();
-      consoleErrorSpy.mockRestore();
     });
   });
 
-  describe('generateAllCertificatesEndpoint', () => {
-    test('returns success with results', async () => {
-      mockFromResults.push(chainable({ data: [], error: null }));
-
-      const req = createReq();
+  describe('generateBulkCertificatesEndpoint', () => {
+    test('returns 400 when winnerIds or templateId missing', async () => {
+      const req = createReq({ templateId: 'tpl-1' });
       const res = createRes();
 
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-      await certificates.generateAllCertificatesEndpoint(req, res);
+      await certificates.generateBulkCertificatesEndpoint(req, res);
 
-      expect(res.body.success).toBe(true);
-      expect(res.body.results).toBeDefined();
-      consoleSpy.mockRestore();
+      expect(res.statusCode).toBe(400);
     });
 
     test('returns 500 on error', async () => {
-      mockFromResults.push(chainable({ data: null, error: new Error('DB down') }));
+      mockFromResults.push(chainable({ data: null, error: new Error('Template error') }));
 
-      const req = createReq();
+      const req = createReq({ winnerIds: ['w1'], templateId: 'tpl-1' });
       const res = createRes();
 
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
-      await certificates.generateAllCertificatesEndpoint(req, res);
+      await certificates.generateBulkCertificatesEndpoint(req, res);
 
       expect(res.statusCode).toBe(500);
-      consoleSpy.mockRestore();
-      consoleErrorSpy.mockRestore();
+      expect(res.body.error).toBeDefined();
+    });
+  });
+
+  describe('previewCertificateEndpoint', () => {
+    test('returns 400 when templateId missing', async () => {
+      const req = createReq({});
+      const res = createRes();
+
+      await certificates.previewCertificateEndpoint(req, res);
+
+      expect(res.statusCode).toBe(400);
+    });
+
+    test('returns preview PDF base64', async () => {
+      const template = {
+        id: 'tpl-1',
+        fields_json: [
+          { text: '{WINNER_NAME}', x: 100, y: 200, fontSize: 36, fontFamily: 'Helvetica', color: '#000000' },
+        ],
+        custom_fonts_json: [],
+        background_pdf_url: null,
+        page_width: 842,
+        page_height: 595,
+      };
+
+      mockFromResults.push(chainable({ data: template, error: null }));
+
+      const req = createReq({ templateId: 'tpl-1' });
+      const res = createRes();
+
+      await certificates.previewCertificateEndpoint(req, res);
+
+      expect(res.body.success).toBe(true);
+      expect(res.body.pdfBase64).toBeDefined();
     });
   });
 

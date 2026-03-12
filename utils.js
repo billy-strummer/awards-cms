@@ -470,6 +470,48 @@ const utils = {
    * @param {string} selectId - ID of select element
    * @param {string} placeholder - Placeholder text
    */
+  /**
+   * Fetch distinct years from the award_years table and populate a <select> dropdown.
+   * Caches the result so multiple modules share one DB call.
+   * @param {string} selectId - ID of the <select> element to populate
+   * @param {Object} [options]
+   * @param {string} [options.placeholder='All Years'] - text for the empty-value option
+   * @param {boolean} [options.selectCurrent=false] - auto-select the current year
+   */
+  async populateYearFilterFromDB(selectId, options = {}) {
+    const { placeholder = 'All Years', selectCurrent = false } = options;
+    const select = document.getElementById(selectId);
+    if (!select) return;
+
+    try {
+      // Cache across all callers
+      if (!this._cachedDbYears) {
+        const { data } = await apiClient.select('awards', {
+          select: 'year',
+          pageSize: 1000,
+        });
+        const years = [...new Set((data || []).map((a) => a.year).filter(Boolean))].sort((a, b) => b - a);
+        // Only cache non-empty results; don't overwrite existing options with nothing
+        if (years.length === 0) return;
+        this._cachedDbYears = years;
+      }
+
+      const current = select.value;
+      select.innerHTML =
+        `<option value="">${this.escapeHtml(placeholder)}</option>` +
+        this._cachedDbYears.map((y) => `<option value="${y}">${y}</option>`).join('');
+
+      if (current) {
+        select.value = current;
+      } else if (selectCurrent) {
+        const thisYear = new Date().getFullYear();
+        if (this._cachedDbYears.includes(thisYear)) select.value = thisYear;
+      }
+    } catch (e) {
+      console.warn('Could not load years from DB:', e.message);
+    }
+  },
+
   populateFilter(data, key, selectId, placeholder = 'All') {
     const select = document.getElementById(selectId);
     if (!select) return;

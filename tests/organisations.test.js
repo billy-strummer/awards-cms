@@ -3412,6 +3412,7 @@ describe('Organisations Module - _populateFiltersFromConstants()', () => {
 // ---------------------------------------------------------------------------
 describe('Organisations Module - _buildOrgServerFilters()', () => {
   beforeEach(() => {
+    document.getElementById('orgsYearFilter').value = '';
     document.getElementById('orgsStatusFilter').value = '';
     document.getElementById('orgsSectorFilter').value = '';
     document.getElementById('orgsCountyFilter').value = '';
@@ -5328,6 +5329,7 @@ describe('Organisations Module - updateCountyFilterByRegion()', () => {
 // ---------------------------------------------------------------------------
 describe('Organisations Module - _buildOrgServerFilters()', () => {
   beforeEach(() => {
+    document.getElementById('orgsYearFilter').value = '';
     document.getElementById('orgsStatusFilter').value = '';
     document.getElementById('orgsSectorFilter').value = '';
     document.getElementById('orgsCountyFilter').value = '';

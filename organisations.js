@@ -381,6 +381,11 @@ const orgsModule = {
   /**
    * Update county dropdown based on selected region using cached DB data
    */
+  onRegionFilterChange() {
+    this.updateCountyFilterByRegion();
+    this.filterOrganisations();
+  },
+
   updateCountyFilterByRegion() {
     const selectedRegion = document.getElementById('orgsRegionFilter')?.value || '';
     const countySelect = document.getElementById('orgsCountyFilter');
@@ -419,11 +424,13 @@ const orgsModule = {
    */
   _buildOrgServerFilters() {
     const filters = {};
+    const year = document.getElementById('orgsYearFilter')?.value;
     const status = document.getElementById('orgsStatusFilter')?.value;
     const sector = document.getElementById('orgsSectorFilter')?.value;
     const county = document.getElementById('orgsCountyFilter')?.value;
     const region = document.getElementById('orgsRegionFilter')?.value;
 
+    if (year) filters.year = year;
     if (status && status !== 'all') filters.status = status;
     if (sector) filters.sector = sector;
     if (county) filters.county = county;

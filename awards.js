@@ -116,11 +116,13 @@ const awardsModule = {
     const year = document.getElementById('awardsYearFilterSelect')?.value;
     const status = document.getElementById('awardsStatusFilterSelect')?.value;
     const sector = document.getElementById('awardsSectorFilterSelect')?.value;
+    const region = document.getElementById('awardsRegionFilterSelect')?.value;
     const county = document.getElementById('awardsCountyFilterSelect')?.value;
 
     if (year) filters.year = year;
     if (status) filters.status = status;
     if (sector) filters.sector = sector;
+    if (region) filters.region = region;
     if (county) filters.county = county;
 
     return filters;

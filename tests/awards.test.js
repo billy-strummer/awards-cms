@@ -606,27 +606,30 @@ describe('Awards Module - populateYearFilter()', () => {
 });
 
 describe('Awards Module - _populateFiltersFromConstants()', () => {
-  test('populates year filter from YEARS constant', () => {
-    awardsModule._populateFiltersFromConstants();
+  test('is a no-op (filters are now populated from DB)', () => {
     const yearSelect = document.getElementById('awardsYearFilterSelect');
-    expect(yearSelect.innerHTML).toContain('All Years');
-    expect(yearSelect.innerHTML).toContain('2026');
-  });
-
-  test('populates sector filter from SECTORS constant', () => {
+    const sectorSelect = document.getElementById('awardsSectorFilterSelect');
+    const regionSelect = document.getElementById('awardsRegionFilterSelect');
+    const yearBefore = yearSelect.innerHTML;
+    const sectorBefore = sectorSelect.innerHTML;
+    const regionBefore = regionSelect.innerHTML;
     awardsModule._populateFiltersFromConstants();
+    // _populateFiltersFromConstants is now a no-op — all filters come from DB
+    expect(yearSelect.innerHTML).toBe(yearBefore);
+    expect(sectorSelect.innerHTML).toBe(sectorBefore);
+    expect(regionSelect.innerHTML).toBe(regionBefore);
+  });
+});
+
+describe('Awards Module - _populateSectorFilterFromDB()', () => {
+  test('populates sector filter from database', async () => {
+    jest.spyOn(apiClient, 'select').mockResolvedValue({
+      data: [{ sector: 'BUILDING & CONSTRUCTION' }, { sector: 'CARPENTRY & JOINERY' }],
+    });
+    await awardsModule._populateSectorFilterFromDB();
     const sectorSelect = document.getElementById('awardsSectorFilterSelect');
     expect(sectorSelect.innerHTML).toContain('All Sectors');
-    expect(sectorSelect.innerHTML).toContain('BUILDING');
-  });
-
-  test('does not populate region filter (now loaded from DB)', () => {
-    const regionSelect = document.getElementById('awardsRegionFilterSelect');
-    regionSelect.innerHTML = '<option value="">All Regions</option>';
-    awardsModule._populateFiltersFromConstants();
-    // Region filter is no longer populated from constants — it's loaded from DB
-    expect(regionSelect.innerHTML).toContain('All Regions');
-    expect(regionSelect.querySelectorAll('option').length).toBe(1);
+    expect(sectorSelect.innerHTML).toContain('Building');
   });
 });
 

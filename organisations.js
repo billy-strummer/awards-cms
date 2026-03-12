@@ -94,6 +94,7 @@ const orgsModule = {
       this.populateRegionAndCountyFilters();
       this.populateSectorFilter();
       this.populateSectorSuggestions();
+      utils.populateYearFilterFromDB('orgsYearFilter', { selectCurrent: true });
       utils.trackDataLoad('organisations');
     } catch (error) {
       console.error('Error loading organisations:', error);
@@ -3156,12 +3157,15 @@ const orgsModule = {
    */
   async populateSectorFilter() {
     try {
-      const { data } = await apiClient.select('organisations', {
-        select: 'sector',
-        pageSize: 1000,
-      });
-      const dbSectors = (data || []).map((o) => o.sector).filter(Boolean);
-      const allSectors = [...new Set([...SECTORS, ...dbSectors])].sort();
+      // Fetch sectors from both organisations and awards tables for complete coverage
+      const [{ data: orgData }, { data: awardData }] = await Promise.all([
+        apiClient.select('organisations', { select: 'sector', pageSize: 1000 }),
+        apiClient.select('awards', { select: 'sector', pageSize: 1000 }),
+      ]);
+      const dbSectors = [...(orgData || []).map((o) => o.sector), ...(awardData || []).map((a) => a.sector)].filter(
+        Boolean
+      );
+      const allSectors = [...new Set(dbSectors)].sort();
 
       const sectorSelect = document.getElementById('orgsSectorFilter');
       if (sectorSelect) {

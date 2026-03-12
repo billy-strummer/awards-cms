@@ -47,6 +47,9 @@ const winnersModule = {
 
       console.debug(`Loaded winners (page 1, total: ${this._pagination.count})`);
 
+      // Populate year filter from database
+      utils.populateYearFilterFromDB('winnerYearFilterSelect', { selectCurrent: true });
+
       // Initialise reusable keyboard navigation (once)
       if (!this._keyboardNavInit) {
         this._keyboardNavInit = true;
@@ -78,11 +81,7 @@ const winnersModule = {
    * Populate filter dropdowns from known constants
    */
   _populateFiltersFromConstants() {
-    const yearSelect = document.getElementById('winnerYearFilterSelect');
-    if (yearSelect) {
-      yearSelect.innerHTML =
-        '<option value="">All Years</option>' + YEARS.map((y) => `<option value="${y}">${y}</option>`).join('');
-    }
+    // Year filter populated from DB after page loads (see loadWinners)
   },
 
   /**
@@ -891,6 +890,9 @@ const winnersModule = {
       this.pressReleaseState.selectedWinners.clear();
       this.pressReleaseState.excludedPhotos.clear();
 
+      // Populate year filter from DB
+      utils.populateYearFilterFromDB('pressReleaseYearFilter');
+
       // Show modal
       const modal = new bootstrap.Modal(document.getElementById('pressReleaseExportModal'));
       modal.show();
@@ -1373,6 +1375,9 @@ const winnersModule = {
       this.certificateState.allWinners = winners || [];
       this.certificateState.filteredWinners = this.certificateState.allWinners;
       this.certificateState.selectedWinners.clear();
+
+      // Populate year filter from DB
+      utils.populateYearFilterFromDB('certificateYearFilter');
 
       // Show modal
       const modal = new bootstrap.Modal(document.getElementById('certificateGeneratorModal'));

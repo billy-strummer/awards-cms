@@ -424,13 +424,13 @@ const orgsModule = {
    */
   _buildOrgServerFilters() {
     const filters = {};
-    const year = document.getElementById('orgsYearFilter')?.value;
     const status = document.getElementById('orgsStatusFilter')?.value;
     const sector = document.getElementById('orgsSectorFilter')?.value;
     const county = document.getElementById('orgsCountyFilter')?.value;
     const region = document.getElementById('orgsRegionFilter')?.value;
 
-    if (year) filters.year = year;
+    // Note: year is not a column on organisations — it is derived from linked
+    // awards during enrichment, so year filtering is applied post-fetch in _srvFetchPage.
     if (status && status !== 'all') filters.status = status;
     if (sector) filters.sector = sector;
     if (county) filters.county = county;
@@ -459,10 +459,17 @@ const orgsModule = {
 
     if (fetchId !== this._srvFetchId) return;
 
-    const pageData = result.data || [];
+    let pageData = result.data || [];
 
-    // Enrich page data with award assignments
+    // Enrich page data with award assignments (sets org.year from linked awards)
     await this._enrichOrgPageData(pageData);
+
+    // Year filter is applied post-fetch because year is derived from linked awards,
+    // not stored directly on the organisations table.
+    const year = document.getElementById('orgsYearFilter')?.value;
+    if (year) {
+      pageData = pageData.filter((org) => !org.year || String(org.year) === String(year));
+    }
 
     STATE.allOrganisations = pageData;
     STATE.filteredOrganisations = pageData;

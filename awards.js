@@ -122,8 +122,16 @@ const awardsModule = {
     if (year) filters.year = year;
     if (status) filters.status = status;
     if (sector) filters.sector = sector;
-    if (region) filters.region = region;
-    if (county) filters.county = county;
+
+    // Region is not a column on awards — translate to county IN [...] using cached data
+    if (region && !county && this._cachedCounties) {
+      const countiesInRegion = this._cachedCounties.filter((c) => c._regionName === region).map((c) => c.Name);
+      if (countiesInRegion.length > 0) {
+        filters.county = { op: 'in', value: countiesInRegion };
+      }
+    } else if (county) {
+      filters.county = county;
+    }
 
     return filters;
   },

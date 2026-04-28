@@ -36,8 +36,8 @@ const dom = new JSDOM(
   <!-- Filter elements -->
   <select id="orgsYearFilter"><option value="">All</option><option value="2026">2026</option><option value="2025">2025</option></select>
   <select id="orgsSectorFilter"><option value="">All</option><option value="BUILDING & CONSTRUCTION">BUILDING & CONSTRUCTION</option><option value="PLUMBING">PLUMBING</option><option value="ELECTRICAL">ELECTRICAL</option></select>
-  <select id="orgsCountyFilter"><option value="">All</option><option value="Kent">Kent</option><option value="Essex">Essex</option><option value="London, North">London, North</option></select>
-  <select id="orgsRegionFilter"><option value="">All Regions</option><option value="South East">South East</option><option value="East of England">East of England</option><option value="Greater London">Greater London</option></select>
+  <select id="orgsAreaFilter"><option value="">All Areas</option><option value="area-kent">Kent</option><option value="area-essex">Essex</option><option value="area-surrey">Surrey</option></select>
+  <select id="orgsCountryFilter"><option value="">All Countries</option><option value="England">England</option><option value="Scotland">Scotland</option><option value="Wales">Wales</option></select>
   <select id="orgsStatusFilter"><option value="">All</option><option value="all">Show All</option><option value="prospect">Prospect</option><option value="entrant">Entrant</option><option value="winner">Winner</option><option value="archived">Archived</option><option value="sponsor">Sponsor</option></select>
   <input id="orgsSearchBox" value="" />
   <select id="orgsTierFilter"><option value="">All</option><option value="Gold">Gold</option><option value="Silver">Silver</option><option value="Platinum">Platinum</option></select>
@@ -80,9 +80,9 @@ const dom = new JSDOM(
     <select id="newCompanySector"><option value="BUILDING">BUILDING</option></select>
     <input id="newContactName" value="" />
     <input id="newContactPhone" value="" />
-    <select id="newCompanyRegion"><option value="Greater London">Greater London</option></select>
+    <select id="newCompanyCountry"><option value="">-- Select Country --</option><option value="England">England</option><option value="Scotland">Scotland</option><option value="Wales">Wales</option></select>
     <input id="newCompanyAddress" value="" />
-    <select id="newCompanyCounty"><option value="">All</option><option value="Kent">Kent</option></select>
+    <select id="newCompanyArea"><option value="">-- Select Area --</option><option value="area-kent">Kent</option></select>
     <input id="newCompanyCatchment" value="" />
   </form>
 
@@ -108,6 +108,45 @@ global.Blob = dom.window.Blob;
 
 // Mock URL.createObjectURL / revokeObjectURL used by exportToCSV
 global.window.URL = { createObjectURL: jest.fn(() => 'blob://mock'), revokeObjectURL: jest.fn() };
+
+// ---------------------------------------------------------------------------
+// locationModule mock — must be defined before organisations.js is loaded
+// ---------------------------------------------------------------------------
+global.locationModule = {
+  _cachedAreas: [
+    { id: 'area-kent', display_name: 'Kent', country: 'England', area_type: 'county', is_small: false, sort_order: 1 },
+    {
+      id: 'area-essex',
+      display_name: 'Essex',
+      country: 'England',
+      area_type: 'county',
+      is_small: false,
+      sort_order: 2,
+    },
+    {
+      id: 'area-surrey',
+      display_name: 'Surrey',
+      country: 'England',
+      area_type: 'county',
+      is_small: false,
+      sort_order: 3,
+    },
+  ],
+  loadAreas: jest.fn().mockResolvedValue([]),
+  getAreaById: jest.fn((id) => global.locationModule._cachedAreas.find((a) => a.id === id) || null),
+  getAreaName: jest.fn((id) => {
+    const area = global.locationModule._cachedAreas.find((a) => a.id === id);
+    return area ? area.display_name : '';
+  }),
+  isSmall: jest.fn((id) => {
+    const area = global.locationModule._cachedAreas.find((a) => a.id === id);
+    return area ? area.is_small : false;
+  }),
+  sizeBadgeHtml: jest.fn(() => ''),
+  populateCountryDropdown: jest.fn(),
+  populateAreaDropdown: jest.fn(),
+};
+global.window.locationModule = global.locationModule;
 
 // ---------------------------------------------------------------------------
 // Bootstrap mock
@@ -267,8 +306,8 @@ describe('Organisations Module - filterOrganisations()', () => {
     // Reset filter DOM elements
     document.getElementById('orgsYearFilter').value = '';
     document.getElementById('orgsSectorFilter').value = '';
-    document.getElementById('orgsCountyFilter').value = '';
-    document.getElementById('orgsRegionFilter').value = '';
+    document.getElementById('orgsAreaFilter').value = '';
+    document.getElementById('orgsCountryFilter').value = '';
     document.getElementById('orgsStatusFilter').value = '';
     document.getElementById('orgsSearchBox').value = '';
     document.getElementById('orgsTierFilter').value = '';
@@ -285,6 +324,8 @@ describe('Organisations Module - filterOrganisations()', () => {
         sector: 'BUILDING & CONSTRUCTION',
         county: 'Kent',
         county_city: 'South East',
+        area_id: 'area-kent',
+        country: 'England',
         status: 'prospect',
         email: 'a@a.com',
         tier: 'Gold',
@@ -300,6 +341,8 @@ describe('Organisations Module - filterOrganisations()', () => {
         sector: 'PLUMBING',
         county: 'Essex',
         county_city: 'East of England',
+        area_id: 'area-essex',
+        country: 'Scotland',
         status: 'entrant',
         email: null,
         tier: null,
@@ -315,6 +358,8 @@ describe('Organisations Module - filterOrganisations()', () => {
         sector: 'BUILDING & CONSTRUCTION',
         county: 'Kent',
         county_city: 'South East',
+        area_id: 'area-kent',
+        country: 'England',
         status: 'winner',
         email: 'g@g.com',
         tier: 'Silver',
@@ -330,6 +375,8 @@ describe('Organisations Module - filterOrganisations()', () => {
         sector: 'ELECTRICAL',
         county: 'London',
         county_city: 'London',
+        area_id: 'area-surrey',
+        country: 'England',
         status: 'archived',
         email: 'd@d.com',
         tier: null,
@@ -343,6 +390,8 @@ describe('Organisations Module - filterOrganisations()', () => {
         sector: 'PLUMBING',
         county: 'Essex',
         county_city: 'East of England',
+        area_id: 'area-essex',
+        country: 'Scotland',
         status: 'sponsor',
         email: 'e@e.com',
         tier: 'Platinum',
@@ -390,15 +439,29 @@ describe('Organisations Module - filterOrganisations()', () => {
     expect(ids).toEqual(['2', '5']);
   });
 
-  test('filters by county', () => {
-    document.getElementById('orgsCountyFilter').value = 'Kent';
+  test('filters by area_id', () => {
+    const areaEl = document.getElementById('orgsAreaFilter');
+    if (!areaEl.querySelector('option[value="area-kent"]')) {
+      const opt = document.createElement('option');
+      opt.value = 'area-kent';
+      opt.textContent = 'Kent';
+      areaEl.appendChild(opt);
+    }
+    areaEl.value = 'area-kent';
     orgsModule.filterOrganisations();
     const ids = STATE.filteredOrganisations.map((o) => o.id).sort();
     expect(ids).toEqual(['1', '3']);
   });
 
-  test('filters by region', () => {
-    document.getElementById('orgsRegionFilter').value = 'East of England';
+  test('filters by country', () => {
+    const countryEl = document.getElementById('orgsCountryFilter');
+    if (!countryEl.querySelector('option[value="Scotland"]')) {
+      const opt = document.createElement('option');
+      opt.value = 'Scotland';
+      opt.textContent = 'Scotland';
+      countryEl.appendChild(opt);
+    }
+    countryEl.value = 'Scotland';
     orgsModule.filterOrganisations();
     const ids = STATE.filteredOrganisations.map((o) => o.id).sort();
     expect(ids).toEqual(['2', '5']);
@@ -478,7 +541,7 @@ describe('Organisations Module - filterOrganisations()', () => {
 
   test('combining multiple filters narrows results', () => {
     document.getElementById('orgsSectorFilter').value = 'BUILDING & CONSTRUCTION';
-    document.getElementById('orgsCountyFilter').value = 'Kent';
+    document.getElementById('orgsAreaFilter').value = 'Kent';
     document.getElementById('orgsStatusFilter').value = 'winner';
     orgsModule.filterOrganisations();
     expect(STATE.filteredOrganisations.length).toBe(1);
@@ -1086,8 +1149,8 @@ describe('Organisations Module - Filter Combinations', () => {
   beforeEach(() => {
     document.getElementById('orgsYearFilter').value = '';
     document.getElementById('orgsSectorFilter').value = '';
-    document.getElementById('orgsCountyFilter').value = '';
-    document.getElementById('orgsRegionFilter').value = '';
+    document.getElementById('orgsAreaFilter').value = '';
+    document.getElementById('orgsCountryFilter').value = '';
     document.getElementById('orgsStatusFilter').value = '';
     document.getElementById('orgsSearchBox').value = '';
     document.getElementById('orgsTierFilter').value = '';
@@ -1104,6 +1167,8 @@ describe('Organisations Module - Filter Combinations', () => {
         sector: 'BUILDING & CONSTRUCTION',
         county: 'Kent',
         county_city: 'South East',
+        area_id: 'area-kent',
+        country: 'England',
         status: 'prospect',
         email: 'a@a.com',
         tier: 'Gold',
@@ -1119,6 +1184,8 @@ describe('Organisations Module - Filter Combinations', () => {
         sector: 'PLUMBING',
         county: 'Essex',
         county_city: 'East of England',
+        area_id: 'area-essex',
+        country: 'Scotland',
         status: 'entrant',
         email: null,
         tier: null,
@@ -1134,6 +1201,8 @@ describe('Organisations Module - Filter Combinations', () => {
         sector: 'BUILDING & CONSTRUCTION',
         county: 'Kent',
         county_city: 'South East',
+        area_id: 'area-kent',
+        country: 'England',
         status: 'winner',
         email: 'g@g.com',
         tier: 'Silver',
@@ -1149,6 +1218,8 @@ describe('Organisations Module - Filter Combinations', () => {
         sector: 'ELECTRICAL',
         county: 'London',
         county_city: 'London',
+        area_id: 'area-surrey',
+        country: 'England',
         status: 'archived',
         email: 'd@d.com',
         tier: null,
@@ -1162,6 +1233,8 @@ describe('Organisations Module - Filter Combinations', () => {
         sector: 'PLUMBING',
         county: 'Essex',
         county_city: 'East of England',
+        area_id: 'area-essex',
+        country: 'Scotland',
         status: 'sponsor',
         email: 'e@e.com',
         tier: 'Platinum',
@@ -1173,9 +1246,9 @@ describe('Organisations Module - Filter Combinations', () => {
     STATE.filteredOrganisations = [...STATE.allOrganisations];
   });
 
-  test('filter by sector and region applies both filters', () => {
+  test('filter by sector and country applies both filters', () => {
     document.getElementById('orgsSectorFilter').value = 'PLUMBING';
-    document.getElementById('orgsRegionFilter').value = 'East of England';
+    document.getElementById('orgsCountryFilter').value = 'Scotland';
     orgsModule.filterOrganisations();
     expect(STATE.filteredOrganisations.length).toBeLessThanOrEqual(STATE.allOrganisations.length);
   });
@@ -1212,7 +1285,7 @@ describe('Organisations Module - Filter Combinations', () => {
 
   test('filter with non-matching values narrows results', () => {
     document.getElementById('orgsSectorFilter').value = 'PLUMBING';
-    document.getElementById('orgsCountyFilter').value = 'Kent';
+    document.getElementById('orgsAreaFilter').value = 'Kent';
     orgsModule.filterOrganisations();
     expect(STATE.filteredOrganisations.length).toBeLessThanOrEqual(STATE.allOrganisations.length);
   });
@@ -1251,8 +1324,8 @@ describe('Organisations Module - Search Advanced', () => {
   beforeEach(() => {
     document.getElementById('orgsYearFilter').value = '';
     document.getElementById('orgsSectorFilter').value = '';
-    document.getElementById('orgsCountyFilter').value = '';
-    document.getElementById('orgsRegionFilter').value = '';
+    document.getElementById('orgsAreaFilter').value = '';
+    document.getElementById('orgsCountryFilter').value = '';
     document.getElementById('orgsStatusFilter').value = '';
     document.getElementById('orgsSearchBox').value = '';
     document.getElementById('orgsTierFilter').value = '';
@@ -1789,15 +1862,15 @@ describe('Organisations Module - Reset Filters Advanced', () => {
   });
 
   test('resets county filter', () => {
-    document.getElementById('orgsCountyFilter').value = 'Kent';
+    document.getElementById('orgsAreaFilter').value = 'Kent';
     orgsModule.resetFilters();
-    expect(document.getElementById('orgsCountyFilter').value).toBe('');
+    expect(document.getElementById('orgsAreaFilter').value).toBe('');
   });
 
   test('resets region filter', () => {
-    document.getElementById('orgsRegionFilter').value = 'South East';
+    document.getElementById('orgsCountryFilter').value = 'South East';
     orgsModule.resetFilters();
-    expect(document.getElementById('orgsRegionFilter').value).toBe('');
+    expect(document.getElementById('orgsCountryFilter').value).toBe('');
   });
 });
 
@@ -1899,8 +1972,8 @@ describe('Organisations Module - Missing Field Filter', () => {
   beforeEach(() => {
     document.getElementById('orgsYearFilter').value = '';
     document.getElementById('orgsSectorFilter').value = '';
-    document.getElementById('orgsCountyFilter').value = '';
-    document.getElementById('orgsRegionFilter').value = '';
+    document.getElementById('orgsAreaFilter').value = '';
+    document.getElementById('orgsCountryFilter').value = '';
     document.getElementById('orgsStatusFilter').value = 'all';
     document.getElementById('orgsSearchBox').value = '';
     document.getElementById('orgsTierFilter').value = '';
@@ -2337,8 +2410,8 @@ describe('Organisations Module - Tag Filtering', () => {
     orgsModule._selectedTagFilters = [];
     document.getElementById('orgsYearFilter').value = '';
     document.getElementById('orgsSectorFilter').value = '';
-    document.getElementById('orgsCountyFilter').value = '';
-    document.getElementById('orgsRegionFilter').value = '';
+    document.getElementById('orgsAreaFilter').value = '';
+    document.getElementById('orgsCountryFilter').value = '';
     document.getElementById('orgsStatusFilter').value = 'all';
     document.getElementById('orgsSearchBox').value = '';
     document.getElementById('orgsTierFilter').value = '';
@@ -2657,8 +2730,8 @@ describe('Organisations Module - Deep Search', () => {
     orgsModule._selectedTagFilters = [];
     document.getElementById('orgsYearFilter').value = '';
     document.getElementById('orgsSectorFilter').value = '';
-    document.getElementById('orgsCountyFilter').value = '';
-    document.getElementById('orgsRegionFilter').value = '';
+    document.getElementById('orgsAreaFilter').value = '';
+    document.getElementById('orgsCountryFilter').value = '';
     document.getElementById('orgsStatusFilter').value = 'all';
     document.getElementById('orgsSearchBox').value = '';
     document.getElementById('orgsTierFilter').value = '';
@@ -2878,49 +2951,26 @@ describe('Organisations Module - _levenshtein()', () => {
 // ---------------------------------------------------------------------------
 // Update County Filter by Region
 // ---------------------------------------------------------------------------
-describe('Organisations Module - updateCountyFilterByRegion()', () => {
+describe('Organisations Module - onCountryFilterChange()', () => {
   beforeEach(() => {
-    STATE.allOrganisations = [
-      makeOrg({ county: 'Kent', county_city: 'South East' }),
-      makeOrg({ county: 'Surrey', county_city: 'South East' }),
-      makeOrg({ county: 'London, North', county_city: 'Greater London' }),
-      makeOrg({ county: 'Essex', county_city: 'East of England' }),
-    ];
-    // Simulate cached DB data used by the updated updateCountyFilterByRegion
-    orgsModule._cachedCounties = [
-      { Name: 'Kent', region: 'South East', _regionName: 'South East' },
-      { Name: 'Surrey', region: 'South East', _regionName: 'South East' },
-      { Name: 'London, North', region: 'Greater London', _regionName: 'Greater London' },
-      { Name: 'Essex', region: 'East of England', _regionName: 'East of England' },
-    ];
+    locationModule.populateAreaDropdown.mockClear();
   });
 
-  test('shows all counties when no region selected', () => {
-    document.getElementById('orgsRegionFilter').value = '';
-    orgsModule.updateCountyFilterByRegion();
-    const countySelect = document.getElementById('orgsCountyFilter');
-    const options = Array.from(countySelect.querySelectorAll('option'));
-    // Should have "All Counties" + 4 unique counties
-    expect(options.length).toBeGreaterThanOrEqual(4);
+  test('calls locationModule.populateAreaDropdown with selected country', () => {
+    const el = document.getElementById('orgsCountryFilter');
+    el.value = 'England';
+    orgsModule.onCountryFilterChange();
+    expect(locationModule.populateAreaDropdown).toHaveBeenCalledWith('orgsAreaFilter', 'England', 'All Areas');
   });
 
-  test('filters counties when region is selected', () => {
-    document.getElementById('orgsRegionFilter').value = 'South East';
-    orgsModule.updateCountyFilterByRegion();
-    const countySelect = document.getElementById('orgsCountyFilter');
-    const values = Array.from(countySelect.querySelectorAll('option'))
-      .map((o) => o.value)
-      .filter((v) => v);
-    // Should have county options populated
-    expect(values.length).toBeGreaterThan(0);
+  test('calls populateAreaDropdown with empty string when no country selected', () => {
+    document.getElementById('orgsCountryFilter').value = '';
+    orgsModule.onCountryFilterChange();
+    expect(locationModule.populateAreaDropdown).toHaveBeenCalledWith('orgsAreaFilter', '', 'All Areas');
   });
 
-  test('county filter has an empty "All" option', () => {
-    document.getElementById('orgsRegionFilter').value = 'South East';
-    orgsModule.updateCountyFilterByRegion();
-    const countySelect = document.getElementById('orgsCountyFilter');
-    const firstOpt = countySelect.querySelector('option');
-    expect(firstOpt.value).toBe('');
+  test('does not throw when element missing', () => {
+    expect(() => orgsModule.onCountryFilterChange()).not.toThrow();
   });
 });
 
@@ -2934,8 +2984,8 @@ describe('Organisations Module - Date/Stale Filter', () => {
     orgsModule._selectedTagFilters = [];
     document.getElementById('orgsYearFilter').value = '';
     document.getElementById('orgsSectorFilter').value = '';
-    document.getElementById('orgsCountyFilter').value = '';
-    document.getElementById('orgsRegionFilter').value = '';
+    document.getElementById('orgsAreaFilter').value = '';
+    document.getElementById('orgsCountryFilter').value = '';
     document.getElementById('orgsStatusFilter').value = 'all';
     document.getElementById('orgsSearchBox').value = '';
     document.getElementById('orgsTierFilter').value = '';
@@ -3094,8 +3144,8 @@ describe('Organisations Module - Archived Organisation Filtering', () => {
     orgsModule._selectedTagFilters = [];
     document.getElementById('orgsYearFilter').value = '';
     document.getElementById('orgsSectorFilter').value = '';
-    document.getElementById('orgsCountyFilter').value = '';
-    document.getElementById('orgsRegionFilter').value = '';
+    document.getElementById('orgsAreaFilter').value = '';
+    document.getElementById('orgsCountryFilter').value = '';
     document.getElementById('orgsSearchBox').value = '';
     document.getElementById('orgsTierFilter').value = '';
     document.getElementById('orgsTagFilter').value = '';
@@ -3141,8 +3191,8 @@ describe('Organisations Module - Tier Filter', () => {
     orgsModule._selectedTagFilters = [];
     document.getElementById('orgsYearFilter').value = '';
     document.getElementById('orgsSectorFilter').value = '';
-    document.getElementById('orgsCountyFilter').value = '';
-    document.getElementById('orgsRegionFilter').value = '';
+    document.getElementById('orgsAreaFilter').value = '';
+    document.getElementById('orgsCountryFilter').value = '';
     document.getElementById('orgsStatusFilter').value = 'all';
     document.getElementById('orgsSearchBox').value = '';
     document.getElementById('orgsTagFilter').value = '';
@@ -3365,24 +3415,30 @@ describe('Organisations Module - restoreFilters()', () => {
     expect(() => orgsModule.restoreFilters()).not.toThrow();
   });
 
-  test('restores region and triggers county update', () => {
-    STATE.allOrganisations = [makeOrg({ county: 'Kent', county_city: 'South East' })];
-    const regionEl = document.getElementById('orgsRegionFilter');
-    if (!regionEl.querySelector('option[value="South East"]')) {
+  test('restores country filter', () => {
+    const countryEl = document.getElementById('orgsCountryFilter');
+    if (!countryEl.querySelector('option[value="England"]')) {
       const opt = document.createElement('option');
-      opt.value = 'South East';
-      opt.textContent = 'South East';
-      regionEl.appendChild(opt);
+      opt.value = 'England';
+      opt.textContent = 'England';
+      countryEl.appendChild(opt);
     }
-    localStorage.setItem('orgsFilters', JSON.stringify({ region: 'South East' }));
+    localStorage.setItem('orgsFilters', JSON.stringify({ country: 'England' }));
     orgsModule.restoreFilters();
-    expect(document.getElementById('orgsRegionFilter').value).toBe('South East');
+    expect(document.getElementById('orgsCountryFilter').value).toBe('England');
   });
 
-  test('restores county filter', () => {
-    localStorage.setItem('orgsFilters', JSON.stringify({ county: 'Kent' }));
+  test('restores area filter', () => {
+    const areaEl = document.getElementById('orgsAreaFilter');
+    if (!areaEl.querySelector('option[value="area-kent"]')) {
+      const opt = document.createElement('option');
+      opt.value = 'area-kent';
+      opt.textContent = 'Kent';
+      areaEl.appendChild(opt);
+    }
+    localStorage.setItem('orgsFilters', JSON.stringify({ areaId: 'area-kent' }));
     orgsModule.restoreFilters();
-    expect(document.getElementById('orgsCountyFilter').value).toBe('Kent');
+    expect(document.getElementById('orgsAreaFilter').value).toBe('area-kent');
   });
 });
 
@@ -3398,12 +3454,8 @@ describe('Organisations Module - _populateFiltersFromConstants()', () => {
     expect(options[0].value).toBe(''); // First is "All"
   });
 
-  test('populates region filter from REGIONS constant', () => {
-    orgsModule._populateFiltersFromConstants();
-    const regionSelect = document.getElementById('orgsRegionFilter');
-    const options = Array.from(regionSelect.querySelectorAll('option'));
-    expect(options.length).toBeGreaterThan(1);
-    expect(options[0].value).toBe(''); // First is "All Regions"
+  test('does not throw (country/area filters populated separately via locationModule)', () => {
+    expect(() => orgsModule._populateFiltersFromConstants()).not.toThrow();
   });
 });
 
@@ -3415,8 +3467,8 @@ describe('Organisations Module - _buildOrgServerFilters()', () => {
     document.getElementById('orgsYearFilter').value = '';
     document.getElementById('orgsStatusFilter').value = '';
     document.getElementById('orgsSectorFilter').value = '';
-    document.getElementById('orgsCountyFilter').value = '';
-    document.getElementById('orgsRegionFilter').value = '';
+    document.getElementById('orgsAreaFilter').value = '';
+    document.getElementById('orgsCountryFilter').value = '';
   });
 
   test('returns empty object when no filters set', () => {
@@ -3449,30 +3501,46 @@ describe('Organisations Module - _buildOrgServerFilters()', () => {
     expect(filters.sector).toBe('PLUMBING');
   });
 
-  test('includes county filter when set', () => {
-    const countyEl = document.getElementById('orgsCountyFilter');
-    if (!countyEl.querySelector('option[value="Kent"]')) {
+  test('includes area_id filter when area is set', () => {
+    const areaEl = document.getElementById('orgsAreaFilter');
+    if (!areaEl.querySelector('option[value="area-kent"]')) {
       const opt = document.createElement('option');
-      opt.value = 'Kent';
+      opt.value = 'area-kent';
       opt.textContent = 'Kent';
-      countyEl.appendChild(opt);
+      areaEl.appendChild(opt);
     }
-    countyEl.value = 'Kent';
+    areaEl.value = 'area-kent';
     const filters = orgsModule._buildOrgServerFilters();
-    expect(filters.county).toBe('Kent');
+    expect(filters.area_id).toBe('area-kent');
   });
 
-  test('includes region filter when set', () => {
-    const regionEl = document.getElementById('orgsRegionFilter');
-    if (!regionEl.querySelector('option[value="South East"]')) {
+  test('includes country filter when set but no area', () => {
+    document.getElementById('orgsAreaFilter').value = '';
+    const countryEl = document.getElementById('orgsCountryFilter');
+    if (!countryEl.querySelector('option[value="England"]')) {
       const opt = document.createElement('option');
-      opt.value = 'South East';
-      opt.textContent = 'South East';
-      regionEl.appendChild(opt);
+      opt.value = 'England';
+      opt.textContent = 'England';
+      countryEl.appendChild(opt);
     }
-    regionEl.value = 'South East';
+    countryEl.value = 'England';
     const filters = orgsModule._buildOrgServerFilters();
-    expect(filters.county_city).toBe('South East');
+    expect(filters.country).toBe('England');
+  });
+
+  test('area_id takes precedence over country', () => {
+    const areaEl = document.getElementById('orgsAreaFilter');
+    if (!areaEl.querySelector('option[value="area-kent"]')) {
+      const opt = document.createElement('option');
+      opt.value = 'area-kent';
+      opt.textContent = 'Kent';
+      areaEl.appendChild(opt);
+    }
+    areaEl.value = 'area-kent';
+    document.getElementById('orgsCountryFilter').value = 'England';
+    const filters = orgsModule._buildOrgServerFilters();
+    expect(filters.area_id).toBe('area-kent');
+    expect(filters.country).toBeUndefined();
   });
 
   test('includes multiple filters', () => {
@@ -3485,16 +3553,19 @@ describe('Organisations Module - _buildOrgServerFilters()', () => {
       sectorEl.appendChild(opt);
     }
     sectorEl.value = 'BUILDING';
-    const regionEl = document.getElementById('orgsRegionFilter');
-    if (!regionEl.querySelector('option[value="Greater London"]')) {
+    document.getElementById('orgsAreaFilter').value = '';
+    const countryEl = document.getElementById('orgsCountryFilter');
+    if (!countryEl.querySelector('option[value="England"]')) {
       const opt = document.createElement('option');
-      opt.value = 'Greater London';
-      opt.textContent = 'Greater London';
-      regionEl.appendChild(opt);
+      opt.value = 'England';
+      opt.textContent = 'England';
+      countryEl.appendChild(opt);
     }
-    regionEl.value = 'Greater London';
+    countryEl.value = 'England';
     const filters = orgsModule._buildOrgServerFilters();
-    expect(filters).toEqual({ status: 'prospect', sector: 'BUILDING', county_city: 'Greater London' });
+    expect(filters.status).toBe('prospect');
+    expect(filters.sector).toBe('BUILDING');
+    expect(filters.country).toBe('England');
   });
 });
 
@@ -3923,8 +3994,8 @@ describe('Organisations Module - toggleTagFilter()', () => {
     orgsModule._filterMissingField = null;
     document.getElementById('orgsYearFilter').value = '';
     document.getElementById('orgsSectorFilter').value = '';
-    document.getElementById('orgsCountyFilter').value = '';
-    document.getElementById('orgsRegionFilter').value = '';
+    document.getElementById('orgsAreaFilter').value = '';
+    document.getElementById('orgsCountryFilter').value = '';
     document.getElementById('orgsStatusFilter').value = 'all';
     document.getElementById('orgsSearchBox').value = '';
     document.getElementById('orgsTierFilter').value = '';
@@ -4181,8 +4252,8 @@ describe('Organisations Module - filterOrganisations date filter numeric', () =>
     orgsModule._selectedTagFilters = [];
     document.getElementById('orgsYearFilter').value = '';
     document.getElementById('orgsSectorFilter').value = '';
-    document.getElementById('orgsCountyFilter').value = '';
-    document.getElementById('orgsRegionFilter').value = '';
+    document.getElementById('orgsAreaFilter').value = '';
+    document.getElementById('orgsCountryFilter').value = '';
     document.getElementById('orgsStatusFilter').value = 'all';
     document.getElementById('orgsSearchBox').value = '';
     document.getElementById('orgsTierFilter').value = '';
@@ -4221,8 +4292,8 @@ describe('Organisations Module - filterOrganisations search across fields', () =
     orgsModule._selectedTagFilters = [];
     document.getElementById('orgsYearFilter').value = '';
     document.getElementById('orgsSectorFilter').value = '';
-    document.getElementById('orgsCountyFilter').value = '';
-    document.getElementById('orgsRegionFilter').value = '';
+    document.getElementById('orgsAreaFilter').value = '';
+    document.getElementById('orgsCountryFilter').value = '';
     document.getElementById('orgsStatusFilter').value = 'all';
     document.getElementById('orgsTierFilter').value = '';
     document.getElementById('orgsTagFilter').value = '';
@@ -4311,8 +4382,8 @@ describe('Organisations Module - filterOrganisations localStorage persistence', 
     document.getElementById('orgsSectorFilter').value = 'BUILDING & CONSTRUCTION';
     document.getElementById('orgsSearchBox').value = 'test';
     document.getElementById('orgsStatusFilter').value = 'all';
-    document.getElementById('orgsCountyFilter').value = '';
-    document.getElementById('orgsRegionFilter').value = '';
+    document.getElementById('orgsAreaFilter').value = '';
+    document.getElementById('orgsCountryFilter').value = '';
     document.getElementById('orgsTierFilter').value = '';
     document.getElementById('orgsTagFilter').value = '';
     document.getElementById('orgsLogoFilter').value = '';
@@ -5272,55 +5343,30 @@ describe('Organisations Module - getPackageBadge()', () => {
 });
 
 // ---------------------------------------------------------------------------
-// updateCountyFilterByRegion
+// onCountryFilterChange (replaces updateCountyFilterByRegion)
 // ---------------------------------------------------------------------------
-describe('Organisations Module - updateCountyFilterByRegion()', () => {
+describe('Organisations Module - onCountryFilterChange() (second suite)', () => {
   beforeEach(() => {
-    STATE.allOrganisations = [
-      makeOrg({ county: 'Kent', county_city: 'South East' }),
-      makeOrg({ county: 'Essex', county_city: 'East of England' }),
-      makeOrg({ county: 'Surrey', county_city: 'South East' }),
-    ];
-    // Simulate cached DB data used by the updated updateCountyFilterByRegion
-    orgsModule._cachedCounties = [
-      { Name: 'Kent', region: 'South East', _regionName: 'South East' },
-      { Name: 'Essex', region: 'East', _regionName: 'East' },
-      { Name: 'Surrey', region: 'South East', _regionName: 'South East' },
-    ];
+    locationModule.populateAreaDropdown.mockClear();
   });
 
-  test('shows all counties when no region selected', () => {
-    document.getElementById('orgsRegionFilter').value = '';
-    orgsModule.updateCountyFilterByRegion();
-    const options = document.getElementById('orgsCountyFilter').innerHTML;
-    expect(options).toContain('Kent');
-    expect(options).toContain('Essex');
-    expect(options).toContain('Surrey');
+  test('calls populateAreaDropdown with England', () => {
+    const el = document.getElementById('orgsCountryFilter');
+    el.value = 'England';
+    orgsModule.onCountryFilterChange();
+    expect(locationModule.populateAreaDropdown).toHaveBeenCalledWith('orgsAreaFilter', 'England', 'All Areas');
   });
 
-  test('filters counties to region when region is selected', () => {
-    const regionEl = document.getElementById('orgsRegionFilter');
-    const opt = document.createElement('option');
-    opt.value = 'South East';
-    opt.textContent = 'South East';
-    regionEl.appendChild(opt);
-    regionEl.value = 'South East';
-    orgsModule.updateCountyFilterByRegion();
-    const options = document.getElementById('orgsCountyFilter').innerHTML;
-    expect(options).toContain('Kent');
-    expect(options).toContain('Surrey');
-    expect(options).not.toContain('Essex');
+  test('calls populateAreaDropdown with Scotland', () => {
+    document.getElementById('orgsCountryFilter').value = 'Scotland';
+    orgsModule.onCountryFilterChange();
+    expect(locationModule.populateAreaDropdown).toHaveBeenCalledWith('orgsAreaFilter', 'Scotland', 'All Areas');
   });
 
-  test('resets county selection after filtering', () => {
-    const regionEl = document.getElementById('orgsRegionFilter');
-    const opt = document.createElement('option');
-    opt.value = 'South East';
-    opt.textContent = 'South East';
-    regionEl.appendChild(opt);
-    regionEl.value = 'South East';
-    orgsModule.updateCountyFilterByRegion();
-    expect(document.getElementById('orgsCountyFilter').value).toBe('');
+  test('calls populateAreaDropdown with empty string when cleared', () => {
+    document.getElementById('orgsCountryFilter').value = '';
+    orgsModule.onCountryFilterChange();
+    expect(locationModule.populateAreaDropdown).toHaveBeenCalledWith('orgsAreaFilter', '', 'All Areas');
   });
 });
 
@@ -5332,8 +5378,8 @@ describe('Organisations Module - _buildOrgServerFilters()', () => {
     document.getElementById('orgsYearFilter').value = '';
     document.getElementById('orgsStatusFilter').value = '';
     document.getElementById('orgsSectorFilter').value = '';
-    document.getElementById('orgsCountyFilter').value = '';
-    document.getElementById('orgsRegionFilter').value = '';
+    document.getElementById('orgsAreaFilter').value = '';
+    document.getElementById('orgsCountryFilter').value = '';
   });
 
   test('returns empty object when no filters set', () => {
@@ -5362,15 +5408,17 @@ describe('Organisations Module - _buildOrgServerFilters()', () => {
 
   test('includes multiple filters', () => {
     document.getElementById('orgsStatusFilter').value = 'entrant';
-    const countyEl = document.getElementById('orgsCountyFilter');
-    const opt = document.createElement('option');
-    opt.value = 'Kent';
-    opt.textContent = 'Kent';
-    countyEl.appendChild(opt);
-    countyEl.value = 'Kent';
+    const areaEl = document.getElementById('orgsAreaFilter');
+    if (!areaEl.querySelector('option[value="area-kent"]')) {
+      const opt = document.createElement('option');
+      opt.value = 'area-kent';
+      opt.textContent = 'Kent';
+      areaEl.appendChild(opt);
+    }
+    areaEl.value = 'area-kent';
     const filters = orgsModule._buildOrgServerFilters();
     expect(filters.status).toBe('entrant');
-    expect(filters.county).toBe('Kent');
+    expect(filters.area_id).toBe('area-kent');
   });
 });
 
@@ -5387,13 +5435,8 @@ describe('Organisations Module - _populateFiltersFromConstants()', () => {
     }
   });
 
-  test('populates region filter from REGIONS constant', () => {
-    orgsModule._populateFiltersFromConstants();
-    const regionSelect = document.getElementById('orgsRegionFilter');
-    expect(regionSelect.innerHTML).toContain('All Regions');
-    if (typeof REGIONS !== 'undefined' && REGIONS.length > 0) {
-      expect(regionSelect.querySelectorAll('option').length).toBeGreaterThan(1);
-    }
+  test('does not throw (country filter populated separately via locationModule)', () => {
+    expect(() => orgsModule._populateFiltersFromConstants()).not.toThrow();
   });
 });
 
@@ -5720,8 +5763,8 @@ describe('Organisations Module - deleteOrganisation()', () => {
     // Reset filter inputs
     document.getElementById('orgsYearFilter').value = '';
     document.getElementById('orgsSectorFilter').value = '';
-    document.getElementById('orgsCountyFilter').value = '';
-    document.getElementById('orgsRegionFilter').value = '';
+    document.getElementById('orgsAreaFilter').value = '';
+    document.getElementById('orgsCountryFilter').value = '';
     document.getElementById('orgsStatusFilter').value = '';
     document.getElementById('orgsSearchBox').value = '';
     document.getElementById('orgsTierFilter').value = '';
@@ -5781,8 +5824,8 @@ describe('Organisations Module - restoreOrganisation()', () => {
     jest.spyOn(apiClient, 'update').mockResolvedValue({ data: null, error: null });
     document.getElementById('orgsYearFilter').value = '';
     document.getElementById('orgsSectorFilter').value = '';
-    document.getElementById('orgsCountyFilter').value = '';
-    document.getElementById('orgsRegionFilter').value = '';
+    document.getElementById('orgsAreaFilter').value = '';
+    document.getElementById('orgsCountryFilter').value = '';
     document.getElementById('orgsStatusFilter').value = '';
     document.getElementById('orgsSearchBox').value = '';
     document.getElementById('orgsTierFilter').value = '';
@@ -6197,8 +6240,8 @@ describe('Organisations Module - Bulk Operations', () => {
     orgsModule._pageSize = 50;
     document.getElementById('orgsYearFilter').value = '';
     document.getElementById('orgsSectorFilter').value = '';
-    document.getElementById('orgsCountyFilter').value = '';
-    document.getElementById('orgsRegionFilter').value = '';
+    document.getElementById('orgsAreaFilter').value = '';
+    document.getElementById('orgsCountryFilter').value = '';
     document.getElementById('orgsStatusFilter').value = '';
     document.getElementById('orgsSearchBox').value = '';
     document.getElementById('orgsTierFilter').value = '';
@@ -6622,8 +6665,8 @@ describe('Organisations Module - filterByMissingField()', () => {
     STATE.filteredOrganisations = [...STATE.allOrganisations];
     document.getElementById('orgsYearFilter').value = '';
     document.getElementById('orgsSectorFilter').value = '';
-    document.getElementById('orgsCountyFilter').value = '';
-    document.getElementById('orgsRegionFilter').value = '';
+    document.getElementById('orgsAreaFilter').value = '';
+    document.getElementById('orgsCountryFilter').value = '';
     document.getElementById('orgsStatusFilter').value = '';
     document.getElementById('orgsSearchBox').value = '';
     document.getElementById('orgsTierFilter').value = '';
@@ -6663,8 +6706,8 @@ describe('Organisations Module - filterByRegion()', () => {
     STATE.filteredOrganisations = [...STATE.allOrganisations];
     document.getElementById('orgsYearFilter').value = '';
     document.getElementById('orgsSectorFilter').value = '';
-    document.getElementById('orgsCountyFilter').value = '';
-    document.getElementById('orgsRegionFilter').value = '';
+    document.getElementById('orgsAreaFilter').value = '';
+    document.getElementById('orgsCountryFilter').value = '';
     document.getElementById('orgsStatusFilter').value = '';
     document.getElementById('orgsSearchBox').value = '';
     document.getElementById('orgsTierFilter').value = '';
@@ -6673,9 +6716,9 @@ describe('Organisations Module - filterByRegion()', () => {
     document.getElementById('orgsDateFilter').value = '';
   });
 
-  test('sets region filter and triggers filtering', () => {
-    orgsModule.filterByRegion('South East');
-    expect(document.getElementById('orgsRegionFilter').value).toBe('South East');
+  test('sets country filter and triggers filtering', () => {
+    orgsModule.filterByRegion('England');
+    expect(document.getElementById('orgsCountryFilter').value).toBe('England');
   });
 });
 
@@ -6844,8 +6887,8 @@ describe('Organisations Module - Tag Filter Operations', () => {
     STATE.filteredOrganisations = [...STATE.allOrganisations];
     document.getElementById('orgsYearFilter').value = '';
     document.getElementById('orgsSectorFilter').value = '';
-    document.getElementById('orgsCountyFilter').value = '';
-    document.getElementById('orgsRegionFilter').value = '';
+    document.getElementById('orgsAreaFilter').value = '';
+    document.getElementById('orgsCountryFilter').value = '';
     document.getElementById('orgsStatusFilter').value = '';
     document.getElementById('orgsSearchBox').value = '';
     document.getElementById('orgsTierFilter').value = '';

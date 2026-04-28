@@ -38,8 +38,8 @@ const awardsModule = {
         year: document.getElementById('awardsYearFilterSelect')?.value || lsAwardsFilters.year || '',
         status: document.getElementById('awardsStatusFilterSelect')?.value || lsAwardsFilters.status || '',
         sector: document.getElementById('awardsSectorFilterSelect')?.value || lsAwardsFilters.sector || '',
-        region: document.getElementById('awardsRegionFilterSelect')?.value || lsAwardsFilters.region || '',
-        county: document.getElementById('awardsCountyFilterSelect')?.value || lsAwardsFilters.county || '',
+        country: document.getElementById('awardsCountryFilter')?.value || lsAwardsFilters.country || '',
+        areaId: document.getElementById('awardsAreaFilter')?.value || lsAwardsFilters.areaId || '',
         search: document.getElementById('awardsSearchBox')?.value || lsAwardsFilters.search || '',
       };
 
@@ -47,11 +47,6 @@ const awardsModule = {
       document.getElementById('awardsYearFilterSelect').value = savedFilters.year;
       document.getElementById('awardsStatusFilterSelect').value = savedFilters.status;
       document.getElementById('awardsSectorFilterSelect').value = savedFilters.sector;
-      if (savedFilters.region) {
-        document.getElementById('awardsRegionFilterSelect').value = savedFilters.region;
-        this.updateCountyFilterByRegion();
-      }
-      document.getElementById('awardsCountyFilterSelect').value = savedFilters.county;
       document.getElementById('awardsSearchBox').value = savedFilters.search;
 
       // Enable server-side pagination and fetch first page with active filters
@@ -71,8 +66,8 @@ const awardsModule = {
         });
       }
 
-      // Populate filter dropdowns from DB (non-blocking)
-      this.populateRegionAndCountyFilters();
+      // Populate location filter dropdowns (non-blocking)
+      this._initLocationFilters(savedFilters.country, savedFilters.areaId);
       utils.populateYearFilterFromDB('awardsYearFilterSelect', { selectCurrent: true });
       this._populateSectorFilterFromDB();
 
@@ -127,21 +122,16 @@ const awardsModule = {
     const year = document.getElementById('awardsYearFilterSelect')?.value;
     const status = document.getElementById('awardsStatusFilterSelect')?.value;
     const sector = document.getElementById('awardsSectorFilterSelect')?.value;
-    const region = document.getElementById('awardsRegionFilterSelect')?.value;
-    const county = document.getElementById('awardsCountyFilterSelect')?.value;
+    const country = document.getElementById('awardsCountryFilter')?.value;
+    const areaId = document.getElementById('awardsAreaFilter')?.value;
 
     if (year) filters.year = year;
     if (status) filters.status = status;
     if (sector) filters.sector = sector;
-
-    // Region is not a column on awards — translate to county IN [...] using cached data
-    if (region && !county && this._cachedCounties) {
-      const countiesInRegion = this._cachedCounties.filter((c) => c._regionName === region).map((c) => c.Name);
-      if (countiesInRegion.length > 0) {
-        filters.county = { op: 'in', value: countiesInRegion };
-      }
-    } else if (county) {
-      filters.county = county;
+    if (areaId) {
+      filters.area_id = areaId;
+    } else if (country) {
+      filters.country = country;
     }
 
     return filters;
@@ -159,7 +149,7 @@ const awardsModule = {
 
     const result = await apiClient.select('awards', {
       filters,
-      search: search ? { term: search, columns: ['award_name', 'county', 'sector', 'description'] } : undefined,
+      search: search ? { term: search, columns: ['award_name', 'sector', 'description', 'country'] } : undefined,
       sort: {
         column: this.currentSort.column === 'award_name' ? 'award_name' : this.currentSort.column,
         ascending: this.currentSort.direction === 'asc',
@@ -193,24 +183,6 @@ const awardsModule = {
    * @param {Array} awards - The page of award records to enrich
    */
   async _enrichPageData(awards) {
-    // Batch lookup regions for counties on this page
-    const uniqueCounties = [...new Set(awards.map((a) => a.county).filter(Boolean))];
-    const countyRegionMap = {};
-    if (uniqueCounties.length > 0) {
-      try {
-        const { data: countyData } = await apiClient.select('counties', {
-          select: 'Name, regions(name)',
-          filters: { Name: { op: 'in', value: uniqueCounties } },
-          pageSize: 1000,
-        });
-        (countyData || []).forEach((c) => {
-          countyRegionMap[c.Name] = c.regions?.name || null;
-        });
-      } catch (_e) {
-        /* ignore — counties table may not exist */
-      }
-    }
-
     // Batch lookup assignment counts for awards on this page
     const awardIds = awards.map((a) => a.id).filter(Boolean);
     const counts = {};
@@ -238,8 +210,8 @@ const awardsModule = {
 
     // Attach enriched data to each award
     awards.forEach((award) => {
-      award._actualRegion = award.county ? countyRegionMap[award.county] || null : null;
-      award._countyName = award.county;
+      award._areaName = locationModule.getAreaName(award.area_id);
+      award._isSmall = locationModule.isSmall(award.area_id);
       award._assignmentCounts = counts[award.id] || { total: 0, nominated: 0, shortlisted: 0, winner: 0 };
       const awardWinners = winners[award.id];
       if (awardWinners) {
@@ -372,71 +344,71 @@ const awardsModule = {
   },
 
   /**
-   * Update county dropdown based on selected region
-   * @returns {void}
+   * Initialise country + area filter dropdowns using locationModule cache.
+   * @param {string} [country]  - pre-selected country
+   * @param {string} [areaId]   - pre-selected area UUID
    */
-  /**
-   * Fetch regions and counties from the database and populate both filter dropdowns.
-   * Caches the data so subsequent calls (e.g. region change) don't re-fetch.
-   */
-  async populateRegionAndCountyFilters() {
+  async _initLocationFilters(country = '', areaId = '') {
     try {
-      if (!this._cachedRegions) {
-        const { data: regions } = await apiClient.select('regions', {
-          select: 'id, name',
-          sort: { column: 'name', ascending: true },
-          pageSize: 500,
-        });
-        this._cachedRegions = regions || [];
+      await locationModule.loadAreas();
+      locationModule.populateCountryDropdown('awardsCountryFilter', 'All Countries');
+      if (country) {
+        const el = document.getElementById('awardsCountryFilter');
+        if (el) el.value = country;
       }
-      if (!this._cachedCounties) {
-        const { data: counties } = await apiClient.select('counties', {
-          select: 'id, Name, region, region_id, regions(name)',
-          sort: { column: 'Name', ascending: true },
-          pageSize: 1000,
-        });
-        // Normalise: prefer FK join name, fall back to text region column
-        (counties || []).forEach((c) => {
-          c._regionName = c.regions?.name || c.region || null;
-        });
-        this._cachedCounties = counties || [];
-      }
-
-      // Populate region dropdown
-      const regionSelect = document.getElementById('awardsRegionFilterSelect');
-      if (regionSelect) {
-        const current = regionSelect.value;
-        regionSelect.innerHTML =
-          '<option value="">All Regions</option>' +
-          this._cachedRegions
-            .map((r) => `<option value="${utils.escapeHtml(r.name)}">${utils.escapeHtml(r.name)}</option>`)
-            .join('');
-        if (current) regionSelect.value = current;
-      }
-
-      // Populate county dropdown (respects current region selection)
-      this.updateCountyFilterByRegion();
+      locationModule.populateAreaDropdown('awardsAreaFilter', country, 'All Areas', areaId);
     } catch (e) {
-      console.warn('Could not load regions/counties from DB:', e.message);
+      console.warn('Could not init location filters:', e.message);
     }
   },
 
-  updateCountyFilterByRegion() {
-    const selectedRegion = document.getElementById('awardsRegionFilterSelect')?.value || '';
-    const countySelect = document.getElementById('awardsCountyFilterSelect');
+  /**
+   * Called when the country filter changes — repopulates area dropdown and re-filters.
+   */
+  onCountryFilterChange() {
+    const country = document.getElementById('awardsCountryFilter')?.value || '';
+    locationModule.populateAreaDropdown('awardsAreaFilter', country, 'All Areas');
+    this.filterAwards();
+  },
 
-    if (!countySelect) return;
+  /**
+   * Called when the country field in the Add/Edit award form changes.
+   * Repopulates the area dropdown and clears the hint.
+   */
+  onAwardFormCountryChange() {
+    const country = document.getElementById('awardFormCountry')?.value || '';
+    locationModule.populateAreaDropdown('awardFormArea', country, 'Select Area...');
+    this._updateAwardFormAreaHint(null);
+  },
 
-    let counties = this._cachedCounties || [];
-    if (selectedRegion) {
-      counties = counties.filter((c) => c._regionName === selectedRegion);
+  /**
+   * Called when the area field in the Add/Edit award form changes.
+   * Updates the SMALL/LARGE hint.
+   */
+  onAwardFormAreaChange() {
+    const areaId = document.getElementById('awardFormArea')?.value || null;
+    this._updateAwardFormAreaHint(areaId);
+  },
+
+  /**
+   * Update the area hint div to show SMALL/LARGE indicator.
+   * @param {string|null} areaId
+   */
+  _updateAwardFormAreaHint(areaId) {
+    const hint = document.getElementById('awardFormAreaHint');
+    if (!hint) return;
+    if (!areaId) {
+      hint.innerHTML = '';
+      return;
     }
-
-    const current = countySelect.value;
-    countySelect.innerHTML =
-      '<option value="">All Counties</option>' +
-      counties.map((c) => `<option value="${utils.escapeHtml(c.Name)}">${utils.escapeHtml(c.Name)}</option>`).join('');
-    if (current) countySelect.value = current;
+    const area = locationModule.getAreaById(areaId);
+    if (!area) {
+      hint.innerHTML = '';
+      return;
+    }
+    hint.innerHTML = area.is_small
+      ? '<span class="badge bg-warning text-dark">SMALL</span> <span class="text-muted small">Uses compact category list</span>'
+      : '<span class="badge bg-primary-subtle text-primary">LARGE</span> <span class="text-muted small">Uses full category list</span>';
   },
 
   /**
@@ -519,8 +491,9 @@ const awardsModule = {
           valB = utils.formatAwardName(b).toLowerCase();
           break;
         case 'county':
-          valA = (a.county || '').toLowerCase();
-          valB = (b.county || '').toLowerCase();
+        case 'location':
+          valA = (a.area_id ? locationModule.getAreaName(a.area_id) : a.country || '').toLowerCase();
+          valB = (b.area_id ? locationModule.getAreaName(b.area_id) : b.country || '').toLowerCase();
           break;
         case 'sector':
           valA = (a.sector || '').toLowerCase();
@@ -557,12 +530,12 @@ const awardsModule = {
     const year = document.getElementById('awardsYearFilterSelect')?.value || '';
     const status = document.getElementById('awardsStatusFilterSelect')?.value || '';
     const sector = document.getElementById('awardsSectorFilterSelect')?.value || '';
-    const county = document.getElementById('awardsCountyFilterSelect')?.value || '';
-    const region = document.getElementById('awardsRegionFilterSelect')?.value || '';
+    const country = document.getElementById('awardsCountryFilter')?.value || '';
+    const areaId = document.getElementById('awardsAreaFilter')?.value || '';
     const search = (document.getElementById('awardsSearchBox')?.value || '').toLowerCase().trim();
 
     try {
-      localStorage.setItem('awardsFilters', JSON.stringify({ year, status, sector, county, region, search }));
+      localStorage.setItem('awardsFilters', JSON.stringify({ year, status, sector, country, areaId, search }));
     } catch (e) {
       console.warn('Failed to save filter state:', e.message);
     }
@@ -589,12 +562,13 @@ const awardsModule = {
       }
       if (status && award.status?.toLowerCase() !== status.toLowerCase()) return false;
       if (sector && award.sector !== sector) return false;
-      if (county && award.county !== county) return false;
-      if (region && award._actualRegion !== region) return false;
+      if (areaId && award.area_id !== areaId) return false;
+      if (country && !areaId && award.country !== country) return false;
       if (search) {
         const searchFields = [
           utils.formatAwardName(award),
-          award.county || '',
+          award._areaName || '',
+          award.country || '',
           award.sector || '',
           award.status || '',
           award._winnerName || '',
@@ -608,7 +582,7 @@ const awardsModule = {
     });
 
     if (search && STATE.filteredAwards.length === 0) {
-      STATE.filteredAwards = utils.fuzzyFilter(STATE.allAwards, search, ['award_name', 'county']);
+      STATE.filteredAwards = utils.fuzzyFilter(STATE.allAwards, search, ['award_name', 'country']);
       if (year)
         STATE.filteredAwards = STATE.filteredAwards.filter((a) => {
           const ay = typeof a.year === 'string' && a.year.includes('-') ? a.year.split('-')[0] : a.year;
@@ -617,8 +591,8 @@ const awardsModule = {
       if (status)
         STATE.filteredAwards = STATE.filteredAwards.filter((a) => a.status?.toLowerCase() === status.toLowerCase());
       if (sector) STATE.filteredAwards = STATE.filteredAwards.filter((a) => a.sector === sector);
-      if (county) STATE.filteredAwards = STATE.filteredAwards.filter((a) => a.county === county);
-      if (region) STATE.filteredAwards = STATE.filteredAwards.filter((a) => a._actualRegion === region);
+      if (areaId) STATE.filteredAwards = STATE.filteredAwards.filter((a) => a.area_id === areaId);
+      if (country && !areaId) STATE.filteredAwards = STATE.filteredAwards.filter((a) => a.country === country);
     }
 
     this.applySorting();
@@ -735,7 +709,10 @@ const awardsModule = {
               ${utils.escapeHtml(fullName)}
             </a>
           </td>
-          <td><span class="small">${utils.escapeHtml(award.county || '-')}</span></td>
+          <td>
+            <span class="small d-block">${utils.escapeHtml(award.country || '-')}</span>
+            ${award.area_id ? `<span class="small text-muted">${utils.escapeHtml(award._areaName || locationModule.getAreaName(award.area_id))}${locationModule.sizeBadgeHtml(award.area_id)}</span>` : ''}
+          </td>
           <td>
             <span class="badge bg-info-subtle text-info" style="font-size: 0.7rem;">
               ${utils.escapeHtml(utils.toTitleCase(award.sector) || '-')}
@@ -883,8 +860,8 @@ const awardsModule = {
                 <td>${utils.escapeHtml(award.award_name)}</td>
               </tr>
               <tr>
-                <th>County/City:</th>
-                <td>${utils.escapeHtml(award.county || 'N/A')}</td>
+                <th>Location:</th>
+                <td>${utils.escapeHtml(award.country || 'N/A')}${award.area_id ? ' — ' + utils.escapeHtml(locationModule.getAreaName(award.area_id)) + locationModule.sizeBadgeHtml(award.area_id) : ''}</td>
               </tr>
               <tr>
                 <th>Year:</th>
@@ -1126,7 +1103,7 @@ const awardsModule = {
     el('statsActiveAwards', awards.filter((a) => a.status?.toLowerCase() === 'active').length);
     el('statsWithNominees', awards.filter((a) => (a._assignmentCounts?.total || 0) > 0).length);
     el('statsWithWinners', awards.filter((a) => (a._assignmentCounts?.winner || 0) > 0).length);
-    el('statsCounties', [...new Set(awards.map((a) => a.county).filter(Boolean))].length);
+    el('statsCounties', [...new Set(awards.map((a) => a.area_id || a.country).filter(Boolean))].length);
     el('statsSectors', [...new Set(awards.map((a) => a.sector).filter(Boolean))].length);
   },
 
@@ -1195,14 +1172,9 @@ const awardsModule = {
     document.getElementById('awardFormPrev3rd').value = '';
     document.getElementById('awardFormModalTitle').innerHTML = '<i class="bi bi-plus-lg me-2"></i>Add Award';
 
-    // Populate county dropdown from cached DB data (falls back to REGIONS constant)
-    const countySelect = document.getElementById('awardFormCounty');
-    const countyNames = this._cachedCounties?.length
-      ? this._cachedCounties.map((c) => c.Name).sort()
-      : [...REGIONS].sort();
-    countySelect.innerHTML =
-      '<option value="">Select County/City...</option>' +
-      countyNames.map((r) => `<option value="${r}">${utils.escapeHtml(r)}</option>`).join('');
+    // Populate country + area dropdowns via locationModule
+    locationModule.populateCountryDropdown('awardFormCountry', 'Select Country...');
+    locationModule.populateAreaDropdown('awardFormArea', '', 'Select Area...');
 
     // Populate sector dropdown
     const sectorSelect = document.getElementById('awardFormSector');
@@ -1224,7 +1196,11 @@ const awardsModule = {
     if (draft) {
       const banner = utils.showDraftRecoveryBanner('award_new', (data) => {
         if (data.award_name) document.getElementById('awardFormName').value = data.award_name;
-        if (data.county) document.getElementById('awardFormCounty').value = data.county;
+        if (data.country) {
+          document.getElementById('awardFormCountry').value = data.country;
+          locationModule.populateAreaDropdown('awardFormArea', data.country, 'Select Area...', data.area_id || '');
+        }
+        if (data.area_id) document.getElementById('awardFormArea').value = data.area_id;
         if (data.sector) document.getElementById('awardFormSector').value = data.sector;
         if (data.year) document.getElementById('awardFormYear').value = data.year;
         if (data.status) document.getElementById('awardFormStatus').value = data.status;
@@ -1237,7 +1213,8 @@ const awardsModule = {
     // Start auto-save for the create form
     utils.startFormAutoSave('award_new', () => ({
       award_name: document.getElementById('awardFormName')?.value,
-      county: document.getElementById('awardFormCounty')?.value,
+      country: document.getElementById('awardFormCountry')?.value,
+      area_id: document.getElementById('awardFormArea')?.value,
       sector: document.getElementById('awardFormSector')?.value,
       year: document.getElementById('awardFormYear')?.value,
       status: document.getElementById('awardFormStatus')?.value,
@@ -1281,16 +1258,15 @@ const awardsModule = {
     document.getElementById('awardFormPrev3rd').value = award.prev_year_3rd || '';
     document.getElementById('awardFormModalTitle').innerHTML = '<i class="bi bi-pencil me-2"></i>Edit Award';
 
-    // Populate county dropdown from cached DB data (falls back to REGIONS constant)
-    const countySelect = document.getElementById('awardFormCounty');
-    const editCountyNames = this._cachedCounties?.length
-      ? this._cachedCounties.map((c) => c.Name).sort()
-      : [...REGIONS].sort();
-    countySelect.innerHTML =
-      '<option value="">Select County/City...</option>' +
-      editCountyNames
-        .map((r) => `<option value="${r}" ${r === award.county ? 'selected' : ''}>${utils.escapeHtml(r)}</option>`)
-        .join('');
+    // Populate country + area dropdowns via locationModule
+    locationModule.populateCountryDropdown('awardFormCountry', 'Select Country...');
+    if (award.country) {
+      const countryEl = document.getElementById('awardFormCountry');
+      if (countryEl) countryEl.value = award.country;
+    }
+    locationModule.populateAreaDropdown('awardFormArea', award.country || '', 'Select Area...', award.area_id || '');
+    // Update area hint
+    this._updateAwardFormAreaHint(award.area_id);
 
     // Populate sector dropdown
     const sectorSelect = document.getElementById('awardFormSector');
@@ -1312,7 +1288,11 @@ const awardsModule = {
     if (draft) {
       const banner = utils.showDraftRecoveryBanner(editFormKey, (data) => {
         if (data.award_name) document.getElementById('awardFormName').value = data.award_name;
-        if (data.county) document.getElementById('awardFormCounty').value = data.county;
+        if (data.country) {
+          document.getElementById('awardFormCountry').value = data.country;
+          locationModule.populateAreaDropdown('awardFormArea', data.country, 'Select Area...', data.area_id || '');
+        }
+        if (data.area_id) document.getElementById('awardFormArea').value = data.area_id;
         if (data.sector) document.getElementById('awardFormSector').value = data.sector;
         if (data.year) document.getElementById('awardFormYear').value = data.year;
         if (data.status) document.getElementById('awardFormStatus').value = data.status;
@@ -1325,7 +1305,8 @@ const awardsModule = {
     // Start auto-save for the edit form
     utils.startFormAutoSave(editFormKey, () => ({
       award_name: document.getElementById('awardFormName')?.value,
-      county: document.getElementById('awardFormCounty')?.value,
+      country: document.getElementById('awardFormCountry')?.value,
+      area_id: document.getElementById('awardFormArea')?.value,
       sector: document.getElementById('awardFormSector')?.value,
       year: document.getElementById('awardFormYear')?.value,
       status: document.getElementById('awardFormStatus')?.value,
@@ -1384,9 +1365,11 @@ const awardsModule = {
     }
 
     const id = document.getElementById('awardFormId').value;
+    const areaId = document.getElementById('awardFormArea').value || null;
     const awardData = {
       award_name: document.getElementById('awardFormName').value.trim(),
-      county: document.getElementById('awardFormCounty').value,
+      country: document.getElementById('awardFormCountry').value || null,
+      area_id: areaId || null,
       sector: document.getElementById('awardFormSector').value,
       year: document.getElementById('awardFormYear').value,
       status: document.getElementById('awardFormStatus').value,
@@ -1415,13 +1398,13 @@ const awardsModule = {
       await utils.protectModalDuringSave('awardFormModal', async () => {
         utils.showLoading();
 
-        // Duplicate prevention: check for same award_name + county + year
+        // Duplicate prevention: check for same award_name + area_id + year
         {
           const dupeFilters = {
             award_name: awardData.award_name,
-            county: awardData.county,
             year: awardData.year,
           };
+          if (awardData.area_id) dupeFilters.area_id = awardData.area_id;
           if (id) dupeFilters.id = { op: 'neq', value: id };
 
           const { data: existing } = await apiClient.select('awards', {
@@ -1431,9 +1414,12 @@ const awardsModule = {
           });
 
           if (existing && existing.length > 0) {
+            const areaLabel = awardData.area_id
+              ? locationModule.getAreaName(awardData.area_id)
+              : awardData.country || 'this location';
             utils.hideLoading();
             utils.showToast(
-              `An award "${awardData.award_name}" already exists for ${awardData.county} in ${awardData.year}`,
+              `An award "${awardData.award_name}" already exists for ${areaLabel} in ${awardData.year}`,
               'error'
             );
             return;
@@ -1465,8 +1451,8 @@ const awardsModule = {
           id ? 'updated' : 'created',
           awardData.award_name,
           id
-            ? `Award updated: ${awardData.award_name} (${awardData.county}, ${awardData.year})`
-            : `Award created: ${awardData.award_name} (${awardData.county}, ${awardData.year})`
+            ? `Award updated: ${awardData.award_name} (${awardData.area_id ? locationModule.getAreaName(awardData.area_id) : awardData.country || ''}, ${awardData.year})`
+            : `Award created: ${awardData.award_name} (${awardData.area_id ? locationModule.getAreaName(awardData.area_id) : awardData.country || ''}, ${awardData.year})`
         );
 
         utils.showToast(id ? 'Award updated successfully!' : 'Award created successfully!', 'success');
@@ -1720,14 +1706,14 @@ const awardsModule = {
     }
     const exportData = awards.map((a) => ({
       award_name: utils.formatAwardName(a),
-      county: a.county || '',
+      location: (a.area_id ? locationModule.getAreaName(a.area_id) : a.country) || '',
       sector: a.sector || '',
       year: a.year || '',
       status: a.status || '',
       winner: a._winnerName || '',
     }));
     utils.exportToPrintablePDF(exportData, 'Awards Report', {
-      columns: ['award_name', 'county', 'sector', 'year', 'status', 'winner'],
+      columns: ['award_name', 'location', 'sector', 'year', 'status', 'winner'],
     });
   },
 
@@ -1862,11 +1848,11 @@ const awardsModule = {
     try {
       utils.showLoading();
 
-      // Get existing award name+county combos for target year to avoid duplicates
-      const existingKeys = new Set(existingTarget.map((a) => `${a.award_name}|||${a.county}`));
+      // Get existing award name+area combos for target year to avoid duplicates
+      const existingKeys = new Set(existingTarget.map((a) => `${a.award_name}|||${a.area_id || a.county}`));
 
-      // Filter out awards that already exist in the target year (same name + county)
-      const awardsToRoll = sourceAwards.filter((a) => !existingKeys.has(`${a.award_name}|||${a.county}`));
+      // Filter out awards that already exist in the target year (same name + area)
+      const awardsToRoll = sourceAwards.filter((a) => !existingKeys.has(`${a.award_name}|||${a.area_id || a.county}`));
 
       if (awardsToRoll.length === 0) {
         utils.showToast(`All ${sourceYear} awards already exist in ${targetYear}`, 'info');
@@ -1897,7 +1883,8 @@ const awardsModule = {
         const prevWinners = winnersMap[a.id] || {};
         return {
           award_name: a.award_name,
-          county: a.county,
+          area_id: a.area_id || null,
+          country: a.country || null,
           sector: a.sector,
           year: targetYear,
           status: 'Draft',
@@ -1938,10 +1925,10 @@ const awardsModule = {
     document.getElementById('awardsYearFilterSelect').value = '';
     document.getElementById('awardsStatusFilterSelect').value = '';
     document.getElementById('awardsSectorFilterSelect').value = '';
-    document.getElementById('awardsRegionFilterSelect').value = '';
-    document.getElementById('awardsCountyFilterSelect').value = '';
+    document.getElementById('awardsCountryFilter').value = '';
+    document.getElementById('awardsAreaFilter').value = '';
     document.getElementById('awardsSearchBox').value = '';
-    this.updateCountyFilterByRegion();
+    locationModule.populateAreaDropdown('awardsAreaFilter', '', 'All Areas');
     this.filterAwards();
   },
 
@@ -2306,21 +2293,25 @@ const awardsModule = {
       utils.showLoading();
 
       // Check for duplicate
+      const dupeCloneFilters = { award_name: award.award_name, year: targetYear };
+      if (award.area_id) dupeCloneFilters.area_id = award.area_id;
       const { data: existing } = await apiClient.select('awards', {
         select: 'id',
-        filters: { award_name: award.award_name, county: award.county, year: targetYear },
+        filters: dupeCloneFilters,
         pageSize: 1,
       });
 
       if (existing && existing.length > 0) {
         utils.hideLoading();
-        utils.showToast(`"${award.award_name}" already exists for ${award.county} in ${targetYear}`, 'error');
+        const label = award.area_id ? locationModule.getAreaName(award.area_id) : award.country || 'this location';
+        utils.showToast(`"${award.award_name}" already exists for ${label} in ${targetYear}`, 'error');
         return;
       }
 
       const cloneData = {
         award_name: award.award_name,
-        county: award.county,
+        area_id: award.area_id || null,
+        country: award.country || null,
         sector: award.sector,
         year: targetYear,
         status: 'Draft',
@@ -2390,9 +2381,11 @@ const awardsModule = {
           const award = STATE.allAwards.find((a) => a.id === awardId);
           if (!award) throw new Error('Award not found');
 
+          const bulkCloneFilters = { award_name: award.award_name, year: targetYear };
+          if (award.area_id) bulkCloneFilters.area_id = award.area_id;
           const { data: existing } = await apiClient.select('awards', {
             select: 'id',
-            filters: { award_name: award.award_name, county: award.county, year: targetYear },
+            filters: bulkCloneFilters,
             pageSize: 1,
           });
 
@@ -2404,7 +2397,8 @@ const awardsModule = {
           await apiClient.insert('awards', [
             {
               award_name: award.award_name,
-              county: award.county,
+              area_id: award.area_id || null,
+              country: award.country || null,
               sector: award.sector,
               year: targetYear,
               status: 'Draft',
@@ -2529,7 +2523,7 @@ const awardsModule = {
             ${awards
               .map(
                 (a) => `<tr>
-              <td class="small fw-semibold text-truncate" style="max-width: 200px;" title="${utils.escapeHtml(utils.formatAwardName(a))}">${utils.escapeHtml(a.award_name || 'N/A')}<br><span class="text-muted" style="font-size:0.6rem;">${utils.escapeHtml(a.county || '-')}</span></td>
+              <td class="small fw-semibold text-truncate" style="max-width: 200px;" title="${utils.escapeHtml(utils.formatAwardName(a))}">${utils.escapeHtml(a.award_name || 'N/A')}<br><span class="text-muted" style="font-size:0.6rem;">${utils.escapeHtml(a.area_id ? locationModule.getAreaName(a.area_id) : a.country || '-')}</span></td>
               ${dateFields
                 .map((df) => {
                   const d = a[df.key];
@@ -2562,14 +2556,15 @@ const awardsModule = {
     const dupeMap = new Map();
 
     STATE.allAwards.forEach((award) => {
-      const key = `${(award.award_name || '').toLowerCase().trim()}|${(award.county || '').toLowerCase().trim()}|${award.year}`;
+      const locKey = award.area_id || (award.country || '').toLowerCase().trim();
+      const key = `${(award.award_name || '').toLowerCase().trim()}|${locKey}|${award.year}`;
       if (!dupeMap.has(key)) dupeMap.set(key, []);
       dupeMap.get(key).push(award);
     });
 
     const exactDupes = Array.from(dupeMap.values()).filter((g) => g.length > 1);
 
-    // Fuzzy name matching (same county+year, similar names)
+    // Fuzzy name matching (same area+year, similar names)
     const fuzzyDupes = [];
     const checked = new Set();
     const awards = STATE.allAwards;
@@ -2579,7 +2574,7 @@ const awardsModule = {
         const a = awards[i],
           b = awards[j];
         if (a.year !== b.year) continue;
-        if ((a.county || '').toLowerCase() !== (b.county || '').toLowerCase()) continue;
+        if ((a.area_id || a.country || '') !== (b.area_id || b.country || '')) continue;
         const key = `${a.id}|${b.id}`;
         if (checked.has(key)) continue;
 
@@ -2609,9 +2604,9 @@ const awardsModule = {
       html += `<div class="alert alert-danger mb-3"><i class="bi bi-exclamation-triangle me-2"></i>${exactDupes.length} exact duplicate group(s) found</div>`;
       exactDupes.forEach((group, idx) => {
         html += `<div class="card mb-2"><div class="card-body py-2">
-          <h6 class="mb-2 small fw-bold">Exact Group ${idx + 1}: "${utils.escapeHtml(group[0].award_name)}" - ${group[0].county} (${group[0].year})</h6>
+          <h6 class="mb-2 small fw-bold">Exact Group ${idx + 1}: "${utils.escapeHtml(group[0].award_name)}" - ${utils.escapeHtml(group[0].area_id ? locationModule.getAreaName(group[0].area_id) : group[0].country || '-')} (${group[0].year})</h6>
           <div class="table-responsive"><table class="table table-sm mb-0">
-            <thead><tr><th>Name</th><th>County</th><th>Year</th><th>Status</th><th>Nominees</th><th>Action</th></tr></thead>
+            <thead><tr><th>Name</th><th>Location</th><th>Year</th><th>Status</th><th>Nominees</th><th>Action</th></tr></thead>
             <tbody>${group
               .map(
                 (a) => `<tr>
@@ -2713,8 +2708,8 @@ const awardsModule = {
       year: document.getElementById('awardsYearFilterSelect')?.value || '',
       status: document.getElementById('awardsStatusFilterSelect')?.value || '',
       sector: document.getElementById('awardsSectorFilterSelect')?.value || '',
-      county: document.getElementById('awardsCountyFilterSelect')?.value || '',
-      region: document.getElementById('awardsRegionFilterSelect')?.value || '',
+      country: document.getElementById('awardsCountryFilter')?.value || '',
+      areaId: document.getElementById('awardsAreaFilter')?.value || '',
       search: document.getElementById('awardsSearchBox')?.value || '',
     };
     try {
@@ -2762,8 +2757,16 @@ const awardsModule = {
       if (view.filters.year) document.getElementById('awardsYearFilterSelect').value = view.filters.year;
       if (view.filters.status) document.getElementById('awardsStatusFilterSelect').value = view.filters.status;
       if (view.filters.sector) document.getElementById('awardsSectorFilterSelect').value = view.filters.sector;
-      if (view.filters.region) document.getElementById('awardsRegionFilterSelect').value = view.filters.region;
-      if (view.filters.county) document.getElementById('awardsCountyFilterSelect').value = view.filters.county;
+      if (view.filters.country) {
+        document.getElementById('awardsCountryFilter').value = view.filters.country;
+        locationModule.populateAreaDropdown(
+          'awardsAreaFilter',
+          view.filters.country,
+          'All Areas',
+          view.filters.areaId || ''
+        );
+      }
+      if (view.filters.areaId) document.getElementById('awardsAreaFilter').value = view.filters.areaId;
       if (view.filters.search) document.getElementById('awardsSearchBox').value = view.filters.search;
       this.filterAwards();
       utils.showToast('Loaded view: ' + view.name, 'success');

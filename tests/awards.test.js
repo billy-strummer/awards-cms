@@ -29,8 +29,8 @@ const dom = new JSDOM(
   <select id="awardsYearFilterSelect"><option value="">All Years</option><option value="2026">2026</option><option value="2025">2025</option></select>
   <select id="awardsStatusFilterSelect"><option value="">All</option><option value="published">Published</option><option value="draft">Draft</option><option value="active">Active</option><option value="pending">Pending</option><option value="archived">Archived</option></select>
   <select id="awardsSectorFilterSelect"><option value="">All Sectors</option><option value="MECHANICAL, ELECTRICAL &amp; PLUMBING">MEP</option><option value="BUILDING &amp; CONSTRUCTION">Building</option><option value="CARPENTRY &amp; JOINERY">Carpentry</option><option value="OUTDOOR &amp; LANDSCAPING">Landscaping</option></select>
-  <select id="awardsRegionFilterSelect"><option value="">All Regions</option><option value="South East">South East</option><option value="East of England">East of England</option><option value="Greater London">Greater London</option><option value="South West">South West</option></select>
-  <select id="awardsCountyFilterSelect"><option value="">All Counties</option><option value="Kent">Kent</option><option value="Essex">Essex</option><option value="London, North">London, North</option><option value="Surrey">Surrey</option><option value="Devon">Devon</option></select>
+  <select id="awardsCountryFilter"><option value="">All Countries</option><option value="England">England</option><option value="Scotland">Scotland</option><option value="Wales">Wales</option></select>
+  <select id="awardsAreaFilter"><option value="">All Areas</option><option value="area-kent">Kent</option><option value="area-essex">Essex</option><option value="area-surrey">Surrey</option></select>
   <input id="awardsSearchBox" value="" />
   <input type="checkbox" id="selectAllAwards" />
   <select id="awardsSavedViewsList"><option value="">No saved views</option></select>
@@ -50,6 +50,41 @@ global.HTMLElement = dom.window.HTMLElement;
 global.Blob = dom.window.Blob;
 global.URL = { createObjectURL: jest.fn(() => 'blob://mock'), revokeObjectURL: jest.fn() };
 global.window.URL = global.URL;
+
+global.locationModule = {
+  _cachedAreas: [
+    { id: 'area-kent', display_name: 'Kent', country: 'England', area_type: 'county', is_small: false, sort_order: 1 },
+    {
+      id: 'area-essex',
+      display_name: 'Essex',
+      country: 'England',
+      area_type: 'county',
+      is_small: false,
+      sort_order: 2,
+    },
+    {
+      id: 'area-surrey',
+      display_name: 'Surrey',
+      country: 'England',
+      area_type: 'county',
+      is_small: false,
+      sort_order: 3,
+    },
+  ],
+  loadAreas: jest.fn().mockResolvedValue([]),
+  getAreaById: jest.fn((id) => global.locationModule._cachedAreas.find((a) => a.id === id) || null),
+  getAreaName: jest.fn((id) => {
+    const area = global.locationModule._cachedAreas.find((a) => a.id === id);
+    return area ? area.display_name : '';
+  }),
+  isSmall: jest.fn((id) => {
+    const area = global.locationModule._cachedAreas.find((a) => a.id === id);
+    return area ? area.is_small : false;
+  }),
+  sizeBadgeHtml: jest.fn(() => ''),
+  populateCountryDropdown: jest.fn(),
+  populateAreaDropdown: jest.fn(),
+};
 
 global.bootstrap = {
   Toast: class {
@@ -144,6 +179,8 @@ const sampleAwards = [
     id: 'award-1',
     award_name: 'Best Plumber',
     county: 'Kent',
+    area_id: 'area-kent',
+    country: 'England',
     sector: 'MECHANICAL, ELECTRICAL & PLUMBING',
     year: 2026,
     status: 'published',
@@ -151,12 +188,15 @@ const sampleAwards = [
     _assignmentCounts: { total: 5, nominated: 3, shortlisted: 1, winner: 1 },
     _winnerName: 'Acme Plumbing',
     _runnerUpName: null,
-    _actualRegion: 'South East',
+    _areaName: 'Kent',
+    _isSmall: false,
   },
   {
     id: 'award-2',
     award_name: 'Best Builder',
     county: 'Essex',
+    area_id: 'area-essex',
+    country: 'Scotland',
     sector: 'BUILDING & CONSTRUCTION',
     year: 2026,
     status: 'draft',
@@ -164,12 +204,15 @@ const sampleAwards = [
     _assignmentCounts: { total: 0, nominated: 0, shortlisted: 0, winner: 0 },
     _winnerName: null,
     _runnerUpName: null,
-    _actualRegion: 'East',
+    _areaName: 'Essex',
+    _isSmall: false,
   },
   {
     id: 'award-3',
     award_name: 'Best Electrician',
     county: 'London',
+    area_id: 'area-surrey',
+    country: 'England',
     sector: 'MECHANICAL, ELECTRICAL & PLUMBING',
     year: 2025,
     status: 'active',
@@ -177,12 +220,15 @@ const sampleAwards = [
     _assignmentCounts: { total: 10, nominated: 7, shortlisted: 2, winner: 1 },
     _winnerName: 'Spark Electric',
     _runnerUpName: 'Bolt Ltd',
-    _actualRegion: 'London',
+    _areaName: 'Surrey',
+    _isSmall: false,
   },
   {
     id: 'award-4',
     award_name: 'Best Carpenter',
     county: 'Surrey',
+    area_id: 'area-surrey',
+    country: 'England',
     sector: 'CARPENTRY & JOINERY',
     year: 2026,
     status: 'pending',
@@ -190,12 +236,15 @@ const sampleAwards = [
     _assignmentCounts: { total: 3, nominated: 2, shortlisted: 1, winner: 0 },
     _winnerName: null,
     _runnerUpName: null,
-    _actualRegion: 'South East',
+    _areaName: 'Surrey',
+    _isSmall: false,
   },
   {
     id: 'award-5',
     award_name: 'Best Landscaper',
     county: 'Devon',
+    area_id: null,
+    country: 'Scotland',
     sector: 'OUTDOOR & LANDSCAPING',
     year: 2025,
     status: 'archived',
@@ -203,7 +252,8 @@ const sampleAwards = [
     _assignmentCounts: { total: 1, nominated: 1, shortlisted: 0, winner: 0 },
     _winnerName: null,
     _runnerUpName: null,
-    _actualRegion: 'South West',
+    _areaName: '',
+    _isSmall: false,
   },
 ];
 
@@ -236,7 +286,7 @@ describe('Awards Module - Initialization & Structure', () => {
     expect(typeof awardsModule.applySorting).toBe('function');
     expect(typeof awardsModule.populateFilters).toBe('function');
     expect(typeof awardsModule.populateYearFilter).toBe('function');
-    expect(typeof awardsModule.updateCountyFilterByRegion).toBe('function');
+    expect(typeof awardsModule.onCountryFilterChange).toBe('function');
     expect(typeof awardsModule.filterByStatus).toBe('function');
     expect(typeof awardsModule.getAwardPhase).toBe('function');
     expect(typeof awardsModule.toggleSelection).toBe('function');
@@ -265,8 +315,8 @@ describe('Awards Module - filterAwards() (client-side)', () => {
     document.getElementById('awardsYearFilterSelect').value = '';
     document.getElementById('awardsStatusFilterSelect').value = '';
     document.getElementById('awardsSectorFilterSelect').value = '';
-    document.getElementById('awardsCountyFilterSelect').value = '';
-    document.getElementById('awardsRegionFilterSelect').value = '';
+    document.getElementById('awardsAreaFilter').value = '';
+    document.getElementById('awardsCountryFilter').value = '';
     document.getElementById('awardsSearchBox').value = '';
   });
 
@@ -295,15 +345,29 @@ describe('Awards Module - filterAwards() (client-side)', () => {
     expect(STATE.filteredAwards.length).toBe(2);
   });
 
-  test('filters by county', () => {
-    document.getElementById('awardsCountyFilterSelect').value = 'Kent';
+  test('filters by area_id', () => {
+    const areaEl = document.getElementById('awardsAreaFilter');
+    if (!areaEl.querySelector('option[value="area-kent"]')) {
+      const opt = document.createElement('option');
+      opt.value = 'area-kent';
+      opt.textContent = 'Kent';
+      areaEl.appendChild(opt);
+    }
+    areaEl.value = 'area-kent';
     awardsModule.filterAwards();
     expect(STATE.filteredAwards.length).toBe(1);
     expect(STATE.filteredAwards[0].id).toBe('award-1');
   });
 
-  test('filters by region', () => {
-    document.getElementById('awardsRegionFilterSelect').value = 'South East';
+  test('filters by country', () => {
+    const countryEl = document.getElementById('awardsCountryFilter');
+    if (!countryEl.querySelector('option[value="Scotland"]')) {
+      const opt = document.createElement('option');
+      opt.value = 'Scotland';
+      opt.textContent = 'Scotland';
+      countryEl.appendChild(opt);
+    }
+    countryEl.value = 'Scotland';
     awardsModule.filterAwards();
     expect(STATE.filteredAwards.length).toBe(2);
   });
@@ -380,12 +444,14 @@ describe('Awards Module - sortBy()', () => {
     }
   });
 
-  test('sortBy county ascending orders alphabetically', () => {
-    awardsModule.currentSort = { column: 'county', direction: 'asc' };
+  test('sortBy location ascending orders alphabetically by area name', () => {
+    awardsModule.currentSort = { column: 'location', direction: 'asc' };
     awardsModule.applySorting();
-    const counties = STATE.filteredAwards.map((a) => (a.county || '').toLowerCase());
-    for (let i = 0; i < counties.length - 1; i++) {
-      expect(counties[i] <= counties[i + 1]).toBe(true);
+    const areas = STATE.filteredAwards.map((a) =>
+      (a.area_id ? locationModule.getAreaName(a.area_id) : a.country || '').toLowerCase()
+    );
+    for (let i = 0; i < areas.length - 1; i++) {
+      expect(areas[i] <= areas[i + 1]).toBe(true);
     }
   });
 
@@ -609,15 +675,15 @@ describe('Awards Module - _populateFiltersFromConstants()', () => {
   test('is a no-op (filters are now populated from DB)', () => {
     const yearSelect = document.getElementById('awardsYearFilterSelect');
     const sectorSelect = document.getElementById('awardsSectorFilterSelect');
-    const regionSelect = document.getElementById('awardsRegionFilterSelect');
+    const countrySelect = document.getElementById('awardsCountryFilter');
     const yearBefore = yearSelect.innerHTML;
     const sectorBefore = sectorSelect.innerHTML;
-    const regionBefore = regionSelect.innerHTML;
+    const countryBefore = countrySelect.innerHTML;
     awardsModule._populateFiltersFromConstants();
     // _populateFiltersFromConstants is now a no-op — all filters come from DB
     expect(yearSelect.innerHTML).toBe(yearBefore);
     expect(sectorSelect.innerHTML).toBe(sectorBefore);
-    expect(regionSelect.innerHTML).toBe(regionBefore);
+    expect(countrySelect.innerHTML).toBe(countryBefore);
   });
 });
 
@@ -638,7 +704,8 @@ describe('Awards Module - _buildServerFilters()', () => {
     document.getElementById('awardsYearFilterSelect').value = '';
     document.getElementById('awardsStatusFilterSelect').value = '';
     document.getElementById('awardsSectorFilterSelect').value = '';
-    document.getElementById('awardsCountyFilterSelect').value = '';
+    document.getElementById('awardsCountryFilter').value = '';
+    document.getElementById('awardsAreaFilter').value = '';
   });
 
   test('returns empty object when no filters set', () => {
@@ -667,40 +734,21 @@ describe('Awards Module - _buildServerFilters()', () => {
   });
 });
 
-describe('Awards Module - updateCountyFilterByRegion()', () => {
+describe('Awards Module - onCountryFilterChange()', () => {
   beforeEach(() => {
     STATE.allAwards = [...sampleAwards];
-    document.getElementById('awardsRegionFilterSelect').value = '';
-    // Simulate cached DB data used by the updated updateCountyFilterByRegion
-    awardsModule._cachedCounties = [
-      { Name: 'Kent', region: 'South East', _regionName: 'South East' },
-      { Name: 'Surrey', region: 'South East', _regionName: 'South East' },
-      { Name: 'Essex', region: 'East', _regionName: 'East' },
-      { Name: 'London', region: 'London', _regionName: 'London' },
-      { Name: 'Devon', region: 'South West', _regionName: 'South West' },
-    ];
+    document.getElementById('awardsCountryFilter').value = '';
+    document.getElementById('awardsAreaFilter').value = '';
   });
 
-  test('shows all counties when no region selected', () => {
-    awardsModule.updateCountyFilterByRegion();
-    const countySelect = document.getElementById('awardsCountyFilterSelect');
-    expect(countySelect.innerHTML).toContain('All Counties');
-  });
-
-  test('filters counties by selected region', () => {
-    document.getElementById('awardsRegionFilterSelect').value = 'South East';
-    awardsModule.updateCountyFilterByRegion();
-    const countySelect = document.getElementById('awardsCountyFilterSelect');
-    expect(countySelect.innerHTML).toContain('Kent');
-    expect(countySelect.innerHTML).toContain('Surrey');
-  });
-
-  test('resets county selection when no cached data', () => {
-    awardsModule._cachedCounties = [];
-    const countySelect = document.getElementById('awardsCountyFilterSelect');
-    countySelect.value = 'Kent';
-    awardsModule.updateCountyFilterByRegion();
-    expect(countySelect.value).toBe('');
+  test('calls populateAreaDropdown and filterAwards', () => {
+    const origFilter = awardsModule.filterAwards;
+    awardsModule.filterAwards = jest.fn();
+    document.getElementById('awardsCountryFilter').value = 'England';
+    awardsModule.onCountryFilterChange();
+    expect(locationModule.populateAreaDropdown).toHaveBeenCalledWith('awardsAreaFilter', 'England', 'All Areas');
+    expect(awardsModule.filterAwards).toHaveBeenCalled();
+    awardsModule.filterAwards = origFilter;
   });
 });
 
@@ -904,64 +952,57 @@ describe('Awards Module - _fetchPage()', () => {
 });
 
 describe('Awards Module - _enrichPageData()', () => {
-  test('enriches awards with region and assignment data', async () => {
+  test('enriches awards with area name and assignment data', async () => {
     const origSelect = apiClient.select;
-    apiClient.select = jest
-      .fn()
-      .mockResolvedValueOnce({ data: [{ Name: 'Kent', regions: { name: 'South East' } }] })
-      .mockResolvedValueOnce({
-        data: [
-          { award_id: 'a1', status: 'nominated', winner_position: null, organisations: null },
-          { award_id: 'a1', status: 'winner', winner_position: 1, organisations: { company_name: 'Winner Co' } },
-          { award_id: 'a1', status: 'winner', winner_position: 2, organisations: { company_name: 'Runner Co' } },
-        ],
-      });
+    apiClient.select = jest.fn().mockResolvedValueOnce({
+      data: [
+        { award_id: 'a1', status: 'nominated', winner_position: null, organisations: null },
+        { award_id: 'a1', status: 'winner', winner_position: 1, organisations: { company_name: 'Winner Co' } },
+        { award_id: 'a1', status: 'winner', winner_position: 2, organisations: { company_name: 'Runner Co' } },
+      ],
+    });
 
-    const awards = [{ id: 'a1', county: 'Kent' }];
+    const awards = [{ id: 'a1', area_id: 'area-kent', country: 'England' }];
     await awardsModule._enrichPageData(awards);
-    expect(awards[0]._actualRegion).toBe('South East');
+    expect(awards[0]._areaName).toBe('Kent');
+    expect(awards[0]._isSmall).toBe(false);
     expect(awards[0]._assignmentCounts.total).toBe(3);
     expect(awards[0]._winnerName).toBe('Winner Co');
     expect(awards[0]._runnerUpName).toBe('Runner Co');
     apiClient.select = origSelect;
   });
 
-  test('handles empty counties and no awardIds', async () => {
-    const awards = [{ id: null, county: null }];
+  test('handles null area_id and no awardIds', async () => {
+    const awards = [{ id: null, area_id: null, country: 'England' }];
     await awardsModule._enrichPageData(awards);
-    expect(awards[0]._actualRegion).toBeNull();
-  });
-
-  test('handles error in county lookup', async () => {
-    const origSelect = apiClient.select;
-    apiClient.select = jest.fn().mockRejectedValueOnce(new Error('counties error')).mockResolvedValueOnce({ data: [] });
-    const awards = [{ id: 'a1', county: 'Kent' }];
-    await awardsModule._enrichPageData(awards);
-    expect(awards[0]._actualRegion).toBeNull();
-    apiClient.select = origSelect;
+    expect(awards[0]._areaName).toBe('');
+    expect(awards[0]._isSmall).toBe(false);
+    expect(awards[0]._assignmentCounts).toEqual({ total: 0, nominated: 0, shortlisted: 0, winner: 0 });
   });
 
   test('handles error in assignment lookup', async () => {
     const origSelect = apiClient.select;
-    apiClient.select = jest
-      .fn()
-      .mockResolvedValueOnce({ data: [] })
-      .mockRejectedValueOnce(new Error('assignments error'));
-    const awards = [{ id: 'a1', county: null }];
+    apiClient.select = jest.fn().mockRejectedValueOnce(new Error('assignments error'));
+    const awards = [{ id: 'a1', area_id: 'area-kent', country: 'England' }];
     await awardsModule._enrichPageData(awards);
     expect(awards[0]._assignmentCounts).toEqual({ total: 0, nominated: 0, shortlisted: 0, winner: 0 });
     apiClient.select = origSelect;
   });
 
+  test('sets _areaName from locationModule', async () => {
+    const awards = [{ id: 'a1', area_id: 'area-essex', country: 'England' }];
+    await awardsModule._enrichPageData(awards);
+    expect(awards[0]._areaName).toBe('Essex');
+  });
+
   test('handles winners without explicit position', async () => {
     const origSelect = apiClient.select;
-    // county is null so no county lookup is made; only the assignments select call fires
     apiClient.select = jest.fn().mockResolvedValueOnce({
       data: [
         { award_id: 'a1', status: 'winner', winner_position: null, organisations: { company_name: 'Solo Winner' } },
       ],
     });
-    const awards = [{ id: 'a1', county: null }];
+    const awards = [{ id: 'a1', area_id: null, country: 'England' }];
     await awardsModule._enrichPageData(awards);
     expect(awards[0]._winnerName).toBe('Solo Winner');
     apiClient.select = origSelect;
@@ -1079,8 +1120,8 @@ describe('Awards Module - filterAwards() fuzzy fallback', () => {
     document.getElementById('awardsYearFilterSelect').value = '';
     document.getElementById('awardsStatusFilterSelect').value = '';
     document.getElementById('awardsSectorFilterSelect').value = '';
-    document.getElementById('awardsCountyFilterSelect').value = '';
-    document.getElementById('awardsRegionFilterSelect').value = '';
+    document.getElementById('awardsAreaFilter').value = '';
+    document.getElementById('awardsCountryFilter').value = '';
     awardsModule.filterAwards();
     // Fuzzy matching should have been attempted
     expect(STATE.filteredAwards).toBeDefined();
@@ -1091,8 +1132,8 @@ describe('Awards Module - filterAwards() fuzzy fallback', () => {
     document.getElementById('awardsYearFilterSelect').value = '2026';
     document.getElementById('awardsStatusFilterSelect').value = 'published';
     document.getElementById('awardsSectorFilterSelect').value = 'MECHANICAL, ELECTRICAL & PLUMBING';
-    document.getElementById('awardsCountyFilterSelect').value = 'Kent';
-    document.getElementById('awardsRegionFilterSelect').value = 'South East';
+    document.getElementById('awardsAreaFilter').value = 'Kent';
+    document.getElementById('awardsCountryFilter').value = 'South East';
     awardsModule.filterAwards();
     expect(STATE.filteredAwards).toBeDefined();
   });
@@ -1109,8 +1150,8 @@ describe('Awards Module - filterAwards year with dash format', () => {
     document.getElementById('awardsYearFilterSelect').value = '2026';
     document.getElementById('awardsStatusFilterSelect').value = '';
     document.getElementById('awardsSectorFilterSelect').value = '';
-    document.getElementById('awardsCountyFilterSelect').value = '';
-    document.getElementById('awardsRegionFilterSelect').value = '';
+    document.getElementById('awardsAreaFilter').value = '';
+    document.getElementById('awardsCountryFilter').value = '';
     document.getElementById('awardsSearchBox').value = '';
     awardsModule.filterAwards();
     expect(STATE.filteredAwards.length).toBe(1);
@@ -1121,8 +1162,8 @@ describe('Awards Module - filterAwards year with dash format', () => {
     document.getElementById('awardsYearFilterSelect').value = '';
     document.getElementById('awardsStatusFilterSelect').value = '';
     document.getElementById('awardsSectorFilterSelect').value = '';
-    document.getElementById('awardsCountyFilterSelect').value = '';
-    document.getElementById('awardsRegionFilterSelect').value = '';
+    document.getElementById('awardsAreaFilter').value = '';
+    document.getElementById('awardsCountryFilter').value = '';
     document.getElementById('awardsSearchBox').value = 'unique description';
     awardsModule.filterAwards();
     expect(STATE.filteredAwards.length).toBe(1);
@@ -1467,13 +1508,14 @@ describe('Awards Module - openCreateModal()', () => {
       'awardFormPrev3rd',
       'awardFormModalTitle',
     ];
-    const selectIds = ['awardFormCounty', 'awardFormSector', 'awardFormSeason'];
-    const allIds = [...fieldIds, ...selectIds];
+    const selectIds = ['awardFormCountry', 'awardFormArea', 'awardFormSector', 'awardFormSeason'];
+    const divIds = ['awardFormModalTitle', 'awardFormAreaHint'];
+    const allIds = [...fieldIds, ...selectIds, ...divIds];
     const created = allIds.map((id) => {
       let el;
       if (selectIds.includes(id)) {
         el = document.createElement('select');
-      } else if (id === 'awardFormModalTitle') {
+      } else if (divIds.includes(id)) {
         el = document.createElement('div');
       } else {
         el = document.createElement('input');
@@ -1494,7 +1536,6 @@ describe('Awards Module - openCreateModal()', () => {
 
     expect(document.getElementById('awardFormId').value).toBe('');
     expect(document.getElementById('awardFormModalTitle').innerHTML).toContain('Add Award');
-    expect(document.getElementById('awardFormCounty').innerHTML).toContain('Select County');
     expect(document.getElementById('awardFormSector').innerHTML).toContain('Select Sector');
 
     delete global.settingsModule;
@@ -1524,13 +1565,14 @@ describe('Awards Module - openEditModal()', () => {
       'awardFormPrev3rd',
       'awardFormModalTitle',
     ];
-    const selectIds = ['awardFormCounty', 'awardFormSector', 'awardFormSeason'];
-    const allIds = [...fieldIds, ...selectIds];
+    const selectIds = ['awardFormCountry', 'awardFormArea', 'awardFormSector', 'awardFormSeason'];
+    const divIds = ['awardFormModalTitle', 'awardFormAreaHint'];
+    const allIds = [...fieldIds, ...selectIds, ...divIds];
     const created = allIds.map((id) => {
       let el;
       if (selectIds.includes(id)) {
         el = document.createElement('select');
-      } else if (id === 'awardFormModalTitle') {
+      } else if (divIds.includes(id)) {
         el = document.createElement('div');
       } else {
         el = document.createElement('input');
@@ -1616,7 +1658,7 @@ describe('Awards Module - saveAward()', () => {
       'awardFormPrev2nd',
       'awardFormPrev3rd',
     ];
-    const selects = ['awardFormCounty', 'awardFormSector'];
+    const selects = ['awardFormCountry', 'awardFormArea', 'awardFormSector'];
     formEls = [];
 
     // Remove any stale elements left behind by earlier tests
@@ -1664,7 +1706,8 @@ describe('Awards Module - saveAward()', () => {
     document.getElementById('awardFormName').value = 'Test Award';
     document.getElementById('awardFormYear').value = '2026';
     document.getElementById('awardFormStatus').value = 'Active';
-    document.getElementById('awardFormCounty').value = 'Kent';
+    document.getElementById('awardFormCountry').value = 'England';
+    document.getElementById('awardFormArea').value = 'area-kent';
     document.getElementById('awardFormSector').value = 'Technology';
   });
 
@@ -2437,11 +2480,11 @@ describe('Awards Module - inlineUpdateStatus()', () => {
 });
 
 describe('Awards Module - populateFilters()', () => {
-  test('populates all filter dropdowns', () => {
+  test('populates country filter via locationModule', () => {
     STATE.allAwards = [...sampleAwards];
     awardsModule.populateFilters();
-    const regionSelect = document.getElementById('awardsRegionFilterSelect');
-    expect(regionSelect.innerHTML).toContain('All Regions');
+    const countrySelect = document.getElementById('awardsCountryFilter');
+    expect(countrySelect.innerHTML).toContain('All Countries');
   });
 });
 

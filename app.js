@@ -1153,6 +1153,7 @@ document.addEventListener('DOMContentLoaded', function () {
   if (settingsTab)
     settingsTab.addEventListener('click', () => {
       settingsModule.init();
+      areasManager.loadAreas();
     });
 
   // --- Media Upload ---

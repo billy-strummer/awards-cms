@@ -121,6 +121,7 @@ const ALLOWED_TABLES = new Set([
   'activity_log',
   'email_templates',
   'user_preferences',
+  'areas',
   'counties',
   'regions',
   'award_years',

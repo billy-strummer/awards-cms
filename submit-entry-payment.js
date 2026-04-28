@@ -116,7 +116,7 @@
       'Plumbing & Heating Company',
     ],
     'CARPENTRY & JOINERY': ['Carpentry & Joinery Company', 'Timber Windows Installer'],
-    'FIT-OUT & FINISHES': [
+    'INTERIOR FIT-OUT & FINISHING': [
       'Bathroom Installer',
       'Carpet Fitters',
       'Flooring Installer',

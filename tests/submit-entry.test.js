@@ -94,11 +94,11 @@ global.requestAnimationFrame = (cb) => setTimeout(cb, 0);
 global.window.SECTORS = [
   'BUILDING & CONSTRUCTION',
   'CARPENTRY & JOINERY',
-  'ENERGY, TECH & SUSTAINABILITY',
-  'INTERIOR FIT-OUT & FINISHING',
+  'FIT-OUT & FINISHES',
   'MECHANICAL, ELECTRICAL & PLUMBING',
   'OUTDOOR & LANDSCAPING',
   'SPECIALIST TRADES',
+  'TECH & GREEN ENERGY',
 ];
 global.window.REGIONS = [
   'Bedfordshire',

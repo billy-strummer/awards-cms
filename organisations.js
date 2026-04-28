@@ -76,11 +76,11 @@ const orgsModule = {
       })();
       if (lsFilters.year) document.getElementById('orgsYearFilter').value = lsFilters.year;
       if (lsFilters.sector) document.getElementById('orgsSectorFilter').value = lsFilters.sector;
-      if (lsFilters.region) {
-        document.getElementById('orgsRegionFilter').value = lsFilters.region;
-        this.updateCountyFilterByRegion();
+      if (lsFilters.country) {
+        document.getElementById('orgsCountryFilter').value = lsFilters.country;
+        locationModule.populateAreaDropdown('orgsAreaFilter', lsFilters.country, 'All Areas', lsFilters.areaId || '');
       }
-      if (lsFilters.county) document.getElementById('orgsCountyFilter').value = lsFilters.county;
+      if (lsFilters.areaId) document.getElementById('orgsAreaFilter').value = lsFilters.areaId;
       if (lsFilters.status) document.getElementById('orgsStatusFilter').value = lsFilters.status;
       if (lsFilters.search) document.getElementById('orgsSearchBox').value = lsFilters.search;
 
@@ -91,7 +91,7 @@ const orgsModule = {
       // Calculate dashboard stats AFTER first page is loaded
       await this.calculateDashboardStats();
 
-      this.populateRegionAndCountyFilters();
+      this._initLocationFilters(lsFilters.country || '', lsFilters.areaId || '');
       this.populateSectorFilter();
       this.populateSectorSuggestions();
       utils.populateYearFilterFromDB('orgsYearFilter', { selectCurrent: true });
@@ -229,7 +229,7 @@ const orgsModule = {
    */
   populateFilters() {
     // Sector, region, and county filters are populated from DB
-    // via populateSectorFilter() and populateRegionAndCountyFilters().
+    // via populateSectorFilter() and _initLocationFilters().
     // This method handles tag filter and saved presets.
 
     // Populate tag filter
@@ -267,14 +267,14 @@ const orgsModule = {
         const el = document.getElementById('orgsSectorFilter');
         if (el) el.value = saved.sector;
       }
-      if (saved.region) {
-        const el = document.getElementById('orgsRegionFilter');
-        if (el) el.value = saved.region;
-        this.updateCountyFilterByRegion();
+      if (saved.country) {
+        const el = document.getElementById('orgsCountryFilter');
+        if (el) el.value = saved.country;
+        locationModule.populateAreaDropdown('orgsAreaFilter', saved.country, 'All Areas', saved.areaId || '');
       }
-      if (saved.county) {
-        const el = document.getElementById('orgsCountyFilter');
-        if (el) el.value = saved.county;
+      if (saved.areaId) {
+        const el = document.getElementById('orgsAreaFilter');
+        if (el) el.value = saved.areaId;
       }
       if (saved.status) {
         const el = document.getElementById('orgsStatusFilter');
@@ -290,119 +290,76 @@ const orgsModule = {
   },
 
   /**
-   * Fetch regions and counties from the database and populate both filter dropdowns.
-   * Caches the data so subsequent calls (e.g. region change) don't re-fetch.
+   * Initialise country + area filter dropdowns using locationModule cache.
+   * Also populates Add Company and CSV import area dropdowns.
+   * @param {string} [country]  - pre-selected country
+   * @param {string} [areaId]   - pre-selected area UUID
    */
-  async populateRegionAndCountyFilters() {
+  async _initLocationFilters(country = '', areaId = '') {
     try {
-      if (!this._cachedRegions) {
-        const { data: regions } = await apiClient.select('regions', {
-          select: 'id, name',
-          sort: { column: 'name', ascending: true },
-          pageSize: 500,
-        });
-        this._cachedRegions = regions || [];
+      await locationModule.loadAreas();
+      locationModule.populateCountryDropdown('orgsCountryFilter', 'All Countries');
+      if (country) {
+        const el = document.getElementById('orgsCountryFilter');
+        if (el) el.value = country;
       }
-      if (!this._cachedCounties) {
-        const { data: counties } = await apiClient.select('counties', {
-          select: 'id, Name, region, region_id, regions(name)',
-          sort: { column: 'Name', ascending: true },
-          pageSize: 1000,
-        });
-        // Normalise: prefer FK join name, fall back to text region column
-        (counties || []).forEach((c) => {
-          c._regionName = c.regions?.name || c.region || null;
-        });
-        this._cachedCounties = counties || [];
-      }
+      locationModule.populateAreaDropdown('orgsAreaFilter', country, 'All Areas', areaId);
 
-      // Populate region dropdown
-      const regionSelect = document.getElementById('orgsRegionFilter');
-      if (regionSelect) {
-        const current = regionSelect.value;
-        regionSelect.innerHTML =
-          '<option value="">All Regions</option>' +
-          this._cachedRegions
-            .map((r) => `<option value="${utils.escapeHtml(r.name)}">${utils.escapeHtml(r.name)}</option>`)
-            .join('');
-        if (current) regionSelect.value = current;
-      }
-
-      // Populate county dropdown (respects current region selection)
-      this.updateCountyFilterByRegion();
-
-      // Also update the Add Company and CSV import county dropdowns
-      this._populateFormCountyDropdowns();
+      // Also populate the Add Company and CSV area dropdowns (grouped by country)
+      this._populateFormAreaDropdowns();
     } catch (e) {
-      console.warn('Could not load regions/counties from DB:', e.message);
+      console.warn('Could not init org location filters:', e.message);
     }
   },
 
   /**
-   * Populate the Add Company and CSV import county dropdowns from cached DB data.
-   * Groups counties by region for a better UX.
+   * Populate the Add Company and CSV import area dropdowns from locationModule cache.
    */
-  _populateFormCountyDropdowns() {
-    const counties = this._cachedCounties || [];
-    if (!counties.length) return;
+  _populateFormAreaDropdowns() {
+    const areas = locationModule._cachedAreas || [];
+    if (!areas.length) return;
 
-    // Group counties by region
-    const grouped = {};
-    counties.forEach((c) => {
-      const region = c._regionName || 'Other';
-      if (!grouped[region]) grouped[region] = [];
-      grouped[region].push(c.Name);
+    const grouped = { England: [], Scotland: [], Wales: [] };
+    areas.forEach((a) => {
+      if (grouped[a.country]) grouped[a.country].push(a);
     });
 
-    // Build optgroup HTML
     const optgroupHtml = Object.keys(grouped)
-      .sort()
+      .filter((c) => grouped[c].length > 0)
       .map(
-        (region) =>
-          `<optgroup label="${utils.escapeHtml(region)}">${grouped[region]
-            .sort()
-            .map((n) => `<option value="${utils.escapeHtml(n)}">${utils.escapeHtml(n)}</option>`)
+        (c) =>
+          `<optgroup label="${utils.escapeHtml(c)}">${grouped[c]
+            .map((a) => `<option value="${a.id}">${utils.escapeHtml(a.display_name)}</option>`)
             .join('')}</optgroup>`
       )
       .join('');
 
-    // Update Add Company county dropdown
-    const addSelect = document.getElementById('newCompanyCounty');
+    const addSelect = document.getElementById('newCompanyArea');
     if (addSelect) {
-      addSelect.innerHTML = '<option value="">-- Select --</option>' + optgroupHtml;
+      addSelect.innerHTML = '<option value="">-- Select Area --</option>' + optgroupHtml;
     }
 
-    // Update CSV import county dropdown
-    const csvSelect = document.getElementById('csvCountySelect');
+    const csvSelect = document.getElementById('csvAreaSelect');
     if (csvSelect) {
-      csvSelect.innerHTML = '<option value="">-- Select County or City --</option>' + optgroupHtml;
+      csvSelect.innerHTML = '<option value="">-- Select Area --</option>' + optgroupHtml;
     }
   },
 
   /**
-   * Update county dropdown based on selected region using cached DB data
+   * Called when the country filter changes — repopulates area dropdown and re-filters.
    */
-  onRegionFilterChange() {
-    this.updateCountyFilterByRegion();
+  onCountryFilterChange() {
+    const country = document.getElementById('orgsCountryFilter')?.value || '';
+    locationModule.populateAreaDropdown('orgsAreaFilter', country, 'All Areas');
     this.filterOrganisations();
   },
 
-  updateCountyFilterByRegion() {
-    const selectedRegion = document.getElementById('orgsRegionFilter')?.value || '';
-    const countySelect = document.getElementById('orgsCountyFilter');
-
-    if (!countySelect) return;
-
-    let counties = this._cachedCounties || [];
-    if (selectedRegion) {
-      counties = counties.filter((c) => c._regionName === selectedRegion);
-    }
-
-    const current = countySelect.value;
-    countySelect.innerHTML =
-      '<option value="">All Counties</option>' +
-      counties.map((c) => `<option value="${utils.escapeHtml(c.Name)}">${utils.escapeHtml(c.Name)}</option>`).join('');
-    if (current) countySelect.value = current;
+  /**
+   * Called when the country field in Add Company modal changes.
+   */
+  onAddCompanyCountryChange() {
+    const country = document.getElementById('newCompanyCountry')?.value || '';
+    locationModule.populateAreaDropdown('newCompanyArea', country, '-- Select Area --');
   },
 
   /**
@@ -417,7 +374,7 @@ const orgsModule = {
           (s) => `<option value="${utils.escapeHtml(s)}">${utils.escapeHtml(utils.toTitleCase(s))}</option>`
         ).join('');
     }
-    // Region & County filters are populated from DB via populateRegionAndCountyFilters()
+    // Location filters are populated via _initLocationFilters()
   },
 
   /**
@@ -427,15 +384,18 @@ const orgsModule = {
     const filters = {};
     const status = document.getElementById('orgsStatusFilter')?.value;
     const sector = document.getElementById('orgsSectorFilter')?.value;
-    const county = document.getElementById('orgsCountyFilter')?.value;
-    const region = document.getElementById('orgsRegionFilter')?.value;
+    const areaId = document.getElementById('orgsAreaFilter')?.value;
+    const country = document.getElementById('orgsCountryFilter')?.value;
 
     // Note: year is not a column on organisations — it is derived from linked
     // awards during enrichment, so year filtering is applied post-fetch in _srvFetchPage.
     if (status && status !== 'all') filters.status = status;
     if (sector) filters.sector = sector;
-    if (county) filters.county = county;
-    if (region) filters.county_city = region;
+    if (areaId) {
+      filters.area_id = areaId;
+    } else if (country) {
+      filters.country = country;
+    }
     return filters;
   },
 
@@ -513,7 +473,7 @@ const orgsModule = {
       const awardMap = {};
       if (awardIds.length > 0) {
         const { data: awardData } = await apiClient.select('awards', {
-          select: 'id, county, sector, year',
+          select: 'id, area_id, country, sector, year',
           filters: { id: { op: 'in', value: awardIds } },
           pageSize: 1000,
         });
@@ -522,38 +482,13 @@ const orgsModule = {
         });
       }
 
-      // Fetch county→region mapping
-      const uniqueCounties = [
-        ...new Set([
-          ...orgs.map((o) => o.catchment_area).filter(Boolean),
-          ...Object.values(awardMap)
-            .map((a) => a.county)
-            .filter(Boolean),
-        ]),
-      ];
-      const countyToRegion = {};
-      if (uniqueCounties.length > 0) {
-        try {
-          const { data: countyData } = await apiClient.select('counties', {
-            select: 'Name, regions(name)',
-            filters: { Name: { op: 'in', value: uniqueCounties } },
-            pageSize: 1000,
-          });
-          (countyData || []).forEach((c) => {
-            if (c.Name && c.regions?.name) countyToRegion[c.Name] = c.regions.name;
-          });
-        } catch (_e) {
-          /* counties table may not exist */
-        }
-      }
-
       // Attach enriched data
       orgs.forEach((org) => {
         const awardId = orgAwardMap[org.id];
         const award = awardMap[awardId];
-        const awardCounty = award?.county || null;
-        org.county = awardCounty || org.catchment_area || org.county || null;
-        org.county_city = org.county ? countyToRegion[org.county] || org.county_city || null : org.county_city || null;
+        // Use org's own area_id/country if set, otherwise fall back to linked award
+        if (!org.area_id && award?.area_id) org.area_id = award.area_id;
+        if (!org.country && award?.country) org.country = award.country;
         org.sector = award?.sector || org.sector || null;
         org.year = award?.year || org.year || null;
         org.awards_count = orgAwardsCount[org.id] || 0;
@@ -586,8 +521,8 @@ const orgsModule = {
   filterOrganisations() {
     const year = document.getElementById('orgsYearFilter')?.value || '';
     const sector = document.getElementById('orgsSectorFilter')?.value || '';
-    const county = document.getElementById('orgsCountyFilter')?.value || '';
-    const region = document.getElementById('orgsRegionFilter')?.value || '';
+    const areaId = document.getElementById('orgsAreaFilter')?.value || '';
+    const country = document.getElementById('orgsCountryFilter')?.value || '';
     const status = document.getElementById('orgsStatusFilter')?.value || '';
     const search = document.getElementById('orgsSearchBox')?.value.toLowerCase().trim() || '';
     const tier = document.getElementById('orgsTierFilter')?.value || '';
@@ -600,7 +535,7 @@ const orgsModule = {
     try {
       localStorage.setItem(
         'orgsFilters',
-        JSON.stringify({ year, sector, county, region, status, search, tier, tag, logoFilter, dateFilter })
+        JSON.stringify({ year, sector, country, areaId, status, search, tier, tag, logoFilter, dateFilter })
       );
     } catch (e) {
       /* ignore */
@@ -645,11 +580,11 @@ const orgsModule = {
       // Sector filter
       if (sector && org.sector !== sector) return false;
 
-      // County filter
-      if (county && org.county !== county) return false;
+      // Area filter
+      if (areaId && org.area_id !== areaId) return false;
 
-      // Region filter
-      if (region && org.county_city !== region) return false;
+      // Country filter (only when no specific area selected)
+      if (country && !areaId && org.country !== country) return false;
 
       // Tier filter
       if (tier && (org.tier || '') !== tier) return false;
@@ -724,8 +659,9 @@ const orgsModule = {
       if (status && status !== 'all')
         STATE.filteredOrganisations = STATE.filteredOrganisations.filter((o) => (o.status || 'prospect') === status);
       if (sector) STATE.filteredOrganisations = STATE.filteredOrganisations.filter((o) => o.sector === sector);
-      if (county) STATE.filteredOrganisations = STATE.filteredOrganisations.filter((o) => o.county === county);
-      if (region) STATE.filteredOrganisations = STATE.filteredOrganisations.filter((o) => o.county_city === region);
+      if (areaId) STATE.filteredOrganisations = STATE.filteredOrganisations.filter((o) => o.area_id === areaId);
+      if (country && !areaId)
+        STATE.filteredOrganisations = STATE.filteredOrganisations.filter((o) => o.country === country);
       if (tier) STATE.filteredOrganisations = STATE.filteredOrganisations.filter((o) => (o.tier || '') === tier);
     }
 
@@ -809,8 +745,8 @@ const orgsModule = {
       const hasActiveFilters = !!(
         document.getElementById('orgsYearFilter')?.value ||
         document.getElementById('orgsSectorFilter')?.value ||
-        document.getElementById('orgsRegionFilter')?.value ||
-        document.getElementById('orgsCountyFilter')?.value ||
+        document.getElementById('orgsCountryFilter')?.value ||
+        document.getElementById('orgsAreaFilter')?.value ||
         document.getElementById('orgsStatusFilter')?.value ||
         document.getElementById('orgsSearchBox')?.value
       );
@@ -912,8 +848,8 @@ const orgsModule = {
         </td>
         <td style="${cv('county_city')}">
           <span class="badge bg-success-subtle text-success small">
-            ${utils.escapeHtml(org.county_city || '-')}
-          </span>
+            ${utils.escapeHtml(org.area_id ? locationModule.getAreaName(org.area_id) : org.country || org.county_city || '-')}
+          </span>${org.area_id ? locationModule.sizeBadgeHtml(org.area_id) : ''}
         </td>
         <td class="text-center" style="${cv('status')}">
           <select class="form-select form-select-sm border-0 p-0 text-center"
@@ -1213,13 +1149,13 @@ const orgsModule = {
             <div class="card">
               <div class="card-body">
                 <div class="mb-2">
-                  <strong>Region:</strong>
+                  <strong>Location:</strong>
                   <span class="view-mode" id="viewRegion">
-                    <span class="badge bg-success-subtle text-success">${utils.escapeHtml(org.county_city || 'N/A')}</span>
+                    <span class="badge bg-success-subtle text-success">${utils.escapeHtml(org.area_id ? locationModule.getAreaName(org.area_id) : org.country || org.county_city || 'N/A')}${org.area_id ? locationModule.sizeBadgeHtml(org.area_id) : ''}</span>
                   </span>
                   <select class="form-select form-select-sm edit-mode" id="editRegion" style="display: none;">
-                    <option value="">Select Region</option>
-                    ${(this._cachedRegions || []).map((r) => `<option value="${utils.escapeHtml(r.name)}" ${org.county_city === r.name ? 'selected' : ''}>${utils.escapeHtml(r.name)}</option>`).join('')}
+                    <option value="">Select Area</option>
+                    ${(locationModule._cachedAreas || []).map((a) => `<option value="${a.id}" ${org.area_id === a.id ? 'selected' : ''}>${utils.escapeHtml(a.display_name)}</option>`).join('')}
                   </select>
                 </div>
                 <div class="mb-2">
@@ -2663,7 +2599,7 @@ const orgsModule = {
           email: document.getElementById('editEmail').value.trim(),
           contact_phone: document.getElementById('editPhone').value.trim(),
           website: document.getElementById('editWebsite').value.trim(),
-          county_city: document.getElementById('editRegion').value,
+          area_id: document.getElementById('editRegion').value || null,
           address: document.getElementById('editAddress').value.trim(),
           catchment_area: document.getElementById('editCatchmentArea').value.trim(),
           // Extended fields
@@ -2978,7 +2914,8 @@ const orgsModule = {
       }
     }
 
-    const selectedCounty = document.getElementById('newCompanyCounty')?.value || '';
+    const selectedAreaId = document.getElementById('newCompanyArea')?.value || null;
+    const selectedCountry = document.getElementById('newCompanyCountry')?.value || null;
 
     const companyData = {
       company_name: companyName,
@@ -2987,9 +2924,10 @@ const orgsModule = {
       contact_phone: document.getElementById('newContactPhone').value.trim() || null,
       email: email || null,
       website: website,
-      county_city: document.getElementById('newCompanyRegion').value,
+      area_id: selectedAreaId || null,
+      country: selectedCountry || null,
       address: document.getElementById('newCompanyAddress').value.trim() || null,
-      catchment_area: selectedCounty || document.getElementById('newCompanyCatchment').value.trim() || null,
+      catchment_area: document.getElementById('newCompanyCatchment')?.value.trim() || null,
       status: 'prospect',
     };
 
@@ -3200,8 +3138,9 @@ const orgsModule = {
     document.getElementById('orgsSearchBox').value = '';
     document.getElementById('orgsYearFilter').value = '';
     document.getElementById('orgsSectorFilter').value = '';
-    document.getElementById('orgsRegionFilter').value = '';
-    document.getElementById('orgsCountyFilter').value = '';
+    document.getElementById('orgsCountryFilter').value = '';
+    document.getElementById('orgsAreaFilter').value = '';
+    locationModule.populateAreaDropdown('orgsAreaFilter', '', 'All Areas');
     document.getElementById('orgsStatusFilter').value = '';
     const tierEl = document.getElementById('orgsTierFilter');
     if (tierEl) tierEl.value = '';
@@ -3215,7 +3154,6 @@ const orgsModule = {
     if (presetEl) presetEl.value = '';
     this._filterMissingField = null;
     this._selectedTagFilters = [];
-    this.updateCountyFilterByRegion();
     try {
       localStorage.removeItem('orgsFilters');
     } catch (e) {
@@ -5020,8 +4958,8 @@ const orgsModule = {
       presets[name.trim()] = {
         year: document.getElementById('orgsYearFilter')?.value || '',
         sector: document.getElementById('orgsSectorFilter')?.value || '',
-        region: document.getElementById('orgsRegionFilter')?.value || '',
-        county: document.getElementById('orgsCountyFilter')?.value || '',
+        country: document.getElementById('orgsCountryFilter')?.value || '',
+        areaId: document.getElementById('orgsAreaFilter')?.value || '',
         status: document.getElementById('orgsStatusFilter')?.value || '',
         search: document.getElementById('orgsSearchBox')?.value || '',
         tier: document.getElementById('orgsTierFilter')?.value || '',
@@ -5094,9 +5032,9 @@ const orgsModule = {
     if (!preset) return;
     document.getElementById('orgsYearFilter').value = preset.year || '';
     document.getElementById('orgsSectorFilter').value = preset.sector || '';
-    document.getElementById('orgsRegionFilter').value = preset.region || '';
-    if (preset.region) this.updateCountyFilterByRegion();
-    document.getElementById('orgsCountyFilter').value = preset.county || '';
+    document.getElementById('orgsCountryFilter').value = preset.country || '';
+    locationModule.populateAreaDropdown('orgsAreaFilter', preset.country || '', 'All Areas', preset.areaId || '');
+    if (preset.areaId) document.getElementById('orgsAreaFilter').value = preset.areaId;
     document.getElementById('orgsStatusFilter').value = preset.status || '';
     document.getElementById('orgsSearchBox').value = preset.search || '';
     const tierEl = document.getElementById('orgsTierFilter');
@@ -8216,8 +8154,8 @@ const orgsModule = {
         filters: {
           year: document.getElementById('orgsYearFilter')?.value || '',
           sector: document.getElementById('orgsSectorFilter')?.value || '',
-          region: document.getElementById('orgsRegionFilter')?.value || '',
-          county: document.getElementById('orgsCountyFilter')?.value || '',
+          country: document.getElementById('orgsCountryFilter')?.value || '',
+          areaId: document.getElementById('orgsAreaFilter')?.value || '',
           status: document.getElementById('orgsStatusFilter')?.value || '',
           search: document.getElementById('orgsSearchBox')?.value || '',
           tier: document.getElementById('orgsTierFilter')?.value || '',
@@ -8331,9 +8269,9 @@ const orgsModule = {
     const f = view.filters;
     document.getElementById('orgsYearFilter').value = f.year || '';
     document.getElementById('orgsSectorFilter').value = f.sector || '';
-    document.getElementById('orgsRegionFilter').value = f.region || '';
-    if (f.region) this.updateCountyFilterByRegion();
-    document.getElementById('orgsCountyFilter').value = f.county || '';
+    document.getElementById('orgsCountryFilter').value = f.country || '';
+    locationModule.populateAreaDropdown('orgsAreaFilter', f.country || '', 'All Areas', f.areaId || '');
+    if (f.areaId) document.getElementById('orgsAreaFilter').value = f.areaId;
     document.getElementById('orgsStatusFilter').value = f.status || '';
     document.getElementById('orgsSearchBox').value = f.search || '';
     const tierEl = document.getElementById('orgsTierFilter');
@@ -9425,10 +9363,11 @@ const orgsModule = {
     bootstrap.Modal.getInstance(document.getElementById('dynamicOrgModal'))?.hide();
   },
 
-  /** Helper for data-action: filter by region from map/chart */
-  filterByRegion(region) {
-    const el = document.getElementById('orgsRegionFilter');
-    if (el) el.value = region;
+  /** Helper for data-action: filter by country from map/chart */
+  filterByRegion(country) {
+    const el = document.getElementById('orgsCountryFilter');
+    if (el) el.value = country;
+    locationModule.populateAreaDropdown('orgsAreaFilter', country, 'All Areas');
     this.filterOrganisations();
     bootstrap.Modal.getInstance(document.getElementById('dynamicOrgModal'))?.hide();
   },

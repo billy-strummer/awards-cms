@@ -75,7 +75,9 @@
     "showPublicToast": "readonly",
     "esc": "readonly",
     "updateTabCounts": "readonly",
-    "TradingView": "readonly"
+    "TradingView": "readonly",
+    "locationModule": "readonly",
+    "areasManager": "readonly"
   },
   "parserOptions": {
     "ecmaVersion": 2022,

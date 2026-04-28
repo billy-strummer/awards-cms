@@ -1395,27 +1395,25 @@
       </select>
     </div>
 
-        <!-- Region Filter (South West, East of England, etc.) -->
-<div class="col-md-2">
-  <label for="awardsRegionFilterSelect" class="form-label">
-    <i class="bi bi-geo-alt me-1"></i>Region
-  </label>
-  <select class="form-select" id="awardsRegionFilterSelect">
-    <option value="">All Regions</option>
-    <!-- Populated by JS -->
-  </select>
-</div>
+    <!-- Country Filter -->
+    <div class="col-md-2">
+      <label for="awardsCountryFilter" class="form-label">
+        <i class="bi bi-flag me-1"></i>Country
+      </label>
+      <select class="form-select" id="awardsCountryFilter" data-on-change="awardsModule.onCountryFilterChange">
+        <option value="">All Countries</option>
+      </select>
+    </div>
 
-    <!-- County/City Filter (Cornwall, London North, Birmingham, etc.) -->
-<div class="col-md-2">
-  <label for="awardsCountyFilterSelect" class="form-label">
-    <i class="bi bi-pin-map me-1"></i>County/City
-  </label>
-  <select class="form-select" id="awardsCountyFilterSelect">
-    <option value="">All Counties/Cities</option>
-    <!-- Populated by JS -->
-  </select>
-</div>
+    <!-- Area Filter (cascades from Country) -->
+    <div class="col-md-2">
+      <label for="awardsAreaFilter" class="form-label">
+        <i class="bi bi-pin-map me-1"></i>Area
+      </label>
+      <select class="form-select" id="awardsAreaFilter" data-on-change="awardsModule.filterAwards">
+        <option value="">All Areas</option>
+      </select>
+    </div>
 
     <!-- Search Box -->
     <div class="col-md-2">
@@ -1524,7 +1522,7 @@
                     <th scope="col" style="width: 3%;"><input type="checkbox" class="form-check-input" id="awardsSelectAll" data-on-change="awardsModule.toggleSelectAll" aria-label="Select all awards"></th>
                     <th scope="col" style="width: 5%; cursor: pointer;" data-sort-field="year" data-action="awardsModule.sortBy" data-args='["year"]'>Year <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="year"></i></th>
                     <th scope="col" style="width: 22%; cursor: pointer;" data-sort-field="award_name" data-action="awardsModule.sortBy" data-args='["award_name"]'>Award Name <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="award_name"></i></th>
-                    <th scope="col" style="width: 12%; cursor: pointer;" data-sort-field="county" data-action="awardsModule.sortBy" data-args='["county"]'>County/City <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="county"></i></th>
+                    <th scope="col" style="width: 12%; cursor: pointer;" data-sort-field="location" data-action="awardsModule.sortBy" data-args='["location"]'>Location <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="location"></i></th>
                     <th scope="col" style="width: 10%; cursor: pointer;" data-sort-field="sector" data-action="awardsModule.sortBy" data-args='["sector"]'>Sector <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="sector"></i></th>
                     <th scope="col" style="width: 7%; cursor: pointer;" data-sort-field="status" data-action="awardsModule.sortBy" data-args='["status"]'>Status <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="status"></i></th>
                     <th scope="col" style="width: 6%; cursor: pointer;" class="text-center" data-sort-field="nominees" data-action="awardsModule.sortBy" data-args='["nominees"]'>Nominees <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="nominees"></i></th>
@@ -1683,25 +1681,25 @@
             </select>
           </div>
 
-          <!-- Region Filter -->
+          <!-- Country Filter -->
           <div class="col-md-2">
-            <label for="orgsRegionFilter" class="form-label small fw-semibold mb-1">
-              <i class="bi bi-geo-alt me-1"></i>Region
+            <label for="orgsCountryFilter" class="form-label small fw-semibold mb-1">
+              <i class="bi bi-flag me-1"></i>Country
             </label>
-            <select class="form-select form-select-sm" id="orgsRegionFilter"
-                    data-on-change="orgsModule.onRegionFilterChange">
-              <option value="">All Regions</option>
+            <select class="form-select form-select-sm" id="orgsCountryFilter"
+                    data-on-change="orgsModule.onCountryFilterChange">
+              <option value="">All Countries</option>
             </select>
           </div>
 
-          <!-- County/City Filter -->
+          <!-- Area Filter (cascades from Country) -->
           <div class="col-md-2">
-            <label for="orgsCountyFilter" class="form-label small fw-semibold mb-1">
-              <i class="bi bi-pin-map me-1"></i>County/City
+            <label for="orgsAreaFilter" class="form-label small fw-semibold mb-1">
+              <i class="bi bi-pin-map me-1"></i>Area
             </label>
-            <select class="form-select form-select-sm" id="orgsCountyFilter"
+            <select class="form-select form-select-sm" id="orgsAreaFilter"
                     data-on-change="orgsModule.filterOrganisations">
-              <option value="">All Counties/Cities</option>
+              <option value="">All Areas</option>
             </select>
           </div>
 
@@ -2006,55 +2004,22 @@
                   <datalist id="sectorSuggestions"></datalist>
                 </div>
                 <div class="col-md-6">
-                  <label for="newCompanyCounty" class="form-label">County / City</label>
-                  <select class="form-select" id="newCompanyCounty">
-                    <option value="">-- Select --</option>
-                    <optgroup label="England Counties">
-                      <option>Bedfordshire</option><option>Berkshire</option><option>Buckinghamshire</option>
-                      <option>Cambridgeshire</option><option>Cheshire</option><option>Cornwall</option>
-                      <option>Cumbria</option><option>Derbyshire</option><option>Devon</option>
-                      <option>Dorset</option><option>County Durham</option><option>East Sussex</option>
-                      <option>East Yorkshire</option><option>Essex</option><option>Gloucestershire</option>
-                      <option>Hampshire</option><option>Herefordshire</option><option>Hertfordshire</option>
-                      <option>Isle of Wight</option><option>Kent</option><option>Lancashire</option>
-                      <option>Leicestershire</option><option>Lincolnshire</option><option>Norfolk</option>
-                      <option>Northamptonshire</option><option>Northumberland</option><option>North Yorkshire</option>
-                      <option>Nottinghamshire</option><option>Oxfordshire</option><option>Rutland</option>
-                      <option>Shropshire</option><option>Somerset</option><option>South Yorkshire</option>
-                      <option>Staffordshire</option><option>Suffolk</option><option>Surrey</option>
-                      <option>Tyne & Wear</option><option>Warwickshire</option><option>West Sussex</option>
-                      <option>West Yorkshire</option><option>Wiltshire</option><option>Worcestershire</option>
-                    </optgroup>
-                    <optgroup label="Scotland">
-                      <option>Argyll & Bute</option><option>Ayrshire</option><option>Central Scotland</option>
-                      <option>Dumfries & Galloway</option><option>Dunbartonshire</option><option>Fife</option>
-                      <option>Grampian</option><option>Highlands</option><option>Lanarkshire</option>
-                      <option>Lothian</option><option>Renfrewshire</option><option>Scottish Borders</option>
-                      <option>Scottish Islands</option><option>Tayside</option>
-                    </optgroup>
-                    <optgroup label="Wales">
-                      <option>Anglesey</option><option>Cardiff</option><option>Carmarthenshire</option>
-                      <option>Ceredigion</option><option>Conwy</option><option>Denbighshire</option>
-                      <option>Flintshire</option><option>Glamorgan</option><option>Gwent</option>
-                      <option>Gwynedd</option><option>Pembrokeshire</option><option>Powys</option>
-                      <option>Swansea</option><option>Wrexham</option>
-                    </optgroup>
-                    <optgroup label="UK Cities Top 20">
-                      <option>Birmingham</option><option>Bournemouth</option><option>Bradford</option>
-                      <option>Brighton & Hove</option><option>Bristol</option><option>Cardiff</option>
-                      <option>Coventry</option><option>Edinburgh</option><option>Glasgow</option>
-                      <option>Leeds</option><option>Leicester</option><option>Liverpool</option>
-                      <option>London</option><option>Manchester</option><option>Middlesborough</option>
-                      <option>Newcastle</option><option>Nottingham</option><option>Sheffield</option>
-                      <option>Southampton</option><option>Swansea</option>
-                    </optgroup>
+                  <label for="newCompanyCountry" class="form-label">Country</label>
+                  <select class="form-select" id="newCompanyCountry"
+                          data-on-change="orgsModule.onAddCompanyCountryChange">
+                    <option value="">-- Select Country --</option>
+                    <option value="England">England</option>
+                    <option value="Scotland">Scotland</option>
+                    <option value="Wales">Wales</option>
                   </select>
                 </div>
               </div>
               <div class="row mb-3">
                 <div class="col-md-6">
-                  <label for="newCompanyRegion" class="form-label">Region</label>
-                  <input type="text" class="form-control" id="newCompanyRegion" placeholder="e.g. North West">
+                  <label for="newCompanyArea" class="form-label">Area</label>
+                  <select class="form-select" id="newCompanyArea">
+                    <option value="">-- Select Area --</option>
+                  </select>
                 </div>
               </div>
               <div class="row mb-3">
@@ -5981,6 +5946,26 @@
               </div>
             </div>
 
+            <!-- Manage Areas Section -->
+            <div class="col-12">
+              <div class="content-card">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <div>
+                    <h5 class="mb-1">
+                      <i class="bi bi-pin-map me-2"></i>Manage Areas
+                    </h5>
+                    <p class="text-muted mb-0 small">View the 101 geographic areas used for award categories. Populated by the areas seed SQL.</p>
+                  </div>
+                  <button class="btn btn-outline-secondary btn-sm" data-action="areasManager.loadAreas">
+                    <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+                  </button>
+                </div>
+                <div id="manageAreasContainer">
+                  <p class="text-muted small">Click Refresh to load areas.</p>
+                </div>
+              </div>
+            </div>
+
             <!-- Backup & Export Section -->
             <div class="col-lg-6">
               <div class="content-card">
@@ -6676,11 +6661,23 @@
                 <label for="awardFormYear" class="form-label fw-semibold">Year</label>
                 <input type="number" class="form-control" id="awardFormYear" value="2026" min="2024" max="2030" required>
               </div>
-              <div class="col-md-6">
-                <label for="awardFormCounty" class="form-label fw-semibold">County/City</label>
-                <select class="form-select" id="awardFormCounty" required>
-                  <option value="">Select County/City...</option>
+              <div class="col-md-3">
+                <label for="awardFormCountry" class="form-label fw-semibold">Country</label>
+                <select class="form-select" id="awardFormCountry" required
+                        data-on-change="awardsModule.onAwardFormCountryChange">
+                  <option value="">Select Country...</option>
+                  <option value="England">England</option>
+                  <option value="Scotland">Scotland</option>
+                  <option value="Wales">Wales</option>
                 </select>
+              </div>
+              <div class="col-md-3">
+                <label for="awardFormArea" class="form-label fw-semibold">Area</label>
+                <select class="form-select" id="awardFormArea" required
+                        data-on-change="awardsModule.onAwardFormAreaChange">
+                  <option value="">Select Area...</option>
+                </select>
+                <div id="awardFormAreaHint" class="form-text mt-1"></div>
               </div>
               <div class="col-md-6">
                 <label for="awardFormSector" class="form-label fw-semibold">Sector</label>
@@ -10309,6 +10306,8 @@
   <script src="config.js"></script>
   <script src="utils.js?v=2"></script>
   <script src="auth.js?v=3"></script>
+  <script src="location.js"></script>
+  <script src="areas-manager.js"></script>
   <script src="awards.js?v=2"></script>
   <script src="organisations.js"></script>
   <script src="winners.js?v=5"></script>

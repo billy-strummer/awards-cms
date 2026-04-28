@@ -1,13 +1,45 @@
 /* ==================================================== */
-/* LOCATION MODULE — shared country / area helpers      */
+/* LOCATION MODULE — Country / Region / Area helpers    */
 /* ==================================================== */
 
 const locationModule = {
   _cachedAreas: null,
+  _cachedRegions: null,
   _loadPromise: null,
+  _loadRegionsPromise: null,
+
+  /**
+   * Fetch all active regions from the regions table (cached after first call).
+   * @returns {Promise<Array>}
+   */
+  async loadRegions() {
+    if (this._cachedRegions) return this._cachedRegions;
+    if (this._loadRegionsPromise) return this._loadRegionsPromise;
+
+    this._loadRegionsPromise = (async () => {
+      try {
+        const { data } = await apiClient.select('regions', {
+          select: 'id, display_name, country, sort_order',
+          filters: { is_active: true },
+          sort: { column: 'sort_order', ascending: true },
+          pageSize: 100,
+        });
+        this._cachedRegions = data || [];
+      } catch (e) {
+        console.warn('locationModule: could not load regions:', e.message);
+        this._cachedRegions = [];
+      } finally {
+        this._loadRegionsPromise = null;
+      }
+      return this._cachedRegions;
+    })();
+
+    return this._loadRegionsPromise;
+  },
 
   /**
    * Fetch all active areas from the areas table (cached after first call).
+   * Automatically loads regions too so each area object includes _regionName.
    * @returns {Promise<Array>}
    */
   async loadAreas() {
@@ -16,13 +48,23 @@ const locationModule = {
 
     this._loadPromise = (async () => {
       try {
+        await this.loadRegions();
+        const regionMap = {};
+        (this._cachedRegions || []).forEach((r) => {
+          regionMap[r.id] = r;
+        });
+
         const { data } = await apiClient.select('areas', {
-          select: 'id, display_name, country, area_type, is_small, sort_order',
+          select: 'id, display_name, country, area_type, is_small, sort_order, region_id',
           filters: { is_active: true },
           sort: { column: 'sort_order', ascending: true },
           pageSize: 500,
         });
-        this._cachedAreas = data || [];
+        this._cachedAreas = (data || []).map((a) => ({
+          ...a,
+          _region: regionMap[a.region_id] || null,
+          _regionName: regionMap[a.region_id]?.display_name || '',
+        }));
       } catch (e) {
         console.warn('locationModule: could not load areas:', e.message);
         this._cachedAreas = [];
@@ -52,6 +94,15 @@ const locationModule = {
    */
   getAreaName(id) {
     return this.getAreaById(id)?.display_name || '';
+  },
+
+  /**
+   * Return the region name for an area UUID.
+   * @param {string} id
+   * @returns {string}
+   */
+  getRegionName(id) {
+    return this.getAreaById(id)?._regionName || '';
   },
 
   /**
@@ -94,25 +145,47 @@ const locationModule = {
   },
 
   /**
-   * Populate an area <select> filtered by country.
-   * Preserves selected area UUID if it is still in the filtered list.
+   * Populate an area <select> filtered by country, grouped by region via <optgroup>.
+   * Preserves selected area UUID if still in the filtered list.
    * @param {string} selectId
-   * @param {string} [country]     - Filter by country, '' means all
+   * @param {string} [country]    - Filter by country; '' means all
    * @param {string} [allLabel]
-   * @param {string} [selectedId]  - UUID to pre-select (falls back to current el.value)
+   * @param {string} [selectedId] - UUID to pre-select (falls back to current el.value)
    */
   populateAreaDropdown(selectId, country = '', allLabel = 'All Areas', selectedId = '') {
     const el = document.getElementById(selectId);
     if (!el) return;
     const pick = selectedId || el.value;
     const areas = (this._cachedAreas || []).filter((a) => !country || a.country === country);
-    el.innerHTML =
-      `<option value="">${utils.escapeHtml(allLabel)}</option>` +
-      areas
-        .map(
-          (a) =>
-            `<option value="${a.id}"${pick === a.id ? ' selected' : ''}>${utils.escapeHtml(a.display_name)}</option>`
-        )
-        .join('');
+
+    // Group by region for <optgroup> rendering
+    const grouped = {};
+    const ungrouped = [];
+    areas.forEach((a) => {
+      if (a._regionName) {
+        if (!grouped[a._regionName]) grouped[a._regionName] = [];
+        grouped[a._regionName].push(a);
+      } else {
+        ungrouped.push(a);
+      }
+    });
+
+    const makeOption = (a) =>
+      `<option value="${a.id}"${pick === a.id ? ' selected' : ''}>${utils.escapeHtml(a.display_name)}</option>`;
+
+    let html = `<option value="">${utils.escapeHtml(allLabel)}</option>`;
+
+    if (Object.keys(grouped).length > 0) {
+      Object.entries(grouped).forEach(([regionName, regionAreas]) => {
+        html += `<optgroup label="${utils.escapeHtml(regionName)}">`;
+        html += regionAreas.map(makeOption).join('');
+        html += '</optgroup>';
+      });
+      if (ungrouped.length) html += ungrouped.map(makeOption).join('');
+    } else {
+      html += areas.map(makeOption).join('');
+    }
+
+    el.innerHTML = html;
   },
 };

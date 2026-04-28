@@ -2829,7 +2829,7 @@ const dashboardModule = {
       const statsEl = document.getElementById('countyCoverageStats');
       if (statsEl) {
         const pct = totalCount > 0 ? Math.round((coveredCount / totalCount) * 100) : 0;
-        statsEl.innerHTML = `<span class="text-success">${coveredCount}</span> / ${totalCount} counties covered (${pct}%)`;
+        statsEl.innerHTML = `<span class="text-success">${coveredCount}</span> / ${totalCount} areas covered (${pct}%)`;
       }
 
       // Update section header badges with coverage counts
@@ -2887,7 +2887,7 @@ const dashboardModule = {
       const activeOrgs = orgs.filter((o) => o.status !== 'archived');
       const totalOrgs = activeOrgs.length;
 
-      // England counties, Scotland regions, Wales areas, Cities
+      // England counties, Scotland regions, Wales areas, Cities — canonical list
       const englandCounties = [
         'Bedfordshire',
         'Berkshire',
@@ -2895,11 +2895,12 @@ const dashboardModule = {
         'Cambridgeshire',
         'Cheshire',
         'Cornwall',
+        'County Durham',
         'Cumbria',
         'Derbyshire',
         'Devon',
         'Dorset',
-        'County Durham',
+        'East Sussex',
         'East Yorkshire',
         'Essex',
         'Gloucestershire',
@@ -2924,13 +2925,29 @@ const dashboardModule = {
         'Staffordshire',
         'Suffolk',
         'Surrey',
-        'East Sussex',
-        'West Sussex',
         'Tyne & Wear',
         'Warwickshire',
+        'West Sussex',
         'West Yorkshire',
         'Wiltshire',
         'Worcestershire',
+      ];
+      const londonBoroughs = [
+        'Bromley',
+        'Camden',
+        'Croydon',
+        'Greenwich',
+        'Hackney',
+        'Hammersmith & Fulham',
+        'Islington',
+        'Kensington & Chelsea',
+        'Kingston & Richmond',
+        'Lambeth',
+        'Lewisham',
+        'Middlesex',
+        'Southwark',
+        'Wandsworth',
+        'Westminster',
       ];
       const scotlandRegions = [
         'Argyll & Bute',
@@ -2941,23 +2958,21 @@ const dashboardModule = {
         'Fife',
         'Grampian',
         'Highlands',
-        'Islands',
         'Lanarkshire',
         'Lothian',
         'Renfrewshire',
         'Scottish Borders',
+        'Scottish Islands',
         'Tayside',
       ];
       const walesAreas = [
-        'Anglesey',
         'Carmarthenshire',
         'Ceredigion',
-        'Conwy',
-        'Denbighshire',
+        'Conwy & Denbighshire',
         'Flintshire',
         'Glamorgan',
         'Gwent',
-        'Gwynedd',
+        'Gwynedd & Anglesey',
         'Pembrokeshire',
         'Powys',
         'Wrexham',
@@ -2975,12 +2990,8 @@ const dashboardModule = {
         'Leeds',
         'Leicester',
         'Liverpool',
-        'London, North',
-        'London, South',
-        'London, East',
-        'London, West',
         'Manchester',
-        'Middlesborough',
+        'Middlesbrough',
         'Newcastle',
         'Nottingham',
         'Sheffield',
@@ -3003,7 +3014,7 @@ const dashboardModule = {
         return count;
       };
 
-      const engCount = countRegion(englandCounties);
+      const engCount = countRegion(englandCounties) + countRegion(londonBoroughs);
       const scotCount = countRegion(scotlandRegions);
       const walesCount = countRegion(walesAreas);
       const citiesCount = countRegion(cities);

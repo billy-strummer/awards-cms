@@ -15,6 +15,8 @@ const JS_FILES = [
   'config.js',
   'utils.js',
   'auth.js',
+  'location.js',
+  'areas-manager.js',
   'awards.js',
   'organisations.js',
   'winners.js',

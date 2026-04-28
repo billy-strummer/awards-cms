@@ -118,7 +118,7 @@ const SMALL_CATEGORIES = {
 
   'CARPENTRY & JOINERY': ['Carpentry & Joinery Company', 'Timber Windows Installer'],
 
-  'INTERIOR FIT-OUT & FINISHING': [
+  'FIT-OUT & FINISHES': [
     'Bathroom Installer',
     'Carpet Fitters',
     'Flooring Installer',

@@ -48,11 +48,11 @@ const YEARS = ['2026', '2025'];
 const SECTORS = [
   'BUILDING & CONSTRUCTION',
   'CARPENTRY & JOINERY',
-  'ENERGY, TECH & SUSTAINABILITY',
-  'INTERIOR FIT-OUT & FINISHING',
+  'FIT-OUT & FINISHES',
   'MECHANICAL, ELECTRICAL & PLUMBING',
   'OUTDOOR & LANDSCAPING',
   'SPECIALIST TRADES',
+  'TECH & GREEN ENERGY',
 ];
 
 const COUNTIES_CITIES = [
@@ -65,29 +65,40 @@ const COUNTIES_CITIES = [
   'Suffolk',
   // East Midlands
   'Derbyshire',
-  'Lincolnshire',
   'Leicestershire',
+  'Lincolnshire',
   'Northamptonshire',
   'Nottinghamshire',
   'Rutland',
   'Leicester',
   'Nottingham',
-  // Greater London
-  'London, North',
-  'London, South',
-  'London, East',
-  'London, West',
+  // London Boroughs
+  'Bromley',
+  'Camden',
+  'Croydon',
+  'Greenwich',
+  'Hackney',
+  'Hammersmith & Fulham',
+  'Islington',
+  'Kensington & Chelsea',
+  'Kingston & Richmond',
+  'Lambeth',
+  'Lewisham',
+  'Middlesex',
+  'Southwark',
+  'Wandsworth',
+  'Westminster',
   // North East
-  'Northumberland',
-  'Tyne & Wear',
   'County Durham',
-  'North Yorkshire',
   'East Yorkshire',
+  'North Yorkshire',
+  'Northumberland',
   'South Yorkshire',
+  'Tyne & Wear',
   'West Yorkshire',
   'Bradford',
   'Leeds',
-  'Middlesborough',
+  'Middlesbrough',
   'Newcastle',
   'Sheffield',
   // North West
@@ -99,67 +110,64 @@ const COUNTIES_CITIES = [
   // South East
   'Berkshire',
   'Buckinghamshire',
+  'East Sussex',
   'Hampshire',
   'Isle of Wight',
   'Kent',
   'Oxfordshire',
   'Surrey',
-  'East Sussex',
   'West Sussex',
   'Brighton & Hove',
   'Southampton',
   // South West
   'Cornwall',
-  'Dorset',
   'Devon',
+  'Dorset',
   'Gloucestershire',
   'Somerset',
   'Wiltshire',
-  'Bristol',
   'Bournemouth',
+  'Bristol',
   // West Midlands
+  'Herefordshire',
+  'Shropshire',
   'Staffordshire',
   'Warwickshire',
-  'Shropshire',
-  'Herefordshire',
   'Worcestershire',
   'Birmingham',
   'Coventry',
-  // Wales, NW (Gwynedd)
-  'Gwynedd',
-  'Anglesey',
-  // Wales, NE (Clwyd)
-  'Conwy',
-  'Denbighshire',
+  // Wales — North
+  'Conwy & Denbighshire',
   'Flintshire',
+  'Gwynedd & Anglesey',
   'Wrexham',
-  // Wales, Mid & West
-  'Ceredigion',
+  // Wales — Mid & West
   'Carmarthenshire',
+  'Ceredigion',
   'Pembrokeshire',
   'Powys',
-  // Wales, South
-  'Gwent',
+  // Wales — South
   'Glamorgan',
+  'Gwent',
   'Cardiff',
   'Swansea',
-  // Scotland, North
+  // Scotland — North
   'Grampian',
   'Highlands',
-  'Islands',
+  'Scottish Islands',
   'Tayside',
-  // Scotland, Central
+  // Scotland — Central
   'Central Scotland',
   'Fife',
   'Lothian',
   'Edinburgh',
-  // Scotland, West
+  // Scotland — West
   'Argyll & Bute',
   'Dunbartonshire',
   'Lanarkshire',
   'Renfrewshire',
   'Glasgow',
-  // Scotland, South
+  // Scotland — South
   'Ayrshire',
   'Dumfries & Galloway',
   'Scottish Borders',

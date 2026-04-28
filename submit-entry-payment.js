@@ -53,7 +53,7 @@
       'Staircase Specialist',
       'Timber Windows Installer',
     ],
-    'INTERIOR FIT-OUT & FINISHING': [
+    'FIT-OUT & FINISHES': [
       'Bathroom Installer',
       'Carpet Fitters',
       'Curtains & Blinds Installer',
@@ -77,7 +77,7 @@
       'Outdoor Lighting & Electrical Company',
       'Tree Surgery Services',
     ],
-    'ENERGY, TECH & SUSTAINABILITY': [
+    'TECH & GREEN ENERGY': [
       'EV Charger Installer',
       'Insulation & Energy Efficiency Company',
       'PV Installer',
@@ -116,7 +116,7 @@
       'Plumbing & Heating Company',
     ],
     'CARPENTRY & JOINERY': ['Carpentry & Joinery Company', 'Timber Windows Installer'],
-    'INTERIOR FIT-OUT & FINISHING': [
+    'FIT-OUT & FINISHES': [
       'Bathroom Installer',
       'Carpet Fitters',
       'Flooring Installer',
@@ -133,7 +133,7 @@
       'Landscaping & Garden Design Company',
       'Tree Surgery Services',
     ],
-    'ENERGY, TECH & SUSTAINABILITY': [
+    'TECH & GREEN ENERGY': [
       'EV Charger Installer',
       'Insulation & Energy Efficiency Company',
       'PV Installer',
@@ -256,6 +256,23 @@
         return;
       }
 
+      const londonBoroughs = [
+        'Bromley',
+        'Camden',
+        'Croydon',
+        'Greenwich',
+        'Hackney',
+        'Hammersmith & Fulham',
+        'Islington',
+        'Kensington & Chelsea',
+        'Kingston & Richmond',
+        'Lambeth',
+        'Lewisham',
+        'Middlesex',
+        'Southwark',
+        'Wandsworth',
+        'Westminster',
+      ];
       const cities = [
         'Birmingham',
         'Bournemouth',
@@ -269,9 +286,8 @@
         'Leeds',
         'Leicester',
         'Liverpool',
-        'London',
         'Manchester',
-        'Middlesborough',
+        'Middlesbrough',
         'Newcastle',
         'Nottingham',
         'Sheffield',
@@ -280,7 +296,8 @@
       ];
 
       const allCountiesCities = window.COUNTIES_CITIES || window.REGIONS || [];
-      const counties = allCountiesCities.filter((r) => !cities.includes(r));
+      const counties = allCountiesCities.filter((r) => !cities.includes(r) && !londonBoroughs.includes(r));
+      const boroughList = allCountiesCities.filter((r) => londonBoroughs.includes(r));
       const cityList = allCountiesCities.filter((r) => cities.includes(r));
 
       let html = '<option value="" placeholder>Select your county or city</option>';
@@ -289,6 +306,14 @@
         html += '<optgroup label="Counties">';
         counties.forEach((county) => {
           html += `<option value="${this.escapeHtml(county)}">${this.escapeHtml(county)}</option>`;
+        });
+        html += '</optgroup>';
+      }
+
+      if (boroughList.length > 0) {
+        html += '<optgroup label="London Boroughs">';
+        boroughList.forEach((b) => {
+          html += `<option value="${this.escapeHtml(b)}">${this.escapeHtml(b)}</option>`;
         });
         html += '</optgroup>';
       }

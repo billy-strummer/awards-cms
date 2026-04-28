@@ -2730,20 +2730,31 @@ const dashboardModule = {
         select: 'award_id, organisation_id',
       });
 
-      // Build county → org count map
+      // Ensure areas are loaded so area_id → display_name lookups work
+      if (typeof locationModule !== 'undefined') {
+        await locationModule.loadAreas();
+      }
+
+      // Build award → area name map (prefer area_id lookup, fall back to county)
       const awardCountyMap = {};
       (awardData || []).forEach((a) => {
-        if (a.county) awardCountyMap[a.id] = a.county;
+        const name =
+          (typeof locationModule !== 'undefined' && a.area_id ? locationModule.getAreaName(a.area_id) : '') ||
+          a.county ||
+          '';
+        if (name) awardCountyMap[a.id] = name;
       });
 
       const countyOrgCounts = {};
       const countyAwardCounts = {};
 
-      // Count awards per county
+      // Count awards per area name
       (awards || []).forEach((a) => {
-        if (a.county) {
-          countyAwardCounts[a.county] = (countyAwardCounts[a.county] || 0) + 1;
-        }
+        const name =
+          (typeof locationModule !== 'undefined' && a.area_id ? locationModule.getAreaName(a.area_id) : '') ||
+          a.county ||
+          '';
+        if (name) countyAwardCounts[name] = (countyAwardCounts[name] || 0) + 1;
       });
 
       // Count orgs per county (through assignments)
@@ -2818,11 +2829,12 @@ const dashboardModule = {
       const statsEl = document.getElementById('countyCoverageStats');
       if (statsEl) {
         const pct = totalCount > 0 ? Math.round((coveredCount / totalCount) * 100) : 0;
-        statsEl.innerHTML = `<span class="text-success">${coveredCount}</span> / ${totalCount} counties covered (${pct}%)`;
+        statsEl.innerHTML = `<span class="text-success">${coveredCount}</span> / ${totalCount} areas covered (${pct}%)`;
       }
 
       // Update section header badges with coverage counts
       this._updateSectionCoverage('regEng', countyOrgCounts);
+      this._updateSectionCoverage('regLondon', countyOrgCounts);
       this._updateSectionCoverage('regScot', countyOrgCounts);
       this._updateSectionCoverage('regWales', countyOrgCounts);
       this._updateSectionCoverage('regCities', countyOrgCounts);
@@ -2875,7 +2887,7 @@ const dashboardModule = {
       const activeOrgs = orgs.filter((o) => o.status !== 'archived');
       const totalOrgs = activeOrgs.length;
 
-      // England counties, Scotland regions, Wales areas, Cities
+      // England counties, Scotland regions, Wales areas, Cities — canonical list
       const englandCounties = [
         'Bedfordshire',
         'Berkshire',
@@ -2883,11 +2895,12 @@ const dashboardModule = {
         'Cambridgeshire',
         'Cheshire',
         'Cornwall',
+        'County Durham',
         'Cumbria',
         'Derbyshire',
         'Devon',
         'Dorset',
-        'County Durham',
+        'East Sussex',
         'East Yorkshire',
         'Essex',
         'Gloucestershire',
@@ -2912,13 +2925,29 @@ const dashboardModule = {
         'Staffordshire',
         'Suffolk',
         'Surrey',
-        'East Sussex',
-        'West Sussex',
         'Tyne & Wear',
         'Warwickshire',
+        'West Sussex',
         'West Yorkshire',
         'Wiltshire',
         'Worcestershire',
+      ];
+      const londonBoroughs = [
+        'Bromley',
+        'Camden',
+        'Croydon',
+        'Greenwich',
+        'Hackney',
+        'Hammersmith & Fulham',
+        'Islington',
+        'Kensington & Chelsea',
+        'Kingston & Richmond',
+        'Lambeth',
+        'Lewisham',
+        'Middlesex',
+        'Southwark',
+        'Wandsworth',
+        'Westminster',
       ];
       const scotlandRegions = [
         'Argyll & Bute',
@@ -2929,23 +2958,21 @@ const dashboardModule = {
         'Fife',
         'Grampian',
         'Highlands',
-        'Islands',
         'Lanarkshire',
         'Lothian',
         'Renfrewshire',
         'Scottish Borders',
+        'Scottish Islands',
         'Tayside',
       ];
       const walesAreas = [
-        'Anglesey',
         'Carmarthenshire',
         'Ceredigion',
-        'Conwy',
-        'Denbighshire',
+        'Conwy & Denbighshire',
         'Flintshire',
         'Glamorgan',
         'Gwent',
-        'Gwynedd',
+        'Gwynedd & Anglesey',
         'Pembrokeshire',
         'Powys',
         'Wrexham',
@@ -2963,12 +2990,8 @@ const dashboardModule = {
         'Leeds',
         'Leicester',
         'Liverpool',
-        'London, North',
-        'London, South',
-        'London, East',
-        'London, West',
         'Manchester',
-        'Middlesborough',
+        'Middlesbrough',
         'Newcastle',
         'Nottingham',
         'Sheffield',
@@ -2991,7 +3014,7 @@ const dashboardModule = {
         return count;
       };
 
-      const engCount = countRegion(englandCounties);
+      const engCount = countRegion(englandCounties) + countRegion(londonBoroughs);
       const scotCount = countRegion(scotlandRegions);
       const walesCount = countRegion(walesAreas);
       const citiesCount = countRegion(cities);

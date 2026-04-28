@@ -17,7 +17,7 @@ const dom = new JSDOM(
 
   <!-- Step 1 – Region -->
   <div id="step1" class="form-step active">
-    <select id="county_city"><option value="">Select your county or city</option><option value="Kent">Kent</option><option value="Lancashire">Lancashire</option><option value="London, North">London, North</option></select>
+    <select id="county_city"><option value="">Select your county or city</option><option value="Kent">Kent</option><option value="Lancashire">Lancashire</option><option value="Westminster">Westminster</option></select>
   </div>
 
   <!-- Step 2 – Sector -->
@@ -94,11 +94,11 @@ global.requestAnimationFrame = (cb) => setTimeout(cb, 0);
 global.window.SECTORS = [
   'BUILDING & CONSTRUCTION',
   'CARPENTRY & JOINERY',
-  'ENERGY, TECH & SUSTAINABILITY',
-  'INTERIOR FIT-OUT & FINISHING',
+  'FIT-OUT & FINISHES',
   'MECHANICAL, ELECTRICAL & PLUMBING',
   'OUTDOOR & LANDSCAPING',
   'SPECIALIST TRADES',
+  'TECH & GREEN ENERGY',
 ];
 global.window.REGIONS = [
   'Bedfordshire',
@@ -110,8 +110,8 @@ global.window.REGIONS = [
   'Kent',
   'Lancashire',
   'Birmingham',
-  'London, North',
-  'London, South',
+  'Westminster',
+  'Camden',
   'Manchester',
 ];
 
@@ -1156,10 +1156,11 @@ describe('populateRegions', () => {
     entryFormApp.populateRegions();
     const select = document.getElementById('county_city');
     const optgroups = select.querySelectorAll('optgroup');
-    // Should have Counties and Cities groups
-    expect(optgroups.length).toBe(2);
+    // Should have Counties, London Boroughs, and Cities groups
+    expect(optgroups.length).toBe(3);
     const labels = Array.from(optgroups).map((g) => g.label);
     expect(labels).toContain('Counties');
+    expect(labels).toContain('London Boroughs');
     expect(labels).toContain('Cities');
   });
 
@@ -1170,7 +1171,16 @@ describe('populateRegions', () => {
     const values = Array.from(cityOptions).map((o) => o.value);
     expect(values).toContain('Birmingham');
     expect(values).toContain('Manchester');
-    expect(values).toContain('London, North');
+    expect(values).not.toContain('London, North');
+  });
+
+  test('places London boroughs under London Boroughs group', () => {
+    entryFormApp.populateRegions();
+    const boroughsGroup = document.querySelector('optgroup[label="London Boroughs"]');
+    const boroughOptions = boroughsGroup.querySelectorAll('option');
+    const values = Array.from(boroughOptions).map((o) => o.value);
+    expect(values).toContain('Westminster');
+    expect(values).toContain('Camden');
   });
 });
 

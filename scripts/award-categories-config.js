@@ -26,7 +26,7 @@ const STANDARD_CATEGORIES = {
     'New Build Company',
     'Roofing Company',
     'Structural Engineers',
-    'Structural Steelworks'
+    'Structural Steelworks',
   ],
 
   'MECHANICAL, ELECTRICAL & PLUMBING': [
@@ -34,7 +34,7 @@ const STANDARD_CATEGORIES = {
     'Electrical Company',
     'Heating Company',
     'Plumbing Company',
-    'Underfloor Heating Company'
+    'Underfloor Heating Company',
   ],
 
   'CARPENTRY & JOINERY': [
@@ -42,10 +42,10 @@ const STANDARD_CATEGORIES = {
     'Carpentry Company',
     'Joinery Company',
     'Staircase Specialist',
-    'Timber Windows Installer'
+    'Timber Windows Installer',
   ],
 
-  'INTERIOR FIT-OUT & FINISHING': [
+  'FIT-OUT & FINISHES': [
     'Bathroom Installer',
     'Carpet Fitters',
     'Curtains & Blinds Installer',
@@ -57,7 +57,7 @@ const STANDARD_CATEGORIES = {
     'Painting & Decorating Company',
     'Plastering Company',
     'Screeding Company',
-    'Tiling Installer'
+    'Tiling Installer',
   ],
 
   'OUTDOOR & LANDSCAPING': [
@@ -68,16 +68,16 @@ const STANDARD_CATEGORIES = {
     'Garden Outbuilding Company',
     'Landscaping & Garden Design Company',
     'Outdoor Lighting & Electrical Company',
-    'Tree Surgery Services'
+    'Tree Surgery Services',
   ],
 
-  'ENERGY, TECH & SUSTAINABILITY': [
+  'TECH & GREEN ENERGY': [
     'EV Charger Installer',
     'Insulation & Energy Efficiency Company',
     'PV Installer',
     'Renewable Energy Specialist',
     'Security System Installer',
-    'Smart Home & Automation Company'
+    'Smart Home & Automation Company',
   ],
 
   'SPECIALIST TRADES': [
@@ -88,8 +88,8 @@ const STANDARD_CATEGORIES = {
     'Scaffolding Company',
     'Shop Fitting Company',
     'Swimming Pool & Hot Tub Company',
-    'Window & Door Installer'
-  ]
+    'Window & Door Installer',
+  ],
 };
 
 // ============================================
@@ -107,21 +107,18 @@ const SMALL_CATEGORIES = {
     'Loft Conversion Company',
     'Maintenance Services',
     'New Build Company',
-    'Roofing Company'
+    'Roofing Company',
   ],
 
   'MECHANICAL, ELECTRICAL & PLUMBING': [
     'Air-Conditioning & Ventilation Company',
     'Electrical Company',
-    'Plumbing & Heating Company'
+    'Plumbing & Heating Company',
   ],
 
-  'CARPENTRY & JOINERY': [
-    'Carpentry & Joinery Company',
-    'Timber Windows Installer'
-  ],
+  'CARPENTRY & JOINERY': ['Carpentry & Joinery Company', 'Timber Windows Installer'],
 
-  'INTERIOR FIT-OUT & FINISHING': [
+  'FIT-OUT & FINISHES': [
     'Bathroom Installer',
     'Carpet Fitters',
     'Flooring Installer',
@@ -129,7 +126,7 @@ const SMALL_CATEGORIES = {
     'Kitchen Installer',
     'Painting & Decorating Company',
     'Plastering Company',
-    'Tiling Installer'
+    'Tiling Installer',
   ],
 
   'OUTDOOR & LANDSCAPING': [
@@ -137,15 +134,15 @@ const SMALL_CATEGORIES = {
     'Fencing Installer',
     'Gardening Services',
     'Landscaping & Garden Design Company',
-    'Tree Surgery Services'
+    'Tree Surgery Services',
   ],
 
-  'ENERGY, TECH & SUSTAINABILITY': [
+  'TECH & GREEN ENERGY': [
     'EV Charger Installer',
     'Insulation & Energy Efficiency Company',
     'PV Installer',
     'Renewable Energy Specialist',
-    'Security Systems Installer'
+    'Security Systems Installer',
   ],
 
   'SPECIALIST TRADES': [
@@ -153,8 +150,8 @@ const SMALL_CATEGORIES = {
     'Pest Control Company',
     'Rendering Company',
     'Scaffolding Company',
-    'Window & Door Installer'
-  ]
+    'Window & Door Installer',
+  ],
 };
 
 // ============================================
@@ -164,12 +161,7 @@ const SMALL_CATEGORIES = {
 // Any county not listed defaults to STANDARD.
 // ============================================
 
-const SMALL_COUNTIES = [
-  'Ceredigion',
-  'Herefordshire',
-  'Isle of Wight',
-  'Rutland',
-];
+const SMALL_COUNTIES = ['Ceredigion', 'Herefordshire', 'Isle of Wight', 'Rutland'];
 
 const STANDARD_COUNTIES = [
   // Add your main counties/cities here, e.g.:
@@ -199,14 +191,14 @@ const STANDARD_COUNTIES = [
 // ============================================
 
 function getCategoriesForCounty(county) {
-  if (SMALL_COUNTIES.map(c => c.toLowerCase()).includes(county.toLowerCase())) {
+  if (SMALL_COUNTIES.map((c) => c.toLowerCase()).includes(county.toLowerCase())) {
     return SMALL_CATEGORIES;
   }
   return STANDARD_CATEGORIES;
 }
 
 function getTierForCounty(county) {
-  if (SMALL_COUNTIES.map(c => c.toLowerCase()).includes(county.toLowerCase())) {
+  if (SMALL_COUNTIES.map((c) => c.toLowerCase()).includes(county.toLowerCase())) {
     return 'small';
   }
   return 'standard';
@@ -227,5 +219,5 @@ module.exports = {
   STANDARD_COUNTIES,
   getCategoriesForCounty,
   getTierForCounty,
-  getTotalCategoryCount
+  getTotalCategoryCount,
 };

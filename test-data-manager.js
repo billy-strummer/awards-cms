@@ -1346,10 +1346,10 @@ const testDataManager = {
     if (count && count > 0) return; // already seeded
 
     const counties = [
-      { Name: 'London, North', region: 'Greater London' },
-      { Name: 'London, South', region: 'Greater London' },
-      { Name: 'London, East', region: 'Greater London' },
-      { Name: 'London, West', region: 'Greater London' },
+      { Name: 'Camden', region: 'London' },
+      { Name: 'Westminster', region: 'London' },
+      { Name: 'Southwark', region: 'London' },
+      { Name: 'Greenwich', region: 'London' },
       { Name: 'Manchester', region: 'North West' },
       { Name: 'Birmingham', region: 'West Midlands' },
       { Name: 'West Yorkshire', region: 'North East' },

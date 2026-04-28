@@ -9131,7 +9131,7 @@ const orgsModule = {
     Preston: [53.763, -2.703],
     Lancaster: [54.047, -2.801],
     Carlisle: [54.893, -2.933],
-    Middlesborough: [54.574, -1.235],
+    Middlesbrough: [54.574, -1.235],
     Durham: [54.775, -1.585],
     Darlington: [54.524, -1.553],
     Blackpool: [53.818, -3.036],

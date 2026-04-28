@@ -205,6 +205,7 @@ const _COUNTY_TO_REGION = {
   'Highlands & Islands': 'Scotland, North',
   'Highlands and Islands': 'Scotland, North',
   Islands: 'Scotland, North',
+  'Scottish Islands': 'Scotland, North',
   'Orkney & Shetland': 'Scotland, North',
   'Orkney and Shetland': 'Scotland, North',
   'Orkney Islands': 'Scotland, North',
@@ -214,13 +215,13 @@ const _COUNTY_TO_REGION = {
   Moray: 'Scotland, North',
   Tayside: 'Scotland, North',
 
-  // Wales, NW (Gwynedd)
-  Gwynedd: 'Wales, NW (Gwynedd)',
-  Anglesey: 'Wales, NW (Gwynedd)',
-
-  // Wales, NE (Clwyd)
-  Conwy: 'Wales, NE (Clwyd)',
-  Denbighshire: 'Wales, NE (Clwyd)',
+  // Wales, North
+  Gwynedd: 'Wales, North',
+  Anglesey: 'Wales, North',
+  'Gwynedd & Anglesey': 'Wales, North',
+  Conwy: 'Wales, North',
+  Denbighshire: 'Wales, North',
+  'Conwy & Denbighshire': 'Wales, North',
   Flintshire: 'Wales, NE (Clwyd)',
   Wrexham: 'Wales, NE (Clwyd)',
 

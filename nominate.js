@@ -291,6 +291,23 @@
         return;
       }
 
+      const londonBoroughs = [
+        'Bromley',
+        'Camden',
+        'Croydon',
+        'Greenwich',
+        'Hackney',
+        'Hammersmith & Fulham',
+        'Islington',
+        'Kensington & Chelsea',
+        'Kingston & Richmond',
+        'Lambeth',
+        'Lewisham',
+        'Middlesex',
+        'Southwark',
+        'Wandsworth',
+        'Westminster',
+      ];
       const cities = [
         'Birmingham',
         'Bournemouth',
@@ -304,12 +321,8 @@
         'Leeds',
         'Leicester',
         'Liverpool',
-        'London, North',
-        'London, South',
-        'London, East',
-        'London, West',
         'Manchester',
-        'Middlesborough',
+        'Middlesbrough',
         'Newcastle',
         'Nottingham',
         'Sheffield',
@@ -319,7 +332,10 @@
 
       const allCountiesCities = window.COUNTIES_CITIES || window.REGIONS || [];
       const counties = allCountiesCities.filter(function (r) {
-        return cities.indexOf(r) === -1;
+        return cities.indexOf(r) === -1 && londonBoroughs.indexOf(r) === -1;
+      });
+      const boroughList = allCountiesCities.filter(function (r) {
+        return londonBoroughs.indexOf(r) !== -1;
       });
       const cityList = allCountiesCities.filter(function (r) {
         return cities.indexOf(r) !== -1;
@@ -331,6 +347,14 @@
         html += '<optgroup label="Counties">';
         counties.forEach(function (county) {
           html += '<option value="' + self.escapeHtml(county) + '">' + self.escapeHtml(county) + '</option>';
+        });
+        html += '</optgroup>';
+      }
+
+      if (boroughList.length > 0) {
+        html += '<optgroup label="London Boroughs">';
+        boroughList.forEach(function (b) {
+          html += '<option value="' + self.escapeHtml(b) + '">' + self.escapeHtml(b) + '</option>';
         });
         html += '</optgroup>';
       }

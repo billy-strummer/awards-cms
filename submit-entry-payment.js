@@ -53,7 +53,7 @@
       'Staircase Specialist',
       'Timber Windows Installer',
     ],
-    'INTERIOR FIT-OUT & FINISHING': [
+    'FIT-OUT & FINISHES': [
       'Bathroom Installer',
       'Carpet Fitters',
       'Curtains & Blinds Installer',
@@ -77,7 +77,7 @@
       'Outdoor Lighting & Electrical Company',
       'Tree Surgery Services',
     ],
-    'ENERGY, TECH & SUSTAINABILITY': [
+    'TECH & GREEN ENERGY': [
       'EV Charger Installer',
       'Insulation & Energy Efficiency Company',
       'PV Installer',
@@ -133,7 +133,7 @@
       'Landscaping & Garden Design Company',
       'Tree Surgery Services',
     ],
-    'ENERGY, TECH & SUSTAINABILITY': [
+    'TECH & GREEN ENERGY': [
       'EV Charger Installer',
       'Insulation & Energy Efficiency Company',
       'PV Installer',

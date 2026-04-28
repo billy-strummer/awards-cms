@@ -942,14 +942,62 @@
                   </div>
                 </div>
 
-                <!-- TOP 20 CITIES -->
+                <!-- LONDON BOROUGHS -->
+                <div class="border rounded mb-2">
+                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
+                       data-bs-toggle="collapse" data-bs-target="#regLondon" aria-expanded="false">
+                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
+                    <i class="bi bi-buildings-fill text-danger me-2"></i>
+                    <strong class="small">LONDON BOROUGHS</strong>
+                    <span class="badge bg-danger ms-auto">33</span>
+                  </div>
+                  <div class="collapse" id="regLondon">
+                    <div class="px-3 pb-2 small text-muted" style="columns:3;column-gap:0.75rem;">
+                      <div class="py-1 border-top" data-county="Barking & Dagenham">Barking &amp; Dagenham</div>
+                      <div class="py-1 border-top" data-county="Barnet">Barnet</div>
+                      <div class="py-1 border-top" data-county="Bexley">Bexley</div>
+                      <div class="py-1 border-top" data-county="Brent">Brent</div>
+                      <div class="py-1 border-top" data-county="Bromley">Bromley</div>
+                      <div class="py-1 border-top" data-county="Camden">Camden</div>
+                      <div class="py-1 border-top" data-county="City of London">City of London <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                      <div class="py-1 border-top" data-county="Croydon">Croydon</div>
+                      <div class="py-1 border-top" data-county="Ealing">Ealing</div>
+                      <div class="py-1 border-top" data-county="Enfield">Enfield</div>
+                      <div class="py-1 border-top" data-county="Greenwich">Greenwich</div>
+                      <div class="py-1 border-top" data-county="Hackney">Hackney</div>
+                      <div class="py-1 border-top" data-county="Hammersmith &amp; Fulham">Hammersmith &amp; Fulham</div>
+                      <div class="py-1 border-top" data-county="Haringey">Haringey</div>
+                      <div class="py-1 border-top" data-county="Harrow">Harrow</div>
+                      <div class="py-1 border-top" data-county="Havering">Havering</div>
+                      <div class="py-1 border-top" data-county="Hillingdon">Hillingdon</div>
+                      <div class="py-1 border-top" data-county="Hounslow">Hounslow</div>
+                      <div class="py-1 border-top" data-county="Islington">Islington</div>
+                      <div class="py-1 border-top" data-county="Kensington & Chelsea">Kensington &amp; Chelsea</div>
+                      <div class="py-1 border-top" data-county="Kingston upon Thames">Kingston upon Thames</div>
+                      <div class="py-1 border-top" data-county="Lambeth">Lambeth</div>
+                      <div class="py-1 border-top" data-county="Lewisham">Lewisham</div>
+                      <div class="py-1 border-top" data-county="Merton">Merton</div>
+                      <div class="py-1 border-top" data-county="Newham">Newham</div>
+                      <div class="py-1 border-top" data-county="Redbridge">Redbridge</div>
+                      <div class="py-1 border-top" data-county="Richmond upon Thames">Richmond upon Thames</div>
+                      <div class="py-1 border-top" data-county="Southwark">Southwark</div>
+                      <div class="py-1 border-top" data-county="Sutton">Sutton</div>
+                      <div class="py-1 border-top" data-county="Tower Hamlets">Tower Hamlets</div>
+                      <div class="py-1 border-top" data-county="Waltham Forest">Waltham Forest</div>
+                      <div class="py-1 border-top" data-county="Wandsworth">Wandsworth</div>
+                      <div class="py-1 border-top" data-county="Westminster">Westminster</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- TOP 19 CITIES -->
                 <div class="border rounded mb-2">
                   <div class="d-flex align-items-center px-3 py-2 u-pointer"
                        data-bs-toggle="collapse" data-bs-target="#regCities" aria-expanded="false">
                     <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
                     <i class="bi bi-buildings text-info me-2"></i>
-                    <strong class="small">TOP 20 CITIES</strong>
-                    <span class="badge bg-info ms-auto">20</span>
+                    <strong class="small">TOP CITIES</strong>
+                    <span class="badge bg-info ms-auto">19</span>
                   </div>
                   <div class="collapse" id="regCities">
                     <div class="px-3 pb-2 small text-muted u-columns-2">
@@ -968,11 +1016,13 @@
                       <div class="py-1 border-top" data-county="Bradford">Bradford</div>
                       <div class="py-1 border-top" data-county="Cardiff">Cardiff</div>
                       <div class="py-1 border-top" data-county="Bournemouth">Bournemouth</div>
-                      <div class="py-1 border-top" data-county="Brighton & Hove">Brighton & Hove</div>
+                      <div class="py-1 border-top" data-county="Brighton & Hove">Brighton &amp; Hove</div>
                       <div class="py-1 border-top" data-county="Southampton">Southampton</div>
                       <div class="py-1 border-top" data-county="Middlesborough">Middlesborough</div>
                       <div class="py-1 border-top" data-county="Swansea">Swansea</div>
-                      <div class="py-1 border-top" data-county="London">London <span class="text-muted u-text-xs">(North, South, East, West)</span></div>
+                    </div>
+                    <div class="px-3 pb-2">
+                      <small class="text-muted fst-italic">London covered individually under London Boroughs above</small>
                     </div>
                   </div>
                 </div>
@@ -986,7 +1036,7 @@
               <span id="countyCoverageStats" class="fw-semibold">Loading coverage...</span>
             </div>
             <div class="mt-1 text-muted small text-center">
-              <i class="bi bi-info-circle me-1"></i>38 England counties &middot; 14 Scotland regions &middot; 12 Wales areas &middot; 20 cities
+              <i class="bi bi-info-circle me-1"></i>38 England counties &middot; 33 London boroughs &middot; 14 Scotland regions &middot; 12 Wales areas &middot; 19 cities
               &middot; <span class="badge bg-warning text-dark u-text-xxs">small</span> = Small County/Town category list
             </div>
           </div>

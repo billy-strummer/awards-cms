@@ -2730,20 +2730,31 @@ const dashboardModule = {
         select: 'award_id, organisation_id',
       });
 
-      // Build county → org count map
+      // Ensure areas are loaded so area_id → display_name lookups work
+      if (typeof locationModule !== 'undefined') {
+        await locationModule.loadAreas();
+      }
+
+      // Build award → area name map (prefer area_id lookup, fall back to county)
       const awardCountyMap = {};
       (awardData || []).forEach((a) => {
-        if (a.county) awardCountyMap[a.id] = a.county;
+        const name =
+          (typeof locationModule !== 'undefined' && a.area_id ? locationModule.getAreaName(a.area_id) : '') ||
+          a.county ||
+          '';
+        if (name) awardCountyMap[a.id] = name;
       });
 
       const countyOrgCounts = {};
       const countyAwardCounts = {};
 
-      // Count awards per county
+      // Count awards per area name
       (awards || []).forEach((a) => {
-        if (a.county) {
-          countyAwardCounts[a.county] = (countyAwardCounts[a.county] || 0) + 1;
-        }
+        const name =
+          (typeof locationModule !== 'undefined' && a.area_id ? locationModule.getAreaName(a.area_id) : '') ||
+          a.county ||
+          '';
+        if (name) countyAwardCounts[name] = (countyAwardCounts[name] || 0) + 1;
       });
 
       // Count orgs per county (through assignments)
@@ -2823,6 +2834,7 @@ const dashboardModule = {
 
       // Update section header badges with coverage counts
       this._updateSectionCoverage('regEng', countyOrgCounts);
+      this._updateSectionCoverage('regLondon', countyOrgCounts);
       this._updateSectionCoverage('regScot', countyOrgCounts);
       this._updateSectionCoverage('regWales', countyOrgCounts);
       this._updateSectionCoverage('regCities', countyOrgCounts);

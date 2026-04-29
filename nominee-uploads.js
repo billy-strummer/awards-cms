@@ -7,16 +7,30 @@ const nomineeUploads = (() => {
   // ── Canonical area list (matches config.js COUNTIES_CITIES) ──
   const KNOWN_AREAS = window.COUNTIES_CITIES || window.REGIONS || [];
 
+  // ── Canonical sector list (fallback if config.js not yet loaded) ──
+  const KNOWN_SECTORS = window.SECTORS || [
+    'BUILDING & CONSTRUCTION',
+    'CARPENTRY & JOINERY',
+    'FIT-OUT & FINISHES',
+    'MECHANICAL, ELECTRICAL & PLUMBING',
+    'OUTDOOR & LANDSCAPING',
+    'SPECIALIST TRADES',
+    'TECH & GREEN ENERGY',
+  ];
+
   // ── State ─────────────────────────────────────────────────────
   let _parsedRows = []; // CSV rows after parsing (blanks removed)
   let _headers = []; // normalised column headers
   let _areaColumn = null; // detected header name for the Area column
+  let _categoryColumn = null; // detected header name for the Category/Sector column
   let _companyColumn = null; // detected header name for the Company column
   let _selectedArea = null; // area chosen in the "assign area" dropdown
   let _selectedCountry = null;
   let _selectedCategory = null;
   let _currentFilename = '';
   let _preselectedArea = null; // area pre-filled when opening modal from inline icon
+  let _validationIssues = []; // { col, originalValue, suggestions, type }
+  let _corrections = {}; // key: "col|||originalValue" → correctedValue
 
   // ── CSV PARSER ────────────────────────────────────────────────
 
@@ -86,6 +100,15 @@ const nomineeUploads = (() => {
     return headers[0] || null; // fall back to first column
   }
 
+  function _detectCategoryColumn(headers) {
+    const candidates = ['category', 'sector', 'trade', 'tradecategory', 'industry', 'type'];
+    for (const c of candidates) {
+      const match = headers.find((h) => h.toLowerCase().replace(/[\s_-]/g, '') === c);
+      if (match) return match;
+    }
+    return null;
+  }
+
   function _normaliseAreaName(raw) {
     if (!raw) return '';
     const cleaned = raw.trim();
@@ -97,6 +120,170 @@ const nomineeUploads = (() => {
       (a) => a.toLowerCase().includes(cleaned.toLowerCase()) || cleaned.toLowerCase().includes(a.toLowerCase())
     );
     return partial || cleaned;
+  }
+
+  // ── FUZZY MATCHING & VALIDATION ──────────────────────────────
+
+  function _levenshtein(a, b) {
+    const m = a.length;
+    const n = b.length;
+    const dp = [];
+    for (let i = 0; i <= m; i++) dp[i] = [i];
+    for (let j = 0; j <= n; j++) dp[0][j] = j;
+    for (let i = 1; i <= m; i++) {
+      for (let j = 1; j <= n; j++) {
+        dp[i][j] =
+          a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+      }
+    }
+    return dp[m][n];
+  }
+
+  function _normForMatch(s) {
+    return s.toLowerCase().replace(/[^a-z0-9]/g, '');
+  }
+
+  function _fuzzyMatch(value, canonicalList) {
+    if (canonicalList.some((c) => c.toLowerCase() === value.toLowerCase())) return { exact: true, suggestions: [] };
+    const normVal = _normForMatch(value);
+    const scored = canonicalList.map((candidate) => {
+      const normCand = _normForMatch(candidate);
+      let score = 0;
+      if (normCand === normVal) score = 10;
+      else if (normCand.startsWith(normVal) || normVal.startsWith(normCand)) score += 4;
+      else if (normCand.includes(normVal) || normVal.includes(normCand)) score += 2;
+      const maxLen = Math.max(normVal.length, normCand.length);
+      if (maxLen > 0) score += (1 - _levenshtein(normVal, normCand) / maxLen) * 6;
+      return { candidate, score };
+    });
+    const suggestions = scored
+      .filter((s) => s.score > 2)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3)
+      .map((s) => s.candidate);
+    return { exact: false, suggestions };
+  }
+
+  function _validateCSV() {
+    _validationIssues = [];
+    if (!_parsedRows.length) return;
+    const canonicalAreas = window.COUNTIES_CITIES || KNOWN_AREAS;
+
+    if (_areaColumn) {
+      const uniqueVals = [...new Set(_parsedRows.map((r) => r[_areaColumn]).filter(Boolean))];
+      for (const val of uniqueVals) {
+        const result = _fuzzyMatch(val, canonicalAreas);
+        if (!result.exact)
+          _validationIssues.push({
+            col: _areaColumn,
+            originalValue: val,
+            suggestions: result.suggestions,
+            type: 'area',
+          });
+      }
+    }
+
+    if (_categoryColumn) {
+      const uniqueVals = [...new Set(_parsedRows.map((r) => r[_categoryColumn]).filter(Boolean))];
+      for (const val of uniqueVals) {
+        const result = _fuzzyMatch(val, KNOWN_SECTORS);
+        if (!result.exact)
+          _validationIssues.push({
+            col: _categoryColumn,
+            originalValue: val,
+            suggestions: result.suggestions,
+            type: 'category',
+          });
+      }
+    }
+  }
+
+  function _renderValidation() {
+    const container = document.getElementById('nomineeValidationContainer');
+    if (!container) return;
+
+    if (!_validationIssues.length) {
+      container.innerHTML = `
+        <div class="alert alert-success py-2 d-flex align-items-center gap-2 small mb-0">
+          <i class="bi bi-check-circle-fill"></i><span>All values validated — no issues found.</span>
+        </div>`;
+      return;
+    }
+
+    const pending = _validationIssues.filter((i) => !_corrections[`${i.col}|||${i.originalValue}`]);
+    const resolvedCount = _validationIssues.length - pending.length;
+
+    const issueHtml = pending
+      .map((issue) => {
+        const key = `${issue.col}|||${issue.originalValue}`;
+        const badge =
+          issue.type === 'area'
+            ? '<span class="badge bg-secondary me-1">Area</span>'
+            : '<span class="badge bg-info text-dark me-1">Category</span>';
+        const suggBtns = issue.suggestions
+          .map(
+            (s) =>
+              `<button type="button" class="btn btn-sm btn-outline-success py-0 px-2 nominee-correction-btn"
+                data-key="${utils.escapeHtml(key)}" data-value="${utils.escapeHtml(s)}">
+                <i class="bi bi-check me-1"></i>${utils.escapeHtml(s)}
+              </button>`
+          )
+          .join('');
+
+        return `
+          <div class="border rounded p-2 mb-2 bg-warning-subtle" data-issue-key="${utils.escapeHtml(key)}">
+            <div class="d-flex align-items-start gap-2">
+              <i class="bi bi-exclamation-triangle-fill text-warning flex-shrink-0 mt-1"></i>
+              <div class="flex-grow-1 min-w-0">
+                <div class="small">${badge}<strong class="text-danger">"${utils.escapeHtml(issue.originalValue)}"</strong> not recognised</div>
+                ${
+                  issue.suggestions.length
+                    ? `<div class="mt-1 d-flex flex-wrap gap-1 align-items-center">
+                        <span class="text-muted u-text-xs me-1">Replace with:</span>${suggBtns}
+                      </div>`
+                    : `<div class="text-muted u-text-xs mt-1">No close match found — type the correct value below.</div>`
+                }
+                <div class="d-flex gap-2 mt-2">
+                  <input type="text" class="form-control form-control-sm nominee-correction-input"
+                    data-key="${utils.escapeHtml(key)}"
+                    placeholder="Or type the correct value…">
+                  <button type="button" class="btn btn-sm btn-outline-primary nominee-correction-apply-btn flex-shrink-0"
+                    data-key="${utils.escapeHtml(key)}">Apply</button>
+                </div>
+              </div>
+            </div>
+          </div>`;
+      })
+      .join('');
+
+    const resolvedNote = resolvedCount
+      ? `<div class="text-success small mt-1 mb-0"><i class="bi bi-check-circle-fill me-1"></i>${resolvedCount} correction${resolvedCount > 1 ? 's' : ''} applied to matching rows.</div>`
+      : '';
+
+    container.innerHTML = `
+      <div class="mb-0">
+        <div class="small fw-semibold mb-2">
+          <i class="bi bi-exclamation-triangle-fill text-warning me-1"></i>
+          ${pending.length} unresolved issue${pending.length !== 1 ? 's' : ''}
+          <span class="fw-normal text-muted"> — corrections apply to all matching rows</span>
+        </div>
+        ${issueHtml}${resolvedNote}
+      </div>`;
+  }
+
+  function _applyCorrectionsToRows() {
+    if (!Object.keys(_corrections).length) return _parsedRows;
+    return _parsedRows.map((row) => {
+      const out = { ...row };
+      for (const [key, correctedValue] of Object.entries(_corrections)) {
+        const sep = key.indexOf('|||');
+        if (sep === -1) continue;
+        const col = key.slice(0, sep);
+        const origVal = key.slice(sep + 3);
+        if (out[col] === origVal) out[col] = correctedValue;
+      }
+      return out;
+    });
   }
 
   // ── UPLOAD ───────────────────────────────────────────────────
@@ -113,7 +300,8 @@ const nomineeUploads = (() => {
       return;
     }
 
-    const rows = _parsedRows.map((r) => ({
+    const correctedRows = _applyCorrectionsToRows();
+    const rows = correctedRows.map((r) => ({
       area,
       company_name: _companyColumn ? r[_companyColumn] || null : null,
       raw_data: r,
@@ -506,11 +694,16 @@ const nomineeUploads = (() => {
     _parsedRows = [];
     _headers = [];
     _areaColumn = null;
+    _categoryColumn = null;
     _companyColumn = null;
     _selectedArea = null;
     _selectedCountry = null;
     _selectedCategory = null;
     _currentFilename = '';
+    _validationIssues = [];
+    _corrections = {};
+    const valContainer = document.getElementById('nomineeValidationContainer');
+    if (valContainer) valContainer.innerHTML = '';
 
     const fileInput = document.getElementById('nomineeFileInput');
     if (fileInput) fileInput.value = '';
@@ -565,6 +758,7 @@ const nomineeUploads = (() => {
           _headers = headers;
           _parsedRows = rows;
           _areaColumn = _detectAreaColumn(headers);
+          _categoryColumn = _detectCategoryColumn(headers);
           _companyColumn = _detectCompanyColumn(headers);
 
           // Show step 2
@@ -588,6 +782,8 @@ const nomineeUploads = (() => {
           }
 
           _renderPreview();
+          _validateCSV();
+          _renderValidation();
           _updateConfirmButton();
         };
         reader.readAsText(file);
@@ -622,7 +818,7 @@ const nomineeUploads = (() => {
     // Inject inline upload icons next to every area name in the coverage panel
     _injectAreaUploadIcons();
 
-    // Delegated click handler for those icons
+    // Delegated click handler for inline area upload icons
     document.addEventListener('click', (e) => {
       const icon = e.target.closest('.nominee-upload-area-btn');
       if (!icon) return;
@@ -631,6 +827,35 @@ const nomineeUploads = (() => {
       const modalEl = document.getElementById('nomineeUploadModal');
       if (modalEl) bootstrap.Modal.getOrCreateInstance(modalEl).show();
     });
+
+    // Delegated click handler for validation correction buttons
+    const modalEl = document.getElementById('nomineeUploadModal');
+    if (modalEl) {
+      modalEl.addEventListener('click', (e) => {
+        // Suggestion chip clicked
+        const suggBtn = e.target.closest('.nominee-correction-btn');
+        if (suggBtn) {
+          const key = suggBtn.getAttribute('data-key');
+          const value = suggBtn.getAttribute('data-value');
+          _corrections[key] = value;
+          _renderValidation();
+          _updateConfirmButton();
+          return;
+        }
+        // Manual "Apply" button clicked
+        const applyBtn = e.target.closest('.nominee-correction-apply-btn');
+        if (applyBtn) {
+          const key = applyBtn.getAttribute('data-key');
+          const input = document.querySelector(`[data-issue-key="${CSS.escape(key)}"] .nominee-correction-input`);
+          const value = input?.value.trim();
+          if (value) {
+            _corrections[key] = value;
+            _renderValidation();
+            _updateConfirmButton();
+          }
+        }
+      });
+    }
 
     // Modal open — load recent uploads
     const modal = document.getElementById('nomineeUploadModal');
@@ -691,7 +916,19 @@ const nomineeUploads = (() => {
 
   function _updateConfirmButton() {
     const btn = document.getElementById('nomineeUploadConfirmBtn');
-    if (btn) btn.disabled = !(_parsedRows.length > 0 && _selectedArea);
+    if (!btn) return;
+    const ready = _parsedRows.length > 0 && !!_selectedArea;
+    btn.disabled = !ready;
+    if (!ready) return;
+
+    const pendingCount = _validationIssues.filter((i) => !_corrections[`${i.col}|||${i.originalValue}`]).length;
+    if (pendingCount) {
+      btn.innerHTML = `<i class="bi bi-cloud-upload me-2"></i>Upload with ${pendingCount} warning${pendingCount > 1 ? 's' : ''}`;
+      btn.className = 'btn btn-warning text-dark';
+    } else {
+      btn.innerHTML = '<i class="bi bi-cloud-upload me-2"></i>Upload &amp; Verify';
+      btn.className = 'btn btn-primary';
+    }
   }
 
   return {

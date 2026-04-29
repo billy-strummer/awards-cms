@@ -42,15 +42,19 @@ ALTER TABLE nominee_upload_batches ENABLE ROW LEVEL SECURITY;
 ALTER TABLE nominee_upload_rows    ENABLE ROW LEVEL SECURITY;
 
 -- Service role bypass (used by server-side API)
-CREATE POLICY IF NOT EXISTS "service_all_batches"
+DROP POLICY IF EXISTS "service_all_batches" ON nominee_upload_batches;
+CREATE POLICY "service_all_batches"
   ON nominee_upload_batches FOR ALL TO service_role USING (true) WITH CHECK (true);
 
-CREATE POLICY IF NOT EXISTS "service_all_rows"
+DROP POLICY IF EXISTS "service_all_rows" ON nominee_upload_rows;
+CREATE POLICY "service_all_rows"
   ON nominee_upload_rows FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 -- Authenticated users can read
-CREATE POLICY IF NOT EXISTS "auth_read_batches"
+DROP POLICY IF EXISTS "auth_read_batches" ON nominee_upload_batches;
+CREATE POLICY "auth_read_batches"
   ON nominee_upload_batches FOR SELECT TO authenticated USING (true);
 
-CREATE POLICY IF NOT EXISTS "auth_read_rows"
+DROP POLICY IF EXISTS "auth_read_rows" ON nominee_upload_rows;
+CREATE POLICY "auth_read_rows"
   ON nominee_upload_rows FOR SELECT TO authenticated USING (true);

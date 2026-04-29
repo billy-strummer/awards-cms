@@ -96,7 +96,6 @@ const COUNTIES_CITIES = [
   'South Yorkshire',
   'Tyne & Wear',
   'West Yorkshire',
-  'Bradford',
   'Leeds',
   'Middlesbrough',
   'Newcastle',
@@ -118,6 +117,7 @@ const COUNTIES_CITIES = [
   'Surrey',
   'West Sussex',
   'Brighton & Hove',
+  'Reading',
   'Southampton',
   // South West
   'Cornwall',

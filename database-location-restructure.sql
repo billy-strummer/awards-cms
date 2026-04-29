@@ -74,21 +74,21 @@ FROM (VALUES
   ('Nottingham',       'England', 'city',   false, 208, 'East Midlands'),
 
   -- ── ENGLAND: London (boroughs) ───────────────────────────
-  ('Bromley',              'England', 'borough', false, 301, 'London'),
-  ('Camden',               'England', 'borough', false, 302, 'London'),
-  ('Croydon',              'England', 'borough', false, 303, 'London'),
-  ('Greenwich',            'England', 'borough', false, 304, 'London'),
-  ('Hackney',              'England', 'borough', false, 305, 'London'),
-  ('Hammersmith & Fulham', 'England', 'borough', false, 306, 'London'),
-  ('Islington',            'England', 'borough', false, 307, 'London'),
-  ('Kensington & Chelsea', 'England', 'borough', false, 308, 'London'),
-  ('Kingston & Richmond',  'England', 'borough', false, 309, 'London'),
-  ('Lambeth',              'England', 'borough', false, 310, 'London'),
-  ('Lewisham',             'England', 'borough', false, 311, 'London'),
+  ('Bromley',              'England', 'borough', true,  301, 'London'),
+  ('Camden',               'England', 'borough', true,  302, 'London'),
+  ('Croydon',              'England', 'borough', true,  303, 'London'),
+  ('Greenwich',            'England', 'borough', true,  304, 'London'),
+  ('Hackney',              'England', 'borough', true,  305, 'London'),
+  ('Hammersmith & Fulham', 'England', 'borough', true,  306, 'London'),
+  ('Islington',            'England', 'borough', true,  307, 'London'),
+  ('Kensington & Chelsea', 'England', 'borough', true,  308, 'London'),
+  ('Kingston & Richmond',  'England', 'borough', true,  309, 'London'),
+  ('Lambeth',              'England', 'borough', true,  310, 'London'),
+  ('Lewisham',             'England', 'borough', true,  311, 'London'),
   ('Middlesex',            'England', 'borough', false, 312, 'London'),
-  ('Southwark',            'England', 'borough', false, 313, 'London'),
-  ('Wandsworth',           'England', 'borough', false, 314, 'London'),
-  ('Westminster',          'England', 'borough', false, 315, 'London'),
+  ('Southwark',            'England', 'borough', true,  313, 'London'),
+  ('Wandsworth',           'England', 'borough', true,  314, 'London'),
+  ('Westminster',          'England', 'borough', true,  315, 'London'),
 
   -- ── ENGLAND: North East ──────────────────────────────────
   ('County Durham',  'England', 'county', false, 401, 'North East'),
@@ -98,7 +98,7 @@ FROM (VALUES
   ('South Yorkshire','England', 'county', false, 405, 'North East'),
   ('Tyne & Wear',    'England', 'county', false, 406, 'North East'),
   ('West Yorkshire', 'England', 'county', false, 407, 'North East'),
-  ('Bradford',       'England', 'city',   false, 408, 'North East'),
+  ('Reading',        'England', 'city',   false, 408, 'South East'),
   ('Leeds',          'England', 'city',   false, 409, 'North East'),
   ('Middlesbrough',  'England', 'city',   false, 410, 'North East'),
   ('Newcastle',      'England', 'city',   false, 411, 'North East'),
@@ -144,16 +144,16 @@ FROM (VALUES
   ('Coventry',      'England', 'city',   false, 807, 'West Midlands'),
 
   -- ── WALES: North Wales ───────────────────────────────────
-  ('Conwy & Denbighshire', 'Wales', 'county', false, 1101, 'North Wales'),
-  ('Flintshire',           'Wales', 'county', false, 1102, 'North Wales'),
-  ('Gwynedd & Anglesey',   'Wales', 'county', false, 1103, 'North Wales'),
-  ('Wrexham',              'Wales', 'county', false, 1104, 'North Wales'),
+  ('Conwy & Denbighshire', 'Wales', 'county', true,  1101, 'North Wales'),
+  ('Flintshire',           'Wales', 'county', true,  1102, 'North Wales'),
+  ('Gwynedd & Anglesey',   'Wales', 'county', true,  1103, 'North Wales'),
+  ('Wrexham',              'Wales', 'county', true,  1104, 'North Wales'),
 
   -- ── WALES: Mid & West Wales ──────────────────────────────
-  ('Carmarthenshire', 'Wales', 'county', false, 1201, 'Mid & West Wales'),
+  ('Carmarthenshire', 'Wales', 'county', true,  1201, 'Mid & West Wales'),
   ('Ceredigion',      'Wales', 'county', true,  1202, 'Mid & West Wales'),
-  ('Pembrokeshire',   'Wales', 'county', false, 1203, 'Mid & West Wales'),
-  ('Powys',           'Wales', 'county', false, 1204, 'Mid & West Wales'),
+  ('Pembrokeshire',   'Wales', 'county', true,  1203, 'Mid & West Wales'),
+  ('Powys',           'Wales', 'county', true,  1204, 'Mid & West Wales'),
 
   -- ── WALES: South Wales ───────────────────────────────────
   ('Glamorgan', 'Wales', 'county', false, 1301, 'South Wales'),
@@ -162,27 +162,27 @@ FROM (VALUES
   ('Swansea',   'Wales', 'city',   false, 1304, 'South Wales'),
 
   -- ── SCOTLAND: North ──────────────────────────────────────
-  ('Grampian',        'Scotland', 'region', false, 2101, 'North Scotland'),
-  ('Highlands',       'Scotland', 'region', false, 2102, 'North Scotland'),
+  ('Grampian',        'Scotland', 'region', true,  2101, 'North Scotland'),
+  ('Highlands',       'Scotland', 'region', true,  2102, 'North Scotland'),
   ('Scottish Islands','Scotland', 'region', true,  2103, 'North Scotland'),
-  ('Tayside',         'Scotland', 'region', false, 2104, 'North Scotland'),
+  ('Tayside',         'Scotland', 'region', true,  2104, 'North Scotland'),
 
   -- ── SCOTLAND: Central ────────────────────────────────────
-  ('Central Scotland','Scotland', 'region', false, 2201, 'Central Scotland'),
+  ('Central Scotland','Scotland', 'region', true,  2201, 'Central Scotland'),
   ('Fife',            'Scotland', 'region', true,  2202, 'Central Scotland'),
-  ('Lothian',         'Scotland', 'region', false, 2203, 'Central Scotland'),
+  ('Lothian',         'Scotland', 'region', true,  2203, 'Central Scotland'),
   ('Edinburgh',       'Scotland', 'city',   false, 2204, 'Central Scotland'),
 
   -- ── SCOTLAND: West ───────────────────────────────────────
-  ('Argyll & Bute',  'Scotland', 'region', false, 2301, 'West Scotland'),
-  ('Dunbartonshire', 'Scotland', 'region', false, 2302, 'West Scotland'),
-  ('Lanarkshire',    'Scotland', 'region', false, 2303, 'West Scotland'),
-  ('Renfrewshire',   'Scotland', 'region', false, 2304, 'West Scotland'),
+  ('Argyll & Bute',  'Scotland', 'region', true,  2301, 'West Scotland'),
+  ('Dunbartonshire', 'Scotland', 'region', true,  2302, 'West Scotland'),
+  ('Lanarkshire',    'Scotland', 'region', true,  2303, 'West Scotland'),
+  ('Renfrewshire',   'Scotland', 'region', true,  2304, 'West Scotland'),
   ('Glasgow',        'Scotland', 'city',   false, 2305, 'West Scotland'),
 
   -- ── SCOTLAND: South ──────────────────────────────────────
-  ('Ayrshire',           'Scotland', 'region', false, 2401, 'South Scotland'),
-  ('Dumfries & Galloway','Scotland', 'region', false, 2402, 'South Scotland'),
-  ('Scottish Borders',   'Scotland', 'region', false, 2403, 'South Scotland')
+  ('Ayrshire',           'Scotland', 'region', true,  2401, 'South Scotland'),
+  ('Dumfries & Galloway','Scotland', 'region', true,  2402, 'South Scotland'),
+  ('Scottish Borders',   'Scotland', 'region', true,  2403, 'South Scotland')
 
 ) AS v(display_name, country, area_type, is_small, sort_order, region);

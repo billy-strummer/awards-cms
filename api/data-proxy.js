@@ -1456,6 +1456,15 @@ module.exports = async function handler(req, res) {
       return res.status(200).json(uploadResult);
     }
 
+    if (body.operation === 'nominee_delete_all') {
+      if (!hasMinimumRole(role, 'editor')) {
+        return res.status(403).json({ error: 'Forbidden', message: 'Nominee delete requires editor role or above' });
+      }
+      await supabase.from('nominee_upload_rows').delete().gte('created_at', '2000-01-01');
+      await supabase.from('nominee_upload_batches').delete().gte('uploaded_at', '2000-01-01');
+      return res.status(200).json({ deleted: true });
+    }
+
     // 8. Validate standard query params
     const validationErrors = validateQueryParams(body);
     if (validationErrors.length > 0) {

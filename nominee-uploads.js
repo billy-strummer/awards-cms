@@ -617,10 +617,16 @@ const nomineeUploads = (() => {
         el.innerHTML = '<p class="text-muted small mb-0">No uploads yet.</p>';
         return;
       }
-      el.innerHTML = data
+      const deleteAllBtn = `
+        <div class="d-flex justify-content-end mb-2">
+          <button class="btn btn-outline-danger btn-sm u-text-xs" onclick="nomineeUploads.deleteAllBatches()">
+            <i class="bi bi-trash me-1"></i>Delete all uploads
+          </button>
+        </div>`;
+      const rows = data
         .map(
           (b) => `
-        <div class="d-flex align-items-center justify-content-between py-2 border-bottom">
+        <div class="d-flex align-items-center justify-content-between py-2 border-bottom" data-batch-id="${b.id}">
           <div>
             <span class="fw-semibold small">${utils.escapeHtml(b.area)}</span>
             ${b.category ? `<span class="badge bg-light text-dark border ms-1 u-text-xs">${utils.escapeHtml(b.category)}</span>` : ''}
@@ -630,22 +636,71 @@ const nomineeUploads = (() => {
               ${b.uploaded_by ? `· ${utils.escapeHtml(b.uploaded_by)}` : ''}
             </div>
           </div>
-          <div class="text-end ms-3">
+          <div class="text-end ms-3 d-flex align-items-center gap-1">
             ${
               b.stored_row_count === b.csv_row_count
                 ? `<span class="badge bg-success"><i class="bi bi-check-circle-fill me-1"></i>${b.stored_row_count} rows</span>`
                 : `<span class="badge bg-warning text-dark">${b.stored_row_count}/${b.csv_row_count}</span>`
             }
-            <button class="btn btn-outline-secondary btn-sm ms-2 u-text-xs"
+            <button class="btn btn-outline-secondary btn-sm u-text-xs"
               onclick="nomineeUploads.viewBatchRows('${b.id}', '${utils.escapeHtml(b.area)}')">
               <i class="bi bi-eye me-1"></i>View
+            </button>
+            <button class="btn btn-outline-danger btn-sm u-text-xs"
+              onclick="nomineeUploads.deleteBatch('${b.id}', '${utils.escapeHtml(b.area)}')">
+              <i class="bi bi-trash"></i>
             </button>
           </div>
         </div>`
         )
         .join('');
+      el.innerHTML = deleteAllBtn + rows;
     } catch (e) {
       el.innerHTML = `<p class="text-danger small">${utils.escapeHtml(e.message)}</p>`;
+    }
+  }
+
+  async function deleteBatch(batchId, area) {
+    if (!confirm(`Delete all uploaded nominee data for "${area}"?\n\nThis cannot be undone.`)) return;
+    try {
+      await apiClient.delete('nominee_upload_batches', batchId);
+      // Remove from localStorage coverage
+      try {
+        const stored = JSON.parse(localStorage.getItem('csvImportedCounties') || '{}');
+        Object.keys(stored).forEach((k) => {
+          if (stored[k]?.batchId === batchId) delete stored[k];
+        });
+        localStorage.setItem('csvImportedCounties', JSON.stringify(stored));
+      } catch (_) {
+        /* ignore */
+      }
+      utils.showToast('success', 'Deleted', `Nominee data for "${area}" removed.`);
+      loadRecentUploads();
+      if (typeof dashboardModule !== 'undefined' && typeof dashboardModule.updateCountyCoverage === 'function') {
+        dashboardModule.updateCountyCoverage();
+      }
+    } catch (err) {
+      utils.showToast('error', 'Delete Failed', err.message || 'Unknown error');
+    }
+  }
+
+  async function deleteAllBatches() {
+    if (
+      !confirm(
+        'Delete ALL uploaded nominee data?\n\nThis will remove every batch and all their rows. This cannot be undone.'
+      )
+    )
+      return;
+    try {
+      await apiClient.post({ operation: 'nominee_delete_all' });
+      localStorage.removeItem('csvImportedCounties');
+      utils.showToast('success', 'Cleared', 'All nominee upload data deleted.');
+      loadRecentUploads();
+      if (typeof dashboardModule !== 'undefined' && typeof dashboardModule.updateCountyCoverage === 'function') {
+        dashboardModule.updateCountyCoverage();
+      }
+    } catch (err) {
+      utils.showToast('error', 'Delete Failed', err.message || 'Unknown error');
     }
   }
 
@@ -954,6 +1009,8 @@ const nomineeUploads = (() => {
     init,
     loadRecentUploads,
     viewBatchRows,
+    deleteBatch,
+    deleteAllBatches,
   };
 })();
 

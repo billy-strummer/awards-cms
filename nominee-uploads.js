@@ -16,6 +16,7 @@ const nomineeUploads = (() => {
   let _selectedCountry = null;
   let _selectedCategory = null;
   let _currentFilename = '';
+  let _preselectedArea = null; // area pre-filled when opening modal from inline icon
 
   // ── CSV PARSER ────────────────────────────────────────────────
 
@@ -532,6 +533,21 @@ const nomineeUploads = (() => {
     if (btn) btn.disabled = true;
   }
 
+  // ── INLINE AREA ICONS ────────────────────────────────────────
+
+  function _injectAreaUploadIcons() {
+    document.querySelectorAll('[data-county]').forEach((el) => {
+      if (el.querySelector('.nominee-upload-area-btn')) return; // already injected
+      const area = el.getAttribute('data-county');
+      const icon = document.createElement('i');
+      icon.className = 'bi bi-cloud-upload text-secondary nominee-upload-area-btn ms-1';
+      icon.setAttribute('data-area', area);
+      icon.title = `Upload nominees CSV for ${area}`;
+      icon.style.cssText = 'cursor:pointer;font-size:0.7rem;vertical-align:middle;opacity:0.55';
+      el.appendChild(icon);
+    });
+  }
+
   // ── INIT / EVENT BINDING ──────────────────────────────────────
 
   function init() {
@@ -603,11 +619,32 @@ const nomineeUploads = (() => {
       confirmBtn.addEventListener('click', _uploadBatch);
     }
 
+    // Inject inline upload icons next to every area name in the coverage panel
+    _injectAreaUploadIcons();
+
+    // Delegated click handler for those icons
+    document.addEventListener('click', (e) => {
+      const icon = e.target.closest('.nominee-upload-area-btn');
+      if (!icon) return;
+      e.stopPropagation();
+      _preselectedArea = icon.getAttribute('data-area');
+      const modalEl = document.getElementById('nomineeUploadModal');
+      if (modalEl) bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    });
+
     // Modal open — load recent uploads
     const modal = document.getElementById('nomineeUploadModal');
     if (modal) {
       modal.addEventListener('show.bs.modal', () => {
         _buildAreaDropdown('nomineeAreaSelect');
+        if (_preselectedArea) {
+          const sel = document.getElementById('nomineeAreaSelect');
+          if (sel) sel.value = _preselectedArea;
+          _selectedArea = _preselectedArea;
+          _selectedCountry = _detectCountry(_preselectedArea);
+          _preselectedArea = null;
+          _updateConfirmButton();
+        }
         loadRecentUploads();
       });
       modal.addEventListener('hidden.bs.modal', _resetForm);

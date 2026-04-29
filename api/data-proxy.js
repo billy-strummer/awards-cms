@@ -224,6 +224,8 @@ const ALLOWED_TABLES = new Set([
   'sponsor_impressions',
   'media_videos',
   'certificate_templates',
+  'nominee_upload_batches',
+  'nominee_upload_rows',
 ]);
 
 /** Tables that can be mutated (insert/update/delete/upsert) */
@@ -335,6 +337,8 @@ const MUTABLE_TABLES = new Set([
   'sponsor_impressions',
   'media_videos',
   'certificate_templates',
+  'nominee_upload_batches',
+  'nominee_upload_rows',
 ]);
 
 /** Maximum page size to prevent abuse */
@@ -1272,6 +1276,69 @@ function executeStorageUrl(body) {
 // ============================================
 
 /**
+/**
+ * Nominee batch upload — inserts a batch record then all rows atomically.
+ * Returns { batchId, csvRowCount, storedRowCount } for client-side verification.
+ */
+async function executeNomineeUpload(body, user) {
+  const { batch, rows } = body;
+
+  if (!batch || typeof batch !== 'object') throw new Error('nominee_upload: missing batch metadata');
+  if (!Array.isArray(rows) || rows.length === 0) throw new Error('nominee_upload: rows must be a non-empty array');
+
+  const csvRowCount = rows.length;
+
+  // 1. Insert the batch record
+  const batchRecord = {
+    filename: String(batch.filename || 'upload.csv').slice(0, 255),
+    area: String(batch.area || '').slice(0, 100),
+    country: batch.country ? String(batch.country).slice(0, 50) : null,
+    category: batch.category ? String(batch.category).slice(0, 200) : null,
+    csv_row_count: csvRowCount,
+    stored_row_count: 0,
+    uploaded_by: user.email || null,
+    notes: batch.notes ? String(batch.notes).slice(0, 500) : null,
+  };
+
+  const { data: batchData, error: batchError } = await supabase
+    .from('nominee_upload_batches')
+    .insert(batchRecord)
+    .select('id')
+    .single();
+
+  if (batchError) throw new Error(`Failed to create upload batch: ${batchError.message}`);
+  const batchId = batchData.id;
+
+  // 2. Insert rows in chunks of 100
+  const CHUNK_SIZE = 100;
+  let storedRowCount = 0;
+
+  for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
+    const chunk = rows.slice(i, i + CHUNK_SIZE).map((r, idx) => ({
+      batch_id: batchId,
+      area: String(r.area || batch.area || '').slice(0, 100),
+      row_number: i + idx + 1,
+      company_name: r.company_name ? String(r.company_name).slice(0, 255) : null,
+      raw_data: r.raw_data && typeof r.raw_data === 'object' ? r.raw_data : {},
+    }));
+
+    const { error: rowsError } = await supabase
+      .from('nominee_upload_rows')
+      .insert(chunk)
+      .select('id', { count: 'exact', head: true });
+
+    if (rowsError)
+      throw new Error(`Failed to insert rows (chunk ${Math.floor(i / CHUNK_SIZE) + 1}): ${rowsError.message}`);
+    storedRowCount += chunk.length;
+  }
+
+  // 3. Update stored_row_count on the batch
+  await supabase.from('nominee_upload_batches').update({ stored_row_count: storedRowCount }).eq('id', batchId);
+
+  return { batchId, csvRowCount, storedRowCount, verified: storedRowCount === csvRowCount };
+}
+
+/**
  * Vercel serverless function handler.
  * POST /api/data-proxy
  *
@@ -1380,7 +1447,16 @@ module.exports = async function handler(req, res) {
       return res.status(200).json(deleteResult);
     }
 
-    // 7. Validate standard query params
+    // 7. Handle nominee batch upload
+    if (body.operation === 'nominee_upload') {
+      if (!hasMinimumRole(role, 'editor')) {
+        return res.status(403).json({ error: 'Forbidden', message: 'Nominee upload requires editor role or above' });
+      }
+      const uploadResult = await executeNomineeUpload(body, user);
+      return res.status(200).json(uploadResult);
+    }
+
+    // 8. Validate standard query params
     const validationErrors = validateQueryParams(body);
     if (validationErrors.length > 0) {
       return res.status(400).json({ error: 'Validation failed', details: validationErrors });

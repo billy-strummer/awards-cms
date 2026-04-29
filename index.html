@@ -1019,6 +1019,97 @@
               <i class="bi bi-info-circle me-1"></i>42 England counties &middot; 15 London boroughs &middot; 14 Scotland regions &middot; 10 Wales areas &middot; 19 cities
               &middot; <span class="badge bg-warning text-dark u-text-xxs">small</span> = Small County/Town category list
             </div>
+            <div class="mt-3 text-center">
+              <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#nomineeUploadModal">
+                <i class="bi bi-upload me-2"></i>Upload Nominees CSV
+              </button>
+            </div>
+          </div>
+
+          <!-- ── NOMINEE UPLOAD MODAL ──────────────────────── -->
+          <div class="modal fade" id="nomineeUploadModal" tabindex="-1" aria-labelledby="nomineeUploadModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-xl modal-dialog-scrollable">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title" id="nomineeUploadModalLabel">
+                    <i class="bi bi-upload text-primary me-2"></i>Upload Nominees CSV
+                  </h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+
+                  <!-- STEP 1: File picker -->
+                  <div id="nomineeStep1">
+                    <p class="text-muted small mb-3">
+                      Select a CSV file containing nominee data. Blank rows and the header row are handled automatically.
+                      The file must have an <strong>Area</strong> column containing the county, city, or London borough name.
+                    </p>
+                    <div class="mb-3">
+                      <label class="form-label fw-semibold">CSV File</label>
+                      <input type="file" class="form-control" id="nomineeFileInput" accept=".csv,.tsv,.txt">
+                    </div>
+                  </div>
+
+                  <!-- STEP 2: Preview & assign -->
+                  <div id="nomineeStep2" class="d-none">
+                    <!-- Stats bar -->
+                    <div id="nomineePreviewStats" class="mb-3 p-2 bg-light rounded border"></div>
+
+                    <!-- Area assignment -->
+                    <div class="row g-3 mb-3">
+                      <div class="col-md-5">
+                        <label class="form-label fw-semibold">Area <span class="text-danger">*</span></label>
+                        <select class="form-select form-select-sm" id="nomineeAreaSelect">
+                          <option value="">— Select area —</option>
+                        </select>
+                        <div class="form-text">Auto-detected from the Area column. Correct if needed.</div>
+                      </div>
+                      <div class="col-md-5">
+                        <label class="form-label fw-semibold">Category <span class="text-muted fw-normal">(optional)</span></label>
+                        <input type="text" class="form-control form-control-sm" id="nomineeCategoryInput"
+                          placeholder="e.g. Building &amp; Construction">
+                      </div>
+                      <div class="col-md-2 d-flex align-items-end">
+                        <button class="btn btn-outline-secondary btn-sm w-100"
+                          onclick="document.getElementById('nomineeStep1').classList.remove('d-none'); document.getElementById('nomineeStep2').classList.add('d-none'); document.getElementById('nomineeFileInput').value='';">
+                          <i class="bi bi-arrow-left me-1"></i>Change file
+                        </button>
+                      </div>
+                    </div>
+
+                    <!-- Preview table -->
+                    <div class="mb-3">
+                      <label class="form-label fw-semibold text-muted small">Preview (first 10 rows)</label>
+                      <div id="nomineePreviewContainer"></div>
+                    </div>
+
+                    <!-- Verification result -->
+                    <div id="nomineeUploadVerification" class="d-none"></div>
+                  </div>
+
+                  <hr class="my-4">
+
+                  <!-- Recent uploads -->
+                  <div>
+                    <h6 class="fw-semibold mb-3"><i class="bi bi-clock-history me-2"></i>Recent Uploads</h6>
+                    <div id="nomineeRecentUploads"><p class="text-muted small">Loading…</p></div>
+                  </div>
+
+                  <!-- Batch row viewer -->
+                  <div id="nomineeBatchRowsPanel" class="d-none mt-4">
+                    <h6 class="fw-semibold mb-2" id="nomineeBatchRowsTitle">Nominees</h6>
+                    <div id="nomineeBatchRowsContainer"></div>
+                  </div>
+
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                  <button type="button" class="btn btn-primary" id="nomineeUploadConfirmBtn" disabled>
+                    <i class="bi bi-cloud-upload me-2"></i>Upload &amp; Verify
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- Geographic Distribution Widget -->

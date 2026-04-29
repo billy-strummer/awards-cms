@@ -857,6 +857,7 @@ document.addEventListener('DOMContentLoaded', function () {
   if (typeof stripeFrontend !== 'undefined') stripeFrontend.init();
   if (typeof i18n !== 'undefined') i18n.init();
   if (typeof tenantModule !== 'undefined') tenantModule.init();
+  if (typeof nomineeUploads !== 'undefined') nomineeUploads.init();
 
   // ==========================================
   // STEP 1c: Initialize event delegation system

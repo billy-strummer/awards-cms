@@ -311,7 +311,6 @@
       const cities = [
         'Birmingham',
         'Bournemouth',
-        'Bradford',
         'Brighton & Hove',
         'Bristol',
         'Cardiff',
@@ -325,6 +324,7 @@
         'Middlesbrough',
         'Newcastle',
         'Nottingham',
+        'Reading',
         'Sheffield',
         'Southampton',
         'Swansea',

@@ -124,7 +124,7 @@ const COUNTY_TO_REGION = {
   leeds: 'Leeds',
   sheffield: 'Sheffield',
   hull: 'Hull',
-  bradford: 'Bradford',
+  reading: 'Reading',
 
   // England - London
   london: 'London',
@@ -250,7 +250,6 @@ const VALID_REGIONS = [
   'South Yorkshire',
   'Tyne & Wear',
   'West Yorkshire',
-  'Bradford',
   'Leeds',
   'Middlesbrough',
   'Newcastle',
@@ -272,6 +271,7 @@ const VALID_REGIONS = [
   'Surrey',
   'West Sussex',
   'Brighton & Hove',
+  'Reading',
   'Southampton',
   // South West
   'Cornwall',

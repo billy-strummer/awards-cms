@@ -2980,7 +2980,6 @@ const dashboardModule = {
       const cities = [
         'Birmingham',
         'Bournemouth',
-        'Bradford',
         'Brighton & Hove',
         'Bristol',
         'Cardiff',
@@ -2994,6 +2993,7 @@ const dashboardModule = {
         'Middlesbrough',
         'Newcastle',
         'Nottingham',
+        'Reading',
         'Sheffield',
         'Southampton',
         'Swansea',

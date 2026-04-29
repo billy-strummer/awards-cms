@@ -22,7 +22,7 @@ const nomineeUploads = (() => {
   let _parsedRows = []; // CSV rows after parsing (blanks removed)
   let _headers = []; // normalised column headers
   let _areaColumn = null; // detected header name for the Area column
-  let _categoryColumn = null; // detected header name for the Category/Sector column
+  let _sectorColumn = null; // detected header name for the Sector column (validated against SECTORS)
   let _companyColumn = null; // detected header name for the Company column
   let _selectedArea = null; // area chosen in the "assign area" dropdown
   let _selectedCountry = null;
@@ -49,7 +49,7 @@ const nomineeUploads = (() => {
       const values = _splitLine(line, delimiter);
       const row = {};
       headers.forEach((h, idx) => {
-        row[h] = (values[idx] || '').trim();
+        row[h] = _stripMarkdownLinks((values[idx] || '').trim());
       });
       // Skip rows where every cell is empty
       if (Object.values(row).every((v) => !v)) continue;
@@ -100,13 +100,23 @@ const nomineeUploads = (() => {
     return headers[0] || null; // fall back to first column
   }
 
-  function _detectCategoryColumn(headers) {
-    const candidates = ['category', 'sector', 'trade', 'tradecategory', 'industry', 'type'];
+  function _detectSectorColumn(headers) {
+    // Only match the Sector/Trade/Industry column — NOT "Category" (that's a free-form sub-category)
+    const candidates = ['sector', 'trade', 'tradecategory', 'industry'];
     for (const c of candidates) {
       const match = headers.find((h) => h.toLowerCase().replace(/[\s_-]/g, '') === c);
       if (match) return match;
     }
     return null;
+  }
+
+  function _stripMarkdownLinks(value) {
+    if (!value) return value;
+    // [text](url) → url  (handles mailto: links and plain URLs)
+    return value.replace(/\[([^\]]*)\]\(([^)]*)\)/g, (_match, _text, url) => {
+      // For mailto: links extract the email address
+      return url.startsWith('mailto:') ? url.slice(7) : url;
+    });
   }
 
   function _normaliseAreaName(raw) {
@@ -183,16 +193,16 @@ const nomineeUploads = (() => {
       }
     }
 
-    if (_categoryColumn) {
-      const uniqueVals = [...new Set(_parsedRows.map((r) => r[_categoryColumn]).filter(Boolean))];
+    if (_sectorColumn) {
+      const uniqueVals = [...new Set(_parsedRows.map((r) => r[_sectorColumn]).filter(Boolean))];
       for (const val of uniqueVals) {
         const result = _fuzzyMatch(val, KNOWN_SECTORS);
         if (!result.exact)
           _validationIssues.push({
-            col: _categoryColumn,
+            col: _sectorColumn,
             originalValue: val,
             suggestions: result.suggestions,
-            type: 'category',
+            type: 'sector',
           });
       }
     }
@@ -219,7 +229,7 @@ const nomineeUploads = (() => {
         const badge =
           issue.type === 'area'
             ? '<span class="badge bg-secondary me-1">Area</span>'
-            : '<span class="badge bg-info text-dark me-1">Category</span>';
+            : '<span class="badge bg-info text-dark me-1">Sector</span>';
         const suggBtns = issue.suggestions
           .map(
             (s) =>
@@ -694,7 +704,7 @@ const nomineeUploads = (() => {
     _parsedRows = [];
     _headers = [];
     _areaColumn = null;
-    _categoryColumn = null;
+    _sectorColumn = null;
     _companyColumn = null;
     _selectedArea = null;
     _selectedCountry = null;
@@ -758,7 +768,7 @@ const nomineeUploads = (() => {
           _headers = headers;
           _parsedRows = rows;
           _areaColumn = _detectAreaColumn(headers);
-          _categoryColumn = _detectCategoryColumn(headers);
+          _sectorColumn = _detectSectorColumn(headers);
           _companyColumn = _detectCompanyColumn(headers);
 
           // Show step 2
@@ -767,7 +777,7 @@ const nomineeUploads = (() => {
           if (step1) step1.classList.add('d-none');
           if (step2) step2.classList.remove('d-none');
 
-          // Pre-fill area dropdown if area column detected and unique value
+          // Pre-fill area dropdown if area column detected and has a single unique value
           if (_areaColumn) {
             const uniqueAreas = [
               ...new Set(_parsedRows.map((r) => _normaliseAreaName(r[_areaColumn])).filter(Boolean)),
@@ -776,8 +786,17 @@ const nomineeUploads = (() => {
               _selectedArea = uniqueAreas[0];
               const sel = document.getElementById('nomineeAreaSelect');
               if (sel) sel.value = _selectedArea;
-              // Auto-detect country
               _selectedCountry = _detectCountry(_selectedArea);
+            }
+          }
+
+          // Pre-fill batch category input from Sector column if single unique value
+          if (_sectorColumn) {
+            const uniqueSectors = [...new Set(_parsedRows.map((r) => r[_sectorColumn]).filter(Boolean))];
+            if (uniqueSectors.length === 1) {
+              _selectedCategory = uniqueSectors[0];
+              const catInput = document.getElementById('nomineeCategoryInput');
+              if (catInput) catInput.value = _selectedCategory;
             }
           }
 

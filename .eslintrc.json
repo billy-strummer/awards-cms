@@ -77,7 +77,8 @@
     "updateTabCounts": "readonly",
     "TradingView": "readonly",
     "locationModule": "readonly",
-    "areasManager": "readonly"
+    "areasManager": "readonly",
+    "nomineeUploads": "readonly"
   },
   "parserOptions": {
     "ecmaVersion": 2022,

@@ -77,7 +77,7 @@ export { webhooksModule } from './webhooks.js';
 export { documentModule } from './document-management.js';
 export { rateLimitModule } from './rate-limiting.js';
 export { winnerAnnouncementsModule } from './winner-announcements.js';
-export { nomineeVoting } from './nominee-voting.js';
+import './nominee-voting.js'; // sets window.nomineeVoting — no named export (plain-script compatible)
 
 // Application initialization (must be last)
 export { reportsScheduler } from './app.js';

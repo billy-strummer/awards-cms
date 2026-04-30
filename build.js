@@ -257,6 +257,7 @@ async function build() {
   const publicJsFiles = [
     'vote.js',
     'public-voting.js',
+    'nominee-voting.js',
     'judge-portal.js',
     'judge-login.js',
     'winners-portal.js',

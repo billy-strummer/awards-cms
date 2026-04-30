@@ -435,9 +435,8 @@ const nomineeVoting = {
   },
 };
 
-// Expose globally for tests and external access.
-// NOTE: This is a public-facing page that runs outside the main CMS app and does
-// not load ModuleRegistry. Direct window.* assignment is intentional here.
+// Expose globally — vote.html loads this as a plain <script> (not type="module"),
+// so export {} would cause a SyntaxError. Window assignment works in both contexts.
 if (typeof window !== 'undefined') {
   window.nomineeVoting = nomineeVoting;
   window.showPublicToast = showPublicToast;
@@ -450,5 +449,3 @@ if (document.getElementById('loadingState') && document.getElementById('errorSta
     nomineeVoting.initialize();
   });
 }
-
-export { nomineeVoting };

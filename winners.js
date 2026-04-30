@@ -45,7 +45,7 @@ const winnersModule = {
       this._serverPagination = true;
       await this._fetchPage(1);
 
-      console.debug(`Loaded winners (page 1, total: ${this._pagination.count})`);
+      console.debug(`Loaded winners (page 1, total: ${this._pagination.count})`); // eslint-disable-line no-console
 
       // Populate year filter from database
       utils.populateYearFilterFromDB('winnerYearFilterSelect', { selectCurrent: true });
@@ -282,6 +282,18 @@ const winnersModule = {
     });
 
     this.renderWinners();
+    utils.renderFilterChips('winnersActiveFilters', [
+      { label: 'Year', fieldId: 'winnerYearFilterSelect', clearAction: 'winnersModule.clearFilter' },
+      { label: 'Award', fieldId: 'winnerAwardFilterSelect', clearAction: 'winnersModule.clearFilter' },
+      { label: 'Search', fieldId: 'winnerSearchBox', clearAction: 'winnersModule.clearFilter' },
+    ]);
+  },
+
+  clearFilter(fieldId) {
+    const el = document.getElementById(fieldId);
+    if (!el) return;
+    el.value = '';
+    this.filterWinners();
   },
 
   /**

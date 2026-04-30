@@ -631,6 +631,21 @@ const entriesModule = {
 
     this._currentPage = 1;
     this.renderEntries();
+    utils.renderFilterChips('entriesActiveFilters', [
+      { label: 'Status', fieldId: 'entriesStatusFilter', clearAction: 'entriesModule.clearFilter' },
+      { label: 'Award', fieldId: 'entriesAwardFilter', clearAction: 'entriesModule.clearFilter' },
+      { label: 'Year', fieldId: 'entriesYearFilter', clearAction: 'entriesModule.clearFilter' },
+      { label: 'Type', fieldId: 'entriesSelfNomFilter', clearAction: 'entriesModule.clearFilter' },
+      { label: 'Search', fieldId: 'entriesSearchInput', clearAction: 'entriesModule.clearFilter' },
+    ]);
+  },
+
+  clearFilter(fieldId) {
+    const el = document.getElementById(fieldId);
+    if (!el) return;
+    el.value = '';
+    this.filterEntries();
+    this.searchEntries();
   },
 
   /**

@@ -2486,6 +2486,48 @@ const utils = {
     const el = document.getElementById('shortcutHelpOverlay');
     if (el) el.remove();
   },
+
+  /**
+   * Render active filter chips below a filter panel.
+   * @param {string} containerId - ID of the container div to render into
+   * @param {Array<{label:string, fieldId:string, clearAction:string}>} configs - filter field configs
+   * Each config maps a human label to a DOM field ID. Chips only appear for non-empty fields.
+   * The clearAction is a data-action string called when the × button is clicked.
+   */
+  renderFilterChips(containerId, configs) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    const active = configs.filter((c) => {
+      const input = document.getElementById(c.fieldId);
+      return input && input.value;
+    });
+    if (!active.length) {
+      el.innerHTML = '';
+      return;
+    }
+    el.innerHTML =
+      `<div class="d-flex flex-wrap gap-2 align-items-center py-1">` +
+      `<small class="text-muted" style="font-size:0.75rem;">Active filters:</small>` +
+      active
+        .map((c) => {
+          const input = document.getElementById(c.fieldId);
+          const display =
+            input.tagName === 'SELECT' ? input.options[input.selectedIndex]?.text || input.value : input.value;
+          return (
+            `<span class="d-inline-flex align-items-center gap-1 rounded-pill px-3 py-1" ` +
+            `style="background:#e8f0fe;color:#1a56db;border:1px solid #c3d9ff;font-size:0.8rem;">` +
+            `<span class="fw-normal">${this.escapeHtml(c.label)}:</span>` +
+            `<strong class="ms-1">${this.escapeHtml(display)}</strong>` +
+            `<button type="button" class="ms-2 border-0 bg-transparent p-0 lh-1" ` +
+            `data-action="${c.clearAction}" data-id="${c.fieldId}" ` +
+            `style="color:#1a56db;cursor:pointer;font-size:1rem;line-height:1;" ` +
+            `title="Remove this filter" aria-label="Remove ${this.escapeHtml(c.label)} filter">×</button>` +
+            `</span>`
+          );
+        })
+        .join('') +
+      `</div>`;
+  },
 };
 
 // ============================================

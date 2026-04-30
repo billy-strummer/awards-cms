@@ -672,6 +672,28 @@ const orgsModule = {
     this._currentPage = 1;
 
     this.renderOrganisations();
+    utils.renderFilterChips('orgsActiveFilters', [
+      { label: 'Year', fieldId: 'orgsYearFilter', clearAction: 'orgsModule.clearFilter' },
+      { label: 'Status', fieldId: 'orgsStatusFilter', clearAction: 'orgsModule.clearFilter' },
+      { label: 'Sector', fieldId: 'orgsSectorFilter', clearAction: 'orgsModule.clearFilter' },
+      { label: 'Country', fieldId: 'orgsCountryFilter', clearAction: 'orgsModule.clearFilter' },
+      { label: 'Area', fieldId: 'orgsAreaFilter', clearAction: 'orgsModule.clearFilter' },
+      { label: 'Tier', fieldId: 'orgsTierFilter', clearAction: 'orgsModule.clearFilter' },
+      { label: 'Tag', fieldId: 'orgsTagFilter', clearAction: 'orgsModule.clearFilter' },
+      { label: 'Logo', fieldId: 'orgsLogoFilter', clearAction: 'orgsModule.clearFilter' },
+      { label: 'Date', fieldId: 'orgsDateFilter', clearAction: 'orgsModule.clearFilter' },
+      { label: 'Search', fieldId: 'orgsSearchBox', clearAction: 'orgsModule.clearFilter' },
+    ]);
+  },
+
+  clearFilter(fieldId) {
+    const el = document.getElementById(fieldId);
+    if (!el) return;
+    el.value = '';
+    if (fieldId === 'orgsCountryFilter') {
+      if (typeof locationModule !== 'undefined') locationModule.populateAreaDropdown('orgsAreaFilter', '', 'All Areas');
+    }
+    this.filterOrganisations();
   },
 
   /**
@@ -7466,11 +7488,11 @@ const orgsModule = {
         })
         .subscribe((status) => {
           if (status === 'SUBSCRIBED') {
-            console.debug('Organisations realtime: subscribed');
+            console.debug('Organisations realtime: subscribed'); // eslint-disable-line no-console
           }
         });
     } catch (e) {
-      console.debug('Realtime subscription failed:', e.message);
+      console.debug('Realtime subscription failed:', e.message); // eslint-disable-line no-console
     }
   },
 

@@ -597,6 +597,25 @@ const awardsModule = {
 
     this.applySorting();
     this.renderAwards();
+    utils.renderFilterChips('awardsActiveFilters', [
+      { label: 'Year', fieldId: 'awardsYearFilterSelect', clearAction: 'awardsModule.clearFilter' },
+      { label: 'Status', fieldId: 'awardsStatusFilterSelect', clearAction: 'awardsModule.clearFilter' },
+      { label: 'Sector', fieldId: 'awardsSectorFilterSelect', clearAction: 'awardsModule.clearFilter' },
+      { label: 'Country', fieldId: 'awardsCountryFilter', clearAction: 'awardsModule.clearFilter' },
+      { label: 'Area', fieldId: 'awardsAreaFilter', clearAction: 'awardsModule.clearFilter' },
+      { label: 'Search', fieldId: 'awardsSearchBox', clearAction: 'awardsModule.clearFilter' },
+    ]);
+  },
+
+  clearFilter(fieldId) {
+    const el = document.getElementById(fieldId);
+    if (!el) return;
+    el.value = '';
+    if (fieldId === 'awardsCountryFilter') {
+      if (typeof locationModule !== 'undefined')
+        locationModule.populateAreaDropdown('awardsAreaFilter', '', 'All Areas');
+    }
+    this.filterAwards();
   },
 
   /**

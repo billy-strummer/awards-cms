@@ -189,3 +189,5 @@ const locationModule = {
     el.innerHTML = html;
   },
 };
+
+window.locationModule = locationModule;

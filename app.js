@@ -854,9 +854,12 @@ document.addEventListener('DOMContentLoaded', function () {
   // ==========================================
   if (typeof securityModule !== 'undefined') securityModule.init();
   if (typeof a11yModule !== 'undefined') a11yModule.init();
+  if (typeof gdprModule !== 'undefined') gdprModule.init();
   if (typeof stripeFrontend !== 'undefined') stripeFrontend.init();
   if (typeof i18n !== 'undefined') i18n.init();
   if (typeof tenantModule !== 'undefined') tenantModule.init();
+  if (typeof notificationsModule !== 'undefined') notificationsModule.init();
+  if (typeof seatingEnhancements !== 'undefined') seatingEnhancements.init();
   if (typeof nomineeUploads !== 'undefined') nomineeUploads.init();
 
   // ==========================================

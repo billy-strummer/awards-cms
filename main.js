@@ -77,7 +77,17 @@ export { webhooksModule } from './webhooks.js';
 export { documentModule } from './document-management.js';
 export { rateLimitModule } from './rate-limiting.js';
 export { winnerAnnouncementsModule } from './winner-announcements.js';
+// Location system — side-effect imports (set window globals, no named exports)
+import './location.js';
+import './areas-manager.js';
+
+// Nominee uploads — side-effect import (sets window.nomineeUploads)
+import './nominee-uploads.js';
+
 import './nominee-voting.js'; // sets window.nomineeVoting — no named export (plain-script compatible)
+
+// BTC price widget
+import './btc-module.js';
 
 // Application initialization (must be last)
 export { reportsScheduler } from './app.js';

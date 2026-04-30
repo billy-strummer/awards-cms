@@ -832,12 +832,12 @@ const judgePortal = {
   },
 };
 
-// Export to window for global access
+// Expose globally — required because judge-portal.html loads this as a plain
+// <script> (not type="module"), so export {} would cause a SyntaxError.
+window.judgePortal = judgePortal;
 ModuleRegistry.register('judgePortal', judgePortal);
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
   judgePortal.initialize();
 });
-
-export { judgePortal };

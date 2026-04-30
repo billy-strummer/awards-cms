@@ -10,6 +10,10 @@
  * - SUPABASE_SERVICE_KEY
  */
 
+if (!process.env.STRIPE_SECRET_KEY) throw new Error('Missing STRIPE_SECRET_KEY environment variable');
+if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY)
+  throw new Error('Missing Supabase environment variables');
+
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { createClient } = require('@supabase/supabase-js');
 const { Resend } = require('resend');

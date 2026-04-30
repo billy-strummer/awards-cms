@@ -69,3 +69,5 @@ const areasManager = {
     }
   },
 };
+
+window.areasManager = areasManager;

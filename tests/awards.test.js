@@ -531,7 +531,7 @@ describe('Awards Module - renderAwards()', () => {
     STATE.filteredAwards = [];
     awardsModule.renderAwards();
     const tbody = document.getElementById('awardsTableBody');
-    expect(tbody.innerHTML).toContain('No awards found');
+    expect(tbody.innerHTML).toMatch(/No awards/);
   });
 
   test('escapes HTML in award names (XSS prevention)', () => {

@@ -682,7 +682,7 @@ describe('Organisations Module - renderOrganisations()', () => {
     STATE.filteredOrganisations = [];
     orgsModule.renderOrganisations();
     const tbody = document.getElementById('orgsTableBody');
-    expect(tbody.innerHTML).toContain('No organisations found');
+    expect(tbody.innerHTML).toMatch(/No organisations/);
   });
 
   test('escapes HTML in company names (XSS prevention)', () => {
@@ -4656,7 +4656,7 @@ describe('Organisations Module - _getSelectedCounty()', () => {
     const spy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
     const result = orgsModule._getSelectedCounty();
     expect(result).toBeNull();
-    expect(spy).toHaveBeenCalledWith(expect.stringContaining('County'), 'error');
+    expect(spy).toHaveBeenCalledWith(expect.stringContaining('Area'), 'error');
     spy.mockRestore();
   });
 });
@@ -4669,7 +4669,7 @@ describe('Organisations Module - _applyMapping()', () => {
     orgsModule._csvColumnMap = { 0: 'email', 1: 'sector' };
     const spy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
     orgsModule._applyMapping();
-    expect(spy).toHaveBeenCalledWith(expect.stringContaining('Company Name'), 'error');
+    expect(spy).toHaveBeenCalledWith(expect.stringContaining('Organisation Name'), 'error');
     spy.mockRestore();
   });
 });
@@ -4711,7 +4711,7 @@ describe('Organisations Module - exportToExcel()', () => {
     orgsModule.exportToExcel();
     global.Blob = OrigBlob;
     expect(capturedContent).toContain('<?xml');
-    expect(capturedContent).toContain('Company Name');
+    expect(capturedContent).toContain('Organisation Name');
     expect(capturedContent).toContain('XML Test');
   });
 });

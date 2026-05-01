@@ -691,7 +691,7 @@
           Award Details
           <span class="review-edit-btn float-end" data-action="entryFormApp.goToStep" data-args="[1]">Edit</span>
         </div>
-        ${row('County / City', d.county_city)}
+        ${row('Area', d.county_city)}
         ${row('Sector', this.toTitleCase(d.sector || ''))}
         ${row('Category', d.awardCategory)}
       </div>

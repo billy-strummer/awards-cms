@@ -369,8 +369,11 @@ const winnersModule = {
     if (STATE.filteredWinners.length === 0) {
       utils.showEnhancedEmptyState('winnersTableBody', 7, {
         icon: 'bi-trophy',
-        message: 'No winners found',
-        description: 'Winners will appear here once confirmed',
+        message: STATE.allWinners.length > 0 ? 'No winners match your filters' : 'No winners yet',
+        description:
+          STATE.allWinners.length > 0
+            ? 'Try clearing your filters using the Reset button above'
+            : 'Winners are set via Assignments — shortlist an entry and mark it as the winner there',
         actionLabel: 'View Pipeline',
         actionAction: 'winnerPipelineModule.renderPipelineDashboard',
         isFiltered: STATE.filteredWinners.length === 0 && STATE.allWinners.length > 0,

@@ -774,8 +774,10 @@ const orgsModule = {
       );
       utils.showEnhancedEmptyState('orgsTableBody', visibleColCount, {
         icon: 'bi-building',
-        message: 'No organisations found',
-        description: 'Organisations will appear here once added',
+        message: hasActiveFilters ? 'No organisations match your filters' : 'No organisations yet',
+        description: hasActiveFilters
+          ? 'Try clearing your filters using the Reset button above'
+          : 'Click "+ Add Organisation" above to add your first organisation',
         isFiltered: hasActiveFilters,
       });
       this._renderPaginationControls(0, 1);
@@ -3195,7 +3197,7 @@ const orgsModule = {
     }
     try {
       const csv = [
-        'Company Name,Sector,County,Region,Contact Name,Email,Phone,Website,Status,Tier,Tags,Awards Count,Address,Catchment Area,Description,Engagement Score,Health Status,Last Contacted',
+        'Organisation Name,Sector,Area,Region,Contact Name,Email,Phone,Website,Status,Tier,Tags,Awards Count,Address,Catchment Area,Description,Engagement Score,Health Status,Last Contacted',
         ...data.map((org) => {
           const engagement = this.calculateEngagementScore(org);
           const health = this.getOrgHealthIndicator(org);
@@ -4456,7 +4458,7 @@ const orgsModule = {
   _getSelectedCounty() {
     const val = document.getElementById('csvCountySelect')?.value || '';
     if (!val) {
-      utils.showToast('Please select a County/City first', 'error');
+      utils.showToast('Please select an Area first', 'error');
       document.getElementById('csvCountySelect')?.focus();
       return null;
     }
@@ -4621,7 +4623,7 @@ const orgsModule = {
     // Check company_name is mapped
     const hasCompanyName = Object.values(this._csvColumnMap).includes('company_name');
     if (!hasCompanyName) {
-      utils.showToast('You must map at least the "Company Name" column', 'error');
+      utils.showToast('You must map at least the "Organisation Name" column', 'error');
       return;
     }
 
@@ -5638,7 +5640,7 @@ const orgsModule = {
       note_added: 'bi-sticky text-secondary',
       csv_import: 'bi-file-earmark-arrow-up text-primary',
     };
-    return `<table class="table table-sm table-hover"><thead><tr><th>Time</th><th>User</th><th>Company</th><th>Action</th><th>Details</th></tr></thead><tbody>
+    return `<table class="table table-sm table-hover"><thead><tr><th>Time</th><th>User</th><th>Organisation</th><th>Action</th><th>Details</th></tr></thead><tbody>
       ${entries
         .map((e) => {
           const date = new Date(e.timestamp || e.created_at);
@@ -6095,7 +6097,7 @@ const orgsModule = {
           ? `
         <h6 class="fw-semibold mb-2">Invalid Emails</h6>
         <div class="table-responsive mb-3" style="max-height: 200px; overflow-y: auto;">
-          <table class="table table-sm"><thead><tr><th>Company</th><th>Email</th><th>Issue</th></tr></thead><tbody>
+          <table class="table table-sm"><thead><tr><th>Organisation</th><th>Email</th><th>Issue</th></tr></thead><tbody>
             ${invalidEmails
               .slice(0, 50)
               .map((o) => {
@@ -6112,7 +6114,7 @@ const orgsModule = {
           ? `
         <h6 class="fw-semibold mb-2">Stale Records (6+ months without updates)</h6>
         <div class="table-responsive" style="max-height: 200px; overflow-y: auto;">
-          <table class="table table-sm"><thead><tr><th>Company</th><th>Last Updated</th><th>Status</th></tr></thead><tbody>
+          <table class="table table-sm"><thead><tr><th>Organisation</th><th>Last Updated</th><th>Status</th></tr></thead><tbody>
             ${staleOrgs
               .slice(0, 50)
               .map(
@@ -6401,9 +6403,9 @@ const orgsModule = {
 
     // Build XML Spreadsheet (compatible with Excel without external libs)
     const headers = [
-      'Company Name',
+      'Organisation Name',
       'Sector',
-      'County',
+      'Area',
       'Region',
       'Contact Name',
       'Email',
@@ -6519,7 +6521,7 @@ const orgsModule = {
       const html =
         history.length === 0
           ? '<p class="text-muted text-center">No import history yet</p>'
-          : `<div class="table-responsive"><table class="table table-sm"><thead><tr><th>Date</th><th>File</th><th>County</th><th>Records</th></tr></thead><tbody>
+          : `<div class="table-responsive"><table class="table table-sm"><thead><tr><th>Date</th><th>File</th><th>Area</th><th>Records</th></tr></thead><tbody>
           ${history
             .map(
               (h) => `<tr>
@@ -7635,7 +7637,7 @@ const orgsModule = {
       <div class="table-responsive">
         <table class="table table-sm table-hover">
           <thead><tr>
-            <th>Company</th><th>Due Date</th><th>Note</th><th>Status</th><th>Action</th>
+            <th>Organisation</th><th>Due Date</th><th>Note</th><th>Status</th><th>Action</th>
           </tr></thead>
           <tbody>
             ${all

@@ -2256,7 +2256,7 @@ const crmModule = {
                     <table class="table table-hover">
                       <thead>
                         <tr>
-                          <th>Company</th>
+                          <th>Organisation</th>
                           <th>Industry</th>
                           <th>Email</th>
                           <th>Phone</th>
@@ -2640,7 +2640,7 @@ const crmModule = {
       </div>
       ${
         matching.length > 0
-          ? `<div class="table-responsive mt-2"><table class="table table-sm table-hover"><thead><tr><th>Company</th><th>Status</th><th>Sector</th><th>Region</th></tr></thead><tbody>
+          ? `<div class="table-responsive mt-2"><table class="table table-sm table-hover"><thead><tr><th>Organisation</th><th>Status</th><th>Sector</th><th>Region</th></tr></thead><tbody>
         ${matching
           .slice(0, 50)
           .map(

@@ -6759,7 +6759,7 @@ const mediaGalleryModule = {
           <h6 class="text-danger mb-3"><i class="bi bi-exclamation-triangle me-2"></i>Broken YouTube Links</h6>
           <div class="table-responsive">
             <table class="table table-sm table-hover">
-              <thead><tr><th>Title</th><th>YouTube ID</th><th>Company</th><th>Status</th><th>Action</th></tr></thead>
+              <thead><tr><th>Title</th><th>YouTube ID</th><th>Organisation</th><th>Status</th><th>Action</th></tr></thead>
               <tbody>
                 ${broken
                   .map(

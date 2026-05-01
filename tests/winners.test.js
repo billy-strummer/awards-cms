@@ -408,7 +408,7 @@ describe('Winners Module - renderWinners()', () => {
     STATE.filteredWinners = [];
     winnersModule.renderWinners();
     const tbody = document.getElementById('winnersTableBody');
-    expect(tbody.innerHTML).toContain('No winners found');
+    expect(tbody.innerHTML).toMatch(/No winners/);
   });
 
   test('escapes HTML in winner names', () => {

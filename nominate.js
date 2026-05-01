@@ -701,7 +701,7 @@
         '<div class="review-group">' +
         '<div class="review-group-title">Nomination <span class="review-edit-btn float-end" data-action="nominateApp.goToStep" data-args="[1]">Edit</span></div>' +
         row('Award Category', d.awardCategory) +
-        row('County / City', d.county_city) +
+        row('Area', d.county_city) +
         '</div>' +
         nomineeSection +
         '<div class="review-group">' +

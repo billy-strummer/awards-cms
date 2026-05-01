@@ -681,7 +681,21 @@ const awardsModule = {
     count.textContent = displayCount;
 
     if (STATE.filteredAwards.length === 0) {
-      utils.showEmptyState('awardsTableBody', 10, 'No awards found matching your filters');
+      const hasFilters = !!(
+        document.getElementById('awardsYearFilterSelect')?.value ||
+        document.getElementById('awardsStatusFilterSelect')?.value ||
+        document.getElementById('awardsSectorFilterSelect')?.value ||
+        document.getElementById('awardsCountryFilter')?.value ||
+        document.getElementById('awardsAreaFilter')?.value ||
+        document.getElementById('awardsSearchBox')?.value
+      );
+      utils.showEmptyState(
+        'awardsTableBody',
+        10,
+        hasFilters
+          ? 'No awards match your current filters — try resetting them using the Reset button above'
+          : 'No awards yet — click "Add Award" to create your first award'
+      );
       // Clear pagination
       const pagEl = document.getElementById('awardsPagination');
       if (pagEl) pagEl.innerHTML = '';
@@ -989,7 +1003,7 @@ const awardsModule = {
               <table class="table table-sm table-hover">
                 <thead>
                   <tr>
-                    <th>Company</th>
+                    <th>Organisation</th>
                     <th>Status</th>
                     <th>Score</th>
                     <th>Actions</th>
@@ -1043,7 +1057,7 @@ const awardsModule = {
                 <thead>
                   <tr>
                     <th>Entry #</th>
-                    <th>Company</th>
+                    <th>Organisation</th>
                     <th>Entry Title</th>
                     <th>Votes</th>
                     <th>Voting Link</th>
@@ -1647,7 +1661,7 @@ const awardsModule = {
       const headers = [
         'Award Name',
         'Category',
-        'County/City',
+        'Area',
         'Region',
         'Sector',
         'Year',

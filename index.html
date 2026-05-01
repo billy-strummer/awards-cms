@@ -1524,16 +1524,22 @@
           <option value="">All Sectors</option>
         </select>
       </div>
-      <div class="col-md-2">
+      <div class="col-md-1">
         <label for="awardsCountryFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-globe me-1"></i>Country</label>
         <select class="form-select form-select-sm" id="awardsCountryFilter" data-on-change="awardsModule.onCountryFilterChange">
-          <option value="">All Countries</option>
+          <option value="">All</option>
         </select>
       </div>
       <div class="col-md-2">
-        <label for="awardsAreaFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-pin-map me-1"></i>Area</label>
+        <label for="awardsRegionFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-map me-1"></i>Region</label>
+        <select class="form-select form-select-sm" id="awardsRegionFilter" data-on-change="awardsModule.onRegionFilterChange">
+          <option value="">All Regions</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label for="awardsAreaFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-pin-map me-1"></i>County/City/Borough</label>
         <select class="form-select form-select-sm" id="awardsAreaFilter" data-on-change="awardsModule.filterAwards">
-          <option value="">All Areas</option>
+          <option value="">All</option>
         </select>
       </div>
       <div class="col">
@@ -1808,24 +1814,35 @@
           </div>
 
           <!-- Country Filter -->
-          <div class="col-md-2">
+          <div class="col-md-1">
             <label for="orgsCountryFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;">
               <i class="bi bi-globe me-1"></i>Country
             </label>
             <select class="form-select form-select-sm" id="orgsCountryFilter"
                     data-on-change="orgsModule.onCountryFilterChange">
-              <option value="">All Countries</option>
+              <option value="">All</option>
             </select>
           </div>
 
-          <!-- Area Filter (cascades from Country) -->
+          <!-- Region Filter (cascades from Country) -->
+          <div class="col-md-2">
+            <label for="orgsRegionFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;">
+              <i class="bi bi-map me-1"></i>Region
+            </label>
+            <select class="form-select form-select-sm" id="orgsRegionFilter"
+                    data-on-change="orgsModule.onRegionFilterChange">
+              <option value="">All Regions</option>
+            </select>
+          </div>
+
+          <!-- County/City/Borough Filter (cascades from Region) -->
           <div class="col-md-2">
             <label for="orgsAreaFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;">
-              <i class="bi bi-pin-map me-1"></i>Area
+              <i class="bi bi-pin-map me-1"></i>County/City/Borough
             </label>
             <select class="form-select form-select-sm" id="orgsAreaFilter"
                     data-on-change="orgsModule.filterOrganisations">
-              <option value="">All Areas</option>
+              <option value="">All</option>
             </select>
           </div>
 

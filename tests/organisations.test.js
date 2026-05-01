@@ -36,8 +36,9 @@ const dom = new JSDOM(
   <!-- Filter elements -->
   <select id="orgsYearFilter"><option value="">All</option><option value="2026">2026</option><option value="2025">2025</option></select>
   <select id="orgsSectorFilter"><option value="">All</option><option value="BUILDING & CONSTRUCTION">BUILDING & CONSTRUCTION</option><option value="PLUMBING">PLUMBING</option><option value="ELECTRICAL">ELECTRICAL</option></select>
-  <select id="orgsAreaFilter"><option value="">All Areas</option><option value="area-kent">Kent</option><option value="area-essex">Essex</option><option value="area-surrey">Surrey</option></select>
-  <select id="orgsCountryFilter"><option value="">All Countries</option><option value="England">England</option><option value="Scotland">Scotland</option><option value="Wales">Wales</option></select>
+  <select id="orgsAreaFilter"><option value="">All</option><option value="area-kent">Kent</option><option value="area-essex">Essex</option><option value="area-surrey">Surrey</option></select>
+  <select id="orgsCountryFilter"><option value="">All</option><option value="England">England</option><option value="Scotland">Scotland</option><option value="Wales">Wales</option></select>
+  <select id="orgsRegionFilter"><option value="">All Regions</option></select>
   <select id="orgsStatusFilter"><option value="">All</option><option value="all">Show All</option><option value="prospect">Prospect</option><option value="entrant">Entrant</option><option value="winner">Winner</option><option value="archived">Archived</option><option value="sponsor">Sponsor</option></select>
   <input id="orgsSearchBox" value="" />
   <select id="orgsTierFilter"><option value="">All</option><option value="Gold">Gold</option><option value="Silver">Silver</option><option value="Platinum">Platinum</option></select>
@@ -144,6 +145,7 @@ global.locationModule = {
   }),
   sizeBadgeHtml: jest.fn(() => ''),
   populateCountryDropdown: jest.fn(),
+  populateRegionDropdown: jest.fn(),
   populateAreaDropdown: jest.fn(),
 };
 global.window.locationModule = global.locationModule;
@@ -2953,6 +2955,7 @@ describe('Organisations Module - _levenshtein()', () => {
 // ---------------------------------------------------------------------------
 describe('Organisations Module - onCountryFilterChange()', () => {
   beforeEach(() => {
+    locationModule.populateRegionDropdown.mockClear();
     locationModule.populateAreaDropdown.mockClear();
   });
 
@@ -2960,13 +2963,14 @@ describe('Organisations Module - onCountryFilterChange()', () => {
     const el = document.getElementById('orgsCountryFilter');
     el.value = 'England';
     orgsModule.onCountryFilterChange();
-    expect(locationModule.populateAreaDropdown).toHaveBeenCalledWith('orgsAreaFilter', 'England', 'All Areas');
+    expect(locationModule.populateRegionDropdown).toHaveBeenCalledWith('orgsRegionFilter', 'England', 'All Regions');
+    expect(locationModule.populateAreaDropdown).toHaveBeenCalledWith('orgsAreaFilter', 'England', 'All');
   });
 
   test('calls populateAreaDropdown with empty string when no country selected', () => {
     document.getElementById('orgsCountryFilter').value = '';
     orgsModule.onCountryFilterChange();
-    expect(locationModule.populateAreaDropdown).toHaveBeenCalledWith('orgsAreaFilter', '', 'All Areas');
+    expect(locationModule.populateAreaDropdown).toHaveBeenCalledWith('orgsAreaFilter', '', 'All');
   });
 
   test('does not throw when element missing', () => {
@@ -5347,6 +5351,7 @@ describe('Organisations Module - getPackageBadge()', () => {
 // ---------------------------------------------------------------------------
 describe('Organisations Module - onCountryFilterChange() (second suite)', () => {
   beforeEach(() => {
+    locationModule.populateRegionDropdown.mockClear();
     locationModule.populateAreaDropdown.mockClear();
   });
 
@@ -5354,19 +5359,19 @@ describe('Organisations Module - onCountryFilterChange() (second suite)', () => 
     const el = document.getElementById('orgsCountryFilter');
     el.value = 'England';
     orgsModule.onCountryFilterChange();
-    expect(locationModule.populateAreaDropdown).toHaveBeenCalledWith('orgsAreaFilter', 'England', 'All Areas');
+    expect(locationModule.populateAreaDropdown).toHaveBeenCalledWith('orgsAreaFilter', 'England', 'All');
   });
 
   test('calls populateAreaDropdown with Scotland', () => {
     document.getElementById('orgsCountryFilter').value = 'Scotland';
     orgsModule.onCountryFilterChange();
-    expect(locationModule.populateAreaDropdown).toHaveBeenCalledWith('orgsAreaFilter', 'Scotland', 'All Areas');
+    expect(locationModule.populateAreaDropdown).toHaveBeenCalledWith('orgsAreaFilter', 'Scotland', 'All');
   });
 
   test('calls populateAreaDropdown with empty string when cleared', () => {
     document.getElementById('orgsCountryFilter').value = '';
     orgsModule.onCountryFilterChange();
-    expect(locationModule.populateAreaDropdown).toHaveBeenCalledWith('orgsAreaFilter', '', 'All Areas');
+    expect(locationModule.populateAreaDropdown).toHaveBeenCalledWith('orgsAreaFilter', '', 'All');
   });
 });
 

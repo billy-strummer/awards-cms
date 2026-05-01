@@ -29,8 +29,9 @@ const dom = new JSDOM(
   <select id="awardsYearFilterSelect"><option value="">All Years</option><option value="2026">2026</option><option value="2025">2025</option></select>
   <select id="awardsStatusFilterSelect"><option value="">All</option><option value="published">Published</option><option value="draft">Draft</option><option value="active">Active</option><option value="pending">Pending</option><option value="archived">Archived</option></select>
   <select id="awardsSectorFilterSelect"><option value="">All Sectors</option><option value="MECHANICAL, ELECTRICAL &amp; PLUMBING">MEP</option><option value="BUILDING &amp; CONSTRUCTION">Building</option><option value="CARPENTRY &amp; JOINERY">Carpentry</option><option value="OUTDOOR &amp; LANDSCAPING">Landscaping</option></select>
-  <select id="awardsCountryFilter"><option value="">All Countries</option><option value="England">England</option><option value="Scotland">Scotland</option><option value="Wales">Wales</option></select>
-  <select id="awardsAreaFilter"><option value="">All Areas</option><option value="area-kent">Kent</option><option value="area-essex">Essex</option><option value="area-surrey">Surrey</option></select>
+  <select id="awardsCountryFilter"><option value="">All</option><option value="England">England</option><option value="Scotland">Scotland</option><option value="Wales">Wales</option></select>
+  <select id="awardsRegionFilter"><option value="">All Regions</option></select>
+  <select id="awardsAreaFilter"><option value="">All</option><option value="area-kent">Kent</option><option value="area-essex">Essex</option><option value="area-surrey">Surrey</option></select>
   <input id="awardsSearchBox" value="" />
   <input type="checkbox" id="selectAllAwards" />
   <select id="awardsSavedViewsList"><option value="">No saved views</option></select>
@@ -83,6 +84,7 @@ global.locationModule = {
   }),
   sizeBadgeHtml: jest.fn(() => ''),
   populateCountryDropdown: jest.fn(),
+  populateRegionDropdown: jest.fn(),
   populateAreaDropdown: jest.fn(),
 };
 
@@ -746,7 +748,8 @@ describe('Awards Module - onCountryFilterChange()', () => {
     awardsModule.filterAwards = jest.fn();
     document.getElementById('awardsCountryFilter').value = 'England';
     awardsModule.onCountryFilterChange();
-    expect(locationModule.populateAreaDropdown).toHaveBeenCalledWith('awardsAreaFilter', 'England', 'All Areas');
+    expect(locationModule.populateRegionDropdown).toHaveBeenCalledWith('awardsRegionFilter', 'England', 'All Regions');
+    expect(locationModule.populateAreaDropdown).toHaveBeenCalledWith('awardsAreaFilter', 'England', 'All');
     expect(awardsModule.filterAwards).toHaveBeenCalled();
     awardsModule.filterAwards = origFilter;
   });
@@ -2484,7 +2487,7 @@ describe('Awards Module - populateFilters()', () => {
     STATE.allAwards = [...sampleAwards];
     awardsModule.populateFilters();
     const countrySelect = document.getElementById('awardsCountryFilter');
-    expect(countrySelect.innerHTML).toContain('All Countries');
+    expect(countrySelect.innerHTML).toContain('England');
   });
 });
 

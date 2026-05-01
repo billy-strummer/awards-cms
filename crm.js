@@ -3532,6 +3532,87 @@ const crmModule = {
     this.renderDealsTable(this._deals);
   },
 
+  showDealsTableView() {
+    this._kanbanView = false;
+    const tableEl = document.getElementById('dealsTableContainer');
+    const kanbanEl = document.getElementById('dealsKanbanBoard');
+    const tableBtn = document.getElementById('dealsTableViewBtn');
+    const kanbanBtn = document.getElementById('dealsKanbanViewBtn');
+    if (tableEl) tableEl.classList.remove('d-none');
+    if (kanbanEl) kanbanEl.classList.add('d-none');
+    if (tableBtn) {
+      tableBtn.classList.add('active');
+      tableBtn.classList.remove('btn-outline-secondary');
+      tableBtn.classList.add('btn-secondary');
+    }
+    if (kanbanBtn) {
+      kanbanBtn.classList.remove('active');
+      kanbanBtn.classList.add('btn-outline-secondary');
+      kanbanBtn.classList.remove('btn-secondary');
+    }
+  },
+
+  showDealsKanbanView() {
+    this._kanbanView = true;
+    const tableEl = document.getElementById('dealsTableContainer');
+    const kanbanEl = document.getElementById('dealsKanbanBoard');
+    const tableBtn = document.getElementById('dealsTableViewBtn');
+    const kanbanBtn = document.getElementById('dealsKanbanViewBtn');
+    if (tableEl) tableEl.classList.add('d-none');
+    if (kanbanEl) kanbanEl.classList.remove('d-none');
+    if (tableBtn) {
+      tableBtn.classList.remove('active');
+      tableBtn.classList.remove('btn-secondary');
+      tableBtn.classList.add('btn-outline-secondary');
+    }
+    if (kanbanBtn) {
+      kanbanBtn.classList.add('active');
+      kanbanBtn.classList.remove('btn-outline-secondary');
+      kanbanBtn.classList.add('btn-secondary');
+    }
+    this.renderDealKanban();
+  },
+
+  renderDealKanban() {
+    const container = document.getElementById('dealsKanbanBoard');
+    if (!container) return;
+    const deals = this._deals || [];
+    const stages = [
+      { key: 'lead', label: 'Lead', color: 'secondary' },
+      { key: 'contacted', label: 'Contacted', color: 'info' },
+      { key: 'qualified', label: 'Qualified', color: 'primary' },
+      { key: 'proposal', label: 'Proposal', color: 'warning' },
+      { key: 'negotiation', label: 'Negotiation', color: 'orange' },
+      { key: 'closed_won', label: 'Closed Won', color: 'success' },
+      { key: 'closed_lost', label: 'Closed Lost', color: 'danger' },
+    ];
+    let html = '<div class="d-flex gap-2 overflow-auto pb-3" style="min-height:400px;">';
+    stages.forEach((stage) => {
+      const stageDeals = deals.filter((d) => (d.stage || 'lead') === stage.key);
+      const totalValue = stageDeals.reduce((sum, d) => sum + (parseFloat(d.deal_value) || 0), 0);
+      html += `<div class="flex-shrink-0" style="width:200px;">
+        <div class="card-header bg-${stage.color === 'orange' ? 'warning' : stage.color} ${['warning'].includes(stage.color) ? 'text-dark' : 'text-white'} rounded-top py-2 px-2 small fw-semibold">
+          ${stage.label} <span class="badge bg-white text-dark ms-1">${stageDeals.length}</span>
+        </div>
+        <div class="border border-top-0 rounded-bottom p-2" style="min-height:200px;background:#f8f9fa;">
+          <div class="text-muted small mb-2">£${totalValue.toLocaleString()}</div>
+          ${stageDeals
+            .map(
+              (d) => `<div class="card card-body p-2 mb-2 shadow-sm" style="font-size:0.8rem;">
+            <div class="fw-semibold">${utils.escapeHtml(d.deal_name || 'Untitled')}</div>
+            <div class="text-muted">${utils.escapeHtml(d.company_name || '')}</div>
+            <div class="text-success fw-bold mt-1">£${(parseFloat(d.deal_value) || 0).toLocaleString()}</div>
+          </div>`
+            )
+            .join('')}
+          ${stageDeals.length === 0 ? '<p class="text-muted small text-center py-2">No deals</p>' : ''}
+        </div>
+      </div>`;
+    });
+    html += '</div>';
+    container.innerHTML = html;
+  },
+
   renderKanbanBoard() {
     const deals = this._deals || [];
     const stages = ['prospecting', 'proposal', 'negotiation', 'won', 'lost'];

@@ -544,6 +544,26 @@ const awardsModule = {
    * Filter awards based on current filter values
    * @returns {void}
    */
+  _updateFilterCountBadge() {
+    const badge = document.getElementById('awardsFilterCount');
+    if (!badge) return;
+    const count = [
+      document.getElementById('awardsYearFilterSelect')?.value,
+      document.getElementById('awardsStatusFilterSelect')?.value,
+      document.getElementById('awardsSectorFilterSelect')?.value,
+      document.getElementById('awardsCountryFilter')?.value,
+      document.getElementById('awardsRegionFilter')?.value,
+      document.getElementById('awardsAreaFilter')?.value,
+      document.getElementById('awardsSearchBox')?.value,
+    ].filter(Boolean).length;
+    if (count > 0) {
+      badge.textContent = count;
+      badge.classList.remove('d-none');
+    } else {
+      badge.classList.add('d-none');
+    }
+  },
+
   filterAwards() {
     const year = document.getElementById('awardsYearFilterSelect')?.value || '';
     const status = document.getElementById('awardsStatusFilterSelect')?.value || '';
@@ -552,6 +572,7 @@ const awardsModule = {
     const regionId = document.getElementById('awardsRegionFilter')?.value || '';
     const areaId = document.getElementById('awardsAreaFilter')?.value || '';
     const search = (document.getElementById('awardsSearchBox')?.value || '').toLowerCase().trim();
+    this._updateFilterCountBadge();
 
     try {
       localStorage.setItem(

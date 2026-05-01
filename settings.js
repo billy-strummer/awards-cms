@@ -612,6 +612,30 @@ const settingsModule = {
     utils.showToast('Audit log cleared', 'success');
   },
 
+  async clearAuditLogConfirmed() {
+    const input = document.getElementById('clearAuditLogConfirmInput');
+    if (!input || input.value.trim().toUpperCase() !== 'CLEAR') {
+      utils.showToast('Please type CLEAR to confirm', 'warning');
+      return;
+    }
+    const modalEl = document.getElementById('clearAuditLogModal');
+    if (modalEl) {
+      const modal = bootstrap.Modal.getInstance(modalEl);
+      if (modal) modal.hide();
+    }
+    input.value = '';
+    try {
+      await apiClient.deleteByFilters('cms_audit_logs', {
+        id: { op: 'neq', value: '00000000-0000-0000-0000-000000000000' },
+      });
+    } catch (e) {
+      // ignore
+    }
+    localStorage.removeItem('audit_logs');
+    await this.renderAuditLog();
+    utils.showToast('Audit log cleared', 'success');
+  },
+
   // ========== AWARD SEASONS ==========
 
   allSeasons: [],

@@ -292,8 +292,27 @@ const mediaGalleryModule = {
   /**
    * Show Events List View
    */
+  _updateBreadcrumb(crumbs) {
+    const nav = document.getElementById('mediaGalleryBreadcrumb');
+    const list = document.getElementById('mediaGalleryBreadcrumbList');
+    if (!nav || !list) return;
+    if (!crumbs || crumbs.length <= 1) {
+      nav.classList.add('d-none');
+      return;
+    }
+    nav.classList.remove('d-none');
+    list.innerHTML = crumbs
+      .map((c, i) => {
+        const isLast = i === crumbs.length - 1;
+        if (isLast) return `<li class="breadcrumb-item active" aria-current="page">${c.label}</li>`;
+        return `<li class="breadcrumb-item"><a href="#" class="text-decoration-none" data-action="mediaGalleryModule.${c.action}">${c.label}</a></li>`;
+      })
+      .join('');
+  },
+
   async showEventsListView() {
     this.currentView = 'events-list';
+    this._updateBreadcrumb([{ label: 'Events List' }]);
     this.hideAllViews();
     document.getElementById('eventsListView').style.display = 'block';
 
@@ -406,6 +425,10 @@ const mediaGalleryModule = {
 
     this.currentEventId = eventId || this.currentEventId;
     this.currentView = 'event-contents';
+    this._updateBreadcrumb([
+      { label: 'Events List', action: 'showEventsListView' },
+      { label: this.currentEvent?.event_name || 'Event' },
+    ]);
     this.hideAllViews();
     document.getElementById('eventContentsView').style.display = 'block';
 
@@ -447,6 +470,11 @@ const mediaGalleryModule = {
     if (!this.currentEventId) return;
 
     this.currentView = 'photos-production';
+    this._updateBreadcrumb([
+      { label: 'Events List', action: 'showEventsListView' },
+      { label: this.currentEvent?.event_name || 'Event', action: 'showEventContentsView' },
+      { label: 'Photos' },
+    ]);
     this.hideAllViews();
     document.getElementById('photosProductionView').style.display = 'block';
 
@@ -800,6 +828,11 @@ const mediaGalleryModule = {
     if (!this.currentEventId) return;
 
     this.currentView = 'videos-production';
+    this._updateBreadcrumb([
+      { label: 'Events List', action: 'showEventsListView' },
+      { label: this.currentEvent?.event_name || 'Event', action: 'showEventContentsView' },
+      { label: 'Videos' },
+    ]);
     this.hideAllViews();
     document.getElementById('videosProductionView').style.display = 'block';
 

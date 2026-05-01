@@ -761,6 +761,10 @@
                 <i class="bi bi-images text-warning"></i>
                 <span>Upload Media</span>
               </div>
+              <div class="quick-action-item" data-action="dashboardModule.quickGoToPayments">
+                <i class="bi bi-receipt text-success"></i>
+                <span>Record Payment</span>
+              </div>
             </div>
           </div>
 
@@ -803,13 +807,9 @@
                       <h6 class="text-muted mb-1 small">Winners Declared</h6>
                       <h3 class="mb-0 fw-bold text-warning" id="statsWithWinners">0</h3>
                     </div>
-                    <div class="col-md-2" title="Areas">
-                      <h6 class="text-muted mb-1 small">Areas</h6>
-                      <h3 class="mb-0 fw-bold text-secondary" id="statsCounties">0</h3>
-                    </div>
-                    <div class="col-md-2" title="Sectors">
-                      <h6 class="text-muted mb-1 small">Sectors</h6>
-                      <h3 class="mb-0 fw-bold text-dark" id="statsSectors">0</h3>
+                    <div class="col-md-2" title="Entries Received">
+                      <h6 class="text-muted mb-1 small">Entries Received</h6>
+                      <h3 class="mb-0 fw-bold text-secondary" id="awardsEntriesCount">0</h3>
                     </div>
                   </div>
                 </div>
@@ -821,7 +821,10 @@
 <div class="filters-section" style="position: sticky; top: 104px; z-index: 999; background-color: var(--bs-body-bg, white); padding: 0.75rem 0 0; margin-bottom: 0.75rem; border-bottom: 1px solid #dee2e6;">
   <div class="rounded-2 p-3 mb-2" style="background:#f8f9fa;">
     <div class="d-flex align-items-center justify-content-between mb-2">
-      <span class="fw-semibold text-muted" style="font-size:0.8rem;letter-spacing:.04em;text-transform:uppercase;"><i class="bi bi-funnel me-1"></i>Filter Awards</span>
+      <button class="btn btn-link p-0 text-decoration-none fw-semibold text-muted" style="font-size:0.8rem;letter-spacing:.04em;text-transform:uppercase;" data-bs-toggle="collapse" data-bs-target="#awardsFiltersCollapse" aria-expanded="true" aria-controls="awardsFiltersCollapse">
+        <i class="bi bi-funnel me-1"></i>Filter Awards <span id="awardsFilterCount" class="badge bg-primary ms-1 d-none"></span>
+        <i class="bi bi-chevron-down ms-1 small"></i>
+      </button>
       <div class="d-flex align-items-center gap-2">
         <div class="input-group input-group-sm" style="width:220px;">
           <select class="form-select form-select-sm" id="awardsSavedViewsList" data-on-change="awardsModule.loadSavedAwardsView">
@@ -836,6 +839,7 @@
         </button>
       </div>
     </div>
+    <div class="collapse show" id="awardsFiltersCollapse">
     <div class="row g-2 align-items-end">
       <div class="col-md-1">
         <label for="awardsYearFilterSelect" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-calendar3 me-1"></i>Year</label>
@@ -882,6 +886,7 @@
         <label for="awardsSearchBox" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-search me-1"></i>Search</label>
         <input type="text" class="form-control form-control-sm" id="awardsSearchBox" placeholder="Search awards…">
       </div>
+    </div>
     </div>
   </div>
 </div>
@@ -1564,7 +1569,7 @@
               <div class="alert alert-info">
                 <i class="bi bi-info-circle me-2"></i>
                 <strong>CSV Format:</strong> Your file should have headers in the first row.
-                Supported columns: Company Name, Sector, Contact Name, Email, Phone, Website, Address, Catchment Area
+                Supported columns: Company Name, Sector, Contact Name, Email, Phone, Website, Address
               </div>
               <div class="d-flex gap-2 mb-3">
                 <button class="btn btn-sm btn-outline-secondary" id="importMergeModeBtn" data-action="orgsModule.toggleImportMergeMode">
@@ -1992,7 +1997,7 @@
                 </select>
               </div>
               <div class="col-md-2">
-                <label class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-person me-1"></i>Entry Type</label>
+                <label class="form-label fw-semibold mb-1" style="font-size:0.8rem;" title="Self-Nominated: the company applied directly. Standard: nominated by a sponsor or organiser."><i class="bi bi-person me-1"></i>Entry Type</label>
                 <select class="form-select form-select-sm" id="entriesSelfNomFilter" data-on-change="entriesModule.filterEntries">
                   <option value="">All Entries</option>
                   <option value="self_nom">Self-Nominated</option>
@@ -2049,7 +2054,7 @@
                     <th scope="col" class="u-pointer" data-action="entriesModule.sortEntries" data-args="[&quot;award&quot;]">Award <i data-sort-icon-entries="award" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
                     <th scope="col">Entry Title</th>
                     <th scope="col" class="u-pointer" data-action="entriesModule.sortEntries" data-args="[&quot;status&quot;]">Status <i data-sort-icon-entries="status" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
-                    <th scope="col" class="u-pointer" data-action="entriesModule.sortEntries" data-args="[&quot;score&quot;]">Score <i data-sort-icon-entries="score" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th scope="col" class="u-pointer" data-action="entriesModule.sortEntries" data-args="[&quot;score&quot;]" title="Average judging score submitted by assigned judges">Score <i data-sort-icon-entries="score" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
                     <th scope="col">Payment</th>
                     <th scope="col" class="u-pointer" data-action="entriesModule.sortEntries" data-args="[&quot;submission_date&quot;]">Submitted <i data-sort-icon-entries="submission_date" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
                     <th scope="col" style="width: 150px;">Actions</th>
@@ -2086,12 +2091,10 @@
               <p class="section-subtitle">Manage event photos and videos</p>
             </div>
             <div class="d-flex gap-2 align-items-center flex-wrap">
-              <button class="btn btn-sm btn-outline-warning" data-action="mediaGalleryModule.showFeaturedPhotosView" title="Featured Photos">
+              <button class="btn btn-sm btn-outline-warning" data-action="mediaGalleryModule.showFeaturedPhotosView" title="Mark photos as featured to highlight them on the public winner pages">
                 <i class="bi bi-star-fill me-1"></i>Featured
               </button>
-              <button class="btn btn-sm btn-outline-secondary" data-action="mediaGalleryModule.showKeyboardShortcutsHelp" title="Keyboard Shortcuts">
-                <i class="bi bi-keyboard me-1"></i>Shortcuts
-              </button>
+              <button class="btn btn-sm btn-outline-secondary" data-action="mediaGalleryModule.showKeyboardShortcutsHelp" title="Keyboard shortcuts"><i class="bi bi-keyboard"></i></button>
               <div class="input-group input-group-sm" style="width:280px;">
                 <span class="input-group-text"><i class="bi bi-building"></i></span>
                 <select class="form-select form-select-sm" id="mediaOrgFilter" data-on-change="mediaGalleryModule.viewOrgMedia">
@@ -2103,6 +2106,11 @@
 
           <!-- Media Gallery Content -->
           <div id="mediaGalleryContent">
+
+            <!-- Breadcrumb Navigation -->
+            <nav aria-label="breadcrumb" id="mediaGalleryBreadcrumb" class="d-none mb-3">
+              <ol class="breadcrumb mb-0 small" id="mediaGalleryBreadcrumbList"></ol>
+            </nav>
 
             <!-- Events List View (default) -->
             <div id="eventsListView" style="display: block;">
@@ -2700,9 +2708,16 @@
 
           <!-- Financial Overview Panel (collapsible) -->
           <div class="card mb-4" id="eventsFinancialPanel">
-            <div class="card-header d-flex justify-content-between align-items-center py-2 u-pointer" data-bs-toggle="collapse" data-bs-target="#financialPanelBody" aria-expanded="false">
-              <h6 class="mb-0"><i class="bi bi-cash-stack me-2"></i>Financial Overview - All Events</h6>
-              <i class="bi bi-chevron-down"></i>
+            <div class="card-header u-pointer" data-bs-toggle="collapse" data-bs-target="#financialPanelBody" aria-expanded="false">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <h6 class="mb-0"><i class="bi bi-cash-stack me-2"></i>Financial Overview - All Events</h6>
+                <i class="bi bi-chevron-down"></i>
+              </div>
+              <div class="d-flex gap-4 small mt-1">
+                <span class="text-success fw-semibold">Revenue: <span id="financialSummaryRevenue">£0</span></span>
+                <span class="text-danger fw-semibold">Costs: <span id="financialSummaryCosts">£0</span></span>
+                <span class="fw-semibold">Net P&amp;L: <span id="financialSummaryPL">£0</span></span>
+              </div>
             </div>
             <div class="card-body collapse" id="financialPanelBody">
               <div class="row g-3 mb-3">
@@ -2962,10 +2977,14 @@
 
           <!-- Toolbar: Year Filter + Print + Freshness -->
           <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-            <div class="d-flex gap-2 align-items-center">
+            <div class="d-flex gap-2 align-items-center flex-wrap">
               <label class="form-label mb-0 small fw-semibold text-muted">Year:</label>
               <select id="reportsYearFilter" class="form-select form-select-sm" style="width:120px;" data-on-change="reportsAnalytics.filterByYear">
                 <option value="all">All Years</option>
+              </select>
+              <label class="form-label mb-0 small fw-semibold text-muted ms-2">Compare with:</label>
+              <select id="reportsCompareYearFilter" class="form-select form-select-sm" style="width:120px;" data-on-change="reportsAnalytics.filterByYear">
+                <option value="">None</option>
               </select>
               <button class="btn btn-sm btn-outline-primary" data-action="reportsAnalytics.printSummaryReport">
                 <i class="bi bi-printer me-1"></i>Print Report
@@ -3127,7 +3146,7 @@
           </div>
 
           <!-- Scheduled Reports Section -->
-          <div class="content-card">
+          <div class="content-card d-none">
             <div class="d-flex justify-content-between align-items-center mb-3">
               <h5 class="mb-0">
                 <i class="bi bi-calendar2-week me-2"></i>Scheduled Reports
@@ -4578,21 +4597,25 @@
             <li class="nav-item" role="presentation">
               <button class="nav-link active" id="invoices-subtab" data-bs-toggle="pill" data-bs-target="#invoices-content" type="button" role="tab">
                 <i class="bi bi-file-earmark-text me-2"></i>Invoices
+                <span class="d-block small fw-normal opacity-75" style="font-size:0.7rem;">Bills issued to organisations</span>
               </button>
             </li>
             <li class="nav-item" role="presentation">
               <button class="nav-link" id="payments-list-subtab" data-bs-toggle="pill" data-bs-target="#payments-list-content" type="button" role="tab">
                 <i class="bi bi-cash-coin me-2"></i>Payments
+                <span class="d-block small fw-normal opacity-75" style="font-size:0.7rem;">Payments received against invoices</span>
               </button>
             </li>
             <li class="nav-item" role="presentation">
               <button class="nav-link" id="financial-reports-subtab" data-bs-toggle="pill" data-bs-target="#financial-reports-content" type="button" role="tab">
                 <i class="bi bi-graph-up me-2"></i>Financial Reports
+                <span class="d-block small fw-normal opacity-75" style="font-size:0.7rem;">Revenue and outstanding analysis</span>
               </button>
             </li>
             <li class="nav-item" role="presentation">
               <button class="nav-link" id="accounting-subtab" data-bs-toggle="pill" data-bs-target="#accounting-content" type="button" role="tab">
                 <i class="bi bi-currency-pound me-2"></i>Accounting Integration
+                <span class="d-block small fw-normal opacity-75" style="font-size:0.7rem;">Connect your accounting software</span>
               </button>
             </li>
           </ul>
@@ -4945,13 +4968,13 @@
               </button>
             </li>
             <li class="nav-item" role="presentation">
-              <button class="nav-link" id="smart-segments-subtab" data-bs-toggle="pill" data-bs-target="#smart-segments-content" type="button" role="tab">
+              <button class="nav-link" id="smart-segments-subtab" data-bs-toggle="pill" data-bs-target="#smart-segments-content" type="button" role="tab" title="Smart Segments are rule-based auto-segments that update dynamically as organisation data changes">
                 <i class="bi bi-funnel me-2"></i>Smart Segments
               </button>
             </li>
             <li class="nav-item" role="presentation">
-              <button class="nav-link" id="my-tasks-subtab" data-bs-toggle="pill" data-bs-target="#my-tasks-content" type="button" role="tab">
-                <i class="bi bi-person-check me-2"></i>My Tasks
+              <button class="nav-link" id="my-tasks-subtab" data-bs-toggle="pill" data-bs-target="#my-tasks-content" type="button" role="tab" title="Tasks assigned to you personally — shared across the team">
+                <i class="bi bi-check2-square me-2"></i>Tasks
               </button>
             </li>
           </ul>
@@ -5202,8 +5225,19 @@
                 </div>
               </div>
 
+              <!-- Deals View Toggle -->
+              <div class="d-flex justify-content-end mb-2">
+                <div class="btn-group btn-group-sm" role="group" aria-label="View toggle">
+                  <button type="button" class="btn btn-outline-secondary active" id="dealsTableViewBtn" data-action="crmModule.showDealsTableView" title="Table view"><i class="bi bi-table"></i></button>
+                  <button type="button" class="btn btn-outline-secondary" id="dealsKanbanViewBtn" data-action="crmModule.showDealsKanbanView" title="Kanban view"><i class="bi bi-kanban"></i></button>
+                </div>
+              </div>
+
+              <!-- Deals Kanban -->
+              <div id="dealsKanbanBoard" class="d-none mb-4"></div>
+
               <!-- Deals Pipeline -->
-              <div class="table-container">
+              <div id="dealsTableContainer" class="table-container">
                 <div class="table-responsive">
                   <table class="table table-hover table-striped align-middle">
                     <thead class="table-light">
@@ -5665,13 +5699,13 @@
                 <div class="form-check mb-2">
                   <input class="form-check-input" type="checkbox" id="weeklyBackup" aria-label="Enable weekly backup" data-on-change="settingsModule.updateBackupSettings">
                   <label class="form-check-label" for="weeklyBackup">
-                    Weekly backup reminder
+                    Weekly backup reminder <span class="text-muted small ms-1">(email notification)</span>
                   </label>
                 </div>
                 <div class="form-check mb-2">
                   <input class="form-check-input" type="checkbox" id="monthlyBackup" aria-label="Enable monthly backup" data-on-change="settingsModule.updateBackupSettings" checked>
                   <label class="form-check-label" for="monthlyBackup">
-                    Monthly backup reminder
+                    Monthly backup reminder <span class="text-muted small ms-1">(email notification)</span>
                   </label>
                 </div>
 
@@ -5697,7 +5731,7 @@
                     <button class="btn btn-outline-secondary btn-sm" data-action="settingsModule.refreshAuditLog">
                       <i class="bi bi-arrow-clockwise me-1"></i>Refresh
                     </button>
-                    <button class="btn btn-outline-danger btn-sm" data-action="settingsModule.clearAuditLog">
+                    <button class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#clearAuditLogModal">
                       <i class="bi bi-trash me-1"></i>Clear Log
                     </button>
                   </div>
@@ -6666,6 +6700,28 @@
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
           <button type="button" class="btn btn-info text-white" data-action="paymentsModule.confirmSendInvoice">
             <i class="bi bi-send me-1"></i>Send Invoice
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Clear Audit Log Confirm Modal -->
+  <div class="modal fade" id="clearAuditLogModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-exclamation-triangle-fill text-danger me-2"></i>Clear Audit Log</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small mb-3">This will permanently delete all audit log entries. Type <strong>CLEAR</strong> to confirm.</p>
+          <input type="text" class="form-control form-control-sm" id="clearAuditLogConfirmInput" placeholder="Type CLEAR to confirm">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-danger btn-sm" id="clearAuditLogConfirmBtn" data-action="settingsModule.clearAuditLogConfirmed">
+            <i class="bi bi-trash me-1"></i>Clear Log
           </button>
         </div>
       </div>

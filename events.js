@@ -13256,11 +13256,22 @@ const eventsModule = {
     const netEl = document.getElementById('financialNetPL');
     const marginEl = document.getElementById('financialMargin');
 
-    if (revEl) revEl.textContent = `\u00A3${grandRevenue.toLocaleString('en-GB', { minimumFractionDigits: 2 })}`;
-    if (costEl) costEl.textContent = `\u00A3${grandCosts.toLocaleString('en-GB', { minimumFractionDigits: 2 })}`;
+    const fmtGBP = (v) => `\u00A3${Math.abs(v).toLocaleString('en-GB', { minimumFractionDigits: 2 })}`;
+    if (revEl) revEl.textContent = fmtGBP(grandRevenue);
+    if (costEl) costEl.textContent = fmtGBP(grandCosts);
     if (netEl) {
-      netEl.textContent = `${grandNet >= 0 ? '' : '-'}\u00A3${Math.abs(grandNet).toLocaleString('en-GB', { minimumFractionDigits: 2 })}`;
+      netEl.textContent = `${grandNet >= 0 ? '' : '-'}${fmtGBP(grandNet)}`;
       netEl.className = `mb-0 ${grandNet >= 0 ? 'text-success' : 'text-danger'} fw-bold`;
+    }
+    // Update always-visible summary in header
+    const sumRev = document.getElementById('financialSummaryRevenue');
+    const sumCosts = document.getElementById('financialSummaryCosts');
+    const sumPL = document.getElementById('financialSummaryPL');
+    if (sumRev) sumRev.textContent = fmtGBP(grandRevenue);
+    if (sumCosts) sumCosts.textContent = fmtGBP(grandCosts);
+    if (sumPL) {
+      sumPL.textContent = `${grandNet >= 0 ? '' : '-'}${fmtGBP(grandNet)}`;
+      sumPL.className = grandNet >= 0 ? 'text-success' : 'text-danger';
     }
     if (marginEl) {
       if (grandRevenue > 0) {
@@ -13422,21 +13433,31 @@ const eventsModule = {
   // ============================================
   toggleEventsCalendar() {
     const cal = document.getElementById('eventsCalendarView');
-    if (cal.style.display === 'none' || !cal.style.display) {
-      cal.style.display = 'block';
+    if (!cal) return;
+    const isHidden = cal.classList.contains('d-none') || cal.style.display === 'none' || !cal.style.display;
+    if (isHidden) {
+      cal.classList.remove('d-none');
+      cal.style.display = '';
       this.renderCalendar();
     } else {
-      cal.style.display = 'none';
+      cal.classList.add('d-none');
+      cal.style.display = '';
     }
   },
 
   showEventsCalendar() {
-    document.getElementById('eventsCalendarView').style.display = 'block';
+    const cal = document.getElementById('eventsCalendarView');
+    if (!cal) return;
+    cal.classList.remove('d-none');
+    cal.style.display = '';
     this.renderCalendar();
   },
 
   hideEventsCalendar() {
-    document.getElementById('eventsCalendarView').style.display = 'none';
+    const cal = document.getElementById('eventsCalendarView');
+    if (!cal) return;
+    cal.classList.add('d-none');
+    cal.style.display = '';
   },
 
   calendarPrev() {

@@ -315,11 +315,14 @@ const reportsAnalytics = {
       if (y && y.length === 4 && !isNaN(Number(y))) years.add(y);
     });
     const sortedYears = [...years].sort((a, b) => Number(b) - Number(a));
-    select.innerHTML =
-      '<option value="all">All Years</option>' +
-      sortedYears
-        .map((y) => `<option value="${y}"${y === this._selectedYear ? ' selected' : ''}>${y}</option>`)
-        .join('');
+    const yearOptions = sortedYears
+      .map((y) => `<option value="${y}"${y === this._selectedYear ? ' selected' : ''}>${y}</option>`)
+      .join('');
+    select.innerHTML = '<option value="all">All Years</option>' + yearOptions;
+    const compareSelect = document.getElementById('reportsCompareYearFilter');
+    if (compareSelect) {
+      compareSelect.innerHTML = '<option value="">None</option>' + yearOptions;
+    }
   },
 
   /**

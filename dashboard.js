@@ -1906,6 +1906,10 @@ const dashboardModule = {
     utils.showToast('Navigate to Media Gallery to upload files', 'info');
   },
 
+  quickGoToPayments() {
+    document.getElementById('payments-tab')?.click();
+  },
+
   /**
    * Open Sales Dashboard Modal
    */

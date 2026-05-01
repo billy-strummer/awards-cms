@@ -45,7 +45,7 @@ const winnersModule = {
       this._serverPagination = true;
       await this._fetchPage(1);
 
-      console.debug(`Loaded winners (page 1, total: ${this._pagination.count})`);
+      console.debug(`Loaded winners (page 1, total: ${this._pagination.count})`); // eslint-disable-line no-console
 
       // Populate year filter from database
       utils.populateYearFilterFromDB('winnerYearFilterSelect', { selectCurrent: true });
@@ -282,6 +282,26 @@ const winnersModule = {
     });
 
     this.renderWinners();
+    utils.renderFilterChips('winnersActiveFilters', [
+      { label: 'Year', fieldId: 'winnerYearFilterSelect', clearAction: 'winnersModule.clearFilter' },
+      { label: 'Award', fieldId: 'winnerAwardFilterSelect', clearAction: 'winnersModule.clearFilter' },
+      { label: 'Search', fieldId: 'winnerSearchBox', clearAction: 'winnersModule.clearFilter' },
+    ]);
+  },
+
+  clearFilter(fieldId) {
+    const el = document.getElementById(fieldId);
+    if (!el) return;
+    el.value = '';
+    this.filterWinners();
+  },
+
+  resetFilters() {
+    ['winnerYearFilterSelect', 'winnerAwardFilterSelect', 'winnerSearchBox'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    this.filterWinners();
   },
 
   /**
@@ -349,8 +369,11 @@ const winnersModule = {
     if (STATE.filteredWinners.length === 0) {
       utils.showEnhancedEmptyState('winnersTableBody', 7, {
         icon: 'bi-trophy',
-        message: 'No winners found',
-        description: 'Winners will appear here once confirmed',
+        message: STATE.allWinners.length > 0 ? 'No winners match your filters' : 'No winners yet',
+        description:
+          STATE.allWinners.length > 0
+            ? 'Try clearing your filters using the Reset button above'
+            : 'Winners are set via Assignments — shortlist an entry and mark it as the winner there',
         actionLabel: 'View Pipeline',
         actionAction: 'winnerPipelineModule.renderPipelineDashboard',
         isFiltered: STATE.filteredWinners.length === 0 && STATE.allWinners.length > 0,

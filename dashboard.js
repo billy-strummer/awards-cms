@@ -1071,7 +1071,7 @@ const dashboardModule = {
       Year: award.year || '',
       'Award Category': award.award_category || '',
       Sector: award.sector || '',
-      'County/City': award.county || '',
+      Area: award.county || '',
       Status: award.status || '',
       'Created At': utils.formatDate(award.created_at),
     }));
@@ -1904,6 +1904,10 @@ const dashboardModule = {
   quickAddMedia() {
     this.navigateToSection('media-gallery');
     utils.showToast('Navigate to Media Gallery to upload files', 'info');
+  },
+
+  quickGoToPayments() {
+    document.getElementById('payments-tab')?.click();
   },
 
   /**

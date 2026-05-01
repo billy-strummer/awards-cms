@@ -291,11 +291,19 @@ const entriesModule = {
     countSpan.textContent = String(displayCount);
 
     if (this.filteredEntries.length === 0) {
+      const hasFilters = !!(
+        this.currentFilters.status ||
+        this.currentFilters.award ||
+        this.currentFilters.year ||
+        this.currentFilters.selfNom ||
+        this.currentFilters.search
+      );
       tbody.innerHTML = `
         <tr>
           <td colspan="10" class="text-center py-5">
             <i class="bi bi-inbox display-4 d-block mb-2 opacity-25"></i>
-            <p class="text-muted">No entries found</p>
+            <p class="text-muted fw-semibold mb-1">${hasFilters ? 'No entries match your current filters' : 'No entries yet'}</p>
+            <p class="text-muted small">${hasFilters ? 'Try clearing your filters using the Reset button above' : 'Entries appear here once companies submit them via the public entry form'}</p>
           </td>
         </tr>
       `;
@@ -323,7 +331,7 @@ const entriesModule = {
         const _statusBadge = this.getStatusBadge(entry.status);
         const paymentBadge = this.getPaymentBadge(entry.payment_status);
         const selfNomBadge = entry.is_self_nomination
-          ? '<span class="badge bg-info ms-2" title="Self-Nominated Entry"><i class="bi bi-person-raised-hand me-1"></i>Self-Nom</span>'
+          ? '<span class="badge bg-info ms-2" title="Self-Nominated Entry"><i class="bi bi-person-raised-hand me-1"></i>Self-Nominated</span>'
           : '';
         const scoreDisplay = entry.average_score
           ? `${entry.average_score.toFixed(1)} <small>(${entry.total_scores || 0})</small>`
@@ -365,17 +373,17 @@ const entriesModule = {
           <td>${submittedDate}</td>
           <td>
             <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-primary" data-action="entriesModule.viewEntry" data-id="${entry.id}" title="View">
-                <i class="bi bi-eye"></i>
+              <button class="btn btn-outline-primary" data-action="entriesModule.viewEntry" data-id="${entry.id}" title="View entry details">
+                <i class="bi bi-eye me-1"></i>View
               </button>
-              <button class="btn btn-outline-secondary" data-action="entriesModule.editEntry" data-id="${entry.id}" title="Edit">
-                <i class="bi bi-pencil"></i>
+              <button class="btn btn-outline-secondary" data-action="entriesModule.editEntry" data-id="${entry.id}" title="Edit this entry">
+                <i class="bi bi-pencil me-1"></i>Edit
               </button>
-              <button class="btn btn-outline-info" data-action="entriesModule.showVotingLink" data-id="${entry.id}" title="Get Voting Link">
-                <i class="bi bi-link-45deg"></i>
+              <button class="btn btn-outline-info" data-action="entriesModule.showVotingLink" data-id="${entry.id}" title="Get public voting link for this entry">
+                <i class="bi bi-link-45deg me-1"></i>Vote Link
               </button>
-              <button class="btn btn-outline-danger" data-action="entriesModule.deleteEntry" data-id="${entry.id}" title="Delete">
-                <i class="bi bi-trash"></i>
+              <button class="btn btn-outline-danger" data-action="entriesModule.deleteEntry" data-id="${entry.id}" title="Permanently delete this entry">
+                <i class="bi bi-trash me-1"></i>Delete
               </button>
             </div>
           </td>
@@ -501,7 +509,26 @@ const entriesModule = {
     this.currentFilters.year = document.getElementById('entriesYearFilter').value;
     this.currentFilters.selfNom = document.getElementById('entriesSelfNomFilter').value;
 
+    this._updateFilterCountBadge();
     this.applyFilters();
+  },
+
+  _updateFilterCountBadge() {
+    const badge = document.getElementById('entriesFilterCount');
+    if (!badge) return;
+    const count = [
+      this.currentFilters.status,
+      this.currentFilters.award,
+      this.currentFilters.year,
+      this.currentFilters.selfNom,
+      this.currentFilters.search,
+    ].filter(Boolean).length;
+    if (count > 0) {
+      badge.textContent = count;
+      badge.classList.remove('d-none');
+    } else {
+      badge.classList.add('d-none');
+    }
   },
 
   /**
@@ -631,6 +658,36 @@ const entriesModule = {
 
     this._currentPage = 1;
     this.renderEntries();
+    utils.renderFilterChips('entriesActiveFilters', [
+      { label: 'Status', fieldId: 'entriesStatusFilter', clearAction: 'entriesModule.clearFilter' },
+      { label: 'Award', fieldId: 'entriesAwardFilter', clearAction: 'entriesModule.clearFilter' },
+      { label: 'Year', fieldId: 'entriesYearFilter', clearAction: 'entriesModule.clearFilter' },
+      { label: 'Type', fieldId: 'entriesSelfNomFilter', clearAction: 'entriesModule.clearFilter' },
+      { label: 'Search', fieldId: 'entriesSearchInput', clearAction: 'entriesModule.clearFilter' },
+    ]);
+  },
+
+  clearFilter(fieldId) {
+    const el = document.getElementById(fieldId);
+    if (!el) return;
+    el.value = '';
+    this.filterEntries();
+    this.searchEntries();
+  },
+
+  resetFilters() {
+    [
+      'entriesStatusFilter',
+      'entriesAwardFilter',
+      'entriesYearFilter',
+      'entriesSelfNomFilter',
+      'entriesSearchInput',
+    ].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    this.filterEntries();
+    this.searchEntries();
   },
 
   /**
@@ -775,7 +832,7 @@ const entriesModule = {
                           <td>${utils.escapeHtml(utils.toTitleCase(entry.awards?.sector || entry.sector) || 'N/A')}</td>
                         </tr>
                         <tr>
-                          <td class="text-muted">County/City:</td>
+                          <td class="text-muted">Area:</td>
                           <td>${utils.escapeHtml(entry.awards?.county || entry.county_city || 'N/A')}</td>
                         </tr>
                         <tr>

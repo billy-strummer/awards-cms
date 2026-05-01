@@ -12067,6 +12067,13 @@ const eventsModule = {
     el('eventsThisYearCount', thisYearCount);
     el('eventsPastCount', past);
     el('eventsDataIssuesCount', dataIssues);
+    const issueIcon = document.getElementById('eventsDataIssuesIcon');
+    const issueCountEl = document.getElementById('eventsDataIssuesCount');
+    if (issueIcon && issueCountEl) {
+      const cls = dataIssues > 0 ? 'text-warning' : 'text-muted';
+      issueIcon.className = `bi bi-exclamation-triangle stat-card-icon ${cls}`;
+      issueCountEl.className = `stat-value ${cls}`;
+    }
 
     // Data quality bar
     const dqBar = document.getElementById('eventsDataQualityBar');
@@ -12403,7 +12410,6 @@ const eventsModule = {
           <td>${eventDate}${countdown}</td>
           <td>${utils.escapeHtml(event.venue || '-')}</td>
           <td class="text-center" id="capacityCell_${event.id}">${capacityCell}</td>
-          <td class="text-center" id="vipCell_${event.id}"><span class="text-muted small">-</span></td>
           <td class="text-center" id="awardCount_${event.id}">${awardData.total > 0 ? `<span class="badge bg-success" title="${awardData.confirmed} confirmed">${awardData.confirmed}/${awardData.total}</span>` : '<span class="text-muted small">-</span>'}</td>
           <td class="text-center" id="winnerCount_${event.id}">${awardData.winners > 0 ? `<span class="badge bg-info">${awardData.winners}</span>` : '<span class="text-muted small">-</span>'}</td>
           <td class="text-center">${statusDropdown}</td>
@@ -12597,9 +12603,10 @@ const eventsModule = {
         capCell.innerHTML = `<span class="badge bg-info">${data.attending}</span>`;
       }
     }
-    const vipCell = document.getElementById(`vipCell_${eventId}`);
-    if (vipCell && data.vipCount > 0) {
-      vipCell.innerHTML = `<span class="badge bg-warning text-dark">${data.vipCount}</span>`;
+    // Append VIP count to the attendees cell rather than a separate column
+    if (capCell && data.vipCount > 0) {
+      const vipBadge = ` <span class="badge bg-warning text-dark" title="${data.vipCount} VIP" style="font-size:0.65rem;">${data.vipCount} VIP</span>`;
+      capCell.innerHTML += vipBadge;
     }
   },
 
@@ -13249,11 +13256,22 @@ const eventsModule = {
     const netEl = document.getElementById('financialNetPL');
     const marginEl = document.getElementById('financialMargin');
 
-    if (revEl) revEl.textContent = `\u00A3${grandRevenue.toLocaleString('en-GB', { minimumFractionDigits: 2 })}`;
-    if (costEl) costEl.textContent = `\u00A3${grandCosts.toLocaleString('en-GB', { minimumFractionDigits: 2 })}`;
+    const fmtGBP = (v) => `\u00A3${Math.abs(v).toLocaleString('en-GB', { minimumFractionDigits: 2 })}`;
+    if (revEl) revEl.textContent = fmtGBP(grandRevenue);
+    if (costEl) costEl.textContent = fmtGBP(grandCosts);
     if (netEl) {
-      netEl.textContent = `${grandNet >= 0 ? '' : '-'}\u00A3${Math.abs(grandNet).toLocaleString('en-GB', { minimumFractionDigits: 2 })}`;
+      netEl.textContent = `${grandNet >= 0 ? '' : '-'}${fmtGBP(grandNet)}`;
       netEl.className = `mb-0 ${grandNet >= 0 ? 'text-success' : 'text-danger'} fw-bold`;
+    }
+    // Update always-visible summary in header
+    const sumRev = document.getElementById('financialSummaryRevenue');
+    const sumCosts = document.getElementById('financialSummaryCosts');
+    const sumPL = document.getElementById('financialSummaryPL');
+    if (sumRev) sumRev.textContent = fmtGBP(grandRevenue);
+    if (sumCosts) sumCosts.textContent = fmtGBP(grandCosts);
+    if (sumPL) {
+      sumPL.textContent = `${grandNet >= 0 ? '' : '-'}${fmtGBP(grandNet)}`;
+      sumPL.className = grandNet >= 0 ? 'text-success' : 'text-danger';
     }
     if (marginEl) {
       if (grandRevenue > 0) {
@@ -13415,21 +13433,31 @@ const eventsModule = {
   // ============================================
   toggleEventsCalendar() {
     const cal = document.getElementById('eventsCalendarView');
-    if (cal.style.display === 'none' || !cal.style.display) {
-      cal.style.display = 'block';
+    if (!cal) return;
+    const isHidden = cal.classList.contains('d-none') || cal.style.display === 'none' || !cal.style.display;
+    if (isHidden) {
+      cal.classList.remove('d-none');
+      cal.style.display = '';
       this.renderCalendar();
     } else {
-      cal.style.display = 'none';
+      cal.classList.add('d-none');
+      cal.style.display = '';
     }
   },
 
   showEventsCalendar() {
-    document.getElementById('eventsCalendarView').style.display = 'block';
+    const cal = document.getElementById('eventsCalendarView');
+    if (!cal) return;
+    cal.classList.remove('d-none');
+    cal.style.display = '';
     this.renderCalendar();
   },
 
   hideEventsCalendar() {
-    document.getElementById('eventsCalendarView').style.display = 'none';
+    const cal = document.getElementById('eventsCalendarView');
+    if (!cal) return;
+    cal.classList.add('d-none');
+    cal.style.display = '';
   },
 
   calendarPrev() {

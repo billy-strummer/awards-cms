@@ -239,9 +239,9 @@
           <i class="bi bi-gear me-2"></i>Settings & Backup
         </button>
       </li>
-      <li class="nav-item" role="presentation">
+      <li class="nav-item d-none" id="bitcoin-nav-item" role="presentation">
         <button class="nav-link" id="bitcoin-tab" data-bs-toggle="tab" data-bs-target="#bitcoin" type="button" role="tab">
-          <i class="bi bi-currency-bitcoin me-2"></i>Bitcoin
+          <i class="bi bi-currency-bitcoin me-2"></i>Markets
         </button>
       </li>
     </ul>
@@ -264,7 +264,7 @@
               <p class="section-subtitle">Quick insights and statistics</p>
             </div>
             <button class="btn btn-outline-secondary btn-sm" data-action="dashboardModule.openCustomiseModal" title="Customise Dashboard">
-              <i class="bi bi-sliders me-1"></i>Customise
+              <i class="bi bi-sliders me-1"></i>Customise Dashboard
             </button>
           </div>
 
@@ -314,7 +314,7 @@
                 <h6>Organisations</h6>
                 <div class="stat-value text-success" id="totalOrgs">0</div>
                 <div id="totalOrgsGrowth" class="stat-growth"></div>
-                <small class="text-muted">Registered companies</small>
+                <small class="text-muted">Registered organisations</small>
                 <div class="stat-card-hover-indicator">
                   <i class="bi bi-arrow-right-circle"></i>
                 </div>
@@ -453,667 +453,7 @@
             </div>
           </div>
 
-          <!-- Award Categories Reference -->
-          <div class="content-card mb-5" data-dashboard-widget="award-categories" data-widget-label="Award Categories Reference">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-              <div>
-                <h3 class="h5 mb-1">
-                  <i class="bi bi-grid-3x3-gap-fill text-primary me-2"></i>Award Categories
-                </h3>
-                <p class="text-muted small mb-0">All award types by size</p>
-              </div>
-              <button class="btn btn-outline-secondary btn-sm" data-action="utils.toggleAccordion" data-id="catAccordion">
-                <i class="bi bi-arrows-expand me-1"></i>Toggle All
-              </button>
-            </div>
 
-            <div class="row" id="catAccordion">
-
-              <!-- LEFT COLUMN: Standard Size County/City -->
-              <div class="col-lg-6">
-                <h6 class="text-uppercase text-primary fw-bold mb-3 border-bottom pb-2">
-                  <i class="bi bi-building me-1"></i>Standard Size County/City
-                </h6>
-
-                <!-- BUILDING & CONSTRUCTION -->
-                <div class="border rounded mb-2">
-                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
-                       data-bs-toggle="collapse" data-bs-target="#catS1" aria-expanded="false">
-                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
-                    <i class="bi bi-bricks text-warning me-2"></i>
-                    <strong class="small">BUILDING & CONSTRUCTION</strong>
-                    <span class="badge bg-secondary ms-auto">12</span>
-                  </div>
-                  <div class="collapse" id="catS1">
-                    <ul class="list-unstyled mb-0 px-3 pb-2 small text-muted">
-                      <li class="py-1 border-top">Brickwork & Masonry Company</li>
-                      <li class="py-1 border-top">Drainage Company</li>
-                      <li class="py-1 border-top">Extension Company</li>
-                      <li class="py-1 border-top">General Building Company</li>
-                      <li class="py-1 border-top">Groundworks & Foundations Company</li>
-                      <li class="py-1 border-top">Guttering Company</li>
-                      <li class="py-1 border-top">Loft Conversion Company</li>
-                      <li class="py-1 border-top">Maintenance Services</li>
-                      <li class="py-1 border-top">New Build Company</li>
-                      <li class="py-1 border-top">Roofing Company</li>
-                      <li class="py-1 border-top">Structural Engineers</li>
-                      <li class="py-1 border-top">Structural Steelworks</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <!-- MECHANICAL, ELECTRICAL & PLUMBING -->
-                <div class="border rounded mb-2">
-                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
-                       data-bs-toggle="collapse" data-bs-target="#catS2" aria-expanded="false">
-                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
-                    <i class="bi bi-lightning-charge text-danger me-2"></i>
-                    <strong class="small">MECHANICAL, ELECTRICAL & PLUMBING</strong>
-                    <span class="badge bg-secondary ms-auto">5</span>
-                  </div>
-                  <div class="collapse" id="catS2">
-                    <ul class="list-unstyled mb-0 px-3 pb-2 small text-muted">
-                      <li class="py-1 border-top">Air-Conditioning & Ventilation Company</li>
-                      <li class="py-1 border-top">Electrical Company</li>
-                      <li class="py-1 border-top">Heating Company</li>
-                      <li class="py-1 border-top">Plumbing Company</li>
-                      <li class="py-1 border-top">Underfloor Heating Company</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <!-- CARPENTRY & JOINERY -->
-                <div class="border rounded mb-2">
-                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
-                       data-bs-toggle="collapse" data-bs-target="#catS3" aria-expanded="false">
-                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
-                    <i class="bi bi-hammer text-success me-2"></i>
-                    <strong class="small">CARPENTRY & JOINERY</strong>
-                    <span class="badge bg-secondary ms-auto">5</span>
-                  </div>
-                  <div class="collapse" id="catS3">
-                    <ul class="list-unstyled mb-0 px-3 pb-2 small text-muted">
-                      <li class="py-1 border-top">Cabinet Maker</li>
-                      <li class="py-1 border-top">Carpentry Company</li>
-                      <li class="py-1 border-top">Joinery Company</li>
-                      <li class="py-1 border-top">Staircase Specialist</li>
-                      <li class="py-1 border-top">Timber Windows Installer</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <!-- FIT-OUT & FINISHES -->
-                <div class="border rounded mb-2">
-                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
-                       data-bs-toggle="collapse" data-bs-target="#catS4" aria-expanded="false">
-                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
-                    <i class="bi bi-house-heart text-info me-2"></i>
-                    <strong class="small">FIT-OUT & FINISHES</strong>
-                    <span class="badge bg-secondary ms-auto">12</span>
-                  </div>
-                  <div class="collapse" id="catS4">
-                    <ul class="list-unstyled mb-0 px-3 pb-2 small text-muted">
-                      <li class="py-1 border-top">Bathroom Installer</li>
-                      <li class="py-1 border-top">Carpet Fitters</li>
-                      <li class="py-1 border-top">Curtains & Blinds Installer</li>
-                      <li class="py-1 border-top">Drylining Company</li>
-                      <li class="py-1 border-top">Flooring Installer</li>
-                      <li class="py-1 border-top">Home Office Installer</li>
-                      <li class="py-1 border-top">Interior Refurbishment Company</li>
-                      <li class="py-1 border-top">Kitchen Installer</li>
-                      <li class="py-1 border-top">Painting & Decorating Company</li>
-                      <li class="py-1 border-top">Plastering Company</li>
-                      <li class="py-1 border-top">Screeding Company</li>
-                      <li class="py-1 border-top">Tiling Installer</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <!-- OUTDOOR & LANDSCAPING -->
-                <div class="border rounded mb-2">
-                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
-                       data-bs-toggle="collapse" data-bs-target="#catS5" aria-expanded="false">
-                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
-                    <i class="bi bi-tree text-success me-2"></i>
-                    <strong class="small">OUTDOOR & LANDSCAPING</strong>
-                    <span class="badge bg-secondary ms-auto">8</span>
-                  </div>
-                  <div class="collapse" id="catS5">
-                    <ul class="list-unstyled mb-0 px-3 pb-2 small text-muted">
-                      <li class="py-1 border-top">Decking Company</li>
-                      <li class="py-1 border-top">Driveway & Paving Company</li>
-                      <li class="py-1 border-top">Fencing Installer</li>
-                      <li class="py-1 border-top">Gardening Services</li>
-                      <li class="py-1 border-top">Garden Outbuilding Company</li>
-                      <li class="py-1 border-top">Landscaping & Garden Design Company</li>
-                      <li class="py-1 border-top">Outdoor Lighting & Electrical Company</li>
-                      <li class="py-1 border-top">Tree Surgery Services</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <!-- TECH & GREEN ENERGY -->
-                <div class="border rounded mb-2">
-                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
-                       data-bs-toggle="collapse" data-bs-target="#catS6" aria-expanded="false">
-                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
-                    <i class="bi bi-ev-front text-primary me-2"></i>
-                    <strong class="small">TECH & GREEN ENERGY</strong>
-                    <span class="badge bg-secondary ms-auto">6</span>
-                  </div>
-                  <div class="collapse" id="catS6">
-                    <ul class="list-unstyled mb-0 px-3 pb-2 small text-muted">
-                      <li class="py-1 border-top">EV Charger Installer</li>
-                      <li class="py-1 border-top">Insulation & Energy Efficiency Company</li>
-                      <li class="py-1 border-top">PV Installer</li>
-                      <li class="py-1 border-top">Renewable Energy Specialist</li>
-                      <li class="py-1 border-top">Security System Installer</li>
-                      <li class="py-1 border-top">Smart Home & Automation Company</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <!-- SPECIALIST TRADES -->
-                <div class="border rounded mb-2">
-                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
-                       data-bs-toggle="collapse" data-bs-target="#catS7" aria-expanded="false">
-                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
-                    <i class="bi bi-tools text-secondary me-2"></i>
-                    <strong class="small">SPECIALIST TRADES</strong>
-                    <span class="badge bg-secondary ms-auto">8</span>
-                  </div>
-                  <div class="collapse" id="catS7">
-                    <ul class="list-unstyled mb-0 px-3 pb-2 small text-muted">
-                      <li class="py-1 border-top">Asbestos Removal Specialist</li>
-                      <li class="py-1 border-top">Locksmith</li>
-                      <li class="py-1 border-top">Pest Control Company</li>
-                      <li class="py-1 border-top">Rendering Company</li>
-                      <li class="py-1 border-top">Scaffolding Company</li>
-                      <li class="py-1 border-top">Shop Fitting Company</li>
-                      <li class="py-1 border-top">Swimming Pool & Hot Tub Company</li>
-                      <li class="py-1 border-top">Window & Door Installer</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <div class="text-muted small text-center mt-2">
-                  <i class="bi bi-info-circle me-1"></i>7 categories &middot; 56 sub-categories
-                </div>
-              </div>
-
-              <!-- RIGHT COLUMN: Small County/Town -->
-              <div class="col-lg-6">
-                <h6 class="text-uppercase text-success fw-bold mb-3 border-bottom pb-2">
-                  <i class="bi bi-house-door me-1"></i>Small County/Town
-                </h6>
-
-                <!-- BUILDING & CONSTRUCTION -->
-                <div class="border rounded mb-2">
-                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
-                       data-bs-toggle="collapse" data-bs-target="#catT1" aria-expanded="false">
-                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
-                    <i class="bi bi-bricks text-warning me-2"></i>
-                    <strong class="small">BUILDING & CONSTRUCTION</strong>
-                    <span class="badge bg-secondary ms-auto">10</span>
-                  </div>
-                  <div class="collapse" id="catT1">
-                    <ul class="list-unstyled mb-0 px-3 pb-2 small text-muted">
-                      <li class="py-1 border-top">Brickwork & Masonry Company</li>
-                      <li class="py-1 border-top">Drainage Company</li>
-                      <li class="py-1 border-top">Extension Company</li>
-                      <li class="py-1 border-top">General Building Company</li>
-                      <li class="py-1 border-top">Groundworks & Foundations Company</li>
-                      <li class="py-1 border-top">Guttering Company</li>
-                      <li class="py-1 border-top">Loft Conversion Company</li>
-                      <li class="py-1 border-top">Maintenance Services</li>
-                      <li class="py-1 border-top">New Build Company</li>
-                      <li class="py-1 border-top">Roofing Company</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <!-- MECHANICAL, ELECTRICAL & PLUMBING -->
-                <div class="border rounded mb-2">
-                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
-                       data-bs-toggle="collapse" data-bs-target="#catT2" aria-expanded="false">
-                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
-                    <i class="bi bi-lightning-charge text-danger me-2"></i>
-                    <strong class="small">MECHANICAL, ELECTRICAL & PLUMBING</strong>
-                    <span class="badge bg-secondary ms-auto">3</span>
-                  </div>
-                  <div class="collapse" id="catT2">
-                    <ul class="list-unstyled mb-0 px-3 pb-2 small text-muted">
-                      <li class="py-1 border-top">Air-Conditioning & Ventilation Company</li>
-                      <li class="py-1 border-top">Electrical Company</li>
-                      <li class="py-1 border-top">Plumbing & Heating Company</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <!-- CARPENTRY & JOINERY -->
-                <div class="border rounded mb-2">
-                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
-                       data-bs-toggle="collapse" data-bs-target="#catT3" aria-expanded="false">
-                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
-                    <i class="bi bi-hammer text-success me-2"></i>
-                    <strong class="small">CARPENTRY & JOINERY</strong>
-                    <span class="badge bg-secondary ms-auto">2</span>
-                  </div>
-                  <div class="collapse" id="catT3">
-                    <ul class="list-unstyled mb-0 px-3 pb-2 small text-muted">
-                      <li class="py-1 border-top">Carpentry & Joinery Company</li>
-                      <li class="py-1 border-top">Timber Windows Installer</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <!-- FIT-OUT & FINISHES -->
-                <div class="border rounded mb-2">
-                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
-                       data-bs-toggle="collapse" data-bs-target="#catT4" aria-expanded="false">
-                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
-                    <i class="bi bi-house-heart text-info me-2"></i>
-                    <strong class="small">FIT-OUT & FINISHES</strong>
-                    <span class="badge bg-secondary ms-auto">8</span>
-                  </div>
-                  <div class="collapse" id="catT4">
-                    <ul class="list-unstyled mb-0 px-3 pb-2 small text-muted">
-                      <li class="py-1 border-top">Bathroom Installer</li>
-                      <li class="py-1 border-top">Carpet Fitters</li>
-                      <li class="py-1 border-top">Flooring Installer</li>
-                      <li class="py-1 border-top">Interior Refurbishment Company</li>
-                      <li class="py-1 border-top">Kitchen Installer</li>
-                      <li class="py-1 border-top">Painting & Decorating Company</li>
-                      <li class="py-1 border-top">Plastering Company</li>
-                      <li class="py-1 border-top">Tiling Installer</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <!-- OUTDOOR & LANDSCAPING -->
-                <div class="border rounded mb-2">
-                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
-                       data-bs-toggle="collapse" data-bs-target="#catT5" aria-expanded="false">
-                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
-                    <i class="bi bi-tree text-success me-2"></i>
-                    <strong class="small">OUTDOOR & LANDSCAPING</strong>
-                    <span class="badge bg-secondary ms-auto">5</span>
-                  </div>
-                  <div class="collapse" id="catT5">
-                    <ul class="list-unstyled mb-0 px-3 pb-2 small text-muted">
-                      <li class="py-1 border-top">Driveway & Paving Company</li>
-                      <li class="py-1 border-top">Fencing Installer</li>
-                      <li class="py-1 border-top">Gardening Services</li>
-                      <li class="py-1 border-top">Landscaping & Garden Design Company</li>
-                      <li class="py-1 border-top">Tree Surgery Services</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <!-- TECH & GREEN ENERGY -->
-                <div class="border rounded mb-2">
-                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
-                       data-bs-toggle="collapse" data-bs-target="#catT6" aria-expanded="false">
-                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
-                    <i class="bi bi-ev-front text-primary me-2"></i>
-                    <strong class="small">TECH & GREEN ENERGY</strong>
-                    <span class="badge bg-secondary ms-auto">5</span>
-                  </div>
-                  <div class="collapse" id="catT6">
-                    <ul class="list-unstyled mb-0 px-3 pb-2 small text-muted">
-                      <li class="py-1 border-top">EV Charger Installer</li>
-                      <li class="py-1 border-top">Insulation & Energy Efficiency Company</li>
-                      <li class="py-1 border-top">PV Installer</li>
-                      <li class="py-1 border-top">Renewable Energy Specialist</li>
-                      <li class="py-1 border-top">Security Systems Installer</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <!-- SPECIALIST TRADES -->
-                <div class="border rounded mb-2">
-                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
-                       data-bs-toggle="collapse" data-bs-target="#catT7" aria-expanded="false">
-                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
-                    <i class="bi bi-tools text-secondary me-2"></i>
-                    <strong class="small">SPECIALIST TRADES</strong>
-                    <span class="badge bg-secondary ms-auto">5</span>
-                  </div>
-                  <div class="collapse" id="catT7">
-                    <ul class="list-unstyled mb-0 px-3 pb-2 small text-muted">
-                      <li class="py-1 border-top">Locksmith</li>
-                      <li class="py-1 border-top">Pest Control Company</li>
-                      <li class="py-1 border-top">Rendering Company</li>
-                      <li class="py-1 border-top">Scaffolding Company</li>
-                      <li class="py-1 border-top">Window & Door Installer</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <div class="text-muted small text-center mt-2">
-                  <i class="bi bi-info-circle me-1"></i>7 categories &middot; 38 sub-categories
-                </div>
-              </div>
-
-            </div>
-          </div>
-
-          <!-- Counties, Cities & Regions Reference -->
-          <div class="content-card mb-5">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-              <div>
-                <h3 class="h5 mb-1">
-                  <i class="bi bi-geo-alt-fill text-danger me-2"></i>Counties, Cities & Regions
-                </h3>
-                <p class="text-muted small mb-0">All areas included in the awards programme</p>
-              </div>
-              <button class="btn btn-outline-secondary btn-sm" data-action="utils.toggleAccordion" data-id="regionAccordion">
-                <i class="bi bi-arrows-expand me-1"></i>Toggle All
-              </button>
-            </div>
-
-            <div class="row" id="regionAccordion">
-
-              <!-- LEFT COLUMN: England & Scotland -->
-              <div class="col-lg-6">
-
-                <!-- ENGLAND COUNTIES -->
-                <div class="border rounded mb-2">
-                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
-                       data-bs-toggle="collapse" data-bs-target="#regEng" aria-expanded="false">
-                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
-                    <span class="me-2">&#127988;&#917607;&#917602;&#917605;&#917614;&#917607;&#917631;</span>
-                    <strong class="small">ENGLAND COUNTIES</strong>
-                    <span class="text-muted small ms-1">(excl. cities)</span>
-                    <span class="badge bg-danger ms-auto">42</span>
-                  </div>
-                  <div class="collapse" id="regEng">
-                    <div class="px-3 pb-2 small text-muted u-columns-2">
-                      <div class="py-1 border-top" data-county="Bedfordshire">Bedfordshire</div>
-                      <div class="py-1 border-top" data-county="Berkshire">Berkshire</div>
-                      <div class="py-1 border-top" data-county="Buckinghamshire">Buckinghamshire</div>
-                      <div class="py-1 border-top" data-county="Cambridgeshire">Cambridgeshire</div>
-                      <div class="py-1 border-top" data-county="Cheshire">Cheshire</div>
-                      <div class="py-1 border-top" data-county="Cornwall">Cornwall</div>
-                      <div class="py-1 border-top" data-county="County Durham">County Durham</div>
-                      <div class="py-1 border-top" data-county="Cumbria">Cumbria</div>
-                      <div class="py-1 border-top" data-county="Derbyshire">Derbyshire</div>
-                      <div class="py-1 border-top" data-county="Devon">Devon</div>
-                      <div class="py-1 border-top" data-county="Dorset">Dorset</div>
-                      <div class="py-1 border-top" data-county="East Sussex">East Sussex</div>
-                      <div class="py-1 border-top" data-county="East Yorkshire">East Yorkshire</div>
-                      <div class="py-1 border-top" data-county="Essex">Essex</div>
-                      <div class="py-1 border-top" data-county="Gloucestershire">Gloucestershire</div>
-                      <div class="py-1 border-top" data-county="Hampshire">Hampshire</div>
-                      <div class="py-1 border-top" data-county="Herefordshire">Herefordshire <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
-                      <div class="py-1 border-top" data-county="Hertfordshire">Hertfordshire</div>
-                      <div class="py-1 border-top" data-county="Isle of Wight">Isle of Wight <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
-                      <div class="py-1 border-top" data-county="Kent">Kent</div>
-                      <div class="py-1 border-top" data-county="Lancashire">Lancashire</div>
-                      <div class="py-1 border-top" data-county="Leicestershire">Leicestershire</div>
-                      <div class="py-1 border-top" data-county="Lincolnshire">Lincolnshire</div>
-                      <div class="py-1 border-top" data-county="Norfolk">Norfolk</div>
-                      <div class="py-1 border-top" data-county="Northamptonshire">Northamptonshire</div>
-                      <div class="py-1 border-top" data-county="North Yorkshire">North Yorkshire</div>
-                      <div class="py-1 border-top" data-county="Northumberland">Northumberland</div>
-                      <div class="py-1 border-top" data-county="Nottinghamshire">Nottinghamshire</div>
-                      <div class="py-1 border-top" data-county="Oxfordshire">Oxfordshire</div>
-                      <div class="py-1 border-top" data-county="Rutland">Rutland <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
-                      <div class="py-1 border-top" data-county="Shropshire">Shropshire</div>
-                      <div class="py-1 border-top" data-county="Somerset">Somerset</div>
-                      <div class="py-1 border-top" data-county="South Yorkshire">South Yorkshire</div>
-                      <div class="py-1 border-top" data-county="Staffordshire">Staffordshire</div>
-                      <div class="py-1 border-top" data-county="Suffolk">Suffolk</div>
-                      <div class="py-1 border-top" data-county="Surrey">Surrey</div>
-                      <div class="py-1 border-top" data-county="Tyne & Wear">Tyne &amp; Wear</div>
-                      <div class="py-1 border-top" data-county="Warwickshire">Warwickshire</div>
-                      <div class="py-1 border-top" data-county="West Sussex">West Sussex</div>
-                      <div class="py-1 border-top" data-county="West Yorkshire">West Yorkshire</div>
-                      <div class="py-1 border-top" data-county="Wiltshire">Wiltshire</div>
-                      <div class="py-1 border-top" data-county="Worcestershire">Worcestershire</div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- SCOTLAND -->
-                <div class="border rounded mb-2">
-                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
-                       data-bs-toggle="collapse" data-bs-target="#regScot" aria-expanded="false">
-                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
-                    <span class="me-2">&#127988;&#917607;&#917602;&#917619;&#917603;&#917620;&#917631;</span>
-                    <strong class="small">SCOTLAND</strong>
-                    <span class="badge bg-primary ms-auto">14</span>
-                  </div>
-                  <div class="collapse" id="regScot">
-                    <div class="px-3 pb-2 small text-muted u-columns-2">
-                      <div class="py-1 border-top" data-county="Argyll & Bute">Argyll &amp; Bute <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
-                      <div class="py-1 border-top" data-county="Ayrshire">Ayrshire <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
-                      <div class="py-1 border-top" data-county="Central Scotland">Central Scotland <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
-                      <div class="py-1 border-top" data-county="Dumfries & Galloway">Dumfries &amp; Galloway <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
-                      <div class="py-1 border-top" data-county="Dunbartonshire">Dunbartonshire <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
-                      <div class="py-1 border-top" data-county="Fife">Fife <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
-                      <div class="py-1 border-top" data-county="Grampian">Grampian <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
-                      <div class="py-1 border-top" data-county="Highlands">Highlands <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
-                      <div class="py-1 border-top" data-county="Lanarkshire">Lanarkshire <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
-                      <div class="py-1 border-top" data-county="Lothian">Lothian <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
-                      <div class="py-1 border-top" data-county="Renfrewshire">Renfrewshire <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
-                      <div class="py-1 border-top" data-county="Scottish Borders">Scottish Borders <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
-                      <div class="py-1 border-top" data-county="Scottish Islands">Scottish Islands <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
-                      <div class="py-1 border-top" data-county="Tayside">Tayside <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
-                    </div>
-                    <div class="px-3 pb-2">
-                      <small class="text-muted fst-italic">Edinburgh &amp; Glasgow listed under Cities</small>
-                    </div>
-                  </div>
-                </div>
-
-              </div>
-
-              <!-- RIGHT COLUMN: Wales & Cities -->
-              <div class="col-lg-6">
-
-                <!-- WALES -->
-                <div class="border rounded mb-2">
-                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
-                       data-bs-toggle="collapse" data-bs-target="#regWales" aria-expanded="false">
-                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
-                    <span class="me-2">&#127988;&#917607;&#917602;&#917623;&#917612;&#917619;&#917631;</span>
-                    <strong class="small">WALES</strong>
-                    <span class="badge bg-success ms-auto">10</span>
-                  </div>
-                  <div class="collapse" id="regWales">
-                    <div class="px-3 pb-2 small text-muted u-columns-2">
-                      <div class="py-1 border-top" data-county="Carmarthenshire">Carmarthenshire <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
-                      <div class="py-1 border-top" data-county="Ceredigion">Ceredigion <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
-                      <div class="py-1 border-top" data-county="Conwy & Denbighshire">Conwy &amp; Denbighshire <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
-                      <div class="py-1 border-top" data-county="Flintshire">Flintshire <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
-                      <div class="py-1 border-top" data-county="Glamorgan">Glamorgan <span class="text-muted u-text-xs">(Vale of Glamorgan, Bridgend, RCT, Merthyr Tydfil, NPT)</span></div>
-                      <div class="py-1 border-top" data-county="Gwent">Gwent <span class="text-muted u-text-xs">(Caerphilly, Blaenau Gwent, Torfaen, Newport, Monmouthshire)</span></div>
-                      <div class="py-1 border-top" data-county="Gwynedd & Anglesey">Gwynedd &amp; Anglesey <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
-                      <div class="py-1 border-top" data-county="Pembrokeshire">Pembrokeshire <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
-                      <div class="py-1 border-top" data-county="Powys">Powys <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
-                      <div class="py-1 border-top" data-county="Wrexham">Wrexham <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
-                    </div>
-                    <div class="px-3 pb-2">
-                      <small class="text-muted fst-italic">Cardiff &amp; Swansea listed under Cities</small>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- LONDON BOROUGHS -->
-                <div class="border rounded mb-2">
-                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
-                       data-bs-toggle="collapse" data-bs-target="#regLondon" aria-expanded="false">
-                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
-                    <i class="bi bi-buildings-fill text-danger me-2"></i>
-                    <strong class="small">LONDON BOROUGHS</strong>
-                    <span class="badge bg-danger ms-auto">15</span>
-                  </div>
-                  <div class="collapse" id="regLondon">
-                    <div class="px-3 pb-2 small text-muted u-columns-2">
-                      <div class="py-1 border-top" data-county="Bromley">Bromley <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
-                      <div class="py-1 border-top" data-county="Camden">Camden <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
-                      <div class="py-1 border-top" data-county="Croydon">Croydon <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
-                      <div class="py-1 border-top" data-county="Greenwich">Greenwich <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
-                      <div class="py-1 border-top" data-county="Hackney">Hackney <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
-                      <div class="py-1 border-top" data-county="Hammersmith & Fulham">Hammersmith &amp; Fulham <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
-                      <div class="py-1 border-top" data-county="Islington">Islington <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
-                      <div class="py-1 border-top" data-county="Kensington & Chelsea">Kensington &amp; Chelsea <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
-                      <div class="py-1 border-top" data-county="Kingston & Richmond">Kingston &amp; Richmond <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
-                      <div class="py-1 border-top" data-county="Lambeth">Lambeth <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
-                      <div class="py-1 border-top" data-county="Lewisham">Lewisham <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
-                      <div class="py-1 border-top" data-county="Middlesex">Middlesex <span class="text-muted u-text-xs">(Hillingdon, Harrow, Ealing, Brent, Hounslow, Enfield, Barnet)</span></div>
-                      <div class="py-1 border-top" data-county="Southwark">Southwark <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
-                      <div class="py-1 border-top" data-county="Wandsworth">Wandsworth <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
-                      <div class="py-1 border-top" data-county="Westminster">Westminster <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- TOP 19 CITIES -->
-                <div class="border rounded mb-2">
-                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
-                       data-bs-toggle="collapse" data-bs-target="#regCities" aria-expanded="false">
-                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
-                    <i class="bi bi-buildings text-info me-2"></i>
-                    <strong class="small">TOP CITIES</strong>
-                    <span class="badge bg-info ms-auto">19</span>
-                  </div>
-                  <div class="collapse" id="regCities">
-                    <div class="px-3 pb-2 small text-muted u-columns-2">
-                      <div class="py-1 border-top" data-county="Birmingham">Birmingham</div>
-                      <div class="py-1 border-top" data-county="Manchester">Manchester</div>
-                      <div class="py-1 border-top" data-county="Glasgow">Glasgow</div>
-                      <div class="py-1 border-top" data-county="Liverpool">Liverpool</div>
-                      <div class="py-1 border-top" data-county="Leeds">Leeds</div>
-                      <div class="py-1 border-top" data-county="Sheffield">Sheffield</div>
-                      <div class="py-1 border-top" data-county="Newcastle">Newcastle</div>
-                      <div class="py-1 border-top" data-county="Edinburgh">Edinburgh</div>
-                      <div class="py-1 border-top" data-county="Bristol">Bristol</div>
-                      <div class="py-1 border-top" data-county="Nottingham">Nottingham</div>
-                      <div class="py-1 border-top" data-county="Leicester">Leicester</div>
-                      <div class="py-1 border-top" data-county="Coventry">Coventry</div>
-                      <div class="py-1 border-top" data-county="Reading">Reading</div>
-                      <div class="py-1 border-top" data-county="Cardiff">Cardiff</div>
-                      <div class="py-1 border-top" data-county="Bournemouth">Bournemouth</div>
-                      <div class="py-1 border-top" data-county="Brighton & Hove">Brighton &amp; Hove</div>
-                      <div class="py-1 border-top" data-county="Southampton">Southampton</div>
-                      <div class="py-1 border-top" data-county="Middlesbrough">Middlesbrough</div>
-                      <div class="py-1 border-top" data-county="Swansea">Swansea</div>
-                    </div>
-                    <div class="px-3 pb-2">
-                      <small class="text-muted fst-italic">London covered individually under London Boroughs above</small>
-                    </div>
-                  </div>
-                </div>
-
-              </div>
-
-            </div>
-
-            <div class="mt-3 text-muted small text-center">
-              <i class="bi bi-check-circle-fill text-success me-1"></i>= has organisations data &nbsp;|&nbsp;
-              <span id="countyCoverageStats" class="fw-semibold">Loading coverage...</span>
-            </div>
-            <div class="mt-1 text-muted small text-center">
-              <i class="bi bi-info-circle me-1"></i>42 England counties &middot; 15 London boroughs &middot; 14 Scotland regions &middot; 10 Wales areas &middot; 19 cities
-              &middot; <span class="badge bg-warning text-dark u-text-xxs">small</span> = Small County/Town category list
-            </div>
-            <div class="mt-3 text-center">
-              <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#nomineeUploadModal">
-                <i class="bi bi-upload me-2"></i>Upload Nominees CSV
-              </button>
-            </div>
-          </div>
-
-          <!-- ── NOMINEE UPLOAD MODAL ──────────────────────── -->
-          <div class="modal fade" id="nomineeUploadModal" tabindex="-1" aria-labelledby="nomineeUploadModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-xl modal-dialog-scrollable">
-              <div class="modal-content">
-                <div class="modal-header">
-                  <h5 class="modal-title" id="nomineeUploadModalLabel">
-                    <i class="bi bi-upload text-primary me-2"></i>Upload Nominees CSV
-                  </h5>
-                  <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-
-                  <!-- STEP 1: File picker -->
-                  <div id="nomineeStep1">
-                    <p class="text-muted small mb-3">
-                      Select a CSV file containing nominee data. Blank rows and the header row are handled automatically.
-                      The file must have an <strong>Area</strong> column containing the county, city, or London borough name.
-                    </p>
-                    <div class="mb-3">
-                      <label class="form-label fw-semibold">CSV File</label>
-                      <input type="file" class="form-control" id="nomineeFileInput" accept=".csv,.tsv,.txt">
-                    </div>
-                  </div>
-
-                  <!-- STEP 2: Preview & assign -->
-                  <div id="nomineeStep2" class="d-none">
-                    <!-- Stats bar -->
-                    <div id="nomineePreviewStats" class="mb-3 p-2 bg-light rounded border"></div>
-
-                    <!-- Area assignment -->
-                    <div class="row g-3 mb-3">
-                      <div class="col-md-5">
-                        <label class="form-label fw-semibold">Area <span class="text-danger">*</span></label>
-                        <select class="form-select form-select-sm" id="nomineeAreaSelect">
-                          <option value="">— Select area —</option>
-                        </select>
-                        <div class="form-text">Auto-detected from the Area column. Correct if needed.</div>
-                      </div>
-                      <div class="col-md-5">
-                        <label class="form-label fw-semibold">Category <span class="text-muted fw-normal">(optional)</span></label>
-                        <input type="text" class="form-control form-control-sm" id="nomineeCategoryInput"
-                          placeholder="e.g. Building &amp; Construction">
-                      </div>
-                      <div class="col-md-2 d-flex align-items-end">
-                        <button class="btn btn-outline-secondary btn-sm w-100"
-                          onclick="document.getElementById('nomineeStep1').classList.remove('d-none'); document.getElementById('nomineeStep2').classList.add('d-none'); document.getElementById('nomineeFileInput').value='';">
-                          <i class="bi bi-arrow-left me-1"></i>Change file
-                        </button>
-                      </div>
-                    </div>
-
-                    <!-- Preview table -->
-                    <div class="mb-3">
-                      <label class="form-label fw-semibold text-muted small">Preview (first 10 rows)</label>
-                      <div id="nomineePreviewContainer"></div>
-                    </div>
-
-                    <!-- Validation issues -->
-                    <div id="nomineeValidationContainer" class="mb-3"></div>
-
-                    <!-- Verification result -->
-                    <div id="nomineeUploadVerification" class="d-none"></div>
-                  </div>
-
-                  <hr class="my-4">
-
-                  <!-- Recent uploads -->
-                  <div>
-                    <h6 class="fw-semibold mb-3"><i class="bi bi-clock-history me-2"></i>Recent Uploads</h6>
-                    <div id="nomineeRecentUploads"><p class="text-muted small">Loading…</p></div>
-                  </div>
-
-                  <!-- Batch row viewer -->
-                  <div id="nomineeBatchRowsPanel" class="d-none mt-4">
-                    <h6 class="fw-semibold mb-2" id="nomineeBatchRowsTitle">Nominees</h6>
-                    <div id="nomineeBatchRowsContainer"></div>
-                  </div>
-
-                </div>
-                <div class="modal-footer">
-                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                  <button type="button" class="btn btn-primary" id="nomineeUploadConfirmBtn" disabled>
-                    <i class="bi bi-cloud-upload me-2"></i>Upload &amp; Verify
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
 
           <!-- Geographic Distribution Widget -->
           <div class="row g-4 mb-5" data-dashboard-widget="geo-distribution" data-widget-label="Geographic Distribution">
@@ -1194,21 +534,21 @@
             </div>
           </div>
 
-          <!-- Recent Orders Section -->
-          <div class="content-card" data-dashboard-widget="recent-orders" data-widget-label="Recent Orders">
+          <!-- Recent Payments Section -->
+          <div class="content-card" data-dashboard-widget="recent-orders" data-widget-label="Recent Payments">
             <div class="d-flex justify-content-between align-items-center mb-4">
               <div>
                 <h3 class="h5 mb-1">
-                  <i class="bi bi-cart-check-fill text-success me-2"></i>Recent Orders
+                  <i class="bi bi-credit-card-fill text-success me-2"></i>Recent Payments
                 </h3>
-                <p class="text-muted small mb-0">Latest purchases and invoices</p>
+                <p class="text-muted small mb-0">Latest invoices and payments received</p>
               </div>
               <div class="btn-group btn-group-sm">
                 <button class="btn btn-primary" data-action="dashboardModule.openSalesDashboard">
                   <i class="bi bi-graph-up me-1"></i>Sales Dashboard
                 </button>
                 <button class="btn btn-outline-primary" data-action="dashboardModule.navigateToSection" data-args='["payments"]'>
-                  <i class="bi bi-arrow-right me-1"></i>View All Orders
+                  <i class="bi bi-arrow-right me-1"></i>View All Payments
                 </button>
               </div>
             </div>
@@ -1217,9 +557,9 @@
               <table class="table table-hover">
                 <thead>
                   <tr>
-                    <th scope="col">Order #</th>
-                    <th scope="col">Company</th>
-                    <th scope="col">Items Purchased</th>
+                    <th scope="col">Invoice #</th>
+                    <th scope="col">Organisation</th>
+                    <th scope="col">Items</th>
                     <th scope="col">Date</th>
                     <th scope="col">Amount</th>
                     <th scope="col">Status</th>
@@ -1230,7 +570,7 @@
                   <tr>
                     <td colspan="7" class="text-center py-4 text-muted">
                       <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
-                      Loading orders...
+                      Loading payments...
                     </td>
                   </tr>
                 </tbody>
@@ -1238,12 +578,12 @@
             </div>
           </div>
 
-          <!-- Top Companies Section -->
-          <div class="content-card" data-dashboard-widget="top-companies" data-widget-label="Top Companies">
+          <!-- Top Organisations Section -->
+          <div class="content-card" data-dashboard-widget="top-companies" data-widget-label="Top Organisations">
             <div class="d-flex justify-content-between align-items-center mb-4">
               <div class="flex-grow-1">
                 <h3 class="h5 mb-2">
-                  <i class="bi bi-star-fill text-warning me-2"></i>Top Companies
+                  <i class="bi bi-star-fill text-warning me-2"></i>Top Organisations
                 </h3>
                 <div class="d-flex align-items-center gap-2">
                   <label class="text-muted small mb-0">View by:</label>
@@ -1268,7 +608,7 @@
                 <thead id="topCompaniesTableHead">
                   <tr>
                     <th scope="col" width="60">#</th>
-                    <th scope="col">Company Name</th>
+                    <th scope="col">Organisation Name</th>
                     <th scope="col">Email</th>
                     <th scope="col">Website</th>
                     <th scope="col">Region</th>
@@ -1278,7 +618,7 @@
                   <tr>
                     <td colspan="5" class="text-center py-4 text-muted">
                       <i class="bi bi-inbox display-4 d-block mb-2 opacity-25"></i>
-                      Loading companies...
+                      Loading organisations...
                     </td>
                   </tr>
                 </tbody>
@@ -1413,10 +753,6 @@
                 <i class="bi bi-building text-success"></i>
                 <span>Add Organisation</span>
               </div>
-              <div class="quick-action-item" data-action="dashboardModule.quickAddWinner">
-                <i class="bi bi-award text-info"></i>
-                <span>Add Winner</span>
-              </div>
               <div class="quick-action-item" data-action="dashboardModule.quickAddEvent">
                 <i class="bi bi-calendar-event text-purple"></i>
                 <span>Add Event</span>
@@ -1424,6 +760,10 @@
               <div class="quick-action-item" data-action="dashboardModule.quickAddMedia">
                 <i class="bi bi-images text-warning"></i>
                 <span>Upload Media</span>
+              </div>
+              <div class="quick-action-item" data-action="dashboardModule.quickGoToPayments">
+                <i class="bi bi-receipt text-success"></i>
+                <span>Record Payment</span>
               </div>
             </div>
           </div>
@@ -1467,13 +807,9 @@
                       <h6 class="text-muted mb-1 small">Winners Declared</h6>
                       <h3 class="mb-0 fw-bold text-warning" id="statsWithWinners">0</h3>
                     </div>
-                    <div class="col-md-2" title="Areas">
-                      <h6 class="text-muted mb-1 small">Areas</h6>
-                      <h3 class="mb-0 fw-bold text-secondary" id="statsCounties">0</h3>
-                    </div>
-                    <div class="col-md-2" title="Sectors">
-                      <h6 class="text-muted mb-1 small">Sectors</h6>
-                      <h3 class="mb-0 fw-bold text-dark" id="statsSectors">0</h3>
+                    <div class="col-md-2" title="Entries Received">
+                      <h6 class="text-muted mb-1 small">Entries Received</h6>
+                      <h3 class="mb-0 fw-bold text-secondary" id="awardsEntriesCount">0</h3>
                     </div>
                   </div>
                 </div>
@@ -1482,100 +818,91 @@
           </div>
 
           <!-- Filters Section -->
-<div class="filters-section" style="position: sticky; top: 104px; z-index: 999; background-color: var(--bs-body-bg, white); padding: 1rem 0; margin-bottom: 1rem; border-bottom: 1px solid #dee2e6;">
-  <div class="row g-3">
-    <!-- Year Filter - Now auto-populated with 2026+ only -->
-    <div class="col-md-1">
-  <label for="awardsYearFilterSelect" class="form-label">
-    <i class="bi bi-calendar3 me-1"></i>Year
-  </label>
-  <select class="form-select form-select-sm" id="awardsYearFilterSelect" style="width: auto; min-width: 100px;">
-    <option value="">All Years</option>
-  </select>
-</div>
-    <!-- Status Filter -->
-    <div class="col-md-2">
-      <label for="awardsStatusFilterSelect" class="form-label">
-        <i class="bi bi-flag me-1"></i>Status
-      </label>
-      <select class="form-select" id="awardsStatusFilterSelect">
-        <option value="">All Statuses</option>
-        <option value="draft">Draft</option>
-        <option value="pending">Pending</option>
-        <option value="published">Published</option>
-        <option value="active">Active</option>
-        <option value="archived">Archived</option>
-      </select>
-    </div>
-
-    <!-- Sector Filter -->
-    <div class="col-md-2">
-      <label for="awardsSectorFilterSelect" class="form-label">
-        <i class="bi bi-briefcase me-1"></i>Sector
-      </label>
-      <select class="form-select" id="awardsSectorFilterSelect">
-        <option value="">All Sectors</option>
-        <!-- Populated by JS -->
-      </select>
-    </div>
-
-    <!-- Country Filter -->
-    <div class="col-md-2">
-      <label for="awardsCountryFilter" class="form-label">
-        <i class="bi bi-flag me-1"></i>Country
-      </label>
-      <select class="form-select" id="awardsCountryFilter" data-on-change="awardsModule.onCountryFilterChange">
-        <option value="">All Countries</option>
-      </select>
-    </div>
-
-    <!-- Area Filter (cascades from Country) -->
-    <div class="col-md-2">
-      <label for="awardsAreaFilter" class="form-label">
-        <i class="bi bi-pin-map me-1"></i>Area
-      </label>
-      <select class="form-select" id="awardsAreaFilter" data-on-change="awardsModule.filterAwards">
-        <option value="">All Areas</option>
-      </select>
-    </div>
-
-    <!-- Search Box -->
-    <div class="col-md-2">
-      <label for="awardsSearchBox" class="form-label">
-        <i class="bi bi-search me-1"></i>Search
-      </label>
-      <input type="text" class="form-control" id="awardsSearchBox" placeholder="Search awards...">
-    </div>
-    <div class="col-md-2">
-      <label class="form-label small fw-semibold"><i class="bi bi-bookmark me-1"></i>Saved Views</label>
-      <div class="input-group input-group-sm">
-        <select class="form-select form-select-sm" id="awardsSavedViewsList" data-on-change="awardsModule.loadSavedAwardsView">
-          <option value="">No saved views</option>
-        </select>
-        <button class="btn btn-outline-primary" data-action="awardsModule.saveCurrentAwardsView" title="Save current filters as view">
-          <i class="bi bi-bookmark-plus"></i>
+<div class="filters-section" style="position: sticky; top: 104px; z-index: 999; background-color: var(--bs-body-bg, white); padding: 0.75rem 0 0; margin-bottom: 0.75rem; border-bottom: 1px solid #dee2e6;">
+  <div class="rounded-2 p-3 mb-2" style="background:#f8f9fa;">
+    <div class="d-flex align-items-center justify-content-between mb-2">
+      <button class="btn btn-link p-0 text-decoration-none fw-semibold text-muted" style="font-size:0.8rem;letter-spacing:.04em;text-transform:uppercase;" data-bs-toggle="collapse" data-bs-target="#awardsFiltersCollapse" aria-expanded="true" aria-controls="awardsFiltersCollapse">
+        <i class="bi bi-funnel me-1"></i>Filter Awards <span id="awardsFilterCount" class="badge bg-primary ms-1 d-none"></span>
+        <i class="bi bi-chevron-down ms-1 small"></i>
+      </button>
+      <div class="d-flex align-items-center gap-2">
+        <div class="input-group input-group-sm" style="width:220px;">
+          <select class="form-select form-select-sm" id="awardsSavedViewsList" data-on-change="awardsModule.loadSavedAwardsView">
+            <option value="">Saved views…</option>
+          </select>
+          <button class="btn btn-outline-primary btn-sm" data-action="awardsModule.saveCurrentAwardsView" title="Save current filters as a view">
+            <i class="bi bi-bookmark-plus"></i>
+          </button>
+        </div>
+        <button class="btn btn-outline-secondary btn-sm" data-action="awardsModule.resetFilters" title="Reset all filters">
+          <i class="bi bi-x-circle me-1"></i>Reset
         </button>
       </div>
     </div>
-    <div class="col-md-1 d-flex align-items-end">
-      <button class="btn btn-outline-secondary btn-sm w-100" data-action="awardsModule.resetFilters" title="Reset all filters">
-        <i class="bi bi-x-circle"></i>
-      </button>
+    <div class="collapse show" id="awardsFiltersCollapse">
+    <div class="row g-2 align-items-end">
+      <div class="col-md-1">
+        <label for="awardsYearFilterSelect" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-calendar3 me-1"></i>Year</label>
+        <select class="form-select form-select-sm" id="awardsYearFilterSelect">
+          <option value="">All Years</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label for="awardsStatusFilterSelect" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-flag me-1"></i>Status</label>
+        <select class="form-select form-select-sm" id="awardsStatusFilterSelect">
+          <option value="">All Statuses</option>
+          <option value="draft">Draft</option>
+          <option value="pending">Pending</option>
+          <option value="published">Published</option>
+          <option value="active">Active</option>
+          <option value="archived">Archived</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label for="awardsSectorFilterSelect" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-briefcase me-1"></i>Sector</label>
+        <select class="form-select form-select-sm" id="awardsSectorFilterSelect">
+          <option value="">All Sectors</option>
+        </select>
+      </div>
+      <div class="col-md-1">
+        <label for="awardsCountryFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-globe me-1"></i>Country</label>
+        <select class="form-select form-select-sm" id="awardsCountryFilter" data-on-change="awardsModule.onCountryFilterChange">
+          <option value="">All</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label for="awardsRegionFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-map me-1"></i>Region</label>
+        <select class="form-select form-select-sm" id="awardsRegionFilter" data-on-change="awardsModule.onRegionFilterChange">
+          <option value="">All Regions</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label for="awardsAreaFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-pin-map me-1"></i>County/City/Borough</label>
+        <select class="form-select form-select-sm" id="awardsAreaFilter" data-on-change="awardsModule.filterAwards">
+          <option value="">All</option>
+        </select>
+      </div>
+      <div class="col">
+        <label for="awardsSearchBox" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-search me-1"></i>Search</label>
+        <input type="text" class="form-control form-control-sm" id="awardsSearchBox" placeholder="Search awards…">
+      </div>
+    </div>
     </div>
   </div>
 </div>
+          <div id="awardsActiveFilters" class="mb-1"></div>
           <!-- Awards Table -->
           <div class="table-container">
             <div class="d-flex justify-content-between align-items-center mb-3">
               <h5 class="mb-0">
                 <i class="bi bi-list-ul me-2"></i>Awards List
               </h5>
-              <div class="d-flex align-items-center gap-3">
+              <div class="d-flex align-items-center gap-2">
                 <button class="btn btn-primary btn-sm" data-action="awardsModule.openCreateModal">
                   <i class="bi bi-plus-lg me-1"></i>Add Award
                 </button>
-                <div class="btn-group">
-                  <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                <div class="btn-group btn-group-sm">
+                  <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
                     <i class="bi bi-download me-1"></i>Export
                   </button>
                   <ul class="dropdown-menu">
@@ -1584,19 +911,18 @@
                     <li><a class="dropdown-item" href="#" data-action="awardsModule.exportAwardsPDF" data-prevent-default="true"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
                   </ul>
                 </div>
-                <button class="btn btn-outline-info btn-sm" data-action="awardsModule.rolloverToNextYear">
-                  <i class="bi bi-arrow-repeat me-1"></i>Roll Over
-                </button>
-                <button class="btn btn-outline-success btn-sm" data-action="awardsModule.showVisualTimeline" title="Timeline Overview">
-                  <i class="bi bi-calendar-range me-1"></i>Timeline
-                </button>
-                <button class="btn btn-outline-danger btn-sm" data-action="awardsModule.showDataQualityDashboard" title="Data Quality">
-                  <i class="bi bi-shield-check me-1"></i>Quality
-                </button>
-                <button class="btn btn-outline-warning btn-sm" data-action="awardsModule.showDuplicateDetection" title="Find Duplicates">
-                  <i class="bi bi-files me-1"></i>Duplicates
-                </button>
-                <div class="badge bg-primary-subtle text-primary fs-6">
+                <div class="btn-group btn-group-sm">
+                  <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-tools me-1"></i>Tools
+                  </button>
+                  <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="#" data-action="awardsModule.rolloverToNextYear" data-prevent-default="true"><i class="bi bi-arrow-repeat text-info me-2"></i>Roll Over to Next Year</a></li>
+                    <li><a class="dropdown-item" href="#" data-action="awardsModule.showVisualTimeline" data-prevent-default="true"><i class="bi bi-calendar-range text-success me-2"></i>Timeline Overview</a></li>
+                    <li><a class="dropdown-item" href="#" data-action="awardsModule.showDataQualityDashboard" data-prevent-default="true"><i class="bi bi-shield-check text-danger me-2"></i>Data Quality Check</a></li>
+                    <li><a class="dropdown-item" href="#" data-action="awardsModule.showDuplicateDetection" data-prevent-default="true"><i class="bi bi-files text-warning me-2"></i>Find Duplicates</a></li>
+                  </ul>
+                </div>
+                <div class="badge bg-primary-subtle text-primary fs-6 ms-1">
                   <span id="awardsCount">0</span> awards
                 </div>
               </div>
@@ -1648,9 +974,12 @@
                     <th scope="col" style="width: 22%; cursor: pointer;" data-sort-field="award_name" data-action="awardsModule.sortBy" data-args='["award_name"]'>Award Name <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="award_name"></i></th>
                     <th scope="col" style="width: 12%; cursor: pointer;" data-sort-field="location" data-action="awardsModule.sortBy" data-args='["location"]'>Location <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="location"></i></th>
                     <th scope="col" style="width: 10%; cursor: pointer;" data-sort-field="sector" data-action="awardsModule.sortBy" data-args='["sector"]'>Sector <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="sector"></i></th>
-                    <th scope="col" style="width: 7%; cursor: pointer;" data-sort-field="status" data-action="awardsModule.sortBy" data-args='["status"]'>Status <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="status"></i></th>
+                    <th scope="col" style="width: 7%; cursor: pointer;" data-sort-field="status" data-action="awardsModule.sortBy" data-args='["status"]'>
+                      Status <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="status"></i>
+                      <i class="bi bi-question-circle text-muted ms-1 small" title="Award lifecycle: Draft (being set up) → Pending (awaiting approval) → Published (visible) → Active (open for entries/judging) → Archived (closed)"></i>
+                    </th>
                     <th scope="col" style="width: 6%; cursor: pointer;" class="text-center" data-sort-field="nominees" data-action="awardsModule.sortBy" data-args='["nominees"]'>Nominees <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="nominees"></i></th>
-                    <th scope="col" style="width: 7%;" class="text-center">Phase</th>
+                    <th scope="col" style="width: 7%;" class="text-center" title="Current judging phase: e.g. Entry, Judging, Shortlisting, Voting, Announced">Phase</th>
                     <th scope="col" style="width: 14%; cursor: pointer;" data-sort-field="winner" data-action="awardsModule.sortBy" data-args='["winner"]'>Winner <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="winner"></i></th>
                     <th scope="col" style="width: 6%;" class="text-center">Actions</th>
                   </tr>
@@ -1682,7 +1011,7 @@
       <h1 class="section-title">
         <i class="bi bi-building me-2"></i>Organisation Management
       </h1>
-      <p class="section-subtitle">View and manage registered companies<span id="organisationsFreshness" class="ms-2"></span></p>
+      <p class="section-subtitle">View and manage registered organisations<span id="organisationsFreshness" class="ms-2"></span></p>
     </div>
 
     <!-- Enhanced Stats Card with Pipeline & Data Quality -->
@@ -1691,59 +1020,39 @@
         <div class="card border-0 shadow-sm">
           <div class="card-body py-3">
             <div class="row text-center">
-              <div class="col">
-                <h6 class="text-muted mb-1 small">Total Companies</h6>
+              <div class="col-2">
+                <h6 class="text-muted mb-1 small">Total Organisations</h6>
                 <h3 class="mb-0 fw-bold text-primary" id="orgsTotalCount">0</h3>
               </div>
-              <div class="col">
+              <div class="col-2">
                 <h6 class="text-muted mb-1 small">With Awards</h6>
                 <h3 class="mb-0 fw-bold text-success" id="orgsWithAwards">0</h3>
               </div>
-              <div class="col">
+              <div class="col-2">
                 <h6 class="text-muted mb-1 small">New This Month</h6>
                 <h3 class="mb-0 fw-bold text-info" id="orgsNewThisMonth">0</h3>
               </div>
-              <div class="col">
-                <h6 class="text-muted mb-1 small">Top Sector</h6>
-                <h5 class="mb-0 fw-semibold text-info" id="orgsTopSector">-</h5>
-              </div>
-              <div class="col">
+              <div class="col-2">
                 <h6 class="text-muted mb-1 small">Missing Email</h6>
-                <h3 class="mb-0 fw-bold text-warning u-pointer" id="orgsMissingEmail" title="Click to filter" data-action="orgsModule.filterByMissingField" data-id="email">0</h3>
+                <h3 class="mb-0 fw-bold text-warning u-pointer" id="orgsMissingEmail" title="Click to filter organisations with no email address" data-action="orgsModule.filterByMissingField" data-id="email">0</h3>
               </div>
-              <div class="col">
+              <div class="col-2">
                 <h6 class="text-muted mb-1 small">Missing Logo</h6>
-                <h3 class="mb-0 fw-bold text-warning u-pointer" id="orgsMissingLogo" title="Click to filter" data-action="orgsModule.filterByMissingField" data-id="logo_url">0</h3>
+                <h3 class="mb-0 fw-bold text-warning u-pointer" id="orgsMissingLogo" title="Click to filter organisations with no logo uploaded" data-action="orgsModule.filterByMissingField" data-id="logo_url">0</h3>
               </div>
-              <div class="col u-pointer" title="Click to filter sponsors" data-action="orgsModule.filterByStatus" data-id="sponsor">
+              <div class="col-2 u-pointer" title="Click to filter sponsors" data-action="orgsModule.filterByStatus" data-id="sponsor">
                 <h6 class="text-muted mb-1 small">Sponsors</h6>
-                <h3 class="mb-0 fw-bold text-purple" id="orgsSponsorCount" style="color:#6f42c1;">0</h3>
-              </div>
-              <div class="col">
-                <h6 class="text-muted mb-1 small">At Risk</h6>
-                <h3 class="mb-0 fw-bold text-danger u-pointer" id="orgsAtRiskCount" title="Click to filter stale" data-action="orgsModule.filterByDate" data-id="stale">0</h3>
-              </div>
-              <div class="col">
-                <h6 class="text-muted mb-1 small">Avg Engagement</h6>
-                <h5 class="mb-0 fw-semibold text-success" id="orgsAvgEngagement">0%</h5>
-              </div>
-              <div class="col">
-                <h6 class="text-muted mb-1 small">Top Tier</h6>
-                <h6 class="mb-0 fw-semibold text-warning" id="orgsTopTier">-</h6>
-              </div>
-              <div class="col">
-                <h6 class="text-muted mb-1 small">Overdue</h6>
-                <h3 class="mb-0 fw-bold text-danger u-pointer" id="orgsOverdueCount" title="Click to view overdue follow-ups" data-action="orgsModule.showOverdueFollowUps">0</h3>
-              </div>
-              <div class="col">
-                <h6 class="text-muted mb-1 small">Due Soon</h6>
-                <h3 class="mb-0 fw-bold text-warning u-pointer" id="orgsDueSoonCount" title="Click to view upcoming follow-ups" data-action="orgsModule.showOverdueFollowUps">0</h3>
-              </div>
-              <div class="col">
-                <h6 class="text-muted mb-1 small">Last Updated</h6>
-                <p class="mb-0 small" id="orgsLastUpdated">-</p>
+                <h3 class="mb-0 fw-bold" id="orgsSponsorCount" style="color:#6f42c1;">0</h3>
               </div>
             </div>
+            <!-- hidden elements kept for JS compatibility -->
+            <span class="d-none" id="orgsTopSector"></span>
+            <span class="d-none" id="orgsAtRiskCount"></span>
+            <span class="d-none" id="orgsAvgEngagement"></span>
+            <span class="d-none" id="orgsTopTier"></span>
+            <span class="d-none" id="orgsOverdueCount"></span>
+            <span class="d-none" id="orgsDueSoonCount"></span>
+            <span class="d-none" id="orgsLastUpdated"></span>
             <!-- Conversion Pipeline Mini with Rates -->
             <div class="mt-3 pt-2 border-top">
               <div class="d-flex align-items-center justify-content-center gap-1 flex-wrap small">
@@ -1771,21 +1080,41 @@
     <!-- Enhanced Filters Row -->
     <div class="card border-0 shadow-sm mb-4">
       <div class="card-body py-3">
+        <!-- Row header -->
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <span class="fw-semibold text-muted" style="font-size:0.8rem;letter-spacing:.04em;text-transform:uppercase;"><i class="bi bi-funnel me-1"></i>Filter Companies</span>
+          <div class="d-flex align-items-center gap-2">
+            <div class="input-group input-group-sm" style="width:200px;">
+              <select class="form-select form-select-sm" id="orgsFilterPreset" data-on-change="orgsModule.loadFilterPreset">
+                <option value="">Saved views…</option>
+              </select>
+              <button class="btn btn-outline-primary btn-sm" data-action="orgsModule.saveFilterPreset" title="Save current view">
+                <i class="bi bi-bookmark-plus"></i>
+              </button>
+              <button class="btn btn-outline-danger btn-sm" data-action="orgsModule.deleteFilterPreset" title="Delete selected view">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
+            <button class="btn btn-outline-secondary btn-sm" data-action="orgsModule.resetFilters" title="Reset all filters">
+              <i class="bi bi-x-circle me-1"></i>Reset
+            </button>
+          </div>
+        </div>
         <!-- Row 1: Primary Filters -->
         <div class="row g-2 align-items-end">
 
           <!-- Search Box -->
           <div class="col-md-2">
-            <label for="orgsSearchBox" class="form-label small fw-semibold mb-1">
+            <label for="orgsSearchBox" class="form-label fw-semibold mb-1" style="font-size:0.8rem;">
               <i class="bi bi-search me-1"></i>Search
             </label>
             <input type="text" class="form-control form-control-sm" id="orgsSearchBox"
-                   placeholder="Company, email, contact...">
+                   placeholder="Company, email, contact…">
           </div>
 
           <!-- Year Filter -->
           <div class="col-md-1">
-            <label for="orgsYearFilter" class="form-label small fw-semibold mb-1">
+            <label for="orgsYearFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;">
               <i class="bi bi-calendar3 me-1"></i>Year
             </label>
             <select class="form-select form-select-sm" id="orgsYearFilter"
@@ -1796,45 +1125,56 @@
 
           <!-- Sector Filter -->
           <div class="col-md-2">
-            <label for="orgsSectorFilter" class="form-label small fw-semibold mb-1">
+            <label for="orgsSectorFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;">
               <i class="bi bi-briefcase me-1"></i>Sector
             </label>
             <select class="form-select form-select-sm" id="orgsSectorFilter"
+                    data-on-change="orgsModule.filterOrganisations">
+              <option value="">All Sectors</option>
+            </select>
+          </div>
+
+          <!-- Country Filter -->
+          <div class="col-md-1">
+            <label for="orgsCountryFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;">
+              <i class="bi bi-globe me-1"></i>Country
+            </label>
+            <select class="form-select form-select-sm" id="orgsCountryFilter"
+                    data-on-change="orgsModule.onCountryFilterChange">
+              <option value="">All</option>
+            </select>
+          </div>
+
+          <!-- Region Filter (cascades from Country) -->
+          <div class="col-md-2">
+            <label for="orgsRegionFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;">
+              <i class="bi bi-map me-1"></i>Region
+            </label>
+            <select class="form-select form-select-sm" id="orgsRegionFilter"
+                    data-on-change="orgsModule.onRegionFilterChange">
+              <option value="">All Regions</option>
+            </select>
+          </div>
+
+          <!-- County/City/Borough Filter (cascades from Region) -->
+          <div class="col-md-2">
+            <label for="orgsAreaFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;">
+              <i class="bi bi-pin-map me-1"></i>County/City/Borough
+            </label>
+            <select class="form-select form-select-sm" id="orgsAreaFilter"
                     data-on-change="orgsModule.filterOrganisations">
               <option value="">All</option>
             </select>
           </div>
 
-          <!-- Country Filter -->
-          <div class="col-md-2">
-            <label for="orgsCountryFilter" class="form-label small fw-semibold mb-1">
-              <i class="bi bi-flag me-1"></i>Country
-            </label>
-            <select class="form-select form-select-sm" id="orgsCountryFilter"
-                    data-on-change="orgsModule.onCountryFilterChange">
-              <option value="">All Countries</option>
-            </select>
-          </div>
-
-          <!-- Area Filter (cascades from Country) -->
-          <div class="col-md-2">
-            <label for="orgsAreaFilter" class="form-label small fw-semibold mb-1">
-              <i class="bi bi-pin-map me-1"></i>Area
-            </label>
-            <select class="form-select form-select-sm" id="orgsAreaFilter"
-                    data-on-change="orgsModule.filterOrganisations">
-              <option value="">All Areas</option>
-            </select>
-          </div>
-
           <!-- Status Filter -->
           <div class="col-md-1">
-            <label for="orgsStatusFilter" class="form-label small fw-semibold mb-1">
-              <i class="bi bi-flag me-1"></i>Status
+            <label for="orgsStatusFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;">
+              <i class="bi bi-person-badge me-1"></i>Status
             </label>
             <select class="form-select form-select-sm" id="orgsStatusFilter"
                     data-on-change="orgsModule.filterOrganisations">
-              <option value="">Active</option>
+              <option value="">All Active</option>
               <option value="prospect">Prospect</option>
               <option value="entrant">Entrant</option>
               <option value="nominee">Nominee</option>
@@ -1849,32 +1189,25 @@
 
           <!-- Tier Filter -->
           <div class="col-md-1">
-            <label for="orgsTierFilter" class="form-label small fw-semibold mb-1">
+            <label for="orgsTierFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;">
               <i class="bi bi-award me-1"></i>Tier
             </label>
             <select class="form-select form-select-sm" id="orgsTierFilter"
                     data-on-change="orgsModule.filterOrganisations">
-              <option value="">All</option>
+              <option value="">All Tiers</option>
               <option value="Bronze">Bronze</option>
               <option value="Silver">Silver</option>
               <option value="Gold">Gold</option>
               <option value="Platinum">Platinum</option>
             </select>
           </div>
-
-          <!-- Reset + Actions -->
-          <div class="col-auto d-flex align-items-end">
-            <button class="btn btn-outline-secondary btn-sm" data-action="orgsModule.resetFilters" title="Reset all filters">
-              <i class="bi bi-x-circle"></i>
-            </button>
-          </div>
         </div>
 
-        <!-- Row 2: Advanced Filters & Actions -->
-        <div class="row g-2 align-items-end mt-1">
+        <!-- Row 2: Advanced Filters -->
+        <div class="row g-2 align-items-end mt-2">
           <!-- Tag Filter -->
           <div class="col-md-2">
-            <label for="orgsTagFilter" class="form-label small fw-semibold mb-1">
+            <label for="orgsTagFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;">
               <i class="bi bi-tags me-1"></i>Tag
             </label>
             <select class="form-select form-select-sm" id="orgsTagFilter"
@@ -1885,7 +1218,7 @@
 
           <!-- Has Logo Toggle -->
           <div class="col-md-1">
-            <label for="orgsLogoFilter" class="form-label small fw-semibold mb-1">
+            <label for="orgsLogoFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;">
               <i class="bi bi-image me-1"></i>Logo
             </label>
             <select class="form-select form-select-sm" id="orgsLogoFilter"
@@ -1898,8 +1231,8 @@
 
           <!-- Date Range Filter -->
           <div class="col-md-2">
-            <label for="orgsDateFilter" class="form-label small fw-semibold mb-1">
-              <i class="bi bi-clock-history me-1"></i>Added
+            <label for="orgsDateFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;">
+              <i class="bi bi-clock-history me-1"></i>Date Added
             </label>
             <select class="form-select form-select-sm" id="orgsDateFilter"
                     data-on-change="orgsModule.filterOrganisations">
@@ -1911,86 +1244,60 @@
               <option value="stale">Stale (6+ months)</option>
             </select>
           </div>
+        </div>
 
-          <!-- Saved Filter Presets -->
-          <div class="col-md-3">
-            <label class="form-label small fw-semibold mb-1">
-              <i class="bi bi-bookmark me-1"></i>Saved Views
-            </label>
-            <div class="input-group input-group-sm">
-              <select class="form-select form-select-sm" id="orgsFilterPreset"
-                      data-on-change="orgsModule.loadFilterPreset">
-                <option value="">-- Saved Views --</option>
-              </select>
-              <button class="btn btn-outline-primary btn-sm" data-action="orgsModule.saveFilterPreset" title="Save current view (filters, sort, columns)">
-                <i class="bi bi-bookmark-plus"></i>
-              </button>
-              <button class="btn btn-outline-danger btn-sm" data-action="orgsModule.deleteFilterPreset" title="Delete selected view">
-                <i class="bi bi-trash"></i>
-              </button>
-            </div>
+        <!-- Row 3: Actions Toolbar -->
+        <div class="d-flex gap-2 align-items-center flex-wrap mt-3 pt-2 border-top">
+          <!-- View Toggle -->
+          <div class="btn-group btn-group-sm me-2" role="group" aria-label="View toggle">
+            <button class="btn btn-outline-secondary active" id="orgsTableViewBtn" data-action="orgsModule.setView" data-id="table" title="Table view">
+              <i class="bi bi-list-ul"></i>
+            </button>
+            <button class="btn btn-outline-secondary" id="kanbanToggleBtn" data-action="orgsModule.toggleKanbanView" data-prevent-default="true" title="Kanban pipeline view">
+              <i class="bi bi-kanban"></i>
+            </button>
+            <button class="btn btn-outline-secondary" id="mapToggleBtn" data-action="orgsModule.toggleMapView" data-prevent-default="true" title="Map view">
+              <i class="bi bi-map"></i>
+            </button>
           </div>
-
-          <!-- Buttons (Right Aligned) -->
-          <div class="col text-end">
-            <label class="form-label small mb-1">&nbsp;</label>
-            <div class="d-flex gap-1 justify-content-end flex-wrap">
-              <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addNewOrgModal" title="Add Company">
-                <i class="bi bi-plus-lg"></i>
-              </button>
-              <button class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#csvImportModal" title="Import CSV">
-                <i class="bi bi-upload me-1"></i>Import
-              </button>
-              <div class="btn-group btn-group-sm d-inline-block">
-                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" data-bs-display="static" title="Export">
-                  <i class="bi bi-download me-1"></i>Export
-                </button>
-                <ul class="dropdown-menu">
-                  <li><a class="dropdown-item" href="#" data-action="orgsModule.exportToCSV"><i class="bi bi-filetype-csv text-success me-2"></i>Export CSV</a></li>
-                  <li><a class="dropdown-item" href="#" data-action="orgsModule.exportToExcel"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Export Excel (.xlsx)</a></li>
-                  <li><a class="dropdown-item" href="#" data-action="orgsModule.exportToPDF" data-prevent-default="true"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
-                </ul>
-              </div>
-              <button class="btn btn-sm btn-outline-secondary" id="togglePhoneColBtn" data-action="orgsModule.togglePhoneColumn" title="Toggle Phone Column">
-                <i class="bi bi-telephone"></i>
-              </button>
-              <button class="btn btn-sm btn-outline-secondary" data-action="orgsModule.showColumnSettings" title="Column Visibility Settings">
-                <i class="bi bi-layout-three-columns"></i>
-              </button>
-              <button class="btn btn-sm btn-outline-warning" data-action="orgsModule.showDuplicateCheck" title="Check Duplicates">
-                <i class="bi bi-files"></i>
-              </button>
-              <button class="btn btn-sm btn-outline-info" id="kanbanToggleBtn" data-action="orgsModule.toggleKanbanView" title="Kanban Pipeline View">
-                <i class="bi bi-kanban"></i>
-              </button>
-              <button class="btn btn-sm btn-outline-success" id="mapToggleBtn" data-action="orgsModule.toggleMapView" title="Interactive British Isles Map">
-                <i class="bi bi-map"></i> Map
-              </button>
-              <button class="btn btn-sm btn-outline-info" data-action="orgsModule.showAnalyticsDashboard" title="Analytics & Reports">
-                <i class="bi bi-bar-chart"></i>
-              </button>
-              <button class="btn btn-sm btn-outline-danger" data-action="orgsModule.showDataQualityWizard" title="Data Quality">
-                <i class="bi bi-shield-check"></i>
-              </button>
-              <button class="btn btn-sm btn-outline-dark" data-action="orgsModule.showGlobalAuditLog" title="Audit Log">
-                <i class="bi bi-journal-text"></i>
-              </button>
-              <button class="btn btn-sm btn-outline-secondary" data-action="orgsModule.showImportHistory" title="Import History">
-                <i class="bi bi-clock-history"></i>
-              </button>
-              <button class="btn btn-sm btn-outline-secondary" data-action="orgsModule.showTagFilterModal" title="Multi-Tag Filter">
-                <i class="bi bi-tags"></i>
-              </button>
-              <div class="vr mx-1"></div>
-              <button class="btn btn-sm btn-outline-info" data-action="orgsModule.showDuplicateDetectionDashboard" title="Duplicate Detection Scan">
-                <i class="bi bi-search"></i>
-              </button>
-            </div>
+          <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addNewOrgModal">
+            <i class="bi bi-plus-lg me-1"></i>Add Organisation
+          </button>
+          <button class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#csvImportModal">
+            <i class="bi bi-upload me-1"></i>Import
+          </button>
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="bi bi-download me-1"></i>Export
+            </button>
+            <ul class="dropdown-menu">
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.exportToCSV"><i class="bi bi-filetype-csv text-success me-2"></i>Export CSV</a></li>
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.exportToExcel"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Export Excel (.xlsx)</a></li>
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.exportToPDF" data-prevent-default="true"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
+            </ul>
+          </div>
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="bi bi-tools me-1"></i>Tools
+            </button>
+            <ul class="dropdown-menu">
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.showAnalyticsDashboard" data-prevent-default="true"><i class="bi bi-bar-chart text-primary me-2"></i>Analytics Dashboard</a></li>
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.showDataQualityWizard" data-prevent-default="true"><i class="bi bi-shield-check text-danger me-2"></i>Data Quality Check</a></li>
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.showDuplicateCheck" data-prevent-default="true"><i class="bi bi-files text-warning me-2"></i>Check Duplicates</a></li>
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.showDuplicateDetectionDashboard" data-prevent-default="true"><i class="bi bi-search text-info me-2"></i>Duplicate Scan</a></li>
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.showGlobalAuditLog" data-prevent-default="true"><i class="bi bi-journal-text me-2"></i>Audit Log</a></li>
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.showImportHistory" data-prevent-default="true"><i class="bi bi-clock-history me-2"></i>Import History</a></li>
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.showTagFilterModal" data-prevent-default="true"><i class="bi bi-tags me-2"></i>Multi-Tag Filter</a></li>
+              <li class="dropdown-divider"></li>
+              <li><a class="dropdown-item" href="#" id="togglePhoneColBtn" data-action="orgsModule.togglePhoneColumn" data-prevent-default="true"><i class="bi bi-telephone me-2"></i>Toggle Phone Column</a></li>
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.showColumnSettings" data-prevent-default="true"><i class="bi bi-layout-three-columns me-2"></i>Column Visibility</a></li>
+            </ul>
           </div>
         </div>
       </div>
     </div>
 
+    <div id="orgsActiveFilters" class="mb-1"></div>
     <!-- Kanban Pipeline Board (Feature 5) -->
     <div id="orgKanbanBoard" class="d-none mb-4"></div>
 
@@ -2042,7 +1349,7 @@
                   Sector <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="sector"></i>
                 </th>
                 <th scope="col" style="width: 8%; cursor: pointer;" data-action="orgsModule.sortBy" data-args="[&quot;county&quot;]">
-                  County <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="county"></i>
+                  Area <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="county"></i>
                 </th>
                 <th scope="col" style="width: 8%; cursor: pointer;" data-action="orgsModule.sortBy" data-args="[&quot;contact&quot;]">
                   Contact <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="contact"></i>
@@ -2109,7 +1416,7 @@
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title" id="addNewOrgModalLabel">
-              <i class="bi bi-plus-circle me-2"></i>Add New Company
+              <i class="bi bi-plus-circle me-2"></i>Add New Organisation
             </h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
@@ -2168,16 +1475,12 @@
                 <label for="newCompanyAddress" class="form-label">Address</label>
                 <textarea class="form-control" id="newCompanyAddress" rows="2"></textarea>
               </div>
-              <div class="mb-3">
-                <label for="newCompanyCatchment" class="form-label">Catchment Area</label>
-                <input type="text" class="form-control" id="newCompanyCatchment" placeholder="e.g. Greater Manchester">
-              </div>
             </form>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
             <button type="button" class="btn btn-primary" data-action="orgsModule.saveNewCompany">
-              <i class="bi bi-check-lg me-1"></i>Save Company
+              <i class="bi bi-check-lg me-1"></i>Save Organisation
             </button>
           </div>
         </div>
@@ -2197,19 +1500,19 @@
           <div class="modal-body">
             <!-- Step 1: File Upload -->
             <div id="csvStep1">
-              <!-- County/City Selector (Required) -->
+              <!-- Area Selector (Required) -->
               <div class="card border-primary mb-3">
                 <div class="card-body py-3">
                   <div class="row align-items-center">
                     <div class="col-md-4">
                       <label for="csvCountySelect" class="form-label fw-bold mb-0">
-                        <i class="bi bi-geo-alt-fill text-primary me-1"></i>County / City *
+                        <i class="bi bi-geo-alt-fill text-primary me-1"></i>Area *
                       </label>
-                      <small class="text-muted d-block">Which county/city is this CSV for?</small>
+                      <small class="text-muted d-block">Which area is this CSV for?</small>
                     </div>
                     <div class="col-md-8">
                       <select class="form-select" id="csvCountySelect" required>
-                        <option value="">-- Select County or City --</option>
+                        <option value="">-- Select Area --</option>
                         <optgroup label="England Counties">
                           <option>Bedfordshire</option><option>Berkshire</option><option>Buckinghamshire</option>
                           <option>Cambridgeshire</option><option>Cheshire</option><option>Cornwall</option>
@@ -2266,7 +1569,7 @@
               <div class="alert alert-info">
                 <i class="bi bi-info-circle me-2"></i>
                 <strong>CSV Format:</strong> Your file should have headers in the first row.
-                Supported columns: Company Name, Sector, Contact Name, Email, Phone, Website, Address, Catchment Area
+                Supported columns: Company Name, Sector, Contact Name, Email, Phone, Website, Address
               </div>
               <div class="d-flex gap-2 mb-3">
                 <button class="btn btn-sm btn-outline-secondary" id="importMergeModeBtn" data-action="orgsModule.toggleImportMergeMode">
@@ -2427,43 +1730,51 @@
           </div>
 
           <!-- Filters Section -->
-          <div class="filters-section" style="position: sticky; top: 104px; z-index: 999; background-color: var(--bs-body-bg, white); padding: 1rem 0; margin-bottom: 1rem; border-bottom: 1px solid #dee2e6;">
-            <div class="row g-3">
-              <div class="col-md-4">
-                <label for="winnerYearFilterSelect" class="form-label">
-                  <i class="bi bi-calendar3 me-1"></i>Year
-                </label>
-                <select class="form-select" id="winnerYearFilterSelect">
-                  <option value="">All Years</option>
-                </select>
-              </div>
-              
-              <div class="col-md-4">
-                <label for="winnerAwardFilterSelect" class="form-label">
-                  <i class="bi bi-trophy me-1"></i>Award
-                </label>
-                <select class="form-select" id="winnerAwardFilterSelect">
-                  <option value="">All Awards</option>
-                </select>
-              </div>
-              
-              <div class="col-md-4">
-                <label for="winnerSearchBox" class="form-label">
-                  <i class="bi bi-search me-1"></i>Search
-                </label>
-                <input type="text" class="form-control" id="winnerSearchBox" placeholder="Search winners...">
-              </div>
-            </div>
-            <div class="row g-3 mt-1">
-              <div class="col-md-3">
-                <label class="form-label small fw-semibold"><i class="bi bi-bookmark me-1"></i>Saved Views</label>
-                <div class="input-group input-group-sm">
-                  <select class="form-select form-select-sm" id="winnersSavedViewsList" data-on-change="winnersModule.loadSavedWinnersView">
-                    <option value="">No saved views</option>
-                  </select>
-                  <button class="btn btn-outline-primary" data-action="winnersModule.saveCurrentWinnersView" title="Save current filters as view">
-                    <i class="bi bi-bookmark-plus"></i>
+          <div class="filters-section" style="position: sticky; top: 104px; z-index: 999; background-color: var(--bs-body-bg, white); padding: 0.75rem 0 0; margin-bottom: 0.75rem; border-bottom: 1px solid #dee2e6;">
+            <div class="rounded-2 p-3 mb-2" style="background:#f8f9fa;">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="fw-semibold text-muted" style="font-size:0.8rem;letter-spacing:.04em;text-transform:uppercase;"><i class="bi bi-funnel me-1"></i>Filter Winners</span>
+                <div class="d-flex align-items-center gap-2">
+                  <div class="input-group input-group-sm" style="width:200px;">
+                    <select class="form-select form-select-sm" id="winnersSavedViewsList" data-on-change="winnersModule.loadSavedWinnersView">
+                      <option value="">Saved views…</option>
+                    </select>
+                    <button class="btn btn-outline-primary btn-sm" data-action="winnersModule.saveCurrentWinnersView" title="Save current filters as view">
+                      <i class="bi bi-bookmark-plus"></i>
+                    </button>
+                  </div>
+                  <button class="btn btn-outline-secondary btn-sm" data-action="winnersModule.resetFilters" title="Reset all filters">
+                    <i class="bi bi-x-circle me-1"></i>Reset
                   </button>
+                </div>
+              </div>
+              <div class="row g-2 align-items-end">
+                <div class="col-md-2">
+                  <label for="winnerYearFilterSelect" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-calendar3 me-1"></i>Year</label>
+                  <select class="form-select form-select-sm" id="winnerYearFilterSelect">
+                    <option value="">All Years</option>
+                  </select>
+                </div>
+                <div class="col-md-3">
+                  <label for="winnerAwardFilterSelect" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-trophy me-1"></i>Award</label>
+                  <select class="form-select form-select-sm" id="winnerAwardFilterSelect">
+                    <option value="">All Awards</option>
+                  </select>
+                </div>
+                <div class="col-md-2">
+                  <label for="winnerStatusFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-circle-half me-1"></i>Status</label>
+                  <select class="form-select form-select-sm" id="winnerStatusFilter">
+                    <option value="">All Statuses</option>
+                    <option value="pending">Pending</option>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="announced">Announced</option>
+                    <option value="media_sent">Media Sent</option>
+                    <option value="complete">Complete</option>
+                  </select>
+                </div>
+                <div class="col">
+                  <label for="winnerSearchBox" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-search me-1"></i>Search</label>
+                  <input type="text" class="form-control form-control-sm" id="winnerSearchBox" placeholder="Search winners…">
                 </div>
               </div>
             </div>
@@ -2487,6 +1798,7 @@
             </div>
           </div>
 
+          <div id="winnersActiveFilters" class="mb-1"></div>
           <!-- Winners Table -->
           <div class="table-container">
             <div class="d-flex justify-content-between align-items-center mb-3">
@@ -2497,26 +1809,24 @@
                 <button class="btn btn-warning btn-sm" data-action="winnerPipelineModule.renderPipelineDashboard">
                   <i class="bi bi-funnel me-1"></i>Pipeline
                 </button>
-                <button class="btn btn-purple btn-sm" data-action="winnerAnnouncementsModule.renderAnnouncementsDashboard" style="background-color:#6f42c1;border-color:#6f42c1;color:#fff">
+                <button class="btn btn-sm" data-action="winnerAnnouncementsModule.renderAnnouncementsDashboard" style="background-color:#6f42c1;border-color:#6f42c1;color:#fff">
                   <i class="bi bi-megaphone me-1"></i>Announcements
                 </button>
-                <button class="btn btn-info btn-sm" data-action="winnersModule.openYearComparison">
-                  <i class="bi bi-bar-chart-line me-1"></i>Year Comparison
-                </button>
-                <button class="btn btn-outline-primary btn-sm" data-action="winnersModule.openCertificateGenerator">
-                  <i class="bi bi-award-fill me-1"></i>Certificate Editor
-                </button>
-                <button class="btn btn-secondary btn-sm" data-action="winnersModule.bulkGenerateMediaPacks">
-                  <i class="bi bi-newspaper me-1"></i>Bulk Media Packs
-                </button>
-                <button class="btn btn-primary btn-sm" data-action="winnersModule.bulkGenerateWinnerPackages">
-                  <i class="bi bi-gift me-1"></i>Bulk Winner Packages
-                </button>
-                <button class="btn btn-success btn-sm" data-action="winnersModule.openImportWinners">
-                  <i class="bi bi-upload me-1"></i>Import CSV
-                </button>
                 <div class="btn-group btn-group-sm">
-                  <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-display="static">
+                  <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                    <i class="bi bi-tools me-1"></i>Tools
+                  </button>
+                  <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#" data-action="winnersModule.openYearComparison" data-prevent-default="true"><i class="bi bi-bar-chart-line text-info me-2"></i>Year Comparison</a></li>
+                    <li><a class="dropdown-item" href="#" data-action="winnersModule.openCertificateGenerator" data-prevent-default="true"><i class="bi bi-award-fill text-primary me-2"></i>Certificate Editor</a></li>
+                    <li><a class="dropdown-item" href="#" data-action="winnersModule.bulkGenerateMediaPacks" data-prevent-default="true"><i class="bi bi-newspaper text-secondary me-2"></i>Bulk Media Packs</a></li>
+                    <li><a class="dropdown-item" href="#" data-action="winnersModule.bulkGenerateWinnerPackages" data-prevent-default="true"><i class="bi bi-gift text-success me-2"></i>Bulk Winner Packages</a></li>
+                    <li class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="#" data-action="winnersModule.openImportWinners" data-prevent-default="true"><i class="bi bi-upload text-warning me-2"></i>Import CSV</a></li>
+                  </ul>
+                </div>
+                <div class="btn-group btn-group-sm">
+                  <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-display="static">
                     <i class="bi bi-download me-1"></i>Export
                   </button>
                   <ul class="dropdown-menu">
@@ -2539,8 +1849,11 @@
                     <th scope="col" class="u-pointer" data-sort-field="winner_name" data-action="winnersModule.sortWinners" data-args="[&quot;winner_name&quot;]">Winner Name <i data-sort-icon-winners="winner_name" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
                     <th scope="col" class="u-pointer" data-sort-field="award" data-action="winnersModule.sortWinners" data-args="[&quot;award&quot;]">Award <i data-sort-icon-winners="award" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
                     <th scope="col" class="u-pointer" data-sort-field="year" data-action="winnersModule.sortWinners" data-args="[&quot;year&quot;]">Year <i data-sort-icon-winners="year" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
-                    <th scope="col">Media</th>
-                    <th scope="col" class="u-pointer" data-sort-field="status" data-action="winnersModule.sortWinners" data-args="[&quot;status&quot;]">Status <i data-sort-icon-winners="status" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th scope="col">Photos/Videos</th>
+                    <th scope="col" class="u-pointer" data-sort-field="status" data-action="winnersModule.sortWinners" data-args="[&quot;status&quot;]">
+                      Status <i data-sort-icon-winners="status" class="bi bi-arrow-down-up text-muted ms-1 small"></i>
+                      <i class="bi bi-question-circle text-muted ms-1 small" title="Winner journey: Pending → Notified (told they won) → Pack Sent (winner pack dispatched) → Confirmed (winner accepted) → Published (announced publicly)"></i>
+                    </th>
                     <th scope="col" width="220" class="text-center">Actions</th>
                   </tr>
                 </thead>
@@ -2640,81 +1953,88 @@
           </div>
 
           <!-- Filters and Actions -->
-          <div class="card mb-4">
-            <div class="card-body">
-              <div class="row g-3">
-                <div class="col-md-3">
-                  <label class="form-label">Status Filter</label>
-                  <select class="form-select" id="entriesStatusFilter" data-on-change="entriesModule.filterEntries">
-                    <option value="">All Statuses</option>
-                    <option value="draft">Draft</option>
-                    <option value="submitted">Submitted</option>
-                    <option value="under_review">Under Review</option>
-                    <option value="submitted,under_review" hidden>Pending Review</option>
-                    <option value="shortlisted">Shortlisted</option>
-                    <option value="winner">Winner</option>
-                    <option value="rejected">Rejected</option>
+          <div class="rounded-2 p-3 mb-3" style="background:#f8f9fa;border:1px solid #e9ecef;">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <span class="fw-semibold text-muted" style="font-size:0.8rem;letter-spacing:.04em;text-transform:uppercase;"><i class="bi bi-funnel me-1"></i>Filter Entries <span id="entriesFilterCount" class="badge bg-primary ms-1 d-none"></span></span>
+              <div class="d-flex align-items-center gap-2">
+                <div class="input-group input-group-sm" style="width:200px;">
+                  <select class="form-select form-select-sm" id="entriesSavedViewsList" data-on-change="entriesModule.loadSavedEntriesView">
+                    <option value="">Saved views…</option>
                   </select>
-                </div>
-                <div class="col-md-3">
-                  <label class="form-label">Award Category</label>
-                  <select class="form-select" id="entriesAwardFilter" data-on-change="entriesModule.filterEntries">
-                    <option value="">All Awards</option>
-                  </select>
-                </div>
-                <div class="col-md-2">
-                  <label class="form-label">Year</label>
-                  <select class="form-select" id="entriesYearFilter" data-on-change="entriesModule.filterEntries">
-                    <option value="">All Years</option>
-                  </select>
-                </div>
-                <div class="col-md-2">
-                  <label class="form-label">Type</label>
-                  <select class="form-select" id="entriesSelfNomFilter" data-on-change="entriesModule.filterEntries">
-                    <option value="">All Entries</option>
-                    <option value="self_nom">Self-Nominations</option>
-                    <option value="standard">Standard Entries</option>
-                  </select>
-                </div>
-                <div class="col-md-2">
-                  <label class="form-label">Search</label>
-                  <input type="text" class="form-control" id="entriesSearchInput" placeholder="Search entries...">
-                </div>
-              </div>
-              <div class="row g-3 mt-1">
-                <div class="col-md-3">
-                  <label class="form-label small fw-semibold"><i class="bi bi-bookmark me-1"></i>Saved Views</label>
-                  <div class="input-group input-group-sm">
-                    <select class="form-select form-select-sm" id="entriesSavedViewsList" data-on-change="entriesModule.loadSavedEntriesView">
-                      <option value="">No saved views</option>
-                    </select>
-                    <button class="btn btn-outline-primary" data-action="entriesModule.saveCurrentEntriesView" title="Save current filters as view">
-                      <i class="bi bi-bookmark-plus"></i>
-                    </button>
-                  </div>
-                </div>
-              </div>
-              <div class="mt-3 d-flex gap-2">
-                <button class="btn btn-sm btn-primary" data-action="entriesModule.openPublicFormLink">
-                  <i class="bi bi-link-45deg me-1"></i>Get Public Entry Form Link
-                </button>
-                <div class="btn-group">
-                  <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="bi bi-download me-1"></i>Export
+                  <button class="btn btn-outline-primary btn-sm" data-action="entriesModule.saveCurrentEntriesView" title="Save current filters as view">
+                    <i class="bi bi-bookmark-plus"></i>
                   </button>
-                  <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="#" data-action="entriesModule.exportEntries" data-prevent-default="true"><i class="bi bi-filetype-csv text-success me-2"></i>Export CSV</a></li>
-                    <li><a class="dropdown-item" href="#" data-action="entriesModule.exportEntriesExcel" data-prevent-default="true"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Export Excel</a></li>
-                    <li><a class="dropdown-item" href="#" data-action="entriesModule.exportEntriesPDF" data-prevent-default="true"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
-                  </ul>
                 </div>
-                <button class="btn btn-sm btn-outline-danger" data-action="entriesModule.bulkActions">
-                  <i class="bi bi-list-check me-1"></i>Bulk Actions
+                <button class="btn btn-outline-secondary btn-sm" data-action="entriesModule.resetFilters" title="Reset all filters">
+                  <i class="bi bi-x-circle me-1"></i>Reset
                 </button>
+              </div>
+            </div>
+            <div class="row g-2 align-items-end">
+              <div class="col-md-2">
+                <label class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-flag me-1"></i>Status</label>
+                <select class="form-select form-select-sm" id="entriesStatusFilter" data-on-change="entriesModule.filterEntries">
+                  <option value="">All Statuses</option>
+                  <option value="draft">Draft</option>
+                  <option value="submitted">Submitted</option>
+                  <option value="under_review">Under Review</option>
+                  <option value="submitted,under_review" hidden>Pending Review</option>
+                  <option value="shortlisted">Shortlisted</option>
+                  <option value="winner">Winner</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-trophy me-1"></i>Award Category</label>
+                <select class="form-select form-select-sm" id="entriesAwardFilter" data-on-change="entriesModule.filterEntries">
+                  <option value="">All Awards</option>
+                </select>
+              </div>
+              <div class="col-md-1">
+                <label class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-calendar3 me-1"></i>Year</label>
+                <select class="form-select form-select-sm" id="entriesYearFilter" data-on-change="entriesModule.filterEntries">
+                  <option value="">All Years</option>
+                </select>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label fw-semibold mb-1" style="font-size:0.8rem;" title="Self-Nominated: the company applied directly. Standard: nominated by a sponsor or organiser."><i class="bi bi-person me-1"></i>Entry Type</label>
+                <select class="form-select form-select-sm" id="entriesSelfNomFilter" data-on-change="entriesModule.filterEntries">
+                  <option value="">All Entries</option>
+                  <option value="self_nom">Self-Nominated</option>
+                  <option value="standard">Standard Entry</option>
+                </select>
+              </div>
+              <div class="col">
+                <label class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-search me-1"></i>Search</label>
+                <input type="text" class="form-control form-control-sm" id="entriesSearchInput" placeholder="Search entries…">
+              </div>
+            </div>
+            <div class="mt-2 d-flex gap-2">
+              <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                  <i class="bi bi-download me-1"></i>Export
+                </button>
+                <ul class="dropdown-menu">
+                  <li><a class="dropdown-item" href="#" data-action="entriesModule.exportEntries" data-prevent-default="true"><i class="bi bi-filetype-csv text-success me-2"></i>Export CSV</a></li>
+                  <li><a class="dropdown-item" href="#" data-action="entriesModule.exportEntriesExcel" data-prevent-default="true"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Export Excel</a></li>
+                  <li><a class="dropdown-item" href="#" data-action="entriesModule.exportEntriesPDF" data-prevent-default="true"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
+                </ul>
+              </div>
+              <button class="btn btn-sm btn-outline-secondary" data-action="entriesModule.bulkActions">
+                <i class="bi bi-list-check me-1"></i>Bulk Actions
+              </button>
+              <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                  <i class="bi bi-tools me-1"></i>Tools
+                </button>
+                <ul class="dropdown-menu">
+                  <li><a class="dropdown-item" href="#" data-action="entriesModule.openPublicFormLink" data-prevent-default="true"><i class="bi bi-link-45deg text-primary me-2"></i>Get Entry Form Link</a></li>
+                </ul>
               </div>
             </div>
           </div>
 
+          <div id="entriesActiveFilters" class="mb-1"></div>
           <!-- Entries Table -->
           <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
@@ -2734,7 +2054,7 @@
                     <th scope="col" class="u-pointer" data-action="entriesModule.sortEntries" data-args="[&quot;award&quot;]">Award <i data-sort-icon-entries="award" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
                     <th scope="col">Entry Title</th>
                     <th scope="col" class="u-pointer" data-action="entriesModule.sortEntries" data-args="[&quot;status&quot;]">Status <i data-sort-icon-entries="status" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
-                    <th scope="col" class="u-pointer" data-action="entriesModule.sortEntries" data-args="[&quot;score&quot;]">Score <i data-sort-icon-entries="score" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th scope="col" class="u-pointer" data-action="entriesModule.sortEntries" data-args="[&quot;score&quot;]" title="Average judging score submitted by assigned judges">Score <i data-sort-icon-entries="score" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
                     <th scope="col">Payment</th>
                     <th scope="col" class="u-pointer" data-action="entriesModule.sortEntries" data-args="[&quot;submission_date&quot;]">Submitted <i data-sort-icon-entries="submission_date" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
                     <th scope="col" style="width: 150px;">Actions</th>
@@ -2771,12 +2091,10 @@
               <p class="section-subtitle">Manage event photos and videos</p>
             </div>
             <div class="d-flex gap-2 align-items-center flex-wrap">
-              <button class="btn btn-sm btn-outline-warning" data-action="mediaGalleryModule.showFeaturedPhotosView" title="Featured Photos">
+              <button class="btn btn-sm btn-outline-warning" data-action="mediaGalleryModule.showFeaturedPhotosView" title="Mark photos as featured to highlight them on the public winner pages">
                 <i class="bi bi-star-fill me-1"></i>Featured
               </button>
-              <button class="btn btn-sm btn-outline-secondary" data-action="mediaGalleryModule.showKeyboardShortcutsHelp" title="Keyboard Shortcuts">
-                <i class="bi bi-keyboard me-1"></i>Shortcuts
-              </button>
+              <button class="btn btn-sm btn-outline-secondary" data-action="mediaGalleryModule.showKeyboardShortcutsHelp" title="Keyboard shortcuts"><i class="bi bi-keyboard"></i></button>
               <div class="input-group input-group-sm" style="width:280px;">
                 <span class="input-group-text"><i class="bi bi-building"></i></span>
                 <select class="form-select form-select-sm" id="mediaOrgFilter" data-on-change="mediaGalleryModule.viewOrgMedia">
@@ -2788,6 +2106,11 @@
 
           <!-- Media Gallery Content -->
           <div id="mediaGalleryContent">
+
+            <!-- Breadcrumb Navigation -->
+            <nav aria-label="breadcrumb" id="mediaGalleryBreadcrumb" class="d-none mb-3">
+              <ol class="breadcrumb mb-0 small" id="mediaGalleryBreadcrumbList"></ol>
+            </nav>
 
             <!-- Events List View (default) -->
             <div id="eventsListView" style="display: block;">
@@ -3024,14 +2347,14 @@
                   </label>
                   <div class="input-group mb-2">
                     <select class="form-select" id="videoTagInput">
-                      <option value="">Select a company...</option>
+                      <option value="">Select an organisation...</option>
                     </select>
                     <button class="btn btn-outline-secondary" type="button" data-action="mediaGalleryModule.addVideoTag">
-                      <i class="bi bi-plus-circle me-1"></i>Add Company
+                      <i class="bi bi-plus-circle me-1"></i>Add Organisation
                     </button>
                   </div>
                   <div id="videoTagsContainer" class="d-flex flex-wrap gap-2">
-                    <!-- Company tags will be added here dynamically -->
+                    <!-- Organisation tags will be added here dynamically -->
                   </div>
                 </div>
 
@@ -3375,19 +2698,26 @@
               </div>
             </div>
             <div class="col-6 col-md-3 col-lg">
-              <div class="stat-card" data-stat-filter="callback:eventsModule.filterDataIssues" title="Click to view events with missing data">
-                <i class="bi bi-exclamation-triangle stat-card-icon text-warning"></i>
+              <div class="stat-card" id="eventsDataIssuesCard" data-stat-filter="callback:eventsModule.filterDataIssues" title="Click to view events with missing data">
+                <i class="bi bi-exclamation-triangle stat-card-icon text-muted" id="eventsDataIssuesIcon"></i>
                 <h6>Data Issues</h6>
-                <div class="stat-value text-warning" id="eventsDataIssuesCount">0</div>
+                <div class="stat-value text-muted" id="eventsDataIssuesCount">0</div>
               </div>
             </div>
           </div>
 
           <!-- Financial Overview Panel (collapsible) -->
           <div class="card mb-4" id="eventsFinancialPanel">
-            <div class="card-header d-flex justify-content-between align-items-center py-2 u-pointer" data-bs-toggle="collapse" data-bs-target="#financialPanelBody" aria-expanded="false">
-              <h6 class="mb-0"><i class="bi bi-cash-stack me-2"></i>Financial Overview - All Events</h6>
-              <i class="bi bi-chevron-down"></i>
+            <div class="card-header u-pointer" data-bs-toggle="collapse" data-bs-target="#financialPanelBody" aria-expanded="false">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <h6 class="mb-0"><i class="bi bi-cash-stack me-2"></i>Financial Overview - All Events</h6>
+                <i class="bi bi-chevron-down"></i>
+              </div>
+              <div class="d-flex gap-4 small mt-1">
+                <span class="text-success fw-semibold">Revenue: <span id="financialSummaryRevenue">£0</span></span>
+                <span class="text-danger fw-semibold">Costs: <span id="financialSummaryCosts">£0</span></span>
+                <span class="fw-semibold">Net P&amp;L: <span id="financialSummaryPL">£0</span></span>
+              </div>
             </div>
             <div class="card-body collapse" id="financialPanelBody">
               <div class="row g-3 mb-3">
@@ -3584,8 +2914,7 @@
                     <th scope="col" style="width:70px;cursor:pointer" data-sort-field="year" data-action="eventsModule.sortEvents" data-args="[&quot;year&quot;]">Year <i data-sort-icon-events="year" class="bi bi-arrow-down-up text-muted small"></i></th>
                     <th scope="col" style="width:100px;cursor:pointer" data-sort-field="event_date" data-action="eventsModule.sortEvents" data-args="[&quot;event_date&quot;]">Date <i data-sort-icon-events="event_date" class="bi bi-arrow-down-up text-muted small"></i></th>
                     <th scope="col" class="u-pointer" data-sort-field="venue" data-action="eventsModule.sortEvents" data-args="[&quot;venue&quot;]">Venue <i data-sort-icon-events="venue" class="bi bi-arrow-down-up text-muted small"></i></th>
-                    <th scope="col" style="width:70px" class="text-center" title="Attendees"><i class="bi bi-people me-1"></i>Att.</th>
-                    <th scope="col" style="width:55px" class="text-center" title="VIP Guests"><i class="bi bi-star me-1"></i>VIP</th>
+                    <th scope="col" style="width:90px" class="text-center" title="Total attendees (VIP count in brackets)"><i class="bi bi-people me-1"></i>Attendees</th>
                     <th scope="col" style="width:70px" class="text-center" title="Award Presentations Confirmed"><i class="bi bi-trophy me-1"></i>Awards</th>
                     <th scope="col" style="width:65px" class="text-center" title="Winners Confirmed"><i class="bi bi-award me-1"></i>Won</th>
                     <th scope="col" style="width:85px" class="text-center">Status</th>
@@ -3594,7 +2923,7 @@
                 </thead>
                 <tbody id="eventsTableBody">
                   <tr>
-                    <td colspan="11" class="text-center py-4">
+                    <td colspan="10" class="text-center py-4">
                       <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
                       Loading events...
                     </td>
@@ -3630,12 +2959,6 @@
 
         </div>
 
-        <!-- Floating Action Button -->
-        <div class="position-fixed" style="bottom:80px; right:30px; z-index:1040;">
-          <button class="btn btn-primary btn-lg rounded-circle shadow-lg" data-action="eventsModule.openAddModal" title="Add Event" style="width:56px; height:56px;">
-            <i class="bi bi-plus-lg"></i>
-          </button>
-        </div>
       </div>
 
       <!-- ==================================================== -->
@@ -3654,10 +2977,14 @@
 
           <!-- Toolbar: Year Filter + Print + Freshness -->
           <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-            <div class="d-flex gap-2 align-items-center">
+            <div class="d-flex gap-2 align-items-center flex-wrap">
               <label class="form-label mb-0 small fw-semibold text-muted">Year:</label>
               <select id="reportsYearFilter" class="form-select form-select-sm" style="width:120px;" data-on-change="reportsAnalytics.filterByYear">
                 <option value="all">All Years</option>
+              </select>
+              <label class="form-label mb-0 small fw-semibold text-muted ms-2">Compare with:</label>
+              <select id="reportsCompareYearFilter" class="form-select form-select-sm" style="width:120px;" data-on-change="reportsAnalytics.filterByYear">
+                <option value="">None</option>
               </select>
               <button class="btn btn-sm btn-outline-primary" data-action="reportsAnalytics.printSummaryReport">
                 <i class="bi bi-printer me-1"></i>Print Report
@@ -3819,7 +3146,7 @@
           </div>
 
           <!-- Scheduled Reports Section -->
-          <div class="content-card">
+          <div class="content-card d-none">
             <div class="d-flex justify-content-between align-items-center mb-3">
               <h5 class="mb-0">
                 <i class="bi bi-calendar2-week me-2"></i>Scheduled Reports
@@ -3854,7 +3181,104 @@
             <p class="section-subtitle">Manage banners, sponsors, campaigns and promotional content</p>
           </div>
 
-          <!-- Marketing Sub-Navigation -->
+          <!-- Getting Started Workflow Card -->
+          <div class="card border-0 shadow-sm mb-4" id="marketingGettingStarted">
+            <div class="card-body py-3">
+              <div class="d-flex justify-content-between align-items-start mb-3">
+                <div>
+                  <h6 class="fw-bold mb-1"><i class="bi bi-map me-2 text-primary"></i>Getting Started — Recommended Workflow</h6>
+                  <p class="text-muted small mb-0">Follow these steps in order the first time you set up Marketing. Each step builds on the last.</p>
+                </div>
+                <button type="button" class="btn-close btn-sm" aria-label="Dismiss" onclick="document.getElementById('marketingGettingStarted').style.display='none';localStorage.setItem('mktWorkflowDismissed','1');"></button>
+              </div>
+              <div class="row g-2">
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">1</span>
+                    <div>
+                      <div class="fw-semibold small">Branding</div>
+                      <div class="text-muted" style="font-size:.75rem;">Set your logo, colours &amp; identity used across all emails and certificates.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">2</span>
+                    <div>
+                      <div class="fw-semibold small">Email Placeholders</div>
+                      <div class="text-muted" style="font-size:.75rem;">Define merge tags (e.g. <code>{{company_name}}</code>) that auto-fill when emails are sent.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">3</span>
+                    <div>
+                      <div class="fw-semibold small">Email Templates</div>
+                      <div class="text-muted" style="font-size:.75rem;">Create reusable email layouts (winner notification, shortlist, etc.).</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">4</span>
+                    <div>
+                      <div class="fw-semibold small">Email Builder</div>
+                      <div class="text-muted" style="font-size:.75rem;">Drag-and-drop builder for one-off campaigns. Start from a template or from scratch.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">5</span>
+                    <div>
+                      <div class="fw-semibold small">Email Lists</div>
+                      <div class="text-muted" style="font-size:.75rem;">Import or sync recipients. Segment by sector, region, or award status.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">6</span>
+                    <div>
+                      <div class="fw-semibold small">Email Sequences</div>
+                      <div class="text-muted" style="font-size:.75rem;">Automate multi-step campaigns — e.g. entry confirmation → shortlist → winner reveal.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-success rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">7</span>
+                    <div>
+                      <div class="fw-semibold small">Banners</div>
+                      <div class="text-muted" style="font-size:.75rem;">Upload promotional banners for the website and event materials.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-success rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">8</span>
+                    <div>
+                      <div class="fw-semibold small">Sponsors</div>
+                      <div class="text-muted" style="font-size:.75rem;">Add sponsor logos, tier levels, and manage sponsorship packages.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-success rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">9</span>
+                    <div>
+                      <div class="fw-semibold small">Social Media</div>
+                      <div class="text-muted" style="font-size:.75rem;">Schedule and post to Twitter/X, LinkedIn, Facebook, and Instagram.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <script>if(localStorage.getItem('mktWorkflowDismissed')==='1'){var el=document.getElementById('marketingGettingStarted');if(el)el.style.display='none';}</script>
+
+          <!-- Marketing Sub-Navigation (order matches Getting Started workflow) -->
           <ul class="nav nav-pills mb-4" id="marketingSubTabs" role="tablist">
             <li class="nav-item" role="presentation">
               <button class="nav-link active" id="branding-subtab" data-bs-toggle="pill" data-bs-target="#branding-overview-content" type="button" role="tab">
@@ -3864,21 +3288,6 @@
             <li class="nav-item" role="presentation">
               <button class="nav-link" id="placeholders-subtab" data-bs-toggle="pill" data-bs-target="#placeholders-content" type="button" role="tab">
                 <i class="bi bi-braces me-2"></i>Email Placeholders
-              </button>
-            </li>
-            <li class="nav-item" role="presentation">
-              <button class="nav-link" id="banners-subtab" data-bs-toggle="pill" data-bs-target="#banners-content" type="button" role="tab">
-                <i class="bi bi-file-image me-2"></i>Banners
-              </button>
-            </li>
-            <li class="nav-item" role="presentation">
-              <button class="nav-link" id="sponsors-subtab" data-bs-toggle="pill" data-bs-target="#sponsors-content" type="button" role="tab">
-                <i class="bi bi-award me-2"></i>Sponsors
-              </button>
-            </li>
-            <li class="nav-item" role="presentation">
-              <button class="nav-link" id="social-subtab" data-bs-toggle="pill" data-bs-target="#social-content" type="button" role="tab">
-                <i class="bi bi-share me-2"></i>Social Media
               </button>
             </li>
             <li class="nav-item" role="presentation">
@@ -3899,6 +3308,21 @@
             <li class="nav-item" role="presentation">
               <button class="nav-link" id="email-sequences-subtab" data-bs-toggle="pill" data-bs-target="#email-sequences-content" type="button" role="tab">
                 <i class="bi bi-envelope-arrow-up me-2"></i>Email Sequences
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="banners-subtab" data-bs-toggle="pill" data-bs-target="#banners-content" type="button" role="tab">
+                <i class="bi bi-file-image me-2"></i>Banners
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="sponsors-subtab" data-bs-toggle="pill" data-bs-target="#sponsors-content" type="button" role="tab">
+                <i class="bi bi-award me-2"></i>Sponsors
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="social-subtab" data-bs-toggle="pill" data-bs-target="#social-content" type="button" role="tab">
+                <i class="bi bi-share me-2"></i>Social Media
               </button>
             </li>
           </ul>
@@ -5173,21 +4597,25 @@
             <li class="nav-item" role="presentation">
               <button class="nav-link active" id="invoices-subtab" data-bs-toggle="pill" data-bs-target="#invoices-content" type="button" role="tab">
                 <i class="bi bi-file-earmark-text me-2"></i>Invoices
+                <span class="d-block small fw-normal opacity-75" style="font-size:0.7rem;">Bills issued to organisations</span>
               </button>
             </li>
             <li class="nav-item" role="presentation">
               <button class="nav-link" id="payments-list-subtab" data-bs-toggle="pill" data-bs-target="#payments-list-content" type="button" role="tab">
                 <i class="bi bi-cash-coin me-2"></i>Payments
+                <span class="d-block small fw-normal opacity-75" style="font-size:0.7rem;">Payments received against invoices</span>
               </button>
             </li>
             <li class="nav-item" role="presentation">
               <button class="nav-link" id="financial-reports-subtab" data-bs-toggle="pill" data-bs-target="#financial-reports-content" type="button" role="tab">
                 <i class="bi bi-graph-up me-2"></i>Financial Reports
+                <span class="d-block small fw-normal opacity-75" style="font-size:0.7rem;">Revenue and outstanding analysis</span>
               </button>
             </li>
             <li class="nav-item" role="presentation">
               <button class="nav-link" id="accounting-subtab" data-bs-toggle="pill" data-bs-target="#accounting-content" type="button" role="tab">
-                <i class="bi bi-currency-pound me-2"></i>Accounting
+                <i class="bi bi-currency-pound me-2"></i>Accounting Integration
+                <span class="d-block small fw-normal opacity-75" style="font-size:0.7rem;">Connect your accounting software</span>
               </button>
             </li>
           </ul>
@@ -5433,6 +4861,12 @@
               <!-- Report Options -->
               <div class="content-card mb-4">
                 <h5 class="mb-3"><i class="bi bi-graph-up me-2"></i>Generate Financial Reports</h5>
+                <div class="mb-3 d-flex gap-2 flex-wrap">
+                  <span class="text-muted small fw-semibold align-self-center me-1">Quick range:</span>
+                  <button class="btn btn-sm btn-outline-secondary" onclick="(function(){var n=new Date(),s=new Date(n);s.setDate(n.getDate()-30);document.getElementById('reportStartDate').value=s.toISOString().slice(0,10);document.getElementById('reportEndDate').value=n.toISOString().slice(0,10);})()">Last 30 Days</button>
+                  <button class="btn btn-sm btn-outline-secondary" onclick="(function(){var n=new Date(),q=Math.floor(n.getMonth()/3),s=new Date(n.getFullYear(),q*3,1);document.getElementById('reportStartDate').value=s.toISOString().slice(0,10);document.getElementById('reportEndDate').value=n.toISOString().slice(0,10);})()">This Quarter</button>
+                  <button class="btn btn-sm btn-outline-secondary" onclick="(function(){var n=new Date();document.getElementById('reportStartDate').value=n.getFullYear()+'-01-01';document.getElementById('reportEndDate').value=n.toISOString().slice(0,10);})()">This Year</button>
+                </div>
                 <div class="row g-3">
                   <div class="col-md-3">
                     <label class="form-label small fw-bold">Report Type</label>
@@ -5510,7 +4944,7 @@
           <ul class="nav nav-pills mb-4" id="crmSubTabs" role="tablist">
             <li class="nav-item" role="presentation">
               <button class="nav-link active" id="companies-crm-subtab" data-bs-toggle="pill" data-bs-target="#companies-crm-content" type="button" role="tab">
-                <i class="bi bi-building me-2"></i>Companies
+                <i class="bi bi-building me-2"></i>Organisations
               </button>
             </li>
             <li class="nav-item" role="presentation">
@@ -5534,13 +4968,13 @@
               </button>
             </li>
             <li class="nav-item" role="presentation">
-              <button class="nav-link" id="smart-segments-subtab" data-bs-toggle="pill" data-bs-target="#smart-segments-content" type="button" role="tab">
+              <button class="nav-link" id="smart-segments-subtab" data-bs-toggle="pill" data-bs-target="#smart-segments-content" type="button" role="tab" title="Smart Segments are rule-based auto-segments that update dynamically as organisation data changes">
                 <i class="bi bi-funnel me-2"></i>Smart Segments
               </button>
             </li>
             <li class="nav-item" role="presentation">
-              <button class="nav-link" id="my-tasks-subtab" data-bs-toggle="pill" data-bs-target="#my-tasks-content" type="button" role="tab">
-                <i class="bi bi-person-check me-2"></i>My Tasks
+              <button class="nav-link" id="my-tasks-subtab" data-bs-toggle="pill" data-bs-target="#my-tasks-content" type="button" role="tab" title="Tasks assigned to you personally — shared across the team">
+                <i class="bi bi-check2-square me-2"></i>Tasks
               </button>
             </li>
           </ul>
@@ -5557,7 +4991,7 @@
                   <div class="content-card text-center">
                     <i class="bi bi-building text-primary fs-1 mb-2"></i>
                     <div class="fs-2 fw-bold" id="totalCompaniesCount">0</div>
-                    <div class="text-muted small">Total Companies</div>
+                    <div class="text-muted small">Total Organisations</div>
                   </div>
                 </div>
                 <div class="col-md-3">
@@ -5791,8 +5225,19 @@
                 </div>
               </div>
 
+              <!-- Deals View Toggle -->
+              <div class="d-flex justify-content-end mb-2">
+                <div class="btn-group btn-group-sm" role="group" aria-label="View toggle">
+                  <button type="button" class="btn btn-outline-secondary active" id="dealsTableViewBtn" data-action="crmModule.showDealsTableView" title="Table view"><i class="bi bi-table"></i></button>
+                  <button type="button" class="btn btn-outline-secondary" id="dealsKanbanViewBtn" data-action="crmModule.showDealsKanbanView" title="Kanban view"><i class="bi bi-kanban"></i></button>
+                </div>
+              </div>
+
+              <!-- Deals Kanban -->
+              <div id="dealsKanbanBoard" class="d-none mb-4"></div>
+
               <!-- Deals Pipeline -->
-              <div class="table-container">
+              <div id="dealsTableContainer" class="table-container">
                 <div class="table-responsive">
                   <table class="table table-hover table-striped align-middle">
                     <thead class="table-light">
@@ -6032,12 +5477,48 @@
             <p class="section-subtitle">Manage system settings and data backups</p>
           </div>
 
+          <!-- Settings Sub-Navigation -->
+          <ul class="nav nav-pills mb-4" id="settingsSubTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#settings-general" type="button" role="tab">
+                <i class="bi bi-palette me-2"></i>General
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" data-bs-toggle="pill" data-bs-target="#settings-seasons" type="button" role="tab">
+                <i class="bi bi-calendar-event me-2"></i>Seasons &amp; Areas
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" data-bs-toggle="pill" data-bs-target="#settings-security" type="button" role="tab">
+                <i class="bi bi-shield-lock me-2"></i>Security
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" data-bs-toggle="pill" data-bs-target="#settings-integrations" type="button" role="tab">
+                <i class="bi bi-broadcast me-2"></i>Integrations
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" data-bs-toggle="pill" data-bs-target="#settings-data" type="button" role="tab">
+                <i class="bi bi-cloud-download me-2"></i>Data &amp; Backup
+              </button>
+            </li>
+          </ul>
+
+          <div class="tab-content" id="settingsSubTabContent">
+
+          <!-- General: Branding + UX Preferences -->
+          <div class="tab-pane fade show active" id="settings-general" role="tabpanel">
           <!-- Branding (rendered dynamically by brandingModule.renderBrandSettings) -->
           <div id="brandingSettingsContainer" class="mb-4"></div>
 
           <!-- UX Preferences (rendered dynamically by settingsModule.renderUxSettings) -->
           <div id="uxSettingsContainer" class="mb-4"></div>
+          </div>
 
+          <!-- Seasons & Areas -->
+          <div class="tab-pane fade" id="settings-seasons" role="tabpanel">
           <div class="row g-4">
 
             <!-- Award Seasons -->
@@ -6097,6 +5578,13 @@
                 </div>
               </div>
             </div>
+
+          </div><!-- /row: seasons+areas -->
+          </div><!-- /tab-pane: settings-seasons -->
+
+          <!-- Data & Backup: Backup/Export + System Info + Audit Log -->
+          <div class="tab-pane fade" id="settings-data" role="tabpanel">
+          <div class="row g-4">
 
             <!-- Backup & Export Section -->
             <div class="col-lg-6">
@@ -6211,13 +5699,13 @@
                 <div class="form-check mb-2">
                   <input class="form-check-input" type="checkbox" id="weeklyBackup" aria-label="Enable weekly backup" data-on-change="settingsModule.updateBackupSettings">
                   <label class="form-check-label" for="weeklyBackup">
-                    Weekly backup reminder
+                    Weekly backup reminder <span class="text-muted small ms-1">(email notification)</span>
                   </label>
                 </div>
                 <div class="form-check mb-2">
                   <input class="form-check-input" type="checkbox" id="monthlyBackup" aria-label="Enable monthly backup" data-on-change="settingsModule.updateBackupSettings" checked>
                   <label class="form-check-label" for="monthlyBackup">
-                    Monthly backup reminder
+                    Monthly backup reminder <span class="text-muted small ms-1">(email notification)</span>
                   </label>
                 </div>
 
@@ -6228,7 +5716,7 @@
             </div>
           </div>
 
-          <!-- Audit Log Section -->
+          <!-- Audit Log -->
           <div class="row g-4 mt-4">
             <div class="col-12">
               <div class="content-card">
@@ -6243,7 +5731,7 @@
                     <button class="btn btn-outline-secondary btn-sm" data-action="settingsModule.refreshAuditLog">
                       <i class="bi bi-arrow-clockwise me-1"></i>Refresh
                     </button>
-                    <button class="btn btn-outline-danger btn-sm" data-action="settingsModule.clearAuditLog">
+                    <button class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#clearAuditLogModal">
                       <i class="bi bi-trash me-1"></i>Clear Log
                     </button>
                   </div>
@@ -6292,8 +5780,13 @@
             </div>
           </div>
 
+          </div><!-- /tab-pane: settings-data -->
+
+          <!-- Security: 2FA + User Roles + GDPR -->
+          <div class="tab-pane fade" id="settings-security" role="tabpanel">
+
           <!-- Two-Factor Authentication Section -->
-          <div class="row g-4 mt-4">
+          <div class="row g-4 mt-0">
             <div class="col-12">
               <div class="content-card">
                 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -6313,6 +5806,11 @@
               </div>
             </div>
           </div>
+
+          <!-- Integrations: Webhooks -->
+          </div><!-- /tab-pane: settings-security (2FA opened above, closed here) -->
+
+          <div class="tab-pane fade" id="settings-integrations" role="tabpanel">
 
           <!-- Outbound Webhooks Section -->
           <div class="row g-4 mt-4">
@@ -6357,6 +5855,10 @@
             </div>
           </div>
 
+          </div><!-- /tab-pane: settings-integrations -->
+
+          <!-- Security extras: GDPR + User Roles — moved into #settings-security by script below -->
+          <div id="settings-security-overflow" style="display:none">
           <!-- GDPR Compliance (rendered dynamically by gdprModule.renderGdprPanel) -->
           <div id="gdprPanel" class="mt-4"></div>
 
@@ -6448,6 +5950,20 @@
               </div>
             </div>
           </div>
+
+          </div><!-- /settings-security-overflow -->
+          </div><!-- /settingsSubTabContent tab-content -->
+
+          <script>
+          (function() {
+            var overflow = document.getElementById('settings-security-overflow');
+            var secPane = document.getElementById('settings-security');
+            if (overflow && secPane) {
+              while (overflow.firstChild) secPane.appendChild(overflow.firstChild);
+              overflow.remove();
+            }
+          })();
+          </script>
 
         </div>
       </div>
@@ -6785,16 +6301,16 @@
             <input type="hidden" id="awardFormId">
             <div class="row g-3">
               <div class="col-md-8">
-                <label for="awardFormName" class="form-label fw-semibold">Category Name</label>
+                <label for="awardFormName" class="form-label fw-semibold">Category Name <span class="text-danger">*</span></label>
                 <input type="text" class="form-control" id="awardFormName" placeholder="e.g. Loft Conversion Company" required minlength="2" aria-required="true">
-                <div class="form-text">The category name (county prefix is added automatically)</div>
+                <div class="form-text">The category name (area prefix is added automatically)</div>
               </div>
               <div class="col-md-4">
-                <label for="awardFormYear" class="form-label fw-semibold">Year</label>
+                <label for="awardFormYear" class="form-label fw-semibold">Year <span class="text-danger">*</span></label>
                 <input type="number" class="form-control" id="awardFormYear" value="2026" min="2024" max="2030" required>
               </div>
               <div class="col-md-3">
-                <label for="awardFormCountry" class="form-label fw-semibold">Country</label>
+                <label for="awardFormCountry" class="form-label fw-semibold">Country <span class="text-danger">*</span></label>
                 <select class="form-select" id="awardFormCountry" required
                         data-on-change="awardsModule.onAwardFormCountryChange">
                   <option value="">Select Country...</option>
@@ -6804,7 +6320,7 @@
                 </select>
               </div>
               <div class="col-md-3">
-                <label for="awardFormArea" class="form-label fw-semibold">Area</label>
+                <label for="awardFormArea" class="form-label fw-semibold">Area <span class="text-danger">*</span></label>
                 <select class="form-select" id="awardFormArea" required
                         data-on-change="awardsModule.onAwardFormAreaChange">
                   <option value="">Select Area...</option>
@@ -6812,7 +6328,7 @@
                 <div id="awardFormAreaHint" class="form-text mt-1"></div>
               </div>
               <div class="col-md-6">
-                <label for="awardFormSector" class="form-label fw-semibold">Sector</label>
+                <label for="awardFormSector" class="form-label fw-semibold">Sector <span class="text-danger">*</span></label>
                 <select class="form-select" id="awardFormSector" required>
                   <option value="">Select Sector...</option>
                 </select>
@@ -7190,6 +6706,28 @@
     </div>
   </div>
 
+  <!-- Clear Audit Log Confirm Modal -->
+  <div class="modal fade" id="clearAuditLogModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-exclamation-triangle-fill text-danger me-2"></i>Clear Audit Log</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small mb-3">This will permanently delete all audit log entries. Type <strong>CLEAR</strong> to confirm.</p>
+          <input type="text" class="form-control form-control-sm" id="clearAuditLogConfirmInput" placeholder="Type CLEAR to confirm">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-danger btn-sm" id="clearAuditLogConfirmBtn" data-action="settingsModule.clearAuditLogConfirmed">
+            <i class="bi bi-trash me-1"></i>Clear Log
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Overdue Reminders Modal -->
   <div class="modal fade" id="overdueRemindersModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
@@ -7367,30 +6905,30 @@
   </div>
 </div>
 
-<!-- Add Company Modal (Enhanced search/select) -->
+<!-- Add Organisation Modal (Enhanced search/select) -->
 <div class="modal fade" id="addCompanyModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">
-          <i class="bi bi-plus-circle me-2"></i>Add Companies to Award
+          <i class="bi bi-plus-circle me-2"></i>Add Organisations to Award
         </h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
         <div class="mb-3">
-          <label class="form-label">Search Companies</label>
-          <input 
-            type="text" 
-            class="form-control form-control-lg" 
-            id="bulkAddSearchBox" 
+          <label class="form-label">Search Organisations</label>
+          <input
+            type="text"
+            class="form-control form-control-lg"
+            id="bulkAddSearchBox"
             placeholder="Type to search..."
             data-on-input="assignmentsModule.filterBulkAdd">
         </div>
-        
+
         <div class="alert alert-info">
           <i class="bi bi-lightbulb me-2"></i>
-          <strong>Tip:</strong> Select multiple companies and click "Add Selected" to add them all at once.
+          <strong>Tip:</strong> Select multiple organisations and click "Add Selected" to add them all at once.
         </div>
         
         <div id="bulkAddCompanyList" class="u-scroll-y-400">
@@ -10347,7 +9885,7 @@
             <div class="col-md-4">
               <div class="card bg-primary text-white h-100">
                 <div class="card-body">
-                  <h6 class="card-subtitle mb-2 opacity-75">Total Companies</h6>
+                  <h6 class="card-subtitle mb-2 opacity-75">Total Organisations</h6>
                   <h3 class="card-title mb-0" id="vettingTotalCount">0</h3>
                   <p class="small mb-0 mt-2 opacity-75">
                     <i class="bi bi-clock-history me-1"></i>

@@ -1089,7 +1089,7 @@ const emailListsModule = {
                         <th>Email</th>
                         <th>First Name</th>
                         <th>Last Name</th>
-                        <th>Company</th>
+                        <th>Organisation</th>
                         <th>Status</th>
                         <th>Emails</th>
                         <th>Open Rate</th>

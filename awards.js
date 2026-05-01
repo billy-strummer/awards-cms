@@ -39,6 +39,7 @@ const awardsModule = {
         status: document.getElementById('awardsStatusFilterSelect')?.value || lsAwardsFilters.status || '',
         sector: document.getElementById('awardsSectorFilterSelect')?.value || lsAwardsFilters.sector || '',
         country: document.getElementById('awardsCountryFilter')?.value || lsAwardsFilters.country || '',
+        regionId: document.getElementById('awardsRegionFilter')?.value || lsAwardsFilters.regionId || '',
         areaId: document.getElementById('awardsAreaFilter')?.value || lsAwardsFilters.areaId || '',
         search: document.getElementById('awardsSearchBox')?.value || lsAwardsFilters.search || '',
       };
@@ -67,7 +68,7 @@ const awardsModule = {
       }
 
       // Populate location filter dropdowns (non-blocking)
-      this._initLocationFilters(savedFilters.country, savedFilters.areaId);
+      this._initLocationFilters(savedFilters.country, savedFilters.regionId, savedFilters.areaId);
       utils.populateYearFilterFromDB('awardsYearFilterSelect', { selectCurrent: true });
       this._populateSectorFilterFromDB();
 
@@ -344,30 +345,47 @@ const awardsModule = {
   },
 
   /**
-   * Initialise country + area filter dropdowns using locationModule cache.
+   * Initialise country → region → area filter dropdowns using locationModule cache.
    * @param {string} [country]  - pre-selected country
+   * @param {string} [regionId] - pre-selected region UUID
    * @param {string} [areaId]   - pre-selected area UUID
    */
-  async _initLocationFilters(country = '', areaId = '') {
+  async _initLocationFilters(country = '', regionId = '', areaId = '') {
     try {
       await locationModule.loadAreas();
-      locationModule.populateCountryDropdown('awardsCountryFilter', 'All Countries');
+      locationModule.populateCountryDropdown('awardsCountryFilter', 'All');
       if (country) {
         const el = document.getElementById('awardsCountryFilter');
         if (el) el.value = country;
       }
-      locationModule.populateAreaDropdown('awardsAreaFilter', country, 'All Areas', areaId);
+      locationModule.populateRegionDropdown('awardsRegionFilter', country, 'All Regions', regionId);
+      locationModule.populateAreaDropdown('awardsAreaFilter', country, 'All', areaId, regionId);
     } catch (e) {
       console.warn('Could not init location filters:', e.message);
     }
   },
 
   /**
-   * Called when the country filter changes — repopulates area dropdown and re-filters.
+   * Called when the country filter changes — repopulates region and area dropdowns and re-filters.
    */
   onCountryFilterChange() {
     const country = document.getElementById('awardsCountryFilter')?.value || '';
-    locationModule.populateAreaDropdown('awardsAreaFilter', country, 'All Areas');
+    const regionEl = document.getElementById('awardsRegionFilter');
+    if (regionEl) regionEl.value = '';
+    locationModule.populateRegionDropdown('awardsRegionFilter', country, 'All Regions');
+    locationModule.populateAreaDropdown('awardsAreaFilter', country, 'All');
+    this.filterAwards();
+  },
+
+  /**
+   * Called when the region filter changes — repopulates area dropdown and re-filters.
+   */
+  onRegionFilterChange() {
+    const country = document.getElementById('awardsCountryFilter')?.value || '';
+    const regionId = document.getElementById('awardsRegionFilter')?.value || '';
+    const areaEl = document.getElementById('awardsAreaFilter');
+    if (areaEl) areaEl.value = '';
+    locationModule.populateAreaDropdown('awardsAreaFilter', country, 'All', '', regionId);
     this.filterAwards();
   },
 
@@ -526,16 +544,41 @@ const awardsModule = {
    * Filter awards based on current filter values
    * @returns {void}
    */
+  _updateFilterCountBadge() {
+    const badge = document.getElementById('awardsFilterCount');
+    if (!badge) return;
+    const count = [
+      document.getElementById('awardsYearFilterSelect')?.value,
+      document.getElementById('awardsStatusFilterSelect')?.value,
+      document.getElementById('awardsSectorFilterSelect')?.value,
+      document.getElementById('awardsCountryFilter')?.value,
+      document.getElementById('awardsRegionFilter')?.value,
+      document.getElementById('awardsAreaFilter')?.value,
+      document.getElementById('awardsSearchBox')?.value,
+    ].filter(Boolean).length;
+    if (count > 0) {
+      badge.textContent = count;
+      badge.classList.remove('d-none');
+    } else {
+      badge.classList.add('d-none');
+    }
+  },
+
   filterAwards() {
     const year = document.getElementById('awardsYearFilterSelect')?.value || '';
     const status = document.getElementById('awardsStatusFilterSelect')?.value || '';
     const sector = document.getElementById('awardsSectorFilterSelect')?.value || '';
     const country = document.getElementById('awardsCountryFilter')?.value || '';
+    const regionId = document.getElementById('awardsRegionFilter')?.value || '';
     const areaId = document.getElementById('awardsAreaFilter')?.value || '';
     const search = (document.getElementById('awardsSearchBox')?.value || '').toLowerCase().trim();
+    this._updateFilterCountBadge();
 
     try {
-      localStorage.setItem('awardsFilters', JSON.stringify({ year, status, sector, country, areaId, search }));
+      localStorage.setItem(
+        'awardsFilters',
+        JSON.stringify({ year, status, sector, country, regionId, areaId, search })
+      );
     } catch (e) {
       console.warn('Failed to save filter state:', e.message);
     }
@@ -563,7 +606,11 @@ const awardsModule = {
       if (status && award.status?.toLowerCase() !== status.toLowerCase()) return false;
       if (sector && award.sector !== sector) return false;
       if (areaId && award.area_id !== areaId) return false;
-      if (country && !areaId && award.country !== country) return false;
+      if (regionId && !areaId) {
+        const area = locationModule.getAreaById(award.area_id);
+        if (!area || area.region_id !== regionId) return false;
+      }
+      if (country && !areaId && !regionId && award.country !== country) return false;
       if (search) {
         const searchFields = [
           utils.formatAwardName(award),
@@ -597,6 +644,33 @@ const awardsModule = {
 
     this.applySorting();
     this.renderAwards();
+    utils.renderFilterChips('awardsActiveFilters', [
+      { label: 'Year', fieldId: 'awardsYearFilterSelect', clearAction: 'awardsModule.clearFilter' },
+      { label: 'Status', fieldId: 'awardsStatusFilterSelect', clearAction: 'awardsModule.clearFilter' },
+      { label: 'Sector', fieldId: 'awardsSectorFilterSelect', clearAction: 'awardsModule.clearFilter' },
+      { label: 'Country', fieldId: 'awardsCountryFilter', clearAction: 'awardsModule.clearFilter' },
+      { label: 'Region', fieldId: 'awardsRegionFilter', clearAction: 'awardsModule.clearFilter' },
+      { label: 'Area', fieldId: 'awardsAreaFilter', clearAction: 'awardsModule.clearFilter' },
+      { label: 'Search', fieldId: 'awardsSearchBox', clearAction: 'awardsModule.clearFilter' },
+    ]);
+  },
+
+  clearFilter(fieldId) {
+    const el = document.getElementById(fieldId);
+    if (!el) return;
+    el.value = '';
+    if (fieldId === 'awardsCountryFilter') {
+      const regionEl = document.getElementById('awardsRegionFilter');
+      if (regionEl) regionEl.value = '';
+      locationModule.populateRegionDropdown('awardsRegionFilter', '', 'All Regions');
+      locationModule.populateAreaDropdown('awardsAreaFilter', '', 'All');
+    } else if (fieldId === 'awardsRegionFilter') {
+      const country = document.getElementById('awardsCountryFilter')?.value || '';
+      const areaEl = document.getElementById('awardsAreaFilter');
+      if (areaEl) areaEl.value = '';
+      locationModule.populateAreaDropdown('awardsAreaFilter', country, 'All');
+    }
+    this.filterAwards();
   },
 
   /**
@@ -662,7 +736,22 @@ const awardsModule = {
     count.textContent = displayCount;
 
     if (STATE.filteredAwards.length === 0) {
-      utils.showEmptyState('awardsTableBody', 10, 'No awards found matching your filters');
+      const hasFilters = !!(
+        document.getElementById('awardsYearFilterSelect')?.value ||
+        document.getElementById('awardsStatusFilterSelect')?.value ||
+        document.getElementById('awardsSectorFilterSelect')?.value ||
+        document.getElementById('awardsCountryFilter')?.value ||
+        document.getElementById('awardsRegionFilter')?.value ||
+        document.getElementById('awardsAreaFilter')?.value ||
+        document.getElementById('awardsSearchBox')?.value
+      );
+      utils.showEmptyState(
+        'awardsTableBody',
+        10,
+        hasFilters
+          ? 'No awards match your current filters — try resetting them using the Reset button above'
+          : 'No awards yet — click "Add Award" to create your first award'
+      );
       // Clear pagination
       const pagEl = document.getElementById('awardsPagination');
       if (pagEl) pagEl.innerHTML = '';
@@ -970,7 +1059,7 @@ const awardsModule = {
               <table class="table table-sm table-hover">
                 <thead>
                   <tr>
-                    <th>Company</th>
+                    <th>Organisation</th>
                     <th>Status</th>
                     <th>Score</th>
                     <th>Actions</th>
@@ -1024,7 +1113,7 @@ const awardsModule = {
                 <thead>
                   <tr>
                     <th>Entry #</th>
-                    <th>Company</th>
+                    <th>Organisation</th>
                     <th>Entry Title</th>
                     <th>Votes</th>
                     <th>Voting Link</th>
@@ -1628,7 +1717,7 @@ const awardsModule = {
       const headers = [
         'Award Name',
         'Category',
-        'County/City',
+        'Area',
         'Region',
         'Sector',
         'Year',
@@ -1926,9 +2015,9 @@ const awardsModule = {
     document.getElementById('awardsStatusFilterSelect').value = '';
     document.getElementById('awardsSectorFilterSelect').value = '';
     document.getElementById('awardsCountryFilter').value = '';
-    document.getElementById('awardsAreaFilter').value = '';
     document.getElementById('awardsSearchBox').value = '';
-    locationModule.populateAreaDropdown('awardsAreaFilter', '', 'All Areas');
+    locationModule.populateRegionDropdown('awardsRegionFilter', '', 'All Regions');
+    locationModule.populateAreaDropdown('awardsAreaFilter', '', 'All');
     this.filterAwards();
   },
 
@@ -2709,6 +2798,7 @@ const awardsModule = {
       status: document.getElementById('awardsStatusFilterSelect')?.value || '',
       sector: document.getElementById('awardsSectorFilterSelect')?.value || '',
       country: document.getElementById('awardsCountryFilter')?.value || '',
+      regionId: document.getElementById('awardsRegionFilter')?.value || '',
       areaId: document.getElementById('awardsAreaFilter')?.value || '',
       search: document.getElementById('awardsSearchBox')?.value || '',
     };
@@ -2757,15 +2847,21 @@ const awardsModule = {
       if (view.filters.year) document.getElementById('awardsYearFilterSelect').value = view.filters.year;
       if (view.filters.status) document.getElementById('awardsStatusFilterSelect').value = view.filters.status;
       if (view.filters.sector) document.getElementById('awardsSectorFilterSelect').value = view.filters.sector;
-      if (view.filters.country) {
-        document.getElementById('awardsCountryFilter').value = view.filters.country;
-        locationModule.populateAreaDropdown(
-          'awardsAreaFilter',
-          view.filters.country,
-          'All Areas',
-          view.filters.areaId || ''
-        );
-      }
+      if (view.filters.country) document.getElementById('awardsCountryFilter').value = view.filters.country;
+      locationModule.populateRegionDropdown(
+        'awardsRegionFilter',
+        view.filters.country || '',
+        'All Regions',
+        view.filters.regionId || ''
+      );
+      if (view.filters.regionId) document.getElementById('awardsRegionFilter').value = view.filters.regionId;
+      locationModule.populateAreaDropdown(
+        'awardsAreaFilter',
+        view.filters.country || '',
+        'All',
+        view.filters.areaId || '',
+        view.filters.regionId || ''
+      );
       if (view.filters.areaId) document.getElementById('awardsAreaFilter').value = view.filters.areaId;
       if (view.filters.search) document.getElementById('awardsSearchBox').value = view.filters.search;
       this.filterAwards();

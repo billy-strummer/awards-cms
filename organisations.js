@@ -76,10 +76,7 @@ const orgsModule = {
       })();
       if (lsFilters.year) document.getElementById('orgsYearFilter').value = lsFilters.year;
       if (lsFilters.sector) document.getElementById('orgsSectorFilter').value = lsFilters.sector;
-      if (lsFilters.country) {
-        document.getElementById('orgsCountryFilter').value = lsFilters.country;
-        locationModule.populateAreaDropdown('orgsAreaFilter', lsFilters.country, 'All Areas', lsFilters.areaId || '');
-      }
+      if (lsFilters.country) document.getElementById('orgsCountryFilter').value = lsFilters.country;
       if (lsFilters.areaId) document.getElementById('orgsAreaFilter').value = lsFilters.areaId;
       if (lsFilters.status) document.getElementById('orgsStatusFilter').value = lsFilters.status;
       if (lsFilters.search) document.getElementById('orgsSearchBox').value = lsFilters.search;
@@ -91,7 +88,7 @@ const orgsModule = {
       // Calculate dashboard stats AFTER first page is loaded
       await this.calculateDashboardStats();
 
-      this._initLocationFilters(lsFilters.country || '', lsFilters.areaId || '');
+      this._initLocationFilters(lsFilters.country || '', lsFilters.regionId || '', lsFilters.areaId || '');
       this.populateSectorFilter();
       this.populateSectorSuggestions();
       utils.populateYearFilterFromDB('orgsYearFilter', { selectCurrent: true });
@@ -270,8 +267,24 @@ const orgsModule = {
       if (saved.country) {
         const el = document.getElementById('orgsCountryFilter');
         if (el) el.value = saved.country;
-        locationModule.populateAreaDropdown('orgsAreaFilter', saved.country, 'All Areas', saved.areaId || '');
       }
+      locationModule.populateRegionDropdown(
+        'orgsRegionFilter',
+        saved.country || '',
+        'All Regions',
+        saved.regionId || ''
+      );
+      if (saved.regionId) {
+        const el = document.getElementById('orgsRegionFilter');
+        if (el) el.value = saved.regionId;
+      }
+      locationModule.populateAreaDropdown(
+        'orgsAreaFilter',
+        saved.country || '',
+        'All',
+        saved.areaId || '',
+        saved.regionId || ''
+      );
       if (saved.areaId) {
         const el = document.getElementById('orgsAreaFilter');
         if (el) el.value = saved.areaId;
@@ -295,15 +308,16 @@ const orgsModule = {
    * @param {string} [country]  - pre-selected country
    * @param {string} [areaId]   - pre-selected area UUID
    */
-  async _initLocationFilters(country = '', areaId = '') {
+  async _initLocationFilters(country = '', regionId = '', areaId = '') {
     try {
       await locationModule.loadAreas();
-      locationModule.populateCountryDropdown('orgsCountryFilter', 'All Countries');
+      locationModule.populateCountryDropdown('orgsCountryFilter', 'All');
       if (country) {
         const el = document.getElementById('orgsCountryFilter');
         if (el) el.value = country;
       }
-      locationModule.populateAreaDropdown('orgsAreaFilter', country, 'All Areas', areaId);
+      locationModule.populateRegionDropdown('orgsRegionFilter', country, 'All Regions', regionId);
+      locationModule.populateAreaDropdown('orgsAreaFilter', country, 'All', areaId, regionId);
 
       // Also populate the Add Company and CSV area dropdowns (grouped by country)
       this._populateFormAreaDropdowns();
@@ -350,7 +364,19 @@ const orgsModule = {
    */
   onCountryFilterChange() {
     const country = document.getElementById('orgsCountryFilter')?.value || '';
-    locationModule.populateAreaDropdown('orgsAreaFilter', country, 'All Areas');
+    const regionEl = document.getElementById('orgsRegionFilter');
+    if (regionEl) regionEl.value = '';
+    locationModule.populateRegionDropdown('orgsRegionFilter', country, 'All Regions');
+    locationModule.populateAreaDropdown('orgsAreaFilter', country, 'All');
+    this.filterOrganisations();
+  },
+
+  onRegionFilterChange() {
+    const country = document.getElementById('orgsCountryFilter')?.value || '';
+    const regionId = document.getElementById('orgsRegionFilter')?.value || '';
+    const areaEl = document.getElementById('orgsAreaFilter');
+    if (areaEl) areaEl.value = '';
+    locationModule.populateAreaDropdown('orgsAreaFilter', country, 'All', '', regionId);
     this.filterOrganisations();
   },
 
@@ -523,6 +549,7 @@ const orgsModule = {
     const sector = document.getElementById('orgsSectorFilter')?.value || '';
     const areaId = document.getElementById('orgsAreaFilter')?.value || '';
     const country = document.getElementById('orgsCountryFilter')?.value || '';
+    const regionId = document.getElementById('orgsRegionFilter')?.value || '';
     const status = document.getElementById('orgsStatusFilter')?.value || '';
     const search = document.getElementById('orgsSearchBox')?.value.toLowerCase().trim() || '';
     const tier = document.getElementById('orgsTierFilter')?.value || '';
@@ -535,7 +562,7 @@ const orgsModule = {
     try {
       localStorage.setItem(
         'orgsFilters',
-        JSON.stringify({ year, sector, country, areaId, status, search, tier, tag, logoFilter, dateFilter })
+        JSON.stringify({ year, sector, country, regionId, areaId, status, search, tier, tag, logoFilter, dateFilter })
       );
     } catch (e) {
       /* ignore */
@@ -580,11 +607,17 @@ const orgsModule = {
       // Sector filter
       if (sector && org.sector !== sector) return false;
 
-      // Area filter
+      // Area filter (most specific — subsumes region and country)
       if (areaId && org.area_id !== areaId) return false;
 
-      // Country filter (only when no specific area selected)
-      if (country && !areaId && org.country !== country) return false;
+      // Region filter (only when no specific area selected)
+      if (regionId && !areaId) {
+        const area = locationModule.getAreaById(org.area_id);
+        if (!area || area.region_id !== regionId) return false;
+      }
+
+      // Country filter (only when no area or region selected)
+      if (country && !areaId && !regionId && org.country !== country) return false;
 
       // Tier filter
       if (tier && (org.tier || '') !== tier) return false;
@@ -672,6 +705,37 @@ const orgsModule = {
     this._currentPage = 1;
 
     this.renderOrganisations();
+    utils.renderFilterChips('orgsActiveFilters', [
+      { label: 'Year', fieldId: 'orgsYearFilter', clearAction: 'orgsModule.clearFilter' },
+      { label: 'Status', fieldId: 'orgsStatusFilter', clearAction: 'orgsModule.clearFilter' },
+      { label: 'Sector', fieldId: 'orgsSectorFilter', clearAction: 'orgsModule.clearFilter' },
+      { label: 'Country', fieldId: 'orgsCountryFilter', clearAction: 'orgsModule.clearFilter' },
+      { label: 'Region', fieldId: 'orgsRegionFilter', clearAction: 'orgsModule.clearFilter' },
+      { label: 'Area', fieldId: 'orgsAreaFilter', clearAction: 'orgsModule.clearFilter' },
+      { label: 'Tier', fieldId: 'orgsTierFilter', clearAction: 'orgsModule.clearFilter' },
+      { label: 'Tag', fieldId: 'orgsTagFilter', clearAction: 'orgsModule.clearFilter' },
+      { label: 'Logo', fieldId: 'orgsLogoFilter', clearAction: 'orgsModule.clearFilter' },
+      { label: 'Date', fieldId: 'orgsDateFilter', clearAction: 'orgsModule.clearFilter' },
+      { label: 'Search', fieldId: 'orgsSearchBox', clearAction: 'orgsModule.clearFilter' },
+    ]);
+  },
+
+  clearFilter(fieldId) {
+    const el = document.getElementById(fieldId);
+    if (!el) return;
+    el.value = '';
+    if (fieldId === 'orgsCountryFilter') {
+      const regionEl = document.getElementById('orgsRegionFilter');
+      if (regionEl) regionEl.value = '';
+      locationModule.populateRegionDropdown('orgsRegionFilter', '', 'All Regions');
+      locationModule.populateAreaDropdown('orgsAreaFilter', '', 'All');
+    } else if (fieldId === 'orgsRegionFilter') {
+      const country = document.getElementById('orgsCountryFilter')?.value || '';
+      const areaEl = document.getElementById('orgsAreaFilter');
+      if (areaEl) areaEl.value = '';
+      locationModule.populateAreaDropdown('orgsAreaFilter', country, 'All');
+    }
+    this.filterOrganisations();
   },
 
   /**
@@ -746,14 +810,17 @@ const orgsModule = {
         document.getElementById('orgsYearFilter')?.value ||
         document.getElementById('orgsSectorFilter')?.value ||
         document.getElementById('orgsCountryFilter')?.value ||
+        document.getElementById('orgsRegionFilter')?.value ||
         document.getElementById('orgsAreaFilter')?.value ||
         document.getElementById('orgsStatusFilter')?.value ||
         document.getElementById('orgsSearchBox')?.value
       );
       utils.showEnhancedEmptyState('orgsTableBody', visibleColCount, {
         icon: 'bi-building',
-        message: 'No organisations found',
-        description: 'Organisations will appear here once added',
+        message: hasActiveFilters ? 'No organisations match your filters' : 'No organisations yet',
+        description: hasActiveFilters
+          ? 'Try clearing your filters using the Reset button above'
+          : 'Click "+ Add Organisation" above to add your first organisation',
         isFiltered: hasActiveFilters,
       });
       this._renderPaginationControls(0, 1);
@@ -3139,8 +3206,8 @@ const orgsModule = {
     document.getElementById('orgsYearFilter').value = '';
     document.getElementById('orgsSectorFilter').value = '';
     document.getElementById('orgsCountryFilter').value = '';
-    document.getElementById('orgsAreaFilter').value = '';
-    locationModule.populateAreaDropdown('orgsAreaFilter', '', 'All Areas');
+    locationModule.populateRegionDropdown('orgsRegionFilter', '', 'All Regions');
+    locationModule.populateAreaDropdown('orgsAreaFilter', '', 'All');
     document.getElementById('orgsStatusFilter').value = '';
     const tierEl = document.getElementById('orgsTierFilter');
     if (tierEl) tierEl.value = '';
@@ -3173,7 +3240,7 @@ const orgsModule = {
     }
     try {
       const csv = [
-        'Company Name,Sector,County,Region,Contact Name,Email,Phone,Website,Status,Tier,Tags,Awards Count,Address,Catchment Area,Description,Engagement Score,Health Status,Last Contacted',
+        'Organisation Name,Sector,Area,Region,Contact Name,Email,Phone,Website,Status,Tier,Tags,Awards Count,Address,Catchment Area,Description,Engagement Score,Health Status,Last Contacted',
         ...data.map((org) => {
           const engagement = this.calculateEngagementScore(org);
           const health = this.getOrgHealthIndicator(org);
@@ -4434,7 +4501,7 @@ const orgsModule = {
   _getSelectedCounty() {
     const val = document.getElementById('csvCountySelect')?.value || '';
     if (!val) {
-      utils.showToast('Please select a County/City first', 'error');
+      utils.showToast('Please select an Area first', 'error');
       document.getElementById('csvCountySelect')?.focus();
       return null;
     }
@@ -4599,7 +4666,7 @@ const orgsModule = {
     // Check company_name is mapped
     const hasCompanyName = Object.values(this._csvColumnMap).includes('company_name');
     if (!hasCompanyName) {
-      utils.showToast('You must map at least the "Company Name" column', 'error');
+      utils.showToast('You must map at least the "Organisation Name" column', 'error');
       return;
     }
 
@@ -4959,6 +5026,7 @@ const orgsModule = {
         year: document.getElementById('orgsYearFilter')?.value || '',
         sector: document.getElementById('orgsSectorFilter')?.value || '',
         country: document.getElementById('orgsCountryFilter')?.value || '',
+        regionId: document.getElementById('orgsRegionFilter')?.value || '',
         areaId: document.getElementById('orgsAreaFilter')?.value || '',
         status: document.getElementById('orgsStatusFilter')?.value || '',
         search: document.getElementById('orgsSearchBox')?.value || '',
@@ -5033,7 +5101,20 @@ const orgsModule = {
     document.getElementById('orgsYearFilter').value = preset.year || '';
     document.getElementById('orgsSectorFilter').value = preset.sector || '';
     document.getElementById('orgsCountryFilter').value = preset.country || '';
-    locationModule.populateAreaDropdown('orgsAreaFilter', preset.country || '', 'All Areas', preset.areaId || '');
+    locationModule.populateRegionDropdown(
+      'orgsRegionFilter',
+      preset.country || '',
+      'All Regions',
+      preset.regionId || ''
+    );
+    if (preset.regionId) document.getElementById('orgsRegionFilter').value = preset.regionId;
+    locationModule.populateAreaDropdown(
+      'orgsAreaFilter',
+      preset.country || '',
+      'All',
+      preset.areaId || '',
+      preset.regionId || ''
+    );
     if (preset.areaId) document.getElementById('orgsAreaFilter').value = preset.areaId;
     document.getElementById('orgsStatusFilter').value = preset.status || '';
     document.getElementById('orgsSearchBox').value = preset.search || '';
@@ -5616,7 +5697,7 @@ const orgsModule = {
       note_added: 'bi-sticky text-secondary',
       csv_import: 'bi-file-earmark-arrow-up text-primary',
     };
-    return `<table class="table table-sm table-hover"><thead><tr><th>Time</th><th>User</th><th>Company</th><th>Action</th><th>Details</th></tr></thead><tbody>
+    return `<table class="table table-sm table-hover"><thead><tr><th>Time</th><th>User</th><th>Organisation</th><th>Action</th><th>Details</th></tr></thead><tbody>
       ${entries
         .map((e) => {
           const date = new Date(e.timestamp || e.created_at);
@@ -6073,7 +6154,7 @@ const orgsModule = {
           ? `
         <h6 class="fw-semibold mb-2">Invalid Emails</h6>
         <div class="table-responsive mb-3" style="max-height: 200px; overflow-y: auto;">
-          <table class="table table-sm"><thead><tr><th>Company</th><th>Email</th><th>Issue</th></tr></thead><tbody>
+          <table class="table table-sm"><thead><tr><th>Organisation</th><th>Email</th><th>Issue</th></tr></thead><tbody>
             ${invalidEmails
               .slice(0, 50)
               .map((o) => {
@@ -6090,7 +6171,7 @@ const orgsModule = {
           ? `
         <h6 class="fw-semibold mb-2">Stale Records (6+ months without updates)</h6>
         <div class="table-responsive" style="max-height: 200px; overflow-y: auto;">
-          <table class="table table-sm"><thead><tr><th>Company</th><th>Last Updated</th><th>Status</th></tr></thead><tbody>
+          <table class="table table-sm"><thead><tr><th>Organisation</th><th>Last Updated</th><th>Status</th></tr></thead><tbody>
             ${staleOrgs
               .slice(0, 50)
               .map(
@@ -6379,9 +6460,9 @@ const orgsModule = {
 
     // Build XML Spreadsheet (compatible with Excel without external libs)
     const headers = [
-      'Company Name',
+      'Organisation Name',
       'Sector',
-      'County',
+      'Area',
       'Region',
       'Contact Name',
       'Email',
@@ -6497,7 +6578,7 @@ const orgsModule = {
       const html =
         history.length === 0
           ? '<p class="text-muted text-center">No import history yet</p>'
-          : `<div class="table-responsive"><table class="table table-sm"><thead><tr><th>Date</th><th>File</th><th>County</th><th>Records</th></tr></thead><tbody>
+          : `<div class="table-responsive"><table class="table table-sm"><thead><tr><th>Date</th><th>File</th><th>Area</th><th>Records</th></tr></thead><tbody>
           ${history
             .map(
               (h) => `<tr>
@@ -7466,11 +7547,11 @@ const orgsModule = {
         })
         .subscribe((status) => {
           if (status === 'SUBSCRIBED') {
-            console.debug('Organisations realtime: subscribed');
+            console.debug('Organisations realtime: subscribed'); // eslint-disable-line no-console
           }
         });
     } catch (e) {
-      console.debug('Realtime subscription failed:', e.message);
+      console.debug('Realtime subscription failed:', e.message); // eslint-disable-line no-console
     }
   },
 
@@ -7613,7 +7694,7 @@ const orgsModule = {
       <div class="table-responsive">
         <table class="table table-sm table-hover">
           <thead><tr>
-            <th>Company</th><th>Due Date</th><th>Note</th><th>Status</th><th>Action</th>
+            <th>Organisation</th><th>Due Date</th><th>Note</th><th>Status</th><th>Action</th>
           </tr></thead>
           <tbody>
             ${all

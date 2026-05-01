@@ -508,7 +508,7 @@ describe('Entries Module - Pagination Logic', () => {
     entriesModule.filteredEntries = [];
     entriesModule.renderEntries();
     const tbody = document.getElementById('entriesTableBody');
-    expect(tbody.innerHTML).toContain('No entries found');
+    expect(tbody.innerHTML).toMatch(/No entries/);
   });
 
   test('goToEntriesPage clamps page to valid range', () => {
@@ -1634,7 +1634,7 @@ describe('Entries Module - renderEntries pagination', () => {
     entriesModule.filteredEntries = [];
     entriesModule.renderEntries();
     const tbody = document.getElementById('entriesTableBody');
-    expect(tbody.innerHTML).toContain('No entries found');
+    expect(tbody.innerHTML).toMatch(/No entries/);
     const paginationEl = document.getElementById('entriesPagination');
     expect(paginationEl.innerHTML).toBe('');
   });

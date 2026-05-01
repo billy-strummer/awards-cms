@@ -2324,7 +2324,7 @@ const paymentsModule = {
       </div>
       <div class="table-responsive">
         <table class="table table-sm table-striped">
-          <thead><tr><th>Invoice</th><th>Company</th><th>Date</th><th>Amount</th><th>Status</th></tr></thead>
+          <thead><tr><th>Invoice</th><th>Organisation</th><th>Date</th><th>Amount</th><th>Status</th></tr></thead>
           <tbody>
             ${eventInvoices
               .map(
@@ -2371,7 +2371,7 @@ const paymentsModule = {
               <th style="width: 40px;">
                 <input type="checkbox" class="form-check-input" id="overdueSelectAll" checked data-on-change="paymentsModule._toggleAllOverdueFromChange">
               </th>
-              <th>Company</th>
+              <th>Organisation</th>
               <th>Invoice #</th>
               <th class="text-end">Amount</th>
               <th class="text-end">Days Overdue</th>

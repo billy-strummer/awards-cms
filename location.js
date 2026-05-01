@@ -151,12 +151,21 @@ const locationModule = {
    * @param {string} [country]    - Filter by country; '' means all
    * @param {string} [allLabel]
    * @param {string} [selectedId] - UUID to pre-select (falls back to current el.value)
+   * @param {string} [regionId]   - When set, only show areas in this region (no optgroups)
    */
-  populateAreaDropdown(selectId, country = '', allLabel = 'All Areas', selectedId = '') {
+  populateAreaDropdown(selectId, country = '', allLabel = 'All Areas', selectedId = '', regionId = '') {
     const el = document.getElementById(selectId);
     if (!el) return;
     const pick = selectedId || el.value;
-    const areas = (this._cachedAreas || []).filter((a) => !country || a.country === country);
+    let areas = (this._cachedAreas || []).filter((a) => !country || a.country === country);
+
+    if (regionId) {
+      areas = areas.filter((a) => a.region_id === regionId);
+      const makeOption = (a) =>
+        `<option value="${a.id}"${pick === a.id ? ' selected' : ''}>${utils.escapeHtml(a.display_name)}</option>`;
+      el.innerHTML = `<option value="">${utils.escapeHtml(allLabel)}</option>` + areas.map(makeOption).join('');
+      return;
+    }
 
     // Group by region for <optgroup> rendering
     const grouped = {};
@@ -187,6 +196,28 @@ const locationModule = {
     }
 
     el.innerHTML = html;
+  },
+
+  /**
+   * Populate a region <select> filtered by country.
+   * @param {string} selectId
+   * @param {string} [country]    - Filter by country; '' means all
+   * @param {string} [allLabel]
+   * @param {string} [selectedId] - UUID to pre-select
+   */
+  populateRegionDropdown(selectId, country = '', allLabel = 'All Regions', selectedId = '') {
+    const el = document.getElementById(selectId);
+    if (!el) return;
+    const pick = selectedId || el.value;
+    const regions = (this._cachedRegions || []).filter((r) => !country || r.country === country);
+    el.innerHTML =
+      `<option value="">${utils.escapeHtml(allLabel)}</option>` +
+      regions
+        .map(
+          (r) =>
+            `<option value="${r.id}"${pick === r.id ? ' selected' : ''}>${utils.escapeHtml(r.display_name)}</option>`
+        )
+        .join('');
   },
 };
 

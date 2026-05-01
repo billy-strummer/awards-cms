@@ -12067,6 +12067,13 @@ const eventsModule = {
     el('eventsThisYearCount', thisYearCount);
     el('eventsPastCount', past);
     el('eventsDataIssuesCount', dataIssues);
+    const issueIcon = document.getElementById('eventsDataIssuesIcon');
+    const issueCountEl = document.getElementById('eventsDataIssuesCount');
+    if (issueIcon && issueCountEl) {
+      const cls = dataIssues > 0 ? 'text-warning' : 'text-muted';
+      issueIcon.className = `bi bi-exclamation-triangle stat-card-icon ${cls}`;
+      issueCountEl.className = `stat-value ${cls}`;
+    }
 
     // Data quality bar
     const dqBar = document.getElementById('eventsDataQualityBar');
@@ -12403,7 +12410,6 @@ const eventsModule = {
           <td>${eventDate}${countdown}</td>
           <td>${utils.escapeHtml(event.venue || '-')}</td>
           <td class="text-center" id="capacityCell_${event.id}">${capacityCell}</td>
-          <td class="text-center" id="vipCell_${event.id}"><span class="text-muted small">-</span></td>
           <td class="text-center" id="awardCount_${event.id}">${awardData.total > 0 ? `<span class="badge bg-success" title="${awardData.confirmed} confirmed">${awardData.confirmed}/${awardData.total}</span>` : '<span class="text-muted small">-</span>'}</td>
           <td class="text-center" id="winnerCount_${event.id}">${awardData.winners > 0 ? `<span class="badge bg-info">${awardData.winners}</span>` : '<span class="text-muted small">-</span>'}</td>
           <td class="text-center">${statusDropdown}</td>
@@ -12597,9 +12603,10 @@ const eventsModule = {
         capCell.innerHTML = `<span class="badge bg-info">${data.attending}</span>`;
       }
     }
-    const vipCell = document.getElementById(`vipCell_${eventId}`);
-    if (vipCell && data.vipCount > 0) {
-      vipCell.innerHTML = `<span class="badge bg-warning text-dark">${data.vipCount}</span>`;
+    // Append VIP count to the attendees cell rather than a separate column
+    if (capCell && data.vipCount > 0) {
+      const vipBadge = ` <span class="badge bg-warning text-dark" title="${data.vipCount} VIP" style="font-size:0.65rem;">${data.vipCount} VIP</span>`;
+      capCell.innerHTML += vipBadge;
     }
   },
 

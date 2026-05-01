@@ -509,7 +509,26 @@ const entriesModule = {
     this.currentFilters.year = document.getElementById('entriesYearFilter').value;
     this.currentFilters.selfNom = document.getElementById('entriesSelfNomFilter').value;
 
+    this._updateFilterCountBadge();
     this.applyFilters();
+  },
+
+  _updateFilterCountBadge() {
+    const badge = document.getElementById('entriesFilterCount');
+    if (!badge) return;
+    const count = [
+      this.currentFilters.status,
+      this.currentFilters.award,
+      this.currentFilters.year,
+      this.currentFilters.selfNom,
+      this.currentFilters.search,
+    ].filter(Boolean).length;
+    if (count > 0) {
+      badge.textContent = count;
+      badge.classList.remove('d-none');
+    } else {
+      badge.classList.add('d-none');
+    }
   },
 
   /**

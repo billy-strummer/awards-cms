@@ -1482,85 +1482,64 @@
           </div>
 
           <!-- Filters Section -->
-<div class="filters-section" style="position: sticky; top: 104px; z-index: 999; background-color: var(--bs-body-bg, white); padding: 1rem 0; margin-bottom: 1rem; border-bottom: 1px solid #dee2e6;">
-  <div class="row g-3">
-    <!-- Year Filter - Now auto-populated with 2026+ only -->
-    <div class="col-md-1">
-  <label for="awardsYearFilterSelect" class="form-label">
-    <i class="bi bi-calendar3 me-1"></i>Year
-  </label>
-  <select class="form-select form-select-sm" id="awardsYearFilterSelect" style="width: auto; min-width: 100px;">
-    <option value="">All Years</option>
-  </select>
-</div>
-    <!-- Status Filter -->
-    <div class="col-md-2">
-      <label for="awardsStatusFilterSelect" class="form-label">
-        <i class="bi bi-flag me-1"></i>Status
-      </label>
-      <select class="form-select" id="awardsStatusFilterSelect">
-        <option value="">All Statuses</option>
-        <option value="draft">Draft</option>
-        <option value="pending">Pending</option>
-        <option value="published">Published</option>
-        <option value="active">Active</option>
-        <option value="archived">Archived</option>
-      </select>
-    </div>
-
-    <!-- Sector Filter -->
-    <div class="col-md-2">
-      <label for="awardsSectorFilterSelect" class="form-label">
-        <i class="bi bi-briefcase me-1"></i>Sector
-      </label>
-      <select class="form-select" id="awardsSectorFilterSelect">
-        <option value="">All Sectors</option>
-        <!-- Populated by JS -->
-      </select>
-    </div>
-
-    <!-- Country Filter -->
-    <div class="col-md-2">
-      <label for="awardsCountryFilter" class="form-label">
-        <i class="bi bi-flag me-1"></i>Country
-      </label>
-      <select class="form-select" id="awardsCountryFilter" data-on-change="awardsModule.onCountryFilterChange">
-        <option value="">All Countries</option>
-      </select>
-    </div>
-
-    <!-- Area Filter (cascades from Country) -->
-    <div class="col-md-2">
-      <label for="awardsAreaFilter" class="form-label">
-        <i class="bi bi-pin-map me-1"></i>Area
-      </label>
-      <select class="form-select" id="awardsAreaFilter" data-on-change="awardsModule.filterAwards">
-        <option value="">All Areas</option>
-      </select>
-    </div>
-
-    <!-- Search Box -->
-    <div class="col-md-2">
-      <label for="awardsSearchBox" class="form-label">
-        <i class="bi bi-search me-1"></i>Search
-      </label>
-      <input type="text" class="form-control" id="awardsSearchBox" placeholder="Search awards...">
-    </div>
-    <div class="col-md-2">
-      <label class="form-label small fw-semibold"><i class="bi bi-bookmark me-1"></i>Saved Views</label>
-      <div class="input-group input-group-sm">
-        <select class="form-select form-select-sm" id="awardsSavedViewsList" data-on-change="awardsModule.loadSavedAwardsView">
-          <option value="">No saved views</option>
-        </select>
-        <button class="btn btn-outline-primary" data-action="awardsModule.saveCurrentAwardsView" title="Save current filters as view">
-          <i class="bi bi-bookmark-plus"></i>
+<div class="filters-section" style="position: sticky; top: 104px; z-index: 999; background-color: var(--bs-body-bg, white); padding: 0.75rem 0 0; margin-bottom: 0.75rem; border-bottom: 1px solid #dee2e6;">
+  <div class="rounded-2 p-3 mb-2" style="background:#f8f9fa;">
+    <div class="d-flex align-items-center justify-content-between mb-2">
+      <span class="fw-semibold text-muted" style="font-size:0.8rem;letter-spacing:.04em;text-transform:uppercase;"><i class="bi bi-funnel me-1"></i>Filter Awards</span>
+      <div class="d-flex align-items-center gap-2">
+        <div class="input-group input-group-sm" style="width:220px;">
+          <select class="form-select form-select-sm" id="awardsSavedViewsList" data-on-change="awardsModule.loadSavedAwardsView">
+            <option value="">Saved views…</option>
+          </select>
+          <button class="btn btn-outline-primary btn-sm" data-action="awardsModule.saveCurrentAwardsView" title="Save current filters as a view">
+            <i class="bi bi-bookmark-plus"></i>
+          </button>
+        </div>
+        <button class="btn btn-outline-secondary btn-sm" data-action="awardsModule.resetFilters" title="Reset all filters">
+          <i class="bi bi-x-circle me-1"></i>Reset
         </button>
       </div>
     </div>
-    <div class="col-md-1 d-flex align-items-end">
-      <button class="btn btn-outline-secondary btn-sm w-100" data-action="awardsModule.resetFilters" title="Reset all filters">
-        <i class="bi bi-x-circle"></i>
-      </button>
+    <div class="row g-2 align-items-end">
+      <div class="col-md-1">
+        <label for="awardsYearFilterSelect" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-calendar3 me-1"></i>Year</label>
+        <select class="form-select form-select-sm" id="awardsYearFilterSelect">
+          <option value="">All Years</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label for="awardsStatusFilterSelect" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-flag me-1"></i>Status</label>
+        <select class="form-select form-select-sm" id="awardsStatusFilterSelect">
+          <option value="">All Statuses</option>
+          <option value="draft">Draft</option>
+          <option value="pending">Pending</option>
+          <option value="published">Published</option>
+          <option value="active">Active</option>
+          <option value="archived">Archived</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label for="awardsSectorFilterSelect" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-briefcase me-1"></i>Sector</label>
+        <select class="form-select form-select-sm" id="awardsSectorFilterSelect">
+          <option value="">All Sectors</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label for="awardsCountryFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-globe me-1"></i>Country</label>
+        <select class="form-select form-select-sm" id="awardsCountryFilter" data-on-change="awardsModule.onCountryFilterChange">
+          <option value="">All Countries</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label for="awardsAreaFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-pin-map me-1"></i>Area</label>
+        <select class="form-select form-select-sm" id="awardsAreaFilter" data-on-change="awardsModule.filterAwards">
+          <option value="">All Areas</option>
+        </select>
+      </div>
+      <div class="col">
+        <label for="awardsSearchBox" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-search me-1"></i>Search</label>
+        <input type="text" class="form-control form-control-sm" id="awardsSearchBox" placeholder="Search awards…">
+      </div>
     </div>
   </div>
 </div>
@@ -1571,12 +1550,12 @@
               <h5 class="mb-0">
                 <i class="bi bi-list-ul me-2"></i>Awards List
               </h5>
-              <div class="d-flex align-items-center gap-3">
+              <div class="d-flex align-items-center gap-2">
                 <button class="btn btn-primary btn-sm" data-action="awardsModule.openCreateModal">
                   <i class="bi bi-plus-lg me-1"></i>Add Award
                 </button>
-                <div class="btn-group">
-                  <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                <div class="btn-group btn-group-sm">
+                  <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
                     <i class="bi bi-download me-1"></i>Export
                   </button>
                   <ul class="dropdown-menu">
@@ -1585,19 +1564,18 @@
                     <li><a class="dropdown-item" href="#" data-action="awardsModule.exportAwardsPDF" data-prevent-default="true"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
                   </ul>
                 </div>
-                <button class="btn btn-outline-info btn-sm" data-action="awardsModule.rolloverToNextYear">
-                  <i class="bi bi-arrow-repeat me-1"></i>Roll Over
-                </button>
-                <button class="btn btn-outline-success btn-sm" data-action="awardsModule.showVisualTimeline" title="Timeline Overview">
-                  <i class="bi bi-calendar-range me-1"></i>Timeline
-                </button>
-                <button class="btn btn-outline-danger btn-sm" data-action="awardsModule.showDataQualityDashboard" title="Data Quality">
-                  <i class="bi bi-shield-check me-1"></i>Quality
-                </button>
-                <button class="btn btn-outline-warning btn-sm" data-action="awardsModule.showDuplicateDetection" title="Find Duplicates">
-                  <i class="bi bi-files me-1"></i>Duplicates
-                </button>
-                <div class="badge bg-primary-subtle text-primary fs-6">
+                <div class="btn-group btn-group-sm">
+                  <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-tools me-1"></i>Tools
+                  </button>
+                  <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="#" data-action="awardsModule.rolloverToNextYear" data-prevent-default="true"><i class="bi bi-arrow-repeat text-info me-2"></i>Roll Over to Next Year</a></li>
+                    <li><a class="dropdown-item" href="#" data-action="awardsModule.showVisualTimeline" data-prevent-default="true"><i class="bi bi-calendar-range text-success me-2"></i>Timeline Overview</a></li>
+                    <li><a class="dropdown-item" href="#" data-action="awardsModule.showDataQualityDashboard" data-prevent-default="true"><i class="bi bi-shield-check text-danger me-2"></i>Data Quality Check</a></li>
+                    <li><a class="dropdown-item" href="#" data-action="awardsModule.showDuplicateDetection" data-prevent-default="true"><i class="bi bi-files text-warning me-2"></i>Find Duplicates</a></li>
+                  </ul>
+                </div>
+                <div class="badge bg-primary-subtle text-primary fs-6 ms-1">
                   <span id="awardsCount">0</span> awards
                 </div>
               </div>
@@ -1772,21 +1750,41 @@
     <!-- Enhanced Filters Row -->
     <div class="card border-0 shadow-sm mb-4">
       <div class="card-body py-3">
+        <!-- Row header -->
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <span class="fw-semibold text-muted" style="font-size:0.8rem;letter-spacing:.04em;text-transform:uppercase;"><i class="bi bi-funnel me-1"></i>Filter Companies</span>
+          <div class="d-flex align-items-center gap-2">
+            <div class="input-group input-group-sm" style="width:200px;">
+              <select class="form-select form-select-sm" id="orgsFilterPreset" data-on-change="orgsModule.loadFilterPreset">
+                <option value="">Saved views…</option>
+              </select>
+              <button class="btn btn-outline-primary btn-sm" data-action="orgsModule.saveFilterPreset" title="Save current view">
+                <i class="bi bi-bookmark-plus"></i>
+              </button>
+              <button class="btn btn-outline-danger btn-sm" data-action="orgsModule.deleteFilterPreset" title="Delete selected view">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
+            <button class="btn btn-outline-secondary btn-sm" data-action="orgsModule.resetFilters" title="Reset all filters">
+              <i class="bi bi-x-circle me-1"></i>Reset
+            </button>
+          </div>
+        </div>
         <!-- Row 1: Primary Filters -->
         <div class="row g-2 align-items-end">
 
           <!-- Search Box -->
           <div class="col-md-2">
-            <label for="orgsSearchBox" class="form-label small fw-semibold mb-1">
+            <label for="orgsSearchBox" class="form-label fw-semibold mb-1" style="font-size:0.8rem;">
               <i class="bi bi-search me-1"></i>Search
             </label>
             <input type="text" class="form-control form-control-sm" id="orgsSearchBox"
-                   placeholder="Company, email, contact...">
+                   placeholder="Company, email, contact…">
           </div>
 
           <!-- Year Filter -->
           <div class="col-md-1">
-            <label for="orgsYearFilter" class="form-label small fw-semibold mb-1">
+            <label for="orgsYearFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;">
               <i class="bi bi-calendar3 me-1"></i>Year
             </label>
             <select class="form-select form-select-sm" id="orgsYearFilter"
@@ -1797,19 +1795,19 @@
 
           <!-- Sector Filter -->
           <div class="col-md-2">
-            <label for="orgsSectorFilter" class="form-label small fw-semibold mb-1">
+            <label for="orgsSectorFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;">
               <i class="bi bi-briefcase me-1"></i>Sector
             </label>
             <select class="form-select form-select-sm" id="orgsSectorFilter"
                     data-on-change="orgsModule.filterOrganisations">
-              <option value="">All</option>
+              <option value="">All Sectors</option>
             </select>
           </div>
 
           <!-- Country Filter -->
           <div class="col-md-2">
-            <label for="orgsCountryFilter" class="form-label small fw-semibold mb-1">
-              <i class="bi bi-flag me-1"></i>Country
+            <label for="orgsCountryFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;">
+              <i class="bi bi-globe me-1"></i>Country
             </label>
             <select class="form-select form-select-sm" id="orgsCountryFilter"
                     data-on-change="orgsModule.onCountryFilterChange">
@@ -1819,7 +1817,7 @@
 
           <!-- Area Filter (cascades from Country) -->
           <div class="col-md-2">
-            <label for="orgsAreaFilter" class="form-label small fw-semibold mb-1">
+            <label for="orgsAreaFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;">
               <i class="bi bi-pin-map me-1"></i>Area
             </label>
             <select class="form-select form-select-sm" id="orgsAreaFilter"
@@ -1830,12 +1828,12 @@
 
           <!-- Status Filter -->
           <div class="col-md-1">
-            <label for="orgsStatusFilter" class="form-label small fw-semibold mb-1">
-              <i class="bi bi-flag me-1"></i>Status
+            <label for="orgsStatusFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;">
+              <i class="bi bi-person-badge me-1"></i>Status
             </label>
             <select class="form-select form-select-sm" id="orgsStatusFilter"
                     data-on-change="orgsModule.filterOrganisations">
-              <option value="">Active</option>
+              <option value="">All Active</option>
               <option value="prospect">Prospect</option>
               <option value="entrant">Entrant</option>
               <option value="nominee">Nominee</option>
@@ -1850,32 +1848,25 @@
 
           <!-- Tier Filter -->
           <div class="col-md-1">
-            <label for="orgsTierFilter" class="form-label small fw-semibold mb-1">
+            <label for="orgsTierFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;">
               <i class="bi bi-award me-1"></i>Tier
             </label>
             <select class="form-select form-select-sm" id="orgsTierFilter"
                     data-on-change="orgsModule.filterOrganisations">
-              <option value="">All</option>
+              <option value="">All Tiers</option>
               <option value="Bronze">Bronze</option>
               <option value="Silver">Silver</option>
               <option value="Gold">Gold</option>
               <option value="Platinum">Platinum</option>
             </select>
           </div>
-
-          <!-- Reset + Actions -->
-          <div class="col-auto d-flex align-items-end">
-            <button class="btn btn-outline-secondary btn-sm" data-action="orgsModule.resetFilters" title="Reset all filters">
-              <i class="bi bi-x-circle"></i>
-            </button>
-          </div>
         </div>
 
-        <!-- Row 2: Advanced Filters & Actions -->
-        <div class="row g-2 align-items-end mt-1">
+        <!-- Row 2: Advanced Filters -->
+        <div class="row g-2 align-items-end mt-2">
           <!-- Tag Filter -->
           <div class="col-md-2">
-            <label for="orgsTagFilter" class="form-label small fw-semibold mb-1">
+            <label for="orgsTagFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;">
               <i class="bi bi-tags me-1"></i>Tag
             </label>
             <select class="form-select form-select-sm" id="orgsTagFilter"
@@ -1886,7 +1877,7 @@
 
           <!-- Has Logo Toggle -->
           <div class="col-md-1">
-            <label for="orgsLogoFilter" class="form-label small fw-semibold mb-1">
+            <label for="orgsLogoFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;">
               <i class="bi bi-image me-1"></i>Logo
             </label>
             <select class="form-select form-select-sm" id="orgsLogoFilter"
@@ -1899,8 +1890,8 @@
 
           <!-- Date Range Filter -->
           <div class="col-md-2">
-            <label for="orgsDateFilter" class="form-label small fw-semibold mb-1">
-              <i class="bi bi-clock-history me-1"></i>Added
+            <label for="orgsDateFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;">
+              <i class="bi bi-clock-history me-1"></i>Date Added
             </label>
             <select class="form-select form-select-sm" id="orgsDateFilter"
                     data-on-change="orgsModule.filterOrganisations">
@@ -1913,79 +1904,51 @@
             </select>
           </div>
 
-          <!-- Saved Filter Presets -->
-          <div class="col-md-3">
-            <label class="form-label small fw-semibold mb-1">
-              <i class="bi bi-bookmark me-1"></i>Saved Views
-            </label>
-            <div class="input-group input-group-sm">
-              <select class="form-select form-select-sm" id="orgsFilterPreset"
-                      data-on-change="orgsModule.loadFilterPreset">
-                <option value="">-- Saved Views --</option>
-              </select>
-              <button class="btn btn-outline-primary btn-sm" data-action="orgsModule.saveFilterPreset" title="Save current view (filters, sort, columns)">
-                <i class="bi bi-bookmark-plus"></i>
-              </button>
-              <button class="btn btn-outline-danger btn-sm" data-action="orgsModule.deleteFilterPreset" title="Delete selected view">
-                <i class="bi bi-trash"></i>
-              </button>
-            </div>
-          </div>
-
           <!-- Buttons (Right Aligned) -->
           <div class="col text-end">
-            <label class="form-label small mb-1">&nbsp;</label>
-            <div class="d-flex gap-1 justify-content-end flex-wrap">
-              <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addNewOrgModal" title="Add Company">
-                <i class="bi bi-plus-lg"></i>
+            <div class="d-flex gap-2 justify-content-end flex-wrap align-items-center">
+              <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addNewOrgModal">
+                <i class="bi bi-plus-lg me-1"></i>Add Company
               </button>
-              <button class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#csvImportModal" title="Import CSV">
+              <button class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#csvImportModal">
                 <i class="bi bi-upload me-1"></i>Import
               </button>
-              <div class="btn-group btn-group-sm d-inline-block">
-                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" data-bs-display="static" title="Export">
+              <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
                   <i class="bi bi-download me-1"></i>Export
                 </button>
-                <ul class="dropdown-menu">
+                <ul class="dropdown-menu dropdown-menu-end">
                   <li><a class="dropdown-item" href="#" data-action="orgsModule.exportToCSV"><i class="bi bi-filetype-csv text-success me-2"></i>Export CSV</a></li>
                   <li><a class="dropdown-item" href="#" data-action="orgsModule.exportToExcel"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Export Excel (.xlsx)</a></li>
                   <li><a class="dropdown-item" href="#" data-action="orgsModule.exportToPDF" data-prevent-default="true"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
                 </ul>
               </div>
-              <button class="btn btn-sm btn-outline-secondary" id="togglePhoneColBtn" data-action="orgsModule.togglePhoneColumn" title="Toggle Phone Column">
-                <i class="bi bi-telephone"></i>
-              </button>
-              <button class="btn btn-sm btn-outline-secondary" data-action="orgsModule.showColumnSettings" title="Column Visibility Settings">
-                <i class="bi bi-layout-three-columns"></i>
-              </button>
-              <button class="btn btn-sm btn-outline-warning" data-action="orgsModule.showDuplicateCheck" title="Check Duplicates">
-                <i class="bi bi-files"></i>
-              </button>
-              <button class="btn btn-sm btn-outline-info" id="kanbanToggleBtn" data-action="orgsModule.toggleKanbanView" title="Kanban Pipeline View">
-                <i class="bi bi-kanban"></i>
-              </button>
-              <button class="btn btn-sm btn-outline-success" id="mapToggleBtn" data-action="orgsModule.toggleMapView" title="Interactive British Isles Map">
-                <i class="bi bi-map"></i> Map
-              </button>
-              <button class="btn btn-sm btn-outline-info" data-action="orgsModule.showAnalyticsDashboard" title="Analytics & Reports">
-                <i class="bi bi-bar-chart"></i>
-              </button>
-              <button class="btn btn-sm btn-outline-danger" data-action="orgsModule.showDataQualityWizard" title="Data Quality">
-                <i class="bi bi-shield-check"></i>
-              </button>
-              <button class="btn btn-sm btn-outline-dark" data-action="orgsModule.showGlobalAuditLog" title="Audit Log">
-                <i class="bi bi-journal-text"></i>
-              </button>
-              <button class="btn btn-sm btn-outline-secondary" data-action="orgsModule.showImportHistory" title="Import History">
-                <i class="bi bi-clock-history"></i>
-              </button>
-              <button class="btn btn-sm btn-outline-secondary" data-action="orgsModule.showTagFilterModal" title="Multi-Tag Filter">
-                <i class="bi bi-tags"></i>
-              </button>
-              <div class="vr mx-1"></div>
-              <button class="btn btn-sm btn-outline-info" data-action="orgsModule.showDuplicateDetectionDashboard" title="Duplicate Detection Scan">
-                <i class="bi bi-search"></i>
-              </button>
+              <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                  <i class="bi bi-grid me-1"></i>Views
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                  <li><a class="dropdown-item" href="#" id="kanbanToggleBtn" data-action="orgsModule.toggleKanbanView" data-prevent-default="true"><i class="bi bi-kanban text-info me-2"></i>Kanban Pipeline</a></li>
+                  <li><a class="dropdown-item" href="#" id="mapToggleBtn" data-action="orgsModule.toggleMapView" data-prevent-default="true"><i class="bi bi-map text-success me-2"></i>Map View</a></li>
+                  <li><a class="dropdown-item" href="#" data-action="orgsModule.showAnalyticsDashboard" data-prevent-default="true"><i class="bi bi-bar-chart text-primary me-2"></i>Analytics Dashboard</a></li>
+                </ul>
+              </div>
+              <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                  <i class="bi bi-tools me-1"></i>Tools
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                  <li><a class="dropdown-item" href="#" data-action="orgsModule.showDataQualityWizard" data-prevent-default="true"><i class="bi bi-shield-check text-danger me-2"></i>Data Quality Check</a></li>
+                  <li><a class="dropdown-item" href="#" data-action="orgsModule.showDuplicateCheck" data-prevent-default="true"><i class="bi bi-files text-warning me-2"></i>Check Duplicates</a></li>
+                  <li><a class="dropdown-item" href="#" data-action="orgsModule.showDuplicateDetectionDashboard" data-prevent-default="true"><i class="bi bi-search text-info me-2"></i>Duplicate Scan</a></li>
+                  <li><a class="dropdown-item" href="#" data-action="orgsModule.showGlobalAuditLog" data-prevent-default="true"><i class="bi bi-journal-text me-2"></i>Audit Log</a></li>
+                  <li><a class="dropdown-item" href="#" data-action="orgsModule.showImportHistory" data-prevent-default="true"><i class="bi bi-clock-history me-2"></i>Import History</a></li>
+                  <li><a class="dropdown-item" href="#" data-action="orgsModule.showTagFilterModal" data-prevent-default="true"><i class="bi bi-tags me-2"></i>Multi-Tag Filter</a></li>
+                  <li class="dropdown-divider"></li>
+                  <li><a class="dropdown-item" href="#" id="togglePhoneColBtn" data-action="orgsModule.togglePhoneColumn" data-prevent-default="true"><i class="bi bi-telephone me-2"></i>Toggle Phone Column</a></li>
+                  <li><a class="dropdown-item" href="#" data-action="orgsModule.showColumnSettings" data-prevent-default="true"><i class="bi bi-layout-three-columns me-2"></i>Column Visibility</a></li>
+                </ul>
+              </div>
             </div>
           </div>
         </div>
@@ -2429,43 +2392,40 @@
           </div>
 
           <!-- Filters Section -->
-          <div class="filters-section" style="position: sticky; top: 104px; z-index: 999; background-color: var(--bs-body-bg, white); padding: 1rem 0; margin-bottom: 1rem; border-bottom: 1px solid #dee2e6;">
-            <div class="row g-3">
-              <div class="col-md-4">
-                <label for="winnerYearFilterSelect" class="form-label">
-                  <i class="bi bi-calendar3 me-1"></i>Year
-                </label>
-                <select class="form-select" id="winnerYearFilterSelect">
-                  <option value="">All Years</option>
-                </select>
-              </div>
-              
-              <div class="col-md-4">
-                <label for="winnerAwardFilterSelect" class="form-label">
-                  <i class="bi bi-trophy me-1"></i>Award
-                </label>
-                <select class="form-select" id="winnerAwardFilterSelect">
-                  <option value="">All Awards</option>
-                </select>
-              </div>
-              
-              <div class="col-md-4">
-                <label for="winnerSearchBox" class="form-label">
-                  <i class="bi bi-search me-1"></i>Search
-                </label>
-                <input type="text" class="form-control" id="winnerSearchBox" placeholder="Search winners...">
-              </div>
-            </div>
-            <div class="row g-3 mt-1">
-              <div class="col-md-3">
-                <label class="form-label small fw-semibold"><i class="bi bi-bookmark me-1"></i>Saved Views</label>
-                <div class="input-group input-group-sm">
-                  <select class="form-select form-select-sm" id="winnersSavedViewsList" data-on-change="winnersModule.loadSavedWinnersView">
-                    <option value="">No saved views</option>
-                  </select>
-                  <button class="btn btn-outline-primary" data-action="winnersModule.saveCurrentWinnersView" title="Save current filters as view">
-                    <i class="bi bi-bookmark-plus"></i>
+          <div class="filters-section" style="position: sticky; top: 104px; z-index: 999; background-color: var(--bs-body-bg, white); padding: 0.75rem 0 0; margin-bottom: 0.75rem; border-bottom: 1px solid #dee2e6;">
+            <div class="rounded-2 p-3 mb-2" style="background:#f8f9fa;">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="fw-semibold text-muted" style="font-size:0.8rem;letter-spacing:.04em;text-transform:uppercase;"><i class="bi bi-funnel me-1"></i>Filter Winners</span>
+                <div class="d-flex align-items-center gap-2">
+                  <div class="input-group input-group-sm" style="width:200px;">
+                    <select class="form-select form-select-sm" id="winnersSavedViewsList" data-on-change="winnersModule.loadSavedWinnersView">
+                      <option value="">Saved views…</option>
+                    </select>
+                    <button class="btn btn-outline-primary btn-sm" data-action="winnersModule.saveCurrentWinnersView" title="Save current filters as view">
+                      <i class="bi bi-bookmark-plus"></i>
+                    </button>
+                  </div>
+                  <button class="btn btn-outline-secondary btn-sm" data-action="winnersModule.resetFilters" title="Reset all filters">
+                    <i class="bi bi-x-circle me-1"></i>Reset
                   </button>
+                </div>
+              </div>
+              <div class="row g-2 align-items-end">
+                <div class="col-md-3">
+                  <label for="winnerYearFilterSelect" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-calendar3 me-1"></i>Year</label>
+                  <select class="form-select form-select-sm" id="winnerYearFilterSelect">
+                    <option value="">All Years</option>
+                  </select>
+                </div>
+                <div class="col-md-4">
+                  <label for="winnerAwardFilterSelect" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-trophy me-1"></i>Award</label>
+                  <select class="form-select form-select-sm" id="winnerAwardFilterSelect">
+                    <option value="">All Awards</option>
+                  </select>
+                </div>
+                <div class="col">
+                  <label for="winnerSearchBox" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-search me-1"></i>Search</label>
+                  <input type="text" class="form-control form-control-sm" id="winnerSearchBox" placeholder="Search winners…">
                 </div>
               </div>
             </div>
@@ -2643,78 +2603,79 @@
           </div>
 
           <!-- Filters and Actions -->
-          <div class="card mb-4">
-            <div class="card-body">
-              <div class="row g-3">
-                <div class="col-md-3">
-                  <label class="form-label">Status Filter</label>
-                  <select class="form-select" id="entriesStatusFilter" data-on-change="entriesModule.filterEntries">
-                    <option value="">All Statuses</option>
-                    <option value="draft">Draft</option>
-                    <option value="submitted">Submitted</option>
-                    <option value="under_review">Under Review</option>
-                    <option value="submitted,under_review" hidden>Pending Review</option>
-                    <option value="shortlisted">Shortlisted</option>
-                    <option value="winner">Winner</option>
-                    <option value="rejected">Rejected</option>
+          <div class="rounded-2 p-3 mb-3" style="background:#f8f9fa;border:1px solid #e9ecef;">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <span class="fw-semibold text-muted" style="font-size:0.8rem;letter-spacing:.04em;text-transform:uppercase;"><i class="bi bi-funnel me-1"></i>Filter Entries</span>
+              <div class="d-flex align-items-center gap-2">
+                <div class="input-group input-group-sm" style="width:200px;">
+                  <select class="form-select form-select-sm" id="entriesSavedViewsList" data-on-change="entriesModule.loadSavedEntriesView">
+                    <option value="">Saved views…</option>
                   </select>
-                </div>
-                <div class="col-md-3">
-                  <label class="form-label">Award Category</label>
-                  <select class="form-select" id="entriesAwardFilter" data-on-change="entriesModule.filterEntries">
-                    <option value="">All Awards</option>
-                  </select>
-                </div>
-                <div class="col-md-2">
-                  <label class="form-label">Year</label>
-                  <select class="form-select" id="entriesYearFilter" data-on-change="entriesModule.filterEntries">
-                    <option value="">All Years</option>
-                  </select>
-                </div>
-                <div class="col-md-2">
-                  <label class="form-label">Type</label>
-                  <select class="form-select" id="entriesSelfNomFilter" data-on-change="entriesModule.filterEntries">
-                    <option value="">All Entries</option>
-                    <option value="self_nom">Self-Nominations</option>
-                    <option value="standard">Standard Entries</option>
-                  </select>
-                </div>
-                <div class="col-md-2">
-                  <label class="form-label">Search</label>
-                  <input type="text" class="form-control" id="entriesSearchInput" placeholder="Search entries...">
-                </div>
-              </div>
-              <div class="row g-3 mt-1">
-                <div class="col-md-3">
-                  <label class="form-label small fw-semibold"><i class="bi bi-bookmark me-1"></i>Saved Views</label>
-                  <div class="input-group input-group-sm">
-                    <select class="form-select form-select-sm" id="entriesSavedViewsList" data-on-change="entriesModule.loadSavedEntriesView">
-                      <option value="">No saved views</option>
-                    </select>
-                    <button class="btn btn-outline-primary" data-action="entriesModule.saveCurrentEntriesView" title="Save current filters as view">
-                      <i class="bi bi-bookmark-plus"></i>
-                    </button>
-                  </div>
-                </div>
-              </div>
-              <div class="mt-3 d-flex gap-2">
-                <button class="btn btn-sm btn-primary" data-action="entriesModule.openPublicFormLink">
-                  <i class="bi bi-link-45deg me-1"></i>Get Public Entry Form Link
-                </button>
-                <div class="btn-group">
-                  <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="bi bi-download me-1"></i>Export
+                  <button class="btn btn-outline-primary btn-sm" data-action="entriesModule.saveCurrentEntriesView" title="Save current filters as view">
+                    <i class="bi bi-bookmark-plus"></i>
                   </button>
-                  <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="#" data-action="entriesModule.exportEntries" data-prevent-default="true"><i class="bi bi-filetype-csv text-success me-2"></i>Export CSV</a></li>
-                    <li><a class="dropdown-item" href="#" data-action="entriesModule.exportEntriesExcel" data-prevent-default="true"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Export Excel</a></li>
-                    <li><a class="dropdown-item" href="#" data-action="entriesModule.exportEntriesPDF" data-prevent-default="true"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
-                  </ul>
                 </div>
-                <button class="btn btn-sm btn-outline-danger" data-action="entriesModule.bulkActions">
-                  <i class="bi bi-list-check me-1"></i>Bulk Actions
+                <button class="btn btn-outline-secondary btn-sm" data-action="entriesModule.resetFilters" title="Reset all filters">
+                  <i class="bi bi-x-circle me-1"></i>Reset
                 </button>
               </div>
+            </div>
+            <div class="row g-2 align-items-end">
+              <div class="col-md-2">
+                <label class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-flag me-1"></i>Status</label>
+                <select class="form-select form-select-sm" id="entriesStatusFilter" data-on-change="entriesModule.filterEntries">
+                  <option value="">All Statuses</option>
+                  <option value="draft">Draft</option>
+                  <option value="submitted">Submitted</option>
+                  <option value="under_review">Under Review</option>
+                  <option value="submitted,under_review" hidden>Pending Review</option>
+                  <option value="shortlisted">Shortlisted</option>
+                  <option value="winner">Winner</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-trophy me-1"></i>Award Category</label>
+                <select class="form-select form-select-sm" id="entriesAwardFilter" data-on-change="entriesModule.filterEntries">
+                  <option value="">All Awards</option>
+                </select>
+              </div>
+              <div class="col-md-1">
+                <label class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-calendar3 me-1"></i>Year</label>
+                <select class="form-select form-select-sm" id="entriesYearFilter" data-on-change="entriesModule.filterEntries">
+                  <option value="">All Years</option>
+                </select>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-person me-1"></i>Entry Type</label>
+                <select class="form-select form-select-sm" id="entriesSelfNomFilter" data-on-change="entriesModule.filterEntries">
+                  <option value="">All Entries</option>
+                  <option value="self_nom">Self-Nominated</option>
+                  <option value="standard">Standard Entry</option>
+                </select>
+              </div>
+              <div class="col">
+                <label class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-search me-1"></i>Search</label>
+                <input type="text" class="form-control form-control-sm" id="entriesSearchInput" placeholder="Search entries…">
+              </div>
+            </div>
+            <div class="mt-2 d-flex gap-2">
+              <button class="btn btn-sm btn-primary" data-action="entriesModule.openPublicFormLink">
+                <i class="bi bi-link-45deg me-1"></i>Get Entry Form Link
+              </button>
+              <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                  <i class="bi bi-download me-1"></i>Export
+                </button>
+                <ul class="dropdown-menu">
+                  <li><a class="dropdown-item" href="#" data-action="entriesModule.exportEntries" data-prevent-default="true"><i class="bi bi-filetype-csv text-success me-2"></i>Export CSV</a></li>
+                  <li><a class="dropdown-item" href="#" data-action="entriesModule.exportEntriesExcel" data-prevent-default="true"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Export Excel</a></li>
+                  <li><a class="dropdown-item" href="#" data-action="entriesModule.exportEntriesPDF" data-prevent-default="true"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
+                </ul>
+              </div>
+              <button class="btn btn-sm btn-outline-secondary" data-action="entriesModule.bulkActions">
+                <i class="bi bi-list-check me-1"></i>Bulk Actions
+              </button>
             </div>
           </div>
 

@@ -296,6 +296,14 @@ const winnersModule = {
     this.filterWinners();
   },
 
+  resetFilters() {
+    ['winnerYearFilterSelect', 'winnerAwardFilterSelect', 'winnerSearchBox'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    this.filterWinners();
+  },
+
   /**
    * Sort winners by the given field, toggling direction if already sorted by that field
    * @param {string} field - The field to sort by

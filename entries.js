@@ -648,6 +648,21 @@ const entriesModule = {
     this.searchEntries();
   },
 
+  resetFilters() {
+    [
+      'entriesStatusFilter',
+      'entriesAwardFilter',
+      'entriesYearFilter',
+      'entriesSelfNomFilter',
+      'entriesSearchInput',
+    ].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    this.filterEntries();
+    this.searchEntries();
+  },
+
   /**
    * Toggle select all entries
    */

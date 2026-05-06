@@ -171,83 +171,123 @@
       </div>
     </nav>
 
-    <!-- Tab Navigation -->
-    <ul class="nav nav-tabs" id="mainTabs" role="tablist" style="position: sticky; top: 56px; z-index: 1000; background-color: white; margin: 0; padding-top: 0.5rem;">
-      <li class="nav-item" role="presentation">
-        <button class="nav-link active" id="dashboard-tab" data-bs-toggle="tab" data-bs-target="#dashboard" type="button" role="tab">
-          <i class="bi bi-speedometer2 me-2"></i>Dashboard
+    <div class="app-layout" id="appLayout">
+
+      <!-- ================================================ -->
+      <!-- LEFT SIDEBAR NAVIGATION                          -->
+      <!-- ================================================ -->
+      <nav class="app-sidebar" id="appSidebar" role="tablist">
+
+        <!-- Collapse toggle -->
+        <button class="sidebar-toggle" id="sidebarToggle" type="button" title="Toggle sidebar">
+          <i class="bi bi-layout-sidebar"></i>
         </button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="awards-tab" data-bs-toggle="tab" data-bs-target="#awards" type="button" role="tab">
-          <i class="bi bi-trophy me-2"></i>Awards
-          <span class="badge rounded-pill bg-secondary ms-1 tab-count-badge" id="awardsTabCount"></span>
-        </button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="organisations-tab" data-bs-toggle="tab" data-bs-target="#organisations" type="button" role="tab">
-          <i class="bi bi-building me-2"></i>Organisations
-          <span class="badge rounded-pill bg-secondary ms-1 tab-count-badge" id="orgsTabCount"></span>
-        </button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="winners-tab" data-bs-toggle="tab" data-bs-target="#winners" type="button" role="tab">
-          <i class="bi bi-award me-2"></i>Winners
-          <span class="badge rounded-pill bg-secondary ms-1 tab-count-badge" id="winnersTabCount"></span>
-        </button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="entries-tab" data-bs-toggle="tab" data-bs-target="#entries" type="button" role="tab">
-          <i class="bi bi-file-earmark-text me-2"></i>Entries
-          <span class="badge rounded-pill bg-secondary ms-1 tab-count-badge" id="entriesTabCount"></span>
-        </button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="media-gallery-tab" data-bs-toggle="tab" data-bs-target="#media-gallery" type="button" role="tab">
-          <i class="bi bi-images me-2"></i>Media Gallery
-        </button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="events-tab" data-bs-toggle="tab" data-bs-target="#events" type="button" role="tab">
-          <i class="bi bi-calendar-event me-2"></i>Events
-          <span class="badge rounded-pill bg-secondary ms-1 tab-count-badge" id="eventsTabCount"></span>
-        </button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="reports-tab" data-bs-toggle="tab" data-bs-target="#reports" type="button" role="tab">
-          <i class="bi bi-graph-up me-2"></i>Reports
-        </button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="marketing-tab" data-bs-toggle="tab" data-bs-target="#marketing" type="button" role="tab">
-          <i class="bi bi-megaphone me-2"></i>Marketing
-        </button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="payments-tab" data-bs-toggle="tab" data-bs-target="#payments" type="button" role="tab">
-          <i class="bi bi-credit-card me-2"></i>Payments
-          <span class="badge rounded-pill bg-secondary ms-1 tab-count-badge" id="paymentsTabCount"></span>
-        </button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="crm-tab" data-bs-toggle="tab" data-bs-target="#crm" type="button" role="tab">
-          <i class="bi bi-people me-2"></i>CRM
-        </button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings" type="button" role="tab">
-          <i class="bi bi-gear me-2"></i>Settings & Backup
-        </button>
-      </li>
-      <li class="nav-item d-none" id="bitcoin-nav-item" role="presentation">
-        <button class="nav-link" id="bitcoin-tab" data-bs-toggle="tab" data-bs-target="#bitcoin" type="button" role="tab">
-          <i class="bi bi-currency-bitcoin me-2"></i>Markets
-        </button>
-      </li>
-    </ul>
+
+        <!-- Scrollable nav groups -->
+        <div class="sidebar-nav">
+
+          <!-- OVERVIEW -->
+          <div class="sidebar-group">
+            <span class="sidebar-group-label">Overview</span>
+            <button class="sidebar-nav-link active" id="dashboard-tab" data-bs-toggle="tab" data-bs-target="#dashboard" type="button" role="tab" aria-controls="dashboard" aria-selected="true" title="Dashboard">
+              <i class="bi bi-speedometer2 sidebar-icon"></i>
+              <span class="sidebar-label">Dashboard</span>
+            </button>
+          </div>
+
+          <!-- PROGRAMME -->
+          <div class="sidebar-group">
+            <span class="sidebar-group-label">Programme</span>
+            <button class="sidebar-nav-link" id="awards-tab" data-bs-toggle="tab" data-bs-target="#awards" type="button" role="tab" aria-controls="awards" aria-selected="false" title="Awards">
+              <i class="bi bi-trophy sidebar-icon"></i>
+              <span class="sidebar-label">Awards</span>
+              <span class="sidebar-badge" id="awardsTabCount"></span>
+            </button>
+            <button class="sidebar-nav-link" id="entries-tab" data-bs-toggle="tab" data-bs-target="#entries" type="button" role="tab" aria-controls="entries" aria-selected="false" title="Entries">
+              <i class="bi bi-file-earmark-text sidebar-icon"></i>
+              <span class="sidebar-label">Entries</span>
+              <span class="sidebar-badge" id="entriesTabCount"></span>
+            </button>
+            <button class="sidebar-nav-link" id="winners-tab" data-bs-toggle="tab" data-bs-target="#winners" type="button" role="tab" aria-controls="winners" aria-selected="false" title="Winners">
+              <i class="bi bi-award sidebar-icon"></i>
+              <span class="sidebar-label">Winners</span>
+              <span class="sidebar-badge" id="winnersTabCount"></span>
+            </button>
+            <button class="sidebar-nav-link" id="media-gallery-tab" data-bs-toggle="tab" data-bs-target="#media-gallery" type="button" role="tab" aria-controls="media-gallery" aria-selected="false" title="Media Gallery">
+              <i class="bi bi-images sidebar-icon"></i>
+              <span class="sidebar-label">Media Gallery</span>
+            </button>
+          </div>
+
+          <!-- PEOPLE -->
+          <div class="sidebar-group">
+            <span class="sidebar-group-label">People</span>
+            <button class="sidebar-nav-link" id="organisations-tab" data-bs-toggle="tab" data-bs-target="#organisations" type="button" role="tab" aria-controls="organisations" aria-selected="false" title="Organisations">
+              <i class="bi bi-building sidebar-icon"></i>
+              <span class="sidebar-label">Organisations</span>
+              <span class="sidebar-badge" id="orgsTabCount"></span>
+            </button>
+            <button class="sidebar-nav-link" id="crm-tab" data-bs-toggle="tab" data-bs-target="#crm" type="button" role="tab" aria-controls="crm" aria-selected="false" title="CRM">
+              <i class="bi bi-people sidebar-icon"></i>
+              <span class="sidebar-label">CRM</span>
+            </button>
+          </div>
+
+          <!-- COMMERCIAL -->
+          <div class="sidebar-group">
+            <span class="sidebar-group-label">Commercial</span>
+            <button class="sidebar-nav-link" id="events-tab" data-bs-toggle="tab" data-bs-target="#events" type="button" role="tab" aria-controls="events" aria-selected="false" title="Events">
+              <i class="bi bi-calendar-event sidebar-icon"></i>
+              <span class="sidebar-label">Events</span>
+              <span class="sidebar-badge" id="eventsTabCount"></span>
+            </button>
+            <button class="sidebar-nav-link" id="payments-tab" data-bs-toggle="tab" data-bs-target="#payments" type="button" role="tab" aria-controls="payments" aria-selected="false" title="Payments">
+              <i class="bi bi-credit-card sidebar-icon"></i>
+              <span class="sidebar-label">Payments</span>
+              <span class="sidebar-badge" id="paymentsTabCount"></span>
+            </button>
+          </div>
+
+          <!-- INTELLIGENCE -->
+          <div class="sidebar-group">
+            <span class="sidebar-group-label">Intelligence</span>
+            <button class="sidebar-nav-link" id="reports-tab" data-bs-toggle="tab" data-bs-target="#reports" type="button" role="tab" aria-controls="reports" aria-selected="false" title="Reports">
+              <i class="bi bi-graph-up sidebar-icon"></i>
+              <span class="sidebar-label">Reports</span>
+            </button>
+            <button class="sidebar-nav-link" id="marketing-tab" data-bs-toggle="tab" data-bs-target="#marketing" type="button" role="tab" aria-controls="marketing" aria-selected="false" title="Marketing">
+              <i class="bi bi-megaphone sidebar-icon"></i>
+              <span class="sidebar-label">Marketing</span>
+            </button>
+          </div>
+
+          <!-- SYSTEM -->
+          <div class="sidebar-group">
+            <span class="sidebar-group-label">System</span>
+            <button class="sidebar-nav-link" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings" type="button" role="tab" aria-controls="settings" aria-selected="false" title="Settings &amp; Backup">
+              <i class="bi bi-gear sidebar-icon"></i>
+              <span class="sidebar-label">Settings</span>
+            </button>
+          </div>
+
+          <!-- Markets (hidden by default — RBAC shows for admin/superadmin) -->
+          <div class="sidebar-group d-none" id="bitcoin-nav-item">
+            <button class="sidebar-nav-link" id="bitcoin-tab" data-bs-toggle="tab" data-bs-target="#bitcoin" type="button" role="tab" aria-controls="bitcoin" aria-selected="false" title="Markets">
+              <i class="bi bi-currency-bitcoin sidebar-icon"></i>
+              <span class="sidebar-label">Markets</span>
+            </button>
+          </div>
+
+        </div><!-- /.sidebar-nav -->
+      </nav><!-- /.app-sidebar -->
+
+      <!-- ================================================ -->
+      <!-- MAIN CONTENT                                     -->
+      <!-- ================================================ -->
+      <main class="app-main" id="appMain">
 
     <!-- Tab Content -->
-    <div class="tab-content py-4" id="mainTabContent">
+    <div class="tab-content" id="mainTabContent">
       
       <!-- ==================================================== -->
       <!-- DASHBOARD TAB -->
@@ -1165,7 +1205,7 @@
           </div>
 
           <!-- Filters Section -->
-<div class="filters-section" style="position: sticky; top: 104px; z-index: 999; background-color: var(--bs-body-bg, white); padding: 0.75rem 0 0; margin-bottom: 0.75rem; border-bottom: 1px solid #dee2e6;">
+<div class="filters-section" style="position: sticky; top: 56px; z-index: 999; background-color: var(--bs-body-bg, white); padding: 0.75rem 0 0; margin-bottom: 0.75rem; border-bottom: 1px solid #dee2e6;">
   <div class="rounded-2 p-3 mb-2" style="background:#f8f9fa;">
     <div class="d-flex align-items-center justify-content-between mb-2">
       <button class="btn btn-link p-0 text-decoration-none fw-semibold text-muted" style="font-size:0.8rem;letter-spacing:.04em;text-transform:uppercase;" data-bs-toggle="collapse" data-bs-target="#awardsFiltersCollapse" aria-expanded="true" aria-controls="awardsFiltersCollapse">
@@ -2077,7 +2117,7 @@
           </div>
 
           <!-- Filters Section -->
-          <div class="filters-section" style="position: sticky; top: 104px; z-index: 999; background-color: var(--bs-body-bg, white); padding: 0.75rem 0 0; margin-bottom: 0.75rem; border-bottom: 1px solid #dee2e6;">
+          <div class="filters-section" style="position: sticky; top: 56px; z-index: 999; background-color: var(--bs-body-bg, white); padding: 0.75rem 0 0; margin-bottom: 0.75rem; border-bottom: 1px solid #dee2e6;">
             <div class="rounded-2 p-3 mb-2" style="background:#f8f9fa;">
               <div class="d-flex align-items-center justify-content-between mb-2">
                 <span class="fw-semibold text-muted" style="font-size:0.8rem;letter-spacing:.04em;text-transform:uppercase;"><i class="bi bi-funnel me-1"></i>Filter Winners</span>
@@ -6656,6 +6696,8 @@
       </div>
 
     </div>
+      </main><!-- /.app-main -->
+    </div><!-- /.app-layout -->
   </div>
 
   <!-- ==================================================== -->
@@ -10539,6 +10581,32 @@
       </div>
     </div>
   </div>
+
+
+  <script>
+    /* Sidebar collapse state */
+    (function () {
+      var sidebar = document.getElementById('appSidebar');
+      var toggle  = document.getElementById('sidebarToggle');
+      if (!sidebar || !toggle) return;
+      if (localStorage.getItem('sidebarCollapsed') === 'true') sidebar.classList.add('collapsed');
+      toggle.addEventListener('click', function () {
+        sidebar.classList.toggle('collapsed');
+        localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+      });
+      /* Sync active state when Bootstrap switches tab */
+      document.addEventListener('shown.bs.tab', function (e) {
+        sidebar.querySelectorAll('.sidebar-nav-link').forEach(function (btn) {
+          btn.classList.remove('active');
+          btn.setAttribute('aria-selected', 'false');
+        });
+        if (e.target && e.target.closest('.app-sidebar')) {
+          e.target.classList.add('active');
+          e.target.setAttribute('aria-selected', 'true');
+        }
+      });
+    })();
+  </script>
 
   <!-- Bootstrap JS Bundle -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>

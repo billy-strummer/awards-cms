@@ -778,8 +778,8 @@
                   <div class="flex-grow-1">
                     <h6 class="mb-1 fw-semibold">Award Categories Reference</h6>
                     <p class="text-muted small mb-3">Browse all award categories, descriptions and eligibility criteria.</p>
-                    <button class="btn btn-outline-primary btn-sm" data-action="dashboardModule.navigateToSection" data-id="awards">
-                      <i class="bi bi-arrow-right me-1"></i>View in Awards tab
+                    <button class="btn btn-outline-primary btn-sm" data-action="dashboardModule.openAwardCategoriesModal">
+                      <i class="bi bi-eye me-1"></i>Browse Categories
                     </button>
                   </div>
                 </div>
@@ -794,8 +794,8 @@
                   <div class="flex-grow-1">
                     <h6 class="mb-1 fw-semibold">Counties, Cities &amp; Regions Reference</h6>
                     <p class="text-muted small mb-3">101 geographic areas: 42 England counties, 15 London boroughs, 14 Scotland regions, 10 Wales areas &amp; 19 cities.</p>
-                    <button class="btn btn-outline-danger btn-sm" data-action="dashboardModule.navigateToSection" data-id="settings">
-                      <i class="bi bi-arrow-right me-1"></i>View in Settings tab
+                    <button class="btn btn-outline-danger btn-sm" data-action="dashboardModule.openLocationsModal">
+                      <i class="bi bi-eye me-1"></i>Browse Locations
                     </button>
                   </div>
                 </div>
@@ -10643,6 +10643,52 @@
       });
     })();
   </script>
+
+  <!-- Award Categories Reference Modal -->
+  <div class="modal fade" id="awardCatRefModal" tabindex="-1" aria-labelledby="awardCatRefModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="awardCatRefModalLabel">
+            <i class="bi bi-grid-3x3-gap-fill text-primary me-2"></i>Award Categories Reference
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" id="awardCatRefModalBody">
+          <div class="text-center py-4 text-muted"><i class="bi bi-hourglass-split"></i> Loading...</div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-outline-primary btn-sm" data-action="dashboardModule.navigateToSection" data-id="awards" data-bs-dismiss="modal">
+            <i class="bi bi-arrow-right me-1"></i>Go to Awards tab
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Locations Reference Modal -->
+  <div class="modal fade" id="locationsRefModal" tabindex="-1" aria-labelledby="locationsRefModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="locationsRefModalLabel">
+            <i class="bi bi-geo-alt-fill text-danger me-2"></i>Counties, Cities &amp; Regions Reference
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" id="locationsRefModalBody">
+          <div class="text-center py-4 text-muted"><i class="bi bi-hourglass-split"></i> Loading...</div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-outline-danger btn-sm" data-action="dashboardModule.navigateToSection" data-id="settings" data-bs-dismiss="modal">
+            <i class="bi bi-arrow-right me-1"></i>Go to Settings tab
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Bulk Delete / Destructive Action Confirmation Modal -->
   <div class="modal fade" id="bulkDeleteConfirmModal" tabindex="-1" aria-labelledby="bulkDeleteConfirmLabel" aria-hidden="true">

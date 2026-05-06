@@ -239,9 +239,11 @@ const eventsModule = {
     // Validate form fields
     const form = document.getElementById('eventForm');
     if (form && !form.checkValidity()) {
+      form.classList.add('was-validated');
       form.reportValidity();
       return;
     }
+    if (form) form.classList.remove('was-validated');
 
     try {
       await utils.protectModalDuringSave('eventModal', async () => {
@@ -12297,6 +12299,7 @@ const eventsModule = {
     // Use server total count when in server pagination mode
     const displayCount = this._serverPagination ? this._pagination.count : events.length;
     if (count) count.textContent = displayCount;
+    utils.renderRowCount('eventsRowCount', events.length, displayCount, 'events');
 
     // Server-side: data is already one page; client-side: slice locally
     let pageEvents;

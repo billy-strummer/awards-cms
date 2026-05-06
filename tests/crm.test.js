@@ -191,7 +191,7 @@ describe('CRM Module - Exports and Structure', () => {
   });
 
   test('crmModule has correct default state', () => {
-    expect(crmModule.currentSubTab).toBe('companies-crm');
+    expect(crmModule.currentSubTab).toBe('communications');
     expect(Array.isArray(crmModule.allCompanies)).toBe(true);
     expect(crmModule._crmCurrentPage).toBe(1);
     expect(crmModule._crmPageSize).toBe(50);
@@ -778,13 +778,7 @@ describe('CRM Module - loadAllData routing', () => {
     jest.restoreAllMocks();
   });
 
-  test('loadAllData calls loadCompanies for companies-crm tab', async () => {
-    crmModule.currentSubTab = 'companies-crm';
-    await crmModule.loadAllData();
-    expect(crmModule.loadCompanies).toHaveBeenCalled();
-  });
-
-  test('loadAllData calls loadCommunications for communications tab', async () => {
+  test('loadAllData calls loadCommunications for communications tab (default)', async () => {
     crmModule.currentSubTab = 'communications';
     await crmModule.loadAllData();
     expect(crmModule.loadCommunications).toHaveBeenCalled();
@@ -2583,9 +2577,9 @@ describe('CRM Module - renderSegments edge cases', () => {
 // switchSubTab
 // ---------------------------------------------------------------------------
 describe('CRM Module - switchSubTab()', () => {
-  test('switches to companies-crm tab', () => {
-    crmModule.currentSubTab = 'companies-crm';
-    expect(crmModule.currentSubTab).toBe('companies-crm');
+  test('switches to communications tab', () => {
+    crmModule.currentSubTab = 'communications';
+    expect(crmModule.currentSubTab).toBe('communications');
   });
 
   test('switches to communications tab', () => {

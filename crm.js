@@ -4,7 +4,7 @@
 // ============================================
 
 const crmModule = {
-  currentSubTab: 'companies-crm',
+  currentSubTab: 'communications',
   allCompanies: [],
   filters: {
     companies: {},
@@ -52,9 +52,6 @@ const crmModule = {
     try {
       // Load data based on current sub-tab
       switch (this.currentSubTab) {
-        case 'companies-crm':
-          await this.loadCompanies();
-          break;
         case 'communications':
           await this.loadCommunications();
           break;
@@ -2729,6 +2726,13 @@ const crmModule = {
   async loadSmartSegments() {
     const segments = await this._loadSegments();
     const names = Object.keys(segments);
+
+    const badge = document.getElementById('smartSegmentsBadge');
+    if (badge) {
+      badge.textContent = names.length;
+      badge.style.display = names.length ? '' : 'none';
+    }
+
     if (names.length === 0) {
       utils.showToast('No saved segments', 'info');
       return;
@@ -2791,6 +2795,15 @@ const crmModule = {
     const todayTasks = followUps.filter((f) => !f.done && f.date === today);
     const upcoming = followUps.filter((f) => !f.done && f.date > today).slice(0, 20);
     const completed = followUps.filter((f) => f.done).slice(0, 10);
+
+    const pendingCount = overdue.length + todayTasks.length + upcoming.length;
+    const taskBadge = document.getElementById('myTasksBadge');
+    if (taskBadge) {
+      taskBadge.textContent = pendingCount;
+      taskBadge.style.display = pendingCount ? '' : 'none';
+      taskBadge.className = `badge ms-2 ${overdue.length > 0 ? 'bg-danger' : 'bg-warning text-dark'}`;
+    }
+
     const orgs = typeof STATE !== 'undefined' && STATE.allOrganisations ? STATE.allOrganisations : [];
 
     const renderTask = (f, section) => {

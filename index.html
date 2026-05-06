@@ -152,6 +152,12 @@
             </ul>
           </div>
 
+          <!-- Global Search -->
+          <button class="btn btn-outline-light btn-sm" id="globalSearchNavBtn" title="Search everything (Ctrl+K)" aria-label="Search" onclick="utils.toggleCommandPalette()">
+            <i class="bi bi-search me-1"></i><span class="d-none d-xl-inline small">Search</span>
+            <kbd class="d-none d-xl-inline ms-1" style="background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.75);border:1px solid rgba(255,255,255,0.3);padding:1px 5px;border-radius:3px;font-size:0.6rem;line-height:1.4;">Ctrl K</kbd>
+          </button>
+
           <!-- Dark Mode Toggle -->
           <button class="btn btn-outline-light" id="darkModeToggle" title="Toggle dark mode" aria-label="Toggle dark mode">
             <i class="bi bi-moon"></i>
@@ -171,83 +177,123 @@
       </div>
     </nav>
 
-    <!-- Tab Navigation -->
-    <ul class="nav nav-tabs" id="mainTabs" role="tablist" style="position: sticky; top: 56px; z-index: 1000; background-color: white; margin: 0; padding-top: 0.5rem;">
-      <li class="nav-item" role="presentation">
-        <button class="nav-link active" id="dashboard-tab" data-bs-toggle="tab" data-bs-target="#dashboard" type="button" role="tab">
-          <i class="bi bi-speedometer2 me-2"></i>Dashboard
+    <div class="app-layout" id="appLayout">
+
+      <!-- ================================================ -->
+      <!-- LEFT SIDEBAR NAVIGATION                          -->
+      <!-- ================================================ -->
+      <nav class="app-sidebar" id="appSidebar" role="tablist">
+
+        <!-- Collapse toggle -->
+        <button class="sidebar-toggle" id="sidebarToggle" type="button" title="Toggle sidebar">
+          <i class="bi bi-layout-sidebar"></i>
         </button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="awards-tab" data-bs-toggle="tab" data-bs-target="#awards" type="button" role="tab">
-          <i class="bi bi-trophy me-2"></i>Awards
-          <span class="badge rounded-pill bg-secondary ms-1 tab-count-badge" id="awardsTabCount"></span>
-        </button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="organisations-tab" data-bs-toggle="tab" data-bs-target="#organisations" type="button" role="tab">
-          <i class="bi bi-building me-2"></i>Organisations
-          <span class="badge rounded-pill bg-secondary ms-1 tab-count-badge" id="orgsTabCount"></span>
-        </button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="winners-tab" data-bs-toggle="tab" data-bs-target="#winners" type="button" role="tab">
-          <i class="bi bi-award me-2"></i>Winners
-          <span class="badge rounded-pill bg-secondary ms-1 tab-count-badge" id="winnersTabCount"></span>
-        </button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="entries-tab" data-bs-toggle="tab" data-bs-target="#entries" type="button" role="tab">
-          <i class="bi bi-file-earmark-text me-2"></i>Entries
-          <span class="badge rounded-pill bg-secondary ms-1 tab-count-badge" id="entriesTabCount"></span>
-        </button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="media-gallery-tab" data-bs-toggle="tab" data-bs-target="#media-gallery" type="button" role="tab">
-          <i class="bi bi-images me-2"></i>Media Gallery
-        </button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="events-tab" data-bs-toggle="tab" data-bs-target="#events" type="button" role="tab">
-          <i class="bi bi-calendar-event me-2"></i>Events
-          <span class="badge rounded-pill bg-secondary ms-1 tab-count-badge" id="eventsTabCount"></span>
-        </button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="reports-tab" data-bs-toggle="tab" data-bs-target="#reports" type="button" role="tab">
-          <i class="bi bi-graph-up me-2"></i>Reports
-        </button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="marketing-tab" data-bs-toggle="tab" data-bs-target="#marketing" type="button" role="tab">
-          <i class="bi bi-megaphone me-2"></i>Marketing
-        </button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="payments-tab" data-bs-toggle="tab" data-bs-target="#payments" type="button" role="tab">
-          <i class="bi bi-credit-card me-2"></i>Payments
-          <span class="badge rounded-pill bg-secondary ms-1 tab-count-badge" id="paymentsTabCount"></span>
-        </button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="crm-tab" data-bs-toggle="tab" data-bs-target="#crm" type="button" role="tab">
-          <i class="bi bi-people me-2"></i>CRM
-        </button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings" type="button" role="tab">
-          <i class="bi bi-gear me-2"></i>Settings & Backup
-        </button>
-      </li>
-      <li class="nav-item d-none" id="bitcoin-nav-item" role="presentation">
-        <button class="nav-link" id="bitcoin-tab" data-bs-toggle="tab" data-bs-target="#bitcoin" type="button" role="tab">
-          <i class="bi bi-currency-bitcoin me-2"></i>Markets
-        </button>
-      </li>
-    </ul>
+
+        <!-- Scrollable nav groups -->
+        <div class="sidebar-nav">
+
+          <!-- OVERVIEW -->
+          <div class="sidebar-group">
+            <span class="sidebar-group-label">Overview</span>
+            <button class="sidebar-nav-link active" id="dashboard-tab" data-bs-toggle="tab" data-bs-target="#dashboard" type="button" role="tab" aria-controls="dashboard" aria-selected="true" title="Dashboard">
+              <i class="bi bi-speedometer2 sidebar-icon"></i>
+              <span class="sidebar-label">Dashboard</span>
+            </button>
+          </div>
+
+          <!-- PROGRAMME -->
+          <div class="sidebar-group">
+            <span class="sidebar-group-label">Programme</span>
+            <button class="sidebar-nav-link" id="awards-tab" data-bs-toggle="tab" data-bs-target="#awards" type="button" role="tab" aria-controls="awards" aria-selected="false" title="Awards">
+              <i class="bi bi-trophy sidebar-icon"></i>
+              <span class="sidebar-label">Awards</span>
+              <span class="sidebar-badge" id="awardsTabCount"></span>
+            </button>
+            <button class="sidebar-nav-link" id="entries-tab" data-bs-toggle="tab" data-bs-target="#entries" type="button" role="tab" aria-controls="entries" aria-selected="false" title="Entries">
+              <i class="bi bi-file-earmark-text sidebar-icon"></i>
+              <span class="sidebar-label">Entries</span>
+              <span class="sidebar-badge" id="entriesTabCount"></span>
+            </button>
+            <button class="sidebar-nav-link" id="winners-tab" data-bs-toggle="tab" data-bs-target="#winners" type="button" role="tab" aria-controls="winners" aria-selected="false" title="Winners">
+              <i class="bi bi-award sidebar-icon"></i>
+              <span class="sidebar-label">Winners</span>
+              <span class="sidebar-badge" id="winnersTabCount"></span>
+            </button>
+            <button class="sidebar-nav-link" id="media-gallery-tab" data-bs-toggle="tab" data-bs-target="#media-gallery" type="button" role="tab" aria-controls="media-gallery" aria-selected="false" title="Media Gallery">
+              <i class="bi bi-images sidebar-icon"></i>
+              <span class="sidebar-label">Media Gallery</span>
+            </button>
+          </div>
+
+          <!-- PEOPLE -->
+          <div class="sidebar-group">
+            <span class="sidebar-group-label">People</span>
+            <button class="sidebar-nav-link" id="organisations-tab" data-bs-toggle="tab" data-bs-target="#organisations" type="button" role="tab" aria-controls="organisations" aria-selected="false" title="Organisations">
+              <i class="bi bi-building sidebar-icon"></i>
+              <span class="sidebar-label">Organisations</span>
+              <span class="sidebar-badge" id="orgsTabCount"></span>
+            </button>
+            <button class="sidebar-nav-link" id="crm-tab" data-bs-toggle="tab" data-bs-target="#crm" type="button" role="tab" aria-controls="crm" aria-selected="false" title="CRM">
+              <i class="bi bi-people sidebar-icon"></i>
+              <span class="sidebar-label">CRM</span>
+            </button>
+          </div>
+
+          <!-- COMMERCIAL -->
+          <div class="sidebar-group">
+            <span class="sidebar-group-label">Commercial</span>
+            <button class="sidebar-nav-link" id="events-tab" data-bs-toggle="tab" data-bs-target="#events" type="button" role="tab" aria-controls="events" aria-selected="false" title="Events">
+              <i class="bi bi-calendar-event sidebar-icon"></i>
+              <span class="sidebar-label">Events</span>
+              <span class="sidebar-badge" id="eventsTabCount"></span>
+            </button>
+            <button class="sidebar-nav-link" id="payments-tab" data-bs-toggle="tab" data-bs-target="#payments" type="button" role="tab" aria-controls="payments" aria-selected="false" title="Payments">
+              <i class="bi bi-credit-card sidebar-icon"></i>
+              <span class="sidebar-label">Payments</span>
+              <span class="sidebar-badge" id="paymentsTabCount"></span>
+            </button>
+          </div>
+
+          <!-- INTELLIGENCE -->
+          <div class="sidebar-group">
+            <span class="sidebar-group-label">Intelligence</span>
+            <button class="sidebar-nav-link" id="reports-tab" data-bs-toggle="tab" data-bs-target="#reports" type="button" role="tab" aria-controls="reports" aria-selected="false" title="Reports">
+              <i class="bi bi-graph-up sidebar-icon"></i>
+              <span class="sidebar-label">Reports</span>
+            </button>
+            <button class="sidebar-nav-link" id="marketing-tab" data-bs-toggle="tab" data-bs-target="#marketing" type="button" role="tab" aria-controls="marketing" aria-selected="false" title="Marketing">
+              <i class="bi bi-megaphone sidebar-icon"></i>
+              <span class="sidebar-label">Marketing</span>
+            </button>
+          </div>
+
+          <!-- SYSTEM -->
+          <div class="sidebar-group">
+            <span class="sidebar-group-label">System</span>
+            <button class="sidebar-nav-link" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings" type="button" role="tab" aria-controls="settings" aria-selected="false" title="Settings &amp; Backup">
+              <i class="bi bi-gear sidebar-icon"></i>
+              <span class="sidebar-label">Settings</span>
+            </button>
+          </div>
+
+          <!-- Markets (hidden by default — RBAC shows for admin/superadmin) -->
+          <div class="sidebar-group d-none" id="bitcoin-nav-item">
+            <button class="sidebar-nav-link" id="bitcoin-tab" data-bs-toggle="tab" data-bs-target="#bitcoin" type="button" role="tab" aria-controls="bitcoin" aria-selected="false" title="Markets">
+              <i class="bi bi-currency-bitcoin sidebar-icon"></i>
+              <span class="sidebar-label">Markets</span>
+            </button>
+          </div>
+
+        </div><!-- /.sidebar-nav -->
+      </nav><!-- /.app-sidebar -->
+
+      <!-- ================================================ -->
+      <!-- MAIN CONTENT                                     -->
+      <!-- ================================================ -->
+      <main class="app-main" id="appMain">
 
     <!-- Tab Content -->
-    <div class="tab-content py-4" id="mainTabContent">
+    <div class="tab-content" id="mainTabContent">
       
       <!-- ==================================================== -->
       <!-- DASHBOARD TAB -->
@@ -267,6 +313,63 @@
               <i class="bi bi-sliders me-1"></i>Customise Dashboard
             </button>
           </div>
+
+          <!-- Getting Started Banner (first-run, dismissible) -->
+          <div class="alert border-0 shadow-sm mb-4 p-0 overflow-hidden d-none" id="gettingStartedBanner" role="complementary" aria-label="Getting started guide">
+            <div class="d-flex align-items-stretch">
+              <div class="d-flex align-items-center justify-content-center flex-shrink-0 px-4 py-3" style="background:linear-gradient(135deg,#4f46e5,#7c3aed);min-width:72px;">
+                <i class="bi bi-rocket-takeoff text-white" style="font-size:1.75rem;"></i>
+              </div>
+              <div class="flex-grow-1 p-3" style="background:linear-gradient(135deg,#eef2ff 0%,#f5f3ff 100%);">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                  <div>
+                    <strong class="text-dark">Welcome to British Trade Awards Admin</strong>
+                    <p class="text-muted small mb-0">Complete these steps to get up and running quickly</p>
+                  </div>
+                  <button type="button" class="btn-close btn-close-sm ms-3 flex-shrink-0" id="dismissGettingStarted" aria-label="Dismiss guide"></button>
+                </div>
+                <div class="row g-2 mt-1">
+                  <div class="col-6 col-lg-3">
+                    <div class="d-flex align-items-center gap-2 small">
+                      <span class="badge rounded-circle text-bg-primary flex-shrink-0" style="width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:0.65rem;">1</span>
+                      <a href="#" class="text-decoration-none text-dark fw-medium" data-action="dashboardModule.navigateToSection" data-id="organisations" data-prevent-default="true">Add Organisations</a>
+                    </div>
+                  </div>
+                  <div class="col-6 col-lg-3">
+                    <div class="d-flex align-items-center gap-2 small">
+                      <span class="badge rounded-circle text-bg-primary flex-shrink-0" style="width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:0.65rem;">2</span>
+                      <a href="#" class="text-decoration-none text-dark fw-medium" data-action="dashboardModule.navigateToSection" data-id="awards" data-prevent-default="true">Create Award Categories</a>
+                    </div>
+                  </div>
+                  <div class="col-6 col-lg-3">
+                    <div class="d-flex align-items-center gap-2 small">
+                      <span class="badge rounded-circle text-bg-primary flex-shrink-0" style="width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:0.65rem;">3</span>
+                      <a href="#" class="text-decoration-none text-dark fw-medium" data-action="dashboardModule.navigateToSection" data-id="events" data-prevent-default="true">Set up Events</a>
+                    </div>
+                  </div>
+                  <div class="col-6 col-lg-3">
+                    <div class="d-flex align-items-center gap-2 small">
+                      <span class="badge rounded-circle text-bg-primary flex-shrink-0" style="width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:0.65rem;">4</span>
+                      <a href="#" class="text-decoration-none text-dark fw-medium" data-action="dashboardModule.navigateToSection" data-id="marketing" data-prevent-default="true">Configure Marketing</a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <script>
+            (function () {
+              if (!localStorage.getItem('btaGettingStartedDismissed')) {
+                var el = document.getElementById('gettingStartedBanner');
+                if (el) el.classList.remove('d-none');
+              }
+              var btn = document.getElementById('dismissGettingStarted');
+              if (btn) btn.addEventListener('click', function () {
+                document.getElementById('gettingStartedBanner').classList.add('d-none');
+                localStorage.setItem('btaGettingStartedDismissed', '1');
+              });
+            })();
+          </script>
 
           <!-- Stats Cards -->
           <div class="row g-4 mb-5" data-dashboard-widget="stats-cards" data-widget-label="KPI Stats Cards">
@@ -642,7 +745,7 @@
 
             <div class="row g-4">
               <!-- Winners by Year Chart -->
-              <div class="col-lg-6">
+              <div class="col-lg-8">
                 <div class="chart-container">
                   <h6 class="chart-title">
                     <i class="bi bi-trophy me-2"></i>Winners by Year
@@ -652,40 +755,13 @@
                   </div>
                 </div>
               </div>
-
-              <!-- Category Distribution Chart -->
-              <div class="col-lg-6">
-                <div class="chart-container">
-                  <h6 class="chart-title">
-                    <i class="bi bi-pie-chart me-2"></i>Top Award Categories
-                  </h6>
-                  <div class="u-chart-container">
-                    <canvas id="categoryChart"></canvas>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Sector Trends Chart -->
-              <div class="col-lg-6">
-                <div class="chart-container">
-                  <h6 class="chart-title">
-                    <i class="bi bi-building me-2"></i>Sector Distribution
-                  </h6>
-                  <div class="u-chart-container">
-                    <canvas id="sectorChart"></canvas>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Region Distribution Chart -->
-              <div class="col-lg-6">
-                <div class="chart-container">
-                  <h6 class="chart-title">
-                    <i class="bi bi-geo-alt me-2"></i>Regional Breakdown
-                  </h6>
-                  <div class="u-chart-container">
-                    <canvas id="regionChart"></canvas>
-                  </div>
+              <div class="col-lg-4 d-flex align-items-center justify-content-center">
+                <div class="text-center text-muted p-4">
+                  <i class="bi bi-graph-up-arrow display-4 d-block mb-3 text-primary opacity-50"></i>
+                  <p class="mb-3">Category, sector and regional breakdowns are available in the full analytics view.</p>
+                  <button class="btn btn-outline-primary btn-sm" data-action="dashboardModule.navigateToSection" data-id="reports">
+                    <i class="bi bi-bar-chart me-1"></i>Open Reports &amp; Analytics
+                  </button>
                 </div>
               </div>
             </div>
@@ -817,14 +893,364 @@
             </div>
           </div>
 
+
+          <!-- Award Categories Reference (moved from Dashboard) -->
+          <div class="content-card mb-4">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h5 class="mb-1">
+                  <i class="bi bi-grid-3x3-gap-fill text-primary me-2"></i>Award Categories Reference
+                </h5>
+                <p class="text-muted small mb-0">All award types by size — expand sections below to browse</p>
+              </div>
+              <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="collapse" data-bs-target="#awardCatRefBody" aria-expanded="false" aria-controls="awardCatRefBody">
+                <i class="bi bi-chevron-down me-1"></i>Show / Hide
+              </button>
+            </div>
+            <div class="collapse" id="awardCatRefBody">
+              <div class="mt-3">
+<div class="row" id="catAccordion">
+
+              <!-- LEFT COLUMN: Standard Size Area -->
+              <div class="col-lg-6">
+                <h6 class="text-uppercase text-primary fw-bold mb-3 border-bottom pb-2">
+                  <i class="bi bi-building me-1"></i>Standard Size Area
+                </h6>
+
+                <!-- BUILDING & CONSTRUCTION -->
+                <div class="border rounded mb-2">
+                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
+                       data-bs-toggle="collapse" data-bs-target="#catS1" aria-expanded="false">
+                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
+                    <i class="bi bi-bricks text-warning me-2"></i>
+                    <strong class="small">BUILDING & CONSTRUCTION</strong>
+                    <span class="badge bg-secondary ms-auto">12</span>
+                  </div>
+                  <div class="collapse" id="catS1">
+                    <ul class="list-unstyled mb-0 px-3 pb-2 small text-muted">
+                      <li class="py-1 border-top">Brickwork & Masonry Company</li>
+                      <li class="py-1 border-top">Drainage Company</li>
+                      <li class="py-1 border-top">Extension Company</li>
+                      <li class="py-1 border-top">General Building Company</li>
+                      <li class="py-1 border-top">Groundworks & Foundations Company</li>
+                      <li class="py-1 border-top">Guttering Company</li>
+                      <li class="py-1 border-top">Loft Conversion Company</li>
+                      <li class="py-1 border-top">Maintenance Services</li>
+                      <li class="py-1 border-top">New Build Company</li>
+                      <li class="py-1 border-top">Roofing Company</li>
+                      <li class="py-1 border-top">Structural Engineers</li>
+                      <li class="py-1 border-top">Structural Steelworks</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <!-- MECHANICAL, ELECTRICAL & PLUMBING -->
+                <div class="border rounded mb-2">
+                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
+                       data-bs-toggle="collapse" data-bs-target="#catS2" aria-expanded="false">
+                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
+                    <i class="bi bi-lightning-charge text-danger me-2"></i>
+                    <strong class="small">MECHANICAL, ELECTRICAL & PLUMBING</strong>
+                    <span class="badge bg-secondary ms-auto">5</span>
+                  </div>
+                  <div class="collapse" id="catS2">
+                    <ul class="list-unstyled mb-0 px-3 pb-2 small text-muted">
+                      <li class="py-1 border-top">Air-Conditioning & Ventilation Company</li>
+                      <li class="py-1 border-top">Electrical Company</li>
+                      <li class="py-1 border-top">Heating Company</li>
+                      <li class="py-1 border-top">Plumbing Company</li>
+                      <li class="py-1 border-top">Underfloor Heating Company</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <!-- CARPENTRY & JOINERY -->
+                <div class="border rounded mb-2">
+                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
+                       data-bs-toggle="collapse" data-bs-target="#catS3" aria-expanded="false">
+                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
+                    <i class="bi bi-hammer text-success me-2"></i>
+                    <strong class="small">CARPENTRY & JOINERY</strong>
+                    <span class="badge bg-secondary ms-auto">5</span>
+                  </div>
+                  <div class="collapse" id="catS3">
+                    <ul class="list-unstyled mb-0 px-3 pb-2 small text-muted">
+                      <li class="py-1 border-top">Cabinet Maker</li>
+                      <li class="py-1 border-top">Carpentry Company</li>
+                      <li class="py-1 border-top">Joinery Company</li>
+                      <li class="py-1 border-top">Staircase Specialist</li>
+                      <li class="py-1 border-top">Timber Windows Installer</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <!-- FIT-OUT & FINISHES -->
+                <div class="border rounded mb-2">
+                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
+                       data-bs-toggle="collapse" data-bs-target="#catS4" aria-expanded="false">
+                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
+                    <i class="bi bi-house-heart text-info me-2"></i>
+                    <strong class="small">FIT-OUT & FINISHES</strong>
+                    <span class="badge bg-secondary ms-auto">12</span>
+                  </div>
+                  <div class="collapse" id="catS4">
+                    <ul class="list-unstyled mb-0 px-3 pb-2 small text-muted">
+                      <li class="py-1 border-top">Bathroom Installer</li>
+                      <li class="py-1 border-top">Carpet Fitters</li>
+                      <li class="py-1 border-top">Curtains & Blinds Installer</li>
+                      <li class="py-1 border-top">Drylining Company</li>
+                      <li class="py-1 border-top">Flooring Installer</li>
+                      <li class="py-1 border-top">Home Office Installer</li>
+                      <li class="py-1 border-top">Interior Refurbishment Company</li>
+                      <li class="py-1 border-top">Kitchen Installer</li>
+                      <li class="py-1 border-top">Painting & Decorating Company</li>
+                      <li class="py-1 border-top">Plastering Company</li>
+                      <li class="py-1 border-top">Screeding Company</li>
+                      <li class="py-1 border-top">Tiling Installer</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <!-- OUTDOOR & LANDSCAPING -->
+                <div class="border rounded mb-2">
+                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
+                       data-bs-toggle="collapse" data-bs-target="#catS5" aria-expanded="false">
+                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
+                    <i class="bi bi-tree text-success me-2"></i>
+                    <strong class="small">OUTDOOR & LANDSCAPING</strong>
+                    <span class="badge bg-secondary ms-auto">8</span>
+                  </div>
+                  <div class="collapse" id="catS5">
+                    <ul class="list-unstyled mb-0 px-3 pb-2 small text-muted">
+                      <li class="py-1 border-top">Decking Company</li>
+                      <li class="py-1 border-top">Driveway & Paving Company</li>
+                      <li class="py-1 border-top">Fencing Installer</li>
+                      <li class="py-1 border-top">Gardening Services</li>
+                      <li class="py-1 border-top">Garden Outbuilding Company</li>
+                      <li class="py-1 border-top">Landscaping & Garden Design Company</li>
+                      <li class="py-1 border-top">Outdoor Lighting & Electrical Company</li>
+                      <li class="py-1 border-top">Tree Surgery Services</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <!-- TECH & GREEN ENERGY -->
+                <div class="border rounded mb-2">
+                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
+                       data-bs-toggle="collapse" data-bs-target="#catS6" aria-expanded="false">
+                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
+                    <i class="bi bi-ev-front text-primary me-2"></i>
+                    <strong class="small">TECH & GREEN ENERGY</strong>
+                    <span class="badge bg-secondary ms-auto">6</span>
+                  </div>
+                  <div class="collapse" id="catS6">
+                    <ul class="list-unstyled mb-0 px-3 pb-2 small text-muted">
+                      <li class="py-1 border-top">EV Charger Installer</li>
+                      <li class="py-1 border-top">Insulation & Energy Efficiency Company</li>
+                      <li class="py-1 border-top">PV Installer</li>
+                      <li class="py-1 border-top">Renewable Energy Specialist</li>
+                      <li class="py-1 border-top">Security System Installer</li>
+                      <li class="py-1 border-top">Smart Home & Automation Company</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <!-- SPECIALIST TRADES -->
+                <div class="border rounded mb-2">
+                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
+                       data-bs-toggle="collapse" data-bs-target="#catS7" aria-expanded="false">
+                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
+                    <i class="bi bi-tools text-secondary me-2"></i>
+                    <strong class="small">SPECIALIST TRADES</strong>
+                    <span class="badge bg-secondary ms-auto">8</span>
+                  </div>
+                  <div class="collapse" id="catS7">
+                    <ul class="list-unstyled mb-0 px-3 pb-2 small text-muted">
+                      <li class="py-1 border-top">Asbestos Removal Specialist</li>
+                      <li class="py-1 border-top">Locksmith</li>
+                      <li class="py-1 border-top">Pest Control Company</li>
+                      <li class="py-1 border-top">Rendering Company</li>
+                      <li class="py-1 border-top">Scaffolding Company</li>
+                      <li class="py-1 border-top">Shop Fitting Company</li>
+                      <li class="py-1 border-top">Swimming Pool & Hot Tub Company</li>
+                      <li class="py-1 border-top">Window & Door Installer</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div class="text-muted small text-center mt-2">
+                  <i class="bi bi-info-circle me-1"></i>7 categories &middot; 56 sub-categories
+                </div>
+              </div>
+
+              <!-- RIGHT COLUMN: Small Area -->
+              <div class="col-lg-6">
+                <h6 class="text-uppercase text-success fw-bold mb-3 border-bottom pb-2">
+                  <i class="bi bi-house-door me-1"></i>Small Area
+                </h6>
+
+                <!-- BUILDING & CONSTRUCTION -->
+                <div class="border rounded mb-2">
+                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
+                       data-bs-toggle="collapse" data-bs-target="#catT1" aria-expanded="false">
+                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
+                    <i class="bi bi-bricks text-warning me-2"></i>
+                    <strong class="small">BUILDING & CONSTRUCTION</strong>
+                    <span class="badge bg-secondary ms-auto">10</span>
+                  </div>
+                  <div class="collapse" id="catT1">
+                    <ul class="list-unstyled mb-0 px-3 pb-2 small text-muted">
+                      <li class="py-1 border-top">Brickwork & Masonry Company</li>
+                      <li class="py-1 border-top">Drainage Company</li>
+                      <li class="py-1 border-top">Extension Company</li>
+                      <li class="py-1 border-top">General Building Company</li>
+                      <li class="py-1 border-top">Groundworks & Foundations Company</li>
+                      <li class="py-1 border-top">Guttering Company</li>
+                      <li class="py-1 border-top">Loft Conversion Company</li>
+                      <li class="py-1 border-top">Maintenance Services</li>
+                      <li class="py-1 border-top">New Build Company</li>
+                      <li class="py-1 border-top">Roofing Company</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <!-- MECHANICAL, ELECTRICAL & PLUMBING -->
+                <div class="border rounded mb-2">
+                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
+                       data-bs-toggle="collapse" data-bs-target="#catT2" aria-expanded="false">
+                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
+                    <i class="bi bi-lightning-charge text-danger me-2"></i>
+                    <strong class="small">MECHANICAL, ELECTRICAL & PLUMBING</strong>
+                    <span class="badge bg-secondary ms-auto">3</span>
+                  </div>
+                  <div class="collapse" id="catT2">
+                    <ul class="list-unstyled mb-0 px-3 pb-2 small text-muted">
+                      <li class="py-1 border-top">Air-Conditioning & Ventilation Company</li>
+                      <li class="py-1 border-top">Electrical Company</li>
+                      <li class="py-1 border-top">Plumbing & Heating Company</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <!-- CARPENTRY & JOINERY -->
+                <div class="border rounded mb-2">
+                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
+                       data-bs-toggle="collapse" data-bs-target="#catT3" aria-expanded="false">
+                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
+                    <i class="bi bi-hammer text-success me-2"></i>
+                    <strong class="small">CARPENTRY & JOINERY</strong>
+                    <span class="badge bg-secondary ms-auto">2</span>
+                  </div>
+                  <div class="collapse" id="catT3">
+                    <ul class="list-unstyled mb-0 px-3 pb-2 small text-muted">
+                      <li class="py-1 border-top">Carpentry & Joinery Company</li>
+                      <li class="py-1 border-top">Timber Windows Installer</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <!-- FIT-OUT & FINISHES -->
+                <div class="border rounded mb-2">
+                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
+                       data-bs-toggle="collapse" data-bs-target="#catT4" aria-expanded="false">
+                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
+                    <i class="bi bi-house-heart text-info me-2"></i>
+                    <strong class="small">FIT-OUT & FINISHES</strong>
+                    <span class="badge bg-secondary ms-auto">8</span>
+                  </div>
+                  <div class="collapse" id="catT4">
+                    <ul class="list-unstyled mb-0 px-3 pb-2 small text-muted">
+                      <li class="py-1 border-top">Bathroom Installer</li>
+                      <li class="py-1 border-top">Carpet Fitters</li>
+                      <li class="py-1 border-top">Flooring Installer</li>
+                      <li class="py-1 border-top">Interior Refurbishment Company</li>
+                      <li class="py-1 border-top">Kitchen Installer</li>
+                      <li class="py-1 border-top">Painting & Decorating Company</li>
+                      <li class="py-1 border-top">Plastering Company</li>
+                      <li class="py-1 border-top">Tiling Installer</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <!-- OUTDOOR & LANDSCAPING -->
+                <div class="border rounded mb-2">
+                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
+                       data-bs-toggle="collapse" data-bs-target="#catT5" aria-expanded="false">
+                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
+                    <i class="bi bi-tree text-success me-2"></i>
+                    <strong class="small">OUTDOOR & LANDSCAPING</strong>
+                    <span class="badge bg-secondary ms-auto">5</span>
+                  </div>
+                  <div class="collapse" id="catT5">
+                    <ul class="list-unstyled mb-0 px-3 pb-2 small text-muted">
+                      <li class="py-1 border-top">Driveway & Paving Company</li>
+                      <li class="py-1 border-top">Fencing Installer</li>
+                      <li class="py-1 border-top">Gardening Services</li>
+                      <li class="py-1 border-top">Landscaping & Garden Design Company</li>
+                      <li class="py-1 border-top">Tree Surgery Services</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <!-- TECH & GREEN ENERGY -->
+                <div class="border rounded mb-2">
+                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
+                       data-bs-toggle="collapse" data-bs-target="#catT6" aria-expanded="false">
+                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
+                    <i class="bi bi-ev-front text-primary me-2"></i>
+                    <strong class="small">TECH & GREEN ENERGY</strong>
+                    <span class="badge bg-secondary ms-auto">5</span>
+                  </div>
+                  <div class="collapse" id="catT6">
+                    <ul class="list-unstyled mb-0 px-3 pb-2 small text-muted">
+                      <li class="py-1 border-top">EV Charger Installer</li>
+                      <li class="py-1 border-top">Insulation & Energy Efficiency Company</li>
+                      <li class="py-1 border-top">PV Installer</li>
+                      <li class="py-1 border-top">Renewable Energy Specialist</li>
+                      <li class="py-1 border-top">Security Systems Installer</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <!-- SPECIALIST TRADES -->
+                <div class="border rounded mb-2">
+                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
+                       data-bs-toggle="collapse" data-bs-target="#catT7" aria-expanded="false">
+                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
+                    <i class="bi bi-tools text-secondary me-2"></i>
+                    <strong class="small">SPECIALIST TRADES</strong>
+                    <span class="badge bg-secondary ms-auto">5</span>
+                  </div>
+                  <div class="collapse" id="catT7">
+                    <ul class="list-unstyled mb-0 px-3 pb-2 small text-muted">
+                      <li class="py-1 border-top">Locksmith</li>
+                      <li class="py-1 border-top">Pest Control Company</li>
+                      <li class="py-1 border-top">Rendering Company</li>
+                      <li class="py-1 border-top">Scaffolding Company</li>
+                      <li class="py-1 border-top">Window & Door Installer</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div class="text-muted small text-center mt-2">
+                  <i class="bi bi-info-circle me-1"></i>7 categories &middot; 38 sub-categories
+                </div>
+              </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Filters Section -->
-<div class="filters-section" style="position: sticky; top: 104px; z-index: 999; background-color: var(--bs-body-bg, white); padding: 0.75rem 0 0; margin-bottom: 0.75rem; border-bottom: 1px solid #dee2e6;">
+<div class="filters-section" style="position: sticky; top: 56px; z-index: 999; background-color: var(--bs-body-bg, white); padding: 0.75rem 0 0; margin-bottom: 0.75rem; border-bottom: 1px solid #dee2e6;">
   <div class="rounded-2 p-3 mb-2" style="background:#f8f9fa;">
     <div class="d-flex align-items-center justify-content-between mb-2">
-      <button class="btn btn-link p-0 text-decoration-none fw-semibold text-muted" style="font-size:0.8rem;letter-spacing:.04em;text-transform:uppercase;" data-bs-toggle="collapse" data-bs-target="#awardsFiltersCollapse" aria-expanded="true" aria-controls="awardsFiltersCollapse">
-        <i class="bi bi-funnel me-1"></i>Filter Awards <span id="awardsFilterCount" class="badge bg-primary ms-1 d-none"></span>
-        <i class="bi bi-chevron-down ms-1 small"></i>
-      </button>
+      <div class="d-flex align-items-center gap-3 flex-grow-1">
+        <button class="btn btn-link p-0 text-decoration-none fw-semibold text-muted" style="font-size:0.8rem;letter-spacing:.04em;text-transform:uppercase;" data-bs-toggle="collapse" data-bs-target="#awardsFiltersCollapse" aria-expanded="true" aria-controls="awardsFiltersCollapse">
+          <i class="bi bi-funnel me-1"></i>Filter Awards <span id="awardsFilterCount" class="badge bg-primary ms-1 d-none"></span>
+          <i class="bi bi-chevron-down ms-1 small"></i>
+        </button>
+        <span id="awardsRowCount" class="table-row-count"></span>
+      </div>
       <div class="d-flex align-items-center gap-2">
         <div class="input-group input-group-sm" style="width:220px;">
           <select class="form-select form-select-sm" id="awardsSavedViewsList" data-on-change="awardsModule.loadSavedAwardsView">
@@ -834,8 +1260,8 @@
             <i class="bi bi-bookmark-plus"></i>
           </button>
         </div>
-        <button class="btn btn-outline-secondary btn-sm" data-action="awardsModule.resetFilters" title="Reset all filters">
-          <i class="bi bi-x-circle me-1"></i>Reset
+        <button class="btn btn-outline-secondary btn-sm" data-action="awardsModule.resetFilters" title="Clear all active filters">
+          <i class="bi bi-x-circle me-1"></i>Clear Filters
         </button>
       </div>
     </div>
@@ -955,11 +1381,11 @@
                 <button class="btn btn-purple btn-sm" style="background:#6f42c1;color:#fff;border-color:#6f42c1;" data-action="awardsModule.bulkCloneSelected">
                   <i class="bi bi-copy me-1"></i>Clone Selected
                 </button>
-                <button class="btn btn-danger btn-sm" data-action="awardsModule.bulkDelete">
+                <button class="btn btn-danger btn-sm" data-action="globalActions.confirmBulkDelete" data-module="awardsModule" data-fn="bulkDelete" data-label="award">
                   <i class="bi bi-trash me-1"></i>Delete Selected
                 </button>
                 <button class="btn btn-outline-secondary btn-sm" data-action="awardsModule.clearSelection">
-                  <i class="bi bi-x-lg me-1"></i>Clear
+                  <i class="bi bi-x-lg me-1"></i>Clear Selection
                 </button>
               </div>
             </div>
@@ -985,11 +1411,18 @@
                   </tr>
                 </thead>
                 <tbody id="awardsTableBody">
-                  <tr>
+                  <tr id="awardsEmptyRow">
                     <td colspan="10" class="text-center py-5">
                       <div class="text-muted">
-                        <i class="bi bi-inbox display-3 d-block mb-3 opacity-25"></i>
-                        <p class="mb-0">Loading awards...</p>
+                        <i class="bi bi-trophy display-3 d-block mb-3 opacity-25"></i>
+                        <p class="fw-semibold mb-1 text-dark">No awards yet</p>
+                        <p class="small mb-3">Create your first award category to get started.</p>
+                        <button class="btn btn-primary btn-sm" data-action="awardsModule.openAddAwardModal">
+                          <i class="bi bi-plus-lg me-1"></i>Add Award
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm ms-2" data-action="awardsModule.resetFilters">
+                          <i class="bi bi-x-circle me-1"></i>Clear Filters
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -1013,6 +1446,23 @@
       </h1>
       <p class="section-subtitle">View and manage registered organisations<span id="organisationsFreshness" class="ms-2"></span></p>
     </div>
+
+    <!-- Section View Toggle -->
+    <ul class="nav nav-pills mb-4" id="orgsSubNav" role="tablist">
+      <li class="nav-item">
+        <button class="nav-link active" id="orgsViewBtn" data-action="orgsModule.showOrgsView">
+          <i class="bi bi-building me-2"></i>All Organisations
+        </button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" id="sponsorsViewBtn" data-action="orgsModule.showSponsorsView">
+          <i class="bi bi-award me-2"></i>Sponsors &amp; Partners
+        </button>
+      </li>
+    </ul>
+
+    <!-- Organisations Content (default view) -->
+    <div id="orgsMainContent">
 
     <!-- Enhanced Stats Card with Pipeline & Data Quality -->
     <div class="row mb-4">
@@ -1082,7 +1532,10 @@
       <div class="card-body py-3">
         <!-- Row header -->
         <div class="d-flex align-items-center justify-content-between mb-2">
-          <span class="fw-semibold text-muted" style="font-size:0.8rem;letter-spacing:.04em;text-transform:uppercase;"><i class="bi bi-funnel me-1"></i>Filter Companies</span>
+          <div class="d-flex align-items-center gap-3">
+            <span class="fw-semibold text-muted" style="font-size:0.8rem;letter-spacing:.04em;text-transform:uppercase;"><i class="bi bi-funnel me-1"></i>Filter Organisations</span>
+            <span id="orgsRowCount" class="table-row-count"></span>
+          </div>
           <div class="d-flex align-items-center gap-2">
             <div class="input-group input-group-sm" style="width:200px;">
               <select class="form-select form-select-sm" id="orgsFilterPreset" data-on-change="orgsModule.loadFilterPreset">
@@ -1095,8 +1548,8 @@
                 <i class="bi bi-trash"></i>
               </button>
             </div>
-            <button class="btn btn-outline-secondary btn-sm" data-action="orgsModule.resetFilters" title="Reset all filters">
-              <i class="bi bi-x-circle me-1"></i>Reset
+            <button class="btn btn-outline-secondary btn-sm" data-action="orgsModule.resetFilters" title="Clear all active filters">
+              <i class="bi bi-x-circle me-1"></i>Clear Filters
             </button>
           </div>
         </div>
@@ -1384,11 +1837,18 @@
               </tr>
             </thead>
             <tbody id="orgsTableBody">
-              <tr>
+              <tr id="orgsEmptyRow">
                 <td colspan="16" class="text-center py-5">
                   <div class="text-muted">
-                    <div class="spinner-border spinner-border-sm mb-2" role="status"></div>
-                    <p class="mb-0 small">Loading organisations...</p>
+                    <i class="bi bi-building display-3 d-block mb-3 opacity-25"></i>
+                    <p class="fw-semibold mb-1 text-dark">No organisations yet</p>
+                    <p class="small mb-3">Add your first organisation to begin managing your award entrants.</p>
+                    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addNewOrgModal">
+                      <i class="bi bi-plus-lg me-1"></i>Add Organisation
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm ms-2" data-action="orgsModule.resetFilters">
+                      <i class="bi bi-x-circle me-1"></i>Clear Filters
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -1423,7 +1883,7 @@
           <div class="modal-body">
             <form id="addCompanyForm">
               <div class="mb-3">
-                <label for="newCompanyName" class="form-label">Company Name *</label>
+                <label for="newCompanyName" class="form-label">Organisation Name <span class="text-danger" aria-label="required">*</span></label>
                 <input type="text" class="form-control" id="newCompanyName" required
                        data-on-input="orgsModule._liveCheckDuplicate">
                 <div id="duplicateWarning" class="small text-warning mt-1 d-none"></div>
@@ -1702,15 +2162,38 @@
           <button class="btn btn-sm btn-outline-warning" data-action="orgsModule.showMergeDuplicatesModal" title="Merge selected organisations">
             <i class="bi bi-intersect me-1"></i>Merge
           </button>
-          <button class="btn btn-sm btn-danger" data-action="orgsModule.bulkDelete">
+          <button class="btn btn-sm btn-danger" data-action="globalActions.confirmBulkDelete" data-module="orgsModule" data-fn="bulkDelete" data-label="organisation" data-verb="Archive">
             <i class="bi bi-archive me-1"></i>Archive
           </button>
           <button class="btn btn-sm btn-outline-secondary" data-action="orgsModule.clearSelection">
-            <i class="bi bi-x-lg me-1"></i>Clear
+            <i class="bi bi-x-lg me-1"></i>Clear Selection
           </button>
         </div>
       </div>
     </div>
+
+    </div><!-- /orgsMainContent -->
+
+    <!-- Sponsors Section (hidden by default) -->
+    <div id="orgsSponsorSection" class="d-none">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4><i class="bi bi-award me-2"></i>Sponsors &amp; Partners</h4>
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-info" data-action="sponsorPortalModule.renderSponsorDashboard">
+            <i class="bi bi-speedometer2 me-2"></i>Sponsor Portal
+          </button>
+          <button class="btn btn-primary" data-action="marketingModule.openAddSponsorModal">
+            <i class="bi bi-plus-lg me-2"></i>Add Sponsor
+          </button>
+        </div>
+      </div>
+      <div id="sponsorsGrid">
+        <div class="text-center py-5 text-muted">
+          <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+          Loading sponsors...
+        </div>
+      </div>
+    </div><!-- /orgsSponsorSection -->
 
   </div>
 </div>
@@ -1730,10 +2213,13 @@
           </div>
 
           <!-- Filters Section -->
-          <div class="filters-section" style="position: sticky; top: 104px; z-index: 999; background-color: var(--bs-body-bg, white); padding: 0.75rem 0 0; margin-bottom: 0.75rem; border-bottom: 1px solid #dee2e6;">
+          <div class="filters-section" style="position: sticky; top: 56px; z-index: 999; background-color: var(--bs-body-bg, white); padding: 0.75rem 0 0; margin-bottom: 0.75rem; border-bottom: 1px solid #dee2e6;">
             <div class="rounded-2 p-3 mb-2" style="background:#f8f9fa;">
               <div class="d-flex align-items-center justify-content-between mb-2">
-                <span class="fw-semibold text-muted" style="font-size:0.8rem;letter-spacing:.04em;text-transform:uppercase;"><i class="bi bi-funnel me-1"></i>Filter Winners</span>
+                <div class="d-flex align-items-center gap-3">
+                  <span class="fw-semibold text-muted" style="font-size:0.8rem;letter-spacing:.04em;text-transform:uppercase;"><i class="bi bi-funnel me-1"></i>Filter Winners</span>
+                  <span id="winnersRowCount" class="table-row-count"></span>
+                </div>
                 <div class="d-flex align-items-center gap-2">
                   <div class="input-group input-group-sm" style="width:200px;">
                     <select class="form-select form-select-sm" id="winnersSavedViewsList" data-on-change="winnersModule.loadSavedWinnersView">
@@ -1743,8 +2229,8 @@
                       <i class="bi bi-bookmark-plus"></i>
                     </button>
                   </div>
-                  <button class="btn btn-outline-secondary btn-sm" data-action="winnersModule.resetFilters" title="Reset all filters">
-                    <i class="bi bi-x-circle me-1"></i>Reset
+                  <button class="btn btn-outline-secondary btn-sm" data-action="winnersModule.resetFilters" title="Clear all active filters">
+                    <i class="bi bi-x-circle me-1"></i>Clear Filters
                   </button>
                 </div>
               </div>
@@ -1785,7 +2271,7 @@
             <div class="card-body py-2 d-flex align-items-center justify-content-between">
               <span><strong id="winnersBulkCount">0</strong> winners selected</span>
               <div class="btn-group btn-group-sm">
-                <button class="btn btn-outline-danger" data-action="winnersModule.bulkDeleteWinners">
+                <button class="btn btn-outline-danger" data-action="globalActions.confirmBulkDelete" data-module="winnersModule" data-fn="bulkDeleteWinners" data-label="winner">
                   <i class="bi bi-trash me-1"></i>Delete Selected
                 </button>
                 <button class="btn btn-outline-secondary" data-action="winnersModule.bulkExportWinners">
@@ -1862,7 +2348,11 @@
                     <td colspan="7" class="text-center py-5">
                       <div class="text-muted">
                         <i class="bi bi-inbox display-3 d-block mb-3 opacity-25"></i>
-                        <p class="mb-0">Loading winners...</p>
+                        <p class="fw-semibold mb-1 text-dark">No winners found</p>
+                        <p class="small mb-3">Winners are recorded after the judging phase. Try adjusting your filters.</p>
+                        <button class="btn btn-outline-secondary btn-sm" data-action="winnersModule.resetFilters">
+                          <i class="bi bi-x-circle me-1"></i>Clear Filters
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -1955,7 +2445,10 @@
           <!-- Filters and Actions -->
           <div class="rounded-2 p-3 mb-3" style="background:#f8f9fa;border:1px solid #e9ecef;">
             <div class="d-flex align-items-center justify-content-between mb-2">
-              <span class="fw-semibold text-muted" style="font-size:0.8rem;letter-spacing:.04em;text-transform:uppercase;"><i class="bi bi-funnel me-1"></i>Filter Entries <span id="entriesFilterCount" class="badge bg-primary ms-1 d-none"></span></span>
+              <div class="d-flex align-items-center gap-3">
+                <span class="fw-semibold text-muted" style="font-size:0.8rem;letter-spacing:.04em;text-transform:uppercase;"><i class="bi bi-funnel me-1"></i>Filter Entries <span id="entriesFilterCount" class="badge bg-primary ms-1 d-none"></span></span>
+                <span id="entriesRowCount" class="table-row-count"></span>
+              </div>
               <div class="d-flex align-items-center gap-2">
                 <div class="input-group input-group-sm" style="width:200px;">
                   <select class="form-select form-select-sm" id="entriesSavedViewsList" data-on-change="entriesModule.loadSavedEntriesView">
@@ -1965,8 +2458,8 @@
                     <i class="bi bi-bookmark-plus"></i>
                   </button>
                 </div>
-                <button class="btn btn-outline-secondary btn-sm" data-action="entriesModule.resetFilters" title="Reset all filters">
-                  <i class="bi bi-x-circle me-1"></i>Reset
+                <button class="btn btn-outline-secondary btn-sm" data-action="entriesModule.resetFilters" title="Clear all active filters">
+                  <i class="bi bi-x-circle me-1"></i>Clear Filters
                 </button>
               </div>
             </div>
@@ -2828,9 +3321,10 @@
                 </select>
               </div>
               <div class="col-md-4 text-end">
-                <div class="d-flex gap-2 justify-content-end flex-wrap">
-                  <button class="btn btn-outline-secondary btn-sm" data-action="eventsModule.resetEventFilters" title="Reset Filters">
-                    <i class="bi bi-x-circle me-1"></i>Reset
+                <div class="d-flex gap-2 justify-content-end align-items-center flex-wrap">
+                  <span id="eventsRowCount" class="table-row-count me-1"></span>
+                  <button class="btn btn-outline-secondary btn-sm" data-action="eventsModule.resetEventFilters" title="Clear all active filters">
+                    <i class="bi bi-x-circle me-1"></i>Clear Filters
                   </button>
                   <div class="vr mx-1"></div>
                   <button class="btn btn-outline-info btn-sm" data-action="eventsModule.toggleEventsCalendar" title="Calendar View">
@@ -2870,7 +3364,7 @@
             <div class="card-body py-2 d-flex align-items-center justify-content-between">
               <span><strong id="eventsBulkCount">0</strong> events selected</span>
               <div class="btn-group btn-group-sm">
-                <button class="btn btn-outline-danger" data-action="eventsModule.bulkDeleteEvents">
+                <button class="btn btn-outline-danger" data-action="globalActions.confirmBulkDelete" data-module="eventsModule" data-fn="bulkDeleteEvents" data-label="event">
                   <i class="bi bi-trash me-1"></i>Delete Selected
                 </button>
                 <button class="btn btn-outline-secondary" data-action="eventsModule.bulkExportEvents">
@@ -3316,11 +3810,6 @@
               </button>
             </li>
             <li class="nav-item" role="presentation">
-              <button class="nav-link" id="sponsors-subtab" data-bs-toggle="pill" data-bs-target="#sponsors-content" type="button" role="tab">
-                <i class="bi bi-award me-2"></i>Sponsors
-              </button>
-            </li>
-            <li class="nav-item" role="presentation">
               <button class="nav-link" id="social-subtab" data-bs-toggle="pill" data-bs-target="#social-content" type="button" role="tab">
                 <i class="bi bi-share me-2"></i>Social Media
               </button>
@@ -3378,28 +3867,6 @@
                 <div class="text-center py-5 text-muted">
                   <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
                   Loading banners...
-                </div>
-              </div>
-            </div>
-
-            <!-- Sponsors Sub-Tab -->
-            <div class="tab-pane fade" id="sponsors-content" role="tabpanel">
-              <div class="d-flex justify-content-between align-items-center mb-4">
-                <h4><i class="bi bi-award me-2"></i>Sponsors & Partners</h4>
-                <div class="d-flex gap-2">
-                  <button class="btn btn-outline-info" data-action="sponsorPortalModule.renderSponsorDashboard">
-                    <i class="bi bi-speedometer2 me-2"></i>Sponsor Portal
-                  </button>
-                  <button class="btn btn-primary" data-action="marketingModule.openAddSponsorModal">
-                    <i class="bi bi-plus-lg me-2"></i>Add Sponsor
-                  </button>
-                </div>
-              </div>
-
-              <div id="sponsorsGrid">
-                <div class="text-center py-5 text-muted">
-                  <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
-                  Loading sponsors...
                 </div>
               </div>
             </div>
@@ -4347,8 +4814,8 @@
                       <button class="btn btn-outline-info btn-sm" data-action="emailBuilder.checkSpamScore">
                         <i class="bi bi-shield-check me-1"></i>Spam Check
                       </button>
-                      <button class="btn btn-outline-secondary btn-sm" data-action="emailBuilder.clearCanvas">
-                        <i class="bi bi-trash me-1"></i>Clear All
+                      <button class="btn btn-outline-secondary btn-sm" data-action="globalActions.confirmClearCanvas" title="Clear the entire email canvas — this cannot be undone">
+                        <i class="bi bi-trash me-1"></i>Clear Canvas
                       </button>
                     </div>
 
@@ -4943,12 +5410,7 @@
           <!-- Sub-navigation -->
           <ul class="nav nav-pills mb-4" id="crmSubTabs" role="tablist">
             <li class="nav-item" role="presentation">
-              <button class="nav-link active" id="companies-crm-subtab" data-bs-toggle="pill" data-bs-target="#companies-crm-content" type="button" role="tab">
-                <i class="bi bi-building me-2"></i>Organisations
-              </button>
-            </li>
-            <li class="nav-item" role="presentation">
-              <button class="nav-link" id="communications-subtab" data-bs-toggle="pill" data-bs-target="#communications-content" type="button" role="tab">
+              <button class="nav-link active" id="communications-subtab" data-bs-toggle="pill" data-bs-target="#communications-content" type="button" role="tab">
                 <i class="bi bi-chat-dots me-2"></i>Communications
               </button>
             </li>
@@ -4969,12 +5431,12 @@
             </li>
             <li class="nav-item" role="presentation">
               <button class="nav-link" id="smart-segments-subtab" data-bs-toggle="pill" data-bs-target="#smart-segments-content" type="button" role="tab" title="Smart Segments are rule-based auto-segments that update dynamically as organisation data changes">
-                <i class="bi bi-funnel me-2"></i>Smart Segments
+                <i class="bi bi-funnel me-2"></i>Smart Segments<span id="smartSegmentsBadge" class="badge bg-secondary ms-2" style="display:none"></span>
               </button>
             </li>
             <li class="nav-item" role="presentation">
               <button class="nav-link" id="my-tasks-subtab" data-bs-toggle="pill" data-bs-target="#my-tasks-content" type="button" role="tab" title="Tasks assigned to you personally — shared across the team">
-                <i class="bi bi-check2-square me-2"></i>Tasks
+                <i class="bi bi-check2-square me-2"></i>Tasks<span id="myTasksBadge" class="badge bg-danger ms-2" style="display:none"></span>
               </button>
             </li>
           </ul>
@@ -4982,94 +5444,8 @@
           <!-- Sub-tab Content -->
           <div class="tab-content" id="crmSubTabContent">
 
-            <!-- Companies CRM View Sub-Tab -->
-            <div class="tab-pane fade show active" id="companies-crm-content" role="tabpanel">
-
-              <!-- Quick Stats -->
-              <div class="row g-3 mb-4">
-                <div class="col-md-3">
-                  <div class="content-card text-center">
-                    <i class="bi bi-building text-primary fs-1 mb-2"></i>
-                    <div class="fs-2 fw-bold" id="totalCompaniesCount">0</div>
-                    <div class="text-muted small">Total Organisations</div>
-                  </div>
-                </div>
-                <div class="col-md-3">
-                  <div class="content-card text-center">
-                    <i class="bi bi-graph-up text-success fs-1 mb-2"></i>
-                    <div class="fs-2 fw-bold" id="activeDealsCount">0</div>
-                    <div class="text-muted small">Active Deals</div>
-                  </div>
-                </div>
-                <div class="col-md-3">
-                  <div class="content-card text-center">
-                    <i class="bi bi-chat-dots text-info fs-1 mb-2"></i>
-                    <div class="fs-2 fw-bold" id="recentCommunicationsCount">0</div>
-                    <div class="text-muted small">Recent Communications</div>
-                  </div>
-                </div>
-                <div class="col-md-3">
-                  <div class="content-card text-center">
-                    <i class="bi bi-bell text-warning fs-1 mb-2"></i>
-                    <div class="fs-2 fw-bold" id="pendingFollowUpsCount">0</div>
-                    <div class="text-muted small">Pending Follow-ups</div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Segment Filter -->
-              <div class="content-card mb-4">
-                <div class="row g-3">
-                  <div class="col-md-4">
-                    <label class="form-label small fw-bold">Filter by Segment</label>
-                    <select class="form-select form-select-sm" id="crmSegmentFilter" data-on-change="crmModule.filterCompanies">
-                      <option value="">All Companies</option>
-                    </select>
-                  </div>
-                  <div class="col-md-4">
-                    <label class="form-label small fw-bold">Search</label>
-                    <input type="text" class="form-control form-control-sm" id="crmCompanySearch" placeholder="Search companies...">
-                  </div>
-                  <div class="col-md-4 d-flex align-items-end">
-                    <button class="btn btn-primary btn-sm w-100" data-action="crmModule.openCompanyDetails">
-                      <i class="bi bi-plus-circle me-1"></i>Add Company Activity
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Companies Table with CRM Data -->
-              <div class="table-container">
-                <div class="table-responsive">
-                  <table class="table table-hover table-striped align-middle">
-                    <thead class="table-light">
-                      <tr>
-                        <th scope="col">Company</th>
-                        <th scope="col">Segments</th>
-                        <th scope="col">Communications</th>
-                        <th scope="col">Active Deals</th>
-                        <th scope="col">Pipeline Value</th>
-                        <th scope="col">Last Contact</th>
-                        <th scope="col">Follow-ups</th>
-                        <th scope="col">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody id="companiesCrmTableBody">
-                      <tr>
-                        <td colspan="8" class="text-center py-5 text-muted">
-                          <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
-                          Loading companies...
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-            </div>
-
             <!-- Communications Sub-Tab -->
-            <div class="tab-pane fade" id="communications-content" role="tabpanel">
+            <div class="tab-pane fade show active" id="communications-content" role="tabpanel">
 
               <!-- Filter & Actions -->
               <div class="content-card mb-4">
@@ -5480,28 +5856,33 @@
           <!-- Settings Sub-Navigation -->
           <ul class="nav nav-pills mb-4" id="settingsSubTabs" role="tablist">
             <li class="nav-item" role="presentation">
-              <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#settings-general" type="button" role="tab">
+              <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#settings-general" type="button" role="tab" title="Branding, logo, and display preferences">
                 <i class="bi bi-palette me-2"></i>General
+                <span class="d-block small fw-normal opacity-75" style="font-size:0.65rem;margin-top:1px;">Branding &amp; display</span>
               </button>
             </li>
             <li class="nav-item" role="presentation">
-              <button class="nav-link" data-bs-toggle="pill" data-bs-target="#settings-seasons" type="button" role="tab">
+              <button class="nav-link" data-bs-toggle="pill" data-bs-target="#settings-seasons" type="button" role="tab" title="Manage award seasons and geographic areas">
                 <i class="bi bi-calendar-event me-2"></i>Seasons &amp; Areas
+                <span class="d-block small fw-normal opacity-75" style="font-size:0.65rem;margin-top:1px;">Award periods &amp; regions</span>
               </button>
             </li>
             <li class="nav-item" role="presentation">
-              <button class="nav-link" data-bs-toggle="pill" data-bs-target="#settings-security" type="button" role="tab">
+              <button class="nav-link" data-bs-toggle="pill" data-bs-target="#settings-security" type="button" role="tab" title="Two-factor auth, GDPR, and user roles">
                 <i class="bi bi-shield-lock me-2"></i>Security
+                <span class="d-block small fw-normal opacity-75" style="font-size:0.65rem;margin-top:1px;">2FA, GDPR &amp; roles</span>
               </button>
             </li>
             <li class="nav-item" role="presentation">
-              <button class="nav-link" data-bs-toggle="pill" data-bs-target="#settings-integrations" type="button" role="tab">
+              <button class="nav-link" data-bs-toggle="pill" data-bs-target="#settings-integrations" type="button" role="tab" title="Webhooks and third-party service connections">
                 <i class="bi bi-broadcast me-2"></i>Integrations
+                <span class="d-block small fw-normal opacity-75" style="font-size:0.65rem;margin-top:1px;">Webhooks &amp; APIs</span>
               </button>
             </li>
             <li class="nav-item" role="presentation">
-              <button class="nav-link" data-bs-toggle="pill" data-bs-target="#settings-data" type="button" role="tab">
+              <button class="nav-link" data-bs-toggle="pill" data-bs-target="#settings-data" type="button" role="tab" title="Export data, backups, and audit log">
                 <i class="bi bi-cloud-download me-2"></i>Data &amp; Backup
+                <span class="d-block small fw-normal opacity-75" style="font-size:0.65rem;margin-top:1px;">Export, backup &amp; audit</span>
               </button>
             </li>
           </ul>
@@ -5579,6 +5960,240 @@
               </div>
             </div>
 
+
+
+              <!-- Counties, Cities & Regions Reference (moved from Dashboard) -->
+              <div class="card mt-4">
+                <div class="card-header d-flex justify-content-between align-items-center py-2">
+                  <div>
+                    <h6 class="mb-0">
+                      <i class="bi bi-geo-alt-fill text-danger me-2"></i>Counties, Cities & Regions Reference
+                    </h6>
+                    <small class="text-muted">Coverage: <span id="countyCoverageStats" class="fw-semibold">Loading...</span></small>
+                  </div>
+                  <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="collapse" data-bs-target="#countiesRefBody" aria-expanded="false">
+                    <i class="bi bi-chevron-down me-1"></i>Show / Hide
+                  </button>
+                </div>
+                <div class="collapse" id="countiesRefBody">
+                  <div class="card-body">
+                    <p class="text-muted small mb-3">All areas included in the awards programme. <span class="text-success fw-semibold">Green</span> = has organisations or data. Indicators update when the Dashboard loads.</p>
+              <button class="btn btn-outline-secondary btn-sm" data-action="utils.toggleAccordion" data-id="regionAccordion">
+                <i class="bi bi-arrows-expand me-1"></i>Toggle All
+              </button>
+            </div>
+
+            <div class="row" id="regionAccordion">
+
+              <!-- LEFT COLUMN: England & Scotland -->
+              <div class="col-lg-6">
+
+                <!-- ENGLAND COUNTIES -->
+                <div class="border rounded mb-2">
+                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
+                       data-bs-toggle="collapse" data-bs-target="#regEng" aria-expanded="false">
+                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
+                    <span class="me-2">&#127988;&#917607;&#917602;&#917605;&#917614;&#917607;&#917631;</span>
+                    <strong class="small">ENGLAND COUNTIES</strong>
+                    <span class="text-muted small ms-1">(excl. cities)</span>
+                    <span class="badge bg-danger ms-auto">42</span>
+                  </div>
+                  <div class="collapse" id="regEng">
+                    <div class="px-3 pb-2 small text-muted u-columns-2">
+                      <div class="py-1 border-top" data-county="Bedfordshire">Bedfordshire</div>
+                      <div class="py-1 border-top" data-county="Berkshire">Berkshire</div>
+                      <div class="py-1 border-top" data-county="Buckinghamshire">Buckinghamshire</div>
+                      <div class="py-1 border-top" data-county="Cambridgeshire">Cambridgeshire</div>
+                      <div class="py-1 border-top" data-county="Cheshire">Cheshire</div>
+                      <div class="py-1 border-top" data-county="Cornwall">Cornwall</div>
+                      <div class="py-1 border-top" data-county="County Durham">County Durham</div>
+                      <div class="py-1 border-top" data-county="Cumbria">Cumbria</div>
+                      <div class="py-1 border-top" data-county="Derbyshire">Derbyshire</div>
+                      <div class="py-1 border-top" data-county="Devon">Devon</div>
+                      <div class="py-1 border-top" data-county="Dorset">Dorset</div>
+                      <div class="py-1 border-top" data-county="East Sussex">East Sussex</div>
+                      <div class="py-1 border-top" data-county="East Yorkshire">East Yorkshire</div>
+                      <div class="py-1 border-top" data-county="Essex">Essex</div>
+                      <div class="py-1 border-top" data-county="Gloucestershire">Gloucestershire</div>
+                      <div class="py-1 border-top" data-county="Hampshire">Hampshire</div>
+                      <div class="py-1 border-top" data-county="Herefordshire">Herefordshire <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                      <div class="py-1 border-top" data-county="Hertfordshire">Hertfordshire</div>
+                      <div class="py-1 border-top" data-county="Isle of Wight">Isle of Wight <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                      <div class="py-1 border-top" data-county="Kent">Kent</div>
+                      <div class="py-1 border-top" data-county="Lancashire">Lancashire</div>
+                      <div class="py-1 border-top" data-county="Leicestershire">Leicestershire</div>
+                      <div class="py-1 border-top" data-county="Lincolnshire">Lincolnshire</div>
+                      <div class="py-1 border-top" data-county="Norfolk">Norfolk</div>
+                      <div class="py-1 border-top" data-county="Northamptonshire">Northamptonshire</div>
+                      <div class="py-1 border-top" data-county="North Yorkshire">North Yorkshire</div>
+                      <div class="py-1 border-top" data-county="Northumberland">Northumberland</div>
+                      <div class="py-1 border-top" data-county="Nottinghamshire">Nottinghamshire</div>
+                      <div class="py-1 border-top" data-county="Oxfordshire">Oxfordshire</div>
+                      <div class="py-1 border-top" data-county="Rutland">Rutland <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                      <div class="py-1 border-top" data-county="Shropshire">Shropshire</div>
+                      <div class="py-1 border-top" data-county="Somerset">Somerset</div>
+                      <div class="py-1 border-top" data-county="South Yorkshire">South Yorkshire</div>
+                      <div class="py-1 border-top" data-county="Staffordshire">Staffordshire</div>
+                      <div class="py-1 border-top" data-county="Suffolk">Suffolk</div>
+                      <div class="py-1 border-top" data-county="Surrey">Surrey</div>
+                      <div class="py-1 border-top" data-county="Tyne & Wear">Tyne &amp; Wear</div>
+                      <div class="py-1 border-top" data-county="Warwickshire">Warwickshire</div>
+                      <div class="py-1 border-top" data-county="West Sussex">West Sussex</div>
+                      <div class="py-1 border-top" data-county="West Yorkshire">West Yorkshire</div>
+                      <div class="py-1 border-top" data-county="Wiltshire">Wiltshire</div>
+                      <div class="py-1 border-top" data-county="Worcestershire">Worcestershire</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- SCOTLAND -->
+                <div class="border rounded mb-2">
+                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
+                       data-bs-toggle="collapse" data-bs-target="#regScot" aria-expanded="false">
+                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
+                    <span class="me-2">&#127988;&#917607;&#917602;&#917619;&#917603;&#917620;&#917631;</span>
+                    <strong class="small">SCOTLAND</strong>
+                    <span class="badge bg-primary ms-auto">14</span>
+                  </div>
+                  <div class="collapse" id="regScot">
+                    <div class="px-3 pb-2 small text-muted u-columns-2">
+                      <div class="py-1 border-top" data-county="Argyll & Bute">Argyll &amp; Bute <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                      <div class="py-1 border-top" data-county="Ayrshire">Ayrshire <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                      <div class="py-1 border-top" data-county="Central Scotland">Central Scotland <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                      <div class="py-1 border-top" data-county="Dumfries & Galloway">Dumfries &amp; Galloway <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                      <div class="py-1 border-top" data-county="Dunbartonshire">Dunbartonshire <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                      <div class="py-1 border-top" data-county="Fife">Fife <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                      <div class="py-1 border-top" data-county="Grampian">Grampian <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                      <div class="py-1 border-top" data-county="Highlands">Highlands <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                      <div class="py-1 border-top" data-county="Lanarkshire">Lanarkshire <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                      <div class="py-1 border-top" data-county="Lothian">Lothian <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                      <div class="py-1 border-top" data-county="Renfrewshire">Renfrewshire <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                      <div class="py-1 border-top" data-county="Scottish Borders">Scottish Borders <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                      <div class="py-1 border-top" data-county="Scottish Islands">Scottish Islands <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                      <div class="py-1 border-top" data-county="Tayside">Tayside <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                    </div>
+                    <div class="px-3 pb-2">
+                      <small class="text-muted fst-italic">Edinburgh &amp; Glasgow listed under Cities</small>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              <!-- RIGHT COLUMN: Wales & Cities -->
+              <div class="col-lg-6">
+
+                <!-- WALES -->
+                <div class="border rounded mb-2">
+                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
+                       data-bs-toggle="collapse" data-bs-target="#regWales" aria-expanded="false">
+                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
+                    <span class="me-2">&#127988;&#917607;&#917602;&#917623;&#917612;&#917619;&#917631;</span>
+                    <strong class="small">WALES</strong>
+                    <span class="badge bg-success ms-auto">10</span>
+                  </div>
+                  <div class="collapse" id="regWales">
+                    <div class="px-3 pb-2 small text-muted u-columns-2">
+                      <div class="py-1 border-top" data-county="Carmarthenshire">Carmarthenshire <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                      <div class="py-1 border-top" data-county="Ceredigion">Ceredigion <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                      <div class="py-1 border-top" data-county="Conwy & Denbighshire">Conwy &amp; Denbighshire <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                      <div class="py-1 border-top" data-county="Flintshire">Flintshire <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                      <div class="py-1 border-top" data-county="Glamorgan">Glamorgan <span class="text-muted u-text-xs">(Vale of Glamorgan, Bridgend, RCT, Merthyr Tydfil, NPT)</span></div>
+                      <div class="py-1 border-top" data-county="Gwent">Gwent <span class="text-muted u-text-xs">(Caerphilly, Blaenau Gwent, Torfaen, Newport, Monmouthshire)</span></div>
+                      <div class="py-1 border-top" data-county="Gwynedd & Anglesey">Gwynedd &amp; Anglesey <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                      <div class="py-1 border-top" data-county="Pembrokeshire">Pembrokeshire <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                      <div class="py-1 border-top" data-county="Powys">Powys <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                      <div class="py-1 border-top" data-county="Wrexham">Wrexham <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                    </div>
+                    <div class="px-3 pb-2">
+                      <small class="text-muted fst-italic">Cardiff &amp; Swansea listed under Cities</small>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- LONDON BOROUGHS -->
+                <div class="border rounded mb-2">
+                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
+                       data-bs-toggle="collapse" data-bs-target="#regLondon" aria-expanded="false">
+                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
+                    <i class="bi bi-buildings-fill text-danger me-2"></i>
+                    <strong class="small">LONDON BOROUGHS</strong>
+                    <span class="badge bg-danger ms-auto">15</span>
+                  </div>
+                  <div class="collapse" id="regLondon">
+                    <div class="px-3 pb-2 small text-muted u-columns-2">
+                      <div class="py-1 border-top" data-county="Bromley">Bromley <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                      <div class="py-1 border-top" data-county="Camden">Camden <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                      <div class="py-1 border-top" data-county="Croydon">Croydon <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                      <div class="py-1 border-top" data-county="Greenwich">Greenwich <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                      <div class="py-1 border-top" data-county="Hackney">Hackney <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                      <div class="py-1 border-top" data-county="Hammersmith & Fulham">Hammersmith &amp; Fulham <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                      <div class="py-1 border-top" data-county="Islington">Islington <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                      <div class="py-1 border-top" data-county="Kensington & Chelsea">Kensington &amp; Chelsea <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                      <div class="py-1 border-top" data-county="Kingston & Richmond">Kingston &amp; Richmond <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                      <div class="py-1 border-top" data-county="Lambeth">Lambeth <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                      <div class="py-1 border-top" data-county="Lewisham">Lewisham <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                      <div class="py-1 border-top" data-county="Middlesex">Middlesex <span class="text-muted u-text-xs">(Hillingdon, Harrow, Ealing, Brent, Hounslow, Enfield, Barnet)</span></div>
+                      <div class="py-1 border-top" data-county="Southwark">Southwark <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                      <div class="py-1 border-top" data-county="Wandsworth">Wandsworth <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                      <div class="py-1 border-top" data-county="Westminster">Westminster <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- TOP 19 CITIES -->
+                <div class="border rounded mb-2">
+                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
+                       data-bs-toggle="collapse" data-bs-target="#regCities" aria-expanded="false">
+                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
+                    <i class="bi bi-buildings text-info me-2"></i>
+                    <strong class="small">TOP CITIES</strong>
+                    <span class="badge bg-info ms-auto">19</span>
+                  </div>
+                  <div class="collapse" id="regCities">
+                    <div class="px-3 pb-2 small text-muted u-columns-2">
+                      <div class="py-1 border-top" data-county="Birmingham">Birmingham</div>
+                      <div class="py-1 border-top" data-county="Manchester">Manchester</div>
+                      <div class="py-1 border-top" data-county="Glasgow">Glasgow</div>
+                      <div class="py-1 border-top" data-county="Liverpool">Liverpool</div>
+                      <div class="py-1 border-top" data-county="Leeds">Leeds</div>
+                      <div class="py-1 border-top" data-county="Sheffield">Sheffield</div>
+                      <div class="py-1 border-top" data-county="Newcastle">Newcastle</div>
+                      <div class="py-1 border-top" data-county="Edinburgh">Edinburgh</div>
+                      <div class="py-1 border-top" data-county="Bristol">Bristol</div>
+                      <div class="py-1 border-top" data-county="Nottingham">Nottingham</div>
+                      <div class="py-1 border-top" data-county="Leicester">Leicester</div>
+                      <div class="py-1 border-top" data-county="Coventry">Coventry</div>
+                      <div class="py-1 border-top" data-county="Reading">Reading</div>
+                      <div class="py-1 border-top" data-county="Cardiff">Cardiff</div>
+                      <div class="py-1 border-top" data-county="Bournemouth">Bournemouth</div>
+                      <div class="py-1 border-top" data-county="Brighton & Hove">Brighton &amp; Hove</div>
+                      <div class="py-1 border-top" data-county="Southampton">Southampton</div>
+                      <div class="py-1 border-top" data-county="Middlesbrough">Middlesbrough</div>
+                      <div class="py-1 border-top" data-county="Swansea">Swansea</div>
+                    </div>
+                    <div class="px-3 pb-2">
+                      <small class="text-muted fst-italic">London covered individually under London Boroughs above</small>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+
+            <div class="mt-3 text-muted small text-center">
+              <i class="bi bi-check-circle-fill text-success me-1"></i>= has organisations data &nbsp;|&nbsp;
+              <span class="fw-semibold">Green name = data present</span>
+            </div>
+            <div class="mt-1 text-muted small text-center">
+              <i class="bi bi-info-circle me-1"></i>42 England counties &middot; 15 London boroughs &middot; 14 Scotland regions &middot; 10 Wales areas &middot; 19 cities
+              &middot; <span class="badge bg-warning text-dark u-text-xxs">small</span> = Small Area category list
+            </div>
+                  </div>
+                </div>
+              </div>
+
           </div><!-- /row: seasons+areas -->
           </div><!-- /tab-pane: settings-seasons -->
 
@@ -5610,28 +6225,11 @@
 
                 <!-- Individual Table Exports -->
                 <div>
-                  <h6 class="mb-3">Export Individual Tables</h6>
-                  <p class="small text-muted mb-3">Export specific tables as CSV files</p>
-                  <div class="d-flex gap-2 flex-wrap">
-                    <button class="btn btn-outline-secondary btn-sm" data-action="dashboardModule.exportAwardsCSV">
-                      <i class="bi bi-download me-1"></i>Awards
-                    </button>
-                    <button class="btn btn-outline-secondary btn-sm" data-action="dashboardModule.exportOrganisationsCSV">
-                      <i class="bi bi-download me-1"></i>Organisations
-                    </button>
-                    <button class="btn btn-outline-secondary btn-sm" data-action="dashboardModule.exportWinnersCSV">
-                      <i class="bi bi-download me-1"></i>Winners
-                    </button>
-                    <button class="btn btn-outline-secondary btn-sm" data-action="settingsModule.exportEntriesCSV">
-                      <i class="bi bi-download me-1"></i>Entries
-                    </button>
-                    <button class="btn btn-outline-secondary btn-sm" data-action="settingsModule.exportEventsCSV">
-                      <i class="bi bi-download me-1"></i>Events
-                    </button>
-                    <button class="btn btn-outline-secondary btn-sm" data-action="settingsModule.exportMediaCSV">
-                      <i class="bi bi-download me-1"></i>Media Gallery
-                    </button>
-                  </div>
+                  <h6 class="mb-3">Export Data</h6>
+                  <p class="small text-muted mb-3">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Use the <strong>Export</strong> dropdown in each module's toolbar to download table data as CSV or Excel. Exports are available in: Awards, Organisations, Winners, Entries, Events, and Payments.
+                  </p>
                 </div>
 
                 <!-- Last Backup Info -->
@@ -6075,6 +6673,8 @@
       </div>
 
     </div>
+      </main><!-- /.app-main -->
+    </div><!-- /.app-layout -->
   </div>
 
   <!-- ==================================================== -->
@@ -6297,7 +6897,7 @@
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <form id="awardForm">
+          <form id="awardForm" novalidate>
             <input type="hidden" id="awardFormId">
             <div class="row g-3">
               <div class="col-md-8">
@@ -6458,7 +7058,7 @@
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <form id="createInvoiceForm">
+          <form id="createInvoiceForm" novalidate>
             <div class="row mb-3">
               <div class="col-md-6">
                 <label for="invoiceOrganisation" class="form-label">Company *</label>
@@ -6565,7 +7165,7 @@
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <form id="recordPaymentForm">
+          <form id="recordPaymentForm" novalidate>
             <div class="mb-3">
               <label for="paymentOrganisation" class="form-label">Company *</label>
               <select class="form-select" id="paymentOrganisation" required>
@@ -7126,7 +7726,7 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <form id="eventForm">
+          <form id="eventForm" novalidate>
             <input type="hidden" id="eventId">
             <div class="mb-3">
               <label for="eventName" class="form-label">Event Name *</label>
@@ -9958,6 +10558,108 @@
       </div>
     </div>
   </div>
+
+
+  <script>
+    /* Auto-insert "* Required fields" legend in modals that contain required inputs */
+    document.addEventListener('show.bs.modal', function (e) {
+      var modal = e.target;
+      var form  = modal.querySelector('form');
+      if (!form || modal.querySelector('.required-field-legend')) return;
+      if (!form.querySelector('[required]')) return;
+      var legend = document.createElement('p');
+      legend.className = 'required-field-legend text-muted small mb-3 pb-2 border-bottom';
+      legend.innerHTML = '<span class="text-danger fw-semibold" aria-hidden="true">*</span> Required fields';
+      form.insertBefore(legend, form.firstChild);
+    });
+  </script>
+
+  <script>
+    /* Sidebar collapse state */
+    (function () {
+      var sidebar = document.getElementById('appSidebar');
+      var toggle  = document.getElementById('sidebarToggle');
+      if (!sidebar || !toggle) return;
+      if (localStorage.getItem('sidebarCollapsed') === 'true') sidebar.classList.add('collapsed');
+      toggle.addEventListener('click', function () {
+        sidebar.classList.toggle('collapsed');
+        localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+      });
+      /* Sync active state when Bootstrap switches tab */
+      document.addEventListener('shown.bs.tab', function (e) {
+        sidebar.querySelectorAll('.sidebar-nav-link').forEach(function (btn) {
+          btn.classList.remove('active');
+          btn.setAttribute('aria-selected', 'false');
+        });
+        if (e.target && e.target.closest('.app-sidebar')) {
+          e.target.classList.add('active');
+          e.target.setAttribute('aria-selected', 'true');
+        }
+      });
+    })();
+  </script>
+
+  <!-- Bulk Delete / Destructive Action Confirmation Modal -->
+  <div class="modal fade" id="bulkDeleteConfirmModal" tabindex="-1" aria-labelledby="bulkDeleteConfirmLabel" aria-hidden="true">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header border-0 pb-0">
+          <h6 class="modal-title text-danger" id="bulkDeleteConfirmLabel">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i><span id="bulkDeleteConfirmTitle">Confirm Action</span>
+          </h6>
+        </div>
+        <div class="modal-body text-center py-3">
+          <p class="mb-2" id="bulkDeleteConfirmMsg">Are you sure you want to continue?</p>
+          <p class="small text-muted mb-0" id="bulkDeleteConfirmSub">This action cannot be undone.</p>
+        </div>
+        <div class="modal-footer border-0 pt-0 justify-content-center gap-2">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-danger" id="bulkDeleteConfirmBtn">
+            <i class="bi bi-trash me-1"></i><span id="bulkDeleteConfirmBtnLabel">Delete</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* Global actions for confirmation dialogs */
+    window.globalActions = {
+      confirmBulkDelete: function (el) {
+        var module = el.dataset.module;
+        var fn     = el.dataset.fn;
+        var label  = el.dataset.label  || 'item';
+        var verb   = el.dataset.verb   || 'Delete';
+        /* Count checked items — try common checkbox patterns */
+        var checked = document.querySelectorAll(
+          'input[type="checkbox"]:checked:not(#awardsSelectAll):not(#selectAllOrgs):not([id$="SelectAll"]):not([id$="selectAll"])'
+        );
+        var count = checked.length || 'the selected';
+        var plural = count !== 1 ? 's' : '';
+        document.getElementById('bulkDeleteConfirmTitle').textContent = verb + ' ' + label + (typeof count === 'number' ? 's' : '');
+        document.getElementById('bulkDeleteConfirmMsg').textContent =
+          verb + ' ' + count + ' ' + label + plural + '?';
+        document.getElementById('bulkDeleteConfirmBtnLabel').textContent = verb;
+        document.getElementById('bulkDeleteConfirmBtn').onclick = function () {
+          bootstrap.Modal.getInstance(document.getElementById('bulkDeleteConfirmModal'))?.hide();
+          var mod = window[module];
+          if (mod && typeof mod[fn] === 'function') mod[fn]();
+        };
+        new bootstrap.Modal(document.getElementById('bulkDeleteConfirmModal')).show();
+      },
+      confirmClearCanvas: function () {
+        document.getElementById('bulkDeleteConfirmTitle').textContent = 'Clear Email Canvas';
+        document.getElementById('bulkDeleteConfirmMsg').textContent = 'Clear the entire email canvas?';
+        document.getElementById('bulkDeleteConfirmSub').textContent = 'All your email content will be removed and cannot be recovered.';
+        document.getElementById('bulkDeleteConfirmBtnLabel').textContent = 'Clear Canvas';
+        document.getElementById('bulkDeleteConfirmBtn').onclick = function () {
+          bootstrap.Modal.getInstance(document.getElementById('bulkDeleteConfirmModal'))?.hide();
+          emailBuilder?.clearCanvas();
+        };
+        new bootstrap.Modal(document.getElementById('bulkDeleteConfirmModal')).show();
+      }
+    };
+  </script>
 
   <!-- Bootstrap JS Bundle -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>

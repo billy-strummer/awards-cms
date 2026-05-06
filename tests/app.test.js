@@ -1557,46 +1557,24 @@ describe('App Module - Keyboard Shortcuts', () => {
     jest.clearAllMocks();
   });
 
-  test('Ctrl+K focuses search box on awards tab', () => {
-    const awardsTab = document.getElementById('awards-tab');
-    awardsTab.classList.add('active');
-    const searchBox = document.getElementById('awardsSearchBox');
-    const focusSpy = jest.spyOn(searchBox, 'focus');
+  test('Ctrl+K opens the global command palette', () => {
+    const toggleSpy = jest.spyOn(utils, 'toggleCommandPalette').mockImplementation(() => {});
 
     const event = new dom.window.KeyboardEvent('keydown', { key: 'k', ctrlKey: true, cancelable: true, bubbles: true });
     document.dispatchEvent(event);
 
-    expect(focusSpy).toHaveBeenCalled();
-    focusSpy.mockRestore();
-    awardsTab.classList.remove('active');
+    expect(toggleSpy).toHaveBeenCalled();
+    toggleSpy.mockRestore();
   });
 
-  test('Ctrl+K focuses search box on organisations tab', () => {
-    const orgsTab = document.getElementById('organisations-tab');
-    orgsTab.classList.add('active');
-    const searchBox = document.getElementById('orgsSearchBox');
-    const focusSpy = jest.spyOn(searchBox, 'focus');
+  test('Cmd+K opens the global command palette', () => {
+    const toggleSpy = jest.spyOn(utils, 'toggleCommandPalette').mockImplementation(() => {});
 
-    const event = new dom.window.KeyboardEvent('keydown', { key: 'k', ctrlKey: true, cancelable: true, bubbles: true });
+    const event = new dom.window.KeyboardEvent('keydown', { key: 'k', metaKey: true, cancelable: true, bubbles: true });
     document.dispatchEvent(event);
 
-    expect(focusSpy).toHaveBeenCalled();
-    focusSpy.mockRestore();
-    orgsTab.classList.remove('active');
-  });
-
-  test('Ctrl+K focuses search box on winners tab', () => {
-    const winnersTab = document.getElementById('winners-tab');
-    winnersTab.classList.add('active');
-    const searchBox = document.getElementById('winnerSearchBox');
-    const focusSpy = jest.spyOn(searchBox, 'focus');
-
-    const event = new dom.window.KeyboardEvent('keydown', { key: 'k', ctrlKey: true, cancelable: true, bubbles: true });
-    document.dispatchEvent(event);
-
-    expect(focusSpy).toHaveBeenCalled();
-    focusSpy.mockRestore();
-    winnersTab.classList.remove('active');
+    expect(toggleSpy).toHaveBeenCalled();
+    toggleSpy.mockRestore();
   });
 
   test('Escape key attempts to close open modals', () => {
@@ -1959,11 +1937,11 @@ describe('App Module - CRM Sub-tab Navigation', () => {
     jest.clearAllMocks();
   });
 
-  test('clicking companies-crm-subtab sets currentSubTab and loads data', () => {
-    const tab = document.getElementById('companies-crm-subtab');
+  test('clicking communications-subtab sets currentSubTab and loads data', () => {
+    const tab = document.getElementById('communications-subtab');
     tab.click();
 
-    expect(crmModule.currentSubTab).toBe('companies-crm');
+    expect(crmModule.currentSubTab).toBe('communications');
     expect(crmModule.loadAllData).toHaveBeenCalled();
   });
 
@@ -2786,36 +2764,35 @@ describe('App Module - Keyboard Shortcuts additional coverage', () => {
     document.querySelectorAll('.nav-link').forEach((t) => t.classList.remove('active'));
   });
 
-  test('Cmd+K (metaKey) focuses search box on awards tab', () => {
-    const awardsTab = document.getElementById('awards-tab');
-    awardsTab.classList.add('active');
-    const searchBox = document.getElementById('awardsSearchBox');
-    const focusSpy = jest.spyOn(searchBox, 'focus');
+  test('Cmd+K (metaKey) opens global command palette', () => {
+    const toggleSpy = jest.spyOn(utils, 'toggleCommandPalette').mockImplementation(() => {});
 
     const event = new dom.window.KeyboardEvent('keydown', { key: 'k', metaKey: true, cancelable: true, bubbles: true });
     document.dispatchEvent(event);
 
-    expect(focusSpy).toHaveBeenCalled();
-    focusSpy.mockRestore();
-    awardsTab.classList.remove('active');
+    expect(toggleSpy).toHaveBeenCalled();
+    toggleSpy.mockRestore();
   });
 
-  test('Ctrl+K does nothing when no tab is active', () => {
-    // All tabs have active removed in beforeEach
+  test('Ctrl+K always opens command palette regardless of active tab', () => {
+    const toggleSpy = jest.spyOn(utils, 'toggleCommandPalette').mockImplementation(() => {});
     const event = new dom.window.KeyboardEvent('keydown', { key: 'k', ctrlKey: true, cancelable: true, bubbles: true });
     // Should not throw
     expect(() => document.dispatchEvent(event)).not.toThrow();
+    toggleSpy.mockRestore();
   });
 
-  test('Ctrl+K does nothing when active tab is not awards/orgs/winners', () => {
+  test('Ctrl+K opens command palette regardless of which tab is active', () => {
+    const toggleSpy = jest.spyOn(utils, 'toggleCommandPalette').mockImplementation(() => {});
     const reportsTab = document.getElementById('reports-tab');
     reportsTab.classList.add('active');
 
     const event = new dom.window.KeyboardEvent('keydown', { key: 'k', ctrlKey: true, cancelable: true, bubbles: true });
-    // Should not throw or focus anything unexpected
     expect(() => document.dispatchEvent(event)).not.toThrow();
+    expect(toggleSpy).toHaveBeenCalled();
 
     reportsTab.classList.remove('active');
+    toggleSpy.mockRestore();
   });
 
   test('? key does not trigger when Ctrl is held', () => {

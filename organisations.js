@@ -771,6 +771,7 @@ const orgsModule = {
       if (total) total.textContent = STATE.allOrganisations.length;
     }
     if (lastRefresh) lastRefresh.textContent = new Date().toLocaleTimeString('en-GB');
+    utils.renderRowCount('orgsRowCount', pageOrgs.length, totalFiltered, 'organisations');
 
     // Column visibility helper
     const isColVisible = (col) => this._columnVisibility[col] !== false;
@@ -2946,9 +2947,11 @@ const orgsModule = {
   async saveNewCompany() {
     const form = document.getElementById('addCompanyForm');
     if (!form.checkValidity()) {
+      form.classList.add('was-validated');
       form.reportValidity();
       return;
     }
+    form.classList.remove('was-validated');
 
     const companyName = document.getElementById('newCompanyName').value.trim();
     const email = document.getElementById('newCompanyEmail').value.trim();
@@ -9451,6 +9454,21 @@ const orgsModule = {
     locationModule.populateAreaDropdown('orgsAreaFilter', country, 'All Areas');
     this.filterOrganisations();
     bootstrap.Modal.getInstance(document.getElementById('dynamicOrgModal'))?.hide();
+  },
+
+  showOrgsView() {
+    document.getElementById('orgsMainContent')?.classList.remove('d-none');
+    document.getElementById('orgsSponsorSection')?.classList.add('d-none');
+    document.getElementById('orgsViewBtn')?.classList.add('active');
+    document.getElementById('sponsorsViewBtn')?.classList.remove('active');
+  },
+
+  showSponsorsView() {
+    document.getElementById('orgsMainContent')?.classList.add('d-none');
+    document.getElementById('orgsSponsorSection')?.classList.remove('d-none');
+    document.getElementById('orgsViewBtn')?.classList.remove('active');
+    document.getElementById('sponsorsViewBtn')?.classList.add('active');
+    if (typeof marketingModule !== 'undefined') marketingModule.loadSponsors();
   },
 
   /** Helper for data-action: filter by status from dashboard card */

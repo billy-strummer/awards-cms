@@ -353,6 +353,7 @@ const winnersModule = {
     // Use server total count when in server pagination mode
     const displayCount = this._serverPagination ? this._pagination.count : STATE.filteredWinners.length;
     count.textContent = displayCount;
+    utils.renderRowCount('winnersRowCount', STATE.filteredWinners.length, displayCount, 'winners');
 
     // Server-side: data is already one page; client-side: slice locally
     let pageWinners;
@@ -424,7 +425,7 @@ const winnersModule = {
           </td>
           <td class="text-center">
             <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
+              <button class="btn badge ${statusInfo.bg} border-0 rounded-pill px-2 dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false" style="font-size:0.75rem;">
                 <i class="bi ${statusInfo.icon} me-1"></i>${statusInfo.label}
               </button>
               <ul class="dropdown-menu dropdown-menu-end">

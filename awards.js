@@ -734,6 +734,7 @@ const awardsModule = {
     // Use server total count when in server pagination mode
     const displayCount = this._serverPagination ? this._pagination.count : STATE.filteredAwards.length;
     count.textContent = displayCount;
+    utils.renderRowCount('awardsRowCount', STATE.filteredAwards.length, displayCount, 'awards');
 
     if (STATE.filteredAwards.length === 0) {
       const hasFilters = !!(
@@ -1449,9 +1450,11 @@ const awardsModule = {
   async saveAward() {
     const form = document.getElementById('awardForm');
     if (!form.checkValidity()) {
+      form.classList.add('was-validated');
       form.reportValidity();
       return;
     }
+    form.classList.remove('was-validated');
 
     const id = document.getElementById('awardFormId').value;
     const areaId = document.getElementById('awardFormArea').value || null;

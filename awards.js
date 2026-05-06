@@ -734,6 +734,7 @@ const awardsModule = {
     // Use server total count when in server pagination mode
     const displayCount = this._serverPagination ? this._pagination.count : STATE.filteredAwards.length;
     count.textContent = displayCount;
+    utils.renderRowCount('awardsRowCount', STATE.filteredAwards.length, displayCount, 'awards');
 
     if (STATE.filteredAwards.length === 0) {
       const hasFilters = !!(

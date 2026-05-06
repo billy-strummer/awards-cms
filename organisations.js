@@ -771,6 +771,7 @@ const orgsModule = {
       if (total) total.textContent = STATE.allOrganisations.length;
     }
     if (lastRefresh) lastRefresh.textContent = new Date().toLocaleTimeString('en-GB');
+    utils.renderRowCount('orgsRowCount', pageOrgs.length, totalFiltered, 'organisations');
 
     // Column visibility helper
     const isColVisible = (col) => this._columnVisibility[col] !== false;

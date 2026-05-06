@@ -12297,6 +12297,7 @@ const eventsModule = {
     // Use server total count when in server pagination mode
     const displayCount = this._serverPagination ? this._pagination.count : events.length;
     if (count) count.textContent = displayCount;
+    utils.renderRowCount('eventsRowCount', events.length, displayCount, 'events');
 
     // Server-side: data is already one page; client-side: slice locally
     let pageEvents;

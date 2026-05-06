@@ -549,16 +549,16 @@ const paymentsModule = {
     const itemHTML = `
       <div class="invoice-line-item row g-2 mb-2" data-item-id="${itemId}">
         <div class="col-md-4">
-          <input type="text" class="form-control form-control-sm" placeholder="Item name" required>
+          <input type="text" class="form-control form-control-sm" placeholder="Item name" aria-label="Item name" required>
         </div>
         <div class="col-md-3">
-          <input type="text" class="form-control form-control-sm" placeholder="Description">
+          <input type="text" class="form-control form-control-sm" placeholder="Description (optional)" aria-label="Item description">
         </div>
         <div class="col-md-2">
-          <input type="number" class="form-control form-control-sm" placeholder="Qty" value="1" min="1" required>
+          <input type="number" class="form-control form-control-sm" placeholder="Qty" aria-label="Quantity" value="1" min="1" required>
         </div>
         <div class="col-md-2">
-          <input type="number" class="form-control form-control-sm" placeholder="Price" step="0.01" min="0" required>
+          <input type="number" class="form-control form-control-sm" placeholder="Unit price (£)" aria-label="Unit price" step="0.01" min="0" required>
         </div>
         <div class="col-md-1">
           <button type="button" class="btn btn-sm btn-danger w-100" data-action="paymentsModule.removeInvoiceLineItem" data-id="${itemId}" aria-label="Remove line item">

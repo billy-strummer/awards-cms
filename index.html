@@ -2203,7 +2203,10 @@
           <div class="filters-section" style="position: sticky; top: 56px; z-index: 999; background-color: var(--bs-body-bg, white); padding: 0.75rem 0 0; margin-bottom: 0.75rem; border-bottom: 1px solid #dee2e6;">
             <div class="rounded-2 p-3 mb-2" style="background:#f8f9fa;">
               <div class="d-flex align-items-center justify-content-between mb-2">
-                <span class="fw-semibold text-muted" style="font-size:0.8rem;letter-spacing:.04em;text-transform:uppercase;"><i class="bi bi-funnel me-1"></i>Filter Winners</span>
+                <div class="d-flex align-items-center gap-3">
+                  <span class="fw-semibold text-muted" style="font-size:0.8rem;letter-spacing:.04em;text-transform:uppercase;"><i class="bi bi-funnel me-1"></i>Filter Winners</span>
+                  <span id="winnersRowCount" class="table-row-count"></span>
+                </div>
                 <div class="d-flex align-items-center gap-2">
                   <div class="input-group input-group-sm" style="width:200px;">
                     <select class="form-select form-select-sm" id="winnersSavedViewsList" data-on-change="winnersModule.loadSavedWinnersView">
@@ -2429,7 +2432,10 @@
           <!-- Filters and Actions -->
           <div class="rounded-2 p-3 mb-3" style="background:#f8f9fa;border:1px solid #e9ecef;">
             <div class="d-flex align-items-center justify-content-between mb-2">
-              <span class="fw-semibold text-muted" style="font-size:0.8rem;letter-spacing:.04em;text-transform:uppercase;"><i class="bi bi-funnel me-1"></i>Filter Entries <span id="entriesFilterCount" class="badge bg-primary ms-1 d-none"></span></span>
+              <div class="d-flex align-items-center gap-3">
+                <span class="fw-semibold text-muted" style="font-size:0.8rem;letter-spacing:.04em;text-transform:uppercase;"><i class="bi bi-funnel me-1"></i>Filter Entries <span id="entriesFilterCount" class="badge bg-primary ms-1 d-none"></span></span>
+                <span id="entriesRowCount" class="table-row-count"></span>
+              </div>
               <div class="d-flex align-items-center gap-2">
                 <div class="input-group input-group-sm" style="width:200px;">
                   <select class="form-select form-select-sm" id="entriesSavedViewsList" data-on-change="entriesModule.loadSavedEntriesView">
@@ -3302,7 +3308,8 @@
                 </select>
               </div>
               <div class="col-md-4 text-end">
-                <div class="d-flex gap-2 justify-content-end flex-wrap">
+                <div class="d-flex gap-2 justify-content-end align-items-center flex-wrap">
+                  <span id="eventsRowCount" class="table-row-count me-1"></span>
                   <button class="btn btn-outline-secondary btn-sm" data-action="eventsModule.resetEventFilters" title="Clear all active filters">
                     <i class="bi bi-x-circle me-1"></i>Clear Filters
                   </button>

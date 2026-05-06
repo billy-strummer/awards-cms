@@ -2947,9 +2947,11 @@ const orgsModule = {
   async saveNewCompany() {
     const form = document.getElementById('addCompanyForm');
     if (!form.checkValidity()) {
+      form.classList.add('was-validated');
       form.reportValidity();
       return;
     }
+    form.classList.remove('was-validated');
 
     const companyName = document.getElementById('newCompanyName').value.trim();
     const email = document.getElementById('newCompanyEmail').value.trim();

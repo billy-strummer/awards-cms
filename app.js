@@ -1493,7 +1493,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // CRM Sub-tab navigation
   const crmSubTabs = {
-    'companies-crm-subtab': 'companies-crm',
     'communications-subtab': 'communications',
     'deals-subtab': 'deals',
     'meetings-subtab': 'meetings',

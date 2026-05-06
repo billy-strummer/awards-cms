@@ -9456,6 +9456,21 @@ const orgsModule = {
     bootstrap.Modal.getInstance(document.getElementById('dynamicOrgModal'))?.hide();
   },
 
+  showOrgsView() {
+    document.getElementById('orgsMainContent')?.classList.remove('d-none');
+    document.getElementById('orgsSponsorSection')?.classList.add('d-none');
+    document.getElementById('orgsViewBtn')?.classList.add('active');
+    document.getElementById('sponsorsViewBtn')?.classList.remove('active');
+  },
+
+  showSponsorsView() {
+    document.getElementById('orgsMainContent')?.classList.add('d-none');
+    document.getElementById('orgsSponsorSection')?.classList.remove('d-none');
+    document.getElementById('orgsViewBtn')?.classList.remove('active');
+    document.getElementById('sponsorsViewBtn')?.classList.add('active');
+    if (typeof marketingModule !== 'undefined') marketingModule.loadSponsors();
+  },
+
   /** Helper for data-action: filter by status from dashboard card */
   filterByStatus(status) {
     const el = document.getElementById('orgsStatusFilter');

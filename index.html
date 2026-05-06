@@ -745,7 +745,7 @@
 
             <div class="row g-4">
               <!-- Winners by Year Chart -->
-              <div class="col-lg-6">
+              <div class="col-lg-8">
                 <div class="chart-container">
                   <h6 class="chart-title">
                     <i class="bi bi-trophy me-2"></i>Winners by Year
@@ -755,40 +755,13 @@
                   </div>
                 </div>
               </div>
-
-              <!-- Category Distribution Chart -->
-              <div class="col-lg-6">
-                <div class="chart-container">
-                  <h6 class="chart-title">
-                    <i class="bi bi-pie-chart me-2"></i>Top Award Categories
-                  </h6>
-                  <div class="u-chart-container">
-                    <canvas id="categoryChart"></canvas>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Sector Trends Chart -->
-              <div class="col-lg-6">
-                <div class="chart-container">
-                  <h6 class="chart-title">
-                    <i class="bi bi-building me-2"></i>Sector Distribution
-                  </h6>
-                  <div class="u-chart-container">
-                    <canvas id="sectorChart"></canvas>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Region Distribution Chart -->
-              <div class="col-lg-6">
-                <div class="chart-container">
-                  <h6 class="chart-title">
-                    <i class="bi bi-geo-alt me-2"></i>Regional Breakdown
-                  </h6>
-                  <div class="u-chart-container">
-                    <canvas id="regionChart"></canvas>
-                  </div>
+              <div class="col-lg-4 d-flex align-items-center justify-content-center">
+                <div class="text-center text-muted p-4">
+                  <i class="bi bi-graph-up-arrow display-4 d-block mb-3 text-primary opacity-50"></i>
+                  <p class="mb-3">Category, sector and regional breakdowns are available in the full analytics view.</p>
+                  <button class="btn btn-outline-primary btn-sm" data-action="dashboardModule.navigateToSection" data-id="reports">
+                    <i class="bi bi-bar-chart me-1"></i>Open Reports &amp; Analytics
+                  </button>
                 </div>
               </div>
             </div>
@@ -1473,6 +1446,23 @@
       </h1>
       <p class="section-subtitle">View and manage registered organisations<span id="organisationsFreshness" class="ms-2"></span></p>
     </div>
+
+    <!-- Section View Toggle -->
+    <ul class="nav nav-pills mb-4" id="orgsSubNav" role="tablist">
+      <li class="nav-item">
+        <button class="nav-link active" id="orgsViewBtn" data-action="orgsModule.showOrgsView">
+          <i class="bi bi-building me-2"></i>All Organisations
+        </button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" id="sponsorsViewBtn" data-action="orgsModule.showSponsorsView">
+          <i class="bi bi-award me-2"></i>Sponsors &amp; Partners
+        </button>
+      </li>
+    </ul>
+
+    <!-- Organisations Content (default view) -->
+    <div id="orgsMainContent">
 
     <!-- Enhanced Stats Card with Pipeline & Data Quality -->
     <div class="row mb-4">
@@ -2181,6 +2171,29 @@
         </div>
       </div>
     </div>
+
+    </div><!-- /orgsMainContent -->
+
+    <!-- Sponsors Section (hidden by default) -->
+    <div id="orgsSponsorSection" class="d-none">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4><i class="bi bi-award me-2"></i>Sponsors &amp; Partners</h4>
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-info" data-action="sponsorPortalModule.renderSponsorDashboard">
+            <i class="bi bi-speedometer2 me-2"></i>Sponsor Portal
+          </button>
+          <button class="btn btn-primary" data-action="marketingModule.openAddSponsorModal">
+            <i class="bi bi-plus-lg me-2"></i>Add Sponsor
+          </button>
+        </div>
+      </div>
+      <div id="sponsorsGrid">
+        <div class="text-center py-5 text-muted">
+          <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+          Loading sponsors...
+        </div>
+      </div>
+    </div><!-- /orgsSponsorSection -->
 
   </div>
 </div>
@@ -3797,11 +3810,6 @@
               </button>
             </li>
             <li class="nav-item" role="presentation">
-              <button class="nav-link" id="sponsors-subtab" data-bs-toggle="pill" data-bs-target="#sponsors-content" type="button" role="tab">
-                <i class="bi bi-award me-2"></i>Sponsors
-              </button>
-            </li>
-            <li class="nav-item" role="presentation">
               <button class="nav-link" id="social-subtab" data-bs-toggle="pill" data-bs-target="#social-content" type="button" role="tab">
                 <i class="bi bi-share me-2"></i>Social Media
               </button>
@@ -3859,28 +3867,6 @@
                 <div class="text-center py-5 text-muted">
                   <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
                   Loading banners...
-                </div>
-              </div>
-            </div>
-
-            <!-- Sponsors Sub-Tab -->
-            <div class="tab-pane fade" id="sponsors-content" role="tabpanel">
-              <div class="d-flex justify-content-between align-items-center mb-4">
-                <h4><i class="bi bi-award me-2"></i>Sponsors & Partners</h4>
-                <div class="d-flex gap-2">
-                  <button class="btn btn-outline-info" data-action="sponsorPortalModule.renderSponsorDashboard">
-                    <i class="bi bi-speedometer2 me-2"></i>Sponsor Portal
-                  </button>
-                  <button class="btn btn-primary" data-action="marketingModule.openAddSponsorModal">
-                    <i class="bi bi-plus-lg me-2"></i>Add Sponsor
-                  </button>
-                </div>
-              </div>
-
-              <div id="sponsorsGrid">
-                <div class="text-center py-5 text-muted">
-                  <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
-                  Loading sponsors...
                 </div>
               </div>
             </div>
@@ -5424,12 +5410,7 @@
           <!-- Sub-navigation -->
           <ul class="nav nav-pills mb-4" id="crmSubTabs" role="tablist">
             <li class="nav-item" role="presentation">
-              <button class="nav-link active" id="companies-crm-subtab" data-bs-toggle="pill" data-bs-target="#companies-crm-content" type="button" role="tab">
-                <i class="bi bi-building me-2"></i>Organisations
-              </button>
-            </li>
-            <li class="nav-item" role="presentation">
-              <button class="nav-link" id="communications-subtab" data-bs-toggle="pill" data-bs-target="#communications-content" type="button" role="tab">
+              <button class="nav-link active" id="communications-subtab" data-bs-toggle="pill" data-bs-target="#communications-content" type="button" role="tab">
                 <i class="bi bi-chat-dots me-2"></i>Communications
               </button>
             </li>
@@ -5463,94 +5444,8 @@
           <!-- Sub-tab Content -->
           <div class="tab-content" id="crmSubTabContent">
 
-            <!-- Companies CRM View Sub-Tab -->
-            <div class="tab-pane fade show active" id="companies-crm-content" role="tabpanel">
-
-              <!-- Quick Stats -->
-              <div class="row g-3 mb-4">
-                <div class="col-md-3">
-                  <div class="content-card text-center">
-                    <i class="bi bi-building text-primary fs-1 mb-2"></i>
-                    <div class="fs-2 fw-bold" id="totalCompaniesCount">0</div>
-                    <div class="text-muted small">Total Organisations</div>
-                  </div>
-                </div>
-                <div class="col-md-3">
-                  <div class="content-card text-center">
-                    <i class="bi bi-graph-up text-success fs-1 mb-2"></i>
-                    <div class="fs-2 fw-bold" id="activeDealsCount">0</div>
-                    <div class="text-muted small">Active Deals</div>
-                  </div>
-                </div>
-                <div class="col-md-3">
-                  <div class="content-card text-center">
-                    <i class="bi bi-chat-dots text-info fs-1 mb-2"></i>
-                    <div class="fs-2 fw-bold" id="recentCommunicationsCount">0</div>
-                    <div class="text-muted small">Recent Communications</div>
-                  </div>
-                </div>
-                <div class="col-md-3">
-                  <div class="content-card text-center">
-                    <i class="bi bi-bell text-warning fs-1 mb-2"></i>
-                    <div class="fs-2 fw-bold" id="pendingFollowUpsCount">0</div>
-                    <div class="text-muted small">Pending Follow-ups</div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Segment Filter -->
-              <div class="content-card mb-4">
-                <div class="row g-3">
-                  <div class="col-md-4">
-                    <label class="form-label small fw-bold">Filter by Segment</label>
-                    <select class="form-select form-select-sm" id="crmSegmentFilter" data-on-change="crmModule.filterCompanies">
-                      <option value="">All Companies</option>
-                    </select>
-                  </div>
-                  <div class="col-md-4">
-                    <label class="form-label small fw-bold">Search</label>
-                    <input type="text" class="form-control form-control-sm" id="crmCompanySearch" placeholder="Search companies...">
-                  </div>
-                  <div class="col-md-4 d-flex align-items-end">
-                    <button class="btn btn-primary btn-sm w-100" data-action="crmModule.openCompanyDetails">
-                      <i class="bi bi-plus-circle me-1"></i>Add Company Activity
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Companies Table with CRM Data -->
-              <div class="table-container">
-                <div class="table-responsive">
-                  <table class="table table-hover table-striped align-middle">
-                    <thead class="table-light">
-                      <tr>
-                        <th scope="col">Company</th>
-                        <th scope="col">Segments</th>
-                        <th scope="col">Communications</th>
-                        <th scope="col">Active Deals</th>
-                        <th scope="col">Pipeline Value</th>
-                        <th scope="col">Last Contact</th>
-                        <th scope="col">Follow-ups</th>
-                        <th scope="col">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody id="companiesCrmTableBody">
-                      <tr>
-                        <td colspan="8" class="text-center py-5 text-muted">
-                          <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
-                          Loading companies...
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-            </div>
-
             <!-- Communications Sub-Tab -->
-            <div class="tab-pane fade" id="communications-content" role="tabpanel">
+            <div class="tab-pane fade show active" id="communications-content" role="tabpanel">
 
               <!-- Filter & Actions -->
               <div class="content-card mb-4">
@@ -6330,28 +6225,11 @@
 
                 <!-- Individual Table Exports -->
                 <div>
-                  <h6 class="mb-3">Export Individual Tables</h6>
-                  <p class="small text-muted mb-3">Export specific tables as CSV files</p>
-                  <div class="d-flex gap-2 flex-wrap">
-                    <button class="btn btn-outline-secondary btn-sm" data-action="dashboardModule.exportAwardsCSV">
-                      <i class="bi bi-download me-1"></i>Awards
-                    </button>
-                    <button class="btn btn-outline-secondary btn-sm" data-action="dashboardModule.exportOrganisationsCSV">
-                      <i class="bi bi-download me-1"></i>Organisations
-                    </button>
-                    <button class="btn btn-outline-secondary btn-sm" data-action="dashboardModule.exportWinnersCSV">
-                      <i class="bi bi-download me-1"></i>Winners
-                    </button>
-                    <button class="btn btn-outline-secondary btn-sm" data-action="settingsModule.exportEntriesCSV">
-                      <i class="bi bi-download me-1"></i>Entries
-                    </button>
-                    <button class="btn btn-outline-secondary btn-sm" data-action="settingsModule.exportEventsCSV">
-                      <i class="bi bi-download me-1"></i>Events
-                    </button>
-                    <button class="btn btn-outline-secondary btn-sm" data-action="settingsModule.exportMediaCSV">
-                      <i class="bi bi-download me-1"></i>Media Gallery
-                    </button>
-                  </div>
+                  <h6 class="mb-3">Export Data</h6>
+                  <p class="small text-muted mb-3">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Use the <strong>Export</strong> dropdown in each module's toolbar to download table data as CSV or Excel. Exports are available in: Awards, Organisations, Winners, Entries, Events, and Payments.
+                  </p>
                 </div>
 
                 <!-- Last Backup Info -->

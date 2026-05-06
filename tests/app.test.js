@@ -1937,11 +1937,11 @@ describe('App Module - CRM Sub-tab Navigation', () => {
     jest.clearAllMocks();
   });
 
-  test('clicking companies-crm-subtab sets currentSubTab and loads data', () => {
-    const tab = document.getElementById('companies-crm-subtab');
+  test('clicking communications-subtab sets currentSubTab and loads data', () => {
+    const tab = document.getElementById('communications-subtab');
     tab.click();
 
-    expect(crmModule.currentSubTab).toBe('companies-crm');
+    expect(crmModule.currentSubTab).toBe('communications');
     expect(crmModule.loadAllData).toHaveBeenCalled();
   });
 

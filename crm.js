@@ -4,7 +4,7 @@
 // ============================================
 
 const crmModule = {
-  currentSubTab: 'companies-crm',
+  currentSubTab: 'communications',
   allCompanies: [],
   filters: {
     companies: {},
@@ -52,9 +52,6 @@ const crmModule = {
     try {
       // Load data based on current sub-tab
       switch (this.currentSubTab) {
-        case 'companies-crm':
-          await this.loadCompanies();
-          break;
         case 'communications':
           await this.loadCommunications();
           break;

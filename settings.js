@@ -103,9 +103,16 @@ const settingsModule = {
 
       // Get last backup time from localStorage
       const lastBackup = localStorage.getItem('lastBackupTime');
-      if (lastBackup) {
-        const backupDate = new Date(lastBackup);
-        document.getElementById('lastBackupTime').textContent = utils.formatRelativeTime(backupDate);
+      const lastBackupEl = document.getElementById('lastBackupTime');
+      if (lastBackupEl) {
+        if (lastBackup) {
+          const backupDate = new Date(lastBackup);
+          lastBackupEl.textContent = utils.formatRelativeTime(backupDate);
+          lastBackupEl.className = 'text-success fw-semibold';
+        } else {
+          lastBackupEl.textContent = 'No backup taken yet';
+          lastBackupEl.className = 'text-danger fw-semibold';
+        }
       }
     } catch (error) {
       console.error('Error updating system info:', error);
@@ -187,7 +194,11 @@ const settingsModule = {
       // Update last backup time
       const now = new Date().toISOString();
       localStorage.setItem('lastBackupTime', now);
-      document.getElementById('lastBackupTime').textContent = 'Just now';
+      const el = document.getElementById('lastBackupTime');
+      if (el) {
+        el.textContent = 'Just now';
+        el.className = 'text-success fw-semibold';
+      }
 
       utils.showToast('Full backup downloaded successfully', 'success');
     } catch (error) {

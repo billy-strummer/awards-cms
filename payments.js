@@ -1965,6 +1965,15 @@ const paymentsModule = {
     if (overdueInvoicesEl) overdueInvoicesEl.textContent = String(overdueInvoices);
     if (totalOutstandingEl) totalOutstandingEl.textContent = `\u00A3${totalOutstanding.toFixed(2)}`;
 
+    const banner = document.getElementById('overdueInvoicesBanner');
+    if (banner) {
+      banner.classList.toggle('d-none', overdueInvoices === 0);
+      const countEl = document.getElementById('overdueInvoicesBannerCount');
+      const pluralEl = document.getElementById('overdueInvoicesBannerPlural');
+      if (countEl) countEl.textContent = String(overdueInvoices);
+      if (pluralEl) pluralEl.textContent = overdueInvoices === 1 ? '' : 's';
+    }
+
     const totalPayments = this.currentPayments.length;
     const totalReceived = this.currentPayments
       .filter((p) => p.status === 'completed')

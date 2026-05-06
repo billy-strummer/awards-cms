@@ -4043,3 +4043,8 @@ input[type="date"].form-control::-webkit-calendar-picker-indicator {
   opacity: 0.5;
   cursor: pointer;
 }
+
+/* Winners table — photo hover thumbnail */
+.winner-thumb-wrap:hover .winner-thumb-preview {
+  display: block !important;
+}

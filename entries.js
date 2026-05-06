@@ -299,15 +299,16 @@ const entriesModule = {
         this.currentFilters.selfNom ||
         this.currentFilters.search
       );
-      tbody.innerHTML = `
-        <tr>
-          <td colspan="10" class="text-center py-5">
-            <i class="bi bi-inbox display-4 d-block mb-2 opacity-25"></i>
-            <p class="text-muted fw-semibold mb-1">${hasFilters ? 'No entries match your current filters' : 'No entries yet'}</p>
-            <p class="text-muted small">${hasFilters ? 'Try clearing your filters using the Reset button above' : 'Entries appear here once companies submit them via the public entry form'}</p>
-          </td>
-        </tr>
-      `;
+      utils.showEnhancedEmptyState('entriesTableBody', 10, {
+        icon: 'bi-inbox',
+        message: hasFilters ? 'No entries match your filters' : 'No entries yet',
+        description: hasFilters
+          ? 'Try clearing your filters using the Clear Filters button above'
+          : 'Entries appear here once companies submit via the public entry form',
+        actionLabel: hasFilters ? 'Clear Filters' : 'Copy Entry Link',
+        actionAction: hasFilters ? 'entriesModule.resetFilters' : 'entriesModule.copyEntryLink',
+        isFiltered: hasFilters,
+      });
       const paginationEl = document.getElementById('entriesPagination');
       if (paginationEl) paginationEl.innerHTML = '';
       return;
@@ -674,6 +675,14 @@ const entriesModule = {
     el.value = '';
     this.filterEntries();
     this.searchEntries();
+  },
+
+  copyEntryLink() {
+    const url = `${window.location.origin}/submit-entry.html`;
+    navigator.clipboard.writeText(url).then(
+      () => utils.showToast('Entry form link copied to clipboard', 'success'),
+      () => utils.showToast('Entry form URL: ' + url, 'info')
+    );
   },
 
   resetFilters() {

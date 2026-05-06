@@ -305,10 +305,13 @@ const paymentsModule = {
       return;
     }
 
+    const nowMs = Date.now();
     tbody.innerHTML = pageInvoices
-      .map(
-        (invoice) => `
-      <tr>
+      .map((invoice) => {
+        const isOverdue = (invoice.status || '').toLowerCase() === 'overdue' && invoice.due_date;
+        const daysOverdue = isOverdue ? Math.floor((nowMs - new Date(invoice.due_date).getTime()) / 86400000) : 0;
+        return `
+      <tr class="${isOverdue ? 'table-danger' : ''}">
         <td><input type="checkbox" class="form-check-input invoice-checkbox" value="${invoice.id}" ${this._selectedInvoiceIds.has(invoice.id) ? 'checked' : ''} data-on-check="paymentsModule.toggleInvoiceSelect" data-id="${invoice.id}"></td>
         <td>
           <strong>${utils.escapeHtml(invoice.invoice_number)}</strong>
@@ -329,7 +332,10 @@ const paymentsModule = {
           }
         </td>
         <td>${invoice.invoice_date ? new Date(invoice.invoice_date).toLocaleDateString() : 'N/A'}</td>
-        <td>${invoice.due_date ? new Date(invoice.due_date).toLocaleDateString() : 'N/A'}</td>
+        <td>
+          ${invoice.due_date ? new Date(invoice.due_date).toLocaleDateString() : 'N/A'}
+          ${isOverdue && daysOverdue > 0 ? `<br><span class="badge bg-danger" style="font-size:0.65rem;">${daysOverdue}d overdue</span>` : ''}
+        </td>
         <td><span class="badge bg-info-subtle text-info">${this.formatInvoiceType(invoice.invoice_type)}</span></td>
         <td><strong>&pound;${parseFloat(invoice.total_amount || 0).toFixed(2)}</strong></td>
         <td class="text-success">&pound;${parseFloat(invoice.paid_amount || 0).toFixed(2)}</td>
@@ -357,14 +363,15 @@ const paymentsModule = {
             <button class="btn btn-outline-secondary" data-action="paymentsModule.sendInvoice" data-id="${invoice.id}" title="Send" aria-label="Send invoice">
               <i class="bi bi-envelope"></i>
             </button>
+            ${isOverdue ? `<button class="btn btn-outline-warning" data-action="paymentsModule.sendSingleReminder" data-id="${invoice.id}" title="Send Reminder" aria-label="Send payment reminder"><i class="bi bi-bell"></i></button>` : ''}
             <button class="btn btn-outline-danger" data-action="paymentsModule.deleteInvoice" data-id="${invoice.id}" title="Delete" aria-label="Delete invoice">
               <i class="bi bi-trash"></i>
             </button>
           </div>
         </td>
       </tr>
-    `
-      )
+    `;
+      })
       .join('');
 
     // Render pagination
@@ -2479,6 +2486,16 @@ const paymentsModule = {
       utils.showToast(`Successfully sent ${sentCount} overdue reminder${sentCount !== 1 ? 's' : ''}`, 'success');
     } else {
       utils.showToast(`Sent ${sentCount} reminder${sentCount !== 1 ? 's' : ''}, ${failCount} failed`, 'warning');
+    }
+  },
+
+  async sendSingleReminder(invoiceId) {
+    try {
+      utils.showToast('Sending reminder...', 'info');
+      await this.sendInvoice(invoiceId);
+      utils.showToast('Reminder sent', 'success');
+    } catch (err) {
+      utils.showToast('Failed to send reminder: ' + err.message, 'error');
     }
   },
 

@@ -28,7 +28,10 @@ const orgsModule = {
   // Column visibility state (persistent via localStorage)
   _columnVisibility: (() => {
     try {
-      return JSON.parse(localStorage.getItem('orgsColumnVisibility') || '{}');
+      const saved = localStorage.getItem('orgsColumnVisibility');
+      if (saved) return JSON.parse(saved);
+      // Default: hide the four noisiest columns so the table fits on screen
+      return { tags: false, county_city: false, lastContacted: false, health: false };
     } catch (e) {
       return {};
     }
@@ -791,9 +794,10 @@ const orgsModule = {
       county_city: 8,
       status: 9,
       awards: 10,
-      updated: 11,
-      lastContacted: 12,
-      health: 13,
+      // phone is at th[11], handled separately — skip to 12
+      updated: 12,
+      lastContacted: 13,
+      health: 14,
     };
     const thead = tbody.closest('table')?.querySelector('thead tr');
     if (thead) {

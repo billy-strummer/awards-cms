@@ -2522,9 +2522,24 @@ ${content}
     const configOk = await this.checkEmailConfig();
     if (!configOk) return;
 
-    const email = prompt('Enter email address to send a test to:');
-    if (!email || !email.includes('@')) return;
+    const input = document.getElementById('testEmailAddress');
+    if (input) input.value = '';
+    if (input) input.classList.remove('is-invalid');
+    new bootstrap.Modal(document.getElementById('testEmailModal')).show();
+  },
 
+  async confirmSendTestEmail() {
+    const input = document.getElementById('testEmailAddress');
+    const email = input?.value?.trim();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      if (input) input.classList.add('is-invalid');
+      return;
+    }
+    if (input) input.classList.remove('is-invalid');
+
+    bootstrap.Modal.getInstance(document.getElementById('testEmailModal'))?.hide();
+
+    const subject = document.getElementById('builderSubject')?.value;
     const html = this.generateFullHTML();
     const fromName = document.getElementById('builderFromName')?.value || 'British Trade Awards';
     const fromEmail = document.getElementById('builderFromEmail')?.value || 'awards@britishtradeawards.com';

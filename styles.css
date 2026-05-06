@@ -3959,3 +3959,77 @@ body.dark-mode .app-main {
 /* ── Tab-count badges in old horizontal nav (now hidden) ── */
 /* Keep .tab-count-badge selectable for JS updates */
 .tab-count-badge { display: none; }
+
+/* ==================================================== */
+/* UX IMPROVEMENTS                                      */
+/* ==================================================== */
+
+/* Filter collapse: chevron rotates when open */
+[data-bs-toggle="collapse"] .bi-chevron-down {
+  transition: transform 0.2s ease;
+  display: inline-block;
+}
+[data-bs-toggle="collapse"][aria-expanded="true"] .bi-chevron-down {
+  transform: rotate(180deg);
+}
+
+/* Getting started banner */
+#gettingStartedBanner {
+  border-left: 4px solid #4f46e5 !important;
+}
+
+/* Empty state enhancements — make CTAs visible but subtle */
+.table tbody tr td .btn {
+  pointer-events: all;
+}
+
+/* Bulk delete confirm modal — danger emphasis */
+#bulkDeleteConfirmModal .modal-content {
+  border-top: 3px solid var(--danger-color);
+}
+
+/* Sidebar focus-visible only (remove outline:none override) */
+.sidebar-nav-link:focus { outline: none; }
+.sidebar-nav-link:focus-visible {
+  outline: 2px solid #818cf8;
+  outline-offset: -2px;
+}
+
+/* Global search navbar button — kbd shortcut hint */
+#globalSearchNavBtn kbd {
+  font-family: inherit;
+  line-height: 1.4;
+  vertical-align: middle;
+}
+
+/* Required field asterisk */
+.form-label .text-danger[aria-label="required"] {
+  font-size: 0.75em;
+  vertical-align: super;
+  margin-left: 1px;
+}
+
+/* Row count badge on filter bars */
+.table-row-count {
+  font-size: 0.75rem;
+  color: #6c757d;
+  font-weight: 400;
+}
+
+/* Dark mode: getting started banner */
+body.dark-mode #gettingStartedBanner > div > div:last-child {
+  background: linear-gradient(135deg, #1e1b4b 0%, #2e1065 100%) !important;
+}
+body.dark-mode #gettingStartedBanner a {
+  color: #c7d2fe !important;
+}
+
+/* Confirmation modal animation */
+#bulkDeleteConfirmModal .modal-dialog {
+  animation: none;
+}
+
+/* Command palette — ensure it's on top of sidebar */
+#commandPalette {
+  z-index: 1100 !important;
+}

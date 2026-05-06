@@ -1227,22 +1227,10 @@ document.addEventListener('DOMContentLoaded', function () {
   // STEP 5: Keyboard Shortcuts
   // ==========================================
   document.addEventListener('keydown', (e) => {
-    // Ctrl/Cmd + K to focus search (if on appropriate tab)
+    // Ctrl/Cmd + K — open global command palette
     if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
       e.preventDefault();
-
-      const activeTab = document.querySelector('.nav-link.active');
-      if (activeTab) {
-        const tabId = activeTab.id;
-
-        if (tabId === 'awards-tab') {
-          document.getElementById('awardsSearchBox')?.focus();
-        } else if (tabId === 'organisations-tab') {
-          document.getElementById('orgsSearchBox')?.focus();
-        } else if (tabId === 'winners-tab') {
-          document.getElementById('winnerSearchBox')?.focus();
-        }
-      }
+      utils.toggleCommandPalette();
     }
 
     // Escape key to close modals

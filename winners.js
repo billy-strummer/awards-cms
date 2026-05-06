@@ -403,6 +403,20 @@ const winnersModule = {
 
         const winnerChecked = this._selectedWinnerIds.has(winner.id) ? 'checked' : '';
 
+        // Readiness score: 5 checks — org linked, award assigned, media uploaded, status advanced, published
+        const readinessChecks = [
+          !!winner.org_id,
+          !!winner.award_id,
+          mediaTotal > 0,
+          !['pending'].includes(status),
+          status === 'published',
+        ];
+        const readinessPct = Math.round((readinessChecks.filter(Boolean).length / readinessChecks.length) * 100);
+        const readinessColor = readinessPct === 100 ? 'success' : readinessPct >= 60 ? 'warning' : 'danger';
+        const readinessDots = readinessChecks
+          .map((c) => `<span style="color:${c ? 'inherit' : '#ccc'}">●</span>`)
+          .join('');
+
         return `
         <tr class="fade-in">
           <td><input type="checkbox" class="form-check-input winner-checkbox" value="${winner.id}" ${winnerChecked} data-on-check="winnersModule.toggleWinnerSelect" data-id="${winner.id}"></td>
@@ -418,10 +432,21 @@ const winnersModule = {
             <span class="badge bg-primary-subtle text-primary">${year}</span>
           </td>
           <td>
-            <span class="badge ${mediaTotal > 0 ? 'bg-info' : 'bg-secondary'}">
-              <i class="bi bi-collection me-1"></i>${mediaTotal}
-            </span>
-            ${mediaTotal > 0 ? `<span class="text-muted small ms-1">${photoCount}<i class="bi bi-camera ms-1 me-2"></i>${videoCount}<i class="bi bi-camera-video ms-1"></i></span>` : ''}
+            ${(() => {
+              const firstPhoto = winner.winner_media?.find((m) => m.media_type === MEDIA_TYPES.PHOTO && m.file_url);
+              const thumbUrl = firstPhoto?.file_url || '';
+              return `<span class="winner-thumb-wrap" style="position:relative;display:inline-block;">
+                <span class="badge ${mediaTotal > 0 ? 'bg-info' : 'bg-secondary'}">
+                  <i class="bi bi-collection me-1"></i>${mediaTotal}
+                </span>
+                ${mediaTotal > 0 ? `<span class="text-muted small ms-1">${photoCount}<i class="bi bi-camera ms-1 me-2"></i>${videoCount}<i class="bi bi-camera-video ms-1"></i></span>` : ''}
+                ${thumbUrl ? `<img src="${utils.escapeHtml(thumbUrl)}" class="winner-thumb-preview" alt="Photo preview" style="display:none;position:absolute;bottom:calc(100% + 4px);left:0;width:120px;height:80px;object-fit:cover;border-radius:4px;border:2px solid #dee2e6;box-shadow:0 4px 12px rgba(0,0,0,.2);z-index:100;pointer-events:none;">` : ''}
+              </span>`;
+            })()}
+            <div class="mt-1" title="Readiness: ${readinessPct}% — org, award, media, notified, published">
+              <span class="small text-${readinessColor}" style="font-size:0.7rem;letter-spacing:-1px;">${readinessDots}</span>
+              <span class="text-${readinessColor} small ms-1" style="font-size:0.7rem;">${readinessPct}%</span>
+            </div>
           </td>
           <td class="text-center">
             <div class="btn-group btn-group-sm">

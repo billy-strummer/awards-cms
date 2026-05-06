@@ -3174,6 +3174,39 @@ const dashboardModule = {
     bootstrap.Modal.getInstance(document.getElementById('dashboardCustomiseModal'))?.hide();
     utils.showToast('Dashboard reset to default layout', 'success');
   },
+
+  openAwardCategoriesModal() {
+    const modalEl = document.getElementById('awardCatRefModal');
+    const body = document.getElementById('awardCatRefModalBody');
+    if (!modalEl || !body) return;
+    const source = document.getElementById('catAccordion');
+    if (source) {
+      let html = source.outerHTML;
+      // Suffix all collapse IDs to avoid conflicts with the live panel
+      html = html.replace(/\bid="(cat[A-Za-z0-9_-]+)"/g, 'id="$1-m"');
+      html = html.replace(/data-bs-target="#(cat[A-Za-z0-9_-]+)"/g, 'data-bs-target="#$1-m"');
+      html = html.replace(/aria-controls="(cat[A-Za-z0-9_-]+)"/g, 'aria-controls="$1-m"');
+      body.innerHTML = `<p class="text-muted small mb-3">All award types by size — click a sector to expand.</p>${html}`;
+    }
+    new bootstrap.Modal(modalEl).show();
+  },
+
+  openLocationsModal() {
+    const modalEl = document.getElementById('locationsRefModal');
+    const body = document.getElementById('locationsRefModalBody');
+    if (!modalEl || !body) return;
+    const source = document.getElementById('regionAccordion');
+    const intro =
+      '<p class="text-muted small mb-3">All areas included in the awards programme. <span class="text-success fw-semibold">Green</span> = has organisations or data.</p>';
+    if (source) {
+      let html = source.outerHTML;
+      html = html.replace(/\bid="(reg[A-Za-z0-9_-]+)"/g, 'id="$1-m"');
+      html = html.replace(/data-bs-target="#(reg[A-Za-z0-9_-]+)"/g, 'data-bs-target="#$1-m"');
+      html = html.replace(/aria-controls="(reg[A-Za-z0-9_-]+)"/g, 'aria-controls="$1-m"');
+      body.innerHTML = intro + html;
+    }
+    new bootstrap.Modal(modalEl).show();
+  },
 };
 
 // Export to window for global access

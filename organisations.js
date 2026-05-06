@@ -4515,19 +4515,20 @@ const orgsModule = {
     return val;
   },
 
-  parseCSVFile(input) {
-    const file = input.files[0];
+  parseCSVFile(_value, event) {
+    // data-on-change passes (el.value, event) — we need the element itself for .files
+    const inputEl = event?.target || document.getElementById('csvFileInput');
+    const file = inputEl?.files?.[0];
     if (!file) return;
 
     if (!this._getSelectedCounty()) {
-      input.value = '';
+      if (inputEl) inputEl.value = '';
       return;
     }
 
     const reader = new FileReader();
     reader.onload = (e) => {
-      const text = e.target.result;
-      this._processCSVText(text);
+      this._processCSVText(e.target.result);
     };
     reader.readAsText(file);
   },

@@ -1450,9 +1450,11 @@ const awardsModule = {
   async saveAward() {
     const form = document.getElementById('awardForm');
     if (!form.checkValidity()) {
+      form.classList.add('was-validated');
       form.reportValidity();
       return;
     }
+    form.classList.remove('was-validated');
 
     const id = document.getElementById('awardFormId').value;
     const areaId = document.getElementById('awardFormArea').value || null;

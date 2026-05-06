@@ -239,9 +239,11 @@ const eventsModule = {
     // Validate form fields
     const form = document.getElementById('eventForm');
     if (form && !form.checkValidity()) {
+      form.classList.add('was-validated');
       form.reportValidity();
       return;
     }
+    if (form) form.classList.remove('was-validated');
 
     try {
       await utils.protectModalDuringSave('eventModal', async () => {

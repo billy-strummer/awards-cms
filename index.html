@@ -5450,12 +5450,12 @@
             </li>
             <li class="nav-item" role="presentation">
               <button class="nav-link" id="smart-segments-subtab" data-bs-toggle="pill" data-bs-target="#smart-segments-content" type="button" role="tab" title="Smart Segments are rule-based auto-segments that update dynamically as organisation data changes">
-                <i class="bi bi-funnel me-2"></i>Smart Segments
+                <i class="bi bi-funnel me-2"></i>Smart Segments<span id="smartSegmentsBadge" class="badge bg-secondary ms-2" style="display:none"></span>
               </button>
             </li>
             <li class="nav-item" role="presentation">
               <button class="nav-link" id="my-tasks-subtab" data-bs-toggle="pill" data-bs-target="#my-tasks-content" type="button" role="tab" title="Tasks assigned to you personally — shared across the team">
-                <i class="bi bi-check2-square me-2"></i>Tasks
+                <i class="bi bi-check2-square me-2"></i>Tasks<span id="myTasksBadge" class="badge bg-danger ms-2" style="display:none"></span>
               </button>
             </li>
           </ul>
@@ -7019,7 +7019,7 @@
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <form id="awardForm">
+          <form id="awardForm" novalidate>
             <input type="hidden" id="awardFormId">
             <div class="row g-3">
               <div class="col-md-8">
@@ -7180,7 +7180,7 @@
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <form id="createInvoiceForm">
+          <form id="createInvoiceForm" novalidate>
             <div class="row mb-3">
               <div class="col-md-6">
                 <label for="invoiceOrganisation" class="form-label">Company *</label>
@@ -7287,7 +7287,7 @@
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <form id="recordPaymentForm">
+          <form id="recordPaymentForm" novalidate>
             <div class="mb-3">
               <label for="paymentOrganisation" class="form-label">Company *</label>
               <select class="form-select" id="paymentOrganisation" required>
@@ -7848,7 +7848,7 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <form id="eventForm">
+          <form id="eventForm" novalidate>
             <input type="hidden" id="eventId">
             <div class="mb-3">
               <label for="eventName" class="form-label">Event Name *</label>

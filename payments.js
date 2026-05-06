@@ -593,9 +593,11 @@ const paymentsModule = {
 
         const form = document.getElementById('createInvoiceForm');
         if (!form.checkValidity()) {
+          form.classList.add('was-validated');
           form.reportValidity();
           return;
         }
+        form.classList.remove('was-validated');
 
         const organisationId = document.getElementById('invoiceOrganisation').value;
         const invoiceDate = document.getElementById('invoiceDate').value;
@@ -1504,9 +1506,11 @@ const paymentsModule = {
 
         const form = document.getElementById('recordPaymentForm');
         if (!form.checkValidity()) {
+          form.classList.add('was-validated');
           form.reportValidity();
           return;
         }
+        form.classList.remove('was-validated');
 
         const organisationId = document.getElementById('paymentOrganisation').value;
         const invoiceId = document.getElementById('paymentInvoice').value || null;

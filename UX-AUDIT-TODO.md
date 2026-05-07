@@ -452,7 +452,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
   3. The Payments filter is inside `.content-card` which is fine — it can stay as `.content-card` since it is a content-area filter, not a sticky bar.
   4. If any of the Winners/Entries filter bars need sticky positioning, add the sticky inline style (or a `.filter-bar-sticky` class) consistently.
 - **Done when:** Awards, Winners, and Entries filter bars visually match each other.
-- [ ] Implemented
+- [x] Implemented
 
 ### V2-H3 — Condense Awards filter bar (too many controls)
 - **Files:** `index.html`, `awards.js`
@@ -462,7 +462,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
   - Or: put Country/Region/Area inside an "Advanced Filters" collapse section (a `<a data-bs-toggle="collapse">More filters</a>`) that shows/hides the extra three controls.
   - The collapse approach is lower risk. Add a "More filters ▾" link that toggles a second row containing Country, Region, and Area. The main row stays: Year, Status, Sector, Search.
 - **Done when:** The primary Awards filter row has 4 controls (Year, Status, Sector, Search). Location filters are accessible behind "More filters" toggle.
-- [ ] Implemented
+- [x] Implemented
 
 ### V2-H4 — Hide Test Mode button in production
 - **Files:** `app.js` (or `auth.js`)
@@ -485,7 +485,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
   3. Payments: `.content-card text-center` — icon above number, no left decoration
 - **Fix:** Keep `.stat-card` as the canonical pattern. Convert Entries stats cards to use `.stat-card` (possibly a `.stat-card-sm` variant for compact height). Update their HTML structure to match. The CSS for `.stat-card` already exists and is well-styled.
 - **Done when:** Entries tab stats cards visually match the Dashboard stat cards (same border-radius, shadow, icon treatment, value size).
-- [ ] Implemented
+- [x] Implemented
 
 ### V2-H6 — Fix `#mainTabContent` premature closure (structural)
 - **Files:** `index.html`
@@ -498,7 +498,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
   5. Verify the HTML structure: `#appMain > #mainTabContent > [all 11 .tab-pane divs]`.
   6. The CSS workaround `.tab-pane:not(.active){display:none}` can be **removed** once the structure is correct (Bootstrap handles it natively).
 - **Done when:** All 11 tab panes are direct children of `#mainTabContent`. The CSS workaround is removed. Tab switching still works correctly.
-- [ ] Implemented
+- [x] Implemented
 
 ### V2-H7 — Payments actions: declutter the filter row
 - **Files:** `index.html`

@@ -1274,11 +1274,11 @@
 
 
           <!-- Filters Section -->
-<div class="filters-section" style="position: sticky; top: 56px; z-index: 999; background-color: var(--bs-body-bg, white); padding: 0.75rem 0 0; margin-bottom: 0.75rem; border-bottom: 1px solid #dee2e6;">
-  <div class="rounded-2 p-3 mb-2" style="background:#f8f9fa;">
+<div class="filters-section filter-bar-sticky">
+  <div class="rounded-2 p-3 mb-2 bg-light">
     <div class="d-flex align-items-center justify-content-between mb-2">
       <div class="d-flex align-items-center gap-3 flex-grow-1">
-        <button class="btn btn-link p-0 text-decoration-none fw-semibold text-muted" class="filter-bar-label" data-bs-toggle="collapse" data-bs-target="#awardsFiltersCollapse" aria-expanded="true" aria-controls="awardsFiltersCollapse">
+        <button class="btn btn-link p-0 text-decoration-none filter-bar-label" data-bs-toggle="collapse" data-bs-target="#awardsFiltersCollapse" aria-expanded="true" aria-controls="awardsFiltersCollapse">
           <i class="bi bi-funnel me-1"></i>Filter Awards <span id="awardsFilterCount" class="badge bg-primary ms-1 d-none"></span>
           <i class="bi bi-chevron-down ms-1 small"></i>
         </button>
@@ -1299,15 +1299,16 @@
       </div>
     </div>
     <div class="collapse show" id="awardsFiltersCollapse">
-    <div class="row g-2 align-items-end">
+    <!-- Primary filters row -->
+    <div class="row g-2 align-items-end mb-2">
       <div class="col-md-1">
-        <label for="awardsYearFilterSelect" class="form-label filter-bar-field-label mb-1"><i class="bi bi-calendar3 me-1"></i>Year</label>
+        <label for="awardsYearFilterSelect" class="form-label filter-bar-field-label mb-1"><i class="bi bi-calendar3 me-1" aria-hidden="true"></i>Year</label>
         <select class="form-select form-select-sm" id="awardsYearFilterSelect">
           <option value="">All Years</option>
         </select>
       </div>
       <div class="col-md-2">
-        <label for="awardsStatusFilterSelect" class="form-label filter-bar-field-label mb-1"><i class="bi bi-flag me-1"></i>Status</label>
+        <label for="awardsStatusFilterSelect" class="form-label filter-bar-field-label mb-1"><i class="bi bi-flag me-1" aria-hidden="true"></i>Status</label>
         <select class="form-select form-select-sm" id="awardsStatusFilterSelect">
           <option value="">All Statuses</option>
           <option value="draft">Draft</option>
@@ -1318,33 +1319,45 @@
         </select>
       </div>
       <div class="col-md-2">
-        <label for="awardsSectorFilterSelect" class="form-label filter-bar-field-label mb-1"><i class="bi bi-briefcase me-1"></i>Sector</label>
+        <label for="awardsSectorFilterSelect" class="form-label filter-bar-field-label mb-1"><i class="bi bi-briefcase me-1" aria-hidden="true"></i>Sector</label>
         <select class="form-select form-select-sm" id="awardsSectorFilterSelect">
           <option value="">All Sectors</option>
         </select>
       </div>
-      <div class="col-md-1">
-        <label for="awardsCountryFilter" class="form-label filter-bar-field-label mb-1"><i class="bi bi-globe me-1"></i>Country</label>
-        <select class="form-select form-select-sm" id="awardsCountryFilter" data-on-change="awardsModule.onCountryFilterChange">
-          <option value="">All</option>
-        </select>
-      </div>
-      <div class="col-md-2">
-        <label for="awardsRegionFilter" class="form-label filter-bar-field-label mb-1"><i class="bi bi-map me-1"></i>Region</label>
-        <select class="form-select form-select-sm" id="awardsRegionFilter" data-on-change="awardsModule.onRegionFilterChange">
-          <option value="">All Regions</option>
-        </select>
-      </div>
-      <div class="col-md-2">
-        <label for="awardsAreaFilter" class="form-label filter-bar-field-label mb-1"><i class="bi bi-pin-map me-1"></i>County/City/Borough</label>
-        <select class="form-select form-select-sm" id="awardsAreaFilter" data-on-change="awardsModule.filterAwards">
-          <option value="">All</option>
-        </select>
-      </div>
       <div class="col">
-        <label for="awardsSearchBox" class="form-label filter-bar-field-label mb-1"><i class="bi bi-search me-1"></i>Search</label>
+        <label for="awardsSearchBox" class="form-label filter-bar-field-label mb-1"><i class="bi bi-search me-1" aria-hidden="true"></i>Search</label>
         <input type="text" class="form-control form-control-sm" id="awardsSearchBox" placeholder="Search awards…">
       </div>
+      <div class="col-auto">
+        <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#awardsLocationFilters" aria-expanded="false" aria-controls="awardsLocationFilters" title="Filter by location">
+          <i class="bi bi-geo-alt me-1" aria-hidden="true"></i>Location
+          <i class="bi bi-chevron-down ms-1 small"></i>
+        </button>
+      </div>
+    </div>
+    <!-- Location filters (collapsed by default) -->
+    <div class="collapse" id="awardsLocationFilters">
+      <div class="row g-2 align-items-end pt-2 border-top">
+        <div class="col-md-2">
+          <label for="awardsCountryFilter" class="form-label filter-bar-field-label mb-1"><i class="bi bi-globe me-1" aria-hidden="true"></i>Country</label>
+          <select class="form-select form-select-sm" id="awardsCountryFilter" data-on-change="awardsModule.onCountryFilterChange">
+            <option value="">All</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label for="awardsRegionFilter" class="form-label filter-bar-field-label mb-1"><i class="bi bi-map me-1" aria-hidden="true"></i>Region</label>
+          <select class="form-select form-select-sm" id="awardsRegionFilter" data-on-change="awardsModule.onRegionFilterChange">
+            <option value="">All Regions</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label for="awardsAreaFilter" class="form-label filter-bar-field-label mb-1"><i class="bi bi-pin-map me-1" aria-hidden="true"></i>County / City / Borough</label>
+          <select class="form-select form-select-sm" id="awardsAreaFilter" data-on-change="awardsModule.filterAwards">
+            <option value="">All</option>
+          </select>
+        </div>
+      </div>
+    </div>
     </div>
     </div>
   </div>
@@ -1478,7 +1491,6 @@
 
         </div>
       </div>
-    </div><!-- /tab-pane#awards -->
 
       <!-- ==================================================== -->
       <!-- ORGANISATIONS TAB -->
@@ -1813,7 +1825,7 @@
         <!-- Row header -->
         <div class="d-flex align-items-center justify-content-between mb-2">
           <div class="d-flex align-items-center gap-3">
-            <span class="fw-semibold text-muted" class="filter-bar-label"><i class="bi bi-funnel me-1"></i>Filter Organisations</span>
+            <span class="filter-bar-label"><i class="bi bi-funnel me-1"></i>Filter Organisations</span>
             <span id="orgsRowCount" class="table-row-count"></span>
           </div>
           <div class="d-flex align-items-center gap-2">
@@ -2477,7 +2489,6 @@
     </div><!-- /orgsSponsorSection -->
 
   </div>
-</div>
 
       <!-- ==================================================== -->
       <!-- WINNERS TAB -->
@@ -2494,11 +2505,11 @@
           </div>
 
           <!-- Filters Section -->
-          <div class="filters-section" style="position: sticky; top: 56px; z-index: 999; background-color: var(--bs-body-bg, white); padding: 0.75rem 0 0; margin-bottom: 0.75rem; border-bottom: 1px solid #dee2e6;">
-            <div class="rounded-2 p-3 mb-2" style="background:#f8f9fa;">
+          <div class="filters-section filter-bar-sticky">
+            <div class="rounded-2 p-3 mb-2 bg-light">
               <div class="d-flex align-items-center justify-content-between mb-2">
                 <div class="d-flex align-items-center gap-3">
-                  <span class="fw-semibold text-muted" class="filter-bar-label"><i class="bi bi-funnel me-1"></i>Filter Winners</span>
+                  <span class="filter-bar-label"><i class="bi bi-funnel me-1"></i>Filter Winners</span>
                   <span id="winnersRowCount" class="table-row-count"></span>
                 </div>
                 <div class="d-flex align-items-center gap-2">
@@ -2665,72 +2676,48 @@
           <!-- Stats Cards -->
           <div class="row g-3 mb-4">
             <div class="col-md-3">
-              <div class="card stats-card" data-stat-filter="clear:entriesStatusFilter" title="Show all entries">
-                <div class="card-body">
-                  <div class="d-flex align-items-center">
-                    <div class="stats-icon bg-primary">
-                      <i class="bi bi-file-earmark-text"></i>
-                    </div>
-                    <div class="ms-3">
-                      <h6 class="mb-0 text-muted">Total Entries</h6>
-                      <h3 class="mb-0" id="totalEntriesCount">0</h3>
-                    </div>
-                  </div>
-                </div>
+              <div class="stat-card stat-card-clickable" data-stat-filter="clear:entriesStatusFilter" title="Show all entries">
+                <i class="bi bi-file-earmark-text stat-card-icon text-primary"></i>
+                <h6>Total Entries</h6>
+                <div class="stat-value" id="totalEntriesCount">0</div>
+                <small class="text-muted">All submissions</small>
+                <div class="stat-card-hover-indicator"><i class="bi bi-arrow-right-circle"></i></div>
               </div>
             </div>
             <div class="col-md-3">
-              <div class="card stats-card" data-stat-filter="entriesStatusFilter:pending_review" title="Filter to pending review">
-                <div class="card-body">
-                  <div class="d-flex align-items-center">
-                    <div class="stats-icon bg-warning">
-                      <i class="bi bi-clock-history"></i>
-                    </div>
-                    <div class="ms-3">
-                      <h6 class="mb-0 text-muted">Pending Review</h6>
-                      <h3 class="mb-0" id="pendingEntriesCount">0</h3>
-                    </div>
-                  </div>
-                </div>
+              <div class="stat-card stat-card-clickable" data-stat-filter="entriesStatusFilter:pending_review" title="Filter to pending review">
+                <i class="bi bi-clock-history stat-card-icon text-warning"></i>
+                <h6>Pending Review</h6>
+                <div class="stat-value text-warning" id="pendingEntriesCount">0</div>
+                <small class="text-muted">Submitted &amp; under review</small>
+                <div class="stat-card-hover-indicator"><i class="bi bi-arrow-right-circle"></i></div>
               </div>
             </div>
             <div class="col-md-3">
-              <div class="card stats-card" data-stat-filter="entriesStatusFilter:shortlisted" title="Filter to shortlisted">
-                <div class="card-body">
-                  <div class="d-flex align-items-center">
-                    <div class="stats-icon bg-info">
-                      <i class="bi bi-star"></i>
-                    </div>
-                    <div class="ms-3">
-                      <h6 class="mb-0 text-muted">Shortlisted</h6>
-                      <h3 class="mb-0" id="shortlistedEntriesCount">0</h3>
-                    </div>
-                  </div>
-                </div>
+              <div class="stat-card stat-card-clickable" data-stat-filter="entriesStatusFilter:shortlisted" title="Filter to shortlisted">
+                <i class="bi bi-star stat-card-icon text-info"></i>
+                <h6>Shortlisted</h6>
+                <div class="stat-value text-info" id="shortlistedEntriesCount">0</div>
+                <small class="text-muted">Made the shortlist</small>
+                <div class="stat-card-hover-indicator"><i class="bi bi-arrow-right-circle"></i></div>
               </div>
             </div>
             <div class="col-md-3">
-              <div class="card stats-card" data-stat-filter="entriesStatusFilter:winner" title="Filter to winners">
-                <div class="card-body">
-                  <div class="d-flex align-items-center">
-                    <div class="stats-icon bg-success">
-                      <i class="bi bi-trophy"></i>
-                    </div>
-                    <div class="ms-3">
-                      <h6 class="mb-0 text-muted">Winners</h6>
-                      <h3 class="mb-0" id="winnerEntriesCount">0</h3>
-                    </div>
-                  </div>
-                </div>
+              <div class="stat-card stat-card-clickable" data-stat-filter="entriesStatusFilter:winner" title="Filter to winners">
+                <i class="bi bi-trophy stat-card-icon text-success"></i>
+                <h6>Winners</h6>
+                <div class="stat-value text-success" id="winnerEntriesCount">0</div>
+                <small class="text-muted">Award recipients</small>
+                <div class="stat-card-hover-indicator"><i class="bi bi-arrow-right-circle"></i></div>
               </div>
             </div>
           </div>
 
           <!-- Filters and Actions -->
-          <div class="rounded-2 p-3 mb-3" style="background:#f8f9fa;border:1px solid #e9ecef;">
+          <div class="filters-section mb-3">
             <div class="d-flex align-items-center justify-content-between mb-2">
               <div class="d-flex align-items-center gap-3">
-                <span class="fw-semibold text-muted" class="filter-bar-label"><i class="bi bi-funnel me-1"></i>Filter Entries <span id="entriesFilterCount" class="badge bg-primary ms-1 d-none"></span></span>
+                <span class="filter-bar-label"><i class="bi bi-funnel me-1"></i>Filter Entries <span id="entriesFilterCount" class="badge bg-primary ms-1 d-none"></span></span>
                 <span id="entriesRowCount" class="table-row-count"></span>
               </div>
               <div class="d-flex align-items-center gap-2">
@@ -6837,7 +6824,7 @@
         </div>
       </div>
 
-    </div>
+    </div><!-- /#mainTabContent -->
       </main><!-- /.app-main -->
     </div><!-- /.app-layout -->
 
@@ -10960,6 +10947,8 @@
       </div>
     </div>
   </div>
+
+</div><!-- /#dashboardPage -->
 
   <script>
     /* Global actions for confirmation dialogs */

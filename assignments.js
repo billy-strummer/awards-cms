@@ -1188,6 +1188,75 @@ const assignmentsModule = {
     const el = document.getElementById('assignSelectedCount');
     if (el) el.textContent = String(count);
   },
+
+  // H14: Conflict of Interest management
+  _getConflicts() {
+    try {
+      return JSON.parse(localStorage.getItem('judgeConflicts') || '[]');
+    } catch (e) {
+      return [];
+    }
+  },
+  _saveConflicts(conflicts) {
+    localStorage.setItem('judgeConflicts', JSON.stringify(conflicts));
+  },
+
+  hasConflict(judgeEmail, orgId) {
+    return this._getConflicts().some((c) => c.judgeEmail === judgeEmail && c.orgId === orgId);
+  },
+
+  openConflictManager() {
+    const conflicts = this._getConflicts();
+    const html = `
+      <div class="mb-3">
+        <p class="text-muted small">Record relationships that prevent a judge from scoring an organisation (same company, family, etc.).</p>
+        <div class="row g-2 mb-2">
+          <div class="col-5"><input type="email" class="form-control form-control-sm" id="conflictJudgeEmail" placeholder="Judge email"></div>
+          <div class="col-5"><input type="text" class="form-control form-control-sm" id="conflictOrgName" placeholder="Organisation name (partial match)"></div>
+          <div class="col-2"><button class="btn btn-sm btn-primary w-100" data-action="assignmentsModule.addConflict">Add</button></div>
+        </div>
+        <div id="conflictsList">
+          ${
+            conflicts.length === 0
+              ? '<p class="text-muted small text-center py-2">No conflicts recorded.</p>'
+              : `<table class="table table-sm"><thead><tr><th>Judge</th><th>Organisation</th><th></th></tr></thead><tbody>
+            ${conflicts
+              .map(
+                (c, i) => `<tr>
+              <td class="small">${utils.escapeHtml(c.judgeEmail)}</td>
+              <td class="small">${utils.escapeHtml(c.orgName)}</td>
+              <td><button class="btn btn-sm btn-outline-danger" data-action="assignmentsModule.removeConflict" data-id="${i}"><i class="bi bi-trash"></i></button></td>
+            </tr>`
+              )
+              .join('')}
+            </tbody></table>`
+          }
+        </div>
+      </div>`;
+    utils.showModal('Conflict of Interest Registry', html, { icon: 'bi-shield-exclamation', size: 'modal-lg' });
+  },
+
+  addConflict() {
+    const judgeEmail = document.getElementById('conflictJudgeEmail')?.value.trim();
+    const orgName = document.getElementById('conflictOrgName')?.value.trim();
+    if (!judgeEmail || !orgName) {
+      utils.showToast('Enter both judge email and organisation name', 'warning');
+      return;
+    }
+    const conflicts = this._getConflicts();
+    const orgMatch = STATE.allOrganisations?.find((o) => o.company_name.toLowerCase().includes(orgName.toLowerCase()));
+    conflicts.push({ judgeEmail, orgName, orgId: orgMatch?.id || null });
+    this._saveConflicts(conflicts);
+    utils.showToast('Conflict recorded', 'success');
+    this.openConflictManager();
+  },
+
+  removeConflict(idx) {
+    const conflicts = this._getConflicts();
+    conflicts.splice(parseInt(idx), 1);
+    this._saveConflicts(conflicts);
+    this.openConflictManager();
+  },
 };
 
 // Export to window

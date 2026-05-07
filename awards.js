@@ -1346,7 +1346,26 @@ const awardsModule = {
     document.getElementById('awardFormPrevWinner').value = award.prev_year_winner || '';
     document.getElementById('awardFormPrev2nd').value = award.prev_year_2nd || '';
     document.getElementById('awardFormPrev3rd').value = award.prev_year_3rd || '';
-    document.getElementById('awardFormModalTitle').innerHTML = '<i class="bi bi-pencil me-2"></i>Edit Award';
+    // H4: Status stepper in edit modal header
+    const steps = ['draft', 'pending', 'active', 'archived'];
+    const stepLabels = { draft: 'Draft', pending: 'Pending', active: 'Active', archived: 'Archived' };
+    const stepColors = { draft: 'secondary', pending: 'warning', active: 'success', archived: 'dark' };
+    const curStatus = (award.status || 'draft').toLowerCase();
+    const curIdx = steps.indexOf(curStatus);
+    const stepperHtml = `<div class="d-flex align-items-center gap-1 mt-2 mb-1" style="font-size:0.7rem;">
+      ${steps
+        .map(
+          (s, i) => `
+        <span class="badge ${i <= curIdx ? 'bg-' + stepColors[s] : 'bg-light text-muted border'} px-2 py-1 rounded-pill" title="Click to set status to ${stepLabels[s]}" style="cursor:pointer;" data-action="awardsModule._stepperSetStatus" data-args='["${award.id}","${s}"]'>
+          ${i < curIdx ? '<i class="bi bi-check me-1"></i>' : ''}${stepLabels[s]}
+        </span>
+        ${i < steps.length - 1 ? '<i class="bi bi-chevron-right text-muted" style="font-size:0.6rem;"></i>' : ''}
+      `
+        )
+        .join('')}
+    </div>`;
+    document.getElementById('awardFormModalTitle').innerHTML =
+      '<i class="bi bi-pencil me-2"></i>Edit Award' + stepperHtml;
 
     // Populate country + area dropdowns via locationModule
     locationModule.populateCountryDropdown('awardFormCountry', 'Select Country...');
@@ -1550,6 +1569,7 @@ const awardsModule = {
 
         utils.showToast(id ? 'Award updated successfully!' : 'Award created successfully!', 'success');
         await this.loadAwards();
+        if (typeof updateTabCounts === 'function') updateTabCounts();
       });
     } catch (error) {
       console.error('Error saving award:', error);
@@ -1881,6 +1901,7 @@ const awardsModule = {
       );
 
       await this.loadAwards();
+      if (typeof updateTabCounts === 'function') updateTabCounts();
       utils.showToast(
         'Award deleted. <a href="#" data-action="utils.undoLastDelete" data-id="awards" data-prevent-default="true">Undo</a>',
         'info'
@@ -3040,6 +3061,14 @@ const awardsModule = {
    * @param {string} newStatus - New status value
    * @returns {Promise<void>}
    */
+  // H4: Stepper click handler — update status and refresh modal header
+  async _stepperSetStatus(awardId, newStatus) {
+    await this.inlineUpdateStatus(awardId, newStatus);
+    // Refresh the stepper in the currently open modal
+    const award = STATE.allAwards.find((a) => a.id === awardId);
+    if (award) this.openEditModal(awardId);
+  },
+
   async inlineUpdateStatus(awardId, newStatus) {
     try {
       await apiClient.update('awards', awardId, { status: newStatus });

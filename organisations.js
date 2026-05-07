@@ -3015,6 +3015,7 @@ const orgsModule = {
         bootstrap.Modal.getInstance(document.getElementById('addNewOrgModal'))?.hide();
         form.reset();
         await this.loadOrganisations();
+        if (typeof updateTabCounts === 'function') updateTabCounts();
       });
     } catch (error) {
       console.error('Error saving new company:', error);

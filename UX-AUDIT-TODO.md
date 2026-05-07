@@ -543,7 +543,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **Fix:** Extract the category data to a `AWARD_CATEGORIES` constant in `awards.js`. Write a `renderCategoryReference()` function that generates the accordion HTML from the constant and injects it into a placeholder `<div id="awardCatRefBody">`. This keeps the data in one place and makes the reference updatable without touching HTML.
 - **Note:** This is a medium-effort refactor. Prioritise after the Critical and High items.
 - **Done when:** `index.html` has no hardcoded category list. The accordion is rendered dynamically from `awards.js`.
-- [ ] Implemented
+- [x] Implemented
 
 ### V2-M3 — Entries status filter: remove compound value
 - **Files:** `index.html`, `entries.js`

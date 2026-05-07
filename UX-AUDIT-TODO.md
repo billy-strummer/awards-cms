@@ -4,6 +4,7 @@
 
 Last audit: 2026-05-07 (original items — all complete)
 Second audit: 2026-05-07 (new deep audit — see V2 section below)
+Third audit: 2026-05-07 (post-structural-fix audit — see V3 section below)
 Branch: `claude/bta-location-restructure-JS5hX`
 
 ---
@@ -703,6 +704,277 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - Always run `npm test` and `npm run build` after each commit. All 65 suites must pass.
 - Commit message format: "Implements V2-C1, V2-C2" etc.
 - Vercel 12-function limit still applies — no new `/api/` files.
+
+---
+
+## ═══════════════════════════════════════════════
+## V3 AUDIT — Post-Structural Fix (2026-05-07)
+## ═══════════════════════════════════════════════
+
+> **CLAUDE: All V3 items are open. Work in order: V3-C → V3-H → V3-M → V3-L.**
+
+---
+
+## V3-CRITICAL — Broken right now
+
+### V3-C1 — Scroll architecture: full-window scroll causes broken UX
+- **Files:** `styles.css`
+- **Root cause:** `.app-main` uses `min-height: calc(100vh - 56px)` with no `overflow` set, so the **entire browser window** scrolls (body scroll). The sidebar is `position: fixed`, the navbar is `sticky-top`. This means:
+  1. Scrolling down on a long tab (CRM, Marketing) and then switching tabs keeps the scroll position — you land partway down a different tab's content.
+  2. The sticky filter bars use `top: 56px` but with body scroll this sticks to the window top — if the navbar renders taller than 56px (it does: ~60px), the bar clips under the navbar bottom border.
+  3. Short-content tabs (Bitcoin, Media Gallery) feel oddly tiny before JS loads.
+- **Fix:**
+  1. Change `.app-main` from `min-height` to a contained scroll area:
+     ```css
+     .app-main {
+       height: calc(100vh - 60px);   /* replaces min-height */
+       overflow-y: auto;
+       scroll-behavior: smooth;
+     }
+     ```
+  2. Change `.filter-bar-sticky { top: 56px }` → `top: 0` (now sticky relative to `.app-main`'s scroll container).
+  3. Update `.app-sidebar`, `.app-layout`, and `.app-sidebar.collapsed + .app-main` to use `60px` instead of `56px` for all navbar-offset values.
+  4. Add a `--navbar-height: 60px` CSS variable to `:root` and replace all hardcoded `56px` values in one pass.
+- **Done when:** Switching tabs always shows the top of the new tab's content. Sidebar and navbar never scroll. Scroll is contained within `.app-main`.
+- [ ] Implemented
+
+### V3-C2 — Media Gallery and Bitcoin tabs appear completely blank on first visit
+- **Files:** `index.html`
+- **Root cause:** Neither the Media Gallery nor Bitcoin tab-panes have any visible static HTML content below the page header. All their content is JS-rendered (gallery grid from `mediaGalleryModule.initialize()`, TradingView widget from `btcModule`). Before JS renders, both tabs show only a title and subtitle — the rest is white/blank.
+- **Fix:** Add a visible loading placeholder inside each tab's main content container:
+  - In Media Gallery: inside `#mediaGalleryContent` add `<div id="mediaGalleryLoadingState" class="text-center py-5 text-muted"><div class="spinner-border spinner-border-sm mb-2"></div><p class="small mb-0">Loading media…</p></div>`
+  - In Bitcoin: inside the chart container div add `<div id="btcLoadingState" class="d-flex align-items-center justify-content-center" style="height:450px;"><div class="text-center text-muted"><div class="spinner-border mb-3"></div><p>Loading market data…</p></div></div>`
+  - In `media-gallery-new.js` and `btc-module.js`, remove/hide the loading placeholder once real content renders.
+- **Done when:** Media Gallery and Bitcoin tabs show a spinner while loading instead of blank white space.
+- [ ] Implemented
+
+---
+
+## V3-HIGH — Significantly degrades usability
+
+### V3-H1 — Tab switch does not scroll to top
+- **Files:** `app.js`
+- **Root cause:** Switching tabs does not reset scroll position. After V3-C1 (scroll in `.app-main`), the `appMain` element retains scroll position between tabs. A user scrolled to the bottom of CRM will see the bottom of whatever tab they switch to.
+- **Fix:** In the `shown.bs.tab` handler in `app.js` (around line 1714), add:
+  ```javascript
+  document.getElementById('appMain')?.scrollTo({ top: 0, behavior: 'instant' });
+  ```
+  Use `'instant'` not `'smooth'` to avoid visible scroll animation.
+- **Done when:** Every tab switch places the user at the top of the new tab's content.
+- [ ] Implemented
+
+### V3-H2 — Sticky filter bars on only 2 of 7 filtered tabs
+- **Files:** `index.html`
+- **Root cause:** Only Awards (L949) and Winners (L2179) have `filter-bar-sticky`. Organisations, Entries, Payments, CRM, and Reports all have filter bars that scroll away, forcing users to scroll back to the top to change filters on long tables.
+- **Fix:** Add `filter-bar-sticky` class to the outermost filter wrapper div in each of these tabs:
+  - Organisations main filter bar (in `#orgsMainContent`)
+  - Entries filter bar
+  - Payments Invoices filter row wrapper
+  - Reports filter row
+  (CRM has no standalone filter bar — skip for now.)
+- **Done when:** All tabular content tabs keep their filter controls visible while scrolling the table.
+- [ ] Implemented
+
+### V3-H3 — Sticky table `<thead>` overlaps sticky filter bar when both are present
+- **Files:** `styles.css`
+- **Root cause:** Awards, Winners, and Payments tables use `<thead class="sticky-top">`. After V3-C1, sticky elements are relative to `.app-main` scroll container. The `<thead>` with no explicit `top` value defaults to `top: 0` and slides under the filter bar when scrolling. Users see column headers disappear behind the filters.
+- **Fix:** After V3-C1, add:
+  ```css
+  /* Place sticky thead below the sticky filter bar (~52px filter bar height) */
+  .tab-pane .filter-bar-sticky + * table thead.sticky-top,
+  .tab-pane table thead.sticky-top {
+    top: 0;
+  }
+  ```
+  Then for tabs WITH a sticky filter bar, the thead needs `top: [filter-bar-height]`. The cleanest approach: add a CSS variable `--filter-bar-height: 52px` and use it. Or: just remove `sticky-top` from `<thead>` elements and instead keep the filter bar sticky (most important UX win).
+- **Done when:** Column headers in tables with sticky filter bars do not disappear under the filter bar when scrolling.
+- [ ] Implemented
+
+### V3-H4 — Organisations sub-nav (All Orgs / Sponsors) uses custom JS show/hide, not Bootstrap tabs
+- **Files:** `organisations.js`, `index.html`
+- **Root cause:** The `#orgsSubNav` pills switch between All Organisations and Sponsors views via custom `showOrgsView()` / `showSponsorsView()` functions in `organisations.js`. This means the active pill is managed manually, the URL doesn't reflect sub-view, and it's a separate code path from the rest of the app's Bootstrap tab pattern.
+- **Fix:** Wrap the two org views in proper tab-pane divs. Give the pills `data-bs-toggle="tab"` and `data-bs-target` attributes pointing to the panes. Remove the custom show/hide JS — Bootstrap handles it automatically.
+- **Done when:** Orgs sub-nav works as Bootstrap tabs. Active pill updates automatically. No custom show/hide code required.
+- [ ] Implemented
+
+### V3-H5 — Reports tab shows empty state on first visit even with data
+- **Files:** `app.js`
+- **Root cause:** The `shown.bs.tab` handler for Reports (line 1187 of app.js) calls `reportsAnalytics.loadAnalytics()` when tab is shown. But `reportingModule.generateReport()` — which populates the main report table — is only called when the user manually clicks a filter or generate button. On first visit the table body is empty even if there is data.
+- **Fix:** In the Reports `shown.bs.tab` handler, also call `reportingModule?.generateReport()` on first visit (use a `let reportsInitialized = false` flag, set to `true` after first call).
+- **Done when:** Opening Reports shows populated data on first click, not an empty table.
+- [ ] Implemented
+
+### V3-H6 — Settings sub-tab state not preserved on page refresh
+- **Files:** `app.js`, `settings.js`
+- **Root cause:** When the URL hash is `#settings`, `app.js` restores the Settings tab. But it always opens the default sub-tab (General). If user was on Settings → Security before refresh, they lose that context.
+- **Fix:** On `shown.bs.tab` for settings sub-tabs, `localStorage.setItem('lastSettingsSubTab', tabId)`. On Settings tab activation, read that key and call `.click()` on the stored sub-tab button (with a short timeout to allow the tab to render first).
+- **Done when:** Refreshing the page while on Settings → Integrations returns to Settings → Integrations.
+- [ ] Implemented
+
+---
+
+## V3-MEDIUM — Visible gaps
+
+### V3-M1 — No "Back to top" button for long-content tabs
+- **Files:** `index.html`, `styles.css`, `app.js`
+- **Root cause:** CRM, Marketing, Settings tabs regularly exceed the viewport height. There is no quick way to return to the top of the page without scrolling.
+- **Fix:** Add a floating "Back to top" button. Show it when `.app-main` scroll position > 400px:
+  ```html
+  <!-- Add just before </body> -->
+  <button id="backToTopBtn" class="btn btn-primary rounded-circle d-none" aria-label="Back to top"
+    style="position:fixed;bottom:1.5rem;right:1.5rem;z-index:998;width:40px;height:40px;padding:0;">
+    <i class="bi bi-arrow-up"></i>
+  </button>
+  ```
+  ```javascript
+  // In app.js after appMain reference:
+  document.getElementById('appMain')?.addEventListener('scroll', () => {
+    document.getElementById('backToTopBtn')?.classList.toggle('d-none',
+      document.getElementById('appMain').scrollTop < 400);
+  });
+  document.getElementById('backToTopBtn')?.addEventListener('click', () => {
+    document.getElementById('appMain')?.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+  ```
+- **Done when:** A floating up-arrow button appears after scrolling down 400px on any tab and returns to top on click.
+- [ ] Implemented
+
+### V3-M2 — Dark mode: filter-bar-sticky shows white background
+- **Files:** `styles.css`
+- **Root cause:** `.filter-bar-sticky { background-color: var(--bs-body-bg, white) }` — the `white` fallback renders in dark mode if `--bs-body-bg` isn't set at the right cascade point. The sticky bar appears white/light over a dark table.
+- **Fix:** Add to dark mode block in `styles.css`:
+  ```css
+  body.dark-mode .filter-bar-sticky {
+    background-color: #1e1e2e;
+    border-bottom-color: #404040;
+  }
+  ```
+- **Done when:** Sticky filter bars in dark mode match the dark body background.
+- [ ] Implemented
+
+### V3-M3 — Sidebar active sub-tab: no visible hint
+- **Files:** `index.html`, `styles.css`, `app.js`
+- **Root cause:** When on CRM → Deals, the sidebar shows only "CRM" as highlighted with no indication of which sub-section is active. Same for Marketing, Payments, Settings. This harms wayfinding.
+- **Fix:** Add a sub-label element below each sidebar tab button that has sub-tabs (CRM, Marketing, Payments, Settings). Update it in the `shown.bs.tab` handler for sub-tabs:
+  ```css
+  .sidebar-sub-label {
+    font-size: 0.65rem;
+    opacity: 0.6;
+    padding-left: 2.25rem;
+    margin-top: -0.25rem;
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: rgba(255,255,255,0.8);
+  }
+  .app-sidebar.collapsed .sidebar-sub-label { display: none; }
+  ```
+- **Done when:** Sidebar shows "▸ Deals" under CRM when the Deals sub-tab is active.
+- [ ] Implemented
+
+### V3-M4 — Empty states missing from Entries and Media Gallery
+- **Files:** `index.html`, `entries.js`, `media-gallery-new.js`
+- **Root cause:** `<tbody id="entriesTableBody">` is empty when no entries exist, showing bare column headers. Media Gallery has no empty state. Both give no guidance on next steps.
+- **Fix:**
+  - Entries: add an empty-state row inside `<tbody id="entriesTableBody">` with `id="entriesEmptyRow" class="d-none"` containing a helpful message and CTA.
+  - Media Gallery: add a visible card inside `#mediaGalleryContent` with `id="mediaGalleryEmptyState" class="d-none"` showing "No media yet — upload your first photo".
+  - In the respective JS modules, toggle `d-none` based on whether data is present.
+- **Done when:** Empty Entries and Media Gallery tabs show friendly messages rather than blank/bare-table UI.
+- [ ] Implemented
+
+### V3-M5 — Sidebar "Analytics" group has only one item
+- **Files:** `index.html`
+- **Root cause:** After V2-L4 moved Marketing to Commercial, the "Analytics" group contains only "Reports". A single-item group label adds noise without benefit.
+- **Fix:** Remove the "Analytics" `<div class="sidebar-group">` wrapper and `<span class="sidebar-group-label">` label. Move the Reports button into the "Commercial" group below Payments and Marketing, or into a new "Insights" group if paired with another item.
+- **Done when:** No sidebar group has fewer than two navigation items.
+- [ ] Implemented
+
+### V3-M6 — `touch-action: manipulation` missing on interactive elements
+- **Files:** `styles.css`
+- **Root cause:** Without `touch-action: manipulation`, browsers add a 300ms delay on tap events for buttons and table rows on mobile/tablet (legacy behaviour for double-tap zoom detection). This makes the app feel sluggish on touch devices.
+- **Fix:** Add to `styles.css`:
+  ```css
+  button, .btn, [role="button"], .sidebar-nav-link,
+  td[data-action], tr[data-action], .stat-card {
+    touch-action: manipulation;
+  }
+  ```
+- **Done when:** No perceptible tap delay on buttons and clickable rows on mobile/tablet.
+- [ ] Implemented
+
+---
+
+## V3-LOW — Polish
+
+### V3-L1 — Filter-bar sticky background doesn't extend edge-to-edge
+- **Files:** `styles.css`
+- **Root cause:** `.filter-bar-sticky` sits inside `.app-main .tab-content { padding: 1.5rem 1.75rem }`. The sticky bar's background only covers the content area, leaving the padded edges visually broken when it sticks — you can see the scrolling content behind the padding.
+- **Fix:**
+  ```css
+  .filter-bar-sticky {
+    margin-left: -1.75rem;
+    margin-right: -1.75rem;
+    padding-left: 1.75rem;
+    padding-right: 1.75rem;
+  }
+  ```
+- **Done when:** Sticky filter bar background covers the full width flush to the viewport edge.
+- [ ] Implemented
+
+### V3-L2 — Sidebar toggle button tooltip is static ("Toggle sidebar")
+- **Files:** `app.js`
+- **Root cause:** The sidebar toggle `#sidebarToggle` has a fixed `title="Toggle sidebar"`. When collapsed it should say "Expand sidebar" and when expanded "Collapse sidebar".
+- **Fix:** In the sidebar toggle click handler in `app.js`, after the classList toggle:
+  ```javascript
+  sidebarToggle.title = appSidebar.classList.contains('collapsed') ? 'Expand sidebar' : 'Collapse sidebar';
+  ```
+- **Done when:** Tooltip on sidebar toggle reflects current state.
+- [ ] Implemented
+
+### V3-L3 — Connection status pill illegible in dark mode on purple navbar
+- **Files:** `styles.css`
+- **Root cause:** The navbar has a purple gradient. `#connectionStatus` in "Connected" state uses a green-tinted or default pill that may lack contrast against the purple.
+- **Fix:**
+  ```css
+  body.dark-mode .connection-status,
+  .connection-status {
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.25);
+    color: #fff;
+  }
+  ```
+- **Done when:** Connection status pill is readable in both light and dark mode against the navbar.
+- [ ] Implemented
+
+### V3-L4 — `aria-selected` on sidebar tab buttons not dynamically updated
+- **Files:** `app.js`
+- **Root cause:** Sidebar buttons have `aria-selected` hardcoded (`dashboard-tab` = true, all others = false). Bootstrap's tab system may not update `aria-selected` on non-standard tab containers. Screen reader users can't tell which tab is active.
+- **Fix:** In `shown.bs.tab` handler in `app.js`, update all sidebar buttons:
+  ```javascript
+  document.querySelectorAll('.sidebar-nav-link[role="tab"]').forEach(btn => {
+    btn.setAttribute('aria-selected', btn.id === e.target.id ? 'true' : 'false');
+  });
+  ```
+- **Done when:** Active sidebar tab button has `aria-selected="true"`; all others have `aria-selected="false"`.
+- [ ] Implemented
+
+### V3-L5 — Settings sub-tab content sections lack card wrappers
+- **Files:** `index.html`, `styles.css`
+- **Root cause:** Settings General, Seasons, Data, Security sub-tabs mix raw form groups and card-wrapped sections inconsistently. Some sections have `.content-card`, others just use `<hr>` dividers. The visual rhythm is uneven.
+- **Fix:** Audit the Settings sub-tab HTML. For each logical section (e.g., "Email Settings", "Account Details", "Password Change"), wrap in a `.content-card` with a `<h6 class="fw-semibold mb-3"><i class="bi bi-..."></i> Section Name</h6>` header. This matches how Dashboard and CRM are structured.
+- **Done when:** All Settings sub-tabs have consistent card-wrapped sections with visible headers.
+- [ ] Implemented
+
+---
+
+## Notes for Claude (V3)
+
+- **V3-C1 first** — fixing scroll containment in `.app-main` changes how sticky positions work everywhere. Do this before V3-H2, V3-H3, V3-M1.
+- **Navbar height**: actual rendered height is ~60px (padding-top:1rem + padding-bottom:1rem + ~28px content). Use 60px everywhere. Add `--navbar-height: 60px` to `:root`.
+- **After V3-C1**: verify sidebar aligns with the top of the content area correctly. Check at all viewport widths. Check dark mode.
+- Always run `npm test` and `npm run build` after each commit. All 65 suites must pass.
+- Commit message format: "Implements V3-C1, V3-C2" etc.
 
 ---
 

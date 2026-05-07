@@ -1734,6 +1734,24 @@ document.addEventListener('DOMContentLoaded', function () {
         const tabName = target.replace('#', '');
         history.replaceState(null, '', '#' + tabName);
         utils._updateBreadcrumb && utils._updateBreadcrumb(tabName);
+
+        // Update browser tab title on navigation
+        const tabTitles = {
+          dashboard: 'Dashboard',
+          awards: 'Awards',
+          organisations: 'Organisations',
+          entries: 'Entries',
+          winners: 'Winners',
+          'media-gallery': 'Media Gallery',
+          events: 'Events',
+          payments: 'Payments',
+          crm: 'CRM',
+          reports: 'Reports',
+          marketing: 'Marketing',
+          settings: 'Settings',
+          bitcoin: 'Markets',
+        };
+        document.title = tabTitles[tabName] ? `${tabTitles[tabName]} · BTA Admin` : 'British Trade Awards Admin';
       }
     });
   });

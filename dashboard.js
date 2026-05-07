@@ -6,9 +6,21 @@ const dashboardModule = {
   /**
    * Load all data for dashboard
    */
+  _initGettingStartedBanner() {
+    if (!localStorage.getItem('btaGettingStartedDismissed')) {
+      document.getElementById('gettingStartedBanner')?.classList.remove('d-none');
+    }
+    document.getElementById('dismissGettingStarted')?.addEventListener('click', () => {
+      document.getElementById('gettingStartedBanner')?.classList.add('d-none');
+      localStorage.setItem('btaGettingStartedDismissed', '1');
+    });
+  },
+
   async loadAllData() {
     try {
       utils.showLoading();
+
+      this._initGettingStartedBanner();
 
       // Apply saved widget visibility/order config
       this.applyWidgetConfig();

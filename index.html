@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://*.supabase.co; script-src 'self' https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://js.stripe.com https://browser.sentry-cdn.com https://s3.tradingview.com https://cdn.sheetjs.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com; img-src 'self' data: blob: https://*.supabase.co https://i.ytimg.com https://*.tile.openstreetmap.org https://*.britishtradeawards.com https://britishtradeawards.com; font-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; connect-src 'self' https://*.supabase.co https://api.resend.com https://*.sentry.io wss://*.supabase.co https://*.tradingview.com wss://*.tradingview.com https://*.tradingview-widget.com wss://*.tradingview-widget.com https://www.youtube.com https://vimeo.com https://api.company-information.service.gov.uk https://*.stripe.com https://*.vercel-scripts.com https://*.vercel-insights.com https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://browser.sentry-cdn.com; frame-src 'self' https://js.stripe.com https://www.youtube.com https://s3.tradingview.com https://*.tradingview.com https://*.tradingview-widget.com; object-src 'none'; base-uri 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://*.supabase.co; script-src 'self' https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://js.stripe.com https://browser.sentry-cdn.com https://s3.tradingview.com https://cdn.sheetjs.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://fonts.googleapis.com; img-src 'self' data: blob: https://*.supabase.co https://i.ytimg.com https://*.tile.openstreetmap.org https://*.britishtradeawards.com https://britishtradeawards.com; font-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://api.resend.com https://*.sentry.io wss://*.supabase.co https://*.tradingview.com wss://*.tradingview.com https://*.tradingview-widget.com wss://*.tradingview-widget.com https://www.youtube.com https://vimeo.com https://api.company-information.service.gov.uk https://*.stripe.com https://*.vercel-scripts.com https://*.vercel-insights.com https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://browser.sentry-cdn.com; frame-src 'self' https://js.stripe.com https://www.youtube.com https://s3.tradingview.com https://*.tradingview.com https://*.tradingview-widget.com; object-src 'none'; base-uri 'self'">
   <!-- Supabase credentials — injected per environment, never hardcoded -->
   <meta name="supabase-url" content="">
   <meta name="supabase-anon-key" content="">
@@ -366,20 +366,6 @@
               </div>
             </div>
           </div>
-          <script>
-            (function () {
-              if (!localStorage.getItem('btaGettingStartedDismissed')) {
-                var el = document.getElementById('gettingStartedBanner');
-                if (el) el.classList.remove('d-none');
-              }
-              var btn = document.getElementById('dismissGettingStarted');
-              if (btn) btn.addEventListener('click', function () {
-                document.getElementById('gettingStartedBanner').classList.add('d-none');
-                localStorage.setItem('btaGettingStartedDismissed', '1');
-              });
-            })();
-          </script>
-
           <!-- Stats Cards -->
           <div class="row g-4 mb-5" data-dashboard-widget="stats-cards" data-widget-label="KPI Stats Cards">
             <div class="col-md-3">
@@ -1292,7 +1278,7 @@
   <div class="rounded-2 p-3 mb-2" style="background:#f8f9fa;">
     <div class="d-flex align-items-center justify-content-between mb-2">
       <div class="d-flex align-items-center gap-3 flex-grow-1">
-        <button class="btn btn-link p-0 text-decoration-none fw-semibold text-muted" style="font-size:0.8rem;letter-spacing:.04em;text-transform:uppercase;" data-bs-toggle="collapse" data-bs-target="#awardsFiltersCollapse" aria-expanded="true" aria-controls="awardsFiltersCollapse">
+        <button class="btn btn-link p-0 text-decoration-none fw-semibold text-muted" class="filter-bar-label" data-bs-toggle="collapse" data-bs-target="#awardsFiltersCollapse" aria-expanded="true" aria-controls="awardsFiltersCollapse">
           <i class="bi bi-funnel me-1"></i>Filter Awards <span id="awardsFilterCount" class="badge bg-primary ms-1 d-none"></span>
           <i class="bi bi-chevron-down ms-1 small"></i>
         </button>
@@ -1315,13 +1301,13 @@
     <div class="collapse show" id="awardsFiltersCollapse">
     <div class="row g-2 align-items-end">
       <div class="col-md-1">
-        <label for="awardsYearFilterSelect" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-calendar3 me-1"></i>Year</label>
+        <label for="awardsYearFilterSelect" class="form-label filter-bar-field-label mb-1"><i class="bi bi-calendar3 me-1"></i>Year</label>
         <select class="form-select form-select-sm" id="awardsYearFilterSelect">
           <option value="">All Years</option>
         </select>
       </div>
       <div class="col-md-2">
-        <label for="awardsStatusFilterSelect" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-flag me-1"></i>Status</label>
+        <label for="awardsStatusFilterSelect" class="form-label filter-bar-field-label mb-1"><i class="bi bi-flag me-1"></i>Status</label>
         <select class="form-select form-select-sm" id="awardsStatusFilterSelect">
           <option value="">All Statuses</option>
           <option value="draft">Draft</option>
@@ -1332,31 +1318,31 @@
         </select>
       </div>
       <div class="col-md-2">
-        <label for="awardsSectorFilterSelect" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-briefcase me-1"></i>Sector</label>
+        <label for="awardsSectorFilterSelect" class="form-label filter-bar-field-label mb-1"><i class="bi bi-briefcase me-1"></i>Sector</label>
         <select class="form-select form-select-sm" id="awardsSectorFilterSelect">
           <option value="">All Sectors</option>
         </select>
       </div>
       <div class="col-md-1">
-        <label for="awardsCountryFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-globe me-1"></i>Country</label>
+        <label for="awardsCountryFilter" class="form-label filter-bar-field-label mb-1"><i class="bi bi-globe me-1"></i>Country</label>
         <select class="form-select form-select-sm" id="awardsCountryFilter" data-on-change="awardsModule.onCountryFilterChange">
           <option value="">All</option>
         </select>
       </div>
       <div class="col-md-2">
-        <label for="awardsRegionFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-map me-1"></i>Region</label>
+        <label for="awardsRegionFilter" class="form-label filter-bar-field-label mb-1"><i class="bi bi-map me-1"></i>Region</label>
         <select class="form-select form-select-sm" id="awardsRegionFilter" data-on-change="awardsModule.onRegionFilterChange">
           <option value="">All Regions</option>
         </select>
       </div>
       <div class="col-md-2">
-        <label for="awardsAreaFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-pin-map me-1"></i>County/City/Borough</label>
+        <label for="awardsAreaFilter" class="form-label filter-bar-field-label mb-1"><i class="bi bi-pin-map me-1"></i>County/City/Borough</label>
         <select class="form-select form-select-sm" id="awardsAreaFilter" data-on-change="awardsModule.filterAwards">
           <option value="">All</option>
         </select>
       </div>
       <div class="col">
-        <label for="awardsSearchBox" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-search me-1"></i>Search</label>
+        <label for="awardsSearchBox" class="form-label filter-bar-field-label mb-1"><i class="bi bi-search me-1"></i>Search</label>
         <input type="text" class="form-control form-control-sm" id="awardsSearchBox" placeholder="Search awards…">
       </div>
     </div>
@@ -1827,7 +1813,7 @@
         <!-- Row header -->
         <div class="d-flex align-items-center justify-content-between mb-2">
           <div class="d-flex align-items-center gap-3">
-            <span class="fw-semibold text-muted" style="font-size:0.8rem;letter-spacing:.04em;text-transform:uppercase;"><i class="bi bi-funnel me-1"></i>Filter Organisations</span>
+            <span class="fw-semibold text-muted" class="filter-bar-label"><i class="bi bi-funnel me-1"></i>Filter Organisations</span>
             <span id="orgsRowCount" class="table-row-count"></span>
           </div>
           <div class="d-flex align-items-center gap-2">
@@ -1852,7 +1838,7 @@
 
           <!-- Search Box -->
           <div class="col-md-2">
-            <label for="orgsSearchBox" class="form-label fw-semibold mb-1" style="font-size:0.8rem;">
+            <label for="orgsSearchBox" class="form-label filter-bar-field-label mb-1">
               <i class="bi bi-search me-1"></i>Search
             </label>
             <input type="text" class="form-control form-control-sm" id="orgsSearchBox"
@@ -1861,7 +1847,7 @@
 
           <!-- Year Filter -->
           <div class="col-md-1">
-            <label for="orgsYearFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;">
+            <label for="orgsYearFilter" class="form-label filter-bar-field-label mb-1">
               <i class="bi bi-calendar3 me-1"></i>Year
             </label>
             <select class="form-select form-select-sm" id="orgsYearFilter"
@@ -1872,7 +1858,7 @@
 
           <!-- Sector Filter -->
           <div class="col-md-2">
-            <label for="orgsSectorFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;">
+            <label for="orgsSectorFilter" class="form-label filter-bar-field-label mb-1">
               <i class="bi bi-briefcase me-1"></i>Sector
             </label>
             <select class="form-select form-select-sm" id="orgsSectorFilter"
@@ -1883,7 +1869,7 @@
 
           <!-- Country Filter -->
           <div class="col-md-1">
-            <label for="orgsCountryFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;">
+            <label for="orgsCountryFilter" class="form-label filter-bar-field-label mb-1">
               <i class="bi bi-globe me-1"></i>Country
             </label>
             <select class="form-select form-select-sm" id="orgsCountryFilter"
@@ -1894,7 +1880,7 @@
 
           <!-- Region Filter (cascades from Country) -->
           <div class="col-md-2">
-            <label for="orgsRegionFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;">
+            <label for="orgsRegionFilter" class="form-label filter-bar-field-label mb-1">
               <i class="bi bi-map me-1"></i>Region
             </label>
             <select class="form-select form-select-sm" id="orgsRegionFilter"
@@ -1905,7 +1891,7 @@
 
           <!-- County/City/Borough Filter (cascades from Region) -->
           <div class="col-md-2">
-            <label for="orgsAreaFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;">
+            <label for="orgsAreaFilter" class="form-label filter-bar-field-label mb-1">
               <i class="bi bi-pin-map me-1"></i>County/City/Borough
             </label>
             <select class="form-select form-select-sm" id="orgsAreaFilter"
@@ -1916,7 +1902,7 @@
 
           <!-- Status Filter -->
           <div class="col-md-1">
-            <label for="orgsStatusFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;">
+            <label for="orgsStatusFilter" class="form-label filter-bar-field-label mb-1">
               <i class="bi bi-person-badge me-1"></i>Status
             </label>
             <select class="form-select form-select-sm" id="orgsStatusFilter"
@@ -1936,7 +1922,7 @@
 
           <!-- Tier Filter -->
           <div class="col-md-1">
-            <label for="orgsTierFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;">
+            <label for="orgsTierFilter" class="form-label filter-bar-field-label mb-1">
               <i class="bi bi-award me-1"></i>Tier
             </label>
             <select class="form-select form-select-sm" id="orgsTierFilter"
@@ -1954,7 +1940,7 @@
         <div class="row g-2 align-items-end mt-2">
           <!-- Tag Filter -->
           <div class="col-md-2">
-            <label for="orgsTagFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;">
+            <label for="orgsTagFilter" class="form-label filter-bar-field-label mb-1">
               <i class="bi bi-tags me-1"></i>Tag
             </label>
             <select class="form-select form-select-sm" id="orgsTagFilter"
@@ -1965,7 +1951,7 @@
 
           <!-- Has Logo Toggle -->
           <div class="col-md-1">
-            <label for="orgsLogoFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;">
+            <label for="orgsLogoFilter" class="form-label filter-bar-field-label mb-1">
               <i class="bi bi-image me-1"></i>Logo
             </label>
             <select class="form-select form-select-sm" id="orgsLogoFilter"
@@ -1978,7 +1964,7 @@
 
           <!-- Date Range Filter -->
           <div class="col-md-2">
-            <label for="orgsDateFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;">
+            <label for="orgsDateFilter" class="form-label filter-bar-field-label mb-1">
               <i class="bi bi-clock-history me-1"></i>Date Added
             </label>
             <select class="form-select form-select-sm" id="orgsDateFilter"
@@ -2512,7 +2498,7 @@
             <div class="rounded-2 p-3 mb-2" style="background:#f8f9fa;">
               <div class="d-flex align-items-center justify-content-between mb-2">
                 <div class="d-flex align-items-center gap-3">
-                  <span class="fw-semibold text-muted" style="font-size:0.8rem;letter-spacing:.04em;text-transform:uppercase;"><i class="bi bi-funnel me-1"></i>Filter Winners</span>
+                  <span class="fw-semibold text-muted" class="filter-bar-label"><i class="bi bi-funnel me-1"></i>Filter Winners</span>
                   <span id="winnersRowCount" class="table-row-count"></span>
                 </div>
                 <div class="d-flex align-items-center gap-2">
@@ -2531,19 +2517,19 @@
               </div>
               <div class="row g-2 align-items-end">
                 <div class="col-md-2">
-                  <label for="winnerYearFilterSelect" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-calendar3 me-1"></i>Year</label>
+                  <label for="winnerYearFilterSelect" class="form-label filter-bar-field-label mb-1"><i class="bi bi-calendar3 me-1"></i>Year</label>
                   <select class="form-select form-select-sm" id="winnerYearFilterSelect">
                     <option value="">All Years</option>
                   </select>
                 </div>
                 <div class="col-md-3">
-                  <label for="winnerAwardFilterSelect" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-trophy me-1"></i>Award</label>
+                  <label for="winnerAwardFilterSelect" class="form-label filter-bar-field-label mb-1"><i class="bi bi-trophy me-1"></i>Award</label>
                   <select class="form-select form-select-sm" id="winnerAwardFilterSelect">
                     <option value="">All Awards</option>
                   </select>
                 </div>
                 <div class="col-md-2">
-                  <label for="winnerStatusFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-circle-half me-1"></i>Status</label>
+                  <label for="winnerStatusFilter" class="form-label filter-bar-field-label mb-1"><i class="bi bi-circle-half me-1"></i>Status</label>
                   <select class="form-select form-select-sm" id="winnerStatusFilter">
                     <option value="">All Statuses</option>
                     <option value="pending">Pending</option>
@@ -2554,7 +2540,7 @@
                   </select>
                 </div>
                 <div class="col">
-                  <label for="winnerSearchBox" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-search me-1"></i>Search</label>
+                  <label for="winnerSearchBox" class="form-label filter-bar-field-label mb-1"><i class="bi bi-search me-1"></i>Search</label>
                   <input type="text" class="form-control form-control-sm" id="winnerSearchBox" placeholder="Search winners…">
                 </div>
               </div>
@@ -2694,7 +2680,7 @@
               </div>
             </div>
             <div class="col-md-3">
-              <div class="card stats-card" data-stat-filter="entriesStatusFilter:submitted,under_review" title="Filter to pending review">
+              <div class="card stats-card" data-stat-filter="entriesStatusFilter:pending_review" title="Filter to pending review">
                 <div class="card-body">
                   <div class="d-flex align-items-center">
                     <div class="stats-icon bg-warning">
@@ -2744,7 +2730,7 @@
           <div class="rounded-2 p-3 mb-3" style="background:#f8f9fa;border:1px solid #e9ecef;">
             <div class="d-flex align-items-center justify-content-between mb-2">
               <div class="d-flex align-items-center gap-3">
-                <span class="fw-semibold text-muted" style="font-size:0.8rem;letter-spacing:.04em;text-transform:uppercase;"><i class="bi bi-funnel me-1"></i>Filter Entries <span id="entriesFilterCount" class="badge bg-primary ms-1 d-none"></span></span>
+                <span class="fw-semibold text-muted" class="filter-bar-label"><i class="bi bi-funnel me-1"></i>Filter Entries <span id="entriesFilterCount" class="badge bg-primary ms-1 d-none"></span></span>
                 <span id="entriesRowCount" class="table-row-count"></span>
               </div>
               <div class="d-flex align-items-center gap-2">
@@ -2763,32 +2749,32 @@
             </div>
             <div class="row g-2 align-items-end">
               <div class="col-md-2">
-                <label class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-flag me-1"></i>Status</label>
+                <label class="form-label filter-bar-field-label mb-1"><i class="bi bi-flag me-1"></i>Status</label>
                 <select class="form-select form-select-sm" id="entriesStatusFilter" data-on-change="entriesModule.filterEntries">
                   <option value="">All Statuses</option>
                   <option value="draft">Draft</option>
                   <option value="submitted">Submitted</option>
                   <option value="under_review">Under Review</option>
-                  <option value="submitted,under_review">Pending Review</option>
+                  <option value="pending_review">Pending Review</option>
                   <option value="shortlisted">Shortlisted</option>
                   <option value="winner">Winner</option>
                   <option value="rejected">Rejected</option>
                 </select>
               </div>
               <div class="col-md-3">
-                <label class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-trophy me-1"></i>Award Category</label>
+                <label class="form-label filter-bar-field-label mb-1"><i class="bi bi-trophy me-1"></i>Award Category</label>
                 <select class="form-select form-select-sm" id="entriesAwardFilter" data-on-change="entriesModule.filterEntries">
                   <option value="">All Awards</option>
                 </select>
               </div>
               <div class="col-md-1">
-                <label class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-calendar3 me-1"></i>Year</label>
+                <label class="form-label filter-bar-field-label mb-1"><i class="bi bi-calendar3 me-1"></i>Year</label>
                 <select class="form-select form-select-sm" id="entriesYearFilter" data-on-change="entriesModule.filterEntries">
                   <option value="">All Years</option>
                 </select>
               </div>
               <div class="col-md-2">
-                <label class="form-label fw-semibold mb-1" style="font-size:0.8rem;" title="Self-Nominated: the company applied directly. Standard: nominated by a sponsor or organiser."><i class="bi bi-person me-1"></i>Entry Type</label>
+                <label class="form-label filter-bar-field-label mb-1" title="Self-Nominated: the company applied directly. Standard: nominated by a sponsor or organiser."><i class="bi bi-person me-1"></i>Entry Type</label>
                 <select class="form-select form-select-sm" id="entriesSelfNomFilter" data-on-change="entriesModule.filterEntries">
                   <option value="">All Entries</option>
                   <option value="self_nom">Self-Nominated</option>
@@ -2796,7 +2782,7 @@
                 </select>
               </div>
               <div class="col">
-                <label class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-search me-1"></i>Search</label>
+                <label class="form-label filter-bar-field-label mb-1"><i class="bi bi-search me-1"></i>Search</label>
                 <input type="text" class="form-control form-control-sm" id="entriesSearchInput" placeholder="Search entries…">
               </div>
             </div>

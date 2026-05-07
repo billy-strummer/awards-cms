@@ -341,8 +341,8 @@ describe('Entries Module - Filter & Search Logic', () => {
     expect(entriesModule.filteredEntries[0].id).toBe('entry-1');
   });
 
-  test('applyFilters supports comma-separated status filter', () => {
-    entriesModule.currentFilters.status = 'submitted,under_review';
+  test('applyFilters supports pending_review status filter sentinel', () => {
+    entriesModule.currentFilters.status = 'pending_review';
     entriesModule.applyFilters();
     expect(entriesModule.filteredEntries.length).toBe(2);
     const ids = entriesModule.filteredEntries.map((e) => e.id);
@@ -406,7 +406,7 @@ describe('Entries Module - Filter & Search Logic', () => {
   });
 
   test('applyFilters combines multiple filters', () => {
-    entriesModule.currentFilters.status = 'submitted,under_review';
+    entriesModule.currentFilters.status = 'pending_review';
     entriesModule.currentFilters.year = '2026';
     entriesModule.applyFilters();
     expect(entriesModule.filteredEntries.length).toBe(2);
@@ -1352,7 +1352,7 @@ describe('Entries Module - _buildServerFilters', () => {
   });
 
   test('comma-separated status maps to in operator', () => {
-    entriesModule.currentFilters.status = 'submitted,under_review';
+    entriesModule.currentFilters.status = 'pending_review';
     const filters = entriesModule._buildServerFilters();
     expect(filters.status).toEqual({ op: 'in', value: ['submitted', 'under_review'] });
   });
@@ -1411,7 +1411,7 @@ describe('Entries Module - applyFilters (client-side)', () => {
   });
 
   test('filters by comma-separated status', () => {
-    entriesModule.currentFilters.status = 'submitted,under_review';
+    entriesModule.currentFilters.status = 'pending_review';
     entriesModule.applyFilters();
     entriesModule.filteredEntries.forEach((e) => {
       expect(['submitted', 'under_review']).toContain(e.status);

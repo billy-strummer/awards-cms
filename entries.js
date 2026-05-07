@@ -170,12 +170,12 @@ const entriesModule = {
   _buildServerFilters() {
     const filters = {};
     if (this.currentFilters.status) {
-      // Status can be comma-separated (e.g., "submitted,under_review")
-      const statuses = this.currentFilters.status.split(',');
-      if (statuses.length === 1) {
-        filters.status = statuses[0];
+      const raw =
+        this.currentFilters.status === 'pending_review' ? ['submitted', 'under_review'] : [this.currentFilters.status];
+      if (raw.length === 1) {
+        filters.status = raw[0];
       } else {
-        filters.status = { op: 'in', value: statuses };
+        filters.status = { op: 'in', value: raw };
       }
     }
     if (this.currentFilters.award) filters.award_id = this.currentFilters.award;
@@ -573,9 +573,11 @@ const entriesModule = {
 
     // Client-side fallback (used by tests and when data is pre-loaded)
     this.filteredEntries = this.allEntries.filter((entry) => {
-      // Status filter (supports comma-separated values, e.g. "submitted,under_review")
       if (this.currentFilters.status) {
-        const statuses = this.currentFilters.status.split(',');
+        const statuses =
+          this.currentFilters.status === 'pending_review'
+            ? ['submitted', 'under_review']
+            : [this.currentFilters.status];
         if (!statuses.includes(entry.status)) return false;
       }
 

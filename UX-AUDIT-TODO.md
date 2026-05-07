@@ -2,7 +2,8 @@
 
 **CLAUDE: Read this file at the start of every session. Work through items in priority order (Critical → High → Medium → Low). Mark each item `[x]` immediately after it is fully implemented, tested, and committed. Never mark an item complete unless the change is in a committed and pushed git commit.**
 
-Last audit: 2026-05-07  
+Last audit: 2026-05-07 (original items — all complete)
+Second audit: 2026-05-07 (new deep audit — see V2 section below)
 Branch: `claude/bta-location-restructure-JS5hX`
 
 ---
@@ -350,16 +351,361 @@ Branch: `claude/bta-location-restructure-JS5hX`
 
 ---
 
-## COMPLETED
+## COMPLETED (V1 Audit — all items done)
 
-*(Items move here once committed and pushed)*
+*(Original V1 items C1–C8, H1–H15, M1–M20, L1–L10 are all committed and pushed)*
 
 ---
 
-## Notes for Claude
+## ═══════════════════════════════════════════════
+## V2 AUDIT — Deep UX Audit (2026-05-07)
+## ═══════════════════════════════════════════════
 
-- Always run `npm test` and `npm run build` after implementing any item before marking `[x]`
-- Commit each logical group together (e.g. all filter chips = one commit)
-- Keep the Vercel 12-function limit in mind — no new `/api/` files
-- Update this file's checkboxes in the same commit as the implementation
-- Reference format: when committing, include the item code (e.g. "Implements H1, H2") in the commit message
+> **CLAUDE: If any V2 items are still `[ ]`, start here before doing anything else.**
+> Items are ordered strictly: V2-C → V2-H → V2-M → V2-L.
+> Each item has a precise description of the file(s) and exact change needed.
+
+---
+
+## V2-CRITICAL — Broken right now, must fix first
+
+### V2-C1 — Google Fonts blocked by CSP (Inter never loads)
+- **Files:** `index.html`
+- **Root cause:** `modern-theme.css` imports Inter via `@import url('https://fonts.googleapis.com/css2?family=Inter...')`. The `<meta http-equiv="Content-Security-Policy">` in `index.html` has `font-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com` — no `fonts.googleapis.com` or `fonts.gstatic.com`. Inter is silently blocked; the app falls back to system fonts.
+- **Fix:** Add `https://fonts.googleapis.com https://fonts.gstatic.com` to the `font-src` directive in the CSP meta tag in `index.html`. Also add `https://fonts.googleapis.com` to `style-src` (Google Fonts injects a `<link>` stylesheet). The exact CSP attribute is on line 6 of `index.html`.
+- **Done when:** DevTools Network tab shows Inter font files loaded (not blocked), and the app renders in Inter.
+- [x] Implemented
+
+### V2-C2 — Inline `<script>` may be blocked by CSP
+- **Files:** `index.html`, `dashboard.js` (or `app.js`)
+- **Root cause:** Lines 369–381 of `index.html` contain an inline `<script>` block for the Getting Started banner (reads/writes `localStorage`, wires dismiss click). The CSP `script-src` has no `'unsafe-inline'` — this may be blocked in strict browsers. Even if it runs, it is an anomaly (everything else is in module JS).
+- **Fix:** Remove the inline `<script>` block entirely from `index.html`. In `dashboard.js`, add equivalent logic inside the `loadDashboard()` or `init()` function:
+  ```javascript
+  // Getting Started banner
+  if (!localStorage.getItem('btaGettingStartedDismissed')) {
+    document.getElementById('gettingStartedBanner')?.classList.remove('d-none');
+  }
+  document.getElementById('dismissGettingStarted')?.addEventListener('click', () => {
+    document.getElementById('gettingStartedBanner')?.classList.add('d-none');
+    localStorage.setItem('btaGettingStartedDismissed', '1');
+  });
+  ```
+- **Done when:** The Getting Started banner still shows/dismisses correctly, but there is no `<script>` tag inside `index.html`'s dashboard tab pane.
+- [x] Implemented
+
+### V2-C3 — Universal `* { transition }` performance bomb
+- **Files:** `modern-theme.css`
+- **Root cause:** Line 55–57 of `modern-theme.css`:
+  ```css
+  * {
+    transition: var(--transition-base);
+  }
+  ```
+  This applies `transition: all 0.2s ease` to every element — `<html>`, `<body>`, `<table>`, SVG paths, every `<div>`, every `<span>`. Causes significant jank during tab switches and data loads, makes dark mode toggle animate the entire page background, and forces the browser to track property changes on all elements continuously.
+- **Fix:** Delete those 3 lines entirely. Add targeted transitions only on interactive components that need them. Most are already defined on individual selectors (`.btn`, `.form-control`, `.card`, `.nav-link`, `.sidebar-nav-link`, etc.).
+- **Done when:** No `* { transition }` rule exists in any CSS file. Verify dark mode toggle is still smooth (it has its own `body { transition: background-color }` rule in `styles.css`).
+- [x] Implemented
+
+### V2-C4 — Infinite pulse animation on stat values
+- **Files:** `modern-theme.css`
+- **Root cause:** Lines 524–527 of `modern-theme.css`:
+  ```css
+  .stat-value {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  ```
+  Every KPI number on the dashboard pulsates for ever. Users interpret this as "still loading" or "there is a problem". It adds no informational value.
+- **Fix:** Delete those 4 lines. If a load-complete animation is desired, use a one-shot `fadeIn` class applied programmatically after data loads (already defined as `.fade-in` in `styles.css`).
+- **Done when:** Dashboard KPI numbers are static after loading — no breathing/pulsing.
+- [x] Implemented
+
+---
+
+## V2-HIGH — Dramatic improvement available
+
+### V2-H1 — Unified primary colour (blue vs purple split)
+- **Files:** `styles.css`, `modern-theme.css`
+- **Root cause:** Two competing primary colours are in use simultaneously:
+  - `styles.css` defines `--primary-color: #0d6efd` (Bootstrap blue)
+  - `modern-theme.css` defines `--bs-primary: #6366f1` (indigo)
+  - Stat card values, row count badges, sidebar badges → Bootstrap blue
+  - Navbar gradient, primary buttons, active tab underline → indigo/purple
+  - This makes the app look like two different design systems were glued together
+- **Fix:** Pick indigo (`#6366f1`) as the single primary. In `styles.css`:
+  1. Change `--primary-color: #0d6efd` → `--primary-color: #6366f1`
+  2. Change `--primary-color` hex fallbacks anywhere they appear as string literals (e.g. `rgba(13, 110, 253, ...)` → `rgba(99, 102, 241, ...)`)
+  3. Verify `.stat-value { color: var(--primary-color) }` now renders indigo
+  4. Verify `box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15)` on focus is updated to match
+- **Done when:** All interactive highlights, borders, badges, and the navbar use the same indigo colour family.
+- [x] Implemented
+
+### V2-H2 — Standardise filter bar across all tabs
+- **Files:** `index.html`, `styles.css`
+- **Root cause:** Awards, Winners, Entries, and Payments each render their filter bar with a different wrapper class/inline style. There is no canonical `.filter-bar` component.
+  - Awards: `.filters-section` (class defined in styles.css) with position:sticky inline style
+  - Winners: `<div class="rounded-2 p-3 mb-2" style="background:#f8f9fa;">`
+  - Entries: `<div class="rounded-2 p-3 mb-3" style="background:#f8f9fa;border:1px solid #e9ecef;">`
+  - Payments invoices: `.content-card mb-4`
+- **Fix:**
+  1. In `styles.css`, ensure `.filters-section` has the correct base styles (white bg, border, border-radius, padding, margin-bottom). Already defined — just verify.
+  2. In `index.html`, update Winners and Entries filter wrappers from the inline-style `<div>` to use `class="filters-section"`. Remove inline `style=""` attributes.
+  3. The Payments filter is inside `.content-card` which is fine — it can stay as `.content-card` since it is a content-area filter, not a sticky bar.
+  4. If any of the Winners/Entries filter bars need sticky positioning, add the sticky inline style (or a `.filter-bar-sticky` class) consistently.
+- **Done when:** Awards, Winners, and Entries filter bars visually match each other.
+- [ ] Implemented
+
+### V2-H3 — Condense Awards filter bar (too many controls)
+- **Files:** `index.html`, `awards.js`
+- **Root cause:** The Awards filter row has 7 controls: Year (col-md-1), Status (col-md-2), Sector (col-md-2), Country (col-md-1), Region (col-md-2), County/City/Borough (col-md-2), and Search. At 1280px these are each ≈155px wide. The Country, Region, and Area controls are a cascade — you can only use Area if you've set Region, and Region only if you've set Country. They are used rarely compared to Year/Status/Sector.
+- **Fix:** Collapse Country, Region, and Area into a single "Location" filter. Options:
+  - Replace the three separate selects with a single `<select id="awardsLocationFilter">` that progressively reveals sub-options (simplest approach).
+  - Or: put Country/Region/Area inside an "Advanced Filters" collapse section (a `<a data-bs-toggle="collapse">More filters</a>`) that shows/hides the extra three controls.
+  - The collapse approach is lower risk. Add a "More filters ▾" link that toggles a second row containing Country, Region, and Area. The main row stays: Year, Status, Sector, Search.
+- **Done when:** The primary Awards filter row has 4 controls (Year, Status, Sector, Search). Location filters are accessible behind "More filters" toggle.
+- [ ] Implemented
+
+### V2-H4 — Hide Test Mode button in production
+- **Files:** `app.js` (or `auth.js`)
+- **Root cause:** `<div class="dropdown" id="testModeDropdown">` is always rendered in the navbar. It is shown to all admin users including in production, giving the impression of a debugging/broken state.
+- **Fix:** In `app.js` after auth initialisation (or in the `showDashboard` function), add:
+  ```javascript
+  const isDevEnv = window.location.hostname === 'localhost' ||
+                   window.location.hostname === '127.0.0.1' ||
+                   window.location.search.includes('testMode=1');
+  document.getElementById('testModeDropdown')?.classList.toggle('d-none', !isDevEnv);
+  ```
+- **Done when:** On `localhost`, Test Mode is visible. On any other hostname, it is hidden.
+- [x] Implemented
+
+### V2-H5 — Unify stats cards across tabs
+- **Files:** `index.html`, `styles.css`
+- **Root cause:** Three visual patterns for "stats card" exist:
+  1. Dashboard: `.stat-card` — large card, giant icon top-right (opacity 0.15), 2.25rem value
+  2. Entries/CRM: `.card.stats-card` — compact, coloured icon box left, 1.5rem value, no click chevron
+  3. Payments: `.content-card text-center` — icon above number, no left decoration
+- **Fix:** Keep `.stat-card` as the canonical pattern. Convert Entries stats cards to use `.stat-card` (possibly a `.stat-card-sm` variant for compact height). Update their HTML structure to match. The CSS for `.stat-card` already exists and is well-styled.
+- **Done when:** Entries tab stats cards visually match the Dashboard stat cards (same border-radius, shadow, icon treatment, value size).
+- [ ] Implemented
+
+### V2-H6 — Fix `#mainTabContent` premature closure (structural)
+- **Files:** `index.html`
+- **Root cause:** `#mainTabContent` closes at line 2494, after only 3 of 11 tab panes (dashboard, awards, organisations). The remaining 8 panes (winners, entries, media-gallery, events, reports, marketing, payments, crm, settings, bitcoin) are outside it. The CSS fix `.tab-pane:not(.active){display:none}` compensates but is fragile.
+- **Fix:** Move the `</div>` that closes `#mainTabContent` (currently at line 2494) to after the closing `</div>` of the last tab pane (bitcoin, currently around line 6754). This requires carefully finding the right closing div. Use the following procedure:
+  1. Find `<!-- /tab-pane#organisations -->` comment (around line 2490) — the `</div></div>` immediately before it closes organisations tab + a container.
+  2. Find the line that closes `#mainTabContent` — it should be a lone `</div>` at depth 3→2 around line 2494.
+  3. Remove that `</div>`.
+  4. Add `</div><!-- /#mainTabContent -->` immediately after the closing `</div>` of the bitcoin tab pane (find `<!-- /tab-pane#bitcoin -->` or similar).
+  5. Verify the HTML structure: `#appMain > #mainTabContent > [all 11 .tab-pane divs]`.
+  6. The CSS workaround `.tab-pane:not(.active){display:none}` can be **removed** once the structure is correct (Bootstrap handles it natively).
+- **Done when:** All 11 tab panes are direct children of `#mainTabContent`. The CSS workaround is removed. Tab switching still works correctly.
+- [ ] Implemented
+
+### V2-H7 — Payments actions: declutter the filter row
+- **Files:** `index.html`
+- **Root cause:** The Payments → Invoices filter row last column (`col-md-2`) contains 4 actions: Create Invoice (btn-primary), Export dropdown, Reminders (btn-outline-warning), and Auto-Reminders (btn-outline-info). At <1400px this wraps or overflows.
+- **Fix:**
+  1. Move "Create Invoice" primary button to the table header area (alongside the table title "Invoices List"), mirroring how Awards places "Add Award" next to the table title.
+  2. Merge Reminders + Auto-Reminders into the Export dropdown (or a new "Actions" dropdown) so the filter row's action area has only: Export dropdown + Create Invoice button.
+- **Done when:** The Payments filter row has at most 2 action buttons. Create Invoice appears near the table heading.
+- [ ] Implemented
+
+### V2-H8 — Hide Accounting Integration subtab until implemented
+- **Files:** `index.html`
+- **Root cause:** The Payments tab has an "Accounting Integration" nav-pill tab. If its content panel is a stub/placeholder, showing the tab creates a false expectation of a working feature.
+- **Fix:** Check the content of `#accounting-content` in `index.html`. If it is empty or contains only placeholder text:
+  1. Add `class="d-none"` to the `<li class="nav-item">` wrapping the Accounting Integration button.
+  2. Or, if it has partial content: add a `<div class="alert alert-info"><i class="bi bi-info-circle me-2"></i>Coming soon — connect Xero, QuickBooks, or Sage.</div>` and keep the tab visible.
+- **Done when:** Users cannot click into an empty Accounting Integration panel, or the panel shows a clear "coming soon" message.
+- [ ] Implemented
+
+---
+
+## V2-MEDIUM — Visible polish gaps
+
+### V2-M1 — Dark mode: stat cards stay white (modern-theme.css wins over dark mode)
+- **Files:** `styles.css`
+- **Root cause:** `modern-theme.css` (loaded second) gives `.stat-card` the rule `background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%)`. The dark mode override in `styles.css` sets `background-color: #2d2d2d`. Because `modern-theme.css` loads after `styles.css`, the gradient wins.
+- **Fix:** In `styles.css`, update the dark mode stat-card override to use `background` (not `background-color`) to override the gradient:
+  ```css
+  body.dark-mode .stat-card {
+    background: #2d2d2d !important;
+    border-color: #404040;
+    color: #fff;
+  }
+  ```
+  Similarly audit other elements that `modern-theme.css` styles with a gradient `background` shorthand and ensure dark mode overrides also use the `background` shorthand.
+- **Done when:** In dark mode, stat cards are dark (#2d2d2d), not white/light.
+- [x] Implemented
+
+### V2-M2 — Award Categories Reference: extracted to a data constant
+- **Files:** `index.html`, `awards.js`
+- **Root cause:** Lines 922–1480 of `index.html` are ~500 lines of hardcoded HTML listing 56 award sub-categories in a static accordion. New award types cannot be reflected here without manually editing the HTML.
+- **Fix:** Extract the category data to a `AWARD_CATEGORIES` constant in `awards.js`. Write a `renderCategoryReference()` function that generates the accordion HTML from the constant and injects it into a placeholder `<div id="awardCatRefBody">`. This keeps the data in one place and makes the reference updatable without touching HTML.
+- **Note:** This is a medium-effort refactor. Prioritise after the Critical and High items.
+- **Done when:** `index.html` has no hardcoded category list. The accordion is rendered dynamically from `awards.js`.
+- [ ] Implemented
+
+### V2-M3 — Entries status filter: remove compound value
+- **Files:** `index.html`, `entries.js`
+- **Root cause:** `<option value="submitted,under_review">Pending Review</option>` exposes implementation detail (comma-separated DB values) in the UI HTML.
+- **Fix:**
+  1. Change the option to `<option value="pending_review">Pending Review</option>`.
+  2. In `entries.js` `filterEntries()` / `_buildServerFilters()`, translate `"pending_review"` → `["submitted", "under_review"]` for the DB query.
+- **Done when:** The DOM option value is `"pending_review"`, not a comma-separated string. Filtering by "Pending Review" still returns submitted + under_review entries.
+- [x] Implemented
+
+### V2-M4 — Eliminate inline style proliferation (phase 1: filter labels)
+- **Files:** `index.html`, `styles.css`
+- **Root cause:** This inline style appears verbatim 4+ times across Awards, Winners, Entries filter bars:
+  `style="font-size:0.8rem;letter-spacing:.04em;text-transform:uppercase;"`
+  Similar repetition for filter label text: `style="font-size:0.8rem;"` on `<label>` elements.
+- **Fix:**
+  1. Add to `styles.css`:
+     ```css
+     .filter-bar-label {
+       font-size: 0.8rem;
+       letter-spacing: 0.04em;
+       text-transform: uppercase;
+     }
+     .filter-bar-field-label {
+       font-size: 0.8rem;
+     }
+     ```
+  2. In `index.html`, replace all occurrences of the matching inline styles with the new classes.
+- **Done when:** No `style="font-size:0.8rem"` or `style="font-size:0.8rem;letter-spacing..."` inline styles remain in filter bar sections.
+- [x] Implemented
+
+### V2-M5 — Document title updates on tab navigation
+- **Files:** `app.js`
+- **Root cause:** `document.title` is always "British Trade Awards Admin" regardless of active tab. Users with many browser tabs can't distinguish which section is open.
+- **Fix:** In the `shown.bs.tab` event handler (wherever tab switches are handled in `app.js`), add:
+  ```javascript
+  const tabLabels = {
+    dashboard: 'Dashboard', awards: 'Awards', organisations: 'Organisations',
+    entries: 'Entries', winners: 'Winners', events: 'Events',
+    payments: 'Payments', crm: 'CRM', reports: 'Reports',
+    marketing: 'Marketing', settings: 'Settings'
+  };
+  document.title = `${tabLabels[tabId] || tabId} · BTA Admin`;
+  ```
+- **Done when:** Switching to the Awards tab updates browser tab title to "Awards · BTA Admin".
+- [x] Implemented
+
+### V2-M6 — Connection status: hide when connected
+- **Files:** `styles.css` (or `app.js`)
+- **Root cause:** The "Connected" status pill is always visible in the navbar, taking up space. It is only useful when showing a disconnection warning.
+- **Fix:** In `app.js`, wherever connection status is updated: hide the `#connectionStatus` element when status is "connected", show it (with warning colour) only when disconnected. Or: use CSS `opacity: 0` (not `display:none`) so it still takes up space but is invisible — this prevents navbar layout shift on reconnect.
+  ```javascript
+  // When connected:
+  connectionEl.style.opacity = '0';
+  connectionEl.style.pointerEvents = 'none';
+  // When disconnected:
+  connectionEl.style.opacity = '1';
+  connectionEl.style.pointerEvents = '';
+  connectionEl.classList.remove('connected');
+  connectionEl.classList.add('disconnected');
+  ```
+- **Done when:** Navbar shows no "Connected" pill during normal operation. A disconnection indicator appears when the connection drops.
+- [x] Implemented
+
+### V2-M7 — Getting Started banner: check for real data before showing
+- **Files:** `dashboard.js`
+- **Root cause:** The Getting Started banner shows based solely on `localStorage`. Admins who clear storage, or open the app in a new browser, see the onboarding checklist even when the system is fully set up with hundreds of records.
+- **Fix:** In the banner initialisation logic (after V2-C2 is done and it's in `dashboard.js`), add a check:
+  ```javascript
+  const dismissed = localStorage.getItem('btaGettingStartedDismissed');
+  const hasData = parseInt(document.getElementById('totalAwards')?.textContent || '0') > 0
+               || parseInt(document.getElementById('totalOrgs')?.textContent || '0') > 0;
+  if (!dismissed && !hasData) {
+    document.getElementById('gettingStartedBanner')?.classList.remove('d-none');
+  }
+  ```
+  Call this after KPI stats load, not before.
+- **Done when:** A system with existing awards/orgs does not show the Getting Started banner, even in a fresh browser session.
+- [ ] Implemented
+
+### V2-M8 — Remove imperceptible table row hover scale
+- **Files:** `styles.css` or `modern-theme.css`
+- **Root cause:**
+  ```css
+  .table-hover tbody tr:hover {
+    transform: scale(1.005);  /* in modern-theme.css */
+  }
+  /* also in styles.css: */
+  .table tbody tr:hover {
+    transform: scale(1.001);
+  }
+  ```
+  A 0.1–0.5% scale on a full-width table row is imperceptible to users but forces GPU compositing on every row hover. Remove both.
+- **Fix:** Delete `transform: scale(1.001)` from `.table tbody tr:hover` in `styles.css`. Delete `transform: scale(1.005)` from `.table-hover tbody tr:hover` in `modern-theme.css`. The hover highlight background colour is sufficient.
+- **Done when:** Table rows do not scale on hover. A simple background colour change remains.
+- [x] Implemented
+
+---
+
+## V2-LOW — Small but worth fixing
+
+### V2-L1 — Accessibility: `aria-hidden` on decorative filter label icons
+- **Files:** `index.html`
+- **Root cause:** All filter `<label>` elements contain `<i class="bi bi-calendar3 me-1"></i>` (and similar) with no `aria-hidden="true"`. Screen readers announce the icon name before every label: "calendar icon Year".
+- **Fix:** Add `aria-hidden="true"` to every `<i>` icon that is inside a `<label>` element across all filter bars. Search for `<label` in `index.html` and audit each one.
+- **Done when:** No decorative icons inside `<label>` elements lack `aria-hidden="true"`.
+- [ ] Implemented
+
+### V2-L2 — Accessibility: sortable column headers need `aria-label`
+- **Files:** `index.html`
+- **Root cause:** Sort icon `<i class="bi bi-arrow-down-up">` inside table headers has no accessible text. Keyboard users cannot discover sortable columns.
+- **Fix:** On each sortable `<th>`, add `aria-sort="none"` (changing to `"ascending"` / `"descending"` as sorted). On the sort icon `<i>`, add `aria-hidden="true"`. Add a visually-hidden `<span class="visually-hidden"> (click to sort)</span>` inside each sortable `<th>`.
+- **Done when:** Sortable columns in Awards, Winners, Entries, Organisations tables have `aria-sort` attribute and screen-reader-readable sort affordance.
+- [ ] Implemented
+
+### V2-L3 — Inconsistent shadow tokens (two systems)
+- **Files:** `styles.css`, `modern-theme.css`
+- **Root cause:** `styles.css` defines `--shadow-sm/md/lg/xl` used by components directly. `modern-theme.css` defines `--bs-box-shadow-sm/md/lg` (Bootstrap shadow overrides). Components using `var(--shadow-sm)` get one shadow; components using `var(--bs-box-shadow)` or Bootstrap utility classes get a different shadow.
+- **Fix:** In `modern-theme.css`, add:
+  ```css
+  --shadow-sm: var(--bs-box-shadow-sm);
+  --shadow-md: var(--bs-box-shadow);
+  --shadow-lg: var(--bs-box-shadow-lg);
+  ```
+  This makes the custom tokens resolve to the modern-theme values, unifying both systems without changing component markup.
+- **Done when:** All card/table shadows visually match each other regardless of which token the component uses.
+- [x] Implemented
+
+### V2-L4 — Sidebar group label taxonomy review
+- **Files:** `index.html`
+- **Root cause:** Current grouping:
+  - "Programme" = Awards, Entries, Winners, Media Gallery
+  - "People" = Organisations, CRM
+  - "Commercial" = Events, Payments
+  - "Intelligence" = Reports, Marketing ← Marketing ≠ Intelligence
+- **Fix:** Move Marketing to "Commercial" (Events, Payments, Marketing). Rename "Intelligence" to "Analytics" or remove the group and put Reports under "System". This better reflects what each group does.
+- **Done when:** Sidebar group labels accurately describe their contents. Marketing is not grouped under Intelligence.
+- [ ] Implemented
+
+### V2-L5 — Empty Dashboard stats row (second row has 2 of 4 columns)
+- **Files:** `index.html`
+- **Root cause:** The "Events & Upcoming Stats" row defines 4 `col-md-3` slots but only 2 are visibly populated (Total Events, Upcoming Events). The other 2 appear to be absent or empty, leaving a visual gap.
+- **Fix:** Either:
+  - Add 2 more stat cards to the row (e.g. "Total Attendees" across all events, "Overdue Invoices" count with link to payments), OR
+  - Change the existing 2 cards from `col-md-3` to `col-md-4` (or `col-md-6`) so they fill the row proportionally.
+- **Done when:** The Events stats row has no empty columns — either all slots are used or cards are proportioned to fill the row.
+- [ ] Implemented
+
+---
+
+## Notes for Claude (V2)
+
+- **Implementation order is strict**: V2-C items first, then V2-H, then V2-M, then V2-L.
+- **V2-H6 (mainTabContent fix) is complex** — read the full description carefully and use a script to verify div depths before and after the change.
+- **V2-C3 and V2-C4 are in `modern-theme.css`** — not `styles.css`. Don't confuse them.
+- **V2-H1 colour change** — after changing `--primary-color`, search for all hardcoded `rgba(13, 110, 253` occurrences in `styles.css` and update to `rgba(99, 102, 241`.
+- Always run `npm test` and `npm run build` after each commit. All 65 suites must pass.
+- Commit message format: "Implements V2-C1, V2-C2" etc.
+- Vercel 12-function limit still applies — no new `/api/` files.
+
+---
+
+## COMPLETED (V1 Audit — all items done)
+
+*(Original V1 items C1–C8, H1–H15, M1–M20, L1–L10 are all committed and pushed)*

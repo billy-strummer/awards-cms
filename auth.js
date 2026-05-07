@@ -76,10 +76,14 @@ const authModule = {
 
     if (connected) {
       statusEl.className = 'connection-status connected';
+      statusEl.style.opacity = '0';
+      statusEl.style.pointerEvents = 'none';
       if (icon) icon.className = 'bi bi-wifi status-icon';
       if (text) text.textContent = 'Connected';
     } else {
       statusEl.className = 'connection-status disconnected';
+      statusEl.style.opacity = '1';
+      statusEl.style.pointerEvents = '';
       if (icon) icon.className = 'bi bi-wifi-off status-icon';
       if (text) text.textContent = 'Disconnected';
     }
@@ -331,6 +335,13 @@ const authModule = {
     this.hideSplash();
     document.getElementById('loginPage').classList.add('d-none');
     document.getElementById('dashboardPage').classList.remove('d-none');
+
+    // Hide Test Mode button in production (only show on localhost or ?testMode=1)
+    const isDevEnv =
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1' ||
+      new URLSearchParams(window.location.search).has('testMode');
+    document.getElementById('testModeDropdown')?.classList.toggle('d-none', !isDevEnv);
 
     // Set user email in navbar
     if (STATE.currentUser) {

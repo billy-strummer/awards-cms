@@ -6,6 +6,18 @@ const dashboardModule = {
   /**
    * Load all data for dashboard
    */
+  _initGettingStartedBanner(awardsCount = 0, orgsCount = 0) {
+    const dismissed = localStorage.getItem('btaGettingStartedDismissed');
+    const hasData = awardsCount > 0 || orgsCount > 0;
+    if (!dismissed && !hasData) {
+      document.getElementById('gettingStartedBanner')?.classList.remove('d-none');
+    }
+    document.getElementById('dismissGettingStarted')?.addEventListener('click', () => {
+      document.getElementById('gettingStartedBanner')?.classList.add('d-none');
+      localStorage.setItem('btaGettingStartedDismissed', '1');
+    });
+  },
+
   async loadAllData() {
     try {
       utils.showLoading();
@@ -140,6 +152,8 @@ const dashboardModule = {
     if (totalOrgsEl) totalOrgsEl.textContent = totalOrgs;
     const totalWinnersEl = document.getElementById('totalWinners');
     if (totalWinnersEl) totalWinnersEl.textContent = totalWinners;
+
+    this._initGettingStartedBanner(totalAwards, totalOrgs);
 
     // Update reports tab stats
     const reportsTotalEl = document.getElementById('reportsTotal');

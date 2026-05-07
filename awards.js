@@ -109,6 +109,7 @@ const awardsModule = {
             .map((s) => `<option value="${utils.escapeHtml(s)}">${utils.escapeHtml(utils.toTitleCase(s))}</option>`)
             .join('');
         if (current) sectorSelect.value = current;
+        utils.makeSearchableSelect('awardsSectorFilterSelect');
       }
     } catch (e) {
       console.warn('Could not load sector filter from DB:', e.message);
@@ -3113,3 +3114,297 @@ const awardsModule = {
 ModuleRegistry.register('awardsModule', awardsModule);
 
 export { awardsModule };
+
+/* ---------- Award Categories Reference Data ---------- */
+const AWARD_CATEGORIES = [
+  {
+    title: 'Standard Size Area',
+    icon: 'building',
+    color: 'primary',
+    categories: [
+      {
+        id: 'catS1',
+        name: 'BUILDING & CONSTRUCTION',
+        icon: 'bricks',
+        color: 'warning',
+        items: [
+          'Brickwork & Masonry Company',
+          'Drainage Company',
+          'Extension Company',
+          'General Building Company',
+          'Groundworks & Foundations Company',
+          'Guttering Company',
+          'Loft Conversion Company',
+          'Maintenance Services',
+          'New Build Company',
+          'Roofing Company',
+          'Structural Engineers',
+          'Structural Steelworks',
+        ],
+      },
+      {
+        id: 'catS2',
+        name: 'MECHANICAL, ELECTRICAL & PLUMBING',
+        icon: 'lightning-charge',
+        color: 'danger',
+        items: [
+          'Air-Conditioning & Ventilation Company',
+          'Electrical Company',
+          'Heating Company',
+          'Plumbing Company',
+          'Underfloor Heating Company',
+        ],
+      },
+      {
+        id: 'catS3',
+        name: 'CARPENTRY & JOINERY',
+        icon: 'hammer',
+        color: 'success',
+        items: [
+          'Cabinet Maker',
+          'Carpentry Company',
+          'Joinery Company',
+          'Staircase Specialist',
+          'Timber Windows Installer',
+        ],
+      },
+      {
+        id: 'catS4',
+        name: 'FIT-OUT & FINISHES',
+        icon: 'house-heart',
+        color: 'info',
+        items: [
+          'Bathroom Installer',
+          'Carpet Fitters',
+          'Curtains & Blinds Installer',
+          'Drylining Company',
+          'Flooring Installer',
+          'Home Office Installer',
+          'Interior Refurbishment Company',
+          'Kitchen Installer',
+          'Painting & Decorating Company',
+          'Plastering Company',
+          'Screeding Company',
+          'Tiling Installer',
+        ],
+      },
+      {
+        id: 'catS5',
+        name: 'OUTDOOR & LANDSCAPING',
+        icon: 'tree',
+        color: 'success',
+        items: [
+          'Decking Company',
+          'Driveway & Paving Company',
+          'Fencing Installer',
+          'Gardening Services',
+          'Garden Outbuilding Company',
+          'Landscaping & Garden Design Company',
+          'Outdoor Lighting & Electrical Company',
+          'Tree Surgery Services',
+        ],
+      },
+      {
+        id: 'catS6',
+        name: 'TECH & GREEN ENERGY',
+        icon: 'ev-front',
+        color: 'primary',
+        items: [
+          'EV Charger Installer',
+          'Insulation & Energy Efficiency Company',
+          'PV Installer',
+          'Renewable Energy Specialist',
+          'Security System Installer',
+          'Smart Home & Automation Company',
+        ],
+      },
+      {
+        id: 'catS7',
+        name: 'SPECIALIST TRADES',
+        icon: 'tools',
+        color: 'secondary',
+        items: [
+          'Asbestos Removal Specialist',
+          'Locksmith',
+          'Pest Control Company',
+          'Rendering Company',
+          'Scaffolding Company',
+          'Shop Fitting Company',
+          'Swimming Pool & Hot Tub Company',
+          'Window & Door Installer',
+        ],
+      },
+    ],
+  },
+  {
+    title: 'Small Area',
+    icon: 'house-door',
+    color: 'success',
+    categories: [
+      {
+        id: 'catT1',
+        name: 'BUILDING & CONSTRUCTION',
+        icon: 'bricks',
+        color: 'warning',
+        items: [
+          'Brickwork & Masonry Company',
+          'Drainage Company',
+          'Extension Company',
+          'General Building Company',
+          'Groundworks & Foundations Company',
+          'Guttering Company',
+          'Loft Conversion Company',
+          'Maintenance Services',
+          'New Build Company',
+          'Roofing Company',
+        ],
+      },
+      {
+        id: 'catT2',
+        name: 'MECHANICAL, ELECTRICAL & PLUMBING',
+        icon: 'lightning-charge',
+        color: 'danger',
+        items: ['Air-Conditioning & Ventilation Company', 'Electrical Company', 'Plumbing & Heating Company'],
+      },
+      {
+        id: 'catT3',
+        name: 'CARPENTRY & JOINERY',
+        icon: 'hammer',
+        color: 'success',
+        items: ['Carpentry & Joinery Company', 'Timber Windows Installer'],
+      },
+      {
+        id: 'catT4',
+        name: 'FIT-OUT & FINISHES',
+        icon: 'house-heart',
+        color: 'info',
+        items: [
+          'Bathroom Installer',
+          'Carpet Fitters',
+          'Flooring Installer',
+          'Interior Refurbishment Company',
+          'Kitchen Installer',
+          'Painting & Decorating Company',
+          'Plastering Company',
+          'Tiling Installer',
+        ],
+      },
+      {
+        id: 'catT5',
+        name: 'OUTDOOR & LANDSCAPING',
+        icon: 'tree',
+        color: 'success',
+        items: [
+          'Driveway & Paving Company',
+          'Fencing Installer',
+          'Gardening Services',
+          'Landscaping & Garden Design Company',
+          'Tree Surgery Services',
+        ],
+      },
+      {
+        id: 'catT6',
+        name: 'TECH & GREEN ENERGY',
+        icon: 'ev-front',
+        color: 'primary',
+        items: [
+          'EV Charger Installer',
+          'Insulation & Energy Efficiency Company',
+          'PV Installer',
+          'Renewable Energy Specialist',
+          'Security Systems Installer',
+        ],
+      },
+      {
+        id: 'catT7',
+        name: 'SPECIALIST TRADES',
+        icon: 'tools',
+        color: 'secondary',
+        items: [
+          'Locksmith',
+          'Pest Control Company',
+          'Rendering Company',
+          'Scaffolding Company',
+          'Window & Door Installer',
+        ],
+      },
+    ],
+  },
+];
+
+function renderCategoryReference(containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  container.innerHTML =
+    '<div class="row" id="catAccordion">' +
+    AWARD_CATEGORIES.map(
+      (col) =>
+        '<div class="col-lg-6">' +
+        '<h6 class="text-uppercase text-' +
+        col.color +
+        ' fw-bold mb-3 border-bottom pb-2">' +
+        '<i class="bi bi-' +
+        col.icon +
+        ' me-1" aria-hidden="true"></i>' +
+        col.title +
+        '</h6>' +
+        col.categories
+          .map(
+            (cat) =>
+              '<div class="border rounded mb-2">' +
+              '<div class="d-flex align-items-center px-3 py-2 u-pointer"' +
+              ' data-bs-toggle="collapse" data-bs-target="#' +
+              cat.id +
+              '" aria-expanded="false">' +
+              '<i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform" aria-hidden="true"></i>' +
+              '<i class="bi bi-' +
+              cat.icon +
+              ' text-' +
+              cat.color +
+              ' me-2" aria-hidden="true"></i>' +
+              '<strong class="small">' +
+              cat.name +
+              '</strong>' +
+              '<span class="badge bg-secondary ms-auto">' +
+              cat.items.length +
+              '</span>' +
+              '</div>' +
+              '<div class="collapse" id="' +
+              cat.id +
+              '">' +
+              '<ul class="list-unstyled mb-0 px-3 pb-2 small text-muted">' +
+              cat.items.map((item) => '<li class="py-1 border-top">' + item + '</li>').join('') +
+              '</ul></div></div>'
+          )
+          .join('') +
+        '</div>'
+    ).join('') +
+    '</div>';
+}
+
+// Lazy-render category reference on first expand (collapse panel) or modal open
+document.addEventListener('DOMContentLoaded', () => {
+  const collapseEl = document.getElementById('awardCatRefBody');
+  if (collapseEl) {
+    collapseEl.addEventListener(
+      'show.bs.collapse',
+      () => {
+        const content = document.getElementById('awardCatRefBody-content');
+        if (content && !content.hasChildNodes()) renderCategoryReference('awardCatRefBody-content');
+      },
+      { once: false }
+    );
+  }
+
+  const modalEl = document.getElementById('awardCatRefModal');
+  if (modalEl) {
+    modalEl.addEventListener(
+      'show.bs.modal',
+      () => {
+        const body = document.getElementById('awardCatRefModalBody');
+        if (body && !body.querySelector('#catAccordion')) renderCategoryReference('awardCatRefModalBody');
+      },
+      { once: false }
+    );
+  }
+});

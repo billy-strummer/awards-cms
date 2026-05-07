@@ -3,7 +3,7 @@
 /* ==================================================== */
 :root {
   /* Colors */
-  --primary-color: #0d6efd;
+  --primary-color: #6366f1;
   --success-color: #28a745;
   --danger-color: #dc3545;
   --warning-color: #ffc107;
@@ -363,7 +363,6 @@ body.dark-mode {
 
 .table tbody tr:hover {
   background-color: #f8f9fa;
-  transform: scale(1.001);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
@@ -434,9 +433,9 @@ body.dark-mode {
 .card.stats-card.stat-card-active,
 .stat-card.stat-card-active,
 .col-md-2.stat-card-active {
-  outline: 2px solid var(--bs-primary, #0d6efd);
+  outline: 2px solid var(--bs-primary, #6366f1);
   outline-offset: -2px;
-  background: rgba(13, 110, 253, 0.04);
+  background: rgba(99, 102, 241, 0.04);
 }
 
 /* Pipeline badges clickable */
@@ -451,7 +450,7 @@ body.dark-mode {
 .badge[data-stat-filter].stat-card-active {
   outline: 2px solid #fff;
   outline-offset: 1px;
-  box-shadow: 0 0 0 3px var(--bs-primary, #0d6efd);
+  box-shadow: 0 0 0 3px var(--bs-primary, #6366f1);
 }
 
 /* ==================================================== */
@@ -505,7 +504,7 @@ body.dark-mode {
 .form-control:focus,
 .form-select:focus {
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
+  box-shadow: 0 0 0 0.2rem rgba(99, 102, 241, 0.15);
   transform: translateY(-1px);
 }
 
@@ -535,6 +534,31 @@ body.dark-mode {
   margin-bottom: var(--spacing-xl);
   box-shadow: var(--shadow-sm);
   border: 1px solid #e9ecef;
+}
+
+/* Filter bar layout utilities */
+.filter-bar-sticky {
+  position: sticky;
+  top: 56px;
+  z-index: 999;
+  background-color: var(--bs-body-bg, white);
+  padding: 0.75rem 0 0;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid #dee2e6;
+}
+
+/* Filter bar typography utilities (replaces repeated inline styles) */
+.filter-bar-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #6c757d;
+}
+
+.filter-bar-field-label {
+  font-size: 0.8rem;
+  font-weight: 600;
 }
 
 /* ==================================================== */
@@ -583,7 +607,7 @@ body.dark-mode {
 
 /* Subtle variants */
 .bg-primary-subtle {
-  background-color: rgba(13, 110, 253, 0.1) !important;
+  background-color: rgba(99, 102, 241, 0.1) !important;
 }
 
 .bg-success-subtle {
@@ -651,7 +675,7 @@ body.dark-mode {
 
 .splash-icon {
   font-size: 3rem;
-  color: var(--primary-color, #0d6efd);
+  color: var(--primary-color, #6366f1);
 }
 
 .splash-content h2 {
@@ -950,7 +974,7 @@ body.dark-mode .stat-card,
 body.dark-mode .content-card,
 body.dark-mode .table-container,
 body.dark-mode .filters-section {
-  background-color: #2d2d2d;
+  background: #2d2d2d !important;
   border-color: #404040;
   color: #fff;
 }
@@ -1168,8 +1192,8 @@ body.dark-mode .page-link {
   color: #e0e0e0;
 }
 body.dark-mode .page-item.active .page-link {
-  background-color: #0d6efd;
-  border-color: #0d6efd;
+  background-color: #6366f1;
+  border-color: #6366f1;
 }
 body.dark-mode .page-item.disabled .page-link {
   background-color: #1a1a1a;
@@ -2372,7 +2396,7 @@ body.dark-mode .html-toolkit-label {
   background: #f0f8ff;
   border-color: var(--primary-color);
   border-style: solid;
-  box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.1);
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
 }
 
 .email-canvas:empty::before {
@@ -2400,7 +2424,7 @@ body.dark-mode .html-toolkit-label {
 
 .email-block-wrapper:hover {
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.1);
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
 }
 
 /* Block Controls — compact dark bar, bottom-right */
@@ -2466,12 +2490,12 @@ body.dark-mode .html-toolkit-label {
 /* Block Drag Reorder */
 .email-block-wrapper.dragging-block {
   opacity: 0.4;
-  border: 2px dashed #0d6efd !important;
+  border: 2px dashed #6366f1 !important;
 }
 
 .block-drop-indicator {
   height: 4px;
-  background: #0d6efd;
+  background: #6366f1;
   border-radius: 2px;
   margin: 2px 0;
   transition: opacity 0.15s;
@@ -2511,9 +2535,9 @@ body.dark-mode .html-toolkit-label {
 }
 
 .drop-zone.drag-over {
-  border-color: #0d6efd;
-  background-color: rgba(13, 110, 253, 0.05);
-  box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.15);
+  border-color: #6366f1;
+  background-color: rgba(99, 102, 241, 0.05);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
 }
 
 .drop-zone.filled {
@@ -2556,8 +2580,8 @@ body.dark-mode .drop-zone:hover {
 }
 
 body.dark-mode .drop-zone.drag-over {
-  border-color: #0d6efd;
-  background-color: rgba(13, 110, 253, 0.1);
+  border-color: #6366f1;
+  background-color: rgba(99, 102, 241, 0.1);
 }
 
 body.dark-mode .content-library-panel {
@@ -2567,7 +2591,7 @@ body.dark-mode .content-library-panel {
 
 /* Autosave Recovery Banner */
 #autosaveRecoveryBanner {
-  border-left: 4px solid #0d6efd;
+  border-left: 4px solid #6366f1;
   animation: slideDown 0.3s ease-out;
 }
 
@@ -2678,12 +2702,12 @@ body.dark-mode .content-library-panel {
 }
 
 [contenteditable='true']:hover {
-  outline-color: rgba(13, 110, 253, 0.3);
+  outline-color: rgba(99, 102, 241, 0.3);
 }
 
 [contenteditable='true']:focus {
   outline-color: var(--primary-color);
-  background: rgba(13, 110, 253, 0.05);
+  background: rgba(99, 102, 241, 0.05);
 }
 
 /* Rich Text Toolbar */
@@ -2789,8 +2813,8 @@ body.dark-mode .content-library-panel {
 }
 
 .email-richtext-content:focus {
-  outline-color: var(--primary-color, #0d6efd);
-  background: rgba(13, 110, 253, 0.02);
+  outline-color: var(--primary-color, #6366f1);
+  background: rgba(99, 102, 241, 0.02);
 }
 
 /* HTML Code Block */
@@ -2907,7 +2931,7 @@ body.dark-mode .campaign-settings {
 }
 
 body.dark-mode [contenteditable='true']:focus {
-  background: rgba(13, 110, 253, 0.1);
+  background: rgba(99, 102, 241, 0.1);
 }
 
 body.dark-mode .email-richtext-toolbar {
@@ -2995,7 +3019,7 @@ body.dark-mode .email-html-preview {
 
 #schedulePreview {
   font-size: 0.8rem;
-  color: #0d6efd;
+  color: #6366f1;
 }
 
 /* Dark mode for campaign log */
@@ -3036,7 +3060,7 @@ body.dark-mode #schedulePreview {
 
 .template-card.selected {
   border-color: var(--primary-color);
-  background-color: rgba(13, 110, 253, 0.05);
+  background-color: rgba(99, 102, 241, 0.05);
 }
 
 /* Social Media Preview Styles */
@@ -3249,13 +3273,13 @@ body.dark-mode #schedulePreview {
 
 /* Keyboard navigation highlight */
 #orgsTableBody tr[style*='outline'] {
-  background-color: rgba(13, 110, 253, 0.05) !important;
+  background-color: rgba(99, 102, 241, 0.05) !important;
 }
 
 /* Drag and drop states */
 .dragover {
   border: 2px dashed var(--primary-color) !important;
-  background-color: rgba(13, 110, 253, 0.05) !important;
+  background-color: rgba(99, 102, 241, 0.05) !important;
 }
 
 .uploading {
@@ -3274,7 +3298,7 @@ body.dark-mode #schedulePreview {
 
 .drag-over {
   border: 2px dashed var(--primary-color) !important;
-  background-color: rgba(13, 110, 253, 0.05) !important;
+  background-color: rgba(99, 102, 241, 0.05) !important;
 }
 
 /* Inline editing active state */
@@ -3333,9 +3357,9 @@ body.dark-mode #schedulePreview {
 /* ==================================================== */
 /* Enhanced focus-visible styles */
 :focus-visible {
-  outline: 3px solid var(--bs-primary, #0d6efd);
+  outline: 3px solid var(--bs-primary, #6366f1);
   outline-offset: 2px;
-  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+  box-shadow: 0 0 0 0.25rem rgba(99, 102, 241, 0.25);
 }
 [data-bs-theme='dark'] :focus-visible {
   outline-color: #6ea8fe;
@@ -3344,7 +3368,7 @@ body.dark-mode #schedulePreview {
 .btn:focus-visible,
 .form-control:focus-visible,
 .form-select:focus-visible {
-  outline: 3px solid var(--bs-primary, #0d6efd);
+  outline: 3px solid var(--bs-primary, #6366f1);
   outline-offset: 1px;
 }
 
@@ -3470,7 +3494,7 @@ body.dark-mode #schedulePreview {
   justify-content: center;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   border: none;
-  background: var(--bs-primary, #0d6efd);
+  background: var(--bs-primary, #6366f1);
   color: #fff;
   cursor: pointer;
   transition:
@@ -3926,6 +3950,7 @@ mark.search-highlight {
 .app-main .tab-content {
   padding: 1.5rem 1.75rem;
 }
+
 
 /* ── Responsive: sidebar becomes overlay on small screens ── */
 @media (max-width: 991.98px) {

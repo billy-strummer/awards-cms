@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://*.supabase.co; script-src 'self' https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://js.stripe.com https://browser.sentry-cdn.com https://s3.tradingview.com https://cdn.sheetjs.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com; img-src 'self' data: blob: https://*.supabase.co https://i.ytimg.com https://*.tile.openstreetmap.org https://*.britishtradeawards.com https://britishtradeawards.com; font-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; connect-src 'self' https://*.supabase.co https://api.resend.com https://*.sentry.io wss://*.supabase.co https://*.tradingview.com wss://*.tradingview.com https://*.tradingview-widget.com wss://*.tradingview-widget.com https://www.youtube.com https://vimeo.com https://api.company-information.service.gov.uk https://*.stripe.com https://*.vercel-scripts.com https://*.vercel-insights.com https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://browser.sentry-cdn.com; frame-src 'self' https://js.stripe.com https://www.youtube.com https://s3.tradingview.com https://*.tradingview.com https://*.tradingview-widget.com; object-src 'none'; base-uri 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://*.supabase.co; script-src 'self' https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://js.stripe.com https://browser.sentry-cdn.com https://s3.tradingview.com https://cdn.sheetjs.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://fonts.googleapis.com; img-src 'self' data: blob: https://*.supabase.co https://i.ytimg.com https://*.tile.openstreetmap.org https://*.britishtradeawards.com https://britishtradeawards.com; font-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://api.resend.com https://*.sentry.io wss://*.supabase.co https://*.tradingview.com wss://*.tradingview.com https://*.tradingview-widget.com wss://*.tradingview-widget.com https://www.youtube.com https://vimeo.com https://api.company-information.service.gov.uk https://*.stripe.com https://*.vercel-scripts.com https://*.vercel-insights.com https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://browser.sentry-cdn.com; frame-src 'self' https://js.stripe.com https://www.youtube.com https://s3.tradingview.com https://*.tradingview.com https://*.tradingview-widget.com; object-src 'none'; base-uri 'self'">
   <!-- Supabase credentials — injected per environment, never hardcoded -->
   <meta name="supabase-url" content="">
   <meta name="supabase-anon-key" content="">
@@ -252,18 +252,18 @@
               <span class="sidebar-label">Payments</span>
               <span class="sidebar-badge" id="paymentsTabCount"></span>
             </button>
-          </div>
-
-          <!-- INTELLIGENCE -->
-          <div class="sidebar-group">
-            <span class="sidebar-group-label">Intelligence</span>
-            <button class="sidebar-nav-link" id="reports-tab" data-bs-toggle="tab" data-bs-target="#reports" type="button" role="tab" aria-controls="reports" aria-selected="false" title="Reports">
-              <i class="bi bi-graph-up sidebar-icon"></i>
-              <span class="sidebar-label">Reports</span>
-            </button>
             <button class="sidebar-nav-link" id="marketing-tab" data-bs-toggle="tab" data-bs-target="#marketing" type="button" role="tab" aria-controls="marketing" aria-selected="false" title="Marketing">
               <i class="bi bi-megaphone sidebar-icon"></i>
               <span class="sidebar-label">Marketing</span>
+            </button>
+          </div>
+
+          <!-- ANALYTICS -->
+          <div class="sidebar-group">
+            <span class="sidebar-group-label">Analytics</span>
+            <button class="sidebar-nav-link" id="reports-tab" data-bs-toggle="tab" data-bs-target="#reports" type="button" role="tab" aria-controls="reports" aria-selected="false" title="Reports">
+              <i class="bi bi-graph-up sidebar-icon"></i>
+              <span class="sidebar-label">Reports</span>
             </button>
           </div>
 
@@ -366,20 +366,6 @@
               </div>
             </div>
           </div>
-          <script>
-            (function () {
-              if (!localStorage.getItem('btaGettingStartedDismissed')) {
-                var el = document.getElementById('gettingStartedBanner');
-                if (el) el.classList.remove('d-none');
-              }
-              var btn = document.getElementById('dismissGettingStarted');
-              if (btn) btn.addEventListener('click', function () {
-                document.getElementById('gettingStartedBanner').classList.add('d-none');
-                localStorage.setItem('btaGettingStartedDismissed', '1');
-              });
-            })();
-          </script>
-
           <!-- Stats Cards -->
           <div class="row g-4 mb-5" data-dashboard-widget="stats-cards" data-widget-label="KPI Stats Cards">
             <div class="col-md-3">
@@ -455,7 +441,7 @@
 
           <!-- Second Row of Stats -->
           <div class="row g-4 mb-5" data-dashboard-widget="stats-extended" data-widget-label="Events & Upcoming Stats">
-            <div class="col-md-3">
+            <div class="col-md-6">
               <div class="stat-card stat-card-clickable" data-action="dashboardModule.navigateToSection" data-id="events" title="Click to view all events">
                 <button class="btn btn-sm btn-outline-secondary position-absolute top-0 end-0 m-2"
                         data-action="dashboardModule.openEventsSummary" data-stop-propagation="true"
@@ -474,7 +460,7 @@
               </div>
             </div>
 
-            <div class="col-md-3">
+            <div class="col-md-6">
               <div class="stat-card stat-card-clickable" data-action="dashboardModule.showUpcomingEvents" title="Click to view upcoming events">
                 <i class="bi bi-calendar-check stat-card-icon text-success"></i>
                 <h6>Upcoming Events</h6>
@@ -915,340 +901,12 @@
                 </h5>
                 <p class="text-muted small mb-0">All award types by size — expand sections below to browse</p>
               </div>
-              <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="collapse" data-bs-target="#awardCatRefBody" aria-expanded="true" aria-controls="awardCatRefBody">
-                <i class="bi bi-chevron-up me-1"></i>Hide
+              <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="collapse" data-bs-target="#awardCatRefBody" aria-expanded="false" aria-controls="awardCatRefBody">
+                <i class="bi bi-chevron-down me-1"></i>Show / Hide
               </button>
             </div>
-            <div class="collapse show" id="awardCatRefBody">
-              <div class="mt-3">
-<div class="row" id="catAccordion">
-
-              <!-- LEFT COLUMN: Standard Size Area -->
-              <div class="col-lg-6">
-                <h6 class="text-uppercase text-primary fw-bold mb-3 border-bottom pb-2">
-                  <i class="bi bi-building me-1"></i>Standard Size Area
-                </h6>
-
-                <!-- BUILDING & CONSTRUCTION -->
-                <div class="border rounded mb-2">
-                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
-                       data-bs-toggle="collapse" data-bs-target="#catS1" aria-expanded="false">
-                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
-                    <i class="bi bi-bricks text-warning me-2"></i>
-                    <strong class="small">BUILDING & CONSTRUCTION</strong>
-                    <span class="badge bg-secondary ms-auto">12</span>
-                  </div>
-                  <div class="collapse" id="catS1">
-                    <ul class="list-unstyled mb-0 px-3 pb-2 small text-muted">
-                      <li class="py-1 border-top">Brickwork & Masonry Company</li>
-                      <li class="py-1 border-top">Drainage Company</li>
-                      <li class="py-1 border-top">Extension Company</li>
-                      <li class="py-1 border-top">General Building Company</li>
-                      <li class="py-1 border-top">Groundworks & Foundations Company</li>
-                      <li class="py-1 border-top">Guttering Company</li>
-                      <li class="py-1 border-top">Loft Conversion Company</li>
-                      <li class="py-1 border-top">Maintenance Services</li>
-                      <li class="py-1 border-top">New Build Company</li>
-                      <li class="py-1 border-top">Roofing Company</li>
-                      <li class="py-1 border-top">Structural Engineers</li>
-                      <li class="py-1 border-top">Structural Steelworks</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <!-- MECHANICAL, ELECTRICAL & PLUMBING -->
-                <div class="border rounded mb-2">
-                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
-                       data-bs-toggle="collapse" data-bs-target="#catS2" aria-expanded="false">
-                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
-                    <i class="bi bi-lightning-charge text-danger me-2"></i>
-                    <strong class="small">MECHANICAL, ELECTRICAL & PLUMBING</strong>
-                    <span class="badge bg-secondary ms-auto">5</span>
-                  </div>
-                  <div class="collapse" id="catS2">
-                    <ul class="list-unstyled mb-0 px-3 pb-2 small text-muted">
-                      <li class="py-1 border-top">Air-Conditioning & Ventilation Company</li>
-                      <li class="py-1 border-top">Electrical Company</li>
-                      <li class="py-1 border-top">Heating Company</li>
-                      <li class="py-1 border-top">Plumbing Company</li>
-                      <li class="py-1 border-top">Underfloor Heating Company</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <!-- CARPENTRY & JOINERY -->
-                <div class="border rounded mb-2">
-                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
-                       data-bs-toggle="collapse" data-bs-target="#catS3" aria-expanded="false">
-                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
-                    <i class="bi bi-hammer text-success me-2"></i>
-                    <strong class="small">CARPENTRY & JOINERY</strong>
-                    <span class="badge bg-secondary ms-auto">5</span>
-                  </div>
-                  <div class="collapse" id="catS3">
-                    <ul class="list-unstyled mb-0 px-3 pb-2 small text-muted">
-                      <li class="py-1 border-top">Cabinet Maker</li>
-                      <li class="py-1 border-top">Carpentry Company</li>
-                      <li class="py-1 border-top">Joinery Company</li>
-                      <li class="py-1 border-top">Staircase Specialist</li>
-                      <li class="py-1 border-top">Timber Windows Installer</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <!-- FIT-OUT & FINISHES -->
-                <div class="border rounded mb-2">
-                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
-                       data-bs-toggle="collapse" data-bs-target="#catS4" aria-expanded="false">
-                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
-                    <i class="bi bi-house-heart text-info me-2"></i>
-                    <strong class="small">FIT-OUT & FINISHES</strong>
-                    <span class="badge bg-secondary ms-auto">12</span>
-                  </div>
-                  <div class="collapse" id="catS4">
-                    <ul class="list-unstyled mb-0 px-3 pb-2 small text-muted">
-                      <li class="py-1 border-top">Bathroom Installer</li>
-                      <li class="py-1 border-top">Carpet Fitters</li>
-                      <li class="py-1 border-top">Curtains & Blinds Installer</li>
-                      <li class="py-1 border-top">Drylining Company</li>
-                      <li class="py-1 border-top">Flooring Installer</li>
-                      <li class="py-1 border-top">Home Office Installer</li>
-                      <li class="py-1 border-top">Interior Refurbishment Company</li>
-                      <li class="py-1 border-top">Kitchen Installer</li>
-                      <li class="py-1 border-top">Painting & Decorating Company</li>
-                      <li class="py-1 border-top">Plastering Company</li>
-                      <li class="py-1 border-top">Screeding Company</li>
-                      <li class="py-1 border-top">Tiling Installer</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <!-- OUTDOOR & LANDSCAPING -->
-                <div class="border rounded mb-2">
-                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
-                       data-bs-toggle="collapse" data-bs-target="#catS5" aria-expanded="false">
-                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
-                    <i class="bi bi-tree text-success me-2"></i>
-                    <strong class="small">OUTDOOR & LANDSCAPING</strong>
-                    <span class="badge bg-secondary ms-auto">8</span>
-                  </div>
-                  <div class="collapse" id="catS5">
-                    <ul class="list-unstyled mb-0 px-3 pb-2 small text-muted">
-                      <li class="py-1 border-top">Decking Company</li>
-                      <li class="py-1 border-top">Driveway & Paving Company</li>
-                      <li class="py-1 border-top">Fencing Installer</li>
-                      <li class="py-1 border-top">Gardening Services</li>
-                      <li class="py-1 border-top">Garden Outbuilding Company</li>
-                      <li class="py-1 border-top">Landscaping & Garden Design Company</li>
-                      <li class="py-1 border-top">Outdoor Lighting & Electrical Company</li>
-                      <li class="py-1 border-top">Tree Surgery Services</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <!-- TECH & GREEN ENERGY -->
-                <div class="border rounded mb-2">
-                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
-                       data-bs-toggle="collapse" data-bs-target="#catS6" aria-expanded="false">
-                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
-                    <i class="bi bi-ev-front text-primary me-2"></i>
-                    <strong class="small">TECH & GREEN ENERGY</strong>
-                    <span class="badge bg-secondary ms-auto">6</span>
-                  </div>
-                  <div class="collapse" id="catS6">
-                    <ul class="list-unstyled mb-0 px-3 pb-2 small text-muted">
-                      <li class="py-1 border-top">EV Charger Installer</li>
-                      <li class="py-1 border-top">Insulation & Energy Efficiency Company</li>
-                      <li class="py-1 border-top">PV Installer</li>
-                      <li class="py-1 border-top">Renewable Energy Specialist</li>
-                      <li class="py-1 border-top">Security System Installer</li>
-                      <li class="py-1 border-top">Smart Home & Automation Company</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <!-- SPECIALIST TRADES -->
-                <div class="border rounded mb-2">
-                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
-                       data-bs-toggle="collapse" data-bs-target="#catS7" aria-expanded="false">
-                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
-                    <i class="bi bi-tools text-secondary me-2"></i>
-                    <strong class="small">SPECIALIST TRADES</strong>
-                    <span class="badge bg-secondary ms-auto">8</span>
-                  </div>
-                  <div class="collapse" id="catS7">
-                    <ul class="list-unstyled mb-0 px-3 pb-2 small text-muted">
-                      <li class="py-1 border-top">Asbestos Removal Specialist</li>
-                      <li class="py-1 border-top">Locksmith</li>
-                      <li class="py-1 border-top">Pest Control Company</li>
-                      <li class="py-1 border-top">Rendering Company</li>
-                      <li class="py-1 border-top">Scaffolding Company</li>
-                      <li class="py-1 border-top">Shop Fitting Company</li>
-                      <li class="py-1 border-top">Swimming Pool & Hot Tub Company</li>
-                      <li class="py-1 border-top">Window & Door Installer</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <div class="text-muted small text-center mt-2">
-                  <i class="bi bi-info-circle me-1"></i>7 categories &middot; 56 sub-categories
-                </div>
-              </div>
-
-              <!-- RIGHT COLUMN: Small Area -->
-              <div class="col-lg-6">
-                <h6 class="text-uppercase text-success fw-bold mb-3 border-bottom pb-2">
-                  <i class="bi bi-house-door me-1"></i>Small Area
-                </h6>
-
-                <!-- BUILDING & CONSTRUCTION -->
-                <div class="border rounded mb-2">
-                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
-                       data-bs-toggle="collapse" data-bs-target="#catT1" aria-expanded="false">
-                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
-                    <i class="bi bi-bricks text-warning me-2"></i>
-                    <strong class="small">BUILDING & CONSTRUCTION</strong>
-                    <span class="badge bg-secondary ms-auto">10</span>
-                  </div>
-                  <div class="collapse" id="catT1">
-                    <ul class="list-unstyled mb-0 px-3 pb-2 small text-muted">
-                      <li class="py-1 border-top">Brickwork & Masonry Company</li>
-                      <li class="py-1 border-top">Drainage Company</li>
-                      <li class="py-1 border-top">Extension Company</li>
-                      <li class="py-1 border-top">General Building Company</li>
-                      <li class="py-1 border-top">Groundworks & Foundations Company</li>
-                      <li class="py-1 border-top">Guttering Company</li>
-                      <li class="py-1 border-top">Loft Conversion Company</li>
-                      <li class="py-1 border-top">Maintenance Services</li>
-                      <li class="py-1 border-top">New Build Company</li>
-                      <li class="py-1 border-top">Roofing Company</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <!-- MECHANICAL, ELECTRICAL & PLUMBING -->
-                <div class="border rounded mb-2">
-                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
-                       data-bs-toggle="collapse" data-bs-target="#catT2" aria-expanded="false">
-                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
-                    <i class="bi bi-lightning-charge text-danger me-2"></i>
-                    <strong class="small">MECHANICAL, ELECTRICAL & PLUMBING</strong>
-                    <span class="badge bg-secondary ms-auto">3</span>
-                  </div>
-                  <div class="collapse" id="catT2">
-                    <ul class="list-unstyled mb-0 px-3 pb-2 small text-muted">
-                      <li class="py-1 border-top">Air-Conditioning & Ventilation Company</li>
-                      <li class="py-1 border-top">Electrical Company</li>
-                      <li class="py-1 border-top">Plumbing & Heating Company</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <!-- CARPENTRY & JOINERY -->
-                <div class="border rounded mb-2">
-                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
-                       data-bs-toggle="collapse" data-bs-target="#catT3" aria-expanded="false">
-                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
-                    <i class="bi bi-hammer text-success me-2"></i>
-                    <strong class="small">CARPENTRY & JOINERY</strong>
-                    <span class="badge bg-secondary ms-auto">2</span>
-                  </div>
-                  <div class="collapse" id="catT3">
-                    <ul class="list-unstyled mb-0 px-3 pb-2 small text-muted">
-                      <li class="py-1 border-top">Carpentry & Joinery Company</li>
-                      <li class="py-1 border-top">Timber Windows Installer</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <!-- FIT-OUT & FINISHES -->
-                <div class="border rounded mb-2">
-                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
-                       data-bs-toggle="collapse" data-bs-target="#catT4" aria-expanded="false">
-                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
-                    <i class="bi bi-house-heart text-info me-2"></i>
-                    <strong class="small">FIT-OUT & FINISHES</strong>
-                    <span class="badge bg-secondary ms-auto">8</span>
-                  </div>
-                  <div class="collapse" id="catT4">
-                    <ul class="list-unstyled mb-0 px-3 pb-2 small text-muted">
-                      <li class="py-1 border-top">Bathroom Installer</li>
-                      <li class="py-1 border-top">Carpet Fitters</li>
-                      <li class="py-1 border-top">Flooring Installer</li>
-                      <li class="py-1 border-top">Interior Refurbishment Company</li>
-                      <li class="py-1 border-top">Kitchen Installer</li>
-                      <li class="py-1 border-top">Painting & Decorating Company</li>
-                      <li class="py-1 border-top">Plastering Company</li>
-                      <li class="py-1 border-top">Tiling Installer</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <!-- OUTDOOR & LANDSCAPING -->
-                <div class="border rounded mb-2">
-                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
-                       data-bs-toggle="collapse" data-bs-target="#catT5" aria-expanded="false">
-                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
-                    <i class="bi bi-tree text-success me-2"></i>
-                    <strong class="small">OUTDOOR & LANDSCAPING</strong>
-                    <span class="badge bg-secondary ms-auto">5</span>
-                  </div>
-                  <div class="collapse" id="catT5">
-                    <ul class="list-unstyled mb-0 px-3 pb-2 small text-muted">
-                      <li class="py-1 border-top">Driveway & Paving Company</li>
-                      <li class="py-1 border-top">Fencing Installer</li>
-                      <li class="py-1 border-top">Gardening Services</li>
-                      <li class="py-1 border-top">Landscaping & Garden Design Company</li>
-                      <li class="py-1 border-top">Tree Surgery Services</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <!-- TECH & GREEN ENERGY -->
-                <div class="border rounded mb-2">
-                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
-                       data-bs-toggle="collapse" data-bs-target="#catT6" aria-expanded="false">
-                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
-                    <i class="bi bi-ev-front text-primary me-2"></i>
-                    <strong class="small">TECH & GREEN ENERGY</strong>
-                    <span class="badge bg-secondary ms-auto">5</span>
-                  </div>
-                  <div class="collapse" id="catT6">
-                    <ul class="list-unstyled mb-0 px-3 pb-2 small text-muted">
-                      <li class="py-1 border-top">EV Charger Installer</li>
-                      <li class="py-1 border-top">Insulation & Energy Efficiency Company</li>
-                      <li class="py-1 border-top">PV Installer</li>
-                      <li class="py-1 border-top">Renewable Energy Specialist</li>
-                      <li class="py-1 border-top">Security Systems Installer</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <!-- SPECIALIST TRADES -->
-                <div class="border rounded mb-2">
-                  <div class="d-flex align-items-center px-3 py-2 u-pointer"
-                       data-bs-toggle="collapse" data-bs-target="#catT7" aria-expanded="false">
-                    <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
-                    <i class="bi bi-tools text-secondary me-2"></i>
-                    <strong class="small">SPECIALIST TRADES</strong>
-                    <span class="badge bg-secondary ms-auto">5</span>
-                  </div>
-                  <div class="collapse" id="catT7">
-                    <ul class="list-unstyled mb-0 px-3 pb-2 small text-muted">
-                      <li class="py-1 border-top">Locksmith</li>
-                      <li class="py-1 border-top">Pest Control Company</li>
-                      <li class="py-1 border-top">Rendering Company</li>
-                      <li class="py-1 border-top">Scaffolding Company</li>
-                      <li class="py-1 border-top">Window & Door Installer</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <div class="text-muted small text-center mt-2">
-                  <i class="bi bi-info-circle me-1"></i>7 categories &middot; 38 sub-categories
-                </div>
-              </div>
-              </div>
+            <div class="collapse" id="awardCatRefBody">
+              <div class="mt-3" id="awardCatRefBody-content"></div>
             </div>
           </div>
 
@@ -1288,11 +946,11 @@
 
 
           <!-- Filters Section -->
-<div class="filters-section" style="position: sticky; top: 56px; z-index: 999; background-color: var(--bs-body-bg, white); padding: 0.75rem 0 0; margin-bottom: 0.75rem; border-bottom: 1px solid #dee2e6;">
-  <div class="rounded-2 p-3 mb-2" style="background:#f8f9fa;">
+<div class="filters-section filter-bar-sticky">
+  <div class="rounded-2 p-3 mb-2 bg-light">
     <div class="d-flex align-items-center justify-content-between mb-2">
       <div class="d-flex align-items-center gap-3 flex-grow-1">
-        <button class="btn btn-link p-0 text-decoration-none fw-semibold text-muted" style="font-size:0.8rem;letter-spacing:.04em;text-transform:uppercase;" data-bs-toggle="collapse" data-bs-target="#awardsFiltersCollapse" aria-expanded="true" aria-controls="awardsFiltersCollapse">
+        <button class="btn btn-link p-0 text-decoration-none filter-bar-label" data-bs-toggle="collapse" data-bs-target="#awardsFiltersCollapse" aria-expanded="true" aria-controls="awardsFiltersCollapse">
           <i class="bi bi-funnel me-1"></i>Filter Awards <span id="awardsFilterCount" class="badge bg-primary ms-1 d-none"></span>
           <i class="bi bi-chevron-down ms-1 small"></i>
         </button>
@@ -1313,15 +971,16 @@
       </div>
     </div>
     <div class="collapse show" id="awardsFiltersCollapse">
-    <div class="row g-2 align-items-end">
+    <!-- Primary filters row -->
+    <div class="row g-2 align-items-end mb-2">
       <div class="col-md-1">
-        <label for="awardsYearFilterSelect" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-calendar3 me-1"></i>Year</label>
+        <label for="awardsYearFilterSelect" class="form-label filter-bar-field-label mb-1"><i class="bi bi-calendar3 me-1" aria-hidden="true"></i>Year</label>
         <select class="form-select form-select-sm" id="awardsYearFilterSelect">
           <option value="">All Years</option>
         </select>
       </div>
       <div class="col-md-2">
-        <label for="awardsStatusFilterSelect" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-flag me-1"></i>Status</label>
+        <label for="awardsStatusFilterSelect" class="form-label filter-bar-field-label mb-1"><i class="bi bi-flag me-1" aria-hidden="true"></i>Status</label>
         <select class="form-select form-select-sm" id="awardsStatusFilterSelect">
           <option value="">All Statuses</option>
           <option value="draft">Draft</option>
@@ -1332,33 +991,45 @@
         </select>
       </div>
       <div class="col-md-2">
-        <label for="awardsSectorFilterSelect" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-briefcase me-1"></i>Sector</label>
+        <label for="awardsSectorFilterSelect" class="form-label filter-bar-field-label mb-1"><i class="bi bi-briefcase me-1" aria-hidden="true"></i>Sector</label>
         <select class="form-select form-select-sm" id="awardsSectorFilterSelect">
           <option value="">All Sectors</option>
         </select>
       </div>
-      <div class="col-md-1">
-        <label for="awardsCountryFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-globe me-1"></i>Country</label>
-        <select class="form-select form-select-sm" id="awardsCountryFilter" data-on-change="awardsModule.onCountryFilterChange">
-          <option value="">All</option>
-        </select>
-      </div>
-      <div class="col-md-2">
-        <label for="awardsRegionFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-map me-1"></i>Region</label>
-        <select class="form-select form-select-sm" id="awardsRegionFilter" data-on-change="awardsModule.onRegionFilterChange">
-          <option value="">All Regions</option>
-        </select>
-      </div>
-      <div class="col-md-2">
-        <label for="awardsAreaFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-pin-map me-1"></i>County/City/Borough</label>
-        <select class="form-select form-select-sm" id="awardsAreaFilter" data-on-change="awardsModule.filterAwards">
-          <option value="">All</option>
-        </select>
-      </div>
       <div class="col">
-        <label for="awardsSearchBox" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-search me-1"></i>Search</label>
+        <label for="awardsSearchBox" class="form-label filter-bar-field-label mb-1"><i class="bi bi-search me-1" aria-hidden="true"></i>Search</label>
         <input type="text" class="form-control form-control-sm" id="awardsSearchBox" placeholder="Search awards…">
       </div>
+      <div class="col-auto">
+        <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#awardsLocationFilters" aria-expanded="false" aria-controls="awardsLocationFilters" title="Filter by location">
+          <i class="bi bi-geo-alt me-1" aria-hidden="true"></i>Location
+          <i class="bi bi-chevron-down ms-1 small"></i>
+        </button>
+      </div>
+    </div>
+    <!-- Location filters (collapsed by default) -->
+    <div class="collapse" id="awardsLocationFilters">
+      <div class="row g-2 align-items-end pt-2 border-top">
+        <div class="col-md-2">
+          <label for="awardsCountryFilter" class="form-label filter-bar-field-label mb-1"><i class="bi bi-globe me-1" aria-hidden="true"></i>Country</label>
+          <select class="form-select form-select-sm" id="awardsCountryFilter" data-on-change="awardsModule.onCountryFilterChange">
+            <option value="">All</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label for="awardsRegionFilter" class="form-label filter-bar-field-label mb-1"><i class="bi bi-map me-1" aria-hidden="true"></i>Region</label>
+          <select class="form-select form-select-sm" id="awardsRegionFilter" data-on-change="awardsModule.onRegionFilterChange">
+            <option value="">All Regions</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label for="awardsAreaFilter" class="form-label filter-bar-field-label mb-1"><i class="bi bi-pin-map me-1" aria-hidden="true"></i>County / City / Borough</label>
+          <select class="form-select form-select-sm" id="awardsAreaFilter" data-on-change="awardsModule.filterAwards">
+            <option value="">All</option>
+          </select>
+        </div>
+      </div>
+    </div>
     </div>
     </div>
   </div>
@@ -1454,17 +1125,17 @@
                 <thead>
                   <tr>
                     <th scope="col" style="width: 3%;"><input type="checkbox" class="form-check-input" id="awardsSelectAll" data-on-change="awardsModule.toggleSelectAll" aria-label="Select all awards"></th>
-                    <th scope="col" style="width: 5%; cursor: pointer;" data-sort-field="year" data-action="awardsModule.sortBy" data-args='["year"]'>Year <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="year"></i></th>
-                    <th scope="col" style="width: 22%; cursor: pointer;" data-sort-field="award_name" data-action="awardsModule.sortBy" data-args='["award_name"]'>Award Name <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="award_name"></i></th>
-                    <th scope="col" style="width: 12%; cursor: pointer;" data-sort-field="location" data-action="awardsModule.sortBy" data-args='["location"]'>Location <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="location"></i></th>
-                    <th scope="col" style="width: 10%; cursor: pointer;" data-sort-field="sector" data-action="awardsModule.sortBy" data-args='["sector"]'>Sector <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="sector"></i></th>
-                    <th scope="col" style="width: 7%; cursor: pointer;" data-sort-field="status" data-action="awardsModule.sortBy" data-args='["status"]'>
-                      Status <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="status"></i>
+                    <th scope="col" style="width: 5%; cursor: pointer;" data-sort-field="year" data-action="awardsModule.sortBy" data-args='["year"]' aria-sort="none">Year <i class="bi bi-arrow-down-up" aria-hidden="true" text-muted ms-1 small" data-sort-icon="year"></i></th>
+                    <th scope="col" style="width: 22%; cursor: pointer;" data-sort-field="award_name" data-action="awardsModule.sortBy" data-args='["award_name"]' aria-sort="none">Award Name <i class="bi bi-arrow-down-up" aria-hidden="true" text-muted ms-1 small" data-sort-icon="award_name"></i></th>
+                    <th scope="col" style="width: 12%; cursor: pointer;" data-sort-field="location" data-action="awardsModule.sortBy" data-args='["location"]' aria-sort="none">Location <i class="bi bi-arrow-down-up" aria-hidden="true" text-muted ms-1 small" data-sort-icon="location"></i></th>
+                    <th scope="col" style="width: 10%; cursor: pointer;" data-sort-field="sector" data-action="awardsModule.sortBy" data-args='["sector"]' aria-sort="none">Sector <i class="bi bi-arrow-down-up" aria-hidden="true" text-muted ms-1 small" data-sort-icon="sector"></i></th>
+                    <th scope="col" style="width: 7%; cursor: pointer;" data-sort-field="status" data-action="awardsModule.sortBy" data-args='["status"]' aria-sort="none">
+                      Status <i class="bi bi-arrow-down-up" aria-hidden="true" text-muted ms-1 small" data-sort-icon="status"></i>
                       <i class="bi bi-question-circle text-muted ms-1 small" title="Award lifecycle: Draft (being set up) → Pending (awaiting approval) → Published (visible) → Active (open for entries/judging) → Archived (closed)"></i>
                     </th>
-                    <th scope="col" style="width: 6%; cursor: pointer;" class="text-center" data-sort-field="nominees" data-action="awardsModule.sortBy" data-args='["nominees"]'>Nominees <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="nominees"></i></th>
+                    <th scope="col" style="width: 6%; cursor: pointer;" class="text-center" data-sort-field="nominees" data-action="awardsModule.sortBy" data-args='["nominees"]' aria-sort="none">Nominees <i class="bi bi-arrow-down-up" aria-hidden="true" text-muted ms-1 small" data-sort-icon="nominees"></i></th>
                     <th scope="col" style="width: 7%;" class="text-center" title="Current judging phase: e.g. Entry, Judging, Shortlisting, Voting, Announced">Phase</th>
-                    <th scope="col" style="width: 14%; cursor: pointer;" data-sort-field="winner" data-action="awardsModule.sortBy" data-args='["winner"]'>Winner <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="winner"></i></th>
+                    <th scope="col" style="width: 14%; cursor: pointer;" data-sort-field="winner" data-action="awardsModule.sortBy" data-args='["winner"]' aria-sort="none">Winner <i class="bi bi-arrow-down-up" aria-hidden="true" text-muted ms-1 small" data-sort-icon="winner"></i></th>
                     <th scope="col" id="awardsModifiedHeader" class="d-none" style="width: 8%;">Modified</th>
                     <th scope="col" style="width: 6%;" class="text-center">Actions</th>
                   </tr>
@@ -1491,8 +1162,6 @@
           </div>
 
         </div>
-      </div>
-    </div><!-- /tab-pane#awards -->
 
       <!-- ==================================================== -->
       <!-- ORGANISATIONS TAB -->
@@ -1827,7 +1496,7 @@
         <!-- Row header -->
         <div class="d-flex align-items-center justify-content-between mb-2">
           <div class="d-flex align-items-center gap-3">
-            <span class="fw-semibold text-muted" style="font-size:0.8rem;letter-spacing:.04em;text-transform:uppercase;"><i class="bi bi-funnel me-1"></i>Filter Organisations</span>
+            <span class="filter-bar-label"><i class="bi bi-funnel me-1"></i>Filter Organisations</span>
             <span id="orgsRowCount" class="table-row-count"></span>
           </div>
           <div class="d-flex align-items-center gap-2">
@@ -1852,8 +1521,8 @@
 
           <!-- Search Box -->
           <div class="col-md-2">
-            <label for="orgsSearchBox" class="form-label fw-semibold mb-1" style="font-size:0.8rem;">
-              <i class="bi bi-search me-1"></i>Search
+            <label for="orgsSearchBox" class="form-label filter-bar-field-label mb-1">
+              <i class="bi bi-search me-1" aria-hidden="true"></i>Search
             </label>
             <input type="text" class="form-control form-control-sm" id="orgsSearchBox"
                    placeholder="Company, email, contact…">
@@ -1861,8 +1530,8 @@
 
           <!-- Year Filter -->
           <div class="col-md-1">
-            <label for="orgsYearFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;">
-              <i class="bi bi-calendar3 me-1"></i>Year
+            <label for="orgsYearFilter" class="form-label filter-bar-field-label mb-1">
+              <i class="bi bi-calendar3 me-1" aria-hidden="true"></i>Year
             </label>
             <select class="form-select form-select-sm" id="orgsYearFilter"
                     data-on-change="orgsModule.filterOrganisations">
@@ -1872,8 +1541,8 @@
 
           <!-- Sector Filter -->
           <div class="col-md-2">
-            <label for="orgsSectorFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;">
-              <i class="bi bi-briefcase me-1"></i>Sector
+            <label for="orgsSectorFilter" class="form-label filter-bar-field-label mb-1">
+              <i class="bi bi-briefcase me-1" aria-hidden="true"></i>Sector
             </label>
             <select class="form-select form-select-sm" id="orgsSectorFilter"
                     data-on-change="orgsModule.filterOrganisations">
@@ -1883,8 +1552,8 @@
 
           <!-- Country Filter -->
           <div class="col-md-1">
-            <label for="orgsCountryFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;">
-              <i class="bi bi-globe me-1"></i>Country
+            <label for="orgsCountryFilter" class="form-label filter-bar-field-label mb-1">
+              <i class="bi bi-globe me-1" aria-hidden="true"></i>Country
             </label>
             <select class="form-select form-select-sm" id="orgsCountryFilter"
                     data-on-change="orgsModule.onCountryFilterChange">
@@ -1894,8 +1563,8 @@
 
           <!-- Region Filter (cascades from Country) -->
           <div class="col-md-2">
-            <label for="orgsRegionFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;">
-              <i class="bi bi-map me-1"></i>Region
+            <label for="orgsRegionFilter" class="form-label filter-bar-field-label mb-1">
+              <i class="bi bi-map me-1" aria-hidden="true"></i>Region
             </label>
             <select class="form-select form-select-sm" id="orgsRegionFilter"
                     data-on-change="orgsModule.onRegionFilterChange">
@@ -1905,8 +1574,8 @@
 
           <!-- County/City/Borough Filter (cascades from Region) -->
           <div class="col-md-2">
-            <label for="orgsAreaFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;">
-              <i class="bi bi-pin-map me-1"></i>County/City/Borough
+            <label for="orgsAreaFilter" class="form-label filter-bar-field-label mb-1">
+              <i class="bi bi-pin-map me-1" aria-hidden="true"></i>County/City/Borough
             </label>
             <select class="form-select form-select-sm" id="orgsAreaFilter"
                     data-on-change="orgsModule.filterOrganisations">
@@ -1916,8 +1585,8 @@
 
           <!-- Status Filter -->
           <div class="col-md-1">
-            <label for="orgsStatusFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;">
-              <i class="bi bi-person-badge me-1"></i>Status
+            <label for="orgsStatusFilter" class="form-label filter-bar-field-label mb-1">
+              <i class="bi bi-person-badge me-1" aria-hidden="true"></i>Status
             </label>
             <select class="form-select form-select-sm" id="orgsStatusFilter"
                     data-on-change="orgsModule.filterOrganisations">
@@ -1936,8 +1605,8 @@
 
           <!-- Tier Filter -->
           <div class="col-md-1">
-            <label for="orgsTierFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;">
-              <i class="bi bi-award me-1"></i>Tier
+            <label for="orgsTierFilter" class="form-label filter-bar-field-label mb-1">
+              <i class="bi bi-award me-1" aria-hidden="true"></i>Tier
             </label>
             <select class="form-select form-select-sm" id="orgsTierFilter"
                     data-on-change="orgsModule.filterOrganisations">
@@ -1954,8 +1623,8 @@
         <div class="row g-2 align-items-end mt-2">
           <!-- Tag Filter -->
           <div class="col-md-2">
-            <label for="orgsTagFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;">
-              <i class="bi bi-tags me-1"></i>Tag
+            <label for="orgsTagFilter" class="form-label filter-bar-field-label mb-1">
+              <i class="bi bi-tags me-1" aria-hidden="true"></i>Tag
             </label>
             <select class="form-select form-select-sm" id="orgsTagFilter"
                     data-on-change="orgsModule.filterOrganisations">
@@ -1965,8 +1634,8 @@
 
           <!-- Has Logo Toggle -->
           <div class="col-md-1">
-            <label for="orgsLogoFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;">
-              <i class="bi bi-image me-1"></i>Logo
+            <label for="orgsLogoFilter" class="form-label filter-bar-field-label mb-1">
+              <i class="bi bi-image me-1" aria-hidden="true"></i>Logo
             </label>
             <select class="form-select form-select-sm" id="orgsLogoFilter"
                     data-on-change="orgsModule.filterOrganisations">
@@ -1978,8 +1647,8 @@
 
           <!-- Date Range Filter -->
           <div class="col-md-2">
-            <label for="orgsDateFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;">
-              <i class="bi bi-clock-history me-1"></i>Date Added
+            <label for="orgsDateFilter" class="form-label filter-bar-field-label mb-1">
+              <i class="bi bi-clock-history me-1" aria-hidden="true"></i>Date Added
             </label>
             <select class="form-select form-select-sm" id="orgsDateFilter"
                     data-on-change="orgsModule.filterOrganisations">
@@ -2088,38 +1757,38 @@
                   <input type="checkbox" class="form-check-input" id="selectAllOrgs"
                          aria-label="Select all organisations" data-on-change="orgsModule.toggleSelectAll">
                 </th>
-                <th scope="col" style="width: 14%; cursor: pointer;" class="fw-semibold" data-action="orgsModule.sortBy" data-args="[&quot;company&quot;]">
+                <th scope="col" style="width: 14%; cursor: pointer;" class="fw-semibold" data-action="orgsModule.sortBy" data-args="[&quot;company&quot;]" aria-sort="none">
                   Company Name
-                  <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="company"></i>
+                  <i class="bi bi-arrow-down-up" aria-hidden="true" text-muted ms-1 small" data-sort-icon="company"></i>
                 </th>
-                <th scope="col" style="width: 8%; cursor: pointer;" data-action="orgsModule.sortBy" data-args="[&quot;sector&quot;]">
-                  Sector <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="sector"></i>
+                <th scope="col" style="width: 8%; cursor: pointer;" data-action="orgsModule.sortBy" data-args="[&quot;sector&quot;]" aria-sort="none">
+                  Sector <i class="bi bi-arrow-down-up" aria-hidden="true" text-muted ms-1 small" data-sort-icon="sector"></i>
                 </th>
-                <th scope="col" style="width: 8%; cursor: pointer;" data-action="orgsModule.sortBy" data-args="[&quot;county&quot;]">
-                  Area <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="county"></i>
+                <th scope="col" style="width: 8%; cursor: pointer;" data-action="orgsModule.sortBy" data-args="[&quot;county&quot;]" aria-sort="none">
+                  Area <i class="bi bi-arrow-down-up" aria-hidden="true" text-muted ms-1 small" data-sort-icon="county"></i>
                 </th>
-                <th scope="col" style="width: 8%; cursor: pointer;" data-action="orgsModule.sortBy" data-args="[&quot;contact&quot;]">
-                  Contact <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="contact"></i>
+                <th scope="col" style="width: 8%; cursor: pointer;" data-action="orgsModule.sortBy" data-args="[&quot;contact&quot;]" aria-sort="none">
+                  Contact <i class="bi bi-arrow-down-up" aria-hidden="true" text-muted ms-1 small" data-sort-icon="contact"></i>
                 </th>
                 <th scope="col" style="width: 10%;">Email</th>
-                <th scope="col" style="width: 5%; cursor: pointer;" data-action="orgsModule.sortBy" data-args="[&quot;tier&quot;]">
-                  Tier <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="tier"></i>
+                <th scope="col" style="width: 5%; cursor: pointer;" data-action="orgsModule.sortBy" data-args="[&quot;tier&quot;]" aria-sort="none">
+                  Tier <i class="bi bi-arrow-down-up" aria-hidden="true" text-muted ms-1 small" data-sort-icon="tier"></i>
                 </th>
                 <th scope="col" style="width: 10%;">Tags</th>
-                <th scope="col" style="width: 7%; cursor: pointer;" data-action="orgsModule.sortBy" data-args="[&quot;region&quot;]">
-                  Region <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="region"></i>
+                <th scope="col" style="width: 7%; cursor: pointer;" data-action="orgsModule.sortBy" data-args="[&quot;region&quot;]" aria-sort="none">
+                  Region <i class="bi bi-arrow-down-up" aria-hidden="true" text-muted ms-1 small" data-sort-icon="region"></i>
                 </th>
-                <th scope="col" style="width: 6%; cursor: pointer;" data-action="orgsModule.sortBy" data-args="[&quot;status&quot;]">
-                  Status <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="status"></i>
+                <th scope="col" style="width: 6%; cursor: pointer;" data-action="orgsModule.sortBy" data-args="[&quot;status&quot;]" aria-sort="none">
+                  Status <i class="bi bi-arrow-down-up" aria-hidden="true" text-muted ms-1 small" data-sort-icon="status"></i>
                 </th>
-                <th scope="col" style="width: 4%; cursor: pointer; text-align: center;" data-action="orgsModule.sortBy" data-args="[&quot;awards&quot;]">
-                  <i class="bi bi-trophy" title="Awards Count"></i> <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="awards"></i>
+                <th scope="col" style="width: 4%; cursor: pointer; text-align: center;" data-action="orgsModule.sortBy" data-args="[&quot;awards&quot;]" aria-sort="none">
+                  <i class="bi bi-trophy" title="Awards Count"></i> <i class="bi bi-arrow-down-up" aria-hidden="true" text-muted ms-1 small" data-sort-icon="awards"></i>
                 </th>
-                <th scope="col" style="width: 6%; display: none;" id="phoneColHeader" data-action="orgsModule.sortBy" data-args="[&quot;phone&quot;]" class="cursor-pointer">
-                  Phone <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="phone"></i>
+                <th scope="col" style="width: 6%; display: none;" id="phoneColHeader" data-action="orgsModule.sortBy" data-args="[&quot;phone&quot;]" class="cursor-pointer" aria-sort="none">
+                  Phone <i class="bi bi-arrow-down-up" aria-hidden="true" text-muted ms-1 small" data-sort-icon="phone"></i>
                 </th>
-                <th scope="col" style="width: 6%; cursor: pointer; text-align: center;" data-action="orgsModule.sortBy" data-args="[&quot;updated&quot;]">
-                  Updated <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="updated"></i>
+                <th scope="col" style="width: 6%; cursor: pointer; text-align: center;" data-action="orgsModule.sortBy" data-args="[&quot;updated&quot;]" aria-sort="none">
+                  Updated <i class="bi bi-arrow-down-up" aria-hidden="true" text-muted ms-1 small" data-sort-icon="updated"></i>
                 </th>
                 <th scope="col" style="width: 6%; text-align: center;" title="Last Contacted">
                   <i class="bi bi-envelope-check" title="Last Contacted"></i>
@@ -2260,7 +1929,7 @@
                   <div class="row align-items-center">
                     <div class="col-md-4">
                       <label for="csvCountySelect" class="form-label fw-bold mb-0">
-                        <i class="bi bi-geo-alt-fill text-primary me-1"></i>Area *
+                        <i class="bi bi-geo-alt-fill text-primary me-1" aria-hidden="true"></i>Area *
                       </label>
                       <small class="text-muted d-block">Which area is this CSV for?</small>
                     </div>
@@ -2491,7 +2160,6 @@
     </div><!-- /orgsSponsorSection -->
 
   </div>
-</div>
 
       <!-- ==================================================== -->
       <!-- WINNERS TAB -->
@@ -2508,11 +2176,11 @@
           </div>
 
           <!-- Filters Section -->
-          <div class="filters-section" style="position: sticky; top: 56px; z-index: 999; background-color: var(--bs-body-bg, white); padding: 0.75rem 0 0; margin-bottom: 0.75rem; border-bottom: 1px solid #dee2e6;">
-            <div class="rounded-2 p-3 mb-2" style="background:#f8f9fa;">
+          <div class="filters-section filter-bar-sticky">
+            <div class="rounded-2 p-3 mb-2 bg-light">
               <div class="d-flex align-items-center justify-content-between mb-2">
                 <div class="d-flex align-items-center gap-3">
-                  <span class="fw-semibold text-muted" style="font-size:0.8rem;letter-spacing:.04em;text-transform:uppercase;"><i class="bi bi-funnel me-1"></i>Filter Winners</span>
+                  <span class="filter-bar-label"><i class="bi bi-funnel me-1"></i>Filter Winners</span>
                   <span id="winnersRowCount" class="table-row-count"></span>
                 </div>
                 <div class="d-flex align-items-center gap-2">
@@ -2531,19 +2199,19 @@
               </div>
               <div class="row g-2 align-items-end">
                 <div class="col-md-2">
-                  <label for="winnerYearFilterSelect" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-calendar3 me-1"></i>Year</label>
+                  <label for="winnerYearFilterSelect" class="form-label filter-bar-field-label mb-1"><i class="bi bi-calendar3 me-1" aria-hidden="true"></i>Year</label>
                   <select class="form-select form-select-sm" id="winnerYearFilterSelect">
                     <option value="">All Years</option>
                   </select>
                 </div>
                 <div class="col-md-3">
-                  <label for="winnerAwardFilterSelect" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-trophy me-1"></i>Award</label>
+                  <label for="winnerAwardFilterSelect" class="form-label filter-bar-field-label mb-1"><i class="bi bi-trophy me-1" aria-hidden="true"></i>Award</label>
                   <select class="form-select form-select-sm" id="winnerAwardFilterSelect">
                     <option value="">All Awards</option>
                   </select>
                 </div>
                 <div class="col-md-2">
-                  <label for="winnerStatusFilter" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-circle-half me-1"></i>Status</label>
+                  <label for="winnerStatusFilter" class="form-label filter-bar-field-label mb-1"><i class="bi bi-circle-half me-1" aria-hidden="true"></i>Status</label>
                   <select class="form-select form-select-sm" id="winnerStatusFilter">
                     <option value="">All Statuses</option>
                     <option value="pending">Pending</option>
@@ -2554,7 +2222,7 @@
                   </select>
                 </div>
                 <div class="col">
-                  <label for="winnerSearchBox" class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-search me-1"></i>Search</label>
+                  <label for="winnerSearchBox" class="form-label filter-bar-field-label mb-1"><i class="bi bi-search me-1" aria-hidden="true"></i>Search</label>
                   <input type="text" class="form-control form-control-sm" id="winnerSearchBox" placeholder="Search winners…">
                 </div>
               </div>
@@ -2627,14 +2295,14 @@
                 <thead>
                   <tr>
                     <th scope="col" style="width:35px"><input type="checkbox" class="form-check-input" id="selectAllWinners" data-on-change="winnersModule.toggleSelectAllWinners" aria-label="Select all winners"></th>
-                    <th scope="col" class="u-pointer" data-sort-field="winner_name" data-action="winnersModule.sortWinners" data-args="[&quot;winner_name&quot;]">Winner Name <i data-sort-icon-winners="winner_name" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
-                    <th scope="col" class="u-pointer" data-sort-field="award" data-action="winnersModule.sortWinners" data-args="[&quot;award&quot;]">Award <i data-sort-icon-winners="award" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
-                    <th scope="col" class="u-pointer" data-sort-field="year" data-action="winnersModule.sortWinners" data-args="[&quot;year&quot;]">Year <i data-sort-icon-winners="year" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th scope="col" class="u-pointer" data-sort-field="winner_name" data-action="winnersModule.sortWinners" data-args="[&quot;winner_name&quot;]" aria-sort="none">Winner Name <i data-sort-icon-winners="winner_name" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th scope="col" class="u-pointer" data-sort-field="award" data-action="winnersModule.sortWinners" data-args="[&quot;award&quot;]" aria-sort="none">Award <i data-sort-icon-winners="award" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th scope="col" class="u-pointer" data-sort-field="year" data-action="winnersModule.sortWinners" data-args="[&quot;year&quot;]" aria-sort="none">Year <i data-sort-icon-winners="year" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
                     <th scope="col">Photos/Videos</th>
                     <th scope="col" class="text-center" title="GDPR: winner consents to use of name & image">
                       <i class="bi bi-shield-check text-success me-1"></i>Consent
                     </th>
-                    <th scope="col" class="u-pointer" data-sort-field="status" data-action="winnersModule.sortWinners" data-args="[&quot;status&quot;]">
+                    <th scope="col" class="u-pointer" data-sort-field="status" data-action="winnersModule.sortWinners" data-args="[&quot;status&quot;]" aria-sort="none">
                       Status <i data-sort-icon-winners="status" class="bi bi-arrow-down-up text-muted ms-1 small"></i>
                       <i class="bi bi-question-circle text-muted ms-1 small" title="Winner journey: Pending → Notified (told they won) → Pack Sent (winner pack dispatched) → Confirmed (winner accepted) → Published (announced publicly)"></i>
                     </th>
@@ -2679,72 +2347,48 @@
           <!-- Stats Cards -->
           <div class="row g-3 mb-4">
             <div class="col-md-3">
-              <div class="card stats-card" data-stat-filter="clear:entriesStatusFilter" title="Show all entries">
-                <div class="card-body">
-                  <div class="d-flex align-items-center">
-                    <div class="stats-icon bg-primary">
-                      <i class="bi bi-file-earmark-text"></i>
-                    </div>
-                    <div class="ms-3">
-                      <h6 class="mb-0 text-muted">Total Entries</h6>
-                      <h3 class="mb-0" id="totalEntriesCount">0</h3>
-                    </div>
-                  </div>
-                </div>
+              <div class="stat-card stat-card-clickable" data-stat-filter="clear:entriesStatusFilter" title="Show all entries">
+                <i class="bi bi-file-earmark-text stat-card-icon text-primary"></i>
+                <h6>Total Entries</h6>
+                <div class="stat-value" id="totalEntriesCount">0</div>
+                <small class="text-muted">All submissions</small>
+                <div class="stat-card-hover-indicator"><i class="bi bi-arrow-right-circle"></i></div>
               </div>
             </div>
             <div class="col-md-3">
-              <div class="card stats-card" data-stat-filter="entriesStatusFilter:submitted,under_review" title="Filter to pending review">
-                <div class="card-body">
-                  <div class="d-flex align-items-center">
-                    <div class="stats-icon bg-warning">
-                      <i class="bi bi-clock-history"></i>
-                    </div>
-                    <div class="ms-3">
-                      <h6 class="mb-0 text-muted">Pending Review</h6>
-                      <h3 class="mb-0" id="pendingEntriesCount">0</h3>
-                    </div>
-                  </div>
-                </div>
+              <div class="stat-card stat-card-clickable" data-stat-filter="entriesStatusFilter:pending_review" title="Filter to pending review">
+                <i class="bi bi-clock-history stat-card-icon text-warning"></i>
+                <h6>Pending Review</h6>
+                <div class="stat-value text-warning" id="pendingEntriesCount">0</div>
+                <small class="text-muted">Submitted &amp; under review</small>
+                <div class="stat-card-hover-indicator"><i class="bi bi-arrow-right-circle"></i></div>
               </div>
             </div>
             <div class="col-md-3">
-              <div class="card stats-card" data-stat-filter="entriesStatusFilter:shortlisted" title="Filter to shortlisted">
-                <div class="card-body">
-                  <div class="d-flex align-items-center">
-                    <div class="stats-icon bg-info">
-                      <i class="bi bi-star"></i>
-                    </div>
-                    <div class="ms-3">
-                      <h6 class="mb-0 text-muted">Shortlisted</h6>
-                      <h3 class="mb-0" id="shortlistedEntriesCount">0</h3>
-                    </div>
-                  </div>
-                </div>
+              <div class="stat-card stat-card-clickable" data-stat-filter="entriesStatusFilter:shortlisted" title="Filter to shortlisted">
+                <i class="bi bi-star stat-card-icon text-info"></i>
+                <h6>Shortlisted</h6>
+                <div class="stat-value text-info" id="shortlistedEntriesCount">0</div>
+                <small class="text-muted">Made the shortlist</small>
+                <div class="stat-card-hover-indicator"><i class="bi bi-arrow-right-circle"></i></div>
               </div>
             </div>
             <div class="col-md-3">
-              <div class="card stats-card" data-stat-filter="entriesStatusFilter:winner" title="Filter to winners">
-                <div class="card-body">
-                  <div class="d-flex align-items-center">
-                    <div class="stats-icon bg-success">
-                      <i class="bi bi-trophy"></i>
-                    </div>
-                    <div class="ms-3">
-                      <h6 class="mb-0 text-muted">Winners</h6>
-                      <h3 class="mb-0" id="winnerEntriesCount">0</h3>
-                    </div>
-                  </div>
-                </div>
+              <div class="stat-card stat-card-clickable" data-stat-filter="entriesStatusFilter:winner" title="Filter to winners">
+                <i class="bi bi-trophy stat-card-icon text-success"></i>
+                <h6>Winners</h6>
+                <div class="stat-value text-success" id="winnerEntriesCount">0</div>
+                <small class="text-muted">Award recipients</small>
+                <div class="stat-card-hover-indicator"><i class="bi bi-arrow-right-circle"></i></div>
               </div>
             </div>
           </div>
 
           <!-- Filters and Actions -->
-          <div class="rounded-2 p-3 mb-3" style="background:#f8f9fa;border:1px solid #e9ecef;">
+          <div class="filters-section mb-3">
             <div class="d-flex align-items-center justify-content-between mb-2">
               <div class="d-flex align-items-center gap-3">
-                <span class="fw-semibold text-muted" style="font-size:0.8rem;letter-spacing:.04em;text-transform:uppercase;"><i class="bi bi-funnel me-1"></i>Filter Entries <span id="entriesFilterCount" class="badge bg-primary ms-1 d-none"></span></span>
+                <span class="filter-bar-label"><i class="bi bi-funnel me-1"></i>Filter Entries <span id="entriesFilterCount" class="badge bg-primary ms-1 d-none"></span></span>
                 <span id="entriesRowCount" class="table-row-count"></span>
               </div>
               <div class="d-flex align-items-center gap-2">
@@ -2763,32 +2407,32 @@
             </div>
             <div class="row g-2 align-items-end">
               <div class="col-md-2">
-                <label class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-flag me-1"></i>Status</label>
+                <label class="form-label filter-bar-field-label mb-1"><i class="bi bi-flag me-1" aria-hidden="true"></i>Status</label>
                 <select class="form-select form-select-sm" id="entriesStatusFilter" data-on-change="entriesModule.filterEntries">
                   <option value="">All Statuses</option>
                   <option value="draft">Draft</option>
                   <option value="submitted">Submitted</option>
                   <option value="under_review">Under Review</option>
-                  <option value="submitted,under_review">Pending Review</option>
+                  <option value="pending_review">Pending Review</option>
                   <option value="shortlisted">Shortlisted</option>
                   <option value="winner">Winner</option>
                   <option value="rejected">Rejected</option>
                 </select>
               </div>
               <div class="col-md-3">
-                <label class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-trophy me-1"></i>Award Category</label>
+                <label class="form-label filter-bar-field-label mb-1"><i class="bi bi-trophy me-1" aria-hidden="true"></i>Award Category</label>
                 <select class="form-select form-select-sm" id="entriesAwardFilter" data-on-change="entriesModule.filterEntries">
                   <option value="">All Awards</option>
                 </select>
               </div>
               <div class="col-md-1">
-                <label class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-calendar3 me-1"></i>Year</label>
+                <label class="form-label filter-bar-field-label mb-1"><i class="bi bi-calendar3 me-1" aria-hidden="true"></i>Year</label>
                 <select class="form-select form-select-sm" id="entriesYearFilter" data-on-change="entriesModule.filterEntries">
                   <option value="">All Years</option>
                 </select>
               </div>
               <div class="col-md-2">
-                <label class="form-label fw-semibold mb-1" style="font-size:0.8rem;" title="Self-Nominated: the company applied directly. Standard: nominated by a sponsor or organiser."><i class="bi bi-person me-1"></i>Entry Type</label>
+                <label class="form-label filter-bar-field-label mb-1" title="Self-Nominated: the company applied directly. Standard: nominated by a sponsor or organiser."><i class="bi bi-person me-1" aria-hidden="true"></i>Entry Type</label>
                 <select class="form-select form-select-sm" id="entriesSelfNomFilter" data-on-change="entriesModule.filterEntries">
                   <option value="">All Entries</option>
                   <option value="self_nom">Self-Nominated</option>
@@ -2796,7 +2440,7 @@
                 </select>
               </div>
               <div class="col">
-                <label class="form-label fw-semibold mb-1" style="font-size:0.8rem;"><i class="bi bi-search me-1"></i>Search</label>
+                <label class="form-label filter-bar-field-label mb-1"><i class="bi bi-search me-1" aria-hidden="true"></i>Search</label>
                 <input type="text" class="form-control form-control-sm" id="entriesSearchInput" placeholder="Search entries…">
               </div>
             </div>
@@ -2840,14 +2484,14 @@
                     <th scope="col" style="width: 40px;">
                       <input type="checkbox" id="selectAllEntries" data-on-change="entriesModule.toggleSelectAll" aria-label="Select all entries">
                     </th>
-                    <th scope="col" class="u-pointer" data-action="entriesModule.sortEntries" data-args="[&quot;entry_number&quot;]">Entry # <i data-sort-icon-entries="entry_number" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
-                    <th scope="col" class="u-pointer" data-action="entriesModule.sortEntries" data-args="[&quot;company&quot;]">Company <i data-sort-icon-entries="company" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
-                    <th scope="col" class="u-pointer" data-action="entriesModule.sortEntries" data-args="[&quot;award&quot;]">Award <i data-sort-icon-entries="award" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th scope="col" class="u-pointer" data-action="entriesModule.sortEntries" data-args="[&quot;entry_number&quot;]" aria-sort="none">Entry # <i data-sort-icon-entries="entry_number" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th scope="col" class="u-pointer" data-action="entriesModule.sortEntries" data-args="[&quot;company&quot;]" aria-sort="none">Company <i data-sort-icon-entries="company" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th scope="col" class="u-pointer" data-action="entriesModule.sortEntries" data-args="[&quot;award&quot;]" aria-sort="none">Award <i data-sort-icon-entries="award" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
                     <th scope="col">Entry Title</th>
-                    <th scope="col" class="u-pointer" data-action="entriesModule.sortEntries" data-args="[&quot;status&quot;]">Status <i data-sort-icon-entries="status" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
-                    <th scope="col" class="u-pointer" data-action="entriesModule.sortEntries" data-args="[&quot;score&quot;]" title="Average judging score submitted by assigned judges">Score <i data-sort-icon-entries="score" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th scope="col" class="u-pointer" data-action="entriesModule.sortEntries" data-args="[&quot;status&quot;]" aria-sort="none">Status <i data-sort-icon-entries="status" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th scope="col" class="u-pointer" data-action="entriesModule.sortEntries" data-args="[&quot;score&quot;]" title="Average judging score submitted by assigned judges" aria-sort="none">Score <i data-sort-icon-entries="score" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
                     <th scope="col">Payment</th>
-                    <th scope="col" class="u-pointer" data-action="entriesModule.sortEntries" data-args="[&quot;submission_date&quot;]">Submitted <i data-sort-icon-entries="submission_date" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th scope="col" class="u-pointer" data-action="entriesModule.sortEntries" data-args="[&quot;submission_date&quot;]" aria-sort="none">Submitted <i data-sort-icon-entries="submission_date" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
                     <th scope="col" style="width: 150px;">Actions</th>
                   </tr>
                 </thead>
@@ -3073,7 +2717,7 @@
                       <div class="form-check card p-3 u-pointer">
                         <input class="form-check-input" type="radio" name="videoSourceType" id="sourceTypeYouTube" value="youtube" checked aria-label="Source type YouTube" data-on-change="mediaGalleryModule.toggleVideoSourceFields" data-id="youtube">
                         <label class="form-check-label w-100 u-pointer" for="sourceTypeYouTube">
-                          <i class="bi bi-youtube text-danger fs-4 d-block mb-2"></i>
+                          <i class="bi bi-youtube text-danger fs-4 d-block mb-2" aria-hidden="true"></i>
                           <strong>YouTube Link</strong>
                           <small class="d-block text-muted">Embed a YouTube video</small>
                         </label>
@@ -3083,7 +2727,7 @@
                       <div class="form-check card p-3 u-pointer">
                         <input class="form-check-input" type="radio" name="videoSourceType" id="sourceTypeUpload" value="upload" aria-label="Source type upload" data-on-change="mediaGalleryModule.toggleVideoSourceFields" data-id="upload">
                         <label class="form-check-label w-100 u-pointer" for="sourceTypeUpload">
-                          <i class="bi bi-cloud-upload text-primary fs-4 d-block mb-2"></i>
+                          <i class="bi bi-cloud-upload text-primary fs-4 d-block mb-2" aria-hidden="true"></i>
                           <strong>Upload Video File</strong>
                           <small class="d-block text-muted">Upload from your device</small>
                         </label>
@@ -3581,14 +3225,14 @@
             <div class="row g-3 align-items-end">
               <div class="col-md-2">
                 <label class="form-label small fw-semibold mb-1">
-                  <i class="bi bi-search me-1"></i>Search
+                  <i class="bi bi-search me-1" aria-hidden="true"></i>Search
                 </label>
                 <input type="text" class="form-control form-control-sm" id="eventsSearchBox"
                        placeholder="Search events...">
               </div>
               <div class="col-md-2">
                 <label class="form-label small fw-semibold mb-1">
-                  <i class="bi bi-calendar3 me-1"></i>Year
+                  <i class="bi bi-calendar3 me-1" aria-hidden="true"></i>Year
                 </label>
                 <select class="form-select form-select-sm" id="eventsYearFilter" data-on-change="eventsModule.filterEvents">
                   <option value="">All Years</option>
@@ -3597,7 +3241,7 @@
               </div>
               <div class="col-md-2">
                 <label class="form-label small fw-semibold mb-1">
-                  <i class="bi bi-funnel me-1"></i>Time
+                  <i class="bi bi-funnel me-1" aria-hidden="true"></i>Time
                 </label>
                 <select class="form-select form-select-sm" id="eventsStatusFilter" data-on-change="eventsModule.filterEvents">
                   <option value="">All Events</option>
@@ -3608,7 +3252,7 @@
               </div>
               <div class="col-md-2">
                 <label class="form-label small fw-semibold mb-1">
-                  <i class="bi bi-flag me-1"></i>Event Status
+                  <i class="bi bi-flag me-1" aria-hidden="true"></i>Event Status
                 </label>
                 <select class="form-select form-select-sm" id="eventsEventStatusFilter" data-on-change="eventsModule.filterEvents">
                   <option value="">All Statuses</option>
@@ -3702,10 +3346,10 @@
                 <thead>
                   <tr>
                     <th scope="col" style="width:35px"><input type="checkbox" class="form-check-input" id="selectAllEvents" data-on-change="eventsModule.toggleSelectAll" aria-label="Select all events"></th>
-                    <th scope="col" class="u-pointer" data-sort-field="event_name" data-action="eventsModule.sortEvents" data-args="[&quot;event_name&quot;]">Event Name <i data-sort-icon-events="event_name" class="bi bi-arrow-down-up text-muted small"></i></th>
-                    <th scope="col" style="width:70px;cursor:pointer" data-sort-field="year" data-action="eventsModule.sortEvents" data-args="[&quot;year&quot;]">Year <i data-sort-icon-events="year" class="bi bi-arrow-down-up text-muted small"></i></th>
-                    <th scope="col" style="width:100px;cursor:pointer" data-sort-field="event_date" data-action="eventsModule.sortEvents" data-args="[&quot;event_date&quot;]">Date <i data-sort-icon-events="event_date" class="bi bi-arrow-down-up text-muted small"></i></th>
-                    <th scope="col" class="u-pointer" data-sort-field="venue" data-action="eventsModule.sortEvents" data-args="[&quot;venue&quot;]">Venue <i data-sort-icon-events="venue" class="bi bi-arrow-down-up text-muted small"></i></th>
+                    <th scope="col" class="u-pointer" data-sort-field="event_name" data-action="eventsModule.sortEvents" data-args="[&quot;event_name&quot;]" aria-sort="none">Event Name <i data-sort-icon-events="event_name" class="bi bi-arrow-down-up text-muted small"></i></th>
+                    <th scope="col" style="width:70px;cursor:pointer" data-sort-field="year" data-action="eventsModule.sortEvents" data-args="[&quot;year&quot;]" aria-sort="none">Year <i data-sort-icon-events="year" class="bi bi-arrow-down-up text-muted small"></i></th>
+                    <th scope="col" style="width:100px;cursor:pointer" data-sort-field="event_date" data-action="eventsModule.sortEvents" data-args="[&quot;event_date&quot;]" aria-sort="none">Date <i data-sort-icon-events="event_date" class="bi bi-arrow-down-up text-muted small"></i></th>
+                    <th scope="col" class="u-pointer" data-sort-field="venue" data-action="eventsModule.sortEvents" data-args="[&quot;venue&quot;]" aria-sort="none">Venue <i data-sort-icon-events="venue" class="bi bi-arrow-down-up text-muted small"></i></th>
                     <th scope="col" style="width:90px" class="text-center" title="Total attendees (VIP count in brackets)"><i class="bi bi-people me-1"></i>Attendees</th>
                     <th scope="col" style="width:70px" class="text-center" title="Award Presentations Confirmed"><i class="bi bi-trophy me-1"></i>Awards</th>
                     <th scope="col" style="width:65px" class="text-center" title="Winners Confirmed"><i class="bi bi-award me-1"></i>Won</th>
@@ -4309,7 +3953,7 @@
                         <div class="form-check">
                           <input class="form-check-input" type="checkbox" id="smPlatformOverrides" aria-label="Enable platform overrides" data-on-change="socialMediaModule.togglePlatformOverrides">
                           <label class="form-check-label" for="smPlatformOverrides">
-                            <i class="bi bi-sliders me-1"></i>Customise content per platform
+                            <i class="bi bi-sliders me-1" aria-hidden="true"></i>Customise content per platform
                           </label>
                         </div>
 
@@ -4317,27 +3961,27 @@
                           <div class="row g-3">
                             <div class="col-md-6">
                               <label class="form-label small">
-                                <i class="bi bi-twitter-x text-info me-1"></i>X
+                                <i class="bi bi-twitter-x text-info me-1" aria-hidden="true"></i>X
                                 <span class="text-muted">(280 chars)</span>
                               </label>
                               <textarea class="form-control form-control-sm" id="smTwitterContent" rows="3" placeholder="Twitter-specific content..." data-on-input="socialMediaModule.updatePostPreview"></textarea>
                             </div>
                             <div class="col-md-6">
                               <label class="form-label small">
-                                <i class="bi bi-facebook text-primary me-1"></i>Facebook
+                                <i class="bi bi-facebook text-primary me-1" aria-hidden="true"></i>Facebook
                               </label>
                               <textarea class="form-control form-control-sm" id="smFacebookContent" rows="3" placeholder="Facebook-specific content..." data-on-input="socialMediaModule.updatePostPreview"></textarea>
                             </div>
                             <div class="col-md-6">
                               <label class="form-label small">
-                                <i class="bi bi-instagram text-danger me-1"></i>Instagram
+                                <i class="bi bi-instagram text-danger me-1" aria-hidden="true"></i>Instagram
                                 <span class="text-muted">(2,200 chars)</span>
                               </label>
                               <textarea class="form-control form-control-sm" id="smInstagramContent" rows="3" placeholder="Instagram-specific caption..." data-on-input="socialMediaModule.updatePostPreview"></textarea>
                             </div>
                             <div class="col-md-6">
                               <label class="form-label small">
-                                <i class="bi bi-linkedin text-info me-1"></i>LinkedIn
+                                <i class="bi bi-linkedin text-info me-1" aria-hidden="true"></i>LinkedIn
                                 <span class="text-muted">(3,000 chars)</span>
                               </label>
                               <textarea class="form-control form-control-sm" id="smLinkedInContent" rows="3" placeholder="LinkedIn-specific content..." data-on-input="socialMediaModule.updatePostPreview"></textarea>
@@ -4350,7 +3994,7 @@
                       <!-- Image Options -->
                       <div class="mb-3">
                         <label class="form-label fw-bold">
-                          <i class="bi bi-image me-1"></i>Post Image
+                          <i class="bi bi-image me-1" aria-hidden="true"></i>Post Image
                         </label>
                         <div class="row g-3">
                           <div class="col-md-6">
@@ -4384,7 +4028,7 @@
                           <div class="form-check">
                             <input class="form-check-input" type="checkbox" id="smAddLogoOverlay" checked aria-label="Add logo overlay" data-on-change="socialMediaModule.updateImagePreview">
                             <label class="form-check-label" for="smAddLogoOverlay">
-                              <i class="bi bi-badge-tm me-1"></i>Add British Trade Awards Logo Overlay
+                              <i class="bi bi-badge-tm me-1" aria-hidden="true"></i>Add British Trade Awards Logo Overlay
                             </label>
                           </div>
                           <small class="text-muted d-block mt-1">Logo will be placed in the corner with transparency</small>
@@ -4394,14 +4038,14 @@
                       <!-- Platform Selection -->
                       <div class="mb-3">
                         <label class="form-label fw-bold">
-                          <i class="bi bi-share-fill me-1"></i>Post To
+                          <i class="bi bi-share-fill me-1" aria-hidden="true"></i>Post To
                         </label>
                         <div class="row g-2">
                           <div class="col-md-3">
                             <div class="form-check">
                               <input class="form-check-input" type="checkbox" id="platformTwitter" aria-label="Post to Twitter" checked>
                               <label class="form-check-label" for="platformTwitter">
-                                <i class="bi bi-twitter-x text-info me-1"></i>X
+                                <i class="bi bi-twitter-x text-info me-1" aria-hidden="true"></i>X
                               </label>
                             </div>
                           </div>
@@ -4409,7 +4053,7 @@
                             <div class="form-check">
                               <input class="form-check-input" type="checkbox" id="platformFacebook" aria-label="Post to Facebook" checked>
                               <label class="form-check-label" for="platformFacebook">
-                                <i class="bi bi-facebook text-primary me-1"></i>Facebook
+                                <i class="bi bi-facebook text-primary me-1" aria-hidden="true"></i>Facebook
                               </label>
                             </div>
                           </div>
@@ -4417,7 +4061,7 @@
                             <div class="form-check">
                               <input class="form-check-input" type="checkbox" id="platformInstagram" aria-label="Post to Instagram" checked>
                               <label class="form-check-label" for="platformInstagram">
-                                <i class="bi bi-instagram text-danger me-1"></i>Instagram
+                                <i class="bi bi-instagram text-danger me-1" aria-hidden="true"></i>Instagram
                               </label>
                             </div>
                           </div>
@@ -4425,7 +4069,7 @@
                             <div class="form-check">
                               <input class="form-check-input" type="checkbox" id="platformLinkedIn" aria-label="Post to LinkedIn" checked>
                               <label class="form-check-label" for="platformLinkedIn">
-                                <i class="bi bi-linkedin text-info me-1"></i>LinkedIn
+                                <i class="bi bi-linkedin text-info me-1" aria-hidden="true"></i>LinkedIn
                               </label>
                             </div>
                           </div>
@@ -4436,14 +4080,14 @@
                       <div class="row g-3 mb-3">
                         <div class="col-md-6">
                           <label for="smScheduleDate" class="form-label">
-                            <i class="bi bi-calendar3 me-1"></i>Schedule Date
+                            <i class="bi bi-calendar3 me-1" aria-hidden="true"></i>Schedule Date
                           </label>
                           <input type="date" class="form-control" id="smScheduleDate">
                           <small class="text-muted">Leave empty to post immediately</small>
                         </div>
                         <div class="col-md-6">
                           <label for="smScheduleTime" class="form-label">
-                            <i class="bi bi-clock me-1"></i>Schedule Time
+                            <i class="bi bi-clock me-1" aria-hidden="true"></i>Schedule Time
                           </label>
                           <input type="time" class="form-control" id="smScheduleTime">
                         </div>
@@ -4743,7 +4387,7 @@
                             <div class="form-check">
                               <input class="form-check-input" type="checkbox" id="bulkPlatformTwitter" checked>
                               <label class="form-check-label" for="bulkPlatformTwitter">
-                                <i class="bi bi-twitter-x text-info me-1"></i>X
+                                <i class="bi bi-twitter-x text-info me-1" aria-hidden="true"></i>X
                               </label>
                             </div>
                           </div>
@@ -4751,7 +4395,7 @@
                             <div class="form-check">
                               <input class="form-check-input" type="checkbox" id="bulkPlatformFacebook" checked>
                               <label class="form-check-label" for="bulkPlatformFacebook">
-                                <i class="bi bi-facebook text-primary me-1"></i>Facebook
+                                <i class="bi bi-facebook text-primary me-1" aria-hidden="true"></i>Facebook
                               </label>
                             </div>
                           </div>
@@ -4759,7 +4403,7 @@
                             <div class="form-check">
                               <input class="form-check-input" type="checkbox" id="bulkPlatformInstagram" checked>
                               <label class="form-check-label" for="bulkPlatformInstagram">
-                                <i class="bi bi-instagram text-danger me-1"></i>Instagram
+                                <i class="bi bi-instagram text-danger me-1" aria-hidden="true"></i>Instagram
                               </label>
                             </div>
                           </div>
@@ -4767,7 +4411,7 @@
                             <div class="form-check">
                               <input class="form-check-input" type="checkbox" id="bulkPlatformLinkedIn" checked>
                               <label class="form-check-label" for="bulkPlatformLinkedIn">
-                                <i class="bi bi-linkedin text-info me-1"></i>LinkedIn
+                                <i class="bi bi-linkedin text-info me-1" aria-hidden="true"></i>LinkedIn
                               </label>
                             </div>
                           </div>
@@ -5127,9 +4771,9 @@
                       <div class="mb-3">
                         <div class="btn-group btn-group-sm w-100" role="group">
                           <input type="radio" class="btn-check" name="sendMode" id="sendModeNow" value="now" checked aria-label="Send now" data-on-change="emailBuilder.toggleScheduler">
-                          <label class="btn btn-outline-secondary" for="sendModeNow"><i class="bi bi-send me-1"></i>Send Now</label>
+                          <label class="btn btn-outline-secondary" for="sendModeNow"><i class="bi bi-send me-1" aria-hidden="true"></i>Send Now</label>
                           <input type="radio" class="btn-check" name="sendMode" id="sendModeScheduled" value="scheduled" aria-label="Send scheduled" data-on-change="emailBuilder.toggleScheduler">
-                          <label class="btn btn-outline-secondary" for="sendModeScheduled"><i class="bi bi-clock me-1"></i>Schedule</label>
+                          <label class="btn btn-outline-secondary" for="sendModeScheduled"><i class="bi bi-clock me-1" aria-hidden="true"></i>Schedule</label>
                         </div>
                       </div>
 
@@ -5449,7 +5093,7 @@
                 <span class="d-block small fw-normal opacity-75" style="font-size:0.7rem;">Revenue and outstanding analysis</span>
               </button>
             </li>
-            <li class="nav-item" role="presentation">
+            <li class="nav-item d-none" role="presentation">
               <button class="nav-link" id="accounting-subtab" data-bs-toggle="pill" data-bs-target="#accounting-content" type="button" role="tab">
                 <i class="bi bi-currency-pound me-2"></i>Accounting Integration
                 <span class="d-block small fw-normal opacity-75" style="font-size:0.7rem;">Connect your accounting software</span>
@@ -5536,9 +5180,6 @@
                   </div>
                   <div class="col-md-2">
                     <div class="d-flex gap-1">
-                      <button class="btn btn-primary btn-sm flex-grow-1" data-action="paymentsModule.createNewInvoice">
-                        <i class="bi bi-plus-circle me-1"></i>Create Invoice
-                      </button>
                       <div class="btn-group">
                         <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
                           <i class="bi bi-download me-1"></i>Export
@@ -5547,34 +5188,37 @@
                           <li><a class="dropdown-item" href="#" data-action="paymentsModule.exportInvoicesCSV" data-prevent-default="true"><i class="bi bi-filetype-csv text-success me-2"></i>Export CSV</a></li>
                           <li><a class="dropdown-item" href="#" data-action="paymentsModule.exportInvoicesExcel" data-prevent-default="true"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Export Excel</a></li>
                           <li><a class="dropdown-item" href="#" data-action="paymentsModule.exportInvoicesPDF" data-prevent-default="true"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
+                          <li><hr class="dropdown-divider"></li>
+                          <li><a class="dropdown-item text-warning" href="#" data-action="paymentsModule.sendOverdueReminders" data-prevent-default="true"><i class="bi bi-bell me-2"></i>Send Overdue Reminders</a></li>
+                          <li><a class="dropdown-item text-info" href="#" data-action="paymentsModule.openDunningSettings" data-prevent-default="true"><i class="bi bi-gear me-2"></i>Auto-Reminder Settings</a></li>
                         </ul>
                       </div>
-                      <button class="btn btn-outline-warning btn-sm" data-action="paymentsModule.sendOverdueReminders" title="Send payment reminders to all overdue invoices">
-                        <i class="bi bi-bell me-1"></i>Reminders
-                      </button>
-                      <button class="btn btn-outline-info btn-sm" data-action="paymentsModule.openDunningSettings" title="Configure automatic overdue reminder sequence">
-                        <i class="bi bi-gear me-1"></i>Auto-Reminders
-                      </button>
                     </div>
                   </div>
                 </div>
               </div>
 
               <!-- Invoices Table -->
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="fw-semibold mb-0">Invoices</h6>
+                <button class="btn btn-primary btn-sm" data-action="paymentsModule.createNewInvoice">
+                  <i class="bi bi-plus-circle me-1"></i>Create Invoice
+                </button>
+              </div>
               <div class="table-container">
                 <div class="table-responsive">
                   <table class="table table-hover table-striped align-middle">
                     <thead class="table-light">
                       <tr>
-                        <th scope="col" class="u-pointer" data-action="paymentsModule.sortInvoices" data-args="[&quot;invoice_number&quot;]">Invoice #</th>
-                        <th scope="col" class="u-pointer" data-action="paymentsModule.sortInvoices" data-args="[&quot;org_name&quot;]">Organisation</th>
-                        <th scope="col" class="u-pointer" data-action="paymentsModule.sortInvoices" data-args="[&quot;invoice_date&quot;]">Date</th>
-                        <th scope="col" class="u-pointer" data-action="paymentsModule.sortInvoices" data-args="[&quot;due_date&quot;]">Due Date</th>
+                        <th scope="col" class="u-pointer" data-action="paymentsModule.sortInvoices" data-args="[&quot;invoice_number&quot;]" aria-sort="none">Invoice #</th>
+                        <th scope="col" class="u-pointer" data-action="paymentsModule.sortInvoices" data-args="[&quot;org_name&quot;]" aria-sort="none">Organisation</th>
+                        <th scope="col" class="u-pointer" data-action="paymentsModule.sortInvoices" data-args="[&quot;invoice_date&quot;]" aria-sort="none">Date</th>
+                        <th scope="col" class="u-pointer" data-action="paymentsModule.sortInvoices" data-args="[&quot;due_date&quot;]" aria-sort="none">Due Date</th>
                         <th scope="col">Type</th>
-                        <th scope="col" class="u-pointer" data-action="paymentsModule.sortInvoices" data-args="[&quot;total_amount&quot;]">Amount</th>
+                        <th scope="col" class="u-pointer" data-action="paymentsModule.sortInvoices" data-args="[&quot;total_amount&quot;]" aria-sort="none">Amount</th>
                         <th scope="col">Paid</th>
-                        <th scope="col" class="u-pointer" data-action="paymentsModule.sortInvoices" data-args="[&quot;balance_due&quot;]">Balance</th>
-                        <th scope="col" class="u-pointer" data-action="paymentsModule.sortInvoices" data-args="[&quot;status&quot;]">Status</th>
+                        <th scope="col" class="u-pointer" data-action="paymentsModule.sortInvoices" data-args="[&quot;balance_due&quot;]" aria-sort="none">Balance</th>
+                        <th scope="col" class="u-pointer" data-action="paymentsModule.sortInvoices" data-args="[&quot;status&quot;]" aria-sort="none">Status</th>
                         <th scope="col">Actions</th>
                       </tr>
                     </thead>
@@ -6851,7 +6495,7 @@
         </div>
       </div>
 
-    </div>
+    </div><!-- /#mainTabContent -->
       </main><!-- /.app-main -->
     </div><!-- /.app-layout -->
 
@@ -8900,14 +8544,14 @@
             <!-- Tags Row -->
             <div class="row g-3 mb-3">
               <div class="col-md-6">
-                <label for="tagPhotoOrgSelect" class="form-label"><i class="bi bi-building me-1"></i>Organisation</label>
+                <label for="tagPhotoOrgSelect" class="form-label"><i class="bi bi-building me-1" aria-hidden="true"></i>Organisation</label>
                 <select class="form-select" id="tagPhotoOrgSelect">
                   <option value="">None</option>
                 </select>
                 <small class="text-muted">Which company is featured in this photo?</small>
               </div>
               <div class="col-md-6">
-                <label for="tagPhotoAwardSelect" class="form-label"><i class="bi bi-trophy me-1"></i>Award</label>
+                <label for="tagPhotoAwardSelect" class="form-label"><i class="bi bi-trophy me-1" aria-hidden="true"></i>Award</label>
                 <select class="form-select" id="tagPhotoAwardSelect">
                   <option value="">None</option>
                 </select>
@@ -8918,31 +8562,31 @@
             <!-- Caption & Alt Text -->
             <div class="row g-3 mb-3">
               <div class="col-md-6">
-                <label for="tagPhotoCaption" class="form-label"><i class="bi bi-chat-left-text me-1"></i>Caption</label>
+                <label for="tagPhotoCaption" class="form-label"><i class="bi bi-chat-left-text me-1" aria-hidden="true"></i>Caption</label>
                 <textarea class="form-control form-control-sm" id="tagPhotoCaption" rows="2" placeholder="Photo caption for website display..."></textarea>
               </div>
               <div class="col-md-6">
-                <label for="tagPhotoAltText" class="form-label"><i class="bi bi-universal-access me-1"></i>Alt Text (Accessibility)</label>
+                <label for="tagPhotoAltText" class="form-label"><i class="bi bi-universal-access me-1" aria-hidden="true"></i>Alt Text (Accessibility)</label>
                 <textarea class="form-control form-control-sm" id="tagPhotoAltText" rows="2" placeholder="Describe the image for screen readers..."></textarea>
               </div>
             </div>
 
             <!-- Photographer -->
             <div class="mb-3">
-              <label for="tagPhotoPhotographer" class="form-label"><i class="bi bi-camera me-1"></i>Photographer Credit</label>
+              <label for="tagPhotoPhotographer" class="form-label"><i class="bi bi-camera me-1" aria-hidden="true"></i>Photographer Credit</label>
               <input type="text" class="form-control form-control-sm" id="tagPhotoPhotographer" placeholder="Photographer name...">
             </div>
 
             <!-- Where to Display -->
             <div class="card bg-light mb-2">
               <div class="card-body py-2">
-                <label class="form-label mb-2 fw-bold"><i class="bi bi-globe me-1"></i>Display On Website</label>
+                <label class="form-label mb-2 fw-bold"><i class="bi bi-globe me-1" aria-hidden="true"></i>Display On Website</label>
                 <div class="row g-2">
                   <div class="col-md-4">
                     <div class="form-check form-switch">
                       <input class="form-check-input" type="checkbox" id="tagPhotoShowGallery" checked>
                       <label class="form-check-label" for="tagPhotoShowGallery">
-                        <i class="bi bi-images me-1"></i>Public Gallery
+                        <i class="bi bi-images me-1" aria-hidden="true"></i>Public Gallery
                       </label>
                     </div>
                   </div>
@@ -8950,7 +8594,7 @@
                     <div class="form-check form-switch">
                       <input class="form-check-input" type="checkbox" id="tagPhotoShowWinner" checked>
                       <label class="form-check-label" for="tagPhotoShowWinner">
-                        <i class="bi bi-trophy me-1"></i>Winner Profile Page
+                        <i class="bi bi-trophy me-1" aria-hidden="true"></i>Winner Profile Page
                       </label>
                     </div>
                   </div>
@@ -8958,7 +8602,7 @@
                     <div class="form-check form-switch">
                       <input class="form-check-input" type="checkbox" id="tagPhotoShowCompany" checked>
                       <label class="form-check-label" for="tagPhotoShowCompany">
-                        <i class="bi bi-building me-1"></i>Company Profile Page
+                        <i class="bi bi-building me-1" aria-hidden="true"></i>Company Profile Page
                       </label>
                     </div>
                   </div>
@@ -9612,28 +9256,28 @@
               <div class="form-check mb-2">
                 <input class="form-check-input" type="checkbox" id="mpIncludePressRelease" checked>
                 <label class="form-check-label" for="mpIncludePressRelease">
-                  <i class="bi bi-file-earmark-text me-1"></i><strong>Press Release</strong>
+                  <i class="bi bi-file-earmark-text me-1" aria-hidden="true"></i><strong>Press Release</strong>
                   <small class="d-block text-muted">Ready-to-publish press release with winner details</small>
                 </label>
               </div>
               <div class="form-check mb-2">
                 <input class="form-check-input" type="checkbox" id="mpIncludePhotos" checked>
                 <label class="form-check-label" for="mpIncludePhotos">
-                  <i class="bi bi-images me-1"></i><strong>High-Res Photos</strong>
+                  <i class="bi bi-images me-1" aria-hidden="true"></i><strong>High-Res Photos</strong>
                   <small class="d-block text-muted">Event and ceremony photography</small>
                 </label>
               </div>
               <div class="form-check mb-2">
                 <input class="form-check-input" type="checkbox" id="mpIncludeQuotes" checked>
                 <label class="form-check-label" for="mpIncludeQuotes">
-                  <i class="bi bi-quote me-1"></i><strong>Winner Quotes</strong>
+                  <i class="bi bi-quote me-1" aria-hidden="true"></i><strong>Winner Quotes</strong>
                   <small class="d-block text-muted">Quotable excerpts and testimonials</small>
                 </label>
               </div>
               <div class="form-check mb-2">
                 <input class="form-check-input" type="checkbox" id="mpIncludeGuidelines">
                 <label class="form-check-label" for="mpIncludeGuidelines">
-                  <i class="bi bi-book me-1"></i><strong>Brand Guidelines</strong>
+                  <i class="bi bi-book me-1" aria-hidden="true"></i><strong>Brand Guidelines</strong>
                   <small class="d-block text-muted">Logo usage guidelines and specifications</small>
                 </label>
               </div>
@@ -9687,42 +9331,42 @@
               <div class="form-check mb-2">
                 <input class="form-check-input" type="checkbox" id="wpIncludeBadge" checked>
                 <label class="form-check-label" for="wpIncludeBadge">
-                  <i class="bi bi-award-fill me-1"></i><strong>Winner Badge/Logo</strong>
+                  <i class="bi bi-award-fill me-1" aria-hidden="true"></i><strong>Winner Badge/Logo</strong>
                   <small class="d-block text-muted">Official winner badge for websites and marketing</small>
                 </label>
               </div>
               <div class="form-check mb-2">
                 <input class="form-check-input" type="checkbox" id="wpIncludeSocialGraphics" checked>
                 <label class="form-check-label" for="wpIncludeSocialGraphics">
-                  <i class="bi bi-image me-1"></i><strong>Social Media Graphics</strong>
+                  <i class="bi bi-image me-1" aria-hidden="true"></i><strong>Social Media Graphics</strong>
                   <small class="d-block text-muted">Optimised graphics for LinkedIn, Twitter, Facebook, Instagram</small>
                 </label>
               </div>
               <div class="form-check mb-2">
                 <input class="form-check-input" type="checkbox" id="wpIncludeCertificate" checked>
                 <label class="form-check-label" for="wpIncludeCertificate">
-                  <i class="bi bi-file-earmark-pdf me-1"></i><strong>Certificate</strong>
+                  <i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i><strong>Certificate</strong>
                   <small class="d-block text-muted">Printable certificate of achievement</small>
                 </label>
               </div>
               <div class="form-check mb-2">
                 <input class="form-check-input" type="checkbox" id="wpIncludePhotos" checked>
                 <label class="form-check-label" for="wpIncludePhotos">
-                  <i class="bi bi-images me-1"></i><strong>Ceremony Photos</strong>
+                  <i class="bi bi-images me-1" aria-hidden="true"></i><strong>Ceremony Photos</strong>
                   <small class="d-block text-muted">Photos from the awards event</small>
                 </label>
               </div>
               <div class="form-check mb-2">
                 <input class="form-check-input" type="checkbox" id="wpIncludeEmailBanner" checked>
                 <label class="form-check-label" for="wpIncludeEmailBanner">
-                  <i class="bi bi-envelope me-1"></i><strong>Email Signature Banner</strong>
+                  <i class="bi bi-envelope me-1" aria-hidden="true"></i><strong>Email Signature Banner</strong>
                   <small class="d-block text-muted">Banner to add to email signatures</small>
                 </label>
               </div>
               <div class="form-check mb-2">
                 <input class="form-check-input" type="checkbox" id="wpIncludeWebBanner" checked>
                 <label class="form-check-label" for="wpIncludeWebBanner">
-                  <i class="bi bi-globe me-1"></i><strong>Website Banner</strong>
+                  <i class="bi bi-globe me-1" aria-hidden="true"></i><strong>Website Banner</strong>
                   <small class="d-block text-muted">Banner for winner's website</small>
                 </label>
               </div>
@@ -11078,5 +10722,6 @@
   <!-- TradingView Widget -->
   <script src="btc-module.js"></script>
 
+</div><!-- /#dashboardPage -->
 </body>
 </html>

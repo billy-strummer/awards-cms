@@ -1469,6 +1469,16 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
+  // Load Content Calendar when sub-tab is opened
+  const contentCalendarSubTab = document.getElementById('content-calendar-subtab');
+  if (contentCalendarSubTab) {
+    contentCalendarSubTab.addEventListener('shown.bs.tab', () => {
+      if (typeof marketingModule !== 'undefined') {
+        marketingModule.loadContentCalendar();
+      }
+    });
+  }
+
   // Load payments data when payments tab is clicked
   const paymentsTab = document.getElementById('payments-tab');
   if (paymentsTab) {

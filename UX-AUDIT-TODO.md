@@ -168,19 +168,19 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **Files:** `crm.js`, `index.html`
 - **What to build:** Add a "Manage Stages" button in the Deal Pipeline sub-tab. Opens a modal to add/rename/reorder/delete pipeline stages. Stages stored in settings table.
 - **Done when:** User can rename "Stage 1" to "Proposal Sent" and it reflects in the Kanban.
-- [ ] Implemented
+- [x] Implemented
 
 ### M2 — CRM communication timeline per organisation
 - **Files:** `crm.js`, `organisations.js`, `index.html`
 - **What to build:** In the organisation detail modal, add a "History" tab showing all CRM communications, meetings, and notes for that org in chronological order.
 - **Done when:** Opening an organisation shows its full interaction history in one view.
-- [ ] Implemented
+- [x] Implemented (pre-existing: `loadUnifiedTimeline` / `orgActivityTimeline`)
 
 ### M3 — Smart segments AND/OR rule logic
 - **Files:** `crm.js`, `index.html`
 - **What to build:** Upgrade the smart segment rule builder to support multiple conditions with AND/OR operators. Add "Add condition" button that appends a new field/operator/value row. Add an AND/OR toggle between conditions.
 - **Done when:** User can build "Sector = Construction AND Region = London AND Status = Active".
-- [ ] Implemented
+- [x] Implemented
 
 ### M4 — Calendar as default Events view
 - **Files:** `events.js`, `index.html`
@@ -192,7 +192,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **Files:** `reporting.js`, `index.html`
 - **What to build:** Add Chart.js (already likely in project or add via CDN). Add bar charts for: entries per sector, winners per region, revenue per month. Add a pie chart for award status breakdown. Render below the existing report table.
 - **Done when:** The Reporting tab shows at least 3 charts that update when filters change.
-- [ ] Implemented
+- [x] Implemented (pre-existing: `renderSectorChart`, `renderRegionChart`, etc. in `reporting.js`)
 
 ### M6 — Reporting: PDF and Excel export
 - **Files:** `reporting.js`, `index.html`
@@ -204,7 +204,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **Files:** `reporting.js`, `index.html`, `api/email-automation.js`
 - **What to build:** Add a "Schedule Report" button. Opens modal: report type, frequency (weekly/monthly), recipient email(s). Stores schedule in settings. Email automation triggers the report on schedule.
 - **Done when:** User can set "Email me the monthly revenue report on the 1st of each month".
-- [ ] Implemented
+- [x] Implemented (pre-existing: `reportsScheduler` module in `app.js`)
 
 ### M8 — Winner announcement scheduling
 - **Files:** `winners.js`, `index.html`
@@ -216,55 +216,55 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **Files:** `entries.js`, `awards.js`, `index.html`
 - **What to build:** Add `entry_deadline` date field to the award record. In the entries table, flag submissions past the deadline with an "Overdue" badge. Optionally block new public submissions past the deadline in `entry-proxy.js`.
 - **Done when:** Awards with a past deadline show their entries flagged; new public submissions are blocked.
-- [ ] Implemented
+- [x] Implemented
 
 ### M10 — Email template thumbnail grid
 - **Files:** `email-templates.js`, `index.html`
 - **What to build:** Change the email templates list from a plain table to a card grid. Each card shows a small preview (first 200px of the template rendered in an iframe or screenshot), the template name, last modified date, and Use/Edit/Delete buttons.
 - **Done when:** Email Templates tab shows a visual card grid instead of a plain list.
-- [ ] Implemented
+- [x] Implemented
 
 ### M11 — Email A/B subject line testing
 - **Files:** `email-builder.js`, `index.html`
 - **What to build:** Add an "A/B Test" toggle in the campaign send modal. When on, show two subject line inputs and a split % slider. Send version A to X% and version B to the rest. Record which performed better in the campaign log.
 - **Done when:** User can create a campaign with two subject lines and a 50/50 split.
-- [ ] Implemented
+- [x] Implemented (pre-existing: `abTestEnabled` + `abTestSection` in `email-builder.js`)
 
 ### M12 — Sponsor tier visual badges
 - **Files:** `organisations.js`, `marketing.js`, `index.html`
 - **What to build:** Add a tier badge (Gold/Silver/Bronze/Partner with colour-coded styling) to sponsor organisation rows and the marketing sponsors section. Badge colour: Gold=#FFD700, Silver=#C0C0C0, Bronze=#CD7F32.
 - **Done when:** Sponsor organisations show a coloured tier badge in the table and marketing section.
-- [ ] Implemented
+- [x] Implemented (pre-existing: `tierColors` in `organisations.js:845` + `getTierColor()` in `marketing.js`)
 
 ### M13 — Social media content calendar
 - **Files:** `marketing.js`, `index.html`
 - **What to build:** Add a "Content Calendar" sub-tab to Marketing. Shows a monthly calendar grid with scheduled posts as event blocks (colour-coded by platform). Clicking a block opens the post for editing.
 - **Done when:** Marketing → Content Calendar shows a monthly view of all scheduled social posts.
-- [ ] Implemented
+- [x] Implemented
 
 ### M14 — Hashtag library for social posts
 - **Files:** `marketing.js`, `index.html`
 - **What to build:** Add a "# Hashtags" button in the social media post composer. Opens a panel with curated hashtag groups (Awards, Sectors, Locations). Clicking a hashtag appends it to the post.
 - **Done when:** Composing a social post can insert hashtags from a library panel.
-- [ ] Implemented
+- [x] Implemented
 
 ### M15 — Meeting note templates in CRM
 - **Files:** `crm.js`, `index.html`
 - **What to build:** When logging a meeting, pre-populate the notes field with a template: "**Attendees:** \n**Key Points:** \n**Action Items:** \n**Next Steps:**". User can edit before saving.
 - **Done when:** Adding a meeting pre-fills the notes with a structured template.
-- [ ] Implemented
+- [x] Implemented
 
 ### M16 — Settings: login activity audit log
 - **Files:** `settings.js`, `index.html`, `auth.js`
 - **What to build:** Add a "Login History" panel to Settings → Security sub-tab. Shows last 50 logins: date/time, user email, IP address, browser. Query from Supabase auth.audit_log_entries or a custom logins table.
 - **Done when:** Settings → Security shows a table of recent login events.
-- [ ] Implemented
+- [x] Implemented
 
 ### M17 — Settings: per-user notification preferences
 - **Files:** `settings.js`, `index.html`
 - **What to build:** Add a "Notifications" section to Settings → General. Checkboxes for: "Notify me of new entries", "Notify me of overdue invoices", "Notify me of new organisations", "Daily digest email". Saved per user in localStorage or Supabase user metadata.
 - **Done when:** User can toggle notification types and preferences persist across sessions.
-- [ ] Implemented
+- [x] Implemented
 
 ### M18 — Co-winner / runner-up support
 - **Files:** `winners.js`, `index.html`
@@ -276,13 +276,13 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **Files:** `dashboard.js`, `index.html`
 - **What to build:** Add a "Data Quality" card to the dashboard showing: % of organisations with logos, % with email addresses, % of awards with nominees, % of winners with confirmed status. Each metric is a mini progress bar.
 - **Done when:** Dashboard shows a data quality card with 4 progress indicators.
-- [ ] Implemented
+- [x] Implemented
 
 ### M20 — Organisation parent/subsidiary hierarchy
 - **Files:** `organisations.js`, `index.html`
 - **What to build:** Add a `parent_org_id` field to organisations. In the org edit modal, add a "Parent Organisation" searchable dropdown. In the org table, show a hierarchy icon if the org has a parent, with a tooltip showing the parent name.
 - **Done when:** Organisation "Acme Electrical" can be linked as a subsidiary of "Acme Group".
-- [ ] Implemented
+- [x] Implemented (pre-existing: `organisation_relationships` table + `addRelationship` in org profile)
 
 ---
 
@@ -292,25 +292,25 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **Files:** `awards.js`, `organisations.js`, `winners.js`, `entries.js`
 - **What to build:** Everywhere a status is shown as a colour badge only, add a small icon inside the badge. E.g. Active = green + `bi-check-circle`, Pending = yellow + `bi-clock`, Archived = grey + `bi-archive`. Ensures WCAG compliance.
 - **Done when:** All status badges across all tabs show an icon alongside the colour.
-- [ ] Implemented
+- [x] Implemented
 
 ### L2 — Consistent loading states (skeleton loaders everywhere)
 - **Files:** `utils.js`, all module JS files
 - **What to build:** Audit all tabs — any that still use a plain "Loading..." text or spinner should use `utils.showSkeletonLoading()` instead. Ensure skeleton row count matches expected table columns.
 - **Done when:** Every table shows a skeleton loader (not a spinner or text) while fetching data.
-- [ ] Implemented
+- [x] Implemented (payments invoices + payments table now use skeleton; other spinners are appropriate button/modal loaders)
 
 ### L3 — Sidebar collapse state persisted in localStorage
 - **Files:** `app.js`, `index.html`
 - **What to build:** When the user collapses/expands the sidebar, store state in `localStorage.setItem('sidebarCollapsed', true/false)`. On page load, apply the stored state before rendering.
 - **Done when:** Collapsing the sidebar and refreshing keeps it collapsed.
-- [ ] Implemented
+- [x] Implemented (pre-existing)
 
 ### L4 — Sector filter: searchable dropdown
 - **Files:** `awards.js`, `index.html`
 - **What to build:** Replace the plain `<select>` sector filter on Awards with a searchable dropdown (Bootstrap's `tom-select` or a simple filtered list). Makes finding a sector fast when there are 50+ options.
 - **Done when:** The sector filter has a search input that narrows the dropdown options as you type.
-- [ ] Implemented
+- [x] Implemented (`utils.makeSearchableSelect()` wraps the sector `<select>` with a live-filter input)
 
 ### L5 — Toast notifications: longer duration + action link
 - **Files:** `utils.js`
@@ -322,31 +322,31 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **Files:** `index.html` (all modal forms)
 - **What to build:** Audit all modal forms. Any required field that is missing the red asterisk `<span class="text-danger">*</span>` label should have one added. Also ensure `required` attribute is set on the input.
 - **Done when:** All required fields across all modal forms are marked with a red asterisk.
-- [ ] Implemented
+- [x] Implemented (invoice, payment, event, season, media upload, gallery section, clone event, template forms all updated)
 
 ### L7 — Campaign log columns: responsive hide/show
 - **Files:** `email-builder.js`, `index.html`
 - **What to build:** On the email campaign log table, mark lower-priority columns (Bounced, Unsubscribed) as `d-none d-xl-table-cell` so they hide on smaller screens. Ensure the table is still usable at 1024px width.
 - **Done when:** Email campaign log table shows without horizontal scroll on a 1024px screen.
-- [ ] Implemented
+- [x] Implemented
 
 ### L8 — Winner table: row highlight on checkbox selection
 - **Files:** `winners.js`, `styles.css`
 - **What to build:** Add a CSS rule and JS toggle: when a winner row checkbox is checked, add class `table-primary` to the `<tr>`. Remove it when unchecked.
 - **Done when:** Checking a winner row highlights it in light blue; unchecking removes highlight.
-- [ ] Implemented
+- [x] Implemented
 
 ### L9 — Awards table: show "last modified" column
 - **Files:** `awards.js`, `index.html`
 - **What to build:** Add an optional "Modified" column to the awards table (hidden by default, toggleable via column visibility). Shows `updated_at` formatted as relative time ("2 days ago").
 - **Done when:** Awards column visibility menu has a "Modified" option that shows the updated_at date.
-- [ ] Implemented
+- [x] Implemented
 
 ### L10 — Bulk action bar: visual hierarchy (destructive actions distinct)
 - **Files:** `index.html`, `styles.css`
 - **What to build:** In bulk action bars across all tabs, style destructive actions (Archive, Delete) as `btn-outline-danger` and separate them from non-destructive actions with a `|` divider. Currently all buttons look the same.
 - **Done when:** Bulk action bars show Archive/Delete buttons in red, separated from other actions.
-- [ ] Implemented
+- [x] Implemented
 
 ---
 

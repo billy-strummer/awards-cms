@@ -4112,6 +4112,11 @@
                 <i class="bi bi-share me-2"></i>Social Media
               </button>
             </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="content-calendar-subtab" data-bs-toggle="pill" data-bs-target="#content-calendar-content" type="button" role="tab" data-on-show="marketingModule.loadContentCalendar">
+                <i class="bi bi-calendar3 me-2"></i>Content Calendar
+              </button>
+            </li>
           </ul>
 
           <!-- Marketing Sub-Tab Content -->
@@ -4787,6 +4792,35 @@
                 </div>
               </div>
 
+            </div>
+
+            <!-- Content Calendar Sub-Tab -->
+            <div class="tab-pane fade" id="content-calendar-content" role="tabpanel">
+              <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                  <h4><i class="bi bi-calendar3 me-2"></i>Content Calendar</h4>
+                  <p class="text-muted mb-0">Monthly view of all scheduled social media posts</p>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                  <button class="btn btn-outline-secondary btn-sm" data-action="marketingModule.prevContentCalendarMonth" title="Previous month">
+                    <i class="bi bi-chevron-left"></i>
+                  </button>
+                  <span id="contentCalendarMonthLabel" class="fw-semibold px-2"></span>
+                  <button class="btn btn-outline-secondary btn-sm" data-action="marketingModule.nextContentCalendarMonth" title="Next month">
+                    <i class="bi bi-chevron-right"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Platform legend -->
+              <div class="d-flex gap-3 mb-3 flex-wrap">
+                <span class="badge" style="background:#1DA1F2"><i class="bi bi-twitter-x me-1"></i>X / Twitter</span>
+                <span class="badge" style="background:#1877F2"><i class="bi bi-facebook me-1"></i>Facebook</span>
+                <span class="badge" style="background:#E1306C"><i class="bi bi-instagram me-1"></i>Instagram</span>
+                <span class="badge" style="background:#0A66C2"><i class="bi bi-linkedin me-1"></i>LinkedIn</span>
+              </div>
+
+              <div id="contentCalendarGrid"></div>
             </div>
 
             <!-- Email Templates Sub-Tab -->
@@ -6959,11 +6993,11 @@
             <input type="hidden" id="seasonFormId">
             <div class="row g-3">
               <div class="col-md-8">
-                <label for="seasonFormName" class="form-label fw-semibold">Season Name</label>
+                <label for="seasonFormName" class="form-label fw-semibold">Season Name <span class="text-danger" aria-label="required">*</span></label>
                 <input type="text" class="form-control" id="seasonFormName" placeholder="e.g. 2026 Main Season" required>
               </div>
               <div class="col-md-2">
-                <label for="seasonFormYear" class="form-label fw-semibold">Year</label>
+                <label for="seasonFormYear" class="form-label fw-semibold">Year <span class="text-danger" aria-label="required">*</span></label>
                 <input type="number" class="form-control" id="seasonFormYear" value="2026" min="2024" max="2030" required>
               </div>
               <div class="col-md-2">
@@ -7205,13 +7239,13 @@
           <form id="createInvoiceForm" novalidate>
             <div class="row mb-3">
               <div class="col-md-6">
-                <label for="invoiceOrganisation" class="form-label">Company *</label>
+                <label for="invoiceOrganisation" class="form-label">Company <span class="text-danger" aria-label="required">*</span></label>
                 <select class="form-select" id="invoiceOrganisation" required>
                   <option value="">Select Company...</option>
                 </select>
               </div>
               <div class="col-md-6">
-                <label for="invoiceType" class="form-label">Invoice Type *</label>
+                <label for="invoiceType" class="form-label">Invoice Type <span class="text-danger" aria-label="required">*</span></label>
                 <select class="form-select" id="invoiceType" required>
                   <option value="package">Package</option>
                   <option value="entry_fee">Entry Fee</option>
@@ -7223,11 +7257,11 @@
             </div>
             <div class="row mb-3">
               <div class="col-md-3">
-                <label for="invoiceDate" class="form-label">Invoice Date *</label>
+                <label for="invoiceDate" class="form-label">Invoice Date <span class="text-danger" aria-label="required">*</span></label>
                 <input type="date" class="form-control" id="invoiceDate" required>
               </div>
               <div class="col-md-3">
-                <label for="invoiceDueDate" class="form-label">Due Date *</label>
+                <label for="invoiceDueDate" class="form-label">Due Date <span class="text-danger" aria-label="required">*</span></label>
                 <input type="date" class="form-control" id="invoiceDueDate" required>
               </div>
               <div class="col-md-3">
@@ -7311,7 +7345,7 @@
         <div class="modal-body">
           <form id="recordPaymentForm" novalidate>
             <div class="mb-3">
-              <label for="paymentOrganisation" class="form-label">Company *</label>
+              <label for="paymentOrganisation" class="form-label">Company <span class="text-danger" aria-label="required">*</span></label>
               <select class="form-select" id="paymentOrganisation" required>
                 <option value="">Select Company...</option>
               </select>
@@ -7324,16 +7358,16 @@
             </div>
             <div class="row mb-3">
               <div class="col-md-6">
-                <label for="paymentAmount" class="form-label">Amount (£) *</label>
+                <label for="paymentAmount" class="form-label">Amount (£) <span class="text-danger" aria-label="required">*</span></label>
                 <input type="number" class="form-control" id="paymentAmount" step="0.01" min="0.01" required>
               </div>
               <div class="col-md-6">
-                <label for="paymentDate" class="form-label">Payment Date *</label>
+                <label for="paymentDate" class="form-label">Payment Date <span class="text-danger" aria-label="required">*</span></label>
                 <input type="date" class="form-control" id="paymentDate" required>
               </div>
             </div>
             <div class="mb-3">
-              <label for="paymentMethod" class="form-label">Payment Method *</label>
+              <label for="paymentMethod" class="form-label">Payment Method <span class="text-danger" aria-label="required">*</span></label>
               <select class="form-select" id="paymentMethod" required>
                 <option value="bank_transfer">Bank Transfer</option>
                 <option value="card">Card</option>
@@ -7423,7 +7457,7 @@
         <div class="modal-body">
           <form id="sendInvoiceForm">
             <div class="mb-3">
-              <label for="sendInvoiceEmail" class="form-label">Recipient Email *</label>
+              <label for="sendInvoiceEmail" class="form-label">Recipient Email <span class="text-danger" aria-label="required">*</span></label>
               <input type="email" class="form-control" id="sendInvoiceEmail" required placeholder="recipient@company.com">
             </div>
             <div class="mb-3">
@@ -7536,7 +7570,7 @@
         <div class="modal-body">
           <form id="uploadMediaForm">
             <div class="mb-3">
-              <label for="mediaFile" class="form-label">Select File</label>
+              <label for="mediaFile" class="form-label">Select File <span class="text-danger" aria-label="required">*</span></label>
               <input type="file" class="form-control" id="mediaFile" required>
             </div>
             <div class="mb-3">
@@ -7710,7 +7744,7 @@
           <form id="uploadMediaGalleryForm">
             <div class="mb-3">
               <label for="uploadEventSelect" class="form-label">
-                Event *
+                Event <span class="text-danger" aria-label="required">*</span>
                 <button type="button" class="btn btn-sm btn-link p-0 ms-2" data-action="mediaGalleryModule.showQuickAddEvent">
                   <i class="bi bi-plus-circle"></i> Add New Event
                 </button>
@@ -7747,7 +7781,7 @@
               </div>
             </div>
             <div class="mb-3">
-              <label for="uploadFile" class="form-label">Select Files *</label>
+              <label for="uploadFile" class="form-label">Select Files <span class="text-danger" aria-label="required">*</span></label>
               <input type="file" class="form-control" id="uploadFile" accept="image/*,video/*" multiple required>
               <small class="text-muted">Select multiple files. Supported: Images (JPEG, PNG, GIF, WebP) and Videos (MP4, MOV, AVI, WebM)</small>
             </div>
@@ -7876,7 +7910,7 @@
           <form id="eventForm" novalidate>
             <input type="hidden" id="eventId">
             <div class="mb-3">
-              <label for="eventName" class="form-label">Event Name *</label>
+              <label for="eventName" class="form-label">Event Name <span class="text-danger" aria-label="required">*</span></label>
               <input type="text" class="form-control" id="eventName" required placeholder="e.g., Awards Ceremony 2026">
             </div>
             <div class="row">
@@ -7947,7 +7981,7 @@
             <input type="hidden" id="cloneEventSourceId">
 
             <div class="mb-3">
-              <label for="cloneEventName" class="form-label">New Event Name *</label>
+              <label for="cloneEventName" class="form-label">New Event Name <span class="text-danger" aria-label="required">*</span></label>
               <input type="text" class="form-control" id="cloneEventName" required placeholder="e.g., 2025 Awards Ceremony">
             </div>
 
@@ -7957,7 +7991,7 @@
                 <input type="date" class="form-control" id="cloneEventDate">
               </div>
               <div class="col-md-6 mb-3">
-                <label for="cloneEventYear" class="form-label">Year *</label>
+                <label for="cloneEventYear" class="form-label">Year <span class="text-danger" aria-label="required">*</span></label>
                 <input type="number" class="form-control" id="cloneEventYear" min="2000" max="2100" placeholder="2025" required>
               </div>
             </div>
@@ -8695,7 +8729,7 @@
           <form id="gallerySectionForm">
             <input type="hidden" id="gallerySectionId">
             <div class="mb-3">
-              <label for="gallerySectionName" class="form-label">Section Name *</label>
+              <label for="gallerySectionName" class="form-label">Section Name <span class="text-danger" aria-label="required">*</span></label>
               <input type="text" class="form-control" id="gallerySectionName" required placeholder="e.g., Drinks Reception, Dinner, Winner Photos">
             </div>
             <div class="mb-3">
@@ -9468,7 +9502,7 @@
                 <input type="hidden" id="templateId">
                 <div class="row">
                   <div class="col-md-6 mb-3">
-                    <label for="templateName" class="form-label">Template Name *</label>
+                    <label for="templateName" class="form-label">Template Name <span class="text-danger" aria-label="required">*</span></label>
                     <input type="text" class="form-control" id="templateName" required
                       placeholder="e.g., Annual Awards Ceremony">
                   </div>

@@ -1231,6 +1231,174 @@ const marketingModule = {
     const tab = document.getElementById('settings-tab');
     if (tab) tab.click();
   },
+
+  /* -------------------------------------------------- */
+  /* CONTENT CALENDAR (M13)                             */
+  /* -------------------------------------------------- */
+
+  _contentCalendarDate: null,
+
+  async loadContentCalendar() {
+    if (!this._contentCalendarDate) {
+      const now = new Date();
+      this._contentCalendarDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    }
+
+    const date = this._contentCalendarDate;
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const monthStart = new Date(year, month, 1).toISOString().split('T')[0];
+    const monthEnd = new Date(year, month + 1, 0).toISOString().split('T')[0];
+
+    const label = document.getElementById('contentCalendarMonthLabel');
+    if (label) {
+      label.textContent = date.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+    }
+
+    const grid = document.getElementById('contentCalendarGrid');
+    if (grid)
+      grid.innerHTML =
+        '<div class="text-center py-4 text-muted"><div class="spinner-border spinner-border-sm me-2"></div>Loading calendar…</div>';
+
+    try {
+      const result = await apiClient.select('social_media_posts', {
+        select: 'id, content, platforms, scheduled_for, status, organisations:company_id(company_name)',
+        filters: { status: { op: 'eq', value: 'scheduled' } },
+        sort: { column: 'scheduled_for', ascending: true },
+        pageSize: 200,
+      });
+
+      const posts = (result.data || []).filter((p) => {
+        if (!p.scheduled_for) return false;
+        const d = p.scheduled_for.split('T')[0];
+        return d >= monthStart && d <= monthEnd;
+      });
+
+      this.renderContentCalendar(posts, year, month);
+    } catch (err) {
+      const grid2 = document.getElementById('contentCalendarGrid');
+      if (grid2)
+        grid2.innerHTML = `<div class="alert alert-danger">Failed to load calendar: ${utils.escapeHtml(err.message)}</div>`;
+    }
+  },
+
+  renderContentCalendar(posts, year, month) {
+    const grid = document.getElementById('contentCalendarGrid');
+    if (!grid) return;
+
+    const platformColors = {
+      twitter: '#1DA1F2',
+      facebook: '#1877F2',
+      instagram: '#E1306C',
+      linkedin: '#0A66C2',
+    };
+
+    // Group posts by day (YYYY-MM-DD)
+    const byDay = {};
+    posts.forEach((p) => {
+      const day = (p.scheduled_for || '').split('T')[0];
+      if (!byDay[day]) byDay[day] = [];
+      byDay[day].push(p);
+    });
+
+    const firstDay = new Date(year, month, 1).getDay(); // 0=Sun
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const header = dayNames
+      .map((d) => `<div class="fw-semibold text-muted small text-center py-2 border-bottom">${d}</div>`)
+      .join('');
+
+    const cells = [];
+    // Leading empty cells
+    for (let i = 0; i < firstDay; i++) cells.push('<div class="border bg-light"></div>');
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const isToday = dateStr === todayStr;
+      const dayPosts = byDay[dateStr] || [];
+
+      const postBlocks = dayPosts
+        .slice(0, 3)
+        .map((p) => {
+          const platforms = p.platforms || [];
+          const firstPlatform = platforms[0] || 'twitter';
+          const color = platformColors[firstPlatform] || '#6c757d';
+          const preview =
+            utils.escapeHtml((p.content || '').substring(0, 40)) + ((p.content || '').length > 40 ? '…' : '');
+          const platformIcons = platforms
+            .map((pl) => {
+              const icons = {
+                twitter: 'bi-twitter-x',
+                facebook: 'bi-facebook',
+                instagram: 'bi-instagram',
+                linkedin: 'bi-linkedin',
+              };
+              return `<i class="bi ${icons[pl] || 'bi-share'}" style="color:${platformColors[pl] || '#6c757d'}"></i>`;
+            })
+            .join(' ');
+
+          return `<div class="rounded px-1 mb-1 text-white small" style="background:${color};font-size:0.68rem;line-height:1.3;cursor:pointer"
+                    title="${preview}" data-action="marketingModule.scrollToPost" data-id="${p.id}">
+                    ${platformIcons} ${preview}
+                  </div>`;
+        })
+        .join('');
+
+      const moreLabel =
+        dayPosts.length > 3
+          ? `<div class="text-muted" style="font-size:0.65rem">+${dayPosts.length - 3} more</div>`
+          : '';
+
+      cells.push(`
+        <div class="border p-1" style="min-height:90px;${isToday ? 'background:#fff3cd;' : ''}">
+          <div class="fw-semibold small mb-1${isToday ? ' text-warning' : ' text-muted'}">${d}</div>
+          ${postBlocks}${moreLabel}
+        </div>
+      `);
+    }
+
+    // Trailing empty cells to complete last row
+    const total = firstDay + daysInMonth;
+    const trailing = total % 7 === 0 ? 0 : 7 - (total % 7);
+    for (let i = 0; i < trailing; i++) cells.push('<div class="border bg-light"></div>');
+
+    grid.innerHTML = `
+      <div class="border rounded overflow-hidden">
+        <div style="display:grid;grid-template-columns:repeat(7,1fr)">${header}</div>
+        <div style="display:grid;grid-template-columns:repeat(7,1fr)">${cells.join('')}</div>
+      </div>
+      <p class="text-muted small mt-2">${posts.length} scheduled post${posts.length !== 1 ? 's' : ''} this month</p>
+    `;
+  },
+
+  prevContentCalendarMonth() {
+    if (!this._contentCalendarDate) this._contentCalendarDate = new Date();
+    const d = this._contentCalendarDate;
+    this._contentCalendarDate = new Date(d.getFullYear(), d.getMonth() - 1, 1);
+    this.loadContentCalendar();
+  },
+
+  nextContentCalendarMonth() {
+    if (!this._contentCalendarDate) this._contentCalendarDate = new Date();
+    const d = this._contentCalendarDate;
+    this._contentCalendarDate = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+    this.loadContentCalendar();
+  },
+
+  scrollToPost(postId) {
+    const el = document.querySelector(`[data-post-id="${postId}"]`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('table-warning');
+      setTimeout(() => el.classList.remove('table-warning'), 2000);
+    } else {
+      // Activate scheduled posts tab then try again
+      const schedTab = document.getElementById('social-subtab');
+      if (schedTab) schedTab.click();
+    }
+  },
 };
 
 // ---------------------------------------------------------------------------

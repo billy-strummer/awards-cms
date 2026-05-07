@@ -142,6 +142,7 @@ const paymentsModule = {
    */
   async _fetchInvoicePage(page) {
     const fetchId = ++this._fetchId;
+    utils.showSkeletonLoading('invoicesTableBody', 10);
     const filters = this._buildInvoiceServerFilters();
     const search = (document.getElementById('invoiceSearchBox')?.value || '').trim();
 
@@ -1228,6 +1229,7 @@ const paymentsModule = {
    */
   async _fetchPaymentPage(page) {
     const fetchId = ++this._payFetchId;
+    utils.showSkeletonLoading('paymentsTableBody', 8);
     const filters = this._buildPaymentServerFilters();
     const search = (document.getElementById('paymentSearchBox')?.value || '').trim();
 

@@ -340,8 +340,9 @@ const awardsModule = {
     // Populate year filter (2026+)
     this.populateYearFilter();
 
-    // Populate sector filter
+    // Populate sector filter (searchable)
     utils.populateFilter(STATE.allAwards, 'sector', 'awardsSectorFilterSelect', 'All Sectors');
+    utils.makeSearchableSelect('awardsSectorFilterSelect');
   },
 
   /**

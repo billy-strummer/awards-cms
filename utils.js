@@ -530,6 +530,97 @@ const utils = {
     uniqueValues.forEach((value) => {
       select.innerHTML += `<option value="${this.escapeHtml(value)}">${this.escapeHtml(value)}</option>`;
     });
+
+    // Refresh searchable wrapper if one exists
+    const wrapper = select.closest('[data-searchable-select]');
+    if (wrapper) this._refreshSearchableSelect(wrapper, select, placeholder);
+  },
+
+  /**
+   * Convert a plain <select> into a searchable combo-box.
+   * The original <select> stays hidden and remains the value source.
+   * @param {string} selectId - ID of the <select> to upgrade
+   */
+  makeSearchableSelect(selectId) {
+    const select = document.getElementById(selectId);
+    if (!select || select.dataset.searchableInit) return;
+    select.dataset.searchableInit = '1';
+    select.style.display = 'none';
+
+    const placeholder = select.options[0]?.text || 'Search…';
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'position-relative';
+    wrapper.setAttribute('data-searchable-select', selectId);
+    select.parentNode.insertBefore(wrapper, select);
+    wrapper.appendChild(select);
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'form-control form-control-sm';
+    input.placeholder = placeholder;
+    input.autocomplete = 'off';
+    input.setAttribute('aria-label', placeholder);
+
+    const dropdown = document.createElement('ul');
+    dropdown.className = 'list-unstyled bg-white border rounded shadow-sm position-absolute';
+    dropdown.style.cssText =
+      'max-height:200px;overflow-y:auto;z-index:1060;display:none;margin:0;padding:4px 0;width:100%;top:100%;left:0;';
+
+    wrapper.appendChild(input);
+    wrapper.appendChild(dropdown);
+
+    const showDropdown = (filter) => {
+      const fl = (filter || '').toLowerCase();
+      dropdown.innerHTML = '';
+      Array.from(select.options).forEach((opt) => {
+        if (!fl || opt.text.toLowerCase().includes(fl) || opt.value === '') {
+          const li = document.createElement('li');
+          li.textContent = opt.text;
+          li.style.cssText =
+            'padding:5px 10px;cursor:pointer;font-size:0.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+          li.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            select.value = opt.value;
+            input.value = opt.value ? opt.text : '';
+            dropdown.style.display = 'none';
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+          });
+          li.addEventListener('mouseover', () => (li.style.background = '#f0f0f0'));
+          li.addEventListener('mouseout', () => (li.style.background = ''));
+          dropdown.appendChild(li);
+        }
+      });
+      dropdown.style.display = dropdown.children.length ? 'block' : 'none';
+    };
+
+    input.addEventListener('input', () => showDropdown(input.value));
+    input.addEventListener('focus', () => showDropdown(input.value));
+    input.addEventListener('blur', () =>
+      setTimeout(() => {
+        dropdown.style.display = 'none';
+      }, 150)
+    );
+
+    // Restore display value from current select value
+    const current = select.value;
+    if (current) {
+      const opt = Array.from(select.options).find((o) => o.value === current);
+      if (opt) input.value = opt.text;
+    }
+  },
+
+  _refreshSearchableSelect(wrapper, select, placeholder) {
+    const input = wrapper.querySelector('input[type="text"]');
+    if (!input) return;
+    const current = select.value;
+    if (current) {
+      const opt = Array.from(select.options).find((o) => o.value === current);
+      input.value = opt ? opt.text : '';
+    } else {
+      input.value = '';
+      input.placeholder = placeholder || select.options[0]?.text || 'Search…';
+    }
   },
 
   /**

@@ -342,6 +342,17 @@ const entriesModule = {
           ? new Date(entry.submission_date).toLocaleDateString()
           : '<span class="text-muted">Draft</span>';
 
+        // M9: Overdue badge if entry_close_date has passed and entry isn't resolved
+        const entryAward = STATE.allAwards?.find((a) => a.id === entry.award_id);
+        const activeStatuses = ['draft', 'submitted', 'under_review'];
+        const isOverdue =
+          entryAward?.entry_close_date &&
+          new Date(entryAward.entry_close_date) < new Date() &&
+          activeStatuses.includes((entry.status || '').toLowerCase());
+        const overdueBadge = isOverdue
+          ? '<span class="badge bg-danger ms-1" title="Past entry deadline"><i class="bi bi-exclamation-triangle me-1"></i>Overdue</span>'
+          : '';
+
         return `
         <tr>
           <td>
@@ -372,7 +383,7 @@ const entriesModule = {
           </td>
           <td>${scoreDisplay}</td>
           <td>${paymentBadge}</td>
-          <td>${submittedDate}</td>
+          <td>${submittedDate}${overdueBadge}</td>
           <td>
             <div class="btn-group btn-group-sm">
               <button class="btn btn-outline-primary" data-action="entriesModule.viewEntry" data-id="${entry.id}" title="View entry details">

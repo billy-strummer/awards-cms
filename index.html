@@ -5912,7 +5912,10 @@
               </div>
 
               <!-- Deals View Toggle -->
-              <div class="d-flex justify-content-end mb-2">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <button class="btn btn-sm btn-outline-secondary" data-action="crmModule.openManageStagesModal">
+                  <i class="bi bi-sliders me-1"></i>Manage Stages
+                </button>
                 <div class="btn-group btn-group-sm" role="group" aria-label="View toggle">
                   <button type="button" class="btn btn-outline-secondary active" id="dealsTableViewBtn" data-action="crmModule.showDealsTableView" title="Table view"><i class="bi bi-table"></i></button>
                   <button type="button" class="btn btn-outline-secondary" id="dealsKanbanViewBtn" data-action="crmModule.showDealsKanbanView" title="Kanban view"><i class="bi bi-kanban"></i></button>
@@ -6121,7 +6124,14 @@
                   <input type="text" class="form-control form-control-sm" style="width:150px;" id="segVal0" placeholder="Value...">
                 </div>
               </div>
-              <button class="btn btn-sm btn-outline-secondary mb-3" data-action="crmModule.addSegmentRule"><i class="bi bi-plus me-1"></i>Add Rule</button>
+              <div class="d-flex align-items-center gap-2 mb-2">
+                <button class="btn btn-sm btn-outline-secondary" data-action="crmModule.addSegmentRule"><i class="bi bi-plus me-1"></i>Add Rule</button>
+                <span class="text-muted small">Match:</span>
+                <div class="btn-group btn-group-sm" id="segmentLogicGroup">
+                  <button class="btn btn-outline-primary active" id="segLogicAND" data-action="crmModule.setSegmentLogic" data-id="AND">ALL (AND)</button>
+                  <button class="btn btn-outline-secondary" id="segLogicOR" data-action="crmModule.setSegmentLogic" data-id="OR">ANY (OR)</button>
+                </div>
+              </div>
               <div class="d-flex gap-2 mb-3">
                 <button class="btn btn-sm btn-primary" data-action="crmModule.applySmartSegment"><i class="bi bi-funnel me-1"></i>Apply Segment</button>
                 <button class="btn btn-sm btn-outline-success" data-action="crmModule.saveSmartSegment"><i class="bi bi-save me-1"></i>Save Segment</button>

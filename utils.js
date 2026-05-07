@@ -251,6 +251,15 @@ const utils = {
     return str.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
   },
 
+  // H7: Highlight search term matches within text
+  highlightMatch(text, query) {
+    if (!text) return '';
+    const escaped = this.escapeHtml(String(text));
+    if (!query || !query.trim()) return escaped;
+    const safe = query.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return escaped.replace(new RegExp(`(${safe})`, 'gi'), '<mark class="p-0 rounded-1">$1</mark>');
+  },
+
   /**
    * Debounce function calls
    * @param {Function} func - Function to debounce

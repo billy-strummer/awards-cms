@@ -302,16 +302,25 @@
         <div class="container-fluid">
           
           <!-- Page Header -->
-          <div class="section-header d-flex justify-content-between align-items-start">
+          <div class="section-header d-flex justify-content-between align-items-start flex-wrap gap-2">
             <div>
               <h1 class="section-title">
                 <i class="bi bi-speedometer2 me-2"></i>Dashboard Overview
               </h1>
               <p class="section-subtitle">Quick insights and statistics</p>
             </div>
-            <button class="btn btn-outline-secondary btn-sm" data-action="dashboardModule.openCustomiseModal" title="Customise Dashboard">
-              <i class="bi bi-sliders me-1"></i>Customise Dashboard
-            </button>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <!-- H6: Dashboard date range filter -->
+              <div class="btn-group btn-group-sm" id="dashboardDateRangeGroup" role="group" aria-label="Date range">
+                <button type="button" class="btn btn-outline-secondary active" data-action="dashboardModule.setDateRange" data-id="all">All Time</button>
+                <button type="button" class="btn btn-outline-secondary" data-action="dashboardModule.setDateRange" data-id="month">This Month</button>
+                <button type="button" class="btn btn-outline-secondary" data-action="dashboardModule.setDateRange" data-id="quarter">This Quarter</button>
+                <button type="button" class="btn btn-outline-secondary" data-action="dashboardModule.setDateRange" data-id="year">This Year</button>
+              </div>
+              <button class="btn btn-outline-secondary btn-sm" data-action="dashboardModule.openCustomiseModal" title="Customise Dashboard">
+                <i class="bi bi-sliders me-1"></i>Customise
+              </button>
+            </div>
           </div>
 
           <!-- Getting Started Banner (first-run, dismissible) -->
@@ -5458,6 +5467,9 @@
                       </div>
                       <button class="btn btn-outline-warning btn-sm" data-action="paymentsModule.sendOverdueReminders" title="Send payment reminders to all overdue invoices">
                         <i class="bi bi-bell me-1"></i>Reminders
+                      </button>
+                      <button class="btn btn-outline-info btn-sm" data-action="paymentsModule.openDunningSettings" title="Configure automatic overdue reminder sequence">
+                        <i class="bi bi-gear me-1"></i>Auto-Reminders
                       </button>
                     </div>
                   </div>
@@ -10715,6 +10727,48 @@
           <button type="button" class="btn btn-danger" id="bulkDeleteConfirmBtn">
             <i class="bi bi-trash me-1"></i><span id="bulkDeleteConfirmBtnLabel">Delete</span>
           </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dunning Auto-Reminders Modal (H10) -->
+  <div class="modal fade" id="dunningSettingsModal" tabindex="-1" aria-labelledby="dunningSettingsLabel" aria-hidden="true">
+    <div class="modal-dialog modal-md modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header">
+          <h5 class="modal-title" id="dunningSettingsLabel"><i class="bi bi-bell-fill text-warning me-2"></i>Automatic Overdue Reminders</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small mb-3">Configure up to 3 automatic email reminders sent after an invoice becomes overdue.</p>
+          <div class="mb-3 p-3 border rounded">
+            <div class="form-check form-switch mb-2">
+              <input class="form-check-input" type="checkbox" id="dunningEnabled">
+              <label class="form-check-label fw-semibold" for="dunningEnabled">Enable automatic reminders</label>
+            </div>
+          </div>
+          <div class="row g-2 mb-2">
+            <div class="col-4 text-center"><label class="form-label small fw-semibold">Reminder 1</label>
+              <div class="input-group input-group-sm"><input type="number" class="form-control" id="dunningDay1" min="1" max="365" value="7" placeholder="Days"><span class="input-group-text">days</span></div>
+              <div class="form-text">after due date</div>
+            </div>
+            <div class="col-4 text-center"><label class="form-label small fw-semibold">Reminder 2</label>
+              <div class="input-group input-group-sm"><input type="number" class="form-control" id="dunningDay2" min="1" max="365" value="14" placeholder="Days"><span class="input-group-text">days</span></div>
+              <div class="form-text">after due date</div>
+            </div>
+            <div class="col-4 text-center"><label class="form-label small fw-semibold">Final Notice</label>
+              <div class="input-group input-group-sm"><input type="number" class="form-control" id="dunningDay3" min="1" max="365" value="30" placeholder="Days"><span class="input-group-text">days</span></div>
+              <div class="form-text">after due date</div>
+            </div>
+          </div>
+          <div class="alert alert-info small mt-3 mb-0">
+            <i class="bi bi-info-circle me-1"></i>Reminders use your <em>Overdue Invoice</em> email template. Make sure it is configured in Email → Templates.
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" data-action="paymentsModule.saveDunningSettings"><i class="bi bi-check-lg me-1"></i>Save Settings</button>
         </div>
       </div>
     </div>

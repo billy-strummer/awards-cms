@@ -76,6 +76,36 @@ const dashboardModule = {
     }
   },
 
+  // H6: Date range filter
+  _dateRange: 'all',
+
+  setDateRange(range) {
+    this._dateRange = range;
+    // Update active button state
+    document.querySelectorAll('#dashboardDateRangeGroup .btn').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.id === range);
+    });
+    // Re-run stats with new range
+    this.updateStats();
+  },
+
+  _getDateRangeFilter() {
+    const now = new Date();
+    if (this._dateRange === 'month') {
+      const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      return start;
+    }
+    if (this._dateRange === 'quarter') {
+      const q = Math.floor(now.getMonth() / 3);
+      const start = new Date(now.getFullYear(), q * 3, 1).toISOString();
+      return start;
+    }
+    if (this._dateRange === 'year') {
+      return new Date(now.getFullYear(), 0, 1).toISOString();
+    }
+    return null;
+  },
+
   /**
    * Update dashboard statistics
    */

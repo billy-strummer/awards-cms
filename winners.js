@@ -497,6 +497,13 @@ const winnersModule = {
                   : ''
               }
               <button
+                class="btn btn-outline-warning btn-sm"
+                data-action="winnersModule.openCertificateForWinner" data-id="${winner.id}"
+                title="Generate Certificate"
+                aria-label="Generate certificate">
+                <i class="bi bi-award"></i>
+              </button>
+              <button
                 class="btn btn-outline-secondary btn-sm"
                 data-action="winnersModule.downloadMediaPack" data-id="${winner.id}"
                 title="Download Media Pack"
@@ -1483,6 +1490,17 @@ const winnersModule = {
       utils.showToast('Error loading certificate editor: ' + error.message, 'error');
     } finally {
       utils.hideLoading();
+    }
+  },
+
+  // H8: open certificate generator pre-selected for a specific winner
+  async openCertificateForWinner(winnerId) {
+    await this.openCertificateGenerator();
+    // Pre-select this winner after the generator loads
+    const winner = STATE.allWinners.find((w) => w.id === winnerId);
+    if (winner) {
+      this.certificateState.selectedWinners = new Set([winnerId]);
+      this.renderCertificateWinners();
     }
   },
 

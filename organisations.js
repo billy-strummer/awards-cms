@@ -867,7 +867,7 @@ const orgsModule = {
             <a class="text-primary text-decoration-none fw-semibold"
                style="cursor: pointer;"
                data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([org.id, escapedName])}'>
-              ${utils.escapeHtml(org.company_name || 'N/A')}
+              ${utils.highlightMatch(org.company_name || 'N/A', document.getElementById('orgsSearchBox')?.value)}
             </a>
           </div>
         </td>
@@ -3351,8 +3351,29 @@ const orgsModule = {
           <input type="text" class="form-control form-control-sm" id="bulkEmailSubject" placeholder="Enter subject...">
         </div>
         <div class="col-12">
-          <label class="form-label small fw-semibold">Body <small class="text-muted">(use {contact_name}, {company_name} for personalisation)</small></label>
+          <label class="form-label small fw-semibold">Body</label>
           <textarea class="form-control form-control-sm" id="bulkEmailBody" rows="6" placeholder="Enter message..."></textarea>
+          <!-- H9: Merge tags reference panel -->
+          <div class="mt-2 p-2 bg-light rounded border small">
+            <strong class="text-muted d-block mb-1"><i class="bi bi-braces me-1"></i>Available merge tags — click to insert:</strong>
+            <div class="d-flex flex-wrap gap-1">
+              ${[
+                '{company_name}',
+                '{contact_name}',
+                '{award_name}',
+                '{award_year}',
+                '{entry_number}',
+                '{invoice_number}',
+                '{event_date}',
+                '{unsubscribe_link}',
+              ]
+                .map(
+                  (tag) =>
+                    `<code class="badge bg-secondary u-pointer" data-action="orgsModule.insertMergeTag" data-id="${tag}">${tag}</code>`
+                )
+                .join('')}
+            </div>
+          </div>
         </div>
         <div class="col-12">
           <div class="d-flex gap-2">
@@ -3364,6 +3385,16 @@ const orgsModule = {
       </div>`;
 
     this._showDynamicModal(`Email Campaign (${withEmail.length} recipients)`, html, 'bi-megaphone', 'modal-lg');
+  },
+
+  insertMergeTag(tag) {
+    const ta = document.getElementById('bulkEmailBody');
+    if (!ta) return;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    ta.value = ta.value.slice(0, start) + tag + ta.value.slice(end);
+    ta.selectionStart = ta.selectionEnd = start + tag.length;
+    ta.focus();
   },
 
   _populateBulkEmailFromTemplate() {

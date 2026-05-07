@@ -2499,6 +2499,37 @@ const paymentsModule = {
     }
   },
 
+  // H10: Dunning auto-reminder settings
+  openDunningSettings() {
+    try {
+      const settings = JSON.parse(localStorage.getItem('dunningSettings') || '{}');
+      const el = (id) => document.getElementById(id);
+      if (el('dunningEnabled')) el('dunningEnabled').checked = settings.enabled !== false;
+      if (el('dunningDay1')) el('dunningDay1').value = settings.day1 || 7;
+      if (el('dunningDay2')) el('dunningDay2').value = settings.day2 || 14;
+      if (el('dunningDay3')) el('dunningDay3').value = settings.day3 || 30;
+    } catch (e) {
+      /* ignore */
+    }
+    new bootstrap.Modal(document.getElementById('dunningSettingsModal')).show();
+  },
+
+  saveDunningSettings() {
+    const el = (id) => document.getElementById(id);
+    const settings = {
+      enabled: el('dunningEnabled')?.checked ?? true,
+      day1: parseInt(el('dunningDay1')?.value) || 7,
+      day2: parseInt(el('dunningDay2')?.value) || 14,
+      day3: parseInt(el('dunningDay3')?.value) || 30,
+    };
+    localStorage.setItem('dunningSettings', JSON.stringify(settings));
+    bootstrap.Modal.getInstance(document.getElementById('dunningSettingsModal'))?.hide();
+    utils.showToast(
+      `Auto-reminders ${settings.enabled ? 'enabled' : 'disabled'}: ${settings.day1}, ${settings.day2}, ${settings.day3} days after due`,
+      'success'
+    );
+  },
+
   /* ==================================================== */
   /* UTILITIES */
   /* ==================================================== */

@@ -796,7 +796,7 @@ const awardsModule = {
             <a href="#"
                class="text-decoration-none fw-semibold text-primary"
                data-action="assignmentsModule.openAssignmentsModal" data-args='${JSON.stringify([award.id, fullName]).replace(/'/g, '&#39;')}'>
-              ${utils.escapeHtml(fullName)}
+              ${utils.highlightMatch(fullName, document.getElementById('awardsSearchBox')?.value)}
             </a>
           </td>
           <td>

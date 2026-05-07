@@ -831,6 +831,7 @@ const awardsModule = {
           </td>
           <td class="text-center">${phaseHtml}</td>
           <td>${winnerHtml}</td>
+          <td class="d-none award-col-modified"><small class="text-muted">${award.updated_at ? utils.formatRelativeTime(award.updated_at) : '-'}</small></td>
           <td class="text-center">
             <div class="btn-group btn-group-sm">
               <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false" aria-label="Award actions">
@@ -882,6 +883,7 @@ const awardsModule = {
       .join('');
 
     this.updateSortIndicators();
+    this._restoreColumnVisibility();
 
     // Render server-side pagination controls
     if (this._serverPagination) {
@@ -893,6 +895,29 @@ const awardsModule = {
         tbody.closest('table')?.parentElement?.appendChild(pagEl);
       }
       utils.renderServerPagination('awardsPagination', this._pagination, 'awardsModule._goToPage');
+    }
+  },
+
+  // L9: Toggle awards table column visibility
+  toggleAwardColumn(value, event) {
+    const col = event?.target?.dataset?.id;
+    if (!col) return;
+    const show = event.target.checked;
+    if (col === 'modified') {
+      document.getElementById('awardsModifiedHeader')?.classList.toggle('d-none', !show);
+      document.querySelectorAll('.award-col-modified').forEach((td) => td.classList.toggle('d-none', !show));
+      localStorage.setItem('awardsColModified', show ? '1' : '0');
+    }
+  },
+
+  // Restore column visibility from localStorage
+  _restoreColumnVisibility() {
+    const showModified = localStorage.getItem('awardsColModified') === '1';
+    const cb = document.getElementById('colToggleModified');
+    if (cb) cb.checked = showModified;
+    if (showModified) {
+      document.getElementById('awardsModifiedHeader')?.classList.remove('d-none');
+      document.querySelectorAll('.award-col-modified').forEach((td) => td.classList.remove('d-none'));
     }
   },
 

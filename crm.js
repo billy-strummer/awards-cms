@@ -2935,7 +2935,10 @@ const crmModule = {
                   </div>
                   <div class="mb-3">
                     <label class="form-label">Meeting Notes</label>
-                    <textarea class="form-control" id="newMeetingNotes" rows="3" placeholder="Key discussion points..."></textarea>
+                    <textarea class="form-control" id="newMeetingNotes" rows="5">**Attendees:**
+**Key Points:**
+**Action Items:**
+**Next Steps:**</textarea>
                   </div>
                   <div class="mb-3">
                     <label class="form-label">Action Items</label>

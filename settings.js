@@ -35,6 +35,7 @@ const settingsModule = {
     this.loadBackupSettings();
     this.checkBackupReminders();
     this.renderUxSettings();
+    this.renderNotificationSettings();
     this.renderCurrentUserRole();
     this.loadMfaStatus();
     this.loadWebhooks();
@@ -999,6 +1000,52 @@ const settingsModule = {
   savePageSize(value) {
     localStorage.setItem('globalPageSize', value);
     utils.showToast('Page size updated. Changes take effect on next data load.', 'success');
+  },
+
+  // M17: Notification preference settings
+  renderNotificationSettings() {
+    const container = document.getElementById('notificationSettingsContainer');
+    if (!container) return;
+    const prefs = JSON.parse(localStorage.getItem('notificationPrefs') || '{}');
+    const checks = [
+      { key: 'newEntries', label: 'Notify me of new entry submissions', icon: 'bi-pencil-square text-primary' },
+      { key: 'overdueInvoices', label: 'Notify me of overdue invoices', icon: 'bi-exclamation-circle text-danger' },
+      { key: 'newOrgs', label: 'Notify me of new organisations added', icon: 'bi-building text-success' },
+      { key: 'dailyDigest', label: 'Send me a daily digest email', icon: 'bi-envelope text-info' },
+    ];
+    container.innerHTML = `
+      <div class="card mb-3">
+        <div class="card-header"><h6 class="mb-0"><i class="bi bi-bell me-2"></i>Notification Preferences</h6></div>
+        <div class="card-body">
+          <p class="text-muted small mb-3">Choose which events trigger in-app notifications for your account.</p>
+          <div class="row g-2">
+            ${checks
+              .map(
+                (c) => `
+              <div class="col-md-6">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="notif_${c.key}"
+                    ${prefs[c.key] !== false ? 'checked' : ''}
+                    data-on-change="settingsModule.saveNotificationPref" data-id="${c.key}">
+                  <label class="form-check-label" for="notif_${c.key}">
+                    <i class="bi ${c.icon} me-1"></i>${c.label}
+                  </label>
+                </div>
+              </div>`
+              )
+              .join('')}
+          </div>
+        </div>
+      </div>`;
+  },
+
+  saveNotificationPref(value, event) {
+    const key = event?.target?.dataset?.id;
+    if (!key) return;
+    const prefs = JSON.parse(localStorage.getItem('notificationPrefs') || '{}');
+    prefs[key] = event.target.checked;
+    localStorage.setItem('notificationPrefs', JSON.stringify(prefs));
+    utils.showToast('Notification preference saved', 'success');
   },
 
   /**

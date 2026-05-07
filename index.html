@@ -1391,6 +1391,16 @@
                   <ul class="dropdown-menu dropdown-menu-end">
                     <li><a class="dropdown-item" href="#" data-action="awardsModule.openImportModal" data-prevent-default="true"><i class="bi bi-filetype-csv text-success me-2"></i>Import Awards CSV</a></li>
                     <li><hr class="dropdown-divider"></li>
+                    <li>
+                      <span class="dropdown-item-text fw-semibold small text-muted px-3">Columns</span>
+                    </li>
+                    <li>
+                      <label class="dropdown-item" for="colToggleModified">
+                        <input type="checkbox" class="form-check-input me-2" id="colToggleModified" data-on-change="awardsModule.toggleAwardColumn" data-id="modified">
+                        Modified
+                      </label>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item" href="#" data-action="awardsModule.rolloverToNextYear" data-prevent-default="true"><i class="bi bi-arrow-repeat text-info me-2"></i>Roll Over to Next Year</a></li>
                     <li><a class="dropdown-item" href="#" data-action="awardsModule.showVisualTimeline" data-prevent-default="true"><i class="bi bi-calendar-range text-success me-2"></i>Timeline Overview</a></li>
                     <li><a class="dropdown-item" href="#" data-action="awardsModule.showDataQualityDashboard" data-prevent-default="true"><i class="bi bi-shield-check text-danger me-2"></i>Data Quality Check</a></li>
@@ -1414,7 +1424,7 @@
                   <button class="btn btn-success" data-action="awardsModule.bulkSetStatus" data-args='["Active"]'>
                     <i class="bi bi-check-circle me-1"></i>Set Active
                   </button>
-                  <button class="btn btn-warning" data-action="awardsModule.bulkSetStatus" data-args='["Archived"]'>
+                  <button class="btn btn-outline-danger" data-action="awardsModule.bulkSetStatus" data-args='["Archived"]'>
                     <i class="bi bi-archive me-1"></i>Archive
                   </button>
                   <button class="btn btn-secondary" data-action="awardsModule.bulkSetStatus" data-args='["Draft"]'>
@@ -1430,7 +1440,7 @@
                 <button class="btn btn-purple btn-sm" style="background:#6f42c1;color:#fff;border-color:#6f42c1;" data-action="awardsModule.bulkCloneSelected">
                   <i class="bi bi-copy me-1"></i>Clone Selected
                 </button>
-                <button class="btn btn-danger btn-sm" data-action="globalActions.confirmBulkDelete" data-module="awardsModule" data-fn="bulkDelete" data-label="award">
+                <button class="btn btn-outline-danger btn-sm" data-action="globalActions.confirmBulkDelete" data-module="awardsModule" data-fn="bulkDelete" data-label="award">
                   <i class="bi bi-trash me-1"></i>Delete Selected
                 </button>
                 <button class="btn btn-outline-secondary btn-sm" data-action="awardsModule.clearSelection">
@@ -1455,12 +1465,13 @@
                     <th scope="col" style="width: 6%; cursor: pointer;" class="text-center" data-sort-field="nominees" data-action="awardsModule.sortBy" data-args='["nominees"]'>Nominees <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="nominees"></i></th>
                     <th scope="col" style="width: 7%;" class="text-center" title="Current judging phase: e.g. Entry, Judging, Shortlisting, Voting, Announced">Phase</th>
                     <th scope="col" style="width: 14%; cursor: pointer;" data-sort-field="winner" data-action="awardsModule.sortBy" data-args='["winner"]'>Winner <i class="bi bi-arrow-down-up text-muted ms-1 small" data-sort-icon="winner"></i></th>
+                    <th scope="col" id="awardsModifiedHeader" class="d-none" style="width: 8%;">Modified</th>
                     <th scope="col" style="width: 6%;" class="text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="awardsTableBody">
                   <tr id="awardsEmptyRow">
-                    <td colspan="10" class="text-center py-5">
+                    <td colspan="11" class="text-center py-5">
                       <div class="text-muted">
                         <i class="bi bi-trophy display-3 d-block mb-3 opacity-25"></i>
                         <p class="fw-semibold mb-1 text-dark">No awards yet</p>
@@ -2445,7 +2456,8 @@
           <button class="btn btn-sm btn-outline-warning" data-action="orgsModule.showMergeDuplicatesModal" title="Merge selected organisations">
             <i class="bi bi-intersect me-1"></i>Merge
           </button>
-          <button class="btn btn-sm btn-danger" data-action="globalActions.confirmBulkDelete" data-module="orgsModule" data-fn="bulkDelete" data-label="organisation" data-verb="Archive">
+          <div class="vr"></div>
+          <button class="btn btn-sm btn-outline-danger" data-action="globalActions.confirmBulkDelete" data-module="orgsModule" data-fn="bulkDelete" data-label="organisation" data-verb="Archive">
             <i class="bi bi-archive me-1"></i>Archive
           </button>
           <button class="btn btn-sm btn-outline-secondary" data-action="orgsModule.clearSelection">
@@ -5227,7 +5239,7 @@
                           <th scope="col">Recipients</th>
                           <th scope="col">Opened</th>
                           <th scope="col">Clicked</th>
-                          <th scope="col">Bounced</th>
+                          <th scope="col" class="d-none d-xl-table-cell">Bounced</th>
                           <th scope="col">Sent / Scheduled</th>
                           <th scope="col">Actions</th>
                         </tr>
@@ -6194,6 +6206,9 @@
 
           <!-- UX Preferences (rendered dynamically by settingsModule.renderUxSettings) -->
           <div id="uxSettingsContainer" class="mb-4"></div>
+
+          <!-- Notification Preferences (rendered dynamically by settingsModule.renderNotificationSettings) -->
+          <div id="notificationSettingsContainer" class="mb-4"></div>
           </div>
 
           <!-- Seasons & Areas -->

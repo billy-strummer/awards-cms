@@ -1421,6 +1421,39 @@ const dashboardModule = {
         level: Number(orgCompletionRate) >= 80 ? 'high' : Number(orgCompletionRate) >= 50 ? 'medium' : 'low',
       });
 
+      // M19: Orgs with logos
+      const orgsWithLogos = STATE.allOrganisations.filter((org) => org.logo_url).length;
+      const logoRate = totalOrgs > 0 ? ((orgsWithLogos / totalOrgs) * 100).toFixed(0) : 0;
+      metrics.push({
+        title: 'Organisations with Logos',
+        value: `${orgsWithLogos}/${totalOrgs}`,
+        percentage: logoRate,
+        level: Number(logoRate) >= 70 ? 'high' : Number(logoRate) >= 40 ? 'medium' : 'low',
+      });
+
+      // M19: Orgs with email
+      const orgsWithEmail = STATE.allOrganisations.filter((org) => org.email).length;
+      const emailRate = totalOrgs > 0 ? ((orgsWithEmail / totalOrgs) * 100).toFixed(0) : 0;
+      metrics.push({
+        title: 'Organisations with Email',
+        value: `${orgsWithEmail}/${totalOrgs}`,
+        percentage: emailRate,
+        level: Number(emailRate) >= 80 ? 'high' : Number(emailRate) >= 50 ? 'medium' : 'low',
+      });
+
+      // M19: Winners with confirmed/published status
+      const totalWinners = STATE.allWinners.length;
+      const confirmedWinners = STATE.allWinners.filter(
+        (w) => w.status === 'confirmed' || w.status === 'published'
+      ).length;
+      const winnerConfirmRate = totalWinners > 0 ? ((confirmedWinners / totalWinners) * 100).toFixed(0) : 0;
+      metrics.push({
+        title: 'Winners Confirmed',
+        value: `${confirmedWinners}/${totalWinners}`,
+        percentage: winnerConfirmRate,
+        level: Number(winnerConfirmRate) >= 80 ? 'high' : Number(winnerConfirmRate) >= 50 ? 'medium' : 'low',
+      });
+
       // Tagged media (only fetch columns needed for counting)
       const { data: allMedia } = await apiClient.select('media_gallery', { select: 'id, organisation_id, award_id' });
 

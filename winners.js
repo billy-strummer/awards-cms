@@ -3939,6 +3939,8 @@ const winnersModule = {
   toggleWinnerSelect(winnerId, checked) {
     if (checked) this._selectedWinnerIds.add(winnerId);
     else this._selectedWinnerIds.delete(winnerId);
+    const cb = Array.from(document.querySelectorAll('.winner-checkbox')).find((el) => el.value === String(winnerId));
+    if (cb) cb.closest('tr')?.classList.toggle('table-primary', !!checked);
     this.updateWinnersBulkBar();
   },
 
@@ -3951,6 +3953,7 @@ const winnersModule = {
       cb.checked = checked;
       if (checked) this._selectedWinnerIds.add(cb.value);
       else this._selectedWinnerIds.delete(cb.value);
+      cb.closest('tr')?.classList.toggle('table-primary', checked);
     });
     this.updateWinnersBulkBar();
   },
@@ -3972,7 +3975,10 @@ const winnersModule = {
    */
   clearWinnerSelection() {
     this._selectedWinnerIds.clear();
-    document.querySelectorAll('.winner-checkbox').forEach((cb) => (cb.checked = false));
+    document.querySelectorAll('.winner-checkbox').forEach((cb) => {
+      cb.checked = false;
+      cb.closest('tr')?.classList.remove('table-primary');
+    });
     const selectAll = document.getElementById('selectAllWinners');
     if (selectAll) selectAll.checked = false;
     this.updateWinnersBulkBar();

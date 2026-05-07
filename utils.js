@@ -210,16 +210,16 @@ const utils = {
    */
   getStatusBadge(status) {
     const statusMap = {
-      Draft: 'secondary',
-      Pending: 'warning',
-      Approved: 'success',
-      Published: 'primary',
-      Active: 'success',
-      Archived: 'dark',
-      Rejected: 'danger',
+      Draft: { color: 'secondary', icon: 'bi-file-earmark' },
+      Pending: { color: 'warning', icon: 'bi-clock' },
+      Approved: { color: 'success', icon: 'bi-check-circle' },
+      Published: { color: 'primary', icon: 'bi-globe' },
+      Active: { color: 'success', icon: 'bi-check-circle' },
+      Archived: { color: 'dark', icon: 'bi-archive' },
+      Rejected: { color: 'danger', icon: 'bi-x-circle' },
     };
-    const badgeClass = statusMap[status] || 'secondary';
-    return `<span class="badge bg-${badgeClass}">${status}</span>`;
+    const { color, icon } = statusMap[status] || { color: 'secondary', icon: 'bi-circle' };
+    return `<span class="badge bg-${color}"><i class="bi ${icon} me-1"></i>${status}</span>`;
   },
 
   /**

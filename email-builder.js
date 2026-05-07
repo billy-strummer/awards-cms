@@ -4182,7 +4182,7 @@ ${content}
             <td>${c.total_recipients || 0}</td>
             <td>${c.opened_count || 0} <small class="text-muted">(${openRate}%)</small></td>
             <td>${c.clicked_count || 0} <small class="text-muted">(${clickRate}%)</small></td>
-            <td>${c.bounced_count || 0}</td>
+            <td class="d-none d-xl-table-cell">${c.bounced_count || 0}</td>
             <td><small>${displayDate}</small></td>
             <td class="text-nowrap">
               ${c.status === 'Draft' ? `<button class="btn btn-outline-success btn-sm py-0 px-1" data-action="emailBuilder.loadDraft" data-id="${utils.escapeHtml(c.id)}" title="Load Draft"><i class="bi bi-pencil-square"></i></button>` : ''}

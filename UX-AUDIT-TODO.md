@@ -22,49 +22,49 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **Files:** `awards.js`, `index.html`
 - **What to build:** Add a "Duplicate" button on each award row (and in the award detail modal). Clicking opens a small modal asking for the target year. Copies all fields except status (sets to Draft) and clears winner/nominee counts.
 - **Done when:** User can duplicate an award to a new year in 2 clicks from the awards table.
-- [ ] Implemented
+- [x] Implemented
 
 ### C2 — Bulk award creation via CSV import
 - **Files:** `awards.js`, `index.html`
 - **What to build:** Add "Import Awards CSV" button to Awards tab toolbar. Reuse the existing CSV import pattern from Organisations. Required columns: award_name, year, sector, status. Show preview before import.
 - **Done when:** User can upload a CSV of 50 awards and they appear in the table.
-- [ ] Implemented
+- [x] Implemented
 
 ### C3 — Duplicate detection for Organisations
 - **Files:** `organisations.js`
 - **What to build:** When saving a new organisation, check for existing records with similar name (case-insensitive, strip "Ltd/Limited/PLC"). If match found, show warning modal "Possible duplicate: [name]. Add anyway?" with link to existing record.
 - **Done when:** Creating "Acme Limited" when "Acme Ltd" exists triggers a warning.
-- [ ] Implemented
+- [x] Implemented
 
 ### C4 — Duplicate detection for Awards
 - **Files:** `awards.js`
 - **What to build:** When saving a new award, check for existing award with same `award_name` + `year`. Show inline warning if match found.
 - **Done when:** Creating "Best Builder 2025" when it already exists shows a warning.
-- [ ] Implemented
+- [x] Implemented
 
 ### C5 — GDPR consent flag on Winners
 - **Files:** `winners.js`, `index.html`
 - **What to build:** Add a "Consent" boolean column to the winners table view. Add checkbox "Winner consents to use of name & image" in the winner edit modal. Show a warning badge on rows where consent is not recorded.
 - **Done when:** Each winner row shows consent status; unconsented winners are flagged.
-- [ ] Implemented
+- [x] Implemented
 
 ### C6 — Unsaved changes warning on form navigation
 - **Files:** `app.js` or `utils.js`
 - **What to build:** When a modal form has been modified and the user tries to close it or navigate away, show a Bootstrap confirmation modal: "You have unsaved changes. Leave anyway?"
 - **Done when:** Editing an award form, clicking the X or navigating away triggers the warning.
-- [ ] Implemented
+- [x] Implemented
 
 ### C7 — Bulk operation undo (last action)
 - **Files:** `utils.js`, `index.html`
 - **What to build:** After any bulk action (status change, archive, delete), show a toast with an "Undo" button for 8 seconds. Store the previous state in memory. On Undo click, revert the changes via the data proxy.
 - **Done when:** Bulk-archiving 5 orgs shows "Archived 5 organisations. Undo" toast that works.
-- [ ] Implemented
+- [x] Implemented
 
 ### C8 — Progress indicators for long operations
 - **Files:** `organisations.js`, `winners.js`, `awards.js`, `utils.js`
 - **What to build:** Add a reusable `utils.showProgress(label, percent)` / `utils.hideProgress()` helper. Use it in: CSV import (after each batch), bulk logo fetch, bulk export, bulk email send. Show as a fixed bottom progress bar.
 - **Done when:** Importing a 100-row CSV shows a progress bar incrementing as rows process.
-- [ ] Implemented
+- [x] Implemented
 
 ---
 
@@ -74,91 +74,91 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **Files:** `awards.js`, `winners.js`, `entries.js`, `payments.js`
 - **What to build:** After applying filters, render chip tags below the filter bar ("Year: 2025 ×", "Status: Active ×"). Clicking × removes that filter. Already partially implemented in organisations.js — reuse that pattern.
 - **Done when:** Filtering awards by Year + Status shows two removable chips.
-- [ ] Implemented
+- [x] Implemented
 
 ### H2 — Pagination "Page X of Y" totals
 - **Files:** `awards.js`, `organisations.js`, `winners.js`, `entries.js`
 - **What to build:** Update `utils.renderServerPagination()` (or each module's pagination render) to show "Page 1 of 12 (573 records)" next to the page controls.
 - **Done when:** Awards table pagination shows total page count and record count.
-- [ ] Implemented
+- [x] Implemented
 
 ### H3 — Tab badge counts refresh on data change
 - **Files:** `app.js`, `dashboard.js`
 - **What to build:** After any create/update/delete operation, call `updateTabCounts()` to refresh the red badge numbers on the sidebar nav items. Hook into the post-save callbacks in each module.
 - **Done when:** Adding an award increments the Awards badge count without a page reload.
-- [ ] Implemented
+- [x] Implemented
 
 ### H4 — Award status workflow visual indicator
 - **Files:** `awards.js`, `index.html`
 - **What to build:** Add a small horizontal stepper (Draft → Pending → Active → Archived) to the award detail modal header. Highlight the current step. Allow clicking a step to transition status (with confirmation).
 - **Done when:** Opening an award in "Pending" status shows the stepper with Pending highlighted.
-- [ ] Implemented
+- [x] Implemented
 
 ### H5 — Dashboard activity feed panel
 - **Files:** `dashboard.js`, `index.html`
 - **What to build:** Add an "Activity Feed" card to the dashboard (below the KPI row). Calls `loadActivityFeed()` which already exists. Shows last 20 actions (created award, updated organisation, sent email, etc.) with timestamps and user names.
 - **Done when:** Dashboard shows a live activity feed card with recent CMS actions.
-- [ ] Implemented
+- [x] Implemented
 
 ### H6 — Dashboard date range filter
 - **Files:** `dashboard.js`, `index.html`
 - **What to build:** Add a date range selector to the dashboard header (Today / This Week / This Month / This Year / Custom). All KPI cards re-query using the selected range.
 - **Done when:** Switching to "This Month" updates all stat cards to show current-month data.
-- [ ] Implemented
+- [x] Implemented
 
 ### H7 — Search term highlighting in table results
 - **Files:** `awards.js`, `organisations.js`, `winners.js`, `utils.js`
 - **What to build:** Add a `utils.highlightMatch(text, query)` helper that wraps matched characters in `<mark>`. Call it when rendering table cells for name/title columns when a search query is active.
 - **Done when:** Searching "acme" in Organisations bolds "Acme" in every matching row.
-- [ ] Implemented
+- [x] Implemented
 
 ### H8 — Certificate generator button on winner rows
 - **Files:** `winners.js`, `index.html`
 - **What to build:** Add a certificate icon button (bi-award) directly in the winner table row actions (alongside the existing Edit/Delete buttons). Clicking opens the certificate generator modal pre-populated with that winner's data.
 - **Done when:** Each winner row has a certificate button that opens the generator in 1 click.
-- [ ] Implemented
+- [x] Implemented
 
 ### H9 — Email merge tag reference panel
 - **Files:** `email-builder.js`, `index.html`
 - **What to build:** Add a collapsible "Available Merge Tags" panel in the email composer and bulk email modal. List all supported tags: {{company_name}}, {{contact_name}}, {{award_name}}, {{award_year}}, {{entry_number}}, {{invoice_number}}, {{event_date}}, {{unsubscribe_link}}.
 - **Done when:** Composing a bulk email shows a "Merge Tags" reference panel nearby.
-- [ ] Implemented
+- [x] Implemented
 
 ### H10 — Dunning automation for overdue invoices
 - **Files:** `payments.js`, `index.html`
 - **What to build:** Add a "Set up auto-reminders" button in the Invoices tab. Opens a modal to configure: Reminder 1 (X days after due), Reminder 2 (Y days), Final notice (Z days). Store settings, trigger reminders via existing email automation.
 - **Done when:** User can configure 3-step overdue reminder sequence that fires automatically.
-- [ ] Implemented
+- [x] Implemented
 
 ### H11 — Inline entry status editing
 - **Files:** `entries.js`
 - **What to build:** Replace the status text in the entries table with a Bootstrap dropdown (`<select class="form-select form-select-sm">`) that saves on change. No modal needed for a status-only change.
 - **Done when:** Changing entry status in the table row saves immediately without opening a modal.
-- [ ] Implemented
+- [x] Implemented
 
 ### H12 — VAT calculation on invoices
 - **Files:** `payments.js`, `index.html`
 - **What to build:** Add VAT rate field (0%, 5%, 20%) to invoice creation form. Calculate and display subtotal + VAT + total. Store vat_rate and vat_amount on the invoice record.
 - **Done when:** Creating an invoice with £1000 at 20% VAT shows £200 VAT and £1200 total.
-- [ ] Implemented
+- [x] Implemented
 
 ### H13 — Companies House lookup for Organisations
 - **Files:** `organisations.js`, `index.html`
 - **What to build:** Add a "Lookup" button next to the Organisation Name field in the add/edit modal. Calls Companies House API (free, no key needed for basic search) to return company name, registered address, SIC code, and status. Pre-fills matching fields.
 - **Done when:** Typing a company name and clicking Lookup fills in address and sector fields.
-- [ ] Implemented
+- [x] Implemented
 
 ### H14 — Conflict of interest tracking for Judges
 - **Files:** `assignments.js`, `index.html`
 - **What to build:** Add a "Conflicts" tab or panel to the judge assignment modal. Allow admins to record "Judge X cannot score Organisation Y" relationships. Flag assignments that violate conflicts with a warning badge.
 - **Done when:** Assigning a judge to an entry from their own company shows a conflict warning.
-- [ ] Implemented
+- [x] Implemented
 
 ### H15 — Event attendee management
 - **Files:** `events.js`, `index.html`
 - **What to build:** Add an "Attendees" sub-tab or panel to the event detail modal. Show RSVP list with columns: Name, Organisation, Role, RSVP Status, Check-in Status. Add "Check In" button per row and a bulk "Export Attendee List" button.
 - **Done when:** Opening an event shows an attendee list with check-in capability.
-- [ ] Implemented
+- [x] Implemented
 
 ---
 
@@ -186,7 +186,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **Files:** `events.js`, `index.html`
 - **What to build:** Make the calendar view the default when opening the Events tab. Move the "List View" toggle to a secondary button. Persist the user's last-used view in localStorage.
 - **Done when:** Opening Events shows the calendar; toggling to list and refreshing remembers preference.
-- [ ] Implemented
+- [x] Implemented
 
 ### M5 — Reporting: charts and visualisations
 - **Files:** `reporting.js`, `index.html`
@@ -198,7 +198,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **Files:** `reporting.js`, `index.html`
 - **What to build:** Add "Export PDF" and "Export Excel" buttons to the reporting tab. PDF uses browser print with a print stylesheet. Excel uses SheetJS (already in package.json if present, otherwise add).
 - **Done when:** Clicking Export PDF opens print dialog; Export Excel downloads an .xlsx file.
-- [ ] Implemented
+- [x] Implemented
 
 ### M7 — Scheduled report delivery by email
 - **Files:** `reporting.js`, `index.html`, `api/email-automation.js`
@@ -210,7 +210,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **Files:** `winners.js`, `index.html`
 - **What to build:** Add an "Announce on" date-time picker to the winner edit modal. When the scheduled time arrives (via automation scheduler), automatically update status to "Announced" and trigger announcement email.
 - **Done when:** Setting an announce date updates the winner status automatically at that time.
-- [ ] Implemented
+- [x] Implemented
 
 ### M9 — Entry deadline enforcement
 - **Files:** `entries.js`, `awards.js`, `index.html`
@@ -270,7 +270,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **Files:** `winners.js`, `index.html`
 - **What to build:** Add a "Position" field to the winner record (Winner / Runner-Up / Highly Commended). Show position as a badge in the winners table. Allow multiple records per award year (one per position).
 - **Done when:** An award can have a Winner, a Runner-Up, and a Highly Commended entry.
-- [ ] Implemented
+- [x] Implemented
 
 ### M19 — Data quality score on Dashboard
 - **Files:** `dashboard.js`, `index.html`
@@ -316,7 +316,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **Files:** `utils.js`
 - **What to build:** Increase success toast duration from 3s to 5s. Add an optional action link parameter (e.g. "View Invoice #1234") that navigates to the relevant record. Update all toast calls that have a clear navigation target.
 - **Done when:** Creating a new award shows "Award created. View Award →" toast that lasts 5 seconds.
-- [ ] Implemented
+- [x] Implemented
 
 ### L6 — Required field indicators consistent across all forms
 - **Files:** `index.html` (all modal forms)

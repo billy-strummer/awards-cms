@@ -476,6 +476,11 @@ const winnersModule = {
                 `
                   )
                   .join('')}
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item small" href="#" data-action="winnersModule.scheduleAnnouncement" data-args='${JSON.stringify([winner.id])}' data-prevent-default="true">
+                  <i class="bi bi-calendar-event text-info me-2"></i>Schedule Announcement…
+                  ${winner.announce_at ? `<span class="badge bg-info ms-1" style="font-size:0.65rem;">${new Date(winner.announce_at).toLocaleDateString()}</span>` : ''}
+                </a></li>
               </ul>
             </div>
           </td>
@@ -3867,6 +3872,44 @@ const winnersModule = {
       console.error('Error updating winner status:', error);
       utils.showToast('Error updating status: ' + error.message, 'error');
     }
+  },
+
+  // M8: Schedule winner announcement
+  async scheduleAnnouncement(winnerId) {
+    const winner = STATE.allWinners.find((w) => w.id === winnerId);
+    if (!winner) return;
+    const current = winner.announce_at ? winner.announce_at.slice(0, 16) : '';
+    const html = `<div class="mb-3">
+      <label class="form-label fw-semibold">Announcement date &amp; time</label>
+      <input type="datetime-local" class="form-control" id="announceAtInput" value="${current}">
+      <div class="form-text">At this time, status will automatically update to "Published" when the page next loads.</div>
+      ${current ? `<button class="btn btn-sm btn-outline-danger mt-2" data-action="winnersModule.clearAnnouncement" data-args='["${winnerId}"]'>Clear schedule</button>` : ''}
+    </div>`;
+    utils.showModal(`Schedule: ${utils.escapeHtml(winner.winner_name)}`, html, {
+      icon: 'bi-calendar-event',
+      confirmLabel: 'Save',
+      onConfirm: async () => {
+        const val = document.getElementById('announceAtInput')?.value;
+        if (!val) return;
+        await apiClient.update('winners', winnerId, { announce_at: new Date(val).toISOString() });
+        [STATE.allWinners, STATE.filteredWinners].forEach((arr) => {
+          const w = arr.find((x) => x.id === winnerId);
+          if (w) w.announce_at = new Date(val).toISOString();
+        });
+        this.renderWinners();
+        utils.showToast(`Announcement scheduled for ${new Date(val).toLocaleString()}`, 'success');
+      },
+    });
+  },
+
+  async clearAnnouncement(winnerId) {
+    await apiClient.update('winners', winnerId, { announce_at: null });
+    [STATE.allWinners, STATE.filteredWinners].forEach((arr) => {
+      const w = arr.find((x) => x.id === winnerId);
+      if (w) w.announce_at = null;
+    });
+    this.renderWinners();
+    utils.showToast('Announcement schedule cleared', 'success');
   },
 
   // C5: GDPR consent toggle

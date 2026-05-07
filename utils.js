@@ -64,7 +64,7 @@ const utils = {
    * @param {string} type - Type of notification: 'success', 'error', 'warning', 'info'
    * @param {string} title - Optional title (defaults based on type)
    */
-  showToast(message, type = 'info', title = null) {
+  showToast(message, type = 'info', title = null, delay = 5000) {
     const toastEl = document.getElementById('notificationToast');
     if (!toastEl) return;
     const toastIcon = document.getElementById('toastIcon');
@@ -113,7 +113,7 @@ const utils = {
     // Show toast
     const toast = new bootstrap.Toast(toastEl, {
       autohide: true,
-      delay: 4000,
+      delay: delay,
     });
     toast.show();
   },
@@ -210,16 +210,16 @@ const utils = {
    */
   getStatusBadge(status) {
     const statusMap = {
-      Draft: 'secondary',
-      Pending: 'warning',
-      Approved: 'success',
-      Published: 'primary',
-      Active: 'success',
-      Archived: 'dark',
-      Rejected: 'danger',
+      Draft: { color: 'secondary', icon: 'bi-file-earmark' },
+      Pending: { color: 'warning', icon: 'bi-clock' },
+      Approved: { color: 'success', icon: 'bi-check-circle' },
+      Published: { color: 'primary', icon: 'bi-globe' },
+      Active: { color: 'success', icon: 'bi-check-circle' },
+      Archived: { color: 'dark', icon: 'bi-archive' },
+      Rejected: { color: 'danger', icon: 'bi-x-circle' },
     };
-    const badgeClass = statusMap[status] || 'secondary';
-    return `<span class="badge bg-${badgeClass}">${status}</span>`;
+    const { color, icon } = statusMap[status] || { color: 'secondary', icon: 'bi-circle' };
+    return `<span class="badge bg-${color}"><i class="bi ${icon} me-1"></i>${status}</span>`;
   },
 
   /**
@@ -249,6 +249,15 @@ const utils = {
   toTitleCase(str) {
     if (!str) return '';
     return str.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+  },
+
+  // H7: Highlight search term matches within text
+  highlightMatch(text, query) {
+    if (!text) return '';
+    const escaped = this.escapeHtml(String(text));
+    if (!query || !query.trim()) return escaped;
+    const safe = query.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return escaped.replace(new RegExp(`(${safe})`, 'gi'), '<mark class="p-0 rounded-1">$1</mark>');
   },
 
   /**
@@ -521,6 +530,97 @@ const utils = {
     uniqueValues.forEach((value) => {
       select.innerHTML += `<option value="${this.escapeHtml(value)}">${this.escapeHtml(value)}</option>`;
     });
+
+    // Refresh searchable wrapper if one exists
+    const wrapper = select.closest('[data-searchable-select]');
+    if (wrapper) this._refreshSearchableSelect(wrapper, select, placeholder);
+  },
+
+  /**
+   * Convert a plain <select> into a searchable combo-box.
+   * The original <select> stays hidden and remains the value source.
+   * @param {string} selectId - ID of the <select> to upgrade
+   */
+  makeSearchableSelect(selectId) {
+    const select = document.getElementById(selectId);
+    if (!select || select.dataset.searchableInit) return;
+    select.dataset.searchableInit = '1';
+    select.style.display = 'none';
+
+    const placeholder = select.options[0]?.text || 'Search…';
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'position-relative';
+    wrapper.setAttribute('data-searchable-select', selectId);
+    select.parentNode.insertBefore(wrapper, select);
+    wrapper.appendChild(select);
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'form-control form-control-sm';
+    input.placeholder = placeholder;
+    input.autocomplete = 'off';
+    input.setAttribute('aria-label', placeholder);
+
+    const dropdown = document.createElement('ul');
+    dropdown.className = 'list-unstyled bg-white border rounded shadow-sm position-absolute';
+    dropdown.style.cssText =
+      'max-height:200px;overflow-y:auto;z-index:1060;display:none;margin:0;padding:4px 0;width:100%;top:100%;left:0;';
+
+    wrapper.appendChild(input);
+    wrapper.appendChild(dropdown);
+
+    const showDropdown = (filter) => {
+      const fl = (filter || '').toLowerCase();
+      dropdown.innerHTML = '';
+      Array.from(select.options).forEach((opt) => {
+        if (!fl || opt.text.toLowerCase().includes(fl) || opt.value === '') {
+          const li = document.createElement('li');
+          li.textContent = opt.text;
+          li.style.cssText =
+            'padding:5px 10px;cursor:pointer;font-size:0.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+          li.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            select.value = opt.value;
+            input.value = opt.value ? opt.text : '';
+            dropdown.style.display = 'none';
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+          });
+          li.addEventListener('mouseover', () => (li.style.background = '#f0f0f0'));
+          li.addEventListener('mouseout', () => (li.style.background = ''));
+          dropdown.appendChild(li);
+        }
+      });
+      dropdown.style.display = dropdown.children.length ? 'block' : 'none';
+    };
+
+    input.addEventListener('input', () => showDropdown(input.value));
+    input.addEventListener('focus', () => showDropdown(input.value));
+    input.addEventListener('blur', () =>
+      setTimeout(() => {
+        dropdown.style.display = 'none';
+      }, 150)
+    );
+
+    // Restore display value from current select value
+    const current = select.value;
+    if (current) {
+      const opt = Array.from(select.options).find((o) => o.value === current);
+      if (opt) input.value = opt.text;
+    }
+  },
+
+  _refreshSearchableSelect(wrapper, select, placeholder) {
+    const input = wrapper.querySelector('input[type="text"]');
+    if (!input) return;
+    const current = select.value;
+    if (current) {
+      const opt = Array.from(select.options).find((o) => o.value === current);
+      input.value = opt ? opt.text : '';
+    } else {
+      input.value = '';
+      input.placeholder = placeholder || select.options[0]?.text || 'Search…';
+    }
   },
 
   /**
@@ -2153,6 +2253,76 @@ const utils = {
   },
   canRedo(moduleKey) {
     return (this._redoStacks[moduleKey]?.length || 0) > 0;
+  },
+
+  /* ==================================================== */
+  /* PROGRESS BAR (C8)                                    */
+  /* ==================================================== */
+
+  _progressEl: null,
+
+  showProgress(label, percent) {
+    if (!this._progressEl) {
+      const bar = document.createElement('div');
+      bar.id = 'globalProgressBar';
+      bar.style.cssText =
+        'position:fixed;bottom:0;left:0;right:0;z-index:9999;background:#fff;border-top:1px solid #dee2e6;padding:6px 16px;display:flex;align-items:center;gap:10px;box-shadow:0 -2px 8px rgba(0,0,0,.08);';
+      bar.innerHTML = `<span id="globalProgressLabel" class="small text-muted" style="min-width:160px;"></span>
+        <div class="progress flex-grow-1" style="height:8px;"><div id="globalProgressFill" class="progress-bar progress-bar-striped progress-bar-animated" style="width:0%"></div></div>
+        <span id="globalProgressPct" class="small text-muted fw-semibold" style="min-width:36px;text-align:right;"></span>`;
+      document.body.appendChild(bar);
+      this._progressEl = bar;
+    }
+    this._progressEl.style.display = 'flex';
+    document.getElementById('globalProgressLabel').textContent = label || '';
+    const pct = Math.max(0, Math.min(100, Math.round(percent)));
+    document.getElementById('globalProgressFill').style.width = pct + '%';
+    document.getElementById('globalProgressPct').textContent = pct + '%';
+  },
+
+  hideProgress() {
+    if (this._progressEl) this._progressEl.style.display = 'none';
+  },
+
+  /* ==================================================== */
+  /* MODAL DIRTY-STATE WARNING (C6)                       */
+  /* ==================================================== */
+
+  _dirtyModals: new Set(),
+
+  markModalDirty(modalId) {
+    this._dirtyModals.add(modalId);
+  },
+
+  clearModalDirty(modalId) {
+    this._dirtyModals.delete(modalId);
+  },
+
+  isModalDirty(modalId) {
+    return this._dirtyModals.has(modalId);
+  },
+
+  initModalDirtyTracking(modalId) {
+    const modalEl = document.getElementById(modalId);
+    if (!modalEl || modalEl._dirtyTracked) return;
+    modalEl._dirtyTracked = true;
+
+    // Mark dirty on any input change
+    modalEl.addEventListener('input', () => this.markModalDirty(modalId));
+    modalEl.addEventListener('change', () => this.markModalDirty(modalId));
+
+    // Clear dirty on successful hide (save clears it before hiding)
+    modalEl.addEventListener('hidden.bs.modal', () => this.clearModalDirty(modalId));
+
+    // Intercept close attempts
+    modalEl.addEventListener('hide.bs.modal', (e) => {
+      if (!this.isModalDirty(modalId)) return;
+      e.preventDefault();
+      if (confirm('You have unsaved changes. Leave without saving?')) {
+        this.clearModalDirty(modalId);
+        bootstrap.Modal.getInstance(modalEl)?.hide();
+      }
+    });
   },
 
   /* ==================================================== */

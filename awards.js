@@ -340,8 +340,9 @@ const awardsModule = {
     // Populate year filter (2026+)
     this.populateYearFilter();
 
-    // Populate sector filter
+    // Populate sector filter (searchable)
     utils.populateFilter(STATE.allAwards, 'sector', 'awardsSectorFilterSelect', 'All Sectors');
+    utils.makeSearchableSelect('awardsSectorFilterSelect');
   },
 
   /**
@@ -796,7 +797,7 @@ const awardsModule = {
             <a href="#"
                class="text-decoration-none fw-semibold text-primary"
                data-action="assignmentsModule.openAssignmentsModal" data-args='${JSON.stringify([award.id, fullName]).replace(/'/g, '&#39;')}'>
-              ${utils.escapeHtml(fullName)}
+              ${utils.highlightMatch(fullName, document.getElementById('awardsSearchBox')?.value)}
             </a>
           </td>
           <td>
@@ -831,6 +832,7 @@ const awardsModule = {
           </td>
           <td class="text-center">${phaseHtml}</td>
           <td>${winnerHtml}</td>
+          <td class="d-none award-col-modified"><small class="text-muted">${award.updated_at ? utils.formatRelativeTime(award.updated_at) : '-'}</small></td>
           <td class="text-center">
             <div class="btn-group btn-group-sm">
               <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false" aria-label="Award actions">
@@ -882,6 +884,7 @@ const awardsModule = {
       .join('');
 
     this.updateSortIndicators();
+    this._restoreColumnVisibility();
 
     // Render server-side pagination controls
     if (this._serverPagination) {
@@ -893,6 +896,29 @@ const awardsModule = {
         tbody.closest('table')?.parentElement?.appendChild(pagEl);
       }
       utils.renderServerPagination('awardsPagination', this._pagination, 'awardsModule._goToPage');
+    }
+  },
+
+  // L9: Toggle awards table column visibility
+  toggleAwardColumn(value, event) {
+    const col = event?.target?.dataset?.id;
+    if (!col) return;
+    const show = event.target.checked;
+    if (col === 'modified') {
+      document.getElementById('awardsModifiedHeader')?.classList.toggle('d-none', !show);
+      document.querySelectorAll('.award-col-modified').forEach((td) => td.classList.toggle('d-none', !show));
+      localStorage.setItem('awardsColModified', show ? '1' : '0');
+    }
+  },
+
+  // Restore column visibility from localStorage
+  _restoreColumnVisibility() {
+    const showModified = localStorage.getItem('awardsColModified') === '1';
+    const cb = document.getElementById('colToggleModified');
+    if (cb) cb.checked = showModified;
+    if (showModified) {
+      document.getElementById('awardsModifiedHeader')?.classList.remove('d-none');
+      document.querySelectorAll('.award-col-modified').forEach((td) => td.classList.remove('d-none'));
     }
   },
 
@@ -1346,7 +1372,26 @@ const awardsModule = {
     document.getElementById('awardFormPrevWinner').value = award.prev_year_winner || '';
     document.getElementById('awardFormPrev2nd').value = award.prev_year_2nd || '';
     document.getElementById('awardFormPrev3rd').value = award.prev_year_3rd || '';
-    document.getElementById('awardFormModalTitle').innerHTML = '<i class="bi bi-pencil me-2"></i>Edit Award';
+    // H4: Status stepper in edit modal header
+    const steps = ['draft', 'pending', 'active', 'archived'];
+    const stepLabels = { draft: 'Draft', pending: 'Pending', active: 'Active', archived: 'Archived' };
+    const stepColors = { draft: 'secondary', pending: 'warning', active: 'success', archived: 'dark' };
+    const curStatus = (award.status || 'draft').toLowerCase();
+    const curIdx = steps.indexOf(curStatus);
+    const stepperHtml = `<div class="d-flex align-items-center gap-1 mt-2 mb-1" style="font-size:0.7rem;">
+      ${steps
+        .map(
+          (s, i) => `
+        <span class="badge ${i <= curIdx ? 'bg-' + stepColors[s] : 'bg-light text-muted border'} px-2 py-1 rounded-pill" title="Click to set status to ${stepLabels[s]}" style="cursor:pointer;" data-action="awardsModule._stepperSetStatus" data-args='["${award.id}","${s}"]'>
+          ${i < curIdx ? '<i class="bi bi-check me-1"></i>' : ''}${stepLabels[s]}
+        </span>
+        ${i < steps.length - 1 ? '<i class="bi bi-chevron-right text-muted" style="font-size:0.6rem;"></i>' : ''}
+      `
+        )
+        .join('')}
+    </div>`;
+    document.getElementById('awardFormModalTitle').innerHTML =
+      '<i class="bi bi-pencil me-2"></i>Edit Award' + stepperHtml;
 
     // Populate country + area dropdowns via locationModule
     locationModule.populateCountryDropdown('awardFormCountry', 'Select Country...');
@@ -1533,7 +1578,8 @@ const awardsModule = {
           utils.clearFormDraft('award_new');
         }
 
-        // Close modal
+        // C6: clear dirty state so close doesn't trigger unsaved-changes warning
+        utils.clearModalDirty('awardFormModal');
         const modal = bootstrap.Modal.getInstance(document.getElementById('awardFormModal'));
         if (modal) modal.hide();
 
@@ -1549,6 +1595,7 @@ const awardsModule = {
 
         utils.showToast(id ? 'Award updated successfully!' : 'Award created successfully!', 'success');
         await this.loadAwards();
+        if (typeof updateTabCounts === 'function') updateTabCounts();
       });
     } catch (error) {
       console.error('Error saving award:', error);
@@ -1880,6 +1927,7 @@ const awardsModule = {
       );
 
       await this.loadAwards();
+      if (typeof updateTabCounts === 'function') updateTabCounts();
       utils.showToast(
         'Award deleted. <a href="#" data-action="utils.undoLastDelete" data-id="awards" data-prevent-default="true">Undo</a>',
         'info'
@@ -2376,10 +2424,31 @@ const awardsModule = {
       return;
     }
 
-    const targetYear = parseInt(
-      prompt(`Clone "${utils.formatAwardName(award)}" to which year?`, String(new Date().getFullYear()))
-    );
-    if (!targetYear || isNaN(targetYear)) return;
+    // Open modal instead of browser prompt
+    this._pendingCloneId = awardId;
+    const descEl = document.getElementById('cloneAwardDesc');
+    if (descEl)
+      descEl.textContent = `Duplicate "${utils.formatAwardName(award)}" — copies all fields, resets status to Draft and clears dates.`;
+    const yearInput = document.getElementById('cloneAwardYear');
+    if (yearInput) {
+      yearInput.value = new Date().getFullYear() + 1;
+      yearInput.classList.remove('is-invalid');
+    }
+    new bootstrap.Modal(document.getElementById('cloneAwardModal')).show();
+  },
+
+  async confirmCloneAward() {
+    const awardId = this._pendingCloneId;
+    const award = STATE.allAwards.find((a) => a.id === awardId);
+    if (!award) return;
+
+    const yearInput = document.getElementById('cloneAwardYear');
+    const targetYear = parseInt(yearInput?.value);
+    if (!targetYear || isNaN(targetYear) || targetYear < 2020 || targetYear > 2040) {
+      if (yearInput) yearInput.classList.add('is-invalid');
+      return;
+    }
+    bootstrap.Modal.getInstance(document.getElementById('cloneAwardModal'))?.hide();
 
     try {
       utils.showLoading();
@@ -2431,6 +2500,122 @@ const awardsModule = {
     } catch (error) {
       console.error('Error cloning award:', error);
       utils.showToast('Error: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  // ── C2: CSV Import for Awards ────────────────────────────────────────────
+
+  openImportModal() {
+    const fileInput = document.getElementById('awardsImportFile');
+    if (fileInput) fileInput.value = '';
+    const preview = document.getElementById('awardsImportPreview');
+    if (preview) preview.classList.add('d-none');
+    const btn = document.getElementById('awardsImportConfirmBtn');
+    if (btn) btn.classList.add('d-none');
+    new bootstrap.Modal(document.getElementById('awardsImportModal')).show();
+  },
+
+  downloadImportTemplate() {
+    const csv =
+      'award_name,year,sector,status,country,description\n"Best Builder Company",2026,"Building & Construction",Draft,England,""\n"Best Electrician Company",2026,"Mechanical Electrical & Plumbing",Draft,England,""\n';
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'awards-import-template.csv';
+    a.click();
+  },
+
+  previewAwardsCSV(_value, event) {
+    const input = event?.target || document.getElementById('awardsImportFile');
+    const file = input?.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const lines = e.target.result.split('\n').filter((l) => l.trim());
+      if (lines.length < 2) {
+        utils.showToast('CSV must have a header row and at least one data row', 'error');
+        return;
+      }
+
+      const headers = lines[0].split(',').map((h) => h.trim().replace(/^"|"$/g, '').toLowerCase());
+      const required = ['award_name', 'year', 'sector'];
+      const missing = required.filter((r) => !headers.includes(r));
+      if (missing.length) {
+        document.getElementById('awardsImportErrors').textContent = `Missing columns: ${missing.join(', ')}`;
+        return;
+      }
+      document.getElementById('awardsImportErrors').textContent = '';
+
+      const rows = lines
+        .slice(1)
+        .map((line) => {
+          const vals = line.split(',').map((v) => v.trim().replace(/^"|"$/g, ''));
+          return Object.fromEntries(headers.map((h, i) => [h, vals[i] || '']));
+        })
+        .filter((r) => r.award_name);
+
+      this._pendingImportRows = rows;
+
+      // Render preview table
+      const thead = document.getElementById('awardsImportPreviewHead');
+      const tbody = document.getElementById('awardsImportPreviewBody');
+      thead.innerHTML = `<tr>${headers.map((h) => `<th>${utils.escapeHtml(h)}</th>`).join('')}</tr>`;
+      tbody.innerHTML = rows
+        .slice(0, 10)
+        .map((row) => `<tr>${headers.map((h) => `<td>${utils.escapeHtml(row[h] || '')}</td>`).join('')}</tr>`)
+        .join('');
+
+      document.getElementById('awardsImportRowCount').textContent = `${rows.length} rows`;
+      document.getElementById('awardsImportConfirmCount').textContent = rows.length;
+      document.getElementById('awardsImportPreview').classList.remove('d-none');
+      document.getElementById('awardsImportConfirmBtn').classList.remove('d-none');
+    };
+    reader.readAsText(file);
+  },
+
+  async confirmImportAwards() {
+    const rows = this._pendingImportRows;
+    if (!rows?.length) return;
+
+    bootstrap.Modal.getInstance(document.getElementById('awardsImportModal'))?.hide();
+
+    let imported = 0,
+      skipped = 0;
+    try {
+      utils.showLoading();
+      for (const row of rows) {
+        const year = parseInt(row.year);
+        if (!row.award_name || !year || !row.sector) {
+          skipped++;
+          continue;
+        }
+
+        const filters = { award_name: row.award_name, year };
+        const { data: existing } = await apiClient.select('awards', { select: 'id', filters, pageSize: 1 });
+        if (existing?.length) {
+          skipped++;
+          continue;
+        }
+
+        await apiClient.insert('awards', {
+          award_name: row.award_name,
+          year,
+          sector: row.sector,
+          status: row.status || 'Draft',
+          country: row.country || null,
+          description: row.description || null,
+        });
+        imported++;
+      }
+
+      utils.showToast(`Imported ${imported} awards${skipped ? `, skipped ${skipped} duplicates` : ''}`, 'success');
+      await this.loadAwards();
+    } catch (error) {
+      console.error('Error importing awards:', error);
+      utils.showToast('Import error: ' + error.message, 'error');
     } finally {
       utils.hideLoading();
     }
@@ -2902,6 +3087,14 @@ const awardsModule = {
    * @param {string} newStatus - New status value
    * @returns {Promise<void>}
    */
+  // H4: Stepper click handler — update status and refresh modal header
+  async _stepperSetStatus(awardId, newStatus) {
+    await this.inlineUpdateStatus(awardId, newStatus);
+    // Refresh the stepper in the currently open modal
+    const award = STATE.allAwards.find((a) => a.id === awardId);
+    if (award) this.openEditModal(awardId);
+  },
+
   async inlineUpdateStatus(awardId, newStatus) {
     try {
       await apiClient.update('awards', awardId, { status: newStatus });

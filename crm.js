@@ -2563,6 +2563,17 @@ const crmModule = {
   // SMART SEGMENTS (moved from Organisations)
   // ============================================
   _segmentRuleCount: 1,
+  _segmentLogic: 'AND',
+
+  setSegmentLogic(value, event) {
+    this._segmentLogic = event?.target?.dataset?.id || 'AND';
+    document.getElementById('segLogicAND')?.classList.toggle('active', this._segmentLogic === 'AND');
+    document.getElementById('segLogicAND')?.classList.toggle('btn-outline-primary', this._segmentLogic !== 'AND');
+    document.getElementById('segLogicAND')?.classList.toggle('btn-primary', this._segmentLogic === 'AND');
+    document.getElementById('segLogicOR')?.classList.toggle('active', this._segmentLogic === 'OR');
+    document.getElementById('segLogicOR')?.classList.toggle('btn-outline-secondary', this._segmentLogic !== 'OR');
+    document.getElementById('segLogicOR')?.classList.toggle('btn-secondary', this._segmentLogic === 'OR');
+  },
 
   addSegmentRule() {
     const i = this._segmentRuleCount++;
@@ -2594,7 +2605,8 @@ const crmModule = {
   },
 
   _matchesSegmentRules(org, rules) {
-    return rules.every((r) => {
+    const matchFn = this._segmentLogic === 'OR' ? 'some' : 'every';
+    return rules[matchFn]((r) => {
       let orgVal;
       if (r.field === 'engagement' && typeof orgsModule !== 'undefined')
         orgVal = orgsModule.calculateEngagementScore(org);
@@ -2935,7 +2947,10 @@ const crmModule = {
                   </div>
                   <div class="mb-3">
                     <label class="form-label">Meeting Notes</label>
-                    <textarea class="form-control" id="newMeetingNotes" rows="3" placeholder="Key discussion points..."></textarea>
+                    <textarea class="form-control" id="newMeetingNotes" rows="5">**Attendees:**
+**Key Points:**
+**Action Items:**
+**Next Steps:**</textarea>
                   </div>
                   <div class="mb-3">
                     <label class="form-label">Action Items</label>
@@ -3626,36 +3641,108 @@ const crmModule = {
     container.innerHTML = html;
   },
 
+  // M1: Get pipeline stages (custom or default)
+  _getPipelineStages() {
+    const stored = localStorage.getItem('crmPipelineStages');
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch {
+        /* fall through */
+      }
+    }
+    return [
+      { id: 'prospecting', label: 'Prospecting', color: 'primary' },
+      { id: 'proposal', label: 'Proposal', color: 'info' },
+      { id: 'negotiation', label: 'Negotiation', color: 'warning' },
+      { id: 'won', label: 'Won', color: 'success' },
+      { id: 'lost', label: 'Lost', color: 'danger' },
+    ];
+  },
+
+  openManageStagesModal() {
+    const stages = this._getPipelineStages();
+    const html = `
+      <p class="text-muted small mb-3">Add, rename, or reorder deal pipeline stages. Changes apply immediately.</p>
+      <div id="stagesList" class="mb-3">
+        ${stages
+          .map(
+            (s, i) => `
+          <div class="d-flex gap-2 align-items-center mb-2 stage-row" data-idx="${i}">
+            <i class="bi bi-grip-vertical text-muted" style="cursor:grab;"></i>
+            <input type="text" class="form-control form-control-sm stage-label" value="${utils.escapeHtml(s.label)}" placeholder="Stage name">
+            <select class="form-select form-select-sm stage-color" style="width:auto;">
+              ${['primary', 'info', 'warning', 'success', 'danger', 'secondary']
+                .map((c) => `<option value="${c}" ${s.color === c ? 'selected' : ''}>${c}</option>`)
+                .join('')}
+            </select>
+            <button class="btn btn-sm btn-outline-danger" onclick="this.closest('.stage-row').remove()"><i class="bi bi-trash"></i></button>
+          </div>`
+          )
+          .join('')}
+      </div>
+      <button class="btn btn-sm btn-outline-secondary mb-2" id="addStageBtn"><i class="bi bi-plus me-1"></i>Add Stage</button>`;
+    utils.showModal('Manage Pipeline Stages', html, {
+      icon: 'bi-sliders',
+      confirmLabel: 'Save Stages',
+      onConfirm: () => {
+        const rows = document.querySelectorAll('.stage-row');
+        const newStages = [];
+        rows.forEach((row) => {
+          const label = row.querySelector('.stage-label')?.value.trim();
+          const color = row.querySelector('.stage-color')?.value || 'secondary';
+          if (label) newStages.push({ id: label.toLowerCase().replace(/\s+/g, '_'), label, color });
+        });
+        if (newStages.length === 0) {
+          utils.showToast('Need at least one stage', 'warning');
+          return false;
+        }
+        localStorage.setItem('crmPipelineStages', JSON.stringify(newStages));
+        utils.showToast('Pipeline stages saved', 'success');
+        if (this._kanbanView) this.renderKanbanBoard();
+      },
+    });
+    setTimeout(() => {
+      document.getElementById('addStageBtn')?.addEventListener('click', () => {
+        const list = document.getElementById('stagesList');
+        const idx = list.children.length;
+        list.insertAdjacentHTML(
+          'beforeend',
+          `
+          <div class="d-flex gap-2 align-items-center mb-2 stage-row" data-idx="${idx}">
+            <i class="bi bi-grip-vertical text-muted" style="cursor:grab;"></i>
+            <input type="text" class="form-control form-control-sm stage-label" placeholder="Stage name">
+            <select class="form-select form-select-sm stage-color" style="width:auto;">
+              <option value="primary">primary</option><option value="info">info</option>
+              <option value="warning">warning</option><option value="success">success</option>
+              <option value="danger">danger</option><option value="secondary">secondary</option>
+            </select>
+            <button class="btn btn-sm btn-outline-danger" onclick="this.closest('.stage-row').remove()"><i class="bi bi-trash"></i></button>
+          </div>`
+        );
+      });
+    }, 100);
+  },
+
   renderKanbanBoard() {
     const deals = this._deals || [];
-    const stages = ['prospecting', 'proposal', 'negotiation', 'won', 'lost'];
-    const stageLabels = {
-      prospecting: 'Prospecting',
-      proposal: 'Proposal',
-      negotiation: 'Negotiation',
-      won: 'Won',
-      lost: 'Lost',
-    };
-    const stageColors = {
-      prospecting: 'primary',
-      proposal: 'info',
-      negotiation: 'warning',
-      won: 'success',
-      lost: 'danger',
-    };
+    const stages = this._getPipelineStages();
+    const stageLabels = Object.fromEntries(stages.map((s) => [s.id, s.label]));
+    const stageColors = Object.fromEntries(stages.map((s) => [s.id, s.color]));
 
     const tbody = document.getElementById('dealsTableBody');
     const container = tbody?.closest('.table-responsive') || tbody?.parentElement;
     if (!container) return;
 
     let html = '<div class="kanban-board">';
-    stages.forEach((stage) => {
+    stages.forEach((stageObj) => {
+      const stage = stageObj.id;
       const stageDeals = deals.filter((d) => (d.stage || 'prospecting') === stage);
       const totalValue = stageDeals.reduce((sum, d) => sum + (parseFloat(d.deal_value) || 0), 0);
       html += `
         <div class="kanban-column">
           <div class="kanban-column-header">
-            <span class="badge bg-${stageColors[stage]}">${stageLabels[stage]}</span>
+            <span class="badge bg-${stageColors[stage] || 'secondary'}">${stageLabels[stage] || stage}</span>
             <span class="text-muted small">${stageDeals.length} &middot; £${totalValue.toLocaleString()}</span>
           </div>
           ${stageDeals.length === 0 ? '<p class="text-muted small text-center py-3">No deals</p>' : ''}

@@ -579,6 +579,15 @@ The British Trade Awards Team`,
    * Render the templates sidebar list grouped by workflow stage
    * @returns {void}
    */
+  _viewMode: 'list',
+
+  setView(value, event) {
+    this._viewMode = event?.target?.dataset?.id || value || 'list';
+    document.getElementById('tmplListViewBtn')?.classList.toggle('active', this._viewMode === 'list');
+    document.getElementById('tmplGridViewBtn')?.classList.toggle('active', this._viewMode === 'grid');
+    this.renderTemplatesList();
+  },
+
   renderTemplatesList() {
     const container = document.getElementById('templatesList');
 
@@ -651,6 +660,32 @@ The British Trade Awards Team`,
         })
         .join('');
     });
+
+    if (this._viewMode === 'grid') {
+      // M10: Card grid view
+      let gridHtml = '<div class="row g-3 p-2">';
+      visible.forEach((template) => {
+        const preview = (template.body || '').replace(/<[^>]*>/g, '').slice(0, 120);
+        const modified = template.updated_at ? utils.formatRelativeTime(template.updated_at) : '';
+        gridHtml += `
+          <div class="col-12">
+            <div class="card border ${this.currentTemplate?.id === template.id ? 'border-primary' : ''}">
+              <div class="card-body py-2 px-3">
+                <div class="fw-semibold small">${utils.escapeHtml(template.template_name || 'Untitled')}</div>
+                <div class="text-muted" style="font-size:0.7rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${utils.escapeHtml(preview)}">${utils.escapeHtml(preview) || '(no content)'}</div>
+                ${modified ? `<div class="text-muted mt-1" style="font-size:0.65rem;">${modified}</div>` : ''}
+                <div class="d-flex gap-1 mt-2">
+                  <button class="btn btn-xs btn-outline-primary py-0 px-1" style="font-size:0.7rem;" data-action="emailTemplatesModule.selectTemplate" data-id="${template.id}"><i class="bi bi-pencil"></i> Edit</button>
+                  <button class="btn btn-xs btn-outline-success py-0 px-1" style="font-size:0.7rem;" data-action="emailTemplatesModule.selectTemplate" data-id="${template.id}" title="Select and use this template"><i class="bi bi-send"></i> Use</button>
+                </div>
+              </div>
+            </div>
+          </div>`;
+      });
+      gridHtml += '</div>';
+      container.innerHTML = gridHtml;
+      return;
+    }
 
     container.innerHTML = html;
 

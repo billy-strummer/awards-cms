@@ -449,6 +449,19 @@ const winnersModule = {
             </div>
           </td>
           <td class="text-center">
+            ${(() => {
+              const consented = winner.gdpr_consent === true;
+              const noConsent = winner.gdpr_consent === false;
+              const unknown = winner.gdpr_consent == null;
+              return `<button class="btn btn-sm ${consented ? 'btn-success' : noConsent ? 'btn-outline-danger' : 'btn-outline-secondary'}"
+                data-action="winnersModule.toggleConsent" data-args='${JSON.stringify([winner.id, !consented])}'
+                title="${consented ? 'Consent given — click to revoke' : unknown ? 'Consent not recorded — click to confirm' : 'Consent declined — click to confirm'}"
+                aria-label="Toggle GDPR consent">
+                <i class="bi ${consented ? 'bi-shield-check' : unknown ? 'bi-shield-exclamation' : 'bi-shield-x'}"></i>
+              </button>`;
+            })()}
+          </td>
+          <td class="text-center">
             <div class="btn-group btn-group-sm">
               <button class="btn badge ${statusInfo.bg} border-0 rounded-pill px-2 dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false" style="font-size:0.75rem;">
                 <i class="bi ${statusInfo.icon} me-1"></i>${statusInfo.label}
@@ -463,6 +476,11 @@ const winnersModule = {
                 `
                   )
                   .join('')}
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item small" href="#" data-action="winnersModule.scheduleAnnouncement" data-args='${JSON.stringify([winner.id])}' data-prevent-default="true">
+                  <i class="bi bi-calendar-event text-info me-2"></i>Schedule Announcement…
+                  ${winner.announce_at ? `<span class="badge bg-info ms-1" style="font-size:0.65rem;">${new Date(winner.announce_at).toLocaleDateString()}</span>` : ''}
+                </a></li>
               </ul>
             </div>
           </td>
@@ -483,6 +501,13 @@ const winnersModule = {
               `
                   : ''
               }
+              <button
+                class="btn btn-outline-warning btn-sm"
+                data-action="winnersModule.openCertificateForWinner" data-id="${winner.id}"
+                title="Generate Certificate"
+                aria-label="Generate certificate">
+                <i class="bi bi-award"></i>
+              </button>
               <button
                 class="btn btn-outline-secondary btn-sm"
                 data-action="winnersModule.downloadMediaPack" data-id="${winner.id}"
@@ -1470,6 +1495,17 @@ const winnersModule = {
       utils.showToast('Error loading certificate editor: ' + error.message, 'error');
     } finally {
       utils.hideLoading();
+    }
+  },
+
+  // H8: open certificate generator pre-selected for a specific winner
+  async openCertificateForWinner(winnerId) {
+    await this.openCertificateGenerator();
+    // Pre-select this winner after the generator loads
+    const winner = STATE.allWinners.find((w) => w.id === winnerId);
+    if (winner) {
+      this.certificateState.selectedWinners = new Set([winnerId]);
+      this.renderCertificateWinners();
     }
   },
 
@@ -3838,6 +3874,59 @@ const winnersModule = {
     }
   },
 
+  // M8: Schedule winner announcement
+  async scheduleAnnouncement(winnerId) {
+    const winner = STATE.allWinners.find((w) => w.id === winnerId);
+    if (!winner) return;
+    const current = winner.announce_at ? winner.announce_at.slice(0, 16) : '';
+    const html = `<div class="mb-3">
+      <label class="form-label fw-semibold">Announcement date &amp; time</label>
+      <input type="datetime-local" class="form-control" id="announceAtInput" value="${current}">
+      <div class="form-text">At this time, status will automatically update to "Published" when the page next loads.</div>
+      ${current ? `<button class="btn btn-sm btn-outline-danger mt-2" data-action="winnersModule.clearAnnouncement" data-args='["${winnerId}"]'>Clear schedule</button>` : ''}
+    </div>`;
+    utils.showModal(`Schedule: ${utils.escapeHtml(winner.winner_name)}`, html, {
+      icon: 'bi-calendar-event',
+      confirmLabel: 'Save',
+      onConfirm: async () => {
+        const val = document.getElementById('announceAtInput')?.value;
+        if (!val) return;
+        await apiClient.update('winners', winnerId, { announce_at: new Date(val).toISOString() });
+        [STATE.allWinners, STATE.filteredWinners].forEach((arr) => {
+          const w = arr.find((x) => x.id === winnerId);
+          if (w) w.announce_at = new Date(val).toISOString();
+        });
+        this.renderWinners();
+        utils.showToast(`Announcement scheduled for ${new Date(val).toLocaleString()}`, 'success');
+      },
+    });
+  },
+
+  async clearAnnouncement(winnerId) {
+    await apiClient.update('winners', winnerId, { announce_at: null });
+    [STATE.allWinners, STATE.filteredWinners].forEach((arr) => {
+      const w = arr.find((x) => x.id === winnerId);
+      if (w) w.announce_at = null;
+    });
+    this.renderWinners();
+    utils.showToast('Announcement schedule cleared', 'success');
+  },
+
+  // C5: GDPR consent toggle
+  async toggleConsent(winnerId, newValue) {
+    try {
+      await apiClient.update('winners', winnerId, { gdpr_consent: newValue });
+      [STATE.allWinners, STATE.filteredWinners].forEach((arr) => {
+        const w = arr.find((x) => x.id === winnerId);
+        if (w) w.gdpr_consent = newValue;
+      });
+      this.renderWinners();
+      utils.showToast(newValue ? 'Consent recorded' : 'Consent revoked', 'success');
+    } catch (error) {
+      utils.showToast('Error updating consent: ' + error.message, 'error');
+    }
+  },
+
   // ============================================
   // BULK OPERATIONS (table-level)
   // ============================================
@@ -3850,6 +3939,8 @@ const winnersModule = {
   toggleWinnerSelect(winnerId, checked) {
     if (checked) this._selectedWinnerIds.add(winnerId);
     else this._selectedWinnerIds.delete(winnerId);
+    const cb = Array.from(document.querySelectorAll('.winner-checkbox')).find((el) => el.value === String(winnerId));
+    if (cb) cb.closest('tr')?.classList.toggle('table-primary', !!checked);
     this.updateWinnersBulkBar();
   },
 
@@ -3862,6 +3953,7 @@ const winnersModule = {
       cb.checked = checked;
       if (checked) this._selectedWinnerIds.add(cb.value);
       else this._selectedWinnerIds.delete(cb.value);
+      cb.closest('tr')?.classList.toggle('table-primary', checked);
     });
     this.updateWinnersBulkBar();
   },
@@ -3883,7 +3975,10 @@ const winnersModule = {
    */
   clearWinnerSelection() {
     this._selectedWinnerIds.clear();
-    document.querySelectorAll('.winner-checkbox').forEach((cb) => (cb.checked = false));
+    document.querySelectorAll('.winner-checkbox').forEach((cb) => {
+      cb.checked = false;
+      cb.closest('tr')?.classList.remove('table-primary');
+    });
     const selectAll = document.getElementById('selectAllWinners');
     if (selectAll) selectAll.checked = false;
     this.updateWinnersBulkBar();

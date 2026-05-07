@@ -1469,6 +1469,16 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
+  // Load Content Calendar when sub-tab is opened
+  const contentCalendarSubTab = document.getElementById('content-calendar-subtab');
+  if (contentCalendarSubTab) {
+    contentCalendarSubTab.addEventListener('shown.bs.tab', () => {
+      if (typeof marketingModule !== 'undefined') {
+        marketingModule.loadContentCalendar();
+      }
+    });
+  }
+
   // Load payments data when payments tab is clicked
   const paymentsTab = document.getElementById('payments-tab');
   if (paymentsTab) {
@@ -1869,6 +1879,12 @@ document.addEventListener('DOMContentLoaded', function () {
   // ==========================================
   // INITIALIZATION COMPLETE
   // ==========================================
+
+  // C6: Wire unsaved-changes tracking to key form modals
+  ['awardFormModal', 'orgFormModal', 'eventFormModal', 'paymentFormModal', 'invoiceFormModal'].forEach((id) =>
+    utils.initModalDirtyTracking(id)
+  );
+
   console.debug('Application initialized successfully');
 });
 

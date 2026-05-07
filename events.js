@@ -67,6 +67,13 @@ const eventsModule = {
 
       console.debug(`Loaded events (page 1, total: ${this._pagination.count})`);
       utils.trackDataLoad('events');
+
+      // M4: Default to calendar view if saved preference or first load
+      const savedView = localStorage.getItem('eventsDefaultView');
+      if (savedView === 'calendar' || savedView === null) {
+        this.showEventsCalendar();
+        localStorage.setItem('eventsDefaultView', 'calendar');
+      }
     } catch (error) {
       console.error('Error loading events:', error);
       utils.showErrorWithRetry(error, 'loading events', () => this.loadEvents());
@@ -13442,9 +13449,11 @@ const eventsModule = {
       cal.classList.remove('d-none');
       cal.style.display = '';
       this.renderCalendar();
+      localStorage.setItem('eventsDefaultView', 'calendar');
     } else {
       cal.classList.add('d-none');
       cal.style.display = '';
+      localStorage.setItem('eventsDefaultView', 'list');
     }
   },
 

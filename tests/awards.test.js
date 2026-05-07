@@ -39,6 +39,18 @@ const dom = new JSDOM(
   <div id="confirmDialogTitle"></div>
   <div id="confirmDialogBody"></div>
   <div id="confirmDialogOk"></div>
+  <div id="cloneAwardModal"></div>
+  <input id="cloneAwardYear" type="number" value="" />
+  <div id="cloneAwardDesc"></div>
+  <div id="awardsImportModal"></div>
+  <input id="awardsImportFile" type="file" />
+  <div id="awardsImportPreview" class="d-none"></div>
+  <span id="awardsImportRowCount"></span>
+  <span id="awardsImportConfirmCount"></span>
+  <span id="awardsImportErrors"></span>
+  <button id="awardsImportConfirmBtn" class="d-none"></button>
+  <thead id="awardsImportPreviewHead"></thead>
+  <tbody id="awardsImportPreviewBody"></tbody>
 </body></html>`,
   { url: 'http://localhost' }
 );
@@ -2251,16 +2263,16 @@ describe('Awards Module - cloneAward()', () => {
     spy.mockRestore();
   });
 
-  test('returns early on invalid year', async () => {
+  test('opens modal and sets pending clone id', async () => {
     STATE.allAwards = [...sampleAwards];
-    global.prompt = jest.fn().mockReturnValue(null);
     await awardsModule.cloneAward('award-1');
-    delete global.prompt;
+    expect(awardsModule._pendingCloneId).toBe('award-1');
   });
 
-  test('clones award successfully', async () => {
+  test('confirmCloneAward clones award successfully', async () => {
     STATE.allAwards = [...sampleAwards];
-    global.prompt = jest.fn().mockReturnValue('2027');
+    awardsModule._pendingCloneId = 'award-1';
+    document.getElementById('cloneAwardYear').value = '2027';
     const origSelect = apiClient.select;
     const origInsert = apiClient.insert;
     apiClient.select = jest.fn().mockResolvedValue({ data: [] });
@@ -2268,24 +2280,27 @@ describe('Awards Module - cloneAward()', () => {
     awardsModule._logAwardAudit = jest.fn().mockResolvedValue();
     awardsModule.loadAwards = jest.fn().mockResolvedValue();
 
-    await awardsModule.cloneAward('award-1');
+    await awardsModule.confirmCloneAward();
     expect(apiClient.insert).toHaveBeenCalled();
 
     apiClient.select = origSelect;
     apiClient.insert = origInsert;
-    delete global.prompt;
   });
 
-  test('prevents cloning to year with duplicate', async () => {
+  test('confirmCloneAward prevents cloning to duplicate year', async () => {
     STATE.allAwards = [...sampleAwards];
-    global.prompt = jest.fn().mockReturnValue('2027');
+    awardsModule._pendingCloneId = 'award-1';
+    document.getElementById('cloneAwardYear').value = '2027';
     const origSelect = apiClient.select;
+    const origInsert = apiClient.insert;
     apiClient.select = jest.fn().mockResolvedValue({ data: [{ id: 'existing' }] });
+    apiClient.insert = jest.fn().mockResolvedValue({});
 
-    await awardsModule.cloneAward('award-1');
+    await awardsModule.confirmCloneAward();
+    expect(apiClient.insert).not.toHaveBeenCalled();
 
     apiClient.select = origSelect;
-    delete global.prompt;
+    apiClient.insert = origInsert;
   });
 });
 

@@ -76,6 +76,36 @@ const dashboardModule = {
     }
   },
 
+  // H6: Date range filter
+  _dateRange: 'all',
+
+  setDateRange(range) {
+    this._dateRange = range;
+    // Update active button state
+    document.querySelectorAll('#dashboardDateRangeGroup .btn').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.id === range);
+    });
+    // Re-run stats with new range
+    this.updateStats();
+  },
+
+  _getDateRangeFilter() {
+    const now = new Date();
+    if (this._dateRange === 'month') {
+      const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      return start;
+    }
+    if (this._dateRange === 'quarter') {
+      const q = Math.floor(now.getMonth() / 3);
+      const start = new Date(now.getFullYear(), q * 3, 1).toISOString();
+      return start;
+    }
+    if (this._dateRange === 'year') {
+      return new Date(now.getFullYear(), 0, 1).toISOString();
+    }
+    return null;
+  },
+
   /**
    * Update dashboard statistics
    */
@@ -1389,6 +1419,39 @@ const dashboardModule = {
         value: `${completeOrgs}/${totalOrgs}`,
         percentage: orgCompletionRate,
         level: Number(orgCompletionRate) >= 80 ? 'high' : Number(orgCompletionRate) >= 50 ? 'medium' : 'low',
+      });
+
+      // M19: Orgs with logos
+      const orgsWithLogos = STATE.allOrganisations.filter((org) => org.logo_url).length;
+      const logoRate = totalOrgs > 0 ? ((orgsWithLogos / totalOrgs) * 100).toFixed(0) : 0;
+      metrics.push({
+        title: 'Organisations with Logos',
+        value: `${orgsWithLogos}/${totalOrgs}`,
+        percentage: logoRate,
+        level: Number(logoRate) >= 70 ? 'high' : Number(logoRate) >= 40 ? 'medium' : 'low',
+      });
+
+      // M19: Orgs with email
+      const orgsWithEmail = STATE.allOrganisations.filter((org) => org.email).length;
+      const emailRate = totalOrgs > 0 ? ((orgsWithEmail / totalOrgs) * 100).toFixed(0) : 0;
+      metrics.push({
+        title: 'Organisations with Email',
+        value: `${orgsWithEmail}/${totalOrgs}`,
+        percentage: emailRate,
+        level: Number(emailRate) >= 80 ? 'high' : Number(emailRate) >= 50 ? 'medium' : 'low',
+      });
+
+      // M19: Winners with confirmed/published status
+      const totalWinners = STATE.allWinners.length;
+      const confirmedWinners = STATE.allWinners.filter(
+        (w) => w.status === 'confirmed' || w.status === 'published'
+      ).length;
+      const winnerConfirmRate = totalWinners > 0 ? ((confirmedWinners / totalWinners) * 100).toFixed(0) : 0;
+      metrics.push({
+        title: 'Winners Confirmed',
+        value: `${confirmedWinners}/${totalWinners}`,
+        percentage: winnerConfirmRate,
+        level: Number(winnerConfirmRate) >= 80 ? 'high' : Number(winnerConfirmRate) >= 50 ? 'medium' : 'low',
       });
 
       // Tagged media (only fetch columns needed for counting)

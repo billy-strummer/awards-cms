@@ -919,6 +919,23 @@ Vote now: {{website}}
     }
   },
 
+  // M14: Insert hashtag at cursor position in post content
+  insertHashtag(value, event) {
+    const tag = event?.target?.dataset?.id || value;
+    if (!tag) return;
+    const ta = document.getElementById('smPostContent');
+    if (!ta) return;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const current = ta.value;
+    const prefix = current.slice(0, start).endsWith(' ') || start === 0 ? '' : ' ';
+    const suffix = current.slice(end).startsWith(' ') || end === current.length ? '' : ' ';
+    ta.value = current.slice(0, start) + prefix + tag + suffix + current.slice(end);
+    ta.selectionStart = ta.selectionEnd = start + prefix.length + tag.length + suffix.length;
+    ta.focus();
+    this.updatePostPreview();
+  },
+
   clearForm() {
     this.editingPostId = null;
     this.showEditingIndicator(false);

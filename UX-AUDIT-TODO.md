@@ -507,7 +507,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
   1. Move "Create Invoice" primary button to the table header area (alongside the table title "Invoices List"), mirroring how Awards places "Add Award" next to the table title.
   2. Merge Reminders + Auto-Reminders into the Export dropdown (or a new "Actions" dropdown) so the filter row's action area has only: Export dropdown + Create Invoice button.
 - **Done when:** The Payments filter row has at most 2 action buttons. Create Invoice appears near the table heading.
-- [ ] Implemented
+- [x] Implemented
 
 ### V2-H8 — Hide Accounting Integration subtab until implemented
 - **Files:** `index.html`
@@ -516,7 +516,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
   1. Add `class="d-none"` to the `<li class="nav-item">` wrapping the Accounting Integration button.
   2. Or, if it has partial content: add a `<div class="alert alert-info"><i class="bi bi-info-circle me-2"></i>Coming soon — connect Xero, QuickBooks, or Sage.</div>` and keep the tab visible.
 - **Done when:** Users cannot click into an empty Accounting Integration panel, or the panel shows a clear "coming soon" message.
-- [ ] Implemented
+- [x] Implemented
 
 ---
 
@@ -622,7 +622,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
   ```
   Call this after KPI stats load, not before.
 - **Done when:** A system with existing awards/orgs does not show the Getting Started banner, even in a fresh browser session.
-- [ ] Implemented
+- [x] Implemented
 
 ### V2-M8 — Remove imperceptible table row hover scale
 - **Files:** `styles.css` or `modern-theme.css`
@@ -650,14 +650,14 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **Root cause:** All filter `<label>` elements contain `<i class="bi bi-calendar3 me-1"></i>` (and similar) with no `aria-hidden="true"`. Screen readers announce the icon name before every label: "calendar icon Year".
 - **Fix:** Add `aria-hidden="true"` to every `<i>` icon that is inside a `<label>` element across all filter bars. Search for `<label` in `index.html` and audit each one.
 - **Done when:** No decorative icons inside `<label>` elements lack `aria-hidden="true"`.
-- [ ] Implemented
+- [x] Implemented
 
 ### V2-L2 — Accessibility: sortable column headers need `aria-label`
 - **Files:** `index.html`
 - **Root cause:** Sort icon `<i class="bi bi-arrow-down-up">` inside table headers has no accessible text. Keyboard users cannot discover sortable columns.
 - **Fix:** On each sortable `<th>`, add `aria-sort="none"` (changing to `"ascending"` / `"descending"` as sorted). On the sort icon `<i>`, add `aria-hidden="true"`. Add a visually-hidden `<span class="visually-hidden"> (click to sort)</span>` inside each sortable `<th>`.
 - **Done when:** Sortable columns in Awards, Winners, Entries, Organisations tables have `aria-sort` attribute and screen-reader-readable sort affordance.
-- [ ] Implemented
+- [x] Implemented
 
 ### V2-L3 — Inconsistent shadow tokens (two systems)
 - **Files:** `styles.css`, `modern-theme.css`
@@ -681,7 +681,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
   - "Intelligence" = Reports, Marketing ← Marketing ≠ Intelligence
 - **Fix:** Move Marketing to "Commercial" (Events, Payments, Marketing). Rename "Intelligence" to "Analytics" or remove the group and put Reports under "System". This better reflects what each group does.
 - **Done when:** Sidebar group labels accurately describe their contents. Marketing is not grouped under Intelligence.
-- [ ] Implemented
+- [x] Implemented
 
 ### V2-L5 — Empty Dashboard stats row (second row has 2 of 4 columns)
 - **Files:** `index.html`
@@ -690,7 +690,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
   - Add 2 more stat cards to the row (e.g. "Total Attendees" across all events, "Overdue Invoices" count with link to payments), OR
   - Change the existing 2 cards from `col-md-3` to `col-md-4` (or `col-md-6`) so they fill the row proportionally.
 - **Done when:** The Events stats row has no empty columns — either all slots are used or cards are proportioned to fill the row.
-- [ ] Implemented
+- [x] Implemented
 
 ---
 

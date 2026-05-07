@@ -4265,6 +4265,38 @@
                         <div class="form-text">
                           <strong>Available variables:</strong> {{company_name}}, {{award_name}}, {{award_hashtag}}, {{year}}, {{website}}
                         </div>
+                        <!-- M14: Hashtag library -->
+                        <div class="mt-2">
+                          <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#hashtagLibrary">
+                            <i class="bi bi-hash me-1"></i>Hashtag Library
+                          </button>
+                          <div class="collapse mt-2" id="hashtagLibrary">
+                            <div class="card card-body py-2 px-3" style="font-size:0.85rem;">
+                              <div class="mb-2">
+                                <strong class="small text-muted">Awards</strong><br>
+                                <span class="badge bg-secondary me-1 mb-1" style="cursor:pointer;" data-action="socialMediaModule.insertHashtag" data-id="#BritishTradeAwards">#BritishTradeAwards</span>
+                                <span class="badge bg-secondary me-1 mb-1" style="cursor:pointer;" data-action="socialMediaModule.insertHashtag" data-id="#AwardWinner">#AwardWinner</span>
+                                <span class="badge bg-secondary me-1 mb-1" style="cursor:pointer;" data-action="socialMediaModule.insertHashtag" data-id="#BusinessExcellence">#BusinessExcellence</span>
+                                <span class="badge bg-secondary me-1 mb-1" style="cursor:pointer;" data-action="socialMediaModule.insertHashtag" data-id="#UKBusiness">#UKBusiness</span>
+                              </div>
+                              <div class="mb-2">
+                                <strong class="small text-muted">Sectors</strong><br>
+                                <span class="badge bg-info me-1 mb-1" style="cursor:pointer;" data-action="socialMediaModule.insertHashtag" data-id="#Construction">#Construction</span>
+                                <span class="badge bg-info me-1 mb-1" style="cursor:pointer;" data-action="socialMediaModule.insertHashtag" data-id="#Technology">#Technology</span>
+                                <span class="badge bg-info me-1 mb-1" style="cursor:pointer;" data-action="socialMediaModule.insertHashtag" data-id="#Hospitality">#Hospitality</span>
+                                <span class="badge bg-info me-1 mb-1" style="cursor:pointer;" data-action="socialMediaModule.insertHashtag" data-id="#Retail">#Retail</span>
+                                <span class="badge bg-info me-1 mb-1" style="cursor:pointer;" data-action="socialMediaModule.insertHashtag" data-id="#Finance">#Finance</span>
+                              </div>
+                              <div>
+                                <strong class="small text-muted">Engagement</strong><br>
+                                <span class="badge bg-success me-1 mb-1" style="cursor:pointer;" data-action="socialMediaModule.insertHashtag" data-id="#Congratulations">#Congratulations</span>
+                                <span class="badge bg-success me-1 mb-1" style="cursor:pointer;" data-action="socialMediaModule.insertHashtag" data-id="#VoteNow">#VoteNow</span>
+                                <span class="badge bg-success me-1 mb-1" style="cursor:pointer;" data-action="socialMediaModule.insertHashtag" data-id="#ProudWinner">#ProudWinner</span>
+                                <span class="badge bg-success me-1 mb-1" style="cursor:pointer;" data-action="socialMediaModule.insertHashtag" data-id="#Excellence">#Excellence</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                       </div>
 
                       <!-- Platform-Specific Content -->
@@ -4770,9 +4802,15 @@
                   <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
                       <h5 class="mb-0">Templates</h5>
-                      <button class="btn btn-sm btn-primary" data-action="emailTemplatesModule.newTemplate">
-                        <i class="bi bi-plus-circle me-1"></i>New
-                      </button>
+                      <div class="d-flex gap-1">
+                        <div class="btn-group btn-group-sm">
+                          <button class="btn btn-outline-secondary active" id="tmplListViewBtn" title="List view" data-action="emailTemplatesModule.setView" data-id="list"><i class="bi bi-list-ul"></i></button>
+                          <button class="btn btn-outline-secondary" id="tmplGridViewBtn" title="Grid view" data-action="emailTemplatesModule.setView" data-id="grid"><i class="bi bi-grid-3x3-gap"></i></button>
+                        </div>
+                        <button class="btn btn-sm btn-primary" data-action="emailTemplatesModule.newTemplate">
+                          <i class="bi bi-plus-circle me-1"></i>New
+                        </button>
+                      </div>
                     </div>
                     <div class="list-group list-group-flush" id="templatesList">
                       <div class="text-center py-5">
@@ -6490,6 +6528,23 @@
                     <div class="spinner-border spinner-border-sm" role="status"></div>
                     <span class="ms-2">Loading MFA status...</span>
                   </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- M16: Login History -->
+          <div class="row g-4 mt-3">
+            <div class="col-12">
+              <div class="content-card">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>Login History</h5>
+                  <button class="btn btn-sm btn-outline-secondary" data-action="settingsModule.loadLoginHistory">
+                    <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+                  </button>
+                </div>
+                <div id="loginHistoryContainer">
+                  <p class="text-muted small">Click Refresh to load recent login activity.</p>
                 </div>
               </div>
             </div>

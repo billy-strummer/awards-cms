@@ -1048,6 +1048,47 @@ const settingsModule = {
     utils.showToast('Notification preference saved', 'success');
   },
 
+  // M16: Load login activity from CMS audit log
+  async loadLoginHistory() {
+    const container = document.getElementById('loginHistoryContainer');
+    if (!container) return;
+    container.innerHTML = '<div class="text-center py-3"><div class="spinner-border spinner-border-sm"></div></div>';
+    try {
+      const { data } = await apiClient.select('cms_audit_logs', {
+        select: 'created_at, user_email, description, details',
+        filters: { action: { eq: 'login' } },
+        sort: { column: 'created_at', ascending: false },
+        pageSize: 50,
+      });
+      if (!data || data.length === 0) {
+        container.innerHTML =
+          '<p class="text-muted small mb-0">No login records found. Login events are recorded when users sign in.</p>';
+        return;
+      }
+      container.innerHTML = `
+        <div class="table-responsive">
+          <table class="table table-sm table-hover">
+            <thead class="table-light"><tr><th>Date/Time</th><th>User</th><th>Details</th></tr></thead>
+            <tbody>
+              ${data
+                .map(
+                  (log) => `
+                <tr>
+                  <td><small>${log.created_at ? new Date(log.created_at).toLocaleString('en-GB') : '-'}</small></td>
+                  <td><small>${utils.escapeHtml(log.user_email || '-')}</small></td>
+                  <td><small class="text-muted">${utils.escapeHtml(log.description || log.details || '-')}</small></td>
+                </tr>`
+                )
+                .join('')}
+            </tbody>
+          </table>
+        </div>`;
+    } catch (e) {
+      container.innerHTML =
+        '<p class="text-muted small mb-0">Login history requires the CMS audit log to be enabled.</p>';
+    }
+  },
+
   /**
    * Apply saved density on page load
    */

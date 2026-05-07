@@ -64,7 +64,7 @@ const utils = {
    * @param {string} type - Type of notification: 'success', 'error', 'warning', 'info'
    * @param {string} title - Optional title (defaults based on type)
    */
-  showToast(message, type = 'info', title = null) {
+  showToast(message, type = 'info', title = null, delay = 5000) {
     const toastEl = document.getElementById('notificationToast');
     if (!toastEl) return;
     const toastIcon = document.getElementById('toastIcon');
@@ -113,7 +113,7 @@ const utils = {
     // Show toast
     const toast = new bootstrap.Toast(toastEl, {
       autohide: true,
-      delay: 4000,
+      delay: delay,
     });
     toast.show();
   },
@@ -2153,6 +2153,76 @@ const utils = {
   },
   canRedo(moduleKey) {
     return (this._redoStacks[moduleKey]?.length || 0) > 0;
+  },
+
+  /* ==================================================== */
+  /* PROGRESS BAR (C8)                                    */
+  /* ==================================================== */
+
+  _progressEl: null,
+
+  showProgress(label, percent) {
+    if (!this._progressEl) {
+      const bar = document.createElement('div');
+      bar.id = 'globalProgressBar';
+      bar.style.cssText =
+        'position:fixed;bottom:0;left:0;right:0;z-index:9999;background:#fff;border-top:1px solid #dee2e6;padding:6px 16px;display:flex;align-items:center;gap:10px;box-shadow:0 -2px 8px rgba(0,0,0,.08);';
+      bar.innerHTML = `<span id="globalProgressLabel" class="small text-muted" style="min-width:160px;"></span>
+        <div class="progress flex-grow-1" style="height:8px;"><div id="globalProgressFill" class="progress-bar progress-bar-striped progress-bar-animated" style="width:0%"></div></div>
+        <span id="globalProgressPct" class="small text-muted fw-semibold" style="min-width:36px;text-align:right;"></span>`;
+      document.body.appendChild(bar);
+      this._progressEl = bar;
+    }
+    this._progressEl.style.display = 'flex';
+    document.getElementById('globalProgressLabel').textContent = label || '';
+    const pct = Math.max(0, Math.min(100, Math.round(percent)));
+    document.getElementById('globalProgressFill').style.width = pct + '%';
+    document.getElementById('globalProgressPct').textContent = pct + '%';
+  },
+
+  hideProgress() {
+    if (this._progressEl) this._progressEl.style.display = 'none';
+  },
+
+  /* ==================================================== */
+  /* MODAL DIRTY-STATE WARNING (C6)                       */
+  /* ==================================================== */
+
+  _dirtyModals: new Set(),
+
+  markModalDirty(modalId) {
+    this._dirtyModals.add(modalId);
+  },
+
+  clearModalDirty(modalId) {
+    this._dirtyModals.delete(modalId);
+  },
+
+  isModalDirty(modalId) {
+    return this._dirtyModals.has(modalId);
+  },
+
+  initModalDirtyTracking(modalId) {
+    const modalEl = document.getElementById(modalId);
+    if (!modalEl || modalEl._dirtyTracked) return;
+    modalEl._dirtyTracked = true;
+
+    // Mark dirty on any input change
+    modalEl.addEventListener('input', () => this.markModalDirty(modalId));
+    modalEl.addEventListener('change', () => this.markModalDirty(modalId));
+
+    // Clear dirty on successful hide (save clears it before hiding)
+    modalEl.addEventListener('hidden.bs.modal', () => this.clearModalDirty(modalId));
+
+    // Intercept close attempts
+    modalEl.addEventListener('hide.bs.modal', (e) => {
+      if (!this.isModalDirty(modalId)) return;
+      e.preventDefault();
+      if (confirm('You have unsaved changes. Leave without saving?')) {
+        this.clearModalDirty(modalId);
+        bootstrap.Modal.getInstance(modalEl)?.hide();
+      }
+    });
   },
 
   /* ==================================================== */

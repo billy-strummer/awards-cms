@@ -1380,6 +1380,8 @@
                     <i class="bi bi-tools me-1"></i>Tools
                   </button>
                   <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="#" data-action="awardsModule.openImportModal" data-prevent-default="true"><i class="bi bi-filetype-csv text-success me-2"></i>Import Awards CSV</a></li>
+                    <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item" href="#" data-action="awardsModule.rolloverToNextYear" data-prevent-default="true"><i class="bi bi-arrow-repeat text-info me-2"></i>Roll Over to Next Year</a></li>
                     <li><a class="dropdown-item" href="#" data-action="awardsModule.showVisualTimeline" data-prevent-default="true"><i class="bi bi-calendar-range text-success me-2"></i>Timeline Overview</a></li>
                     <li><a class="dropdown-item" href="#" data-action="awardsModule.showDataQualityDashboard" data-prevent-default="true"><i class="bi bi-shield-check text-danger me-2"></i>Data Quality Check</a></li>
@@ -2608,6 +2610,9 @@
                     <th scope="col" class="u-pointer" data-sort-field="award" data-action="winnersModule.sortWinners" data-args="[&quot;award&quot;]">Award <i data-sort-icon-winners="award" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
                     <th scope="col" class="u-pointer" data-sort-field="year" data-action="winnersModule.sortWinners" data-args="[&quot;year&quot;]">Year <i data-sort-icon-winners="year" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
                     <th scope="col">Photos/Videos</th>
+                    <th scope="col" class="text-center" title="GDPR: winner consents to use of name & image">
+                      <i class="bi bi-shield-check text-success me-1"></i>Consent
+                    </th>
                     <th scope="col" class="u-pointer" data-sort-field="status" data-action="winnersModule.sortWinners" data-args="[&quot;status&quot;]">
                       Status <i data-sort-icon-winners="status" class="bi bi-arrow-down-up text-muted ms-1 small"></i>
                       <i class="bi bi-question-circle text-muted ms-1 small" title="Winner journey: Pending → Notified (told they won) → Pack Sent (winner pack dispatched) → Confirmed (winner accepted) → Published (announced publicly)"></i>
@@ -10715,7 +10720,70 @@
     </div>
   </div>
 
-  <!-- Test Email Modal -->
+  <!-- Clone Award Year Modal (C1) -->
+  <div class="modal fade" id="cloneAwardModal" tabindex="-1" aria-labelledby="cloneAwardModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header">
+          <h6 class="modal-title" id="cloneAwardModalLabel"><i class="bi bi-copy text-primary me-2"></i>Duplicate Award</h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small mb-3" id="cloneAwardDesc">Copies all fields except status (set to Draft) and clears dates.</p>
+          <label for="cloneAwardYear" class="form-label fw-semibold">Target Year <span class="text-danger">*</span></label>
+          <input type="number" class="form-control" id="cloneAwardYear" min="2020" max="2040" placeholder="e.g. 2026" required>
+          <div class="invalid-feedback">Please enter a valid year (2020–2040).</div>
+        </div>
+        <div class="modal-footer border-0 pt-0">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" data-action="awardsModule.confirmCloneAward"><i class="bi bi-copy me-1"></i>Duplicate</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import Awards CSV Modal (C2) -->
+  <div class="modal fade" id="awardsImportModal" tabindex="-1" aria-labelledby="awardsImportModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header">
+          <h5 class="modal-title" id="awardsImportModalLabel"><i class="bi bi-filetype-csv text-success me-2"></i>Import Awards from CSV</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-info small mb-3">
+            <i class="bi bi-info-circle me-1"></i>
+            Required columns: <code>award_name</code>, <code>year</code>, <code>sector</code>. Optional: <code>status</code>, <code>country</code>, <code>description</code>.
+            <br>Status defaults to <strong>Draft</strong> if not provided. Download a <a href="#" data-action="awardsModule.downloadImportTemplate" data-prevent-default="true" class="alert-link">template CSV</a>.
+          </div>
+          <div class="mb-3">
+            <label for="awardsImportFile" class="form-label fw-semibold">Select CSV File <span class="text-danger">*</span></label>
+            <input type="file" class="form-control" id="awardsImportFile" accept=".csv,.txt" data-on-change="awardsModule.previewAwardsCSV">
+          </div>
+          <div id="awardsImportPreview" class="d-none">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h6 class="mb-0">Preview <span id="awardsImportRowCount" class="badge bg-secondary ms-1">0 rows</span></h6>
+              <span id="awardsImportErrors" class="text-danger small"></span>
+            </div>
+            <div class="table-responsive" style="max-height:300px;overflow-y:auto;">
+              <table class="table table-sm table-bordered small">
+                <thead class="table-light sticky-top" id="awardsImportPreviewHead"></thead>
+                <tbody id="awardsImportPreviewBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-success d-none" id="awardsImportConfirmBtn" data-action="awardsModule.confirmImportAwards">
+            <i class="bi bi-cloud-upload me-1"></i>Import <span id="awardsImportConfirmCount"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
   <div class="modal fade" id="testEmailModal" tabindex="-1" aria-labelledby="testEmailModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-sm modal-dialog-centered">
       <div class="modal-content border-0 shadow-lg">

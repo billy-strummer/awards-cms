@@ -1869,6 +1869,12 @@ document.addEventListener('DOMContentLoaded', function () {
   // ==========================================
   // INITIALIZATION COMPLETE
   // ==========================================
+
+  // C6: Wire unsaved-changes tracking to key form modals
+  ['awardFormModal', 'orgFormModal', 'eventFormModal', 'paymentFormModal', 'invoiceFormModal'].forEach((id) =>
+    utils.initModalDirtyTracking(id)
+  );
+
   console.debug('Application initialized successfully');
 });
 

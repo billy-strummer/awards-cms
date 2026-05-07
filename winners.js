@@ -449,6 +449,19 @@ const winnersModule = {
             </div>
           </td>
           <td class="text-center">
+            ${(() => {
+              const consented = winner.gdpr_consent === true;
+              const noConsent = winner.gdpr_consent === false;
+              const unknown = winner.gdpr_consent == null;
+              return `<button class="btn btn-sm ${consented ? 'btn-success' : noConsent ? 'btn-outline-danger' : 'btn-outline-secondary'}"
+                data-action="winnersModule.toggleConsent" data-args='${JSON.stringify([winner.id, !consented])}'
+                title="${consented ? 'Consent given — click to revoke' : unknown ? 'Consent not recorded — click to confirm' : 'Consent declined — click to confirm'}"
+                aria-label="Toggle GDPR consent">
+                <i class="bi ${consented ? 'bi-shield-check' : unknown ? 'bi-shield-exclamation' : 'bi-shield-x'}"></i>
+              </button>`;
+            })()}
+          </td>
+          <td class="text-center">
             <div class="btn-group btn-group-sm">
               <button class="btn badge ${statusInfo.bg} border-0 rounded-pill px-2 dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false" style="font-size:0.75rem;">
                 <i class="bi ${statusInfo.icon} me-1"></i>${statusInfo.label}
@@ -3835,6 +3848,21 @@ const winnersModule = {
     } catch (error) {
       console.error('Error updating winner status:', error);
       utils.showToast('Error updating status: ' + error.message, 'error');
+    }
+  },
+
+  // C5: GDPR consent toggle
+  async toggleConsent(winnerId, newValue) {
+    try {
+      await apiClient.update('winners', winnerId, { gdpr_consent: newValue });
+      [STATE.allWinners, STATE.filteredWinners].forEach((arr) => {
+        const w = arr.find((x) => x.id === winnerId);
+        if (w) w.gdpr_consent = newValue;
+      });
+      this.renderWinners();
+      utils.showToast(newValue ? 'Consent recorded' : 'Consent revoked', 'success');
+    } catch (error) {
+      utils.showToast('Error updating consent: ' + error.message, 'error');
     }
   },
 

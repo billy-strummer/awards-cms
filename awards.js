@@ -1533,7 +1533,8 @@ const awardsModule = {
           utils.clearFormDraft('award_new');
         }
 
-        // Close modal
+        // C6: clear dirty state so close doesn't trigger unsaved-changes warning
+        utils.clearModalDirty('awardFormModal');
         const modal = bootstrap.Modal.getInstance(document.getElementById('awardFormModal'));
         if (modal) modal.hide();
 
@@ -2376,10 +2377,31 @@ const awardsModule = {
       return;
     }
 
-    const targetYear = parseInt(
-      prompt(`Clone "${utils.formatAwardName(award)}" to which year?`, String(new Date().getFullYear()))
-    );
-    if (!targetYear || isNaN(targetYear)) return;
+    // Open modal instead of browser prompt
+    this._pendingCloneId = awardId;
+    const descEl = document.getElementById('cloneAwardDesc');
+    if (descEl)
+      descEl.textContent = `Duplicate "${utils.formatAwardName(award)}" — copies all fields, resets status to Draft and clears dates.`;
+    const yearInput = document.getElementById('cloneAwardYear');
+    if (yearInput) {
+      yearInput.value = new Date().getFullYear() + 1;
+      yearInput.classList.remove('is-invalid');
+    }
+    new bootstrap.Modal(document.getElementById('cloneAwardModal')).show();
+  },
+
+  async confirmCloneAward() {
+    const awardId = this._pendingCloneId;
+    const award = STATE.allAwards.find((a) => a.id === awardId);
+    if (!award) return;
+
+    const yearInput = document.getElementById('cloneAwardYear');
+    const targetYear = parseInt(yearInput?.value);
+    if (!targetYear || isNaN(targetYear) || targetYear < 2020 || targetYear > 2040) {
+      if (yearInput) yearInput.classList.add('is-invalid');
+      return;
+    }
+    bootstrap.Modal.getInstance(document.getElementById('cloneAwardModal'))?.hide();
 
     try {
       utils.showLoading();
@@ -2431,6 +2453,122 @@ const awardsModule = {
     } catch (error) {
       console.error('Error cloning award:', error);
       utils.showToast('Error: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  // ── C2: CSV Import for Awards ────────────────────────────────────────────
+
+  openImportModal() {
+    const fileInput = document.getElementById('awardsImportFile');
+    if (fileInput) fileInput.value = '';
+    const preview = document.getElementById('awardsImportPreview');
+    if (preview) preview.classList.add('d-none');
+    const btn = document.getElementById('awardsImportConfirmBtn');
+    if (btn) btn.classList.add('d-none');
+    new bootstrap.Modal(document.getElementById('awardsImportModal')).show();
+  },
+
+  downloadImportTemplate() {
+    const csv =
+      'award_name,year,sector,status,country,description\n"Best Builder Company",2026,"Building & Construction",Draft,England,""\n"Best Electrician Company",2026,"Mechanical Electrical & Plumbing",Draft,England,""\n';
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'awards-import-template.csv';
+    a.click();
+  },
+
+  previewAwardsCSV(_value, event) {
+    const input = event?.target || document.getElementById('awardsImportFile');
+    const file = input?.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const lines = e.target.result.split('\n').filter((l) => l.trim());
+      if (lines.length < 2) {
+        utils.showToast('CSV must have a header row and at least one data row', 'error');
+        return;
+      }
+
+      const headers = lines[0].split(',').map((h) => h.trim().replace(/^"|"$/g, '').toLowerCase());
+      const required = ['award_name', 'year', 'sector'];
+      const missing = required.filter((r) => !headers.includes(r));
+      if (missing.length) {
+        document.getElementById('awardsImportErrors').textContent = `Missing columns: ${missing.join(', ')}`;
+        return;
+      }
+      document.getElementById('awardsImportErrors').textContent = '';
+
+      const rows = lines
+        .slice(1)
+        .map((line) => {
+          const vals = line.split(',').map((v) => v.trim().replace(/^"|"$/g, ''));
+          return Object.fromEntries(headers.map((h, i) => [h, vals[i] || '']));
+        })
+        .filter((r) => r.award_name);
+
+      this._pendingImportRows = rows;
+
+      // Render preview table
+      const thead = document.getElementById('awardsImportPreviewHead');
+      const tbody = document.getElementById('awardsImportPreviewBody');
+      thead.innerHTML = `<tr>${headers.map((h) => `<th>${utils.escapeHtml(h)}</th>`).join('')}</tr>`;
+      tbody.innerHTML = rows
+        .slice(0, 10)
+        .map((row) => `<tr>${headers.map((h) => `<td>${utils.escapeHtml(row[h] || '')}</td>`).join('')}</tr>`)
+        .join('');
+
+      document.getElementById('awardsImportRowCount').textContent = `${rows.length} rows`;
+      document.getElementById('awardsImportConfirmCount').textContent = rows.length;
+      document.getElementById('awardsImportPreview').classList.remove('d-none');
+      document.getElementById('awardsImportConfirmBtn').classList.remove('d-none');
+    };
+    reader.readAsText(file);
+  },
+
+  async confirmImportAwards() {
+    const rows = this._pendingImportRows;
+    if (!rows?.length) return;
+
+    bootstrap.Modal.getInstance(document.getElementById('awardsImportModal'))?.hide();
+
+    let imported = 0,
+      skipped = 0;
+    try {
+      utils.showLoading();
+      for (const row of rows) {
+        const year = parseInt(row.year);
+        if (!row.award_name || !year || !row.sector) {
+          skipped++;
+          continue;
+        }
+
+        const filters = { award_name: row.award_name, year };
+        const { data: existing } = await apiClient.select('awards', { select: 'id', filters, pageSize: 1 });
+        if (existing?.length) {
+          skipped++;
+          continue;
+        }
+
+        await apiClient.insert('awards', {
+          award_name: row.award_name,
+          year,
+          sector: row.sector,
+          status: row.status || 'Draft',
+          country: row.country || null,
+          description: row.description || null,
+        });
+        imported++;
+      }
+
+      utils.showToast(`Imported ${imported} awards${skipped ? `, skipped ${skipped} duplicates` : ''}`, 'success');
+      await this.loadAwards();
+    } catch (error) {
+      console.error('Error importing awards:', error);
+      utils.showToast('Import error: ' + error.message, 'error');
     } finally {
       utils.hideLoading();
     }

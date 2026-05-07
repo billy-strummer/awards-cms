@@ -3728,6 +3728,12 @@ const orgsModule = {
       utils.showLoading();
       const orgIds = Array.from(this.selectedOrgs);
 
+      // C7: capture previous statuses for undo
+      const previousStatuses = orgIds.map((id) => ({
+        id,
+        status: STATE.allOrganisations.find((o) => o.id === id)?.status || 'prospect',
+      }));
+
       await apiClient.updateByFilters('organisations', { 'id@in': orgIds }, { status: newStatus });
 
       orgIds.forEach((id) => {
@@ -3737,7 +3743,33 @@ const orgsModule = {
         if (fOrg) fOrg.status = newStatus;
       });
 
-      utils.showToast(`${count} org(s) updated to ${newStatus.replace('_', ' ')}`, 'success');
+      // C7: push to undo stack
+      utils.pushUndo('organisations', {
+        description: `Bulk status → ${newStatus} (${count} org${count > 1 ? 's' : ''})`,
+        undoFn: async () => {
+          for (const { id, status } of previousStatuses) {
+            await apiClient.update('organisations', id, { status });
+            const o = STATE.allOrganisations.find((x) => x.id === id);
+            if (o) o.status = status;
+          }
+          this.renderOrganisations();
+        },
+        redoFn: async () => {
+          await apiClient.updateByFilters('organisations', { 'id@in': orgIds }, { status: newStatus });
+          orgIds.forEach((id) => {
+            const o = STATE.allOrganisations.find((x) => x.id === id);
+            if (o) o.status = newStatus;
+          });
+          this.renderOrganisations();
+        },
+      });
+
+      utils.showToast(
+        `${count} org(s) updated to ${newStatus.replace('_', ' ')} — <a href="#" data-action="utils.undo" data-args='["organisations"]' data-prevent-default="true">Undo</a>`,
+        'success',
+        null,
+        6000
+      );
       this.renderOrganisations();
     } catch (error) {
       console.error('Error bulk status change:', error);

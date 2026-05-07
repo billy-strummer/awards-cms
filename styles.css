@@ -3927,6 +3927,14 @@ mark.search-highlight {
   padding: 1.5rem 1.75rem;
 }
 
+/* Ensure all inactive tab panes are display:none (not just opacity:0).
+   Some main tab panes live outside #mainTabContent so Bootstrap's
+   .tab-content>.tab-pane rule doesn't apply; they would hide via opacity:0
+   but still occupy layout space, creating blank scroll areas. */
+.tab-pane:not(.active) {
+  display: none;
+}
+
 /* ── Responsive: sidebar becomes overlay on small screens ── */
 @media (max-width: 991.98px) {
   .app-sidebar {

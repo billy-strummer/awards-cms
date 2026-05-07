@@ -109,6 +109,7 @@ const awardsModule = {
             .map((s) => `<option value="${utils.escapeHtml(s)}">${utils.escapeHtml(utils.toTitleCase(s))}</option>`)
             .join('');
         if (current) sectorSelect.value = current;
+        utils.makeSearchableSelect('awardsSectorFilterSelect');
       }
     } catch (e) {
       console.warn('Could not load sector filter from DB:', e.message);

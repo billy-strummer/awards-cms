@@ -736,7 +736,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
   3. Update `.app-sidebar`, `.app-layout`, and `.app-sidebar.collapsed + .app-main` to use `60px` instead of `56px` for all navbar-offset values.
   4. Add a `--navbar-height: 60px` CSS variable to `:root` and replace all hardcoded `56px` values in one pass.
 - **Done when:** Switching tabs always shows the top of the new tab's content. Sidebar and navbar never scroll. Scroll is contained within `.app-main`.
-- [ ] Implemented
+- [x] Implemented
 
 ### V3-C2 — Media Gallery and Bitcoin tabs appear completely blank on first visit
 - **Files:** `index.html`
@@ -746,7 +746,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
   - In Bitcoin: inside the chart container div add `<div id="btcLoadingState" class="d-flex align-items-center justify-content-center" style="height:450px;"><div class="text-center text-muted"><div class="spinner-border mb-3"></div><p>Loading market data…</p></div></div>`
   - In `media-gallery-new.js` and `btc-module.js`, remove/hide the loading placeholder once real content renders.
 - **Done when:** Media Gallery and Bitcoin tabs show a spinner while loading instead of blank white space.
-- [ ] Implemented
+- [x] Implemented
 
 ---
 
@@ -761,7 +761,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
   ```
   Use `'instant'` not `'smooth'` to avoid visible scroll animation.
 - **Done when:** Every tab switch places the user at the top of the new tab's content.
-- [ ] Implemented
+- [x] Implemented
 
 ### V3-H2 — Sticky filter bars on only 2 of 7 filtered tabs
 - **Files:** `index.html`
@@ -773,7 +773,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
   - Reports filter row
   (CRM has no standalone filter bar — skip for now.)
 - **Done when:** All tabular content tabs keep their filter controls visible while scrolling the table.
-- [ ] Implemented
+- [x] Implemented
 
 ### V3-H3 — Sticky table `<thead>` overlaps sticky filter bar when both are present
 - **Files:** `styles.css`
@@ -788,7 +788,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
   ```
   Then for tabs WITH a sticky filter bar, the thead needs `top: [filter-bar-height]`. The cleanest approach: add a CSS variable `--filter-bar-height: 52px` and use it. Or: just remove `sticky-top` from `<thead>` elements and instead keep the filter bar sticky (most important UX win).
 - **Done when:** Column headers in tables with sticky filter bars do not disappear under the filter bar when scrolling.
-- [ ] Implemented
+- [x] Implemented
 
 ### V3-H4 — Organisations sub-nav (All Orgs / Sponsors) uses custom JS show/hide, not Bootstrap tabs
 - **Files:** `organisations.js`, `index.html`
@@ -802,14 +802,14 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **Root cause:** The `shown.bs.tab` handler for Reports (line 1187 of app.js) calls `reportsAnalytics.loadAnalytics()` when tab is shown. But `reportingModule.generateReport()` — which populates the main report table — is only called when the user manually clicks a filter or generate button. On first visit the table body is empty even if there is data.
 - **Fix:** In the Reports `shown.bs.tab` handler, also call `reportingModule?.generateReport()` on first visit (use a `let reportsInitialized = false` flag, set to `true` after first call).
 - **Done when:** Opening Reports shows populated data on first click, not an empty table.
-- [ ] Implemented
+- [x] Implemented
 
 ### V3-H6 — Settings sub-tab state not preserved on page refresh
 - **Files:** `app.js`, `settings.js`
 - **Root cause:** When the URL hash is `#settings`, `app.js` restores the Settings tab. But it always opens the default sub-tab (General). If user was on Settings → Security before refresh, they lose that context.
 - **Fix:** On `shown.bs.tab` for settings sub-tabs, `localStorage.setItem('lastSettingsSubTab', tabId)`. On Settings tab activation, read that key and call `.click()` on the stored sub-tab button (with a short timeout to allow the tab to render first).
 - **Done when:** Refreshing the page while on Settings → Integrations returns to Settings → Integrations.
-- [ ] Implemented
+- [x] Implemented
 
 ---
 
@@ -837,7 +837,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
   });
   ```
 - **Done when:** A floating up-arrow button appears after scrolling down 400px on any tab and returns to top on click.
-- [ ] Implemented
+- [x] Implemented
 
 ### V3-M2 — Dark mode: filter-bar-sticky shows white background
 - **Files:** `styles.css`
@@ -850,7 +850,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
   }
   ```
 - **Done when:** Sticky filter bars in dark mode match the dark body background.
-- [ ] Implemented
+- [x] Implemented
 
 ### V3-M3 — Sidebar active sub-tab: no visible hint
 - **Files:** `index.html`, `styles.css`, `app.js`
@@ -871,7 +871,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
   .app-sidebar.collapsed .sidebar-sub-label { display: none; }
   ```
 - **Done when:** Sidebar shows "▸ Deals" under CRM when the Deals sub-tab is active.
-- [ ] Implemented
+- [x] Implemented
 
 ### V3-M4 — Empty states missing from Entries and Media Gallery
 - **Files:** `index.html`, `entries.js`, `media-gallery-new.js`
@@ -881,14 +881,14 @@ Branch: `claude/bta-location-restructure-JS5hX`
   - Media Gallery: add a visible card inside `#mediaGalleryContent` with `id="mediaGalleryEmptyState" class="d-none"` showing "No media yet — upload your first photo".
   - In the respective JS modules, toggle `d-none` based on whether data is present.
 - **Done when:** Empty Entries and Media Gallery tabs show friendly messages rather than blank/bare-table UI.
-- [ ] Implemented
+- [x] Implemented
 
 ### V3-M5 — Sidebar "Analytics" group has only one item
 - **Files:** `index.html`
 - **Root cause:** After V2-L4 moved Marketing to Commercial, the "Analytics" group contains only "Reports". A single-item group label adds noise without benefit.
 - **Fix:** Remove the "Analytics" `<div class="sidebar-group">` wrapper and `<span class="sidebar-group-label">` label. Move the Reports button into the "Commercial" group below Payments and Marketing, or into a new "Insights" group if paired with another item.
 - **Done when:** No sidebar group has fewer than two navigation items.
-- [ ] Implemented
+- [x] Implemented
 
 ### V3-M6 — `touch-action: manipulation` missing on interactive elements
 - **Files:** `styles.css`
@@ -901,7 +901,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
   }
   ```
 - **Done when:** No perceptible tap delay on buttons and clickable rows on mobile/tablet.
-- [ ] Implemented
+- [x] Implemented
 
 ---
 
@@ -920,7 +920,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
   }
   ```
 - **Done when:** Sticky filter bar background covers the full width flush to the viewport edge.
-- [ ] Implemented
+- [x] Implemented
 
 ### V3-L2 — Sidebar toggle button tooltip is static ("Toggle sidebar")
 - **Files:** `app.js`
@@ -930,7 +930,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
   sidebarToggle.title = appSidebar.classList.contains('collapsed') ? 'Expand sidebar' : 'Collapse sidebar';
   ```
 - **Done when:** Tooltip on sidebar toggle reflects current state.
-- [ ] Implemented
+- [x] Implemented
 
 ### V3-L3 — Connection status pill illegible in dark mode on purple navbar
 - **Files:** `styles.css`
@@ -945,7 +945,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
   }
   ```
 - **Done when:** Connection status pill is readable in both light and dark mode against the navbar.
-- [ ] Implemented
+- [x] Implemented
 
 ### V3-L4 — `aria-selected` on sidebar tab buttons not dynamically updated
 - **Files:** `app.js`
@@ -957,7 +957,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
   });
   ```
 - **Done when:** Active sidebar tab button has `aria-selected="true"`; all others have `aria-selected="false"`.
-- [ ] Implemented
+- [x] Implemented
 
 ### V3-L5 — Settings sub-tab content sections lack card wrappers
 - **Files:** `index.html`, `styles.css`

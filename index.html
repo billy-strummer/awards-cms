@@ -237,6 +237,7 @@
               <i class="bi bi-people sidebar-icon"></i>
               <span class="sidebar-label">CRM</span>
             </button>
+            <span class="sidebar-sub-label d-none" id="crmSubLabel"></span>
           </div>
 
           <!-- COMMERCIAL -->
@@ -252,15 +253,11 @@
               <span class="sidebar-label">Payments</span>
               <span class="sidebar-badge" id="paymentsTabCount"></span>
             </button>
+            <span class="sidebar-sub-label d-none" id="paymentsSubLabel"></span>
             <button class="sidebar-nav-link" id="marketing-tab" data-bs-toggle="tab" data-bs-target="#marketing" type="button" role="tab" aria-controls="marketing" aria-selected="false" title="Marketing">
               <i class="bi bi-megaphone sidebar-icon"></i>
               <span class="sidebar-label">Marketing</span>
             </button>
-          </div>
-
-          <!-- ANALYTICS -->
-          <div class="sidebar-group">
-            <span class="sidebar-group-label">Analytics</span>
             <button class="sidebar-nav-link" id="reports-tab" data-bs-toggle="tab" data-bs-target="#reports" type="button" role="tab" aria-controls="reports" aria-selected="false" title="Reports">
               <i class="bi bi-graph-up sidebar-icon"></i>
               <span class="sidebar-label">Reports</span>
@@ -274,6 +271,7 @@
               <i class="bi bi-gear sidebar-icon"></i>
               <span class="sidebar-label">Settings</span>
             </button>
+            <span class="sidebar-sub-label d-none" id="settingsSubLabel"></span>
           </div>
 
           <!-- Markets (hidden by default — RBAC shows for admin/superadmin) -->
@@ -1491,7 +1489,7 @@
     </div>
 
     <!-- Enhanced Filters Row -->
-    <div class="card border-0 shadow-sm mb-4">
+    <div class="card border-0 shadow-sm mb-4 filter-bar-sticky">
       <div class="card-body py-3">
         <!-- Row header -->
         <div class="d-flex align-items-center justify-content-between mb-2">
@@ -2385,7 +2383,7 @@
           </div>
 
           <!-- Filters and Actions -->
-          <div class="filters-section mb-3">
+          <div class="filters-section filter-bar-sticky mb-3">
             <div class="d-flex align-items-center justify-content-between mb-2">
               <div class="d-flex align-items-center gap-3">
                 <span class="filter-bar-label"><i class="bi bi-funnel me-1"></i>Filter Entries <span id="entriesFilterCount" class="badge bg-primary ms-1 d-none"></span></span>
@@ -2496,6 +2494,14 @@
                   </tr>
                 </thead>
                 <tbody id="entriesTableBody">
+                  <tr id="entriesEmptyRow" class="d-none">
+                    <td colspan="10" class="text-center py-5 text-muted">
+                      <i class="bi bi-inbox display-6 d-block mb-2 opacity-50" aria-hidden="true"></i>
+                      <p class="mb-1">No entries yet.</p>
+                      <a href="#" class="small" data-action="dashboardModule.navigateToSection" data-id="awards">Set up awards</a> to start receiving entries.
+                    </td>
+                  </tr>
+                </tbody>
                   <tr>
                     <td colspan="10" class="text-center py-5">
                       <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
@@ -2542,10 +2548,23 @@
           <!-- Media Gallery Content -->
           <div id="mediaGalleryContent">
 
+            <!-- Loading state shown until JS renders gallery -->
+            <div id="mediaGalleryLoadingState" class="text-center py-5 text-muted">
+              <div class="spinner-border spinner-border-sm mb-2" role="status"><span class="visually-hidden">Loading…</span></div>
+              <p class="small mb-0">Loading media gallery…</p>
+            </div>
+
             <!-- Breadcrumb Navigation -->
             <nav aria-label="breadcrumb" id="mediaGalleryBreadcrumb" class="d-none mb-3">
               <ol class="breadcrumb mb-0 small" id="mediaGalleryBreadcrumbList"></ol>
             </nav>
+
+            <!-- Empty state shown when gallery has no content -->
+            <div id="mediaGalleryEmptyState" class="d-none text-center py-5 text-muted">
+              <i class="bi bi-images display-4 d-block mb-3 opacity-50" aria-hidden="true"></i>
+              <h6 class="mb-1">No media yet</h6>
+              <p class="small mb-0">Upload photos or videos for your events and winners.</p>
+            </div>
 
             <!-- Events List View (default) -->
             <div id="eventsListView" style="display: block;">
@@ -3412,7 +3431,7 @@
           </div>
 
           <!-- Toolbar: Year Filter + Print + Freshness -->
-          <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+          <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2 filter-bar-sticky">
             <div class="d-flex gap-2 align-items-center flex-wrap">
               <label class="form-label mb-0 small fw-semibold text-muted">Year:</label>
               <select id="reportsYearFilter" class="form-select form-select-sm" style="width:120px;" data-on-change="reportsAnalytics.filterByYear">
@@ -5149,7 +5168,7 @@
               </div>
 
               <!-- Filters & Actions -->
-              <div class="content-card mb-4">
+              <div class="content-card mb-4 filter-bar-sticky">
                 <div class="row g-3 align-items-end">
                   <div class="col-md-3">
                     <label class="form-label small fw-bold">Search</label>
@@ -6462,7 +6481,14 @@
           <div class="row g-2">
             <!-- Main Chart -->
             <div class="col-lg-9" id="btcChartCol">
-              <div id="tradingview_chart" style="height: 700px; width: 100%; position: relative; overflow: hidden;"></div>
+              <div id="tradingview_chart" style="height: 700px; width: 100%; position: relative; overflow: hidden;">
+                <div id="btcLoadingState" class="d-flex align-items-center justify-content-center h-100">
+                  <div class="text-center text-muted">
+                    <div class="spinner-border mb-3" role="status"><span class="visually-hidden">Loading…</span></div>
+                    <p class="mb-0">Loading market data…</p>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <!-- Watchlist Sidebar -->
@@ -10405,10 +10431,14 @@
       var sidebar = document.getElementById('appSidebar');
       var toggle  = document.getElementById('sidebarToggle');
       if (!sidebar || !toggle) return;
-      if (localStorage.getItem('sidebarCollapsed') === 'true') sidebar.classList.add('collapsed');
+      var isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+      if (isCollapsed) sidebar.classList.add('collapsed');
+      toggle.title = isCollapsed ? 'Expand sidebar' : 'Collapse sidebar';
       toggle.addEventListener('click', function () {
         sidebar.classList.toggle('collapsed');
-        localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+        var collapsed = sidebar.classList.contains('collapsed');
+        localStorage.setItem('sidebarCollapsed', collapsed);
+        toggle.title = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
       });
       /* Sync active state when Bootstrap switches tab */
       document.addEventListener('shown.bs.tab', function (e) {
@@ -10717,6 +10747,12 @@
   <script src="calendar.js"></script>
   <script src="rate-limiting.js"></script>
   <script src="winner-announcements.js"></script>
+
+  <!-- Back to top button -->
+  <button id="backToTopBtn" class="btn btn-primary rounded-circle d-none" aria-label="Back to top"
+    style="position:fixed;bottom:1.5rem;right:1.5rem;z-index:998;width:40px;height:40px;padding:0;box-shadow:0 4px 12px rgba(0,0,0,0.25);">
+    <i class="bi bi-arrow-up" aria-hidden="true"></i>
+  </button>
 
   <script src="app.js"></script>
   <!-- TradingView Widget -->

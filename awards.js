@@ -748,13 +748,15 @@ const awardsModule = {
         document.getElementById('awardsAreaFilter')?.value ||
         document.getElementById('awardsSearchBox')?.value
       );
-      utils.showEmptyState(
-        'awardsTableBody',
-        10,
-        hasFilters
-          ? 'No awards match your current filters — try resetting them using the Reset button above'
-          : 'No awards yet — click "Add Award" to create your first award'
-      );
+      utils.showEnhancedEmptyState('awardsTableBody', 10, {
+        icon: 'bi-trophy',
+        message: hasFilters ? 'No awards match your filters' : 'No awards yet',
+        description: hasFilters
+          ? 'Try clearing your filters or search terms'
+          : 'Click "+ Add Award" in the toolbar to create your first award',
+        isFiltered: hasFilters,
+        clearAction: hasFilters ? 'awardsModule.resetFilters' : '',
+      });
       // Clear pagination
       const pagEl = document.getElementById('awardsPagination');
       if (pagEl) pagEl.innerHTML = '';

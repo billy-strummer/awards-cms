@@ -373,11 +373,12 @@ const winnersModule = {
         message: STATE.allWinners.length > 0 ? 'No winners match your filters' : 'No winners yet',
         description:
           STATE.allWinners.length > 0
-            ? 'Try clearing your filters using the Reset button above'
+            ? 'Try clearing your filters or search terms'
             : 'Winners are set via Assignments — shortlist an entry and mark it as the winner there',
-        actionLabel: 'View Pipeline',
-        actionAction: 'winnerPipelineModule.renderPipelineDashboard',
         isFiltered: STATE.filteredWinners.length === 0 && STATE.allWinners.length > 0,
+        clearAction: STATE.allWinners.length > 0 ? 'winnersModule.resetFilters' : '',
+        actionLabel: STATE.allWinners.length === 0 ? 'View Pipeline' : '',
+        actionAction: STATE.allWinners.length === 0 ? 'winnerPipelineModule.renderPipelineDashboard' : '',
       });
       return;
     }

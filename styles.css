@@ -250,6 +250,11 @@ td[data-action], tr[data-action], .stat-card, .u-pointer {
   transform: translateY(-2px) scale(0.98);
 }
 
+.stat-card-clickable:focus-visible {
+  outline: 3px solid var(--primary-color);
+  outline-offset: 3px;
+}
+
 .stat-card-hover-indicator {
   position: absolute;
   bottom: var(--spacing-md);
@@ -387,6 +392,12 @@ td[data-action], tr[data-action], .stat-card, .u-pointer {
   border-radius: var(--radius-md);
   overflow-x: auto;
   overflow-y: visible !important;
+  background:
+    linear-gradient(to right, var(--card-bg, #fff) 20%, transparent) left / 30px 100% no-repeat,
+    linear-gradient(to left,  var(--card-bg, #fff) 20%, transparent) right / 30px 100% no-repeat,
+    radial-gradient(farthest-side at 0 50%, rgba(0,0,0,.12), transparent) left  / 12px 100% no-repeat,
+    radial-gradient(farthest-side at 100% 50%, rgba(0,0,0,.12), transparent) right / 12px 100% no-repeat;
+  background-attachment: local, local, scroll, scroll;
 }
 
 /* Allow dropdowns to escape the table-responsive container */
@@ -1298,8 +1309,29 @@ body.dark-mode .shadow-sm {
   .navbar,
   .nav-tabs,
   .btn,
-  .filters-section {
+  .filters-section,
+  .app-sidebar,
+  #bulkActionsBar,
+  #backToTopBtn,
+  .filter-bar-sticky,
+  .toast-container,
+  .modal-backdrop,
+  .offcanvas-backdrop,
+  [data-bs-toggle="tooltip"],
+  .pagination {
     display: none !important;
+  }
+
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .main-content,
+  #appMain {
+    margin-left: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
   }
 
   .stat-card,
@@ -1307,6 +1339,14 @@ body.dark-mode .shadow-sm {
   .table-container {
     box-shadow: none !important;
     page-break-inside: avoid;
+  }
+
+  table {
+    font-size: 10pt;
+  }
+
+  a[href]::after {
+    content: none !important;
   }
 }
 

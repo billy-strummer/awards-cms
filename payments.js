@@ -298,10 +298,15 @@ const paymentsModule = {
     }
 
     if (this.currentInvoices.length === 0) {
+      const hasFilters = this.allInvoices.length > 0;
       utils.showEnhancedEmptyState('invoicesTableBody', 10, {
         icon: 'bi-receipt',
-        message: 'No invoices found',
-        description: 'Create your first invoice to get started',
+        message: hasFilters ? 'No invoices match your filters' : 'No invoices found',
+        description: hasFilters
+          ? 'Try clearing your filters or search terms'
+          : 'Create your first invoice to get started',
+        isFiltered: hasFilters,
+        clearAction: hasFilters ? 'paymentsModule.clearInvoiceFilters' : '',
       });
       return;
     }
@@ -1207,6 +1212,24 @@ const paymentsModule = {
     this.filterPayments();
   },
 
+  clearInvoiceFilters() {
+    const ids = ['invoiceSearchBox', 'invoiceStatusFilter', 'invoiceOrgFilter', 'invoiceMonthFilter'];
+    ids.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    this.filterInvoices();
+  },
+
+  clearPaymentFilters() {
+    const ids = ['paymentSearchBox', 'paymentMethodFilter', 'paymentStatusFilter', 'paymentMonthFilter'];
+    ids.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    this.filterPayments();
+  },
+
   /**
    * Build server-side filters from current payment filter UI state.
    * @returns {Object} Filters object for apiClient.select
@@ -1330,10 +1353,15 @@ const paymentsModule = {
     }
 
     if (this.currentPayments.length === 0) {
+      const hasFilters = this.allPayments.length > 0;
       utils.showEnhancedEmptyState('paymentsTableBody', 8, {
         icon: 'bi-credit-card',
-        message: 'No payments found',
-        description: 'Payments will appear here once recorded',
+        message: hasFilters ? 'No payments match your filters' : 'No payments found',
+        description: hasFilters
+          ? 'Try clearing your filters or search terms'
+          : 'Payments will appear here once recorded',
+        isFiltered: hasFilters,
+        clearAction: hasFilters ? 'paymentsModule.clearPaymentFilters' : '',
       });
       return;
     }

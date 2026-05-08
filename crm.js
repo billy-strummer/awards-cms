@@ -404,10 +404,20 @@ const crmModule = {
     if (!tbody) return;
 
     if (!communications || communications.length === 0) {
+      const hasFilters =
+        this.filters.communications.type !== 'all' ||
+        this.filters.communications.regarding !== 'all' ||
+        this.filters.communications.followUpRequired !== 'all';
       utils.showEnhancedEmptyState('communicationsTableBody', 8, {
         icon: 'bi-chat-dots',
-        message: 'No communications found',
-        description: 'Communications will appear here once logged',
+        message: hasFilters ? 'No communications match your filters' : 'No communications found',
+        description: hasFilters
+          ? 'Try clearing your filters to see all communications'
+          : 'Communications will appear here once logged',
+        isFiltered: hasFilters,
+        clearAction: hasFilters ? 'crmModule.resetCommunicationFilters' : '',
+        actionLabel: hasFilters ? '' : 'Log Communication',
+        actionAction: hasFilters ? '' : 'crmModule.openLogCommunicationModal',
       });
       return;
     }
@@ -596,10 +606,13 @@ const crmModule = {
     if (!tbody) return;
 
     if (!deals || deals.length === 0) {
+      const hasFilters = this.filters.deals.stage !== 'all' || this.filters.deals.type !== 'all';
       utils.showEnhancedEmptyState('dealsTableBody', 9, {
         icon: 'bi-handshake',
-        message: 'No deals found',
-        description: 'Deals will appear here once created',
+        message: hasFilters ? 'No deals match your filters' : 'No deals found',
+        description: hasFilters ? 'Try clearing your filters to see all deals' : 'Deals will appear here once created',
+        isFiltered: hasFilters,
+        clearAction: hasFilters ? 'crmModule.resetDealsFilters' : '',
       });
       return;
     }
@@ -752,10 +765,15 @@ const crmModule = {
     if (!tbody) return;
 
     if (!meetings || meetings.length === 0) {
+      const hasFilters = this.filters.meetings.type !== 'all';
       utils.showEnhancedEmptyState('meetingsTableBody', 8, {
         icon: 'bi-calendar-check',
-        message: 'No meetings found',
-        description: 'Meetings will appear here once scheduled',
+        message: hasFilters ? 'No meetings match your filters' : 'No meetings found',
+        description: hasFilters
+          ? 'Try clearing your filters to see all meetings'
+          : 'Meetings will appear here once scheduled',
+        isFiltered: hasFilters,
+        clearAction: hasFilters ? 'crmModule.resetMeetingsFilters' : '',
       });
       return;
     }
@@ -958,6 +976,33 @@ const crmModule = {
   filterDealsWon() {
     this.applyFilter('deals', 'status', 'won');
     document.getElementById('dealStatusFilter').value = 'won';
+  },
+
+  resetCommunicationFilters() {
+    const ids = ['communicationTypeFilter', 'communicationRegardingFilter', 'communicationFollowUpFilter'];
+    ids.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    this.filters.communications = { type: 'all', regarding: 'all', followUpRequired: 'all' };
+    this.loadCommunications();
+  },
+
+  resetDealsFilters() {
+    const stageEl = document.getElementById('dealStageFilter');
+    const typeEl = document.getElementById('dealTypeFilter');
+    if (stageEl) stageEl.value = '';
+    if (typeEl) typeEl.value = '';
+    this.filters.deals.stage = 'all';
+    this.filters.deals.type = 'all';
+    this.loadDeals();
+  },
+
+  resetMeetingsFilters() {
+    const el = document.getElementById('meetingTypeFilter');
+    if (el) el.value = '';
+    this.filters.meetings = { type: 'all' };
+    this.loadMeetings();
   },
 
   // ============================================

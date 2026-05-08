@@ -374,6 +374,26 @@ const reportsAnalytics = {
     }
   },
 
+  _showChartNoData(canvas, message = 'No data available yet') {
+    const parent = canvas.parentElement;
+    if (!parent) return;
+    canvas.style.display = 'none';
+    let placeholder = parent.querySelector('.chart-no-data');
+    if (!placeholder) {
+      placeholder = document.createElement('div');
+      placeholder.className = 'chart-no-data text-center text-muted py-4';
+      placeholder.innerHTML = `<i class="bi bi-bar-chart-line display-6 d-block mb-2 opacity-25"></i><small>${message}</small>`;
+      parent.appendChild(placeholder);
+    }
+    placeholder.style.display = '';
+  },
+
+  _clearChartNoData(canvas) {
+    canvas.style.display = '';
+    const placeholder = canvas.parentElement?.querySelector('.chart-no-data');
+    if (placeholder) placeholder.style.display = 'none';
+  },
+
   /**
    * Render the pipeline doughnut chart.
    * @param {Array} orgs - Organisation records
@@ -391,6 +411,12 @@ const reportsAnalytics = {
     });
     const labels = Object.keys(counts);
     const data = Object.values(counts);
+
+    if (labels.length === 0) {
+      this._showChartNoData(canvas, 'No organisations to display');
+      return;
+    }
+    this._clearChartNoData(canvas);
     const colors = [
       '#0d6efd',
       '#198754',
@@ -439,6 +465,12 @@ const reportsAnalytics = {
     const labels = sorted.map(([k]) => (k.length > 20 ? k.slice(0, 18) + '...' : k));
     const data = sorted.map(([, v]) => v);
 
+    if (labels.length === 0) {
+      this._showChartNoData(canvas, 'No sector data to display');
+      return;
+    }
+    this._clearChartNoData(canvas);
+
     this._charts.sector = new Chart(canvas.getContext('2d'), {
       type: 'bar',
       data: { labels, datasets: [{ label: 'Organisations', data, backgroundColor: '#0d6efd', borderRadius: 4 }] },
@@ -473,6 +505,12 @@ const reportsAnalytics = {
     const labels = sorted.map(([k]) => k);
     const data = sorted.map(([, v]) => v);
 
+    if (labels.length === 0) {
+      this._showChartNoData(canvas, 'No region data to display');
+      return;
+    }
+    this._clearChartNoData(canvas);
+
     this._charts.region = new Chart(canvas.getContext('2d'), {
       type: 'bar',
       data: { labels, datasets: [{ label: 'Organisations', data, backgroundColor: '#198754', borderRadius: 4 }] },
@@ -504,6 +542,12 @@ const reportsAnalytics = {
     const labels = Object.keys(counts);
     const data = Object.values(counts);
     const colors = ['#cd7f32', '#c0c0c0', '#ffd700', '#e5e4e2', '#6c757d'];
+
+    if (data.every((v) => v === 0)) {
+      this._showChartNoData(canvas, 'No tier data to display');
+      return;
+    }
+    this._clearChartNoData(canvas);
 
     this._charts.tier = new Chart(canvas.getContext('2d'), {
       type: 'polarArea',
@@ -545,7 +589,11 @@ const reportsAnalytics = {
     addYears(orgs);
     const years = [...yearSet].sort();
 
-    if (years.length < 1) return;
+    if (years.length < 1) {
+      this._showChartNoData(canvas, 'No year-over-year data available yet');
+      return;
+    }
+    this._clearChartNoData(canvas);
 
     const countByYear = (arr) => {
       const map = {};
@@ -633,6 +681,12 @@ const reportsAnalytics = {
       '#6c757d',
     ];
 
+    if (labels.length === 0) {
+      this._showChartNoData(canvas, 'No award categories to display');
+      return;
+    }
+    this._clearChartNoData(canvas);
+
     this._charts.category = new Chart(canvas.getContext('2d'), {
       type: 'bar',
       data: {
@@ -680,6 +734,12 @@ const reportsAnalytics = {
     const stages = ['Organisations', 'Entries', 'Shortlisted', 'Winners'];
     const values = [totalOrgs, totalEntries, shortlisted, totalWinners];
     const colors = ['#0d6efd', '#ffc107', '#fd7e14', '#198754'];
+
+    if (values.every((v) => v === 0)) {
+      this._showChartNoData(canvas, 'No funnel data available yet');
+      return;
+    }
+    this._clearChartNoData(canvas);
 
     this._charts.funnel = new Chart(canvas.getContext('2d'), {
       type: 'bar',
@@ -1279,10 +1339,23 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // ? key to show keyboard shortcuts help
     const tag = e.target.tagName;
-    if (e.key === '?' && !e.ctrlKey && !e.metaKey && tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT') {
+    const inInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+    if (e.key === '?' && !e.ctrlKey && !e.metaKey && !inInput) {
       e.preventDefault();
       const helpModalEl = document.getElementById('shortcutsHelpModal');
       if (helpModalEl) new bootstrap.Modal(helpModalEl).show();
+    }
+
+    // / key to focus the active tab's search box
+    if (e.key === '/' && !e.ctrlKey && !e.metaKey && !inInput) {
+      e.preventDefault();
+      const searchInput = document.querySelector(
+        '#appMain .section:not(.d-none) input[type="search"], #appMain .section:not(.d-none) input[id$="SearchBox"]'
+      );
+      if (searchInput) {
+        searchInput.focus();
+        searchInput.select();
+      }
     }
   });
 
@@ -1599,9 +1672,13 @@ document.addEventListener('DOMContentLoaded', function () {
   // ==========================================
   // STEP 12: Tooltips Initialization
   // ==========================================
-  // Initialize Bootstrap tooltips
+  // Initialize Bootstrap tooltips; also backfill aria-label from title for screen readers
   const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
   tooltipTriggerList.map(function (tooltipTriggerEl) {
+    const title = tooltipTriggerEl.getAttribute('title') || tooltipTriggerEl.getAttribute('data-bs-title');
+    if (title && !tooltipTriggerEl.getAttribute('aria-label')) {
+      tooltipTriggerEl.setAttribute('aria-label', title);
+    }
     return new bootstrap.Tooltip(tooltipTriggerEl);
   });
 
@@ -1975,10 +2052,41 @@ document.addEventListener('DOMContentLoaded', function () {
   // INITIALIZATION COMPLETE
   // ==========================================
 
-  // C6: Wire unsaved-changes tracking to key form modals
-  ['awardFormModal', 'orgFormModal', 'eventFormModal', 'paymentFormModal', 'invoiceFormModal'].forEach((id) =>
-    utils.initModalDirtyTracking(id)
-  );
+  // V5-L3: Auto-load Login History when Security settings sub-tab is activated
+  document.querySelector('[data-bs-target="#settings-security"]')?.addEventListener('shown.bs.tab', () => {
+    if (typeof settingsModule !== 'undefined' && settingsModule.loadLoginHistory) {
+      settingsModule.loadLoginHistory();
+    }
+  });
+
+  // V5-M5: Character counters for key textareas
+  [
+    ['eventDescription', 1000],
+    ['awardFormDescription', 500],
+    ['sendInvoiceMessage', 500],
+    ['invoiceDescription', 500],
+    ['paymentNotes', 300],
+    ['videoDescription', 500],
+    ['gallerySectionDescription', 300],
+  ].forEach(([id, max]) => utils.initCharCounter(id, max));
+
+  // V5-H2: Wire unsaved-changes tracking to all key form modals
+  [
+    'awardFormModal', // Award create/edit
+    'addNewOrgModal', // Organisation create/edit
+    'eventModal', // Event create/edit
+    'recordPaymentModal', // Record payment
+    'createInvoiceModal', // Create invoice
+    'sendInvoiceModal', // Send invoice email
+    'webhookFormModal', // Webhook settings
+    'seasonFormModal', // Season settings
+    'addVideoModal', // Add YouTube video
+    'tagMediaModal', // Tag media item
+    'gallerySectionModal', // Gallery section edit
+    'youtubeVideoModal', // YouTube video edit
+    'tagPhotoModal', // Tag photo
+    'cloneEventModal', // Clone event
+  ].forEach((id) => utils.initModalDirtyTracking(id));
 
   // Back-to-top button
   const appMain = document.getElementById('appMain');

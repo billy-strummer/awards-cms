@@ -1126,7 +1126,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
   ```
   Or better: accept a `clearAction` option (e.g. `clearAction: 'orgsModule.resetFilters'`) and render a `data-action` button.
 - **Done when:** All filtered-empty-state rows include a working "Clear Filters" button that resets filters and re-queries.
-- [ ] Implemented
+- [x] Implemented
 
 ### V5-C2 — Print/PDF stylesheet incomplete: sidebar and UI chrome appear in print output
 - **Files:** `styles.css`
@@ -1145,7 +1145,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
   }
   ```
 - **Done when:** `window.print()` from the Reporting tab shows only charts and data tables, no sidebar/nav/buttons.
-- [ ] Implemented
+- [x] Implemented
 
 ---
 
@@ -1159,7 +1159,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
   2. Add `class="tab-pane fade show active"` to `#orgsMainContent` and `class="tab-pane fade"` to `#orgsSponsorSection`.
   3. Remove or simplify `showOrgsView()` / `showSponsorsView()` in `organisations.js` — Bootstrap handles active class and show/hide. Keep only the `marketingModule.loadSponsors()` side-effect call by wiring it to the `shown.bs.tab` event.
 - **Done when:** Clicking All Organisations / Sponsors & Partners tabs uses Bootstrap's tab system; arrow keys navigate between tabs; `aria-selected` updates automatically.
-- [ ] Implemented
+- [x] Implemented
 
 ### V5-H2 — Unsaved-changes warning missing from 65+ form modals
 - **Files:** `app.js`
@@ -1173,7 +1173,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
     ```
   - Or: add `data-dirty-track="true"` to the 15-20 most important form modals and target those specifically.
 - **Done when:** Closing any modal with unsaved form input shows "You have unsaved changes. Leave anyway?" confirmation.
-- [ ] Implemented
+- [x] Implemented
 
 ### V5-H3 — Modal header colours have no semantic rule — confusing visual language
 - **Files:** `index.html`
@@ -1192,7 +1192,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
   - `bg-danger text-white`: all destructive/delete/warning modals
   Audit and update all 70 modal headers. Remove `bg-success`, `bg-info`, `bg-dark`, `bg-warning` from modal headers.
 - **Done when:** Modal header colour indicates the action type (view = plain, create/edit = blue, destructive = red) consistently across all modals.
-- [ ] Implemented
+- [x] Implemented
 
 ### V5-H4 — stat-card-clickable elements missing explicit focus-visible ring
 - **Files:** `styles.css`
@@ -1205,14 +1205,14 @@ Branch: `claude/bta-location-restructure-JS5hX`
   }
   ```
 - **Done when:** Tabbing through dashboard stat cards shows a clear blue focus ring on each card.
-- [ ] Implemented
+- [x] Implemented
 
 ### V5-H5 — Awards table uses old `showEmptyState()` while all other tables use `showEnhancedEmptyState()`
 - **Files:** `awards.js`
 - **Root cause:** `awards.js:751` calls `utils.showEmptyState()` which renders `<i class="bi ${icon}">` (inline, tiny) with a bare `<p>` — no `display-4 d-block opacity-25` icon sizing, no description line, no action button. All other tables (orgs, winners, entries, invoices, events, CRM) call `utils.showEnhancedEmptyState()` which renders a large centred icon, description text, filter hint, and optional CTA button.
 - **Fix:** Replace the `showEmptyState()` call in `awards.js` with `showEnhancedEmptyState()` passing `icon`, `message`, `description`, `isFiltered`, and `actionLabel`/`actionAction` for the non-filtered case (e.g. "Add Award" → `awardsModule.openAddAwardModal`).
 - **Done when:** Awards empty state visually matches the Organisations and Winners empty states.
-- [ ] Implemented
+- [x] Implemented
 
 ---
 
@@ -1223,7 +1223,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **Root cause:** `dashboard.js:renderWinnersYearChart()` correctly handles zero data. But other Chart.js instances in `app.js` (sector chart, revenue chart, region chart) likely call `new Chart(ctx, {...})` directly with empty data arrays — resulting in a blank canvas with no message. When a user filters to a year with no entries/winners, charts silently render empty.
 - **Fix:** Before each `new Chart(...)` call, check if the data array is empty. If so, replace the canvas with a `<div class="text-center py-4 text-muted">` message: "No data for the selected period — try a different year or filter."
 - **Done when:** Selecting a year with no data shows "No data" message instead of blank chart area.
-- [ ] Implemented
+- [x] Implemented
 
 ### V5-M2 — Settings General sub-tab section headers not visible (dynamically rendered containers lack headings)
 - **Files:** `index.html`, `settings.js`
@@ -1244,14 +1244,14 @@ Branch: `claude/bta-location-restructure-JS5hX`
   </div>
   ```
 - **Done when:** Settings → General shows the same visual card structure as Data/Security/Integrations.
-- [ ] Implemented
+- [x] Implemented
 
 ### V5-M3 — Loading spinners without adjacent text have no aria-label
 - **Files:** `index.html`
 - **Root cause:** Several `<div class="spinner-border" role="status">` elements have no `aria-label` and no adjacent visible text. Examples: line 540 (content calendar loading), line 564 (social media preview spinner), line 579 (hashtag panel spinner). Screen readers announce "status" with no context. (Spinners added in V4-C3 correctly have `aria-label="Loading"` — these older ones were missed.)
 - **Fix:** Add `aria-label="Loading [context]"` to each bare spinner. Example: `aria-label="Loading content calendar"`. Quick grep for `role="status">` without `aria-label` to find all instances.
 - **Done when:** No `<div role="status">` exists without either `aria-label` or adjacent text in a visually-hidden `<span>`.
-- [ ] Implemented
+- [x] Implemented
 
 ### V5-M4 — Horizontally-scrollable tables on mobile have no scroll indicator
 - **Files:** `styles.css`
@@ -1269,7 +1269,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
   }
   ```
 - **Done when:** On narrow screens, a subtle shadow on the right edge of tables indicates hidden columns.
-- [ ] Implemented
+- [x] Implemented
 
 ### V5-M5 — Large textarea fields have no character counter or length guidance
 - **Files:** `index.html`
@@ -1283,7 +1283,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
   ```
   Add a `utils.initCharCounter()` helper that wires `input` events to update the counter. Add to `app.js` init.
 - **Done when:** Key textarea fields show a live "X / Y characters" counter below them.
-- [ ] Implemented
+- [x] Implemented
 
 ### V5-M6 — Error toasts have no retry action
 - **Files:** `utils.js`
@@ -1299,7 +1299,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
   ```
   Wire `retryFn` in key save operations (save award, save org, save invoice, etc.).
 - **Done when:** Failed save operations show a "Retry" button in the error toast.
-- [ ] Implemented
+- [x] Implemented
 
 ### V5-M7 — No keyboard shortcut to focus search box (power user gap)
 - **Files:** `app.js`
@@ -1317,7 +1317,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
   });
   ```
 - **Done when:** Pressing `/` on any list tab focuses the search box.
-- [ ] Implemented
+- [x] Implemented
 
 ---
 
@@ -1334,21 +1334,21 @@ Branch: `claude/bta-location-restructure-JS5hX`
   </a>
   ```
 - **Done when:** Pressing Tab once after page load reveals a "Skip to main content" link that jumps focus to `#appMain`.
-- [ ] Implemented
+- [x] Implemented
 
 ### V5-L2 — Add/create button icons inconsistent across sections
 - **Files:** `index.html`
 - **Root cause:** "Add" / "Create" buttons use three different icons with no rule: `bi-plus-circle` (Organisations), `bi-plus-lg` (Settings → Add Webhook, Reporting → Add Season), and `bi-plus` (some inline buttons). This creates visual noise across the toolbar.
 - **Fix:** Standardise on `bi-plus-lg` for all primary "add/create" toolbar buttons. Audit all `.btn-primary` and `.btn-outline-primary` buttons with `bi-plus-*` and update to `bi-plus-lg`.
 - **Done when:** All add/create buttons use `bi-plus-lg me-1` consistently.
-- [ ] Implemented
+- [x] Implemented
 
 ### V5-L3 — Login History panel requires manual "Refresh" click instead of auto-loading
 - **Files:** `index.html`, `settings.js`
 - **Root cause:** The Login History panel (`#loginHistoryContainer`) in Settings → Security shows "Click Refresh to load recent login activity." on first visit. All other settings sub-tabs load their content automatically on `shown.bs.tab`. This is an inconsistency — users expect the data to be there.
 - **Fix:** In `app.js` (or `settings.js`), listen for `shown.bs.tab` on `#settings-security-subtab` (or similar) and call `settingsModule.loadLoginHistory()` automatically on first activation. Use a `let loginHistoryLoaded = false` flag to avoid redundant re-fetches.
 - **Done when:** Opening Settings → Security automatically shows the recent login history without requiring a manual click.
-- [ ] Implemented
+- [x] Implemented
 
 ### V5-L4 — Hover-only tooltips not accessible on touch / keyboard-only users
 - **Files:** `index.html`
@@ -1364,21 +1364,21 @@ Branch: `claude/bta-location-restructure-JS5hX`
   ```
   Additionally, icon-only buttons must always have `aria-label`.
 - **Done when:** All tooltip content is also present as `aria-label` on the triggering element.
-- [ ] Implemented
+- [x] Implemented
 
 ### V5-L5 — `<input type="date">` native picker contradicts DD/MM/YYYY placeholder
 - **Files:** `index.html`
 - **Root cause:** Every date input has `placeholder="DD/MM/YYYY"` (per V4-L7), but browsers ignore the `placeholder` attribute on `<input type="date">` because a native date picker is shown instead. On mobile, the native date picker UI occupies the full screen. The placeholder is never visible, creating a false expectation in the codebase that user guidance is being shown.
 - **Fix:** Remove the `placeholder="DD/MM/YYYY"` attribute from all `<input type="date">` elements (it has no effect). Instead add `<div class="form-text">Enter date in DD/MM/YYYY format</div>` only for date inputs where manual entry is expected (i.e. inputs outside native-picker context). This avoids the misleading codebase assumption.
 - **Done when:** No `<input type="date">` has a `placeholder` attribute (which browsers ignore). Date format guidance appears as `form-text` only where necessary.
-- [ ] Implemented
+- [x] Implemented
 
 ### V5-L6 — CRM Communications table empty state has no "Log Communication" CTA
 - **Files:** `crm.js`
 - **Root cause:** When the Communications table is empty, `showEnhancedEmptyState()` is called. Checking `crm.js:407`, the empty state likely shows "No communications yet" with no action button. Users are left without a clear next step. Other empty states (Orgs, Awards) do provide a CTA button via `actionLabel`/`actionAction` options.
 - **Fix:** In `crm.js`'s communications empty state call, add `actionLabel: 'Log Communication'` and `actionAction: 'crmModule.openLogCommunicationModal'`.
 - **Done when:** The CRM Communications empty state shows a "Log Communication" button that opens the modal directly.
-- [ ] Implemented
+- [x] Implemented
 
 ---
 

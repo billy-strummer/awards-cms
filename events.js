@@ -12338,6 +12338,7 @@ const eventsModule = {
         message: 'No events match your filters',
         description: 'Try adjusting your filters to see more results',
         isFiltered: true,
+        clearAction: 'eventsModule.resetEventFilters',
       });
       return;
     }

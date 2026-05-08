@@ -30,6 +30,8 @@
 </head>
 <body>
 
+  <a href="#appMain" class="visually-hidden-focusable position-absolute top-0 start-0 p-2 bg-primary text-white rounded-bottom" style="z-index:9999">Skip to main content</a>
+
   <!-- Loading Bar -->
   <div id="loadingBar" class="loading-bar d-none"></div>
 
@@ -122,7 +124,7 @@
             <ul class="dropdown-menu dropdown-menu-end">
               <li><h6 class="dropdown-header">Test Data Management</h6></li>
               <li><a class="dropdown-item" href="#" data-action="testDataManager.generateTestData" data-prevent-default="true">
-                <i class="bi bi-plus-circle me-2"></i>Generate Test Data (30 Winners)
+                <i class="bi bi-plus-lg me-2"></i>Generate Test Data (30 Winners)
               </a></li>
               <li><a class="dropdown-item text-danger" href="#" data-action="testDataManager.removeTestData" data-prevent-default="true">
                 <i class="bi bi-trash me-2"></i>Remove Test Data
@@ -537,7 +539,7 @@
                 <tbody id="awardsYearSummaryBody">
                   <tr>
                     <td colspan="4" class="text-center py-4 text-muted">
-                      <div class="spinner-border spinner-border-sm mb-2" role="status"></div>
+                      <div class="spinner-border spinner-border-sm mb-2" role="status" aria-label="Loading awards data"></div>
                       <p class="mb-0 small">Loading awards data...</p>
                     </td>
                   </tr>
@@ -561,7 +563,7 @@
                 <p class="text-muted small mb-3">Organisation coverage by country</p>
                 <div id="geoDistributionWidget">
                   <div class="text-center py-4 text-muted">
-                    <div class="spinner-border spinner-border-sm" role="status"></div>
+                    <div class="spinner-border spinner-border-sm" role="status" aria-label="Loading geographic data"></div>
                   </div>
                 </div>
               </div>
@@ -576,7 +578,7 @@
                 <p class="text-muted small mb-3">Counties with the most registered organisations</p>
                 <div id="topCountiesWidget">
                   <div class="text-center py-4 text-muted">
-                    <div class="spinner-border spinner-border-sm" role="status"></div>
+                    <div class="spinner-border spinner-border-sm" role="status" aria-label="Loading county data"></div>
                   </div>
                 </div>
               </div>
@@ -1183,20 +1185,26 @@
 
     <!-- Section View Toggle -->
     <ul class="nav nav-tabs mb-4" id="orgsSubNav" role="tablist">
-      <li class="nav-item">
-        <button class="nav-link active" id="orgsViewBtn" data-action="orgsModule.showOrgsView">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="orgsViewBtn" role="tab"
+          data-bs-toggle="tab" data-bs-target="#orgsMainContent"
+          aria-controls="orgsMainContent" aria-selected="true">
           <i class="bi bi-building me-2"></i>All Organisations
         </button>
       </li>
-      <li class="nav-item">
-        <button class="nav-link" id="sponsorsViewBtn" data-action="orgsModule.showSponsorsView">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="sponsorsViewBtn" role="tab"
+          data-bs-toggle="tab" data-bs-target="#orgsSponsorSection"
+          aria-controls="orgsSponsorSection" aria-selected="false">
           <i class="bi bi-award me-2"></i>Sponsors &amp; Partners
         </button>
       </li>
     </ul>
 
+    <div class="tab-content">
+
     <!-- Organisations Content (default view) -->
-    <div id="orgsMainContent">
+    <div id="orgsMainContent" class="tab-pane fade show active" role="tabpanel" aria-labelledby="orgsViewBtn">
 
           <!-- Counties, Cities & Regions Reference (moved from Dashboard) -->
           <div class="card mt-4">
@@ -1844,7 +1852,7 @@
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title" id="addNewOrgModalLabel">
-              <i class="bi bi-plus-circle me-2"></i>Add New Organisation
+              <i class="bi bi-plus-lg me-2"></i>Add New Organisation
             </h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
@@ -2143,8 +2151,8 @@
 
     </div><!-- /orgsMainContent -->
 
-    <!-- Sponsors Section (hidden by default) -->
-    <div id="orgsSponsorSection" class="d-none">
+    <!-- Sponsors Section (shown via Bootstrap tab) -->
+    <div id="orgsSponsorSection" class="tab-pane fade" role="tabpanel" aria-labelledby="sponsorsViewBtn">
       <div class="d-flex justify-content-between align-items-center mb-4">
         <h4><i class="bi bi-award me-2"></i>Sponsors &amp; Partners</h4>
         <div class="d-flex gap-2">
@@ -2163,6 +2171,8 @@
         </div>
       </div>
     </div><!-- /orgsSponsorSection -->
+
+    </div><!-- /tab-content -->
 
   </div>
 
@@ -2683,7 +2693,7 @@
               <!-- Video Action Buttons -->
               <div class="mb-4 d-flex flex-wrap gap-2">
                 <button class="btn btn-primary" data-action="mediaGalleryModule.openAddVideoModal">
-                  <i class="bi bi-plus-circle me-2"></i>Add Video / YouTube Link
+                  <i class="bi bi-plus-lg me-2"></i>Add Video / YouTube Link
                 </button>
                 <button class="btn btn-outline-danger" data-action="mediaGalleryModule.openBulkYouTubeModal">
                   <i class="bi bi-youtube me-2"></i>Bulk YouTube Import
@@ -2730,7 +2740,7 @@
           <div class="modal-content">
             <div class="modal-header">
               <h5 class="modal-title">
-                <i class="bi bi-plus-circle me-2"></i>Add Video / YouTube Link
+                <i class="bi bi-plus-lg me-2"></i>Add Video / YouTube Link
               </h5>
               <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
@@ -2813,7 +2823,7 @@
                       <option value="">Select an organisation...</option>
                     </select>
                     <button class="btn btn-outline-secondary" type="button" data-action="mediaGalleryModule.addVideoTag">
-                      <i class="bi bi-plus-circle me-1"></i>Add Organisation
+                      <i class="bi bi-plus-lg me-1"></i>Add Organisation
                     </button>
                   </div>
                   <div id="videoTagsContainer" class="d-flex flex-wrap gap-2">
@@ -2832,7 +2842,7 @@
                       <option value="">Select an award...</option>
                     </select>
                     <button class="btn btn-outline-secondary" type="button" data-action="mediaGalleryModule.addVideoAwardTag">
-                      <i class="bi bi-plus-circle me-1"></i>Add Award
+                      <i class="bi bi-plus-lg me-1"></i>Add Award
                     </button>
                   </div>
                   <div id="videoAwardTagsContainer" class="d-flex flex-wrap gap-2">
@@ -2863,7 +2873,7 @@
       <div class="modal fade" id="bulkYouTubeModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
           <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
+            <div class="modal-header bg-primary text-white">
               <h5 class="modal-title"><i class="bi bi-youtube me-2"></i>Bulk YouTube Import</h5>
               <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
@@ -2917,7 +2927,7 @@
       <div class="modal fade" id="playlistSyncModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
           <div class="modal-content">
-            <div class="modal-header bg-info text-white">
+            <div class="modal-header bg-primary text-white">
               <h5 class="modal-title"><i class="bi bi-collection-play me-2"></i>YouTube Playlist Import</h5>
               <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
@@ -2952,7 +2962,7 @@
       <div class="modal fade" id="watermarkModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
           <div class="modal-content">
-            <div class="modal-header bg-dark text-white">
+            <div class="modal-header bg-primary text-white">
               <h5 class="modal-title"><i class="bi bi-droplet me-2"></i>Photo Watermarking</h5>
               <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
@@ -3012,7 +3022,7 @@
       <div class="modal fade" id="exportModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
           <div class="modal-content">
-            <div class="modal-header bg-success text-white">
+            <div class="modal-header bg-primary text-white">
               <h5 class="modal-title"><i class="bi bi-box-arrow-up me-2"></i>Export Media for Social</h5>
               <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
@@ -3088,7 +3098,7 @@
       <div class="modal fade" id="youtubeHealthModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
           <div class="modal-content">
-            <div class="modal-header bg-warning text-dark">
+            <div class="modal-header bg-primary text-white">
               <h5 class="modal-title"><i class="bi bi-heart-pulse me-2"></i>YouTube Link Health Check</h5>
               <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
@@ -3307,7 +3317,7 @@
                     <i class="bi bi-upload"></i>
                   </button>
                   <button class="btn btn-primary btn-sm" data-action="eventsModule.openAddModal">
-                    <i class="bi bi-plus-circle me-1"></i>Add Event
+                    <i class="bi bi-plus-lg me-1"></i>Add Event
                   </button>
                 </div>
               </div>
@@ -3617,7 +3627,7 @@
                 <i class="bi bi-calendar2-week me-2"></i>Scheduled Reports
               </h5>
               <button class="btn btn-primary btn-sm" data-action="reportsScheduler.showCreateReport">
-                <i class="bi bi-plus-circle me-2"></i>Create Report Schedule
+                <i class="bi bi-plus-lg me-2"></i>Create Report Schedule
               </button>
             </div>
             <p class="text-muted small mb-3">Schedule automated reports to be generated on a recurring basis.</p>
@@ -4111,7 +4121,7 @@
                           <label for="smScheduleDate" class="form-label">
                             <i class="bi bi-calendar3 me-1" aria-hidden="true"></i>Schedule Date
                           </label>
-                          <input type="date" class="form-control" id="smScheduleDate" placeholder="DD/MM/YYYY">
+                          <input type="date" class="form-control" id="smScheduleDate">
                           <small class="text-muted">Leave empty to post immediately</small>
                         </div>
                         <div class="col-md-6">
@@ -4515,7 +4525,7 @@
                           <button class="btn btn-outline-secondary" id="tmplGridViewBtn" title="Grid view" data-action="emailTemplatesModule.setView" data-id="grid"><i class="bi bi-grid-3x3-gap"></i></button>
                         </div>
                         <button class="btn btn-sm btn-primary" data-action="emailTemplatesModule.newTemplate">
-                          <i class="bi bi-plus-circle me-1"></i>New
+                          <i class="bi bi-plus-lg me-1"></i>New
                         </button>
                       </div>
                     </div>
@@ -4810,7 +4820,7 @@
                       <div id="scheduleOptions" class="d-none">
                         <div class="mb-2">
                           <label class="form-label small">Send Date</label>
-                          <input type="date" class="form-control form-control-sm" id="builderScheduleDate" placeholder="DD/MM/YYYY">
+                          <input type="date" class="form-control form-control-sm" id="builderScheduleDate">
                         </div>
                         <div class="mb-3">
                           <label class="form-label small">Send Time</label>
@@ -5071,7 +5081,7 @@
               <div class="d-flex justify-content-between align-items-center mb-4">
                 <h4><i class="bi bi-envelope-arrow-up me-2"></i>Email Sequences</h4>
                 <button class="btn btn-primary btn-sm" data-action="marketingModule.showCreateSequence">
-                  <i class="bi bi-plus-circle me-2"></i>Create New Sequence
+                  <i class="bi bi-plus-lg me-2"></i>Create New Sequence
                 </button>
               </div>
               <p class="text-muted small">Create automated email sequences triggered by status changes or manual enrollment.</p>
@@ -5231,7 +5241,7 @@
               <div class="d-flex justify-content-between align-items-center mb-2">
                 <h6 class="fw-semibold mb-0">Invoices</h6>
                 <button class="btn btn-primary btn-sm" data-action="paymentsModule.createNewInvoice">
-                  <i class="bi bi-plus-circle me-1"></i>Create Invoice
+                  <i class="bi bi-plus-lg me-1"></i>Create Invoice
                 </button>
               </div>
               <div class="table-container">
@@ -5334,7 +5344,7 @@
                   <div class="col-md-3">
                     <div class="d-flex gap-1">
                       <button class="btn btn-success btn-sm flex-grow-1" data-action="paymentsModule.recordNewPayment">
-                        <i class="bi bi-plus-circle me-1"></i>Record Payment
+                        <i class="bi bi-plus-lg me-1"></i>Record Payment
                       </button>
                       <div class="btn-group">
                         <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
@@ -5407,11 +5417,11 @@
                   </div>
                   <div class="col-md-3">
                     <label class="form-label small fw-bold">Start Date</label>
-                    <input type="date" class="form-control" id="reportStartDate" placeholder="DD/MM/YYYY">
+                    <input type="date" class="form-control" id="reportStartDate">
                   </div>
                   <div class="col-md-3">
                     <label class="form-label small fw-bold">End Date</label>
-                    <input type="date" class="form-control" id="reportEndDate" placeholder="DD/MM/YYYY">
+                    <input type="date" class="form-control" id="reportEndDate">
                   </div>
                   <div class="col-md-3 d-flex align-items-end">
                     <button class="btn btn-primary w-100" data-action="paymentsModule.generateReport">
@@ -5543,7 +5553,7 @@
                   </div>
                   <div class="col-md-3">
                     <button class="btn btn-primary btn-sm w-100" data-action="crmModule.logCommunication">
-                      <i class="bi bi-plus-circle me-1"></i>Log Communication
+                      <i class="bi bi-plus-lg me-1"></i>Log Communication
                     </button>
                   </div>
                 </div>
@@ -5654,7 +5664,7 @@
                   </div>
                   <div class="col-md-3">
                     <button class="btn btn-primary btn-sm w-100" data-action="crmModule.createDeal">
-                      <i class="bi bi-plus-circle me-1"></i>Create Deal
+                      <i class="bi bi-plus-lg me-1"></i>Create Deal
                     </button>
                   </div>
                 </div>
@@ -5727,7 +5737,7 @@
                   </div>
                   <div class="col-md-4">
                     <button class="btn btn-primary btn-sm w-100" data-action="crmModule.createMeetingNote">
-                      <i class="bi bi-plus-circle me-1"></i>Add Meeting Note
+                      <i class="bi bi-plus-lg me-1"></i>Add Meeting Note
                     </button>
                   </div>
                 </div>
@@ -5847,7 +5857,7 @@
                   <i class="bi bi-tags me-1"></i>Assign Company to Segments
                 </button>
                 <button class="btn btn-secondary btn-sm ms-2" data-action="crmModule.createCustomSegment">
-                  <i class="bi bi-plus-circle me-1"></i>Create Custom Segment
+                  <i class="bi bi-plus-lg me-1"></i>Create Custom Segment
                 </button>
               </div>
 
@@ -5960,14 +5970,22 @@
 
           <!-- General: Branding + UX Preferences -->
           <div class="tab-pane fade show active" id="settings-general" role="tabpanel">
-          <!-- Branding (rendered dynamically by brandingModule.renderBrandSettings) -->
-          <div id="brandingSettingsContainer" class="mb-4"></div>
+          <div class="row g-4">
+            <!-- Branding (rendered dynamically by brandingModule.renderBrandSettings) -->
+            <div class="col-12">
+              <div id="brandingSettingsContainer"></div>
+            </div>
 
-          <!-- UX Preferences (rendered dynamically by settingsModule.renderUxSettings) -->
-          <div id="uxSettingsContainer" class="mb-4"></div>
+            <!-- UX Preferences (rendered dynamically by settingsModule.renderUxSettings) -->
+            <div class="col-12">
+              <div id="uxSettingsContainer"></div>
+            </div>
 
-          <!-- Notification Preferences (rendered dynamically by settingsModule.renderNotificationSettings) -->
-          <div id="notificationSettingsContainer" class="mb-4"></div>
+            <!-- Notification Preferences (rendered dynamically by settingsModule.renderNotificationSettings) -->
+            <div class="col-12">
+              <div id="notificationSettingsContainer"></div>
+            </div>
+          </div>
           </div>
 
           <!-- Seasons & Areas -->
@@ -6666,7 +6684,7 @@
   <div class="modal fade" id="seasonFormModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
-        <div class="modal-header bg-info text-white">
+        <div class="modal-header bg-primary text-white">
           <h5 class="modal-title" id="seasonFormModalTitle">
             <i class="bi bi-calendar-event me-2"></i>Add Season
           </h5>
@@ -6695,39 +6713,39 @@
               <div class="col-12"><hr class="my-1"><small class="text-muted fw-semibold">Entries (CTA)</small></div>
               <div class="col-md-6">
                 <label for="seasonFormEntryOpen" class="form-label">Entry Opens</label>
-                <input type="date" class="form-control" id="seasonFormEntryOpen" placeholder="DD/MM/YYYY">
+                <input type="date" class="form-control" id="seasonFormEntryOpen">
               </div>
               <div class="col-md-6">
                 <label for="seasonFormEntryClose" class="form-label">Entry Closes</label>
-                <input type="date" class="form-control" id="seasonFormEntryClose" placeholder="DD/MM/YYYY">
+                <input type="date" class="form-control" id="seasonFormEntryClose">
               </div>
               <div class="col-12"><hr class="my-1"><small class="text-muted fw-semibold">Nominees Announced</small></div>
               <div class="col-md-6">
                 <label for="seasonFormNomineesAnnouncement" class="form-label">Nominees Announcement Date</label>
-                <input type="date" class="form-control" id="seasonFormNomineesAnnouncement" placeholder="DD/MM/YYYY">
+                <input type="date" class="form-control" id="seasonFormNomineesAnnouncement">
               </div>
               <div class="col-12"><hr class="my-1"><small class="text-muted fw-semibold">Judging Period</small></div>
               <div class="col-md-6">
                 <label for="seasonFormJudgingOpen" class="form-label">Judging Opens</label>
-                <input type="date" class="form-control" id="seasonFormJudgingOpen" placeholder="DD/MM/YYYY">
+                <input type="date" class="form-control" id="seasonFormJudgingOpen">
               </div>
               <div class="col-md-6">
                 <label for="seasonFormJudgingClose" class="form-label">Judging Closes</label>
-                <input type="date" class="form-control" id="seasonFormJudgingClose" placeholder="DD/MM/YYYY">
+                <input type="date" class="form-control" id="seasonFormJudgingClose">
               </div>
               <div class="col-12"><hr class="my-1"><small class="text-muted fw-semibold">Voting Period</small></div>
               <div class="col-md-6">
                 <label for="seasonFormVotingOpen" class="form-label">Voting Opens</label>
-                <input type="date" class="form-control" id="seasonFormVotingOpen" placeholder="DD/MM/YYYY">
+                <input type="date" class="form-control" id="seasonFormVotingOpen">
               </div>
               <div class="col-md-6">
                 <label for="seasonFormVotingClose" class="form-label">Voting Closes</label>
-                <input type="date" class="form-control" id="seasonFormVotingClose" placeholder="DD/MM/YYYY">
+                <input type="date" class="form-control" id="seasonFormVotingClose">
               </div>
               <div class="col-12"><hr class="my-1"><small class="text-muted fw-semibold">Winners Announced</small></div>
               <div class="col-md-6">
                 <label for="seasonFormWinnersAnnouncement" class="form-label">Winners Announcement Date</label>
-                <input type="date" class="form-control" id="seasonFormWinnersAnnouncement" placeholder="DD/MM/YYYY">
+                <input type="date" class="form-control" id="seasonFormWinnersAnnouncement">
               </div>
               <div class="col-12">
                 <div class="form-check">
@@ -6815,36 +6833,36 @@
               <div class="col-12"><hr class="my-1"><small class="text-muted fw-semibold">Key Dates</small></div>
               <div class="col-md-3">
                 <label for="awardFormEntryOpen" class="form-label small">Entry Opens</label>
-                <input type="date" class="form-control form-control-sm" id="awardFormEntryOpen" placeholder="DD/MM/YYYY">
+                <input type="date" class="form-control form-control-sm" id="awardFormEntryOpen">
               </div>
               <div class="col-md-3">
                 <label for="awardFormEntryClose" class="form-label small">Entry Closes</label>
-                <input type="date" class="form-control form-control-sm" id="awardFormEntryClose" placeholder="DD/MM/YYYY">
+                <input type="date" class="form-control form-control-sm" id="awardFormEntryClose">
                 <div class="form-text">Public submissions blocked after this date</div>
               </div>
               <div class="col-md-3">
                 <label for="awardFormNomineesAnnouncement" class="form-label small">Nominees Announced</label>
-                <input type="date" class="form-control form-control-sm" id="awardFormNomineesAnnouncement" placeholder="DD/MM/YYYY">
+                <input type="date" class="form-control form-control-sm" id="awardFormNomineesAnnouncement">
               </div>
               <div class="col-md-3">
                 <label for="awardFormJudgingOpen" class="form-label small">Judging Opens</label>
-                <input type="date" class="form-control form-control-sm" id="awardFormJudgingOpen" placeholder="DD/MM/YYYY">
+                <input type="date" class="form-control form-control-sm" id="awardFormJudgingOpen">
               </div>
               <div class="col-md-3">
                 <label for="awardFormJudgingClose" class="form-label small">Judging Closes</label>
-                <input type="date" class="form-control form-control-sm" id="awardFormJudgingClose" placeholder="DD/MM/YYYY">
+                <input type="date" class="form-control form-control-sm" id="awardFormJudgingClose">
               </div>
               <div class="col-md-3">
                 <label for="awardFormVotingOpen" class="form-label small">Voting Opens</label>
-                <input type="date" class="form-control form-control-sm" id="awardFormVotingOpen" placeholder="DD/MM/YYYY">
+                <input type="date" class="form-control form-control-sm" id="awardFormVotingOpen">
               </div>
               <div class="col-md-3">
                 <label for="awardFormVotingClose" class="form-label small">Voting Closes</label>
-                <input type="date" class="form-control form-control-sm" id="awardFormVotingClose" placeholder="DD/MM/YYYY">
+                <input type="date" class="form-control form-control-sm" id="awardFormVotingClose">
               </div>
               <div class="col-md-3">
                 <label for="awardFormWinnersAnnouncement" class="form-label small">Winners Announced</label>
-                <input type="date" class="form-control form-control-sm" id="awardFormWinnersAnnouncement" placeholder="DD/MM/YYYY">
+                <input type="date" class="form-control form-control-sm" id="awardFormWinnersAnnouncement">
               </div>
               <div class="col-12">
                 <label class="form-label fw-semibold">Previous Year Results</label>
@@ -6914,7 +6932,7 @@
   <div class="modal fade" id="createInvoiceModal" tabindex="-1" aria-labelledby="createInvoiceModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
-        <div class="modal-header bg-success text-white">
+        <div class="modal-header bg-primary text-white">
           <h5 class="modal-title" id="createInvoiceModalLabel">
             <i class="bi bi-file-earmark-plus me-2"></i>Create New Invoice
           </h5>
@@ -6943,11 +6961,11 @@
             <div class="row mb-3">
               <div class="col-md-3">
                 <label for="invoiceDate" class="form-label">Invoice Date <span class="text-danger" aria-label="required">*</span></label>
-                <input type="date" class="form-control" id="invoiceDate" placeholder="DD/MM/YYYY" required>
+                <input type="date" class="form-control" id="invoiceDate" required>
               </div>
               <div class="col-md-3">
                 <label for="invoiceDueDate" class="form-label">Due Date <span class="text-danger" aria-label="required">*</span></label>
-                <input type="date" class="form-control" id="invoiceDueDate" placeholder="DD/MM/YYYY" required>
+                <input type="date" class="form-control" id="invoiceDueDate" required>
               </div>
               <div class="col-md-3">
                 <label for="invoiceTaxRate" class="form-label">Tax Rate (%)</label>
@@ -6998,7 +7016,7 @@
               </div>
               <div id="invoiceLineItems"></div>
               <button type="button" class="btn btn-sm btn-outline-primary mt-2" data-action="paymentsModule.addInvoiceLineItem">
-                <i class="bi bi-plus-circle me-1"></i>Add Line Item
+                <i class="bi bi-plus-lg me-1"></i>Add Line Item
               </button>
             </div>
             <div class="mb-3">
@@ -7021,7 +7039,7 @@
   <div class="modal fade" id="recordPaymentModal" tabindex="-1" aria-labelledby="recordPaymentModalLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
-        <div class="modal-header bg-success text-white">
+        <div class="modal-header bg-primary text-white">
           <h5 class="modal-title" id="recordPaymentModalLabel">
             <i class="bi bi-cash-stack me-2"></i>Record Payment
           </h5>
@@ -7048,7 +7066,7 @@
               </div>
               <div class="col-md-6">
                 <label for="paymentDate" class="form-label">Payment Date <span class="text-danger" aria-label="required">*</span></label>
-                <input type="date" class="form-control" id="paymentDate" placeholder="DD/MM/YYYY" required>
+                <input type="date" class="form-control" id="paymentDate" required>
               </div>
             </div>
             <div class="mb-3">
@@ -7111,7 +7129,7 @@
   <div class="modal fade" id="viewPaymentModal" tabindex="-1" aria-labelledby="viewPaymentModalLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
-        <div class="modal-header bg-success text-white">
+        <div class="modal-header">
           <h5 class="modal-title" id="viewPaymentModalLabel">
             <i class="bi bi-cash-stack me-2"></i>Payment Details
           </h5>
@@ -7133,7 +7151,7 @@
   <div class="modal fade" id="sendInvoiceModal" tabindex="-1" aria-labelledby="sendInvoiceModalLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
-        <div class="modal-header bg-info text-white">
+        <div class="modal-header bg-primary text-white">
           <h5 class="modal-title" id="sendInvoiceModalLabel">
             <i class="bi bi-envelope me-2"></i>Send Invoice
           </h5>
@@ -7217,7 +7235,7 @@
   <div class="modal fade" id="publicFormLinkModal" tabindex="-1" aria-labelledby="publicFormLinkModalLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
-        <div class="modal-header bg-info text-white">
+        <div class="modal-header">
           <h5 class="modal-title" id="publicFormLinkModalLabel">
             <i class="bi bi-link-45deg me-2"></i>Public Entry Form Link
           </h5>
@@ -7377,7 +7395,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">
-          <i class="bi bi-plus-circle me-2"></i>Add Organisations to Award
+          <i class="bi bi-plus-lg me-2"></i>Add Organisations to Award
         </h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
@@ -7431,7 +7449,7 @@
               <label for="uploadEventSelect" class="form-label">
                 Event <span class="text-danger" aria-label="required">*</span>
                 <button type="button" class="btn btn-sm btn-link p-0 ms-2" data-action="mediaGalleryModule.showQuickAddEvent">
-                  <i class="bi bi-plus-circle"></i> Add New Event
+                  <i class="bi bi-plus-lg"></i> Add New Event
                 </button>
               </label>
               <select class="form-select" id="uploadEventSelect" required>
@@ -7448,7 +7466,7 @@
                   </div>
                   <div class="row">
                     <div class="col-md-6 mb-2">
-                      <input type="date" class="form-control form-control-sm" id="quickEventDate" placeholder="Event Date">
+                      <input type="date" class="form-control form-control-sm" id="quickEventDate">
                     </div>
                     <div class="col-md-6 mb-2">
                       <input type="number" class="form-control form-control-sm" id="quickEventYear" placeholder="Year" min="2000" max="2100">
@@ -7601,7 +7619,7 @@
             <div class="row">
               <div class="col-md-6 mb-3">
                 <label for="eventDate" class="form-label">Event Date</label>
-                <input type="date" class="form-control" id="eventDate" placeholder="DD/MM/YYYY">
+                <input type="date" class="form-control" id="eventDate">
               </div>
               <div class="col-md-6 mb-3">
                 <label for="eventYear" class="form-label">Year</label>
@@ -7649,7 +7667,7 @@
   <div class="modal fade" id="cloneEventModal" tabindex="-1" aria-labelledby="cloneEventModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
-        <div class="modal-header bg-success text-white">
+        <div class="modal-header bg-primary text-white">
           <h5 class="modal-title" id="cloneEventModalLabel">
             <i class="bi bi-files me-2"></i>Clone Event
           </h5>
@@ -7673,7 +7691,7 @@
             <div class="row">
               <div class="col-md-6 mb-3">
                 <label for="cloneEventDate" class="form-label">Event Date</label>
-                <input type="date" class="form-control" id="cloneEventDate" placeholder="DD/MM/YYYY">
+                <input type="date" class="form-control" id="cloneEventDate">
               </div>
               <div class="col-md-6 mb-3">
                 <label for="cloneEventYear" class="form-label">Year <span class="text-danger" aria-label="required">*</span></label>
@@ -7716,7 +7734,7 @@
   <div class="modal fade" id="attendeesModal" tabindex="-1" aria-labelledby="attendeesModalLabel" aria-hidden="true">
     <div class="modal-dialog" style="max-width: 1400px;">
       <div class="modal-content">
-        <div class="modal-header bg-info text-white">
+        <div class="modal-header">
           <h5 class="modal-title" id="attendeesModalLabel">
             <i class="bi bi-people me-2"></i>Event Attendees & RSVP
           </h5>
@@ -7913,7 +7931,7 @@
                     </div>
                     <div class="col-md-2">
                       <button class="btn btn-sm btn-primary w-100" data-action="eventsModule.addAttendee">
-                        <i class="bi bi-plus-circle me-1"></i>Add
+                        <i class="bi bi-plus-lg me-1"></i>Add
                       </button>
                     </div>
                   </div>
@@ -8157,7 +8175,7 @@
                   <small class="text-muted">When at capacity, add guests here. Promote to attendee list when space opens up.</small>
                 </div>
                 <button class="btn btn-sm btn-primary" data-action="eventsModule.addToWaitlist">
-                  <i class="bi bi-plus-circle me-1"></i>Add to Waitlist
+                  <i class="bi bi-plus-lg me-1"></i>Add to Waitlist
                 </button>
               </div>
               <div class="table-responsive">
@@ -8181,7 +8199,7 @@
                     <i class="bi bi-download me-1"></i>Export
                   </button>
                   <button class="btn btn-sm btn-primary" data-action="eventsModule.addBudgetItem">
-                    <i class="bi bi-plus-circle me-1"></i>Add Item
+                    <i class="bi bi-plus-lg me-1"></i>Add Item
                   </button>
                 </div>
               </div>
@@ -8275,7 +8293,7 @@
                     <i class="bi bi-download me-1"></i>Export
                   </button>
                   <button class="btn btn-sm btn-primary" data-action="eventsModule.addVendor">
-                    <i class="bi bi-plus-circle me-1"></i>Add Vendor
+                    <i class="bi bi-plus-lg me-1"></i>Add Vendor
                   </button>
                 </div>
               </div>
@@ -8561,7 +8579,7 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
           <button type="button" class="btn btn-primary" id="addYouTubeVideoBtn" data-action="mediaGalleryModule.addYouTubeVideo">
-            <i class="bi bi-plus-circle me-2"></i>Add Video
+            <i class="bi bi-plus-lg me-2"></i>Add Video
           </button>
         </div>
       </div>
@@ -8740,7 +8758,7 @@
   <div class="modal fade" id="pressReleaseExportModal" tabindex="-1" aria-labelledby="pressReleaseExportModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl">
       <div class="modal-content">
-        <div class="modal-header bg-success text-white">
+        <div class="modal-header bg-primary text-white">
           <h5 class="modal-title" id="pressReleaseExportModalLabel">
             <i class="bi bi-file-earmark-text me-2"></i>Export Winners for Press Release
           </h5>
@@ -9021,7 +9039,7 @@
   <div class="modal fade" id="yearComparisonModal" tabindex="-1" aria-labelledby="yearComparisonModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl">
       <div class="modal-content">
-        <div class="modal-header bg-info text-white">
+        <div class="modal-header">
           <h5 class="modal-title" id="yearComparisonModalLabel">
             <i class="bi bi-bar-chart-line me-2"></i>Year Comparison & Trends
           </h5>
@@ -9163,7 +9181,7 @@
             <div class="card-header bg-light d-flex justify-content-between align-items-center">
               <h6 class="mb-0"><i class="bi bi-list-ul me-2"></i>Saved Templates (<span id="templatesCount">0</span>)</h6>
               <button class="btn btn-primary btn-sm" data-action="eventsModule.openCreateTemplate">
-                <i class="bi bi-plus-circle me-1"></i>Create Template
+                <i class="bi bi-plus-lg me-1"></i>Create Template
               </button>
             </div>
             <div class="card-body">
@@ -9180,7 +9198,7 @@
           <!-- Create/Edit Template Form -->
           <div id="templateFormSection" class="card d-none">
             <div class="card-header bg-primary text-white">
-              <h6 class="mb-0" id="templateFormTitle"><i class="bi bi-plus-circle me-2"></i>Create New Template</h6>
+              <h6 class="mb-0" id="templateFormTitle"><i class="bi bi-plus-lg me-2"></i>Create New Template</h6>
             </div>
             <div class="card-body">
               <form id="templateForm">
@@ -9449,7 +9467,7 @@
   <div class="modal fade" id="importWinnersModal" tabindex="-1" aria-labelledby="importWinnersModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
-        <div class="modal-header bg-success text-white">
+        <div class="modal-header bg-primary text-white">
           <h5 class="modal-title" id="importWinnersModalLabel">
             <i class="bi bi-upload me-2"></i>Import Winners from CSV
           </h5>
@@ -9561,7 +9579,7 @@
   <div class="modal fade" id="salesDashboardModal" tabindex="-1" aria-labelledby="salesDashboardModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl">
       <div class="modal-content">
-        <div class="modal-header bg-success text-white">
+        <div class="modal-header bg-primary text-white">
           <div>
             <h5 class="modal-title" id="salesDashboardModalLabel">
               <i class="bi bi-graph-up-arrow me-2"></i>Sales Dashboard
@@ -9870,7 +9888,7 @@
   <div class="modal fade" id="organisationsSummaryModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl">
       <div class="modal-content">
-        <div class="modal-header bg-success text-white">
+        <div class="modal-header">
           <h5 class="modal-title">
             <i class="bi bi-building me-2"></i>Organisations Summary
           </h5>
@@ -9976,7 +9994,7 @@
   <div class="modal fade" id="winnersSummaryModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl">
       <div class="modal-content">
-        <div class="modal-header bg-info text-white">
+        <div class="modal-header">
           <h5 class="modal-title">
             <i class="bi bi-award me-2"></i>Winners Summary
           </h5>

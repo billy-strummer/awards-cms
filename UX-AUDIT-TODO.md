@@ -965,7 +965,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **Root cause:** Settings General, Seasons, Data, Security sub-tabs mix raw form groups and card-wrapped sections inconsistently. Some sections have `.content-card`, others just use `<hr>` dividers. The visual rhythm is uneven.
 - **Fix:** Audit the Settings sub-tab HTML. For each logical section (e.g., "Email Settings", "Account Details", "Password Change"), wrap in a `.content-card` with a `<h6 class="fw-semibold mb-3"><i class="bi bi-..."></i> Section Name</h6>` header. This matches how Dashboard and CRM are structured.
 - **Done when:** All Settings sub-tabs have consistent card-wrapped sections with visible headers.
-- [ ] Implemented
+- [x] Implemented
 
 ---
 

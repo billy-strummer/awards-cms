@@ -412,11 +412,13 @@ const brandingModule = {
       `<div class="mb-3"><label class="form-label">${label}</label><input type="${type}" class="form-control${type === 'color' ? ' form-control-color' : ''}" id="${id}" value="${esc(value)}"${placeholder ? ` placeholder="${placeholder}"` : ''} ${type === 'color' ? 'style="width:100%"' : ''}></div>`;
 
     container.innerHTML = `<div class="row g-4">
-      <div class="col-lg-7"><div class="card"><div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">Brand Settings</h5>
-        <div class="btn-group btn-group-sm"><button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" data-bs-display="static"><i class="bi bi-palette me-1"></i>Load Preset</button>
-        <ul class="dropdown-menu dropdown-menu-end">${presetItems}</ul></div></div>
-        <div class="card-body"><form id="brandingForm" novalidate>
+      <div class="col-lg-7"><div class="content-card">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="mb-0"><i class="bi bi-palette me-2"></i>Brand Settings</h5>
+          <div class="btn-group btn-group-sm"><button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" data-bs-display="static"><i class="bi bi-palette me-1"></i>Load Preset</button>
+          <ul class="dropdown-menu dropdown-menu-end">${presetItems}</ul></div>
+        </div>
+        <form id="brandingForm" novalidate>
           <h6 class="text-muted fw-semibold mb-3">Identity</h6>
           ${field('Company Name', 'bf_company_name', 'text', cur.company_name || '')}
           ${field('Tagline', 'bf_tagline', 'text', cur.tagline || '')}
@@ -445,13 +447,16 @@ const brandingModule = {
             <button type="submit" class="btn btn-primary">Save Branding</button>
             <button type="button" class="btn btn-outline-secondary" id="bf_preview_btn">Apply Preview</button>
           </div>
-        </form></div></div></div>
+        </form>
+      </div></div>
       <div class="col-lg-5">
-        <div class="card"><div class="card-header"><h5 class="mb-0">Live Preview</h5></div>
-          <div class="card-body" id="bf_preview_panel">${this.renderPreview(cur)}</div>
+        <div class="content-card">
+          <h5 class="mb-3"><i class="bi bi-eye me-2"></i>Live Preview</h5>
+          <div id="bf_preview_panel">${this.renderPreview(cur)}</div>
         </div>
-        <div class="card mt-3"><div class="card-header"><h5 class="mb-0">Email Preview</h5></div>
-          <div class="card-body" id="bf_email_preview_panel">${this.renderEmailPreview(cur)}</div>
+        <div class="content-card">
+          <h5 class="mb-3"><i class="bi bi-envelope me-2"></i>Email Preview</h5>
+          <div id="bf_email_preview_panel">${this.renderEmailPreview(cur)}</div>
         </div>
       </div>
     </div>`;

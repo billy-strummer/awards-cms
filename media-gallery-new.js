@@ -32,6 +32,7 @@ const mediaGalleryModule = {
    * Initialize Media Gallery - Show events list
    */
   async initialize() {
+    document.getElementById('mediaGalleryLoadingState')?.remove();
     try {
       utils.showLoading();
 
@@ -340,14 +341,11 @@ const mediaGalleryModule = {
     const container = document.getElementById('eventsListContainer');
 
     if (!events || events.length === 0) {
-      container.innerHTML = `
-        <div class="col-12 text-center py-5">
-          <i class="bi bi-calendar-x display-4 d-block mb-2 opacity-25"></i>
-          <p class="text-muted">No events found. Create an event in the Events tab first.</p>
-        </div>
-      `;
+      container.innerHTML = '';
+      document.getElementById('mediaGalleryEmptyState')?.classList.remove('d-none');
       return;
     }
+    document.getElementById('mediaGalleryEmptyState')?.classList.add('d-none');
 
     // Get media counts for each event
     const eventsWithCounts = await Promise.all(

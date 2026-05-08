@@ -192,14 +192,11 @@
         <!-- Scrollable nav groups -->
         <div class="sidebar-nav">
 
-          <!-- OVERVIEW -->
-          <div class="sidebar-group">
-            <span class="sidebar-group-label">Overview</span>
-            <button class="sidebar-nav-link active" id="dashboard-tab" data-bs-toggle="tab" data-bs-target="#dashboard" type="button" role="tab" aria-controls="dashboard" aria-selected="true" title="Dashboard">
-              <i class="bi bi-speedometer2 sidebar-icon"></i>
-              <span class="sidebar-label">Dashboard</span>
-            </button>
-          </div>
+          <!-- DASHBOARD (no group label — single item) -->
+          <button class="sidebar-nav-link active" id="dashboard-tab" data-bs-toggle="tab" data-bs-target="#dashboard" type="button" role="tab" aria-controls="dashboard" aria-selected="true" title="Dashboard">
+            <i class="bi bi-speedometer2 sidebar-icon"></i>
+            <span class="sidebar-label">Dashboard</span>
+          </button>
 
           <!-- PROGRAMME -->
           <div class="sidebar-group">
@@ -237,6 +234,7 @@
               <i class="bi bi-people sidebar-icon"></i>
               <span class="sidebar-label">CRM</span>
             </button>
+            <span class="sidebar-sub-label d-none" id="crmSubLabel"></span>
           </div>
 
           <!-- COMMERCIAL -->
@@ -252,15 +250,11 @@
               <span class="sidebar-label">Payments</span>
               <span class="sidebar-badge" id="paymentsTabCount"></span>
             </button>
+            <span class="sidebar-sub-label d-none" id="paymentsSubLabel"></span>
             <button class="sidebar-nav-link" id="marketing-tab" data-bs-toggle="tab" data-bs-target="#marketing" type="button" role="tab" aria-controls="marketing" aria-selected="false" title="Marketing">
               <i class="bi bi-megaphone sidebar-icon"></i>
               <span class="sidebar-label">Marketing</span>
             </button>
-          </div>
-
-          <!-- ANALYTICS -->
-          <div class="sidebar-group">
-            <span class="sidebar-group-label">Analytics</span>
             <button class="sidebar-nav-link" id="reports-tab" data-bs-toggle="tab" data-bs-target="#reports" type="button" role="tab" aria-controls="reports" aria-selected="false" title="Reports">
               <i class="bi bi-graph-up sidebar-icon"></i>
               <span class="sidebar-label">Reports</span>
@@ -274,6 +268,7 @@
               <i class="bi bi-gear sidebar-icon"></i>
               <span class="sidebar-label">Settings</span>
             </button>
+            <span class="sidebar-sub-label d-none" id="settingsSubLabel"></span>
           </div>
 
           <!-- Markets (hidden by default — RBAC shows for admin/superadmin) -->
@@ -378,7 +373,7 @@
                 </button>
                 <i class="bi bi-trophy stat-card-icon text-primary"></i>
                 <h6>Total Awards</h6>
-                <div class="stat-value" id="totalAwards">0</div>
+                <div class="stat-value" id="totalAwards"><span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></div>
                 <div id="totalAwardsGrowth" class="stat-growth"></div>
                 <small class="text-muted">All award categories</small>
                 <div class="stat-card-hover-indicator">
@@ -391,7 +386,7 @@
               <div class="stat-card stat-card-clickable" data-action="dashboardModule.filterPendingAwards" title="Click to view pending awards">
                 <i class="bi bi-hourglass-split stat-card-icon text-warning"></i>
                 <h6>Pending Reviews</h6>
-                <div class="stat-value text-warning" id="pendingAwards">0</div>
+                <div class="stat-value text-warning" id="pendingAwards"><span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></div>
                 <div id="pendingAwardsGrowth" class="stat-growth"></div>
                 <small class="text-muted">Awaiting approval</small>
                 <div class="stat-card-hover-indicator">
@@ -410,7 +405,7 @@
                 </button>
                 <i class="bi bi-building stat-card-icon text-success"></i>
                 <h6>Organisations</h6>
-                <div class="stat-value text-success" id="totalOrgs">0</div>
+                <div class="stat-value text-success" id="totalOrgs"><span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></div>
                 <div id="totalOrgsGrowth" class="stat-growth"></div>
                 <small class="text-muted">Registered organisations</small>
                 <div class="stat-card-hover-indicator">
@@ -429,7 +424,7 @@
                 </button>
                 <i class="bi bi-award stat-card-icon text-info"></i>
                 <h6>Winners</h6>
-                <div class="stat-value text-info" id="totalWinners">0</div>
+                <div class="stat-value text-info" id="totalWinners"><span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></div>
                 <div id="totalWinnersGrowth" class="stat-growth"></div>
                 <small class="text-muted">Award recipients</small>
                 <div class="stat-card-hover-indicator">
@@ -451,7 +446,7 @@
                 </button>
                 <i class="bi bi-calendar-event stat-card-icon text-purple"></i>
                 <h6>Events</h6>
-                <div class="stat-value" id="totalEvents">0</div>
+                <div class="stat-value" id="totalEvents"><span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></div>
                 <div id="totalEventsGrowth" class="stat-growth"></div>
                 <small class="text-muted">Award ceremonies & functions</small>
                 <div class="stat-card-hover-indicator">
@@ -464,7 +459,7 @@
               <div class="stat-card stat-card-clickable" data-action="dashboardModule.showUpcomingEvents" title="Click to view upcoming events">
                 <i class="bi bi-calendar-check stat-card-icon text-success"></i>
                 <h6>Upcoming Events</h6>
-                <div class="stat-value text-success" id="upcomingEvents">0</div>
+                <div class="stat-value text-success" id="upcomingEvents"><span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></div>
                 <div id="upcomingEventsGrowth" class="stat-growth"></div>
                 <small class="text-muted">Next 30 days</small>
                 <div class="stat-card-hover-indicator">
@@ -486,7 +481,7 @@
                 </button>
                 <i class="bi bi-images stat-card-icon text-primary"></i>
                 <h6>Media Gallery</h6>
-                <div class="stat-value text-primary" id="totalMediaItems">0</div>
+                <div class="stat-value text-primary" id="totalMediaItems"><span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></div>
                 <div id="totalMediaGrowth" class="stat-growth"></div>
                 <small class="text-muted">Photos & videos</small>
                 <div class="stat-card-hover-indicator">
@@ -505,7 +500,7 @@
                 </button>
                 <i class="bi bi-robot stat-card-icon text-warning"></i>
                 <h6>AI Vetting</h6>
-                <div class="stat-value text-warning" id="vettingFlaggedCount">0</div>
+                <div class="stat-value text-warning" id="vettingFlaggedCount"><span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></div>
                 <div id="vettingGrowth" class="stat-growth"></div>
                 <small class="text-muted" id="vettingLastRun">Never run</small>
                 <div class="stat-card-hover-indicator">
@@ -653,6 +648,7 @@
 
             <div class="table-responsive">
               <table class="table table-hover">
+                <caption class="visually-hidden">Recent orders</caption>
                 <thead>
                   <tr>
                     <th scope="col">Invoice #</th>
@@ -703,6 +699,7 @@
             
             <div class="table-responsive">
               <table class="table table-hover">
+                <caption class="visually-hidden">Top organisations</caption>
                 <thead id="topCompaniesTableHead">
                   <tr>
                     <th scope="col" width="60">#</th>
@@ -919,23 +916,23 @@
                   <div class="row text-center">
                     <div class="col-md-2" data-stat-filter="clear:awardsStatusFilterSelect" title="Show all awards">
                       <h6 class="text-muted mb-1 small">Total Awards</h6>
-                      <h3 class="mb-0 fw-bold text-primary" id="statsTotalAwards">0</h3>
+                      <h3 class="mb-0 fw-bold text-primary" id="statsTotalAwards"><span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></h3>
                     </div>
                     <div class="col-md-2" data-stat-filter="awardsStatusFilterSelect:active" title="Filter to active awards">
                       <h6 class="text-muted mb-1 small">Active</h6>
-                      <h3 class="mb-0 fw-bold text-success" id="statsActiveAwards">0</h3>
+                      <h3 class="mb-0 fw-bold text-success" id="statsActiveAwards"><span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></h3>
                     </div>
                     <div class="col-md-2" title="With Nominees">
                       <h6 class="text-muted mb-1 small">With Nominees</h6>
-                      <h3 class="mb-0 fw-bold text-info" id="statsWithNominees">0</h3>
+                      <h3 class="mb-0 fw-bold text-info" id="statsWithNominees"><span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></h3>
                     </div>
                     <div class="col-md-2" title="Winners Declared">
                       <h6 class="text-muted mb-1 small">Winners Declared</h6>
-                      <h3 class="mb-0 fw-bold text-warning" id="statsWithWinners">0</h3>
+                      <h3 class="mb-0 fw-bold text-warning" id="statsWithWinners"><span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></h3>
                     </div>
                     <div class="col-md-2" title="Entries Received">
                       <h6 class="text-muted mb-1 small">Entries Received</h6>
-                      <h3 class="mb-0 fw-bold text-secondary" id="awardsEntriesCount">0</h3>
+                      <h3 class="mb-0 fw-bold text-secondary" id="awardsEntriesCount"><span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></h3>
                     </div>
                   </div>
                 </div>
@@ -1066,6 +1063,12 @@
                       <span class="dropdown-item-text fw-semibold small text-muted px-3">Columns</span>
                     </li>
                     <li>
+                      <label class="dropdown-item" for="colTogglePhase">
+                        <input type="checkbox" class="form-check-input me-2" id="colTogglePhase" data-on-change="awardsModule.toggleAwardColumn" data-id="phase">
+                        Phase
+                      </label>
+                    </li>
+                    <li>
                       <label class="dropdown-item" for="colToggleModified">
                         <input type="checkbox" class="form-check-input me-2" id="colToggleModified" data-on-change="awardsModule.toggleAwardColumn" data-id="modified">
                         Modified
@@ -1079,7 +1082,7 @@
                   </ul>
                 </div>
                 <div class="badge bg-primary-subtle text-primary fs-6 ms-1">
-                  <span id="awardsCount">0</span> awards
+                  <span id="awardsCount"><span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></span> awards
                 </div>
               </div>
             </div>
@@ -1122,20 +1125,21 @@
 
             <div class="table-responsive">
               <table class="table table-hover table-striped align-middle" aria-label="Awards list">
+                <caption class="visually-hidden">Awards list</caption>
                 <thead>
                   <tr>
                     <th scope="col" style="width: 3%;"><input type="checkbox" class="form-check-input" id="awardsSelectAll" data-on-change="awardsModule.toggleSelectAll" aria-label="Select all awards"></th>
-                    <th scope="col" style="width: 5%; cursor: pointer;" data-sort-field="year" data-action="awardsModule.sortBy" data-args='["year"]' aria-sort="none">Year <i class="bi bi-arrow-down-up" aria-hidden="true" text-muted ms-1 small" data-sort-icon="year"></i></th>
-                    <th scope="col" style="width: 22%; cursor: pointer;" data-sort-field="award_name" data-action="awardsModule.sortBy" data-args='["award_name"]' aria-sort="none">Award Name <i class="bi bi-arrow-down-up" aria-hidden="true" text-muted ms-1 small" data-sort-icon="award_name"></i></th>
-                    <th scope="col" style="width: 12%; cursor: pointer;" data-sort-field="location" data-action="awardsModule.sortBy" data-args='["location"]' aria-sort="none">Location <i class="bi bi-arrow-down-up" aria-hidden="true" text-muted ms-1 small" data-sort-icon="location"></i></th>
-                    <th scope="col" style="width: 10%; cursor: pointer;" data-sort-field="sector" data-action="awardsModule.sortBy" data-args='["sector"]' aria-sort="none">Sector <i class="bi bi-arrow-down-up" aria-hidden="true" text-muted ms-1 small" data-sort-icon="sector"></i></th>
+                    <th scope="col" style="width: 5%; cursor: pointer;" data-sort-field="year" data-action="awardsModule.sortBy" data-args='["year"]' aria-sort="none">Year <i class="bi bi-arrow-down-up text-muted ms-1 small" aria-hidden="true" data-sort-icon="year"></i></th>
+                    <th scope="col" style="width: 18%; cursor: pointer;" data-sort-field="award_name" data-action="awardsModule.sortBy" data-args='["award_name"]' aria-sort="none">Award Name <i class="bi bi-arrow-down-up text-muted ms-1 small" aria-hidden="true" data-sort-icon="award_name"></i></th>
+                    <th scope="col" style="width: 9%; cursor: pointer;" data-sort-field="location" data-action="awardsModule.sortBy" data-args='["location"]' aria-sort="none">Location <i class="bi bi-arrow-down-up text-muted ms-1 small" aria-hidden="true" data-sort-icon="location"></i></th>
+                    <th scope="col" style="width: 10%; cursor: pointer;" data-sort-field="sector" data-action="awardsModule.sortBy" data-args='["sector"]' aria-sort="none">Sector <i class="bi bi-arrow-down-up text-muted ms-1 small" aria-hidden="true" data-sort-icon="sector"></i></th>
                     <th scope="col" style="width: 7%; cursor: pointer;" data-sort-field="status" data-action="awardsModule.sortBy" data-args='["status"]' aria-sort="none">
-                      Status <i class="bi bi-arrow-down-up" aria-hidden="true" text-muted ms-1 small" data-sort-icon="status"></i>
+                      Status <i class="bi bi-arrow-down-up text-muted ms-1 small" aria-hidden="true" data-sort-icon="status"></i>
                       <i class="bi bi-question-circle text-muted ms-1 small" title="Award lifecycle: Draft (being set up) → Pending (awaiting approval) → Published (visible) → Active (open for entries/judging) → Archived (closed)"></i>
                     </th>
-                    <th scope="col" style="width: 6%; cursor: pointer;" class="text-center" data-sort-field="nominees" data-action="awardsModule.sortBy" data-args='["nominees"]' aria-sort="none">Nominees <i class="bi bi-arrow-down-up" aria-hidden="true" text-muted ms-1 small" data-sort-icon="nominees"></i></th>
-                    <th scope="col" style="width: 7%;" class="text-center" title="Current judging phase: e.g. Entry, Judging, Shortlisting, Voting, Announced">Phase</th>
-                    <th scope="col" style="width: 14%; cursor: pointer;" data-sort-field="winner" data-action="awardsModule.sortBy" data-args='["winner"]' aria-sort="none">Winner <i class="bi bi-arrow-down-up" aria-hidden="true" text-muted ms-1 small" data-sort-icon="winner"></i></th>
+                    <th scope="col" style="width: 6%; cursor: pointer;" class="text-center" data-sort-field="nominees" data-action="awardsModule.sortBy" data-args='["nominees"]' aria-sort="none">Nominees <i class="bi bi-arrow-down-up text-muted ms-1 small" aria-hidden="true" data-sort-icon="nominees"></i></th>
+                    <th scope="col" id="awardsPhaseHeader" class="d-none text-center" style="width: 7%;" title="Current judging phase: e.g. Entry, Judging, Shortlisting, Voting, Announced">Phase</th>
+                    <th scope="col" style="width: 11%; cursor: pointer;" data-sort-field="winner" data-action="awardsModule.sortBy" data-args='["winner"]' aria-sort="none">Winner <i class="bi bi-arrow-down-up text-muted ms-1 small" aria-hidden="true" data-sort-icon="winner"></i></th>
                     <th scope="col" id="awardsModifiedHeader" class="d-none" style="width: 8%;">Modified</th>
                     <th scope="col" style="width: 6%;" class="text-center">Actions</th>
                   </tr>
@@ -1178,7 +1182,7 @@
     </div>
 
     <!-- Section View Toggle -->
-    <ul class="nav nav-pills mb-4" id="orgsSubNav" role="tablist">
+    <ul class="nav nav-tabs mb-4" id="orgsSubNav" role="tablist">
       <li class="nav-item">
         <button class="nav-link active" id="orgsViewBtn" data-action="orgsModule.showOrgsView">
           <i class="bi bi-building me-2"></i>All Organisations
@@ -1491,7 +1495,7 @@
     </div>
 
     <!-- Enhanced Filters Row -->
-    <div class="card border-0 shadow-sm mb-4">
+    <div class="card border-0 shadow-sm mb-4 filter-bar-sticky">
       <div class="card-body py-3">
         <!-- Row header -->
         <div class="d-flex align-items-center justify-content-between mb-2">
@@ -1751,6 +1755,7 @@
       <div class="card-body p-0">
         <div class="table-responsive">
           <table class="table table-hover table-sm mb-0 align-middle">
+            <caption class="visually-hidden">Organisations list</caption>
             <thead class="table-light">
               <tr>
                 <th scope="col" style="width: 2%;" class="text-center">
@@ -1758,37 +1763,37 @@
                          aria-label="Select all organisations" data-on-change="orgsModule.toggleSelectAll">
                 </th>
                 <th scope="col" style="width: 14%; cursor: pointer;" class="fw-semibold" data-action="orgsModule.sortBy" data-args="[&quot;company&quot;]" aria-sort="none">
-                  Company Name
-                  <i class="bi bi-arrow-down-up" aria-hidden="true" text-muted ms-1 small" data-sort-icon="company"></i>
+                  Organisation Name
+                  <i class="bi bi-arrow-down-up text-muted ms-1 small" aria-hidden="true" data-sort-icon="company"></i>
                 </th>
                 <th scope="col" style="width: 8%; cursor: pointer;" data-action="orgsModule.sortBy" data-args="[&quot;sector&quot;]" aria-sort="none">
-                  Sector <i class="bi bi-arrow-down-up" aria-hidden="true" text-muted ms-1 small" data-sort-icon="sector"></i>
+                  Sector <i class="bi bi-arrow-down-up text-muted ms-1 small" aria-hidden="true" data-sort-icon="sector"></i>
                 </th>
                 <th scope="col" style="width: 8%; cursor: pointer;" data-action="orgsModule.sortBy" data-args="[&quot;county&quot;]" aria-sort="none">
-                  Area <i class="bi bi-arrow-down-up" aria-hidden="true" text-muted ms-1 small" data-sort-icon="county"></i>
+                  Area <i class="bi bi-arrow-down-up text-muted ms-1 small" aria-hidden="true" data-sort-icon="county"></i>
                 </th>
                 <th scope="col" style="width: 8%; cursor: pointer;" data-action="orgsModule.sortBy" data-args="[&quot;contact&quot;]" aria-sort="none">
-                  Contact <i class="bi bi-arrow-down-up" aria-hidden="true" text-muted ms-1 small" data-sort-icon="contact"></i>
+                  Contact <i class="bi bi-arrow-down-up text-muted ms-1 small" aria-hidden="true" data-sort-icon="contact"></i>
                 </th>
                 <th scope="col" style="width: 10%;">Email</th>
                 <th scope="col" style="width: 5%; cursor: pointer;" data-action="orgsModule.sortBy" data-args="[&quot;tier&quot;]" aria-sort="none">
-                  Tier <i class="bi bi-arrow-down-up" aria-hidden="true" text-muted ms-1 small" data-sort-icon="tier"></i>
+                  Tier <i class="bi bi-arrow-down-up text-muted ms-1 small" aria-hidden="true" data-sort-icon="tier"></i>
                 </th>
                 <th scope="col" style="width: 10%;">Tags</th>
                 <th scope="col" style="width: 7%; cursor: pointer;" data-action="orgsModule.sortBy" data-args="[&quot;region&quot;]" aria-sort="none">
-                  Region <i class="bi bi-arrow-down-up" aria-hidden="true" text-muted ms-1 small" data-sort-icon="region"></i>
+                  Region <i class="bi bi-arrow-down-up text-muted ms-1 small" aria-hidden="true" data-sort-icon="region"></i>
                 </th>
                 <th scope="col" style="width: 6%; cursor: pointer;" data-action="orgsModule.sortBy" data-args="[&quot;status&quot;]" aria-sort="none">
-                  Status <i class="bi bi-arrow-down-up" aria-hidden="true" text-muted ms-1 small" data-sort-icon="status"></i>
+                  Status <i class="bi bi-arrow-down-up text-muted ms-1 small" aria-hidden="true" data-sort-icon="status"></i>
                 </th>
                 <th scope="col" style="width: 4%; cursor: pointer; text-align: center;" data-action="orgsModule.sortBy" data-args="[&quot;awards&quot;]" aria-sort="none">
-                  <i class="bi bi-trophy" title="Awards Count"></i> <i class="bi bi-arrow-down-up" aria-hidden="true" text-muted ms-1 small" data-sort-icon="awards"></i>
+                  <i class="bi bi-trophy" title="Awards Count"></i> <i class="bi bi-arrow-down-up text-muted ms-1 small" aria-hidden="true" data-sort-icon="awards"></i>
                 </th>
                 <th scope="col" style="width: 6%; display: none;" id="phoneColHeader" data-action="orgsModule.sortBy" data-args="[&quot;phone&quot;]" class="cursor-pointer" aria-sort="none">
-                  Phone <i class="bi bi-arrow-down-up" aria-hidden="true" text-muted ms-1 small" data-sort-icon="phone"></i>
+                  Phone <i class="bi bi-arrow-down-up text-muted ms-1 small" aria-hidden="true" data-sort-icon="phone"></i>
                 </th>
                 <th scope="col" style="width: 6%; cursor: pointer; text-align: center;" data-action="orgsModule.sortBy" data-args="[&quot;updated&quot;]" aria-sort="none">
-                  Updated <i class="bi bi-arrow-down-up" aria-hidden="true" text-muted ms-1 small" data-sort-icon="updated"></i>
+                  Updated <i class="bi bi-arrow-down-up text-muted ms-1 small" aria-hidden="true" data-sort-icon="updated"></i>
                 </th>
                 <th scope="col" style="width: 6%; text-align: center;" title="Last Contacted">
                   <i class="bi bi-envelope-check" title="Last Contacted"></i>
@@ -1992,7 +1997,7 @@
               <div class="alert alert-info">
                 <i class="bi bi-info-circle me-2"></i>
                 <strong>CSV Format:</strong> Your file should have headers in the first row.
-                Supported columns: Company Name, Sector, Contact Name, Email, Phone, Website, Address
+                Supported columns: Organisation Name, Sector, Contact Name, Email, Phone, Website, Address
               </div>
               <div class="d-flex gap-2 mb-3">
                 <button class="btn btn-sm btn-outline-secondary" id="importMergeModeBtn" data-action="orgsModule.toggleImportMergeMode">
@@ -2292,6 +2297,7 @@
             
             <div class="table-responsive">
               <table class="table table-hover table-striped align-middle">
+                <caption class="visually-hidden">Winners list</caption>
                 <thead>
                   <tr>
                     <th scope="col" style="width:35px"><input type="checkbox" class="form-check-input" id="selectAllWinners" data-on-change="winnersModule.toggleSelectAllWinners" aria-label="Select all winners"></th>
@@ -2350,7 +2356,7 @@
               <div class="stat-card stat-card-clickable" data-stat-filter="clear:entriesStatusFilter" title="Show all entries">
                 <i class="bi bi-file-earmark-text stat-card-icon text-primary"></i>
                 <h6>Total Entries</h6>
-                <div class="stat-value" id="totalEntriesCount">0</div>
+                <div class="stat-value" id="totalEntriesCount"><span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></div>
                 <small class="text-muted">All submissions</small>
                 <div class="stat-card-hover-indicator"><i class="bi bi-arrow-right-circle"></i></div>
               </div>
@@ -2385,7 +2391,7 @@
           </div>
 
           <!-- Filters and Actions -->
-          <div class="filters-section mb-3">
+          <div class="filters-section filter-bar-sticky mb-3">
             <div class="d-flex align-items-center justify-content-between mb-2">
               <div class="d-flex align-items-center gap-3">
                 <span class="filter-bar-label"><i class="bi bi-funnel me-1"></i>Filter Entries <span id="entriesFilterCount" class="badge bg-primary ms-1 d-none"></span></span>
@@ -2479,6 +2485,7 @@
             </div>
             <div class="table-responsive">
               <table class="table table-hover">
+                <caption class="visually-hidden">Entries list</caption>
                 <thead>
                   <tr>
                     <th scope="col" style="width: 40px;">
@@ -2496,6 +2503,14 @@
                   </tr>
                 </thead>
                 <tbody id="entriesTableBody">
+                  <tr id="entriesEmptyRow" class="d-none">
+                    <td colspan="10" class="text-center py-5 text-muted">
+                      <i class="bi bi-inbox display-6 d-block mb-2 opacity-50" aria-hidden="true"></i>
+                      <p class="mb-1">No entries yet.</p>
+                      <a href="#" class="small" data-action="dashboardModule.navigateToSection" data-id="awards">Set up awards</a> to start receiving entries.
+                    </td>
+                  </tr>
+                </tbody>
                   <tr>
                     <td colspan="10" class="text-center py-5">
                       <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
@@ -2542,10 +2557,23 @@
           <!-- Media Gallery Content -->
           <div id="mediaGalleryContent">
 
+            <!-- Loading state shown until JS renders gallery -->
+            <div id="mediaGalleryLoadingState" class="text-center py-5 text-muted">
+              <div class="spinner-border spinner-border-sm mb-2" role="status"><span class="visually-hidden">Loading…</span></div>
+              <p class="small mb-0">Loading media gallery…</p>
+            </div>
+
             <!-- Breadcrumb Navigation -->
             <nav aria-label="breadcrumb" id="mediaGalleryBreadcrumb" class="d-none mb-3">
               <ol class="breadcrumb mb-0 small" id="mediaGalleryBreadcrumbList"></ol>
             </nav>
+
+            <!-- Empty state shown when gallery has no content -->
+            <div id="mediaGalleryEmptyState" class="d-none text-center py-5 text-muted">
+              <i class="bi bi-images display-4 d-block mb-3 opacity-50" aria-hidden="true"></i>
+              <h6 class="mb-1">No media yet</h6>
+              <p class="small mb-0">Upload photos or videos for your events and winners.</p>
+            </div>
 
             <!-- Events List View (default) -->
             <div id="eventsListView" style="display: block;">
@@ -2854,10 +2882,10 @@
               <p class="text-muted small mb-2">Shared tags (applied to all videos):</p>
               <div class="row">
                 <div class="col-md-6 mb-2">
-                  <label class="form-label small">Company</label>
+                  <label class="form-label small">Organisation</label>
                   <div class="input-group input-group-sm">
                     <select class="form-select" id="bulkVideoTagInput">
-                      <option value="">Select company...</option>
+                      <option value="">Select organisation...</option>
                     </select>
                     <button class="btn btn-outline-secondary" type="button" data-action="mediaGalleryModule.addVideoTag" data-args="[&quot;bulk&quot;]"><i class="bi bi-plus"></i></button>
                   </div>
@@ -2993,10 +3021,10 @@
                 <i class="bi bi-info-circle me-2"></i>Download all photos and video links for a specific company - ready for social media or PR packages.
               </div>
               <div class="mb-3">
-                <label class="form-label">Select Company</label>
+                <label class="form-label">Select Organisation</label>
                 <div class="input-group">
                   <select class="form-select" id="exportOrgSelect">
-                    <option value="">Select a company...</option>
+                    <option value="">Select an organisation...</option>
                   </select>
                   <button class="btn btn-outline-primary" data-action="mediaGalleryModule.previewExport">
                     <i class="bi bi-search me-1"></i>Preview
@@ -3343,6 +3371,7 @@
             </div>
             <div class="table-responsive">
               <table class="table table-hover">
+                <caption class="visually-hidden">Events list</caption>
                 <thead>
                   <tr>
                     <th scope="col" style="width:35px"><input type="checkbox" class="form-check-input" id="selectAllEvents" data-on-change="eventsModule.toggleSelectAll" aria-label="Select all events"></th>
@@ -3412,7 +3441,7 @@
           </div>
 
           <!-- Toolbar: Year Filter + Print + Freshness -->
-          <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+          <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2 filter-bar-sticky">
             <div class="d-flex gap-2 align-items-center flex-wrap">
               <label class="form-label mb-0 small fw-semibold text-muted">Year:</label>
               <select id="reportsYearFilter" class="form-select form-select-sm" style="width:120px;" data-on-change="reportsAnalytics.filterByYear">
@@ -3438,7 +3467,7 @@
               <div class="stat-card">
                 <i class="bi bi-trophy stat-card-icon text-primary"></i>
                 <h6>Total Awards</h6>
-                <div class="stat-value" id="reportsTotal">0</div>
+                <div class="stat-value" id="reportsTotal"><span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></div>
               </div>
             </div>
             <div class="col-md-3">
@@ -3715,49 +3744,49 @@
           <script>if(localStorage.getItem('mktWorkflowDismissed')==='1'){var el=document.getElementById('marketingGettingStarted');if(el)el.style.display='none';}</script>
 
           <!-- Marketing Sub-Navigation (order matches Getting Started workflow) -->
-          <ul class="nav nav-pills mb-4" id="marketingSubTabs" role="tablist">
+          <ul class="nav nav-tabs mb-4" id="marketingSubTabs" role="tablist">
             <li class="nav-item" role="presentation">
-              <button class="nav-link active" id="branding-subtab" data-bs-toggle="pill" data-bs-target="#branding-overview-content" type="button" role="tab">
+              <button class="nav-link active" id="branding-subtab" data-bs-toggle="tab" data-bs-target="#branding-overview-content" type="button" role="tab">
                 <i class="bi bi-palette me-2"></i>Branding
               </button>
             </li>
             <li class="nav-item" role="presentation">
-              <button class="nav-link" id="placeholders-subtab" data-bs-toggle="pill" data-bs-target="#placeholders-content" type="button" role="tab">
+              <button class="nav-link" id="placeholders-subtab" data-bs-toggle="tab" data-bs-target="#placeholders-content" type="button" role="tab">
                 <i class="bi bi-braces me-2"></i>Email Placeholders
               </button>
             </li>
             <li class="nav-item" role="presentation">
-              <button class="nav-link" id="email-templates-subtab" data-bs-toggle="pill" data-bs-target="#email-templates-content" type="button" role="tab">
+              <button class="nav-link" id="email-templates-subtab" data-bs-toggle="tab" data-bs-target="#email-templates-content" type="button" role="tab">
                 <i class="bi bi-envelope me-2"></i>Email Templates
               </button>
             </li>
             <li class="nav-item" role="presentation">
-              <button class="nav-link" id="email-builder-subtab" data-bs-toggle="pill" data-bs-target="#email-builder-content" type="button" role="tab">
+              <button class="nav-link" id="email-builder-subtab" data-bs-toggle="tab" data-bs-target="#email-builder-content" type="button" role="tab">
                 <i class="bi bi-grid-3x3-gap me-2"></i>Email Builder
               </button>
             </li>
             <li class="nav-item" role="presentation">
-              <button class="nav-link" id="email-lists-subtab" data-bs-toggle="pill" data-bs-target="#email-lists-content" type="button" role="tab">
+              <button class="nav-link" id="email-lists-subtab" data-bs-toggle="tab" data-bs-target="#email-lists-content" type="button" role="tab">
                 <i class="bi bi-list-ul me-2"></i>Email Lists
               </button>
             </li>
             <li class="nav-item" role="presentation">
-              <button class="nav-link" id="email-sequences-subtab" data-bs-toggle="pill" data-bs-target="#email-sequences-content" type="button" role="tab">
+              <button class="nav-link" id="email-sequences-subtab" data-bs-toggle="tab" data-bs-target="#email-sequences-content" type="button" role="tab">
                 <i class="bi bi-envelope-arrow-up me-2"></i>Email Sequences
               </button>
             </li>
             <li class="nav-item" role="presentation">
-              <button class="nav-link" id="banners-subtab" data-bs-toggle="pill" data-bs-target="#banners-content" type="button" role="tab">
+              <button class="nav-link" id="banners-subtab" data-bs-toggle="tab" data-bs-target="#banners-content" type="button" role="tab">
                 <i class="bi bi-file-image me-2"></i>Banners
               </button>
             </li>
             <li class="nav-item" role="presentation">
-              <button class="nav-link" id="social-subtab" data-bs-toggle="pill" data-bs-target="#social-content" type="button" role="tab">
+              <button class="nav-link" id="social-subtab" data-bs-toggle="tab" data-bs-target="#social-content" type="button" role="tab">
                 <i class="bi bi-share me-2"></i>Social Media
               </button>
             </li>
             <li class="nav-item" role="presentation">
-              <button class="nav-link" id="content-calendar-subtab" data-bs-toggle="pill" data-bs-target="#content-calendar-content" type="button" role="tab" data-on-show="marketingModule.loadContentCalendar">
+              <button class="nav-link" id="content-calendar-subtab" data-bs-toggle="tab" data-bs-target="#content-calendar-content" type="button" role="tab" data-on-show="marketingModule.loadContentCalendar">
                 <i class="bi bi-calendar3 me-2"></i>Content Calendar
               </button>
             </li>
@@ -3891,7 +3920,7 @@
                             Company/Nominee <span class="text-danger">*</span>
                           </label>
                           <select class="form-select" id="smCompanySelect" data-on-change="socialMediaModule.updatePostPreview">
-                            <option value="">Select company...</option>
+                            <option value="">Select organisation...</option>
                           </select>
                         </div>
                         <div class="col-md-6">
@@ -4082,7 +4111,7 @@
                           <label for="smScheduleDate" class="form-label">
                             <i class="bi bi-calendar3 me-1" aria-hidden="true"></i>Schedule Date
                           </label>
-                          <input type="date" class="form-control" id="smScheduleDate">
+                          <input type="date" class="form-control" id="smScheduleDate" placeholder="DD/MM/YYYY">
                           <small class="text-muted">Leave empty to post immediately</small>
                         </div>
                         <div class="col-md-6">
@@ -4195,7 +4224,7 @@
                     <div class="card-body">
 
                       <!-- Platform Tabs -->
-                      <ul class="nav nav-pills mb-3" role="tablist">
+                      <ul class="nav nav-tabs mb-3" role="tablist">
                         <li class="nav-item" role="presentation">
                           <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#previewTwitter">
                             <i class="bi bi-twitter-x"></i>
@@ -4528,12 +4557,12 @@
                       <h6 class="mb-3"><i class="bi bi-layout-text-window-reverse me-2"></i>Email Template</h6>
                       <select class="form-select" id="builderTemplateType" data-on-change="emailBuilder.loadTemplate">
                         <option value="">Blank Canvas</option>
-                        <option value="paste-html">📋 I Have HTML</option>
-                        <option value="winner">🏆 Winner Announcement</option>
-                        <option value="nominee">⭐ Nominee Notification</option>
-                        <option value="event-countdown">⏰ Event Countdown</option>
-                        <option value="event-tickets">🎟️ Book Event Tickets</option>
-                        <option value="general">📢 General Announcement</option>
+                        <option value="paste-html">I Have HTML</option>
+                        <option value="winner">Winner Announcement</option>
+                        <option value="nominee">Nominee Notification</option>
+                        <option value="event-countdown">Event Countdown</option>
+                        <option value="event-tickets">Book Event Tickets</option>
+                        <option value="general">General Announcement</option>
                         <option value="client-promotion">✨ Client Promotion</option>
                       </select>
                       <small class="text-muted d-block mt-2">Choose a template to auto-populate blocks</small>
@@ -4781,7 +4810,7 @@
                       <div id="scheduleOptions" class="d-none">
                         <div class="mb-2">
                           <label class="form-label small">Send Date</label>
-                          <input type="date" class="form-control form-control-sm" id="builderScheduleDate">
+                          <input type="date" class="form-control form-control-sm" id="builderScheduleDate" placeholder="DD/MM/YYYY">
                         </div>
                         <div class="mb-3">
                           <label class="form-label small">Send Time</label>
@@ -4800,7 +4829,7 @@
                         <button class="btn btn-primary btn-sm d-none" id="btnScheduleCampaign" data-action="emailBuilder.scheduleCampaign">
                           <i class="bi bi-clock-fill me-1"></i>Schedule Campaign
                         </button>
-                        <button class="btn btn-info btn-sm d-none" id="btnABCampaign" data-action="emailBuilder.sendABCampaign">
+                        <button class="btn btn-primary btn-sm d-none" id="btnABCampaign" data-action="emailBuilder.sendABCampaign">
                           <i class="bi bi-diagram-2 me-1"></i>Send A/B Test
                         </button>
                       </div>
@@ -5074,29 +5103,25 @@
           </div>
 
           <!-- Sub-navigation -->
-          <ul class="nav nav-pills mb-4" id="paymentsSubTabs" role="tablist">
+          <ul class="nav nav-tabs mb-4" id="paymentsSubTabs" role="tablist">
             <li class="nav-item" role="presentation">
-              <button class="nav-link active" id="invoices-subtab" data-bs-toggle="pill" data-bs-target="#invoices-content" type="button" role="tab">
+              <button class="nav-link active" id="invoices-subtab" data-bs-toggle="tab" data-bs-target="#invoices-content" type="button" role="tab">
                 <i class="bi bi-file-earmark-text me-2"></i>Invoices
-                <span class="d-block small fw-normal opacity-75" style="font-size:0.7rem;">Bills issued to organisations</span>
               </button>
             </li>
             <li class="nav-item" role="presentation">
-              <button class="nav-link" id="payments-list-subtab" data-bs-toggle="pill" data-bs-target="#payments-list-content" type="button" role="tab">
+              <button class="nav-link" id="payments-list-subtab" data-bs-toggle="tab" data-bs-target="#payments-list-content" type="button" role="tab">
                 <i class="bi bi-cash-coin me-2"></i>Payments
-                <span class="d-block small fw-normal opacity-75" style="font-size:0.7rem;">Payments received against invoices</span>
               </button>
             </li>
             <li class="nav-item" role="presentation">
-              <button class="nav-link" id="financial-reports-subtab" data-bs-toggle="pill" data-bs-target="#financial-reports-content" type="button" role="tab">
+              <button class="nav-link" id="financial-reports-subtab" data-bs-toggle="tab" data-bs-target="#financial-reports-content" type="button" role="tab">
                 <i class="bi bi-graph-up me-2"></i>Financial Reports
-                <span class="d-block small fw-normal opacity-75" style="font-size:0.7rem;">Revenue and outstanding analysis</span>
               </button>
             </li>
             <li class="nav-item d-none" role="presentation">
-              <button class="nav-link" id="accounting-subtab" data-bs-toggle="pill" data-bs-target="#accounting-content" type="button" role="tab">
+              <button class="nav-link" id="accounting-subtab" data-bs-toggle="tab" data-bs-target="#accounting-content" type="button" role="tab">
                 <i class="bi bi-currency-pound me-2"></i>Accounting Integration
-                <span class="d-block small fw-normal opacity-75" style="font-size:0.7rem;">Connect your accounting software</span>
               </button>
             </li>
           </ul>
@@ -5119,37 +5144,41 @@
               <!-- Quick Stats -->
               <div class="row g-3 mb-4">
                 <div class="col-md-3">
-                  <div class="content-card text-center" data-stat-filter="clear:invoiceStatusFilter" title="Show all invoices">
-                    <i class="bi bi-file-earmark-text text-primary fs-1 mb-2"></i>
-                    <div class="fs-2 fw-bold" id="totalInvoicesCount">0</div>
-                    <div class="text-muted small">Total Invoices</div>
+                  <div class="stat-card stat-card-clickable" data-stat-filter="clear:invoiceStatusFilter" title="Show all invoices">
+                    <i class="bi bi-file-earmark-text stat-card-icon text-primary"></i>
+                    <h6>Total Invoices</h6>
+                    <div class="stat-value" id="totalInvoicesCount"><span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></div>
+                    <div class="stat-card-hover-indicator"><i class="bi bi-arrow-right-circle"></i></div>
                   </div>
                 </div>
                 <div class="col-md-3">
-                  <div class="content-card text-center" data-stat-filter="invoiceStatusFilter:paid" title="Filter to paid invoices">
-                    <i class="bi bi-check-circle text-success fs-1 mb-2"></i>
-                    <div class="fs-2 fw-bold" id="paidInvoicesCount">0</div>
-                    <div class="text-muted small">Paid Invoices</div>
+                  <div class="stat-card stat-card-clickable" data-stat-filter="invoiceStatusFilter:paid" title="Filter to paid invoices">
+                    <i class="bi bi-check-circle stat-card-icon text-success"></i>
+                    <h6>Paid Invoices</h6>
+                    <div class="stat-value text-success" id="paidInvoicesCount"><span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></div>
+                    <div class="stat-card-hover-indicator"><i class="bi bi-arrow-right-circle"></i></div>
                   </div>
                 </div>
                 <div class="col-md-3">
-                  <div class="content-card text-center" data-stat-filter="invoiceStatusFilter:overdue" title="Filter to overdue invoices">
-                    <i class="bi bi-exclamation-triangle text-warning fs-1 mb-2"></i>
-                    <div class="fs-2 fw-bold" id="overdueInvoicesCount">0</div>
-                    <div class="text-muted small">Overdue Invoices</div>
+                  <div class="stat-card stat-card-clickable" data-stat-filter="invoiceStatusFilter:overdue" title="Filter to overdue invoices">
+                    <i class="bi bi-exclamation-triangle stat-card-icon text-warning"></i>
+                    <h6>Overdue Invoices</h6>
+                    <div class="stat-value text-warning" id="overdueInvoicesCount"><span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></div>
+                    <div class="stat-card-hover-indicator"><i class="bi bi-arrow-right-circle"></i></div>
                   </div>
                 </div>
                 <div class="col-md-3">
-                  <div class="content-card text-center" data-stat-filter="invoiceStatusFilter:partially_paid" title="Filter to invoices with outstanding balance">
-                    <i class="bi bi-currency-pound text-info fs-1 mb-2"></i>
-                    <div class="fs-2 fw-bold" id="totalOutstandingAmount">£0</div>
-                    <div class="text-muted small">Outstanding</div>
+                  <div class="stat-card stat-card-clickable" data-stat-filter="invoiceStatusFilter:partially_paid" title="Filter to invoices with outstanding balance">
+                    <i class="bi bi-currency-pound stat-card-icon text-info"></i>
+                    <h6>Outstanding</h6>
+                    <div class="stat-value text-info" id="totalOutstandingAmount">£<span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></div>
+                    <div class="stat-card-hover-indicator"><i class="bi bi-arrow-right-circle"></i></div>
                   </div>
                 </div>
               </div>
 
               <!-- Filters & Actions -->
-              <div class="content-card mb-4">
+              <div class="content-card mb-4 filter-bar-sticky">
                 <div class="row g-3 align-items-end">
                   <div class="col-md-3">
                     <label class="form-label small fw-bold">Search</label>
@@ -5208,6 +5237,7 @@
               <div class="table-container">
                 <div class="table-responsive">
                   <table class="table table-hover table-striped align-middle">
+                    <caption class="visually-hidden">Invoices list</caption>
                     <thead class="table-light">
                       <tr>
                         <th scope="col" class="u-pointer" data-action="paymentsModule.sortInvoices" data-args="[&quot;invoice_number&quot;]" aria-sort="none">Invoice #</th>
@@ -5242,24 +5272,27 @@
               <!-- Quick Stats -->
               <div class="row g-3 mb-4">
                 <div class="col-md-4">
-                  <div class="content-card text-center" data-stat-filter="clear:paymentStatusFilter" title="Show all payments">
-                    <i class="bi bi-cash-coin text-success fs-1 mb-2"></i>
-                    <div class="fs-2 fw-bold" id="totalPaymentsCount">0</div>
-                    <div class="text-muted small">Total Payments</div>
+                  <div class="stat-card stat-card-clickable" data-stat-filter="clear:paymentStatusFilter" title="Show all payments">
+                    <i class="bi bi-cash-coin stat-card-icon text-success"></i>
+                    <h6>Total Payments</h6>
+                    <div class="stat-value text-success" id="totalPaymentsCount"><span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></div>
+                    <div class="stat-card-hover-indicator"><i class="bi bi-arrow-right-circle"></i></div>
                   </div>
                 </div>
                 <div class="col-md-4">
-                  <div class="content-card text-center" data-stat-filter="paymentStatusFilter:completed" title="Filter to completed payments">
-                    <i class="bi bi-currency-pound text-primary fs-1 mb-2"></i>
-                    <div class="fs-2 fw-bold" id="totalPaymentsAmount">£0</div>
-                    <div class="text-muted small">Total Received</div>
+                  <div class="stat-card stat-card-clickable" data-stat-filter="paymentStatusFilter:completed" title="Filter to completed payments">
+                    <i class="bi bi-currency-pound stat-card-icon text-primary"></i>
+                    <h6>Total Received</h6>
+                    <div class="stat-value" id="totalPaymentsAmount"><span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></div>
+                    <div class="stat-card-hover-indicator"><i class="bi bi-arrow-right-circle"></i></div>
                   </div>
                 </div>
                 <div class="col-md-4">
-                  <div class="content-card text-center" data-stat-filter="callback:paymentsModule.filterThisMonth" title="Filter to this month's payments">
-                    <i class="bi bi-calendar-month text-info fs-1 mb-2"></i>
-                    <div class="fs-2 fw-bold" id="monthlyPaymentsAmount">£0</div>
-                    <div class="text-muted small">This Month</div>
+                  <div class="stat-card stat-card-clickable" data-stat-filter="callback:paymentsModule.filterThisMonth" title="Filter to this month's payments">
+                    <i class="bi bi-calendar-month stat-card-icon text-info"></i>
+                    <h6>This Month</h6>
+                    <div class="stat-value text-info" id="monthlyPaymentsAmount"><span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></div>
+                    <div class="stat-card-hover-indicator"><i class="bi bi-arrow-right-circle"></i></div>
                   </div>
                 </div>
               </div>
@@ -5374,11 +5407,11 @@
                   </div>
                   <div class="col-md-3">
                     <label class="form-label small fw-bold">Start Date</label>
-                    <input type="date" class="form-control" id="reportStartDate">
+                    <input type="date" class="form-control" id="reportStartDate" placeholder="DD/MM/YYYY">
                   </div>
                   <div class="col-md-3">
                     <label class="form-label small fw-bold">End Date</label>
-                    <input type="date" class="form-control" id="reportEndDate">
+                    <input type="date" class="form-control" id="reportEndDate" placeholder="DD/MM/YYYY">
                   </div>
                   <div class="col-md-3 d-flex align-items-end">
                     <button class="btn btn-primary w-100" data-action="paymentsModule.generateReport">
@@ -5434,34 +5467,34 @@
           </div>
 
           <!-- Sub-navigation -->
-          <ul class="nav nav-pills mb-4" id="crmSubTabs" role="tablist">
+          <ul class="nav nav-tabs mb-4" id="crmSubTabs" role="tablist">
             <li class="nav-item" role="presentation">
-              <button class="nav-link active" id="communications-subtab" data-bs-toggle="pill" data-bs-target="#communications-content" type="button" role="tab">
+              <button class="nav-link active" id="communications-subtab" data-bs-toggle="tab" data-bs-target="#communications-content" type="button" role="tab">
                 <i class="bi bi-chat-dots me-2"></i>Communications
               </button>
             </li>
             <li class="nav-item" role="presentation">
-              <button class="nav-link" id="deals-subtab" data-bs-toggle="pill" data-bs-target="#deals-content" type="button" role="tab">
+              <button class="nav-link" id="deals-subtab" data-bs-toggle="tab" data-bs-target="#deals-content" type="button" role="tab">
                 <i class="bi bi-graph-up-arrow me-2"></i>Deal Pipeline
               </button>
             </li>
             <li class="nav-item" role="presentation">
-              <button class="nav-link" id="meetings-subtab" data-bs-toggle="pill" data-bs-target="#meetings-content" type="button" role="tab">
+              <button class="nav-link" id="meetings-subtab" data-bs-toggle="tab" data-bs-target="#meetings-content" type="button" role="tab">
                 <i class="bi bi-calendar3 me-2"></i>Meetings
               </button>
             </li>
             <li class="nav-item" role="presentation">
-              <button class="nav-link" id="segments-subtab" data-bs-toggle="pill" data-bs-target="#segments-content" type="button" role="tab">
+              <button class="nav-link" id="segments-subtab" data-bs-toggle="tab" data-bs-target="#segments-content" type="button" role="tab">
                 <i class="bi bi-tags me-2"></i>Segments
               </button>
             </li>
             <li class="nav-item" role="presentation">
-              <button class="nav-link" id="smart-segments-subtab" data-bs-toggle="pill" data-bs-target="#smart-segments-content" type="button" role="tab" title="Smart Segments are rule-based auto-segments that update dynamically as organisation data changes">
+              <button class="nav-link" id="smart-segments-subtab" data-bs-toggle="tab" data-bs-target="#smart-segments-content" type="button" role="tab" title="Smart Segments are rule-based auto-segments that update dynamically as organisation data changes">
                 <i class="bi bi-funnel me-2"></i>Smart Segments<span id="smartSegmentsBadge" class="badge bg-secondary ms-2" style="display:none"></span>
               </button>
             </li>
             <li class="nav-item" role="presentation">
-              <button class="nav-link" id="my-tasks-subtab" data-bs-toggle="pill" data-bs-target="#my-tasks-content" type="button" role="tab" title="Tasks assigned to you personally — shared across the team">
+              <button class="nav-link" id="my-tasks-subtab" data-bs-toggle="tab" data-bs-target="#my-tasks-content" type="button" role="tab" title="Tasks assigned to you personally — shared across the team">
                 <i class="bi bi-check2-square me-2"></i>Tasks<span id="myTasksBadge" class="badge bg-danger ms-2" style="display:none"></span>
               </button>
             </li>
@@ -5509,7 +5542,7 @@
                     </select>
                   </div>
                   <div class="col-md-3">
-                    <button class="btn btn-success btn-sm w-100" data-action="crmModule.logCommunication">
+                    <button class="btn btn-primary btn-sm w-100" data-action="crmModule.logCommunication">
                       <i class="bi bi-plus-circle me-1"></i>Log Communication
                     </button>
                   </div>
@@ -5524,7 +5557,7 @@
                       <tr>
                         <th scope="col">Date</th>
                         <th scope="col">Type</th>
-                        <th scope="col">Company</th>
+                        <th scope="col">Organisation</th>
                         <th scope="col">Contact</th>
                         <th scope="col">Subject</th>
                         <th scope="col">Regarding</th>
@@ -5648,7 +5681,7 @@
                     <thead class="table-light">
                       <tr>
                         <th scope="col">Deal Name</th>
-                        <th scope="col">Company</th>
+                        <th scope="col">Organisation</th>
                         <th scope="col">Type</th>
                         <th scope="col">Stage</th>
                         <th scope="col">Value</th>
@@ -5708,7 +5741,7 @@
                       <tr>
                         <th scope="col">Date</th>
                         <th scope="col">Meeting Title</th>
-                        <th scope="col">Company</th>
+                        <th scope="col">Organisation</th>
                         <th scope="col">Type</th>
                         <th scope="col">Duration</th>
                         <th scope="col">Attendees</th>
@@ -5741,7 +5774,7 @@
                     </div>
                     <div class="card-body">
                       <div class="fs-2 fw-bold text-success" id="segmentPastWinnersCount">0</div>
-                      <p class="text-muted small mb-0">Companies that have won awards</p>
+                      <p class="text-muted small mb-0">Organisations that have won awards</p>
                     </div>
                   </div>
                 </div>
@@ -5890,33 +5923,33 @@
           </div>
 
           <!-- Settings Sub-Navigation -->
-          <ul class="nav nav-pills mb-4" id="settingsSubTabs" role="tablist">
+          <ul class="nav nav-tabs mb-4" id="settingsSubTabs" role="tablist">
             <li class="nav-item" role="presentation">
-              <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#settings-general" type="button" role="tab" title="Branding, logo, and display preferences">
+              <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#settings-general" type="button" role="tab" title="Branding, logo, and display preferences">
                 <i class="bi bi-palette me-2"></i>General
                 <span class="d-block small fw-normal opacity-75" style="font-size:0.65rem;margin-top:1px;">Branding &amp; display</span>
               </button>
             </li>
             <li class="nav-item" role="presentation">
-              <button class="nav-link" data-bs-toggle="pill" data-bs-target="#settings-seasons" type="button" role="tab" title="Manage award seasons and geographic areas">
+              <button class="nav-link" data-bs-toggle="tab" data-bs-target="#settings-seasons" type="button" role="tab" title="Manage award seasons and geographic areas">
                 <i class="bi bi-calendar-event me-2"></i>Seasons &amp; Areas
                 <span class="d-block small fw-normal opacity-75" style="font-size:0.65rem;margin-top:1px;">Award periods &amp; regions</span>
               </button>
             </li>
             <li class="nav-item" role="presentation">
-              <button class="nav-link" data-bs-toggle="pill" data-bs-target="#settings-security" type="button" role="tab" title="Two-factor auth, GDPR, and user roles">
+              <button class="nav-link" data-bs-toggle="tab" data-bs-target="#settings-security" type="button" role="tab" title="Two-factor auth, GDPR, and user roles">
                 <i class="bi bi-shield-lock me-2"></i>Security
                 <span class="d-block small fw-normal opacity-75" style="font-size:0.65rem;margin-top:1px;">2FA, GDPR &amp; roles</span>
               </button>
             </li>
             <li class="nav-item" role="presentation">
-              <button class="nav-link" data-bs-toggle="pill" data-bs-target="#settings-integrations" type="button" role="tab" title="Webhooks and third-party service connections">
+              <button class="nav-link" data-bs-toggle="tab" data-bs-target="#settings-integrations" type="button" role="tab" title="Webhooks and third-party service connections">
                 <i class="bi bi-broadcast me-2"></i>Integrations
                 <span class="d-block small fw-normal opacity-75" style="font-size:0.65rem;margin-top:1px;">Webhooks &amp; APIs</span>
               </button>
             </li>
             <li class="nav-item" role="presentation">
-              <button class="nav-link" data-bs-toggle="pill" data-bs-target="#settings-data" type="button" role="tab" title="Export data, backups, and audit log">
+              <button class="nav-link" data-bs-toggle="tab" data-bs-target="#settings-data" type="button" role="tab" title="Export data, backups, and audit log">
                 <i class="bi bi-cloud-download me-2"></i>Data &amp; Backup
                 <span class="d-block small fw-normal opacity-75" style="font-size:0.65rem;margin-top:1px;">Export, backup &amp; audit</span>
               </button>
@@ -6462,7 +6495,14 @@
           <div class="row g-2">
             <!-- Main Chart -->
             <div class="col-lg-9" id="btcChartCol">
-              <div id="tradingview_chart" style="height: 700px; width: 100%; position: relative; overflow: hidden;"></div>
+              <div id="tradingview_chart" style="height: 700px; width: 100%; position: relative; overflow: hidden;">
+                <div id="btcLoadingState" class="d-flex align-items-center justify-content-center h-100">
+                  <div class="text-center text-muted">
+                    <div class="spinner-border mb-3" role="status"><span class="visually-hidden">Loading…</span></div>
+                    <p class="mb-0">Loading market data…</p>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <!-- Watchlist Sidebar -->
@@ -6509,7 +6549,7 @@
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title" id="companyProfileModalLabel">
-            <i class="bi bi-building me-2"></i>Company Profile
+            <i class="bi bi-building me-2"></i>Organisation Profile
           </h5>
           <div class="d-flex gap-2">
             <button type="button" class="btn btn-outline-secondary btn-sm" id="printProfileBtn" title="Print / PDF Profile">
@@ -6518,7 +6558,7 @@
             <button type="button" class="btn btn-primary btn-sm d-none" id="editOrgBtn">
               <i class="bi bi-pencil me-1"></i>Edit
             </button>
-            <button type="button" class="btn btn-success btn-sm d-none" id="saveOrgBtn">
+            <button type="button" class="btn btn-primary btn-sm d-none" id="saveOrgBtn">
               <i class="bi bi-check-lg me-1"></i>Save
             </button>
             <button type="button" class="btn btn-secondary btn-sm d-none" id="cancelEditOrgBtn">
@@ -6567,7 +6607,7 @@
   <!-- Season Create/Edit Modal -->
   <!-- Webhook Form Modal -->
   <div class="modal fade" id="webhookFormModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header bg-primary text-white">
           <h5 class="modal-title" id="webhookFormModalTitle">
@@ -6624,7 +6664,7 @@
   </div>
 
   <div class="modal fade" id="seasonFormModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header bg-info text-white">
           <h5 class="modal-title" id="seasonFormModalTitle">
@@ -6655,39 +6695,39 @@
               <div class="col-12"><hr class="my-1"><small class="text-muted fw-semibold">Entries (CTA)</small></div>
               <div class="col-md-6">
                 <label for="seasonFormEntryOpen" class="form-label">Entry Opens</label>
-                <input type="date" class="form-control" id="seasonFormEntryOpen">
+                <input type="date" class="form-control" id="seasonFormEntryOpen" placeholder="DD/MM/YYYY">
               </div>
               <div class="col-md-6">
                 <label for="seasonFormEntryClose" class="form-label">Entry Closes</label>
-                <input type="date" class="form-control" id="seasonFormEntryClose">
+                <input type="date" class="form-control" id="seasonFormEntryClose" placeholder="DD/MM/YYYY">
               </div>
               <div class="col-12"><hr class="my-1"><small class="text-muted fw-semibold">Nominees Announced</small></div>
               <div class="col-md-6">
                 <label for="seasonFormNomineesAnnouncement" class="form-label">Nominees Announcement Date</label>
-                <input type="date" class="form-control" id="seasonFormNomineesAnnouncement">
+                <input type="date" class="form-control" id="seasonFormNomineesAnnouncement" placeholder="DD/MM/YYYY">
               </div>
               <div class="col-12"><hr class="my-1"><small class="text-muted fw-semibold">Judging Period</small></div>
               <div class="col-md-6">
                 <label for="seasonFormJudgingOpen" class="form-label">Judging Opens</label>
-                <input type="date" class="form-control" id="seasonFormJudgingOpen">
+                <input type="date" class="form-control" id="seasonFormJudgingOpen" placeholder="DD/MM/YYYY">
               </div>
               <div class="col-md-6">
                 <label for="seasonFormJudgingClose" class="form-label">Judging Closes</label>
-                <input type="date" class="form-control" id="seasonFormJudgingClose">
+                <input type="date" class="form-control" id="seasonFormJudgingClose" placeholder="DD/MM/YYYY">
               </div>
               <div class="col-12"><hr class="my-1"><small class="text-muted fw-semibold">Voting Period</small></div>
               <div class="col-md-6">
                 <label for="seasonFormVotingOpen" class="form-label">Voting Opens</label>
-                <input type="date" class="form-control" id="seasonFormVotingOpen">
+                <input type="date" class="form-control" id="seasonFormVotingOpen" placeholder="DD/MM/YYYY">
               </div>
               <div class="col-md-6">
                 <label for="seasonFormVotingClose" class="form-label">Voting Closes</label>
-                <input type="date" class="form-control" id="seasonFormVotingClose">
+                <input type="date" class="form-control" id="seasonFormVotingClose" placeholder="DD/MM/YYYY">
               </div>
               <div class="col-12"><hr class="my-1"><small class="text-muted fw-semibold">Winners Announced</small></div>
               <div class="col-md-6">
                 <label for="seasonFormWinnersAnnouncement" class="form-label">Winners Announcement Date</label>
-                <input type="date" class="form-control" id="seasonFormWinnersAnnouncement">
+                <input type="date" class="form-control" id="seasonFormWinnersAnnouncement" placeholder="DD/MM/YYYY">
               </div>
               <div class="col-12">
                 <div class="form-check">
@@ -6700,7 +6740,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-info text-white" data-action="settingsModule.saveSeason">
+          <button type="button" class="btn btn-primary" data-action="settingsModule.saveSeason">
             <i class="bi bi-check-lg me-1"></i>Save Season
           </button>
         </div>
@@ -6775,35 +6815,36 @@
               <div class="col-12"><hr class="my-1"><small class="text-muted fw-semibold">Key Dates</small></div>
               <div class="col-md-3">
                 <label for="awardFormEntryOpen" class="form-label small">Entry Opens</label>
-                <input type="date" class="form-control form-control-sm" id="awardFormEntryOpen">
+                <input type="date" class="form-control form-control-sm" id="awardFormEntryOpen" placeholder="DD/MM/YYYY">
               </div>
               <div class="col-md-3">
                 <label for="awardFormEntryClose" class="form-label small">Entry Closes</label>
-                <input type="date" class="form-control form-control-sm" id="awardFormEntryClose">
+                <input type="date" class="form-control form-control-sm" id="awardFormEntryClose" placeholder="DD/MM/YYYY">
+                <div class="form-text">Public submissions blocked after this date</div>
               </div>
               <div class="col-md-3">
                 <label for="awardFormNomineesAnnouncement" class="form-label small">Nominees Announced</label>
-                <input type="date" class="form-control form-control-sm" id="awardFormNomineesAnnouncement">
+                <input type="date" class="form-control form-control-sm" id="awardFormNomineesAnnouncement" placeholder="DD/MM/YYYY">
               </div>
               <div class="col-md-3">
                 <label for="awardFormJudgingOpen" class="form-label small">Judging Opens</label>
-                <input type="date" class="form-control form-control-sm" id="awardFormJudgingOpen">
+                <input type="date" class="form-control form-control-sm" id="awardFormJudgingOpen" placeholder="DD/MM/YYYY">
               </div>
               <div class="col-md-3">
                 <label for="awardFormJudgingClose" class="form-label small">Judging Closes</label>
-                <input type="date" class="form-control form-control-sm" id="awardFormJudgingClose">
+                <input type="date" class="form-control form-control-sm" id="awardFormJudgingClose" placeholder="DD/MM/YYYY">
               </div>
               <div class="col-md-3">
                 <label for="awardFormVotingOpen" class="form-label small">Voting Opens</label>
-                <input type="date" class="form-control form-control-sm" id="awardFormVotingOpen">
+                <input type="date" class="form-control form-control-sm" id="awardFormVotingOpen" placeholder="DD/MM/YYYY">
               </div>
               <div class="col-md-3">
                 <label for="awardFormVotingClose" class="form-label small">Voting Closes</label>
-                <input type="date" class="form-control form-control-sm" id="awardFormVotingClose">
+                <input type="date" class="form-control form-control-sm" id="awardFormVotingClose" placeholder="DD/MM/YYYY">
               </div>
               <div class="col-md-3">
                 <label for="awardFormWinnersAnnouncement" class="form-label small">Winners Announced</label>
-                <input type="date" class="form-control form-control-sm" id="awardFormWinnersAnnouncement">
+                <input type="date" class="form-control form-control-sm" id="awardFormWinnersAnnouncement" placeholder="DD/MM/YYYY">
               </div>
               <div class="col-12">
                 <label class="form-label fw-semibold">Previous Year Results</label>
@@ -6883,9 +6924,9 @@
           <form id="createInvoiceForm" novalidate>
             <div class="row mb-3">
               <div class="col-md-6">
-                <label for="invoiceOrganisation" class="form-label">Company <span class="text-danger" aria-label="required">*</span></label>
+                <label for="invoiceOrganisation" class="form-label">Organisation <span class="text-danger" aria-label="required">*</span></label>
                 <select class="form-select" id="invoiceOrganisation" required>
-                  <option value="">Select Company...</option>
+                  <option value="">Select Organisation...</option>
                 </select>
               </div>
               <div class="col-md-6">
@@ -6902,11 +6943,11 @@
             <div class="row mb-3">
               <div class="col-md-3">
                 <label for="invoiceDate" class="form-label">Invoice Date <span class="text-danger" aria-label="required">*</span></label>
-                <input type="date" class="form-control" id="invoiceDate" required>
+                <input type="date" class="form-control" id="invoiceDate" placeholder="DD/MM/YYYY" required>
               </div>
               <div class="col-md-3">
                 <label for="invoiceDueDate" class="form-label">Due Date <span class="text-danger" aria-label="required">*</span></label>
-                <input type="date" class="form-control" id="invoiceDueDate" required>
+                <input type="date" class="form-control" id="invoiceDueDate" placeholder="DD/MM/YYYY" required>
               </div>
               <div class="col-md-3">
                 <label for="invoiceTaxRate" class="form-label">Tax Rate (%)</label>
@@ -6968,7 +7009,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-success" data-action="paymentsModule.saveNewInvoice">
+          <button type="button" class="btn btn-primary" data-action="paymentsModule.saveNewInvoice">
             <i class="bi bi-check-lg me-1"></i>Create Invoice
           </button>
         </div>
@@ -6989,9 +7030,9 @@
         <div class="modal-body">
           <form id="recordPaymentForm" novalidate>
             <div class="mb-3">
-              <label for="paymentOrganisation" class="form-label">Company <span class="text-danger" aria-label="required">*</span></label>
+              <label for="paymentOrganisation" class="form-label">Organisation <span class="text-danger" aria-label="required">*</span></label>
               <select class="form-select" id="paymentOrganisation" required>
-                <option value="">Select Company...</option>
+                <option value="">Select Organisation...</option>
               </select>
             </div>
             <div class="mb-3">
@@ -7007,7 +7048,7 @@
               </div>
               <div class="col-md-6">
                 <label for="paymentDate" class="form-label">Payment Date <span class="text-danger" aria-label="required">*</span></label>
-                <input type="date" class="form-control" id="paymentDate" required>
+                <input type="date" class="form-control" id="paymentDate" placeholder="DD/MM/YYYY" required>
               </div>
             </div>
             <div class="mb-3">
@@ -7301,7 +7342,7 @@
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
               <i class="bi bi-x-lg me-2"></i>Close
             </button>
-            <button type="button" class="btn btn-success" data-action="assignmentsModule.emailAllAssigned">
+            <button type="button" class="btn btn-primary" data-action="assignmentsModule.emailAllAssigned">
               <i class="bi bi-envelope me-2"></i>Email All Nominees
             </button>
           </div>
@@ -7414,7 +7455,7 @@
                     </div>
                   </div>
                   <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-sm btn-success" data-action="mediaGalleryModule.saveQuickEvent">
+                    <button type="button" class="btn btn-sm btn-primary" data-action="mediaGalleryModule.saveQuickEvent">
                       <i class="bi bi-check"></i> Create & Select
                     </button>
                     <button type="button" class="btn btn-sm btn-secondary" data-action="mediaGalleryModule.cancelQuickAddEvent">
@@ -7560,7 +7601,7 @@
             <div class="row">
               <div class="col-md-6 mb-3">
                 <label for="eventDate" class="form-label">Event Date</label>
-                <input type="date" class="form-control" id="eventDate">
+                <input type="date" class="form-control" id="eventDate" placeholder="DD/MM/YYYY">
               </div>
               <div class="col-md-6 mb-3">
                 <label for="eventYear" class="form-label">Year</label>
@@ -7606,7 +7647,7 @@
 
   <!-- Clone Event Modal -->
   <div class="modal fade" id="cloneEventModal" tabindex="-1" aria-labelledby="cloneEventModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header bg-success text-white">
           <h5 class="modal-title" id="cloneEventModalLabel">
@@ -7632,7 +7673,7 @@
             <div class="row">
               <div class="col-md-6 mb-3">
                 <label for="cloneEventDate" class="form-label">Event Date</label>
-                <input type="date" class="form-control" id="cloneEventDate">
+                <input type="date" class="form-control" id="cloneEventDate" placeholder="DD/MM/YYYY">
               </div>
               <div class="col-md-6 mb-3">
                 <label for="cloneEventYear" class="form-label">Year <span class="text-danger" aria-label="required">*</span></label>
@@ -7663,7 +7704,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-success" data-action="eventsModule.cloneEvent">
+          <button type="button" class="btn btn-primary" data-action="eventsModule.cloneEvent">
             <i class="bi bi-files me-1"></i>Clone Event
           </button>
         </div>
@@ -7871,7 +7912,7 @@
                       <input type="text" class="form-control form-control-sm" id="attendeeNotes" placeholder="Notes (e.g. wheelchair access, sponsor contact)">
                     </div>
                     <div class="col-md-2">
-                      <button class="btn btn-sm btn-success w-100" data-action="eventsModule.addAttendee">
+                      <button class="btn btn-sm btn-primary w-100" data-action="eventsModule.addAttendee">
                         <i class="bi bi-plus-circle me-1"></i>Add
                       </button>
                     </div>
@@ -8602,7 +8643,7 @@
                     <div class="form-check form-switch">
                       <input class="form-check-input" type="checkbox" id="tagPhotoShowCompany" checked>
                       <label class="form-check-label" for="tagPhotoShowCompany">
-                        <i class="bi bi-building me-1" aria-hidden="true"></i>Company Profile Page
+                        <i class="bi bi-building me-1" aria-hidden="true"></i>Organisation Profile Page
                       </label>
                     </div>
                   </div>
@@ -8758,7 +8799,7 @@
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
             <i class="bi bi-x-lg me-1"></i>Cancel
           </button>
-          <button type="button" class="btn btn-success" data-action="winnersModule.exportPressRelease">
+          <button type="button" class="btn btn-primary" data-action="winnersModule.exportPressRelease">
             <i class="bi bi-download me-1"></i>Export Press Release
           </button>
         </div>
@@ -9618,7 +9659,7 @@
                       <thead class="sticky-top bg-light">
                         <tr>
                           <th scope="col">Date</th>
-                          <th scope="col">Company</th>
+                          <th scope="col">Organisation</th>
                           <th scope="col">Method</th>
                           <th scope="col" class="text-end">Amount</th>
                         </tr>
@@ -9650,7 +9691,7 @@
                       <thead class="sticky-top bg-light">
                         <tr>
                           <th scope="col">Invoice #</th>
-                          <th scope="col">Company</th>
+                          <th scope="col">Organisation</th>
                           <th scope="col">Due Date</th>
                           <th scope="col" class="text-end">Amount</th>
                         </tr>
@@ -9888,7 +9929,7 @@
                 <table class="table table-hover mb-0">
                   <thead class="table-light">
                     <tr>
-                      <th scope="col">Company Name</th>
+                      <th scope="col">Organisation Name</th>
                       <th scope="col">Sector</th>
                       <th scope="col">Region</th>
                       <th scope="col">Awards Won</th>
@@ -10351,7 +10392,7 @@
                 <table class="table table-hover mb-0">
                   <thead class="table-light">
                     <tr>
-                      <th scope="col">Company</th>
+                      <th scope="col">Organisation</th>
                       <th scope="col">Sector</th>
                       <th scope="col" class="text-center">Status</th>
                       <th scope="col" class="text-center">Operational</th>
@@ -10405,10 +10446,14 @@
       var sidebar = document.getElementById('appSidebar');
       var toggle  = document.getElementById('sidebarToggle');
       if (!sidebar || !toggle) return;
-      if (localStorage.getItem('sidebarCollapsed') === 'true') sidebar.classList.add('collapsed');
+      var isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+      if (isCollapsed) sidebar.classList.add('collapsed');
+      toggle.title = isCollapsed ? 'Expand sidebar' : 'Collapse sidebar';
       toggle.addEventListener('click', function () {
         sidebar.classList.toggle('collapsed');
-        localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+        var collapsed = sidebar.classList.contains('collapsed');
+        localStorage.setItem('sidebarCollapsed', collapsed);
+        toggle.title = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
       });
       /* Sync active state when Bootstrap switches tab */
       document.addEventListener('shown.bs.tab', function (e) {
@@ -10717,6 +10762,12 @@
   <script src="calendar.js"></script>
   <script src="rate-limiting.js"></script>
   <script src="winner-announcements.js"></script>
+
+  <!-- Back to top button -->
+  <button id="backToTopBtn" class="btn btn-primary rounded-circle d-none" aria-label="Back to top"
+    style="position:fixed;bottom:1.5rem;right:1.5rem;z-index:998;width:40px;height:40px;padding:0;box-shadow:0 4px 12px rgba(0,0,0,0.25);">
+    <i class="bi bi-arrow-up" aria-hidden="true"></i>
+  </button>
 
   <script src="app.js"></script>
   <!-- TradingView Widget -->

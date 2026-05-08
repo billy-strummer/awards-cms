@@ -33,6 +33,7 @@ const dom = new JSDOM(
   <!-- Events List View -->
   <div id="eventsListView" style="display:none;"></div>
   <div id="eventsListContainer"></div>
+  <div id="mediaGalleryEmptyState" class="d-none"></div>
 
   <!-- Event Contents View -->
   <div id="eventContentsView" style="display:none;"></div>
@@ -1115,8 +1116,9 @@ describe('Media Gallery Module - Gallery Sections', () => {
 describe('Media Gallery Module - Render Events List', () => {
   test('renderEventsList shows empty state when no events', async () => {
     await mediaGalleryModule.renderEventsList([]);
-    const content = document.getElementById('eventsListContainer').innerHTML;
-    expect(content).toContain('No events found');
+    const emptyState = document.getElementById('mediaGalleryEmptyState');
+    expect(emptyState.classList.contains('d-none')).toBe(false);
+    expect(document.getElementById('eventsListContainer').innerHTML).toBe('');
   });
 });
 

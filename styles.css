@@ -31,6 +31,9 @@
   --radius-lg: 12px;
   --radius-xl: 16px;
 
+  /* Layout */
+  --navbar-height: 60px;
+
   /* Transitions */
   --transition-fast: 0.15s ease;
   --transition-base: 0.2s ease;
@@ -56,6 +59,12 @@ body {
 body.dark-mode {
   background-color: var(--dark-color);
   color: #fff;
+}
+
+/* Eliminate 300ms tap delay on touch devices */
+button, .btn, [role="button"], .sidebar-nav-link,
+td[data-action], tr[data-action], .stat-card, .u-pointer {
+  touch-action: manipulation;
 }
 
 /* ==================================================== */
@@ -539,12 +548,18 @@ body.dark-mode {
 /* Filter bar layout utilities */
 .filter-bar-sticky {
   position: sticky;
-  top: 56px;
+  top: 0;
   z-index: 999;
   background-color: var(--bs-body-bg, white);
-  padding: 0.75rem 0 0;
-  margin-bottom: 0.75rem;
+  padding: 0.75rem 1.75rem 0;
+  margin: 0 -1.75rem 0.75rem;
   border-bottom: 1px solid #dee2e6;
+}
+
+/* Sticky thead inside a tab with a sticky filter bar — needs a z-index step-down
+   to slide beneath the filter bar rather than overlap it */
+.tab-pane table thead.sticky-top {
+  z-index: 1;  /* below filter-bar-sticky z-index:999 */
 }
 
 /* Filter bar typography utilities (replaces repeated inline styles) */
@@ -687,7 +702,9 @@ body.dark-mode {
 /* CONNECTION STATUS */
 /* ==================================================== */
 .connection-status {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #fff;
   border-radius: var(--radius-md);
   padding: 0.5rem 0.875rem;
   display: inline-flex;
@@ -977,6 +994,11 @@ body.dark-mode .filters-section {
   background: #2d2d2d !important;
   border-color: #404040;
   color: #fff;
+}
+
+body.dark-mode .filter-bar-sticky {
+  background-color: #1a1a2e;
+  border-bottom-color: #404040;
 }
 
 body.dark-mode .table thead th {
@@ -3276,6 +3298,14 @@ body.dark-mode #schedulePreview {
   background-color: rgba(99, 102, 241, 0.05) !important;
 }
 
+/* V4-M7: Truncate long email addresses in orgs table */
+#orgsTableBody td.org-email-cell {
+  max-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Drag and drop states */
 .dragover {
   border: 2px dashed var(--primary-color) !important;
@@ -3748,17 +3778,17 @@ mark.search-highlight {
 
 .app-layout {
   display: flex;
-  min-height: calc(100vh - 56px);
+  min-height: calc(100vh - var(--navbar-height));
   position: relative;
 }
 
 /* ── Sidebar ── */
 .app-sidebar {
   position: fixed;
-  top: 56px;
+  top: var(--navbar-height);
   left: 0;
   width: 220px;
-  height: calc(100vh - 56px);
+  height: calc(100vh - var(--navbar-height));
   background: #1e293b;
   display: flex;
   flex-direction: column;
@@ -3904,6 +3934,25 @@ mark.search-highlight {
   pointer-events: none;
 }
 
+/* Active sub-tab hint below parent nav item */
+.sidebar-sub-label {
+  display: block;
+  font-size: 0.6rem;
+  opacity: 0.65;
+  padding-left: 2.5rem;
+  margin-top: -0.35rem;
+  margin-bottom: 0.15rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: rgba(255, 255, 255, 0.8);
+  letter-spacing: 0.02em;
+  pointer-events: none;
+}
+.app-sidebar.collapsed .sidebar-sub-label {
+  display: none;
+}
+
 /* Count badge */
 .sidebar-badge {
   background: rgba(99,102,241,0.35);
@@ -3939,7 +3988,9 @@ mark.search-highlight {
   transition: margin-left 0.25s ease;
   min-width: 0;
   flex: 1;
-  min-height: calc(100vh - 56px);
+  height: calc(100vh - var(--navbar-height));
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .app-sidebar.collapsed + .app-main {

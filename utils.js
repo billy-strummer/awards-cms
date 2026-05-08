@@ -1742,13 +1742,18 @@ const utils = {
   /**
    * Render a consistent row count summary (LOW-1)
    */
-  renderRowCount(containerId, shown, total, label) {
+  renderRowCount(containerId, shown, total, label, page, pageSize) {
     const el = document.getElementById(containerId);
     if (!el) return;
-    el.innerHTML =
-      shown < total
-        ? `<span class="text-muted small">Showing ${shown} of ${total} ${label || 'records'}</span>`
-        : `<span class="text-muted small">${total} ${label || 'records'}</span>`;
+    if (shown < total && page && pageSize) {
+      const from = (page - 1) * pageSize + 1;
+      const to = Math.min(page * pageSize, total);
+      el.innerHTML = `<span class="text-muted small">Showing ${from}–${to} of ${total} ${label || 'records'}</span>`;
+    } else if (shown < total) {
+      el.innerHTML = `<span class="text-muted small">Showing ${shown} of ${total} ${label || 'records'}</span>`;
+    } else {
+      el.innerHTML = `<span class="text-muted small">${total} ${label || 'records'}</span>`;
+    }
   },
 
   /* ==================================================== */
@@ -1825,6 +1830,21 @@ const utils = {
         </td>
       </tr>
     `;
+  },
+
+  /**
+   * Update the colspan of an empty-state row to match visible column count.
+   * Call after any column show/hide operation.
+   * @param {string} tableBodyId - id of the <tbody>
+   */
+  updateEmptyRowColspan(tableBodyId) {
+    const tbody = document.getElementById(tableBodyId);
+    if (!tbody) return;
+    const table = tbody.closest('table');
+    if (!table) return;
+    const visibleCols = table.querySelectorAll('thead th:not([style*="display: none"]):not(.d-none)').length;
+    const emptyTd = tbody.querySelector('tr td[colspan]');
+    if (emptyTd && visibleCols > 0) emptyTd.setAttribute('colspan', visibleCols);
   },
 
   /* ==================================================== */

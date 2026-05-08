@@ -71,26 +71,40 @@ const reportsScheduler = {
       </div>`;
       return;
     }
-    container.innerHTML = reports
-      .map(
-        (r, i) => `
-      <div class="card mb-2">
-        <div class="card-body py-2">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <strong>${utils.escapeHtml(r.name)}</strong>
-              <span class="badge bg-${r.active ? 'success' : 'secondary'} ms-2">${r.active ? 'Active' : 'Paused'}</span>
-              <div class="text-muted small">${utils.escapeHtml(r.frequency)} &middot; ${r.sections.join(', ')} &middot; To: ${utils.escapeHtml(r.recipients)}</div>
-            </div>
-            <div>
-              <button class="btn btn-sm btn-outline-primary me-1" data-action="reportsScheduler.previewReport" data-id="${i}"><i class="bi bi-eye"></i> Preview</button>
-              <button class="btn btn-sm btn-outline-danger" data-action="reportsScheduler.deleteReport" data-id="${i}"><i class="bi bi-trash"></i></button>
-            </div>
-          </div>
-        </div>
-      </div>`
-      )
-      .join('');
+    container.innerHTML = `
+      <div class="table-responsive">
+        <table class="table table-hover table-sm align-middle mb-0">
+          <caption class="visually-hidden">Scheduled reports list</caption>
+          <thead class="table-light">
+            <tr>
+              <th scope="col">Name</th>
+              <th scope="col">Frequency</th>
+              <th scope="col">Sections</th>
+              <th scope="col">Recipients</th>
+              <th scope="col">Status</th>
+              <th scope="col" class="text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${reports
+              .map(
+                (r, i) => `
+              <tr>
+                <td class="fw-semibold">${utils.escapeHtml(r.name)}</td>
+                <td>${utils.escapeHtml(r.frequency)}</td>
+                <td class="small text-muted">${r.sections.join(', ')}</td>
+                <td class="small">${utils.escapeHtml(r.recipients)}</td>
+                <td><span class="badge bg-${r.active ? 'success' : 'secondary'}">${r.active ? 'Active' : 'Paused'}</span></td>
+                <td class="text-center">
+                  <button class="btn btn-sm btn-outline-primary me-1" data-action="reportsScheduler.previewReport" data-id="${i}" aria-label="Preview report"><i class="bi bi-eye"></i></button>
+                  <button class="btn btn-sm btn-outline-danger" data-action="reportsScheduler.deleteReport" data-id="${i}" aria-label="Delete report"><i class="bi bi-trash"></i></button>
+                </td>
+              </tr>`
+              )
+              .join('')}
+          </tbody>
+        </table>
+      </div>`;
   },
 
   /**
@@ -1155,13 +1169,27 @@ document.addEventListener('DOMContentLoaded', function () {
       dashboardModule.updateStats();
     });
 
-  // Initialize settings when Settings tab is clicked
+  // Initialize settings when Settings tab is clicked; restore last active sub-tab
   const settingsTab = document.getElementById('settings-tab');
   if (settingsTab)
     settingsTab.addEventListener('click', () => {
       settingsModule.init();
       areasManager.loadAreas();
+      const lastSubTab = localStorage.getItem('lastSettingsSubTab');
+      if (lastSubTab) {
+        setTimeout(() => {
+          const btn = document.getElementById(lastSubTab);
+          if (btn) new bootstrap.Tab(btn).show();
+        }, 50);
+      }
     });
+
+  // Persist active settings sub-tab across page refreshes
+  document.querySelectorAll('#settingsSubTabs [data-bs-toggle="tab"]').forEach((btn) => {
+    btn.addEventListener('shown.bs.tab', () => {
+      localStorage.setItem('lastSettingsSubTab', btn.id);
+    });
+  });
 
   // --- Media Upload ---
   const uploadMediaBtn = document.getElementById('uploadMediaBtn');
@@ -1182,11 +1210,16 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
   // Load Reports analytics + scheduled reports when Reports tab is opened
+  let reportsInitialized = false;
   const reportsTab = document.getElementById('reports-tab');
   if (reportsTab) {
     reportsTab.addEventListener('shown.bs.tab', () => {
       if (typeof reportsAnalytics !== 'undefined') {
         reportsAnalytics.loadAnalytics();
+      }
+      if (!reportsInitialized && typeof reportingModule !== 'undefined') {
+        reportsInitialized = true;
+        reportingModule.generateReport?.();
       }
     });
   }
@@ -1524,6 +1557,45 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   });
 
+  // Sidebar sub-labels: show active sub-tab name under parent tab button
+  function updateSidebarSubLabel(labelId, text) {
+    const el = document.getElementById(labelId);
+    if (!el) return;
+    if (text) {
+      el.textContent = '▸ ' + text;
+      el.classList.remove('d-none');
+    } else {
+      el.classList.add('d-none');
+    }
+  }
+
+  const subLabelMap = {
+    // CRM sub-tabs → sidebar label
+    'communications-subtab': ['crmSubLabel', 'Communications'],
+    'deals-subtab': ['crmSubLabel', 'Deals'],
+    'meetings-subtab': ['crmSubLabel', 'Meetings'],
+    'segments-subtab': ['crmSubLabel', 'Segments'],
+    'smart-segments-subtab': ['crmSubLabel', 'Smart Segments'],
+    'my-tasks-subtab': ['crmSubLabel', 'My Tasks'],
+    // Payments sub-tabs
+    'invoices-subtab': ['paymentsSubLabel', 'Invoices'],
+    'payments-list-subtab': ['paymentsSubLabel', 'Payments'],
+    'financial-reports-subtab': ['paymentsSubLabel', 'Financial Reports'],
+    // Settings sub-tabs
+    'settings-general-tab': ['settingsSubLabel', 'General'],
+    'settings-seasons-tab': ['settingsSubLabel', 'Seasons'],
+    'settings-data-tab': ['settingsSubLabel', 'Data'],
+    'settings-security-tab': ['settingsSubLabel', 'Security'],
+    'settings-integrations-tab': ['settingsSubLabel', 'Integrations'],
+  };
+
+  Object.entries(subLabelMap).forEach(([tabId, [labelId, labelText]]) => {
+    const btn = document.getElementById(tabId);
+    if (btn) {
+      btn.addEventListener('shown.bs.tab', () => updateSidebarSubLabel(labelId, labelText));
+    }
+  });
+
   // ==========================================
   // STEP 12: Tooltips Initialization
   // ==========================================
@@ -1712,6 +1784,11 @@ document.addEventListener('DOMContentLoaded', function () {
   // ==========================================
   document.querySelectorAll('[data-bs-toggle="tab"]').forEach((tab) => {
     tab.addEventListener('shown.bs.tab', (e) => {
+      // Scroll to top of content area on every top-level tab switch
+      if (e.target.closest('.app-sidebar, #appSidebar')) {
+        document.getElementById('appMain')?.scrollTo({ top: 0, behavior: 'instant' });
+      }
+
       // Stale data auto-refresh
       const tabId = e.target.id;
       const refreshMap = {
@@ -1902,6 +1979,18 @@ document.addEventListener('DOMContentLoaded', function () {
   ['awardFormModal', 'orgFormModal', 'eventFormModal', 'paymentFormModal', 'invoiceFormModal'].forEach((id) =>
     utils.initModalDirtyTracking(id)
   );
+
+  // Back-to-top button
+  const appMain = document.getElementById('appMain');
+  const backToTopBtn = document.getElementById('backToTopBtn');
+  if (appMain && backToTopBtn) {
+    appMain.addEventListener('scroll', () => {
+      backToTopBtn.classList.toggle('d-none', appMain.scrollTop < 400);
+    });
+    backToTopBtn.addEventListener('click', () => {
+      appMain.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
 
   console.debug('Application initialized successfully');
 });

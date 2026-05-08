@@ -634,6 +634,16 @@ const paymentsModule = {
           utils.showToast('Please add at least one line item', 'warning');
           return;
         }
+        const invalidItem = lineItems.find((item) => !item.item_name.trim());
+        if (invalidItem) {
+          utils.showToast('Each line item must have a name', 'warning');
+          return;
+        }
+        const zeroQty = lineItems.find((item) => item.quantity <= 0);
+        if (zeroQty) {
+          utils.showToast('Line item quantities must be greater than zero', 'warning');
+          return;
+        }
 
         const subtotal = Math.round(lineItems.reduce((sum, item) => sum + item.line_total, 0) * 100) / 100;
         const discountPercentage = this.getDiscountPercentage();

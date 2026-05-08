@@ -1100,3 +1100,294 @@ Branch: `claude/bta-location-restructure-JS5hX`
 
 ### V4-L7 — Date input placeholders
 - [x] Implemented (already present)
+
+---
+
+## ═══════════════════════════════════════════════
+## V5 AUDIT — Fresh Deep UX Audit (2026-05-08)
+## ═══════════════════════════════════════════════
+
+> **CLAUDE: All V5 items are open. Work in order: V5-C → V5-H → V5-M → V5-L.**
+
+---
+
+## V5-CRITICAL — Blocks or severely impairs core operations
+
+### V5-C1 — Filtered empty states have descriptive text but no "Clear Filters" button
+- **Files:** `utils.js`, `organisations.js`, `awards.js`, `winners.js`, `entries.js`, `payments.js`, `events.js`, `crm.js`
+- **Root cause:** `showEnhancedEmptyState()` (`utils.js:1813`) renders a text hint `"Try adjusting your filters or search terms"` when `isFiltered: true`, but no action button. Awards uses the older `showEmptyState()` which doesn't even show a hint. Users who filter to zero results reach a dead end and must scroll back up to find and manually reset each filter control.
+- **Fix:** In `showEnhancedEmptyState()`, when `isFiltered` is true, add a clear-filters button below the hint text:
+  ```javascript
+  const clearBtn = isFiltered
+    ? `<button class="btn btn-sm btn-outline-secondary mt-2" onclick="document.querySelectorAll('.filter-bar-sticky select, .filter-bar-sticky input[type=text]').forEach(el=>{el.value=''}); document.querySelector('[data-action*=filter]')?.dispatchEvent(new Event('change'))">
+        <i class="bi bi-x-circle me-1"></i>Clear Filters
+       </button>`
+    : '';
+  ```
+  Or better: accept a `clearAction` option (e.g. `clearAction: 'orgsModule.resetFilters'`) and render a `data-action` button.
+- **Done when:** All filtered-empty-state rows include a working "Clear Filters" button that resets filters and re-queries.
+- [ ] Implemented
+
+### V5-C2 — Print/PDF stylesheet incomplete: sidebar and UI chrome appear in print output
+- **Files:** `styles.css`
+- **Root cause:** `@media print` (line 1297) hides `.navbar`, `.nav-tabs`, `.btn`, `.filters-section`. But `.app-sidebar`, `#bulkActionsBar`, `#backToTopBtn`, `.filter-bar-sticky`, `.sidebar-group-label`, and Bootstrap modal backdrop remnants are all printed. "Export PDF" in Reporting calls `window.print()` directly, so this is a live defect affecting a core feature.
+- **Fix:** Extend `@media print` to hide all non-content chrome:
+  ```css
+  @media print {
+    .app-sidebar, .app-navbar,
+    #bulkActionsBar, #backToTopBtn,
+    .filter-bar-sticky, .nav-tabs, .navbar,
+    .btn, .filters-section,
+    .sidebar-group-label, .toast-container,
+    [data-action], .modal-backdrop { display: none !important; }
+    .app-main { height: auto; overflow: visible; }
+    .tab-pane { display: block !important; }
+  }
+  ```
+- **Done when:** `window.print()` from the Reporting tab shows only charts and data tables, no sidebar/nav/buttons.
+- [ ] Implemented
+
+---
+
+## V5-HIGH — Significantly degrades usability
+
+### V5-H1 — V3-H4 outstanding: Organisations sub-nav uses custom JS show/hide, not Bootstrap tabs
+- **Files:** `index.html`, `organisations.js`
+- **Root cause:** `#orgsSubNav` was converted to `nav-tabs` visually in V4-M1, but buttons still use `data-action="orgsModule.showOrgsView"` / `data-action="orgsModule.showSponsorsView"` with no `data-bs-toggle="tab"` or `data-bs-target`. Content areas (`#orgsMainContent`, `#orgsSponsorSection`) are plain `<div>`s with `d-none` — not `tab-pane` elements. The custom JS manually toggles the `active` class. This means: no Bootstrap keyboard arrow-key navigation, `aria-selected` not updated by Bootstrap, semantic mismatch between `role="tablist"` and the actual non-tab behaviour.
+- **Fix:**
+  1. Give buttons `data-bs-toggle="tab"` and `data-bs-target="#orgsMainContent"` / `"#orgsSponsorSection"`.
+  2. Add `class="tab-pane fade show active"` to `#orgsMainContent` and `class="tab-pane fade"` to `#orgsSponsorSection`.
+  3. Remove or simplify `showOrgsView()` / `showSponsorsView()` in `organisations.js` — Bootstrap handles active class and show/hide. Keep only the `marketingModule.loadSponsors()` side-effect call by wiring it to the `shown.bs.tab` event.
+- **Done when:** Clicking All Organisations / Sponsors & Partners tabs uses Bootstrap's tab system; arrow keys navigate between tabs; `aria-selected` updates automatically.
+- [ ] Implemented
+
+### V5-H2 — Unsaved-changes warning missing from 65+ form modals
+- **Files:** `app.js`
+- **Root cause:** `utils.initModalDirtyTracking()` is wired to only 5 modals: `awardFormModal`, `orgFormModal`, `eventFormModal`, `paymentFormModal`, `invoiceFormModal` (`app.js:1979`). The remaining ~65 modals with form inputs (winner modal, CRM communications modal, assignment modal, season form, webhook form, etc.) silently discard all user input on close.
+- **Fix:** Either:
+  - Apply dirty tracking to all modals that contain a `<form>` element using a generic initialiser:
+    ```javascript
+    document.querySelectorAll('.modal.fade').forEach(modal => {
+      if (modal.querySelector('form')) utils.initModalDirtyTracking(modal.id);
+    });
+    ```
+  - Or: add `data-dirty-track="true"` to the 15-20 most important form modals and target those specifically.
+- **Done when:** Closing any modal with unsaved form input shows "You have unsaved changes. Leave anyway?" confirmation.
+- [ ] Implemented
+
+### V5-H3 — Modal header colours have no semantic rule — confusing visual language
+- **Files:** `index.html`
+- **Root cause:** 70 modals use 7 different header colour schemes with no consistent meaning:
+  - `bg-primary` — used for Create Invoice, Webhook, Award Form, Record Payment, Send Email, and others
+  - `bg-success` — used for Create Invoice (another), Record New Payment, Clone Event, Add Gallery Section
+  - `bg-info` — used for Season Form, Send Invoice Email, Add Webhook
+  - `bg-danger` — used for Delete confirmation
+  - `bg-dark` — used for QR code modal
+  - `bg-warning` — used for bulk action confirm
+  - Plain (no class) — used for Org Profile, Public Link, Media, many others
+  Users cannot learn what colour implies. Create vs Edit vs Danger vs Info all use the same colours.
+- **Fix:** Adopt a 3-colour semantic rule:
+  - Plain header: all read/view/info modals
+  - `bg-primary text-white`: all create/edit/save modals
+  - `bg-danger text-white`: all destructive/delete/warning modals
+  Audit and update all 70 modal headers. Remove `bg-success`, `bg-info`, `bg-dark`, `bg-warning` from modal headers.
+- **Done when:** Modal header colour indicates the action type (view = plain, create/edit = blue, destructive = red) consistently across all modals.
+- [ ] Implemented
+
+### V5-H4 — stat-card-clickable elements missing explicit focus-visible ring
+- **Files:** `styles.css`
+- **Root cause:** Stat cards have `tabindex="0"` making them keyboard-focusable, but `styles.css` defines `focus-visible` rules only for `:focus-visible` (generic), `.btn:focus-visible`, `.form-control:focus-visible`, `.form-select:focus-visible`, `.sidebar-nav-link:focus-visible`. `.stat-card` is not listed, so the default outline may be invisible (browsers differ) and keyboard users can't see which card is active.
+- **Fix:** Add to `styles.css`:
+  ```css
+  .stat-card-clickable:focus-visible {
+    outline: 3px solid var(--primary-color);
+    outline-offset: 3px;
+  }
+  ```
+- **Done when:** Tabbing through dashboard stat cards shows a clear blue focus ring on each card.
+- [ ] Implemented
+
+### V5-H5 — Awards table uses old `showEmptyState()` while all other tables use `showEnhancedEmptyState()`
+- **Files:** `awards.js`
+- **Root cause:** `awards.js:751` calls `utils.showEmptyState()` which renders `<i class="bi ${icon}">` (inline, tiny) with a bare `<p>` — no `display-4 d-block opacity-25` icon sizing, no description line, no action button. All other tables (orgs, winners, entries, invoices, events, CRM) call `utils.showEnhancedEmptyState()` which renders a large centred icon, description text, filter hint, and optional CTA button.
+- **Fix:** Replace the `showEmptyState()` call in `awards.js` with `showEnhancedEmptyState()` passing `icon`, `message`, `description`, `isFiltered`, and `actionLabel`/`actionAction` for the non-filtered case (e.g. "Add Award" → `awardsModule.openAddAwardModal`).
+- **Done when:** Awards empty state visually matches the Organisations and Winners empty states.
+- [ ] Implemented
+
+---
+
+## V5-MEDIUM — Visible polish gaps
+
+### V5-M1 — Report Analytics charts render blank canvas when no data for selected period
+- **Files:** `app.js` (chart rendering in `loadAnalyticsData`), `dashboard.js`
+- **Root cause:** `dashboard.js:renderWinnersYearChart()` correctly handles zero data. But other Chart.js instances in `app.js` (sector chart, revenue chart, region chart) likely call `new Chart(ctx, {...})` directly with empty data arrays — resulting in a blank canvas with no message. When a user filters to a year with no entries/winners, charts silently render empty.
+- **Fix:** Before each `new Chart(...)` call, check if the data array is empty. If so, replace the canvas with a `<div class="text-center py-4 text-muted">` message: "No data for the selected period — try a different year or filter."
+- **Done when:** Selecting a year with no data shows "No data" message instead of blank chart area.
+- [ ] Implemented
+
+### V5-M2 — Settings General sub-tab section headers not visible (dynamically rendered containers lack headings)
+- **Files:** `index.html`, `settings.js`
+- **Root cause:** `#settings-general` contains three bare `<div>` placeholder containers (`brandingSettingsContainer`, `uxSettingsContainer`, `notificationSettingsContainer`) injected by JS. Other Settings sub-tabs (Data, Security, Integrations) use explicit `content-card` divs with `<h5>` headers inside `index.html`. The General tab's card structure depends entirely on JS rendering — if branding settings fail to load, the tab shows a blank white area.
+- **Fix:** Add static skeleton structure in `index.html` inside `#settings-general` (similar to other tabs):
+  ```html
+  <div class="content-card mb-4">
+    <h5 class="mb-3"><i class="bi bi-palette me-2"></i>Branding</h5>
+    <div id="brandingSettingsContainer"></div>
+  </div>
+  <div class="content-card mb-4">
+    <h5 class="mb-3"><i class="bi bi-sliders me-2"></i>Preferences</h5>
+    <div id="uxSettingsContainer"></div>
+  </div>
+  <div class="content-card mb-4">
+    <h5 class="mb-3"><i class="bi bi-bell me-2"></i>Notifications</h5>
+    <div id="notificationSettingsContainer"></div>
+  </div>
+  ```
+- **Done when:** Settings → General shows the same visual card structure as Data/Security/Integrations.
+- [ ] Implemented
+
+### V5-M3 — Loading spinners without adjacent text have no aria-label
+- **Files:** `index.html`
+- **Root cause:** Several `<div class="spinner-border" role="status">` elements have no `aria-label` and no adjacent visible text. Examples: line 540 (content calendar loading), line 564 (social media preview spinner), line 579 (hashtag panel spinner). Screen readers announce "status" with no context. (Spinners added in V4-C3 correctly have `aria-label="Loading"` — these older ones were missed.)
+- **Fix:** Add `aria-label="Loading [context]"` to each bare spinner. Example: `aria-label="Loading content calendar"`. Quick grep for `role="status">` without `aria-label` to find all instances.
+- **Done when:** No `<div role="status">` exists without either `aria-label` or adjacent text in a visually-hidden `<span>`.
+- [ ] Implemented
+
+### V5-M4 — Horizontally-scrollable tables on mobile have no scroll indicator
+- **Files:** `styles.css`
+- **Root cause:** `.table-responsive` hides overflow-x content on small screens. Users on mobile/tablet don't know that columns extend to the right. No fade shadow or "swipe" hint is shown.
+- **Fix:** Add a right-edge shadow that disappears once the table is fully scrolled:
+  ```css
+  @media (max-width: 991.98px) {
+    .table-responsive {
+      background: linear-gradient(to right, white 30%, rgba(255,255,255,0)) center right,
+                  linear-gradient(to left, #e9ecef 50%, rgba(255,255,255,0)) center right;
+      background-size: 30px 100%, 8px 100%;
+      background-repeat: no-repeat;
+      background-attachment: local, scroll;
+    }
+  }
+  ```
+- **Done when:** On narrow screens, a subtle shadow on the right edge of tables indicates hidden columns.
+- [ ] Implemented
+
+### V5-M5 — Large textarea fields have no character counter or length guidance
+- **Files:** `index.html`
+- **Root cause:** Several key textareas accept long form content with no visible limit or counter: event description (`#eventDescription`), invoice message (`#sendInvoiceMessage`), CRM communication notes (`#communicationNotes`), award form description (`#awardFormDescription`). Users don't know if they're about to exceed a database column limit or email display limit.
+- **Fix:** For each important textarea, add a character counter below it:
+  ```html
+  <textarea id="eventDescription" rows="3" maxlength="2000" ...></textarea>
+  <div class="d-flex justify-content-end">
+    <small class="text-muted char-counter" data-target="eventDescription">0 / 2000</small>
+  </div>
+  ```
+  Add a `utils.initCharCounter()` helper that wires `input` events to update the counter. Add to `app.js` init.
+- **Done when:** Key textarea fields show a live "X / Y characters" counter below them.
+- [ ] Implemented
+
+### V5-M6 — Error toasts have no retry action
+- **Files:** `utils.js`
+- **Root cause:** `utils.showToast()` renders a static toast. When an API call fails (save award, create invoice, etc.), the user sees "Failed to save" with no way to retry. They must remember what they did, find the form/button again, and repeat the action manually.
+- **Fix:** Extend `utils.showToast()` with an optional `retryFn` parameter:
+  ```javascript
+  showToast(message, type = 'success', duration = 5000, retryFn = null) {
+    // existing toast creation...
+    if (retryFn && type === 'error') {
+      toastBody.innerHTML += `<button class="btn btn-sm btn-outline-light ms-2 mt-1" onclick="(${retryFn})()">Retry</button>`;
+    }
+  }
+  ```
+  Wire `retryFn` in key save operations (save award, save org, save invoice, etc.).
+- **Done when:** Failed save operations show a "Retry" button in the error toast.
+- [ ] Implemented
+
+### V5-M7 — No keyboard shortcut to focus search box (power user gap)
+- **Files:** `app.js`
+- **Root cause:** All list tabs (Awards, Organisations, Winners, Entries, Events) have a search box, but no keyboard shortcut to jump to it. Users must click the search box or tab through many elements to reach it. Convention: `/` focuses search on the current tab.
+- **Fix:** In the `shown.bs.tab` handler (or as a global `keydown` listener), bind `/`:
+  ```javascript
+  document.addEventListener('keydown', (e) => {
+    if (e.key === '/' && !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)) {
+      e.preventDefault();
+      const activeTab = document.querySelector('.tab-pane.active');
+      const searchBox = activeTab?.querySelector('input[type="text"][id*="Search"], input[type="search"]');
+      searchBox?.focus();
+      searchBox?.select();
+    }
+  });
+  ```
+- **Done when:** Pressing `/` on any list tab focuses the search box.
+- [ ] Implemented
+
+---
+
+## V5-LOW — Polish and refinement
+
+### V5-L1 — No skip-to-main-content link (keyboard accessibility baseline)
+- **Files:** `index.html`
+- **Root cause:** Keyboard and screen reader users must tab through the sidebar (30+ nav buttons) before reaching the main content on every page load and tab switch. No skip link exists.
+- **Fix:** Add as the first element inside `<body>`:
+  ```html
+  <a href="#appMain" class="visually-hidden-focusable btn btn-primary btn-sm"
+     style="position:fixed;top:0.5rem;left:50%;transform:translateX(-50%);z-index:9999;">
+    Skip to main content
+  </a>
+  ```
+- **Done when:** Pressing Tab once after page load reveals a "Skip to main content" link that jumps focus to `#appMain`.
+- [ ] Implemented
+
+### V5-L2 — Add/create button icons inconsistent across sections
+- **Files:** `index.html`
+- **Root cause:** "Add" / "Create" buttons use three different icons with no rule: `bi-plus-circle` (Organisations), `bi-plus-lg` (Settings → Add Webhook, Reporting → Add Season), and `bi-plus` (some inline buttons). This creates visual noise across the toolbar.
+- **Fix:** Standardise on `bi-plus-lg` for all primary "add/create" toolbar buttons. Audit all `.btn-primary` and `.btn-outline-primary` buttons with `bi-plus-*` and update to `bi-plus-lg`.
+- **Done when:** All add/create buttons use `bi-plus-lg me-1` consistently.
+- [ ] Implemented
+
+### V5-L3 — Login History panel requires manual "Refresh" click instead of auto-loading
+- **Files:** `index.html`, `settings.js`
+- **Root cause:** The Login History panel (`#loginHistoryContainer`) in Settings → Security shows "Click Refresh to load recent login activity." on first visit. All other settings sub-tabs load their content automatically on `shown.bs.tab`. This is an inconsistency — users expect the data to be there.
+- **Fix:** In `app.js` (or `settings.js`), listen for `shown.bs.tab` on `#settings-security-subtab` (or similar) and call `settingsModule.loadLoginHistory()` automatically on first activation. Use a `let loginHistoryLoaded = false` flag to avoid redundant re-fetches.
+- **Done when:** Opening Settings → Security automatically shows the recent login history without requiring a manual click.
+- [ ] Implemented
+
+### V5-L4 — Hover-only tooltips not accessible on touch / keyboard-only users
+- **Files:** `index.html`
+- **Root cause:** `data-bs-toggle="tooltip"` elements show content only on hover — invisible on touch devices and when using keyboard navigation. Affected: stat card info buttons (e.g. `#totalAwardsInfo`), table column headers with `title=` only, and icon-only action buttons. Bootstrap tooltips have no built-in touch or focus fallback.
+- **Fix:** On every `data-bs-toggle="tooltip"` element also set `aria-label` to the same tooltip text. This makes the content available to screen readers and touch users via long-press or inspection:
+  ```javascript
+  // In app.js tooltip init:
+  document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+    if (!el.getAttribute('aria-label') && el.getAttribute('title')) {
+      el.setAttribute('aria-label', el.getAttribute('title'));
+    }
+  });
+  ```
+  Additionally, icon-only buttons must always have `aria-label`.
+- **Done when:** All tooltip content is also present as `aria-label` on the triggering element.
+- [ ] Implemented
+
+### V5-L5 — `<input type="date">` native picker contradicts DD/MM/YYYY placeholder
+- **Files:** `index.html`
+- **Root cause:** Every date input has `placeholder="DD/MM/YYYY"` (per V4-L7), but browsers ignore the `placeholder` attribute on `<input type="date">` because a native date picker is shown instead. On mobile, the native date picker UI occupies the full screen. The placeholder is never visible, creating a false expectation in the codebase that user guidance is being shown.
+- **Fix:** Remove the `placeholder="DD/MM/YYYY"` attribute from all `<input type="date">` elements (it has no effect). Instead add `<div class="form-text">Enter date in DD/MM/YYYY format</div>` only for date inputs where manual entry is expected (i.e. inputs outside native-picker context). This avoids the misleading codebase assumption.
+- **Done when:** No `<input type="date">` has a `placeholder` attribute (which browsers ignore). Date format guidance appears as `form-text` only where necessary.
+- [ ] Implemented
+
+### V5-L6 — CRM Communications table empty state has no "Log Communication" CTA
+- **Files:** `crm.js`
+- **Root cause:** When the Communications table is empty, `showEnhancedEmptyState()` is called. Checking `crm.js:407`, the empty state likely shows "No communications yet" with no action button. Users are left without a clear next step. Other empty states (Orgs, Awards) do provide a CTA button via `actionLabel`/`actionAction` options.
+- **Fix:** In `crm.js`'s communications empty state call, add `actionLabel: 'Log Communication'` and `actionAction: 'crmModule.openLogCommunicationModal'`.
+- **Done when:** The CRM Communications empty state shows a "Log Communication" button that opens the modal directly.
+- [ ] Implemented
+
+---
+
+## Notes for Claude (V5)
+
+- **V5-C1 first**: the `showEnhancedEmptyState()` change in `utils.js` affects all modules; test that the new `clearAction` option works in Organisations, Awards, Winners, Entries, Events, Invoices.
+- **V5-C2**: test `window.print()` from the Reporting tab after the print CSS fix. Verify sidebar is hidden.
+- **V5-H1**: converting Orgs sub-nav to proper Bootstrap tabs requires structural changes to `index.html` (add `tab-pane` class to content divs) and `organisations.js` (replace `showOrgsView`/`showSponsorsView` with event listeners on the Bootstrap `shown.bs.tab` event).
+- **V5-H2**: test dirty tracking by opening the winner edit modal, changing a field, then pressing Escape or clicking X — should show the unsaved changes dialog.
+- **V5-H3**: Modal header colour audit is a large `index.html` change — do all 70 modals in one pass using a script.
+- Always run `npm test` and `npm run build` after each commit. All 65 suites must pass.
+- Commit format: "Implements V5-C1, V5-C2" etc.

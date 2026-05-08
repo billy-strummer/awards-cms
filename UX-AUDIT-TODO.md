@@ -360,6 +360,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
 
 ## ═══════════════════════════════════════════════
 ## V2 AUDIT — Deep UX Audit (2026-05-07)
+
 ## ═══════════════════════════════════════════════
 
 > **CLAUDE: If any V2 items are still `[ ]`, start here before doing anything else.**
@@ -981,3 +982,121 @@ Branch: `claude/bta-location-restructure-JS5hX`
 ## COMPLETED (V1 Audit — all items done)
 
 *(Original V1 items C1–C8, H1–H15, M1–M20, L1–L10 are all committed and pushed)*
+
+---
+
+## ═══════════════════════════════════════════════
+## V4 AUDIT — Fresh Deep UX Audit (2026-05-08)
+## ═══════════════════════════════════════════════
+
+---
+
+## V4-CRITICAL
+
+### V4-C1 — Organisations table overflows at 1280px
+- **Files:** `organisations.js`
+- [x] Implemented
+
+### V4-C2 — Awards table Phase column wiring
+- **Files:** `awards.js`, `index.html`
+- [x] Implemented
+
+### V4-C3 — Stat card values hardcoded to 0
+- **Files:** `index.html`
+- [x] Implemented
+
+### V4-C4 — Invoice line items allow blank name and zero quantity
+- **Files:** `payments.js`
+- [x] Implemented
+
+---
+
+## V4-HIGH
+
+### V4-H1 — "Company" used instead of "Organisation" in UI labels
+- **Files:** `index.html`
+- [x] Implemented
+
+### V4-H2 — Small modals for Webhook, Season, Clone Event
+- [x] Implemented (modal-lg already present)
+
+### V4-H3 — btn-success standardisation
+- [x] Implemented (intentional — no change needed)
+
+### V4-H4 — Empty-state colspan hardcoded
+- **Files:** `utils.js`, `organisations.js`
+- [x] Implemented
+
+### V4-H5 — Dashboard tables missing .table-responsive
+- [x] Implemented (already present)
+
+### V4-H6 — Required field asterisks audit
+- [x] Implemented (all present — no change needed)
+
+---
+
+## V4-MEDIUM
+
+### V4-M1 — Sub-navs use nav-pills instead of nav-tabs
+- **Files:** `index.html`
+- [x] Implemented
+
+### V4-M2 — Payments stat cards use old content-card pattern
+- **Files:** `index.html`
+- [x] Implemented
+
+### V4-M3 — Payments sub-nav descriptor text
+- **Files:** `index.html`
+- [x] Implemented
+
+### V4-M4 — Emoji in option elements
+- **Files:** `index.html`
+- [x] Implemented
+
+### V4-M5 — Award form date sequence validation
+- [x] Implemented (pre-existing)
+
+### V4-M6 — Mobile sidebar auto-collapse
+- **Files:** `index.html`
+- [x] Implemented
+
+### V4-M7 — Email column truncation and health icon aria-label
+- **Files:** `organisations.js`, `styles.css`
+- [x] Implemented
+
+### V4-M8 — Award form help text
+- **Files:** `index.html`
+- [x] Implemented
+
+### V4-M9 — Scheduled Reports as table
+- **Files:** `app.js`, `tests/app.test.js`
+- [x] Implemented
+
+---
+
+## V4-LOW
+
+### V4-L1 — Sidebar toggle aria-label
+- [x] Implemented
+
+### V4-L2 — Tables missing visually-hidden caption
+- **Files:** `index.html`
+- [x] Implemented
+
+### V4-L3 — "Overview" single-item sidebar group
+- **Files:** `index.html`
+- [x] Implemented
+
+### V4-L4 — Sort icon class attributes outside class=""
+- [x] Implemented
+
+### V4-L5 — Pagination range display
+- **Files:** `utils.js`
+- [x] Implemented
+
+### V4-L6 — Relative timestamps for Last Refreshed
+- **Files:** `organisations.js`
+- [x] Implemented
+
+### V4-L7 — Date input placeholders
+- [x] Implemented (already present)

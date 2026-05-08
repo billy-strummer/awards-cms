@@ -831,7 +831,7 @@ const awardsModule = {
               <span>${counts.total}</span>
             </div>
           </td>
-          <td class="text-center">${phaseHtml}</td>
+          <td class="text-center d-none award-col-phase">${phaseHtml}</td>
           <td>${winnerHtml}</td>
           <td class="d-none award-col-modified"><small class="text-muted">${award.updated_at ? utils.formatRelativeTime(award.updated_at) : '-'}</small></td>
           <td class="text-center">
@@ -909,18 +909,32 @@ const awardsModule = {
       document.getElementById('awardsModifiedHeader')?.classList.toggle('d-none', !show);
       document.querySelectorAll('.award-col-modified').forEach((td) => td.classList.toggle('d-none', !show));
       localStorage.setItem('awardsColModified', show ? '1' : '0');
+    } else if (col === 'phase') {
+      document.getElementById('awardsPhaseHeader')?.classList.toggle('d-none', !show);
+      document.querySelectorAll('.award-col-phase').forEach((td) => td.classList.toggle('d-none', !show));
+      localStorage.setItem('awardsColPhase', show ? '1' : '0');
     }
+    utils.updateEmptyRowColspan('awardsTableBody');
   },
 
   // Restore column visibility from localStorage
   _restoreColumnVisibility() {
     const showModified = localStorage.getItem('awardsColModified') === '1';
-    const cb = document.getElementById('colToggleModified');
-    if (cb) cb.checked = showModified;
+    const cbModified = document.getElementById('colToggleModified');
+    if (cbModified) cbModified.checked = showModified;
     if (showModified) {
       document.getElementById('awardsModifiedHeader')?.classList.remove('d-none');
       document.querySelectorAll('.award-col-modified').forEach((td) => td.classList.remove('d-none'));
     }
+    // Phase column: hidden by default
+    const showPhase = localStorage.getItem('awardsColPhase') === '1';
+    const cbPhase = document.getElementById('colTogglePhase');
+    if (cbPhase) cbPhase.checked = showPhase;
+    if (showPhase) {
+      document.getElementById('awardsPhaseHeader')?.classList.remove('d-none');
+      document.querySelectorAll('.award-col-phase').forEach((td) => td.classList.remove('d-none'));
+    }
+    utils.updateEmptyRowColspan('awardsTableBody');
   },
 
   /**

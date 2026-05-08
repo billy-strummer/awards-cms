@@ -3298,6 +3298,14 @@ body.dark-mode #schedulePreview {
   background-color: rgba(99, 102, 241, 0.05) !important;
 }
 
+/* V4-M7: Truncate long email addresses in orgs table */
+#orgsTableBody td.org-email-cell {
+  max-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Drag and drop states */
 .dragover {
   border: 2px dashed var(--primary-color) !important;

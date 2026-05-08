@@ -584,6 +584,12 @@ describe('App Module - reportsScheduler', () => {
     jest.clearAllMocks();
   });
 
+  afterEach(() => {
+    // Clear rendered content so other test suites aren't affected by table-responsive DOM
+    const grid = document.getElementById('scheduledReportsGrid');
+    if (grid) grid.innerHTML = '';
+  });
+
   // --- Structure / Registration ---
   test('reportsScheduler is registered and available on window', () => {
     expect(window.reportsScheduler).toBeDefined();
@@ -752,7 +758,7 @@ describe('App Module - reportsScheduler', () => {
     expect(container.innerHTML).toContain('No scheduled reports configured yet');
   });
 
-  test('loadReports renders cards for scheduled reports', async () => {
+  test('loadReports renders table rows for scheduled reports', async () => {
     localStorage.setItem(
       'orgScheduledReports',
       JSON.stringify([

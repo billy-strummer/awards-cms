@@ -30,8 +30,8 @@ const orgsModule = {
     try {
       const saved = localStorage.getItem('orgsColumnVisibility');
       if (saved) return JSON.parse(saved);
-      // Default: hide the four noisiest columns so the table fits on screen
-      return { tags: false, county_city: false, lastContacted: false, health: false };
+      // Default: hide low-priority columns so the table fits on screen
+      return { tags: false, county_city: false, lastContacted: false, health: false, updated: false };
     } catch (e) {
       return {};
     }
@@ -773,7 +773,21 @@ const orgsModule = {
       if (showing) showing.textContent = pageOrgs.length > 0 ? `${startIdx + 1}-${endIdx}` : '0';
       if (total) total.textContent = STATE.allOrganisations.length;
     }
-    if (lastRefresh) lastRefresh.textContent = new Date().toLocaleTimeString('en-GB');
+    if (lastRefresh) {
+      const now = new Date();
+      lastRefresh.textContent = 'just now';
+      lastRefresh.title = now.toLocaleTimeString('en-GB');
+      clearInterval(lastRefresh._relTimer);
+      lastRefresh._relTimer = setInterval(() => {
+        const secs = Math.round((Date.now() - now) / 1000);
+        lastRefresh.textContent =
+          secs < 60
+            ? `${secs}s ago`
+            : secs < 3600
+              ? `${Math.floor(secs / 60)}m ago`
+              : `${Math.floor(secs / 3600)}h ago`;
+      }, 15000);
+    }
     utils.renderRowCount('orgsRowCount', pageOrgs.length, totalFiltered, 'organisations');
 
     // Column visibility helper
@@ -884,7 +898,7 @@ const orgsModule = {
         <td class="small" style="${cv('contact')}cursor: pointer;" data-on-dblclick="orgsModule.startInlineEdit" data-args='${JSON.stringify([org.id, 'contact', org.contact_name || ''])}' title="Double-click to edit">
           ${utils.escapeHtml(org.contact_name ? (org.contact_name.length > 18 ? org.contact_name.substring(0, 18) + '...' : org.contact_name) : '-')}
         </td>
-        <td class="small" style="${cv('email')}cursor: pointer;" data-on-dblclick="orgsModule.startInlineEdit" data-args='${JSON.stringify([org.id, 'email', org.email || ''])}' title="Double-click to edit">
+        <td class="small org-email-cell" style="${cv('email')}cursor: pointer;" data-on-dblclick="orgsModule.startInlineEdit" data-args='${JSON.stringify([org.id, 'email', org.email || ''])}' title="Double-click to edit">
           ${
             org.email
               ? `<a href="mailto:${org.email}" class="text-decoration-none" title="${utils.escapeHtml(org.email)}">
@@ -956,7 +970,7 @@ const orgsModule = {
         <td class="text-center" style="${cv('health')}">
           ${(() => {
             const h = this.getOrgHealthIndicator(org);
-            return `<i class="bi ${h.icon} text-${h.color}" title="${h.label}" style="font-size: 0.85rem;"></i>`;
+            return `<i class="bi ${h.icon} text-${h.color}" title="${h.label}" aria-label="Health: ${h.label}" style="font-size: 0.85rem;"></i>`;
           })()}
         </td>
         <td class="text-center">
@@ -7850,10 +7864,11 @@ const orgsModule = {
       console.warn('Failed to save column visibility to localStorage:', e.message);
     }
     this.renderOrganisations();
+    utils.updateEmptyRowColspan('orgsTableBody');
   },
 
   resetColumnVisibility() {
-    this._columnVisibility = {};
+    this._columnVisibility = { tags: false, county_city: false, lastContacted: false, health: false, updated: false };
     try {
       localStorage.setItem('orgsColumnVisibility', JSON.stringify(this._columnVisibility));
     } catch (e) {

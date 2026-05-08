@@ -71,26 +71,40 @@ const reportsScheduler = {
       </div>`;
       return;
     }
-    container.innerHTML = reports
-      .map(
-        (r, i) => `
-      <div class="card mb-2">
-        <div class="card-body py-2">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <strong>${utils.escapeHtml(r.name)}</strong>
-              <span class="badge bg-${r.active ? 'success' : 'secondary'} ms-2">${r.active ? 'Active' : 'Paused'}</span>
-              <div class="text-muted small">${utils.escapeHtml(r.frequency)} &middot; ${r.sections.join(', ')} &middot; To: ${utils.escapeHtml(r.recipients)}</div>
-            </div>
-            <div>
-              <button class="btn btn-sm btn-outline-primary me-1" data-action="reportsScheduler.previewReport" data-id="${i}"><i class="bi bi-eye"></i> Preview</button>
-              <button class="btn btn-sm btn-outline-danger" data-action="reportsScheduler.deleteReport" data-id="${i}"><i class="bi bi-trash"></i></button>
-            </div>
-          </div>
-        </div>
-      </div>`
-      )
-      .join('');
+    container.innerHTML = `
+      <div class="table-responsive">
+        <table class="table table-hover table-sm align-middle mb-0">
+          <caption class="visually-hidden">Scheduled reports list</caption>
+          <thead class="table-light">
+            <tr>
+              <th scope="col">Name</th>
+              <th scope="col">Frequency</th>
+              <th scope="col">Sections</th>
+              <th scope="col">Recipients</th>
+              <th scope="col">Status</th>
+              <th scope="col" class="text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${reports
+              .map(
+                (r, i) => `
+              <tr>
+                <td class="fw-semibold">${utils.escapeHtml(r.name)}</td>
+                <td>${utils.escapeHtml(r.frequency)}</td>
+                <td class="small text-muted">${r.sections.join(', ')}</td>
+                <td class="small">${utils.escapeHtml(r.recipients)}</td>
+                <td><span class="badge bg-${r.active ? 'success' : 'secondary'}">${r.active ? 'Active' : 'Paused'}</span></td>
+                <td class="text-center">
+                  <button class="btn btn-sm btn-outline-primary me-1" data-action="reportsScheduler.previewReport" data-id="${i}" aria-label="Preview report"><i class="bi bi-eye"></i></button>
+                  <button class="btn btn-sm btn-outline-danger" data-action="reportsScheduler.deleteReport" data-id="${i}" aria-label="Delete report"><i class="bi bi-trash"></i></button>
+                </td>
+              </tr>`
+              )
+              .join('')}
+          </tbody>
+        </table>
+      </div>`;
   },
 
   /**

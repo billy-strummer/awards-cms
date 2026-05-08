@@ -3912,10 +3912,15 @@ describe('Organisations Module - Column Visibility Management', () => {
     expect(saved.tier).toBe(false);
   });
 
-  test('resetColumnVisibility clears all visibility settings', () => {
+  test('resetColumnVisibility restores default hidden columns', () => {
     orgsModule._columnVisibility = { sector: false, tier: false };
     orgsModule.resetColumnVisibility();
-    expect(orgsModule._columnVisibility).toEqual({});
+    expect(orgsModule._columnVisibility.tags).toBe(false);
+    expect(orgsModule._columnVisibility.county_city).toBe(false);
+    expect(orgsModule._columnVisibility.lastContacted).toBe(false);
+    expect(orgsModule._columnVisibility.health).toBe(false);
+    expect(orgsModule._columnVisibility.updated).toBe(false);
+    expect(orgsModule._columnVisibility.sector).toBeUndefined();
   });
 
   test('hideAllColumns sets all columns to false', () => {

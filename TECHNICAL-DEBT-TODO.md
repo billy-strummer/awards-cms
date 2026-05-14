@@ -42,7 +42,7 @@ The CMS is functionally complete at a surface level but has three categories of 
 ### T1-C — Extract: Dashboard
 - **What:** Extract the Dashboard section into `src/partials/01-dashboard.html`.
 - **Done when:** Build output unchanged, tests pass.
-- [ ] Implemented
+- [x] Implemented
 
 ### T1-D — Extract: Awards
 - **What:** Extract Awards section + Add Award modal into `src/partials/02-awards.html`.

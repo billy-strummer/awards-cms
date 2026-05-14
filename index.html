@@ -499,7 +499,7 @@
 
             <div class="col-md-3">
               <div class="stat-card stat-card-clickable" data-action="aiVettingModule.openVettingModal" title="Click to view AI vetting status">
-                <button class="btn btn-sm btn-outline-warning position-absolute top-0 end-0 m-2"
+                <button class="btn btn-sm btn-outline-secondary position-absolute top-0 end-0 m-2"
                         data-action="aiVettingModule.openVettingModal" data-stop-propagation="true"
                         title="View AI Vetting Details"
                         style="z-index: 10; padding: 0.25rem 0.5rem;">
@@ -1569,7 +1569,7 @@
               </div>
               <div class="col-2 u-pointer" title="Click to filter sponsors" data-action="orgsModule.filterByStatus" data-id="sponsor">
                 <h6 class="text-muted mb-1 small">Sponsors</h6>
-                <h3 class="mb-0 fw-bold" id="orgsSponsorCount" style="color:#6f42c1;">0</h3>
+                <h3 class="mb-0 fw-bold text-purple" id="orgsSponsorCount">0</h3>
               </div>
             </div>
             <!-- hidden elements kept for JS compatibility -->
@@ -2192,7 +2192,7 @@
               <li><a class="dropdown-item" href="#" data-action="orgsModule.bulkStatusChange" data-args="[&quot;nominee&quot;]"><i class="bi bi-person-check text-info me-2"></i>Nominee</a></li>
               <li><a class="dropdown-item" href="#" data-action="orgsModule.bulkStatusChange" data-args="[&quot;shortlisted&quot;]"><i class="bi bi-list-check text-warning me-2"></i>Shortlisted</a></li>
               <li><a class="dropdown-item" href="#" data-action="orgsModule.bulkStatusChange" data-args="[&quot;winner&quot;]"><i class="bi bi-trophy text-success me-2"></i>Winner</a></li>
-              <li><a class="dropdown-item" href="#" data-action="orgsModule.bulkStatusChange" data-args="[&quot;sponsor&quot;]"><i class="bi bi-star text-purple me-2" style="color:#6f42c1;"></i>Sponsor</a></li>
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.bulkStatusChange" data-args="[&quot;sponsor&quot;]"><i class="bi bi-star text-purple me-2"></i>Sponsor</a></li>
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item text-danger" href="#" data-action="orgsModule.bulkStatusChange" data-args="[&quot;archived&quot;]"><i class="bi bi-archive me-2"></i>Archive</a></li>
             </ul>
@@ -2742,7 +2742,7 @@
               <p class="section-subtitle">Manage event photos and videos</p>
             </div>
             <div class="d-flex gap-2 align-items-center flex-wrap">
-              <button class="btn btn-sm btn-outline-warning" data-action="mediaGalleryModule.showFeaturedPhotosView" title="Mark photos as featured to highlight them on the public winner pages">
+              <button class="btn btn-sm btn-outline-secondary" data-action="mediaGalleryModule.showFeaturedPhotosView" title="Mark photos as featured to highlight them on the public winner pages">
                 <i class="bi bi-star-fill me-1"></i>Featured
               </button>
               <button class="btn btn-sm btn-outline-secondary" data-action="mediaGalleryModule.showKeyboardShortcutsHelp" title="Keyboard shortcuts"><i class="bi bi-keyboard"></i></button>
@@ -5114,7 +5114,7 @@
 
                     <!-- Quick Actions -->
                     <div class="d-grid gap-2">
-                      <button class="btn btn-outline-warning btn-sm" data-action="emailBuilder.saveDraft">
+                      <button class="btn btn-outline-secondary btn-sm" data-action="emailBuilder.saveDraft">
                         <i class="bi bi-file-earmark me-1"></i>Save Draft
                       </button>
                       <button class="btn btn-outline-secondary btn-sm" data-action="emailBuilder.exportHTML">
@@ -8154,10 +8154,10 @@
                   <li><a class="dropdown-item" href="#" data-action="eventsModule.generateNameBadges"><i class="bi bi-person-badge text-primary me-2"></i>Name Badges PDF</a></li>
                   <li><a class="dropdown-item" href="#" data-action="eventsModule.generatePlaceCards"><i class="bi bi-card-text text-info me-2"></i>Place Cards PDF</a></li>
                   <li><hr class="dropdown-divider"></li>
-                  <li><a class="dropdown-item" href="#" data-action="eventsModule.openShareableSeatingChart"><i class="bi bi-share text-purple me-2" style="color:#6f42c1;"></i>Shareable Seating Chart</a></li>
+                  <li><a class="dropdown-item" href="#" data-action="eventsModule.openShareableSeatingChart"><i class="bi bi-share text-purple me-2"></i>Shareable Seating Chart</a></li>
                 </ul>
               </div>
-              <button class="btn btn-outline-warning btn-sm" data-action="ticketModule.renderTicketDashboard" title="Manage tickets, QR codes, and refunds">
+              <button class="btn btn-outline-secondary btn-sm" data-action="ticketModule.renderTicketDashboard" title="Manage tickets, QR codes, and refunds">
                 <i class="bi bi-ticket-perforated me-1"></i>Tickets
               </button>
               <button class="btn btn-outline-secondary btn-sm" data-action="eventsModule.sendBulkInvites" title="Send invitation email to all guests">
@@ -10678,7 +10678,7 @@
                 <button class="btn btn-primary btn-sm" data-action="utils.navigateAndCloseModal" data-id='{"section":"media-gallery","modal":"mediaGallerySummaryModal"}'>
                   <i class="bi bi-images me-1"></i>View Media Gallery
                 </button>
-                <button class="btn btn-warning btn-sm" data-action="mediaGalleryModule.showUntaggedPhotos"  data-args='{"closeModal":"mediaGallerySummaryModal"}'>
+                <button class="btn btn-outline-primary btn-sm" data-action="mediaGalleryModule.showUntaggedPhotos"  data-args='{"closeModal":"mediaGallerySummaryModal"}'>
                   <i class="bi bi-tags me-1"></i>Tag Untagged Photos
                 </button>
               </div>

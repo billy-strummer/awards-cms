@@ -2076,3 +2076,43 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **V9-M1/M2/L2/L3** — These are all single-line `btn-warning` → `btn-*` class changes in `index.html`.
 - Always run `npm test` and `npm run build` after implementing. All 65 suites must pass, 0 lint errors.
 - Branch: `claude/bta-location-restructure-JS5hX`
+
+---
+
+# V10 UX Audit — Button Semantics & Inline Colour Cleanup
+
+## V10-HIGH
+
+### V10-H1 — "Save Draft" button uses `btn-outline-warning` (amber) for a safe action
+- **File:** `index.html` line 5117
+- **Fix:** `btn-outline-warning` → `btn-outline-secondary`
+- [x] Implemented
+
+### V10-H2 — "Tickets" toolbar button uses `btn-outline-warning` for a navigation action
+- **File:** `index.html` line 8160
+- **Fix:** `btn-outline-warning` → `btn-outline-secondary`
+- [x] Implemented
+
+### V10-H3 — "Tag Untagged Photos" uses `btn-warning` for a helpful maintenance task
+- **File:** `index.html` line 10681
+- **Fix:** `btn-warning` → `btn-outline-primary`
+- [x] Implemented
+
+### V10-H4 — "Featured" photos button uses `btn-outline-warning` for a positive editorial action
+- **File:** `index.html` line 2745
+- **Fix:** `btn-outline-warning` → `btn-outline-secondary`
+- [x] Implemented
+
+## V10-MEDIUM
+
+### V10-M1 — AI Vetting info icon on Dashboard KPI card uses `btn-outline-warning`
+- **File:** `index.html` line 502
+- **Fix:** `btn-outline-warning` → `btn-outline-secondary`
+- [x] Implemented
+
+## V10-LOW
+
+### V10-L1 — Three remaining inline `style="color:#6f42c1;"` when `.text-purple` CSS class exists
+- **Files:** `index.html` lines 1572, 2195, 8157
+- **Fix:** Replace inline colour with `text-purple` class; remove redundant inline styles
+- [x] Implemented

@@ -129,21 +129,21 @@ const winnerPipelineModule = {
         .join('');
 
       container.innerHTML = `
-        <div class="card mb-4">
-          <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">Panel Deliberation</h5>
+        <div class="content-card mb-4">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0"><i class="bi bi-list-ol me-2"></i>Panel Deliberation</h5>
             <button class="btn btn-sm btn-outline-secondary" data-action="winnerPipelineModule.renderScoreChart" data-id="${awardId}">Score Chart</button>
           </div>
-          <div class="card-body p-0">
+          <div class="table-responsive">
             <table class="table table-hover mb-0">
               <thead class="table-light"><tr><th>#</th><th>Entry</th><th>Avg Score</th><th>Status</th><th>Actions</th></tr></thead>
               <tbody>${rows || '<tr><td colspan="5" class="text-center text-muted py-3">No shortlisted entries</td></tr>'}</tbody>
             </table>
           </div>
         </div>
-        <div id="scoreChartContainer" class="card d-none mb-4">
-          <div class="card-header"><h6 class="mb-0">Score Breakdown</h6></div>
-          <div class="card-body"><canvas id="pipelineScoreChart" height="120"></canvas></div>
+        <div id="scoreChartContainer" class="content-card d-none mb-4">
+          <h6 class="mb-3"><i class="bi bi-bar-chart-line me-2"></i>Score Distribution</h6>
+          <canvas id="pipelineScoreChart" height="120"></canvas>
         </div>
         <div class="modal fade" id="deliberationNoteModal" tabindex="-1">
           <div class="modal-dialog"><div class="modal-content">
@@ -342,22 +342,31 @@ const winnerPipelineModule = {
         })
         .join('');
 
+      if (!awards || awards.length === 0) {
+        container.innerHTML = '';
+        utils.showEnhancedEmptyState('pipelineDashboard', 1, {
+          icon: 'bi-funnel',
+          message: 'No active awards in the pipeline',
+          description: 'Awards appear here once their status is set to Active. Go to Awards to check or update status.',
+          isFiltered: false,
+        });
+        return;
+      }
+
       container.innerHTML = `
-        <div class="card mb-4">
-          <div class="card-header"><h5 class="mb-0">Award Pipeline Dashboard</h5></div>
-          <div class="card-body">
-            <div class="row g-2 mb-3">
-              ${Object.entries(stageCounts)
-                .map(
-                  ([label, count]) => `
-                <div class="col"><div class="text-center border rounded p-2">
-                  <div class="fs-4 fw-bold">${count}</div><div class="small text-muted">${label}</div>
-                </div></div>`
-                )
-                .join('')}
-            </div>
-            <div class="row">${cards || '<div class="col text-muted">No active awards found.</div>'}</div>
+        <div class="content-card mb-4">
+          <h5 class="mb-3"><i class="bi bi-funnel me-2"></i>Award Pipeline Dashboard</h5>
+          <div class="row g-2 mb-3">
+            ${Object.entries(stageCounts)
+              .map(
+                ([label, count]) => `
+              <div class="col"><div class="text-center border rounded p-2">
+                <div class="fs-4 fw-bold">${count}</div><div class="small text-muted">${label}</div>
+              </div></div>`
+              )
+              .join('')}
           </div>
+          <div class="row">${cards}</div>
         </div>`;
     } catch (err) {
       container.innerHTML = `<div class="alert alert-danger">Pipeline dashboard error: ${utils.escapeHtml(err.message)}</div>`;

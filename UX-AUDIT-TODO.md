@@ -5,6 +5,7 @@
 Last audit: 2026-05-07 (original items — all complete)
 Second audit: 2026-05-07 (new deep audit — see V2 section below)
 Third audit: 2026-05-07 (post-structural-fix audit — see V3 section below)
+Sixth audit: 2026-05-08 (international awards business first-run UX audit — see V6 section below)
 Branch: `claude/bta-location-restructure-JS5hX`
 
 ---
@@ -1391,3 +1392,260 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **V5-H3**: Modal header colour audit is a large `index.html` change — do all 70 modals in one pass using a script.
 - Always run `npm test` and `npm run build` after each commit. All 65 suites must pass.
 - Commit format: "Implements V5-C1, V5-C2" etc.
+
+---
+
+## ═══════════════════════════════════════════════
+## V6 AUDIT — International Awards Business First-Run UX (2026-05-08)
+## ═══════════════════════════════════════════════
+
+**Context:** This audit is from the perspective of a first-time admin at a professional international awards business. Every finding is verified against the actual codebase. No hypothetical issues.
+
+---
+
+## V6-CRITICAL
+
+### V6-C1 — Social media "Post Now" silently fails with no upfront warning
+- **Files:** `index.html` (social-content tab), `social-media.js`
+- **Root cause:** The Social Media Manager presents fully functional-looking "Post Now" and "Schedule Post" buttons. When clicked, they show: *"Post has been queued for Twitter, LinkedIn. Note: Platform API integration required for actual posting."* via a toast. The post appears in Scheduled/Published lists but never reaches any platform. There is **no persistent warning** visible before the user starts composing. An international awards business client will spend time drafting and "posting" announcements believing they are live, when they are not.
+- **Fix:** Add a visible `alert alert-warning` banner at the top of `#social-content` that shows when platform credentials are not configured. Check for the presence of platform tokens via a lightweight `/api/data-proxy.js` action or a localStorage flag set by Settings → Integrations. Banner text: *"⚠️ Social media posting is not yet active. Configure your API credentials in [Settings → Integrations] to enable live posting."* Dismiss once credentials are saved.
+- **Also:** Change `openPlatformSettings()` to open a proper modal or navigate to Settings → Integrations rather than showing a toast.
+- **Done when:** A user with no API credentials set sees a warning banner before composing a post. Once credentials are saved the banner disappears.
+- [x] Implemented
+
+### V6-C2 — No Getting Started guidance in Entries, CRM, Payments, Events, Organisations
+- **Files:** `index.html` (entries, crm, payments, events, organisations sections)
+- **Root cause:** Dashboard has `#gettingStartedBanner` and Marketing has `#marketingGettingStarted` — both show numbered workflow steps for a first-time user. The five core workflow sections (Entries, CRM, Payments, Events, Organisations) have **no onboarding banner**. A new user arriving at Entries sees a blank table with no explanation of what an "entry" is, how it relates to awards, or what to do first.
+- **Fix:** Add a dismissible getting-started banner (matching the Marketing pattern — `card border-0 shadow-sm` with numbered steps, dismiss via localStorage flag) to each of these 5 sections:
+  - **Entries:** Steps: 1) Ensure award categories exist → 2) Share the public entry link → 3) Review submissions here. Action button: "Copy Entry Submission Link".
+  - **Organisations:** Steps: 1) Import via CSV or add manually → 2) Tag with sector/region → 3) Entries & CRM auto-link by org. Action: "Download Import Template".
+  - **CRM:** Steps: 1) Organisations sync automatically from Organisations tab → 2) Log communications → 3) Track deals and sponsorship. Action: "Go to Communications".
+  - **Payments:** Steps: 1) Create an invoice for an organisation → 2) Send it via email → 3) Record payment when received or use Stripe checkout. Action: "Create First Invoice".
+  - **Events:** Steps: 1) Create an event → 2) Share registration link → 3) Manage attendees and seating here. Action: "Create First Event".
+- **Done when:** Each section shows a numbered workflow banner on first visit (dismissed per section, stored in localStorage).
+- [x] Implemented
+
+---
+
+## V6-HIGH
+
+### V6-H1 — GDPR panel uses Bootstrap card style inside content-card Settings tab
+- **Files:** `gdpr.js` lines 32–84
+- **Root cause:** `gdprModule.renderGdprPanel()` outputs HTML using Bootstrap `.card`/`.card-header`/`.card-body`. This panel is injected into `#gdprPanel` inside `#settings-security`, which is surrounded by `.content-card` sections. The result is a visual inconsistency — GDPR Data Requests and Retention Policy sections look different from the rest of the Security tab.
+- **Fix:** In `gdpr.js`, replace `.card` → `<div class="content-card">`, `.card-header` content → `<h5 class="mb-3"><i class="bi bi-..."></i> Title</h5>`, `.card-body` → remove (content sits directly in `.content-card`). Match the pattern used in `branding.js` after V3-L5 fix.
+- **Done when:** GDPR sections in Security tab are visually indistinguishable from other sections (same card style, same header weight).
+- [x] Implemented
+
+### V6-H2 — Social media section uses Bootstrap card style throughout
+- **Files:** `index.html` lines 3884–4215 (social-content tab)
+- **Root cause:** The Social Media Manager sub-tab uses Bootstrap `.card`/`.card-header`/`.card-body` for "Create New Post", "Scheduled Posts", "Drafts", and "Published Posts" sections. All other CMS sections use `.content-card`. This inconsistency is particularly visible because the social media section is long and card-heavy.
+- **Fix:** Replace the 4 Bootstrap cards in `#social-content` with `.content-card` divs. Convert `.card-header` content to `<h5 class="mb-3"><i class="bi bi-..."></i> Title</h5>` headings directly inside `.content-card`. The scheduled/draft/published count badges can move to `d-flex justify-content-between align-items-center mb-3` wrapper with the h5 on the left and badge on the right.
+- **Done when:** Social media section cards match the `.content-card` style used everywhere else.
+- [x] Implemented
+
+### V6-H3 — Assignments module has no enhanced empty state
+- **Files:** `assignments.js` lines 165–175
+- **Root cause:** When no companies are assigned to the selected award, the module renders bare HTML: `<div class="text-center py-3 text-muted">No companies assigned yet. Add companies from the section below.</div>`. This plain text box has no icon, no primary action button, and doesn't match the `showEnhancedEmptyState()` pattern used in Awards, Entries, CRM, Events etc. It's especially jarring on a fresh system because the first thing judges/admins see is this blank text.
+- **Fix:** Replace the bare HTML at line ~173 with:
+  ```javascript
+  utils.showEnhancedEmptyState('assignedCompaniesList', 1, {
+    icon: 'bi-person-badge',
+    message: 'No companies assigned yet',
+    description: 'Search for companies in the panel below and click Assign to add them to this award',
+    isFiltered: false,
+  });
+  ```
+  Wrap the `<tbody id="assignedCompaniesList">` so the colspan covers the full table.
+- **Done when:** An empty assignment panel shows the standard icon + message + description empty state.
+- [x] Implemented
+
+### V6-H4 — Winner pipeline "No active awards" state is plain text
+- **Files:** `winner-pipeline.js` lines 354–362
+- **Root cause:** When no active awards exist, the pipeline dashboard renders: `<div class="col text-muted">No active awards found.</div>` inside a `.row`. No icon, no guidance, no action button. A new user has no idea what "active" means or what to do.
+- **Fix:** Replace the inline fallback string with a proper call after the container render:
+  ```javascript
+  if (!awards.length) {
+    container.innerHTML = '';
+    utils.showEnhancedEmptyState('pipelineDashboard', 1, {
+      icon: 'bi-funnel',
+      message: 'No active awards in the pipeline',
+      description: 'Awards appear here once they have shortlisted nominees. Go to Awards to check status.',
+      isFiltered: false,
+      actionLabel: 'Go to Awards',
+      actionFn: "dashboardModule.navigateToSection('awards')",
+    });
+    return;
+  }
+  ```
+- **Done when:** An empty winner pipeline shows the standard empty state with an action to navigate to Awards.
+- [x] Implemented
+
+### V6-H5 — Event ticket price and URL stored in localStorage only
+- **Files:** `events.js` lines 1434–1440
+- **Root cause:** `renderTicketsTab()` reads ticket price and URL from `localStorage.getItem('bta_ticket_settings_${eventId}')`. If the admin uses a different browser, clears cache, or another admin logs in, these settings are silently missing. A professional events business setting ticket prices for hundreds-of-pounds-per-head events cannot rely on browser storage.
+- **Fix:** Persist ticket price and ticket URL to the `events` table (add columns `ticket_price` and `ticket_url` if not present, or use a `bta_settings` key-value table). In `renderTicketsTab()`, load from the database first and fall back to localStorage only for migration. In `eventsModule.saveTicketSettings()`, write to the database via `apiClient`.
+- **Done when:** Ticket price and URL survive a browser cache clear and are visible to any admin who opens the event.
+- [x] Implemented
+
+### V6-H6 — Marketing banners/sponsors use inconsistent empty state style
+- **Files:** `marketing.js` lines 98–106, 425–432
+- **Root cause:** When no banners or sponsors exist, `marketing.js` sets `container.innerHTML` to a Bootstrap `alert alert-info` block. This doesn't match the `showEnhancedEmptyState()` pattern. The result: Banners and Sponsors tabs show a plain blue info box while every other empty section in the CMS shows an icon + description + action button in the standard enhanced empty state style.
+- **Fix:** Replace the `alert alert-info` empty states in `renderBanners()` and `renderSponsors()` with `utils.showEnhancedEmptyState()` calls:
+  ```javascript
+  // banners
+  utils.showEnhancedEmptyState('bannersContainer', 1, {
+    icon: 'bi-image',
+    message: 'No banners yet',
+    description: 'Create advertising banners to display on your awards pages',
+    actionLabel: 'Add Banner',
+    actionFn: 'marketingModule.openAddBannerModal',
+  });
+  // sponsors
+  utils.showEnhancedEmptyState('sponsorsContainer', 1, {
+    icon: 'bi-building',
+    message: 'No sponsors yet',
+    description: 'Add sponsors and partners to feature on your awards pages',
+    actionLabel: 'Add Sponsor',
+    actionFn: 'marketingModule.openAddSponsorModal',
+  });
+  ```
+  Note: these containers use card-grid layout, not a `<tbody>`, so `showEnhancedEmptyState` needs to work with a `div` container (the `colspan` param should be ignored for non-table containers — verify `utils.showEnhancedEmptyState` handles this or adapt the call).
+- **Done when:** Empty Banners and Sponsors tabs show the standard icon + description + primary action button.
+- [x] Implemented
+
+---
+
+## V6-MEDIUM
+
+### V6-M1 — Command palette (Ctrl+K) has no UI hint
+- **Files:** `index.html` (topbar search area, around line 159), `utils.js` (`initCommandPalette`)
+- **Root cause:** The global command palette is a powerful feature (Ctrl+K opens a fuzzy search across all modules). It is completely undiscoverable — no keyboard shortcut badge, no tooltip, no mention in the UI. New users never find it. The `?` shortcut modal (keyboard shortcuts help) could mention it, but only if users know `?` exists.
+- **Fix:** Add a `<kbd>Ctrl+K</kbd>` hint badge next to the topbar search input:
+  ```html
+  <small class="text-muted ms-2 d-none d-md-inline"><kbd>Ctrl</kbd>+<kbd>K</kbd></small>
+  ```
+  Also add it to the `?` shortcuts modal. Style `kbd` elements in `styles.css` if not already styled (Bootstrap includes `.kbd` styles).
+- **Done when:** The Ctrl+K shortcut is visible in the topbar and listed in the shortcuts modal.
+- [x] Implemented
+
+### V6-M2 — Reports "Data loaded: --" shows literal "--" on first render
+- **Files:** `index.html` line 3470, `reporting.js` (freshness update logic)
+- **Root cause:** The reports freshness indicator renders `<span>Data loaded: --</span>` on page load. The `--` looks like a rendering error to a new user. It should show a loading spinner until data is ready, then switch to the actual timestamp.
+- **Fix:** Change the initial HTML to:
+  ```html
+  <span id="reportsDataFreshnessText">
+    <span class="spinner-border spinner-border-sm me-1" role="status" aria-label="Loading data"></span>Loading…
+  </span>
+  ```
+  In `reportsAnalytics` after data loads, replace this with the timestamp: `el.innerHTML = 'Data loaded: ' + new Date().toLocaleTimeString()`.
+- **Done when:** Reports section shows a spinner then a real timestamp, never "--".
+- [x] Implemented
+
+### V6-M3 — Social media scheduled/draft/published empty states are bare HTML
+- **Files:** `index.html` lines 4163–4169, `social-media.js` `loadScheduledPosts()` / `loadPublishedPosts()`
+- **Root cause:** Scheduled Posts and Published Posts sections hard-code their empty state in HTML:
+  ```html
+  <div class="text-center text-muted py-4">
+    <i class="bi bi-calendar-x display-4 d-block mb-2 opacity-25"></i>
+    No scheduled posts
+  </div>
+  ```
+  And `loadPublishedPosts()` likely uses a similar bare pattern. These don't use `showEnhancedEmptyState()` and have no call to action.
+- **Fix:** In `social-media.js`, after loading scheduled/published posts, if the list is empty call `showEnhancedEmptyState()` on the container with a description pointing the user to the compose form. For the static HTML empty state, replace with a dynamic render driven by JS (remove the hard-coded HTML, let JS set the empty state after load).
+- **Done when:** Empty scheduled/published/draft lists show the standard icon + description style, matching the rest of the CMS.
+- [x] Implemented
+
+### V6-M4 — `console.debug` calls left in crm.js production code
+- **Files:** `crm.js` (31 occurrences of `console.debug`)
+- **Root cause:** `crm.js` contains 31 `console.debug('Loading deals...')` and similar calls. While `console.debug` is suppressed in most production browser consoles, it is unprofessional and leaks internal implementation detail if a client opens DevTools.
+- **Fix:** Run: `sed -i 's/console\.debug(/\/\/ console.debug(/g' crm.js` to comment them all out. Then remove any that are truly redundant (loading indicators that have UI spinners already). Keep errors (`console.error`) and warnings (`console.warn`).
+- **Done when:** `grep -c "console.debug" crm.js` returns 0.
+- [x] Implemented
+
+### V6-M5 — Winner pipeline panel uses old Bootstrap card for score chart
+- **Files:** `winner-pipeline.js` lines 143–148
+- **Root cause:** The panel rendered by `_loadPipelinePanel()` includes `<div class="card-body"><canvas id="pipelineScoreChart" height="120"></canvas></div>` — a Bootstrap `.card-body` without a surrounding `.card`. This orphaned class produces inconsistent padding/styling in the pipeline panel.
+- **Fix:** Wrap the canvas in a `.content-card` with a `<h6>` heading: `<div class="content-card mt-3"><h6 class="mb-3"><i class="bi bi-bar-chart-line me-2"></i>Score Distribution</h6><canvas id="pipelineScoreChart" height="120"></canvas></div>`.
+- **Done when:** The score chart in the pipeline panel is visually consistent with other content cards.
+- [x] Implemented
+
+### V6-M6 — Assignments "Add Companies" section header uses bi-plus-circle
+- **Files:** `assignments.js` line ~217
+- **Root cause:** The "Add Companies" section heading uses `bi-plus-circle` icon — inconsistent with the V5-L2 standardisation to `bi-plus-lg` across all add/create actions.
+- **Fix:** Change `<i class="bi bi-plus-circle me-2 text-primary"></i>` → `<i class="bi bi-plus-lg me-2 text-primary"></i>` in `assignments.js`.
+- **Done when:** No `bi-plus-circle` icons remain in the rendered assignments panel.
+- [x] Implemented
+
+### V6-M7 — Social media "Configure Platforms" shows a toast instead of a settings path
+- **Files:** `social-media.js` lines 999–1004, `index.html` line 4383
+- **Root cause:** The "Configure Platforms" button calls `openPlatformSettings()` which shows a toast: *"Platform connection settings require OAuth API keys... Configure these in your .env file."*. This is unhelpful — a non-technical admin doesn't know what a `.env` file is. There's no link to Settings → Integrations where the Webhooks section lives (the closest thing to an integrations UI).
+- **Fix:** Replace the toast with a navigation action to the Settings → Integrations sub-tab:
+  ```javascript
+  openPlatformSettings() {
+    utils.showToast('Navigating to Settings → Integrations', 'info');
+    app.navigateToSection('settings');
+    // then programmatically activate the integrations sub-tab
+    const tab = document.querySelector('[data-bs-target="#settings-integrations"]');
+    if (tab) bootstrap.Tab.getOrCreateInstance(tab).show();
+  },
+  ```
+  Also update the tooltip text on the button to "API Credentials" and add a note in Settings → Integrations about social media platform tokens.
+- **Done when:** "Configure Platforms" navigates the user to Settings → Integrations rather than showing a useless toast.
+- [x] Implemented
+
+---
+
+## V6-LOW
+
+### V6-L1 — No keyboard shortcut hint visible in any section toolbar
+- **Files:** `index.html` (filter bars in Awards, Organisations, Winners, Entries, Events), `utils.js` (`_buildShortcutsModal`)
+- **Root cause:** The `?` keyboard shortcut opens a shortcuts reference modal. But `?` itself is not discovered unless the user already knows about it. No toolbar, filter bar, or section header shows a `?` or "Keyboard shortcuts" hint anywhere.
+- **Fix:** Add a small `<button class="btn btn-link btn-sm text-muted p-0 ms-2" data-action="utils.toggleShortcutsModal" title="Keyboard shortcuts"><kbd>?</kbd></button>` to the right side of the filter bar in each major section (Awards, Organisations, Winners, Entries, Events, CRM, Payments). One global instance in the topbar would also work.
+- **Done when:** At least one visible `?` hint is present in the UI that opens the shortcuts modal.
+- [x] Implemented
+
+### V6-L2 — Marketing getting-started banner uses Bootstrap card style (not content-card)
+- **Files:** `index.html` lines 3660–3754
+- **Root cause:** The Marketing Getting Started guide uses `class="card border-0 shadow-sm mb-4"` — a Bootstrap card, not `.content-card`. This is minor but inconsistent: the rest of the Marketing section uses `.content-card`.
+- **Fix:** Change `<div class="card border-0 shadow-sm mb-4" id="marketingGettingStarted">` → `<div class="content-card mb-4" id="marketingGettingStarted">` and remove the inner `<div class="card-body py-3">` wrapper (`.content-card` provides its own padding).
+- **Done when:** Marketing getting-started banner uses `.content-card` and renders with consistent padding/border-radius.
+- [x] Implemented
+
+### V6-L3 — Reports data freshness shows no auto-refresh option
+- **Files:** `index.html` line 3468, `reporting.js`
+- **Root cause:** The reports toolbar shows "Data loaded: [time]" but there's no way to refresh without navigating away and back. For an awards admin reviewing live data during a ceremony, this is inconvenient.
+- **Fix:** Add a small `<button class="btn btn-sm btn-outline-secondary ms-2" data-action="reportsAnalytics.loadReports" title="Refresh data"><i class="bi bi-arrow-clockwise"></i></button>` next to the freshness indicator. Show a spinner inside the button while loading.
+- **Done when:** User can click a Refresh button in the Reports toolbar to reload data without page navigation.
+- [x] Implemented
+
+### V6-L4 — CRM companies table "status" badge shows raw database value
+- **Files:** `crm.js` line ~2702
+- **Root cause:** The CRM companies embedded table (in deals section) renders: `<span class="badge bg-primary">${utils.escapeHtml(o.status || '')}</span>` — the raw `status` database value (e.g. `"nominee"`, `"active"`, `"prospect"`) without title-casing or badge colour coding. Users see a uniform blue badge for every status.
+- **Fix:** Apply `utils.toTitleCase()` to the status value and map statuses to Bootstrap colour classes:
+  ```javascript
+  const statusColors = { nominee: 'bg-info', winner: 'bg-success', active: 'bg-primary', prospect: 'bg-secondary', inactive: 'bg-danger' };
+  const cls = statusColors[o.status] || 'bg-secondary';
+  `<span class="badge ${cls}">${utils.toTitleCase(o.status || 'Unknown')}</span>`
+  ```
+- **Done when:** CRM company status badges are colour-coded and title-cased.
+- [x] Implemented
+
+### V6-L5 — "Copy Entry Link" in entries empty state label is unclear
+- **Files:** `entries.js` lines 302–312
+- **Root cause:** The entries empty state (when no entries exist) shows a CTA button labelled "Copy Entry Link". A new admin doesn't know what this links to or where to paste it. The action is also ambiguous — "link" to what?
+- **Fix:** Change the action button label to `"Copy Public Entry Form URL"` and add a description line: *"Share this link with entrants so they can submit online."* Update `showEnhancedEmptyState` call in `entries.js` accordingly.
+- **Done when:** Empty entries state CTA is labelled "Copy Public Entry Form URL" with explanatory description.
+- [x] Implemented
+
+---
+
+## Notes for Claude (V6)
+
+- **V6-C1 first** — the social media warning banner is the most reputationally damaging issue. An international awards client posting to 4 platforms and seeing nothing happen will lose trust in the system.
+- **V6-C2** — add the 5 getting-started banners in a single commit. Use the Marketing banner at line 3660 as the exact template. Each banner needs a unique localStorage key (`entriesWorkflowDismissed`, `orgsWorkflowDismissed`, etc.).
+- **V6-H1 (GDPR)** — `gdpr.js` renders inside `#gdprPanel` which is moved into `#settings-security` by an inline script. The card changes are purely in `gdpr.js`.
+- **V6-H2 (Social media cards)** — the 4 cards are in `index.html` `#social-content`. They are rendered as static HTML (not dynamically), so the change is purely in `index.html`.
+- **V6-H5 (Ticket price persistence)** — check whether the `events` table already has `ticket_price` / `ticket_url` columns in `database-schema.sql` before assuming you need a migration. If the columns exist, the fix is purely in `events.js`.
+- **V6-M4 (console.debug)** — use sed or a script; do not edit manually. Run `grep -c "console.debug" crm.js` to verify count before and after.
+- Always run `npm test` and `npm run build` after each commit. All 65 suites must pass.
+- Commit format: "Implements V6-C1, V6-C2" etc.

@@ -168,9 +168,14 @@ const assignmentsModule = {
             ${
               validAssignments.length === 0
                 ? `
-              <div class="alert alert-info">
-                <i class="bi bi-info-circle me-2"></i>
-                No companies assigned yet. Add companies from the section below.
+              <div id="assignedCompaniesList">
+                <div class="text-center py-5">
+                  <div class="empty-state">
+                    <i class="bi bi-person-badge display-4 d-block mb-2 opacity-25"></i>
+                    <p class="fw-semibold mb-1">No companies assigned yet</p>
+                    <p class="text-muted small mb-1">Search for companies in the panel below and click Assign to add them to this award</p>
+                  </div>
+                </div>
               </div>
             `
                 : `
@@ -214,7 +219,7 @@ const assignmentsModule = {
           <div class="col-12 mt-4">
             <hr class="mb-4">
             <h5 class="mb-3">
-              <i class="bi bi-plus-circle me-2 text-primary"></i>
+              <i class="bi bi-plus-lg me-2 text-primary"></i>
               Add Companies
             </h5>
 

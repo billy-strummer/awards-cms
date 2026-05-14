@@ -3373,20 +3373,20 @@ describe('Social Media Module - showPostSuccessMessage()', () => {
 
   test('formats platform names with capitalized first letter', () => {
     socialMediaModule.showPostSuccessMessage(['twitter', 'facebook']);
-    expect(showToastSpy).toHaveBeenCalledWith(expect.stringContaining('Twitter, Facebook'), 'info', 5000);
+    expect(showToastSpy).toHaveBeenCalledWith(expect.stringContaining('Twitter, Facebook'), 'info', 6000);
   });
 
   test('formats single platform name correctly', () => {
     socialMediaModule.showPostSuccessMessage(['linkedin']);
-    expect(showToastSpy).toHaveBeenCalledWith(expect.stringContaining('Linkedin'), 'info', 5000);
+    expect(showToastSpy).toHaveBeenCalledWith(expect.stringContaining('Linkedin'), 'info', 6000);
   });
 
   test('includes platform API integration note', () => {
     socialMediaModule.showPostSuccessMessage(['twitter']);
     expect(showToastSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Platform API integration required'),
+      expect.stringContaining('Live publishing requires API credentials'),
       'info',
-      5000
+      6000
     );
   });
 });
@@ -3402,18 +3402,13 @@ describe('Social Media Module - openPlatformSettings()', () => {
     showToastSpy.mockRestore();
   });
 
-  test('shows toast with OAuth configuration info', () => {
+  test('shows navigation toast when called', () => {
     socialMediaModule.openPlatformSettings();
-    expect(showToastSpy).toHaveBeenCalledWith(expect.stringContaining('OAuth API keys'), 'info');
+    expect(showToastSpy).toHaveBeenCalledWith(expect.stringContaining('Settings'), 'info', expect.any(Number));
   });
 
-  test('mentions all four platforms', () => {
-    socialMediaModule.openPlatformSettings();
-    const message = showToastSpy.mock.calls[0][0];
-    expect(message).toContain('X');
-    expect(message).toContain('Facebook');
-    expect(message).toContain('Instagram');
-    expect(message).toContain('LinkedIn');
+  test('does not throw when settings tab is not in DOM', () => {
+    expect(() => socialMediaModule.openPlatformSettings()).not.toThrow();
   });
 });
 

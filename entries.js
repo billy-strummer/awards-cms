@@ -304,10 +304,10 @@ const entriesModule = {
         message: hasFilters ? 'No entries match your filters' : 'No entries yet',
         description: hasFilters
           ? 'Try clearing your filters or search terms'
-          : 'Entries appear here once organisations submit via the public entry form',
+          : 'Share this link with entrants so they can submit online.',
         isFiltered: hasFilters,
         clearAction: hasFilters ? 'entriesModule.resetFilters' : '',
-        actionLabel: hasFilters ? '' : 'Copy Entry Link',
+        actionLabel: hasFilters ? '' : 'Copy Public Entry Form URL',
         actionAction: hasFilters ? '' : 'entriesModule.copyPublicFormLink',
       });
       const paginationEl = document.getElementById('entriesPagination');

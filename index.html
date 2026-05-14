@@ -160,6 +160,11 @@
             <kbd class="d-none d-xl-inline ms-1" style="background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.75);border:1px solid rgba(255,255,255,0.3);padding:1px 5px;border-radius:3px;font-size:0.6rem;line-height:1.4;">Ctrl K</kbd>
           </button>
 
+          <!-- Keyboard Shortcuts Hint -->
+          <button class="btn btn-outline-light btn-sm" title="Keyboard shortcuts" aria-label="Keyboard shortcuts" onclick="var m=document.getElementById('shortcutsHelpModal');if(m)new bootstrap.Modal(m).show();">
+            <kbd style="background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.85);border:1px solid rgba(255,255,255,0.3);padding:1px 6px;border-radius:3px;font-size:0.7rem;">?</kbd>
+          </button>
+
           <!-- Dark Mode Toggle -->
           <button class="btn btn-outline-light" id="darkModeToggle" title="Toggle dark mode" aria-label="Toggle dark mode">
             <i class="bi bi-moon"></i>
@@ -1182,6 +1187,52 @@
       </h1>
       <p class="section-subtitle">View and manage registered organisations<span id="organisationsFreshness" class="ms-2"></span></p>
     </div>
+
+    <!-- Getting Started Banner -->
+    <div class="card border-0 shadow-sm mb-4" id="orgsGettingStarted">
+      <div class="card-body py-3">
+        <div class="d-flex justify-content-between align-items-start mb-3">
+          <div>
+            <h6 class="fw-bold mb-1"><i class="bi bi-map me-2 text-primary"></i>Getting Started — Organisations</h6>
+            <p class="text-muted small mb-0">Build your organisation database — the foundation of your awards programme.</p>
+          </div>
+          <button type="button" class="btn-close btn-sm" aria-label="Dismiss" onclick="document.getElementById('orgsGettingStarted').style.display='none';localStorage.setItem('orgsWorkflowDismissed','1');"></button>
+        </div>
+        <div class="row g-2">
+          <div class="col-md-4">
+            <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+              <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">1</span>
+              <div>
+                <div class="fw-semibold small">Import or Add Organisations</div>
+                <div class="text-muted" style="font-size:.75rem;">Use CSV Import for bulk upload or add organisations individually. Include sector, region, and contact details.</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+              <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">2</span>
+              <div>
+                <div class="fw-semibold small">Tag with Sector &amp; Region</div>
+                <div class="text-muted" style="font-size:.75rem;">Tagging enables filtered reporting, regional award categories, and targeted email campaigns.</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+              <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">3</span>
+              <div>
+                <div class="fw-semibold small">Entries &amp; CRM Auto-Link</div>
+                <div class="text-muted" style="font-size:.75rem;">Entries submitted by an organisation link back here automatically. CRM tracks all communications per org.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="mt-3">
+          <button class="btn btn-sm btn-primary" data-action="orgsModule.downloadImportTemplate"><i class="bi bi-download me-1"></i>Download Import Template</button>
+        </div>
+      </div>
+    </div>
+    <script>if(localStorage.getItem('orgsWorkflowDismissed')==='1'){var _ob=document.getElementById('orgsGettingStarted');if(_ob)_ob.style.display='none';}</script>
 
     <!-- Section View Toggle -->
     <ul class="nav nav-tabs mb-4" id="orgsSubNav" role="tablist">
@@ -2360,6 +2411,52 @@
             <p class="section-subtitle">Manage award entries and submissions<span id="entriesFreshness" class="ms-2"></span></p>
           </div>
 
+          <!-- Getting Started Banner -->
+          <div class="card border-0 shadow-sm mb-4" id="entriesGettingStarted">
+            <div class="card-body py-3">
+              <div class="d-flex justify-content-between align-items-start mb-3">
+                <div>
+                  <h6 class="fw-bold mb-1"><i class="bi bi-map me-2 text-primary"></i>Getting Started — Entry Submissions</h6>
+                  <p class="text-muted small mb-0">How entries flow into your awards programme.</p>
+                </div>
+                <button type="button" class="btn-close btn-sm" aria-label="Dismiss" onclick="document.getElementById('entriesGettingStarted').style.display='none';localStorage.setItem('entriesWorkflowDismissed','1');"></button>
+              </div>
+              <div class="row g-2">
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">1</span>
+                    <div>
+                      <div class="fw-semibold small">Create Award Categories</div>
+                      <div class="text-muted" style="font-size:.75rem;">Go to Awards and set up your categories first — entrants select a category when submitting.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">2</span>
+                    <div>
+                      <div class="fw-semibold small">Share the Entry Form</div>
+                      <div class="text-muted" style="font-size:.75rem;">Copy the public entry form URL and share it with entrants. Submissions appear here automatically.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">3</span>
+                    <div>
+                      <div class="fw-semibold small">Review &amp; Progress Entries</div>
+                      <div class="text-muted" style="font-size:.75rem;">Update status (Draft → Submitted → Shortlisted → Winner) and assign entries to judges.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="mt-3">
+                <button class="btn btn-sm btn-primary" data-action="entriesModule.copyEntryLink"><i class="bi bi-link-45deg me-1"></i>Copy Public Entry Form URL</button>
+              </div>
+            </div>
+          </div>
+          <script>if(localStorage.getItem('entriesWorkflowDismissed')==='1'){var _eb=document.getElementById('entriesGettingStarted');if(_eb)_eb.style.display='none';}</script>
+
           <!-- Stats Cards -->
           <div class="row g-3 mb-4">
             <div class="col-md-3">
@@ -3132,6 +3229,52 @@
             <p class="section-subtitle">Plan, manage, and track award ceremonies and events<span id="eventsFreshness" class="ms-2"></span></p>
           </div>
 
+          <!-- Getting Started Banner -->
+          <div class="card border-0 shadow-sm mb-4" id="eventsGettingStarted">
+            <div class="card-body py-3">
+              <div class="d-flex justify-content-between align-items-start mb-3">
+                <div>
+                  <h6 class="fw-bold mb-1"><i class="bi bi-map me-2 text-primary"></i>Getting Started — Events</h6>
+                  <p class="text-muted small mb-0">Plan and manage your awards ceremonies and events.</p>
+                </div>
+                <button type="button" class="btn-close btn-sm" aria-label="Dismiss" onclick="document.getElementById('eventsGettingStarted').style.display='none';localStorage.setItem('eventsWorkflowDismissed','1');"></button>
+              </div>
+              <div class="row g-2">
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">1</span>
+                    <div>
+                      <div class="fw-semibold small">Create an Event</div>
+                      <div class="text-muted" style="font-size:.75rem;">Add a ceremony or gala event with venue, date, capacity, and ticket pricing.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">2</span>
+                    <div>
+                      <div class="fw-semibold small">Share Registration Link</div>
+                      <div class="text-muted" style="font-size:.75rem;">Copy the public registration URL from the event's Tickets tab and share with attendees.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">3</span>
+                    <div>
+                      <div class="fw-semibold small">Manage Attendees &amp; Seating</div>
+                      <div class="text-muted" style="font-size:.75rem;">Track RSVPs, assign seating, issue QR code tickets, and check in guests on the night.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="mt-3">
+                <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#eventModal"><i class="bi bi-plus-lg me-1"></i>Create First Event</button>
+              </div>
+            </div>
+          </div>
+          <script>if(localStorage.getItem('eventsWorkflowDismissed')==='1'){var _evb=document.getElementById('eventsGettingStarted');if(_evb)_evb.style.display='none';}</script>
+
           <!-- Calendar View Toggle -->
           <div class="mb-3">
             <button class="btn btn-outline-primary btn-sm" data-action="calendarModule.renderCalendar" title="Show calendar view of events and deadlines">
@@ -3465,9 +3608,11 @@
                 <i class="bi bi-printer me-1"></i>Print Report
               </button>
             </div>
-            <div id="reportsDataFreshness" class="d-flex align-items-center gap-2 small text-muted">
-              <i class="bi bi-clock-history"></i>
-              <span>Data loaded: --</span>
+            <div class="d-flex align-items-center gap-2">
+              <div id="reportsDataFreshness" class="d-flex align-items-center gap-2 small text-muted">
+                <span class="spinner-border spinner-border-sm" role="status" aria-label="Loading data"></span><span>Loading&hellip;</span>
+              </div>
+              <button class="btn btn-sm btn-outline-secondary" data-action="reportsAnalytics.loadAnalytics" title="Refresh data" aria-label="Refresh data"><i class="bi bi-arrow-clockwise"></i></button>
             </div>
           </div>
 
@@ -3657,8 +3802,7 @@
           </div>
 
           <!-- Getting Started Workflow Card -->
-          <div class="card border-0 shadow-sm mb-4" id="marketingGettingStarted">
-            <div class="card-body py-3">
+          <div class="content-card mb-4" id="marketingGettingStarted">
               <div class="d-flex justify-content-between align-items-start mb-3">
                 <div>
                   <h6 class="fw-bold mb-1"><i class="bi bi-map me-2 text-primary"></i>Getting Started — Recommended Workflow</h6>
@@ -3749,7 +3893,6 @@
                   </div>
                 </div>
               </div>
-            </div>
           </div>
           <script>if(localStorage.getItem('mktWorkflowDismissed')==='1'){var el=document.getElementById('marketingGettingStarted');if(el)el.style.display='none';}</script>
 
@@ -3859,6 +4002,15 @@
 
             <!-- Social Media Sub-Tab -->
             <div class="tab-pane fade" id="social-content" role="tabpanel">
+              <!-- API credentials warning — hidden once credentials are configured -->
+              <div class="alert alert-warning d-flex align-items-start gap-2 mb-4" id="socialApiWarning" role="alert">
+                <i class="bi bi-exclamation-triangle-fill flex-shrink-0 mt-1"></i>
+                <div>
+                  <strong>Social media posting is not yet active.</strong>
+                  Posts you create here are saved but will not be published to any platform until API credentials are configured.
+                  <a href="#" class="alert-link ms-1" data-action="socialMediaModule.openPlatformSettings" data-prevent-default="true">Configure credentials in Settings → Integrations</a>
+                </div>
+              </div>
               <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
                   <h4><i class="bi bi-share me-2"></i>Social Media Manager</h4>
@@ -3881,13 +4033,8 @@
                 <div class="col-lg-8">
 
                   <!-- Create Post Card -->
-                  <div class="card mb-4">
-                    <div class="card-header">
-                      <h5 class="mb-0">
-                        <i class="bi bi-pencil-square me-2"></i>Create New Post
-                      </h5>
-                    </div>
-                    <div class="card-body">
+                  <div class="content-card mb-4">
+                    <h5 class="mb-3"><i class="bi bi-pencil-square me-2"></i>Create New Post</h5>
 
                       <!-- Template Selection -->
                       <div class="mb-4">
@@ -4148,70 +4295,39 @@
                         </button>
                       </div>
 
-                    </div>
                   </div>
 
                   <!-- Scheduled Posts -->
-                  <div class="card mb-4">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                      <h5 class="mb-0">
-                        <i class="bi bi-calendar-check me-2"></i>Scheduled Posts
-                      </h5>
+                  <div class="content-card mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                      <h5 class="mb-0"><i class="bi bi-calendar-check me-2"></i>Scheduled Posts</h5>
                       <span class="badge bg-primary" id="scheduledPostsCount">0</span>
                     </div>
-                    <div class="card-body">
-                      <div id="scheduledPostsList">
-                        <div class="text-center text-muted py-4">
-                          <i class="bi bi-calendar-x display-4 d-block mb-2 opacity-25"></i>
-                          No scheduled posts
-                        </div>
-                      </div>
-                    </div>
+                    <div id="scheduledPostsList"></div>
                   </div>
 
                   <!-- Draft Posts -->
-                  <div class="card mb-4">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                      <h5 class="mb-0">
-                        <i class="bi bi-file-earmark-text me-2"></i>Drafts
-                      </h5>
+                  <div class="content-card mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                      <h5 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i>Drafts</h5>
                       <span class="badge bg-secondary" id="draftPostsCount">0</span>
                     </div>
-                    <div class="card-body">
-                      <div id="draftPostsList">
-                        <div class="text-center text-muted py-3">
-                          <small>No drafts</small>
-                        </div>
-                      </div>
-                    </div>
+                    <div id="draftPostsList"></div>
                   </div>
 
                   <!-- Published Posts History -->
-                  <div class="card mb-4">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                      <h5 class="mb-0">
-                        <i class="bi bi-send-check me-2"></i>Published Posts
-                      </h5>
+                  <div class="content-card mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                      <h5 class="mb-0"><i class="bi bi-send-check me-2"></i>Published Posts</h5>
                       <span class="badge bg-success" id="publishedPostsCount">0</span>
                     </div>
-                    <div class="card-body">
-                      <div id="publishedPostsList">
-                        <div class="text-center text-muted py-4">
-                          <i class="bi bi-send display-4 d-block mb-2 opacity-25"></i>
-                          No published posts yet
-                        </div>
-                      </div>
-                    </div>
+                    <div id="publishedPostsList"></div>
                   </div>
 
                   <!-- Analytics Section -->
-                  <div class="card" id="analyticsSection">
-                    <div class="card-header">
-                      <h5 class="mb-0">
-                        <i class="bi bi-graph-up me-2"></i>Post Analytics
-                      </h5>
-                    </div>
-                    <div class="card-body" id="analyticsContent">
+                  <div class="content-card" id="analyticsSection">
+                    <h5 class="mb-3"><i class="bi bi-graph-up me-2"></i>Post Analytics</h5>
+                    <div id="analyticsContent">
                       <div class="text-center text-muted py-4">
                         <i class="bi bi-graph-up display-4 d-block mb-2 opacity-25"></i>
                         <p>Click "Analytics" to load statistics</p>
@@ -4225,13 +4341,8 @@
                 <div class="col-lg-4">
 
                   <!-- Live Preview -->
-                  <div class="card mb-4 sticky-top" style="top: 20px;">
-                    <div class="card-header">
-                      <h5 class="mb-0">
-                        <i class="bi bi-eye me-2"></i>Live Preview
-                      </h5>
-                    </div>
-                    <div class="card-body">
+                  <div class="content-card mb-4 sticky-top" style="top: 20px;">
+                    <h5 class="mb-3"><i class="bi bi-eye me-2"></i>Live Preview</h5>
 
                       <!-- Platform Tabs -->
                       <ul class="nav nav-tabs mb-3" role="tablist">
@@ -4338,18 +4449,12 @@
                         </div>
                       </div>
 
-                    </div>
                   </div>
 
                   <!-- Connected Platforms -->
-                  <div class="card">
-                    <div class="card-header">
-                      <h5 class="mb-0">
-                        <i class="bi bi-plug me-2"></i>Connected Platforms
-                      </h5>
-                    </div>
-                    <div class="card-body">
-                      <div id="connectedPlatformsList">
+                  <div class="content-card">
+                    <h5 class="mb-3"><i class="bi bi-plug me-2"></i>Connected Platforms</h5>
+                    <div id="connectedPlatformsList">
                         <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
                           <div>
                             <i class="bi bi-twitter-x text-info me-2"></i>
@@ -4382,7 +4487,6 @@
                       <button class="btn btn-outline-primary btn-sm w-100 mt-3" data-action="socialMediaModule.openPlatformSettings">
                         <i class="bi bi-gear me-2"></i>Configure Platforms
                       </button>
-                    </div>
                   </div>
 
                 </div>
@@ -5112,6 +5216,52 @@
             <p class="section-subtitle">Manage invoices, payments, and financial tracking<span id="paymentsFreshness" class="ms-2"></span></p>
           </div>
 
+          <!-- Getting Started Banner -->
+          <div class="card border-0 shadow-sm mb-4" id="paymentsGettingStarted">
+            <div class="card-body py-3">
+              <div class="d-flex justify-content-between align-items-start mb-3">
+                <div>
+                  <h6 class="fw-bold mb-1"><i class="bi bi-map me-2 text-primary"></i>Getting Started — Payments &amp; Invoicing</h6>
+                  <p class="text-muted small mb-0">Manage entry fees, sponsorship invoices, and event ticket payments.</p>
+                </div>
+                <button type="button" class="btn-close btn-sm" aria-label="Dismiss" onclick="document.getElementById('paymentsGettingStarted').style.display='none';localStorage.setItem('paymentsWorkflowDismissed','1');"></button>
+              </div>
+              <div class="row g-2">
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">1</span>
+                    <div>
+                      <div class="fw-semibold small">Create an Invoice</div>
+                      <div class="text-muted" style="font-size:.75rem;">Select an organisation, add line items (entry fees, sponsorship, tables), and set payment terms.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">2</span>
+                    <div>
+                      <div class="fw-semibold small">Send via Email or Stripe</div>
+                      <div class="text-muted" style="font-size:.75rem;">Email the invoice directly or send a Stripe payment link for online card payment.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">3</span>
+                    <div>
+                      <div class="fw-semibold small">Record Payment Received</div>
+                      <div class="text-muted" style="font-size:.75rem;">Mark invoices as paid when payment arrives by bank transfer, or Stripe updates status automatically.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="mt-3">
+                <button class="btn btn-sm btn-primary" data-action="paymentsModule.createNewInvoice"><i class="bi bi-plus-lg me-1"></i>Create First Invoice</button>
+              </div>
+            </div>
+          </div>
+          <script>if(localStorage.getItem('paymentsWorkflowDismissed')==='1'){var _pb=document.getElementById('paymentsGettingStarted');if(_pb)_pb.style.display='none';}</script>
+
           <!-- Sub-navigation -->
           <ul class="nav nav-tabs mb-4" id="paymentsSubTabs" role="tablist">
             <li class="nav-item" role="presentation">
@@ -5475,6 +5625,52 @@
             </h1>
             <p class="section-subtitle">Track company relationships, communications, deals, and segments</p>
           </div>
+
+          <!-- Getting Started Banner -->
+          <div class="card border-0 shadow-sm mb-4" id="crmGettingStarted">
+            <div class="card-body py-3">
+              <div class="d-flex justify-content-between align-items-start mb-3">
+                <div>
+                  <h6 class="fw-bold mb-1"><i class="bi bi-map me-2 text-primary"></i>Getting Started — CRM</h6>
+                  <p class="text-muted small mb-0">Track relationships, sponsorship deals, and communications with every organisation.</p>
+                </div>
+                <button type="button" class="btn-close btn-sm" aria-label="Dismiss" onclick="document.getElementById('crmGettingStarted').style.display='none';localStorage.setItem('crmWorkflowDismissed','1');"></button>
+              </div>
+              <div class="row g-2">
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">1</span>
+                    <div>
+                      <div class="fw-semibold small">Organisations Sync Automatically</div>
+                      <div class="text-muted" style="font-size:.75rem;">All organisations from the Organisations tab appear here. No duplicate data entry needed.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">2</span>
+                    <div>
+                      <div class="fw-semibold small">Log Communications</div>
+                      <div class="text-muted" style="font-size:.75rem;">Record calls, emails, and meetings against each company. Set follow-up reminders.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">3</span>
+                    <div>
+                      <div class="fw-semibold small">Track Deals &amp; Sponsorship</div>
+                      <div class="text-muted" style="font-size:.75rem;">Create deals for sponsorship packages and table sales. Track pipeline value and win rate.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="mt-3">
+                <button class="btn btn-sm btn-primary" data-action="crmModule.logCommunication"><i class="bi bi-chat-dots me-1"></i>Log First Communication</button>
+              </div>
+            </div>
+          </div>
+          <script>if(localStorage.getItem('crmWorkflowDismissed')==='1'){var _cb=document.getElementById('crmGettingStarted');if(_cb)_cb.style.display='none';}</script>
 
           <!-- Sub-navigation -->
           <ul class="nav nav-tabs mb-4" id="crmSubTabs" role="tablist">

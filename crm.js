@@ -48,7 +48,7 @@ const crmModule = {
    * @returns {Promise<void>}
    */
   async loadAllData() {
-    console.debug('Loading CRM data...');
+    // console.debug('Loading CRM data...');
     try {
       // Load data based on current sub-tab
       switch (this.currentSubTab) {
@@ -85,7 +85,7 @@ const crmModule = {
    * @returns {Promise<void>}
    */
   async loadCompanies() {
-    console.debug('Loading companies CRM view...');
+    // console.debug('Loading companies CRM view...');
 
     try {
       // Enable server-side pagination and fetch first page
@@ -353,7 +353,7 @@ const crmModule = {
     // Prevent concurrent/repeated calls while already loading
     if (this._loadingCommunications) return;
     this._loadingCommunications = true;
-    console.debug('Loading communications...');
+    // console.debug('Loading communications...');
 
     // Read filter values from DOM
     const typeEl = document.getElementById('communicationTypeFilter');
@@ -527,7 +527,7 @@ const crmModule = {
   async loadDeals() {
     if (this._loadingDeals) return;
     this._loadingDeals = true;
-    console.debug('Loading deals...');
+    // console.debug('Loading deals...');
 
     try {
       const filters = {};
@@ -731,7 +731,7 @@ const crmModule = {
    * @returns {Promise<void>}
    */
   async loadMeetings() {
-    console.debug('Loading meetings...');
+    // console.debug('Loading meetings...');
 
     try {
       const filters = {};
@@ -873,7 +873,7 @@ const crmModule = {
    * @returns {Promise<void>}
    */
   async loadSegments() {
-    console.debug('Loading segments...');
+    // console.debug('Loading segments...');
 
     try {
       // selectAll justified: contact_segments is a small lookup table for segment management (see pagination documentation)
@@ -2699,7 +2699,7 @@ const crmModule = {
           .slice(0, 50)
           .map(
             (o) =>
-              `<tr><td>${utils.escapeHtml(o.company_name || '')}</td><td><span class="badge bg-primary">${utils.escapeHtml(o.status || '')}</span></td><td>${utils.escapeHtml(utils.toTitleCase(o.sector) || '-')}</td><td>${utils.escapeHtml(o.county_city || '-')}</td></tr>`
+              `<tr><td>${utils.escapeHtml(o.company_name || '')}</td><td><span class="badge ${{ nominee: 'bg-info', winner: 'bg-success', active: 'bg-primary', prospect: 'bg-secondary', inactive: 'bg-danger' }[o.status] || 'bg-secondary'}">${utils.escapeHtml(utils.toTitleCase(o.status || 'Unknown'))}</span></td><td>${utils.escapeHtml(utils.toTitleCase(o.sector) || '-')}</td><td>${utils.escapeHtml(o.county_city || '-')}</td></tr>`
           )
           .join('')}
         ${matching.length > 50 ? `<tr><td colspan="4" class="text-muted text-center">... and ${matching.length - 50} more</td></tr>` : ''}
@@ -3829,6 +3829,6 @@ const crmModule = {
 // INITIALIZATION
 // ============================================
 ModuleRegistry.register('crmModule', crmModule);
-console.debug('CRM Module loaded');
+// console.debug('CRM Module loaded');
 
 export { crmModule };

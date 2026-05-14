@@ -1430,17 +1430,26 @@ const eventsModule = {
     const event = STATE.allEvents.find((e) => e.id === eventId);
     if (!event) return;
 
-    // Merge localStorage fallback for ticket settings (columns may not exist in DB)
+    // If ticket fields are missing from the cached event, fetch fresh from DB
     if (event.ticket_price === undefined && event.ticket_url === undefined) {
       try {
-        const stored = localStorage.getItem(`bta_ticket_settings_${eventId}`);
-        if (stored) {
-          const s = JSON.parse(stored);
-          event.ticket_price = s.ticket_price;
-          event.ticket_url = s.ticket_url;
+        const fresh = await apiClient.selectById('events', eventId, 'ticket_price, ticket_url');
+        if (fresh) {
+          event.ticket_price = fresh.ticket_price;
+          event.ticket_url = fresh.ticket_url;
         }
-      } catch (e) {
-        /* ignore */
+      } catch (_) {
+        // Fall back to localStorage for migration from older data
+        try {
+          const stored = localStorage.getItem(`bta_ticket_settings_${eventId}`);
+          if (stored) {
+            const s = JSON.parse(stored);
+            event.ticket_price = s.ticket_price;
+            event.ticket_url = s.ticket_url;
+          }
+        } catch (_2) {
+          /* ignore */
+        }
       }
     }
 

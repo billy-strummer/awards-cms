@@ -235,13 +235,13 @@ describe('CRM Module - Badge Formatting', () => {
   });
 
   test('getStageBadge returns correct badge for known stages', () => {
-    expect(crmModule.getStageBadge('lead')).toContain('Lead');
+    expect(crmModule.getStageBadge('lead')).toContain('Identified');
     expect(crmModule.getStageBadge('lead')).toContain('bg-secondary');
 
-    expect(crmModule.getStageBadge('closed_won')).toContain('Won');
+    expect(crmModule.getStageBadge('closed_won')).toContain('Confirmed');
     expect(crmModule.getStageBadge('closed_won')).toContain('bg-success');
 
-    expect(crmModule.getStageBadge('closed_lost')).toContain('Lost');
+    expect(crmModule.getStageBadge('closed_lost')).toContain('Declined');
     expect(crmModule.getStageBadge('closed_lost')).toContain('bg-danger');
   });
 
@@ -1905,43 +1905,43 @@ describe('CRM Module - getTypeBadge()', () => {
 // getStageBadge
 // ---------------------------------------------------------------------------
 describe('CRM Module - getStageBadge()', () => {
-  test('returns Lead badge', () => {
+  test('returns Identified badge', () => {
     const badge = crmModule.getStageBadge('lead');
-    expect(badge).toContain('Lead');
+    expect(badge).toContain('Identified');
     expect(badge).toContain('bg-secondary');
   });
 
-  test('returns Contacted badge', () => {
+  test('returns Approached badge', () => {
     const badge = crmModule.getStageBadge('contacted');
-    expect(badge).toContain('Contacted');
+    expect(badge).toContain('Approached');
     expect(badge).toContain('bg-info');
   });
 
-  test('returns Qualified badge', () => {
+  test('returns Meeting Held badge', () => {
     const badge = crmModule.getStageBadge('qualified');
-    expect(badge).toContain('Qualified');
+    expect(badge).toContain('Meeting Held');
     expect(badge).toContain('bg-primary');
   });
 
-  test('returns Proposal badge', () => {
+  test('returns Proposal Sent badge', () => {
     const badge = crmModule.getStageBadge('proposal');
-    expect(badge).toContain('Proposal');
+    expect(badge).toContain('Proposal Sent');
   });
 
-  test('returns Negotiation badge', () => {
+  test('returns Under Negotiation badge', () => {
     const badge = crmModule.getStageBadge('negotiation');
-    expect(badge).toContain('Negotiation');
+    expect(badge).toContain('Under Negotiation');
   });
 
-  test('returns Won badge for closed_won', () => {
+  test('returns Confirmed badge for closed_won', () => {
     const badge = crmModule.getStageBadge('closed_won');
-    expect(badge).toContain('Won');
+    expect(badge).toContain('Confirmed');
     expect(badge).toContain('bg-success');
   });
 
-  test('returns Lost badge for closed_lost', () => {
+  test('returns Declined badge for closed_lost', () => {
     const badge = crmModule.getStageBadge('closed_lost');
-    expect(badge).toContain('Lost');
+    expect(badge).toContain('Declined');
     expect(badge).toContain('bg-danger');
   });
 

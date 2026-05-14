@@ -170,7 +170,7 @@ const btcModule = {
 };
 window.btcModule = btcModule;
 
-const btcTab = document.getElementById('bitcoin-tab');
+const btcTab = document.getElementById('markets-tab');
 if (btcTab) {
   btcTab.addEventListener('shown.bs.tab', function () {
     window.scrollTo({ top: 0, behavior: 'smooth' });

@@ -30,6 +30,8 @@
 </head>
 <body>
 
+  <a href="#appMain" class="visually-hidden-focusable position-absolute top-0 start-0 p-2 bg-primary text-white rounded-bottom" style="z-index:9999">Skip to main content</a>
+
   <!-- Loading Bar -->
   <div id="loadingBar" class="loading-bar d-none"></div>
 
@@ -114,15 +116,15 @@
             <span class="status-text">Connected</span>
           </div>
 
-          <!-- Test Mode Button -->
-          <div class="dropdown" id="testModeDropdown">
+          <!-- Test Mode Button (hidden by default — reveal with Ctrl+Shift+D) -->
+          <div class="dropdown d-none" id="testModeDropdown">
             <button class="btn btn-outline-warning dropdown-toggle" type="button" data-bs-toggle="dropdown" title="Test Data Management">
               <i class="bi bi-bug me-1"></i>Test Mode
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
               <li><h6 class="dropdown-header">Test Data Management</h6></li>
               <li><a class="dropdown-item" href="#" data-action="testDataManager.generateTestData" data-prevent-default="true">
-                <i class="bi bi-plus-circle me-2"></i>Generate Test Data (30 Winners)
+                <i class="bi bi-plus-lg me-2"></i>Generate Test Data (30 Winners)
               </a></li>
               <li><a class="dropdown-item text-danger" href="#" data-action="testDataManager.removeTestData" data-prevent-default="true">
                 <i class="bi bi-trash me-2"></i>Remove Test Data
@@ -156,6 +158,11 @@
           <button class="btn btn-outline-light btn-sm" id="globalSearchNavBtn" title="Search everything (Ctrl+K)" aria-label="Search" onclick="utils.toggleCommandPalette()">
             <i class="bi bi-search me-1"></i><span class="d-none d-xl-inline small">Search</span>
             <kbd class="d-none d-xl-inline ms-1" style="background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.75);border:1px solid rgba(255,255,255,0.3);padding:1px 5px;border-radius:3px;font-size:0.6rem;line-height:1.4;">Ctrl K</kbd>
+          </button>
+
+          <!-- Keyboard Shortcuts Hint -->
+          <button class="btn btn-outline-light btn-sm" title="Keyboard shortcuts" aria-label="Keyboard shortcuts" onclick="var m=document.getElementById('shortcutsHelpModal');if(m)new bootstrap.Modal(m).show();">
+            <kbd style="background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.85);border:1px solid rgba(255,255,255,0.3);padding:1px 6px;border-radius:3px;font-size:0.7rem;">?</kbd>
           </button>
 
           <!-- Dark Mode Toggle -->
@@ -272,9 +279,9 @@
           </div>
 
           <!-- Markets (hidden by default — RBAC shows for admin/superadmin) -->
-          <div class="sidebar-group d-none" id="bitcoin-nav-item">
-            <button class="sidebar-nav-link" id="bitcoin-tab" data-bs-toggle="tab" data-bs-target="#bitcoin" type="button" role="tab" aria-controls="bitcoin" aria-selected="false" title="Markets">
-              <i class="bi bi-currency-bitcoin sidebar-icon"></i>
+          <div class="sidebar-group d-none" id="markets-nav-item">
+            <button class="sidebar-nav-link" id="markets-tab" data-bs-toggle="tab" data-bs-target="#bitcoin" type="button" role="tab" aria-controls="bitcoin" aria-selected="false" title="Markets">
+              <i class="bi bi-graph-up-arrow sidebar-icon"></i>
               <span class="sidebar-label">Markets</span>
             </button>
           </div>
@@ -416,7 +423,7 @@
 
             <div class="col-md-3">
               <div class="stat-card stat-card-clickable" data-action="dashboardModule.navigateToSection" data-id="winners" title="Click to view all winners">
-                <button class="btn btn-sm btn-outline-info position-absolute top-0 end-0 m-2"
+                <button class="btn btn-sm btn-outline-secondary position-absolute top-0 end-0 m-2"
                         data-action="dashboardModule.openWinnersSummary" data-stop-propagation="true"
                         title="View Winners Summary"
                         style="z-index: 10; padding: 0.25rem 0.5rem;">
@@ -492,7 +499,7 @@
 
             <div class="col-md-3">
               <div class="stat-card stat-card-clickable" data-action="aiVettingModule.openVettingModal" title="Click to view AI vetting status">
-                <button class="btn btn-sm btn-outline-warning position-absolute top-0 end-0 m-2"
+                <button class="btn btn-sm btn-outline-secondary position-absolute top-0 end-0 m-2"
                         data-action="aiVettingModule.openVettingModal" data-stop-propagation="true"
                         title="View AI Vetting Details"
                         style="z-index: 10; padding: 0.25rem 0.5rem;">
@@ -537,7 +544,7 @@
                 <tbody id="awardsYearSummaryBody">
                   <tr>
                     <td colspan="4" class="text-center py-4 text-muted">
-                      <div class="spinner-border spinner-border-sm mb-2" role="status"></div>
+                      <div class="spinner-border spinner-border-sm mb-2" role="status" aria-label="Loading awards data"></div>
                       <p class="mb-0 small">Loading awards data...</p>
                     </td>
                   </tr>
@@ -561,7 +568,7 @@
                 <p class="text-muted small mb-3">Organisation coverage by country</p>
                 <div id="geoDistributionWidget">
                   <div class="text-center py-4 text-muted">
-                    <div class="spinner-border spinner-border-sm" role="status"></div>
+                    <div class="spinner-border spinner-border-sm" role="status" aria-label="Loading geographic data"></div>
                   </div>
                 </div>
               </div>
@@ -576,7 +583,7 @@
                 <p class="text-muted small mb-3">Counties with the most registered organisations</p>
                 <div id="topCountiesWidget">
                   <div class="text-center py-4 text-muted">
-                    <div class="spinner-border spinner-border-sm" role="status"></div>
+                    <div class="spinner-border spinner-border-sm" role="status" aria-label="Loading county data"></div>
                   </div>
                 </div>
               </div>
@@ -637,8 +644,8 @@
                 <p class="text-muted small mb-0">Latest invoices and payments received</p>
               </div>
               <div class="btn-group btn-group-sm">
-                <button class="btn btn-primary" data-action="dashboardModule.openSalesDashboard">
-                  <i class="bi bi-graph-up me-1"></i>Sales Dashboard
+                <button class="btn btn-primary" data-action="dashboardModule.openSalesDashboard" title="Revenue, pipeline, and conversion metrics across all awards and events">
+                  <i class="bi bi-graph-up me-1"></i>Sales &amp; Revenue Dashboard
                 </button>
                 <button class="btn btn-outline-primary" data-action="dashboardModule.navigateToSection" data-args='["payments"]'>
                   <i class="bi bi-arrow-right me-1"></i>View All Payments
@@ -683,12 +690,12 @@
                   <label class="text-muted small mb-0">View by:</label>
                   <select class="form-select form-select-sm" id="topCompaniesMetric"
                           data-on-change="dashboardModule.updateTopCompanies" style="width: auto;">
-                    <option value="most-active">Most Active</option>
-                    <option value="top-spenders">Top Spenders</option>
-                    <option value="most-awards">Most Awards Won</option>
-                    <option value="recent-activity">Recent Activity</option>
-                    <option value="highest-revenue">Highest Revenue</option>
-                    <option value="newest-members">Newest Members</option>
+                    <option value="most-active" title="Organisations with the most entries submitted across all awards">Most Active</option>
+                    <option value="top-spenders" title="Organisations with the highest total invoice value paid">Top Spenders</option>
+                    <option value="most-awards" title="Organisations that have won the most awards">Most Awards Won</option>
+                    <option value="recent-activity" title="Organisations with the most recent interactions (emails, meetings, entries)">Recent Activity</option>
+                    <option value="highest-revenue" title="Organisations generating the highest total revenue including entries and events">Highest Revenue</option>
+                    <option value="newest-members" title="Organisations added to the CMS most recently">Newest Members</option>
                   </select>
                 </div>
               </div>
@@ -889,24 +896,57 @@
             <p class="section-subtitle">Manage and review award submissions<span id="awardsFreshness" class="ms-2"></span></p>
           </div>
 
-          <!-- Award Categories Reference (moved from Dashboard) -->
-          <div class="content-card mb-4">
-            <div class="d-flex justify-content-between align-items-center">
-              <div>
-                <h5 class="mb-1">
-                  <i class="bi bi-grid-3x3-gap-fill text-primary me-2"></i>Award Categories Reference
-                </h5>
-                <p class="text-muted small mb-0">All award types by size — expand sections below to browse</p>
+          <!-- Getting Started Banner -->
+          <div class="card border-0 shadow-sm mb-4" id="awardsGettingStarted">
+            <div class="card-body py-3">
+              <div class="d-flex justify-content-between align-items-start mb-3">
+                <div>
+                  <h6 class="fw-bold mb-1"><i class="bi bi-map me-2 text-primary"></i>Getting Started — Award Management</h6>
+                  <p class="text-muted small mb-0">Follow the award lifecycle from creation through to winner announcement.</p>
+                </div>
+                <button type="button" class="btn-close btn-sm" aria-label="Dismiss" onclick="document.getElementById('awardsGettingStarted').style.display='none';localStorage.setItem('awardsWorkflowDismissed','1');"></button>
               </div>
-              <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="collapse" data-bs-target="#awardCatRefBody" aria-expanded="false" aria-controls="awardCatRefBody">
-                <i class="bi bi-chevron-down me-1"></i>Show / Hide
-              </button>
-            </div>
-            <div class="collapse" id="awardCatRefBody">
-              <div class="mt-3" id="awardCatRefBody-content"></div>
+              <div class="row g-2">
+                <div class="col-md-3">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">1</span>
+                    <div>
+                      <div class="fw-semibold small">Create Award Categories</div>
+                      <div class="text-muted" style="font-size:.75rem;">Click "Add Award" to create each award category. Set Year, Sector, and Region to organise them.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">2</span>
+                    <div>
+                      <div class="fw-semibold small">Set Status to Active</div>
+                      <div class="text-muted" style="font-size:.75rem;">Change status from Draft → Active to open the award for entries. Use Phase to track progress through judging stages.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">3</span>
+                    <div>
+                      <div class="fw-semibold small">Manage Judging</div>
+                      <div class="text-muted" style="font-size:.75rem;">Use the Assignments panel (trophy icon on each row) to assign nominees to judges and record decisions.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-success rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">4</span>
+                    <div>
+                      <div class="fw-semibold small">Announce Winners</div>
+                      <div class="text-muted" style="font-size:.75rem;">Go to Winners to record and publish results. Set award status to Archived once the programme is complete.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-
+          <script>if(localStorage.getItem('awardsWorkflowDismissed')==='1'){var _aw=document.getElementById('awardsGettingStarted');if(_aw)_aw.style.display='none';}</script>
 
           <!-- Stats Summary -->
           <div class="row mb-4" id="awardsStatsRow">
@@ -1064,7 +1104,7 @@
                     </li>
                     <li>
                       <label class="dropdown-item" for="colTogglePhase">
-                        <input type="checkbox" class="form-check-input me-2" id="colTogglePhase" data-on-change="awardsModule.toggleAwardColumn" data-id="phase">
+                        <input type="checkbox" class="form-check-input me-2" id="colTogglePhase" data-on-change="awardsModule.toggleAwardColumn" data-id="phase" checked>
                         Phase
                       </label>
                     </li>
@@ -1106,12 +1146,12 @@
                   </button>
                 </div>
                 <div class="btn-group btn-group-sm d-inline-block">
-                  <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-display="static">
-                    <i class="bi bi-calendar-event me-1"></i>Apply Season
+                  <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-display="static" title="Copy the configured season open/close dates to all selected awards">
+                    <i class="bi bi-calendar-event me-1"></i>Apply Season Dates
                   </button>
                   <ul class="dropdown-menu" id="bulkSeasonDropdown"></ul>
                 </div>
-                <button class="btn btn-purple btn-sm" style="background:#6f42c1;color:#fff;border-color:#6f42c1;" data-action="awardsModule.bulkCloneSelected">
+                <button class="btn btn-purple btn-sm" data-action="awardsModule.bulkCloneSelected">
                   <i class="bi bi-copy me-1"></i>Clone Selected
                 </button>
                 <button class="btn btn-outline-danger btn-sm" data-action="globalActions.confirmBulkDelete" data-module="awardsModule" data-fn="bulkDelete" data-label="award">
@@ -1138,7 +1178,7 @@
                       <i class="bi bi-question-circle text-muted ms-1 small" title="Award lifecycle: Draft (being set up) → Pending (awaiting approval) → Published (visible) → Active (open for entries/judging) → Archived (closed)"></i>
                     </th>
                     <th scope="col" style="width: 6%; cursor: pointer;" class="text-center" data-sort-field="nominees" data-action="awardsModule.sortBy" data-args='["nominees"]' aria-sort="none">Nominees <i class="bi bi-arrow-down-up text-muted ms-1 small" aria-hidden="true" data-sort-icon="nominees"></i></th>
-                    <th scope="col" id="awardsPhaseHeader" class="d-none text-center" style="width: 7%;" title="Current judging phase: e.g. Entry, Judging, Shortlisting, Voting, Announced">Phase</th>
+                    <th scope="col" id="awardsPhaseHeader" class="text-center" style="width: 7%;" title="Current judging phase: e.g. Entry, Judging, Shortlisting, Voting, Announced">Phase</th>
                     <th scope="col" style="width: 11%; cursor: pointer;" data-sort-field="winner" data-action="awardsModule.sortBy" data-args='["winner"]' aria-sort="none">Winner <i class="bi bi-arrow-down-up text-muted ms-1 small" aria-hidden="true" data-sort-icon="winner"></i></th>
                     <th scope="col" id="awardsModifiedHeader" class="d-none" style="width: 8%;">Modified</th>
                     <th scope="col" style="width: 6%;" class="text-center">Actions</th>
@@ -1165,6 +1205,24 @@
             </div>
           </div>
 
+          <!-- Award Categories Reference (size guide — collapsed by default) -->
+          <div class="content-card mt-4">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h5 class="mb-1">
+                  <i class="bi bi-grid-3x3-gap-fill text-primary me-2"></i>Award Size Reference Guide
+                </h5>
+                <p class="text-muted small mb-0">Browse all award types grouped by organisation size</p>
+              </div>
+              <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="collapse" data-bs-target="#awardCatRefBody" aria-expanded="false" aria-controls="awardCatRefBody">
+                <i class="bi bi-chevron-down me-1"></i>Show / Hide
+              </button>
+            </div>
+            <div class="collapse" id="awardCatRefBody">
+              <div class="mt-3" id="awardCatRefBody-content"></div>
+            </div>
+          </div>
+
         </div>
 
       <!-- ==================================================== -->
@@ -1181,22 +1239,74 @@
       <p class="section-subtitle">View and manage registered organisations<span id="organisationsFreshness" class="ms-2"></span></p>
     </div>
 
+    <!-- Getting Started Banner -->
+    <div class="card border-0 shadow-sm mb-4" id="orgsGettingStarted">
+      <div class="card-body py-3">
+        <div class="d-flex justify-content-between align-items-start mb-3">
+          <div>
+            <h6 class="fw-bold mb-1"><i class="bi bi-map me-2 text-primary"></i>Getting Started — Organisations</h6>
+            <p class="text-muted small mb-0">Build your organisation database — the foundation of your awards programme.</p>
+          </div>
+          <button type="button" class="btn-close btn-sm" aria-label="Dismiss" onclick="document.getElementById('orgsGettingStarted').style.display='none';localStorage.setItem('orgsWorkflowDismissed','1');"></button>
+        </div>
+        <div class="row g-2">
+          <div class="col-md-4">
+            <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+              <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">1</span>
+              <div>
+                <div class="fw-semibold small">Import or Add Organisations</div>
+                <div class="text-muted" style="font-size:.75rem;">Use CSV Import for bulk upload or add organisations individually. Include sector, region, and contact details.</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+              <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">2</span>
+              <div>
+                <div class="fw-semibold small">Tag with Sector &amp; Region</div>
+                <div class="text-muted" style="font-size:.75rem;">Tagging enables filtered reporting, regional award categories, and targeted email campaigns.</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+              <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">3</span>
+              <div>
+                <div class="fw-semibold small">Entries &amp; CRM Auto-Link</div>
+                <div class="text-muted" style="font-size:.75rem;">Entries submitted by an organisation link back here automatically. CRM tracks all communications per org.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="mt-3">
+          <button class="btn btn-sm btn-primary" data-action="orgsModule.downloadImportTemplate"><i class="bi bi-download me-1"></i>Download Import Template</button>
+        </div>
+      </div>
+    </div>
+    <script>if(localStorage.getItem('orgsWorkflowDismissed')==='1'){var _ob=document.getElementById('orgsGettingStarted');if(_ob)_ob.style.display='none';}</script>
+
     <!-- Section View Toggle -->
     <ul class="nav nav-tabs mb-4" id="orgsSubNav" role="tablist">
-      <li class="nav-item">
-        <button class="nav-link active" id="orgsViewBtn" data-action="orgsModule.showOrgsView">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="orgsViewBtn" role="tab"
+          data-bs-toggle="tab" data-bs-target="#orgsMainContent"
+          aria-controls="orgsMainContent" aria-selected="true">
           <i class="bi bi-building me-2"></i>All Organisations
         </button>
       </li>
-      <li class="nav-item">
-        <button class="nav-link" id="sponsorsViewBtn" data-action="orgsModule.showSponsorsView">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="sponsorsViewBtn" role="tab"
+          data-bs-toggle="tab" data-bs-target="#orgsSponsorSection"
+          aria-controls="orgsSponsorSection" aria-selected="false">
           <i class="bi bi-award me-2"></i>Sponsors &amp; Partners
         </button>
       </li>
     </ul>
 
+    <div class="tab-content">
+
     <!-- Organisations Content (default view) -->
-    <div id="orgsMainContent">
+    <div id="orgsMainContent" class="tab-pane fade show active" role="tabpanel" aria-labelledby="orgsViewBtn">
 
           <!-- Counties, Cities & Regions Reference (moved from Dashboard) -->
           <div class="card mt-4">
@@ -1459,7 +1569,7 @@
               </div>
               <div class="col-2 u-pointer" title="Click to filter sponsors" data-action="orgsModule.filterByStatus" data-id="sponsor">
                 <h6 class="text-muted mb-1 small">Sponsors</h6>
-                <h3 class="mb-0 fw-bold" id="orgsSponsorCount" style="color:#6f42c1;">0</h3>
+                <h3 class="mb-0 fw-bold text-purple" id="orgsSponsorCount">0</h3>
               </div>
             </div>
             <!-- hidden elements kept for JS compatibility -->
@@ -1495,8 +1605,7 @@
     </div>
 
     <!-- Enhanced Filters Row -->
-    <div class="card border-0 shadow-sm mb-4 filter-bar-sticky">
-      <div class="card-body py-3">
+    <div class="content-card mb-4 filter-bar-sticky">
         <!-- Row header -->
         <div class="d-flex align-items-center justify-content-between mb-2">
           <div class="d-flex align-items-center gap-3">
@@ -1529,7 +1638,7 @@
               <i class="bi bi-search me-1" aria-hidden="true"></i>Search
             </label>
             <input type="text" class="form-control form-control-sm" id="orgsSearchBox"
-                   placeholder="Company, email, contact…">
+                   placeholder="Organisation name, email, contact…">
           </div>
 
           <!-- Year Filter -->
@@ -1594,7 +1703,7 @@
             </label>
             <select class="form-select form-select-sm" id="orgsStatusFilter"
                     data-on-change="orgsModule.filterOrganisations">
-              <option value="">All Active</option>
+              <option value="">All (Active Only)</option>
               <option value="prospect">Prospect</option>
               <option value="entrant">Entrant</option>
               <option value="nominee">Nominee</option>
@@ -1714,7 +1823,6 @@
             </ul>
           </div>
         </div>
-      </div>
     </div>
 
     <div id="orgsActiveFilters" class="mb-1"></div>
@@ -1844,7 +1952,7 @@
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title" id="addNewOrgModalLabel">
-              <i class="bi bi-plus-circle me-2"></i>Add New Organisation
+              <i class="bi bi-plus-lg me-2"></i>Add New Organisation
             </h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
@@ -1888,7 +1996,7 @@
                 </div>
                 <div class="col-md-6">
                   <label for="newContactPhone" class="form-label">Phone</label>
-                  <input type="tel" class="form-control" id="newContactPhone">
+                  <input type="tel" class="form-control" id="newContactPhone" placeholder="+44 7700 900123">
                 </div>
               </div>
               <div class="mb-3">
@@ -2084,7 +2192,7 @@
               <li><a class="dropdown-item" href="#" data-action="orgsModule.bulkStatusChange" data-args="[&quot;nominee&quot;]"><i class="bi bi-person-check text-info me-2"></i>Nominee</a></li>
               <li><a class="dropdown-item" href="#" data-action="orgsModule.bulkStatusChange" data-args="[&quot;shortlisted&quot;]"><i class="bi bi-list-check text-warning me-2"></i>Shortlisted</a></li>
               <li><a class="dropdown-item" href="#" data-action="orgsModule.bulkStatusChange" data-args="[&quot;winner&quot;]"><i class="bi bi-trophy text-success me-2"></i>Winner</a></li>
-              <li><a class="dropdown-item" href="#" data-action="orgsModule.bulkStatusChange" data-args="[&quot;sponsor&quot;]"><i class="bi bi-star text-purple me-2" style="color:#6f42c1;"></i>Sponsor</a></li>
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.bulkStatusChange" data-args="[&quot;sponsor&quot;]"><i class="bi bi-star text-purple me-2"></i>Sponsor</a></li>
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item text-danger" href="#" data-action="orgsModule.bulkStatusChange" data-args="[&quot;archived&quot;]"><i class="bi bi-archive me-2"></i>Archive</a></li>
             </ul>
@@ -2105,7 +2213,7 @@
           <button class="btn btn-sm btn-secondary" data-action="orgsModule.showBulkTagModal" title="Add/remove tags for selected">
             <i class="bi bi-tags me-1"></i>Tags
           </button>
-          <button class="btn btn-sm btn-info" data-action="orgsModule.showBulkAssignAwardModal" title="Assign selected to an award">
+          <button class="btn btn-sm btn-primary" data-action="orgsModule.showBulkAssignAwardModal" title="Assign selected to an award">
             <i class="bi bi-trophy me-1"></i>Assign Award
           </button>
           <button class="btn btn-sm btn-primary" data-action="orgsModule.bulkEmail">
@@ -2121,7 +2229,7 @@
               <li><a class="dropdown-item" href="#" data-action="orgsModule.bulkExport" data-id="pdf" data-prevent-default="true"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
             </ul>
           </div>
-          <button class="btn btn-sm btn-outline-info" data-action="orgsModule.showOrgComparison" title="Compare selected (2-4)">
+          <button class="btn btn-sm btn-outline-secondary" data-action="orgsModule.showOrgComparison" title="Compare selected (2-4)">
             <i class="bi bi-layout-split me-1"></i>Compare
           </button>
           <button class="btn btn-sm btn-outline-secondary" data-action="orgsModule.showBulkCustomFieldModal" title="Bulk edit custom field">
@@ -2143,12 +2251,12 @@
 
     </div><!-- /orgsMainContent -->
 
-    <!-- Sponsors Section (hidden by default) -->
-    <div id="orgsSponsorSection" class="d-none">
+    <!-- Sponsors Section (shown via Bootstrap tab) -->
+    <div id="orgsSponsorSection" class="tab-pane fade" role="tabpanel" aria-labelledby="sponsorsViewBtn">
       <div class="d-flex justify-content-between align-items-center mb-4">
         <h4><i class="bi bi-award me-2"></i>Sponsors &amp; Partners</h4>
         <div class="d-flex gap-2">
-          <button class="btn btn-outline-info" data-action="sponsorPortalModule.renderSponsorDashboard">
+          <button class="btn btn-outline-secondary" data-action="sponsorPortalModule.renderSponsorDashboard" title="View a summary dashboard of all organisations marked as sponsors or partners">
             <i class="bi bi-speedometer2 me-2"></i>Sponsor Portal
           </button>
           <button class="btn btn-primary" data-action="marketingModule.openAddSponsorModal">
@@ -2163,6 +2271,8 @@
         </div>
       </div>
     </div><!-- /orgsSponsorSection -->
+
+    </div><!-- /tab-content -->
 
   </div>
 
@@ -2179,6 +2289,58 @@
             </h1>
             <p class="section-subtitle">Manage award winners and their media<span id="winnersFreshness" class="ms-2"></span></p>
           </div>
+
+          <!-- Getting Started Banner -->
+          <div class="card border-0 shadow-sm mb-4" id="winnersGettingStarted">
+            <div class="card-body py-3">
+              <div class="d-flex justify-content-between align-items-start mb-3">
+                <div>
+                  <h6 class="fw-bold mb-1"><i class="bi bi-map me-2 text-primary"></i>Getting Started — Winners</h6>
+                  <p class="text-muted small mb-0">Winners can be added manually, imported via CSV, or promoted from the judging panel.</p>
+                </div>
+                <button type="button" class="btn-close btn-sm" aria-label="Dismiss" onclick="document.getElementById('winnersGettingStarted').style.display='none';localStorage.setItem('winnersWorkflowDismissed','1');"></button>
+              </div>
+              <div class="row g-2">
+                <div class="col-md-3">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">1</span>
+                    <div>
+                      <div class="fw-semibold small">Add Winners</div>
+                      <div class="text-muted" style="font-size:.75rem;">Add winners manually using "Add Winner", import in bulk via CSV, or promote shortlisted nominees from Assignments.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">2</span>
+                    <div>
+                      <div class="fw-semibold small">Record GDPR Consent</div>
+                      <div class="text-muted" style="font-size:.75rem;">Before publishing a winner's name or image, record their GDPR consent using the Consent checkbox on each row.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">3</span>
+                    <div>
+                      <div class="fw-semibold small">Update Status</div>
+                      <div class="text-muted" style="font-size:.75rem;">Move each winner through: Pending → Notified → Pack Sent → Confirmed → Published as you progress.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-success rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">4</span>
+                    <div>
+                      <div class="fw-semibold small">Announce Publicly</div>
+                      <div class="text-muted" style="font-size:.75rem;">Set status to "Published" to make the winner visible on public pages. Upload photos and winner story for maximum impact.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <script>if(localStorage.getItem('winnersWorkflowDismissed')==='1'){var _ww=document.getElementById('winnersGettingStarted');if(_ww)_ww.style.display='none';}</script>
 
           <!-- Filters Section -->
           <div class="filters-section filter-bar-sticky">
@@ -2216,14 +2378,14 @@
                   </select>
                 </div>
                 <div class="col-md-2">
-                  <label for="winnerStatusFilter" class="form-label filter-bar-field-label mb-1"><i class="bi bi-circle-half me-1" aria-hidden="true"></i>Status</label>
-                  <select class="form-select form-select-sm" id="winnerStatusFilter">
+                  <label for="winnerStatusFilter" class="form-label filter-bar-field-label mb-1"><i class="bi bi-circle-half me-1" aria-hidden="true"></i>Status <i class="bi bi-info-circle text-muted ms-1" title="Winner pipeline: Pending (identified) → Notified (emailed) → Pack Sent (physical pack posted — set manually) → Confirmed (winner accepted) → Published (publicly announced)"></i></label>
+                  <select class="form-select form-select-sm" id="winnerStatusFilter" data-on-change="winnersModule.filterWinners">
                     <option value="">All Statuses</option>
                     <option value="pending">Pending</option>
+                    <option value="notified">Notified</option>
+                    <option value="pack_sent">Pack Sent</option>
                     <option value="confirmed">Confirmed</option>
-                    <option value="announced">Announced</option>
-                    <option value="media_sent">Media Sent</option>
-                    <option value="complete">Complete</option>
+                    <option value="published">Published</option>
                   </select>
                 </div>
                 <div class="col">
@@ -2242,8 +2404,8 @@
                 <button class="btn btn-outline-danger" data-action="globalActions.confirmBulkDelete" data-module="winnersModule" data-fn="bulkDeleteWinners" data-label="winner">
                   <i class="bi bi-trash me-1"></i>Delete Selected
                 </button>
-                <button class="btn btn-outline-secondary" data-action="winnersModule.bulkExportWinners">
-                  <i class="bi bi-download me-1"></i>Export Selected
+                <button class="btn btn-outline-secondary" data-action="winnersModule.bulkExportWinners" title="Download selected winners as a CSV spreadsheet">
+                  <i class="bi bi-filetype-csv me-1"></i>Export Selected (CSV)
                 </button>
                 <button class="btn btn-outline-secondary" data-action="winnersModule.clearWinnerSelection">
                   <i class="bi bi-x-circle me-1"></i>Clear
@@ -2260,10 +2422,10 @@
                 <i class="bi bi-list-ul me-2"></i>Winners List
               </h5>
               <div class="d-flex gap-2 align-items-center flex-wrap">
-                <button class="btn btn-warning btn-sm" data-action="winnerPipelineModule.renderPipelineDashboard">
+                <button class="btn btn-outline-primary btn-sm" data-action="winnerPipelineModule.renderPipelineDashboard">
                   <i class="bi bi-funnel me-1"></i>Pipeline
                 </button>
-                <button class="btn btn-sm" data-action="winnerAnnouncementsModule.renderAnnouncementsDashboard" style="background-color:#6f42c1;border-color:#6f42c1;color:#fff">
+                <button class="btn btn-purple btn-sm" data-action="winnerAnnouncementsModule.renderAnnouncementsDashboard">
                   <i class="bi bi-megaphone me-1"></i>Announcements
                 </button>
                 <div class="btn-group btn-group-sm">
@@ -2350,6 +2512,52 @@
             <p class="section-subtitle">Manage award entries and submissions<span id="entriesFreshness" class="ms-2"></span></p>
           </div>
 
+          <!-- Getting Started Banner -->
+          <div class="card border-0 shadow-sm mb-4" id="entriesGettingStarted">
+            <div class="card-body py-3">
+              <div class="d-flex justify-content-between align-items-start mb-3">
+                <div>
+                  <h6 class="fw-bold mb-1"><i class="bi bi-map me-2 text-primary"></i>Getting Started — Entry Submissions</h6>
+                  <p class="text-muted small mb-0">How entries flow into your awards programme.</p>
+                </div>
+                <button type="button" class="btn-close btn-sm" aria-label="Dismiss" onclick="document.getElementById('entriesGettingStarted').style.display='none';localStorage.setItem('entriesWorkflowDismissed','1');"></button>
+              </div>
+              <div class="row g-2">
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">1</span>
+                    <div>
+                      <div class="fw-semibold small">Create Award Categories</div>
+                      <div class="text-muted" style="font-size:.75rem;">Go to Awards and set up your categories first — entrants select a category when submitting.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">2</span>
+                    <div>
+                      <div class="fw-semibold small">Share the Entry Form</div>
+                      <div class="text-muted" style="font-size:.75rem;">Copy the public entry form URL and share it with entrants. Submissions appear here automatically.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">3</span>
+                    <div>
+                      <div class="fw-semibold small">Review &amp; Progress Entries</div>
+                      <div class="text-muted" style="font-size:.75rem;">Update status (Draft → Submitted → Shortlisted → Winner) and assign entries to judges.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="mt-3">
+                <button class="btn btn-sm btn-primary" data-action="entriesModule.copyEntryLink"><i class="bi bi-link-45deg me-1"></i>Copy Public Entry Form URL</button>
+              </div>
+            </div>
+          </div>
+          <script>if(localStorage.getItem('entriesWorkflowDismissed')==='1'){var _eb=document.getElementById('entriesGettingStarted');if(_eb)_eb.style.display='none';}</script>
+
           <!-- Stats Cards -->
           <div class="row g-3 mb-4">
             <div class="col-md-3">
@@ -2413,13 +2621,13 @@
             </div>
             <div class="row g-2 align-items-end">
               <div class="col-md-2">
-                <label class="form-label filter-bar-field-label mb-1"><i class="bi bi-flag me-1" aria-hidden="true"></i>Status</label>
+                <label class="form-label filter-bar-field-label mb-1"><i class="bi bi-flag me-1" aria-hidden="true"></i>Status <i class="bi bi-question-circle text-muted ms-1 small" title="Awaiting Review = submitted, waiting for a judge to be assigned. Under Review = actively being scored by an assigned judge."></i></label>
                 <select class="form-select form-select-sm" id="entriesStatusFilter" data-on-change="entriesModule.filterEntries">
                   <option value="">All Statuses</option>
                   <option value="draft">Draft</option>
                   <option value="submitted">Submitted</option>
-                  <option value="under_review">Under Review</option>
-                  <option value="pending_review">Pending Review</option>
+                  <option value="under_review">Under Review (with judge)</option>
+                  <option value="pending_review">Awaiting Review (no judge yet)</option>
                   <option value="shortlisted">Shortlisted</option>
                   <option value="winner">Winner</option>
                   <option value="rejected">Rejected</option>
@@ -2438,7 +2646,7 @@
                 </select>
               </div>
               <div class="col-md-2">
-                <label class="form-label filter-bar-field-label mb-1" title="Self-Nominated: the company applied directly. Standard: nominated by a sponsor or organiser."><i class="bi bi-person me-1" aria-hidden="true"></i>Entry Type</label>
+                <label class="form-label filter-bar-field-label mb-1" title="Self-Nominated: the company applied directly. Standard: nominated by a sponsor or organiser."><i class="bi bi-person me-1" aria-hidden="true"></i>Nomination Source</label>
                 <select class="form-select form-select-sm" id="entriesSelfNomFilter" data-on-change="entriesModule.filterEntries">
                   <option value="">All Entries</option>
                   <option value="self_nom">Self-Nominated</option>
@@ -2511,13 +2719,6 @@
                     </td>
                   </tr>
                 </tbody>
-                  <tr>
-                    <td colspan="10" class="text-center py-5">
-                      <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
-                      Loading entries...
-                    </td>
-                  </tr>
-                </tbody>
               </table>
             </div>
             <div id="entriesPagination"></div>
@@ -2541,7 +2742,7 @@
               <p class="section-subtitle">Manage event photos and videos</p>
             </div>
             <div class="d-flex gap-2 align-items-center flex-wrap">
-              <button class="btn btn-sm btn-outline-warning" data-action="mediaGalleryModule.showFeaturedPhotosView" title="Mark photos as featured to highlight them on the public winner pages">
+              <button class="btn btn-sm btn-outline-secondary" data-action="mediaGalleryModule.showFeaturedPhotosView" title="Mark photos as featured to highlight them on the public winner pages">
                 <i class="bi bi-star-fill me-1"></i>Featured
               </button>
               <button class="btn btn-sm btn-outline-secondary" data-action="mediaGalleryModule.showKeyboardShortcutsHelp" title="Keyboard shortcuts"><i class="bi bi-keyboard"></i></button>
@@ -2553,6 +2754,39 @@
               </div>
             </div>
           </div>
+
+          <!-- Getting Started Banner -->
+          <div class="card border-0 shadow-sm mb-4" id="mediaGalleryGettingStarted">
+            <div class="card-body py-3">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <h6 class="fw-semibold mb-2"><i class="bi bi-images me-2 text-primary"></i>Getting Started — Media Gallery</h6>
+                  <div class="d-flex flex-wrap gap-3">
+                    <div class="d-flex align-items-start gap-2">
+                      <span class="badge bg-primary rounded-pill">1</span>
+                      <div><strong>Upload Photos &amp; Videos</strong><br><small class="text-muted">Drag and drop files or use the Upload button to add event imagery.</small></div>
+                    </div>
+                    <div class="d-flex align-items-start gap-2">
+                      <span class="badge bg-primary rounded-pill">2</span>
+                      <div><strong>Import from YouTube</strong><br><small class="text-muted">Paste a YouTube playlist URL to automatically import videos in bulk.</small></div>
+                    </div>
+                    <div class="d-flex align-items-start gap-2">
+                      <span class="badge bg-primary rounded-pill">3</span>
+                      <div><strong>Link to Winners &amp; Orgs</strong><br><small class="text-muted">Media linked here appears on winner profiles and organisation pages across the CMS.</small></div>
+                    </div>
+                    <div class="d-flex align-items-start gap-2">
+                      <span class="badge bg-primary rounded-pill">4</span>
+                      <div><strong>Mark as Featured</strong><br><small class="text-muted">Use the Featured button to highlight key photos on public winner pages.</small></div>
+                    </div>
+                  </div>
+                </div>
+                <button class="btn btn-sm btn-outline-secondary ms-3 flex-shrink-0" onclick="localStorage.setItem('mediaGalleryWorkflowDismissed','1');this.closest('#mediaGalleryGettingStarted').style.display='none'" aria-label="Dismiss">
+                  <i class="bi bi-x-lg"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+          <script>if(localStorage.getItem('mediaGalleryWorkflowDismissed')==='1'){var _mg=document.getElementById('mediaGalleryGettingStarted');if(_mg)_mg.style.display='none';}</script>
 
           <!-- Media Gallery Content -->
           <div id="mediaGalleryContent">
@@ -2683,12 +2917,12 @@
               <!-- Video Action Buttons -->
               <div class="mb-4 d-flex flex-wrap gap-2">
                 <button class="btn btn-primary" data-action="mediaGalleryModule.openAddVideoModal">
-                  <i class="bi bi-plus-circle me-2"></i>Add Video / YouTube Link
+                  <i class="bi bi-plus-lg me-2"></i>Add Video / YouTube Link
                 </button>
                 <button class="btn btn-outline-danger" data-action="mediaGalleryModule.openBulkYouTubeModal">
                   <i class="bi bi-youtube me-2"></i>Bulk YouTube Import
                 </button>
-                <button class="btn btn-outline-info" data-action="mediaGalleryModule.openPlaylistSyncModal">
+                <button class="btn btn-outline-secondary" data-action="mediaGalleryModule.openPlaylistSyncModal">
                   <i class="bi bi-collection-play me-2"></i>Playlist Import
                 </button>
                 <div class="btn-group btn-group-sm">
@@ -2730,7 +2964,7 @@
           <div class="modal-content">
             <div class="modal-header">
               <h5 class="modal-title">
-                <i class="bi bi-plus-circle me-2"></i>Add Video / YouTube Link
+                <i class="bi bi-plus-lg me-2"></i>Add Video / YouTube Link
               </h5>
               <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
@@ -2806,14 +3040,14 @@
                 <div class="mb-3">
                   <label class="form-label">
                     Company Tags
-                    <small class="text-muted">(Select companies to tag in this video)</small>
+                    <small class="text-muted">(Optional — video will appear on the tagged company's profile)</small>
                   </label>
                   <div class="input-group mb-2">
                     <select class="form-select" id="videoTagInput">
                       <option value="">Select an organisation...</option>
                     </select>
                     <button class="btn btn-outline-secondary" type="button" data-action="mediaGalleryModule.addVideoTag">
-                      <i class="bi bi-plus-circle me-1"></i>Add Organisation
+                      <i class="bi bi-plus-lg me-1"></i>Add Organisation
                     </button>
                   </div>
                   <div id="videoTagsContainer" class="d-flex flex-wrap gap-2">
@@ -2825,14 +3059,14 @@
                 <div class="mb-3">
                   <label class="form-label">
                     Award Tags
-                    <small class="text-muted">(Select awards to tag in this video)</small>
+                    <small class="text-muted">(Optional — video will appear in the tagged award's gallery)</small>
                   </label>
                   <div class="input-group mb-2">
                     <select class="form-select" id="videoAwardTagInput">
                       <option value="">Select an award...</option>
                     </select>
                     <button class="btn btn-outline-secondary" type="button" data-action="mediaGalleryModule.addVideoAwardTag">
-                      <i class="bi bi-plus-circle me-1"></i>Add Award
+                      <i class="bi bi-plus-lg me-1"></i>Add Award
                     </button>
                   </div>
                   <div id="videoAwardTagsContainer" class="d-flex flex-wrap gap-2">
@@ -2863,7 +3097,7 @@
       <div class="modal fade" id="bulkYouTubeModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
           <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
+            <div class="modal-header bg-primary text-white">
               <h5 class="modal-title"><i class="bi bi-youtube me-2"></i>Bulk YouTube Import</h5>
               <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
@@ -2871,7 +3105,7 @@
               <div class="alert alert-info mb-3">
                 <i class="bi bi-info-circle me-2"></i>
                 <strong>Event:</strong> <span id="bulkYouTubeEventName"></span>
-                <br><small>Paste YouTube URLs or IDs (one per line). Shared tags will be applied to all videos.</small>
+                <br><small>Paste YouTube URLs or video IDs (one per line). Video titles are automatically imported from YouTube — no need to enter them manually. Shared tags below will be applied to all videos.</small>
               </div>
               <div class="mb-3">
                 <label class="form-label">YouTube URLs / IDs (one per line)</label>
@@ -2917,7 +3151,7 @@
       <div class="modal fade" id="playlistSyncModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
           <div class="modal-content">
-            <div class="modal-header bg-info text-white">
+            <div class="modal-header bg-primary text-white">
               <h5 class="modal-title"><i class="bi bi-collection-play me-2"></i>YouTube Playlist Import</h5>
               <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
@@ -2930,7 +3164,7 @@
                 <label class="form-label">YouTube Playlist URL</label>
                 <div class="input-group">
                   <input type="text" class="form-control" id="playlistUrl" placeholder="https://www.youtube.com/playlist?list=PLxxxxxxxx">
-                  <button class="btn btn-info text-white" data-action="mediaGalleryModule.fetchPlaylistVideos">
+                  <button class="btn btn-primary" data-action="mediaGalleryModule.fetchPlaylistVideos">
                     <i class="bi bi-search me-1"></i>Fetch
                   </button>
                 </div>
@@ -2940,7 +3174,7 @@
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="button" class="btn btn-info text-white" data-action="mediaGalleryModule.importPlaylistVideos">
+              <button type="button" class="btn btn-primary" data-action="mediaGalleryModule.importPlaylistVideos">
                 <i class="bi bi-cloud-upload me-2"></i>Import Videos
               </button>
             </div>
@@ -2952,7 +3186,7 @@
       <div class="modal fade" id="watermarkModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
           <div class="modal-content">
-            <div class="modal-header bg-dark text-white">
+            <div class="modal-header bg-primary text-white">
               <h5 class="modal-title"><i class="bi bi-droplet me-2"></i>Photo Watermarking</h5>
               <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
@@ -3012,7 +3246,7 @@
       <div class="modal fade" id="exportModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
           <div class="modal-content">
-            <div class="modal-header bg-success text-white">
+            <div class="modal-header bg-primary text-white">
               <h5 class="modal-title"><i class="bi bi-box-arrow-up me-2"></i>Export Media for Social</h5>
               <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
@@ -3055,13 +3289,13 @@
             <div class="modal-body">
               <div class="row mb-3">
                 <div class="col-md-4">
-                  <label class="form-label">Event 1 (Previous)</label>
+                  <label class="form-label">Baseline Event <small class="text-muted">(older / last year)</small></label>
                   <select class="form-select" id="comparisonEvent1">
                     <option value="">Select event...</option>
                   </select>
                 </div>
                 <div class="col-md-4">
-                  <label class="form-label">Event 2 (Current)</label>
+                  <label class="form-label">Comparison Event <small class="text-muted">(newer / this year)</small></label>
                   <select class="form-select" id="comparisonEvent2">
                     <option value="">Select event...</option>
                   </select>
@@ -3088,7 +3322,7 @@
       <div class="modal fade" id="youtubeHealthModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
           <div class="modal-content">
-            <div class="modal-header bg-warning text-dark">
+            <div class="modal-header bg-primary text-white">
               <h5 class="modal-title"><i class="bi bi-heart-pulse me-2"></i>YouTube Link Health Check</h5>
               <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
@@ -3097,7 +3331,7 @@
                 <i class="bi bi-info-circle me-2"></i>Checks all YouTube video links in the system to verify they're still accessible. Detects deleted, private, or restricted videos.
               </div>
               <div class="text-center mb-3">
-                <button class="btn btn-warning btn-lg" data-action="mediaGalleryModule.runYouTubeHealthCheck">
+                <button class="btn btn-outline-secondary btn-lg" data-action="mediaGalleryModule.runYouTubeHealthCheck">
                   <i class="bi bi-play-circle me-2"></i>Run Health Check
                 </button>
               </div>
@@ -3121,6 +3355,79 @@
             </h1>
             <p class="section-subtitle">Plan, manage, and track award ceremonies and events<span id="eventsFreshness" class="ms-2"></span></p>
           </div>
+
+          <!-- Getting Started Banner -->
+          <div class="card border-0 shadow-sm mb-4" id="eventsGettingStarted">
+            <div class="card-body py-3">
+              <div class="d-flex justify-content-between align-items-start mb-3">
+                <div>
+                  <h6 class="fw-bold mb-1"><i class="bi bi-map me-2 text-primary"></i>Getting Started — Events</h6>
+                  <p class="text-muted small mb-0">Plan and manage your awards ceremonies and events.</p>
+                </div>
+                <button type="button" class="btn-close btn-sm" aria-label="Dismiss" onclick="document.getElementById('eventsGettingStarted').style.display='none';localStorage.setItem('eventsWorkflowDismissed','1');"></button>
+              </div>
+              <div class="row g-2">
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">1</span>
+                    <div>
+                      <div class="fw-semibold small">Create an Event</div>
+                      <div class="text-muted" style="font-size:.75rem;">Click "Create Event" below. Enter the name, date, venue, and expected capacity.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">2</span>
+                    <div>
+                      <div class="fw-semibold small">Set Ticket Price &amp; Stripe (optional)</div>
+                      <div class="text-muted" style="font-size:.75rem;">Open the event → Tickets tab. Set a price and add your Stripe key to accept online payments.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">3</span>
+                    <div>
+                      <div class="fw-semibold small">Share the Registration Link</div>
+                      <div class="text-muted" style="font-size:.75rem;">Copy the Public Registration URL from the Tickets tab. Share on your website and invitations.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">4</span>
+                    <div>
+                      <div class="fw-semibold small">Add &amp; Manage Attendees</div>
+                      <div class="text-muted" style="font-size:.75rem;">Open the event → Attendees tab. Track RSVPs, assign seating, manage dietary and special requirements.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">5</span>
+                    <div>
+                      <div class="fw-semibold small">Issue QR Code Tickets</div>
+                      <div class="text-muted" style="font-size:.75rem;">In the Tickets tab, click "Issue Tickets" to email QR codes to each confirmed attendee.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">6</span>
+                    <div>
+                      <div class="fw-semibold small">Check In Guests on the Night</div>
+                      <div class="text-muted" style="font-size:.75rem;">Open the Check-In tab and use the QR scanner on any smartphone to mark guests as arrived.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="mt-3">
+                <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#eventModal"><i class="bi bi-plus-lg me-1"></i>Create First Event</button>
+              </div>
+            </div>
+          </div>
+          <script>if(localStorage.getItem('eventsWorkflowDismissed')==='1'){var _evb=document.getElementById('eventsGettingStarted');if(_evb)_evb.style.display='none';}</script>
 
           <!-- Calendar View Toggle -->
           <div class="mb-3">
@@ -3171,24 +3478,24 @@
 
           <!-- Financial Overview Panel (collapsible) -->
           <div class="card mb-4" id="eventsFinancialPanel">
-            <div class="card-header u-pointer" data-bs-toggle="collapse" data-bs-target="#financialPanelBody" aria-expanded="false">
+            <div class="card-header u-pointer" data-bs-toggle="collapse" data-bs-target="#financialPanelBody" aria-expanded="true">
               <div class="d-flex justify-content-between align-items-center mb-1">
                 <h6 class="mb-0"><i class="bi bi-cash-stack me-2"></i>Financial Overview - All Events</h6>
                 <i class="bi bi-chevron-down"></i>
               </div>
               <div class="d-flex gap-4 small mt-1">
-                <span class="text-success fw-semibold">Revenue: <span id="financialSummaryRevenue">£0</span></span>
-                <span class="text-danger fw-semibold">Costs: <span id="financialSummaryCosts">£0</span></span>
-                <span class="fw-semibold">Net P&amp;L: <span id="financialSummaryPL">£0</span></span>
+                <span class="text-success fw-semibold" title="Total ticket sales received across all events">Revenue: <span id="financialSummaryRevenue">£0</span></span>
+                <span class="text-danger fw-semibold" title="Total actual costs (invoiced expenses from the Budget tab)">Costs: <span id="financialSummaryCosts">£0</span></span>
+                <span class="fw-semibold" title="Net Profit/Loss = Revenue minus Costs. Negative means a loss.">Net P&amp;L: <span id="financialSummaryPL">£0</span></span>
               </div>
             </div>
-            <div class="card-body collapse" id="financialPanelBody">
+            <div class="card-body collapse show" id="financialPanelBody">
               <div class="row g-3 mb-3">
                 <div class="col-md-3">
                   <div class="card text-center bg-light border-success">
                     <div class="card-body py-2">
                       <h4 class="mb-0 text-success" id="financialTotalRevenue">&pound;0</h4>
-                      <small class="text-muted">Total Revenue (All Events)</small>
+                      <small class="text-muted" title="Sum of all ticket sales across all events">Total Revenue (All Events)</small>
                     </div>
                   </div>
                 </div>
@@ -3196,7 +3503,7 @@
                   <div class="card text-center bg-light border-danger">
                     <div class="card-body py-2">
                       <h4 class="mb-0 text-danger" id="financialTotalCosts">&pound;0</h4>
-                      <small class="text-muted">Total Costs (All Events)</small>
+                      <small class="text-muted" title="Sum of all actual invoiced costs from the Budget tab across all events">Total Costs (All Events)</small>
                     </div>
                   </div>
                 </div>
@@ -3276,6 +3583,7 @@
                   <option value="upcoming">Upcoming</option>
                   <option value="past">Past</option>
                   <option value="this-month">This Month</option>
+                  <option value="this-year">This Year</option>
                 </select>
               </div>
               <div class="col-md-2">
@@ -3297,7 +3605,7 @@
                     <i class="bi bi-x-circle me-1"></i>Clear Filters
                   </button>
                   <div class="vr mx-1"></div>
-                  <button class="btn btn-outline-info btn-sm" data-action="eventsModule.toggleEventsCalendar" title="Calendar View">
+                  <button class="btn btn-outline-secondary btn-sm" data-action="eventsModule.toggleEventsCalendar" title="Calendar View">
                     <i class="bi bi-calendar-week"></i>
                   </button>
                   <button class="btn btn-outline-secondary btn-sm" data-action="eventsModule.openTemplatesManager" title="Event Templates">
@@ -3307,7 +3615,7 @@
                     <i class="bi bi-upload"></i>
                   </button>
                   <button class="btn btn-primary btn-sm" data-action="eventsModule.openAddModal">
-                    <i class="bi bi-plus-circle me-1"></i>Add Event
+                    <i class="bi bi-plus-lg me-1"></i>Add Event
                   </button>
                 </div>
               </div>
@@ -3337,8 +3645,8 @@
                 <button class="btn btn-outline-danger" data-action="globalActions.confirmBulkDelete" data-module="eventsModule" data-fn="bulkDeleteEvents" data-label="event">
                   <i class="bi bi-trash me-1"></i>Delete Selected
                 </button>
-                <button class="btn btn-outline-secondary" data-action="eventsModule.bulkExportEvents">
-                  <i class="bi bi-download me-1"></i>Export Selected
+                <button class="btn btn-outline-secondary" data-action="eventsModule.bulkExportEvents" title="Download selected events as a CSV spreadsheet">
+                  <i class="bi bi-filetype-csv me-1"></i>Export Selected (CSV)
                 </button>
                 <button class="btn btn-outline-secondary" data-action="eventsModule.clearSelection">
                   <i class="bi bi-x-circle me-1"></i>Clear
@@ -3440,6 +3748,39 @@
             <p class="section-subtitle">View comprehensive statistics, charts, and insights</p>
           </div>
 
+          <!-- Getting Started Banner -->
+          <div class="card border-0 shadow-sm mb-4" id="reportsGettingStarted">
+            <div class="card-body py-3">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <h6 class="fw-semibold mb-2"><i class="bi bi-graph-up-arrow me-2 text-primary"></i>Getting Started — Reports &amp; Analytics</h6>
+                  <div class="d-flex flex-wrap gap-3">
+                    <div class="d-flex align-items-start gap-2">
+                      <span class="badge bg-primary rounded-pill">1</span>
+                      <div><strong>Choose a Year</strong><br><small class="text-muted">Use the Year filter to focus on a specific awards cycle.</small></div>
+                    </div>
+                    <div class="d-flex align-items-start gap-2">
+                      <span class="badge bg-primary rounded-pill">2</span>
+                      <div><strong>Compare Years</strong><br><small class="text-muted">Select a comparison year to view year-on-year trends.</small></div>
+                    </div>
+                    <div class="d-flex align-items-start gap-2">
+                      <span class="badge bg-primary rounded-pill">3</span>
+                      <div><strong>Review the Charts</strong><br><small class="text-muted">Scroll through entries, revenue, and winner breakdowns.</small></div>
+                    </div>
+                    <div class="d-flex align-items-start gap-2">
+                      <span class="badge bg-primary rounded-pill">4</span>
+                      <div><strong>Print or Export</strong><br><small class="text-muted">Use the Print button to produce a summary report for stakeholders.</small></div>
+                    </div>
+                  </div>
+                </div>
+                <button class="btn btn-sm btn-outline-secondary ms-3 flex-shrink-0" onclick="localStorage.setItem('reportsWorkflowDismissed','1');this.closest('#reportsGettingStarted').style.display='none'">
+                  <i class="bi bi-x-lg"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+          <script>if(localStorage.getItem('reportsWorkflowDismissed')==='1'){var _rg=document.getElementById('reportsGettingStarted');if(_rg)_rg.style.display='none';}</script>
+
           <!-- Toolbar: Year Filter + Print + Freshness -->
           <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2 filter-bar-sticky">
             <div class="d-flex gap-2 align-items-center flex-wrap">
@@ -3455,39 +3796,41 @@
                 <i class="bi bi-printer me-1"></i>Print Report
               </button>
             </div>
-            <div id="reportsDataFreshness" class="d-flex align-items-center gap-2 small text-muted">
-              <i class="bi bi-clock-history"></i>
-              <span>Data loaded: --</span>
+            <div class="d-flex align-items-center gap-2">
+              <div id="reportsDataFreshness" class="d-flex align-items-center gap-2 small text-muted">
+                <span class="spinner-border spinner-border-sm" role="status" aria-label="Loading data"></span><span>Loading&hellip;</span>
+              </div>
+              <button class="btn btn-sm btn-outline-secondary" data-action="reportsAnalytics.loadAnalytics" title="Refresh data" aria-label="Refresh data"><i class="bi bi-arrow-clockwise"></i></button>
             </div>
           </div>
 
           <!-- Summary Stats -->
           <div class="row g-3 mb-4">
             <div class="col-md-3">
-              <div class="stat-card">
+              <div class="stat-card" title="Unique award categories active in the selected year">
                 <i class="bi bi-trophy stat-card-icon text-primary"></i>
-                <h6>Total Awards</h6>
+                <h6>Total Awards <i class="bi bi-info-circle text-muted" style="font-size:.7rem;"></i></h6>
                 <div class="stat-value" id="reportsTotal"><span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></div>
               </div>
             </div>
             <div class="col-md-3">
-              <div class="stat-card">
+              <div class="stat-card" title="Number of organisations registered and active in the selected year">
                 <i class="bi bi-building stat-card-icon text-success"></i>
-                <h6>Total Organisations</h6>
+                <h6>Total Organisations <i class="bi bi-info-circle text-muted" style="font-size:.7rem;"></i></h6>
                 <div class="stat-value text-success" id="reportsTotalOrgs">0</div>
               </div>
             </div>
             <div class="col-md-3">
-              <div class="stat-card">
+              <div class="stat-card" title="Number of entries awarded a winner status in the selected year (unique entries, not unique companies)">
                 <i class="bi bi-award stat-card-icon text-info"></i>
-                <h6>Total Winners</h6>
+                <h6>Total Winners <i class="bi bi-info-circle text-muted" style="font-size:.7rem;"></i></h6>
                 <div class="stat-value text-info" id="reportsTotalWinners">0</div>
               </div>
             </div>
             <div class="col-md-3">
-              <div class="stat-card">
+              <div class="stat-card" title="Total valid entries submitted in the selected year (across all award categories)">
                 <i class="bi bi-file-earmark-text stat-card-icon text-warning"></i>
-                <h6>Total Entries</h6>
+                <h6>Total Entries <i class="bi bi-info-circle text-muted" style="font-size:.7rem;"></i></h6>
                 <div class="stat-value text-warning" id="reportsTotalEntries">0</div>
               </div>
             </div>
@@ -3617,7 +3960,7 @@
                 <i class="bi bi-calendar2-week me-2"></i>Scheduled Reports
               </h5>
               <button class="btn btn-primary btn-sm" data-action="reportsScheduler.showCreateReport">
-                <i class="bi bi-plus-circle me-2"></i>Create Report Schedule
+                <i class="bi bi-plus-lg me-2"></i>Create Report Schedule
               </button>
             </div>
             <p class="text-muted small mb-3">Schedule automated reports to be generated on a recurring basis.</p>
@@ -3647,8 +3990,7 @@
           </div>
 
           <!-- Getting Started Workflow Card -->
-          <div class="card border-0 shadow-sm mb-4" id="marketingGettingStarted">
-            <div class="card-body py-3">
+          <div class="content-card mb-4" id="marketingGettingStarted">
               <div class="d-flex justify-content-between align-items-start mb-3">
                 <div>
                   <h6 class="fw-bold mb-1"><i class="bi bi-map me-2 text-primary"></i>Getting Started — Recommended Workflow</h6>
@@ -3724,8 +4066,8 @@
                   <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
                     <span class="badge bg-success rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">8</span>
                     <div>
-                      <div class="fw-semibold small">Sponsors</div>
-                      <div class="text-muted" style="font-size:.75rem;">Add sponsor logos, tier levels, and manage sponsorship packages.</div>
+                      <div class="fw-semibold small">Social Media</div>
+                      <div class="text-muted" style="font-size:.75rem;">Schedule and post to Twitter/X, LinkedIn, Facebook, and Instagram.</div>
                     </div>
                   </div>
                 </div>
@@ -3733,13 +4075,12 @@
                   <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
                     <span class="badge bg-success rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">9</span>
                     <div>
-                      <div class="fw-semibold small">Social Media</div>
-                      <div class="text-muted" style="font-size:.75rem;">Schedule and post to Twitter/X, LinkedIn, Facebook, and Instagram.</div>
+                      <div class="fw-semibold small">Content Calendar</div>
+                      <div class="text-muted" style="font-size:.75rem;">Plan your publishing schedule and review what's going out across all channels.</div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
           </div>
           <script>if(localStorage.getItem('mktWorkflowDismissed')==='1'){var el=document.getElementById('marketingGettingStarted');if(el)el.style.display='none';}</script>
 
@@ -3756,8 +4097,8 @@
               </button>
             </li>
             <li class="nav-item" role="presentation">
-              <button class="nav-link" id="email-templates-subtab" data-bs-toggle="tab" data-bs-target="#email-templates-content" type="button" role="tab">
-                <i class="bi bi-envelope me-2"></i>Email Templates
+              <button class="nav-link" id="email-templates-subtab" data-bs-toggle="tab" data-bs-target="#email-templates-content" type="button" role="tab" title="Manage reusable email templates. Use Email Builder to compose and send individual campaigns.">
+                <i class="bi bi-envelope me-2"></i>Template Library
               </button>
             </li>
             <li class="nav-item" role="presentation">
@@ -3849,13 +4190,64 @@
 
             <!-- Social Media Sub-Tab -->
             <div class="tab-pane fade" id="social-content" role="tabpanel">
+              <!-- API credentials warning — hidden once credentials are configured -->
+              <div class="alert alert-warning d-flex align-items-start gap-2 mb-4" id="socialApiWarning" role="alert">
+                <i class="bi bi-exclamation-triangle-fill flex-shrink-0 mt-1"></i>
+                <div>
+                  <strong>Social media posting is not yet active.</strong>
+                  Posts you create here are saved but will not be published to any platform until API credentials are configured.
+                  <a href="#" class="alert-link ms-1" data-action="socialMediaModule.openPlatformSettings" data-prevent-default="true">Configure credentials in Settings → Integrations</a>
+                </div>
+              </div>
+              <!-- Getting Started Banner -->
+              <div class="card border-0 shadow-sm mb-4" id="socialMediaGettingStarted">
+                <div class="card-body py-3">
+                  <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                      <h6 class="fw-bold mb-1"><i class="bi bi-map me-2 text-primary"></i>Getting Started — Social Media</h6>
+                      <p class="text-muted small mb-0">Schedule and publish posts about your awards across Twitter, LinkedIn, Facebook, and Instagram.</p>
+                    </div>
+                    <button type="button" class="btn-close btn-sm" aria-label="Dismiss" onclick="document.getElementById('socialMediaGettingStarted').style.display='none';localStorage.setItem('socialMediaBannerDismissed','1');"></button>
+                  </div>
+                  <div class="row g-2">
+                    <div class="col-md-4">
+                      <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                        <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">1</span>
+                        <div>
+                          <div class="fw-semibold small">Connect Your Platforms</div>
+                          <div class="text-muted" style="font-size:.75rem;">Click Configure Platforms and add your API credentials for each social network you want to post to.</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                        <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">2</span>
+                        <div>
+                          <div class="fw-semibold small">Generate or Compose Posts</div>
+                          <div class="text-muted" style="font-size:.75rem;">Use Bulk Generate to auto-create posts from winner data, or compose individual posts using the templates below.</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                        <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">3</span>
+                        <div>
+                          <div class="fw-semibold small">Schedule or Post Now</div>
+                          <div class="text-muted" style="font-size:.75rem;">Pick a date and time to schedule, or click Post Now to publish immediately to all selected platforms.</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <script>if(localStorage.getItem('socialMediaBannerDismissed')==='1'){var _smb=document.getElementById('socialMediaGettingStarted');if(_smb)_smb.style.display='none';}</script>
               <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
                   <h4><i class="bi bi-share me-2"></i>Social Media Manager</h4>
                   <p class="text-muted mb-0">Automate and schedule posts across all platforms</p>
                 </div>
                 <div class="d-flex gap-2">
-                  <button class="btn btn-outline-primary" data-action="socialMediaModule.openBulkGenerateModal">
+                  <button class="btn btn-outline-primary" data-action="socialMediaModule.openBulkGenerateModal" title="Auto-generate social media posts for all nominees, winners, or voting from your award data — no writing required.">
                     <i class="bi bi-collection me-2"></i>Bulk Generate
                   </button>
                   <button class="btn btn-outline-secondary" data-action="socialMediaModule.loadAnalytics">
@@ -3871,13 +4263,8 @@
                 <div class="col-lg-8">
 
                   <!-- Create Post Card -->
-                  <div class="card mb-4">
-                    <div class="card-header">
-                      <h5 class="mb-0">
-                        <i class="bi bi-pencil-square me-2"></i>Create New Post
-                      </h5>
-                    </div>
-                    <div class="card-body">
+                  <div class="content-card mb-4">
+                    <h5 class="mb-3"><i class="bi bi-pencil-square me-2"></i>Create New Post</h5>
 
                       <!-- Template Selection -->
                       <div class="mb-4">
@@ -4111,7 +4498,7 @@
                           <label for="smScheduleDate" class="form-label">
                             <i class="bi bi-calendar3 me-1" aria-hidden="true"></i>Schedule Date
                           </label>
-                          <input type="date" class="form-control" id="smScheduleDate" placeholder="DD/MM/YYYY">
+                          <input type="date" class="form-control" id="smScheduleDate">
                           <small class="text-muted">Leave empty to post immediately</small>
                         </div>
                         <div class="col-md-6">
@@ -4124,10 +4511,10 @@
 
                       <!-- Action Buttons -->
                       <div class="d-flex gap-2">
-                        <button class="btn btn-primary" data-action="socialMediaModule.savePost" data-args="[&quot;scheduled&quot;]">
+                        <button class="btn btn-success" data-action="socialMediaModule.savePost" data-args="[&quot;scheduled&quot;]">
                           <i class="bi bi-clock-history me-2"></i>Schedule Post
                         </button>
-                        <button class="btn btn-success" data-action="socialMediaModule.savePost" data-args="[&quot;immediate&quot;]">
+                        <button class="btn btn-outline-warning" data-action="socialMediaModule.savePost" data-args="[&quot;immediate&quot;]" title="Posts immediately to all selected platforms — requires API credentials to be configured">
                           <i class="bi bi-send me-2"></i>Post Now
                         </button>
                         <button class="btn btn-outline-secondary" data-action="socialMediaModule.saveDraft">
@@ -4138,70 +4525,39 @@
                         </button>
                       </div>
 
-                    </div>
                   </div>
 
                   <!-- Scheduled Posts -->
-                  <div class="card mb-4">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                      <h5 class="mb-0">
-                        <i class="bi bi-calendar-check me-2"></i>Scheduled Posts
-                      </h5>
+                  <div class="content-card mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                      <h5 class="mb-0"><i class="bi bi-calendar-check me-2"></i>Scheduled Posts</h5>
                       <span class="badge bg-primary" id="scheduledPostsCount">0</span>
                     </div>
-                    <div class="card-body">
-                      <div id="scheduledPostsList">
-                        <div class="text-center text-muted py-4">
-                          <i class="bi bi-calendar-x display-4 d-block mb-2 opacity-25"></i>
-                          No scheduled posts
-                        </div>
-                      </div>
-                    </div>
+                    <div id="scheduledPostsList"></div>
                   </div>
 
                   <!-- Draft Posts -->
-                  <div class="card mb-4">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                      <h5 class="mb-0">
-                        <i class="bi bi-file-earmark-text me-2"></i>Drafts
-                      </h5>
+                  <div class="content-card mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                      <h5 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i>Drafts</h5>
                       <span class="badge bg-secondary" id="draftPostsCount">0</span>
                     </div>
-                    <div class="card-body">
-                      <div id="draftPostsList">
-                        <div class="text-center text-muted py-3">
-                          <small>No drafts</small>
-                        </div>
-                      </div>
-                    </div>
+                    <div id="draftPostsList"></div>
                   </div>
 
                   <!-- Published Posts History -->
-                  <div class="card mb-4">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                      <h5 class="mb-0">
-                        <i class="bi bi-send-check me-2"></i>Published Posts
-                      </h5>
+                  <div class="content-card mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                      <h5 class="mb-0"><i class="bi bi-send-check me-2"></i>Published Posts</h5>
                       <span class="badge bg-success" id="publishedPostsCount">0</span>
                     </div>
-                    <div class="card-body">
-                      <div id="publishedPostsList">
-                        <div class="text-center text-muted py-4">
-                          <i class="bi bi-send display-4 d-block mb-2 opacity-25"></i>
-                          No published posts yet
-                        </div>
-                      </div>
-                    </div>
+                    <div id="publishedPostsList"></div>
                   </div>
 
                   <!-- Analytics Section -->
-                  <div class="card" id="analyticsSection">
-                    <div class="card-header">
-                      <h5 class="mb-0">
-                        <i class="bi bi-graph-up me-2"></i>Post Analytics
-                      </h5>
-                    </div>
-                    <div class="card-body" id="analyticsContent">
+                  <div class="content-card" id="analyticsSection">
+                    <h5 class="mb-3"><i class="bi bi-graph-up me-2"></i>Post Analytics</h5>
+                    <div id="analyticsContent">
                       <div class="text-center text-muted py-4">
                         <i class="bi bi-graph-up display-4 d-block mb-2 opacity-25"></i>
                         <p>Click "Analytics" to load statistics</p>
@@ -4215,13 +4571,8 @@
                 <div class="col-lg-4">
 
                   <!-- Live Preview -->
-                  <div class="card mb-4 sticky-top" style="top: 20px;">
-                    <div class="card-header">
-                      <h5 class="mb-0">
-                        <i class="bi bi-eye me-2"></i>Live Preview
-                      </h5>
-                    </div>
-                    <div class="card-body">
+                  <div class="content-card mb-4 sticky-top" style="top: 20px;">
+                    <h5 class="mb-3"><i class="bi bi-eye me-2"></i>Live Preview</h5>
 
                       <!-- Platform Tabs -->
                       <ul class="nav nav-tabs mb-3" role="tablist">
@@ -4328,51 +4679,47 @@
                         </div>
                       </div>
 
-                    </div>
                   </div>
 
                   <!-- Connected Platforms -->
-                  <div class="card">
-                    <div class="card-header">
-                      <h5 class="mb-0">
-                        <i class="bi bi-plug me-2"></i>Connected Platforms
-                      </h5>
+                  <div class="content-card">
+                    <h5 class="mb-3"><i class="bi bi-plug me-2"></i>Connected Platforms</h5>
+                    <div class="alert alert-warning border-0 py-2 px-3 mb-2 small" role="note">
+                      <i class="bi bi-exclamation-triangle me-1"></i>No platforms connected — posting is disabled. Click <strong>Configure Platforms</strong> below to add credentials.
                     </div>
-                    <div class="card-body">
-                      <div id="connectedPlatformsList">
+                    <div id="connectedPlatformsList">
                         <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
                           <div>
                             <i class="bi bi-twitter-x text-info me-2"></i>
                             <strong>X</strong>
                           </div>
-                          <span class="badge bg-secondary">Not Connected</span>
+                          <span class="badge bg-warning text-dark" title="Not connected — add credentials in Configure Platforms">Action required</span>
                         </div>
                         <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
                           <div>
                             <i class="bi bi-facebook text-primary me-2"></i>
                             <strong>Facebook</strong>
                           </div>
-                          <span class="badge bg-secondary">Not Connected</span>
+                          <span class="badge bg-warning text-dark" title="Not connected — add credentials in Configure Platforms">Action required</span>
                         </div>
                         <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
                           <div>
                             <i class="bi bi-instagram text-danger me-2"></i>
                             <strong>Instagram</strong>
                           </div>
-                          <span class="badge bg-secondary">Not Connected</span>
+                          <span class="badge bg-warning text-dark" title="Not connected — add credentials in Configure Platforms">Action required</span>
                         </div>
                         <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
                           <div>
                             <i class="bi bi-linkedin text-info me-2"></i>
                             <strong>LinkedIn</strong>
                           </div>
-                          <span class="badge bg-secondary">Not Connected</span>
+                          <span class="badge bg-warning text-dark" title="Not connected — add credentials in Configure Platforms">Action required</span>
                         </div>
                       </div>
-                      <button class="btn btn-outline-primary btn-sm w-100 mt-3" data-action="socialMediaModule.openPlatformSettings">
-                        <i class="bi bi-gear me-2"></i>Configure Platforms
+                      <button class="btn btn-primary btn-sm w-100 mt-3" data-action="socialMediaModule.openPlatformSettings">
+                        <i class="bi bi-gear me-2"></i>Configure Platforms to Enable Posting
                       </button>
-                    </div>
                   </div>
 
                 </div>
@@ -4498,9 +4845,14 @@
 
             <!-- Email Templates Sub-Tab -->
             <div class="tab-pane fade" id="email-templates-content" role="tabpanel">
-              <div class="d-flex justify-content-between align-items-center mb-4">
-                <h4><i class="bi bi-envelope-paper me-2"></i>Email Templates</h4>
-                <p class="text-muted mb-0">Manage automated email templates with dynamic placeholders</p>
+              <div class="d-flex justify-content-between align-items-start mb-3">
+                <div>
+                  <h4 class="mb-1"><i class="bi bi-envelope-paper me-2"></i>Template Library</h4>
+                  <p class="text-muted mb-0 small">Store and edit reusable email layouts (Winner Announcement, Nominee Notification, etc.). To compose and send a campaign to a list, use the <strong>Email Builder</strong> tab.</p>
+                </div>
+              </div>
+              <div class="alert alert-light border py-2 px-3 mb-3 small" role="note">
+                <i class="bi bi-lightbulb text-warning me-1"></i><strong>Template Library vs Email Builder:</strong> Edit your reusable templates here. When you're ready to send an email campaign, go to the <strong>Email Builder</strong> tab — it uses these templates as a starting point.
               </div>
 
               <!-- Template List + Editor -->
@@ -4515,7 +4867,7 @@
                           <button class="btn btn-outline-secondary" id="tmplGridViewBtn" title="Grid view" data-action="emailTemplatesModule.setView" data-id="grid"><i class="bi bi-grid-3x3-gap"></i></button>
                         </div>
                         <button class="btn btn-sm btn-primary" data-action="emailTemplatesModule.newTemplate">
-                          <i class="bi bi-plus-circle me-1"></i>New
+                          <i class="bi bi-plus-lg me-1"></i>New
                         </button>
                       </div>
                     </div>
@@ -4546,6 +4898,48 @@
 
             <!-- Email Builder Sub-Tab -->
             <div class="tab-pane fade" id="email-builder-content" role="tabpanel">
+              <!-- Getting Started Banner -->
+              <div class="card border-0 shadow-sm mb-3" id="emailBuilderGettingStarted">
+                <div class="card-body py-3">
+                  <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                      <h6 class="fw-bold mb-1"><i class="bi bi-map me-2 text-primary"></i>Getting Started — Email Builder</h6>
+                      <p class="text-muted small mb-0">Create and send professional email campaigns to your winners, nominees, and contacts.</p>
+                    </div>
+                    <button type="button" class="btn-close btn-sm" aria-label="Dismiss" onclick="document.getElementById('emailBuilderGettingStarted').style.display='none';localStorage.setItem('emailBuilderBannerDismissed','1');"></button>
+                  </div>
+                  <div class="row g-2">
+                    <div class="col-md-4">
+                      <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                        <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">1</span>
+                        <div>
+                          <div class="fw-semibold small">Choose a Template</div>
+                          <div class="text-muted" style="font-size:.75rem;">Pick a pre-built layout from the Email Template dropdown, or start with a blank canvas.</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                        <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">2</span>
+                        <div>
+                          <div class="fw-semibold small">Drag Blocks &amp; Edit Content</div>
+                          <div class="text-muted" style="font-size:.75rem;">Drag blocks from the left panel onto the canvas. Click any block to edit its text, images, or style.</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                        <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">3</span>
+                        <div>
+                          <div class="fw-semibold small">Choose a List &amp; Send</div>
+                          <div class="text-muted" style="font-size:.75rem;">Scroll to "Send to List", pick a recipient list, send a test first, then click Send to List to deliver.</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <script>if(localStorage.getItem('emailBuilderBannerDismissed')==='1'){var _ebb=document.getElementById('emailBuilderGettingStarted');if(_ebb)_ebb.style.display='none';}</script>
               <div class="row g-0" style="height: calc(100vh - 280px); min-height: 600px;">
 
                 <!-- Left Sidebar - Blocks & Settings -->
@@ -4742,6 +5136,7 @@
                           <input class="form-check-input" type="checkbox" id="abTestToggle" aria-label="Enable A/B testing" data-on-change="emailBuilder.toggleABTest">
                           <label class="form-check-label small" for="abTestToggle">A/B Test Subject Line</label>
                         </div>
+                        <div class="small text-muted mt-1">Send two different subject lines to a split of your list and compare open rates. Works best with lists of 100+ recipients.</div>
                       </div>
                       <div id="abTestSection" class="d-none">
                         <div class="mb-2">
@@ -4771,7 +5166,7 @@
 
                     <!-- Send Campaign -->
                     <div class="mb-4">
-                      <h6 class="mb-3"><i class="bi bi-send me-2"></i>Send Campaign</h6>
+                      <h6 class="mb-3"><i class="bi bi-send me-2"></i>Send to List</h6>
 
                       <div class="mb-3">
                         <label class="form-label small">Send To List</label>
@@ -4810,7 +5205,7 @@
                       <div id="scheduleOptions" class="d-none">
                         <div class="mb-2">
                           <label class="form-label small">Send Date</label>
-                          <input type="date" class="form-control form-control-sm" id="builderScheduleDate" placeholder="DD/MM/YYYY">
+                          <input type="date" class="form-control form-control-sm" id="builderScheduleDate">
                         </div>
                         <div class="mb-3">
                           <label class="form-label small">Send Time</label>
@@ -4820,10 +5215,10 @@
                       </div>
 
                       <div class="d-grid gap-2">
-                        <button class="btn btn-outline-info btn-sm" data-action="emailBuilder.sendTestEmail">
+                        <button class="btn btn-outline-secondary btn-sm" data-action="emailBuilder.sendTestEmail">
                           <i class="bi bi-envelope-check me-1"></i>Send Test Email
                         </button>
-                        <button class="btn btn-warning btn-sm" id="btnSendCampaign" data-action="emailBuilder.sendCampaign">
+                        <button class="btn btn-success btn-sm" id="btnSendCampaign" data-action="emailBuilder.sendCampaign">
                           <i class="bi bi-send-fill me-1"></i>Send to List
                         </button>
                         <button class="btn btn-primary btn-sm d-none" id="btnScheduleCampaign" data-action="emailBuilder.scheduleCampaign">
@@ -4839,7 +5234,7 @@
 
                     <!-- Quick Actions -->
                     <div class="d-grid gap-2">
-                      <button class="btn btn-outline-warning btn-sm" data-action="emailBuilder.saveDraft">
+                      <button class="btn btn-outline-secondary btn-sm" data-action="emailBuilder.saveDraft">
                         <i class="bi bi-file-earmark me-1"></i>Save Draft
                       </button>
                       <button class="btn btn-outline-secondary btn-sm" data-action="emailBuilder.exportHTML">
@@ -4854,7 +5249,7 @@
                       <button class="btn btn-primary btn-sm" data-action="emailBuilder.saveTemplate">
                         <i class="bi bi-save me-1"></i>Save Template
                       </button>
-                      <button class="btn btn-outline-info btn-sm" data-action="emailBuilder.checkSpamScore">
+                      <button class="btn btn-outline-secondary btn-sm" data-action="emailBuilder.checkSpamScore">
                         <i class="bi bi-shield-check me-1"></i>Spam Check
                       </button>
                       <button class="btn btn-outline-secondary btn-sm" data-action="globalActions.confirmClearCanvas" title="Clear the entire email canvas — this cannot be undone">
@@ -4866,20 +5261,20 @@
 
                     <!-- Available Variables -->
                     <div class="mb-3">
-                      <h6 class="small mb-2">Available Variables</h6>
+                      <h6 class="small mb-1">Dynamic Variables <i class="bi bi-info-circle text-muted" title="Variables are automatically replaced with each recipient's real data when the email is sent. For example, {{company_name}} becomes 'Acme Ltd' for one recipient and 'TechStart' for another."></i></h6>
+                      <small class="text-muted d-block mb-2"><i class="bi bi-cursor-text me-1"></i>Click any variable to copy it, then paste into your email content:</small>
                       <div class="variable-tags">
-                        <code class="variable-tag">{{company_name}}</code>
-                        <code class="variable-tag">{{company_logo}}</code>
-                        <code class="variable-tag">{{contact_name}}</code>
-                        <code class="variable-tag">{{award_category}}</code>
-                        <code class="variable-tag">{{award_year}}</code>
-                        <code class="variable-tag">{{website}}</code>
-                        <code class="variable-tag">{{event_name}}</code>
-                        <code class="variable-tag">{{event_date}}</code>
-                        <code class="variable-tag">{{unsubscribe_url}}</code>
-                        <code class="variable-tag">{{view_in_browser_url}}</code>
+                        <code class="variable-tag" title="Recipient's company name">{{company_name}}</code>
+                        <code class="variable-tag" title="Recipient's company logo image">{{company_logo}}</code>
+                        <code class="variable-tag" title="Recipient's contact person name">{{contact_name}}</code>
+                        <code class="variable-tag" title="Award category name">{{award_category}}</code>
+                        <code class="variable-tag" title="Award year (e.g. 2025)">{{award_year}}</code>
+                        <code class="variable-tag" title="Company website URL">{{website}}</code>
+                        <code class="variable-tag" title="Event name">{{event_name}}</code>
+                        <code class="variable-tag" title="Event date">{{event_date}}</code>
+                        <code class="variable-tag" title="Required unsubscribe link — always include in marketing emails">{{unsubscribe_url}}</code>
+                        <code class="variable-tag" title="Link to view email in a browser">{{view_in_browser_url}}</code>
                       </div>
-                      <small class="text-muted d-block mt-2">Click to copy to clipboard</small>
                     </div>
 
                   </div>
@@ -4958,8 +5353,8 @@
                   <div class="d-flex justify-content-between align-items-center mb-3">
                     <h6 class="mb-0"><i class="bi bi-journal-text me-2"></i>Campaign Log</h6>
                     <div class="d-flex gap-2 align-items-center">
-                      <input type="text" class="form-control form-control-sm" id="campaignLogSearchInput" placeholder="Search campaigns..." style="width: 180px;">
-                      <select class="form-select form-select-sm" id="campaignLogFilter" style="width: auto;" data-on-change="emailBuilder.resetAndLoadCampaignLog">
+                      <input type="text" class="form-control form-control-sm" id="campaignLogSearchInput" placeholder="Search campaign name or subject..." style="width: 200px;">
+                      <select class="form-select form-select-sm" id="campaignLogFilter" style="width: auto;" data-on-change="emailBuilder.resetAndLoadCampaignLog" title="Draft = not sent yet. Scheduled = set to go out at a specific time. Sending = currently being delivered. Sent = completed. Failed = error during send. Cancelled = manually stopped.">
                         <option value="all">All Campaigns</option>
                         <option value="Sent">Sent</option>
                         <option value="Scheduled">Scheduled</option>
@@ -4968,6 +5363,7 @@
                         <option value="Failed">Failed</option>
                         <option value="Cancelled">Cancelled</option>
                       </select>
+                      <i class="bi bi-info-circle text-muted" title="Draft = not sent yet. Scheduled = set to go out at a specific time. Sending = currently being delivered. Sent = delivery complete. Failed = error during send (check logs). Cancelled = manually stopped before sending."></i>
                       <button class="btn btn-outline-secondary btn-sm" data-action="emailBuilder.loadCampaignLog" title="Refresh">
                         <i class="bi bi-arrow-clockwise"></i>
                       </button>
@@ -5071,10 +5467,18 @@
               <div class="d-flex justify-content-between align-items-center mb-4">
                 <h4><i class="bi bi-envelope-arrow-up me-2"></i>Email Sequences</h4>
                 <button class="btn btn-primary btn-sm" data-action="marketingModule.showCreateSequence">
-                  <i class="bi bi-plus-circle me-2"></i>Create New Sequence
+                  <i class="bi bi-plus-lg me-2"></i>Create New Sequence
                 </button>
               </div>
-              <p class="text-muted small">Create automated email sequences triggered by status changes or manual enrollment.</p>
+              <p class="text-muted small">Create automated email sequences triggered by status changes or manual enrollment. Use sequences for multi-email workflows; use the Email Builder for one-off campaigns.</p>
+              <div class="alert alert-light border py-2 px-3 mb-3 small" role="note">
+                <strong><i class="bi bi-lightbulb text-warning me-1"></i>Common sequences:</strong>
+                <ul class="mb-0 mt-1 ps-3">
+                  <li><strong>Entry received</strong> → Confirmation email → Payment reminder (3 days) → Voting reminder (when live)</li>
+                  <li><strong>Winner announced</strong> → Congratulations → Media pack → Post-event survey (1 week)</li>
+                  <li><strong>Sponsor onboarded</strong> → Welcome &amp; overview → Event logistics → Upgrade offer (30 days)</li>
+                </ul>
+              </div>
               <div id="emailSequencesGrid">
                 <div class="text-center py-5 text-muted">
                   <i class="bi bi-envelope-slash display-4 d-block mb-2 opacity-25"></i>
@@ -5101,6 +5505,52 @@
             </h1>
             <p class="section-subtitle">Manage invoices, payments, and financial tracking<span id="paymentsFreshness" class="ms-2"></span></p>
           </div>
+
+          <!-- Getting Started Banner -->
+          <div class="card border-0 shadow-sm mb-4" id="paymentsGettingStarted">
+            <div class="card-body py-3">
+              <div class="d-flex justify-content-between align-items-start mb-3">
+                <div>
+                  <h6 class="fw-bold mb-1"><i class="bi bi-map me-2 text-primary"></i>Getting Started — Payments &amp; Invoicing</h6>
+                  <p class="text-muted small mb-0">Manage entry fees, sponsorship invoices, and event ticket payments.</p>
+                </div>
+                <button type="button" class="btn-close btn-sm" aria-label="Dismiss" onclick="document.getElementById('paymentsGettingStarted').style.display='none';localStorage.setItem('paymentsWorkflowDismissed','1');"></button>
+              </div>
+              <div class="row g-2">
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">1</span>
+                    <div>
+                      <div class="fw-semibold small">Create an Invoice</div>
+                      <div class="text-muted" style="font-size:.75rem;">Select an organisation, add line items (entry fees, sponsorship, tables), and set payment terms.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">2</span>
+                    <div>
+                      <div class="fw-semibold small">Send via Email or Stripe</div>
+                      <div class="text-muted" style="font-size:.75rem;">Email the invoice directly or send a Stripe payment link for online card payment.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">3</span>
+                    <div>
+                      <div class="fw-semibold small">Record Payment Received</div>
+                      <div class="text-muted" style="font-size:.75rem;">Mark invoices as paid when payment arrives by bank transfer, or Stripe updates status automatically.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="mt-3">
+                <button class="btn btn-sm btn-primary" data-action="paymentsModule.createNewInvoice"><i class="bi bi-plus-lg me-1"></i>Create First Invoice</button>
+              </div>
+            </div>
+          </div>
+          <script>if(localStorage.getItem('paymentsWorkflowDismissed')==='1'){var _pb=document.getElementById('paymentsGettingStarted');if(_pb)_pb.style.display='none';}</script>
 
           <!-- Sub-navigation -->
           <ul class="nav nav-tabs mb-4" id="paymentsSubTabs" role="tablist">
@@ -5170,7 +5620,7 @@
                 <div class="col-md-3">
                   <div class="stat-card stat-card-clickable" data-stat-filter="invoiceStatusFilter:partially_paid" title="Filter to invoices with outstanding balance">
                     <i class="bi bi-currency-pound stat-card-icon text-info"></i>
-                    <h6>Outstanding</h6>
+                    <h6>Outstanding Balance</h6>
                     <div class="stat-value text-info" id="totalOutstandingAmount">£<span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></div>
                     <div class="stat-card-hover-indicator"><i class="bi bi-arrow-right-circle"></i></div>
                   </div>
@@ -5185,7 +5635,7 @@
                     <input type="text" class="form-control form-control-sm" id="invoiceSearchBox" placeholder="Invoice #, company...">
                   </div>
                   <div class="col-md-3">
-                    <label class="form-label small fw-bold">Status</label>
+                    <label class="form-label small fw-bold">Status <i class="bi bi-info-circle text-muted" title="Invoice lifecycle: Draft (not yet sent) → Sent (delivered to customer) → Viewed (customer opened it) → Paid or Partially Paid (payment received) or Overdue (past due date). Cancelled = removed from billing. Stripe auto-updates status when payment is received."></i></label>
                     <select class="form-select form-select-sm" id="invoiceStatusFilter" data-on-change="paymentsModule.filterInvoices">
                       <option value="">All Statuses</option>
                       <option value="draft">Draft</option>
@@ -5231,7 +5681,7 @@
               <div class="d-flex justify-content-between align-items-center mb-2">
                 <h6 class="fw-semibold mb-0">Invoices</h6>
                 <button class="btn btn-primary btn-sm" data-action="paymentsModule.createNewInvoice">
-                  <i class="bi bi-plus-circle me-1"></i>Create Invoice
+                  <i class="bi bi-plus-lg me-1"></i>Create Invoice
                 </button>
               </div>
               <div class="table-container">
@@ -5334,7 +5784,7 @@
                   <div class="col-md-3">
                     <div class="d-flex gap-1">
                       <button class="btn btn-success btn-sm flex-grow-1" data-action="paymentsModule.recordNewPayment">
-                        <i class="bi bi-plus-circle me-1"></i>Record Payment
+                        <i class="bi bi-plus-lg me-1"></i>Record Payment
                       </button>
                       <div class="btn-group">
                         <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
@@ -5395,8 +5845,9 @@
                 </div>
                 <div class="row g-3">
                   <div class="col-md-3">
-                    <label class="form-label small fw-bold">Report Type</label>
+                    <label class="form-label small fw-bold">Report Type <i class="bi bi-info-circle text-muted ms-1" title="Revenue Summary: total income by period. Outstanding Invoices: unpaid amounts. Payment History: all received payments. By Organisation: breakdown per company. By Package Type: income by award package. By Event: breakdown per ceremony."></i></label>
                     <select class="form-select" id="reportType">
+                      <option value="">Select report type…</option>
                       <option value="revenue">Revenue Summary</option>
                       <option value="outstanding">Outstanding Invoices</option>
                       <option value="payments">Payment History</option>
@@ -5407,11 +5858,11 @@
                   </div>
                   <div class="col-md-3">
                     <label class="form-label small fw-bold">Start Date</label>
-                    <input type="date" class="form-control" id="reportStartDate" placeholder="DD/MM/YYYY">
+                    <input type="date" class="form-control" id="reportStartDate">
                   </div>
                   <div class="col-md-3">
                     <label class="form-label small fw-bold">End Date</label>
-                    <input type="date" class="form-control" id="reportEndDate" placeholder="DD/MM/YYYY">
+                    <input type="date" class="form-control" id="reportEndDate">
                   </div>
                   <div class="col-md-3 d-flex align-items-end">
                     <button class="btn btn-primary w-100" data-action="paymentsModule.generateReport">
@@ -5466,6 +5917,52 @@
             <p class="section-subtitle">Track company relationships, communications, deals, and segments</p>
           </div>
 
+          <!-- Getting Started Banner -->
+          <div class="card border-0 shadow-sm mb-4" id="crmGettingStarted">
+            <div class="card-body py-3">
+              <div class="d-flex justify-content-between align-items-start mb-3">
+                <div>
+                  <h6 class="fw-bold mb-1"><i class="bi bi-map me-2 text-primary"></i>Getting Started — CRM</h6>
+                  <p class="text-muted small mb-0">Track relationships, sponsorship deals, and communications with every organisation.</p>
+                </div>
+                <button type="button" class="btn-close btn-sm" aria-label="Dismiss" onclick="document.getElementById('crmGettingStarted').style.display='none';localStorage.setItem('crmWorkflowDismissed','1');"></button>
+              </div>
+              <div class="row g-2">
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">1</span>
+                    <div>
+                      <div class="fw-semibold small">Organisations Sync Automatically</div>
+                      <div class="text-muted" style="font-size:.75rem;">All organisations from the Organisations tab appear here. No duplicate data entry needed.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">2</span>
+                    <div>
+                      <div class="fw-semibold small">Log Communications</div>
+                      <div class="text-muted" style="font-size:.75rem;">Record calls, emails, and meetings against each company. Set follow-up reminders.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">3</span>
+                    <div>
+                      <div class="fw-semibold small">Track Deals &amp; Sponsorship</div>
+                      <div class="text-muted" style="font-size:.75rem;">Create deals for sponsorship packages and table sales. Track pipeline value and win rate.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="mt-3">
+                <button class="btn btn-sm btn-primary" data-action="crmModule.logCommunication"><i class="bi bi-chat-dots me-1"></i>Log First Communication</button>
+              </div>
+            </div>
+          </div>
+          <script>if(localStorage.getItem('crmWorkflowDismissed')==='1'){var _cb=document.getElementById('crmGettingStarted');if(_cb)_cb.style.display='none';}</script>
+
           <!-- Sub-navigation -->
           <ul class="nav nav-tabs mb-4" id="crmSubTabs" role="tablist">
             <li class="nav-item" role="presentation">
@@ -5490,7 +5987,7 @@
             </li>
             <li class="nav-item" role="presentation">
               <button class="nav-link" id="smart-segments-subtab" data-bs-toggle="tab" data-bs-target="#smart-segments-content" type="button" role="tab" title="Smart Segments are rule-based auto-segments that update dynamically as organisation data changes">
-                <i class="bi bi-funnel me-2"></i>Smart Segments<span id="smartSegmentsBadge" class="badge bg-secondary ms-2" style="display:none"></span>
+                <i class="bi bi-funnel me-2"></i>Auto-Segments<span id="smartSegmentsBadge" class="badge bg-secondary ms-2" style="display:none"></span>
               </button>
             </li>
             <li class="nav-item" role="presentation">
@@ -5508,6 +6005,7 @@
 
               <!-- Filter & Actions -->
               <div class="content-card mb-4">
+                <p class="text-muted small mb-3"><i class="bi bi-info-circle me-1"></i><strong>Type</strong> = communication method (Email, Phone, Meeting, etc.) &nbsp;·&nbsp; <strong>Topic</strong> = subject matter (Sponsorship, Renewal, etc.). Use either or both filters together.</p>
                 <div class="row g-3 align-items-end">
                   <div class="col-md-3">
                     <label class="form-label small fw-bold">Type</label>
@@ -5522,7 +6020,7 @@
                     </select>
                   </div>
                   <div class="col-md-3">
-                    <label class="form-label small fw-bold">Regarding</label>
+                    <label class="form-label small fw-bold">Topic</label>
                     <select class="form-select form-select-sm" id="communicationRegardingFilter" data-on-change="crmModule.loadCommunications">
                       <option value="">All Topics</option>
                       <option value="sponsorship">Sponsorship</option>
@@ -5543,7 +6041,7 @@
                   </div>
                   <div class="col-md-3">
                     <button class="btn btn-primary btn-sm w-100" data-action="crmModule.logCommunication">
-                      <i class="bi bi-plus-circle me-1"></i>Log Communication
+                      <i class="bi bi-plus-lg me-1"></i>Log Communication
                     </button>
                   </div>
                 </div>
@@ -5560,7 +6058,7 @@
                         <th scope="col">Organisation</th>
                         <th scope="col">Contact</th>
                         <th scope="col">Subject</th>
-                        <th scope="col">Regarding</th>
+                        <th scope="col">Topic</th>
                         <th scope="col">Follow-up</th>
                         <th scope="col">Actions</th>
                       </tr>
@@ -5618,16 +6116,16 @@
               <div class="content-card mb-4">
                 <div class="row g-3 align-items-end">
                   <div class="col-md-3">
-                    <label class="form-label small fw-bold">Stage</label>
+                    <label class="form-label small fw-bold">Stage <i class="bi bi-info-circle text-muted ms-1" title="Identified: prospect found. Approached: first contact made. Meeting Held: discussion completed. Proposal Sent: quote provided. Under Negotiation: terms being agreed. Confirmed: deal closed. Declined: not proceeding."></i></label>
                     <select class="form-select form-select-sm" id="dealStageFilter" data-on-change="crmModule.applyFilter" data-args='["deals","stage"]'>
                       <option value="">All Stages</option>
-                      <option value="lead">Lead</option>
-                      <option value="contacted">Contacted</option>
-                      <option value="qualified">Qualified</option>
-                      <option value="proposal">Proposal</option>
-                      <option value="negotiation">Negotiation</option>
-                      <option value="closed_won">Closed Won</option>
-                      <option value="closed_lost">Closed Lost</option>
+                      <option value="lead">Identified</option>
+                      <option value="contacted">Approached</option>
+                      <option value="qualified">Meeting Held</option>
+                      <option value="proposal">Proposal Sent</option>
+                      <option value="negotiation">Under Negotiation</option>
+                      <option value="closed_won">Confirmed</option>
+                      <option value="closed_lost">Declined</option>
                     </select>
                   </div>
                   <div class="col-md-3">
@@ -5654,7 +6152,7 @@
                   </div>
                   <div class="col-md-3">
                     <button class="btn btn-primary btn-sm w-100" data-action="crmModule.createDeal">
-                      <i class="bi bi-plus-circle me-1"></i>Create Deal
+                      <i class="bi bi-plus-lg me-1"></i>Create Deal
                     </button>
                   </div>
                 </div>
@@ -5727,7 +6225,7 @@
                   </div>
                   <div class="col-md-4">
                     <button class="btn btn-primary btn-sm w-100" data-action="crmModule.createMeetingNote">
-                      <i class="bi bi-plus-circle me-1"></i>Add Meeting Note
+                      <i class="bi bi-plus-lg me-1"></i>Add Meeting Note
                     </button>
                   </div>
                 </div>
@@ -5847,7 +6345,7 @@
                   <i class="bi bi-tags me-1"></i>Assign Company to Segments
                 </button>
                 <button class="btn btn-secondary btn-sm ms-2" data-action="crmModule.createCustomSegment">
-                  <i class="bi bi-plus-circle me-1"></i>Create Custom Segment
+                  <i class="bi bi-plus-lg me-1"></i>Create Custom Segment
                 </button>
               </div>
 
@@ -5856,7 +6354,7 @@
             <!-- Smart Segments Sub-Tab -->
             <div class="tab-pane fade" id="smart-segments-content" role="tabpanel">
               <div class="d-flex justify-content-between align-items-center mb-4">
-                <h4><i class="bi bi-funnel me-2"></i>Smart Segments</h4>
+                <h4><i class="bi bi-funnel me-2"></i>Auto-Segments</h4>
               </div>
               <p class="small text-muted mb-3">Build dynamic segments based on rules. Matching organisations update in real-time.</p>
               <div id="smartSegmentRules">
@@ -5877,9 +6375,10 @@
                 <button class="btn btn-sm btn-outline-secondary" data-action="crmModule.addSegmentRule"><i class="bi bi-plus me-1"></i>Add Rule</button>
                 <span class="text-muted small">Match:</span>
                 <div class="btn-group btn-group-sm" id="segmentLogicGroup">
-                  <button class="btn btn-outline-primary active" id="segLogicAND" data-action="crmModule.setSegmentLogic" data-id="AND">ALL (AND)</button>
-                  <button class="btn btn-outline-secondary" id="segLogicOR" data-action="crmModule.setSegmentLogic" data-id="OR">ANY (OR)</button>
+                  <button class="btn btn-outline-primary active" id="segLogicAND" data-action="crmModule.setSegmentLogic" data-id="AND" title="ALL (AND): organisation must match every rule. E.g. Tier=Gold AND Sector=Tech">ALL (AND)</button>
+                  <button class="btn btn-outline-secondary" id="segLogicOR" data-action="crmModule.setSegmentLogic" data-id="OR" title="ANY (OR): organisation matches if it meets at least one rule. E.g. Sector=Tech OR Sector=Finance">ANY (OR)</button>
                 </div>
+                <small class="text-muted ms-1">ALL = must match every rule &nbsp;·&nbsp; ANY = matches at least one rule</small>
               </div>
               <div class="d-flex gap-2 mb-3">
                 <button class="btn btn-sm btn-primary" data-action="crmModule.applySmartSegment"><i class="bi bi-funnel me-1"></i>Apply Segment</button>
@@ -5922,6 +6421,39 @@
             <p class="section-subtitle">Manage system settings and data backups</p>
           </div>
 
+          <!-- Getting Started Banner -->
+          <div class="card border-0 shadow-sm mb-4" id="settingsGettingStarted">
+            <div class="card-body py-3">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <h6 class="fw-semibold mb-2"><i class="bi bi-gear me-2 text-primary"></i>Getting Started — Settings</h6>
+                  <div class="d-flex flex-wrap gap-3">
+                    <div class="d-flex align-items-start gap-2">
+                      <span class="badge bg-primary rounded-pill">1</span>
+                      <div><strong>General / Branding</strong><br><small class="text-muted">Set your programme name, logo, and colour scheme.</small></div>
+                    </div>
+                    <div class="d-flex align-items-start gap-2">
+                      <span class="badge bg-primary rounded-pill">2</span>
+                      <div><strong>Email Settings</strong><br><small class="text-muted">Configure the sender name and address used for all CMS emails.</small></div>
+                    </div>
+                    <div class="d-flex align-items-start gap-2">
+                      <span class="badge bg-primary rounded-pill">3</span>
+                      <div><strong>Seasons &amp; Areas</strong><br><small class="text-muted">Set the open and close dates for the current awards cycle.</small></div>
+                    </div>
+                    <div class="d-flex align-items-start gap-2">
+                      <span class="badge bg-primary rounded-pill">4</span>
+                      <div><strong>Security</strong><br><small class="text-muted">Manage user roles, two-factor authentication, and GDPR settings.</small></div>
+                    </div>
+                  </div>
+                </div>
+                <button class="btn btn-sm btn-outline-secondary ms-3 flex-shrink-0" onclick="localStorage.setItem('settingsWorkflowDismissed','1');this.closest('#settingsGettingStarted').style.display='none'" aria-label="Dismiss">
+                  <i class="bi bi-x-lg"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+          <script>if(localStorage.getItem('settingsWorkflowDismissed')==='1'){var _sg=document.getElementById('settingsGettingStarted');if(_sg)_sg.style.display='none';}</script>
+
           <!-- Settings Sub-Navigation -->
           <ul class="nav nav-tabs mb-4" id="settingsSubTabs" role="tablist">
             <li class="nav-item" role="presentation">
@@ -5960,14 +6492,22 @@
 
           <!-- General: Branding + UX Preferences -->
           <div class="tab-pane fade show active" id="settings-general" role="tabpanel">
-          <!-- Branding (rendered dynamically by brandingModule.renderBrandSettings) -->
-          <div id="brandingSettingsContainer" class="mb-4"></div>
+          <div class="row g-4">
+            <!-- Branding (rendered dynamically by brandingModule.renderBrandSettings) -->
+            <div class="col-12">
+              <div id="brandingSettingsContainer"></div>
+            </div>
 
-          <!-- UX Preferences (rendered dynamically by settingsModule.renderUxSettings) -->
-          <div id="uxSettingsContainer" class="mb-4"></div>
+            <!-- UX Preferences (rendered dynamically by settingsModule.renderUxSettings) -->
+            <div class="col-12">
+              <div id="uxSettingsContainer"></div>
+            </div>
 
-          <!-- Notification Preferences (rendered dynamically by settingsModule.renderNotificationSettings) -->
-          <div id="notificationSettingsContainer" class="mb-4"></div>
+            <!-- Notification Preferences (rendered dynamically by settingsModule.renderNotificationSettings) -->
+            <div class="col-12">
+              <div id="notificationSettingsContainer"></div>
+            </div>
+          </div>
           </div>
 
           <!-- Seasons & Areas -->
@@ -6020,7 +6560,7 @@
                     <h5 class="mb-1">
                       <i class="bi bi-pin-map me-2"></i>Manage Areas
                     </h5>
-                    <p class="text-muted mb-0 small">View the 101 geographic areas used for award categories. Populated by the areas seed SQL.</p>
+                    <p class="text-muted mb-0 small">The 101 geographic areas used for award category filtering. These are pre-loaded and do not need to be edited.</p>
                   </div>
                   <button class="btn btn-outline-secondary btn-sm" data-action="areasManager.loadAreas">
                     <i class="bi bi-arrow-clockwise me-1"></i>Refresh
@@ -6046,7 +6586,10 @@
                 <h5 class="mb-3">
                   <i class="bi bi-cloud-download me-2"></i>Database Backup & Export
                 </h5>
-                <p class="text-muted mb-4">Download complete database backups or export individual tables</p>
+                <p class="text-muted mb-3">Download complete database backups or export individual tables</p>
+                <div class="alert alert-light border small mb-4">
+                  <strong>Full Backup:</strong> Complete data snapshot — save this for archiving or before making major changes. &nbsp;<strong>Restore:</strong> Load a backup file to revert all data — <span class="text-danger fw-semibold">this overwrites current data and cannot be undone.</span> &nbsp;<strong>Table Export:</strong> Download individual sections (e.g. winners list as a spreadsheet).
+                </div>
 
                 <!-- Full Database Backup -->
                 <div class="mb-4 pb-4 border-bottom">
@@ -6314,7 +6857,10 @@
           <!-- Security extras: GDPR + User Roles — moved into #settings-security by script below -->
           <div id="settings-security-overflow" style="display:none">
           <!-- GDPR Compliance (rendered dynamically by gdprModule.renderGdprPanel) -->
-          <div id="gdprPanel" class="mt-4"></div>
+          <div class="alert alert-info border-0 mt-4 mb-0" role="note">
+            <i class="bi bi-shield-lock me-2"></i><strong>GDPR Compliance:</strong> UK GDPR requires winners' explicit consent before their name, company, or image appears in any public announcement or marketing material. Use the controls below to record consent, respond to data subject requests (access, deletion, portability), and manage data retention periods.
+          </div>
+          <div id="gdprPanel" class="mt-3"></div>
 
           <!-- User Roles & Permissions Section -->
           <div class="row g-4 mt-4">
@@ -6449,7 +6995,7 @@
               <button class="btn btn-sm btn-outline-success btc-symbol-btn" data-action="btcModule.switchSymbol" data-id="FX:GBPUSD">
                 <i class="bi bi-currency-pound me-1"></i>GBP/USD
               </button>
-              <button class="btn btn-sm btn-outline-info btc-symbol-btn" data-action="btcModule.switchSymbol" data-id="FX:EURUSD">
+              <button class="btn btn-sm btn-outline-secondary btc-symbol-btn" data-action="btcModule.switchSymbol" data-id="FX:EURUSD">
                 <i class="bi bi-currency-euro me-1"></i>EUR/USD
               </button>
               <button class="btn btn-sm btn-outline-secondary btc-symbol-btn" data-action="btcModule.switchSymbol" data-id="TVC:GOLD">
@@ -6627,8 +7173,9 @@
               <input type="url" class="form-control" id="webhookFormUrl" placeholder="https://example.com/webhook" required>
             </div>
             <div class="mb-3">
-              <label for="webhookFormSecret" class="form-label">Secret <small class="text-muted">(optional, used to sign payloads)</small></label>
+              <label for="webhookFormSecret" class="form-label">Security Token <small class="text-muted">(optional)</small></label>
               <input type="text" class="form-control" id="webhookFormSecret" placeholder="Leave blank to auto-generate">
+              <div class="small text-muted mt-1">A secret token that lets your external system verify requests genuinely came from this CMS. Leave blank and one will be generated automatically.</div>
             </div>
             <div class="mb-3">
               <label class="form-label">Events <span class="text-danger">*</span></label>
@@ -6666,7 +7213,7 @@
   <div class="modal fade" id="seasonFormModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
-        <div class="modal-header bg-info text-white">
+        <div class="modal-header bg-primary text-white">
           <h5 class="modal-title" id="seasonFormModalTitle">
             <i class="bi bi-calendar-event me-2"></i>Add Season
           </h5>
@@ -6695,39 +7242,39 @@
               <div class="col-12"><hr class="my-1"><small class="text-muted fw-semibold">Entries (CTA)</small></div>
               <div class="col-md-6">
                 <label for="seasonFormEntryOpen" class="form-label">Entry Opens</label>
-                <input type="date" class="form-control" id="seasonFormEntryOpen" placeholder="DD/MM/YYYY">
+                <input type="date" class="form-control" id="seasonFormEntryOpen">
               </div>
               <div class="col-md-6">
                 <label for="seasonFormEntryClose" class="form-label">Entry Closes</label>
-                <input type="date" class="form-control" id="seasonFormEntryClose" placeholder="DD/MM/YYYY">
+                <input type="date" class="form-control" id="seasonFormEntryClose">
               </div>
               <div class="col-12"><hr class="my-1"><small class="text-muted fw-semibold">Nominees Announced</small></div>
               <div class="col-md-6">
                 <label for="seasonFormNomineesAnnouncement" class="form-label">Nominees Announcement Date</label>
-                <input type="date" class="form-control" id="seasonFormNomineesAnnouncement" placeholder="DD/MM/YYYY">
+                <input type="date" class="form-control" id="seasonFormNomineesAnnouncement">
               </div>
               <div class="col-12"><hr class="my-1"><small class="text-muted fw-semibold">Judging Period</small></div>
               <div class="col-md-6">
                 <label for="seasonFormJudgingOpen" class="form-label">Judging Opens</label>
-                <input type="date" class="form-control" id="seasonFormJudgingOpen" placeholder="DD/MM/YYYY">
+                <input type="date" class="form-control" id="seasonFormJudgingOpen">
               </div>
               <div class="col-md-6">
                 <label for="seasonFormJudgingClose" class="form-label">Judging Closes</label>
-                <input type="date" class="form-control" id="seasonFormJudgingClose" placeholder="DD/MM/YYYY">
+                <input type="date" class="form-control" id="seasonFormJudgingClose">
               </div>
               <div class="col-12"><hr class="my-1"><small class="text-muted fw-semibold">Voting Period</small></div>
               <div class="col-md-6">
                 <label for="seasonFormVotingOpen" class="form-label">Voting Opens</label>
-                <input type="date" class="form-control" id="seasonFormVotingOpen" placeholder="DD/MM/YYYY">
+                <input type="date" class="form-control" id="seasonFormVotingOpen">
               </div>
               <div class="col-md-6">
                 <label for="seasonFormVotingClose" class="form-label">Voting Closes</label>
-                <input type="date" class="form-control" id="seasonFormVotingClose" placeholder="DD/MM/YYYY">
+                <input type="date" class="form-control" id="seasonFormVotingClose">
               </div>
               <div class="col-12"><hr class="my-1"><small class="text-muted fw-semibold">Winners Announced</small></div>
               <div class="col-md-6">
                 <label for="seasonFormWinnersAnnouncement" class="form-label">Winners Announcement Date</label>
-                <input type="date" class="form-control" id="seasonFormWinnersAnnouncement" placeholder="DD/MM/YYYY">
+                <input type="date" class="form-control" id="seasonFormWinnersAnnouncement">
               </div>
               <div class="col-12">
                 <div class="form-check">
@@ -6798,12 +7345,13 @@
               <div class="col-md-6">
                 <label for="awardFormStatus" class="form-label fw-semibold">Status</label>
                 <select class="form-select" id="awardFormStatus">
-                  <option value="Active">Active</option>
-                  <option value="Draft">Draft</option>
-                  <option value="Pending">Pending</option>
-                  <option value="Published">Published</option>
-                  <option value="Archived">Archived</option>
+                  <option value="Draft">Draft — not yet open for entries</option>
+                  <option value="Active">Active — open for entries</option>
+                  <option value="Pending">Pending — awaiting approval</option>
+                  <option value="Published">Published — publicly visible</option>
+                  <option value="Archived">Archived — closed</option>
                 </select>
+                <div class="form-text">New awards start as <strong>Draft</strong>. Change to <strong>Active</strong> when ready to accept entries.</div>
               </div>
               <div class="col-md-6">
                 <label for="awardFormSeason" class="form-label fw-semibold">Season</label>
@@ -6815,36 +7363,36 @@
               <div class="col-12"><hr class="my-1"><small class="text-muted fw-semibold">Key Dates</small></div>
               <div class="col-md-3">
                 <label for="awardFormEntryOpen" class="form-label small">Entry Opens</label>
-                <input type="date" class="form-control form-control-sm" id="awardFormEntryOpen" placeholder="DD/MM/YYYY">
+                <input type="date" class="form-control form-control-sm" id="awardFormEntryOpen">
               </div>
               <div class="col-md-3">
                 <label for="awardFormEntryClose" class="form-label small">Entry Closes</label>
-                <input type="date" class="form-control form-control-sm" id="awardFormEntryClose" placeholder="DD/MM/YYYY">
+                <input type="date" class="form-control form-control-sm" id="awardFormEntryClose">
                 <div class="form-text">Public submissions blocked after this date</div>
               </div>
               <div class="col-md-3">
                 <label for="awardFormNomineesAnnouncement" class="form-label small">Nominees Announced</label>
-                <input type="date" class="form-control form-control-sm" id="awardFormNomineesAnnouncement" placeholder="DD/MM/YYYY">
+                <input type="date" class="form-control form-control-sm" id="awardFormNomineesAnnouncement">
               </div>
               <div class="col-md-3">
                 <label for="awardFormJudgingOpen" class="form-label small">Judging Opens</label>
-                <input type="date" class="form-control form-control-sm" id="awardFormJudgingOpen" placeholder="DD/MM/YYYY">
+                <input type="date" class="form-control form-control-sm" id="awardFormJudgingOpen">
               </div>
               <div class="col-md-3">
                 <label for="awardFormJudgingClose" class="form-label small">Judging Closes</label>
-                <input type="date" class="form-control form-control-sm" id="awardFormJudgingClose" placeholder="DD/MM/YYYY">
+                <input type="date" class="form-control form-control-sm" id="awardFormJudgingClose">
               </div>
               <div class="col-md-3">
                 <label for="awardFormVotingOpen" class="form-label small">Voting Opens</label>
-                <input type="date" class="form-control form-control-sm" id="awardFormVotingOpen" placeholder="DD/MM/YYYY">
+                <input type="date" class="form-control form-control-sm" id="awardFormVotingOpen">
               </div>
               <div class="col-md-3">
                 <label for="awardFormVotingClose" class="form-label small">Voting Closes</label>
-                <input type="date" class="form-control form-control-sm" id="awardFormVotingClose" placeholder="DD/MM/YYYY">
+                <input type="date" class="form-control form-control-sm" id="awardFormVotingClose">
               </div>
               <div class="col-md-3">
                 <label for="awardFormWinnersAnnouncement" class="form-label small">Winners Announced</label>
-                <input type="date" class="form-control form-control-sm" id="awardFormWinnersAnnouncement" placeholder="DD/MM/YYYY">
+                <input type="date" class="form-control form-control-sm" id="awardFormWinnersAnnouncement">
               </div>
               <div class="col-12">
                 <label class="form-label fw-semibold">Previous Year Results</label>
@@ -6852,19 +7400,19 @@
                   <div class="col-md-4">
                     <div class="input-group input-group-sm">
                       <span class="input-group-text"><i class="bi bi-trophy-fill text-warning"></i></span>
-                      <input type="text" class="form-control" id="awardFormPrevWinner" placeholder="1st Place">
+                      <input type="text" class="form-control" id="awardFormPrevWinner" placeholder="Winner's name (e.g. Acme Ltd)">
                     </div>
                   </div>
                   <div class="col-md-4">
                     <div class="input-group input-group-sm">
                       <span class="input-group-text"><i class="bi bi-award text-secondary"></i></span>
-                      <input type="text" class="form-control" id="awardFormPrev2nd" placeholder="2nd Place">
+                      <input type="text" class="form-control" id="awardFormPrev2nd" placeholder="Runner-up name (e.g. Beta Co)">
                     </div>
                   </div>
                   <div class="col-md-4">
                     <div class="input-group input-group-sm">
                       <span class="input-group-text"><i class="bi bi-award text-info"></i></span>
-                      <input type="text" class="form-control" id="awardFormPrev3rd" placeholder="3rd Place">
+                      <input type="text" class="form-control" id="awardFormPrev3rd" placeholder="Third place name (optional)">
                     </div>
                   </div>
                 </div>
@@ -6914,7 +7462,7 @@
   <div class="modal fade" id="createInvoiceModal" tabindex="-1" aria-labelledby="createInvoiceModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
-        <div class="modal-header bg-success text-white">
+        <div class="modal-header bg-primary text-white">
           <h5 class="modal-title" id="createInvoiceModalLabel">
             <i class="bi bi-file-earmark-plus me-2"></i>Create New Invoice
           </h5>
@@ -6932,10 +7480,11 @@
               <div class="col-md-6">
                 <label for="invoiceType" class="form-label">Invoice Type <span class="text-danger" aria-label="required">*</span></label>
                 <select class="form-select" id="invoiceType" required>
-                  <option value="package">Package</option>
-                  <option value="entry_fee">Entry Fee</option>
-                  <option value="sponsorship">Sponsorship</option>
-                  <option value="tickets">Tickets</option>
+                  <option value="">Select invoice type…</option>
+                  <option value="package">Package (full awards package)</option>
+                  <option value="entry_fee">Entry Fee (award category entry)</option>
+                  <option value="sponsorship">Sponsorship (event/category sponsor)</option>
+                  <option value="tickets">Tickets (event attendance)</option>
                   <option value="other">Other</option>
                 </select>
               </div>
@@ -6943,15 +7492,17 @@
             <div class="row mb-3">
               <div class="col-md-3">
                 <label for="invoiceDate" class="form-label">Invoice Date <span class="text-danger" aria-label="required">*</span></label>
-                <input type="date" class="form-control" id="invoiceDate" placeholder="DD/MM/YYYY" required>
+                <input type="date" class="form-control" id="invoiceDate" required>
               </div>
               <div class="col-md-3">
                 <label for="invoiceDueDate" class="form-label">Due Date <span class="text-danger" aria-label="required">*</span></label>
-                <input type="date" class="form-control" id="invoiceDueDate" placeholder="DD/MM/YYYY" required>
+                <input type="date" class="form-control" id="invoiceDueDate" required>
+                <div class="small text-muted mt-1">Invoices are automatically marked <strong>Overdue</strong> if this date passes without full payment.</div>
               </div>
               <div class="col-md-3">
                 <label for="invoiceTaxRate" class="form-label">Tax Rate (%)</label>
                 <input type="number" class="form-control" id="invoiceTaxRate" value="20" min="0" max="100" step="0.01">
+                <div class="small text-muted mt-1">UK standard VAT is 20%. Set to 0 for zero-rated or VAT-exempt invoices.</div>
               </div>
               <div class="col-md-3">
                 <label for="invoiceDiscount" class="form-label">Discount (%)</label>
@@ -6976,13 +7527,14 @@
             </div>
             <div class="row mb-3">
               <div class="col-md-12">
-                <label for="invoicePackageType" class="form-label">Package Type (if applicable)</label>
+                <label for="invoicePackageType" class="form-label">Package Type <small class="text-muted">(for tiered sponsorships)</small></label>
                 <select class="form-select" id="invoicePackageType">
-                  <option value="">None</option>
+                  <option value="">None — not a tiered package</option>
                   <option value="bronze">Bronze</option>
                   <option value="silver">Silver</option>
                   <option value="gold">Gold</option>
                 </select>
+                <div class="small text-muted mt-1">Select only if this invoice is for a Bronze/Silver/Gold sponsorship package. Leave as "None" for entry fees, tickets, and other invoice types.</div>
               </div>
             </div>
             <div class="mb-3">
@@ -6998,7 +7550,7 @@
               </div>
               <div id="invoiceLineItems"></div>
               <button type="button" class="btn btn-sm btn-outline-primary mt-2" data-action="paymentsModule.addInvoiceLineItem">
-                <i class="bi bi-plus-circle me-1"></i>Add Line Item
+                <i class="bi bi-plus-lg me-1"></i>Add Line Item
               </button>
             </div>
             <div class="mb-3">
@@ -7021,7 +7573,7 @@
   <div class="modal fade" id="recordPaymentModal" tabindex="-1" aria-labelledby="recordPaymentModalLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
-        <div class="modal-header bg-success text-white">
+        <div class="modal-header bg-primary text-white">
           <h5 class="modal-title" id="recordPaymentModalLabel">
             <i class="bi bi-cash-stack me-2"></i>Record Payment
           </h5>
@@ -7048,7 +7600,7 @@
               </div>
               <div class="col-md-6">
                 <label for="paymentDate" class="form-label">Payment Date <span class="text-danger" aria-label="required">*</span></label>
-                <input type="date" class="form-control" id="paymentDate" placeholder="DD/MM/YYYY" required>
+                <input type="date" class="form-control" id="paymentDate" required>
               </div>
             </div>
             <div class="mb-3">
@@ -7111,7 +7663,7 @@
   <div class="modal fade" id="viewPaymentModal" tabindex="-1" aria-labelledby="viewPaymentModalLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
-        <div class="modal-header bg-success text-white">
+        <div class="modal-header">
           <h5 class="modal-title" id="viewPaymentModalLabel">
             <i class="bi bi-cash-stack me-2"></i>Payment Details
           </h5>
@@ -7133,7 +7685,7 @@
   <div class="modal fade" id="sendInvoiceModal" tabindex="-1" aria-labelledby="sendInvoiceModalLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
-        <div class="modal-header bg-info text-white">
+        <div class="modal-header bg-primary text-white">
           <h5 class="modal-title" id="sendInvoiceModalLabel">
             <i class="bi bi-envelope me-2"></i>Send Invoice
           </h5>
@@ -7161,7 +7713,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-info text-white" data-action="paymentsModule.confirmSendInvoice">
+          <button type="button" class="btn btn-primary" data-action="paymentsModule.confirmSendInvoice">
             <i class="bi bi-send me-1"></i>Send Invoice
           </button>
         </div>
@@ -7217,7 +7769,7 @@
   <div class="modal fade" id="publicFormLinkModal" tabindex="-1" aria-labelledby="publicFormLinkModalLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
-        <div class="modal-header bg-info text-white">
+        <div class="modal-header">
           <h5 class="modal-title" id="publicFormLinkModalLabel">
             <i class="bi bi-link-45deg me-2"></i>Public Entry Form Link
           </h5>
@@ -7318,10 +7870,10 @@
     <div class="modal-content">
       <div class="modal-header bg-primary text-white">
         <h5 class="modal-title" id="assignmentsModalTitle">
-          <i class="bi bi-trophy me-2"></i>Manage Award Nominees
+          <i class="bi bi-people me-2"></i>Award Judging Panel
         </h5>
         <button class="btn btn-sm btn-light me-2" data-action="assignmentsModule.openConflictManager" title="Manage judge conflict of interest records">
-          <i class="bi bi-shield-exclamation me-1"></i>Conflicts
+          <i class="bi bi-shield-exclamation me-1"></i>Judge Conflicts
         </button>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
@@ -7335,7 +7887,7 @@
           <div>
             <small class="text-muted">
               <i class="bi bi-info-circle me-1"></i>
-              Tip: Click a company to see more details
+              Assign judges to entries for blind scoring. Judges see their assignments in the Judge Portal. Click a row to view details.
             </small>
           </div>
           <div>
@@ -7377,7 +7929,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">
-          <i class="bi bi-plus-circle me-2"></i>Add Organisations to Award
+          <i class="bi bi-plus-lg me-2"></i>Add Organisations to Award
         </h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
@@ -7431,7 +7983,7 @@
               <label for="uploadEventSelect" class="form-label">
                 Event <span class="text-danger" aria-label="required">*</span>
                 <button type="button" class="btn btn-sm btn-link p-0 ms-2" data-action="mediaGalleryModule.showQuickAddEvent">
-                  <i class="bi bi-plus-circle"></i> Add New Event
+                  <i class="bi bi-plus-lg"></i> Add New Event
                 </button>
               </label>
               <select class="form-select" id="uploadEventSelect" required>
@@ -7448,7 +8000,7 @@
                   </div>
                   <div class="row">
                     <div class="col-md-6 mb-2">
-                      <input type="date" class="form-control form-control-sm" id="quickEventDate" placeholder="Event Date">
+                      <input type="date" class="form-control form-control-sm" id="quickEventDate">
                     </div>
                     <div class="col-md-6 mb-2">
                       <input type="number" class="form-control form-control-sm" id="quickEventYear" placeholder="Year" min="2000" max="2100">
@@ -7601,7 +8153,7 @@
             <div class="row">
               <div class="col-md-6 mb-3">
                 <label for="eventDate" class="form-label">Event Date</label>
-                <input type="date" class="form-control" id="eventDate" placeholder="DD/MM/YYYY">
+                <input type="date" class="form-control" id="eventDate">
               </div>
               <div class="col-md-6 mb-3">
                 <label for="eventYear" class="form-label">Year</label>
@@ -7649,7 +8201,7 @@
   <div class="modal fade" id="cloneEventModal" tabindex="-1" aria-labelledby="cloneEventModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
-        <div class="modal-header bg-success text-white">
+        <div class="modal-header bg-primary text-white">
           <h5 class="modal-title" id="cloneEventModalLabel">
             <i class="bi bi-files me-2"></i>Clone Event
           </h5>
@@ -7673,7 +8225,7 @@
             <div class="row">
               <div class="col-md-6 mb-3">
                 <label for="cloneEventDate" class="form-label">Event Date</label>
-                <input type="date" class="form-control" id="cloneEventDate" placeholder="DD/MM/YYYY">
+                <input type="date" class="form-control" id="cloneEventDate">
               </div>
               <div class="col-md-6 mb-3">
                 <label for="cloneEventYear" class="form-label">Year <span class="text-danger" aria-label="required">*</span></label>
@@ -7716,7 +8268,7 @@
   <div class="modal fade" id="attendeesModal" tabindex="-1" aria-labelledby="attendeesModalLabel" aria-hidden="true">
     <div class="modal-dialog" style="max-width: 1400px;">
       <div class="modal-content">
-        <div class="modal-header bg-info text-white">
+        <div class="modal-header">
           <h5 class="modal-title" id="attendeesModalLabel">
             <i class="bi bi-people me-2"></i>Event Attendees & RSVP
           </h5>
@@ -7746,13 +8298,13 @@
                   <li><a class="dropdown-item" href="#" data-action="eventsModule.generateNameBadges"><i class="bi bi-person-badge text-primary me-2"></i>Name Badges PDF</a></li>
                   <li><a class="dropdown-item" href="#" data-action="eventsModule.generatePlaceCards"><i class="bi bi-card-text text-info me-2"></i>Place Cards PDF</a></li>
                   <li><hr class="dropdown-divider"></li>
-                  <li><a class="dropdown-item" href="#" data-action="eventsModule.openShareableSeatingChart"><i class="bi bi-share text-purple me-2" style="color:#6f42c1;"></i>Shareable Seating Chart</a></li>
+                  <li><a class="dropdown-item" href="#" data-action="eventsModule.openShareableSeatingChart"><i class="bi bi-share text-purple me-2"></i>Shareable Seating Chart</a></li>
                 </ul>
               </div>
-              <button class="btn btn-outline-warning btn-sm" data-action="ticketModule.renderTicketDashboard" title="Manage tickets, QR codes, and refunds">
+              <button class="btn btn-outline-secondary btn-sm" data-action="ticketModule.renderTicketDashboard" title="Manage tickets, QR codes, and refunds">
                 <i class="bi bi-ticket-perforated me-1"></i>Tickets
               </button>
-              <button class="btn btn-outline-info btn-sm" data-action="eventsModule.sendBulkInvites" title="Send invitation email to all guests">
+              <button class="btn btn-outline-secondary btn-sm" data-action="eventsModule.sendBulkInvites" title="Send invitation email to all guests">
                 <i class="bi bi-envelope me-1"></i>Send Invites
               </button>
               <button class="btn btn-primary btn-sm" data-action="eventsModule.openAddAttendeeForm">
@@ -7841,6 +8393,11 @@
           </div>
 
           <!-- Tabs -->
+          <div class="alert alert-light border py-2 px-3 mb-2 small" role="note">
+            <i class="bi bi-info-circle me-1 text-primary"></i>
+            <strong>Required:</strong> Attendees · Check-In · Tickets &nbsp;&nbsp;|&nbsp;&nbsp;
+            <strong>Optional:</strong> Waitlist · Budget · Vendors · Special Reqs · Milestones · Post-Event
+          </div>
           <ul class="nav nav-tabs mb-3 flex-nowrap" role="tablist" style="font-size: 0.9rem;">
             <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#attendeesTab">
               <i class="bi bi-people me-1"></i>Attendees</a></li>
@@ -7854,8 +8411,8 @@
               <i class="bi bi-wallet2 me-1"></i>Budget</a></li>
             <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#vendorsTab">
               <i class="bi bi-truck me-1"></i>Vendors <span class="badge bg-secondary ms-1 d-none" id="vendorBadge">0</span></a></li>
-            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#specialReqsTab">
-              <i class="bi bi-shield-check me-1"></i>Requirements</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#specialReqsTab" title="Special attendee requirements: dietary, accessibility, and mobility needs">
+              <i class="bi bi-shield-check me-1"></i>Special Reqs</a></li>
             <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#milestonesTab">
               <i class="bi bi-check2-square me-1"></i>Milestones</a></li>
             <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#postEventTab">
@@ -7884,7 +8441,7 @@
                       </select>
                     </div>
                     <div class="col-md-2">
-                      <select class="form-select form-select-sm" id="attendeeType">
+                      <select class="form-select form-select-sm" id="attendeeType" title="Guest = standard attendee. VIP = priority seating &amp; comms. Speaker = listed in agenda. Sponsor = tracked for ROI. Media = press credentials. Staff = door/crew (bypasses check-in scan).">
                         <option value="guest">Guest</option>
                         <option value="vip">VIP</option>
                         <option value="speaker">Speaker</option>
@@ -7913,7 +8470,7 @@
                     </div>
                     <div class="col-md-2">
                       <button class="btn btn-sm btn-primary w-100" data-action="eventsModule.addAttendee">
-                        <i class="bi bi-plus-circle me-1"></i>Add
+                        <i class="bi bi-plus-lg me-1"></i>Add
                       </button>
                     </div>
                   </div>
@@ -7964,6 +8521,14 @@
 
             <!-- Check-In Tab -->
             <div class="tab-pane fade" id="checkInTab">
+              <div class="alert alert-info border-0 py-2 px-3 mb-3 small" role="note">
+                <i class="bi bi-qr-code me-1"></i><strong>How check-in works:</strong>
+                <ol class="mb-0 mt-1 ps-3">
+                  <li><strong>Before the event:</strong> Issue QR code tickets from the <strong>Tickets</strong> tab — they are emailed to each confirmed attendee automatically.</li>
+                  <li><strong>On the night:</strong> Click <strong>Launch Scanner</strong> to open the QR reader on any smartphone or tablet.</li>
+                  <li><strong>Scan each guest's ticket</strong> as they arrive — they are instantly marked as Checked In.</li>
+                </ol>
+              </div>
               <div class="row g-3 mb-3">
                 <div class="col-md-4">
                   <div class="card text-center border-success">
@@ -8026,6 +8591,10 @@
 
             <!-- Tickets Tab -->
             <div class="tab-pane fade" id="ticketsTab">
+              <div class="alert alert-light border py-2 px-3 mb-3 small" role="note">
+                <i class="bi bi-signpost-split text-primary me-1"></i><strong>Setup order:</strong>
+                <span class="text-muted ms-1"><strong>1.</strong> Set ticket price below &nbsp;→&nbsp; <strong>2.</strong> Add Stripe key (optional, for online payments) &nbsp;→&nbsp; <strong>3.</strong> Share the Public Registration Link with guests &nbsp;→&nbsp; <strong>4.</strong> Issue QR code tickets to confirmed attendees.</span>
+              </div>
               <div class="row g-3 mb-3">
                 <div class="col-md-3">
                   <div class="card text-center">
@@ -8099,8 +8668,8 @@
                   <div class="row g-3">
                     <div class="col-md-8">
                       <label class="form-label small">Stripe Publishable Key</label>
-                      <input type="text" class="form-control form-control-sm" id="stripePublicKeyInput" placeholder="pk_live_..." value="">
-                      <small class="text-muted">Enter your Stripe publishable key to enable online payments on the registration page</small>
+                      <input type="text" class="form-control form-control-sm" id="stripePublicKeyInput" placeholder="pk_live_... or pk_test_..." value="">
+                      <small class="text-muted">Enables online payments on the public registration page. Use <strong>pk_test_…</strong> while testing, <strong>pk_live_…</strong> for real payments. Find your keys at <strong>dashboard.stripe.com → Developers → API keys</strong>.</small>
                     </div>
                     <div class="col-md-4">
                       <label class="form-label small">&nbsp;</label>
@@ -8117,24 +8686,24 @@
                   <h6 class="card-title"><i class="bi bi-link-45deg me-2"></i>Registration & Check-In Links</h6>
                   <div class="row g-3">
                     <div class="col-md-6">
-                      <label class="form-label small">Public Registration Page</label>
+                      <label class="form-label small"><i class="bi bi-person-plus text-success me-1"></i>Public Registration Page <span class="badge bg-success ms-1" style="font-size:.65rem;">For guests</span></label>
                       <div class="input-group input-group-sm">
                         <input type="text" class="form-control" id="registrationLinkDisplay" readonly>
                         <button class="btn btn-outline-primary" data-action="eventsModule.copyRegistrationLink">
                           <i class="bi bi-clipboard me-1"></i>Copy
                         </button>
                       </div>
-                      <small class="text-muted">Share this link on your website for guests to register and purchase tickets</small>
+                      <small class="text-muted">Share on your website and invitations so guests can register and buy tickets.</small>
                     </div>
                     <div class="col-md-6">
-                      <label class="form-label small">Check-In Scanner Page</label>
+                      <label class="form-label small"><i class="bi bi-qr-code-scan text-warning me-1"></i>Check-In Scanner Page <span class="badge bg-warning text-dark ms-1" style="font-size:.65rem;">Staff only</span></label>
                       <div class="input-group input-group-sm">
                         <input type="text" class="form-control" id="checkInLinkDisplay" readonly>
                         <button class="btn btn-outline-primary" data-action="eventsModule.copyCheckInLink">
                           <i class="bi bi-clipboard me-1"></i>Copy
                         </button>
                       </div>
-                      <small class="text-muted">Share with door staff - opens QR scanner on any phone</small>
+                      <small class="text-muted"><strong>Do not share with guests.</strong> Share only with door staff — opens QR scanner on any smartphone to check guests in on the night.</small>
                     </div>
                   </div>
                 </div>
@@ -8157,7 +8726,7 @@
                   <small class="text-muted">When at capacity, add guests here. Promote to attendee list when space opens up.</small>
                 </div>
                 <button class="btn btn-sm btn-primary" data-action="eventsModule.addToWaitlist">
-                  <i class="bi bi-plus-circle me-1"></i>Add to Waitlist
+                  <i class="bi bi-plus-lg me-1"></i>Add to Waitlist
                 </button>
               </div>
               <div class="table-responsive">
@@ -8181,7 +8750,7 @@
                     <i class="bi bi-download me-1"></i>Export
                   </button>
                   <button class="btn btn-sm btn-primary" data-action="eventsModule.addBudgetItem">
-                    <i class="bi bi-plus-circle me-1"></i>Add Item
+                    <i class="bi bi-plus-lg me-1"></i>Add Item
                   </button>
                 </div>
               </div>
@@ -8264,6 +8833,9 @@
 
             <!-- Vendors Tab -->
             <div class="tab-pane fade" id="vendorsTab">
+              <div class="alert alert-light border py-2 px-3 mb-3 small" role="note">
+                <i class="bi bi-truck text-primary me-1"></i><strong>Vendors &amp; Suppliers:</strong> Keep all external suppliers in one place — caterers, AV companies, photographers, transport, etc. Use this to store contact details, track costs, and confirm who is booked. Vendor costs should also be recorded in the <strong>Budget</strong> tab. Categories include: Catering, Audio/Visual, Photography, Transport, Accommodation, Venue, Security, Other.
+              </div>
               <div class="d-flex justify-content-between align-items-center mb-3">
                 <div>
                   <h6 class="mb-0"><i class="bi bi-truck me-2"></i>Vendors & Suppliers
@@ -8275,7 +8847,7 @@
                     <i class="bi bi-download me-1"></i>Export
                   </button>
                   <button class="btn btn-sm btn-primary" data-action="eventsModule.addVendor">
-                    <i class="bi bi-plus-circle me-1"></i>Add Vendor
+                    <i class="bi bi-plus-lg me-1"></i>Add Vendor
                   </button>
                 </div>
               </div>
@@ -8293,8 +8865,15 @@
 
             <!-- Special Requirements Tab -->
             <div class="tab-pane fade" id="specialReqsTab">
+              <div class="alert alert-info border-0 py-2 px-3 mb-3 small" role="note">
+                <i class="bi bi-info-circle me-1"></i><strong>Special Requirements</strong> records per-attendee needs: accessibility, parking, dietary restrictions (beyond catering), photo consent, emergency contacts, and dress code preferences. Requirements entered on the Attendees tab are summarised here.
+              </div>
               <div id="specialReqsContent">
-                <!-- Populated by JS: accessibility, parking, photo consent, emergency, dress code -->
+                <div class="text-center py-4 text-muted">
+                  <i class="bi bi-person-gear display-4 d-block mb-2 opacity-25"></i>
+                  <p class="mb-1">No special requirements recorded yet.</p>
+                  <small>Add requirements per attendee in the <strong>Attendees</strong> tab (Notes / Dietary fields).</small>
+                </div>
               </div>
             </div>
 
@@ -8307,7 +8886,11 @@
                 <div class="col-md-7">
                   <div class="card">
                     <div class="card-body" id="milestonesContent">
-                      <!-- Populated by JS -->
+                      <div class="text-center py-3 text-muted">
+                        <i class="bi bi-check2-square display-4 d-block mb-2 opacity-25"></i>
+                        <p class="mb-1 small">Milestones track your pre-event checklist — tasks with deadlines such as "Confirm venue by [date]", "Issue tickets by [date]", "Send final attendee list by [date]".</p>
+                        <small>Milestones will load here once saved for this event.</small>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -8325,8 +8908,15 @@
 
             <!-- Post-Event Tab -->
             <div class="tab-pane fade" id="postEventTab">
+              <div class="alert alert-info border-0 py-2 px-3 mb-3 small" role="note">
+                <i class="bi bi-clipboard-data me-1"></i><strong>Post-Event Analysis</strong> becomes available after the event date has passed. It includes: attendance report (actual vs expected), attendee survey results, winner highlights, sponsor ROI summary, and debrief notes.
+              </div>
               <div id="postEventContent">
-                <!-- Populated by JS: survey, attendance report, winner highlights, sponsor ROI, debrief -->
+                <div class="text-center py-4 text-muted">
+                  <i class="bi bi-calendar-check display-4 d-block mb-2 opacity-25"></i>
+                  <p class="mb-1">Post-event reports will appear here once the event date has passed.</p>
+                  <small>After the event, return here to generate attendance, survey, and sponsor ROI reports.</small>
+                </div>
               </div>
             </div>
 
@@ -8561,7 +9151,7 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
           <button type="button" class="btn btn-primary" id="addYouTubeVideoBtn" data-action="mediaGalleryModule.addYouTubeVideo">
-            <i class="bi bi-plus-circle me-2"></i>Add Video
+            <i class="bi bi-plus-lg me-2"></i>Add Video
           </button>
         </div>
       </div>
@@ -8721,7 +9311,7 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-outline-info" id="cropRotateFromViewBtn" data-action="mediaGalleryModule.openCropRotate">
+          <button type="button" class="btn btn-outline-secondary" id="cropRotateFromViewBtn" data-action="mediaGalleryModule.openCropRotate">
             <i class="bi bi-crop me-2"></i>Crop / Rotate
           </button>
           <button type="button" class="btn btn-primary" id="tagPhotoFromViewBtn" data-action="mediaGalleryModule.tagPhotoFromView">
@@ -8740,7 +9330,7 @@
   <div class="modal fade" id="pressReleaseExportModal" tabindex="-1" aria-labelledby="pressReleaseExportModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl">
       <div class="modal-content">
-        <div class="modal-header bg-success text-white">
+        <div class="modal-header bg-primary text-white">
           <h5 class="modal-title" id="pressReleaseExportModalLabel">
             <i class="bi bi-file-earmark-text me-2"></i>Export Winners for Press Release
           </h5>
@@ -8828,7 +9418,12 @@
             <button type="button" class="btn-close btn-close-white ms-2" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
         </div>
-        <div class="modal-body p-0 d-flex" style="overflow:hidden">
+        <div class="modal-body p-0 d-flex flex-column" style="overflow:hidden">
+          <div class="alert alert-info alert-dismissible border-0 rounded-0 mb-0 py-2 px-3" role="alert" style="font-size:.85rem;">
+            <i class="bi bi-lightbulb me-2"></i><strong>How it works:</strong> 1) Upload a PDF background (optional — use a blank page for a plain certificate). 2) Click <strong>Add Field</strong> to place a text element on the certificate. 3) Select a field and set its position, font, and placeholder text (e.g. <code>{WINNER_NAME}</code>). 4) Click <strong>Generate</strong> to produce PDFs for all winners.
+            <button type="button" class="btn-close btn-sm py-2" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+          <div class="d-flex flex-grow-1" style="overflow:hidden">
           <!-- Left: Field List & Properties Panel -->
           <div class="border-end bg-light d-flex flex-column" style="width:320px;min-width:320px">
             <!-- Template Info -->
@@ -8884,24 +9479,25 @@
               </div>
               <div class="row g-2 mb-2">
                 <div class="col-6">
-                  <label class="form-label small mb-0">X</label>
+                  <label class="form-label small mb-0">X <small class="text-muted">(px)</small></label>
                   <input type="number" class="form-control form-control-sm" id="certFieldX" min="0">
                 </div>
                 <div class="col-6">
-                  <label class="form-label small mb-0">Y</label>
+                  <label class="form-label small mb-0">Y <small class="text-muted">(px)</small></label>
                   <input type="number" class="form-control form-control-sm" id="certFieldY" min="0">
                 </div>
               </div>
               <div class="row g-2 mb-2">
                 <div class="col-6">
-                  <label class="form-label small mb-0">Width</label>
+                  <label class="form-label small mb-0">Width <small class="text-muted">(px)</small></label>
                   <input type="number" class="form-control form-control-sm" id="certFieldWidth" min="0">
                 </div>
                 <div class="col-6">
-                  <label class="form-label small mb-0">Font Size</label>
+                  <label class="form-label small mb-0">Font Size <small class="text-muted">(pt)</small></label>
                   <input type="number" class="form-control form-control-sm" id="certFieldFontSize" min="6" max="200">
                 </div>
               </div>
+              <div class="small text-muted mb-2"><i class="bi bi-info-circle me-1"></i>Coordinates start from top-left (0, 0)</div>
               <div class="row g-2 mb-2">
                 <div class="col-6">
                   <label class="form-label small mb-0">Font</label>
@@ -8922,7 +9518,7 @@
               </div>
               <div class="row g-2 mb-2">
                 <div class="col-6">
-                  <label class="form-label small mb-0">Color</label>
+                  <label class="form-label small mb-0" title="Hex colour for this text field. Solid colours only — transparency not supported.">Text Colour <small class="text-muted">(solid only)</small></label>
                   <input type="color" class="form-control form-control-sm form-control-color" id="certFieldColor" value="#000000">
                 </div>
                 <div class="col-6">
@@ -8969,7 +9565,7 @@
                 <label class="form-check-label" for="certSnapToGrid">Snap to Grid</label>
               </div>
               <div class="ms-auto d-flex gap-2">
-                <button class="btn btn-sm btn-outline-info" data-action="winnersModule.previewCertificate" title="Preview with sample data">
+                <button class="btn btn-sm btn-outline-secondary" data-action="winnersModule.previewCertificate" title="Preview with sample data">
                   <i class="bi bi-eye me-1"></i>Preview PDF
                 </button>
               </div>
@@ -9012,6 +9608,7 @@
               </button>
             </div>
           </div>
+          </div>
         </div>
       </div>
     </div>
@@ -9021,7 +9618,7 @@
   <div class="modal fade" id="yearComparisonModal" tabindex="-1" aria-labelledby="yearComparisonModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl">
       <div class="modal-content">
-        <div class="modal-header bg-info text-white">
+        <div class="modal-header">
           <h5 class="modal-title" id="yearComparisonModalLabel">
             <i class="bi bi-bar-chart-line me-2"></i>Year Comparison & Trends
           </h5>
@@ -9134,7 +9731,7 @@
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
             <i class="bi bi-x-lg me-1"></i>Close
           </button>
-          <button type="button" class="btn btn-info" data-action="winnersModule.exportYearComparison">
+          <button type="button" class="btn btn-primary" data-action="winnersModule.exportYearComparison">
             <i class="bi bi-download me-1"></i>Export Report (CSV)
           </button>
         </div>
@@ -9163,7 +9760,7 @@
             <div class="card-header bg-light d-flex justify-content-between align-items-center">
               <h6 class="mb-0"><i class="bi bi-list-ul me-2"></i>Saved Templates (<span id="templatesCount">0</span>)</h6>
               <button class="btn btn-primary btn-sm" data-action="eventsModule.openCreateTemplate">
-                <i class="bi bi-plus-circle me-1"></i>Create Template
+                <i class="bi bi-plus-lg me-1"></i>Create Template
               </button>
             </div>
             <div class="card-body">
@@ -9180,7 +9777,7 @@
           <!-- Create/Edit Template Form -->
           <div id="templateFormSection" class="card d-none">
             <div class="card-header bg-primary text-white">
-              <h6 class="mb-0" id="templateFormTitle"><i class="bi bi-plus-circle me-2"></i>Create New Template</h6>
+              <h6 class="mb-0" id="templateFormTitle"><i class="bi bi-plus-lg me-2"></i>Create New Template</h6>
             </div>
             <div class="card-body">
               <form id="templateForm">
@@ -9449,7 +10046,7 @@
   <div class="modal fade" id="importWinnersModal" tabindex="-1" aria-labelledby="importWinnersModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
-        <div class="modal-header bg-success text-white">
+        <div class="modal-header bg-primary text-white">
           <h5 class="modal-title" id="importWinnersModalLabel">
             <i class="bi bi-upload me-2"></i>Import Winners from CSV
           </h5>
@@ -9561,7 +10158,7 @@
   <div class="modal fade" id="salesDashboardModal" tabindex="-1" aria-labelledby="salesDashboardModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl">
       <div class="modal-content">
-        <div class="modal-header bg-success text-white">
+        <div class="modal-header bg-primary text-white">
           <div>
             <h5 class="modal-title" id="salesDashboardModalLabel">
               <i class="bi bi-graph-up-arrow me-2"></i>Sales Dashboard
@@ -9870,7 +10467,7 @@
   <div class="modal fade" id="organisationsSummaryModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl">
       <div class="modal-content">
-        <div class="modal-header bg-success text-white">
+        <div class="modal-header">
           <h5 class="modal-title">
             <i class="bi bi-building me-2"></i>Organisations Summary
           </h5>
@@ -9976,7 +10573,7 @@
   <div class="modal fade" id="winnersSummaryModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl">
       <div class="modal-content">
-        <div class="modal-header bg-info text-white">
+        <div class="modal-header">
           <h5 class="modal-title">
             <i class="bi bi-award me-2"></i>Winners Summary
           </h5>
@@ -10069,7 +10666,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-          <button type="button" class="btn btn-info" data-action="utils.navigateAndCloseModal" data-id='{"section":"winners","modal":"winnersSummaryModal"}'>
+          <button type="button" class="btn btn-primary" data-action="utils.navigateAndCloseModal" data-id='{"section":"winners","modal":"winnersSummaryModal"}'>
             <i class="bi bi-award me-1"></i>View All Winners
           </button>
         </div>
@@ -10081,7 +10678,7 @@
   <div class="modal fade" id="eventsSummaryModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl">
       <div class="modal-content">
-        <div class="modal-header" style="background-color: #6f42c1; color: white;">
+        <div class="modal-header bg-purple text-white">
           <h5 class="modal-title">
             <i class="bi bi-calendar-event me-2"></i>Events Summary
           </h5>
@@ -10091,7 +10688,7 @@
           <!-- Summary Cards -->
           <div class="row g-3 mb-4">
             <div class="col-md-3">
-              <div class="card text-white h-100" style="background-color: #6f42c1;">
+              <div class="card text-white h-100 bg-purple">
                 <div class="card-body">
                   <h6 class="card-subtitle mb-2 opacity-75">Total Events</h6>
                   <h3 class="card-title mb-0" id="summaryTotalEvents">0</h3>
@@ -10175,7 +10772,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-          <button type="button" class="btn" style="background-color: #6f42c1; color: white;" data-action="utils.navigateAndCloseModal" data-id='{"section":"events","modal":"eventsSummaryModal"}'>
+          <button type="button" class="btn btn-purple" data-action="utils.navigateAndCloseModal" data-id='{"section":"events","modal":"eventsSummaryModal"}'>
             <i class="bi bi-calendar-event me-1"></i>View All Events
           </button>
         </div>
@@ -10269,7 +10866,7 @@
                 <button class="btn btn-primary btn-sm" data-action="utils.navigateAndCloseModal" data-id='{"section":"media-gallery","modal":"mediaGallerySummaryModal"}'>
                   <i class="bi bi-images me-1"></i>View Media Gallery
                 </button>
-                <button class="btn btn-warning btn-sm" data-action="mediaGalleryModule.showUntaggedPhotos"  data-args='{"closeModal":"mediaGallerySummaryModal"}'>
+                <button class="btn btn-outline-primary btn-sm" data-action="mediaGalleryModule.showUntaggedPhotos"  data-args='{"closeModal":"mediaGallerySummaryModal"}'>
                   <i class="bi bi-tags me-1"></i>Tag Untagged Photos
                 </button>
               </div>
@@ -10298,7 +10895,7 @@
           <!-- Configuration Alert (shown if API key missing) -->
           <div id="vettingConfigAlert" class="alert alert-info d-none">
             <i class="bi bi-info-circle me-2"></i>
-            <strong>Configuration Required:</strong> Please configure your Claude API key in the Settings tab to enable AI vetting.
+            <strong>Configuration Required:</strong> To enable AI vetting, go to <strong>Settings → Integrations</strong> and add your Claude API key under "API Keys". Get your key from <strong>console.anthropic.com → API Keys</strong>.
           </div>
 
           <!-- Progress Section (shown when vetting is running) -->
@@ -10376,7 +10973,7 @@
               </button>
             </div>
             <div>
-              <button class="btn btn-warning btn-sm" data-action="aiVettingModule.runVetting" id="runVettingBtn">
+              <button class="btn btn-primary btn-sm" data-action="aiVettingModule.runVetting" id="runVettingBtn">
                 <i class="bi bi-robot me-1"></i>Run AI Vetting
               </button>
               <button class="btn btn-outline-secondary btn-sm" data-action="aiVettingModule.exportResults">
@@ -10395,10 +10992,10 @@
                       <th scope="col">Organisation</th>
                       <th scope="col">Sector</th>
                       <th scope="col" class="text-center">Status</th>
-                      <th scope="col" class="text-center">Operational</th>
-                      <th scope="col" class="text-center">Category Match</th>
-                      <th scope="col" class="text-center">Reputation</th>
-                      <th scope="col">AI Findings</th>
+                      <th scope="col" class="text-center" title="Is the company actively trading and not dissolved or dormant?">Operational</th>
+                      <th scope="col" class="text-center" title="Does the company's sector and activities align with this award category?">Category Match</th>
+                      <th scope="col" class="text-center" title="Any insolvency filings, regulatory sanctions, or significant adverse press detected?">Reputation</th>
+                      <th scope="col" title="Claude AI's summary of findings — key issues, flags, or verification notes for this organisation.">AI Findings</th>
                       <th scope="col" class="text-center">Actions</th>
                     </tr>
                   </thead>

@@ -1430,17 +1430,26 @@ const eventsModule = {
     const event = STATE.allEvents.find((e) => e.id === eventId);
     if (!event) return;
 
-    // Merge localStorage fallback for ticket settings (columns may not exist in DB)
+    // If ticket fields are missing from the cached event, fetch fresh from DB
     if (event.ticket_price === undefined && event.ticket_url === undefined) {
       try {
-        const stored = localStorage.getItem(`bta_ticket_settings_${eventId}`);
-        if (stored) {
-          const s = JSON.parse(stored);
-          event.ticket_price = s.ticket_price;
-          event.ticket_url = s.ticket_url;
+        const fresh = await apiClient.selectById('events', eventId, 'ticket_price, ticket_url');
+        if (fresh) {
+          event.ticket_price = fresh.ticket_price;
+          event.ticket_url = fresh.ticket_url;
         }
-      } catch (e) {
-        /* ignore */
+      } catch (_) {
+        // Fall back to localStorage for migration from older data
+        try {
+          const stored = localStorage.getItem(`bta_ticket_settings_${eventId}`);
+          if (stored) {
+            const s = JSON.parse(stored);
+            event.ticket_price = s.ticket_price;
+            event.ticket_url = s.ticket_url;
+          }
+        } catch (_2) {
+          /* ignore */
+        }
       }
     }
 
@@ -12188,6 +12197,8 @@ const eventsModule = {
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
     const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+    const yearStart = `${now.getFullYear()}-01-01`;
+    const yearEnd = `${now.getFullYear()}-12-31`;
 
     let filtered = (STATE.allEvents || []).filter((e) => {
       if (search) {
@@ -12198,6 +12209,8 @@ const eventsModule = {
       if (timeStatus === 'upcoming' && (!e.event_date || e.event_date < today)) return false;
       if (timeStatus === 'past' && (!e.event_date || e.event_date >= today)) return false;
       if (timeStatus === 'this-month' && (!e.event_date || e.event_date < monthStart || e.event_date > monthEnd))
+        return false;
+      if (timeStatus === 'this-year' && (!e.event_date || e.event_date < yearStart || e.event_date > yearEnd))
         return false;
       if (eventStatus && (e.event_status || 'draft') !== eventStatus) return false;
       return true;
@@ -12211,6 +12224,8 @@ const eventsModule = {
       if (timeStatus === 'past') filtered = filtered.filter((e) => e.event_date && e.event_date < today);
       if (timeStatus === 'this-month')
         filtered = filtered.filter((e) => e.event_date && e.event_date >= monthStart && e.event_date <= monthEnd);
+      if (timeStatus === 'this-year')
+        filtered = filtered.filter((e) => e.event_date && e.event_date >= yearStart && e.event_date <= yearEnd);
       if (eventStatus) filtered = filtered.filter((e) => (e.event_status || 'draft') === eventStatus);
     }
 
@@ -12338,6 +12353,7 @@ const eventsModule = {
         message: 'No events match your filters',
         description: 'Try adjusting your filters to see more results',
         isFiltered: true,
+        clearAction: 'eventsModule.resetEventFilters',
       });
       return;
     }

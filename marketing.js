@@ -96,12 +96,13 @@ const marketingModule = {
     const container = document.getElementById('bannersGrid');
 
     if (this.currentBanners.length === 0) {
-      container.innerHTML = `
-        <div class="alert alert-info">
-          <i class="bi bi-info-circle me-2"></i>
-          No banners found. Click "Add Banner" to create your first advertising banner.
-        </div>
-      `;
+      container.innerHTML = '<div id="bannersEmptyState"></div>';
+      utils.showEnhancedEmptyState('bannersEmptyState', 1, {
+        icon: 'bi-image',
+        message: 'No banners yet',
+        description: 'Click "Add Banner" to create your first advertising banner.',
+        isFiltered: false,
+      });
       return;
     }
 
@@ -423,12 +424,13 @@ const marketingModule = {
     const container = document.getElementById('sponsorsGrid');
 
     if (this.currentSponsors.length === 0) {
-      container.innerHTML = `
-        <div class="alert alert-info">
-          <i class="bi bi-info-circle me-2"></i>
-          No sponsors found. Click "Add Sponsor" to register your first sponsor or partner.
-        </div>
-      `;
+      container.innerHTML = '<div id="sponsorsEmptyState"></div>';
+      utils.showEnhancedEmptyState('sponsorsEmptyState', 1, {
+        icon: 'bi-building',
+        message: 'No sponsors yet',
+        description: 'Click "Add Sponsor" to register your first sponsor or partner.',
+        isFiltered: false,
+      });
       return;
     }
 

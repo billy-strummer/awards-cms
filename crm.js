@@ -48,7 +48,7 @@ const crmModule = {
    * @returns {Promise<void>}
    */
   async loadAllData() {
-    console.debug('Loading CRM data...');
+    // console.debug('Loading CRM data...');
     try {
       // Load data based on current sub-tab
       switch (this.currentSubTab) {
@@ -85,7 +85,7 @@ const crmModule = {
    * @returns {Promise<void>}
    */
   async loadCompanies() {
-    console.debug('Loading companies CRM view...');
+    // console.debug('Loading companies CRM view...');
 
     try {
       // Enable server-side pagination and fetch first page
@@ -353,7 +353,7 @@ const crmModule = {
     // Prevent concurrent/repeated calls while already loading
     if (this._loadingCommunications) return;
     this._loadingCommunications = true;
-    console.debug('Loading communications...');
+    // console.debug('Loading communications...');
 
     // Read filter values from DOM
     const typeEl = document.getElementById('communicationTypeFilter');
@@ -404,10 +404,20 @@ const crmModule = {
     if (!tbody) return;
 
     if (!communications || communications.length === 0) {
+      const hasFilters =
+        this.filters.communications.type !== 'all' ||
+        this.filters.communications.regarding !== 'all' ||
+        this.filters.communications.followUpRequired !== 'all';
       utils.showEnhancedEmptyState('communicationsTableBody', 8, {
         icon: 'bi-chat-dots',
-        message: 'No communications found',
-        description: 'Communications will appear here once logged',
+        message: hasFilters ? 'No communications match your filters' : 'No communications found',
+        description: hasFilters
+          ? 'Try clearing your filters to see all communications'
+          : 'Communications will appear here once logged',
+        isFiltered: hasFilters,
+        clearAction: hasFilters ? 'crmModule.resetCommunicationFilters' : '',
+        actionLabel: hasFilters ? '' : 'Log Communication',
+        actionAction: hasFilters ? '' : 'crmModule.openLogCommunicationModal',
       });
       return;
     }
@@ -517,7 +527,7 @@ const crmModule = {
   async loadDeals() {
     if (this._loadingDeals) return;
     this._loadingDeals = true;
-    console.debug('Loading deals...');
+    // console.debug('Loading deals...');
 
     try {
       const filters = {};
@@ -596,10 +606,15 @@ const crmModule = {
     if (!tbody) return;
 
     if (!deals || deals.length === 0) {
+      const hasFilters = this.filters.deals.stage !== 'all' || this.filters.deals.type !== 'all';
       utils.showEnhancedEmptyState('dealsTableBody', 9, {
         icon: 'bi-handshake',
-        message: 'No deals found',
-        description: 'Deals will appear here once created',
+        message: hasFilters ? 'No deals match your filters' : 'No deals tracked yet',
+        description: hasFilters
+          ? 'Try clearing your filters to see all deals'
+          : "Use 'New Deal' to record sponsorship conversations and award fee negotiations.",
+        isFiltered: hasFilters,
+        clearAction: hasFilters ? 'crmModule.resetDealsFilters' : '',
       });
       return;
     }
@@ -676,13 +691,13 @@ const crmModule = {
 
   getStageBadge(stage) {
     const stages = {
-      lead: '<span class="badge bg-secondary">Lead</span>',
-      contacted: '<span class="badge bg-info">Contacted</span>',
-      qualified: '<span class="badge bg-primary">Qualified</span>',
-      proposal: '<span class="badge bg-warning text-dark">Proposal</span>',
-      negotiation: '<span class="badge bg-warning">Negotiation</span>',
-      closed_won: '<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Won</span>',
-      closed_lost: '<span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Lost</span>',
+      lead: '<span class="badge bg-secondary">Identified</span>',
+      contacted: '<span class="badge bg-info">Approached</span>',
+      qualified: '<span class="badge bg-primary">Meeting Held</span>',
+      proposal: '<span class="badge bg-warning text-dark">Proposal Sent</span>',
+      negotiation: '<span class="badge bg-warning">Under Negotiation</span>',
+      closed_won: '<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Confirmed</span>',
+      closed_lost: '<span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Declined</span>',
     };
     return stages[stage] || `<span class="badge bg-secondary">${stage}</span>`;
   },
@@ -718,7 +733,7 @@ const crmModule = {
    * @returns {Promise<void>}
    */
   async loadMeetings() {
-    console.debug('Loading meetings...');
+    // console.debug('Loading meetings...');
 
     try {
       const filters = {};
@@ -752,10 +767,15 @@ const crmModule = {
     if (!tbody) return;
 
     if (!meetings || meetings.length === 0) {
+      const hasFilters = this.filters.meetings.type !== 'all';
       utils.showEnhancedEmptyState('meetingsTableBody', 8, {
         icon: 'bi-calendar-check',
-        message: 'No meetings found',
-        description: 'Meetings will appear here once scheduled',
+        message: hasFilters ? 'No meetings match your filters' : 'No meetings found',
+        description: hasFilters
+          ? 'Try clearing your filters to see all meetings'
+          : 'Meetings will appear here once scheduled',
+        isFiltered: hasFilters,
+        clearAction: hasFilters ? 'crmModule.resetMeetingsFilters' : '',
       });
       return;
     }
@@ -855,7 +875,7 @@ const crmModule = {
    * @returns {Promise<void>}
    */
   async loadSegments() {
-    console.debug('Loading segments...');
+    // console.debug('Loading segments...');
 
     try {
       // selectAll justified: contact_segments is a small lookup table for segment management (see pagination documentation)
@@ -960,6 +980,33 @@ const crmModule = {
     document.getElementById('dealStatusFilter').value = 'won';
   },
 
+  resetCommunicationFilters() {
+    const ids = ['communicationTypeFilter', 'communicationRegardingFilter', 'communicationFollowUpFilter'];
+    ids.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    this.filters.communications = { type: 'all', regarding: 'all', followUpRequired: 'all' };
+    this.loadCommunications();
+  },
+
+  resetDealsFilters() {
+    const stageEl = document.getElementById('dealStageFilter');
+    const typeEl = document.getElementById('dealTypeFilter');
+    if (stageEl) stageEl.value = '';
+    if (typeEl) typeEl.value = '';
+    this.filters.deals.stage = 'all';
+    this.filters.deals.type = 'all';
+    this.loadDeals();
+  },
+
+  resetMeetingsFilters() {
+    const el = document.getElementById('meetingTypeFilter');
+    if (el) el.value = '';
+    this.filters.meetings = { type: 'all' };
+    this.loadMeetings();
+  },
+
   // ============================================
   // MODAL & ACTION FUNCTIONS
   // ============================================
@@ -1039,7 +1086,7 @@ const crmModule = {
                   </select>
                 </div>
                 <div class="mb-3">
-                  <label class="form-label">Regarding</label>
+                  <label class="form-label">Topic</label>
                   <select class="form-select" id="commRegarding">
                     <option value="general">General</option>
                     <option value="sponsorship">Sponsorship</option>
@@ -1232,11 +1279,11 @@ const crmModule = {
                   <div class="col-md-4 mb-3">
                     <label class="form-label">Stage</label>
                     <select class="form-select" id="dealStage">
-                      <option value="lead">Lead</option>
-                      <option value="contacted">Contacted</option>
-                      <option value="qualified">Qualified</option>
-                      <option value="proposal">Proposal</option>
-                      <option value="negotiation">Negotiation</option>
+                      <option value="lead">Identified</option>
+                      <option value="contacted">Approached</option>
+                      <option value="qualified">Meeting Held</option>
+                      <option value="proposal">Proposal Sent</option>
+                      <option value="negotiation">Under Negotiation</option>
                     </select>
                   </div>
                   <div class="col-md-4 mb-3">
@@ -1400,7 +1447,7 @@ const crmModule = {
                       <tr><td class="text-muted">Date:</td><td><strong>${date}</strong></td></tr>
                       <tr><td class="text-muted">Type:</td><td>${this.getTypeBadge(comm.type)}</td></tr>
                       <tr><td class="text-muted">Direction:</td><td>${comm.direction === 'inbound' ? '<span class="badge bg-info">Inbound</span>' : '<span class="badge bg-primary">Outbound</span>'}</td></tr>
-                      <tr><td class="text-muted">Regarding:</td><td>${this.formatRegarding(comm.regarding)}</td></tr>
+                      <tr><td class="text-muted">Topic:</td><td>${this.formatRegarding(comm.regarding)}</td></tr>
                     </table>
                   </div>
                   <div class="col-md-6">
@@ -1491,7 +1538,7 @@ const crmModule = {
                     </div>
                   </div>
                   <div class="mb-3">
-                    <label class="form-label">Regarding</label>
+                    <label class="form-label">Topic</label>
                     <select class="form-select" id="editCommRegarding">
                       <option value="general" ${comm.regarding === 'general' ? 'selected' : ''}>General</option>
                       <option value="sponsorship" ${comm.regarding === 'sponsorship' ? 'selected' : ''}>Sponsorship</option>
@@ -1775,13 +1822,13 @@ const crmModule = {
                     <div class="col-md-4 mb-3">
                       <label class="form-label">Stage</label>
                       <select class="form-select" id="editDealStage">
-                        <option value="lead" ${deal.stage === 'lead' ? 'selected' : ''}>Lead</option>
-                        <option value="contacted" ${deal.stage === 'contacted' ? 'selected' : ''}>Contacted</option>
-                        <option value="qualified" ${deal.stage === 'qualified' ? 'selected' : ''}>Qualified</option>
-                        <option value="proposal" ${deal.stage === 'proposal' ? 'selected' : ''}>Proposal</option>
-                        <option value="negotiation" ${deal.stage === 'negotiation' ? 'selected' : ''}>Negotiation</option>
-                        <option value="closed_won" ${deal.stage === 'closed_won' ? 'selected' : ''}>Closed Won</option>
-                        <option value="closed_lost" ${deal.stage === 'closed_lost' ? 'selected' : ''}>Closed Lost</option>
+                        <option value="lead" ${deal.stage === 'lead' ? 'selected' : ''}>Identified</option>
+                        <option value="contacted" ${deal.stage === 'contacted' ? 'selected' : ''}>Approached</option>
+                        <option value="qualified" ${deal.stage === 'qualified' ? 'selected' : ''}>Meeting Held</option>
+                        <option value="proposal" ${deal.stage === 'proposal' ? 'selected' : ''}>Proposal Sent</option>
+                        <option value="negotiation" ${deal.stage === 'negotiation' ? 'selected' : ''}>Under Negotiation</option>
+                        <option value="closed_won" ${deal.stage === 'closed_won' ? 'selected' : ''}>Confirmed</option>
+                        <option value="closed_lost" ${deal.stage === 'closed_lost' ? 'selected' : ''}>Declined</option>
                       </select>
                     </div>
                   </div>
@@ -2654,7 +2701,7 @@ const crmModule = {
           .slice(0, 50)
           .map(
             (o) =>
-              `<tr><td>${utils.escapeHtml(o.company_name || '')}</td><td><span class="badge bg-primary">${utils.escapeHtml(o.status || '')}</span></td><td>${utils.escapeHtml(utils.toTitleCase(o.sector) || '-')}</td><td>${utils.escapeHtml(o.county_city || '-')}</td></tr>`
+              `<tr><td>${utils.escapeHtml(o.company_name || '')}</td><td><span class="badge ${{ nominee: 'bg-info', winner: 'bg-success', active: 'bg-primary', prospect: 'bg-secondary', inactive: 'bg-danger' }[o.status] || 'bg-secondary'}">${utils.escapeHtml(utils.toTitleCase(o.status || 'Unknown'))}</span></td><td>${utils.escapeHtml(utils.toTitleCase(o.sector) || '-')}</td><td>${utils.escapeHtml(o.county_city || '-')}</td></tr>`
           )
           .join('')}
         ${matching.length > 50 ? `<tr><td colspan="4" class="text-muted text-center">... and ${matching.length - 50} more</td></tr>` : ''}
@@ -3606,13 +3653,13 @@ const crmModule = {
     if (!container) return;
     const deals = this._deals || [];
     const stages = [
-      { key: 'lead', label: 'Lead', color: 'secondary' },
-      { key: 'contacted', label: 'Contacted', color: 'info' },
-      { key: 'qualified', label: 'Qualified', color: 'primary' },
-      { key: 'proposal', label: 'Proposal', color: 'warning' },
-      { key: 'negotiation', label: 'Negotiation', color: 'orange' },
-      { key: 'closed_won', label: 'Closed Won', color: 'success' },
-      { key: 'closed_lost', label: 'Closed Lost', color: 'danger' },
+      { key: 'lead', label: 'Identified', color: 'secondary' },
+      { key: 'contacted', label: 'Approached', color: 'info' },
+      { key: 'qualified', label: 'Meeting Held', color: 'primary' },
+      { key: 'proposal', label: 'Proposal Sent', color: 'warning' },
+      { key: 'negotiation', label: 'Under Negotiation', color: 'orange' },
+      { key: 'closed_won', label: 'Confirmed', color: 'success' },
+      { key: 'closed_lost', label: 'Declined', color: 'danger' },
     ];
     let html = '<div class="d-flex gap-2 overflow-auto pb-3" style="min-height:400px;">';
     stages.forEach((stage) => {
@@ -3784,6 +3831,6 @@ const crmModule = {
 // INITIALIZATION
 // ============================================
 ModuleRegistry.register('crmModule', crmModule);
-console.debug('CRM Module loaded');
+// console.debug('CRM Module loaded');
 
 export { crmModule };

@@ -2593,7 +2593,8 @@ describe('App Module - reportsAnalytics additional coverage', () => {
   test('renderRegionChart handles empty orgs array', () => {
     reportsAnalytics.renderRegionChart([]);
 
-    expect(reportsAnalytics._charts.region).toBeDefined();
+    // Empty data → no chart created; placeholder shown instead
+    expect(reportsAnalytics._charts.region).not.toBeDefined();
   });
 
   // --- renderTierChart: all orgs have same tier ---

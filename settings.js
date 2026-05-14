@@ -944,9 +944,9 @@ const settingsModule = {
     const pageSize = localStorage.getItem('globalPageSize') || '50';
 
     container.innerHTML = `
-      <div class="card mb-3">
-        <div class="card-header"><h6 class="mb-0"><i class="bi bi-sliders me-2"></i>Display Preferences</h6></div>
-        <div class="card-body">
+      <div class="content-card">
+        <h5 class="mb-3"><i class="bi bi-sliders me-2"></i>Display Preferences</h5>
+        <div>
           <div class="row g-3">
             <div class="col-md-4">
               <label class="form-label fw-semibold">Layout Density</label>
@@ -1014,9 +1014,9 @@ const settingsModule = {
       { key: 'dailyDigest', label: 'Send me a daily digest email', icon: 'bi-envelope text-info' },
     ];
     container.innerHTML = `
-      <div class="card mb-3">
-        <div class="card-header"><h6 class="mb-0"><i class="bi bi-bell me-2"></i>Notification Preferences</h6></div>
-        <div class="card-body">
+      <div class="content-card">
+        <h5 class="mb-3"><i class="bi bi-bell me-2"></i>Notification Preferences</h5>
+        <div>
           <p class="text-muted small mb-3">Choose which events trigger in-app notifications for your account.</p>
           <div class="row g-2">
             ${checks

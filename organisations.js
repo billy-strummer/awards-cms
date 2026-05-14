@@ -54,6 +54,9 @@ const orgsModule = {
       // Initialize keyboard shortcuts
       this.initKeyboardShortcuts();
 
+      // Wire sub-nav Bootstrap tabs
+      this._initSubNavTabs();
+
       // Initialize inline validation for Add Company form when modal is shown
       const addOrgModalEl = document.getElementById('addNewOrgModal');
       if (addOrgModalEl && !addOrgModalEl._inlineValidationInit) {
@@ -838,9 +841,10 @@ const orgsModule = {
         icon: 'bi-building',
         message: hasActiveFilters ? 'No organisations match your filters' : 'No organisations yet',
         description: hasActiveFilters
-          ? 'Try clearing your filters using the Reset button above'
-          : 'Click "+ Add Organisation" above to add your first organisation',
+          ? 'Try clearing your filters or search terms'
+          : 'Click "+ Add Organisation" in the toolbar above',
         isFiltered: hasActiveFilters,
+        clearAction: hasActiveFilters ? 'orgsModule.resetFilters' : '',
       });
       this._renderPaginationControls(0, 1);
       return;
@@ -9541,18 +9545,22 @@ const orgsModule = {
   },
 
   showOrgsView() {
-    document.getElementById('orgsMainContent')?.classList.remove('d-none');
-    document.getElementById('orgsSponsorSection')?.classList.add('d-none');
-    document.getElementById('orgsViewBtn')?.classList.add('active');
-    document.getElementById('sponsorsViewBtn')?.classList.remove('active');
+    const btn = document.getElementById('orgsViewBtn');
+    if (btn) bootstrap.Tab.getOrCreateInstance(btn).show();
   },
 
   showSponsorsView() {
-    document.getElementById('orgsMainContent')?.classList.add('d-none');
-    document.getElementById('orgsSponsorSection')?.classList.remove('d-none');
-    document.getElementById('orgsViewBtn')?.classList.remove('active');
-    document.getElementById('sponsorsViewBtn')?.classList.add('active');
-    if (typeof marketingModule !== 'undefined') marketingModule.loadSponsors();
+    const btn = document.getElementById('sponsorsViewBtn');
+    if (btn) bootstrap.Tab.getOrCreateInstance(btn).show();
+  },
+
+  _initSubNavTabs() {
+    const sponsorsBtn = document.getElementById('sponsorsViewBtn');
+    if (sponsorsBtn) {
+      sponsorsBtn.addEventListener('shown.bs.tab', () => {
+        if (typeof marketingModule !== 'undefined') marketingModule.loadSponsors();
+      });
+    }
   },
 
   /** Helper for data-action: filter by status from dashboard card */

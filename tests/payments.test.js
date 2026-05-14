@@ -579,6 +579,7 @@ describe('Payments Module - renderInvoices()', () => {
   });
 
   test('renders empty state when no invoices', () => {
+    paymentsModule.allInvoices = [];
     paymentsModule.currentInvoices = [];
     paymentsModule.renderInvoices();
     const tbody = document.getElementById('invoicesTableBody');
@@ -1380,6 +1381,7 @@ describe('Payments Module - Render Payments Content', () => {
   });
 
   test('renderPayments shows empty state when no payments', () => {
+    paymentsModule.allPayments = [];
     paymentsModule.currentPayments = [];
     paymentsModule.renderPayments();
     const tbody = document.getElementById('paymentsTableBody');

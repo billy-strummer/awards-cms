@@ -28,81 +28,75 @@ const gdprModule = {
     if (!container) return;
 
     container.innerHTML = `
-      <div class="card mb-3">
-        <div class="card-header"><i class="bi bi-shield-check me-2"></i>GDPR Data Requests</div>
-        <div class="card-body">
-          <div class="row g-3 mb-3">
-            <div class="col-md-4">
-              <label class="form-label fw-semibold">Request Type</label>
-              <select class="form-select" id="gdprRequestType" aria-label="GDPR request type">
-                <option value="export">Data Export (SAR)</option>
-                <option value="delete">Right to Erasure</option>
-                <option value="anonymize">Anonymise Record</option>
-              </select>
-            </div>
-            <div class="col-md-4">
-              <label class="form-label fw-semibold">Entity Type</label>
-              <select class="form-select" id="gdprEntityType" aria-label="Entity type">
-                <option value="organisation">Organisation</option>
-                <option value="contact">Contact</option>
-              </select>
-            </div>
-            <div class="col-md-4">
-              <label class="form-label fw-semibold">Requester Email</label>
-              <input type="email" class="form-control" id="gdprRequesterEmail" placeholder="requester@example.com" aria-label="Requester email">
-            </div>
+      <div class="content-card mb-4">
+        <h5 class="mb-3"><i class="bi bi-shield-check me-2"></i>GDPR Data Requests</h5>
+        <div class="row g-3 mb-3">
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Request Type</label>
+            <select class="form-select" id="gdprRequestType" aria-label="GDPR request type">
+              <option value="export">Data Export (SAR)</option>
+              <option value="delete">Right to Erasure</option>
+              <option value="anonymize">Anonymise Record</option>
+            </select>
           </div>
-          <div class="mb-3">
-            <label class="form-label fw-semibold">Search Entity</label>
-            <div class="input-group">
-              <input type="text" class="form-control" id="gdprEntitySearch" placeholder="Search by name or email..." aria-label="Search entity">
-              <button class="btn btn-outline-primary" data-action="gdprModule.searchEntity" aria-label="Search"><i class="bi bi-search"></i></button>
-            </div>
-            <div id="gdprSearchResults" class="mt-2"></div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Entity Type</label>
+            <select class="form-select" id="gdprEntityType" aria-label="Entity type">
+              <option value="organisation">Organisation</option>
+              <option value="contact">Contact</option>
+            </select>
           </div>
-          <button class="btn btn-warning" data-action="gdprModule.submitRequest" aria-label="Submit GDPR request">
-            <i class="bi bi-shield-exclamation me-2"></i>Submit Request
-          </button>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Requester Email</label>
+            <input type="email" class="form-control" id="gdprRequesterEmail" placeholder="requester@example.com" aria-label="Requester email">
+          </div>
         </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Search Entity</label>
+          <div class="input-group">
+            <input type="text" class="form-control" id="gdprEntitySearch" placeholder="Search by name or email..." aria-label="Search entity">
+            <button class="btn btn-outline-primary" data-action="gdprModule.searchEntity" aria-label="Search"><i class="bi bi-search"></i></button>
+          </div>
+          <div id="gdprSearchResults" class="mt-2"></div>
+        </div>
+        <button class="btn btn-warning" data-action="gdprModule.submitRequest" aria-label="Submit GDPR request">
+          <i class="bi bi-shield-exclamation me-2"></i>Submit Request
+        </button>
       </div>
 
-      <div class="card mb-3">
-        <div class="card-header"><i class="bi bi-clock-history me-2"></i>Pending Requests</div>
-        <div class="card-body">
-          <table class="table table-sm" role="grid" aria-label="GDPR requests">
-            <thead>
-              <tr><th scope="col">Date</th><th scope="col">Type</th><th scope="col">Entity</th><th scope="col">Requester</th><th scope="col">Status</th><th scope="col">Actions</th></tr>
-            </thead>
-            <tbody id="gdprRequestsTable"></tbody>
-          </table>
-          <div id="gdprPaginationControls"></div>
-        </div>
+      <div class="content-card mb-4">
+        <h5 class="mb-3"><i class="bi bi-clock-history me-2"></i>Pending Requests</h5>
+        <table class="table table-sm" role="grid" aria-label="GDPR requests">
+          <thead>
+            <tr><th scope="col">Date</th><th scope="col">Type</th><th scope="col">Entity</th><th scope="col">Requester</th><th scope="col">Status</th><th scope="col">Actions</th></tr>
+          </thead>
+          <tbody id="gdprRequestsTable"></tbody>
+        </table>
+        <div id="gdprPaginationControls"></div>
       </div>
 
-      <div class="card">
-        <div class="card-header"><i class="bi bi-calendar-range me-2"></i>Data Retention Policy</div>
-        <div class="card-body">
-          <p class="text-muted mb-3">Configure automatic data cleanup rules.</p>
-          <div class="row g-3">
-            <div class="col-md-6">
-              <div class="form-check form-switch">
-                <input class="form-check-input" type="checkbox" id="retentionAuditLogs" role="switch" aria-label="Auto-delete audit logs">
-                <label class="form-check-label">Auto-delete audit logs older than 2 years</label>
-              </div>
-              <div class="form-check form-switch mt-2">
-                <input class="form-check-input" type="checkbox" id="retentionEmailLogs" role="switch" aria-label="Auto-delete email logs">
-                <label class="form-check-label">Auto-delete email logs older than 1 year</label>
-              </div>
-              <div class="form-check form-switch mt-2">
-                <input class="form-check-input" type="checkbox" id="retentionVotingData" role="switch" aria-label="Anonymise voting data">
-                <label class="form-check-label">Anonymise voting data after season closes</label>
-              </div>
+      <div class="content-card">
+        <h5 class="mb-3"><i class="bi bi-calendar-range me-2"></i>Data Retention Policy</h5>
+        <p class="text-muted mb-3">Configure automatic data cleanup rules.</p>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="retentionAuditLogs" role="switch" aria-label="Auto-delete audit logs">
+              <label class="form-check-label">Auto-delete audit logs older than 2 years</label>
             </div>
-            <div class="col-md-6">
-              <button class="btn btn-outline-danger btn-sm" data-action="gdprModule.runRetentionCleanup" aria-label="Run cleanup now">
-                <i class="bi bi-trash me-2"></i>Run Cleanup Now
-              </button>
+            <div class="form-check form-switch mt-2">
+              <input class="form-check-input" type="checkbox" id="retentionEmailLogs" role="switch" aria-label="Auto-delete email logs">
+              <label class="form-check-label">Auto-delete email logs older than 1 year</label>
             </div>
+            <div class="form-check form-switch mt-2">
+              <input class="form-check-input" type="checkbox" id="retentionVotingData" role="switch" aria-label="Anonymise voting data">
+              <label class="form-check-label">Anonymise voting data after season closes</label>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <button class="btn btn-outline-danger btn-sm" data-action="gdprModule.runRetentionCleanup" aria-label="Run cleanup now">
+              <i class="bi bi-trash me-2"></i>Run Cleanup Now
+            </button>
           </div>
         </div>
       </div>

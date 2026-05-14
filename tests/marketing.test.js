@@ -493,7 +493,7 @@ describe('Marketing Module - renderBanners()', () => {
     marketingModule.currentBanners = [];
     marketingModule.renderBanners();
     const container = document.getElementById('bannersGrid');
-    expect(container.innerHTML).toContain('No banners found');
+    expect(container.innerHTML).toContain('No banners yet');
     expect(container.innerHTML).toContain('Add Banner');
   });
 
@@ -611,7 +611,7 @@ describe('Marketing Module - renderSponsors()', () => {
     marketingModule.currentSponsors = [];
     marketingModule.renderSponsors();
     const container = document.getElementById('sponsorsGrid');
-    expect(container.innerHTML).toContain('No sponsors found');
+    expect(container.innerHTML).toContain('No sponsors yet');
     expect(container.innerHTML).toContain('Add Sponsor');
   });
 
@@ -967,14 +967,14 @@ describe('Marketing Module - Edge Cases', () => {
     marketingModule.currentBanners = [];
     expect(() => marketingModule.renderBanners()).not.toThrow();
     const container = document.getElementById('bannersGrid');
-    expect(container.innerHTML).toContain('No banners found');
+    expect(container.innerHTML).toContain('No banners yet');
   });
 
   test('renderSponsors handles empty array gracefully', () => {
     marketingModule.currentSponsors = [];
     expect(() => marketingModule.renderSponsors()).not.toThrow();
     const container = document.getElementById('sponsorsGrid');
-    expect(container.innerHTML).toContain('No sponsors found');
+    expect(container.innerHTML).toContain('No sponsors yet');
   });
 
   test('renderBannerCard handles banner with all null optional fields', () => {

@@ -214,10 +214,11 @@ const winnersModule = {
     this._currentPage = 1;
     const year = document.getElementById('winnerYearFilterSelect')?.value || '';
     const award = document.getElementById('winnerAwardFilterSelect')?.value || '';
+    const status = document.getElementById('winnerStatusFilter')?.value || '';
     const search = (document.getElementById('winnerSearchBox')?.value || '').toLowerCase().trim();
 
     try {
-      localStorage.setItem('winnersFilters', JSON.stringify({ year, award, search }));
+      localStorage.setItem('winnersFilters', JSON.stringify({ year, award, status, search }));
     } catch (e) {
       console.warn('Failed to save winner filters:', e.message);
     }
@@ -239,6 +240,9 @@ const winnersModule = {
       // Award filter
       if (award && utils.formatAwardName(winner.awards) !== award) return false;
 
+      // Status filter
+      if (status && (winner.winner_status || 'pending') !== status) return false;
+
       // Search filter
       if (search) {
         const winnerName = winner.winner_name?.toLowerCase() || '';
@@ -258,6 +262,8 @@ const winnersModule = {
       // Also apply non-search filters to fuzzy results
       if (year) STATE.filteredWinners = STATE.filteredWinners.filter((w) => String(w.awards?.year) === year);
       if (award) STATE.filteredWinners = STATE.filteredWinners.filter((w) => utils.formatAwardName(w.awards) === award);
+      if (status)
+        STATE.filteredWinners = STATE.filteredWinners.filter((w) => (w.winner_status || 'pending') === status);
     }
 
     // Sort
@@ -373,11 +379,12 @@ const winnersModule = {
         message: STATE.allWinners.length > 0 ? 'No winners match your filters' : 'No winners yet',
         description:
           STATE.allWinners.length > 0
-            ? 'Try clearing your filters using the Reset button above'
+            ? 'Try clearing your filters or search terms'
             : 'Winners are set via Assignments — shortlist an entry and mark it as the winner there',
-        actionLabel: 'View Pipeline',
-        actionAction: 'winnerPipelineModule.renderPipelineDashboard',
         isFiltered: STATE.filteredWinners.length === 0 && STATE.allWinners.length > 0,
+        clearAction: STATE.allWinners.length > 0 ? 'winnersModule.resetFilters' : '',
+        actionLabel: STATE.allWinners.length === 0 ? 'View Pipeline' : '',
+        actionAction: STATE.allWinners.length === 0 ? 'winnerPipelineModule.renderPipelineDashboard' : '',
       });
       return;
     }

@@ -303,11 +303,12 @@ const entriesModule = {
         icon: 'bi-inbox',
         message: hasFilters ? 'No entries match your filters' : 'No entries yet',
         description: hasFilters
-          ? 'Try clearing your filters using the Clear Filters button above'
-          : 'Entries appear here once companies submit via the public entry form',
-        actionLabel: hasFilters ? 'Clear Filters' : 'Copy Entry Link',
-        actionAction: hasFilters ? 'entriesModule.resetFilters' : 'entriesModule.copyEntryLink',
+          ? 'Try clearing your filters or search terms'
+          : 'Share this link with entrants so they can submit online.',
         isFiltered: hasFilters,
+        clearAction: hasFilters ? 'entriesModule.resetFilters' : '',
+        actionLabel: hasFilters ? '' : 'Copy Public Entry Form URL',
+        actionAction: hasFilters ? '' : 'entriesModule.copyPublicFormLink',
       });
       const paginationEl = document.getElementById('entriesPagination');
       if (paginationEl) paginationEl.innerHTML = '';

@@ -64,7 +64,7 @@ const utils = {
    * @param {string} type - Type of notification: 'success', 'error', 'warning', 'info'
    * @param {string} title - Optional title (defaults based on type)
    */
-  showToast(message, type = 'info', title = null, delay = 5000) {
+  showToast(message, type = 'info', title = null, delay = 5000, retryFn = null) {
     const toastEl = document.getElementById('notificationToast');
     if (!toastEl) return;
     const toastIcon = document.getElementById('toastIcon');
@@ -108,12 +108,21 @@ const utils = {
 
     // Set content
     if (toastTitle) toastTitle.textContent = settings.title;
-    if (toastMessage) toastMessage.innerHTML = message;
+    const retryBtn =
+      retryFn && type === 'error'
+        ? `<button class="btn btn-sm btn-outline-light ms-2 py-0" id="toastRetryBtn">Retry</button>`
+        : '';
+    if (toastMessage) toastMessage.innerHTML = `${message}${retryBtn}`;
 
-    // Show toast
+    if (retryFn && type === 'error') {
+      const btn = document.getElementById('toastRetryBtn');
+      if (btn) btn.addEventListener('click', retryFn, { once: true });
+    }
+
+    // Show toast (extend delay when retry button shown so user can click it)
     const toast = new bootstrap.Toast(toastEl, {
       autohide: true,
-      delay: delay,
+      delay: retryFn && type === 'error' ? Math.max(delay, 8000) : delay,
     });
     toast.show();
   },
@@ -1807,12 +1816,17 @@ const utils = {
       actionAction = '',
       actionId = '',
       isFiltered = false,
+      clearAction = '',
     } = options;
     const tbody = document.getElementById(tableBodyId);
     if (!tbody) return;
     const filterHint = isFiltered
       ? '<p class="text-muted small mb-2">Try adjusting your filters or search terms</p>'
       : '';
+    const clearBtn =
+      isFiltered && clearAction
+        ? `<button class="btn btn-sm btn-outline-secondary mt-2 me-2" data-action="${this.escapeHtml(clearAction)}"><i class="bi bi-x-circle me-1"></i>Clear Filters</button>`
+        : '';
     const actionBtn =
       actionLabel && actionAction
         ? `<button class="btn btn-sm btn-primary mt-2" data-action="${this.escapeHtml(actionAction)}"${actionId ? ` data-id="${this.escapeHtml(actionId)}"` : ''}><i class="bi bi-plus-circle me-1"></i>${this.escapeHtml(actionLabel)}</button>`
@@ -1825,7 +1839,7 @@ const utils = {
             <p class="fw-semibold mb-1">${message}</p>
             ${description ? `<p class="text-muted small mb-1">${description}</p>` : ''}
             ${filterHint}
-            ${actionBtn}
+            <div>${clearBtn}${actionBtn}</div>
           </div>
         </td>
       </tr>
@@ -2602,6 +2616,26 @@ const utils = {
    * Shows real-time validation feedback as user types
    * @param {string} formId - Form element ID or container ID
    */
+  initCharCounter(textareaId, maxLength) {
+    const textarea = document.getElementById(textareaId);
+    if (!textarea) return;
+    if (!maxLength) maxLength = parseInt(textarea.getAttribute('maxlength'), 10) || 500;
+    textarea.setAttribute('maxlength', maxLength);
+    let counter = textarea.parentElement?.querySelector('.char-counter');
+    if (!counter) {
+      counter = document.createElement('small');
+      counter.className = 'char-counter text-muted float-end';
+      textarea.insertAdjacentElement('afterend', counter);
+    }
+    const update = () => {
+      const remaining = maxLength - textarea.value.length;
+      counter.textContent = `${textarea.value.length}/${maxLength}`;
+      counter.classList.toggle('text-danger', remaining <= Math.max(20, Math.floor(maxLength * 0.05)));
+    };
+    textarea.addEventListener('input', update);
+    update();
+  },
+
   initInlineValidation(formId) {
     const form = document.getElementById(formId);
     if (!form) return;

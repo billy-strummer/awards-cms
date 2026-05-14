@@ -680,12 +680,13 @@ Vote now: {{website}}
     if (!container) return;
 
     if (posts.length === 0) {
-      container.innerHTML = `
-        <div class="text-center text-muted py-4">
-          <i class="bi bi-calendar-x display-4 d-block mb-2 opacity-25"></i>
-          No scheduled posts
-        </div>
-      `;
+      container.innerHTML = '<div id="scheduledPostsEmpty"></div>';
+      utils.showEnhancedEmptyState('scheduledPostsEmpty', 1, {
+        icon: 'bi-calendar-x',
+        message: 'No scheduled posts',
+        description: 'Use the compose form above to create and schedule a post.',
+        isFiltered: false,
+      });
       return;
     }
 
@@ -747,11 +748,13 @@ Vote now: {{website}}
     if (countBadge) countBadge.textContent = posts.length;
 
     if (posts.length === 0) {
-      container.innerHTML = `
-        <div class="text-center text-muted py-3">
-          <small>No drafts</small>
-        </div>
-      `;
+      container.innerHTML = '<div id="draftPostsEmpty"></div>';
+      utils.showEnhancedEmptyState('draftPostsEmpty', 1, {
+        icon: 'bi-file-earmark-text',
+        message: 'No drafts',
+        description: 'Save a post as a draft to continue editing it later.',
+        isFiltered: false,
+      });
       return;
     }
 
@@ -990,17 +993,21 @@ Vote now: {{website}}
   showPostSuccessMessage(platforms) {
     const platformNames = platforms.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(', ');
     utils.showToast(
-      `Post has been queued for ${platformNames}. Note: Platform API integration required for actual posting.`,
+      `Post saved for ${platformNames}. Live publishing requires API credentials — see Settings → Integrations.`,
       'info',
-      5000
+      6000
     );
   },
 
   openPlatformSettings() {
-    utils.showToast(
-      'Platform connection settings require OAuth API keys for X, Facebook, Instagram and LinkedIn. Configure these in your .env file.',
-      'info'
-    );
+    // Navigate to Settings → Integrations sub-tab
+    const settingsTab = document.getElementById('settings-tab');
+    if (settingsTab) bootstrap.Tab.getOrCreateInstance(settingsTab).show();
+    setTimeout(() => {
+      const integrationsTab = document.querySelector('[data-bs-target="#settings-integrations"]');
+      if (integrationsTab) bootstrap.Tab.getOrCreateInstance(integrationsTab).show();
+    }, 150);
+    utils.showToast('Opening Settings → Integrations', 'info', 3000);
   },
 
   /* ==================================================== */
@@ -1031,12 +1038,13 @@ Vote now: {{website}}
     if (!container) return;
 
     if (posts.length === 0) {
-      container.innerHTML = `
-        <div class="text-center text-muted py-4">
-          <i class="bi bi-send display-4 d-block mb-2 opacity-25"></i>
-          No published posts yet
-        </div>
-      `;
+      container.innerHTML = '<div id="publishedPostsEmpty"></div>';
+      utils.showEnhancedEmptyState('publishedPostsEmpty', 1, {
+        icon: 'bi-send',
+        message: 'No published posts yet',
+        description: 'Posts will appear here after they have been sent to social media platforms.',
+        isFiltered: false,
+      });
       return;
     }
 

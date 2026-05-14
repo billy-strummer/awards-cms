@@ -1247,7 +1247,10 @@ const dashboardModule = {
     });
 
     const years = Object.keys(yearCounts).sort();
-    if (years.length === 0) return;
+    if (years.length === 0) {
+      canvas.parentElement.innerHTML = `<div class="text-center py-5 text-muted"><i class="bi bi-bar-chart-line display-4 d-block mb-2 opacity-25"></i><small>No year data available yet</small></div>`;
+      return;
+    }
 
     const ctx = canvas.getContext('2d');
     const gradient = ctx.createLinearGradient(0, 0, 0, 280);

@@ -1117,8 +1117,7 @@ describe('Winner Pipeline - additional branch coverage', () => {
     await winnerPipelineModule.renderPipelineDashboard();
 
     const container = document.getElementById('pipelineDashboard');
-    expect(container.innerHTML).toContain('Award Pipeline Dashboard');
-    expect(container.innerHTML).toContain('No active awards found');
+    expect(container.innerHTML).toContain('No active awards in the pipeline');
   });
 
   test('renderPipelineDashboard counts all stage types correctly', async () => {

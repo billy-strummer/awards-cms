@@ -748,13 +748,15 @@ const awardsModule = {
         document.getElementById('awardsAreaFilter')?.value ||
         document.getElementById('awardsSearchBox')?.value
       );
-      utils.showEmptyState(
-        'awardsTableBody',
-        10,
-        hasFilters
-          ? 'No awards match your current filters — try resetting them using the Reset button above'
-          : 'No awards yet — click "Add Award" to create your first award'
-      );
+      utils.showEnhancedEmptyState('awardsTableBody', 10, {
+        icon: 'bi-trophy',
+        message: hasFilters ? 'No awards match your filters' : 'No awards yet',
+        description: hasFilters
+          ? 'Try clearing your filters or search terms'
+          : 'Click "+ Add Award" in the toolbar to create your first award',
+        isFiltered: hasFilters,
+        clearAction: hasFilters ? 'awardsModule.resetFilters' : '',
+      });
       // Clear pagination
       const pagEl = document.getElementById('awardsPagination');
       if (pagEl) pagEl.innerHTML = '';
@@ -926,13 +928,13 @@ const awardsModule = {
       document.getElementById('awardsModifiedHeader')?.classList.remove('d-none');
       document.querySelectorAll('.award-col-modified').forEach((td) => td.classList.remove('d-none'));
     }
-    // Phase column: hidden by default
-    const showPhase = localStorage.getItem('awardsColPhase') === '1';
+    // Phase column: visible by default
+    const showPhase = localStorage.getItem('awardsColPhase') !== '0';
     const cbPhase = document.getElementById('colTogglePhase');
     if (cbPhase) cbPhase.checked = showPhase;
-    if (showPhase) {
-      document.getElementById('awardsPhaseHeader')?.classList.remove('d-none');
-      document.querySelectorAll('.award-col-phase').forEach((td) => td.classList.remove('d-none'));
+    if (!showPhase) {
+      document.getElementById('awardsPhaseHeader')?.classList.add('d-none');
+      document.querySelectorAll('.award-col-phase').forEach((td) => td.classList.add('d-none'));
     }
     utils.updateEmptyRowColspan('awardsTableBody');
   },

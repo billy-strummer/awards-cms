@@ -6,6 +6,10 @@
 
 > **CLAUDE: There is an active UX/UI improvement backlog at `UX-AUDIT-TODO.md`. Read it at the start of every session and work through items in order (Critical → High → Medium → Low). Mark each item `[x]` in the same commit as the implementation. Never start a new session without checking this file first.**
 
+## ACTIVE WORK: Technical Improvements
+
+> **CLAUDE: There is a technical improvement plan at `TECHNICAL-DEBT-TODO.md`. This covers three phases: (1) breaking the monolithic `index.html` into composable HTML partials, (2) implementing genuinely missing features (Post-Event tab, Ticket Issuance, Milestones, Special Requirements, Social Media audit, Auto-Segments), and (3) adding JSDoc type annotations for code quality. When the user asks to work on architecture, missing features, or code quality — read this file and pick up from the first unchecked `[ ]` item.**
+
 ## Project Overview
 
 British Trade Awards CMS - a web-based admin system for managing awards ceremonies, organisations, entries, judging, events, payments, email marketing, and CRM.

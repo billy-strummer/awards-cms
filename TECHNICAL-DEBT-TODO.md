@@ -62,7 +62,7 @@ The CMS is functionally complete at a surface level but has three categories of 
 ### T1-G — Extract: Events + Media Gallery
 - **What:** Extract Events section and Media Gallery into `src/partials/06-events.html` and `src/partials/07-media.html`.
 - **Done when:** Build output unchanged, tests pass.
-- [ ] Implemented
+- [x] Implemented
 
 ### T1-H — Extract: CRM + Payments + Reports
 - **What:** Extract CRM, Payments, and Reports sections into `src/partials/08-crm.html`, `src/partials/09-payments.html`, `src/partials/10-reports.html`.

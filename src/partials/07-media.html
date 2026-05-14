@@ -1,0 +1,615 @@
+      <!-- MEDIA GALLERY TAB -->
+      <!-- ==================================================== -->
+      <div class="tab-pane fade" id="media-gallery" role="tabpanel">
+        <div class="container-fluid">
+
+          <!-- Page Header -->
+          <div class="section-header d-flex justify-content-between align-items-start">
+            <div>
+              <h1 class="section-title">
+                <i class="bi bi-images me-2"></i>Media Gallery
+              </h1>
+              <p class="section-subtitle">Manage event photos and videos</p>
+            </div>
+            <div class="d-flex gap-2 align-items-center flex-wrap">
+              <button class="btn btn-sm btn-outline-secondary" data-action="mediaGalleryModule.showFeaturedPhotosView" title="Mark photos as featured to highlight them on the public winner pages">
+                <i class="bi bi-star-fill me-1"></i>Featured
+              </button>
+              <button class="btn btn-sm btn-outline-secondary" data-action="mediaGalleryModule.showKeyboardShortcutsHelp" title="Keyboard shortcuts"><i class="bi bi-keyboard"></i></button>
+              <div class="input-group input-group-sm" style="width:280px;">
+                <span class="input-group-text"><i class="bi bi-building"></i></span>
+                <select class="form-select form-select-sm" id="mediaOrgFilter" data-on-change="mediaGalleryModule.viewOrgMedia">
+                  <option value="">View all media for org...</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Getting Started Banner -->
+          <div class="card border-0 shadow-sm mb-4" id="mediaGalleryGettingStarted">
+            <div class="card-body py-3">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <h6 class="fw-semibold mb-2"><i class="bi bi-images me-2 text-primary"></i>Getting Started — Media Gallery</h6>
+                  <div class="d-flex flex-wrap gap-3">
+                    <div class="d-flex align-items-start gap-2">
+                      <span class="badge bg-primary rounded-pill">1</span>
+                      <div><strong>Upload Photos &amp; Videos</strong><br><small class="text-muted">Drag and drop files or use the Upload button to add event imagery.</small></div>
+                    </div>
+                    <div class="d-flex align-items-start gap-2">
+                      <span class="badge bg-primary rounded-pill">2</span>
+                      <div><strong>Import from YouTube</strong><br><small class="text-muted">Paste a YouTube playlist URL to automatically import videos in bulk.</small></div>
+                    </div>
+                    <div class="d-flex align-items-start gap-2">
+                      <span class="badge bg-primary rounded-pill">3</span>
+                      <div><strong>Link to Winners &amp; Orgs</strong><br><small class="text-muted">Media linked here appears on winner profiles and organisation pages across the CMS.</small></div>
+                    </div>
+                    <div class="d-flex align-items-start gap-2">
+                      <span class="badge bg-primary rounded-pill">4</span>
+                      <div><strong>Mark as Featured</strong><br><small class="text-muted">Use the Featured button to highlight key photos on public winner pages.</small></div>
+                    </div>
+                  </div>
+                </div>
+                <button class="btn btn-sm btn-outline-secondary ms-3 flex-shrink-0" onclick="localStorage.setItem('mediaGalleryWorkflowDismissed','1');this.closest('#mediaGalleryGettingStarted').style.display='none'" aria-label="Dismiss">
+                  <i class="bi bi-x-lg"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+          <script>if(localStorage.getItem('mediaGalleryWorkflowDismissed')==='1'){var _mg=document.getElementById('mediaGalleryGettingStarted');if(_mg)_mg.style.display='none';}</script>
+
+          <!-- Media Gallery Content -->
+          <div id="mediaGalleryContent">
+
+            <!-- Loading state shown until JS renders gallery -->
+            <div id="mediaGalleryLoadingState" class="text-center py-5 text-muted">
+              <div class="spinner-border spinner-border-sm mb-2" role="status"><span class="visually-hidden">Loading…</span></div>
+              <p class="small mb-0">Loading media gallery…</p>
+            </div>
+
+            <!-- Breadcrumb Navigation -->
+            <nav aria-label="breadcrumb" id="mediaGalleryBreadcrumb" class="d-none mb-3">
+              <ol class="breadcrumb mb-0 small" id="mediaGalleryBreadcrumbList"></ol>
+            </nav>
+
+            <!-- Empty state shown when gallery has no content -->
+            <div id="mediaGalleryEmptyState" class="d-none text-center py-5 text-muted">
+              <i class="bi bi-images display-4 d-block mb-3 opacity-50" aria-hidden="true"></i>
+              <h6 class="mb-1">No media yet</h6>
+              <p class="small mb-0">Upload photos or videos for your events and winners.</p>
+            </div>
+
+            <!-- Events List View (default) -->
+            <div id="eventsListView" style="display: block;">
+              <div class="row g-4" id="eventsListContainer">
+                <div class="col-12 text-center py-5">
+                  <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                  Loading events...
+                </div>
+              </div>
+            </div>
+
+            <!-- Event Contents View (hidden by default) -->
+            <div id="eventContentsView" class="d-none">
+              <div class="mb-4">
+                <button class="btn btn-outline-secondary btn-sm" data-action="mediaGalleryModule.showEventsListView">
+                  <i class="bi bi-arrow-left me-2"></i>Back to Events
+                </button>
+                <h3 class="mt-3" id="eventContentsTitle">Event Contents</h3>
+              </div>
+
+              <div class="row g-4">
+                <!-- Photos Section Card -->
+                <div class="col-md-6">
+                  <div class="card h-100 border-primary u-pointer" data-action="mediaGalleryModule.openPhotosProduction">
+                    <div class="card-body text-center">
+                      <i class="bi bi-camera-fill text-primary" style="font-size: 4rem;"></i>
+                      <h4 class="mt-3">Photos</h4>
+                      <p class="text-muted">Manage event photo galleries</p>
+                      <div class="mt-3">
+                        <span class="badge bg-primary fs-5" id="eventPhotosCount">0</span>
+                        <small class="text-muted d-block mt-1">photos</small>
+                      </div>
+                      <button class="btn btn-primary mt-3">
+                        <i class="bi bi-images me-2"></i>Open Photos
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Videos Section Card -->
+                <div class="col-md-6">
+                  <div class="card h-100 border-danger u-pointer" data-action="mediaGalleryModule.openVideosProduction">
+                    <div class="card-body text-center">
+                      <i class="bi bi-play-btn-fill text-danger" style="font-size: 4rem;"></i>
+                      <h4 class="mt-3">Videos</h4>
+                      <p class="text-muted">Manage event videos and YouTube links</p>
+                      <div class="mt-3">
+                        <span class="badge bg-danger fs-5" id="eventVideosCount">0</span>
+                        <small class="text-muted d-block mt-1">videos</small>
+                      </div>
+                      <button class="btn btn-danger mt-3">
+                        <i class="bi bi-play-circle me-2"></i>Open Videos
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Photos Production View (hidden by default) -->
+            <div id="photosProductionView" class="d-none">
+              <div class="mb-4">
+                <button class="btn btn-outline-secondary btn-sm" data-action="mediaGalleryModule.showEventContentsView">
+                  <i class="bi bi-arrow-left me-2"></i>Back to Event Contents
+                </button>
+                <h3 class="mt-3">
+                  <i class="bi bi-camera-fill me-2"></i>Photos Production
+                  <small class="text-muted" id="photosEventName"></small>
+                </h3>
+              </div>
+
+              <!-- Photo Tools -->
+              <div class="mb-3 d-flex flex-wrap gap-2">
+                <div class="btn-group btn-group-sm">
+                  <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" data-bs-display="static">
+                    <i class="bi bi-tools me-1"></i>Photo Tools
+                  </button>
+                  <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#" data-action="mediaGalleryModule.openWatermarkModal"><i class="bi bi-droplet text-info me-2"></i>Watermark Photos</a></li>
+                    <li><a class="dropdown-item" href="#" data-action="mediaGalleryModule.openExportModal"><i class="bi bi-box-arrow-up text-primary me-2"></i>Export for Social</a></li>
+                    <li><a class="dropdown-item" href="#" data-action="mediaGalleryModule.openComparisonModal"><i class="bi bi-layout-split text-success me-2"></i>Event Comparison</a></li>
+                  </ul>
+                </div>
+              </div>
+
+              <!-- Photos will be loaded here by JS -->
+              <div id="photosProductionContent">
+                <div class="text-center py-5">
+                  <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                  Loading photos...
+                </div>
+              </div>
+            </div>
+
+            <!-- Videos Production View (hidden by default) -->
+            <div id="videosProductionView" class="d-none">
+              <div class="mb-4">
+                <button class="btn btn-outline-secondary btn-sm" data-action="mediaGalleryModule.showEventContentsView">
+                  <i class="bi bi-arrow-left me-2"></i>Back to Event Contents
+                </button>
+                <h3 class="mt-3">
+                  <i class="bi bi-play-btn-fill me-2"></i>Videos Production
+                  <small class="text-muted" id="videosEventName"></small>
+                </h3>
+              </div>
+
+              <!-- Video Action Buttons -->
+              <div class="mb-4 d-flex flex-wrap gap-2">
+                <button class="btn btn-primary" data-action="mediaGalleryModule.openAddVideoModal">
+                  <i class="bi bi-plus-lg me-2"></i>Add Video / YouTube Link
+                </button>
+                <button class="btn btn-outline-danger" data-action="mediaGalleryModule.openBulkYouTubeModal">
+                  <i class="bi bi-youtube me-2"></i>Bulk YouTube Import
+                </button>
+                <button class="btn btn-outline-secondary" data-action="mediaGalleryModule.openPlaylistSyncModal">
+                  <i class="bi bi-collection-play me-2"></i>Playlist Import
+                </button>
+                <div class="btn-group btn-group-sm">
+                  <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" data-bs-display="static">
+                    <i class="bi bi-tools me-1"></i>Tools
+                  </button>
+                  <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#" data-action="mediaGalleryModule.openYouTubeHealthCheck"><i class="bi bi-heart-pulse text-danger me-2"></i>YouTube Link Checker</a></li>
+                    <li><a class="dropdown-item" href="#" data-action="mediaGalleryModule.openComparisonModal"><i class="bi bi-layout-split text-success me-2"></i>Event Comparison</a></li>
+                    <li><a class="dropdown-item" href="#" data-action="mediaGalleryModule.openExportModal"><i class="bi bi-box-arrow-up text-primary me-2"></i>Export for Social</a></li>
+                    <li><a class="dropdown-item" href="#" data-action="mediaGalleryModule.openWatermarkModal"><i class="bi bi-droplet text-info me-2"></i>Watermark Photos</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="#" data-action="mediaGalleryModule.toggleVideoReorderMode"><i class="bi bi-sort-numeric-down text-warning me-2"></i>Reorder Videos</a></li>
+                  </ul>
+                </div>
+              </div>
+
+              <!-- Videos will be loaded here by JS -->
+              <div id="videosProductionContent">
+                <div class="text-center py-5">
+                  <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                  Loading videos...
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ==================================================== -->
+      <!-- MEDIA GALLERY MODALS -->
+      <!-- ==================================================== -->
+
+      <!-- Add Video/YouTube Link Modal -->
+      <div class="modal fade" id="addVideoModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">
+                <i class="bi bi-plus-lg me-2"></i>Add Video / YouTube Link
+              </h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <form id="addVideoForm">
+
+                <!-- Video Source Type -->
+                <div class="mb-4">
+                  <label class="form-label fw-bold">Video Source</label>
+                  <div class="row g-3">
+                    <div class="col-md-6">
+                      <div class="form-check card p-3 u-pointer">
+                        <input class="form-check-input" type="radio" name="videoSourceType" id="sourceTypeYouTube" value="youtube" checked aria-label="Source type YouTube" data-on-change="mediaGalleryModule.toggleVideoSourceFields" data-id="youtube">
+                        <label class="form-check-label w-100 u-pointer" for="sourceTypeYouTube">
+                          <i class="bi bi-youtube text-danger fs-4 d-block mb-2" aria-hidden="true"></i>
+                          <strong>YouTube Link</strong>
+                          <small class="d-block text-muted">Embed a YouTube video</small>
+                        </label>
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <div class="form-check card p-3 u-pointer">
+                        <input class="form-check-input" type="radio" name="videoSourceType" id="sourceTypeUpload" value="upload" aria-label="Source type upload" data-on-change="mediaGalleryModule.toggleVideoSourceFields" data-id="upload">
+                        <label class="form-check-label w-100 u-pointer" for="sourceTypeUpload">
+                          <i class="bi bi-cloud-upload text-primary fs-4 d-block mb-2" aria-hidden="true"></i>
+                          <strong>Upload Video File</strong>
+                          <small class="d-block text-muted">Upload from your device</small>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- YouTube ID Field -->
+                <div id="youtubeFieldGroup" class="mb-3">
+                  <label for="videoYouTubeId" class="form-label">
+                    YouTube URL or Video ID <span class="text-danger">*</span>
+                    <small class="text-muted d-block">Paste full URL or just the video ID</small>
+                  </label>
+                  <input type="text" class="form-control" id="videoYouTubeId" placeholder="https://www.youtube.com/watch?v=dQw4w9WgXcQ or dQw4w9WgXcQ" data-on-input="mediaGalleryModule.previewYouTubeThumbnail">
+                  <div class="form-text">
+                    <i class="bi bi-info-circle me-1"></i>We'll automatically extract the video ID
+                  </div>
+                  <div id="youtubePreviewContainer"></div>
+                </div>
+
+                <!-- File Upload Field (hidden by default) -->
+                <div id="uploadFieldGroup" class="mb-3 d-none">
+                  <label for="videoFileUpload" class="form-label">
+                    Video File <span class="text-danger">*</span>
+                  </label>
+                  <input type="file" class="form-control" id="videoFileUpload" accept="video/*">
+                  <div class="form-text">
+                    <i class="bi bi-info-circle me-1"></i>Accepted formats: MP4, MOV, AVI, WMV (Max 500MB)
+                  </div>
+                </div>
+
+                <!-- Video Title -->
+                <div class="mb-3">
+                  <label for="videoTitle" class="form-label">
+                    Video Title <span class="text-danger">*</span>
+                  </label>
+                  <input type="text" class="form-control" id="videoTitle" required placeholder="Enter video title">
+                </div>
+
+                <!-- Video Description -->
+                <div class="mb-3">
+                  <label for="videoDescription" class="form-label">Description</label>
+                  <textarea class="form-control" id="videoDescription" rows="3" placeholder="Enter video description (optional)"></textarea>
+                </div>
+
+                <!-- Tags Input -->
+                <div class="mb-3">
+                  <label class="form-label">
+                    Company Tags
+                    <small class="text-muted">(Optional — video will appear on the tagged company's profile)</small>
+                  </label>
+                  <div class="input-group mb-2">
+                    <select class="form-select" id="videoTagInput">
+                      <option value="">Select an organisation...</option>
+                    </select>
+                    <button class="btn btn-outline-secondary" type="button" data-action="mediaGalleryModule.addVideoTag">
+                      <i class="bi bi-plus-lg me-1"></i>Add Organisation
+                    </button>
+                  </div>
+                  <div id="videoTagsContainer" class="d-flex flex-wrap gap-2">
+                    <!-- Organisation tags will be added here dynamically -->
+                  </div>
+                </div>
+
+                <!-- Award Tags Input -->
+                <div class="mb-3">
+                  <label class="form-label">
+                    Award Tags
+                    <small class="text-muted">(Optional — video will appear in the tagged award's gallery)</small>
+                  </label>
+                  <div class="input-group mb-2">
+                    <select class="form-select" id="videoAwardTagInput">
+                      <option value="">Select an award...</option>
+                    </select>
+                    <button class="btn btn-outline-secondary" type="button" data-action="mediaGalleryModule.addVideoAwardTag">
+                      <i class="bi bi-plus-lg me-1"></i>Add Award
+                    </button>
+                  </div>
+                  <div id="videoAwardTagsContainer" class="d-flex flex-wrap gap-2">
+                    <!-- Award tags will be added here dynamically -->
+                  </div>
+                </div>
+
+                <!-- Event Association (read-only) -->
+                <div class="mb-3">
+                  <label class="form-label">Event</label>
+                  <input type="text" class="form-control" id="videoEventName" readonly>
+                  <input type="hidden" id="videoEventId">
+                </div>
+
+              </form>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="button" class="btn btn-primary" data-action="mediaGalleryModule.saveVideo">
+                <i class="bi bi-save me-2"></i>Save Video
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bulk YouTube Import Modal -->
+      <div class="modal fade" id="bulkYouTubeModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+              <h5 class="modal-title"><i class="bi bi-youtube me-2"></i>Bulk YouTube Import</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <div class="alert alert-info mb-3">
+                <i class="bi bi-info-circle me-2"></i>
+                <strong>Event:</strong> <span id="bulkYouTubeEventName"></span>
+                <br><small>Paste YouTube URLs or video IDs (one per line). Video titles are automatically imported from YouTube — no need to enter them manually. Shared tags below will be applied to all videos.</small>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">YouTube URLs / IDs (one per line)</label>
+                <textarea class="form-control" id="bulkYouTubeUrls" rows="8" placeholder="https://www.youtube.com/watch?v=VIDEO_ID_1&#10;https://www.youtube.com/watch?v=VIDEO_ID_2&#10;dQw4w9WgXcQ&#10;..." data-on-input="mediaGalleryModule.previewBulkYouTube"></textarea>
+              </div>
+              <div id="bulkYouTubePreview" class="mb-3"></div>
+              <hr>
+              <p class="text-muted small mb-2">Shared tags (applied to all videos):</p>
+              <div class="row">
+                <div class="col-md-6 mb-2">
+                  <label class="form-label small">Organisation</label>
+                  <div class="input-group input-group-sm">
+                    <select class="form-select" id="bulkVideoTagInput">
+                      <option value="">Select organisation...</option>
+                    </select>
+                    <button class="btn btn-outline-secondary" type="button" data-action="mediaGalleryModule.addVideoTag" data-args="[&quot;bulk&quot;]"><i class="bi bi-plus"></i></button>
+                  </div>
+                  <div id="bulkVideoTagsContainer" class="d-flex flex-wrap gap-1 mt-1"></div>
+                </div>
+                <div class="col-md-6 mb-2">
+                  <label class="form-label small">Award</label>
+                  <div class="input-group input-group-sm">
+                    <select class="form-select" id="bulkVideoAwardTagInput">
+                      <option value="">Select award...</option>
+                    </select>
+                    <button class="btn btn-outline-secondary" type="button" data-action="mediaGalleryModule.addVideoAwardTag" data-args="[&quot;bulk&quot;]"><i class="bi bi-plus"></i></button>
+                  </div>
+                  <div id="bulkVideoAwardTagsContainer" class="d-flex flex-wrap gap-1 mt-1"></div>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="button" class="btn btn-danger" data-action="mediaGalleryModule.saveBulkYouTube">
+                <i class="bi bi-cloud-upload me-2"></i>Import All Videos
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Playlist Sync Modal -->
+      <div class="modal fade" id="playlistSyncModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+              <h5 class="modal-title"><i class="bi bi-collection-play me-2"></i>YouTube Playlist Import</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <div class="alert alert-info mb-3">
+                <i class="bi bi-info-circle me-2"></i>
+                <strong>Event:</strong> <span id="playlistEventName"></span>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">YouTube Playlist URL</label>
+                <div class="input-group">
+                  <input type="text" class="form-control" id="playlistUrl" placeholder="https://www.youtube.com/playlist?list=PLxxxxxxxx">
+                  <button class="btn btn-primary" data-action="mediaGalleryModule.fetchPlaylistVideos">
+                    <i class="bi bi-search me-1"></i>Fetch
+                  </button>
+                </div>
+              </div>
+              <div id="playlistStatus"></div>
+              <div id="playlistPreview"></div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="button" class="btn btn-primary" data-action="mediaGalleryModule.importPlaylistVideos">
+                <i class="bi bi-cloud-upload me-2"></i>Import Videos
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Watermark Modal -->
+      <div class="modal fade" id="watermarkModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+              <h5 class="modal-title"><i class="bi bi-droplet me-2"></i>Photo Watermarking</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>Add a watermark logo to event photos. Originals are NOT modified - watermarked copies are downloaded separately.
+              </div>
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label class="form-label">Watermark Image (logo)</label>
+                    <input type="file" class="form-control" id="watermarkLogo" accept="image/png,image/svg+xml,image/jpeg">
+                    <small class="text-muted">PNG with transparency works best</small>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Gallery Section</label>
+                    <select class="form-select" id="watermarkSection">
+                      <option value="all">All Sections</option>
+                    </select>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Position</label>
+                    <select class="form-select" id="watermarkPosition">
+                      <option value="bottom-right">Bottom Right (Recommended)</option>
+                      <option value="bottom-left">Bottom Left</option>
+                      <option value="top-right">Top Right</option>
+                      <option value="top-left">Top Left</option>
+                      <option value="center">Center</option>
+                    </select>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Opacity: <span id="watermarkOpacityValue">30%</span></label>
+                    <input type="range" class="form-range" id="watermarkOpacity" min="5" max="80" value="30" data-on-input="utils.updateSliderLabel" data-id="watermarkOpacityValue" data-args='{"suffix":"%"}'>
+                  </div>
+                  <button class="btn btn-outline-primary me-2" data-action="mediaGalleryModule.previewWatermark">
+                    <i class="bi bi-eye me-1"></i>Preview
+                  </button>
+                  <button class="btn btn-primary" data-action="mediaGalleryModule.applyWatermarks">
+                    <i class="bi bi-droplet me-1"></i>Apply & Download
+                  </button>
+                </div>
+                <div class="col-md-6">
+                  <div id="watermarkPreviewResult">
+                    <div class="text-center text-muted py-5">
+                      <i class="bi bi-image display-4 d-block mb-2 opacity-25"></i>
+                      <p>Upload a logo and click Preview</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Export for Social Modal -->
+      <div class="modal fade" id="exportModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+              <h5 class="modal-title"><i class="bi bi-box-arrow-up me-2"></i>Export Media for Social</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>Download all photos and video links for a specific company - ready for social media or PR packages.
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Select Organisation</label>
+                <div class="input-group">
+                  <select class="form-select" id="exportOrgSelect">
+                    <option value="">Select an organisation...</option>
+                  </select>
+                  <button class="btn btn-outline-primary" data-action="mediaGalleryModule.previewExport">
+                    <i class="bi bi-search me-1"></i>Preview
+                  </button>
+                </div>
+              </div>
+              <div id="exportPreview"></div>
+              <div id="exportStatus"></div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="button" class="btn btn-success" data-action="mediaGalleryModule.downloadExportPackage">
+                <i class="bi bi-download me-2"></i>Download Package
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Event Comparison Modal -->
+      <div class="modal fade" id="comparisonModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+          <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+              <h5 class="modal-title"><i class="bi bi-layout-split me-2"></i>Event Media Comparison</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <div class="row mb-3">
+                <div class="col-md-4">
+                  <label class="form-label">Baseline Event <small class="text-muted">(older / last year)</small></label>
+                  <select class="form-select" id="comparisonEvent1">
+                    <option value="">Select event...</option>
+                  </select>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Comparison Event <small class="text-muted">(newer / this year)</small></label>
+                  <select class="form-select" id="comparisonEvent2">
+                    <option value="">Select event...</option>
+                  </select>
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label">Filter by Company</label>
+                  <select class="form-select" id="comparisonOrg">
+                    <option value="">All companies</option>
+                  </select>
+                </div>
+                <div class="col-md-1 d-flex align-items-end">
+                  <button class="btn btn-primary w-100" data-action="mediaGalleryModule.runComparison">
+                    <i class="bi bi-arrow-left-right"></i>
+                  </button>
+                </div>
+              </div>
+              <div id="comparisonResult"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- YouTube Health Check Modal -->
+      <div class="modal fade" id="youtubeHealthModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+              <h5 class="modal-title"><i class="bi bi-heart-pulse me-2"></i>YouTube Link Health Check</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>Checks all YouTube video links in the system to verify they're still accessible. Detects deleted, private, or restricted videos.
+              </div>
+              <div class="text-center mb-3">
+                <button class="btn btn-outline-secondary btn-lg" data-action="mediaGalleryModule.runYouTubeHealthCheck">
+                  <i class="bi bi-play-circle me-2"></i>Run Health Check
+                </button>
+              </div>
+              <div id="youtubeHealthStatus"></div>
+              <div id="youtubeHealthResult"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================================================== -->

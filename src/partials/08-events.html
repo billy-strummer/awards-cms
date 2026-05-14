@@ -1,0 +1,634 @@
+      <!-- EVENTS TAB -->
+      <!-- ==================================================== -->
+      <div class="tab-pane fade" id="events" role="tabpanel">
+        <div class="container-fluid">
+
+          <!-- Page Header -->
+          <div class="section-header">
+            <h1 class="section-title">
+              <i class="bi bi-calendar-event me-2"></i>Events Management
+            </h1>
+            <p class="section-subtitle">Plan, manage, and track award ceremonies and events<span id="eventsFreshness" class="ms-2"></span></p>
+          </div>
+
+          <!-- Getting Started Banner -->
+          <div class="card border-0 shadow-sm mb-4" id="eventsGettingStarted">
+            <div class="card-body py-3">
+              <div class="d-flex justify-content-between align-items-start mb-3">
+                <div>
+                  <h6 class="fw-bold mb-1"><i class="bi bi-map me-2 text-primary"></i>Getting Started — Events</h6>
+                  <p class="text-muted small mb-0">Plan and manage your awards ceremonies and events.</p>
+                </div>
+                <button type="button" class="btn-close btn-sm" aria-label="Dismiss" onclick="document.getElementById('eventsGettingStarted').style.display='none';localStorage.setItem('eventsWorkflowDismissed','1');"></button>
+              </div>
+              <div class="row g-2">
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">1</span>
+                    <div>
+                      <div class="fw-semibold small">Create an Event</div>
+                      <div class="text-muted" style="font-size:.75rem;">Click "Create Event" below. Enter the name, date, venue, and expected capacity.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">2</span>
+                    <div>
+                      <div class="fw-semibold small">Set Ticket Price &amp; Stripe (optional)</div>
+                      <div class="text-muted" style="font-size:.75rem;">Open the event → Tickets tab. Set a price and add your Stripe key to accept online payments.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">3</span>
+                    <div>
+                      <div class="fw-semibold small">Share the Registration Link</div>
+                      <div class="text-muted" style="font-size:.75rem;">Copy the Public Registration URL from the Tickets tab. Share on your website and invitations.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">4</span>
+                    <div>
+                      <div class="fw-semibold small">Add &amp; Manage Attendees</div>
+                      <div class="text-muted" style="font-size:.75rem;">Open the event → Attendees tab. Track RSVPs, assign seating, manage dietary and special requirements.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">5</span>
+                    <div>
+                      <div class="fw-semibold small">Issue QR Code Tickets</div>
+                      <div class="text-muted" style="font-size:.75rem;">In the Tickets tab, click "Issue Tickets" to email QR codes to each confirmed attendee.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">6</span>
+                    <div>
+                      <div class="fw-semibold small">Check In Guests on the Night</div>
+                      <div class="text-muted" style="font-size:.75rem;">Open the Check-In tab and use the QR scanner on any smartphone to mark guests as arrived.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="mt-3">
+                <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#eventModal"><i class="bi bi-plus-lg me-1"></i>Create First Event</button>
+              </div>
+            </div>
+          </div>
+          <script>if(localStorage.getItem('eventsWorkflowDismissed')==='1'){var _evb=document.getElementById('eventsGettingStarted');if(_evb)_evb.style.display='none';}</script>
+
+          <!-- Calendar View Toggle -->
+          <div class="mb-3">
+            <button class="btn btn-outline-primary btn-sm" data-action="calendarModule.renderCalendar" title="Show calendar view of events and deadlines">
+              <i class="bi bi-calendar3 me-1"></i>Calendar View
+            </button>
+          </div>
+          <div id="calendarContainer" class="mb-4 d-none"></div>
+
+          <!-- Quick Stats -->
+          <div class="row g-3 mb-4">
+            <div class="col-6 col-md-3 col-lg">
+              <div class="stat-card" data-stat-filter="clear:eventsStatusFilter" title="Show all events">
+                <i class="bi bi-calendar-event stat-card-icon text-primary"></i>
+                <h6>Total Events</h6>
+                <div class="stat-value" id="eventsTotalCount">0</div>
+              </div>
+            </div>
+            <div class="col-6 col-md-3 col-lg">
+              <div class="stat-card" data-stat-filter="eventsStatusFilter:upcoming" title="Filter to upcoming events">
+                <i class="bi bi-calendar-plus stat-card-icon text-success"></i>
+                <h6>Upcoming</h6>
+                <div class="stat-value text-success" id="eventsUpcomingCount">0</div>
+              </div>
+            </div>
+            <div class="col-6 col-md-3 col-lg">
+              <div class="stat-card" data-stat-filter="eventsStatusFilter:this-month" title="Filter to this month's events">
+                <i class="bi bi-calendar-check stat-card-icon text-info"></i>
+                <h6>This Year</h6>
+                <div class="stat-value text-info" id="eventsThisYearCount">0</div>
+              </div>
+            </div>
+            <div class="col-6 col-md-3 col-lg">
+              <div class="stat-card" data-stat-filter="eventsStatusFilter:past" title="Filter to past events">
+                <i class="bi bi-clock-history stat-card-icon text-secondary"></i>
+                <h6>Past Events</h6>
+                <div class="stat-value text-secondary" id="eventsPastCount">0</div>
+              </div>
+            </div>
+            <div class="col-6 col-md-3 col-lg">
+              <div class="stat-card" id="eventsDataIssuesCard" data-stat-filter="callback:eventsModule.filterDataIssues" title="Click to view events with missing data">
+                <i class="bi bi-exclamation-triangle stat-card-icon text-muted" id="eventsDataIssuesIcon"></i>
+                <h6>Data Issues</h6>
+                <div class="stat-value text-muted" id="eventsDataIssuesCount">0</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Financial Overview Panel (collapsible) -->
+          <div class="card mb-4" id="eventsFinancialPanel">
+            <div class="card-header u-pointer" data-bs-toggle="collapse" data-bs-target="#financialPanelBody" aria-expanded="true">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <h6 class="mb-0"><i class="bi bi-cash-stack me-2"></i>Financial Overview - All Events</h6>
+                <i class="bi bi-chevron-down"></i>
+              </div>
+              <div class="d-flex gap-4 small mt-1">
+                <span class="text-success fw-semibold" title="Total ticket sales received across all events">Revenue: <span id="financialSummaryRevenue">£0</span></span>
+                <span class="text-danger fw-semibold" title="Total actual costs (invoiced expenses from the Budget tab)">Costs: <span id="financialSummaryCosts">£0</span></span>
+                <span class="fw-semibold" title="Net Profit/Loss = Revenue minus Costs. Negative means a loss.">Net P&amp;L: <span id="financialSummaryPL">£0</span></span>
+              </div>
+            </div>
+            <div class="card-body collapse show" id="financialPanelBody">
+              <div class="row g-3 mb-3">
+                <div class="col-md-3">
+                  <div class="card text-center bg-light border-success">
+                    <div class="card-body py-2">
+                      <h4 class="mb-0 text-success" id="financialTotalRevenue">&pound;0</h4>
+                      <small class="text-muted" title="Sum of all ticket sales across all events">Total Revenue (All Events)</small>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="card text-center bg-light border-danger">
+                    <div class="card-body py-2">
+                      <h4 class="mb-0 text-danger" id="financialTotalCosts">&pound;0</h4>
+                      <small class="text-muted" title="Sum of all actual invoiced costs from the Budget tab across all events">Total Costs (All Events)</small>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="card text-center bg-light">
+                    <div class="card-body py-2">
+                      <h4 class="mb-0" id="financialNetPL">&pound;0</h4>
+                      <small class="text-muted">Net Profit / Loss</small>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="card text-center bg-light">
+                    <div class="card-body py-2">
+                      <h4 class="mb-0" id="financialMargin">-</h4>
+                      <small class="text-muted">Profit Margin</small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- Per-Event Breakdown -->
+              <h6 class="mb-2"><i class="bi bi-table me-2"></i>Per-Event Breakdown</h6>
+              <div class="table-responsive" style="max-height:250px; overflow-y:auto;">
+                <table class="table table-sm table-hover">
+                  <thead class="table-light">
+                    <tr>
+                      <th scope="col">Event</th><th scope="col">Year</th><th scope="col" class="text-end">Ticket Revenue</th>
+                      <th scope="col" class="text-end">Budget</th><th scope="col" class="text-end">Actual Costs</th>
+                      <th scope="col" class="text-end">Net P&L</th><th scope="col" class="text-center">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="financialBreakdownBody">
+                    <tr><td colspan="7" class="text-center text-muted py-2">Loading...</td></tr>
+                  </tbody>
+                  <tfoot class="table-dark" id="financialBreakdownFoot">
+                  </tfoot>
+                </table>
+              </div>
+              <div class="text-end mt-2">
+                <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.exportFinancialSummary"><i class="bi bi-download me-1"></i>Export Financial Report</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Data Quality Warnings -->
+          <div id="eventsDataQualityBar" class="alert alert-warning py-2 mb-3 d-none">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            <strong>Data quality:</strong>
+            <span id="eventsDataQualityText"></span>
+          </div>
+
+          <!-- Filters & Actions Bar -->
+          <div class="content-card mb-4">
+            <div class="row g-3 align-items-end">
+              <div class="col-md-2">
+                <label class="form-label small fw-semibold mb-1">
+                  <i class="bi bi-search me-1" aria-hidden="true"></i>Search
+                </label>
+                <input type="text" class="form-control form-control-sm" id="eventsSearchBox"
+                       placeholder="Search events...">
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small fw-semibold mb-1">
+                  <i class="bi bi-calendar3 me-1" aria-hidden="true"></i>Year
+                </label>
+                <select class="form-select form-select-sm" id="eventsYearFilter" data-on-change="eventsModule.filterEvents">
+                  <option value="">All Years</option>
+                  <!-- Dynamically populated by eventsModule.populateYearFilter() -->
+                </select>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small fw-semibold mb-1">
+                  <i class="bi bi-funnel me-1" aria-hidden="true"></i>Time
+                </label>
+                <select class="form-select form-select-sm" id="eventsStatusFilter" data-on-change="eventsModule.filterEvents">
+                  <option value="">All Events</option>
+                  <option value="upcoming">Upcoming</option>
+                  <option value="past">Past</option>
+                  <option value="this-month">This Month</option>
+                  <option value="this-year">This Year</option>
+                </select>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small fw-semibold mb-1">
+                  <i class="bi bi-flag me-1" aria-hidden="true"></i>Event Status
+                </label>
+                <select class="form-select form-select-sm" id="eventsEventStatusFilter" data-on-change="eventsModule.filterEvents">
+                  <option value="">All Statuses</option>
+                  <option value="draft">Draft</option>
+                  <option value="confirmed">Confirmed</option>
+                  <option value="cancelled">Cancelled</option>
+                  <option value="complete">Complete</option>
+                </select>
+              </div>
+              <div class="col-md-4 text-end">
+                <div class="d-flex gap-2 justify-content-end align-items-center flex-wrap">
+                  <span id="eventsRowCount" class="table-row-count me-1"></span>
+                  <button class="btn btn-outline-secondary btn-sm" data-action="eventsModule.resetEventFilters" title="Clear all active filters">
+                    <i class="bi bi-x-circle me-1"></i>Clear Filters
+                  </button>
+                  <div class="vr mx-1"></div>
+                  <button class="btn btn-outline-secondary btn-sm" data-action="eventsModule.toggleEventsCalendar" title="Calendar View">
+                    <i class="bi bi-calendar-week"></i>
+                  </button>
+                  <button class="btn btn-outline-secondary btn-sm" data-action="eventsModule.openTemplatesManager" title="Event Templates">
+                    <i class="bi bi-layout-text-sidebar"></i>
+                  </button>
+                  <button class="btn btn-outline-secondary btn-sm" data-action="eventsModule.showImportAttendeesModal" title="Import Attendees CSV">
+                    <i class="bi bi-upload"></i>
+                  </button>
+                  <button class="btn btn-primary btn-sm" data-action="eventsModule.openAddModal">
+                    <i class="bi bi-plus-lg me-1"></i>Add Event
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Calendar View (hidden by default) -->
+          <div id="eventsCalendarView" class="d-none content-card mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h5 class="mb-0"><i class="bi bi-calendar-week me-2"></i>Events Calendar</h5>
+              <div class="d-flex gap-2 align-items-center">
+                <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.calendarPrev" aria-label="Previous month"><i class="bi bi-chevron-left"></i></button>
+                <span class="fw-semibold" id="eventsCalendarTitle">February 2026</span>
+                <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.calendarNext" aria-label="Next month"><i class="bi bi-chevron-right"></i></button>
+                <div class="vr mx-1"></div>
+                <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.hideEventsCalendar"><i class="bi bi-x-lg"></i> Close</button>
+              </div>
+            </div>
+            <div id="eventsCalendarGrid" class="row g-1"></div>
+          </div>
+
+          <!-- Events Bulk Action Bar -->
+          <div class="card mb-3 d-none" id="eventsBulkBar">
+            <div class="card-body py-2 d-flex align-items-center justify-content-between">
+              <span><strong id="eventsBulkCount">0</strong> events selected</span>
+              <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-danger" data-action="globalActions.confirmBulkDelete" data-module="eventsModule" data-fn="bulkDeleteEvents" data-label="event">
+                  <i class="bi bi-trash me-1"></i>Delete Selected
+                </button>
+                <button class="btn btn-outline-secondary" data-action="eventsModule.bulkExportEvents" title="Download selected events as a CSV spreadsheet">
+                  <i class="bi bi-filetype-csv me-1"></i>Export Selected (CSV)
+                </button>
+                <button class="btn btn-outline-secondary" data-action="eventsModule.clearSelection">
+                  <i class="bi bi-x-circle me-1"></i>Clear
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Events Charts -->
+          <div id="eventsChartsContainer"></div>
+
+          <!-- Events Table -->
+          <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <h5 class="mb-0">
+                All Events (<span id="eventsCount">0</span>)
+              </h5>
+              <div class="d-flex gap-2">
+                <div class="btn-group">
+                  <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-download me-1"></i>Export
+                  </button>
+                  <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#" data-action="eventsModule.exportEventsCSV" data-prevent-default="true"><i class="bi bi-filetype-csv text-success me-2"></i>Export CSV</a></li>
+                    <li><a class="dropdown-item" href="#" data-action="eventsModule.exportEventsExcel" data-prevent-default="true"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Export Excel</a></li>
+                    <li><a class="dropdown-item" href="#" data-action="eventsModule.exportEventsPDF" data-prevent-default="true"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-hover">
+                <caption class="visually-hidden">Events list</caption>
+                <thead>
+                  <tr>
+                    <th scope="col" style="width:35px"><input type="checkbox" class="form-check-input" id="selectAllEvents" data-on-change="eventsModule.toggleSelectAll" aria-label="Select all events"></th>
+                    <th scope="col" class="u-pointer" data-sort-field="event_name" data-action="eventsModule.sortEvents" data-args="[&quot;event_name&quot;]" aria-sort="none">Event Name <i data-sort-icon-events="event_name" class="bi bi-arrow-down-up text-muted small"></i></th>
+                    <th scope="col" style="width:70px;cursor:pointer" data-sort-field="year" data-action="eventsModule.sortEvents" data-args="[&quot;year&quot;]" aria-sort="none">Year <i data-sort-icon-events="year" class="bi bi-arrow-down-up text-muted small"></i></th>
+                    <th scope="col" style="width:100px;cursor:pointer" data-sort-field="event_date" data-action="eventsModule.sortEvents" data-args="[&quot;event_date&quot;]" aria-sort="none">Date <i data-sort-icon-events="event_date" class="bi bi-arrow-down-up text-muted small"></i></th>
+                    <th scope="col" class="u-pointer" data-sort-field="venue" data-action="eventsModule.sortEvents" data-args="[&quot;venue&quot;]" aria-sort="none">Venue <i data-sort-icon-events="venue" class="bi bi-arrow-down-up text-muted small"></i></th>
+                    <th scope="col" style="width:90px" class="text-center" title="Total attendees (VIP count in brackets)"><i class="bi bi-people me-1"></i>Attendees</th>
+                    <th scope="col" style="width:70px" class="text-center" title="Award Presentations Confirmed"><i class="bi bi-trophy me-1"></i>Awards</th>
+                    <th scope="col" style="width:65px" class="text-center" title="Winners Confirmed"><i class="bi bi-award me-1"></i>Won</th>
+                    <th scope="col" style="width:85px" class="text-center">Status</th>
+                    <th scope="col" style="width:230px" class="text-center">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="eventsTableBody">
+                  <tr>
+                    <td colspan="10" class="text-center py-4">
+                      <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                      Loading events...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="card-footer d-flex justify-content-between align-items-center small text-muted">
+              <span id="eventsLastRefreshed">Last refreshed: --</span>
+              <span id="eventsFilterSummary"></span>
+            </div>
+          </div>
+
+          <!-- Bulk Actions Bar (hidden by default) -->
+          <div id="eventsBulkActionsBar" class="position-fixed start-50 translate-middle-x bg-dark text-white rounded-pill px-4 py-2 shadow-lg d-flex align-items-center gap-3" style="display:none !important; bottom:30px; z-index:1050;">
+            <span><strong id="eventsSelectedCount">0</strong> selected</span>
+            <div class="vr bg-light mx-1"></div>
+            <button class="btn btn-sm btn-outline-light" data-action="eventsModule.bulkClone"><i class="bi bi-files me-1"></i>Clone</button>
+            <div class="btn-group btn-group-sm">
+              <button class="btn btn-outline-light btn-sm dropdown-toggle" data-bs-toggle="dropdown" data-bs-display="static">
+                <i class="bi bi-flag me-1"></i>Set Status
+              </button>
+              <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="#" data-action="eventsModule.bulkSetStatus" data-id="draft" data-prevent-default="true"><i class="bi bi-pencil text-secondary me-2"></i>Draft</a></li>
+                <li><a class="dropdown-item" href="#" data-action="eventsModule.bulkSetStatus" data-id="confirmed" data-prevent-default="true"><i class="bi bi-check-circle text-success me-2"></i>Confirmed</a></li>
+                <li><a class="dropdown-item" href="#" data-action="eventsModule.bulkSetStatus" data-id="cancelled" data-prevent-default="true"><i class="bi bi-x-circle text-danger me-2"></i>Cancelled</a></li>
+                <li><a class="dropdown-item" href="#" data-action="eventsModule.bulkSetStatus" data-id="complete" data-prevent-default="true"><i class="bi bi-flag-fill text-primary me-2"></i>Complete</a></li>
+              </ul>
+            </div>
+            <button class="btn btn-sm btn-outline-danger" data-action="eventsModule.bulkDelete"><i class="bi bi-trash me-1"></i>Delete</button>
+            <button class="btn btn-sm btn-outline-light" data-action="eventsModule.clearEventSelection" aria-label="Clear selection"><i class="bi bi-x-lg"></i></button>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- ==================================================== -->
+      <!-- REPORTS TAB -->
+      <!-- ==================================================== -->
+      <div class="tab-pane fade" id="reports" role="tabpanel">
+        <div class="container-fluid">
+
+          <!-- Page Header -->
+          <div class="section-header">
+            <h1 class="section-title">
+              <i class="bi bi-graph-up me-2"></i>Reports & Analytics
+            </h1>
+            <p class="section-subtitle">View comprehensive statistics, charts, and insights</p>
+          </div>
+
+          <!-- Getting Started Banner -->
+          <div class="card border-0 shadow-sm mb-4" id="reportsGettingStarted">
+            <div class="card-body py-3">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <h6 class="fw-semibold mb-2"><i class="bi bi-graph-up-arrow me-2 text-primary"></i>Getting Started — Reports &amp; Analytics</h6>
+                  <div class="d-flex flex-wrap gap-3">
+                    <div class="d-flex align-items-start gap-2">
+                      <span class="badge bg-primary rounded-pill">1</span>
+                      <div><strong>Choose a Year</strong><br><small class="text-muted">Use the Year filter to focus on a specific awards cycle.</small></div>
+                    </div>
+                    <div class="d-flex align-items-start gap-2">
+                      <span class="badge bg-primary rounded-pill">2</span>
+                      <div><strong>Compare Years</strong><br><small class="text-muted">Select a comparison year to view year-on-year trends.</small></div>
+                    </div>
+                    <div class="d-flex align-items-start gap-2">
+                      <span class="badge bg-primary rounded-pill">3</span>
+                      <div><strong>Review the Charts</strong><br><small class="text-muted">Scroll through entries, revenue, and winner breakdowns.</small></div>
+                    </div>
+                    <div class="d-flex align-items-start gap-2">
+                      <span class="badge bg-primary rounded-pill">4</span>
+                      <div><strong>Print or Export</strong><br><small class="text-muted">Use the Print button to produce a summary report for stakeholders.</small></div>
+                    </div>
+                  </div>
+                </div>
+                <button class="btn btn-sm btn-outline-secondary ms-3 flex-shrink-0" onclick="localStorage.setItem('reportsWorkflowDismissed','1');this.closest('#reportsGettingStarted').style.display='none'">
+                  <i class="bi bi-x-lg"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+          <script>if(localStorage.getItem('reportsWorkflowDismissed')==='1'){var _rg=document.getElementById('reportsGettingStarted');if(_rg)_rg.style.display='none';}</script>
+
+          <!-- Toolbar: Year Filter + Print + Freshness -->
+          <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2 filter-bar-sticky">
+            <div class="d-flex gap-2 align-items-center flex-wrap">
+              <label class="form-label mb-0 small fw-semibold text-muted">Year:</label>
+              <select id="reportsYearFilter" class="form-select form-select-sm" style="width:120px;" data-on-change="reportsAnalytics.filterByYear">
+                <option value="all">All Years</option>
+              </select>
+              <label class="form-label mb-0 small fw-semibold text-muted ms-2">Compare with:</label>
+              <select id="reportsCompareYearFilter" class="form-select form-select-sm" style="width:120px;" data-on-change="reportsAnalytics.filterByYear">
+                <option value="">None</option>
+              </select>
+              <button class="btn btn-sm btn-outline-primary" data-action="reportsAnalytics.printSummaryReport">
+                <i class="bi bi-printer me-1"></i>Print Report
+              </button>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <div id="reportsDataFreshness" class="d-flex align-items-center gap-2 small text-muted">
+                <span class="spinner-border spinner-border-sm" role="status" aria-label="Loading data"></span><span>Loading&hellip;</span>
+              </div>
+              <button class="btn btn-sm btn-outline-secondary" data-action="reportsAnalytics.loadAnalytics" title="Refresh data" aria-label="Refresh data"><i class="bi bi-arrow-clockwise"></i></button>
+            </div>
+          </div>
+
+          <!-- Summary Stats -->
+          <div class="row g-3 mb-4">
+            <div class="col-md-3">
+              <div class="stat-card" title="Unique award categories active in the selected year">
+                <i class="bi bi-trophy stat-card-icon text-primary"></i>
+                <h6>Total Awards <i class="bi bi-info-circle text-muted" style="font-size:.7rem;"></i></h6>
+                <div class="stat-value" id="reportsTotal"><span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="stat-card" title="Number of organisations registered and active in the selected year">
+                <i class="bi bi-building stat-card-icon text-success"></i>
+                <h6>Total Organisations <i class="bi bi-info-circle text-muted" style="font-size:.7rem;"></i></h6>
+                <div class="stat-value text-success" id="reportsTotalOrgs">0</div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="stat-card" title="Number of entries awarded a winner status in the selected year (unique entries, not unique companies)">
+                <i class="bi bi-award stat-card-icon text-info"></i>
+                <h6>Total Winners <i class="bi bi-info-circle text-muted" style="font-size:.7rem;"></i></h6>
+                <div class="stat-value text-info" id="reportsTotalWinners">0</div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="stat-card" title="Total valid entries submitted in the selected year (across all award categories)">
+                <i class="bi bi-file-earmark-text stat-card-icon text-warning"></i>
+                <h6>Total Entries <i class="bi bi-info-circle text-muted" style="font-size:.7rem;"></i></h6>
+                <div class="stat-value text-warning" id="reportsTotalEntries">0</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Analytics Charts -->
+          <div class="row g-4 mb-4">
+            <div class="col-md-6">
+              <div class="content-card">
+                <h6 class="fw-semibold mb-3"><i class="bi bi-pie-chart me-2"></i>Organisations by Status</h6>
+                <div class="u-chart-sm">
+                  <canvas id="reportsPipelineChart"></canvas>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="content-card">
+                <h6 class="fw-semibold mb-3"><i class="bi bi-bar-chart me-2"></i>Organisations by Sector</h6>
+                <div class="u-chart-sm">
+                  <canvas id="reportsSectorChart"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="row g-4 mb-4">
+            <div class="col-md-6">
+              <div class="content-card">
+                <h6 class="fw-semibold mb-3"><i class="bi bi-geo-alt me-2"></i>Regional Distribution</h6>
+                <div class="u-chart-sm">
+                  <canvas id="reportsRegionChart"></canvas>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="content-card">
+                <h6 class="fw-semibold mb-3"><i class="bi bi-layers me-2"></i>Organisation Tier Breakdown</h6>
+                <div class="u-chart-sm">
+                  <canvas id="reportsTierChart"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Year-over-Year Comparison -->
+          <div class="row g-4 mb-4">
+            <div class="col-12">
+              <div class="content-card">
+                <h6 class="fw-semibold mb-1"><i class="bi bi-graph-up-arrow me-2"></i>Year-over-Year Comparison</h6>
+                <p class="text-muted small mb-3">Compares Entries, Winners, and Organisations across the last 3 calendar years. Use this to spot growth trends and seasonal patterns in programme engagement.</p>
+                <div style="height:320px; position:relative;">
+                  <canvas id="reportsYoYChart"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Awards by Category + Entry Conversion Funnel -->
+          <div class="row g-4 mb-4">
+            <div class="col-md-6">
+              <div class="content-card">
+                <h6 class="fw-semibold mb-3"><i class="bi bi-grid me-2"></i>Awards by Category</h6>
+                <div style="height:300px; position:relative;">
+                  <canvas id="reportsCategoryChart"></canvas>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="content-card">
+                <h6 class="fw-semibold mb-3"><i class="bi bi-funnel me-2"></i>Entry Conversion Funnel</h6>
+                <div style="height:300px; position:relative;">
+                  <canvas id="reportsFunnelChart"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pipeline Summary Table -->
+          <div class="content-card mb-4">
+            <h5 class="mb-3"><i class="bi bi-clipboard-data me-2"></i>Pipeline Summary</h5>
+            <div class="table-responsive">
+              <table class="table table-sm table-hover">
+                <thead>
+                  <tr>
+                    <th scope="col">Status</th>
+                    <th scope="col" class="text-center">Count</th>
+                    <th scope="col">Percentage</th>
+                    <th scope="col" title="Mini progress bar showing this status's share of the total pipeline">Trend</th>
+                  </tr>
+                </thead>
+                <tbody id="reportsPipelineTable">
+                  <tr><td colspan="4" class="text-center text-muted py-3">Loading...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Export Section -->
+          <div class="content-card mb-4">
+            <h5 class="mb-3">
+              <i class="bi bi-download me-2"></i>Export Data
+            </h5>
+            <p class="text-muted mb-3">Download reports in various formats</p>
+
+            <div class="d-flex gap-2 flex-wrap">
+              <button class="btn btn-sm btn-outline-secondary" data-action="dashboardModule.exportAwardsCSV" title="All award categories: name, status, season, dates, entry count">
+                <i class="bi bi-download me-1"></i>Export Awards (CSV)
+              </button>
+              <button class="btn btn-sm btn-outline-secondary" data-action="dashboardModule.exportOrganisationsCSV" title="All organisations: name, sector, region, tier, contact details">
+                <i class="bi bi-download me-1"></i>Export Organisations (CSV)
+              </button>
+              <button class="btn btn-sm btn-outline-secondary" data-action="dashboardModule.exportWinnersCSV" title="All winner records: organisation, award, year, status, consent flag">
+                <i class="bi bi-download me-1"></i>Export Winners (CSV)
+              </button>
+              <button class="btn btn-sm btn-outline-secondary" data-action="settingsModule.exportEventsCSV" title="All events: name, date, venue, capacity, attendee count, check-in rate">
+                <i class="bi bi-download me-1"></i>Export Events (CSV)
+              </button>
+              <button class="btn btn-sm btn-outline-secondary" data-action="settingsModule.exportFullBackup" title="Complete data snapshot across all tables — use for migration or archiving. JSON format.">
+                <i class="bi bi-download me-1"></i>Full Backup (JSON)
+              </button>
+            </div>
+          </div>
+
+          <!-- Scheduled Reports Section -->
+          <div class="content-card d-none">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h5 class="mb-0">
+                <i class="bi bi-calendar2-week me-2"></i>Scheduled Reports
+              </h5>
+              <button class="btn btn-primary btn-sm" data-action="reportsScheduler.showCreateReport">
+                <i class="bi bi-plus-lg me-2"></i>Create Report Schedule
+              </button>
+            </div>
+            <p class="text-muted small mb-3">Schedule automated reports to be generated on a recurring basis.</p>
+            <div id="scheduledReportsGrid">
+              <div class="text-center py-4 text-muted">
+                <i class="bi bi-calendar-x display-4 d-block mb-2 opacity-25"></i>
+                No scheduled reports configured yet
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ==================================================== -->

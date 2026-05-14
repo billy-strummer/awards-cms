@@ -116,8 +116,8 @@
             <span class="status-text">Connected</span>
           </div>
 
-          <!-- Test Mode Button -->
-          <div class="dropdown" id="testModeDropdown">
+          <!-- Test Mode Button (hidden by default — reveal with Ctrl+Shift+D) -->
+          <div class="dropdown d-none" id="testModeDropdown">
             <button class="btn btn-outline-warning dropdown-toggle" type="button" data-bs-toggle="dropdown" title="Test Data Management">
               <i class="bi bi-bug me-1"></i>Test Mode
             </button>
@@ -279,9 +279,9 @@
           </div>
 
           <!-- Markets (hidden by default — RBAC shows for admin/superadmin) -->
-          <div class="sidebar-group d-none" id="bitcoin-nav-item">
-            <button class="sidebar-nav-link" id="bitcoin-tab" data-bs-toggle="tab" data-bs-target="#bitcoin" type="button" role="tab" aria-controls="bitcoin" aria-selected="false" title="Markets">
-              <i class="bi bi-currency-bitcoin sidebar-icon"></i>
+          <div class="sidebar-group d-none" id="markets-nav-item">
+            <button class="sidebar-nav-link" id="markets-tab" data-bs-toggle="tab" data-bs-target="#bitcoin" type="button" role="tab" aria-controls="bitcoin" aria-selected="false" title="Markets">
+              <i class="bi bi-graph-up-arrow sidebar-icon"></i>
               <span class="sidebar-label">Markets</span>
             </button>
           </div>
@@ -644,8 +644,8 @@
                 <p class="text-muted small mb-0">Latest invoices and payments received</p>
               </div>
               <div class="btn-group btn-group-sm">
-                <button class="btn btn-primary" data-action="dashboardModule.openSalesDashboard">
-                  <i class="bi bi-graph-up me-1"></i>Sales Dashboard
+                <button class="btn btn-primary" data-action="dashboardModule.openSalesDashboard" title="Revenue, pipeline, and conversion metrics across all awards and events">
+                  <i class="bi bi-graph-up me-1"></i>Sales &amp; Revenue Dashboard
                 </button>
                 <button class="btn btn-outline-primary" data-action="dashboardModule.navigateToSection" data-args='["payments"]'>
                   <i class="bi bi-arrow-right me-1"></i>View All Payments
@@ -896,24 +896,57 @@
             <p class="section-subtitle">Manage and review award submissions<span id="awardsFreshness" class="ms-2"></span></p>
           </div>
 
-          <!-- Award Categories Reference (moved from Dashboard) -->
-          <div class="content-card mb-4">
-            <div class="d-flex justify-content-between align-items-center">
-              <div>
-                <h5 class="mb-1">
-                  <i class="bi bi-grid-3x3-gap-fill text-primary me-2"></i>Award Categories Reference
-                </h5>
-                <p class="text-muted small mb-0">All award types by size — expand sections below to browse</p>
+          <!-- Getting Started Banner -->
+          <div class="card border-0 shadow-sm mb-4" id="awardsGettingStarted">
+            <div class="card-body py-3">
+              <div class="d-flex justify-content-between align-items-start mb-3">
+                <div>
+                  <h6 class="fw-bold mb-1"><i class="bi bi-map me-2 text-primary"></i>Getting Started — Award Management</h6>
+                  <p class="text-muted small mb-0">Follow the award lifecycle from creation through to winner announcement.</p>
+                </div>
+                <button type="button" class="btn-close btn-sm" aria-label="Dismiss" onclick="document.getElementById('awardsGettingStarted').style.display='none';localStorage.setItem('awardsWorkflowDismissed','1');"></button>
               </div>
-              <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="collapse" data-bs-target="#awardCatRefBody" aria-expanded="false" aria-controls="awardCatRefBody">
-                <i class="bi bi-chevron-down me-1"></i>Show / Hide
-              </button>
-            </div>
-            <div class="collapse" id="awardCatRefBody">
-              <div class="mt-3" id="awardCatRefBody-content"></div>
+              <div class="row g-2">
+                <div class="col-md-3">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">1</span>
+                    <div>
+                      <div class="fw-semibold small">Create Award Categories</div>
+                      <div class="text-muted" style="font-size:.75rem;">Click "Add Award" to create each award category. Set Year, Sector, and Region to organise them.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">2</span>
+                    <div>
+                      <div class="fw-semibold small">Set Status to Active</div>
+                      <div class="text-muted" style="font-size:.75rem;">Change status from Draft → Active to open the award for entries. Use Phase to track progress through judging stages.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">3</span>
+                    <div>
+                      <div class="fw-semibold small">Manage Judging</div>
+                      <div class="text-muted" style="font-size:.75rem;">Use the Assignments panel (trophy icon on each row) to assign nominees to judges and record decisions.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-success rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">4</span>
+                    <div>
+                      <div class="fw-semibold small">Announce Winners</div>
+                      <div class="text-muted" style="font-size:.75rem;">Go to Winners to record and publish results. Set award status to Archived once the programme is complete.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-
+          <script>if(localStorage.getItem('awardsWorkflowDismissed')==='1'){var _aw=document.getElementById('awardsGettingStarted');if(_aw)_aw.style.display='none';}</script>
 
           <!-- Stats Summary -->
           <div class="row mb-4" id="awardsStatsRow">
@@ -1071,7 +1104,7 @@
                     </li>
                     <li>
                       <label class="dropdown-item" for="colTogglePhase">
-                        <input type="checkbox" class="form-check-input me-2" id="colTogglePhase" data-on-change="awardsModule.toggleAwardColumn" data-id="phase">
+                        <input type="checkbox" class="form-check-input me-2" id="colTogglePhase" data-on-change="awardsModule.toggleAwardColumn" data-id="phase" checked>
                         Phase
                       </label>
                     </li>
@@ -1145,7 +1178,7 @@
                       <i class="bi bi-question-circle text-muted ms-1 small" title="Award lifecycle: Draft (being set up) → Pending (awaiting approval) → Published (visible) → Active (open for entries/judging) → Archived (closed)"></i>
                     </th>
                     <th scope="col" style="width: 6%; cursor: pointer;" class="text-center" data-sort-field="nominees" data-action="awardsModule.sortBy" data-args='["nominees"]' aria-sort="none">Nominees <i class="bi bi-arrow-down-up text-muted ms-1 small" aria-hidden="true" data-sort-icon="nominees"></i></th>
-                    <th scope="col" id="awardsPhaseHeader" class="d-none text-center" style="width: 7%;" title="Current judging phase: e.g. Entry, Judging, Shortlisting, Voting, Announced">Phase</th>
+                    <th scope="col" id="awardsPhaseHeader" class="text-center" style="width: 7%;" title="Current judging phase: e.g. Entry, Judging, Shortlisting, Voting, Announced">Phase</th>
                     <th scope="col" style="width: 11%; cursor: pointer;" data-sort-field="winner" data-action="awardsModule.sortBy" data-args='["winner"]' aria-sort="none">Winner <i class="bi bi-arrow-down-up text-muted ms-1 small" aria-hidden="true" data-sort-icon="winner"></i></th>
                     <th scope="col" id="awardsModifiedHeader" class="d-none" style="width: 8%;">Modified</th>
                     <th scope="col" style="width: 6%;" class="text-center">Actions</th>
@@ -1169,6 +1202,24 @@
                   </tr>
                 </tbody>
               </table>
+            </div>
+          </div>
+
+          <!-- Award Categories Reference (size guide — collapsed by default) -->
+          <div class="content-card mt-4">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h5 class="mb-1">
+                  <i class="bi bi-grid-3x3-gap-fill text-primary me-2"></i>Award Size Reference Guide
+                </h5>
+                <p class="text-muted small mb-0">Browse all award types grouped by organisation size</p>
+              </div>
+              <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="collapse" data-bs-target="#awardCatRefBody" aria-expanded="false" aria-controls="awardCatRefBody">
+                <i class="bi bi-chevron-down me-1"></i>Show / Hide
+              </button>
+            </div>
+            <div class="collapse" id="awardCatRefBody">
+              <div class="mt-3" id="awardCatRefBody-content"></div>
             </div>
           </div>
 
@@ -1554,8 +1605,7 @@
     </div>
 
     <!-- Enhanced Filters Row -->
-    <div class="card border-0 shadow-sm mb-4 filter-bar-sticky">
-      <div class="card-body py-3">
+    <div class="content-card mb-4 filter-bar-sticky">
         <!-- Row header -->
         <div class="d-flex align-items-center justify-content-between mb-2">
           <div class="d-flex align-items-center gap-3">
@@ -1773,7 +1823,6 @@
             </ul>
           </div>
         </div>
-      </div>
     </div>
 
     <div id="orgsActiveFilters" class="mb-1"></div>
@@ -2241,6 +2290,58 @@
             <p class="section-subtitle">Manage award winners and their media<span id="winnersFreshness" class="ms-2"></span></p>
           </div>
 
+          <!-- Getting Started Banner -->
+          <div class="card border-0 shadow-sm mb-4" id="winnersGettingStarted">
+            <div class="card-body py-3">
+              <div class="d-flex justify-content-between align-items-start mb-3">
+                <div>
+                  <h6 class="fw-bold mb-1"><i class="bi bi-map me-2 text-primary"></i>Getting Started — Winners</h6>
+                  <p class="text-muted small mb-0">Winners can be added manually, imported via CSV, or promoted from the judging panel.</p>
+                </div>
+                <button type="button" class="btn-close btn-sm" aria-label="Dismiss" onclick="document.getElementById('winnersGettingStarted').style.display='none';localStorage.setItem('winnersWorkflowDismissed','1');"></button>
+              </div>
+              <div class="row g-2">
+                <div class="col-md-3">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">1</span>
+                    <div>
+                      <div class="fw-semibold small">Add Winners</div>
+                      <div class="text-muted" style="font-size:.75rem;">Add winners manually using "Add Winner", import in bulk via CSV, or promote shortlisted nominees from Assignments.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">2</span>
+                    <div>
+                      <div class="fw-semibold small">Record GDPR Consent</div>
+                      <div class="text-muted" style="font-size:.75rem;">Before publishing a winner's name or image, record their GDPR consent using the Consent checkbox on each row.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">3</span>
+                    <div>
+                      <div class="fw-semibold small">Update Status</div>
+                      <div class="text-muted" style="font-size:.75rem;">Move each winner through: Pending → Notified → Pack Sent → Confirmed → Published as you progress.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-success rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">4</span>
+                    <div>
+                      <div class="fw-semibold small">Announce Publicly</div>
+                      <div class="text-muted" style="font-size:.75rem;">Set status to "Published" to make the winner visible on public pages. Upload photos and winner story for maximum impact.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <script>if(localStorage.getItem('winnersWorkflowDismissed')==='1'){var _ww=document.getElementById('winnersGettingStarted');if(_ww)_ww.style.display='none';}</script>
+
           <!-- Filters Section -->
           <div class="filters-section filter-bar-sticky">
             <div class="rounded-2 p-3 mb-2 bg-light">
@@ -2283,7 +2384,7 @@
                     <option value="pending">Pending</option>
                     <option value="confirmed">Confirmed</option>
                     <option value="announced">Announced</option>
-                    <option value="media_sent">Media Sent</option>
+                    <option value="pack_sent">Pack Sent</option>
                     <option value="complete">Complete</option>
                   </select>
                 </div>
@@ -2520,13 +2621,13 @@
             </div>
             <div class="row g-2 align-items-end">
               <div class="col-md-2">
-                <label class="form-label filter-bar-field-label mb-1"><i class="bi bi-flag me-1" aria-hidden="true"></i>Status</label>
+                <label class="form-label filter-bar-field-label mb-1"><i class="bi bi-flag me-1" aria-hidden="true"></i>Status <i class="bi bi-question-circle text-muted ms-1 small" title="Awaiting Review = submitted, waiting for a judge to be assigned. Under Review = actively being scored by an assigned judge."></i></label>
                 <select class="form-select form-select-sm" id="entriesStatusFilter" data-on-change="entriesModule.filterEntries">
                   <option value="">All Statuses</option>
                   <option value="draft">Draft</option>
                   <option value="submitted">Submitted</option>
-                  <option value="under_review">Under Review</option>
-                  <option value="pending_review">Pending Review</option>
+                  <option value="under_review">Under Review (with judge)</option>
+                  <option value="pending_review">Awaiting Review (no judge yet)</option>
                   <option value="shortlisted">Shortlisted</option>
                   <option value="winner">Winner</option>
                   <option value="rejected">Rejected</option>
@@ -3037,7 +3138,7 @@
                 <label class="form-label">YouTube Playlist URL</label>
                 <div class="input-group">
                   <input type="text" class="form-control" id="playlistUrl" placeholder="https://www.youtube.com/playlist?list=PLxxxxxxxx">
-                  <button class="btn btn-info text-white" data-action="mediaGalleryModule.fetchPlaylistVideos">
+                  <button class="btn btn-primary" data-action="mediaGalleryModule.fetchPlaylistVideos">
                     <i class="bi bi-search me-1"></i>Fetch
                   </button>
                 </div>
@@ -3047,7 +3148,7 @@
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="button" class="btn btn-info text-white" data-action="mediaGalleryModule.importPlaylistVideos">
+              <button type="button" class="btn btn-primary" data-action="mediaGalleryModule.importPlaylistVideos">
                 <i class="bi bi-cloud-upload me-2"></i>Import Videos
               </button>
             </div>
@@ -3324,7 +3425,7 @@
 
           <!-- Financial Overview Panel (collapsible) -->
           <div class="card mb-4" id="eventsFinancialPanel">
-            <div class="card-header u-pointer" data-bs-toggle="collapse" data-bs-target="#financialPanelBody" aria-expanded="false">
+            <div class="card-header u-pointer" data-bs-toggle="collapse" data-bs-target="#financialPanelBody" aria-expanded="true">
               <div class="d-flex justify-content-between align-items-center mb-1">
                 <h6 class="mb-0"><i class="bi bi-cash-stack me-2"></i>Financial Overview - All Events</h6>
                 <i class="bi bi-chevron-down"></i>
@@ -3335,7 +3436,7 @@
                 <span class="fw-semibold">Net P&amp;L: <span id="financialSummaryPL">£0</span></span>
               </div>
             </div>
-            <div class="card-body collapse" id="financialPanelBody">
+            <div class="card-body collapse show" id="financialPanelBody">
               <div class="row g-3 mb-3">
                 <div class="col-md-3">
                   <div class="card text-center bg-light border-success">
@@ -3429,6 +3530,7 @@
                   <option value="upcoming">Upcoming</option>
                   <option value="past">Past</option>
                   <option value="this-month">This Month</option>
+                  <option value="this-year">This Year</option>
                 </select>
               </div>
               <div class="col-md-2">
@@ -3592,6 +3694,39 @@
             </h1>
             <p class="section-subtitle">View comprehensive statistics, charts, and insights</p>
           </div>
+
+          <!-- Getting Started Banner -->
+          <div class="card border-0 shadow-sm mb-4" id="reportsGettingStarted">
+            <div class="card-body py-3">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <h6 class="fw-semibold mb-2"><i class="bi bi-graph-up-arrow me-2 text-primary"></i>Getting Started — Reports &amp; Analytics</h6>
+                  <div class="d-flex flex-wrap gap-3">
+                    <div class="d-flex align-items-start gap-2">
+                      <span class="badge bg-primary rounded-pill">1</span>
+                      <div><strong>Choose a Year</strong><br><small class="text-muted">Use the Year filter to focus on a specific awards cycle.</small></div>
+                    </div>
+                    <div class="d-flex align-items-start gap-2">
+                      <span class="badge bg-primary rounded-pill">2</span>
+                      <div><strong>Compare Years</strong><br><small class="text-muted">Select a comparison year to view year-on-year trends.</small></div>
+                    </div>
+                    <div class="d-flex align-items-start gap-2">
+                      <span class="badge bg-primary rounded-pill">3</span>
+                      <div><strong>Review the Charts</strong><br><small class="text-muted">Scroll through entries, revenue, and winner breakdowns.</small></div>
+                    </div>
+                    <div class="d-flex align-items-start gap-2">
+                      <span class="badge bg-primary rounded-pill">4</span>
+                      <div><strong>Print or Export</strong><br><small class="text-muted">Use the Print button to produce a summary report for stakeholders.</small></div>
+                    </div>
+                  </div>
+                </div>
+                <button class="btn btn-sm btn-outline-secondary ms-3 flex-shrink-0" onclick="localStorage.setItem('reportsWorkflowDismissed','1');this.closest('#reportsGettingStarted').style.display='none'">
+                  <i class="bi bi-x-lg"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+          <script>if(localStorage.getItem('reportsWorkflowDismissed')==='1'){var _rg=document.getElementById('reportsGettingStarted');if(_rg)_rg.style.display='none';}</script>
 
           <!-- Toolbar: Year Filter + Print + Freshness -->
           <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2 filter-bar-sticky">
@@ -3878,8 +4013,8 @@
                   <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
                     <span class="badge bg-success rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">8</span>
                     <div>
-                      <div class="fw-semibold small">Sponsors</div>
-                      <div class="text-muted" style="font-size:.75rem;">Add sponsor logos, tier levels, and manage sponsorship packages.</div>
+                      <div class="fw-semibold small">Social Media</div>
+                      <div class="text-muted" style="font-size:.75rem;">Schedule and post to Twitter/X, LinkedIn, Facebook, and Instagram.</div>
                     </div>
                   </div>
                 </div>
@@ -3887,8 +4022,8 @@
                   <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
                     <span class="badge bg-success rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">9</span>
                     <div>
-                      <div class="fw-semibold small">Social Media</div>
-                      <div class="text-muted" style="font-size:.75rem;">Schedule and post to Twitter/X, LinkedIn, Facebook, and Instagram.</div>
+                      <div class="fw-semibold small">Content Calendar</div>
+                      <div class="text-muted" style="font-size:.75rem;">Plan your publishing schedule and review what's going out across all channels.</div>
                     </div>
                   </div>
                 </div>
@@ -4281,10 +4416,10 @@
 
                       <!-- Action Buttons -->
                       <div class="d-flex gap-2">
-                        <button class="btn btn-primary" data-action="socialMediaModule.savePost" data-args="[&quot;scheduled&quot;]">
+                        <button class="btn btn-success" data-action="socialMediaModule.savePost" data-args="[&quot;scheduled&quot;]">
                           <i class="bi bi-clock-history me-2"></i>Schedule Post
                         </button>
-                        <button class="btn btn-success" data-action="socialMediaModule.savePost" data-args="[&quot;immediate&quot;]">
+                        <button class="btn btn-outline-warning" data-action="socialMediaModule.savePost" data-args="[&quot;immediate&quot;]">
                           <i class="bi bi-send me-2"></i>Post Now
                         </button>
                         <button class="btn btn-outline-secondary" data-action="socialMediaModule.saveDraft">
@@ -5330,7 +5465,7 @@
                 <div class="col-md-3">
                   <div class="stat-card stat-card-clickable" data-stat-filter="invoiceStatusFilter:partially_paid" title="Filter to invoices with outstanding balance">
                     <i class="bi bi-currency-pound stat-card-icon text-info"></i>
-                    <h6>Outstanding</h6>
+                    <h6>Outstanding Balance</h6>
                     <div class="stat-value text-info" id="totalOutstandingAmount">£<span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></div>
                     <div class="stat-card-hover-indicator"><i class="bi bi-arrow-right-circle"></i></div>
                   </div>
@@ -5696,7 +5831,7 @@
             </li>
             <li class="nav-item" role="presentation">
               <button class="nav-link" id="smart-segments-subtab" data-bs-toggle="tab" data-bs-target="#smart-segments-content" type="button" role="tab" title="Smart Segments are rule-based auto-segments that update dynamically as organisation data changes">
-                <i class="bi bi-funnel me-2"></i>Smart Segments<span id="smartSegmentsBadge" class="badge bg-secondary ms-2" style="display:none"></span>
+                <i class="bi bi-funnel me-2"></i>Auto-Segments<span id="smartSegmentsBadge" class="badge bg-secondary ms-2" style="display:none"></span>
               </button>
             </li>
             <li class="nav-item" role="presentation">
@@ -5728,7 +5863,7 @@
                     </select>
                   </div>
                   <div class="col-md-3">
-                    <label class="form-label small fw-bold">Regarding</label>
+                    <label class="form-label small fw-bold">Topic</label>
                     <select class="form-select form-select-sm" id="communicationRegardingFilter" data-on-change="crmModule.loadCommunications">
                       <option value="">All Topics</option>
                       <option value="sponsorship">Sponsorship</option>
@@ -5766,7 +5901,7 @@
                         <th scope="col">Organisation</th>
                         <th scope="col">Contact</th>
                         <th scope="col">Subject</th>
-                        <th scope="col">Regarding</th>
+                        <th scope="col">Topic</th>
                         <th scope="col">Follow-up</th>
                         <th scope="col">Actions</th>
                       </tr>
@@ -5827,13 +5962,13 @@
                     <label class="form-label small fw-bold">Stage</label>
                     <select class="form-select form-select-sm" id="dealStageFilter" data-on-change="crmModule.applyFilter" data-args='["deals","stage"]'>
                       <option value="">All Stages</option>
-                      <option value="lead">Lead</option>
-                      <option value="contacted">Contacted</option>
-                      <option value="qualified">Qualified</option>
-                      <option value="proposal">Proposal</option>
-                      <option value="negotiation">Negotiation</option>
-                      <option value="closed_won">Closed Won</option>
-                      <option value="closed_lost">Closed Lost</option>
+                      <option value="lead">Identified</option>
+                      <option value="contacted">Approached</option>
+                      <option value="qualified">Meeting Held</option>
+                      <option value="proposal">Proposal Sent</option>
+                      <option value="negotiation">Under Negotiation</option>
+                      <option value="closed_won">Confirmed</option>
+                      <option value="closed_lost">Declined</option>
                     </select>
                   </div>
                   <div class="col-md-3">
@@ -6062,7 +6197,7 @@
             <!-- Smart Segments Sub-Tab -->
             <div class="tab-pane fade" id="smart-segments-content" role="tabpanel">
               <div class="d-flex justify-content-between align-items-center mb-4">
-                <h4><i class="bi bi-funnel me-2"></i>Smart Segments</h4>
+                <h4><i class="bi bi-funnel me-2"></i>Auto-Segments</h4>
               </div>
               <p class="small text-muted mb-3">Build dynamic segments based on rules. Matching organisations update in real-time.</p>
               <div id="smartSegmentRules">
@@ -6234,7 +6369,7 @@
                     <h5 class="mb-1">
                       <i class="bi bi-pin-map me-2"></i>Manage Areas
                     </h5>
-                    <p class="text-muted mb-0 small">View the 101 geographic areas used for award categories. Populated by the areas seed SQL.</p>
+                    <p class="text-muted mb-0 small">The 101 geographic areas used for award category filtering. These are pre-loaded and do not need to be edited.</p>
                   </div>
                   <button class="btn btn-outline-secondary btn-sm" data-action="areasManager.loadAreas">
                     <i class="bi bi-arrow-clockwise me-1"></i>Refresh
@@ -7066,19 +7201,19 @@
                   <div class="col-md-4">
                     <div class="input-group input-group-sm">
                       <span class="input-group-text"><i class="bi bi-trophy-fill text-warning"></i></span>
-                      <input type="text" class="form-control" id="awardFormPrevWinner" placeholder="1st Place">
+                      <input type="text" class="form-control" id="awardFormPrevWinner" placeholder="Winner's name (e.g. Acme Ltd)">
                     </div>
                   </div>
                   <div class="col-md-4">
                     <div class="input-group input-group-sm">
                       <span class="input-group-text"><i class="bi bi-award text-secondary"></i></span>
-                      <input type="text" class="form-control" id="awardFormPrev2nd" placeholder="2nd Place">
+                      <input type="text" class="form-control" id="awardFormPrev2nd" placeholder="Runner-up name (e.g. Beta Co)">
                     </div>
                   </div>
                   <div class="col-md-4">
                     <div class="input-group input-group-sm">
                       <span class="input-group-text"><i class="bi bi-award text-info"></i></span>
-                      <input type="text" class="form-control" id="awardFormPrev3rd" placeholder="3rd Place">
+                      <input type="text" class="form-control" id="awardFormPrev3rd" placeholder="Third place name (optional)">
                     </div>
                   </div>
                 </div>
@@ -7375,7 +7510,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-info text-white" data-action="paymentsModule.confirmSendInvoice">
+          <button type="button" class="btn btn-primary" data-action="paymentsModule.confirmSendInvoice">
             <i class="bi bi-send me-1"></i>Send Invoice
           </button>
         </div>
@@ -7532,7 +7667,7 @@
     <div class="modal-content">
       <div class="modal-header bg-primary text-white">
         <h5 class="modal-title" id="assignmentsModalTitle">
-          <i class="bi bi-trophy me-2"></i>Manage Award Nominees
+          <i class="bi bi-people me-2"></i>Award Judging Panel
         </h5>
         <button class="btn btn-sm btn-light me-2" data-action="assignmentsModule.openConflictManager" title="Manage judge conflict of interest records">
           <i class="bi bi-shield-exclamation me-1"></i>Conflicts
@@ -9348,7 +9483,7 @@
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
             <i class="bi bi-x-lg me-1"></i>Close
           </button>
-          <button type="button" class="btn btn-info" data-action="winnersModule.exportYearComparison">
+          <button type="button" class="btn btn-primary" data-action="winnersModule.exportYearComparison">
             <i class="bi bi-download me-1"></i>Export Report (CSV)
           </button>
         </div>
@@ -10283,7 +10418,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-          <button type="button" class="btn btn-info" data-action="utils.navigateAndCloseModal" data-id='{"section":"winners","modal":"winnersSummaryModal"}'>
+          <button type="button" class="btn btn-primary" data-action="utils.navigateAndCloseModal" data-id='{"section":"winners","modal":"winnersSummaryModal"}'>
             <i class="bi bi-award me-1"></i>View All Winners
           </button>
         </div>

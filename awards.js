@@ -928,13 +928,13 @@ const awardsModule = {
       document.getElementById('awardsModifiedHeader')?.classList.remove('d-none');
       document.querySelectorAll('.award-col-modified').forEach((td) => td.classList.remove('d-none'));
     }
-    // Phase column: hidden by default
-    const showPhase = localStorage.getItem('awardsColPhase') === '1';
+    // Phase column: visible by default
+    const showPhase = localStorage.getItem('awardsColPhase') !== '0';
     const cbPhase = document.getElementById('colTogglePhase');
     if (cbPhase) cbPhase.checked = showPhase;
-    if (showPhase) {
-      document.getElementById('awardsPhaseHeader')?.classList.remove('d-none');
-      document.querySelectorAll('.award-col-phase').forEach((td) => td.classList.remove('d-none'));
+    if (!showPhase) {
+      document.getElementById('awardsPhaseHeader')?.classList.add('d-none');
+      document.querySelectorAll('.award-col-phase').forEach((td) => td.classList.add('d-none'));
     }
     utils.updateEmptyRowColspan('awardsTableBody');
   },

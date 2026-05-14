@@ -165,7 +165,7 @@ const rbacModule = {
       'crm-tab': 'crm',
       'settings-tab': 'settings',
       'reports-tab': 'reports',
-      'bitcoin-tab': 'bitcoin',
+      'markets-tab': 'bitcoin',
     };
 
     // Show/hide tabs based on module access

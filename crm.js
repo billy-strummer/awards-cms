@@ -689,13 +689,13 @@ const crmModule = {
 
   getStageBadge(stage) {
     const stages = {
-      lead: '<span class="badge bg-secondary">Lead</span>',
-      contacted: '<span class="badge bg-info">Contacted</span>',
-      qualified: '<span class="badge bg-primary">Qualified</span>',
-      proposal: '<span class="badge bg-warning text-dark">Proposal</span>',
-      negotiation: '<span class="badge bg-warning">Negotiation</span>',
-      closed_won: '<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Won</span>',
-      closed_lost: '<span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Lost</span>',
+      lead: '<span class="badge bg-secondary">Identified</span>',
+      contacted: '<span class="badge bg-info">Approached</span>',
+      qualified: '<span class="badge bg-primary">Meeting Held</span>',
+      proposal: '<span class="badge bg-warning text-dark">Proposal Sent</span>',
+      negotiation: '<span class="badge bg-warning">Under Negotiation</span>',
+      closed_won: '<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Confirmed</span>',
+      closed_lost: '<span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Declined</span>',
     };
     return stages[stage] || `<span class="badge bg-secondary">${stage}</span>`;
   },
@@ -1084,7 +1084,7 @@ const crmModule = {
                   </select>
                 </div>
                 <div class="mb-3">
-                  <label class="form-label">Regarding</label>
+                  <label class="form-label">Topic</label>
                   <select class="form-select" id="commRegarding">
                     <option value="general">General</option>
                     <option value="sponsorship">Sponsorship</option>
@@ -1277,11 +1277,11 @@ const crmModule = {
                   <div class="col-md-4 mb-3">
                     <label class="form-label">Stage</label>
                     <select class="form-select" id="dealStage">
-                      <option value="lead">Lead</option>
-                      <option value="contacted">Contacted</option>
-                      <option value="qualified">Qualified</option>
-                      <option value="proposal">Proposal</option>
-                      <option value="negotiation">Negotiation</option>
+                      <option value="lead">Identified</option>
+                      <option value="contacted">Approached</option>
+                      <option value="qualified">Meeting Held</option>
+                      <option value="proposal">Proposal Sent</option>
+                      <option value="negotiation">Under Negotiation</option>
                     </select>
                   </div>
                   <div class="col-md-4 mb-3">
@@ -1445,7 +1445,7 @@ const crmModule = {
                       <tr><td class="text-muted">Date:</td><td><strong>${date}</strong></td></tr>
                       <tr><td class="text-muted">Type:</td><td>${this.getTypeBadge(comm.type)}</td></tr>
                       <tr><td class="text-muted">Direction:</td><td>${comm.direction === 'inbound' ? '<span class="badge bg-info">Inbound</span>' : '<span class="badge bg-primary">Outbound</span>'}</td></tr>
-                      <tr><td class="text-muted">Regarding:</td><td>${this.formatRegarding(comm.regarding)}</td></tr>
+                      <tr><td class="text-muted">Topic:</td><td>${this.formatRegarding(comm.regarding)}</td></tr>
                     </table>
                   </div>
                   <div class="col-md-6">
@@ -1536,7 +1536,7 @@ const crmModule = {
                     </div>
                   </div>
                   <div class="mb-3">
-                    <label class="form-label">Regarding</label>
+                    <label class="form-label">Topic</label>
                     <select class="form-select" id="editCommRegarding">
                       <option value="general" ${comm.regarding === 'general' ? 'selected' : ''}>General</option>
                       <option value="sponsorship" ${comm.regarding === 'sponsorship' ? 'selected' : ''}>Sponsorship</option>
@@ -1820,13 +1820,13 @@ const crmModule = {
                     <div class="col-md-4 mb-3">
                       <label class="form-label">Stage</label>
                       <select class="form-select" id="editDealStage">
-                        <option value="lead" ${deal.stage === 'lead' ? 'selected' : ''}>Lead</option>
-                        <option value="contacted" ${deal.stage === 'contacted' ? 'selected' : ''}>Contacted</option>
-                        <option value="qualified" ${deal.stage === 'qualified' ? 'selected' : ''}>Qualified</option>
-                        <option value="proposal" ${deal.stage === 'proposal' ? 'selected' : ''}>Proposal</option>
-                        <option value="negotiation" ${deal.stage === 'negotiation' ? 'selected' : ''}>Negotiation</option>
-                        <option value="closed_won" ${deal.stage === 'closed_won' ? 'selected' : ''}>Closed Won</option>
-                        <option value="closed_lost" ${deal.stage === 'closed_lost' ? 'selected' : ''}>Closed Lost</option>
+                        <option value="lead" ${deal.stage === 'lead' ? 'selected' : ''}>Identified</option>
+                        <option value="contacted" ${deal.stage === 'contacted' ? 'selected' : ''}>Approached</option>
+                        <option value="qualified" ${deal.stage === 'qualified' ? 'selected' : ''}>Meeting Held</option>
+                        <option value="proposal" ${deal.stage === 'proposal' ? 'selected' : ''}>Proposal Sent</option>
+                        <option value="negotiation" ${deal.stage === 'negotiation' ? 'selected' : ''}>Under Negotiation</option>
+                        <option value="closed_won" ${deal.stage === 'closed_won' ? 'selected' : ''}>Confirmed</option>
+                        <option value="closed_lost" ${deal.stage === 'closed_lost' ? 'selected' : ''}>Declined</option>
                       </select>
                     </div>
                   </div>
@@ -3651,13 +3651,13 @@ const crmModule = {
     if (!container) return;
     const deals = this._deals || [];
     const stages = [
-      { key: 'lead', label: 'Lead', color: 'secondary' },
-      { key: 'contacted', label: 'Contacted', color: 'info' },
-      { key: 'qualified', label: 'Qualified', color: 'primary' },
-      { key: 'proposal', label: 'Proposal', color: 'warning' },
-      { key: 'negotiation', label: 'Negotiation', color: 'orange' },
-      { key: 'closed_won', label: 'Closed Won', color: 'success' },
-      { key: 'closed_lost', label: 'Closed Lost', color: 'danger' },
+      { key: 'lead', label: 'Identified', color: 'secondary' },
+      { key: 'contacted', label: 'Approached', color: 'info' },
+      { key: 'qualified', label: 'Meeting Held', color: 'primary' },
+      { key: 'proposal', label: 'Proposal Sent', color: 'warning' },
+      { key: 'negotiation', label: 'Under Negotiation', color: 'orange' },
+      { key: 'closed_won', label: 'Confirmed', color: 'success' },
+      { key: 'closed_lost', label: 'Declined', color: 'danger' },
     ];
     let html = '<div class="d-flex gap-2 overflow-auto pb-3" style="min-height:400px;">';
     stages.forEach((stage) => {

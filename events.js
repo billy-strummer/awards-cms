@@ -12197,6 +12197,8 @@ const eventsModule = {
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
     const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+    const yearStart = `${now.getFullYear()}-01-01`;
+    const yearEnd = `${now.getFullYear()}-12-31`;
 
     let filtered = (STATE.allEvents || []).filter((e) => {
       if (search) {
@@ -12207,6 +12209,8 @@ const eventsModule = {
       if (timeStatus === 'upcoming' && (!e.event_date || e.event_date < today)) return false;
       if (timeStatus === 'past' && (!e.event_date || e.event_date >= today)) return false;
       if (timeStatus === 'this-month' && (!e.event_date || e.event_date < monthStart || e.event_date > monthEnd))
+        return false;
+      if (timeStatus === 'this-year' && (!e.event_date || e.event_date < yearStart || e.event_date > yearEnd))
         return false;
       if (eventStatus && (e.event_status || 'draft') !== eventStatus) return false;
       return true;
@@ -12220,6 +12224,8 @@ const eventsModule = {
       if (timeStatus === 'past') filtered = filtered.filter((e) => e.event_date && e.event_date < today);
       if (timeStatus === 'this-month')
         filtered = filtered.filter((e) => e.event_date && e.event_date >= monthStart && e.event_date <= monthEnd);
+      if (timeStatus === 'this-year')
+        filtered = filtered.filter((e) => e.event_date && e.event_date >= yearStart && e.event_date <= yearEnd);
       if (eventStatus) filtered = filtered.filter((e) => (e.event_status || 'draft') === eventStatus);
     }
 

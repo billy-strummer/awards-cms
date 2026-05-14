@@ -798,7 +798,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **Root cause:** The `#orgsSubNav` pills switch between All Organisations and Sponsors views via custom `showOrgsView()` / `showSponsorsView()` functions in `organisations.js`. This means the active pill is managed manually, the URL doesn't reflect sub-view, and it's a separate code path from the rest of the app's Bootstrap tab pattern.
 - **Fix:** Wrap the two org views in proper tab-pane divs. Give the pills `data-bs-toggle="tab"` and `data-bs-target` attributes pointing to the panes. Remove the custom show/hide JS — Bootstrap handles it automatically.
 - **Done when:** Orgs sub-nav works as Bootstrap tabs. Active pill updates automatically. No custom show/hide code required.
-- [ ] Implemented
+- [x] Implemented
 
 ### V3-H5 — Reports tab shows empty state on first visit even with data
 - **Files:** `app.js`
@@ -1668,7 +1668,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **Root cause:** The topbar contains a bright yellow `btn-outline-warning` dropdown labelled "🐛 Test Mode" with options: "Generate Test Data (30 Winners)", "Remove Test Data", "Create Mock Order", "Remove Mock Orders". This is visible to every user, including non-technical business admins. A single click on "Generate Test Data" injects 30 fake winner records into the live database. There is no confirmation step.
 - **Fix:** Wrap the entire `#testModeDropdown` in a check so it only renders in non-production environments. The simplest approach: add a `data-env` attribute to `<body>` (set by the build script) and use CSS `body:not([data-env="development"]) #testModeDropdown { display: none !important; }`. Alternatively, hide it with `d-none` and only show it via a developer keyboard shortcut (`Ctrl+Shift+D`). The "Generate Test Data" action must also show a confirmation modal before executing.
 - **Done when:** The Test Mode button is not visible to a logged-in business admin in any production build. It can only be accessed by developers who know the secret shortcut.
-- [ ] Implemented
+- [x] Implemented
 
 ---
 
@@ -1680,7 +1680,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **Fix:** Move the "Award Categories Reference" card to a help/info panel — either a collapsible section at the BOTTOM of the Awards tab, or a modal opened via an "Award Size Guide" button in the toolbar. The first visible element in the Awards tab should be the filter bar and awards table (matching the pattern in Entries, Organisations, Events).
 - **Also:** Add a "Getting Started — Awards" dismissible banner (matching the Entries/Events/Payments pattern) showing the award lifecycle: 1) Create award categories → 2) Set to Active to open for entries → 3) Manage judging phases → 4) Announce winners.
 - **Done when:** Opening the Awards section shows the filter bar and table immediately. The reference card is accessible but not the first thing on the page.
-- [ ] Implemented
+- [x] Implemented
 
 ### V7-H2 — Winners section has no "Getting Started" banner
 - **Files:** `index.html` (winners tab pane, around line 2205)
@@ -1692,42 +1692,42 @@ Branch: `claude/bta-location-restructure-JS5hX`
   - Action CTA: "Import Winners CSV"
   - localStorage key: `winnersWorkflowDismissed`
 - **Done when:** Opening the Winners section shows the numbered workflow banner on first visit.
-- [ ] Implemented
+- [x] Implemented
 
 ### V7-H3 — Assignments modal title "Manage Award Nominees" is wrong — it is the judge assignment screen
 - **Files:** `index.html` line 7534–7535
 - **Root cause:** The assignments modal (opened from Awards → each award row) is titled "Manage Award Nominees" with a trophy icon. But this modal is actually the judge-assignment workflow: it shows which organisations/nominees are assigned to a judge panel, allows sending decision emails (Shortlisted/Rejected/Winner), and shows vote counts. It is NOT a screen for managing who the nominees are. A first-time user will expect to find judges here, not see "nominees" terminology.
 - **Fix:** Rename the modal title to `"Award Judging Panel"` or `"Manage Nominees & Decisions"`. Change the icon from `bi-trophy` to `bi-person-badge` or `bi-people`. Update the subtitle/description text inside the modal body to explain this is where judges review assigned nominees and record decisions.
 - **Done when:** The modal title accurately describes its purpose (judge/decision management, not nominee creation).
-- [ ] Implemented
+- [x] Implemented
 
 ### V7-H4 — Entry status options "Under Review" and "Pending Review" are unexplained and redundant-seeming
 - **Files:** `index.html` lines 2527–2529 (entries status filter select)
 - **Root cause:** The entry status filter dropdown includes: Submitted, Under Review, Pending Review, Shortlisted, Rejected. Both "Under Review" and "Pending Review" exist with no tooltip, description, or differentiation. A first-time judge or admin will not understand the difference — they seem like synonyms. Looking at the codebase, `pending_review` = waiting to be assigned to a reviewer; `under_review` = actively being reviewed by a judge. This distinction is invisible in the UI.
 - **Fix:** Add `<option>` titles or, better, add a tooltip icon next to the filter label explaining: "Pending Review = submitted, waiting for a judge to be assigned. Under Review = currently being scored by an assigned judge." Alternatively, rename to "Awaiting Judge" and "With Judge" to make the distinction crystal clear.
 - **Done when:** A user can distinguish between the two review statuses without reading documentation.
-- [ ] Implemented
+- [x] Implemented
 
 ### V7-H5 — Marketing sub-tabs are in a different order from the "Getting Started" workflow steps
 - **Files:** `index.html` lines 3899–3960 (marketingSubTabs nav)
 - **Root cause:** The Marketing "Getting Started" banner lists the recommended workflow as: 1) Branding → 2) Email Placeholders → 3) Email Templates → 4) Email Builder → 5) Email Lists → 6) Email Sequences → 7) Banners → 8) Sponsors → 9) Social Media. But the actual sub-tabs appear in this order: Branding Overview, Placeholders, **Banners, Social Media, Content Calendar**, Email Templates, Email Builder, Email Lists, Email Sequences. Banners and Social are shown third and fourth, not seventh and ninth as the workflow suggests. The mismatch means the banner says "follow steps in order" but the tabs are NOT in that order.
 - **Fix:** Reorder the Marketing sub-tabs to match the Getting Started workflow: 1) Branding, 2) Placeholders, 3) Email Templates, 4) Email Builder, 5) Email Lists, 6) Email Sequences, 7) Banners, 8) Sponsors, 9) Social Media, 10) Content Calendar. This is a pure HTML reorder — move the `<li>` tab buttons in `#marketingSubTabs`. Also move the corresponding `tab-pane` divs in the content area to match.
 - **Done when:** Tab order in `#marketingSubTabs` matches the numbered steps in the Getting Started banner exactly.
-- [ ] Implemented
+- [x] Implemented
 
 ### V7-H6 — "Phase" column in Awards table is hidden by default; it is critical judging workflow info
 - **Files:** `index.html` lines 1074–1076 (Tools dropdown column toggle), `awards.js` (column visibility logic)
 - **Root cause:** The Phase column (showing the current judging phase: Entry / Judging / Shortlisting / Voting / Announced) is toggled off by default. It appears in Tools → Column Visibility as an opt-in. During active award programmes, Phase is one of the most important fields for an admin to see at a glance — it tells them what stage each award is at. Hiding it by default means users manage an active programme without visibility into phase.
 - **Fix:** Make the Phase column visible by default. Change the initial checked state of `#colTogglePhase` to checked, and ensure `awardsModule` renders the Phase column in the initial table render. The user can still hide it via Tools → Column Visibility if they want a cleaner view.
 - **Done when:** The Phase column is visible when a user first opens the Awards section, alongside Status, Year, and Sector.
-- [ ] Implemented
+- [x] Implemented
 
 ### V7-H7 — Social media compose: "Post Now" is green (success) and "Schedule Post" is blue (primary) — backwards priority
 - **Files:** `index.html` lines 4284–4288 (social media compose buttons)
 - **Root cause:** The social media compose panel has two submit buttons: "Schedule Post" (`btn-primary`, blue) and "Post Now" (`btn-success`, green). For an awards business, scheduling is the safe, deliberate workflow; "Post Now" is the dangerous one (publishes immediately). The green "success" colour makes "Post Now" look like the encouraged primary action. This compounds V6-C1: even with the warning banner, the button colour signals "Post Now = good / correct".
 - **Fix:** Swap the button styles: "Schedule Post" → `btn-success` (green, encouraged action), "Post Now" → `btn-outline-warning` or `btn-outline-danger` (cautious action, especially since credentials may not be set). Add `title="Posts immediately — requires API credentials to be configured"` to the Post Now button.
 - **Done when:** The button hierarchy visually communicates that Schedule is the intended workflow and Post Now is the exception.
-- [ ] Implemented
+- [x] Implemented
 
 ---
 
@@ -1738,70 +1738,70 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **Root cause:** The Organisations filter bar uses `<div class="card border-0 shadow-sm mb-4 filter-bar-sticky">` — a Bootstrap card, while all other sections (Awards, Entries, Events, Payments, CRM) use `<div class="content-card mb-4 filter-bar-sticky">`. Minor visual inconsistency but noticeable when switching between sections.
 - **Fix:** Change `class="card border-0 shadow-sm mb-4 filter-bar-sticky"` → `class="content-card mb-4 filter-bar-sticky"` on the organisations filter bar. Remove the inner `<div class="card-body">` wrapper (`.content-card` includes its own padding). This is the same fix pattern as previous audits.
 - **Done when:** Organisations filter bar is visually identical in style to the Awards filter bar.
-- [ ] Implemented
+- [x] Implemented
 
 ### V7-M2 — CRM "Regarding" column/filter label is passive and unclear
 - **Files:** `index.html` lines 5731–5738 (CRM communications filter), line 5769 (communications table `<th>`)
 - **Root cause:** The CRM communications filter and table column are labelled "Regarding" — a passive, formal word that doesn't communicate purpose. Options include "Sponsorship", "Award Application", "Event Ticket", "General Enquiry". The filter should tell users what they're filtering by: the topic or type of communication.
 - **Fix:** Rename label `"Regarding"` → `"Topic"` in both the filter (`<label>`) and the table column (`<th>`). Also update `crm.js` render output that writes the `"regarding"` value into the table row to use `"Topic"` as the display header.
 - **Done when:** Both the filter label and the table column header say "Topic" instead of "Regarding".
-- [ ] Implemented
+- [x] Implemented
 
 ### V7-M3 — Settings > "Seasons & Areas" description exposes technical language ("seed SQL")
 - **Files:** `index.html` lines 6235–6238 (Manage Areas section)
 - **Root cause:** The description reads: *"View the 101 geographic areas used for award categories. Populated by the areas seed SQL."* The phrase "seed SQL" is developer jargon that business users will not understand. It also says "101 geographic areas" with no explanation of what this means for their workflow.
 - **Fix:** Replace the description with: *"The geographic areas available when assigning award categories to locations. These are pre-loaded from your initial setup and cover all UK regions and major cities."* Remove any reference to SQL or seeding.
 - **Done when:** No technical jargon is visible in the Settings > Areas panel description.
-- [ ] Implemented
+- [x] Implemented
 
 ### V7-M4 — Events "Financial Overview" panel is collapsed by default; revenue data should be visible
 - **Files:** `index.html` lines 3325–3395 (financial overview panel)
 - **Root cause:** The "Financial Overview - All Events" panel (showing Total Revenue, Total Costs, Net P&L, and per-event breakdown) is rendered as a Bootstrap collapse that is closed by default. For an awards business processing ticket sales and sponsorship payments, this financial summary is a primary concern — not a secondary detail to be discovered.
 - **Fix:** Change the panel to be expanded by default: add `class="show"` to the `#financialOverviewBody` collapse div and update the toggle button's `aria-expanded` to `"true"`. Users can still collapse it. The change is one-line in `index.html`.
 - **Done when:** Financial Overview is visible when a user first opens the Events section without needing to click anything.
-- [ ] Implemented
+- [x] Implemented
 
 ### V7-M5 — Payments "Outstanding" stat card label is ambiguous (amount vs. count?)
 - **Files:** `index.html` lines 5332–5337
 - **Root cause:** The "Outstanding" stat card in the Payments > Invoices tab shows `£<amount>` but the card title is just "Outstanding". It's unclear at a glance whether this is a count of outstanding invoices or an outstanding monetary amount. The `£` prefix suggests it's a total balance but the label doesn't confirm this.
 - **Fix:** Change the stat card `<h6>` label from `"Outstanding"` to `"Outstanding Balance"`. This immediately tells users it's a monetary total, not a count.
 - **Done when:** The stat card clearly communicates it shows a total amount owed, not a count of invoices.
-- [ ] Implemented
+- [x] Implemented
 
 ### V7-M6 — "Sales Dashboard" button in the dashboard is confusing alongside the Reports section
 - **Files:** `index.html` line 647
 - **Root cause:** The dashboard header has a `btn-primary` button "Sales Dashboard" that opens a modal (`#salesDashboardModal`). There is also a "Reports" section in the sidebar. A first-time user will not understand the difference: why is there a "Sales Dashboard" in the main dashboard AND a "Reports" section? The modal appears to show payment/revenue charts — content that logically belongs in Reports.
 - **Fix:** Either (a) rename the button to "Revenue Overview" and add a `title` tooltip explaining "Quick view of revenue and payments — see Reports for full analytics", or (b) remove the modal entirely and add its charts to the Payments section's KPI bar or the Reports section. If keeping, add a description under the button: `<small class="text-muted d-block mt-1">Quick payment & revenue summary</small>`.
 - **Done when:** The relationship between "Sales Dashboard" and "Reports" is clear to a first-time user.
-- [ ] Implemented
+- [x] Implemented
 
 ### V7-M7 — CRM deal pipeline stages use generic sales jargon, not awards terminology
 - **Files:** `index.html` lines 5829–5836 (deals stage filter), `crm.js` (renderDeals stage display)
 - **Root cause:** The deals pipeline stages are: `lead`, `contacted`, `qualified`, `proposal`, `negotiation`, `closed_won`, `closed_lost`. These are standard B2B sales stages that don't map naturally to an awards business sponsorship pipeline. An awards admin thinking about sponsors won't naturally categorise them as "qualified" or "negotiation". The stages should use awards/sponsorship terminology.
 - **Fix:** Rename stages in the filter options and CRM deal rendering to: Identified → Approached → Meeting Held → Proposal Sent → Under Negotiation → Confirmed → Declined. Update the `<option value>` attributes and any `crm.js` display logic that maps stage to a display label. This is a display-only change; DB values can stay the same if mapped via a translation object.
 - **Done when:** Deal stages use awards/sponsorship terminology. No B2B sales jargon visible to business users.
-- [ ] Implemented
+- [x] Implemented
 
 ### V7-M8 — "Smart Segments" CRM tab name is technical jargon
 - **Files:** `index.html` line 5698 (`#smart-segments-subtab`), line 6063–6064
 - **Root cause:** The CRM sub-tab is labelled "Smart Segments" — this sounds like a marketing tech feature, not a business function. The tooltip explains it, but tooltips are invisible until hover. A first-time user may not know to click it, and may confuse it with email list segments in Marketing.
 - **Fix:** Rename the tab label to "Auto-Segments" or "Dynamic Lists" — clearer, more self-explanatory. Update the `<h4>` heading inside the tab content at line 6065 to match. Also update the tooltip to: *"Rules-based filters that automatically update as your organisation data changes — e.g. 'All winners in Finance sector'"*.
 - **Done when:** Tab label and heading are business-friendly and self-explanatory without needing the tooltip.
-- [ ] Implemented
+- [x] Implemented
 
 ### V7-M9 — Winner status "media_sent" in filter doesn't match the documented status lifecycle
 - **Files:** `index.html` line 2286 (winners status filter), line 2373–2374 (status column tooltip)
 - **Root cause:** The Winners status filter includes `"media_sent"` (displayed as "Media Sent") but the tooltip on the Status column documents the lifecycle as: `Pending → Notified → Pack Sent → Confirmed → Published`. "Media Sent" is not in this documented lifecycle. This is either a missing status in the tooltip or an undocumented status in the filter — either way it's inconsistent.
 - **Fix:** Align the filter options with the documented lifecycle. Either: (a) Add "Media Sent" to the lifecycle tooltip with its definition, OR (b) Replace "Media Sent" in the filter with "Pack Sent" (which IS in the documented lifecycle) if they are the same thing. Update `winners.js` status badge rendering to match whichever canonical list is agreed.
 - **Done when:** Every status option in the filter appears in the documented lifecycle tooltip, and vice versa.
-- [ ] Implemented
+- [x] Implemented
 
 ### V7-M10 — Events "This Year" stat card has no corresponding filter option
 - **Files:** `index.html` lines 3300–3315 (events stat cards)
 - **Root cause:** The Events section has stat cards including one labelled "This Year" showing the count of events this year. Other stat cards (like "Upcoming") are clickable and apply a filter. But there is no "This Year" option in the Events filter bar dropdown — the time filter only offers: All Events, Upcoming, Past, This Month. Clicking the "This Year" card (if it's supposed to filter) would have no matching filter state.
 - **Fix:** Either (a) add a "This Year" option to the events time filter dropdown so the stat card can activate it on click, or (b) make the "This Year" stat card non-clickable and visually distinguish it from the clickable stat cards (remove `stat-card-clickable` class if present). Adding "This Year" to the filter is the better solution.
 - **Done when:** "This Year" is a usable filter option in the Events filter bar, and the corresponding stat card activates it on click.
-- [ ] Implemented
+- [x] Implemented
 
 ---
 
@@ -1812,40 +1812,40 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **Root cause:** Every other major section (Awards, Entries, Events, Payments, CRM, Organisations, Marketing, Winners) has a "Getting Started" banner. The Reports section — which contains chart tabs (Pipeline, Sector, Region, Year-on-Year), scheduled reports, and year filtering — opens with no explanation. A first-time user doesn't know what charts are available, how to schedule a report, or how to export data.
 - **Fix:** Add a dismissible "Getting Started — Reports" banner above the filter bar: 1) Use the year filter to narrow the view → 2) Scroll down to see pipeline, sector, and region breakdowns → 3) Scroll to "Scheduled Reports" to set up automated email reports. Add an action button "Schedule a Report".
 - **Done when:** Reports section has a getting-started banner matching the style of other sections.
-- [ ] Implemented
+- [x] Implemented
 
 ### V7-L2 — btn-info used for confirm/primary actions in several places; should be btn-primary
 - **Files:** `index.html` lines 3040, 3050 (YouTube playlist buttons), 7378 (Send Invoice confirm), 9351 (winner export)
 - **Root cause:** `btn-info` (Bootstrap's teal/cyan button) is used for several confirm/submit actions: "Fetch Playlist Videos", "Import Playlist Videos", "Send Invoice" (confirm), "Export Year Comparison". This is inconsistent with the rest of the CMS which uses `btn-primary` (blue) for all primary confirm/submit actions. `btn-info` also lacks sufficient colour contrast in some themes.
 - **Fix:** Replace `btn-info text-white` and `btn-info` with `btn-primary` on all action/confirm buttons that aren't specifically status-indicator buttons. Do a global search for `btn-info` and convert each to `btn-primary` (unless it's genuinely an informational indicator, not an action).
 - **Done when:** No `btn-info` is used for primary action buttons. Only `btn-primary` (blue), `btn-success` (green), `btn-warning` (amber), `btn-danger` (red) are used with clear semantic meaning.
-- [ ] Implemented
+- [x] Implemented
 
 ### V7-L3 — Award Categories Reference card should move out of the main Awards view
 - **Files:** `index.html` lines 888–949
 - **Note:** This is the secondary fix for V7-H1. If V7-H1 moves this card to the bottom of the page, this item is auto-complete. If V7-H1 converts it to a modal, add a "Size Guide" button to the Awards toolbar linking to the modal.
 - **Done when:** The reference card is not the first content visible when opening Awards.
-- [ ] Implemented
+- [x] Implemented
 
 ### V7-L4 — Award form "Previous Winner" fields use placeholder text "1st Place / 2nd Place / 3rd Place" which looks like position codes
 - **Files:** `index.html` lines 7067–7083 (award form modal, Previous Winner fields)
 - **Root cause:** The award form has three "Previous Winner" fields with placeholder text "1st Place", "2nd Place", "3rd Place". These look like they expect a position code or selection, not a free-text name. A user might type "1st Place" literally rather than entering the winner's name.
 - **Fix:** Change placeholder text to `"Winner's name (e.g. Acme Ltd)"`, `"Runner-up name (optional)"`, `"Third place name (optional)"`. Also add a `<small class="text-muted">` label above these three fields: "Previous year's results (optional — for display on award pages)".
 - **Done when:** Previous Winner fields clearly communicate they expect company/person names, not position codes.
-- [ ] Implemented
+- [x] Implemented
 
 ### V7-L5 — "bitcoin" / "Markets" hidden sidebar item uses cryptocurrency branding in an awards CMS
 - **Files:** `index.html` lines 282–289 (`#bitcoin-nav-item`)
 - **Root cause:** There is a hidden sidebar item `id="bitcoin-nav-item"` with `id="bitcoin-tab"` and the Bootstrap icon `bi-currency-bitcoin`. The label says "Markets". If RBAC enables this item for certain admin roles, users will see a Bitcoin icon in an awards CMS. This is confusing regardless of context.
 - **Fix:** If this feature will be used, rename the id to something business-appropriate (e.g., `#markets-nav-item`) and replace `bi-currency-bitcoin` with `bi-bar-chart-line` or `bi-graph-up`. If the feature is not planned for use, remove the HTML block entirely to reduce dead code.
 - **Done when:** No cryptocurrency icon or identifier appears in the sidebar in any RBAC role.
-- [ ] Implemented
+- [x] Implemented
 
 ### V7-L6 — "Populated by the areas seed SQL" exposes database implementation language in Settings
 - **Files:** `index.html` line 6237
 - **Note:** This is the secondary item for V7-M3. V7-M3 covers the full fix; this item is auto-complete when V7-M3 is done.
 - **Done when:** Settings > Areas description uses business language. No mention of SQL or seeding.
-- [ ] Implemented
+- [x] Implemented
 
 ---
 

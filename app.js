@@ -1326,6 +1326,20 @@ document.addEventListener('DOMContentLoaded', function () {
       utils.toggleCommandPalette();
     }
 
+    // Ctrl+Shift+D — toggle developer Test Mode button visibility
+    if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+      e.preventDefault();
+      const tm = document.getElementById('testModeDropdown');
+      if (tm) {
+        const hidden = tm.classList.toggle('d-none');
+        utils.showToast(
+          hidden ? 'Test Mode hidden' : 'Test Mode enabled — developer only',
+          hidden ? 'info' : 'warning',
+          3000
+        );
+      }
+    }
+
     // Escape key to close modals
     if (e.key === 'Escape') {
       const openModals = document.querySelectorAll('.modal.show');

@@ -4164,3 +4164,8 @@ input[type="date"].form-control::-webkit-calendar-picker-indicator {
 .winner-thumb-wrap:hover .winner-thumb-preview {
   display: block !important;
 }
+
+/* Purple utility (replaces hardcoded #6f42c1 inline styles) */
+.btn-purple { background-color: #6f42c1; border-color: #6f42c1; color: #fff; }
+.btn-purple:hover { background-color: #5a329a; border-color: #5a329a; color: #fff; }
+.bg-purple { background-color: #6f42c1 !important; }

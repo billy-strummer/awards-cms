@@ -1985,3 +1985,94 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **V8-M3 (CRM deals empty state)** — Find the `renderDeals` or equivalent method in `crm.js` that populates the deals table body. Add an `if (deals.length === 0)` empty state row.
 - Always run `npm test` and `npm run build` after implementing. All 65 suites must pass, 0 lint errors.
 - Branch: `claude/bta-location-restructure-JS5hX`
+
+---
+
+## V9 Audit — 2026-05-14 (Colour semantics, certificate editor, remaining polish)
+
+> **Focus:** Areas not previously audited deeply — certificate template editor, email builder, winner pipeline toolbar, btn-warning semantic consistency, and hardcoded colour styles. The CMS is substantially complete; these are refinement-level issues.
+
+---
+
+## V9-HIGH
+
+### V9-H1 — Certificate Template Editor: X, Y, Width, Font Size fields have no unit indicators
+- **Files:** `index.html` lines 9293–9312 (certificate field properties panel)
+- **Root cause:** The Certificate Template Editor has numeric inputs for X, Y, Width, and Font Size with no indication of units. A non-technical awards admin placing winner text on a certificate has no idea if "100" means 100px, 100mm, or 100pt. There is no hint text, no example, and no canvas scale reference.
+- **Fix:** Add `<small class="text-muted ms-1">(px)</small>` next to X, Y, and Width labels; `<small class="text-muted ms-1">(pt)</small>` next to Font Size label. Add a note below the field list: *"Coordinates start from the top-left corner of the page (0, 0)."*
+- **Done when:** A non-technical user can position a field on a certificate without guessing units.
+- [x] Implemented
+
+---
+
+## V9-MEDIUM
+
+### V9-M1 — Email Builder "Send to List" button uses `btn-warning` (amber) — wrong semantic
+- **Files:** `index.html` line 5101 (`#btnSendCampaign`)
+- **Root cause:** The primary send action in the email builder is styled `btn-warning` (amber). In this CMS amber consistently signals "proceed with caution / dangerous action" (Post Now social media, Overdue Reminders). But "Send to List" is the *intended normal outcome* of building an email — a positive primary action, not a cautionary one. Users hesitate at amber primary CTAs.
+- **Fix:** Change `btn-warning` → `btn-success` on `#btnSendCampaign`. "Schedule Campaign" is already correctly `btn-primary`.
+- **Done when:** The Send to List button is green (success/positive action), not amber.
+- [x] Implemented
+
+### V9-M2 — Winner Pipeline button is `btn-warning` (amber) on the Winners toolbar
+- **Files:** `index.html` line 2425
+- **Root cause:** The "Pipeline" button on the Winners section toolbar opens the winner pipeline dashboard — a read-only management view. It is styled `btn-warning` (amber), implying dangerous or cautionary action, when it is simply a navigation/view button.
+- **Fix:** Change `btn-warning btn-sm` → `btn-outline-primary btn-sm` on the Pipeline button.
+- **Done when:** The Pipeline button matches the neutral navigation style of the other toolbar buttons.
+- [x] Implemented
+
+### V9-M3 — "Conflicts" button in Assignments modal header is cryptic
+- **Files:** `index.html` line 7732
+- **Root cause:** The button reads "Conflicts" with a shield-exclamation icon. A first-time admin won't know this means "judge conflict of interest declarations". The title tooltip helps on hover but the button text alone is ambiguous — "Conflicts" could refer to scheduling conflicts, data conflicts, or anything else.
+- **Fix:** Change button label from `"Conflicts"` to `"Judge Conflicts"`.
+- **Done when:** The button text alone communicates it is about judge conflict-of-interest management.
+- [x] Implemented
+
+---
+
+## V9-LOW
+
+### V9-L1 — Hardcoded `#6f42c1` purple inline styles used on multiple buttons and panels
+- **Files:** `index.html` lines 1154, 2428, 10492, 10502, 10586; `styles.css`
+- **Root cause:** Bootstrap 5 does not include a purple theme colour. Several elements use inline `style="background-color:#6f42c1;..."` to create purple buttons and panels: the Awards bulk clone button, the Winner Announcements button, and the Events Summary modal header/card/button. This is inconsistent with the theme system and breaks if branding changes.
+- **Fix:** Add a `.btn-purple` utility class to `styles.css` (`background-color:#6f42c1;border-color:#6f42c1;color:#fff`) and replace all inline colour styles with `class="btn btn-purple ..."`. Also add `.bg-purple` for the modal header and card backgrounds.
+- **Done when:** No `#6f42c1` inline colour styles remain on interactive elements; all use CSS classes.
+- [x] Implemented
+
+### V9-L2 — "Run YouTube Health Check" button is `btn-warning` for a passive diagnostic
+- **Files:** `index.html` line 3334
+- **Root cause:** The "Run YouTube Health Check" in Media Gallery is `btn-warning` (amber). This operation checks the status of synced YouTube playlists — it is read-only and non-destructive. Amber incorrectly implies danger.
+- **Fix:** Change `btn-warning btn-lg` → `btn-outline-secondary btn-lg`.
+- **Done when:** The Health Check button is neutral-styled, matching other diagnostic/secondary actions.
+- [x] Implemented
+
+### V9-L3 — AI Vetting "Run Vetting" button is `btn-warning` for a primary action
+- **Files:** `index.html` line 10787
+- **Root cause:** The "Run Vetting" button in the AI Vetting panel is `btn-warning` (amber). Running AI vetting is the primary intended action of this panel — not a destructive or cautionary one. It queries the Claude API to vet an organisation.
+- **Fix:** Change `btn-warning` → `btn-primary` on `#runVettingBtn`.
+- **Done when:** Run Vetting is styled as a primary action (blue), not a warning.
+- [x] Implemented
+
+### V9-L4 — Email Builder sidebar heading "Send Campaign" conflicts with button label "Send to List"
+- **Files:** `index.html` line 5049
+- **Root cause:** The email builder sidebar panel has a heading `<h6>Send Campaign</h6>` and a button immediately below it labelled "Send to List". Using two different names for the same action in the same panel is confusing — users may think they are different operations.
+- **Fix:** Change the `<h6>` heading text from `"Send Campaign"` to `"Send to List"` to match the button.
+- **Done when:** The heading and the button use the same label for the same action.
+- [x] Implemented
+
+### V9-L5 — Sponsor Portal button has no tooltip explaining what it opens
+- **Files:** `index.html` line 2259
+- **Root cause:** The "Sponsor Portal" button in Organisations opens a summary dashboard of all sponsor/partner organisations. There is no tooltip or description explaining what it does or how it differs from the main Organisations table.
+- **Fix:** Add `title="View a summary dashboard of all organisations marked as sponsors or partners"` to the button.
+- **Done when:** Hovering the button gives a plain-English description of what it opens.
+- [x] Implemented
+
+---
+
+## Notes for Claude (V9)
+
+- **V9-H1 (certificate units)** — The field properties panel is at `#certFieldProps` (hidden until a field is selected). The inputs are `#certFieldX`, `#certFieldY`, `#certFieldWidth`, `#certFieldFontSize`. Add `<small>` unit hints after each `<label>`.
+- **V9-L1 (btn-purple)** — Add to `styles.css`: `.btn-purple { background-color:#6f42c1;border-color:#6f42c1;color:#fff; } .btn-purple:hover { background-color:#5a329a;border-color:#5a329a;color:#fff; } .bg-purple { background-color:#6f42c1 !important; }`. Then replace inline styles in `index.html`.
+- **V9-M1/M2/L2/L3** — These are all single-line `btn-warning` → `btn-*` class changes in `index.html`.
+- Always run `npm test` and `npm run build` after implementing. All 65 suites must pass, 0 lint errors.
+- Branch: `claude/bta-location-restructure-JS5hX`

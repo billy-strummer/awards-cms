@@ -1151,7 +1151,7 @@
                   </button>
                   <ul class="dropdown-menu" id="bulkSeasonDropdown"></ul>
                 </div>
-                <button class="btn btn-purple btn-sm" style="background:#6f42c1;color:#fff;border-color:#6f42c1;" data-action="awardsModule.bulkCloneSelected">
+                <button class="btn btn-purple btn-sm" data-action="awardsModule.bulkCloneSelected">
                   <i class="bi bi-copy me-1"></i>Clone Selected
                 </button>
                 <button class="btn btn-outline-danger btn-sm" data-action="globalActions.confirmBulkDelete" data-module="awardsModule" data-fn="bulkDelete" data-label="award">
@@ -2256,7 +2256,7 @@
       <div class="d-flex justify-content-between align-items-center mb-4">
         <h4><i class="bi bi-award me-2"></i>Sponsors &amp; Partners</h4>
         <div class="d-flex gap-2">
-          <button class="btn btn-outline-secondary" data-action="sponsorPortalModule.renderSponsorDashboard">
+          <button class="btn btn-outline-secondary" data-action="sponsorPortalModule.renderSponsorDashboard" title="View a summary dashboard of all organisations marked as sponsors or partners">
             <i class="bi bi-speedometer2 me-2"></i>Sponsor Portal
           </button>
           <button class="btn btn-primary" data-action="marketingModule.openAddSponsorModal">
@@ -2422,10 +2422,10 @@
                 <i class="bi bi-list-ul me-2"></i>Winners List
               </h5>
               <div class="d-flex gap-2 align-items-center flex-wrap">
-                <button class="btn btn-warning btn-sm" data-action="winnerPipelineModule.renderPipelineDashboard">
+                <button class="btn btn-outline-primary btn-sm" data-action="winnerPipelineModule.renderPipelineDashboard">
                   <i class="bi bi-funnel me-1"></i>Pipeline
                 </button>
-                <button class="btn btn-sm" data-action="winnerAnnouncementsModule.renderAnnouncementsDashboard" style="background-color:#6f42c1;border-color:#6f42c1;color:#fff">
+                <button class="btn btn-purple btn-sm" data-action="winnerAnnouncementsModule.renderAnnouncementsDashboard">
                   <i class="bi bi-megaphone me-1"></i>Announcements
                 </button>
                 <div class="btn-group btn-group-sm">
@@ -3331,7 +3331,7 @@
                 <i class="bi bi-info-circle me-2"></i>Checks all YouTube video links in the system to verify they're still accessible. Detects deleted, private, or restricted videos.
               </div>
               <div class="text-center mb-3">
-                <button class="btn btn-warning btn-lg" data-action="mediaGalleryModule.runYouTubeHealthCheck">
+                <button class="btn btn-outline-secondary btn-lg" data-action="mediaGalleryModule.runYouTubeHealthCheck">
                   <i class="bi bi-play-circle me-2"></i>Run Health Check
                 </button>
               </div>
@@ -5046,7 +5046,7 @@
 
                     <!-- Send Campaign -->
                     <div class="mb-4">
-                      <h6 class="mb-3"><i class="bi bi-send me-2"></i>Send Campaign</h6>
+                      <h6 class="mb-3"><i class="bi bi-send me-2"></i>Send to List</h6>
 
                       <div class="mb-3">
                         <label class="form-label small">Send To List</label>
@@ -5098,7 +5098,7 @@
                         <button class="btn btn-outline-secondary btn-sm" data-action="emailBuilder.sendTestEmail">
                           <i class="bi bi-envelope-check me-1"></i>Send Test Email
                         </button>
-                        <button class="btn btn-warning btn-sm" id="btnSendCampaign" data-action="emailBuilder.sendCampaign">
+                        <button class="btn btn-success btn-sm" id="btnSendCampaign" data-action="emailBuilder.sendCampaign">
                           <i class="bi bi-send-fill me-1"></i>Send to List
                         </button>
                         <button class="btn btn-primary btn-sm d-none" id="btnScheduleCampaign" data-action="emailBuilder.scheduleCampaign">
@@ -7729,7 +7729,7 @@
           <i class="bi bi-people me-2"></i>Award Judging Panel
         </h5>
         <button class="btn btn-sm btn-light me-2" data-action="assignmentsModule.openConflictManager" title="Manage judge conflict of interest records">
-          <i class="bi bi-shield-exclamation me-1"></i>Conflicts
+          <i class="bi bi-shield-exclamation me-1"></i>Judge Conflicts
         </button>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
@@ -9292,24 +9292,25 @@
               </div>
               <div class="row g-2 mb-2">
                 <div class="col-6">
-                  <label class="form-label small mb-0">X</label>
+                  <label class="form-label small mb-0">X <small class="text-muted">(px)</small></label>
                   <input type="number" class="form-control form-control-sm" id="certFieldX" min="0">
                 </div>
                 <div class="col-6">
-                  <label class="form-label small mb-0">Y</label>
+                  <label class="form-label small mb-0">Y <small class="text-muted">(px)</small></label>
                   <input type="number" class="form-control form-control-sm" id="certFieldY" min="0">
                 </div>
               </div>
               <div class="row g-2 mb-2">
                 <div class="col-6">
-                  <label class="form-label small mb-0">Width</label>
+                  <label class="form-label small mb-0">Width <small class="text-muted">(px)</small></label>
                   <input type="number" class="form-control form-control-sm" id="certFieldWidth" min="0">
                 </div>
                 <div class="col-6">
-                  <label class="form-label small mb-0">Font Size</label>
+                  <label class="form-label small mb-0">Font Size <small class="text-muted">(pt)</small></label>
                   <input type="number" class="form-control form-control-sm" id="certFieldFontSize" min="6" max="200">
                 </div>
               </div>
+              <div class="small text-muted mb-2"><i class="bi bi-info-circle me-1"></i>Coordinates start from top-left (0, 0)</div>
               <div class="row g-2 mb-2">
                 <div class="col-6">
                   <label class="form-label small mb-0">Font</label>
@@ -10489,7 +10490,7 @@
   <div class="modal fade" id="eventsSummaryModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl">
       <div class="modal-content">
-        <div class="modal-header" style="background-color: #6f42c1; color: white;">
+        <div class="modal-header bg-purple text-white">
           <h5 class="modal-title">
             <i class="bi bi-calendar-event me-2"></i>Events Summary
           </h5>
@@ -10499,7 +10500,7 @@
           <!-- Summary Cards -->
           <div class="row g-3 mb-4">
             <div class="col-md-3">
-              <div class="card text-white h-100" style="background-color: #6f42c1;">
+              <div class="card text-white h-100 bg-purple">
                 <div class="card-body">
                   <h6 class="card-subtitle mb-2 opacity-75">Total Events</h6>
                   <h3 class="card-title mb-0" id="summaryTotalEvents">0</h3>
@@ -10583,7 +10584,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-          <button type="button" class="btn" style="background-color: #6f42c1; color: white;" data-action="utils.navigateAndCloseModal" data-id='{"section":"events","modal":"eventsSummaryModal"}'>
+          <button type="button" class="btn btn-purple" data-action="utils.navigateAndCloseModal" data-id='{"section":"events","modal":"eventsSummaryModal"}'>
             <i class="bi bi-calendar-event me-1"></i>View All Events
           </button>
         </div>
@@ -10784,7 +10785,7 @@
               </button>
             </div>
             <div>
-              <button class="btn btn-warning btn-sm" data-action="aiVettingModule.runVetting" id="runVettingBtn">
+              <button class="btn btn-primary btn-sm" data-action="aiVettingModule.runVetting" id="runVettingBtn">
                 <i class="bi bi-robot me-1"></i>Run AI Vetting
               </button>
               <button class="btn btn-outline-secondary btn-sm" data-action="aiVettingModule.exportResults">

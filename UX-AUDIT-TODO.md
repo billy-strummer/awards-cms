@@ -2195,3 +2195,80 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **File:** `index.html` line 4181
 - **Fix:** Add `title` attribute explaining it auto-generates posts from winner data.
 - [x] Implemented
+
+---
+
+# V12 UX Audit — Form Clarity, Terminology & Help Text
+
+## V12-HIGH
+
+### V12-H1 — Phone input has no format placeholder
+- **File:** `index.html` line 1999
+- **Fix:** Added `placeholder="+44 7700 900123"` to the phone input in Add Organisation modal.
+- [x] Implemented
+
+### V12-H2 — A/B test toggle has no explanation
+- **File:** `index.html` line 5102
+- **Fix:** Added help text below the toggle explaining what A/B testing does and the 100+ recipient recommendation.
+- [x] Implemented
+
+### V12-H3 — AI Vetting config alert points to wrong location
+- **File:** `index.html` line 10814
+- **Fix:** Updated alert to say "Settings → Integrations → API Keys" with console.anthropic.com link.
+- [x] Implemented
+
+### V12-H4 — "Export Selected" buttons give no format hint
+- **File:** `index.html` lines 2407, 3621 (Winners and Events)
+- **Fix:** Changed label to "Export Selected (CSV)" with `bi-filetype-csv` icon and descriptive tooltip.
+- [x] Implemented
+
+## V12-MEDIUM
+
+### V12-M1 — Invoice Type defaults to "Package" with no blank option
+- **File:** `index.html` line 7433
+- **Fix:** Added blank first option "Select invoice type…" and expanded option labels with brief descriptions.
+- [x] Implemented
+
+### V12-M2 — Tax Rate field has no UK VAT context
+- **File:** `index.html` line 7452
+- **Fix:** Added help text "UK standard VAT is 20%. Set to 0 for zero-rated or VAT-exempt invoices."
+- [x] Implemented
+
+### V12-M3 — Webhook Secret label uses developer jargon
+- **File:** `index.html` line 7128
+- **Fix:** Renamed to "Security Token" and added plain-English explanation below the field.
+- [x] Implemented
+
+### V12-M4 — Organisations filter "All Active" silently hides archived records
+- **File:** `index.html` line 1706
+- **Fix:** Changed default option to "All (Active Only)" to make the filter behaviour explicit.
+- [x] Implemented
+
+### V12-M5 — Organisations search placeholder says "Company" not "Organisation"
+- **File:** `index.html` line 1641
+- **Fix:** Changed placeholder to "Organisation name, email, contact…"
+- [x] Implemented
+
+### V12-M6 — CRM Deal Stage filter label has no context
+- **File:** `index.html` line 6072
+- **Fix:** Added info icon with tooltip listing all stage definitions (Identified through Declined).
+- [x] Implemented
+
+### V12-M7 — Stripe key help text doesn't explain test vs live mode
+- **File:** `index.html` line 8609
+- **Fix:** Updated help text to explain pk_test_ vs pk_live_ and link to Stripe dashboard.
+- [x] Implemented
+
+## V12 — NEEDS JAVASCRIPT (noted for awareness, not yet implemented)
+
+### V12-J1 — "Post Now" social media has no confirmation dialog
+- Social media Post Now button publishes immediately with no confirmation. Needs a modal.
+
+### V12-J2 — "Send to List" too easy to click before sending a test
+- Should prompt user to send test email before allowing full campaign send.
+
+### V12-J3 — "Restore from Backup" has no confirmation modal
+- Button should require a typed confirmation ("RESTORE") before overwriting all data.
+
+### V12-J4 — Winner status change has no in-row affordance
+- Status badge in Winners table should be clickable to change state directly.

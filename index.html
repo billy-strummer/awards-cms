@@ -1638,7 +1638,7 @@
               <i class="bi bi-search me-1" aria-hidden="true"></i>Search
             </label>
             <input type="text" class="form-control form-control-sm" id="orgsSearchBox"
-                   placeholder="Company, email, contact…">
+                   placeholder="Organisation name, email, contact…">
           </div>
 
           <!-- Year Filter -->
@@ -1703,7 +1703,7 @@
             </label>
             <select class="form-select form-select-sm" id="orgsStatusFilter"
                     data-on-change="orgsModule.filterOrganisations">
-              <option value="">All Active</option>
+              <option value="">All (Active Only)</option>
               <option value="prospect">Prospect</option>
               <option value="entrant">Entrant</option>
               <option value="nominee">Nominee</option>
@@ -1996,7 +1996,7 @@
                 </div>
                 <div class="col-md-6">
                   <label for="newContactPhone" class="form-label">Phone</label>
-                  <input type="tel" class="form-control" id="newContactPhone">
+                  <input type="tel" class="form-control" id="newContactPhone" placeholder="+44 7700 900123">
                 </div>
               </div>
               <div class="mb-3">
@@ -2404,8 +2404,8 @@
                 <button class="btn btn-outline-danger" data-action="globalActions.confirmBulkDelete" data-module="winnersModule" data-fn="bulkDeleteWinners" data-label="winner">
                   <i class="bi bi-trash me-1"></i>Delete Selected
                 </button>
-                <button class="btn btn-outline-secondary" data-action="winnersModule.bulkExportWinners">
-                  <i class="bi bi-download me-1"></i>Export Selected
+                <button class="btn btn-outline-secondary" data-action="winnersModule.bulkExportWinners" title="Download selected winners as a CSV spreadsheet">
+                  <i class="bi bi-filetype-csv me-1"></i>Export Selected (CSV)
                 </button>
                 <button class="btn btn-outline-secondary" data-action="winnersModule.clearWinnerSelection">
                   <i class="bi bi-x-circle me-1"></i>Clear
@@ -3618,8 +3618,8 @@
                 <button class="btn btn-outline-danger" data-action="globalActions.confirmBulkDelete" data-module="eventsModule" data-fn="bulkDeleteEvents" data-label="event">
                   <i class="bi bi-trash me-1"></i>Delete Selected
                 </button>
-                <button class="btn btn-outline-secondary" data-action="eventsModule.bulkExportEvents">
-                  <i class="bi bi-download me-1"></i>Export Selected
+                <button class="btn btn-outline-secondary" data-action="eventsModule.bulkExportEvents" title="Download selected events as a CSV spreadsheet">
+                  <i class="bi bi-filetype-csv me-1"></i>Export Selected (CSV)
                 </button>
                 <button class="btn btn-outline-secondary" data-action="eventsModule.clearSelection">
                   <i class="bi bi-x-circle me-1"></i>Clear
@@ -5101,6 +5101,7 @@
                           <input class="form-check-input" type="checkbox" id="abTestToggle" aria-label="Enable A/B testing" data-on-change="emailBuilder.toggleABTest">
                           <label class="form-check-label small" for="abTestToggle">A/B Test Subject Line</label>
                         </div>
+                        <div class="small text-muted mt-1">Send two different subject lines to a split of your list and compare open rates. Works best with lists of 100+ recipients.</div>
                       </div>
                       <div id="abTestSection" class="d-none">
                         <div class="mb-2">
@@ -6069,7 +6070,7 @@
               <div class="content-card mb-4">
                 <div class="row g-3 align-items-end">
                   <div class="col-md-3">
-                    <label class="form-label small fw-bold">Stage</label>
+                    <label class="form-label small fw-bold">Stage <i class="bi bi-info-circle text-muted ms-1" title="Identified: prospect found. Approached: first contact made. Meeting Held: discussion completed. Proposal Sent: quote provided. Under Negotiation: terms being agreed. Confirmed: deal closed. Declined: not proceeding."></i></label>
                     <select class="form-select form-select-sm" id="dealStageFilter" data-on-change="crmModule.applyFilter" data-args='["deals","stage"]'>
                       <option value="">All Stages</option>
                       <option value="lead">Identified</option>
@@ -7125,8 +7126,9 @@
               <input type="url" class="form-control" id="webhookFormUrl" placeholder="https://example.com/webhook" required>
             </div>
             <div class="mb-3">
-              <label for="webhookFormSecret" class="form-label">Secret <small class="text-muted">(optional, used to sign payloads)</small></label>
+              <label for="webhookFormSecret" class="form-label">Security Token <small class="text-muted">(optional)</small></label>
               <input type="text" class="form-control" id="webhookFormSecret" placeholder="Leave blank to auto-generate">
+              <div class="small text-muted mt-1">A secret token that lets your external system verify requests genuinely came from this CMS. Leave blank and one will be generated automatically.</div>
             </div>
             <div class="mb-3">
               <label class="form-label">Events <span class="text-danger">*</span></label>
@@ -7430,10 +7432,11 @@
               <div class="col-md-6">
                 <label for="invoiceType" class="form-label">Invoice Type <span class="text-danger" aria-label="required">*</span></label>
                 <select class="form-select" id="invoiceType" required>
-                  <option value="package">Package</option>
-                  <option value="entry_fee">Entry Fee</option>
-                  <option value="sponsorship">Sponsorship</option>
-                  <option value="tickets">Tickets</option>
+                  <option value="">Select invoice type…</option>
+                  <option value="package">Package (full awards package)</option>
+                  <option value="entry_fee">Entry Fee (award category entry)</option>
+                  <option value="sponsorship">Sponsorship (event/category sponsor)</option>
+                  <option value="tickets">Tickets (event attendance)</option>
                   <option value="other">Other</option>
                 </select>
               </div>
@@ -7450,6 +7453,7 @@
               <div class="col-md-3">
                 <label for="invoiceTaxRate" class="form-label">Tax Rate (%)</label>
                 <input type="number" class="form-control" id="invoiceTaxRate" value="20" min="0" max="100" step="0.01">
+                <div class="small text-muted mt-1">UK standard VAT is 20%. Set to 0 for zero-rated or VAT-exempt invoices.</div>
               </div>
               <div class="col-md-3">
                 <label for="invoiceDiscount" class="form-label">Discount (%)</label>
@@ -8605,8 +8609,8 @@
                   <div class="row g-3">
                     <div class="col-md-8">
                       <label class="form-label small">Stripe Publishable Key</label>
-                      <input type="text" class="form-control form-control-sm" id="stripePublicKeyInput" placeholder="pk_live_..." value="">
-                      <small class="text-muted">Enter your Stripe publishable key to enable online payments on the registration page</small>
+                      <input type="text" class="form-control form-control-sm" id="stripePublicKeyInput" placeholder="pk_live_... or pk_test_..." value="">
+                      <small class="text-muted">Enables online payments on the public registration page. Use <strong>pk_test_…</strong> while testing, <strong>pk_live_…</strong> for real payments. Find your keys at <strong>dashboard.stripe.com → Developers → API keys</strong>.</small>
                     </div>
                     <div class="col-md-4">
                       <label class="form-label small">&nbsp;</label>
@@ -10811,7 +10815,7 @@
           <!-- Configuration Alert (shown if API key missing) -->
           <div id="vettingConfigAlert" class="alert alert-info d-none">
             <i class="bi bi-info-circle me-2"></i>
-            <strong>Configuration Required:</strong> Please configure your Claude API key in the Settings tab to enable AI vetting.
+            <strong>Configuration Required:</strong> To enable AI vetting, go to <strong>Settings → Integrations</strong> and add your Claude API key under "API Keys". Get your key from <strong>console.anthropic.com → API Keys</strong>.
           </div>
 
           <!-- Progress Section (shown when vetting is running) -->

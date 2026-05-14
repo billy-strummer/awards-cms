@@ -2378,7 +2378,7 @@
                   </select>
                 </div>
                 <div class="col-md-2">
-                  <label for="winnerStatusFilter" class="form-label filter-bar-field-label mb-1"><i class="bi bi-circle-half me-1" aria-hidden="true"></i>Status</label>
+                  <label for="winnerStatusFilter" class="form-label filter-bar-field-label mb-1"><i class="bi bi-circle-half me-1" aria-hidden="true"></i>Status <i class="bi bi-info-circle text-muted ms-1" title="Winner pipeline: Pending (identified) → Notified (emailed) → Pack Sent (physical pack posted — set manually) → Confirmed (winner accepted) → Published (publicly announced)"></i></label>
                   <select class="form-select form-select-sm" id="winnerStatusFilter" data-on-change="winnersModule.filterWinners">
                     <option value="">All Statuses</option>
                     <option value="pending">Pending</option>
@@ -4172,13 +4172,55 @@
                   <a href="#" class="alert-link ms-1" data-action="socialMediaModule.openPlatformSettings" data-prevent-default="true">Configure credentials in Settings → Integrations</a>
                 </div>
               </div>
+              <!-- Getting Started Banner -->
+              <div class="card border-0 shadow-sm mb-4" id="socialMediaGettingStarted">
+                <div class="card-body py-3">
+                  <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                      <h6 class="fw-bold mb-1"><i class="bi bi-map me-2 text-primary"></i>Getting Started — Social Media</h6>
+                      <p class="text-muted small mb-0">Schedule and publish posts about your awards across Twitter, LinkedIn, Facebook, and Instagram.</p>
+                    </div>
+                    <button type="button" class="btn-close btn-sm" aria-label="Dismiss" onclick="document.getElementById('socialMediaGettingStarted').style.display='none';localStorage.setItem('socialMediaBannerDismissed','1');"></button>
+                  </div>
+                  <div class="row g-2">
+                    <div class="col-md-4">
+                      <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                        <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">1</span>
+                        <div>
+                          <div class="fw-semibold small">Connect Your Platforms</div>
+                          <div class="text-muted" style="font-size:.75rem;">Click Configure Platforms and add your API credentials for each social network you want to post to.</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                        <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">2</span>
+                        <div>
+                          <div class="fw-semibold small">Generate or Compose Posts</div>
+                          <div class="text-muted" style="font-size:.75rem;">Use Bulk Generate to auto-create posts from winner data, or compose individual posts using the templates below.</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                        <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">3</span>
+                        <div>
+                          <div class="fw-semibold small">Schedule or Post Now</div>
+                          <div class="text-muted" style="font-size:.75rem;">Pick a date and time to schedule, or click Post Now to publish immediately to all selected platforms.</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <script>if(localStorage.getItem('socialMediaBannerDismissed')==='1'){var _smb=document.getElementById('socialMediaGettingStarted');if(_smb)_smb.style.display='none';}</script>
               <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
                   <h4><i class="bi bi-share me-2"></i>Social Media Manager</h4>
                   <p class="text-muted mb-0">Automate and schedule posts across all platforms</p>
                 </div>
                 <div class="d-flex gap-2">
-                  <button class="btn btn-outline-primary" data-action="socialMediaModule.openBulkGenerateModal">
+                  <button class="btn btn-outline-primary" data-action="socialMediaModule.openBulkGenerateModal" title="Auto-generate social media posts for all nominees, winners, or voting from your award data — no writing required.">
                     <i class="bi bi-collection me-2"></i>Bulk Generate
                   </button>
                   <button class="btn btn-outline-secondary" data-action="socialMediaModule.loadAnalytics">
@@ -4821,6 +4863,48 @@
 
             <!-- Email Builder Sub-Tab -->
             <div class="tab-pane fade" id="email-builder-content" role="tabpanel">
+              <!-- Getting Started Banner -->
+              <div class="card border-0 shadow-sm mb-3" id="emailBuilderGettingStarted">
+                <div class="card-body py-3">
+                  <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                      <h6 class="fw-bold mb-1"><i class="bi bi-map me-2 text-primary"></i>Getting Started — Email Builder</h6>
+                      <p class="text-muted small mb-0">Create and send professional email campaigns to your winners, nominees, and contacts.</p>
+                    </div>
+                    <button type="button" class="btn-close btn-sm" aria-label="Dismiss" onclick="document.getElementById('emailBuilderGettingStarted').style.display='none';localStorage.setItem('emailBuilderBannerDismissed','1');"></button>
+                  </div>
+                  <div class="row g-2">
+                    <div class="col-md-4">
+                      <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                        <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">1</span>
+                        <div>
+                          <div class="fw-semibold small">Choose a Template</div>
+                          <div class="text-muted" style="font-size:.75rem;">Pick a pre-built layout from the Email Template dropdown, or start with a blank canvas.</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                        <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">2</span>
+                        <div>
+                          <div class="fw-semibold small">Drag Blocks &amp; Edit Content</div>
+                          <div class="text-muted" style="font-size:.75rem;">Drag blocks from the left panel onto the canvas. Click any block to edit its text, images, or style.</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                        <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">3</span>
+                        <div>
+                          <div class="fw-semibold small">Choose a List &amp; Send</div>
+                          <div class="text-muted" style="font-size:.75rem;">Scroll to "Send to List", pick a recipient list, send a test first, then click Send to List to deliver.</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <script>if(localStorage.getItem('emailBuilderBannerDismissed')==='1'){var _ebb=document.getElementById('emailBuilderGettingStarted');if(_ebb)_ebb.style.display='none';}</script>
               <div class="row g-0" style="height: calc(100vh - 280px); min-height: 600px;">
 
                 <!-- Left Sidebar - Blocks & Settings -->
@@ -6454,7 +6538,10 @@
                 <h5 class="mb-3">
                   <i class="bi bi-cloud-download me-2"></i>Database Backup & Export
                 </h5>
-                <p class="text-muted mb-4">Download complete database backups or export individual tables</p>
+                <p class="text-muted mb-3">Download complete database backups or export individual tables</p>
+                <div class="alert alert-light border small mb-4">
+                  <strong>Full Backup:</strong> Complete data snapshot — save this for archiving or before making major changes. &nbsp;<strong>Restore:</strong> Load a backup file to revert all data — <span class="text-danger fw-semibold">this overwrites current data and cannot be undone.</span> &nbsp;<strong>Table Export:</strong> Download individual sections (e.g. winners list as a spreadsheet).
+                </div>
 
                 <!-- Full Database Backup -->
                 <div class="mb-4 pb-4 border-bottom">
@@ -6722,7 +6809,10 @@
           <!-- Security extras: GDPR + User Roles — moved into #settings-security by script below -->
           <div id="settings-security-overflow" style="display:none">
           <!-- GDPR Compliance (rendered dynamically by gdprModule.renderGdprPanel) -->
-          <div id="gdprPanel" class="mt-4"></div>
+          <div class="alert alert-info border-0 mt-4 mb-0" role="note">
+            <i class="bi bi-shield-lock me-2"></i><strong>GDPR Compliance:</strong> UK GDPR requires winners' explicit consent before their name, company, or image appears in any public announcement or marketing material. Use the controls below to record consent, respond to data subject requests (access, deletion, portability), and manage data retention periods.
+          </div>
+          <div id="gdprPanel" class="mt-3"></div>
 
           <!-- User Roles & Permissions Section -->
           <div class="row g-4 mt-4">
@@ -8249,6 +8339,11 @@
           </div>
 
           <!-- Tabs -->
+          <div class="alert alert-light border py-2 px-3 mb-2 small" role="note">
+            <i class="bi bi-info-circle me-1 text-primary"></i>
+            <strong>Required:</strong> Attendees · Check-In · Tickets &nbsp;&nbsp;|&nbsp;&nbsp;
+            <strong>Optional:</strong> Waitlist · Budget · Vendors · Special Reqs · Milestones · Post-Event
+          </div>
           <ul class="nav nav-tabs mb-3 flex-nowrap" role="tablist" style="font-size: 0.9rem;">
             <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#attendeesTab">
               <i class="bi bi-people me-1"></i>Attendees</a></li>
@@ -8262,8 +8357,8 @@
               <i class="bi bi-wallet2 me-1"></i>Budget</a></li>
             <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#vendorsTab">
               <i class="bi bi-truck me-1"></i>Vendors <span class="badge bg-secondary ms-1 d-none" id="vendorBadge">0</span></a></li>
-            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#specialReqsTab">
-              <i class="bi bi-shield-check me-1"></i>Requirements</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#specialReqsTab" title="Special attendee requirements: dietary, accessibility, and mobility needs">
+              <i class="bi bi-shield-check me-1"></i>Special Reqs</a></li>
             <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#milestonesTab">
               <i class="bi bi-check2-square me-1"></i>Milestones</a></li>
             <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#postEventTab">
@@ -8372,6 +8467,9 @@
 
             <!-- Check-In Tab -->
             <div class="tab-pane fade" id="checkInTab">
+              <div class="alert alert-info border-0 py-2 px-3 mb-3 small" role="note">
+                <i class="bi bi-qr-code me-1"></i><strong>How check-in works:</strong> QR code tickets are generated in the <strong>Tickets</strong> tab and emailed to attendees automatically. On the event night, scan each attendee's QR code using any smartphone camera to mark them as checked in.
+              </div>
               <div class="row g-3 mb-3">
                 <div class="col-md-4">
                   <div class="card text-center border-success">
@@ -9236,7 +9334,12 @@
             <button type="button" class="btn-close btn-close-white ms-2" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
         </div>
-        <div class="modal-body p-0 d-flex" style="overflow:hidden">
+        <div class="modal-body p-0 d-flex flex-column" style="overflow:hidden">
+          <div class="alert alert-info alert-dismissible border-0 rounded-0 mb-0 py-2 px-3" role="alert" style="font-size:.85rem;">
+            <i class="bi bi-lightbulb me-2"></i><strong>How it works:</strong> 1) Upload a PDF background (optional — use a blank page for a plain certificate). 2) Click <strong>Add Field</strong> to place a text element on the certificate. 3) Select a field and set its position, font, and placeholder text (e.g. <code>{WINNER_NAME}</code>). 4) Click <strong>Generate</strong> to produce PDFs for all winners.
+            <button type="button" class="btn-close btn-sm py-2" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+          <div class="d-flex flex-grow-1" style="overflow:hidden">
           <!-- Left: Field List & Properties Panel -->
           <div class="border-end bg-light d-flex flex-column" style="width:320px;min-width:320px">
             <!-- Template Info -->
@@ -9331,7 +9434,7 @@
               </div>
               <div class="row g-2 mb-2">
                 <div class="col-6">
-                  <label class="form-label small mb-0">Color</label>
+                  <label class="form-label small mb-0" title="Hex colour for this text field. Solid colours only — transparency not supported.">Text Colour <small class="text-muted">(solid only)</small></label>
                   <input type="color" class="form-control form-control-sm form-control-color" id="certFieldColor" value="#000000">
                 </div>
                 <div class="col-6">
@@ -9420,6 +9523,7 @@
                 <i class="bi bi-download me-1"></i>Generate Certificates
               </button>
             </div>
+          </div>
           </div>
         </div>
       </div>
@@ -10804,10 +10908,10 @@
                       <th scope="col">Organisation</th>
                       <th scope="col">Sector</th>
                       <th scope="col" class="text-center">Status</th>
-                      <th scope="col" class="text-center">Operational</th>
-                      <th scope="col" class="text-center">Category Match</th>
-                      <th scope="col" class="text-center">Reputation</th>
-                      <th scope="col">AI Findings</th>
+                      <th scope="col" class="text-center" title="Is the company actively trading and not dissolved or dormant?">Operational</th>
+                      <th scope="col" class="text-center" title="Does the company's sector and activities align with this award category?">Category Match</th>
+                      <th scope="col" class="text-center" title="Any insolvency filings, regulatory sanctions, or significant adverse press detected?">Reputation</th>
+                      <th scope="col" title="Claude AI's summary of findings — key issues, flags, or verification notes for this organisation.">AI Findings</th>
                       <th scope="col" class="text-center">Actions</th>
                     </tr>
                   </thead>

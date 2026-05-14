@@ -2116,3 +2116,82 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **Files:** `index.html` lines 1572, 2195, 8157
 - **Fix:** Replace inline colour with `text-purple` class; remove redundant inline styles
 - [x] Implemented
+
+---
+
+# V11 UX Audit — First-Run Guidance, Missing Banners & Tooltips
+
+## V11-CRITICAL
+
+### V11-C1 — Email Builder has no Getting Started banner
+- **File:** `index.html` line 4823 (inside `#email-builder-content` tab pane)
+- **Problem:** Opens straight into a complex 3-column layout with zero guidance.
+- **Fix:** Add a 3-step dismissible Getting Started banner above the builder columns.
+- [x] Implemented
+
+### V11-C2 — Social Media section has no Getting Started banner
+- **File:** `index.html` line 4175 (before `<div class="d-flex justify-content-between...">`)
+- **Problem:** Social Media Manager opens with complex layout (platforms, calendar, composer) but no banner.
+- **Fix:** Add a 3-step banner: Connect platforms → Compose/generate posts → Schedule or post.
+- [x] Implemented
+
+## V11-HIGH
+
+### V11-H1 — AI Vetting result column headers have no tooltips
+- **File:** `index.html` lines 10807–10810
+- **Fix:** Add `title` attributes to Operational, Category Match, Reputation, AI Findings `<th>` elements.
+- [x] Implemented
+
+### V11-H2 — Winners "Pack Sent" status is unexplained in filter
+- **File:** `index.html` line 2381 (status filter label)
+- **Fix:** Add pipeline info icon with tooltip to Status filter label.
+- [x] Implemented
+
+### V11-H3 — Certificate editor modal has no workflow guidance
+- **File:** `index.html` line 9239 (modal-body start)
+- **Fix:** Add dismissible info alert above the 3-panel layout explaining the workflow.
+- [x] Implemented
+
+### V11-H4 — "Requirements" tab label is ambiguous
+- **File:** `index.html` line 8266
+- **Fix:** Rename to `Special Reqs` with tooltip explaining it covers dietary, accessibility, mobility needs.
+- [x] Implemented
+
+### V11-H5 — Attendees modal 9 tabs with no workflow hint
+- **File:** `index.html` line 8251 (before `<ul class="nav nav-tabs...">`)
+- **Fix:** Add small Required/Optional hint bar above the tab list.
+- [x] Implemented
+
+## V11-MEDIUM
+
+### V11-M1 — Winners status filter label gives no pipeline context
+- **File:** `index.html` line 2381
+- **Combined with V11-H2** — same label; info icon covers both.
+- [x] Implemented
+
+### V11-M2 — GDPR section has no intro explaining what it governs
+- **File:** `index.html` line 6725 (before `<div id="gdprPanel">`)
+- **Fix:** Add a static info alert above the dynamically-rendered panel.
+- [x] Implemented
+
+### V11-M3 — Check-In tab has no intro explaining the QR code workflow
+- **File:** `index.html` line 8374 (top of `#checkInTab` pane)
+- **Fix:** Add brief intro div explaining QR tickets → scan on night → marked checked in.
+- [x] Implemented
+
+### V11-M4 — Backup section has no intro distinguishing its three options
+- **File:** `index.html` line 6457 (after `<p class="text-muted mb-4">`)
+- **Fix:** Improve the existing description text to distinguish Full Backup vs Restore vs Table Export.
+- [x] Implemented
+
+## V11-LOW
+
+### V11-L1 — Certificate text colour label is too vague
+- **File:** `index.html` line 9334
+- **Fix:** Change `Color` label to `Text Colour (solid only)` with tooltip.
+- [x] Implemented
+
+### V11-L3 — "Bulk Generate" button in Social Media has no tooltip
+- **File:** `index.html` line 4181
+- **Fix:** Add `title` attribute explaining it auto-generates posts from winner data.
+- [x] Implemented

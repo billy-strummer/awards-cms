@@ -1,0 +1,222 @@
+      <!-- WINNERS TAB -->
+      <!-- ==================================================== -->
+      <div class="tab-pane fade" id="winners" role="tabpanel">
+        <div class="container-fluid">
+          
+          <!-- Page Header -->
+          <div class="section-header">
+            <h1 class="section-title">
+              <i class="bi bi-award me-2"></i>Winners Management
+            </h1>
+            <p class="section-subtitle">Manage award winners and their media<span id="winnersFreshness" class="ms-2"></span></p>
+          </div>
+
+          <!-- Getting Started Banner -->
+          <div class="card border-0 shadow-sm mb-4" id="winnersGettingStarted">
+            <div class="card-body py-3">
+              <div class="d-flex justify-content-between align-items-start mb-3">
+                <div>
+                  <h6 class="fw-bold mb-1"><i class="bi bi-map me-2 text-primary"></i>Getting Started — Winners</h6>
+                  <p class="text-muted small mb-0">Winners can be added manually, imported via CSV, or promoted from the judging panel.</p>
+                </div>
+                <button type="button" class="btn-close btn-sm" aria-label="Dismiss" onclick="document.getElementById('winnersGettingStarted').style.display='none';localStorage.setItem('winnersWorkflowDismissed','1');"></button>
+              </div>
+              <div class="row g-2">
+                <div class="col-md-3">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">1</span>
+                    <div>
+                      <div class="fw-semibold small">Add Winners</div>
+                      <div class="text-muted" style="font-size:.75rem;">Add winners manually using "Add Winner", import in bulk via CSV, or promote shortlisted nominees from Assignments.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">2</span>
+                    <div>
+                      <div class="fw-semibold small">Record GDPR Consent</div>
+                      <div class="text-muted" style="font-size:.75rem;">Before publishing a winner's name or image, record their GDPR consent using the Consent checkbox on each row.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">3</span>
+                    <div>
+                      <div class="fw-semibold small">Update Status</div>
+                      <div class="text-muted" style="font-size:.75rem;">Move each winner through: Pending → Notified → Pack Sent → Confirmed → Published as you progress.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-success rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">4</span>
+                    <div>
+                      <div class="fw-semibold small">Announce Publicly</div>
+                      <div class="text-muted" style="font-size:.75rem;">Set status to "Published" to make the winner visible on public pages. Upload photos and winner story for maximum impact.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <script>if(localStorage.getItem('winnersWorkflowDismissed')==='1'){var _ww=document.getElementById('winnersGettingStarted');if(_ww)_ww.style.display='none';}</script>
+
+          <!-- Filters Section -->
+          <div class="filters-section filter-bar-sticky">
+            <div class="rounded-2 p-3 mb-2 bg-light">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <div class="d-flex align-items-center gap-3">
+                  <span class="filter-bar-label"><i class="bi bi-funnel me-1"></i>Filter Winners</span>
+                  <span id="winnersRowCount" class="table-row-count"></span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                  <div class="input-group input-group-sm" style="width:200px;">
+                    <select class="form-select form-select-sm" id="winnersSavedViewsList" data-on-change="winnersModule.loadSavedWinnersView">
+                      <option value="">Saved views…</option>
+                    </select>
+                    <button class="btn btn-outline-primary btn-sm" data-action="winnersModule.saveCurrentWinnersView" title="Save current filters as view">
+                      <i class="bi bi-bookmark-plus"></i>
+                    </button>
+                  </div>
+                  <button class="btn btn-outline-secondary btn-sm" data-action="winnersModule.resetFilters" title="Clear all active filters">
+                    <i class="bi bi-x-circle me-1"></i>Clear Filters
+                  </button>
+                </div>
+              </div>
+              <div class="row g-2 align-items-end">
+                <div class="col-md-2">
+                  <label for="winnerYearFilterSelect" class="form-label filter-bar-field-label mb-1"><i class="bi bi-calendar3 me-1" aria-hidden="true"></i>Year</label>
+                  <select class="form-select form-select-sm" id="winnerYearFilterSelect">
+                    <option value="">All Years</option>
+                  </select>
+                </div>
+                <div class="col-md-3">
+                  <label for="winnerAwardFilterSelect" class="form-label filter-bar-field-label mb-1"><i class="bi bi-trophy me-1" aria-hidden="true"></i>Award</label>
+                  <select class="form-select form-select-sm" id="winnerAwardFilterSelect">
+                    <option value="">All Awards</option>
+                  </select>
+                </div>
+                <div class="col-md-2">
+                  <label for="winnerStatusFilter" class="form-label filter-bar-field-label mb-1"><i class="bi bi-circle-half me-1" aria-hidden="true"></i>Status <i class="bi bi-info-circle text-muted ms-1" title="Winner pipeline: Pending (identified) → Notified (emailed) → Pack Sent (physical pack posted — set manually) → Confirmed (winner accepted) → Published (publicly announced)"></i></label>
+                  <select class="form-select form-select-sm" id="winnerStatusFilter" data-on-change="winnersModule.filterWinners">
+                    <option value="">All Statuses</option>
+                    <option value="pending">Pending</option>
+                    <option value="notified">Notified</option>
+                    <option value="pack_sent">Pack Sent</option>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="published">Published</option>
+                  </select>
+                </div>
+                <div class="col">
+                  <label for="winnerSearchBox" class="form-label filter-bar-field-label mb-1"><i class="bi bi-search me-1" aria-hidden="true"></i>Search</label>
+                  <input type="text" class="form-control form-control-sm" id="winnerSearchBox" placeholder="Search winners…">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Winners Bulk Action Bar -->
+          <div class="card mb-3 d-none" id="winnersBulkBar">
+            <div class="card-body py-2 d-flex align-items-center justify-content-between">
+              <span><strong id="winnersBulkCount">0</strong> winners selected</span>
+              <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-danger" data-action="globalActions.confirmBulkDelete" data-module="winnersModule" data-fn="bulkDeleteWinners" data-label="winner">
+                  <i class="bi bi-trash me-1"></i>Delete Selected
+                </button>
+                <button class="btn btn-outline-secondary" data-action="winnersModule.bulkExportWinners" title="Download selected winners as a CSV spreadsheet">
+                  <i class="bi bi-filetype-csv me-1"></i>Export Selected (CSV)
+                </button>
+                <button class="btn btn-outline-secondary" data-action="winnersModule.clearWinnerSelection">
+                  <i class="bi bi-x-circle me-1"></i>Clear
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div id="winnersActiveFilters" class="mb-1"></div>
+          <!-- Winners Table -->
+          <div class="table-container">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h5 class="mb-0">
+                <i class="bi bi-list-ul me-2"></i>Winners List
+              </h5>
+              <div class="d-flex gap-2 align-items-center flex-wrap">
+                <button class="btn btn-outline-primary btn-sm" data-action="winnerPipelineModule.renderPipelineDashboard">
+                  <i class="bi bi-funnel me-1"></i>Pipeline
+                </button>
+                <button class="btn btn-purple btn-sm" data-action="winnerAnnouncementsModule.renderAnnouncementsDashboard">
+                  <i class="bi bi-megaphone me-1"></i>Announcements
+                </button>
+                <div class="btn-group btn-group-sm">
+                  <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                    <i class="bi bi-tools me-1"></i>Tools
+                  </button>
+                  <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#" data-action="winnersModule.openYearComparison" data-prevent-default="true"><i class="bi bi-bar-chart-line text-info me-2"></i>Year Comparison</a></li>
+                    <li><a class="dropdown-item" href="#" data-action="winnersModule.openCertificateGenerator" data-prevent-default="true"><i class="bi bi-award-fill text-primary me-2"></i>Certificate Editor</a></li>
+                    <li><a class="dropdown-item" href="#" data-action="winnersModule.bulkGenerateMediaPacks" data-prevent-default="true"><i class="bi bi-newspaper text-secondary me-2"></i>Bulk Media Packs</a></li>
+                    <li><a class="dropdown-item" href="#" data-action="winnersModule.bulkGenerateWinnerPackages" data-prevent-default="true"><i class="bi bi-gift text-success me-2"></i>Bulk Winner Packages</a></li>
+                    <li class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="#" data-action="winnersModule.openImportWinners" data-prevent-default="true"><i class="bi bi-upload text-warning me-2"></i>Import CSV</a></li>
+                  </ul>
+                </div>
+                <div class="btn-group btn-group-sm">
+                  <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-display="static">
+                    <i class="bi bi-download me-1"></i>Export
+                  </button>
+                  <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#" data-action="winnersModule.exportFilteredWinnersCSV" data-prevent-default="true"><i class="bi bi-filetype-csv text-success me-2"></i>Export CSV</a></li>
+                    <li><a class="dropdown-item" href="#" data-action="winnersModule.exportFilteredWinnersExcel" data-prevent-default="true"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Export Excel</a></li>
+                    <li><a class="dropdown-item" href="#" data-action="winnersModule.exportFilteredWinnersPDF" data-prevent-default="true"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
+                  </ul>
+                </div>
+                <div class="badge bg-info-subtle text-info fs-6">
+                  <span id="winnersCount">0</span> winners
+                </div>
+              </div>
+            </div>
+            
+            <div class="table-responsive">
+              <table class="table table-hover table-striped align-middle">
+                <caption class="visually-hidden">Winners list</caption>
+                <thead>
+                  <tr>
+                    <th scope="col" style="width:35px"><input type="checkbox" class="form-check-input" id="selectAllWinners" data-on-change="winnersModule.toggleSelectAllWinners" aria-label="Select all winners"></th>
+                    <th scope="col" class="u-pointer" data-sort-field="winner_name" data-action="winnersModule.sortWinners" data-args="[&quot;winner_name&quot;]" aria-sort="none">Winner Name <i data-sort-icon-winners="winner_name" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th scope="col" class="u-pointer" data-sort-field="award" data-action="winnersModule.sortWinners" data-args="[&quot;award&quot;]" aria-sort="none">Award <i data-sort-icon-winners="award" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th scope="col" class="u-pointer" data-sort-field="year" data-action="winnersModule.sortWinners" data-args="[&quot;year&quot;]" aria-sort="none">Year <i data-sort-icon-winners="year" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th scope="col">Photos/Videos</th>
+                    <th scope="col" class="text-center" title="GDPR: winner consents to use of name & image">
+                      <i class="bi bi-shield-check text-success me-1"></i>Consent
+                    </th>
+                    <th scope="col" class="u-pointer" data-sort-field="status" data-action="winnersModule.sortWinners" data-args="[&quot;status&quot;]" aria-sort="none">
+                      Status <i data-sort-icon-winners="status" class="bi bi-arrow-down-up text-muted ms-1 small"></i>
+                      <i class="bi bi-question-circle text-muted ms-1 small" title="Winner journey: Pending → Notified (told they won) → Pack Sent (winner pack dispatched) → Confirmed (winner accepted) → Published (announced publicly)"></i>
+                    </th>
+                    <th scope="col" width="220" class="text-center">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="winnersTableBody">
+                  <tr>
+                    <td colspan="7" class="text-center py-5">
+                      <div class="text-muted">
+                        <i class="bi bi-inbox display-3 d-block mb-3 opacity-25"></i>
+                        <p class="fw-semibold mb-1 text-dark">No winners found</p>
+                        <p class="small mb-3">Winners are recorded after the judging phase. Try adjusting your filters.</p>
+                        <button class="btn btn-outline-secondary btn-sm" data-action="winnersModule.resetFilters">
+                          <i class="bi bi-x-circle me-1"></i>Clear Filters
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ==================================================== -->

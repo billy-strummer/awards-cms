@@ -57,7 +57,7 @@ The CMS is functionally complete at a surface level but has three categories of 
 ### T1-F — Extract: Winners + Entries
 - **What:** Extract Winners and Entries sections into `src/partials/04-winners.html` and `src/partials/05-entries.html`.
 - **Done when:** Build output unchanged, tests pass.
-- [ ] Implemented
+- [x] Implemented
 
 ### T1-G — Extract: Events + Media Gallery
 - **What:** Extract Events section and Media Gallery into `src/partials/06-events.html` and `src/partials/07-media.html`.

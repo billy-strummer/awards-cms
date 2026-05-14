@@ -392,10 +392,10 @@
             <div class="col-md-3">
               <div class="stat-card stat-card-clickable" data-action="dashboardModule.filterPendingAwards" title="Click to view pending awards">
                 <i class="bi bi-hourglass-split stat-card-icon text-warning"></i>
-                <h6>Pending Reviews</h6>
+                <h6>Pending Approvals</h6>
                 <div class="stat-value text-warning" id="pendingAwards"><span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></div>
                 <div id="pendingAwardsGrowth" class="stat-growth"></div>
-                <small class="text-muted">Awaiting approval</small>
+                <small class="text-muted" title="Awards in Draft or Pending status waiting to be set Active">Awards not yet active</small>
                 <div class="stat-card-hover-indicator">
                   <i class="bi bi-arrow-right-circle"></i>
                 </div>
@@ -930,7 +930,7 @@
                     <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">3</span>
                     <div>
                       <div class="fw-semibold small">Manage Judging</div>
-                      <div class="text-muted" style="font-size:.75rem;">Use the Assignments panel (trophy icon on each row) to assign nominees to judges and record decisions.</div>
+                      <div class="text-muted" style="font-size:.75rem;">Use the Assignments panel (<i class="bi bi-people-fill"></i> people icon on each row) to assign nominees to judges and record decisions.</div>
                     </div>
                   </div>
                 </div>
@@ -2537,7 +2537,7 @@
                     <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">2</span>
                     <div>
                       <div class="fw-semibold small">Share the Entry Form</div>
-                      <div class="text-muted" style="font-size:.75rem;">Copy the public entry form URL and share it with entrants. Submissions appear here automatically.</div>
+                      <div class="text-muted" style="font-size:.75rem;">Copy the public entry form URL and share it with entrants. Submissions appear here automatically. <strong>Note:</strong> there is no manual "Add Entry" button — all entries must be submitted through the public form.</div>
                     </div>
                   </div>
                 </div>
@@ -3879,7 +3879,8 @@
           <div class="row g-4 mb-4">
             <div class="col-12">
               <div class="content-card">
-                <h6 class="fw-semibold mb-3"><i class="bi bi-graph-up-arrow me-2"></i>Year-over-Year Comparison</h6>
+                <h6 class="fw-semibold mb-1"><i class="bi bi-graph-up-arrow me-2"></i>Year-over-Year Comparison</h6>
+                <p class="text-muted small mb-3">Compares Entries, Winners, and Organisations across the last 3 calendar years. Use this to spot growth trends and seasonal patterns in programme engagement.</p>
                 <div style="height:320px; position:relative;">
                   <canvas id="reportsYoYChart"></canvas>
                 </div>
@@ -3917,7 +3918,7 @@
                     <th scope="col">Status</th>
                     <th scope="col" class="text-center">Count</th>
                     <th scope="col">Percentage</th>
-                    <th scope="col">Visual</th>
+                    <th scope="col" title="Mini progress bar showing this status's share of the total pipeline">Trend</th>
                   </tr>
                 </thead>
                 <tbody id="reportsPipelineTable">
@@ -3935,19 +3936,19 @@
             <p class="text-muted mb-3">Download reports in various formats</p>
 
             <div class="d-flex gap-2 flex-wrap">
-              <button class="btn btn-sm btn-outline-secondary" data-action="dashboardModule.exportAwardsCSV">
+              <button class="btn btn-sm btn-outline-secondary" data-action="dashboardModule.exportAwardsCSV" title="All award categories: name, status, season, dates, entry count">
                 <i class="bi bi-download me-1"></i>Export Awards (CSV)
               </button>
-              <button class="btn btn-sm btn-outline-secondary" data-action="dashboardModule.exportOrganisationsCSV">
+              <button class="btn btn-sm btn-outline-secondary" data-action="dashboardModule.exportOrganisationsCSV" title="All organisations: name, sector, region, tier, contact details">
                 <i class="bi bi-download me-1"></i>Export Organisations (CSV)
               </button>
-              <button class="btn btn-sm btn-outline-secondary" data-action="dashboardModule.exportWinnersCSV">
+              <button class="btn btn-sm btn-outline-secondary" data-action="dashboardModule.exportWinnersCSV" title="All winner records: organisation, award, year, status, consent flag">
                 <i class="bi bi-download me-1"></i>Export Winners (CSV)
               </button>
-              <button class="btn btn-sm btn-outline-secondary" data-action="settingsModule.exportEventsCSV">
+              <button class="btn btn-sm btn-outline-secondary" data-action="settingsModule.exportEventsCSV" title="All events: name, date, venue, capacity, attendee count, check-in rate">
                 <i class="bi bi-download me-1"></i>Export Events (CSV)
               </button>
-              <button class="btn btn-sm btn-outline-secondary" data-action="settingsModule.exportFullBackup">
+              <button class="btn btn-sm btn-outline-secondary" data-action="settingsModule.exportFullBackup" title="Complete data snapshot across all tables — use for migration or archiving. JSON format.">
                 <i class="bi bi-download me-1"></i>Full Backup (JSON)
               </button>
             </div>
@@ -4506,6 +4507,7 @@
                             <i class="bi bi-clock me-1" aria-hidden="true"></i>Schedule Time
                           </label>
                           <input type="time" class="form-control" id="smScheduleTime">
+                          <small class="text-muted">Times are in your browser's local timezone</small>
                         </div>
                       </div>
 
@@ -4819,7 +4821,7 @@
               <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
                   <h4><i class="bi bi-calendar3 me-2"></i>Content Calendar</h4>
-                  <p class="text-muted mb-0">Monthly view of all scheduled social media posts</p>
+                  <p class="text-muted mb-0">Monthly view of all scheduled social media posts. Schedule posts in the <strong>Social Media</strong> tab — they appear here automatically. Click any post on the calendar to edit or cancel it.</p>
                 </div>
                 <div class="d-flex align-items-center gap-2">
                   <button class="btn btn-outline-secondary btn-sm" data-action="marketingModule.prevContentCalendarMonth" title="Previous month">
@@ -5184,6 +5186,7 @@
                       <div class="mb-3">
                         <label class="form-label small">From Email</label>
                         <input type="email" class="form-control form-control-sm" id="builderFromEmail" value="awards@britishtradeawards.com">
+                        <div class="form-text"><i class="bi bi-info-circle me-1"></i>The sender domain must be verified in your <a href="https://resend.com/domains" target="_blank" rel="noopener">Resend account</a> or emails will be rejected.</div>
                       </div>
 
                       <div class="mb-3">
@@ -5618,9 +5621,9 @@
                   </div>
                 </div>
                 <div class="col-md-3">
-                  <div class="stat-card stat-card-clickable" data-stat-filter="invoiceStatusFilter:partially_paid" title="Filter to invoices with outstanding balance">
+                  <div class="stat-card stat-card-clickable" data-stat-filter="invoiceStatusFilter:partially_paid" title="Total remaining balance on partially-paid invoices (deposit taken, remainder still owed). Click to filter. Does not include fully-unpaid overdue invoices.">
                     <i class="bi bi-currency-pound stat-card-icon text-info"></i>
-                    <h6>Outstanding Balance</h6>
+                    <h6>Outstanding Balance <small class="text-muted fw-normal" style="font-size:.7rem;">Partial pay</small></h6>
                     <div class="stat-value text-info" id="totalOutstandingAmount">£<span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></div>
                     <div class="stat-card-hover-indicator"><i class="bi bi-arrow-right-circle"></i></div>
                   </div>
@@ -5668,7 +5671,7 @@
                           <li><a class="dropdown-item" href="#" data-action="paymentsModule.exportInvoicesExcel" data-prevent-default="true"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Export Excel</a></li>
                           <li><a class="dropdown-item" href="#" data-action="paymentsModule.exportInvoicesPDF" data-prevent-default="true"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
                           <li><hr class="dropdown-divider"></li>
-                          <li><a class="dropdown-item text-warning" href="#" data-action="paymentsModule.sendOverdueReminders" data-prevent-default="true"><i class="bi bi-bell me-2"></i>Send Overdue Reminders</a></li>
+                          <li><a class="dropdown-item text-warning" href="#" data-action="paymentsModule.sendOverdueReminders" data-prevent-default="true" title="Sends a payment chaser email to all contacts with invoices past their due date (status: Overdue). A confirmation showing the recipient count will appear before any emails are sent."><i class="bi bi-bell me-2"></i>Send Overdue Reminders</a></li>
                           <li><a class="dropdown-item text-info" href="#" data-action="paymentsModule.openDunningSettings" data-prevent-default="true"><i class="bi bi-gear me-2"></i>Auto-Reminder Settings</a></li>
                         </ul>
                       </div>
@@ -6104,7 +6107,7 @@
                   </div>
                 </div>
                 <div class="col-md-3">
-                  <div class="content-card text-center" title="Win Rate">
+                  <div class="content-card text-center" title="Win Rate: deals marked Confirmed ÷ all closed deals (Confirmed + Declined). Shows the percentage of pursued deals that converted to a sale.">
                     <i class="bi bi-percent text-info fs-1 mb-2"></i>
                     <div class="fs-2 fw-bold" id="averageWinRate">0%</div>
                     <div class="text-muted small">Win Rate</div>
@@ -6241,7 +6244,7 @@
                         <th scope="col">Meeting Title</th>
                         <th scope="col">Organisation</th>
                         <th scope="col">Type</th>
-                        <th scope="col">Duration</th>
+                        <th scope="col" title="Meeting duration in minutes — enter it in the Duration field when logging or editing a meeting record">Duration</th>
                         <th scope="col">Attendees</th>
                         <th scope="col">Follow-up</th>
                         <th scope="col">Actions</th>
@@ -6385,13 +6388,16 @@
                 <button class="btn btn-sm btn-outline-success" data-action="crmModule.saveSmartSegment"><i class="bi bi-save me-1"></i>Save Segment</button>
                 <button class="btn btn-sm btn-outline-secondary" data-action="crmModule.loadSmartSegments"><i class="bi bi-folder-open me-1"></i>Load Saved</button>
               </div>
-              <div id="smartSegmentResult"></div>
+              <div id="smartSegmentResult"><p class="text-muted small py-3 mb-0"><i class="bi bi-funnel me-1"></i>Click <strong>Apply Segment</strong> to preview the list of matching organisations.</p></div>
             </div>
 
             <!-- My Tasks Sub-Tab -->
             <div class="tab-pane fade" id="my-tasks-content" role="tabpanel">
               <div class="d-flex justify-content-between align-items-center mb-4">
-                <h4><i class="bi bi-person-check me-2"></i>My Tasks & Follow-ups</h4>
+                <div>
+                  <h4 class="mb-1"><i class="bi bi-person-check me-2"></i>My Tasks &amp; Follow-ups</h4>
+                  <p class="text-muted small mb-0">Tasks assigned specifically to you — communications to send, meetings to schedule, and follow-ups you have personally committed to. Team-wide tasks appear in the Communications log.</p>
+                </div>
                 <button class="btn btn-sm btn-outline-primary" data-action="crmModule.refreshMyTasks"><i class="bi bi-arrow-clockwise me-1"></i>Refresh</button>
               </div>
               <div id="myTasksContainer">
@@ -7358,7 +7364,7 @@
                 <select class="form-select" id="awardFormSeason" data-on-change="awardsModule.applySeasonDates">
                   <option value="">Custom dates...</option>
                 </select>
-                <div class="form-text">Select a season to auto-fill dates, or set manually below</div>
+                <div class="form-text">Select a season to auto-fill Entry Opens/Closes and Judging dates. Seasons are managed in <strong>Settings → Award Seasons</strong>. Changing season here does not change the season's own status.</div>
               </div>
               <div class="col-12"><hr class="my-1"><small class="text-muted fw-semibold">Key Dates</small></div>
               <div class="col-md-3">
@@ -7871,6 +7877,7 @@
       <div class="modal-header bg-primary text-white">
         <h5 class="modal-title" id="assignmentsModalTitle">
           <i class="bi bi-people me-2"></i>Award Judging Panel
+          <small class="ms-2 fw-light opacity-75" style="font-size:.8rem;">— assign judges &amp; manage nominees for this category</small>
         </h5>
         <button class="btn btn-sm btn-light me-2" data-action="assignmentsModule.openConflictManager" title="Manage judge conflict of interest records">
           <i class="bi bi-shield-exclamation me-1"></i>Judge Conflicts
@@ -8298,7 +8305,7 @@
                   <li><a class="dropdown-item" href="#" data-action="eventsModule.generateNameBadges"><i class="bi bi-person-badge text-primary me-2"></i>Name Badges PDF</a></li>
                   <li><a class="dropdown-item" href="#" data-action="eventsModule.generatePlaceCards"><i class="bi bi-card-text text-info me-2"></i>Place Cards PDF</a></li>
                   <li><hr class="dropdown-divider"></li>
-                  <li><a class="dropdown-item" href="#" data-action="eventsModule.openShareableSeatingChart"><i class="bi bi-share text-purple me-2"></i>Shareable Seating Chart</a></li>
+                  <li><a class="dropdown-item" href="#" data-action="eventsModule.openShareableSeatingChart" title="Open the drag-and-drop seating planner — assign guests to tables, rearrange the layout, and share a live view with your venue team"><i class="bi bi-share text-purple me-2"></i>Shareable Seating Chart</a></li>
                 </ul>
               </div>
               <button class="btn btn-outline-secondary btn-sm" data-action="ticketModule.renderTicketDashboard" title="Manage tickets, QR codes, and refunds">
@@ -8552,7 +8559,7 @@
                       <div class="progress mt-1" style="height:16px;">
                         <div class="progress-bar bg-success" id="checkInProgressBar" style="width:0%;">0%</div>
                       </div>
-                      <small class="text-muted mt-1 d-block">Check-In Rate</small>
+                      <small class="text-muted mt-1 d-block" title="Checked-in guests ÷ guests with RSVP status 'Attending'. Waitlisted and cancelled guests are excluded from the denominator.">Check-In Rate</small>
                     </div>
                   </div>
                 </div>
@@ -8719,11 +8726,14 @@
 
             <!-- Waitlist Tab -->
             <div class="tab-pane fade" id="waitlistTab">
+              <div class="alert alert-light border py-2 px-3 mb-3 small" role="note">
+                <i class="bi bi-hourglass text-warning me-1"></i><strong>How the Waitlist works:</strong> When your event reaches its capacity limit, add extra guests here rather than directly to Attendees. When a confirmed attendee cancels, click <strong>Promote to Attendee</strong> on any waitlisted guest to move them across — they will receive a confirmation email. The waitlist is managed manually; you decide who gets promoted and in what order.
+              </div>
               <div class="d-flex justify-content-between align-items-center mb-3">
                 <div>
                   <h6 class="mb-0"><i class="bi bi-hourglass me-2"></i>Waitlist
                     <span class="badge bg-warning ms-2" id="waitlistCount">0</span> waiting</h6>
-                  <small class="text-muted">When at capacity, add guests here. Promote to attendee list when space opens up.</small>
+                  <small class="text-muted">Promote guests to the Attendees tab when a space opens up.</small>
                 </div>
                 <button class="btn btn-sm btn-primary" data-action="eventsModule.addToWaitlist">
                   <i class="bi bi-plus-lg me-1"></i>Add to Waitlist
@@ -8743,6 +8753,9 @@
 
             <!-- Budget Tab -->
             <div class="tab-pane fade" id="budgetTab">
+              <div class="alert alert-light border py-2 px-3 mb-3 small" role="note">
+                <i class="bi bi-wallet2 text-primary me-1"></i><strong>Budget tracking:</strong> Set your <strong>Total Budget</strong> target, then add expense items below. <strong>Estimated</strong> = your planned cost before the event. <strong>Actual</strong> = the real invoiced amount once confirmed. <strong>Variance</strong> = Estimated minus Actual (positive = under budget, negative = over budget). Update Actual amounts as invoices arrive.
+              </div>
               <div class="d-flex justify-content-between align-items-center mb-3">
                 <h6 class="mb-0"><i class="bi bi-wallet2 me-2"></i>Event Budget</h6>
                 <div class="d-flex gap-2">
@@ -10940,7 +10953,7 @@
                 <div class="card-body">
                   <h6 class="card-subtitle mb-2 opacity-75">Flagged Companies</h6>
                   <h3 class="card-title mb-0" id="vettingModalFlaggedCount">0</h3>
-                  <p class="small mb-0 mt-2 opacity-75">Require attention</p>
+                  <p class="small mb-0 mt-2 opacity-75">Require attention — review AI findings, then either approve (override to Pass) or disqualify from the shortlist</p>
                 </div>
               </div>
             </div>
@@ -10996,7 +11009,7 @@
                       <th scope="col" class="text-center" title="Does the company's sector and activities align with this award category?">Category Match</th>
                       <th scope="col" class="text-center" title="Any insolvency filings, regulatory sanctions, or significant adverse press detected?">Reputation</th>
                       <th scope="col" title="Claude AI's summary of findings — key issues, flags, or verification notes for this organisation.">AI Findings</th>
-                      <th scope="col" class="text-center">Actions</th>
+                      <th scope="col" class="text-center" title="View full AI report, manually override the vetting verdict, or flag the organisation for a human review">Actions</th>
                     </tr>
                   </thead>
                   <tbody id="vettingResultsTableBody">

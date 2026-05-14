@@ -1,3 +1,5 @@
 [
-  "00-full.html"
+  "00-shell-head.html",
+  "01-content.html",
+  "99-shell-foot.html"
 ]

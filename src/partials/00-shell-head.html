@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://*.supabase.co; script-src 'self' https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://js.stripe.com https://browser.sentry-cdn.com https://s3.tradingview.com https://cdn.sheetjs.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://fonts.googleapis.com; img-src 'self' data: blob: https://*.supabase.co https://i.ytimg.com https://*.tile.openstreetmap.org https://*.britishtradeawards.com https://britishtradeawards.com; font-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://api.resend.com https://*.sentry.io wss://*.supabase.co https://*.tradingview.com wss://*.tradingview.com https://*.tradingview-widget.com wss://*.tradingview-widget.com https://www.youtube.com https://vimeo.com https://api.company-information.service.gov.uk https://*.stripe.com https://*.vercel-scripts.com https://*.vercel-insights.com https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://browser.sentry-cdn.com; frame-src 'self' https://js.stripe.com https://www.youtube.com https://s3.tradingview.com https://*.tradingview.com https://*.tradingview-widget.com; object-src 'none'; base-uri 'self'">
+  <!-- Supabase credentials — injected per environment, never hardcoded -->
+  <meta name="supabase-url" content="">
+  <meta name="supabase-anon-key" content="">
+  <title>British Trade Awards Admin</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='80' font-size='80'>🏆</text></svg>">
+  
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" crossorigin="anonymous">
+
+  <!-- Leaflet.js Map Library -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="manifest.json">
+
+  <!-- Sentry Error Monitoring (optional - set SENTRY_DSN to enable) -->
+  <script src="https://browser.sentry-cdn.com/8.0.0/bundle.tracing.min.js" crossorigin="anonymous" defer></script>
+
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="styles.css?v=6">
+  <link rel="stylesheet" href="modern-theme.css">
+</head>
+<body>
+
+  <a href="#appMain" class="visually-hidden-focusable position-absolute top-0 start-0 p-2 bg-primary text-white rounded-bottom" style="z-index:9999">Skip to main content</a>
+
+  <!-- Loading Bar -->
+  <div id="loadingBar" class="loading-bar d-none"></div>
+
+  <!-- ==================================================== -->
+  <!-- INITIAL LOADING SPLASH -->
+  <!-- ==================================================== -->
+  <div id="splashScreen" class="splash-screen">
+    <div class="splash-content">
+      <i class="bi bi-trophy-fill splash-icon"></i>
+      <h2>British Trade Awards</h2>
+      <p class="text-muted">Admin Portal</p>
+      <div class="spinner-border text-primary mt-3" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <p class="text-muted mt-2 small" id="splashStatus">Connecting...</p>
+    </div>
+  </div>
+
+  <!-- ==================================================== -->
+  <!-- LOGIN PAGE -->
+  <!-- ==================================================== -->
+  <div id="loginPage" class="d-none">
+    <div class="login-container">
+      <div class="card login-card">
+        <div class="card-body p-5">
+          <div class="text-center mb-4">
+            <i class="bi bi-shield-lock login-icon"></i>
+            <h2 class="mt-3 mb-2">British Trade Awards</h2>
+            <p class="text-muted">Admin Portal</p>
+          </div>
+          
+          <div id="loginError" class="alert alert-danger d-none" role="alert"></div>
+          
+          <form id="loginForm" data-on-submit="authModule.handleLogin">
+            <div class="mb-3">
+              <label for="loginEmail" class="form-label">Email</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                <input type="email" class="form-control" id="loginEmail" placeholder="admin@britishtrade.com" required autocomplete="username">
+              </div>
+            </div>
+            
+            <div class="mb-4">
+              <label for="loginPassword" class="form-label">Password</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                <input type="password" class="form-control" id="loginPassword" placeholder="Enter password" required autocomplete="current-password">
+              </div>
+            </div>
+            
+            <button type="submit" id="loginBtn" class="btn btn-primary w-100 py-2">
+              <i class="bi bi-box-arrow-in-right me-2"></i>Sign In
+            </button>
+          </form>
+          
+          <div class="text-center mt-4">
+            <small class="text-muted">
+              <i class="bi bi-shield-check me-1"></i>Secure admin access
+            </small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================================================== -->
+  <!-- DASHBOARD PAGE -->
+  <!-- ==================================================== -->
+  <div id="dashboardPage" class="d-none">
+    
+    <!-- Top Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top" style="z-index: 1001;">
+      <div class="container-fluid">
+        <a class="navbar-brand fw-bold" href="#">
+          <i class="bi bi-trophy-fill me-2"></i>British Trade Awards
+        </a>
+        
+        <div class="d-flex align-items-center gap-2">
+          <!-- Connection Status -->
+          <div id="connectionStatus" class="connection-status">
+            <i class="bi bi-wifi status-icon"></i>
+            <span class="status-text">Connected</span>
+          </div>
+
+          <!-- Test Mode Button (hidden by default — reveal with Ctrl+Shift+D) -->
+          <div class="dropdown d-none" id="testModeDropdown">
+            <button class="btn btn-outline-warning dropdown-toggle" type="button" data-bs-toggle="dropdown" title="Test Data Management">
+              <i class="bi bi-bug me-1"></i>Test Mode
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><h6 class="dropdown-header">Test Data Management</h6></li>
+              <li><a class="dropdown-item" href="#" data-action="testDataManager.generateTestData" data-prevent-default="true">
+                <i class="bi bi-plus-lg me-2"></i>Generate Test Data (30 Winners)
+              </a></li>
+              <li><a class="dropdown-item text-danger" href="#" data-action="testDataManager.removeTestData" data-prevent-default="true">
+                <i class="bi bi-trash me-2"></i>Remove Test Data
+              </a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><h6 class="dropdown-header">Mock Orders</h6></li>
+              <li><a class="dropdown-item" href="#" data-action="testDataManager.generateMockOrder" data-prevent-default="true">
+                <i class="bi bi-cart-plus me-2"></i>Create Mock Order
+              </a></li>
+              <li><a class="dropdown-item text-danger" href="#" data-action="testDataManager.removeMockOrders" data-prevent-default="true">
+                <i class="bi bi-cart-x me-2"></i>Remove Mock Orders
+              </a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item" href="#" data-action="testDataManager.showTestDataInfo" data-prevent-default="true">
+                <i class="bi bi-info-circle me-2"></i>Test Data Info
+              </a></li>
+            </ul>
+          </div>
+
+          <!-- Recently Viewed -->
+          <div class="dropdown d-inline-block me-2">
+            <button class="btn btn-outline-light btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" title="Recently viewed">
+              <i class="bi bi-clock-history"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end" id="recentlyViewedList" style="min-width:280px; max-height:400px; overflow-y:auto;">
+              <li><span class="dropdown-item text-muted small">No recent items</span></li>
+            </ul>
+          </div>
+
+          <!-- Global Search -->
+          <button class="btn btn-outline-light btn-sm" id="globalSearchNavBtn" title="Search everything (Ctrl+K)" aria-label="Search" onclick="utils.toggleCommandPalette()">
+            <i class="bi bi-search me-1"></i><span class="d-none d-xl-inline small">Search</span>
+            <kbd class="d-none d-xl-inline ms-1" style="background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.75);border:1px solid rgba(255,255,255,0.3);padding:1px 5px;border-radius:3px;font-size:0.6rem;line-height:1.4;">Ctrl K</kbd>
+          </button>
+
+          <!-- Keyboard Shortcuts Hint -->
+          <button class="btn btn-outline-light btn-sm" title="Keyboard shortcuts" aria-label="Keyboard shortcuts" onclick="var m=document.getElementById('shortcutsHelpModal');if(m)new bootstrap.Modal(m).show();">
+            <kbd style="background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.85);border:1px solid rgba(255,255,255,0.3);padding:1px 6px;border-radius:3px;font-size:0.7rem;">?</kbd>
+          </button>
+
+          <!-- Dark Mode Toggle -->
+          <button class="btn btn-outline-light" id="darkModeToggle" title="Toggle dark mode" aria-label="Toggle dark mode">
+            <i class="bi bi-moon"></i>
+          </button>
+
+          <!-- User Info -->
+          <div class="navbar-text text-white me-3">
+            <i class="bi bi-person-circle me-1"></i>
+            <span id="userEmail"></span>
+          </div>
+
+          <!-- Logout -->
+          <button class="btn btn-outline-light" id="logoutBtn">
+            <i class="bi bi-box-arrow-right me-1"></i>Logout
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <div class="app-layout" id="appLayout">
+
+      <!-- ================================================ -->
+      <!-- LEFT SIDEBAR NAVIGATION                          -->
+      <!-- ================================================ -->
+      <nav class="app-sidebar" id="appSidebar" role="tablist">
+
+        <!-- Collapse toggle -->
+        <button class="sidebar-toggle" id="sidebarToggle" type="button" title="Toggle sidebar">
+          <i class="bi bi-layout-sidebar"></i>
+        </button>
+
+        <!-- Scrollable nav groups -->
+        <div class="sidebar-nav">
+
+          <!-- DASHBOARD (no group label — single item) -->
+          <button class="sidebar-nav-link active" id="dashboard-tab" data-bs-toggle="tab" data-bs-target="#dashboard" type="button" role="tab" aria-controls="dashboard" aria-selected="true" title="Dashboard">
+            <i class="bi bi-speedometer2 sidebar-icon"></i>
+            <span class="sidebar-label">Dashboard</span>
+          </button>
+
+          <!-- PROGRAMME -->
+          <div class="sidebar-group">
+            <span class="sidebar-group-label">Programme</span>
+            <button class="sidebar-nav-link" id="awards-tab" data-bs-toggle="tab" data-bs-target="#awards" type="button" role="tab" aria-controls="awards" aria-selected="false" title="Awards">
+              <i class="bi bi-trophy sidebar-icon"></i>
+              <span class="sidebar-label">Awards</span>
+              <span class="sidebar-badge" id="awardsTabCount"></span>
+            </button>
+            <button class="sidebar-nav-link" id="entries-tab" data-bs-toggle="tab" data-bs-target="#entries" type="button" role="tab" aria-controls="entries" aria-selected="false" title="Entries">
+              <i class="bi bi-file-earmark-text sidebar-icon"></i>
+              <span class="sidebar-label">Entries</span>
+              <span class="sidebar-badge" id="entriesTabCount"></span>
+            </button>
+            <button class="sidebar-nav-link" id="winners-tab" data-bs-toggle="tab" data-bs-target="#winners" type="button" role="tab" aria-controls="winners" aria-selected="false" title="Winners">
+              <i class="bi bi-award sidebar-icon"></i>
+              <span class="sidebar-label">Winners</span>
+              <span class="sidebar-badge" id="winnersTabCount"></span>
+            </button>
+            <button class="sidebar-nav-link" id="media-gallery-tab" data-bs-toggle="tab" data-bs-target="#media-gallery" type="button" role="tab" aria-controls="media-gallery" aria-selected="false" title="Media Gallery">
+              <i class="bi bi-images sidebar-icon"></i>
+              <span class="sidebar-label">Media Gallery</span>
+            </button>
+          </div>
+
+          <!-- PEOPLE -->
+          <div class="sidebar-group">
+            <span class="sidebar-group-label">People</span>
+            <button class="sidebar-nav-link" id="organisations-tab" data-bs-toggle="tab" data-bs-target="#organisations" type="button" role="tab" aria-controls="organisations" aria-selected="false" title="Organisations">
+              <i class="bi bi-building sidebar-icon"></i>
+              <span class="sidebar-label">Organisations</span>
+              <span class="sidebar-badge" id="orgsTabCount"></span>
+            </button>
+            <button class="sidebar-nav-link" id="crm-tab" data-bs-toggle="tab" data-bs-target="#crm" type="button" role="tab" aria-controls="crm" aria-selected="false" title="CRM">
+              <i class="bi bi-people sidebar-icon"></i>
+              <span class="sidebar-label">CRM</span>
+            </button>
+            <span class="sidebar-sub-label d-none" id="crmSubLabel"></span>
+          </div>
+
+          <!-- COMMERCIAL -->
+          <div class="sidebar-group">
+            <span class="sidebar-group-label">Commercial</span>
+            <button class="sidebar-nav-link" id="events-tab" data-bs-toggle="tab" data-bs-target="#events" type="button" role="tab" aria-controls="events" aria-selected="false" title="Events">
+              <i class="bi bi-calendar-event sidebar-icon"></i>
+              <span class="sidebar-label">Events</span>
+              <span class="sidebar-badge" id="eventsTabCount"></span>
+            </button>
+            <button class="sidebar-nav-link" id="payments-tab" data-bs-toggle="tab" data-bs-target="#payments" type="button" role="tab" aria-controls="payments" aria-selected="false" title="Payments">
+              <i class="bi bi-credit-card sidebar-icon"></i>
+              <span class="sidebar-label">Payments</span>
+              <span class="sidebar-badge" id="paymentsTabCount"></span>
+            </button>
+            <span class="sidebar-sub-label d-none" id="paymentsSubLabel"></span>
+            <button class="sidebar-nav-link" id="marketing-tab" data-bs-toggle="tab" data-bs-target="#marketing" type="button" role="tab" aria-controls="marketing" aria-selected="false" title="Marketing">
+              <i class="bi bi-megaphone sidebar-icon"></i>
+              <span class="sidebar-label">Marketing</span>
+            </button>
+            <button class="sidebar-nav-link" id="reports-tab" data-bs-toggle="tab" data-bs-target="#reports" type="button" role="tab" aria-controls="reports" aria-selected="false" title="Reports">
+              <i class="bi bi-graph-up sidebar-icon"></i>
+              <span class="sidebar-label">Reports</span>
+            </button>
+          </div>
+
+          <!-- SYSTEM -->
+          <div class="sidebar-group">
+            <span class="sidebar-group-label">System</span>
+            <button class="sidebar-nav-link" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings" type="button" role="tab" aria-controls="settings" aria-selected="false" title="Settings &amp; Backup">
+              <i class="bi bi-gear sidebar-icon"></i>
+              <span class="sidebar-label">Settings</span>
+            </button>
+            <span class="sidebar-sub-label d-none" id="settingsSubLabel"></span>
+          </div>
+
+          <!-- Markets (hidden by default — RBAC shows for admin/superadmin) -->
+          <div class="sidebar-group d-none" id="markets-nav-item">
+            <button class="sidebar-nav-link" id="markets-tab" data-bs-toggle="tab" data-bs-target="#bitcoin" type="button" role="tab" aria-controls="bitcoin" aria-selected="false" title="Markets">
+              <i class="bi bi-graph-up-arrow sidebar-icon"></i>
+              <span class="sidebar-label">Markets</span>
+            </button>
+          </div>
+
+        </div><!-- /.sidebar-nav -->
+      </nav><!-- /.app-sidebar -->
+
+      <!-- ================================================ -->
+      <!-- MAIN CONTENT                                     -->
+      <!-- ================================================ -->
+      <main class="app-main" id="appMain">
+
+    <!-- Tab Content -->
+    <div class="tab-content" id="mainTabContent">

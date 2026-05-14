@@ -37,7 +37,7 @@ The CMS is functionally complete at a surface level but has three categories of 
 ### T1-B — Extract: Navigation & shell
 - **What:** Extract the outer shell — `<head>`, nav sidebar, top bar, and closing scripts — into `src/partials/00-shell-head.html` and `src/partials/99-shell-foot.html`.
 - **Done when:** Build output unchanged, tests pass.
-- [ ] Implemented
+- [x] Implemented
 
 ### T1-C — Extract: Dashboard
 - **What:** Extract the Dashboard section into `src/partials/01-dashboard.html`.

@@ -3,7 +3,7 @@
 **CLAUDE: Read this file at the start of any session focused on technical improvements (architecture, missing features, code quality). Work through items in order. Mark each item `[x]` in the same commit as the implementation. Never mark complete unless committed and pushed.**
 
 Branch: `claude/bta-location-restructure-JS5hX`
-Last updated: 2026-05-14 (T1-A complete)
+Last updated: 2026-05-14 (Phase 1 complete — all partials extracted)
 
 ---
 
@@ -67,17 +67,17 @@ The CMS is functionally complete at a surface level but has three categories of 
 ### T1-H — Extract: CRM + Payments + Reports
 - **What:** Extract CRM, Payments, and Reports sections into `src/partials/08-crm.html`, `src/partials/09-payments.html`, `src/partials/10-reports.html`.
 - **Done when:** Build output unchanged, tests pass.
-- [ ] Implemented
+- [x] Implemented
 
 ### T1-I — Extract: Email + Marketing + Social Media
 - **What:** Extract Email Builder/Lists/Templates, Marketing, and Social Media into `src/partials/11-email.html`, `src/partials/12-marketing.html`.
 - **Done when:** Build output unchanged, tests pass.
-- [ ] Implemented
+- [x] Implemented
 
 ### T1-J — Extract: Settings + all remaining modals
 - **What:** Extract Settings section and all shared/global modals into `src/partials/13-settings.html` and `src/partials/14-modals-shared.html`.
 - **Done when:** `index.html` is gone from root (replaced by partials), build output is identical, all 65 tests pass.
-- [ ] Implemented
+- [x] Implemented
 
 ---
 

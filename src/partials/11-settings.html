@@ -1,0 +1,673 @@
+      <!-- SETTINGS & BACKUP TAB -->
+      <!-- ==================================================== -->
+      <div class="tab-pane fade" id="settings" role="tabpanel">
+        <div class="container-fluid">
+
+          <!-- Page Header -->
+          <div class="section-header">
+            <h1 class="section-title">
+              <i class="bi bi-gear me-2"></i>Settings & Backup
+            </h1>
+            <p class="section-subtitle">Manage system settings and data backups</p>
+          </div>
+
+          <!-- Getting Started Banner -->
+          <div class="card border-0 shadow-sm mb-4" id="settingsGettingStarted">
+            <div class="card-body py-3">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <h6 class="fw-semibold mb-2"><i class="bi bi-gear me-2 text-primary"></i>Getting Started — Settings</h6>
+                  <div class="d-flex flex-wrap gap-3">
+                    <div class="d-flex align-items-start gap-2">
+                      <span class="badge bg-primary rounded-pill">1</span>
+                      <div><strong>General / Branding</strong><br><small class="text-muted">Set your programme name, logo, and colour scheme.</small></div>
+                    </div>
+                    <div class="d-flex align-items-start gap-2">
+                      <span class="badge bg-primary rounded-pill">2</span>
+                      <div><strong>Email Settings</strong><br><small class="text-muted">Configure the sender name and address used for all CMS emails.</small></div>
+                    </div>
+                    <div class="d-flex align-items-start gap-2">
+                      <span class="badge bg-primary rounded-pill">3</span>
+                      <div><strong>Seasons &amp; Areas</strong><br><small class="text-muted">Set the open and close dates for the current awards cycle.</small></div>
+                    </div>
+                    <div class="d-flex align-items-start gap-2">
+                      <span class="badge bg-primary rounded-pill">4</span>
+                      <div><strong>Security</strong><br><small class="text-muted">Manage user roles, two-factor authentication, and GDPR settings.</small></div>
+                    </div>
+                  </div>
+                </div>
+                <button class="btn btn-sm btn-outline-secondary ms-3 flex-shrink-0" onclick="localStorage.setItem('settingsWorkflowDismissed','1');this.closest('#settingsGettingStarted').style.display='none'" aria-label="Dismiss">
+                  <i class="bi bi-x-lg"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+          <script>if(localStorage.getItem('settingsWorkflowDismissed')==='1'){var _sg=document.getElementById('settingsGettingStarted');if(_sg)_sg.style.display='none';}</script>
+
+          <!-- Settings Sub-Navigation -->
+          <ul class="nav nav-tabs mb-4" id="settingsSubTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#settings-general" type="button" role="tab" title="Branding, logo, and display preferences">
+                <i class="bi bi-palette me-2"></i>General
+                <span class="d-block small fw-normal opacity-75" style="font-size:0.65rem;margin-top:1px;">Branding &amp; display</span>
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" data-bs-toggle="tab" data-bs-target="#settings-seasons" type="button" role="tab" title="Manage award seasons and geographic areas">
+                <i class="bi bi-calendar-event me-2"></i>Seasons &amp; Areas
+                <span class="d-block small fw-normal opacity-75" style="font-size:0.65rem;margin-top:1px;">Award periods &amp; regions</span>
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" data-bs-toggle="tab" data-bs-target="#settings-security" type="button" role="tab" title="Two-factor auth, GDPR, and user roles">
+                <i class="bi bi-shield-lock me-2"></i>Security
+                <span class="d-block small fw-normal opacity-75" style="font-size:0.65rem;margin-top:1px;">2FA, GDPR &amp; roles</span>
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" data-bs-toggle="tab" data-bs-target="#settings-integrations" type="button" role="tab" title="Webhooks and third-party service connections">
+                <i class="bi bi-broadcast me-2"></i>Integrations
+                <span class="d-block small fw-normal opacity-75" style="font-size:0.65rem;margin-top:1px;">Webhooks &amp; APIs</span>
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" data-bs-toggle="tab" data-bs-target="#settings-data" type="button" role="tab" title="Export data, backups, and audit log">
+                <i class="bi bi-cloud-download me-2"></i>Data &amp; Backup
+                <span class="d-block small fw-normal opacity-75" style="font-size:0.65rem;margin-top:1px;">Export, backup &amp; audit</span>
+              </button>
+            </li>
+          </ul>
+
+          <div class="tab-content" id="settingsSubTabContent">
+
+          <!-- General: Branding + UX Preferences -->
+          <div class="tab-pane fade show active" id="settings-general" role="tabpanel">
+          <div class="row g-4">
+            <!-- Branding (rendered dynamically by brandingModule.renderBrandSettings) -->
+            <div class="col-12">
+              <div id="brandingSettingsContainer"></div>
+            </div>
+
+            <!-- UX Preferences (rendered dynamically by settingsModule.renderUxSettings) -->
+            <div class="col-12">
+              <div id="uxSettingsContainer"></div>
+            </div>
+
+            <!-- Notification Preferences (rendered dynamically by settingsModule.renderNotificationSettings) -->
+            <div class="col-12">
+              <div id="notificationSettingsContainer"></div>
+            </div>
+          </div>
+          </div>
+
+          <!-- Seasons & Areas -->
+          <div class="tab-pane fade" id="settings-seasons" role="tabpanel">
+          <div class="row g-4">
+
+            <!-- Award Seasons -->
+            <div class="col-12">
+              <div class="content-card">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <div>
+                    <h5 class="mb-1">
+                      <i class="bi bi-calendar-event me-2"></i>Award Seasons
+                    </h5>
+                    <p class="text-muted mb-0 small">Define key dates for each awards season. These can be applied to awards via the Add/Edit Award form.</p>
+                  </div>
+                  <button class="btn btn-primary btn-sm" data-action="settingsModule.openSeasonModal">
+                    <i class="bi bi-plus-lg me-1"></i>Add Season
+                  </button>
+                </div>
+                <div class="table-responsive">
+                  <table class="table table-sm table-hover align-middle">
+                    <thead class="table-light">
+                      <tr>
+                        <th scope="col">Season Name</th>
+                        <th scope="col">Year</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Entries</th>
+                        <th scope="col">Nominees</th>
+                        <th scope="col">Judging</th>
+                        <th scope="col">Voting</th>
+                        <th scope="col">Winners</th>
+                        <th scope="col">Default</th>
+                        <th scope="col" class="text-center">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="seasonsTableBody">
+                      <tr><td colspan="10" class="text-center text-muted py-3">Loading seasons...</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- Manage Areas Section -->
+            <div class="col-12">
+              <div class="content-card">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <div>
+                    <h5 class="mb-1">
+                      <i class="bi bi-pin-map me-2"></i>Manage Areas
+                    </h5>
+                    <p class="text-muted mb-0 small">The 101 geographic areas used for award category filtering. These are pre-loaded and do not need to be edited.</p>
+                  </div>
+                  <button class="btn btn-outline-secondary btn-sm" data-action="areasManager.loadAreas">
+                    <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+                  </button>
+                </div>
+                <div id="manageAreasContainer">
+                  <p class="text-muted small">Click Refresh to load areas.</p>
+                </div>
+              </div>
+            </div>
+
+
+          </div><!-- /row: seasons+areas -->
+          </div><!-- /tab-pane: settings-seasons -->
+
+          <!-- Data & Backup: Backup/Export + System Info + Audit Log -->
+          <div class="tab-pane fade" id="settings-data" role="tabpanel">
+          <div class="row g-4">
+
+            <!-- Backup & Export Section -->
+            <div class="col-lg-6">
+              <div class="content-card">
+                <h5 class="mb-3">
+                  <i class="bi bi-cloud-download me-2"></i>Database Backup & Export
+                </h5>
+                <p class="text-muted mb-3">Download complete database backups or export individual tables</p>
+                <div class="alert alert-light border small mb-4">
+                  <strong>Full Backup:</strong> Complete data snapshot — save this for archiving or before making major changes. &nbsp;<strong>Restore:</strong> Load a backup file to revert all data — <span class="text-danger fw-semibold">this overwrites current data and cannot be undone.</span> &nbsp;<strong>Table Export:</strong> Download individual sections (e.g. winners list as a spreadsheet).
+                </div>
+
+                <!-- Full Database Backup -->
+                <div class="mb-4 pb-4 border-bottom">
+                  <h6 class="mb-3">Full Database Backup</h6>
+                  <p class="small text-muted mb-3">Export all data in JSON format for complete backup</p>
+                  <div class="d-flex gap-2">
+                    <button class="btn btn-primary" data-action="settingsModule.exportFullBackup">
+                      <i class="bi bi-database-down me-2"></i>Download Full Backup
+                    </button>
+                    <button class="btn btn-outline-warning" data-action="settingsModule.restoreFromBackup">
+                      <i class="bi bi-database-up me-2"></i>Restore from Backup
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Individual Table Exports -->
+                <div>
+                  <h6 class="mb-3">Export Data</h6>
+                  <p class="small text-muted mb-3">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Use the <strong>Export</strong> dropdown in each module's toolbar to download table data as CSV or Excel. Exports are available in: Awards, Organisations, Winners, Entries, Events, and Payments.
+                  </p>
+                </div>
+
+                <!-- Last Backup Info -->
+                <div class="mt-4 pt-4 border-top">
+                  <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                      <small class="text-muted d-block">Last Backup</small>
+                      <span class="text-success" id="lastBackupTime">Never</span>
+                    </div>
+                    <div>
+                      <small class="text-muted d-block">Total Records</small>
+                      <span class="fw-bold" id="totalRecords">0</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- System Information -->
+            <div class="col-lg-6">
+              <div class="content-card">
+                <h5 class="mb-3">
+                  <i class="bi bi-info-circle me-2"></i>System Information
+                </h5>
+
+                <div class="mb-3">
+                  <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                    <span class="text-muted">System Version</span>
+                    <span class="fw-semibold">1.0.0</span>
+                  </div>
+                  <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                    <span class="text-muted">Database Status</span>
+                    <span id="systemDbStatus"><span class="badge bg-secondary">Checking...</span></span>
+                  </div>
+                  <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                    <span class="text-muted">Total Awards</span>
+                    <span id="systemAwardsCount">0</span>
+                  </div>
+                  <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                    <span class="text-muted">Total Organisations</span>
+                    <span id="systemOrgsCount">0</span>
+                  </div>
+                  <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                    <span class="text-muted">Total Winners</span>
+                    <span id="systemWinnersCount">0</span>
+                  </div>
+                  <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                    <span class="text-muted">Total Events</span>
+                    <span id="systemEventsCount">0</span>
+                  </div>
+                  <div class="d-flex justify-content-between align-items-center py-2">
+                    <span class="text-muted">Media Items</span>
+                    <span id="systemMediaCount">0</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Backup Reminders -->
+              <div class="content-card mt-4">
+                <h5 class="mb-3">
+                  <i class="bi bi-bell me-2"></i>Backup Reminders
+                </h5>
+                <p class="text-muted mb-3">Set automatic backup reminders</p>
+
+                <div class="form-check mb-2">
+                  <input class="form-check-input" type="checkbox" id="weeklyBackup" aria-label="Enable weekly backup" data-on-change="settingsModule.updateBackupSettings">
+                  <label class="form-check-label" for="weeklyBackup">
+                    Weekly backup reminder <span class="text-muted small ms-1">(email notification)</span>
+                  </label>
+                </div>
+                <div class="form-check mb-2">
+                  <input class="form-check-input" type="checkbox" id="monthlyBackup" aria-label="Enable monthly backup" data-on-change="settingsModule.updateBackupSettings" checked>
+                  <label class="form-check-label" for="monthlyBackup">
+                    Monthly backup reminder <span class="text-muted small ms-1">(email notification)</span>
+                  </label>
+                </div>
+
+                <button class="btn btn-outline-primary btn-sm mt-3" data-action="settingsModule.testBackupReminder">
+                  <i class="bi bi-bell me-1"></i>Test Reminder
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Audit Log -->
+          <div class="row g-4 mt-4">
+            <div class="col-12">
+              <div class="content-card">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <div>
+                    <h5 class="mb-1">
+                      <i class="bi bi-clock-history me-2"></i>Audit Log
+                    </h5>
+                    <p class="text-muted mb-0">Track all system changes and activities</p>
+                  </div>
+                  <div class="d-flex gap-2">
+                    <button class="btn btn-outline-secondary btn-sm" data-action="settingsModule.refreshAuditLog">
+                      <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+                    </button>
+                    <button class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#clearAuditLogModal">
+                      <i class="bi bi-trash me-1"></i>Clear Log
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Filter -->
+                <div class="row mb-3">
+                  <div class="col-md-3">
+                    <select class="form-select form-select-sm" id="auditLogFilter" data-on-change="settingsModule.filterAuditLog">
+                      <option value="">All Actions</option>
+                      <option value="create">Created</option>
+                      <option value="update">Updated</option>
+                      <option value="delete">Deleted</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <select class="form-select form-select-sm" id="auditEntityFilter" data-on-change="settingsModule.filterAuditLog">
+                      <option value="">All Entities</option>
+                      <option value="award">Awards</option>
+                      <option value="organisation">Organisations</option>
+                      <option value="winner">Winners</option>
+                      <option value="event">Events</option>
+                      <option value="media">Media</option>
+                    </select>
+                  </div>
+                </div>
+
+                <!-- Audit Log Table -->
+                <div class="table-responsive u-scroll-y-400">
+                  <table class="table table-sm table-hover">
+                    <thead class="sticky-top bg-white">
+                      <tr>
+                        <th scope="col" width="150">Timestamp</th>
+                        <th scope="col" width="80">Action</th>
+                        <th scope="col" width="100">Entity</th>
+                        <th scope="col">Description</th>
+                        <th scope="col" width="120">User</th>
+                      </tr>
+                    </thead>
+                    <tbody id="auditLogTableBody">
+                      <!-- Populated by JS -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          </div><!-- /tab-pane: settings-data -->
+
+          <!-- Security: 2FA + User Roles + GDPR -->
+          <div class="tab-pane fade" id="settings-security" role="tabpanel">
+
+          <!-- Two-Factor Authentication Section -->
+          <div class="row g-4 mt-0">
+            <div class="col-12">
+              <div class="content-card">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <div>
+                    <h5 class="mb-1">
+                      <i class="bi bi-shield-check me-2"></i>Two-Factor Authentication (2FA)
+                    </h5>
+                    <p class="text-muted mb-0">Add an extra layer of security to your account using an authenticator app</p>
+                  </div>
+                </div>
+                <div id="mfaSetupContainer">
+                  <div class="text-center py-3 text-muted">
+                    <div class="spinner-border spinner-border-sm" role="status"></div>
+                    <span class="ms-2">Loading MFA status...</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- M16: Login History -->
+          <div class="row g-4 mt-3">
+            <div class="col-12">
+              <div class="content-card">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>Login History</h5>
+                  <button class="btn btn-sm btn-outline-secondary" data-action="settingsModule.loadLoginHistory">
+                    <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+                  </button>
+                </div>
+                <div id="loginHistoryContainer">
+                  <p class="text-muted small">Click Refresh to load recent login activity.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Integrations: Webhooks -->
+          </div><!-- /tab-pane: settings-security (2FA opened above, closed here) -->
+
+          <div class="tab-pane fade" id="settings-integrations" role="tabpanel">
+
+          <!-- Outbound Webhooks Section -->
+          <div class="row g-4 mt-4">
+            <div class="col-12">
+              <div class="content-card">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <div>
+                    <h5 class="mb-1">
+                      <i class="bi bi-broadcast me-2"></i>Outbound Webhooks
+                    </h5>
+                    <p class="text-muted mb-0">Notify external systems when data changes in your CMS</p>
+                  </div>
+                  <button class="btn btn-primary btn-sm" data-action="settingsModule.openWebhookModal">
+                    <i class="bi bi-plus-lg me-1"></i>Add Webhook
+                  </button>
+                </div>
+                <div class="table-responsive">
+                  <table class="table table-sm table-hover align-middle">
+                    <thead class="table-light">
+                      <tr>
+                        <th scope="col">Name</th>
+                        <th scope="col">URL</th>
+                        <th scope="col">Events</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Last Triggered</th>
+                        <th scope="col" class="text-center">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="webhooksTableBody">
+                      <tr><td colspan="6" class="text-center text-muted py-3">Loading webhooks...</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <!-- Webhook Logs -->
+                <div class="mt-3">
+                  <h6 class="mb-2"><i class="bi bi-journal-text me-2"></i>Recent Webhook Deliveries</h6>
+                  <div id="webhookLogsContainer" class="small">
+                    <p class="text-muted">No recent deliveries</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          </div><!-- /tab-pane: settings-integrations -->
+
+          <!-- Security extras: GDPR + User Roles — moved into #settings-security by script below -->
+          <div id="settings-security-overflow" style="display:none">
+          <!-- GDPR Compliance (rendered dynamically by gdprModule.renderGdprPanel) -->
+          <div class="alert alert-info border-0 mt-4 mb-0" role="note">
+            <i class="bi bi-shield-lock me-2"></i><strong>GDPR Compliance:</strong> UK GDPR requires winners' explicit consent before their name, company, or image appears in any public announcement or marketing material. Use the controls below to record consent, respond to data subject requests (access, deletion, portability), and manage data retention periods.
+          </div>
+          <div id="gdprPanel" class="mt-3"></div>
+
+          <!-- User Roles & Permissions Section -->
+          <div class="row g-4 mt-4">
+            <div class="col-12">
+              <div class="content-card">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <div>
+                    <h5 class="mb-1">
+                      <i class="bi bi-shield-lock me-2"></i>User Roles & Permissions
+                    </h5>
+                    <p class="text-muted mb-0">Manage user access and permissions</p>
+                  </div>
+                </div>
+
+                <div class="alert alert-info">
+                  <i class="bi bi-info-circle me-2"></i>
+                  <strong>System-wide Permissions:</strong> Configure role-based access control for your awards management system.
+                </div>
+
+                <!-- Roles Overview -->
+                <div class="row g-3">
+                  <div class="col-md-4">
+                    <div class="card border-primary">
+                      <div class="card-header bg-primary text-white">
+                        <h6 class="mb-0"><i class="bi bi-star-fill me-2"></i>Administrator</h6>
+                      </div>
+                      <div class="card-body">
+                        <p class="small mb-2">Full system access</p>
+                        <ul class="small mb-0">
+                          <li>Manage all awards & winners</li>
+                          <li>Manage organisations</li>
+                          <li>Manage events & media</li>
+                          <li>System settings & backups</li>
+                          <li>User management</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="col-md-4">
+                    <div class="card border-success">
+                      <div class="card-header bg-success text-white">
+                        <h6 class="mb-0"><i class="bi bi-pen me-2"></i>Editor</h6>
+                      </div>
+                      <div class="card-body">
+                        <p class="small mb-2">Content management access</p>
+                        <ul class="small mb-0">
+                          <li>Create & edit awards</li>
+                          <li>Manage winners</li>
+                          <li>Upload media</li>
+                          <li>View reports</li>
+                          <li class="text-muted">No system settings access</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="col-md-4">
+                    <div class="card border-secondary">
+                      <div class="card-header bg-secondary text-white">
+                        <h6 class="mb-0"><i class="bi bi-eye me-2"></i>Viewer</h6>
+                      </div>
+                      <div class="card-body">
+                        <p class="small mb-2">Read-only access</p>
+                        <ul class="small mb-0">
+                          <li>View awards & winners</li>
+                          <li>View organisations</li>
+                          <li>View events & media</li>
+                          <li>Export reports</li>
+                          <li class="text-muted">No edit permissions</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Current User Role (dynamic) -->
+                <div class="mt-4">
+                  <div class="alert" id="currentUserRoleAlert">
+                    <i class="bi bi-person-check me-2"></i>
+                    <strong>Your Current Role:</strong> <span id="currentUserRoleLabel">Loading...</span>
+                  </div>
+                  <p class="small text-muted">
+                    Note: User role management requires database authentication. Contact your system administrator to change user roles and permissions.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          </div><!-- /settings-security-overflow -->
+          </div><!-- /settingsSubTabContent tab-content -->
+
+          <script>
+          (function() {
+            var overflow = document.getElementById('settings-security-overflow');
+            var secPane = document.getElementById('settings-security');
+            if (overflow && secPane) {
+              while (overflow.firstChild) secPane.appendChild(overflow.firstChild);
+              overflow.remove();
+            }
+          })();
+          </script>
+
+        </div>
+      </div>
+
+      <!-- ==================================================== -->
+      <!-- BITCOIN TAB -->
+      <!-- ==================================================== -->
+      <div class="tab-pane fade" id="bitcoin" role="tabpanel">
+        <div class="container-fluid">
+
+          <!-- Page Header -->
+          <div class="section-header">
+            <h1 class="section-title">
+              <i class="bi bi-currency-bitcoin me-2"></i>Crypto & Markets
+            </h1>
+            <p class="section-subtitle">Live charts with technical analysis tools — powered by TradingView</p>
+          </div>
+
+          <!-- Quick Symbol Buttons -->
+          <div class="content-card mb-1 py-2">
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+              <span class="fw-semibold small me-2"><i class="bi bi-lightning-charge me-1"></i>Quick Switch:</span>
+              <button class="btn btn-sm btn-outline-warning btc-symbol-btn active" data-action="btcModule.switchSymbol" data-id="COINBASE:BTCUSD">
+                <i class="bi bi-currency-bitcoin me-1"></i>BTC/USD
+              </button>
+              <button class="btn btn-sm btn-outline-primary btc-symbol-btn" data-action="btcModule.switchSymbol" data-id="COINBASE:ETHUSD">
+                <i class="bi bi-diamond me-1"></i>ETH/USD
+              </button>
+              <button class="btn btn-sm btn-outline-success btc-symbol-btn" data-action="btcModule.switchSymbol" data-id="FX:GBPUSD">
+                <i class="bi bi-currency-pound me-1"></i>GBP/USD
+              </button>
+              <button class="btn btn-sm btn-outline-secondary btc-symbol-btn" data-action="btcModule.switchSymbol" data-id="FX:EURUSD">
+                <i class="bi bi-currency-euro me-1"></i>EUR/USD
+              </button>
+              <button class="btn btn-sm btn-outline-secondary btc-symbol-btn" data-action="btcModule.switchSymbol" data-id="TVC:GOLD">
+                <i class="bi bi-gem me-1"></i>Gold
+              </button>
+              <button class="btn btn-sm btn-outline-secondary btc-symbol-btn" data-action="btcModule.switchSymbol" data-id="SP:SPX">
+                <i class="bi bi-graph-up me-1"></i>S&P 500
+              </button>
+              <div class="vr mx-2"></div>
+              <span class="fw-semibold small me-1">Interval:</span>
+              <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-secondary btc-interval-btn" data-action="btcModule.switchInterval" data-id="1">1m</button>
+                <button class="btn btn-outline-secondary btc-interval-btn" data-action="btcModule.switchInterval" data-id="5">5m</button>
+                <button class="btn btn-outline-secondary btc-interval-btn" data-action="btcModule.switchInterval" data-id="15">15m</button>
+                <button class="btn btn-outline-secondary btc-interval-btn" data-action="btcModule.switchInterval" data-id="60">1H</button>
+                <button class="btn btn-outline-secondary btc-interval-btn" data-action="btcModule.switchInterval" data-id="240">4H</button>
+                <button class="btn btn-outline-secondary btc-interval-btn active" data-action="btcModule.switchInterval" data-id="D">1D</button>
+                <button class="btn btn-outline-secondary btc-interval-btn" data-action="btcModule.switchInterval" data-id="W">1W</button>
+              </div>
+              <div class="vr mx-2"></div>
+              <span class="fw-semibold small me-1">Style:</span>
+              <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-secondary btc-style-btn active" data-action="btcModule.switchStyle" data-id="1" title="Candles" aria-label="Candles chart style"><i class="bi bi-bar-chart"></i></button>
+                <button class="btn btn-outline-secondary btc-style-btn" data-action="btcModule.switchStyle" data-id="2" title="Line" aria-label="Line chart style"><i class="bi bi-graph-up"></i></button>
+                <button class="btn btn-outline-secondary btc-style-btn" data-action="btcModule.switchStyle" data-id="3" title="Area" aria-label="Area chart style"><i class="bi bi-graph-down"></i></button>
+                <button class="btn btn-outline-secondary btc-style-btn" data-action="btcModule.switchStyle" data-id="0" title="Bars" aria-label="Bars chart style"><i class="bi bi-bar-chart-steps"></i></button>
+              </div>
+              <div class="vr mx-2"></div>
+              <span class="fw-semibold small me-1">Theme:</span>
+              <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-dark btc-theme-btn active" data-action="btcModule.switchTheme" data-id="dark" aria-label="Dark theme"><i class="bi bi-moon-fill"></i></button>
+                <button class="btn btn-outline-light border btc-theme-btn" data-action="btcModule.switchTheme" data-id="light" aria-label="Light theme"><i class="bi bi-sun-fill"></i></button>
+              </div>
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-end mb-1">
+            <button class="btn btn-sm btn-outline-dark" id="btcToggleSidebar" data-action="btcModule.toggleSidebar" title="Toggle sidebar panel">
+              <i class="bi bi-layout-sidebar-reverse me-1"></i>Toggle Panel
+            </button>
+          </div>
+
+          <div class="row g-2">
+            <!-- Main Chart -->
+            <div class="col-lg-9" id="btcChartCol">
+              <div id="tradingview_chart" style="height: 700px; width: 100%; position: relative; overflow: hidden;">
+                <div id="btcLoadingState" class="d-flex align-items-center justify-content-center h-100">
+                  <div class="text-center text-muted">
+                    <div class="spinner-border mb-3" role="status"><span class="visually-hidden">Loading…</span></div>
+                    <p class="mb-0">Loading market data…</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Watchlist Sidebar -->
+            <div class="col-lg-3" id="btcSidebarCol">
+              <div class="card border-0 shadow-sm">
+                <div class="card-header bg-dark text-white py-2">
+                  <h6 class="mb-0"><i class="bi bi-star me-2"></i>Watchlist</h6>
+                </div>
+                <div class="card-body p-0">
+                  <div id="btcWatchlist" style="max-height: 340px; overflow-y: auto;">
+                    <div class="text-center py-3 text-muted small">Loading watchlist...</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Market Overview Widget -->
+              <div class="card border-0 shadow-sm mt-3">
+                <div class="card-header bg-dark text-white py-2">
+                  <h6 class="mb-0"><i class="bi bi-globe me-2"></i>Market Overview</h6>
+                </div>
+                <div class="card-body p-2" style="max-height: 340px; overflow-y: auto;">
+                  <div id="btcMarketOverview">
+                    <div class="text-center py-3 text-muted small">Loading market data...</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+

@@ -7,6 +7,7 @@ Second audit: 2026-05-07 (new deep audit — see V2 section below)
 Third audit: 2026-05-07 (post-structural-fix audit — see V3 section below)
 Sixth audit: 2026-05-08 (international awards business first-run UX audit — see V6 section below)
 Seventh audit: 2026-05-14 (top-to-bottom professional CMS audit — see V7 section below)
+Fourteenth audit: 2026-05-14 (deep tab-by-tab audit with 7 parallel agents — see V14 section below)
 Branch: `claude/bta-location-restructure-JS5hX`
 
 ---
@@ -2301,4 +2302,139 @@ Branch: `claude/bta-location-restructure-JS5hX`
 ### V13-L1 — Submit Entry Step 1 subtitle is ambiguous for multi-location businesses
 - **File:** `submit-entry.html` line 650
 - **Fix:** Changed to "Select the county or city where your business is based or primarily operates."
+- [x] Implemented
+
+---
+
+# V14 UX Audit — Deep Tab-by-Tab Audit (7 Parallel Agents, 2026-05-14)
+
+## V14-CRITICAL
+
+### V14-C1 — Award status defaults to "Active" instead of "Draft"
+- **File:** `index.html` line 7301
+- **Fix:** Moved Draft to first position in Add Award status dropdown. Added descriptive labels to all options (e.g. "Active — open for entries") and added form text: "New awards start as Draft. Change to Active when ready to accept entries."
+- [x] Implemented
+
+### V14-C2 — Events Getting Started banner oversimplified (3 steps)
+- **File:** `index.html` line 3369
+- **Fix:** Expanded from 3 steps to 6: Create Event → Set Ticket Price & Stripe → Share Registration Link → Add & Manage Attendees → Issue QR Code Tickets → Check In Guests on the Night.
+- [x] Implemented
+
+### V14-C3 — Special Reqs tab completely blank on load
+- **File:** `index.html` line 8806
+- **Fix:** Added info alert explaining the tab purpose (accessibility, parking, photo consent, emergency contacts, dress code) and an empty-state message with guidance to add requirements via the Attendees tab.
+- [x] Implemented
+
+### V14-C4 — Post-Event tab completely blank on load
+- **File:** `index.html` line 8837
+- **Fix:** Added info alert explaining what will appear (attendance report, survey results, winner highlights, sponsor ROI, debrief notes) and an empty-state message explaining it becomes active after the event date.
+- [x] Implemented
+
+### V14-C5 — "Email Templates" subtab indistinguishable from "Email Builder"
+- **File:** `index.html` lines 4073, 4843
+- **Fix:** Renamed subtab nav to "Template Library". Added subtitle and an alert-light box in the content panel: "Template Library vs Email Builder: Edit reusable templates here. To compose and send a campaign, use the Email Builder tab."
+- [x] Implemented
+
+## V14-HIGH
+
+### V14-H1 — Company Tags vs Award Tags have no explanation of what tagging does
+- **File:** `index.html` lines 3042, 3061
+- **Fix:** Updated helper text: Company Tags = "video will appear on the tagged company's profile"; Award Tags = "video will appear in the tagged award's gallery".
+- [x] Implemented
+
+### V14-H2 — Event Financial Overview uses undefined accounting terms
+- **File:** `index.html` lines 3460–3480
+- **Fix:** Added title tooltip attributes to Revenue, Costs, Net P&L labels and metric cards explaining what each measures (ticket sales vs invoiced costs vs revenue minus costs).
+- [x] Implemented
+
+### V14-H3 — Attendee Type dropdown has no description of each role's effect
+- **File:** `index.html` line 8395
+- **Fix:** Added `title` tooltip to the select: "Guest = standard attendee. VIP = priority seating & comms. Speaker = listed in agenda. Sponsor = tracked for ROI. Media = press credentials. Staff = bypasses check-in scan."
+- [x] Implemented
+
+### V14-H4 — Check-In tab instruction is a single dense paragraph
+- **File:** `index.html` line 8475
+- **Fix:** Broke into a numbered 3-step list: (1) Before event: issue QR tickets from Tickets tab. (2) On the night: Launch Scanner on any smartphone. (3) Scan each guest's ticket to mark them as Checked In.
+- [x] Implemented
+
+### V14-H5 — Tickets tab has 5+ workflows with no "start here" guide
+- **File:** `index.html` line 8539
+- **Fix:** Added a setup-order note at the top: "Setup order: 1. Set ticket price → 2. Add Stripe key (optional) → 3. Share registration link → 4. Issue QR code tickets."
+- [x] Implemented
+
+### V14-H6 — Registration link vs Check-In scanner link not differentiated
+- **File:** `index.html` line 8670
+- **Fix:** Added "For guests" green badge to registration link and "Staff only" amber badge to check-in scanner link. Added warning: "Do not share with guests."
+- [x] Implemented
+
+### V14-H7 — Vendors tab has no purpose explanation
+- **File:** `index.html` line 8776
+- **Fix:** Added alert-light intro explaining the purpose (all external suppliers in one place), categories (Catering, AV, Photography, etc.), and note to also record costs in the Budget tab.
+- [x] Implemented
+
+### V14-H8 — Campaign log status filter has no definitions
+- **File:** `index.html` line 5318
+- **Fix:** Added info icon with tooltip and title attribute to the filter select: defines Draft, Scheduled, Sending, Sent, Failed, Cancelled. Also improved search placeholder to "Search campaign name or subject...".
+- [x] Implemented
+
+### V14-H9 — Social media platform badges are grey "Not Connected" (looks fine)
+- **File:** `index.html` line 4693
+- **Fix:** Changed all four platform badges from `bg-secondary / Not Connected` to `bg-warning text-dark / Action required` with tooltips. Added amber alert banner above platforms. Changed Configure Platforms to `btn-primary` with updated label.
+- [x] Implemented
+
+### V14-H10 — Invoice status lifecycle not explained
+- **File:** `index.html` line 5594
+- **Fix:** Added info icon to the Status filter label with tooltip explaining the full lifecycle: Draft → Sent → Viewed → Paid/Partially Paid or Overdue → Cancelled. Notes that Stripe auto-updates status.
+- [x] Implemented
+
+### V14-H11 — Communications Type vs Topic filters not explained
+- **File:** `index.html` line 5963
+- **Fix:** Added intro text above filters: "Type = communication method (Email, Phone, etc.) · Topic = subject matter (Sponsorship, Renewal, etc.). Use either or both filters together."
+- [x] Implemented
+
+### V14-H12 — Report summary stat cards lack definitions
+- **File:** `index.html` line 3781
+- **Fix:** Added `title` tooltip attributes and info icons to all four stat cards (Total Awards, Total Organisations, Total Winners, Total Entries) explaining exactly what each counts.
+- [x] Implemented
+
+## V14-MEDIUM
+
+### V14-M1 — Bulk YouTube import gives no hint about title auto-import
+- **File:** `index.html` line 3105
+- **Fix:** Updated alert text: "Video titles are automatically imported from YouTube — no need to enter them manually."
+- [x] Implemented
+
+### V14-M2 — Event Comparison modal labels ambiguous (Previous/Current)
+- **File:** `index.html` line 3292
+- **Fix:** Renamed to "Baseline Event (older / last year)" and "Comparison Event (newer / this year)".
+- [x] Implemented
+
+### V14-M3 — Milestones tab card is completely blank
+- **File:** `index.html` line 8820
+- **Fix:** Added empty-state placeholder explaining what milestones are (pre-event checklist tasks with deadlines) and that they will load once saved.
+- [x] Implemented
+
+### V14-M4 — Email Builder Available Variables section hard to find and use
+- **File:** `index.html` line 5227
+- **Fix:** Improved header to "Dynamic Variables" with info icon explaining auto-substitution. Added "Click any variable to copy it" instruction. Added descriptive tooltips to each variable tag.
+- [x] Implemented
+
+### V14-M5 — Email Sequences tab gives no examples of what sequences look like
+- **File:** `index.html` line 5437
+- **Fix:** Added alert-light box with three common sequence examples: Entry Received → confirmation → payment reminder → voting reminder; Winner Announced → congratulations → media pack → survey; Sponsor Onboarded → welcome → logistics → upgrade offer.
+- [x] Implemented
+
+### V14-M6 — Invoice Due Date field has no Overdue logic explanation
+- **File:** `index.html` line 7452
+- **Fix:** Added form text: "Invoices are automatically marked Overdue if this date passes without full payment."
+- [x] Implemented
+
+### V14-M7 — Package Type field in invoice has no context
+- **File:** `index.html` line 7482
+- **Fix:** Updated label to "Package Type (for tiered sponsorships)", changed blank option to "None — not a tiered package", added form text explaining when to use (Bronze/Silver/Gold sponsorships only, not entry fees or tickets).
+- [x] Implemented
+
+### V14-M8 — Auto-Segments AND/OR matching logic has no explanation
+- **File:** `index.html` line 6332
+- **Fix:** Added title tooltips to AND/OR buttons with concrete examples. Added inline label: "ALL = must match every rule · ANY = matches at least one rule".
 - [x] Implemented

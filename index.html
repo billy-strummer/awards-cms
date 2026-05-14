@@ -3040,7 +3040,7 @@
                 <div class="mb-3">
                   <label class="form-label">
                     Company Tags
-                    <small class="text-muted">(Select companies to tag in this video)</small>
+                    <small class="text-muted">(Optional — video will appear on the tagged company's profile)</small>
                   </label>
                   <div class="input-group mb-2">
                     <select class="form-select" id="videoTagInput">
@@ -3059,7 +3059,7 @@
                 <div class="mb-3">
                   <label class="form-label">
                     Award Tags
-                    <small class="text-muted">(Select awards to tag in this video)</small>
+                    <small class="text-muted">(Optional — video will appear in the tagged award's gallery)</small>
                   </label>
                   <div class="input-group mb-2">
                     <select class="form-select" id="videoAwardTagInput">
@@ -3105,7 +3105,7 @@
               <div class="alert alert-info mb-3">
                 <i class="bi bi-info-circle me-2"></i>
                 <strong>Event:</strong> <span id="bulkYouTubeEventName"></span>
-                <br><small>Paste YouTube URLs or IDs (one per line). Shared tags will be applied to all videos.</small>
+                <br><small>Paste YouTube URLs or video IDs (one per line). Video titles are automatically imported from YouTube — no need to enter them manually. Shared tags below will be applied to all videos.</small>
               </div>
               <div class="mb-3">
                 <label class="form-label">YouTube URLs / IDs (one per line)</label>
@@ -3289,13 +3289,13 @@
             <div class="modal-body">
               <div class="row mb-3">
                 <div class="col-md-4">
-                  <label class="form-label">Event 1 (Previous)</label>
+                  <label class="form-label">Baseline Event <small class="text-muted">(older / last year)</small></label>
                   <select class="form-select" id="comparisonEvent1">
                     <option value="">Select event...</option>
                   </select>
                 </div>
                 <div class="col-md-4">
-                  <label class="form-label">Event 2 (Current)</label>
+                  <label class="form-label">Comparison Event <small class="text-muted">(newer / this year)</small></label>
                   <select class="form-select" id="comparisonEvent2">
                     <option value="">Select event...</option>
                   </select>
@@ -3372,7 +3372,7 @@
                     <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">1</span>
                     <div>
                       <div class="fw-semibold small">Create an Event</div>
-                      <div class="text-muted" style="font-size:.75rem;">Add a ceremony or gala event with venue, date, capacity, and ticket pricing.</div>
+                      <div class="text-muted" style="font-size:.75rem;">Click "Create Event" below. Enter the name, date, venue, and expected capacity.</div>
                     </div>
                   </div>
                 </div>
@@ -3380,8 +3380,8 @@
                   <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
                     <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">2</span>
                     <div>
-                      <div class="fw-semibold small">Share Registration Link</div>
-                      <div class="text-muted" style="font-size:.75rem;">Copy the public registration URL from the event's Tickets tab and share with attendees.</div>
+                      <div class="fw-semibold small">Set Ticket Price &amp; Stripe (optional)</div>
+                      <div class="text-muted" style="font-size:.75rem;">Open the event → Tickets tab. Set a price and add your Stripe key to accept online payments.</div>
                     </div>
                   </div>
                 </div>
@@ -3389,8 +3389,35 @@
                   <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
                     <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">3</span>
                     <div>
-                      <div class="fw-semibold small">Manage Attendees &amp; Seating</div>
-                      <div class="text-muted" style="font-size:.75rem;">Track RSVPs, assign seating, issue QR code tickets, and check in guests on the night.</div>
+                      <div class="fw-semibold small">Share the Registration Link</div>
+                      <div class="text-muted" style="font-size:.75rem;">Copy the Public Registration URL from the Tickets tab. Share on your website and invitations.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">4</span>
+                    <div>
+                      <div class="fw-semibold small">Add &amp; Manage Attendees</div>
+                      <div class="text-muted" style="font-size:.75rem;">Open the event → Attendees tab. Track RSVPs, assign seating, manage dietary and special requirements.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">5</span>
+                    <div>
+                      <div class="fw-semibold small">Issue QR Code Tickets</div>
+                      <div class="text-muted" style="font-size:.75rem;">In the Tickets tab, click "Issue Tickets" to email QR codes to each confirmed attendee.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">6</span>
+                    <div>
+                      <div class="fw-semibold small">Check In Guests on the Night</div>
+                      <div class="text-muted" style="font-size:.75rem;">Open the Check-In tab and use the QR scanner on any smartphone to mark guests as arrived.</div>
                     </div>
                   </div>
                 </div>
@@ -3457,9 +3484,9 @@
                 <i class="bi bi-chevron-down"></i>
               </div>
               <div class="d-flex gap-4 small mt-1">
-                <span class="text-success fw-semibold">Revenue: <span id="financialSummaryRevenue">£0</span></span>
-                <span class="text-danger fw-semibold">Costs: <span id="financialSummaryCosts">£0</span></span>
-                <span class="fw-semibold">Net P&amp;L: <span id="financialSummaryPL">£0</span></span>
+                <span class="text-success fw-semibold" title="Total ticket sales received across all events">Revenue: <span id="financialSummaryRevenue">£0</span></span>
+                <span class="text-danger fw-semibold" title="Total actual costs (invoiced expenses from the Budget tab)">Costs: <span id="financialSummaryCosts">£0</span></span>
+                <span class="fw-semibold" title="Net Profit/Loss = Revenue minus Costs. Negative means a loss.">Net P&amp;L: <span id="financialSummaryPL">£0</span></span>
               </div>
             </div>
             <div class="card-body collapse show" id="financialPanelBody">
@@ -3468,7 +3495,7 @@
                   <div class="card text-center bg-light border-success">
                     <div class="card-body py-2">
                       <h4 class="mb-0 text-success" id="financialTotalRevenue">&pound;0</h4>
-                      <small class="text-muted">Total Revenue (All Events)</small>
+                      <small class="text-muted" title="Sum of all ticket sales across all events">Total Revenue (All Events)</small>
                     </div>
                   </div>
                 </div>
@@ -3476,7 +3503,7 @@
                   <div class="card text-center bg-light border-danger">
                     <div class="card-body py-2">
                       <h4 class="mb-0 text-danger" id="financialTotalCosts">&pound;0</h4>
-                      <small class="text-muted">Total Costs (All Events)</small>
+                      <small class="text-muted" title="Sum of all actual invoiced costs from the Budget tab across all events">Total Costs (All Events)</small>
                     </div>
                   </div>
                 </div>
@@ -3780,30 +3807,30 @@
           <!-- Summary Stats -->
           <div class="row g-3 mb-4">
             <div class="col-md-3">
-              <div class="stat-card">
+              <div class="stat-card" title="Unique award categories active in the selected year">
                 <i class="bi bi-trophy stat-card-icon text-primary"></i>
-                <h6>Total Awards</h6>
+                <h6>Total Awards <i class="bi bi-info-circle text-muted" style="font-size:.7rem;"></i></h6>
                 <div class="stat-value" id="reportsTotal"><span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></div>
               </div>
             </div>
             <div class="col-md-3">
-              <div class="stat-card">
+              <div class="stat-card" title="Number of organisations registered and active in the selected year">
                 <i class="bi bi-building stat-card-icon text-success"></i>
-                <h6>Total Organisations</h6>
+                <h6>Total Organisations <i class="bi bi-info-circle text-muted" style="font-size:.7rem;"></i></h6>
                 <div class="stat-value text-success" id="reportsTotalOrgs">0</div>
               </div>
             </div>
             <div class="col-md-3">
-              <div class="stat-card">
+              <div class="stat-card" title="Number of entries awarded a winner status in the selected year (unique entries, not unique companies)">
                 <i class="bi bi-award stat-card-icon text-info"></i>
-                <h6>Total Winners</h6>
+                <h6>Total Winners <i class="bi bi-info-circle text-muted" style="font-size:.7rem;"></i></h6>
                 <div class="stat-value text-info" id="reportsTotalWinners">0</div>
               </div>
             </div>
             <div class="col-md-3">
-              <div class="stat-card">
+              <div class="stat-card" title="Total valid entries submitted in the selected year (across all award categories)">
                 <i class="bi bi-file-earmark-text stat-card-icon text-warning"></i>
-                <h6>Total Entries</h6>
+                <h6>Total Entries <i class="bi bi-info-circle text-muted" style="font-size:.7rem;"></i></h6>
                 <div class="stat-value text-warning" id="reportsTotalEntries">0</div>
               </div>
             </div>
@@ -4070,8 +4097,8 @@
               </button>
             </li>
             <li class="nav-item" role="presentation">
-              <button class="nav-link" id="email-templates-subtab" data-bs-toggle="tab" data-bs-target="#email-templates-content" type="button" role="tab">
-                <i class="bi bi-envelope me-2"></i>Email Templates
+              <button class="nav-link" id="email-templates-subtab" data-bs-toggle="tab" data-bs-target="#email-templates-content" type="button" role="tab" title="Manage reusable email templates. Use Email Builder to compose and send individual campaigns.">
+                <i class="bi bi-envelope me-2"></i>Template Library
               </button>
             </li>
             <li class="nav-item" role="presentation">
@@ -4657,38 +4684,41 @@
                   <!-- Connected Platforms -->
                   <div class="content-card">
                     <h5 class="mb-3"><i class="bi bi-plug me-2"></i>Connected Platforms</h5>
+                    <div class="alert alert-warning border-0 py-2 px-3 mb-2 small" role="note">
+                      <i class="bi bi-exclamation-triangle me-1"></i>No platforms connected — posting is disabled. Click <strong>Configure Platforms</strong> below to add credentials.
+                    </div>
                     <div id="connectedPlatformsList">
                         <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
                           <div>
                             <i class="bi bi-twitter-x text-info me-2"></i>
                             <strong>X</strong>
                           </div>
-                          <span class="badge bg-secondary">Not Connected</span>
+                          <span class="badge bg-warning text-dark" title="Not connected — add credentials in Configure Platforms">Action required</span>
                         </div>
                         <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
                           <div>
                             <i class="bi bi-facebook text-primary me-2"></i>
                             <strong>Facebook</strong>
                           </div>
-                          <span class="badge bg-secondary">Not Connected</span>
+                          <span class="badge bg-warning text-dark" title="Not connected — add credentials in Configure Platforms">Action required</span>
                         </div>
                         <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
                           <div>
                             <i class="bi bi-instagram text-danger me-2"></i>
                             <strong>Instagram</strong>
                           </div>
-                          <span class="badge bg-secondary">Not Connected</span>
+                          <span class="badge bg-warning text-dark" title="Not connected — add credentials in Configure Platforms">Action required</span>
                         </div>
                         <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
                           <div>
                             <i class="bi bi-linkedin text-info me-2"></i>
                             <strong>LinkedIn</strong>
                           </div>
-                          <span class="badge bg-secondary">Not Connected</span>
+                          <span class="badge bg-warning text-dark" title="Not connected — add credentials in Configure Platforms">Action required</span>
                         </div>
                       </div>
-                      <button class="btn btn-outline-primary btn-sm w-100 mt-3" data-action="socialMediaModule.openPlatformSettings">
-                        <i class="bi bi-gear me-2"></i>Configure Platforms
+                      <button class="btn btn-primary btn-sm w-100 mt-3" data-action="socialMediaModule.openPlatformSettings">
+                        <i class="bi bi-gear me-2"></i>Configure Platforms to Enable Posting
                       </button>
                   </div>
 
@@ -4815,9 +4845,14 @@
 
             <!-- Email Templates Sub-Tab -->
             <div class="tab-pane fade" id="email-templates-content" role="tabpanel">
-              <div class="d-flex justify-content-between align-items-center mb-4">
-                <h4><i class="bi bi-envelope-paper me-2"></i>Email Templates</h4>
-                <p class="text-muted mb-0">Manage automated email templates with dynamic placeholders</p>
+              <div class="d-flex justify-content-between align-items-start mb-3">
+                <div>
+                  <h4 class="mb-1"><i class="bi bi-envelope-paper me-2"></i>Template Library</h4>
+                  <p class="text-muted mb-0 small">Store and edit reusable email layouts (Winner Announcement, Nominee Notification, etc.). To compose and send a campaign to a list, use the <strong>Email Builder</strong> tab.</p>
+                </div>
+              </div>
+              <div class="alert alert-light border py-2 px-3 mb-3 small" role="note">
+                <i class="bi bi-lightbulb text-warning me-1"></i><strong>Template Library vs Email Builder:</strong> Edit your reusable templates here. When you're ready to send an email campaign, go to the <strong>Email Builder</strong> tab — it uses these templates as a starting point.
               </div>
 
               <!-- Template List + Editor -->
@@ -5226,20 +5261,20 @@
 
                     <!-- Available Variables -->
                     <div class="mb-3">
-                      <h6 class="small mb-2">Available Variables</h6>
+                      <h6 class="small mb-1">Dynamic Variables <i class="bi bi-info-circle text-muted" title="Variables are automatically replaced with each recipient's real data when the email is sent. For example, {{company_name}} becomes 'Acme Ltd' for one recipient and 'TechStart' for another."></i></h6>
+                      <small class="text-muted d-block mb-2"><i class="bi bi-cursor-text me-1"></i>Click any variable to copy it, then paste into your email content:</small>
                       <div class="variable-tags">
-                        <code class="variable-tag">{{company_name}}</code>
-                        <code class="variable-tag">{{company_logo}}</code>
-                        <code class="variable-tag">{{contact_name}}</code>
-                        <code class="variable-tag">{{award_category}}</code>
-                        <code class="variable-tag">{{award_year}}</code>
-                        <code class="variable-tag">{{website}}</code>
-                        <code class="variable-tag">{{event_name}}</code>
-                        <code class="variable-tag">{{event_date}}</code>
-                        <code class="variable-tag">{{unsubscribe_url}}</code>
-                        <code class="variable-tag">{{view_in_browser_url}}</code>
+                        <code class="variable-tag" title="Recipient's company name">{{company_name}}</code>
+                        <code class="variable-tag" title="Recipient's company logo image">{{company_logo}}</code>
+                        <code class="variable-tag" title="Recipient's contact person name">{{contact_name}}</code>
+                        <code class="variable-tag" title="Award category name">{{award_category}}</code>
+                        <code class="variable-tag" title="Award year (e.g. 2025)">{{award_year}}</code>
+                        <code class="variable-tag" title="Company website URL">{{website}}</code>
+                        <code class="variable-tag" title="Event name">{{event_name}}</code>
+                        <code class="variable-tag" title="Event date">{{event_date}}</code>
+                        <code class="variable-tag" title="Required unsubscribe link — always include in marketing emails">{{unsubscribe_url}}</code>
+                        <code class="variable-tag" title="Link to view email in a browser">{{view_in_browser_url}}</code>
                       </div>
-                      <small class="text-muted d-block mt-2">Click to copy to clipboard</small>
                     </div>
 
                   </div>
@@ -5318,8 +5353,8 @@
                   <div class="d-flex justify-content-between align-items-center mb-3">
                     <h6 class="mb-0"><i class="bi bi-journal-text me-2"></i>Campaign Log</h6>
                     <div class="d-flex gap-2 align-items-center">
-                      <input type="text" class="form-control form-control-sm" id="campaignLogSearchInput" placeholder="Search campaigns..." style="width: 180px;">
-                      <select class="form-select form-select-sm" id="campaignLogFilter" style="width: auto;" data-on-change="emailBuilder.resetAndLoadCampaignLog">
+                      <input type="text" class="form-control form-control-sm" id="campaignLogSearchInput" placeholder="Search campaign name or subject..." style="width: 200px;">
+                      <select class="form-select form-select-sm" id="campaignLogFilter" style="width: auto;" data-on-change="emailBuilder.resetAndLoadCampaignLog" title="Draft = not sent yet. Scheduled = set to go out at a specific time. Sending = currently being delivered. Sent = completed. Failed = error during send. Cancelled = manually stopped.">
                         <option value="all">All Campaigns</option>
                         <option value="Sent">Sent</option>
                         <option value="Scheduled">Scheduled</option>
@@ -5328,6 +5363,7 @@
                         <option value="Failed">Failed</option>
                         <option value="Cancelled">Cancelled</option>
                       </select>
+                      <i class="bi bi-info-circle text-muted" title="Draft = not sent yet. Scheduled = set to go out at a specific time. Sending = currently being delivered. Sent = delivery complete. Failed = error during send (check logs). Cancelled = manually stopped before sending."></i>
                       <button class="btn btn-outline-secondary btn-sm" data-action="emailBuilder.loadCampaignLog" title="Refresh">
                         <i class="bi bi-arrow-clockwise"></i>
                       </button>
@@ -5434,7 +5470,15 @@
                   <i class="bi bi-plus-lg me-2"></i>Create New Sequence
                 </button>
               </div>
-              <p class="text-muted small">Create automated email sequences triggered by status changes or manual enrollment.</p>
+              <p class="text-muted small">Create automated email sequences triggered by status changes or manual enrollment. Use sequences for multi-email workflows; use the Email Builder for one-off campaigns.</p>
+              <div class="alert alert-light border py-2 px-3 mb-3 small" role="note">
+                <strong><i class="bi bi-lightbulb text-warning me-1"></i>Common sequences:</strong>
+                <ul class="mb-0 mt-1 ps-3">
+                  <li><strong>Entry received</strong> → Confirmation email → Payment reminder (3 days) → Voting reminder (when live)</li>
+                  <li><strong>Winner announced</strong> → Congratulations → Media pack → Post-event survey (1 week)</li>
+                  <li><strong>Sponsor onboarded</strong> → Welcome &amp; overview → Event logistics → Upgrade offer (30 days)</li>
+                </ul>
+              </div>
               <div id="emailSequencesGrid">
                 <div class="text-center py-5 text-muted">
                   <i class="bi bi-envelope-slash display-4 d-block mb-2 opacity-25"></i>
@@ -5591,7 +5635,7 @@
                     <input type="text" class="form-control form-control-sm" id="invoiceSearchBox" placeholder="Invoice #, company...">
                   </div>
                   <div class="col-md-3">
-                    <label class="form-label small fw-bold">Status</label>
+                    <label class="form-label small fw-bold">Status <i class="bi bi-info-circle text-muted" title="Invoice lifecycle: Draft (not yet sent) → Sent (delivered to customer) → Viewed (customer opened it) → Paid or Partially Paid (payment received) or Overdue (past due date). Cancelled = removed from billing. Stripe auto-updates status when payment is received."></i></label>
                     <select class="form-select form-select-sm" id="invoiceStatusFilter" data-on-change="paymentsModule.filterInvoices">
                       <option value="">All Statuses</option>
                       <option value="draft">Draft</option>
@@ -5961,6 +6005,7 @@
 
               <!-- Filter & Actions -->
               <div class="content-card mb-4">
+                <p class="text-muted small mb-3"><i class="bi bi-info-circle me-1"></i><strong>Type</strong> = communication method (Email, Phone, Meeting, etc.) &nbsp;·&nbsp; <strong>Topic</strong> = subject matter (Sponsorship, Renewal, etc.). Use either or both filters together.</p>
                 <div class="row g-3 align-items-end">
                   <div class="col-md-3">
                     <label class="form-label small fw-bold">Type</label>
@@ -6330,9 +6375,10 @@
                 <button class="btn btn-sm btn-outline-secondary" data-action="crmModule.addSegmentRule"><i class="bi bi-plus me-1"></i>Add Rule</button>
                 <span class="text-muted small">Match:</span>
                 <div class="btn-group btn-group-sm" id="segmentLogicGroup">
-                  <button class="btn btn-outline-primary active" id="segLogicAND" data-action="crmModule.setSegmentLogic" data-id="AND">ALL (AND)</button>
-                  <button class="btn btn-outline-secondary" id="segLogicOR" data-action="crmModule.setSegmentLogic" data-id="OR">ANY (OR)</button>
+                  <button class="btn btn-outline-primary active" id="segLogicAND" data-action="crmModule.setSegmentLogic" data-id="AND" title="ALL (AND): organisation must match every rule. E.g. Tier=Gold AND Sector=Tech">ALL (AND)</button>
+                  <button class="btn btn-outline-secondary" id="segLogicOR" data-action="crmModule.setSegmentLogic" data-id="OR" title="ANY (OR): organisation matches if it meets at least one rule. E.g. Sector=Tech OR Sector=Finance">ANY (OR)</button>
                 </div>
+                <small class="text-muted ms-1">ALL = must match every rule &nbsp;·&nbsp; ANY = matches at least one rule</small>
               </div>
               <div class="d-flex gap-2 mb-3">
                 <button class="btn btn-sm btn-primary" data-action="crmModule.applySmartSegment"><i class="bi bi-funnel me-1"></i>Apply Segment</button>
@@ -7299,12 +7345,13 @@
               <div class="col-md-6">
                 <label for="awardFormStatus" class="form-label fw-semibold">Status</label>
                 <select class="form-select" id="awardFormStatus">
-                  <option value="Active">Active</option>
-                  <option value="Draft">Draft</option>
-                  <option value="Pending">Pending</option>
-                  <option value="Published">Published</option>
-                  <option value="Archived">Archived</option>
+                  <option value="Draft">Draft — not yet open for entries</option>
+                  <option value="Active">Active — open for entries</option>
+                  <option value="Pending">Pending — awaiting approval</option>
+                  <option value="Published">Published — publicly visible</option>
+                  <option value="Archived">Archived — closed</option>
                 </select>
+                <div class="form-text">New awards start as <strong>Draft</strong>. Change to <strong>Active</strong> when ready to accept entries.</div>
               </div>
               <div class="col-md-6">
                 <label for="awardFormSeason" class="form-label fw-semibold">Season</label>
@@ -7450,6 +7497,7 @@
               <div class="col-md-3">
                 <label for="invoiceDueDate" class="form-label">Due Date <span class="text-danger" aria-label="required">*</span></label>
                 <input type="date" class="form-control" id="invoiceDueDate" required>
+                <div class="small text-muted mt-1">Invoices are automatically marked <strong>Overdue</strong> if this date passes without full payment.</div>
               </div>
               <div class="col-md-3">
                 <label for="invoiceTaxRate" class="form-label">Tax Rate (%)</label>
@@ -7479,13 +7527,14 @@
             </div>
             <div class="row mb-3">
               <div class="col-md-12">
-                <label for="invoicePackageType" class="form-label">Package Type (if applicable)</label>
+                <label for="invoicePackageType" class="form-label">Package Type <small class="text-muted">(for tiered sponsorships)</small></label>
                 <select class="form-select" id="invoicePackageType">
-                  <option value="">None</option>
+                  <option value="">None — not a tiered package</option>
                   <option value="bronze">Bronze</option>
                   <option value="silver">Silver</option>
                   <option value="gold">Gold</option>
                 </select>
+                <div class="small text-muted mt-1">Select only if this invoice is for a Bronze/Silver/Gold sponsorship package. Leave as "None" for entry fees, tickets, and other invoice types.</div>
               </div>
             </div>
             <div class="mb-3">
@@ -8392,7 +8441,7 @@
                       </select>
                     </div>
                     <div class="col-md-2">
-                      <select class="form-select form-select-sm" id="attendeeType">
+                      <select class="form-select form-select-sm" id="attendeeType" title="Guest = standard attendee. VIP = priority seating &amp; comms. Speaker = listed in agenda. Sponsor = tracked for ROI. Media = press credentials. Staff = door/crew (bypasses check-in scan).">
                         <option value="guest">Guest</option>
                         <option value="vip">VIP</option>
                         <option value="speaker">Speaker</option>
@@ -8473,7 +8522,12 @@
             <!-- Check-In Tab -->
             <div class="tab-pane fade" id="checkInTab">
               <div class="alert alert-info border-0 py-2 px-3 mb-3 small" role="note">
-                <i class="bi bi-qr-code me-1"></i><strong>How check-in works:</strong> QR code tickets are generated in the <strong>Tickets</strong> tab and emailed to attendees automatically. On the event night, scan each attendee's QR code using any smartphone camera to mark them as checked in.
+                <i class="bi bi-qr-code me-1"></i><strong>How check-in works:</strong>
+                <ol class="mb-0 mt-1 ps-3">
+                  <li><strong>Before the event:</strong> Issue QR code tickets from the <strong>Tickets</strong> tab — they are emailed to each confirmed attendee automatically.</li>
+                  <li><strong>On the night:</strong> Click <strong>Launch Scanner</strong> to open the QR reader on any smartphone or tablet.</li>
+                  <li><strong>Scan each guest's ticket</strong> as they arrive — they are instantly marked as Checked In.</li>
+                </ol>
               </div>
               <div class="row g-3 mb-3">
                 <div class="col-md-4">
@@ -8537,6 +8591,10 @@
 
             <!-- Tickets Tab -->
             <div class="tab-pane fade" id="ticketsTab">
+              <div class="alert alert-light border py-2 px-3 mb-3 small" role="note">
+                <i class="bi bi-signpost-split text-primary me-1"></i><strong>Setup order:</strong>
+                <span class="text-muted ms-1"><strong>1.</strong> Set ticket price below &nbsp;→&nbsp; <strong>2.</strong> Add Stripe key (optional, for online payments) &nbsp;→&nbsp; <strong>3.</strong> Share the Public Registration Link with guests &nbsp;→&nbsp; <strong>4.</strong> Issue QR code tickets to confirmed attendees.</span>
+              </div>
               <div class="row g-3 mb-3">
                 <div class="col-md-3">
                   <div class="card text-center">
@@ -8628,24 +8686,24 @@
                   <h6 class="card-title"><i class="bi bi-link-45deg me-2"></i>Registration & Check-In Links</h6>
                   <div class="row g-3">
                     <div class="col-md-6">
-                      <label class="form-label small">Public Registration Page</label>
+                      <label class="form-label small"><i class="bi bi-person-plus text-success me-1"></i>Public Registration Page <span class="badge bg-success ms-1" style="font-size:.65rem;">For guests</span></label>
                       <div class="input-group input-group-sm">
                         <input type="text" class="form-control" id="registrationLinkDisplay" readonly>
                         <button class="btn btn-outline-primary" data-action="eventsModule.copyRegistrationLink">
                           <i class="bi bi-clipboard me-1"></i>Copy
                         </button>
                       </div>
-                      <small class="text-muted">Share this link on your website for guests to register and purchase tickets</small>
+                      <small class="text-muted">Share on your website and invitations so guests can register and buy tickets.</small>
                     </div>
                     <div class="col-md-6">
-                      <label class="form-label small">Check-In Scanner Page</label>
+                      <label class="form-label small"><i class="bi bi-qr-code-scan text-warning me-1"></i>Check-In Scanner Page <span class="badge bg-warning text-dark ms-1" style="font-size:.65rem;">Staff only</span></label>
                       <div class="input-group input-group-sm">
                         <input type="text" class="form-control" id="checkInLinkDisplay" readonly>
                         <button class="btn btn-outline-primary" data-action="eventsModule.copyCheckInLink">
                           <i class="bi bi-clipboard me-1"></i>Copy
                         </button>
                       </div>
-                      <small class="text-muted">Share with door staff - opens QR scanner on any phone</small>
+                      <small class="text-muted"><strong>Do not share with guests.</strong> Share only with door staff — opens QR scanner on any smartphone to check guests in on the night.</small>
                     </div>
                   </div>
                 </div>
@@ -8775,6 +8833,9 @@
 
             <!-- Vendors Tab -->
             <div class="tab-pane fade" id="vendorsTab">
+              <div class="alert alert-light border py-2 px-3 mb-3 small" role="note">
+                <i class="bi bi-truck text-primary me-1"></i><strong>Vendors &amp; Suppliers:</strong> Keep all external suppliers in one place — caterers, AV companies, photographers, transport, etc. Use this to store contact details, track costs, and confirm who is booked. Vendor costs should also be recorded in the <strong>Budget</strong> tab. Categories include: Catering, Audio/Visual, Photography, Transport, Accommodation, Venue, Security, Other.
+              </div>
               <div class="d-flex justify-content-between align-items-center mb-3">
                 <div>
                   <h6 class="mb-0"><i class="bi bi-truck me-2"></i>Vendors & Suppliers
@@ -8804,8 +8865,15 @@
 
             <!-- Special Requirements Tab -->
             <div class="tab-pane fade" id="specialReqsTab">
+              <div class="alert alert-info border-0 py-2 px-3 mb-3 small" role="note">
+                <i class="bi bi-info-circle me-1"></i><strong>Special Requirements</strong> records per-attendee needs: accessibility, parking, dietary restrictions (beyond catering), photo consent, emergency contacts, and dress code preferences. Requirements entered on the Attendees tab are summarised here.
+              </div>
               <div id="specialReqsContent">
-                <!-- Populated by JS: accessibility, parking, photo consent, emergency, dress code -->
+                <div class="text-center py-4 text-muted">
+                  <i class="bi bi-person-gear display-4 d-block mb-2 opacity-25"></i>
+                  <p class="mb-1">No special requirements recorded yet.</p>
+                  <small>Add requirements per attendee in the <strong>Attendees</strong> tab (Notes / Dietary fields).</small>
+                </div>
               </div>
             </div>
 
@@ -8818,7 +8886,11 @@
                 <div class="col-md-7">
                   <div class="card">
                     <div class="card-body" id="milestonesContent">
-                      <!-- Populated by JS -->
+                      <div class="text-center py-3 text-muted">
+                        <i class="bi bi-check2-square display-4 d-block mb-2 opacity-25"></i>
+                        <p class="mb-1 small">Milestones track your pre-event checklist — tasks with deadlines such as "Confirm venue by [date]", "Issue tickets by [date]", "Send final attendee list by [date]".</p>
+                        <small>Milestones will load here once saved for this event.</small>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -8836,8 +8908,15 @@
 
             <!-- Post-Event Tab -->
             <div class="tab-pane fade" id="postEventTab">
+              <div class="alert alert-info border-0 py-2 px-3 mb-3 small" role="note">
+                <i class="bi bi-clipboard-data me-1"></i><strong>Post-Event Analysis</strong> becomes available after the event date has passed. It includes: attendance report (actual vs expected), attendee survey results, winner highlights, sponsor ROI summary, and debrief notes.
+              </div>
               <div id="postEventContent">
-                <!-- Populated by JS: survey, attendance report, winner highlights, sponsor ROI, debrief -->
+                <div class="text-center py-4 text-muted">
+                  <i class="bi bi-calendar-check display-4 d-block mb-2 opacity-25"></i>
+                  <p class="mb-1">Post-event reports will appear here once the event date has passed.</p>
+                  <small>After the event, return here to generate attendance, survey, and sponsor ROI reports.</small>
+                </div>
               </div>
             </div>
 

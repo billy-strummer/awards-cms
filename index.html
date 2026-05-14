@@ -423,7 +423,7 @@
 
             <div class="col-md-3">
               <div class="stat-card stat-card-clickable" data-action="dashboardModule.navigateToSection" data-id="winners" title="Click to view all winners">
-                <button class="btn btn-sm btn-outline-info position-absolute top-0 end-0 m-2"
+                <button class="btn btn-sm btn-outline-secondary position-absolute top-0 end-0 m-2"
                         data-action="dashboardModule.openWinnersSummary" data-stop-propagation="true"
                         title="View Winners Summary"
                         style="z-index: 10; padding: 0.25rem 0.5rem;">
@@ -690,12 +690,12 @@
                   <label class="text-muted small mb-0">View by:</label>
                   <select class="form-select form-select-sm" id="topCompaniesMetric"
                           data-on-change="dashboardModule.updateTopCompanies" style="width: auto;">
-                    <option value="most-active">Most Active</option>
-                    <option value="top-spenders">Top Spenders</option>
-                    <option value="most-awards">Most Awards Won</option>
-                    <option value="recent-activity">Recent Activity</option>
-                    <option value="highest-revenue">Highest Revenue</option>
-                    <option value="newest-members">Newest Members</option>
+                    <option value="most-active" title="Organisations with the most entries submitted across all awards">Most Active</option>
+                    <option value="top-spenders" title="Organisations with the highest total invoice value paid">Top Spenders</option>
+                    <option value="most-awards" title="Organisations that have won the most awards">Most Awards Won</option>
+                    <option value="recent-activity" title="Organisations with the most recent interactions (emails, meetings, entries)">Recent Activity</option>
+                    <option value="highest-revenue" title="Organisations generating the highest total revenue including entries and events">Highest Revenue</option>
+                    <option value="newest-members" title="Organisations added to the CMS most recently">Newest Members</option>
                   </select>
                 </div>
               </div>
@@ -1146,8 +1146,8 @@
                   </button>
                 </div>
                 <div class="btn-group btn-group-sm d-inline-block">
-                  <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-display="static">
-                    <i class="bi bi-calendar-event me-1"></i>Apply Season
+                  <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-display="static" title="Copy the configured season open/close dates to all selected awards">
+                    <i class="bi bi-calendar-event me-1"></i>Apply Season Dates
                   </button>
                   <ul class="dropdown-menu" id="bulkSeasonDropdown"></ul>
                 </div>
@@ -2213,7 +2213,7 @@
           <button class="btn btn-sm btn-secondary" data-action="orgsModule.showBulkTagModal" title="Add/remove tags for selected">
             <i class="bi bi-tags me-1"></i>Tags
           </button>
-          <button class="btn btn-sm btn-info" data-action="orgsModule.showBulkAssignAwardModal" title="Assign selected to an award">
+          <button class="btn btn-sm btn-primary" data-action="orgsModule.showBulkAssignAwardModal" title="Assign selected to an award">
             <i class="bi bi-trophy me-1"></i>Assign Award
           </button>
           <button class="btn btn-sm btn-primary" data-action="orgsModule.bulkEmail">
@@ -2229,7 +2229,7 @@
               <li><a class="dropdown-item" href="#" data-action="orgsModule.bulkExport" data-id="pdf" data-prevent-default="true"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
             </ul>
           </div>
-          <button class="btn btn-sm btn-outline-info" data-action="orgsModule.showOrgComparison" title="Compare selected (2-4)">
+          <button class="btn btn-sm btn-outline-secondary" data-action="orgsModule.showOrgComparison" title="Compare selected (2-4)">
             <i class="bi bi-layout-split me-1"></i>Compare
           </button>
           <button class="btn btn-sm btn-outline-secondary" data-action="orgsModule.showBulkCustomFieldModal" title="Bulk edit custom field">
@@ -2256,7 +2256,7 @@
       <div class="d-flex justify-content-between align-items-center mb-4">
         <h4><i class="bi bi-award me-2"></i>Sponsors &amp; Partners</h4>
         <div class="d-flex gap-2">
-          <button class="btn btn-outline-info" data-action="sponsorPortalModule.renderSponsorDashboard">
+          <button class="btn btn-outline-secondary" data-action="sponsorPortalModule.renderSponsorDashboard">
             <i class="bi bi-speedometer2 me-2"></i>Sponsor Portal
           </button>
           <button class="btn btn-primary" data-action="marketingModule.openAddSponsorModal">
@@ -2379,13 +2379,13 @@
                 </div>
                 <div class="col-md-2">
                   <label for="winnerStatusFilter" class="form-label filter-bar-field-label mb-1"><i class="bi bi-circle-half me-1" aria-hidden="true"></i>Status</label>
-                  <select class="form-select form-select-sm" id="winnerStatusFilter">
+                  <select class="form-select form-select-sm" id="winnerStatusFilter" data-on-change="winnersModule.filterWinners">
                     <option value="">All Statuses</option>
                     <option value="pending">Pending</option>
-                    <option value="confirmed">Confirmed</option>
-                    <option value="announced">Announced</option>
+                    <option value="notified">Notified</option>
                     <option value="pack_sent">Pack Sent</option>
-                    <option value="complete">Complete</option>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="published">Published</option>
                   </select>
                 </div>
                 <div class="col">
@@ -2646,7 +2646,7 @@
                 </select>
               </div>
               <div class="col-md-2">
-                <label class="form-label filter-bar-field-label mb-1" title="Self-Nominated: the company applied directly. Standard: nominated by a sponsor or organiser."><i class="bi bi-person me-1" aria-hidden="true"></i>Entry Type</label>
+                <label class="form-label filter-bar-field-label mb-1" title="Self-Nominated: the company applied directly. Standard: nominated by a sponsor or organiser."><i class="bi bi-person me-1" aria-hidden="true"></i>Nomination Source</label>
                 <select class="form-select form-select-sm" id="entriesSelfNomFilter" data-on-change="entriesModule.filterEntries">
                   <option value="">All Entries</option>
                   <option value="self_nom">Self-Nominated</option>
@@ -2719,13 +2719,6 @@
                     </td>
                   </tr>
                 </tbody>
-                  <tr>
-                    <td colspan="10" class="text-center py-5">
-                      <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
-                      Loading entries...
-                    </td>
-                  </tr>
-                </tbody>
               </table>
             </div>
             <div id="entriesPagination"></div>
@@ -2761,6 +2754,39 @@
               </div>
             </div>
           </div>
+
+          <!-- Getting Started Banner -->
+          <div class="card border-0 shadow-sm mb-4" id="mediaGalleryGettingStarted">
+            <div class="card-body py-3">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <h6 class="fw-semibold mb-2"><i class="bi bi-images me-2 text-primary"></i>Getting Started — Media Gallery</h6>
+                  <div class="d-flex flex-wrap gap-3">
+                    <div class="d-flex align-items-start gap-2">
+                      <span class="badge bg-primary rounded-pill">1</span>
+                      <div><strong>Upload Photos &amp; Videos</strong><br><small class="text-muted">Drag and drop files or use the Upload button to add event imagery.</small></div>
+                    </div>
+                    <div class="d-flex align-items-start gap-2">
+                      <span class="badge bg-primary rounded-pill">2</span>
+                      <div><strong>Import from YouTube</strong><br><small class="text-muted">Paste a YouTube playlist URL to automatically import videos in bulk.</small></div>
+                    </div>
+                    <div class="d-flex align-items-start gap-2">
+                      <span class="badge bg-primary rounded-pill">3</span>
+                      <div><strong>Link to Winners &amp; Orgs</strong><br><small class="text-muted">Media linked here appears on winner profiles and organisation pages across the CMS.</small></div>
+                    </div>
+                    <div class="d-flex align-items-start gap-2">
+                      <span class="badge bg-primary rounded-pill">4</span>
+                      <div><strong>Mark as Featured</strong><br><small class="text-muted">Use the Featured button to highlight key photos on public winner pages.</small></div>
+                    </div>
+                  </div>
+                </div>
+                <button class="btn btn-sm btn-outline-secondary ms-3 flex-shrink-0" onclick="localStorage.setItem('mediaGalleryWorkflowDismissed','1');this.closest('#mediaGalleryGettingStarted').style.display='none'" aria-label="Dismiss">
+                  <i class="bi bi-x-lg"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+          <script>if(localStorage.getItem('mediaGalleryWorkflowDismissed')==='1'){var _mg=document.getElementById('mediaGalleryGettingStarted');if(_mg)_mg.style.display='none';}</script>
 
           <!-- Media Gallery Content -->
           <div id="mediaGalleryContent">
@@ -2896,7 +2922,7 @@
                 <button class="btn btn-outline-danger" data-action="mediaGalleryModule.openBulkYouTubeModal">
                   <i class="bi bi-youtube me-2"></i>Bulk YouTube Import
                 </button>
-                <button class="btn btn-outline-info" data-action="mediaGalleryModule.openPlaylistSyncModal">
+                <button class="btn btn-outline-secondary" data-action="mediaGalleryModule.openPlaylistSyncModal">
                   <i class="bi bi-collection-play me-2"></i>Playlist Import
                 </button>
                 <div class="btn-group btn-group-sm">
@@ -3552,7 +3578,7 @@
                     <i class="bi bi-x-circle me-1"></i>Clear Filters
                   </button>
                   <div class="vr mx-1"></div>
-                  <button class="btn btn-outline-info btn-sm" data-action="eventsModule.toggleEventsCalendar" title="Calendar View">
+                  <button class="btn btn-outline-secondary btn-sm" data-action="eventsModule.toggleEventsCalendar" title="Calendar View">
                     <i class="bi bi-calendar-week"></i>
                   </button>
                   <button class="btn btn-outline-secondary btn-sm" data-action="eventsModule.openTemplatesManager" title="Event Templates">
@@ -4419,7 +4445,7 @@
                         <button class="btn btn-success" data-action="socialMediaModule.savePost" data-args="[&quot;scheduled&quot;]">
                           <i class="bi bi-clock-history me-2"></i>Schedule Post
                         </button>
-                        <button class="btn btn-outline-warning" data-action="socialMediaModule.savePost" data-args="[&quot;immediate&quot;]">
+                        <button class="btn btn-outline-warning" data-action="socialMediaModule.savePost" data-args="[&quot;immediate&quot;]" title="Posts immediately to all selected platforms — requires API credentials to be configured">
                           <i class="bi bi-send me-2"></i>Post Now
                         </button>
                         <button class="btn btn-outline-secondary" data-action="socialMediaModule.saveDraft">
@@ -5069,7 +5095,7 @@
                       </div>
 
                       <div class="d-grid gap-2">
-                        <button class="btn btn-outline-info btn-sm" data-action="emailBuilder.sendTestEmail">
+                        <button class="btn btn-outline-secondary btn-sm" data-action="emailBuilder.sendTestEmail">
                           <i class="bi bi-envelope-check me-1"></i>Send Test Email
                         </button>
                         <button class="btn btn-warning btn-sm" id="btnSendCampaign" data-action="emailBuilder.sendCampaign">
@@ -5103,7 +5129,7 @@
                       <button class="btn btn-primary btn-sm" data-action="emailBuilder.saveTemplate">
                         <i class="bi bi-save me-1"></i>Save Template
                       </button>
-                      <button class="btn btn-outline-info btn-sm" data-action="emailBuilder.checkSpamScore">
+                      <button class="btn btn-outline-secondary btn-sm" data-action="emailBuilder.checkSpamScore">
                         <i class="bi bi-shield-check me-1"></i>Spam Check
                       </button>
                       <button class="btn btn-outline-secondary btn-sm" data-action="globalActions.confirmClearCanvas" title="Clear the entire email canvas — this cannot be undone">
@@ -6263,6 +6289,39 @@
             <p class="section-subtitle">Manage system settings and data backups</p>
           </div>
 
+          <!-- Getting Started Banner -->
+          <div class="card border-0 shadow-sm mb-4" id="settingsGettingStarted">
+            <div class="card-body py-3">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <h6 class="fw-semibold mb-2"><i class="bi bi-gear me-2 text-primary"></i>Getting Started — Settings</h6>
+                  <div class="d-flex flex-wrap gap-3">
+                    <div class="d-flex align-items-start gap-2">
+                      <span class="badge bg-primary rounded-pill">1</span>
+                      <div><strong>General / Branding</strong><br><small class="text-muted">Set your programme name, logo, and colour scheme.</small></div>
+                    </div>
+                    <div class="d-flex align-items-start gap-2">
+                      <span class="badge bg-primary rounded-pill">2</span>
+                      <div><strong>Email Settings</strong><br><small class="text-muted">Configure the sender name and address used for all CMS emails.</small></div>
+                    </div>
+                    <div class="d-flex align-items-start gap-2">
+                      <span class="badge bg-primary rounded-pill">3</span>
+                      <div><strong>Seasons &amp; Areas</strong><br><small class="text-muted">Set the open and close dates for the current awards cycle.</small></div>
+                    </div>
+                    <div class="d-flex align-items-start gap-2">
+                      <span class="badge bg-primary rounded-pill">4</span>
+                      <div><strong>Security</strong><br><small class="text-muted">Manage user roles, two-factor authentication, and GDPR settings.</small></div>
+                    </div>
+                  </div>
+                </div>
+                <button class="btn btn-sm btn-outline-secondary ms-3 flex-shrink-0" onclick="localStorage.setItem('settingsWorkflowDismissed','1');this.closest('#settingsGettingStarted').style.display='none'" aria-label="Dismiss">
+                  <i class="bi bi-x-lg"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+          <script>if(localStorage.getItem('settingsWorkflowDismissed')==='1'){var _sg=document.getElementById('settingsGettingStarted');if(_sg)_sg.style.display='none';}</script>
+
           <!-- Settings Sub-Navigation -->
           <ul class="nav nav-tabs mb-4" id="settingsSubTabs" role="tablist">
             <li class="nav-item" role="presentation">
@@ -6798,7 +6857,7 @@
               <button class="btn btn-sm btn-outline-success btc-symbol-btn" data-action="btcModule.switchSymbol" data-id="FX:GBPUSD">
                 <i class="bi bi-currency-pound me-1"></i>GBP/USD
               </button>
-              <button class="btn btn-sm btn-outline-info btc-symbol-btn" data-action="btcModule.switchSymbol" data-id="FX:EURUSD">
+              <button class="btn btn-sm btn-outline-secondary btc-symbol-btn" data-action="btcModule.switchSymbol" data-id="FX:EURUSD">
                 <i class="bi bi-currency-euro me-1"></i>EUR/USD
               </button>
               <button class="btn btn-sm btn-outline-secondary btc-symbol-btn" data-action="btcModule.switchSymbol" data-id="TVC:GOLD">
@@ -7684,7 +7743,7 @@
           <div>
             <small class="text-muted">
               <i class="bi bi-info-circle me-1"></i>
-              Tip: Click a company to see more details
+              Assign judges to entries for blind scoring. Judges see their assignments in the Judge Portal. Click a row to view details.
             </small>
           </div>
           <div>
@@ -8101,7 +8160,7 @@
               <button class="btn btn-outline-warning btn-sm" data-action="ticketModule.renderTicketDashboard" title="Manage tickets, QR codes, and refunds">
                 <i class="bi bi-ticket-perforated me-1"></i>Tickets
               </button>
-              <button class="btn btn-outline-info btn-sm" data-action="eventsModule.sendBulkInvites" title="Send invitation email to all guests">
+              <button class="btn btn-outline-secondary btn-sm" data-action="eventsModule.sendBulkInvites" title="Send invitation email to all guests">
                 <i class="bi bi-envelope me-1"></i>Send Invites
               </button>
               <button class="btn btn-primary btn-sm" data-action="eventsModule.openAddAttendeeForm">
@@ -9070,7 +9129,7 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-outline-info" id="cropRotateFromViewBtn" data-action="mediaGalleryModule.openCropRotate">
+          <button type="button" class="btn btn-outline-secondary" id="cropRotateFromViewBtn" data-action="mediaGalleryModule.openCropRotate">
             <i class="bi bi-crop me-2"></i>Crop / Rotate
           </button>
           <button type="button" class="btn btn-primary" id="tagPhotoFromViewBtn" data-action="mediaGalleryModule.tagPhotoFromView">
@@ -9318,7 +9377,7 @@
                 <label class="form-check-label" for="certSnapToGrid">Snap to Grid</label>
               </div>
               <div class="ms-auto d-flex gap-2">
-                <button class="btn btn-sm btn-outline-info" data-action="winnersModule.previewCertificate" title="Preview with sample data">
+                <button class="btn btn-sm btn-outline-secondary" data-action="winnersModule.previewCertificate" title="Preview with sample data">
                   <i class="bi bi-eye me-1"></i>Preview PDF
                 </button>
               </div>

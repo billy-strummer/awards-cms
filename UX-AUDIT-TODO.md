@@ -1860,3 +1860,128 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **V7-M9 (Winner status "media_sent")** — Check `winners.js` and `database-schema.sql` to confirm whether `media_sent` is a valid DB status. If it exists, add it to the tooltip lifecycle. If it's a legacy value, replace `media_sent` display with "Pack Sent" via a mapping.
 - Always run `npm test` and `npm run build` after each commit. All 65 suites must pass.
 - Commit format: "Implements V7-C1", "Implements V7-H1, V7-H2, V7-L3" etc.
+
+---
+
+## V8 Audit — 2026-05-14 (Post-V7 follow-up: wiring, HTML bugs, consistency)
+
+> **Focus:** Verifying that V7 fixes landed cleanly, then reading every section with fresh eyes for new first-time-user friction. Key findings: orphaned HTML in entries table, winner status filter completely unwired, Settings is the only major section without a Getting Started banner, btn-outline-info inconsistency, and several missing contextual hints.
+
+---
+
+## V8-CRITICAL
+
+### V8-C1 — Orphaned `<tr>Loading entries...</tr>` sits outside `</tbody>` in the entries table
+- **Files:** `index.html` lines 2722–2728
+- **Root cause:** The entries table has two `</tbody>` tags. The first closes the real tbody at line 2721. Lines 2722–2727 contain a `<tr>` "Loading entries..." spinner row that is outside any `<tbody>` — invalid HTML. A second stray `</tbody>` closes nothing at line 2728. While browsers may visually hide this, it breaks table semantics, accessibility tools, and will cause issues in strict-mode parsers.
+- **Fix:** Delete lines 2722–2728 entirely (the orphaned `<tr>Loading entries...</tr>` block and the second `</tbody>`). The real empty/loading state is already handled by `#entriesEmptyRow` inside the proper `<tbody>`.
+- **Done when:** Only one `</tbody>` exists in the entries table, and no `<tr>` content sits outside a `<tbody>`.
+- [x] Implemented
+
+---
+
+## V8-HIGH
+
+### V8-H1 — Winner Status filter dropdown is completely unwired — changing it does nothing
+- **Files:** `index.html` line 2382 (`#winnerStatusFilter`), `winners.js` `filterWinners()` method
+- **Root cause:** `#winnerStatusFilter` has no `data-on-change` handler and `filterWinners()` never reads its value. The filter is visible in the UI but has zero effect. A user who tries to filter winners by "Pack Sent" or "Notified" will see no change and assume the CMS is broken.
+- **Fix:** (1) Add `data-on-change="winnersModule.filterWinners"` to the select element in `index.html`. (2) In `winners.js` `filterWinners()`, read the value and apply it: filter by `winner.winner_status === status` (or skip if status is empty).
+- **Done when:** Selecting a status in the filter instantly narrows the winners table to matching rows.
+- [x] Implemented
+
+### V8-H2 — Winner Status filter has wrong options vs. the actual statusConfig
+- **Files:** `index.html` lines 2383–2388 (winner status filter options), `winners.js` statusConfig (line 386–392)
+- **Root cause:** The filter shows: Pending / Confirmed / Announced / Pack Sent / Complete. But `statusConfig` defines five statuses: `pending`, `notified`, `pack_sent`, `confirmed`, `published`. Two filter options (`announced`, `complete`) don't exist in the status system and will never match any record. Two real statuses (`notified`, `published`) cannot be filtered at all.
+- **Fix:** Replace filter options with exactly the five canonical statuses from `statusConfig`: Pending / Notified / Pack Sent / Confirmed / Published. Remove `announced` and `complete`.
+- **Done when:** Every filter option corresponds to a real winner status, and every real status can be filtered.
+- [x] Implemented
+
+### V8-H3 — Settings is the only major section without a Getting Started banner
+- **Files:** `index.html` — Settings tab pane starting at line 6255
+- **Root cause:** Every other primary section has a dismissible numbered Getting Started banner (Awards, Organisations, Winners, Entries, Events, Reports, Marketing, Payments, CRM). Settings opens with eight sub-tabs and no introduction. A first-time admin won't know which tab to visit first, what "Season" means, or that Security/GDPR is where user roles are managed.
+- **Fix:** Add a dismissible Getting Started banner at the top of the Settings tab (before the sub-tab nav) explaining the recommended setup order: 1) Programme (name, logo, branding) → 2) Email Settings (sender address, Resend API) → 3) Awards Config (entry fields, scoring) → 4) Season (open/close dates for the current cycle) → 5) Security (user roles, 2FA, GDPR). localStorage key: `settingsWorkflowDismissed`.
+- **Done when:** Opening Settings shows a numbered workflow banner on first visit.
+- [x] Implemented
+
+### V8-H4 — `btn-info` / `btn-outline-info` remain on ~11 buttons after the V7-L2 partial fix
+- **Files:** `index.html` lines 426, 2216, 2232, 2259, 2899, 3555, 5072, 5106, 8104, 9073, 9321
+- **Root cause:** V7-L2 replaced `class="btn btn-info"` and `class="btn btn-info text-white"` but missed: (a) `btn-sm btn-info` at line 2216 (Organisations "Assign Award" bulk button), and (b) all `btn-outline-info` instances throughout (media gallery, email builder, events calendar, certificate preview, etc.). These teal buttons are inconsistent with the blue/green/amber/red semantic colour system.
+- **Fix:** Change `btn-sm btn-info` → `btn-sm btn-primary` (line 2216). Change `btn-outline-info` → `btn-outline-secondary` for neutral secondary actions (media sync, calendar toggle, crop/rotate, certificate preview, EUR/USD symbol switch in BTC module). Keep `btn-outline-info` only if there is a genuine informational semantic — which there is not in any of these cases.
+- **Done when:** No `btn-info` or `btn-outline-info` class appears on interactive buttons in `index.html`.
+- [x] Implemented
+
+---
+
+## V8-MEDIUM
+
+### V8-M1 — Dashboard "Top Organisations" metric options have no explanation
+- **Files:** `index.html` lines 693–698 (`#topCompaniesMetric` select options)
+- **Root cause:** The "View by:" dropdown in the Top Organisations widget offers: Most Active / Top Spenders / Most Awards Won / Recent Activity / Highest Revenue / Newest Members. None of these is defined. "Most Active" is ambiguous — it could mean most entries, most logins, most email opens, or most meetings. Business users may pick the wrong metric for their workflow.
+- **Fix:** Add `title` attributes to each `<option>` explaining the metric. e.g. `title="Organisations with the most entries submitted across all awards"` for Most Active; `title="Organisations with the highest total invoice value"` for Top Spenders; etc.
+- **Done when:** Hovering any metric option shows a plain-English definition of what it measures.
+- [x] Implemented
+
+### V8-M2 — "Apply Season" bulk action button in Awards has no tooltip and an ambiguous label
+- **Files:** `index.html` line 1150
+- **Root cause:** The Awards bulk-action toolbar has an `"Apply Season"` button (calendar icon, no title attribute). A first-time user won't know what "season" means or what applying it does — it bulk-copies the configured season open/close dates to all selected awards.
+- **Fix:** Rename label to `"Apply Season Dates"` and add `title="Copy the configured season open/close dates to all selected awards"`.
+- **Done when:** The button label and tooltip make its function obvious without reading documentation.
+- [x] Implemented
+
+### V8-M3 — CRM Deals table has no empty-state guidance
+- **Files:** `crm.js` (deals render method), `index.html` (CRM deals tab pane)
+- **Root cause:** When no deals exist, the Deals table is blank. There is no empty state message explaining how to create the first deal or what a "deal" represents in an awards business (sponsorship opportunity, entry fee negotiation, etc.).
+- **Fix:** Add an empty-state row in the deals table render: *"No deals tracked yet — use 'New Deal' to record sponsorship conversations and award fee negotiations."* Match the pattern used in other empty-state tables.
+- **Done when:** An empty Deals table shows actionable guidance instead of a blank table.
+- [x] Implemented
+
+### V8-M4 — Assignments section has no Getting Started banner
+- **Files:** `index.html` — Assignments tab pane
+- **Root cause:** The Assignments section (accessible from the sidebar) opens directly into a table of judge-to-entry assignments with no context. How are assignments created? Are they automatic or manual? What happens when a judge is assigned? There is no explanation.
+- **Fix:** Add a compact dismissible banner: *"Assignments link judges to specific award entries for blind scoring. Use 'Auto-Assign' to allocate entries automatically, or create individual assignments. Once assigned, judges see entries in the Judge Portal."* localStorage key: `assignmentsWorkflowDismissed`.
+- **Done when:** First-time users understand how assignments work and what to do next.
+- [x] Implemented
+
+### V8-M5 — Social media "Post Now" button missing its warning tooltip
+- **Files:** `index.html` — Social Media compose panel (around line 4390)
+- **Root cause:** V7-H7 correctly changed "Post Now" to `btn-outline-warning` but the accompanying V7 audit note also specified adding `title="Posts immediately to all selected platforms — requires API credentials to be configured"`. This tooltip was not added.
+- **Fix:** Add `title="Posts immediately to all selected platforms — requires API credentials to be configured"` to the Post Now button.
+- **Done when:** Hovering Post Now shows a warning about its immediate and irreversible nature.
+- [x] Implemented
+
+---
+
+## V8-LOW
+
+### V8-L1 — "Entry Type" filter label should be "Nomination Source"
+- **Files:** `index.html` line 2649
+- **Root cause:** The label "Entry Type" filters by self-nominated vs. standard submission. "Type" implies format (written/video/presentation), not origin. The tooltip text is correct but the label misleads users.
+- **Fix:** Rename label text from `"Entry Type"` to `"Nomination Source"`. Keep existing tooltip.
+- **Done when:** The filter label clearly communicates it distinguishes how an entry was submitted, not what format it is.
+- [x] Implemented
+
+### V8-L2 — Media Gallery section has no Getting Started banner
+- **Files:** `index.html` — Media Gallery tab pane
+- **Root cause:** Media Gallery opens directly into an asset grid with no introduction. Users don't know they can link YouTube playlists for automatic import, or that media uploaded here is linked to winners and organisations across the CMS.
+- **Fix:** Add a compact dismissible banner: *"Upload photos and videos from your awards events here. Link a YouTube playlist for automatic import. Media is associated with winners and organisations across the CMS."* localStorage key: `mediaGalleryWorkflowDismissed`.
+- **Done when:** First-time users understand what the Media Gallery is for and how to get started.
+- [x] Implemented
+
+### V8-L3 — Winner status tooltip on the Status column header does not list all statuses
+- **Files:** `index.html` — Winners table Status column `<th>`
+- **Root cause:** After fixing V7-M9 (renamed `media_sent` → `pack_sent`), the Status column header tooltip should list all five statuses in lifecycle order. Check that the tooltip reads: "Pending → Notified → Pack Sent → Confirmed → Published" and remove any reference to old status names.
+- **Fix:** Verify and update the `<th>` tooltip for the winner status column to match the canonical five-status lifecycle.
+- **Done when:** The tooltip lists exactly the five statuses that can appear in the table, in correct lifecycle order.
+- [x] Implemented
+
+---
+
+## Notes for Claude (V8)
+
+- **V8-C1 (orphaned tbody)** — Lines 2722–2728 in `index.html`. The structure is: `</tbody>` at 2721, then a stray `<tr>` at 2722–2727 with the "Loading entries..." spinner, then `</tbody>` at 2728. Delete lines 2722–2728 entirely.
+- **V8-H1+H2 (winner status filter)** — Two separate fixes: (1) wire up the `data-on-change` attribute in `index.html` and add status filtering to `filterWinners()` in `winners.js`; (2) replace the five filter option values/labels to match statusConfig exactly.
+- **V8-H3 (Settings banner)** — Insert the banner inside `<div class="tab-pane fade" id="settings">` before the sub-tab navigation. Use the same card/dismiss pattern as all other Getting Started banners.
+- **V8-H4 (btn-outline-info)** — Use `grep -n "btn-outline-info\|btn-sm btn-info" index.html` to find all instances. Replace each with `btn-outline-secondary` unless there is a genuine semantic reason to keep info colour (there isn't).
+- **V8-M3 (CRM deals empty state)** — Find the `renderDeals` or equivalent method in `crm.js` that populates the deals table body. Add an `if (deals.length === 0)` empty state row.
+- Always run `npm test` and `npm run build` after implementing. All 65 suites must pass, 0 lint errors.
+- Branch: `claude/bta-location-restructure-JS5hX`

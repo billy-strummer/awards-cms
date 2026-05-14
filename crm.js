@@ -609,8 +609,10 @@ const crmModule = {
       const hasFilters = this.filters.deals.stage !== 'all' || this.filters.deals.type !== 'all';
       utils.showEnhancedEmptyState('dealsTableBody', 9, {
         icon: 'bi-handshake',
-        message: hasFilters ? 'No deals match your filters' : 'No deals found',
-        description: hasFilters ? 'Try clearing your filters to see all deals' : 'Deals will appear here once created',
+        message: hasFilters ? 'No deals match your filters' : 'No deals tracked yet',
+        description: hasFilters
+          ? 'Try clearing your filters to see all deals'
+          : "Use 'New Deal' to record sponsorship conversations and award fee negotiations.",
         isFiltered: hasFilters,
         clearAction: hasFilters ? 'crmModule.resetDealsFilters' : '',
       });

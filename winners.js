@@ -214,10 +214,11 @@ const winnersModule = {
     this._currentPage = 1;
     const year = document.getElementById('winnerYearFilterSelect')?.value || '';
     const award = document.getElementById('winnerAwardFilterSelect')?.value || '';
+    const status = document.getElementById('winnerStatusFilter')?.value || '';
     const search = (document.getElementById('winnerSearchBox')?.value || '').toLowerCase().trim();
 
     try {
-      localStorage.setItem('winnersFilters', JSON.stringify({ year, award, search }));
+      localStorage.setItem('winnersFilters', JSON.stringify({ year, award, status, search }));
     } catch (e) {
       console.warn('Failed to save winner filters:', e.message);
     }
@@ -239,6 +240,9 @@ const winnersModule = {
       // Award filter
       if (award && utils.formatAwardName(winner.awards) !== award) return false;
 
+      // Status filter
+      if (status && (winner.winner_status || 'pending') !== status) return false;
+
       // Search filter
       if (search) {
         const winnerName = winner.winner_name?.toLowerCase() || '';
@@ -258,6 +262,8 @@ const winnersModule = {
       // Also apply non-search filters to fuzzy results
       if (year) STATE.filteredWinners = STATE.filteredWinners.filter((w) => String(w.awards?.year) === year);
       if (award) STATE.filteredWinners = STATE.filteredWinners.filter((w) => utils.formatAwardName(w.awards) === award);
+      if (status)
+        STATE.filteredWinners = STATE.filteredWinners.filter((w) => (w.winner_status || 'pending') === status);
     }
 
     // Sort

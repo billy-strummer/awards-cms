@@ -47,7 +47,7 @@ The CMS is functionally complete at a surface level but has three categories of 
 ### T1-D — Extract: Awards
 - **What:** Extract Awards section + Add Award modal into `src/partials/02-awards.html`.
 - **Done when:** Build output unchanged, tests pass.
-- [ ] Implemented
+- [x] Implemented
 
 ### T1-E — Extract: Organisations
 - **What:** Extract Organisations section + all related modals into `src/partials/03-organisations.html`.

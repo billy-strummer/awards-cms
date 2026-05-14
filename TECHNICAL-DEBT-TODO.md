@@ -3,7 +3,7 @@
 **CLAUDE: Read this file at the start of any session focused on technical improvements (architecture, missing features, code quality). Work through items in order. Mark each item `[x]` in the same commit as the implementation. Never mark complete unless committed and pushed.**
 
 Branch: `claude/bta-location-restructure-JS5hX`
-Last updated: 2026-05-14
+Last updated: 2026-05-14 (T1-A complete)
 
 ---
 
@@ -32,7 +32,7 @@ The CMS is functionally complete at a surface level but has three categories of 
 ### T1-A — Create partials build system
 - **What:** Create `src/partials/` directory. Update `build.js` to read a manifest of partial HTML files and concatenate them (in order) to produce `dist/index.html`. The concatenation must preserve all `<!-- section comments -->`, IDs, and whitespace in the correct positions.
 - **Done when:** `npm run build` produces an identical `index.html` to the current one, and all 65 tests pass.
-- [ ] Implemented
+- [x] Implemented
 
 ### T1-B — Extract: Navigation & shell
 - **What:** Extract the outer shell — `<head>`, nav sidebar, top bar, and closing scripts — into `src/partials/00-shell-head.html` and `src/partials/99-shell-foot.html`.

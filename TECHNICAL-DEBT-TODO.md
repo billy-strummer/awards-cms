@@ -52,7 +52,7 @@ The CMS is functionally complete at a surface level but has three categories of 
 ### T1-E — Extract: Organisations
 - **What:** Extract Organisations section + all related modals into `src/partials/03-organisations.html`.
 - **Done when:** Build output unchanged, tests pass.
-- [ ] Implemented
+- [x] Implemented
 
 ### T1-F — Extract: Winners + Entries
 - **What:** Extract Winners and Entries sections into `src/partials/04-winners.html` and `src/partials/05-entries.html`.

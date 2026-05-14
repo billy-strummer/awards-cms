@@ -2272,3 +2272,33 @@ Branch: `claude/bta-location-restructure-JS5hX`
 
 ### V12-J4 — Winner status change has no in-row affordance
 - Status badge in Winners table should be clickable to change state directly.
+
+---
+
+# V13 UX Audit — Final Pass: Public Pages & Remaining Gaps
+
+## V13-HIGH
+
+### V13-H1 — Judge Portal has no onboarding for first-time judges
+- **File:** `judge-portal.html` line 201
+- **Fix:** Added "How judging works" alert above the entries list explaining: select entry → read submission → score criteria → auto-saves. Notes that judging is blind.
+- [x] Implemented
+
+## V13-MEDIUM
+
+### V13-M1 — Vote page hides email verification requirement until after button click
+- **File:** `vote.html` line 270
+- **Fix:** Moved verification note above the Vote Now button as a visible alert-info box explaining that email verification will be required.
+- [x] Implemented
+
+### V13-M2 — Financial Reports "By Package Type" and "By Event" are unexplained
+- **File:** `index.html` line 5804
+- **Fix:** Added info icon tooltip to Report Type label explaining all six report types. Added blank "Select report type…" first option.
+- [x] Implemented
+
+## V13-LOW
+
+### V13-L1 — Submit Entry Step 1 subtitle is ambiguous for multi-location businesses
+- **File:** `submit-entry.html` line 650
+- **Fix:** Changed to "Select the county or city where your business is based or primarily operates."
+- [x] Implemented

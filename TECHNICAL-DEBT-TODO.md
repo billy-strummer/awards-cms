@@ -108,7 +108,7 @@ The CMS is functionally complete at a surface level but has three categories of 
   3. "Issue All" bulk button with a confirmation: "Send tickets to X confirmed attendees?"
   4. Track issued status in Supabase (`ticket_issued_at` timestamp on attendee record or separate `tickets` table).
 - **Done when:** Clicking Issue Ticket sends a real email with a QR code attachment to that attendee's email address.
-- [ ] Implemented
+- [x] Implemented
 
 ### T2-C — Milestones tab
 - **What:** Implement a real milestone/checklist system for events:

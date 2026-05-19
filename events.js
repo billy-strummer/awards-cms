@@ -1683,6 +1683,56 @@ const eventsModule = {
     return `${prefix}-${year}-${seq}-${random}`;
   },
 
+  async _sendTicketEmail(attendee, ticket, event) {
+    if (!attendee.email) return false;
+    try {
+      const token = await apiClient._getToken();
+      let qrCodeUrl = null;
+      try {
+        const qrRes = await fetch('/api/certificates-qr?action=generate-qr-ticket', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ attendeeId: attendee.id }),
+        });
+        if (qrRes.ok) {
+          const qrData = await qrRes.json();
+          qrCodeUrl = qrData.qrCodeUrl || qrData.qrCodeDataURL || null;
+        }
+      } catch (_) {
+        // QR generation failure is non-fatal — email still sends without QR
+      }
+      const eventDate = event.event_date
+        ? new Date(event.event_date).toLocaleDateString('en-GB', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+          })
+        : 'TBC';
+      const emailRes = await fetch('/api/resend-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          action: 'send-templated',
+          to: attendee.email,
+          templateType: 'ticket_issued',
+          data: {
+            event_name: event.event_name,
+            ticket_number: ticket.ticketNumber,
+            event_date: eventDate,
+            venue: event.venue || 'TBC',
+            attendee_name: attendee.name,
+            guest_type: ticket.guestType || attendee.guestType || 'guest',
+            qr_code_url: qrCodeUrl,
+          },
+        }),
+      });
+      return emailRes.ok;
+    } catch (_) {
+      return false;
+    }
+  },
+
   async issueTicketToAttendee(attendeeId) {
     const eventId = document.getElementById('attendeesEventId').value;
     const event = STATE.allEvents.find((e) => e.id === eventId);
@@ -1698,7 +1748,7 @@ const eventsModule = {
     }
 
     const ticketNumber = this._generateTicketNumber(eventId, ticketData.tickets.length + 1);
-    ticketData.tickets.push({
+    const ticket = {
       id: 'ticket_' + Date.now(),
       ticketNumber,
       attendeeId,
@@ -1708,10 +1758,23 @@ const eventsModule = {
       issuedAt: new Date().toISOString(),
       status: 'issued',
       checkedIn: false,
-    });
+    };
+    ticketData.tickets.push(ticket);
 
-    this._saveTicketData(eventId, ticketData);
-    utils.showToast(`Ticket ${ticketNumber} issued to ${attendee.name}`, 'success');
+    await this._saveTicketData(eventId, ticketData);
+
+    if (attendee.email) {
+      utils.showToast(`Issuing ticket ${ticketNumber} and sending email…`, 'info');
+      const sent = await this._sendTicketEmail(attendee, ticket, event);
+      utils.showToast(
+        sent
+          ? `Ticket ${ticketNumber} issued and emailed to ${attendee.email}`
+          : `Ticket ${ticketNumber} issued — email send failed`,
+        sent ? 'success' : 'warning'
+      );
+    } else {
+      utils.showToast(`Ticket ${ticketNumber} issued to ${attendee.name} (no email on record)`, 'success');
+    }
     this.renderTicketsTab(eventId);
   },
 
@@ -1744,20 +1807,26 @@ const eventsModule = {
       return;
     }
 
+    const withEmail = eligible.filter((a) => a.email).length;
+    const confirmMsg =
+      `Issue tickets to ${eligible.length} attendee(s)?` +
+      (withEmail > 0 ? ` Ticket emails will be sent to ${withEmail} with an email address.` : '');
+
     if (
       !(await utils.confirmDialog({
         title: 'Issue Tickets',
-        message: `Issue tickets to ${eligible.length} attendee(s)?`,
+        message: confirmMsg,
         confirmText: 'Issue Tickets',
         danger: false,
       }))
     )
       return;
 
+    const newTickets = [];
     let issued = 0;
     eligible.forEach((attendee) => {
       const ticketNumber = this._generateTicketNumber(eventId, ticketData.tickets.length + 1);
-      ticketData.tickets.push({
+      const ticket = {
         id: 'ticket_' + Date.now() + '_' + issued,
         ticketNumber,
         attendeeId: attendee.id,
@@ -1767,13 +1836,33 @@ const eventsModule = {
         issuedAt: new Date().toISOString(),
         status: 'issued',
         checkedIn: false,
-      });
+      };
+      ticketData.tickets.push(ticket);
+      newTickets.push({ attendee, ticket });
       issued++;
     });
 
-    this._saveTicketData(eventId, ticketData);
-    utils.showToast(`${issued} ticket(s) issued`, 'success');
+    await this._saveTicketData(eventId, ticketData);
+    utils.showToast(`${issued} ticket(s) issued — sending emails…`, 'info');
     this.renderTicketsTab(eventId);
+
+    // Send emails asynchronously after UI is updated
+    const emailTargets = newTickets.filter(({ attendee }) => attendee.email);
+    if (emailTargets.length > 0) {
+      let sent = 0;
+      let failed = 0;
+      for (const { attendee, ticket } of emailTargets) {
+        const ok = await this._sendTicketEmail(attendee, ticket, event);
+        if (ok) sent++;
+        else failed++;
+      }
+      utils.showToast(
+        failed === 0
+          ? `${sent} ticket email${sent !== 1 ? 's' : ''} sent`
+          : `${sent} email${sent !== 1 ? 's' : ''} sent, ${failed} failed`,
+        failed === 0 ? 'success' : 'warning'
+      );
+    }
   },
 
   async revokeTicket(ticketId) {

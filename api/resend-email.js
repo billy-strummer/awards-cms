@@ -213,11 +213,21 @@ async function sendTemplatedEmail({ to, templateType, data }) {
     ticket_issued: {
       subject: `Your Ticket: ${d.event_name}`,
       body: `<h2>Your Ticket</h2>
-        <p>Your ticket for <strong>${d.event_name}</strong> has been issued.</p>
-        <p><strong>Ticket Number:</strong> ${d.ticket_number}</p>
-        <p><strong>Date:</strong> ${d.event_date}</p>
-        <p><strong>Venue:</strong> ${d.venue}</p>
-        <p>Please present this ticket at check-in.</p>`,
+        <p>Dear ${esc(d.attendee_name || 'Guest')},</p>
+        <p>Your ticket for <strong>${esc(d.event_name)}</strong> has been confirmed.</p>
+        <table style="border-collapse:collapse;margin:16px 0;width:100%;">
+          <tr><td style="padding:6px 12px 6px 0;color:#666;white-space:nowrap;"><strong>Ticket Number</strong></td><td style="padding:6px 0;font-family:monospace;font-size:1.1em;">${esc(d.ticket_number)}</td></tr>
+          <tr><td style="padding:6px 12px 6px 0;color:#666;"><strong>Date</strong></td><td style="padding:6px 0;">${esc(d.event_date)}</td></tr>
+          <tr><td style="padding:6px 12px 6px 0;color:#666;"><strong>Venue</strong></td><td style="padding:6px 0;">${esc(d.venue)}</td></tr>
+          ${d.guest_type ? `<tr><td style="padding:6px 12px 6px 0;color:#666;"><strong>Guest Type</strong></td><td style="padding:6px 0;">${esc(d.guest_type)}</td></tr>` : ''}
+        </table>
+        ${
+          d.qr_code_url
+            ? `<p style="margin-top:16px;"><strong>Present this QR code at the door:</strong></p>
+        <img src="${sanitizeUrl(d.qr_code_url)}" alt="Entry QR Code" style="width:200px;height:200px;display:block;border:4px solid #eee;border-radius:4px;">`
+            : ''
+        }
+        <p style="margin-top:16px;">Please bring this email or note your ticket number. We look forward to seeing you.</p>`,
     },
   };
 

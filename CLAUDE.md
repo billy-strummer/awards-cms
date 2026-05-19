@@ -144,12 +144,15 @@ Build passes (0 lint errors, 2072KB JS, 58KB CSS). 65/65 test suites pass (6381 
 | Variable | Service | Where to get it |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | AI vetting (Claude API) | console.anthropic.com → API Keys |
-| `TWITTER_BEARER_TOKEN` | Social media posting | developer.x.com → Projects & Apps → Keys and Tokens |
-| `LINKEDIN_ACCESS_TOKEN` | Social media posting | linkedin.com/developers → Auth tab → OAuth 2.0 token (`w_organization_social` scope) |
-| `LINKEDIN_ORG_ID` | Social media posting | LinkedIn company page URL numeric ID |
-| `FACEBOOK_PAGE_TOKEN` | Social media posting | developers.facebook.com → Graph API Explorer → Page Access Token (`pages_manage_posts`) |
-| `FACEBOOK_PAGE_ID` | Social media posting | Facebook Page → About → Page ID |
-| `INSTAGRAM_ACCOUNT_ID` | Social media posting | Graph API: `GET /{page-id}?fields=instagram_business_account` |
+| `TWITTER_API_KEY` | Twitter/X posting (OAuth 1.0a consumer key) | developer.x.com → Projects & Apps → Keys and Tokens → API Key |
+| `TWITTER_API_SECRET` | Twitter/X posting (OAuth 1.0a consumer secret) | developer.x.com → Projects & Apps → Keys and Tokens → API Key Secret |
+| `TWITTER_ACCESS_TOKEN` | Twitter/X posting (OAuth 1.0a user access token) | developer.x.com → Projects & Apps → Keys and Tokens → Access Token |
+| `TWITTER_ACCESS_TOKEN_SECRET` | Twitter/X posting (OAuth 1.0a user access token secret) | developer.x.com → Projects & Apps → Keys and Tokens → Access Token Secret |
+| `LINKEDIN_ACCESS_TOKEN` | LinkedIn posting | linkedin.com/developers → Auth tab → OAuth 2.0 token (`w_organization_social` scope) |
+| `LINKEDIN_ORG_ID` | LinkedIn posting | LinkedIn company page URL numeric ID |
+| `FACEBOOK_PAGE_TOKEN` | Facebook & Instagram posting | developers.facebook.com → Graph API Explorer → Page Access Token (`pages_manage_posts`) |
+| `FACEBOOK_PAGE_ID` | Facebook posting | Facebook Page → About → Page ID |
+| `INSTAGRAM_ACCOUNT_ID` | Instagram posting | Graph API: `GET /{page-id}?fields=instagram_business_account` |
 
 ## Commands
 

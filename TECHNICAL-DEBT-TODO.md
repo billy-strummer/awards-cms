@@ -128,7 +128,7 @@ The CMS is functionally complete at a surface level but has three categories of 
   4. Add proper error handling: if a platform returns an error, show the error message in the UI (not just a generic failure).
   5. Document which platforms require credentials not yet in Vercel (see CLAUDE.md env var table).
 - **Done when:** Posting to any connected platform makes a real API call. Disconnected platforms show a clear "credentials not configured" message rather than silently failing.
-- [ ] Implemented
+- [x] Implemented
 
 ### T2-E — Auto-segments: verify and complete rule evaluation
 - **What:** Audit the Auto-Segments feature in the CRM tab:

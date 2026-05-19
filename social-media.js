@@ -532,12 +532,23 @@ Vote now: {{website}}
               body: JSON.stringify({ action: 'publish', postId: data[0].id }),
             });
             const publishResult = await pubRes.json();
-            if (!pubRes.ok) console.warn('Auto-publish failed, post saved:', publishResult.error);
-            else if (publishResult?.errors?.length > 0) {
+            if (!pubRes.ok) {
               utils.showToast(
-                `Published with warnings: ${publishResult.errors.map((e) => e.platform).join(', ')} failed`,
-                'warning'
+                `Publish failed: ${publishResult.error || 'Server error — post saved to database'}`,
+                'error'
               );
+            } else if (publishResult?.errors?.length > 0) {
+              const allFailed = publishResult.results?.length === 0;
+              publishResult.errors.forEach(({ platform: p, error: msg }) => {
+                const isCredsMissing = /not configured/i.test(msg);
+                const displayMsg = isCredsMissing
+                  ? `${p}: API credentials not configured — add keys in Vercel`
+                  : `${p}: ${msg}`;
+                utils.showToast(displayMsg, allFailed ? 'error' : 'warning');
+              });
+              if (publishResult.results?.length > 0) {
+                utils.showToast(`Published to: ${publishResult.results.map((r) => r.platform).join(', ')}`, 'success');
+              }
             } else {
               utils.showToast('Post published successfully!', 'success');
             }

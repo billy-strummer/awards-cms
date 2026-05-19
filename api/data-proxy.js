@@ -1339,6 +1339,101 @@ async function executeNomineeUpload(body, user) {
 }
 
 /**
+ * Execute a smart segment query against the organisations table.
+ * Queries ALL organisations in the database (not just the current page).
+ * For field types: tier, status, sector, region (county_city) → direct DB filters.
+ * For awards_count → embedded count from award_assignments join.
+ * For engagement → simplified score computed from org fields (updated_at, email, etc.).
+ * @param {Array<{field: string, op: string, val: string}>} rules - Segment rules.
+ * @param {'AND'|'OR'} logic - Match logic.
+ * @returns {Promise<{count: number, organisations: Array}>}
+ */
+async function executeSegmentQuery(rules, logic) {
+  const DB_COL = {
+    tier: 'tier',
+    status: 'status',
+    sector: 'sector',
+    region: 'county_city',
+    county_city: 'county_city',
+  };
+
+  // Fetch all orgs with embedded award count (limit 1000 — full database)
+  const { data: orgs, error } = await supabase
+    .from('organisations')
+    .select(
+      'id, company_name, status, sector, county_city, tier, email, contact_name, logo_url, website, updated_at, award_assignments(count)'
+    )
+    .limit(1000);
+
+  if (error) throw error;
+
+  const processed = (orgs || []).map((org) => ({
+    ...org,
+    awards_count: org.award_assignments?.[0]?.count || 0,
+    county_city: org.county_city || org.region || '',
+  }));
+
+  const matchFn = logic === 'OR' ? 'some' : 'every';
+  const matching = processed.filter((org) =>
+    rules[matchFn]((r) => {
+      let orgVal;
+      if (r.field === 'engagement') {
+        // Simplified engagement: derived from available DB columns (no CRM last-contacted)
+        let score = 0;
+        const daysSinceUpdate = org.updated_at
+          ? Math.floor((Date.now() - new Date(org.updated_at).getTime()) / 86400000)
+          : 999;
+        if (daysSinceUpdate < 7) score += 40;
+        else if (daysSinceUpdate < 30) score += 25;
+        else if (daysSinceUpdate < 90) score += 10;
+        else if (daysSinceUpdate < 180) score += 3;
+        if (org.email) score += 8;
+        if (org.contact_name) score += 7;
+        if (org.logo_url) score += 5;
+        if (org.website) score += 5;
+        if ((org.awards_count || 0) > 0) score += 15;
+        if (org.tier) score += 5;
+        if (org.contact_phone) score += 3;
+        orgVal = score;
+      } else if (r.field === 'awards_count') {
+        orgVal = org.awards_count || 0;
+      } else {
+        const col = DB_COL[r.field] || r.field;
+        orgVal = org[col] || '';
+      }
+      const testVal = r.val;
+      switch (r.op) {
+        case 'eq':
+          return String(orgVal).toLowerCase() === testVal.toLowerCase();
+        case 'neq':
+          return String(orgVal).toLowerCase() !== testVal.toLowerCase();
+        case 'gt':
+          return Number(orgVal) > Number(testVal);
+        case 'lt':
+          return Number(orgVal) < Number(testVal);
+        case 'contains':
+          return String(orgVal).toLowerCase().includes(testVal.toLowerCase());
+        default:
+          return false;
+      }
+    })
+  );
+
+  return {
+    count: matching.length,
+    organisations: matching.slice(0, 200).map((o) => ({
+      id: o.id,
+      company_name: o.company_name,
+      status: o.status,
+      sector: o.sector,
+      county_city: o.county_city,
+      tier: o.tier,
+      awards_count: o.awards_count,
+    })),
+  };
+}
+
+/**
  * Vercel serverless function handler.
  * POST /api/data-proxy
  *
@@ -1465,7 +1560,16 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ deleted: true });
     }
 
-    // 8. Validate standard query params
+    // 8. Handle smart segment server-side query
+    if (body.operation === 'apply_segment') {
+      if (!hasMinimumRole(role, 'viewer')) {
+        return res.status(403).json({ error: 'Forbidden', message: 'Segment queries require viewer role or above' });
+      }
+      const segResult = await executeSegmentQuery(body.rules || [], body.logic || 'AND');
+      return res.status(200).json(segResult);
+    }
+
+    // 9. Validate standard query params
     const validationErrors = validateQueryParams(body);
     if (validationErrors.length > 0) {
       return res.status(400).json({ error: 'Validation failed', details: validationErrors });

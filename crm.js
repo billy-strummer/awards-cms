@@ -2678,36 +2678,44 @@ const crmModule = {
     });
   },
 
-  /** Apply selected smart segment rules to filter organisations in-memory. */
-  applySmartSegment() {
+  /** Apply selected smart segment rules — queries the full database server-side. */
+  async applySmartSegment() {
     const rules = this._getSegmentRules();
     if (rules.length === 0) {
       utils.showToast('Add at least one rule', 'warning');
       return;
     }
-    const orgs = typeof STATE !== 'undefined' && STATE.allOrganisations ? STATE.allOrganisations : [];
-    const matching = orgs.filter((o) => this._matchesSegmentRules(o, rules));
-    this._lastSegmentMatches = matching;
+    const logic = this._segmentLogic || 'AND';
     const resultEl = document.getElementById('smartSegmentResult');
     if (resultEl) {
-      resultEl.innerHTML = `<div class="alert alert-info small py-2">
-        <strong>${matching.length}</strong> organisations match this segment.
-        <button class="btn btn-sm btn-outline-primary ms-2" data-action="crmModule.applySegmentAsFilter">View in Organisations Tab</button>
-      </div>
-      ${
-        matching.length > 0
-          ? `<div class="table-responsive mt-2"><table class="table table-sm table-hover"><thead><tr><th>Organisation</th><th>Status</th><th>Sector</th><th>Region</th></tr></thead><tbody>
-        ${matching
-          .slice(0, 50)
-          .map(
-            (o) =>
-              `<tr><td>${utils.escapeHtml(o.company_name || '')}</td><td><span class="badge ${{ nominee: 'bg-info', winner: 'bg-success', active: 'bg-primary', prospect: 'bg-secondary', inactive: 'bg-danger' }[o.status] || 'bg-secondary'}">${utils.escapeHtml(utils.toTitleCase(o.status || 'Unknown'))}</span></td><td>${utils.escapeHtml(utils.toTitleCase(o.sector) || '-')}</td><td>${utils.escapeHtml(o.county_city || '-')}</td></tr>`
-          )
-          .join('')}
-        ${matching.length > 50 ? `<tr><td colspan="4" class="text-muted text-center">... and ${matching.length - 50} more</td></tr>` : ''}
-      </tbody></table></div>`
-          : ''
-      }`;
+      resultEl.innerHTML = `<div class="text-muted small py-2"><span class="spinner-border spinner-border-sm me-1"></span>Querying database…</div>`;
+    }
+    try {
+      const result = await apiClient._call({ operation: 'apply_segment', rules, logic });
+      const matching = result.organisations || [];
+      this._lastSegmentMatches = matching;
+      if (resultEl) {
+        resultEl.innerHTML =
+          `<div class="alert alert-info small py-2">
+            <strong>${result.count}</strong> organisation${result.count !== 1 ? 's' : ''} match this segment (showing up to 200).
+            <button class="btn btn-sm btn-outline-primary ms-2" data-action="crmModule.applySegmentAsFilter">View in Organisations Tab</button>
+          </div>` +
+          (matching.length > 0
+            ? `<div class="table-responsive mt-2"><table class="table table-sm table-hover"><thead><tr><th>Organisation</th><th>Status</th><th>Sector</th><th>Region</th></tr></thead><tbody>
+              ${matching
+                .map(
+                  (o) =>
+                    `<tr><td>${utils.escapeHtml(o.company_name || '')}</td><td><span class="badge ${{ nominee: 'bg-info', winner: 'bg-success', active: 'bg-primary', prospect: 'bg-secondary', inactive: 'bg-danger' }[o.status] || 'bg-secondary'}">${utils.escapeHtml(utils.toTitleCase(o.status || 'Unknown'))}</span></td><td>${utils.escapeHtml(utils.toTitleCase(o.sector) || '-')}</td><td>${utils.escapeHtml(o.county_city || '-')}</td></tr>`
+                )
+                .join('')}
+            </tbody></table></div>`
+            : '');
+      }
+    } catch (err) {
+      utils.showToast('Segment query failed: ' + err.message, 'error');
+      if (resultEl) {
+        resultEl.innerHTML = `<div class="alert alert-danger small py-2">Query failed: ${utils.escapeHtml(err.message)}</div>`;
+      }
     }
   },
 
@@ -2815,18 +2823,21 @@ const crmModule = {
       const segments = await this._loadSegments();
       const rules = segments[name];
       if (!rules) return;
-      const orgs = typeof STATE !== 'undefined' && STATE.allOrganisations ? STATE.allOrganisations : [];
-      const matching = orgs.filter((o) => this._matchesSegmentRules(o, rules));
-      this._lastSegmentMatches = matching;
       const resultEl = document.getElementById('smartSegmentResult');
       if (resultEl) {
+        resultEl.innerHTML = `<div class="text-muted small py-2"><span class="spinner-border spinner-border-sm me-1"></span>Loading "${utils.escapeHtml(name)}"…</div>`;
+      }
+      const result = await apiClient.post('apply_segment', { rules, logic: 'AND' });
+      const matching = result.organisations || [];
+      this._lastSegmentMatches = matching;
+      if (resultEl) {
         resultEl.innerHTML = `<div class="alert alert-success small py-2">
-          <strong>"${utils.escapeHtml(name)}"</strong>: ${matching.length} organisations match.
+          <strong>"${utils.escapeHtml(name)}"</strong>: ${result.count} organisation${result.count !== 1 ? 's' : ''} match.
           <button class="btn btn-sm btn-outline-primary ms-2" data-action="crmModule.applySegmentAsFilter">View in Organisations Tab</button>
         </div>`;
       }
     } catch (e) {
-      console.warn('Failed to load and apply segment:', e.message);
+      utils.showToast('Failed to apply segment: ' + e.message, 'error');
     }
   },
 

@@ -138,7 +138,7 @@ The CMS is functionally complete at a surface level but has three categories of 
   4. The "Apply Segment" button must show a count + preview list of matching organisations.
   5. "Save Segment" must persist the rules to Supabase so they survive page refresh.
 - **Done when:** All rule types query the database correctly. Saved segments reload on next session. Preview shows real matching organisations.
-- [ ] Implemented
+- [x] Implemented
 
 ### T2-F — Special Requirements: aggregate from attendees
 - **What:** The Special Requirements tab currently shows a blank placeholder. Implement it:

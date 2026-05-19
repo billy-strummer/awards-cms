@@ -1291,11 +1291,11 @@ describe('CRM Module - _getSegmentRules', () => {
 });
 
 describe('CRM Module - applySmartSegment', () => {
-  test('shows warning when no rules are defined', () => {
+  test('shows warning when no rules are defined', async () => {
     const showToastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
     jest.spyOn(crmModule, '_getSegmentRules').mockReturnValue([]);
 
-    crmModule.applySmartSegment();
+    await crmModule.applySmartSegment();
 
     expect(showToastSpy).toHaveBeenCalledWith('Add at least one rule', 'warning');
 
@@ -1303,18 +1303,27 @@ describe('CRM Module - applySmartSegment', () => {
     jest.restoreAllMocks();
   });
 
-  test('filters organisations by rules and updates result element', () => {
+  test('filters organisations by rules via server-side query and updates result element', async () => {
     jest.spyOn(crmModule, '_getSegmentRules').mockReturnValue([{ field: 'status', op: 'eq', val: 'Active' }]);
-    STATE.allOrganisations = [
-      { id: '1', company_name: 'ActiveCo', status: 'Active' },
-      { id: '2', company_name: 'InactiveCo', status: 'Inactive' },
+    const mockOrgs = [
+      {
+        id: '1',
+        company_name: 'ActiveCo',
+        status: 'Active',
+        sector: null,
+        county_city: null,
+        tier: null,
+        awards_count: 0,
+      },
     ];
+    apiClient._call = jest.fn().mockResolvedValue({ count: 1, organisations: mockOrgs });
 
-    crmModule.applySmartSegment();
+    await crmModule.applySmartSegment();
 
     const resultEl = document.getElementById('smartSegmentResult');
     expect(resultEl.innerHTML).toContain('1');
-    expect(resultEl.innerHTML).toContain('organisations match');
+    expect(resultEl.innerHTML).toContain('organisation');
+    expect(resultEl.innerHTML).toContain('match');
     expect(crmModule._lastSegmentMatches).toHaveLength(1);
     expect(crmModule._lastSegmentMatches[0].company_name).toBe('ActiveCo');
 

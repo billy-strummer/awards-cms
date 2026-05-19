@@ -99,7 +99,7 @@ The CMS is functionally complete at a surface level but has three categories of 
 - **Data sources:** Existing `events`, `attendees`, `event_budget_items` Supabase tables via data-proxy.js.
 - **No new API files** — add a new `action` to `data-proxy.js`.
 - **Done when:** Opening Post-Event tab on a past event shows real numbers from the database. Empty state shown for future events.
-- [ ] Implemented
+- [x] Implemented
 
 ### T2-B — Ticket Issuance system
 - **What:** The Ticket Issuance section in the Tickets tab should:

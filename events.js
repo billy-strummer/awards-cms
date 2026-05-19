@@ -3382,14 +3382,84 @@ const eventsModule = {
     const isComplete = event.event_status === 'complete';
     const isPast = event.event_date && new Date(event.event_date) < new Date();
 
-    // Pre-fetch async data
-    const postEventData = await this._getPostEventData(eventId);
-    const surveyStatsHtml = await this._renderSurveyStats(eventId);
-    const sponsorReportHtml = await this._renderSponsorReport(eventId);
-    const debriefHtml = await this._renderDebrief(eventId);
+    // Pre-fetch all async data in parallel (avoids [object Promise] from unawaited calls)
+    const [postEventData, attendees, budget, surveyStatsHtml, sponsorReportHtml, debriefHtml, attendanceReportHtml] =
+      await Promise.all([
+        this._getPostEventData(eventId),
+        this.getAttendees(eventId),
+        this.getBudget(eventId),
+        this._renderSurveyStats(eventId),
+        this._renderSponsorReport(eventId),
+        this._renderDebrief(eventId),
+        this._renderAttendanceReport(eventId),
+      ]);
+
+    // Budget summary calculations
+    const budgetItems = budget.items || [];
+    const totalBudget = parseFloat(budget.totalBudget) || 0;
+    const totalEstimated = budgetItems.reduce((s, i) => s + (parseFloat(i.estimated) || 0), 0);
+    const totalActual = budgetItems.reduce((s, i) => s + (parseFloat(i.actual) || 0), 0);
+    const variance = totalEstimated - totalActual;
+    const attending = attendees.filter((a) => a.status === 'attending').length;
+    const ticketRevenue = (parseFloat(event.ticket_price) || 0) * attending;
+    const netPL = ticketRevenue - totalActual;
+    const profitMarginPct = ticketRevenue > 0 ? Math.round((netPL / ticketRevenue) * 100) : null;
+
+    const budgetSummaryHtml =
+      budgetItems.length === 0
+        ? '<p class="text-muted small mb-0">No budget items recorded. Add them in the <strong>Budget</strong> tab.</p>'
+        : `<div class="row g-2 mb-2">
+            <div class="col-6 col-md-3"><div class="card bg-light text-center h-100"><div class="card-body py-2">
+              <div class="fw-bold">£${totalBudget.toFixed(2)}</div><small class="text-muted">Total Budget</small>
+            </div></div></div>
+            <div class="col-6 col-md-3"><div class="card bg-light text-center h-100"><div class="card-body py-2">
+              <div class="fw-bold">£${totalEstimated.toFixed(2)}</div><small class="text-muted">Estimated Costs</small>
+            </div></div></div>
+            <div class="col-6 col-md-3"><div class="card bg-light text-center h-100"><div class="card-body py-2">
+              <div class="fw-bold">£${totalActual.toFixed(2)}</div><small class="text-muted">Actual Costs</small>
+            </div></div></div>
+            <div class="col-6 col-md-3"><div class="card ${variance >= 0 ? 'bg-success' : 'bg-danger'} text-white text-center h-100"><div class="card-body py-2">
+              <div class="fw-bold">${variance >= 0 ? '+' : ''}£${Math.abs(variance).toFixed(2)}</div>
+              <small class="opacity-75">Variance <span title="Estimated minus Actual. Positive = under budget.">(?)</span></small>
+            </div></div></div>
+          </div>
+          ${
+            ticketRevenue > 0
+              ? `<div class="row g-2">
+              <div class="col-md-4"><div class="card bg-light text-center"><div class="card-body py-2">
+                <div class="fw-bold">£${ticketRevenue.toFixed(2)}</div><small class="text-muted">Ticket Revenue (est.)</small>
+              </div></div></div>
+              <div class="col-md-4"><div class="card ${netPL >= 0 ? 'bg-success' : 'bg-danger'} text-white text-center"><div class="card-body py-2">
+                <div class="fw-bold">${netPL >= 0 ? '+' : '-'}£${Math.abs(netPL).toFixed(2)}</div>
+                <small class="opacity-75">Net P&amp;L</small>
+              </div></div></div>
+              <div class="col-md-4"><div class="card bg-light text-center"><div class="card-body py-2">
+                <div class="fw-bold ${profitMarginPct >= 0 ? 'text-success' : 'text-danger'}">${profitMarginPct}%</div>
+                <small class="text-muted">Profit Margin</small>
+              </div></div></div>
+            </div>`
+              : ''
+          }`;
 
     container.innerHTML = `
       ${!isComplete && !isPast ? `<div class="alert alert-info mb-3"><i class="bi bi-info-circle me-2"></i>This event hasn't happened yet. Post-event features are available after the event date or when status is set to "Complete".</div>` : ''}
+
+      <!-- Tab shortcuts for post-event review -->
+      <div class="card mb-3 border-0 bg-light">
+        <div class="card-body py-2">
+          <small class="text-muted fw-semibold d-block mb-2"><i class="bi bi-arrow-left-right me-1"></i>Jump to another tab:</small>
+          <div class="d-flex gap-1 flex-wrap">
+            <a href="#attendeesTab" data-bs-toggle="tab" class="btn btn-outline-secondary btn-sm"><i class="bi bi-people me-1"></i>Attendees</a>
+            <a href="#checkInTab" data-bs-toggle="tab" class="btn btn-outline-secondary btn-sm"><i class="bi bi-qr-code me-1"></i>Check-In</a>
+            <a href="#ticketsTab" data-bs-toggle="tab" class="btn btn-outline-secondary btn-sm"><i class="bi bi-ticket-perforated me-1"></i>Tickets</a>
+            <a href="#waitlistTab" data-bs-toggle="tab" class="btn btn-outline-secondary btn-sm"><i class="bi bi-hourglass me-1"></i>Waitlist</a>
+            <a href="#budgetTab" data-bs-toggle="tab" class="btn btn-outline-secondary btn-sm"><i class="bi bi-wallet2 me-1"></i>Budget</a>
+            <a href="#vendorsTab" data-bs-toggle="tab" class="btn btn-outline-secondary btn-sm"><i class="bi bi-truck me-1"></i>Vendors</a>
+            <a href="#specialReqsTab" data-bs-toggle="tab" class="btn btn-outline-secondary btn-sm"><i class="bi bi-clipboard-check me-1"></i>Special Reqs</a>
+            <a href="#milestonesTab" data-bs-toggle="tab" class="btn btn-outline-secondary btn-sm"><i class="bi bi-flag me-1"></i>Milestones</a>
+          </div>
+        </div>
+      </div>
 
       <!-- Quick Actions -->
       <div class="card mb-3 border-primary">
@@ -3403,6 +3473,27 @@ const eventsModule = {
             <button class="btn btn-outline-info btn-sm" data-action="eventsModule.generateSponsorReport" title="Jump to Sponsor ROI section below"><i class="bi bi-graph-up me-1"></i>Sponsor ROI Report</button>
             <button class="btn btn-outline-secondary btn-sm" data-action="eventsModule.exportPostEventPack" title="Downloads all reports (attendance, budget, vendors, debrief, sponsor) as CSV files"><i class="bi bi-file-earmark-zip me-1"></i>Export Full Pack</button>
           </div>
+        </div>
+      </div>
+
+      <!-- Attendance Report -->
+      <div class="card mb-3">
+        <div class="card-body">
+          <h6 class="card-title"><i class="bi bi-bar-chart-line me-2"></i>Attendance Report</h6>
+          <div id="attendanceReportContent">
+            ${attendanceReportHtml}
+          </div>
+        </div>
+      </div>
+
+      <!-- Budget Summary -->
+      <div class="card mb-3">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="card-title mb-0"><i class="bi bi-wallet2 me-2"></i>Budget Summary</h6>
+            <a href="#budgetTab" data-bs-toggle="tab" class="btn btn-sm btn-outline-secondary">Full Budget &rarr;</a>
+          </div>
+          ${budgetSummaryHtml}
         </div>
       </div>
 
@@ -3427,16 +3518,6 @@ const eventsModule = {
             <div class="row g-3" id="surveyResponseStats">
               ${surveyStatsHtml}
             </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Attendance Report -->
-      <div class="card mb-3">
-        <div class="card-body">
-          <h6 class="card-title"><i class="bi bi-bar-chart-line me-2"></i>Attendance Report</h6>
-          <div id="attendanceReportContent">
-            ${this._renderAttendanceReport(eventId)}
           </div>
         </div>
       </div>

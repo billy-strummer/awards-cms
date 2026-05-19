@@ -118,7 +118,7 @@ The CMS is functionally complete at a surface level but has three categories of 
   4. "Add Custom Milestone" button for non-standard tasks.
   5. Store per-event milestones in Supabase.
 - **Done when:** Opening Milestones tab on any event shows the pre-populated checklist. Checking items saves to database. Progress bar updates in real time.
-- [ ] Implemented
+- [x] Implemented
 
 ### T2-D — Audit social media posting end-to-end
 - **What:** Audit every platform's post action in `social-media-api.js`:

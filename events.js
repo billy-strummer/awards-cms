@@ -13762,21 +13762,19 @@ const eventsModule = {
 
   _getDefaultMilestones() {
     return [
-      { id: 'm1', label: 'Venue booked', done: false, category: 'Planning' },
-      { id: 'm2', label: 'Date confirmed', done: false, category: 'Planning' },
-      { id: 'm3', label: 'Budget set', done: false, category: 'Planning' },
-      { id: 'm4', label: 'Catering arranged', done: false, category: 'Logistics' },
-      { id: 'm5', label: 'AV/Production booked', done: false, category: 'Logistics' },
-      { id: 'm6', label: 'Invitations sent', done: false, category: 'Marketing' },
-      { id: 'm7', label: 'Sponsors confirmed', done: false, category: 'Marketing' },
-      { id: 'm8', label: 'Awards shortlist finalised', done: false, category: 'Awards' },
-      { id: 'm9', label: 'Winners confirmed', done: false, category: 'Awards' },
-      { id: 'm10', label: 'Running order set', done: false, category: 'Day of Event' },
-      { id: 'm11', label: 'Table plan done', done: false, category: 'Day of Event' },
-      { id: 'm12', label: 'Name badges printed', done: false, category: 'Day of Event' },
-      { id: 'm13', label: 'Post-event survey created', done: false, category: 'Post-Event' },
-      { id: 'm14', label: 'Thank you emails sent', done: false, category: 'Post-Event' },
+      { id: 'm1', label: 'Confirm venue', done: false, category: 'Pre-Event', dueRelativeDays: -60 },
+      { id: 'm2', label: 'Set ticket price', done: false, category: 'Pre-Event', dueRelativeDays: -45 },
+      { id: 'm3', label: 'Share registration link', done: false, category: 'Pre-Event', dueRelativeDays: -30 },
+      { id: 'm4', label: 'Confirm catering', done: false, category: 'Pre-Event', dueRelativeDays: -14 },
+      { id: 'm5', label: 'Issue QR tickets', done: false, category: 'Pre-Event', dueRelativeDays: -7 },
+      { id: 'm6', label: 'Send final attendee list', done: false, category: 'Day of Event', dueRelativeDays: -1 },
+      { id: 'm7', label: 'Brief door staff', done: false, category: 'Day of Event', dueRelativeDays: 0 },
+      { id: 'm8', label: 'Post-event debrief', done: false, category: 'Post-Event', dueRelativeDays: 7 },
     ];
+  },
+
+  _defaultMilestoneMetaById() {
+    return Object.fromEntries(this._getDefaultMilestones().map((m) => [m.id, m]));
   },
 
   async getMilestones(eventId) {
@@ -13786,19 +13784,29 @@ const eventsModule = {
         filters: { event_id: eventId },
         sort: { column: 'created_at', ascending: true },
       });
-      return data && data.length > 0
-        ? data.map((m) => ({
-            id: m.milestone_id || m.id,
-            label: m.label || m.title || '',
-            done: m.done ?? m.is_completed ?? false,
-            category: m.category || 'General',
-            custom: m.custom ?? m.is_custom ?? false,
+      if (data && data.length > 0) {
+        const meta = this._defaultMilestoneMetaById();
+        return data.map((m) => {
+          const id = m.milestone_id || m.id;
+          const defaultMeta = meta[id] || {};
+          return {
+            id,
+            label: m.title || m.label || defaultMeta.label || '',
+            done: m.is_completed ?? m.done ?? false,
+            category: m.category || defaultMeta.category || 'General',
+            custom: m.is_custom ?? m.custom ?? false,
             completedAt: m.completed_at || null,
-          }))
-        : this._getDefaultMilestones();
+            notes: m.notes || '',
+            dueRelativeDays: m.due_days_relative ?? defaultMeta.dueRelativeDays ?? null,
+          };
+        });
+      }
+      return this._getDefaultMilestones().map((m) => ({ ...m, notes: '', completedAt: null }));
     } catch (e) {
       const stored = localStorage.getItem(this._milestonesKey(eventId));
-      return stored ? JSON.parse(stored) : this._getDefaultMilestones();
+      return stored
+        ? JSON.parse(stored)
+        : this._getDefaultMilestones().map((m) => ({ ...m, notes: '', completedAt: null }));
     }
   },
 
@@ -13810,9 +13818,12 @@ const eventsModule = {
           event_id: eventId,
           milestone_id: m.id,
           title: m.label || m.title || '',
-          is_completed: m.done ?? m.is_completed ?? false,
-          is_custom: m.custom ?? m.is_custom ?? false,
+          is_completed: m.done ?? false,
+          is_custom: m.custom ?? false,
           completed_at: m.completedAt || null,
+          category: m.category || 'General',
+          notes: m.notes || null,
+          due_days_relative: m.dueRelativeDays ?? null,
         }));
         await apiClient.insert('event_milestones', rows);
       }
@@ -13832,6 +13843,16 @@ const eventsModule = {
     this.renderMilestonesPanel(eventId);
   },
 
+  async saveMilestoneNotes(eventId, milestoneId) {
+    const input = document.getElementById(`ms_notes_${milestoneId}`);
+    if (!input) return;
+    const milestones = await this.getMilestones(eventId);
+    const ms = milestones.find((m) => m.id === milestoneId);
+    if (ms) ms.notes = input.value.trim();
+    await this._saveMilestones(eventId, milestones);
+    utils.showToast('Notes saved', 'success');
+  },
+
   async addCustomMilestone(eventId) {
     const input = document.getElementById('newMilestoneInput');
     const label = input?.value?.trim();
@@ -13840,7 +13861,16 @@ const eventsModule = {
       return;
     }
     const milestones = await this.getMilestones(eventId);
-    milestones.push({ id: 'mc_' + Date.now(), label, done: false, category: 'Custom', custom: true });
+    milestones.push({
+      id: 'mc_' + Date.now(),
+      label,
+      done: false,
+      category: 'Custom',
+      custom: true,
+      notes: '',
+      completedAt: null,
+      dueRelativeDays: null,
+    });
     await this._saveMilestones(eventId, milestones);
     input.value = '';
     this.renderMilestonesPanel(eventId);
@@ -13852,20 +13882,40 @@ const eventsModule = {
     this.renderMilestonesPanel(eventId);
   },
 
+  _formatMilestoneDue(dueRelativeDays, eventDate) {
+    if (dueRelativeDays == null || !eventDate) return '';
+    const due = new Date(eventDate);
+    due.setDate(due.getDate() + dueRelativeDays);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    due.setHours(0, 0, 0, 0);
+    const diffDays = Math.round((due - today) / 86400000);
+    const dateStr = due.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    if (diffDays < 0) return `<span class="text-danger" style="font-size:0.7rem;">${dateStr} (overdue)</span>`;
+    if (diffDays === 0) return `<span class="text-warning" style="font-size:0.7rem;">Today</span>`;
+    if (diffDays <= 7) return `<span class="text-warning" style="font-size:0.7rem;">${dateStr}</span>`;
+    return `<span class="text-muted" style="font-size:0.7rem;">${dateStr}</span>`;
+  },
+
   async renderMilestonesPanel(eventId) {
     const container = document.getElementById('milestonesContent');
     if (!container) return;
-    const milestones = await this.getMilestones(eventId);
+    const [milestones, event] = await Promise.all([
+      this.getMilestones(eventId),
+      Promise.resolve(STATE.allEvents.find((e) => e.id === eventId)),
+    ]);
     const done = milestones.filter((m) => m.done).length;
     const total = milestones.length;
     const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+    const eventDate = event?.event_date || null;
 
     const categories = [...new Set(milestones.map((m) => m.category))];
 
     container.innerHTML = `
       <div class="d-flex justify-content-between align-items-center mb-2">
         <div>
-          <strong>${done}/${total}</strong> complete <span class="badge bg-${pct === 100 ? 'success' : pct >= 50 ? 'info' : 'warning'}">${pct}%</span>
+          <strong>${done}/${total}</strong> complete
+          <span class="badge bg-${pct === 100 ? 'success' : pct >= 50 ? 'info' : 'warning'} ms-1">${pct}%</span>
         </div>
       </div>
       <div class="progress mb-3" style="height:6px;">
@@ -13874,19 +13924,32 @@ const eventsModule = {
       ${categories
         .map(
           (cat) => `
-        <h6 class="small text-muted mb-1 mt-2">${cat}</h6>
+        <h6 class="small text-muted text-uppercase mb-1 mt-3">${utils.escapeHtml(cat)}</h6>
         ${milestones
           .filter((m) => m.category === cat)
           .map(
             (m) => `
-          <div class="form-check d-flex align-items-center mb-1">
-            <input class="form-check-input me-2" type="checkbox" ${m.done ? 'checked' : ''}
-              data-on-change="eventsModule.toggleMilestone" data-id="${eventId}" data-args='["${m.id}"]' id="ms_${m.id}">
-            <label class="form-check-label small ${m.done ? 'text-decoration-line-through text-muted' : ''}" for="ms_${m.id}">
-              ${utils.escapeHtml(m.label)}
-              ${m.completedAt ? `<span class="text-success ms-1" style="font-size:0.65rem;">${new Date(m.completedAt).toLocaleDateString('en-GB')}</span>` : ''}
-            </label>
-            ${m.custom ? `<button class="btn btn-sm ms-auto p-0 text-danger" data-action="eventsModule.removeCustomMilestone" data-args='${JSON.stringify([eventId, m.id])}' title="Remove"><i class="bi bi-x"></i></button>` : ''}
+          <div class="mb-2 border-start border-2 ${m.done ? 'border-success' : 'border-secondary'} ps-2">
+            <div class="d-flex align-items-start gap-2">
+              <input class="form-check-input mt-1 flex-shrink-0" type="checkbox" ${m.done ? 'checked' : ''}
+                data-on-change="eventsModule.toggleMilestone" data-id="${eventId}" data-args='["${m.id}"]' id="ms_${m.id}">
+              <div class="flex-grow-1">
+                <label class="form-check-label small fw-semibold ${m.done ? 'text-decoration-line-through text-muted' : ''}" for="ms_${m.id}">
+                  ${utils.escapeHtml(m.label)}
+                </label>
+                <div class="d-flex gap-2 align-items-center flex-wrap">
+                  ${m.dueRelativeDays != null ? this._formatMilestoneDue(m.dueRelativeDays, eventDate) : ''}
+                  ${m.completedAt ? `<span class="text-success" style="font-size:0.7rem;"><i class="bi bi-check-circle-fill me-1"></i>${new Date(m.completedAt).toLocaleDateString('en-GB')}</span>` : ''}
+                </div>
+                <div class="mt-1">
+                  <input type="text" class="form-control form-control-sm py-0" id="ms_notes_${m.id}"
+                    value="${utils.escapeHtml(m.notes || '')}" placeholder="Notes (optional)"
+                    data-on-blur="eventsModule.saveMilestoneNotes" data-id="${eventId}" data-args='["${m.id}"]'
+                    style="font-size:0.75rem;">
+                </div>
+              </div>
+              ${m.custom ? `<button class="btn btn-sm p-0 text-danger flex-shrink-0" data-action="eventsModule.removeCustomMilestone" data-args='${JSON.stringify([eventId, m.id])}' title="Remove"><i class="bi bi-x-circle"></i></button>` : ''}
+            </div>
           </div>
         `
           )
@@ -13896,7 +13959,7 @@ const eventsModule = {
         .join('')}
       <div class="input-group input-group-sm mt-3">
         <input type="text" class="form-control" id="newMilestoneInput" placeholder="Add custom milestone...">
-        <button class="btn btn-outline-primary" data-action="eventsModule.addCustomMilestone" data-id="eventId"><i class="bi bi-plus"></i></button>
+        <button class="btn btn-outline-primary" data-action="eventsModule.addCustomMilestone" data-id="${eventId}"><i class="bi bi-plus"></i> Add</button>
       </div>`;
   },
 

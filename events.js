@@ -3206,6 +3206,68 @@ const eventsModule = {
   // GUEST SPECIAL REQUIREMENTS
   // ========================================
 
+  _isDietaryNote(notes) {
+    const n = (notes || '').toLowerCase();
+    return (
+      n.includes('vegetarian') ||
+      n.includes('vegan') ||
+      n.includes('gluten') ||
+      n.includes('halal') ||
+      n.includes('kosher') ||
+      n.includes('nut') ||
+      n.includes('dairy') ||
+      n.includes('lactose') ||
+      n.includes('shellfish') ||
+      n.includes('seafood') ||
+      n.includes('fish') ||
+      n.includes('meat-free') ||
+      n.includes('food allergy') ||
+      n.includes('intolerance') ||
+      n.includes('diabetic') ||
+      n.includes('low sodium') ||
+      n.includes('no pork') ||
+      n.includes('no beef')
+    );
+  },
+
+  _isAccessibilityNote(notes) {
+    const n = (notes || '').toLowerCase();
+    return (
+      n.includes('wheelchair') ||
+      n.includes('accessibility') ||
+      n.includes('disabled') ||
+      n.includes('mobility') ||
+      n.includes('hearing') ||
+      n.includes('visual') ||
+      n.includes('step-free') ||
+      n.includes('braille') ||
+      n.includes('assistance dog') ||
+      n.includes('sign language') ||
+      n.includes('bsl')
+    );
+  },
+
+  exportSpecialRequirements(eventId) {
+    const allRows = this._lastSpecialReqsAttendees || [];
+    if (allRows.length === 0) {
+      utils.showToast('No special requirements to export', 'warning');
+      return;
+    }
+    const rows = allRows.map((a) => ({
+      Name: a.name,
+      Email: a.email || '',
+      'Guest Type': (a.guestType || 'guest').toUpperCase(),
+      Type: this._isDietaryNote(a.notes) ? 'Dietary' : this._isAccessibilityNote(a.notes) ? 'Accessibility' : 'Other',
+      Requirement: a.notes || '',
+    }));
+    const event = STATE.allEvents.find((e) => e.id === eventId);
+    utils.exportToCSV(
+      rows,
+      `${event ? event.event_name.replace(/[^a-z0-9]/gi, '_') : 'event'}_special_requirements.csv`
+    );
+    utils.showToast('Special requirements exported', 'success');
+  },
+
   async renderSpecialReqsTab(eventId) {
     const container = document.getElementById('specialReqsContent');
     if (!container) return;
@@ -3213,49 +3275,60 @@ const eventsModule = {
     const _event = STATE.allEvents.find((e) => e.id === eventId);
     const reqs = await this._getSpecialReqs(eventId);
 
-    // Accessibility summary
-    const accessNeeds = attendees.filter((a) => {
-      const notes = (a.notes || '').toLowerCase();
-      return (
-        notes.includes('wheelchair') ||
-        notes.includes('accessibility') ||
-        notes.includes('disabled') ||
-        notes.includes('mobility') ||
-        notes.includes('hearing') ||
-        notes.includes('visual') ||
-        notes.includes('step-free')
-      );
-    });
+    // Classify attendees with non-empty notes
+    const withNotes = attendees.filter((a) => (a.notes || '').trim());
+    const dietaryNeeds = withNotes.filter((a) => this._isDietaryNote(a.notes));
+    const accessNeeds = withNotes.filter((a) => this._isAccessibilityNote(a.notes));
+    const otherNeeds = withNotes.filter((a) => !this._isDietaryNote(a.notes) && !this._isAccessibilityNote(a.notes));
+    this._lastSpecialReqsAttendees = [...dietaryNeeds, ...accessNeeds, ...otherNeeds];
 
     const reqsSummary = reqs || { parking: 0, photoConsent: { yes: 0, no: 0, notAsked: 0 }, emergencyContact: '' };
 
-    container.innerHTML = `
-      <!-- Accessibility Requirements -->
-      <div class="card mb-3">
+    const totalSpecialReqs = dietaryNeeds.length + accessNeeds.length + otherNeeds.length;
+
+    const _reqTableRows = (list) =>
+      list
+        .map(
+          (a) => `<tr>
+          <td>${utils.escapeHtml(a.name)}</td>
+          <td><span class="badge bg-secondary">${(a.guestType || 'guest').toUpperCase()}</span></td>
+          <td>${utils.escapeHtml(a.notes)}</td>
+        </tr>`
+        )
+        .join('');
+
+    const _reqSection = (icon, title, colour, list, hint) =>
+      `<div class="card mb-3">
         <div class="card-body">
-          <h6 class="card-title"><i class="bi bi-universal-access me-2"></i>Accessibility Requirements
-            <span class="badge bg-info ms-2">${accessNeeds.length} guest${accessNeeds.length !== 1 ? 's' : ''}</span></h6>
+          <h6 class="card-title"><i class="bi bi-${icon} me-2"></i>${title}
+            <span class="badge bg-${colour} ms-2">${list.length}</span></h6>
           ${
-            accessNeeds.length > 0
-              ? `
-            <div class="table-responsive"><table class="table table-sm">
-              <thead><tr><th>Guest</th><th>Type</th><th>Requirement</th></tr></thead>
-              <tbody>${accessNeeds
-                .map(
-                  (a) => `<tr>
-                <td>${utils.escapeHtml(a.name)}</td>
-                <td><span class="badge bg-secondary">${(a.guestType || 'guest').toUpperCase()}</span></td>
-                <td>${utils.escapeHtml(a.notes)}</td>
-              </tr>`
-                )
-                .join('')}</tbody>
-            </table></div>
-            <div class="alert alert-warning mb-0"><i class="bi bi-exclamation-triangle me-2"></i>Ensure venue provides: step-free access, accessible toilets, hearing loop, reserved seating near exits.</div>
-          `
-              : '<p class="text-muted mb-0">No accessibility requirements flagged. Requirements are detected from guest notes (wheelchair, mobility, hearing, etc.)</p>'
+            list.length > 0
+              ? `<div class="table-responsive"><table class="table table-sm">
+                  <thead><tr><th>Guest</th><th>Type</th><th>Requirement Note</th></tr></thead>
+                  <tbody>${_reqTableRows(list)}</tbody>
+                </table></div>`
+              : `<p class="text-muted small mb-0">${hint}</p>`
           }
         </div>
+      </div>`;
+
+    container.innerHTML = `
+      <!-- Summary + Export -->
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          ${
+            totalSpecialReqs === 0
+              ? '<p class="text-muted mb-0"><i class="bi bi-check-circle me-2 text-success"></i>No special requirements recorded for confirmed attendees.</p>'
+              : `<p class="mb-0"><strong>${totalSpecialReqs}</strong> confirmed attendee${totalSpecialReqs !== 1 ? 's' : ''} with special requirements (from their registration notes).</p>`
+          }
+        </div>
+        <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.exportSpecialRequirements" data-id="${eventId}"><i class="bi bi-download me-1"></i>Export CSV</button>
       </div>
+
+      ${_reqSection('egg-fried', 'Dietary Requirements', 'warning', dietaryNeeds, 'No dietary requirements detected. Dietary needs are detected from guest notes (vegan, gluten-free, halal, nut allergy, etc.)')}
+      ${_reqSection('universal-access', 'Accessibility Requirements', 'info', accessNeeds, 'No accessibility requirements flagged. Detected from guest notes (wheelchair, mobility, hearing, etc.)')}
+      ${_reqSection('chat-dots', 'Other Requirements', 'secondary', otherNeeds, 'No other requirements recorded.')}
 
       <!-- Parking Passes -->
       <div class="card mb-3">

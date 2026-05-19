@@ -147,7 +147,7 @@ The CMS is functionally complete at a surface level but has three categories of 
   3. Show a "No special requirements recorded" empty state if none exist.
   4. Add an "Export Requirements" button that downloads a CSV for the catering/venue team.
 - **Done when:** Opening Special Reqs on an event with attendees who have notes shows those requirements grouped and summarised.
-- [ ] Implemented
+- [x] Implemented
 
 ---
 

@@ -44,7 +44,7 @@ const utils = {
    * @param {Event} event - The input event from the range slider.
    */
   updateSliderLabel(event) {
-    const input = event?.target || event;
+    const input = /** @type {any} */ (event?.target || event);
     const labelId = input?.getAttribute?.('data-id');
     if (!labelId) return;
     const label = document.getElementById(labelId);
@@ -523,7 +523,7 @@ const utils = {
         select.value = current;
       } else if (selectCurrent) {
         const thisYear = new Date().getFullYear();
-        if (this._cachedDbYears.includes(thisYear)) select.value = thisYear;
+        if (this._cachedDbYears.includes(thisYear)) select.value = String(thisYear);
       }
     } catch (e) {
       console.warn('Could not load years from DB:', e.message);
@@ -1858,7 +1858,7 @@ const utils = {
     if (!table) return;
     const visibleCols = table.querySelectorAll('thead th:not([style*="display: none"]):not(.d-none)').length;
     const emptyTd = tbody.querySelector('tr td[colspan]');
-    if (emptyTd && visibleCols > 0) emptyTd.setAttribute('colspan', visibleCols);
+    if (emptyTd && visibleCols > 0) emptyTd.setAttribute('colspan', String(visibleCols));
   },
 
   /* ==================================================== */
@@ -2612,15 +2612,15 @@ const utils = {
   /* ==================================================== */
 
   /**
-   * Initialize inline validation for a form
-   * Shows real-time validation feedback as user types
-   * @param {string} formId - Form element ID or container ID
+   * Initialize a character counter for a textarea element.
+   * @param {string} textareaId - Textarea element ID
+   * @param {number} maxLength - Maximum allowed character count
    */
   initCharCounter(textareaId, maxLength) {
     const textarea = document.getElementById(textareaId);
     if (!textarea) return;
     if (!maxLength) maxLength = parseInt(textarea.getAttribute('maxlength'), 10) || 500;
-    textarea.setAttribute('maxlength', maxLength);
+    textarea.setAttribute('maxlength', String(maxLength));
     let counter = textarea.parentElement?.querySelector('.char-counter');
     if (!counter) {
       counter = document.createElement('small');

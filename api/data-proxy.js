@@ -1112,6 +1112,7 @@ async function dispatchWebhooks(table, action, user, result) {
               response_body: responseBody,
             },
           ])
+          // @ts-ignore — .catch() is valid on the promise-like query builder
           .catch(() => {});
       })
     );
@@ -1325,6 +1326,7 @@ async function executeNomineeUpload(body, user) {
     const { error: rowsError } = await supabase
       .from('nominee_upload_rows')
       .insert(chunk)
+      // @ts-ignore — .select() with count options is valid at runtime
       .select('id', { count: 'exact', head: true });
 
     if (rowsError)
@@ -1361,7 +1363,7 @@ async function executeSegmentQuery(rules, logic) {
   const { data: orgs, error } = await supabase
     .from('organisations')
     .select(
-      'id, company_name, status, sector, county_city, tier, email, contact_name, logo_url, website, updated_at, award_assignments(count)'
+      'id, company_name, status, sector, county_city, tier, email, contact_name, contact_phone, logo_url, website, updated_at, award_assignments(count)'
     )
     .limit(1000);
 
@@ -1370,7 +1372,7 @@ async function executeSegmentQuery(rules, logic) {
   const processed = (orgs || []).map((org) => ({
     ...org,
     awards_count: org.award_assignments?.[0]?.count || 0,
-    county_city: org.county_city || org.region || '',
+    county_city: org.county_city || '',
   }));
 
   const matchFn = logic === 'OR' ? 'some' : 'every';

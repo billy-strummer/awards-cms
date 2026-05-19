@@ -2,20 +2,17 @@
   "compilerOptions": {
     "checkJs": true,
     "allowJs": true,
+    "noEmit": true,
     "target": "ES2020",
     "module": "ES2020",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "strict": false,
     "noImplicitAny": false,
     "strictNullChecks": false,
     "strictFunctionTypes": false,
     "noImplicitThis": false,
     "skipLibCheck": true,
-    "resolveJsonModule": true,
-    "baseUrl": ".",
-    "paths": {
-      "*": ["./*"]
-    }
+    "resolveJsonModule": true
   },
   "include": [
     "*.js",

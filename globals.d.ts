@@ -1,218 +1,229 @@
 /**
- * Global type declarations for Awards CMS
+ * Type declarations for global variables loaded via script tags in index.html.
+ * These are conditionally available (checked via typeof X !== 'undefined' guards).
  *
- * This file declares global variables and augments DOM types
- * to support TypeScript checking of vanilla JavaScript files.
+ * DOM interface augmentations cover vanilla-JS patterns where getElementById /
+ * querySelector returns a base type (HTMLElement / Element / EventTarget) but the
+ * code accesses properties that only live on specific sub-types (HTMLInputElement,
+ * HTMLFormElement, HTMLCanvasElement, etc.).  Making them optional (?) is safe — it
+ * tells TypeScript "this CAN exist" without lying about it always being present.
  */
 
-// ── Application globals (defined in config.js, utils.js, etc.) ──
+// ── Core globals injected by config.js / app.js ──────────────────────────────
+declare var STATE: any;
+declare var apiClient: any;
+declare var utils: any;
+declare var bootstrap: any;
+declare var supabase: any;
+declare var SUPABASE_CONFIG: any;
 
-declare const utils: Record<string, any>;
-declare const apiClient: Record<string, any>;
-declare const STATE: Record<string, any>;
-declare const ModuleRegistry: Record<string, any>;
-declare const SUPABASE_CONFIG: Record<string, any>;
-declare const supabase: any;
+// ── Third-party globals (CDN) ─────────────────────────────────────────────────
+declare var Chart: any;
+declare var Sentry: any;
+declare var stripeFrontend: any;
+declare var Stripe: any;
+declare var TradingView: any;
+declare var Choices: any;
+declare var L: any;       // Leaflet
+declare var XLSX: any;
+declare var jspdf: any;
 
-// Constants
-declare const STATUS: Record<string, string>;
-declare const MEDIA_TYPES: Record<string, string>;
-declare const SECTORS: string[];
-declare const REGIONS: string[];
-declare const YEARS: string[];
-declare const INACTIVITY_TIMEOUT: number;
+// ── Application constants ─────────────────────────────────────────────────────
+declare var SECTORS: any;
+declare var REGIONS: any;
+declare var STATUS: any;
+declare var MEDIA_TYPES: any;
+declare var INACTIVITY_TIMEOUT: number | undefined;
 
-// ── Module globals (defined in their respective .js files) ──
+// ── Module globals (assigned from feature modules) ────────────────────────────
+declare var ModuleRegistry: any;
+declare var actionRegistry: any;
+declare var awardsModule: any;
+declare var assignmentsModule: any;
+declare var authModule: any;
+declare var brandingModule: any;
+declare var crmModule: any;
+declare var dashboardModule: any;
+declare var emailBuilder: any;
+declare var emailListsModule: any;
+declare var entriesModule: any;
+declare var eventsModule: any;
+declare var gdprModule: any;
+declare var i18n: any;
+declare var marketingModule: any;
+declare var mediaGalleryModule: any;
+declare var multiTenancyModule: any;
+declare var paymentsModule: any;
+declare var rbacModule: any;
+declare var securityModule: any;
+declare var settingsModule: any;
+declare var winnersModule: any;
+declare var a11yModule: any;
+declare var aiVettingModule: any;
+declare var reportsScheduler: any;
 
-declare const awardsModule: Record<string, any>;
-declare const orgsModule: Record<string, any>;
-declare const winnersModule: Record<string, any>;
-declare const eventsModule: Record<string, any>;
-declare const paymentsModule: Record<string, any>;
-declare const crmModule: Record<string, any>;
-declare const marketingModule: Record<string, any>;
-declare const brandingModule: Record<string, any>;
-declare const entriesModule: Record<string, any>;
-declare const settingsModule: Record<string, any>;
-declare const dashboardModule: Record<string, any>;
-declare const rbacModule: Record<string, any>;
-declare const authModule: Record<string, any>;
-declare const emailBuilder: Record<string, any>;
-declare const emailListsModule: Record<string, any>;
-declare const mediaGalleryModule: Record<string, any>;
-declare const multiTenancyModule: Record<string, any>;
-declare const notificationsModule: Record<string, any>;
-declare const assignmentsModule: Record<string, any>;
-declare const aiVettingModule: Record<string, any>;
-declare const tenantModule: Record<string, any>;
-declare const securityModule: Record<string, any>;
-declare const gdprModule: Record<string, any>;
-declare const stripeFrontend: Record<string, any>;
-declare const a11yModule: Record<string, any>;
-declare const actionRegistry: Record<string, any>;
-declare const reportsScheduler: Record<string, any>;
-declare const i18n: Record<string, any>;
+// ── Feature module globals ────────────────────────────────────────────────────
+declare var seatingEnhancements: { init: () => void } | undefined;
+declare var reportingModule: { generateReport?: () => void } | undefined;
+declare var updateTabCounts: (() => void) | undefined;
+declare var orgsModule: any | undefined;
 
-// ── Third-party library globals (loaded via CDN / script tags) ──
+// Changed to `any` so auth.js can attach _pollInterval / _realtimeChannel
+declare var notificationsModule: any | undefined;
+// Changed to `any` so app.js can call .init() and other methods
+declare var tenantModule: any | undefined;
 
-declare const bootstrap: any;
-declare const Chart: any;
-declare const XLSX: any;
-declare const jspdf: any;
-declare const Sentry: any;
-declare const Stripe: any;
-declare const Choices: any;
-declare const L: any;
-declare const TradingView: any;
-declare const QRCode: any;
-
-// AMD/UMD define
-declare function define(deps: any, factory?: any): any;
-
-// ── Window augmentation ──
-// The codebase attaches many properties to window for cross-module access.
-
+// ── Window module properties (assigned via window.X = ...) ───────────────────
 interface Window {
+  areasManager?: any;
+  eventsModule?: any;
+  paymentsModule?: any;
+  winnersModule?: any;
+  SENTRY_DSN?: string;
   [key: string]: any;
 }
 
-// ── DOM type augmentations ──
-// Vanilla JS uses generic DOM query methods that return base types,
-// but code accesses subtype-specific properties without casting.
+// ── DOM interface augmentations ───────────────────────────────────────────────
+// Vanilla JS regularly accesses specific-element properties on base types returned
+// by getElementById / querySelector.  All properties are optional so the
+// augmentations don't falsely claim every element has them.
 
-interface EventTarget {
-  closest(selectors: string): HTMLElement | null;
-  contains(other: Node | null): boolean;
-  value: any;
-  checked: boolean;
-  dataset: DOMStringMap;
-  style: CSSStyleDeclaration;
-  files: FileList | null;
-  disabled: boolean;
-  click(): void;
-  key: string;
-  dataTransfer: DataTransfer | null;
-  tagName: string;
-  id: string;
-  getAttribute(qualifiedName: string): string | null;
-  querySelectorAll(selectors: string): NodeListOf<HTMLElement>;
-  checkValidity(): boolean;
-  [key: string]: any;
-}
+interface HTMLElement {
+  // Form / input element properties
+  value?: string;
+  checked?: boolean;
+  disabled?: boolean;
+  required?: boolean;
+  placeholder?: string;
+  min?: string;
+  type?: string;
+  name?: string;
+  accept?: string;
+  multiple?: boolean;
+  href?: string;
+  src?: string;
+  alt?: string;
+  width?: number;
+  height?: number;
+  selectedIndex?: number;
+  selectedOptions?: HTMLCollectionOf<HTMLOptionElement>;
+  options?: HTMLOptionsCollection;
+  files?: FileList | null;
+  selectionStart?: number | null;
+  selectionEnd?: number | null;
+  contentWindow?: Window | null;
+  contentDocument?: Document | null;
 
-interface Node {
-  querySelector(selectors: string): HTMLElement | null;
-  querySelectorAll(selectors: string): NodeListOf<HTMLElement>;
-  setAttribute(name: string, value: string): void;
+  // Form-level methods
+  reset?(): void;
+  checkValidity?(): boolean;
+  reportValidity?(): boolean;
+  validationMessage?: string;
+
+  // Input selection
+  select?(): void;
+
+  // Canvas methods
+  getContext?(contextId: string, options?: any): any;
+  toBlob?(callback: BlobCallback, type?: string, quality?: any): void;
+  toDataURL?(type?: string, quality?: any): string;
+
+  // Custom instance properties attached at runtime by various modules
+  _presenceChannel?: any;
+  _cmsRealtimeChannel?: any;
+  _activeUsers?: any;
+  _realtimeChannel?: any;
+  _pollInterval?: any;
+  _initPresence?: any;
+  _formDirty?: boolean;
+  _formSaved?: boolean;
+  _formSnapshot?: any;
+  _dirtyTracked?: boolean;
+  _chartInstance?: any;
+  _certHandler?: any;
+  _certInit?: boolean;
+  _listenerAttached?: boolean;
+  _relTimer?: any;
+  _bannerClickBound?: any;
+  _canvasWrapperBound?: any;
+  _gdprClickBound?: any;
+  _gdprPageBound?: any;
+  _gdprSearchBound?: any;
+  _gdprSearchBound2?: any;
+  _inlineValidationInit?: boolean;
+  _orgChangeBound?: any;
 }
 
 interface Element {
-  value: any;
-  checked: boolean;
-  files: FileList | null;
-  disabled: boolean;
-  selectedIndex: number;
-  options: HTMLOptionsCollection;
-  checkValidity(): boolean;
-  reportValidity(): boolean;
-  src: string;
-  getContext(contextId: string, options?: any): any;
-  style: CSSStyleDeclaration;
-  dataset: DOMStringMap;
-  width: number;
-  height: number;
-  focus(options?: FocusOptions): void;
-  blur(): void;
-  content: any;
-  onclick: ((this: GlobalEventHandlers, ev: MouseEvent) => any) | null;
-  oninput: ((this: GlobalEventHandlers, ev: Event) => any) | null;
-  title: string;
-  href: string;
-  alt: string;
-  name: string;
-  type: string;
-  placeholder: string;
-  rel: string;
-  webkitRequestFullscreen(): void;
-  msRequestFullscreen(): void;
-  [key: string]: any;
+  // Common element properties accessed after getElementById / querySelector
+  style?: CSSStyleDeclaration;
+  dataset?: DOMStringMap;
+  value?: string;
+  checked?: boolean;
+  disabled?: boolean;
+  type?: string;
+  name?: string;
+  href?: string;
+  src?: string;
+  alt?: string;
+  rel?: string;
+  title?: string;
+  content?: string;
+  placeholder?: string;
+  onclick?: ((this: GlobalEventHandlers, ev: MouseEvent) => any) | null;
+  oninput?: ((this: GlobalEventHandlers, ev: Event) => any) | null;
+
+  // HTMLElement methods not on base Element
+  click?(): void;
+  focus?(options?: FocusOptions): void;
+  blur?(): void;
+
+  // Form methods
+  checkValidity?(): boolean;
+  reportValidity?(): boolean;
+  validationMessage?: string;
+  select?(): void;
+
+  // Custom instance properties
+  _a11yKeyHandler?: any;
+  _a11yTrigger?: Element;
+  webkitRequestFullscreen?(): Promise<void>;
+  msRequestFullscreen?(): Promise<void>;
 }
 
-interface HTMLElement {
-  value: any;
-  checked: boolean;
-  files: FileList | null;
-  disabled: boolean;
-  selectedIndex: number;
-  selectedOptions: HTMLCollectionOf<HTMLOptionElement>;
-  options: HTMLOptionsCollection;
-  required: boolean;
-  checkValidity(): boolean;
-  reportValidity(): boolean;
-  reset(): void;
-  select(): void;
-  src: string;
-  href: string;
-  alt: string;
-  min: string;
-  getContext(contextId: string, options?: any): any;
-  toDataURL(type?: string, quality?: any): string;
-  toBlob(callback: BlobCallback, type?: string, quality?: any): void;
-  selectionStart: number | null;
-  selectionEnd: number | null;
-  contentWindow: Window | null;
-  contentDocument: Document | null;
-  [key: string]: any;
+interface EventTarget {
+  // Properties accessed on raw EventTarget (e.g. event.target)
+  closest?(selector: string): Element | null;
+  contains?(other: Node | null): boolean;
+  querySelectorAll?(selector: string): NodeListOf<Element>;
+  getAttribute?(name: string): string | null;
+  setAttribute?(name: string, value: string): void;
+  tagName?: string;
+  id?: string;
+  value?: any;
+  checked?: boolean;
+  disabled?: boolean;
+  name?: string;
+  type?: string;
+  files?: FileList | null;
+  dataset?: DOMStringMap;
+  classList?: DOMTokenList;
+  style?: CSSStyleDeclaration;
+  blur?(): void;
+  focus?(): void;
+  click?(): void;
+  checkValidity?(): boolean;
+
+  // Custom instance properties
+  _a11yTrigger?: Element;
 }
 
 interface Event {
-  key: string;
-  dataTransfer: DataTransfer | null;
+  key?: string;
+  dataTransfer?: DataTransfer | null;
 }
 
 interface Error {
-  [key: string]: any;
-}
-
-// ── Third-party Node.js modules (used in api/ files) ──
-
-declare module 'pdfkit' {
-  const PDFDocument: any;
-  export = PDFDocument;
-}
-
-declare module 'fontkit' {
-  const fontkit: any;
-  export = fontkit;
-}
-
-declare module 'crypto-js' {
-  const CryptoJS: any;
-  export = CryptoJS;
-}
-
-declare module 'node-cron' {
-  const cron: any;
-  export = cron;
-}
-
-declare module 'qrcode' {
-  const QRCode: any;
-  export = QRCode;
-}
-
-declare module 'resend' {
-  export class Resend {
-    constructor(apiKey: string);
-    emails: { send(options: any): Promise<any> };
-  }
-}
-
-declare module 'stripe' {
-  const Stripe: any;
-  export = Stripe;
-}
-
-declare module '@supabase/supabase-js' {
-  export function createClient(...args: any[]): any;
+  code?: string | number;
+  status?: number;
 }

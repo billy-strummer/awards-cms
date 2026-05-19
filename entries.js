@@ -538,7 +538,7 @@ const entriesModule = {
       this.currentFilters.search,
     ].filter(Boolean).length;
     if (count > 0) {
-      badge.textContent = count;
+      badge.textContent = String(count);
       badge.classList.remove('d-none');
     } else {
       badge.classList.add('d-none');

@@ -1948,9 +1948,9 @@ const winnersModule = {
 
     document.getElementById('certFieldProps').style.display = '';
     document.getElementById('certFieldText').value = field.text || '';
-    document.getElementById('certFieldX').value = Math.round(field.x || 0);
-    document.getElementById('certFieldY').value = Math.round(field.y || 0);
-    document.getElementById('certFieldWidth').value = Math.round(field.width || 200);
+    document.getElementById('certFieldX').value = String(Math.round(field.x || 0));
+    document.getElementById('certFieldY').value = String(Math.round(field.y || 0));
+    document.getElementById('certFieldWidth').value = String(Math.round(field.width || 200));
     document.getElementById('certFieldFontSize').value = field.fontSize || 24;
     document.getElementById('certFieldColor').value = field.color || '#000000';
     document.getElementById('certFieldAlign').value = field.align || 'left';
@@ -2102,8 +2102,8 @@ const winnersModule = {
     field.y = newY;
 
     // Update property inputs
-    document.getElementById('certFieldX').value = Math.round(newX);
-    document.getElementById('certFieldY').value = Math.round(newY);
+    document.getElementById('certFieldX').value = String(Math.round(newX));
+    document.getElementById('certFieldY').value = String(Math.round(newY));
 
     this._drawCertCanvas();
   },
@@ -2477,7 +2477,7 @@ const winnersModule = {
   /**
    * Legacy generateCertificatePDF — no-op, use template editor instead
    */
-  async generateCertificatePDF() {
+  async generateCertificatePDF(_winner, _brandColor, _accentColor) {
     // Replaced by template-based certificate generation
   },
 

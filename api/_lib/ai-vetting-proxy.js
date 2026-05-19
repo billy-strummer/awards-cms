@@ -69,7 +69,8 @@ Provide your response in the following JSON format:
     messages: [{ role: 'user', content: prompt }],
   });
 
-  const content = message.content?.[0]?.text;
+  const firstBlock = message.content?.[0];
+  const content = firstBlock && 'text' in firstBlock ? firstBlock.text : null;
   if (!content) throw new Error('Empty response from AI service');
 
   // Parse JSON from response
@@ -79,12 +80,7 @@ Provide your response in the following JSON format:
 
 /**
  * Batch vet multiple companies sequentially with rate limiting.
- * @param {Array<Object>} companies - Array of company objects to vet.
- * @param {string} companies[].companyName - The name of the company.
- * @param {string} [companies[].organisationId] - The organisation ID for tracking.
- * @param {string} [companies[].website] - The company website URL.
- * @param {string} [companies[].sector] - The sector or category.
- * @param {string} [companies[].county] - The region or county.
+ * @param {Array<{companyName: string, organisationId?: string, website?: string, sector?: string, county?: string}>} companies - Array of company objects to vet.
  * @returns {Promise<Array<Object>>} Array of vetting results with status ('clear', 'flagged', or 'error').
  */
 async function vetCompanies(companies) {

@@ -91,21 +91,24 @@ function wrapEmailTemplate(subject, bodyHtml, preheader = '', branding = {}, sub
  * @param {string} options.html - HTML body content.
  * @param {string} [options.text] - Plain text fallback body.
  * @param {string} [options.replyTo] - Reply-to email address.
+ * @param {string|string[]} [options.cc] - CC email address(es).
  * @param {Array<{name: string, value: string}>} [options.tags] - Email tags for tracking.
  * @returns {Promise<{success: boolean, id?: string, error?: string}>} Send result.
  */
 async function sendEmail({ to, subject, html, text, replyTo, cc, tags }) {
   try {
-    const { data, error } = await resend.emails.send({
-      from: `${FROM_NAME} <${FROM_EMAIL}>`,
-      to: Array.isArray(to) ? to : [to],
-      cc: cc ? (Array.isArray(cc) ? cc : [cc]) : undefined,
-      subject,
-      html,
-      text: text || undefined,
-      reply_to: replyTo || undefined,
-      tags: tags || undefined,
-    });
+    const { data, error } = await resend.emails.send(
+      /** @type {any} */ ({
+        from: `${FROM_NAME} <${FROM_EMAIL}>`,
+        to: Array.isArray(to) ? to : [to],
+        cc: cc ? (Array.isArray(cc) ? cc : [cc]) : undefined,
+        subject,
+        html,
+        text: text || undefined,
+        reply_to: replyTo || undefined,
+        tags: tags || undefined,
+      })
+    );
 
     if (error) throw error;
 

@@ -559,7 +559,7 @@ const awardsModule = {
       document.getElementById('awardsSearchBox')?.value,
     ].filter(Boolean).length;
     if (count > 0) {
-      badge.textContent = count;
+      badge.textContent = String(count);
       badge.classList.remove('d-none');
     } else {
       badge.classList.add('d-none');
@@ -1289,7 +1289,7 @@ const awardsModule = {
   openCreateModal() {
     document.getElementById('awardFormId').value = '';
     document.getElementById('awardFormName').value = '';
-    document.getElementById('awardFormYear').value = new Date().getFullYear();
+    document.getElementById('awardFormYear').value = String(new Date().getFullYear());
     document.getElementById('awardFormStatus').value = 'Active';
     document.getElementById('awardFormEntryOpen').value = '';
     document.getElementById('awardFormEntryClose').value = '';
@@ -2448,7 +2448,7 @@ const awardsModule = {
       descEl.textContent = `Duplicate "${utils.formatAwardName(award)}" — copies all fields, resets status to Draft and clears dates.`;
     const yearInput = document.getElementById('cloneAwardYear');
     if (yearInput) {
-      yearInput.value = new Date().getFullYear() + 1;
+      yearInput.value = String(new Date().getFullYear() + 1);
       yearInput.classList.remove('is-invalid');
     }
     new bootstrap.Modal(document.getElementById('cloneAwardModal')).show();
@@ -2551,7 +2551,9 @@ const awardsModule = {
 
     const reader = new FileReader();
     reader.onload = (e) => {
-      const lines = e.target.result.split('\n').filter((l) => l.trim());
+      const lines = String(e.target.result)
+        .split('\n')
+        .filter((l) => l.trim());
       if (lines.length < 2) {
         utils.showToast('CSV must have a header row and at least one data row', 'error');
         return;
@@ -2586,7 +2588,7 @@ const awardsModule = {
         .join('');
 
       document.getElementById('awardsImportRowCount').textContent = `${rows.length} rows`;
-      document.getElementById('awardsImportConfirmCount').textContent = rows.length;
+      document.getElementById('awardsImportConfirmCount').textContent = String(rows.length);
       document.getElementById('awardsImportPreview').classList.remove('d-none');
       document.getElementById('awardsImportConfirmBtn').classList.remove('d-none');
     };

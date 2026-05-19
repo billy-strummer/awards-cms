@@ -163,7 +163,7 @@ The CMS is functionally complete at a surface level but has three categories of 
 - **What:** Add `@param`, `@returns`, and `@typedef` JSDoc annotations to every exported function in every `.js` module. Focus first on the API boundary functions (anything called by `app.js` or another module).
 - **Priority order:** `config.js`, `app.js`, `auth.js`, `rbac.js`, then all feature modules alphabetically.
 - **Done when:** Every exported function has complete JSDoc. Running `npx tsc --checkJs --noEmit --allowJs --target ES2020` reports 0 errors.
-- [ ] Implemented
+- [x] Implemented
 
 ### T3-B — Add tsconfig.json for checkJs mode
 - **What:** Add a `tsconfig.json` configured for JavaScript checking mode (not TypeScript compilation):
@@ -183,12 +183,12 @@ The CMS is functionally complete at a surface level but has three categories of 
   ```
 - Add `"typecheck": "tsc --noEmit"` to `package.json` scripts.
 - **Done when:** `npm run typecheck` runs cleanly with 0 errors after T3-A is complete.
-- [ ] Implemented
+- [x] Implemented
 
 ### T3-C — Fix any type errors surfaced by checkJs
 - **What:** After T3-A and T3-B, run `npm run typecheck` and fix every error found. Common issues to expect: wrong argument count, undefined properties accessed without null checks, incorrect return types.
 - **Done when:** `npm run typecheck` → 0 errors. All 65 test suites still pass.
-- [ ] Implemented
+- [x] Implemented
 
 ---
 

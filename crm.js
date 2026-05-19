@@ -2796,7 +2796,7 @@ const crmModule = {
 
     const badge = document.getElementById('smartSegmentsBadge');
     if (badge) {
-      badge.textContent = names.length;
+      badge.textContent = String(names.length);
       badge.style.display = names.length ? '' : 'none';
     }
 

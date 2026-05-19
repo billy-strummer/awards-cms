@@ -368,7 +368,7 @@ const eventsModule = {
     // Pre-fill form with source event data (incrementing year by 1)
     const nextYear = sourceEvent.year ? parseInt(sourceEvent.year) + 1 : new Date().getFullYear();
     document.getElementById('cloneEventName').value = sourceEvent.event_name.replace(/\d{4}/, nextYear);
-    document.getElementById('cloneEventYear').value = nextYear;
+    document.getElementById('cloneEventYear').value = String(nextYear);
     document.getElementById('cloneEventVenue').value = sourceEvent.venue || '';
     document.getElementById('cloneEventDescription').value = sourceEvent.description || '';
     document.getElementById('cloneEventDate').value = '';
@@ -746,7 +746,7 @@ const eventsModule = {
     document.getElementById('eventId').value = '';
     document.getElementById('eventName').value = '';
     document.getElementById('eventDate').value = '';
-    document.getElementById('eventYear').value = new Date().getFullYear();
+    document.getElementById('eventYear').value = String(new Date().getFullYear());
     document.getElementById('eventVenue').value = template.venue || '';
     document.getElementById('eventDescription').value = template.description || '';
     document.getElementById('eventStatus').value = 'draft';
@@ -13861,7 +13861,7 @@ const eventsModule = {
         const meta = this._defaultMilestoneMetaById();
         return data.map((m) => {
           const id = m.milestone_id || m.id;
-          const defaultMeta = meta[id] || {};
+          const defaultMeta = meta[id] || { label: '', category: 'General', dueRelativeDays: null };
           return {
             id,
             label: m.title || m.label || defaultMeta.label || '',
@@ -13962,7 +13962,7 @@ const eventsModule = {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     due.setHours(0, 0, 0, 0);
-    const diffDays = Math.round((due - today) / 86400000);
+    const diffDays = Math.round((due.getTime() - today.getTime()) / 86400000);
     const dateStr = due.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
     if (diffDays < 0) return `<span class="text-danger" style="font-size:0.7rem;">${dateStr} (overdue)</span>`;
     if (diffDays === 0) return `<span class="text-warning" style="font-size:0.7rem;">Today</span>`;

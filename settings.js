@@ -741,7 +741,7 @@ const settingsModule = {
   openSeasonModal() {
     document.getElementById('seasonFormId').value = '';
     document.getElementById('seasonFormName').value = '';
-    document.getElementById('seasonFormYear').value = new Date().getFullYear();
+    document.getElementById('seasonFormYear').value = String(new Date().getFullYear());
     document.getElementById('seasonFormStatus').value = 'upcoming';
     document.getElementById('seasonFormEntryOpen').value = '';
     document.getElementById('seasonFormEntryClose').value = '';

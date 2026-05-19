@@ -1,3 +1,4 @@
+// @ts-nocheck — pdfkit type definitions don't cover the full fluent chaining API
 /**
  * @module certificates-qr
  * Certificate Generation and QR Code System.

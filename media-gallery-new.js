@@ -4401,10 +4401,10 @@ const mediaGalleryModule = {
       ctx.setLineDash([]);
 
       // Update input fields
-      document.getElementById('cropX').value = Math.round(x);
-      document.getElementById('cropY').value = Math.round(y);
-      document.getElementById('cropW').value = Math.round(w);
-      document.getElementById('cropH').value = Math.round(h);
+      document.getElementById('cropX').value = String(Math.round(x));
+      document.getElementById('cropY').value = String(Math.round(y));
+      document.getElementById('cropW').value = String(Math.round(w));
+      document.getElementById('cropH').value = String(Math.round(h));
     }
   },
 
@@ -7270,7 +7270,7 @@ const mediaGalleryModule = {
       const result = await apiClient.insert('events', {
         event_name: name,
         event_date: eventDate || null,
-        year: parseInt(year),
+        year: parseInt(String(year)),
       });
       const data = result.data[0];
 

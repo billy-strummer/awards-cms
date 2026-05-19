@@ -906,7 +906,7 @@ async function sendDeadlineReminders() {
         for (const entry of draftEntries || []) {
           const variables = {
             contact_name: entry.contact_name,
-            company_name: entry.organisations?.company_name || '',
+            company_name: /** @type {any} */ (entry.organisations)?.company_name || '',
             award_name: season.name,
             days_left: String(daysLeft),
             deadline: season.entry_close_date,
@@ -943,7 +943,7 @@ async function sendDeadlineReminders() {
           .limit(1);
         const judgingDeadline = activeAwards?.[0]?.judging_end_date;
         const daysLeft = judgingDeadline
-          ? Math.max(0, Math.ceil((new Date(judgingDeadline) - now) / (1000 * 60 * 60 * 24)))
+          ? Math.max(0, Math.ceil((new Date(judgingDeadline).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
           : null;
         const formatDate = (d) =>
           d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : 'TBC';

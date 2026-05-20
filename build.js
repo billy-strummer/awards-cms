@@ -185,37 +185,53 @@ async function build() {
     console.log(`  CSS: ${(totalCssSize / 1024).toFixed(0)}KB (concatenated, not minified)`);
   }
 
-  // 3. Copy index.html with updated script/css references
-  const indexPath = path.join(__dirname, 'index.html');
-  if (fs.existsSync(indexPath)) {
-    let html = fs.readFileSync(indexPath, 'utf8');
+  // 3. Assemble HTML from src/partials/ (or fall back to root index.html)
+  const partialsManifest = path.join(__dirname, 'src', 'partials', 'manifest.json');
+  let html;
 
-    // Replace custom CSS block: everything from <!-- Custom Styles --> to </head>
-    html = html.replace(
-      /<!-- Custom Styles -->[\s\S]*?<\/head>/,
-      '<!-- Custom Styles -->\n  <link rel="stylesheet" href="app.min.css">\n</head>'
-    );
-
-    // Replace app script block: everything from <!-- Application Scripts --> to the last
-    // bundled script (btc-module.js follows app.js). Keep only one bundled script tag.
-    html = html.replace(
-      /\s*<!-- Application Scripts[\s\S]*?<script src="btc-module\.js"><\/script>/,
-      '\n  <script type="module" src="app.min.js"></script>'
-    );
-
-    // Inject Supabase environment variables into meta tags
-    const supabaseUrl = process.env.SUPABASE_URL || '';
-    const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || '';
-    html = html.replace('<meta name="supabase-url" content="">', `<meta name="supabase-url" content="${supabaseUrl}">`);
-    html = html.replace(
-      '<meta name="supabase-anon-key" content="">',
-      `<meta name="supabase-anon-key" content="${supabaseAnonKey}">`
-    );
-
-    fs.writeFileSync(path.join(DIST_DIR, 'index.html'), html);
-    console.log('  HTML: rewrote index.html to use bundled app.min.js + app.min.css');
-    if (supabaseUrl) console.log('  Supabase: credentials injected from environment');
+  if (fs.existsSync(partialsManifest)) {
+    const partials = JSON.parse(fs.readFileSync(partialsManifest, 'utf8'));
+    const partialsDir = path.join(__dirname, 'src', 'partials');
+    html = partials
+      .map((file) => {
+        const filePath = path.join(partialsDir, file);
+        if (!fs.existsSync(filePath)) throw new Error(`Partial not found: src/partials/${file}`);
+        return fs.readFileSync(filePath, 'utf8');
+      })
+      .join('');
+    console.log(`  HTML: assembled from ${partials.length} partial(s) in src/partials/`);
+  } else {
+    const indexPath = path.join(__dirname, 'index.html');
+    if (!fs.existsSync(indexPath)) throw new Error('index.html not found and no partials manifest');
+    html = fs.readFileSync(indexPath, 'utf8');
+    console.log('  HTML: using root index.html (no partials manifest found)');
   }
+
+  // Replace custom CSS block: everything from <!-- Custom Styles --> to </head>
+  html = html.replace(
+    /<!-- Custom Styles -->[\s\S]*?<\/head>/,
+    '<!-- Custom Styles -->\n  <link rel="stylesheet" href="app.min.css">\n</head>'
+  );
+
+  // Replace app script block: everything from <!-- Application Scripts --> to the last
+  // bundled script (btc-module.js follows app.js). Keep only one bundled script tag.
+  html = html.replace(
+    /\s*<!-- Application Scripts[\s\S]*?<script src="btc-module\.js"><\/script>/,
+    '\n  <script type="module" src="app.min.js"></script>'
+  );
+
+  // Inject Supabase environment variables into meta tags
+  const supabaseUrl = process.env.SUPABASE_URL || '';
+  const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || '';
+  html = html.replace('<meta name="supabase-url" content="">', `<meta name="supabase-url" content="${supabaseUrl}">`);
+  html = html.replace(
+    '<meta name="supabase-anon-key" content="">',
+    `<meta name="supabase-anon-key" content="${supabaseAnonKey}">`
+  );
+
+  fs.writeFileSync(path.join(DIST_DIR, 'index.html'), html);
+  console.log('  HTML: rewrote index.html to use bundled app.min.js + app.min.css');
+  if (supabaseUrl) console.log('  Supabase: credentials injected from environment');
 
   // 4. Copy public-facing pages and their assets
   // These standalone pages have their own JS/CSS (not part of the admin bundle)

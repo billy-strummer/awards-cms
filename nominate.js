@@ -815,8 +815,8 @@
     if (el.dataset.preventDefault === 'true') e.preventDefault();
     const actionName = el.dataset.action;
     const parts = actionName.split('.');
-    let ctx = window;
-    let fn = window;
+    let ctx = /** @type {any} */ (window);
+    let fn = /** @type {any} */ (window);
     for (let i = 0; i < parts.length; i++) {
       ctx = fn;
       fn = fn[parts[i]];

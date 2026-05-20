@@ -1,0 +1,1052 @@
+      <!-- ==================================================== -->
+      <!-- ORGANISATIONS TAB -->
+      <!-- ==================================================== -->
+<div class="tab-pane fade" id="organisations" role="tabpanel">
+  <div class="container-fluid">
+    
+    <!-- Page Header -->
+    <div class="section-header">
+      <h1 class="section-title">
+        <i class="bi bi-building me-2"></i>Organisation Management
+      </h1>
+      <p class="section-subtitle">View and manage registered organisations<span id="organisationsFreshness" class="ms-2"></span></p>
+    </div>
+
+    <!-- Getting Started Banner -->
+    <div class="card border-0 shadow-sm mb-4" id="orgsGettingStarted">
+      <div class="card-body py-3">
+        <div class="d-flex justify-content-between align-items-start mb-3">
+          <div>
+            <h6 class="fw-bold mb-1"><i class="bi bi-map me-2 text-primary"></i>Getting Started — Organisations</h6>
+            <p class="text-muted small mb-0">Build your organisation database — the foundation of your awards programme.</p>
+          </div>
+          <button type="button" class="btn-close btn-sm" aria-label="Dismiss" onclick="document.getElementById('orgsGettingStarted').style.display='none';localStorage.setItem('orgsWorkflowDismissed','1');"></button>
+        </div>
+        <div class="row g-2">
+          <div class="col-md-4">
+            <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+              <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">1</span>
+              <div>
+                <div class="fw-semibold small">Import or Add Organisations</div>
+                <div class="text-muted" style="font-size:.75rem;">Use CSV Import for bulk upload or add organisations individually. Include sector, region, and contact details.</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+              <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">2</span>
+              <div>
+                <div class="fw-semibold small">Tag with Sector &amp; Region</div>
+                <div class="text-muted" style="font-size:.75rem;">Tagging enables filtered reporting, regional award categories, and targeted email campaigns.</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+              <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">3</span>
+              <div>
+                <div class="fw-semibold small">Entries &amp; CRM Auto-Link</div>
+                <div class="text-muted" style="font-size:.75rem;">Entries submitted by an organisation link back here automatically. CRM tracks all communications per org.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="mt-3">
+          <button class="btn btn-sm btn-primary" data-action="orgsModule.downloadImportTemplate"><i class="bi bi-download me-1"></i>Download Import Template</button>
+        </div>
+      </div>
+    </div>
+    <script>if(localStorage.getItem('orgsWorkflowDismissed')==='1'){var _ob=document.getElementById('orgsGettingStarted');if(_ob)_ob.style.display='none';}</script>
+
+    <!-- Section View Toggle -->
+    <ul class="nav nav-tabs mb-4" id="orgsSubNav" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="orgsViewBtn" role="tab"
+          data-bs-toggle="tab" data-bs-target="#orgsMainContent"
+          aria-controls="orgsMainContent" aria-selected="true">
+          <i class="bi bi-building me-2"></i>All Organisations
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="sponsorsViewBtn" role="tab"
+          data-bs-toggle="tab" data-bs-target="#orgsSponsorSection"
+          aria-controls="orgsSponsorSection" aria-selected="false">
+          <i class="bi bi-award me-2"></i>Sponsors &amp; Partners
+        </button>
+      </li>
+    </ul>
+
+    <div class="tab-content">
+
+    <!-- Organisations Content (default view) -->
+    <div id="orgsMainContent" class="tab-pane fade show active" role="tabpanel" aria-labelledby="orgsViewBtn">
+
+          <!-- Counties, Cities & Regions Reference (moved from Dashboard) -->
+          <div class="card mt-4">
+            <div class="card-header d-flex justify-content-between align-items-center py-2">
+              <div>
+                <h6 class="mb-0">
+                  <i class="bi bi-geo-alt-fill text-danger me-2"></i>Counties, Cities & Regions Reference
+                </h6>
+                <small class="text-muted">Coverage: <span id="countyCoverageStats" class="fw-semibold">Loading...</span></small>
+              </div>
+              <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="collapse" data-bs-target="#countiesRefBody" aria-expanded="false">
+                <i class="bi bi-chevron-down me-1"></i>Show / Hide
+              </button>
+            </div>
+            <div class="collapse" id="countiesRefBody">
+              <div class="card-body">
+                <p class="text-muted small mb-3">All areas included in the awards programme. <span class="text-success fw-semibold">Green</span> = has organisations or data. Indicators update when the Dashboard loads.</p>
+          <button class="btn btn-outline-secondary btn-sm" data-action="utils.toggleAccordion" data-id="regionAccordion">
+            <i class="bi bi-arrows-expand me-1"></i>Toggle All
+          </button>
+            </div>
+
+            <div class="row" id="regionAccordion">
+
+          <!-- LEFT COLUMN: England & Scotland -->
+          <div class="col-lg-6">
+
+            <!-- ENGLAND COUNTIES -->
+            <div class="border rounded mb-2">
+              <div class="d-flex align-items-center px-3 py-2 u-pointer"
+                   data-bs-toggle="collapse" data-bs-target="#regEng" aria-expanded="false">
+                <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
+                <span class="me-2">&#127988;&#917607;&#917602;&#917605;&#917614;&#917607;&#917631;</span>
+                <strong class="small">ENGLAND COUNTIES</strong>
+                <span class="text-muted small ms-1">(excl. cities)</span>
+                <span class="badge bg-danger ms-auto">42</span>
+              </div>
+              <div class="collapse" id="regEng">
+                <div class="px-3 pb-2 small text-muted u-columns-2">
+                  <div class="py-1 border-top" data-county="Bedfordshire">Bedfordshire</div>
+                  <div class="py-1 border-top" data-county="Berkshire">Berkshire</div>
+                  <div class="py-1 border-top" data-county="Buckinghamshire">Buckinghamshire</div>
+                  <div class="py-1 border-top" data-county="Cambridgeshire">Cambridgeshire</div>
+                  <div class="py-1 border-top" data-county="Cheshire">Cheshire</div>
+                  <div class="py-1 border-top" data-county="Cornwall">Cornwall</div>
+                  <div class="py-1 border-top" data-county="County Durham">County Durham</div>
+                  <div class="py-1 border-top" data-county="Cumbria">Cumbria</div>
+                  <div class="py-1 border-top" data-county="Derbyshire">Derbyshire</div>
+                  <div class="py-1 border-top" data-county="Devon">Devon</div>
+                  <div class="py-1 border-top" data-county="Dorset">Dorset</div>
+                  <div class="py-1 border-top" data-county="East Sussex">East Sussex</div>
+                  <div class="py-1 border-top" data-county="East Yorkshire">East Yorkshire</div>
+                  <div class="py-1 border-top" data-county="Essex">Essex</div>
+                  <div class="py-1 border-top" data-county="Gloucestershire">Gloucestershire</div>
+                  <div class="py-1 border-top" data-county="Hampshire">Hampshire</div>
+                  <div class="py-1 border-top" data-county="Herefordshire">Herefordshire <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                  <div class="py-1 border-top" data-county="Hertfordshire">Hertfordshire</div>
+                  <div class="py-1 border-top" data-county="Isle of Wight">Isle of Wight <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                  <div class="py-1 border-top" data-county="Kent">Kent</div>
+                  <div class="py-1 border-top" data-county="Lancashire">Lancashire</div>
+                  <div class="py-1 border-top" data-county="Leicestershire">Leicestershire</div>
+                  <div class="py-1 border-top" data-county="Lincolnshire">Lincolnshire</div>
+                  <div class="py-1 border-top" data-county="Norfolk">Norfolk</div>
+                  <div class="py-1 border-top" data-county="Northamptonshire">Northamptonshire</div>
+                  <div class="py-1 border-top" data-county="North Yorkshire">North Yorkshire</div>
+                  <div class="py-1 border-top" data-county="Northumberland">Northumberland</div>
+                  <div class="py-1 border-top" data-county="Nottinghamshire">Nottinghamshire</div>
+                  <div class="py-1 border-top" data-county="Oxfordshire">Oxfordshire</div>
+                  <div class="py-1 border-top" data-county="Rutland">Rutland <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                  <div class="py-1 border-top" data-county="Shropshire">Shropshire</div>
+                  <div class="py-1 border-top" data-county="Somerset">Somerset</div>
+                  <div class="py-1 border-top" data-county="South Yorkshire">South Yorkshire</div>
+                  <div class="py-1 border-top" data-county="Staffordshire">Staffordshire</div>
+                  <div class="py-1 border-top" data-county="Suffolk">Suffolk</div>
+                  <div class="py-1 border-top" data-county="Surrey">Surrey</div>
+                  <div class="py-1 border-top" data-county="Tyne & Wear">Tyne &amp; Wear</div>
+                  <div class="py-1 border-top" data-county="Warwickshire">Warwickshire</div>
+                  <div class="py-1 border-top" data-county="West Sussex">West Sussex</div>
+                  <div class="py-1 border-top" data-county="West Yorkshire">West Yorkshire</div>
+                  <div class="py-1 border-top" data-county="Wiltshire">Wiltshire</div>
+                  <div class="py-1 border-top" data-county="Worcestershire">Worcestershire</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- SCOTLAND -->
+            <div class="border rounded mb-2">
+              <div class="d-flex align-items-center px-3 py-2 u-pointer"
+                   data-bs-toggle="collapse" data-bs-target="#regScot" aria-expanded="false">
+                <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
+                <span class="me-2">&#127988;&#917607;&#917602;&#917619;&#917603;&#917620;&#917631;</span>
+                <strong class="small">SCOTLAND</strong>
+                <span class="badge bg-primary ms-auto">14</span>
+              </div>
+              <div class="collapse" id="regScot">
+                <div class="px-3 pb-2 small text-muted u-columns-2">
+                  <div class="py-1 border-top" data-county="Argyll & Bute">Argyll &amp; Bute <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                  <div class="py-1 border-top" data-county="Ayrshire">Ayrshire <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                  <div class="py-1 border-top" data-county="Central Scotland">Central Scotland <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                  <div class="py-1 border-top" data-county="Dumfries & Galloway">Dumfries &amp; Galloway <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                  <div class="py-1 border-top" data-county="Dunbartonshire">Dunbartonshire <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                  <div class="py-1 border-top" data-county="Fife">Fife <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                  <div class="py-1 border-top" data-county="Grampian">Grampian <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                  <div class="py-1 border-top" data-county="Highlands">Highlands <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                  <div class="py-1 border-top" data-county="Lanarkshire">Lanarkshire <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                  <div class="py-1 border-top" data-county="Lothian">Lothian <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                  <div class="py-1 border-top" data-county="Renfrewshire">Renfrewshire <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                  <div class="py-1 border-top" data-county="Scottish Borders">Scottish Borders <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                  <div class="py-1 border-top" data-county="Scottish Islands">Scottish Islands <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                  <div class="py-1 border-top" data-county="Tayside">Tayside <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                </div>
+                <div class="px-3 pb-2">
+                  <small class="text-muted fst-italic">Edinburgh &amp; Glasgow listed under Cities</small>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- RIGHT COLUMN: Wales & Cities -->
+          <div class="col-lg-6">
+
+            <!-- WALES -->
+            <div class="border rounded mb-2">
+              <div class="d-flex align-items-center px-3 py-2 u-pointer"
+                   data-bs-toggle="collapse" data-bs-target="#regWales" aria-expanded="false">
+                <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
+                <span class="me-2">&#127988;&#917607;&#917602;&#917623;&#917612;&#917619;&#917631;</span>
+                <strong class="small">WALES</strong>
+                <span class="badge bg-success ms-auto">10</span>
+              </div>
+              <div class="collapse" id="regWales">
+                <div class="px-3 pb-2 small text-muted u-columns-2">
+                  <div class="py-1 border-top" data-county="Carmarthenshire">Carmarthenshire <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                  <div class="py-1 border-top" data-county="Ceredigion">Ceredigion <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                  <div class="py-1 border-top" data-county="Conwy & Denbighshire">Conwy &amp; Denbighshire <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                  <div class="py-1 border-top" data-county="Flintshire">Flintshire <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                  <div class="py-1 border-top" data-county="Glamorgan">Glamorgan <span class="text-muted u-text-xs">(Vale of Glamorgan, Bridgend, RCT, Merthyr Tydfil, NPT)</span></div>
+                  <div class="py-1 border-top" data-county="Gwent">Gwent <span class="text-muted u-text-xs">(Caerphilly, Blaenau Gwent, Torfaen, Newport, Monmouthshire)</span></div>
+                  <div class="py-1 border-top" data-county="Gwynedd & Anglesey">Gwynedd &amp; Anglesey <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                  <div class="py-1 border-top" data-county="Pembrokeshire">Pembrokeshire <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                  <div class="py-1 border-top" data-county="Powys">Powys <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                  <div class="py-1 border-top" data-county="Wrexham">Wrexham <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                </div>
+                <div class="px-3 pb-2">
+                  <small class="text-muted fst-italic">Cardiff &amp; Swansea listed under Cities</small>
+                </div>
+              </div>
+            </div>
+
+            <!-- LONDON BOROUGHS -->
+            <div class="border rounded mb-2">
+              <div class="d-flex align-items-center px-3 py-2 u-pointer"
+                   data-bs-toggle="collapse" data-bs-target="#regLondon" aria-expanded="false">
+                <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
+                <i class="bi bi-buildings-fill text-danger me-2"></i>
+                <strong class="small">LONDON BOROUGHS</strong>
+                <span class="badge bg-danger ms-auto">15</span>
+              </div>
+              <div class="collapse" id="regLondon">
+                <div class="px-3 pb-2 small text-muted u-columns-2">
+                  <div class="py-1 border-top" data-county="Bromley">Bromley <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                  <div class="py-1 border-top" data-county="Camden">Camden <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                  <div class="py-1 border-top" data-county="Croydon">Croydon <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                  <div class="py-1 border-top" data-county="Greenwich">Greenwich <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                  <div class="py-1 border-top" data-county="Hackney">Hackney <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                  <div class="py-1 border-top" data-county="Hammersmith & Fulham">Hammersmith &amp; Fulham <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                  <div class="py-1 border-top" data-county="Islington">Islington <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                  <div class="py-1 border-top" data-county="Kensington & Chelsea">Kensington &amp; Chelsea <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                  <div class="py-1 border-top" data-county="Kingston & Richmond">Kingston &amp; Richmond <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                  <div class="py-1 border-top" data-county="Lambeth">Lambeth <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                  <div class="py-1 border-top" data-county="Lewisham">Lewisham <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                  <div class="py-1 border-top" data-county="Middlesex">Middlesex <span class="text-muted u-text-xs">(Hillingdon, Harrow, Ealing, Brent, Hounslow, Enfield, Barnet)</span></div>
+                  <div class="py-1 border-top" data-county="Southwark">Southwark <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                  <div class="py-1 border-top" data-county="Wandsworth">Wandsworth <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                  <div class="py-1 border-top" data-county="Westminster">Westminster <span class="badge bg-warning text-dark u-text-xxxs">small</span></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- TOP 19 CITIES -->
+            <div class="border rounded mb-2">
+              <div class="d-flex align-items-center px-3 py-2 u-pointer"
+                   data-bs-toggle="collapse" data-bs-target="#regCities" aria-expanded="false">
+                <i class="bi bi-chevron-right me-2 cat-arrow u-transition-transform"></i>
+                <i class="bi bi-buildings text-info me-2"></i>
+                <strong class="small">TOP CITIES</strong>
+                <span class="badge bg-info ms-auto">19</span>
+              </div>
+              <div class="collapse" id="regCities">
+                <div class="px-3 pb-2 small text-muted u-columns-2">
+                  <div class="py-1 border-top" data-county="Birmingham">Birmingham</div>
+                  <div class="py-1 border-top" data-county="Manchester">Manchester</div>
+                  <div class="py-1 border-top" data-county="Glasgow">Glasgow</div>
+                  <div class="py-1 border-top" data-county="Liverpool">Liverpool</div>
+                  <div class="py-1 border-top" data-county="Leeds">Leeds</div>
+                  <div class="py-1 border-top" data-county="Sheffield">Sheffield</div>
+                  <div class="py-1 border-top" data-county="Newcastle">Newcastle</div>
+                  <div class="py-1 border-top" data-county="Edinburgh">Edinburgh</div>
+                  <div class="py-1 border-top" data-county="Bristol">Bristol</div>
+                  <div class="py-1 border-top" data-county="Nottingham">Nottingham</div>
+                  <div class="py-1 border-top" data-county="Leicester">Leicester</div>
+                  <div class="py-1 border-top" data-county="Coventry">Coventry</div>
+                  <div class="py-1 border-top" data-county="Reading">Reading</div>
+                  <div class="py-1 border-top" data-county="Cardiff">Cardiff</div>
+                  <div class="py-1 border-top" data-county="Bournemouth">Bournemouth</div>
+                  <div class="py-1 border-top" data-county="Brighton & Hove">Brighton &amp; Hove</div>
+                  <div class="py-1 border-top" data-county="Southampton">Southampton</div>
+                  <div class="py-1 border-top" data-county="Middlesbrough">Middlesbrough</div>
+                  <div class="py-1 border-top" data-county="Swansea">Swansea</div>
+                </div>
+                <div class="px-3 pb-2">
+                  <small class="text-muted fst-italic">London covered individually under London Boroughs above</small>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+            </div>
+
+            <div class="mt-3 text-muted small text-center">
+          <i class="bi bi-check-circle-fill text-success me-1"></i>= has organisations data &nbsp;|&nbsp;
+          <span class="fw-semibold">Green name = data present</span>
+            </div>
+            <div class="mt-1 text-muted small text-center">
+          <i class="bi bi-info-circle me-1"></i>42 England counties &middot; 15 London boroughs &middot; 14 Scotland regions &middot; 10 Wales areas &middot; 19 cities
+          &middot; <span class="badge bg-warning text-dark u-text-xxs">small</span> = Small Area category list
+            </div>
+              </div>
+            </div>
+          </div>
+
+
+    <!-- Enhanced Stats Card with Pipeline & Data Quality -->
+    <div class="row mb-4">
+      <div class="col-12">
+        <div class="card border-0 shadow-sm">
+          <div class="card-body py-3">
+            <div class="row text-center">
+              <div class="col-2">
+                <h6 class="text-muted mb-1 small">Total Organisations</h6>
+                <h3 class="mb-0 fw-bold text-primary" id="orgsTotalCount">0</h3>
+              </div>
+              <div class="col-2">
+                <h6 class="text-muted mb-1 small">With Awards</h6>
+                <h3 class="mb-0 fw-bold text-success" id="orgsWithAwards">0</h3>
+              </div>
+              <div class="col-2">
+                <h6 class="text-muted mb-1 small">New This Month</h6>
+                <h3 class="mb-0 fw-bold text-info" id="orgsNewThisMonth">0</h3>
+              </div>
+              <div class="col-2">
+                <h6 class="text-muted mb-1 small">Missing Email</h6>
+                <h3 class="mb-0 fw-bold text-warning u-pointer" id="orgsMissingEmail" title="Click to filter organisations with no email address" data-action="orgsModule.filterByMissingField" data-id="email">0</h3>
+              </div>
+              <div class="col-2">
+                <h6 class="text-muted mb-1 small">Missing Logo</h6>
+                <h3 class="mb-0 fw-bold text-warning u-pointer" id="orgsMissingLogo" title="Click to filter organisations with no logo uploaded" data-action="orgsModule.filterByMissingField" data-id="logo_url">0</h3>
+              </div>
+              <div class="col-2 u-pointer" title="Click to filter sponsors" data-action="orgsModule.filterByStatus" data-id="sponsor">
+                <h6 class="text-muted mb-1 small">Sponsors</h6>
+                <h3 class="mb-0 fw-bold text-purple" id="orgsSponsorCount">0</h3>
+              </div>
+            </div>
+            <!-- hidden elements kept for JS compatibility -->
+            <span class="d-none" id="orgsTopSector"></span>
+            <span class="d-none" id="orgsAtRiskCount"></span>
+            <span class="d-none" id="orgsAvgEngagement"></span>
+            <span class="d-none" id="orgsTopTier"></span>
+            <span class="d-none" id="orgsOverdueCount"></span>
+            <span class="d-none" id="orgsDueSoonCount"></span>
+            <span class="d-none" id="orgsLastUpdated"></span>
+            <!-- Conversion Pipeline Mini with Rates -->
+            <div class="mt-3 pt-2 border-top">
+              <div class="d-flex align-items-center justify-content-center gap-1 flex-wrap small">
+                <span class="text-muted fw-semibold">Pipeline:</span>
+                <span class="badge bg-secondary" id="orgsPipelineProspect" title="Click to filter prospects" data-stat-filter="orgsStatusFilter:prospect">0 Prospects</span>
+                <span class="text-muted u-text-xxs" id="orgsConvProspectEntrant" title="Conversion rate">0%</span>
+                <i class="bi bi-chevron-right text-muted"></i>
+                <span class="badge bg-info" id="orgsPipelineEntrant" title="Click to filter entrants" data-stat-filter="orgsStatusFilter:entrant">0 Entrants</span>
+                <span class="text-muted u-text-xxs" id="orgsConvEntrantNominee" title="Conversion rate">0%</span>
+                <i class="bi bi-chevron-right text-muted"></i>
+                <span class="badge bg-primary" id="orgsPipelineNominee" title="Click to filter nominees" data-stat-filter="orgsStatusFilter:nominee">0 Nominees</span>
+                <span class="text-muted u-text-xxs" id="orgsConvNomineeShortlisted" title="Conversion rate">0%</span>
+                <i class="bi bi-chevron-right text-muted"></i>
+                <span class="badge bg-warning text-dark" id="orgsPipelineShortlisted" title="Click to filter shortlisted" data-stat-filter="orgsStatusFilter:shortlisted">0 Shortlisted</span>
+                <span class="text-muted u-text-xxs" id="orgsConvShortlistedWinner" title="Conversion rate">0%</span>
+                <i class="bi bi-chevron-right text-muted"></i>
+                <span class="badge bg-success" id="orgsPipelineWinner" title="Click to filter winners" data-stat-filter="orgsStatusFilter:winner">0 Winners</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Enhanced Filters Row -->
+    <div class="content-card mb-4 filter-bar-sticky">
+        <!-- Row header -->
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <div class="d-flex align-items-center gap-3">
+            <span class="filter-bar-label"><i class="bi bi-funnel me-1"></i>Filter Organisations</span>
+            <span id="orgsRowCount" class="table-row-count"></span>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <div class="input-group input-group-sm" style="width:200px;">
+              <select class="form-select form-select-sm" id="orgsFilterPreset" data-on-change="orgsModule.loadFilterPreset">
+                <option value="">Saved views…</option>
+              </select>
+              <button class="btn btn-outline-primary btn-sm" data-action="orgsModule.saveFilterPreset" title="Save current view">
+                <i class="bi bi-bookmark-plus"></i>
+              </button>
+              <button class="btn btn-outline-danger btn-sm" data-action="orgsModule.deleteFilterPreset" title="Delete selected view">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
+            <button class="btn btn-outline-secondary btn-sm" data-action="orgsModule.resetFilters" title="Clear all active filters">
+              <i class="bi bi-x-circle me-1"></i>Clear Filters
+            </button>
+          </div>
+        </div>
+        <!-- Row 1: Primary Filters -->
+        <div class="row g-2 align-items-end">
+
+          <!-- Search Box -->
+          <div class="col-md-2">
+            <label for="orgsSearchBox" class="form-label filter-bar-field-label mb-1">
+              <i class="bi bi-search me-1" aria-hidden="true"></i>Search
+            </label>
+            <input type="text" class="form-control form-control-sm" id="orgsSearchBox"
+                   placeholder="Organisation name, email, contact…">
+          </div>
+
+          <!-- Year Filter -->
+          <div class="col-md-1">
+            <label for="orgsYearFilter" class="form-label filter-bar-field-label mb-1">
+              <i class="bi bi-calendar3 me-1" aria-hidden="true"></i>Year
+            </label>
+            <select class="form-select form-select-sm" id="orgsYearFilter"
+                    data-on-change="orgsModule.filterOrganisations">
+              <option value="">All Years</option>
+            </select>
+          </div>
+
+          <!-- Sector Filter -->
+          <div class="col-md-2">
+            <label for="orgsSectorFilter" class="form-label filter-bar-field-label mb-1">
+              <i class="bi bi-briefcase me-1" aria-hidden="true"></i>Sector
+            </label>
+            <select class="form-select form-select-sm" id="orgsSectorFilter"
+                    data-on-change="orgsModule.filterOrganisations">
+              <option value="">All Sectors</option>
+            </select>
+          </div>
+
+          <!-- Country Filter -->
+          <div class="col-md-1">
+            <label for="orgsCountryFilter" class="form-label filter-bar-field-label mb-1">
+              <i class="bi bi-globe me-1" aria-hidden="true"></i>Country
+            </label>
+            <select class="form-select form-select-sm" id="orgsCountryFilter"
+                    data-on-change="orgsModule.onCountryFilterChange">
+              <option value="">All</option>
+            </select>
+          </div>
+
+          <!-- Region Filter (cascades from Country) -->
+          <div class="col-md-2">
+            <label for="orgsRegionFilter" class="form-label filter-bar-field-label mb-1">
+              <i class="bi bi-map me-1" aria-hidden="true"></i>Region
+            </label>
+            <select class="form-select form-select-sm" id="orgsRegionFilter"
+                    data-on-change="orgsModule.onRegionFilterChange">
+              <option value="">All Regions</option>
+            </select>
+          </div>
+
+          <!-- County/City/Borough Filter (cascades from Region) -->
+          <div class="col-md-2">
+            <label for="orgsAreaFilter" class="form-label filter-bar-field-label mb-1">
+              <i class="bi bi-pin-map me-1" aria-hidden="true"></i>County/City/Borough
+            </label>
+            <select class="form-select form-select-sm" id="orgsAreaFilter"
+                    data-on-change="orgsModule.filterOrganisations">
+              <option value="">All</option>
+            </select>
+          </div>
+
+          <!-- Status Filter -->
+          <div class="col-md-1">
+            <label for="orgsStatusFilter" class="form-label filter-bar-field-label mb-1">
+              <i class="bi bi-person-badge me-1" aria-hidden="true"></i>Status
+            </label>
+            <select class="form-select form-select-sm" id="orgsStatusFilter"
+                    data-on-change="orgsModule.filterOrganisations">
+              <option value="">All (Active Only)</option>
+              <option value="prospect">Prospect</option>
+              <option value="entrant">Entrant</option>
+              <option value="nominee">Nominee</option>
+              <option value="shortlisted">Shortlisted</option>
+              <option value="winner">Winner</option>
+              <option value="sponsor">Sponsor</option>
+              <option value="past_winner">Past Winner</option>
+              <option value="archived">Archived</option>
+              <option value="all">All (inc. Archived)</option>
+            </select>
+          </div>
+
+          <!-- Tier Filter -->
+          <div class="col-md-1">
+            <label for="orgsTierFilter" class="form-label filter-bar-field-label mb-1">
+              <i class="bi bi-award me-1" aria-hidden="true"></i>Tier
+            </label>
+            <select class="form-select form-select-sm" id="orgsTierFilter"
+                    data-on-change="orgsModule.filterOrganisations">
+              <option value="">All Tiers</option>
+              <option value="Bronze">Bronze</option>
+              <option value="Silver">Silver</option>
+              <option value="Gold">Gold</option>
+              <option value="Platinum">Platinum</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Row 2: Advanced Filters -->
+        <div class="row g-2 align-items-end mt-2">
+          <!-- Tag Filter -->
+          <div class="col-md-2">
+            <label for="orgsTagFilter" class="form-label filter-bar-field-label mb-1">
+              <i class="bi bi-tags me-1" aria-hidden="true"></i>Tag
+            </label>
+            <select class="form-select form-select-sm" id="orgsTagFilter"
+                    data-on-change="orgsModule.filterOrganisations">
+              <option value="">All Tags</option>
+            </select>
+          </div>
+
+          <!-- Has Logo Toggle -->
+          <div class="col-md-1">
+            <label for="orgsLogoFilter" class="form-label filter-bar-field-label mb-1">
+              <i class="bi bi-image me-1" aria-hidden="true"></i>Logo
+            </label>
+            <select class="form-select form-select-sm" id="orgsLogoFilter"
+                    data-on-change="orgsModule.filterOrganisations">
+              <option value="">All</option>
+              <option value="has">Has Logo</option>
+              <option value="missing">No Logo</option>
+            </select>
+          </div>
+
+          <!-- Date Range Filter -->
+          <div class="col-md-2">
+            <label for="orgsDateFilter" class="form-label filter-bar-field-label mb-1">
+              <i class="bi bi-clock-history me-1" aria-hidden="true"></i>Date Added
+            </label>
+            <select class="form-select form-select-sm" id="orgsDateFilter"
+                    data-on-change="orgsModule.filterOrganisations">
+              <option value="">Any Time</option>
+              <option value="7">Last 7 Days</option>
+              <option value="30">Last 30 Days</option>
+              <option value="90">Last 90 Days</option>
+              <option value="180">Last 6 Months</option>
+              <option value="stale">Stale (6+ months)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Row 3: Actions Toolbar -->
+        <div class="d-flex gap-2 align-items-center flex-wrap mt-3 pt-2 border-top">
+          <!-- View Toggle -->
+          <div class="btn-group btn-group-sm me-2" role="group" aria-label="View toggle">
+            <button class="btn btn-outline-secondary active" id="orgsTableViewBtn" data-action="orgsModule.setView" data-id="table" title="Table view">
+              <i class="bi bi-list-ul"></i>
+            </button>
+            <button class="btn btn-outline-secondary" id="kanbanToggleBtn" data-action="orgsModule.toggleKanbanView" data-prevent-default="true" title="Kanban pipeline view">
+              <i class="bi bi-kanban"></i>
+            </button>
+            <button class="btn btn-outline-secondary" id="mapToggleBtn" data-action="orgsModule.toggleMapView" data-prevent-default="true" title="Map view">
+              <i class="bi bi-map"></i>
+            </button>
+          </div>
+          <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addNewOrgModal">
+            <i class="bi bi-plus-lg me-1"></i>Add Organisation
+          </button>
+          <button class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#csvImportModal">
+            <i class="bi bi-upload me-1"></i>Import
+          </button>
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="bi bi-download me-1"></i>Export
+            </button>
+            <ul class="dropdown-menu">
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.exportToCSV"><i class="bi bi-filetype-csv text-success me-2"></i>Export CSV</a></li>
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.exportToExcel"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Export Excel (.xlsx)</a></li>
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.exportToPDF" data-prevent-default="true"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
+            </ul>
+          </div>
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="bi bi-tools me-1"></i>Tools
+            </button>
+            <ul class="dropdown-menu">
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.showAnalyticsDashboard" data-prevent-default="true"><i class="bi bi-bar-chart text-primary me-2"></i>Analytics Dashboard</a></li>
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.showDataQualityWizard" data-prevent-default="true"><i class="bi bi-shield-check text-danger me-2"></i>Data Quality Check</a></li>
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.showDuplicateCheck" data-prevent-default="true"><i class="bi bi-files text-warning me-2"></i>Check Duplicates</a></li>
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.showDuplicateDetectionDashboard" data-prevent-default="true"><i class="bi bi-search text-info me-2"></i>Duplicate Scan</a></li>
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.showGlobalAuditLog" data-prevent-default="true"><i class="bi bi-journal-text me-2"></i>Audit Log</a></li>
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.showImportHistory" data-prevent-default="true"><i class="bi bi-clock-history me-2"></i>Import History</a></li>
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.showTagFilterModal" data-prevent-default="true"><i class="bi bi-tags me-2"></i>Multi-Tag Filter</a></li>
+              <li class="dropdown-divider"></li>
+              <li><a class="dropdown-item" href="#" id="togglePhoneColBtn" data-action="orgsModule.togglePhoneColumn" data-prevent-default="true"><i class="bi bi-telephone me-2"></i>Toggle Phone Column</a></li>
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.showColumnSettings" data-prevent-default="true"><i class="bi bi-layout-three-columns me-2"></i>Column Visibility</a></li>
+            </ul>
+          </div>
+        </div>
+    </div>
+
+    <div id="orgsActiveFilters" class="mb-1"></div>
+    <!-- Kanban Pipeline Board (Feature 5) -->
+    <div id="orgKanbanBoard" class="d-none mb-4"></div>
+
+    <!-- Interactive British Isles Map View -->
+    <div id="orgMapContainer" class="d-none mb-4">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-0 py-2">
+          <div class="d-flex justify-content-between align-items-center">
+            <h6 class="mb-0 fw-semibold"><i class="bi bi-map me-2"></i>Organisation Map - British Isles</h6>
+            <div class="d-flex gap-2 align-items-center">
+              <span class="badge bg-primary" id="mapOrgCount">0</span>
+              <button class="btn btn-sm btn-outline-secondary" data-action="orgsModule.toggleMapView"><i class="bi bi-x-lg"></i> Close Map</button>
+            </div>
+          </div>
+        </div>
+        <div class="card-body p-0">
+          <div id="orgLeafletMap" style="height: 700px; width: 100%; border-radius: 0 0 0.375rem 0.375rem;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Clean Table with Narrow Contact Column -->
+    <div class="card border-0 shadow-sm" id="orgTableContainer">
+      <div class="card-header bg-white border-0 py-2">
+        <div class="d-flex justify-content-between align-items-center">
+          <h6 class="mb-0 fw-semibold">
+            <i class="bi bi-list-ul me-2"></i>Organisations List
+          </h6>
+          <span class="badge bg-success text-white px-3 py-2">
+            <span id="orgsCount">0</span> organisations
+          </span>
+        </div>
+      </div>
+      
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover table-sm mb-0 align-middle">
+            <caption class="visually-hidden">Organisations list</caption>
+            <thead class="table-light">
+              <tr>
+                <th scope="col" style="width: 2%;" class="text-center">
+                  <input type="checkbox" class="form-check-input" id="selectAllOrgs"
+                         aria-label="Select all organisations" data-on-change="orgsModule.toggleSelectAll">
+                </th>
+                <th scope="col" style="width: 14%; cursor: pointer;" class="fw-semibold" data-action="orgsModule.sortBy" data-args="[&quot;company&quot;]" aria-sort="none">
+                  Organisation Name
+                  <i class="bi bi-arrow-down-up text-muted ms-1 small" aria-hidden="true" data-sort-icon="company"></i>
+                </th>
+                <th scope="col" style="width: 8%; cursor: pointer;" data-action="orgsModule.sortBy" data-args="[&quot;sector&quot;]" aria-sort="none">
+                  Sector <i class="bi bi-arrow-down-up text-muted ms-1 small" aria-hidden="true" data-sort-icon="sector"></i>
+                </th>
+                <th scope="col" style="width: 8%; cursor: pointer;" data-action="orgsModule.sortBy" data-args="[&quot;county&quot;]" aria-sort="none">
+                  Area <i class="bi bi-arrow-down-up text-muted ms-1 small" aria-hidden="true" data-sort-icon="county"></i>
+                </th>
+                <th scope="col" style="width: 8%; cursor: pointer;" data-action="orgsModule.sortBy" data-args="[&quot;contact&quot;]" aria-sort="none">
+                  Contact <i class="bi bi-arrow-down-up text-muted ms-1 small" aria-hidden="true" data-sort-icon="contact"></i>
+                </th>
+                <th scope="col" style="width: 10%;">Email</th>
+                <th scope="col" style="width: 5%; cursor: pointer;" data-action="orgsModule.sortBy" data-args="[&quot;tier&quot;]" aria-sort="none">
+                  Tier <i class="bi bi-arrow-down-up text-muted ms-1 small" aria-hidden="true" data-sort-icon="tier"></i>
+                </th>
+                <th scope="col" style="width: 10%;">Tags</th>
+                <th scope="col" style="width: 7%; cursor: pointer;" data-action="orgsModule.sortBy" data-args="[&quot;region&quot;]" aria-sort="none">
+                  Region <i class="bi bi-arrow-down-up text-muted ms-1 small" aria-hidden="true" data-sort-icon="region"></i>
+                </th>
+                <th scope="col" style="width: 6%; cursor: pointer;" data-action="orgsModule.sortBy" data-args="[&quot;status&quot;]" aria-sort="none">
+                  Status <i class="bi bi-arrow-down-up text-muted ms-1 small" aria-hidden="true" data-sort-icon="status"></i>
+                </th>
+                <th scope="col" style="width: 4%; cursor: pointer; text-align: center;" data-action="orgsModule.sortBy" data-args="[&quot;awards&quot;]" aria-sort="none">
+                  <i class="bi bi-trophy" title="Awards Count"></i> <i class="bi bi-arrow-down-up text-muted ms-1 small" aria-hidden="true" data-sort-icon="awards"></i>
+                </th>
+                <th scope="col" style="width: 6%; display: none;" id="phoneColHeader" data-action="orgsModule.sortBy" data-args="[&quot;phone&quot;]" class="cursor-pointer" aria-sort="none">
+                  Phone <i class="bi bi-arrow-down-up text-muted ms-1 small" aria-hidden="true" data-sort-icon="phone"></i>
+                </th>
+                <th scope="col" style="width: 6%; cursor: pointer; text-align: center;" data-action="orgsModule.sortBy" data-args="[&quot;updated&quot;]" aria-sort="none">
+                  Updated <i class="bi bi-arrow-down-up text-muted ms-1 small" aria-hidden="true" data-sort-icon="updated"></i>
+                </th>
+                <th scope="col" style="width: 6%; text-align: center;" title="Last Contacted">
+                  <i class="bi bi-envelope-check" title="Last Contacted"></i>
+                </th>
+                <th scope="col" style="width: 3%; text-align: center;" title="Health Status">
+                  <i class="bi bi-heart-pulse" title="Health"></i>
+                </th>
+                <th scope="col" style="width: 5%;" class="text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="orgsTableBody">
+              <tr id="orgsEmptyRow">
+                <td colspan="16" class="text-center py-5">
+                  <div class="text-muted">
+                    <i class="bi bi-building display-3 d-block mb-3 opacity-25"></i>
+                    <p class="fw-semibold mb-1 text-dark">No organisations yet</p>
+                    <p class="small mb-3">Add your first organisation to begin managing your award entrants.</p>
+                    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addNewOrgModal">
+                      <i class="bi bi-plus-lg me-1"></i>Add Organisation
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm ms-2" data-action="orgsModule.resetFilters">
+                      <i class="bi bi-x-circle me-1"></i>Clear Filters
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      
+      <!-- Pagination Footer (Optional) -->
+      <div class="card-footer bg-white border-0 py-2">
+        <div class="d-flex justify-content-between align-items-center">
+          <small class="text-muted">
+            Showing <span id="orgsShowing">0</span> of <span id="orgsTotal">0</span>
+          </small>
+          <small class="text-muted">
+            <i class="bi bi-clock me-1"></i>Last refreshed: <span id="orgsLastRefresh">-</span>
+          </small>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add New Organisation Modal -->
+    <div class="modal fade" id="addNewOrgModal" tabindex="-1" aria-labelledby="addNewOrgModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="addNewOrgModalLabel">
+              <i class="bi bi-plus-lg me-2"></i>Add New Organisation
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form id="addCompanyForm">
+              <div class="mb-3">
+                <label for="newCompanyName" class="form-label">Organisation Name <span class="text-danger" aria-label="required">*</span></label>
+                <input type="text" class="form-control" id="newCompanyName" required
+                       data-on-input="orgsModule._liveCheckDuplicate">
+                <div id="duplicateWarning" class="small text-warning mt-1 d-none"></div>
+              </div>
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <label for="newCompanySector" class="form-label">Sector</label>
+                  <input type="text" class="form-control" id="newCompanySector" list="sectorSuggestions" placeholder="e.g. Manufacturing" autocomplete="off">
+                  <datalist id="sectorSuggestions"></datalist>
+                </div>
+                <div class="col-md-6">
+                  <label for="newCompanyCountry" class="form-label">Country</label>
+                  <select class="form-select" id="newCompanyCountry"
+                          data-on-change="orgsModule.onAddCompanyCountryChange">
+                    <option value="">-- Select Country --</option>
+                    <option value="England">England</option>
+                    <option value="Scotland">Scotland</option>
+                    <option value="Wales">Wales</option>
+                  </select>
+                </div>
+              </div>
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <label for="newCompanyArea" class="form-label">Area</label>
+                  <select class="form-select" id="newCompanyArea">
+                    <option value="">-- Select Area --</option>
+                  </select>
+                </div>
+              </div>
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <label for="newContactName" class="form-label">Contact Name</label>
+                  <input type="text" class="form-control" id="newContactName">
+                </div>
+                <div class="col-md-6">
+                  <label for="newContactPhone" class="form-label">Phone</label>
+                  <input type="tel" class="form-control" id="newContactPhone" placeholder="+44 7700 900123">
+                </div>
+              </div>
+              <div class="mb-3">
+                <label for="newCompanyEmail" class="form-label">Email</label>
+                <input type="email" class="form-control" id="newCompanyEmail">
+              </div>
+              <div class="mb-3">
+                <label for="newCompanyWebsite" class="form-label">Website</label>
+                <input type="url" class="form-control" id="newCompanyWebsite" placeholder="https://">
+              </div>
+              <div class="mb-3">
+                <label for="newCompanyAddress" class="form-label">Address</label>
+                <textarea class="form-control" id="newCompanyAddress" rows="2"></textarea>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-primary" data-action="orgsModule.saveNewCompany">
+              <i class="bi bi-check-lg me-1"></i>Save Organisation
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CSV Import Modal -->
+    <div class="modal fade" id="csvImportModal" tabindex="-1" aria-labelledby="csvImportModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="csvImportModalLabel">
+              <i class="bi bi-file-earmark-spreadsheet me-2"></i>Import Organisations from CSV
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <!-- Step 1: File Upload -->
+            <div id="csvStep1">
+              <!-- Area Selector (Required) -->
+              <div class="card border-primary mb-3">
+                <div class="card-body py-3">
+                  <div class="row align-items-center">
+                    <div class="col-md-4">
+                      <label for="csvCountySelect" class="form-label fw-bold mb-0">
+                        <i class="bi bi-geo-alt-fill text-primary me-1" aria-hidden="true"></i>Area *
+                      </label>
+                      <small class="text-muted d-block">Which area is this CSV for?</small>
+                    </div>
+                    <div class="col-md-8">
+                      <select class="form-select" id="csvCountySelect" required>
+                        <option value="">-- Select Area --</option>
+                        <optgroup label="England Counties">
+                          <option>Bedfordshire</option><option>Berkshire</option><option>Buckinghamshire</option>
+                          <option>Cambridgeshire</option><option>Cheshire</option><option>Cornwall</option>
+                          <option>County Durham</option><option>Cumbria</option><option>Derbyshire</option>
+                          <option>Devon</option><option>Dorset</option><option>East Sussex</option>
+                          <option>East Yorkshire</option><option>Essex</option><option>Gloucestershire</option>
+                          <option>Hampshire</option><option>Herefordshire</option><option>Hertfordshire</option>
+                          <option>Isle of Wight</option><option>Kent</option><option>Lancashire</option>
+                          <option>Leicestershire</option><option>Lincolnshire</option><option>Norfolk</option>
+                          <option>Northamptonshire</option><option>North Yorkshire</option><option>Northumberland</option>
+                          <option>Nottinghamshire</option><option>Oxfordshire</option><option>Rutland</option>
+                          <option>Shropshire</option><option>Somerset</option><option>South Yorkshire</option>
+                          <option>Staffordshire</option><option>Suffolk</option><option>Surrey</option>
+                          <option>Tyne &amp; Wear</option><option>Warwickshire</option><option>West Sussex</option>
+                          <option>West Yorkshire</option><option>Wiltshire</option><option>Worcestershire</option>
+                        </optgroup>
+                        <optgroup label="London Boroughs">
+                          <option>Bromley</option><option>Camden</option><option>Croydon</option>
+                          <option>Greenwich</option><option>Hackney</option><option>Hammersmith &amp; Fulham</option>
+                          <option>Islington</option><option>Kensington &amp; Chelsea</option>
+                          <option>Kingston &amp; Richmond</option><option>Lambeth</option><option>Lewisham</option>
+                          <option>Middlesex</option><option>Southwark</option><option>Wandsworth</option>
+                          <option>Westminster</option>
+                        </optgroup>
+                        <optgroup label="Scotland">
+                          <option>Argyll &amp; Bute</option><option>Ayrshire</option><option>Central Scotland</option>
+                          <option>Dumfries &amp; Galloway</option><option>Dunbartonshire</option><option>Fife</option>
+                          <option>Grampian</option><option>Highlands</option><option>Lanarkshire</option>
+                          <option>Lothian</option><option>Renfrewshire</option><option>Scottish Borders</option>
+                          <option>Scottish Islands</option><option>Tayside</option>
+                        </optgroup>
+                        <optgroup label="Wales">
+                          <option>Carmarthenshire</option><option>Ceredigion</option>
+                          <option>Conwy &amp; Denbighshire</option><option>Flintshire</option>
+                          <option>Glamorgan</option><option>Gwent</option>
+                          <option>Gwynedd &amp; Anglesey</option><option>Pembrokeshire</option>
+                          <option>Powys</option><option>Wrexham</option>
+                        </optgroup>
+                        <optgroup label="Cities">
+                          <option>Birmingham</option><option>Bournemouth</option>
+                          <option>Brighton &amp; Hove</option><option>Bristol</option><option>Cardiff</option>
+                          <option>Coventry</option><option>Edinburgh</option><option>Glasgow</option>
+                          <option>Leeds</option><option>Leicester</option><option>Liverpool</option>
+                          <option>Manchester</option><option>Middlesbrough</option><option>Newcastle</option>
+                          <option>Nottingham</option><option>Reading</option><option>Sheffield</option><option>Southampton</option>
+                          <option>Swansea</option>
+                        </optgroup>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>
+                <strong>CSV Format:</strong> Your file should have headers in the first row.
+                Supported columns: Organisation Name, Sector, Contact Name, Email, Phone, Website, Address
+              </div>
+              <div class="d-flex gap-2 mb-3">
+                <button class="btn btn-sm btn-outline-secondary" id="importMergeModeBtn" data-action="orgsModule.toggleImportMergeMode">
+                  <i class="bi bi-arrow-repeat me-1"></i>Merge Mode: OFF
+                </button>
+                <small class="text-muted align-self-center">When ON, duplicates will be updated with new data instead of skipped</small>
+              </div>
+              <div class="mb-3">
+                <label for="csvFileInput" class="form-label fw-semibold">Select CSV File</label>
+                <input type="file" class="form-control" id="csvFileInput" accept=".csv,.txt"
+                       data-on-change="orgsModule.parseCSVFile">
+              </div>
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Or paste CSV content:</label>
+                <textarea class="form-control" id="csvPasteArea" rows="5"
+                          placeholder="company_name,sector,email&#10;Acme Ltd,Manufacturing,info@acme.com&#10;..."></textarea>
+                <button class="btn btn-sm btn-outline-primary mt-2" data-action="orgsModule.parseCSVText">
+                  <i class="bi bi-clipboard-check me-1"></i>Parse Pasted Data
+                </button>
+              </div>
+            </div>
+
+            <!-- Step 2: Column Mapping -->
+            <div id="csvStep2" class="d-none">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="mb-0"><i class="bi bi-arrow-left-right me-2"></i>Map CSV Columns</h6>
+                <button class="btn btn-sm btn-outline-secondary" data-action="orgsModule.resetCSVImport">
+                  <i class="bi bi-arrow-counterclockwise me-1"></i>Start Over
+                </button>
+              </div>
+              <div class="row g-2 mb-3" id="csvColumnMapping"></div>
+            </div>
+
+            <!-- Step 3: Preview -->
+            <div id="csvStep3" class="d-none">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="mb-0">
+                  <i class="bi bi-eye me-2"></i>Preview
+                  <span class="badge bg-primary" id="csvPreviewCount">0</span> rows
+                </h6>
+                <div>
+                  <span class="badge bg-success me-2" id="csvNewCount">0 new</span>
+                  <span class="badge bg-warning text-dark" id="csvDuplicateCount">0 duplicates</span>
+                </div>
+              </div>
+              <div class="table-responsive u-scroll-y-400">
+                <table class="table table-sm table-hover">
+                  <thead class="table-light sticky-top">
+                    <tr id="csvPreviewHeader"></tr>
+                  </thead>
+                  <tbody id="csvPreviewBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-primary" id="csvImportBtn" data-action="orgsModule.executeCSVImport"
+                    disabled>
+              <i class="bi bi-cloud-upload me-1"></i>Import <span id="csvImportBtnCount"></span> Organisations
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Floating Bulk Actions Bar (appears when items selected) -->
+    <div id="bulkActionsBar"
+         style="display: none; position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 1050;">
+      <div class="card border-0 shadow-lg">
+        <div class="card-body d-flex align-items-center gap-3 py-2 px-4 flex-wrap">
+          <span class="fw-semibold">
+            <i class="bi bi-check-square me-2"></i>
+            <span id="selectedCount">0</span> selected
+          </span>
+          <div class="vr"></div>
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" data-bs-display="static">
+              <i class="bi bi-arrow-repeat me-1"></i>Status
+            </button>
+            <ul class="dropdown-menu">
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.bulkStatusChange" data-args="[&quot;prospect&quot;]"><i class="bi bi-eye text-secondary me-2"></i>Prospect</a></li>
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.bulkStatusChange" data-args="[&quot;entrant&quot;]"><i class="bi bi-pencil text-primary me-2"></i>Entrant</a></li>
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.bulkStatusChange" data-args="[&quot;nominee&quot;]"><i class="bi bi-person-check text-info me-2"></i>Nominee</a></li>
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.bulkStatusChange" data-args="[&quot;shortlisted&quot;]"><i class="bi bi-list-check text-warning me-2"></i>Shortlisted</a></li>
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.bulkStatusChange" data-args="[&quot;winner&quot;]"><i class="bi bi-trophy text-success me-2"></i>Winner</a></li>
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.bulkStatusChange" data-args="[&quot;sponsor&quot;]"><i class="bi bi-star text-purple me-2"></i>Sponsor</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item text-danger" href="#" data-action="orgsModule.bulkStatusChange" data-args="[&quot;archived&quot;]"><i class="bi bi-archive me-2"></i>Archive</a></li>
+            </ul>
+          </div>
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" data-bs-display="static">
+              <i class="bi bi-pencil-square me-1"></i>Set Field
+            </button>
+            <ul class="dropdown-menu">
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.showBulkFieldModal" data-args="[&quot;sector&quot;]"><i class="bi bi-briefcase text-primary me-2"></i>Sector</a></li>
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.showBulkFieldModal" data-args="[&quot;region&quot;]"><i class="bi bi-geo-alt text-success me-2"></i>Region</a></li>
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.showBulkFieldModal" data-args="[&quot;tier&quot;]"><i class="bi bi-award text-warning me-2"></i>Tier</a></li>
+            </ul>
+          </div>
+          <button class="btn btn-sm btn-success" data-action="orgsModule.bulkFetchLogos" title="Fetch logos for selected orgs with websites but no logo">
+            <i class="bi bi-image me-1"></i>Logos
+          </button>
+          <button class="btn btn-sm btn-secondary" data-action="orgsModule.showBulkTagModal" title="Add/remove tags for selected">
+            <i class="bi bi-tags me-1"></i>Tags
+          </button>
+          <button class="btn btn-sm btn-primary" data-action="orgsModule.showBulkAssignAwardModal" title="Assign selected to an award">
+            <i class="bi bi-trophy me-1"></i>Assign Award
+          </button>
+          <button class="btn btn-sm btn-primary" data-action="orgsModule.bulkEmail">
+            <i class="bi bi-envelope me-1"></i>Email
+          </button>
+          <div class="btn-group btn-group-sm d-inline-block">
+            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" data-bs-display="static">
+              <i class="bi bi-download me-1"></i>Export
+            </button>
+            <ul class="dropdown-menu">
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.bulkExport" data-args="[&quot;csv&quot;]"><i class="bi bi-filetype-csv text-success me-2"></i>Export CSV</a></li>
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.bulkExport" data-args="[&quot;excel&quot;]"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Export Excel</a></li>
+              <li><a class="dropdown-item" href="#" data-action="orgsModule.bulkExport" data-id="pdf" data-prevent-default="true"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
+            </ul>
+          </div>
+          <button class="btn btn-sm btn-outline-secondary" data-action="orgsModule.showOrgComparison" title="Compare selected (2-4)">
+            <i class="bi bi-layout-split me-1"></i>Compare
+          </button>
+          <button class="btn btn-sm btn-outline-secondary" data-action="orgsModule.showBulkCustomFieldModal" title="Bulk edit custom field">
+            <i class="bi bi-input-cursor-text me-1"></i>Custom Field
+          </button>
+          <button class="btn btn-sm btn-outline-warning" data-action="orgsModule.showMergeDuplicatesModal" title="Merge selected organisations">
+            <i class="bi bi-intersect me-1"></i>Merge
+          </button>
+          <div class="vr"></div>
+          <button class="btn btn-sm btn-outline-danger" data-action="globalActions.confirmBulkDelete" data-module="orgsModule" data-fn="bulkDelete" data-label="organisation" data-verb="Archive">
+            <i class="bi bi-archive me-1"></i>Archive
+          </button>
+          <button class="btn btn-sm btn-outline-secondary" data-action="orgsModule.clearSelection">
+            <i class="bi bi-x-lg me-1"></i>Clear Selection
+          </button>
+        </div>
+      </div>
+    </div>
+
+    </div><!-- /orgsMainContent -->
+
+    <!-- Sponsors Section (shown via Bootstrap tab) -->
+    <div id="orgsSponsorSection" class="tab-pane fade" role="tabpanel" aria-labelledby="sponsorsViewBtn">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4><i class="bi bi-award me-2"></i>Sponsors &amp; Partners</h4>
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-secondary" data-action="sponsorPortalModule.renderSponsorDashboard" title="View a summary dashboard of all organisations marked as sponsors or partners">
+            <i class="bi bi-speedometer2 me-2"></i>Sponsor Portal
+          </button>
+          <button class="btn btn-primary" data-action="marketingModule.openAddSponsorModal">
+            <i class="bi bi-plus-lg me-2"></i>Add Sponsor
+          </button>
+        </div>
+      </div>
+      <div id="sponsorsGrid">
+        <div class="text-center py-5 text-muted">
+          <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+          Loading sponsors...
+        </div>
+      </div>
+    </div><!-- /orgsSponsorSection -->
+
+    </div><!-- /tab-content -->
+
+  </div>
+
+      <!-- ==================================================== -->

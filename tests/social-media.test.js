@@ -1481,18 +1481,23 @@ describe('Social Media Module - savePost() successful insert', () => {
     confirmSpy.mockRestore();
   });
 
-  test('immediate post shows warning when some platforms fail', async () => {
+  test('immediate post shows per-platform error when some platforms fail', async () => {
     const confirmSpy = jest.spyOn(utils, 'confirmDialog').mockResolvedValue(true);
 
     apiClient.insert = jest.fn().mockResolvedValue({ data: [{ id: 'pub-new-2' }] });
     apiClient._getToken = jest.fn().mockResolvedValue('test-token');
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ errors: [{ platform: 'twitter' }], results: [], status: 'partial' }),
+      json: () =>
+        Promise.resolve({
+          errors: [{ platform: 'twitter', error: 'Twitter OAuth 1.0a credentials not configured.' }],
+          results: [],
+          status: 'failed',
+        }),
     });
 
     await socialMediaModule.savePost('immediate');
-    expect(showToastSpy).toHaveBeenCalledWith(expect.stringContaining('Published with warnings'), 'warning');
+    expect(showToastSpy).toHaveBeenCalledWith(expect.stringContaining('API credentials not configured'), 'error');
     confirmSpy.mockRestore();
   });
 

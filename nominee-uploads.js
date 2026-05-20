@@ -3,6 +3,7 @@
 /* CSV parse → preview → verify → store in Supabase            */
 /* ============================================================ */
 
+// @ts-ignore — globals.d.ts declares this as a var; defined here as the module IIFE
 const nomineeUploads = (() => {
   // ── Canonical area list (matches config.js COUNTIES_CITIES) ──
   const KNOWN_AREAS = window.COUNTIES_CITIES || window.REGIONS || [];

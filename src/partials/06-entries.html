@@ -1,0 +1,229 @@
+      <!-- ENTRIES TAB -->
+      <!-- ==================================================== -->
+      <div class="tab-pane fade" id="entries" role="tabpanel">
+        <div class="container-fluid">
+
+          <!-- Page Header -->
+          <div class="section-header mb-4">
+            <h1 class="section-title">
+              <i class="bi bi-file-earmark-text me-2"></i>Entry Submissions
+            </h1>
+            <p class="section-subtitle">Manage award entries and submissions<span id="entriesFreshness" class="ms-2"></span></p>
+          </div>
+
+          <!-- Getting Started Banner -->
+          <div class="card border-0 shadow-sm mb-4" id="entriesGettingStarted">
+            <div class="card-body py-3">
+              <div class="d-flex justify-content-between align-items-start mb-3">
+                <div>
+                  <h6 class="fw-bold mb-1"><i class="bi bi-map me-2 text-primary"></i>Getting Started — Entry Submissions</h6>
+                  <p class="text-muted small mb-0">How entries flow into your awards programme.</p>
+                </div>
+                <button type="button" class="btn-close btn-sm" aria-label="Dismiss" onclick="document.getElementById('entriesGettingStarted').style.display='none';localStorage.setItem('entriesWorkflowDismissed','1');"></button>
+              </div>
+              <div class="row g-2">
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">1</span>
+                    <div>
+                      <div class="fw-semibold small">Create Award Categories</div>
+                      <div class="text-muted" style="font-size:.75rem;">Go to Awards and set up your categories first — entrants select a category when submitting.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">2</span>
+                    <div>
+                      <div class="fw-semibold small">Share the Entry Form</div>
+                      <div class="text-muted" style="font-size:.75rem;">Copy the public entry form URL and share it with entrants. Submissions appear here automatically. <strong>Note:</strong> there is no manual "Add Entry" button — all entries must be submitted through the public form.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">3</span>
+                    <div>
+                      <div class="fw-semibold small">Review &amp; Progress Entries</div>
+                      <div class="text-muted" style="font-size:.75rem;">Update status (Draft → Submitted → Shortlisted → Winner) and assign entries to judges.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="mt-3">
+                <button class="btn btn-sm btn-primary" data-action="entriesModule.copyEntryLink"><i class="bi bi-link-45deg me-1"></i>Copy Public Entry Form URL</button>
+              </div>
+            </div>
+          </div>
+          <script>if(localStorage.getItem('entriesWorkflowDismissed')==='1'){var _eb=document.getElementById('entriesGettingStarted');if(_eb)_eb.style.display='none';}</script>
+
+          <!-- Stats Cards -->
+          <div class="row g-3 mb-4">
+            <div class="col-md-3">
+              <div class="stat-card stat-card-clickable" data-stat-filter="clear:entriesStatusFilter" title="Show all entries">
+                <i class="bi bi-file-earmark-text stat-card-icon text-primary"></i>
+                <h6>Total Entries</h6>
+                <div class="stat-value" id="totalEntriesCount"><span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></div>
+                <small class="text-muted">All submissions</small>
+                <div class="stat-card-hover-indicator"><i class="bi bi-arrow-right-circle"></i></div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="stat-card stat-card-clickable" data-stat-filter="entriesStatusFilter:pending_review" title="Filter to pending review">
+                <i class="bi bi-clock-history stat-card-icon text-warning"></i>
+                <h6>Pending Review</h6>
+                <div class="stat-value text-warning" id="pendingEntriesCount">0</div>
+                <small class="text-muted">Submitted &amp; under review</small>
+                <div class="stat-card-hover-indicator"><i class="bi bi-arrow-right-circle"></i></div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="stat-card stat-card-clickable" data-stat-filter="entriesStatusFilter:shortlisted" title="Filter to shortlisted">
+                <i class="bi bi-star stat-card-icon text-info"></i>
+                <h6>Shortlisted</h6>
+                <div class="stat-value text-info" id="shortlistedEntriesCount">0</div>
+                <small class="text-muted">Made the shortlist</small>
+                <div class="stat-card-hover-indicator"><i class="bi bi-arrow-right-circle"></i></div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="stat-card stat-card-clickable" data-stat-filter="entriesStatusFilter:winner" title="Filter to winners">
+                <i class="bi bi-trophy stat-card-icon text-success"></i>
+                <h6>Winners</h6>
+                <div class="stat-value text-success" id="winnerEntriesCount">0</div>
+                <small class="text-muted">Award recipients</small>
+                <div class="stat-card-hover-indicator"><i class="bi bi-arrow-right-circle"></i></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Filters and Actions -->
+          <div class="filters-section filter-bar-sticky mb-3">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <div class="d-flex align-items-center gap-3">
+                <span class="filter-bar-label"><i class="bi bi-funnel me-1"></i>Filter Entries <span id="entriesFilterCount" class="badge bg-primary ms-1 d-none"></span></span>
+                <span id="entriesRowCount" class="table-row-count"></span>
+              </div>
+              <div class="d-flex align-items-center gap-2">
+                <div class="input-group input-group-sm" style="width:200px;">
+                  <select class="form-select form-select-sm" id="entriesSavedViewsList" data-on-change="entriesModule.loadSavedEntriesView">
+                    <option value="">Saved views…</option>
+                  </select>
+                  <button class="btn btn-outline-primary btn-sm" data-action="entriesModule.saveCurrentEntriesView" title="Save current filters as view">
+                    <i class="bi bi-bookmark-plus"></i>
+                  </button>
+                </div>
+                <button class="btn btn-outline-secondary btn-sm" data-action="entriesModule.resetFilters" title="Clear all active filters">
+                  <i class="bi bi-x-circle me-1"></i>Clear Filters
+                </button>
+              </div>
+            </div>
+            <div class="row g-2 align-items-end">
+              <div class="col-md-2">
+                <label class="form-label filter-bar-field-label mb-1"><i class="bi bi-flag me-1" aria-hidden="true"></i>Status <i class="bi bi-question-circle text-muted ms-1 small" title="Awaiting Review = submitted, waiting for a judge to be assigned. Under Review = actively being scored by an assigned judge."></i></label>
+                <select class="form-select form-select-sm" id="entriesStatusFilter" data-on-change="entriesModule.filterEntries">
+                  <option value="">All Statuses</option>
+                  <option value="draft">Draft</option>
+                  <option value="submitted">Submitted</option>
+                  <option value="under_review">Under Review (with judge)</option>
+                  <option value="pending_review">Awaiting Review (no judge yet)</option>
+                  <option value="shortlisted">Shortlisted</option>
+                  <option value="winner">Winner</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label filter-bar-field-label mb-1"><i class="bi bi-trophy me-1" aria-hidden="true"></i>Award Category</label>
+                <select class="form-select form-select-sm" id="entriesAwardFilter" data-on-change="entriesModule.filterEntries">
+                  <option value="">All Awards</option>
+                </select>
+              </div>
+              <div class="col-md-1">
+                <label class="form-label filter-bar-field-label mb-1"><i class="bi bi-calendar3 me-1" aria-hidden="true"></i>Year</label>
+                <select class="form-select form-select-sm" id="entriesYearFilter" data-on-change="entriesModule.filterEntries">
+                  <option value="">All Years</option>
+                </select>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label filter-bar-field-label mb-1" title="Self-Nominated: the company applied directly. Standard: nominated by a sponsor or organiser."><i class="bi bi-person me-1" aria-hidden="true"></i>Nomination Source</label>
+                <select class="form-select form-select-sm" id="entriesSelfNomFilter" data-on-change="entriesModule.filterEntries">
+                  <option value="">All Entries</option>
+                  <option value="self_nom">Self-Nominated</option>
+                  <option value="standard">Standard Entry</option>
+                </select>
+              </div>
+              <div class="col">
+                <label class="form-label filter-bar-field-label mb-1"><i class="bi bi-search me-1" aria-hidden="true"></i>Search</label>
+                <input type="text" class="form-control form-control-sm" id="entriesSearchInput" placeholder="Search entries…">
+              </div>
+            </div>
+            <div class="mt-2 d-flex gap-2">
+              <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                  <i class="bi bi-download me-1"></i>Export
+                </button>
+                <ul class="dropdown-menu">
+                  <li><a class="dropdown-item" href="#" data-action="entriesModule.exportEntries" data-prevent-default="true"><i class="bi bi-filetype-csv text-success me-2"></i>Export CSV</a></li>
+                  <li><a class="dropdown-item" href="#" data-action="entriesModule.exportEntriesExcel" data-prevent-default="true"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Export Excel</a></li>
+                  <li><a class="dropdown-item" href="#" data-action="entriesModule.exportEntriesPDF" data-prevent-default="true"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
+                </ul>
+              </div>
+              <button class="btn btn-sm btn-outline-secondary" data-action="entriesModule.bulkActions">
+                <i class="bi bi-list-check me-1"></i>Bulk Actions
+              </button>
+              <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                  <i class="bi bi-tools me-1"></i>Tools
+                </button>
+                <ul class="dropdown-menu">
+                  <li><a class="dropdown-item" href="#" data-action="entriesModule.openPublicFormLink" data-prevent-default="true"><i class="bi bi-link-45deg text-primary me-2"></i>Get Entry Form Link</a></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div id="entriesActiveFilters" class="mb-1"></div>
+          <!-- Entries Table -->
+          <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <h5 class="mb-0">
+                All Entries (<span id="entriesTableCount">0</span>)
+              </h5>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-hover">
+                <caption class="visually-hidden">Entries list</caption>
+                <thead>
+                  <tr>
+                    <th scope="col" style="width: 40px;">
+                      <input type="checkbox" id="selectAllEntries" data-on-change="entriesModule.toggleSelectAll" aria-label="Select all entries">
+                    </th>
+                    <th scope="col" class="u-pointer" data-action="entriesModule.sortEntries" data-args="[&quot;entry_number&quot;]" aria-sort="none">Entry # <i data-sort-icon-entries="entry_number" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th scope="col" class="u-pointer" data-action="entriesModule.sortEntries" data-args="[&quot;company&quot;]" aria-sort="none">Company <i data-sort-icon-entries="company" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th scope="col" class="u-pointer" data-action="entriesModule.sortEntries" data-args="[&quot;award&quot;]" aria-sort="none">Award <i data-sort-icon-entries="award" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th scope="col">Entry Title</th>
+                    <th scope="col" class="u-pointer" data-action="entriesModule.sortEntries" data-args="[&quot;status&quot;]" aria-sort="none">Status <i data-sort-icon-entries="status" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th scope="col" class="u-pointer" data-action="entriesModule.sortEntries" data-args="[&quot;score&quot;]" title="Average judging score submitted by assigned judges" aria-sort="none">Score <i data-sort-icon-entries="score" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th scope="col">Payment</th>
+                    <th scope="col" class="u-pointer" data-action="entriesModule.sortEntries" data-args="[&quot;submission_date&quot;]" aria-sort="none">Submitted <i data-sort-icon-entries="submission_date" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th scope="col" style="width: 150px;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="entriesTableBody">
+                  <tr id="entriesEmptyRow" class="d-none">
+                    <td colspan="10" class="text-center py-5 text-muted">
+                      <i class="bi bi-inbox display-6 d-block mb-2 opacity-50" aria-hidden="true"></i>
+                      <p class="mb-1">No entries yet.</p>
+                      <a href="#" class="small" data-action="dashboardModule.navigateToSection" data-id="awards">Set up awards</a> to start receiving entries.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div id="entriesPagination"></div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ==================================================== -->

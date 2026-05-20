@@ -14,6 +14,7 @@ if (!process.env.STRIPE_SECRET_KEY) throw new Error('Missing STRIPE_SECRET_KEY e
 if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY)
   throw new Error('Missing Supabase environment variables');
 
+// @ts-ignore — Stripe v12+ is a default export function, not a constructor
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { createClient } = require('@supabase/supabase-js');
 const { Resend } = require('resend');

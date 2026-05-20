@@ -368,7 +368,7 @@ const eventsModule = {
     // Pre-fill form with source event data (incrementing year by 1)
     const nextYear = sourceEvent.year ? parseInt(sourceEvent.year) + 1 : new Date().getFullYear();
     document.getElementById('cloneEventName').value = sourceEvent.event_name.replace(/\d{4}/, nextYear);
-    document.getElementById('cloneEventYear').value = nextYear;
+    document.getElementById('cloneEventYear').value = String(nextYear);
     document.getElementById('cloneEventVenue').value = sourceEvent.venue || '';
     document.getElementById('cloneEventDescription').value = sourceEvent.description || '';
     document.getElementById('cloneEventDate').value = '';
@@ -746,7 +746,7 @@ const eventsModule = {
     document.getElementById('eventId').value = '';
     document.getElementById('eventName').value = '';
     document.getElementById('eventDate').value = '';
-    document.getElementById('eventYear').value = new Date().getFullYear();
+    document.getElementById('eventYear').value = String(new Date().getFullYear());
     document.getElementById('eventVenue').value = template.venue || '';
     document.getElementById('eventDescription').value = template.description || '';
     document.getElementById('eventStatus').value = 'draft';
@@ -1683,6 +1683,56 @@ const eventsModule = {
     return `${prefix}-${year}-${seq}-${random}`;
   },
 
+  async _sendTicketEmail(attendee, ticket, event) {
+    if (!attendee.email) return false;
+    try {
+      const token = await apiClient._getToken();
+      let qrCodeUrl = null;
+      try {
+        const qrRes = await fetch('/api/certificates-qr?action=generate-qr-ticket', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ attendeeId: attendee.id }),
+        });
+        if (qrRes.ok) {
+          const qrData = await qrRes.json();
+          qrCodeUrl = qrData.qrCodeUrl || qrData.qrCodeDataURL || null;
+        }
+      } catch (_) {
+        // QR generation failure is non-fatal — email still sends without QR
+      }
+      const eventDate = event.event_date
+        ? new Date(event.event_date).toLocaleDateString('en-GB', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+          })
+        : 'TBC';
+      const emailRes = await fetch('/api/resend-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          action: 'send-templated',
+          to: attendee.email,
+          templateType: 'ticket_issued',
+          data: {
+            event_name: event.event_name,
+            ticket_number: ticket.ticketNumber,
+            event_date: eventDate,
+            venue: event.venue || 'TBC',
+            attendee_name: attendee.name,
+            guest_type: ticket.guestType || attendee.guestType || 'guest',
+            qr_code_url: qrCodeUrl,
+          },
+        }),
+      });
+      return emailRes.ok;
+    } catch (_) {
+      return false;
+    }
+  },
+
   async issueTicketToAttendee(attendeeId) {
     const eventId = document.getElementById('attendeesEventId').value;
     const event = STATE.allEvents.find((e) => e.id === eventId);
@@ -1698,7 +1748,7 @@ const eventsModule = {
     }
 
     const ticketNumber = this._generateTicketNumber(eventId, ticketData.tickets.length + 1);
-    ticketData.tickets.push({
+    const ticket = {
       id: 'ticket_' + Date.now(),
       ticketNumber,
       attendeeId,
@@ -1708,10 +1758,23 @@ const eventsModule = {
       issuedAt: new Date().toISOString(),
       status: 'issued',
       checkedIn: false,
-    });
+    };
+    ticketData.tickets.push(ticket);
 
-    this._saveTicketData(eventId, ticketData);
-    utils.showToast(`Ticket ${ticketNumber} issued to ${attendee.name}`, 'success');
+    await this._saveTicketData(eventId, ticketData);
+
+    if (attendee.email) {
+      utils.showToast(`Issuing ticket ${ticketNumber} and sending email…`, 'info');
+      const sent = await this._sendTicketEmail(attendee, ticket, event);
+      utils.showToast(
+        sent
+          ? `Ticket ${ticketNumber} issued and emailed to ${attendee.email}`
+          : `Ticket ${ticketNumber} issued — email send failed`,
+        sent ? 'success' : 'warning'
+      );
+    } else {
+      utils.showToast(`Ticket ${ticketNumber} issued to ${attendee.name} (no email on record)`, 'success');
+    }
     this.renderTicketsTab(eventId);
   },
 
@@ -1744,20 +1807,26 @@ const eventsModule = {
       return;
     }
 
+    const withEmail = eligible.filter((a) => a.email).length;
+    const confirmMsg =
+      `Issue tickets to ${eligible.length} attendee(s)?` +
+      (withEmail > 0 ? ` Ticket emails will be sent to ${withEmail} with an email address.` : '');
+
     if (
       !(await utils.confirmDialog({
         title: 'Issue Tickets',
-        message: `Issue tickets to ${eligible.length} attendee(s)?`,
+        message: confirmMsg,
         confirmText: 'Issue Tickets',
         danger: false,
       }))
     )
       return;
 
+    const newTickets = [];
     let issued = 0;
     eligible.forEach((attendee) => {
       const ticketNumber = this._generateTicketNumber(eventId, ticketData.tickets.length + 1);
-      ticketData.tickets.push({
+      const ticket = {
         id: 'ticket_' + Date.now() + '_' + issued,
         ticketNumber,
         attendeeId: attendee.id,
@@ -1767,13 +1836,33 @@ const eventsModule = {
         issuedAt: new Date().toISOString(),
         status: 'issued',
         checkedIn: false,
-      });
+      };
+      ticketData.tickets.push(ticket);
+      newTickets.push({ attendee, ticket });
       issued++;
     });
 
-    this._saveTicketData(eventId, ticketData);
-    utils.showToast(`${issued} ticket(s) issued`, 'success');
+    await this._saveTicketData(eventId, ticketData);
+    utils.showToast(`${issued} ticket(s) issued — sending emails…`, 'info');
     this.renderTicketsTab(eventId);
+
+    // Send emails asynchronously after UI is updated
+    const emailTargets = newTickets.filter(({ attendee }) => attendee.email);
+    if (emailTargets.length > 0) {
+      let sent = 0;
+      let failed = 0;
+      for (const { attendee, ticket } of emailTargets) {
+        const ok = await this._sendTicketEmail(attendee, ticket, event);
+        if (ok) sent++;
+        else failed++;
+      }
+      utils.showToast(
+        failed === 0
+          ? `${sent} ticket email${sent !== 1 ? 's' : ''} sent`
+          : `${sent} email${sent !== 1 ? 's' : ''} sent, ${failed} failed`,
+        failed === 0 ? 'success' : 'warning'
+      );
+    }
   },
 
   async revokeTicket(ticketId) {
@@ -2148,7 +2237,16 @@ const eventsModule = {
         filters: { event_id: eventId },
         sort: { column: 'created_at', ascending: true },
       });
-      return data || [];
+      return (data || []).map((row) => ({
+        id: row.id,
+        name: row.name,
+        email: row.email || '',
+        phone: row.phone || '',
+        notified: row.notified || false,
+        promoted: row.promoted || false,
+        promotedAt: row.promoted_at || null,
+        addedAt: row.created_at || new Date().toISOString(),
+      }));
     } catch (e) {
       const stored = localStorage.getItem(this._waitlistKey(eventId));
       return stored ? JSON.parse(stored) : [];
@@ -2159,7 +2257,15 @@ const eventsModule = {
     try {
       await apiClient.deleteByFilters('event_waitlist', { event_id: eventId });
       if (waitlist.length > 0) {
-        const rows = waitlist.map((w) => ({ ...w, event_id: eventId }));
+        const rows = waitlist.map((w) => ({
+          event_id: eventId,
+          name: w.name,
+          email: w.email || null,
+          phone: w.phone || null,
+          notified: w.notified || false,
+          promoted: w.promoted || false,
+          promoted_at: w.promotedAt || null,
+        }));
         await apiClient.insert('event_waitlist', rows);
       }
     } catch (e) {
@@ -2643,8 +2749,9 @@ const eventsModule = {
           event_id: eventId,
           name: item.name,
           category: item.category,
-          estimated_amount: item.estimatedAmount || item.estimated_amount || 0,
-          actual_amount: item.actualAmount || item.actual_amount || 0,
+          estimated: item.estimated || item.estimatedAmount || item.estimated_amount || 0,
+          actual: item.actual || item.actualAmount || item.actual_amount || 0,
+          status: item.status || 'Pending',
           notes: item.notes,
         }));
         await apiClient.insert('event_budget_items', rows);
@@ -3117,6 +3224,68 @@ const eventsModule = {
   // GUEST SPECIAL REQUIREMENTS
   // ========================================
 
+  _isDietaryNote(notes) {
+    const n = (notes || '').toLowerCase();
+    return (
+      n.includes('vegetarian') ||
+      n.includes('vegan') ||
+      n.includes('gluten') ||
+      n.includes('halal') ||
+      n.includes('kosher') ||
+      n.includes('nut') ||
+      n.includes('dairy') ||
+      n.includes('lactose') ||
+      n.includes('shellfish') ||
+      n.includes('seafood') ||
+      n.includes('fish') ||
+      n.includes('meat-free') ||
+      n.includes('food allergy') ||
+      n.includes('intolerance') ||
+      n.includes('diabetic') ||
+      n.includes('low sodium') ||
+      n.includes('no pork') ||
+      n.includes('no beef')
+    );
+  },
+
+  _isAccessibilityNote(notes) {
+    const n = (notes || '').toLowerCase();
+    return (
+      n.includes('wheelchair') ||
+      n.includes('accessibility') ||
+      n.includes('disabled') ||
+      n.includes('mobility') ||
+      n.includes('hearing') ||
+      n.includes('visual') ||
+      n.includes('step-free') ||
+      n.includes('braille') ||
+      n.includes('assistance dog') ||
+      n.includes('sign language') ||
+      n.includes('bsl')
+    );
+  },
+
+  exportSpecialRequirements(eventId) {
+    const allRows = this._lastSpecialReqsAttendees || [];
+    if (allRows.length === 0) {
+      utils.showToast('No special requirements to export', 'warning');
+      return;
+    }
+    const rows = allRows.map((a) => ({
+      Name: a.name,
+      Email: a.email || '',
+      'Guest Type': (a.guestType || 'guest').toUpperCase(),
+      Type: this._isDietaryNote(a.notes) ? 'Dietary' : this._isAccessibilityNote(a.notes) ? 'Accessibility' : 'Other',
+      Requirement: a.notes || '',
+    }));
+    const event = STATE.allEvents.find((e) => e.id === eventId);
+    utils.exportToCSV(
+      rows,
+      `${event ? event.event_name.replace(/[^a-z0-9]/gi, '_') : 'event'}_special_requirements.csv`
+    );
+    utils.showToast('Special requirements exported', 'success');
+  },
+
   async renderSpecialReqsTab(eventId) {
     const container = document.getElementById('specialReqsContent');
     if (!container) return;
@@ -3124,49 +3293,60 @@ const eventsModule = {
     const _event = STATE.allEvents.find((e) => e.id === eventId);
     const reqs = await this._getSpecialReqs(eventId);
 
-    // Accessibility summary
-    const accessNeeds = attendees.filter((a) => {
-      const notes = (a.notes || '').toLowerCase();
-      return (
-        notes.includes('wheelchair') ||
-        notes.includes('accessibility') ||
-        notes.includes('disabled') ||
-        notes.includes('mobility') ||
-        notes.includes('hearing') ||
-        notes.includes('visual') ||
-        notes.includes('step-free')
-      );
-    });
+    // Classify attendees with non-empty notes
+    const withNotes = attendees.filter((a) => (a.notes || '').trim());
+    const dietaryNeeds = withNotes.filter((a) => this._isDietaryNote(a.notes));
+    const accessNeeds = withNotes.filter((a) => this._isAccessibilityNote(a.notes));
+    const otherNeeds = withNotes.filter((a) => !this._isDietaryNote(a.notes) && !this._isAccessibilityNote(a.notes));
+    this._lastSpecialReqsAttendees = [...dietaryNeeds, ...accessNeeds, ...otherNeeds];
 
     const reqsSummary = reqs || { parking: 0, photoConsent: { yes: 0, no: 0, notAsked: 0 }, emergencyContact: '' };
 
-    container.innerHTML = `
-      <!-- Accessibility Requirements -->
-      <div class="card mb-3">
+    const totalSpecialReqs = dietaryNeeds.length + accessNeeds.length + otherNeeds.length;
+
+    const _reqTableRows = (list) =>
+      list
+        .map(
+          (a) => `<tr>
+          <td>${utils.escapeHtml(a.name)}</td>
+          <td><span class="badge bg-secondary">${(a.guestType || 'guest').toUpperCase()}</span></td>
+          <td>${utils.escapeHtml(a.notes)}</td>
+        </tr>`
+        )
+        .join('');
+
+    const _reqSection = (icon, title, colour, list, hint) =>
+      `<div class="card mb-3">
         <div class="card-body">
-          <h6 class="card-title"><i class="bi bi-universal-access me-2"></i>Accessibility Requirements
-            <span class="badge bg-info ms-2">${accessNeeds.length} guest${accessNeeds.length !== 1 ? 's' : ''}</span></h6>
+          <h6 class="card-title"><i class="bi bi-${icon} me-2"></i>${title}
+            <span class="badge bg-${colour} ms-2">${list.length}</span></h6>
           ${
-            accessNeeds.length > 0
-              ? `
-            <div class="table-responsive"><table class="table table-sm">
-              <thead><tr><th>Guest</th><th>Type</th><th>Requirement</th></tr></thead>
-              <tbody>${accessNeeds
-                .map(
-                  (a) => `<tr>
-                <td>${utils.escapeHtml(a.name)}</td>
-                <td><span class="badge bg-secondary">${(a.guestType || 'guest').toUpperCase()}</span></td>
-                <td>${utils.escapeHtml(a.notes)}</td>
-              </tr>`
-                )
-                .join('')}</tbody>
-            </table></div>
-            <div class="alert alert-warning mb-0"><i class="bi bi-exclamation-triangle me-2"></i>Ensure venue provides: step-free access, accessible toilets, hearing loop, reserved seating near exits.</div>
-          `
-              : '<p class="text-muted mb-0">No accessibility requirements flagged. Requirements are detected from guest notes (wheelchair, mobility, hearing, etc.)</p>'
+            list.length > 0
+              ? `<div class="table-responsive"><table class="table table-sm">
+                  <thead><tr><th>Guest</th><th>Type</th><th>Requirement Note</th></tr></thead>
+                  <tbody>${_reqTableRows(list)}</tbody>
+                </table></div>`
+              : `<p class="text-muted small mb-0">${hint}</p>`
           }
         </div>
+      </div>`;
+
+    container.innerHTML = `
+      <!-- Summary + Export -->
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          ${
+            totalSpecialReqs === 0
+              ? '<p class="text-muted mb-0"><i class="bi bi-check-circle me-2 text-success"></i>No special requirements recorded for confirmed attendees.</p>'
+              : `<p class="mb-0"><strong>${totalSpecialReqs}</strong> confirmed attendee${totalSpecialReqs !== 1 ? 's' : ''} with special requirements (from their registration notes).</p>`
+          }
+        </div>
+        <button class="btn btn-sm btn-outline-secondary" data-action="eventsModule.exportSpecialRequirements" data-id="${eventId}"><i class="bi bi-download me-1"></i>Export CSV</button>
       </div>
+
+      ${_reqSection('egg-fried', 'Dietary Requirements', 'warning', dietaryNeeds, 'No dietary requirements detected. Dietary needs are detected from guest notes (vegan, gluten-free, halal, nut allergy, etc.)')}
+      ${_reqSection('universal-access', 'Accessibility Requirements', 'info', accessNeeds, 'No accessibility requirements flagged. Detected from guest notes (wheelchair, mobility, hearing, etc.)')}
+      ${_reqSection('chat-dots', 'Other Requirements', 'secondary', otherNeeds, 'No other requirements recorded.')}
 
       <!-- Parking Passes -->
       <div class="card mb-3">
@@ -3382,14 +3562,84 @@ const eventsModule = {
     const isComplete = event.event_status === 'complete';
     const isPast = event.event_date && new Date(event.event_date) < new Date();
 
-    // Pre-fetch async data
-    const postEventData = await this._getPostEventData(eventId);
-    const surveyStatsHtml = await this._renderSurveyStats(eventId);
-    const sponsorReportHtml = await this._renderSponsorReport(eventId);
-    const debriefHtml = await this._renderDebrief(eventId);
+    // Pre-fetch all async data in parallel (avoids [object Promise] from unawaited calls)
+    const [postEventData, attendees, budget, surveyStatsHtml, sponsorReportHtml, debriefHtml, attendanceReportHtml] =
+      await Promise.all([
+        this._getPostEventData(eventId),
+        this.getAttendees(eventId),
+        this.getBudget(eventId),
+        this._renderSurveyStats(eventId),
+        this._renderSponsorReport(eventId),
+        this._renderDebrief(eventId),
+        this._renderAttendanceReport(eventId),
+      ]);
+
+    // Budget summary calculations
+    const budgetItems = budget.items || [];
+    const totalBudget = parseFloat(budget.totalBudget) || 0;
+    const totalEstimated = budgetItems.reduce((s, i) => s + (parseFloat(i.estimated) || 0), 0);
+    const totalActual = budgetItems.reduce((s, i) => s + (parseFloat(i.actual) || 0), 0);
+    const variance = totalEstimated - totalActual;
+    const attending = attendees.filter((a) => a.status === 'attending').length;
+    const ticketRevenue = (parseFloat(event.ticket_price) || 0) * attending;
+    const netPL = ticketRevenue - totalActual;
+    const profitMarginPct = ticketRevenue > 0 ? Math.round((netPL / ticketRevenue) * 100) : null;
+
+    const budgetSummaryHtml =
+      budgetItems.length === 0
+        ? '<p class="text-muted small mb-0">No budget items recorded. Add them in the <strong>Budget</strong> tab.</p>'
+        : `<div class="row g-2 mb-2">
+            <div class="col-6 col-md-3"><div class="card bg-light text-center h-100"><div class="card-body py-2">
+              <div class="fw-bold">£${totalBudget.toFixed(2)}</div><small class="text-muted">Total Budget</small>
+            </div></div></div>
+            <div class="col-6 col-md-3"><div class="card bg-light text-center h-100"><div class="card-body py-2">
+              <div class="fw-bold">£${totalEstimated.toFixed(2)}</div><small class="text-muted">Estimated Costs</small>
+            </div></div></div>
+            <div class="col-6 col-md-3"><div class="card bg-light text-center h-100"><div class="card-body py-2">
+              <div class="fw-bold">£${totalActual.toFixed(2)}</div><small class="text-muted">Actual Costs</small>
+            </div></div></div>
+            <div class="col-6 col-md-3"><div class="card ${variance >= 0 ? 'bg-success' : 'bg-danger'} text-white text-center h-100"><div class="card-body py-2">
+              <div class="fw-bold">${variance >= 0 ? '+' : ''}£${Math.abs(variance).toFixed(2)}</div>
+              <small class="opacity-75">Variance <span title="Estimated minus Actual. Positive = under budget.">(?)</span></small>
+            </div></div></div>
+          </div>
+          ${
+            ticketRevenue > 0
+              ? `<div class="row g-2">
+              <div class="col-md-4"><div class="card bg-light text-center"><div class="card-body py-2">
+                <div class="fw-bold">£${ticketRevenue.toFixed(2)}</div><small class="text-muted">Ticket Revenue (est.)</small>
+              </div></div></div>
+              <div class="col-md-4"><div class="card ${netPL >= 0 ? 'bg-success' : 'bg-danger'} text-white text-center"><div class="card-body py-2">
+                <div class="fw-bold">${netPL >= 0 ? '+' : '-'}£${Math.abs(netPL).toFixed(2)}</div>
+                <small class="opacity-75">Net P&amp;L</small>
+              </div></div></div>
+              <div class="col-md-4"><div class="card bg-light text-center"><div class="card-body py-2">
+                <div class="fw-bold ${profitMarginPct >= 0 ? 'text-success' : 'text-danger'}">${profitMarginPct}%</div>
+                <small class="text-muted">Profit Margin</small>
+              </div></div></div>
+            </div>`
+              : ''
+          }`;
 
     container.innerHTML = `
       ${!isComplete && !isPast ? `<div class="alert alert-info mb-3"><i class="bi bi-info-circle me-2"></i>This event hasn't happened yet. Post-event features are available after the event date or when status is set to "Complete".</div>` : ''}
+
+      <!-- Tab shortcuts for post-event review -->
+      <div class="card mb-3 border-0 bg-light">
+        <div class="card-body py-2">
+          <small class="text-muted fw-semibold d-block mb-2"><i class="bi bi-arrow-left-right me-1"></i>Jump to another tab:</small>
+          <div class="d-flex gap-1 flex-wrap">
+            <a href="#attendeesTab" data-bs-toggle="tab" class="btn btn-outline-secondary btn-sm"><i class="bi bi-people me-1"></i>Attendees</a>
+            <a href="#checkInTab" data-bs-toggle="tab" class="btn btn-outline-secondary btn-sm"><i class="bi bi-qr-code me-1"></i>Check-In</a>
+            <a href="#ticketsTab" data-bs-toggle="tab" class="btn btn-outline-secondary btn-sm"><i class="bi bi-ticket-perforated me-1"></i>Tickets</a>
+            <a href="#waitlistTab" data-bs-toggle="tab" class="btn btn-outline-secondary btn-sm"><i class="bi bi-hourglass me-1"></i>Waitlist</a>
+            <a href="#budgetTab" data-bs-toggle="tab" class="btn btn-outline-secondary btn-sm"><i class="bi bi-wallet2 me-1"></i>Budget</a>
+            <a href="#vendorsTab" data-bs-toggle="tab" class="btn btn-outline-secondary btn-sm"><i class="bi bi-truck me-1"></i>Vendors</a>
+            <a href="#specialReqsTab" data-bs-toggle="tab" class="btn btn-outline-secondary btn-sm"><i class="bi bi-clipboard-check me-1"></i>Special Reqs</a>
+            <a href="#milestonesTab" data-bs-toggle="tab" class="btn btn-outline-secondary btn-sm"><i class="bi bi-flag me-1"></i>Milestones</a>
+          </div>
+        </div>
+      </div>
 
       <!-- Quick Actions -->
       <div class="card mb-3 border-primary">
@@ -3403,6 +3653,27 @@ const eventsModule = {
             <button class="btn btn-outline-info btn-sm" data-action="eventsModule.generateSponsorReport" title="Jump to Sponsor ROI section below"><i class="bi bi-graph-up me-1"></i>Sponsor ROI Report</button>
             <button class="btn btn-outline-secondary btn-sm" data-action="eventsModule.exportPostEventPack" title="Downloads all reports (attendance, budget, vendors, debrief, sponsor) as CSV files"><i class="bi bi-file-earmark-zip me-1"></i>Export Full Pack</button>
           </div>
+        </div>
+      </div>
+
+      <!-- Attendance Report -->
+      <div class="card mb-3">
+        <div class="card-body">
+          <h6 class="card-title"><i class="bi bi-bar-chart-line me-2"></i>Attendance Report</h6>
+          <div id="attendanceReportContent">
+            ${attendanceReportHtml}
+          </div>
+        </div>
+      </div>
+
+      <!-- Budget Summary -->
+      <div class="card mb-3">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="card-title mb-0"><i class="bi bi-wallet2 me-2"></i>Budget Summary</h6>
+            <a href="#budgetTab" data-bs-toggle="tab" class="btn btn-sm btn-outline-secondary">Full Budget &rarr;</a>
+          </div>
+          ${budgetSummaryHtml}
         </div>
       </div>
 
@@ -3427,16 +3698,6 @@ const eventsModule = {
             <div class="row g-3" id="surveyResponseStats">
               ${surveyStatsHtml}
             </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Attendance Report -->
-      <div class="card mb-3">
-        <div class="card-body">
-          <h6 class="card-title"><i class="bi bi-bar-chart-line me-2"></i>Attendance Report</h6>
-          <div id="attendanceReportContent">
-            ${this._renderAttendanceReport(eventId)}
           </div>
         </div>
       </div>
@@ -9964,8 +10225,10 @@ const eventsModule = {
     };
 
     // Try saving to DB first, fall back to localStorage
+    // Strip the frontend-generated id so the DB assigns a UUID primary key
     try {
-      const { data } = await apiClient.insert('event_room_fixtures', fixture);
+      const { id: _fid, ...fixtureInsert } = fixture;
+      const { data } = await apiClient.insert('event_room_fixtures', fixtureInsert);
       const insertedFixture = Array.isArray(data) ? data[0] : data;
 
       if (insertedFixture) {
@@ -13592,21 +13855,19 @@ const eventsModule = {
 
   _getDefaultMilestones() {
     return [
-      { id: 'm1', label: 'Venue booked', done: false, category: 'Planning' },
-      { id: 'm2', label: 'Date confirmed', done: false, category: 'Planning' },
-      { id: 'm3', label: 'Budget set', done: false, category: 'Planning' },
-      { id: 'm4', label: 'Catering arranged', done: false, category: 'Logistics' },
-      { id: 'm5', label: 'AV/Production booked', done: false, category: 'Logistics' },
-      { id: 'm6', label: 'Invitations sent', done: false, category: 'Marketing' },
-      { id: 'm7', label: 'Sponsors confirmed', done: false, category: 'Marketing' },
-      { id: 'm8', label: 'Awards shortlist finalised', done: false, category: 'Awards' },
-      { id: 'm9', label: 'Winners confirmed', done: false, category: 'Awards' },
-      { id: 'm10', label: 'Running order set', done: false, category: 'Day of Event' },
-      { id: 'm11', label: 'Table plan done', done: false, category: 'Day of Event' },
-      { id: 'm12', label: 'Name badges printed', done: false, category: 'Day of Event' },
-      { id: 'm13', label: 'Post-event survey created', done: false, category: 'Post-Event' },
-      { id: 'm14', label: 'Thank you emails sent', done: false, category: 'Post-Event' },
+      { id: 'm1', label: 'Confirm venue', done: false, category: 'Pre-Event', dueRelativeDays: -60 },
+      { id: 'm2', label: 'Set ticket price', done: false, category: 'Pre-Event', dueRelativeDays: -45 },
+      { id: 'm3', label: 'Share registration link', done: false, category: 'Pre-Event', dueRelativeDays: -30 },
+      { id: 'm4', label: 'Confirm catering', done: false, category: 'Pre-Event', dueRelativeDays: -14 },
+      { id: 'm5', label: 'Issue QR tickets', done: false, category: 'Pre-Event', dueRelativeDays: -7 },
+      { id: 'm6', label: 'Send final attendee list', done: false, category: 'Day of Event', dueRelativeDays: -1 },
+      { id: 'm7', label: 'Brief door staff', done: false, category: 'Day of Event', dueRelativeDays: 0 },
+      { id: 'm8', label: 'Post-event debrief', done: false, category: 'Post-Event', dueRelativeDays: 7 },
     ];
+  },
+
+  _defaultMilestoneMetaById() {
+    return Object.fromEntries(this._getDefaultMilestones().map((m) => [m.id, m]));
   },
 
   async getMilestones(eventId) {
@@ -13616,19 +13877,29 @@ const eventsModule = {
         filters: { event_id: eventId },
         sort: { column: 'created_at', ascending: true },
       });
-      return data && data.length > 0
-        ? data.map((m) => ({
-            id: m.milestone_id || m.id,
-            label: m.label || m.title || '',
-            done: m.done ?? m.is_completed ?? false,
-            category: m.category || 'General',
-            custom: m.custom ?? m.is_custom ?? false,
+      if (data && data.length > 0) {
+        const meta = this._defaultMilestoneMetaById();
+        return data.map((m) => {
+          const id = m.milestone_id || m.id;
+          const defaultMeta = meta[id] || { label: '', category: 'General', dueRelativeDays: null };
+          return {
+            id,
+            label: m.title || m.label || defaultMeta.label || '',
+            done: m.is_completed ?? m.done ?? false,
+            category: m.category || defaultMeta.category || 'General',
+            custom: m.is_custom ?? m.custom ?? false,
             completedAt: m.completed_at || null,
-          }))
-        : this._getDefaultMilestones();
+            notes: m.notes || '',
+            dueRelativeDays: m.due_days_relative ?? defaultMeta.dueRelativeDays ?? null,
+          };
+        });
+      }
+      return this._getDefaultMilestones().map((m) => ({ ...m, notes: '', completedAt: null }));
     } catch (e) {
       const stored = localStorage.getItem(this._milestonesKey(eventId));
-      return stored ? JSON.parse(stored) : this._getDefaultMilestones();
+      return stored
+        ? JSON.parse(stored)
+        : this._getDefaultMilestones().map((m) => ({ ...m, notes: '', completedAt: null }));
     }
   },
 
@@ -13640,9 +13911,12 @@ const eventsModule = {
           event_id: eventId,
           milestone_id: m.id,
           title: m.label || m.title || '',
-          is_completed: m.done ?? m.is_completed ?? false,
-          is_custom: m.custom ?? m.is_custom ?? false,
+          is_completed: m.done ?? false,
+          is_custom: m.custom ?? false,
           completed_at: m.completedAt || null,
+          category: m.category || 'General',
+          notes: m.notes || null,
+          due_days_relative: m.dueRelativeDays ?? null,
         }));
         await apiClient.insert('event_milestones', rows);
       }
@@ -13662,6 +13936,16 @@ const eventsModule = {
     this.renderMilestonesPanel(eventId);
   },
 
+  async saveMilestoneNotes(eventId, milestoneId) {
+    const input = document.getElementById(`ms_notes_${milestoneId}`);
+    if (!input) return;
+    const milestones = await this.getMilestones(eventId);
+    const ms = milestones.find((m) => m.id === milestoneId);
+    if (ms) ms.notes = input.value.trim();
+    await this._saveMilestones(eventId, milestones);
+    utils.showToast('Notes saved', 'success');
+  },
+
   async addCustomMilestone(eventId) {
     const input = document.getElementById('newMilestoneInput');
     const label = input?.value?.trim();
@@ -13670,7 +13954,16 @@ const eventsModule = {
       return;
     }
     const milestones = await this.getMilestones(eventId);
-    milestones.push({ id: 'mc_' + Date.now(), label, done: false, category: 'Custom', custom: true });
+    milestones.push({
+      id: 'mc_' + Date.now(),
+      label,
+      done: false,
+      category: 'Custom',
+      custom: true,
+      notes: '',
+      completedAt: null,
+      dueRelativeDays: null,
+    });
     await this._saveMilestones(eventId, milestones);
     input.value = '';
     this.renderMilestonesPanel(eventId);
@@ -13682,20 +13975,40 @@ const eventsModule = {
     this.renderMilestonesPanel(eventId);
   },
 
+  _formatMilestoneDue(dueRelativeDays, eventDate) {
+    if (dueRelativeDays == null || !eventDate) return '';
+    const due = new Date(eventDate);
+    due.setDate(due.getDate() + dueRelativeDays);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    due.setHours(0, 0, 0, 0);
+    const diffDays = Math.round((due.getTime() - today.getTime()) / 86400000);
+    const dateStr = due.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    if (diffDays < 0) return `<span class="text-danger" style="font-size:0.7rem;">${dateStr} (overdue)</span>`;
+    if (diffDays === 0) return `<span class="text-warning" style="font-size:0.7rem;">Today</span>`;
+    if (diffDays <= 7) return `<span class="text-warning" style="font-size:0.7rem;">${dateStr}</span>`;
+    return `<span class="text-muted" style="font-size:0.7rem;">${dateStr}</span>`;
+  },
+
   async renderMilestonesPanel(eventId) {
     const container = document.getElementById('milestonesContent');
     if (!container) return;
-    const milestones = await this.getMilestones(eventId);
+    const [milestones, event] = await Promise.all([
+      this.getMilestones(eventId),
+      Promise.resolve(STATE.allEvents.find((e) => e.id === eventId)),
+    ]);
     const done = milestones.filter((m) => m.done).length;
     const total = milestones.length;
     const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+    const eventDate = event?.event_date || null;
 
     const categories = [...new Set(milestones.map((m) => m.category))];
 
     container.innerHTML = `
       <div class="d-flex justify-content-between align-items-center mb-2">
         <div>
-          <strong>${done}/${total}</strong> complete <span class="badge bg-${pct === 100 ? 'success' : pct >= 50 ? 'info' : 'warning'}">${pct}%</span>
+          <strong>${done}/${total}</strong> complete
+          <span class="badge bg-${pct === 100 ? 'success' : pct >= 50 ? 'info' : 'warning'} ms-1">${pct}%</span>
         </div>
       </div>
       <div class="progress mb-3" style="height:6px;">
@@ -13704,19 +14017,32 @@ const eventsModule = {
       ${categories
         .map(
           (cat) => `
-        <h6 class="small text-muted mb-1 mt-2">${cat}</h6>
+        <h6 class="small text-muted text-uppercase mb-1 mt-3">${utils.escapeHtml(cat)}</h6>
         ${milestones
           .filter((m) => m.category === cat)
           .map(
             (m) => `
-          <div class="form-check d-flex align-items-center mb-1">
-            <input class="form-check-input me-2" type="checkbox" ${m.done ? 'checked' : ''}
-              data-on-change="eventsModule.toggleMilestone" data-id="${eventId}" data-args='["${m.id}"]' id="ms_${m.id}">
-            <label class="form-check-label small ${m.done ? 'text-decoration-line-through text-muted' : ''}" for="ms_${m.id}">
-              ${utils.escapeHtml(m.label)}
-              ${m.completedAt ? `<span class="text-success ms-1" style="font-size:0.65rem;">${new Date(m.completedAt).toLocaleDateString('en-GB')}</span>` : ''}
-            </label>
-            ${m.custom ? `<button class="btn btn-sm ms-auto p-0 text-danger" data-action="eventsModule.removeCustomMilestone" data-args='${JSON.stringify([eventId, m.id])}' title="Remove"><i class="bi bi-x"></i></button>` : ''}
+          <div class="mb-2 border-start border-2 ${m.done ? 'border-success' : 'border-secondary'} ps-2">
+            <div class="d-flex align-items-start gap-2">
+              <input class="form-check-input mt-1 flex-shrink-0" type="checkbox" ${m.done ? 'checked' : ''}
+                data-on-change="eventsModule.toggleMilestone" data-id="${eventId}" data-args='["${m.id}"]' id="ms_${m.id}">
+              <div class="flex-grow-1">
+                <label class="form-check-label small fw-semibold ${m.done ? 'text-decoration-line-through text-muted' : ''}" for="ms_${m.id}">
+                  ${utils.escapeHtml(m.label)}
+                </label>
+                <div class="d-flex gap-2 align-items-center flex-wrap">
+                  ${m.dueRelativeDays != null ? this._formatMilestoneDue(m.dueRelativeDays, eventDate) : ''}
+                  ${m.completedAt ? `<span class="text-success" style="font-size:0.7rem;"><i class="bi bi-check-circle-fill me-1"></i>${new Date(m.completedAt).toLocaleDateString('en-GB')}</span>` : ''}
+                </div>
+                <div class="mt-1">
+                  <input type="text" class="form-control form-control-sm py-0" id="ms_notes_${m.id}"
+                    value="${utils.escapeHtml(m.notes || '')}" placeholder="Notes (optional)"
+                    data-on-blur="eventsModule.saveMilestoneNotes" data-id="${eventId}" data-args='["${m.id}"]'
+                    style="font-size:0.75rem;">
+                </div>
+              </div>
+              ${m.custom ? `<button class="btn btn-sm p-0 text-danger flex-shrink-0" data-action="eventsModule.removeCustomMilestone" data-args='${JSON.stringify([eventId, m.id])}' title="Remove"><i class="bi bi-x-circle"></i></button>` : ''}
+            </div>
           </div>
         `
           )
@@ -13726,7 +14052,7 @@ const eventsModule = {
         .join('')}
       <div class="input-group input-group-sm mt-3">
         <input type="text" class="form-control" id="newMilestoneInput" placeholder="Add custom milestone...">
-        <button class="btn btn-outline-primary" data-action="eventsModule.addCustomMilestone" data-id="eventId"><i class="bi bi-plus"></i></button>
+        <button class="btn btn-outline-primary" data-action="eventsModule.addCustomMilestone" data-id="${eventId}"><i class="bi bi-plus"></i> Add</button>
       </div>`;
   },
 

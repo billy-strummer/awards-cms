@@ -2540,7 +2540,19 @@ const paymentsModule = {
   },
 
   // H10: Dunning auto-reminder settings
-  openDunningSettings() {
+  async openDunningSettings() {
+    // Sync shared settings from server before showing modal
+    try {
+      const result = await apiClient.select('user_preferences', {
+        filters: { key: 'dunningSettings' },
+        pageSize: 1,
+      });
+      if (result.data?.[0]?.value) {
+        localStorage.setItem('dunningSettings', result.data[0].value);
+      }
+    } catch (e) {
+      // localStorage cache remains valid
+    }
     try {
       const settings = JSON.parse(localStorage.getItem('dunningSettings') || '{}');
       const el = (id) => document.getElementById(id);
@@ -2563,6 +2575,13 @@ const paymentsModule = {
       day3: parseInt(el('dunningDay3')?.value) || 30,
     };
     localStorage.setItem('dunningSettings', JSON.stringify(settings));
+    apiClient
+      .upsert(
+        'user_preferences',
+        { key: 'dunningSettings', value: JSON.stringify(settings), updated_at: new Date().toISOString() },
+        { onConflict: 'key' }
+      )
+      .catch(() => {});
     bootstrap.Modal.getInstance(document.getElementById('dunningSettingsModal'))?.hide();
     utils.showToast(
       `Auto-reminders ${settings.enabled ? 'enabled' : 'disabled'}: ${settings.day1}, ${settings.day2}, ${settings.day3} days after due`,

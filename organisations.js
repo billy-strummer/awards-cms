@@ -782,7 +782,7 @@ const orgsModule = {
       lastRefresh.title = now.toLocaleTimeString('en-GB');
       clearInterval(lastRefresh._relTimer);
       lastRefresh._relTimer = setInterval(() => {
-        const secs = Math.round((Date.now() - now) / 1000);
+        const secs = Math.round((Date.now() - now.getTime()) / 1000);
         lastRefresh.textContent =
           secs < 60
             ? `${secs}s ago`

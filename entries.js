@@ -70,7 +70,8 @@ const entriesModule = {
       // Load stats
       await this.loadStats();
 
-      // Render saved views dropdown
+      // Sync saved views from server, then render dropdown
+      await this._syncEntriesViewsFromServer();
       this._renderSavedEntriesViews();
     } catch (error) {
       console.error('Error initializing entries module:', error);
@@ -538,7 +539,7 @@ const entriesModule = {
       this.currentFilters.search,
     ].filter(Boolean).length;
     if (count > 0) {
-      badge.textContent = count;
+      badge.textContent = String(count);
       badge.classList.remove('d-none');
     } else {
       badge.classList.add('d-none');
@@ -2250,6 +2251,33 @@ const entriesModule = {
   /* SAVED FILTER VIEWS */
   /* ==================================================== */
 
+  _entriesViewsKey: 'entriesSavedViews',
+
+  async _syncEntriesViewsFromServer() {
+    try {
+      const result = await apiClient.select('user_preferences', {
+        filters: { key: this._entriesViewsKey },
+        pageSize: 1,
+      });
+      if (result.data?.[0]?.value) {
+        localStorage.setItem(this._entriesViewsKey, result.data[0].value);
+      }
+    } catch (e) {
+      // localStorage cache remains valid
+    }
+  },
+
+  async _persistEntriesViews(views) {
+    localStorage.setItem(this._entriesViewsKey, JSON.stringify(views));
+    apiClient
+      .upsert(
+        'user_preferences',
+        { key: this._entriesViewsKey, value: JSON.stringify(views), updated_at: new Date().toISOString() },
+        { onConflict: 'key' }
+      )
+      .catch(() => {});
+  },
+
   saveCurrentEntriesView() {
     const name = prompt('Enter a name for this view:');
     if (!name) return;
@@ -2261,9 +2289,9 @@ const entriesModule = {
       search: document.getElementById('entriesSearchInput')?.value || '',
     };
     try {
-      const views = JSON.parse(localStorage.getItem('entriesSavedViews') || '[]');
+      const views = JSON.parse(localStorage.getItem(this._entriesViewsKey) || '[]');
       views.push({ name, filters, created: Date.now() });
-      localStorage.setItem('entriesSavedViews', JSON.stringify(views));
+      this._persistEntriesViews(views);
       this._renderSavedEntriesViews();
       utils.showToast('View saved: ' + name, 'success');
     } catch (e) {
@@ -2275,7 +2303,7 @@ const entriesModule = {
     const el = document.getElementById('entriesSavedViewsList');
     if (!el) return;
     try {
-      const views = JSON.parse(localStorage.getItem('entriesSavedViews') || '[]');
+      const views = JSON.parse(localStorage.getItem(this._entriesViewsKey) || '[]');
       if (views.length === 0) {
         el.innerHTML = '<option value="">No saved views</option>';
         return;
@@ -2290,7 +2318,7 @@ const entriesModule = {
 
   loadSavedEntriesView(index) {
     try {
-      const views = JSON.parse(localStorage.getItem('entriesSavedViews') || '[]');
+      const views = JSON.parse(localStorage.getItem(this._entriesViewsKey) || '[]');
       const view = views[index];
       if (!view) return;
       if (view.filters.status) document.getElementById('entriesStatusFilter').value = view.filters.status;
@@ -2307,10 +2335,10 @@ const entriesModule = {
 
   deleteSavedEntriesView(index) {
     try {
-      const views = JSON.parse(localStorage.getItem('entriesSavedViews') || '[]');
+      const views = JSON.parse(localStorage.getItem(this._entriesViewsKey) || '[]');
       const name = views[index]?.name;
       views.splice(index, 1);
-      localStorage.setItem('entriesSavedViews', JSON.stringify(views));
+      this._persistEntriesViews(views);
       this._renderSavedEntriesViews();
       utils.showToast('Deleted view: ' + name, 'info');
     } catch (e) {

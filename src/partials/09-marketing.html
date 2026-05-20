@@ -1,0 +1,1930 @@
+      <!-- MARKETING TAB -->
+      <!-- ==================================================== -->
+      <div class="tab-pane fade" id="marketing" role="tabpanel">
+        <div class="container-fluid">
+
+          <!-- Page Header -->
+          <div class="section-header">
+            <h1 class="section-title">
+              <i class="bi bi-megaphone me-2"></i>Marketing & Advertising
+            </h1>
+            <p class="section-subtitle">Manage banners, sponsors, campaigns and promotional content</p>
+          </div>
+
+          <!-- Getting Started Workflow Card -->
+          <div class="content-card mb-4" id="marketingGettingStarted">
+              <div class="d-flex justify-content-between align-items-start mb-3">
+                <div>
+                  <h6 class="fw-bold mb-1"><i class="bi bi-map me-2 text-primary"></i>Getting Started — Recommended Workflow</h6>
+                  <p class="text-muted small mb-0">Follow these steps in order the first time you set up Marketing. Each step builds on the last.</p>
+                </div>
+                <button type="button" class="btn-close btn-sm" aria-label="Dismiss" onclick="document.getElementById('marketingGettingStarted').style.display='none';localStorage.setItem('mktWorkflowDismissed','1');"></button>
+              </div>
+              <div class="row g-2">
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">1</span>
+                    <div>
+                      <div class="fw-semibold small">Branding</div>
+                      <div class="text-muted" style="font-size:.75rem;">Set your logo, colours &amp; identity used across all emails and certificates.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">2</span>
+                    <div>
+                      <div class="fw-semibold small">Email Placeholders</div>
+                      <div class="text-muted" style="font-size:.75rem;">Define merge tags (e.g. <code>{{company_name}}</code>) that auto-fill when emails are sent.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">3</span>
+                    <div>
+                      <div class="fw-semibold small">Email Templates</div>
+                      <div class="text-muted" style="font-size:.75rem;">Create reusable email layouts (winner notification, shortlist, etc.).</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">4</span>
+                    <div>
+                      <div class="fw-semibold small">Email Builder</div>
+                      <div class="text-muted" style="font-size:.75rem;">Drag-and-drop builder for one-off campaigns. Start from a template or from scratch.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">5</span>
+                    <div>
+                      <div class="fw-semibold small">Email Lists</div>
+                      <div class="text-muted" style="font-size:.75rem;">Import or sync recipients. Segment by sector, region, or award status.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">6</span>
+                    <div>
+                      <div class="fw-semibold small">Email Sequences</div>
+                      <div class="text-muted" style="font-size:.75rem;">Automate multi-step campaigns — e.g. entry confirmation → shortlist → winner reveal.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-success rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">7</span>
+                    <div>
+                      <div class="fw-semibold small">Banners</div>
+                      <div class="text-muted" style="font-size:.75rem;">Upload promotional banners for the website and event materials.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-success rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">8</span>
+                    <div>
+                      <div class="fw-semibold small">Social Media</div>
+                      <div class="text-muted" style="font-size:.75rem;">Schedule and post to Twitter/X, LinkedIn, Facebook, and Instagram.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-success rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">9</span>
+                    <div>
+                      <div class="fw-semibold small">Content Calendar</div>
+                      <div class="text-muted" style="font-size:.75rem;">Plan your publishing schedule and review what's going out across all channels.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+          </div>
+          <script>if(localStorage.getItem('mktWorkflowDismissed')==='1'){var el=document.getElementById('marketingGettingStarted');if(el)el.style.display='none';}</script>
+
+          <!-- Marketing Sub-Navigation (order matches Getting Started workflow) -->
+          <ul class="nav nav-tabs mb-4" id="marketingSubTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" id="branding-subtab" data-bs-toggle="tab" data-bs-target="#branding-overview-content" type="button" role="tab">
+                <i class="bi bi-palette me-2"></i>Branding
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="placeholders-subtab" data-bs-toggle="tab" data-bs-target="#placeholders-content" type="button" role="tab">
+                <i class="bi bi-braces me-2"></i>Email Placeholders
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="email-templates-subtab" data-bs-toggle="tab" data-bs-target="#email-templates-content" type="button" role="tab" title="Manage reusable email templates. Use Email Builder to compose and send individual campaigns.">
+                <i class="bi bi-envelope me-2"></i>Template Library
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="email-builder-subtab" data-bs-toggle="tab" data-bs-target="#email-builder-content" type="button" role="tab">
+                <i class="bi bi-grid-3x3-gap me-2"></i>Email Builder
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="email-lists-subtab" data-bs-toggle="tab" data-bs-target="#email-lists-content" type="button" role="tab">
+                <i class="bi bi-list-ul me-2"></i>Email Lists
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="email-sequences-subtab" data-bs-toggle="tab" data-bs-target="#email-sequences-content" type="button" role="tab">
+                <i class="bi bi-envelope-arrow-up me-2"></i>Email Sequences
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="banners-subtab" data-bs-toggle="tab" data-bs-target="#banners-content" type="button" role="tab">
+                <i class="bi bi-file-image me-2"></i>Banners
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="social-subtab" data-bs-toggle="tab" data-bs-target="#social-content" type="button" role="tab">
+                <i class="bi bi-share me-2"></i>Social Media
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="content-calendar-subtab" data-bs-toggle="tab" data-bs-target="#content-calendar-content" type="button" role="tab" data-on-show="marketingModule.loadContentCalendar">
+                <i class="bi bi-calendar3 me-2"></i>Content Calendar
+              </button>
+            </li>
+          </ul>
+
+          <!-- Marketing Sub-Tab Content -->
+          <div class="tab-content" id="marketingSubTabContent">
+
+            <!-- Branding Overview Sub-Tab -->
+            <div class="tab-pane fade show active" id="branding-overview-content" role="tabpanel">
+              <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                  <h4><i class="bi bi-palette me-2"></i>Brand Identity</h4>
+                  <p class="text-muted mb-0">Your brand settings are the root source for all marketing materials, emails and public pages</p>
+                </div>
+                <button class="btn btn-outline-primary" data-action="settingsModule.scrollToBranding">
+                  <i class="bi bi-pencil me-2"></i>Edit in Settings
+                </button>
+              </div>
+              <div id="brandingOverviewPanel">
+                <div class="text-center py-5 text-muted">
+                  <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                  Loading branding...
+                </div>
+              </div>
+            </div>
+
+            <!-- Email Placeholders Sub-Tab -->
+            <div class="tab-pane fade" id="placeholders-content" role="tabpanel">
+              <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                  <h4><i class="bi bi-braces me-2"></i>Email Placeholder Defaults</h4>
+                  <p class="text-muted mb-0">Configure the default values used in email template previews and test sends</p>
+                </div>
+              </div>
+              <div id="placeholdersPanel">
+                <div class="text-center py-5 text-muted">
+                  <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                  Loading placeholders...
+                </div>
+              </div>
+            </div>
+
+            <!-- Banners Sub-Tab -->
+            <div class="tab-pane fade" id="banners-content" role="tabpanel">
+              <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4><i class="bi bi-file-image me-2"></i>Website Banners</h4>
+                <button class="btn btn-primary" data-action="marketingModule.openAddBannerModal">
+                  <i class="bi bi-plus-lg me-2"></i>Add Banner
+                </button>
+              </div>
+
+              <div id="bannersGrid">
+                <div class="text-center py-5 text-muted">
+                  <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                  Loading banners...
+                </div>
+              </div>
+            </div>
+
+            <!-- Social Media Sub-Tab -->
+            <div class="tab-pane fade" id="social-content" role="tabpanel">
+              <!-- API credentials warning — hidden once credentials are configured -->
+              <div class="alert alert-warning d-flex align-items-start gap-2 mb-4" id="socialApiWarning" role="alert">
+                <i class="bi bi-exclamation-triangle-fill flex-shrink-0 mt-1"></i>
+                <div>
+                  <strong>Social media posting is not yet active.</strong>
+                  Posts you create here are saved but will not be published to any platform until API credentials are configured.
+                  <a href="#" class="alert-link ms-1" data-action="socialMediaModule.openPlatformSettings" data-prevent-default="true">Configure credentials in Settings → Integrations</a>
+                </div>
+              </div>
+              <!-- Getting Started Banner -->
+              <div class="card border-0 shadow-sm mb-4" id="socialMediaGettingStarted">
+                <div class="card-body py-3">
+                  <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                      <h6 class="fw-bold mb-1"><i class="bi bi-map me-2 text-primary"></i>Getting Started — Social Media</h6>
+                      <p class="text-muted small mb-0">Schedule and publish posts about your awards across Twitter, LinkedIn, Facebook, and Instagram.</p>
+                    </div>
+                    <button type="button" class="btn-close btn-sm" aria-label="Dismiss" onclick="document.getElementById('socialMediaGettingStarted').style.display='none';localStorage.setItem('socialMediaBannerDismissed','1');"></button>
+                  </div>
+                  <div class="row g-2">
+                    <div class="col-md-4">
+                      <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                        <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">1</span>
+                        <div>
+                          <div class="fw-semibold small">Connect Your Platforms</div>
+                          <div class="text-muted" style="font-size:.75rem;">Click Configure Platforms and add your API credentials for each social network you want to post to.</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                        <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">2</span>
+                        <div>
+                          <div class="fw-semibold small">Generate or Compose Posts</div>
+                          <div class="text-muted" style="font-size:.75rem;">Use Bulk Generate to auto-create posts from winner data, or compose individual posts using the templates below.</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                        <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">3</span>
+                        <div>
+                          <div class="fw-semibold small">Schedule or Post Now</div>
+                          <div class="text-muted" style="font-size:.75rem;">Pick a date and time to schedule, or click Post Now to publish immediately to all selected platforms.</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <script>if(localStorage.getItem('socialMediaBannerDismissed')==='1'){var _smb=document.getElementById('socialMediaGettingStarted');if(_smb)_smb.style.display='none';}</script>
+              <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                  <h4><i class="bi bi-share me-2"></i>Social Media Manager</h4>
+                  <p class="text-muted mb-0">Automate and schedule posts across all platforms</p>
+                </div>
+                <div class="d-flex gap-2">
+                  <button class="btn btn-outline-primary" data-action="socialMediaModule.openBulkGenerateModal" title="Auto-generate social media posts for all nominees, winners, or voting from your award data — no writing required.">
+                    <i class="bi bi-collection me-2"></i>Bulk Generate
+                  </button>
+                  <button class="btn btn-outline-secondary" data-action="socialMediaModule.loadAnalytics">
+                    <i class="bi bi-graph-up me-2"></i>Analytics
+                  </button>
+                </div>
+              </div>
+
+              <!-- Main Content -->
+              <div class="row g-4">
+
+                <!-- Left Column: Post Composer -->
+                <div class="col-lg-8">
+
+                  <!-- Create Post Card -->
+                  <div class="content-card mb-4">
+                    <h5 class="mb-3"><i class="bi bi-pencil-square me-2"></i>Create New Post</h5>
+
+                      <!-- Template Selection -->
+                      <div class="mb-4">
+                        <label class="form-label fw-bold">Post Template</label>
+                        <div class="row g-3">
+                          <div class="col-md-4">
+                            <div class="card template-card" data-action="socialMediaModule.selectTemplate" data-id="nominee">
+                              <div class="card-body text-center">
+                                <i class="bi bi-star text-warning fs-1 mb-2"></i>
+                                <h6>Nominee Announcement</h6>
+                                <small class="text-muted">Announce nominees</small>
+                              </div>
+                            </div>
+                          </div>
+                          <div class="col-md-4">
+                            <div class="card template-card" data-action="socialMediaModule.selectTemplate" data-id="winner">
+                              <div class="card-body text-center">
+                                <i class="bi bi-trophy text-success fs-1 mb-2"></i>
+                                <h6>Winner Announcement</h6>
+                                <small class="text-muted">Celebrate winners</small>
+                              </div>
+                            </div>
+                          </div>
+                          <div class="col-md-4">
+                            <div class="card template-card" data-action="socialMediaModule.selectTemplate" data-id="voting">
+                              <div class="card-body text-center">
+                                <i class="bi bi-hand-thumbs-up text-primary fs-1 mb-2"></i>
+                                <h6>Voting Reminder</h6>
+                                <small class="text-muted">Encourage voting</small>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Company/Nominee Selection -->
+                      <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                          <label for="smCompanySelect" class="form-label">
+                            Company/Nominee <span class="text-danger">*</span>
+                          </label>
+                          <select class="form-select" id="smCompanySelect" data-on-change="socialMediaModule.updatePostPreview">
+                            <option value="">Select organisation...</option>
+                          </select>
+                        </div>
+                        <div class="col-md-6">
+                          <label for="smAwardSelect" class="form-label">
+                            Award Category <span class="text-danger">*</span>
+                          </label>
+                          <select class="form-select" id="smAwardSelect" data-on-change="socialMediaModule.updatePostPreview">
+                            <option value="">Select award...</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <!-- Post Content -->
+                      <div class="mb-3">
+                        <label for="smPostContent" class="form-label">
+                          Post Content
+                          <small class="text-muted">(Use {{company_name}} and {{award_name}} as placeholders)</small>
+                        </label>
+                        <textarea class="form-control" id="smPostContent" rows="5" data-on-input="socialMediaModule.updatePostPreview" placeholder="Write your post here... Use {{company_name}} and {{award_name}} to insert dynamic content"></textarea>
+                        <div class="form-text">
+                          <strong>Available variables:</strong> {{company_name}}, {{award_name}}, {{award_hashtag}}, {{year}}, {{website}}
+                        </div>
+                        <!-- M14: Hashtag library -->
+                        <div class="mt-2">
+                          <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#hashtagLibrary">
+                            <i class="bi bi-hash me-1"></i>Hashtag Library
+                          </button>
+                          <div class="collapse mt-2" id="hashtagLibrary">
+                            <div class="card card-body py-2 px-3" style="font-size:0.85rem;">
+                              <div class="mb-2">
+                                <strong class="small text-muted">Awards</strong><br>
+                                <span class="badge bg-secondary me-1 mb-1" style="cursor:pointer;" data-action="socialMediaModule.insertHashtag" data-id="#BritishTradeAwards">#BritishTradeAwards</span>
+                                <span class="badge bg-secondary me-1 mb-1" style="cursor:pointer;" data-action="socialMediaModule.insertHashtag" data-id="#AwardWinner">#AwardWinner</span>
+                                <span class="badge bg-secondary me-1 mb-1" style="cursor:pointer;" data-action="socialMediaModule.insertHashtag" data-id="#BusinessExcellence">#BusinessExcellence</span>
+                                <span class="badge bg-secondary me-1 mb-1" style="cursor:pointer;" data-action="socialMediaModule.insertHashtag" data-id="#UKBusiness">#UKBusiness</span>
+                              </div>
+                              <div class="mb-2">
+                                <strong class="small text-muted">Sectors</strong><br>
+                                <span class="badge bg-info me-1 mb-1" style="cursor:pointer;" data-action="socialMediaModule.insertHashtag" data-id="#Construction">#Construction</span>
+                                <span class="badge bg-info me-1 mb-1" style="cursor:pointer;" data-action="socialMediaModule.insertHashtag" data-id="#Technology">#Technology</span>
+                                <span class="badge bg-info me-1 mb-1" style="cursor:pointer;" data-action="socialMediaModule.insertHashtag" data-id="#Hospitality">#Hospitality</span>
+                                <span class="badge bg-info me-1 mb-1" style="cursor:pointer;" data-action="socialMediaModule.insertHashtag" data-id="#Retail">#Retail</span>
+                                <span class="badge bg-info me-1 mb-1" style="cursor:pointer;" data-action="socialMediaModule.insertHashtag" data-id="#Finance">#Finance</span>
+                              </div>
+                              <div>
+                                <strong class="small text-muted">Engagement</strong><br>
+                                <span class="badge bg-success me-1 mb-1" style="cursor:pointer;" data-action="socialMediaModule.insertHashtag" data-id="#Congratulations">#Congratulations</span>
+                                <span class="badge bg-success me-1 mb-1" style="cursor:pointer;" data-action="socialMediaModule.insertHashtag" data-id="#VoteNow">#VoteNow</span>
+                                <span class="badge bg-success me-1 mb-1" style="cursor:pointer;" data-action="socialMediaModule.insertHashtag" data-id="#ProudWinner">#ProudWinner</span>
+                                <span class="badge bg-success me-1 mb-1" style="cursor:pointer;" data-action="socialMediaModule.insertHashtag" data-id="#Excellence">#Excellence</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Platform-Specific Content -->
+                      <div class="mb-3">
+                        <div class="form-check">
+                          <input class="form-check-input" type="checkbox" id="smPlatformOverrides" aria-label="Enable platform overrides" data-on-change="socialMediaModule.togglePlatformOverrides">
+                          <label class="form-check-label" for="smPlatformOverrides">
+                            <i class="bi bi-sliders me-1" aria-hidden="true"></i>Customise content per platform
+                          </label>
+                        </div>
+
+                        <div id="platformOverridesContainer" class="d-none mt-3">
+                          <div class="row g-3">
+                            <div class="col-md-6">
+                              <label class="form-label small">
+                                <i class="bi bi-twitter-x text-info me-1" aria-hidden="true"></i>X
+                                <span class="text-muted">(280 chars)</span>
+                              </label>
+                              <textarea class="form-control form-control-sm" id="smTwitterContent" rows="3" placeholder="Twitter-specific content..." data-on-input="socialMediaModule.updatePostPreview"></textarea>
+                            </div>
+                            <div class="col-md-6">
+                              <label class="form-label small">
+                                <i class="bi bi-facebook text-primary me-1" aria-hidden="true"></i>Facebook
+                              </label>
+                              <textarea class="form-control form-control-sm" id="smFacebookContent" rows="3" placeholder="Facebook-specific content..." data-on-input="socialMediaModule.updatePostPreview"></textarea>
+                            </div>
+                            <div class="col-md-6">
+                              <label class="form-label small">
+                                <i class="bi bi-instagram text-danger me-1" aria-hidden="true"></i>Instagram
+                                <span class="text-muted">(2,200 chars)</span>
+                              </label>
+                              <textarea class="form-control form-control-sm" id="smInstagramContent" rows="3" placeholder="Instagram-specific caption..." data-on-input="socialMediaModule.updatePostPreview"></textarea>
+                            </div>
+                            <div class="col-md-6">
+                              <label class="form-label small">
+                                <i class="bi bi-linkedin text-info me-1" aria-hidden="true"></i>LinkedIn
+                                <span class="text-muted">(3,000 chars)</span>
+                              </label>
+                              <textarea class="form-control form-control-sm" id="smLinkedInContent" rows="3" placeholder="LinkedIn-specific content..." data-on-input="socialMediaModule.updatePostPreview"></textarea>
+                            </div>
+                          </div>
+                          <small class="text-muted d-block mt-2">Leave blank to use the main post content above</small>
+                        </div>
+                      </div>
+
+                      <!-- Image Options -->
+                      <div class="mb-3">
+                        <label class="form-label fw-bold">
+                          <i class="bi bi-image me-1" aria-hidden="true"></i>Post Image
+                        </label>
+                        <div class="row g-3">
+                          <div class="col-md-6">
+                            <div class="form-check">
+                              <input class="form-check-input" type="radio" name="imageSource" id="imageCompanyLogo" value="company_logo" checked aria-label="Use company logo" data-on-change="socialMediaModule.updateImagePreview">
+                              <label class="form-check-label" for="imageCompanyLogo">
+                                Company Logo
+                              </label>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <div class="form-check">
+                              <input class="form-check-input" type="radio" name="imageSource" id="imageCustom" value="custom" aria-label="Use custom image" data-on-change="socialMediaModule.updateImagePreview">
+                              <label class="form-check-label" for="imageCustom">
+                                Upload Custom Image
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- Custom Image Upload -->
+                        <div id="customImageUpload" class="mt-3 d-none">
+                          <input type="file" class="form-control" id="smCustomImage" accept="image/*" data-on-change="socialMediaModule.handleImageUpload">
+                        </div>
+
+                        <!-- Image Size Warnings -->
+                        <div id="imageSizeWarning"></div>
+
+                        <!-- Add British Trade Awards Logo Overlay -->
+                        <div class="mt-3">
+                          <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="smAddLogoOverlay" checked aria-label="Add logo overlay" data-on-change="socialMediaModule.updateImagePreview">
+                            <label class="form-check-label" for="smAddLogoOverlay">
+                              <i class="bi bi-badge-tm me-1" aria-hidden="true"></i>Add British Trade Awards Logo Overlay
+                            </label>
+                          </div>
+                          <small class="text-muted d-block mt-1">Logo will be placed in the corner with transparency</small>
+                        </div>
+                      </div>
+
+                      <!-- Platform Selection -->
+                      <div class="mb-3">
+                        <label class="form-label fw-bold">
+                          <i class="bi bi-share-fill me-1" aria-hidden="true"></i>Post To
+                        </label>
+                        <div class="row g-2">
+                          <div class="col-md-3">
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" id="platformTwitter" aria-label="Post to Twitter" checked>
+                              <label class="form-check-label" for="platformTwitter">
+                                <i class="bi bi-twitter-x text-info me-1" aria-hidden="true"></i>X
+                              </label>
+                            </div>
+                          </div>
+                          <div class="col-md-3">
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" id="platformFacebook" aria-label="Post to Facebook" checked>
+                              <label class="form-check-label" for="platformFacebook">
+                                <i class="bi bi-facebook text-primary me-1" aria-hidden="true"></i>Facebook
+                              </label>
+                            </div>
+                          </div>
+                          <div class="col-md-3">
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" id="platformInstagram" aria-label="Post to Instagram" checked>
+                              <label class="form-check-label" for="platformInstagram">
+                                <i class="bi bi-instagram text-danger me-1" aria-hidden="true"></i>Instagram
+                              </label>
+                            </div>
+                          </div>
+                          <div class="col-md-3">
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" id="platformLinkedIn" aria-label="Post to LinkedIn" checked>
+                              <label class="form-check-label" for="platformLinkedIn">
+                                <i class="bi bi-linkedin text-info me-1" aria-hidden="true"></i>LinkedIn
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Scheduling -->
+                      <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                          <label for="smScheduleDate" class="form-label">
+                            <i class="bi bi-calendar3 me-1" aria-hidden="true"></i>Schedule Date
+                          </label>
+                          <input type="date" class="form-control" id="smScheduleDate">
+                          <small class="text-muted">Leave empty to post immediately</small>
+                        </div>
+                        <div class="col-md-6">
+                          <label for="smScheduleTime" class="form-label">
+                            <i class="bi bi-clock me-1" aria-hidden="true"></i>Schedule Time
+                          </label>
+                          <input type="time" class="form-control" id="smScheduleTime">
+                          <small class="text-muted">Times are in your browser's local timezone</small>
+                        </div>
+                      </div>
+
+                      <!-- Action Buttons -->
+                      <div class="d-flex gap-2">
+                        <button class="btn btn-success" data-action="socialMediaModule.savePost" data-args="[&quot;scheduled&quot;]">
+                          <i class="bi bi-clock-history me-2"></i>Schedule Post
+                        </button>
+                        <button class="btn btn-outline-warning" data-action="socialMediaModule.savePost" data-args="[&quot;immediate&quot;]" title="Posts immediately to all selected platforms — requires API credentials to be configured">
+                          <i class="bi bi-send me-2"></i>Post Now
+                        </button>
+                        <button class="btn btn-outline-secondary" data-action="socialMediaModule.saveDraft">
+                          <i class="bi bi-save me-2"></i>Save Draft
+                        </button>
+                        <button class="btn btn-outline-danger" data-action="socialMediaModule.clearForm">
+                          <i class="bi bi-x-circle me-2"></i>Clear
+                        </button>
+                      </div>
+
+                  </div>
+
+                  <!-- Scheduled Posts -->
+                  <div class="content-card mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                      <h5 class="mb-0"><i class="bi bi-calendar-check me-2"></i>Scheduled Posts</h5>
+                      <span class="badge bg-primary" id="scheduledPostsCount">0</span>
+                    </div>
+                    <div id="scheduledPostsList"></div>
+                  </div>
+
+                  <!-- Draft Posts -->
+                  <div class="content-card mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                      <h5 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i>Drafts</h5>
+                      <span class="badge bg-secondary" id="draftPostsCount">0</span>
+                    </div>
+                    <div id="draftPostsList"></div>
+                  </div>
+
+                  <!-- Published Posts History -->
+                  <div class="content-card mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                      <h5 class="mb-0"><i class="bi bi-send-check me-2"></i>Published Posts</h5>
+                      <span class="badge bg-success" id="publishedPostsCount">0</span>
+                    </div>
+                    <div id="publishedPostsList"></div>
+                  </div>
+
+                  <!-- Analytics Section -->
+                  <div class="content-card" id="analyticsSection">
+                    <h5 class="mb-3"><i class="bi bi-graph-up me-2"></i>Post Analytics</h5>
+                    <div id="analyticsContent">
+                      <div class="text-center text-muted py-4">
+                        <i class="bi bi-graph-up display-4 d-block mb-2 opacity-25"></i>
+                        <p>Click "Analytics" to load statistics</p>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+
+                <!-- Right Column: Preview & Platforms -->
+                <div class="col-lg-4">
+
+                  <!-- Live Preview -->
+                  <div class="content-card mb-4 sticky-top" style="top: 20px;">
+                    <h5 class="mb-3"><i class="bi bi-eye me-2"></i>Live Preview</h5>
+
+                      <!-- Platform Tabs -->
+                      <ul class="nav nav-tabs mb-3" role="tablist">
+                        <li class="nav-item" role="presentation">
+                          <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#previewTwitter">
+                            <i class="bi bi-twitter-x"></i>
+                          </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                          <button class="nav-link" data-bs-toggle="tab" data-bs-target="#previewFacebook">
+                            <i class="bi bi-facebook"></i>
+                          </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                          <button class="nav-link" data-bs-toggle="tab" data-bs-target="#previewInstagram">
+                            <i class="bi bi-instagram"></i>
+                          </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                          <button class="nav-link" data-bs-toggle="tab" data-bs-target="#previewLinkedIn">
+                            <i class="bi bi-linkedin"></i>
+                          </button>
+                        </li>
+                      </ul>
+
+                      <!-- Preview Content -->
+                      <div class="tab-content">
+                        <!-- Twitter Preview -->
+                        <div class="tab-pane fade show active" id="previewTwitter">
+                          <div class="social-preview twitter-preview">
+                            <div class="preview-header">
+                              <strong>British Trade Awards</strong>
+                              <small class="text-muted">@BritishTradeAwards</small>
+                            </div>
+                            <div class="preview-content" id="twitterPreviewText">
+                              Your post will appear here...
+                            </div>
+                            <div class="preview-image" id="twitterPreviewImage">
+                              <div class="text-center text-muted py-4">
+                                <i class="bi bi-image opacity-25 fs-1"></i>
+                              </div>
+                            </div>
+                            <div class="preview-meta">
+                              <small class="text-muted">Character count: <span id="twitterCharCount">0</span>/280</small>
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- Facebook Preview -->
+                        <div class="tab-pane fade" id="previewFacebook">
+                          <div class="social-preview facebook-preview">
+                            <div class="preview-header">
+                              <strong>British Trade Awards</strong>
+                            </div>
+                            <div class="preview-content" id="facebookPreviewText">
+                              Your post will appear here...
+                            </div>
+                            <div class="preview-image" id="facebookPreviewImage">
+                              <div class="text-center text-muted py-4">
+                                <i class="bi bi-image opacity-25 fs-1"></i>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- Instagram Preview -->
+                        <div class="tab-pane fade" id="previewInstagram">
+                          <div class="social-preview instagram-preview">
+                            <div class="preview-header">
+                              <strong>britishtrade_awards</strong>
+                            </div>
+                            <div class="preview-image" id="instagramPreviewImage">
+                              <div class="text-center text-muted py-4">
+                                <i class="bi bi-image opacity-25 fs-1"></i>
+                              </div>
+                            </div>
+                            <div class="preview-content" id="instagramPreviewText">
+                              Your caption will appear here...
+                            </div>
+                            <div class="preview-meta">
+                              <small class="text-muted">Character count: <span id="instagramCharCount">0</span>/2,200</small>
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- LinkedIn Preview -->
+                        <div class="tab-pane fade" id="previewLinkedIn">
+                          <div class="social-preview linkedin-preview">
+                            <div class="preview-header">
+                              <strong>British Trade Awards</strong>
+                            </div>
+                            <div class="preview-content" id="linkedinPreviewText">
+                              Your post will appear here...
+                            </div>
+                            <div class="preview-image" id="linkedinPreviewImage">
+                              <div class="text-center text-muted py-4">
+                                <i class="bi bi-image opacity-25 fs-1"></i>
+                              </div>
+                            </div>
+                            <div class="preview-meta">
+                              <small class="text-muted">Character count: <span id="linkedinCharCount">0</span>/3,000</small>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                  </div>
+
+                  <!-- Connected Platforms -->
+                  <div class="content-card">
+                    <h5 class="mb-3"><i class="bi bi-plug me-2"></i>Connected Platforms</h5>
+                    <div class="alert alert-warning border-0 py-2 px-3 mb-2 small" role="note">
+                      <i class="bi bi-exclamation-triangle me-1"></i>No platforms connected — posting is disabled. Click <strong>Configure Platforms</strong> below to add credentials.
+                    </div>
+                    <div id="connectedPlatformsList">
+                        <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
+                          <div>
+                            <i class="bi bi-twitter-x text-info me-2"></i>
+                            <strong>X</strong>
+                          </div>
+                          <span class="badge bg-warning text-dark" title="Not connected — add credentials in Configure Platforms">Action required</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
+                          <div>
+                            <i class="bi bi-facebook text-primary me-2"></i>
+                            <strong>Facebook</strong>
+                          </div>
+                          <span class="badge bg-warning text-dark" title="Not connected — add credentials in Configure Platforms">Action required</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
+                          <div>
+                            <i class="bi bi-instagram text-danger me-2"></i>
+                            <strong>Instagram</strong>
+                          </div>
+                          <span class="badge bg-warning text-dark" title="Not connected — add credentials in Configure Platforms">Action required</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
+                          <div>
+                            <i class="bi bi-linkedin text-info me-2"></i>
+                            <strong>LinkedIn</strong>
+                          </div>
+                          <span class="badge bg-warning text-dark" title="Not connected — add credentials in Configure Platforms">Action required</span>
+                        </div>
+                      </div>
+                      <button class="btn btn-primary btn-sm w-100 mt-3" data-action="socialMediaModule.openPlatformSettings">
+                        <i class="bi bi-gear me-2"></i>Configure Platforms to Enable Posting
+                      </button>
+                  </div>
+
+                </div>
+
+              </div>
+
+              <!-- Bulk Generate Modal -->
+              <div class="modal fade" id="bulkGenerateModal" tabindex="-1">
+                <div class="modal-dialog">
+                  <div class="modal-content">
+                    <div class="modal-header">
+                      <h5 class="modal-title">
+                        <i class="bi bi-collection me-2"></i>Bulk Generate Posts
+                      </h5>
+                      <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                      <p class="text-muted">Generate posts for all nominees or winners in an award category.</p>
+
+                      <div class="mb-3">
+                        <label for="bulkAwardSelect" class="form-label">Award Category <span class="text-danger">*</span></label>
+                        <select class="form-select" id="bulkAwardSelect">
+                          <option value="">Select award...</option>
+                        </select>
+                      </div>
+
+                      <div class="mb-3">
+                        <label for="bulkTemplateType" class="form-label">Template Type <span class="text-danger">*</span></label>
+                        <select class="form-select" id="bulkTemplateType">
+                          <option value="">Select template...</option>
+                          <option value="nominee">Nominee Announcement</option>
+                          <option value="winner">Winner Announcement</option>
+                          <option value="voting">Voting Reminder</option>
+                        </select>
+                      </div>
+
+                      <div class="mb-3">
+                        <label class="form-label">Platforms</label>
+                        <div class="row g-2">
+                          <div class="col-6">
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" id="bulkPlatformTwitter" checked>
+                              <label class="form-check-label" for="bulkPlatformTwitter">
+                                <i class="bi bi-twitter-x text-info me-1" aria-hidden="true"></i>X
+                              </label>
+                            </div>
+                          </div>
+                          <div class="col-6">
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" id="bulkPlatformFacebook" checked>
+                              <label class="form-check-label" for="bulkPlatformFacebook">
+                                <i class="bi bi-facebook text-primary me-1" aria-hidden="true"></i>Facebook
+                              </label>
+                            </div>
+                          </div>
+                          <div class="col-6">
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" id="bulkPlatformInstagram" checked>
+                              <label class="form-check-label" for="bulkPlatformInstagram">
+                                <i class="bi bi-instagram text-danger me-1" aria-hidden="true"></i>Instagram
+                              </label>
+                            </div>
+                          </div>
+                          <div class="col-6">
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" id="bulkPlatformLinkedIn" checked>
+                              <label class="form-check-label" for="bulkPlatformLinkedIn">
+                                <i class="bi bi-linkedin text-info me-1" aria-hidden="true"></i>LinkedIn
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="mb-3">
+                        <label for="bulkSaveAs" class="form-label">Save As</label>
+                        <select class="form-select" id="bulkSaveAs">
+                          <option value="draft">Drafts (review before posting)</option>
+                          <option value="scheduled">Scheduled</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="modal-footer">
+                      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                      <button type="button" class="btn btn-primary" data-action="socialMediaModule.bulkGenerate">
+                        <i class="bi bi-collection me-2"></i>Generate Posts
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Content Calendar Sub-Tab -->
+            <div class="tab-pane fade" id="content-calendar-content" role="tabpanel">
+              <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                  <h4><i class="bi bi-calendar3 me-2"></i>Content Calendar</h4>
+                  <p class="text-muted mb-0">Monthly view of all scheduled social media posts. Schedule posts in the <strong>Social Media</strong> tab — they appear here automatically. Click any post on the calendar to edit or cancel it.</p>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                  <button class="btn btn-outline-secondary btn-sm" data-action="marketingModule.prevContentCalendarMonth" title="Previous month">
+                    <i class="bi bi-chevron-left"></i>
+                  </button>
+                  <span id="contentCalendarMonthLabel" class="fw-semibold px-2"></span>
+                  <button class="btn btn-outline-secondary btn-sm" data-action="marketingModule.nextContentCalendarMonth" title="Next month">
+                    <i class="bi bi-chevron-right"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Platform legend -->
+              <div class="d-flex gap-3 mb-3 flex-wrap">
+                <span class="badge" style="background:#1DA1F2"><i class="bi bi-twitter-x me-1"></i>X / Twitter</span>
+                <span class="badge" style="background:#1877F2"><i class="bi bi-facebook me-1"></i>Facebook</span>
+                <span class="badge" style="background:#E1306C"><i class="bi bi-instagram me-1"></i>Instagram</span>
+                <span class="badge" style="background:#0A66C2"><i class="bi bi-linkedin me-1"></i>LinkedIn</span>
+              </div>
+
+              <div id="contentCalendarGrid"></div>
+            </div>
+
+            <!-- Email Templates Sub-Tab -->
+            <div class="tab-pane fade" id="email-templates-content" role="tabpanel">
+              <div class="d-flex justify-content-between align-items-start mb-3">
+                <div>
+                  <h4 class="mb-1"><i class="bi bi-envelope-paper me-2"></i>Template Library</h4>
+                  <p class="text-muted mb-0 small">Store and edit reusable email layouts (Winner Announcement, Nominee Notification, etc.). To compose and send a campaign to a list, use the <strong>Email Builder</strong> tab.</p>
+                </div>
+              </div>
+              <div class="alert alert-light border py-2 px-3 mb-3 small" role="note">
+                <i class="bi bi-lightbulb text-warning me-1"></i><strong>Template Library vs Email Builder:</strong> Edit your reusable templates here. When you're ready to send an email campaign, go to the <strong>Email Builder</strong> tab — it uses these templates as a starting point.
+              </div>
+
+              <!-- Template List + Editor -->
+              <div class="row">
+                <div class="col-md-4">
+                  <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                      <h5 class="mb-0">Templates</h5>
+                      <div class="d-flex gap-1">
+                        <div class="btn-group btn-group-sm">
+                          <button class="btn btn-outline-secondary active" id="tmplListViewBtn" title="List view" data-action="emailTemplatesModule.setView" data-id="list"><i class="bi bi-list-ul"></i></button>
+                          <button class="btn btn-outline-secondary" id="tmplGridViewBtn" title="Grid view" data-action="emailTemplatesModule.setView" data-id="grid"><i class="bi bi-grid-3x3-gap"></i></button>
+                        </div>
+                        <button class="btn btn-sm btn-primary" data-action="emailTemplatesModule.newTemplate">
+                          <i class="bi bi-plus-lg me-1"></i>New
+                        </button>
+                      </div>
+                    </div>
+                    <div class="list-group list-group-flush" id="templatesList">
+                      <div class="text-center py-5">
+                        <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                        Loading templates...
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-md-8">
+                  <div class="card">
+                    <div class="card-header">
+                      <h5 class="mb-0" id="editorTitle">Select a template</h5>
+                    </div>
+                    <div class="card-body" id="templateEditor">
+                      <div class="text-center py-5 text-muted">
+                        <i class="bi bi-envelope display-1 opacity-25 d-block mb-3"></i>
+                        <p>Select a template from the list to edit</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Email Builder Sub-Tab -->
+            <div class="tab-pane fade" id="email-builder-content" role="tabpanel">
+              <!-- Getting Started Banner -->
+              <div class="card border-0 shadow-sm mb-3" id="emailBuilderGettingStarted">
+                <div class="card-body py-3">
+                  <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                      <h6 class="fw-bold mb-1"><i class="bi bi-map me-2 text-primary"></i>Getting Started — Email Builder</h6>
+                      <p class="text-muted small mb-0">Create and send professional email campaigns to your winners, nominees, and contacts.</p>
+                    </div>
+                    <button type="button" class="btn-close btn-sm" aria-label="Dismiss" onclick="document.getElementById('emailBuilderGettingStarted').style.display='none';localStorage.setItem('emailBuilderBannerDismissed','1');"></button>
+                  </div>
+                  <div class="row g-2">
+                    <div class="col-md-4">
+                      <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                        <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">1</span>
+                        <div>
+                          <div class="fw-semibold small">Choose a Template</div>
+                          <div class="text-muted" style="font-size:.75rem;">Pick a pre-built layout from the Email Template dropdown, or start with a blank canvas.</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                        <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">2</span>
+                        <div>
+                          <div class="fw-semibold small">Drag Blocks &amp; Edit Content</div>
+                          <div class="text-muted" style="font-size:.75rem;">Drag blocks from the left panel onto the canvas. Click any block to edit its text, images, or style.</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                        <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">3</span>
+                        <div>
+                          <div class="fw-semibold small">Choose a List &amp; Send</div>
+                          <div class="text-muted" style="font-size:.75rem;">Scroll to "Send to List", pick a recipient list, send a test first, then click Send to List to deliver.</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <script>if(localStorage.getItem('emailBuilderBannerDismissed')==='1'){var _ebb=document.getElementById('emailBuilderGettingStarted');if(_ebb)_ebb.style.display='none';}</script>
+              <div class="row g-0" style="height: calc(100vh - 280px); min-height: 600px;">
+
+                <!-- Left Sidebar - Blocks & Settings -->
+                <div class="col-md-3 border-end email-builder-sidebar" style="overflow-y: auto; position: relative; z-index: 2;">
+                  <div class="p-3">
+
+                    <!-- Template Selector -->
+                    <div class="mb-4">
+                      <h6 class="mb-3"><i class="bi bi-layout-text-window-reverse me-2"></i>Email Template</h6>
+                      <select class="form-select" id="builderTemplateType" data-on-change="emailBuilder.loadTemplate">
+                        <option value="">Blank Canvas</option>
+                        <option value="paste-html">I Have HTML</option>
+                        <option value="winner">Winner Announcement</option>
+                        <option value="nominee">Nominee Notification</option>
+                        <option value="event-countdown">Event Countdown</option>
+                        <option value="event-tickets">Book Event Tickets</option>
+                        <option value="general">General Announcement</option>
+                        <option value="client-promotion">✨ Client Promotion</option>
+                      </select>
+                      <small class="text-muted d-block mt-2">Choose a template to auto-populate blocks</small>
+                    </div>
+
+                    <!-- Draggable Blocks (shown for Blank Canvas) -->
+                    <div class="mb-4 d-none" id="blockPaletteSection">
+                      <hr>
+                      <h6 class="mb-3"><i class="bi bi-grid-3x3-gap me-2"></i>Drag Blocks</h6>
+
+                      <div class="email-block-palette">
+                        <div class="email-block-item" draggable="true" data-block-type="header">
+                          <i class="bi bi-image"></i> Header Image
+                        </div>
+                        <div class="email-block-item" draggable="true" data-block-type="hero">
+                          <i class="bi bi-card-image"></i> Hero Section
+                        </div>
+                        <div class="email-block-item" draggable="true" data-block-type="text">
+                          <i class="bi bi-text-paragraph"></i> Text Block
+                        </div>
+                        <div class="email-block-item" draggable="true" data-block-type="company-profile">
+                          <i class="bi bi-building"></i> Company Profile
+                        </div>
+                        <div class="email-block-item" draggable="true" data-block-type="award-list">
+                          <i class="bi bi-trophy"></i> Award List
+                        </div>
+                        <div class="email-block-item" draggable="true" data-block-type="button">
+                          <i class="bi bi-cursor"></i> CTA Button
+                        </div>
+                        <div class="email-block-item" draggable="true" data-block-type="image">
+                          <i class="bi bi-image-fill"></i> Image
+                        </div>
+                        <div class="email-block-item" draggable="true" data-block-type="video">
+                          <i class="bi bi-play-btn"></i> Video
+                        </div>
+                        <div class="email-block-item" draggable="true" data-block-type="countdown">
+                          <i class="bi bi-hourglass-split"></i> Countdown
+                        </div>
+                        <div class="email-block-item" draggable="true" data-block-type="divider">
+                          <i class="bi bi-dash-lg"></i> Divider
+                        </div>
+                        <div class="email-block-item" draggable="true" data-block-type="social-links">
+                          <i class="bi bi-share"></i> Social Links
+                        </div>
+                        <div class="email-block-item" draggable="true" data-block-type="richtext">
+                          <i class="bi bi-type-bold"></i> Rich Text
+                        </div>
+                        <div class="email-block-item" draggable="true" data-block-type="html-code">
+                          <i class="bi bi-code-slash"></i> HTML Code
+                        </div>
+                        <div class="email-block-item" draggable="true" data-block-type="footer">
+                          <i class="bi bi-layout-text-window"></i> Footer
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- HTML Toolkit (shown for "I Have HTML" mode) -->
+                    <div class="mb-4 d-none" id="htmlToolkitSection">
+                      <hr>
+                      <h6 class="mb-3"><i class="bi bi-tools me-2"></i>HTML Toolkit</h6>
+
+                      <!-- Structure -->
+                      <div class="html-toolkit-group">
+                        <label class="html-toolkit-label">Structure</label>
+                        <div class="html-toolkit-grid">
+                          <button class="html-toolkit-btn" data-action="emailBuilder.insertHtmlSnippet" data-args="[&quot;table-row&quot;]" title="Table Row with Padding">
+                            <i class="bi bi-table"></i> Padded Row
+                          </button>
+                          <button class="html-toolkit-btn" data-action="emailBuilder.insertHtmlSnippet" data-args="[&quot;two-column&quot;]" title="Two Column Layout">
+                            <i class="bi bi-layout-split"></i> 2 Columns
+                          </button>
+                          <button class="html-toolkit-btn" data-action="emailBuilder.insertHtmlSnippet" data-args="[&quot;three-column&quot;]" title="Three Column Layout">
+                            <i class="bi bi-layout-three-columns"></i> 3 Columns
+                          </button>
+                          <button class="html-toolkit-btn" data-action="emailBuilder.insertHtmlSnippet" data-args="[&quot;full-width-wrapper&quot;]" title="Full Width Container">
+                            <i class="bi bi-aspect-ratio"></i> Container
+                          </button>
+                        </div>
+                      </div>
+
+                      <!-- Spacing -->
+                      <div class="html-toolkit-group">
+                        <label class="html-toolkit-label">Spacing</label>
+                        <div class="html-toolkit-grid">
+                          <button class="html-toolkit-btn" data-action="emailBuilder.insertHtmlSnippet" data-args="[&quot;spacer-sm&quot;]" title="Small Spacer (10px)">
+                            <i class="bi bi-distribute-vertical"></i> 10px
+                          </button>
+                          <button class="html-toolkit-btn" data-action="emailBuilder.insertHtmlSnippet" data-args="[&quot;spacer-md&quot;]" title="Medium Spacer (20px)">
+                            <i class="bi bi-distribute-vertical"></i> 20px
+                          </button>
+                          <button class="html-toolkit-btn" data-action="emailBuilder.insertHtmlSnippet" data-args="[&quot;spacer-lg&quot;]" title="Large Spacer (40px)">
+                            <i class="bi bi-distribute-vertical"></i> 40px
+                          </button>
+                          <button class="html-toolkit-btn" data-action="emailBuilder.insertHtmlSnippet" data-args="[&quot;divider&quot;]" title="Horizontal Line">
+                            <i class="bi bi-dash-lg"></i> Divider
+                          </button>
+                        </div>
+                      </div>
+
+                      <!-- Content -->
+                      <div class="html-toolkit-group">
+                        <label class="html-toolkit-label">Content</label>
+                        <div class="html-toolkit-grid">
+                          <button class="html-toolkit-btn" data-action="emailBuilder.insertHtmlSnippet" data-args="[&quot;heading&quot;]" title="Heading">
+                            <i class="bi bi-type-h1"></i> Heading
+                          </button>
+                          <button class="html-toolkit-btn" data-action="emailBuilder.insertHtmlSnippet" data-args="[&quot;paragraph&quot;]" title="Paragraph">
+                            <i class="bi bi-text-paragraph"></i> Paragraph
+                          </button>
+                          <button class="html-toolkit-btn" data-action="emailBuilder.insertHtmlSnippet" data-args="[&quot;image&quot;]" title="Image">
+                            <i class="bi bi-image"></i> Image
+                          </button>
+                          <button class="html-toolkit-btn" data-action="emailBuilder.insertHtmlSnippet" data-args="[&quot;button&quot;]" title="CTA Button">
+                            <i class="bi bi-cursor"></i> Button
+                          </button>
+                        </div>
+                      </div>
+
+                      <!-- Styling -->
+                      <div class="html-toolkit-group">
+                        <label class="html-toolkit-label">Style Helpers</label>
+                        <div class="html-toolkit-grid">
+                          <button class="html-toolkit-btn" data-action="emailBuilder.insertHtmlSnippet" data-args="[&quot;bg-section&quot;]" title="Background Color Section">
+                            <i class="bi bi-palette"></i> BG Section
+                          </button>
+                          <button class="html-toolkit-btn" data-action="emailBuilder.insertHtmlSnippet" data-args="[&quot;link&quot;]" title="Styled Link">
+                            <i class="bi bi-link-45deg"></i> Link
+                          </button>
+                          <button class="html-toolkit-btn" data-action="emailBuilder.insertHtmlSnippet" data-args="[&quot;bold-text&quot;]" title="Bold Text">
+                            <i class="bi bi-type-bold"></i> Bold
+                          </button>
+                          <button class="html-toolkit-btn" data-action="emailBuilder.insertHtmlSnippet" data-args="[&quot;preheader&quot;]" title="Hidden Preheader Text">
+                            <i class="bi bi-eye-slash"></i> Preheader
+                          </button>
+                        </div>
+                      </div>
+
+                      <!-- Quick Padding -->
+                      <div class="html-toolkit-group">
+                        <label class="html-toolkit-label">Wrap Selection</label>
+                        <div class="html-toolkit-grid">
+                          <button class="html-toolkit-btn" data-action="emailBuilder.wrapHtmlSelection" data-args="[&quot;padding&quot;,&quot;20px&quot;]" title="Add 20px Padding">
+                            <i class="bi bi-border-outer"></i> +Padding
+                          </button>
+                          <button class="html-toolkit-btn" data-action="emailBuilder.wrapHtmlSelection" data-args="[&quot;center&quot;]" title="Center Align">
+                            <i class="bi bi-text-center"></i> Center
+                          </button>
+                          <button class="html-toolkit-btn" data-action="emailBuilder.wrapHtmlSelection" data-args="[&quot;table-cell&quot;]" title="Wrap in Table Cell">
+                            <i class="bi bi-grid-1x2"></i> Table Cell
+                          </button>
+                          <button class="html-toolkit-btn" data-action="emailBuilder.wrapHtmlSelection" data-args="[&quot;conditional&quot;]" title="Outlook Conditional">
+                            <i class="bi bi-envelope"></i> Outlook If
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Campaign Settings -->
+                    <div class="mb-4">
+                      <h6 class="mb-3"><i class="bi bi-gear me-2"></i>Campaign Settings</h6>
+
+                      <div class="mb-3">
+                        <label class="form-label small">Campaign Name</label>
+                        <input type="text" class="form-control form-control-sm" id="builderCampaignName" placeholder="Winner Announcement 2024">
+                      </div>
+
+                      <div class="mb-3">
+                        <label class="form-label small">Subject Line</label>
+                        <input type="text" class="form-control form-control-sm" id="builderSubject" placeholder="Congratulations {{company_name}}!" data-on-input="emailBuilder.updateSubjectCounter">
+                      </div>
+
+                      <!-- A/B Testing Toggle -->
+                      <div class="mb-3">
+                        <div class="form-check form-switch">
+                          <input class="form-check-input" type="checkbox" id="abTestToggle" aria-label="Enable A/B testing" data-on-change="emailBuilder.toggleABTest">
+                          <label class="form-check-label small" for="abTestToggle">A/B Test Subject Line</label>
+                        </div>
+                        <div class="small text-muted mt-1">Send two different subject lines to a split of your list and compare open rates. Works best with lists of 100+ recipients.</div>
+                      </div>
+                      <div id="abTestSection" class="d-none">
+                        <div class="mb-2">
+                          <label class="form-label small">Subject B (variant)</label>
+                          <input type="text" class="form-control form-control-sm" id="abVariantB" placeholder="Alternative subject line..." data-on-input="emailBuilder.setAbVariantB">
+                        </div>
+                        <div class="mb-3">
+                          <label class="form-label small">Split: <span id="abSplitLabel">50/50</span></label>
+                          <input type="range" class="form-range" id="abSplitPercent" min="10" max="90" step="10" value="50" data-on-input="emailBuilder.updateAbSplit">
+                        </div>
+                      </div>
+
+                      <div class="mb-3">
+                        <label class="form-label small">Preview Text <small class="text-muted">(preheader)</small></label>
+                        <input type="text" class="form-control form-control-sm" id="builderPreheader" placeholder="Shown after subject in inbox...">
+                      </div>
+
+                      <div class="mb-3">
+                        <label class="form-label small">Select Organisation</label>
+                        <select class="form-select form-select-sm" id="builderOrgSelect">
+                          <option value="">Choose organisation...</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Send Campaign -->
+                    <div class="mb-4">
+                      <h6 class="mb-3"><i class="bi bi-send me-2"></i>Send to List</h6>
+
+                      <div class="mb-3">
+                        <label class="form-label small">Send To List</label>
+                        <select class="form-select form-select-sm" id="builderEmailList">
+                          <option value="">Choose email list...</option>
+                        </select>
+                        <small class="text-muted d-block mt-1" id="builderListCount"></small>
+                      </div>
+
+                      <div class="mb-3">
+                        <label class="form-label small">From Name</label>
+                        <input type="text" class="form-control form-control-sm" id="builderFromName" value="British Trade Awards">
+                      </div>
+
+                      <div class="mb-3">
+                        <label class="form-label small">From Email</label>
+                        <input type="email" class="form-control form-control-sm" id="builderFromEmail" value="awards@britishtradeawards.com">
+                        <div class="form-text"><i class="bi bi-info-circle me-1"></i>The sender domain must be verified in your <a href="https://resend.com/domains" target="_blank" rel="noopener">Resend account</a> or emails will be rejected.</div>
+                      </div>
+
+                      <div class="mb-3">
+                        <label class="form-label small">Reply-To Email</label>
+                        <input type="email" class="form-control form-control-sm" id="builderReplyTo" placeholder="Same as from email">
+                      </div>
+
+                      <!-- Send Mode Toggle -->
+                      <div class="mb-3">
+                        <div class="btn-group btn-group-sm w-100" role="group">
+                          <input type="radio" class="btn-check" name="sendMode" id="sendModeNow" value="now" checked aria-label="Send now" data-on-change="emailBuilder.toggleScheduler">
+                          <label class="btn btn-outline-secondary" for="sendModeNow"><i class="bi bi-send me-1" aria-hidden="true"></i>Send Now</label>
+                          <input type="radio" class="btn-check" name="sendMode" id="sendModeScheduled" value="scheduled" aria-label="Send scheduled" data-on-change="emailBuilder.toggleScheduler">
+                          <label class="btn btn-outline-secondary" for="sendModeScheduled"><i class="bi bi-clock me-1" aria-hidden="true"></i>Schedule</label>
+                        </div>
+                      </div>
+
+                      <!-- Schedule Options (hidden by default) -->
+                      <div id="scheduleOptions" class="d-none">
+                        <div class="mb-2">
+                          <label class="form-label small">Send Date</label>
+                          <input type="date" class="form-control form-control-sm" id="builderScheduleDate">
+                        </div>
+                        <div class="mb-3">
+                          <label class="form-label small">Send Time</label>
+                          <input type="time" class="form-control form-control-sm" id="builderScheduleTime" value="09:00">
+                        </div>
+                        <small class="text-muted d-block mb-2" id="schedulePreview"></small>
+                      </div>
+
+                      <div class="d-grid gap-2">
+                        <button class="btn btn-outline-secondary btn-sm" data-action="emailBuilder.sendTestEmail">
+                          <i class="bi bi-envelope-check me-1"></i>Send Test Email
+                        </button>
+                        <button class="btn btn-success btn-sm" id="btnSendCampaign" data-action="emailBuilder.sendCampaign">
+                          <i class="bi bi-send-fill me-1"></i>Send to List
+                        </button>
+                        <button class="btn btn-primary btn-sm d-none" id="btnScheduleCampaign" data-action="emailBuilder.scheduleCampaign">
+                          <i class="bi bi-clock-fill me-1"></i>Schedule Campaign
+                        </button>
+                        <button class="btn btn-primary btn-sm d-none" id="btnABCampaign" data-action="emailBuilder.sendABCampaign">
+                          <i class="bi bi-diagram-2 me-1"></i>Send A/B Test
+                        </button>
+                      </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Quick Actions -->
+                    <div class="d-grid gap-2">
+                      <button class="btn btn-outline-secondary btn-sm" data-action="emailBuilder.saveDraft">
+                        <i class="bi bi-file-earmark me-1"></i>Save Draft
+                      </button>
+                      <button class="btn btn-outline-secondary btn-sm" data-action="emailBuilder.exportHTML">
+                        <i class="bi bi-download me-1"></i>Export HTML
+                      </button>
+                      <button class="btn btn-outline-secondary btn-sm" data-action="emailBuilder.copyHTMLToClipboard">
+                        <i class="bi bi-clipboard me-1"></i>Copy HTML
+                      </button>
+                      <button class="btn btn-outline-secondary btn-sm" data-action="emailBuilder.exportPlainText">
+                        <i class="bi bi-file-text me-1"></i>Plain Text
+                      </button>
+                      <button class="btn btn-primary btn-sm" data-action="emailBuilder.saveTemplate">
+                        <i class="bi bi-save me-1"></i>Save Template
+                      </button>
+                      <button class="btn btn-outline-secondary btn-sm" data-action="emailBuilder.checkSpamScore">
+                        <i class="bi bi-shield-check me-1"></i>Spam Check
+                      </button>
+                      <button class="btn btn-outline-secondary btn-sm" data-action="globalActions.confirmClearCanvas" title="Clear the entire email canvas — this cannot be undone">
+                        <i class="bi bi-trash me-1"></i>Clear Canvas
+                      </button>
+                    </div>
+
+                    <hr>
+
+                    <!-- Available Variables -->
+                    <div class="mb-3">
+                      <h6 class="small mb-1">Dynamic Variables <i class="bi bi-info-circle text-muted" title="Variables are automatically replaced with each recipient's real data when the email is sent. For example, {{company_name}} becomes 'Acme Ltd' for one recipient and 'TechStart' for another."></i></h6>
+                      <small class="text-muted d-block mb-2"><i class="bi bi-cursor-text me-1"></i>Click any variable to copy it, then paste into your email content:</small>
+                      <div class="variable-tags">
+                        <code class="variable-tag" title="Recipient's company name">{{company_name}}</code>
+                        <code class="variable-tag" title="Recipient's company logo image">{{company_logo}}</code>
+                        <code class="variable-tag" title="Recipient's contact person name">{{contact_name}}</code>
+                        <code class="variable-tag" title="Award category name">{{award_category}}</code>
+                        <code class="variable-tag" title="Award year (e.g. 2025)">{{award_year}}</code>
+                        <code class="variable-tag" title="Company website URL">{{website}}</code>
+                        <code class="variable-tag" title="Event name">{{event_name}}</code>
+                        <code class="variable-tag" title="Event date">{{event_date}}</code>
+                        <code class="variable-tag" title="Required unsubscribe link — always include in marketing emails">{{unsubscribe_url}}</code>
+                        <code class="variable-tag" title="Link to view email in a browser">{{view_in_browser_url}}</code>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+
+                <!-- Center - Canvas/Builder -->
+                <div class="col-md-9 bg-light" style="overflow-y: auto; position: relative; z-index: 1;">
+                  <div class="p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                      <h6 class="mb-0"><i class="bi bi-palette me-2"></i>Email Canvas</h6>
+                      <div class="d-flex gap-2">
+                        <div class="btn-group btn-group-sm" role="group">
+                          <button class="btn btn-outline-secondary" data-action="emailBuilder.undo" title="Undo (Ctrl+Z)" aria-label="Undo">
+                            <i class="bi bi-arrow-counterclockwise"></i>
+                          </button>
+                          <button class="btn btn-outline-secondary" data-action="emailBuilder.redo" title="Redo (Ctrl+Y)" aria-label="Redo">
+                            <i class="bi bi-arrow-clockwise"></i>
+                          </button>
+                        </div>
+                        <div class="btn-group btn-group-sm" role="group">
+                          <button class="btn btn-outline-secondary active" data-action="emailBuilder.setViewMode" data-id="desktop">
+                            <i class="bi bi-display"></i>
+                          </button>
+                          <button class="btn btn-outline-secondary" data-action="emailBuilder.setViewMode" data-id="mobile">
+                            <i class="bi bi-phone"></i>
+                          </button>
+                        </div>
+                        <button class="btn btn-outline-primary btn-sm" data-action="emailBuilder.openPreviewModal">
+                          <i class="bi bi-eye me-1"></i>Preview
+                        </button>
+                      </div>
+                    </div>
+
+                    <!-- Email Canvas -->
+                    <div id="emailCanvas" class="email-canvas" style="max-width: 600px; margin: 0 auto; background: white; min-height: 400px; border: 1px solid #dee2e6; border-radius: 4px;">
+                      <div class="text-center py-5 text-muted">
+                        <i class="bi bi-grid-3x3-gap display-4 d-block mb-3 opacity-25"></i>
+                        <p class="mb-0">Drag blocks from the left panel to start building your email</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Fullscreen Preview Modal -->
+                <div class="modal fade" id="emailPreviewModal" tabindex="-1" aria-labelledby="emailPreviewModalLabel" aria-hidden="true">
+                  <div class="modal-dialog">
+                    <div class="modal-content">
+                      <div class="modal-header py-2 px-3" style="background: #1e1e2e; border-bottom: none; flex-shrink: 0;">
+                        <h6 class="modal-title text-light mb-0" id="emailPreviewModalLabel">
+                          <i class="bi bi-eye me-2"></i>Email Preview
+                        </h6>
+                        <div class="d-flex align-items-center gap-2">
+                          <div class="btn-group btn-group-sm" role="group">
+                            <button class="btn btn-outline-light btn-sm active" data-action="emailBuilder.setPreviewDevice" data-id="desktop">
+                              <i class="bi bi-display me-1"></i>Desktop
+                            </button>
+                            <button class="btn btn-outline-light btn-sm" data-action="emailBuilder.setPreviewDevice" data-id="mobile">
+                              <i class="bi bi-phone me-1"></i>Mobile
+                            </button>
+                          </div>
+                          <button type="button" class="btn-close btn-close-white ms-2" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                      </div>
+                      <div class="modal-body p-0">
+                        <iframe id="emailPreviewFrame" frameborder="0"></iframe>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              <!-- Campaign Log / Status Panel -->
+              <div class="mt-3" id="campaignLogSection">
+                <div class="content-card">
+                  <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="mb-0"><i class="bi bi-journal-text me-2"></i>Campaign Log</h6>
+                    <div class="d-flex gap-2 align-items-center">
+                      <input type="text" class="form-control form-control-sm" id="campaignLogSearchInput" placeholder="Search campaign name or subject..." style="width: 200px;">
+                      <select class="form-select form-select-sm" id="campaignLogFilter" style="width: auto;" data-on-change="emailBuilder.resetAndLoadCampaignLog" title="Draft = not sent yet. Scheduled = set to go out at a specific time. Sending = currently being delivered. Sent = completed. Failed = error during send. Cancelled = manually stopped.">
+                        <option value="all">All Campaigns</option>
+                        <option value="Sent">Sent</option>
+                        <option value="Scheduled">Scheduled</option>
+                        <option value="Draft">Draft</option>
+                        <option value="Sending">Sending</option>
+                        <option value="Failed">Failed</option>
+                        <option value="Cancelled">Cancelled</option>
+                      </select>
+                      <i class="bi bi-info-circle text-muted" title="Draft = not sent yet. Scheduled = set to go out at a specific time. Sending = currently being delivered. Sent = delivery complete. Failed = error during send (check logs). Cancelled = manually stopped before sending."></i>
+                      <button class="btn btn-outline-secondary btn-sm" data-action="emailBuilder.loadCampaignLog" title="Refresh">
+                        <i class="bi bi-arrow-clockwise"></i>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0" id="campaignLogTable">
+                      <thead>
+                        <tr>
+                          <th scope="col">Campaign</th>
+                          <th scope="col">Subject</th>
+                          <th scope="col">Status</th>
+                          <th scope="col">Recipients</th>
+                          <th scope="col">Opened</th>
+                          <th scope="col">Clicked</th>
+                          <th scope="col" class="d-none d-xl-table-cell">Bounced</th>
+                          <th scope="col">Sent / Scheduled</th>
+                          <th scope="col">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody id="campaignLogBody">
+                        <tr>
+                          <td colspan="9" class="text-center text-muted py-4">
+                            <i class="bi bi-journal-text d-block mb-2" style="font-size: 1.5rem; opacity: 0.3;"></i>
+                            No campaigns yet
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <!-- Pagination -->
+                  <div class="d-flex justify-content-end mt-2" id="campaignLogPagination"></div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Email Lists Sub-Tab -->
+            <div class="tab-pane fade" id="email-lists-content" role="tabpanel">
+
+              <!-- Quick Stats -->
+              <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                  <div class="content-card text-center">
+                    <i class="bi bi-list-ul text-primary fs-1 mb-2"></i>
+                    <div class="fs-2 fw-bold" id="emailListsTotalCount">0</div>
+                    <div class="text-muted small">Total Lists</div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="content-card text-center">
+                    <i class="bi bi-people text-success fs-1 mb-2"></i>
+                    <div class="fs-2 fw-bold" id="emailListsTotalSubscribers">0</div>
+                    <div class="text-muted small">Total Subscribers</div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="content-card text-center">
+                    <i class="bi bi-check-circle text-info fs-1 mb-2"></i>
+                    <div class="fs-2 fw-bold" id="emailListsActiveSubscribers">0</div>
+                    <div class="text-muted small">Active Subscribers</div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="content-card text-center">
+                    <i class="bi bi-percent text-warning fs-1 mb-2"></i>
+                    <div class="fs-2 fw-bold" id="emailListsAvgOpenRate">0%</div>
+                    <div class="text-muted small">Avg Open Rate</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Actions Bar -->
+              <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4><i class="bi bi-list-ul me-2"></i>Email Lists</h4>
+                <div class="btn-group">
+                  <button class="btn btn-sm btn-primary" data-action="emailListsModule.openCreateListModal">
+                    <i class="bi bi-plus-lg me-1"></i>Create List
+                  </button>
+                  <button class="btn btn-sm btn-outline-success" data-action="emailListsModule.openImportModal">
+                    <i class="bi bi-upload me-1"></i>Import
+                  </button>
+                </div>
+              </div>
+
+              <!-- Email Lists Grid -->
+              <div class="row g-4" id="emailListsGrid">
+                <div class="col-12">
+                  <div class="text-center py-5 text-muted">
+                    <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                    Loading email lists...
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Email Sequences Sub-Tab -->
+            <div class="tab-pane fade" id="email-sequences-content" role="tabpanel">
+              <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4><i class="bi bi-envelope-arrow-up me-2"></i>Email Sequences</h4>
+                <button class="btn btn-primary btn-sm" data-action="marketingModule.showCreateSequence">
+                  <i class="bi bi-plus-lg me-2"></i>Create New Sequence
+                </button>
+              </div>
+              <p class="text-muted small">Create automated email sequences triggered by status changes or manual enrollment. Use sequences for multi-email workflows; use the Email Builder for one-off campaigns.</p>
+              <div class="alert alert-light border py-2 px-3 mb-3 small" role="note">
+                <strong><i class="bi bi-lightbulb text-warning me-1"></i>Common sequences:</strong>
+                <ul class="mb-0 mt-1 ps-3">
+                  <li><strong>Entry received</strong> → Confirmation email → Payment reminder (3 days) → Voting reminder (when live)</li>
+                  <li><strong>Winner announced</strong> → Congratulations → Media pack → Post-event survey (1 week)</li>
+                  <li><strong>Sponsor onboarded</strong> → Welcome &amp; overview → Event logistics → Upgrade offer (30 days)</li>
+                </ul>
+              </div>
+              <div id="emailSequencesGrid">
+                <div class="text-center py-5 text-muted">
+                  <i class="bi bi-envelope-slash display-4 d-block mb-2 opacity-25"></i>
+                  No sequences configured yet
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ==================================================== -->
+      <!-- PAYMENTS TAB -->
+      <!-- ==================================================== -->
+      <div class="tab-pane fade" id="payments" role="tabpanel">
+        <div class="container-fluid">
+
+          <!-- Page Header -->
+          <div class="section-header">
+            <h1 class="section-title">
+              <i class="bi bi-credit-card me-2"></i>Payments & Invoicing
+            </h1>
+            <p class="section-subtitle">Manage invoices, payments, and financial tracking<span id="paymentsFreshness" class="ms-2"></span></p>
+          </div>
+
+          <!-- Getting Started Banner -->
+          <div class="card border-0 shadow-sm mb-4" id="paymentsGettingStarted">
+            <div class="card-body py-3">
+              <div class="d-flex justify-content-between align-items-start mb-3">
+                <div>
+                  <h6 class="fw-bold mb-1"><i class="bi bi-map me-2 text-primary"></i>Getting Started — Payments &amp; Invoicing</h6>
+                  <p class="text-muted small mb-0">Manage entry fees, sponsorship invoices, and event ticket payments.</p>
+                </div>
+                <button type="button" class="btn-close btn-sm" aria-label="Dismiss" onclick="document.getElementById('paymentsGettingStarted').style.display='none';localStorage.setItem('paymentsWorkflowDismissed','1');"></button>
+              </div>
+              <div class="row g-2">
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">1</span>
+                    <div>
+                      <div class="fw-semibold small">Create an Invoice</div>
+                      <div class="text-muted" style="font-size:.75rem;">Select an organisation, add line items (entry fees, sponsorship, tables), and set payment terms.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">2</span>
+                    <div>
+                      <div class="fw-semibold small">Send via Email or Stripe</div>
+                      <div class="text-muted" style="font-size:.75rem;">Email the invoice directly or send a Stripe payment link for online card payment.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">3</span>
+                    <div>
+                      <div class="fw-semibold small">Record Payment Received</div>
+                      <div class="text-muted" style="font-size:.75rem;">Mark invoices as paid when payment arrives by bank transfer, or Stripe updates status automatically.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="mt-3">
+                <button class="btn btn-sm btn-primary" data-action="paymentsModule.createNewInvoice"><i class="bi bi-plus-lg me-1"></i>Create First Invoice</button>
+              </div>
+            </div>
+          </div>
+          <script>if(localStorage.getItem('paymentsWorkflowDismissed')==='1'){var _pb=document.getElementById('paymentsGettingStarted');if(_pb)_pb.style.display='none';}</script>
+
+          <!-- Sub-navigation -->
+          <ul class="nav nav-tabs mb-4" id="paymentsSubTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" id="invoices-subtab" data-bs-toggle="tab" data-bs-target="#invoices-content" type="button" role="tab">
+                <i class="bi bi-file-earmark-text me-2"></i>Invoices
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="payments-list-subtab" data-bs-toggle="tab" data-bs-target="#payments-list-content" type="button" role="tab">
+                <i class="bi bi-cash-coin me-2"></i>Payments
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="financial-reports-subtab" data-bs-toggle="tab" data-bs-target="#financial-reports-content" type="button" role="tab">
+                <i class="bi bi-graph-up me-2"></i>Financial Reports
+              </button>
+            </li>
+            <li class="nav-item d-none" role="presentation">
+              <button class="nav-link" id="accounting-subtab" data-bs-toggle="tab" data-bs-target="#accounting-content" type="button" role="tab">
+                <i class="bi bi-currency-pound me-2"></i>Accounting Integration
+              </button>
+            </li>
+          </ul>
+
+          <!-- Sub-tab Content -->
+          <div class="tab-content" id="paymentsSubTabContent">
+
+            <!-- Invoices Sub-Tab -->
+            <div class="tab-pane fade show active" id="invoices-content" role="tabpanel">
+
+              <!-- Overdue Alert Banner -->
+              <div id="overdueInvoicesBanner" class="alert alert-danger d-flex align-items-center gap-2 mb-3 d-none" role="alert">
+                <i class="bi bi-exclamation-triangle-fill flex-shrink-0"></i>
+                <div class="flex-grow-1">
+                  <strong><span id="overdueInvoicesBannerCount">0</span> overdue invoice<span id="overdueInvoicesBannerPlural">s</span></strong> — payment is past due.
+                </div>
+                <button class="btn btn-danger btn-sm" data-action="paymentsModule.filterOverdueInvoices">View Overdue</button>
+              </div>
+
+              <!-- Quick Stats -->
+              <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                  <div class="stat-card stat-card-clickable" data-stat-filter="clear:invoiceStatusFilter" title="Show all invoices">
+                    <i class="bi bi-file-earmark-text stat-card-icon text-primary"></i>
+                    <h6>Total Invoices</h6>
+                    <div class="stat-value" id="totalInvoicesCount"><span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></div>
+                    <div class="stat-card-hover-indicator"><i class="bi bi-arrow-right-circle"></i></div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="stat-card stat-card-clickable" data-stat-filter="invoiceStatusFilter:paid" title="Filter to paid invoices">
+                    <i class="bi bi-check-circle stat-card-icon text-success"></i>
+                    <h6>Paid Invoices</h6>
+                    <div class="stat-value text-success" id="paidInvoicesCount"><span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></div>
+                    <div class="stat-card-hover-indicator"><i class="bi bi-arrow-right-circle"></i></div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="stat-card stat-card-clickable" data-stat-filter="invoiceStatusFilter:overdue" title="Filter to overdue invoices">
+                    <i class="bi bi-exclamation-triangle stat-card-icon text-warning"></i>
+                    <h6>Overdue Invoices</h6>
+                    <div class="stat-value text-warning" id="overdueInvoicesCount"><span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></div>
+                    <div class="stat-card-hover-indicator"><i class="bi bi-arrow-right-circle"></i></div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="stat-card stat-card-clickable" data-stat-filter="invoiceStatusFilter:partially_paid" title="Total remaining balance on partially-paid invoices (deposit taken, remainder still owed). Click to filter. Does not include fully-unpaid overdue invoices.">
+                    <i class="bi bi-currency-pound stat-card-icon text-info"></i>
+                    <h6>Outstanding Balance <small class="text-muted fw-normal" style="font-size:.7rem;">Partial pay</small></h6>
+                    <div class="stat-value text-info" id="totalOutstandingAmount">£<span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></div>
+                    <div class="stat-card-hover-indicator"><i class="bi bi-arrow-right-circle"></i></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Filters & Actions -->
+              <div class="content-card mb-4 filter-bar-sticky">
+                <div class="row g-3 align-items-end">
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold">Search</label>
+                    <input type="text" class="form-control form-control-sm" id="invoiceSearchBox" placeholder="Invoice #, company...">
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold">Status <i class="bi bi-info-circle text-muted" title="Invoice lifecycle: Draft (not yet sent) → Sent (delivered to customer) → Viewed (customer opened it) → Paid or Partially Paid (payment received) or Overdue (past due date). Cancelled = removed from billing. Stripe auto-updates status when payment is received."></i></label>
+                    <select class="form-select form-select-sm" id="invoiceStatusFilter" data-on-change="paymentsModule.filterInvoices">
+                      <option value="">All Statuses</option>
+                      <option value="draft">Draft</option>
+                      <option value="sent">Sent</option>
+                      <option value="viewed">Viewed</option>
+                      <option value="paid">Paid</option>
+                      <option value="partially_paid">Partially Paid</option>
+                      <option value="overdue">Overdue</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                  </div>
+                  <div class="col-md-2">
+                    <label class="form-label small fw-bold">Organisation</label>
+                    <select class="form-select form-select-sm" id="invoiceOrgFilter" data-on-change="paymentsModule.filterInvoices">
+                      <option value="">All Organisations</option>
+                    </select>
+                  </div>
+                  <div class="col-md-2">
+                    <label class="form-label small fw-bold">Date Range</label>
+                    <input type="month" class="form-control form-control-sm" id="invoiceMonthFilter" data-on-change="paymentsModule.filterInvoices">
+                  </div>
+                  <div class="col-md-2">
+                    <div class="d-flex gap-1">
+                      <div class="btn-group">
+                        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                          <i class="bi bi-download me-1"></i>Export
+                        </button>
+                        <ul class="dropdown-menu">
+                          <li><a class="dropdown-item" href="#" data-action="paymentsModule.exportInvoicesCSV" data-prevent-default="true"><i class="bi bi-filetype-csv text-success me-2"></i>Export CSV</a></li>
+                          <li><a class="dropdown-item" href="#" data-action="paymentsModule.exportInvoicesExcel" data-prevent-default="true"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Export Excel</a></li>
+                          <li><a class="dropdown-item" href="#" data-action="paymentsModule.exportInvoicesPDF" data-prevent-default="true"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
+                          <li><hr class="dropdown-divider"></li>
+                          <li><a class="dropdown-item text-warning" href="#" data-action="paymentsModule.sendOverdueReminders" data-prevent-default="true" title="Sends a payment chaser email to all contacts with invoices past their due date (status: Overdue). A confirmation showing the recipient count will appear before any emails are sent."><i class="bi bi-bell me-2"></i>Send Overdue Reminders</a></li>
+                          <li><a class="dropdown-item text-info" href="#" data-action="paymentsModule.openDunningSettings" data-prevent-default="true"><i class="bi bi-gear me-2"></i>Auto-Reminder Settings</a></li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Invoices Table -->
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="fw-semibold mb-0">Invoices</h6>
+                <button class="btn btn-primary btn-sm" data-action="paymentsModule.createNewInvoice">
+                  <i class="bi bi-plus-lg me-1"></i>Create Invoice
+                </button>
+              </div>
+              <div class="table-container">
+                <div class="table-responsive">
+                  <table class="table table-hover table-striped align-middle">
+                    <caption class="visually-hidden">Invoices list</caption>
+                    <thead class="table-light">
+                      <tr>
+                        <th scope="col" class="u-pointer" data-action="paymentsModule.sortInvoices" data-args="[&quot;invoice_number&quot;]" aria-sort="none">Invoice #</th>
+                        <th scope="col" class="u-pointer" data-action="paymentsModule.sortInvoices" data-args="[&quot;org_name&quot;]" aria-sort="none">Organisation</th>
+                        <th scope="col" class="u-pointer" data-action="paymentsModule.sortInvoices" data-args="[&quot;invoice_date&quot;]" aria-sort="none">Date</th>
+                        <th scope="col" class="u-pointer" data-action="paymentsModule.sortInvoices" data-args="[&quot;due_date&quot;]" aria-sort="none">Due Date</th>
+                        <th scope="col">Type</th>
+                        <th scope="col" class="u-pointer" data-action="paymentsModule.sortInvoices" data-args="[&quot;total_amount&quot;]" aria-sort="none">Amount</th>
+                        <th scope="col">Paid</th>
+                        <th scope="col" class="u-pointer" data-action="paymentsModule.sortInvoices" data-args="[&quot;balance_due&quot;]" aria-sort="none">Balance</th>
+                        <th scope="col" class="u-pointer" data-action="paymentsModule.sortInvoices" data-args="[&quot;status&quot;]" aria-sort="none">Status</th>
+                        <th scope="col">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="invoicesTableBody">
+                      <tr>
+                        <td colspan="10" class="text-center py-5 text-muted">
+                          <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                          Loading invoices...
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Payments List Sub-Tab -->
+            <div class="tab-pane fade" id="payments-list-content" role="tabpanel">
+
+              <!-- Quick Stats -->
+              <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                  <div class="stat-card stat-card-clickable" data-stat-filter="clear:paymentStatusFilter" title="Show all payments">
+                    <i class="bi bi-cash-coin stat-card-icon text-success"></i>
+                    <h6>Total Payments</h6>
+                    <div class="stat-value text-success" id="totalPaymentsCount"><span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></div>
+                    <div class="stat-card-hover-indicator"><i class="bi bi-arrow-right-circle"></i></div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="stat-card stat-card-clickable" data-stat-filter="paymentStatusFilter:completed" title="Filter to completed payments">
+                    <i class="bi bi-currency-pound stat-card-icon text-primary"></i>
+                    <h6>Total Received</h6>
+                    <div class="stat-value" id="totalPaymentsAmount"><span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></div>
+                    <div class="stat-card-hover-indicator"><i class="bi bi-arrow-right-circle"></i></div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="stat-card stat-card-clickable" data-stat-filter="callback:paymentsModule.filterThisMonth" title="Filter to this month's payments">
+                    <i class="bi bi-calendar-month stat-card-icon text-info"></i>
+                    <h6>This Month</h6>
+                    <div class="stat-value text-info" id="monthlyPaymentsAmount"><span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></div>
+                    <div class="stat-card-hover-indicator"><i class="bi bi-arrow-right-circle"></i></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Filters -->
+              <div class="content-card mb-4">
+                <div class="row g-3 align-items-end">
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold">Search</label>
+                    <input type="text" class="form-control form-control-sm" id="paymentSearchBox" placeholder="Reference, company...">
+                  </div>
+                  <div class="col-md-2">
+                    <label class="form-label small fw-bold">Payment Method</label>
+                    <select class="form-select form-select-sm" id="paymentMethodFilter" data-on-change="paymentsModule.filterPayments">
+                      <option value="">All Methods</option>
+                      <option value="bank_transfer">Bank Transfer</option>
+                      <option value="card">Card</option>
+                      <option value="paypal">PayPal</option>
+                      <option value="stripe">Stripe</option>
+                      <option value="cash">Cash</option>
+                      <option value="cheque">Cheque</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                  <div class="col-md-2">
+                    <label class="form-label small fw-bold">Status</label>
+                    <select class="form-select form-select-sm" id="paymentStatusFilter" data-on-change="paymentsModule.filterPayments">
+                      <option value="">All Statuses</option>
+                      <option value="pending">Pending</option>
+                      <option value="completed">Completed</option>
+                      <option value="failed">Failed</option>
+                      <option value="refunded">Refunded</option>
+                    </select>
+                  </div>
+                  <div class="col-md-2">
+                    <label class="form-label small fw-bold">Date Range</label>
+                    <input type="month" class="form-control form-control-sm" id="paymentMonthFilter" data-on-change="paymentsModule.filterPayments">
+                  </div>
+                  <div class="col-md-3">
+                    <div class="d-flex gap-1">
+                      <button class="btn btn-success btn-sm flex-grow-1" data-action="paymentsModule.recordNewPayment">
+                        <i class="bi bi-plus-lg me-1"></i>Record Payment
+                      </button>
+                      <div class="btn-group">
+                        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                          <i class="bi bi-download me-1"></i>Export
+                        </button>
+                        <ul class="dropdown-menu">
+                          <li><a class="dropdown-item" href="#" data-action="paymentsModule.exportPaymentsCSV" data-prevent-default="true"><i class="bi bi-filetype-csv text-success me-2"></i>Export CSV</a></li>
+                          <li><a class="dropdown-item" href="#" data-action="paymentsModule.exportPaymentsExcel" data-prevent-default="true"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Export Excel</a></li>
+                          <li><a class="dropdown-item" href="#" data-action="paymentsModule.exportPaymentsPDF" data-prevent-default="true"><i class="bi bi-file-pdf text-danger me-2"></i>Print / PDF</a></li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Payments Table -->
+              <div class="table-container">
+                <div class="table-responsive">
+                  <table class="table table-hover table-striped align-middle">
+                    <thead class="table-light">
+                      <tr>
+                        <th scope="col">Reference</th>
+                        <th scope="col">Date</th>
+                        <th scope="col">Organisation</th>
+                        <th scope="col">Invoice</th>
+                        <th scope="col">Method</th>
+                        <th scope="col">Amount</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="paymentsTableBody">
+                      <tr>
+                        <td colspan="8" class="text-center py-5 text-muted">
+                          <i class="bi bi-hourglass-split display-4 d-block mb-2 opacity-25"></i>
+                          Loading payments...
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Financial Reports Sub-Tab -->
+            <div class="tab-pane fade" id="financial-reports-content" role="tabpanel">
+
+              <!-- Report Options -->
+              <div class="content-card mb-4">
+                <h5 class="mb-3"><i class="bi bi-graph-up me-2"></i>Generate Financial Reports</h5>
+                <div class="mb-3 d-flex gap-2 flex-wrap">
+                  <span class="text-muted small fw-semibold align-self-center me-1">Quick range:</span>
+                  <button class="btn btn-sm btn-outline-secondary" onclick="(function(){var n=new Date(),s=new Date(n);s.setDate(n.getDate()-30);document.getElementById('reportStartDate').value=s.toISOString().slice(0,10);document.getElementById('reportEndDate').value=n.toISOString().slice(0,10);})()">Last 30 Days</button>
+                  <button class="btn btn-sm btn-outline-secondary" onclick="(function(){var n=new Date(),q=Math.floor(n.getMonth()/3),s=new Date(n.getFullYear(),q*3,1);document.getElementById('reportStartDate').value=s.toISOString().slice(0,10);document.getElementById('reportEndDate').value=n.toISOString().slice(0,10);})()">This Quarter</button>
+                  <button class="btn btn-sm btn-outline-secondary" onclick="(function(){var n=new Date();document.getElementById('reportStartDate').value=n.getFullYear()+'-01-01';document.getElementById('reportEndDate').value=n.toISOString().slice(0,10);})()">This Year</button>
+                </div>
+                <div class="row g-3">
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold">Report Type <i class="bi bi-info-circle text-muted ms-1" title="Revenue Summary: total income by period. Outstanding Invoices: unpaid amounts. Payment History: all received payments. By Organisation: breakdown per company. By Package Type: income by award package. By Event: breakdown per ceremony."></i></label>
+                    <select class="form-select" id="reportType">
+                      <option value="">Select report type…</option>
+                      <option value="revenue">Revenue Summary</option>
+                      <option value="outstanding">Outstanding Invoices</option>
+                      <option value="payments">Payment History</option>
+                      <option value="by_org">By Organisation</option>
+                      <option value="by_package">By Package Type</option>
+                      <option value="by_event">By Event</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold">Start Date</label>
+                    <input type="date" class="form-control" id="reportStartDate">
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold">End Date</label>
+                    <input type="date" class="form-control" id="reportEndDate">
+                  </div>
+                  <div class="col-md-3 d-flex align-items-end">
+                    <button class="btn btn-primary w-100" data-action="paymentsModule.generateReport">
+                      <i class="bi bi-file-earmark-bar-graph me-1"></i>Generate Report
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Report Display Area -->
+              <div class="content-card">
+                <div id="reportDisplayArea">
+                  <div class="text-center py-5 text-muted">
+                    <i class="bi bi-bar-chart display-4 d-block mb-3 opacity-25"></i>
+                    <p>Select report options above and click "Generate Report"</p>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Accounting Integration Sub-Tab -->
+            <div class="tab-pane fade" id="accounting-content" role="tabpanel">
+              <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4><i class="bi bi-currency-pound me-2"></i>Accounting Integration</h4>
+              </div>
+              <p class="text-muted small mb-3">Connect your accounting software to sync invoices and payments.</p>
+              <div id="accountingIntegrationContainer">
+                <div class="text-center py-5 text-muted">
+                  <i class="bi bi-currency-pound display-4 d-block mb-2 opacity-25"></i>
+                  Loading accounting settings...
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ==================================================== -->

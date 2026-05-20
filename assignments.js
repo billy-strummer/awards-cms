@@ -1202,15 +1202,51 @@ const assignmentsModule = {
       return [];
     }
   },
+  async _loadConflictsFromServer() {
+    try {
+      const data = await apiClient.selectAll('judge_conflicts', {
+        sort: { column: 'created_at', ascending: true },
+      });
+      const conflicts = (data || []).map((c) => ({
+        judgeEmail: c.judge_email,
+        orgName: c.org_name,
+        orgId: c.org_id || null,
+      }));
+      localStorage.setItem('judgeConflicts', JSON.stringify(conflicts));
+    } catch (e) {
+      // localStorage cache remains valid on failure
+    }
+  },
+  async _saveConflictsToServer(conflicts) {
+    try {
+      await apiClient.deleteByFilters('judge_conflicts', {
+        id: { op: 'neq', value: '00000000-0000-0000-0000-000000000000' },
+      });
+      if (conflicts.length > 0) {
+        await apiClient.insert(
+          'judge_conflicts',
+          conflicts.map((c) => ({
+            judge_email: c.judgeEmail,
+            org_name: c.orgName,
+            org_id: c.orgId || null,
+          }))
+        );
+      }
+    } catch (e) {
+      // ignore — localStorage copy is still updated
+    }
+  },
   _saveConflicts(conflicts) {
     localStorage.setItem('judgeConflicts', JSON.stringify(conflicts));
+    this._saveConflictsToServer(conflicts);
   },
 
   hasConflict(judgeEmail, orgId) {
     return this._getConflicts().some((c) => c.judgeEmail === judgeEmail && c.orgId === orgId);
   },
 
-  openConflictManager() {
+  async openConflictManager() {
+    await this._loadConflictsFromServer();
     const conflicts = this._getConflicts();
     const html = `
       <div class="mb-3">

@@ -8,6 +8,7 @@ Third audit: 2026-05-07 (post-structural-fix audit — see V3 section below)
 Sixth audit: 2026-05-08 (international awards business first-run UX audit — see V6 section below)
 Seventh audit: 2026-05-14 (top-to-bottom professional CMS audit — see V7 section below)
 Fourteenth audit: 2026-05-14 (deep tab-by-tab audit with 7 parallel agents — see V14 section below)
+Fifteenth audit: 2026-05-14 (follow-up suggestions from V14 review — see V15 section below)
 Branch: `claude/bta-location-restructure-JS5hX`
 
 ---
@@ -2437,4 +2438,123 @@ Branch: `claude/bta-location-restructure-JS5hX`
 ### V14-M8 — Auto-Segments AND/OR matching logic has no explanation
 - **File:** `index.html` line 6332
 - **Fix:** Added title tooltips to AND/OR buttons with concrete examples. Added inline label: "ALL = must match every rule · ANY = matches at least one rule".
+- [x] Implemented
+
+---
+
+## V15 — Suggested improvements (post-V14 review), implemented 2026-05-14
+
+### V15-C1 — Dashboard "Pending Reviews" → "Pending Approvals"
+- **File:** `index.html` line 395
+- **Fix:** Renamed to "Pending Approvals" + added tooltip "Awards in Draft or Pending status waiting to be set Active".
+- [x] Implemented
+
+### V15-C2 — Waitlist tab has no explanation of how the waitlist works
+- **File:** `index.html` (Waitlist tab)
+- **Fix:** Added alert explaining manual promotion flow and confirmation email behaviour.
+- [x] Implemented
+
+### V15-C3 — Budget tab: Estimated/Actual/Variance not explained
+- **File:** `index.html` (Budget tab)
+- **Fix:** Added alert defining Estimated, Actual, and Variance with positive/negative guidance.
+- [x] Implemented
+
+### V15-C4 — Seating Chart entry point has no tooltip
+- **File:** `index.html` line 8301 (attendees modal tools dropdown)
+- **Fix:** Added descriptive title tooltip to "Shareable Seating Chart" dropdown item.
+- [x] Implemented
+
+### V15-H2 — Entries Getting Started implies "Add Entry" admin button exists
+- **File:** `index.html` (entries Getting Started step 2)
+- **Fix:** Added note: "there is no manual 'Add Entry' button — all entries must be submitted through the public form."
+- [x] Implemented
+
+### V15-H4 — AI Vetting Actions column has no tooltip
+- **File:** `index.html` line 11005
+- **Fix:** Added tooltip to "Actions" column header explaining available actions.
+- [x] Implemented
+
+### V15-H5 — Season selector help text too brief
+- **File:** `index.html` line 7361 (award form)
+- **Fix:** Expanded help text to explain auto-fill scope and Settings → Award Seasons management.
+- [x] Implemented
+
+### V15-H6 — Award Judging Panel modal title has no subtitle
+- **File:** `index.html` line 7873
+- **Fix:** Added subtitle "— assign judges & manage nominees for this category".
+- [x] Implemented
+
+### V15-H7 — Outstanding Balance stat card misleads (only partially-paid)
+- **File:** `index.html` line 5621
+- **Fix:** Improved tooltip to explain partially-paid scope. Added "(Partial pay)" label.
+- [x] Implemented
+
+### V15-H8 — Send Overdue Reminders button has no explanation
+- **File:** `index.html` line 5671
+- **Fix:** Added tooltip describing recipients, trigger condition, and confirmation step.
+- [x] Implemented
+
+### V15-H9 — Year-over-Year chart has no subtitle explaining what is compared
+- **File:** `index.html` line 3882
+- **Fix:** Added subtitle: "Compares Entries, Winners, and Organisations across the last 3 calendar years."
+- [x] Implemented
+
+### V15-H10 — Social media Schedule Time has no timezone indication
+- **File:** `index.html` (social media scheduling)
+- **Fix:** Added "Times are in your browser's local timezone" note below time input.
+- [x] Implemented
+
+### V15-H11 — From Email field has no sender verification reminder
+- **File:** `index.html` (Email Builder sidebar)
+- **Fix:** Added form-text noting domain must be verified in Resend with link.
+- [x] Implemented
+
+### V15-H12 — Check-In Rate progress bar has no denominator explanation
+- **File:** `index.html` (Events check-in tab)
+- **Fix:** Added tooltip: "Checked-in guests ÷ guests with RSVP status 'Attending'."
+- [x] Implemented
+
+### V15-M1 — Export Data buttons have no per-button descriptions
+- **File:** `index.html` (Reports Export section)
+- **Fix:** Added title tooltips to each export button describing the included columns.
+- [x] Implemented
+
+### V15-M2 — Pipeline Summary "Visual" column name is unclear
+- **File:** `index.html` line 3920
+- **Fix:** Renamed "Visual" → "Trend" with tooltip explaining it's a mini progress bar.
+- [x] Implemented
+
+### V15-M3 — Deal Win Rate stat card tooltip does not define the calculation
+- **File:** `index.html` line 6107
+- **Fix:** Updated tooltip with full definition: Confirmed ÷ (Confirmed + Declined).
+- [x] Implemented
+
+### V15-M4 — Meetings Duration column has no entry guidance
+- **File:** `index.html` line 6244
+- **Fix:** Added tooltip explaining where to enter duration when logging a meeting.
+- [x] Implemented
+
+### V15-M5 — My Tasks heading does not distinguish personal vs team tasks
+- **File:** `index.html` (CRM My Tasks tab)
+- **Fix:** Added subtitle explaining tasks are personal (assigned to current user), vs team-wide communications log.
+- [x] Implemented
+
+### V15-M6 — Smart Segment result area is blank before first run
+- **File:** `index.html` line 6388
+- **Fix:** Added placeholder text "Click Apply Segment to preview matching organisations."
+- [x] Implemented
+
+### V15-M7 — Content Calendar has no usage instructions
+- **File:** `index.html` (Marketing Content Calendar tab)
+- **Fix:** Updated subtitle with workflow: schedule in Social Media tab → appears here → click to edit/cancel.
+- [x] Implemented
+
+### V15-M8 — Awards Getting Started references wrong icon ("trophy icon")
+- **File:** `index.html` line 933
+- **Fix:** Corrected to "people icon (bi-people-fill)" which matches the actual button rendered by awards.js.
+- [x] Implemented
+
+### V15-M9 — Flagged Companies card gives no guidance on next steps
+- **File:** `index.html` line 10949
+- **Fix:** Added action guidance: "review AI findings, then either approve (override to Pass) or disqualify from the shortlist".
 - [x] Implemented

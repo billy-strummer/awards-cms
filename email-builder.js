@@ -3173,7 +3173,7 @@ ${content}
     if (!wrapper) return;
 
     const newBlockId = 'block-' + ++this._blockIdCounter + '-' + Math.random().toString(36).slice(2, 7);
-    const clone = wrapper.cloneNode(true);
+    const clone = /** @type {Element} */ (wrapper.cloneNode(true));
     clone.setAttribute('data-block-id', newBlockId);
 
     // Update any block-specific IDs in the clone

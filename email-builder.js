@@ -18,6 +18,8 @@ const emailBuilder = {
   // Autosave
   hasUnsavedChanges: false,
   autosaveTimer: null,
+  // Debounced preview updater (avoids expensive re-render on every keystroke)
+  _debouncedUpdatePreview: null,
   // Campaign log pagination
   campaignLogPage: 0,
   campaignLogPageSize: 20,
@@ -65,6 +67,7 @@ const emailBuilder = {
       return;
     }
 
+    this._debouncedUpdatePreview = utils.debounce(() => this.updatePreview(), 300);
     this.setupDragAndDrop();
     this.loadOrganisations();
     this.loadEmailLists();
@@ -293,10 +296,10 @@ const emailBuilder = {
     // Add edit/delete controls
     this.addBlockControls(blockWrapper, blockId);
 
-    // Wire up rich text content to update preview on input
+    // Wire up rich text content to update preview on input (debounced to avoid re-render on every keystroke)
     const richContent = blockWrapper.querySelector('.email-richtext-content');
     if (richContent) {
-      richContent.addEventListener('input', () => this.updatePreview());
+      richContent.addEventListener('input', () => this._debouncedUpdatePreview?.());
     }
   },
 
@@ -3494,14 +3497,14 @@ ${content}
     this.canvas.querySelectorAll('.email-richtext-content').forEach((el) => {
       const fresh = el.cloneNode(true);
       el.parentNode.replaceChild(fresh, el);
-      fresh.addEventListener('input', () => this.updatePreview());
+      fresh.addEventListener('input', () => this._debouncedUpdatePreview?.());
     });
     this.canvas.querySelectorAll('[contenteditable="true"]').forEach((el) => {
       const fresh = el.cloneNode(true);
       el.parentNode.replaceChild(fresh, el);
       fresh.addEventListener('input', () => {
         this.markUnsavedChanges();
-        this.updatePreview();
+        this._debouncedUpdatePreview?.();
       });
     });
   },

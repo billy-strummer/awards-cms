@@ -27,6 +27,39 @@ const supabaseAuth = createClient(
 
 const ALLOWED_ORIGIN = process.env.APP_URL || 'https://admin.britishtradeawards.com';
 
+// Allowed file extensions for upload (document and image types only)
+const ALLOWED_EXTENSIONS = new Set([
+  'pdf',
+  'doc',
+  'docx',
+  'xls',
+  'xlsx',
+  'csv',
+  'txt',
+  'rtf',
+  'odt',
+  'ods',
+  'jpg',
+  'jpeg',
+  'png',
+  'gif',
+  'webp',
+  'svg',
+  'tiff',
+  'bmp',
+  'mp4',
+  'mov',
+  'avi',
+  'webm',
+  'mp3',
+  'wav',
+  'zip',
+  'ppt',
+  'pptx',
+]);
+
+const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024; // 25 MB
+
 function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -223,6 +256,12 @@ async function handleSaveFileMetadata(req, res) {
     return res.status(400).json({ error: 'entry_id, file_name, and file_url are required' });
   }
 
+  // Validate file extension against allowlist
+  const metaExt = file_name.split('.').pop()?.toLowerCase() || '';
+  if (!ALLOWED_EXTENSIONS.has(metaExt)) {
+    return res.status(400).json({ error: `File type ".${metaExt}" is not allowed.` });
+  }
+
   // Verify the entry exists
   const { data: entry } = await supabase.from('entries').select('id').eq('id', entry_id).single();
   if (!entry) {
@@ -261,8 +300,23 @@ async function handleGetUploadToken(req, res) {
   const entryNumber = sanitizeString(req.body.entry_number, 50);
   const fileName = sanitizeString(req.body.file_name, 500);
 
+  const fileSize = req.body.file_size;
+
   if (!entryNumber || !fileName) {
     return res.status(400).json({ error: 'entry_number and file_name are required' });
+  }
+
+  // Validate file extension against allowlist
+  const ext = fileName.split('.').pop()?.toLowerCase() || '';
+  if (!ALLOWED_EXTENSIONS.has(ext)) {
+    return res
+      .status(400)
+      .json({ error: `File type ".${ext}" is not allowed. Permitted types: documents and images only.` });
+  }
+
+  // Enforce max file size (client-supplied; also enforced by Supabase Storage policy)
+  if (typeof fileSize === 'number' && fileSize > MAX_FILE_SIZE_BYTES) {
+    return res.status(400).json({ error: `File exceeds the 25 MB maximum size limit.` });
   }
 
   // Verify the entry exists

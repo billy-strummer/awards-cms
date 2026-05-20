@@ -30,6 +30,8 @@ const emailBuilder = {
   _blockIdCounter: 0,
   // Drag-to-reorder tracking
   _reorderDragId: null,
+  // Tracks the campaign ID of the draft currently open in the builder (null = unsaved new draft)
+  _currentDraftId: null,
 
   /**
    * Update A/B variant B subject line from the input field.
@@ -1486,6 +1488,7 @@ ${content}
       })
     ) {
       this.blocks = [];
+      this._currentDraftId = null;
       this.showEmptyState();
       this.updatePreview();
     }
@@ -3548,7 +3551,8 @@ ${content}
         }),
       };
 
-      await apiClient.insert('email_campaigns', draftData);
+      const insertResult = await apiClient.insert('email_campaigns', draftData);
+      this._currentDraftId = insertResult.data?.[0]?.id || null;
 
       this.hasUnsavedChanges = false;
       utils.showToast('Draft saved successfully!', 'success');
@@ -3563,6 +3567,7 @@ ${content}
    * Load a draft back into the builder
    */
   async loadDraft(campaignId) {
+    this._currentDraftId = campaignId;
     try {
       const result = await apiClient.select('email_campaigns', {
         filters: { id: campaignId },
@@ -4281,7 +4286,8 @@ ${content}
   },
 
   /**
-   * Save current state to localStorage
+   * Save current state to localStorage and, if a draft campaign ID is tracked,
+   * also silently update the DB campaign so the work is recoverable across devices.
    */
   autosaveToLocalStorage() {
     try {
@@ -4294,9 +4300,32 @@ ${content}
         blocks: this.blocks,
       };
       localStorage.setItem('emailBuilder_autosave', JSON.stringify(state));
+      if (this._currentDraftId) {
+        this._autosaveToDB(state).catch(() => {});
+      }
     } catch (e) {
       // localStorage may be full or disabled
     }
+  },
+
+  async _autosaveToDB(state) {
+    const html = this.generateFullHTML();
+    await apiClient.update('email_campaigns', this._currentDraftId, {
+      campaign_name: state.campaignName || 'Untitled Draft',
+      subject: state.subject || '',
+      notes: JSON.stringify({
+        html,
+        from_name: document.getElementById('builderFromName')?.value || '',
+        from_email: document.getElementById('builderFromEmail')?.value || '',
+        reply_to: document.getElementById('builderReplyTo')?.value || '',
+        list_id: document.getElementById('builderEmailList')?.value || '',
+        preheader: state.preheader,
+        canvas_html: state.canvasHTML,
+        blocks: state.blocks,
+        ab_enabled: this.abTestEnabled,
+        ab_variant_b: this.abVariantB,
+      }),
+    });
   },
 
   /**

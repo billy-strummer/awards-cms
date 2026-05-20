@@ -1062,6 +1062,7 @@ const marketingModule = {
   // EMAIL SEQUENCES (moved from Organisations)
   // ============================================
   _emailSequences: [],
+  _emailSequencesFromServer: false,
 
   async _loadEmailSequences() {
     try {
@@ -1072,6 +1073,7 @@ const marketingModule = {
       });
       if (result.data?.[0]) {
         this._emailSequences = JSON.parse(result.data[0].value);
+        this._emailSequencesFromServer = true;
         return;
       }
     } catch (e) {
@@ -1199,6 +1201,7 @@ const marketingModule = {
       utils.showToast('Add at least one step with a subject', 'warning');
       return;
     }
+    if (this._emailSequencesFromServer) await this._loadEmailSequences(); // Fetch fresh to avoid losing concurrent changes
     this._emailSequences.push({ name, trigger, steps, active: true, enrolled: 0, created: new Date().toISOString() });
     await this._saveEmailSequences();
     utils.showToast('Sequence created', 'success');
@@ -1207,6 +1210,7 @@ const marketingModule = {
   },
 
   async toggleSequence(i) {
+    if (this._emailSequencesFromServer) await this._loadEmailSequences(); // Refresh first — index i may have shifted if another admin added sequences
     if (this._emailSequences[i]) {
       this._emailSequences[i].active = !this._emailSequences[i].active;
       await this._saveEmailSequences();
@@ -1224,6 +1228,7 @@ const marketingModule = {
       }))
     )
       return;
+    if (this._emailSequencesFromServer) await this._loadEmailSequences(); // Refresh first — index i may have shifted if another admin added sequences
     this._emailSequences.splice(i, 1);
     await this._saveEmailSequences();
     this.loadEmailSequences();

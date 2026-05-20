@@ -2114,6 +2114,23 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
+  // ==========================================
+  // Mobile sidebar hamburger toggle
+  // ==========================================
+  document.getElementById('mobileSidebarToggle')?.addEventListener('click', () => {
+    document.getElementById('appSidebar')?.classList.toggle('mobile-open');
+  });
+  // Close sidebar when clicking outside on mobile
+  document.addEventListener('click', (e) => {
+    if (window.innerWidth < 992) {
+      const sidebar = document.getElementById('appSidebar');
+      const toggle = document.getElementById('mobileSidebarToggle');
+      if (sidebar?.classList.contains('mobile-open') && !sidebar.contains(e.target) && !toggle?.contains(e.target)) {
+        sidebar.classList.remove('mobile-open');
+      }
+    }
+  });
+
   console.debug('Application initialized successfully');
 });
 

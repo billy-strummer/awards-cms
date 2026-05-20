@@ -1746,10 +1746,30 @@ const awardsModule = {
       }))
     )
       return;
+
+    // Check for linked entries across all selected awards
+    const ids = [...this.selectedAwards];
+    let totalEntryCount = 0;
+    try {
+      const entryCheck = await apiClient.select('entries', {
+        select: 'id',
+        filters: { award_id: { op: 'in', value: ids } },
+        pageSize: 1,
+      });
+      totalEntryCount = entryCheck.count ?? entryCheck.data?.length ?? 0;
+    } catch (_e) {
+      // Non-fatal: proceed without count if query fails
+    }
+
+    const entryWarning =
+      totalEntryCount > 0
+        ? ` These awards have ${totalEntryCount} linked entr${totalEntryCount === 1 ? 'y' : 'ies'} — deleting them will orphan those entries.`
+        : '';
+
     if (
       !(await utils.confirmDialog({
         title: 'Final Confirmation',
-        message: `Are you absolutely sure? This will permanently delete ${count} award(s) and their assignments.`,
+        message: `Are you absolutely sure? This will permanently delete ${count} award(s) and their assignments.${entryWarning}`,
         danger: true,
         confirmText: 'Delete Permanently',
       }))
@@ -1758,8 +1778,6 @@ const awardsModule = {
 
     try {
       utils.showLoading();
-
-      const ids = [...this.selectedAwards];
 
       // Delete assignments first
       await Promise.all(ids.map((id) => apiClient.deleteByFilters('award_assignments', { award_id: id })));
@@ -1925,10 +1943,29 @@ const awardsModule = {
       utils.showToast('You do not have permission to delete awards', 'error');
       return;
     }
+
+    // Check for linked entries before confirming deletion
+    let entryCount = 0;
+    try {
+      const entryCheck = await apiClient.select('entries', {
+        select: 'id',
+        filters: { award_id: awardId },
+        pageSize: 1,
+      });
+      entryCount = entryCheck.count ?? entryCheck.data?.length ?? 0;
+    } catch (_e) {
+      // Non-fatal: proceed without entry count if query fails
+    }
+
+    const entryWarning =
+      entryCount > 0
+        ? ` This award has ${entryCount} linked entr${entryCount === 1 ? 'y' : 'ies'} — deleting it will orphan those entries.`
+        : '';
+
     if (
       !(await utils.confirmDialog({
         title: 'Delete Award',
-        message: 'Are you sure you want to delete this award? This action cannot be undone.',
+        message: `Are you sure you want to delete this award? This action cannot be undone.${entryWarning}`,
         danger: true,
         confirmText: 'Delete',
       }))

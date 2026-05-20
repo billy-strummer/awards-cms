@@ -201,10 +201,28 @@ const judgePortal = {
   async _fetchPage(page) {
     this._pagination.page = page;
 
+    const judgeEmail = this.currentJudge?.email;
+    if (!judgeEmail) {
+      this._pagination = { ...this._pagination, page, count: 0, totalPages: 0 };
+      return [];
+    }
+
+    // Only show entries that are explicitly assigned to this judge
+    const assignedScores = await apiClient.selectAll('judge_scores', {
+      select: 'entry_id',
+      filters: { judge_email: judgeEmail },
+    });
+    const assignedEntryIds = (assignedScores || []).map((s) => s.entry_id).filter(Boolean);
+
+    if (assignedEntryIds.length === 0) {
+      this._pagination = { ...this._pagination, page, count: 0, totalPages: 0 };
+      return [];
+    }
+
     const result = await apiClient.select('entries', {
       select:
         '*, organisations(company_name, logo_url), awards:award_years(award_name, award_category), entry_files(*), judge_scores!judge_scores_entry_id_fkey(*)',
-      filters: { status: 'submitted' },
+      filters: { status: 'submitted', 'id@in': assignedEntryIds },
       sort: { column: 'submission_date', ascending: true },
       page,
       pageSize: this._pagination.pageSize,

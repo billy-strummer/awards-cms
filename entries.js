@@ -2021,14 +2021,43 @@ const entriesModule = {
               updateData.shortlisted_date = new Date().toISOString();
             }
 
-            await apiClient.updateByFilters('entries', { id: { operator: 'in', value: ids } }, updateData);
+            // Validate state-machine transitions per entry before updating
+            const validIds = [];
+            let skippedCount = 0;
+            for (const id of ids) {
+              const entry = this.allEntries.find((e) => e.id === id);
+              const currentStatus = (entry?.status || 'draft').toLowerCase();
+              const allowed = ENTRY_VALID_TRANSITIONS[currentStatus] || [];
+              if (allowed.includes(value)) {
+                validIds.push(id);
+              } else {
+                skippedCount++;
+              }
+            }
 
-            utils.showToast(`${count} entries updated to ${value}`, 'success');
+            if (validIds.length === 0) {
+              utils.showToast(
+                `No entries updated — all ${skippedCount} entr${skippedCount === 1 ? 'y' : 'ies'} have an invalid transition to "${value}".`,
+                'warning'
+              );
+              return;
+            }
+
+            await apiClient.updateByFilters('entries', { id: { operator: 'in', value: validIds } }, updateData);
+
+            if (skippedCount > 0) {
+              utils.showToast(
+                `Updated ${validIds.length} entr${validIds.length === 1 ? 'y' : 'ies'}. ${skippedCount} entr${skippedCount === 1 ? 'y' : 'ies'} skipped (invalid status transition).`,
+                'warning'
+              );
+            } else {
+              utils.showToast(`${validIds.length} entries updated to ${value}`, 'success');
+            }
 
             // Send auto emails for rejection or shortlisting
             if (value === 'rejected' && window.entryRevisionModule) {
               let emailCount = 0;
-              for (const id of ids) {
+              for (const id of validIds) {
                 try {
                   await window.entryRevisionModule._sendRejectionEmail(id);
                   emailCount++;
@@ -2039,7 +2068,7 @@ const entriesModule = {
               if (emailCount > 0) utils.showToast(`${emailCount} rejection email(s) sent`, 'info');
             } else if (value === 'shortlisted') {
               let emailCount = 0;
-              for (const id of ids) {
+              for (const id of validIds) {
                 try {
                   await this._sendShortlistEmail(id);
                   emailCount++;

@@ -7180,7 +7180,12 @@
             </div>
             <div class="mb-3">
               <label for="webhookFormSecret" class="form-label">Security Token <small class="text-muted">(optional)</small></label>
-              <input type="text" class="form-control" id="webhookFormSecret" placeholder="Leave blank to auto-generate">
+              <div class="input-group">
+                <input type="password" class="form-control" id="webhookFormSecret" placeholder="Leave blank to auto-generate" autocomplete="new-password">
+                <button class="btn btn-outline-secondary" type="button" aria-label="Show/hide secret token" onclick="this.previousElementSibling.type = this.previousElementSibling.type === 'password' ? 'text' : 'password'; this.querySelector('i').classList.toggle('bi-eye'); this.querySelector('i').classList.toggle('bi-eye-slash');">
+                  <i class="bi bi-eye"></i>
+                </button>
+              </div>
               <div class="small text-muted mt-1">A secret token that lets your external system verify requests genuinely came from this CMS. Leave blank and one will be generated automatically.</div>
             </div>
             <div class="mb-3">

@@ -579,6 +579,23 @@ const assignmentsModule = {
         return;
       }
 
+      // Warn if any assigned judges have declared a conflict with this organisation
+      const scoreRows = await apiClient.selectAll('judge_scores', {
+        select: 'judge_email',
+        filters: { award_id: this.currentAwardId },
+      });
+      const assignedJudges = [...new Set((scoreRows || []).map((r) => r.judge_email).filter(Boolean))];
+      const conflictedJudges = assignedJudges.filter((email) => this.hasConflict(email, orgId));
+      if (conflictedJudges.length > 0) {
+        const proceed = await utils.confirmDialog({
+          title: 'Conflict of Interest Detected',
+          message: `The following assigned judge(s) have declared a conflict with ${companyName}: ${conflictedJudges.join(', ')}. Assigning this organisation may compromise judging integrity. Proceed anyway?`,
+          danger: true,
+          confirmText: 'Assign Anyway',
+        });
+        if (!proceed) return;
+      }
+
       await apiClient.insert('award_assignments', {
         award_id: this.currentAwardId,
         organisation_id: orgId,

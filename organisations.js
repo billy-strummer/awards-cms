@@ -3691,6 +3691,11 @@ const orgsModule = {
         apiClient.deleteByFilters('organisation_images', { organisation_id: orgId }),
         apiClient.deleteByFilters('organisation_custom_fields', { organisation_id: orgId }),
         apiClient.deleteByFilters('organisation_documents', { organisation_id: orgId }),
+        apiClient.deleteByFilters('crm_communications', { organisation_id: orgId }),
+        apiClient.deleteByFilters('crm_deals', { organisation_id: orgId }),
+        apiClient.deleteByFilters('crm_meetings', { organisation_id: orgId }),
+        apiClient.deleteByFilters('invoices', { organisation_id: orgId }),
+        apiClient.deleteByFilters('payments', { organisation_id: orgId }),
       ]);
       await apiClient.delete('organisations', orgId);
 

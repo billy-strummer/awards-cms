@@ -3,6 +3,7 @@
 **CLAUDE: Read this file at the start of every session. Work through items in priority order (Critical → High → Medium → Low). Mark each item `[x]` immediately after it is fully implemented, tested, and committed. Never mark an item complete unless the change is in a committed and pushed git commit.**
 
 Last audit: 2026-05-07 (original items — all complete)
+Seventeenth audit: 2026-05-20 (comprehensive 5-agent audit — see V17 section at bottom)
 Second audit: 2026-05-07 (new deep audit — see V2 section below)
 Third audit: 2026-05-07 (post-structural-fix audit — see V3 section below)
 Sixth audit: 2026-05-08 (international awards business first-run UX audit — see V6 section below)
@@ -2760,3 +2761,306 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **Fix:** Standardise: after any successful create/update operation in a modal, auto-hide the modal after showing the success toast (1 second delay). Use `setTimeout(() => modal.hide(), 1000)` pattern. Do NOT auto-close on error or warning.
 - **Done when:** All create/edit modals close automatically 1 second after a successful save.
 - [ ] Implemented
+
+---
+
+## Seventeenth Audit — V17 (2026-05-20)
+
+> 5-agent comprehensive audit covering all tabs, pages, and aspects of the CMS. Focus: new-user UX, workflow integrity, security, accessibility, mobile, performance.
+
+---
+
+## V17-CRITICAL — Must fix before any user sees this system
+
+### V17-C1 — Judge portal shows ALL submitted entries, not just assigned ones
+- **File:** `judge-portal.js` — `_fetchPage()`
+- **Root cause:** Query filtered by `status: 'submitted'` with no judge_email filter. Any authenticated judge could view every entry in the system, breaking blind assignment.
+- **Fix:** First fetch `judge_scores` for the current judge to get assigned entry IDs, then filter entries to `id@in` those IDs.
+- [x] Implemented
+
+### V17-C2 — Manual company assignment ignores conflict of interest registry
+- **File:** `assignments.js` — `assignCompany()`
+- **Root cause:** `hasConflict()` exists and is used in read-only `openConflictManager()`, but was never called during manual assignment. Automated batch path enforced conflicts; manual path had zero enforcement.
+- **Fix:** Fetch all judge_scores for the award, check each judge email for conflicts with the org, show a blocking danger confirmation if any conflicts found.
+- [x] Implemented
+
+---
+
+## V17-HIGH — Fix before production launch
+
+### V17-H1 — Deleting a winner does not revert the entry status
+- **File:** `winners.js` — `deleteWinner()`
+- **Root cause:** Only deleted the winner record; entry remained at `status: 'winner'` with no winner record.
+- **Fix:** After deletion, look up matching entry by `organisation_id + award_id + status='winner'` and update it to `status: 'shortlisted'`.
+- [x] Implemented
+
+### V17-H2 — Press release photo thumbnails broken (wrong field name)
+- **File:** `winners.js` — lines 1069 and 1399
+- **Root cause:** `photo.media_url` used but `winner_media` table stores `file_url`. Two thumbnail `<img>` tags in press release builder showed broken images.
+- **Fix:** Replace both `photo.media_url` with `photo.file_url`.
+- [x] Implemented
+
+### V17-H3 — Entry inline status dropdown bypasses state machine
+- **File:** `entries.js` — `inlineUpdateEntryStatus()` and `saveEntryEdit()`
+- **Root cause:** `getEntryStatusOptions()` disables invalid options in the UI, but the save functions write whatever value is submitted without a server-side transition check. A POST with a skipped status would succeed.
+- **Fix:** Add `validateTransition(currentStatus, newStatus)` guard in both `inlineUpdateEntryStatus` and `saveEntryEdit` before any DB write.
+- [ ] Implemented
+
+### V17-H4 — `why_should_win` field not locked for shortlisted/winner entries
+- **File:** `entries.js` — `editEntry()` content-locking block
+- **Root cause:** Content locking (added in V16) only covers `editEntryTitle`, `editEntryDescription`, `editEntrySupportingInfo`. The primary judged narrative field `editEntryWhyWin` is still editable after shortlisting.
+- **Fix:** Add `'editEntryWhyWin'` to the `contentFieldIds` array in the content-locking block.
+- [ ] Implemented
+
+### V17-H5 — Entry number race condition in submission proxy
+- **File:** `api/entry-proxy.js` — `generateEntryNumber()`
+- **Root cause:** Read-then-write pattern — two concurrent submissions can read the same MAX(entry_number) and generate identical entry numbers. No DB sequence or unique constraint.
+- **Fix:** Use a PostgreSQL sequence (`CREATE SEQUENCE bta_entry_seq`) and add `UNIQUE` constraint on `entry_number`. Or use `pg_advisory_lock` around the generate+insert.
+- [ ] Implemented
+
+### V17-H6 — No confirmation email on event registration (false claim in UI)
+- **File:** `api/registration-proxy.js`, `register.html`
+- **Status:** Already fixed — `registration-proxy.js` sends a Resend confirmation email after successful insert.
+- [x] Implemented
+
+### V17-H7 — GDPR SAR export missing tables
+- **File:** `gdpr.js` — `_exportEntityData()`
+- **Status:** Already fixed — export includes invoices, payments, crm_communications, crm_deals, crm_meetings, organisation_notes, organisation_follow_ups.
+- [x] Implemented
+
+### V17-H8 — GDPR erasure delete missing CRM tables
+- **File:** `gdpr.js` — `_deleteEntityData()`
+- **Status:** Already fixed — erasure deletes crm_communications, crm_deals, crm_meetings, organisation_notes, organisation_follow_ups.
+- [x] Implemented
+
+### V17-H9 — Organisation permanentDelete missing CRM/invoice tables
+- **File:** `organisations.js` — `permanentDelete()`
+- **Status:** Already fixed — deletion cascade includes crm_communications, crm_deals, crm_meetings, invoices, payments.
+- [x] Implemented
+
+### V17-H10 — Award deletion orphans linked entries
+- **File:** `awards.js` — `deleteAward()` and `bulkDelete()`
+- **Status:** Already fixed — both functions query entry count before deletion and show a warning in the confirmation dialog.
+- [x] Implemented
+
+### V17-H11 — Bulk status change in Entries bypassed state machine
+- **File:** `entries.js` — `executeBulkAction()`
+- **Status:** Already fixed — per-entry `ENTRY_VALID_TRANSITIONS` check, skipped entries are counted and reported.
+- [x] Implemented
+
+### V17-H12 — Reporting export ignores year filter
+- **File:** `reporting.js` — all export functions
+- **Root cause:** Export functions call `loadReportData()` but don't pass the active year filter to the query.
+- **Fix:** Pass `STATE.selectedYear` or the active report filter to export queries.
+- [ ] Implemented
+
+### V17-H13 — Dashboard date range filter buttons have no effect on KPIs
+- **File:** `dashboard.js` — `updateStats()`
+- **Root cause:** `_getDateRangeFilter()` is defined and called by `setDateRange()` but `updateStats()` never passes the result as a filter to its `apiClient.select()` calls.
+- **Fix:** Pass date range filter as `created_at >=` filter in each KPI query inside `updateStats()`.
+- [ ] Implemented
+
+### V17-H14 — Scheduled email campaigns are never auto-sent
+- **File:** `api/automation-scheduler.js` and `email-builder.js`
+- **Root cause:** Users can schedule campaigns with a future date, but no server-side cron polls `email_campaigns` for `status='Scheduled'` and sends them.
+- **Fix:** Add a check in `automation-scheduler.js` for campaigns with `send_at <= now` and `status='Scheduled'`, and trigger sending via the `send_campaign_emails` RPC.
+- [ ] Implemented
+
+### V17-H15 — Mobile sidebar has no hamburger button
+- **File:** `index.html`, `app.js`, `styles.css`
+- **Status:** Already fixed — `#sidebarToggle` button exists in navbar, `app.js` line 2118 wires it up.
+- [x] Implemented
+
+### V17-H16 — API key / credential fields shown as plaintext
+- **File:** `index.html`, `settings.js`
+- **Status:** Already addressed — webhook secret uses `type="password"` with show/hide toggle; Stripe publishable key is intentionally public. No secret API keys are stored via the UI.
+- [x] Implemented
+
+---
+
+## V17-MEDIUM — Fix before stable release
+
+### V17-M1 — No votes IP-based rate limiting (email-only throttle)
+- **File:** `api/voting-proxy.js`
+- **Root cause:** `RATE_LIMIT_MAX = 10` per email per hour, but `voter_ip` is stored and never checked. Multiple votes from same IP with different emails are not throttled.
+- **Fix:** Add a parallel IP-based check alongside the email check.
+- [ ] Implemented
+
+### V17-M2 — Live vote counts visible to voters (influences tactical voting)
+- **File:** `vote.html`
+- **Root cause:** Real-time `public_votes` count is shown to any visitor, which may encourage tactical voting against leading candidates.
+- **Fix:** Consider hiding counts until voting closes, or add an admin config flag to control visibility.
+- [ ] Implemented
+
+### V17-M3 — No progress saved mid-wizard on public entry submission
+- **File:** `submit-entry.html`
+- **Root cause:** Leaving the page mid-wizard discards all form data. No `localStorage` persistence or server-side draft.
+- **Fix:** Persist `formData` to `localStorage` on every `nextStep()` call and restore on page load.
+- [ ] Implemented
+
+### V17-M4 — No CAPTCHA on public entry submission form
+- **File:** `submit-entry.html`, `api/entry-proxy.js`
+- **Root cause:** No bot protection on entry submission — a bot can submit unlimited entries.
+- **Fix:** Add Cloudflare Turnstile or a hidden honeypot field with server-side check.
+- [ ] Implemented
+
+### V17-M5 — Judge portal no auto-save (lost work risk)
+- **File:** `judge-portal.js`
+- **Root cause:** Scores are only persisted on explicit "Submit Score"/"Save Draft" clicks. Closing tab mid-scoring loses all work.
+- **Fix:** Add debounced `localStorage` auto-save on slider input events, or `setInterval` draft save every 60 seconds.
+- [ ] Implemented
+
+### V17-M6 — Judge portal two-column layout breaks on mobile
+- **File:** `judge-portal.html`
+- **Root cause:** `grid-template-columns: 350px 1fr` has no `@media` breakpoints below 700px.
+- **Fix:** Add `@media (max-width: 768px) { .entries-grid { grid-template-columns: 1fr; } }`.
+- [ ] Implemented
+
+### V17-M7 — Conflict score included in averages without flag
+- **File:** `judge-portal.js` — `checkConflictOfInterest()`
+- **Root cause:** A judge who declares a conflict still has scores included in `average_score`. Scores with `has_conflict: true` and `isComplete: true` are saved normally.
+- **Fix:** Either exclude conflict scores from averages, or trigger an admin review queue for conflict-flagged scores.
+- [ ] Implemented
+
+### V17-M8 — CRM still has residual "Company/Companies" strings
+- **File:** `crm.js` — view deal/communication/meeting modals, segment titles, filter dropdown
+- **Root cause:** V16 audit fixed most but missed: "Company:" labels in detail modals, "Companies in segment" title, "View Companies" button, "All Companies" filter option, empty state text.
+- **Fix:** Replace remaining user-visible "Company"/"Companies" with "Organisation"/"Organisations".
+- [ ] Implemented
+
+### V17-M9 — Awards rollover uses paginated STATE.allAwards (incomplete data)
+- **File:** `awards.js` — `rolloverToNextYear()`
+- **Root cause:** `STATE.allAwards` in server-pagination mode only holds the current page (50 records). Awards on other pages are silently excluded from rollover.
+- **Fix:** Replace `STATE.allAwards` with `apiClient.selectAll('awards', { filters: { year: sourceYear } })`.
+- [ ] Implemented
+
+### V17-M10 — Assignment removal leaves orphaned judge_scores
+- **File:** `assignments.js` — `removeAssignment()`
+- **Root cause:** When an assignment is removed, `judge_scores` rows for that judge/entry persist and continue to affect average_score calculations.
+- **Fix:** On removal, cascade-delete orphaned `judge_scores` rows, or mark them `voided`.
+- [ ] Implemented
+
+### V17-M11 — Organisation CSV import has no required-column check
+- **File:** `organisations.js` — `parseCSVText()`
+- **Root cause:** `_validateImportRow()` validates values but never checks that required column headers are present. A CSV without `company_name` column imports silently with blank names.
+- **Fix:** Before import wizard proceeds, verify `this._csvHeaders` contains at least `company_name`.
+- [ ] Implemented
+
+### V17-M12 — Organisation logo upload has no byte-size limit
+- **File:** `organisations.js` — `validateAndUploadLogo()`
+- **Root cause:** Enforces 250×170 px dimensions but no maximum file size. A valid 250×170 image could be multi-megabyte.
+- **Fix:** Add `if (file.size > 2 * 1024 * 1024) { showError; return; }` before the FileReader call.
+- [ ] Implemented
+
+### V17-M13 — Organisation Excel export omits custom fields
+- **File:** `organisations.js` — export function
+- **Root cause:** Export builds rows from fixed `org` fields only; `organisation_custom_fields` are never fetched or included.
+- **Fix:** Fetch custom fields per-org in the export loop and append as extra columns.
+- [ ] Implemented
+
+### V17-M14 — Dashboard notification items navigate nowhere
+- **File:** `dashboard.js` — `loadNotifications()`
+- **Root cause:** Notifications using `data-action="dashboardModule.navigateToSection"` have no `data-id` attribute, so `navigateToSection(undefined)` is called.
+- **Fix:** Serialise the target section ID into a `data-id` attribute when rendering notification action links.
+- [ ] Implemented
+
+### V17-M15 — URL hash routing doesn't persist sub-tab state
+- **File:** `app.js` — hash routing
+- **Root cause:** `history.replaceState` tracks top-level tab switches but not sub-tab state (e.g. Settings → Security, Payments → Invoices). Reloading the page loses sub-tab position.
+- **Fix:** Extend hash routing to include active sub-tab (e.g. `#organisations/sponsors`).
+- [ ] Implemented
+
+### V17-M16 — Breadcrumbs only exist in Media Gallery
+- **File:** `index.html`, all modules with detail drill-downs
+- **Root cause:** No breadcrumb or back-navigation when drilling into record detail in any module except Media Gallery.
+- **Fix:** Implement a shared breadcrumb component using the existing pattern in `app.js:2016` and apply it consistently.
+- [ ] Implemented
+
+### V17-M17 — Getting Started banner disappears after first record created
+- **File:** `dashboard.js` — banner display logic
+- **Root cause:** `hasData = awardsCount > 0 || orgsCount > 0` — creating even one record hides the banner permanently. No per-step completion state.
+- **Fix:** Change banner logic to show until all four steps (Organisations, Awards, Events, Marketing) are individually completed. Persist per-step state.
+- [ ] Implemented
+
+### V17-M18 — Assignments (judge workflow) has no sidebar entry
+- **File:** `index.html` — sidebar nav
+- **Root cause:** Assignments is only accessible via Awards table row action buttons. New users following Getting Started steps will never discover the judging workflow.
+- **Fix:** Add an "Assignments" link to the Programme sidebar group, or as a sub-item under Awards.
+- [ ] Implemented
+
+### V17-M19 — Marketing sequence can be saved with empty email body
+- **File:** `marketing.js` — `_saveSequence()`
+- **Root cause:** Guard checks `steps.length === 0 || !steps[0].subject` but allows a step with a subject and empty body.
+- **Fix:** Validate that all steps have both subject and body before saving.
+- [ ] Implemented
+
+### V17-M20 — Revision history invisible to admins (feature exists but unreachable)
+- **File:** `entries.js`, `index.html`
+- **Root cause:** `entry-revision.js` is loaded and works, but `renderRevisionHistory`/`renderRevisionReview` are never called from the Entries tab UI.
+- **Fix:** Add a "Revisions" button or tab to the entry view/edit modal calling `entryRevisionModule.renderRevisionReview(entryId)`.
+- [ ] Implemented
+
+---
+
+## V17-LOW — Polish when time permits
+
+### V17-L1 — Missing `aria-labelledby` on 20 modals
+- **File:** `index.html`
+- **Root cause:** 20+ modals lack `aria-labelledby` pointing to their modal-title. Screen readers cannot announce the dialog name.
+- **Fix:** Add `id` to each `.modal-title`, then `aria-labelledby="that-id"` to the `.modal` wrapper.
+- [ ] Implemented
+
+### V17-L2 — No modals carry `aria-modal="true"`
+- **File:** `index.html` — all `.modal` wrappers
+- **Root cause:** Bootstrap adds `role="dialog"` via JS but the static HTML doesn't include `aria-modal="true"`.
+- **Fix:** Add `aria-modal="true"` to all `.modal` div wrappers.
+- [ ] Implemented
+
+### V17-L3 — Clickable stat cards not keyboard-focusable
+- **File:** `index.html` — `.stat-card-clickable` divs
+- **Root cause:** Eight stat card divs use `data-action` for click handling but lack `tabindex="0"` and `role="button"`, making them unreachable via Tab key.
+- **Fix:** Add `tabindex="0"` and `role="button"` to every `.stat-card-clickable` div.
+- [ ] Implemented
+
+### V17-L4 — 25 of 33 tables missing `<caption>`
+- **File:** `index.html` — data tables
+- **Root cause:** Only 8 tables include `<caption class="visually-hidden">`. Remaining 25 are unlabelled for assistive technologies.
+- **Fix:** Add `<caption class="visually-hidden">` to every `<table>`.
+- [ ] Implemented
+
+### V17-L5 — Performance: 2.2 MB monolithic JS bundle, no code splitting
+- **File:** `build.js`, `app.js`
+- **Root cause:** esbuild produces a single 2.2 MB bundle. All module code downloads regardless of which tabs are visited.
+- **Fix:** Use esbuild `splitting` + ESM output to create per-tab chunks; lazy-load heavy modules (email builder, charts) only when their tab is activated.
+- [ ] Implemented
+
+### V17-L6 — Gallery images have no lazy loading
+- **File:** `media-gallery-new.js` — all gallery render functions
+- **Root cause:** All `<img>` tags rendered without `loading="lazy"`. A gallery with hundreds of photos fires all network requests immediately.
+- **Fix:** Add `loading="lazy"` to every generated `<img>` tag in gallery render functions.
+- [ ] Implemented
+
+### V17-L7 — Scheduled report modal checkboxes lack `for`/`id` pairing
+- **File:** `app.js` — `reportsScheduler.showCreateReport()`
+- **Root cause:** Dynamically generated checkboxes have `<label>` with no `for` attribute and `<input>` with no `id`. Clicking the label doesn't activate the checkbox.
+- **Fix:** Give each checkbox a unique `id` and match `for` attributes on labels.
+- [ ] Implemented
+
+### V17-L8 — Judge portal no completion state on finishing all entries
+- **File:** `judge-portal.js` — `nextEntry()`
+- **Root cause:** When the last entry is scored, a toast appears but there is no persistent "done" state, summary view, or admin notification.
+- **Fix:** Show a full-screen completion card listing all scored entries with a "Your judging is complete" confirmation.
+- [ ] Implemented
+
+### V17-L9 — `previous_winner` badge relies on manual status, not actual wins
+- **File:** `organisations.js`
+- **Root cause:** Badge shows when `org.status === 'past_winner'` regardless of actual award history.
+- **Fix:** Cross-reference against `award_assignments` with `status = 'winner'` for ground-truth check.
+- [ ] Implemented
+
+### V17-L10 — Dashboard activity feed labels all awards as "New Award Added"
+- **File:** `dashboard.js` — `loadActivityFeed()`
+- **Root cause:** Feed shows all awards in `STATE.allAwards` (up to 5) as "New Award Added" regardless of age.
+- **Fix:** Filter to awards created within 30 days, or use label "Award: `<name>`".
+- [ ] Implemented
+

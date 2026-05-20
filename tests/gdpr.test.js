@@ -506,7 +506,7 @@ describe('GDPR Module - _deleteEntityData', () => {
   test('deletes data from all related tables', async () => {
     apiClient.deleteByFilters = jest.fn().mockResolvedValue({});
     await gdprModule._deleteEntityData('org1');
-    expect(apiClient.deleteByFilters).toHaveBeenCalledTimes(5);
+    expect(apiClient.deleteByFilters).toHaveBeenCalledTimes(10);
     expect(apiClient.deleteByFilters).toHaveBeenCalledWith('organisation_contacts', { organisation_id: 'org1' });
     expect(apiClient.deleteByFilters).toHaveBeenCalledWith('organisations', { id: 'org1' });
   });

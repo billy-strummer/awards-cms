@@ -842,9 +842,11 @@ const orgsModule = {
         message: hasActiveFilters ? 'No organisations match your filters' : 'No organisations yet',
         description: hasActiveFilters
           ? 'Try clearing your filters or search terms'
-          : 'Click "+ Add Organisation" in the toolbar above',
+          : 'Add your first organisation to get started',
         isFiltered: hasActiveFilters,
         clearAction: hasActiveFilters ? 'orgsModule.resetFilters' : '',
+        actionLabel: hasActiveFilters ? '' : 'Add Organisation',
+        actionAction: hasActiveFilters ? '' : 'orgsModule.openAddOrgModal',
       });
       this._renderPaginationControls(0, 1);
       return;
@@ -9634,6 +9636,11 @@ const orgsModule = {
   },
 
   /** Helper for data-action: cancel inline edit (receives orgId from data-id) */
+  openAddOrgModal() {
+    const el = document.getElementById('addNewOrgModal');
+    if (el) new bootstrap.Modal(el).show();
+  },
+
   cancelInlineEdit(elOrId, orgIdOrEvent) {
     // Support both old signature (el, orgId) and new delegation signature (orgId, event)
     if (typeof elOrId === 'string' && (orgIdOrEvent instanceof Event || orgIdOrEvent === undefined)) {

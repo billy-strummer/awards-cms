@@ -221,7 +221,8 @@ const entriesModule = {
     const search = this.currentFilters.search?.trim();
 
     const result = await apiClient.select('entries', {
-      select: '*, organisations(company_name, logo_url), awards:award_years(award_name, sector, county)',
+      select:
+        '*, organisations(company_name, logo_url), awards:award_years(award_name, sector, county), entry_files(count)',
       filters,
       search: search ? { term: search, columns: ['entry_title', 'entry_number'] } : undefined,
       sort: { column: this._sortField, ascending: this._sortDir === 'asc' },
@@ -362,6 +363,11 @@ const entriesModule = {
         const selfNomBadge = entry.is_self_nomination
           ? '<span class="badge bg-info ms-2" title="Self-Nominated Entry"><i class="bi bi-person-raised-hand me-1"></i>Self-Nominated</span>'
           : '';
+        const fileCount = Array.isArray(entry.entry_files) ? entry.entry_files[0]?.count || 0 : 0;
+        const fileBadge =
+          fileCount > 0
+            ? `<i class="bi bi-paperclip text-muted ms-1 small" title="${fileCount} supporting document${fileCount !== 1 ? 's' : ''} attached"></i>`
+            : '';
         const scoreDisplay = entry.average_score
           ? `${entry.average_score.toFixed(1)} <small>(${entry.total_scores || 0})</small>`
           : '<span class="text-muted">-</span>';
@@ -393,7 +399,7 @@ const entriesModule = {
           <td>
             <div class="text-truncate" style="max-width: 250px;" title="${(entry.entry_title || '').replace(/<[^>]*>/g, '').replace(/"/g, '&quot;')}">
               ${utils.escapeHtml(entry.entry_title)}
-              ${selfNomBadge}
+              ${selfNomBadge}${fileBadge}
             </div>
           </td>
           <td>
@@ -1601,6 +1607,27 @@ const entriesModule = {
       const modal = new bootstrap.Modal(document.getElementById('editEntryModal'));
       modal.show();
       utils.initInlineValidation('editEntryForm');
+
+      // Lock content fields for shortlisted/winner entries
+      const lockedStatuses = ['shortlisted', 'winner'];
+      if (lockedStatuses.includes((entry.status || '').toLowerCase())) {
+        const contentFieldIds = ['editEntryTitle', 'editEntryDescription', 'editEntrySupportingInfo'];
+        contentFieldIds.forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) el.setAttribute('readonly', 'true');
+        });
+        const form = document.getElementById('editEntryForm');
+        if (form) {
+          const lockBanner = document.createElement('div');
+          lockBanner.className = 'alert alert-warning mb-3';
+          lockBanner.innerHTML =
+            '<i class="bi bi-lock me-2"></i><strong>Content locked.</strong> This entry has been ' +
+            (entry.status === 'winner' ? 'selected as a winner' : 'shortlisted') +
+            '. Change the status to unlock editing.';
+          form.insertBefore(lockBanner, form.firstChild);
+        }
+      }
+
       document.getElementById('editEntryModal').addEventListener('hidden.bs.modal', function () {
         this.remove();
       });

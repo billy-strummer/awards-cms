@@ -759,6 +759,8 @@ const awardsModule = {
           : 'Click "+ Add Award" in the toolbar to create your first award',
         isFiltered: hasFilters,
         clearAction: hasFilters ? 'awardsModule.resetFilters' : '',
+        actionLabel: hasFilters ? '' : 'Add Award',
+        actionAction: hasFilters ? '' : 'awardsModule.openCreateModal',
       });
       // Clear pagination
       const pagEl = document.getElementById('awardsPagination');

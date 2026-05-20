@@ -2935,6 +2935,10 @@ const crmModule = {
   // MISSING ACTION FUNCTIONS
   // ============================================
 
+  openLogCommunicationModal() {
+    this.logCommunication(null);
+  },
+
   openCompanyDetails() {
     // "Add Company Activity" button - opens the log communication form
     // which is the primary way to add activity for a company

@@ -2631,7 +2631,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **Root cause:** Buttons like `<button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>` have no text, no `aria-label`, and no `title` visible on hover. Screen readers announce "button" with no context; mouse users get no tooltip.
 - **Fix:** Ensure every icon-only action button has both `title="Delete award"` (for tooltip) and `aria-label="Delete award"` (for screen readers). Audit all tables: Awards, Organisations, Entries, Payments, CRM, Events. Use `aria-label` values like "Edit [module name]", "Delete [module name]".
 - **Done when:** Hovering any icon-only button in any table shows a descriptive tooltip; no bare "button" announcements for screen reader users.
-- [ ] Implemented
+- [x] Implemented
 
 ### V16-H2 — Empty states lack calls-to-action buttons
 - **File:** `index.html` — empty state messages across all tabs
@@ -2643,7 +2643,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
   - Email Lists: already has a note, but add a button
   Buttons should call the same open-modal function as the toolbar button (wire with `data-action`).
 - **Done when:** Each major empty state has a visible CTA button that opens the create modal directly.
-- [ ] Implemented
+- [x] Implemented
 
 ### V16-H3 — "Company" vs "Organisation" terminology inconsistency
 - **File:** `crm.js`, `assignments.js`, `index.html`
@@ -2674,7 +2674,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **Root cause:** Entries with supporting documents look identical to those without. An admin doing a completeness review has no way to quickly scan which entries have documents attached.
 - **Fix:** In the entries table, add a small file icon badge (e.g. `<i class="bi bi-paperclip text-muted" title="Has documents"></i>`) to rows where the entry has `entry_files` records. Fetch the count during `loadEntries()` via a join or a batch query.
 - **Done when:** Entries with attached files show a paperclip icon in their table row; entries without show nothing.
-- [ ] Implemented
+- [x] Implemented
 
 ---
 
@@ -2685,7 +2685,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **Root cause:** Entry content fields (title, description, answers) remain editable even when status is `shortlisted` or `winner`. An accidental edit after judging could alter the winning entry content.
 - **Fix:** In the entry detail modal, when `entry.status` is `shortlisted` or `winner`, set all content input fields to `disabled` or `readonly`. Show a banner: "This entry has been shortlisted/selected as winner. Content is locked — change status to edit." Include an admin override button for superadmin role.
 - **Done when:** Opening a `winner` entry in the edit modal shows all content fields as read-only.
-- [ ] Implemented
+- [x] Implemented
 
 ### V16-M2 — Same event attendee can be added twice (admin side)
 - **File:** `events.js` — `addAttendee()` around line 1227
@@ -2713,14 +2713,14 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **Root cause:** When multiple filters are active, users must clear them one by one (reset search box, reset status dropdown, reset date dropdown). There is no single "Clear All" button.
 - **Fix:** Add a "Clear Filters" button next to the filter bar on the Entries, Awards, Organisations, and Payments tabs. It should reset all filter inputs to default and call the load function. Hide the button when no filters are active (check if any filter differs from default).
 - **Done when:** An active filter state shows a "Clear Filters" button; clicking it resets all filters and reloads.
-- [ ] Implemented
+- [x] Implemented
 
 ### V16-M6 — Required form fields marked inconsistently
 - **File:** `index.html` — all major create/edit forms
 - **Root cause:** Some forms show `<span class="text-danger">*</span>` on required fields; others have no visual indicator. New users don't know what's mandatory until they hit a validation error.
 - **Fix:** Add a `<small class="text-muted d-block mb-2">* Required fields</small>` legend at the top of every modal form that has required fields. Ensure all `required` HTML inputs also have a visible asterisk label.
 - **Done when:** All create/edit modals show a required-fields legend; required inputs have visual asterisks.
-- [ ] Implemented
+- [x] Implemented
 
 ### V16-M7 — Loading state missing in CRM "Log Communication" modal org dropdown
 - **File:** `crm.js` — communication modal open handler
@@ -2738,21 +2738,21 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **Root cause:** Success/error toasts are visually shown but not announced to screen readers because the container lacks `aria-live="polite"` or `role="alert"`.
 - **Fix:** Ensure the toast container element has `aria-live="polite"` and `aria-atomic="true"`. Error toasts should use `aria-live="assertive"`.
 - **Done when:** Screen readers announce toasts when they appear.
-- [ ] Implemented
+- [x] Implemented
 
 ### V16-L2 — "Entry" vs "Submission" vs "Application" used inconsistently
 - **File:** `index.html`, `entries.js`, `entry-proxy.js`
 - **Root cause:** Most places say "entry" but a few buttons/messages say "submission" or "application". Standardise on "entry" throughout.
 - **Fix:** Search for "submission" and "application" in user-visible text in `index.html` and `entries.js`. Replace with "entry"/"entries" where referring to the entries module.
 - **Done when:** "submission" and "application" do not appear in UI-facing strings in the entries context.
-- [ ] Implemented
+- [x] Implemented
 
 ### V16-L3 — Sidebar icon-only collapsed mode lacks tooltips
 - **File:** `index.html` — sidebar nav links
 - **Root cause:** When the sidebar collapses to icon-only, labels are hidden. Navigation links lack `title` attributes so users cannot identify icons by hovering.
 - **Fix:** Add `title="Dashboard"`, `title="Awards"`, etc. to each `<a>` or `<li>` in the sidebar nav so icon-only mode still shows hover tooltips.
 - **Done when:** Hovering any collapsed sidebar icon shows a tooltip with the section name.
-- [ ] Implemented
+- [x] Implemented
 
 ### V16-L4 — Modal close behavior inconsistent (auto-close vs manual)
 - **File:** Multiple modules — modal success handlers

@@ -1297,7 +1297,7 @@ const awardsModule = {
    * Open create award modal with empty form fields
    * @returns {void}
    */
-  async openCreateModal() {
+  openCreateModal() {
     const currentYear = new Date().getFullYear();
     document.getElementById('awardFormId').value = '';
     document.getElementById('awardFormName').value = '';
@@ -1339,25 +1339,24 @@ const awardsModule = {
       areaEl.innerHTML = '<option value="">Select country first...</option>';
     }
 
-    // Populate sector dropdown
+    // Populate sector dropdown (hardcoded sectors first, custom ones appended async)
     const sectorSelect = document.getElementById('awardFormSector');
     sectorSelect.innerHTML =
       '<option value="">Select Sector...</option>' +
       SECTORS.map((s) => `<option value="${s}">${utils.toTitleCase(s)}</option>`).join('');
-    // Merge custom sectors
-    try {
-      const customSectorsResult = await apiClient.select('custom_sectors', {
+    apiClient
+      .select('custom_sectors', {
         select: 'name',
         filters: { is_active: true },
         sort: { column: 'name', ascending: true },
         pageSize: 200,
-      });
-      (customSectorsResult?.data || []).forEach((s) => {
-        sectorSelect.innerHTML += `<option value="${utils.escapeHtml(s.name)}">${utils.toTitleCase(s.name)}</option>`;
-      });
-    } catch (_) {
-      /* ignore, hardcoded sectors still shown */
-    }
+      })
+      .then((result) => {
+        (result?.data || []).forEach((s) => {
+          sectorSelect.innerHTML += `<option value="${utils.escapeHtml(s.name)}">${utils.toTitleCase(s.name)}</option>`;
+        });
+      })
+      .catch(() => {});
 
     // Populate season dropdown
     this.populateSeasonDropdown();
@@ -1492,7 +1491,7 @@ const awardsModule = {
    * @param {string} awardId - Award ID to edit
    * @returns {void}
    */
-  async openEditModal(awardId) {
+  openEditModal(awardId) {
     const award = STATE.allAwards.find((a) => a.id === awardId);
     if (!award) return;
 
@@ -1543,27 +1542,26 @@ const awardsModule = {
     // Update area hint
     this._updateAwardFormAreaHint(award.area_id);
 
-    // Populate sector dropdown
+    // Populate sector dropdown (hardcoded sectors first, custom ones appended async)
     const sectorSelect = document.getElementById('awardFormSector');
     sectorSelect.innerHTML =
       '<option value="">Select Sector...</option>' +
       SECTORS.map(
         (s) => `<option value="${s}" ${s === award.sector ? 'selected' : ''}>${utils.toTitleCase(s)}</option>`
       ).join('');
-    // Merge custom sectors
-    try {
-      const customSectorsResult = await apiClient.select('custom_sectors', {
+    apiClient
+      .select('custom_sectors', {
         select: 'name',
         filters: { is_active: true },
         sort: { column: 'name', ascending: true },
         pageSize: 200,
-      });
-      (customSectorsResult?.data || []).forEach((s) => {
-        sectorSelect.innerHTML += `<option value="${utils.escapeHtml(s.name)}" ${s.name === award.sector ? 'selected' : ''}>${utils.toTitleCase(s.name)}</option>`;
-      });
-    } catch (_) {
-      /* ignore, hardcoded sectors still shown */
-    }
+      })
+      .then((result) => {
+        (result?.data || []).forEach((s) => {
+          sectorSelect.innerHTML += `<option value="${utils.escapeHtml(s.name)}" ${s.name === award.sector ? 'selected' : ''}>${utils.toTitleCase(s.name)}</option>`;
+        });
+      })
+      .catch(() => {});
 
     // Populate season dropdown
     this.populateSeasonDropdown();

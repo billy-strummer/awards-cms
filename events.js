@@ -2237,7 +2237,16 @@ const eventsModule = {
         filters: { event_id: eventId },
         sort: { column: 'created_at', ascending: true },
       });
-      return data || [];
+      return (data || []).map((row) => ({
+        id: row.id,
+        name: row.name,
+        email: row.email || '',
+        phone: row.phone || '',
+        notified: row.notified || false,
+        promoted: row.promoted || false,
+        promotedAt: row.promoted_at || null,
+        addedAt: row.created_at || new Date().toISOString(),
+      }));
     } catch (e) {
       const stored = localStorage.getItem(this._waitlistKey(eventId));
       return stored ? JSON.parse(stored) : [];
@@ -2248,7 +2257,15 @@ const eventsModule = {
     try {
       await apiClient.deleteByFilters('event_waitlist', { event_id: eventId });
       if (waitlist.length > 0) {
-        const rows = waitlist.map((w) => ({ ...w, event_id: eventId }));
+        const rows = waitlist.map((w) => ({
+          event_id: eventId,
+          name: w.name,
+          email: w.email || null,
+          phone: w.phone || null,
+          notified: w.notified || false,
+          promoted: w.promoted || false,
+          promoted_at: w.promotedAt || null,
+        }));
         await apiClient.insert('event_waitlist', rows);
       }
     } catch (e) {
@@ -2732,8 +2749,9 @@ const eventsModule = {
           event_id: eventId,
           name: item.name,
           category: item.category,
-          estimated_amount: item.estimatedAmount || item.estimated_amount || 0,
-          actual_amount: item.actualAmount || item.actual_amount || 0,
+          estimated: item.estimated || item.estimatedAmount || item.estimated_amount || 0,
+          actual: item.actual || item.actualAmount || item.actual_amount || 0,
+          status: item.status || 'Pending',
           notes: item.notes,
         }));
         await apiClient.insert('event_budget_items', rows);
@@ -10207,8 +10225,10 @@ const eventsModule = {
     };
 
     // Try saving to DB first, fall back to localStorage
+    // Strip the frontend-generated id so the DB assigns a UUID primary key
     try {
-      const { data } = await apiClient.insert('event_room_fixtures', fixture);
+      const { id: _fid, ...fixtureInsert } = fixture;
+      const { data } = await apiClient.insert('event_room_fixtures', fixtureInsert);
       const insertedFixture = Array.isArray(data) ? data[0] : data;
 
       if (insertedFixture) {

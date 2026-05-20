@@ -23,6 +23,9 @@ const awardsModule = {
       utils.showLoading();
       utils.showSkeletonLoading('awardsTableBody', 10);
 
+      // Sync shared saved views from server so all users see the same list
+      this._syncAwardsViewsFromServer();
+
       // Populate filter dropdowns from constants (no full dataset needed)
       this._populateFiltersFromConstants();
 
@@ -2993,8 +2996,35 @@ const awardsModule = {
   /* SAVED FILTER VIEWS */
   /* ==================================================== */
 
+  _awardsViewsKey: 'awardsSavedViews',
+
+  async _syncAwardsViewsFromServer() {
+    try {
+      const result = await apiClient.select('user_preferences', {
+        filters: { key: this._awardsViewsKey },
+        pageSize: 1,
+      });
+      if (result.data?.[0]?.value) {
+        localStorage.setItem(this._awardsViewsKey, result.data[0].value);
+      }
+    } catch (e) {
+      // localStorage cache remains valid
+    }
+  },
+
+  async _persistAwardsViews(views) {
+    localStorage.setItem(this._awardsViewsKey, JSON.stringify(views));
+    apiClient
+      .upsert(
+        'user_preferences',
+        { key: this._awardsViewsKey, value: JSON.stringify(views), updated_at: new Date().toISOString() },
+        { onConflict: 'key' }
+      )
+      .catch(() => {});
+  },
+
   /**
-   * Save the current filter state as a named view in localStorage.
+   * Save the current filter state as a named view.
    * @returns {void}
    */
   saveCurrentAwardsView() {
@@ -3010,9 +3040,9 @@ const awardsModule = {
       search: document.getElementById('awardsSearchBox')?.value || '',
     };
     try {
-      const views = JSON.parse(localStorage.getItem('awardsSavedViews') || '[]');
+      const views = JSON.parse(localStorage.getItem(this._awardsViewsKey) || '[]');
       views.push({ name, filters, created: Date.now() });
-      localStorage.setItem('awardsSavedViews', JSON.stringify(views));
+      this._persistAwardsViews(views);
       this._renderSavedAwardsViews();
       utils.showToast('View saved: ' + name, 'success');
     } catch (e) {
@@ -3021,14 +3051,14 @@ const awardsModule = {
   },
 
   /**
-   * Render the saved views dropdown from localStorage.
+   * Render the saved views dropdown.
    * @returns {void}
    */
   _renderSavedAwardsViews() {
     const el = document.getElementById('awardsSavedViewsList');
     if (!el) return;
     try {
-      const views = JSON.parse(localStorage.getItem('awardsSavedViews') || '[]');
+      const views = JSON.parse(localStorage.getItem(this._awardsViewsKey) || '[]');
       if (views.length === 0) {
         el.innerHTML = '<option value="">No saved views</option>';
         return;
@@ -3043,12 +3073,12 @@ const awardsModule = {
 
   /**
    * Load a saved filter view by index and apply its filters.
-   * @param {number} index - Index of the saved view in localStorage array
+   * @param {number} index - Index of the saved view array
    * @returns {void}
    */
   loadSavedAwardsView(index) {
     try {
-      const views = JSON.parse(localStorage.getItem('awardsSavedViews') || '[]');
+      const views = JSON.parse(localStorage.getItem(this._awardsViewsKey) || '[]');
       const view = views[index];
       if (!view) return;
       if (view.filters.year) document.getElementById('awardsYearFilterSelect').value = view.filters.year;
@@ -3085,10 +3115,10 @@ const awardsModule = {
    */
   deleteSavedAwardsView(index) {
     try {
-      const views = JSON.parse(localStorage.getItem('awardsSavedViews') || '[]');
+      const views = JSON.parse(localStorage.getItem(this._awardsViewsKey) || '[]');
       const name = views[index]?.name;
       views.splice(index, 1);
-      localStorage.setItem('awardsSavedViews', JSON.stringify(views));
+      this._persistAwardsViews(views);
       this._renderSavedAwardsViews();
       utils.showToast('Deleted view: ' + name, 'info');
     } catch (e) {

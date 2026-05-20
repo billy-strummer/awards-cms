@@ -529,6 +529,9 @@ const crmModule = {
     this._loadingDeals = true;
     // console.debug('Loading deals...');
 
+    // Sync pipeline stage customisations from server so all users see the same stages
+    this._syncPipelineStagesFromServer();
+
     try {
       const filters = {};
       if (this.filters.deals.stage !== 'all') {
@@ -3699,7 +3702,8 @@ const crmModule = {
     container.innerHTML = html;
   },
 
-  // M1: Get pipeline stages (custom or default)
+  // M1: Get pipeline stages (custom or default).  The cache in localStorage is
+  //     kept fresh by _syncPipelineStagesFromServer(), called in loadDeals().
   _getPipelineStages() {
     const stored = localStorage.getItem('crmPipelineStages');
     if (stored) {
@@ -3716,6 +3720,32 @@ const crmModule = {
       { id: 'won', label: 'Won', color: 'success' },
       { id: 'lost', label: 'Lost', color: 'danger' },
     ];
+  },
+
+  async _syncPipelineStagesFromServer() {
+    try {
+      const result = await apiClient.select('user_preferences', {
+        filters: { key: 'crmPipelineStages' },
+        pageSize: 1,
+      });
+      if (result.data?.[0]?.value) {
+        localStorage.setItem('crmPipelineStages', result.data[0].value);
+      }
+    } catch (e) {
+      // localStorage cache remains valid
+    }
+  },
+
+  async _savePipelineStagesToServer(stages) {
+    try {
+      await apiClient.upsert(
+        'user_preferences',
+        { key: 'crmPipelineStages', value: JSON.stringify(stages), updated_at: new Date().toISOString() },
+        { onConflict: 'key' }
+      );
+    } catch (e) {
+      // ignore — localStorage copy is current
+    }
   },
 
   openManageStagesModal() {
@@ -3756,6 +3786,7 @@ const crmModule = {
           return false;
         }
         localStorage.setItem('crmPipelineStages', JSON.stringify(newStages));
+        this._savePipelineStagesToServer(newStages);
         utils.showToast('Pipeline stages saved', 'success');
         if (this._kanbanView) this.renderKanbanBoard();
       },

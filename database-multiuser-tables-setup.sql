@@ -31,6 +31,13 @@ CREATE TABLE IF NOT EXISTS cms_audit_logs (
   created_at  TIMESTAMP    DEFAULT NOW()
 );
 
+-- Add columns defensively in case the table already existed with fewer columns
+ALTER TABLE cms_audit_logs ADD COLUMN IF NOT EXISTS entity_type VARCHAR(100);
+ALTER TABLE cms_audit_logs ADD COLUMN IF NOT EXISTS entity_id   TEXT;
+ALTER TABLE cms_audit_logs ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE cms_audit_logs ADD COLUMN IF NOT EXISTS user_email  VARCHAR(255);
+ALTER TABLE cms_audit_logs ADD COLUMN IF NOT EXISTS created_at  TIMESTAMP DEFAULT NOW();
+
 CREATE INDEX IF NOT EXISTS idx_cms_audit_logs_created    ON cms_audit_logs(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_cms_audit_logs_user       ON cms_audit_logs(user_email);
 CREATE INDEX IF NOT EXISTS idx_cms_audit_logs_entity     ON cms_audit_logs(entity_type, entity_id);

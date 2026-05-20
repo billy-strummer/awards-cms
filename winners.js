@@ -486,7 +486,7 @@ const winnersModule = {
                 <li><hr class="dropdown-divider"></li>
                 <li><a class="dropdown-item small" href="#" data-action="winnersModule.scheduleAnnouncement" data-args='${JSON.stringify([winner.id])}' data-prevent-default="true">
                   <i class="bi bi-calendar-event text-info me-2"></i>Schedule Announcement…
-                  ${winner.announce_at ? `<span class="badge bg-info ms-1" style="font-size:0.65rem;">${new Date(winner.announce_at).toLocaleDateString()}</span>` : ''}
+                  ${winner.announce_at ? `<span class="badge bg-info ms-1" style="font-size:0.65rem;">${new Date(winner.announce_at).toLocaleDateString('en-GB')}</span>` : ''}
                 </a></li>
               </ul>
             </div>

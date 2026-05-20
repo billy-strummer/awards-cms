@@ -198,7 +198,7 @@ const assignmentsModule = {
                 <thead class="table-light">
                   <tr>
                     <th style="cursor: pointer;" data-action="assignmentsModule.sortAssignments" data-id="company">
-                      Company <i class="bi bi-arrow-down-up ms-1"></i>
+                      Organisation <i class="bi bi-arrow-down-up ms-1"></i>
                     </th>
                     <th>Badges</th>
                     <th style="cursor: pointer;" data-action="assignmentsModule.sortAssignments" data-id="votes">
@@ -339,7 +339,7 @@ const assignmentsModule = {
             <a href="#"
                class="text-decoration-none fw-semibold text-primary"
                data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([org.id, org.company_name]).replace(/'/g, '&#39;')}'
-               title="View company profile">
+               title="View organisation profile">
               ${utils.escapeHtml(org.company_name)}
             </a>
           </div>
@@ -595,7 +595,7 @@ const assignmentsModule = {
       }
     } catch (error) {
       console.error('Error assigning company:', error);
-      utils.showToast('Failed to assign company: ' + error.message, 'error');
+      utils.showToast('Failed to assign organisation: ' + error.message, 'error');
     } finally {
       utils.hideLoading();
     }
@@ -626,7 +626,7 @@ const assignmentsModule = {
 
       await apiClient.delete('award_assignments', assignmentId);
 
-      utils.showToast('Company removed from award', 'success');
+      utils.showToast('Organisation removed from award', 'success');
       await this.refreshAssignments();
 
       // Refresh awards list

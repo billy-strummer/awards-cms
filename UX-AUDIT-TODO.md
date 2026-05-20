@@ -9,6 +9,7 @@ Sixth audit: 2026-05-08 (international awards business first-run UX audit — se
 Seventh audit: 2026-05-14 (top-to-bottom professional CMS audit — see V7 section below)
 Fourteenth audit: 2026-05-14 (deep tab-by-tab audit with 7 parallel agents — see V14 section below)
 Fifteenth audit: 2026-05-14 (follow-up suggestions from V14 review — see V15 section below)
+Sixteenth audit: 2026-05-20 (5-agent comprehensive audit: business logic, workflows, accessibility, mobile, terminology, first-run — see V16 section below)
 Branch: `claude/bta-location-restructure-JS5hX`
 
 ---
@@ -2558,3 +2559,204 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **File:** `index.html` line 10949
 - **Fix:** Added action guidance: "review AI findings, then either approve (override to Pass) or disqualify from the shortlist".
 - [x] Implemented
+
+---
+
+## ═══════════════════════════════════════════════
+## V16 AUDIT — 5-Agent Comprehensive Audit (2026-05-20)
+## Business Logic · Workflows · Accessibility · Mobile · Terminology · First-Run
+## ═══════════════════════════════════════════════
+
+> **CLAUDE: If any V16 items are still `[ ]`, start here before doing anything else.**
+> Sources: 5 parallel agents covering (1) Dashboard/Awards/Orgs/Entries, (2) Events/Payments/Email,
+> (3) Assignments/CRM/Settings/Cross-cutting, (4) Accessibility/Mobile/Terminology/First-run,
+> (5) Business logic & workflow integrity.
+> Items are ordered strictly: V16-C → V16-H → V16-M → V16-L.
+
+---
+
+## V16-CRITICAL — Data integrity and workflow-blocking bugs
+
+### V16-C1 — Email campaign can be sent to 0 recipients without error
+- **File:** `email-builder.js` — `sendCampaign()` around line 2604
+- **Root cause:** After counting subscribers, if `count === 0` the code still shows the confirmation dialog and allows send. The RPC will silently send to nobody, logging a fake campaign record.
+- **Fix:** After `const count = countResult.count || 0;`, add:
+  ```js
+  if (count === 0) {
+    utils.showToast('This email list has no active subscribers. Add subscribers before sending.', 'warning');
+    return;
+  }
+  ```
+- **Done when:** Attempting to send to an empty list shows a warning toast and aborts — no confirmation dialog is shown.
+- [x] Implemented
+
+### V16-C2 — Invoice can be deleted when linked payments exist (orphaned payment records)
+- **File:** `payments.js` — `deleteInvoice()` around line 965
+- **Root cause:** The function deletes invoices and their line items but does not check for linked payment records. Deleting a paid invoice leaves orphaned `payments` rows referencing a non-existent `invoice_id`.
+- **Fix:** Before deleting, query `payments` table for `invoice_id = invoiceId`. If any payments exist, block with an error toast: "Cannot delete this invoice — it has linked payment records. Delete the payments first, or void the invoice instead."
+- **Done when:** Attempting to delete an invoice with linked payments shows the error and aborts.
+- [x] Implemented
+
+### V16-C3 — Entry status allows any transition (no state machine)
+- **File:** `entries.js` — `updateEntryStatus()` and inline status dropdown rendering
+- **Root cause:** The status dropdown shows all 6 statuses at all times. A user can jump from `draft` straight to `winner`, or revert from `winner` back to `draft` with no guard.
+- **Fix:** Add a `VALID_TRANSITIONS` map and filter the dropdown to only show allowed next states:
+  ```js
+  const VALID_TRANSITIONS = {
+    draft:        ['submitted', 'rejected'],
+    submitted:    ['under_review', 'rejected'],
+    under_review: ['shortlisted', 'rejected'],
+    shortlisted:  ['winner', 'rejected', 'under_review'],
+    winner:       ['shortlisted'],      // allow reverting to shortlisted only
+    rejected:     ['under_review'],     // allow re-opening for review
+  };
+  ```
+  Filter `<option>` elements so only valid next states (plus current state) are rendered. Apply in both the table inline dropdown and the detail modal dropdown.
+- **Done when:** An entry with status `submitted` only shows `under_review` and `rejected` as options (not `draft`, `shortlisted`, or `winner`). An admin can still override by selecting the current status (no-op).
+- [x] Implemented
+
+### V16-C4 — Refund does not update invoice status to "Refunded"
+- **File:** `payments.js` — `recordRefund()` or the refund action handler
+- **Root cause:** When a refund is recorded, the payment record gets a `refunded` status but the linked invoice `payment_status` stays as `paid`. The invoice still appears as "Paid" in the list and in reports, hiding the fact that money was returned.
+- **Fix:** After saving the refund, update the linked invoice: set `payment_status = 'refunded'` and `status = 'refunded'` (or `sent` if partial). Also adjust `paid_amount` downwards by the refund amount and recalculate `balance_due`.
+- **Done when:** Recording a refund for a fully-paid invoice changes the invoice status badge to "Refunded" immediately.
+- [x] Implemented
+
+---
+
+## V16-HIGH — Significantly degrades experience for new users
+
+### V16-H1 — Icon-only action buttons missing aria-labels in table rows
+- **File:** `index.html` — all table rows with edit/delete icon buttons
+- **Root cause:** Buttons like `<button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>` have no text, no `aria-label`, and no `title` visible on hover. Screen readers announce "button" with no context; mouse users get no tooltip.
+- **Fix:** Ensure every icon-only action button has both `title="Delete award"` (for tooltip) and `aria-label="Delete award"` (for screen readers). Audit all tables: Awards, Organisations, Entries, Payments, CRM, Events. Use `aria-label` values like "Edit [module name]", "Delete [module name]".
+- **Done when:** Hovering any icon-only button in any table shows a descriptive tooltip; no bare "button" announcements for screen reader users.
+- [ ] Implemented
+
+### V16-H2 — Empty states lack calls-to-action buttons
+- **File:** `index.html` — empty state messages across all tabs
+- **Root cause:** Most empty states say "No X found" but the create button is elsewhere in the toolbar, invisible from the empty state. New users don't know how to proceed.
+- **Fix:** For each key empty state add an inline action button:
+  - Awards: "No awards yet — <button>Create your first award</button>"
+  - Organisations: "No organisations yet — <button>Add Organisation</button>"
+  - CRM Communications: "No communications logged — <button>Log First Communication</button>"
+  - Email Lists: already has a note, but add a button
+  Buttons should call the same open-modal function as the toolbar button (wire with `data-action`).
+- **Done when:** Each major empty state has a visible CTA button that opens the create modal directly.
+- [ ] Implemented
+
+### V16-H3 — "Company" vs "Organisation" terminology inconsistency
+- **File:** `crm.js`, `assignments.js`, `index.html`
+- **Root cause:** The database uses `organisations` table. The UI uses "organisation" in most places but CRM module uses "Company" in column headers and form labels. `assignments.js` uses "Remove company from award" in toasts.
+- **Fix:**
+  - `crm.js`: Replace "Company" column header → "Organisation" in rendered table rows
+  - `assignments.js`: Replace "Remove company" toast → "Remove organisation"
+  - `index.html`: Audit all CRM-related form labels for "Company" → "Organisation"
+- **Done when:** The word "company" does not appear in any user-visible UI label, button, or toast (except where the actual database field is `company_name` which is fine in a data context).
+- [x] Implemented
+
+### V16-H4 — Judge portal URL not surfaced to admin
+- **File:** `index.html` — Assignments tab or Settings
+- **Root cause:** The judge portal is at a public URL (e.g. `/judge-portal.html`) but admins have no way to see or copy this URL from inside the CMS. New admins don't know where to direct judges.
+- **Fix:** In the Assignments tab toolbar or the Judge panel, add a "Judge Portal URL" info box showing the URL (constructed from `window.location.origin + '/judge-portal.html'`) with a copy-to-clipboard button.
+- **Done when:** An admin can see and copy the judge login URL from within the Assignments tab without needing to know the domain structure.
+- [x] Implemented
+
+### V16-H5 — Confirmation dialogs on destructive actions are inconsistent
+- **File:** `awards.js`, `entries.js`, `organisations.js`, `events.js`, `payments.js`
+- **Root cause:** Some delete actions use `utils.confirmDialog({ danger: true })` (red confirm button), others use the default (no danger styling), and a few have no confirmation at all.
+- **Fix:** Audit all delete/purge/archive operations. Ensure every one uses `utils.confirmDialog({ danger: true, confirmText: 'Delete' })`. Add `danger: true` to the invoice deletion dialog, award deletion dialog, and any others missing it.
+- **Done when:** All destructive action confirmation buttons are styled red via `danger: true`.
+- [x] Implemented
+
+### V16-H6 — No visible indication of which entries have uploaded documents
+- **File:** `entries.js` — table row rendering, `index.html`
+- **Root cause:** Entries with supporting documents look identical to those without. An admin doing a completeness review has no way to quickly scan which entries have documents attached.
+- **Fix:** In the entries table, add a small file icon badge (e.g. `<i class="bi bi-paperclip text-muted" title="Has documents"></i>`) to rows where the entry has `entry_files` records. Fetch the count during `loadEntries()` via a join or a batch query.
+- **Done when:** Entries with attached files show a paperclip icon in their table row; entries without show nothing.
+- [ ] Implemented
+
+---
+
+## V16-MEDIUM — Visible friction for regular users
+
+### V16-M1 — Entries remain editable after shortlist/winner status
+- **File:** `entries.js` — entry detail modal form
+- **Root cause:** Entry content fields (title, description, answers) remain editable even when status is `shortlisted` or `winner`. An accidental edit after judging could alter the winning entry content.
+- **Fix:** In the entry detail modal, when `entry.status` is `shortlisted` or `winner`, set all content input fields to `disabled` or `readonly`. Show a banner: "This entry has been shortlisted/selected as winner. Content is locked — change status to edit." Include an admin override button for superadmin role.
+- **Done when:** Opening a `winner` entry in the edit modal shows all content fields as read-only.
+- [ ] Implemented
+
+### V16-M2 — Same event attendee can be added twice (admin side)
+- **File:** `events.js` — `addAttendee()` around line 1227
+- **Root cause:** The admin attendee-add function doesn't check if the email already exists in the attendees list. The same person can be added multiple times.
+- **Fix:** Before pushing the new attendee, check if any existing attendee has the same `email` (case-insensitive). If so, show: "An attendee with this email is already on the list." and abort.
+- **Done when:** Adding an attendee with the same email twice shows an error and doesn't duplicate.
+- [x] Implemented
+
+### V16-M3 — Same email campaign can be sent twice (no idempotency)
+- **File:** `email-builder.js` — `sendCampaign()`
+- **Root cause:** If an admin clicks "Send" twice quickly, or re-opens a sent campaign and sends again, the RPC fires twice, double-sending to all subscribers.
+- **Fix:** After a successful send, set a flag on the builder instance (e.g. `this._campaignAlreadySent = true`) and check it at the top of `sendCampaign()`. If already sent, show: "This campaign was already sent. Create a new campaign to send again." Clear the flag on `clearCanvas()`.
+- **Done when:** Pressing Send on an already-sent campaign shows the warning and does not call the RPC again.
+- [x] Implemented
+
+### V16-M4 — Date format not locale-aware (GB users expect DD/MM/YYYY)
+- **File:** `entries.js`, `payments.js`, `events.js`, `awards.js` — date display in table rows
+- **Root cause:** Dates are displayed using `toLocaleDateString()` without a locale option, defaulting to the browser locale. GB users typically want DD/MM/YYYY but US browsers show MM/DD/YYYY.
+- **Fix:** Replace bare `toLocaleDateString()` calls with `toLocaleDateString('en-GB')` throughout all modules. This forces `DD/MM/YYYY` format consistently regardless of browser locale.
+- **Done when:** All displayed dates use `en-GB` locale (DD/MM/YYYY format).
+- [x] Implemented
+
+### V16-M5 — Filter "Clear All Filters" button missing across all tabs
+- **File:** `index.html`, `entries.js`, `awards.js`, `organisations.js`
+- **Root cause:** When multiple filters are active, users must clear them one by one (reset search box, reset status dropdown, reset date dropdown). There is no single "Clear All" button.
+- **Fix:** Add a "Clear Filters" button next to the filter bar on the Entries, Awards, Organisations, and Payments tabs. It should reset all filter inputs to default and call the load function. Hide the button when no filters are active (check if any filter differs from default).
+- **Done when:** An active filter state shows a "Clear Filters" button; clicking it resets all filters and reloads.
+- [ ] Implemented
+
+### V16-M6 — Required form fields marked inconsistently
+- **File:** `index.html` — all major create/edit forms
+- **Root cause:** Some forms show `<span class="text-danger">*</span>` on required fields; others have no visual indicator. New users don't know what's mandatory until they hit a validation error.
+- **Fix:** Add a `<small class="text-muted d-block mb-2">* Required fields</small>` legend at the top of every modal form that has required fields. Ensure all `required` HTML inputs also have a visible asterisk label.
+- **Done when:** All create/edit modals show a required-fields legend; required inputs have visual asterisks.
+- [ ] Implemented
+
+### V16-M7 — Loading state missing in CRM "Log Communication" modal org dropdown
+- **File:** `crm.js` — communication modal open handler
+- **Root cause:** When the log-communication modal opens, the organisations dropdown loads asynchronously. If data takes 2-3 seconds, the dropdown appears empty and users think it's broken.
+- **Fix:** Show `<option disabled selected>Loading organisations…</option>` while the data loads. Replace with real options after the fetch completes.
+- **Done when:** Opening the Log Communication modal shows "Loading organisations…" in the dropdown until data arrives.
+- [x] Implemented
+
+---
+
+## V16-LOW — Polish and accessibility
+
+### V16-L1 — Aria-live regions missing on toast notifications
+- **File:** `app.js` or `utils.js` — toast display function
+- **Root cause:** Success/error toasts are visually shown but not announced to screen readers because the container lacks `aria-live="polite"` or `role="alert"`.
+- **Fix:** Ensure the toast container element has `aria-live="polite"` and `aria-atomic="true"`. Error toasts should use `aria-live="assertive"`.
+- **Done when:** Screen readers announce toasts when they appear.
+- [ ] Implemented
+
+### V16-L2 — "Entry" vs "Submission" vs "Application" used inconsistently
+- **File:** `index.html`, `entries.js`, `entry-proxy.js`
+- **Root cause:** Most places say "entry" but a few buttons/messages say "submission" or "application". Standardise on "entry" throughout.
+- **Fix:** Search for "submission" and "application" in user-visible text in `index.html` and `entries.js`. Replace with "entry"/"entries" where referring to the entries module.
+- **Done when:** "submission" and "application" do not appear in UI-facing strings in the entries context.
+- [ ] Implemented
+
+### V16-L3 — Sidebar icon-only collapsed mode lacks tooltips
+- **File:** `index.html` — sidebar nav links
+- **Root cause:** When the sidebar collapses to icon-only, labels are hidden. Navigation links lack `title` attributes so users cannot identify icons by hovering.
+- **Fix:** Add `title="Dashboard"`, `title="Awards"`, etc. to each `<a>` or `<li>` in the sidebar nav so icon-only mode still shows hover tooltips.
+- **Done when:** Hovering any collapsed sidebar icon shows a tooltip with the section name.
+- [ ] Implemented
+
+### V16-L4 — Modal close behavior inconsistent (auto-close vs manual)
+- **File:** Multiple modules — modal success handlers
+- **Root cause:** Some modals auto-close after a successful save; others stay open requiring manual close. Users become confused about whether the action succeeded.
+- **Fix:** Standardise: after any successful create/update operation in a modal, auto-hide the modal after showing the success toast (1 second delay). Use `setTimeout(() => modal.hide(), 1000)` pattern. Do NOT auto-close on error or warning.
+- **Done when:** All create/edit modals close automatically 1 second after a successful save.
+- [ ] Implemented

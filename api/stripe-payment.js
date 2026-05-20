@@ -525,6 +525,31 @@ async function handleChargeRefunded(charge) {
       })
       .eq('id', entry.id);
 
+    // Also update linked invoice status to refunded
+    try {
+      const { data: invoices } = await supabase
+        .from('invoices')
+        .select('id')
+        .eq('entry_id', entry.id)
+        .in('payment_status', ['paid', 'partial']);
+
+      if (invoices && invoices.length > 0) {
+        await supabase
+          .from('invoices')
+          .update({
+            payment_status: 'refunded',
+            status: 'refunded',
+            updated_at: new Date().toISOString(),
+          })
+          .in(
+            'id',
+            invoices.map((i) => i.id)
+          );
+      }
+    } catch (invoiceUpdateErr) {
+      console.warn('Failed to update linked invoice on refund:', invoiceUpdateErr.message);
+    }
+
     // Send refund confirmation email
     await sendRefundConfirmationEmail(entry);
   }

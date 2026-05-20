@@ -232,7 +232,7 @@ const crmModule = {
     tbody.innerHTML = companies
       .map((company) => {
         const lastContact = company.last_communication_date
-          ? new Date(company.last_communication_date).toLocaleDateString()
+          ? new Date(company.last_communication_date).toLocaleDateString('en-GB')
           : '<span class="text-muted">Never</span>';
 
         const pipelineValue = company.pipeline_value
@@ -261,7 +261,7 @@ const crmModule = {
           </td>
           <td>
             <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-primary" data-action="crmModule.viewCompanyProfile" data-id="${company.id}" title="View Profile" aria-label="View company profile">
+              <button class="btn btn-outline-primary" data-action="crmModule.viewCompanyProfile" data-id="${company.id}" title="View Profile" aria-label="View organisation profile">
                 <i class="bi bi-eye"></i>
               </button>
               <button class="btn btn-outline-success" data-action="crmModule.logCommunication" data-id="${company.id}" title="Log Communication" aria-label="Log communication">
@@ -428,7 +428,7 @@ const crmModule = {
 
     tbody.innerHTML = pageComms
       .map((comm) => {
-        const date = new Date(comm.communication_date).toLocaleDateString();
+        const date = new Date(comm.communication_date).toLocaleDateString('en-GB');
         const companyName = comm.organisation?.company_name || 'Unknown';
         const contactName = comm.contact
           ? `${comm.contact.first_name} ${comm.contact.last_name}`
@@ -442,7 +442,7 @@ const crmModule = {
 
         const followUpBadge = comm.follow_up_required
           ? `<span class="badge bg-warning text-dark">
-             <i class="bi bi-calendar-check me-1"></i>${comm.follow_up_date ? new Date(comm.follow_up_date).toLocaleDateString() : 'ASAP'}
+             <i class="bi bi-calendar-check me-1"></i>${comm.follow_up_date ? new Date(comm.follow_up_date).toLocaleDateString('en-GB') : 'ASAP'}
            </span>`
           : '<span class="text-muted">-</span>';
 
@@ -634,7 +634,7 @@ const crmModule = {
         const typeBadge = this.getDealTypeBadge(deal.deal_type);
         const value = `£${parseFloat(deal.deal_value).toLocaleString('en-GB', { minimumFractionDigits: 2 })}`;
         const expectedClose = deal.expected_close_date
-          ? new Date(deal.expected_close_date).toLocaleDateString()
+          ? new Date(deal.expected_close_date).toLocaleDateString('en-GB')
           : '<span class="text-muted">TBD</span>';
 
         return `
@@ -789,7 +789,7 @@ const crmModule = {
 
     tbody.innerHTML = pageMeetings
       .map((meeting) => {
-        const date = new Date(meeting.meeting_date).toLocaleDateString();
+        const date = new Date(meeting.meeting_date).toLocaleDateString('en-GB');
         const time = new Date(meeting.meeting_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         const companyName = meeting.organisation?.company_name || 'Unknown';
         const typeBadge = this.getMeetingTypeBadge(meeting.meeting_type);
@@ -807,7 +807,7 @@ const crmModule = {
 
         const followUpBadge = meeting.follow_up_required
           ? `<span class="badge bg-warning text-dark">
-             <i class="bi bi-calendar-check me-1"></i>${meeting.follow_up_date ? new Date(meeting.follow_up_date).toLocaleDateString() : 'ASAP'}
+             <i class="bi bi-calendar-check me-1"></i>${meeting.follow_up_date ? new Date(meeting.follow_up_date).toLocaleDateString('en-GB') : 'ASAP'}
            </span>`
           : '<span class="text-muted">-</span>';
 
@@ -1023,7 +1023,7 @@ const crmModule = {
       const org = (STATE.allOrganisations || []).find((o) => o.id === companyId);
       orgsModule.openCompanyProfile(companyId, org?.company_name || '');
     } else {
-      utils.showToast('Company profile view not available', 'warning');
+      utils.showToast('Organisation profile view not available', 'warning');
     }
   },
 
@@ -1077,9 +1077,9 @@ const crmModule = {
                   </div>
                 </div>
                 <div class="mb-3">
-                  <label class="form-label">Company <span class="text-danger">*</span></label>
+                  <label class="form-label">Organisation <span class="text-danger">*</span></label>
                   <select class="form-select" id="commOrganisation" required>
-                    <option value="">Select company...</option>
+                    <option value="">Select organisation...</option>
                   </select>
                 </div>
                 <div class="mb-3">
@@ -1145,14 +1145,19 @@ const crmModule = {
       // Add modal to page
       document.body.insertAdjacentHTML('beforeend', modalHtml);
 
+      // Show loading state while organisations are fetched / resolved
+      const orgSelect = document.getElementById('commOrganisation');
+      if (!STATE.allOrganisations || STATE.allOrganisations.length === 0) {
+        orgSelect.innerHTML = '<option value="" disabled selected>Loading organisations…</option>';
+      }
+
       // Use already-loaded organisations if available
       const orgs = (STATE.allOrganisations || [])
         .map((o) => ({ id: o.id, company_name: o.company_name }))
         .sort((a, b) => (a.company_name || '').localeCompare(b.company_name || ''));
 
-      const orgSelect = document.getElementById('commOrganisation');
       orgSelect.innerHTML =
-        '<option value="">Select company...</option>' +
+        '<option value="">Select organisation...</option>' +
         orgs
           .map(
             (org) =>
@@ -1251,9 +1256,9 @@ const crmModule = {
                     <input type="text" class="form-control" id="dealName" required placeholder="e.g. Gold Sponsorship 2026">
                   </div>
                   <div class="col-md-6 mb-3">
-                    <label class="form-label">Company <span class="text-danger">*</span></label>
+                    <label class="form-label">Organisation <span class="text-danger">*</span></label>
                     <select class="form-select" id="dealOrganisation" required>
-                      <option value="">Select company...</option>
+                      <option value="">Select organisation...</option>
                     </select>
                   </div>
                 </div>
@@ -1329,7 +1334,7 @@ const crmModule = {
 
       const orgSelect = document.getElementById('dealOrganisation');
       orgSelect.innerHTML =
-        '<option value="">Select company...</option>' +
+        '<option value="">Select organisation...</option>' +
         orgs
           .map(
             (org) =>
@@ -1460,7 +1465,7 @@ const crmModule = {
                       ${contactEmail ? `<tr><td class="text-muted">Email:</td><td><a href="mailto:${utils.escapeHtml(contactEmail)}">${utils.escapeHtml(contactEmail)}</a></td></tr>` : ''}
                       <tr><td class="text-muted">Follow-up:</td><td>${
                         comm.follow_up_required
-                          ? `<span class="badge bg-warning text-dark"><i class="bi bi-calendar-check me-1"></i>${comm.follow_up_date ? new Date(comm.follow_up_date).toLocaleDateString() : 'ASAP'}</span>`
+                          ? `<span class="badge bg-warning text-dark"><i class="bi bi-calendar-check me-1"></i>${comm.follow_up_date ? new Date(comm.follow_up_date).toLocaleDateString('en-GB') : 'ASAP'}</span>`
                           : '<span class="text-muted">None</span>'
                       }</td></tr>
                     </table>
@@ -1682,7 +1687,7 @@ const crmModule = {
       const companyName = deal.organisation?.company_name || 'Unknown';
       const contactName = deal.contact ? `${deal.contact.first_name} ${deal.contact.last_name}` : 'N/A';
       const value = `£${parseFloat(deal.deal_value).toLocaleString('en-GB', { minimumFractionDigits: 2 })}`;
-      const createdDate = new Date(deal.created_at).toLocaleDateString();
+      const createdDate = new Date(deal.created_at).toLocaleDateString('en-GB');
 
       const modalHtml = `
         <div class="modal fade" id="viewDealModal" tabindex="-1">
@@ -1726,7 +1731,7 @@ const crmModule = {
                     <div class="card">
                       <div class="card-body text-center">
                         <h6 class="text-muted mb-1">Expected Close</h6>
-                        <h5 class="mb-0">${deal.expected_close_date ? new Date(deal.expected_close_date).toLocaleDateString() : '<span class="text-warning">Not set</span>'}</h5>
+                        <h5 class="mb-0">${deal.expected_close_date ? new Date(deal.expected_close_date).toLocaleDateString('en-GB') : '<span class="text-warning">Not set</span>'}</h5>
                       </div>
                     </div>
                   </div>
@@ -1969,7 +1974,7 @@ const crmModule = {
       const meeting = meetingResult.data?.[0];
       if (!meeting) throw new Error('Meeting not found');
 
-      const date = new Date(meeting.meeting_date).toLocaleDateString();
+      const date = new Date(meeting.meeting_date).toLocaleDateString('en-GB');
       const time = new Date(meeting.meeting_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const companyName = meeting.organisation?.company_name || 'N/A';
       const dealName = meeting.deal?.deal_name || 'N/A';
@@ -2005,7 +2010,7 @@ const crmModule = {
                       <tr><td class="text-muted">Location:</td><td>${utils.escapeHtml(meeting.location || 'N/A')}</td></tr>
                       <tr><td class="text-muted">Follow-up:</td><td>${
                         meeting.follow_up_required
-                          ? `<span class="badge bg-warning text-dark"><i class="bi bi-calendar-check me-1"></i>${meeting.follow_up_date ? new Date(meeting.follow_up_date).toLocaleDateString() : 'ASAP'}</span>`
+                          ? `<span class="badge bg-warning text-dark"><i class="bi bi-calendar-check me-1"></i>${meeting.follow_up_date ? new Date(meeting.follow_up_date).toLocaleDateString('en-GB') : 'ASAP'}</span>`
                           : '<span class="text-muted">None</span>'
                       }</td></tr>
                     </table>
@@ -2366,7 +2371,7 @@ const crmModule = {
     if (
       !(await utils.confirmDialog({
         title: 'Remove from Segment',
-        message: 'Remove this company from the segment?',
+        message: 'Remove this organisation from the segment?',
         confirmText: 'Remove',
       }))
     )
@@ -2376,7 +2381,7 @@ const crmModule = {
       await utils.protectModalDuringSave('viewSegmentCompaniesModal', async () => {
         await apiClient.delete('organisation_segments', assignmentId);
 
-        utils.showToast('Company removed from segment', 'success');
+        utils.showToast('Organisation removed from segment', 'success');
         // Refresh the segment companies view
         bootstrap.Modal.getInstance(document.getElementById('viewSegmentCompaniesModal'))?.hide();
         this.viewSegmentCompanies(segmentId, segmentName);
@@ -2384,7 +2389,7 @@ const crmModule = {
       });
     } catch (error) {
       console.error('Error removing from segment:', error);
-      utils.showToast('Error removing company from segment', 'error');
+      utils.showToast('Error removing organisation from segment', 'error');
     }
   },
 
@@ -2966,9 +2971,9 @@ const crmModule = {
                       <input type="text" class="form-control" id="newMeetingTitle" required placeholder="e.g. Quarterly Review">
                     </div>
                     <div class="col-md-6 mb-3">
-                      <label class="form-label">Company <span class="text-danger">*</span></label>
+                      <label class="form-label">Organisation <span class="text-danger">*</span></label>
                       <select class="form-select" id="newMeetingOrg" required>
-                        <option value="">Select company...</option>
+                        <option value="">Select organisation...</option>
                         ${orgOptions}
                       </select>
                     </div>
@@ -3158,14 +3163,14 @@ const crmModule = {
           <div class="modal-dialog">
             <div class="modal-content">
               <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title"><i class="bi bi-tags me-2"></i>Assign Company to Segments</h5>
+                <h5 class="modal-title"><i class="bi bi-tags me-2"></i>Assign Organisation to Segments</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
               </div>
               <div class="modal-body">
                 <div class="mb-3">
-                  <label class="form-label">Select Company <span class="text-danger">*</span></label>
+                  <label class="form-label">Select Organisation <span class="text-danger">*</span></label>
                   <select class="form-select" id="assignSegmentOrg" required>
-                    <option value="">Select company...</option>
+                    <option value="">Select organisation...</option>
                     ${orgOptions}
                   </select>
                 </div>
@@ -3230,7 +3235,7 @@ const crmModule = {
       localStorage.setItem(key, JSON.stringify(stored));
       bootstrap.Modal.getInstance(document.getElementById('assignSegmentsModal'))?.hide();
     }
-    utils.showToast(`Company assigned to ${checked.length} segment(s)`, 'success');
+    utils.showToast(`Organisation assigned to ${checked.length} segment(s)`, 'success');
     this.loadSegments();
   },
 

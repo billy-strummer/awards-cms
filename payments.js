@@ -337,9 +337,9 @@ const paymentsModule = {
               : utils.escapeHtml(invoice.organisations?.company_name || 'N/A')
           }
         </td>
-        <td>${invoice.invoice_date ? new Date(invoice.invoice_date).toLocaleDateString() : 'N/A'}</td>
+        <td>${invoice.invoice_date ? new Date(invoice.invoice_date).toLocaleDateString('en-GB') : 'N/A'}</td>
         <td>
-          ${invoice.due_date ? new Date(invoice.due_date).toLocaleDateString() : 'N/A'}
+          ${invoice.due_date ? new Date(invoice.due_date).toLocaleDateString('en-GB') : 'N/A'}
           ${isOverdue && daysOverdue > 0 ? `<br><span class="badge bg-danger" style="font-size:0.65rem;">${daysOverdue}d overdue</span>` : ''}
         </td>
         <td><span class="badge bg-info-subtle text-info">${this.formatInvoiceType(invoice.invoice_type)}</span></td>
@@ -963,10 +963,30 @@ const paymentsModule = {
    * @returns {Promise<void>}
    */
   async deleteInvoice(invoiceId) {
+    // Block deletion if linked payments exist (would orphan payment records)
+    try {
+      const paymentsCheck = await apiClient.select('payments', {
+        select: 'id',
+        filters: { invoice_id: { operator: 'eq', value: invoiceId } },
+        pageSize: 1,
+      });
+      if (paymentsCheck.data && paymentsCheck.data.length > 0) {
+        utils.showToast(
+          'Cannot delete this invoice — it has linked payment records. Delete the payments first, or void the invoice instead.',
+          'error'
+        );
+        return;
+      }
+    } catch (_e) {
+      // If check fails, allow deletion to proceed (non-blocking guard)
+    }
+
     if (
       !(await utils.confirmDialog({
         title: 'Delete Invoice',
         message: 'Are you sure you want to delete this invoice? This action cannot be undone.',
+        danger: true,
+        confirmText: 'Delete',
       }))
     ) {
       return;
@@ -1376,7 +1396,7 @@ const paymentsModule = {
             <i class="bi bi-clipboard text-muted small"></i>
           </button>
         </td>
-        <td>${payment.payment_date ? new Date(payment.payment_date).toLocaleDateString() : 'N/A'}</td>
+        <td>${payment.payment_date ? new Date(payment.payment_date).toLocaleDateString('en-GB') : 'N/A'}</td>
         <td>
           ${
             payment.organisations?.id && payment.organisations?.company_name
@@ -1567,7 +1587,7 @@ const paymentsModule = {
         const notes = document.getElementById('paymentNotes').value;
 
         if (!organisationId) {
-          utils.showToast('Please select a company', 'warning');
+          utils.showToast('Please select an organisation', 'warning');
           return;
         }
 
@@ -2110,7 +2130,7 @@ const paymentsModule = {
     const totalOutstanding = invoices.reduce((sum, i) => sum + parseFloat(i.balance_due || 0), 0);
 
     return `
-      <h5 class="mb-4">Revenue Summary: ${new Date(startDate).toLocaleDateString()} - ${new Date(endDate).toLocaleDateString()}</h5>
+      <h5 class="mb-4">Revenue Summary: ${new Date(startDate).toLocaleDateString('en-GB')} - ${new Date(endDate).toLocaleDateString('en-GB')}</h5>
       <div class="row g-3 mb-4">
         <div class="col-md-4">
           <div class="card text-center">
@@ -2170,7 +2190,7 @@ const paymentsModule = {
               <tr>
                 <td>${utils.escapeHtml(inv.invoice_number)}</td>
                 <td>${utils.escapeHtml(inv.organisations?.company_name || 'N/A')}</td>
-                <td>${new Date(inv.due_date).toLocaleDateString()}</td>
+                <td>${new Date(inv.due_date).toLocaleDateString('en-GB')}</td>
                 <td>&pound;${parseFloat(inv.total_amount).toFixed(2)}</td>
                 <td class="text-danger fw-bold">&pound;${parseFloat(inv.balance_due).toFixed(2)}</td>
                 <td>${this.getInvoiceStatusBadge(inv.status, inv.payment_status)}</td>
@@ -2201,7 +2221,7 @@ const paymentsModule = {
       .reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
 
     return `
-      <h5 class="mb-4">Payment History: ${new Date(startDate).toLocaleDateString()} - ${new Date(endDate).toLocaleDateString()}</h5>
+      <h5 class="mb-4">Payment History: ${new Date(startDate).toLocaleDateString('en-GB')} - ${new Date(endDate).toLocaleDateString('en-GB')}</h5>
       <div class="alert alert-info">
         <strong>Total Received:</strong> &pound;${totalReceived.toFixed(2)} (${filteredPayments.length} payments)
       </div>
@@ -2222,7 +2242,7 @@ const paymentsModule = {
               .map(
                 (payment) => `
               <tr>
-                <td>${new Date(payment.payment_date).toLocaleDateString()}</td>
+                <td>${new Date(payment.payment_date).toLocaleDateString('en-GB')}</td>
                 <td>${payment.payment_reference}</td>
                 <td>${payment.organisations?.company_name || 'N/A'}</td>
                 <td>${this.formatPaymentMethod(payment.payment_method)}</td>
@@ -2392,7 +2412,7 @@ const paymentsModule = {
               <tr>
                 <td>${utils.escapeHtml(inv.invoice_number)}</td>
                 <td>${utils.escapeHtml(inv.organisations?.company_name || 'N/A')}</td>
-                <td>${new Date(inv.invoice_date).toLocaleDateString()}</td>
+                <td>${new Date(inv.invoice_date).toLocaleDateString('en-GB')}</td>
                 <td>&pound;${parseFloat(inv.total_amount).toFixed(2)}</td>
                 <td>${this.getInvoiceStatusBadge(inv.status, inv.payment_status)}</td>
               </tr>

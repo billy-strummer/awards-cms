@@ -1739,6 +1739,8 @@ const awardsModule = {
       !(await utils.confirmDialog({
         title: 'Delete Awards',
         message: `Delete ${count} award(s)? This cannot be undone.`,
+        danger: true,
+        confirmText: 'Delete',
       }))
     )
       return;
@@ -1746,6 +1748,8 @@ const awardsModule = {
       !(await utils.confirmDialog({
         title: 'Final Confirmation',
         message: `Are you absolutely sure? This will permanently delete ${count} award(s) and their assignments.`,
+        danger: true,
+        confirmText: 'Delete Permanently',
       }))
     )
       return;
@@ -1923,6 +1927,8 @@ const awardsModule = {
       !(await utils.confirmDialog({
         title: 'Delete Award',
         message: 'Are you sure you want to delete this award? This action cannot be undone.',
+        danger: true,
+        confirmText: 'Delete',
       }))
     ) {
       return;

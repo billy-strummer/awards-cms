@@ -729,7 +729,7 @@ Vote now: {{website}}
               </h6>
               <div class="post-preview">${contentPreview}</div>
               <div class="post-meta">
-                <span><i class="bi bi-calendar3 me-1"></i>${scheduledDate.toLocaleDateString()}</span>
+                <span><i class="bi bi-calendar3 me-1"></i>${scheduledDate.toLocaleDateString('en-GB')}</span>
                 <span><i class="bi bi-clock me-1"></i>${scheduledDate.toLocaleTimeString()}</span>
               </div>
               <div class="platform-badges mt-2">
@@ -778,7 +778,7 @@ Vote now: {{website}}
           <div class="d-flex justify-content-between align-items-start">
             <div class="flex-grow-1">
               <div class="small text-truncate" style="max-width: 250px;">${contentPreview}</div>
-              <small class="text-muted">${new Date(post.created_at).toLocaleDateString()}</small>
+              <small class="text-muted">${new Date(post.created_at).toLocaleDateString('en-GB')}</small>
             </div>
             <div class="d-flex gap-1">
               <button class="btn btn-sm btn-outline-primary" data-action="socialMediaModule.editScheduledPost" data-id="${post.id}" title="Edit">
@@ -1086,7 +1086,7 @@ Vote now: {{website}}
               <div class="post-preview small text-muted mb-2">${contentPreview}</div>
               <div class="d-flex align-items-center gap-3">
                 <small class="text-muted">
-                  <i class="bi bi-clock me-1"></i>${createdDate.toLocaleDateString()} ${createdDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  <i class="bi bi-clock me-1"></i>${createdDate.toLocaleDateString('en-GB')} ${createdDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </small>
                 <div class="platform-badges">${platformBadges}</div>
               </div>

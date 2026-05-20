@@ -180,7 +180,7 @@ const aiVettingModule = {
         <tr>
           <td>
             <div class="fw-semibold">${utils.escapeHtml(result.company_name)}</div>
-            <small class="text-muted">${new Date(result.vetting_date).toLocaleDateString()}</small>
+            <small class="text-muted">${new Date(result.vetting_date).toLocaleDateString('en-GB')}</small>
           </td>
           <td>${utils.escapeHtml(utils.toTitleCase(result.sector) || 'N/A')}</td>
           <td class="text-center">${statusBadge}</td>
@@ -504,7 +504,7 @@ const aiVettingModule = {
       r.recent_news || '',
       r.ownership_changes || '',
       r.ai_recommendation || '',
-      new Date(r.vetting_date).toLocaleDateString(),
+      new Date(r.vetting_date).toLocaleDateString('en-GB'),
     ]);
 
     const csv = [headers, ...rows]

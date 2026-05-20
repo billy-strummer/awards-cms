@@ -1164,7 +1164,7 @@ describe('CRM Module - viewCompanyProfile', () => {
 
     crmModule.viewCompanyProfile('org1');
 
-    expect(showToastSpy).toHaveBeenCalledWith('Company profile view not available', 'warning');
+    expect(showToastSpy).toHaveBeenCalledWith('Organisation profile view not available', 'warning');
 
     global.orgsModule = savedOrgs;
     showToastSpy.mockRestore();

@@ -7896,6 +7896,15 @@
               <i class="bi bi-info-circle me-1"></i>
               Assign judges to entries for blind scoring. Judges see their assignments in the Judge Portal. Click a row to view details.
             </small>
+            <div class="mt-2 p-2 bg-light border rounded d-flex align-items-center gap-2" style="font-size:0.8rem;">
+              <i class="bi bi-link-45deg text-primary"></i>
+              <span class="text-muted me-1">Judge Portal URL:</span>
+              <code id="judgePortalUrlDisplay" class="text-primary" style="word-break:break-all;"></code>
+              <button class="btn btn-outline-secondary btn-sm py-0 px-2 ms-1" onclick="(function(){const url=document.getElementById('judgePortalUrlDisplay').textContent;navigator.clipboard.writeText(url).then(()=>utils.showToast('Judge Portal URL copied to clipboard','success'));})();" title="Copy URL" aria-label="Copy Judge Portal URL">
+                <i class="bi bi-clipboard"></i>
+              </button>
+              <script>document.getElementById('judgePortalUrlDisplay').textContent=window.location.origin+'/judge-portal.html';</script>
+            </div>
           </div>
           <div>
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">

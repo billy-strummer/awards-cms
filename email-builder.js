@@ -34,6 +34,8 @@ const emailBuilder = {
   _reorderDragId: null,
   // Tracks the campaign ID of the draft currently open in the builder (null = unsaved new draft)
   _currentDraftId: null,
+  // Prevents sending the same campaign twice in one session
+  _campaignAlreadySent: false,
 
   /**
    * Update A/B variant B subject line from the input field.
@@ -1492,6 +1494,7 @@ ${content}
     ) {
       this.blocks = [];
       this._currentDraftId = null;
+      this._campaignAlreadySent = false;
       this.showEmptyState();
       this.updatePreview();
     }
@@ -2576,6 +2579,11 @@ ${content}
    * Send campaign to selected email list
    */
   async sendCampaign() {
+    if (this._campaignAlreadySent) {
+      utils.showToast('This campaign was already sent. Clear the canvas to start a new campaign.', 'warning');
+      return;
+    }
+
     const listId = document.getElementById('builderEmailList')?.value;
     const subject = document.getElementById('builderSubject')?.value;
     const campaignName = document.getElementById('builderCampaignName')?.value;
@@ -2607,6 +2615,11 @@ ${content}
     });
     const count = countResult.count || 0;
 
+    if (count === 0) {
+      utils.showToast('This email list has no active subscribers. Add subscribers before sending.', 'warning');
+      return;
+    }
+
     const listName = document.getElementById('builderEmailList')?.selectedOptions[0]?.text || 'selected list';
 
     if (
@@ -2637,6 +2650,7 @@ ${content}
 
       if (!result.data || !result.data.success) throw new Error(result.data?.error || 'Campaign send failed');
 
+      this._campaignAlreadySent = true;
       utils.showToast(`Campaign sent to ${result.data.sent || count} recipients!`, 'success');
 
       // Log the campaign with full data for cloning
@@ -3888,6 +3902,11 @@ ${content}
    * Send campaign with A/B test (splits list)
    */
   async sendABCampaign() {
+    if (this._campaignAlreadySent) {
+      utils.showToast('This campaign was already sent. Clear the canvas to start a new campaign.', 'warning');
+      return;
+    }
+
     const listId = document.getElementById('builderEmailList')?.value;
     const subjectA = document.getElementById('builderSubject')?.value;
     const subjectB = document.getElementById('abVariantB')?.value;
@@ -4066,6 +4085,7 @@ ${content}
         }),
       });
 
+      this._campaignAlreadySent = true;
       utils.showToast(`A/B test sent! A: ${countA} recipients, B: ${countB} recipients`, 'success');
       this.loadCampaignLog();
     } catch (error) {

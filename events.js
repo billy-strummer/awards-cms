@@ -860,7 +860,7 @@ const eventsModule = {
     document.getElementById('attendeesEventId').value = eventId;
     document.getElementById('attendeesEventName').textContent = event.event_name || 'Unnamed Event';
     document.getElementById('attendeesEventDate').textContent = event.event_date
-      ? new Date(event.event_date).toLocaleDateString()
+      ? new Date(event.event_date).toLocaleDateString('en-GB')
       : 'No date set';
     document.getElementById('attendeesEventVenue').textContent = event.venue || 'No venue set';
 
@@ -1241,6 +1241,16 @@ const eventsModule = {
     }
 
     const attendees = await this.getAttendees(eventId);
+
+    // Prevent duplicate attendees by email
+    if (email) {
+      const duplicate = attendees.find((a) => a.email && a.email.toLowerCase() === email.toLowerCase());
+      if (duplicate) {
+        utils.showToast(`An attendee with email "${email}" is already on the list.`, 'warning');
+        return;
+      }
+    }
+
     attendees.push({
       id: `attendee_${Date.now()}`,
       name,
@@ -2328,7 +2338,7 @@ const eventsModule = {
       guestType: 'guest',
       plusOnes: 0,
       dietary: '',
-      notes: `Promoted from waitlist on ${new Date().toLocaleDateString()}`,
+      notes: `Promoted from waitlist on ${new Date().toLocaleDateString('en-GB')}`,
       checkedIn: false,
       checkInTime: null,
       addedAt: new Date().toISOString(),
@@ -2364,7 +2374,7 @@ const eventsModule = {
         <td><strong>${utils.escapeHtml(w.name)}</strong></td>
         <td>${utils.escapeHtml(w.email || '-')}</td>
         <td>${utils.escapeHtml(w.phone || '-')}</td>
-        <td>${new Date(w.addedAt).toLocaleDateString()}</td>
+        <td>${new Date(w.addedAt).toLocaleDateString('en-GB')}</td>
         <td>${w.promoted ? '<span class="badge bg-success">Promoted</span>' : '<span class="badge bg-warning">Waiting</span>'}</td>
         <td class="text-center">
           ${
@@ -7044,7 +7054,7 @@ const eventsModule = {
   async saveVersion() {
     const name = prompt(
       'Enter a name for this version:',
-      `v${this._roVersions.length + 1} - ${new Date().toLocaleDateString()}`
+      `v${this._roVersions.length + 1} - ${new Date().toLocaleDateString('en-GB')}`
     );
     if (!name) return;
 

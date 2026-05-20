@@ -2,6 +2,31 @@
 /* ENTRIES MODULE - Entry Submission Management */
 /* ==================================================== */
 
+// Allowed status transitions for the entry state machine.
+// Admins may only move to listed next states from the current state.
+const ENTRY_VALID_TRANSITIONS = {
+  draft: ['submitted', 'rejected'],
+  submitted: ['under_review', 'rejected'],
+  under_review: ['shortlisted', 'rejected'],
+  shortlisted: ['winner', 'rejected', 'under_review'],
+  winner: ['shortlisted'],
+  rejected: ['under_review'],
+};
+
+function getEntryStatusOptions(currentStatus) {
+  const current = (currentStatus || 'draft').toLowerCase();
+  const allowed = new Set(ENTRY_VALID_TRANSITIONS[current] || []);
+  const allStatuses = ['draft', 'submitted', 'under_review', 'shortlisted', 'winner', 'rejected'];
+  return allStatuses
+    .map((s) => {
+      const label = s === 'under_review' ? 'Under Review' : s.charAt(0).toUpperCase() + s.slice(1);
+      const selected = s === current ? 'selected' : '';
+      const disabled = s !== current && !allowed.has(s) ? 'disabled' : '';
+      return `<option value="${s}" ${selected} ${disabled}>${label}${disabled ? ' (not available)' : ''}</option>`;
+    })
+    .join('');
+}
+
 const entriesModule = {
   allEntries: [],
   filteredEntries: [],
@@ -341,7 +366,7 @@ const entriesModule = {
           ? `${entry.average_score.toFixed(1)} <small>(${entry.total_scores || 0})</small>`
           : '<span class="text-muted">-</span>';
         const submittedDate = entry.submission_date
-          ? new Date(entry.submission_date).toLocaleDateString()
+          ? new Date(entry.submission_date).toLocaleDateString('en-GB')
           : '<span class="text-muted">Draft</span>';
 
         // M9: Overdue badge if entry_close_date has passed and entry isn't resolved
@@ -375,12 +400,7 @@ const entriesModule = {
             <select class="form-select form-select-sm d-inline-block" style="width:auto; font-size:0.75rem;"
               data-on-change="entriesModule.inlineUpdateEntryStatus" data-id="${entry.id}"
               aria-label="Change entry status">
-              ${['draft', 'submitted', 'under_review', 'shortlisted', 'winner', 'rejected']
-                .map(
-                  (s) =>
-                    `<option value="${s}" ${(entry.status || '').toLowerCase() === s ? 'selected' : ''}>${s === 'under_review' ? 'Under Review' : s.charAt(0).toUpperCase() + s.slice(1)}</option>`
-                )
-                .join('')}
+              ${getEntryStatusOptions(entry.status)}
             </select>
           </td>
           <td>${scoreDisplay}</td>
@@ -1005,12 +1025,7 @@ const entriesModule = {
                     <div class="col-md-6">
                       <label class="form-label">Status</label>
                       <select class="form-select" id="newEntryStatus">
-                        <option value="draft" ${entry.status === 'draft' ? 'selected' : ''}>Draft</option>
-                        <option value="submitted" ${entry.status === 'submitted' ? 'selected' : ''}>Submitted</option>
-                        <option value="under_review" ${entry.status === 'under_review' ? 'selected' : ''}>Under Review</option>
-                        <option value="shortlisted" ${entry.status === 'shortlisted' ? 'selected' : ''}>Shortlisted</option>
-                        <option value="winner" ${entry.status === 'winner' ? 'selected' : ''}>Winner</option>
-                        <option value="rejected" ${entry.status === 'rejected' ? 'selected' : ''}>Rejected</option>
+                        ${getEntryStatusOptions(entry.status)}
                       </select>
                     </div>
                     <div class="col-md-6">
@@ -1490,12 +1505,7 @@ const entriesModule = {
                         <div class="col-md-4 mb-3">
                           <label class="form-label">Status</label>
                           <select class="form-select" id="editEntryStatus">
-                            <option value="draft" ${entry.status === 'draft' ? 'selected' : ''}>Draft</option>
-                            <option value="submitted" ${entry.status === 'submitted' ? 'selected' : ''}>Submitted</option>
-                            <option value="under_review" ${entry.status === 'under_review' ? 'selected' : ''}>Under Review</option>
-                            <option value="shortlisted" ${entry.status === 'shortlisted' ? 'selected' : ''}>Shortlisted</option>
-                            <option value="winner" ${entry.status === 'winner' ? 'selected' : ''}>Winner</option>
-                            <option value="rejected" ${entry.status === 'rejected' ? 'selected' : ''}>Rejected</option>
+                            ${getEntryStatusOptions(entry.status)}
                           </select>
                         </div>
                         <div class="col-md-4 mb-3">

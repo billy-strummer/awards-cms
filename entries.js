@@ -1595,6 +1595,9 @@ const entriesModule = {
                 </form>
               </div>
               <div class="modal-footer">
+                <button type="button" class="btn btn-outline-info me-auto" data-action="entriesModule.viewRevisionHistory" data-id="${entry.id}">
+                  <i class="bi bi-clock-history me-1"></i>Revision History
+                </button>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-primary" data-action="entriesModule.saveEntryEdit" data-id="${entry.id}">
                   <i class="bi bi-save me-2"></i>Save Changes
@@ -1715,6 +1718,58 @@ const entriesModule = {
       const entry = STATE.allEntries?.find((e) => e.id === entryId);
       if (entry) Object.assign(entry, updateData);
       utils.showToast('Entry saved locally', 'success');
+    }
+  },
+
+  /**
+   * Show the revision history for an entry in a dedicated modal.
+   * Calls entryRevisionModule.renderRevisionReview() to render the admin review UI.
+   * @param {string} entryId - The entry UUID
+   * @returns {Promise<void>}
+   */
+  async viewRevisionHistory(entryId) {
+    try {
+      const revModule = typeof entryRevisionModule !== 'undefined'
+        ? entryRevisionModule
+        : ModuleRegistry.get('entryRevisionModule');
+      if (!revModule) {
+        utils.showToast('Revision module not available.', 'error');
+        return;
+      }
+
+      const content = await revModule.renderRevisionReview(entryId);
+
+      // Remove any existing revision history modal
+      document.getElementById('entryRevisionHistoryModal')?.remove();
+
+      document.body.insertAdjacentHTML('beforeend', `
+        <div class="modal fade" id="entryRevisionHistoryModal" tabindex="-1">
+          <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+              <div class="modal-header bg-info text-white">
+                <h5 class="modal-title"><i class="bi bi-clock-history me-2"></i>Revision History</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body">
+                ${content}
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `);
+
+      const revModal = new bootstrap.Modal(document.getElementById('entryRevisionHistoryModal'));
+      revModal.show();
+
+      document.getElementById('entryRevisionHistoryModal').addEventListener('hidden.bs.modal', function () {
+        this.remove();
+      });
+    } catch (error) {
+      console.error('Error showing revision history:', error);
+      utils.showToast('Failed to load revision history: ' + error.message, 'error');
     }
   },
 

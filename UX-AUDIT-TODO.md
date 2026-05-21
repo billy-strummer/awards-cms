@@ -2998,7 +2998,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **File:** `entries.js`, `index.html`
 - **Root cause:** `entry-revision.js` is loaded and works, but `renderRevisionHistory`/`renderRevisionReview` are never called from the Entries tab UI.
 - **Fix:** Add a "Revisions" button or tab to the entry view/edit modal calling `entryRevisionModule.renderRevisionReview(entryId)`.
-- [ ] Implemented
+- [x] Implemented
 
 ---
 

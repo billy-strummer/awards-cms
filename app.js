@@ -921,23 +921,38 @@ ModuleRegistry.register('reportsAnalytics', reportsAnalytics);
 // LAZY CHUNK LOADER
 // Injects a <script> tag for the named chunk file and resolves when loaded.
 // Deduplicates concurrent/repeated calls via _loadedChunks.
+// Shows the top loading bar (#loadingBar) while any chunk is in flight.
 // ============================================
 const _loadedChunks = new Set();
+let _chunkLoadCount = 0;
+function _setLoadingBar(active) {
+  const bar = document.getElementById('loadingBar');
+  if (!bar) return;
+  if (active) {
+    bar.classList.remove('d-none');
+  } else {
+    bar.classList.add('d-none');
+  }
+}
 function loadChunk(filename) {
   if (_loadedChunks.has(filename)) return Promise.resolve();
   // Avoid starting a second download if already in progress
   if (loadChunk._pending && loadChunk._pending[filename]) return loadChunk._pending[filename];
   if (!loadChunk._pending) loadChunk._pending = {};
+  _chunkLoadCount++;
+  _setLoadingBar(true);
   const promise = new Promise((resolve, reject) => {
     const script = document.createElement('script');
     script.src = filename;
     script.onload = () => {
       _loadedChunks.add(filename);
       delete loadChunk._pending[filename];
+      if (--_chunkLoadCount <= 0) { _chunkLoadCount = 0; _setLoadingBar(false); }
       resolve();
     };
     script.onerror = () => {
       delete loadChunk._pending[filename];
+      if (--_chunkLoadCount <= 0) { _chunkLoadCount = 0; _setLoadingBar(false); }
       reject(new Error(`Failed to load chunk: ${filename}`));
     };
     document.head.appendChild(script);

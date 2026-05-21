@@ -717,8 +717,8 @@ describe('Automation Scheduler', () => {
     // Capture the calls made during module load (before any clearAllMocks)
     const cronCalls = mockCronSchedule.mock.calls.slice();
 
-    test('registers 3 cron schedules', () => {
-      expect(cronCalls).toHaveLength(3);
+    test('registers 4 cron schedules', () => {
+      expect(cronCalls).toHaveLength(4);
     });
 
     test('daily tasks schedule is 0 9 * * *', () => {

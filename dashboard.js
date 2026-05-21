@@ -122,19 +122,26 @@ const dashboardModule = {
    * Update dashboard statistics
    */
   async updateStats() {
+    // Build date range filter from the active date range selection
+    const dateStart = this._getDateRangeFilter();
+    const dateFilters = dateStart ? { 'created_at@gte': dateStart } : {};
+
     // Fetch accurate total counts from the server (STATE arrays only contain current page)
     let totalAwards, pendingAwards, totalOrgs, totalWinners;
     try {
       const [awardsResult, orgsResult, winnersResult] = await Promise.all([
-        apiClient.select('award_years', { select: 'id, status', page: 1, pageSize: 1 }),
-        apiClient.select('organisations', { select: 'id', page: 1, pageSize: 1 }),
-        apiClient.select('winners', { select: 'id', page: 1, pageSize: 1 }),
+        apiClient.select('award_years', { select: 'id, status', page: 1, pageSize: 1, filters: dateFilters }),
+        apiClient.select('organisations', { select: 'id', page: 1, pageSize: 1, filters: dateFilters }),
+        apiClient.select('winners', { select: 'id', page: 1, pageSize: 1, filters: dateFilters }),
       ]);
       totalAwards = awardsResult.count || STATE.allAwards.length;
       totalOrgs = orgsResult.count || STATE.allOrganisations.length;
       totalWinners = winnersResult.count || STATE.allWinners.length;
-      // Pending awards still uses local data as a reasonable approximation
-      pendingAwards = STATE.allAwards.filter((a) => a.status === STATUS.DRAFT || a.status === STATUS.PENDING).length;
+      // Pending awards: filter local state by date range when active
+      const awardsInRange = dateStart
+        ? STATE.allAwards.filter((a) => a.created_at && a.created_at >= dateStart)
+        : STATE.allAwards;
+      pendingAwards = awardsInRange.filter((a) => a.status === STATUS.DRAFT || a.status === STATUS.PENDING).length;
     } catch (_e) {
       // Fallback to local state if server count fails
       totalAwards = STATE.allAwards.length;

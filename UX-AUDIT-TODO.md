@@ -2852,19 +2852,19 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **File:** `reporting.js` — all export functions
 - **Root cause:** Export functions call `loadReportData()` but don't pass the active year filter to the query.
 - **Fix:** Pass `STATE.selectedYear` or the active report filter to export queries.
-- [ ] Implemented
+- [x] Implemented
 
 ### V17-H13 — Dashboard date range filter buttons have no effect on KPIs
 - **File:** `dashboard.js` — `updateStats()`
 - **Root cause:** `_getDateRangeFilter()` is defined and called by `setDateRange()` but `updateStats()` never passes the result as a filter to its `apiClient.select()` calls.
 - **Fix:** Pass date range filter as `created_at >=` filter in each KPI query inside `updateStats()`.
-- [ ] Implemented
+- [x] Implemented
 
 ### V17-H14 — Scheduled email campaigns are never auto-sent
 - **File:** `api/automation-scheduler.js` and `email-builder.js`
 - **Root cause:** Users can schedule campaigns with a future date, but no server-side cron polls `email_campaigns` for `status='Scheduled'` and sends them.
 - **Fix:** Add a check in `automation-scheduler.js` for campaigns with `send_at <= now` and `status='Scheduled'`, and trigger sending via the `send_campaign_emails` RPC.
-- [ ] Implemented
+- [x] Implemented
 
 ### V17-H15 — Mobile sidebar has no hamburger button
 - **File:** `index.html`, `app.js`, `styles.css`

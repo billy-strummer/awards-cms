@@ -26,6 +26,34 @@ const reportingModule = {
     return d ? new Date(d).getFullYear() : null;
   },
 
+  /**
+   * Get the currently active year filter from the analytics module.
+   * Returns null when "All Years" is selected.
+   * @returns {string|null}
+   */
+  _getActiveYear() {
+    if (typeof reportsAnalytics !== 'undefined' && reportsAnalytics._selectedYear && reportsAnalytics._selectedYear !== 'all') {
+      return String(reportsAnalytics._selectedYear);
+    }
+    return null;
+  },
+
+  /**
+   * Build a date range filter for a given year (full calendar year).
+   * Returns an object with `gte` and `lt` ISO strings, or null for no filter.
+   * @param {string|null} year
+   * @returns {{gte: string, lt: string}|null}
+   */
+  _yearDateRange(year) {
+    if (!year) return null;
+    const y = parseInt(year, 10);
+    if (isNaN(y)) return null;
+    return {
+      gte: new Date(y, 0, 1).toISOString(),
+      lt: new Date(y + 1, 0, 1).toISOString(),
+    };
+  },
+
   _dlBlob(blob, name) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -80,9 +108,12 @@ const reportingModule = {
   /* ---- 1. Entries by Category ---- */
   async exportEntriesByCategory(fmt = 'csv') {
     try {
+      const activeYear = this._getActiveYear();
+      const yearRange = this._yearDateRange(activeYear);
       // selectAll justified: report generation needs full dataset for category aggregation (see pagination documentation)
       const data = await apiClient.selectAll('entries', {
         select: 'status, payment_status, award_years(award_name, sector)',
+        ...(yearRange ? { filters: { 'created_at@gte': yearRange.gte, 'created_at@lt': yearRange.lt } } : {}),
       });
       const map = {};
       (data || []).forEach((e) => {
@@ -126,12 +157,18 @@ const reportingModule = {
   /* ---- 2. Revenue Report ---- */
   async exportRevenueReport(fmt = 'csv') {
     try {
+      const activeYear = this._getActiveYear();
+      const yearRange = this._yearDateRange(activeYear);
       // selectAll justified: revenue report needs all invoices and payments for quarterly aggregation (see pagination documentation)
       const [invs, pmts] = await Promise.all([
         apiClient.selectAll('invoices', {
           select: 'invoice_number, total_amount, paid_amount, payment_status, created_at, organisations(company_name)',
+          ...(yearRange ? { filters: { 'created_at@gte': yearRange.gte, 'created_at@lt': yearRange.lt } } : {}),
         }),
-        apiClient.selectAll('payments', { select: 'amount, payment_date' }),
+        apiClient.selectAll('payments', {
+          select: 'amount, payment_date',
+          ...(yearRange ? { filters: { 'payment_date@gte': yearRange.gte.slice(0, 10), 'payment_date@lt': yearRange.lt.slice(0, 10) } } : {}),
+        }),
       ]);
 
       const qMap = {};
@@ -203,9 +240,12 @@ const reportingModule = {
   /* ---- 3. Judge Progress ---- */
   async exportJudgeProgress(fmt = 'csv') {
     try {
+      const activeYear = this._getActiveYear();
+      const yearRange = this._yearDateRange(activeYear);
       // selectAll justified: judge progress report needs all scores for per-judge aggregation (see pagination documentation)
       const data = await apiClient.selectAll('judge_scores', {
         select: 'judge_email, total_score, innovation_score, impact_score, quality_score, presentation_score',
+        ...(yearRange ? { filters: { 'created_at@gte': yearRange.gte, 'created_at@lt': yearRange.lt } } : {}),
       });
       const map = {};
       (data || []).forEach((s) => {
@@ -259,9 +299,12 @@ const reportingModule = {
   /* ---- 4. Voting Trends ---- */
   async exportVotingTrends(fmt = 'csv') {
     try {
+      const activeYear = this._getActiveYear();
+      const yearRange = this._yearDateRange(activeYear);
       // selectAll justified: voting trends report needs all votes for daily and per-entry aggregation (see pagination documentation)
       const data = await apiClient.selectAll('public_votes', {
         select: 'entry_id, created_at, entries(award_years(award_name))',
+        ...(yearRange ? { filters: { 'created_at@gte': yearRange.gte, 'created_at@lt': yearRange.lt } } : {}),
       });
       const byDay = {},
         byEntry = {};
@@ -378,13 +421,27 @@ const reportingModule = {
   async generateBoardReport() {
     try {
       utils.showToast('Generating board report\u2026', 'info');
+      const activeYear = this._getActiveYear();
+      const yearRange = this._yearDateRange(activeYear);
       // selectAll justified: board report needs complete datasets across all tables for KPI calculations (see pagination documentation)
       const [entries, judgeScores, votes, sponsors, pmts] = await Promise.all([
-        apiClient.selectAll('entries', { select: 'id, status, created_at' }),
-        apiClient.selectAll('judge_scores', { select: 'id, judge_email' }),
-        apiClient.selectAll('public_votes', { select: 'id, created_at' }),
+        apiClient.selectAll('entries', {
+          select: 'id, status, created_at',
+          ...(yearRange ? { filters: { 'created_at@gte': yearRange.gte, 'created_at@lt': yearRange.lt } } : {}),
+        }),
+        apiClient.selectAll('judge_scores', {
+          select: 'id, judge_email',
+          ...(yearRange ? { filters: { 'created_at@gte': yearRange.gte, 'created_at@lt': yearRange.lt } } : {}),
+        }),
+        apiClient.selectAll('public_votes', {
+          select: 'id, created_at',
+          ...(yearRange ? { filters: { 'created_at@gte': yearRange.gte, 'created_at@lt': yearRange.lt } } : {}),
+        }),
         apiClient.selectAll('sponsors', { select: 'id, tier' }),
-        apiClient.selectAll('payments', { select: 'id, amount, payment_date' }),
+        apiClient.selectAll('payments', {
+          select: 'id, amount, payment_date',
+          ...(yearRange ? { filters: { 'payment_date@gte': yearRange.gte.slice(0, 10), 'payment_date@lt': yearRange.lt.slice(0, 10) } } : {}),
+        }),
       ]);
       const totalRev = (pmts || []).reduce((s, p) => s + parseFloat(p.amount || 0), 0);
       const uniqueJudges = new Set((judgeScores || []).map((s) => s.judge_email)).size;

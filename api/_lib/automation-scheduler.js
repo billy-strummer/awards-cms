@@ -18,6 +18,24 @@ const { createClient } = require('@supabase/supabase-js');
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
 /**
+ * Scheduled email campaign dispatcher (runs every 5 minutes).
+ * Finds campaigns with status='Scheduled' and scheduled_date <= now, then sends them.
+ */
+cron.schedule(
+  '*/5 * * * *',
+  async () => {
+    try {
+      await dispatchScheduledCampaigns();
+    } catch (error) {
+      console.error('Error dispatching scheduled campaigns:', error);
+    }
+  },
+  {
+    timezone: 'Europe/London',
+  }
+);
+
+/**
  * Daily automation tasks (runs at 9:00 AM)
  */
 cron.schedule(
@@ -105,6 +123,91 @@ cron.schedule(
     timezone: 'Europe/London',
   }
 );
+
+/**
+ * Dispatch all scheduled email campaigns whose send time has arrived.
+ * Finds email_campaigns with status='Scheduled' and scheduled_date <= now,
+ * calls the send_campaign_emails RPC for each, and updates the status to 'Sent' or 'Failed'.
+ * @returns {Promise<void>}
+ */
+async function dispatchScheduledCampaigns() {
+  const now = new Date().toISOString();
+
+  // Fetch due campaigns
+  const { data: campaigns, error } = await supabase
+    .from('email_campaigns')
+    .select('*')
+    .eq('status', 'Scheduled')
+    .lte('scheduled_date', now);
+
+  if (error) {
+    console.error('dispatchScheduledCampaigns: query error', error);
+    return;
+  }
+
+  if (!campaigns || campaigns.length === 0) {
+    return; // Nothing to send
+  }
+
+  console.log(`dispatchScheduledCampaigns: found ${campaigns.length} campaign(s) due`);
+
+  for (const campaign of campaigns) {
+    // Mark as Sending immediately to prevent double-dispatch
+    await supabase
+      .from('email_campaigns')
+      .update({ status: 'Sending' })
+      .eq('id', campaign.id)
+      .eq('status', 'Scheduled');
+
+    try {
+      // Parse stored campaign metadata from notes field
+      let meta = {};
+      try {
+        meta = campaign.notes ? JSON.parse(campaign.notes) : {};
+      } catch (_) {
+        meta = {};
+      }
+
+      const listId = meta.list_id;
+      if (!listId) {
+        throw new Error('No list_id in campaign notes — cannot send');
+      }
+
+      const { data: rpcResult, error: rpcError } = await supabase.rpc('send_campaign_emails', {
+        p_list_id: listId,
+        p_subject: campaign.subject || campaign.campaign_name || 'Campaign',
+        p_html: meta.html || '',
+        p_from_name: meta.from_name || process.env.FROM_NAME || 'British Trade Awards',
+        p_from_email: meta.from_email || process.env.FROM_EMAIL || '',
+        p_reply_to: meta.reply_to || meta.from_email || process.env.FROM_EMAIL || '',
+        p_campaign_name: campaign.campaign_name || campaign.subject || 'Campaign',
+      });
+
+      if (rpcError) throw rpcError;
+      if (rpcResult && !rpcResult.success) throw new Error(rpcResult.error || 'RPC returned failure');
+
+      const sentCount = rpcResult?.sent ?? campaign.total_recipients ?? 0;
+
+      await supabase
+        .from('email_campaigns')
+        .update({
+          status: 'Sent',
+          sent_date: new Date().toISOString(),
+          total_recipients: sentCount,
+        })
+        .eq('id', campaign.id);
+
+      console.log(`dispatchScheduledCampaigns: sent campaign "${campaign.campaign_name}" to ${sentCount} recipients`);
+    } catch (sendErr) {
+      console.error(`dispatchScheduledCampaigns: failed to send campaign ${campaign.id}:`, sendErr);
+
+      await supabase
+        .from('email_campaigns')
+        .update({ status: 'Failed' })
+        .eq('id', campaign.id);
+    }
+  }
+}
 
 /**
  * Get the nearest judging deadline from active awards.
@@ -491,10 +594,13 @@ module.exports = async function handler(req, res) {
       case 'weekly-stats':
         await generateWeeklyStats();
         return res.json({ success: true, action: 'weekly-stats' });
+      case 'send-scheduled-campaigns':
+        await dispatchScheduledCampaigns();
+        return res.json({ success: true, action: 'send-scheduled-campaigns' });
       default:
         return res.status(400).json({
           error:
-            'Invalid action. Use: winner-announcements, judge-assignments, shortlist-generation, payment-reminders, judge-progress, weekly-stats',
+            'Invalid action. Use: winner-announcements, judge-assignments, shortlist-generation, payment-reminders, judge-progress, weekly-stats, send-scheduled-campaigns',
         });
     }
   } catch (error) {
@@ -511,6 +617,7 @@ module.exports.triggerShortlistGeneration = triggerShortlistGeneration;
 module.exports.sendPaymentReminders = sendPaymentReminders;
 module.exports.sendJudgeProgressReports = sendJudgeProgressReports;
 module.exports.generateWeeklyStats = generateWeeklyStats;
+module.exports.dispatchScheduledCampaigns = dispatchScheduledCampaigns;
 
 // Start scheduler if running directly
 if (require.main === module) {

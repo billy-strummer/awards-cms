@@ -181,7 +181,7 @@ const crmModule = {
       });
       const currentVal = segmentFilter.value;
       segmentFilter.innerHTML =
-        '<option value="">All Companies</option>' +
+        '<option value="">All Organisations</option>' +
         [...segments]
           .sort()
           .map((s) => `<option value="${utils.escapeHtml(s)}">${utils.escapeHtml(s)}</option>`)
@@ -223,8 +223,8 @@ const crmModule = {
     if (!companies || companies.length === 0) {
       utils.showEnhancedEmptyState('companiesCrmTableBody', 8, {
         icon: 'bi-building',
-        message: 'No companies found',
-        description: 'Companies will appear here once added',
+        message: 'No organisations found',
+        description: 'Organisations will appear here once added',
       });
       return;
     }
@@ -926,7 +926,7 @@ const crmModule = {
             </div>
             <div class="d-flex gap-2">
               <button class="btn btn-sm btn-outline-primary flex-grow-1" data-action="crmModule.viewSegmentCompanies" data-args='${JSON.stringify([segment.id, utils.escapeHtml(segment.segment_name).replace(/'/g, '&#39;')])}'>
-                <i class="bi bi-eye me-1"></i>View Companies
+                <i class="bi bi-eye me-1"></i>View Organisations
               </button>
               <button class="btn btn-sm btn-outline-secondary" data-action="crmModule.editSegment" data-id="${segment.id}" title="Edit Segment">
                 <i class="bi bi-pencil"></i>
@@ -1020,7 +1020,7 @@ const crmModule = {
       const org = (STATE.allOrganisations || []).find((o) => o.id === companyId);
       orgsModule.openCompanyProfile(companyId, org?.company_name || '');
     } else {
-      utils.showToast('Company profile view not available', 'warning');
+      utils.showToast('Organisation profile view not available', 'warning');
     }
   },
 
@@ -1074,9 +1074,9 @@ const crmModule = {
                   </div>
                 </div>
                 <div class="mb-3">
-                  <label class="form-label">Company <span class="text-danger">*</span></label>
+                  <label class="form-label">Organisation <span class="text-danger">*</span></label>
                   <select class="form-select" id="commOrganisation" required>
-                    <option value="">Select company...</option>
+                    <option value="">Select organisation...</option>
                   </select>
                 </div>
                 <div class="mb-3">
@@ -1248,9 +1248,9 @@ const crmModule = {
                     <input type="text" class="form-control" id="dealName" required placeholder="e.g. Gold Sponsorship 2026">
                   </div>
                   <div class="col-md-6 mb-3">
-                    <label class="form-label">Company <span class="text-danger">*</span></label>
+                    <label class="form-label">Organisation <span class="text-danger">*</span></label>
                     <select class="form-select" id="dealOrganisation" required>
-                      <option value="">Select company...</option>
+                      <option value="">Select organisation...</option>
                     </select>
                   </div>
                 </div>
@@ -1452,7 +1452,7 @@ const crmModule = {
                   </div>
                   <div class="col-md-6">
                     <table class="table table-sm table-borderless">
-                      <tr><td class="text-muted">Company:</td><td><strong>${utils.escapeHtml(companyName)}</strong></td></tr>
+                      <tr><td class="text-muted">Organisation:</td><td><strong>${utils.escapeHtml(companyName)}</strong></td></tr>
                       <tr><td class="text-muted">Contact:</td><td>${utils.escapeHtml(contactName)}</td></tr>
                       ${contactEmail ? `<tr><td class="text-muted">Email:</td><td><a href="mailto:${utils.escapeHtml(contactEmail)}">${utils.escapeHtml(contactEmail)}</a></td></tr>` : ''}
                       <tr><td class="text-muted">Follow-up:</td><td>${
@@ -1694,7 +1694,7 @@ const crmModule = {
                   <div class="col-md-6">
                     <table class="table table-sm table-borderless">
                       <tr><td class="text-muted">Deal Name:</td><td><strong>${utils.escapeHtml(deal.deal_name)}</strong></td></tr>
-                      <tr><td class="text-muted">Company:</td><td>${utils.escapeHtml(companyName)}</td></tr>
+                      <tr><td class="text-muted">Organisation:</td><td>${utils.escapeHtml(companyName)}</td></tr>
                       <tr><td class="text-muted">Contact:</td><td>${utils.escapeHtml(contactName)}</td></tr>
                       <tr><td class="text-muted">Created:</td><td>${createdDate}</td></tr>
                     </table>
@@ -1997,7 +1997,7 @@ const crmModule = {
                   </div>
                   <div class="col-md-6">
                     <table class="table table-sm table-borderless">
-                      <tr><td class="text-muted">Company:</td><td>${utils.escapeHtml(companyName)}</td></tr>
+                      <tr><td class="text-muted">Organisation:</td><td>${utils.escapeHtml(companyName)}</td></tr>
                       <tr><td class="text-muted">Related Deal:</td><td>${utils.escapeHtml(dealName)}</td></tr>
                       <tr><td class="text-muted">Location:</td><td>${utils.escapeHtml(meeting.location || 'N/A')}</td></tr>
                       <tr><td class="text-muted">Follow-up:</td><td>${
@@ -2282,7 +2282,7 @@ const crmModule = {
           <div class="modal-dialog modal-lg modal-dialog-scrollable">
             <div class="modal-content">
               <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title"><i class="bi bi-people me-2"></i>Companies in "${segmentName}"</h5>
+                <h5 class="modal-title"><i class="bi bi-people me-2"></i>Organisations in "${segmentName}"</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
               </div>
               <div class="modal-body">
@@ -2291,7 +2291,7 @@ const crmModule = {
                     ? `
                   <div class="text-center py-4">
                     <i class="bi bi-inbox display-4 d-block mb-2 opacity-25"></i>
-                    <p class="text-muted">No companies in this segment</p>
+                    <p class="text-muted">No organisations in this segment</p>
                   </div>
                 `
                     : `
@@ -2373,7 +2373,7 @@ const crmModule = {
       await utils.protectModalDuringSave('viewSegmentCompaniesModal', async () => {
         await apiClient.delete('organisation_segments', assignmentId);
 
-        utils.showToast('Company removed from segment', 'success');
+        utils.showToast('Organisation removed from segment', 'success');
         // Refresh the segment companies view
         bootstrap.Modal.getInstance(document.getElementById('viewSegmentCompaniesModal'))?.hide();
         this.viewSegmentCompanies(segmentId, segmentName);
@@ -2381,7 +2381,7 @@ const crmModule = {
       });
     } catch (error) {
       console.error('Error removing from segment:', error);
-      utils.showToast('Error removing company from segment', 'error');
+      utils.showToast('Error removing organisation from segment', 'error');
     }
   },
 
@@ -2952,9 +2952,9 @@ const crmModule = {
                       <input type="text" class="form-control" id="newMeetingTitle" required placeholder="e.g. Quarterly Review">
                     </div>
                     <div class="col-md-6 mb-3">
-                      <label class="form-label">Company <span class="text-danger">*</span></label>
+                      <label class="form-label">Organisation <span class="text-danger">*</span></label>
                       <select class="form-select" id="newMeetingOrg" required>
-                        <option value="">Select company...</option>
+                        <option value="">Select organisation...</option>
                         ${orgOptions}
                       </select>
                     </div>
@@ -3144,14 +3144,14 @@ const crmModule = {
           <div class="modal-dialog">
             <div class="modal-content">
               <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title"><i class="bi bi-tags me-2"></i>Assign Company to Segments</h5>
+                <h5 class="modal-title"><i class="bi bi-tags me-2"></i>Assign Organisation to Segments</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
               </div>
               <div class="modal-body">
                 <div class="mb-3">
-                  <label class="form-label">Select Company <span class="text-danger">*</span></label>
+                  <label class="form-label">Select Organisation <span class="text-danger">*</span></label>
                   <select class="form-select" id="assignSegmentOrg" required>
-                    <option value="">Select company...</option>
+                    <option value="">Select organisation...</option>
                     ${orgOptions}
                   </select>
                 </div>
@@ -3216,7 +3216,7 @@ const crmModule = {
       localStorage.setItem(key, JSON.stringify(stored));
       bootstrap.Modal.getInstance(document.getElementById('assignSegmentsModal'))?.hide();
     }
-    utils.showToast(`Company assigned to ${checked.length} segment(s)`, 'success');
+    utils.showToast(`Organisation assigned to ${checked.length} segment(s)`, 'success');
     this.loadSegments();
   },
 
@@ -3533,7 +3533,7 @@ const crmModule = {
       data = this._communications || [];
       if (checkEmpty(data, 'communications')) return;
       filename = 'crm-communications';
-      headers = ['Date', 'Type', 'Company', 'Contact', 'Subject', 'Notes'];
+      headers = ['Date', 'Type', 'Organisation', 'Contact', 'Subject', 'Notes'];
       const rows = data.map((r) => [
         r.communication_date || '',
         r.type || '',
@@ -3547,7 +3547,7 @@ const crmModule = {
       data = this._deals || [];
       if (checkEmpty(data, 'deals')) return;
       filename = 'crm-deals';
-      headers = ['Deal Name', 'Company', 'Value', 'Stage', 'Probability', 'Expected Close', 'Created'];
+      headers = ['Deal Name', 'Organisation', 'Value', 'Stage', 'Probability', 'Expected Close', 'Created'];
       const rows = data.map((r) => [
         r.deal_name || '',
         r.organisation?.company_name || '',
@@ -3562,7 +3562,7 @@ const crmModule = {
       data = this._meetings || [];
       if (checkEmpty(data, 'meetings')) return;
       filename = 'crm-meetings';
-      headers = ['Date', 'Title', 'Company', 'Attendees', 'Location', 'Notes'];
+      headers = ['Date', 'Title', 'Organisation', 'Attendees', 'Location', 'Notes'];
       const rows = data.map((r) => [
         r.meeting_date || '',
         r.meeting_title || '',

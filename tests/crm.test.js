@@ -1164,7 +1164,7 @@ describe('CRM Module - viewCompanyProfile', () => {
 
     crmModule.viewCompanyProfile('org1');
 
-    expect(showToastSpy).toHaveBeenCalledWith('Company profile view not available', 'warning');
+    expect(showToastSpy).toHaveBeenCalledWith('Organisation profile view not available', 'warning');
 
     global.orgsModule = savedOrgs;
     showToastSpy.mockRestore();
@@ -1627,7 +1627,7 @@ describe('CRM Module - exportCrmToCSV with data', () => {
     const spy = jest.spyOn(crmModule, '_downloadCSV');
     crmModule.exportCrmToCSV('communications');
     expect(spy).toHaveBeenCalled();
-    expect(spy.mock.calls[0][0]).toEqual(['Date', 'Type', 'Company', 'Contact', 'Subject', 'Notes']);
+    expect(spy.mock.calls[0][0]).toEqual(['Date', 'Type', 'Organisation', 'Contact', 'Subject', 'Notes']);
     expect(spy.mock.calls[0][2]).toBe('crm-communications');
     spy.mockRestore();
   });
@@ -1650,7 +1650,7 @@ describe('CRM Module - exportCrmToCSV with data', () => {
     expect(spy).toHaveBeenCalled();
     expect(spy.mock.calls[0][0]).toEqual([
       'Deal Name',
-      'Company',
+      'Organisation',
       'Value',
       'Stage',
       'Probability',
@@ -1676,7 +1676,7 @@ describe('CRM Module - exportCrmToCSV with data', () => {
     const spy = jest.spyOn(crmModule, '_downloadCSV');
     crmModule.exportCrmToCSV('meetings');
     expect(spy).toHaveBeenCalled();
-    expect(spy.mock.calls[0][0]).toEqual(['Date', 'Title', 'Company', 'Attendees', 'Location', 'Notes']);
+    expect(spy.mock.calls[0][0]).toEqual(['Date', 'Title', 'Organisation', 'Attendees', 'Location', 'Notes']);
     expect(spy.mock.calls[0][2]).toBe('crm-meetings');
     spy.mockRestore();
   });

@@ -2062,9 +2062,12 @@ describe('Awards Module - rolloverToNextYear()', () => {
     utils.confirmDialog = jest.fn().mockResolvedValue(true);
     const origSelectAll = apiClient.selectAll;
     const origInsert = apiClient.insert;
+    // First call: fetch all source year awards; second call: fetch target year awards; third call: fetch winners
     apiClient.selectAll = jest
       .fn()
-      .mockResolvedValue([{ award_id: 'award-1', winner_position: 1, organisations: { company_name: 'Winner Co' } }]);
+      .mockResolvedValueOnce([...sampleAwards]) // source year awards (full fetch)
+      .mockResolvedValueOnce([]) // target year awards (none exist yet)
+      .mockResolvedValueOnce([{ award_id: 'award-1', winner_position: 1, organisations: { company_name: 'Winner Co' } }]); // winner data
     apiClient.insert = jest.fn().mockResolvedValue({});
     awardsModule.loadAwards = jest.fn().mockResolvedValue();
 

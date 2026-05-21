@@ -485,19 +485,21 @@ const orgsModule = {
     const orgIds = orgs.map((o) => o.id).filter(Boolean);
 
     try {
-      // Batch lookup assignments for orgs on this page
+      // Batch lookup assignments for orgs on this page (include status for V17-L9 winner check)
       const { data: assignments } = await apiClient.select('award_assignments', {
-        select: 'organisation_id, award_id',
+        select: 'organisation_id, award_id, status',
         filters: { organisation_id: { op: 'in', value: orgIds } },
         pageSize: 1000,
       });
 
-      // Collect unique award IDs
+      // Collect unique award IDs and track actual winner assignments (V17-L9)
       const orgAwardMap = {};
       const orgAwardsCount = {};
+      const orgActualWins = {}; // V17-L9: set to true if any assignment has status='winner'
       (assignments || []).forEach((a) => {
         if (!orgAwardMap[a.organisation_id]) orgAwardMap[a.organisation_id] = a.award_id;
         orgAwardsCount[a.organisation_id] = (orgAwardsCount[a.organisation_id] || 0) + 1;
+        if (a.status === 'winner') orgActualWins[a.organisation_id] = true;
       });
 
       // Fetch award details for enrichment
@@ -524,6 +526,8 @@ const orgsModule = {
         org.sector = award?.sector || org.sector || null;
         org.year = award?.year || org.year || null;
         org.awards_count = orgAwardsCount[org.id] || 0;
+        // V17-L9: ground-truth winner flag from award_assignments
+        org._hasActualWins = !!orgActualWins[org.id];
       });
     } catch (err) {
       console.warn('Failed to enrich org data:', err.message);
@@ -955,6 +959,13 @@ const orgsModule = {
               )
               .join('')}
           </select>
+          ${
+            // V17-L9: Show ground-truth "Previous Winner" badge when org has actual winner
+            // assignments but the manual status field doesn't reflect it
+            org._hasActualWins && org.status !== 'winner' && org.status !== 'past_winner'
+              ? '<span class="badge bg-warning text-dark d-block mt-1" style="font-size:0.6rem;" title="Has won an award based on judging records"><i class="bi bi-award me-1"></i>Prev. Winner</span>'
+              : ''
+          }
         </td>
         ${this._showPhoneColumn ? `<td class="small">${utils.escapeHtml(org.contact_phone || '-')}</td>` : ''}
         <td class="text-center" style="${cv('awards')}">
@@ -2094,6 +2105,13 @@ const orgsModule = {
     // Validate file type
     if (!file.type.startsWith('image/')) {
       utils.showToast('Please select an image file', 'error');
+      inputElement.value = '';
+      return;
+    }
+
+    // V17-M12: Validate file size (max 2 MB)
+    if (file.size > 2 * 1024 * 1024) {
+      utils.showToast('Logo file must be under 2 MB', 'error');
       inputElement.value = '';
       return;
     }
@@ -4666,6 +4684,19 @@ const orgsModule = {
       }
     });
 
+    // V17-M11: Verify required column 'company_name' (or an alias) is present in headers
+    const hasCompanyNameHeader = this._csvHeaders.some((h) => {
+      const normalised = h.toLowerCase().trim();
+      return this._columnAliases[normalised] === 'company_name';
+    });
+    if (!hasCompanyNameHeader) {
+      utils.showToast(
+        "CSV must include a 'company_name' column (or equivalent such as 'name', 'organisation', 'business name'). Please check your file and try again.",
+        'error'
+      );
+      return;
+    }
+
     // Show step 2: column mapping
     this._showColumnMapping();
   },
@@ -6547,12 +6578,36 @@ const orgsModule = {
   // ============================================
   // AREA 11: ENHANCED IMPORT/EXPORT
   // ============================================
-  // Excel Export
-  exportToExcel() {
+  // Excel Export (V17-M13: includes custom fields as extra columns)
+  async exportToExcel() {
     const data = STATE.filteredOrganisations;
     if (data.length === 0) {
       utils.showToast('No organisations to export', 'warning');
       return;
+    }
+
+    // V17-M13: Batch-fetch all custom fields for exported orgs to avoid N+1 queries
+    let customFieldsMap = {}; // { orgId: { fieldName: fieldValue, ... } }
+    let allCustomFieldNames = []; // sorted list of all unique custom field names across all orgs
+    try {
+      const orgIds = data.map((o) => o.id).filter(Boolean);
+      if (orgIds.length > 0) {
+        /* selectAll: justified — scoped to a bounded export set */
+        const cfResult = await apiClient.selectAll('organisation_custom_fields', {
+          filters: { organisation_id: { op: 'in', value: orgIds } },
+          sort: { column: 'field_name', ascending: true },
+        });
+        (cfResult || []).forEach((row) => {
+          if (!customFieldsMap[row.organisation_id]) customFieldsMap[row.organisation_id] = {};
+          customFieldsMap[row.organisation_id][row.field_name] = row.field_value;
+        });
+        // Collect all unique field names across all orgs
+        const nameSet = new Set();
+        Object.values(customFieldsMap).forEach((fields) => Object.keys(fields).forEach((k) => nameSet.add(k)));
+        allCustomFieldNames = [...nameSet].sort();
+      }
+    } catch (cfErr) {
+      console.warn('Could not fetch custom fields for export:', cfErr.message);
     }
 
     // Build XML Spreadsheet (compatible with Excel without external libs)
@@ -6577,6 +6632,8 @@ const orgsModule = {
       'Engagement Score',
       'Health Status',
       'Last Contacted',
+      // Append custom field columns at end
+      ...allCustomFieldNames.map((n) => `Custom: ${n}`),
     ];
     const xmlHeader =
       '<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Organisations"><Table>';
@@ -6589,6 +6646,7 @@ const orgsModule = {
         const engagement = this.calculateEngagementScore(org);
         const health = this.getOrgHealthIndicator(org);
         const lastContacted = this.getLastContacted(org.id);
+        const orgCustomFields = customFieldsMap[org.id] || {};
         const vals = [
           org.company_name,
           org.sector,
@@ -6610,6 +6668,8 @@ const orgsModule = {
           String(engagement),
           health.label,
           lastContacted ? new Date(lastContacted).toLocaleDateString('en-GB') : 'Never',
+          // Append custom field values in the same order as headers
+          ...allCustomFieldNames.map((n) => orgCustomFields[n] || ''),
         ];
         return (
           '<Row>' +

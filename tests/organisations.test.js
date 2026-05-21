@@ -4690,24 +4690,30 @@ describe('Organisations Module - exportToExcel()', () => {
   beforeEach(() => {
     orgsModule._serverPagination = false;
     orgsModule._lastContactedMap = {};
+    // Mock apiClient.selectAll for custom fields fetch (V17-M13)
+    jest.spyOn(apiClient, 'selectAll').mockResolvedValue([]);
   });
 
-  test('shows warning when no data to export', () => {
+  afterEach(() => {
+    if (apiClient.selectAll.mockRestore) apiClient.selectAll.mockRestore();
+  });
+
+  test('shows warning when no data to export', async () => {
     STATE.filteredOrganisations = [];
     const spy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
-    orgsModule.exportToExcel();
+    await orgsModule.exportToExcel();
     expect(spy).toHaveBeenCalledWith('No organisations to export', 'warning');
     spy.mockRestore();
   });
 
-  test('creates download link when data exists', () => {
+  test('creates download link when data exists', async () => {
     STATE.filteredOrganisations = [makeOrg({ company_name: 'Excel Co', email: 'excel@test.com', status: 'prospect' })];
     global.window.URL.createObjectURL.mockClear();
-    orgsModule.exportToExcel();
+    await orgsModule.exportToExcel();
     expect(global.window.URL.createObjectURL).toHaveBeenCalled();
   });
 
-  test('generates XML content with correct headers', () => {
+  test('generates XML content with correct headers', async () => {
     STATE.filteredOrganisations = [makeOrg({ company_name: 'XML Test', sector: 'BUILDING', status: 'winner' })];
     let capturedContent = '';
     const OrigBlob = global.Blob;
@@ -4717,7 +4723,7 @@ describe('Organisations Module - exportToExcel()', () => {
         capturedContent = parts.join('');
       }
     };
-    orgsModule.exportToExcel();
+    await orgsModule.exportToExcel();
     global.Blob = OrigBlob;
     expect(capturedContent).toContain('<?xml');
     expect(capturedContent).toContain('Organisation Name');

@@ -109,9 +109,11 @@ async function checkVotes({ voter_email }) {
 }
 
 /**
- * check_rate_limit — return count of votes in the last hour for an email
+ * check_rate_limit — return count of votes in the last hour for an email/IP.
+ * voter_ip is injected server-side in the main handler; any client-supplied
+ * value is overwritten so the IP cannot be spoofed.
  */
-async function checkRateLimit({ voter_email }) {
+async function checkRateLimit({ voter_email, voter_ip }) {
   if (!isValidEmail(voter_email)) {
     return { error: 'Invalid email address', status: 400 };
   }
@@ -125,7 +127,7 @@ async function checkRateLimit({ voter_email }) {
     .gte('voted_at', oneHourAgo);
 
   if (error) throw error;
-  return { count: count || 0, limit: RATE_LIMIT_MAX };
+  return { count: count || 0, limit: RATE_LIMIT_MAX, voter_ip };
 }
 
 /**
@@ -369,9 +371,14 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: `Unknown action: ${action}` });
     }
 
-    // Inject real IP for submit_vote so the IP rate-limit always uses the server-derived IP
-    if (action === 'submit_vote') {
-      const realIp = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
+    // Always derive voter_ip from server-side headers — never trust the client body.
+    // This prevents IP spoofing for rate-limit checks and vote records.
+    const realIp =
+      (req.headers['x-forwarded-for'] || '').split(',')[0].trim() ||
+      req.socket?.remoteAddress ||
+      'unknown';
+
+    if (action === 'submit_vote' || action === 'check_rate_limit') {
       params.voter_ip = realIp;
     }
 

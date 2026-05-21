@@ -2760,7 +2760,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **Root cause:** Some modals auto-close after a successful save; others stay open requiring manual close. Users become confused about whether the action succeeded.
 - **Fix:** Standardise: after any successful create/update operation in a modal, auto-hide the modal after showing the success toast (1 second delay). Use `setTimeout(() => modal.hide(), 1000)` pattern. Do NOT auto-close on error or warning.
 - **Done when:** All create/edit modals close automatically 1 second after a successful save.
-- [ ] Implemented
+- [x] Implemented
 
 ---
 
@@ -2884,7 +2884,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **File:** `api/voting-proxy.js`
 - **Root cause:** `RATE_LIMIT_MAX = 10` per email per hour, but `voter_ip` is stored and never checked. Multiple votes from same IP with different emails are not throttled.
 - **Fix:** Add a parallel IP-based check alongside the email check.
-- [ ] Implemented
+- [x] Implemented
 
 ### V17-M2 — Live vote counts visible to voters (influences tactical voting)
 - **File:** `vote.html`
@@ -2908,55 +2908,55 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **File:** `judge-portal.js`
 - **Root cause:** Scores are only persisted on explicit "Submit Score"/"Save Draft" clicks. Closing tab mid-scoring loses all work.
 - **Fix:** Add debounced `localStorage` auto-save on slider input events, or `setInterval` draft save every 60 seconds.
-- [ ] Implemented
+- [x] Implemented
 
 ### V17-M6 — Judge portal two-column layout breaks on mobile
 - **File:** `judge-portal.html`
 - **Root cause:** `grid-template-columns: 350px 1fr` has no `@media` breakpoints below 700px.
 - **Fix:** Add `@media (max-width: 768px) { .entries-grid { grid-template-columns: 1fr; } }`.
-- [ ] Implemented
+- [x] Implemented
 
 ### V17-M7 — Conflict score included in averages without flag
 - **File:** `judge-portal.js` — `checkConflictOfInterest()`
 - **Root cause:** A judge who declares a conflict still has scores included in `average_score`. Scores with `has_conflict: true` and `isComplete: true` are saved normally.
 - **Fix:** Either exclude conflict scores from averages, or trigger an admin review queue for conflict-flagged scores.
-- [ ] Implemented
+- [x] Implemented
 
 ### V17-M8 — CRM still has residual "Company/Companies" strings
 - **File:** `crm.js` — view deal/communication/meeting modals, segment titles, filter dropdown
 - **Root cause:** V16 audit fixed most but missed: "Company:" labels in detail modals, "Companies in segment" title, "View Companies" button, "All Companies" filter option, empty state text.
 - **Fix:** Replace remaining user-visible "Company"/"Companies" with "Organisation"/"Organisations".
-- [ ] Implemented
+- [x] Implemented
 
 ### V17-M9 — Awards rollover uses paginated STATE.allAwards (incomplete data)
 - **File:** `awards.js` — `rolloverToNextYear()`
 - **Root cause:** `STATE.allAwards` in server-pagination mode only holds the current page (50 records). Awards on other pages are silently excluded from rollover.
 - **Fix:** Replace `STATE.allAwards` with `apiClient.selectAll('awards', { filters: { year: sourceYear } })`.
-- [ ] Implemented
+- [x] Implemented
 
 ### V17-M10 — Assignment removal leaves orphaned judge_scores
 - **File:** `assignments.js` — `removeAssignment()`
 - **Root cause:** When an assignment is removed, `judge_scores` rows for that judge/entry persist and continue to affect average_score calculations.
 - **Fix:** On removal, cascade-delete orphaned `judge_scores` rows, or mark them `voided`.
-- [ ] Implemented
+- [x] Implemented
 
 ### V17-M11 — Organisation CSV import has no required-column check
 - **File:** `organisations.js` — `parseCSVText()`
 - **Root cause:** `_validateImportRow()` validates values but never checks that required column headers are present. A CSV without `company_name` column imports silently with blank names.
 - **Fix:** Before import wizard proceeds, verify `this._csvHeaders` contains at least `company_name`.
-- [ ] Implemented
+- [x] Implemented
 
 ### V17-M12 — Organisation logo upload has no byte-size limit
 - **File:** `organisations.js` — `validateAndUploadLogo()`
 - **Root cause:** Enforces 250×170 px dimensions but no maximum file size. A valid 250×170 image could be multi-megabyte.
 - **Fix:** Add `if (file.size > 2 * 1024 * 1024) { showError; return; }` before the FileReader call.
-- [ ] Implemented
+- [x] Implemented
 
 ### V17-M13 — Organisation Excel export omits custom fields
 - **File:** `organisations.js` — export function
 - **Root cause:** Export builds rows from fixed `org` fields only; `organisation_custom_fields` are never fetched or included.
 - **Fix:** Fetch custom fields per-org in the export loop and append as extra columns.
-- [ ] Implemented
+- [x] Implemented
 
 ### V17-M14 — Dashboard notification items navigate nowhere
 - **File:** `dashboard.js` — `loadNotifications()`
@@ -3038,7 +3038,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **File:** `media-gallery-new.js` — all gallery render functions
 - **Root cause:** All `<img>` tags rendered without `loading="lazy"`. A gallery with hundreds of photos fires all network requests immediately.
 - **Fix:** Add `loading="lazy"` to every generated `<img>` tag in gallery render functions.
-- [ ] Implemented
+- [x] Implemented
 
 ### V17-L7 — Scheduled report modal checkboxes lack `for`/`id` pairing
 - **File:** `app.js` — `reportsScheduler.showCreateReport()`
@@ -3050,13 +3050,13 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **File:** `judge-portal.js` — `nextEntry()`
 - **Root cause:** When the last entry is scored, a toast appears but there is no persistent "done" state, summary view, or admin notification.
 - **Fix:** Show a full-screen completion card listing all scored entries with a "Your judging is complete" confirmation.
-- [ ] Implemented
+- [x] Implemented
 
 ### V17-L9 — `previous_winner` badge relies on manual status, not actual wins
 - **File:** `organisations.js`
 - **Root cause:** Badge shows when `org.status === 'past_winner'` regardless of actual award history.
 - **Fix:** Cross-reference against `award_assignments` with `status = 'winner'` for ground-truth check.
-- [ ] Implemented
+- [x] Implemented
 
 ### V17-L10 — Dashboard activity feed labels all awards as "New Award Added"
 - **File:** `dashboard.js` — `loadActivityFeed()`

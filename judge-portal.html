@@ -146,6 +146,54 @@
       padding: 20px;
       margin-bottom: 20px;
     }
+
+    /* Mobile: stack sidebar and judging panel vertically */
+    @media (max-width: 768px) {
+      .judge-container {
+        margin: 10px auto;
+        padding: 0 10px;
+      }
+
+      .judge-header {
+        border-radius: 12px 12px 0 0;
+        padding: 20px 16px;
+      }
+
+      .entries-grid {
+        grid-template-columns: 1fr;
+        gap: 0;
+        min-height: auto;
+      }
+
+      .entries-list {
+        border-radius: 0;
+        max-height: 40vh;
+        overflow-y: auto;
+        padding: 12px;
+      }
+
+      .judging-panel {
+        border-radius: 0 0 12px 12px;
+        padding: 16px;
+      }
+
+      .score-input {
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .score-input > div:first-child {
+        min-width: 100%;
+      }
+
+      .score-slider {
+        flex: 1 1 auto;
+      }
+
+      .progress-tracker {
+        border-radius: 0;
+      }
+    }
   </style>
 </head>
 <body>

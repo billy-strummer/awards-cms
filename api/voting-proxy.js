@@ -21,6 +21,8 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
 
 /** Rate-limit: max votes per email per hour */
 const RATE_LIMIT_MAX = 10;
+/** Rate-limit: max votes per IP per hour (more lenient — IPs can be shared) */
+const RATE_LIMIT_IP_MAX = 20;
 const RATE_LIMIT_WINDOW_MS = 3600000; // 1 hour
 
 // ────────────────────────────────────────────
@@ -175,6 +177,22 @@ async function submitVote({ entry_id, voter_email, voter_name, voter_ip, verific
   if (rlError) throw rlError;
   if ((count || 0) >= RATE_LIMIT_MAX) {
     return { error: 'Rate limit exceeded. Please try again later.', status: 429 };
+  }
+
+  // IP-based rate limit (parallel check — more lenient since IPs can be shared)
+  const normalizedIp = (voter_ip || 'unknown').split(',')[0].trim(); // handle x-forwarded-for lists
+  if (normalizedIp && normalizedIp !== 'unknown') {
+    const { count: ipCount, error: ipRlError } = await supabase
+      .from('public_votes')
+      .select('id', { count: 'exact', head: true })
+      .eq('voter_ip', normalizedIp)
+      .gte('voted_at', oneHourAgo);
+
+    if (ipRlError) {
+      console.warn('[voting-proxy] IP rate-limit check failed (non-fatal):', ipRlError.message);
+    } else if ((ipCount || 0) >= RATE_LIMIT_IP_MAX) {
+      return { error: 'Too many votes from this network. Please try again later.', status: 429 };
+    }
   }
 
   // Check for duplicate vote
@@ -349,6 +367,12 @@ module.exports = async function handler(req, res) {
 
     if (!action || !ACTIONS[action]) {
       return res.status(400).json({ error: `Unknown action: ${action}` });
+    }
+
+    // Inject real IP for submit_vote so the IP rate-limit always uses the server-derived IP
+    if (action === 'submit_vote') {
+      const realIp = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
+      params.voter_ip = realIp;
     }
 
     const result = await ACTIONS[action](params);

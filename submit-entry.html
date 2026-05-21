@@ -642,6 +642,8 @@
 
       <!-- Form Steps -->
       <form id="entryForm" novalidate aria-label="Award entry submission form">
+        <!-- Honeypot: bots fill this, humans don't see it -->
+        <input type="text" name="website" id="hp_website" style="display:none;position:absolute;left:-9999px;" autocomplete="off" tabindex="-1" aria-hidden="true">
 
         <!-- Step 1: Region -->
         <div class="form-step active" id="step1">

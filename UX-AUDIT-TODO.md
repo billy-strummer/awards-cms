@@ -2890,19 +2890,19 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **File:** `vote.html`
 - **Root cause:** Real-time `public_votes` count is shown to any visitor, which may encourage tactical voting against leading candidates.
 - **Fix:** Consider hiding counts until voting closes, or add an admin config flag to control visibility.
-- [ ] Implemented
+- [x] Implemented
 
 ### V17-M3 — No progress saved mid-wizard on public entry submission
 - **File:** `submit-entry.html`
 - **Root cause:** Leaving the page mid-wizard discards all form data. No `localStorage` persistence or server-side draft.
 - **Fix:** Persist `formData` to `localStorage` on every `nextStep()` call and restore on page load.
-- [ ] Implemented
+- [x] Implemented
 
 ### V17-M4 — No CAPTCHA on public entry submission form
 - **File:** `submit-entry.html`, `api/entry-proxy.js`
 - **Root cause:** No bot protection on entry submission — a bot can submit unlimited entries.
 - **Fix:** Add Cloudflare Turnstile or a hidden honeypot field with server-side check.
-- [ ] Implemented
+- [x] Implemented
 
 ### V17-M5 — Judge portal no auto-save (lost work risk)
 - **File:** `judge-portal.js`
@@ -2962,13 +2962,13 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **File:** `dashboard.js` — `loadNotifications()`
 - **Root cause:** Notifications using `data-action="dashboardModule.navigateToSection"` have no `data-id` attribute, so `navigateToSection(undefined)` is called.
 - **Fix:** Serialise the target section ID into a `data-id` attribute when rendering notification action links.
-- [ ] Implemented
+- [x] Implemented
 
 ### V17-M15 — URL hash routing doesn't persist sub-tab state
 - **File:** `app.js` — hash routing
 - **Root cause:** `history.replaceState` tracks top-level tab switches but not sub-tab state (e.g. Settings → Security, Payments → Invoices). Reloading the page loses sub-tab position.
 - **Fix:** Extend hash routing to include active sub-tab (e.g. `#organisations/sponsors`).
-- [ ] Implemented
+- [x] Implemented
 
 ### V17-M16 — Breadcrumbs only exist in Media Gallery
 - **File:** `index.html`, all modules with detail drill-downs
@@ -2980,19 +2980,19 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **File:** `dashboard.js` — banner display logic
 - **Root cause:** `hasData = awardsCount > 0 || orgsCount > 0` — creating even one record hides the banner permanently. No per-step completion state.
 - **Fix:** Change banner logic to show until all four steps (Organisations, Awards, Events, Marketing) are individually completed. Persist per-step state.
-- [ ] Implemented
+- [x] Implemented
 
 ### V17-M18 — Assignments (judge workflow) has no sidebar entry
 - **File:** `index.html` — sidebar nav
 - **Root cause:** Assignments is only accessible via Awards table row action buttons. New users following Getting Started steps will never discover the judging workflow.
 - **Fix:** Add an "Assignments" link to the Programme sidebar group, or as a sub-item under Awards.
-- [ ] Implemented
+- [x] Implemented
 
 ### V17-M19 — Marketing sequence can be saved with empty email body
 - **File:** `marketing.js` — `_saveSequence()`
 - **Root cause:** Guard checks `steps.length === 0 || !steps[0].subject` but allows a step with a subject and empty body.
 - **Fix:** Validate that all steps have both subject and body before saving.
-- [ ] Implemented
+- [x] Implemented
 
 ### V17-M20 — Revision history invisible to admins (feature exists but unreachable)
 - **File:** `entries.js`, `index.html`
@@ -3008,25 +3008,25 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **File:** `index.html`
 - **Root cause:** 20+ modals lack `aria-labelledby` pointing to their modal-title. Screen readers cannot announce the dialog name.
 - **Fix:** Add `id` to each `.modal-title`, then `aria-labelledby="that-id"` to the `.modal` wrapper.
-- [ ] Implemented
+- [x] Implemented
 
 ### V17-L2 — No modals carry `aria-modal="true"`
 - **File:** `index.html` — all `.modal` wrappers
 - **Root cause:** Bootstrap adds `role="dialog"` via JS but the static HTML doesn't include `aria-modal="true"`.
 - **Fix:** Add `aria-modal="true"` to all `.modal` div wrappers.
-- [ ] Implemented
+- [x] Implemented
 
 ### V17-L3 — Clickable stat cards not keyboard-focusable
 - **File:** `index.html` — `.stat-card-clickable` divs
 - **Root cause:** Eight stat card divs use `data-action` for click handling but lack `tabindex="0"` and `role="button"`, making them unreachable via Tab key.
 - **Fix:** Add `tabindex="0"` and `role="button"` to every `.stat-card-clickable` div.
-- [ ] Implemented
+- [x] Implemented
 
 ### V17-L4 — 25 of 33 tables missing `<caption>`
 - **File:** `index.html` — data tables
 - **Root cause:** Only 8 tables include `<caption class="visually-hidden">`. Remaining 25 are unlabelled for assistive technologies.
 - **Fix:** Add `<caption class="visually-hidden">` to every `<table>`.
-- [ ] Implemented
+- [x] Implemented
 
 ### V17-L5 — Performance: 2.2 MB monolithic JS bundle, no code splitting
 - **File:** `build.js`, `app.js`
@@ -3044,7 +3044,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **File:** `app.js` — `reportsScheduler.showCreateReport()`
 - **Root cause:** Dynamically generated checkboxes have `<label>` with no `for` attribute and `<input>` with no `id`. Clicking the label doesn't activate the checkbox.
 - **Fix:** Give each checkbox a unique `id` and match `for` attributes on labels.
-- [ ] Implemented
+- [x] Implemented
 
 ### V17-L8 — Judge portal no completion state on finishing all entries
 - **File:** `judge-portal.js` — `nextEntry()`
@@ -3062,5 +3062,5 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **File:** `dashboard.js` — `loadActivityFeed()`
 - **Root cause:** Feed shows all awards in `STATE.allAwards` (up to 5) as "New Award Added" regardless of age.
 - **Fix:** Filter to awards created within 30 days, or use label "Award: `<name>`".
-- [ ] Implemented
+- [x] Implemented
 

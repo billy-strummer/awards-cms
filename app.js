@@ -130,11 +130,11 @@ const reportsScheduler = {
           <div class="mb-3"><label class="form-label fw-semibold">Frequency</label><select class="form-select" id="reportFrequency"><option value="Daily">Daily</option><option value="Weekly" selected>Weekly</option><option value="Monthly">Monthly</option></select></div>
           <div class="mb-3"><label class="form-label fw-semibold">Recipients</label><input type="text" class="form-control" id="reportRecipients" placeholder="admin@example.com, manager@example.com"></div>
           <div class="mb-3"><label class="form-label fw-semibold">Include</label>
-            <div class="form-check"><input class="form-check-input rpt-section" type="checkbox" value="KPI Summary" checked><label class="form-check-label">KPI Summary</label></div>
-            <div class="form-check"><input class="form-check-input rpt-section" type="checkbox" value="Pipeline" checked><label class="form-check-label">Pipeline Breakdown</label></div>
-            <div class="form-check"><input class="form-check-input rpt-section" type="checkbox" value="Overdue" checked><label class="form-check-label">Overdue Follow-ups</label></div>
-            <div class="form-check"><input class="form-check-input rpt-section" type="checkbox" value="Regional"><label class="form-check-label">Regional Distribution</label></div>
-            <div class="form-check"><input class="form-check-input rpt-section" type="checkbox" value="Data Quality"><label class="form-check-label">Data Quality Issues</label></div>
+            <div class="form-check"><input class="form-check-input rpt-section" id="rpt-cb-kpi" type="checkbox" value="KPI Summary" checked><label class="form-check-label" for="rpt-cb-kpi">KPI Summary</label></div>
+            <div class="form-check"><input class="form-check-input rpt-section" id="rpt-cb-pipeline" type="checkbox" value="Pipeline" checked><label class="form-check-label" for="rpt-cb-pipeline">Pipeline Breakdown</label></div>
+            <div class="form-check"><input class="form-check-input rpt-section" id="rpt-cb-overdue" type="checkbox" value="Overdue" checked><label class="form-check-label" for="rpt-cb-overdue">Overdue Follow-ups</label></div>
+            <div class="form-check"><input class="form-check-input rpt-section" id="rpt-cb-regional" type="checkbox" value="Regional"><label class="form-check-label" for="rpt-cb-regional">Regional Distribution</label></div>
+            <div class="form-check"><input class="form-check-input rpt-section" id="rpt-cb-dataquality" type="checkbox" value="Data Quality"><label class="form-check-label" for="rpt-cb-dataquality">Data Quality Issues</label></div>
           </div>
         </div>
         <div class="modal-footer">
@@ -1896,11 +1896,16 @@ document.addEventListener('DOMContentLoaded', function () {
         config.fn();
       }
 
-      // Tab state in URL (MEDIUM-6)
+      // Tab state in URL — supports #section/sub-tab format
       const target = e.target.getAttribute('data-bs-target') || e.target.getAttribute('href');
       if (target) {
         const tabName = target.replace('#', '');
-        history.replaceState(null, '', '#' + tabName);
+        // Determine if this is a sub-tab by checking if the parent tab panel is inside another tab-pane
+        const tabPane = document.querySelector(target);
+        const parentTabPane = tabPane?.closest('.tab-pane[id]');
+        const parentId = parentTabPane?.id;
+        const hashValue = parentId && parentId !== tabName ? `${parentId}/${tabName}` : tabName;
+        history.replaceState(null, '', '#' + hashValue);
         utils._updateBreadcrumb && utils._updateBreadcrumb(tabName);
 
         // Update browser tab title on navigation
@@ -1924,31 +1929,40 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 
+  function _activateHashTabs(hash) {
+    if (!hash || !/^[a-zA-Z0-9_/-]+$/.test(hash)) return;
+    const parts = hash.split('/');
+    const mainTab = parts[0];
+    const subTab = parts[1];
+    const mainBtn = document.querySelector(`[data-bs-target="#${mainTab}"]`);
+    if (mainBtn) {
+      mainBtn.click();
+      if (subTab) {
+        // Delay sub-tab activation to allow main tab content to render
+        setTimeout(() => {
+          const subBtn = document.querySelector(`[data-bs-target="#${subTab}"]`);
+          if (subBtn) subBtn.click();
+        }, 150);
+      }
+    }
+  }
+
   // Restore tab from URL hash when hash changes
   window.addEventListener('hashchange', () => {
-    const hash = window.location.hash.replace('#', '');
-    if (hash && /^[a-zA-Z0-9_-]+$/.test(hash)) {
-      const tabBtn = document.querySelector(`[data-bs-target="#${hash}"]`);
-      if (tabBtn) tabBtn.click();
-    }
+    _activateHashTabs(window.location.hash.replace('#', ''));
   });
 
   // Handle browser back/forward button navigation
   window.addEventListener('popstate', () => {
-    const hash = window.location.hash.replace('#', '');
-    if (hash && /^[a-zA-Z0-9_-]+$/.test(hash)) {
-      const tabBtn = document.querySelector(`[data-bs-target="#${hash}"]`);
-      if (tabBtn) tabBtn.click();
-    }
+    _activateHashTabs(window.location.hash.replace('#', ''));
   });
 
   // Restore tab from URL or user preference (LOW-6: default landing tab)
   const hashTab = window.location.hash.replace('#', '');
   const defaultTab = localStorage.getItem('defaultLandingTab');
   const startTab = hashTab || defaultTab;
-  if (startTab && /^[a-zA-Z0-9_-]+$/.test(startTab)) {
-    const tabBtn = document.querySelector(`[data-bs-target="#${startTab}"]`);
-    if (tabBtn) setTimeout(() => tabBtn.click(), 100);
+  if (startTab) {
+    setTimeout(() => _activateHashTabs(startTab), 100);
   }
 
   // ==========================================

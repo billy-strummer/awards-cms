@@ -1201,6 +1201,14 @@ const marketingModule = {
       utils.showToast('Add at least one step with a subject', 'warning');
       return;
     }
+    const emptyBodyStep = steps.findIndex((s) => !s.body || !s.body.trim());
+    if (emptyBodyStep !== -1) {
+      utils.showToast(
+        `Step ${emptyBodyStep + 1} is missing an email body. Please add content before saving.`,
+        'warning'
+      );
+      return;
+    }
     if (this._emailSequencesFromServer) await this._loadEmailSequences(); // Fetch fresh to avoid losing concurrent changes
     this._emailSequences.push({ name, trigger, steps, active: true, enrolled: 0, created: new Date().toISOString() });
     await this._saveEmailSequences();

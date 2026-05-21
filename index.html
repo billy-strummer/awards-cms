@@ -223,6 +223,10 @@
               <span class="sidebar-label">Winners</span>
               <span class="sidebar-badge" id="winnersTabCount"></span>
             </button>
+            <button class="sidebar-nav-link" id="assignments-tab" data-bs-toggle="tab" data-bs-target="#assignments" type="button" role="tab" aria-controls="assignments" aria-selected="false" title="Assignments">
+              <i class="bi bi-people-fill sidebar-icon"></i>
+              <span class="sidebar-label">Assignments</span>
+            </button>
             <button class="sidebar-nav-link" id="media-gallery-tab" data-bs-toggle="tab" data-bs-target="#media-gallery" type="button" role="tab" aria-controls="media-gallery" aria-selected="false" title="Media Gallery">
               <i class="bi bi-images sidebar-icon"></i>
               <span class="sidebar-label">Media Gallery</span>
@@ -371,7 +375,7 @@
           <!-- Stats Cards -->
           <div class="row g-4 mb-5" data-dashboard-widget="stats-cards" data-widget-label="KPI Stats Cards">
             <div class="col-md-3">
-              <div class="stat-card stat-card-clickable" data-action="dashboardModule.navigateToSection" data-id="awards" title="Click to view all awards">
+              <div class="stat-card stat-card-clickable" tabindex="0" role="button" data-action="dashboardModule.navigateToSection" data-id="awards" title="Click to view all awards">
                 <button class="btn btn-sm btn-outline-primary position-absolute top-0 end-0 m-2"
                         data-action="dashboardModule.openAwardsSummary" data-stop-propagation="true"
                         title="View Awards Summary"
@@ -390,7 +394,7 @@
             </div>
 
             <div class="col-md-3">
-              <div class="stat-card stat-card-clickable" data-action="dashboardModule.filterPendingAwards" title="Click to view pending awards">
+              <div class="stat-card stat-card-clickable" tabindex="0" role="button" data-action="dashboardModule.filterPendingAwards" title="Click to view pending awards">
                 <i class="bi bi-hourglass-split stat-card-icon text-warning"></i>
                 <h6>Pending Approvals</h6>
                 <div class="stat-value text-warning" id="pendingAwards"><span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></div>
@@ -403,7 +407,7 @@
             </div>
 
             <div class="col-md-3">
-              <div class="stat-card stat-card-clickable" data-action="dashboardModule.navigateToSection" data-id="organisations" title="Click to view all organisations">
+              <div class="stat-card stat-card-clickable" tabindex="0" role="button" data-action="dashboardModule.navigateToSection" data-id="organisations" title="Click to view all organisations">
                 <button class="btn btn-sm btn-outline-success position-absolute top-0 end-0 m-2"
                         data-action="dashboardModule.openOrganisationsSummary" data-stop-propagation="true"
                         title="View Organisations Summary"
@@ -422,7 +426,7 @@
             </div>
 
             <div class="col-md-3">
-              <div class="stat-card stat-card-clickable" data-action="dashboardModule.navigateToSection" data-id="winners" title="Click to view all winners">
+              <div class="stat-card stat-card-clickable" tabindex="0" role="button" data-action="dashboardModule.navigateToSection" data-id="winners" title="Click to view all winners">
                 <button class="btn btn-sm btn-outline-secondary position-absolute top-0 end-0 m-2"
                         data-action="dashboardModule.openWinnersSummary" data-stop-propagation="true"
                         title="View Winners Summary"
@@ -444,7 +448,7 @@
           <!-- Second Row of Stats -->
           <div class="row g-4 mb-5" data-dashboard-widget="stats-extended" data-widget-label="Events & Upcoming Stats">
             <div class="col-md-6">
-              <div class="stat-card stat-card-clickable" data-action="dashboardModule.navigateToSection" data-id="events" title="Click to view all events">
+              <div class="stat-card stat-card-clickable" tabindex="0" role="button" data-action="dashboardModule.navigateToSection" data-id="events" title="Click to view all events">
                 <button class="btn btn-sm btn-outline-secondary position-absolute top-0 end-0 m-2"
                         data-action="dashboardModule.openEventsSummary" data-stop-propagation="true"
                         title="View Events Summary"
@@ -463,7 +467,7 @@
             </div>
 
             <div class="col-md-6">
-              <div class="stat-card stat-card-clickable" data-action="dashboardModule.showUpcomingEvents" title="Click to view upcoming events">
+              <div class="stat-card stat-card-clickable" tabindex="0" role="button" data-action="dashboardModule.showUpcomingEvents" title="Click to view upcoming events">
                 <i class="bi bi-calendar-check stat-card-icon text-success"></i>
                 <h6>Upcoming Events</h6>
                 <div class="stat-value text-success" id="upcomingEvents"><span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></div>
@@ -479,7 +483,7 @@
           <!-- Media Gallery & AI Vetting Cards -->
           <div class="row g-4 mb-5" data-dashboard-widget="media-ai" data-widget-label="Media Gallery & AI Vetting">
             <div class="col-md-3">
-              <div class="stat-card stat-card-clickable" data-action="dashboardModule.openMediaGallerySummary" title="Click to view media gallery statistics">
+              <div class="stat-card stat-card-clickable" tabindex="0" role="button" data-action="dashboardModule.openMediaGallerySummary" title="Click to view media gallery statistics">
                 <button class="btn btn-sm btn-outline-primary position-absolute top-0 end-0 m-2"
                         data-action="dashboardModule.openMediaGallerySummary" data-stop-propagation="true"
                         title="View Media Gallery Summary"
@@ -498,7 +502,7 @@
             </div>
 
             <div class="col-md-3">
-              <div class="stat-card stat-card-clickable" data-action="aiVettingModule.openVettingModal" title="Click to view AI vetting status">
+              <div class="stat-card stat-card-clickable" tabindex="0" role="button" data-action="aiVettingModule.openVettingModal" title="Click to view AI vetting status">
                 <button class="btn btn-sm btn-outline-secondary position-absolute top-0 end-0 m-2"
                         data-action="aiVettingModule.openVettingModal" data-stop-propagation="true"
                         title="View AI Vetting Details"
@@ -533,6 +537,7 @@
 
             <div class="table-responsive">
               <table class="table table-hover align-middle">
+                <caption class="visually-hidden">Data table</caption>
                 <thead class="table-light">
                   <tr>
                     <th scope="col"><i class="bi bi-calendar3 me-1"></i>Year</th>
@@ -1947,7 +1952,7 @@
     </div>
 
     <!-- Add New Organisation Modal -->
-    <div class="modal fade" id="addNewOrgModal" tabindex="-1" aria-labelledby="addNewOrgModalLabel" aria-hidden="true">
+    <div class="modal fade" aria-modal="true" id="addNewOrgModal" tabindex="-1" aria-labelledby="addNewOrgModalLabel" aria-hidden="true">
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
@@ -2024,7 +2029,7 @@
     </div>
 
     <!-- CSV Import Modal -->
-    <div class="modal fade" id="csvImportModal" tabindex="-1" aria-labelledby="csvImportModalLabel" aria-hidden="true">
+    <div class="modal fade" aria-modal="true" id="csvImportModal" tabindex="-1" aria-labelledby="csvImportModalLabel" aria-hidden="true">
       <div class="modal-dialog modal-xl">
         <div class="modal-content">
           <div class="modal-header">
@@ -2153,6 +2158,7 @@
               </div>
               <div class="table-responsive u-scroll-y-400">
                 <table class="table table-sm table-hover">
+                <caption class="visually-hidden">Data table</caption>
                   <thead class="table-light sticky-top">
                     <tr id="csvPreviewHeader"></tr>
                   </thead>
@@ -2561,7 +2567,7 @@
           <!-- Stats Cards -->
           <div class="row g-3 mb-4">
             <div class="col-md-3">
-              <div class="stat-card stat-card-clickable" data-stat-filter="clear:entriesStatusFilter" title="Show all entries">
+              <div class="stat-card stat-card-clickable" tabindex="0" role="button" data-stat-filter="clear:entriesStatusFilter" title="Show all entries">
                 <i class="bi bi-file-earmark-text stat-card-icon text-primary"></i>
                 <h6>Total Entries</h6>
                 <div class="stat-value" id="totalEntriesCount"><span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></div>
@@ -2570,7 +2576,7 @@
               </div>
             </div>
             <div class="col-md-3">
-              <div class="stat-card stat-card-clickable" data-stat-filter="entriesStatusFilter:pending_review" title="Filter to pending review">
+              <div class="stat-card stat-card-clickable" tabindex="0" role="button" data-stat-filter="entriesStatusFilter:pending_review" title="Filter to pending review">
                 <i class="bi bi-clock-history stat-card-icon text-warning"></i>
                 <h6>Pending Review</h6>
                 <div class="stat-value text-warning" id="pendingEntriesCount">0</div>
@@ -2579,7 +2585,7 @@
               </div>
             </div>
             <div class="col-md-3">
-              <div class="stat-card stat-card-clickable" data-stat-filter="entriesStatusFilter:shortlisted" title="Filter to shortlisted">
+              <div class="stat-card stat-card-clickable" tabindex="0" role="button" data-stat-filter="entriesStatusFilter:shortlisted" title="Filter to shortlisted">
                 <i class="bi bi-star stat-card-icon text-info"></i>
                 <h6>Shortlisted</h6>
                 <div class="stat-value text-info" id="shortlistedEntriesCount">0</div>
@@ -2588,7 +2594,7 @@
               </div>
             </div>
             <div class="col-md-3">
-              <div class="stat-card stat-card-clickable" data-stat-filter="entriesStatusFilter:winner" title="Filter to winners">
+              <div class="stat-card stat-card-clickable" tabindex="0" role="button" data-stat-filter="entriesStatusFilter:winner" title="Filter to winners">
                 <i class="bi bi-trophy stat-card-icon text-success"></i>
                 <h6>Winners</h6>
                 <div class="stat-value text-success" id="winnerEntriesCount">0</div>
@@ -2959,11 +2965,11 @@
       <!-- ==================================================== -->
 
       <!-- Add Video/YouTube Link Modal -->
-      <div class="modal fade" id="addVideoModal" tabindex="-1">
+      <div class="modal fade" aria-modal="true" id="addVideoModal" aria-labelledby="addVideoModalLabel" tabindex="-1">
         <div class="modal-dialog modal-lg">
           <div class="modal-content">
             <div class="modal-header">
-              <h5 class="modal-title">
+              <h5 class="modal-title" id="addVideoModalLabel">
                 <i class="bi bi-plus-lg me-2"></i>Add Video / YouTube Link
               </h5>
               <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -3094,11 +3100,11 @@
       </div>
 
       <!-- Bulk YouTube Import Modal -->
-      <div class="modal fade" id="bulkYouTubeModal" tabindex="-1">
+      <div class="modal fade" aria-modal="true" id="bulkYouTubeModal" aria-labelledby="bulkYouTubeModalLabel" tabindex="-1">
         <div class="modal-dialog modal-lg">
           <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-              <h5 class="modal-title"><i class="bi bi-youtube me-2"></i>Bulk YouTube Import</h5>
+              <h5 class="modal-title" id="bulkYouTubeModalLabel"><i class="bi bi-youtube me-2"></i>Bulk YouTube Import</h5>
               <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -3148,11 +3154,11 @@
       </div>
 
       <!-- Playlist Sync Modal -->
-      <div class="modal fade" id="playlistSyncModal" tabindex="-1">
+      <div class="modal fade" aria-modal="true" id="playlistSyncModal" aria-labelledby="playlistSyncModalLabel" tabindex="-1">
         <div class="modal-dialog modal-lg">
           <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-              <h5 class="modal-title"><i class="bi bi-collection-play me-2"></i>YouTube Playlist Import</h5>
+              <h5 class="modal-title" id="playlistSyncModalLabel"><i class="bi bi-collection-play me-2"></i>YouTube Playlist Import</h5>
               <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -3183,11 +3189,11 @@
       </div>
 
       <!-- Watermark Modal -->
-      <div class="modal fade" id="watermarkModal" tabindex="-1">
+      <div class="modal fade" aria-modal="true" id="watermarkModal" aria-labelledby="watermarkModalLabel" tabindex="-1">
         <div class="modal-dialog modal-lg">
           <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-              <h5 class="modal-title"><i class="bi bi-droplet me-2"></i>Photo Watermarking</h5>
+              <h5 class="modal-title" id="watermarkModalLabel"><i class="bi bi-droplet me-2"></i>Photo Watermarking</h5>
               <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -3243,11 +3249,11 @@
       </div>
 
       <!-- Export for Social Modal -->
-      <div class="modal fade" id="exportModal" tabindex="-1">
+      <div class="modal fade" aria-modal="true" id="exportModal" aria-labelledby="exportModalLabel" tabindex="-1">
         <div class="modal-dialog modal-lg">
           <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-              <h5 class="modal-title"><i class="bi bi-box-arrow-up me-2"></i>Export Media for Social</h5>
+              <h5 class="modal-title" id="exportModalLabel"><i class="bi bi-box-arrow-up me-2"></i>Export Media for Social</h5>
               <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -3279,11 +3285,11 @@
       </div>
 
       <!-- Event Comparison Modal -->
-      <div class="modal fade" id="comparisonModal" tabindex="-1">
+      <div class="modal fade" aria-modal="true" id="comparisonModal" aria-labelledby="comparisonModalLabel" tabindex="-1">
         <div class="modal-dialog modal-xl">
           <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-              <h5 class="modal-title"><i class="bi bi-layout-split me-2"></i>Event Media Comparison</h5>
+              <h5 class="modal-title" id="comparisonModalLabel"><i class="bi bi-layout-split me-2"></i>Event Media Comparison</h5>
               <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -3319,11 +3325,11 @@
       </div>
 
       <!-- YouTube Health Check Modal -->
-      <div class="modal fade" id="youtubeHealthModal" tabindex="-1">
+      <div class="modal fade" aria-modal="true" id="youtubeHealthModal" aria-labelledby="youtubeHealthModalLabel" tabindex="-1">
         <div class="modal-dialog modal-lg">
           <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-              <h5 class="modal-title"><i class="bi bi-heart-pulse me-2"></i>YouTube Link Health Check</h5>
+              <h5 class="modal-title" id="youtubeHealthModalLabel"><i class="bi bi-heart-pulse me-2"></i>YouTube Link Health Check</h5>
               <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -3528,6 +3534,7 @@
               <h6 class="mb-2"><i class="bi bi-table me-2"></i>Per-Event Breakdown</h6>
               <div class="table-responsive" style="max-height:250px; overflow-y:auto;">
                 <table class="table table-sm table-hover">
+                <caption class="visually-hidden">Data table</caption>
                   <thead class="table-light">
                     <tr>
                       <th scope="col">Event</th><th scope="col">Year</th><th scope="col" class="text-end">Ticket Revenue</th>
@@ -3913,6 +3920,7 @@
             <h5 class="mb-3"><i class="bi bi-clipboard-data me-2"></i>Pipeline Summary</h5>
             <div class="table-responsive">
               <table class="table table-sm table-hover">
+                <caption class="visually-hidden">Data table</caption>
                 <thead>
                   <tr>
                     <th scope="col">Status</th>
@@ -4729,11 +4737,11 @@
               </div>
 
               <!-- Bulk Generate Modal -->
-              <div class="modal fade" id="bulkGenerateModal" tabindex="-1">
+              <div class="modal fade" aria-modal="true" id="bulkGenerateModal" aria-labelledby="bulkGenerateModalLabel" tabindex="-1">
                 <div class="modal-dialog">
                   <div class="modal-content">
                     <div class="modal-header">
-                      <h5 class="modal-title">
+                      <h5 class="modal-title" id="bulkGenerateModalLabel">
                         <i class="bi bi-collection me-2"></i>Bulk Generate Posts
                       </h5>
                       <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -5322,7 +5330,7 @@
                 </div>
 
                 <!-- Fullscreen Preview Modal -->
-                <div class="modal fade" id="emailPreviewModal" tabindex="-1" aria-labelledby="emailPreviewModalLabel" aria-hidden="true">
+                <div class="modal fade" aria-modal="true" id="emailPreviewModal" tabindex="-1" aria-labelledby="emailPreviewModalLabel" aria-hidden="true">
                   <div class="modal-dialog">
                     <div class="modal-content">
                       <div class="modal-header py-2 px-3" style="background: #1e1e2e; border-bottom: none; flex-shrink: 0;">
@@ -5375,6 +5383,7 @@
 
                   <div class="table-responsive">
                     <table class="table table-sm table-hover mb-0" id="campaignLogTable">
+                <caption class="visually-hidden">Data table</caption>
                       <thead>
                         <tr>
                           <th scope="col">Campaign</th>
@@ -5597,7 +5606,7 @@
               <!-- Quick Stats -->
               <div class="row g-3 mb-4">
                 <div class="col-md-3">
-                  <div class="stat-card stat-card-clickable" data-stat-filter="clear:invoiceStatusFilter" title="Show all invoices">
+                  <div class="stat-card stat-card-clickable" tabindex="0" role="button" data-stat-filter="clear:invoiceStatusFilter" title="Show all invoices">
                     <i class="bi bi-file-earmark-text stat-card-icon text-primary"></i>
                     <h6>Total Invoices</h6>
                     <div class="stat-value" id="totalInvoicesCount"><span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></div>
@@ -5605,7 +5614,7 @@
                   </div>
                 </div>
                 <div class="col-md-3">
-                  <div class="stat-card stat-card-clickable" data-stat-filter="invoiceStatusFilter:paid" title="Filter to paid invoices">
+                  <div class="stat-card stat-card-clickable" tabindex="0" role="button" data-stat-filter="invoiceStatusFilter:paid" title="Filter to paid invoices">
                     <i class="bi bi-check-circle stat-card-icon text-success"></i>
                     <h6>Paid Invoices</h6>
                     <div class="stat-value text-success" id="paidInvoicesCount"><span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></div>
@@ -5613,7 +5622,7 @@
                   </div>
                 </div>
                 <div class="col-md-3">
-                  <div class="stat-card stat-card-clickable" data-stat-filter="invoiceStatusFilter:overdue" title="Filter to overdue invoices">
+                  <div class="stat-card stat-card-clickable" tabindex="0" role="button" data-stat-filter="invoiceStatusFilter:overdue" title="Filter to overdue invoices">
                     <i class="bi bi-exclamation-triangle stat-card-icon text-warning"></i>
                     <h6>Overdue Invoices</h6>
                     <div class="stat-value text-warning" id="overdueInvoicesCount"><span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></div>
@@ -5621,7 +5630,7 @@
                   </div>
                 </div>
                 <div class="col-md-3">
-                  <div class="stat-card stat-card-clickable" data-stat-filter="invoiceStatusFilter:partially_paid" title="Total remaining balance on partially-paid invoices (deposit taken, remainder still owed). Click to filter. Does not include fully-unpaid overdue invoices.">
+                  <div class="stat-card stat-card-clickable" tabindex="0" role="button" data-stat-filter="invoiceStatusFilter:partially_paid" title="Total remaining balance on partially-paid invoices (deposit taken, remainder still owed). Click to filter. Does not include fully-unpaid overdue invoices.">
                     <i class="bi bi-currency-pound stat-card-icon text-info"></i>
                     <h6>Outstanding Balance <small class="text-muted fw-normal" style="font-size:.7rem;">Partial pay</small></h6>
                     <div class="stat-value text-info" id="totalOutstandingAmount">£<span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></div>
@@ -5725,7 +5734,7 @@
               <!-- Quick Stats -->
               <div class="row g-3 mb-4">
                 <div class="col-md-4">
-                  <div class="stat-card stat-card-clickable" data-stat-filter="clear:paymentStatusFilter" title="Show all payments">
+                  <div class="stat-card stat-card-clickable" tabindex="0" role="button" data-stat-filter="clear:paymentStatusFilter" title="Show all payments">
                     <i class="bi bi-cash-coin stat-card-icon text-success"></i>
                     <h6>Total Payments</h6>
                     <div class="stat-value text-success" id="totalPaymentsCount"><span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></div>
@@ -5733,7 +5742,7 @@
                   </div>
                 </div>
                 <div class="col-md-4">
-                  <div class="stat-card stat-card-clickable" data-stat-filter="paymentStatusFilter:completed" title="Filter to completed payments">
+                  <div class="stat-card stat-card-clickable" tabindex="0" role="button" data-stat-filter="paymentStatusFilter:completed" title="Filter to completed payments">
                     <i class="bi bi-currency-pound stat-card-icon text-primary"></i>
                     <h6>Total Received</h6>
                     <div class="stat-value" id="totalPaymentsAmount"><span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></div>
@@ -5741,7 +5750,7 @@
                   </div>
                 </div>
                 <div class="col-md-4">
-                  <div class="stat-card stat-card-clickable" data-stat-filter="callback:paymentsModule.filterThisMonth" title="Filter to this month's payments">
+                  <div class="stat-card stat-card-clickable" tabindex="0" role="button" data-stat-filter="callback:paymentsModule.filterThisMonth" title="Filter to this month's payments">
                     <i class="bi bi-calendar-month stat-card-icon text-info"></i>
                     <h6>This Month</h6>
                     <div class="stat-value text-info" id="monthlyPaymentsAmount"><span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></div>
@@ -5808,6 +5817,7 @@
               <div class="table-container">
                 <div class="table-responsive">
                   <table class="table table-hover table-striped align-middle">
+                <caption class="visually-hidden">Data table</caption>
                     <thead class="table-light">
                       <tr>
                         <th scope="col">Reference</th>
@@ -6054,6 +6064,7 @@
               <div class="table-container">
                 <div class="table-responsive">
                   <table class="table table-hover table-striped align-middle">
+                <caption class="visually-hidden">Data table</caption>
                     <thead class="table-light">
                       <tr>
                         <th scope="col">Date</th>
@@ -6179,6 +6190,7 @@
               <div id="dealsTableContainer" class="table-container">
                 <div class="table-responsive">
                   <table class="table table-hover table-striped align-middle">
+                <caption class="visually-hidden">Data table</caption>
                     <thead class="table-light">
                       <tr>
                         <th scope="col">Deal Name</th>
@@ -6238,6 +6250,7 @@
               <div class="table-container">
                 <div class="table-responsive">
                   <table class="table table-hover table-striped align-middle">
+                <caption class="visually-hidden">Data table</caption>
                     <thead class="table-light">
                       <tr>
                         <th scope="col">Date</th>
@@ -6536,6 +6549,7 @@
                 </div>
                 <div class="table-responsive">
                   <table class="table table-sm table-hover align-middle">
+                <caption class="visually-hidden">Data table</caption>
                     <thead class="table-light">
                       <tr>
                         <th scope="col">Season Name</th>
@@ -6975,6 +6989,7 @@
                 <!-- Audit Log Table -->
                 <div class="table-responsive u-scroll-y-400">
                   <table class="table table-sm table-hover">
+                <caption class="visually-hidden">Data table</caption>
                     <thead class="sticky-top bg-white">
                       <tr>
                         <th scope="col" width="150">Timestamp</th>
@@ -7059,6 +7074,7 @@
                 </div>
                 <div class="table-responsive">
                   <table class="table table-sm table-hover align-middle">
+                <caption class="visually-hidden">Data table</caption>
                     <thead class="table-light">
                       <tr>
                         <th scope="col">Name</th>
@@ -7323,7 +7339,7 @@
   <!-- ==================================================== -->
   
   <!-- Company Profile Modal -->
-  <div class="modal fade" id="companyProfileModal" tabindex="-1" aria-labelledby="companyProfileModalLabel" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="companyProfileModal" tabindex="-1" aria-labelledby="companyProfileModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl">
       <div class="modal-content">
         <div class="modal-header">
@@ -7360,7 +7376,7 @@
   </div>
 
   <!-- Organisation Invoices Modal -->
-  <div class="modal fade" id="organisationInvoicesModal" tabindex="-1" aria-labelledby="organisationInvoicesModalTitle" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="organisationInvoicesModal" tabindex="-1" aria-labelledby="organisationInvoicesModalTitle" aria-hidden="true">
     <div class="modal-dialog modal-xl">
       <div class="modal-content">
         <div class="modal-header bg-primary text-white">
@@ -7385,7 +7401,7 @@
 
   <!-- Season Create/Edit Modal -->
   <!-- Webhook Form Modal -->
-  <div class="modal fade" id="webhookFormModal" tabindex="-1" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="webhookFormModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header bg-primary text-white">
@@ -7448,7 +7464,7 @@
     </div>
   </div>
 
-  <div class="modal fade" id="seasonFormModal" tabindex="-1" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="seasonFormModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header bg-primary text-white">
@@ -7534,7 +7550,7 @@
   </div>
 
   <!-- Create/Edit Award Modal -->
-  <div class="modal fade" id="awardFormModal" tabindex="-1" aria-labelledby="awardFormModalTitle" aria-modal="true">
+  <div class="modal fade" aria-modal="true" id="awardFormModal" tabindex="-1" aria-labelledby="awardFormModalTitle" aria-modal="true">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header bg-primary text-white">
@@ -7686,7 +7702,7 @@
   </div>
 
   <!-- Award Details Modal -->
-  <div class="modal fade" id="awardDetailsModal" tabindex="-1" aria-labelledby="awardDetailsModalTitle" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="awardDetailsModal" tabindex="-1" aria-labelledby="awardDetailsModalTitle" aria-hidden="true">
     <div class="modal-dialog modal-xl">
       <div class="modal-content">
         <div class="modal-header bg-primary text-white">
@@ -7710,7 +7726,7 @@
   </div>
 
   <!-- Create Invoice Modal -->
-  <div class="modal fade" id="createInvoiceModal" tabindex="-1" aria-labelledby="createInvoiceModalLabel" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="createInvoiceModal" tabindex="-1" aria-labelledby="createInvoiceModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header bg-primary text-white">
@@ -7821,7 +7837,7 @@
   </div>
 
   <!-- Record Payment Modal -->
-  <div class="modal fade" id="recordPaymentModal" tabindex="-1" aria-labelledby="recordPaymentModalLabel" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="recordPaymentModal" tabindex="-1" aria-labelledby="recordPaymentModalLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header bg-primary text-white">
@@ -7883,7 +7899,7 @@
   </div>
 
   <!-- View Invoice Modal -->
-  <div class="modal fade" id="viewInvoiceModal" tabindex="-1" aria-labelledby="viewInvoiceModalLabel" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="viewInvoiceModal" tabindex="-1" aria-labelledby="viewInvoiceModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header bg-primary text-white">
@@ -7911,7 +7927,7 @@
   </div>
 
   <!-- View Payment Modal -->
-  <div class="modal fade" id="viewPaymentModal" tabindex="-1" aria-labelledby="viewPaymentModalLabel" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="viewPaymentModal" tabindex="-1" aria-labelledby="viewPaymentModalLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
@@ -7933,7 +7949,7 @@
   </div>
 
   <!-- Send Invoice Email Modal -->
-  <div class="modal fade" id="sendInvoiceModal" tabindex="-1" aria-labelledby="sendInvoiceModalLabel" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="sendInvoiceModal" tabindex="-1" aria-labelledby="sendInvoiceModalLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header bg-primary text-white">
@@ -7973,11 +7989,11 @@
   </div>
 
   <!-- Clear Audit Log Confirm Modal -->
-  <div class="modal fade" id="clearAuditLogModal" tabindex="-1">
+  <div class="modal fade" aria-modal="true" id="clearAuditLogModal" aria-labelledby="clearAuditLogModalLabel" tabindex="-1">
     <div class="modal-dialog modal-sm">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title"><i class="bi bi-exclamation-triangle-fill text-danger me-2"></i>Clear Audit Log</h5>
+          <h5 class="modal-title" id="clearAuditLogModalLabel"><i class="bi bi-exclamation-triangle-fill text-danger me-2"></i>Clear Audit Log</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
@@ -7995,11 +8011,11 @@
   </div>
 
   <!-- Overdue Reminders Modal -->
-  <div class="modal fade" id="overdueRemindersModal" tabindex="-1">
+  <div class="modal fade" aria-modal="true" id="overdueRemindersModal" aria-labelledby="overdueRemindersModalLabel" tabindex="-1">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title"><i class="bi bi-bell-fill text-warning me-2"></i>Send Overdue Payment Reminders</h5>
+          <h5 class="modal-title" id="overdueRemindersModalLabel"><i class="bi bi-bell-fill text-warning me-2"></i>Send Overdue Payment Reminders</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
@@ -8017,7 +8033,7 @@
   </div>
 
   <!-- Public Form Link Modal -->
-  <div class="modal fade" id="publicFormLinkModal" tabindex="-1" aria-labelledby="publicFormLinkModalLabel" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="publicFormLinkModal" tabindex="-1" aria-labelledby="publicFormLinkModalLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
@@ -8046,7 +8062,7 @@
   </div>
 
   <!-- Upload Media Modal -->
-  <div class="modal fade" id="uploadMediaModal" tabindex="-1" aria-labelledby="uploadMediaModalLabel" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="uploadMediaModal" tabindex="-1" aria-labelledby="uploadMediaModalLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
@@ -8081,7 +8097,7 @@
   </div>
 
   <!-- View Media Modal -->
-  <div class="modal fade" id="viewMediaModal" tabindex="-1" aria-labelledby="viewMediaTitle" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="viewMediaModal" tabindex="-1" aria-labelledby="viewMediaTitle" aria-hidden="true">
     <div class="modal-dialog modal-xl">
       <div class="modal-content">
         <div class="modal-header">
@@ -8098,7 +8114,7 @@
   </div>
 
   <!-- Award Placements Modal -->
-  <div class="modal fade" id="awardPlacementsModal" tabindex="-1" aria-labelledby="awardPlacementsModalTitle" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="awardPlacementsModal" tabindex="-1" aria-labelledby="awardPlacementsModalTitle" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
@@ -8116,7 +8132,7 @@
   </div>
 
   <!-- Assignments Modal -->
-<div class="modal fade" id="assignmentsModal" tabindex="-1" aria-labelledby="assignmentsModalTitle" aria-hidden="true">
+<div class="modal fade" aria-modal="true" id="assignmentsModal" tabindex="-1" aria-labelledby="assignmentsModalTitle" aria-hidden="true">
   <div class="modal-dialog modal-xl" style="max-width: 90vw;">
     <div class="modal-content">
       <div class="modal-header bg-primary text-white">
@@ -8166,11 +8182,11 @@
 </div>
 
 <!-- Quick Actions Modal (for individual companies) -->
-<div class="modal fade" id="assignmentActionsModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" aria-modal="true" id="assignmentActionsModal" aria-labelledby="assignmentActionsModalLabel" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title">
+        <h5 class="modal-title" id="assignmentActionsModalLabel">
           <i class="bi bi-gear me-2"></i>Quick Actions
         </h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -8185,7 +8201,7 @@
 </div>
 
 <!-- Add Organisation Modal (Enhanced search/select) -->
-<div class="modal fade" id="addCompanyModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" aria-modal="true" id="addCompanyModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
@@ -8225,7 +8241,7 @@
 </div>
 
   <!-- Upload Media Gallery Modal -->
-  <div class="modal fade" id="uploadMediaGalleryModal" tabindex="-1" aria-labelledby="uploadMediaGalleryModalLabel" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="uploadMediaGalleryModal" tabindex="-1" aria-labelledby="uploadMediaGalleryModalLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
@@ -8308,7 +8324,7 @@
   </div>
 
   <!-- Tag Media Modal -->
-  <div class="modal fade" id="tagMediaModal" tabindex="-1" aria-labelledby="tagMediaModalLabel" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="tagMediaModal" tabindex="-1" aria-labelledby="tagMediaModalLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
@@ -8346,7 +8362,7 @@
   </div>
 
   <!-- View Media Full Modal -->
-  <div class="modal fade" id="viewMediaFullModal" tabindex="-1" aria-labelledby="viewMediaFullModalLabel" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="viewMediaFullModal" tabindex="-1" aria-labelledby="viewMediaFullModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header">
@@ -8365,7 +8381,7 @@
   </div>
 
   <!-- Select Logo from Gallery Modal -->
-  <div class="modal fade" id="selectLogoModal" tabindex="-1" aria-labelledby="selectLogoModalLabel" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="selectLogoModal" tabindex="-1" aria-labelledby="selectLogoModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl">
       <div class="modal-content">
         <div class="modal-header">
@@ -8395,7 +8411,7 @@
   </div>
 
   <!-- Event Modal (Add/Edit) -->
-  <div class="modal fade" id="eventModal" tabindex="-1" aria-labelledby="eventModalTitle" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="eventModal" tabindex="-1" aria-labelledby="eventModalTitle" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
@@ -8459,7 +8475,7 @@
   </div>
 
   <!-- Clone Event Modal -->
-  <div class="modal fade" id="cloneEventModal" tabindex="-1" aria-labelledby="cloneEventModalLabel" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="cloneEventModal" tabindex="-1" aria-labelledby="cloneEventModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header bg-primary text-white">
@@ -8526,7 +8542,7 @@
   </div>
 
   <!-- Attendees/RSVP Modal -->
-  <div class="modal fade" id="attendeesModal" tabindex="-1" aria-labelledby="attendeesModalLabel" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="attendeesModal" tabindex="-1" aria-labelledby="attendeesModalLabel" aria-hidden="true">
     <div class="modal-dialog" style="max-width: 1400px;">
       <div class="modal-content">
         <div class="modal-header">
@@ -8761,6 +8777,7 @@
               <!-- Attendees Table -->
               <div class="table-responsive">
                 <table class="table table-sm table-hover">
+                <caption class="visually-hidden">Data table</caption>
                   <thead>
                     <tr>
                       <th scope="col">Name</th>
@@ -8834,6 +8851,7 @@
 
               <div class="table-responsive">
                 <table class="table table-sm">
+                <caption class="visually-hidden">Data table</caption>
                   <thead>
                     <tr>
                       <th scope="col">Guest</th>
@@ -8995,6 +9013,7 @@
               </div>
               <div class="table-responsive">
                 <table class="table table-sm table-hover">
+                <caption class="visually-hidden">Data table</caption>
                   <thead>
                     <tr><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Phone</th><th scope="col">Added</th><th scope="col">Status</th><th scope="col" width="120" class="text-center">Actions</th></tr>
                   </thead>
@@ -9088,6 +9107,7 @@
               <h6 class="mb-2"><i class="bi bi-list-check me-2"></i>Expense Items</h6>
               <div class="table-responsive">
                 <table class="table table-sm table-hover">
+                <caption class="visually-hidden">Data table</caption>
                   <thead>
                     <tr><th scope="col">Item</th><th scope="col">Category</th><th scope="col">Estimated</th><th scope="col">Actual</th><th scope="col">Variance</th><th scope="col">Status</th><th scope="col" width="100" class="text-center">Actions</th></tr>
                   </thead>
@@ -9120,6 +9140,7 @@
               </div>
               <div class="table-responsive">
                 <table class="table table-sm table-hover">
+                <caption class="visually-hidden">Data table</caption>
                   <thead>
                     <tr><th scope="col">Contact</th><th scope="col">Category</th><th scope="col">Email</th><th scope="col">Phone</th><th scope="col">Cost</th><th scope="col">Status</th><th scope="col" width="100" class="text-center">Actions</th></tr>
                   </thead>
@@ -9197,7 +9218,7 @@
   </div>
 
   <!-- Upload Company Images Modal -->
-  <div class="modal fade" id="uploadCompanyImagesModal" tabindex="-1" aria-labelledby="uploadCompanyImagesModalLabel" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="uploadCompanyImagesModal" tabindex="-1" aria-labelledby="uploadCompanyImagesModalLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
@@ -9239,7 +9260,7 @@
   </div>
 
   <!-- View Image Full Modal -->
-  <div class="modal fade" id="viewImageFullModal" tabindex="-1" aria-labelledby="viewImageFullTitle" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="viewImageFullModal" tabindex="-1" aria-labelledby="viewImageFullTitle" aria-hidden="true">
     <div class="modal-dialog modal-xl">
       <div class="modal-content">
         <div class="modal-header">
@@ -9258,7 +9279,7 @@
   </div>
 
   <!-- Gallery Section Modal (Add/Edit) -->
-  <div class="modal fade" id="gallerySectionModal" tabindex="-1" aria-labelledby="gallerySectionModalTitle" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="gallerySectionModal" tabindex="-1" aria-labelledby="gallerySectionModalTitle" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
@@ -9296,7 +9317,7 @@
   </div>
 
   <!-- Upload Section Photos Modal -->
-  <div class="modal fade" id="uploadSectionPhotosModal" tabindex="-1" aria-labelledby="uploadSectionPhotosModalLabel" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="uploadSectionPhotosModal" tabindex="-1" aria-labelledby="uploadSectionPhotosModalLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
@@ -9379,7 +9400,7 @@
   </div>
 
   <!-- YouTube Video Modal -->
-  <div class="modal fade" id="youtubeVideoModal" tabindex="-1" aria-labelledby="youtubeVideoModalLabel" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="youtubeVideoModal" tabindex="-1" aria-labelledby="youtubeVideoModalLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
@@ -9426,7 +9447,7 @@
   </div>
 
   <!-- Tag Photo Modal (for Gallery Sections) -->
-  <div class="modal fade" id="tagPhotoModal" tabindex="-1" aria-labelledby="tagPhotoModalLabel" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="tagPhotoModal" tabindex="-1" aria-labelledby="tagPhotoModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header">
@@ -9521,7 +9542,7 @@
   </div>
 
   <!-- Drag & Drop Publish Prompt Modal -->
-  <div class="modal fade" id="dragDropPublishModal" tabindex="-1" aria-labelledby="dragDropPublishModalLabel" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="dragDropPublishModal" tabindex="-1" aria-labelledby="dragDropPublishModalLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
@@ -9563,7 +9584,7 @@
   </div>
 
   <!-- View Photo Full Modal (for Gallery Sections) -->
-  <div class="modal fade" id="viewPhotoFullModal" tabindex="-1" aria-labelledby="viewPhotoFullModalLabel" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="viewPhotoFullModal" tabindex="-1" aria-labelledby="viewPhotoFullModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl">
       <div class="modal-content">
         <div class="modal-header">
@@ -9594,7 +9615,7 @@
   </div>
 
   <!-- Press Release Export Modal -->
-  <div class="modal fade" id="pressReleaseExportModal" tabindex="-1" aria-labelledby="pressReleaseExportModalLabel" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="pressReleaseExportModal" tabindex="-1" aria-labelledby="pressReleaseExportModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl">
       <div class="modal-content">
         <div class="modal-header bg-primary text-white">
@@ -9665,7 +9686,7 @@
   </div>
 
   <!-- Certificate Template Editor Modal -->
-  <div class="modal fade" id="certificateGeneratorModal" tabindex="-1" aria-labelledby="certificateGeneratorModalLabel" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="certificateGeneratorModal" tabindex="-1" aria-labelledby="certificateGeneratorModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-fullscreen">
       <div class="modal-content">
         <div class="modal-header bg-primary text-white py-2">
@@ -9882,7 +9903,7 @@
   </div>
 
   <!-- Year Comparison Modal -->
-  <div class="modal fade" id="yearComparisonModal" tabindex="-1" aria-labelledby="yearComparisonModalLabel" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="yearComparisonModal" tabindex="-1" aria-labelledby="yearComparisonModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl">
       <div class="modal-content">
         <div class="modal-header">
@@ -10007,7 +10028,7 @@
   </div>
 
   <!-- Event Templates Manager Modal -->
-  <div class="modal fade" id="eventTemplatesModal" tabindex="-1" aria-labelledby="eventTemplatesModalLabel" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="eventTemplatesModal" tabindex="-1" aria-labelledby="eventTemplatesModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl">
       <div class="modal-content">
         <div class="modal-header bg-secondary text-white">
@@ -10094,7 +10115,7 @@
   </div>
 
   <!-- Email Template Preview Modal -->
-  <div class="modal fade" id="emailTemplatePreviewModal" tabindex="-1" aria-labelledby="emailTemplatePreviewModalLabel" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="emailTemplatePreviewModal" tabindex="-1" aria-labelledby="emailTemplatePreviewModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header">
@@ -10127,7 +10148,7 @@
   </div>
 
   <!-- Media Pack Download Modal (for journalists/media) -->
-  <div class="modal fade" id="mediaPackDownloadModal" tabindex="-1" aria-labelledby="mediaPackDownloadModalLabel" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="mediaPackDownloadModal" tabindex="-1" aria-labelledby="mediaPackDownloadModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header bg-secondary text-white">
@@ -10202,7 +10223,7 @@
   </div>
 
   <!-- Winner Package Download Modal (for winners themselves) -->
-  <div class="modal fade" id="winnerPackageDownloadModal" tabindex="-1" aria-labelledby="winnerPackageDownloadModalLabel" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="winnerPackageDownloadModal" tabindex="-1" aria-labelledby="winnerPackageDownloadModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header bg-primary text-white">
@@ -10310,7 +10331,7 @@
   </div>
 
   <!-- Import Winners Modal -->
-  <div class="modal fade" id="importWinnersModal" tabindex="-1" aria-labelledby="importWinnersModalLabel" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="importWinnersModal" tabindex="-1" aria-labelledby="importWinnersModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header bg-primary text-white">
@@ -10358,7 +10379,7 @@
   </div>
 
   <!-- Keyboard Shortcuts Help Modal -->
-  <div class="modal fade" id="shortcutsHelpModal" tabindex="-1" aria-labelledby="shortcutsHelpTitle">
+  <div class="modal fade" aria-modal="true" id="shortcutsHelpModal" tabindex="-1" aria-labelledby="shortcutsHelpTitle">
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
@@ -10391,7 +10412,7 @@
   </div>
 
   <!-- Confirmation Dialog Modal -->
-  <div class="modal fade" id="confirmDialogModal" tabindex="-1" aria-labelledby="confirmDialogTitle" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="confirmDialogModal" tabindex="-1" aria-labelledby="confirmDialogTitle" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
@@ -10422,7 +10443,7 @@
   <!-- ==================================================== -->
   <!-- SALES DASHBOARD MODAL -->
   <!-- ==================================================== -->
-  <div class="modal fade" id="salesDashboardModal" tabindex="-1" aria-labelledby="salesDashboardModalLabel" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="salesDashboardModal" tabindex="-1" aria-labelledby="salesDashboardModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl">
       <div class="modal-content">
         <div class="modal-header bg-primary text-white">
@@ -10520,6 +10541,7 @@
                 <div class="card-body p-0">
                   <div class="table-responsive u-scroll-y-400">
                     <table class="table table-sm table-hover mb-0">
+                <caption class="visually-hidden">Data table</caption>
                       <thead class="sticky-top bg-light">
                         <tr>
                           <th scope="col">Date</th>
@@ -10552,6 +10574,7 @@
                 <div class="card-body p-0">
                   <div class="table-responsive u-scroll-y-400">
                     <table class="table table-sm table-hover mb-0">
+                <caption class="visually-hidden">Data table</caption>
                       <thead class="sticky-top bg-light">
                         <tr>
                           <th scope="col">Invoice #</th>
@@ -10626,11 +10649,11 @@
   </div>
 
   <!-- Awards Summary Modal -->
-  <div class="modal fade" id="awardsSummaryModal" tabindex="-1" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="awardsSummaryModal" aria-labelledby="awardsSummaryModalLabel" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl">
       <div class="modal-content">
         <div class="modal-header bg-primary text-white">
-          <h5 class="modal-title">
+          <h5 class="modal-title" id="awardsSummaryModalLabel">
             <i class="bi bi-trophy me-2"></i>Awards Summary
           </h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
@@ -10686,6 +10709,7 @@
             <div class="card-body p-0">
               <div class="table-responsive">
                 <table class="table table-hover mb-0">
+                <caption class="visually-hidden">Data table</caption>
                   <thead class="table-light">
                     <tr>
                       <th scope="col">Award Name</th>
@@ -10731,11 +10755,11 @@
   </div>
 
   <!-- Organisations Summary Modal -->
-  <div class="modal fade" id="organisationsSummaryModal" tabindex="-1" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="organisationsSummaryModal" aria-labelledby="organisationsSummaryModalLabel" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title">
+          <h5 class="modal-title" id="organisationsSummaryModalLabel">
             <i class="bi bi-building me-2"></i>Organisations Summary
           </h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
@@ -10791,6 +10815,7 @@
             <div class="card-body p-0">
               <div class="table-responsive">
                 <table class="table table-hover mb-0">
+                <caption class="visually-hidden">Data table</caption>
                   <thead class="table-light">
                     <tr>
                       <th scope="col">Organisation Name</th>
@@ -10837,11 +10862,11 @@
   </div>
 
   <!-- Winners Summary Modal -->
-  <div class="modal fade" id="winnersSummaryModal" tabindex="-1" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="winnersSummaryModal" aria-labelledby="winnersSummaryModalLabel" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title">
+          <h5 class="modal-title" id="winnersSummaryModalLabel">
             <i class="bi bi-award me-2"></i>Winners Summary
           </h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
@@ -10897,6 +10922,7 @@
             <div class="card-body p-0">
               <div class="table-responsive">
                 <table class="table table-hover mb-0">
+                <caption class="visually-hidden">Data table</caption>
                   <thead class="table-light">
                     <tr>
                       <th scope="col">Organisation</th>
@@ -10942,11 +10968,11 @@
   </div>
 
   <!-- Events Summary Modal -->
-  <div class="modal fade" id="eventsSummaryModal" tabindex="-1" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="eventsSummaryModal" aria-labelledby="eventsSummaryModalLabel" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl">
       <div class="modal-content">
         <div class="modal-header bg-purple text-white">
-          <h5 class="modal-title">
+          <h5 class="modal-title" id="eventsSummaryModalLabel">
             <i class="bi bi-calendar-event me-2"></i>Events Summary
           </h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
@@ -11002,6 +11028,7 @@
             <div class="card-body p-0">
               <div class="table-responsive">
                 <table class="table table-hover mb-0">
+                <caption class="visually-hidden">Data table</caption>
                   <thead class="table-light">
                     <tr>
                       <th scope="col">Event Name</th>
@@ -11048,11 +11075,11 @@
   </div>
 
   <!-- Media Gallery Summary Modal -->
-  <div class="modal fade" id="mediaGallerySummaryModal" tabindex="-1" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="mediaGallerySummaryModal" aria-labelledby="mediaGallerySummaryModalLabel" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header bg-primary text-white">
-          <h5 class="modal-title">
+          <h5 class="modal-title" id="mediaGallerySummaryModalLabel">
             <i class="bi bi-images me-2"></i>Media Gallery Statistics
           </h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
@@ -11148,11 +11175,11 @@
   </div>
 
   <!-- AI Vetting Modal -->
-  <div class="modal fade" id="aiVettingModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal fade" aria-modal="true" id="aiVettingModal" aria-labelledby="aiVettingModalLabel" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
     <div class="modal-dialog modal-xl">
       <div class="modal-content">
         <div class="modal-header bg-warning">
-          <h5 class="modal-title">
+          <h5 class="modal-title" id="aiVettingModalLabel">
             <i class="bi bi-robot me-2"></i>AI Company Vetting
           </h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -11254,6 +11281,7 @@
             <div class="card-body p-0">
               <div class="table-responsive">
                 <table class="table table-hover mb-0">
+                <caption class="visually-hidden">Data table</caption>
                   <thead class="table-light">
                     <tr>
                       <th scope="col">Organisation</th>
@@ -11334,7 +11362,7 @@
   </script>
 
   <!-- Award Categories Reference Modal -->
-  <div class="modal fade" id="awardCatRefModal" tabindex="-1" aria-labelledby="awardCatRefModalLabel" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="awardCatRefModal" tabindex="-1" aria-labelledby="awardCatRefModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
       <div class="modal-content">
         <div class="modal-header">
@@ -11357,7 +11385,7 @@
   </div>
 
   <!-- Locations Reference Modal -->
-  <div class="modal fade" id="locationsRefModal" tabindex="-1" aria-labelledby="locationsRefModalLabel" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="locationsRefModal" tabindex="-1" aria-labelledby="locationsRefModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
       <div class="modal-content">
         <div class="modal-header">
@@ -11380,7 +11408,7 @@
   </div>
 
   <!-- Bulk Delete / Destructive Action Confirmation Modal -->
-  <div class="modal fade" id="bulkDeleteConfirmModal" tabindex="-1" aria-labelledby="bulkDeleteConfirmLabel" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="bulkDeleteConfirmModal" tabindex="-1" aria-labelledby="bulkDeleteConfirmLabel" aria-hidden="true">
     <div class="modal-dialog modal-sm modal-dialog-centered">
       <div class="modal-content border-0 shadow-lg">
         <div class="modal-header border-0 pb-0">
@@ -11403,7 +11431,7 @@
   </div>
 
   <!-- Dunning Auto-Reminders Modal (H10) -->
-  <div class="modal fade" id="dunningSettingsModal" tabindex="-1" aria-labelledby="dunningSettingsLabel" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="dunningSettingsModal" tabindex="-1" aria-labelledby="dunningSettingsLabel" aria-hidden="true">
     <div class="modal-dialog modal-md modal-dialog-centered">
       <div class="modal-content border-0 shadow-lg">
         <div class="modal-header">
@@ -11445,7 +11473,7 @@
   </div>
 
   <!-- Clone Award Year Modal (C1) -->
-  <div class="modal fade" id="cloneAwardModal" tabindex="-1" aria-labelledby="cloneAwardModalLabel" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="cloneAwardModal" tabindex="-1" aria-labelledby="cloneAwardModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-sm modal-dialog-centered">
       <div class="modal-content border-0 shadow-lg">
         <div class="modal-header">
@@ -11467,7 +11495,7 @@
   </div>
 
   <!-- Import Awards CSV Modal (C2) -->
-  <div class="modal fade" id="awardsImportModal" tabindex="-1" aria-labelledby="awardsImportModalLabel" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="awardsImportModal" tabindex="-1" aria-labelledby="awardsImportModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
       <div class="modal-content border-0 shadow-lg">
         <div class="modal-header">
@@ -11491,6 +11519,7 @@
             </div>
             <div class="table-responsive" style="max-height:300px;overflow-y:auto;">
               <table class="table table-sm table-bordered small">
+                <caption class="visually-hidden">Data table</caption>
                 <thead class="table-light sticky-top" id="awardsImportPreviewHead"></thead>
                 <tbody id="awardsImportPreviewBody"></tbody>
               </table>
@@ -11508,7 +11537,7 @@
   </div>
 
 
-  <div class="modal fade" id="testEmailModal" tabindex="-1" aria-labelledby="testEmailModalLabel" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="testEmailModal" tabindex="-1" aria-labelledby="testEmailModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-sm modal-dialog-centered">
       <div class="modal-content border-0 shadow-lg">
         <div class="modal-header">
@@ -11529,11 +11558,11 @@
   </div>
 
   <!-- Add Custom Sector Modal -->
-  <div class="modal fade" id="addSectorModal" tabindex="-1" aria-hidden="true" aria-modal="true">
+  <div class="modal fade" aria-modal="true" id="addSectorModal" tabindex="-1" aria-hidden="true" aria-modal="true">
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title"><i class="bi bi-tags me-2"></i>Add Custom Sector</h5>
+          <h5 class="modal-title" id="addCategoryModalLabel"><i class="bi bi-tags me-2"></i>Add Custom Sector</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
@@ -11554,7 +11583,7 @@
   </div>
 
   <!-- Add Custom Category Modal -->
-  <div class="modal fade" id="addCategoryModal" tabindex="-1" aria-hidden="true" aria-modal="true">
+  <div class="modal fade" aria-modal="true" id="addCategoryModal" aria-labelledby="addCategoryModalLabel" tabindex="-1" aria-hidden="true" aria-modal="true">
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">

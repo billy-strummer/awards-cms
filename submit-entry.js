@@ -203,6 +203,44 @@
       this.setupCharCounters();
       this.setupTermsCheckbox();
       this.updateProgressIndicator(1);
+      this._checkDraftRestore();
+    },
+
+    _checkDraftRestore() {
+      if (typeof localStorage === 'undefined') return;
+      const draft = localStorage.getItem('bta_entry_draft');
+      if (!draft) return;
+      const banner = document.createElement('div');
+      banner.id = 'draftRestoreBanner';
+      banner.className = 'alert alert-info d-flex align-items-center gap-3 mb-3';
+      banner.innerHTML = `
+        <i class="bi bi-cloud-arrow-down-fill fs-5"></i>
+        <span class="flex-grow-1">We found a saved draft from your last visit.</span>
+        <button class="btn btn-sm btn-primary" id="restoreDraftBtn">Restore</button>
+        <button class="btn btn-sm btn-outline-secondary" id="discardDraftBtn">Start fresh</button>
+      `;
+      document.getElementById('step1')?.prepend(banner);
+      document.getElementById('restoreDraftBtn')?.addEventListener('click', () => {
+        try {
+          this.formData = JSON.parse(draft);
+        } catch (_) {
+          /* ignore */
+        }
+        banner.remove();
+        utils?.showToast?.('Draft restored', 'success');
+      });
+      document.getElementById('discardDraftBtn')?.addEventListener('click', () => {
+        localStorage.removeItem('bta_entry_draft');
+        banner.remove();
+      });
+    },
+
+    _saveDraft() {
+      try {
+        if (typeof localStorage !== 'undefined') localStorage.setItem('bta_entry_draft', JSON.stringify(this.formData));
+      } catch (_) {
+        /* ignore */
+      }
     },
 
     // --------------------------------------------------
@@ -411,12 +449,22 @@
           fetch('/api/data-proxy', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'select', table: 'custom_sectors', filters: { is_active: true }, pageSize: 200 }),
+            body: JSON.stringify({
+              action: 'select',
+              table: 'custom_sectors',
+              filters: { is_active: true },
+              pageSize: 200,
+            }),
           }).then((r) => r.json()),
           fetch('/api/data-proxy', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'select', table: 'custom_categories', filters: { is_active: true }, pageSize: 500 }),
+            body: JSON.stringify({
+              action: 'select',
+              table: 'custom_categories',
+              filters: { is_active: true },
+              pageSize: 500,
+            }),
           }).then((r) => r.json()),
         ]);
         const customSectors = customSectorsRes?.data || [];
@@ -504,6 +552,7 @@
     async nextStep(currentStepNum) {
       if (!this.validateStep(currentStepNum)) return;
       this.saveStepData(currentStepNum);
+      this._saveDraft();
 
       // Build category list after sector is selected (step 2)
       if (currentStepNum === 2) {
@@ -826,6 +875,13 @@
         });
 
         const entryNumber = result.entry.entry_number;
+
+        // Clear any saved draft on successful submission
+        try {
+          if (typeof localStorage !== 'undefined') localStorage.removeItem('bta_entry_draft');
+        } catch (_) {
+          /* ignore */
+        }
 
         // Show success
         document.getElementById('entryReference').textContent = entryNumber;

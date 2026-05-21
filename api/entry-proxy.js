@@ -104,8 +104,7 @@ async function insertEntryWithRetry(payload) {
     // PostgreSQL unique-violation code is '23505'; Supabase surfaces it in
     // error.code. Only retry on that specific error.
     const isDuplicate =
-      result.error.code === '23505' ||
-      (result.error.message && result.error.message.includes('entry_number'));
+      result.error.code === '23505' || (result.error.message && result.error.message.includes('entry_number'));
 
     if (!isDuplicate || attempt >= MAX_RETRIES - 1) {
       return result; // non-retryable error, or we've exhausted retries
@@ -158,6 +157,11 @@ module.exports = async function handler(req, res) {
 };
 
 async function handleSubmitEntry(req, res) {
+  // Honeypot: bots fill the 'website' field; humans leave it blank
+  if (req.body?.website) {
+    return res.status(200).json({ success: true, entry: { entry_number: 'BOT-0000' } });
+  }
+
   const {
     companyName,
     county_city,

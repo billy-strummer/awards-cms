@@ -8,9 +8,33 @@ const dashboardModule = {
    */
   _initGettingStartedBanner(awardsCount = 0, orgsCount = 0) {
     const dismissed = localStorage.getItem('btaGettingStartedDismissed');
-    const hasData = awardsCount > 0 || orgsCount > 0;
-    if (!dismissed && !hasData) {
-      document.getElementById('gettingStartedBanner')?.classList.remove('d-none');
+    const eventsCount = (STATE.allEvents || []).length;
+    const campaignsCount = STATE.allCampaigns?.length || 0;
+
+    const steps = [
+      { label: 'Add your first Organisation', done: orgsCount > 0 },
+      { label: 'Create your first Award', done: awardsCount > 0 },
+      { label: 'Set up an Event', done: eventsCount > 0 },
+      { label: 'Create a Marketing Campaign', done: campaignsCount > 0 },
+    ];
+    const allDone = steps.every((s) => s.done);
+
+    if (!dismissed && !allDone) {
+      const banner = document.getElementById('gettingStartedBanner');
+      if (banner) {
+        banner.classList.remove('d-none');
+        const list = banner.querySelector('.getting-started-steps');
+        if (list) {
+          list.innerHTML = steps
+            .map(
+              (s) =>
+                `<li class="me-3 ${s.done ? 'text-muted text-decoration-line-through' : ''}">
+                  <i class="bi bi-${s.done ? 'check-circle-fill text-success' : 'circle'} me-1"></i>${s.label}
+                </li>`
+            )
+            .join('');
+        }
+      }
     }
     document.getElementById('dismissGettingStarted')?.addEventListener('click', () => {
       document.getElementById('gettingStartedBanner')?.classList.add('d-none');
@@ -508,8 +532,10 @@ const dashboardModule = {
         });
       }
 
-      // Use in-memory data for awards, organisations, events
+      // Use in-memory data for awards — only show those created within the last 30 days
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
       const recentAwards = [...(STATE.allAwards || [])]
+        .filter((a) => a.created_at && a.created_at >= thirtyDaysAgo)
         .sort((a, b) => Number(new Date(b.created_at)) - Number(new Date(a.created_at)))
         .slice(0, 5);
 
@@ -518,8 +544,8 @@ const dashboardModule = {
           type: 'award',
           icon: 'trophy',
           color: 'primary',
-          title: 'New Award Added',
-          description: `${utils.formatAwardName(award)}`,
+          title: `Award: ${utils.formatAwardName(award)}`,
+          description: `Added ${new Date(award.created_at).toLocaleDateString('en-GB')}`,
           time: award.created_at,
         });
       });
@@ -648,7 +674,8 @@ const dashboardModule = {
           icon: 'person-raised-hand',
           title: `${pendingEntries} Self-Nomination${pendingEntries > 1 ? 's' : ''} Pending`,
           description: 'New self-nominations awaiting review',
-          action: () => this.navigateToSection('entries'),
+          action: 'navigateToSection',
+          section: 'entries',
         });
       }
 
@@ -686,7 +713,8 @@ const dashboardModule = {
           icon: 'calendar-check',
           title: `${upcomingCount} Upcoming Event${upcomingCount > 1 ? 's' : ''}`,
           description: 'Events in the next 7 days',
-          action: 'showUpcomingEvents',
+          action: 'navigateToSection',
+          section: 'events',
         });
       }
 
@@ -702,7 +730,8 @@ const dashboardModule = {
           icon: 'award',
           title: `${awardsWithoutWinners.length} Award${awardsWithoutWinners.length > 1 ? 's' : ''} Without Winners`,
           description: 'Approved awards that need winners assigned',
-          action: () => this.navigateToSection('winners'),
+          action: 'navigateToSection',
+          section: 'winners',
         });
       }
 
@@ -715,7 +744,8 @@ const dashboardModule = {
           icon: 'info-circle',
           title: `${incompleteOrgs.length} Incomplete Profiles`,
           description: 'Organisations missing contact information',
-          action: () => this.navigateToSection('organisations'),
+          action: 'navigateToSection',
+          section: 'organisations',
         });
       }
 
@@ -773,9 +803,11 @@ const dashboardModule = {
       }
 
       notificationsPanel.innerHTML = notifications
-        .map(
-          (notif) => `
-        <div class="notification-item notification-${notif.type}" data-action="dashboardModule.${typeof notif.action === 'string' ? notif.action : 'navigateToSection'}">
+        .map((notif) => {
+          const action = typeof notif.action === 'string' ? notif.action : 'navigateToSection';
+          const dataId = notif.section ? ` data-id="${notif.section}"` : '';
+          return `
+        <div class="notification-item notification-${notif.type}" data-action="dashboardModule.${action}"${dataId}>
           <div class="notification-icon">
             <i class="bi bi-${notif.icon}"></i>
           </div>
@@ -787,8 +819,8 @@ const dashboardModule = {
             <i class="bi bi-chevron-right"></i>
           </div>
         </div>
-      `
-        )
+      `;
+        })
         .join('');
     } catch (error) {
       console.error('Error loading notifications:', error);

@@ -64,6 +64,9 @@ module.exports = async function handler(req, res) {
     }
   } catch (error) {
     console.error('AI vetting API error:', error);
+    if (error.message && error.message.includes('not configured')) {
+      return res.status(503).json({ error: 'AI vetting is not configured on this server', details: error.message });
+    }
     return res.status(500).json({ error: 'An internal error occurred' });
   }
 };

@@ -198,7 +198,7 @@ const assignmentsModule = {
                 <thead class="table-light">
                   <tr>
                     <th style="cursor: pointer;" data-action="assignmentsModule.sortAssignments" data-id="company">
-                      Company <i class="bi bi-arrow-down-up ms-1"></i>
+                      Organisation <i class="bi bi-arrow-down-up ms-1"></i>
                     </th>
                     <th>Badges</th>
                     <th style="cursor: pointer;" data-action="assignmentsModule.sortAssignments" data-id="votes">
@@ -339,7 +339,7 @@ const assignmentsModule = {
             <a href="#"
                class="text-decoration-none fw-semibold text-primary"
                data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([org.id, org.company_name]).replace(/'/g, '&#39;')}'
-               title="View company profile">
+               title="View organisation profile">
               ${utils.escapeHtml(org.company_name)}
             </a>
           </div>
@@ -579,6 +579,23 @@ const assignmentsModule = {
         return;
       }
 
+      // Warn if any assigned judges have declared a conflict with this organisation
+      const scoreRows = await apiClient.selectAll('judge_scores', {
+        select: 'judge_email',
+        filters: { award_id: this.currentAwardId },
+      });
+      const assignedJudges = [...new Set((scoreRows || []).map((r) => r.judge_email).filter(Boolean))];
+      const conflictedJudges = assignedJudges.filter((email) => this.hasConflict(email, orgId));
+      if (conflictedJudges.length > 0) {
+        const proceed = await utils.confirmDialog({
+          title: 'Conflict of Interest Detected',
+          message: `The following assigned judge(s) have declared a conflict with ${companyName}: ${conflictedJudges.join(', ')}. Assigning this organisation may compromise judging integrity. Proceed anyway?`,
+          danger: true,
+          confirmText: 'Assign Anyway',
+        });
+        if (!proceed) return;
+      }
+
       await apiClient.insert('award_assignments', {
         award_id: this.currentAwardId,
         organisation_id: orgId,
@@ -595,7 +612,7 @@ const assignmentsModule = {
       }
     } catch (error) {
       console.error('Error assigning company:', error);
-      utils.showToast('Failed to assign company: ' + error.message, 'error');
+      utils.showToast('Failed to assign organisation: ' + error.message, 'error');
     } finally {
       utils.hideLoading();
     }
@@ -626,7 +643,7 @@ const assignmentsModule = {
 
       await apiClient.delete('award_assignments', assignmentId);
 
-      utils.showToast('Company removed from award', 'success');
+      utils.showToast('Organisation removed from award', 'success');
       await this.refreshAssignments();
 
       // Refresh awards list

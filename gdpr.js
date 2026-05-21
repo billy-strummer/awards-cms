@@ -478,6 +478,17 @@ const gdprModule = {
       const contacts = await apiClient.selectAll('organisation_contacts', { filters: { organisation_id: entityId } });
       const assignments = await apiClient.selectAll('award_assignments', { filters: { organisation_id: entityId } });
       const entries = await apiClient.selectAll('entries', { filters: { organisation_id: entityId } });
+      const invoices = await apiClient.selectAll('invoices', { filters: { organisation_id: entityId } });
+      const payments = await apiClient.selectAll('payments', { filters: { organisation_id: entityId } });
+      const communications = await apiClient.selectAll('crm_communications', {
+        filters: { organisation_id: entityId },
+      });
+      const deals = await apiClient.selectAll('crm_deals', { filters: { organisation_id: entityId } });
+      const meetings = await apiClient.selectAll('crm_meetings', { filters: { organisation_id: entityId } });
+      const notes = await apiClient.selectAll('organisation_notes', { filters: { organisation_id: entityId } });
+      const followUps = await apiClient.selectAll('organisation_follow_ups', {
+        filters: { organisation_id: entityId },
+      });
 
       const exportData = {
         exportDate: new Date().toISOString(),
@@ -486,6 +497,13 @@ const gdprModule = {
         contacts: contacts || [],
         award_assignments: assignments || [],
         entries: entries || [],
+        invoices: invoices || [],
+        payments: payments || [],
+        communications: communications || [],
+        deals: deals || [],
+        meetings: meetings || [],
+        notes: notes || [],
+        followUps: followUps || [],
       };
 
       const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
@@ -513,6 +531,11 @@ const gdprModule = {
       { table: 'award_assignments', col: 'organisation_id' },
       { table: 'entries', col: 'organisation_id' },
       { table: 'organisation_images', col: 'organisation_id' },
+      { table: 'crm_communications', col: 'organisation_id' },
+      { table: 'crm_deals', col: 'organisation_id' },
+      { table: 'crm_meetings', col: 'organisation_id' },
+      { table: 'organisation_notes', col: 'organisation_id' },
+      { table: 'organisation_follow_ups', col: 'organisation_id' },
       { table: 'organisations', col: 'id' },
     ];
     for (const { table, col } of tables) {

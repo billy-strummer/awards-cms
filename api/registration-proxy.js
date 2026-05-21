@@ -16,6 +16,61 @@ const { createClient } = require('@supabase/supabase-js');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
+/**
+ * Send a registration confirmation email via Resend.
+ * Non-fatal: errors are logged but do not fail the registration response.
+ * @param {Object} params
+ * @param {string} params.guestName
+ * @param {string} params.guestEmail
+ * @param {string} params.eventName
+ * @param {string} params.eventDate
+ * @param {string} params.eventVenue
+ * @param {string} params.bookingRef
+ * @returns {Promise<void>}
+ */
+async function sendConfirmationEmail({ guestName, guestEmail, eventName, eventDate, eventVenue, bookingRef }) {
+  if (!process.env.RESEND_API_KEY || !guestEmail) return;
+  try {
+    const fromEmail = process.env.FROM_EMAIL || 'noreply@example.com';
+    const fromName = process.env.FROM_NAME || 'British Trade Awards';
+    const dateStr = eventDate
+      ? new Date(eventDate).toLocaleDateString('en-GB', {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+        })
+      : 'TBC';
+    const html = `
+      <p>Dear ${guestName},</p>
+      <p>Your registration for <strong>${eventName}</strong> has been confirmed.</p>
+      <table style="border-collapse:collapse;margin:16px 0;">
+        <tr><td style="padding:4px 12px 4px 0;color:#666;">Event:</td><td><strong>${eventName}</strong></td></tr>
+        <tr><td style="padding:4px 12px 4px 0;color:#666;">Date:</td><td>${dateStr}</td></tr>
+        ${eventVenue ? `<tr><td style="padding:4px 12px 4px 0;color:#666;">Venue:</td><td>${eventVenue}</td></tr>` : ''}
+        <tr><td style="padding:4px 12px 4px 0;color:#666;">Booking Reference:</td><td><strong>${bookingRef}</strong></td></tr>
+      </table>
+      <p>Please bring your QR code (shown on the registration page) to the venue for quick check-in.</p>
+      <p>Kind regards,<br>${fromName}</p>
+    `;
+    await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+      },
+      body: JSON.stringify({
+        from: `${fromName} <${fromEmail}>`,
+        to: guestEmail,
+        subject: `Registration Confirmed – ${eventName}`,
+        html,
+      }),
+    });
+  } catch (err) {
+    console.error('Registration confirmation email failed (non-fatal):', err.message);
+  }
+}
+
 function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -176,6 +231,26 @@ async function handleRegisterGuest(req, res) {
   if (error) {
     console.error('Guest registration failed:', error);
     return res.status(500).json({ error: 'Registration failed. Please try again.' });
+  }
+
+  // Send confirmation email to the primary guest (non-blocking)
+  const primaryGuest =
+    insertedGuests.find((g, i) => sanitizedGuests[i]?.guest_type !== 'guest' || i === 0) || insertedGuests[0];
+  if (primaryGuest?.guest_email) {
+    const { data: eventDetails } = await supabase
+      .from('events')
+      .select('event_name, event_date, venue, venue_name')
+      .eq('id', eventId)
+      .single();
+
+    sendConfirmationEmail({
+      guestName: primaryGuest.guest_name,
+      guestEmail: primaryGuest.guest_email,
+      eventName: eventDetails?.event_name || 'Event',
+      eventDate: eventDetails?.event_date || null,
+      eventVenue: eventDetails?.venue || eventDetails?.venue_name || '',
+      bookingRef: primaryGuest.id || 'N/A',
+    });
   }
 
   return res.status(200).json({

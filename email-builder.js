@@ -18,6 +18,8 @@ const emailBuilder = {
   // Autosave
   hasUnsavedChanges: false,
   autosaveTimer: null,
+  // Debounced preview updater (avoids expensive re-render on every keystroke)
+  _debouncedUpdatePreview: null,
   // Campaign log pagination
   campaignLogPage: 0,
   campaignLogPageSize: 20,
@@ -30,6 +32,10 @@ const emailBuilder = {
   _blockIdCounter: 0,
   // Drag-to-reorder tracking
   _reorderDragId: null,
+  // Tracks the campaign ID of the draft currently open in the builder (null = unsaved new draft)
+  _currentDraftId: null,
+  // Prevents sending the same campaign twice in one session
+  _campaignAlreadySent: false,
 
   /**
    * Update A/B variant B subject line from the input field.
@@ -63,6 +69,7 @@ const emailBuilder = {
       return;
     }
 
+    this._debouncedUpdatePreview = utils.debounce(() => this.updatePreview(), 300);
     this.setupDragAndDrop();
     this.loadOrganisations();
     this.loadEmailLists();
@@ -291,10 +298,10 @@ const emailBuilder = {
     // Add edit/delete controls
     this.addBlockControls(blockWrapper, blockId);
 
-    // Wire up rich text content to update preview on input
+    // Wire up rich text content to update preview on input (debounced to avoid re-render on every keystroke)
     const richContent = blockWrapper.querySelector('.email-richtext-content');
     if (richContent) {
-      richContent.addEventListener('input', () => this.updatePreview());
+      richContent.addEventListener('input', () => this._debouncedUpdatePreview?.());
     }
   },
 
@@ -1486,6 +1493,8 @@ ${content}
       })
     ) {
       this.blocks = [];
+      this._currentDraftId = null;
+      this._campaignAlreadySent = false;
       this.showEmptyState();
       this.updatePreview();
     }
@@ -2570,6 +2579,11 @@ ${content}
    * Send campaign to selected email list
    */
   async sendCampaign() {
+    if (this._campaignAlreadySent) {
+      utils.showToast('This campaign was already sent. Clear the canvas to start a new campaign.', 'warning');
+      return;
+    }
+
     const listId = document.getElementById('builderEmailList')?.value;
     const subject = document.getElementById('builderSubject')?.value;
     const campaignName = document.getElementById('builderCampaignName')?.value;
@@ -2601,6 +2615,11 @@ ${content}
     });
     const count = countResult.count || 0;
 
+    if (count === 0) {
+      utils.showToast('This email list has no active subscribers. Add subscribers before sending.', 'warning');
+      return;
+    }
+
     const listName = document.getElementById('builderEmailList')?.selectedOptions[0]?.text || 'selected list';
 
     if (
@@ -2631,6 +2650,7 @@ ${content}
 
       if (!result.data || !result.data.success) throw new Error(result.data?.error || 'Campaign send failed');
 
+      this._campaignAlreadySent = true;
       utils.showToast(`Campaign sent to ${result.data.sent || count} recipients!`, 'success');
 
       // Log the campaign with full data for cloning
@@ -3491,14 +3511,14 @@ ${content}
     this.canvas.querySelectorAll('.email-richtext-content').forEach((el) => {
       const fresh = el.cloneNode(true);
       el.parentNode.replaceChild(fresh, el);
-      fresh.addEventListener('input', () => this.updatePreview());
+      fresh.addEventListener('input', () => this._debouncedUpdatePreview?.());
     });
     this.canvas.querySelectorAll('[contenteditable="true"]').forEach((el) => {
       const fresh = el.cloneNode(true);
       el.parentNode.replaceChild(fresh, el);
       fresh.addEventListener('input', () => {
         this.markUnsavedChanges();
-        this.updatePreview();
+        this._debouncedUpdatePreview?.();
       });
     });
   },
@@ -3548,7 +3568,8 @@ ${content}
         }),
       };
 
-      await apiClient.insert('email_campaigns', draftData);
+      const insertResult = await apiClient.insert('email_campaigns', draftData);
+      this._currentDraftId = insertResult.data?.[0]?.id || null;
 
       this.hasUnsavedChanges = false;
       utils.showToast('Draft saved successfully!', 'success');
@@ -3563,6 +3584,7 @@ ${content}
    * Load a draft back into the builder
    */
   async loadDraft(campaignId) {
+    this._currentDraftId = campaignId;
     try {
       const result = await apiClient.select('email_campaigns', {
         filters: { id: campaignId },
@@ -3880,6 +3902,11 @@ ${content}
    * Send campaign with A/B test (splits list)
    */
   async sendABCampaign() {
+    if (this._campaignAlreadySent) {
+      utils.showToast('This campaign was already sent. Clear the canvas to start a new campaign.', 'warning');
+      return;
+    }
+
     const listId = document.getElementById('builderEmailList')?.value;
     const subjectA = document.getElementById('builderSubject')?.value;
     const subjectB = document.getElementById('abVariantB')?.value;
@@ -4058,6 +4085,7 @@ ${content}
         }),
       });
 
+      this._campaignAlreadySent = true;
       utils.showToast(`A/B test sent! A: ${countA} recipients, B: ${countB} recipients`, 'success');
       this.loadCampaignLog();
     } catch (error) {
@@ -4281,7 +4309,8 @@ ${content}
   },
 
   /**
-   * Save current state to localStorage
+   * Save current state to localStorage and, if a draft campaign ID is tracked,
+   * also silently update the DB campaign so the work is recoverable across devices.
    */
   autosaveToLocalStorage() {
     try {
@@ -4294,9 +4323,32 @@ ${content}
         blocks: this.blocks,
       };
       localStorage.setItem('emailBuilder_autosave', JSON.stringify(state));
+      if (this._currentDraftId) {
+        this._autosaveToDB(state).catch(() => {});
+      }
     } catch (e) {
       // localStorage may be full or disabled
     }
+  },
+
+  async _autosaveToDB(state) {
+    const html = this.generateFullHTML();
+    await apiClient.update('email_campaigns', this._currentDraftId, {
+      campaign_name: state.campaignName || 'Untitled Draft',
+      subject: state.subject || '',
+      notes: JSON.stringify({
+        html,
+        from_name: document.getElementById('builderFromName')?.value || '',
+        from_email: document.getElementById('builderFromEmail')?.value || '',
+        reply_to: document.getElementById('builderReplyTo')?.value || '',
+        list_id: document.getElementById('builderEmailList')?.value || '',
+        preheader: state.preheader,
+        canvas_html: state.canvasHTML,
+        blocks: state.blocks,
+        ab_enabled: this.abTestEnabled,
+        ab_variant_b: this.abVariantB,
+      }),
+    });
   },
 
   /**

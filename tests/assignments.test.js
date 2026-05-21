@@ -470,6 +470,7 @@ describe('Assignments Module - assignCompany()', () => {
     jest.clearAllMocks();
     assignmentsModule.currentAwardId = 'aw1';
     assignmentsModule.refreshAssignments = jest.fn().mockResolvedValue();
+    apiClient.selectAll = jest.fn().mockResolvedValue([]);
   });
 
   test('shows warning if already assigned', async () => {
@@ -962,6 +963,7 @@ describe('assignCompany - awardsModule.loadAwards call (line 586)', () => {
     jest.clearAllMocks();
     assignmentsModule.currentAwardId = 'aw1';
     assignmentsModule.refreshAssignments = jest.fn().mockResolvedValue();
+    apiClient.selectAll = jest.fn().mockResolvedValue([]);
   });
 
   test('calls awardsModule.loadAwards when available', async () => {

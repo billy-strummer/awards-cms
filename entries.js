@@ -2,6 +2,31 @@
 /* ENTRIES MODULE - Entry Submission Management */
 /* ==================================================== */
 
+// Allowed status transitions for the entry state machine.
+// Admins may only move to listed next states from the current state.
+const ENTRY_VALID_TRANSITIONS = {
+  draft: ['submitted', 'rejected'],
+  submitted: ['under_review', 'rejected'],
+  under_review: ['shortlisted', 'rejected'],
+  shortlisted: ['winner', 'rejected', 'under_review'],
+  winner: ['shortlisted'],
+  rejected: ['under_review'],
+};
+
+function getEntryStatusOptions(currentStatus) {
+  const current = (currentStatus || 'draft').toLowerCase();
+  const allowed = new Set(ENTRY_VALID_TRANSITIONS[current] || []);
+  const allStatuses = ['draft', 'submitted', 'under_review', 'shortlisted', 'winner', 'rejected'];
+  return allStatuses
+    .map((s) => {
+      const label = s === 'under_review' ? 'Under Review' : s.charAt(0).toUpperCase() + s.slice(1);
+      const selected = s === current ? 'selected' : '';
+      const disabled = s !== current && !allowed.has(s) ? 'disabled' : '';
+      return `<option value="${s}" ${selected} ${disabled}>${label}${disabled ? ' (not available)' : ''}</option>`;
+    })
+    .join('');
+}
+
 const entriesModule = {
   allEntries: [],
   filteredEntries: [],
@@ -196,7 +221,8 @@ const entriesModule = {
     const search = this.currentFilters.search?.trim();
 
     const result = await apiClient.select('entries', {
-      select: '*, organisations(company_name, logo_url), awards:award_years(award_name, sector, county)',
+      select:
+        '*, organisations(company_name, logo_url), awards:award_years(award_name, sector, county), entry_files(count)',
       filters,
       search: search ? { term: search, columns: ['entry_title', 'entry_number'] } : undefined,
       sort: { column: this._sortField, ascending: this._sortDir === 'asc' },
@@ -337,11 +363,16 @@ const entriesModule = {
         const selfNomBadge = entry.is_self_nomination
           ? '<span class="badge bg-info ms-2" title="Self-Nominated Entry"><i class="bi bi-person-raised-hand me-1"></i>Self-Nominated</span>'
           : '';
+        const fileCount = Array.isArray(entry.entry_files) ? entry.entry_files[0]?.count || 0 : 0;
+        const fileBadge =
+          fileCount > 0
+            ? `<i class="bi bi-paperclip text-muted ms-1 small" title="${fileCount} supporting document${fileCount !== 1 ? 's' : ''} attached"></i>`
+            : '';
         const scoreDisplay = entry.average_score
           ? `${entry.average_score.toFixed(1)} <small>(${entry.total_scores || 0})</small>`
           : '<span class="text-muted">-</span>';
         const submittedDate = entry.submission_date
-          ? new Date(entry.submission_date).toLocaleDateString()
+          ? new Date(entry.submission_date).toLocaleDateString('en-GB')
           : '<span class="text-muted">Draft</span>';
 
         // M9: Overdue badge if entry_close_date has passed and entry isn't resolved
@@ -368,19 +399,14 @@ const entriesModule = {
           <td>
             <div class="text-truncate" style="max-width: 250px;" title="${(entry.entry_title || '').replace(/<[^>]*>/g, '').replace(/"/g, '&quot;')}">
               ${utils.escapeHtml(entry.entry_title)}
-              ${selfNomBadge}
+              ${selfNomBadge}${fileBadge}
             </div>
           </td>
           <td>
             <select class="form-select form-select-sm d-inline-block" style="width:auto; font-size:0.75rem;"
               data-on-change="entriesModule.inlineUpdateEntryStatus" data-id="${entry.id}"
               aria-label="Change entry status">
-              ${['draft', 'submitted', 'under_review', 'shortlisted', 'winner', 'rejected']
-                .map(
-                  (s) =>
-                    `<option value="${s}" ${(entry.status || '').toLowerCase() === s ? 'selected' : ''}>${s === 'under_review' ? 'Under Review' : s.charAt(0).toUpperCase() + s.slice(1)}</option>`
-                )
-                .join('')}
+              ${getEntryStatusOptions(entry.status)}
             </select>
           </td>
           <td>${scoreDisplay}</td>
@@ -1005,12 +1031,7 @@ const entriesModule = {
                     <div class="col-md-6">
                       <label class="form-label">Status</label>
                       <select class="form-select" id="newEntryStatus">
-                        <option value="draft" ${entry.status === 'draft' ? 'selected' : ''}>Draft</option>
-                        <option value="submitted" ${entry.status === 'submitted' ? 'selected' : ''}>Submitted</option>
-                        <option value="under_review" ${entry.status === 'under_review' ? 'selected' : ''}>Under Review</option>
-                        <option value="shortlisted" ${entry.status === 'shortlisted' ? 'selected' : ''}>Shortlisted</option>
-                        <option value="winner" ${entry.status === 'winner' ? 'selected' : ''}>Winner</option>
-                        <option value="rejected" ${entry.status === 'rejected' ? 'selected' : ''}>Rejected</option>
+                        ${getEntryStatusOptions(entry.status)}
                       </select>
                     </div>
                     <div class="col-md-6">
@@ -1490,12 +1511,7 @@ const entriesModule = {
                         <div class="col-md-4 mb-3">
                           <label class="form-label">Status</label>
                           <select class="form-select" id="editEntryStatus">
-                            <option value="draft" ${entry.status === 'draft' ? 'selected' : ''}>Draft</option>
-                            <option value="submitted" ${entry.status === 'submitted' ? 'selected' : ''}>Submitted</option>
-                            <option value="under_review" ${entry.status === 'under_review' ? 'selected' : ''}>Under Review</option>
-                            <option value="shortlisted" ${entry.status === 'shortlisted' ? 'selected' : ''}>Shortlisted</option>
-                            <option value="winner" ${entry.status === 'winner' ? 'selected' : ''}>Winner</option>
-                            <option value="rejected" ${entry.status === 'rejected' ? 'selected' : ''}>Rejected</option>
+                            ${getEntryStatusOptions(entry.status)}
                           </select>
                         </div>
                         <div class="col-md-4 mb-3">
@@ -1591,6 +1607,27 @@ const entriesModule = {
       const modal = new bootstrap.Modal(document.getElementById('editEntryModal'));
       modal.show();
       utils.initInlineValidation('editEntryForm');
+
+      // Lock content fields for shortlisted/winner entries
+      const lockedStatuses = ['shortlisted', 'winner'];
+      if (lockedStatuses.includes((entry.status || '').toLowerCase())) {
+        const contentFieldIds = ['editEntryTitle', 'editEntryDescription', 'editEntrySupportingInfo'];
+        contentFieldIds.forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) el.setAttribute('readonly', 'true');
+        });
+        const form = document.getElementById('editEntryForm');
+        if (form) {
+          const lockBanner = document.createElement('div');
+          lockBanner.className = 'alert alert-warning mb-3';
+          lockBanner.innerHTML =
+            '<i class="bi bi-lock me-2"></i><strong>Content locked.</strong> This entry has been ' +
+            (entry.status === 'winner' ? 'selected as a winner' : 'shortlisted') +
+            '. Change the status to unlock editing.';
+          form.insertBefore(lockBanner, form.firstChild);
+        }
+      }
+
       document.getElementById('editEntryModal').addEventListener('hidden.bs.modal', function () {
         this.remove();
       });
@@ -1984,14 +2021,43 @@ const entriesModule = {
               updateData.shortlisted_date = new Date().toISOString();
             }
 
-            await apiClient.updateByFilters('entries', { id: { operator: 'in', value: ids } }, updateData);
+            // Validate state-machine transitions per entry before updating
+            const validIds = [];
+            let skippedCount = 0;
+            for (const id of ids) {
+              const entry = this.allEntries.find((e) => e.id === id);
+              const currentStatus = (entry?.status || 'draft').toLowerCase();
+              const allowed = ENTRY_VALID_TRANSITIONS[currentStatus] || [];
+              if (allowed.includes(value)) {
+                validIds.push(id);
+              } else {
+                skippedCount++;
+              }
+            }
 
-            utils.showToast(`${count} entries updated to ${value}`, 'success');
+            if (validIds.length === 0) {
+              utils.showToast(
+                `No entries updated — all ${skippedCount} entr${skippedCount === 1 ? 'y' : 'ies'} have an invalid transition to "${value}".`,
+                'warning'
+              );
+              return;
+            }
+
+            await apiClient.updateByFilters('entries', { id: { operator: 'in', value: validIds } }, updateData);
+
+            if (skippedCount > 0) {
+              utils.showToast(
+                `Updated ${validIds.length} entr${validIds.length === 1 ? 'y' : 'ies'}. ${skippedCount} entr${skippedCount === 1 ? 'y' : 'ies'} skipped (invalid status transition).`,
+                'warning'
+              );
+            } else {
+              utils.showToast(`${validIds.length} entries updated to ${value}`, 'success');
+            }
 
             // Send auto emails for rejection or shortlisting
             if (value === 'rejected' && window.entryRevisionModule) {
               let emailCount = 0;
-              for (const id of ids) {
+              for (const id of validIds) {
                 try {
                   await window.entryRevisionModule._sendRejectionEmail(id);
                   emailCount++;
@@ -2002,7 +2068,7 @@ const entriesModule = {
               if (emailCount > 0) utils.showToast(`${emailCount} rejection email(s) sent`, 'info');
             } else if (value === 'shortlisted') {
               let emailCount = 0;
-              for (const id of ids) {
+              for (const id of validIds) {
                 try {
                   await this._sendShortlistEmail(id);
                   emailCount++;

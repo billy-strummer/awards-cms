@@ -1352,6 +1352,7 @@ describe('Judge Portal - initialize', () => {
 // ============================
 describe('Judge Portal - _fetchPage', () => {
   beforeEach(() => {
+    judgePortal.currentJudge = { email: 'judge@test.com', name: 'Judge' };
     judgePortal._pagination = { page: 1, totalPages: 1, count: 0, pageSize: 50 };
   });
 
@@ -1360,7 +1361,11 @@ describe('Judge Portal - _fetchPage', () => {
       { id: 'e1', entry_title: 'Entry 1' },
       { id: 'e2', entry_title: 'Entry 2' },
     ];
-    apiClient.select = jest.fn(() => Promise.resolve({ data: mockEntries, count: 100 }));
+    apiClient.select = jest.fn((table) => {
+      if (table === 'judge_scores')
+        return Promise.resolve({ data: [{ entry_id: 'e1' }, { entry_id: 'e2' }], count: 2, totalPages: 1 });
+      return Promise.resolve({ data: mockEntries, count: 100, totalPages: 2 });
+    });
 
     const entries = await judgePortal._fetchPage(2);
     expect(entries).toEqual(mockEntries);
@@ -1374,10 +1379,27 @@ describe('Judge Portal - _fetchPage', () => {
     await expect(judgePortal._fetchPage(1)).rejects.toEqual({ message: 'Fetch failed' });
   });
 
-  test('returns empty array when data is null', async () => {
-    apiClient.select = jest.fn(() => Promise.resolve({ data: null, count: 0 }));
+  test('returns empty array when judge has no assignments', async () => {
+    apiClient.select = jest.fn(() => Promise.resolve({ data: [], count: 0, totalPages: 1 }));
     const entries = await judgePortal._fetchPage(1);
     expect(entries).toEqual([]);
+    expect(judgePortal._pagination.count).toBe(0);
+  });
+
+  test('returns empty array when data is null', async () => {
+    apiClient.select = jest.fn((table) => {
+      if (table === 'judge_scores') return Promise.resolve({ data: [{ entry_id: 'e1' }], count: 1, totalPages: 1 });
+      return Promise.resolve({ data: null, count: 0, totalPages: 1 });
+    });
+    const entries = await judgePortal._fetchPage(1);
+    expect(entries).toEqual([]);
+  });
+
+  test('returns empty array when no judgeEmail', async () => {
+    judgePortal.currentJudge = null;
+    const entries = await judgePortal._fetchPage(1);
+    expect(entries).toEqual([]);
+    expect(judgePortal._pagination.count).toBe(0);
   });
 });
 
@@ -1391,7 +1413,10 @@ describe('Judge Portal - _goToPage', () => {
   });
 
   test('navigates to a valid page', async () => {
-    apiClient.select = jest.fn(() => Promise.resolve({ data: [{ id: 'e1', judge_scores: [] }], count: 250 }));
+    apiClient.select = jest.fn((table) => {
+      if (table === 'judge_scores') return Promise.resolve({ data: [{ entry_id: 'e1' }], count: 1, totalPages: 1 });
+      return Promise.resolve({ data: [{ id: 'e1', judge_scores: [] }], count: 250, totalPages: 5 });
+    });
     judgePortal._goToPage(3);
     // Wait for the async operation
     await new Promise((r) => setTimeout(r, 50));
@@ -1399,14 +1424,20 @@ describe('Judge Portal - _goToPage', () => {
   });
 
   test('clamps page to minimum of 1', async () => {
-    apiClient.select = jest.fn(() => Promise.resolve({ data: [], count: 250 }));
+    apiClient.select = jest.fn((table) => {
+      if (table === 'judge_scores') return Promise.resolve({ data: [{ entry_id: 'e1' }], count: 1, totalPages: 1 });
+      return Promise.resolve({ data: [], count: 250, totalPages: 5 });
+    });
     judgePortal._goToPage(-5);
     await new Promise((r) => setTimeout(r, 50));
     expect(judgePortal._pagination.page).toBe(1);
   });
 
   test('clamps page to maximum of totalPages', async () => {
-    apiClient.select = jest.fn(() => Promise.resolve({ data: [], count: 250 }));
+    apiClient.select = jest.fn((table) => {
+      if (table === 'judge_scores') return Promise.resolve({ data: [{ entry_id: 'e1' }], count: 1, totalPages: 1 });
+      return Promise.resolve({ data: [], count: 250, totalPages: 5 });
+    });
     judgePortal._goToPage(999);
     await new Promise((r) => setTimeout(r, 50));
     expect(judgePortal._pagination.page).toBe(5);
@@ -1435,7 +1466,10 @@ describe('Judge Portal - loadAssignedEntries', () => {
     const entries = [
       { id: 'e1', entry_title: 'Test', judge_scores: [{ judge_email: 'judge@test.com', total_score: 25 }] },
     ];
-    apiClient.select = jest.fn(() => Promise.resolve({ data: entries, count: 1 }));
+    apiClient.select = jest.fn((table) => {
+      if (table === 'judge_scores') return Promise.resolve({ data: [{ entry_id: 'e1' }], count: 1, totalPages: 1 });
+      return Promise.resolve({ data: entries, count: 1, totalPages: 1 });
+    });
     await judgePortal.loadAssignedEntries();
     expect(judgePortal.assignedEntries.length).toBe(1);
     expect(judgePortal.assignedEntries[0].hasScored).toBe(true);

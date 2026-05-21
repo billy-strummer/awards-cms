@@ -15,6 +15,7 @@ const settingsModule = {
     await Promise.all([
       safe(() => this.updateSystemInfo()),
       safe(() => this.loadSeasons()),
+      safe(() => this.loadCustomSectorsCategories()),
       safe(() => this.renderAuditLog()),
       safe(async () => {
         if (typeof brandingModule !== 'undefined') {
@@ -1546,6 +1547,229 @@ const settingsModule = {
       result += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     return result;
+  },
+
+  // --------------------------------------------------
+  // Custom Sectors & Categories
+  // --------------------------------------------------
+
+  async loadCustomSectorsCategories() {
+    const container = document.getElementById('customSectorsContainer');
+    if (!container) return;
+    try {
+      const [sectorsResult, categoriesResult] = await Promise.all([
+        apiClient.select('custom_sectors', { select: '*', sort: { column: 'sort_order', ascending: true }, pageSize: 200 }),
+        apiClient.select('custom_categories', { select: '*', sort: { column: 'sort_order', ascending: true }, pageSize: 500 }),
+      ]);
+      const customSectors = sectorsResult?.data || [];
+      const customCategories = categoriesResult?.data || [];
+
+      // All sector names: hardcoded + custom
+      const HARDCODED_SECTORS = window.SECTORS || [];
+
+      if (customSectors.length === 0 && customCategories.length === 0) {
+        container.innerHTML = `
+          <p class="text-muted small mb-2">No custom sectors or categories added yet. The built-in list has ${HARDCODED_SECTORS.length} sectors.</p>
+          <button class="btn btn-sm btn-outline-primary" data-action="settingsModule.openAddCategoryModal">
+            <i class="bi bi-plus-lg me-1"></i>Add Category to Existing Sector
+          </button>`;
+        return;
+      }
+
+      // Group custom categories by sector
+      const catsBySector = {};
+      customCategories.forEach((c) => {
+        if (!catsBySector[c.sector_name]) catsBySector[c.sector_name] = [];
+        catsBySector[c.sector_name].push(c);
+      });
+
+      // Show custom sectors
+      let html = '';
+      if (customSectors.length > 0) {
+        html += `<h6 class="small fw-semibold text-muted text-uppercase mb-2">Custom Sectors</h6>`;
+        html += `<table class="table table-sm table-hover mb-3"><tbody>`;
+        customSectors.forEach((s) => {
+          const catCount = (catsBySector[s.name] || []).length;
+          html += `<tr>
+            <td><span class="badge bg-primary-subtle text-primary">${utils.escapeHtml(s.name)}</span></td>
+            <td class="text-muted small">${catCount} categor${catCount === 1 ? 'y' : 'ies'}</td>
+            <td class="text-end">
+              <button class="btn btn-sm btn-outline-danger py-0 px-1" data-action="settingsModule.deleteCustomSector" data-id="${s.id}" data-name="${utils.escapeHtml(s.name)}" title="Delete sector">
+                <i class="bi bi-trash"></i>
+              </button>
+            </td>
+          </tr>`;
+        });
+        html += `</tbody></table>`;
+      }
+
+      // Show custom categories grouped by sector
+      if (customCategories.length > 0) {
+        html += `<h6 class="small fw-semibold text-muted text-uppercase mb-2">Custom Categories</h6>`;
+        const sectorsWithCustomCats = [...new Set(customCategories.map((c) => c.sector_name))];
+        sectorsWithCustomCats.forEach((sectorName) => {
+          const cats = catsBySector[sectorName] || [];
+          html += `<div class="mb-2">
+            <div class="fw-semibold small mb-1">${utils.escapeHtml(sectorName)}</div>
+            <table class="table table-sm table-hover mb-0"><tbody>`;
+          cats.forEach((c) => {
+            html += `<tr>
+              <td>${utils.escapeHtml(c.name)}</td>
+              <td>${c.available_for_small ? '<span class="badge bg-warning text-dark small">Small areas</span>' : ''}</td>
+              <td class="text-end">
+                <button class="btn btn-sm btn-outline-danger py-0 px-1" data-action="settingsModule.deleteCustomCategory" data-id="${c.id}" data-name="${utils.escapeHtml(c.name)}" title="Delete category">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </td>
+            </tr>`;
+          });
+          html += `</tbody></table></div>`;
+        });
+      }
+
+      html += `<div class="mt-3 d-flex gap-2">
+        <button class="btn btn-sm btn-outline-primary" data-action="settingsModule.openAddCategoryModal">
+          <i class="bi bi-plus-lg me-1"></i>Add Category
+        </button>
+      </div>`;
+
+      container.innerHTML = html;
+    } catch (err) {
+      const container2 = document.getElementById('customSectorsContainer');
+      if (container2) container2.innerHTML = `<p class="text-danger small">Failed to load custom sectors: ${utils.escapeHtml(err.message)}</p>`;
+    }
+  },
+
+  openAddSectorModal() {
+    document.getElementById('newSectorName').value = '';
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('addSectorModal')).show();
+  },
+
+  async saveNewSector() {
+    const nameEl = document.getElementById('newSectorName');
+    const name = nameEl.value.trim().toUpperCase();
+    if (!name) {
+      nameEl.classList.add('is-invalid');
+      return;
+    }
+    nameEl.classList.remove('is-invalid');
+
+    // Check not a duplicate of hardcoded sectors
+    const hardcoded = (window.SECTORS || []).map((s) => s.toUpperCase());
+    if (hardcoded.includes(name)) {
+      utils.showToast(`"${name}" already exists in the built-in sector list`, 'error');
+      return;
+    }
+
+    try {
+      await apiClient.insert('custom_sectors', { name, sort_order: 0, is_active: true });
+      bootstrap.Modal.getOrCreateInstance(document.getElementById('addSectorModal')).hide();
+      utils.showToast(`Sector "${name}" added`, 'success');
+      await this.loadCustomSectorsCategories();
+    } catch (err) {
+      utils.showToast('Failed to add sector: ' + err.message, 'error');
+    }
+  },
+
+  async openAddCategoryModal() {
+    // Populate sector dropdown: hardcoded + custom
+    const select = document.getElementById('newCategorySector');
+    select.innerHTML = '<option value="">Select sector...</option>';
+
+    const hardcoded = window.SECTORS || [];
+    hardcoded.forEach((s) => {
+      select.innerHTML += `<option value="${utils.escapeHtml(s)}">${utils.escapeHtml(s)}</option>`;
+    });
+
+    try {
+      const result = await apiClient.select('custom_sectors', {
+        select: 'name',
+        filters: { is_active: true },
+        sort: { column: 'name', ascending: true },
+        pageSize: 200,
+      });
+      (result?.data || []).forEach((s) => {
+        select.innerHTML += `<option value="${utils.escapeHtml(s.name)}">${utils.escapeHtml(s.name)} (custom)</option>`;
+      });
+    } catch (_) {
+      /* ignore, hardcoded sectors still available */
+    }
+
+    document.getElementById('newCategoryName').value = '';
+    document.getElementById('newCategorySmall').checked = false;
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('addCategoryModal')).show();
+  },
+
+  async saveNewCategory() {
+    const sectorEl = document.getElementById('newCategorySector');
+    const nameEl = document.getElementById('newCategoryName');
+    const sectorName = sectorEl.value.trim();
+    const name = nameEl.value.trim();
+    const availableForSmall = document.getElementById('newCategorySmall').checked;
+
+    let valid = true;
+    if (!sectorName) {
+      sectorEl.classList.add('is-invalid');
+      valid = false;
+    } else {
+      sectorEl.classList.remove('is-invalid');
+    }
+    if (!name) {
+      nameEl.classList.add('is-invalid');
+      valid = false;
+    } else {
+      nameEl.classList.remove('is-invalid');
+    }
+    if (!valid) return;
+
+    try {
+      await apiClient.insert('custom_categories', {
+        sector_name: sectorName,
+        name,
+        available_for_small: availableForSmall,
+        sort_order: 0,
+        is_active: true,
+      });
+      bootstrap.Modal.getOrCreateInstance(document.getElementById('addCategoryModal')).hide();
+      utils.showToast(`Category "${name}" added to ${sectorName}`, 'success');
+      await this.loadCustomSectorsCategories();
+    } catch (err) {
+      utils.showToast('Failed to add category: ' + err.message, 'error');
+    }
+  },
+
+  async deleteCustomSector(id, name) {
+    const confirmed = await utils.confirmDialog({
+      title: 'Delete Sector',
+      message: `Delete the custom sector "${name}"? Any custom categories under this sector will also be removed from the entry form (they won't be deleted from the database).`,
+      danger: true,
+      confirmText: 'Delete',
+    });
+    if (!confirmed) return;
+    try {
+      await apiClient.delete('custom_sectors', id);
+      utils.showToast(`Sector "${name}" deleted`, 'success');
+      await this.loadCustomSectorsCategories();
+    } catch (err) {
+      utils.showToast('Failed to delete sector: ' + err.message, 'error');
+    }
+  },
+
+  async deleteCustomCategory(id, name) {
+    const confirmed = await utils.confirmDialog({
+      title: 'Delete Category',
+      message: `Delete the custom category "${name}"?`,
+      danger: true,
+      confirmText: 'Delete',
+    });
+    if (!confirmed) return;
+    try {
+      await apiClient.delete('custom_categories', id);
+      utils.showToast(`Category "${name}" deleted`, 'success');
+      await this.loadCustomSectorsCategories();
+    } catch (err) {
+      utils.showToast('Failed to delete category: ' + err.message, 'error');
+    }
   },
 };
 

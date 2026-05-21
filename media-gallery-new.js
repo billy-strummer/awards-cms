@@ -370,7 +370,7 @@ const mediaGalleryModule = {
 
     container.innerHTML = eventsWithCounts
       .map((event) => {
-        const eventDate = event.event_date ? new Date(event.event_date).toLocaleDateString() : 'Date TBD';
+        const eventDate = event.event_date ? new Date(event.event_date).toLocaleDateString('en-GB') : 'Date TBD';
         const totalMedia = event.photoCount + event.videoCount;
 
         return `
@@ -6439,7 +6439,7 @@ const mediaGalleryModule = {
       document.getElementById('exportOrgSelect').options[document.getElementById('exportOrgSelect').selectedIndex].text;
     let manifest = `MEDIA EXPORT - ${orgName}\n`;
     manifest += `${'='.repeat(50)}\n`;
-    manifest += `Generated: ${new Date().toLocaleDateString()}\n\n`;
+    manifest += `Generated: ${new Date().toLocaleDateString('en-GB')}\n\n`;
     manifest += `PHOTOS (${photos.length}):\n`;
     photos.forEach((p, i) => {
       manifest += `  ${i + 1}. ${p.title || 'Untitled'} - ${p.file_url}\n`;

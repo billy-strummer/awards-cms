@@ -111,6 +111,9 @@ global.bootstrap = {
     static getInstance() {
       return { hide() {} };
     }
+    static getOrCreateInstance() {
+      return { show() {}, hide() {} };
+    }
   },
   Tooltip: class {},
 };
@@ -1635,7 +1638,10 @@ describe('Awards Module - validateDates()', () => {
       entry_close_date: '2026-01-01',
     };
     const result = awardsModule.validateDates(dates);
-    expect(result).toContain('must be before');
+    expect(result).not.toBeNull();
+    expect(result.message).toContain('must be before');
+    expect(result.key1).toBe('entry_open_date');
+    expect(result.key2).toBe('entry_close_date');
   });
 
   test('returns null when no dates set', () => {
@@ -1759,7 +1765,7 @@ describe('Awards Module - saveAward()', () => {
     document.getElementById('awardFormEntryClose').value = '2026-01-01';
     const spy = jest.spyOn(utils, 'showToast');
     await awardsModule.saveAward();
-    expect(spy).toHaveBeenCalledWith(expect.stringContaining('Date order error'), 'error');
+    expect(spy).toHaveBeenCalledWith(expect.stringContaining('must be before'), 'error');
     spy.mockRestore();
   });
 

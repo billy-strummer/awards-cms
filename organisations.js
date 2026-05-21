@@ -842,9 +842,11 @@ const orgsModule = {
         message: hasActiveFilters ? 'No organisations match your filters' : 'No organisations yet',
         description: hasActiveFilters
           ? 'Try clearing your filters or search terms'
-          : 'Click "+ Add Organisation" in the toolbar above',
+          : 'Add your first organisation to get started',
         isFiltered: hasActiveFilters,
         clearAction: hasActiveFilters ? 'orgsModule.resetFilters' : '',
+        actionLabel: hasActiveFilters ? '' : 'Add Organisation',
+        actionAction: hasActiveFilters ? '' : 'orgsModule.openAddOrgModal',
       });
       this._renderPaginationControls(0, 1);
       return;
@@ -3689,6 +3691,11 @@ const orgsModule = {
         apiClient.deleteByFilters('organisation_images', { organisation_id: orgId }),
         apiClient.deleteByFilters('organisation_custom_fields', { organisation_id: orgId }),
         apiClient.deleteByFilters('organisation_documents', { organisation_id: orgId }),
+        apiClient.deleteByFilters('crm_communications', { organisation_id: orgId }),
+        apiClient.deleteByFilters('crm_deals', { organisation_id: orgId }),
+        apiClient.deleteByFilters('crm_meetings', { organisation_id: orgId }),
+        apiClient.deleteByFilters('invoices', { organisation_id: orgId }),
+        apiClient.deleteByFilters('payments', { organisation_id: orgId }),
       ]);
       await apiClient.delete('organisations', orgId);
 
@@ -9634,6 +9641,11 @@ const orgsModule = {
   },
 
   /** Helper for data-action: cancel inline edit (receives orgId from data-id) */
+  openAddOrgModal() {
+    const el = document.getElementById('addNewOrgModal');
+    if (el) new bootstrap.Modal(el).show();
+  },
+
   cancelInlineEdit(elOrId, orgIdOrEvent) {
     // Support both old signature (el, orgId) and new delegation signature (orgId, event)
     if (typeof elOrId === 'string' && (orgIdOrEvent instanceof Event || orgIdOrEvent === undefined)) {

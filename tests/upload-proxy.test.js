@@ -421,13 +421,7 @@ describe('Upload Proxy - get_upload_token', () => {
     expect(res.status).toHaveBeenCalledWith(500);
   });
 
-  test('sanitizes file name in storage path', async () => {
-    mockSingle.mockResolvedValue({ data: { id: 'uuid-1' }, error: null });
-    mockCreateSignedUploadUrl.mockResolvedValue({
-      data: { signedUrl: 'https://example.com/upload', token: 'abc' },
-      error: null,
-    });
-
+  test('rejects directory traversal filenames with 400', async () => {
     const req = mockReq({
       method: 'POST',
       body: {
@@ -439,9 +433,8 @@ describe('Upload Proxy - get_upload_token', () => {
     });
     const res = mockRes();
     await handler(req, res);
-    expect(res.status).toHaveBeenCalledWith(200);
-    // Path should not contain directory traversal
-    expect(res.body.path).not.toContain('..');
+    // Extension "passwd" is not in the allowlist — must be rejected, not sanitized
+    expect(res.status).toHaveBeenCalledWith(400);
   });
 });
 

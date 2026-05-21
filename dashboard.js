@@ -897,8 +897,8 @@ const dashboardModule = {
             <td><span class="badge bg-warning text-dark">${rank}</span></td>
             <td><strong>${companyName}</strong></td>
             <td><span class="badge bg-primary">${org.award_count || 0}</span></td>
-            <td>${org.first_win ? new Date(org.first_win).toLocaleDateString() : 'N/A'}</td>
-            <td>${org.latest_win ? new Date(org.latest_win).toLocaleDateString() : 'N/A'}</td>
+            <td>${org.first_win ? new Date(org.first_win).toLocaleDateString('en-GB') : 'N/A'}</td>
+            <td>${org.latest_win ? new Date(org.latest_win).toLocaleDateString('en-GB') : 'N/A'}</td>
           </tr>
         `;
 
@@ -909,7 +909,7 @@ const dashboardModule = {
             <td><strong>${companyName}</strong></td>
             <td class="fw-bold text-success">£${(org.total_spent || 0).toFixed(2)}</td>
             <td><span class="badge bg-secondary">${org.order_count || 0}</span></td>
-            <td>${org.last_payment ? new Date(org.last_payment).toLocaleDateString() : 'N/A'}</td>
+            <td>${org.last_payment ? new Date(org.last_payment).toLocaleDateString('en-GB') : 'N/A'}</td>
           </tr>
         `;
 
@@ -918,7 +918,7 @@ const dashboardModule = {
           <tr class="fade-in">
             <td><span class="badge bg-info">${rank}</span></td>
             <td><strong>${companyName}</strong></td>
-            <td>${org.updated_at ? new Date(org.updated_at).toLocaleDateString() : 'N/A'}</td>
+            <td>${org.updated_at ? new Date(org.updated_at).toLocaleDateString('en-GB') : 'N/A'}</td>
             <td>${utils.escapeHtml(org.county_city || 'N/A')}</td>
             <td><span class="badge bg-success">${org.status || 'active'}</span></td>
           </tr>
@@ -940,7 +940,7 @@ const dashboardModule = {
           <tr class="fade-in">
             <td><span class="badge bg-secondary">${rank}</span></td>
             <td><strong>${companyName}</strong></td>
-            <td>${org.created_at ? new Date(org.created_at).toLocaleDateString() : 'N/A'}</td>
+            <td>${org.created_at ? new Date(org.created_at).toLocaleDateString('en-GB') : 'N/A'}</td>
             <td>${utils.escapeHtml(org.county_city || 'N/A')}</td>
             <td><span class="badge bg-success">${org.status || 'active'}</span></td>
           </tr>
@@ -1625,7 +1625,7 @@ const dashboardModule = {
       tbody.innerHTML = invoices
         .map((invoice) => {
           const companyName = invoice.organisations?.company_name || 'Unknown';
-          const invoiceDate = new Date(invoice.invoice_date).toLocaleDateString();
+          const invoiceDate = new Date(invoice.invoice_date).toLocaleDateString('en-GB');
 
           // Build items list
           const items = invoice.invoice_line_items || [];
@@ -1876,7 +1876,7 @@ const dashboardModule = {
 
       tbody.innerHTML = payments
         .map((payment) => {
-          const date = new Date(payment.payment_date).toLocaleDateString();
+          const date = new Date(payment.payment_date).toLocaleDateString('en-GB');
           const company = payment.organisations?.company_name || 'N/A';
           const method = this.formatPaymentMethod(payment.payment_method);
           const amount = parseFloat(payment.amount || 0).toFixed(2);
@@ -1933,7 +1933,7 @@ const dashboardModule = {
         .map((invoice) => {
           const dueDate = new Date(invoice.due_date);
           const isOverdue = dueDate < new Date();
-          const dueDateStr = dueDate.toLocaleDateString();
+          const dueDateStr = dueDate.toLocaleDateString('en-GB');
           const company = invoice.organisations?.company_name || 'N/A';
           const amount = parseFloat(invoice.balance_due || 0).toFixed(2);
 
@@ -2228,7 +2228,7 @@ const dashboardModule = {
             <td>${utils.escapeHtml(utils.formatAwardName(award))}</td>
             <td>${utils.escapeHtml(award.category || 'N/A')}</td>
             <td><span class="badge bg-${this.getStatusColor(award.status)}">${award.status || 'N/A'}</span></td>
-            <td>${award.created_at ? new Date(award.created_at).toLocaleDateString() : 'N/A'}</td>
+            <td>${award.created_at ? new Date(award.created_at).toLocaleDateString('en-GB') : 'N/A'}</td>
           </tr>
         `
           )
@@ -2312,7 +2312,7 @@ const dashboardModule = {
             <td>${utils.escapeHtml(utils.toTitleCase(org.sector) || 'N/A')}</td>
             <td>${utils.escapeHtml(org.county_city || 'N/A')}</td>
             <td><span class="badge bg-primary">${org.awards_count || 0}</span></td>
-            <td>${org.created_at ? new Date(org.created_at).toLocaleDateString() : 'N/A'}</td>
+            <td>${org.created_at ? new Date(org.created_at).toLocaleDateString('en-GB') : 'N/A'}</td>
           </tr>
         `
           )
@@ -2490,7 +2490,7 @@ const dashboardModule = {
             (event) => `
           <tr>
             <td>${utils.escapeHtml(event.event_name || 'Untitled')}</td>
-            <td>${event.event_date ? new Date(event.event_date).toLocaleDateString() : 'N/A'}</td>
+            <td>${event.event_date ? new Date(event.event_date).toLocaleDateString('en-GB') : 'N/A'}</td>
             <td>${utils.escapeHtml(event.location || 'TBD')}</td>
             <td>${event.capacity || 'N/A'}</td>
             <td><span class="badge bg-success">Upcoming</span></td>
@@ -2521,7 +2521,7 @@ const dashboardModule = {
               <div class="flex-grow-1">
                 <h6 class="mb-1">${utils.escapeHtml(event.event_name || 'Untitled')}</h6>
                 <p class="text-muted small mb-1">
-                  <i class="bi bi-calendar me-1"></i>${event.event_date ? new Date(event.event_date).toLocaleDateString() : 'N/A'}
+                  <i class="bi bi-calendar me-1"></i>${event.event_date ? new Date(event.event_date).toLocaleDateString('en-GB') : 'N/A'}
                   ${event.location ? `<i class="bi bi-geo-alt ms-2 me-1"></i>${utils.escapeHtml(event.location)}` : ''}
                 </p>
                 ${event.description ? `<p class="small mb-0">${utils.escapeHtml(event.description.substring(0, 100))}${event.description.length > 100 ? '...' : ''}</p>` : ''}

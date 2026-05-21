@@ -486,7 +486,7 @@ const winnersModule = {
                 <li><hr class="dropdown-divider"></li>
                 <li><a class="dropdown-item small" href="#" data-action="winnersModule.scheduleAnnouncement" data-args='${JSON.stringify([winner.id])}' data-prevent-default="true">
                   <i class="bi bi-calendar-event text-info me-2"></i>Schedule Announcement…
-                  ${winner.announce_at ? `<span class="badge bg-info ms-1" style="font-size:0.65rem;">${new Date(winner.announce_at).toLocaleDateString()}</span>` : ''}
+                  ${winner.announce_at ? `<span class="badge bg-info ms-1" style="font-size:0.65rem;">${new Date(winner.announce_at).toLocaleDateString('en-GB')}</span>` : ''}
                 </a></li>
               </ul>
             </div>
@@ -925,6 +925,22 @@ const winnersModule = {
 
       await apiClient.delete('winners', winnerId);
 
+      // Revert the linked entry status from 'winner' back to 'shortlisted'
+      if (winner?.org_id && winner?.award_id) {
+        try {
+          const { data: linkedEntries } = await apiClient.select('entries', {
+            select: 'id',
+            filters: { organisation_id: winner.org_id, award_id: winner.award_id, status: 'winner' },
+            pageSize: 1,
+          });
+          if (linkedEntries?.[0]) {
+            await apiClient.update('entries', linkedEntries[0].id, { status: 'shortlisted' });
+          }
+        } catch (entryErr) {
+          console.warn('Could not revert entry status after winner deletion:', entryErr);
+        }
+      }
+
       await this.loadWinners();
       utils.showToast(
         'Winner deleted. <a href="#" data-action="utils.undoLastDelete" data-id="winners" data-prevent-default="true">Undo</a>',
@@ -1066,7 +1082,7 @@ const winnersModule = {
                               ${isPhotoExcluded ? '' : 'checked'}
                               data-on-change="winnersModule.togglePhotoSelection" data-args='${JSON.stringify([winner.id, photo.id])}'>
                             <label class="form-check-label small" for="photo_${photo.id}">
-                              <img src="${photo.media_url}" alt="${photo.caption || 'Photo'}"
+                              <img src="${photo.file_url}" alt="${photo.caption || 'Photo'}"
                                 style="width: 60px; height: 60px; object-fit: cover;"
                                 class="rounded">
                               <div class="text-truncate" style="max-width: 100px;">
@@ -1396,7 +1412,7 @@ const winnersModule = {
                 .map(
                   (photo) => `
                 <div class="photo-item">
-                  <img src="${photo.media_url}" alt="${utils.escapeHtml(photo.caption || 'Photo')}">
+                  <img src="${photo.file_url}" alt="${utils.escapeHtml(photo.caption || 'Photo')}">
                   <div class="caption">${utils.escapeHtml(photo.caption || 'No caption')}</div>
                 </div>
               `

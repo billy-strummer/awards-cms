@@ -400,7 +400,13 @@ const awardsModule = {
    */
   onAwardFormCountryChange() {
     const country = document.getElementById('awardFormCountry')?.value || '';
-    locationModule.populateAreaDropdown('awardFormArea', country, 'Select Area...');
+    const areaEl = document.getElementById('awardFormArea');
+    if (areaEl) areaEl.disabled = !country;
+    locationModule.populateAreaDropdown(
+      'awardFormArea',
+      country,
+      country ? 'Select Area...' : 'Select country first...'
+    );
     this._updateAwardFormAreaHint(null);
   },
 
@@ -759,6 +765,8 @@ const awardsModule = {
           : 'Click "+ Add Award" in the toolbar to create your first award',
         isFiltered: hasFilters,
         clearAction: hasFilters ? 'awardsModule.resetFilters' : '',
+        actionLabel: hasFilters ? '' : 'Add Award',
+        actionAction: hasFilters ? '' : 'awardsModule.openCreateModal',
       });
       // Clear pagination
       const pagEl = document.getElementById('awardsPagination');
@@ -1290,10 +1298,12 @@ const awardsModule = {
    * @returns {void}
    */
   openCreateModal() {
+    const currentYear = new Date().getFullYear();
     document.getElementById('awardFormId').value = '';
     document.getElementById('awardFormName').value = '';
-    document.getElementById('awardFormYear').value = String(new Date().getFullYear());
-    document.getElementById('awardFormStatus').value = 'Active';
+    document.getElementById('awardFormYear').value = String(currentYear);
+    // NEW: default to Draft — Active immediately opens entries
+    document.getElementById('awardFormStatus').value = 'Draft';
     document.getElementById('awardFormEntryOpen').value = '';
     document.getElementById('awardFormEntryClose').value = '';
     document.getElementById('awardFormNomineesAnnouncement').value = '';
@@ -1307,25 +1317,79 @@ const awardsModule = {
     document.getElementById('awardFormPrev2nd').value = '';
     document.getElementById('awardFormPrev3rd').value = '';
     document.getElementById('awardFormModalTitle').innerHTML = '<i class="bi bi-plus-lg me-2"></i>Add Award';
+    // Update save button for create mode
+    const saveBtnLabel = document.getElementById('awardFormSaveBtnLabel');
+    const saveBtnIcon = document.getElementById('awardFormSaveBtnIcon');
+    if (saveBtnLabel) saveBtnLabel.textContent = 'Create Award';
+    if (saveBtnIcon) {
+      saveBtnIcon.className = 'bi bi-plus-lg me-1';
+    }
+    // Update year range dynamically
+    const yearEl = document.getElementById('awardFormYear');
+    if (yearEl) {
+      yearEl.min = String(currentYear - 2);
+      yearEl.max = String(currentYear + 5);
+    }
 
     // Populate country + area dropdowns via locationModule
     locationModule.populateCountryDropdown('awardFormCountry', 'Select Country...');
-    locationModule.populateAreaDropdown('awardFormArea', '', 'Select Area...');
+    const areaEl = document.getElementById('awardFormArea');
+    if (areaEl) {
+      areaEl.disabled = true;
+      areaEl.innerHTML = '<option value="">Select country first...</option>';
+    }
 
-    // Populate sector dropdown
+    // Populate sector dropdown (hardcoded sectors first, custom ones appended async)
     const sectorSelect = document.getElementById('awardFormSector');
     sectorSelect.innerHTML =
       '<option value="">Select Sector...</option>' +
       SECTORS.map((s) => `<option value="${s}">${utils.toTitleCase(s)}</option>`).join('');
+    apiClient
+      .select('custom_sectors', {
+        select: 'name',
+        filters: { is_active: true },
+        sort: { column: 'name', ascending: true },
+        pageSize: 200,
+      })
+      .then((result) => {
+        (result?.data || []).forEach((s) => {
+          sectorSelect.innerHTML += `<option value="${utils.escapeHtml(s.name)}">${utils.toTitleCase(s.name)}</option>`;
+        });
+      })
+      .catch(() => {});
 
     // Populate season dropdown
     this.populateSeasonDropdown();
+    // Hint if no seasons configured
+    this._updateSeasonHint();
+    this._clearDateErrors();
 
-    const modal = new bootstrap.Modal(document.getElementById('awardFormModal'));
+    const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('awardFormModal'));
     modal.show();
+
+    // Autofocus category name after modal animation completes
+    document.getElementById('awardFormModal').addEventListener(
+      'shown.bs.modal',
+      () => {
+        document.getElementById('awardFormName')?.focus();
+      },
+      { once: true }
+    );
+
+    // Keyboard shortcut: Ctrl/Cmd+Enter to save
+    const keyHandler = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        this.saveAward();
+      }
+    };
+    document.getElementById('awardFormModal').addEventListener('keydown', keyHandler);
 
     // Initialize inline form validation
     utils.initInlineValidation('awardForm');
+
+    // Description character counter
+    this._initDescCount();
 
     // Draft recovery: check for a saved draft
     const draft = utils.getFormDraft('award_new');
@@ -1334,37 +1398,92 @@ const awardsModule = {
         if (data.award_name) document.getElementById('awardFormName').value = data.award_name;
         if (data.country) {
           document.getElementById('awardFormCountry').value = data.country;
+          const aEl = document.getElementById('awardFormArea');
+          if (aEl) aEl.disabled = false;
           locationModule.populateAreaDropdown('awardFormArea', data.country, 'Select Area...', data.area_id || '');
         }
         if (data.area_id) document.getElementById('awardFormArea').value = data.area_id;
         if (data.sector) document.getElementById('awardFormSector').value = data.sector;
         if (data.year) document.getElementById('awardFormYear').value = data.year;
         if (data.status) document.getElementById('awardFormStatus').value = data.status;
+        if (data.entry_open_date) document.getElementById('awardFormEntryOpen').value = data.entry_open_date;
+        if (data.entry_close_date) document.getElementById('awardFormEntryClose').value = data.entry_close_date;
+        if (data.nominees_announcement_date)
+          document.getElementById('awardFormNomineesAnnouncement').value = data.nominees_announcement_date;
+        if (data.judging_open_date) document.getElementById('awardFormJudgingOpen').value = data.judging_open_date;
+        if (data.judging_close_date) document.getElementById('awardFormJudgingClose').value = data.judging_close_date;
+        if (data.voting_open_date) document.getElementById('awardFormVotingOpen').value = data.voting_open_date;
+        if (data.voting_close_date) document.getElementById('awardFormVotingClose').value = data.voting_close_date;
+        if (data.winners_announcement_date)
+          document.getElementById('awardFormWinnersAnnouncement').value = data.winners_announcement_date;
+        if (data.prev_year_winner) document.getElementById('awardFormPrevWinner').value = data.prev_year_winner;
+        if (data.prev_year_2nd) document.getElementById('awardFormPrev2nd').value = data.prev_year_2nd;
+        if (data.prev_year_3rd) document.getElementById('awardFormPrev3rd').value = data.prev_year_3rd;
         if (data.description) document.getElementById('awardFormDescription').value = data.description;
+        document.getElementById('awardFormDescCount').textContent = (data.description || '').length;
       });
       const modalBody = document.querySelector('#awardFormModal .modal-body');
       if (modalBody && banner) modalBody.prepend(banner);
     }
 
-    // Start auto-save for the create form
-    utils.startFormAutoSave('award_new', () => ({
+    // Start auto-save for the create form (all fields)
+    utils.startFormAutoSave('award_new', () => this._gatherAwardFormDraft());
+
+    // Stop auto-save + remove keyboard handler when modal is closed
+    document.getElementById('awardFormModal').addEventListener(
+      'hidden.bs.modal',
+      () => {
+        utils.stopFormAutoSave('award_new');
+        document.getElementById('awardFormModal')?.removeEventListener('keydown', keyHandler);
+      },
+      { once: true }
+    );
+  },
+
+  /** Gather all form field values for draft auto-save */
+  _gatherAwardFormDraft() {
+    return {
       award_name: document.getElementById('awardFormName')?.value,
       country: document.getElementById('awardFormCountry')?.value,
       area_id: document.getElementById('awardFormArea')?.value,
       sector: document.getElementById('awardFormSector')?.value,
       year: document.getElementById('awardFormYear')?.value,
       status: document.getElementById('awardFormStatus')?.value,
+      entry_open_date: document.getElementById('awardFormEntryOpen')?.value,
+      entry_close_date: document.getElementById('awardFormEntryClose')?.value,
+      nominees_announcement_date: document.getElementById('awardFormNomineesAnnouncement')?.value,
+      judging_open_date: document.getElementById('awardFormJudgingOpen')?.value,
+      judging_close_date: document.getElementById('awardFormJudgingClose')?.value,
+      voting_open_date: document.getElementById('awardFormVotingOpen')?.value,
+      voting_close_date: document.getElementById('awardFormVotingClose')?.value,
+      winners_announcement_date: document.getElementById('awardFormWinnersAnnouncement')?.value,
+      prev_year_winner: document.getElementById('awardFormPrevWinner')?.value,
+      prev_year_2nd: document.getElementById('awardFormPrev2nd')?.value,
+      prev_year_3rd: document.getElementById('awardFormPrev3rd')?.value,
       description: document.getElementById('awardFormDescription')?.value,
-    }));
+    };
+  },
 
-    // Stop auto-save when modal is closed
-    document.getElementById('awardFormModal').addEventListener(
-      'hidden.bs.modal',
-      () => {
-        utils.stopFormAutoSave('award_new');
-      },
-      { once: true }
-    );
+  /** Show a hint if no seasons are configured */
+  _updateSeasonHint() {
+    const seasons = settingsModule?.allSeasons || [];
+    const seasonHelp = document.querySelector('#awardFormSeason + .form-text');
+    if (!seasonHelp) return;
+    if (seasons.length === 0) {
+      seasonHelp.innerHTML =
+        'No seasons configured yet. <a href="#" data-action="app.switchTab" data-id="settings">Set up seasons in Settings</a> to auto-fill dates.';
+    }
+  },
+
+  /** Initialise the description character counter */
+  _initDescCount() {
+    const ta = document.getElementById('awardFormDescription');
+    const counter = document.getElementById('awardFormDescCount');
+    if (!ta || !counter) return;
+    counter.textContent = ta.value.length;
+    ta.addEventListener('input', () => {
+      counter.textContent = ta.value.length;
+    });
   },
 
   /**
@@ -1423,19 +1542,64 @@ const awardsModule = {
     // Update area hint
     this._updateAwardFormAreaHint(award.area_id);
 
-    // Populate sector dropdown
+    // Populate sector dropdown (hardcoded sectors first, custom ones appended async)
     const sectorSelect = document.getElementById('awardFormSector');
     sectorSelect.innerHTML =
       '<option value="">Select Sector...</option>' +
       SECTORS.map(
         (s) => `<option value="${s}" ${s === award.sector ? 'selected' : ''}>${utils.toTitleCase(s)}</option>`
       ).join('');
+    apiClient
+      .select('custom_sectors', {
+        select: 'name',
+        filters: { is_active: true },
+        sort: { column: 'name', ascending: true },
+        pageSize: 200,
+      })
+      .then((result) => {
+        (result?.data || []).forEach((s) => {
+          sectorSelect.innerHTML += `<option value="${utils.escapeHtml(s.name)}" ${s.name === award.sector ? 'selected' : ''}>${utils.toTitleCase(s.name)}</option>`;
+        });
+      })
+      .catch(() => {});
 
     // Populate season dropdown
     this.populateSeasonDropdown();
 
-    const modal = new bootstrap.Modal(document.getElementById('awardFormModal'));
+    // Enable area dropdown (award has a country)
+    const areaElEdit = document.getElementById('awardFormArea');
+    if (areaElEdit) areaElEdit.disabled = false;
+
+    // Update save button for edit mode
+    const saveBtnLabelEdit = document.getElementById('awardFormSaveBtnLabel');
+    const saveBtnIconEdit = document.getElementById('awardFormSaveBtnIcon');
+    if (saveBtnLabelEdit) saveBtnLabelEdit.textContent = 'Save Changes';
+    if (saveBtnIconEdit) saveBtnIconEdit.className = 'bi bi-check-lg me-1';
+
+    // Update year range dynamically
+    const currentYearEdit = new Date().getFullYear();
+    const yearElEdit = document.getElementById('awardFormYear');
+    if (yearElEdit) {
+      yearElEdit.min = String(currentYearEdit - 2);
+      yearElEdit.max = String(currentYearEdit + 5);
+    }
+
+    const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('awardFormModal'));
     modal.show();
+
+    // Keyboard shortcut: Ctrl/Cmd+Enter to save
+    const keyHandlerEdit = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        this.saveAward();
+      }
+    };
+    document.getElementById('awardFormModal').addEventListener('keydown', keyHandlerEdit);
+
+    // Initialize inline form validation + desc counter
+    utils.initInlineValidation('awardForm');
+    this._initDescCount();
+    this._clearDateErrors();
 
     // Draft recovery: check for a saved draft for this award
     const editFormKey = 'award_edit_' + awardId;
@@ -1451,28 +1615,37 @@ const awardsModule = {
         if (data.sector) document.getElementById('awardFormSector').value = data.sector;
         if (data.year) document.getElementById('awardFormYear').value = data.year;
         if (data.status) document.getElementById('awardFormStatus').value = data.status;
-        if (data.description) document.getElementById('awardFormDescription').value = data.description;
+        if (data.entry_open_date) document.getElementById('awardFormEntryOpen').value = data.entry_open_date;
+        if (data.entry_close_date) document.getElementById('awardFormEntryClose').value = data.entry_close_date;
+        if (data.nominees_announcement_date)
+          document.getElementById('awardFormNomineesAnnouncement').value = data.nominees_announcement_date;
+        if (data.judging_open_date) document.getElementById('awardFormJudgingOpen').value = data.judging_open_date;
+        if (data.judging_close_date) document.getElementById('awardFormJudgingClose').value = data.judging_close_date;
+        if (data.voting_open_date) document.getElementById('awardFormVotingOpen').value = data.voting_open_date;
+        if (data.voting_close_date) document.getElementById('awardFormVotingClose').value = data.voting_close_date;
+        if (data.winners_announcement_date)
+          document.getElementById('awardFormWinnersAnnouncement').value = data.winners_announcement_date;
+        if (data.prev_year_winner) document.getElementById('awardFormPrevWinner').value = data.prev_year_winner;
+        if (data.prev_year_2nd) document.getElementById('awardFormPrev2nd').value = data.prev_year_2nd;
+        if (data.prev_year_3rd) document.getElementById('awardFormPrev3rd').value = data.prev_year_3rd;
+        if (data.description) {
+          document.getElementById('awardFormDescription').value = data.description;
+          document.getElementById('awardFormDescCount').textContent = (data.description || '').length;
+        }
       });
       const modalBody = document.querySelector('#awardFormModal .modal-body');
       if (modalBody && banner) modalBody.prepend(banner);
     }
 
-    // Start auto-save for the edit form
-    utils.startFormAutoSave(editFormKey, () => ({
-      award_name: document.getElementById('awardFormName')?.value,
-      country: document.getElementById('awardFormCountry')?.value,
-      area_id: document.getElementById('awardFormArea')?.value,
-      sector: document.getElementById('awardFormSector')?.value,
-      year: document.getElementById('awardFormYear')?.value,
-      status: document.getElementById('awardFormStatus')?.value,
-      description: document.getElementById('awardFormDescription')?.value,
-    }));
+    // Start auto-save for the edit form (all fields)
+    utils.startFormAutoSave(editFormKey, () => this._gatherAwardFormDraft());
 
-    // Stop auto-save when modal is closed
+    // Stop auto-save + remove keyboard handler when modal is closed
     document.getElementById('awardFormModal').addEventListener(
       'hidden.bs.modal',
       () => {
         utils.stopFormAutoSave(editFormKey);
+        document.getElementById('awardFormModal')?.removeEventListener('keydown', keyHandlerEdit);
       },
       { once: true }
     );
@@ -1502,10 +1675,36 @@ const awardsModule = {
       const current = setDates[i];
       const next = setDates[i + 1];
       if (dates[current.key] > dates[next.key]) {
-        return `"${current.label}" (${dates[current.key]}) must be before "${next.label}" (${dates[next.key]})`;
+        return {
+          message: `"${current.label}" must be before "${next.label}"`,
+          key1: current.key,
+          key2: next.key,
+          label1: current.label,
+          label2: next.label,
+        };
       }
     }
     return null;
+  },
+
+  _dateFieldIds: {
+    entry_open_date: 'awardFormEntryOpen',
+    entry_close_date: 'awardFormEntryClose',
+    nominees_announcement_date: 'awardFormNomineesAnnouncement',
+    judging_open_date: 'awardFormJudgingOpen',
+    judging_close_date: 'awardFormJudgingClose',
+    voting_open_date: 'awardFormVotingOpen',
+    voting_close_date: 'awardFormVotingClose',
+    winners_announcement_date: 'awardFormWinnersAnnouncement',
+  },
+
+  _clearDateErrors() {
+    Object.values(this._dateFieldIds).forEach((fieldId) => {
+      const el = document.getElementById(fieldId);
+      if (el) el.classList.remove('is-invalid');
+      const fb = document.getElementById(fieldId + 'Feedback');
+      if (fb) fb.textContent = '';
+    });
   },
 
   /**
@@ -1545,9 +1744,23 @@ const awardsModule = {
     };
 
     // Validate date order
+    this._clearDateErrors();
     const dateError = this.validateDates(awardData);
     if (dateError) {
-      utils.showToast('Date order error: ' + dateError, 'error');
+      const field1 = document.getElementById(this._dateFieldIds[dateError.key1]);
+      const field2 = document.getElementById(this._dateFieldIds[dateError.key2]);
+      if (field1) {
+        field1.classList.add('is-invalid');
+        const fb1 = document.getElementById(this._dateFieldIds[dateError.key1] + 'Feedback');
+        if (fb1) fb1.textContent = `Must be before "${dateError.label2}"`;
+        if (field1.scrollIntoView) field1.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+      if (field2) {
+        field2.classList.add('is-invalid');
+        const fb2 = document.getElementById(this._dateFieldIds[dateError.key2] + 'Feedback');
+        if (fb2) fb2.textContent = `Must be after "${dateError.label1}"`;
+      }
+      utils.showToast(dateError.message, 'error');
       return;
     }
 
@@ -1739,21 +1952,43 @@ const awardsModule = {
       !(await utils.confirmDialog({
         title: 'Delete Awards',
         message: `Delete ${count} award(s)? This cannot be undone.`,
+        danger: true,
+        confirmText: 'Delete',
       }))
     )
       return;
+
+    // Check for linked entries across all selected awards
+    const ids = [...this.selectedAwards];
+    let totalEntryCount = 0;
+    try {
+      const entryCheck = await apiClient.select('entries', {
+        select: 'id',
+        filters: { award_id: { op: 'in', value: ids } },
+        pageSize: 1,
+      });
+      totalEntryCount = entryCheck.count ?? entryCheck.data?.length ?? 0;
+    } catch (_e) {
+      // Non-fatal: proceed without count if query fails
+    }
+
+    const entryWarning =
+      totalEntryCount > 0
+        ? ` These awards have ${totalEntryCount} linked entr${totalEntryCount === 1 ? 'y' : 'ies'} — deleting them will orphan those entries.`
+        : '';
+
     if (
       !(await utils.confirmDialog({
         title: 'Final Confirmation',
-        message: `Are you absolutely sure? This will permanently delete ${count} award(s) and their assignments.`,
+        message: `Are you absolutely sure? This will permanently delete ${count} award(s) and their assignments.${entryWarning}`,
+        danger: true,
+        confirmText: 'Delete Permanently',
       }))
     )
       return;
 
     try {
       utils.showLoading();
-
-      const ids = [...this.selectedAwards];
 
       // Delete assignments first
       await Promise.all(ids.map((id) => apiClient.deleteByFilters('award_assignments', { award_id: id })));
@@ -1919,10 +2154,31 @@ const awardsModule = {
       utils.showToast('You do not have permission to delete awards', 'error');
       return;
     }
+
+    // Check for linked entries before confirming deletion
+    let entryCount = 0;
+    try {
+      const entryCheck = await apiClient.select('entries', {
+        select: 'id',
+        filters: { award_id: awardId },
+        pageSize: 1,
+      });
+      entryCount = entryCheck.count ?? entryCheck.data?.length ?? 0;
+    } catch (_e) {
+      // Non-fatal: proceed without entry count if query fails
+    }
+
+    const entryWarning =
+      entryCount > 0
+        ? ` This award has ${entryCount} linked entr${entryCount === 1 ? 'y' : 'ies'} — deleting it will orphan those entries.`
+        : '';
+
     if (
       !(await utils.confirmDialog({
         title: 'Delete Award',
-        message: 'Are you sure you want to delete this award? This action cannot be undone.',
+        message: `Are you sure you want to delete this award? This action cannot be undone.${entryWarning}`,
+        danger: true,
+        confirmText: 'Delete',
       }))
     ) {
       return;

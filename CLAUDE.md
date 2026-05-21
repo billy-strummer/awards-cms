@@ -2,6 +2,10 @@
 
 **Read this file first.** It provides the project context, current state, and step-by-step implementation plan. If a session gets cut off, the next Claude session should read this file and the `IMPLEMENTATION-PLAN.md` to pick up where things left off.
 
+## ACTIVE WORK: Full System Audit
+
+> **CLAUDE: There is a master system audit at `CMS-AUDIT-TODO.md` covering 118 checks across 12 categories (automated tests, database schema, auth, multi-user, end-to-end flows, API health, frontend tabs, forms, security, integrations, performance, error recovery). Read it at the start of every session and work through items in order. Mark each item `[x]` in the same commit as the verification or fix. If an item reveals a bug, fix it before marking it done. Resume from the first unchecked `[ ]` item.**
+
 ## ACTIVE WORK: UX/UI Audit
 
 > **CLAUDE: There is an active UX/UI improvement backlog at `UX-AUDIT-TODO.md`. Read it at the start of every session and work through items in order (Critical → High → Medium → Low). Mark each item `[x]` in the same commit as the implementation. Never start a new session without checking this file first.**

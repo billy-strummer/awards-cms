@@ -386,7 +386,7 @@
     // --------------------------------------------------
     // Build award category list for selected sector + region
     // --------------------------------------------------
-    buildCategoryList() {
+    async buildCategoryList() {
       const awardsList = document.getElementById('awardsList');
       const countyCity = this.formData.county_city || '';
       const sector = this.formData.sector || '';
@@ -396,8 +396,46 @@
         return;
       }
 
-      const categories = this.getCategoriesForRegion(countyCity);
-      const sectorCategories = categories[sector] || [];
+      const isSmall = SMALL_COUNTIES.some((c) => c.toLowerCase() === countyCity.toLowerCase());
+      const baseCategories = this.getCategoriesForRegion(countyCity);
+
+      // Clone the base category map so we don't mutate the hardcoded constant
+      const mergedCategories = {};
+      Object.keys(baseCategories).forEach((k) => {
+        mergedCategories[k] = [...baseCategories[k]];
+      });
+
+      // Fetch and merge custom sectors & categories
+      try {
+        const [customSectorsRes, customCatsRes] = await Promise.all([
+          fetch('/api/data-proxy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'select', table: 'custom_sectors', filters: { is_active: true }, pageSize: 200 }),
+          }).then((r) => r.json()),
+          fetch('/api/data-proxy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'select', table: 'custom_categories', filters: { is_active: true }, pageSize: 500 }),
+          }).then((r) => r.json()),
+        ]);
+        const customSectors = customSectorsRes?.data || [];
+        const customCats = customCatsRes?.data || [];
+        // Merge custom sectors into the category map
+        customSectors.forEach((s) => {
+          if (!mergedCategories[s.name]) mergedCategories[s.name] = [];
+        });
+        // Merge custom categories
+        customCats.forEach((c) => {
+          if (isSmall && !c.available_for_small) return; // respect small-area filter
+          if (!mergedCategories[c.sector_name]) mergedCategories[c.sector_name] = [];
+          if (!mergedCategories[c.sector_name].includes(c.name)) mergedCategories[c.sector_name].push(c.name);
+        });
+      } catch (_) {
+        /* silently fall back to hardcoded only */
+      }
+
+      const sectorCategories = mergedCategories[sector] || [];
 
       if (sectorCategories.length === 0) {
         awardsList.innerHTML = `
@@ -469,7 +507,7 @@
 
       // Build category list after sector is selected (step 2)
       if (currentStepNum === 2) {
-        this.buildCategoryList();
+        await this.buildCategoryList();
       }
 
       // Build review before showing step 8

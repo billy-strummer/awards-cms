@@ -227,6 +227,8 @@ const ALLOWED_TABLES = new Set([
   'certificate_templates',
   'nominee_upload_batches',
   'nominee_upload_rows',
+  'custom_sectors',
+  'custom_categories',
 ]);
 
 /** Tables that can be mutated (insert/update/delete/upsert) */
@@ -341,6 +343,8 @@ const MUTABLE_TABLES = new Set([
   'certificate_templates',
   'nominee_upload_batches',
   'nominee_upload_rows',
+  'custom_sectors',
+  'custom_categories',
 ]);
 
 /** Maximum page size to prevent abuse */

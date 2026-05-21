@@ -2803,20 +2803,20 @@ Branch: `claude/bta-location-restructure-JS5hX`
 ### V17-H3 — Entry inline status dropdown bypasses state machine
 - **File:** `entries.js` — `inlineUpdateEntryStatus()` and `saveEntryEdit()`
 - **Root cause:** `getEntryStatusOptions()` disables invalid options in the UI, but the save functions write whatever value is submitted without a server-side transition check. A POST with a skipped status would succeed.
-- **Fix:** Add `validateTransition(currentStatus, newStatus)` guard in both `inlineUpdateEntryStatus` and `saveEntryEdit` before any DB write.
-- [ ] Implemented
+- **Fix:** Added `validateEntryTransition(currentStatus, newStatus)` guard in both `inlineUpdateEntryStatus` and `saveEntryEdit` before any DB write. `inlineUpdateEntryStatus` reads current status from local state and reverts the dropdown on failure. `saveEntryEdit` reads original status from `data-current-status` attribute embedded in the modal div when the entry is loaded.
+- [x] Implemented
 
 ### V17-H4 — `why_should_win` field not locked for shortlisted/winner entries
 - **File:** `entries.js` — `editEntry()` content-locking block
 - **Root cause:** Content locking (added in V16) only covers `editEntryTitle`, `editEntryDescription`, `editEntrySupportingInfo`. The primary judged narrative field `editEntryWhyWin` is still editable after shortlisting.
-- **Fix:** Add `'editEntryWhyWin'` to the `contentFieldIds` array in the content-locking block.
-- [ ] Implemented
+- **Fix:** Added `editEntryWhyWin` to the `contentFieldIds` array in the content-locking block. All four judged narrative fields are now set `readonly` with `bg-light` style and descriptive tooltip when entry is shortlisted or winner.
+- [x] Implemented
 
 ### V17-H5 — Entry number race condition in submission proxy
 - **File:** `api/entry-proxy.js` — `generateEntryNumber()`
 - **Root cause:** Read-then-write pattern — two concurrent submissions can read the same MAX(entry_number) and generate identical entry numbers. No DB sequence or unique constraint.
-- **Fix:** Use a PostgreSQL sequence (`CREATE SEQUENCE bta_entry_seq`) and add `UNIQUE` constraint on `entry_number`. Or use `pg_advisory_lock` around the generate+insert.
-- [ ] Implemented
+- **Fix:** Added `insertEntryWithRetry(payload)` helper that wraps the insert in a retry loop (up to 3 attempts). On a unique constraint violation (error code `23505`), it backs off with random jitter and re-generates a fresh entry number before retrying. Both `handleSubmitEntry` and `handleSubmitNomination` now use this helper.
+- [x] Implemented
 
 ### V17-H6 — No confirmation email on event registration (false claim in UI)
 - **File:** `api/registration-proxy.js`, `register.html`

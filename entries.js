@@ -2,16 +2,20 @@
 /* ENTRIES MODULE - Entry Submission Management */
 /* ==================================================== */
 
-// Allowed status transitions for the entry state machine.
-// Admins may only move to listed next states from the current state.
 const ENTRY_VALID_TRANSITIONS = {
   draft: ['submitted', 'rejected'],
-  submitted: ['under_review', 'rejected'],
-  under_review: ['shortlisted', 'rejected'],
+  submitted: ['under_review', 'rejected', 'draft'],
+  under_review: ['shortlisted', 'rejected', 'submitted'],
   shortlisted: ['winner', 'rejected', 'under_review'],
   winner: ['shortlisted'],
-  rejected: ['under_review'],
+  rejected: ['submitted', 'under_review'],
 };
+
+function validateEntryTransition(currentStatus, newStatus) {
+  if (currentStatus === newStatus) return true;
+  const allowed = ENTRY_VALID_TRANSITIONS[currentStatus];
+  return Array.isArray(allowed) && allowed.includes(newStatus);
+}
 
 function getEntryStatusOptions(currentStatus) {
   const current = (currentStatus || 'draft').toLowerCase();
@@ -1463,7 +1467,7 @@ const entriesModule = {
       ]);
 
       const modalHtml = `
-        <div class="modal fade" id="editEntryModal" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal fade" id="editEntryModal" tabindex="-1" data-bs-backdrop="static" data-current-status="${utils.escapeHtml(entry.status || '')}">
           <div class="modal-dialog modal-xl modal-dialog-scrollable">
             <div class="modal-content">
               <div class="modal-header bg-secondary text-white">
@@ -1608,23 +1612,33 @@ const entriesModule = {
       modal.show();
       utils.initInlineValidation('editEntryForm');
 
-      // Lock content fields for shortlisted/winner entries
-      const lockedStatuses = ['shortlisted', 'winner'];
-      if (lockedStatuses.includes((entry.status || '').toLowerCase())) {
-        const contentFieldIds = ['editEntryTitle', 'editEntryDescription', 'editEntrySupportingInfo'];
-        contentFieldIds.forEach((id) => {
-          const el = document.getElementById(id);
-          if (el) el.setAttribute('readonly', 'true');
+      // Content-locking: once an entry is shortlisted or a winner its judged
+      // narrative fields must not be editable (scores were cast against them).
+      const CONTENT_LOCKED_STATUSES = ['shortlisted', 'winner'];
+      if (CONTENT_LOCKED_STATUSES.includes(entry.status)) {
+        const contentFieldIds = [
+          'editEntryTitle',
+          'editEntryDescription',
+          'editEntryWhyWin',
+          'editEntrySupportingInfo',
+        ];
+        contentFieldIds.forEach((fieldId) => {
+          const el = document.getElementById(fieldId);
+          if (el) {
+            el.setAttribute('readonly', 'readonly');
+            el.classList.add('bg-light');
+            el.title = 'This field is locked because the entry has been shortlisted or selected as a winner.';
+          }
         });
         const form = document.getElementById('editEntryForm');
         if (form) {
-          const lockBanner = document.createElement('div');
-          lockBanner.className = 'alert alert-warning mb-3';
-          lockBanner.innerHTML =
-            '<i class="bi bi-lock me-2"></i><strong>Content locked.</strong> This entry has been ' +
-            (entry.status === 'winner' ? 'selected as a winner' : 'shortlisted') +
-            '. Change the status to unlock editing.';
-          form.insertBefore(lockBanner, form.firstChild);
+          form.insertAdjacentHTML(
+            'afterbegin',
+            `<div class="alert alert-warning mb-3">
+              <i class="bi bi-lock me-2"></i>
+              <strong>Content locked.</strong> Entry title and narrative fields are read-only because this entry has been <strong>${entry.status}</strong>. Scoring integrity requires these fields to remain unchanged.
+            </div>`
+          );
         }
       }
 
@@ -1648,6 +1662,18 @@ const entriesModule = {
     const editEntryStatusEl = document.getElementById('editEntryStatus');
     if (!editEntryStatusEl) return;
     const newStatus = editEntryStatusEl.value;
+
+    // Validate the status transition against the state machine
+    const modalEl = document.getElementById('editEntryModal');
+    const currentStatus = modalEl ? modalEl.dataset.currentStatus : null;
+    if (currentStatus && !validateEntryTransition(currentStatus, newStatus)) {
+      utils.showToast(
+        `Invalid transition: cannot move from "${currentStatus}" to "${newStatus}"`,
+        'error'
+      );
+      return;
+    }
+
     const updateData = {
       entry_title: document.getElementById('editEntryTitle').value,
       award_id: document.getElementById('editEntryAward').value || null,
@@ -2423,10 +2449,25 @@ const entriesModule = {
    * @returns {Promise<void>}
    */
   async inlineUpdateEntryStatus(entryId, newStatus) {
+    // Validate the transition against the state machine before writing
+    const entry = this.allEntries.find((e) => e.id === entryId);
+    const currentStatus = entry ? entry.status : null;
+    if (currentStatus && !validateEntryTransition(currentStatus, newStatus)) {
+      utils.showToast(
+        `Invalid transition: cannot move from "${currentStatus}" to "${newStatus}"`,
+        'error'
+      );
+      // Revert the dropdown to the current status
+      const dropdown = document.querySelector(
+        `[data-on-change="entriesModule.inlineUpdateEntryStatus"][data-id="${entryId}"]`
+      );
+      if (dropdown) dropdown.value = currentStatus;
+      return;
+    }
+
     try {
       await apiClient.update('entries', entryId, { status: newStatus });
       // Update local state
-      const entry = this.allEntries.find((e) => e.id === entryId);
       if (entry) entry.status = newStatus;
       this.applyFilters();
       utils.showToast('Status updated to ' + newStatus, 'success');

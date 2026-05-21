@@ -2438,3 +2438,23 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **File:** `index.html` line 6332
 - **Fix:** Added title tooltips to AND/OR buttons with concrete examples. Added inline label: "ALL = must match every rule · ANY = matches at least one rule".
 - [x] Implemented
+
+## V17-HIGH
+
+### V17-H3 — Entry inline status dropdown bypasses state machine
+- **File:** `entries.js` — `inlineUpdateEntryStatus()` and `saveEntryEdit()`
+- **Root cause:** `getEntryStatusOptions()` disables invalid options in the UI, but the save functions write whatever value is submitted without a server-side transition check. A POST with a skipped status would succeed.
+- **Fix:** Added `validateEntryTransition(currentStatus, newStatus)` guard in both `inlineUpdateEntryStatus` and `saveEntryEdit` before any DB write. `inlineUpdateEntryStatus` reads current status from local state and reverts the dropdown on failure. `saveEntryEdit` reads original status from `data-current-status` attribute embedded in the modal div when the entry is loaded.
+- [x] Implemented
+
+### V17-H4 — `why_should_win` field not locked for shortlisted/winner entries
+- **File:** `entries.js` — `editEntry()` content-locking block
+- **Root cause:** Content locking only covered `editEntryTitle`, `editEntryDescription`, `editEntrySupportingInfo`. The primary judged narrative field `editEntryWhyWin` was still editable after shortlisting.
+- **Fix:** Added a post-render content-locking block after the edit modal is shown. When `entry.status` is `shortlisted` or `winner`, all four judged narrative fields (`editEntryTitle`, `editEntryDescription`, `editEntryWhyWin`, `editEntrySupportingInfo`) are set `readonly` with a `bg-light` style and descriptive `title` tooltip. An amber alert banner is also injected at the top of the form to explain why the fields are locked.
+- [x] Implemented
+
+### V17-H5 — Entry number race condition in submission proxy
+- **File:** `api/entry-proxy.js` — `generateEntryNumber()`
+- **Root cause:** Read-then-write pattern — two concurrent submissions can read the same MAX(entry_number) and generate identical entry numbers.
+- **Fix:** Added `insertEntryWithRetry(payload)` helper that wraps the insert in a retry loop (up to 3 attempts). On a unique constraint violation (Supabase error code `23505` or message containing `entry_number`), it backs off with random jitter and re-generates a fresh entry number before retrying. Both `handleSubmitEntry` and `handleSubmitNomination` now use this helper for their primary and fallback inserts.
+- [x] Implemented

@@ -80,6 +80,52 @@ async function generateEntryNumber() {
   return `${prefix}${String(lastNum + 1).padStart(4, '0')}`;
 }
 
+/**
+ * Insert an entry payload with protection against the read-then-write race
+ * condition in generateEntryNumber(). If two concurrent submissions read the
+ * same MAX(entry_number) and generate the same value, the second INSERT will
+ * hit the UNIQUE constraint on entry_number. We catch that violation and retry
+ * with a freshly generated number (up to MAX_RETRIES attempts).
+ *
+ * @param {object} payload - The entry record to insert
+ * @returns {Promise<{data: object, error: object|null}>}
+ */
+async function insertEntryWithRetry(payload) {
+  const MAX_RETRIES = 3;
+  let attempt = 0;
+  let entryPayload = { ...payload };
+
+  while (attempt < MAX_RETRIES) {
+    // eslint-disable-next-line no-await-in-loop
+    const result = await supabase.from('entries').insert(entryPayload).select().single();
+
+    if (!result.error) return result;
+
+    // PostgreSQL unique-violation code is '23505'; Supabase surfaces it in
+    // error.code. Only retry on that specific error.
+    const isDuplicate =
+      result.error.code === '23505' ||
+      (result.error.message && result.error.message.includes('entry_number'));
+
+    if (!isDuplicate || attempt >= MAX_RETRIES - 1) {
+      return result; // non-retryable error, or we've exhausted retries
+    }
+
+    // Back off with random jitter before the next attempt
+    const backoffMs = 50 + Math.floor(Math.random() * 100) * (attempt + 1);
+    // eslint-disable-next-line no-await-in-loop
+    await new Promise((resolve) => setTimeout(resolve, backoffMs));
+
+    // Re-generate entry number for the next attempt
+    // eslint-disable-next-line no-await-in-loop
+    entryPayload = { ...entryPayload, entry_number: await generateEntryNumber() };
+    attempt++;
+  }
+
+  // Should not reach here, but satisfy static analysis
+  return await supabase.from('entries').insert(entryPayload).select().single();
+}
+
 // ────────────────────────────────────────────
 // Main handler
 // ────────────────────────────────────────────
@@ -251,10 +297,11 @@ async function handleSubmitEntry(req, res) {
     is_self_nomination: true,
   };
 
-  const { data: entry, error: entryError } = await supabase.from('entries').insert(entryPayload).select().single();
+  // Use retry wrapper to handle concurrent-submission race conditions on entry_number
+  const { data: entry, error: entryError } = await insertEntryWithRetry(entryPayload);
 
   if (entryError) {
-    // Fallback: try base columns only
+    // Fallback: try base columns only (re-use the already-generated entryNumber)
     const fallbackPayload = {
       entry_number: entryNumber,
       organisation_id: organisationId,
@@ -273,11 +320,7 @@ async function handleSubmitEntry(req, res) {
       allow_public_voting: false,
     };
 
-    const { data: baseEntry, error: baseError } = await supabase
-      .from('entries')
-      .insert(fallbackPayload)
-      .select()
-      .single();
+    const { data: baseEntry, error: baseError } = await insertEntryWithRetry(fallbackPayload);
 
     if (baseError) {
       console.error('Entry creation failed:', baseError);
@@ -488,10 +531,11 @@ async function handleSubmitNomination(req, res) {
     is_self_nomination: false,
   };
 
-  const { data: entry, error: entryError } = await supabase.from('entries').insert(entryPayload).select().single();
+  // Use retry wrapper to handle concurrent-submission race conditions on entry_number
+  const { data: entry, error: entryError } = await insertEntryWithRetry(entryPayload);
 
   if (entryError) {
-    // Fallback: try base columns only
+    // Fallback: try base columns only (re-use the already-generated entryNumber)
     const fallbackPayload = {
       entry_number: entryNumber,
       organisation_id: organisationId,
@@ -508,11 +552,7 @@ async function handleSubmitNomination(req, res) {
       allow_public_voting: false,
     };
 
-    const { data: baseEntry, error: baseError } = await supabase
-      .from('entries')
-      .insert(fallbackPayload)
-      .select()
-      .single();
+    const { data: baseEntry, error: baseError } = await insertEntryWithRetry(fallbackPayload);
 
     if (baseError) {
       console.error('Nomination entry creation failed:', baseError);

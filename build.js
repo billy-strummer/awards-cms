@@ -94,12 +94,22 @@ async function build() {
     }
   });
 
+  // Lazy chunks: each entry bundles a group of heavy modules as a plain IIFE
+  // that registers itself on window via ModuleRegistry.register().
+  const LAZY_CHUNKS = [
+    { name: 'events', entry: 'chunks/events-entry.js', outfile: 'events.chunk.js' },
+    { name: 'media', entry: 'chunks/media-entry.js', outfile: 'media.chunk.js' },
+    { name: 'email', entry: 'chunks/email-entry.js', outfile: 'email.chunk.js' },
+    { name: 'crm', entry: 'chunks/crm-entry.js', outfile: 'crm.chunk.js' },
+    { name: 'admin', entry: 'chunks/admin-entry.js', outfile: 'admin.chunk.js' },
+  ];
+
   try {
     const esbuild = require('esbuild');
     const entryPoint = path.join(__dirname, 'main.js');
 
     if (fs.existsSync(entryPoint)) {
-      // Primary: Use esbuild bundler with ESM entry point
+      // Primary: Use esbuild bundler with ESM entry point (core bundle only)
       const result = await esbuild.build({
         entryPoints: [entryPoint],
         bundle: true,
@@ -114,7 +124,36 @@ async function build() {
       const minSize = fs.statSync(path.join(DIST_DIR, 'app.min.js')).size;
       const moduleCount = Object.keys(result.metafile.inputs).length;
       console.log(
-        `  JS: ${(totalJsSize / 1024).toFixed(0)}KB -> ${(minSize / 1024).toFixed(0)}KB (${((1 - minSize / totalJsSize) * 100).toFixed(0)}% reduction, ${moduleCount} ES modules bundled)`
+        `  JS core: ${(totalJsSize / 1024).toFixed(0)}KB source -> ${(minSize / 1024).toFixed(0)}KB (${moduleCount} modules in core bundle)`
+      );
+
+      // Build each lazy chunk as a self-contained IIFE
+      let totalChunkSize = 0;
+      for (const chunk of LAZY_CHUNKS) {
+        const chunkEntry = path.join(__dirname, chunk.entry);
+        if (!fs.existsSync(chunkEntry)) {
+          console.warn(`  WARN: chunk entry not found: ${chunk.entry}`);
+          continue;
+        }
+        await esbuild.build({
+          entryPoints: [chunkEntry],
+          bundle: true,
+          minify: true,
+          target: 'es2020',
+          format: 'iife',
+          outfile: path.join(DIST_DIR, chunk.outfile),
+          drop: ['debugger'],
+          sourcemap: false,
+          // Core globals (utils, apiClient, STATE, ModuleRegistry) are referenced
+          // as bare names in source; esbuild leaves them as globals since they are
+          // never imported — they are already on window from the core bundle.
+        });
+        const chunkSize = fs.statSync(path.join(DIST_DIR, chunk.outfile)).size;
+        totalChunkSize += chunkSize;
+        console.log(`  JS chunk [${chunk.name}]: ${(chunkSize / 1024).toFixed(0)}KB → ${chunk.outfile}`);
+      }
+      console.log(
+        `  JS chunks total: ${(totalChunkSize / 1024).toFixed(0)}KB across ${LAZY_CHUNKS.length} lazy chunks`
       );
     } else {
       // Fallback: concatenate and transform (legacy mode)
@@ -215,9 +254,12 @@ async function build() {
 
   // Replace app script block: everything from <!-- Application Scripts --> to the last
   // bundled script (btc-module.js follows app.js). Keep only one bundled script tag.
+  // Also inject <link rel="prefetch"> hints for all lazy chunks so the browser
+  // downloads them at idle time and serves them from cache on first tab click.
+  const chunkPrefetches = LAZY_CHUNKS.map((c) => `  <link rel="prefetch" as="script" href="${c.outfile}">`).join('\n');
   html = html.replace(
     /\s*<!-- Application Scripts[\s\S]*?<script src="btc-module\.js"><\/script>/,
-    '\n  <script type="module" src="app.min.js"></script>'
+    `\n${chunkPrefetches}\n  <script type="module" src="app.min.js"></script>`
   );
 
   // Inject Supabase environment variables into meta tags

@@ -3032,7 +3032,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **File:** `build.js`, `app.js`
 - **Root cause:** esbuild produces a single 2.2 MB bundle. All module code downloads regardless of which tabs are visited.
 - **Fix:** Use esbuild `splitting` + ESM output to create per-tab chunks; lazy-load heavy modules (email builder, charts) only when their tab is activated.
-- [ ] Implemented
+- [x] Implemented
 
 ### V17-L6 — Gallery images have no lazy loading
 - **File:** `media-gallery-new.js` — all gallery render functions

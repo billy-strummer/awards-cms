@@ -917,6 +917,35 @@ const reportsAnalytics = {
 };
 ModuleRegistry.register('reportsAnalytics', reportsAnalytics);
 
+// ============================================
+// LAZY CHUNK LOADER
+// Injects a <script> tag for the named chunk file and resolves when loaded.
+// Deduplicates concurrent/repeated calls via _loadedChunks.
+// ============================================
+const _loadedChunks = new Set();
+function loadChunk(filename) {
+  if (_loadedChunks.has(filename)) return Promise.resolve();
+  // Avoid starting a second download if already in progress
+  if (loadChunk._pending && loadChunk._pending[filename]) return loadChunk._pending[filename];
+  if (!loadChunk._pending) loadChunk._pending = {};
+  const promise = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = filename;
+    script.onload = () => {
+      _loadedChunks.add(filename);
+      delete loadChunk._pending[filename];
+      resolve();
+    };
+    script.onerror = () => {
+      delete loadChunk._pending[filename];
+      reject(new Error(`Failed to load chunk: ${filename}`));
+    };
+    document.head.appendChild(script);
+  });
+  loadChunk._pending[filename] = promise;
+  return promise;
+}
+
 // Wait for DOM to be fully loaded before initializing
 document.addEventListener('DOMContentLoaded', function () {
   console.debug('Initializing British Trade Awards Admin...');
@@ -938,6 +967,18 @@ document.addEventListener('DOMContentLoaded', function () {
   if (typeof notificationsModule !== 'undefined') notificationsModule.init();
   if (typeof seatingEnhancements !== 'undefined') seatingEnhancements.init();
   if (typeof nomineeUploads !== 'undefined') nomineeUploads.init();
+
+  // Prefetch lazy chunks after 2 s so they're cache-warm when the user
+  // first clicks a tab, without competing with the initial page render.
+  setTimeout(() => {
+    ['events.chunk.js', 'media.chunk.js', 'email.chunk.js', 'crm.chunk.js', 'admin.chunk.js'].forEach((chunk) => {
+      const link = document.createElement('link');
+      link.rel = 'prefetch';
+      link.as = 'script';
+      link.href = chunk;
+      document.head.appendChild(link);
+    });
+  }, 2000);
 
   // ==========================================
   // STEP 1c: Initialize event delegation system
@@ -1209,7 +1250,18 @@ document.addEventListener('DOMContentLoaded', function () {
     mediaGalleryTab.addEventListener('click', () => {
       if (!mediaGalleryInitialized) {
         mediaGalleryInitialized = true;
-        mediaGalleryModule.initialize();
+        if (typeof mediaGalleryModule !== 'undefined') {
+          // Fast path: module already loaded (synchronous)
+          mediaGalleryModule.initialize();
+        } else {
+          // Slow path: load chunk then invoke
+          loadChunk('media.chunk.js')
+            .then(() => mediaGalleryModule.initialize())
+            .catch((e) => {
+              console.error('Failed to load media chunk:', e);
+              mediaGalleryInitialized = false;
+            });
+        }
       }
     });
 
@@ -1218,7 +1270,16 @@ document.addEventListener('DOMContentLoaded', function () {
   if (eventsTab)
     eventsTab.addEventListener('click', () => {
       if (!STATE.allEvents || STATE.allEvents.length === 0) {
-        eventsModule.loadEvents();
+        if (typeof eventsModule !== 'undefined') {
+          // Fast path: module already loaded (synchronous)
+          eventsModule.loadEvents();
+        } else {
+          // Slow path: load chunk (seating-enhancements.js is bundled before events.js
+          // in the chunk entry so seatingEnhancements.init() is called automatically)
+          loadChunk('events.chunk.js')
+            .then(() => eventsModule.loadEvents())
+            .catch((e) => console.error('Failed to load events chunk:', e));
+        }
       }
     });
 
@@ -1273,13 +1334,23 @@ document.addEventListener('DOMContentLoaded', function () {
   let reportsInitialized = false;
   const reportsTab = document.getElementById('reports-tab');
   if (reportsTab) {
-    reportsTab.addEventListener('shown.bs.tab', () => {
+    reportsTab.addEventListener('shown.bs.tab', async () => {
       if (typeof reportsAnalytics !== 'undefined') {
         reportsAnalytics.loadAnalytics();
       }
-      if (!reportsInitialized && typeof reportingModule !== 'undefined') {
-        reportsInitialized = true;
-        reportingModule.generateReport?.();
+      if (!reportsInitialized) {
+        if (typeof reportingModule === 'undefined') {
+          try {
+            await loadChunk('crm.chunk.js');
+          } catch (e) {
+            console.error('Failed to load crm chunk:', e);
+            return;
+          }
+        }
+        if (typeof reportingModule !== 'undefined') {
+          reportsInitialized = true;
+          reportingModule.generateReport?.();
+        }
       }
     });
   }
@@ -1511,16 +1582,34 @@ document.addEventListener('DOMContentLoaded', function () {
   // ==========================================
   // STEP 11: Marketing Tab Event Listener
   // ==========================================
+  // Helper: ensure email.chunk.js is loaded before calling email/marketing modules
+  async function _ensureEmailChunk() {
+    if (typeof marketingModule === 'undefined') {
+      await loadChunk('email.chunk.js');
+    }
+  }
+  // Helper: ensure crm.chunk.js is loaded before calling crm/payments modules
+  async function _ensureCrmChunk() {
+    if (typeof crmModule === 'undefined') {
+      await loadChunk('crm.chunk.js');
+    }
+  }
+
   // Load marketing data when marketing tab is clicked
   const marketingTab = document.getElementById('marketing-tab');
   if (marketingTab) {
-    marketingTab.addEventListener('shown.bs.tab', () => {
+    marketingTab.addEventListener('shown.bs.tab', async () => {
       console.debug('Marketing tab opened');
-      if (typeof marketingModule !== 'undefined' && STATE.currentUser) {
+      try {
+        await _ensureEmailChunk();
+      } catch (e) {
+        console.error('Failed to load email chunk:', e);
+        return;
+      }
+      if (STATE.currentUser) {
         marketingModule.loadAllData();
-        // Load branding overview if branding subtab is active (default)
-        const brandingSubTab = document.getElementById('branding-subtab');
-        if (brandingSubTab && brandingSubTab.classList.contains('active')) {
+        const brandingSubTabEl = document.getElementById('branding-subtab');
+        if (brandingSubTabEl && brandingSubTabEl.classList.contains('active')) {
           marketingModule.loadBrandingOverview();
         }
       }
@@ -1530,29 +1619,41 @@ document.addEventListener('DOMContentLoaded', function () {
   // Load branding overview when branding sub-tab is shown
   const brandingSubTab = document.getElementById('branding-subtab');
   if (brandingSubTab) {
-    brandingSubTab.addEventListener('shown.bs.tab', () => {
-      if (typeof marketingModule !== 'undefined') {
-        marketingModule.loadBrandingOverview();
+    brandingSubTab.addEventListener('shown.bs.tab', async () => {
+      try {
+        await _ensureEmailChunk();
+      } catch (e) {
+        return;
       }
+      marketingModule.loadBrandingOverview();
     });
   }
 
   // Load placeholder defaults when placeholders sub-tab is shown
   const placeholdersSubTab = document.getElementById('placeholders-subtab');
   if (placeholdersSubTab) {
-    placeholdersSubTab.addEventListener('shown.bs.tab', () => {
-      if (typeof marketingModule !== 'undefined') {
-        marketingModule.loadPlaceholderDefaults();
+    placeholdersSubTab.addEventListener('shown.bs.tab', async () => {
+      try {
+        await _ensureEmailChunk();
+      } catch (e) {
+        return;
       }
+      marketingModule.loadPlaceholderDefaults();
     });
   }
 
   // Initialize Email Builder when sub-tab is opened
   const emailBuilderSubTab = document.getElementById('email-builder-subtab');
   if (emailBuilderSubTab) {
-    emailBuilderSubTab.addEventListener('shown.bs.tab', () => {
+    emailBuilderSubTab.addEventListener('shown.bs.tab', async () => {
       console.debug('Email Builder opened');
-      if (typeof emailBuilder !== 'undefined' && !emailBuilder.initialized) {
+      try {
+        await _ensureEmailChunk();
+      } catch (e) {
+        console.error('Failed to load email chunk:', e);
+        return;
+      }
+      if (!emailBuilder.initialized) {
         emailBuilder.init();
       }
     });
@@ -1561,50 +1662,68 @@ document.addEventListener('DOMContentLoaded', function () {
   // Load Email Lists when sub-tab is opened
   const emailListsSubTab = document.getElementById('email-lists-subtab');
   if (emailListsSubTab) {
-    emailListsSubTab.addEventListener('shown.bs.tab', () => {
+    emailListsSubTab.addEventListener('shown.bs.tab', async () => {
       console.debug('Email Lists opened');
-      if (typeof emailListsModule !== 'undefined') {
-        emailListsModule.loadAllData();
+      try {
+        await _ensureEmailChunk();
+      } catch (e) {
+        return;
       }
+      emailListsModule.loadAllData();
     });
   }
 
-  // Load Accounting Integration when sub-tab is opened
+  // Load Accounting Integration when sub-tab is opened (needs payments from crm chunk)
   const accountingSubTab = document.getElementById('accounting-subtab');
   if (accountingSubTab) {
-    accountingSubTab.addEventListener('shown.bs.tab', () => {
-      if (typeof paymentsModule !== 'undefined') {
-        paymentsModule.loadAccountingIntegration();
+    accountingSubTab.addEventListener('shown.bs.tab', async () => {
+      try {
+        await _ensureCrmChunk();
+      } catch (e) {
+        return;
       }
+      paymentsModule.loadAccountingIntegration();
     });
   }
 
   // Load Email Sequences when sub-tab is opened
   const emailSequencesSubTab = document.getElementById('email-sequences-subtab');
   if (emailSequencesSubTab) {
-    emailSequencesSubTab.addEventListener('shown.bs.tab', () => {
-      if (typeof marketingModule !== 'undefined') {
-        marketingModule.loadEmailSequences();
+    emailSequencesSubTab.addEventListener('shown.bs.tab', async () => {
+      try {
+        await _ensureEmailChunk();
+      } catch (e) {
+        return;
       }
+      marketingModule.loadEmailSequences();
     });
   }
 
   // Load Content Calendar when sub-tab is opened
   const contentCalendarSubTab = document.getElementById('content-calendar-subtab');
   if (contentCalendarSubTab) {
-    contentCalendarSubTab.addEventListener('shown.bs.tab', () => {
-      if (typeof marketingModule !== 'undefined') {
-        marketingModule.loadContentCalendar();
+    contentCalendarSubTab.addEventListener('shown.bs.tab', async () => {
+      try {
+        await _ensureEmailChunk();
+      } catch (e) {
+        return;
       }
+      marketingModule.loadContentCalendar();
     });
   }
 
   // Load payments data when payments tab is clicked
   const paymentsTab = document.getElementById('payments-tab');
   if (paymentsTab) {
-    paymentsTab.addEventListener('shown.bs.tab', () => {
+    paymentsTab.addEventListener('shown.bs.tab', async () => {
       console.debug('Payments tab opened');
-      if (typeof paymentsModule !== 'undefined' && STATE.currentUser) {
+      try {
+        await _ensureCrmChunk();
+      } catch (e) {
+        console.error('Failed to load crm chunk:', e);
+        return;
+      }
+      if (STATE.currentUser) {
         paymentsModule.loadAllData();
       }
     });
@@ -1613,9 +1732,15 @@ document.addEventListener('DOMContentLoaded', function () {
   // Load CRM data when CRM tab is clicked
   const crmTab = document.getElementById('crm-tab');
   if (crmTab) {
-    crmTab.addEventListener('shown.bs.tab', () => {
+    crmTab.addEventListener('shown.bs.tab', async () => {
       console.debug('CRM tab opened');
-      if (typeof crmModule !== 'undefined' && STATE.currentUser) {
+      try {
+        await _ensureCrmChunk();
+      } catch (e) {
+        console.error('Failed to load crm chunk:', e);
+        return;
+      }
+      if (STATE.currentUser) {
         crmModule.loadAllData();
       }
     });
@@ -1637,8 +1762,17 @@ document.addEventListener('DOMContentLoaded', function () {
       tab.addEventListener('click', (e) => {
         e.preventDefault();
         if (typeof crmModule !== 'undefined') {
+          // Fast path: module already loaded (synchronous)
           crmModule.currentSubTab = crmSubTabs[tabId];
           crmModule.loadAllData();
+        } else {
+          // Slow path: load chunk then invoke
+          loadChunk('crm.chunk.js')
+            .then(() => {
+              crmModule.currentSubTab = crmSubTabs[tabId];
+              crmModule.loadAllData();
+            })
+            .catch((err) => console.error('Failed to load crm chunk:', err));
         }
       });
     }

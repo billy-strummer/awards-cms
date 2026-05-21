@@ -2438,3 +2438,41 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **File:** `index.html` line 6332
 - **Fix:** Added title tooltips to AND/OR buttons with concrete examples. Added inline label: "ALL = must match every rule · ANY = matches at least one rule".
 - [x] Implemented
+
+---
+
+# V17 UX Audit — Security, Judge Portal & Gallery Hardening
+
+## V17-MEDIUM
+
+### V17-M1 — No votes IP-based rate limiting
+- **File:** `api/voting-proxy.js`
+- **Fix:** Added `RATE_LIMIT_IP_MAX = 20` constant and parallel IP-based check in `submitVote()`. Real IP is extracted from `req.headers['x-forwarded-for'] || req.socket.remoteAddress` and injected server-side for all `submit_vote` actions. Non-fatal: if the IP check query fails, a warning is logged but the vote is not blocked. Error returns HTTP 429 "Too many votes from this network."
+- [x] Implemented
+
+### V17-M5 — Judge portal no auto-save (lost work risk)
+- **File:** `judge-portal.js`
+- **Fix:** Added `_autosaveDraft()` (saves scores + feedback to `localStorage` keyed by `judge_scores_draft_${entryId}`), `_loadDraft()`, and `_clearDraft()`. Score sliders trigger a debounced 500ms auto-save on `input` events via `setupScoreSliders()`. On entry load, if a draft exists for an unscored entry, a dismissable banner offers to restore it. Draft is cleared on successful save/submit via `_clearDraft()`.
+- [x] Implemented
+
+### V17-M6 — Judge portal two-column layout breaks on mobile
+- **File:** `judge-portal.html`
+- **Fix:** Added `@media (max-width: 768px)` block: `.entries-grid` set to `grid-template-columns: 1fr`, `.entries-list` max-height limited to `40vh`, `.judging-panel` adjusted padding, `.score-input` made flex-wrap. Layout stacks cleanly on small screens.
+- [x] Implemented
+
+### V17-M7 — Conflict score included in averages without flag
+- **File:** `judge-portal.js`
+- **Fix:** `renderEntriesList()` now shows a `<span class="badge bg-warning text-dark">&#9888; Conflict</span>` badge next to any entry where `myScore.has_conflict` is true. Score line also appends a warning icon with tooltip. `_showCompletionCard()` summary table includes a conflict badge column so admins can see flagged scores at a glance.
+- [x] Implemented
+
+## V17-LOW
+
+### V17-L6 — Gallery images have no lazy loading
+- **File:** `media-gallery-new.js`
+- **Fix:** Added `loading="lazy"` to all gallery `<img>` tags generated in render functions (photo grid cards, video thumbnails, YouTube thumbnails in bulk import previews, event comparison modal thumbnails, org media view, slideshow thumbnails). Excluded: lightbox primary image (already visible on open), local file upload previews (data URL, no network cost), slideshow first-frame image (immediately visible).
+- [x] Implemented
+
+### V17-L8 — Judge portal no completion state
+- **File:** `judge-portal.js`
+- **Fix:** `nextEntry()` now calls `_showCompletionCard()` instead of a toast when there are no more entries. `_showCompletionCard()` renders a full-panel completion card with a green gradient hero ("Judging Complete — X of X entries scored"), a warning if any entries remain unscored, and a summary table listing all scored entries with entry number, company (anonymised in blind mode), award, score out of 40, recommendation badge, and conflict flag. A "Back to Entries" button reloads the entry list.
+- [x] Implemented

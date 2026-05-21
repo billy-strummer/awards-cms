@@ -298,11 +298,14 @@ const judgePortal = {
            data-action="judgePortal.selectEntry" data-id="${esc(entry.id)}" style="cursor:pointer;">
         <div class="d-flex justify-content-between align-items-start mb-2">
           <strong class="text-truncate">${this.getCompanyDisplay(entry)}</strong>
-          ${entry.hasScored ? '<i class="bi bi-check-circle-fill text-success"></i>' : ''}
+          <div class="d-flex gap-1 align-items-center flex-shrink-0">
+            ${entry.myScore?.has_conflict ? '<span class="badge bg-warning text-dark" title="Conflict of interest declared for this entry">&#9888; Conflict</span>' : ''}
+            ${entry.hasScored ? '<i class="bi bi-check-circle-fill text-success"></i>' : ''}
+          </div>
         </div>
         <div class="small text-muted mb-1">${esc(entry.awards?.award_name || '')}</div>
         <div class="small text-truncate">${esc(entry.entry_title)}</div>
-        ${entry.hasScored ? `<div class="small text-success mt-2">Score: ${parseInt(entry.myScore?.total_score) || 0}/40</div>` : ''}
+        ${entry.hasScored ? `<div class="small text-success mt-2">Score: ${parseInt(entry.myScore?.total_score) || 0}/40${entry.myScore?.has_conflict ? ' <span class="text-warning" title="Score flagged — conflict declared">&#9888;</span>' : ''}</div>` : ''}
       </div>
     `
       )
@@ -604,6 +607,60 @@ const judgePortal = {
 
     // Setup score sliders
     this.setupScoreSliders();
+
+    // Offer to restore localStorage draft if one exists and entry hasn't been fully scored
+    if (!this.currentEntry.hasScored) {
+      const draft = this._loadDraft(this.currentEntry.id);
+      if (draft) {
+        const savedAt = new Date(draft.savedAt).toLocaleTimeString();
+        const banner = document.createElement('div');
+        banner.id = 'draftRestoreBanner';
+        banner.className = 'alert alert-warning alert-dismissible d-flex align-items-center gap-2 mb-3';
+        banner.innerHTML = `
+          <i class="bi bi-cloud-upload"></i>
+          <div class="flex-fill">
+            <strong>Unsaved draft found</strong> — saved at ${savedAt}.
+            <button class="btn btn-sm btn-warning ms-2" id="restoreDraftBtn">Restore draft</button>
+          </div>
+          <button type="button" class="btn-close" aria-label="Dismiss"></button>
+        `;
+        const panel = document.getElementById('judgingPanel');
+        panel.insertBefore(banner, panel.firstChild);
+
+        document.getElementById('restoreDraftBtn')?.addEventListener('click', () => {
+          this._applyDraft(draft);
+          banner.remove();
+          showPortalToast('Draft restored', 'info');
+        });
+        banner.querySelector('.btn-close')?.addEventListener('click', () => banner.remove());
+      }
+    }
+  },
+
+  /**
+   * Apply a previously saved draft to the scoring form
+   * @param {Object} draft - The draft object from localStorage
+   * @returns {void}
+   */
+  _applyDraft(draft) {
+    if (!draft) return;
+    this.scoringCriteria.forEach((criterion) => {
+      const slider = document.getElementById(criterion.id);
+      const valueDisplay = document.getElementById(`${criterion.id}_value`);
+      if (slider && draft.scores?.[criterion.id] !== undefined) {
+        slider.value = draft.scores[criterion.id];
+        if (valueDisplay) valueDisplay.textContent = String(draft.scores[criterion.id]);
+      }
+    });
+    const strengths = document.getElementById('feedbackStrengths');
+    const weaknesses = document.getElementById('feedbackWeaknesses');
+    const comments = document.getElementById('feedbackComments');
+    const recommendation = document.getElementById('recommendation');
+    if (strengths && draft.strengths !== undefined) strengths.value = draft.strengths;
+    if (weaknesses && draft.weaknesses !== undefined) weaknesses.value = draft.weaknesses;
+    if (comments && draft.comments !== undefined) comments.value = draft.comments;
+    if (recommendation && draft.recommendation) recommendation.value = draft.recommendation;
+    this.updateTotalScore();
   },
 
   /**
@@ -661,10 +718,12 @@ const judgePortal = {
   },
 
   /**
-   * Setup score slider event listeners
+   * Setup score slider event listeners with debounced auto-save
    * @returns {void}
    */
   setupScoreSliders() {
+    let autoSaveTimer = null;
+
     this.scoringCriteria.forEach((criterion) => {
       const slider = document.getElementById(criterion.id);
       const valueDisplay = document.getElementById(`${criterion.id}_value`);
@@ -673,9 +732,70 @@ const judgePortal = {
         slider.addEventListener('input', (e) => {
           valueDisplay.textContent = e.target.value;
           this.updateTotalScore();
+
+          // Debounced auto-save to localStorage (500ms after last change)
+          clearTimeout(autoSaveTimer);
+          autoSaveTimer = setTimeout(() => {
+            this._autosaveDraft();
+          }, 500);
         });
       }
     });
+  },
+
+  /**
+   * Save current scoring state as a draft in localStorage
+   * @returns {void}
+   */
+  _autosaveDraft() {
+    if (!this.currentEntry) return;
+    try {
+      const scores = {};
+      this.scoringCriteria.forEach((criterion) => {
+        const slider = document.getElementById(criterion.id);
+        if (slider) scores[criterion.id] = parseFloat(slider.value) || 0;
+      });
+      const draft = {
+        entryId: this.currentEntry.id,
+        scores,
+        strengths: document.getElementById('feedbackStrengths')?.value || '',
+        weaknesses: document.getElementById('feedbackWeaknesses')?.value || '',
+        comments: document.getElementById('feedbackComments')?.value || '',
+        recommendation: document.getElementById('recommendation')?.value || '',
+        savedAt: new Date().toISOString(),
+      };
+      localStorage.setItem(`judge_scores_draft_${this.currentEntry.id}`, JSON.stringify(draft));
+    } catch (e) {
+      console.warn('Auto-save draft failed:', e.message);
+    }
+  },
+
+  /**
+   * Load a localStorage draft for an entry (if any) and offer to restore it
+   * @param {string} entryId - Entry ID to check for draft
+   * @returns {Object|null} Parsed draft or null
+   */
+  _loadDraft(entryId) {
+    try {
+      const raw = localStorage.getItem(`judge_scores_draft_${entryId}`);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch (e) {
+      return null;
+    }
+  },
+
+  /**
+   * Clear the localStorage draft for an entry (called after successful submission)
+   * @param {string} entryId - Entry ID whose draft should be cleared
+   * @returns {void}
+   */
+  _clearDraft(entryId) {
+    try {
+      localStorage.removeItem(`judge_scores_draft_${entryId}`);
+    } catch (e) {
+      // Ignore
+    }
   },
 
   /**
@@ -770,6 +890,9 @@ const judgePortal = {
         isComplete ? 'success' : 'info'
       );
 
+      // Clear localStorage draft on successful save/submit
+      this._clearDraft(this.currentEntry.id);
+
       // Reload entries to update status
       await this.loadAssignedEntries();
       this.updateProgress();
@@ -785,18 +908,89 @@ const judgePortal = {
   },
 
   /**
-   * Move to the next entry in the list
+   * Move to the next entry in the list; show completion card when all are scored.
    * @returns {void}
    */
   nextEntry() {
-    const currentIndex = this.assignedEntries.findIndex((e) => e.id === this.currentEntry.id);
+    const currentIndex = this.assignedEntries.findIndex((e) => e.id === this.currentEntry?.id);
     const nextIndex = currentIndex + 1;
 
     if (nextIndex < this.assignedEntries.length) {
       this.selectEntry(this.assignedEntries[nextIndex].id);
     } else {
-      showPortalToast('You have reviewed all assigned entries!', 'success');
+      this._showCompletionCard();
     }
+  },
+
+  /**
+   * Show a prominent completion card when all assigned entries have been scored.
+   * @returns {void}
+   */
+  _showCompletionCard() {
+    const scored = this.assignedEntries.filter((e) => e.hasScored);
+    const total = this.assignedEntries.length;
+
+    const tableRows = scored
+      .map(
+        (e) => `
+      <tr>
+        <td class="text-muted small">${esc(e.entry_number || '')}</td>
+        <td>${this.getCompanyDisplay(e)}</td>
+        <td class="text-muted small">${esc(e.awards?.award_name || '')}</td>
+        <td class="text-center fw-bold text-success">${parseInt(e.myScore?.total_score) || 0}<span class="text-muted fw-normal">/40</span></td>
+        <td class="text-center">
+          ${e.myScore?.recommendation === 'shortlist' ? '<span class="badge bg-success">Shortlist</span>' : e.myScore?.recommendation === 'maybe' ? '<span class="badge bg-warning text-dark">Maybe</span>' : e.myScore?.recommendation === 'reject' ? '<span class="badge bg-danger">Reject</span>' : '<span class="text-muted small">—</span>'}
+          ${e.myScore?.has_conflict ? ' <span class="badge bg-warning text-dark" title="Conflict declared">&#9888;</span>' : ''}
+        </td>
+      </tr>`
+      )
+      .join('');
+
+    const panel = document.getElementById('judgingPanel');
+    panel.innerHTML = `
+      <div class="text-center py-4 mb-4" style="background:linear-gradient(135deg,#28a745 0%,#20c997 100%);border-radius:16px;color:white;">
+        <i class="bi bi-check-circle-fill" style="font-size:4rem;"></i>
+        <h2 class="mt-3 mb-1">Judging Complete!</h2>
+        <p class="mb-0 opacity-75 fs-5">You have scored <strong>${scored.length}</strong> of <strong>${total}</strong> entries.</p>
+      </div>
+
+      ${
+        scored.length < total
+          ? `<div class="alert alert-warning mb-4">
+              <i class="bi bi-exclamation-triangle me-2"></i>
+              <strong>${total - scored.length} ${total - scored.length === 1 ? 'entry remains' : 'entries remain'} unscored.</strong>
+              You can still go back and score them by selecting them from the list on the left.
+            </div>`
+          : ''
+      }
+
+      <h5 class="mb-3"><i class="bi bi-list-check me-2"></i>Your Scored Entries</h5>
+      ${
+        scored.length > 0
+          ? `<div class="table-responsive">
+              <table class="table table-sm table-hover">
+                <thead class="table-light">
+                  <tr>
+                    <th>Entry #</th>
+                    <th>Company</th>
+                    <th>Award</th>
+                    <th class="text-center">Score</th>
+                    <th class="text-center">Recommendation</th>
+                  </tr>
+                </thead>
+                <tbody>${tableRows}</tbody>
+              </table>
+            </div>`
+          : '<p class="text-muted">No entries scored yet.</p>'
+      }
+
+      <div class="text-center mt-4">
+        <p class="text-muted small">Thank you for your contribution to the British Trade Awards judging process.</p>
+        <button class="btn btn-outline-primary" onclick="judgePortal.loadAssignedEntries()">
+          <i class="bi bi-arrow-left me-2"></i>Back to Entries
+        </button>
+      </div>
+    `;
   },
 
   /**

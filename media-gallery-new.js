@@ -164,7 +164,7 @@ const mediaGalleryModule = {
             <div class="col-md-3">
               <div class="card h-100">
                 <img src="${photo.file_url}" class="card-img-top" alt="${photo.caption || 'Photo'}"
-                     style="height: 200px; object-fit: cover;">
+                     loading="lazy" style="height: 200px; object-fit: cover;">
                 <div class="card-body">
                   <p class="small mb-1">
                     <i class="bi bi-calendar me-1"></i>
@@ -232,7 +232,7 @@ const mediaGalleryModule = {
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
               </div>
               <div class="modal-body">
-                ${photo.file_url ? `<img src="${photo.file_url}" class="img-fluid rounded mb-3" style="max-height:200px;width:100%;object-fit:cover;">` : ''}
+                ${photo.file_url ? `<img src="${photo.file_url}" class="img-fluid rounded mb-3" loading="lazy" style="max-height:200px;width:100%;object-fit:cover;">` : ''}
                 <div class="mb-3">
                   <label class="form-label">Title</label>
                   <input type="text" class="form-control" id="editTagPhotoTitle" value="${utils.escapeHtml(photo.title || '')}">
@@ -619,7 +619,7 @@ const mediaGalleryModule = {
                       : p.thumbnail_url || p.file_url;
                     return `<div style="min-width:80px;width:80px;height:60px;border-radius:6px;overflow:hidden;flex-shrink:0;cursor:pointer;position:relative;${!p.published ? 'opacity:0.5;' : ''}"
                     data-action="mediaGalleryModule.viewPhotoFull" data-args='${JSON.stringify([p.id, p.file_url, p.title || '', isYT ? 'youtube' : 'image'])}'>
-                    <img src="${thumb}" style="width:100%;height:100%;object-fit:cover;">
+                    <img src="${thumb}" loading="lazy" style="width:100%;height:100%;object-fit:cover;">
                     ${p.featured ? '<div style="position:absolute;top:2px;right:2px;"><i class="bi bi-star-fill text-warning" style="font-size:0.7rem;filter:drop-shadow(0 0 2px black);"></i></div>' : ''}
                   </div>`;
                   })
@@ -757,7 +757,7 @@ const mediaGalleryModule = {
                   const isYT = p.file_type === 'video/youtube';
                   const src = isYT ? `https://img.youtube.com/vi/${esc(p.file_url)}/hqdefault.jpg` : esc(p.file_url);
                   return `<div style="border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1);background:white;">
-                  <img src="${src}" style="width:100%;height:200px;object-fit:cover;display:block;">
+                  <img src="${src}" loading="lazy" style="width:100%;height:200px;object-fit:cover;display:block;">
                   <div style="padding:10px;">
                     <div style="font-weight:600;font-size:0.9rem;">${esc(p.title)}</div>
                     ${p.organisations?.company_name ? `<div style="font-size:0.8rem;color:#6c757d;">${esc(p.organisations.company_name)}</div>` : ''}
@@ -952,7 +952,7 @@ const mediaGalleryModule = {
                 ${this._videoReorderMode ? '<div class="position-absolute top-0 start-0 m-2" style="z-index:10;"><i class="bi bi-grip-vertical text-primary" style="font-size:1.2rem;"></i></div>' : ''}
                 <div class="position-relative video-thumbnail-container"
                   ${isYouTube ? `data-youtube-hover="${video.youtube_id}"` : ''}>
-                  <img src="${thumbnailUrl}" class="card-img-top" alt="${utils.escapeHtml(video.title || 'Video')}" style="height: 200px; object-fit: cover;">
+                  <img src="${thumbnailUrl}" class="card-img-top" alt="${utils.escapeHtml(video.title || 'Video')}" loading="lazy" style="height: 200px; object-fit: cover;">
                   <div class="position-absolute top-50 start-50 translate-middle">
                     <i class="bi bi-play-circle-fill text-white" style="font-size: 3rem; opacity: 0.8;"></i>
                   </div>
@@ -2793,7 +2793,7 @@ const mediaGalleryModule = {
                           <div class="card h-100">
                             ${
                               p.file_type?.startsWith('image/')
-                                ? `<img src="${p.file_url}" class="card-img-top" style="height:120px;object-fit:cover;">`
+                                ? `<img src="${p.file_url}" class="card-img-top" loading="lazy" style="height:120px;object-fit:cover;">`
                                 : `<div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height:120px;"><i class="bi bi-play-circle" style="font-size:2rem;"></i></div>`
                             }
                             <div class="card-body p-2">
@@ -3138,14 +3138,14 @@ const mediaGalleryModule = {
           ${
             isImage
               ? `<img src="${photo.file_url}" class="card-img-top ${!isPublished ? 'opacity-50' : ''}" alt="${utils.escapeHtml(photo.title || 'Photo')}"
-              style="height: 200px; object-fit: cover; cursor: pointer;"
+              loading="lazy" style="height: 200px; object-fit: cover; cursor: pointer;"
               data-action="mediaGalleryModule.viewPhotoFull" data-args='${JSON.stringify([photo.id, photo.file_url, photo.title || 'Photo', 'image']).replace(/'/g, '&#39;')}'>`
               : isYouTube
                 ? `<div class="card-img-top ${!isPublished ? 'opacity-50' : ''}" style="height: 200px; position: relative; cursor: pointer;"
               data-action="mediaGalleryModule.viewPhotoFull" data-args='${JSON.stringify([photo.id, photo.file_url, photo.title || 'Video', 'youtube']).replace(/'/g, '&#39;')}'>
               <img src="https://img.youtube.com/vi/${photo.file_url}/mqdefault.jpg"
                 alt="${utils.escapeHtml(photo.title || 'YouTube Video')}"
-                style="width: 100%; height: 100%; object-fit: cover;">
+                loading="lazy" style="width: 100%; height: 100%; object-fit: cover;">
               <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
                 <i class="bi bi-youtube text-danger" style="font-size: 3rem; filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));"></i>
               </div>
@@ -4761,7 +4761,7 @@ const mediaGalleryModule = {
             <i class="bi bi-arrow-left me-2"></i>Back to Events
           </button>
           <h3 class="mt-3">
-            ${org?.logo_url ? `<img src="${org.logo_url}" style="height:32px;width:32px;object-fit:contain;border-radius:4px;" class="me-2">` : '<i class="bi bi-building me-2"></i>'}
+            ${org?.logo_url ? `<img src="${org.logo_url}" loading="lazy" style="height:32px;width:32px;object-fit:contain;border-radius:4px;" class="me-2">` : '<i class="bi bi-building me-2"></i>'}
             All Media: ${utils.escapeHtml(org?.company_name || 'Organisation')}
           </h3>
         </div>
@@ -4799,7 +4799,7 @@ const mediaGalleryModule = {
               return `
             <div class="col-md-2 col-sm-3">
               <div class="card h-100 ${!p.published ? 'border-secondary opacity-75' : ''}">
-                <img src="${thumb}" class="card-img-top" style="height:120px;object-fit:cover;cursor:pointer;"
+                <img src="${thumb}" class="card-img-top" loading="lazy" style="height:120px;object-fit:cover;cursor:pointer;"
                   data-action="mediaGalleryModule.viewPhotoFull" data-args='${JSON.stringify([p.id, p.file_url, p.title || '', isYT ? 'youtube' : 'image']).replace(/'/g, '&#39;')}'>
                 <div class="card-body p-1">
                   <small class="d-block text-truncate fw-semibold">${utils.escapeHtml(p.title || 'Untitled')}</small>
@@ -4832,7 +4832,7 @@ const mediaGalleryModule = {
             <div class="col-md-3">
               <div class="card h-100">
                 <div class="position-relative">
-                  <img src="${thumb}" class="card-img-top" style="height:160px;object-fit:cover;">
+                  <img src="${thumb}" class="card-img-top" loading="lazy" style="height:160px;object-fit:cover;">
                   <div class="position-absolute top-50 start-50 translate-middle"><i class="bi bi-play-circle-fill text-white" style="font-size:2.5rem;opacity:0.8;"></i></div>
                 </div>
                 <div class="card-body p-2">
@@ -5591,7 +5591,7 @@ const mediaGalleryModule = {
       return `
         <div class="col-md-4 mb-2">
           <div class="card">
-            <img src="https://img.youtube.com/vi/${id}/mqdefault.jpg" class="card-img-top" style="height:120px; object-fit:cover;" alt="Preview">
+            <img src="https://img.youtube.com/vi/${id}/mqdefault.jpg" class="card-img-top" loading="lazy" style="height:120px; object-fit:cover;" alt="Preview">
             <div class="card-body p-2">
               <small class="text-muted">ID: ${id}</small>
             </div>
@@ -5700,7 +5700,7 @@ const mediaGalleryModule = {
       <div class="card mt-2">
         <div class="row g-0">
           <div class="col-5">
-            <img src="https://img.youtube.com/vi/${youtubeId}/mqdefault.jpg" class="img-fluid rounded-start" alt="Thumbnail" style="height:100px; object-fit:cover; width:100%;">
+            <img src="https://img.youtube.com/vi/${youtubeId}/mqdefault.jpg" class="img-fluid rounded-start" loading="lazy" alt="Thumbnail" style="height:100px; object-fit:cover; width:100%;">
           </div>
           <div class="col-7 d-flex align-items-center">
             <div class="card-body p-2">
@@ -6305,7 +6305,7 @@ const mediaGalleryModule = {
       return `
         <div class="col-md-3 mb-2">
           <div class="card">
-            <img src="https://img.youtube.com/vi/${id}/mqdefault.jpg" class="card-img-top" style="height:80px; object-fit:cover;">
+            <img src="https://img.youtube.com/vi/${id}/mqdefault.jpg" class="card-img-top" loading="lazy" style="height:80px; object-fit:cover;">
             <div class="card-body p-1"><small class="text-muted">${id}</small></div>
           </div>
         </div>`;
@@ -6403,7 +6403,7 @@ const mediaGalleryModule = {
             .map(
               (p) => `
             <div class="col-md-2 mb-2">
-              <img src="${p.file_url}" class="img-fluid rounded" style="height:80px; object-fit:cover; width:100%;" alt="${utils.escapeHtml(p.title || '')}">
+              <img src="${p.file_url}" class="img-fluid rounded" loading="lazy" style="height:80px; object-fit:cover; width:100%;" alt="${utils.escapeHtml(p.title || '')}">
             </div>
           `
             )
@@ -6604,7 +6604,7 @@ const mediaGalleryModule = {
                     .map(
                       (p) => `
                     <div class="col-3">
-                      <img src="${p.file_url}" class="img-fluid rounded" style="height:60px; object-fit:cover; width:100%;" alt="">
+                      <img src="${p.file_url}" class="img-fluid rounded" loading="lazy" style="height:60px; object-fit:cover; width:100%;" alt="">
                     </div>
                   `
                     )
@@ -6645,7 +6645,7 @@ const mediaGalleryModule = {
                     .map(
                       (p) => `
                     <div class="col-3">
-                      <img src="${p.file_url}" class="img-fluid rounded" style="height:60px; object-fit:cover; width:100%;" alt="">
+                      <img src="${p.file_url}" class="img-fluid rounded" loading="lazy" style="height:60px; object-fit:cover; width:100%;" alt="">
                     </div>
                   `
                     )
@@ -7125,7 +7125,7 @@ const mediaGalleryModule = {
                     (p) => `
                   <div class="col-6 col-md-3 col-lg-2">
                     <div class="card h-100">
-                      <img src="${p.file_url}" class="card-img-top" style="height:120px;object-fit:cover;" alt="${utils.escapeHtml(p.title || '')}">
+                      <img src="${p.file_url}" class="card-img-top" loading="lazy" style="height:120px;object-fit:cover;" alt="${utils.escapeHtml(p.title || '')}">
                       <div class="card-body p-1 text-center">
                         <small class="text-truncate d-block">${utils.escapeHtml(p.title || 'Untitled')}</small>
                       </div>

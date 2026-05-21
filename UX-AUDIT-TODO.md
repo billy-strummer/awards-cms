@@ -2974,7 +2974,7 @@ Branch: `claude/bta-location-restructure-JS5hX`
 - **File:** `index.html`, all modules with detail drill-downs
 - **Root cause:** No breadcrumb or back-navigation when drilling into record detail in any module except Media Gallery.
 - **Fix:** Implement a shared breadcrumb component using the existing pattern in `app.js:2016` and apply it consistently.
-- [ ] Implemented
+- [x] Implemented
 
 ### V17-M17 — Getting Started banner disappears after first record created
 - **File:** `dashboard.js` — banner display logic

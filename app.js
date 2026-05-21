@@ -2015,7 +2015,7 @@ document.addEventListener('DOMContentLoaded', function () {
   // ==========================================
   // STEP 17: Breadcrumb Navigation (MEDIUM-5)
   // ==========================================
-  utils._updateBreadcrumb = function (tabName) {
+  utils._updateBreadcrumb = function (tabName, subTabName) {
     let bc = document.getElementById('mainBreadcrumb');
     if (!bc) {
       bc = document.createElement('nav');
@@ -2026,9 +2026,36 @@ document.addEventListener('DOMContentLoaded', function () {
       const tabContent = document.querySelector('.tab-content');
       if (tabContent) tabContent.parentElement.insertBefore(bc, tabContent);
     }
-    const label = tabName.charAt(0).toUpperCase() + tabName.slice(1);
-    bc.innerHTML = `<ol class="breadcrumb mb-0 bg-transparent p-0"><li class="breadcrumb-item"><a href="#" data-action="dashboardModule.navigateToSection" data-args='["dashboard"]' data-prevent-default="true">Dashboard</a></li><li class="breadcrumb-item active" aria-current="page">${label}</li></ol>`;
+    const tabLabel = tabName
+      .split('-')
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ');
+    let crumbs = `<li class="breadcrumb-item"><a href="#" data-action="dashboardModule.navigateToSection" data-args='["dashboard"]' data-prevent-default="true">Dashboard</a></li>`;
+    if (subTabName) {
+      crumbs += `<li class="breadcrumb-item"><a href="#" data-action="dashboardModule.navigateToSection" data-args='["${tabName}"]' data-prevent-default="true">${tabLabel}</a></li>`;
+      const subLabel = subTabName
+        .split('-')
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(' ');
+      crumbs += `<li class="breadcrumb-item active" aria-current="page">${subLabel}</li>`;
+    } else {
+      crumbs += `<li class="breadcrumb-item active" aria-current="page">${tabLabel}</li>`;
+    }
+    bc.innerHTML = `<ol class="breadcrumb mb-0 bg-transparent p-0">${crumbs}</ol>`;
   };
+
+  // Also update breadcrumb when sub-tabs are clicked
+  document.addEventListener('shown.bs.tab', (e) => {
+    const target = e.target.getAttribute('data-bs-target') || e.target.getAttribute('href');
+    if (!target) return;
+    const subTabName = target.replace('#', '');
+    const subPane = document.querySelector(target);
+    const parentTabPane = subPane?.closest('.tab-pane[id]');
+    const parentId = parentTabPane?.id;
+    if (parentId && parentId !== subTabName) {
+      utils._updateBreadcrumb && utils._updateBreadcrumb(parentId, subTabName);
+    }
+  });
 
   // ==========================================
   // STEP 18: Initialize New UX Features

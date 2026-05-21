@@ -2222,6 +2222,7 @@ const awardsModule = {
    */
   async rolloverToNextYear() {
     // Determine source year from current filter or most common year
+    // Use STATE.allAwards only to find the most recent year (current page is sufficient for this)
     const years = [...new Set((STATE.allAwards || []).map((a) => a.year))].sort((a, b) => b - a);
 
     if (years.length === 0) {
@@ -2232,16 +2233,25 @@ const awardsModule = {
     const sourceYear = parseInt(years[0]);
     const targetYear = sourceYear + 1;
 
-    // Get awards for the source year
-    const sourceAwards = STATE.allAwards.filter((a) => String(a.year) === String(sourceYear));
+    // Fetch ALL awards for the source year from the server (not just the current page)
+    /* selectAll: justified — rollover requires complete dataset for the source year */
+    const allSourceYearAwards = await apiClient.selectAll('awards', {
+      filters: { year: sourceYear },
+      sort: { column: 'award_name', ascending: true },
+    });
+    const sourceAwards = allSourceYearAwards || [];
 
     if (sourceAwards.length === 0) {
       utils.showToast(`No awards found for ${sourceYear}`, 'warning');
       return;
     }
 
-    // Check if target year already has awards
-    const existingTarget = STATE.allAwards.filter((a) => String(a.year) === String(targetYear));
+    // Fetch ALL awards for the target year from the server to check for existing entries
+    /* selectAll: justified — rollover duplicate check requires full target year dataset */
+    const allTargetYearAwards = await apiClient.selectAll('awards', {
+      filters: { year: targetYear },
+    });
+    const existingTarget = allTargetYearAwards || [];
 
     let message = `Roll over ${sourceAwards.length} awards from ${sourceYear} to ${targetYear}?\n\n`;
     message += `All copied awards will be set to "Draft" status, ready for vetting.\n`;

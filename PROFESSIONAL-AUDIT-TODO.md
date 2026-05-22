@@ -48,13 +48,13 @@ Branch: `claude/continue-cms-build-gknZa`
 - **File:** `index.html`, `entries.js`
 - **Impact:** The Entries tab warns all entries must come from the public form. There is no way for an admin to create a test entry, fix a broken submission, or enter a legacy record.
 - **Fix:** Add an "Add Entry" button (admin-only, visible only to admin/super-admin roles) that opens a modal pre-filling all the required fields: organisation, award, contact details, description. On save, call `apiClient.insert('entries', payload)` with `status: 'draft'` and a generated `entry_number`. This mirrors the public form but operates inside the admin CMS.
-- [ ] Implemented
+- [x] Implemented
 
 ### PA-H4 — Award sub-category hierarchy exists in DB but has no UI
 - **File:** `awards.js`, `index.html`
 - **Impact:** The `awards` table has a `parent_category_id` column. `awards.js` ignores it entirely. All awards display as a flat list. Programmes with 30+ awards need hierarchy ("Best Innovation > SME", "Best Innovation > Corporate") for entrant navigation and separate judging panels.
 - **Fix:** In the award creation/edit modal, add a "Parent Award" dropdown (optional) that lists existing awards. In the awards list/grid, group child awards under their parent with indentation. Add a `parent_category_id` field to the `awardFormData` object that is saved on create/update.
-- [ ] Implemented
+- [x] Implemented
 
 ### PA-H5 — Judge scoring criteria are hardcoded, cannot be configured per award
 - **File:** `judge-portal.js` lines 58–63

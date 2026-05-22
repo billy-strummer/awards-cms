@@ -14,6 +14,10 @@
 
 > **CLAUDE: There is a technical improvement plan at `TECHNICAL-DEBT-TODO.md`. This covers three phases: (1) breaking the monolithic `index.html` into composable HTML partials, (2) implementing genuinely missing features (Post-Event tab, Ticket Issuance, Milestones, Special Requirements, Social Media audit, Auto-Segments), and (3) adding JSDoc type annotations for code quality. When the user asks to work on architecture, missing features, or code quality — read this file and pick up from the first unchecked `[ ]` item.**
 
+## ACTIVE WORK: Professional Awards Company Audit
+
+> **CLAUDE: A comprehensive 5-agent audit was run on 2026-05-22 evaluating the CMS as a brand-new user at a professional awards company. All findings are tracked at `PROFESSIONAL-AUDIT-TODO.md` with 2 Critical, 6 High, 7 Medium, and 5 Low items. Read this file and work through items in order (PA-C1 → PA-C2 → PA-H1 → … → PA-L5). Mark each `[x]` when committed and pushed. This is the HIGHEST PRIORITY active work — complete before returning to other audits.**
+
 ## Project Overview
 
 British Trade Awards CMS - a web-based admin system for managing awards ceremonies, organisations, entries, judging, events, payments, email marketing, and CRM.

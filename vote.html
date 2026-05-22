@@ -4,10 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Vote for Nominee - British Trade Awards</title>
+  <link rel="icon" href="BTA-LOGO-entry.jpg" type="image/jpeg">
 
   <!-- Bootstrap 5 -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+
+  <!-- Premium Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
 
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -20,10 +26,48 @@
   <meta name="twitter:card" content="summary_large_image">
 
   <style>
+    :root {
+      --gold-color: #D4AF37;
+      --gold-dark: #B8941F;
+    }
+
     body {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: #000000;
       min-height: 100vh;
       padding: 40px 0;
+      font-family: 'Montserrat', sans-serif;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    body::before,
+    body::after {
+      content: '';
+      position: fixed;
+      top: 0;
+      width: 50%;
+      height: 100%;
+      background-image: url('BTA-LOGO-no-date.jpg');
+      background-size: contain;
+      background-repeat: no-repeat;
+      opacity: 0.06;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    body::before {
+      left: -10%;
+      background-position: right center;
+    }
+
+    body::after {
+      right: -10%;
+      background-position: left center;
+    }
+
+    .vote-container {
+      position: relative;
+      z-index: 1;
     }
 
     .vote-container {
@@ -36,7 +80,8 @@
       background: white;
       border-radius: 24px;
       padding: 50px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      box-shadow: 0 20px 60px rgba(212, 175, 55, 0.3);
+      border: 2px solid var(--gold-color);
       margin-bottom: 30px;
     }
 
@@ -51,8 +96,8 @@
     }
 
     .award-badge {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
+      background: linear-gradient(135deg, #D4AF37 0%, #B8941F 100%);
+      color: #000000;
       padding: 8px 20px;
       border-radius: 20px;
       font-weight: 600;
@@ -61,9 +106,9 @@
     }
 
     .vote-button {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #D4AF37 0%, #B8941F 100%);
       border: none;
-      color: white;
+      color: #000000;
       padding: 18px 50px;
       font-size: 1.3rem;
       font-weight: 700;
@@ -75,7 +120,7 @@
 
     .vote-button:hover:not(:disabled) {
       transform: scale(1.05);
-      box-shadow: 0 10px 30px rgba(102, 126, 234, 0.5);
+      box-shadow: 0 10px 30px rgba(212, 175, 55, 0.5);
     }
 
     .vote-button:disabled {
@@ -88,7 +133,7 @@
       text-align: center;
       font-size: 2.5rem;
       font-weight: 700;
-      color: #667eea;
+      color: #D4AF37;
       margin: 20px 0;
     }
 
@@ -188,7 +233,7 @@
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      color: #667eea;
+      color: #B8941F;
       text-decoration: none;
       font-weight: 600;
       margin-top: 15px;
@@ -202,6 +247,13 @@
 <body>
 
   <div class="vote-container">
+
+    <!-- BTA Brand Header -->
+    <div class="text-center mb-4">
+      <img src="BTA-LOGO-entry.jpg" alt="British Trade Awards" style="height: 80px; width: auto; filter: drop-shadow(0 0 10px rgba(212,175,55,0.5));">
+      <div style="font-family: 'Cinzel', serif; color: var(--gold-color); font-size: 1.1rem; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; margin-top: 10px;">British Trade Awards</div>
+      <div style="font-family: 'Montserrat', sans-serif; color: rgba(212,175,55,0.7); font-size: 0.75rem; letter-spacing: 2px; text-transform: uppercase;">Public Voting</div>
+    </div>
 
     <!-- Loading State -->
     <div id="loadingState" class="loading-spinner">

@@ -4,19 +4,63 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Vote Now - British Trade Awards</title>
+  <link rel="icon" href="BTA-LOGO-entry.jpg" type="image/jpeg">
 
   <!-- Bootstrap 5 -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
 
+  <!-- Premium Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
+    :root {
+      --gold-color: #D4AF37;
+      --gold-dark: #B8941F;
+    }
+
     body {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: #000000;
       min-height: 100vh;
       padding: 40px 0;
+      font-family: 'Montserrat', sans-serif;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    body::before,
+    body::after {
+      content: '';
+      position: fixed;
+      top: 0;
+      width: 50%;
+      height: 100%;
+      background-image: url('BTA-LOGO-no-date.jpg');
+      background-size: contain;
+      background-repeat: no-repeat;
+      opacity: 0.06;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    body::before {
+      left: -10%;
+      background-position: right center;
+    }
+
+    body::after {
+      right: -10%;
+      background-position: left center;
+    }
+
+    .voting-container {
+      position: relative;
+      z-index: 1;
     }
 
     .voting-container {
@@ -38,9 +82,11 @@
       font-size: 3rem;
       font-weight: 700;
       margin-bottom: 10px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      font-family: 'Cinzel', serif;
+      background: linear-gradient(135deg, #D4AF37 0%, #B8941F 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
+      letter-spacing: 2px;
     }
 
     .entry-card {
@@ -70,9 +116,9 @@
     }
 
     .vote-button {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #D4AF37 0%, #B8941F 100%);
       border: none;
-      color: white;
+      color: #000000;
       padding: 12px 30px;
       font-size: 1.1rem;
       font-weight: 600;
@@ -82,7 +128,7 @@
 
     .vote-button:hover {
       transform: scale(1.05);
-      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+      box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
     }
 
     .vote-button:disabled {
@@ -125,11 +171,18 @@
 
   <div class="voting-container">
 
+    <!-- BTA Brand Header -->
+    <div class="text-center mb-4">
+      <img src="BTA-LOGO-entry.jpg" alt="British Trade Awards" style="height: 80px; width: auto; filter: drop-shadow(0 0 10px rgba(212,175,55,0.5));">
+      <div style="font-family: 'Cinzel', serif; color: var(--gold-color); font-size: 1.1rem; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; margin-top: 10px;">British Trade Awards</div>
+      <div style="font-family: 'Montserrat', sans-serif; color: rgba(212,175,55,0.7); font-size: 0.75rem; letter-spacing: 2px; text-transform: uppercase;">People's Choice</div>
+    </div>
+
     <!-- Header -->
     <div class="voting-header">
-      <h1>🏆 Vote Now</h1>
+      <h1>Vote Now</h1>
       <p class="lead mb-0">British Trade Awards <span id="footerYear"></span> - People's Choice</p>
-      <p class="text-muted">Cast your vote for your favorite nominees</p>
+      <p class="text-muted">Cast your vote for your favourite nominees</p>
     </div>
 
     <!-- Award Filter -->

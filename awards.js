@@ -1313,6 +1313,8 @@ const awardsModule = {
     document.getElementById('awardFormVotingClose').value = '';
     document.getElementById('awardFormWinnersAnnouncement').value = '';
     document.getElementById('awardFormDescription').value = '';
+    const criteriaEl = document.getElementById('awardFormCriteria');
+    if (criteriaEl) criteriaEl.value = '';
     document.getElementById('awardFormPrevWinner').value = '';
     document.getElementById('awardFormPrev2nd').value = '';
     document.getElementById('awardFormPrev3rd').value = '';
@@ -1421,6 +1423,7 @@ const awardsModule = {
         if (data.prev_year_3rd) document.getElementById('awardFormPrev3rd').value = data.prev_year_3rd;
         if (data.description) document.getElementById('awardFormDescription').value = data.description;
         document.getElementById('awardFormDescCount').textContent = (data.description || '').length;
+        if (data.criteria) document.getElementById('awardFormCriteria').value = data.criteria;
       });
       const modalBody = document.querySelector('#awardFormModal .modal-body');
       if (modalBody && banner) modalBody.prepend(banner);
@@ -1461,6 +1464,7 @@ const awardsModule = {
       prev_year_2nd: document.getElementById('awardFormPrev2nd')?.value,
       prev_year_3rd: document.getElementById('awardFormPrev3rd')?.value,
       description: document.getElementById('awardFormDescription')?.value,
+      criteria: document.getElementById('awardFormCriteria')?.value,
     };
   },
 
@@ -1508,6 +1512,8 @@ const awardsModule = {
     document.getElementById('awardFormVotingClose').value = award.voting_close_date || '';
     document.getElementById('awardFormWinnersAnnouncement').value = award.winners_announcement_date || '';
     document.getElementById('awardFormDescription').value = award.description || '';
+    const editCriteriaEl = document.getElementById('awardFormCriteria');
+    if (editCriteriaEl) editCriteriaEl.value = award.criteria || '';
     document.getElementById('awardFormPrevWinner').value = award.prev_year_winner || '';
     document.getElementById('awardFormPrev2nd').value = award.prev_year_2nd || '';
     document.getElementById('awardFormPrev3rd').value = award.prev_year_3rd || '';
@@ -1632,6 +1638,7 @@ const awardsModule = {
           document.getElementById('awardFormDescription').value = data.description;
           document.getElementById('awardFormDescCount').textContent = (data.description || '').length;
         }
+        if (data.criteria) document.getElementById('awardFormCriteria').value = data.criteria;
       });
       const modalBody = document.querySelector('#awardFormModal .modal-body');
       if (modalBody && banner) modalBody.prepend(banner);
@@ -1738,6 +1745,7 @@ const awardsModule = {
       voting_close_date: document.getElementById('awardFormVotingClose').value || null,
       winners_announcement_date: document.getElementById('awardFormWinnersAnnouncement').value || null,
       description: document.getElementById('awardFormDescription').value.trim() || null,
+      criteria: document.getElementById('awardFormCriteria')?.value?.trim() || null,
       prev_year_winner: document.getElementById('awardFormPrevWinner').value.trim() || null,
       prev_year_2nd: document.getElementById('awardFormPrev2nd').value.trim() || null,
       prev_year_3rd: document.getElementById('awardFormPrev3rd').value.trim() || null,
@@ -1829,6 +1837,12 @@ const awardsModule = {
         utils.showToast(id ? 'Award updated successfully!' : 'Award created successfully!', 'success');
         await this.loadAwards();
         if (typeof updateTabCounts === 'function') updateTabCounts();
+        if (!id && typeof dashboardModule !== 'undefined' && dashboardModule._initGettingStartedBanner) {
+          dashboardModule._initGettingStartedBanner(
+            typeof STATE !== 'undefined' ? (STATE.allAwards || []).length : 0,
+            typeof STATE !== 'undefined' ? (STATE.allOrganisations || []).length : 0
+          );
+        }
       });
     } catch (error) {
       console.error('Error saving award:', error);

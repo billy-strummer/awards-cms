@@ -3054,6 +3054,12 @@ const orgsModule = {
         form.reset();
         await this.loadOrganisations();
         if (typeof updateTabCounts === 'function') updateTabCounts();
+        if (typeof dashboardModule !== 'undefined' && dashboardModule._initGettingStartedBanner) {
+          dashboardModule._initGettingStartedBanner(
+            typeof STATE !== 'undefined' ? (STATE.allAwards || []).length : 0,
+            typeof STATE !== 'undefined' ? (STATE.allOrganisations || []).length : 0
+          );
+        }
       });
     } catch (error) {
       console.error('Error saving new company:', error);

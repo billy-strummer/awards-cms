@@ -326,6 +326,12 @@ const marketingModule = {
 
         bootstrap.Modal.getInstance(document.getElementById('bannerFormModal'))?.hide();
         await this.loadBanners();
+        if (!bannerId && typeof dashboardModule !== 'undefined' && dashboardModule._initGettingStartedBanner) {
+          dashboardModule._initGettingStartedBanner(
+            typeof STATE !== 'undefined' ? (STATE.allAwards || []).length : 0,
+            typeof STATE !== 'undefined' ? (STATE.allOrganisations || []).length : 0
+          );
+        }
       });
       utils.showToast(bannerId ? 'Banner updated successfully' : 'Banner created successfully', 'success');
     } catch (error) {

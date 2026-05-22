@@ -36,10 +36,6 @@ const dashboardModule = {
         }
       }
     }
-    document.getElementById('dismissGettingStarted')?.addEventListener('click', () => {
-      document.getElementById('gettingStartedBanner')?.classList.add('d-none');
-      localStorage.setItem('btaGettingStartedDismissed', '1');
-    });
   },
 
   async loadAllData() {

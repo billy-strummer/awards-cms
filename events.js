@@ -302,6 +302,12 @@ const eventsModule = {
         // Close modal and reload
         bootstrap.Modal.getInstance(document.getElementById('eventModal'))?.hide();
         await this.loadEvents();
+        if (!eventId && typeof dashboardModule !== 'undefined' && dashboardModule._initGettingStartedBanner) {
+          dashboardModule._initGettingStartedBanner(
+            typeof STATE !== 'undefined' ? (STATE.allAwards || []).length : 0,
+            typeof STATE !== 'undefined' ? (STATE.allOrganisations || []).length : 0
+          );
+        }
       });
     } catch (error) {
       console.error('Error saving event:', error);

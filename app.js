@@ -947,12 +947,18 @@ function loadChunk(filename) {
     script.onload = () => {
       _loadedChunks.add(filename);
       delete loadChunk._pending[filename];
-      if (--_chunkLoadCount <= 0) { _chunkLoadCount = 0; _setLoadingBar(false); }
+      if (--_chunkLoadCount <= 0) {
+        _chunkLoadCount = 0;
+        _setLoadingBar(false);
+      }
       resolve();
     };
     script.onerror = () => {
       delete loadChunk._pending[filename];
-      if (--_chunkLoadCount <= 0) { _chunkLoadCount = 0; _setLoadingBar(false); }
+      if (--_chunkLoadCount <= 0) {
+        _chunkLoadCount = 0;
+        _setLoadingBar(false);
+      }
       reject(new Error(`Failed to load chunk: ${filename}`));
     };
     document.head.appendChild(script);
@@ -1835,10 +1841,22 @@ document.addEventListener('DOMContentLoaded', function () {
   // ==========================================
   // STEP 12: Tooltips Initialization
   // ==========================================
-  // Initialize Bootstrap tooltips; also backfill aria-label from title for screen readers
+  // Convert plain title= attributes (excluding <abbr> and elements that already have
+  // data-bs-toggle set to something other than tooltip) into Bootstrap tooltips so they
+  // work on mobile and keyboard navigation.
+  document.querySelectorAll('[title]:not(abbr):not([data-bs-toggle])').forEach(function (el) {
+    const titleText = el.getAttribute('title');
+    if (!titleText) return;
+    el.setAttribute('data-bs-toggle', 'tooltip');
+    el.setAttribute('data-bs-title', titleText);
+    el.removeAttribute('title');
+  });
+
+  // Initialize Bootstrap tooltips on all elements that now carry data-bs-toggle="tooltip"
+  // (including those converted above and any already marked up in HTML)
   const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
   tooltipTriggerList.map(function (tooltipTriggerEl) {
-    const title = tooltipTriggerEl.getAttribute('title') || tooltipTriggerEl.getAttribute('data-bs-title');
+    const title = tooltipTriggerEl.getAttribute('data-bs-title') || tooltipTriggerEl.getAttribute('title');
     if (title && !tooltipTriggerEl.getAttribute('aria-label')) {
       tooltipTriggerEl.setAttribute('aria-label', title);
     }

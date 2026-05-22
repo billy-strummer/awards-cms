@@ -4141,6 +4141,105 @@ const winnersModule = {
       utils.showToast('Failed to delete view', 'warning');
     }
   },
+
+  /**
+   * Open the Add Winner modal (admin-only) and populate organisation + award dropdowns.
+   */
+  async openAddWinnerModal() {
+    if (typeof rbacModule !== 'undefined' && !rbacModule.canPerform('create')) {
+      utils.showToast('You do not have permission to add winners.', 'error');
+      return;
+    }
+    const modalEl = document.getElementById('addWinnerModal');
+    if (!modalEl) return;
+
+    // Set current year as default
+    const yearInput = document.getElementById('addWinnerYear');
+    if (yearInput) yearInput.value = new Date().getFullYear();
+
+    // Populate organisations dropdown
+    const orgSelect = document.getElementById('addWinnerOrgSelect');
+    if (orgSelect) {
+      orgSelect.innerHTML = '<option value="">Loading…</option>';
+      try {
+        /* selectAll: justified — small reference list for modal dropdown */
+        const orgs = await apiClient.selectAll('organisations', {
+          select: 'id, name',
+          sort: { column: 'name', ascending: true },
+        });
+        orgSelect.innerHTML =
+          '<option value="">— Select Organisation —</option>' +
+          (orgs || [])
+            .map((o) => `<option value="${o.id}">${utils.escapeHtml ? utils.escapeHtml(o.name) : o.name}</option>`)
+            .join('');
+      } catch (e) {
+        orgSelect.innerHTML = '<option value="">Failed to load organisations</option>';
+      }
+    }
+
+    // Populate awards dropdown
+    const awardSelect = document.getElementById('addWinnerAwardSelect');
+    if (awardSelect) {
+      awardSelect.innerHTML = '<option value="">Loading…</option>';
+      try {
+        /* selectAll: justified — small reference list for modal dropdown */
+        const awards = await apiClient.selectAll('awards', {
+          select: 'id, award_name',
+          sort: { column: 'award_name', ascending: true },
+        });
+        awardSelect.innerHTML =
+          '<option value="">— Select Award —</option>' +
+          (awards || [])
+            .map(
+              (a) =>
+                `<option value="${a.id}">${utils.escapeHtml ? utils.escapeHtml(a.award_name) : a.award_name}</option>`
+            )
+            .join('');
+      } catch (e) {
+        awardSelect.innerHTML = '<option value="">Failed to load awards</option>';
+      }
+    }
+
+    new bootstrap.Modal(modalEl).show();
+  },
+
+  /**
+   * Save a manually-added winner record from the Add Winner modal.
+   */
+  async saveAddWinner() {
+    const orgId = document.getElementById('addWinnerOrgSelect')?.value?.trim();
+    const awardId = document.getElementById('addWinnerAwardSelect')?.value?.trim();
+    const year = parseInt(document.getElementById('addWinnerYear')?.value, 10);
+    const placement = document.getElementById('addWinnerPlacement')?.value || 'Winner';
+    const notes = document.getElementById('addWinnerNotes')?.value?.trim() || null;
+
+    if (!orgId || !awardId || !year) {
+      utils.showToast('Please fill in all required fields.', 'warning');
+      return;
+    }
+
+    // Derive winner_name from selected org option text
+    const orgOption = document.getElementById('addWinnerOrgSelect')?.selectedOptions?.[0];
+    const winnerName = orgOption?.textContent?.trim() || '';
+
+    try {
+      await apiClient.insert('winners', {
+        winner_name: winnerName,
+        organisation_id: orgId,
+        award_id: awardId,
+        year,
+        placement,
+        notes,
+        status: 'Pending',
+      });
+
+      bootstrap.Modal.getInstance(document.getElementById('addWinnerModal'))?.hide();
+      utils.showToast('Winner added successfully.', 'success');
+      await this.loadWinners();
+    } catch (err) {
+      utils.showToast('Failed to add winner: ' + err.message, 'error');
+    }
+  },
 };
 
 // Export to window for global access

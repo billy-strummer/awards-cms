@@ -20,7 +20,7 @@ Branch: `claude/continue-cms-build-gknZa`
 - **File:** `register.html` — canvas QR rendering uses a custom hash function, not a real QR encoding library
 - **Impact:** Attendees cannot check in at the venue door. Most damaging issue for a live event.
 - **Fix:** Replace the canvas hash-drawing code with a proper QR library. Install `qrcode` (npm) or use the free `https://api.qrserver.com/v1/create-qr-code/?data=XXX` API endpoint, or bundle `qrcodejs`. The QR data should encode the registration confirmation URL or a unique token from the `event_registrations` table.
-- [ ] Implemented
+- [x] Implemented
 
 ### PA-C2 — `award-nominees.html` leaks entrant email addresses publicly
 - **File:** `award-nominees.html`, `award-nominees.js` (or equivalent)
@@ -36,7 +36,7 @@ Branch: `claude/continue-cms-build-gknZa`
 - **File:** `submit-entry.js`, `api/entry-proxy.js`, `submit-entry.html`
 - **Impact:** Entrants submit for free. `entry-proxy.js` sets `payment_status: 'pending'` but never calls Stripe. Fees must be manually invoiced afterwards — significant revenue leakage and admin overhead.
 - **Fix:** Add a payment step to the entry wizard (after step 7 / before the review step). Check if a fee is configured for the award (`entry_fee` column on `awards` table — add if missing). If fee > 0, redirect through Stripe Checkout (`/api/stripe-payment?action=entry-checkout`). On Stripe webhook success, update entry `payment_status` to `paid`. If no fee, skip the step.
-- [ ] Implemented
+- [x] Implemented
 
 ### PA-H2 — "Add Winner" button referenced in onboarding but does not exist
 - **File:** `index.html` — Winners tab getting-started card (around line 2314–2315)

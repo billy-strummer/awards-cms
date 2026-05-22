@@ -250,9 +250,10 @@ async function handleSubmitEntry(req, res) {
 
   // 2. Find matching award
   let awardId = null;
+  let awardEntryFee = 0;
   const { data: matchingAwards } = await supabase
     .from('awards')
-    .select('id')
+    .select('id, entry_fee')
     .eq('award_name', safe.awardCategory)
     .eq('sector', safe.sector)
     .eq('county', safe.countyCity)
@@ -262,6 +263,7 @@ async function handleSubmitEntry(req, res) {
 
   if (matchingAwards && matchingAwards.length > 0) {
     awardId = matchingAwards[0].id;
+    awardEntryFee = Number(matchingAwards[0].entry_fee) || 0;
   }
 
   // 3. Generate entry number
@@ -357,6 +359,7 @@ async function handleSubmitEntry(req, res) {
     return res.status(200).json({
       success: true,
       entry: { id: baseEntry.id, entry_number: baseEntry.entry_number },
+      entry_fee: awardEntryFee,
     });
   }
 
@@ -366,6 +369,7 @@ async function handleSubmitEntry(req, res) {
   return res.status(200).json({
     success: true,
     entry: { id: entry.id, entry_number: entry.entry_number },
+    entry_fee: awardEntryFee,
   });
 }
 

@@ -187,7 +187,7 @@
 
             <div class="card d-inline-block mb-3" style="max-width:300px;">
               <div class="card-body">
-                <canvas id="qrCanvas" class="qr-code"></canvas>
+                <img id="qrCode" class="qr-code" alt="QR Code for check-in" style="max-width:200px;">
                 <p class="fw-bold mb-0 mt-2" id="confirmGuestName"></p>
                 <small class="text-muted" id="confirmPackageName"></small>
               </div>
@@ -595,83 +595,25 @@
 
     // ---- QR CODE ----
     function generateQRCode(guestId, guestName) {
-      const canvas = document.getElementById('qrCanvas');
-      const ctx = canvas.getContext('2d');
-      // Encode guest ID and event ID for check-in scanning
-      const data = JSON.stringify({
-        gid: guestId,
-        eid: currentEvent.id,
-        n: guestName,
-        t: Date.now()
-      });
-
-      // Simple QR-like visual with the data encoded as a data matrix
-      // For production, use a proper QR library. Here we generate a scannable code.
-      canvas.width = 200;
-      canvas.height = 200;
-
-      // Use a simple encoding: render the guest ID as a grid pattern
-      // This is a placeholder - in production, load qrcode.js library
-      ctx.fillStyle = 'white';
-      ctx.fillRect(0, 0, 200, 200);
-
-      // Generate a deterministic pattern from the guest ID
-      const str = guestId || 'unknown';
-      const size = 10;
-      const modules = 20;
-      ctx.fillStyle = 'black';
-
-      // Finder patterns (top-left, top-right, bottom-left)
-      drawFinderPattern(ctx, 0, 0, size);
-      drawFinderPattern(ctx, (modules - 7) * size, 0, size);
-      drawFinderPattern(ctx, 0, (modules - 7) * size, size);
-
-      // Data modules from the ID hash
-      let hash = 0;
-      for (let i = 0; i < str.length; i++) {
-        hash = ((hash << 5) - hash) + str.charCodeAt(i);
-        hash |= 0;
-      }
-
-      for (let y = 0; y < modules; y++) {
-        for (let x = 0; x < modules; x++) {
-          // Skip finder pattern areas
-          if ((x < 8 && y < 8) || (x >= modules - 8 && y < 8) || (x < 8 && y >= modules - 8)) continue;
-          // Use hash-derived pattern
-          const bit = ((hash * (x + 1) * (y + 1)) >>> (x + y)) & 1;
-          if (bit) {
-            ctx.fillRect(x * size, y * size, size, size);
-          }
-        }
-      }
-
-      // Overlay text with the ID for manual lookup
-      ctx.fillStyle = 'white';
-      ctx.fillRect(30, 85, 140, 30);
-      ctx.fillStyle = 'black';
-      ctx.font = 'bold 9px monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText(str.substring(0, 20), 100, 100);
-      ctx.font = '8px sans-serif';
-      ctx.fillText('SCAN AT ENTRANCE', 100, 112);
-    }
-
-    function drawFinderPattern(ctx, x, y, size) {
-      // Outer border
-      ctx.fillStyle = 'black';
-      ctx.fillRect(x, y, 7 * size, 7 * size);
-      ctx.fillStyle = 'white';
-      ctx.fillRect(x + size, y + size, 5 * size, 5 * size);
-      ctx.fillStyle = 'black';
-      ctx.fillRect(x + 2 * size, y + 2 * size, 3 * size, 3 * size);
+      const img = document.getElementById('qrCode');
+      const data = JSON.stringify({ gid: guestId, eid: currentEvent.id, n: guestName });
+      const encoded = encodeURIComponent(data);
+      img.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encoded}`;
+      img.alt = `Check-in QR for ${guestName}`;
     }
 
     function downloadQR() {
-      const canvas = document.getElementById('qrCanvas');
-      const link = document.createElement('a');
-      link.download = `ticket_${registrationId || 'unknown'}.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
+      const img = document.getElementById('qrCode');
+      fetch(img.src)
+        .then(r => r.blob())
+        .then(blob => {
+          const link = document.createElement('a');
+          link.download = `ticket_${registrationId || 'unknown'}.png`;
+          link.href = URL.createObjectURL(blob);
+          link.click();
+          URL.revokeObjectURL(link.href);
+        })
+        .catch(() => window.open(img.src, '_blank'));
     }
 
     function escapeHtml(str) {

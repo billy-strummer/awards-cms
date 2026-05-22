@@ -875,12 +875,30 @@
         });
 
         const entryNumber = result.entry.entry_number;
+        const entryId = result.entry.id;
+        const entryFee = Number(result.entry_fee) || 0;
 
         // Clear any saved draft on successful submission
         try {
           if (typeof localStorage !== 'undefined') localStorage.removeItem('bta_entry_draft');
         } catch (_) {
           /* ignore */
+        }
+
+        // If there is an entry fee, redirect to Stripe Checkout
+        if (entryFee > 0 && entryId) {
+          submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Redirecting to payment...';
+          const checkoutRes = await fetch('/api/stripe-payment?action=public-checkout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ entry_id: entryId, amount: entryFee }),
+          });
+          const checkoutData = await checkoutRes.json();
+          if (checkoutData.url) {
+            window.location.href = checkoutData.url;
+            return;
+          }
+          // If checkout fails, fall through to success page (fee collected manually)
         }
 
         // Show success

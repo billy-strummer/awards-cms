@@ -2032,6 +2032,20 @@ const paymentsModule = {
     if (overdueInvoicesEl) overdueInvoicesEl.textContent = String(overdueInvoices);
     if (totalOutstandingEl) totalOutstandingEl.textContent = `\u00A3${totalOutstanding.toFixed(2)}`;
 
+    // Financial summary cards
+    const sumTotalInvoiced = this.currentInvoices.reduce((sum, i) => sum + parseFloat(i.total_amount || i.amount || 0), 0);
+    const sumTotalCollected = this.currentInvoices
+      .filter((i) => i.payment_status === 'paid')
+      .reduce((sum, i) => sum + parseFloat(i.total_amount || i.amount || 0), 0);
+    const sumOutstanding = sumTotalInvoiced - sumTotalCollected;
+    const fmt = (n) => `\u00A3${n.toFixed(2)}`;
+    const paymentTotalInvoicedEl = document.getElementById('paymentTotalInvoiced');
+    const paymentTotalCollectedEl = document.getElementById('paymentTotalCollected');
+    const paymentTotalOutstandingEl = document.getElementById('paymentTotalOutstanding');
+    if (paymentTotalInvoicedEl) paymentTotalInvoicedEl.textContent = fmt(sumTotalInvoiced);
+    if (paymentTotalCollectedEl) paymentTotalCollectedEl.textContent = fmt(sumTotalCollected);
+    if (paymentTotalOutstandingEl) paymentTotalOutstandingEl.textContent = fmt(sumOutstanding);
+
     const banner = document.getElementById('overdueInvoicesBanner');
     if (banner) {
       banner.classList.toggle('d-none', overdueInvoices === 0);

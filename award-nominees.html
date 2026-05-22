@@ -25,6 +25,13 @@
   </nav>
 
   <div class="container mt-4">
+
+    <!-- Auth warning (shown when not logged in) -->
+    <div id="authWarning" class="alert alert-warning d-flex align-items-center gap-2 mb-3" style="display:none!important;">
+      <i class="bi bi-lock-fill"></i>
+      <div><strong>Not authenticated.</strong> You must be logged in as an admin to view this page.</div>
+    </div>
+
     <div class="row mb-4">
       <div class="col-12">
         <h2 id="awardTitle">Loading...</h2>
@@ -36,7 +43,6 @@
       <thead class="table-dark">
         <tr>
           <th scope="col">Company Name</th>
-          <th scope="col">Email</th>
           <th scope="col">Website</th>
           <th scope="col">Region</th>
           <th scope="col">Status</th>
@@ -44,7 +50,7 @@
         </tr>
       </thead>
       <tbody id="nomineesContainer">
-        <tr><td colspan="6" class="text-center">Loading nominees...</td></tr>
+        <tr><td colspan="5" class="text-center">Loading nominees...</td></tr>
       </tbody>
     </table>
   </div>
@@ -85,6 +91,17 @@
       return json;
     }
 
+    async function checkAuth() {
+      const token = await getAuthToken();
+      if (!token) {
+        document.getElementById('authWarning').style.display = '';
+        document.getElementById('nomineesContainer').innerHTML =
+          '<tr><td colspan="5" class="text-center text-muted">Please log in to view nominees.</td></tr>';
+        return false;
+      }
+      return true;
+    }
+
     function goBack() {
       window.history.back();
     }
@@ -96,6 +113,13 @@
     }
 
     async function loadPage() {
+      const authed = await checkAuth();
+      if (!authed) {
+        document.getElementById('authWarning').style.display = '';
+        document.getElementById('awardTitle').textContent = '';
+        return;
+      }
+
       const awardName = sessionStorage.getItem('selectedAwardName');
       console.log('Award name from session:', awardName);
 
@@ -111,7 +135,7 @@
         const awardsResult = await proxyFetch({
           table: 'awards',
           operation: 'select',
-          select: '*',
+          select: 'id,award_name,year,region,sector,winner',
           filters: { award_name: awardName },
           pageSize: 1
         });
@@ -123,17 +147,18 @@
         }
 
         // Get all organisations with this award via data-proxy
+        // Explicitly exclude sensitive fields (email, phone) from the public nominees view
         const orgsResult = await proxyFetch({
           table: 'organisations',
           operation: 'select',
-          select: '*',
+          select: 'id,company_name,website,region,award_name',
           filters: { award_name: awardName },
           pageSize: 1000
         });
         const orgs = orgsResult.data || [];
 
         if (orgs.length === 0) {
-          document.getElementById('nomineesContainer').innerHTML = '<tr><td colspan="6" class="text-center text-muted">No companies found</td></tr>';
+          document.getElementById('nomineesContainer').innerHTML = '<tr><td colspan="5" class="text-center text-muted">No companies found</td></tr>';
           return;
         }
 
@@ -145,7 +170,6 @@
           html += `
             <tr>
               <td><a class="company-link" data-action="openCompanyProfile" data-args='["${org.id}","${(org.company_name || '').replace(/'/g, "\\'")}"]'>${org.company_name}</a></td>
-              <td><a href="mailto:${org.email}">${org.email}</a></td>
               <td><a href="${org.website}" target="_blank">${org.website || 'N/A'}</a></td>
               <td>${org.region || 'N/A'}</td>
               <td>${status}</td>
@@ -158,7 +182,7 @@
 
       } catch (err) {
         console.error('Error:', err);
-        document.getElementById('nomineesContainer').innerHTML = '<div class="col-12"><p class="text-danger">Error loading page</p></div>';
+        document.getElementById('nomineesContainer').innerHTML = '<tr><td colspan="5" class="text-center text-danger">Error loading page</td></tr>';
       }
     }
 

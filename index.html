@@ -227,6 +227,7 @@
               <i class="bi bi-people-fill sidebar-icon"></i>
               <span class="sidebar-label">Assignments</span>
             </button>
+            <span class="sidebar-sub-label" id="assignmentsSubLabel">Judge allocation</span>
             <button class="sidebar-nav-link" id="media-gallery-tab" data-bs-toggle="tab" data-bs-target="#media-gallery" type="button" role="tab" aria-controls="media-gallery" aria-selected="false" title="Media Gallery" aria-label="Media Gallery">
               <i class="bi bi-images sidebar-icon"></i>
               <span class="sidebar-label">Media Gallery</span>
@@ -245,6 +246,7 @@
               <i class="bi bi-people sidebar-icon"></i>
               <span class="sidebar-label">CRM</span>
             </button>
+            <span class="sidebar-sub-label" id="crmStaticSubLabel">Contacts &amp; deals</span>
             <span class="sidebar-sub-label d-none" id="crmSubLabel"></span>
           </div>
 
@@ -2311,8 +2313,8 @@
                   <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
                     <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">1</span>
                     <div>
-                      <div class="fw-semibold small">Add Winners</div>
-                      <div class="text-muted" style="font-size:.75rem;">Add winners manually using "Add Winner", import in bulk via CSV, or promote shortlisted nominees from Assignments.</div>
+                      <div class="fw-semibold small">Select Winners</div>
+                      <div class="text-muted" style="font-size:.75rem;">Use the <strong>Winner Pipeline</strong> button above to review scored entries and select winners from your shortlist. Admins can also add winner records manually with <strong>Add Winner</strong>.</div>
                     </div>
                   </div>
                 </div>
@@ -2429,7 +2431,10 @@
               </h5>
               <div class="d-flex gap-2 align-items-center flex-wrap">
                 <button class="btn btn-outline-primary btn-sm" data-action="winnerPipelineModule.renderPipelineDashboard">
-                  <i class="bi bi-funnel me-1"></i>Pipeline
+                  <i class="bi bi-funnel me-1"></i>Winner Pipeline
+                </button>
+                <button class="btn btn-success btn-sm" data-action="winnersModule.openAddWinnerModal" id="addWinnerBtn" style="display:none" title="Manually create a winner record">
+                  <i class="bi bi-plus-lg me-1"></i>Add Winner
                 </button>
                 <button class="btn btn-purple btn-sm" data-action="winnerAnnouncementsModule.renderAnnouncementsDashboard">
                   <i class="bi bi-megaphone me-1"></i>Announcements
@@ -5601,6 +5606,31 @@
                   <strong><span id="overdueInvoicesBannerCount">0</span> overdue invoice<span id="overdueInvoicesBannerPlural">s</span></strong> — payment is past due.
                 </div>
                 <button class="btn btn-danger btn-sm" data-action="paymentsModule.filterOverdueInvoices">View Overdue</button>
+              </div>
+
+              <!-- Financial Summary -->
+              <div class="row g-3 mb-3">
+                <div class="col-md-4">
+                  <div class="stat-card">
+                    <i class="bi bi-receipt stat-card-icon text-primary"></i>
+                    <h6>Total Invoiced</h6>
+                    <div class="stat-value text-primary" id="paymentTotalInvoiced">£—</div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="stat-card">
+                    <i class="bi bi-check2-circle stat-card-icon text-success"></i>
+                    <h6>Collected</h6>
+                    <div class="stat-value text-success" id="paymentTotalCollected">£—</div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="stat-card">
+                    <i class="bi bi-hourglass-split stat-card-icon text-warning"></i>
+                    <h6>Outstanding</h6>
+                    <div class="stat-value text-warning" id="paymentTotalOutstanding">£—</div>
+                  </div>
+                </div>
               </div>
 
               <!-- Quick Stats -->
@@ -10857,6 +10887,83 @@
             <i class="bi bi-building me-1"></i>View All Organisations
           </button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Winner Modal (admin/super-admin only) -->
+  <div class="modal fade" id="addWinnerModal" tabindex="-1" aria-labelledby="addWinnerModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="addWinnerModalLabel"><i class="bi bi-trophy me-2"></i>Add Winner</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label for="addWinnerOrg" class="form-label fw-semibold">Organisation <span class="text-danger">*</span></label>
+              <select class="form-select" id="addWinnerOrg" required>
+                <option value="">Select organisation…</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label for="addWinnerAward" class="form-label fw-semibold">Award <span class="text-danger">*</span></label>
+              <select class="form-select" id="addWinnerAward" required>
+                <option value="">Select award…</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label for="addWinnerYear" class="form-label fw-semibold">Year <span class="text-danger">*</span></label>
+              <input type="number" class="form-control" id="addWinnerYear" min="2000" max="2099" placeholder="e.g. 2026" required>
+            </div>
+            <div class="col-md-4">
+              <label for="addWinnerPlacement" class="form-label fw-semibold">Placement <span class="text-danger">*</span></label>
+              <select class="form-select" id="addWinnerPlacement" required>
+                <option value="Winner">Winner</option>
+                <option value="Runner-up">Runner-up</option>
+                <option value="Highly Commended">Highly Commended</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label for="addWinnerStatus" class="form-label fw-semibold">Status</label>
+              <select class="form-select" id="addWinnerStatus">
+                <option value="Pending">Pending</option>
+                <option value="Notified">Notified</option>
+                <option value="Pack Sent">Pack Sent</option>
+                <option value="Confirmed">Confirmed</option>
+                <option value="Published">Published</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <label for="addWinnerName" class="form-label fw-semibold">Winner Name / Entry Title</label>
+              <input type="text" class="form-control" id="addWinnerName" placeholder="Leave blank to use organisation name">
+            </div>
+            <div class="col-12">
+              <label for="addWinnerNotes" class="form-label fw-semibold">Notes</label>
+              <textarea class="form-control" id="addWinnerNotes" rows="3" placeholder="Optional internal notes…"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-success" id="saveAddWinnerBtn" data-action="winnersModule.saveAddWinner">
+            <i class="bi bi-check-lg me-1"></i>Save Winner
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Winner Pipeline Offcanvas -->
+  <div class="offcanvas offcanvas-end" tabindex="-1" id="winnerPipelineOffcanvas" aria-labelledby="winnerPipelineOffcanvasLabel" style="width:660px">
+    <div class="offcanvas-header border-bottom">
+      <h5 class="offcanvas-title" id="winnerPipelineOffcanvasLabel"><i class="bi bi-trophy me-2"></i>Winner Pipeline</h5>
+      <button type="button" class="btn-close" aria-label="Close" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body" id="winnerPipelineContent">
+      <div class="text-center py-4 text-muted">
+        <i class="bi bi-funnel fs-1 d-block mb-2"></i>Select an award to begin deliberation.
       </div>
     </div>
   </div>

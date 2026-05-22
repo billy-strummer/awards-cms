@@ -26,7 +26,7 @@ Branch: `claude/continue-cms-build-gknZa`
 - **File:** `award-nominees.html`, `award-nominees.js` (or equivalent)
 - **Impact:** The page fails with "Not authenticated" for public visitors but if authenticated it exposes entrant email addresses. GDPR breach risk if URL is ever shared. It is an internal admin view at a public-facing URL.
 - **Fix:** Either (a) add a proper admin-only auth gate that redirects unauthenticated users to the login page with no data visible, OR (b) remove email from the public-facing nominees table and only show company name + award category. Decide which of these pages is meant to be public (browsable nominees) vs admin-only.
-- [ ] Implemented
+- [x] Implemented
 
 ---
 
@@ -88,7 +88,7 @@ Branch: `claude/continue-cms-build-gknZa`
 - **File:** `payments.js`, `index.html`
 - **Impact:** The payments tab lists invoices individually but shows no aggregate. To see total invoiced / collected / outstanding you must export to a spreadsheet.
 - **Fix:** Add a summary row of 3 stat cards at the top of the Payments tab: "Total Invoiced", "Collected", "Outstanding". Compute from the existing invoice data already loaded by `paymentsModule.loadAllData()`. No extra API call needed.
-- [ ] Implemented
+- [x] Implemented
 
 ### PA-M4 — No cross-entry judge score leaderboard
 - **File:** `entries.js`, `index.html`
@@ -112,7 +112,7 @@ Branch: `claude/continue-cms-build-gknZa`
 - **File:** `vote.html`
 - **Impact:** Footer text will be wrong in future years without a manual edit.
 - **Fix:** Replace the hardcoded year with a JavaScript `new Date().getFullYear()` call rendered on page load, e.g. `<span id="footerYear"></span>` with `document.getElementById('footerYear').textContent = new Date().getFullYear()`.
-- [ ] Implemented
+- [x] Implemented
 
 ---
 
@@ -128,7 +128,7 @@ Branch: `claude/continue-cms-build-gknZa`
 - **File:** `index.html` — sidebar nav
 - **Impact:** "Assignments" reads as task assignments; it actually means judge-to-entry assignments. "CRM" is jargon with no sub-label. New users may not find these sections.
 - **Fix:** Add a sub-label below "Assignments" reading "Judge allocation" and below "CRM" reading "Contacts & deals" — matching the pattern used by Settings ("Settings & Backup"). Alternatively rename them: "Judge Assignments" and "CRM & Contacts".
-- [ ] Implemented
+- [x] Implemented
 
 ### PA-L3 — No in-app help or documentation link
 - **File:** `index.html` — header/navbar area

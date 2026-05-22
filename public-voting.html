@@ -128,7 +128,7 @@
     <!-- Header -->
     <div class="voting-header">
       <h1>🏆 Vote Now</h1>
-      <p class="lead mb-0">British Trade Awards 2025 - People's Choice</p>
+      <p class="lead mb-0">British Trade Awards <span id="footerYear"></span> - People's Choice</p>
       <p class="text-muted">Cast your vote for your favorite nominees</p>
     </div>
 
@@ -213,6 +213,11 @@
 
   <!-- Voting System Logic -->
   <script src="public-voting.js"></script>
+
+  <script>
+    var _fy = document.getElementById('footerYear');
+    if (_fy) _fy.textContent = new Date().getFullYear();
+  </script>
 
 </body>
 </html>

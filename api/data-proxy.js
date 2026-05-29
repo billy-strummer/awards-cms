@@ -803,8 +803,12 @@ async function executeQuery(body, user) {
   try {
     return await _executeQuery(body, user, true);
   } catch (err) {
-    // If the error is about a missing tenant_id column, retry without tenant scoping
+    // If the error is about a missing tenant_id column, retry without tenant scoping.
+    // Log a warning so this is visible — tables that need multi-tenant isolation should have tenant_id.
     if (isMissingTenantColumn(err)) {
+      console.error(
+        `[data-proxy] SECURITY: table "${body.table}" lacks tenant_id column but tenant scoping was requested — falling back to unscoped query`
+      );
       return await _executeQuery(body, user, false);
     }
     throw err;
@@ -1561,11 +1565,17 @@ module.exports = async function handler(req, res) {
     }
 
     if (body.operation === 'nominee_delete_all') {
-      if (!hasMinimumRole(role, 'editor')) {
-        return res.status(403).json({ error: 'Forbidden', message: 'Nominee delete requires editor role or above' });
+      if (!hasMinimumRole(role, 'super_admin')) {
+        return res.status(403).json({ error: 'Forbidden', message: 'Nominee delete requires super_admin role' });
       }
-      await supabase.from('nominee_upload_rows').delete().gte('created_at', '2000-01-01');
-      await supabase.from('nominee_upload_batches').delete().gte('uploaded_at', '2000-01-01');
+      const batchId = body.batch_id;
+      if (!batchId) {
+        return res
+          .status(400)
+          .json({ error: 'batch_id is required for nominee_delete_all to prevent accidental mass deletion' });
+      }
+      await supabase.from('nominee_upload_rows').delete().eq('batch_id', batchId);
+      await supabase.from('nominee_upload_batches').delete().eq('id', batchId);
       return res.status(200).json({ deleted: true });
     }
 

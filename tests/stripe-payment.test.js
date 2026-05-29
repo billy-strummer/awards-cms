@@ -159,11 +159,13 @@ describe('Stripe Payment API - createCheckoutSession', () => {
       data: { user: { id: 'user-123', email: 'admin@test.com' } },
       error: null,
     });
+    // getUserRole is the first from() call — default to admin
+    mockFrom.mockReturnValueOnce(chainable({ data: { role: 'admin' }, error: null }));
   });
 
   test('rejects unauthenticated requests', async () => {
     mockGetUser.mockResolvedValue({ data: { user: null }, error: { message: 'invalid' } });
-    const req = createReq({ body: { entryId: '123', amount: 100 } });
+    const req = createReq({ body: { entryId: '123' } });
     const res = createRes();
     await createCheckoutSession(req, res);
     expect(res.statusCode).toBe(401);
@@ -171,7 +173,7 @@ describe('Stripe Payment API - createCheckoutSession', () => {
 
   test('rejects request without Bearer token', async () => {
     const req = createReq({
-      body: { entryId: '123', amount: 100 },
+      body: { entryId: '123' },
       headers: { authorization: undefined },
     });
     delete req.headers.authorization;
@@ -180,88 +182,68 @@ describe('Stripe Payment API - createCheckoutSession', () => {
     expect(res.statusCode).toBe(401);
   });
 
-  test('rejects missing entryId', async () => {
-    const req = createReq({ body: { amount: 100 } });
-    const res = createRes();
-    await createCheckoutSession(req, res);
-    expect(res.statusCode).toBe(400);
-    expect(res.body.error).toContain('Missing');
-  });
-
-  test('rejects missing amount', async () => {
+  test('rejects insufficient role (viewer cannot create checkout sessions)', async () => {
+    mockFrom.mockReset();
+    mockFrom.mockReturnValueOnce(chainable({ data: { role: 'viewer' }, error: null }));
     const req = createReq({ body: { entryId: '123' } });
     const res = createRes();
     await createCheckoutSession(req, res);
-    expect(res.statusCode).toBe(400);
+    expect(res.statusCode).toBe(403);
   });
 
-  test('rejects negative amount', async () => {
-    const req = createReq({ body: { entryId: '123', amount: -50 } });
+  test('rejects missing entryId', async () => {
+    const req = createReq({ body: {} });
     const res = createRes();
     await createCheckoutSession(req, res);
     expect(res.statusCode).toBe(400);
+    expect(res.body.error).toContain('entry_id');
   });
 
-  test('rejects zero amount', async () => {
-    const req = createReq({ body: { entryId: '123', amount: 0 } });
+  test('rejects entry with no fee configured (entry_fee = 0)', async () => {
+    const mockEntry = { id: 'e-1', entry_number: 'BTA-001', contact_email: 'a@b.com', awards: { entry_fee: 0 } };
+    mockFrom.mockReturnValueOnce(chainable({ data: mockEntry, error: null }));
+    const req = createReq({ body: { entryId: 'e-1' } });
     const res = createRes();
     await createCheckoutSession(req, res);
     expect(res.statusCode).toBe(400);
-  });
-
-  test('rejects non-numeric amount', async () => {
-    const req = createReq({ body: { entryId: '123', amount: 'free' } });
-    const res = createRes();
-    await createCheckoutSession(req, res);
-    expect(res.statusCode).toBe(400);
+    expect(res.body.error).toContain('no fee');
   });
 
   test('returns 404 when entry not found', async () => {
-    // Make from().select().eq().single() return no data
-    const chain = chainable({ data: null, error: { message: 'not found' } });
-    mockFrom.mockReturnValueOnce(chain);
-
-    const req = createReq({ body: { entryId: 'nonexistent', amount: 100 } });
+    mockFrom.mockReturnValueOnce(chainable({ data: null, error: { message: 'not found' } }));
+    const req = createReq({ body: { entryId: 'nonexistent' } });
     const res = createRes();
     await createCheckoutSession(req, res);
     expect(res.statusCode).toBe(404);
   });
 
   test('accepts both entryId and entry_id parameter names', async () => {
-    const mockEntry = { id: 'e-1', entry_number: 'BTA-001', contact_email: 'a@b.com' };
-    const chain = chainable({ data: mockEntry, error: null });
-    mockFrom.mockReturnValueOnce(chain);
-
+    const mockEntry = { id: 'e-1', entry_number: 'BTA-001', contact_email: 'a@b.com', awards: { entry_fee: 150 } };
+    mockFrom.mockReturnValueOnce(chainable({ data: mockEntry, error: null }));
     mockCheckoutCreate.mockResolvedValue({
       id: 'cs_123',
       url: 'https://checkout.stripe.com/123',
       payment_intent: 'pi_123',
     });
-
-    // Use from() for the update call too
     mockFrom.mockReturnValueOnce(chainable());
-
-    const req = createReq({ body: { entry_id: 'e-1', amount: 150 } });
+    const req = createReq({ body: { entry_id: 'e-1' } });
     const res = createRes();
     await createCheckoutSession(req, res);
-
     expect(mockCheckoutCreate).toHaveBeenCalled();
   });
 
-  test('creates checkout session with correct amount in pence', async () => {
-    const mockEntry = { id: 'e-1', entry_number: 'BTA-001', contact_email: 'a@b.com' };
-    const chain = chainable({ data: mockEntry, error: null });
-    mockFrom.mockReturnValueOnce(chain);
-
+  test('creates checkout session using server-side entry_fee (ignores client amount)', async () => {
+    const mockEntry = { id: 'e-1', entry_number: 'BTA-001', contact_email: 'a@b.com', awards: { entry_fee: 49.99 } };
+    mockFrom.mockReturnValueOnce(chainable({ data: mockEntry, error: null }));
     mockCheckoutCreate.mockResolvedValue({
       id: 'cs_123',
       url: 'https://checkout.stripe.com/123',
       payment_intent: 'pi_123',
     });
-
     mockFrom.mockReturnValueOnce(chainable());
 
-    const req = createReq({ body: { entryId: 'e-1', amount: 49.99 } });
+    // Client sends a different amount — must be ignored
+    const req = createReq({ body: { entryId: 'e-1', amount: 1 } });
     const res = createRes();
     await createCheckoutSession(req, res);
 
@@ -269,9 +251,9 @@ describe('Stripe Payment API - createCheckoutSession', () => {
     expect(res.body).toHaveProperty('sessionId', 'cs_123');
     expect(res.body).toHaveProperty('url');
 
-    // Verify amount converted to pence
+    // Verify amount comes from DB entry_fee (49.99), not client-supplied 1
     const createArgs = mockCheckoutCreate.mock.calls[0][0];
-    expect(createArgs.line_items[0].price_data.unit_amount).toBe(4999);
+    expect(createArgs.line_items[0].price_data.unit_amount).toBe(4999); // 49.99 * 100
     expect(createArgs.line_items[0].price_data.currency).toBe('gbp');
   });
 });

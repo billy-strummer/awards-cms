@@ -29,6 +29,21 @@ const supabaseAuth = createClient(
   process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_KEY
 );
 
+const ROLE_HIERARCHY = ['viewer', 'editor', 'manager', 'admin', 'super_admin'];
+function hasMinimumRole(userRole, requiredRole) {
+  const a = ROLE_HIERARCHY.indexOf((userRole || '').toLowerCase());
+  const b = ROLE_HIERARCHY.indexOf(requiredRole);
+  return a !== -1 && b !== -1 && a >= b;
+}
+async function getUserRole(email) {
+  try {
+    const { data } = await supabase.from('user_roles').select('role').eq('email', email).limit(1).maybeSingle();
+    return (data?.role || 'viewer').toLowerCase();
+  } catch (_) {
+    return 'viewer';
+  }
+}
+
 /**
  * Generate a unique invoice number (INV-YYYY-NNNNN).
  * @returns {Promise<string>}
@@ -82,23 +97,34 @@ async function createCheckoutSession(req, res) {
     const user = await verifyAuth(req, res);
     if (!user) return;
 
-    const { entryId, entry_id, amount, description, email } = req.body;
+    // Role check: only editor+ can initiate payment sessions
+    const role = await getUserRole(user.email);
+    if (!hasMinimumRole(role, 'editor')) {
+      return res.status(403).json({ error: 'Insufficient permissions to create payment sessions' });
+    }
+
+    const { entryId, entry_id, description, email } = req.body;
     const resolvedEntryId = entryId || entry_id; // Accept both camelCase and snake_case
 
-    // Validate inputs
-    if (!resolvedEntryId || !amount || typeof amount !== 'number' || amount <= 0) {
-      return res.status(400).json({ error: 'Missing or invalid required fields' });
+    if (!resolvedEntryId) {
+      return res.status(400).json({ error: 'entry_id is required' });
     }
 
     // Get entry details from database
     const { data: entry, error: entryError } = await supabase
       .from('entries')
-      .select('*')
+      .select('*, awards(entry_fee)')
       .eq('id', resolvedEntryId)
       .single();
 
     if (entryError || !entry) {
       return res.status(404).json({ error: 'Entry not found' });
+    }
+
+    // Always use the server-side entry fee — never trust client-supplied amounts
+    const amount = Number(entry.awards?.entry_fee) || 0;
+    if (amount <= 0) {
+      return res.status(400).json({ error: 'This entry has no fee configured' });
     }
 
     // Create Stripe checkout session
@@ -831,22 +857,25 @@ function checkPublicCheckoutRate(ip) {
 
 async function createPublicCheckout(req, res) {
   try {
-    const ip = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
+    // Use rightmost IP from x-forwarded-for (set by Vercel CDN, cannot be spoofed by client)
+    const rawIp = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
+    const ip = rawIp.split(',').pop().trim();
     if (!checkPublicCheckoutRate(ip)) {
       return res.status(429).json({ error: 'Too many requests. Please try again later.' });
     }
 
-    const { entry_id, amount } = req.body;
+    const { entry_id } = req.body;
 
     if (!entry_id) {
       return res.status(400).json({ error: 'Missing entry_id' });
     }
 
-    // Validate amount (default to 95 GBP if not provided)
-    const payAmount = typeof amount === 'number' && amount > 0 ? amount : 95;
-
-    // Look up the entry
-    const { data: entry, error: entryError } = await supabase.from('entries').select('*').eq('id', entry_id).single();
+    // Look up the entry including the award's entry_fee — never trust client-supplied amounts
+    const { data: entry, error: entryError } = await supabase
+      .from('entries')
+      .select('*, awards(entry_fee)')
+      .eq('id', entry_id)
+      .single();
 
     if (entryError || !entry) {
       return res.status(404).json({ error: 'Entry not found' });
@@ -856,6 +885,8 @@ async function createPublicCheckout(req, res) {
     if (entry.payment_status === 'paid') {
       return res.status(400).json({ error: 'Entry has already been paid' });
     }
+
+    const payAmount = Number(entry.awards?.entry_fee) || 95; // fall back to £95 default
 
     // Create Stripe checkout session
     const session = await stripe.checkout.sessions.create({

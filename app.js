@@ -1398,13 +1398,16 @@ document.addEventListener('DOMContentLoaded', function () {
   // STEP 4: Connection Monitoring
   // ==========================================
   // Monitor online/offline status
+  let _reconnectToastTimer;
   window.addEventListener('online', () => {
     authModule.updateConnectionStatus(true);
-    utils.showToast('Connection restored', 'success');
+    clearTimeout(_reconnectToastTimer);
+    _reconnectToastTimer = setTimeout(() => utils.showToast('Connection restored', 'success'), 500);
   });
 
   window.addEventListener('offline', () => {
     authModule.updateConnectionStatus(false);
+    clearTimeout(_reconnectToastTimer);
     utils.showToast('Connection lost', 'warning');
   });
 
@@ -2384,5 +2387,14 @@ if ('serviceWorker' in navigator) {
 */
 
 console.debug('British Trade Awards Admin - Version 2.0');
+
+// Global navigation helper referenced by data-action="app.switchTab" links
+window.app = {
+  switchTab(tabId) {
+    if (window.dashboardModule?.navigateToSection) {
+      dashboardModule.navigateToSection(tabId);
+    }
+  },
+};
 
 export { reportsScheduler };

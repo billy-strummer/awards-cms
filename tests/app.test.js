@@ -2888,12 +2888,15 @@ describe('App Module - Connection monitoring toasts', () => {
   });
 
   test('online event shows "Connection restored" toast', () => {
+    jest.useFakeTimers();
     const showToastSpy = jest.spyOn(utils, 'showToast').mockImplementation();
 
     window.dispatchEvent(new Event('online'));
+    jest.runAllTimers();
 
     expect(showToastSpy).toHaveBeenCalledWith('Connection restored', 'success');
     showToastSpy.mockRestore();
+    jest.useRealTimers();
   });
 
   test('offline event shows "Connection lost" toast', () => {

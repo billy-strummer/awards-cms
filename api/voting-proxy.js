@@ -182,7 +182,8 @@ async function submitVote({ entry_id, voter_email, voter_name, voter_ip, verific
   }
 
   // IP-based rate limit (parallel check — more lenient since IPs can be shared)
-  const normalizedIp = (voter_ip || 'unknown').split(',')[0].trim(); // handle x-forwarded-for lists
+  // Use the rightmost IP in x-forwarded-for (added by Vercel's CDN — cannot be spoofed by the client)
+  const normalizedIp = (voter_ip || 'unknown').split(',').pop().trim();
   if (normalizedIp && normalizedIp !== 'unknown') {
     const { count: ipCount, error: ipRlError } = await supabase
       .from('public_votes')
@@ -374,9 +375,7 @@ module.exports = async function handler(req, res) {
     // Always derive voter_ip from server-side headers — never trust the client body.
     // This prevents IP spoofing for rate-limit checks and vote records.
     const realIp =
-      (req.headers['x-forwarded-for'] || '').split(',')[0].trim() ||
-      req.socket?.remoteAddress ||
-      'unknown';
+      (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || 'unknown';
 
     if (action === 'submit_vote' || action === 'check_rate_limit') {
       params.voter_ip = realIp;

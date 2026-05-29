@@ -20,25 +20,25 @@ Branch: `claude/continue-cms-build-gknZa`
 - **File:** `index.html:1206`
 - **Impact:** When the Awards tab is empty, the call-to-action button calls `awardsModule.openAddAwardModal` which does not exist. Clicking it does nothing. A brand-new user cannot create their first award from the empty state — the most important first action in the system.
 - **Fix:** Change `data-action="awardsModule.openAddAwardModal"` → `data-action="awardsModule.openCreateModal"` (the actual function name at `awards.js:1300`).
-- [ ] Implemented
+- [x] Implemented
 
 ### DA-C2 — Duplicate `addWinnerModal` with wrong field IDs breaks Add Winner entirely
 - **File:** `index.html:10981–11014` (first/broken modal); `index.html:11818` (correct one)
 - **Impact:** Two `<div id="addWinnerModal">` elements exist. The first uses field IDs `addWinnerOrg`, `addWinnerAward`, `addWinnerName` — none of which match `winners.js`, which looks for `addWinnerOrgSelect`, `addWinnerAwardSelect`, `addWinnerNotes`. Bootstrap initialises whichever modal it finds first, so the Add Winner form always submits null/undefined values.
 - **Fix:** Delete the first addWinnerModal block at lines 10981–11014. Keep the second at line 11818 which has the correct field IDs.
-- [ ] Implemented
+- [x] Implemented
 
 ### DA-C3 — Entry fee amount taken from client request body — can be set to £0
 - **File:** `api/stripe-payment.js:85–116`
 - **Impact:** The Stripe checkout session uses `amount` from the POST body supplied by the browser. Any user can POST `{ amount: 0 }` and get a free checkout session, bypassing the configured entry fee entirely. Direct revenue loss.
 - **Fix:** Ignore client-supplied `amount`. After authenticating the request, fetch the entry's `entry_fee` from the database: query `awards` (or `entries` joined to `awards`) using the provided `entry_id`, and use only the DB value for the Stripe session amount.
-- [ ] Implemented
+- [x] Implemented
 
 ### DA-C4 — Stripe payment endpoint has no role check — any authenticated user can trigger it
 - **File:** `api/stripe-payment.js:80–145`
 - **Impact:** The endpoint verifies a valid JWT but does not check the user's role. A `viewer`-role user (read-only) can craft a direct POST request and create Stripe checkout sessions or trigger payment webhooks.
 - **Fix:** After `verifyAuth()`, fetch the user's role from `user_roles` and return 403 if role is below `editor`.
-- [ ] Implemented
+- [x] Implemented
 
 ---
 
@@ -60,25 +60,25 @@ Branch: `claude/continue-cms-build-gknZa`
 - **File:** `api/data-proxy.js:1555–1570`
 - **Impact:** `nominee_delete_all` filters with `.gte('created_at', '2000-01-01')`, matching every row in the table. Any admin-role user can wipe the entire nominees dataset in one API call. No confirmation, no scope, no undo.
 - **Fix:** Either (a) remove the operation entirely and require batch-scoped deletion via `batch_id`, or (b) require `super_admin` role and scope the filter to a specific `upload_session_id` or date range provided in the request.
-- [ ] Implemented
+- [x] Implemented
 
 ### DA-H4 — Voting `x-forwarded-for` IP can be spoofed to bypass rate limits
 - **File:** `api/voting-proxy.js:185`
 - **Impact:** Rate limiting uses the first IP in `x-forwarded-for`, which any client can forge (e.g., sending `X-Forwarded-For: 1.2.3.4, real.ip`). Attacker casts unlimited votes by rotating spoofed IP headers.
 - **Fix:** Use the last (rightmost) IP in `x-forwarded-for` — added by Vercel's own CDN, not the client: `const ip = (req.headers['x-forwarded-for'] || '').split(',').pop().trim() || req.socket.remoteAddress;`
-- [ ] Implemented
+- [x] Implemented
 
 ### DA-H5 — N+1 query: per-award assignment count fires a separate request per row
 - **File:** `awards.js:190–227`
 - **Impact:** For every award displayed on the page, a separate API call fetches the judge assignment count. With 50 awards, that's 50 sequential requests. Causes 5–10s load times at scale and hammers the DB.
 - **Fix:** After fetching the awards list, collect all award IDs and fetch all assignment counts in a single batched query: `apiClient.select('judge_assignments', { filter: { award_id: { op: 'in', value: awardIds } } })`, then build a lookup map keyed by `award_id`.
-- [ ] Implemented
+- [x] Implemented (already batched in `_enrichPageData()` at awards.js:195 — single `op:in` query for all awards on the page; audit was a false positive)
 
 ### DA-H6 — Memory leak: validation event listeners re-attached on every form submit
 - **File:** `app.js:1505–1514`
 - **Impact:** Validation listeners are added inside the submit handler, so they accumulate with each submission. After 10 submits there are 10 listeners firing simultaneously, causing duplicate validation errors and memory growth over a long session.
 - **Fix:** Move the validation listener attachment to the DOMContentLoaded initialisation block, outside the submit handler. Attach once only.
-- [ ] Implemented
+- [x] Implemented (listeners already use `{ once: true }` option which auto-removes them after first invocation — no true accumulation occurs)
 
 ### DA-H7 — Judge conflict-of-interest is advisory only — scoring not blocked
 - **File:** `judge-portal.js`, `assignments.js`
@@ -102,7 +102,7 @@ Branch: `claude/continue-cms-build-gknZa`
 - **File:** `index.html:7715`, `app.js`
 - **Impact:** The award creation form's season field includes a "Manage seasons in Settings → Award Seasons" link that calls `app.switchTab('settings')`. The function doesn't exist. The link is silently broken, leaving users unable to follow the workflow hint.
 - **Fix:** Implement `switchTab(tabId)` in `app.js` as an alias for the existing `dashboardModule.navigateToSection(tabId)`. Alternatively, change the link's `data-action` to use the working navigation pattern.
-- [ ] Implemented
+- [x] Implemented
 
 ---
 
@@ -112,7 +112,7 @@ Branch: `claude/continue-cms-build-gknZa`
 - **File:** `api/data-proxy.js:804–811`
 - **Impact:** If a table lacks a `tenant_id` column, queries silently fall back to returning all tenants' data. This data leak happens invisibly — no log, no error, no indication to the caller.
 - **Fix:** When `tenantId` is provided but the table lacks the column, throw an error rather than retrying without tenant scoping: `throw new Error('Table ${table} does not support tenant scoping')`
-- [ ] Implemented
+- [x] Implemented
 
 ### DA-M2 — File upload validates extension only — MIME type and magic bytes ignored
 - **File:** `api/upload-proxy.js:31–59`
@@ -166,7 +166,7 @@ Branch: `claude/continue-cms-build-gknZa`
 - **File:** `api/_lib/automation-scheduler.js`
 - **Impact:** The `deadline_reminder` email template type exists but no scheduled job queries upcoming award deadlines and sends reminders. Entry deadlines pass without entrants or judges being notified.
 - **Fix:** In the automation scheduler, add a daily check: query `award_years` for records where `entry_close_date` falls 7, 3, or 1 day from today; send reminder emails to relevant contacts who haven't yet submitted.
-- [ ] Implemented
+- [x] Implemented
 
 ---
 
@@ -188,19 +188,19 @@ Branch: `claude/continue-cms-build-gknZa`
 - **File:** `awards.js:900`
 - **Impact:** Sort column indicators (▲/▼) never update visually when the user clicks a column header. The actual method is `_updateSortIndicators()` (with underscore). Silent JS error in console.
 - **Fix:** Change `this.updateSortIndicators()` → `this._updateSortIndicators()` at `awards.js:900`.
-- [ ] Implemented
+- [x] Implemented (audit was a false positive — public `updateSortIndicators()` exists at line 2469 and does the same work; line 900 correctly calls it)
 
 ### DA-L4 — Presence indicator element created multiple times — duplicate IDs in DOM
 - **File:** `app.js:2014–2033`
 - **Impact:** `_renderPresenceIndicator()` can be called multiple times, creating duplicate `id="presenceIndicator"` elements. DOM ID uniqueness is violated; `querySelector` returns unpredictable results.
 - **Fix:** Guard creation: `let el = document.getElementById('presenceIndicator'); if (!el) { el = document.createElement('div'); el.id = 'presenceIndicator'; … }`
-- [ ] Implemented
+- [x] Implemented (guard already exists at app.js:2018 — `let el = document.getElementById('presenceIndicator'); if (!el) { ... }` before creating a new element)
 
 ### DA-L5 — Rapid network reconnect shows duplicate "Connection restored" toasts
 - **File:** `app.js:1401–1409`
 - **Impact:** Network flicker (offline/online in quick succession) stacks multiple toasts.
 - **Fix:** Debounce the `online` event handler: `let t; window.addEventListener('online', () => { clearTimeout(t); t = setTimeout(() => showToast('Connection restored', 'success'), 500); });`
-- [ ] Implemented
+- [x] Implemented
 
 ### DA-L6 — Entry duplication for multiple award categories not supported
 - **File:** `entries.js`

@@ -98,6 +98,9 @@ const DB_TEMPLATE_TYPE_MAP = {
   ENTRY_DEADLINE_REMINDER: 'entry_deadline_reminder',
   PAYMENT_REMINDER: 'payment_reminder',
   SHORTLIST_NOTIFICATION: 'approval',
+  NOT_SHORTLISTED: 'entry_not_shortlisted',
+  WINNER_NOTIFICATION: 'winner_notification',
+  ENTRY_RECEIVED: 'entry_received',
   WINNER_ANNOUNCEMENT: 'winner_announcement',
   JUDGE_ASSIGNMENT: 'judge_assignment',
   JUDGE_REMINDER: 'judge_reminder',
@@ -606,6 +609,47 @@ const EMAIL_TEMPLATES = {
         </table>
 
         <p><strong>{{brand_name}} Team</strong></p>
+      </div>
+    `,
+  },
+
+  ENTRY_RECEIVED: {
+    subject: '✅ Entry Received — {{entry_number}}',
+    body: `
+      <div style="padding: 30px 40px;">
+        <h1 style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 28px; color: #1a1a1a;">Entry Received</h1>
+        <p>Dear {{contact_name}},</p>
+        <p>Thank you for submitting your entry <strong>{{entry_title}}</strong> ({{entry_number}}) for <strong>{{award_name}}</strong>.</p>
+        <p>We have received your submission and it is now being processed. You will hear from us with an update as the judging progresses.</p>
+        <p>Kind regards,<br><strong>{{brand_name}} Team</strong></p>
+      </div>
+    `,
+  },
+
+  NOT_SHORTLISTED: {
+    subject: 'Your Entry — {{entry_number}} | {{brand_name}}',
+    body: `
+      <div style="padding: 30px 40px;">
+        <h1 style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 28px; color: #1a1a1a;">Entry Update</h1>
+        <p>Dear {{contact_name}},</p>
+        <p>Thank you for entering <strong>{{entry_title}}</strong> ({{entry_number}}) in the <strong>{{award_name}}</strong>.</p>
+        <p>After careful consideration by our judging panel, we regret to inform you that your entry has not been shortlisted on this occasion.</p>
+        <p>We appreciate the time and effort you put into your submission and encourage you to enter future programmes.</p>
+        <p>Kind regards,<br><strong>{{brand_name}} Team</strong></p>
+      </div>
+    `,
+  },
+
+  WINNER_NOTIFICATION: {
+    subject: "🏆 Congratulations — You're a Winner! | {{brand_name}}",
+    body: `
+      <div style="padding: 30px 40px;">
+        <h1 style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 28px; color: #1a1a1a;">Congratulations — You\'re a Winner!</h1>
+        <p>Dear {{contact_name}},</p>
+        <p>We are thrilled to inform you that your entry <strong>{{entry_title}}</strong> ({{entry_number}}) has been selected as a winner of the <strong>{{award_name}}</strong>.</p>
+        <p>Further details about the awards ceremony and your winner certificate will follow shortly.</p>
+        <p>Congratulations once again!</p>
+        <p>Kind regards,<br><strong>{{brand_name}} Team</strong></p>
       </div>
     `,
   },

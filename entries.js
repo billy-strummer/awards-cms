@@ -762,6 +762,8 @@ const entriesModule = {
     entryCheckboxes.forEach((cb) => {
       cb.checked = checkbox.checked;
     });
+
+    this._updateEntryBulkToolbar();
   },
 
   /**
@@ -779,6 +781,88 @@ const entriesModule = {
     const checkedCheckboxes = document.querySelectorAll('.entry-checkbox:checked');
     document.getElementById('selectAllEntries').checked =
       allCheckboxes.length === checkedCheckboxes.length && allCheckboxes.length > 0;
+
+    this._updateEntryBulkToolbar();
+  },
+
+  /**
+   * Show or hide the inline bulk-action toolbar based on selection state.
+   * @returns {void}
+   */
+  _updateEntryBulkToolbar() {
+    const toolbar = document.getElementById('entryBulkToolbar');
+    if (!toolbar) return;
+    const count = this.selectedEntryIds.size;
+    if (count > 0) {
+      toolbar.classList.remove('d-none');
+      const countEl = toolbar.querySelector('[data-entry-selected-count]');
+      if (countEl) countEl.textContent = count;
+    } else {
+      toolbar.classList.add('d-none');
+    }
+  },
+
+  /**
+   * Bulk-update selected entries to a new status.
+   * @param {string} newStatus - Target status ('shortlisted', 'not_shortlisted', 'under_review')
+   * @returns {Promise<void>}
+   */
+  async bulkUpdateEntryStatus(newStatus) {
+    if (this.selectedEntryIds.size === 0) {
+      utils.showToast('No entries selected', 'warning');
+      return;
+    }
+
+    const ids = Array.from(this.selectedEntryIds);
+    const count = ids.length;
+    const statusLabel =
+      newStatus === 'shortlisted'
+        ? 'Shortlisted'
+        : newStatus === 'not_shortlisted'
+          ? 'Not Shortlisted'
+          : newStatus === 'under_review'
+            ? 'Under Review'
+            : newStatus.charAt(0).toUpperCase() + newStatus.slice(1);
+
+    if (
+      !(await utils.confirmDialog({
+        title: 'Bulk Status Change',
+        message: `Change ${count} entr${count === 1 ? 'y' : 'ies'} to "${statusLabel}"?`,
+        confirmText: 'Update',
+      }))
+    ) {
+      return;
+    }
+
+    try {
+      const updateData = { status: newStatus };
+      if (newStatus === 'shortlisted') {
+        updateData.is_shortlisted = true;
+        updateData.shortlisted_date = new Date().toISOString();
+      }
+
+      await apiClient.updateByFilters('entries', { id: { operator: 'in', value: ids } }, updateData);
+
+      // Log a single activity entry for the bulk change
+      try {
+        await apiClient.insert('activity_log', {
+          action: 'bulk_status_change',
+          description: `Bulk status change: ${count} entr${count === 1 ? 'y' : 'ies'} → ${newStatus}`,
+          entity_type: 'entry',
+          entity_id: ids[0],
+        });
+      } catch (_) {
+        /* non-fatal */
+      }
+
+      utils.showToast(`${count} entr${count === 1 ? 'y' : 'ies'} updated to ${statusLabel}`, 'success');
+      this.selectedEntryIds.clear();
+      await this.loadEntries();
+      await this.loadStats();
+    } catch (error) {
+      console.error('Error bulk updating entries:', error);
+      utils.showToast('Failed to update entries: ' + error.message, 'error');
+    }
   },
 
   /**
@@ -1051,6 +1135,9 @@ const entriesModule = {
               <button type="button" class="btn btn-outline-info me-auto" data-action="entriesModule.openUploadLink" data-id="${entry.entry_number}">
                 <i class="bi bi-paperclip me-2"></i>View Upload Link
               </button>
+              <button type="button" class="btn btn-outline-secondary" data-action="entriesModule.cloneEntryToCategory" data-id="${entry.id}" title="Duplicate this entry to another award category">
+                <i class="bi bi-copy me-1"></i>Duplicate to Category
+              </button>
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
               <button type="button" class="btn btn-primary" data-action="entriesModule.updateEntryStatus" data-id="${entry.id}">
                 <i class="bi bi-check-lg me-1"></i>Save &amp; Confirm
@@ -1144,19 +1231,27 @@ const entriesModule = {
           newStatus === 'under_review' ? 'Under Review' : newStatus.charAt(0).toUpperCase() + newStatus.slice(1);
         utils.showToast(`Entry status updated to ${displayStatus}`, 'success');
 
-        // Send auto email for rejection or shortlisting
+        // Send auto email based on new status
         if (newStatus === 'rejected' && window.entryRevisionModule) {
-          try {
-            await window.entryRevisionModule._sendRejectionEmail(entryId);
-          } catch (emailErr) {
-            console.warn('Rejection email failed (non-fatal):', emailErr.message);
-          }
+          window.entryRevisionModule
+            ._sendRejectionEmail(entryId)
+            .catch((e) => console.warn('Rejection email failed (non-fatal):', e.message));
         } else if (newStatus === 'shortlisted') {
-          try {
-            await this._sendShortlistEmail(entryId);
-          } catch (emailErr) {
-            console.warn('Shortlist email failed (non-fatal):', emailErr.message);
-          }
+          this._sendShortlistEmail(entryId).catch((e) =>
+            console.warn('Shortlist email failed (non-fatal):', e.message)
+          );
+        } else if (newStatus === 'not_shortlisted') {
+          this._sendStatusChangeEmail(entryId, 'NOT_SHORTLISTED').catch((e) =>
+            console.warn('Not-shortlisted email failed (non-fatal):', e.message)
+          );
+        } else if (newStatus === 'winner') {
+          this._sendStatusChangeEmail(entryId, 'WINNER_NOTIFICATION').catch((e) =>
+            console.warn('Winner notification email failed (non-fatal):', e.message)
+          );
+        } else if (newStatus === 'submitted') {
+          this._sendStatusChangeEmail(entryId, 'ENTRY_RECEIVED').catch((e) =>
+            console.warn('Entry received email failed (non-fatal):', e.message)
+          );
         }
 
         // Close modal
@@ -1237,19 +1332,27 @@ const entriesModule = {
 
         utils.showToast('Entry status updated successfully', 'success');
 
-        // Send auto email for rejection or shortlisting
+        // Send auto email based on new status
         if (newStatus === 'rejected' && window.entryRevisionModule) {
-          try {
-            await window.entryRevisionModule._sendRejectionEmail(entryId);
-          } catch (emailErr) {
-            console.warn('Rejection email failed (non-fatal):', emailErr.message);
-          }
+          window.entryRevisionModule
+            ._sendRejectionEmail(entryId)
+            .catch((e) => console.warn('Rejection email failed (non-fatal):', e.message));
         } else if (newStatus === 'shortlisted') {
-          try {
-            await this._sendShortlistEmail(entryId);
-          } catch (emailErr) {
-            console.warn('Shortlist email failed (non-fatal):', emailErr.message);
-          }
+          this._sendShortlistEmail(entryId).catch((e) =>
+            console.warn('Shortlist email failed (non-fatal):', e.message)
+          );
+        } else if (newStatus === 'not_shortlisted') {
+          this._sendStatusChangeEmail(entryId, 'NOT_SHORTLISTED').catch((e) =>
+            console.warn('Not-shortlisted email failed (non-fatal):', e.message)
+          );
+        } else if (newStatus === 'winner') {
+          this._sendStatusChangeEmail(entryId, 'WINNER_NOTIFICATION').catch((e) =>
+            console.warn('Winner notification email failed (non-fatal):', e.message)
+          );
+        } else if (newStatus === 'submitted') {
+          this._sendStatusChangeEmail(entryId, 'ENTRY_RECEIVED').catch((e) =>
+            console.warn('Entry received email failed (non-fatal):', e.message)
+          );
         }
 
         // Close modal
@@ -1349,6 +1452,143 @@ const entriesModule = {
     });
     if (!resp.ok) {
       console.warn('Shortlist email failed:', resp.status);
+    }
+  },
+
+  /**
+   * Send an automated status-change email for an entry.
+   * Fire-and-forget — callers should .catch() any errors.
+   * @param {string} entryId - The entry UUID
+   * @param {string} templateKey - Email automation template key
+   *   ('NOT_SHORTLISTED' | 'WINNER_NOTIFICATION' | 'ENTRY_RECEIVED')
+   * @returns {Promise<void>}
+   */
+  async _sendStatusChangeEmail(entryId, templateKey) {
+    const entryResult = await apiClient.select('entries', {
+      select: 'id, entry_number, entry_title, contact_name, contact_email, company_name, award_id',
+      filters: { id: { eq: entryId } },
+      pageSize: 1,
+    });
+    const entry = entryResult.data?.[0];
+    if (!entry?.contact_email) return;
+
+    let awardName = '';
+    if (entry.award_id) {
+      try {
+        const awardResult = await apiClient.select('awards', {
+          select: 'award_name',
+          filters: { id: { eq: entry.award_id } },
+          pageSize: 1,
+        });
+        awardName = awardResult.data?.[0]?.award_name || '';
+      } catch (_) {
+        /* non-fatal */
+      }
+    }
+
+    const token = await apiClient._getToken();
+    fetch('/api/email-automation', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        action: 'sendTemplate',
+        templateKey,
+        toEmail: entry.contact_email,
+        toName: entry.contact_name,
+        variables: {
+          contact_name: entry.contact_name || 'Entrant',
+          company_name: entry.company_name || '',
+          award_name: awardName,
+          entry_number: entry.entry_number || '',
+          entry_title: entry.entry_title || '',
+        },
+      }),
+    }).catch((e) => console.warn(`Status change email (${templateKey}) failed:`, e.message));
+  },
+
+  /**
+   * L6: Clone an entry to a different award category.
+   * @param {string} entryId - Source entry ID
+   */
+  async cloneEntryToCategory(entryId) {
+    try {
+      // Fetch source entry
+      const result = await apiClient.select('entries', {
+        filters: { id: { operator: 'eq', value: entryId } },
+        pageSize: 1,
+      });
+      const source = result.data && result.data[0];
+      if (!source) {
+        utils.showToast('Entry not found', 'error');
+        return;
+      }
+
+      // Fetch available active awards
+      const awardsResult = await apiClient.select('awards', {
+        select: 'id, award_name',
+        filters: { is_active: { op: 'eq', value: true } },
+        pageSize: 200,
+      });
+      const awards = (awardsResult.data || []).filter((a) => a.id !== source.award_id);
+      if (awards.length === 0) {
+        utils.showToast('No other active award categories available', 'warning');
+        return;
+      }
+
+      const options = awards
+        .map((a) => `<option value="${utils.escapeHtml(a.id)}">${utils.escapeHtml(a.award_name)}</option>`)
+        .join('');
+      const html = `
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Target Award Category</label>
+          <select class="form-select" id="cloneToCategorySelect">
+            <option value="">— Select category —</option>
+            ${options}
+          </select>
+          <div class="form-text">The entry will be duplicated with all fields copied. Status will be reset to <strong>submitted</strong>.</div>
+        </div>`;
+
+      utils.showModal('Duplicate Entry to Another Category', html, {
+        icon: 'bi-copy',
+        confirmLabel: 'Duplicate',
+        onConfirm: async () => {
+          const targetAwardId = document.getElementById('cloneToCategorySelect')?.value;
+          if (!targetAwardId) {
+            utils.showToast('Please select a target category', 'warning');
+            return;
+          }
+          try {
+            const newEntryNumber = (source.entry_number || 'ENTRY') + '-COPY';
+            const {
+              id: _id,
+              created_at: _ca,
+              updated_at: _ua,
+              entry_files: _ef,
+              judge_scores: _js,
+              ...fields
+            } = source;
+            const payload = {
+              ...fields,
+              award_id: targetAwardId,
+              entry_number: newEntryNumber,
+              status: 'submitted',
+              payment_status: 'unpaid',
+            };
+            await apiClient.insert('entries', payload);
+            utils.showToast(`Entry duplicated as ${newEntryNumber}`, 'success');
+            await this.loadEntries();
+          } catch (err) {
+            console.error('cloneEntryToCategory insert error:', err);
+            utils.showToast('Failed to duplicate entry: ' + err.message, 'error');
+          }
+        },
+      });
+    } catch (err) {
+      console.error('cloneEntryToCategory error:', err);
+      utils.showToast('Failed to load entry for duplication: ' + err.message, 'error');
     }
   },
 
@@ -1670,10 +1910,7 @@ const entriesModule = {
     const modalEl = document.getElementById('editEntryModal');
     const currentStatus = modalEl ? modalEl.dataset.currentStatus : null;
     if (currentStatus && !validateEntryTransition(currentStatus, newStatus)) {
-      utils.showToast(
-        `Invalid transition: cannot move from "${currentStatus}" to "${newStatus}"`,
-        'error'
-      );
+      utils.showToast(`Invalid transition: cannot move from "${currentStatus}" to "${newStatus}"`, 'error');
       return;
     }
 
@@ -1729,9 +1966,8 @@ const entriesModule = {
    */
   async viewRevisionHistory(entryId) {
     try {
-      const revModule = typeof entryRevisionModule !== 'undefined'
-        ? entryRevisionModule
-        : ModuleRegistry.get('entryRevisionModule');
+      const revModule =
+        typeof entryRevisionModule !== 'undefined' ? entryRevisionModule : ModuleRegistry.get('entryRevisionModule');
       if (!revModule) {
         utils.showToast('Revision module not available.', 'error');
         return;
@@ -1742,7 +1978,9 @@ const entriesModule = {
       // Remove any existing revision history modal
       document.getElementById('entryRevisionHistoryModal')?.remove();
 
-      document.body.insertAdjacentHTML('beforeend', `
+      document.body.insertAdjacentHTML(
+        'beforeend',
+        `
         <div class="modal fade" id="entryRevisionHistoryModal" tabindex="-1">
           <div class="modal-dialog modal-lg modal-dialog-scrollable">
             <div class="modal-content">
@@ -1759,7 +1997,8 @@ const entriesModule = {
             </div>
           </div>
         </div>
-      `);
+      `
+      );
 
       const revModal = new bootstrap.Modal(document.getElementById('entryRevisionHistoryModal'));
       revModal.show();
@@ -2508,10 +2747,7 @@ const entriesModule = {
     const entry = this.allEntries.find((e) => e.id === entryId);
     const currentStatus = entry ? entry.status : null;
     if (currentStatus && !validateEntryTransition(currentStatus, newStatus)) {
-      utils.showToast(
-        `Invalid transition: cannot move from "${currentStatus}" to "${newStatus}"`,
-        'error'
-      );
+      utils.showToast(`Invalid transition: cannot move from "${currentStatus}" to "${newStatus}"`, 'error');
       // Revert the dropdown to the current status
       const dropdown = document.querySelector(
         `[data-on-change="entriesModule.inlineUpdateEntryStatus"][data-id="${entryId}"]`
@@ -2612,7 +2848,8 @@ const entriesModule = {
 
     const entries = (STATE.allEntries || []).filter((e) => e.average_score != null);
     if (entries.length === 0) {
-      body.innerHTML = '<p class="text-muted text-center py-4">No scored entries yet. Scores appear after judges submit their evaluations.</p>';
+      body.innerHTML =
+        '<p class="text-muted text-center py-4">No scored entries yet. Scores appear after judges submit their evaluations.</p>';
       return;
     }
 
@@ -2634,12 +2871,13 @@ const entriesModule = {
             <thead><tr><th style="width:40px">#</th><th>Entry</th><th>Company</th><th>Score</th><th>Judges</th><th></th></tr></thead><tbody>`;
         catEntries.forEach((e, i) => {
           const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`;
-          const scoreClass = e.average_score >= 80 ? 'text-success fw-bold' : e.average_score >= 60 ? 'text-primary' : '';
+          const scoreClass =
+            e.average_score >= 80 ? 'text-success fw-bold' : e.average_score >= 60 ? 'text-primary' : '';
           const canShortlist = e.status !== 'shortlisted' && e.status !== 'winner';
           html += `<tr>
             <td>${medal}</td>
             <td><small class="text-muted">${e.entry_number || ''}</small></td>
-            <td>${utils.escapeHtml ? utils.escapeHtml(e.company_name || e.organisation_name || '') : (e.company_name || e.organisation_name || '')}</td>
+            <td>${utils.escapeHtml ? utils.escapeHtml(e.company_name || e.organisation_name || '') : e.company_name || e.organisation_name || ''}</td>
             <td class="${scoreClass}">${e.average_score.toFixed(1)}</td>
             <td><small class="text-muted">${e.total_scores || 0} score${(e.total_scores || 0) === 1 ? '' : 's'}</small></td>
             <td>${canShortlist ? `<button class="btn btn-xs btn-sm btn-outline-success py-0 px-1" style="font-size:0.7rem" data-action="entriesModule.promoteToShortlist" data-args="[&quot;${e.id}&quot;]">Shortlist</button>` : `<span class="badge bg-${e.status === 'winner' ? 'warning text-dark' : 'info'}">${e.status}</span>`}</td>

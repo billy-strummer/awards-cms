@@ -270,7 +270,13 @@ describe('Judge Portal - nextEntry', () => {
 
   test('shows completion card when at the last entry', () => {
     judgePortal.assignedEntries = [
-      { id: 'e1', hasScored: true, myScore: { total_score: 30, recommendation: 'shortlist' }, entry_number: 'E001', awards: { award_name: 'Best in Tech' } },
+      {
+        id: 'e1',
+        hasScored: true,
+        myScore: { total_score: 30, recommendation: 'shortlist' },
+        entry_number: 'E001',
+        awards: { award_name: 'Best in Tech' },
+      },
       { id: 'e2', hasScored: false },
     ];
     judgePortal.currentEntry = { id: 'e2' };
@@ -725,63 +731,74 @@ describe('Judge Portal - renderFilteredEntries', () => {
 describe('Judge Portal - checkConflictOfInterest', () => {
   beforeEach(() => {
     judgePortal.currentJudge = { email: 'judge@acme.com', name: 'Judge' };
-    // Reset apiClient.select mock
+    // Reset apiClient.select mock — no hard conflicts by default
     apiClient.select = jest.fn(() => Promise.resolve({ data: [] }));
   });
 
-  test('detects conflict when judge email domain matches company name', async () => {
+  test('returns object with isHardConflict and isSoftConflict properties', async () => {
+    const entry = { id: 'e1', organisations: { company_name: 'Other Corp' } };
+    judgePortal.currentJudge = { email: 'judge@unrelated.com', name: 'Judge' };
+    const result = await judgePortal.checkConflictOfInterest(entry);
+    expect(result).toHaveProperty('isHardConflict');
+    expect(result).toHaveProperty('isSoftConflict');
+  });
+
+  test('detects soft conflict when judge email domain matches company name', async () => {
     const entry = { id: 'e1', organisations: { company_name: 'Acme' } };
     const result = await judgePortal.checkConflictOfInterest(entry);
-    expect(result).toBe(true);
+    expect(result.isSoftConflict).toBe(true);
+    expect(result.isHardConflict).toBe(false);
   });
 
   test('no conflict for generic email domains like gmail.com', async () => {
     judgePortal.currentJudge = { email: 'judge@gmail.com', name: 'Judge' };
     const entry = { id: 'e1', organisations: { company_name: 'Gmail Corp' } };
     const result = await judgePortal.checkConflictOfInterest(entry);
-    expect(result).toBe(false);
+    expect(result.isSoftConflict).toBe(false);
+    expect(result.isHardConflict).toBe(false);
   });
 
   test('no conflict for hotmail.com domain', async () => {
     judgePortal.currentJudge = { email: 'judge@hotmail.com', name: 'Judge' };
     const entry = { id: 'e1', organisations: { company_name: 'Hotmail Corp' } };
     const result = await judgePortal.checkConflictOfInterest(entry);
-    expect(result).toBe(false);
+    expect(result.isSoftConflict).toBe(false);
+    expect(result.isHardConflict).toBe(false);
   });
 
   test('no conflict for yahoo.com domain', async () => {
     judgePortal.currentJudge = { email: 'judge@yahoo.com', name: 'Judge' };
     const entry = { id: 'e1', organisations: { company_name: 'Yahoo Corp' } };
     const result = await judgePortal.checkConflictOfInterest(entry);
-    expect(result).toBe(false);
+    expect(result.isSoftConflict).toBe(false);
+    expect(result.isHardConflict).toBe(false);
   });
 
   test('no conflict for outlook.com domain', async () => {
     judgePortal.currentJudge = { email: 'judge@outlook.com', name: 'Judge' };
     const entry = { id: 'e1', organisations: { company_name: 'Outlook Corp' } };
     const result = await judgePortal.checkConflictOfInterest(entry);
-    expect(result).toBe(false);
+    expect(result.isSoftConflict).toBe(false);
+    expect(result.isHardConflict).toBe(false);
   });
 
-  test('detects conflict from declared conflicts in database', async () => {
+  test('detects hard conflict from judge_conflicts table', async () => {
     judgePortal.currentJudge = { email: 'judge@unrelated.com', name: 'Judge' };
     apiClient.select = jest.fn((table) => {
-      if (table === 'judge_scores') {
-        return Promise.resolve({ data: [{ conflict_declared: true }] });
+      if (table === 'judge_conflicts') {
+        return Promise.resolve({ data: [{ id: 'conflict1' }] });
       }
       return Promise.resolve({ data: [] });
     });
-    const entry = { id: 'e1', organisations: { company_name: 'Other Corp' } };
+    const entry = { id: 'e1', organisation_id: 'org1', organisations: { company_name: 'Other Corp' } };
     const result = await judgePortal.checkConflictOfInterest(entry);
-    expect(result).toBe(true);
+    expect(result.isHardConflict).toBe(true);
+    expect(result.isSoftConflict).toBe(false);
   });
 
-  test('detects conflict when judge is contact for organisation', async () => {
+  test('detects soft conflict when judge is contact for organisation', async () => {
     judgePortal.currentJudge = { email: 'judge@unrelated.com', name: 'Judge' };
     apiClient.select = jest.fn((table) => {
-      if (table === 'judge_scores') {
-        return Promise.resolve({ data: [] });
-      }
       if (table === 'organisation_contacts') {
         return Promise.resolve({ data: [{ email: 'judge@unrelated.com' }] });
       }
@@ -789,23 +806,26 @@ describe('Judge Portal - checkConflictOfInterest', () => {
     });
     const entry = { id: 'e1', organisation_id: 'org1', organisations: { company_name: 'Other Corp' } };
     const result = await judgePortal.checkConflictOfInterest(entry);
-    expect(result).toBe(true);
+    expect(result.isSoftConflict).toBe(true);
+    expect(result.isHardConflict).toBe(false);
   });
 
-  test('returns false when no conflicts found', async () => {
+  test('returns no conflict when no conflicts found', async () => {
     judgePortal.currentJudge = { email: 'judge@unrelated.com', name: 'Judge' };
     apiClient.select = jest.fn(() => Promise.resolve({ data: [] }));
     const entry = { id: 'e1', organisations: { company_name: 'Other Corp' } };
     const result = await judgePortal.checkConflictOfInterest(entry);
-    expect(result).toBe(false);
+    expect(result.isHardConflict).toBe(false);
+    expect(result.isSoftConflict).toBe(false);
   });
 
-  test('returns false on error', async () => {
+  test('returns no conflict on error', async () => {
     judgePortal.currentJudge = { email: 'judge@unrelated.com', name: 'Judge' };
     apiClient.select = jest.fn(() => Promise.reject(new Error('DB error')));
     const entry = { id: 'e1', organisations: { company_name: 'Other Corp' } };
     const result = await judgePortal.checkConflictOfInterest(entry);
-    expect(result).toBe(false);
+    expect(result.isHardConflict).toBe(false);
+    expect(result.isSoftConflict).toBe(false);
   });
 
   test('skips organisation contact check when no organisation_id', async () => {
@@ -813,9 +833,10 @@ describe('Judge Portal - checkConflictOfInterest', () => {
     apiClient.select = jest.fn(() => Promise.resolve({ data: [] }));
     const entry = { id: 'e1', organisations: { company_name: 'Other Corp' } };
     const result = await judgePortal.checkConflictOfInterest(entry);
-    expect(result).toBe(false);
-    // apiClient.select should only be called once (for judge_scores), not for organisation_contacts
-    expect(apiClient.select).toHaveBeenCalledTimes(1);
+    expect(result.isHardConflict).toBe(false);
+    expect(result.isSoftConflict).toBe(false);
+    // No API calls needed when no organisation_id (domain check is done inline)
+    expect(apiClient.select).toHaveBeenCalledTimes(0);
   });
 });
 
@@ -946,17 +967,17 @@ describe('Judge Portal - renderJudgingPanel', () => {
     judgePortal.blindMode = true;
   });
 
-  test('shows conflict warning when conflict detected', () => {
+  test('shows soft conflict warning when soft conflict detected', () => {
     judgePortal.renderJudgingPanel(true);
     const panel = document.getElementById('judgingPanel');
-    expect(panel.innerHTML).toContain('Conflict of Interest Detected');
+    expect(panel.innerHTML).toContain('Possible Conflict of Interest');
     expect(panel.innerHTML).toContain('declareConflict');
   });
 
   test('hides conflict warning when no conflict', () => {
     judgePortal.renderJudgingPanel(false);
     const panel = document.getElementById('judgingPanel');
-    expect(panel.innerHTML).not.toContain('Conflict of Interest Detected');
+    expect(panel.innerHTML).not.toContain('Possible Conflict of Interest');
   });
 
   test('renders supporting information when present', () => {
@@ -1580,7 +1601,8 @@ describe('Judge Portal - showPortalToast container creation', () => {
         document.body.appendChild(container);
       }
       const toast = document.createElement('div');
-      toast.style.cssText = 'background:#28a745;color:#fff;padding:12px 20px;margin-bottom:8px;border-radius:8px;opacity:0;transition:opacity .3s;';
+      toast.style.cssText =
+        'background:#28a745;color:#fff;padding:12px 20px;margin-bottom:8px;border-radius:8px;opacity:0;transition:opacity .3s;';
       toast.textContent = 'Test toast';
       container.appendChild(toast);
       requestAnimationFrame(() => (toast.style.opacity = '1'));

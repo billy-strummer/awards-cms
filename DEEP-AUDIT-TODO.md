@@ -84,19 +84,19 @@ Branch: `claude/continue-cms-build-gknZa`
 - **File:** `judge-portal.js`, `assignments.js`
 - **Impact:** Judges can declare a conflict of interest but are not prevented from scoring the conflicted entry. The flag is never checked at scoring time. Results could be legally challenged.
 - **Fix:** In `judge-portal.js` `selectEntry()`, query for a conflict flag between this judge and the entry's organisation. If a conflict exists, show a blocking message and do not render the scoring form. In `judge-automation.js`, skip conflicted judge/award pairs during auto-assignment.
-- [ ] Implemented
+- [x] Implemented
 
 ### DA-H8 — No automated emails when entry status changes
 - **File:** `entries.js`, `api/email-automation.js`
 - **Impact:** Entries move through statuses (submitted → under_review → shortlisted → not_shortlisted → winner) with zero automated email notifications. Entrants have no visibility into progress; admins must chase manually.
 - **Fix:** After each status update in `entries.js` (and any bulk status change), trigger the email automation API with the appropriate template type: `entry_received`, `entry_shortlisted`, `entry_not_shortlisted`, `winner_notification`. Use the existing `email_templates` + `email_campaigns` system.
-- [ ] Implemented
+- [x] Implemented
 
 ### DA-H9 — No bulk entry approve/reject — must process one at a time
 - **File:** `entries.js`, `index.html`
 - **Impact:** Admins process entries individually. For a programme with 200 entries, status management is a critical bottleneck. At peak submission time this can take hours.
 - **Fix:** Add row checkboxes to the entries table. Show a bulk-action toolbar when rows are selected: "Approve Selected", "Reject Selected", "Move to Shortlist". Wire to a batch `apiClient.update()` call and a single audit log entry.
-- [ ] Implemented
+- [x] Implemented
 
 ### DA-H10 — `app.switchTab()` called but not implemented — season management link dead
 - **File:** `index.html:7715`, `app.js`

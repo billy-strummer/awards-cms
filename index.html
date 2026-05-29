@@ -2703,6 +2703,43 @@
 
           <div id="entriesActiveFilters" class="mb-1"></div>
 
+          <!-- Bulk Action Toolbar (shown when entries are selected) -->
+          <div id="entryBulkToolbar" class="d-none mb-2">
+            <div class="card border-warning shadow-sm">
+              <div class="card-body py-2 px-3 d-flex align-items-center gap-2 flex-wrap">
+                <span class="fw-semibold text-warning-emphasis">
+                  <i class="bi bi-check-square me-1"></i>
+                  <span data-entry-selected-count>0</span> selected
+                </span>
+                <div class="vr mx-1"></div>
+                <button class="btn btn-sm btn-success"
+                        data-action="entriesModule.bulkUpdateEntryStatus"
+                        data-args='["shortlisted"]'
+                        title="Move selected entries to Shortlisted">
+                  <i class="bi bi-check-circle me-1"></i>Approve (Shortlist)
+                </button>
+                <button class="btn btn-sm btn-danger"
+                        data-action="entriesModule.bulkUpdateEntryStatus"
+                        data-args='["not_shortlisted"]'
+                        title="Mark selected entries as Not Shortlisted">
+                  <i class="bi bi-x-circle me-1"></i>Reject
+                </button>
+                <button class="btn btn-sm btn-warning"
+                        data-action="entriesModule.bulkUpdateEntryStatus"
+                        data-args='["under_review"]'
+                        title="Move selected entries to Under Review">
+                  <i class="bi bi-hourglass-split me-1"></i>Set Under Review
+                </button>
+                <div class="vr mx-1"></div>
+                <button class="btn btn-sm btn-outline-secondary"
+                        data-action="entriesModule.bulkActions"
+                        title="More bulk actions...">
+                  <i class="bi bi-list-check me-1"></i>More Actions
+                </button>
+              </div>
+            </div>
+          </div>
+
           <!-- Score Leaderboard (PA-M4) -->
           <div id="scoreLeaderboardSection" class="d-none mb-3">
             <div class="card border-primary">
@@ -3983,6 +4020,12 @@
               </button>
               <button class="btn btn-sm btn-outline-secondary" data-action="settingsModule.exportFullBackup" title="Complete data snapshot across all tables — use for migration or archiving. JSON format." aria-label="Complete data snapshot across all tables — use for migration or archiving. JSON format.">
                 <i class="bi bi-download me-1"></i>Full Backup (JSON)
+              </button>
+              <button class="btn btn-sm btn-outline-info" data-action="reportingModule.exportPaymentReconciliation" title="Invoice vs payment reconciliation CSV for accounting — Invoice #, Organisation, Amount, Status, Due Date, Paid Date, Days Outstanding" aria-label="Payment Reconciliation CSV">
+                <i class="bi bi-receipt me-1"></i>Payment Reconciliation (CSV)
+              </button>
+              <button class="btn btn-sm btn-outline-warning" data-action="reportingModule.exportJudgeScorecard" title="Judge scorecard PDF grouped by award category — all scores, average, outlier flags" aria-label="Export Judge Scorecard PDF">
+                <i class="bi bi-file-earmark-pdf me-1"></i>Export Judge Scorecard (PDF)
               </button>
             </div>
           </div>
@@ -8662,6 +8705,7 @@
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end">
                   <li><a class="dropdown-item" href="#" data-action="eventsModule.exportAttendees"><i class="bi bi-file-earmark-spreadsheet text-success me-2"></i>Export Attendees CSV</a></li>
+                  <li><a class="dropdown-item" href="#" data-action="eventsModule.exportAttendeeList" title="Full attendee list with dietary, accessibility and seating data"><i class="bi bi-person-lines-fill text-info me-2"></i>Download Attendee List (Full)</a></li>
                   <li><a class="dropdown-item" href="#" data-action="eventsModule.exportDietarySummary"><i class="bi bi-egg-fried text-warning me-2"></i>Export Dietary Report</a></li>
                   <li><hr class="dropdown-divider"></li>
                   <li><a class="dropdown-item" href="#" data-action="eventsModule.generateNameBadges"><i class="bi bi-person-badge text-primary me-2"></i>Name Badges PDF</a></li>
@@ -8675,6 +8719,9 @@
               </button>
               <button class="btn btn-outline-secondary btn-sm" data-action="eventsModule.sendBulkInvites" title="Send invitation email to all guests" aria-label="Send invitation email to all guests">
                 <i class="bi bi-envelope me-1"></i>Send Invites
+              </button>
+              <button class="btn btn-outline-primary btn-sm" data-action="eventsModule.showGroupBookingModal" title="Bulk-add multiple attendees for an organisation" aria-label="Group booking">
+                <i class="bi bi-people me-1"></i>Group Booking
               </button>
               <button class="btn btn-primary btn-sm" data-action="eventsModule.openAddAttendeeForm">
                 <i class="bi bi-person-plus me-1"></i>Add Attendee

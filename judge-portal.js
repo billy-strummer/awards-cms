@@ -431,13 +431,39 @@ const judgePortal = {
     await this._loadScoringCriteriaForEntry(this.currentEntry);
 
     // Check for conflict of interest
-    const hasConflict = await this.checkConflictOfInterest(this.currentEntry);
+    const conflictResult = await this.checkConflictOfInterest(this.currentEntry);
 
     // Load existing score if any
     this.currentScore = this.currentEntry.myScore;
 
-    // Render judging panel
-    this.renderJudgingPanel(hasConflict);
+    if (conflictResult.isHardConflict) {
+      // Hard conflict: show blocking message and do NOT render the scoring form
+      const panel = document.getElementById('judgingPanel');
+      const companyDisplay = this.getCompanyDisplay(this.currentEntry);
+      panel.innerHTML = `
+        <div class="d-flex justify-content-between align-items-start mb-4">
+          <div>
+            <h3 class="mb-1">${esc(this.currentEntry.entry_title)}</h3>
+            <p class="text-muted mb-0">
+              ${companyDisplay}
+              | ${esc(this.currentEntry.awards?.award_name || '')}
+            </p>
+          </div>
+          <span class="badge bg-primary">${esc(this.currentEntry.entry_number)}</span>
+        </div>
+        <div class="alert alert-danger" role="alert">
+          <h5 class="alert-heading"><i class="bi bi-ban me-2"></i>Conflict of Interest — Scoring Blocked</h5>
+          <p class="mb-0">You have declared a conflict of interest for this entry. You cannot score this entry.</p>
+          <hr>
+          <p class="mb-0 small">If you believe this is an error, please contact the awards administrator.</p>
+        </div>
+      `;
+      this.renderEntriesList();
+      return;
+    }
+
+    // Render judging panel (passing soft-conflict flag for advisory warning)
+    this.renderJudgingPanel(conflictResult.isSoftConflict);
 
     // Update entries list to show active
     this.renderEntriesList();
@@ -497,17 +523,42 @@ const judgePortal = {
   },
 
   /**
-   * Check for conflict of interest between judge and entry
+   * Check for conflict of interest between judge and entry.
    * @param {Object} entry - The entry to check against
-   * @returns {Promise<boolean>} Whether a conflict was detected
+   * @returns {Promise<{isHardConflict: boolean, isSoftConflict: boolean}>}
+   *   isHardConflict: judge_conflicts table has a row matching this judge+org (blocking)
+   *   isSoftConflict: email domain match or judge is a contact for the org (advisory only)
    */
   async checkConflictOfInterest(entry) {
     try {
       const judgeEmail = this.currentJudge.email;
       const judgeDomain = judgeEmail.split('@')[1]?.toLowerCase();
       const companyName = (entry.organisations?.company_name || '').toLowerCase();
+      const organisationId = entry.organisation_id;
 
-      // Check 1: Judge's email domain matches company website/email domain
+      // Hard conflict check: query the judge_conflicts table for this judge+org combination
+      let isHardConflict = false;
+      if (organisationId) {
+        try {
+          const hardConflictResult = await apiClient.select('judge_conflicts', {
+            select: 'id',
+            filters: { judge_email: judgeEmail, org_id: organisationId },
+            pageSize: 1,
+          });
+          if (hardConflictResult.data && hardConflictResult.data.length > 0) {
+            isHardConflict = true;
+          }
+        } catch (_) {
+          /* non-fatal — fall through to soft checks */
+        }
+      }
+
+      if (isHardConflict) {
+        return { isHardConflict: true, isSoftConflict: false };
+      }
+
+      // Soft conflict check 1: judge's email domain matches company name
+      let isSoftConflict = false;
       if (
         judgeDomain &&
         judgeDomain !== 'gmail.com' &&
@@ -517,47 +568,39 @@ const judgePortal = {
       ) {
         const domainParts = judgeDomain.replace('.co.uk', '').replace('.com', '').replace('.org', '');
         if (companyName.includes(domainParts) || domainParts.includes(companyName.replace(/\s+/g, ''))) {
-          return true;
+          isSoftConflict = true;
         }
       }
 
-      // Check 2: Check for declared conflicts in the database
-      const conflictResult = await apiClient.select('judge_scores', {
-        select: 'conflict_declared',
-        filters: { entry_id: entry.id, judge_email: judgeEmail, conflict_declared: true },
-        pageSize: 1,
-      });
-
-      if (conflictResult.data && conflictResult.data.length > 0) {
-        return true;
-      }
-
-      // Check 3: Check if judge is listed as a contact for the organisation
-      if (entry.organisation_id) {
-        const contactResult = await apiClient.select('organisation_contacts', {
-          select: 'email',
-          filters: { organisation_id: entry.organisation_id, email: judgeEmail },
-          pageSize: 1,
-        });
-
-        if (contactResult.data && contactResult.data.length > 0) {
-          return true;
+      // Soft conflict check 2: judge is listed as a contact for the organisation
+      if (!isSoftConflict && organisationId) {
+        try {
+          const contactResult = await apiClient.select('organisation_contacts', {
+            select: 'email',
+            filters: { organisation_id: organisationId, email: judgeEmail },
+            pageSize: 1,
+          });
+          if (contactResult.data && contactResult.data.length > 0) {
+            isSoftConflict = true;
+          }
+        } catch (_) {
+          /* non-fatal */
         }
       }
 
-      return false;
+      return { isHardConflict: false, isSoftConflict };
     } catch (error) {
       console.warn('Error checking conflict of interest:', error);
-      return false;
+      return { isHardConflict: false, isSoftConflict: false };
     }
   },
 
   /**
    * Render the judging panel for the selected entry
-   * @param {boolean} hasConflict - Whether a conflict of interest was detected
+   * @param {boolean} hasSoftConflict - Whether a soft conflict of interest was detected (advisory warning only)
    * @returns {void}
    */
-  renderJudgingPanel(hasConflict) {
+  renderJudgingPanel(hasSoftConflict) {
     const panel = document.getElementById('judgingPanel');
 
     const companyDisplay = this.getCompanyDisplay(this.currentEntry);
@@ -579,11 +622,11 @@ const judgePortal = {
       </div>
 
       ${
-        hasConflict
+        hasSoftConflict
           ? `
-        <div class="conflict-warning">
-          <h5><i class="bi bi-exclamation-triangle me-2"></i>Conflict of Interest Detected</h5>
-          <p class="mb-2">You may have a conflict of interest with this entry.</p>
+        <div class="conflict-warning alert alert-warning">
+          <h5><i class="bi bi-exclamation-triangle me-2"></i>Possible Conflict of Interest</h5>
+          <p class="mb-2">You may have a conflict of interest with this entry. You may still score this entry, but please consider whether you can judge it impartially.</p>
           <div class="form-check">
             <input class="form-check-input" type="checkbox" id="declareConflict">
             <label class="form-check-label" for="declareConflict">

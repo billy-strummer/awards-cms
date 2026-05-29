@@ -16,7 +16,11 @@
 
 ## ACTIVE WORK: Professional Awards Company Audit
 
-> **CLAUDE: A comprehensive 5-agent audit was run on 2026-05-22 evaluating the CMS as a brand-new user at a professional awards company. All findings are tracked at `PROFESSIONAL-AUDIT-TODO.md` with 2 Critical, 6 High, 7 Medium, and 5 Low items. Read this file and work through items in order (PA-C1 → PA-C2 → PA-H1 → … → PA-L5). Mark each `[x]` when committed and pushed. This is the HIGHEST PRIORITY active work — complete before returning to other audits.**
+> **CLAUDE: A comprehensive 5-agent audit was run on 2026-05-22. All 20 items are COMPLETE — see `PROFESSIONAL-AUDIT-TODO.md` for the full record.**
+
+## ACTIVE WORK: Deep System Audit (HIGHEST PRIORITY)
+
+> **CLAUDE: A 4-agent deep audit (Security, UX/Workflows, Code Quality, Feature Completeness) was run on 2026-05-29. All findings are tracked at `DEEP-AUDIT-TODO.md` with 4 Critical, 10 High, 10 Medium, and 10 Low items. Read this file and work through items in order (DA-C1 → DA-C2 → … → DA-L10). Mark each `[x]` when committed and pushed. This is the HIGHEST PRIORITY active work.**
 
 ## Project Overview
 

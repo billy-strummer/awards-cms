@@ -333,6 +333,36 @@ async function sendVoteConfirmation({ voter_email, company_name, award_name, ent
   }
 }
 
+async function loadWinners() {
+  const now = new Date().toISOString();
+  const { data, error } = await supabase
+    .from('winners')
+    .select('*, award_years(award_name, award_category, year), organisations(company_name, logo_url)')
+    .eq('is_published', true)
+    .or(`embargo_until.is.null,embargo_until.lte.${now}`);
+
+  if (error) throw error;
+  const winners = data || [];
+
+  // Pre-group by category for the public winners page
+  const grouped = {};
+  winners.forEach((w) => {
+    const cat = w.award_years?.award_category || w.award_years?.award_name || w.award_name || 'Uncategorised';
+    if (!grouped[cat]) grouped[cat] = [];
+    grouped[cat].push({
+      id: w.id,
+      placement: w.placement,
+      company_name: w.organisations?.company_name || w.company_name || '',
+      logo_url: w.organisations?.logo_url || null,
+      award_name: w.award_years?.award_name || w.award_name || '',
+      award_category: cat,
+      year: w.award_years?.year || null,
+    });
+  });
+
+  return { winners, grouped };
+}
+
 // ────────────────────────────────────────────
 // Action dispatch map
 // ────────────────────────────────────────────
@@ -346,6 +376,7 @@ const ACTIONS = {
   submit_vote: submitVote,
   load_entry: loadEntry,
   send_vote_confirmation: sendVoteConfirmation,
+  load_winners: loadWinners,
 };
 
 // ────────────────────────────────────────────

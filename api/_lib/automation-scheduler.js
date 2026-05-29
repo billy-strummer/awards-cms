@@ -423,6 +423,8 @@ async function checkDeadlineReminders() {
     const intervals = [7, 3, 1];
     const appUrl = process.env.APP_URL || 'https://admin.britishtradeawards.com';
 
+    const todayMidnight = new Date(now.toISOString().split('T')[0] + 'T00:00:00.000Z').toISOString();
+
     for (const daysLeft of intervals) {
       const target = new Date(now);
       target.setDate(target.getDate() + daysLeft);
@@ -444,14 +446,22 @@ async function checkDeadlineReminders() {
 
         for (const entry of entries || []) {
           if (!entry.contact_email) continue;
+          // Dedup: skip if already sent today
+          const { count: alreadySent } = await supabase
+            .from('email_log')
+            .select('id', { count: 'exact', head: true })
+            .eq('template_key', 'ENTRY_DEADLINE_REMINDER')
+            .eq('recipient_email', entry.contact_email)
+            .gte('sent_at', todayMidnight);
+          if ((alreadySent || 0) > 0) continue;
           try {
             await fetch(`${appUrl}/api/email-automation`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                action: 'send_template',
-                template_type: 'deadline_reminder',
-                recipient_email: entry.contact_email,
+                action: 'sendTemplate',
+                templateKey: 'ENTRY_DEADLINE_REMINDER',
+                toEmail: entry.contact_email,
                 variables: {
                   contact_name: entry.contact_name || 'Entrant',
                   award_name: award.name || 'Award',
@@ -487,14 +497,22 @@ async function checkDeadlineReminders() {
         const judgeEmails = [...new Set((assignments || []).map((a) => a.judge_email).filter(Boolean))];
 
         for (const judgeEmail of judgeEmails) {
+          // Dedup: skip if already sent today
+          const { count: alreadySentJudge } = await supabase
+            .from('email_log')
+            .select('id', { count: 'exact', head: true })
+            .eq('template_key', 'DEADLINE_REMINDER')
+            .eq('recipient_email', judgeEmail)
+            .gte('sent_at', todayMidnight);
+          if ((alreadySentJudge || 0) > 0) continue;
           try {
             await fetch(`${appUrl}/api/email-automation`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                action: 'send_template',
-                template_type: 'deadline_reminder',
-                recipient_email: judgeEmail,
+                action: 'sendTemplate',
+                templateKey: 'DEADLINE_REMINDER',
+                toEmail: judgeEmail,
                 variables: {
                   contact_name: 'Judge',
                   award_name: award.award_name || 'Award',

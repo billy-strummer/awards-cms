@@ -1629,11 +1629,6 @@ module.exports = async function handler(req, res) {
     return res.status(200).json(result);
   } catch (error) {
     console.error('[data-proxy] Error:', error.message, error.details || '', error.hint || '');
-    return res.status(500).json({
-      error: 'Internal server error',
-      message: error.message || 'Unknown error',
-      hint: error.hint || undefined,
-      details: error.details || undefined,
-    });
+    return res.status(500).json({ error: 'Internal server error' });
   }
 };

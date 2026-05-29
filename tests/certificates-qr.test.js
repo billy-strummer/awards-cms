@@ -704,9 +704,9 @@ describe('Certificates & QR Module', () => {
 
   describe('verifyQRCode', () => {
     test('successfully verifies and checks in attendee', async () => {
-      const qrData = JSON.stringify({ id: 'att-verify-1' });
+      const qrData = JSON.stringify({ id: '00000000-0000-0000-0000-000000000001' });
       const attendee = {
-        id: 'att-verify-1',
+        id: '00000000-0000-0000-0000-000000000001',
         checked_in: false,
         contacts: { full_name: 'Verified Person' },
         events: { event_name: 'Gala' },
@@ -725,9 +725,9 @@ describe('Certificates & QR Module', () => {
     });
 
     test('returns invalid for already checked in attendee', async () => {
-      const qrData = JSON.stringify({ id: 'att-verify-2' });
+      const qrData = JSON.stringify({ id: '00000000-0000-0000-0000-000000000002' });
       const attendee = {
-        id: 'att-verify-2',
+        id: '00000000-0000-0000-0000-000000000002',
         checked_in: true,
         contacts: { full_name: 'Already In' },
         events: { event_name: 'Gala' },
@@ -751,7 +751,7 @@ describe('Certificates & QR Module', () => {
     });
 
     test('returns invalid when attendee not found in DB', async () => {
-      const qrData = JSON.stringify({ id: 'nonexistent' });
+      const qrData = JSON.stringify({ id: '00000000-0000-0000-0000-000000000003' });
       mockFromResults.push(chainable({ data: null, error: new Error('Not found') }));
 
       const result = await certificates.verifyQRCode(qrData);
@@ -760,8 +760,15 @@ describe('Certificates & QR Module', () => {
       expect(result.message).toBe('Invalid QR code');
     });
 
+    test('returns invalid for invalid UUID in QR data', async () => {
+      const qrData = JSON.stringify({ id: 'not-a-uuid' });
+      const result = await certificates.verifyQRCode(qrData);
+      expect(result.valid).toBe(false);
+      expect(result.message).toBe('Invalid QR code format');
+    });
+
     test('returns invalid when attendee is null with no error', async () => {
-      const qrData = JSON.stringify({ id: 'ghost-attendee' });
+      const qrData = JSON.stringify({ id: '00000000-0000-0000-0000-000000000004' });
       mockFromResults.push(chainable({ data: null, error: null }));
 
       const result = await certificates.verifyQRCode(qrData);
@@ -975,9 +982,9 @@ describe('Certificates & QR Module', () => {
 
   describe('verifyQREndpoint', () => {
     test('returns verification result for valid QR', async () => {
-      const qrData = JSON.stringify({ id: 'verify-ep-1' });
+      const qrData = JSON.stringify({ id: '00000000-0000-0000-0000-000000000005' });
       const attendee = {
-        id: 'verify-ep-1',
+        id: '00000000-0000-0000-0000-000000000005',
         checked_in: false,
         contacts: { full_name: 'Person' },
         events: { event_name: 'Gala' },

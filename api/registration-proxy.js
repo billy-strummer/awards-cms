@@ -111,7 +111,8 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const ip = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
+  const rawIp = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
+  const ip = rawIp.split(',').pop().trim() || 'unknown';
   if (!checkRateLimit(ip)) {
     return res.status(429).json({ error: 'Too many requests. Please try again later.' });
   }

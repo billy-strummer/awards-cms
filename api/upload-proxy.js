@@ -61,30 +61,12 @@ const ALLOWED_EXTENSIONS = new Set([
 const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024; // 25 MB
 
 // ────────────────────────────────────────────
-// MIME type validation via magic bytes
+// MIME type validation (extension vs declared MIME)
+// Magic-byte validation is delegated to Supabase Storage server-side policies.
 // ────────────────────────────────────────────
 
 /**
- * Known magic byte signatures mapped to canonical MIME types.
- * Each entry contains: bytes (Buffer), offset (start position), and mime.
- */
-const MAGIC_SIGNATURES = [
-  { bytes: Buffer.from([0x25, 0x50, 0x44, 0x46]), offset: 0, mime: 'application/pdf' }, // PDF: %PDF
-  { bytes: Buffer.from([0xff, 0xd8, 0xff]), offset: 0, mime: 'image/jpeg' }, // JPEG
-  { bytes: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), offset: 0, mime: 'image/png' }, // PNG
-  { bytes: Buffer.from([0x47, 0x49, 0x46, 0x38]), offset: 0, mime: 'image/gif' }, // GIF87a or GIF89a
-  { bytes: Buffer.from([0x57, 0x45, 0x42, 0x50]), offset: 8, mime: 'image/webp' }, // WebP (RIFF....WEBP)
-  { bytes: Buffer.from([0x50, 0x4b, 0x03, 0x04]), offset: 0, mime: 'application/zip' }, // ZIP / DOCX / XLSX / PPTX / ODP
-  { bytes: Buffer.from([0x49, 0x44, 0x33]), offset: 0, mime: 'audio/mpeg' }, // MP3 (ID3 tag)
-  { bytes: Buffer.from([0xff, 0xfb]), offset: 0, mime: 'audio/mpeg' }, // MP3 (sync bits)
-  { bytes: Buffer.from([0xff, 0xf3]), offset: 0, mime: 'audio/mpeg' }, // MP3 (sync bits)
-  { bytes: Buffer.from([0xff, 0xf2]), offset: 0, mime: 'audio/mpeg' }, // MP3 (sync bits)
-  { bytes: Buffer.from([0x52, 0x49, 0x46, 0x46]), offset: 0, mime: 'audio/wav' }, // WAV (RIFF)
-];
-
-/**
- * Extensions that cannot be reliably identified by magic bytes
- * (plain-text or XML-based formats). Skip magic-byte check for these.
+ * Extensions where client-declared MIME cannot be reliably validated by extension alone.
  */
 const SKIP_MAGIC_CHECK_EXTENSIONS = new Set(['csv', 'txt', 'rtf', 'svg', 'odt', 'ods', 'doc']);
 
@@ -114,25 +96,6 @@ const EXT_TO_VALID_MIMES = {
   ppt: new Set(['application/vnd.ms-powerpoint']),
   xls: new Set(['application/vnd.ms-excel']),
 };
-
-/**
- * Detect the MIME type of a file buffer by inspecting its magic bytes.
- * Returns the detected MIME type string, or null if unrecognised.
- *
- * @param {Buffer} buffer - The file buffer (first 16+ bytes suffice).
- * @returns {string|null}
- */
-function detectMimeType(buffer) {
-  if (!Buffer.isBuffer(buffer) || buffer.length === 0) return null;
-  for (const sig of MAGIC_SIGNATURES) {
-    const end = sig.offset + sig.bytes.length;
-    if (buffer.length < end) continue;
-    if (buffer.slice(sig.offset, end).equals(sig.bytes)) {
-      return sig.mime;
-    }
-  }
-  return null;
-}
 
 /**
  * Validate that the client-declared MIME type is consistent with the file extension.
@@ -232,7 +195,8 @@ module.exports = async function handler(req, res) {
   setCors(res);
   if (req.method === 'OPTIONS') return res.status(204).end();
 
-  const ip = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
+  const rawIp = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
+  const ip = rawIp.split(',').pop().trim() || 'unknown';
   if (!checkRateLimit(ip)) {
     return res.status(429).json({ error: 'Too many requests. Please try again later.' });
   }

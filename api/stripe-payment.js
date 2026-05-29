@@ -29,7 +29,7 @@ const supabaseAuth = createClient(
   process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_KEY
 );
 
-const ROLE_HIERARCHY = ['viewer', 'editor', 'manager', 'admin', 'super_admin'];
+const ROLE_HIERARCHY = ['viewer', 'judge', 'marketing', 'finance', 'editor', 'admin', 'super_admin'];
 function hasMinimumRole(userRole, requiredRole) {
   const a = ROLE_HIERARCHY.indexOf((userRole || '').toLowerCase());
   const b = ROLE_HIERARCHY.indexOf(requiredRole);
@@ -959,18 +959,44 @@ async function createEventCheckout(req, res) {
       return res.status(404).json({ error: 'Event not found' });
     }
 
-    // Build line items from tickets
-    const line_items = tickets.map((t) => ({
-      price_data: {
-        currency: 'gbp',
-        product_data: {
-          name: t.name || `Event Ticket - ${event.event_name}`,
-          description: t.description || `${event.event_name} - ${event.event_date || ''}`,
+    // Fetch ticket type prices from DB — never trust client-supplied prices
+    const ticketTypeIds = tickets.map((t) => t.ticket_type_id).filter(Boolean);
+    if (ticketTypeIds.length !== tickets.length) {
+      return res.status(400).json({ error: 'Each ticket must include a ticket_type_id' });
+    }
+
+    const { data: ticketTypes, error: ttError } = await supabase
+      .from('event_ticket_types')
+      .select('id, name, price, description')
+      .eq('event_id', eventId)
+      .in('id', ticketTypeIds);
+
+    if (ttError || !ticketTypes) {
+      return res.status(500).json({ error: 'Failed to load ticket pricing' });
+    }
+
+    const ticketTypeMap = Object.fromEntries(ticketTypes.map((tt) => [tt.id, tt]));
+
+    for (const t of tickets) {
+      if (!ticketTypeMap[t.ticket_type_id]) {
+        return res.status(400).json({ error: `Invalid ticket_type_id: ${t.ticket_type_id}` });
+      }
+    }
+
+    const line_items = tickets.map((t) => {
+      const tt = ticketTypeMap[t.ticket_type_id];
+      return {
+        price_data: {
+          currency: 'gbp',
+          product_data: {
+            name: tt.name || `Event Ticket - ${event.event_name}`,
+            description: tt.description || `${event.event_name} - ${event.event_date || ''}`,
+          },
+          unit_amount: Math.round((tt.price || 0) * 100),
         },
-        unit_amount: Math.round((t.price || 0) * 100),
-      },
-      quantity: t.quantity || 1,
-    }));
+        quantity: t.quantity || 1,
+      };
+    });
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],

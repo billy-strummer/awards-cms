@@ -8,6 +8,19 @@
 const { createClient } = require('@supabase/supabase-js');
 const { vetCompany, vetCompanies } = require('./_lib/ai-vetting-proxy');
 
+const ROLE_HIERARCHY = ['viewer', 'judge', 'marketing', 'finance', 'editor', 'admin', 'super_admin'];
+
+function hasMinimumRole(userRole, requiredRole) {
+  const a = ROLE_HIERARCHY.indexOf((userRole || '').toLowerCase());
+  const b = ROLE_HIERARCHY.indexOf(requiredRole);
+  return a >= 0 && b >= 0 && a >= b;
+}
+
+async function getUserRole(supabaseService, email) {
+  const { data } = await supabaseService.from('user_roles').select('role').eq('email', email).limit(1).maybeSingle();
+  return data?.role || 'viewer';
+}
+
 /**
  * Vercel serverless handler for AI vetting operations.
  * Supports: vet-single (vet one company), vet-batch (vet multiple companies)
@@ -34,6 +47,12 @@ module.exports = async function handler(req, res) {
   } = await supabaseAuth.auth.getUser(token);
   if (authError || !user) {
     return res.status(401).json({ error: 'Invalid or expired token' });
+  }
+
+  const supabaseService = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+  const role = await getUserRole(supabaseService, user.email);
+  if (!hasMinimumRole(role, 'editor')) {
+    return res.status(403).json({ error: 'Insufficient permissions for AI vetting' });
   }
 
   const { action } = req.body;

@@ -857,6 +857,20 @@ const entriesModule = {
 
       utils.showToast(`${count} entr${count === 1 ? 'y' : 'ies'} updated to ${statusLabel}`, 'success');
       this.selectedEntryIds.clear();
+
+      // Fire status-change notification emails (non-blocking)
+      if (['shortlisted', 'not_shortlisted', 'winner', 'received'].includes(newStatus)) {
+        const emailFn =
+          newStatus === 'shortlisted'
+            ? (id) => this._sendShortlistEmail(id)
+            : newStatus === 'not_shortlisted'
+              ? (id) => this._sendStatusChangeEmail(id, 'NOT_SHORTLISTED')
+              : newStatus === 'winner'
+                ? (id) => this._sendStatusChangeEmail(id, 'WINNER_NOTIFICATION')
+                : (id) => this._sendStatusChangeEmail(id, 'ENTRY_RECEIVED');
+        Promise.allSettled(ids.map(emailFn.bind(this))).catch(() => {});
+      }
+
       await this.loadEntries();
       await this.loadStats();
     } catch (error) {
@@ -1561,7 +1575,8 @@ const entriesModule = {
             return;
           }
           try {
-            const newEntryNumber = (source.entry_number || 'ENTRY') + '-COPY';
+            const newEntryNumber =
+              (source.entry_number || 'ENTRY') + '-COPY-' + Math.random().toString(36).slice(2, 6).toUpperCase();
             const {
               id: _id,
               created_at: _ca,

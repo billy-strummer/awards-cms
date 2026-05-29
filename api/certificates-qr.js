@@ -578,9 +578,15 @@ async function generateAllEventBadges(eventId) {
  * @param {string} qrData - The JSON string from the scanned QR code.
  * @returns {Promise<{valid: boolean, message: string, attendee?: Object, error?: string}>} Verification result.
  */
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 async function verifyQRCode(qrData) {
   try {
     const data = JSON.parse(qrData);
+
+    if (!data.id || !UUID_PATTERN.test(data.id)) {
+      return { valid: false, message: 'Invalid QR code format' };
+    }
 
     const { data: attendee, error } = await supabase
       .from('event_attendees')
@@ -623,7 +629,7 @@ async function verifyQRCode(qrData) {
     return {
       valid: false,
       message: 'Invalid QR code',
-      error: error.message,
+      error: 'QR verification error',
     };
   }
 }
@@ -772,10 +778,47 @@ module.exports = async function handler(req, res) {
       return verifyQREndpoint(req, res);
     case 'generate-all-badges':
       return generateAllBadgesEndpoint(req, res);
+    case 'generate_and_email': {
+      const { winner_id, template_id } = req.body;
+      if (!winner_id) return res.status(400).json({ error: 'Missing winner_id' });
+      try {
+        const cert = await generateWinnerCertificate(winner_id, template_id);
+        // Look up winner email from organisations join
+        const { data: winnerRow } = await supabase
+          .from('winners')
+          .select('winner_name, organisations(company_name, email)')
+          .eq('id', winner_id)
+          .single();
+        const recipientEmail = winnerRow?.organisations?.email;
+        if (recipientEmail) {
+          const appUrl = process.env.APP_URL || '';
+          await fetch(`${appUrl}/api/email-automation`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'sendTemplate',
+              templateKey: 'WINNER_ANNOUNCEMENT',
+              toEmail: recipientEmail,
+              variables: {
+                company_name: winnerRow?.organisations?.company_name || '',
+                certificate_url: cert.publicUrl,
+              },
+            }),
+          });
+        } else {
+          console.warn(`[certificates-qr] generate_and_email: no recipient email for winner ${winner_id}`);
+        }
+        await supabase.from('winners').update({ certificate_sent_at: new Date().toISOString() }).eq('id', winner_id);
+        return res.json({ success: true, certificate_url: cert.publicUrl });
+      } catch (err) {
+        console.error('[certificates-qr] generate_and_email error:', err.message);
+        return res.status(500).json({ error: 'Certificate generation failed' });
+      }
+    }
     default:
       return res.status(400).json({
         error:
-          'Invalid action. Use: generate-certificate, generate-bulk-certificates, preview-certificate, generate-qr-ticket, generate-badge, generate-all-badges, verify-qr',
+          'Invalid action. Use: generate-certificate, generate-bulk-certificates, preview-certificate, generate-qr-ticket, generate-badge, generate-all-badges, verify-qr, generate_and_email',
       });
   }
 };

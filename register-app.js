@@ -249,10 +249,10 @@ function renderOrderSummary() {
 
   document.getElementById('orderSummary').innerHTML = `
     <div class="d-flex justify-content-between mb-2">
-      <span>${selectedPackage.name}</span>
+      <span>${escapeHtml(selectedPackage.name)}</span>
       <span>${basePrice > 0 ? '£' + total.toFixed(2) : 'Free'}</span>
     </div>
-    <small class="text-muted">${guestNames.length} guest(s): ${guestNames.join(', ')}</small>
+    <small class="text-muted">${guestNames.length} guest(s): ${guestNames.map(escapeHtml).join(', ')}</small>
   `;
   document.getElementById('orderTotal').textContent = basePrice > 0 ? `£${total.toFixed(2)}` : 'Free';
   document.getElementById('submitBtnText').textContent =

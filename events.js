@@ -1360,6 +1360,19 @@ const eventsModule = {
           : [];
 
         const existingAttendees = await this.getAttendees(resolvedEventId);
+
+        const eventMeta = STATE.allEvents?.find((e) => e.id === resolvedEventId);
+        const capacity = eventMeta?.capacity || 0;
+        if (capacity > 0 && existingAttendees.length + seats > capacity) {
+          const remaining = Math.max(0, capacity - existingAttendees.length);
+          const proceed = await utils.confirmDialog({
+            title: 'Capacity Warning',
+            message: `This event has a capacity of ${capacity}. There are ${existingAttendees.length} attendees already (${remaining} remaining). Adding ${seats} would exceed capacity. Proceed anyway?`,
+            confirmText: 'Overbook',
+          });
+          if (!proceed) return;
+        }
+
         const newAttendees = [];
         for (let i = 0; i < seats; i++) {
           const name = nameList[i] || `Guest ${existingAttendees.length + newAttendees.length + 1}`;

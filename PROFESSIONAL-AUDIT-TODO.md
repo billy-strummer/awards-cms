@@ -60,7 +60,7 @@ Branch: `claude/continue-cms-build-gknZa`
 - **File:** `judge-portal.js` lines 58–63
 - **Impact:** Innovation 20% / Business Impact 30% / Quality 25% / Presentation 25% — fixed for every award. A Sustainability award needs different criteria than a Customer Service award.
 - **Fix:** Store scoring criteria as a JSON column (`scoring_criteria`) on the `awards` table. Add a criteria editor in the award edit modal (add/remove criteria, set name and weight, weights must sum to 100). In `judge-portal.js`, load the criteria for the current entry's award via the API instead of using the hardcoded constants. Default to the current 4 criteria if none are configured.
-- [ ] Implemented
+- [x] Implemented
 
 ### PA-H6 — Award eligibility criteria DB column has no UI field
 - **File:** `awards.js`, `index.html`
@@ -82,7 +82,7 @@ Branch: `claude/continue-cms-build-gknZa`
 - **File:** `marketing.js`, `index.html`
 - **Impact:** The DB has a `sponsor_assignments` join table. `marketing.js` only shows sponsors flat by tier. You cannot assign "Acme Corp" as the Category Sponsor for "Best Technology Company" — a standard commercial differentiator (sponsors paying for named category ownership).
 - **Fix:** In the sponsor edit modal or a dedicated "Assign to Category" button, add a multi-select of award categories. On save, upsert rows in `sponsor_assignments` (sponsor_id, award_id). In the awards list and entry form, display the category sponsor name/logo.
-- [ ] Implemented
+- [x] Implemented
 
 ### PA-M3 — No on-screen financial summary card
 - **File:** `payments.js`, `index.html`

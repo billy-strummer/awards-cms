@@ -54,7 +54,17 @@ const judgePortal = {
   currentScore: null,
   /** @type {boolean} Whether blind judging mode is active */
   blindMode: true,
-  /** @type {Array} Scoring criteria with weights */
+  /**
+   * Default scoring criteria — used when an award has no custom criteria configured.
+   * @type {Array}
+   */
+  DEFAULT_SCORING_CRITERIA: [
+    { id: 'innovation_score', name: 'Innovation & Creativity', maxScore: 10, weight: 0.2 },
+    { id: 'impact_score', name: 'Business Impact', maxScore: 10, weight: 0.3 },
+    { id: 'quality_score', name: 'Quality & Excellence', maxScore: 10, weight: 0.25 },
+    { id: 'presentation_score', name: 'Presentation', maxScore: 10, weight: 0.25 },
+  ],
+  /** @type {Array} Active scoring criteria for the currently selected entry's award (defaults to DEFAULT_SCORING_CRITERIA) */
   scoringCriteria: [
     { id: 'innovation_score', name: 'Innovation & Creativity', maxScore: 10, weight: 0.2 },
     { id: 'impact_score', name: 'Business Impact', maxScore: 10, weight: 0.3 },
@@ -417,6 +427,9 @@ const judgePortal = {
 
     if (!this.currentEntry) return;
 
+    // Load scoring criteria for this entry's award (with fallback to defaults)
+    await this._loadScoringCriteriaForEntry(this.currentEntry);
+
     // Check for conflict of interest
     const hasConflict = await this.checkConflictOfInterest(this.currentEntry);
 
@@ -428,6 +441,59 @@ const judgePortal = {
 
     // Update entries list to show active
     this.renderEntriesList();
+  },
+
+  /**
+   * Load and set scoring criteria for the given entry's award.
+   * Falls back to DEFAULT_SCORING_CRITERIA if the award has no custom criteria.
+   * @param {Object} entry - The entry being selected
+   * @returns {Promise<void>}
+   */
+  async _loadScoringCriteriaForEntry(entry) {
+    // Use criteria already embedded in the entry's award relation if available
+    const awardData = entry.awards || null;
+    let customCriteria = null;
+
+    if (awardData && awardData.scoring_criteria) {
+      customCriteria = awardData.scoring_criteria;
+    } else if (entry.award_id) {
+      // Fetch the award record to get scoring_criteria
+      try {
+        const result = await apiClient.select('awards', {
+          select: 'id, scoring_criteria',
+          filters: { id: entry.award_id },
+          pageSize: 1,
+        });
+        const award = result.data?.[0];
+        if (award?.scoring_criteria) {
+          customCriteria = award.scoring_criteria;
+        }
+      } catch (e) {
+        console.warn('Could not load award scoring criteria:', e.message);
+      }
+    }
+
+    if (customCriteria) {
+      try {
+        const parsed = typeof customCriteria === 'string' ? JSON.parse(customCriteria) : customCriteria;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Convert admin-configured criteria to judge portal format
+          const totalWeight = parsed.reduce((s, c) => s + (Number(c.weight) || 0), 0) || 100;
+          this.scoringCriteria = parsed.map((c, i) => ({
+            id: `custom_score_${i}`,
+            name: c.name,
+            maxScore: 10,
+            weight: (Number(c.weight) || 0) / totalWeight,
+          }));
+          return;
+        }
+      } catch (e) {
+        console.warn('Could not parse scoring criteria JSON:', e.message);
+      }
+    }
+
+    // Fall back to defaults
+    this.scoringCriteria = this.DEFAULT_SCORING_CRITERIA;
   },
 
   /**

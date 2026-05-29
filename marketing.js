@@ -612,6 +612,13 @@ const marketingModule = {
                     </div>
                   </div>
                 </div>
+                <div class="mb-3">
+                  <label class="form-label">Category Sponsorships</label>
+                  <select id="sponsorCategoryAssignments" multiple class="form-select" style="height:150px">
+                    <option disabled>Loading award categories…</option>
+                  </select>
+                  <div class="form-text">Hold Ctrl/Cmd to select multiple awards</div>
+                </div>
               </form>
             </div>
             <div class="modal-footer">
@@ -634,6 +641,62 @@ const marketingModule = {
     document.getElementById('sponsorFormModal').addEventListener('hidden.bs.modal', function () {
       this.remove();
     });
+
+    // Populate category sponsorships multi-select asynchronously
+    this._populateSponsorCategorySelect(isEdit ? existingSponsor.id : null);
+  },
+
+  /**
+   * Populate the sponsor category assignments multi-select with all awards,
+   * pre-selecting any existing assignments for the given sponsor.
+   * @param {string|null} sponsorId - Sponsor ID (null for new sponsor)
+   * @returns {Promise<void>}
+   */
+  async _populateSponsorCategorySelect(sponsorId) {
+    const select = document.getElementById('sponsorCategoryAssignments');
+    if (!select) return;
+
+    try {
+      // Load all awards for the options
+      let awards = STATE.allAwards && STATE.allAwards.length > 0 ? STATE.allAwards : null;
+      if (!awards) {
+        const result = await apiClient.select('awards', {
+          select: 'id, award_name, year, status',
+          sort: { column: 'award_name', ascending: true },
+          pageSize: 500,
+        });
+        awards = result.data || [];
+      }
+
+      // Load existing assignments for this sponsor
+      let assignedAwardIds = new Set();
+      if (sponsorId) {
+        try {
+          const assignResult = await apiClient.select('sponsor_assignments', {
+            select: 'award_id',
+            filters: { sponsor_id: sponsorId },
+            pageSize: 500,
+          });
+          (assignResult.data || []).forEach((row) => assignedAwardIds.add(row.award_id));
+        } catch (e) {
+          console.warn('Could not load sponsor assignments:', e.message);
+        }
+      }
+
+      select.innerHTML = awards
+        .map(
+          (a) =>
+            `<option value="${utils.escapeHtml(a.id)}" ${assignedAwardIds.has(a.id) ? 'selected' : ''}>${utils.escapeHtml(a.award_name)}${a.year ? ' (' + a.year + ')' : ''}</option>`
+        )
+        .join('');
+
+      if (awards.length === 0) {
+        select.innerHTML = '<option disabled>No award categories found</option>';
+      }
+    } catch (e) {
+      console.warn('Could not populate award categories:', e.message);
+      select.innerHTML = '<option disabled>Failed to load categories</option>';
+    }
   },
 
   async saveSponsor(sponsorId) {
@@ -657,12 +720,34 @@ const marketingModule = {
       is_active: document.getElementById('sponsorIsActive').checked,
     };
 
+    // Gather selected award category IDs before modal closes
+    const selectedAwardIds = [...(document.getElementById('sponsorCategoryAssignments')?.selectedOptions || [])].map(
+      (o) => o.value
+    );
+
     try {
       await utils.protectModalDuringSave('sponsorFormModal', async () => {
+        let savedSponsorId = sponsorId;
         if (sponsorId) {
           await apiClient.update('sponsors', sponsorId, sponsorData);
         } else {
-          await apiClient.insert('sponsors', sponsorData);
+          const result = await apiClient.insert('sponsors', sponsorData);
+          savedSponsorId = result?.data?.[0]?.id || result?.id || null;
+        }
+
+        // Update sponsor_assignments: delete existing then insert selected
+        if (savedSponsorId) {
+          try {
+            await apiClient.delete('sponsor_assignments', { sponsor_id: savedSponsorId });
+            if (selectedAwardIds.length > 0) {
+              await apiClient.insert(
+                'sponsor_assignments',
+                selectedAwardIds.map((award_id) => ({ sponsor_id: savedSponsorId, award_id }))
+              );
+            }
+          } catch (assignErr) {
+            console.warn('Could not save sponsor category assignments:', assignErr.message);
+          }
         }
 
         bootstrap.Modal.getInstance(document.getElementById('sponsorFormModal'))?.hide();

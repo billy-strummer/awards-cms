@@ -1369,6 +1369,9 @@ const awardsModule = {
     const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('awardFormModal'));
     modal.show();
 
+    // Clear scoring criteria rows for new award
+    this._populateScoringCriteria(null);
+
     // Autofocus category name after modal animation completes
     document.getElementById('awardFormModal').addEventListener(
       'shown.bs.modal',
@@ -1593,6 +1596,9 @@ const awardsModule = {
     const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('awardFormModal'));
     modal.show();
 
+    // Populate scoring criteria from the award's stored JSON
+    this._populateScoringCriteria(award.scoring_criteria || null);
+
     // Keyboard shortcut: Ctrl/Cmd+Enter to save
     const keyHandlerEdit = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
@@ -1749,6 +1755,10 @@ const awardsModule = {
       prev_year_winner: document.getElementById('awardFormPrevWinner').value.trim() || null,
       prev_year_2nd: document.getElementById('awardFormPrev2nd').value.trim() || null,
       prev_year_3rd: document.getElementById('awardFormPrev3rd').value.trim() || null,
+      scoring_criteria: (() => {
+        const criteria = this._getScoringCriteria();
+        return criteria.length > 0 ? JSON.stringify(criteria) : null;
+      })(),
     };
 
     // Validate date order
@@ -1850,6 +1860,87 @@ const awardsModule = {
     } finally {
       utils.hideLoading();
     }
+  },
+
+  /**
+   * Add a scoring criterion row to the criteria editor in the award modal.
+   * @param {string} [name=''] - Criterion name
+   * @param {number|string} [weight=''] - Criterion weight (percentage)
+   * @returns {void}
+   */
+  addScoringCriterionRow(name = '', weight = '') {
+    const container = document.getElementById('scoringCriteriaRows');
+    if (!container) return;
+    const row = document.createElement('div');
+    row.className = 'input-group input-group-sm mb-2 scoring-criterion-row';
+    row.innerHTML = `
+      <input type="text" class="form-control" placeholder="Criterion name (e.g. Innovation)" value="${utils.escapeHtml(String(name))}" aria-label="Criterion name">
+      <input type="number" class="form-control" style="max-width:90px" placeholder="Weight %" min="1" max="100" step="1" value="${utils.escapeHtml(String(weight))}" aria-label="Weight percentage">
+      <span class="input-group-text">%</span>
+      <button type="button" class="btn btn-outline-danger" aria-label="Remove criterion" onclick="this.closest('.scoring-criterion-row').remove(); awardsModule._updateCriteriaWeightTotal();">
+        <i class="bi bi-trash"></i>
+      </button>
+    `;
+    row.querySelectorAll('input').forEach((inp) =>
+      inp.addEventListener('input', () => this._updateCriteriaWeightTotal())
+    );
+    container.appendChild(row);
+    this._updateCriteriaWeightTotal();
+  },
+
+  /**
+   * Update the weight total display for scoring criteria.
+   * @returns {void}
+   */
+  _updateCriteriaWeightTotal() {
+    const totalEl = document.getElementById('criteriaWeightTotal');
+    if (!totalEl) return;
+    const total = this._getScoringCriteria().reduce((sum, c) => sum + (Number(c.weight) || 0), 0);
+    totalEl.textContent = String(total);
+    totalEl.closest('strong') ? null : (totalEl.style.color = total === 100 ? 'green' : total > 100 ? 'red' : 'inherit');
+  },
+
+  /**
+   * Read all scoring criterion rows from the modal and return as an array.
+   * @returns {Array<{name: string, weight: number}>} Array of criteria objects (only rows with a name)
+   */
+  _getScoringCriteria() {
+    const container = document.getElementById('scoringCriteriaRows');
+    if (!container) return [];
+    const rows = container.querySelectorAll('.scoring-criterion-row');
+    const criteria = [];
+    rows.forEach((row) => {
+      const inputs = row.querySelectorAll('input');
+      const name = inputs[0]?.value?.trim();
+      const weight = parseInt(inputs[1]?.value, 10);
+      if (name) {
+        criteria.push({ name, weight: isNaN(weight) ? 0 : weight });
+      }
+    });
+    return criteria;
+  },
+
+  /**
+   * Populate scoring criterion rows from a JSON string or array.
+   * @param {string|Array|null} scoringCriteria - JSON string or array of criteria
+   * @returns {void}
+   */
+  _populateScoringCriteria(scoringCriteria) {
+    const container = document.getElementById('scoringCriteriaRows');
+    if (!container) return;
+    container.innerHTML = '';
+    let criteria = [];
+    if (scoringCriteria) {
+      try {
+        criteria = typeof scoringCriteria === 'string' ? JSON.parse(scoringCriteria) : scoringCriteria;
+      } catch (e) {
+        criteria = [];
+      }
+    }
+    if (Array.isArray(criteria) && criteria.length > 0) {
+      criteria.forEach((c) => this.addScoringCriterionRow(c.name || '', c.weight || ''));
+    }
+    this._updateCriteriaWeightTotal();
   },
 
   /**

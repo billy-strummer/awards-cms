@@ -227,7 +227,14 @@
           /* ignore */
         }
         banner.remove();
-        utils?.showToast?.('Draft restored', 'success');
+        if (window.utils?.showToast) {
+          utils.showToast('Draft restored from autosave', 'success');
+        } else {
+          const notice = document.createElement('div');
+          notice.className = 'alert alert-success alert-dismissible';
+          notice.textContent = 'Draft restored from autosave.';
+          document.querySelector('.entry-wizard')?.prepend(notice);
+        }
       });
       document.getElementById('discardDraftBtn')?.addEventListener('click', () => {
         localStorage.removeItem('bta_entry_draft');
@@ -620,22 +627,40 @@
     },
 
     // --------------------------------------------------
+    // Validation helpers
+    // --------------------------------------------------
+    _markInvalid(input, message) {
+      input.classList.add('is-invalid');
+      let fb = input.nextElementSibling;
+      if (!fb || !fb.classList.contains('invalid-feedback')) {
+        fb = document.createElement('div');
+        fb.className = 'invalid-feedback';
+        input.parentNode.insertBefore(fb, input.nextSibling);
+      }
+      fb.textContent = message;
+      input.addEventListener('input', () => input.classList.remove('is-invalid'), { once: true });
+      if (typeof input.scrollIntoView === 'function') {
+        input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    },
+
+    // --------------------------------------------------
     // Validation
     // --------------------------------------------------
     validateStep(stepNum) {
       switch (stepNum) {
         case 1: {
-          const countyCity = document.getElementById('county_city').value;
-          if (!countyCity) {
-            showPublicToast('Please select your county or city');
+          const countyCity = document.getElementById('county_city');
+          if (!countyCity.value) {
+            this._markInvalid(countyCity, 'Please select your county or city');
             return false;
           }
           return true;
         }
         case 2: {
-          const sector = document.getElementById('sector').value;
-          if (!sector) {
-            showPublicToast('Please select a sector');
+          const sector = document.getElementById('sector');
+          if (!sector.value) {
+            this._markInvalid(sector, 'Please select a sector');
             return false;
           }
           return true;
@@ -648,39 +673,42 @@
           return true;
         }
         case 4: {
-          const name = document.getElementById('companyName').value.trim();
+          const nameEl = document.getElementById('companyName');
+          const name = nameEl.value.trim();
           if (!name) {
-            showPublicToast('Please enter your company name');
+            this._markInvalid(nameEl, 'Please enter your company name');
             return false;
           }
           if (name.length < 2) {
-            showPublicToast('Company name must be at least 2 characters');
+            this._markInvalid(nameEl, 'Company name must be at least 2 characters');
             return false;
           }
-          const years = document.getElementById('yearsInField').value;
-          if (!years) {
-            showPublicToast('Please select years in business');
+          const yearsEl = document.getElementById('yearsInField');
+          if (!yearsEl.value) {
+            this._markInvalid(yearsEl, 'Please select years in business');
             return false;
           }
           return true;
         }
         case 5: {
-          const desc = document.getElementById('entryDescription').value.trim();
+          const descEl = document.getElementById('entryDescription');
+          const desc = descEl.value.trim();
           if (!desc) {
-            showPublicToast('Please provide a description of your business');
+            this._markInvalid(descEl, 'Please provide a description of your business');
             return false;
           }
           if (desc.length < 20) {
-            showPublicToast('Please provide a more detailed description (at least 20 characters)');
+            this._markInvalid(descEl, 'Please provide a more detailed description (at least 20 characters)');
             return false;
           }
-          const why = document.getElementById('whyShouldWin').value.trim();
+          const whyEl = document.getElementById('whyShouldWin');
+          const why = whyEl.value.trim();
           if (!why) {
-            showPublicToast('Please tell us why you should win this award');
+            this._markInvalid(whyEl, 'Please tell us why you should win this award');
             return false;
           }
           if (why.length < 20) {
-            showPublicToast('Please provide more detail on why you should win (at least 20 characters)');
+            this._markInvalid(whyEl, 'Please provide more detail on why you should win (at least 20 characters)');
             return false;
           }
           return true;
@@ -690,23 +718,23 @@
           return true;
         }
         case 7: {
-          const contactName = document.getElementById('contactName').value.trim();
-          const contactEmail = document.getElementById('contactEmail').value.trim();
-          const contactPhone = document.getElementById('contactPhone').value.trim();
-          if (!contactName) {
-            showPublicToast('Please enter your name');
+          const contactNameEl = document.getElementById('contactName');
+          const contactEmailEl = document.getElementById('contactEmail');
+          const contactPhoneEl = document.getElementById('contactPhone');
+          if (!contactNameEl.value.trim()) {
+            this._markInvalid(contactNameEl, 'Please enter your name');
             return false;
           }
-          if (!contactEmail) {
-            showPublicToast('Please enter your email address');
+          if (!contactEmailEl.value.trim()) {
+            this._markInvalid(contactEmailEl, 'Please enter your email address');
             return false;
           }
-          if (!this.validateEmail(contactEmail)) {
-            showPublicToast('Please enter a valid email address');
+          if (!this.validateEmail(contactEmailEl.value.trim())) {
+            this._markInvalid(contactEmailEl, 'Please enter a valid email address');
             return false;
           }
-          if (!contactPhone) {
-            showPublicToast('Please enter your phone number');
+          if (!contactPhoneEl.value.trim()) {
+            this._markInvalid(contactPhoneEl, 'Please enter your phone number');
             return false;
           }
           return true;

@@ -498,7 +498,7 @@ describe('Email Lists Module - renderEmailLists()', () => {
     emailListsModule.currentLists = [];
     emailListsModule.renderEmailLists();
     const container = document.getElementById('emailListsGrid');
-    expect(container.innerHTML).toContain('No email lists found');
+    expect(container.innerHTML).toContain('No email lists yet');
     expect(container.innerHTML).toContain('Create List');
   });
 
@@ -506,7 +506,7 @@ describe('Email Lists Module - renderEmailLists()', () => {
     emailListsModule.currentLists = null;
     emailListsModule.renderEmailLists();
     const container = document.getElementById('emailListsGrid');
-    expect(container.innerHTML).toContain('No email lists found');
+    expect(container.innerHTML).toContain('No email lists yet');
   });
 
   test('does not throw when container is missing', () => {

@@ -1201,9 +1201,9 @@ describe('showPublicToast — timer-based fade-out and removal', () => {
   });
 
   test('toast opacity fades to 0 after 4000ms and element is removed after 300ms more', () => {
-    // Trigger showPublicToast indirectly via a validation failure that calls it
-    document.getElementById('county_city').value = '';
-    entryFormApp.validateStep(1); // calls showPublicToast('Please select your county or city')
+    // Trigger showPublicToast indirectly via a step 3 validation failure (no selectedAwardCategory)
+    entryFormApp.selectedAwardCategory = null;
+    entryFormApp.validateStep(3); // calls showPublicToast('Please select an award category')
 
     // requestAnimationFrame is mocked as setTimeout(cb, 0), advance past it
     jest.advanceTimersByTime(0);

@@ -755,7 +755,7 @@ describe('App Module - reportsScheduler', () => {
     await reportsScheduler.loadReports();
 
     const container = document.getElementById('scheduledReportsGrid');
-    expect(container.innerHTML).toContain('No scheduled reports configured yet');
+    expect(container.innerHTML).toContain('No scheduled reports yet');
   });
 
   test('loadReports renders table rows for scheduled reports', async () => {

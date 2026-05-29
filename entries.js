@@ -5,8 +5,9 @@
 const ENTRY_VALID_TRANSITIONS = {
   draft: ['submitted', 'rejected'],
   submitted: ['under_review', 'rejected', 'draft'],
-  under_review: ['shortlisted', 'rejected', 'submitted'],
-  shortlisted: ['winner', 'rejected', 'under_review'],
+  under_review: ['shortlisted', 'not_shortlisted', 'rejected', 'submitted'],
+  shortlisted: ['winner', 'not_shortlisted', 'rejected', 'under_review'],
+  not_shortlisted: ['under_review', 'rejected'],
   winner: ['shortlisted'],
   rejected: ['submitted', 'under_review'],
 };
@@ -797,6 +798,14 @@ const entriesModule = {
       toolbar.classList.remove('d-none');
       const countEl = toolbar.querySelector('[data-entry-selected-count]');
       if (countEl) countEl.textContent = count;
+      // Show page-scope notice when all visible page entries are selected
+      const pageNotice = toolbar.querySelector('[data-page-scope-notice]');
+      if (pageNotice) {
+        const pageSize = this.filteredEntries?.length || 0;
+        const totalCount = this._pagination?.count || 0;
+        pageNotice.style.display = count === pageSize && totalCount > pageSize ? '' : 'none';
+        pageNotice.textContent = `Only this page's ${count} entries are selected (${totalCount} total match your filter).`;
+      }
     } else {
       toolbar.classList.add('d-none');
     }
@@ -2761,14 +2770,30 @@ const entriesModule = {
     // Validate the transition against the state machine before writing
     const entry = this.allEntries.find((e) => e.id === entryId);
     const currentStatus = entry ? entry.status : null;
-    if (currentStatus && !validateEntryTransition(currentStatus, newStatus)) {
-      utils.showToast(`Invalid transition: cannot move from "${currentStatus}" to "${newStatus}"`, 'error');
-      // Revert the dropdown to the current status
+    const revertDropdown = () => {
       const dropdown = document.querySelector(
         `[data-on-change="entriesModule.inlineUpdateEntryStatus"][data-id="${entryId}"]`
       );
       if (dropdown) dropdown.value = currentStatus;
+    };
+    if (currentStatus && !validateEntryTransition(currentStatus, newStatus)) {
+      utils.showToast(`Invalid transition: cannot move from "${currentStatus}" to "${newStatus}"`, 'error');
+      revertDropdown();
       return;
+    }
+
+    // Confirmation for irreversible/dangerous status changes
+    const dangerous = ['winner', 'rejected', 'not_shortlisted'];
+    if (dangerous.includes(newStatus)) {
+      const confirmed = await utils.confirmDialog({
+        title: 'Change Entry Status',
+        message: `Change status to "${newStatus}"?`,
+        confirmText: 'Change',
+      });
+      if (!confirmed) {
+        revertDropdown();
+        return;
+      }
     }
 
     try {

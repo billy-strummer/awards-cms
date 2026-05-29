@@ -105,6 +105,12 @@
     <!-- Top Navigation Bar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top" style="z-index: 1001;">
       <div class="container-fluid">
+        <button id="mobileSidebarToggle"
+                class="btn btn-outline-light d-lg-none me-2"
+                aria-label="Open navigation menu"
+                aria-expanded="false">
+          <i class="bi bi-list fs-5"></i>
+        </button>
         <a class="navbar-brand fw-bold" href="#">
           <i class="bi bi-trophy-fill me-2"></i>British Trade Awards
         </a>
@@ -2649,19 +2655,19 @@
                 </select>
               </div>
               <div class="col-md-3">
-                <label class="form-label filter-bar-field-label mb-1"><i class="bi bi-trophy me-1" aria-hidden="true"></i>Award Category</label>
+                <label class="form-label filter-bar-field-label mb-1" for="entriesAwardFilter"><i class="bi bi-trophy me-1" aria-hidden="true"></i>Award Category</label>
                 <select class="form-select form-select-sm" id="entriesAwardFilter" data-on-change="entriesModule.filterEntries">
                   <option value="">All Awards</option>
                 </select>
               </div>
               <div class="col-md-1">
-                <label class="form-label filter-bar-field-label mb-1"><i class="bi bi-calendar3 me-1" aria-hidden="true"></i>Year</label>
+                <label class="form-label filter-bar-field-label mb-1" for="entriesYearFilter"><i class="bi bi-calendar3 me-1" aria-hidden="true"></i>Year</label>
                 <select class="form-select form-select-sm" id="entriesYearFilter" data-on-change="entriesModule.filterEntries">
                   <option value="">All Years</option>
                 </select>
               </div>
               <div class="col-md-2">
-                <label class="form-label filter-bar-field-label mb-1" title="Self-Nominated: the company applied directly. Standard: nominated by a sponsor or organiser."><i class="bi bi-person me-1" aria-hidden="true"></i>Nomination Source</label>
+                <label class="form-label filter-bar-field-label mb-1" for="entriesSelfNomFilter" title="Self-Nominated: the company applied directly. Standard: nominated by a sponsor or organiser."><i class="bi bi-person me-1" aria-hidden="true"></i>Nomination Source</label>
                 <select class="form-select form-select-sm" id="entriesSelfNomFilter" data-on-change="entriesModule.filterEntries">
                   <option value="">All Entries</option>
                   <option value="self_nom">Self-Nominated</option>
@@ -2669,7 +2675,7 @@
                 </select>
               </div>
               <div class="col">
-                <label class="form-label filter-bar-field-label mb-1"><i class="bi bi-search me-1" aria-hidden="true"></i>Search</label>
+                <label class="form-label filter-bar-field-label mb-1" for="entriesSearchInput"><i class="bi bi-search me-1" aria-hidden="true"></i>Search</label>
                 <input type="text" class="form-control form-control-sm" id="entriesSearchInput" placeholder="Search entries…">
               </div>
             </div>
@@ -2736,6 +2742,7 @@
                         title="More bulk actions...">
                   <i class="bi bi-list-check me-1"></i>More Actions
                 </button>
+                <small class="text-muted ms-2 d-none" data-page-scope-notice style="display:none"></small>
               </div>
             </div>
           </div>
@@ -3108,7 +3115,7 @@
 
                 <!-- Tags Input -->
                 <div class="mb-3">
-                  <label class="form-label">
+                  <label class="form-label" for="videoTagInput">
                     Company Tags
                     <small class="text-muted">(Optional — video will appear on the tagged company's profile)</small>
                   </label>
@@ -3127,7 +3134,7 @@
 
                 <!-- Award Tags Input -->
                 <div class="mb-3">
-                  <label class="form-label">
+                  <label class="form-label" for="videoAwardTagInput">
                     Award Tags
                     <small class="text-muted">(Optional — video will appear in the tagged award's gallery)</small>
                   </label>
@@ -3146,7 +3153,7 @@
 
                 <!-- Event Association (read-only) -->
                 <div class="mb-3">
-                  <label class="form-label">Event</label>
+                  <label class="form-label" for="videoEventName">Event</label>
                   <input type="text" class="form-control" id="videoEventName" readonly>
                   <input type="hidden" id="videoEventId">
                 </div>
@@ -3178,7 +3185,7 @@
                 <br><small>Paste YouTube URLs or video IDs (one per line). Video titles are automatically imported from YouTube — no need to enter them manually. Shared tags below will be applied to all videos.</small>
               </div>
               <div class="mb-3">
-                <label class="form-label">YouTube URLs / IDs (one per line)</label>
+                <label class="form-label" for="bulkYouTubeUrls">YouTube URLs / IDs (one per line)</label>
                 <textarea class="form-control" id="bulkYouTubeUrls" rows="8" placeholder="https://www.youtube.com/watch?v=VIDEO_ID_1&#10;https://www.youtube.com/watch?v=VIDEO_ID_2&#10;dQw4w9WgXcQ&#10;..." data-on-input="mediaGalleryModule.previewBulkYouTube"></textarea>
               </div>
               <div id="bulkYouTubePreview" class="mb-3"></div>
@@ -3186,7 +3193,7 @@
               <p class="text-muted small mb-2">Shared tags (applied to all videos):</p>
               <div class="row">
                 <div class="col-md-6 mb-2">
-                  <label class="form-label small">Organisation</label>
+                  <label class="form-label small" for="bulkVideoTagInput">Organisation</label>
                   <div class="input-group input-group-sm">
                     <select class="form-select" id="bulkVideoTagInput">
                       <option value="">Select organisation...</option>
@@ -3196,7 +3203,7 @@
                   <div id="bulkVideoTagsContainer" class="d-flex flex-wrap gap-1 mt-1"></div>
                 </div>
                 <div class="col-md-6 mb-2">
-                  <label class="form-label small">Award</label>
+                  <label class="form-label small" for="bulkVideoAwardTagInput">Award</label>
                   <div class="input-group input-group-sm">
                     <select class="form-select" id="bulkVideoAwardTagInput">
                       <option value="">Select award...</option>
@@ -3231,7 +3238,7 @@
                 <strong>Event:</strong> <span id="playlistEventName"></span>
               </div>
               <div class="mb-3">
-                <label class="form-label">YouTube Playlist URL</label>
+                <label class="form-label" for="playlistUrl">YouTube Playlist URL</label>
                 <div class="input-group">
                   <input type="text" class="form-control" id="playlistUrl" placeholder="https://www.youtube.com/playlist?list=PLxxxxxxxx">
                   <button class="btn btn-primary" data-action="mediaGalleryModule.fetchPlaylistVideos">
@@ -4451,27 +4458,27 @@
                         <div id="platformOverridesContainer" class="d-none mt-3">
                           <div class="row g-3">
                             <div class="col-md-6">
-                              <label class="form-label small">
+                              <label class="form-label small" for="smTwitterContent">
                                 <i class="bi bi-twitter-x text-info me-1" aria-hidden="true"></i>X
                                 <span class="text-muted">(280 chars)</span>
                               </label>
                               <textarea class="form-control form-control-sm" id="smTwitterContent" rows="3" placeholder="Twitter-specific content..." data-on-input="socialMediaModule.updatePostPreview"></textarea>
                             </div>
                             <div class="col-md-6">
-                              <label class="form-label small">
+                              <label class="form-label small" for="smFacebookContent">
                                 <i class="bi bi-facebook text-primary me-1" aria-hidden="true"></i>Facebook
                               </label>
                               <textarea class="form-control form-control-sm" id="smFacebookContent" rows="3" placeholder="Facebook-specific content..." data-on-input="socialMediaModule.updatePostPreview"></textarea>
                             </div>
                             <div class="col-md-6">
-                              <label class="form-label small">
+                              <label class="form-label small" for="smInstagramContent">
                                 <i class="bi bi-instagram text-danger me-1" aria-hidden="true"></i>Instagram
                                 <span class="text-muted">(2,200 chars)</span>
                               </label>
                               <textarea class="form-control form-control-sm" id="smInstagramContent" rows="3" placeholder="Instagram-specific caption..." data-on-input="socialMediaModule.updatePostPreview"></textarea>
                             </div>
                             <div class="col-md-6">
-                              <label class="form-label small">
+                              <label class="form-label small" for="smLinkedInContent">
                                 <i class="bi bi-linkedin text-info me-1" aria-hidden="true"></i>LinkedIn
                                 <span class="text-muted">(3,000 chars)</span>
                               </label>
@@ -5196,12 +5203,12 @@
                       <h6 class="mb-3"><i class="bi bi-gear me-2"></i>Campaign Settings</h6>
 
                       <div class="mb-3">
-                        <label class="form-label small">Campaign Name</label>
+                        <label class="form-label small" for="builderCampaignName">Campaign Name</label>
                         <input type="text" class="form-control form-control-sm" id="builderCampaignName" placeholder="Winner Announcement 2024">
                       </div>
 
                       <div class="mb-3">
-                        <label class="form-label small">Subject Line</label>
+                        <label class="form-label small" for="builderSubject">Subject Line</label>
                         <input type="text" class="form-control form-control-sm" id="builderSubject" placeholder="Congratulations {{company_name}}!" data-on-input="emailBuilder.updateSubjectCounter">
                       </div>
 
@@ -5215,22 +5222,22 @@
                       </div>
                       <div id="abTestSection" class="d-none">
                         <div class="mb-2">
-                          <label class="form-label small">Subject B (variant)</label>
+                          <label class="form-label small" for="abVariantB">Subject B (variant)</label>
                           <input type="text" class="form-control form-control-sm" id="abVariantB" placeholder="Alternative subject line..." data-on-input="emailBuilder.setAbVariantB">
                         </div>
                         <div class="mb-3">
-                          <label class="form-label small">Split: <span id="abSplitLabel">50/50</span></label>
+                          <label class="form-label small" for="abSplitPercent">Split: <span id="abSplitLabel">50/50</span></label>
                           <input type="range" class="form-range" id="abSplitPercent" min="10" max="90" step="10" value="50" data-on-input="emailBuilder.updateAbSplit">
                         </div>
                       </div>
 
                       <div class="mb-3">
-                        <label class="form-label small">Preview Text <small class="text-muted">(preheader)</small></label>
+                        <label class="form-label small" for="builderPreheader">Preview Text <small class="text-muted">(preheader)</small></label>
                         <input type="text" class="form-control form-control-sm" id="builderPreheader" placeholder="Shown after subject in inbox...">
                       </div>
 
                       <div class="mb-3">
-                        <label class="form-label small">Select Organisation</label>
+                        <label class="form-label small" for="builderOrgSelect">Select Organisation</label>
                         <select class="form-select form-select-sm" id="builderOrgSelect">
                           <option value="">Choose organisation...</option>
                         </select>
@@ -5244,7 +5251,7 @@
                       <h6 class="mb-3"><i class="bi bi-send me-2"></i>Send to List</h6>
 
                       <div class="mb-3">
-                        <label class="form-label small">Send To List</label>
+                        <label class="form-label small" for="builderEmailList">Send To List</label>
                         <select class="form-select form-select-sm" id="builderEmailList">
                           <option value="">Choose email list...</option>
                         </select>
@@ -5252,18 +5259,18 @@
                       </div>
 
                       <div class="mb-3">
-                        <label class="form-label small">From Name</label>
+                        <label class="form-label small" for="builderFromName">From Name</label>
                         <input type="text" class="form-control form-control-sm" id="builderFromName" value="British Trade Awards">
                       </div>
 
                       <div class="mb-3">
-                        <label class="form-label small">From Email</label>
+                        <label class="form-label small" for="builderFromEmail">From Email</label>
                         <input type="email" class="form-control form-control-sm" id="builderFromEmail" value="awards@britishtradeawards.com">
                         <div class="form-text"><i class="bi bi-info-circle me-1"></i>The sender domain must be verified in your <a href="https://resend.com/domains" target="_blank" rel="noopener">Resend account</a> or emails will be rejected.</div>
                       </div>
 
                       <div class="mb-3">
-                        <label class="form-label small">Reply-To Email</label>
+                        <label class="form-label small" for="builderReplyTo">Reply-To Email</label>
                         <input type="email" class="form-control form-control-sm" id="builderReplyTo" placeholder="Same as from email">
                       </div>
 
@@ -5280,11 +5287,11 @@
                       <!-- Schedule Options (hidden by default) -->
                       <div id="scheduleOptions" class="d-none">
                         <div class="mb-2">
-                          <label class="form-label small">Send Date</label>
+                          <label class="form-label small" for="builderScheduleDate">Send Date</label>
                           <input type="date" class="form-control form-control-sm" id="builderScheduleDate">
                         </div>
                         <div class="mb-3">
-                          <label class="form-label small">Send Time</label>
+                          <label class="form-label small" for="builderScheduleTime">Send Time</label>
                           <input type="time" class="form-control form-control-sm" id="builderScheduleTime" value="09:00">
                         </div>
                         <small class="text-muted d-block mb-2" id="schedulePreview"></small>
@@ -7516,7 +7523,7 @@
 
   <!-- Season Create/Edit Modal -->
   <!-- Webhook Form Modal -->
-  <div class="modal fade" aria-modal="true" id="webhookFormModal" tabindex="-1" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="webhookFormModal" tabindex="-1" aria-hidden="true" aria-labelledby="webhookFormModalTitle">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header bg-primary text-white">
@@ -7579,7 +7586,7 @@
     </div>
   </div>
 
-  <div class="modal fade" aria-modal="true" id="seasonFormModal" tabindex="-1" aria-hidden="true">
+  <div class="modal fade" aria-modal="true" id="seasonFormModal" tabindex="-1" aria-hidden="true" aria-labelledby="seasonFormModalTitle">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header bg-primary text-white">
@@ -8218,7 +8225,7 @@
               <input type="text" class="form-control" id="mediaCaption" placeholder="Add a caption">
             </div>
             <div id="uploadProgress" class="progress d-none mb-3">
-              <div class="progress-bar progress-bar-striped progress-bar-animated u-w-full" role="progressbar"></div>
+              <div class="progress-bar progress-bar-striped progress-bar-animated u-w-full" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
             </div>
           </form>
         </div>
@@ -8336,11 +8343,11 @@
 </div>
 
 <!-- Add Organisation Modal (Enhanced search/select) -->
-<div class="modal fade" aria-modal="true" id="addCompanyModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" aria-modal="true" id="addCompanyModal" tabindex="-1" aria-hidden="true" aria-labelledby="addCompanyModalTitle">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title">
+        <h5 class="modal-title" id="addCompanyModalTitle">
           <i class="bi bi-plus-lg me-2"></i>Add Organisations to Award
         </h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -8444,7 +8451,7 @@
               <textarea class="form-control" id="uploadCaption" rows="2" placeholder="Optional description"></textarea>
             </div>
             <div id="uploadFileProgress" class="progress d-none mb-3">
-              <div class="progress-bar progress-bar-striped progress-bar-animated u-w-full" role="progressbar"></div>
+              <div class="progress-bar progress-bar-striped progress-bar-animated u-w-full" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
             </div>
           </form>
         </div>
@@ -8781,7 +8788,7 @@
                   </div>
                 </div>
                 <div class="progress" style="height: 12px; border-radius: 6px;">
-                  <div class="progress-bar" id="capacityProgressBar" role="progressbar" style="width: 0%; transition: width 0.5s ease;"></div>
+                  <div class="progress-bar" id="capacityProgressBar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" style="width: 0%; transition: width 0.5s ease;"></div>
                 </div>
                 <div class="d-flex justify-content-between mt-1">
                   <small class="text-muted" id="capacityRemainingText">-</small>
@@ -9220,7 +9227,7 @@
               </div>
 
               <div class="progress mb-3" style="height: 8px;">
-                <div class="progress-bar bg-success" id="budgetProgressBar" role="progressbar" style="width: 0%;">0%</div>
+                <div class="progress-bar bg-success" id="budgetProgressBar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" style="width: 0%;">0%</div>
               </div>
 
               <!-- Revenue vs Costs Summary -->
@@ -9524,7 +9531,7 @@
               </div>
             </div>
             <div id="sectionPhotosProgress" class="progress d-none mb-3">
-              <div class="progress-bar progress-bar-striped progress-bar-animated u-w-full" role="progressbar"></div>
+              <div class="progress-bar progress-bar-striped progress-bar-animated u-w-full" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
             </div>
           </form>
         </div>
@@ -11358,7 +11365,7 @@
                   </div>
                   <div class="progress" style="height: 25px;">
                     <div id="vettingProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-warning"
-                         role="progressbar" style="width: 0%">0%</div>
+                         role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" style="width: 0%">0%</div>
                   </div>
                 </div>
                 <div class="small text-muted">
@@ -11668,7 +11675,7 @@
   </div>
 
   <!-- Add Custom Sector Modal -->
-  <div class="modal fade" aria-modal="true" id="addSectorModal" tabindex="-1" aria-hidden="true" aria-modal="true">
+  <div class="modal fade" aria-modal="true" id="addSectorModal" tabindex="-1" aria-hidden="true" aria-labelledby="addCategoryModalLabel">
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">

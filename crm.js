@@ -353,7 +353,7 @@ const crmModule = {
     // Prevent concurrent/repeated calls while already loading
     if (this._loadingCommunications) return;
     this._loadingCommunications = true;
-    // console.debug('Loading communications...');
+    utils.showSkeletonLoading('communicationsTableBody', 8);
 
     // Read filter values from DOM
     const typeEl = document.getElementById('communicationTypeFilter');
@@ -527,7 +527,7 @@ const crmModule = {
   async loadDeals() {
     if (this._loadingDeals) return;
     this._loadingDeals = true;
-    // console.debug('Loading deals...');
+    utils.showSkeletonLoading('dealsTableBody', 9);
 
     // Sync pipeline stage customisations from server so all users see the same stages
     this._syncPipelineStagesFromServer();
@@ -736,7 +736,7 @@ const crmModule = {
    * @returns {Promise<void>}
    */
   async loadMeetings() {
-    // console.debug('Loading meetings...');
+    utils.showSkeletonLoading('meetingsTableBody', 8);
 
     try {
       const filters = {};

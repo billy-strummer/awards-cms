@@ -55,9 +55,10 @@ const winnerAnnouncementsModule = {
     modal.className = 'modal fade';
     modal.id = 'annWizModal';
     modal.setAttribute('tabindex', '-1');
+    modal.setAttribute('aria-labelledby', 'annWizTitle');
     modal.innerHTML = `<div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
       <div class="modal-header bg-primary text-white">
-        <h5 class="modal-title"><i class="bi bi-megaphone me-2"></i>Winner Announcement Wizard</h5>
+        <h5 class="modal-title" id="annWizTitle"><i class="bi bi-megaphone me-2"></i>Winner Announcement Wizard</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body" id="annWizBody"></div>

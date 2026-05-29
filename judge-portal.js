@@ -289,6 +289,10 @@ const judgePortal = {
    * @returns {Promise<void>}
    */
   async loadAssignedEntries() {
+    const listEl = document.getElementById('entriesList');
+    if (listEl) {
+      listEl.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>';
+    }
     try {
       const entries = await this._fetchPage(1);
       this.assignedEntries = this._enrichEntries(entries);

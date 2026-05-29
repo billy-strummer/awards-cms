@@ -65,9 +65,13 @@ const reportsScheduler = {
     await this._loadScheduledReports();
     const reports = this._scheduledReports;
     if (reports.length === 0) {
-      container.innerHTML = `<div class="text-center py-4 text-muted">
-        <i class="bi bi-calendar-x display-4 d-block mb-2 opacity-25"></i>
-        No scheduled reports configured yet
+      container.innerHTML = `<div class="text-center py-5 text-muted">
+        <i class="bi bi-calendar-plus display-4 d-block mb-3 opacity-25"></i>
+        <p class="fw-semibold mb-1">No scheduled reports yet</p>
+        <p class="small mb-3">Create your first scheduled report to automate recurring data exports.</p>
+        <button class="btn btn-sm btn-primary" data-action="reportsScheduler.showCreateReport">
+          <i class="bi bi-plus-circle me-1"></i>Create Scheduled Report
+        </button>
       </div>`;
       return;
     }

@@ -516,6 +516,13 @@ const winnersModule = {
                 <i class="bi bi-award"></i>
               </button>
               <button
+                class="btn btn-outline-success btn-sm"
+                data-action="winnersModule.resendCertificate" data-id="${winner.id}"
+                title="Resend Certificate Email"
+                aria-label="Resend certificate email">
+                <i class="bi bi-envelope-check"></i>
+              </button>
+              <button
                 class="btn btn-outline-secondary btn-sm"
                 data-action="winnersModule.downloadMediaPack" data-id="${winner.id}"
                 title="Download Media Pack"
@@ -3905,9 +3912,65 @@ const winnersModule = {
 
       this.renderWinners();
       utils.showToast(`Status updated to "${newStatus}"`, 'success');
+
+      // M9: Auto-deliver certificate when winner is published
+      if (newStatus === 'published' || newStatus === 'Published') {
+        this._deliverCertificate(winnerId);
+      }
     } catch (error) {
       console.error('Error updating winner status:', error);
       utils.showToast('Error updating status: ' + error.message, 'error');
+    }
+  },
+
+  /**
+   * M9: Fire-and-forget certificate generation + email delivery.
+   * @param {string} winnerId - Winner ID
+   */
+  async _deliverCertificate(winnerId) {
+    try {
+      const session = await (window.supabase?.auth?.getSession?.() ?? Promise.resolve(null));
+      const token = session?.data?.session?.access_token || window.authToken || '';
+      await fetch('/api/certificates-qr', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ action: 'generate_and_email', winner_id: winnerId }),
+      });
+    } catch (err) {
+      // Fire-and-forget: errors are non-fatal
+      console.warn('Certificate auto-delivery failed (non-fatal):', err.message);
+    }
+  },
+
+  /**
+   * M9: Manually resend certificate to a winner.
+   * @param {string} winnerId - Winner ID
+   */
+  async resendCertificate(winnerId) {
+    try {
+      utils.showToast('Sending certificate…', 'info');
+      const session = await (window.supabase?.auth?.getSession?.() ?? Promise.resolve(null));
+      const token = session?.data?.session?.access_token || window.authToken || '';
+      const res = await fetch('/api/certificates-qr', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ action: 'generate_and_email', winner_id: winnerId }),
+      });
+      if (res.ok) {
+        utils.showToast('Certificate sent successfully', 'success');
+      } else {
+        const data = await res.json().catch(() => ({}));
+        utils.showToast('Certificate send failed: ' + (data.error || res.statusText), 'error');
+      }
+    } catch (err) {
+      console.error('resendCertificate error:', err);
+      utils.showToast('Certificate send failed: ' + err.message, 'error');
     }
   },
 
@@ -4241,9 +4304,9 @@ const winnersModule = {
         select: 'table_number,guest_name,event_id',
         limit: 5,
       });
-      const list = (attendees || []);
+      const list = attendees || [];
       if (list.length === 0) {
-        utils.showToast('No seating record found for this winner\'s organisation.', 'info');
+        utils.showToast("No seating record found for this winner's organisation.", 'info');
       } else {
         const info = list.map((a) => `Table ${a.table_number || 'TBC'} (${a.guest_name || 'Guest'})`).join(', ');
         utils.showToast(`Seating: ${info}`, 'info');

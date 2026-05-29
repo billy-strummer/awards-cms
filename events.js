@@ -1300,6 +1300,96 @@ const eventsModule = {
     }
   },
 
+  /**
+   * L7: Show a group booking modal to bulk-add attendees for an organisation.
+   * @param {string} [eventId] - Event ID; falls back to attendeesEventId input
+   */
+  async showGroupBookingModal(eventId) {
+    const resolvedEventId = eventId || document.getElementById('attendeesEventId')?.value;
+    if (!resolvedEventId) {
+      utils.showToast('No event selected', 'warning');
+      return;
+    }
+
+    // Load organisations for dropdown
+    let orgOptions = '<option value="">— No organisation —</option>';
+    try {
+      const orgsResult = await apiClient.select('organisations', {
+        select: 'id, company_name',
+        sort: { column: 'company_name', ascending: true },
+        pageSize: 500,
+      });
+      orgOptions += (orgsResult.data || [])
+        .map((o) => `<option value="${utils.escapeHtml(o.id)}">${utils.escapeHtml(o.company_name)}</option>`)
+        .join('');
+    } catch (e) {
+      console.warn('Group booking: failed to load organisations', e.message);
+    }
+
+    const html = `
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Organisation</label>
+        <select class="form-select" id="groupBookingOrg">${orgOptions}</select>
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Number of Seats <span class="text-danger">*</span></label>
+        <input type="number" class="form-control" id="groupBookingSeats" min="1" max="50" value="1">
+        <div class="form-text">Between 1 and 50.</div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Guest Names (optional)</label>
+        <textarea class="form-control" id="groupBookingNames" rows="4" placeholder="One name per line&#10;Alice Smith&#10;Bob Jones"></textarea>
+        <div class="form-text">Leave blank to create unnamed placeholder bookings.</div>
+      </div>`;
+
+    utils.showModal('Group Booking', html, {
+      icon: 'bi-people',
+      confirmLabel: 'Create Bookings',
+      onConfirm: async () => {
+        const orgId = document.getElementById('groupBookingOrg')?.value || null;
+        const seats = Math.min(
+          50,
+          Math.max(1, parseInt(document.getElementById('groupBookingSeats')?.value || '1', 10))
+        );
+        const namesRaw = (document.getElementById('groupBookingNames')?.value || '').trim();
+        const nameList = namesRaw
+          ? namesRaw
+              .split('\n')
+              .map((n) => n.trim())
+              .filter(Boolean)
+          : [];
+
+        const existingAttendees = await this.getAttendees(resolvedEventId);
+        const newAttendees = [];
+        for (let i = 0; i < seats; i++) {
+          const name = nameList[i] || `Guest ${existingAttendees.length + newAttendees.length + 1}`;
+          const ref = `GRP-${Date.now()}-${i}`;
+          newAttendees.push({
+            id: ref,
+            name,
+            email: '',
+            status: 'attending',
+            guestType: 'guest',
+            plusOnes: 0,
+            dietary: '',
+            notes: `Group booking ref: ${ref}`,
+            organisation_id: orgId,
+            checkedIn: false,
+            checkInTime: null,
+            addedAt: new Date().toISOString(),
+            table_number: null,
+          });
+        }
+
+        const combined = existingAttendees.concat(newAttendees);
+        await this.saveAttendees(resolvedEventId, combined);
+        this.renderAttendees(resolvedEventId);
+        this.renderCheckInTab(resolvedEventId);
+        utils.showToast(`${seats} booking(s) created`, 'success');
+      },
+    });
+  },
+
   async deleteAttendee(attendeeId) {
     if (
       !(await utils.confirmDialog({
@@ -2023,6 +2113,55 @@ const eventsModule = {
 
     const filename = `${eventName.replace(/[^a-z0-9]/gi, '_')}_attendees_${new Date().toISOString().split('T')[0]}.csv`;
     utils.exportToCSV(exportData, filename);
+  },
+
+  /**
+   * L10: Export full attendee list with dietary, accessibility and seating data.
+   * @param {string} [eventId] - Event ID; falls back to attendeesEventId input
+   */
+  async exportAttendeeList(eventId) {
+    const resolvedEventId = eventId || document.getElementById('attendeesEventId')?.value;
+    if (!resolvedEventId) {
+      utils.showToast('No event selected', 'warning');
+      return;
+    }
+
+    try {
+      // Fetch attendees with org info directly from DB for completeness
+      const result = await apiClient.selectAll('event_attendees', {
+        select: '*, organisations(company_name)',
+        filters: { event_id: { op: 'eq', value: resolvedEventId } },
+      });
+      const rows = result || [];
+
+      if (rows.length === 0) {
+        utils.showToast('No attendees to export', 'warning');
+        return;
+      }
+
+      const event = STATE.allEvents.find((e) => e.id === resolvedEventId);
+      const eventName = event ? event.event_name : 'Event';
+
+      const exportData = rows.map((a) => ({
+        'Guest Name': a.attendee_name || a.name || '',
+        Organisation: a.organisations?.company_name || '',
+        'Dietary Requirements': a.meal_preference || a.dietary || '',
+        'Accessibility Notes': a.accessibility_notes || a.notes || '',
+        'Table Number': a.table_number || '',
+        'Seat Number': a.seat_number || '',
+        'Check-in Status': a.checked_in ? 'Checked In' : 'Not Checked In',
+        'Check-in Time': a.check_in_time ? new Date(a.check_in_time).toLocaleString() : '',
+        'RSVP Status': (a.rsvp_status || a.status || '').replace('_', ' '),
+        Email: a.attendee_email || a.email || '',
+      }));
+
+      const filename = `${eventName.replace(/[^a-z0-9]/gi, '_')}_attendee_list_${new Date().toISOString().split('T')[0]}.csv`;
+      utils.exportToCSV(exportData, filename);
+      utils.showToast('Attendee list exported', 'success');
+    } catch (err) {
+      console.error('exportAttendeeList error:', err);
+      utils.showToast('Failed to export attendee list: ' + err.message, 'error');
+    }
   },
 
   // ========================================

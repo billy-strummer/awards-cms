@@ -160,7 +160,7 @@ Branch: `claude/continue-cms-build-gknZa`
 - **File:** `winners.js`, `api/certificates-qr.js`
 - **Impact:** Certificates can only be generated manually on demand. Winners are not automatically emailed their certificate after being announced. Follow-up is a manual admin task.
 - **Fix:** When a winner record is finalised/announced, trigger automatic certificate generation via `certificates-qr.js` and send via email. Add a "Resend Certificate" button as manual fallback.
-- [ ] Implemented
+- [x] Implemented
 
 ### DA-M10 — Deadline reminder emails never sent automatically
 - **File:** `api/_lib/automation-scheduler.js`
@@ -206,28 +206,28 @@ Branch: `claude/continue-cms-build-gknZa`
 - **File:** `entries.js`
 - **Impact:** Entrants cannot submit the same entry to multiple categories without re-entering all information. A common requirement for awards companies running multi-category programmes.
 - **Fix:** Add a "Duplicate to Another Category" button in the entry detail modal. `cloneEntry()` copies all fields (including attachments by reference) to a new entry with a different `award_id` chosen via a dropdown.
-- [ ] Implemented
+- [x] Implemented
 
 ### DA-L7 — No group booking / bulk ticket purchase workflow
 - **File:** `payments.js`, `events.js`
 - **Impact:** Organisations buying multiple tables or tickets must be processed one attendee at a time. No group rate or bulk issuance flow exists.
 - **Fix:** Add a "Group Booking" option in the event section: select organisation, enter quantity, optionally apply a quantity discount, then bulk-create attendee records and issue tickets in one operation.
-- [ ] Implemented
+- [x] Implemented
 
 ### DA-L8 — No payment reconciliation export for accounting
 - **File:** `reporting.js`
 - **Impact:** No single-click export comparing invoices issued vs paid vs outstanding. Finance teams must manually cross-reference invoice records.
 - **Fix:** Add "Payment Reconciliation" to the Reporting module: CSV with invoice ID, organisation, amount, status, due date, paid date, days outstanding.
-- [ ] Implemented
+- [x] Implemented
 
 ### DA-L9 — No judge scorecard PDF for deliberation meetings
 - **File:** `reporting.js`
 - **Impact:** No printable document showing all judges' scores per entry for in-person deliberation panels. Organisers must build this manually from exports.
 - **Fix:** Add "Export Judge Scorecard" report: PDF table per award category showing each entry, all judges' scores, average, median, and outlier flags (scores >1 std dev from mean).
-- [ ] Implemented
+- [x] Implemented
 
 ### DA-L10 — No one-click attendee list export with dietary/accessibility data
 - **File:** `events.js`, `index.html`
 - **Impact:** Guest data (dietary requirements, accessibility notes, table numbers) exists but there's no export. Catering and venue teams require this list before every event.
 - **Fix:** Add "Download Attendee List" CSV button to the Events tab. Export: guest name, organisation, dietary requirement, accessibility notes, table number, check-in status.
-- [ ] Implemented
+- [x] Implemented

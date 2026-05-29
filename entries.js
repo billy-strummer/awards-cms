@@ -2597,6 +2597,70 @@ const entriesModule = {
     };
     input.click();
   },
+
+  toggleScoreLeaderboard() {
+    const section = document.getElementById('scoreLeaderboardSection');
+    if (!section) return;
+    const isHidden = section.classList.contains('d-none');
+    section.classList.toggle('d-none', !isHidden);
+    if (isHidden) this.renderScoreLeaderboard();
+  },
+
+  renderScoreLeaderboard() {
+    const body = document.getElementById('scoreLeaderboardBody');
+    if (!body) return;
+
+    const entries = (STATE.allEntries || []).filter((e) => e.average_score != null);
+    if (entries.length === 0) {
+      body.innerHTML = '<p class="text-muted text-center py-4">No scored entries yet. Scores appear after judges submit their evaluations.</p>';
+      return;
+    }
+
+    // Group by award_category
+    const byCategory = {};
+    entries.forEach((e) => {
+      const cat = e.award_category || e.award_name || 'Uncategorised';
+      if (!byCategory[cat]) byCategory[cat] = [];
+      byCategory[cat].push(e);
+    });
+
+    let html = '';
+    Object.entries(byCategory)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .forEach(([cat, catEntries]) => {
+        catEntries.sort((a, b) => (b.average_score || 0) - (a.average_score || 0));
+        html += `<div class="px-3 pt-3"><h6 class="fw-semibold text-muted small text-uppercase">${utils.escapeHtml ? utils.escapeHtml(cat) : cat}</h6>
+          <table class="table table-sm table-hover mb-3">
+            <thead><tr><th style="width:40px">#</th><th>Entry</th><th>Company</th><th>Score</th><th>Judges</th><th></th></tr></thead><tbody>`;
+        catEntries.forEach((e, i) => {
+          const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`;
+          const scoreClass = e.average_score >= 80 ? 'text-success fw-bold' : e.average_score >= 60 ? 'text-primary' : '';
+          const canShortlist = e.status !== 'shortlisted' && e.status !== 'winner';
+          html += `<tr>
+            <td>${medal}</td>
+            <td><small class="text-muted">${e.entry_number || ''}</small></td>
+            <td>${utils.escapeHtml ? utils.escapeHtml(e.company_name || e.organisation_name || '') : (e.company_name || e.organisation_name || '')}</td>
+            <td class="${scoreClass}">${e.average_score.toFixed(1)}</td>
+            <td><small class="text-muted">${e.total_scores || 0} score${(e.total_scores || 0) === 1 ? '' : 's'}</small></td>
+            <td>${canShortlist ? `<button class="btn btn-xs btn-sm btn-outline-success py-0 px-1" style="font-size:0.7rem" data-action="entriesModule.promoteToShortlist" data-args="[&quot;${e.id}&quot;]">Shortlist</button>` : `<span class="badge bg-${e.status === 'winner' ? 'warning text-dark' : 'info'}">${e.status}</span>`}</td>
+          </tr>`;
+        });
+        html += '</tbody></table></div>';
+      });
+
+    body.innerHTML = html;
+  },
+
+  async promoteToShortlist(entryId) {
+    try {
+      await apiClient.update('entries', entryId, { status: 'shortlisted' });
+      utils.showToast('Entry promoted to shortlist', 'success');
+      await this.loadEntries();
+      this.renderScoreLeaderboard();
+    } catch (e) {
+      utils.showToast('Failed to promote entry: ' + e.message, 'error');
+    }
+  },
 };
 
 // Export to window

@@ -530,6 +530,20 @@ const winnersModule = {
                 <i class="bi bi-gift"></i>
               </button>
               <button
+                class="btn btn-sm ${winner.trophy_collected ? 'btn-warning' : 'btn-outline-secondary'}"
+                data-action="winnersModule.toggleTrophyCollected" data-args='${JSON.stringify([winner.id, !winner.trophy_collected])}'
+                title="${winner.trophy_collected ? 'Trophy collected — click to unmark' : 'Mark trophy as collected'}"
+                aria-label="Trophy collected toggle">
+                <i class="bi bi-trophy${winner.trophy_collected ? '-fill' : ''}"></i>
+              </button>
+              <button
+                class="btn btn-outline-info btn-sm"
+                data-action="winnersModule.lookupWinnerSeating" data-id="${winner.id}"
+                title="Look up event seating for this winner"
+                aria-label="Look up seating">
+                <i class="bi bi-geo-alt"></i>
+              </button>
+              <button
                 class="btn btn-outline-danger btn-sm"
                 data-action="winnersModule.deleteWinner" data-id="${winner.id}"
                 title="Delete Winner"
@@ -4206,6 +4220,39 @@ const winnersModule = {
   /**
    * Save a manually-added winner record from the Add Winner modal.
    */
+  async toggleTrophyCollected(winnerId, collected) {
+    try {
+      await apiClient.update('winners', winnerId, { trophy_collected: collected });
+      const winner = (STATE.allWinners || []).find((w) => w.id === winnerId);
+      if (winner) winner.trophy_collected = collected;
+      this.renderWinners();
+      utils.showToast(collected ? 'Trophy marked as collected' : 'Trophy marked as uncollected', 'success');
+    } catch (e) {
+      utils.showToast('Failed to update trophy status: ' + e.message, 'error');
+    }
+  },
+
+  async lookupWinnerSeating(winnerId) {
+    const winner = (STATE.allWinners || []).find((w) => w.id === winnerId);
+    if (!winner) return;
+    try {
+      const attendees = await apiClient.select('event_attendees', {
+        filters: { organisation_id: winner.organisation_id },
+        select: 'table_number,guest_name,event_id',
+        limit: 5,
+      });
+      const list = (attendees || []);
+      if (list.length === 0) {
+        utils.showToast('No seating record found for this winner\'s organisation.', 'info');
+      } else {
+        const info = list.map((a) => `Table ${a.table_number || 'TBC'} (${a.guest_name || 'Guest'})`).join(', ');
+        utils.showToast(`Seating: ${info}`, 'info');
+      }
+    } catch (e) {
+      utils.showToast('Could not look up seating: ' + e.message, 'error');
+    }
+  },
+
   async saveAddWinner() {
     const orgId = document.getElementById('addWinnerOrgSelect')?.value?.trim();
     const awardId = document.getElementById('addWinnerAwardSelect')?.value?.trim();

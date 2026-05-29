@@ -1771,6 +1771,56 @@ const settingsModule = {
       utils.showToast('Failed to delete category: ' + err.message, 'error');
     }
   },
+
+  async loadActivityLog() {
+    const tbody = document.getElementById('activityLogTableBody');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-3"><div class="spinner-border spinner-border-sm"></div></td></tr>';
+
+    try {
+      const [cmsLogs, orgLogs, actLogs] = await Promise.allSettled([
+        apiClient.select('cms_audit_logs', { sort: { column: 'created_at', ascending: false }, limit: 50 }),
+        apiClient.select('org_audit_log', { sort: { column: 'created_at', ascending: false }, limit: 50 }),
+        apiClient.select('activity_logs', { sort: { column: 'created_at', ascending: false }, limit: 50 }),
+      ]);
+
+      const rows = [];
+
+      (cmsLogs.status === 'fulfilled' ? cmsLogs.value || [] : []).forEach((r) =>
+        rows.push({ ts: r.created_at, user: r.user_email || r.user_id || '—', action: r.action || '—', entity: r.table_name || '—', detail: r.details || '' })
+      );
+      (orgLogs.status === 'fulfilled' ? orgLogs.value || [] : []).forEach((r) =>
+        rows.push({ ts: r.created_at, user: r.changed_by || '—', action: r.action || '—', entity: 'Organisation', detail: r.org_name || r.organisation_id || '' })
+      );
+      (actLogs.status === 'fulfilled' ? actLogs.value || [] : []).forEach((r) =>
+        rows.push({ ts: r.created_at || r.timestamp, user: r.user_email || r.actor || '—', action: r.action || r.event_type || '—', entity: r.entity_type || r.module || '—', detail: r.description || r.metadata || '' })
+      );
+
+      rows.sort((a, b) => new Date(b.ts || 0) - new Date(a.ts || 0));
+
+      if (rows.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No activity recorded yet.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = rows
+        .slice(0, 150)
+        .map((r) => {
+          const dt = r.ts ? new Date(r.ts).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' }) : '—';
+          const esc = (s) => String(s || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          return `<tr>
+            <td class="text-nowrap small text-muted">${dt}</td>
+            <td class="small">${esc(r.user)}</td>
+            <td><span class="badge bg-secondary">${esc(r.action)}</span></td>
+            <td class="small">${esc(r.entity)}</td>
+            <td class="small text-truncate" style="max-width:260px" title="${esc(r.detail)}">${esc(typeof r.detail === 'object' ? JSON.stringify(r.detail) : r.detail)}</td>
+          </tr>`;
+        })
+        .join('');
+    } catch (e) {
+      tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger py-4">Error loading activity log: ${e.message}</td></tr>`;
+    }
+  },
 };
 
 // Export to window for global access

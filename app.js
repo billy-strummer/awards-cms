@@ -2281,6 +2281,13 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   });
 
+  // PA-L5: Load unified activity log when Activity Log sub-tab is activated
+  document.querySelector('[data-bs-target="#settings-activity-log"]')?.addEventListener('shown.bs.tab', () => {
+    if (typeof settingsModule !== 'undefined' && settingsModule.loadActivityLog) {
+      settingsModule.loadActivityLog();
+    }
+  });
+
   // V5-M5: Character counters for key textareas
   [
     ['eventDescription', 1000],

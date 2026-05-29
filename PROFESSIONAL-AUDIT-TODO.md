@@ -42,7 +42,7 @@ Branch: `claude/continue-cms-build-gknZa`
 - **File:** `index.html` — Winners tab getting-started card (around line 2314–2315)
 - **Impact:** The getting-started card tells new users to click "Add Winner" but no such button exists. Winners can only be added via CSV import or the pipeline. This is the most confusing contradiction for a first-time user.
 - **Fix:** Either (a) add a proper "Add Winner" modal that lets admins manually create a winner record (organisation + award + year + placement), OR (b) update the onboarding text to accurately describe the real workflow (use the Winner Pipeline to promote shortlisted entries). Option (b) is the pragmatic quick fix; option (a) is the complete solution.
-- [ ] Implemented
+- [x] Implemented
 
 ### PA-H3 — No admin-side "Add Entry" form
 - **File:** `index.html`, `entries.js`
@@ -66,7 +66,7 @@ Branch: `claude/continue-cms-build-gknZa`
 - **File:** `awards.js`, `index.html`
 - **Impact:** The `awards` table has a `criteria` TEXT column in the DB schema but the award creation/edit form has no corresponding field. Admins cannot record per-award entry eligibility rules through the UI.
 - **Fix:** Add a "Eligibility Criteria" textarea field to the award creation and edit modal forms. Map it to the `criteria` column. Display it on the public entry form (submit-entry.html) as a "Before you apply" information block.
-- [ ] Implemented
+- [x] Implemented
 
 ---
 
@@ -76,7 +76,7 @@ Branch: `claude/continue-cms-build-gknZa`
 - **File:** `vote.html`, `public-voting.html`
 - **Impact:** `submit-entry.html` is gold/black with BTA logo and Cinzel font. The voting pages use a generic purple gradient with no logo. An entrant receiving a voting link after submitting their entry will question if they're on the right site.
 - **Fix:** Update `vote.html` and `public-voting.html` CSS and header to use the same colour variables (gold: `#c9a84c`, dark: `#1a1a2e`) and include the BTA logo in the page header. At minimum, add the logo and swap the purple gradient for the gold/dark palette.
-- [ ] Implemented
+- [x] Implemented
 
 ### PA-M2 — Sponsor–award category assignment has no UI
 - **File:** `marketing.js`, `index.html`
@@ -94,19 +94,19 @@ Branch: `claude/continue-cms-build-gknZa`
 - **File:** `entries.js`, `index.html`
 - **Impact:** Judges score entries but there is no view showing "top 10 entries in this category by average judge score." Producing a shortlist requires manually cross-referencing the entries export.
 - **Fix:** Add a "Score Leaderboard" sub-tab or toggle in the Entries tab. Group entries by award/category, sort by `average_score` descending, display rank, entry number, company name, average score, and number of scores. Include a "Promote to Shortlist" button next to each entry.
-- [ ] Implemented
+- [x] Implemented
 
 ### PA-M5 — Winner pipeline deliberation panel floats outside page layout
 - **File:** `winner-pipeline.js` lines 95–99
 - **Impact:** The panel appends itself to `document.body` as a floating overlay, appearing detached from the normal page structure. Disorientating on first encounter.
 - **Fix:** Convert the deliberation panel to a proper Bootstrap offcanvas or full-screen modal. Replace `document.body.appendChild(panel)` with a `<div id="pipelinePanel" class="offcanvas offcanvas-end">` already in `index.html`, and use `bootstrap.Offcanvas` to show/hide it.
-- [ ] Implemented
+- [x] Implemented
 
 ### PA-M6 — No winner → event seating link
 - **File:** `winners.js`, `events.js`
 - **Impact:** There is no way to see which table a winner is seated at from the winner record, or to mark "trophy collected at ceremony."
 - **Fix:** On the winner detail/edit modal, add a read-only "Event Seating" field that looks up the winner's organisation in `event_attendees` for the linked event and shows their table number. Add a "Trophy Collected" checkbox to the winner record (new boolean column `trophy_collected` on `winners` table).
-- [ ] Implemented
+- [x] Implemented
 
 ### PA-M7 — "British Trade Awards 2025" year hardcoded in vote.html footer
 - **File:** `vote.html`
@@ -122,7 +122,7 @@ Branch: `claude/continue-cms-build-gknZa`
 - **File:** `index.html`, `app.js`
 - **Impact:** Icon-only sidebar buttons have `title=` attributes which don't show on mobile or keyboard-only navigation. Bootstrap tooltips (`data-bs-toggle="tooltip"`) work universally.
 - **Fix:** In `app.js` DOMContentLoaded init, call `bootstrap.Tooltip.getOrCreateInstance()` for all `[title]` elements, or replace `title=` with `data-bs-toggle="tooltip" data-bs-title="..."` and initialise once with `document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el))`.
-- [ ] Implemented
+- [x] Implemented
 
 ### PA-L2 — "Assignments" and "CRM" nav labels are unclear to new users
 - **File:** `index.html` — sidebar nav
@@ -134,16 +134,16 @@ Branch: `claude/continue-cms-build-gknZa`
 - **File:** `index.html` — header/navbar area
 - **Impact:** There is no "?" help icon or link to documentation anywhere in the CMS. New users have no self-service support path.
 - **Fix:** Add a help icon button (`bi-question-circle`) to the top navbar. On click, open a simple offcanvas panel with links to key workflow guides (or a static help modal covering the main sections). At minimum, link to an external documentation URL.
-- [ ] Implemented
+- [x] Implemented
 
 ### PA-L4 — Getting-started checklist only updates on dashboard reload
 - **File:** `dashboard.js` — `_initGettingStartedBanner()`
 - **Impact:** The 4-step checklist (Add Organisation, Create Award, Set up Event, Create Campaign) is evaluated at load time. Completing a step mid-session doesn't tick it off until the user navigates away and back.
 - **Fix:** After each relevant save action (org created, award created, event created, campaign created), call `dashboardModule._initGettingStartedBanner()` to refresh the checklist state.
-- [ ] Implemented
+- [x] Implemented
 
 ### PA-L5 — Audit trail is fragmented across three separate tables
 - **File:** `settings.js`, `organisations.js`, `winner-pipeline.js`
 - **Impact:** Activity is logged to `cms_audit_logs`, `org_audit_log`, and `activity_logs` separately. There is no unified activity log view accessible to non-admin managers.
 - **Fix:** Add a unified "Activity Log" sub-tab in Settings (or a dedicated section) that queries all three tables, unions them, and sorts by timestamp descending. Show: timestamp, user, action, entity type, entity name.
-- [ ] Implemented
+- [x] Implemented

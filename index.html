@@ -176,6 +176,11 @@
             <span id="userEmail"></span>
           </div>
 
+          <!-- Help -->
+          <button class="btn btn-outline-light me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#helpOffcanvas" title="Help & Guidance">
+            <i class="bi bi-question-circle"></i>
+          </button>
+
           <!-- Logout -->
           <button class="btn btn-outline-light" id="logoutBtn">
             <i class="bi bi-box-arrow-right me-1"></i>Logout
@@ -2686,6 +2691,9 @@
               <button class="btn btn-sm btn-outline-secondary" data-action="entriesModule.bulkActions">
                 <i class="bi bi-list-check me-1"></i>Bulk Actions
               </button>
+              <button class="btn btn-sm btn-outline-primary" id="scoreLeaderboardToggle" data-action="entriesModule.toggleScoreLeaderboard" title="View entries ranked by judge score">
+                <i class="bi bi-bar-chart-line me-1"></i>Score Leaderboard
+              </button>
               <div class="btn-group btn-group-sm">
                 <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
                   <i class="bi bi-tools me-1"></i>Tools
@@ -2698,6 +2706,22 @@
           </div>
 
           <div id="entriesActiveFilters" class="mb-1"></div>
+
+          <!-- Score Leaderboard (PA-M4) -->
+          <div id="scoreLeaderboardSection" class="d-none mb-3">
+            <div class="card border-primary">
+              <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-bar-chart-line me-2"></i>Score Leaderboard</h5>
+                <button class="btn btn-sm btn-outline-light" data-action="entriesModule.toggleScoreLeaderboard">
+                  <i class="bi bi-x-lg"></i> Close
+                </button>
+              </div>
+              <div class="card-body p-0" id="scoreLeaderboardBody">
+                <p class="text-muted text-center py-4">Loading leaderboard...</p>
+              </div>
+            </div>
+          </div>
+
           <!-- Entries Table -->
           <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
@@ -6538,6 +6562,12 @@
                 <span class="d-block small fw-normal opacity-75" style="font-size:0.65rem;margin-top:1px;">Export, backup &amp; audit</span>
               </button>
             </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="activityLogTabBtn" data-bs-toggle="tab" data-bs-target="#settings-activity-log" type="button" role="tab" title="Unified activity log across all modules" aria-label="Unified activity log" data-on-shown="settingsModule.loadActivityLog">
+                <i class="bi bi-journal-text me-2"></i>Activity Log
+                <span class="d-block small fw-normal opacity-75" style="font-size:0.65rem;margin-top:1px;">All module history</span>
+              </button>
+            </li>
           </ul>
 
           <div class="tab-content" id="settingsSubTabContent">
@@ -7234,6 +7264,38 @@
           </div>
 
           </div><!-- /settings-security-overflow -->
+          <!-- Activity Log (PA-L5) -->
+          <div class="tab-pane fade" id="settings-activity-log" role="tabpanel">
+            <div class="row g-4 mt-1">
+              <div class="col-12">
+                <div class="card">
+                  <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-journal-text me-2"></i>Activity Log</h5>
+                    <button class="btn btn-sm btn-outline-secondary" data-action="settingsModule.loadActivityLog">
+                      <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+                    </button>
+                  </div>
+                  <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                      <thead>
+                        <tr>
+                          <th>When</th>
+                          <th>User</th>
+                          <th>Action</th>
+                          <th>Entity</th>
+                          <th>Details</th>
+                        </tr>
+                      </thead>
+                      <tbody id="activityLogTableBody">
+                        <tr><td colspan="5" class="text-center text-muted py-4">Click refresh to load activity log.</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div><!-- /tab-pane: settings-activity-log -->
+
           </div><!-- /settingsSubTabContent tab-content -->
 
           <script>
@@ -11782,17 +11844,6 @@
     </div>
   </div>
 
-  <!-- Winner Pipeline Offcanvas (deliberation panel + pipeline dashboard) -->
-  <div class="offcanvas offcanvas-end" tabindex="-1" id="winnerPipelineOffcanvas" aria-labelledby="winnerPipelineOffcanvasLabel" style="width:660px">
-    <div class="offcanvas-header border-bottom">
-      <h5 class="offcanvas-title" id="winnerPipelineOffcanvasLabel"><i class="bi bi-trophy me-2 text-warning"></i>Winner Pipeline</h5>
-      <button type="button" class="btn-close" aria-label="Close" data-bs-dismiss="offcanvas"></button>
-    </div>
-    <div class="offcanvas-body" id="winnerPipelineContent">
-      <div class="text-center py-4"><div class="spinner-border text-primary"></div></div>
-    </div>
-  </div>
-
 
   <script>
     /* Global actions for confirmation dialogs */
@@ -11904,5 +11955,49 @@
   <script src="btc-module.js"></script>
 
 </div><!-- /#dashboardPage -->
+
+  <!-- Help & Guidance Offcanvas (PA-L3) -->
+  <div class="offcanvas offcanvas-end" tabindex="-1" id="helpOffcanvas" aria-labelledby="helpOffcanvasLabel" style="width:400px">
+    <div class="offcanvas-header border-bottom">
+      <h5 class="offcanvas-title" id="helpOffcanvasLabel"><i class="bi bi-question-circle me-2 text-primary"></i>Help &amp; Guidance</h5>
+      <button type="button" class="btn-close" aria-label="Close" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body">
+      <h6 class="fw-semibold text-uppercase text-muted small mb-2">Key Workflows</h6>
+      <ol class="list-group list-group-flush list-group-numbered mb-4">
+        <li class="list-group-item border-0 px-0 py-1 small">Create an <strong>Award</strong> in the Awards tab</li>
+        <li class="list-group-item border-0 px-0 py-1 small">Share the <strong>Entry Form</strong> link with applicants</li>
+        <li class="list-group-item border-0 px-0 py-1 small">Review <strong>Entries</strong> and assign to judges</li>
+        <li class="list-group-item border-0 px-0 py-1 small">Judges score via the <strong>Judge Portal</strong></li>
+        <li class="list-group-item border-0 px-0 py-1 small">Use the <strong>Winner Pipeline</strong> to shortlist &amp; select winners</li>
+        <li class="list-group-item border-0 px-0 py-1 small">Set up an <strong>Event</strong> and manage tickets &amp; seating</li>
+        <li class="list-group-item border-0 px-0 py-1 small">Announce winners via <strong>Email Campaigns</strong></li>
+      </ol>
+
+      <h6 class="fw-semibold text-uppercase text-muted small mb-2">Getting Started</h6>
+      <p class="small text-muted mb-3">The <strong>Dashboard</strong> shows a getting-started checklist. Complete the four steps to unlock the full platform.</p>
+
+      <h6 class="fw-semibold text-uppercase text-muted small mb-2">Quick Links</h6>
+      <div class="d-grid gap-2">
+        <button class="btn btn-sm btn-outline-primary text-start" data-action="app.switchTab" data-id="dashboard">
+          <i class="bi bi-speedometer2 me-2"></i>Dashboard &amp; Getting Started
+        </button>
+        <button class="btn btn-sm btn-outline-primary text-start" data-action="app.switchTab" data-id="awards">
+          <i class="bi bi-trophy me-2"></i>Awards &amp; Categories
+        </button>
+        <button class="btn btn-sm btn-outline-primary text-start" data-action="app.switchTab" data-id="entries">
+          <i class="bi bi-file-earmark-text me-2"></i>Entries &amp; Judging
+        </button>
+        <button class="btn btn-sm btn-outline-primary text-start" data-action="app.switchTab" data-id="settings">
+          <i class="bi bi-gear me-2"></i>Settings &amp; Configuration
+        </button>
+      </div>
+
+      <hr class="my-4">
+      <h6 class="fw-semibold text-uppercase text-muted small mb-2">Support</h6>
+      <p class="small text-muted mb-0">For assistance, contact your system administrator or email <a href="mailto:support@britishtradeawards.com">support@britishtradeawards.com</a>.</p>
+    </div>
+  </div>
+
 </body>
 </html>

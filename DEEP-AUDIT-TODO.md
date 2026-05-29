@@ -48,13 +48,13 @@ Branch: `claude/continue-cms-build-gknZa`
 - **File:** `vercel.json:60`
 - **Impact:** Both `script-src` and `style-src` include `unsafe-inline`. This makes the Content Security Policy worthless against XSS: any injected inline `<script>` tag executes freely. The CSP header creates false confidence.
 - **Fix:** Remove `unsafe-inline` from `script-src`. Audit `index.html` and all public HTML files for inline `<script>` blocks and extract them to external `.js` files (or use build-time nonces). Style `unsafe-inline` can follow as a second step.
-- [ ] Implemented
+- [x] Implemented
 
 ### DA-H2 — In-memory rate limiting bypassed across serverless instances
 - **File:** `api/entry-proxy.js:137–140`, `api/voting-proxy.js:381–382`
 - **Impact:** Rate limiting uses a `Map` in each function instance's memory. Vercel spins up independent instances per request. A distributed attacker making concurrent requests hits multiple instances, each with a fresh counter — no limit is ever enforced. Entries, votes, and registrations can be spammed at scale.
 - **Fix:** Move rate limit state to the database. Store `(ip, endpoint, window_start, hit_count)` rows in Supabase and use an upsert + returning count to enforce limits atomically across all instances.
-- [ ] Implemented
+- [x] Implemented
 
 ### DA-H3 — `nominee_delete_all` deletes every row across all tenants with no scope check
 - **File:** `api/data-proxy.js:1555–1570`
@@ -118,43 +118,43 @@ Branch: `claude/continue-cms-build-gknZa`
 - **File:** `api/upload-proxy.js:31–59`
 - **Impact:** A malicious user can rename any file to `.pdf` and upload it. No server-side MIME or magic byte validation exists. Stored files may not be what they claim.
 - **Fix:** After receiving the file buffer, validate magic bytes against the declared extension. PDFs start with `%PDF`, JPEGs with `FF D8 FF`, PNGs with `89 50 4E 47`. Reject uploads where magic bytes don't match the declared extension.
-- [ ] Implemented
+- [x] Implemented
 
 ### DA-M3 — Smart segment query silently truncates at 1000 rows — emails under-delivered
 - **File:** `api/data-proxy.js:1360–1443`
 - **Impact:** `executeSegmentQuery()` caps results at 1000 rows with no warning. For programmes with 1000+ organisations, segment-targeted email campaigns silently miss recipients. There is no indication that the list was truncated.
 - **Fix:** Paginate the query (loop until `data.length < pageSize`) to fetch all matching rows, or add a visible warning in the Segments UI when the count reaches 1000.
-- [ ] Implemented
+- [x] Implemented
 
 ### DA-M4 — Report modals never disposed — DOM accumulates hidden orphan nodes
 - **File:** `app.js:115–147, 219–228`
 - **Impact:** Each time the Reporting section is opened, new modal DOM nodes are inserted via `insertAdjacentHTML` without disposing the previous ones. Long sessions accumulate hundreds of orphaned nodes.
 - **Fix:** Before inserting a new modal, check for and dispose any existing instance: `const existing = document.getElementById('reportModal'); if (existing) { bootstrap.Modal.getInstance(existing)?.dispose(); existing.remove(); }`
-- [ ] Implemented
+- [x] Implemented
 
 ### DA-M5 — No email preview with real recipient data merged in
 - **File:** `email-builder.js`, `index.html`
 - **Impact:** Email preview renders the template with placeholder merge tags, not real data. Admins cannot verify a personalised email (with a specific company name, contact name, award title) looks correct before sending.
 - **Fix:** Add a "Preview for Recipient" button in the email builder. Open a contact/organisation search modal; on selection, re-render the template with that record's real data substituted for merge tags.
-- [ ] Implemented
+- [x] Implemented
 
 ### DA-M6 — No public winners announcement page
 - **File:** (new file needed: `public-winners.html`)
 - **Impact:** There is no public-facing winners page viewable by press, social followers, or the general public without logging in. Award programmes expect to publish results publicly.
 - **Fix:** Create `public-winners.html` rendering winners grouped by award category. Enforce embargo: hide winners where `embargo_until > NOW()`. Add social-share buttons (Twitter, LinkedIn) per winner entry.
-- [ ] Implemented
+- [x] Implemented
 
 ### DA-M7 — Embargo dates stored but not enforced on public-facing pages
 - **File:** `public-voting.html`, `api/voting-proxy.js`, any future public winners page
 - **Impact:** Winners have an `embargo_until` field but no check prevents them from appearing publicly before the embargo time. A premature announcement could undermine the ceremony.
 - **Fix:** In all API endpoints that return winner data to unauthenticated callers, add a server-side filter: `WHERE embargo_until IS NULL OR embargo_until <= NOW()`. Never rely on the client to enforce this.
-- [ ] Implemented
+- [x] Implemented
 
 ### DA-M8 — No visual seating plan — table management done blind
 - **File:** `events.js`, `seating-enhancements.js`, `index.html`
 - **Impact:** Seating data (`table_number`, `seat_number`) exists in the DB but there's no visual floor plan. Ceremony managers cannot see the room layout, table capacities, or move guests between tables without editing individual records.
 - **Fix:** Add a "Floor Plan" sub-tab in the Events tab. Render tables as card groups showing guest names. Add a "Move Guest" button that reassigns `table_number`. Show capacity warnings (e.g., red border when over capacity).
-- [ ] Implemented
+- [x] Implemented
 
 ### DA-M9 — Winners receive no automatic certificate delivery
 - **File:** `winners.js`, `api/certificates-qr.js`
@@ -176,13 +176,13 @@ Branch: `claude/continue-cms-build-gknZa`
 - **File:** `api/data-proxy.js:851`
 - **Impact:** `safeOrPattern` allows `not` as an operator (non-standard in Supabase) and doesn't validate column names against a known schema. Low-severity injection surface.
 - **Fix:** Restrict allowed operators to the explicit set: `eq|neq|lt|lte|gt|gte|like|ilike|is|in`. Remove `not` as a standalone option.
-- [ ] Implemented
+- [x] Implemented
 
 ### DA-L2 — In-memory rate limit Map never pruned — grows indefinitely in long processes
 - **File:** `api/data-proxy.js:1135–1172`
 - **Impact:** The rate limit `Map` is never cleaned up. In a long-lived dev server or any non-serverless deployment, memory grows without bound.
 - **Fix:** Periodically evict entries older than 2× the rate window: `for (const [k, v] of rateMap) { if (Date.now() - v.windowStart > 2 * WINDOW_MS) rateMap.delete(k); }`
-- [ ] Implemented
+- [x] Implemented (sweep runs on every checkRateLimit call once per 2 windows)
 
 ### DA-L3 — `this.updateSortIndicators()` calls undefined method — column sort arrows never update
 - **File:** `awards.js:900`

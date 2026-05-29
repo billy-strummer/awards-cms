@@ -155,13 +155,13 @@
           </div>
 
           <!-- Global Search -->
-          <button class="btn btn-outline-light btn-sm" id="globalSearchNavBtn" title="Search everything (Ctrl+K)" aria-label="Search" onclick="utils.toggleCommandPalette()">
+          <button class="btn btn-outline-light btn-sm" id="globalSearchNavBtn" title="Search everything (Ctrl+K)" aria-label="Search" data-action="utils.toggleCommandPalette">
             <i class="bi bi-search me-1"></i><span class="d-none d-xl-inline small">Search</span>
             <kbd class="d-none d-xl-inline ms-1" style="background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.75);border:1px solid rgba(255,255,255,0.3);padding:1px 5px;border-radius:3px;font-size:0.6rem;line-height:1.4;">Ctrl K</kbd>
           </button>
 
           <!-- Keyboard Shortcuts Hint -->
-          <button class="btn btn-outline-light btn-sm" title="Keyboard shortcuts" aria-label="Keyboard shortcuts" onclick="var m=document.getElementById('shortcutsHelpModal');if(m)new bootstrap.Modal(m).show();">
+          <button class="btn btn-outline-light btn-sm" title="Keyboard shortcuts" aria-label="Keyboard shortcuts" data-action="globalActions.showShortcutsModal">
             <kbd style="background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.85);border:1px solid rgba(255,255,255,0.3);padding:1px 6px;border-radius:3px;font-size:0.7rem;">?</kbd>
           </button>
 
@@ -916,7 +916,7 @@
                   <h6 class="fw-bold mb-1"><i class="bi bi-map me-2 text-primary"></i>Getting Started — Award Management</h6>
                   <p class="text-muted small mb-0">Follow the award lifecycle from creation through to winner announcement.</p>
                 </div>
-                <button type="button" class="btn-close btn-sm" aria-label="Dismiss" onclick="document.getElementById('awardsGettingStarted').style.display='none';localStorage.setItem('awardsWorkflowDismissed','1');"></button>
+                <button type="button" class="btn-close btn-sm" aria-label="Dismiss" data-action="globalActions.dismissBanner" data-dismiss-key="awardsWorkflowDismissed" data-dismiss-id="awardsGettingStarted"></button>
               </div>
               <div class="row g-2">
                 <div class="col-md-3">
@@ -958,7 +958,6 @@
               </div>
             </div>
           </div>
-          <script>if(localStorage.getItem('awardsWorkflowDismissed')==='1'){var _aw=document.getElementById('awardsGettingStarted');if(_aw)_aw.style.display='none';}</script>
 
           <!-- Stats Summary -->
           <div class="row mb-4" id="awardsStatsRow">
@@ -1259,7 +1258,7 @@
             <h6 class="fw-bold mb-1"><i class="bi bi-map me-2 text-primary"></i>Getting Started — Organisations</h6>
             <p class="text-muted small mb-0">Build your organisation database — the foundation of your awards programme.</p>
           </div>
-          <button type="button" class="btn-close btn-sm" aria-label="Dismiss" onclick="document.getElementById('orgsGettingStarted').style.display='none';localStorage.setItem('orgsWorkflowDismissed','1');"></button>
+          <button type="button" class="btn-close btn-sm" aria-label="Dismiss" data-action="globalActions.dismissBanner" data-dismiss-key="orgsWorkflowDismissed" data-dismiss-id="orgsGettingStarted"></button>
         </div>
         <div class="row g-2">
           <div class="col-md-4">
@@ -1295,7 +1294,6 @@
         </div>
       </div>
     </div>
-    <script>if(localStorage.getItem('orgsWorkflowDismissed')==='1'){var _ob=document.getElementById('orgsGettingStarted');if(_ob)_ob.style.display='none';}</script>
 
     <!-- Section View Toggle -->
     <ul class="nav nav-tabs mb-4" id="orgsSubNav" role="tablist">
@@ -2311,7 +2309,7 @@
                   <h6 class="fw-bold mb-1"><i class="bi bi-map me-2 text-primary"></i>Getting Started — Winners</h6>
                   <p class="text-muted small mb-0">Winners can be added manually, imported via CSV, or promoted from the judging panel.</p>
                 </div>
-                <button type="button" class="btn-close btn-sm" aria-label="Dismiss" onclick="document.getElementById('winnersGettingStarted').style.display='none';localStorage.setItem('winnersWorkflowDismissed','1');"></button>
+                <button type="button" class="btn-close btn-sm" aria-label="Dismiss" data-action="globalActions.dismissBanner" data-dismiss-key="winnersWorkflowDismissed" data-dismiss-id="winnersGettingStarted"></button>
               </div>
               <div class="row g-2">
                 <div class="col-md-3">
@@ -2353,7 +2351,6 @@
               </div>
             </div>
           </div>
-          <script>if(localStorage.getItem('winnersWorkflowDismissed')==='1'){var _ww=document.getElementById('winnersGettingStarted');if(_ww)_ww.style.display='none';}</script>
 
           <!-- Filters Section -->
           <div class="filters-section filter-bar-sticky">
@@ -2539,7 +2536,7 @@
                   <h6 class="fw-bold mb-1"><i class="bi bi-map me-2 text-primary"></i>Getting Started — Entry Submissions</h6>
                   <p class="text-muted small mb-0">How entries flow into your awards programme.</p>
                 </div>
-                <button type="button" class="btn-close btn-sm" aria-label="Dismiss" onclick="document.getElementById('entriesGettingStarted').style.display='none';localStorage.setItem('entriesWorkflowDismissed','1');"></button>
+                <button type="button" class="btn-close btn-sm" aria-label="Dismiss" data-action="globalActions.dismissBanner" data-dismiss-key="entriesWorkflowDismissed" data-dismiss-id="entriesGettingStarted"></button>
               </div>
               <div class="row g-2">
                 <div class="col-md-4">
@@ -2575,7 +2572,6 @@
               </div>
             </div>
           </div>
-          <script>if(localStorage.getItem('entriesWorkflowDismissed')==='1'){var _eb=document.getElementById('entriesGettingStarted');if(_eb)_eb.style.display='none';}</script>
 
           <!-- Stats Cards -->
           <div class="row g-3 mb-4">
@@ -2818,13 +2814,12 @@
                     </div>
                   </div>
                 </div>
-                <button class="btn btn-sm btn-outline-secondary ms-3 flex-shrink-0" onclick="localStorage.setItem('mediaGalleryWorkflowDismissed','1');this.closest('#mediaGalleryGettingStarted').style.display='none'" aria-label="Dismiss">
+                <button class="btn btn-sm btn-outline-secondary ms-3 flex-shrink-0" data-action="globalActions.dismissBanner" data-dismiss-key="mediaGalleryWorkflowDismissed" data-dismiss-id="mediaGalleryGettingStarted" aria-label="Dismiss">
                   <i class="bi bi-x-lg"></i>
                 </button>
               </div>
             </div>
           </div>
-          <script>if(localStorage.getItem('mediaGalleryWorkflowDismissed')==='1'){var _mg=document.getElementById('mediaGalleryGettingStarted');if(_mg)_mg.style.display='none';}</script>
 
           <!-- Media Gallery Content -->
           <div id="mediaGalleryContent">
@@ -3402,7 +3397,7 @@
                   <h6 class="fw-bold mb-1"><i class="bi bi-map me-2 text-primary"></i>Getting Started — Events</h6>
                   <p class="text-muted small mb-0">Plan and manage your awards ceremonies and events.</p>
                 </div>
-                <button type="button" class="btn-close btn-sm" aria-label="Dismiss" onclick="document.getElementById('eventsGettingStarted').style.display='none';localStorage.setItem('eventsWorkflowDismissed','1');"></button>
+                <button type="button" class="btn-close btn-sm" aria-label="Dismiss" data-action="globalActions.dismissBanner" data-dismiss-key="eventsWorkflowDismissed" data-dismiss-id="eventsGettingStarted"></button>
               </div>
               <div class="row g-2">
                 <div class="col-md-4">
@@ -3465,7 +3460,6 @@
               </div>
             </div>
           </div>
-          <script>if(localStorage.getItem('eventsWorkflowDismissed')==='1'){var _evb=document.getElementById('eventsGettingStarted');if(_evb)_evb.style.display='none';}</script>
 
           <!-- Calendar View Toggle -->
           <div class="mb-3">
@@ -3812,13 +3806,12 @@
                     </div>
                   </div>
                 </div>
-                <button class="btn btn-sm btn-outline-secondary ms-3 flex-shrink-0" onclick="localStorage.setItem('reportsWorkflowDismissed','1');this.closest('#reportsGettingStarted').style.display='none'">
+                <button class="btn btn-sm btn-outline-secondary ms-3 flex-shrink-0" data-action="globalActions.dismissBanner" data-dismiss-key="reportsWorkflowDismissed" data-dismiss-id="reportsGettingStarted">
                   <i class="bi bi-x-lg"></i>
                 </button>
               </div>
             </div>
           </div>
-          <script>if(localStorage.getItem('reportsWorkflowDismissed')==='1'){var _rg=document.getElementById('reportsGettingStarted');if(_rg)_rg.style.display='none';}</script>
 
           <!-- Toolbar: Year Filter + Print + Freshness -->
           <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2 filter-bar-sticky">
@@ -4037,7 +4030,7 @@
                   <h6 class="fw-bold mb-1"><i class="bi bi-map me-2 text-primary"></i>Getting Started — Recommended Workflow</h6>
                   <p class="text-muted small mb-0">Follow these steps in order the first time you set up Marketing. Each step builds on the last.</p>
                 </div>
-                <button type="button" class="btn-close btn-sm" aria-label="Dismiss" onclick="document.getElementById('marketingGettingStarted').style.display='none';localStorage.setItem('mktWorkflowDismissed','1');"></button>
+                <button type="button" class="btn-close btn-sm" aria-label="Dismiss" data-action="globalActions.dismissBanner" data-dismiss-key="mktWorkflowDismissed" data-dismiss-id="marketingGettingStarted"></button>
               </div>
               <div class="row g-2">
                 <div class="col-md-4">
@@ -4123,7 +4116,6 @@
                 </div>
               </div>
           </div>
-          <script>if(localStorage.getItem('mktWorkflowDismissed')==='1'){var el=document.getElementById('marketingGettingStarted');if(el)el.style.display='none';}</script>
 
           <!-- Marketing Sub-Navigation (order matches Getting Started workflow) -->
           <ul class="nav nav-tabs mb-4" id="marketingSubTabs" role="tablist">
@@ -4248,7 +4240,7 @@
                       <h6 class="fw-bold mb-1"><i class="bi bi-map me-2 text-primary"></i>Getting Started — Social Media</h6>
                       <p class="text-muted small mb-0">Schedule and publish posts about your awards across Twitter, LinkedIn, Facebook, and Instagram.</p>
                     </div>
-                    <button type="button" class="btn-close btn-sm" aria-label="Dismiss" onclick="document.getElementById('socialMediaGettingStarted').style.display='none';localStorage.setItem('socialMediaBannerDismissed','1');"></button>
+                    <button type="button" class="btn-close btn-sm" aria-label="Dismiss" data-action="globalActions.dismissBanner" data-dismiss-key="socialMediaBannerDismissed" data-dismiss-id="socialMediaGettingStarted"></button>
                   </div>
                   <div class="row g-2">
                     <div class="col-md-4">
@@ -4281,7 +4273,6 @@
                   </div>
                 </div>
               </div>
-              <script>if(localStorage.getItem('socialMediaBannerDismissed')==='1'){var _smb=document.getElementById('socialMediaGettingStarted');if(_smb)_smb.style.display='none';}</script>
               <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
                   <h4><i class="bi bi-share me-2"></i>Social Media Manager</h4>
@@ -4948,7 +4939,7 @@
                       <h6 class="fw-bold mb-1"><i class="bi bi-map me-2 text-primary"></i>Getting Started — Email Builder</h6>
                       <p class="text-muted small mb-0">Create and send professional email campaigns to your winners, nominees, and contacts.</p>
                     </div>
-                    <button type="button" class="btn-close btn-sm" aria-label="Dismiss" onclick="document.getElementById('emailBuilderGettingStarted').style.display='none';localStorage.setItem('emailBuilderBannerDismissed','1');"></button>
+                    <button type="button" class="btn-close btn-sm" aria-label="Dismiss" data-action="globalActions.dismissBanner" data-dismiss-key="emailBuilderBannerDismissed" data-dismiss-id="emailBuilderGettingStarted"></button>
                   </div>
                   <div class="row g-2">
                     <div class="col-md-4">
@@ -4981,7 +4972,6 @@
                   </div>
                 </div>
               </div>
-              <script>if(localStorage.getItem('emailBuilderBannerDismissed')==='1'){var _ebb=document.getElementById('emailBuilderGettingStarted');if(_ebb)_ebb.style.display='none';}</script>
               <div class="row g-0" style="height: calc(100vh - 280px); min-height: 600px;">
 
                 <!-- Left Sidebar - Blocks & Settings -->
@@ -5558,7 +5548,7 @@
                   <h6 class="fw-bold mb-1"><i class="bi bi-map me-2 text-primary"></i>Getting Started — Payments &amp; Invoicing</h6>
                   <p class="text-muted small mb-0">Manage entry fees, sponsorship invoices, and event ticket payments.</p>
                 </div>
-                <button type="button" class="btn-close btn-sm" aria-label="Dismiss" onclick="document.getElementById('paymentsGettingStarted').style.display='none';localStorage.setItem('paymentsWorkflowDismissed','1');"></button>
+                <button type="button" class="btn-close btn-sm" aria-label="Dismiss" data-action="globalActions.dismissBanner" data-dismiss-key="paymentsWorkflowDismissed" data-dismiss-id="paymentsGettingStarted"></button>
               </div>
               <div class="row g-2">
                 <div class="col-md-4">
@@ -5594,7 +5584,6 @@
               </div>
             </div>
           </div>
-          <script>if(localStorage.getItem('paymentsWorkflowDismissed')==='1'){var _pb=document.getElementById('paymentsGettingStarted');if(_pb)_pb.style.display='none';}</script>
 
           <!-- Sub-navigation -->
           <ul class="nav nav-tabs mb-4" id="paymentsSubTabs" role="tablist">
@@ -5909,9 +5898,9 @@
                 <h5 class="mb-3"><i class="bi bi-graph-up me-2"></i>Generate Financial Reports</h5>
                 <div class="mb-3 d-flex gap-2 flex-wrap">
                   <span class="text-muted small fw-semibold align-self-center me-1">Quick range:</span>
-                  <button class="btn btn-sm btn-outline-secondary" onclick="(function(){var n=new Date(),s=new Date(n);s.setDate(n.getDate()-30);document.getElementById('reportStartDate').value=s.toISOString().slice(0,10);document.getElementById('reportEndDate').value=n.toISOString().slice(0,10);})()">Last 30 Days</button>
-                  <button class="btn btn-sm btn-outline-secondary" onclick="(function(){var n=new Date(),q=Math.floor(n.getMonth()/3),s=new Date(n.getFullYear(),q*3,1);document.getElementById('reportStartDate').value=s.toISOString().slice(0,10);document.getElementById('reportEndDate').value=n.toISOString().slice(0,10);})()">This Quarter</button>
-                  <button class="btn btn-sm btn-outline-secondary" onclick="(function(){var n=new Date();document.getElementById('reportStartDate').value=n.getFullYear()+'-01-01';document.getElementById('reportEndDate').value=n.toISOString().slice(0,10);})()">This Year</button>
+                  <button class="btn btn-sm btn-outline-secondary" data-action="globalActions.setLastNDays" data-days="30">Last 30 Days</button>
+                  <button class="btn btn-sm btn-outline-secondary" data-action="globalActions.setThisQuarter">This Quarter</button>
+                  <button class="btn btn-sm btn-outline-secondary" data-action="globalActions.setThisYear">This Year</button>
                 </div>
                 <div class="row g-3">
                   <div class="col-md-3">
@@ -5995,7 +5984,7 @@
                   <h6 class="fw-bold mb-1"><i class="bi bi-map me-2 text-primary"></i>Getting Started — CRM</h6>
                   <p class="text-muted small mb-0">Track relationships, sponsorship deals, and communications with every organisation.</p>
                 </div>
-                <button type="button" class="btn-close btn-sm" aria-label="Dismiss" onclick="document.getElementById('crmGettingStarted').style.display='none';localStorage.setItem('crmWorkflowDismissed','1');"></button>
+                <button type="button" class="btn-close btn-sm" aria-label="Dismiss" data-action="globalActions.dismissBanner" data-dismiss-key="crmWorkflowDismissed" data-dismiss-id="crmGettingStarted"></button>
               </div>
               <div class="row g-2">
                 <div class="col-md-4">
@@ -6031,7 +6020,6 @@
               </div>
             </div>
           </div>
-          <script>if(localStorage.getItem('crmWorkflowDismissed')==='1'){var _cb=document.getElementById('crmGettingStarted');if(_cb)_cb.style.display='none';}</script>
 
           <!-- Sub-navigation -->
           <ul class="nav nav-tabs mb-4" id="crmSubTabs" role="tablist">
@@ -6522,13 +6510,12 @@
                     </div>
                   </div>
                 </div>
-                <button class="btn btn-sm btn-outline-secondary ms-3 flex-shrink-0" onclick="localStorage.setItem('settingsWorkflowDismissed','1');this.closest('#settingsGettingStarted').style.display='none'" aria-label="Dismiss">
+                <button class="btn btn-sm btn-outline-secondary ms-3 flex-shrink-0" data-action="globalActions.dismissBanner" data-dismiss-key="settingsWorkflowDismissed" data-dismiss-id="settingsGettingStarted" aria-label="Dismiss">
                   <i class="bi bi-x-lg"></i>
                 </button>
               </div>
             </div>
           </div>
-          <script>if(localStorage.getItem('settingsWorkflowDismissed')==='1'){var _sg=document.getElementById('settingsGettingStarted');if(_sg)_sg.style.display='none';}</script>
 
           <!-- Settings Sub-Navigation -->
           <ul class="nav nav-tabs mb-4" id="settingsSubTabs" role="tablist">
@@ -7298,16 +7285,6 @@
 
           </div><!-- /settingsSubTabContent tab-content -->
 
-          <script>
-          (function() {
-            var overflow = document.getElementById('settings-security-overflow');
-            var secPane = document.getElementById('settings-security');
-            if (overflow && secPane) {
-              while (overflow.firstChild) secPane.appendChild(overflow.firstChild);
-              overflow.remove();
-            }
-          })();
-          </script>
 
         </div>
       </div>
@@ -7520,7 +7497,7 @@
               <label for="webhookFormSecret" class="form-label">Security Token <small class="text-muted">(optional)</small></label>
               <div class="input-group">
                 <input type="password" class="form-control" id="webhookFormSecret" placeholder="Leave blank to auto-generate" autocomplete="new-password">
-                <button class="btn btn-outline-secondary" type="button" aria-label="Show/hide secret token" onclick="this.previousElementSibling.type = this.previousElementSibling.type === 'password' ? 'text' : 'password'; this.querySelector('i').classList.toggle('bi-eye'); this.querySelector('i').classList.toggle('bi-eye-slash');">
+                <button class="btn btn-outline-secondary" type="button" aria-label="Show/hide secret token" data-action="globalActions.toggleTokenVisibility">
                   <i class="bi bi-eye"></i>
                 </button>
               </div>
@@ -7797,7 +7774,7 @@
                   </div>
                   <div class="d-flex align-items-center gap-2">
                     <span class="text-muted small">Total: <strong id="criteriaWeightTotal">0</strong>/100</span>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="awardsModule.addScoringCriterionRow()">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-action="awardsModule.addScoringCriterionRow">
                       <i class="bi bi-plus me-1"></i>Add Criterion
                     </button>
                   </div>
@@ -8277,10 +8254,9 @@
               <i class="bi bi-link-45deg text-primary"></i>
               <span class="text-muted me-1">Judge Portal URL:</span>
               <code id="judgePortalUrlDisplay" class="text-primary" style="word-break:break-all;"></code>
-              <button class="btn btn-outline-secondary btn-sm py-0 px-2 ms-1" onclick="(function(){const url=document.getElementById('judgePortalUrlDisplay').textContent;navigator.clipboard.writeText(url).then(()=>utils.showToast('Judge Portal URL copied to clipboard','success'));})();" title="Copy URL" aria-label="Copy Judge Portal URL">
+              <button class="btn btn-outline-secondary btn-sm py-0 px-2 ms-1" data-action="globalActions.copyJudgePortalUrl" title="Copy URL" aria-label="Copy Judge Portal URL">
                 <i class="bi bi-clipboard"></i>
               </button>
-              <script>document.getElementById('judgePortalUrlDisplay').textContent=window.location.origin+'/judge-portal.html';</script>
             </div>
           </div>
           <div>
@@ -11447,48 +11423,6 @@
   </div>
 
 
-  <script>
-    /* Auto-insert "* Required fields" legend in modals that contain required inputs */
-    document.addEventListener('show.bs.modal', function (e) {
-      var modal = e.target;
-      var form  = modal.querySelector('form');
-      if (!form || modal.querySelector('.required-field-legend')) return;
-      if (!form.querySelector('[required]')) return;
-      var legend = document.createElement('p');
-      legend.className = 'required-field-legend text-muted small mb-3 pb-2 border-bottom';
-      legend.innerHTML = '<span class="text-danger fw-semibold" aria-hidden="true">*</span> Required fields';
-      form.insertBefore(legend, form.firstChild);
-    });
-  </script>
-
-  <script>
-    /* Sidebar collapse state */
-    (function () {
-      var sidebar = document.getElementById('appSidebar');
-      var toggle  = document.getElementById('sidebarToggle');
-      if (!sidebar || !toggle) return;
-      var isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
-      if (isCollapsed) sidebar.classList.add('collapsed');
-      toggle.title = isCollapsed ? 'Expand sidebar' : 'Collapse sidebar';
-      toggle.addEventListener('click', function () {
-        sidebar.classList.toggle('collapsed');
-        var collapsed = sidebar.classList.contains('collapsed');
-        localStorage.setItem('sidebarCollapsed', collapsed);
-        toggle.title = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
-      });
-      /* Sync active state when Bootstrap switches tab */
-      document.addEventListener('shown.bs.tab', function (e) {
-        sidebar.querySelectorAll('.sidebar-nav-link').forEach(function (btn) {
-          btn.classList.remove('active');
-          btn.setAttribute('aria-selected', 'false');
-        });
-        if (e.target && e.target.closest('.app-sidebar')) {
-          e.target.classList.add('active');
-          e.target.setAttribute('aria-selected', 'true');
-        }
-      });
-    })();
-  </script>
 
   <!-- Award Categories Reference Modal -->
   <div class="modal fade" aria-modal="true" id="awardCatRefModal" tabindex="-1" aria-labelledby="awardCatRefModalLabel" aria-hidden="true">
@@ -11797,45 +11731,6 @@
   </div>
 
 
-  <script>
-    /* Global actions for confirmation dialogs */
-    window.globalActions = {
-      confirmBulkDelete: function (el) {
-        var module = el.dataset.module;
-        var fn     = el.dataset.fn;
-        var label  = el.dataset.label  || 'item';
-        var verb   = el.dataset.verb   || 'Delete';
-        /* Count checked items — try common checkbox patterns */
-        var checked = document.querySelectorAll(
-          'input[type="checkbox"]:checked:not(#awardsSelectAll):not(#selectAllOrgs):not([id$="SelectAll"]):not([id$="selectAll"])'
-        );
-        var count = checked.length || 'the selected';
-        var plural = count !== 1 ? 's' : '';
-        document.getElementById('bulkDeleteConfirmTitle').textContent = verb + ' ' + label + (typeof count === 'number' ? 's' : '');
-        document.getElementById('bulkDeleteConfirmMsg').textContent =
-          verb + ' ' + count + ' ' + label + plural + '?';
-        document.getElementById('bulkDeleteConfirmBtnLabel').textContent = verb;
-        document.getElementById('bulkDeleteConfirmBtn').onclick = function () {
-          bootstrap.Modal.getInstance(document.getElementById('bulkDeleteConfirmModal'))?.hide();
-          var mod = window[module];
-          if (mod && typeof mod[fn] === 'function') mod[fn]();
-        };
-        new bootstrap.Modal(document.getElementById('bulkDeleteConfirmModal')).show();
-      },
-      confirmClearCanvas: function () {
-        document.getElementById('bulkDeleteConfirmTitle').textContent = 'Clear Email Canvas';
-        document.getElementById('bulkDeleteConfirmMsg').textContent = 'Clear the entire email canvas?';
-        document.getElementById('bulkDeleteConfirmSub').textContent = 'All your email content will be removed and cannot be recovered.';
-        document.getElementById('bulkDeleteConfirmBtnLabel').textContent = 'Clear Canvas';
-        document.getElementById('bulkDeleteConfirmBtn').onclick = function () {
-          bootstrap.Modal.getInstance(document.getElementById('bulkDeleteConfirmModal'))?.hide();
-          emailBuilder?.clearCanvas();
-        };
-        new bootstrap.Modal(document.getElementById('bulkDeleteConfirmModal')).show();
-      }
-    };
-  </script>
-
   <!-- Bootstrap JS Bundle -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
 
@@ -11902,6 +11797,7 @@
     <i class="bi bi-arrow-up" aria-hidden="true"></i>
   </button>
 
+  <script src="global-actions.js"></script>
   <script src="app.js"></script>
   <!-- TradingView Widget -->
   <script src="btc-module.js"></script>

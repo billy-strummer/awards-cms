@@ -852,7 +852,7 @@ async function _executeQuery(body, user, enableTenantScope) {
       // Validate OR clause: only allow safe column.operator.value patterns
       const orStr = String(body.or);
       const safeOrPattern =
-        /^[a-zA-Z_][a-zA-Z0-9_]*\.(eq|neq|gt|gte|lt|lte|like|ilike|is|in|not)\.[^,]+(,[a-zA-Z_][a-zA-Z0-9_]*\.(eq|neq|gt|gte|lt|lte|like|ilike|is|in|not)\.[^,]+)*$/;
+        /^[a-zA-Z_][a-zA-Z0-9_]*\.(eq|neq|gt|gte|lt|lte|like|ilike|is|in)\.[^,]+(,[a-zA-Z_][a-zA-Z0-9_]*\.(eq|neq|gt|gte|lt|lte|like|ilike|is|in)\.[^,]+)*$/;
       if (safeOrPattern.test(orStr)) {
         query = query.or(orStr);
       } else {
@@ -1370,17 +1370,40 @@ async function executeSegmentQuery(rules, logic) {
     county_city: 'county_city',
   };
 
-  // Fetch all orgs with embedded award count (limit 1000 — full database)
-  const { data: orgs, error } = await supabase
-    .from('organisations')
-    .select(
-      'id, company_name, status, sector, county_city, tier, email, contact_name, contact_phone, logo_url, website, updated_at, award_assignments(count)'
-    )
-    .limit(1000);
+  // Paginate through all organisations to avoid the 1000-row silent truncation.
+  // Safety cap of 10,000 rows to prevent excessive memory usage.
+  const PAGE_SIZE = 500;
+  const MAX_ROWS = 10000;
+  const allOrgs = [];
+  let page = 0;
 
-  if (error) throw error;
+  while (true) {
+    const from = page * PAGE_SIZE;
+    // eslint-disable-next-line no-await-in-loop
+    const { data: batch, error } = await supabase
+      .from('organisations')
+      .select(
+        'id, company_name, status, sector, county_city, tier, email, contact_name, contact_phone, logo_url, website, updated_at, award_assignments(count)'
+      )
+      .range(from, from + PAGE_SIZE - 1);
 
-  const processed = (orgs || []).map((org) => ({
+    if (error) throw error;
+    if (!batch || batch.length === 0) break;
+
+    allOrgs.push(...batch);
+    page++;
+
+    if (allOrgs.length >= MAX_ROWS) {
+      console.warn(
+        `[executeSegmentQuery] Safety cap reached: ${MAX_ROWS} rows loaded. Some organisations may be excluded from this segment.`
+      );
+      break;
+    }
+
+    if (batch.length < PAGE_SIZE) break; // Last page
+  }
+
+  const processed = allOrgs.map((org) => ({
     ...org,
     awards_count: org.award_assignments?.[0]?.count || 0,
     county_city: org.county_city || '',

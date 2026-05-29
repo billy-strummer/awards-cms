@@ -217,7 +217,11 @@ const reportsScheduler = {
         .join('')}</div>`;
 
     const existingModal = document.getElementById('reportPreviewModal');
-    if (existingModal) existingModal.remove();
+    if (existingModal) {
+      const instance = bootstrap.Modal.getInstance(existingModal);
+      if (instance && typeof instance.dispose === 'function') instance.dispose();
+      existingModal.remove();
+    }
     const modalHtml = `<div class="modal fade" id="reportPreviewModal" tabindex="-1">
       <div class="modal-dialog modal-lg"><div class="modal-content">
         <div class="modal-header"><h5 class="modal-title"><i class="bi bi-file-text me-2"></i>Report Preview</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>

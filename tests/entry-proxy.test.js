@@ -10,9 +10,13 @@ function chainable(resolveWith = { data: null, error: null }) {
     insert: jest.fn(() => obj),
     update: jest.fn(() => obj),
     eq: jest.fn(() => obj),
+    neq: jest.fn(() => obj),
+    gte: jest.fn(() => obj),
+    lte: jest.fn(() => obj),
     ilike: jest.fn(() => obj),
     order: jest.fn(() => obj),
     limit: jest.fn(() => obj),
+    range: jest.fn(() => obj),
     single: jest.fn(() => Promise.resolve(resolveWith)),
     maybeSingle: jest.fn(() => Promise.resolve(resolveWith)),
     rpc: jest.fn(() => Promise.resolve({ data: null, error: null })),
@@ -257,6 +261,8 @@ describe('Entry Proxy API', () => {
   // --- Successful Entry Submission ---
 
   test('creates entry with existing organisation', async () => {
+    // 0. DB rate-limit check (count=0 → allowed)
+    mockFromResults.push(chainable({ count: 0, error: null }));
     // 1. Existing org lookup: found
     mockFromResults.push(chainable({ data: [{ id: 'org-1' }], error: null }));
     // 2. Award match
@@ -281,6 +287,8 @@ describe('Entry Proxy API', () => {
   });
 
   test('creates entry and new organisation when org not found', async () => {
+    // 0. DB rate-limit check
+    mockFromResults.push(chainable({ count: 0, error: null }));
     // 1. Existing org lookup: not found
     mockFromResults.push(chainable({ data: [], error: null }));
     // 2. Org insert
@@ -305,6 +313,8 @@ describe('Entry Proxy API', () => {
   });
 
   test('returns 500 when organisation creation fails', async () => {
+    // DB rate-limit check
+    mockFromResults.push(chainable({ count: 0, error: null }));
     // Org lookup: not found
     mockFromResults.push(chainable({ data: [], error: null }));
     // Org insert: fails
@@ -320,36 +330,14 @@ describe('Entry Proxy API', () => {
   // --- Rate Limiting ---
 
   test('rejects request when rate limited', async () => {
-    // Exhaust the rate limit for this IP (5 max per hour)
-    for (let i = 0; i < 6; i++) {
-      const req = createReq({
-        body: validEntryBody(),
-        headers: { 'x-forwarded-for': '10.99.99.99' },
-      });
-      const res = createRes();
-      // Set up enough mock chains for each call attempt
-      mockFromResults = [];
-      mockFromCallIndex = 0;
-      // Org lookup
-      mockFromResults.push(chainable({ data: [{ id: 'org-1' }], error: null }));
-      // Award match
-      mockFromResults.push(chainable({ data: [], error: null }));
-      // Entry number gen
-      mockFromResults.push(chainable({ data: [], error: null }));
-      // Entry insert
-      mockFromResults.push(
-        chainable({
-          data: { id: `entry-${i}`, entry_number: `BTA-2026-000${i}` },
-          error: null,
-        })
-      );
-      await handler(req, res);
+    // DB rate-limit check returns count=5 (at limit) → should be blocked
+    mockFromResults.push(chainable({ count: 5, error: null }));
 
-      if (i >= 5) {
-        expect(res.statusCode).toBe(429);
-        expect(res.body.error).toContain('Too many');
-      }
-    }
+    const req = createReq({ body: validEntryBody() });
+    const res = createRes();
+    await handler(req, res);
+    expect(res.statusCode).toBe(429);
+    expect(res.body.error).toContain('Too many');
   });
 
   // --- Error Handling ---
@@ -370,6 +358,8 @@ describe('Entry Proxy API', () => {
   // --- Entry with optional fields ---
 
   test('accepts entry with all optional fields', async () => {
+    // DB rate-limit check
+    mockFromResults.push(chainable({ count: 0, error: null }));
     // Org lookup
     mockFromResults.push(chainable({ data: [{ id: 'org-1' }], error: null }));
     // Award match
@@ -405,6 +395,8 @@ describe('Entry Proxy API', () => {
   // --- Fallback entry creation ---
 
   test('falls back to base columns when extended insert fails', async () => {
+    // DB rate-limit check
+    mockFromResults.push(chainable({ count: 0, error: null }));
     // Org lookup
     mockFromResults.push(chainable({ data: [{ id: 'org-1' }], error: null }));
     // Award match
@@ -432,6 +424,8 @@ describe('Entry Proxy API', () => {
   });
 
   test('returns 500 when both extended and fallback entry inserts fail', async () => {
+    // DB rate-limit check
+    mockFromResults.push(chainable({ count: 0, error: null }));
     // Org lookup
     mockFromResults.push(chainable({ data: [{ id: 'org-1' }], error: null }));
     // Award match

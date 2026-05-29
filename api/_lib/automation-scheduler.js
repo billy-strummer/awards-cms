@@ -44,8 +44,9 @@ cron.schedule(
     console.log('\nRunning daily automation tasks...');
 
     try {
-      // Send deadline reminders
+      // Send deadline reminders (entry close dates and judging deadlines)
       await sendDeadlineReminders();
+      await checkDeadlineReminders();
 
       // Check for overdue invoices and send payment reminders
       await sendPaymentReminders();
@@ -201,10 +202,7 @@ async function dispatchScheduledCampaigns() {
     } catch (sendErr) {
       console.error(`dispatchScheduledCampaigns: failed to send campaign ${campaign.id}:`, sendErr);
 
-      await supabase
-        .from('email_campaigns')
-        .update({ status: 'Failed' })
-        .eq('id', campaign.id);
+      await supabase.from('email_campaigns').update({ status: 'Failed' }).eq('id', campaign.id);
     }
   }
 }
@@ -411,6 +409,111 @@ async function generateWeeklyStats() {
     });
   } catch (error) {
     console.error('Error generating weekly stats:', error);
+  }
+}
+
+/**
+ * Check for upcoming award deadlines and send reminder emails to entrants and judges.
+ * Checks entry_close_date at 7, 3, and 1 day intervals, and judging_deadline similarly.
+ * @returns {Promise<void>}
+ */
+async function checkDeadlineReminders() {
+  try {
+    const now = new Date();
+    const intervals = [7, 3, 1];
+    const appUrl = process.env.APP_URL || 'https://admin.britishtradeawards.com';
+
+    for (const daysLeft of intervals) {
+      const target = new Date(now);
+      target.setDate(target.getDate() + daysLeft);
+      const targetStr = target.toISOString().split('T')[0];
+
+      // --- Entry close date reminders ---
+      const { data: closingAwards } = await supabase
+        .from('award_years')
+        .select('id, name, entry_close_date')
+        .eq('entry_close_date', targetStr);
+
+      for (const award of closingAwards || []) {
+        const { data: entries } = await supabase
+          .from('entries')
+          .select('contact_name, contact_email')
+          .eq('award_id', award.id)
+          .in('status', ['submitted', 'under_review', 'draft'])
+          .not('contact_email', 'is', null);
+
+        for (const entry of entries || []) {
+          if (!entry.contact_email) continue;
+          try {
+            await fetch(`${appUrl}/api/email-automation`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'send_template',
+                template_type: 'deadline_reminder',
+                recipient_email: entry.contact_email,
+                variables: {
+                  contact_name: entry.contact_name || 'Entrant',
+                  award_name: award.name || 'Award',
+                  days_left: String(daysLeft),
+                  deadline: award.entry_close_date,
+                  deadline_type: 'Entry Submission',
+                },
+              }),
+            });
+          } catch (emailErr) {
+            console.warn(
+              `checkDeadlineReminders: failed to send entry reminder to ${entry.contact_email}:`,
+              emailErr.message
+            );
+          }
+        }
+      }
+
+      // --- Judging deadline reminders ---
+      const { data: judgingAwards } = await supabase
+        .from('awards')
+        .select('id, award_name, judging_deadline')
+        .eq('judging_deadline', targetStr)
+        .eq('is_active', true);
+
+      for (const award of judgingAwards || []) {
+        const { data: assignments } = await supabase
+          .from('judge_assignments')
+          .select('judge_email')
+          .eq('award_id', award.id)
+          .neq('status', 'completed');
+
+        const judgeEmails = [...new Set((assignments || []).map((a) => a.judge_email).filter(Boolean))];
+
+        for (const judgeEmail of judgeEmails) {
+          try {
+            await fetch(`${appUrl}/api/email-automation`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'send_template',
+                template_type: 'deadline_reminder',
+                recipient_email: judgeEmail,
+                variables: {
+                  contact_name: 'Judge',
+                  award_name: award.award_name || 'Award',
+                  days_left: String(daysLeft),
+                  deadline: award.judging_deadline,
+                  deadline_type: 'Judging',
+                },
+              }),
+            });
+          } catch (emailErr) {
+            console.warn(`checkDeadlineReminders: failed to send judge reminder to ${judgeEmail}:`, emailErr.message);
+          }
+        }
+      }
+    }
+
+    console.log('checkDeadlineReminders: complete');
+  } catch (error) {
+    console.error('checkDeadlineReminders error:', error);
   }
 }
 

@@ -41,22 +41,29 @@ function sanitizeString(str, maxLength = 1000) {
 }
 
 // ────────────────────────────────────────────
-// Rate limiting (in-memory, per-IP)
+// Rate limiting (DB-backed, cross-instance safe)
 // ────────────────────────────────────────────
 
-const rateLimitMap = new Map();
 const RATE_LIMIT_MAX = 5;
 const RATE_LIMIT_WINDOW_MS = 3600000; // 1 hour
 
-function checkRateLimit(ip) {
-  const now = Date.now();
-  const entry = rateLimitMap.get(ip);
-  if (!entry || now - entry.start > RATE_LIMIT_WINDOW_MS) {
-    rateLimitMap.set(ip, { start: now, count: 1 });
-    return true;
+/**
+ * Check whether an email has exceeded the entry submission rate limit.
+ * Uses the database so the limit is enforced across all serverless instances.
+ * Returns true if the request is allowed, false if it should be blocked.
+ */
+async function checkEmailRateLimit(email) {
+  const oneHourAgo = new Date(Date.now() - RATE_LIMIT_WINDOW_MS).toISOString();
+  const { count, error } = await supabase
+    .from('entries')
+    .select('id', { count: 'exact', head: true })
+    .eq('contact_email', email.toLowerCase())
+    .gte('submission_date', oneHourAgo);
+  if (error) {
+    console.warn('[entry-proxy] Rate limit check failed (non-fatal):', error.message);
+    return true; // Allow on error to avoid blocking legitimate submissions
   }
-  entry.count++;
-  return entry.count <= RATE_LIMIT_MAX;
+  return (count || 0) < RATE_LIMIT_MAX;
 }
 
 // ────────────────────────────────────────────
@@ -134,11 +141,6 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const ip = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
-  if (!checkRateLimit(ip)) {
-    return res.status(429).json({ error: 'Too many submissions. Please try again later.' });
-  }
-
   const { action } = req.body || {};
 
   try {
@@ -189,6 +191,13 @@ async function handleSubmitEntry(req, res) {
   if (!contactEmail || !isValidEmail(contactEmail)) {
     return res.status(400).json({ error: 'Valid email address is required' });
   }
+
+  // DB-backed rate limit: enforced across all serverless instances
+  const allowed = await checkEmailRateLimit(contactEmail);
+  if (!allowed) {
+    return res.status(429).json({ error: 'Too many submissions from this email. Please try again later.' });
+  }
+
   if (!contactName || typeof contactName !== 'string' || contactName.trim().length < 2) {
     return res.status(400).json({ error: 'Contact name is required' });
   }
@@ -412,6 +421,13 @@ async function handleSubmitNomination(req, res) {
   if (!nominatorEmail || !isValidEmail(nominatorEmail)) {
     return res.status(400).json({ error: 'Valid email address is required' });
   }
+
+  // DB-backed rate limit (shared limit across entries + nominations for the same email)
+  const allowed = await checkEmailRateLimit(nominatorEmail);
+  if (!allowed) {
+    return res.status(429).json({ error: 'Too many submissions from this email. Please try again later.' });
+  }
+
   if (!nominatorName || typeof nominatorName !== 'string' || nominatorName.trim().length < 2) {
     return res.status(400).json({ error: 'Your name is required' });
   }

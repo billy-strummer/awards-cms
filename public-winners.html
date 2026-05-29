@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Winners - British Trade Awards</title>
+  <link rel="icon" href="BTA-LOGO-entry.jpg" type="image/jpeg">
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+
+  <!-- Premium Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Winners - British Trade Awards">
+  <meta property="og:description" content="Congratulations to all winners of the British Trade Awards">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="BTA-LOGO-no-date.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <style>
+    :root {
+      --gold: #c9a84c;
+      --gold-dark: #a8863a;
+      --dark: #1a1a2e;
+      --dark-mid: #16213e;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      background: var(--dark);
+      min-height: 100vh;
+      font-family: 'Montserrat', sans-serif;
+      color: #f0f0f0;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    body::before,
+    body::after {
+      content: '';
+      position: fixed;
+      top: 0;
+      width: 50%;
+      height: 100%;
+      background-image: url('BTA-LOGO-no-date.jpg');
+      background-size: contain;
+      background-repeat: no-repeat;
+      opacity: 0.04;
+      z-index: 0;
+      pointer-events: none;
+    }
+    body::before { left: -10%; background-position: right center; }
+    body::after  { right: -10%; background-position: left center; }
+
+    .page-wrapper {
+      position: relative;
+      z-index: 1;
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 40px 20px 60px;
+    }
+
+    /* Hero header */
+    .winners-header {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+
+    .winners-header .logo {
+      width: 90px;
+      height: 90px;
+      object-fit: contain;
+      border-radius: 16px;
+      border: 2px solid var(--gold);
+      margin-bottom: 20px;
+      background: white;
+      padding: 6px;
+    }
+
+    .winners-header h1 {
+      font-family: 'Cinzel', serif;
+      font-size: 2.6rem;
+      font-weight: 700;
+      color: var(--gold);
+      margin-bottom: 8px;
+      line-height: 1.1;
+    }
+
+    .winners-header p {
+      color: #adb5bd;
+      font-size: 1rem;
+      letter-spacing: 0.5px;
+    }
+
+    .gold-divider {
+      width: 80px;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, var(--gold), transparent);
+      margin: 16px auto;
+      border-radius: 2px;
+    }
+
+    /* Category sections */
+    .category-section {
+      margin-bottom: 44px;
+    }
+
+    .category-title {
+      font-family: 'Cinzel', serif;
+      font-size: 1.25rem;
+      color: var(--gold);
+      border-bottom: 2px solid rgba(201, 168, 76, 0.3);
+      padding-bottom: 10px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .category-title i {
+      font-size: 1rem;
+      opacity: 0.7;
+    }
+
+    /* Winner cards */
+    .winner-card {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(201,168,76,0.2);
+      border-radius: 16px;
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      margin-bottom: 16px;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .winner-card:hover {
+      border-color: rgba(201,168,76,0.5);
+      background: rgba(255,255,255,0.08);
+    }
+
+    .winner-card.winner-first {
+      border-color: var(--gold);
+      background: rgba(201,168,76,0.07);
+    }
+
+    .org-logo {
+      width: 60px;
+      height: 60px;
+      object-fit: contain;
+      border-radius: 10px;
+      background: white;
+      padding: 4px;
+      flex-shrink: 0;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .org-logo-placeholder {
+      width: 60px;
+      height: 60px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      color: rgba(255,255,255,0.3);
+      font-size: 1.5rem;
+    }
+
+    .winner-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .winner-info .company-name {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: #f0f0f0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .winner-info .award-label {
+      font-size: 0.82rem;
+      color: #adb5bd;
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .placement-badge {
+      padding: 5px 14px;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .badge-winner {
+      background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+      color: #1a1a2e;
+    }
+
+    .badge-runner-up {
+      background: rgba(156,163,175,0.2);
+      color: #d1d5db;
+      border: 1px solid rgba(156,163,175,0.4);
+    }
+
+    .badge-commended {
+      background: rgba(96,165,250,0.15);
+      color: #93c5fd;
+      border: 1px solid rgba(96,165,250,0.3);
+    }
+
+    /* Share buttons */
+    .share-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 6px;
+    }
+
+    .share-btn {
+      font-size: 0.72rem;
+      padding: 3px 10px;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: opacity 0.2s;
+    }
+    .share-btn:hover { opacity: 0.85; }
+
+    .share-btn-twitter  { background: #000; color: #fff; }
+    .share-btn-linkedin { background: #0077b5; color: #fff; }
+
+    /* Loading / Error */
+    .loading-state {
+      text-align: center;
+      padding: 80px 0;
+      color: #adb5bd;
+    }
+
+    .loading-state .spinner-border {
+      color: var(--gold);
+      width: 3rem;
+      height: 3rem;
+    }
+
+    .error-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #f87171;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #adb5bd;
+    }
+
+    /* Footer */
+    .winners-footer {
+      text-align: center;
+      padding: 30px 0 10px;
+      color: #4b5563;
+      font-size: 0.82rem;
+      border-top: 1px solid rgba(255,255,255,0.06);
+      margin-top: 40px;
+    }
+
+    .winners-footer a {
+      color: var(--gold);
+      text-decoration: none;
+    }
+
+    @media (max-width: 576px) {
+      .winners-header h1 { font-size: 1.8rem; }
+      .winner-card { flex-wrap: wrap; }
+      .share-row { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-wrapper">
+
+    <!-- Header -->
+    <div class="winners-header">
+      <img src="BTA-LOGO-entry.jpg" alt="British Trade Awards" class="logo">
+      <h1>Award Winners</h1>
+      <div class="gold-divider"></div>
+      <p id="winnersSubtitle">Celebrating excellence in British trade and business</p>
+    </div>
+
+    <!-- Main content -->
+    <div id="winnersContent">
+      <div class="loading-state">
+        <div class="spinner-border mb-3" role="status">
+          <span class="visually-hidden">Loading winners...</span>
+        </div>
+        <p class="mt-2">Loading winners...</p>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="winners-footer">
+      <p class="mb-1">
+        <i class="bi bi-award me-1" style="color: var(--gold);"></i>
+        Powered by <strong>British Trade Awards</strong>
+      </p>
+      <p class="mb-0">
+        <a href="https://www.britishtradeawards.com" target="_blank" rel="noopener">britishtradeawards.com</a>
+      </p>
+    </div>
+
+  </div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      // Derive API base from current page location
+      const API_BASE = window.location.origin;
+
+      function placementLabel(placement) {
+        if (!placement) return 'Winner';
+        const p = String(placement).toLowerCase().trim();
+        if (p === '1' || p === 'winner' || p === 'gold') return 'Winner';
+        if (p === '2' || p === 'runner-up' || p === 'runner_up' || p === 'silver') return 'Runner-up';
+        if (p === '3' || p === 'highly commended' || p === 'highly_commended' || p === 'commended' || p === 'bronze') return 'Highly Commended';
+        return placement;
+      }
+
+      function placementBadgeClass(placement) {
+        const label = placementLabel(placement).toLowerCase();
+        if (label === 'winner') return 'badge-winner';
+        if (label === 'runner-up') return 'badge-runner-up';
+        return 'badge-commended';
+      }
+
+      function shareLinks(companyName, awardName) {
+        const text = encodeURIComponent(`Congratulations to ${companyName} — ${awardName} winner at the British Trade Awards!`);
+        const url = encodeURIComponent(window.location.href);
+        return `
+          <a href="https://twitter.com/intent/tweet?text=${text}&url=${url}" target="_blank" rel="noopener" class="share-btn share-btn-twitter" aria-label="Share on Twitter">
+            <i class="bi bi-twitter-x"></i> Share
+          </a>
+          <a href="https://www.linkedin.com/sharing/share-offsite/?url=${url}" target="_blank" rel="noopener" class="share-btn share-btn-linkedin" aria-label="Share on LinkedIn">
+            <i class="bi bi-linkedin"></i> Share
+          </a>`;
+      }
+
+      function renderWinners(grouped) {
+        const container = document.getElementById('winnersContent');
+        const categories = Object.keys(grouped).sort();
+
+        if (categories.length === 0) {
+          container.innerHTML = `
+            <div class="empty-state">
+              <i class="bi bi-trophy display-4 d-block mb-3" style="color:var(--gold);opacity:0.3;"></i>
+              <p class="mb-0">No winners have been announced yet. Check back soon!</p>
+            </div>`;
+          return;
+        }
+
+        // Show year in subtitle if available
+        const firstEntry = grouped[categories[0]]?.[0];
+        if (firstEntry?.year) {
+          document.getElementById('winnersSubtitle').textContent =
+            `${firstEntry.year} · Celebrating excellence in British trade and business`;
+        }
+
+        const html = categories.map(function (category) {
+          const entries = grouped[category];
+          const cards = entries.map(function (w) {
+            const label = placementLabel(w.placement);
+            const badgeClass = placementBadgeClass(w.placement);
+            const isFirst = label === 'Winner';
+            const logoHtml = w.logo_url
+              ? `<img src="${escapeHtml(w.logo_url)}" alt="${escapeHtml(w.company_name)} logo" class="org-logo">`
+              : `<div class="org-logo-placeholder"><i class="bi bi-building"></i></div>`;
+
+            return `<div class="winner-card${isFirst ? ' winner-first' : ''}">
+              ${logoHtml}
+              <div class="winner-info">
+                <div class="company-name">${escapeHtml(w.company_name)}</div>
+                <div class="award-label">${escapeHtml(w.award_name)}</div>
+                <div class="share-row">${shareLinks(w.company_name, w.award_name)}</div>
+              </div>
+              <span class="placement-badge ${badgeClass}">${escapeHtml(label)}</span>
+            </div>`;
+          }).join('');
+
+          return `<div class="category-section">
+            <h2 class="category-title"><i class="bi bi-trophy-fill"></i>${escapeHtml(category)}</h2>
+            ${cards}
+          </div>`;
+        }).join('');
+
+        container.innerHTML = html;
+      }
+
+      function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      async function loadWinners() {
+        try {
+          const res = await fetch(API_BASE + '/api/voting-proxy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'load_winners' }),
+          });
+
+          if (!res.ok) {
+            throw new Error('Server returned ' + res.status);
+          }
+
+          const data = await res.json();
+
+          if (data.error) {
+            throw new Error(data.error);
+          }
+
+          // Client-side embargo guard (belt-and-suspenders; server also filters)
+          const now = Date.now();
+          const filtered = (data.winners || []).filter(function (w) {
+            if (!w.embargo_until) return true;
+            return new Date(w.embargo_until).getTime() <= now;
+          });
+
+          // Rebuild grouped from filtered list
+          const grouped = {};
+          filtered.forEach(function (w) {
+            const cat = w.award_years?.award_category || w.award_years?.award_name || w.award_category || w.award_name || 'Uncategorised';
+            if (!grouped[cat]) grouped[cat] = [];
+            grouped[cat].push({
+              id: w.id,
+              placement: w.placement,
+              company_name: w.organisations?.company_name || w.company_name || '',
+              logo_url: w.organisations?.logo_url || w.logo_url || null,
+              award_name: w.award_years?.award_name || w.award_name || '',
+              award_category: cat,
+              year: w.award_years?.year || w.year || null,
+            });
+          });
+
+          // If server already sent grouped, prefer that (no embargo_until in grouped entries)
+          const finalGrouped = (data.grouped && Object.keys(data.grouped).length > 0)
+            ? data.grouped
+            : grouped;
+
+          renderWinners(finalGrouped);
+        } catch (err) {
+          console.error('Failed to load winners:', err);
+          document.getElementById('winnersContent').innerHTML = `
+            <div class="error-state">
+              <i class="bi bi-exclamation-triangle display-4 d-block mb-3"></i>
+              <p class="mb-0">Unable to load winners at this time. Please try again later.</p>
+            </div>`;
+        }
+      }
+
+      loadWinners();
+    })();
+  </script>
+</body>
+</html>

@@ -72,7 +72,7 @@ describe('AI Vetting Proxy Module', () => {
 
       expect(mockMessagesCreate).toHaveBeenCalledWith(
         expect.objectContaining({
-          model: 'claude-sonnet-4-5-20250929',
+          model: 'claude-sonnet-4-6',
           max_tokens: 1024,
           messages: expect.arrayContaining([
             expect.objectContaining({

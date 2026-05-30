@@ -102,7 +102,7 @@ British Trade Awards CMS - a web-based admin system for managing awards ceremoni
 ## Current State (as of March 2026)
 
 **Status: COMPLETE — Production-ready.**
-Build passes (0 lint errors, 2072KB JS, 58KB CSS). 65/65 test suites pass (6381 tests, 0 failures).
+Build passes (0 lint errors, ~1334KB JS chunks + core, 65KB CSS). 65/65 test suites pass (6398 tests, 0 failures).
 
 ### What's Complete (100%)
 - Core CRUD: Awards, Organisations, Winners, Assignments, Events, Media

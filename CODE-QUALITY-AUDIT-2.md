@@ -49,13 +49,13 @@ The most urgent finding is a silent functional bug: public-facing entry forms ca
 - **Description:** All four define an identical 10-line `async function proxyFetch(body)` that POSTs JSON to `/api/data-proxy` without an Authorization header and returns the parsed JSON. This is the same pattern as `apiClient._call()` in `utils.js` but without authentication — again calling auth-required endpoints without tokens (see also CQ2-C1).
 - **Suggested fix:** Consolidate into `public-utils.js` and audit whether these portal pages actually need server-side auth.
 
-### CQ2-H4 — `events.js` has 77 public async methods without `try/catch`
+### [x] CQ2-H4 — `events.js` has 77 public async methods without `try/catch`
 
 - **Files:** `events.js` — examples: `_fetchPage` L117, `openEditModal` L209, `renderAttendees` L921, `exportDietarySummary` L1083, `addAttendee` L1233, `renderCheckInTab` L1426
 - **Description:** Out of ~170 async functions in the 14,489-line `events.js`, 77 have no `try/catch` at any level. Network errors or Supabase failures in these functions will result in unhandled promise rejections with no user feedback and no logging. `_fetchPage` (L117) is particularly critical because it fetches the primary event list and has no error boundary — a network failure silently renders an empty table.
 - **Suggested fix:** Add `try/catch` with `utils.showToast(error.message, 'error')` to all public-facing async methods. At minimum, wrap `_fetchPage` (called from the pagination controls) so users see an error message rather than a blank list.
 
-### CQ2-H5 — `organisations.js` has 15 public async methods without `try/catch`
+### [x] CQ2-H5 — `organisations.js` has 15 public async methods without `try/catch`
 
 - **Files:** `organisations.js` — examples: `_srvFetchPage` L437, `openCompanyProfile` L1040, `bulkEmail` L3341, `_sendBulkEmail` L3488, `saveNewCompany` L2989, `executeMerge` L6106, `executeCSVImport` L4874
 - **Description:** `_srvFetchPage` (L437) fetches the main organisations list and has no error handling — a failure renders a blank table silently. `bulkEmail` (L3341) fetches contact emails before showing a modal; if the fetch fails, the call to `this._getContactEmails()` throws and the modal never opens with no error shown to the user. `saveNewCompany` (L2989) has no catch, so a failed insert leaves the form open with no feedback.
@@ -67,7 +67,7 @@ The most urgent finding is a silent functional bug: public-facing entry forms ca
 - **Description:** `config.js` defines `STATUS = { DRAFT: 'Draft', PENDING: 'Pending', APPROVED: 'Approved', PUBLISHED: 'Published', REJECTED: 'Rejected' }`. However, the database and most code use lowercase strings (`'draft'`, `'pending'`, `'approved'`, `'published'`, `'rejected'`). `STATUS.DRAFT` would never match a DB field containing `'draft'`. Only 5 usages of `STATUS.*` exist in the entire codebase — all in `dashboard.js`. Meanwhile 131 usages of lowercase string literals are scattered across modules with no central definition.
 - **Suggested fix:** Either: (a) fix `STATUS` to use lowercase values matching the DB (`DRAFT: 'draft'`) and migrate all hardcoded strings to use the constant, or (b) add a proper `ENTRY_STATUS`, `AWARD_STATUS`, `EVENT_STATUS` enum structure to `config.js` with lowercase values and enforce usage throughout.
 
-### CQ2-H7 — `email-automation.js` mixes kebab-case and camelCase action names in the same handler
+### [x] CQ2-H7 — `email-automation.js` mixes kebab-case and camelCase action names in the same handler
 
 - **Files:** `api/email-automation.js` L1316–1335
 - **Description:** The handler switch uses `'send-email'` (kebab-case) and `'send-deadline-reminders'` (kebab-case) alongside `'sendTemplate'` (camelCase). The certificates-qr.js handler similarly mixes `'generate-certificate'` (kebab) with `'generate_and_email'` (snake_case) at L781.
@@ -95,13 +95,13 @@ The most urgent finding is a silent functional bug: public-facing entry forms ca
 - **Description:** The 505-line test file covers only `createCheckoutSession`, `handleStripeWebhook` (routing only), and `verifyPayment`. The event checkout (used for event registration) and public checkout (used for anonymous entry payments) are entirely untested. `processRefund` (the admin refund path) has no test coverage. The three email-sending functions have no tests despite interacting with both the DB and Resend API.
 - **Suggested fix:** Add test suites for `createPublicCheckout` (with and without `STRIPE_SECRET_KEY`), `createEventCheckout`, and `processRefund`. Mock `stripe.refunds.create`.
 
-### CQ2-M3 — Global `STATE` object is mutated by 20+ modules with no access control
+### [x] CQ2-M3 — Global `STATE` object is mutated by 20+ modules with no access control
 
 - **Files:** `config.js` L180 (definition); mutated by `organisations.js` (157 usages), `events.js` (68), `dashboard.js` (67), `winners.js` (48), `awards.js` (40), and 15+ other modules
 - **Description:** `STATE` is a plain global object that any module can read or write. `organisations.js` directly assigns `STATE.allOrganisations = pageData` and `STATE.filteredOrganisations = pageData` as part of server-side pagination, but `dashboard.js` reads `STATE.allOrganisations` for stats calculations. If two modules race to update `STATE.allOrganisations`, the stats can be stale or wrong. There is no freeze, no setter, no event mechanism — just raw property assignment.
 - **Suggested fix:** While a full state management system would be over-engineered for vanilla JS, document which module "owns" each STATE property and add a comment warning against cross-module mutation. Medium-term: introduce per-module state and use `customEvent` for cross-module updates instead of shared mutable state.
 
-### CQ2-M4 — Magic status strings scattered across 172 usages with no central definition
+### [x] CQ2-M4 — Magic status strings scattered across 172 usages with no central definition
 
 - **Files:** Across 20+ frontend modules and all API handlers
 - **Description:** Status strings like `'submitted'`, `'shortlisted'`, `'under_review'`, `'winner'`, `'rejected'`, `'draft'`, `'published'`, `'attending'`, `'not_attending'`, `'maybe'` appear as inline string literals 172+ times. `entries.js` alone references `'shortlisted'` 15 times, `'submitted'` 12 times. A typo in one place (e.g. `'shortlisted'` vs `'short_listed'`) would silently fail DB queries with no error.
@@ -119,7 +119,7 @@ The most urgent finding is a silent functional bug: public-facing entry forms ca
 - **Description:** The function is called from `loadAwards()` at L30 but its body is empty with the comment `// All filters are now populated from DB after data loads`. It contributes dead call overhead and creates confusion about the filter population sequence.
 - **Suggested fix:** Remove the function and its call from `loadAwards()`.
 
-### CQ2-M7 — API action naming is inconsistent across handlers (snake_case vs kebab-case vs camelCase)
+### [x] CQ2-M7 — API action naming is inconsistent across handlers (snake_case vs kebab-case vs camelCase)
 
 - **Files:** All `api/*.js` files
 - **Description:** Different handlers use different conventions for the `action` field:
@@ -138,7 +138,7 @@ The most urgent finding is a silent functional bug: public-facing entry forms ca
 - **Description:** Instead of calling the shared `verifyAuth(req, res)` pattern used by 5 other API files, `email-automation.js` inlines the auth check: reads `req.headers.authorization`, extracts token, calls `supabaseAuth.auth.getUser(token)`, and checks `authError || !user`. There is no `verifyAuth` function in this file at all. This is inconsistent and means any future auth enhancement (e.g., adding rate limiting per user, token refresh) must be applied separately here.
 - **Suggested fix:** Extract the inline auth logic into a `verifyAuth()` helper (or, after CQ2-C2 is resolved, import from `api/_lib/auth.js`).
 
-### CQ2-M9 — `utils.js` contains 7 dead utility methods that are exported but never called
+### [x] CQ2-M9 — `utils.js` contains 7 dead utility methods that are exported but never called
 
 - **File:** `utils.js`
   - `showTableLoading` L469 — no external callers
@@ -167,13 +167,13 @@ The most urgent finding is a silent functional bug: public-facing entry forms ca
 - **Description:** These standalone pages use browser `alert()` for all success/error feedback, which blocks the JS thread, can't be styled, and is jarring UX. `check-in-app.js` defines its own `showError(msg)` function using DOM insertion, but then calls `alert()` in the async error paths rather than `showError`.
 - **Suggested fix:** Each standalone page should use its own lightweight toast (copy `check-in-app.js`'s `showError` pattern or extract to `public-utils.js` per CQ2-H2). Replace all `alert()` calls.
 
-### CQ2-L3 — Hardcoded magic page-size numbers scattered across modules
+### [x] CQ2-L3 — Hardcoded magic page-size numbers scattered across modules
 
 - **Files:** `awards.js` L104 (1000), L200 (1000), L970 (1000); `award-nominees-app.js` L89 (1000); `award-companies-app.js` L73 (1000); `entries.js` L1547 (200); `awards.js` L1354, L1566 (200)
 - **Description:** Magic numbers like `pageSize: 1000` and `pageSize: 200` appear in 8+ places. When Supabase or data-proxy row limits change, these must be hunted down manually. `pageSize: 1` (for existence checks) is fine and idiomatic.
 - **Suggested fix:** Add constants to `config.js`: `const PAGE_SIZE_DEFAULT = 50`, `const PAGE_SIZE_FULL = 1000`, `const PAGE_SIZE_LARGE = 200`. Use these in all `apiClient` calls.
 
-### CQ2-L4 — 8 API files are over 500 lines; `data-proxy.js` is 1,634 lines
+### [x] CQ2-L4 — 8 API files are over 500 lines; `data-proxy.js` is 1,634 lines
 
 - **Files:**
   - `api/data-proxy.js`: 1,634 lines
@@ -187,7 +187,7 @@ The most urgent finding is a silent functional bug: public-facing entry forms ca
 - **Description:** `data-proxy.js` is well-structured with a clear named-function-per-operation pattern and a single dispatch handler at the bottom — it is large but maintainable. `email-automation.js` has ~510 lines of `EMAIL_TEMPLATES` constant (L154–670) that could be moved to a separate `api/_lib/email-templates.js` file to make the handler logic easier to navigate. `stripe-payment.js` mixes webhook handlers, checkout session creation, and email sending in one file.
 - **Suggested fix:** For `email-automation.js`, extract `EMAIL_TEMPLATES` and `DB_TEMPLATE_TYPE_MAP` to `api/_lib/email-templates.js`. This alone reduces the file from 1,356 to ~830 lines. Other files are within acceptable range given the Vercel 12-function limit.
 
-### CQ2-L5 — Cross-module coupling via direct symbol references (not via events or registry)
+### [x] CQ2-L5 — Cross-module coupling via direct symbol references (not via events or registry)
 
 - **Files:** `awards.js` L1131 (`orgsModule.openCompanyProfile` in a data-action string), `dashboard.js` L50–52 (calls `awardsModule.loadAwards()`, `orgsModule.loadOrganisations()`, `winnersModule.loadWinners()` directly), `winners.js` L387 (`winnerPipelineModule.renderPipelineDashboard` in a data-action string)
 - **Description:** Modules reference each other's exported names directly. `dashboard.js` calls module load functions directly — this works because all modules are loaded as globals, but creates implicit load-order dependencies. If a module is lazy-loaded (via the chunk system), these calls can fail silently if the chunk hasn't loaded yet.

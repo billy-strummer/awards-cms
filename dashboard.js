@@ -47,9 +47,9 @@ const dashboardModule = {
 
       // Load awards, organisations and winners in parallel (allSettled so partial data still loads)
       const [awardsRes, orgsRes, winnersRes] = await Promise.allSettled([
-        awardsModule.loadAwards(),
-        orgsModule.loadOrganisations(),
-        winnersModule.loadWinners(),
+        ModuleRegistry.get('awardsModule')?.loadAwards(),
+        ModuleRegistry.get('orgsModule')?.loadOrganisations(),
+        ModuleRegistry.get('winnersModule')?.loadWinners(),
       ]);
       if (awardsRes.status === 'rejected') console.warn('Failed to load awards:', awardsRes.reason);
       if (orgsRes.status === 'rejected') console.warn('Failed to load organisations:', orgsRes.reason);

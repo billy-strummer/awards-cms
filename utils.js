@@ -462,7 +462,7 @@ const utils = {
   },
 
   /**
-   * Show loading state in table
+   * @deprecated Use showSkeletonLoading() instead. No external callers.
    * @param {string} tableBodyId - ID of table body element
    * @param {number} colspan - Number of columns
    */
@@ -1402,7 +1402,7 @@ const utils = {
   /* ==================================================== */
 
   /**
-   * Show toast with optional action buttons
+   * @deprecated No external callers. Use showToast() instead.
    * @param {string} message - Toast message
    * @param {string} type - Toast type
    * @param {Array<{label: string, class?: string, action: string, id?: string}>} actions - Action buttons using data-action delegation
@@ -1498,7 +1498,7 @@ const utils = {
   /* ==================================================== */
 
   /**
-   * Highlight search matches in text
+   * @deprecated No external callers. Use highlightMatch() instead.
    */
   highlightSearch(text, query) {
     if (!query || !text) return utils.escapeHtml(text || '');
@@ -1512,7 +1512,7 @@ const utils = {
   /* ==================================================== */
 
   /**
-   * Track form dirty state and warn on close
+   * @deprecated No external callers — not yet integrated.
    */
   _dirtyForms: new Set(),
 
@@ -1562,6 +1562,7 @@ const utils = {
     });
   },
 
+  /** @deprecated No external callers — not yet integrated. */
   markFormSaved(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) {
@@ -1665,7 +1666,7 @@ const utils = {
   /* ==================================================== */
 
   /**
-   * Column visibility toggle system (MEDIUM-1)
+   * @deprecated No external callers — superseded by per-module column visibility in organisations.js.
    */
   showColumnVisibilityDialog(tableId, columns) {
     const storageKey = `colVis_${tableId}`;
@@ -1731,6 +1732,7 @@ const utils = {
     });
   },
 
+  /** @deprecated No external callers — superseded by per-module column visibility in organisations.js. */
   applyColumnVisibility(tableId) {
     const storageKey = `colVis_${tableId}`;
     let saved = {};

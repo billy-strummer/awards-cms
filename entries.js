@@ -1465,7 +1465,7 @@ const entriesModule = {
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
-        action: 'sendTemplate',
+        action: 'send-template',
         templateKey: 'SHORTLIST_NOTIFICATION',
         toEmail: entry.contact_email,
         toName: entry.contact_name,
@@ -1517,7 +1517,7 @@ const entriesModule = {
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
-        action: 'sendTemplate',
+        action: 'send-template',
         templateKey,
         toEmail: entry.contact_email,
         toName: entry.contact_name,

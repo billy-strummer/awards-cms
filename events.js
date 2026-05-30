@@ -1081,29 +1081,33 @@ const eventsModule = {
   },
 
   async exportDietarySummary() {
-    const eventId = document.getElementById('attendeesEventId').value;
-    const attendees = (await this.getAttendees(eventId)).filter((a) => a.status === 'attending');
-    const event = STATE.allEvents.find((e) => e.id === eventId);
-    const eventName = event ? event.event_name : 'Event';
+    try {
+      const eventId = document.getElementById('attendeesEventId').value;
+      const attendees = (await this.getAttendees(eventId)).filter((a) => a.status === 'attending');
+      const event = STATE.allEvents.find((e) => e.id === eventId);
+      const eventName = event ? event.event_name : 'Event';
 
-    const exportData = attendees
-      .filter((a) => a.dietary && a.dietary.trim())
-      .map((a) => ({
-        'Guest Name': a.name,
-        'Dietary Requirements': a.dietary,
-        'Guest Type': (a.guestType || 'guest').charAt(0).toUpperCase() + (a.guestType || 'guest').slice(1),
-        'Plus Ones': a.plusOnes || 0,
-        Notes: a.notes || '',
-      }));
+      const exportData = attendees
+        .filter((a) => a.dietary && a.dietary.trim())
+        .map((a) => ({
+          'Guest Name': a.name,
+          'Dietary Requirements': a.dietary,
+          'Guest Type': (a.guestType || 'guest').charAt(0).toUpperCase() + (a.guestType || 'guest').slice(1),
+          'Plus Ones': a.plusOnes || 0,
+          Notes: a.notes || '',
+        }));
 
-    if (exportData.length === 0) {
-      utils.showToast('No dietary requirements to export', 'info');
-      return;
+      if (exportData.length === 0) {
+        utils.showToast('No dietary requirements to export', 'info');
+        return;
+      }
+
+      const filename = `${eventName.replace(/[^a-z0-9]/gi, '_')}_dietary_report_${new Date().toISOString().split('T')[0]}.csv`;
+      utils.exportToCSV(exportData, filename);
+      utils.showToast('Dietary report exported', 'success');
+    } catch (e) {
+      utils.showToast('Error exporting dietary report: ' + e.message, 'error');
     }
-
-    const filename = `${eventName.replace(/[^a-z0-9]/gi, '_')}_dietary_report_${new Date().toISOString().split('T')[0]}.csv`;
-    utils.exportToCSV(exportData, filename);
-    utils.showToast('Dietary report exported', 'success');
   },
 
   // ---- ATTENDEE FILTERING ----

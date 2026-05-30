@@ -33,6 +33,39 @@ const STATUS = {
   REJECTED: 'rejected',
 };
 
+/** Award entry workflow status values. */
+const ENTRY_STATUS = {
+  DRAFT: 'draft',
+  SUBMITTED: 'submitted',
+  UNDER_REVIEW: 'under_review',
+  SHORTLISTED: 'shortlisted',
+  WINNER: 'winner',
+  REJECTED: 'rejected',
+  NOT_SHORTLISTED: 'not_shortlisted',
+};
+
+/** Event management status values. */
+const EVENT_STATUS = {
+  DRAFT: 'draft',
+  PUBLISHED: 'published',
+  CANCELLED: 'cancelled',
+  COMPLETED: 'completed',
+};
+
+/** Event attendee RSVP status values. */
+const ATTENDEE_STATUS = {
+  ATTENDING: 'attending',
+  NOT_ATTENDING: 'not_attending',
+  MAYBE: 'maybe',
+};
+
+/** Standard API page sizes for apiClient calls. */
+const PAGE_SIZE = {
+  DEFAULT: 50,
+  LARGE: 200,
+  FULL: 1000,
+};
+
 // Media Types
 const MEDIA_TYPES = {
   PHOTO: 'photo',
@@ -175,6 +208,27 @@ const COUNTIES_CITIES = [
 
 /**
  * Global application state shared across all modules.
+ *
+ * Ownership: each property is "owned" by the module that populates it.
+ * Other modules may READ these properties but should not WRITE them
+ * unless they are the designated owner listed below.
+ *
+ * | Property               | Owner module         |
+ * |------------------------|----------------------|
+ * | client                 | auth.js              |
+ * | currentUser            | auth.js              |
+ * | inactivityTimer        | auth.js              |
+ * | allAwards, filteredAwards | awards.js         |
+ * | allOrganisations, filteredOrganisations | organisations.js |
+ * | allWinners, filteredWinners | winners.js      |
+ * | allMedia, filteredMedia | media-gallery-new.js |
+ * | allEvents              | events.js            |
+ * | allEntries, filteredEntries | entries.js      |
+ * | _loggingOut            | auth.js              |
+ *
+ * WARNING: Do not add cross-module race conditions by writing another
+ * module's owned property. Use the owning module's load function instead.
+ *
  * @type {{ client: Object|null, currentUser: Object|null, inactivityTimer: number|null, allAwards: Array, filteredAwards: Array, allOrganisations: Array, filteredOrganisations: Array, allWinners: Array, filteredWinners: Array, allMedia: Array, filteredMedia: Array, allEvents: Array, allEntries: Array, filteredEntries: Array, _loggingOut: boolean }}
  */
 const STATE = {
@@ -253,6 +307,10 @@ const REGIONS = COUNTIES_CITIES;
 export {
   SUPABASE_CONFIG,
   STATUS,
+  ENTRY_STATUS,
+  EVENT_STATUS,
+  ATTENDEE_STATUS,
+  PAGE_SIZE,
   MEDIA_TYPES,
   INACTIVITY_TIMEOUT,
   YEARS,

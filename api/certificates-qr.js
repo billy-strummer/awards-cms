@@ -748,6 +748,7 @@ module.exports = async function handler(req, res) {
       return verifyQREndpoint(req, res);
     case 'generate-all-badges':
       return generateAllBadgesEndpoint(req, res);
+    case 'generate-and-email':
     case 'generate_and_email': {
       const { winner_id, template_id } = req.body;
       if (!winner_id) return res.status(400).json({ error: 'Missing winner_id' });

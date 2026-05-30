@@ -3347,7 +3347,13 @@ const orgsModule = {
     const selectedData = STATE.allOrganisations.filter((org) => this.selectedOrgs.has(org.id));
 
     // Fetch contact-level emails for all selected orgs
-    const contactEmails = await this._getContactEmails(Array.from(this.selectedOrgs));
+    let contactEmails;
+    try {
+      contactEmails = await this._getContactEmails(Array.from(this.selectedOrgs));
+    } catch (e) {
+      utils.showToast('Failed to load contacts: ' + e.message, 'error');
+      return;
+    }
     const contactsByOrg = {};
     contactEmails.forEach((c) => {
       if (!c.email) return;

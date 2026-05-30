@@ -3937,7 +3937,7 @@ const winnersModule = {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ action: 'generate_and_email', winner_id: winnerId }),
+        body: JSON.stringify({ action: 'generate-and-email', winner_id: winnerId }),
       });
     } catch (err) {
       // Fire-and-forget: errors are non-fatal
@@ -3960,7 +3960,7 @@ const winnersModule = {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ action: 'generate_and_email', winner_id: winnerId }),
+        body: JSON.stringify({ action: 'generate-and-email', winner_id: winnerId }),
       });
       if (res.ok) {
         utils.showToast('Certificate sent successfully', 'success');

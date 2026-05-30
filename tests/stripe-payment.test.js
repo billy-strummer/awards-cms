@@ -7,6 +7,7 @@
 const mockCheckoutCreate = jest.fn();
 const mockWebhooksConstruct = jest.fn();
 const mockSessionRetrieve = jest.fn();
+const mockRefundsCreate = jest.fn();
 
 jest.mock(
   'stripe',
@@ -20,6 +21,9 @@ jest.mock(
       },
       webhooks: {
         constructEvent: mockWebhooksConstruct,
+      },
+      refunds: {
+        create: mockRefundsCreate,
       },
     }));
   },
@@ -99,6 +103,9 @@ process.env.RESEND_API_KEY = 'test-resend-key';
 
 const {
   createCheckoutSession,
+  createPublicCheckout,
+  createEventCheckout,
+  processRefund,
   handleStripeWebhook,
   getPaymentStatus: _getPaymentStatus,
   verifyPayment,
@@ -501,5 +508,208 @@ describe('Stripe Payment API - verifyPayment', () => {
     await verifyPayment(req, res);
 
     expect(res.statusCode).toBe(500);
+  });
+});
+
+// ==========================================
+// createPublicCheckout
+// ==========================================
+
+describe('createPublicCheckout', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetUser.mockResolvedValue({ data: { user: { email: 'admin@test.com' } }, error: null });
+  });
+
+  test('returns 400 when entry_id missing', async () => {
+    const req = createReq({ body: {} });
+    req.headers['x-forwarded-for'] = '1.2.3.4';
+    const res = createRes();
+    await createPublicCheckout(req, res);
+    expect(res.statusCode).toBe(400);
+    expect(res.body.error).toMatch(/entry_id/i);
+  });
+
+  test('returns 404 when entry not found', async () => {
+    currentChain = chainable({ data: null, error: { message: 'not found' } });
+    mockFrom.mockReturnValue(currentChain);
+
+    const req = createReq({ body: { entry_id: 'nonexistent' } });
+    req.headers['x-forwarded-for'] = '1.2.3.5';
+    const res = createRes();
+    await createPublicCheckout(req, res);
+    expect(res.statusCode).toBe(404);
+  });
+
+  test('returns 400 when entry already paid', async () => {
+    currentChain = chainable({ data: { payment_status: 'paid', awards: { entry_fee: 95 } }, error: null });
+    mockFrom.mockReturnValue(currentChain);
+
+    const req = createReq({ body: { entry_id: 'entry-123' } });
+    req.headers['x-forwarded-for'] = '1.2.3.6';
+    const res = createRes();
+    await createPublicCheckout(req, res);
+    expect(res.statusCode).toBe(400);
+    expect(res.body.error).toMatch(/already been paid/i);
+  });
+
+  test('creates checkout session and returns sessionId', async () => {
+    currentChain = chainable({
+      data: {
+        id: 'entry-123',
+        entry_number: 'ENT-001',
+        contact_email: 'applicant@test.com',
+        payment_status: 'pending',
+        awards: { entry_fee: 120 },
+      },
+      error: null,
+    });
+    mockFrom.mockReturnValue(currentChain);
+    mockCheckoutCreate.mockResolvedValue({
+      id: 'cs_test_abc',
+      url: 'https://checkout.stripe.com/cs_test_abc',
+      payment_intent: 'pi_test',
+    });
+
+    const req = createReq({ body: { entry_id: 'entry-123' } });
+    req.headers['x-forwarded-for'] = '1.2.3.7';
+    const res = createRes();
+    await createPublicCheckout(req, res);
+
+    expect(res.body.sessionId).toBe('cs_test_abc');
+    expect(mockCheckoutCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mode: 'payment',
+        customer_email: 'applicant@test.com',
+      })
+    );
+  });
+});
+
+// ==========================================
+// processRefund
+// ==========================================
+
+describe('processRefund', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetUser.mockResolvedValue({ data: { user: { email: 'admin@test.com' } }, error: null });
+  });
+
+  test('returns 401 without auth token', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: null }, error: { message: 'Unauthorized' } });
+    const req = createReq({ body: { payment_intent: 'pi_test' } });
+    const res = createRes();
+    await processRefund(req, res);
+    expect(res.statusCode).toBe(401);
+  });
+
+  test('returns 400 when no payment reference provided', async () => {
+    const req = createReq({ body: {} });
+    const res = createRes();
+    await processRefund(req, res);
+    expect(res.statusCode).toBe(400);
+    expect(res.body.error).toMatch(/No payment reference/i);
+  });
+
+  test('processes refund with payment_intent in body', async () => {
+    mockRefundsCreate.mockResolvedValue({ id: 'ref_test123', status: 'succeeded' });
+    currentChain = chainable({ data: null, error: null });
+    mockFrom.mockReturnValue(currentChain);
+
+    const req = createReq({ body: { payment_intent: 'pi_test123' } });
+    const res = createRes();
+    await processRefund(req, res);
+
+    expect(mockRefundsCreate).toHaveBeenCalledWith({ payment_intent: 'pi_test123' });
+    expect(res.body.success).toBe(true);
+    expect(res.body.refundId).toBe('ref_test123');
+  });
+
+  test('processes refund by looking up ticketId', async () => {
+    const guestData = { payment_intent: 'pi_from_db', payment_reference: null };
+    currentChain = chainable({ data: guestData, error: null });
+    mockFrom.mockReturnValue(currentChain);
+    mockRefundsCreate.mockResolvedValue({ id: 'ref_ticket', status: 'succeeded' });
+
+    const req = createReq({ body: { ticketId: 'guest-456' } });
+    const res = createRes();
+    await processRefund(req, res);
+
+    expect(mockRefundsCreate).toHaveBeenCalledWith({ payment_intent: 'pi_from_db' });
+    expect(res.body.success).toBe(true);
+  });
+
+  test('returns 500 on stripe refund failure', async () => {
+    mockRefundsCreate.mockRejectedValue(new Error('Refund failed: card declined'));
+
+    const req = createReq({ body: { payment_intent: 'pi_fail' } });
+    const res = createRes();
+    await processRefund(req, res);
+
+    expect(res.statusCode).toBe(500);
+    expect(res.body.error).toMatch(/Refund failed/i);
+  });
+});
+
+// ==========================================
+// createEventCheckout
+// ==========================================
+
+describe('createEventCheckout', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetUser.mockResolvedValue({ data: { user: { email: 'admin@test.com' } }, error: null });
+  });
+
+  test('returns 401 without auth', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: null }, error: { message: 'Unauthorized' } });
+    const req = createReq({ body: { eventId: 'ev-1', tickets: [{ name: 'Alice' }] } });
+    const res = createRes();
+    await createEventCheckout(req, res);
+    expect(res.statusCode).toBe(401);
+  });
+
+  test('returns 400 when eventId missing', async () => {
+    const req = createReq({ body: { tickets: [{ name: 'Alice' }] } });
+    const res = createRes();
+    await createEventCheckout(req, res);
+    expect(res.statusCode).toBe(400);
+  });
+
+  test('returns 400 when tickets empty', async () => {
+    const req = createReq({ body: { eventId: 'ev-1', tickets: [] } });
+    const res = createRes();
+    await createEventCheckout(req, res);
+    expect(res.statusCode).toBe(400);
+  });
+
+  test('creates checkout session for valid event with ticket types', async () => {
+    const eventChain = chainable({ data: { id: 'ev-1', event_name: 'Gala', event_date: '2026-09-01' }, error: null });
+    const ttChain = chainable({
+      data: [{ id: 'tt-1', name: 'Standard', price: 50, description: 'Standard ticket' }],
+      error: null,
+    });
+
+    mockFrom
+      .mockReturnValueOnce(eventChain) // events lookup
+      .mockReturnValueOnce(ttChain) // event_ticket_types lookup
+      .mockReturnValue(chainable({ data: null, error: null })); // any other calls (logging etc)
+
+    mockCheckoutCreate.mockResolvedValue({ id: 'cs_event_123', url: 'https://stripe.com/pay/cs_event_123' });
+
+    const req = createReq({
+      body: {
+        eventId: 'ev-1',
+        tickets: [{ ticket_type_id: 'tt-1', quantity: 1 }],
+        success_url: 'https://myapp.com/success',
+        cancel_url: 'https://myapp.com/cancel',
+      },
+    });
+    const res = createRes();
+    await createEventCheckout(req, res);
+
+    expect(mockCheckoutCreate).toHaveBeenCalled();
+    expect(res.body.sessionId).toBe('cs_event_123');
   });
 });

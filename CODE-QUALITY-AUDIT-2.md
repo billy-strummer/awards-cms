@@ -83,13 +83,13 @@ The most urgent finding is a silent functional bug: public-facing entry forms ca
 
 ## MEDIUM
 
-### CQ2-M1 — 13 frontend modules have no test file at all
+### [x] CQ2-M1 — 13 frontend modules have no test file at all
 
 - **Untested modules:** `areas-manager.js`, `award-companies-app.js`, `award-nominees-app.js`, `btc-module.js`, `check-in-app.js`, `company-profile-app.js`, `config.js`, `global-actions.js`, `location.js`, `nominate.js`, `nominee-uploads.js`, `public-winners-app.js`, `register-app.js`, `seating-enhancements.js`, `submit-entry-payment.js`, `winners-portal-app.js`
 - **Description:** Of these, the highest-risk untested modules are: `submit-entry-payment.js` (913 lines, payment flow), `seating-enhancements.js` (1037 lines, complex seating logic), `nominee-uploads.js` (1018 lines, CSV parsing and batch DB operations), `nominate.js` (836 lines, public nomination form), and `register-app.js` (487 lines, event registration with Stripe integration).
 - **Suggested fix:** Prioritize test files for `submit-entry-payment.js`, `seating-enhancements.js`, and `nominee-uploads.js` which are the largest and touch payment/data-integrity-critical flows.
 
-### CQ2-M2 — `stripe-payment.js` API: `createPublicCheckout`, `createEventCheckout`, `processRefund`, and all email-sending functions are untested
+### [x] CQ2-M2 — `stripe-payment.js` API: `createPublicCheckout`, `createEventCheckout`, `processRefund`, and all email-sending functions are untested
 
 - **Files:** `api/stripe-payment.js` — untested: `createPublicCheckout` L858, `createEventCheckout` L940, `processRefund` L1028, `sendEntryConfirmationEmail` L658, `sendPaymentFailedEmail` L702, `sendRefundConfirmationEmail` L743, `handleCheckoutSessionCompleted` L228, `handlePaymentIntentSucceeded` L300, `handleChargeSucceeded` L409, `handleChargeRefunded` L536
 - **Description:** The 505-line test file covers only `createCheckoutSession`, `handleStripeWebhook` (routing only), and `verifyPayment`. The event checkout (used for event registration) and public checkout (used for anonymous entry payments) are entirely untested. `processRefund` (the admin refund path) has no test coverage. The three email-sending functions have no tests despite interacting with both the DB and Resend API.

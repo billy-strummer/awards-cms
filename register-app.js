@@ -5,6 +5,8 @@
  * 'unsafe-inline' from the Content-Security-Policy script-src directive.
  */
 
+const { escapeHtml, showPublicToast } = window.publicUtils;
+
 // ---- CONFIG ----
 const API_BASE = '/api/registration-proxy';
 
@@ -163,7 +165,7 @@ function selectPackage(pkgId) {
 // ---- STEPS ----
 function goToStep(step) {
   if (step === 2 && !selectedPackage) {
-    alert('Please select a package first');
+    showPublicToast('Please select a package first', 'warning');
     return;
   }
   if (step === 3) {
@@ -171,7 +173,7 @@ function goToStep(step) {
     const name = document.getElementById('guestName1').value.trim();
     const email = document.getElementById('guestEmail1').value.trim();
     if (!name || !email) {
-      alert('Please enter the primary guest name and email');
+      showPublicToast('Please enter the primary guest name and email', 'warning');
       return;
     }
     renderOrderSummary();
@@ -202,7 +204,7 @@ function goToStep(step) {
 function addGuestRow() {
   guestCount++;
   if (guestCount > selectedPackage.seats) {
-    alert('Maximum guests for this package reached');
+    showPublicToast('Maximum guests for this package reached', 'warning');
     guestCount--;
     return;
   }
@@ -321,7 +323,7 @@ function checkPaymentReturn() {
       completeRegistration(reg.guests, reg.packageName);
     }
   } else if (params.get('payment') === 'cancelled') {
-    alert('Payment was cancelled. You can try again.');
+    showPublicToast('Payment was cancelled. You can try again.', 'warning');
   }
 }
 
@@ -375,7 +377,7 @@ async function submitRegistration() {
     await completeRegistration(guests, selectedPackage.name);
   } catch (err) {
     console.error('Registration error:', err);
-    alert('Registration failed: ' + err.message);
+    showPublicToast('Registration failed: ' + err.message, 'error');
     btn.disabled = false;
     const btnText = document.getElementById('submitBtnText');
     if (btnText) btnText.textContent = 'Confirm Registration';
@@ -444,12 +446,6 @@ function downloadQR() {
       URL.revokeObjectURL(link.href);
     })
     .catch(() => window.open(img.src, '_blank'));
-}
-
-function escapeHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
 }
 
 // ---- Event delegation for data-action attributes ----

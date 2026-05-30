@@ -1,45 +1,10 @@
 /* company-profile.html extracted scripts — SA2-C1 CSP inline-script fix */
 
+const { getAuthToken, proxyFetch, escapeHtml, escapeAttr, showPublicToast } = window.publicUtils;
 const supabaseClient = window.supabase.createClient(window.SUPABASE_CONFIG.url, window.SUPABASE_CONFIG.anonKey);
+
 let currentCompany = null;
 let currentCompanyId = null;
-
-async function getAuthToken() {
-  try {
-    const { data } = await supabaseClient.auth.getSession();
-    return data?.session?.access_token || null;
-  } catch (e) {
-    return null;
-  }
-}
-
-async function proxyFetch(body) {
-  const token = await getAuthToken();
-  if (!token) throw new Error('Not authenticated');
-  const res = await fetch('/api/data-proxy', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: 'Bearer ' + token,
-    },
-    body: JSON.stringify(body),
-  });
-  const json = await res.json();
-  if (!res.ok) throw new Error(json.error || json.message || 'API error ' + res.status);
-  return json;
-}
-
-function escapeHtml(str) {
-  if (!str) return '';
-  const div = document.createElement('div');
-  div.textContent = String(str);
-  return div.innerHTML;
-}
-
-function escapeAttr(str) {
-  if (!str) return '';
-  return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-}
 
 async function loadCompanyProfile() {
   currentCompanyId = sessionStorage.getItem('selectedCompanyId');
@@ -115,11 +80,11 @@ async function saveCompanyInfo() {
       id: currentCompanyId,
       data: updatedData,
     });
-    alert('Changes saved successfully!');
+    showPublicToast('Changes saved successfully!', 'success');
     currentCompany = { ...currentCompany, ...updatedData };
     displayCompanyInfo();
   } catch (e) {
-    alert('Error saving changes: ' + e.message);
+    showPublicToast('Error saving changes: ' + e.message, 'error');
   }
 }
 
@@ -255,7 +220,7 @@ async function addContact() {
   const notes = document.getElementById('contactNotes').value;
 
   if (!name || !email) {
-    alert('Please fill in Name and Email fields');
+    showPublicToast('Please fill in Name and Email fields', 'warning');
     return;
   }
 
@@ -265,11 +230,11 @@ async function addContact() {
       operation: 'insert',
       data: { organisation_id: currentCompanyId, name, title, email, phone, notes },
     });
-    alert('Contact added successfully!');
+    showPublicToast('Contact added successfully!', 'success');
     document.getElementById('addContactForm').reset();
     await loadContacts();
   } catch (e) {
-    alert('Error adding contact: ' + e.message);
+    showPublicToast('Error adding contact: ' + e.message, 'error');
   }
 }
 
@@ -277,10 +242,10 @@ async function deleteContact(contactId) {
   if (confirm('Are you sure you want to delete this contact?')) {
     try {
       await proxyFetch({ table: 'contacts', operation: 'delete', id: contactId });
-      alert('Contact deleted');
+      showPublicToast('Contact deleted', 'success');
       await loadContacts();
     } catch (e) {
-      alert('Error deleting contact: ' + e.message);
+      showPublicToast('Error deleting contact: ' + e.message, 'error');
     }
   }
 }
@@ -320,7 +285,7 @@ async function loadDeals() {
 async function uploadFile() {
   const fileInput = document.getElementById('fileUpload');
   if (!fileInput.files.length) {
-    alert('Please select a file');
+    showPublicToast('Please select a file', 'warning');
     return;
   }
 
@@ -330,9 +295,9 @@ async function uploadFile() {
   const { error } = await supabaseClient.storage.from('uploads').upload(filePath, file);
 
   if (error) {
-    alert('Error uploading file: ' + error.message);
+    showPublicToast('Error uploading file: ' + error.message, 'error');
   } else {
-    alert('File uploaded successfully!');
+    showPublicToast('File uploaded successfully!', 'success');
     fileInput.value = '';
   }
 }

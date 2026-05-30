@@ -3,6 +3,7 @@
 (function () {
   'use strict';
 
+  const { escapeHtml } = window.publicUtils;
   const API_BASE = window.location.origin;
 
   function placementLabel(placement) {
@@ -87,16 +88,6 @@
       .join('');
 
     container.innerHTML = html;
-  }
-
-  function escapeHtml(str) {
-    if (!str) return '';
-    return String(str)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
   }
 
   async function loadWinners() {

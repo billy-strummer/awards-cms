@@ -1,31 +1,6 @@
 /* winners-portal.html extracted scripts — SA2-C1 CSP inline-script fix */
 
-const supabaseClient = window.supabase.createClient(window.SUPABASE_CONFIG.url, window.SUPABASE_CONFIG.anonKey);
-
-async function getAuthToken() {
-  try {
-    const { data } = await supabaseClient.auth.getSession();
-    return data?.session?.access_token || null;
-  } catch (e) {
-    return null;
-  }
-}
-
-async function proxyFetch(body) {
-  const token = await getAuthToken();
-  if (!token) throw new Error('Not authenticated');
-  const res = await fetch('/api/data-proxy', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: 'Bearer ' + token,
-    },
-    body: JSON.stringify(body),
-  });
-  const json = await res.json();
-  if (!res.ok) throw new Error(json.error || json.message || 'API error ' + res.status);
-  return json;
-}
+const { proxyFetch } = window.publicUtils;
 
 async function loadWinnerData() {
   const params = new URLSearchParams(window.location.search);

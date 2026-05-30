@@ -1,32 +1,8 @@
 /* award-nominees.html extracted scripts — SA2-C1 CSP inline-script fix */
 
-const supabaseClient = window.supabase.createClient(window.SUPABASE_CONFIG.url, window.SUPABASE_CONFIG.anonKey);
+const { getAuthToken, proxyFetch, escapeHtml, escapeAttr } = window.publicUtils;
+
 let currentAward = null;
-
-async function getAuthToken() {
-  try {
-    const { data } = await supabaseClient.auth.getSession();
-    return data?.session?.access_token || null;
-  } catch (e) {
-    return null;
-  }
-}
-
-async function proxyFetch(body) {
-  const token = await getAuthToken();
-  if (!token) throw new Error('Not authenticated');
-  const res = await fetch('/api/data-proxy', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: 'Bearer ' + token,
-    },
-    body: JSON.stringify(body),
-  });
-  const json = await res.json();
-  if (!res.ok) throw new Error(json.error || json.message || 'API error ' + res.status);
-  return json;
-}
 
 async function checkAuth() {
   const token = await getAuthToken();
@@ -120,18 +96,6 @@ async function loadPage() {
     document.getElementById('nomineesContainer').innerHTML =
       '<tr><td colspan="5" class="text-center text-danger">Error loading page</td></tr>';
   }
-}
-
-function escapeHtml(str) {
-  if (!str) return '';
-  const div = document.createElement('div');
-  div.textContent = String(str);
-  return div.innerHTML;
-}
-
-function escapeAttr(str) {
-  if (!str) return '';
-  return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 document.addEventListener('click', function (e) {

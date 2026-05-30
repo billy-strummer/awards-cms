@@ -12,13 +12,13 @@ The most urgent finding is a silent functional bug: public-facing entry forms ca
 
 ## CRITICAL
 
-### CQ2-C1 — `submit-entry.js` and `submit-entry-payment.js` call `/api/data-proxy` without auth and with wrong field name
+### [x] CQ2-C1 — `submit-entry.js` and `submit-entry-payment.js` call `/api/data-proxy` without auth and with wrong field name
 
 - **Files:** `/home/user/awards-cms/submit-entry.js` L449–468, `/home/user/awards-cms/submit-entry-payment.js` L415–438
 - **Description:** Both public entry-form pages make unauthenticated `fetch('/api/data-proxy', …)` calls to load `custom_sectors` and `custom_categories`. They pass `action: 'select'` but `data-proxy` reads `operation`, not `action`. `data-proxy` also requires a `Bearer` JWT for every request and returns 401 if missing. These calls therefore always fail with a 401 (wrong field name means `operation` is undefined too, which would be a 400 validation error). The errors are silently swallowed (`catch (_) { /* silently fall back */ }`), so custom sectors and categories simply never appear in the public form — users only see hardcoded fallbacks. This is a silent regression.
 - **Suggested fix:** Either (a) create a public `/api/public-sectors` endpoint that returns `custom_sectors` and `custom_categories` without authentication, or (b) serve these at build time as JSON embedded in the HTML. Do not attempt to authenticate public entry forms via the private `data-proxy`.
 
-### CQ2-C2 — `verifyAuth()`, `ROLE_HIERARCHY`, and `hasMinimumRole()` copy-pasted across 6 API files
+### [x] CQ2-C2 — `verifyAuth()`, `ROLE_HIERARCHY`, and `hasMinimumRole()` copy-pasted across 6 API files
 
 - **Files:**
   - `verifyAuth`: `api/data-proxy.js` L569, `api/email-automation.js` (inline, L1301–1311), `api/certificates-qr.js` L32, `api/judge-automation.js` L41, `api/resend-email.js` L32, `api/upload-proxy.js` L139, `api/stripe-payment.js` L70
@@ -31,19 +31,19 @@ The most urgent finding is a silent functional bug: public-facing entry forms ca
 
 ## HIGH
 
-### CQ2-H1 — `textToHtml()` duplicated identically in `email-automation.js` and `stripe-payment.js`
+### [x] CQ2-H1 — `textToHtml()` duplicated identically in `email-automation.js` and `stripe-payment.js`
 
 - **Files:** `api/email-automation.js` L143–147, `api/stripe-payment.js` L637–641
 - **Description:** Both files contain character-for-character identical implementations of `textToHtml(text)` that escape `&`, `<`, `>` and convert newlines to `<p>` and `<br>` tags inside a padding div. Neither references the other or a shared module.
 - **Suggested fix:** Move to `api/_lib/email-header.js` or a new `api/_lib/email-utils.js` and import in both files.
 
-### CQ2-H2 — `escapeHtml()` defined locally in 6 standalone-page modules
+### [x] CQ2-H2 — `escapeHtml()` defined locally in 6 standalone-page modules
 
 - **Files:** `award-companies-app.js` L33, `check-in-app.js` L334, `company-profile-app.js` L32, `award-nominees-app.js` L125, `register-app.js` L449, `public-winners-app.js` L92
 - **Description:** Six standalone public/portal page modules each define their own `escapeHtml(str)`. These pages do not load the main `utils.js`, so the duplication is structurally necessary — but the implementations should at least be identical. `register-app.js` and `submit-entry-payment.js` each also define their own `toTitleCase()` helper. As the number of standalone pages grows, shared utility drift becomes a risk.
 - **Suggested fix:** Create a tiny `public-utils.js` (or inline in `build.js` as a shared bundle) containing `escapeHtml`, `toTitleCase`, and `showPublicToast` that all standalone pages can load. This would also address the `proxyFetch` duplication (see CQ2-H3).
 
-### CQ2-H3 — `proxyFetch()` helper duplicated in 4 standalone-page modules
+### [x] CQ2-H3 — `proxyFetch()` helper duplicated in 4 standalone-page modules
 
 - **Files:** `award-nominees-app.js` L15, `award-companies-app.js` L17, `company-profile-app.js` L16, `winners-portal-app.js` L14
 - **Description:** All four define an identical 10-line `async function proxyFetch(body)` that POSTs JSON to `/api/data-proxy` without an Authorization header and returns the parsed JSON. This is the same pattern as `apiClient._call()` in `utils.js` but without authentication — again calling auth-required endpoints without tokens (see also CQ2-C1).
@@ -61,7 +61,7 @@ The most urgent finding is a silent functional bug: public-facing entry forms ca
 - **Description:** `_srvFetchPage` (L437) fetches the main organisations list and has no error handling — a failure renders a blank table silently. `bulkEmail` (L3341) fetches contact emails before showing a modal; if the fetch fails, the call to `this._getContactEmails()` throws and the modal never opens with no error shown to the user. `saveNewCompany` (L2989) has no catch, so a failed insert leaves the form open with no feedback.
 - **Suggested fix:** Same as CQ2-H4 — wrap each in `try/catch` with an appropriate `utils.showToast` on error.
 
-### CQ2-H6 — STATUS constants defined in `config.js` use Title Case but database/code uses lowercase — constant is barely used
+### [x] CQ2-H6 — STATUS constants defined in `config.js` use Title Case but database/code uses lowercase — constant is barely used
 
 - **Files:** `config.js` L28–34 (STATUS definition), `dashboard.js` L164, L358, L720, L2238 (only users)
 - **Description:** `config.js` defines `STATUS = { DRAFT: 'Draft', PENDING: 'Pending', APPROVED: 'Approved', PUBLISHED: 'Published', REJECTED: 'Rejected' }`. However, the database and most code use lowercase strings (`'draft'`, `'pending'`, `'approved'`, `'published'`, `'rejected'`). `STATUS.DRAFT` would never match a DB field containing `'draft'`. Only 5 usages of `STATUS.*` exist in the entire codebase — all in `dashboard.js`. Meanwhile 131 usages of lowercase string literals are scattered across modules with no central definition.
@@ -73,7 +73,7 @@ The most urgent finding is a silent functional bug: public-facing entry forms ca
 - **Description:** The handler switch uses `'send-email'` (kebab-case) and `'send-deadline-reminders'` (kebab-case) alongside `'sendTemplate'` (camelCase). The certificates-qr.js handler similarly mixes `'generate-certificate'` (kebab) with `'generate_and_email'` (snake_case) at L781.
 - **Suggested fix:** Standardize all action names within a single file to kebab-case (already used by `resend-email.js`, `social-media-api.js`, `certificates-qr.js`, `judge-automation.js`), and rename `'sendTemplate'` → `'send-template'` and `'generate_and_email'` → `'generate-and-email'`. Update all callers.
 
-### CQ2-H8 — `serverQuery` object in `utils.js` is exported but never called externally — dead abstraction
+### [x] CQ2-H8 — `serverQuery` object in `utils.js` is exported but never called externally — dead abstraction
 
 - **Files:** `utils.js` L2831–2920
 - **Description:** `serverQuery` (exported at L3663 and L3667) provides `execute()` and `loadAll()` methods that are thin wrappers around `apiClient.select()` and `apiClient.selectAll()`. No module outside `utils.js` calls `serverQuery.*` — confirmed by full-codebase grep. It has its own test file (`tests/server-query.test.js`) but the underlying `apiClient` methods it wraps are tested directly. The abstraction adds ~90 lines of maintained surface area with no active consumers.
@@ -113,7 +113,7 @@ The most urgent finding is a silent functional bug: public-facing entry forms ca
 - **Description:** `events.js` is 14,489 lines and `organisations.js` is 9,737 lines — the two largest files in the codebase. Only about 30% of their async functions have JSDoc comments. Public methods like `addAttendee`, `exportDietarySummary`, `bulkEmail`, and `calculateDashboardStats` have no parameter documentation.
 - **Suggested fix:** Add JSDoc at minimum to all public-facing methods (those reachable via `data-action` attributes or called from other modules). Internal helpers prefixed with `_` can be lower priority.
 
-### CQ2-M6 — `_populateFiltersFromConstants()` in `awards.js` is a dead stub
+### [x] CQ2-M6 — `_populateFiltersFromConstants()` in `awards.js` is a dead stub
 
 - **File:** `awards.js` L92–97
 - **Description:** The function is called from `loadAwards()` at L30 but its body is empty with the comment `// All filters are now populated from DB after data loads`. It contributes dead call overhead and creates confusion about the filter population sequence.
@@ -132,7 +132,7 @@ The most urgent finding is a silent functional bug: public-facing entry forms ca
   - `email-automation.js`: `'send-email'` (kebab) + `'sendTemplate'` (camelCase) — mixed within same file
 - **Suggested fix:** Standardize on kebab-case for all action names (matches REST conventions). Update all client-side callers. Document the convention in `CLAUDE.md`.
 
-### CQ2-M8 — `email-automation.js` does inline auth in the handler instead of calling `verifyAuth()`
+### [x] CQ2-M8 — `email-automation.js` does inline auth in the handler instead of calling `verifyAuth()`
 
 - **File:** `api/email-automation.js` L1300–1312
 - **Description:** Instead of calling the shared `verifyAuth(req, res)` pattern used by 5 other API files, `email-automation.js` inlines the auth check: reads `req.headers.authorization`, extracts token, calls `supabaseAuth.auth.getUser(token)`, and checks `authError || !user`. There is no `verifyAuth` function in this file at all. This is inconsistent and means any future auth enhancement (e.g., adding rate limiting per user, token refresh) must be applied separately here.
@@ -155,13 +155,13 @@ The most urgent finding is a silent functional bug: public-facing entry forms ca
 
 ## LOW
 
-### CQ2-L1 — `btc-module.js` uses `window.btcModule` (no ModuleRegistry) and has no test
+### [x] CQ2-L1 — `btc-module.js` uses `window.btcModule` (no ModuleRegistry) and has no test
 
 - **File:** `btc-module.js` L178, `main.js` L64
 - **Description:** `btc-module.js` exposes itself via `window.btcModule = btcModule` directly instead of `ModuleRegistry.register()`. It is the only module in the build that uses the legacy pattern. It also imports TradingView widgets which are unrelated to the awards CMS core and has no unit test.
 - **Suggested fix:** Change `window.btcModule = btcModule` to `ModuleRegistry.register('btcModule', btcModule)` to follow the established pattern.
 
-### CQ2-L2 — `company-profile-app.js` and `register-app.js` use `alert()` for all user feedback
+### [x] CQ2-L2 — `company-profile-app.js` and `register-app.js` use `alert()` for all user feedback
 
 - **Files:** `company-profile-app.js` L118, L122, L258, L268, L272, L280, L283, L323, L333, L335 (10 usages); `register-app.js` L166, L174, L205, L324, L378 (5 usages); `check-in-app.js` L231, L244 (2 usages)
 - **Description:** These standalone pages use browser `alert()` for all success/error feedback, which blocks the JS thread, can't be styled, and is jarring UX. `check-in-app.js` defines its own `showError(msg)` function using DOM insertion, but then calls `alert()` in the async error paths rather than `showError`.
@@ -193,7 +193,7 @@ The most urgent finding is a silent functional bug: public-facing entry forms ca
 - **Description:** Modules reference each other's exported names directly. `dashboard.js` calls module load functions directly — this works because all modules are loaded as globals, but creates implicit load-order dependencies. If a module is lazy-loaded (via the chunk system), these calls can fail silently if the chunk hasn't loaded yet.
 - **Suggested fix:** Route cross-module calls through `ModuleRegistry.get('awardsModule')?.loadAwards()` with optional chaining, rather than assuming global availability. For data-action strings, this is already safe since the action registry resolves at click time.
 
-### CQ2-L6 — `diagnose.js` and `check-schema.js` are developer scripts bundled with the application
+### [x] CQ2-L6 — `diagnose.js` and `check-schema.js` are developer scripts bundled with the application
 
 - **Files:** `diagnose.js` (174 lines), `check-schema.js` (~50 lines)
 - **Description:** `diagnose.js` is a browser console script (wrapped in an async IIFE) that queries all DB tables and logs results. `check-schema.js` is a Node.js script using `require()` and `dotenv`. Neither is part of the production app. `diagnose.js` is included in `index.html` script loading order via `build.js` pattern matching — if it is accidentally bundled, it runs on page load and floods the console.

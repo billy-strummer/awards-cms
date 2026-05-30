@@ -1,6 +1,8 @@
 /* check-in.html extracted scripts — SA2-C1 CSP inline-script fix */
 /* global Html5Qrcode */
 
+const { escapeHtml, showPublicToast } = window.publicUtils;
+
 const SUPABASE_URL = window.SUPABASE_CONFIG.url;
 const SUPABASE_ANON_KEY = window.SUPABASE_CONFIG.anonKey;
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -228,7 +230,7 @@ async function checkInByButton(guestId) {
       .eq('id', guestId);
 
     if (error) {
-      alert('Error: ' + error.message);
+      showPublicToast('Error: ' + error.message, 'error');
       return;
     }
     guest.checked_in = false;
@@ -241,7 +243,7 @@ async function checkInByButton(guestId) {
   try {
     await performCheckIn(guest);
   } catch (err) {
-    alert('Check-in error: ' + err.message);
+    showPublicToast('Check-in error: ' + err.message, 'error');
   }
 }
 
@@ -329,13 +331,6 @@ function renderGuestList() {
       <p>${search ? 'No matching guests' : 'No confirmed guests'}</p>
     </div>`;
   }
-}
-
-function escapeHtml(str) {
-  if (!str) return '';
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
 }
 
 document.getElementById('searchInput').addEventListener('input', filterGuests);

@@ -19,15 +19,10 @@
  */
 
 const { createClient } = require('@supabase/supabase-js');
+const { verifyAuth, hasMinimumRole, getUserRole, ROLE_HIERARCHY } = require('./_lib/auth');
 
 // Service-role client for privileged operations
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-
-// Anon client for JWT verification
-const supabaseAuth = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_KEY
-);
 
 // ============================================
 // TENANT-SCOPED TABLES
@@ -72,21 +67,7 @@ const ALLOWED_RPCS = {
   get_next_table_number: 'editor',
 };
 
-/** Role hierarchy for RPC permission checks (higher index = more privilege) */
-const ROLE_HIERARCHY = ['viewer', 'judge', 'marketing', 'finance', 'editor', 'admin', 'super_admin'];
-
-/**
- * Check if a role meets the minimum required role level.
- * @param {string} userRole - The user's current role.
- * @param {string} requiredRole - The minimum role required.
- * @returns {boolean}
- */
-function hasMinimumRole(userRole, requiredRole) {
-  const userLevel = ROLE_HIERARCHY.indexOf(userRole);
-  const requiredLevel = ROLE_HIERARCHY.indexOf(requiredRole);
-  if (userLevel === -1 || requiredLevel === -1) return false;
-  return userLevel >= requiredLevel;
-}
+// ROLE_HIERARCHY, hasMinimumRole, getUserRole, verifyAuth imported from ./_lib/auth
 
 // ============================================
 // ALLOWED STORAGE BUCKETS
@@ -514,22 +495,6 @@ const ROLE_PERMISSIONS = {
 const READ_ONLY_TABLES = new Set(['activity_log', 'counties', 'regions']);
 
 /**
- * Fetch user role from user_roles table (canonical source of truth).
- * Falls back to 'viewer' if no role is found.
- * @param {string} userEmail - The user's email address.
- * @returns {Promise<string>} The user's role string (defaults to 'viewer').
- */
-async function getUserRole(userEmail) {
-  try {
-    const { data } = await supabase.from('user_roles').select('role').eq('email', userEmail).limit(1).maybeSingle();
-    return (data?.role || 'viewer').toLowerCase();
-  } catch (err) {
-    console.error(`[data-proxy] Failed to fetch role for user ${userEmail}:`, err.message);
-    return 'viewer';
-  }
-}
-
-/**
  * Check if a user's role permits an operation on a table.
  * @param {string} role - The user's role (e.g. 'admin', 'editor', 'viewer').
  * @param {string} table - The database table name.
@@ -553,41 +518,6 @@ function checkPermission(role, table, operation) {
   // Write operations
   if (perms.write === '*') return true;
   return perms.write.has(table);
-}
-
-// ============================================
-// AUTH VERIFICATION
-// ============================================
-
-/**
- * Verify the caller's Supabase JWT.
- * Returns the authenticated user or sends 401 and returns null.
- * @param {Object} req - Express request object.
- * @param {Object} res - Express response object.
- * @returns {Promise<Object|null>} The authenticated user object, or null if authentication fails.
- */
-async function verifyAuth(req, res) {
-  const authHeader = req.headers?.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    res.status(401).json({ error: 'Authentication required' });
-    return null;
-  }
-
-  const token = authHeader.replace('Bearer ', '');
-  try {
-    const {
-      data: { user },
-      error,
-    } = await supabaseAuth.auth.getUser(token);
-    if (error || !user) {
-      res.status(401).json({ error: 'Invalid or expired token' });
-      return null;
-    }
-    return user;
-  } catch (err) {
-    res.status(401).json({ error: 'Token verification failed' });
-    return null;
-  }
 }
 
 // ============================================

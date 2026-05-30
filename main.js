@@ -17,7 +17,7 @@ export {
   STATE,
   ModuleRegistry,
 } from './config.js';
-export { utils, apiClient, serverQuery, actionRegistry } from './utils.js';
+export { utils, apiClient, actionRegistry } from './utils.js';
 
 // Authentication & security
 export { authModule } from './auth.js';

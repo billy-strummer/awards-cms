@@ -2812,95 +2812,6 @@ utils.renderServerPagination = function (containerId, pagination, goToPageFn) {
 // ============================================
 
 /**
- * Reusable server-side query builder for Supabase.
- * Builds queries with server-side filtering, sorting, and pagination
- * so only the required page of data is transferred.
- *
- * Usage:
- *   const result = await utils.serverQuery({
- *     table: 'entries',
- *     select: '*, organisations(company_name)',
- *     filters: { status: 'submitted', year: 2026 },
- *     search: { term: 'acme', columns: ['company_name', 'entry_title'] },
- *     sort: { column: 'submission_date', ascending: false },
- *     page: 1,
- *     pageSize: 50
- *   });
- *   // Returns: { data: [...], count: 123, page: 1, pageSize: 50, totalPages: 3 }
- */
-const serverQuery = {
-  /**
-   * Execute a paginated, filtered, sorted query against Supabase.
-   * @param {Object} options
-   * @param {string} options.table - Supabase table name
-   * @param {string} [options.select='*'] - Select clause
-   * @param {Object} [options.filters={}] - Key-value equality filters (null values skipped)
-   * @param {Object} [options.search] - { term: string, columns: string[] } for ilike search
-   * @param {Object} [options.sort] - { column: string, ascending: boolean }
-   * @param {number} [options.page=1] - Page number (1-based)
-   * @param {number} [options.pageSize=50] - Items per page
-   * @param {Array}  [options.customFilters] - Array of { method, args } for advanced filters
-   * @returns {Promise<{data: Array, count: number, page: number, pageSize: number, totalPages: number}>}
-   */
-  async execute(options) {
-    const {
-      table,
-      select = '*',
-      filters = {},
-      search = null,
-      sort = null,
-      page = 1,
-      pageSize = 50,
-      customFilters = [],
-    } = options;
-
-    // Convert customFilters to data-proxy filter format
-    const mergedFilters = { ...filters };
-    for (const cf of customFilters) {
-      if (cf.method && cf.args) {
-        const [column, value] = cf.args;
-        // Map Supabase method names to data-proxy operator format
-        mergedFilters[`${column}@${cf.method}`] = value;
-      }
-    }
-
-    return apiClient.select(table, {
-      select,
-      filters: mergedFilters,
-      search,
-      sort,
-      page,
-      pageSize,
-    });
-  },
-
-  /**
-   * Load ALL records using server-side pagination (for modules that need full datasets).
-   * Routes through apiClient for RBAC and tenant isolation.
-   * @param {Object} options - Same as execute but without page/pageSize
-   * @param {number} [batchSize=1000] - Records per batch
-   * @returns {Promise<Array>} All matching records
-   */
-  async loadAll(options, batchSize = 1000) {
-    const { table, select = '*', filters = {}, sort = null, customFilters = [] } = options;
-
-    // Convert customFilters to data-proxy filter format
-    const mergedFilters = { ...filters };
-    for (const cf of customFilters) {
-      if (cf.method && cf.args) {
-        const [column, value] = cf.args;
-        mergedFilters[`${column}@${cf.method}`] = value;
-      }
-    }
-
-    return apiClient.selectAll(table, {
-      select,
-      filters: mergedFilters,
-      sort,
-      batchSize,
-    });
-  },
-};
 
 // ============================================
 // EVENT DELEGATION SYSTEM
@@ -3660,8 +3571,8 @@ const apiClient = {
 
 // Export to window for global access
 ModuleRegistry.register('utils', utils);
-ModuleRegistry.register('serverQuery', serverQuery);
+
 ModuleRegistry.register('actionRegistry', actionRegistry);
 ModuleRegistry.register('apiClient', apiClient);
 
-export { utils, apiClient, serverQuery, actionRegistry };
+export { utils, apiClient, actionRegistry };

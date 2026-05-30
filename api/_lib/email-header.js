@@ -136,10 +136,22 @@ function wrapEmail(bodyContent, branding = {}, { subject = '', preheader = '', s
 </html>`;
 }
 
+/**
+ * Convert plain text to a simple HTML block (escapes special chars, converts newlines).
+ * @param {string} text
+ * @returns {string}
+ */
+function textToHtml(text) {
+  const escaped = String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const html = escaped.replace(/\n\n/g, '</p><p style="margin:0 0 16px 0;">').replace(/\n/g, '<br>');
+  return `<div style="padding:30px 40px;"><p style="margin:0 0 16px 0;">${html}</p></div>`;
+}
+
 module.exports = {
   escHtml,
   resolveBranding,
   buildEmailHeader,
   buildEmailFooter,
   wrapEmail,
+  textToHtml,
 };

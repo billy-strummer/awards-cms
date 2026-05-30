@@ -13,13 +13,10 @@
 
 const { createClient } = require('@supabase/supabase-js');
 const { Resend } = require('resend');
-const { wrapEmail } = require('./_lib/email-header');
+const { wrapEmail, textToHtml } = require('./_lib/email-header');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-const supabaseAuth = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_KEY
-);
+const { verifyAuth } = require('./_lib/auth');
 
 // Initialize Resend (replacing SendGrid)
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -140,11 +137,7 @@ async function loadDbTemplate(templateType) {
  * @param {string} text - Plain text content to convert.
  * @returns {string} HTML string with paragraphs and line breaks.
  */
-function textToHtml(text) {
-  const escaped = String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  const html = escaped.replace(/\n\n/g, '</p><p style="margin:0 0 16px 0;">').replace(/\n/g, '<br>');
-  return `<div style="padding:30px 40px;"><p style="margin:0 0 16px 0;">${html}</p></div>`;
-}
+// textToHtml imported from ./_lib/email-header
 
 /**
  * Hardcoded email template body content (fallback when no DB template found).
@@ -1298,18 +1291,8 @@ module.exports = async function handler(req, res) {
   }
 
   // Verify authentication for all actions
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Authentication required' });
-  }
-  const token = authHeader.replace('Bearer ', '');
-  const {
-    data: { user },
-    error: authError,
-  } = await supabaseAuth.auth.getUser(token);
-  if (authError || !user) {
-    return res.status(401).json({ error: 'Invalid or expired token' });
-  }
+  const user = await verifyAuth(req, res);
+  if (!user) return;
 
   const action = req.query.action || req.body?.action;
 

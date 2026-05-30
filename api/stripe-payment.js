@@ -18,31 +18,13 @@ if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY)
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { createClient } = require('@supabase/supabase-js');
 const { Resend } = require('resend');
-const { wrapEmail } = require('./_lib/email-header');
+const { wrapEmail, textToHtml } = require('./_lib/email-header');
 const resend = new Resend(process.env.RESEND_API_KEY);
 const APP_URL = process.env.APP_URL || 'https://admin.britishtradeawards.com';
 const FROM_EMAIL = process.env.FROM_EMAIL || 'awards@britishtradeawards.com';
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-const supabaseAuth = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_KEY
-);
-
-const ROLE_HIERARCHY = ['viewer', 'judge', 'marketing', 'finance', 'editor', 'admin', 'super_admin'];
-function hasMinimumRole(userRole, requiredRole) {
-  const a = ROLE_HIERARCHY.indexOf((userRole || '').toLowerCase());
-  const b = ROLE_HIERARCHY.indexOf(requiredRole);
-  return a !== -1 && b !== -1 && a >= b;
-}
-async function getUserRole(email) {
-  try {
-    const { data } = await supabase.from('user_roles').select('role').eq('email', email).limit(1).maybeSingle();
-    return (data?.role || 'viewer').toLowerCase();
-  } catch (_) {
-    return 'viewer';
-  }
-}
+const { hasMinimumRole, getUserRole, verifyAuth } = require('./_lib/auth');
 
 /**
  * Generate a unique invoice number (INV-YYYY-NNNNN).
@@ -59,30 +41,6 @@ async function generateInvoiceNumber() {
     .limit(1);
   const lastNum = data && data.length > 0 ? parseInt(data[0].invoice_number.replace(prefix, ''), 10) || 0 : 0;
   return `${prefix}${String(lastNum + 1).padStart(5, '0')}`;
-}
-
-/**
- * Verify Supabase JWT from Authorization header.
- * @param {Object} req - Express request object.
- * @param {Object} res - Express response object.
- * @returns {Promise<Object|null>} The authenticated user object, or null if authentication fails (401 sent).
- */
-async function verifyAuth(req, res) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith('Bearer ')) {
-    res.status(401).json({ error: 'Authentication required' });
-    return null;
-  }
-  const token = authHeader.replace('Bearer ', '');
-  const {
-    data: { user },
-    error,
-  } = await supabaseAuth.auth.getUser(token);
-  if (error || !user) {
-    res.status(401).json({ error: 'Invalid or expired token' });
-    return null;
-  }
-  return user;
 }
 
 /**
@@ -629,16 +587,7 @@ function replacePlaceholders(text, data) {
   return result;
 }
 
-/**
- * Convert plain-text template body to styled HTML with paragraph wrapping.
- * @param {string} text - Plain text content to convert.
- * @returns {string} HTML string with paragraphs and line breaks.
- */
-function textToHtml(text) {
-  const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  const html = escaped.replace(/\n\n/g, '</p><p style="margin:0 0 16px 0;">').replace(/\n/g, '<br>');
-  return `<div style="padding:30px 40px;"><p style="margin:0 0 16px 0;">${html}</p></div>`;
-}
+// textToHtml imported from ./_lib/email-header
 
 /**
  * Header subtitle text per payment template type.

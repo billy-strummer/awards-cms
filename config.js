@@ -26,11 +26,11 @@ const SUPABASE_CONFIG = {
  * @type {{ DRAFT: string, PENDING: string, APPROVED: string, PUBLISHED: string, REJECTED: string }}
  */
 const STATUS = {
-  DRAFT: 'Draft',
-  PENDING: 'Pending',
-  APPROVED: 'Approved',
-  PUBLISHED: 'Published',
-  REJECTED: 'Rejected',
+  DRAFT: 'draft',
+  PENDING: 'pending',
+  APPROVED: 'approved',
+  PUBLISHED: 'published',
+  REJECTED: 'rejected',
 };
 
 // Media Types

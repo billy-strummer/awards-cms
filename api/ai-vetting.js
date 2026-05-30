@@ -7,19 +7,7 @@
 
 const { createClient } = require('@supabase/supabase-js');
 const { vetCompany, vetCompanies } = require('./_lib/ai-vetting-proxy');
-
-const ROLE_HIERARCHY = ['viewer', 'judge', 'marketing', 'finance', 'editor', 'admin', 'super_admin'];
-
-function hasMinimumRole(userRole, requiredRole) {
-  const a = ROLE_HIERARCHY.indexOf((userRole || '').toLowerCase());
-  const b = ROLE_HIERARCHY.indexOf(requiredRole);
-  return a >= 0 && b >= 0 && a >= b;
-}
-
-async function getUserRole(supabaseService, email) {
-  const { data } = await supabaseService.from('user_roles').select('role').eq('email', email).limit(1).maybeSingle();
-  return data?.role || 'viewer';
-}
+const { verifyAuth, hasMinimumRole, getUserRole } = require('./_lib/auth');
 
 /**
  * Vercel serverless handler for AI vetting operations.
@@ -30,27 +18,10 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Verify authentication
-  const authHeader = req.headers?.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Authentication required' });
-  }
+  const user = await verifyAuth(req, res);
+  if (!user) return;
 
-  const token = authHeader.replace('Bearer ', '');
-  const supabaseAuth = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_KEY
-  );
-  const {
-    data: { user },
-    error: authError,
-  } = await supabaseAuth.auth.getUser(token);
-  if (authError || !user) {
-    return res.status(401).json({ error: 'Invalid or expired token' });
-  }
-
-  const supabaseService = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-  const role = await getUserRole(supabaseService, user.email);
+  const role = await getUserRole(user.email);
   if (!hasMinimumRole(role, 'editor')) {
     return res.status(403).json({ error: 'Insufficient permissions for AI vetting' });
   }

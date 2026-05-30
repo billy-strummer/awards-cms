@@ -20,37 +20,7 @@ if (process.env.NODE_ENV !== 'production') {
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-const supabaseAuth = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_KEY
-);
-
-/**
- * Verify the caller's Supabase JWT.
- * Returns the authenticated user or sends 401 and returns null.
- */
-async function verifyAuth(req, res) {
-  const authHeader = req.headers?.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    res.status(401).json({ error: 'Authentication required' });
-    return null;
-  }
-  const token = authHeader.replace('Bearer ', '');
-  try {
-    const {
-      data: { user },
-      error,
-    } = await supabaseAuth.auth.getUser(token);
-    if (error || !user) {
-      res.status(401).json({ error: 'Invalid or expired token' });
-      return null;
-    }
-    return user;
-  } catch (_err) {
-    res.status(401).json({ error: 'Token verification failed' });
-    return null;
-  }
-}
+const { verifyAuth } = require('./_lib/auth');
 
 const FROM_EMAIL = process.env.FROM_EMAIL || 'awards@britishtradeawards.com';
 const FROM_NAME = process.env.FROM_NAME || 'British Trade Awards';

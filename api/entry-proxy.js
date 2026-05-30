@@ -149,6 +149,8 @@ module.exports = async function handler(req, res) {
         return await handleSubmitEntry(req, res);
       case 'submit_nomination':
         return await handleSubmitNomination(req, res);
+      case 'get_public_data':
+        return await handleGetPublicData(req, res);
       default:
         return res.status(400).json({ error: `Unknown action: ${action}` });
     }
@@ -157,6 +159,17 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: 'Internal server error' });
   }
 };
+
+async function handleGetPublicData(_req, res) {
+  const [sectorsResult, catsResult] = await Promise.all([
+    supabase.from('custom_sectors').select('id, name, display_name').eq('is_active', true).order('display_name'),
+    supabase.from('custom_categories').select('id, name, sector, county').eq('is_active', true).order('name'),
+  ]);
+  return res.status(200).json({
+    custom_sectors: sectorsResult.data || [],
+    custom_categories: catsResult.data || [],
+  });
+}
 
 async function handleSubmitEntry(req, res) {
   // Honeypot: bots fill the 'website' field; humans leave it blank

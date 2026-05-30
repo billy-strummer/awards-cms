@@ -27,7 +27,6 @@ const awardsModule = {
       this._syncAwardsViewsFromServer();
 
       // Populate filter dropdowns from constants (no full dataset needed)
-      this._populateFiltersFromConstants();
 
       // Restore saved filters from localStorage
       const lsAwardsFilters = (() => {
@@ -87,13 +86,6 @@ const awardsModule = {
       utils.hideLoading();
       this._loading = false;
     }
-  },
-
-  /**
-   * Populate filter dropdowns from known constants (no full dataset required)
-   */
-  _populateFiltersFromConstants() {
-    // All filters are now populated from DB after data loads
   },
 
   /**
@@ -1881,9 +1873,9 @@ const awardsModule = {
         <i class="bi bi-trash"></i>
       </button>
     `;
-    row.querySelectorAll('input').forEach((inp) =>
-      inp.addEventListener('input', () => this._updateCriteriaWeightTotal())
-    );
+    row
+      .querySelectorAll('input')
+      .forEach((inp) => inp.addEventListener('input', () => this._updateCriteriaWeightTotal()));
     container.appendChild(row);
     this._updateCriteriaWeightTotal();
   },
@@ -1897,7 +1889,9 @@ const awardsModule = {
     if (!totalEl) return;
     const total = this._getScoringCriteria().reduce((sum, c) => sum + (Number(c.weight) || 0), 0);
     totalEl.textContent = String(total);
-    totalEl.closest('strong') ? null : (totalEl.style.color = total === 100 ? 'green' : total > 100 ? 'red' : 'inherit');
+    totalEl.closest('strong')
+      ? null
+      : (totalEl.style.color = total === 100 ? 'green' : total > 100 ? 'red' : 'inherit');
   },
 
   /**

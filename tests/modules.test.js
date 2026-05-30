@@ -219,9 +219,9 @@ describe('Config / STATE', () => {
   });
 
   test('STATUS constants are defined', () => {
-    expect(STATUS.DRAFT).toBe('Draft');
-    expect(STATUS.APPROVED).toBe('Approved');
-    expect(STATUS.PUBLISHED).toBe('Published');
+    expect(STATUS.DRAFT).toBe('draft');
+    expect(STATUS.APPROVED).toBe('approved');
+    expect(STATUS.PUBLISHED).toBe('published');
   });
 
   test('SECTORS array is populated', () => {

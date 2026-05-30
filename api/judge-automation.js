@@ -26,40 +26,10 @@ const escHtml = (str) =>
     .replace(/"/g, '&quot;');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-const supabaseAuth = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_KEY
-);
+const { verifyAuth } = require('./_lib/auth');
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const APP_URL = process.env.APP_URL || 'https://admin.britishtradeawards.com';
-
-/**
- * Verify the caller's Supabase JWT.
- * Returns the authenticated user or sends 401 and returns null.
- */
-async function verifyAuth(req, res) {
-  const authHeader = req.headers?.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    res.status(401).json({ error: 'Authentication required' });
-    return null;
-  }
-  const token = authHeader.replace('Bearer ', '');
-  try {
-    const {
-      data: { user },
-      error,
-    } = await supabaseAuth.auth.getUser(token);
-    if (error || !user) {
-      res.status(401).json({ error: 'Invalid or expired token' });
-      return null;
-    }
-    return user;
-  } catch (_err) {
-    res.status(401).json({ error: 'Token verification failed' });
-    return null;
-  }
-}
 
 /**
  * Assign judges to entries automatically using round-robin with expertise matching and conflict checking.

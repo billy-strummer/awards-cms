@@ -107,7 +107,7 @@ The most urgent finding is a silent functional bug: public-facing entry forms ca
 - **Description:** Status strings like `'submitted'`, `'shortlisted'`, `'under_review'`, `'winner'`, `'rejected'`, `'draft'`, `'published'`, `'attending'`, `'not_attending'`, `'maybe'` appear as inline string literals 172+ times. `entries.js` alone references `'shortlisted'` 15 times, `'submitted'` 12 times. A typo in one place (e.g. `'shortlisted'` vs `'short_listed'`) would silently fail DB queries with no error.
 - **Suggested fix:** Expand `config.js` to export proper enum objects: `ENTRY_STATUS = { DRAFT: 'draft', SUBMITTED: 'submitted', UNDER_REVIEW: 'under_review', SHORTLISTED: 'shortlisted', WINNER: 'winner', REJECTED: 'rejected' }` and `EVENT_ATTENDEE_STATUS = { ATTENDING: 'attending', NOT_ATTENDING: 'not_attending', MAYBE: 'maybe' }`. Replace all string literals with these constants.
 
-### CQ2-M5 — `events.js` and `organisations.js` have 130 and 91 async functions without JSDoc
+### [x] CQ2-M5 — `events.js` and `organisations.js` have 130 and 91 async functions without JSDoc
 
 - **Files:** `events.js` (130 undocumented async), `organisations.js` (91 undocumented async), `crm.js` (19 undocumented async)
 - **Description:** `events.js` is 14,489 lines and `organisations.js` is 9,737 lines — the two largest files in the codebase. Only about 30% of their async functions have JSDoc comments. Public methods like `addAttendee`, `exportDietarySummary`, `bulkEmail`, and `calculateDashboardStats` have no parameter documentation.

@@ -118,6 +118,10 @@ const orgsModule = {
   // ============================================
   // Calculate dashboard statistics (Enhanced)
   // ============================================
+  /**
+   * Calculate and render dashboard KPI stats for organisations (counts, pipeline, alerts).
+   * @returns {Promise<void>}
+   */
   async calculateDashboardStats() {
     try {
       const totalCount = this._srvPagination?.count || STATE.allOrganisations.length;
@@ -2986,6 +2990,10 @@ const orgsModule = {
   // ============================================
   // SAVE NEW COMPANY
   // ============================================
+  /**
+   * Validate and submit the Add Company form to create a new organisation record.
+   * @returns {Promise<void>}
+   */
   async saveNewCompany() {
     const form = document.getElementById('addCompanyForm');
     if (!form.checkValidity()) {
@@ -3338,6 +3346,10 @@ const orgsModule = {
   // ============================================
   // BULK EMAIL CAMPAIGN
   // ============================================
+  /**
+   * Open a bulk email compose modal for all selected organisations.
+   * @returns {Promise<void>}
+   */
   async bulkEmail() {
     if (this.selectedOrgs.size === 0) {
       utils.showToast('No organisations selected', 'warning');
@@ -3611,6 +3623,12 @@ const orgsModule = {
   // ============================================
   // QUICK INLINE STATUS UPDATE
   // ============================================
+  /**
+   * Update an organisation's status inline without opening a full profile.
+   * @param {string} orgId - Organisation ID
+   * @param {string} newStatus - New status value
+   * @returns {Promise<void>}
+   */
   async quickUpdateStatus(orgId, newStatus) {
     try {
       const org = STATE.allOrganisations.find((o) => o.id === orgId);
@@ -3636,6 +3654,12 @@ const orgsModule = {
   // ============================================
   // ARCHIVE ORGANISATION (Soft Delete)
   // ============================================
+  /**
+   * Soft-delete (archive) an organisation after confirmation.
+   * @param {string} orgId - Organisation ID
+   * @param {string} companyName - Company name for the confirmation dialog
+   * @returns {Promise<void>}
+   */
   async deleteOrganisation(orgId, companyName) {
     if (
       !(await utils.confirmDialog({
@@ -3672,6 +3696,12 @@ const orgsModule = {
     }
   },
 
+  /**
+   * Restore an archived organisation back to prospect status.
+   * @param {string} orgId - Organisation ID
+   * @param {string} companyName - Company name for the success toast
+   * @returns {Promise<void>}
+   */
   async restoreOrganisation(orgId, companyName) {
     try {
       await apiClient.update('organisations', orgId, { status: 'prospect' });
@@ -3689,6 +3719,12 @@ const orgsModule = {
     }
   },
 
+  /**
+   * Permanently delete an organisation and all its data after double confirmation.
+   * @param {string} orgId - Organisation ID
+   * @param {string} companyName - Company name shown in confirmation dialogs
+   * @returns {Promise<void>}
+   */
   async permanentDelete(orgId, companyName) {
     if (
       !(await utils.confirmDialog({
@@ -3750,6 +3786,10 @@ const orgsModule = {
   // ============================================
   // BULK ARCHIVE
   // ============================================
+  /**
+   * Bulk archive all selected organisations after confirmation.
+   * @returns {Promise<void>}
+   */
   async bulkDelete() {
     if (this.selectedOrgs.size === 0) {
       utils.showToast('No organisations selected', 'warning');
@@ -3794,6 +3834,11 @@ const orgsModule = {
   // ============================================
   // BULK STATUS CHANGE
   // ============================================
+  /**
+   * Change the status of all selected organisations to a new value.
+   * @param {string} newStatus - Status to apply to all selected organisations
+   * @returns {Promise<void>}
+   */
   async bulkStatusChange(newStatus) {
     if (this.selectedOrgs.size === 0) {
       utils.showToast('No organisations selected', 'warning');
@@ -3866,6 +3911,12 @@ const orgsModule = {
     }
   },
 
+  /**
+   * Update an organisation's status and refresh its profile view.
+   * @param {string} orgId - Organisation ID
+   * @param {string} newStatus - New status value
+   * @returns {Promise<void>}
+   */
   async updateOrgStatus(orgId, newStatus) {
     try {
       await apiClient.update('organisations', orgId, { status: newStatus });
@@ -3947,6 +3998,11 @@ const orgsModule = {
     return this._cachedUserEmail;
   },
 
+  /**
+   * Fetch the audit log entries for an organisation (or all orgs if orgId is null).
+   * @param {string|null} orgId - Organisation ID, or null for global log
+   * @returns {Promise<Array>} Array of audit log entry objects
+   */
   async getAuditLog(orgId) {
     try {
       const filters = {};
@@ -3964,6 +4020,11 @@ const orgsModule = {
     }
   },
 
+  /**
+   * Render the audit log as an HTML string for display in the profile panel.
+   * @param {string} orgId - Organisation ID
+   * @returns {Promise<string>} HTML string of audit log entries
+   */
   async renderAuditLog(orgId) {
     const log = await this.getAuditLog(orgId);
     if (log.length === 0) return '<p class="text-muted small">No activity recorded yet</p>';
@@ -4185,6 +4246,11 @@ const orgsModule = {
     }
   },
 
+  /**
+   * Fetch communication history entries for an organisation.
+   * @param {string} orgId - Organisation ID
+   * @returns {Promise<Array>} Array of communication log entry objects
+   */
   async getCommsHistory(orgId) {
     try {
       const filters = {};
@@ -4202,6 +4268,11 @@ const orgsModule = {
     }
   },
 
+  /**
+   * Render communications history as an HTML string for display in the profile panel.
+   * @param {string} orgId - Organisation ID
+   * @returns {Promise<string>} HTML string of communication history
+   */
   async renderCommsHistory(orgId) {
     const history = await this.getCommsHistory(orgId);
     if (history.length === 0) return '<p class="text-muted small">No communications recorded yet</p>';
@@ -4227,6 +4298,11 @@ const orgsModule = {
   // ============================================
   // TAG MANAGEMENT
   // ============================================
+  /**
+   * Add a tag from the tag input field to an organisation.
+   * @param {string} orgId - Organisation ID
+   * @returns {Promise<void>}
+   */
   async addTag(orgId) {
     const input = document.getElementById('newTagInput');
     const tag = (input?.value || '').trim();
@@ -4254,6 +4330,12 @@ const orgsModule = {
     }
   },
 
+  /**
+   * Remove a tag from an organisation.
+   * @param {string} orgId - Organisation ID
+   * @param {string} tag - Tag string to remove
+   * @returns {Promise<void>}
+   */
   async removeTag(orgId, tag) {
     try {
       const org = STATE.allOrganisations.find((o) => o.id === orgId);
@@ -4305,6 +4387,12 @@ const orgsModule = {
   // Last inline edit for undo support
   _lastInlineEdit: null,
 
+  /**
+   * Persist an inline field edit for an organisation and update local state.
+   * @param {string} orgId - Organisation ID
+   * @param {string} field - Display field key being edited
+   * @returns {Promise<void>}
+   */
   async saveInlineEdit(orgId, field) {
     const input = document.getElementById(`inlineEdit_${field}`);
     if (!input) return;
@@ -4360,6 +4448,10 @@ const orgsModule = {
     setTimeout(() => document.getElementById('undoToast')?.remove(), 8000);
   },
 
+  /**
+   * Revert the most recent inline field edit to its previous value.
+   * @returns {Promise<void>}
+   */
   async undoLastInlineEdit() {
     const edit = this._lastInlineEdit;
     if (!edit) {
@@ -4389,6 +4481,12 @@ const orgsModule = {
   // ============================================
   // BULK FIELD UPDATES
   // ============================================
+  /**
+   * Set a single field to a specified value for all selected organisations.
+   * @param {string} field - Database field name to update
+   * @param {string} value - New value to assign
+   * @returns {Promise<void>}
+   */
   async bulkUpdateField(field, value) {
     if (this.selectedOrgs.size === 0) {
       utils.showToast('No organisations selected', 'warning');
@@ -4476,6 +4574,10 @@ const orgsModule = {
   // ============================================
   // BULK AUTO-FETCH LOGOS
   // ============================================
+  /**
+   * Attempt to auto-fetch logos for all selected organisations that have websites but no logo.
+   * @returns {Promise<void>}
+   */
   async bulkFetchLogos() {
     const selected = Array.from(this.selectedOrgs);
     const orgs = STATE.allOrganisations.filter((o) => selected.includes(o.id) && o.website && !o.logo_url);
@@ -4877,6 +4979,10 @@ const orgsModule = {
     this._csvPreviewRows = previewRows;
   },
 
+  /**
+   * Execute the pending CSV import, inserting or merging organisation records.
+   * @returns {Promise<void>}
+   */
   async executeCSVImport() {
     if (!this._csvPreviewRows || this._csvPreviewRows.length === 0) {
       utils.showToast('No data to import', 'warning');
@@ -5143,6 +5249,10 @@ const orgsModule = {
         .join('');
   },
 
+  /**
+   * Prompt for a name and save the current filter/sort/column state as a preset.
+   * @returns {Promise<void>}
+   */
   async saveFilterPreset() {
     const name = prompt('Name this view preset:');
     if (!name || !name.trim()) return;
@@ -5215,6 +5325,11 @@ const orgsModule = {
     }
   },
 
+  /**
+   * Restore filters, sort, and column visibility from a named filter preset.
+   * @param {string} name - Preset name to load
+   * @returns {Promise<void>}
+   */
   async loadFilterPreset(name) {
     if (!name) return;
     let presets = {};
@@ -5288,6 +5403,10 @@ const orgsModule = {
     utils.showToast(`View "${name}" loaded`, 'success');
   },
 
+  /**
+   * Delete the currently selected filter preset after confirmation.
+   * @returns {Promise<void>}
+   */
   async deleteFilterPreset() {
     const presetSelect = document.getElementById('orgsFilterPreset');
     const name = presetSelect?.value;
@@ -5362,6 +5481,11 @@ const orgsModule = {
   // ============================================
   // AREA 4: ORGANISATION CONTACTS (Multi-contact)
   // ============================================
+  /**
+   * Fetch all contacts associated with an organisation.
+   * @param {string} orgId - Organisation ID
+   * @returns {Promise<Array>} Array of contact objects
+   */
   async loadOrgContacts(orgId) {
     try {
       const result = await apiClient.select('organisation_contacts', {
@@ -5407,6 +5531,11 @@ const orgsModule = {
     </div>`;
   },
 
+  /**
+   * Add a new contact to an organisation from the contact form fields.
+   * @param {string} orgId - Organisation ID
+   * @returns {Promise<void>}
+   */
   async addContact(orgId) {
     const firstName = document.getElementById('newContactFirstName')?.value.trim();
     const lastName = document.getElementById('newContactLastName')?.value.trim();
@@ -5444,6 +5573,12 @@ const orgsModule = {
     }
   },
 
+  /**
+   * Delete a contact from an organisation after confirmation.
+   * @param {string} orgId - Organisation ID
+   * @param {string} contactId - Contact record ID to delete
+   * @returns {Promise<void>}
+   */
   async deleteContact(orgId, contactId) {
     if (!(await utils.confirmDialog({ title: 'Delete Contact', message: 'Delete this contact?' }))) return;
     try {
@@ -5456,6 +5591,12 @@ const orgsModule = {
     }
   },
 
+  /**
+   * Set a specific contact as the primary contact for an organisation.
+   * @param {string} orgId - Organisation ID
+   * @param {string} contactId - Contact record ID to make primary
+   * @returns {Promise<void>}
+   */
   async setPrimaryContact(orgId, contactId) {
     try {
       await apiClient.updateByFilters('organisation_contacts', { organisation_id: orgId }, { is_primary: false });
@@ -5468,6 +5609,13 @@ const orgsModule = {
     }
   },
 
+  /**
+   * Toggle the email opt-in/opt-out flag for a specific contact.
+   * @param {string} orgId - Organisation ID
+   * @param {string} contactId - Contact record ID
+   * @param {boolean} value - True to opt in, false to opt out
+   * @returns {Promise<void>}
+   */
   async toggleContactEmails(orgId, contactId, value) {
     try {
       await apiClient.update('organisation_contacts', contactId, { receive_emails: value });
@@ -5482,6 +5630,11 @@ const orgsModule = {
   // ============================================
   // AREA 5: CUSTOM FIELDS (Database-backed)
   // ============================================
+  /**
+   * Fetch all custom fields for an organisation as a key-value map.
+   * @param {string} orgId - Organisation ID
+   * @returns {Promise<Object>} Map of field names to values
+   */
   async getCustomFields(orgId) {
     try {
       /* selectAll: justified — scoped to single organisation */
@@ -5500,6 +5653,13 @@ const orgsModule = {
     }
   },
 
+  /**
+   * Upsert a single custom field value for an organisation.
+   * @param {string} orgId - Organisation ID
+   * @param {string} fieldName - Custom field name
+   * @param {string|null} fieldValue - Value to set, or null to delete
+   * @returns {Promise<void>}
+   */
   async saveCustomField(orgId, fieldName, fieldValue) {
     try {
       if (fieldValue) {
@@ -5529,6 +5689,11 @@ const orgsModule = {
     }
   },
 
+  /**
+   * Add a custom field to an organisation from the custom field form inputs.
+   * @param {string} orgId - Organisation ID
+   * @returns {Promise<void>}
+   */
   async addCustomField(orgId) {
     const name = document.getElementById('customFieldName')?.value.trim();
     const value = document.getElementById('customFieldValue')?.value.trim();
@@ -5541,6 +5706,12 @@ const orgsModule = {
     if (org) this.openCompanyProfile(orgId, org.company_name);
   },
 
+  /**
+   * Remove a custom field from an organisation.
+   * @param {string} orgId - Organisation ID
+   * @param {string} fieldName - Name of the field to remove
+   * @returns {Promise<void>}
+   */
   async removeCustomField(orgId, fieldName) {
     await this.saveCustomField(orgId, fieldName, null);
     const org = STATE.allOrganisations.find((o) => o.id === orgId);
@@ -5550,6 +5721,11 @@ const orgsModule = {
   // ============================================
   // AREA 5: DOCUMENT ATTACHMENTS
   // ============================================
+  /**
+   * Upload a document file for an organisation and store the reference in the database.
+   * @param {string} orgId - Organisation ID
+   * @returns {Promise<void>}
+   */
   async uploadDocument(orgId) {
     const fileInput = document.getElementById('docUploadInput');
     const docTitle = document.getElementById('docTitle')?.value.trim() || '';
@@ -5589,6 +5765,11 @@ const orgsModule = {
     }
   },
 
+  /**
+   * Fetch all document attachments for an organisation.
+   * @param {string} orgId - Organisation ID
+   * @returns {Promise<Array>} Array of document objects
+   */
   async getDocuments(orgId) {
     try {
       /* selectAll: justified — scoped to single organisation */
@@ -5606,6 +5787,11 @@ const orgsModule = {
   // ============================================
   // AREA 6: SCHEDULED FOLLOW-UPS (Database-backed)
   // ============================================
+  /**
+   * Fetch all scheduled follow-ups for an organisation (or all if orgId is omitted).
+   * @param {string} [orgId] - Organisation ID; omit to fetch all follow-ups
+   * @returns {Promise<Array>} Array of follow-up objects
+   */
   async getFollowUps(orgId) {
     try {
       const filters = {};
@@ -5630,6 +5816,11 @@ const orgsModule = {
     }
   },
 
+  /**
+   * Schedule a new follow-up for an organisation from the follow-up form.
+   * @param {string} orgId - Organisation ID
+   * @returns {Promise<void>}
+   */
   async addFollowUp(orgId) {
     const date = document.getElementById('followUpDate')?.value;
     const note = document.getElementById('followUpNote')?.value.trim();
@@ -5656,6 +5847,12 @@ const orgsModule = {
     }
   },
 
+  /**
+   * Mark a follow-up as completed.
+   * @param {string} orgId - Organisation ID
+   * @param {string} followUpId - Follow-up record ID
+   * @returns {Promise<void>}
+   */
   async completeFollowUp(orgId, followUpId) {
     try {
       await apiClient.update('organisation_follow_ups', followUpId, {
@@ -5670,6 +5867,12 @@ const orgsModule = {
     }
   },
 
+  /**
+   * Delete a follow-up after confirmation.
+   * @param {string} orgId - Organisation ID
+   * @param {string} followUpId - Follow-up record ID
+   * @returns {Promise<void>}
+   */
   async deleteFollowUp(orgId, followUpId) {
     if (
       !(await utils.confirmDialog({
@@ -5768,6 +5971,10 @@ const orgsModule = {
   // ============================================
   // AREA 7: GLOBAL AUDIT LOG WITH FILTERS & DIFF
   // ============================================
+  /**
+   * Open a modal showing the global audit log with filter controls.
+   * @returns {Promise<void>}
+   */
   async showGlobalAuditLog() {
     utils.showLoading();
     try {
@@ -5907,6 +6114,10 @@ const orgsModule = {
     this._showDynamicModal('Bulk Tag Assignment', html, 'bi-tags');
   },
 
+  /**
+   * Add a tag to all selected organisations in bulk.
+   * @returns {Promise<void>}
+   */
   async executeBulkTagAdd() {
     const tag = document.getElementById('bulkTagInput')?.value.trim();
     if (!tag) {
@@ -5946,6 +6157,10 @@ const orgsModule = {
     }
   },
 
+  /**
+   * Remove a selected tag from all selected organisations in bulk.
+   * @returns {Promise<void>}
+   */
   async executeBulkTagRemove() {
     const tag = document.getElementById('bulkTagRemoveSelect')?.value;
     if (!tag) {
@@ -5988,6 +6203,10 @@ const orgsModule = {
   // ============================================
   // AREA 8: BULK ASSIGN TO AWARD
   // ============================================
+  /**
+   * Open a modal to bulk-assign the selected organisations to an award.
+   * @returns {Promise<void>}
+   */
   async showBulkAssignAwardModal() {
     if (this.selectedOrgs.size === 0) {
       utils.showToast('No organisations selected', 'warning');
@@ -6025,6 +6244,10 @@ const orgsModule = {
     }
   },
 
+  /**
+   * Execute the bulk award assignment for all selected organisations.
+   * @returns {Promise<void>}
+   */
   async executeBulkAssignAward() {
     const awardId = document.getElementById('bulkAssignAwardSelect')?.value;
     const status = document.getElementById('bulkAssignStatus')?.value || 'nominated';
@@ -6109,6 +6332,12 @@ const orgsModule = {
     this._showDynamicModal('Merge Organisations', html, 'bi-intersect', 'modal-lg');
   },
 
+  /**
+   * Merge two organisations, transferring all related records to the primary one.
+   * @param {string} id1 - ID of the primary (keeper) organisation
+   * @param {string} id2 - ID of the organisation to delete after merge
+   * @returns {Promise<void>}
+   */
   async executeMerge(id1, id2) {
     if (
       !(await utils.confirmDialog({
@@ -6591,6 +6820,10 @@ const orgsModule = {
   // AREA 11: ENHANCED IMPORT/EXPORT
   // ============================================
   // Excel Export (V17-M13: includes custom fields as extra columns)
+  /**
+   * Export the currently filtered organisations list (with custom fields) as an Excel file.
+   * @returns {Promise<void>}
+   */
   async exportToExcel() {
     const data = STATE.filteredOrganisations;
     if (data.length === 0) {
@@ -6796,6 +7029,11 @@ const orgsModule = {
   // ============================================
   // FEATURE 2: UNIFIED ACTIVITY TIMELINE
   // ============================================
+  /**
+   * Load and merge all activity types (audit, comms, notes, follow-ups, assignments, invoices) into a unified timeline.
+   * @param {string} orgId - Organisation ID
+   * @returns {Promise<Array>} Sorted array of timeline event objects
+   */
   async loadUnifiedTimeline(orgId) {
     try {
       const [auditLog, commsLog, notes, followUps] = await Promise.all([
@@ -6921,6 +7159,11 @@ const orgsModule = {
   // ============================================
   // FEATURE 3: RELATIONSHIP MAPPING
   // ============================================
+  /**
+   * Fetch all outgoing and incoming organisation relationship records.
+   * @param {string} orgId - Organisation ID
+   * @returns {Promise<{outgoing: Array, incoming: Array}>}
+   */
   async getRelationships(orgId) {
     try {
       const outRes = await apiClient.select('organisation_relationships', {
@@ -6941,6 +7184,11 @@ const orgsModule = {
     }
   },
 
+  /**
+   * Add a relationship link between this organisation and another found by name.
+   * @param {string} orgId - Organisation ID
+   * @returns {Promise<void>}
+   */
   async addRelationship(orgId) {
     const relatedName = document.getElementById('relatedOrgSearch')?.value.trim();
     const relType = document.getElementById('relationshipType')?.value || 'related';
@@ -6971,6 +7219,12 @@ const orgsModule = {
     }
   },
 
+  /**
+   * Delete a relationship record between two organisations.
+   * @param {string} relId - Relationship record ID
+   * @param {string} orgId - Organisation ID (used to refresh the profile)
+   * @returns {Promise<void>}
+   */
   async removeRelationship(relId, orgId) {
     try {
       await apiClient.delete('organisation_relationships', relId);
@@ -7044,6 +7298,11 @@ const orgsModule = {
   // ============================================
   // FEATURE 4: EMAIL INTEGRATION IN PROFILE
   // ============================================
+  /**
+   * Compose and log an email to an organisation directly from its profile panel.
+   * @param {string} orgId - Organisation ID
+   * @returns {Promise<void>}
+   */
   async composeEmailFromProfile(orgId) {
     const org = STATE.allOrganisations.find((o) => o.id === orgId);
     if (!org) return;
@@ -7220,6 +7479,12 @@ const orgsModule = {
     });
   },
 
+  /**
+   * Handle a Kanban card drag-drop to update an organisation's pipeline status.
+   * @param {DragEvent} event - Browser drag event containing the org ID
+   * @param {string} newStatus - Target pipeline status column
+   * @returns {Promise<void>}
+   */
   async handleKanbanDrop(event, newStatus) {
     event.preventDefault();
     const orgId = event.dataTransfer.getData('text/plain');
@@ -7293,6 +7558,11 @@ const orgsModule = {
   // ============================================
   // FEATURE 8: THREADED NOTES / COMMENTS
   // ============================================
+  /**
+   * Fetch all threaded notes for an organisation, sorted pinned-first then by date.
+   * @param {string} orgId - Organisation ID
+   * @returns {Promise<Array>} Array of note objects
+   */
   async getThreadedNotes(orgId) {
     try {
       // Direct call: complex query not supported by apiClient (dual order by)
@@ -7313,6 +7583,11 @@ const orgsModule = {
     }
   },
 
+  /**
+   * Add a new note to an organisation from the note input field.
+   * @param {string} orgId - Organisation ID
+   * @returns {Promise<void>}
+   */
   async addThreadedNote(orgId) {
     const content = document.getElementById('newNoteContent')?.value.trim();
     if (!content) {
@@ -7335,6 +7610,12 @@ const orgsModule = {
     }
   },
 
+  /**
+   * Delete a note from an organisation after confirmation.
+   * @param {string} noteId - Note record ID
+   * @param {string} orgId - Organisation ID (used to refresh the profile)
+   * @returns {Promise<void>}
+   */
   async deleteThreadedNote(noteId, orgId) {
     if (!(await utils.confirmDialog({ title: 'Delete Note', message: 'Delete this note?' }))) return;
     try {
@@ -7347,6 +7628,13 @@ const orgsModule = {
     }
   },
 
+  /**
+   * Toggle the pinned status of a note.
+   * @param {string} noteId - Note record ID
+   * @param {boolean} pinned - Current pinned state (will be toggled)
+   * @param {string} orgId - Organisation ID (used to refresh the profile)
+   * @returns {Promise<void>}
+   */
   async togglePinNote(noteId, pinned, orgId) {
     try {
       await apiClient.update('organisation_notes', noteId, { pinned: !pinned });
@@ -7386,6 +7674,11 @@ const orgsModule = {
   // ============================================
   // FEATURE 9: SPONSORSHIP PACKAGE MANAGEMENT
   // ============================================
+  /**
+   * Fetch all sponsorship packages for an organisation.
+   * @param {string} orgId - Organisation ID
+   * @returns {Promise<Array>} Array of sponsorship package objects
+   */
   async getSponsorshipPackages(orgId) {
     try {
       const result = await apiClient.select('sponsorship_packages', {
@@ -7399,6 +7692,11 @@ const orgsModule = {
     }
   },
 
+  /**
+   * Add a sponsorship package to an organisation from the package form fields.
+   * @param {string} orgId - Organisation ID
+   * @returns {Promise<void>}
+   */
   async addSponsorshipPackage(orgId) {
     const pkgName = document.getElementById('spkgName')?.value.trim();
     const tier = document.getElementById('spkgTier')?.value;
@@ -7435,6 +7733,12 @@ const orgsModule = {
     }
   },
 
+  /**
+   * Delete a sponsorship package after confirmation.
+   * @param {string} pkgId - Sponsorship package record ID
+   * @param {string} orgId - Organisation ID (used to refresh the profile)
+   * @returns {Promise<void>}
+   */
   async deleteSponsorshipPackage(pkgId, orgId) {
     if (
       !(await utils.confirmDialog({ title: 'Delete Sponsorship Package', message: 'Delete this sponsorship package?' }))
@@ -7670,6 +7974,10 @@ const orgsModule = {
   // ============================================
   // QUICK WIN: LAST CONTACTED COLUMN HELPER
   // ============================================
+  /**
+   * Load and cache the most recent communication date for each organisation.
+   * @returns {Promise<void>}
+   */
   async loadLastContactedDates() {
     try {
       const result = await apiClient.select('organisation_comms_log', {
@@ -7828,6 +8136,10 @@ const orgsModule = {
   // ============================================
   // FEATURE: OVERDUE FOLLOW-UPS WIDGET
   // ============================================
+  /**
+   * Load overdue and due-soon follow-ups and update the dashboard badge counts.
+   * @returns {Promise<void>}
+   */
   async loadOverdueFollowUps() {
     try {
       const allFollowUps = await this.getFollowUps();
@@ -8168,6 +8480,10 @@ const orgsModule = {
   // ============================================
   // FEATURE: BULK EDIT CUSTOM FIELDS
   // ============================================
+  /**
+   * Open a modal to apply a custom field value to all selected organisations.
+   * @returns {Promise<void>}
+   */
   async showBulkCustomFieldModal() {
     if (this.selectedOrgs.size === 0) {
       utils.showToast('No organisations selected', 'warning');
@@ -8191,6 +8507,10 @@ const orgsModule = {
     this._showDynamicModal('Bulk Edit Custom Field', html, 'bi-input-cursor-text');
   },
 
+  /**
+   * Apply the custom field update to all selected organisations.
+   * @returns {Promise<void>}
+   */
   async executeBulkCustomField() {
     const fieldName = document.getElementById('bulkCustomFieldName')?.value.trim();
     const fieldValue = document.getElementById('bulkCustomFieldValue')?.value.trim();
@@ -8217,6 +8537,11 @@ const orgsModule = {
   // ============================================
   // FEATURE: FOLLOW-UP ASSIGNMENT TO USER
   // ============================================
+  /**
+   * Schedule a follow-up with an optional assignee for an organisation.
+   * @param {string} orgId - Organisation ID
+   * @returns {Promise<void>}
+   */
   async addFollowUpWithAssignee(orgId) {
     const date = document.getElementById('followUpDate')?.value;
     const note = document.getElementById('followUpNote')?.value.trim();
@@ -8381,6 +8706,10 @@ const orgsModule = {
   // ============================================
   // FEATURE: SAVED VIEWS (filter + sort + columns)
   // ============================================
+  /**
+   * Save the current filter, sort, column, and page-size state as a named view.
+   * @returns {Promise<void>}
+   */
   async saveView() {
     const name = prompt('Name this view:');
     if (!name || !name.trim()) return;
@@ -8437,6 +8766,10 @@ const orgsModule = {
     }
   },
 
+  /**
+   * Open a modal listing all saved views with load and delete actions.
+   * @returns {Promise<void>}
+   */
   async showSavedViews() {
     let views = {};
     try {
@@ -8491,6 +8824,11 @@ const orgsModule = {
     this._showDynamicModal('Saved Views', html, 'bi-bookmark');
   },
 
+  /**
+   * Restore filters, sort, columns, and page size from a named saved view.
+   * @param {string} name - Saved view name to load
+   * @returns {Promise<void>}
+   */
   async loadView(name) {
     let views = {};
     try {
@@ -8561,6 +8899,11 @@ const orgsModule = {
     utils.showToast(`View "${name}" loaded`, 'success');
   },
 
+  /**
+   * Delete a saved view by name after confirmation.
+   * @param {string} name - View name to delete
+   * @returns {Promise<void>}
+   */
   async deleteView(name) {
     if (!(await utils.confirmDialog({ title: 'Delete View', message: `Delete view "${name}"?` }))) return;
     try {
@@ -8797,6 +9140,11 @@ const orgsModule = {
   // ============================================
   // FEATURE: COMPANIES HOUSE LOOKUP (UK)
   // ============================================
+  /**
+   * Search Companies House for an organisation by name and present matching results.
+   * @param {string} orgId - Organisation ID
+   * @returns {Promise<void>}
+   */
   async companiesHouseLookup(orgId) {
     const org = STATE.allOrganisations.find((o) => o.id === orgId);
     if (!org) {
@@ -8906,6 +9254,11 @@ const orgsModule = {
     this._showDynamicModal('Add Activity Note', html, 'bi-journal-plus', '');
   },
 
+  /**
+   * Save a typed activity note (call, meeting, email, etc.) for an organisation.
+   * @param {string} orgId - Organisation ID
+   * @returns {Promise<void>}
+   */
   async saveActivityNote(orgId) {
     const type = document.getElementById('activityNoteType')?.value || 'note';
     const content = document.getElementById('activityNoteContent')?.value?.trim();
@@ -8974,6 +9327,10 @@ const orgsModule = {
   // ============================================
   // FEATURE: MY TASKS DASHBOARD
   // ============================================
+  /**
+   * Open a modal showing the current user's overdue, today, and upcoming follow-up tasks.
+   * @returns {Promise<void>}
+   */
   async showMyTasks() {
     let followUps = [];
     try {
@@ -9026,6 +9383,11 @@ const orgsModule = {
   // ============================================
   // FEATURE: FIELD-LEVEL AUDIT / CHANGE HISTORY
   // ============================================
+  /**
+   * Open a modal showing the full field-level change history for an organisation.
+   * @param {string} orgId - Organisation ID
+   * @returns {Promise<void>}
+   */
   async showFieldLevelAudit(orgId) {
     let logs = [];
     try {

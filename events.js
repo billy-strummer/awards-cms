@@ -1080,6 +1080,10 @@ const eventsModule = {
     card.style.display = 'block';
   },
 
+  /**
+   * Export a CSV of attendee dietary requirements for the current event.
+   * @returns {Promise<void>}
+   */
   async exportDietarySummary() {
     try {
       const eventId = document.getElementById('attendeesEventId').value;
@@ -1234,6 +1238,10 @@ const eventsModule = {
     document.getElementById('attendeeOrgResults').style.display = 'none';
   },
 
+  /**
+   * Read attendee form fields and add a new attendee to the current event.
+   * @returns {Promise<void>}
+   */
   async addAttendee() {
     const eventId = document.getElementById('attendeesEventId').value;
     const name = document.getElementById('attendeeName').value.trim();
@@ -1291,6 +1299,12 @@ const eventsModule = {
     utils.showToast('Attendee added', 'success');
   },
 
+  /**
+   * Update the RSVP status of a single attendee.
+   * @param {string} attendeeId - Attendee record ID
+   * @param {string} newStatus - New status value (e.g. 'attending', 'declined')
+   * @returns {Promise<void>}
+   */
   async updateAttendeeStatus(attendeeId, newStatus) {
     const eventId = document.getElementById('attendeesEventId').value;
     const attendees = await this.getAttendees(eventId);
@@ -1407,6 +1421,11 @@ const eventsModule = {
     });
   },
 
+  /**
+   * Remove an attendee from the current event after confirmation.
+   * @param {string} attendeeId - Attendee record ID to remove
+   * @returns {Promise<void>}
+   */
   async deleteAttendee(attendeeId) {
     if (
       !(await utils.confirmDialog({
@@ -1427,6 +1446,11 @@ const eventsModule = {
 
   // ---- CHECK-IN SYSTEM ----
 
+  /**
+   * Render the check-in tab with check-in progress and attendee list.
+   * @param {string} eventId - Event ID
+   * @returns {Promise<void>}
+   */
   async renderCheckInTab(eventId) {
     const attendees = await this.getAttendees(eventId);
     const attending = attendees.filter((a) => a.status === 'attending');
@@ -1497,6 +1521,11 @@ const eventsModule = {
       .join('');
   },
 
+  /**
+   * Toggle the checked-in status of an attendee.
+   * @param {string} attendeeId - Attendee record ID
+   * @returns {Promise<void>}
+   */
   async toggleCheckIn(attendeeId) {
     const eventId = document.getElementById('attendeesEventId').value;
     const attendees = await this.getAttendees(eventId);
@@ -1514,6 +1543,10 @@ const eventsModule = {
     }
   },
 
+  /**
+   * Bulk check in all attending guests who have not yet checked in.
+   * @returns {Promise<void>}
+   */
   async checkInAll() {
     const eventId = document.getElementById('attendeesEventId').value;
     const attendees = await this.getAttendees(eventId);
@@ -1549,6 +1582,11 @@ const eventsModule = {
 
   // ---- TICKETS TAB ----
 
+  /**
+   * Render the tickets tab with issued ticket stats and list for the given event.
+   * @param {string} eventId - Event ID
+   * @returns {Promise<void>}
+   */
   async renderTicketsTab(eventId) {
     const event = STATE.allEvents.find((e) => e.id === eventId);
     if (!event) return;
@@ -1726,6 +1764,10 @@ const eventsModule = {
       }`;
   },
 
+  /**
+   * Persist ticket price and URL settings from the form to the database.
+   * @returns {Promise<void>}
+   */
   async saveTicketSettings() {
     const eventId = document.getElementById('attendeesEventId').value;
     const price = parseFloat(document.getElementById('ticketPriceInput').value) || null;
@@ -1856,6 +1898,11 @@ const eventsModule = {
     }
   },
 
+  /**
+   * Issue a ticket to a specific attendee and send a confirmation email.
+   * @param {string} attendeeId - Attendee record ID
+   * @returns {Promise<void>}
+   */
   async issueTicketToAttendee(attendeeId) {
     const eventId = document.getElementById('attendeesEventId').value;
     const event = STATE.allEvents.find((e) => e.id === eventId);
@@ -1901,6 +1948,11 @@ const eventsModule = {
     this.renderTicketsTab(eventId);
   },
 
+  /**
+   * Issue tickets in bulk to attendees matching the given filter criterion.
+   * @param {string} filter - Filter key: 'confirmed', 'vip', or 'winners'
+   * @returns {Promise<void>}
+   */
   async batchIssueTickets(filter) {
     const eventId = document.getElementById('attendeesEventId').value;
     const event = STATE.allEvents.find((e) => e.id === eventId);
@@ -1988,6 +2040,11 @@ const eventsModule = {
     }
   },
 
+  /**
+   * Revoke (cancel) an issued ticket after confirmation.
+   * @param {string} ticketId - Ticket record ID
+   * @returns {Promise<void>}
+   */
   async revokeTicket(ticketId) {
     const eventId = document.getElementById('attendeesEventId').value;
     if (!(await utils.confirmDialog({ title: 'Revoke Ticket', message: 'Revoke this ticket?', confirmText: 'Revoke' })))
@@ -2003,6 +2060,11 @@ const eventsModule = {
     }
   },
 
+  /**
+   * Resend a ticket email to the holder of the specified ticket.
+   * @param {string} ticketId - Ticket record ID
+   * @returns {Promise<void>}
+   */
   async resendTicket(ticketId) {
     const eventId = document.getElementById('attendeesEventId').value;
     const event = STATE.allEvents.find((e) => e.id === eventId);
@@ -2026,6 +2088,10 @@ const eventsModule = {
     this._showEmailPreview(subject, body, [ticket.attendeeEmail], eventId, 'ticket_issued');
   },
 
+  /**
+   * Open an email preview to send ticket details to all holders of active tickets.
+   * @returns {Promise<void>}
+   */
   async emailAllTickets() {
     const eventId = document.getElementById('attendeesEventId').value;
     const event = STATE.allEvents.find((e) => e.id === eventId);
@@ -2054,6 +2120,10 @@ const eventsModule = {
     );
   },
 
+  /**
+   * Export all issued tickets for the current event as a CSV download.
+   * @returns {Promise<void>}
+   */
   async exportTicketsList() {
     const eventId = document.getElementById('attendeesEventId').value;
     const event = STATE.allEvents.find((e) => e.id === eventId);
@@ -2103,6 +2173,10 @@ const eventsModule = {
 
   // ---- EXPORT ATTENDEES ----
 
+  /**
+   * Export the full attendee list for the current event as a CSV download.
+   * @returns {Promise<void>}
+   */
   async exportAttendees() {
     const eventId = document.getElementById('attendeesEventId').value;
     const attendees = await this.getAttendees(eventId);
@@ -2185,6 +2259,11 @@ const eventsModule = {
   // RSVP INVITATION EMAILS
   // ========================================
 
+  /**
+   * Open an email compose preview with an event invitation for a single attendee.
+   * @param {string} attendeeId - Attendee record ID
+   * @returns {Promise<void>}
+   */
   async sendInviteEmail(attendeeId) {
     const eventId = document.getElementById('attendeesEventId').value;
     const attendees = await this.getAttendees(eventId);
@@ -2211,6 +2290,10 @@ const eventsModule = {
     this._showEmailPreview(subject, body, [attendee.email], eventId, 'event_invitation');
   },
 
+  /**
+   * Open an email compose preview to send invitations to all un-invited attendees.
+   * @returns {Promise<void>}
+   */
   async sendBulkInvites() {
     const eventId = document.getElementById('attendeesEventId').value;
     const event = STATE.allEvents.find((e) => e.id === eventId);
@@ -2402,6 +2485,11 @@ const eventsModule = {
     return `bta_waitlist_${eventId}`;
   },
 
+  /**
+   * Fetch all waitlist entries for an event from the database.
+   * @param {string} eventId - Event ID
+   * @returns {Promise<Array>} Array of waitlist entry objects
+   */
   async getWaitlist(eventId) {
     try {
       /* selectAll: justified — scoped to single event */
@@ -2445,6 +2533,10 @@ const eventsModule = {
     }
   },
 
+  /**
+   * Prompt for guest details and add them to the current event waitlist.
+   * @returns {Promise<void>}
+   */
   async addToWaitlist() {
     const eventId = document.getElementById('attendeesEventId').value;
     const name = prompt('Guest name:');
@@ -2467,6 +2559,11 @@ const eventsModule = {
     utils.showToast(`${name.trim()} added to waitlist`, 'success');
   },
 
+  /**
+   * Remove a guest from the waitlist after confirmation.
+   * @param {string} wlId - Waitlist entry ID
+   * @returns {Promise<void>}
+   */
   async removeFromWaitlist(wlId) {
     const eventId = document.getElementById('attendeesEventId').value;
     if (
@@ -2484,6 +2581,11 @@ const eventsModule = {
     utils.showToast('Removed from waitlist', 'success');
   },
 
+  /**
+   * Promote a waitlisted guest to the confirmed attendee list.
+   * @param {string} wlId - Waitlist entry ID
+   * @returns {Promise<void>}
+   */
   async promoteFromWaitlist(wlId) {
     const eventId = document.getElementById('attendeesEventId').value;
     const waitlist = await this.getWaitlist(eventId);
@@ -2517,6 +2619,11 @@ const eventsModule = {
     utils.showToast(`${person.name} promoted to attendee list`, 'success');
   },
 
+  /**
+   * Render the waitlist tab with current waitlist entries for an event.
+   * @param {string} eventId - Event ID
+   * @returns {Promise<void>}
+   */
   async renderWaitlistTab(eventId) {
     const container = document.getElementById('waitlistTableBody');
     if (!container) return;
@@ -2560,6 +2667,10 @@ const eventsModule = {
   // NAME BADGES & PLACE CARDS (PDF)
   // ========================================
 
+  /**
+   * Generate and download a PDF of name badges for all attending guests.
+   * @returns {Promise<void>}
+   */
   async generateNameBadges() {
     const eventId = document.getElementById('attendeesEventId').value;
     const event = STATE.allEvents.find((e) => e.id === eventId);
@@ -2655,6 +2766,10 @@ const eventsModule = {
     utils.showToast(`Generated ${attendees.length} name badges`, 'success');
   },
 
+  /**
+   * Generate and download a PDF of place/table cards for all attending guests.
+   * @returns {Promise<void>}
+   */
   async generatePlaceCards() {
     const eventId = document.getElementById('attendeesEventId').value;
     const event = STATE.allEvents.find((e) => e.id === eventId);
@@ -2857,6 +2972,11 @@ const eventsModule = {
     return `bta_budget_${eventId}`;
   },
 
+  /**
+   * Fetch the budget summary and line items for an event.
+   * @param {string} eventId - Event ID
+   * @returns {Promise<{totalBudget: number, items: Array}>} Budget object
+   */
   async getBudget(eventId) {
     try {
       // Query separately so one table missing doesn't break the other
@@ -2934,6 +3054,11 @@ const eventsModule = {
     }
   },
 
+  /**
+   * Render the budget tab with totals and line-item table for an event.
+   * @param {string} eventId - Event ID
+   * @returns {Promise<void>}
+   */
   async renderBudgetTab(eventId) {
     const container = document.getElementById('budgetTableBody');
     if (!container) return;
@@ -3029,6 +3154,10 @@ const eventsModule = {
       .join('');
   },
 
+  /**
+   * Save the total budget figure entered in the budget form.
+   * @returns {Promise<void>}
+   */
   async saveBudgetTotal() {
     const eventId = document.getElementById('attendeesEventId').value;
     const budget = await this.getBudget(eventId);
@@ -3090,6 +3219,11 @@ const eventsModule = {
 
   _editBudgetIdx: null,
 
+  /**
+   * Open the budget item modal pre-filled with an existing item for editing.
+   * @param {number} idx - Zero-based index of the budget item
+   * @returns {Promise<void>}
+   */
   async editBudgetItem(idx) {
     const eventId = document.getElementById('attendeesEventId').value;
     const budget = await this.getBudget(eventId);
@@ -3139,6 +3273,11 @@ const eventsModule = {
     this._editBudgetIdx = null;
   },
 
+  /**
+   * Delete a budget line item by index after confirmation.
+   * @param {number} idx - Zero-based index of the item to delete
+   * @returns {Promise<void>}
+   */
   async deleteBudgetItem(idx) {
     if (!(await utils.confirmDialog({ title: 'Delete Budget Item', message: 'Delete this budget item?' }))) return;
     const eventId = document.getElementById('attendeesEventId').value;
@@ -3149,6 +3288,10 @@ const eventsModule = {
     utils.showToast('Budget item deleted', 'success');
   },
 
+  /**
+   * Export the budget line items for the current event as a CSV download.
+   * @returns {Promise<void>}
+   */
   async exportBudget() {
     const eventId = document.getElementById('attendeesEventId').value;
     const event = STATE.allEvents.find((e) => e.id === eventId);
@@ -3178,6 +3321,11 @@ const eventsModule = {
     return `bta_vendors_${eventId}`;
   },
 
+  /**
+   * Fetch all vendor/supplier records for an event.
+   * @param {string} eventId - Event ID
+   * @returns {Promise<Array>} Array of vendor objects
+   */
   async getVendors(eventId) {
     try {
       /* selectAll: justified — scoped to single event */
@@ -3219,6 +3367,11 @@ const eventsModule = {
     }
   },
 
+  /**
+   * Render the vendors tab with a table of suppliers for an event.
+   * @param {string} eventId - Event ID
+   * @returns {Promise<void>}
+   */
   async renderVendorsTab(eventId) {
     const container = document.getElementById('vendorsTableBody');
     if (!container) return;
@@ -3308,6 +3461,11 @@ const eventsModule = {
 
   _editVendorIdx: null,
 
+  /**
+   * Open the vendor modal pre-filled with an existing vendor for editing.
+   * @param {number} idx - Zero-based index of the vendor in the list
+   * @returns {Promise<void>}
+   */
   async editVendor(idx) {
     const eventId = document.getElementById('attendeesEventId').value;
     const vendors = await this.getVendors(eventId);
@@ -3360,6 +3518,11 @@ const eventsModule = {
     this._editVendorIdx = null;
   },
 
+  /**
+   * Remove a vendor by index after confirmation.
+   * @param {number} idx - Zero-based index of the vendor to delete
+   * @returns {Promise<void>}
+   */
   async deleteVendor(idx) {
     if (!(await utils.confirmDialog({ title: 'Remove Vendor', message: 'Remove this vendor?', confirmText: 'Remove' })))
       return;
@@ -3371,6 +3534,10 @@ const eventsModule = {
     utils.showToast('Vendor removed', 'success');
   },
 
+  /**
+   * Export all vendors for the current event as a CSV download.
+   * @returns {Promise<void>}
+   */
   async exportVendors() {
     const eventId = document.getElementById('attendeesEventId').value;
     const event = STATE.allEvents.find((e) => e.id === eventId);
@@ -3458,6 +3625,11 @@ const eventsModule = {
     utils.showToast('Special requirements exported', 'success');
   },
 
+  /**
+   * Render the special requirements tab (dietary, accessibility, parking, emergency info).
+   * @param {string} eventId - Event ID
+   * @returns {Promise<void>}
+   */
   async renderSpecialReqsTab(eventId) {
     const container = document.getElementById('specialReqsContent');
     if (!container) return;
@@ -3655,6 +3827,10 @@ const eventsModule = {
     }
   },
 
+  /**
+   * Save special requirements (parking, photo consent, emergency info, dress code) from the form.
+   * @returns {Promise<void>}
+   */
   async saveSpecialReqs() {
     const eventId = document.getElementById('attendeesEventId').value;
     const reqs = {
@@ -3691,6 +3867,10 @@ const eventsModule = {
 
   _stripePublicKey: null,
 
+  /**
+   * Retrieve the stored Stripe publishable key from user preferences.
+   * @returns {Promise<string>} The Stripe publishable key, or empty string if not set
+   */
   async getStripePublicKey() {
     try {
       const result = await apiClient.select('user_preferences', {
@@ -3705,6 +3885,10 @@ const eventsModule = {
     }
   },
 
+  /**
+   * Persist the Stripe publishable key entered in the settings form.
+   * @returns {Promise<void>}
+   */
   async saveStripeKey() {
     const key = document.getElementById('stripePublicKeyInput')?.value?.trim();
     if (key) {
@@ -3725,6 +3909,11 @@ const eventsModule = {
   // POST-EVENT: MASTER RENDER
   // ========================================
 
+  /**
+   * Render the post-event tab with attendance stats, budget summary, surveys, and debrief sections.
+   * @param {string} eventId - Event ID
+   * @returns {Promise<void>}
+   */
   async renderPostEventTab(eventId) {
     const container = document.getElementById('postEventContent');
     if (!container) return;
@@ -3941,6 +4130,10 @@ const eventsModule = {
     }
   },
 
+  /**
+   * Save the post-event survey URL and response count from the form.
+   * @returns {Promise<void>}
+   */
   async savePostEventData() {
     const eventId = document.getElementById('attendeesEventId').value;
     const data = await this._getPostEventData(eventId);
@@ -3983,6 +4176,10 @@ const eventsModule = {
       </div></div></div>`;
   },
 
+  /**
+   * Open an email compose preview to send a post-event survey link to all attending guests.
+   * @returns {Promise<void>}
+   */
   async sendSurveyEmails() {
     const eventId = document.getElementById('attendeesEventId').value;
     const event = STATE.allEvents.find((e) => e.id === eventId);
@@ -4009,6 +4206,10 @@ const eventsModule = {
     );
   },
 
+  /**
+   * Open an email compose preview with a thank-you message for all attending guests.
+   * @returns {Promise<void>}
+   */
   async sendThankYouEmails() {
     const eventId = document.getElementById('attendeesEventId').value;
     const event = STATE.allEvents.find((e) => e.id === eventId);
@@ -4148,6 +4349,10 @@ const eventsModule = {
     return peak ? `${String(peak[0]).padStart(2, '0')}:00 - ${String(parseInt(peak[0]) + 1).padStart(2, '0')}:00` : '-';
   },
 
+  /**
+   * Export a CSV attendance report with check-in status for all attendees.
+   * @returns {Promise<void>}
+   */
   async generateAttendanceReport() {
     const eventId = document.getElementById('attendeesEventId').value;
     const event = STATE.allEvents.find((e) => e.id === eventId);
@@ -4210,6 +4415,10 @@ const eventsModule = {
       </div>`;
   },
 
+  /**
+   * Open a modal with a generated press release listing all event winners.
+   * @returns {Promise<void>}
+   */
   async generatePressRelease() {
     const eventId = document.getElementById('attendeesEventId').value;
     const event = STATE.allEvents.find((e) => e.id === eventId);
@@ -4280,6 +4489,10 @@ const eventsModule = {
     new bootstrap.Modal(document.getElementById('pressReleaseModal')).show();
   },
 
+  /**
+   * Open a modal showing canvas-generated social media winner announcement cards.
+   * @returns {Promise<void>}
+   */
   async generateSocialCards() {
     const eventId = document.getElementById('attendeesEventId').value;
     const event = STATE.allEvents.find((e) => e.id === eventId);
@@ -4431,6 +4644,10 @@ const eventsModule = {
     utils.showToast(`Downloading ${count} social cards...`, 'success');
   },
 
+  /**
+   * Generate and download a PDF of certificates for all event winners.
+   * @returns {Promise<void>}
+   */
   async generateWinnersCertificates() {
     const eventId = document.getElementById('attendeesEventId').value;
     const event = STATE.allEvents.find((e) => e.id === eventId);
@@ -4534,6 +4751,10 @@ const eventsModule = {
     utils.showToast(`Generated ${winners.length} certificates`, 'success');
   },
 
+  /**
+   * Scroll to and highlight the winner highlights section in the post-event tab.
+   * @returns {Promise<void>}
+   */
   async generateWinnerPackage() {
     // Scroll to winner highlights section and flash it
     const el = document.getElementById('winnerHighlightsContent');
@@ -4639,6 +4860,10 @@ const eventsModule = {
     }
   },
 
+  /**
+   * Export a sponsor ROI summary CSV with attendance, revenue, and engagement data.
+   * @returns {Promise<void>}
+   */
   async exportSponsorReport() {
     const eventId = document.getElementById('attendeesEventId').value;
     const event = STATE.allEvents.find((e) => e.id === eventId);
@@ -4713,6 +4938,10 @@ const eventsModule = {
       </div>`;
   },
 
+  /**
+   * Save the event debrief (went well, improvements, ideas, actions) from the form.
+   * @returns {Promise<void>}
+   */
   async saveDebrief() {
     const eventId = document.getElementById('attendeesEventId').value;
     const data = await this._getPostEventData(eventId);
@@ -4734,6 +4963,10 @@ const eventsModule = {
     utils.showToast('Debrief saved', 'success');
   },
 
+  /**
+   * Download the event debrief notes as a plain text file.
+   * @returns {Promise<void>}
+   */
   async exportDebrief() {
     const eventId = document.getElementById('attendeesEventId').value;
     const event = STATE.allEvents.find((e) => e.id === eventId);
@@ -4762,6 +4995,10 @@ const eventsModule = {
   // POST-EVENT: FULL EXPORT PACK
   // ========================================
 
+  /**
+   * Trigger all post-event exports (attendance, budget, vendors, debrief, sponsor) as sequential downloads.
+   * @returns {Promise<void>}
+   */
   async exportPostEventPack() {
     const _eventId = document.getElementById('attendeesEventId').value;
     utils.showToast('Generating exports... check your downloads', 'info');
@@ -5888,6 +6125,12 @@ const eventsModule = {
   // ============================================
   // SET ITEM STATUS INLINE
   // ============================================
+  /**
+   * Update the status of a running order item inline.
+   * @param {string} itemId - Running order item ID
+   * @param {string} newStatus - New status value (e.g. 'announced', 'completed')
+   * @returns {Promise<void>}
+   */
   async setROItemStatus(itemId, newStatus) {
     const item = this.runningOrderItems.find((i) => i.id === itemId);
     if (!item) return;
@@ -5907,6 +6150,12 @@ const eventsModule = {
   // ============================================
   // SET ITEM TIME INLINE
   // ============================================
+  /**
+   * Update the scheduled time of a running order item inline.
+   * @param {string} itemId - Running order item ID
+   * @param {string} time - Scheduled time string (HH:MM)
+   * @returns {Promise<void>}
+   */
   async setROItemTime(itemId, time) {
     const item = this.runningOrderItems.find((i) => i.id === itemId);
     if (!item) return;
@@ -6747,6 +6996,13 @@ const eventsModule = {
     container.innerHTML = html;
   },
 
+  /**
+   * Update a single checklist field on a running order item.
+   * @param {string} itemId - Running order item ID
+   * @param {string} field - Field name to update
+   * @param {*} value - New field value
+   * @returns {Promise<void>}
+   */
   async updateChecklist(itemId, field, value) {
     const item = this.runningOrderItems.find((i) => i.id === itemId);
     if (!item) return;
@@ -6852,6 +7108,12 @@ const eventsModule = {
     container.innerHTML = html;
   },
 
+  /**
+   * Update the trophy preparation status for a running order award item.
+   * @param {string} itemId - Running order item ID
+   * @param {string} status - Trophy status (e.g. 'ordered', 'engraved', 'backstage_ready')
+   * @returns {Promise<void>}
+   */
   async updateTrophyStatus(itemId, status) {
     const item = this.runningOrderItems.find((i) => i.id === itemId);
     if (!item) return;
@@ -6929,6 +7191,11 @@ const eventsModule = {
     container.innerHTML = html;
   },
 
+  /**
+   * Prompt for and save AV/lighting cue notes for a running order item.
+   * @param {string} itemId - Running order item ID
+   * @returns {Promise<void>}
+   */
   async editCueNote(itemId) {
     const item = this.runningOrderItems.find((i) => i.id === itemId);
     if (!item) return;
@@ -7112,6 +7379,10 @@ const eventsModule = {
     );
   },
 
+  /**
+   * Save the running order section colour/label configuration from the manager modal.
+   * @returns {Promise<void>}
+   */
   async saveSectionConfig() {
     const rows = document.querySelectorAll('#sectionConfigList [data-section-idx]');
     const config = [];
@@ -7199,6 +7470,10 @@ const eventsModule = {
     });
   },
 
+  /**
+   * Load all saved running order versions for the current event into _roVersions.
+   * @returns {Promise<void>}
+   */
   async loadVersions() {
     try {
       /* selectAll: justified — scoped to single event */
@@ -7213,6 +7488,10 @@ const eventsModule = {
     }
   },
 
+  /**
+   * Prompt for a version name and save the current running order as a named snapshot.
+   * @returns {Promise<void>}
+   */
   async saveVersion() {
     const name = prompt(
       'Enter a name for this version:',
@@ -7267,6 +7546,11 @@ const eventsModule = {
     this.renderVersionsTab();
   },
 
+  /**
+   * Replace the current running order with a previously saved version snapshot.
+   * @param {string} versionId - Version record ID to restore
+   * @returns {Promise<void>}
+   */
   async restoreVersion(versionId) {
     const version = this._roVersions.find((v) => v.id === versionId);
     if (!version) return;
@@ -7310,6 +7594,11 @@ const eventsModule = {
     }
   },
 
+  /**
+   * Permanently delete a saved running order version.
+   * @param {string} versionId - Version record ID to delete
+   * @returns {Promise<void>}
+   */
   async deleteVersion(versionId) {
     if (!(await utils.confirmDialog({ title: 'Delete Version', message: 'Delete this saved version?' }))) return;
     try {
@@ -7537,6 +7826,10 @@ const eventsModule = {
   // ============================================
   // SYNC FROM RSVPs
   // ============================================
+  /**
+   * Import confirmed RSVPs from event_guests and event_attendees into the running order guest list.
+   * @returns {Promise<void>}
+   */
   async syncFromRSVPs() {
     const eventId = this.currentEventIdRunningOrder;
     if (!eventId) {
@@ -8731,6 +9024,10 @@ const eventsModule = {
     }
   },
 
+  /**
+   * Read the manual entry form and insert a new item into the running order.
+   * @returns {Promise<void>}
+   */
   async saveManualEntry() {
     const form = document.getElementById('addManualEntryForm');
     if (!form.checkValidity()) {
@@ -8919,6 +9216,11 @@ const eventsModule = {
     });
   },
 
+  /**
+   * Persist edits to a running order item from the edit modal.
+   * @param {string} itemId - Running order item ID to update
+   * @returns {Promise<void>}
+   */
   async updateRunningOrderItem(itemId) {
     const awardName = document.getElementById('editROAwardName').value || null;
     const updateData = {
@@ -10996,6 +11298,11 @@ const eventsModule = {
     this.renderCanvasTables();
   },
 
+  /**
+   * Save name, seat count, and shape changes for a seating table.
+   * @param {string} tableId - Table record ID
+   * @returns {Promise<void>}
+   */
   async saveTableProperties(tableId) {
     const name = document.getElementById('tpEditName')?.value?.trim() || null;
     const seats = parseInt(document.getElementById('tpEditSeats')?.value) || 8;
@@ -11091,6 +11398,12 @@ const eventsModule = {
     event.preventDefault();
   },
 
+  /**
+   * Handle a drag-and-drop of a guest or company onto a seating table.
+   * @param {DragEvent} event - Browser drag event
+   * @param {string} tableId - Target table ID
+   * @returns {Promise<void>}
+   */
   async handleTableDrop(event, tableId) {
     event.preventDefault();
     event.stopPropagation();
@@ -11216,6 +11529,10 @@ const eventsModule = {
 
   // ---- ADD / DELETE / REMOVE ----
 
+  /**
+   * Add a new empty round table to the seating canvas.
+   * @returns {Promise<void>}
+   */
   async addNewTable() {
     try {
       let nextNumber;
@@ -11256,6 +11573,11 @@ const eventsModule = {
     }
   },
 
+  /**
+   * Delete a seating table and unassign all guests from it.
+   * @param {string} tableId - Table record ID
+   * @returns {Promise<void>}
+   */
   async deleteTable(tableId) {
     const table = this.tables.find((t) => t.id === tableId);
     const assignedCount = table?.assignments?.length || 0;
@@ -11285,6 +11607,11 @@ const eventsModule = {
     }
   },
 
+  /**
+   * Remove a single guest assignment from their current table.
+   * @param {string} assignmentId - Table assignment record ID
+   * @returns {Promise<void>}
+   */
   async removeGuestFromTable(assignmentId) {
     try {
       await apiClient.delete('table_assignments', assignmentId);
@@ -11315,6 +11642,10 @@ const eventsModule = {
 
   // ---- AUTO ASSIGN ----
 
+  /**
+   * Automatically assign all unassigned guests to available table seats, grouping by company.
+   * @returns {Promise<void>}
+   */
   async autoAssignGuests() {
     if (this.unassignedGuests.length === 0) {
       utils.showToast('No unassigned guests to assign', 'info');
@@ -11427,6 +11758,10 @@ const eventsModule = {
 
   // ---- EXCEL EXPORT ----
 
+  /**
+   * Export the full table plan with guest assignments as an Excel (.xlsx) file.
+   * @returns {Promise<void>}
+   */
   async exportTablePlanExcel() {
     if (this.tables.length === 0) {
       utils.showToast('No tables to export', 'warning');
@@ -12357,6 +12692,11 @@ const eventsModule = {
 
   // ---- DUPLICATE TABLE ----
 
+  /**
+   * Create an empty copy of an existing table with the same configuration.
+   * @param {string} tableId - Source table record ID to duplicate
+   * @returns {Promise<void>}
+   */
   async duplicateTable(tableId) {
     const source = this.tables.find((t) => t.id === tableId);
     if (!source) return;
@@ -12388,6 +12728,10 @@ const eventsModule = {
 
   // ---- RESET CANVAS (remove all tables, fixtures, assignments) ----
 
+  /**
+   * Remove all tables, fixtures, and guest assignments from the seating canvas after confirmation.
+   * @returns {Promise<void>}
+   */
   async resetCanvas() {
     const tableCount = this.tables.length;
     const fixtureCount = this.roomFixtures.length;
@@ -12458,6 +12802,11 @@ const eventsModule = {
 
   // ---- CLEAR TABLE (remove all guests) ----
 
+  /**
+   * Remove all guest assignments from a single table after confirmation.
+   * @param {string} tableId - Table record ID
+   * @returns {Promise<void>}
+   */
   async clearTable(tableId) {
     const table = this.tables.find((t) => t.id === tableId);
     if (!table || !table.assignments || table.assignments.length === 0) return;
@@ -13150,6 +13499,10 @@ const eventsModule = {
     }
   },
 
+  /**
+   * Delete all selected events after confirmation.
+   * @returns {Promise<void>}
+   */
   async bulkDelete() {
     const ids = Array.from(this._selectedEvents);
     if (ids.length === 0) return;
@@ -13176,6 +13529,10 @@ const eventsModule = {
     }
   },
 
+  /**
+   * Clone all selected events (creating draft copies) after confirmation.
+   * @returns {Promise<void>}
+   */
   async bulkClone() {
     const ids = Array.from(this._selectedEvents);
     if (ids.length === 0) return;
@@ -13214,6 +13571,11 @@ const eventsModule = {
     }
   },
 
+  /**
+   * Set the status on all selected events in bulk.
+   * @param {string} status - Event status to apply (e.g. 'draft', 'published')
+   * @returns {Promise<void>}
+   */
   async bulkSetStatus(status) {
     const ids = Array.from(this._selectedEvents);
     if (ids.length === 0) return;
@@ -13251,6 +13613,10 @@ const eventsModule = {
     this._updateBulkBar();
   },
 
+  /**
+   * Delete all events checked via the inline bulk selection bar after confirmation.
+   * @returns {Promise<void>}
+   */
   async bulkDeleteEvents() {
     if (this._selectedEvents.size === 0) return;
     if (
@@ -13578,6 +13944,10 @@ const eventsModule = {
     previewArea.style.display = 'block';
   },
 
+  /**
+   * Parse the uploaded import file and add attendees to the selected event.
+   * @returns {Promise<void>}
+   */
   async executeImportAttendees() {
     const eventId = document.getElementById('importAttendeesEventId')?.value;
     if (!eventId) {
@@ -13681,6 +14051,10 @@ const eventsModule = {
   // ============================================
   // FINANCIAL OVERVIEW - ALL EVENTS
   // ============================================
+  /**
+   * Render the financial overview section with per-event revenue and cost summaries.
+   * @returns {Promise<void>}
+   */
   async renderFinancialOverview() {
     const events = STATE.allEvents || [];
     if (events.length === 0) return;
@@ -13776,6 +14150,10 @@ const eventsModule = {
     }
   },
 
+  /**
+   * Export a CSV with financial summary data (revenue, costs, P&L) for all events.
+   * @returns {Promise<void>}
+   */
   async exportFinancialSummary() {
     const events = STATE.allEvents || [];
     if (events.length === 0) {
@@ -14042,6 +14420,11 @@ const eventsModule = {
     return Object.fromEntries(this._getDefaultMilestones().map((m) => [m.id, m]));
   },
 
+  /**
+   * Fetch all planning milestones for an event, merging defaults with stored data.
+   * @param {string} eventId - Event ID
+   * @returns {Promise<Array>} Array of milestone objects
+   */
   async getMilestones(eventId) {
     try {
       /* selectAll: justified — scoped to single event */
@@ -14097,6 +14480,12 @@ const eventsModule = {
     }
   },
 
+  /**
+   * Toggle the completion state of an event planning milestone.
+   * @param {string} eventId - Event ID
+   * @param {string} milestoneId - Milestone ID to toggle
+   * @returns {Promise<void>}
+   */
   async toggleMilestone(eventId, milestoneId) {
     const milestones = await this.getMilestones(eventId);
     const ms = milestones.find((m) => m.id === milestoneId);
@@ -14108,6 +14497,12 @@ const eventsModule = {
     this.renderMilestonesPanel(eventId);
   },
 
+  /**
+   * Save the notes text for a specific event milestone.
+   * @param {string} eventId - Event ID
+   * @param {string} milestoneId - Milestone ID
+   * @returns {Promise<void>}
+   */
   async saveMilestoneNotes(eventId, milestoneId) {
     const input = document.getElementById(`ms_notes_${milestoneId}`);
     if (!input) return;
@@ -14118,6 +14513,11 @@ const eventsModule = {
     utils.showToast('Notes saved', 'success');
   },
 
+  /**
+   * Add a custom planning milestone to an event from the input field.
+   * @param {string} eventId - Event ID
+   * @returns {Promise<void>}
+   */
   async addCustomMilestone(eventId) {
     const input = document.getElementById('newMilestoneInput');
     const label = input?.value?.trim();
@@ -14141,6 +14541,12 @@ const eventsModule = {
     this.renderMilestonesPanel(eventId);
   },
 
+  /**
+   * Remove a custom milestone from an event's planning checklist.
+   * @param {string} eventId - Event ID
+   * @param {string} milestoneId - Custom milestone ID to remove
+   * @returns {Promise<void>}
+   */
   async removeCustomMilestone(eventId, milestoneId) {
     const milestones = (await this.getMilestones(eventId)).filter((m) => m.id !== milestoneId);
     await this._saveMilestones(eventId, milestones);
@@ -14162,6 +14568,11 @@ const eventsModule = {
     return `<span class="text-muted" style="font-size:0.7rem;">${dateStr}</span>`;
   },
 
+  /**
+   * Render the milestones panel with progress bar and categorised checklist.
+   * @param {string} eventId - Event ID
+   * @returns {Promise<void>}
+   */
   async renderMilestonesPanel(eventId) {
     const container = document.getElementById('milestonesContent');
     if (!container) return;
@@ -14231,6 +14642,11 @@ const eventsModule = {
   // ============================================
   // CLONE EVENT FOR NEXT YEAR
   // ============================================
+  /**
+   * Clone an event for the following year, copying budget and vendor templates.
+   * @param {string} eventId - Source event ID
+   * @returns {Promise<void>}
+   */
   async cloneForNextYear(eventId) {
     const src = STATE.allEvents.find((e) => e.id === eventId);
     if (!src) return;

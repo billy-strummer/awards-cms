@@ -203,7 +203,7 @@ CREATE INDEX IF NOT EXISTS idx_templates_category ON email_templates(category);
 CREATE TABLE IF NOT EXISTS email_campaigns (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   campaign_name VARCHAR(255) NOT NULL,
-  template_id UUID,
+  template_id UUID REFERENCES email_templates(id) ON DELETE SET NULL,
   subject VARCHAR(500) NOT NULL,
   recipients TEXT NOT NULL DEFAULT '',
   scheduled_date TIMESTAMPTZ,
@@ -223,19 +223,27 @@ CREATE TABLE IF NOT EXISTS email_campaigns (
 CREATE INDEX IF NOT EXISTS idx_campaigns_status ON email_campaigns(status);
 CREATE INDEX IF NOT EXISTS idx_campaigns_scheduled ON email_campaigns(scheduled_date);
 
--- Add foreign key for template_id
+-- Foreign keys for email_campaigns (exception-safe; referencing tables may not exist yet in partial installs)
 DO $$
 BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint 
-    WHERE conname = 'email_campaigns_template_id_fkey'
-  ) THEN
-    ALTER TABLE email_campaigns 
-    ADD CONSTRAINT email_campaigns_template_id_fkey 
-    FOREIGN KEY (template_id) 
-    REFERENCES email_templates(id) 
-    ON DELETE SET NULL;
-  END IF;
+  ALTER TABLE email_campaigns
+    ADD CONSTRAINT email_campaigns_template_id_fkey
+    FOREIGN KEY (template_id) REFERENCES email_templates(id) ON DELETE SET NULL;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$
+BEGIN
+  ALTER TABLE email_campaigns
+    ADD CONSTRAINT email_campaigns_award_id_fkey
+    FOREIGN KEY (award_id) REFERENCES award_years(id) ON DELETE SET NULL;
+EXCEPTION WHEN duplicate_object OR undefined_table THEN NULL;
+END $$;
+DO $$
+BEGIN
+  ALTER TABLE email_campaigns
+    ADD CONSTRAINT email_campaigns_event_id_fkey
+    FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE SET NULL;
+EXCEPTION WHEN duplicate_object OR undefined_table THEN NULL;
 END $$;
 
 -- Email Logs
@@ -322,29 +330,10 @@ CREATE TABLE IF NOT EXISTS certificate_templates (
   updated_at TIMESTAMP DEFAULT NOW()
 );
 
--- Events
-CREATE TABLE IF NOT EXISTS events (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  
-  name VARCHAR(255) NOT NULL,
-  description TEXT,
-  event_type VARCHAR(50) DEFAULT 'ceremony',
-  
-  event_date DATE NOT NULL,
-  event_time TIME,
-  venue_name VARCHAR(255),
-  venue_address TEXT,
-  capacity INTEGER,
-  
-  ticket_price DECIMAL(10,2),
-  ticket_url TEXT,
-  
-  dress_code VARCHAR(100),
-  status VARCHAR(50) DEFAULT 'planned',
-  
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
-);
+-- Events table is defined in database-events-setup.sql (authoritative).
+-- That file uses event_name/venue columns which the application code expects.
+-- Do NOT redefine events here to avoid schema conflicts.
+-- See database-events-setup.sql.
 
 -- Event Guests
 CREATE TABLE IF NOT EXISTS event_guests (

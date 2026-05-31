@@ -611,7 +611,8 @@ async function sendEntryConfirmationEmail(entry) {
   }
   try {
     const branding = await loadBranding();
-    const contactEmail = branding.email_from || process.env.CONTACT_EMAIL || 'awards@britishtradeawards.com';
+    const contactEmail =
+      branding.email_from || process.env.CONTACT_EMAIL || process.env.FROM_EMAIL || 'awards@britishtradeawards.com';
     const uploadLink = `${APP_URL}/upload-documents.html?entry=${entry.entry_number || entry.id}`;
 
     const placeholders = {
@@ -655,7 +656,8 @@ async function sendPaymentFailedEmail(entry, errorMessage) {
   }
   try {
     const branding = await loadBranding();
-    const contactEmail = branding.email_from || process.env.CONTACT_EMAIL || 'awards@britishtradeawards.com';
+    const contactEmail =
+      branding.email_from || process.env.CONTACT_EMAIL || process.env.FROM_EMAIL || 'awards@britishtradeawards.com';
 
     const placeholders = {
       ENTRY_NUMBER: entry.entry_number || '',
@@ -696,7 +698,8 @@ async function sendRefundConfirmationEmail(entry) {
   }
   try {
     const branding = await loadBranding();
-    const contactEmail = branding.email_from || process.env.CONTACT_EMAIL || 'awards@britishtradeawards.com';
+    const contactEmail =
+      branding.email_from || process.env.CONTACT_EMAIL || process.env.FROM_EMAIL || 'awards@britishtradeawards.com';
 
     const placeholders = {
       ENTRY_NUMBER: entry.entry_number || '',

@@ -13,7 +13,7 @@
 
 const { createClient } = require('@supabase/supabase-js');
 const { Resend } = require('resend');
-const { wrapEmail, textToHtml } = require('./_lib/email-header');
+const { wrapEmail } = require('./_lib/email-header');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 const { verifyAuth } = require('./_lib/auth');
@@ -75,17 +75,37 @@ const HEADER_SUBTITLES = {
 
 /**
  * Email wrapper - delegates to shared email-header.js module.
- * Header/footer are built from branding; subtitle changes per email type.
+ * Header/footer are built from branding; subtitle and preheader change per email type.
  * @param {string} bodyContent - The HTML body content to wrap.
  * @param {Object} [branding={}] - Tenant branding configuration.
  * @param {string} [subtitle=''] - Subtitle text for the email header.
+ * @param {string} [preheader=''] - Hidden preview text shown in email client inboxes.
  * @returns {string} Complete branded HTML email document.
  */
-function wrapEmailTemplate(bodyContent, branding = {}, subtitle = '') {
-  return wrapEmail(bodyContent, branding, { subtitle });
+function wrapEmailTemplate(bodyContent, branding = {}, subtitle = '', preheader = '') {
+  return wrapEmail(bodyContent, branding, { subtitle, preheader });
 }
 
 const { EMAIL_TEMPLATES, DB_TEMPLATE_TYPE_MAP } = require('./_lib/email-templates');
+
+/**
+ * Strip HTML tags and decode common entities to produce a plain-text fallback.
+ * @param {string} html
+ * @returns {string}
+ */
+function stripHtmlToText(html) {
+  return String(html)
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
 
 /**
  * Load an active email template from the database by type.
@@ -113,7 +133,6 @@ async function loadDbTemplate(templateType) {
  * @param {string} text - Plain text content to convert.
  * @returns {string} HTML string with paragraphs and line breaks.
  */
-// textToHtml imported from ./_lib/email-header
 
 /**
  * Send email using template with tenant branding.
@@ -137,6 +156,13 @@ async function sendTemplateEmail(templateKey, toEmail, variables, { tenantId = '
 
     const subtitle = HEADER_SUBTITLES[templateKey] || '';
 
+    const escapeHtml = (str) =>
+      String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+
     // --- Try database template first ---
     const dbType = DB_TEMPLATE_TYPE_MAP[templateKey];
     const dbTpl = dbType ? await loadDbTemplate(dbType) : null;
@@ -151,15 +177,19 @@ async function sendTemplateEmail(templateKey, toEmail, variables, { tenantId = '
       upperVars.BRAND_NAME = brandName;
 
       let subject = dbTpl.subject;
-      let bodyText = dbTpl.body;
+      // Escape static HTML chars in the body template first. {KEY} placeholders survive
+      // because curly braces are not HTML special characters. Then each user-supplied
+      // value is also HTML-escaped before insertion, preventing XSS injection.
+      let escapedBody = escapeHtml(dbTpl.body);
       for (const [key, value] of Object.entries(upperVars)) {
         const regex = new RegExp(`\\{${key}\\}`, 'g');
-        subject = subject.replace(regex, value);
-        bodyText = bodyText.replace(regex, value);
+        subject = subject.replace(regex, String(value ?? ''));
+        escapedBody = escapedBody.replace(regex, escapeHtml(String(value ?? '')));
       }
-
-      const bodyHtml = textToHtml(bodyText);
-      const html = wrapEmailTemplate(bodyHtml, branding, subtitle);
+      const bodyHtml = `<div style="padding:30px 40px;"><p style="margin:0 0 16px 0;">${escapedBody
+        .replace(/\n\n/g, '</p><p style="margin:0 0 16px 0;">')
+        .replace(/\n/g, '<br>')}</p></div>`;
+      const html = wrapEmailTemplate(bodyHtml, branding, subtitle, subtitle);
 
       const fromEmail = branding.email_from || process.env.FROM_EMAIL || 'awards@britishtradeawards.com';
       await resend.emails.send({
@@ -167,6 +197,7 @@ async function sendTemplateEmail(templateKey, toEmail, variables, { tenantId = '
         from: `${brandName} <${fromEmail}>`,
         subject,
         html,
+        text: stripHtmlToText(html),
         ...(branding.email_reply_to ? { reply_to: branding.email_reply_to } : {}),
       });
 
@@ -181,20 +212,24 @@ async function sendTemplateEmail(templateKey, toEmail, variables, { tenantId = '
       throw new Error(`Template ${templateKey} not found`);
     }
 
-    const allVariables = { brand_name: brandName, ...variables };
+    const appUrl = process.env.APP_URL || '';
+    const allVariables = {
+      brand_name: brandName,
+      support_email: process.env.FROM_EMAIL || '',
+      unsubscribe_link: appUrl ? `${appUrl}/unsubscribe` : '',
+      ...variables,
+    };
 
     let subject = template.subject;
     let bodyContent = template.body;
 
-    const escapeHtml = (str) =>
-      String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     for (const [key, value] of Object.entries(allVariables)) {
       const regex = new RegExp(`{{${key}}}`, 'g');
       subject = subject.replace(regex, value || '');
       bodyContent = bodyContent.replace(regex, escapeHtml(value || ''));
     }
 
-    const html = wrapEmailTemplate(bodyContent, branding, subtitle);
+    const html = wrapEmailTemplate(bodyContent, branding, subtitle, template.preheader || '');
 
     const fromEmail = branding.email_from || process.env.FROM_EMAIL || 'awards@britishtradeawards.com';
     await resend.emails.send({
@@ -202,6 +237,7 @@ async function sendTemplateEmail(templateKey, toEmail, variables, { tenantId = '
       from: `${brandName} <${fromEmail}>`,
       subject,
       html,
+      text: stripHtmlToText(html),
       ...(branding.email_reply_to ? { reply_to: branding.email_reply_to } : {}),
     });
 

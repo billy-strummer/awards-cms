@@ -162,6 +162,8 @@ Build passes (0 lint errors, ~1334KB JS chunks + core, 65KB CSS). 65/65 test sui
 | `SUPABASE_URL` | Supabase project URL | Set |
 | `SUPABASE_ANON_KEY` | Supabase public key | Set |
 | `SUPABASE_SERVICE_KEY` | Supabase service role key | Set |
+| `ALLOWED_ORIGINS` | CORS origin allowlist for data-proxy (`data-proxy.js`) | Set (comma-separated URLs) |
+| `CONTACT_EMAIL` | Fallback contact email in payment receipts (`stripe-payment.js`); falls back to `FROM_EMAIL` if unset | Set |
 
 #### Not Yet Configured (only needed when ready for these features)
 

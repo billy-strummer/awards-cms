@@ -70,18 +70,19 @@ async function build() {
   const startTime = Date.now();
   console.log('Building BTA Awards CMS...\n');
 
-  // 0. Run lint check before building
-  try {
-    const { execSync } = require('child_process');
-    console.log('  Lint: checking...');
-    execSync('npx eslint *.js api/*.js --max-warnings 0', { stdio: 'pipe', cwd: __dirname });
-    console.log('  Lint: passed ✓');
-  } catch (lintErr) {
-    const output = lintErr.stdout ? lintErr.stdout.toString() : '';
-    const errorCount = output.match(/\d+ error/)?.[0] || 'errors found';
-    console.warn(`  Lint: ${errorCount} (run "npm run lint:fix" to auto-fix)`);
-    // Don't fail build on lint warnings, but log them
+  // 0a. Guard: Vercel Hobby plan allows exactly 12 serverless functions
+  const apiFiles = fs.readdirSync('./api').filter((f) => f.endsWith('.js') && !f.startsWith('_'));
+  if (apiFiles.length > 12) {
+    console.error(`ERROR: ${apiFiles.length} API functions exceed the Vercel Hobby limit of 12`);
+    console.error(`Functions found: ${apiFiles.join(', ')}`);
+    process.exit(1);
   }
+
+  // 0b. Run lint check before building — failures abort the build
+  const { execSync } = require('child_process');
+  console.log('  Lint: checking...');
+  execSync('npx eslint *.js api/*.js --max-warnings 0', { stdio: 'inherit', cwd: __dirname });
+  console.log('  Lint: passed ✓');
 
   ensureDir(DIST_DIR);
 
@@ -295,6 +296,7 @@ async function build() {
     'submit-entry-payment.html',
     'upload-documents.html',
     'nominate.html',
+    'public-winners.html',
   ];
 
   // Also copy shared assets needed by public pages
@@ -327,6 +329,7 @@ async function build() {
     'award_companies.js',
     'submit-entry-payment.js',
     'nominate.js',
+    'public-winners-app.js',
   ];
 
   publicJsFiles.forEach((file) => {

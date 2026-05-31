@@ -64,6 +64,7 @@ async function loadDbTemplate(templateType) {
  */
 const EMAIL_TEMPLATES = {
   ENTRY_DEADLINE_REMINDER: {
+    preheader: "Don't miss the deadline — submit your entry today.",
     subject: '⏰ Entry Deadline Approaching - {{award_name}}',
     body: `
       <div style="padding: 30px 40px;">
@@ -77,9 +78,11 @@ const EMAIL_TEMPLATES = {
         <p>Don't miss your chance to be recognised. Submit your entry today!</p>
         <a href="{{submit_link}}" style="display:inline-block;background:#0d6efd;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;margin:16px 0">Submit Entry</a>
         <p><strong>{{brand_name}} Team</strong></p>
+        <p style="text-align:center;font-size:12px;color:#6c757d;border-top:1px solid #e9ecef;padding-top:16px;margin-top:24px;">To stop receiving these reminders, <a href="{{unsubscribe_link}}" style="color:#6c757d;">unsubscribe here</a>.</p>
       </div>`,
   },
   ENTRY_CONFIRMATION: {
+    preheader: 'Your entry has been received — here are the details.',
     subject: '✅ Entry Confirmed - {{entry_number}}',
     body: `
       <div style="padding: 30px 40px;">
@@ -112,6 +115,7 @@ const EMAIL_TEMPLATES = {
   },
 
   NOMINATION_CONFIRMATION: {
+    preheader: 'Your nomination has been received — keep your reference number safe.',
     subject: 'Nomination Received - {{entry_number}} | {{brand_name}}',
     body: `
       <div style="padding: 30px 40px;">
@@ -143,6 +147,7 @@ const EMAIL_TEMPLATES = {
   },
 
   PAYMENT_REMINDER: {
+    preheader: 'Your entry is pending payment — complete it to secure your place.',
     subject: '💳 Payment Pending - Entry {{entry_number}}',
     body: `
       <div style="padding: 30px 40px;">
@@ -164,12 +169,14 @@ const EMAIL_TEMPLATES = {
           </tr>
         </table>
 
-        <p>If you have any questions, please contact us.</p>
+        <p>If you have any questions, please <a href="mailto:{{support_email}}">contact us</a>.</p>
+        <p style="text-align:center;font-size:12px;color:#6c757d;border-top:1px solid #e9ecef;padding-top:16px;margin-top:24px;">To stop receiving these reminders, <a href="{{unsubscribe_link}}" style="color:#6c757d;">unsubscribe here</a>.</p>
       </div>
     `,
   },
 
   SHORTLIST_NOTIFICATION: {
+    preheader: 'Congratulations — your entry has been shortlisted!',
     subject: "🌟 Congratulations - You've Been Shortlisted!",
     body: `
       <div style="padding: 30px 40px;">
@@ -178,7 +185,7 @@ const EMAIL_TEMPLATES = {
 
         <p>We're delighted to inform you that <strong>{{company_name}}</strong> has been shortlisted for the <strong>{{award_name}}</strong> at the {{brand_name}}!</p>
 
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 12px; margin: 20px 0; text-align: center;">
+        <div style="background-color: #667eea; color: white; padding: 30px; border-radius: 12px; margin: 20px 0; text-align: center;">
           <h2 style="color: white; margin: 0;">Shortlisted</h2>
           <h3 style="color: white; opacity: 0.9; margin: 10px 0 0 0;">{{award_name}}</h3>
         </div>
@@ -209,9 +216,10 @@ const EMAIL_TEMPLATES = {
   },
 
   WINNER_ANNOUNCEMENT: {
+    preheader: "You're a winner — here is everything you need to know.",
     subject: '🏆 WINNER - {{award_name}}!',
     body: `
-      <div style="background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); padding: 40px; text-align: center;">
+      <div style="background-color: #FFD700; padding: 40px; text-align: center;">
         <table width="100%" cellpadding="0" cellspacing="0" border="0">
           <tr>
             <td align="center">
@@ -246,7 +254,7 @@ const EMAIL_TEMPLATES = {
 
         <table cellpadding="0" cellspacing="0" border="0" style="margin: 25px 0;" align="center">
           <tr>
-            <td style="background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.15);">
+            <td style="background-color: #FFD700; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.15);">
               <a href="{{winners_portal_link}}" style="color: #1a1a1a; padding: 14px 30px; text-decoration: none; display: inline-block; font-family: Arial, sans-serif; font-weight: bold; font-size: 16px;">
                 Access Winner's Portal
               </a>
@@ -267,6 +275,7 @@ const EMAIL_TEMPLATES = {
   },
 
   JUDGE_ASSIGNMENT: {
+    preheader: 'You have new entries to judge — review your assignments.',
     subject: '⚖️ New Judging Assignment - {{brand_name}}',
     body: `
       <div style="padding: 30px 40px;">
@@ -292,7 +301,7 @@ const EMAIL_TEMPLATES = {
           </tr>
         </table>
 
-        <p>Please complete your scoring by the deadline. If you have any questions or conflicts of interest, please contact us immediately.</p>
+        <p>Please complete your scoring by the deadline. If you have any questions or conflicts of interest, please <a href="mailto:{{support_email}}">contact us</a> immediately.</p>
 
         <p>Thank you for your contribution to the awards!</p>
       </div>
@@ -300,6 +309,7 @@ const EMAIL_TEMPLATES = {
   },
 
   JUDGE_REMINDER: {
+    preheader: 'Judging deadline is approaching — complete your scores today.',
     subject: '⏰ Judging Deadline Reminder - {{days_left}} Days Left',
     body: `
       <div style="padding: 30px 40px;">
@@ -332,6 +342,7 @@ const EMAIL_TEMPLATES = {
   },
 
   DEADLINE_REMINDER: {
+    preheader: 'A deadline is approaching — action required.',
     subject: '⏰ Reminder: {{deadline_type}} Deadline in {{days_left}} Days',
     body: `
       <div style="padding: 30px 40px;">
@@ -356,11 +367,13 @@ const EMAIL_TEMPLATES = {
             </td>
           </tr>
         </table>
+        <p style="text-align:center;font-size:12px;color:#6c757d;border-top:1px solid #e9ecef;padding-top:16px;margin-top:24px;">To stop receiving these reminders, <a href="{{unsubscribe_link}}" style="color:#6c757d;">unsubscribe here</a>.</p>
       </div>
     `,
   },
 
   REVISION_REQUEST: {
+    preheader: 'Your entry requires changes before it can proceed to judging.',
     subject: '📝 Action Required: Changes Requested - {{entry_title}}',
     body: `
       <div style="padding: 30px 40px;">
@@ -386,13 +399,14 @@ const EMAIL_TEMPLATES = {
           </tr>
         </table>
 
-        <p>If you have any questions, please contact us.</p>
+        <p>If you have any questions, please <a href="mailto:{{support_email}}">contact us</a>.</p>
         <p><strong>{{brand_name}} Team</strong></p>
       </div>
     `,
   },
 
   REJECTION: {
+    preheader: 'An update on your entry submission for this years awards.',
     subject: 'Your Entry Update - {{entry_number}} | {{brand_name}}',
     body: `
       <div style="padding: 30px 40px;">
@@ -421,6 +435,7 @@ const EMAIL_TEMPLATES = {
   },
 
   EVENT_INVITATION: {
+    preheader: 'You are cordially invited — see the details inside.',
     subject: "✉️ You're Invited: {{event_name}}",
     body: `
       <div style="padding: 30px 40px;">
@@ -454,6 +469,7 @@ const EMAIL_TEMPLATES = {
   },
 
   TICKET_ISSUED: {
+    preheader: 'Your event ticket has been issued — present this at check-in.',
     subject: '🎟️ Your Ticket: {{event_name}}',
     body: `
       <div style="padding: 30px 40px;">
@@ -479,6 +495,7 @@ const EMAIL_TEMPLATES = {
   },
 
   GENERAL: {
+    preheader: '',
     subject: '{{subject_line}}',
     body: `
       <div style="padding: 30px 40px;">
@@ -490,6 +507,7 @@ const EMAIL_TEMPLATES = {
   },
 
   NOTIFICATION: {
+    preheader: '',
     subject: '🔔 {{subject_line}} - {{brand_name}}',
     body: `
       <div style="padding: 30px 40px;">
@@ -502,6 +520,7 @@ const EMAIL_TEMPLATES = {
   },
 
   INVITE: {
+    preheader: 'You have been invited — see the details inside.',
     subject: '✉️ {{subject_line}} - {{brand_name}}',
     body: `
       <div style="padding: 30px 40px;">
@@ -525,6 +544,7 @@ const EMAIL_TEMPLATES = {
   },
 
   ENTRY_RECEIVED: {
+    preheader: 'Your entry has been received — we will be in touch.',
     subject: '✅ Entry Received — {{entry_number}}',
     body: `
       <div style="padding: 30px 40px;">
@@ -538,6 +558,7 @@ const EMAIL_TEMPLATES = {
   },
 
   NOT_SHORTLISTED: {
+    preheader: 'An update on your entry in this years awards.',
     subject: 'Your Entry — {{entry_number}} | {{brand_name}}',
     body: `
       <div style="padding: 30px 40px;">
@@ -552,6 +573,7 @@ const EMAIL_TEMPLATES = {
   },
 
   WINNER_NOTIFICATION: {
+    preheader: 'Congratulations — your entry has been selected as a winner!',
     subject: "🏆 Congratulations — You're a Winner! | {{brand_name}}",
     body: `
       <div style="padding: 30px 40px;">

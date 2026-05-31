@@ -21,6 +21,7 @@ CREATE INDEX IF NOT EXISTS idx_user_preferences_key ON user_preferences(key);
 -- Used by settings.js logAction() / getAuditLogs().  Per-instance localStorage
 -- fallback is replaced by a real shared audit trail.
 
+-- Immutable audit log — no updated_at by design (audit records must not be altered after creation).
 CREATE TABLE IF NOT EXISTS cms_audit_logs (
   id          UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
   action      VARCHAR(100) NOT NULL,
@@ -30,6 +31,7 @@ CREATE TABLE IF NOT EXISTS cms_audit_logs (
   user_email  VARCHAR(255),
   created_at  TIMESTAMP    DEFAULT NOW()
 );
+COMMENT ON TABLE cms_audit_logs IS 'Immutable audit log — no updated_at by design';
 
 -- Add columns defensively in case the table already existed with fewer columns
 ALTER TABLE cms_audit_logs ADD COLUMN IF NOT EXISTS entity_type VARCHAR(100);
@@ -211,8 +213,17 @@ CREATE TABLE IF NOT EXISTS judge_conflicts (
   id          UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
   judge_email VARCHAR(255) NOT NULL,
   org_name    VARCHAR(500),
-  org_id      UUID,
+  org_id      UUID REFERENCES organisations(id) ON DELETE CASCADE,
   created_at  TIMESTAMP    DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_judge_conflicts_email ON judge_conflicts(judge_email);
+
+-- Harden the soft FK on org_id for existing databases
+DO $$
+BEGIN
+  ALTER TABLE judge_conflicts
+    ADD CONSTRAINT judge_conflicts_org_fkey
+    FOREIGN KEY (org_id) REFERENCES organisations(id) ON DELETE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;

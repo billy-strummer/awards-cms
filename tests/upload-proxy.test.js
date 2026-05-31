@@ -8,6 +8,7 @@
 const { __mocks__: mocks } = require('@supabase/supabase-js');
 const _mockFrom = mocks.mockFrom;
 const mockSingle = mocks.mockSingle;
+const mockMaybeSingle = mocks.mockMaybeSingle;
 const mockOrder = mocks.mockOrder;
 const _mockSelect = mocks.mockSelect;
 const mockInsert = mocks.mockInsert;
@@ -233,7 +234,7 @@ describe('Upload Proxy - get_existing_files', () => {
     });
 
     const req = mockReq({
-      query: { action: 'get_existing_files', entry_id: 'uuid-1' },
+      query: { action: 'get_existing_files', entry_id: '33333333-3333-3333-3333-333333333301' },
       headers: { 'x-forwarded-for': '10.0.3.2', authorization: 'Bearer valid-test-token' },
     });
     const res = mockRes();
@@ -246,7 +247,7 @@ describe('Upload Proxy - get_existing_files', () => {
     mockOrder.mockResolvedValue({ data: null, error: { message: 'DB error' } });
 
     const req = mockReq({
-      query: { action: 'get_existing_files', entry_id: 'uuid-1' },
+      query: { action: 'get_existing_files', entry_id: '33333333-3333-3333-3333-333333333301' },
       headers: { 'x-forwarded-for': '10.0.3.3', authorization: 'Bearer valid-test-token' },
     });
     const res = mockRes();
@@ -282,14 +283,16 @@ describe('Upload Proxy - save_file_metadata', () => {
     expect(res.status).toHaveBeenCalledWith(400);
   });
 
-  test('returns 404 if entry not found', async () => {
-    mockSingle.mockResolvedValue({ data: null, error: null });
+  test('returns 404 if entry not found (ownership check fails)', async () => {
+    mockMaybeSingle.mockResolvedValue({ data: null, error: null });
 
     const req = mockReq({
       method: 'POST',
       body: {
         action: 'save_file_metadata',
-        entry_id: 'uuid-missing',
+        entry_id: '33333333-3333-3333-3333-333333333302',
+        entry_number: 'BTA-2025-0099',
+        contact_email: 'notowner@example.com',
         file_name: 'doc.pdf',
         file_url: 'https://storage.example.com/doc.pdf',
       },
@@ -301,14 +304,16 @@ describe('Upload Proxy - save_file_metadata', () => {
   });
 
   test('saves file metadata on success', async () => {
-    mockSingle.mockResolvedValue({ data: { id: 'uuid-1' }, error: null });
+    mockMaybeSingle.mockResolvedValue({ data: { id: '33333333-3333-3333-3333-333333333301' }, error: null });
     mockInsert.mockResolvedValue({ error: null });
 
     const req = mockReq({
       method: 'POST',
       body: {
         action: 'save_file_metadata',
-        entry_id: 'uuid-1',
+        entry_id: '33333333-3333-3333-3333-333333333301',
+        entry_number: 'BTA-2025-0001',
+        contact_email: 'user@example.com',
         file_name: 'report.pdf',
         file_url: 'https://storage.example.com/report.pdf',
         file_type: 'pdf',
@@ -325,14 +330,16 @@ describe('Upload Proxy - save_file_metadata', () => {
   });
 
   test('returns 500 on insert error', async () => {
-    mockSingle.mockResolvedValue({ data: { id: 'uuid-1' }, error: null });
+    mockMaybeSingle.mockResolvedValue({ data: { id: '33333333-3333-3333-3333-333333333301' }, error: null });
     mockInsert.mockResolvedValue({ error: { message: 'Insert failed' } });
 
     const req = mockReq({
       method: 'POST',
       body: {
         action: 'save_file_metadata',
-        entry_id: 'uuid-1',
+        entry_id: '33333333-3333-3333-3333-333333333301',
+        entry_number: 'BTA-2025-0001',
+        contact_email: 'user@example.com',
         file_name: 'doc.pdf',
         file_url: 'https://storage.example.com/doc.pdf',
       },

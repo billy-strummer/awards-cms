@@ -291,8 +291,8 @@ async function sendEntryConfirmation(entryId) {
     const variables = {
       contact_name: entry.contact_name,
       entry_number: entry.entry_number,
-      company_name: entry.organisations.company_name,
-      award_name: entry.awards.award_name,
+      company_name: entry.organisations?.company_name || '',
+      award_name: entry.awards?.award_name || 'British Trade Awards',
       entry_title: entry.entry_title,
       judging_start: formatDate(awardSeason.judging_start_date),
       judging_end: formatDate(awardSeason.judging_end_date),
@@ -717,8 +717,8 @@ async function sendShortlistNotifications(awardId = null) {
     for (const entry of shortlisted || []) {
       const variables = {
         contact_name: entry.contact_name,
-        company_name: entry.organisations.company_name,
-        award_name: entry.awards.award_name,
+        company_name: entry.organisations?.company_name || '',
+        award_name: entry.awards?.award_name || 'British Trade Awards',
         winner_date: formatDate(activeSeason?.[0]?.winner_announcement_date),
         ceremony_date: formatDate(ceremony?.event_date),
         ceremony_venue: ceremony?.venue || 'TBC',

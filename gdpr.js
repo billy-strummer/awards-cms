@@ -566,13 +566,18 @@ const gdprModule = {
       }))
     )
       return;
-    await apiClient.update('gdpr_requests', requestId, {
-      status: 'rejected',
-      processed_by: STATE.currentUser?.email,
-      processed_at: new Date().toISOString(),
-    });
-    utils.showToast('Request rejected', 'info');
-    this.loadPendingRequests();
+    try {
+      await apiClient.update('gdpr_requests', requestId, {
+        status: 'rejected',
+        processed_by: STATE.currentUser?.email,
+        processed_at: new Date().toISOString(),
+      });
+      utils.showToast('Request rejected', 'info');
+      this.loadPendingRequests();
+    } catch (err) {
+      console.error('Failed to reject GDPR request:', err);
+      utils.showToast('Failed to reject request. Please try again.', 'danger');
+    }
   },
 
   /**

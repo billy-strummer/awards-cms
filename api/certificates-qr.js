@@ -21,6 +21,7 @@ const path = require('path');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 const { verifyAuth } = require('./_lib/auth');
+const { isUUID } = require('./_lib/validate');
 
 /**
  * Parse a hex color string to pdf-lib rgb values.
@@ -615,6 +616,8 @@ async function generateCertificateEndpoint(req, res) {
     if (!winnerId || !templateId) {
       return res.status(400).json({ error: 'winnerId and templateId are required' });
     }
+    if (!isUUID(winnerId)) return res.status(400).json({ error: 'Invalid winnerId format' });
+    if (!isUUID(templateId)) return res.status(400).json({ error: 'Invalid templateId format' });
     const result = await generateWinnerCertificate(winnerId, templateId, format);
     res.json({ success: true, ...result });
   } catch (error) {
@@ -630,6 +633,10 @@ async function generateBulkCertificatesEndpoint(req, res) {
     const { winnerIds, templateId, format } = req.body;
     if (!winnerIds?.length || !templateId) {
       return res.status(400).json({ error: 'winnerIds array and templateId are required' });
+    }
+    if (!isUUID(templateId)) return res.status(400).json({ error: 'Invalid templateId format' });
+    if (!Array.isArray(winnerIds) || winnerIds.some((id) => !isUUID(id))) {
+      return res.status(400).json({ error: 'Invalid winnerId in winnerIds array' });
     }
     const results = await generateBulkCertificates(winnerIds, templateId, format);
     res.json({ success: true, results });
@@ -647,6 +654,7 @@ async function previewCertificateEndpoint(req, res) {
     if (!templateId) {
       return res.status(400).json({ error: 'templateId is required' });
     }
+    if (!isUUID(templateId)) return res.status(400).json({ error: 'Invalid templateId format' });
     const base64Pdf = await previewCertificate(templateId, sampleData);
     res.json({ success: true, pdfBase64: base64Pdf });
   } catch (error) {
@@ -664,6 +672,8 @@ async function previewCertificateEndpoint(req, res) {
 async function generateQRTicketEndpoint(req, res) {
   try {
     const { attendeeId } = req.body;
+    if (!attendeeId) return res.status(400).json({ error: 'attendeeId is required' });
+    if (!isUUID(attendeeId)) return res.status(400).json({ error: 'Invalid attendeeId format' });
     const result = await generateEventTicketQR(attendeeId);
     res.json({ success: true, ...result });
   } catch (error) {
@@ -681,6 +691,8 @@ async function generateQRTicketEndpoint(req, res) {
 async function generateBadgeEndpoint(req, res) {
   try {
     const { attendeeId } = req.body;
+    if (!attendeeId) return res.status(400).json({ error: 'attendeeId is required' });
+    if (!isUUID(attendeeId)) return res.status(400).json({ error: 'Invalid attendeeId format' });
     const result = await generateEventBadge(attendeeId);
     res.json({ success: true, ...result });
   } catch (error) {
@@ -701,6 +713,7 @@ async function generateAllBadgesEndpoint(req, res) {
     if (!eventId) {
       return res.status(400).json({ error: 'eventId is required' });
     }
+    if (!isUUID(eventId)) return res.status(400).json({ error: 'Invalid eventId format' });
     const results = await generateAllEventBadges(eventId);
     res.json({ success: true, results });
   } catch (error) {

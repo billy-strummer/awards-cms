@@ -7,6 +7,7 @@
 
 const { createClient } = require('@supabase/supabase-js');
 const crypto = require('crypto');
+const { isUUID } = require('./_lib/validate');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 const supabaseAuth = createClient(
@@ -490,6 +491,9 @@ module.exports = async function handler(req, res) {
         const { postId } = req.body;
         if (!postId) {
           return res.status(400).json({ error: 'Missing required field: postId' });
+        }
+        if (!isUUID(postId)) {
+          return res.status(400).json({ error: 'Invalid postId format' });
         }
         const result = await publishToSocialMedia(postId);
         return res.status(200).json(result);

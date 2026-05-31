@@ -273,26 +273,32 @@ const sponsorPortalModule = {
   },
 
   async editContract(contractId) {
-    /* selectAll: justified — scoped to single contract by ID */
-    const contracts = await apiClient.selectAll('sponsor_contracts', { filters: { id: { eq: contractId } } });
-    this.openContractModal(contracts?.[0] || null);
+    try {
+      /* selectAll: justified — scoped to single contract by ID */
+      const contracts = await apiClient.selectAll('sponsor_contracts', { filters: { id: { eq: contractId } } });
+      this.openContractModal(contracts?.[0] || null);
+    } catch (err) {
+      console.error('Failed to load contract:', err);
+      utils.showToast('Failed to load contract details', 'danger');
+    }
   },
 
   async openContractModal(contract = null) {
-    /* selectAll: justified — small reference table (active sponsors for dropdown) */
-    const sponsors = await apiClient.selectAll('sponsors', {
-      select: 'id, name',
-      filters: { is_active: { eq: true } },
-      sort: { column: 'name', ascending: true },
-    });
-    const opts = sponsors
-      .map(
-        (s) =>
-          `<option value="${s.id}"${contract?.sponsor_id === s.id ? ' selected' : ''}>${utils.escapeHtml(s.name)}</option>`
-      )
-      .join('');
-    document.getElementById('contractModalTitle').textContent = contract ? 'Edit Contract' : 'New Contract';
-    document.getElementById('contractModalBody').innerHTML = `
+    try {
+      /* selectAll: justified — small reference table (active sponsors for dropdown) */
+      const sponsors = await apiClient.selectAll('sponsors', {
+        select: 'id, name',
+        filters: { is_active: { eq: true } },
+        sort: { column: 'name', ascending: true },
+      });
+      const opts = sponsors
+        .map(
+          (s) =>
+            `<option value="${s.id}"${contract?.sponsor_id === s.id ? ' selected' : ''}>${utils.escapeHtml(s.name)}</option>`
+        )
+        .join('');
+      document.getElementById('contractModalTitle').textContent = contract ? 'Edit Contract' : 'New Contract';
+      document.getElementById('contractModalBody').innerHTML = `
       <input type="hidden" id="contractId" value="${contract?.id || ''}">
       <div class="mb-3"><label class="form-label">Sponsor</label><select class="form-select" id="contractSponsor"><option value="">Select sponsor...</option>${opts}</select></div>
       <div class="row g-2 mb-3">
@@ -303,7 +309,11 @@ const sponsorPortalModule = {
       <div class="mb-3"><label class="form-label">Status</label>
         <select class="form-select" id="contractStatus">${['Active', 'Pending', 'Completed', 'Cancelled'].map((s) => `<option${contract?.status === s ? ' selected' : ''}>${s}</option>`).join('')}</select></div>
       <div class="mb-3"><label class="form-label">Benefits</label><textarea class="form-control" id="contractBenefits" rows="3">${utils.escapeHtml(contract?.benefits || '')}</textarea></div>`;
-    new bootstrap.Modal(document.getElementById('contractModal')).show();
+      new bootstrap.Modal(document.getElementById('contractModal')).show();
+    } catch (err) {
+      console.error('Failed to open contract modal:', err);
+      utils.showToast('Failed to load contract form', 'danger');
+    }
   },
 
   async saveContract() {

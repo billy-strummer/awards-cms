@@ -863,9 +863,8 @@ function checkPublicCheckoutRate(ip) {
 
 async function createPublicCheckout(req, res) {
   try {
-    // Use rightmost IP from x-forwarded-for (set by Vercel CDN, cannot be spoofed by client)
     const rawIp = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
-    const ip = rawIp.split(',').pop().trim();
+    const ip = rawIp.split(',')[0].trim();
     if (!checkPublicCheckoutRate(ip)) {
       return res.status(429).json({ error: 'Too many requests. Please try again later.' });
     }

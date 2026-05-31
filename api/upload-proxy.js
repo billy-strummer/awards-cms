@@ -17,6 +17,7 @@ const { createClient } = require('@supabase/supabase-js');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 const { verifyAuth } = require('./_lib/auth');
+const { isUUID } = require('./_lib/validate');
 
 // ────────────────────────────────────────────
 // CORS helpers
@@ -166,7 +167,7 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(204).end();
 
   const rawIp = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
-  const ip = rawIp.split(',').pop().trim() || 'unknown';
+  const ip = rawIp.split(',')[0].trim() || 'unknown';
   if (!checkRateLimit(ip)) {
     return res.status(429).json({ error: 'Too many requests. Please try again later.' });
   }
@@ -265,6 +266,9 @@ async function handleGetExistingFiles(req, res) {
   if (!entryId) {
     return res.status(400).json({ error: 'entry_id is required' });
   }
+  if (!isUUID(entryId)) {
+    return res.status(400).json({ error: 'Invalid entry_id format' });
+  }
 
   const { data: files, error } = await supabase
     .from('entry_files')
@@ -286,10 +290,18 @@ async function handleGetExistingFiles(req, res) {
 async function handleSaveFileMetadata(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { entry_id, file_name, file_url, file_type, file_size, mime_type, uploaded_by } = req.body;
+  const { entry_id, entry_number, contact_email, file_name, file_url, file_type, file_size, mime_type, uploaded_by } =
+    req.body;
 
   if (!entry_id || !file_name || !file_url) {
     return res.status(400).json({ error: 'entry_id, file_name, and file_url are required' });
+  }
+  if (!isUUID(entry_id)) {
+    return res.status(400).json({ error: 'Invalid entry_id format' });
+  }
+  // Require proof of ownership: entry_number + contact_email must match the entry
+  if (!entry_number || !contact_email) {
+    return res.status(400).json({ error: 'entry_number and contact_email are required to verify ownership' });
   }
 
   // Validate file extension against allowlist
@@ -306,10 +318,16 @@ async function handleSaveFileMetadata(req, res) {
     }
   }
 
-  // Verify the entry exists
-  const { data: entry } = await supabase.from('entries').select('id').eq('id', entry_id).single();
+  // Verify the entry exists AND the caller owns it (entry_number + contact_email match)
+  const { data: entry } = await supabase
+    .from('entries')
+    .select('id')
+    .eq('id', entry_id)
+    .eq('entry_number', sanitizeString(entry_number, 50))
+    .eq('contact_email', sanitizeString(contact_email, 200).toLowerCase())
+    .maybeSingle();
   if (!entry) {
-    return res.status(404).json({ error: 'Entry not found' });
+    return res.status(404).json({ error: 'Entry not found or ownership verification failed' });
   }
 
   const { error } = await supabase.from('entry_files').insert([

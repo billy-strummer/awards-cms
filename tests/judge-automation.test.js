@@ -846,7 +846,7 @@ describe('Judge Automation Module', () => {
       mockFromResults.push(chainable({ data: judges, error: null }));
       mockFromResults.push(chainable({ data: [], error: null }));
 
-      const req = createReq({ body: { awardId: 'a1' } });
+      const req = createReq({ body: { awardId: '22222222-2222-2222-2222-222222222201' } });
       const res = createRes();
 
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
@@ -880,7 +880,7 @@ describe('Judge Automation Module', () => {
     test('returns success with shortlist', async () => {
       mockFromResults.push(chainable({ data: [], error: null }));
 
-      const req = createReq({ body: { awardId: 'a1', topN: 3 } });
+      const req = createReq({ body: { awardId: '22222222-2222-2222-2222-222222222201', topN: 3 } });
       const res = createRes();
 
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
@@ -894,7 +894,7 @@ describe('Judge Automation Module', () => {
     test('uses default topN of 5 when not provided', async () => {
       mockFromResults.push(chainable({ data: [], error: null }));
 
-      const req = createReq({ body: { awardId: 'a1' } });
+      const req = createReq({ body: { awardId: '22222222-2222-2222-2222-222222222201' } });
       const res = createRes();
 
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
@@ -907,7 +907,7 @@ describe('Judge Automation Module', () => {
     test('returns 500 on error', async () => {
       mockFromResults.push(chainable({ data: null, error: new Error('DB fail') }));
 
-      const req = createReq({ body: { awardId: 'a1' } });
+      const req = createReq({ body: { awardId: '22222222-2222-2222-2222-222222222201' } });
       const res = createRes();
 
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
@@ -970,7 +970,7 @@ describe('Judge Automation Module', () => {
     test('returns statistics', async () => {
       mockFromResults.push(chainable({ data: [], error: null }));
 
-      const req = createReq({ query: { awardId: 'a1' } });
+      const req = createReq({ query: { awardId: '22222222-2222-2222-2222-222222222201' } });
       const res = createRes();
 
       await judgeAutomation.getJudgingStatsEndpoint(req, res);

@@ -23,6 +23,15 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
 const { verifyAuth } = require('./_lib/auth');
 
 const FROM_EMAIL = process.env.FROM_EMAIL || 'awards@britishtradeawards.com';
+
+function escapeHtml(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 const FROM_NAME = process.env.FROM_NAME || 'British Trade Awards';
 
 /**
@@ -435,7 +444,7 @@ async function sendInvoiceEmail({ to, subject, message, cc, invoice }) {
 
   const bodyHtml = `
     <h2>Invoice ${invoice.invoice_number || ''}</h2>
-    <p>${message.replace(/\n/g, '<br>')}</p>
+    <p>${escapeHtml(message).replace(/\n/g, '<br>')}</p>
     <table style="width:100%;border-collapse:collapse;margin:20px 0">
       <thead>
         <tr style="background:#f5f5f5">

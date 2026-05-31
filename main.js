@@ -59,6 +59,9 @@ export { rateLimitModule } from './rate-limiting.js';
 import './location.js';
 import './areas-manager.js';
 
+// Global actions — side-effect import (sets window.globalActions for data-action handlers)
+import './global-actions.js';
+
 // Nominee uploads — side-effect import (sets window.nomineeUploads)
 import './nominee-uploads.js';
 

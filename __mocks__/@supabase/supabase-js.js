@@ -5,11 +5,13 @@
  */
 
 const mockSingle = jest.fn(() => Promise.resolve({ data: null, error: null }));
+const mockMaybeSingle = jest.fn(() => Promise.resolve({ data: null, error: null }));
 const mockOrder = jest.fn(() => Promise.resolve({ data: [], error: null }));
 const mockLimit = jest.fn(() => ({ single: mockSingle }));
 const mockRange = jest.fn(() => ({ data: [], error: null }));
 const mockEq = jest.fn(() => ({
   single: mockSingle,
+  maybeSingle: mockMaybeSingle,
   order: mockOrder,
   limit: mockLimit,
   range: mockRange,
@@ -27,6 +29,7 @@ const mockSelect = jest.fn(() => ({
   range: mockRange,
   limit: mockLimit,
   single: mockSingle,
+  maybeSingle: mockMaybeSingle,
 }));
 const mockInsert = jest.fn(() => Promise.resolve({ data: [{}], error: null }));
 const mockUpdate = jest.fn(() => ({ eq: jest.fn(() => Promise.resolve({ data: [{}], error: null })) }));
@@ -84,6 +87,7 @@ module.exports = {
     mockUpsert,
     mockEq,
     mockSingle,
+    mockMaybeSingle,
     mockOrder,
     mockRange,
     mockLimit,

@@ -27,6 +27,7 @@ const escHtml = (str) =>
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 const { verifyAuth } = require('./_lib/auth');
+const { isUUID } = require('./_lib/validate');
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const APP_URL = process.env.APP_URL || 'https://admin.britishtradeawards.com';
@@ -539,6 +540,9 @@ async function getJudgingStatistics(awardId = null) {
 async function assignJudgesEndpoint(req, res) {
   try {
     const { awardId } = req.body;
+    if (awardId && !isUUID(awardId)) {
+      return res.status(400).json({ error: 'Invalid awardId format' });
+    }
     const result = await assignJudgesToEntries(awardId);
     res.json({ success: true, ...result });
   } catch (error) {
@@ -556,7 +560,10 @@ async function assignJudgesEndpoint(req, res) {
 async function generateShortlistEndpoint(req, res) {
   try {
     const { awardId, topN } = req.body;
-    const shortlist = await generateShortlist(awardId, topN || 5);
+    if (!awardId) return res.status(400).json({ error: 'awardId is required' });
+    if (!isUUID(awardId)) return res.status(400).json({ error: 'Invalid awardId format' });
+    const clampedTopN = Math.min(Math.max(parseInt(topN, 10) || 5, 1), 100);
+    const shortlist = await generateShortlist(awardId, clampedTopN);
     res.json({ success: true, shortlist });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -573,7 +580,8 @@ async function generateShortlistEndpoint(req, res) {
 async function generateAllShortlistsEndpoint(req, res) {
   try {
     const { topN } = req.body;
-    const results = await generateAllShortlists(topN || 5);
+    const clampedTopN = Math.min(Math.max(parseInt(topN, 10) || 5, 1), 100);
+    const results = await generateAllShortlists(clampedTopN);
     res.json({ success: true, results });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -590,6 +598,9 @@ async function generateAllShortlistsEndpoint(req, res) {
 async function getJudgingStatsEndpoint(req, res) {
   try {
     const { awardId } = req.query;
+    if (awardId && !isUUID(awardId)) {
+      return res.status(400).json({ error: 'Invalid awardId format' });
+    }
     const stats = await getJudgingStatistics(awardId);
     res.json(stats);
   } catch (error) {
@@ -601,6 +612,11 @@ async function getJudgingStatsEndpoint(req, res) {
  * Vercel serverless handler — routes by query action.
  */
 module.exports = async function handler(req, res) {
+  if (req.method !== 'GET' && req.method !== 'POST') {
+    res.setHeader('Allow', 'GET, POST');
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
   // Verify authentication for all actions
   const user = await verifyAuth(req, res);
   if (!user) return;

@@ -21,6 +21,7 @@
 const { createClient } = require('@supabase/supabase-js');
 const { verifyAuth, hasMinimumRole, getUserRole } = require('./_lib/auth');
 const { assertEnv } = require('./_lib/env');
+const { isValidColumnList, validateSegmentRules } = require('./_lib/validate');
 
 assertEnv(['SUPABASE_URL', 'SUPABASE_SERVICE_KEY']);
 
@@ -863,7 +864,12 @@ async function _executeQuery(body, user, enableTenantScope) {
       updated_at: new Date().toISOString(),
     }));
     const upsertOpts = {};
-    if (body.onConflict) upsertOpts.onConflict = body.onConflict;
+    if (body.onConflict) {
+      if (!isValidColumnList(body.onConflict)) {
+        return { error: 'Invalid onConflict value — must be a column name or comma-separated column names' };
+      }
+      upsertOpts.onConflict = body.onConflict;
+    }
     const { data: result, error } = await supabase.from(table).upsert(enriched, upsertOpts).select();
     if (error) throw error;
     await logActivity(table, 'upsert', user, result, {});
@@ -1531,6 +1537,15 @@ module.exports = async function handler(req, res) {
     }
 
     if (body.operation === 'storage_url') {
+      const requiredRole = ALLOWED_STORAGE_BUCKETS[body.bucket];
+      if (!requiredRole) {
+        return res.status(400).json({ error: `Storage bucket "${body.bucket}" is not allowed` });
+      }
+      if (!hasMinimumRole(role, requiredRole)) {
+        return res
+          .status(403)
+          .json({ error: 'Forbidden', message: `Role "${role}" cannot access bucket "${body.bucket}"` });
+      }
       const urlResult = executeStorageUrl(body);
       return res.status(200).json(urlResult);
     }
@@ -1579,7 +1594,12 @@ module.exports = async function handler(req, res) {
       if (!hasMinimumRole(role, 'viewer')) {
         return res.status(403).json({ error: 'Forbidden', message: 'Segment queries require viewer role or above' });
       }
-      const segResult = await executeSegmentQuery(body.rules || [], body.logic || 'AND');
+      const logic = body.logic === 'OR' ? 'OR' : 'AND';
+      const rulesValidation = validateSegmentRules(body.rules || []);
+      if (!rulesValidation.valid) {
+        return res.status(400).json({ error: rulesValidation.error });
+      }
+      const segResult = await executeSegmentQuery(rulesValidation.rules, logic);
       return res.status(200).json(segResult);
     }
 

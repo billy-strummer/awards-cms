@@ -20,6 +20,7 @@ assertEnv(['SUPABASE_URL', 'SUPABASE_SERVICE_KEY', 'RESEND_API_KEY']);
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 const { verifyAuth } = require('./_lib/auth');
+const crypto = require('crypto');
 
 // Initialize Resend (replacing SendGrid)
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -827,11 +828,25 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Verify authentication for all actions
+  const action = req.query.action || req.body?.action;
+
+  // Resend webhook actions bypass JWT auth — verified via shared secret instead
+  if (action === 'resend-bounce' || action === 'resend-complaint') {
+    const webhookSecret = process.env.RESEND_WEBHOOK_SECRET;
+    if (webhookSecret) {
+      const signature = req.headers['x-resend-signature'] || '';
+      const payload = JSON.stringify(req.body);
+      const expected = crypto.createHmac('sha256', webhookSecret).update(payload).digest('hex');
+      if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
+        return res.status(401).json({ error: 'Invalid webhook signature' });
+      }
+    }
+    return handleResendSuppressionEvent(req, res);
+  }
+
+  // All other actions require JWT authentication
   const user = await verifyAuth(req, res);
   if (!user) return;
-
-  const action = req.query.action || req.body?.action;
 
   switch (action) {
     case 'send-email':
@@ -853,9 +868,6 @@ module.exports = async function handler(req, res) {
       return sendDeadlineRemindersEndpoint(req, res);
     case 'send-winner-announcements':
       return sendWinnerAnnouncementsEndpoint(req, res);
-    case 'resend-bounce':
-    case 'resend-complaint':
-      return handleResendSuppressionEvent(req, res);
     default:
       return res.status(400).json({ error: `Unknown action: ${action || 'none'}` });
   }

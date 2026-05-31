@@ -388,17 +388,26 @@ const awardsModule = {
 
   /**
    * Called when the country field in the Add/Edit award form changes.
-   * Repopulates the area dropdown and clears the hint.
+   * Awaits the area cache before repopulating so the dropdown is never blank.
    */
-  onAwardFormCountryChange() {
+  async onAwardFormCountryChange() {
     const country = document.getElementById('awardFormCountry')?.value || '';
     const areaEl = document.getElementById('awardFormArea');
-    if (areaEl) areaEl.disabled = !country;
-    locationModule.populateAreaDropdown(
-      'awardFormArea',
-      country,
-      country ? 'Select Area...' : 'Select country first...'
-    );
+    if (!country) {
+      if (areaEl) {
+        areaEl.disabled = true;
+        areaEl.innerHTML = '<option value="">Select country first...</option>';
+      }
+      this._updateAwardFormAreaHint(null);
+      return;
+    }
+    if (areaEl) {
+      areaEl.disabled = true;
+      areaEl.innerHTML = '<option value="">Loading areas...</option>';
+    }
+    await locationModule.loadAreas();
+    if (areaEl) areaEl.disabled = false;
+    locationModule.populateAreaDropdown('awardFormArea', country, 'Select Area...');
     this._updateAwardFormAreaHint(null);
   },
 
@@ -1466,7 +1475,8 @@ const awardsModule = {
   /** Show a hint if no seasons are configured */
   _updateSeasonHint() {
     const seasons = settingsModule?.allSeasons || [];
-    const seasonHelp = document.querySelector('#awardFormSeason + .form-text');
+    const seasonEl = document.getElementById('awardFormSeason');
+    const seasonHelp = seasonEl?.closest('.col-md-6')?.querySelector('.form-text');
     if (!seasonHelp) return;
     if (seasons.length === 0) {
       seasonHelp.innerHTML =
@@ -1889,9 +1899,7 @@ const awardsModule = {
     if (!totalEl) return;
     const total = this._getScoringCriteria().reduce((sum, c) => sum + (Number(c.weight) || 0), 0);
     totalEl.textContent = String(total);
-    totalEl.closest('strong')
-      ? null
-      : (totalEl.style.color = total === 100 ? 'green' : total > 100 ? 'red' : 'inherit');
+    totalEl.style.color = total === 100 ? 'var(--bs-success)' : total > 100 ? 'var(--bs-danger)' : 'inherit';
   },
 
   /**

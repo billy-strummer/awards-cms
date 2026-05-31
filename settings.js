@@ -1558,8 +1558,16 @@ const settingsModule = {
     if (!container) return;
     try {
       const [sectorsResult, categoriesResult] = await Promise.all([
-        apiClient.select('custom_sectors', { select: '*', sort: { column: 'sort_order', ascending: true }, pageSize: 200 }),
-        apiClient.select('custom_categories', { select: '*', sort: { column: 'sort_order', ascending: true }, pageSize: 500 }),
+        apiClient.select('custom_sectors', {
+          select: '*',
+          sort: { column: 'sort_order', ascending: true },
+          pageSize: 200,
+        }),
+        apiClient.select('custom_categories', {
+          select: '*',
+          sort: { column: 'sort_order', ascending: true },
+          pageSize: 500,
+        }),
       ]);
       const customSectors = sectorsResult?.data || [];
       const customCategories = categoriesResult?.data || [];
@@ -1636,7 +1644,8 @@ const settingsModule = {
       container.innerHTML = html;
     } catch (err) {
       const container2 = document.getElementById('customSectorsContainer');
-      if (container2) container2.innerHTML = `<p class="text-danger small">Failed to load custom sectors: ${utils.escapeHtml(err.message)}</p>`;
+      if (container2)
+        container2.innerHTML = `<p class="text-danger small">Failed to load custom sectors: ${utils.escapeHtml(err.message)}</p>`;
     }
   },
 
@@ -1775,7 +1784,8 @@ const settingsModule = {
   async loadActivityLog() {
     const tbody = document.getElementById('activityLogTableBody');
     if (!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-3"><div class="spinner-border spinner-border-sm"></div></td></tr>';
+    tbody.innerHTML =
+      '<tr><td colspan="5" class="text-center py-3"><div class="spinner-border spinner-border-sm"></div></td></tr>';
 
     try {
       const [cmsLogs, orgLogs, actLogs] = await Promise.allSettled([
@@ -1787,13 +1797,31 @@ const settingsModule = {
       const rows = [];
 
       (cmsLogs.status === 'fulfilled' ? cmsLogs.value || [] : []).forEach((r) =>
-        rows.push({ ts: r.created_at, user: r.user_email || r.user_id || '—', action: r.action || '—', entity: r.table_name || '—', detail: r.details || '' })
+        rows.push({
+          ts: r.created_at,
+          user: r.user_email || r.user_id || '—',
+          action: r.action || '—',
+          entity: r.table_name || '—',
+          detail: r.details || '',
+        })
       );
       (orgLogs.status === 'fulfilled' ? orgLogs.value || [] : []).forEach((r) =>
-        rows.push({ ts: r.created_at, user: r.changed_by || '—', action: r.action || '—', entity: 'Organisation', detail: r.org_name || r.organisation_id || '' })
+        rows.push({
+          ts: r.created_at,
+          user: r.changed_by || '—',
+          action: r.action || '—',
+          entity: 'Organisation',
+          detail: r.org_name || r.organisation_id || '',
+        })
       );
       (actLogs.status === 'fulfilled' ? actLogs.value || [] : []).forEach((r) =>
-        rows.push({ ts: r.created_at || r.timestamp, user: r.user_email || r.actor || '—', action: r.action || r.event_type || '—', entity: r.entity_type || r.module || '—', detail: r.description || r.metadata || '' })
+        rows.push({
+          ts: r.created_at || r.timestamp,
+          user: r.user_email || r.actor || '—',
+          action: r.action || r.event_type || '—',
+          entity: r.entity_type || r.module || '—',
+          detail: r.description || r.metadata || '',
+        })
       );
 
       rows.sort((a, b) => new Date(b.ts || 0) - new Date(a.ts || 0));
@@ -1807,7 +1835,10 @@ const settingsModule = {
         .slice(0, 150)
         .map((r) => {
           const dt = r.ts ? new Date(r.ts).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' }) : '—';
-          const esc = (s) => String(s || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          const esc = (s) =>
+            String(s || '')
+              .replace(/</g, '&lt;')
+              .replace(/>/g, '&gt;');
           return `<tr>
             <td class="text-nowrap small text-muted">${dt}</td>
             <td class="small">${esc(r.user)}</td>

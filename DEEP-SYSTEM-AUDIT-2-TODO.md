@@ -11,36 +11,36 @@ Email Deliverability, Stripe/Payment Robustness, and Public-facing Pages securit
 
 ## CRITICAL
 
-### [ ] DS2-C1 — Sequential email sends will timeout Vercel (30s limit)
+### [x] DS2-C1 — Sequential email sends will timeout Vercel (30s limit)
 
 - **Files:** `api/email-automation.js` lines ~573 (sendWinnerAnnouncements), ~446 (sendDeadlineReminders)
 - **Description:** Both functions loop through recipients and `await sendTemplateEmail()` sequentially. 1000 winners × 500ms per email = 500 seconds → Vercel timeout. 150 emails (100 draft entries + 50 judges) × 500ms = 75 seconds → timeout.
 - **Fix:** Replace sequential for-loop with `Promise.all` batched to 5 concurrent sends.
 
-### [ ] DS2-C2 — N+1 query in judge assignment (up to 10,000 DB queries)
+### [x] DS2-C2 — N+1 query in judge assignment (up to 10,000 DB queries)
 
 - **File:** `api/judge-automation.js` lines 83–136
 - **Description:** `assignJudgesToEntries()` queries `judge_scores` **per entry per judge** inside a loop. 100 entries × 50 judges = ~10,000 queries. Should batch-fetch all assignments once, then filter in-memory.
 - **Fix:** Fetch all `judge_scores` in one query before the loop; build a Map keyed by entry_id.
 
-### [ ] DS2-C3 — Missing FK indexes on `entries` and `public_votes` tables
+### [x] DS2-C3 — Missing FK indexes on `entries` and `public_votes` tables
 
 - **Description:** `entries(award_id)`, `entries(organisation_id)`, `entries(status)`, `entries(is_public)`, `public_votes(voted_at)`, `public_votes(voter_ip)`, `judge_scores(judge_email, is_complete)` have no indexes. Rate-limit checks on `public_votes` become full table scans.
 - **Fix:** New migration `054-additional-indexes.sql`.
 
-### [ ] DS2-C4 — Supabase connection pool exhaustion under concurrent load
+### [x] DS2-C4 — Supabase connection pool exhaustion under concurrent load
 
 - **Files:** All `api/*.js`
 - **Description:** Every API file creates its own `createClient()` at module level. With 12 functions × concurrent invocations, and Supabase's default 20-connection pool, this exhausts connections at ~15–20 concurrent requests.
 - **Fix:** Create `api/_lib/supabase-client.js` singleton; update all API files to use it.
 
-### [ ] DS2-C5 — GDPR right-to-erasure incomplete (orphaned PII in 6 tables)
+### [x] DS2-C5 — GDPR right-to-erasure incomplete (orphaned PII in 6 tables)
 
 - **File:** `gdpr.js` lines 527–548
 - **Description:** `_deleteEntityData()` deletes from `organisation_contacts`, `award_assignments`, `entries`, `organisations` — but NOT from `email_logs`, `event_guests`, `crm_communications`, `crm_deals`, `crm_meetings`, `public_votes`. GDPR Article 17 requires complete erasure.
 - **Fix:** Add missing tables to the deletion cascade in `gdpr.js`.
 
-### [ ] DS2-C6 — N+1 deadline reminders (separate query per judge)
+### [x] DS2-C6 — N+1 deadline reminders (separate query per judge)
 
 - **File:** `api/email-automation.js` lines 464–502
 - **Description:** Loops through judges, querying `judge_scores` and `award_years` per judge. 100 judges = 200 queries minimum.
@@ -52,7 +52,7 @@ Email Deliverability, Stripe/Payment Robustness, and Public-facing Pages securit
 - **Description:** Module-level `rateLimits = new Map()` with a `lastCleanup` timestamp. Two simultaneous requests can race on `lastCleanup`. Each Vercel instance has its own Map, so rate limiting is not distributed.
 - **Fix:** Move rate limiting to Supabase table (`rate_limit_log`) or accept per-instance limits (currently the lesser risk). At minimum, fix the cleanup race by removing the shared `lastCleanup` global.
 
-### [ ] DS2-C8 — Stripe webhook returns 200 on handler errors (Stripe won't retry)
+### [x] DS2-C8 — Stripe webhook returns 200 on handler errors (Stripe won't retry)
 
 - **File:** `api/stripe-payment.js`
 - **Description:** If `handleCheckoutSessionCompleted()` throws, the catch block returns 200 (or relies on Express defaults). Stripe only retries on non-2xx responses. A failed payment record write is silently lost.
@@ -64,19 +64,19 @@ Email Deliverability, Stripe/Payment Robustness, and Public-facing Pages securit
 - **Description:** Paginates 500 rows at a time up to 10,000, accumulates in a JS array, then filters in-memory. At 2KB/row = 20 MB per request. Multiple concurrent requests risk OOM.
 - **Fix:** Move simple field filters to WHERE clause; only use in-memory filtering for engagement scoring.
 
-### [ ] DS2-C10 — `cms_audit_logs` deletable by admin (audit trail integrity)
+### [x] DS2-C10 — `cms_audit_logs` deletable by admin (audit trail integrity)
 
 - **File:** `settings.js`; `gdpr.js`
 - **Description:** Admin can call `clearAuditLog()` to delete audit entries, destroying the evidence trail. GDPR Article 5(1)(f) requires integrity and confidentiality.
 - **Fix:** Add RLS policy preventing DELETE on `cms_audit_logs`. Remove the clear button from settings UI.
 
-### [ ] DS2-C11 — No consent timestamp or lawful basis recorded on entry/registration
+### [x] DS2-C11 — No consent timestamp or lawful basis recorded on entry/registration
 
 - **Files:** `api/entry-proxy.js`, `api/registration-proxy.js`
 - **Description:** Entry submissions capture a consent checkbox but never record when, via what channel, or on what lawful basis consent was given. Cannot prove GDPR compliance.
 - **Fix:** New migration `055-consent-columns.sql`. Record `consent_timestamp`, `consent_ip_address`, `lawful_basis` in `entry-proxy.js` and `registration-proxy.js`.
 
-### [ ] DS2-C12 — Stripe test vs live key not validated at startup
+### [x] DS2-C12 — Stripe test vs live key not validated at startup
 
 - **File:** `api/stripe-payment.js`
 - **Description:** If `STRIPE_SECRET_KEY` is a test key (`sk_test_`) but `STRIPE_PRICE_ID` is a live price ID (or vice versa), checkout silently fails with a confusing Stripe error. No guard at startup.
@@ -88,7 +88,7 @@ Email Deliverability, Stripe/Payment Robustness, and Public-facing Pages securit
 - **Description:** If `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, or `RESEND_API_KEY` are unset, handlers fail with opaque "Cannot read properties of undefined" errors. No early validation.
 - **Fix:** Add an `assertEnv()` helper in `api/_lib/auth.js` (or a new `_lib/env.js`) and call it at the top of each handler.
 
-### [ ] DS2-C14 — Voting page `load_entries` has no response caching (500 parallel DB queries)
+### [x] DS2-C14 — Voting page `load_entries` has no response caching (500 parallel DB queries)
 
 - **File:** `api/voting-proxy.js`
 - **Description:** Public voting page can have 500 concurrent users all requesting the same entry list. Each hits Supabase independently. No Cache-Control header, no in-memory TTL cache.
@@ -98,7 +98,7 @@ Email Deliverability, Stripe/Payment Robustness, and Public-facing Pages securit
 
 ## HIGH
 
-### [ ] DS2-H1 — Static assets have no cache headers (every visitor re-downloads full bundle)
+### [x] DS2-H1 — Static assets have no cache headers (every visitor re-downloads full bundle)
 
 - **File:** `vercel.json`
 - **Description:** No `Cache-Control` header for `/dist/*` assets. Each page visit re-downloads all JS/CSS. Fingerprinted filenames make long-lived caching safe.
@@ -128,7 +128,7 @@ Email Deliverability, Stripe/Payment Robustness, and Public-facing Pages securit
 - **Description:** Personal data is sent to Resend, Stripe, Supabase, and Anthropic without disclosure in privacy notices. UK GDPR requires transparent disclosure of all processors.
 - **Fix:** Create `privacy-policy.html` with processor list and link from all public forms.
 
-### [ ] DS2-H6 — GDPR breach response not documented
+### [x] DS2-H6 — GDPR breach response not documented
 
 - **Description:** No documented incident response procedure for GDPR Article 33 (72-hour ICO notification). No code to log breach details.
 - **Fix:** Create `GDPR-BREACH-RESPONSE.md` with 72-hour checklist, ICO contact, and breach log table schema.
@@ -150,55 +150,55 @@ Email Deliverability, Stripe/Payment Robustness, and Public-facing Pages securit
 - **Description:** Sending email to an address that has previously bounced or complained is an email deliverability violation. No Resend webhook handler for bounce/complaint events; no suppression list.
 - **Fix:** Add `bounce` and `complaint` actions to `email-automation.js`; create `email_suppressions` table; check before sending.
 
-### [ ] DS2-H10 — No retry logic for Resend API calls
+### [x] DS2-H10 — No retry logic for Resend API calls
 
 - **File:** `api/resend-email.js`, `api/email-automation.js`
 - **Description:** Resend API calls have no retry on transient failures (429 rate limit, 502/503). A single network hiccup silently drops an email.
 - **Fix:** Add exponential-backoff retry (max 3 attempts) around Resend `send()` calls.
 
-### [ ] DS2-H11 — Open redirect risk on Stripe checkout success URL
+### [x] DS2-H11 — Open redirect risk on Stripe checkout success URL
 
 - **File:** `api/stripe-payment.js`
 - **Description:** If `success_url` is constructed from user-supplied data without validation, an attacker could redirect to a phishing site after payment.
 - **Fix:** Validate that `success_url` and `cancel_url` start with `process.env.APP_URL` before passing to Stripe.
 
-### [ ] DS2-H12 — Winners consent (image/name publication) not audited
+### [x] DS2-H12 — Winners consent (image/name publication) not audited
 
 - **File:** `winners.js`, `database-schema.sql`
 - **Description:** `winners.gdpr_consent` is a boolean with no timestamp, method, or scope. Toggling consent leaves no audit trail. Publishing winner images without a timestamped consent record is a GDPR risk.
 - **Fix:** Add `consent_timestamp`, `consent_method` columns; log consent changes to `cms_audit_logs`.
 
-### [ ] DS2-H13 — Missing privacy notice on public-facing forms
+### [x] DS2-H13 — Missing privacy notice on public-facing forms
 
 - **Files:** `submit-entry.html`, `register.html`
 - **Description:** Consent checkbox text is minimal ("I consent to being contacted"). No disclosure of: data storage, retention period, right to erasure, right to access, or DPO contact.
 - **Fix:** Expand checkbox label; add "Your Rights" paragraph linking to privacy policy.
 
-### [ ] DS2-H14 — `checkout.session.expired` event not handled
+### [x] DS2-H14 — `checkout.session.expired` event not handled
 
 - **File:** `api/stripe-payment.js`
 - **Description:** When a Stripe session expires (30-minute window), no cleanup is performed. Invoice may remain in `pending` state indefinitely.
 - **Fix:** Handle `checkout.session.expired` webhook to mark invoice as expired/cancelled.
 
-### [ ] DS2-H15 — No automated data retention cleanup (GDPR Article 5(1)(e))
+### [x] DS2-H15 — No automated data retention cleanup (GDPR Article 5(1)(e))
 
 - **Files:** `gdpr.js`, `api/_lib/automation-scheduler.js`
 - **Description:** `runRetentionCleanup()` only cleans audit logs (>2 yr) and email logs (>1 yr). No cleanup for `entries`, `event_guests`, `public_votes`. No scheduler job runs it automatically.
 - **Fix:** Add retention periods for all personal-data tables; wire `runRetentionCleanup()` into the automation scheduler.
 
-### [ ] DS2-H16 — `public_votes.voted_at` has no index (rate-limit check is full table scan)
+### [x] DS2-H16 — `public_votes.voted_at` has no index (rate-limit check is full table scan)
 
 - **File:** `database-voting-system-setup.sql`
 - **Description:** Rate limiting queries `WHERE voted_at > NOW() - INTERVAL '1 hour'` but no index on `voted_at`.
 - **Fix:** Included in DS2-C3 migration.
 
-### [ ] DS2-H17 — judge-automation N+1 deadline reminder loop (200+ queries)
+### [x] DS2-H17 — judge-automation N+1 deadline reminder loop (200+ queries)
 
 - **File:** `api/email-automation.js` lines 464–502
 - **Description:** Covered by DS2-C6.
 - **Fix:** Same as DS2-C6.
 
-### [ ] DS2-H18 — No `checkout.session.expired` handler
+### [x] DS2-H18 — No `checkout.session.expired` handler
 
 - **Description:** Duplicate of DS2-H14.
 
@@ -294,7 +294,7 @@ Email Deliverability, Stripe/Payment Robustness, and Public-facing Pages securit
 - **Description:** Stripe can issue refunds. When `refund.created` fires, the payment record should be updated to reflect the refund amount. Currently unhandled.
 - **Fix:** Add `charge.refunded` handler updating `payments` record.
 
-### [ ] DS2-M16 — Dev email intercept guard missing
+### [x] DS2-M16 — Dev email intercept guard missing
 
 - **File:** `api/resend-email.js`, `api/email-automation.js`
 - **Description:** In non-production environments, emails send to real recipient addresses. No guard to redirect to a `DEV_EMAIL` address.

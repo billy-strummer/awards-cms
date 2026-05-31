@@ -386,7 +386,11 @@ const seatingEnhancements = {
   },
 
   toggleVip(tableId, index) {
-    this._toggleVip(eventsModule, eventsModule.tables.find((t) => t.id === tableId).assignments[parseInt(index)]);
+    const em = window.eventsModule;
+    if (!em) return;
+    const table = em.tables.find((t) => t.id === tableId);
+    if (!table) return;
+    this._toggleVip(em, table.assignments[parseInt(index)]);
   },
 
   closeDietaryOverlay() {

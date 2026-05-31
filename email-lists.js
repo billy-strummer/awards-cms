@@ -68,10 +68,12 @@ const emailListsModule = {
    * @returns {void}
    */
   _goToPage(page) {
-    this._fetchPage(page).then((data) => {
-      this.currentLists = data || [];
-      this.renderEmailLists();
-    });
+    this._fetchPage(page)
+      .then((data) => {
+        this.currentLists = data || [];
+        this.renderEmailLists();
+      })
+      .catch((e) => console.error('Email list page fetch error:', e.message));
   },
 
   /**

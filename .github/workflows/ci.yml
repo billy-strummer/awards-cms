@@ -19,10 +19,10 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: api/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install root dependencies
-        run: npm install
+        run: npm ci
 
       - name: Install API dependencies
         working-directory: ./api
@@ -47,18 +47,20 @@ jobs:
       - name: Lint JavaScript
         run: npm run lint
 
+      - name: Check formatting
+        run: npm run format:check
+
       - name: Type check JavaScript (JSDoc)
         run: npm run typecheck
         continue-on-error: true
 
-      - name: Run tests
-        run: npx jest tests/ --ci --coverage --forceExit
+      - name: Run tests with coverage
+        run: npx jest tests/ --ci --coverage --forceExit --coverageReporters=text-summary,json-summary
         env:
           NODE_ENV: test
 
-      - name: Check coverage threshold
+      - name: Report coverage
         run: |
-          npx jest tests/ --ci --coverage --forceExit --coverageReporters=json-summary 2>/dev/null || true
           if [ -f coverage/coverage-summary.json ]; then
             LINES=$(node -e "const c=require('./coverage/coverage-summary.json'); console.log(c.total.lines.pct)")
             echo "Line coverage: ${LINES}%"
@@ -81,11 +83,11 @@ jobs:
       - name: Check for hardcoded secrets
         run: |
           echo "Scanning for potential secrets..."
-          # Check for common secret patterns (excluding config.js which has Supabase anon key)
-          FOUND=$(grep -rn "password\s*=\s*['\"]" --include="*.js" --include="*.html" \
+          FOUND=$(grep -rn -E "(password|secret|apiKey|api_key|token)\s*=\s*['\"][^'\"]{8,}" \
+            --include="*.js" --include="*.html" \
             --exclude="config.js" --exclude-dir=node_modules --exclude-dir=.git . || true)
           if [ -n "$FOUND" ]; then
-            echo "WARNING: Possible hardcoded passwords found:"
+            echo "WARNING: Possible hardcoded secrets found:"
             echo "$FOUND"
           fi
 
@@ -114,7 +116,7 @@ jobs:
           node-version: '22'
 
       - name: Install build tools
-        run: npm install
+        run: npm ci
 
       - name: Bundle JavaScript
         run: node build.js

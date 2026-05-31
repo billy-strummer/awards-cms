@@ -63,10 +63,12 @@ const marketingModule = {
    * @returns {void}
    */
   _goToBannerPage(page) {
-    this._fetchBannerPage(page).then((data) => {
-      this.currentBanners = data || [];
-      this.renderBanners();
-    });
+    this._fetchBannerPage(page)
+      .then((data) => {
+        this.currentBanners = data || [];
+        this.renderBanners();
+      })
+      .catch((e) => console.error('Banner page fetch error:', e.message));
   },
 
   /**

@@ -330,6 +330,8 @@ const MUTABLE_TABLES = new Set([
   'nominee_upload_rows',
   'custom_sectors',
   'custom_categories',
+  'areas',
+  'regions',
 ]);
 
 /** Maximum page size to prevent abuse */
@@ -496,7 +498,7 @@ const ROLE_PERMISSIONS = {
 };
 
 /** Read-only tables that no user role should mutate directly */
-const READ_ONLY_TABLES = new Set(['activity_log', 'counties', 'regions']);
+const READ_ONLY_TABLES = new Set(['activity_log', 'counties']);
 
 /**
  * Check if a user's role permits an operation on a table.

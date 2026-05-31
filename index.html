@@ -6681,14 +6681,59 @@
                     <h5 class="mb-1">
                       <i class="bi bi-pin-map me-2"></i>Manage Areas
                     </h5>
-                    <p class="text-muted mb-0 small">The 101 geographic areas used for award category filtering. These are pre-loaded and do not need to be edited.</p>
+                    <p class="text-muted mb-0 small">Geographic areas used for award category filtering. Import regions first, then areas.</p>
                   </div>
-                  <button class="btn btn-outline-secondary btn-sm" data-action="areasManager.loadAreas">
-                    <i class="bi bi-arrow-clockwise me-1"></i>Refresh
-                  </button>
+                  <div class="d-flex gap-2">
+                    <button class="btn btn-outline-primary btn-sm" data-action="areasManager.openImportModal" data-args='["regions"]'>
+                      <i class="bi bi-upload me-1"></i>Import Regions CSV
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm" data-action="areasManager.openImportModal" data-args='["areas"]'>
+                      <i class="bi bi-upload me-1"></i>Import Areas CSV
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm" data-action="areasManager.loadAreas">
+                      <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+                    </button>
+                  </div>
                 </div>
                 <div id="manageAreasContainer">
-                  <p class="text-muted small">Click Refresh to load areas.</p>
+                  <p class="text-muted small">Click Refresh to load areas, or Import CSV to seed the database.</p>
+                </div>
+              </div>
+            </div>
+            <!-- Areas/Regions CSV Import Modal -->
+            <input type="file" id="areasImportFileInput" accept=".csv,.txt" class="d-none">
+            <div class="modal fade" id="areasImportModal" tabindex="-1" aria-labelledby="areasImportModalLabel" aria-modal="true">
+              <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h5 class="modal-title" id="areasImportModalLabel"><i class="bi bi-upload me-2"></i><span id="areasImportModalTitle">Import CSV</span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                  </div>
+                  <div class="modal-body">
+                    <div id="areasImportFormat" class="alert alert-info small mb-3"></div>
+                    <div class="mb-3">
+                      <label class="form-label fw-semibold">Select CSV file</label>
+                      <input type="file" class="form-control" id="areasImportFileVisible" accept=".csv,.txt">
+                    </div>
+                    <div id="areasImportPreview" class="d-none">
+                      <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="fw-semibold small">Preview (<span id="areasImportPreviewCount">0</span> rows)</span>
+                        <span class="text-danger small d-none" id="areasImportErrors"></span>
+                      </div>
+                      <div class="table-responsive" style="max-height:300px;overflow-y:auto;">
+                        <table class="table table-sm table-bordered align-middle mb-0">
+                          <thead class="table-light sticky-top" id="areasImportPreviewHead"></thead>
+                          <tbody id="areasImportPreviewBody"></tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary d-none" id="areasImportConfirmBtn" data-action="areasManager.confirmImport">
+                      <i class="bi bi-check-lg me-1"></i>Import <span id="areasImportConfirmCount"></span> records
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

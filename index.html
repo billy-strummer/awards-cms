@@ -172,11 +172,6 @@
             <kbd class="d-none d-xl-inline ms-1" style="background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.75);border:1px solid rgba(255,255,255,0.3);padding:1px 5px;border-radius:3px;font-size:0.6rem;line-height:1.4;">Ctrl K</kbd>
           </button>
 
-          <!-- Keyboard Shortcuts Hint -->
-          <button class="btn btn-outline-light btn-sm" title="Keyboard shortcuts" aria-label="Keyboard shortcuts" data-action="globalActions.showShortcutsModal">
-            <kbd style="background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.85);border:1px solid rgba(255,255,255,0.3);padding:1px 6px;border-radius:3px;font-size:0.7rem;">?</kbd>
-          </button>
-
           <!-- Dark Mode Toggle -->
           <button class="btn btn-outline-light" id="darkModeToggle" title="Toggle dark mode" aria-label="Toggle dark mode">
             <i class="bi bi-moon"></i>
@@ -188,8 +183,8 @@
             <span id="userEmail"></span>
           </div>
 
-          <!-- Help -->
-          <button class="btn btn-outline-light me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#helpOffcanvas" title="Help & Guidance">
+          <!-- Help & Shortcuts -->
+          <button class="btn btn-outline-light me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#helpOffcanvas" title="Help &amp; Shortcuts (?)">
             <i class="bi bi-question-circle"></i>
           </button>
 
@@ -10529,39 +10524,6 @@
     </div>
   </div>
 
-  <!-- Keyboard Shortcuts Help Modal -->
-  <div class="modal fade" aria-modal="true" id="shortcutsHelpModal" tabindex="-1" aria-labelledby="shortcutsHelpTitle">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="shortcutsHelpTitle"><i class="bi bi-keyboard me-2"></i>Keyboard Shortcuts</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <h6 class="text-muted mb-2">Global</h6>
-          <div class="d-flex justify-content-between mb-1"><span>Search</span><kbd>Ctrl+K</kbd></div>
-          <div class="d-flex justify-content-between mb-1"><span>Close modal / deselect</span><kbd>Esc</kbd></div>
-          <div class="d-flex justify-content-between mb-1"><span>Show this help</span><kbd>?</kbd></div>
-          <hr>
-          <h6 class="text-muted mb-2">Tables</h6>
-          <div class="d-flex justify-content-between mb-1"><span>Navigate rows</span><kbd>&uarr;</kbd> <kbd>&darr;</kbd></div>
-          <div class="d-flex justify-content-between mb-1"><span>Open selected row</span><kbd>Enter</kbd></div>
-          <div class="d-flex justify-content-between mb-1"><span>Focus search</span><kbd>/</kbd></div>
-          <hr>
-          <h6 class="text-muted mb-2">Organisations</h6>
-          <div class="d-flex justify-content-between mb-1"><span>New organisation</span><kbd>Ctrl+N</kbd></div>
-          <div class="d-flex justify-content-between mb-1"><span>Next / previous page</span><kbd>Ctrl+&rarr;</kbd> <kbd>Ctrl+&larr;</kbd></div>
-          <div class="d-flex justify-content-between mb-1"><span>Toggle checkbox</span><kbd>Space</kbd></div>
-          <hr>
-          <h6 class="text-muted mb-2">Running Order / Seating</h6>
-          <div class="d-flex justify-content-between mb-1"><span>Undo</span><kbd>Ctrl+Z</kbd></div>
-          <div class="d-flex justify-content-between mb-1"><span>Redo</span><kbd>Ctrl+Y</kbd></div>
-          <div class="d-flex justify-content-between mb-1"><span>Save</span><kbd>Ctrl+S</kbd></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- Confirmation Dialog Modal -->
   <div class="modal fade" aria-modal="true" id="confirmDialogModal" tabindex="-1" aria-labelledby="confirmDialogTitle" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -11864,9 +11826,9 @@
 </div><!-- /#dashboardPage -->
 
   <!-- Help & Guidance Offcanvas (PA-L3) -->
-  <div class="offcanvas offcanvas-end" tabindex="-1" id="helpOffcanvas" aria-labelledby="helpOffcanvasLabel" style="width:400px">
+  <div class="offcanvas offcanvas-end" tabindex="-1" id="helpOffcanvas" aria-labelledby="helpOffcanvasLabel" style="width:420px">
     <div class="offcanvas-header border-bottom">
-      <h5 class="offcanvas-title" id="helpOffcanvasLabel"><i class="bi bi-question-circle me-2 text-primary"></i>Help &amp; Guidance</h5>
+      <h5 class="offcanvas-title" id="helpOffcanvasLabel"><i class="bi bi-question-circle me-2 text-primary"></i>Help &amp; Shortcuts</h5>
       <button type="button" class="btn-close" aria-label="Close" data-bs-dismiss="offcanvas"></button>
     </div>
     <div class="offcanvas-body">
@@ -11881,26 +11843,50 @@
         <li class="list-group-item border-0 px-0 py-1 small">Announce winners via <strong>Email Campaigns</strong></li>
       </ol>
 
-      <h6 class="fw-semibold text-uppercase text-muted small mb-2">Getting Started</h6>
-      <p class="small text-muted mb-3">The <strong>Dashboard</strong> shows a getting-started checklist. Complete the four steps to unlock the full platform.</p>
-
       <h6 class="fw-semibold text-uppercase text-muted small mb-2">Quick Links</h6>
-      <div class="d-grid gap-2">
-        <button class="btn btn-sm btn-outline-primary text-start" data-action="app.switchTab" data-id="dashboard">
+      <div class="d-grid gap-2 mb-4">
+        <button class="btn btn-sm btn-outline-primary text-start" data-action="app.switchTab" data-id="dashboard" data-bs-dismiss="offcanvas">
           <i class="bi bi-speedometer2 me-2"></i>Dashboard &amp; Getting Started
         </button>
-        <button class="btn btn-sm btn-outline-primary text-start" data-action="app.switchTab" data-id="awards">
+        <button class="btn btn-sm btn-outline-primary text-start" data-action="app.switchTab" data-id="awards" data-bs-dismiss="offcanvas">
           <i class="bi bi-trophy me-2"></i>Awards &amp; Categories
         </button>
-        <button class="btn btn-sm btn-outline-primary text-start" data-action="app.switchTab" data-id="entries">
+        <button class="btn btn-sm btn-outline-primary text-start" data-action="app.switchTab" data-id="entries" data-bs-dismiss="offcanvas">
           <i class="bi bi-file-earmark-text me-2"></i>Entries &amp; Judging
         </button>
-        <button class="btn btn-sm btn-outline-primary text-start" data-action="app.switchTab" data-id="settings">
+        <button class="btn btn-sm btn-outline-primary text-start" data-action="app.switchTab" data-id="settings" data-bs-dismiss="offcanvas">
           <i class="bi bi-gear me-2"></i>Settings &amp; Configuration
         </button>
       </div>
 
-      <hr class="my-4">
+      <hr class="my-3">
+      <h6 class="fw-semibold text-uppercase text-muted small mb-2"><i class="bi bi-keyboard me-1"></i>Keyboard Shortcuts</h6>
+      <div class="mb-2">
+        <div class="text-muted small fw-semibold mb-1">Global</div>
+        <div class="d-flex justify-content-between mb-1 small"><span>Search everything</span><kbd>Ctrl+K</kbd></div>
+        <div class="d-flex justify-content-between mb-1 small"><span>Open this panel</span><kbd>?</kbd></div>
+        <div class="d-flex justify-content-between mb-1 small"><span>Focus tab search box</span><kbd>/</kbd></div>
+        <div class="d-flex justify-content-between mb-1 small"><span>Close modal / deselect</span><kbd>Esc</kbd></div>
+        <div class="d-flex justify-content-between mb-1 small"><span>Save form</span><kbd>Ctrl+Enter</kbd></div>
+      </div>
+      <div class="mb-2">
+        <div class="text-muted small fw-semibold mb-1 mt-2">Tables</div>
+        <div class="d-flex justify-content-between mb-1 small"><span>Navigate rows</span><span><kbd>&uarr;</kbd> <kbd>&darr;</kbd></span></div>
+        <div class="d-flex justify-content-between mb-1 small"><span>Open selected row</span><kbd>Enter</kbd></div>
+        <div class="d-flex justify-content-between mb-1 small"><span>Toggle checkbox</span><kbd>Space</kbd></div>
+      </div>
+      <div class="mb-2">
+        <div class="text-muted small fw-semibold mb-1 mt-2">Organisations</div>
+        <div class="d-flex justify-content-between mb-1 small"><span>New organisation</span><kbd>Ctrl+N</kbd></div>
+        <div class="d-flex justify-content-between mb-1 small"><span>Next / previous page</span><span><kbd>Ctrl+&rarr;</kbd> <kbd>Ctrl+&larr;</kbd></span></div>
+      </div>
+      <div class="mb-3">
+        <div class="text-muted small fw-semibold mb-1 mt-2">Running Order / Seating</div>
+        <div class="d-flex justify-content-between mb-1 small"><span>Undo / Redo</span><span><kbd>Ctrl+Z</kbd> <kbd>Ctrl+Y</kbd></span></div>
+        <div class="d-flex justify-content-between mb-1 small"><span>Save</span><kbd>Ctrl+S</kbd></div>
+      </div>
+
+      <hr class="my-3">
       <h6 class="fw-semibold text-uppercase text-muted small mb-2">Support</h6>
       <p class="small text-muted mb-0">For assistance, contact your system administrator or email <a href="mailto:support@britishtradeawards.com">support@britishtradeawards.com</a>.</p>
     </div>

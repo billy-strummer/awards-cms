@@ -1229,13 +1229,7 @@ const utils = {
       });
     }
 
-    // Global Ctrl+K binding
-    document.addEventListener('keydown', (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-        e.preventDefault();
-        utils.toggleCommandPalette();
-      }
-    });
+    // Ctrl+K is handled by the global keydown listener in app.js
   },
 
   toggleCommandPalette() {
@@ -1356,6 +1350,22 @@ const utils = {
         });
     }
 
+    // Search entries
+    const entries = window.STATE?.allEntries || window.entriesModule?.allEntries || [];
+    entries
+      .filter((e) => {
+        const num = (e.entry_number || '').toLowerCase();
+        const company = (e.organisations?.company_name || e.company_name || '').toLowerCase();
+        const award = (e.awards?.award_name || e.award_category || '').toLowerCase();
+        return num.includes(q) || company.includes(q) || award.includes(q);
+      })
+      .slice(0, 5)
+      .forEach((e) => {
+        const company = e.organisations?.company_name || e.company_name || '';
+        const label = e.entry_number ? `${e.entry_number}${company ? ' — ' + company : ''}` : company || 'Entry';
+        results.push({ type: 'entry', label, icon: 'bi-file-earmark-text', id: e.id, hint: 'Entry' });
+      });
+
     const resultsEl = document.getElementById('commandPaletteResults');
     if (results.length === 0) {
       resultsEl.innerHTML = '<div class="p-3 text-center text-muted">No results found</div>';
@@ -1376,24 +1386,40 @@ const utils = {
 
   _commandPaletteAction(type, id) {
     this.closeCommandPalette();
+    const navTo = (tabId, cb) => {
+      const tabBtn = document.querySelector(`[data-bs-target="#${tabId}"]`);
+      if (tabBtn) tabBtn.click();
+      if (cb) setTimeout(cb, 300);
+    };
     if (type === 'tab') {
-      const tabBtn = document.querySelector(`[data-bs-target="#${id}"]`) || document.querySelector(`[href="#${id}"]`);
-      if (tabBtn) tabBtn.click();
+      navTo(id);
     } else if (type === 'org' && window.orgsModule) {
-      const tabBtn = document.querySelector('[data-bs-target="#organisations"]');
-      if (tabBtn) tabBtn.click();
-      setTimeout(() => {
+      navTo('organisations', () => {
         if (orgsModule.openCompanyProfile) orgsModule.openCompanyProfile(id, '');
-      }, 300);
-    } else if (type === 'award') {
-      const tabBtn = document.querySelector('[data-bs-target="#awards"]');
-      if (tabBtn) tabBtn.click();
-    } else if (type === 'event') {
-      const tabBtn = document.querySelector('[data-bs-target="#events"]');
-      if (tabBtn) tabBtn.click();
+      });
+    } else if (type === 'award' && window.awardsModule) {
+      navTo('awards', () => {
+        if (awardsModule.openEditModal) awardsModule.openEditModal(id);
+      });
+    } else if (type === 'event' && window.eventsModule) {
+      navTo('events', () => {
+        if (eventsModule.openEditModal) eventsModule.openEditModal(id);
+      });
     } else if (type === 'winner') {
-      const tabBtn = document.querySelector('[data-bs-target="#winners"]');
-      if (tabBtn) tabBtn.click();
+      navTo('winners', () => {
+        const w = window.STATE?.allWinners?.find((x) => x.id === id);
+        if (w?.winner_name) {
+          const box = document.getElementById('winnersSearchBox');
+          if (box) {
+            box.value = w.winner_name;
+            box.dispatchEvent(new Event('input', { bubbles: true }));
+          }
+        }
+      });
+    } else if (type === 'entry' && window.entriesModule) {
+      navTo('entries', () => {
+        if (entriesModule.viewEntry) entriesModule.viewEntry(id);
+      });
     }
   },
 

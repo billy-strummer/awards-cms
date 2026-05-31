@@ -1428,6 +1428,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
       e.preventDefault();
       utils.toggleCommandPalette();
+      return;
     }
 
     // Ctrl+Shift+D — toggle developer Test Mode button visibility
@@ -1455,13 +1456,13 @@ document.addEventListener('DOMContentLoaded', function () {
       });
     }
 
-    // ? key to show keyboard shortcuts help
+    // ? key to open Help & Shortcuts panel
     const tag = e.target.tagName;
-    const inInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+    const inInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target.isContentEditable;
     if (e.key === '?' && !e.ctrlKey && !e.metaKey && !inInput) {
       e.preventDefault();
-      const helpModalEl = document.getElementById('shortcutsHelpModal');
-      if (helpModalEl) new bootstrap.Modal(helpModalEl).show();
+      const offcanvasEl = document.getElementById('helpOffcanvas');
+      if (offcanvasEl) bootstrap.Offcanvas.getOrCreateInstance(offcanvasEl).show();
     }
 
     // / key to focus the active tab's search box

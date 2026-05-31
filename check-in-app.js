@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 /* check-in.html extracted scripts — SA2-C1 CSP inline-script fix */
 /* global Html5Qrcode */
 
@@ -336,10 +337,10 @@ function renderGuestList() {
 document.getElementById('searchInput').addEventListener('input', filterGuests);
 
 document.addEventListener('click', function (e) {
-  var target = e.target.closest('[data-action]');
+  const target = e.target.closest('[data-action]');
   if (!target) return;
   if (e.target.closest('[data-stop-propagation]') && e.target.closest('[data-stop-propagation]') !== target) return;
-  var fn = window[target.getAttribute('data-action')];
+  const fn = window[target.getAttribute('data-action')];
   if (typeof fn === 'function') fn(target.getAttribute('data-id'));
 });
 

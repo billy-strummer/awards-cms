@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 /* company-profile.html extracted scripts — SA2-C1 CSP inline-script fix */
 
 const { getAuthToken, proxyFetch, escapeHtml, escapeAttr, showPublicToast } = window.publicUtils;
@@ -307,19 +308,19 @@ function goBack() {
 }
 
 document.addEventListener('click', function (e) {
-  var el = e.target.closest('[data-action]');
+  const el = e.target.closest('[data-action]');
   if (!el) return;
   e.preventDefault();
-  var parts = el.dataset.action.split('.');
-  var ctx = window,
+  const parts = el.dataset.action.split('.');
+  let ctx = window,
     fn = window;
-  for (var i = 0; i < parts.length; i++) {
+  for (let i = 0; i < parts.length; i++) {
     ctx = fn;
     fn = fn[parts[i]];
     if (!fn) return;
   }
   if (typeof fn !== 'function') return;
-  var args = [];
+  let args = [];
   if (el.dataset.args) {
     try {
       args = JSON.parse(el.dataset.args);

@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 /**
  * register-app.js
  *
@@ -262,7 +263,7 @@ function renderOrderSummary() {
 }
 
 // ---- STRIPE INTEGRATION ----
-let stripePublicKey = localStorage.getItem('bta_stripe_pk') || '';
+const stripePublicKey = localStorage.getItem('bta_stripe_pk') || '';
 
 async function handleStripePayment(totalAmount, guestData) {
   if (!stripePublicKey || !window.Stripe) return false;
@@ -450,28 +451,28 @@ function downloadQR() {
 
 // ---- Event delegation for data-action attributes ----
 document.addEventListener('click', function (event) {
-  var el = event.target.closest('[data-action]');
+  const el = event.target.closest('[data-action]');
   if (!el) return;
-  var actionName = el.getAttribute('data-action');
+  const actionName = el.getAttribute('data-action');
   if (!actionName) return;
 
   // Resolve the function by walking the dotted path on window
-  var parts = actionName.split('.');
-  var obj = window;
-  for (var i = 0; i < parts.length - 1; i++) {
+  const parts = actionName.split('.');
+  let obj = window;
+  for (let i = 0; i < parts.length - 1; i++) {
     obj = obj[parts[i]];
     if (!obj) {
       console.warn('[data-action] No handler found:', actionName);
       return;
     }
   }
-  var fn = obj[parts[parts.length - 1]];
+  const fn = obj[parts[parts.length - 1]];
   if (typeof fn !== 'function') {
     console.warn('[data-action] No handler found:', actionName);
     return;
   }
 
-  var id = el.getAttribute('data-id');
+  const id = el.getAttribute('data-id');
   if (id !== null) {
     fn.call(obj, id, event);
   } else {

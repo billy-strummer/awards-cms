@@ -526,7 +526,11 @@ const gdprModule = {
    */
   async _deleteEntityData(entityId) {
     // Delete in correct order (children first) — abort on failure to prevent orphaned data
+    // GDPR Article 17: cascade must cover ALL tables that hold personal data for this entity
     const tables = [
+      { table: 'email_logs', col: 'organisation_id' },
+      { table: 'event_guests', col: 'organisation_id' },
+      { table: 'public_votes', col: 'organisation_id' },
       { table: 'organisation_contacts', col: 'organisation_id' },
       { table: 'award_assignments', col: 'organisation_id' },
       { table: 'entries', col: 'organisation_id' },

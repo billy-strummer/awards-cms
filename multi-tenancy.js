@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 /* ==================================================== */
 /* MULTI-TENANCY MODULE                                  */
 /* Tenant isolation, tenant switching, tenant-scoped     */

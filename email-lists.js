@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 // ============================================
 // EMAIL LISTS MODULE FOR AWARDS CMS
 // Email List Management & Subscriber Import

@@ -73,6 +73,22 @@ async function assignJudgesToEntries(awardId = null) {
     console.log(`📝 Found ${entries.length} entries to assign`);
     console.log(`👨‍⚖️ Found ${judges.length} available judges`);
 
+    // Batch-fetch ALL existing judge scores for these entries in one query (avoids N+1)
+    const entryIds = entries.map((e) => e.id);
+    const { data: allExistingScores } = await supabase
+      .from('judge_scores')
+      .select('entry_id, judge_email, conflict_declared')
+      .in('entry_id', entryIds);
+
+    // Build O(1) lookup maps
+    const assignedByEntry = new Map(); // entry_id → Set<judge_email>
+    const declaredConflicts = new Set(); // "judgeEmail::entryId"
+    for (const score of allExistingScores || []) {
+      if (!assignedByEntry.has(score.entry_id)) assignedByEntry.set(score.entry_id, new Set());
+      assignedByEntry.get(score.entry_id).add(score.judge_email);
+      if (score.conflict_declared) declaredConflicts.add(`${score.judge_email}::${score.entry_id}`);
+    }
+
     // Number of judges per entry (typically 3-5)
     const judgesPerEntry = 3;
 
@@ -81,36 +97,28 @@ async function assignJudgesToEntries(awardId = null) {
 
     // For each entry, assign judges
     for (const entry of entries) {
-      // Get existing assignments for this entry
-      const { data: existingAssignments } = await supabase
-        .from('judge_scores')
-        .select('judge_email')
-        .eq('entry_id', entry.id);
-
-      const alreadyAssigned = existingAssignments?.map((a) => a.judge_email) || [];
+      const alreadyAssigned = assignedByEntry.get(entry.id) || new Set();
 
       // Filter out already assigned judges
-      const availableJudges = judges.filter((j) => !alreadyAssigned.includes(j.email));
+      const availableJudges = judges.filter((j) => !alreadyAssigned.has(j.email));
 
-      // Check conflicts and sort by expertise
-      const judgesWithScores = await Promise.all(
-        availableJudges.map(async (judge) => {
-          const conflict = await checkConflict(judge, entry);
-          const expertiseScore = calculateExpertiseScore(judge, entry);
+      // Check conflicts synchronously using pre-fetched data (no per-entry DB queries)
+      const judgesWithScores = availableJudges.map((judge) => {
+        const conflict = checkConflictSync(judge, entry, declaredConflicts);
+        const expertiseScore = calculateExpertiseScore(judge, entry);
 
-          return {
-            judge,
-            conflict,
-            expertiseScore,
-          };
-        })
-      );
+        return {
+          judge,
+          conflict,
+          expertiseScore,
+        };
+      });
 
       // Filter out conflicts and sort by expertise
       const suitableJudges = judgesWithScores
         .filter((j) => !j.conflict)
         .sort((a, b) => b.expertiseScore - a.expertiseScore)
-        .slice(0, judgesPerEntry - alreadyAssigned.length);
+        .slice(0, judgesPerEntry - alreadyAssigned.size);
 
       // Assign judges
       for (const { judge } of suitableJudges) {
@@ -152,35 +160,53 @@ async function assignJudgesToEntries(awardId = null) {
 }
 
 /**
- * Check for conflicts of interest between a judge and an entry.
- * Checks email domain matches and company name overlaps.
- * @param {Object} judge - The judge contact record.
- * @param {Object} entry - The entry record with organisation details.
- * @returns {Promise<boolean>} True if a conflict of interest is detected.
+ * Synchronous conflict check using pre-fetched declared-conflict set.
+ * Used inside assignJudgesToEntries to avoid N+1 DB queries.
+ * @param {Object} judge
+ * @param {Object} entry
+ * @param {Set<string>} declaredConflicts - Set of "judgeEmail::entryId" keys
+ * @returns {boolean}
  */
-async function checkConflict(judge, entry) {
-  // Check email domain match
+function checkConflictSync(judge, entry, declaredConflicts) {
   const judgeDomain = judge.email.split('@')[1];
   const companyDomain = entry.organisations?.website
     ?.replace(/^https?:\/\//, '')
     .replace(/^www\./, '')
     .split('/')[0];
 
-  if (judgeDomain && companyDomain && judgeDomain === companyDomain) {
-    return true;
-  }
+  if (judgeDomain && companyDomain && judgeDomain === companyDomain) return true;
 
-  // Check if judge works for the company
   if (entry.organisations?.company_name) {
     const companyNameLower = entry.organisations.company_name.toLowerCase();
     const judgeCompanyLower = (judge.company_name || '').toLowerCase();
-
-    if (judgeCompanyLower && companyNameLower.includes(judgeCompanyLower)) {
-      return true;
-    }
+    if (judgeCompanyLower && companyNameLower.includes(judgeCompanyLower)) return true;
   }
 
-  // Check if judge has previously declared a conflict for this entry's organisation
+  return declaredConflicts.has(`${judge.email}::${entry.id}`);
+}
+
+/**
+ * Check for conflicts of interest between a judge and an entry (async, for standalone calls).
+ * @param {Object} judge - The judge contact record.
+ * @param {Object} entry - The entry record with organisation details.
+ * @returns {Promise<boolean>} True if a conflict of interest is detected.
+ */
+// eslint-disable-next-line no-unused-vars
+async function checkConflict(judge, entry) {
+  const judgeDomain = judge.email.split('@')[1];
+  const companyDomain = entry.organisations?.website
+    ?.replace(/^https?:\/\//, '')
+    .replace(/^www\./, '')
+    .split('/')[0];
+
+  if (judgeDomain && companyDomain && judgeDomain === companyDomain) return true;
+
+  if (entry.organisations?.company_name) {
+    const companyNameLower = entry.organisations.company_name.toLowerCase();
+    const judgeCompanyLower = (judge.company_name || '').toLowerCase();
+    if (judgeCompanyLower && companyNameLower.includes(judgeCompanyLower)) return true;
+  }
+
   if (entry.id && judge.email) {
     const { data: declared } = await supabase
       .from('judge_scores')
@@ -189,10 +215,7 @@ async function checkConflict(judge, entry) {
       .eq('entry_id', entry.id)
       .eq('conflict_declared', true)
       .limit(1);
-
-    if (declared && declared.length > 0) {
-      return true;
-    }
+    if (declared && declared.length > 0) return true;
   }
 
   return false;

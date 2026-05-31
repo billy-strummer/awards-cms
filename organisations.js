@@ -6832,7 +6832,7 @@ const orgsModule = {
     }
 
     // V17-M13: Batch-fetch all custom fields for exported orgs to avoid N+1 queries
-    let customFieldsMap = {}; // { orgId: { fieldName: fieldValue, ... } }
+    const customFieldsMap = {}; // { orgId: { fieldName: fieldValue, ... } }
     let allCustomFieldNames = []; // sorted list of all unique custom field names across all orgs
     try {
       const orgIds = data.map((o) => o.id).filter(Boolean);

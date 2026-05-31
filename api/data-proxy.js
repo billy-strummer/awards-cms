@@ -19,7 +19,7 @@
  */
 
 const { createClient } = require('@supabase/supabase-js');
-const { verifyAuth, hasMinimumRole, getUserRole, ROLE_HIERARCHY } = require('./_lib/auth');
+const { verifyAuth, hasMinimumRole, getUserRole } = require('./_lib/auth');
 
 // Service-role client for privileged operations
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
@@ -1307,6 +1307,7 @@ async function executeSegmentQuery(rules, logic) {
   const allOrgs = [];
   let page = 0;
 
+  // eslint-disable-next-line no-constant-condition
   while (true) {
     const from = page * PAGE_SIZE;
     // eslint-disable-next-line no-await-in-loop

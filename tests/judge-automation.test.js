@@ -29,6 +29,7 @@ function chainable(resolveWith = { data: null, error: null }) {
     eq: jest.fn(() => obj),
     neq: jest.fn(() => obj),
     not: jest.fn(() => obj),
+    in: jest.fn(() => obj),
     order: jest.fn(() => obj),
     limit: jest.fn(() => obj),
     single: jest.fn(() => Promise.resolve(resolveWith)),
@@ -350,8 +351,13 @@ describe('Judge Automation Module', () => {
 
       mockFromResults.push(chainable({ data: judges, error: null }));
       mockFromResults.push(chainable({ data: entries, error: null }));
-      // Existing assignments: j1 already assigned
-      mockFromResults.push(chainable({ data: [{ judge_email: 'assigned@test.com' }], error: null }));
+      // Existing assignments: j1 already assigned (batch query includes entry_id)
+      mockFromResults.push(
+        chainable({
+          data: [{ entry_id: 'e1', judge_email: 'assigned@test.com', conflict_declared: false }],
+          error: null,
+        })
+      );
       // Insert 2 new assignments (3 per entry - 1 existing = 2 new)
       mockFromResults.push(chainable({ data: null, error: null }));
       mockFromResults.push(chainable({ data: null, error: null }));

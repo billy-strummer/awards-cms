@@ -15,11 +15,11 @@
 
 /* ── Required-field legend ── */
 document.addEventListener('show.bs.modal', function (e) {
-  var modal = e.target;
-  var form = modal.querySelector('form');
+  const modal = e.target;
+  const form = modal.querySelector('form');
   if (!form || modal.querySelector('.required-field-legend')) return;
   if (!form.querySelector('[required]')) return;
-  var legend = document.createElement('p');
+  const legend = document.createElement('p');
   legend.className = 'required-field-legend text-muted small mb-3 pb-2 border-bottom';
   legend.innerHTML = '<span class="text-danger fw-semibold" aria-hidden="true">*</span> Required fields';
   form.insertBefore(legend, form.firstChild);
@@ -27,15 +27,15 @@ document.addEventListener('show.bs.modal', function (e) {
 
 /* ── Sidebar collapse state ── */
 (function () {
-  var sidebar = document.getElementById('appSidebar');
-  var toggle = document.getElementById('sidebarToggle');
+  const sidebar = document.getElementById('appSidebar');
+  const toggle = document.getElementById('sidebarToggle');
   if (!sidebar || !toggle) return;
-  var isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+  const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
   if (isCollapsed) sidebar.classList.add('collapsed');
   toggle.title = isCollapsed ? 'Expand sidebar' : 'Collapse sidebar';
   toggle.addEventListener('click', function () {
     sidebar.classList.toggle('collapsed');
-    var collapsed = sidebar.classList.contains('collapsed');
+    const collapsed = sidebar.classList.contains('collapsed');
     localStorage.setItem('sidebarCollapsed', collapsed);
     toggle.title = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
   });
@@ -54,7 +54,7 @@ document.addEventListener('show.bs.modal', function (e) {
 
 /* ── Workflow-dismissed banner hiding ── */
 (function () {
-  var banners = [
+  const banners = [
     { key: 'awardsWorkflowDismissed', id: 'awardsGettingStarted' },
     { key: 'orgsWorkflowDismissed', id: 'orgsGettingStarted' },
     { key: 'winnersWorkflowDismissed', id: 'winnersGettingStarted' },
@@ -71,7 +71,7 @@ document.addEventListener('show.bs.modal', function (e) {
   ];
   banners.forEach(function (b) {
     if (localStorage.getItem(b.key) === '1') {
-      var el = document.getElementById(b.id);
+      const el = document.getElementById(b.id);
       if (el) el.style.display = 'none';
     }
   });
@@ -79,14 +79,14 @@ document.addEventListener('show.bs.modal', function (e) {
 
 /* ── Judge Portal URL display ── */
 (function () {
-  var el = document.getElementById('judgePortalUrlDisplay');
+  const el = document.getElementById('judgePortalUrlDisplay');
   if (el) el.textContent = window.location.origin + '/judge-portal.html';
 })();
 
 /* ── Settings security overflow migration ── */
 (function () {
-  var overflow = document.getElementById('settings-security-overflow');
-  var secPane = document.getElementById('settings-security');
+  const overflow = document.getElementById('settings-security-overflow');
+  const secPane = document.getElementById('settings-security');
   if (overflow && secPane) {
     while (overflow.firstChild) secPane.appendChild(overflow.firstChild);
     overflow.remove();
@@ -97,22 +97,22 @@ document.addEventListener('show.bs.modal', function (e) {
 window.globalActions = {
   /* Bulk-delete confirmation dialog */
   confirmBulkDelete: function (el) {
-    var module = el.dataset.module;
-    var fn = el.dataset.fn;
-    var label = el.dataset.label || 'item';
-    var verb = el.dataset.verb || 'Delete';
-    var checked = document.querySelectorAll(
+    const module = el.dataset.module;
+    const fn = el.dataset.fn;
+    const label = el.dataset.label || 'item';
+    const verb = el.dataset.verb || 'Delete';
+    const checked = document.querySelectorAll(
       'input[type="checkbox"]:checked:not(#awardsSelectAll):not(#selectAllOrgs):not([id$="SelectAll"]):not([id$="selectAll"])'
     );
-    var count = checked.length || 'the selected';
-    var plural = count !== 1 ? 's' : '';
+    const count = checked.length || 'the selected';
+    const plural = count !== 1 ? 's' : '';
     document.getElementById('bulkDeleteConfirmTitle').textContent =
       verb + ' ' + label + (typeof count === 'number' ? 's' : '');
     document.getElementById('bulkDeleteConfirmMsg').textContent = verb + ' ' + count + ' ' + label + plural + '?';
     document.getElementById('bulkDeleteConfirmBtnLabel').textContent = verb;
     document.getElementById('bulkDeleteConfirmBtn').onclick = function () {
       bootstrap.Modal.getInstance(document.getElementById('bulkDeleteConfirmModal'))?.hide();
-      var mod = window[module];
+      const mod = window[module];
       if (mod && typeof mod[fn] === 'function') mod[fn]();
     };
     new bootstrap.Modal(document.getElementById('bulkDeleteConfirmModal')).show();
@@ -134,55 +134,55 @@ window.globalActions = {
 
   /* Show keyboard shortcuts modal */
   showShortcutsModal: function () {
-    var m = document.getElementById('shortcutsHelpModal');
+    const m = document.getElementById('shortcutsHelpModal');
     if (m) new bootstrap.Modal(m).show();
   },
 
   /* Dismiss a workflow/getting-started banner and persist to localStorage */
   dismissBanner: function (el) {
-    var key = el.dataset.dismissKey;
-    var bannerId = el.dataset.dismissId || el.closest('[id$="GettingStarted"]')?.id;
+    const key = el.dataset.dismissKey;
+    const bannerId = el.dataset.dismissId || el.closest('[id$="GettingStarted"]')?.id;
     if (key) localStorage.setItem(key, '1');
-    var banner = bannerId ? document.getElementById(bannerId) : el.closest('.alert, [id$="GettingStarted"]');
+    const banner = bannerId ? document.getElementById(bannerId) : el.closest('.alert, [id$="GettingStarted"]');
     if (banner) banner.style.display = 'none';
   },
 
   /* Date-range preset buttons in Reporting */
   setLastNDays: function (el) {
-    var n = parseInt(el.dataset.days || el.dataset.id || '30', 10);
-    var now = new Date();
-    var start = new Date(now);
+    const n = parseInt(el.dataset.days || el.dataset.id || '30', 10);
+    const now = new Date();
+    const start = new Date(now);
     start.setDate(now.getDate() - n);
-    var s = document.getElementById('reportStartDate');
-    var e = document.getElementById('reportEndDate');
+    const s = document.getElementById('reportStartDate');
+    const e = document.getElementById('reportEndDate');
     if (s) s.value = start.toISOString().slice(0, 10);
     if (e) e.value = now.toISOString().slice(0, 10);
   },
 
   setThisQuarter: function () {
-    var now = new Date();
-    var q = Math.floor(now.getMonth() / 3);
-    var start = new Date(now.getFullYear(), q * 3, 1);
-    var s = document.getElementById('reportStartDate');
-    var e = document.getElementById('reportEndDate');
+    const now = new Date();
+    const q = Math.floor(now.getMonth() / 3);
+    const start = new Date(now.getFullYear(), q * 3, 1);
+    const s = document.getElementById('reportStartDate');
+    const e = document.getElementById('reportEndDate');
     if (s) s.value = start.toISOString().slice(0, 10);
     if (e) e.value = now.toISOString().slice(0, 10);
   },
 
   setThisYear: function () {
-    var now = new Date();
-    var s = document.getElementById('reportStartDate');
-    var e = document.getElementById('reportEndDate');
+    const now = new Date();
+    const s = document.getElementById('reportStartDate');
+    const e = document.getElementById('reportEndDate');
     if (s) s.value = now.getFullYear() + '-01-01';
     if (e) e.value = now.toISOString().slice(0, 10);
   },
 
   /* Toggle password/text visibility on a secret-token input */
   toggleTokenVisibility: function (el) {
-    var input = el.previousElementSibling;
+    const input = el.previousElementSibling;
     if (!input) return;
     input.type = input.type === 'password' ? 'text' : 'password';
-    var icon = el.querySelector('i');
+    const icon = el.querySelector('i');
     if (icon) {
       icon.classList.toggle('bi-eye');
       icon.classList.toggle('bi-eye-slash');
@@ -191,7 +191,7 @@ window.globalActions = {
 
   /* Copy judge portal URL to clipboard */
   copyJudgePortalUrl: function () {
-    var url = document.getElementById('judgePortalUrlDisplay')?.textContent;
+    const url = document.getElementById('judgePortalUrlDisplay')?.textContent;
     if (!url) return;
     navigator.clipboard.writeText(url).then(function () {
       if (window.utils) utils.showToast('Judge Portal URL copied to clipboard', 'success');

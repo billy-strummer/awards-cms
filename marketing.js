@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 /* ==================================================== */
 /* MARKETING & ADVERTISING MODULE */
 /* ==================================================== */
@@ -669,7 +670,7 @@ const marketingModule = {
       }
 
       // Load existing assignments for this sponsor
-      let assignedAwardIds = new Set();
+      const assignedAwardIds = new Set();
       if (sponsorId) {
         try {
           const assignResult = await apiClient.select('sponsor_assignments', {

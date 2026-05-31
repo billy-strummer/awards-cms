@@ -14,6 +14,16 @@ if (!process.env.STRIPE_SECRET_KEY) throw new Error('Missing STRIPE_SECRET_KEY e
 if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY)
   throw new Error('Missing Supabase environment variables');
 
+// Warn if key mode (test vs live) is inconsistent with STRIPE_PRICE_ID
+if (process.env.STRIPE_PRICE_ID) {
+  const keyIsTest = process.env.STRIPE_SECRET_KEY.startsWith('sk_test_');
+  const priceIsTest =
+    process.env.STRIPE_PRICE_ID.startsWith('price_test_') || process.env.STRIPE_PRICE_ID.includes('test');
+  if (keyIsTest && !priceIsTest) {
+    console.warn('⚠️  Stripe mode mismatch: STRIPE_SECRET_KEY is a test key but STRIPE_PRICE_ID may be a live price');
+  }
+}
+
 // @ts-ignore — Stripe v12+ is a default export function, not a constructor
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { createClient } = require('@supabase/supabase-js');
@@ -148,30 +158,39 @@ async function handleStripeWebhook(req, res) {
     return res.status(400).json({ error: `Webhook Error: ${err.message}` });
   }
 
-  // Handle the event
-  switch (event.type) {
-    case 'checkout.session.completed':
-      await handleCheckoutSessionCompleted(event.data.object);
-      break;
+  // Handle the event — errors propagate as 500 so Stripe retries the webhook
+  try {
+    switch (event.type) {
+      case 'checkout.session.completed':
+        await handleCheckoutSessionCompleted(event.data.object);
+        break;
 
-    case 'payment_intent.succeeded':
-      await handlePaymentIntentSucceeded(event.data.object);
-      break;
+      case 'payment_intent.succeeded':
+        await handlePaymentIntentSucceeded(event.data.object);
+        break;
 
-    case 'payment_intent.payment_failed':
-      await handlePaymentIntentFailed(event.data.object);
-      break;
+      case 'payment_intent.payment_failed':
+        await handlePaymentIntentFailed(event.data.object);
+        break;
 
-    case 'charge.succeeded':
-      await handleChargeSucceeded(event.data.object);
-      break;
+      case 'charge.succeeded':
+        await handleChargeSucceeded(event.data.object);
+        break;
 
-    case 'charge.refunded':
-      await handleChargeRefunded(event.data.object);
-      break;
+      case 'charge.refunded':
+        await handleChargeRefunded(event.data.object);
+        break;
 
-    default:
-      console.log(`Unhandled event type: ${event.type}`);
+      case 'checkout.session.expired':
+        await handleCheckoutSessionExpired(event.data.object);
+        break;
+
+      default:
+        console.log(`Unhandled event type: ${event.type}`);
+    }
+  } catch (handlerError) {
+    console.error(`Webhook handler error for ${event.type}:`, handlerError);
+    return res.status(500).json({ error: 'Webhook handler failed — Stripe will retry' });
   }
 
   res.json({ received: true });
@@ -247,6 +266,30 @@ async function handleCheckoutSessionCompleted(session) {
     console.log(`✅ Payment completed for entry ${entryId}`);
   } catch (error) {
     console.error('Error handling checkout session:', error);
+    throw error; // Propagate so webhook handler returns 500 and Stripe retries
+  }
+}
+
+/**
+ * Handle expired checkout sessions. Marks the invoice/entry as cancelled.
+ * @param {Object} session - Stripe checkout session object.
+ * @returns {Promise<void>}
+ */
+async function handleCheckoutSessionExpired(session) {
+  try {
+    const entryId = session.metadata?.entry_id;
+    if (!entryId) return;
+
+    await supabase
+      .from('entries')
+      .update({ payment_status: 'expired', updated_at: new Date().toISOString() })
+      .eq('id', entryId)
+      .eq('payment_status', 'pending');
+
+    console.log(`⏰ Checkout session expired for entry ${entryId}`);
+  } catch (error) {
+    console.error('Error handling session expiry:', error);
+    throw error;
   }
 }
 

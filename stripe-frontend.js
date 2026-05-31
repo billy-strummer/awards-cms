@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 /* ==================================================== */
 /* STRIPE FRONTEND INTEGRATION                           */
 /* Connects payment UI to backend Stripe API             */

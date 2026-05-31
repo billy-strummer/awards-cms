@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 /**
  * Seating Plan Enhancements — patches eventsModule with seat-level assignment,
  * VIP marking, floor sections, table notes, dietary summary, accessibility,

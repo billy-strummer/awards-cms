@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 /* ==================================================== */
 /* PAYMENTS MODULE - Invoice & Payment Management */
 /* ==================================================== */
@@ -2033,7 +2034,10 @@ const paymentsModule = {
     if (totalOutstandingEl) totalOutstandingEl.textContent = `\u00A3${totalOutstanding.toFixed(2)}`;
 
     // Financial summary cards
-    const sumTotalInvoiced = this.currentInvoices.reduce((sum, i) => sum + parseFloat(i.total_amount || i.amount || 0), 0);
+    const sumTotalInvoiced = this.currentInvoices.reduce(
+      (sum, i) => sum + parseFloat(i.total_amount || i.amount || 0),
+      0
+    );
     const sumTotalCollected = this.currentInvoices
       .filter((i) => i.payment_status === 'paid')
       .reduce((sum, i) => sum + parseFloat(i.total_amount || i.amount || 0), 0);

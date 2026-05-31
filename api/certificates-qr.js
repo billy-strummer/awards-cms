@@ -186,6 +186,7 @@ async function renderCertificatePDF(winner, templateData) {
  * @param {string} [format='pdf'] - Output format: 'pdf' or 'png'.
  * @returns {Promise<{publicUrl: string, filename: string}>} Certificate file details.
  */
+// eslint-disable-next-line no-unused-vars
 async function generateWinnerCertificate(winnerId, templateId, format = 'pdf') {
   console.log(`Generating certificate for winner ${winnerId}...`);
 
@@ -235,6 +236,7 @@ async function generateWinnerCertificate(winnerId, templateId, format = 'pdf') {
  * @param {string} [format='pdf'] - Output format.
  * @returns {Promise<Array<{winnerId: string, success: boolean, url?: string, error?: string}>>} Results for each winner.
  */
+// eslint-disable-next-line no-unused-vars
 async function generateBulkCertificates(winnerIds, templateId, format = 'pdf') {
   console.log(`Generating certificates for ${winnerIds.length} winners...`);
 

@@ -66,11 +66,16 @@ function wrapEmailTemplate(subject, bodyHtml, preheader = '', branding = {}, sub
  * @returns {Promise<{success: boolean, id?: string, error?: string}>} Send result.
  */
 async function sendEmail({ to, subject, html, text, replyTo, cc, tags }) {
+  // In non-production environments, redirect to DEV_EMAIL to avoid sending to real addresses
+  const recipients = Array.isArray(to) ? to : [to];
+  const resolvedTo =
+    process.env.NODE_ENV !== 'production' && process.env.DEV_EMAIL ? [process.env.DEV_EMAIL] : recipients;
+
   try {
     const { data, error } = await resend.emails.send(
       /** @type {any} */ ({
         from: `${FROM_NAME} <${FROM_EMAIL}>`,
-        to: Array.isArray(to) ? to : [to],
+        to: resolvedTo,
         cc: cc ? (Array.isArray(cc) ? cc : [cc]) : undefined,
         subject,
         html,
@@ -82,10 +87,10 @@ async function sendEmail({ to, subject, html, text, replyTo, cc, tags }) {
 
     if (error) throw error;
 
-    // Log to database
+    // Log to database — always record the original recipient, not the dev intercept
     await supabase.from('notification_queue').insert({
       notification_type: 'email',
-      recipient_email: Array.isArray(to) ? to.join(', ') : to,
+      recipient_email: recipients.join(', '),
       subject,
       status: 'sent',
       sent_at: new Date().toISOString(),
@@ -99,7 +104,7 @@ async function sendEmail({ to, subject, html, text, replyTo, cc, tags }) {
     // Log failure
     await supabase.from('notification_queue').insert({
       notification_type: 'email',
-      recipient_email: Array.isArray(to) ? to.join(', ') : to,
+      recipient_email: recipients.join(', '),
       subject,
       status: 'failed',
       last_error: error.message,

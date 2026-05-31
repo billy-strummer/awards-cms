@@ -19,6 +19,10 @@ const { createClient } = require('@supabase/supabase-js');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
+// 60-second in-memory cache for the public entry list (survives container reuse)
+const _entriesCache = { data: null, ts: 0 };
+const ENTRIES_CACHE_TTL_MS = 60000;
+
 /** Rate-limit: max votes per email per hour */
 const RATE_LIMIT_MAX = 10;
 /** Rate-limit: max votes per IP per hour (more lenient — IPs can be shared) */
@@ -71,14 +75,21 @@ async function loadAwards() {
 }
 
 /**
- * load_entries — return public entries with org & award data, max 500
+ * load_entries — return public entries with org & award data, max 500.
+ * Results are cached for 60 seconds to avoid hammering Supabase under concurrent voter surge.
  */
-async function loadEntries() {
+async function loadEntries(_params, res) {
+  const useCache = process.env.NODE_ENV !== 'test';
+  if (useCache && _entriesCache.data && Date.now() - _entriesCache.ts < ENTRIES_CACHE_TTL_MS) {
+    res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=60');
+    return { entries: _entriesCache.data };
+  }
+
   const { data, error } = await supabase
     .from('entries')
     .select(
       `
-      *,
+      id, entry_number, entry_title, public_votes, status,
       organisations(company_name, logo_url, website),
       awards:award_years(award_name, award_category)
     `
@@ -91,6 +102,11 @@ async function loadEntries() {
     .limit(500);
 
   if (error) throw error;
+  if (useCache) {
+    _entriesCache.data = data || [];
+    _entriesCache.ts = Date.now();
+    res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=60');
+  }
   return { entries: data || [] };
 }
 
@@ -412,7 +428,7 @@ module.exports = async function handler(req, res) {
       params.voter_ip = realIp;
     }
 
-    const result = await ACTIONS[action](params);
+    const result = await ACTIONS[action](params, res);
 
     // If the handler returned a status code (validation / rate-limit error)
     if (result && result.status) {

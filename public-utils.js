@@ -29,7 +29,7 @@ window.publicUtils = (function () {
 
   function showPublicToast(msg, type) {
     type = type || 'warning';
-    var container = document.getElementById('publicToastContainer');
+    let container = document.getElementById('publicToastContainer');
     if (!container) {
       container = document.createElement('div');
       container.id = 'publicToastContainer';
@@ -39,9 +39,9 @@ window.publicUtils = (function () {
         'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:99999;max-width:400px;width:calc(100% - 40px);';
       document.body.appendChild(container);
     }
-    var colors = { warning: '#ffc107', error: '#dc3545', success: '#28a745', info: '#17a2b8' };
-    var textColors = { warning: '#000', error: '#fff', success: '#fff', info: '#fff' };
-    var toast = document.createElement('div');
+    const colors = { warning: '#ffc107', error: '#dc3545', success: '#28a745', info: '#17a2b8' };
+    const textColors = { warning: '#000', error: '#fff', success: '#fff', info: '#fff' };
+    const toast = document.createElement('div');
     toast.style.cssText =
       'background:' +
       (colors[type] || colors.warning) +
@@ -67,12 +67,12 @@ window.publicUtils = (function () {
 
   async function getAuthToken() {
     try {
-      var client =
+      const client =
         window.supabase && window.SUPABASE_CONFIG
           ? window.supabase.createClient(window.SUPABASE_CONFIG.url, window.SUPABASE_CONFIG.anonKey)
           : null;
       if (!client) return null;
-      var result = await client.auth.getSession();
+      const result = await client.auth.getSession();
       return result.data && result.data.session ? result.data.session.access_token : null;
     } catch (_e) {
       return null;
@@ -80,9 +80,9 @@ window.publicUtils = (function () {
   }
 
   async function proxyFetch(body) {
-    var token = await getAuthToken();
+    const token = await getAuthToken();
     if (!token) throw new Error('Not authenticated');
-    var res = await fetch('/api/data-proxy', {
+    const res = await fetch('/api/data-proxy', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -90,7 +90,7 @@ window.publicUtils = (function () {
       },
       body: JSON.stringify(body),
     });
-    var json = await res.json();
+    const json = await res.json();
     if (!res.ok) throw new Error(json.error || json.message || 'API error ' + res.status);
     return json;
   }

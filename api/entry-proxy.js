@@ -302,6 +302,8 @@ async function handleSubmitEntry(req, res) {
 
   // 5. Create entry
   const currentYear = new Date().getFullYear();
+  const submittedAt = new Date().toISOString();
+  const submitterIp = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || null;
   const entryPayload = {
     entry_number: entryNumber,
     organisation_id: organisationId,
@@ -312,7 +314,7 @@ async function handleSubmitEntry(req, res) {
     contact_email: safe.contactEmail,
     status: 'submitted',
     payment_status: 'pending',
-    submission_date: new Date().toISOString(),
+    submission_date: submittedAt,
     allow_public_voting: false,
     why_should_win: safe.whyShouldWin,
     supporting_information: supportingInformation,
@@ -323,6 +325,11 @@ async function handleSubmitEntry(req, res) {
     sector: safe.sector,
     county_city: safe.countyCity,
     is_self_nomination: true,
+    // GDPR Article 7: record when and how consent was given
+    consent_given: true,
+    consent_timestamp: submittedAt,
+    consent_ip_address: submitterIp,
+    lawful_basis: 'legitimate_interest',
   };
 
   // Use retry wrapper to handle concurrent-submission race conditions on entry_number

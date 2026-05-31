@@ -767,6 +767,7 @@ const reportingModule = {
               ];
             });
 
+          // eslint-disable-next-line no-unused-vars
           y = this._pdfTbl(
             doc,
             y,

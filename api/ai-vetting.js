@@ -5,7 +5,6 @@
  * Keeps the Anthropic API key on the server.
  */
 
-const { createClient } = require('@supabase/supabase-js');
 const { vetCompany, vetCompanies } = require('./_lib/ai-vetting-proxy');
 const { verifyAuth, hasMinimumRole, getUserRole } = require('./_lib/auth');
 

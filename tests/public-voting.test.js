@@ -832,7 +832,7 @@ describe('votingSystem.filterByAward()', () => {
     votingSystem.allEntries = [...sampleEntries];
   });
 
-  test('filters entries by selected award id', () => {
+  test('filters entries by selected award id without modifying allEntries', () => {
     const filter = document.getElementById('awardFilter');
     // Simulate selecting award a1
     filter.innerHTML = '<option value="">All</option><option value="a1" selected>Best Innovation</option>';
@@ -841,8 +841,11 @@ describe('votingSystem.filterByAward()', () => {
     const renderSpy = jest.spyOn(votingSystem, 'renderEntries').mockImplementation(() => {});
     votingSystem.filterByAward();
 
-    expect(votingSystem.allEntries).toHaveLength(1);
-    expect(votingSystem.allEntries[0].id).toBe('e1');
+    // allEntries must remain unchanged (bug fix: was being overwritten)
+    expect(votingSystem.allEntries).toHaveLength(2);
+    // filteredEntries contains the filter result
+    expect(votingSystem.filteredEntries).toHaveLength(1);
+    expect(votingSystem.filteredEntries[0].id).toBe('e1');
     renderSpy.mockRestore();
   });
 
@@ -854,6 +857,7 @@ describe('votingSystem.filterByAward()', () => {
     votingSystem.filterByAward();
 
     expect(votingSystem.allEntries).toHaveLength(2);
+    expect(votingSystem.filteredEntries).toHaveLength(2);
     renderSpy.mockRestore();
   });
 

@@ -14,44 +14,59 @@
 const { createClient } = require('@supabase/supabase-js');
 const { Resend } = require('resend');
 const { wrapEmail } = require('./_lib/email-header');
+const { assertEnv } = require('./_lib/env');
+
+assertEnv(['SUPABASE_URL', 'SUPABASE_SERVICE_KEY', 'RESEND_API_KEY']);
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-const supabaseAuth = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_KEY
-);
+const { verifyAuth } = require('./_lib/auth');
+const crypto = require('crypto');
 
 // Initialize Resend (replacing SendGrid)
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-/**
- * Load tenant branding from database (cached for 5 minutes).
- * @returns {Promise<Object>} Branding configuration object.
- */
-/** @type {Map<string, {data: Object, time: number}>} */
+/** @type {Map<string, {data: Object, time: number} | Promise<Object>>} */
 const _brandingCacheMap = new Map();
 const BRANDING_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 /**
- * Load tenant branding from database (cached for 5 minutes per tenant).
+ * Load tenant branding from database (cached per tenant with promise-coalescing).
+ * Concurrent callers before the first fetch resolves will all receive the same promise,
+ * preventing duplicate DB queries on a traffic surge.
  * @param {string} [tenantId='default'] - The tenant identifier.
  * @returns {Promise<Object>} Branding configuration object.
  */
 async function loadTenantBranding(tenantId = 'default') {
   const now = Date.now();
   const cached = _brandingCacheMap.get(tenantId);
-  if (cached && now - cached.time < BRANDING_CACHE_TTL) {
+
+  // Return resolved cache if still fresh
+  if (cached && !(cached instanceof Promise) && now - cached.time < BRANDING_CACHE_TTL) {
     return cached.data;
   }
-  try {
-    const { data } = await supabase.from('tenant_branding').select('*').eq('tenant_id', tenantId).maybeSingle();
-    const branding = data || {};
-    _brandingCacheMap.set(tenantId, { data: branding, time: now });
-    return branding;
-  } catch (e) {
-    console.error('Failed to load tenant branding:', e);
-    return cached?.data || {};
-  }
+
+  // Return in-flight promise (promise-coalescing: concurrent callers share one DB query)
+  if (cached instanceof Promise) return cached;
+
+  const fetchPromise = supabase
+    .from('tenant_branding')
+    .select('*')
+    .eq('tenant_id', tenantId)
+    .maybeSingle()
+    .then(({ data }) => {
+      const branding = data || {};
+      _brandingCacheMap.set(tenantId, { data: branding, time: Date.now() });
+      return branding;
+    })
+    .catch((e) => {
+      console.error('Failed to load tenant branding:', e);
+      _brandingCacheMap.delete(tenantId);
+      // Return stale data if available
+      return (cached && !(cached instanceof Promise) ? cached.data : null) || {};
+    });
+
+  _brandingCacheMap.set(tenantId, fetchPromise);
+  return fetchPromise;
 }
 
 /**
@@ -78,38 +93,37 @@ const HEADER_SUBTITLES = {
 
 /**
  * Email wrapper - delegates to shared email-header.js module.
- * Header/footer are built from branding; subtitle changes per email type.
+ * Header/footer are built from branding; subtitle and preheader change per email type.
  * @param {string} bodyContent - The HTML body content to wrap.
  * @param {Object} [branding={}] - Tenant branding configuration.
  * @param {string} [subtitle=''] - Subtitle text for the email header.
+ * @param {string} [preheader=''] - Hidden preview text shown in email client inboxes.
  * @returns {string} Complete branded HTML email document.
  */
-function wrapEmailTemplate(bodyContent, branding = {}, subtitle = '') {
-  return wrapEmail(bodyContent, branding, { subtitle });
+function wrapEmailTemplate(bodyContent, branding = {}, subtitle = '', preheader = '') {
+  return wrapEmail(bodyContent, branding, { subtitle, preheader });
 }
 
+const { EMAIL_TEMPLATES, DB_TEMPLATE_TYPE_MAP } = require('./_lib/email-templates');
+
 /**
- * Map template keys (used in code) to database template_type values.
- * sendTemplateEmail() tries to load from the DB first using these types.
+ * Strip HTML tags and decode common entities to produce a plain-text fallback.
+ * @param {string} html
+ * @returns {string}
  */
-const DB_TEMPLATE_TYPE_MAP = {
-  ENTRY_CONFIRMATION: 'confirmation',
-  NOMINATION_CONFIRMATION: 'nomination_confirmation',
-  ENTRY_DEADLINE_REMINDER: 'entry_deadline_reminder',
-  PAYMENT_REMINDER: 'payment_reminder',
-  SHORTLIST_NOTIFICATION: 'approval',
-  WINNER_ANNOUNCEMENT: 'winner_announcement',
-  JUDGE_ASSIGNMENT: 'judge_assignment',
-  JUDGE_REMINDER: 'judge_reminder',
-  DEADLINE_REMINDER: 'deadline_reminder',
-  REVISION_REQUEST: 'revision_request',
-  REJECTION: 'rejection',
-  EVENT_INVITATION: 'event_invitation',
-  TICKET_ISSUED: 'ticket_issued',
-  GENERAL: 'general',
-  NOTIFICATION: 'notification',
-  INVITE: 'invite',
-};
+function stripHtmlToText(html) {
+  return String(html)
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
 
 /**
  * Load an active email template from the database by type.
@@ -137,479 +151,6 @@ async function loadDbTemplate(templateType) {
  * @param {string} text - Plain text content to convert.
  * @returns {string} HTML string with paragraphs and line breaks.
  */
-function textToHtml(text) {
-  const escaped = String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  const html = escaped.replace(/\n\n/g, '</p><p style="margin:0 0 16px 0;">').replace(/\n/g, '<br>');
-  return `<div style="padding:30px 40px;"><p style="margin:0 0 16px 0;">${html}</p></div>`;
-}
-
-/**
- * Hardcoded email template body content (fallback when no DB template found).
- * The wrapper is applied at send time using tenant branding.
- * The {{brand_name}} placeholder is replaced with the tenant's company name.
- */
-const EMAIL_TEMPLATES = {
-  ENTRY_DEADLINE_REMINDER: {
-    subject: '⏰ Entry Deadline Approaching - {{award_name}}',
-    body: `
-      <div style="padding: 30px 40px;">
-        <h1 style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 28px; color: #1a1a1a;">Entry Deadline Reminder</h1>
-        <p>Dear {{contact_name}},</p>
-        <p>This is a reminder that the entry deadline for <strong>{{award_name}}</strong> is approaching.</p>
-        <div style="background: #fff3cd; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ffc107;">
-          <p style="margin: 0;"><strong>Days remaining:</strong> {{days_left}}</p>
-          <p style="margin: 5px 0 0;"><strong>Deadline:</strong> {{deadline}}</p>
-        </div>
-        <p>Don't miss your chance to be recognised. Submit your entry today!</p>
-        <a href="{{submit_link}}" style="display:inline-block;background:#0d6efd;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;margin:16px 0">Submit Entry</a>
-        <p><strong>{{brand_name}} Team</strong></p>
-      </div>`,
-  },
-  ENTRY_CONFIRMATION: {
-    subject: '✅ Entry Confirmed - {{entry_number}}',
-    body: `
-      <div style="padding: 30px 40px;">
-        <h1 style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 28px; color: #1a1a1a;">Entry Submitted Successfully!</h1>
-        <p>Dear {{contact_name}},</p>
-        <p>Thank you for submitting your entry for the <strong>{{award_name}}</strong>.</p>
-
-        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-          <h3 style="margin-top: 0;">Entry Details:</h3>
-          <p style="margin: 5px 0;"><strong>Entry Number:</strong> {{entry_number}}</p>
-          <p style="margin: 5px 0;"><strong>Company:</strong> {{company_name}}</p>
-          <p style="margin: 5px 0;"><strong>Award:</strong> {{award_name}}</p>
-          <p style="margin: 5px 0;"><strong>Entry Title:</strong> {{entry_title}}</p>
-        </div>
-
-        <h3>What Happens Next?</h3>
-        <ol>
-          <li>Your entry will be reviewed by our judging panel</li>
-          <li>Judging period: {{judging_start}} - {{judging_end}}</li>
-          <li>Shortlist announced: {{shortlist_date}}</li>
-          <li>Winners announced: {{winner_date}}</li>
-        </ol>
-
-        <p>You'll receive email updates at each stage of the process.</p>
-
-        <p>Best of luck!</p>
-        <p><strong>{{brand_name}} Team</strong></p>
-      </div>
-    `,
-  },
-
-  NOMINATION_CONFIRMATION: {
-    subject: 'Nomination Received - {{entry_number}} | {{brand_name}}',
-    body: `
-      <div style="padding: 30px 40px;">
-        <h1 style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 28px; color: #1a1a1a;">Nomination Confirmation</h1>
-        <p>Dear {{contact_name}},</p>
-        <p>Thank you for submitting your nomination for the {{brand_name}}. We are pleased to confirm that your nomination has been received and is now being processed.</p>
-
-        <div style="background: #fffdf5; border-left: 4px solid #D4AF37; padding: 16px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
-          <h3 style="margin: 0 0 12px; color: #1a1a1a; font-size: 16px;">Nomination Details</h3>
-          <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
-            <tr><td style="padding: 4px 8px; color: #6c757d; width: 120px;">Reference:</td><td style="padding: 4px 8px; font-weight: 600;">{{entry_number}}</td></tr>
-            <tr><td style="padding: 4px 8px; color: #6c757d;">Nominee:</td><td style="padding: 4px 8px;">{{nominee_name}}</td></tr>
-            <tr><td style="padding: 4px 8px; color: #6c757d;">Category:</td><td style="padding: 4px 8px;">{{award_name}}</td></tr>
-          </table>
-        </div>
-
-        <h3 style="color: #1a1a1a; font-size: 16px;">What Happens Next</h3>
-        <ol style="padding-left: 20px;">
-          <li style="margin-bottom: 8px;">Our team will review your nomination to ensure all details are complete.</li>
-          <li style="margin-bottom: 8px;">Shortlisted nominations will be assessed by our independent judging panel.</li>
-          <li style="margin-bottom: 8px;">Winners will be announced at the awards ceremony.</li>
-        </ol>
-
-        <p>Please keep your nomination reference number <strong>{{entry_number}}</strong> safe for future correspondence.</p>
-
-        <p style="margin-top: 24px;">Kind regards,<br><strong>{{brand_name}} Team</strong></p>
-      </div>
-    `,
-  },
-
-  PAYMENT_REMINDER: {
-    subject: '💳 Payment Pending - Entry {{entry_number}}',
-    body: `
-      <div style="padding: 30px 40px;">
-        <h1 style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 28px; color: #1a1a1a;">Payment Reminder</h1>
-        <p>Dear {{contact_name}},</p>
-        <p>Your entry <strong>{{entry_number}}</strong> is currently pending payment.</p>
-
-        <p><strong>Amount Due:</strong> £{{entry_fee}}</p>
-        <p><strong>Entry:</strong> {{entry_title}}</p>
-
-        <p>Please complete your payment to confirm your entry:</p>
-        <table cellpadding="0" cellspacing="0" border="0" style="margin: 20px 0;">
-          <tr>
-            <td style="background: #0d6efd; border-radius: 6px;">
-              <a href="{{payment_link}}" style="color: #ffffff; padding: 12px 24px; text-decoration: none; display: inline-block; font-family: Arial, sans-serif; font-weight: bold;">
-                Complete Payment
-              </a>
-            </td>
-          </tr>
-        </table>
-
-        <p>If you have any questions, please contact us.</p>
-      </div>
-    `,
-  },
-
-  SHORTLIST_NOTIFICATION: {
-    subject: "🌟 Congratulations - You've Been Shortlisted!",
-    body: `
-      <div style="padding: 30px 40px;">
-        <h1 style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 28px; color: #1a1a1a;">🌟 You've Been Shortlisted!</h1>
-        <p>Dear {{contact_name}},</p>
-
-        <p>We're delighted to inform you that <strong>{{company_name}}</strong> has been shortlisted for the <strong>{{award_name}}</strong> at the {{brand_name}}!</p>
-
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 12px; margin: 20px 0; text-align: center;">
-          <h2 style="color: white; margin: 0;">Shortlisted</h2>
-          <h3 style="color: white; opacity: 0.9; margin: 10px 0 0 0;">{{award_name}}</h3>
-        </div>
-
-        <p>Your entry impressed our judges and made it through to the final round.</p>
-
-        <h3>Next Steps:</h3>
-        <ul>
-          <li><strong>Winner Announcement:</strong> {{winner_date}}</li>
-          <li><strong>Awards Ceremony:</strong> {{ceremony_date}} at {{ceremony_venue}}</li>
-          <li>Book your tickets to the ceremony</li>
-        </ul>
-
-        <table cellpadding="0" cellspacing="0" border="0" style="margin: 20px 0;">
-          <tr>
-            <td style="background: #28a745; border-radius: 6px;">
-              <a href="{{ceremony_tickets_link}}" style="color: #ffffff; padding: 12px 24px; text-decoration: none; display: inline-block; font-family: Arial, sans-serif; font-weight: bold;">
-                Book Ceremony Tickets
-              </a>
-            </td>
-          </tr>
-        </table>
-
-        <p>Congratulations once again!</p>
-        <p><strong>{{brand_name}} Team</strong></p>
-      </div>
-    `,
-  },
-
-  WINNER_ANNOUNCEMENT: {
-    subject: '🏆 WINNER - {{award_name}}!',
-    body: `
-      <div style="background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); padding: 40px; text-align: center;">
-        <table width="100%" cellpadding="0" cellspacing="0" border="0">
-          <tr>
-            <td align="center">
-              <div style="display: inline-block; background: rgba(255,255,255,0.2); border-radius: 50%; width: 80px; height: 80px; line-height: 80px; font-size: 48px; margin-bottom: 10px;">🏆</div>
-            </td>
-          </tr>
-          <tr>
-            <td align="center">
-              <h1 style="color: #ffffff; font-family: Arial, sans-serif; font-size: 36px; margin: 10px 0 0 0; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">WINNER!</h1>
-            </td>
-          </tr>
-        </table>
-      </div>
-
-      <div style="padding: 30px 40px;">
-        <p>Dear {{contact_name}},</p>
-
-        <p style="font-size: 18px;"><strong>Congratulations!</strong> We are thrilled to announce that <strong>{{company_name}}</strong> is the winner of the <strong>{{award_name}}</strong> at the {{brand_name}}!</p>
-
-        <p>Your exceptional work has set the standard for excellence.</p>
-
-        <div style="background: #fffbeb; border: 1px solid #fbbf24; border-radius: 8px; padding: 20px; margin: 25px 0;">
-          <h3 style="margin-top: 0; color: #92400e;">Your Winner's Package Includes:</h3>
-          <table cellpadding="0" cellspacing="0" border="0" width="100%">
-            <tr><td style="padding: 4px 0; font-size: 15px;">✅ Digital winner's certificate</td></tr>
-            <tr><td style="padding: 4px 0; font-size: 15px;">✅ Winner's logo and badge for your marketing</td></tr>
-            <tr><td style="padding: 4px 0; font-size: 15px;">✅ Press release and media coverage</td></tr>
-            <tr><td style="padding: 4px 0; font-size: 15px;">✅ Feature on our website and social media</td></tr>
-            <tr><td style="padding: 4px 0; font-size: 15px;">✅ Winner's trophy (presented at ceremony)</td></tr>
-          </table>
-        </div>
-
-        <table cellpadding="0" cellspacing="0" border="0" style="margin: 25px 0;" align="center">
-          <tr>
-            <td style="background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.15);">
-              <a href="{{winners_portal_link}}" style="color: #1a1a1a; padding: 14px 30px; text-decoration: none; display: inline-block; font-family: Arial, sans-serif; font-weight: bold; font-size: 16px;">
-                Access Winner's Portal
-              </a>
-            </td>
-          </tr>
-        </table>
-
-        <div style="background: #f8f9fa; border-radius: 8px; padding: 20px; margin: 20px 0; text-align: center;">
-          <p style="margin: 0; font-size: 15px;"><strong>Awards Ceremony</strong></p>
-          <p style="margin: 8px 0 0 0; font-size: 15px;">{{ceremony_date}} at {{ceremony_venue}}</p>
-        </div>
-
-        <p>We look forward to celebrating with you!</p>
-
-        <p><strong>{{brand_name}} Team</strong></p>
-      </div>
-    `,
-  },
-
-  JUDGE_ASSIGNMENT: {
-    subject: '⚖️ New Judging Assignment - {{brand_name}}',
-    body: `
-      <div style="padding: 30px 40px;">
-        <h1 style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 28px; color: #1a1a1a;">New Judging Assignment</h1>
-        <p>Dear {{judge_name}},</p>
-
-        <p>You have been assigned {{entry_count}} new entries to judge for the {{brand_name}}.</p>
-
-        <p><strong>Judging Deadline:</strong> {{deadline}}</p>
-
-        <h3>Awards to Judge:</h3>
-        <ul>
-          {{award_list}}
-        </ul>
-
-        <table cellpadding="0" cellspacing="0" border="0" style="margin: 20px 0;">
-          <tr>
-            <td style="background: #0d6efd; border-radius: 6px;">
-              <a href="{{judge_portal_link}}" style="color: #ffffff; padding: 12px 24px; text-decoration: none; display: inline-block; font-family: Arial, sans-serif; font-weight: bold;">
-                Start Judging
-              </a>
-            </td>
-          </tr>
-        </table>
-
-        <p>Please complete your scoring by the deadline. If you have any questions or conflicts of interest, please contact us immediately.</p>
-
-        <p>Thank you for your contribution to the awards!</p>
-      </div>
-    `,
-  },
-
-  JUDGE_REMINDER: {
-    subject: '⏰ Judging Deadline Reminder - {{days_left}} Days Left',
-    body: `
-      <div style="padding: 30px 40px;">
-        <h1 style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 28px; color: #1a1a1a;">Judging Deadline Approaching</h1>
-        <p>Dear {{judge_name}},</p>
-
-        <p>This is a reminder that the judging deadline is approaching in <strong>{{days_left}} days</strong>.</p>
-
-        <p><strong>Deadline:</strong> {{deadline}}</p>
-
-        <h3>Your Progress:</h3>
-        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0;">
-          <p style="margin: 5px 0;">✅ Completed: {{scored_count}}/{{total_count}} entries</p>
-          <p style="margin: 5px 0;">⏳ Remaining: {{pending_count}} entries</p>
-        </div>
-
-        <table cellpadding="0" cellspacing="0" border="0" style="margin: 20px 0;">
-          <tr>
-            <td style="background: #0d6efd; border-radius: 6px;">
-              <a href="{{judge_portal_link}}" style="color: #ffffff; padding: 12px 24px; text-decoration: none; display: inline-block; font-family: Arial, sans-serif; font-weight: bold;">
-                Continue Judging
-              </a>
-            </td>
-          </tr>
-        </table>
-
-        <p>Thank you for your time and expertise!</p>
-      </div>
-    `,
-  },
-
-  DEADLINE_REMINDER: {
-    subject: '⏰ Reminder: {{deadline_type}} Deadline in {{days_left}} Days',
-    body: `
-      <div style="padding: 30px 40px;">
-        <h1 style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 28px; color: #1a1a1a;">Deadline Reminder</h1>
-        <p>Dear {{recipient_name}},</p>
-
-        <p>This is a reminder that the <strong>{{deadline_type}}</strong> deadline is approaching.</p>
-
-        <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
-          <h3 style="margin-top: 0;">⏰ {{days_left}} Days Remaining</h3>
-          <p style="margin-bottom: 0;"><strong>Deadline:</strong> {{deadline_date}}</p>
-        </div>
-
-        <p>{{action_required}}</p>
-
-        <table cellpadding="0" cellspacing="0" border="0" style="margin: 20px 0;">
-          <tr>
-            <td style="background: #0d6efd; border-radius: 6px;">
-              <a href="{{action_link}}" style="color: #ffffff; padding: 12px 24px; text-decoration: none; display: inline-block; font-family: Arial, sans-serif; font-weight: bold;">
-                {{action_button_text}}
-              </a>
-            </td>
-          </tr>
-        </table>
-      </div>
-    `,
-  },
-
-  REVISION_REQUEST: {
-    subject: '📝 Action Required: Changes Requested - {{entry_title}}',
-    body: `
-      <div style="padding: 30px 40px;">
-        <h1 style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 28px; color: #1a1a1a;">Changes Requested</h1>
-        <p>Dear {{contact_name}},</p>
-
-        <p>Your entry <strong>{{entry_title}}</strong> ({{entry_number}}) requires some changes before it can proceed to the judging stage.</p>
-
-        <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
-          <h3 style="margin-top: 0; color: #856404;">Feedback from our team:</h3>
-          <p style="margin-bottom: 0;">{{feedback}}</p>
-        </div>
-
-        <p>Please review the feedback and update your entry at your earliest convenience.</p>
-
-        <table cellpadding="0" cellspacing="0" border="0" style="margin: 20px 0;">
-          <tr>
-            <td style="background: #0d6efd; border-radius: 6px;">
-              <a href="{{action_link}}" style="color: #ffffff; padding: 12px 24px; text-decoration: none; display: inline-block; font-family: Arial, sans-serif; font-weight: bold;">
-                Review & Update Entry
-              </a>
-            </td>
-          </tr>
-        </table>
-
-        <p>If you have any questions, please contact us.</p>
-        <p><strong>{{brand_name}} Team</strong></p>
-      </div>
-    `,
-  },
-
-  REJECTION: {
-    subject: 'Your Entry Update - {{entry_number}} | {{brand_name}}',
-    body: `
-      <div style="padding: 30px 40px;">
-        <h1 style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 28px; color: #1a1a1a;">Entry Update</h1>
-        <p>Dear {{contact_name}},</p>
-
-        <p>Thank you for entering <strong>{{company_name}}</strong> into the <strong>{{award_name}}</strong> category at the {{brand_name}}.</p>
-
-        <div style="background: #f8f9fa; padding: 15px 20px; border-radius: 8px; margin: 20px 0;">
-          <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
-            <tr><td style="padding: 4px 8px; color: #6c757d; width: 120px;">Reference:</td><td style="padding: 4px 8px;">{{entry_number}}</td></tr>
-            <tr><td style="padding: 4px 8px; color: #6c757d;">Company:</td><td style="padding: 4px 8px;">{{company_name}}</td></tr>
-            <tr><td style="padding: 4px 8px; color: #6c757d;">Category:</td><td style="padding: 4px 8px;">{{award_name}}</td></tr>
-          </table>
-        </div>
-
-        <p>After careful consideration by our judging panel, we regret to inform you that your entry has not been selected for the shortlist on this occasion.</p>
-
-        <p>We received an exceptionally high standard of entries this year, making the selection process extremely competitive. Not being shortlisted is in no way a reflection on the quality of your business or the work you do.</p>
-
-        <p>We would very much welcome an entry from you again next year and wish you continued success.</p>
-
-        <p>Kind regards,<br><strong>{{brand_name}} Team</strong></p>
-      </div>
-    `,
-  },
-
-  EVENT_INVITATION: {
-    subject: "✉️ You're Invited: {{event_name}}",
-    body: `
-      <div style="padding: 30px 40px;">
-        <h1 style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 28px; color: #1a1a1a;">You're Invited!</h1>
-        <p>Dear {{contact_name}},</p>
-
-        <p>You are cordially invited to attend the <strong>{{event_name}}</strong>.</p>
-
-        <div style="background: #f0f4ff; border-left: 4px solid #0d6efd; padding: 16px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
-          <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
-            <tr><td style="padding: 4px 8px; color: #6c757d; width: 80px;">Date:</td><td style="padding: 4px 8px; font-weight: 600;">{{event_date}}</td></tr>
-            <tr><td style="padding: 4px 8px; color: #6c757d;">Venue:</td><td style="padding: 4px 8px;">{{venue}}</td></tr>
-          </table>
-        </div>
-
-        <p>We would be honoured by your presence at this special occasion.</p>
-
-        <table cellpadding="0" cellspacing="0" border="0" style="margin: 20px 0;">
-          <tr>
-            <td style="background: #0d6efd; border-radius: 6px;">
-              <a href="{{rsvp_link}}" style="color: #ffffff; padding: 12px 24px; text-decoration: none; display: inline-block; font-family: Arial, sans-serif; font-weight: bold;">
-                RSVP Now
-              </a>
-            </td>
-          </tr>
-        </table>
-
-        <p><strong>{{brand_name}} Team</strong></p>
-      </div>
-    `,
-  },
-
-  TICKET_ISSUED: {
-    subject: '🎟️ Your Ticket: {{event_name}}',
-    body: `
-      <div style="padding: 30px 40px;">
-        <h1 style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 28px; color: #1a1a1a;">Your Ticket</h1>
-        <p>Dear {{contact_name}},</p>
-
-        <p>Your ticket for <strong>{{event_name}}</strong> has been issued.</p>
-
-        <div style="background: #f0f4ff; border-left: 4px solid #0d6efd; padding: 16px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
-          <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
-            <tr><td style="padding: 4px 8px; color: #6c757d; width: 120px;">Ticket No:</td><td style="padding: 4px 8px; font-weight: 600;">{{ticket_number}}</td></tr>
-            <tr><td style="padding: 4px 8px; color: #6c757d;">Event:</td><td style="padding: 4px 8px;">{{event_name}}</td></tr>
-            <tr><td style="padding: 4px 8px; color: #6c757d;">Date:</td><td style="padding: 4px 8px;">{{event_date}}</td></tr>
-            <tr><td style="padding: 4px 8px; color: #6c757d;">Venue:</td><td style="padding: 4px 8px;">{{venue}}</td></tr>
-          </table>
-        </div>
-
-        <p>Please present this ticket at check-in. You may also receive a QR code closer to the event date.</p>
-
-        <p><strong>{{brand_name}} Team</strong></p>
-      </div>
-    `,
-  },
-
-  GENERAL: {
-    subject: '{{subject_line}}',
-    body: `
-      <div style="padding: 30px 40px;">
-        <p>Dear {{recipient_name}},</p>
-        <p>{{message_body}}</p>
-        <p>Kind regards,<br><strong>{{brand_name}} Team</strong></p>
-      </div>
-    `,
-  },
-
-  NOTIFICATION: {
-    subject: '🔔 {{subject_line}} - {{brand_name}}',
-    body: `
-      <div style="padding: 30px 40px;">
-        <h1 style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 28px; color: #1a1a1a;">{{subject_line}}</h1>
-        <p>Dear {{recipient_name}},</p>
-        <p>{{message_body}}</p>
-        <p><strong>{{brand_name}} Team</strong></p>
-      </div>
-    `,
-  },
-
-  INVITE: {
-    subject: '✉️ {{subject_line}} - {{brand_name}}',
-    body: `
-      <div style="padding: 30px 40px;">
-        <h1 style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 28px; color: #1a1a1a;">You're Invited</h1>
-        <p>Dear {{recipient_name}},</p>
-        <p>{{message_body}}</p>
-
-        <table cellpadding="0" cellspacing="0" border="0" style="margin: 20px 0;">
-          <tr>
-            <td style="background: #0d6efd; border-radius: 6px;">
-              <a href="{{action_link}}" style="color: #ffffff; padding: 12px 24px; text-decoration: none; display: inline-block; font-family: Arial, sans-serif; font-weight: bold;">
-                {{action_button_text}}
-              </a>
-            </td>
-          </tr>
-        </table>
-
-        <p><strong>{{brand_name}} Team</strong></p>
-      </div>
-    `,
-  },
-};
 
 /**
  * Send email using template with tenant branding.
@@ -633,6 +174,13 @@ async function sendTemplateEmail(templateKey, toEmail, variables, { tenantId = '
 
     const subtitle = HEADER_SUBTITLES[templateKey] || '';
 
+    const escapeHtml = (str) =>
+      String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+
     // --- Try database template first ---
     const dbType = DB_TEMPLATE_TYPE_MAP[templateKey];
     const dbTpl = dbType ? await loadDbTemplate(dbType) : null;
@@ -647,15 +195,19 @@ async function sendTemplateEmail(templateKey, toEmail, variables, { tenantId = '
       upperVars.BRAND_NAME = brandName;
 
       let subject = dbTpl.subject;
-      let bodyText = dbTpl.body;
+      // Escape static HTML chars in the body template first. {KEY} placeholders survive
+      // because curly braces are not HTML special characters. Then each user-supplied
+      // value is also HTML-escaped before insertion, preventing XSS injection.
+      let escapedBody = escapeHtml(dbTpl.body);
       for (const [key, value] of Object.entries(upperVars)) {
         const regex = new RegExp(`\\{${key}\\}`, 'g');
-        subject = subject.replace(regex, value);
-        bodyText = bodyText.replace(regex, value);
+        subject = subject.replace(regex, String(value ?? ''));
+        escapedBody = escapedBody.replace(regex, escapeHtml(String(value ?? '')));
       }
-
-      const bodyHtml = textToHtml(bodyText);
-      const html = wrapEmailTemplate(bodyHtml, branding, subtitle);
+      const bodyHtml = `<div style="padding:30px 40px;"><p style="margin:0 0 16px 0;">${escapedBody
+        .replace(/\n\n/g, '</p><p style="margin:0 0 16px 0;">')
+        .replace(/\n/g, '<br>')}</p></div>`;
+      const html = wrapEmailTemplate(bodyHtml, branding, subtitle, subtitle);
 
       const fromEmail = branding.email_from || process.env.FROM_EMAIL || 'awards@britishtradeawards.com';
       await resend.emails.send({
@@ -663,6 +215,7 @@ async function sendTemplateEmail(templateKey, toEmail, variables, { tenantId = '
         from: `${brandName} <${fromEmail}>`,
         subject,
         html,
+        text: stripHtmlToText(html),
         ...(branding.email_reply_to ? { reply_to: branding.email_reply_to } : {}),
       });
 
@@ -677,20 +230,24 @@ async function sendTemplateEmail(templateKey, toEmail, variables, { tenantId = '
       throw new Error(`Template ${templateKey} not found`);
     }
 
-    const allVariables = { brand_name: brandName, ...variables };
+    const appUrl = process.env.APP_URL || '';
+    const allVariables = {
+      brand_name: brandName,
+      support_email: process.env.FROM_EMAIL || '',
+      unsubscribe_link: appUrl ? `${appUrl}/unsubscribe` : '',
+      ...variables,
+    };
 
     let subject = template.subject;
     let bodyContent = template.body;
 
-    const escapeHtml = (str) =>
-      String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     for (const [key, value] of Object.entries(allVariables)) {
       const regex = new RegExp(`{{${key}}}`, 'g');
       subject = subject.replace(regex, value || '');
       bodyContent = bodyContent.replace(regex, escapeHtml(value || ''));
     }
 
-    const html = wrapEmailTemplate(bodyContent, branding, subtitle);
+    const html = wrapEmailTemplate(bodyContent, branding, subtitle, template.preheader || '');
 
     const fromEmail = branding.email_from || process.env.FROM_EMAIL || 'awards@britishtradeawards.com';
     await resend.emails.send({
@@ -698,6 +255,7 @@ async function sendTemplateEmail(templateKey, toEmail, variables, { tenantId = '
       from: `${brandName} <${fromEmail}>`,
       subject,
       html,
+      text: stripHtmlToText(html),
       ...(branding.email_reply_to ? { reply_to: branding.email_reply_to } : {}),
     });
 
@@ -734,8 +292,8 @@ async function sendEntryConfirmation(entryId) {
     const variables = {
       contact_name: entry.contact_name,
       entry_number: entry.entry_number,
-      company_name: entry.organisations.company_name,
-      award_name: entry.awards.award_name,
+      company_name: entry.organisations?.company_name || '',
+      award_name: entry.awards?.award_name || 'British Trade Awards',
       entry_title: entry.entry_title,
       judging_start: formatDate(awardSeason.judging_start_date),
       judging_end: formatDate(awardSeason.judging_end_date),
@@ -903,51 +461,56 @@ async function sendDeadlineReminders() {
           .eq('award_id', season.id)
           .eq('status', 'draft');
 
-        for (const entry of draftEntries || []) {
-          const variables = {
-            contact_name: entry.contact_name,
-            company_name: /** @type {any} */ (entry.organisations)?.company_name || '',
-            award_name: season.name,
-            days_left: String(daysLeft),
-            deadline: season.entry_close_date,
-            submit_link: `${process.env.APP_URL || 'https://admin.britishtradeawards.com'}/submit-entry.html`,
-          };
-
-          await sendTemplateEmail('ENTRY_DEADLINE_REMINDER', entry.contact_email, variables);
+        // Send in batches of 5 (avoid sequential sends timing out Vercel)
+        const ENTRY_BATCH = 5;
+        for (let i = 0; i < (draftEntries || []).length; i += ENTRY_BATCH) {
+          await Promise.all(
+            (draftEntries || []).slice(i, i + ENTRY_BATCH).map((entry) => {
+              const variables = {
+                contact_name: entry.contact_name,
+                company_name: /** @type {any} */ (entry.organisations)?.company_name || '',
+                award_name: season.name,
+                days_left: String(daysLeft),
+                deadline: season.entry_close_date,
+                submit_link: `${process.env.APP_URL || 'https://admin.britishtradeawards.com'}/submit-entry.html`,
+              };
+              return sendTemplateEmail('ENTRY_DEADLINE_REMINDER', entry.contact_email, variables);
+            })
+          );
         }
       }
     }
 
-    // Judging deadline reminders
-    const { data: judges } = await supabase.from('contacts').select('id, full_name, email').eq('contact_type', 'judge');
+    // Judging deadline reminders — batch-fetch all scores + deadline once to avoid N+1
+    const { data: judges } = await supabase
+      .from('contacts')
+      .select('id, full_name, email')
+      .eq('contact_type', 'judge')
+      .limit(1000);
 
-    for (const judge of judges || []) {
-      // Fetch scores only for this judge instead of loading entire table
-      const { data: judgeScores } = await supabase
-        .from('judge_scores')
-        .select('id, is_complete, judge_email, judge_id')
-        .or(`judge_email.eq.${judge.email},judge_id.eq.${judge.id}`);
-      const scores = judgeScores || [];
+    const { data: allJudgeScores } = await supabase.from('judge_scores').select('judge_email, judge_id, is_complete');
+
+    const { data: activeAwards } = await supabase
+      .from('award_years')
+      .select('judging_end_date')
+      .eq('is_active', true)
+      .not('judging_end_date', 'is', null)
+      .order('judging_end_date', { ascending: true })
+      .limit(1);
+    const judgingDeadline = activeAwards?.[0]?.judging_end_date;
+    const daysLeft = judgingDeadline
+      ? Math.max(0, Math.ceil((new Date(judgingDeadline).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
+      : null;
+    const formatDate = (d) =>
+      d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : 'TBC';
+
+    const judgeReminderPromises = (judges || []).map(async (judge) => {
+      const scores = (allJudgeScores || []).filter((s) => s.judge_email === judge.email || s.judge_id === judge.id);
       const totalAssigned = scores.length;
       const completed = scores.filter((s) => s.is_complete).length;
       const pending = totalAssigned - completed;
 
       if (pending > 0) {
-        // Get nearest judging deadline from active awards
-        const { data: activeAwards } = await supabase
-          .from('award_years')
-          .select('judging_end_date')
-          .eq('is_active', true)
-          .not('judging_end_date', 'is', null)
-          .order('judging_end_date', { ascending: true })
-          .limit(1);
-        const judgingDeadline = activeAwards?.[0]?.judging_end_date;
-        const daysLeft = judgingDeadline
-          ? Math.max(0, Math.ceil((new Date(judgingDeadline).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
-          : null;
-        const formatDate = (d) =>
-          d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : 'TBC';
-
         const variables = {
           judge_name: judge.full_name,
           days_left: daysLeft !== null ? String(daysLeft) : 'TBC',
@@ -957,9 +520,14 @@ async function sendDeadlineReminders() {
           pending_count: pending,
           judge_portal_link: `${process.env.APP_URL || 'https://admin.britishtradeawards.com'}/judge-portal.html`,
         };
-
-        await sendTemplateEmail('JUDGE_REMINDER', judge.email, variables);
+        return sendTemplateEmail('JUDGE_REMINDER', judge.email, variables);
       }
+    });
+
+    // Send in batches of 5 to avoid overwhelming Resend
+    const BATCH = 5;
+    for (let i = 0; i < judgeReminderPromises.length; i += BATCH) {
+      await Promise.all(judgeReminderPromises.slice(i, i + BATCH));
     }
 
     console.log('✅ Deadline reminders sent');
@@ -1053,44 +621,51 @@ async function sendWinnerAnnouncements(awardId = null) {
     const formatDate = (d) =>
       d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : 'TBC';
 
-    for (const winner of winners || []) {
-      const variables = {
-        contact_name: winner.contact_name,
-        company_name: winner.organisations.company_name,
-        award_name: winner.awards.award_name,
-        ceremony_date: formatDate(ceremony?.event_date),
-        ceremony_venue: ceremony?.venue || 'TBC',
-        winners_portal_link: `${process.env.APP_URL || 'https://admin.britishtradeawards.com'}/winners-portal.html`,
-      };
+    // Send in batches of 5 to avoid overwhelming Resend within Vercel's 30s timeout
+    const CONCURRENT_SENDS = 5;
+    let totalSent = 0;
+    const winnerList = winners || [];
 
-      await sendTemplateEmail('WINNER_ANNOUNCEMENT', winner.contact_email, variables);
+    for (let i = 0; i < winnerList.length; i += CONCURRENT_SENDS) {
+      const batch = winnerList.slice(i, i + CONCURRENT_SENDS);
+      const results = await Promise.all(
+        batch.map(async (winner) => {
+          const variables = {
+            contact_name: winner.contact_name,
+            company_name: winner.organisations?.company_name || '',
+            award_name: winner.awards?.award_name || '',
+            ceremony_date: formatDate(ceremony?.event_date),
+            ceremony_venue: ceremony?.venue || 'TBC',
+            winners_portal_link: `${process.env.APP_URL || 'https://admin.britishtradeawards.com'}/winners-portal.html`,
+          };
+          return sendTemplateEmail('WINNER_ANNOUNCEMENT', winner.contact_email, variables);
+        })
+      );
+      totalSent += results.filter(Boolean).length;
 
-      // Auto-post winner announcement to social media
-      try {
-        const postContent = `Congratulations to ${winner.organisations?.company_name || winner.contact_name} for winning ${winner.awards?.award_name || 'a British Trade Award'}! 🏆 #BritishTradeAwards #Winners`;
-        const { data: socialPost } = await supabase
-          .from('social_media_posts')
-          .insert({
-            content: postContent,
-            platforms: ['twitter', 'linkedin', 'facebook'],
-            status: 'scheduled',
-            scheduled_for: new Date().toISOString(),
-            post_type: 'winner_announcement',
-          })
-          .select('id')
-          .single();
-
-        if (socialPost) {
-          const { publishToSocialMedia } = require('./social-media-api');
-          await publishToSocialMedia(socialPost.id);
+      // Queue social media posts in bulk (non-blocking fire-and-forget)
+      const socialInserts = batch.map((winner) => ({
+        content: `Congratulations to ${winner.organisations?.company_name || winner.contact_name} for winning ${winner.awards?.award_name || 'a British Trade Award'}! 🏆 #BritishTradeAwards #Winners`,
+        platforms: ['twitter', 'linkedin', 'facebook'],
+        status: 'scheduled',
+        scheduled_for: new Date().toISOString(),
+        post_type: 'winner_announcement',
+      }));
+      (async () => {
+        try {
+          const { data: posts } = await supabase.from('social_media_posts').insert(socialInserts).select('id');
+          if (posts && posts.length > 0) {
+            const { publishToSocialMedia } = require('./social-media-api');
+            posts.forEach((p) => publishToSocialMedia(p.id).catch(() => {}));
+          }
+        } catch (err) {
+          console.error('Social media queue failed (non-blocking):', err.message);
         }
-      } catch (socialError) {
-        console.error('Social media auto-post failed (non-blocking):', socialError.message);
-      }
+      })();
     }
 
-    console.log(`✅ Sent ${(winners || []).length} winner announcements`);
-    return (winners || []).length;
+    console.log(`✅ Sent ${totalSent} winner announcements`);
+    return totalSent;
   } catch (error) {
     console.error('Error sending winner announcements:', error);
     return 0;
@@ -1143,8 +718,8 @@ async function sendShortlistNotifications(awardId = null) {
     for (const entry of shortlisted || []) {
       const variables = {
         contact_name: entry.contact_name,
-        company_name: entry.organisations.company_name,
-        award_name: entry.awards.award_name,
+        company_name: entry.organisations?.company_name || '',
+        award_name: entry.awards?.award_name || 'British Trade Awards',
         winner_date: formatDate(activeSeason?.[0]?.winner_announcement_date),
         ceremony_date: formatDate(ceremony?.event_date),
         ceremony_venue: ceremony?.venue || 'TBC',
@@ -1253,25 +828,30 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Verify authentication for all actions
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Authentication required' });
-  }
-  const token = authHeader.replace('Bearer ', '');
-  const {
-    data: { user },
-    error: authError,
-  } = await supabaseAuth.auth.getUser(token);
-  if (authError || !user) {
-    return res.status(401).json({ error: 'Invalid or expired token' });
+  const action = req.query.action || req.body?.action;
+
+  // Resend webhook actions bypass JWT auth — verified via shared secret instead
+  if (action === 'resend-bounce' || action === 'resend-complaint') {
+    const webhookSecret = process.env.RESEND_WEBHOOK_SECRET;
+    if (webhookSecret) {
+      const signature = req.headers['x-resend-signature'] || '';
+      const payload = JSON.stringify(req.body);
+      const expected = crypto.createHmac('sha256', webhookSecret).update(payload).digest('hex');
+      if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
+        return res.status(401).json({ error: 'Invalid webhook signature' });
+      }
+    }
+    return handleResendSuppressionEvent(req, res);
   }
 
-  const action = req.query.action || req.body?.action;
+  // All other actions require JWT authentication
+  const user = await verifyAuth(req, res);
+  if (!user) return;
 
   switch (action) {
     case 'send-email':
       return sendEmailEndpoint(req, res);
+    case 'send-template':
     case 'sendTemplate': {
       const { templateKey, toEmail, toName, subject: customSubject, html: customHtml, variables } = req.body;
       if (!templateKey || !toEmail) {
@@ -1292,6 +872,32 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: `Unknown action: ${action || 'none'}` });
   }
 };
+
+/**
+ * Handle Resend bounce/complaint webhook events.
+ * Adds the affected address to the email_suppressions table.
+ * @param {Object} req - Request object.
+ * @param {Object} res - Response object.
+ * @returns {Promise<void>}
+ */
+async function handleResendSuppressionEvent(req, res) {
+  const { action, email, reason } = req.body;
+  if (!email) return res.status(400).json({ error: 'Missing email' });
+
+  const suppressionReason = action === 'resend-complaint' ? 'spam_complaint' : 'bounce';
+  const detail = reason || action;
+
+  try {
+    await supabase
+      .from('email_suppressions')
+      .upsert({ email, reason: suppressionReason, detail }, { onConflict: 'email' });
+    console.log(`[email-automation] Suppressed ${email} (${suppressionReason})`);
+    return res.status(200).json({ suppressed: email, reason: suppressionReason });
+  } catch (err) {
+    console.error('[email-automation] Failed to record suppression:', err.message);
+    return res.status(500).json({ error: 'Failed to record suppression' });
+  }
+}
 
 module.exports.sendTemplateEmail = sendTemplateEmail;
 module.exports.sendEntryConfirmation = sendEntryConfirmation;

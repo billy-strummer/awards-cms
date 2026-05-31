@@ -111,7 +111,8 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const ip = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
+  const rawIp = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
+  const ip = rawIp.split(',')[0].trim() || 'unknown';
   if (!checkRateLimit(ip)) {
     return res.status(429).json({ error: 'Too many requests. Please try again later.' });
   }
@@ -231,6 +232,24 @@ async function handleRegisterGuest(req, res) {
   if (error) {
     console.error('Guest registration failed:', error);
     return res.status(500).json({ error: 'Registration failed. Please try again.' });
+  }
+
+  // Post-insert capacity guard — catches concurrent-registration race condition
+  if (event.max_capacity && event.max_capacity > 0 && insertedGuests?.length) {
+    const { count: finalCount } = await supabase
+      .from('event_guests')
+      .select('id', { count: 'exact', head: true })
+      .eq('event_id', eventId)
+      .in('status', ['registered', 'confirmed', 'checked_in']);
+
+    if ((finalCount || 0) > event.max_capacity) {
+      // Rollback — delete the rows we just inserted
+      const insertedIds = insertedGuests.map((g) => g.id);
+      await supabase.from('event_guests').delete().in('id', insertedIds);
+      return res
+        .status(409)
+        .json({ error: 'Event reached capacity while processing your registration. Please try again.' });
+    }
   }
 
   // Send confirmation email to the primary guest (non-blocking)

@@ -688,22 +688,6 @@ describe('Awards Module - populateYearFilter()', () => {
   });
 });
 
-describe('Awards Module - _populateFiltersFromConstants()', () => {
-  test('is a no-op (filters are now populated from DB)', () => {
-    const yearSelect = document.getElementById('awardsYearFilterSelect');
-    const sectorSelect = document.getElementById('awardsSectorFilterSelect');
-    const countrySelect = document.getElementById('awardsCountryFilter');
-    const yearBefore = yearSelect.innerHTML;
-    const sectorBefore = sectorSelect.innerHTML;
-    const countryBefore = countrySelect.innerHTML;
-    awardsModule._populateFiltersFromConstants();
-    // _populateFiltersFromConstants is now a no-op — all filters come from DB
-    expect(yearSelect.innerHTML).toBe(yearBefore);
-    expect(sectorSelect.innerHTML).toBe(sectorBefore);
-    expect(countrySelect.innerHTML).toBe(countryBefore);
-  });
-});
-
 describe('Awards Module - _populateSectorFilterFromDB()', () => {
   test('populates sector filter from database', async () => {
     jest.spyOn(apiClient, 'select').mockResolvedValue({
@@ -2068,9 +2052,14 @@ describe('Awards Module - rolloverToNextYear()', () => {
     utils.confirmDialog = jest.fn().mockResolvedValue(true);
     const origSelectAll = apiClient.selectAll;
     const origInsert = apiClient.insert;
+    // First call: fetch all source year awards; second call: fetch target year awards; third call: fetch winners
     apiClient.selectAll = jest
       .fn()
-      .mockResolvedValue([{ award_id: 'award-1', winner_position: 1, organisations: { company_name: 'Winner Co' } }]);
+      .mockResolvedValueOnce([...sampleAwards]) // source year awards (full fetch)
+      .mockResolvedValueOnce([]) // target year awards (none exist yet)
+      .mockResolvedValueOnce([
+        { award_id: 'award-1', winner_position: 1, organisations: { company_name: 'Winner Co' } },
+      ]); // winner data
     apiClient.insert = jest.fn().mockResolvedValue({});
     awardsModule.loadAwards = jest.fn().mockResolvedValue();
 

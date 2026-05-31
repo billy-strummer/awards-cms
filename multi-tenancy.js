@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 /* ==================================================== */
 /* MULTI-TENANCY MODULE                                  */
 /* Tenant isolation, tenant switching, tenant-scoped     */
@@ -346,7 +347,8 @@ const tenantModule = {
     try {
       await apiClient.update('tenants', tenantId, { is_active: false });
       if (this._currentTenant?.id === tenantId) {
-        await this.switchTenant(this._tenants[0].id);
+        const next = this._tenants.find((t) => t.id !== tenantId);
+        if (next) await this.switchTenant(next.id);
       }
       await this.loadTenants();
       this.renderTenantManagement();

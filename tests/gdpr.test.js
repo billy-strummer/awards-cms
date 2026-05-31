@@ -506,15 +506,21 @@ describe('GDPR Module - _deleteEntityData', () => {
   test('deletes data from all related tables', async () => {
     apiClient.deleteByFilters = jest.fn().mockResolvedValue({});
     await gdprModule._deleteEntityData('org1');
-    expect(apiClient.deleteByFilters).toHaveBeenCalledTimes(10);
+    // 13 tables: email_logs, event_guests, public_votes, organisation_contacts, award_assignments,
+    // entries, organisation_images, crm_communications, crm_deals, crm_meetings,
+    // organisation_notes, organisation_follow_ups, organisations
+    expect(apiClient.deleteByFilters).toHaveBeenCalledTimes(13);
+    expect(apiClient.deleteByFilters).toHaveBeenCalledWith('email_logs', { organisation_id: 'org1' });
+    expect(apiClient.deleteByFilters).toHaveBeenCalledWith('event_guests', { organisation_id: 'org1' });
     expect(apiClient.deleteByFilters).toHaveBeenCalledWith('organisation_contacts', { organisation_id: 'org1' });
     expect(apiClient.deleteByFilters).toHaveBeenCalledWith('organisations', { id: 'org1' });
   });
 
   test('throws on failure and aborts', async () => {
+    // First table in new order is email_logs, second is event_guests (which fails)
     apiClient.deleteByFilters = jest.fn().mockResolvedValueOnce({}).mockRejectedValueOnce(new Error('FK violation'));
 
-    await expect(gdprModule._deleteEntityData('org1')).rejects.toThrow('Failed to delete from award_assignments');
+    await expect(gdprModule._deleteEntityData('org1')).rejects.toThrow('Failed to delete from event_guests');
   });
 });
 

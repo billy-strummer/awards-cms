@@ -19,8 +19,14 @@ const { createClient } = require('@supabase/supabase-js');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
+// 60-second in-memory cache for the public entry list (survives container reuse)
+const _entriesCache = { data: null, ts: 0 };
+const ENTRIES_CACHE_TTL_MS = 60000;
+
 /** Rate-limit: max votes per email per hour */
 const RATE_LIMIT_MAX = 10;
+/** Rate-limit: max votes per IP per hour (more lenient — IPs can be shared) */
+const RATE_LIMIT_IP_MAX = 20;
 const RATE_LIMIT_WINDOW_MS = 3600000; // 1 hour
 
 // ────────────────────────────────────────────
@@ -69,14 +75,21 @@ async function loadAwards() {
 }
 
 /**
- * load_entries — return public entries with org & award data, max 500
+ * load_entries — return public entries with org & award data, max 500.
+ * Results are cached for 60 seconds to avoid hammering Supabase under concurrent voter surge.
  */
-async function loadEntries() {
+async function loadEntries(_params, res) {
+  const useCache = process.env.NODE_ENV !== 'test';
+  if (useCache && _entriesCache.data && Date.now() - _entriesCache.ts < ENTRIES_CACHE_TTL_MS) {
+    res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=60');
+    return { entries: _entriesCache.data };
+  }
+
   const { data, error } = await supabase
     .from('entries')
     .select(
       `
-      *,
+      id, entry_number, entry_title, public_votes, status,
       organisations(company_name, logo_url, website),
       awards:award_years(award_name, award_category)
     `
@@ -89,6 +102,11 @@ async function loadEntries() {
     .limit(500);
 
   if (error) throw error;
+  if (useCache) {
+    _entriesCache.data = data || [];
+    _entriesCache.ts = Date.now();
+    res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=60');
+  }
   return { entries: data || [] };
 }
 
@@ -107,9 +125,11 @@ async function checkVotes({ voter_email }) {
 }
 
 /**
- * check_rate_limit — return count of votes in the last hour for an email
+ * check_rate_limit — return count of votes in the last hour for an email/IP.
+ * voter_ip is injected server-side in the main handler; any client-supplied
+ * value is overwritten so the IP cannot be spoofed.
  */
-async function checkRateLimit({ voter_email }) {
+async function checkRateLimit({ voter_email, voter_ip }) {
   if (!isValidEmail(voter_email)) {
     return { error: 'Invalid email address', status: 400 };
   }
@@ -123,7 +143,7 @@ async function checkRateLimit({ voter_email }) {
     .gte('voted_at', oneHourAgo);
 
   if (error) throw error;
-  return { count: count || 0, limit: RATE_LIMIT_MAX };
+  return { count: count || 0, limit: RATE_LIMIT_MAX, voter_ip };
 }
 
 /**
@@ -175,6 +195,23 @@ async function submitVote({ entry_id, voter_email, voter_name, voter_ip, verific
   if (rlError) throw rlError;
   if ((count || 0) >= RATE_LIMIT_MAX) {
     return { error: 'Rate limit exceeded. Please try again later.', status: 429 };
+  }
+
+  // IP-based rate limit (parallel check — more lenient since IPs can be shared)
+  // Use the rightmost IP in x-forwarded-for (added by Vercel's CDN — cannot be spoofed by the client)
+  const normalizedIp = (voter_ip || 'unknown').split(',').pop().trim();
+  if (normalizedIp && normalizedIp !== 'unknown') {
+    const { count: ipCount, error: ipRlError } = await supabase
+      .from('public_votes')
+      .select('id', { count: 'exact', head: true })
+      .eq('voter_ip', normalizedIp)
+      .gte('voted_at', oneHourAgo);
+
+    if (ipRlError) {
+      console.warn('[voting-proxy] IP rate-limit check failed (non-fatal):', ipRlError.message);
+    } else if ((ipCount || 0) >= RATE_LIMIT_IP_MAX) {
+      return { error: 'Too many votes from this network. Please try again later.', status: 429 };
+    }
   }
 
   // Check for duplicate vote
@@ -312,6 +349,36 @@ async function sendVoteConfirmation({ voter_email, company_name, award_name, ent
   }
 }
 
+async function loadWinners() {
+  const now = new Date().toISOString();
+  const { data, error } = await supabase
+    .from('winners')
+    .select('*, award_years(award_name, award_category, year), organisations(company_name, logo_url)')
+    .eq('is_published', true)
+    .or(`embargo_until.is.null,embargo_until.lte.${now}`);
+
+  if (error) throw error;
+  const winners = data || [];
+
+  // Pre-group by category for the public winners page
+  const grouped = {};
+  winners.forEach((w) => {
+    const cat = w.award_years?.award_category || w.award_years?.award_name || w.award_name || 'Uncategorised';
+    if (!grouped[cat]) grouped[cat] = [];
+    grouped[cat].push({
+      id: w.id,
+      placement: w.placement,
+      company_name: w.organisations?.company_name || w.company_name || '',
+      logo_url: w.organisations?.logo_url || null,
+      award_name: w.award_years?.award_name || w.award_name || '',
+      award_category: cat,
+      year: w.award_years?.year || null,
+    });
+  });
+
+  return { winners, grouped };
+}
+
 // ────────────────────────────────────────────
 // Action dispatch map
 // ────────────────────────────────────────────
@@ -325,6 +392,7 @@ const ACTIONS = {
   submit_vote: submitVote,
   load_entry: loadEntry,
   send_vote_confirmation: sendVoteConfirmation,
+  load_winners: loadWinners,
 };
 
 // ────────────────────────────────────────────
@@ -351,7 +419,16 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: `Unknown action: ${action}` });
     }
 
-    const result = await ACTIONS[action](params);
+    // Always derive voter_ip from server-side headers — never trust the client body.
+    // This prevents IP spoofing for rate-limit checks and vote records.
+    const realIp =
+      (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || 'unknown';
+
+    if (action === 'submit_vote' || action === 'check_rate_limit') {
+      params.voter_ip = realIp;
+    }
+
+    const result = await ACTIONS[action](params, res);
 
     // If the handler returned a status code (validation / rate-limit error)
     if (result && result.status) {

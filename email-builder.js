@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 /* ==================================================== */
 /* EMAIL BUILDER MODULE - Drag & Drop Email Designer */
 /* ==================================================== */

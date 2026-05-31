@@ -181,7 +181,7 @@ const crmModule = {
       });
       const currentVal = segmentFilter.value;
       segmentFilter.innerHTML =
-        '<option value="">All Companies</option>' +
+        '<option value="">All Organisations</option>' +
         [...segments]
           .sort()
           .map((s) => `<option value="${utils.escapeHtml(s)}">${utils.escapeHtml(s)}</option>`)
@@ -223,8 +223,8 @@ const crmModule = {
     if (!companies || companies.length === 0) {
       utils.showEnhancedEmptyState('companiesCrmTableBody', 8, {
         icon: 'bi-building',
-        message: 'No companies found',
-        description: 'Companies will appear here once added',
+        message: 'No organisations found',
+        description: 'Organisations will appear here once added',
       });
       return;
     }
@@ -353,7 +353,7 @@ const crmModule = {
     // Prevent concurrent/repeated calls while already loading
     if (this._loadingCommunications) return;
     this._loadingCommunications = true;
-    // console.debug('Loading communications...');
+    utils.showSkeletonLoading('communicationsTableBody', 8);
 
     // Read filter values from DOM
     const typeEl = document.getElementById('communicationTypeFilter');
@@ -527,7 +527,7 @@ const crmModule = {
   async loadDeals() {
     if (this._loadingDeals) return;
     this._loadingDeals = true;
-    // console.debug('Loading deals...');
+    utils.showSkeletonLoading('dealsTableBody', 9);
 
     // Sync pipeline stage customisations from server so all users see the same stages
     this._syncPipelineStagesFromServer();
@@ -736,7 +736,7 @@ const crmModule = {
    * @returns {Promise<void>}
    */
   async loadMeetings() {
-    // console.debug('Loading meetings...');
+    utils.showSkeletonLoading('meetingsTableBody', 8);
 
     try {
       const filters = {};
@@ -929,7 +929,7 @@ const crmModule = {
             </div>
             <div class="d-flex gap-2">
               <button class="btn btn-sm btn-outline-primary flex-grow-1" data-action="crmModule.viewSegmentCompanies" data-args='${JSON.stringify([segment.id, utils.escapeHtml(segment.segment_name).replace(/'/g, '&#39;')])}'>
-                <i class="bi bi-eye me-1"></i>View Companies
+                <i class="bi bi-eye me-1"></i>View Organisations
               </button>
               <button class="btn btn-sm btn-outline-secondary" data-action="crmModule.editSegment" data-id="${segment.id}" title="Edit Segment">
                 <i class="bi bi-pencil"></i>
@@ -1460,7 +1460,7 @@ const crmModule = {
                   </div>
                   <div class="col-md-6">
                     <table class="table table-sm table-borderless">
-                      <tr><td class="text-muted">Company:</td><td><strong>${utils.escapeHtml(companyName)}</strong></td></tr>
+                      <tr><td class="text-muted">Organisation:</td><td><strong>${utils.escapeHtml(companyName)}</strong></td></tr>
                       <tr><td class="text-muted">Contact:</td><td>${utils.escapeHtml(contactName)}</td></tr>
                       ${contactEmail ? `<tr><td class="text-muted">Email:</td><td><a href="mailto:${utils.escapeHtml(contactEmail)}">${utils.escapeHtml(contactEmail)}</a></td></tr>` : ''}
                       <tr><td class="text-muted">Follow-up:</td><td>${
@@ -1702,7 +1702,7 @@ const crmModule = {
                   <div class="col-md-6">
                     <table class="table table-sm table-borderless">
                       <tr><td class="text-muted">Deal Name:</td><td><strong>${utils.escapeHtml(deal.deal_name)}</strong></td></tr>
-                      <tr><td class="text-muted">Company:</td><td>${utils.escapeHtml(companyName)}</td></tr>
+                      <tr><td class="text-muted">Organisation:</td><td>${utils.escapeHtml(companyName)}</td></tr>
                       <tr><td class="text-muted">Contact:</td><td>${utils.escapeHtml(contactName)}</td></tr>
                       <tr><td class="text-muted">Created:</td><td>${createdDate}</td></tr>
                     </table>
@@ -2005,7 +2005,7 @@ const crmModule = {
                   </div>
                   <div class="col-md-6">
                     <table class="table table-sm table-borderless">
-                      <tr><td class="text-muted">Company:</td><td>${utils.escapeHtml(companyName)}</td></tr>
+                      <tr><td class="text-muted">Organisation:</td><td>${utils.escapeHtml(companyName)}</td></tr>
                       <tr><td class="text-muted">Related Deal:</td><td>${utils.escapeHtml(dealName)}</td></tr>
                       <tr><td class="text-muted">Location:</td><td>${utils.escapeHtml(meeting.location || 'N/A')}</td></tr>
                       <tr><td class="text-muted">Follow-up:</td><td>${
@@ -2290,7 +2290,7 @@ const crmModule = {
           <div class="modal-dialog modal-lg modal-dialog-scrollable">
             <div class="modal-content">
               <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title"><i class="bi bi-people me-2"></i>Companies in "${segmentName}"</h5>
+                <h5 class="modal-title"><i class="bi bi-people me-2"></i>Organisations in "${segmentName}"</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
               </div>
               <div class="modal-body">
@@ -2299,7 +2299,7 @@ const crmModule = {
                     ? `
                   <div class="text-center py-4">
                     <i class="bi bi-inbox display-4 d-block mb-2 opacity-25"></i>
-                    <p class="text-muted">No companies in this segment</p>
+                    <p class="text-muted">No organisations in this segment</p>
                   </div>
                 `
                     : `
@@ -3556,7 +3556,7 @@ const crmModule = {
       data = this._communications || [];
       if (checkEmpty(data, 'communications')) return;
       filename = 'crm-communications';
-      headers = ['Date', 'Type', 'Company', 'Contact', 'Subject', 'Notes'];
+      headers = ['Date', 'Type', 'Organisation', 'Contact', 'Subject', 'Notes'];
       const rows = data.map((r) => [
         r.communication_date || '',
         r.type || '',
@@ -3570,7 +3570,7 @@ const crmModule = {
       data = this._deals || [];
       if (checkEmpty(data, 'deals')) return;
       filename = 'crm-deals';
-      headers = ['Deal Name', 'Company', 'Value', 'Stage', 'Probability', 'Expected Close', 'Created'];
+      headers = ['Deal Name', 'Organisation', 'Value', 'Stage', 'Probability', 'Expected Close', 'Created'];
       const rows = data.map((r) => [
         r.deal_name || '',
         r.organisation?.company_name || '',
@@ -3585,7 +3585,7 @@ const crmModule = {
       data = this._meetings || [];
       if (checkEmpty(data, 'meetings')) return;
       filename = 'crm-meetings';
-      headers = ['Date', 'Title', 'Company', 'Attendees', 'Location', 'Notes'];
+      headers = ['Date', 'Title', 'Organisation', 'Attendees', 'Location', 'Notes'];
       const rows = data.map((r) => [
         r.meeting_date || '',
         r.meeting_title || '',

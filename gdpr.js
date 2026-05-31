@@ -526,7 +526,11 @@ const gdprModule = {
    */
   async _deleteEntityData(entityId) {
     // Delete in correct order (children first) — abort on failure to prevent orphaned data
+    // GDPR Article 17: cascade must cover ALL tables that hold personal data for this entity
     const tables = [
+      { table: 'email_logs', col: 'organisation_id' },
+      { table: 'event_guests', col: 'organisation_id' },
+      { table: 'public_votes', col: 'organisation_id' },
       { table: 'organisation_contacts', col: 'organisation_id' },
       { table: 'award_assignments', col: 'organisation_id' },
       { table: 'entries', col: 'organisation_id' },
@@ -562,13 +566,18 @@ const gdprModule = {
       }))
     )
       return;
-    await apiClient.update('gdpr_requests', requestId, {
-      status: 'rejected',
-      processed_by: STATE.currentUser?.email,
-      processed_at: new Date().toISOString(),
-    });
-    utils.showToast('Request rejected', 'info');
-    this.loadPendingRequests();
+    try {
+      await apiClient.update('gdpr_requests', requestId, {
+        status: 'rejected',
+        processed_by: STATE.currentUser?.email,
+        processed_at: new Date().toISOString(),
+      });
+      utils.showToast('Request rejected', 'info');
+      this.loadPendingRequests();
+    } catch (err) {
+      console.error('Failed to reject GDPR request:', err);
+      utils.showToast('Failed to reject request. Please try again.', 'danger');
+    }
   },
 
   /**

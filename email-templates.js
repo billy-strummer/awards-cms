@@ -474,10 +474,12 @@ The British Trade Awards Team`,
    * @returns {void}
    */
   _goToPage(page) {
-    this._fetchPage(page).then((data) => {
-      this.templates = data || [];
-      this.renderTemplatesList();
-    });
+    this._fetchPage(page)
+      .then((data) => {
+        this.templates = data || [];
+        this.renderTemplatesList();
+      })
+      .catch((e) => console.error('Template page fetch error:', e.message));
   },
 
   /**

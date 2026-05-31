@@ -516,6 +516,13 @@ const winnersModule = {
                 <i class="bi bi-award"></i>
               </button>
               <button
+                class="btn btn-outline-success btn-sm"
+                data-action="winnersModule.resendCertificate" data-id="${winner.id}"
+                title="Resend Certificate Email"
+                aria-label="Resend certificate email">
+                <i class="bi bi-envelope-check"></i>
+              </button>
+              <button
                 class="btn btn-outline-secondary btn-sm"
                 data-action="winnersModule.downloadMediaPack" data-id="${winner.id}"
                 title="Download Media Pack"
@@ -528,6 +535,20 @@ const winnersModule = {
                 title="Download Winner Package"
                 aria-label="Download winner package">
                 <i class="bi bi-gift"></i>
+              </button>
+              <button
+                class="btn btn-sm ${winner.trophy_collected ? 'btn-warning' : 'btn-outline-secondary'}"
+                data-action="winnersModule.toggleTrophyCollected" data-args='${JSON.stringify([winner.id, !winner.trophy_collected])}'
+                title="${winner.trophy_collected ? 'Trophy collected — click to unmark' : 'Mark trophy as collected'}"
+                aria-label="Trophy collected toggle">
+                <i class="bi bi-trophy${winner.trophy_collected ? '-fill' : ''}"></i>
+              </button>
+              <button
+                class="btn btn-outline-info btn-sm"
+                data-action="winnersModule.lookupWinnerSeating" data-id="${winner.id}"
+                title="Look up event seating for this winner"
+                aria-label="Look up seating">
+                <i class="bi bi-geo-alt"></i>
               </button>
               <button
                 class="btn btn-outline-danger btn-sm"
@@ -3891,9 +3912,65 @@ const winnersModule = {
 
       this.renderWinners();
       utils.showToast(`Status updated to "${newStatus}"`, 'success');
+
+      // M9: Auto-deliver certificate when winner is published
+      if (newStatus === 'published' || newStatus === 'Published') {
+        this._deliverCertificate(winnerId);
+      }
     } catch (error) {
       console.error('Error updating winner status:', error);
       utils.showToast('Error updating status: ' + error.message, 'error');
+    }
+  },
+
+  /**
+   * M9: Fire-and-forget certificate generation + email delivery.
+   * @param {string} winnerId - Winner ID
+   */
+  async _deliverCertificate(winnerId) {
+    try {
+      const session = await (window.supabase?.auth?.getSession?.() ?? Promise.resolve(null));
+      const token = session?.data?.session?.access_token || window.authToken || '';
+      await fetch('/api/certificates-qr', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ action: 'generate-and-email', winner_id: winnerId }),
+      });
+    } catch (err) {
+      // Fire-and-forget: errors are non-fatal
+      console.warn('Certificate auto-delivery failed (non-fatal):', err.message);
+    }
+  },
+
+  /**
+   * M9: Manually resend certificate to a winner.
+   * @param {string} winnerId - Winner ID
+   */
+  async resendCertificate(winnerId) {
+    try {
+      utils.showToast('Sending certificate…', 'info');
+      const session = await (window.supabase?.auth?.getSession?.() ?? Promise.resolve(null));
+      const token = session?.data?.session?.access_token || window.authToken || '';
+      const res = await fetch('/api/certificates-qr', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ action: 'generate-and-email', winner_id: winnerId }),
+      });
+      if (res.ok) {
+        utils.showToast('Certificate sent successfully', 'success');
+      } else {
+        const data = await res.json().catch(() => ({}));
+        utils.showToast('Certificate send failed: ' + (data.error || res.statusText), 'error');
+      }
+    } catch (err) {
+      console.error('resendCertificate error:', err);
+      utils.showToast('Certificate send failed: ' + err.message, 'error');
     }
   },
 
@@ -4139,6 +4216,138 @@ const winnersModule = {
       utils.showToast('Deleted view: ' + name, 'info');
     } catch (e) {
       utils.showToast('Failed to delete view', 'warning');
+    }
+  },
+
+  /**
+   * Open the Add Winner modal (admin-only) and populate organisation + award dropdowns.
+   */
+  async openAddWinnerModal() {
+    if (typeof rbacModule !== 'undefined' && !rbacModule.canPerform('create')) {
+      utils.showToast('You do not have permission to add winners.', 'error');
+      return;
+    }
+    const modalEl = document.getElementById('addWinnerModal');
+    if (!modalEl) return;
+
+    // Set current year as default
+    const yearInput = document.getElementById('addWinnerYear');
+    if (yearInput) yearInput.value = new Date().getFullYear();
+
+    // Populate organisations dropdown
+    const orgSelect = document.getElementById('addWinnerOrgSelect');
+    if (orgSelect) {
+      orgSelect.innerHTML = '<option value="">Loading…</option>';
+      try {
+        /* selectAll: justified — small reference list for modal dropdown */
+        const orgs = await apiClient.selectAll('organisations', {
+          select: 'id, name',
+          sort: { column: 'name', ascending: true },
+        });
+        orgSelect.innerHTML =
+          '<option value="">— Select Organisation —</option>' +
+          (orgs || [])
+            .map((o) => `<option value="${o.id}">${utils.escapeHtml ? utils.escapeHtml(o.name) : o.name}</option>`)
+            .join('');
+      } catch (e) {
+        orgSelect.innerHTML = '<option value="">Failed to load organisations</option>';
+      }
+    }
+
+    // Populate awards dropdown
+    const awardSelect = document.getElementById('addWinnerAwardSelect');
+    if (awardSelect) {
+      awardSelect.innerHTML = '<option value="">Loading…</option>';
+      try {
+        /* selectAll: justified — small reference list for modal dropdown */
+        const awards = await apiClient.selectAll('awards', {
+          select: 'id, award_name',
+          sort: { column: 'award_name', ascending: true },
+        });
+        awardSelect.innerHTML =
+          '<option value="">— Select Award —</option>' +
+          (awards || [])
+            .map(
+              (a) =>
+                `<option value="${a.id}">${utils.escapeHtml ? utils.escapeHtml(a.award_name) : a.award_name}</option>`
+            )
+            .join('');
+      } catch (e) {
+        awardSelect.innerHTML = '<option value="">Failed to load awards</option>';
+      }
+    }
+
+    new bootstrap.Modal(modalEl).show();
+  },
+
+  /**
+   * Save a manually-added winner record from the Add Winner modal.
+   */
+  async toggleTrophyCollected(winnerId, collected) {
+    try {
+      await apiClient.update('winners', winnerId, { trophy_collected: collected });
+      const winner = (STATE.allWinners || []).find((w) => w.id === winnerId);
+      if (winner) winner.trophy_collected = collected;
+      this.renderWinners();
+      utils.showToast(collected ? 'Trophy marked as collected' : 'Trophy marked as uncollected', 'success');
+    } catch (e) {
+      utils.showToast('Failed to update trophy status: ' + e.message, 'error');
+    }
+  },
+
+  async lookupWinnerSeating(winnerId) {
+    const winner = (STATE.allWinners || []).find((w) => w.id === winnerId);
+    if (!winner) return;
+    try {
+      const attendees = await apiClient.select('event_attendees', {
+        filters: { organisation_id: winner.organisation_id },
+        select: 'table_number,guest_name,event_id',
+        limit: 5,
+      });
+      const list = attendees || [];
+      if (list.length === 0) {
+        utils.showToast("No seating record found for this winner's organisation.", 'info');
+      } else {
+        const info = list.map((a) => `Table ${a.table_number || 'TBC'} (${a.guest_name || 'Guest'})`).join(', ');
+        utils.showToast(`Seating: ${info}`, 'info');
+      }
+    } catch (e) {
+      utils.showToast('Could not look up seating: ' + e.message, 'error');
+    }
+  },
+
+  async saveAddWinner() {
+    const orgId = document.getElementById('addWinnerOrgSelect')?.value?.trim();
+    const awardId = document.getElementById('addWinnerAwardSelect')?.value?.trim();
+    const year = parseInt(document.getElementById('addWinnerYear')?.value, 10);
+    const placement = document.getElementById('addWinnerPlacement')?.value || 'Winner';
+    const notes = document.getElementById('addWinnerNotes')?.value?.trim() || null;
+
+    if (!orgId || !awardId || !year) {
+      utils.showToast('Please fill in all required fields.', 'warning');
+      return;
+    }
+
+    // Derive winner_name from selected org option text
+    const orgOption = document.getElementById('addWinnerOrgSelect')?.selectedOptions?.[0];
+    const winnerName = orgOption?.textContent?.trim() || '';
+
+    try {
+      await apiClient.insert('winners', {
+        winner_name: winnerName,
+        organisation_id: orgId,
+        award_id: awardId,
+        year,
+        placement,
+        notes,
+        status: 'Pending',
+      });
+
+      bootstrap.Modal.getInstance(document.getElementById('addWinnerModal'))?.hide();
+      utils.showToast('Winner added successfully.', 'success');
+      await this.loadWinners();
+    } catch (err) {
+      utils.showToast('Failed to add winner: ' + err.message, 'error');
     }
   },
 };

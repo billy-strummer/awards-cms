@@ -1012,6 +1012,17 @@ const nomineeUploads = (() => {
     viewBatchRows,
     deleteBatch,
     deleteAllBatches,
+    // Underscore-prefixed utilities exposed for unit testing
+    _parseCSV,
+    _splitLine,
+    _detectAreaColumn,
+    _detectCompanyColumn,
+    _detectSectorColumn,
+    _stripMarkdownLinks,
+    _normaliseAreaName,
+    _levenshtein,
+    _normForMatch,
+    _fuzzyMatch,
   };
 })();
 

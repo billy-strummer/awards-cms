@@ -92,13 +92,18 @@ const winnerPipelineModule = {
   /* -------------------------------------------------- */
 
   async renderDeliberationPanel(awardId) {
-    let container = document.getElementById('deliberationPanel');
-    if (!container) {
-      container = document.createElement('div');
-      container.id = 'deliberationPanel';
-      document.body.appendChild(container);
+    const offcanvasEl = document.getElementById('winnerPipelineOffcanvas');
+    const contentEl = document.getElementById('winnerPipelineContent');
+    if (!offcanvasEl || !contentEl) {
+      utils.showToast('Pipeline panel not found — please reload the page.', 'error');
+      return;
     }
-    container.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>';
+    contentEl.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>';
+    const offcanvasInstance = bootstrap.Offcanvas.getOrCreateInstance(offcanvasEl);
+    offcanvasInstance.show();
+
+    // Provide a local container alias for rendering logic below
+    const container = contentEl;
 
     try {
       /* selectAll: justified — scoped to single award for deliberation */
@@ -278,13 +283,18 @@ const winnerPipelineModule = {
   /* -------------------------------------------------- */
 
   async renderPipelineDashboard() {
-    let container = document.getElementById('pipelineDashboard');
-    if (!container) {
-      container = document.createElement('div');
-      container.id = 'pipelineDashboard';
-      document.body.appendChild(container);
+    const offcanvasEl = document.getElementById('winnerPipelineOffcanvas');
+    const contentEl = document.getElementById('winnerPipelineContent');
+    if (!offcanvasEl || !contentEl) {
+      utils.showToast('Pipeline panel not found — please reload the page.', 'error');
+      return;
     }
-    container.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>';
+    contentEl.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>';
+    const offcanvasInstance = bootstrap.Offcanvas.getOrCreateInstance(offcanvasEl);
+    offcanvasInstance.show();
+
+    // Provide a local container alias for rendering logic below
+    const container = contentEl;
 
     try {
       /* selectAll: justified — small reference table (active awards for pipeline overview) */
@@ -344,7 +354,7 @@ const winnerPipelineModule = {
 
       if (!awards || awards.length === 0) {
         container.innerHTML = '';
-        utils.showEnhancedEmptyState('pipelineDashboard', 1, {
+        utils.showEnhancedEmptyState('winnerPipelineContent', 1, {
           icon: 'bi-funnel',
           message: 'No active awards in the pipeline',
           description: 'Awards appear here once their status is set to Active. Go to Awards to check or update status.',

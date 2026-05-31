@@ -57,7 +57,9 @@ async function votingApi(action, params = {}) {
 
 const votingSystem = {
   allEntries: [],
+  filteredEntries: [],
   currentEntryId: null,
+  currentVote: null,
   voterEmail: sessionStorage.getItem('voterEmail') || null,
 
   /**
@@ -122,10 +124,11 @@ const votingSystem = {
   /**
    * Render entries
    */
-  renderEntries() {
+  renderEntries(entries) {
+    const entriesToRender = entries || this.allEntries;
     const grid = document.getElementById('entriesGrid');
 
-    if (this.allEntries.length === 0) {
+    if (entriesToRender.length === 0) {
       grid.innerHTML = `
         <div class="entry-card text-center">
           <i class="bi bi-inbox display-1 opacity-25"></i>
@@ -135,7 +138,7 @@ const votingSystem = {
       return;
     }
 
-    grid.innerHTML = this.allEntries
+    grid.innerHTML = entriesToRender
       .map(
         (entry) => `
       <div class="entry-card ${entry.hasVoted ? 'voted' : ''}">
@@ -206,8 +209,7 @@ const votingSystem = {
         </div>
       `;
     } else {
-      this.allEntries = this.filteredEntries;
-      this.renderEntries();
+      this.renderEntries(this.filteredEntries);
     }
   },
 
@@ -216,6 +218,7 @@ const votingSystem = {
    */
   async vote(entryId) {
     this.currentEntryId = entryId;
+    this.currentVote = this.allEntries.find((e) => e.id === entryId) || null;
 
     // If user already has email stored, submit vote directly
     if (this.voterEmail) {

@@ -14,20 +14,27 @@ if (!process.env.STRIPE_SECRET_KEY) throw new Error('Missing STRIPE_SECRET_KEY e
 if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY)
   throw new Error('Missing Supabase environment variables');
 
+// Warn if key mode (test vs live) is inconsistent with STRIPE_PRICE_ID
+if (process.env.STRIPE_PRICE_ID) {
+  const keyIsTest = process.env.STRIPE_SECRET_KEY.startsWith('sk_test_');
+  const priceIsTest =
+    process.env.STRIPE_PRICE_ID.startsWith('price_test_') || process.env.STRIPE_PRICE_ID.includes('test');
+  if (keyIsTest && !priceIsTest) {
+    console.warn('⚠️  Stripe mode mismatch: STRIPE_SECRET_KEY is a test key but STRIPE_PRICE_ID may be a live price');
+  }
+}
+
 // @ts-ignore — Stripe v12+ is a default export function, not a constructor
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { createClient } = require('@supabase/supabase-js');
 const { Resend } = require('resend');
-const { wrapEmail } = require('./_lib/email-header');
+const { wrapEmail, textToHtml } = require('./_lib/email-header');
 const resend = new Resend(process.env.RESEND_API_KEY);
 const APP_URL = process.env.APP_URL || 'https://admin.britishtradeawards.com';
 const FROM_EMAIL = process.env.FROM_EMAIL || 'awards@britishtradeawards.com';
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-const supabaseAuth = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_KEY
-);
+const { hasMinimumRole, getUserRole, verifyAuth } = require('./_lib/auth');
 
 /**
  * Generate a unique invoice number (INV-YYYY-NNNNN).
@@ -47,30 +54,6 @@ async function generateInvoiceNumber() {
 }
 
 /**
- * Verify Supabase JWT from Authorization header.
- * @param {Object} req - Express request object.
- * @param {Object} res - Express response object.
- * @returns {Promise<Object|null>} The authenticated user object, or null if authentication fails (401 sent).
- */
-async function verifyAuth(req, res) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith('Bearer ')) {
-    res.status(401).json({ error: 'Authentication required' });
-    return null;
-  }
-  const token = authHeader.replace('Bearer ', '');
-  const {
-    data: { user },
-    error,
-  } = await supabaseAuth.auth.getUser(token);
-  if (error || !user) {
-    res.status(401).json({ error: 'Invalid or expired token' });
-    return null;
-  }
-  return user;
-}
-
-/**
  * Create a Stripe Checkout Session for an entry fee payment.
  * POST /api/create-checkout-session
  * @param {Object} req - Express request object with body containing entryId, amount, description, email.
@@ -82,23 +65,34 @@ async function createCheckoutSession(req, res) {
     const user = await verifyAuth(req, res);
     if (!user) return;
 
-    const { entryId, entry_id, amount, description, email } = req.body;
+    // Role check: only editor+ can initiate payment sessions
+    const role = await getUserRole(user.email);
+    if (!hasMinimumRole(role, 'editor')) {
+      return res.status(403).json({ error: 'Insufficient permissions to create payment sessions' });
+    }
+
+    const { entryId, entry_id, description, email } = req.body;
     const resolvedEntryId = entryId || entry_id; // Accept both camelCase and snake_case
 
-    // Validate inputs
-    if (!resolvedEntryId || !amount || typeof amount !== 'number' || amount <= 0) {
-      return res.status(400).json({ error: 'Missing or invalid required fields' });
+    if (!resolvedEntryId) {
+      return res.status(400).json({ error: 'entry_id is required' });
     }
 
     // Get entry details from database
     const { data: entry, error: entryError } = await supabase
       .from('entries')
-      .select('*')
+      .select('*, awards(entry_fee)')
       .eq('id', resolvedEntryId)
       .single();
 
     if (entryError || !entry) {
       return res.status(404).json({ error: 'Entry not found' });
+    }
+
+    // Always use the server-side entry fee — never trust client-supplied amounts
+    const amount = Number(entry.awards?.entry_fee) || 0;
+    if (amount <= 0) {
+      return res.status(400).json({ error: 'This entry has no fee configured' });
     }
 
     // Create Stripe checkout session
@@ -164,30 +158,39 @@ async function handleStripeWebhook(req, res) {
     return res.status(400).json({ error: `Webhook Error: ${err.message}` });
   }
 
-  // Handle the event
-  switch (event.type) {
-    case 'checkout.session.completed':
-      await handleCheckoutSessionCompleted(event.data.object);
-      break;
+  // Handle the event — errors propagate as 500 so Stripe retries the webhook
+  try {
+    switch (event.type) {
+      case 'checkout.session.completed':
+        await handleCheckoutSessionCompleted(event.data.object);
+        break;
 
-    case 'payment_intent.succeeded':
-      await handlePaymentIntentSucceeded(event.data.object);
-      break;
+      case 'payment_intent.succeeded':
+        await handlePaymentIntentSucceeded(event.data.object);
+        break;
 
-    case 'payment_intent.payment_failed':
-      await handlePaymentIntentFailed(event.data.object);
-      break;
+      case 'payment_intent.payment_failed':
+        await handlePaymentIntentFailed(event.data.object);
+        break;
 
-    case 'charge.succeeded':
-      await handleChargeSucceeded(event.data.object);
-      break;
+      case 'charge.succeeded':
+        await handleChargeSucceeded(event.data.object);
+        break;
 
-    case 'charge.refunded':
-      await handleChargeRefunded(event.data.object);
-      break;
+      case 'charge.refunded':
+        await handleChargeRefunded(event.data.object);
+        break;
 
-    default:
-      console.log(`Unhandled event type: ${event.type}`);
+      case 'checkout.session.expired':
+        await handleCheckoutSessionExpired(event.data.object);
+        break;
+
+      default:
+        console.log(`Unhandled event type: ${event.type}`);
+    }
+  } catch (handlerError) {
+    console.error(`Webhook handler error for ${event.type}:`, handlerError);
+    return res.status(500).json({ error: 'Webhook handler failed — Stripe will retry' });
   }
 
   res.json({ received: true });
@@ -202,6 +205,17 @@ async function handleStripeWebhook(req, res) {
 async function handleCheckoutSessionCompleted(session) {
   try {
     const entryId = session.metadata.entry_id;
+
+    // Idempotency guard: skip if this payment_intent was already processed
+    const { data: existing } = await supabase
+      .from('invoices')
+      .select('id')
+      .eq('payment_reference', session.payment_intent)
+      .maybeSingle();
+    if (existing) {
+      console.log(`⚡ Duplicate webhook for payment_intent ${session.payment_intent} — skipping`);
+      return;
+    }
 
     // Update entry status
     const { error: updateError } = await supabase
@@ -263,6 +277,30 @@ async function handleCheckoutSessionCompleted(session) {
     console.log(`✅ Payment completed for entry ${entryId}`);
   } catch (error) {
     console.error('Error handling checkout session:', error);
+    throw error; // Propagate so webhook handler returns 500 and Stripe retries
+  }
+}
+
+/**
+ * Handle expired checkout sessions. Marks the invoice/entry as cancelled.
+ * @param {Object} session - Stripe checkout session object.
+ * @returns {Promise<void>}
+ */
+async function handleCheckoutSessionExpired(session) {
+  try {
+    const entryId = session.metadata?.entry_id;
+    if (!entryId) return;
+
+    await supabase
+      .from('entries')
+      .update({ payment_status: 'expired', updated_at: new Date().toISOString() })
+      .eq('id', entryId)
+      .eq('payment_status', 'pending');
+
+    console.log(`⏰ Checkout session expired for entry ${entryId}`);
+  } catch (error) {
+    console.error('Error handling session expiry:', error);
+    throw error;
   }
 }
 
@@ -603,16 +641,7 @@ function replacePlaceholders(text, data) {
   return result;
 }
 
-/**
- * Convert plain-text template body to styled HTML with paragraph wrapping.
- * @param {string} text - Plain text content to convert.
- * @returns {string} HTML string with paragraphs and line breaks.
- */
-function textToHtml(text) {
-  const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  const html = escaped.replace(/\n\n/g, '</p><p style="margin:0 0 16px 0;">').replace(/\n/g, '<br>');
-  return `<div style="padding:30px 40px;"><p style="margin:0 0 16px 0;">${html}</p></div>`;
-}
+// textToHtml imported from ./_lib/email-header
 
 /**
  * Header subtitle text per payment template type.
@@ -636,7 +665,8 @@ async function sendEntryConfirmationEmail(entry) {
   }
   try {
     const branding = await loadBranding();
-    const contactEmail = branding.email_from || process.env.CONTACT_EMAIL || 'awards@britishtradeawards.com';
+    const contactEmail =
+      branding.email_from || process.env.CONTACT_EMAIL || process.env.FROM_EMAIL || 'awards@britishtradeawards.com';
     const uploadLink = `${APP_URL}/upload-documents.html?entry=${entry.entry_number || entry.id}`;
 
     const placeholders = {
@@ -680,7 +710,8 @@ async function sendPaymentFailedEmail(entry, errorMessage) {
   }
   try {
     const branding = await loadBranding();
-    const contactEmail = branding.email_from || process.env.CONTACT_EMAIL || 'awards@britishtradeawards.com';
+    const contactEmail =
+      branding.email_from || process.env.CONTACT_EMAIL || process.env.FROM_EMAIL || 'awards@britishtradeawards.com';
 
     const placeholders = {
       ENTRY_NUMBER: entry.entry_number || '',
@@ -721,7 +752,8 @@ async function sendRefundConfirmationEmail(entry) {
   }
   try {
     const branding = await loadBranding();
-    const contactEmail = branding.email_from || process.env.CONTACT_EMAIL || 'awards@britishtradeawards.com';
+    const contactEmail =
+      branding.email_from || process.env.CONTACT_EMAIL || process.env.FROM_EMAIL || 'awards@britishtradeawards.com';
 
     const placeholders = {
       ENTRY_NUMBER: entry.entry_number || '',
@@ -831,22 +863,24 @@ function checkPublicCheckoutRate(ip) {
 
 async function createPublicCheckout(req, res) {
   try {
-    const ip = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
+    const rawIp = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
+    const ip = rawIp.split(',')[0].trim();
     if (!checkPublicCheckoutRate(ip)) {
       return res.status(429).json({ error: 'Too many requests. Please try again later.' });
     }
 
-    const { entry_id, amount } = req.body;
+    const { entry_id } = req.body;
 
     if (!entry_id) {
       return res.status(400).json({ error: 'Missing entry_id' });
     }
 
-    // Validate amount (default to 95 GBP if not provided)
-    const payAmount = typeof amount === 'number' && amount > 0 ? amount : 95;
-
-    // Look up the entry
-    const { data: entry, error: entryError } = await supabase.from('entries').select('*').eq('id', entry_id).single();
+    // Look up the entry including the award's entry_fee — never trust client-supplied amounts
+    const { data: entry, error: entryError } = await supabase
+      .from('entries')
+      .select('*, awards(entry_fee)')
+      .eq('id', entry_id)
+      .single();
 
     if (entryError || !entry) {
       return res.status(404).json({ error: 'Entry not found' });
@@ -856,6 +890,8 @@ async function createPublicCheckout(req, res) {
     if (entry.payment_status === 'paid') {
       return res.status(400).json({ error: 'Entry has already been paid' });
     }
+
+    const payAmount = Number(entry.awards?.entry_fee) || 95; // fall back to £95 default
 
     // Create Stripe checkout session
     const session = await stripe.checkout.sessions.create({
@@ -928,18 +964,44 @@ async function createEventCheckout(req, res) {
       return res.status(404).json({ error: 'Event not found' });
     }
 
-    // Build line items from tickets
-    const line_items = tickets.map((t) => ({
-      price_data: {
-        currency: 'gbp',
-        product_data: {
-          name: t.name || `Event Ticket - ${event.event_name}`,
-          description: t.description || `${event.event_name} - ${event.event_date || ''}`,
+    // Fetch ticket type prices from DB — never trust client-supplied prices
+    const ticketTypeIds = tickets.map((t) => t.ticket_type_id).filter(Boolean);
+    if (ticketTypeIds.length !== tickets.length) {
+      return res.status(400).json({ error: 'Each ticket must include a ticket_type_id' });
+    }
+
+    const { data: ticketTypes, error: ttError } = await supabase
+      .from('event_ticket_types')
+      .select('id, name, price, description')
+      .eq('event_id', eventId)
+      .in('id', ticketTypeIds);
+
+    if (ttError || !ticketTypes) {
+      return res.status(500).json({ error: 'Failed to load ticket pricing' });
+    }
+
+    const ticketTypeMap = Object.fromEntries(ticketTypes.map((tt) => [tt.id, tt]));
+
+    for (const t of tickets) {
+      if (!ticketTypeMap[t.ticket_type_id]) {
+        return res.status(400).json({ error: `Invalid ticket_type_id: ${t.ticket_type_id}` });
+      }
+    }
+
+    const line_items = tickets.map((t) => {
+      const tt = ticketTypeMap[t.ticket_type_id];
+      return {
+        price_data: {
+          currency: 'gbp',
+          product_data: {
+            name: tt.name || `Event Ticket - ${event.event_name}`,
+            description: tt.description || `${event.event_name} - ${event.event_date || ''}`,
+          },
+          unit_amount: Math.round((tt.price || 0) * 100),
         },
-        unit_amount: Math.round((t.price || 0) * 100),
-      },
-      quantity: t.quantity || 1,
-    }));
+        quantity: t.quantity || 1,
+      };
+    });
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],

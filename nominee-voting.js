@@ -168,8 +168,18 @@ const nomineeVoting = {
     // Entry number
     document.getElementById('entryNumber').textContent = entry.entry_number || '';
 
-    // Vote count
-    document.getElementById('voteCount').textContent = (entry.public_votes || 0).toLocaleString();
+    // Vote count — hidden by default to prevent tactical voting; add data-show-counts="true" to <body> to reveal
+    const voteCountEl = document.getElementById('voteCount');
+    const voteCountLabel = document.querySelector('.vote-count-label');
+    if (document.body.dataset.showCounts === 'true') {
+      if (voteCountEl) voteCountEl.textContent = (entry.public_votes || 0).toLocaleString();
+    } else {
+      if (voteCountEl) {
+        voteCountEl.textContent = '—';
+        voteCountEl.title = 'Vote counts are hidden until voting closes';
+      }
+      if (voteCountLabel) voteCountLabel.textContent = 'Votes Hidden Until Close';
+    }
 
     // Description
     if (entry.entry_description) {
@@ -182,8 +192,8 @@ const nomineeVoting = {
       document.getElementById('whyShouldWinText').textContent = entry.why_should_win;
     }
 
-    // Website link
-    if (org?.website) {
+    // Website link — only allow http/https URLs to prevent javascript: injection
+    if (org?.website && /^https?:\/\//i.test(org.website)) {
       document.getElementById('websiteLinkSection').style.display = 'block';
       document.getElementById('websiteLink').href = org.website;
     }
@@ -303,9 +313,11 @@ const nomineeVoting = {
         verification_token: this.generateToken(),
       });
 
-      // Update local vote count
+      // Update local vote count (only display if counts are visible)
       this.entry.public_votes = (this.entry.public_votes || 0) + 1;
-      document.getElementById('voteCount').textContent = this.entry.public_votes.toLocaleString();
+      if (document.body.dataset.showCounts === 'true') {
+        document.getElementById('voteCount').textContent = this.entry.public_votes.toLocaleString();
+      }
 
       // Close verification modal if open
       this.closeVerificationModal();

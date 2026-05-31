@@ -16,10 +16,8 @@
 const { createClient } = require('@supabase/supabase-js');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-const supabaseAuth = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_KEY
-);
+const { verifyAuth } = require('./_lib/auth');
+const { isUUID } = require('./_lib/validate');
 
 // ────────────────────────────────────────────
 // CORS helpers
@@ -60,38 +58,76 @@ const ALLOWED_EXTENSIONS = new Set([
 
 const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024; // 25 MB
 
+// ────────────────────────────────────────────
+// MIME type validation (extension vs declared MIME)
+// Magic-byte validation is delegated to Supabase Storage server-side policies.
+// ────────────────────────────────────────────
+
+/**
+ * Extensions where client-declared MIME cannot be reliably validated by extension alone.
+ */
+const SKIP_MAGIC_CHECK_EXTENSIONS = new Set(['csv', 'txt', 'rtf', 'svg', 'odt', 'ods', 'doc']);
+
+/**
+ * Map from extension to the set of MIME types that are considered valid for it.
+ * Used for cross-validating the client-declared mime_type against the extension.
+ */
+const EXT_TO_VALID_MIMES = {
+  pdf: new Set(['application/pdf']),
+  jpg: new Set(['image/jpeg']),
+  jpeg: new Set(['image/jpeg']),
+  png: new Set(['image/png']),
+  gif: new Set(['image/gif']),
+  webp: new Set(['image/webp']),
+  bmp: new Set(['image/bmp']),
+  tiff: new Set(['image/tiff']),
+  mp4: new Set(['video/mp4']),
+  mov: new Set(['video/quicktime']),
+  avi: new Set(['video/x-msvideo', 'video/avi']),
+  webm: new Set(['video/webm']),
+  mp3: new Set(['audio/mpeg', 'audio/mp3']),
+  wav: new Set(['audio/wav', 'audio/wave', 'audio/x-wav']),
+  zip: new Set(['application/zip', 'application/x-zip-compressed']),
+  docx: new Set(['application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/zip']),
+  xlsx: new Set(['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/zip']),
+  pptx: new Set(['application/vnd.openxmlformats-officedocument.presentationml.presentation', 'application/zip']),
+  ppt: new Set(['application/vnd.ms-powerpoint']),
+  xls: new Set(['application/vnd.ms-excel']),
+};
+
+/**
+ * Validate that the client-declared MIME type is consistent with the file extension.
+ * For extensions in SKIP_MAGIC_CHECK_EXTENSIONS, the check is skipped.
+ *
+ * @param {string} ext       - Lower-case file extension (without dot).
+ * @param {string} mimeType  - MIME type declared by the client.
+ * @returns {{ valid: boolean, reason?: string }}
+ */
+function validateMimeVsExtension(ext, mimeType) {
+  if (SKIP_MAGIC_CHECK_EXTENSIONS.has(ext)) {
+    return { valid: true };
+  }
+  if (!mimeType) {
+    // No declared MIME type — skip validation (legacy clients)
+    return { valid: true };
+  }
+  const validMimes = EXT_TO_VALID_MIMES[ext];
+  if (!validMimes) {
+    // Extension not in our mapping — skip validation
+    return { valid: true };
+  }
+  const normalised = mimeType.toLowerCase().split(';')[0].trim();
+  if (!validMimes.has(normalised)) {
+    return { valid: false, reason: `Declared MIME type "${normalised}" does not match extension ".${ext}"` };
+  }
+  return { valid: true };
+}
+
 function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
-}
-
-// ────────────────────────────────────────────
-// Authentication
-// ────────────────────────────────────────────
-
-async function verifyAuth(req, res) {
-  const authHeader = req.headers?.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    res.status(401).json({ error: 'Authentication required' });
-    return null;
-  }
-  const token = authHeader.replace('Bearer ', '');
-  try {
-    const {
-      data: { user },
-      error,
-    } = await supabaseAuth.auth.getUser(token);
-    if (error || !user) {
-      res.status(401).json({ error: 'Invalid or expired token' });
-      return null;
-    }
-    return user;
-  } catch (_err) {
-    res.status(401).json({ error: 'Token verification failed' });
-    return null;
-  }
 }
 
 // ────────────────────────────────────────────
@@ -130,7 +166,8 @@ module.exports = async function handler(req, res) {
   setCors(res);
   if (req.method === 'OPTIONS') return res.status(204).end();
 
-  const ip = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
+  const rawIp = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
+  const ip = rawIp.split(',')[0].trim() || 'unknown';
   if (!checkRateLimit(ip)) {
     return res.status(429).json({ error: 'Too many requests. Please try again later.' });
   }
@@ -229,6 +266,9 @@ async function handleGetExistingFiles(req, res) {
   if (!entryId) {
     return res.status(400).json({ error: 'entry_id is required' });
   }
+  if (!isUUID(entryId)) {
+    return res.status(400).json({ error: 'Invalid entry_id format' });
+  }
 
   const { data: files, error } = await supabase
     .from('entry_files')
@@ -250,10 +290,18 @@ async function handleGetExistingFiles(req, res) {
 async function handleSaveFileMetadata(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { entry_id, file_name, file_url, file_type, file_size, mime_type, uploaded_by } = req.body;
+  const { entry_id, entry_number, contact_email, file_name, file_url, file_type, file_size, mime_type, uploaded_by } =
+    req.body;
 
   if (!entry_id || !file_name || !file_url) {
     return res.status(400).json({ error: 'entry_id, file_name, and file_url are required' });
+  }
+  if (!isUUID(entry_id)) {
+    return res.status(400).json({ error: 'Invalid entry_id format' });
+  }
+  // Require proof of ownership: entry_number + contact_email must match the entry
+  if (!entry_number || !contact_email) {
+    return res.status(400).json({ error: 'entry_number and contact_email are required to verify ownership' });
   }
 
   // Validate file extension against allowlist
@@ -262,10 +310,24 @@ async function handleSaveFileMetadata(req, res) {
     return res.status(400).json({ error: `File type ".${metaExt}" is not allowed.` });
   }
 
-  // Verify the entry exists
-  const { data: entry } = await supabase.from('entries').select('id').eq('id', entry_id).single();
+  // Validate declared MIME type is consistent with the file extension
+  if (mime_type) {
+    const mimeCheck = validateMimeVsExtension(metaExt, mime_type);
+    if (!mimeCheck.valid) {
+      return res.status(415).json({ error: mimeCheck.reason });
+    }
+  }
+
+  // Verify the entry exists AND the caller owns it (entry_number + contact_email match)
+  const { data: entry } = await supabase
+    .from('entries')
+    .select('id')
+    .eq('id', entry_id)
+    .eq('entry_number', sanitizeString(entry_number, 50))
+    .eq('contact_email', sanitizeString(contact_email, 200).toLowerCase())
+    .maybeSingle();
   if (!entry) {
-    return res.status(404).json({ error: 'Entry not found' });
+    return res.status(404).json({ error: 'Entry not found or ownership verification failed' });
   }
 
   const { error } = await supabase.from('entry_files').insert([
@@ -312,6 +374,15 @@ async function handleGetUploadToken(req, res) {
     return res
       .status(400)
       .json({ error: `File type ".${ext}" is not allowed. Permitted types: documents and images only.` });
+  }
+
+  // Validate declared MIME type is consistent with the file extension (if provided)
+  const declaredMime = typeof req.body.mime_type === 'string' ? req.body.mime_type : null;
+  if (declaredMime) {
+    const mimeCheck = validateMimeVsExtension(ext, declaredMime);
+    if (!mimeCheck.valid) {
+      return res.status(415).json({ error: mimeCheck.reason });
+    }
   }
 
   // Enforce max file size (client-supplied; also enforced by Supabase Storage policy)

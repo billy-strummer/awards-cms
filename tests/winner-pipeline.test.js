@@ -30,6 +30,9 @@ const dom = new JSDOM(
   <div id="confirmDialogBody"></div>
   <div id="confirmDialogOk"></div>
   <div id="bulkProgressBar" style="display:none;"></div>
+  <div id="winnerPipelineOffcanvas">
+    <div id="winnerPipelineContent"></div>
+  </div>
 </body></html>`,
   { url: 'http://localhost' }
 );
@@ -51,6 +54,17 @@ global.bootstrap = {
     hide() {}
     static getInstance() {
       return { hide() {} };
+    }
+  },
+  Offcanvas: class {
+    constructor() {}
+    show() {}
+    hide() {}
+    static getInstance() {
+      return { show() {}, hide() {} };
+    }
+    static getOrCreateInstance() {
+      return { show() {}, hide() {} };
     }
   },
   Tooltip: class {},
@@ -624,9 +638,9 @@ describe('Winner Pipeline - _openNoteModal', () => {
 describe('Winner Pipeline - renderDeliberationPanel', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    // Remove existing panel
-    const existing = document.getElementById('deliberationPanel');
-    if (existing) existing.remove();
+    // Reset the offcanvas content before each test
+    const content = document.getElementById('winnerPipelineContent');
+    if (content) content.innerHTML = '';
   });
 
   afterEach(() => {
@@ -653,7 +667,7 @@ describe('Winner Pipeline - renderDeliberationPanel', () => {
 
     await winnerPipelineModule.renderDeliberationPanel('award-1');
 
-    const container = document.getElementById('deliberationPanel');
+    const container = document.getElementById('winnerPipelineContent');
     expect(container).not.toBeNull();
     expect(container.innerHTML).toContain('Panel Deliberation');
     expect(container.innerHTML).toContain('Top Entry');
@@ -662,20 +676,12 @@ describe('Winner Pipeline - renderDeliberationPanel', () => {
     expect(container.innerHTML).toContain('finalist');
   });
 
-  test('creates deliberationPanel container if it does not exist', async () => {
-    jest.spyOn(apiClient, 'selectAll').mockResolvedValue([]);
-
-    await winnerPipelineModule.renderDeliberationPanel('award-1');
-
-    expect(document.getElementById('deliberationPanel')).not.toBeNull();
-  });
-
   test('renders empty table message when no shortlisted entries', async () => {
     jest.spyOn(apiClient, 'selectAll').mockResolvedValue([]);
 
     await winnerPipelineModule.renderDeliberationPanel('award-1');
 
-    const container = document.getElementById('deliberationPanel');
+    const container = document.getElementById('winnerPipelineContent');
     // The rows will be empty, showing the fallback
     expect(container.innerHTML).toContain('Panel Deliberation');
   });
@@ -686,7 +692,7 @@ describe('Winner Pipeline - renderDeliberationPanel', () => {
 
     await winnerPipelineModule.renderDeliberationPanel('award-1');
 
-    const container = document.getElementById('deliberationPanel');
+    const container = document.getElementById('winnerPipelineContent');
     expect(container.innerHTML).toContain('Failed to load panel');
     expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('Deliberation panel error'), 'error');
     toastSpy.mockRestore();
@@ -705,7 +711,7 @@ describe('Winner Pipeline - renderDeliberationPanel', () => {
 
     await winnerPipelineModule.renderDeliberationPanel('award-1');
 
-    const container = document.getElementById('deliberationPanel');
+    const container = document.getElementById('winnerPipelineContent');
     expect(container.innerHTML).toContain('winnerPipelineModule.promoteEntry');
     expect(container.innerHTML).toContain('winnerPipelineModule.confirmWinner');
     expect(container.innerHTML).toContain('winnerPipelineModule._openNoteModal');
@@ -715,8 +721,9 @@ describe('Winner Pipeline - renderDeliberationPanel', () => {
 describe('Winner Pipeline - renderPipelineDashboard', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    const existing = document.getElementById('pipelineDashboard');
-    if (existing) existing.remove();
+    // Reset offcanvas content
+    const content = document.getElementById('winnerPipelineContent');
+    if (content) content.innerHTML = '';
   });
 
   afterEach(() => {
@@ -738,7 +745,7 @@ describe('Winner Pipeline - renderPipelineDashboard', () => {
 
     await winnerPipelineModule.renderPipelineDashboard();
 
-    const container = document.getElementById('pipelineDashboard');
+    const container = document.getElementById('winnerPipelineContent');
     expect(container).not.toBeNull();
     expect(container.innerHTML).toContain('Award Pipeline Dashboard');
     expect(container.innerHTML).toContain('Best Innovation');
@@ -747,21 +754,13 @@ describe('Winner Pipeline - renderPipelineDashboard', () => {
     expect(container.innerHTML).toContain('Shortlisted');
   });
 
-  test('creates pipelineDashboard container if not exists', async () => {
-    jest.spyOn(apiClient, 'selectAll').mockResolvedValue([]);
-
-    await winnerPipelineModule.renderPipelineDashboard();
-
-    expect(document.getElementById('pipelineDashboard')).not.toBeNull();
-  });
-
   test('shows error on API failure', async () => {
     jest.spyOn(apiClient, 'selectAll').mockRejectedValue(new Error('Load error'));
     const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
 
     await winnerPipelineModule.renderPipelineDashboard();
 
-    const container = document.getElementById('pipelineDashboard');
+    const container = document.getElementById('winnerPipelineContent');
     expect(container.innerHTML).toContain('Pipeline dashboard error');
     expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('Pipeline dashboard failed'), 'error');
     toastSpy.mockRestore();
@@ -780,7 +779,7 @@ describe('Winner Pipeline - renderPipelineDashboard', () => {
 
     await winnerPipelineModule.renderPipelineDashboard();
 
-    const container = document.getElementById('pipelineDashboard');
+    const container = document.getElementById('winnerPipelineContent');
     expect(container.innerHTML).toContain('Scoring');
     expect(container.innerHTML).toContain('Pending');
     expect(container.innerHTML).toContain('Deliberating');
@@ -849,8 +848,6 @@ describe('Winner Pipeline - renderScoreChart', () => {
     document.getElementById('scoreChartContainer').remove();
     const leftoverCanvas = document.getElementById('pipelineScoreChart');
     if (leftoverCanvas) leftoverCanvas.remove();
-    const deliberationPanel = document.getElementById('deliberationPanel');
-    if (deliberationPanel) deliberationPanel.remove();
     const toastSpy = jest.spyOn(utils, 'showToast').mockImplementation(() => {});
 
     await winnerPipelineModule.renderScoreChart('award-1');
@@ -976,6 +973,9 @@ describe('Winner Pipeline - renderScoreChart', () => {
 describe('Winner Pipeline - additional branch coverage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Reset offcanvas content
+    const content = document.getElementById('winnerPipelineContent');
+    if (content) content.innerHTML = '';
   });
 
   afterEach(() => {
@@ -989,7 +989,7 @@ describe('Winner Pipeline - additional branch coverage', () => {
 
     await winnerPipelineModule.renderDeliberationPanel('award-1');
 
-    const container = document.getElementById('deliberationPanel');
+    const container = document.getElementById('winnerPipelineContent');
     // Should fall back to entry_id
     expect(container.innerHTML).toContain('e-1');
   });
@@ -1014,7 +1014,7 @@ describe('Winner Pipeline - additional branch coverage', () => {
 
     await winnerPipelineModule.renderDeliberationPanel('award-1');
 
-    const container = document.getElementById('deliberationPanel');
+    const container = document.getElementById('winnerPipelineContent');
     expect(container.innerHTML).toContain('bg-success'); // winner badge
     expect(container.innerHTML).toContain('bg-warning'); // runner_up badge
   });
@@ -1032,29 +1032,8 @@ describe('Winner Pipeline - additional branch coverage', () => {
 
     await winnerPipelineModule.renderDeliberationPanel('award-1');
 
-    const container = document.getElementById('deliberationPanel');
+    const container = document.getElementById('winnerPipelineContent');
     expect(container.innerHTML).toContain('bg-secondary');
-  });
-
-  test('renderDeliberationPanel uses existing container if present', async () => {
-    // Remove any leftover from previous tests
-    const leftover = document.getElementById('deliberationPanel');
-    if (leftover) leftover.remove();
-
-    // Create the container manually
-    const existing = document.createElement('div');
-    existing.id = 'deliberationPanel';
-    document.body.appendChild(existing);
-
-    jest.spyOn(apiClient, 'selectAll').mockResolvedValue([]);
-
-    await winnerPipelineModule.renderDeliberationPanel('award-1');
-
-    // Should reuse existing container
-    const containers = document.querySelectorAll('#deliberationPanel');
-    expect(containers.length).toBe(1);
-
-    existing.remove();
   });
 
   test('renderDeliberationPanel handles null shortlist response', async () => {
@@ -1062,7 +1041,7 @@ describe('Winner Pipeline - additional branch coverage', () => {
 
     await winnerPipelineModule.renderDeliberationPanel('award-1');
 
-    const container = document.getElementById('deliberationPanel');
+    const container = document.getElementById('winnerPipelineContent');
     expect(container.innerHTML).toContain('Panel Deliberation');
   });
 
@@ -1080,7 +1059,7 @@ describe('Winner Pipeline - additional branch coverage', () => {
 
     await winnerPipelineModule.renderDeliberationPanel('award-1');
 
-    const container = document.getElementById('deliberationPanel');
+    const container = document.getElementById('winnerPipelineContent');
     expect(container.innerHTML).toContain('test@example.com');
 
     STATE.currentUser = { email: 'admin@test.com' };
@@ -1101,7 +1080,7 @@ describe('Winner Pipeline - additional branch coverage', () => {
 
     await winnerPipelineModule.renderDeliberationPanel('award-1');
 
-    const container = document.getElementById('deliberationPanel');
+    const container = document.getElementById('winnerPipelineContent');
     expect(container.innerHTML).toContain('unknown@user');
 
     STATE.currentUser = origUser;
@@ -1116,7 +1095,7 @@ describe('Winner Pipeline - additional branch coverage', () => {
 
     await winnerPipelineModule.renderPipelineDashboard();
 
-    const container = document.getElementById('pipelineDashboard');
+    const container = document.getElementById('winnerPipelineContent');
     expect(container.innerHTML).toContain('No active awards in the pipeline');
   });
 
@@ -1139,31 +1118,12 @@ describe('Winner Pipeline - additional branch coverage', () => {
 
     await winnerPipelineModule.renderPipelineDashboard();
 
-    const container = document.getElementById('pipelineDashboard');
+    const container = document.getElementById('winnerPipelineContent');
     expect(container.innerHTML).toContain('Confirmed'); // a-1
     expect(container.innerHTML).toContain('Deliberating'); // a-2
     expect(container.innerHTML).toContain('Shortlisted'); // a-3
     expect(container.innerHTML).toContain('Scoring'); // a-4
     expect(container.innerHTML).toContain('Pending'); // a-5
-  });
-
-  test('renderPipelineDashboard uses existing container', async () => {
-    // Remove any leftover from previous tests
-    const leftover = document.getElementById('pipelineDashboard');
-    if (leftover) leftover.remove();
-
-    const existing = document.createElement('div');
-    existing.id = 'pipelineDashboard';
-    document.body.appendChild(existing);
-
-    jest.spyOn(apiClient, 'selectAll').mockResolvedValue([]);
-
-    await winnerPipelineModule.renderPipelineDashboard();
-
-    const containers = document.querySelectorAll('#pipelineDashboard');
-    expect(containers.length).toBe(1);
-
-    existing.remove();
   });
 
   test('renderPipelineDashboard shows shortlist count on cards', async () => {
@@ -1179,7 +1139,7 @@ describe('Winner Pipeline - additional branch coverage', () => {
 
     await winnerPipelineModule.renderPipelineDashboard();
 
-    const container = document.getElementById('pipelineDashboard');
+    const container = document.getElementById('winnerPipelineContent');
     expect(container.innerHTML).toContain('3 shortlisted');
   });
 

@@ -14,6 +14,26 @@
 
 > **CLAUDE: There is a technical improvement plan at `TECHNICAL-DEBT-TODO.md`. This covers three phases: (1) breaking the monolithic `index.html` into composable HTML partials, (2) implementing genuinely missing features (Post-Event tab, Ticket Issuance, Milestones, Special Requirements, Social Media audit, Auto-Segments), and (3) adding JSDoc type annotations for code quality. When the user asks to work on architecture, missing features, or code quality — read this file and pick up from the first unchecked `[ ]` item.**
 
+## ACTIVE WORK: Professional Awards Company Audit
+
+> **CLAUDE: A comprehensive 5-agent audit was run on 2026-05-22. All 20 items are COMPLETE — see `PROFESSIONAL-AUDIT-TODO.md` for the full record.**
+
+## ACTIVE WORK: Deep System Audit (HIGHEST PRIORITY)
+
+> **CLAUDE: A 4-agent deep audit (Security, UX/Workflows, Code Quality, Feature Completeness) was run on 2026-05-29. All findings are tracked at `DEEP-AUDIT-TODO.md` with 4 Critical, 10 High, 10 Medium, and 10 Low items. Read this file and work through items in order (DA-C1 → DA-C2 → … → DA-L10). Mark each `[x]` when committed and pushed. This is the HIGHEST PRIORITY active work.**
+
+## ACTIVE WORK: Database Schema Audit
+
+> **CLAUDE: A database schema audit was run on 2026-05-30 covering all 48 SQL migration files. Findings are tracked at `DB-SCHEMA-AUDIT-TODO.md` with 3 Critical, 3 High, 3 Medium, and 1 Low item. The most urgent finding is missing RLS policies on 8 tables (DB-C3) — without RLS, authenticated Supabase users can read all data directly. Work through items DB-C1 → DB-C3 → DB-H1 → … → DB-L1. Mark each `[x]` when committed and pushed.**
+
+## ACTIVE WORK: Vercel / Build / CSP Configuration Audit
+
+> **CLAUDE: A deployment config audit was run on 2026-05-30. Findings are tracked at `VERCEL-CONFIG-AUDIT-TODO.md` with 2 Critical, 3 High, 2 Medium, and 1 Low item. Most urgent: VC-C1 (no SPA catch-all rewrite — deep links 404) and VC-C2 (undocumented env vars). Also: VC-M1 (`public-winners.html` missing from build copy list — breaks production page). Work through VC-C1 → VC-C2 → VC-H1 → … → VC-L1.**
+
+## ACTIVE WORK: Email Templates Audit
+
+> **CLAUDE: An email templates audit was run on 2026-05-30. Findings are tracked at `EMAIL-AUDIT-TODO.md` with 1 Critical, 2 High, 2 Medium, and 2 Low items. Most urgent: EA-C1 — database-template substitution path does NOT escape user data before injecting into email HTML (XSS risk). Work through EA-C1 → EA-H1 → … → EA-L1.**
+
 ## Project Overview
 
 British Trade Awards CMS - a web-based admin system for managing awards ceremonies, organisations, entries, judging, events, payments, email marketing, and CRM.
@@ -94,7 +114,7 @@ British Trade Awards CMS - a web-based admin system for managing awards ceremoni
 ## Current State (as of March 2026)
 
 **Status: COMPLETE — Production-ready.**
-Build passes (0 lint errors, 2072KB JS, 58KB CSS). 65/65 test suites pass (6381 tests, 0 failures).
+Build passes (0 lint errors, ~1334KB JS chunks + core, 65KB CSS). 65/65 test suites pass (6398 tests, 0 failures).
 
 ### What's Complete (100%)
 - Core CRUD: Awards, Organisations, Winners, Assignments, Events, Media
@@ -142,6 +162,8 @@ Build passes (0 lint errors, 2072KB JS, 58KB CSS). 65/65 test suites pass (6381 
 | `SUPABASE_URL` | Supabase project URL | Set |
 | `SUPABASE_ANON_KEY` | Supabase public key | Set |
 | `SUPABASE_SERVICE_KEY` | Supabase service role key | Set |
+| `ALLOWED_ORIGINS` | CORS origin allowlist for data-proxy (`data-proxy.js`) | Set (comma-separated URLs) |
+| `CONTACT_EMAIL` | Fallback contact email in payment receipts (`stripe-payment.js`); falls back to `FROM_EMAIL` if unset | Set |
 
 #### Not Yet Configured (only needed when ready for these features)
 

@@ -41,22 +41,29 @@ function sanitizeString(str, maxLength = 1000) {
 }
 
 // ────────────────────────────────────────────
-// Rate limiting (in-memory, per-IP)
+// Rate limiting (DB-backed, cross-instance safe)
 // ────────────────────────────────────────────
 
-const rateLimitMap = new Map();
 const RATE_LIMIT_MAX = 5;
 const RATE_LIMIT_WINDOW_MS = 3600000; // 1 hour
 
-function checkRateLimit(ip) {
-  const now = Date.now();
-  const entry = rateLimitMap.get(ip);
-  if (!entry || now - entry.start > RATE_LIMIT_WINDOW_MS) {
-    rateLimitMap.set(ip, { start: now, count: 1 });
-    return true;
+/**
+ * Check whether an email has exceeded the entry submission rate limit.
+ * Uses the database so the limit is enforced across all serverless instances.
+ * Returns true if the request is allowed, false if it should be blocked.
+ */
+async function checkEmailRateLimit(email) {
+  const oneHourAgo = new Date(Date.now() - RATE_LIMIT_WINDOW_MS).toISOString();
+  const { count, error } = await supabase
+    .from('entries')
+    .select('id', { count: 'exact', head: true })
+    .eq('contact_email', email.toLowerCase())
+    .gte('submission_date', oneHourAgo);
+  if (error) {
+    console.warn('[entry-proxy] Rate limit check failed (non-fatal):', error.message);
+    return true; // Allow on error to avoid blocking legitimate submissions
   }
-  entry.count++;
-  return entry.count <= RATE_LIMIT_MAX;
+  return (count || 0) < RATE_LIMIT_MAX;
 }
 
 // ────────────────────────────────────────────
@@ -80,6 +87,51 @@ async function generateEntryNumber() {
   return `${prefix}${String(lastNum + 1).padStart(4, '0')}`;
 }
 
+/**
+ * Insert an entry payload with protection against the read-then-write race
+ * condition in generateEntryNumber(). If two concurrent submissions read the
+ * same MAX(entry_number) and generate the same value, the second INSERT will
+ * hit the UNIQUE constraint on entry_number. We catch that violation and retry
+ * with a freshly generated number (up to MAX_RETRIES attempts).
+ *
+ * @param {object} payload - The entry record to insert
+ * @returns {Promise<{data: object, error: object|null}>}
+ */
+async function insertEntryWithRetry(payload) {
+  const MAX_RETRIES = 3;
+  let attempt = 0;
+  let entryPayload = { ...payload };
+
+  while (attempt < MAX_RETRIES) {
+    // eslint-disable-next-line no-await-in-loop
+    const result = await supabase.from('entries').insert(entryPayload).select().single();
+
+    if (!result.error) return result;
+
+    // PostgreSQL unique-violation code is '23505'; Supabase surfaces it in
+    // error.code. Only retry on that specific error.
+    const isDuplicate =
+      result.error.code === '23505' || (result.error.message && result.error.message.includes('entry_number'));
+
+    if (!isDuplicate || attempt >= MAX_RETRIES - 1) {
+      return result; // non-retryable error, or we've exhausted retries
+    }
+
+    // Back off with random jitter before the next attempt
+    const backoffMs = 50 + Math.floor(Math.random() * 100) * (attempt + 1);
+    // eslint-disable-next-line no-await-in-loop
+    await new Promise((resolve) => setTimeout(resolve, backoffMs));
+
+    // Re-generate entry number for the next attempt
+    // eslint-disable-next-line no-await-in-loop
+    entryPayload = { ...entryPayload, entry_number: await generateEntryNumber() };
+    attempt++;
+  }
+
+  // Should not reach here, but satisfy static analysis
+  return await supabase.from('entries').insert(entryPayload).select().single();
+}
+
 // ────────────────────────────────────────────
 // Main handler
 // ────────────────────────────────────────────
@@ -89,11 +141,6 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const ip = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
-  if (!checkRateLimit(ip)) {
-    return res.status(429).json({ error: 'Too many submissions. Please try again later.' });
-  }
-
   const { action } = req.body || {};
 
   try {
@@ -102,6 +149,10 @@ module.exports = async function handler(req, res) {
         return await handleSubmitEntry(req, res);
       case 'submit_nomination':
         return await handleSubmitNomination(req, res);
+      case 'get_public_data':
+        return await handleGetPublicData(req, res);
+      case 'data_export':
+        return await handleDataExport(req, res);
       default:
         return res.status(400).json({ error: `Unknown action: ${action}` });
     }
@@ -111,7 +162,82 @@ module.exports = async function handler(req, res) {
   }
 };
 
+/**
+ * GDPR Article 20 — Data portability self-service export.
+ * Returns all data held for a given email + entry number without requiring admin login.
+ * Rate-limited by the email lookup being the only auth (entry number acts as a token).
+ */
+async function handleDataExport(req, res) {
+  const { email, entry_number: entryNumber } = req.body || {};
+  if (!email || !entryNumber) {
+    return res.status(400).json({ error: 'email and entry_number are required' });
+  }
+
+  // Validate email format
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ error: 'Invalid email address' });
+  }
+
+  const { data: entry, error } = await supabase
+    .from('entries')
+    .select(
+      'id, entry_number, entry_title, sector, county_city, contact_name, contact_email, contact_phone, entry_description, why_should_win, payment_status, status, consent_given, consent_timestamp, created_at'
+    )
+    .eq('contact_email', email.toLowerCase().trim())
+    .eq('entry_number', entryNumber.trim())
+    .maybeSingle();
+
+  if (error) {
+    console.error('[entry-proxy] data_export query error:', error.message);
+    return res.status(500).json({ error: 'Export failed' });
+  }
+
+  if (!entry) {
+    // Return generic message to avoid email enumeration
+    return res.status(404).json({ error: 'No entry found matching these details' });
+  }
+
+  // Remove fields that could expose internal identifiers
+  const exportData = {
+    entry_number: entry.entry_number,
+    entry_title: entry.entry_title,
+    sector: entry.sector,
+    county_city: entry.county_city,
+    contact_name: entry.contact_name,
+    contact_email: entry.contact_email,
+    contact_phone: entry.contact_phone,
+    entry_description: entry.entry_description,
+    why_should_win: entry.why_should_win,
+    payment_status: entry.payment_status,
+    status: entry.status,
+    consent_given: entry.consent_given,
+    consent_timestamp: entry.consent_timestamp,
+    submitted_at: entry.created_at,
+    data_controller: 'British Trade Awards',
+    export_generated_at: new Date().toISOString(),
+    your_rights: 'You may request erasure by emailing privacy@britishtradeawards.com',
+  };
+
+  return res.status(200).json({ export: exportData });
+}
+
+async function handleGetPublicData(_req, res) {
+  const [sectorsResult, catsResult] = await Promise.all([
+    supabase.from('custom_sectors').select('id, name, display_name').eq('is_active', true).order('display_name'),
+    supabase.from('custom_categories').select('id, name, sector, county').eq('is_active', true).order('name'),
+  ]);
+  return res.status(200).json({
+    custom_sectors: sectorsResult.data || [],
+    custom_categories: catsResult.data || [],
+  });
+}
+
 async function handleSubmitEntry(req, res) {
+  // Honeypot: bots fill the 'website' field; humans leave it blank
+  if (req.body?.website) {
+    return res.status(200).json({ success: true, entry: { entry_number: 'BOT-0000' } });
+  }
+
   const {
     companyName,
     county_city,
@@ -139,6 +265,13 @@ async function handleSubmitEntry(req, res) {
   if (!contactEmail || !isValidEmail(contactEmail)) {
     return res.status(400).json({ error: 'Valid email address is required' });
   }
+
+  // DB-backed rate limit: enforced across all serverless instances
+  const allowed = await checkEmailRateLimit(contactEmail);
+  if (!allowed) {
+    return res.status(429).json({ error: 'Too many submissions from this email. Please try again later.' });
+  }
+
   if (!contactName || typeof contactName !== 'string' || contactName.trim().length < 2) {
     return res.status(400).json({ error: 'Contact name is required' });
   }
@@ -200,9 +333,10 @@ async function handleSubmitEntry(req, res) {
 
   // 2. Find matching award
   let awardId = null;
+  let awardEntryFee = 0;
   const { data: matchingAwards } = await supabase
     .from('awards')
-    .select('id')
+    .select('id, entry_fee')
     .eq('award_name', safe.awardCategory)
     .eq('sector', safe.sector)
     .eq('county', safe.countyCity)
@@ -212,6 +346,7 @@ async function handleSubmitEntry(req, res) {
 
   if (matchingAwards && matchingAwards.length > 0) {
     awardId = matchingAwards[0].id;
+    awardEntryFee = Number(matchingAwards[0].entry_fee) || 0;
   }
 
   // 3. Generate entry number
@@ -228,6 +363,8 @@ async function handleSubmitEntry(req, res) {
 
   // 5. Create entry
   const currentYear = new Date().getFullYear();
+  const submittedAt = new Date().toISOString();
+  const submitterIp = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || null;
   const entryPayload = {
     entry_number: entryNumber,
     organisation_id: organisationId,
@@ -238,7 +375,7 @@ async function handleSubmitEntry(req, res) {
     contact_email: safe.contactEmail,
     status: 'submitted',
     payment_status: 'pending',
-    submission_date: new Date().toISOString(),
+    submission_date: submittedAt,
     allow_public_voting: false,
     why_should_win: safe.whyShouldWin,
     supporting_information: supportingInformation,
@@ -249,12 +386,18 @@ async function handleSubmitEntry(req, res) {
     sector: safe.sector,
     county_city: safe.countyCity,
     is_self_nomination: true,
+    // GDPR Article 7: record when and how consent was given
+    consent_given: true,
+    consent_timestamp: submittedAt,
+    consent_ip_address: submitterIp,
+    lawful_basis: 'legitimate_interest',
   };
 
-  const { data: entry, error: entryError } = await supabase.from('entries').insert(entryPayload).select().single();
+  // Use retry wrapper to handle concurrent-submission race conditions on entry_number
+  const { data: entry, error: entryError } = await insertEntryWithRetry(entryPayload);
 
   if (entryError) {
-    // Fallback: try base columns only
+    // Fallback: try base columns only (re-use the already-generated entryNumber)
     const fallbackPayload = {
       entry_number: entryNumber,
       organisation_id: organisationId,
@@ -273,11 +416,7 @@ async function handleSubmitEntry(req, res) {
       allow_public_voting: false,
     };
 
-    const { data: baseEntry, error: baseError } = await supabase
-      .from('entries')
-      .insert(fallbackPayload)
-      .select()
-      .single();
+    const { data: baseEntry, error: baseError } = await insertEntryWithRetry(fallbackPayload);
 
     if (baseError) {
       console.error('Entry creation failed:', baseError);
@@ -301,7 +440,7 @@ async function handleSubmitEntry(req, res) {
         })
         .eq('id', baseEntry.id);
     } catch (_e) {
-      /* non-blocking */
+      console.error('[entry-proxy] Non-blocking metadata update failed:', _e.message);
     }
 
     // Send confirmation email (non-blocking)
@@ -310,6 +449,7 @@ async function handleSubmitEntry(req, res) {
     return res.status(200).json({
       success: true,
       entry: { id: baseEntry.id, entry_number: baseEntry.entry_number },
+      entry_fee: awardEntryFee,
     });
   }
 
@@ -319,6 +459,7 @@ async function handleSubmitEntry(req, res) {
   return res.status(200).json({
     success: true,
     entry: { id: entry.id, entry_number: entry.entry_number },
+    entry_fee: awardEntryFee,
   });
 }
 
@@ -361,6 +502,13 @@ async function handleSubmitNomination(req, res) {
   if (!nominatorEmail || !isValidEmail(nominatorEmail)) {
     return res.status(400).json({ error: 'Valid email address is required' });
   }
+
+  // DB-backed rate limit (shared limit across entries + nominations for the same email)
+  const allowed = await checkEmailRateLimit(nominatorEmail);
+  if (!allowed) {
+    return res.status(429).json({ error: 'Too many submissions from this email. Please try again later.' });
+  }
+
   if (!nominatorName || typeof nominatorName !== 'string' || nominatorName.trim().length < 2) {
     return res.status(400).json({ error: 'Your name is required' });
   }
@@ -488,10 +636,11 @@ async function handleSubmitNomination(req, res) {
     is_self_nomination: false,
   };
 
-  const { data: entry, error: entryError } = await supabase.from('entries').insert(entryPayload).select().single();
+  // Use retry wrapper to handle concurrent-submission race conditions on entry_number
+  const { data: entry, error: entryError } = await insertEntryWithRetry(entryPayload);
 
   if (entryError) {
-    // Fallback: try base columns only
+    // Fallback: try base columns only (re-use the already-generated entryNumber)
     const fallbackPayload = {
       entry_number: entryNumber,
       organisation_id: organisationId,
@@ -508,11 +657,7 @@ async function handleSubmitNomination(req, res) {
       allow_public_voting: false,
     };
 
-    const { data: baseEntry, error: baseError } = await supabase
-      .from('entries')
-      .insert(fallbackPayload)
-      .select()
-      .single();
+    const { data: baseEntry, error: baseError } = await insertEntryWithRetry(fallbackPayload);
 
     if (baseError) {
       console.error('Nomination entry creation failed:', baseError);
@@ -534,7 +679,7 @@ async function handleSubmitNomination(req, res) {
         })
         .eq('id', baseEntry.id);
     } catch (_e) {
-      /* non-blocking */
+      console.error('[entry-proxy] Non-blocking metadata update failed:', _e.message);
     }
 
     // Send confirmation email (non-blocking)

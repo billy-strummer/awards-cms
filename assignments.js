@@ -643,6 +643,31 @@ const assignmentsModule = {
 
       await apiClient.delete('award_assignments', assignmentId);
 
+      // Clean up orphaned judge_scores: find entries for this org+award and delete their scores
+      if (assignment?.organisation_id && assignment?.award_id) {
+        try {
+          const relatedEntries = await apiClient.selectAll('entries', {
+            select: 'id',
+            filters: {
+              organisation_id: assignment.organisation_id,
+              award_id: assignment.award_id,
+            },
+          });
+          const entryIds = (relatedEntries || []).map((e) => e.id).filter(Boolean);
+          if (entryIds.length > 0) {
+            await Promise.all(
+              entryIds.map((entryId) =>
+                apiClient.deleteByFilters('judge_scores', { entry_id: entryId }).catch((err) => {
+                  console.warn('Could not delete judge_scores for entry', entryId, err);
+                })
+              )
+            );
+          }
+        } catch (err) {
+          console.warn('Could not clean up judge_scores after assignment removal:', err);
+        }
+      }
+
       utils.showToast('Organisation removed from award', 'success');
       await this.refreshAssignments();
 

@@ -27,7 +27,6 @@ const awardsModule = {
       this._syncAwardsViewsFromServer();
 
       // Populate filter dropdowns from constants (no full dataset needed)
-      this._populateFiltersFromConstants();
 
       // Restore saved filters from localStorage
       const lsAwardsFilters = (() => {
@@ -87,13 +86,6 @@ const awardsModule = {
       utils.hideLoading();
       this._loading = false;
     }
-  },
-
-  /**
-   * Populate filter dropdowns from known constants (no full dataset required)
-   */
-  _populateFiltersFromConstants() {
-    // All filters are now populated from DB after data loads
   },
 
   /**
@@ -1313,6 +1305,8 @@ const awardsModule = {
     document.getElementById('awardFormVotingClose').value = '';
     document.getElementById('awardFormWinnersAnnouncement').value = '';
     document.getElementById('awardFormDescription').value = '';
+    const criteriaEl = document.getElementById('awardFormCriteria');
+    if (criteriaEl) criteriaEl.value = '';
     document.getElementById('awardFormPrevWinner').value = '';
     document.getElementById('awardFormPrev2nd').value = '';
     document.getElementById('awardFormPrev3rd').value = '';
@@ -1366,6 +1360,9 @@ const awardsModule = {
 
     const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('awardFormModal'));
     modal.show();
+
+    // Clear scoring criteria rows for new award
+    this._populateScoringCriteria(null);
 
     // Autofocus category name after modal animation completes
     document.getElementById('awardFormModal').addEventListener(
@@ -1421,6 +1418,7 @@ const awardsModule = {
         if (data.prev_year_3rd) document.getElementById('awardFormPrev3rd').value = data.prev_year_3rd;
         if (data.description) document.getElementById('awardFormDescription').value = data.description;
         document.getElementById('awardFormDescCount').textContent = (data.description || '').length;
+        if (data.criteria) document.getElementById('awardFormCriteria').value = data.criteria;
       });
       const modalBody = document.querySelector('#awardFormModal .modal-body');
       if (modalBody && banner) modalBody.prepend(banner);
@@ -1461,6 +1459,7 @@ const awardsModule = {
       prev_year_2nd: document.getElementById('awardFormPrev2nd')?.value,
       prev_year_3rd: document.getElementById('awardFormPrev3rd')?.value,
       description: document.getElementById('awardFormDescription')?.value,
+      criteria: document.getElementById('awardFormCriteria')?.value,
     };
   },
 
@@ -1508,6 +1507,8 @@ const awardsModule = {
     document.getElementById('awardFormVotingClose').value = award.voting_close_date || '';
     document.getElementById('awardFormWinnersAnnouncement').value = award.winners_announcement_date || '';
     document.getElementById('awardFormDescription').value = award.description || '';
+    const editCriteriaEl = document.getElementById('awardFormCriteria');
+    if (editCriteriaEl) editCriteriaEl.value = award.criteria || '';
     document.getElementById('awardFormPrevWinner').value = award.prev_year_winner || '';
     document.getElementById('awardFormPrev2nd').value = award.prev_year_2nd || '';
     document.getElementById('awardFormPrev3rd').value = award.prev_year_3rd || '';
@@ -1587,6 +1588,9 @@ const awardsModule = {
     const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('awardFormModal'));
     modal.show();
 
+    // Populate scoring criteria from the award's stored JSON
+    this._populateScoringCriteria(award.scoring_criteria || null);
+
     // Keyboard shortcut: Ctrl/Cmd+Enter to save
     const keyHandlerEdit = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
@@ -1632,6 +1636,7 @@ const awardsModule = {
           document.getElementById('awardFormDescription').value = data.description;
           document.getElementById('awardFormDescCount').textContent = (data.description || '').length;
         }
+        if (data.criteria) document.getElementById('awardFormCriteria').value = data.criteria;
       });
       const modalBody = document.querySelector('#awardFormModal .modal-body');
       if (modalBody && banner) modalBody.prepend(banner);
@@ -1738,9 +1743,14 @@ const awardsModule = {
       voting_close_date: document.getElementById('awardFormVotingClose').value || null,
       winners_announcement_date: document.getElementById('awardFormWinnersAnnouncement').value || null,
       description: document.getElementById('awardFormDescription').value.trim() || null,
+      criteria: document.getElementById('awardFormCriteria')?.value?.trim() || null,
       prev_year_winner: document.getElementById('awardFormPrevWinner').value.trim() || null,
       prev_year_2nd: document.getElementById('awardFormPrev2nd').value.trim() || null,
       prev_year_3rd: document.getElementById('awardFormPrev3rd').value.trim() || null,
+      scoring_criteria: (() => {
+        const criteria = this._getScoringCriteria();
+        return criteria.length > 0 ? JSON.stringify(criteria) : null;
+      })(),
     };
 
     // Validate date order
@@ -1829,6 +1839,12 @@ const awardsModule = {
         utils.showToast(id ? 'Award updated successfully!' : 'Award created successfully!', 'success');
         await this.loadAwards();
         if (typeof updateTabCounts === 'function') updateTabCounts();
+        if (!id && typeof dashboardModule !== 'undefined' && dashboardModule._initGettingStartedBanner) {
+          dashboardModule._initGettingStartedBanner(
+            typeof STATE !== 'undefined' ? (STATE.allAwards || []).length : 0,
+            typeof STATE !== 'undefined' ? (STATE.allOrganisations || []).length : 0
+          );
+        }
       });
     } catch (error) {
       console.error('Error saving award:', error);
@@ -1836,6 +1852,89 @@ const awardsModule = {
     } finally {
       utils.hideLoading();
     }
+  },
+
+  /**
+   * Add a scoring criterion row to the criteria editor in the award modal.
+   * @param {string} [name=''] - Criterion name
+   * @param {number|string} [weight=''] - Criterion weight (percentage)
+   * @returns {void}
+   */
+  addScoringCriterionRow(name = '', weight = '') {
+    const container = document.getElementById('scoringCriteriaRows');
+    if (!container) return;
+    const row = document.createElement('div');
+    row.className = 'input-group input-group-sm mb-2 scoring-criterion-row';
+    row.innerHTML = `
+      <input type="text" class="form-control" placeholder="Criterion name (e.g. Innovation)" value="${utils.escapeHtml(String(name))}" aria-label="Criterion name">
+      <input type="number" class="form-control" style="max-width:90px" placeholder="Weight %" min="1" max="100" step="1" value="${utils.escapeHtml(String(weight))}" aria-label="Weight percentage">
+      <span class="input-group-text">%</span>
+      <button type="button" class="btn btn-outline-danger" aria-label="Remove criterion" onclick="this.closest('.scoring-criterion-row').remove(); awardsModule._updateCriteriaWeightTotal();">
+        <i class="bi bi-trash"></i>
+      </button>
+    `;
+    row
+      .querySelectorAll('input')
+      .forEach((inp) => inp.addEventListener('input', () => this._updateCriteriaWeightTotal()));
+    container.appendChild(row);
+    this._updateCriteriaWeightTotal();
+  },
+
+  /**
+   * Update the weight total display for scoring criteria.
+   * @returns {void}
+   */
+  _updateCriteriaWeightTotal() {
+    const totalEl = document.getElementById('criteriaWeightTotal');
+    if (!totalEl) return;
+    const total = this._getScoringCriteria().reduce((sum, c) => sum + (Number(c.weight) || 0), 0);
+    totalEl.textContent = String(total);
+    totalEl.closest('strong')
+      ? null
+      : (totalEl.style.color = total === 100 ? 'green' : total > 100 ? 'red' : 'inherit');
+  },
+
+  /**
+   * Read all scoring criterion rows from the modal and return as an array.
+   * @returns {Array<{name: string, weight: number}>} Array of criteria objects (only rows with a name)
+   */
+  _getScoringCriteria() {
+    const container = document.getElementById('scoringCriteriaRows');
+    if (!container) return [];
+    const rows = container.querySelectorAll('.scoring-criterion-row');
+    const criteria = [];
+    rows.forEach((row) => {
+      const inputs = row.querySelectorAll('input');
+      const name = inputs[0]?.value?.trim();
+      const weight = parseInt(inputs[1]?.value, 10);
+      if (name) {
+        criteria.push({ name, weight: isNaN(weight) ? 0 : weight });
+      }
+    });
+    return criteria;
+  },
+
+  /**
+   * Populate scoring criterion rows from a JSON string or array.
+   * @param {string|Array|null} scoringCriteria - JSON string or array of criteria
+   * @returns {void}
+   */
+  _populateScoringCriteria(scoringCriteria) {
+    const container = document.getElementById('scoringCriteriaRows');
+    if (!container) return;
+    container.innerHTML = '';
+    let criteria = [];
+    if (scoringCriteria) {
+      try {
+        criteria = typeof scoringCriteria === 'string' ? JSON.parse(scoringCriteria) : scoringCriteria;
+      } catch (e) {
+        criteria = [];
+      }
+    }
+    if (Array.isArray(criteria) && criteria.length > 0) {
+      criteria.forEach((c) => this.addScoringCriterionRow(c.name || '', c.weight || ''));
+    }
+    this._updateCriteriaWeightTotal();
   },
 
   /**
@@ -2222,6 +2321,7 @@ const awardsModule = {
    */
   async rolloverToNextYear() {
     // Determine source year from current filter or most common year
+    // Use STATE.allAwards only to find the most recent year (current page is sufficient for this)
     const years = [...new Set((STATE.allAwards || []).map((a) => a.year))].sort((a, b) => b - a);
 
     if (years.length === 0) {
@@ -2232,16 +2332,25 @@ const awardsModule = {
     const sourceYear = parseInt(years[0]);
     const targetYear = sourceYear + 1;
 
-    // Get awards for the source year
-    const sourceAwards = STATE.allAwards.filter((a) => String(a.year) === String(sourceYear));
+    // Fetch ALL awards for the source year from the server (not just the current page)
+    /* selectAll: justified — rollover requires complete dataset for the source year */
+    const allSourceYearAwards = await apiClient.selectAll('awards', {
+      filters: { year: sourceYear },
+      sort: { column: 'award_name', ascending: true },
+    });
+    const sourceAwards = allSourceYearAwards || [];
 
     if (sourceAwards.length === 0) {
       utils.showToast(`No awards found for ${sourceYear}`, 'warning');
       return;
     }
 
-    // Check if target year already has awards
-    const existingTarget = STATE.allAwards.filter((a) => String(a.year) === String(targetYear));
+    // Fetch ALL awards for the target year from the server to check for existing entries
+    /* selectAll: justified — rollover duplicate check requires full target year dataset */
+    const allTargetYearAwards = await apiClient.selectAll('awards', {
+      filters: { year: targetYear },
+    });
+    const existingTarget = allTargetYearAwards || [];
 
     let message = `Roll over ${sourceAwards.length} awards from ${sourceYear} to ${targetYear}?\n\n`;
     message += `All copied awards will be set to "Draft" status, ready for vetting.\n`;

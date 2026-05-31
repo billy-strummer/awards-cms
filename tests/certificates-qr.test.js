@@ -704,9 +704,9 @@ describe('Certificates & QR Module', () => {
 
   describe('verifyQRCode', () => {
     test('successfully verifies and checks in attendee', async () => {
-      const qrData = JSON.stringify({ id: 'att-verify-1' });
+      const qrData = JSON.stringify({ id: '00000000-0000-0000-0000-000000000001' });
       const attendee = {
-        id: 'att-verify-1',
+        id: '00000000-0000-0000-0000-000000000001',
         checked_in: false,
         contacts: { full_name: 'Verified Person' },
         events: { event_name: 'Gala' },
@@ -725,9 +725,9 @@ describe('Certificates & QR Module', () => {
     });
 
     test('returns invalid for already checked in attendee', async () => {
-      const qrData = JSON.stringify({ id: 'att-verify-2' });
+      const qrData = JSON.stringify({ id: '00000000-0000-0000-0000-000000000002' });
       const attendee = {
-        id: 'att-verify-2',
+        id: '00000000-0000-0000-0000-000000000002',
         checked_in: true,
         contacts: { full_name: 'Already In' },
         events: { event_name: 'Gala' },
@@ -751,7 +751,7 @@ describe('Certificates & QR Module', () => {
     });
 
     test('returns invalid when attendee not found in DB', async () => {
-      const qrData = JSON.stringify({ id: 'nonexistent' });
+      const qrData = JSON.stringify({ id: '00000000-0000-0000-0000-000000000003' });
       mockFromResults.push(chainable({ data: null, error: new Error('Not found') }));
 
       const result = await certificates.verifyQRCode(qrData);
@@ -760,8 +760,15 @@ describe('Certificates & QR Module', () => {
       expect(result.message).toBe('Invalid QR code');
     });
 
+    test('returns invalid for invalid UUID in QR data', async () => {
+      const qrData = JSON.stringify({ id: 'not-a-uuid' });
+      const result = await certificates.verifyQRCode(qrData);
+      expect(result.valid).toBe(false);
+      expect(result.message).toBe('Invalid QR code format');
+    });
+
     test('returns invalid when attendee is null with no error', async () => {
-      const qrData = JSON.stringify({ id: 'ghost-attendee' });
+      const qrData = JSON.stringify({ id: '00000000-0000-0000-0000-000000000004' });
       mockFromResults.push(chainable({ data: null, error: null }));
 
       const result = await certificates.verifyQRCode(qrData);
@@ -775,9 +782,11 @@ describe('Certificates & QR Module', () => {
 
   describe('generateCertificateEndpoint', () => {
     test('returns success when certificate is generated', async () => {
-      const winner = { id: 'ep-1', winner_name: 'EP Corp', awards: { award_name: 'Best EP' } };
+      const winnerId = '11111111-1111-1111-1111-111111111101';
+      const templateId = '11111111-1111-1111-1111-111111111102';
+      const winner = { id: winnerId, winner_name: 'EP Corp', awards: { award_name: 'Best EP' } };
       const template = {
-        id: 'tpl-1',
+        id: templateId,
         fields_json: [],
         custom_fonts_json: [],
         background_pdf_url: null,
@@ -790,7 +799,7 @@ describe('Certificates & QR Module', () => {
       mockFromResults.push(chainable({ data: template, error: null }));
       mockFromResults.push(chainable({ data: null, error: null }));
 
-      const req = createReq({ winnerId: 'ep-1', templateId: 'tpl-1' });
+      const req = createReq({ winnerId, templateId });
       const res = createRes();
 
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
@@ -802,7 +811,7 @@ describe('Certificates & QR Module', () => {
     });
 
     test('returns 400 when winnerId or templateId missing', async () => {
-      const req = createReq({ winnerId: 'ep-1' });
+      const req = createReq({ winnerId: '11111111-1111-1111-1111-111111111101' });
       const res = createRes();
 
       await certificates.generateCertificateEndpoint(req, res);
@@ -812,9 +821,11 @@ describe('Certificates & QR Module', () => {
     });
 
     test('returns 500 on error', async () => {
+      const winnerId = '11111111-1111-1111-1111-111111111101';
+      const templateId = '11111111-1111-1111-1111-111111111102';
       mockFromResults.push(chainable({ data: null, error: new Error('Not found') }));
 
-      const req = createReq({ winnerId: 'bad-id', templateId: 'tpl-1' });
+      const req = createReq({ winnerId, templateId });
       const res = createRes();
 
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
@@ -828,7 +839,7 @@ describe('Certificates & QR Module', () => {
 
   describe('generateBulkCertificatesEndpoint', () => {
     test('returns 400 when winnerIds or templateId missing', async () => {
-      const req = createReq({ templateId: 'tpl-1' });
+      const req = createReq({ templateId: '11111111-1111-1111-1111-111111111102' });
       const res = createRes();
 
       await certificates.generateBulkCertificatesEndpoint(req, res);
@@ -837,9 +848,11 @@ describe('Certificates & QR Module', () => {
     });
 
     test('returns 500 on error', async () => {
+      const templateId = '11111111-1111-1111-1111-111111111102';
+      const winnerId = '11111111-1111-1111-1111-111111111101';
       mockFromResults.push(chainable({ data: null, error: new Error('Template error') }));
 
-      const req = createReq({ winnerIds: ['w1'], templateId: 'tpl-1' });
+      const req = createReq({ winnerIds: [winnerId], templateId });
       const res = createRes();
 
       await certificates.generateBulkCertificatesEndpoint(req, res);
@@ -860,8 +873,9 @@ describe('Certificates & QR Module', () => {
     });
 
     test('returns preview PDF base64', async () => {
+      const templateId = '11111111-1111-1111-1111-111111111102';
       const template = {
-        id: 'tpl-1',
+        id: templateId,
         fields_json: [
           { text: '{WINNER_NAME}', x: 100, y: 200, fontSize: 36, fontFamily: 'Helvetica', color: '#000000' },
         ],
@@ -873,7 +887,7 @@ describe('Certificates & QR Module', () => {
 
       mockFromResults.push(chainable({ data: template, error: null }));
 
-      const req = createReq({ templateId: 'tpl-1' });
+      const req = createReq({ templateId });
       const res = createRes();
 
       await certificates.previewCertificateEndpoint(req, res);
@@ -885,8 +899,9 @@ describe('Certificates & QR Module', () => {
 
   describe('generateQRTicketEndpoint', () => {
     test('returns success when QR ticket is generated', async () => {
+      const attendeeId = '11111111-1111-1111-1111-111111111103';
       const attendee = {
-        id: 'qr-ep-1',
+        id: attendeeId,
         attendee_name: 'QR Person',
         contacts: { full_name: 'QR Person' },
         events: { event_name: 'Gala' },
@@ -900,7 +915,7 @@ describe('Certificates & QR Module', () => {
         data: { publicUrl: 'https://storage.test.co/qr.png' },
       });
 
-      const req = createReq({ attendeeId: 'qr-ep-1' });
+      const req = createReq({ attendeeId });
       const res = createRes();
 
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
@@ -911,9 +926,10 @@ describe('Certificates & QR Module', () => {
     });
 
     test('returns 500 on error', async () => {
+      const attendeeId = '11111111-1111-1111-1111-111111111103';
       mockFromResults.push(chainable({ data: null, error: new Error('Not found') }));
 
-      const req = createReq({ attendeeId: 'bad-id' });
+      const req = createReq({ attendeeId });
       const res = createRes();
 
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
@@ -928,8 +944,9 @@ describe('Certificates & QR Module', () => {
 
   describe('generateBadgeEndpoint', () => {
     test('returns success when badge is generated', async () => {
+      const attendeeId = '11111111-1111-1111-1111-111111111104';
       const attendee = {
-        id: 'badge-ep-1',
+        id: attendeeId,
         attendee_name: 'Badge Person',
         table_number: 1,
         contacts: { full_name: 'Badge Person' },
@@ -947,7 +964,7 @@ describe('Certificates & QR Module', () => {
         data: { publicUrl: 'https://storage.test.co/qr.png' },
       });
 
-      const req = createReq({ attendeeId: 'badge-ep-1' });
+      const req = createReq({ attendeeId });
       const res = createRes();
 
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
@@ -958,9 +975,10 @@ describe('Certificates & QR Module', () => {
     });
 
     test('returns 500 on error', async () => {
+      const attendeeId = '11111111-1111-1111-1111-111111111104';
       mockFromResults.push(chainable({ data: null, error: new Error('Not found') }));
 
-      const req = createReq({ attendeeId: 'bad-id' });
+      const req = createReq({ attendeeId });
       const res = createRes();
 
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
@@ -975,9 +993,9 @@ describe('Certificates & QR Module', () => {
 
   describe('verifyQREndpoint', () => {
     test('returns verification result for valid QR', async () => {
-      const qrData = JSON.stringify({ id: 'verify-ep-1' });
+      const qrData = JSON.stringify({ id: '00000000-0000-0000-0000-000000000005' });
       const attendee = {
-        id: 'verify-ep-1',
+        id: '00000000-0000-0000-0000-000000000005',
         checked_in: false,
         contacts: { full_name: 'Person' },
         events: { event_name: 'Gala' },

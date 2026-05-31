@@ -26,40 +26,11 @@ const escHtml = (str) =>
     .replace(/"/g, '&quot;');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-const supabaseAuth = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_KEY
-);
+const { verifyAuth } = require('./_lib/auth');
+const { isUUID } = require('./_lib/validate');
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const APP_URL = process.env.APP_URL || 'https://admin.britishtradeawards.com';
-
-/**
- * Verify the caller's Supabase JWT.
- * Returns the authenticated user or sends 401 and returns null.
- */
-async function verifyAuth(req, res) {
-  const authHeader = req.headers?.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    res.status(401).json({ error: 'Authentication required' });
-    return null;
-  }
-  const token = authHeader.replace('Bearer ', '');
-  try {
-    const {
-      data: { user },
-      error,
-    } = await supabaseAuth.auth.getUser(token);
-    if (error || !user) {
-      res.status(401).json({ error: 'Invalid or expired token' });
-      return null;
-    }
-    return user;
-  } catch (_err) {
-    res.status(401).json({ error: 'Token verification failed' });
-    return null;
-  }
-}
 
 /**
  * Assign judges to entries automatically using round-robin with expertise matching and conflict checking.
@@ -74,7 +45,7 @@ async function assignJudgesToEntries(awardId = null) {
     // Get all judges (from contacts or separate judges table)
     const { data: judges, error: judgesError } = await supabase
       .from('contacts')
-      .select('*')
+      .select('id, full_name, email, specialisms, organisation_name')
       .eq('contact_type', 'judge')
       .eq('is_active', true);
 
@@ -85,7 +56,12 @@ async function assignJudgesToEntries(awardId = null) {
     }
 
     // Get entries that need judging
-    let query = supabase.from('entries').select('*, organisations(*), awards:award_years(*)').eq('status', 'submitted');
+    let query = supabase
+      .from('entries')
+      .select(
+        'id, award_id, entry_number, entry_title, sector, organisations(id, company_name, sector), awards:award_years(id, award_name)'
+      )
+      .eq('status', 'submitted');
 
     if (awardId) {
       query = query.eq('award_id', awardId);
@@ -103,6 +79,22 @@ async function assignJudgesToEntries(awardId = null) {
     console.log(`📝 Found ${entries.length} entries to assign`);
     console.log(`👨‍⚖️ Found ${judges.length} available judges`);
 
+    // Batch-fetch ALL existing judge scores for these entries in one query (avoids N+1)
+    const entryIds = entries.map((e) => e.id);
+    const { data: allExistingScores } = await supabase
+      .from('judge_scores')
+      .select('entry_id, judge_email, conflict_declared')
+      .in('entry_id', entryIds);
+
+    // Build O(1) lookup maps
+    const assignedByEntry = new Map(); // entry_id → Set<judge_email>
+    const declaredConflicts = new Set(); // "judgeEmail::entryId"
+    for (const score of allExistingScores || []) {
+      if (!assignedByEntry.has(score.entry_id)) assignedByEntry.set(score.entry_id, new Set());
+      assignedByEntry.get(score.entry_id).add(score.judge_email);
+      if (score.conflict_declared) declaredConflicts.add(`${score.judge_email}::${score.entry_id}`);
+    }
+
     // Number of judges per entry (typically 3-5)
     const judgesPerEntry = 3;
 
@@ -111,36 +103,28 @@ async function assignJudgesToEntries(awardId = null) {
 
     // For each entry, assign judges
     for (const entry of entries) {
-      // Get existing assignments for this entry
-      const { data: existingAssignments } = await supabase
-        .from('judge_scores')
-        .select('judge_email')
-        .eq('entry_id', entry.id);
-
-      const alreadyAssigned = existingAssignments?.map((a) => a.judge_email) || [];
+      const alreadyAssigned = assignedByEntry.get(entry.id) || new Set();
 
       // Filter out already assigned judges
-      const availableJudges = judges.filter((j) => !alreadyAssigned.includes(j.email));
+      const availableJudges = judges.filter((j) => !alreadyAssigned.has(j.email));
 
-      // Check conflicts and sort by expertise
-      const judgesWithScores = await Promise.all(
-        availableJudges.map(async (judge) => {
-          const conflict = await checkConflict(judge, entry);
-          const expertiseScore = calculateExpertiseScore(judge, entry);
+      // Check conflicts synchronously using pre-fetched data (no per-entry DB queries)
+      const judgesWithScores = availableJudges.map((judge) => {
+        const conflict = checkConflictSync(judge, entry, declaredConflicts);
+        const expertiseScore = calculateExpertiseScore(judge, entry);
 
-          return {
-            judge,
-            conflict,
-            expertiseScore,
-          };
-        })
-      );
+        return {
+          judge,
+          conflict,
+          expertiseScore,
+        };
+      });
 
       // Filter out conflicts and sort by expertise
       const suitableJudges = judgesWithScores
         .filter((j) => !j.conflict)
         .sort((a, b) => b.expertiseScore - a.expertiseScore)
-        .slice(0, judgesPerEntry - alreadyAssigned.length);
+        .slice(0, judgesPerEntry - alreadyAssigned.size);
 
       // Assign judges
       for (const { judge } of suitableJudges) {
@@ -182,35 +166,53 @@ async function assignJudgesToEntries(awardId = null) {
 }
 
 /**
- * Check for conflicts of interest between a judge and an entry.
- * Checks email domain matches and company name overlaps.
- * @param {Object} judge - The judge contact record.
- * @param {Object} entry - The entry record with organisation details.
- * @returns {Promise<boolean>} True if a conflict of interest is detected.
+ * Synchronous conflict check using pre-fetched declared-conflict set.
+ * Used inside assignJudgesToEntries to avoid N+1 DB queries.
+ * @param {Object} judge
+ * @param {Object} entry
+ * @param {Set<string>} declaredConflicts - Set of "judgeEmail::entryId" keys
+ * @returns {boolean}
  */
-async function checkConflict(judge, entry) {
-  // Check email domain match
+function checkConflictSync(judge, entry, declaredConflicts) {
   const judgeDomain = judge.email.split('@')[1];
   const companyDomain = entry.organisations?.website
     ?.replace(/^https?:\/\//, '')
     .replace(/^www\./, '')
     .split('/')[0];
 
-  if (judgeDomain && companyDomain && judgeDomain === companyDomain) {
-    return true;
-  }
+  if (judgeDomain && companyDomain && judgeDomain === companyDomain) return true;
 
-  // Check if judge works for the company
   if (entry.organisations?.company_name) {
     const companyNameLower = entry.organisations.company_name.toLowerCase();
     const judgeCompanyLower = (judge.company_name || '').toLowerCase();
-
-    if (judgeCompanyLower && companyNameLower.includes(judgeCompanyLower)) {
-      return true;
-    }
+    if (judgeCompanyLower && companyNameLower.includes(judgeCompanyLower)) return true;
   }
 
-  // Check if judge has previously declared a conflict for this entry's organisation
+  return declaredConflicts.has(`${judge.email}::${entry.id}`);
+}
+
+/**
+ * Check for conflicts of interest between a judge and an entry (async, for standalone calls).
+ * @param {Object} judge - The judge contact record.
+ * @param {Object} entry - The entry record with organisation details.
+ * @returns {Promise<boolean>} True if a conflict of interest is detected.
+ */
+// eslint-disable-next-line no-unused-vars
+async function checkConflict(judge, entry) {
+  const judgeDomain = judge.email.split('@')[1];
+  const companyDomain = entry.organisations?.website
+    ?.replace(/^https?:\/\//, '')
+    .replace(/^www\./, '')
+    .split('/')[0];
+
+  if (judgeDomain && companyDomain && judgeDomain === companyDomain) return true;
+
+  if (entry.organisations?.company_name) {
+    const companyNameLower = entry.organisations.company_name.toLowerCase();
+    const judgeCompanyLower = (judge.company_name || '').toLowerCase();
+    if (judgeCompanyLower && companyNameLower.includes(judgeCompanyLower)) return true;
+  }
+
   if (entry.id && judge.email) {
     const { data: declared } = await supabase
       .from('judge_scores')
@@ -219,10 +221,7 @@ async function checkConflict(judge, entry) {
       .eq('entry_id', entry.id)
       .eq('conflict_declared', true)
       .limit(1);
-
-    if (declared && declared.length > 0) {
-      return true;
-    }
+    if (declared && declared.length > 0) return true;
   }
 
   return false;
@@ -541,6 +540,9 @@ async function getJudgingStatistics(awardId = null) {
 async function assignJudgesEndpoint(req, res) {
   try {
     const { awardId } = req.body;
+    if (awardId && !isUUID(awardId)) {
+      return res.status(400).json({ error: 'Invalid awardId format' });
+    }
     const result = await assignJudgesToEntries(awardId);
     res.json({ success: true, ...result });
   } catch (error) {
@@ -558,7 +560,10 @@ async function assignJudgesEndpoint(req, res) {
 async function generateShortlistEndpoint(req, res) {
   try {
     const { awardId, topN } = req.body;
-    const shortlist = await generateShortlist(awardId, topN || 5);
+    if (!awardId) return res.status(400).json({ error: 'awardId is required' });
+    if (!isUUID(awardId)) return res.status(400).json({ error: 'Invalid awardId format' });
+    const clampedTopN = Math.min(Math.max(parseInt(topN, 10) || 5, 1), 100);
+    const shortlist = await generateShortlist(awardId, clampedTopN);
     res.json({ success: true, shortlist });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -575,7 +580,8 @@ async function generateShortlistEndpoint(req, res) {
 async function generateAllShortlistsEndpoint(req, res) {
   try {
     const { topN } = req.body;
-    const results = await generateAllShortlists(topN || 5);
+    const clampedTopN = Math.min(Math.max(parseInt(topN, 10) || 5, 1), 100);
+    const results = await generateAllShortlists(clampedTopN);
     res.json({ success: true, results });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -592,6 +598,9 @@ async function generateAllShortlistsEndpoint(req, res) {
 async function getJudgingStatsEndpoint(req, res) {
   try {
     const { awardId } = req.query;
+    if (awardId && !isUUID(awardId)) {
+      return res.status(400).json({ error: 'Invalid awardId format' });
+    }
     const stats = await getJudgingStatistics(awardId);
     res.json(stats);
   } catch (error) {
@@ -603,6 +612,11 @@ async function getJudgingStatsEndpoint(req, res) {
  * Vercel serverless handler — routes by query action.
  */
 module.exports = async function handler(req, res) {
+  if (req.method !== 'GET' && req.method !== 'POST') {
+    res.setHeader('Allow', 'GET, POST');
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
   // Verify authentication for all actions
   const user = await verifyAuth(req, res);
   if (!user) return;

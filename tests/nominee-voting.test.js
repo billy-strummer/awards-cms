@@ -319,7 +319,8 @@ describe('Nominee Voting - displayEntry comprehensive', () => {
     expect(document.getElementById('awardBadge').textContent).toBe('Best Innovation');
     expect(document.getElementById('entryTitle').textContent).toBe('My Entry');
     expect(document.getElementById('entryNumber').textContent).toBe('BTA-001');
-    expect(document.getElementById('voteCount').textContent).toBe('42');
+    // Vote count is hidden by default (data-show-counts not set); shows '—'
+    expect(document.getElementById('voteCount').textContent).toBe('—');
   });
 
   test('displays default logo when no logo_url', () => {

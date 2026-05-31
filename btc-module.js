@@ -168,7 +168,7 @@ const btcModule = {
       .join('');
   },
 };
-window.btcModule = btcModule;
+ModuleRegistry.register('btcModule', btcModule);
 
 const btcTab = document.getElementById('markets-tab');
 if (btcTab) {

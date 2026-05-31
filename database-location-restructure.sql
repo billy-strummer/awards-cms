@@ -15,8 +15,15 @@ CREATE TABLE IF NOT EXISTS regions (
   country      TEXT NOT NULL CHECK (country IN ('England','Scotland','Wales')),
   sort_order   INTEGER DEFAULT 0,
   is_active    BOOLEAN DEFAULT true,
+  created_at   TIMESTAMPTZ DEFAULT NOW(),
+  updated_at   TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE (display_name, country)
 );
+
+-- Add timestamps to existing regions tables that were created before this change
+ALTER TABLE regions
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW(),
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
 -- ── 2. ADD region_id TO areas (idempotent) ──────────────────
 ALTER TABLE areas

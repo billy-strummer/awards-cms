@@ -20,39 +20,18 @@ if (process.env.NODE_ENV !== 'production') {
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-const supabaseAuth = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_KEY
-);
-
-/**
- * Verify the caller's Supabase JWT.
- * Returns the authenticated user or sends 401 and returns null.
- */
-async function verifyAuth(req, res) {
-  const authHeader = req.headers?.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    res.status(401).json({ error: 'Authentication required' });
-    return null;
-  }
-  const token = authHeader.replace('Bearer ', '');
-  try {
-    const {
-      data: { user },
-      error,
-    } = await supabaseAuth.auth.getUser(token);
-    if (error || !user) {
-      res.status(401).json({ error: 'Invalid or expired token' });
-      return null;
-    }
-    return user;
-  } catch (_err) {
-    res.status(401).json({ error: 'Token verification failed' });
-    return null;
-  }
-}
+const { verifyAuth } = require('./_lib/auth');
 
 const FROM_EMAIL = process.env.FROM_EMAIL || 'awards@britishtradeawards.com';
+
+function escapeHtml(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 const FROM_NAME = process.env.FROM_NAME || 'British Trade Awards';
 
 /**
@@ -96,11 +75,25 @@ function wrapEmailTemplate(subject, bodyHtml, preheader = '', branding = {}, sub
  * @returns {Promise<{success: boolean, id?: string, error?: string}>} Send result.
  */
 async function sendEmail({ to, subject, html, text, replyTo, cc, tags }) {
+  // In non-production environments, redirect to DEV_EMAIL to avoid sending to real addresses
+  const recipients = Array.isArray(to) ? to : [to];
+  const resolvedTo =
+    process.env.NODE_ENV !== 'production' && process.env.DEV_EMAIL ? [process.env.DEV_EMAIL] : recipients;
+
+  // Filter out suppressed addresses (bounces/complaints) before sending
+  const { data: suppressed } = await supabase.from('email_suppressions').select('email').in('email', resolvedTo);
+  const suppressedSet = new Set((suppressed || []).map((r) => r.email.toLowerCase()));
+  const allowedTo = resolvedTo.filter((addr) => !suppressedSet.has(addr.toLowerCase()));
+  if (allowedTo.length === 0) {
+    console.warn(`[resend-email] All recipients suppressed for subject: ${subject}`);
+    return { success: false, error: 'All recipients are suppressed' };
+  }
+
   try {
     const { data, error } = await resend.emails.send(
       /** @type {any} */ ({
         from: `${FROM_NAME} <${FROM_EMAIL}>`,
-        to: Array.isArray(to) ? to : [to],
+        to: allowedTo,
         cc: cc ? (Array.isArray(cc) ? cc : [cc]) : undefined,
         subject,
         html,
@@ -112,10 +105,10 @@ async function sendEmail({ to, subject, html, text, replyTo, cc, tags }) {
 
     if (error) throw error;
 
-    // Log to database
+    // Log to database — always record the original recipient, not the dev intercept
     await supabase.from('notification_queue').insert({
       notification_type: 'email',
-      recipient_email: Array.isArray(to) ? to.join(', ') : to,
+      recipient_email: recipients.join(', '),
       subject,
       status: 'sent',
       sent_at: new Date().toISOString(),
@@ -129,7 +122,7 @@ async function sendEmail({ to, subject, html, text, replyTo, cc, tags }) {
     // Log failure
     await supabase.from('notification_queue').insert({
       notification_type: 'email',
-      recipient_email: Array.isArray(to) ? to.join(', ') : to,
+      recipient_email: recipients.join(', '),
       subject,
       status: 'failed',
       last_error: error.message,
@@ -451,7 +444,7 @@ async function sendInvoiceEmail({ to, subject, message, cc, invoice }) {
 
   const bodyHtml = `
     <h2>Invoice ${invoice.invoice_number || ''}</h2>
-    <p>${message.replace(/\n/g, '<br>')}</p>
+    <p>${escapeHtml(message).replace(/\n/g, '<br>')}</p>
     <table style="width:100%;border-collapse:collapse;margin:20px 0">
       <thead>
         <tr style="background:#f5f5f5">

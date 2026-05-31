@@ -70,18 +70,19 @@ async function build() {
   const startTime = Date.now();
   console.log('Building BTA Awards CMS...\n');
 
-  // 0. Run lint check before building
-  try {
-    const { execSync } = require('child_process');
-    console.log('  Lint: checking...');
-    execSync('npx eslint *.js api/*.js --max-warnings 0', { stdio: 'pipe', cwd: __dirname });
-    console.log('  Lint: passed ✓');
-  } catch (lintErr) {
-    const output = lintErr.stdout ? lintErr.stdout.toString() : '';
-    const errorCount = output.match(/\d+ error/)?.[0] || 'errors found';
-    console.warn(`  Lint: ${errorCount} (run "npm run lint:fix" to auto-fix)`);
-    // Don't fail build on lint warnings, but log them
+  // 0a. Guard: Vercel Hobby plan allows exactly 12 serverless functions
+  const apiFiles = fs.readdirSync('./api').filter((f) => f.endsWith('.js') && !f.startsWith('_'));
+  if (apiFiles.length > 12) {
+    console.error(`ERROR: ${apiFiles.length} API functions exceed the Vercel Hobby limit of 12`);
+    console.error(`Functions found: ${apiFiles.join(', ')}`);
+    process.exit(1);
   }
+
+  // 0b. Run lint check before building — failures abort the build
+  const { execSync } = require('child_process');
+  console.log('  Lint: checking...');
+  execSync('npx eslint *.js api/*.js --max-warnings 0', { stdio: 'inherit', cwd: __dirname });
+  console.log('  Lint: passed ✓');
 
   ensureDir(DIST_DIR);
 
@@ -94,12 +95,22 @@ async function build() {
     }
   });
 
+  // Lazy chunks: each entry bundles a group of heavy modules as a plain IIFE
+  // that registers itself on window via ModuleRegistry.register().
+  const LAZY_CHUNKS = [
+    { name: 'events', entry: 'chunks/events-entry.js', outfile: 'events.chunk.js' },
+    { name: 'media', entry: 'chunks/media-entry.js', outfile: 'media.chunk.js' },
+    { name: 'email', entry: 'chunks/email-entry.js', outfile: 'email.chunk.js' },
+    { name: 'crm', entry: 'chunks/crm-entry.js', outfile: 'crm.chunk.js' },
+    { name: 'admin', entry: 'chunks/admin-entry.js', outfile: 'admin.chunk.js' },
+  ];
+
   try {
     const esbuild = require('esbuild');
     const entryPoint = path.join(__dirname, 'main.js');
 
     if (fs.existsSync(entryPoint)) {
-      // Primary: Use esbuild bundler with ESM entry point
+      // Primary: Use esbuild bundler with ESM entry point (core bundle only)
       const result = await esbuild.build({
         entryPoints: [entryPoint],
         bundle: true,
@@ -114,7 +125,38 @@ async function build() {
       const minSize = fs.statSync(path.join(DIST_DIR, 'app.min.js')).size;
       const moduleCount = Object.keys(result.metafile.inputs).length;
       console.log(
-        `  JS: ${(totalJsSize / 1024).toFixed(0)}KB -> ${(minSize / 1024).toFixed(0)}KB (${((1 - minSize / totalJsSize) * 100).toFixed(0)}% reduction, ${moduleCount} ES modules bundled)`
+        `  JS core: ${(totalJsSize / 1024).toFixed(0)}KB source -> ${(minSize / 1024).toFixed(0)}KB (${moduleCount} modules in core bundle)`
+      );
+
+      // Build each lazy chunk as a self-contained IIFE
+      let totalChunkSize = 0;
+      for (const chunk of LAZY_CHUNKS) {
+        const chunkEntry = path.join(__dirname, chunk.entry);
+        if (!fs.existsSync(chunkEntry)) {
+          console.warn(`  WARN: chunk entry not found: ${chunk.entry}`);
+          continue;
+        }
+        await esbuild.build({
+          entryPoints: [chunkEntry],
+          bundle: true,
+          minify: true,
+          target: 'es2020',
+          format: 'iife',
+          outfile: path.join(DIST_DIR, chunk.outfile),
+          drop: ['debugger'],
+          sourcemap: false,
+          // Core globals (utils, apiClient, STATE, ModuleRegistry) are referenced
+          // as bare names in source; esbuild leaves them as globals since they are
+          // never imported — they are already on window from the core bundle.
+        });
+        const chunkSize = fs.statSync(path.join(DIST_DIR, chunk.outfile)).size;
+        totalChunkSize += chunkSize;
+        const chunkKb = (chunkSize / 1024).toFixed(0);
+        const chunkWarn = chunkSize > 150 * 1024 ? ' ⚠️  LARGE (>150KB — consider splitting)' : '';
+        console.log(`  JS chunk [${chunk.name}]: ${chunkKb}KB → ${chunk.outfile}${chunkWarn}`);
+      }
+      console.log(
+        `  JS chunks total: ${(totalChunkSize / 1024).toFixed(0)}KB across ${LAZY_CHUNKS.length} lazy chunks`
       );
     } else {
       // Fallback: concatenate and transform (legacy mode)
@@ -215,9 +257,12 @@ async function build() {
 
   // Replace app script block: everything from <!-- Application Scripts --> to the last
   // bundled script (btc-module.js follows app.js). Keep only one bundled script tag.
+  // Also inject <link rel="prefetch"> hints for all lazy chunks so the browser
+  // downloads them at idle time and serves them from cache on first tab click.
+  const chunkPrefetches = LAZY_CHUNKS.map((c) => `  <link rel="prefetch" as="script" href="${c.outfile}">`).join('\n');
   html = html.replace(
     /\s*<!-- Application Scripts[\s\S]*?<script src="btc-module\.js"><\/script>/,
-    '\n  <script type="module" src="app.min.js"></script>'
+    `\n${chunkPrefetches}\n  <script type="module" src="app.min.js"></script>`
   );
 
   // Inject Supabase environment variables into meta tags
@@ -253,6 +298,8 @@ async function build() {
     'submit-entry-payment.html',
     'upload-documents.html',
     'nominate.html',
+    'public-winners.html',
+    'privacy-policy.html',
   ];
 
   // Also copy shared assets needed by public pages
@@ -276,15 +323,19 @@ async function build() {
     'nominee-voting.js',
     'judge-portal.js',
     'judge-login.js',
-    'winners-portal.js',
-    'check-in.js',
-    'register.js',
+    'winners-portal-app.js',
+    'check-in-app.js',
+    'register-app.js',
     'upload-documents.js',
-    'company-profile.js',
-    'award-nominees.js',
-    'award_companies.js',
+    'company-profile-app.js',
+    'award-nominees-app.js',
+    'award-companies-app.js',
     'submit-entry-payment.js',
     'nominate.js',
+    'public-winners-app.js',
+    'public-utils.js',
+    'footer-year.js',
+    'global-actions.js',
   ];
 
   publicJsFiles.forEach((file) => {

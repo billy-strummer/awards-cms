@@ -54,7 +54,17 @@ const judgePortal = {
   currentScore: null,
   /** @type {boolean} Whether blind judging mode is active */
   blindMode: true,
-  /** @type {Array} Scoring criteria with weights */
+  /**
+   * Default scoring criteria — used when an award has no custom criteria configured.
+   * @type {Array}
+   */
+  DEFAULT_SCORING_CRITERIA: [
+    { id: 'innovation_score', name: 'Innovation & Creativity', maxScore: 10, weight: 0.2 },
+    { id: 'impact_score', name: 'Business Impact', maxScore: 10, weight: 0.3 },
+    { id: 'quality_score', name: 'Quality & Excellence', maxScore: 10, weight: 0.25 },
+    { id: 'presentation_score', name: 'Presentation', maxScore: 10, weight: 0.25 },
+  ],
+  /** @type {Array} Active scoring criteria for the currently selected entry's award (defaults to DEFAULT_SCORING_CRITERIA) */
   scoringCriteria: [
     { id: 'innovation_score', name: 'Innovation & Creativity', maxScore: 10, weight: 0.2 },
     { id: 'impact_score', name: 'Business Impact', maxScore: 10, weight: 0.3 },
@@ -279,6 +289,10 @@ const judgePortal = {
    * @returns {Promise<void>}
    */
   async loadAssignedEntries() {
+    const listEl = document.getElementById('entriesList');
+    if (listEl) {
+      listEl.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>';
+    }
     try {
       const entries = await this._fetchPage(1);
       this.assignedEntries = this._enrichEntries(entries);
@@ -316,11 +330,14 @@ const judgePortal = {
            data-action="judgePortal.selectEntry" data-id="${esc(entry.id)}" style="cursor:pointer;">
         <div class="d-flex justify-content-between align-items-start mb-2">
           <strong class="text-truncate">${this.getCompanyDisplay(entry)}</strong>
-          ${entry.hasScored ? '<i class="bi bi-check-circle-fill text-success"></i>' : ''}
+          <div class="d-flex gap-1 align-items-center flex-shrink-0">
+            ${entry.myScore?.has_conflict ? '<span class="badge bg-warning text-dark" title="Conflict of interest declared for this entry">&#9888; Conflict</span>' : ''}
+            ${entry.hasScored ? '<i class="bi bi-check-circle-fill text-success"></i>' : ''}
+          </div>
         </div>
         <div class="small text-muted mb-1">${esc(entry.awards?.award_name || '')}</div>
         <div class="small text-truncate">${esc(entry.entry_title)}</div>
-        ${entry.hasScored ? `<div class="small text-success mt-2">Score: ${parseInt(entry.myScore?.total_score) || 0}/40</div>` : ''}
+        ${entry.hasScored ? `<div class="small text-success mt-2">Score: ${parseInt(entry.myScore?.total_score) || 0}/40${entry.myScore?.has_conflict ? ' <span class="text-warning" title="Score flagged — conflict declared">&#9888;</span>' : ''}</div>` : ''}
       </div>
     `
       )
@@ -414,31 +431,138 @@ const judgePortal = {
 
     if (!this.currentEntry) return;
 
+    // Load scoring criteria for this entry's award (with fallback to defaults)
+    await this._loadScoringCriteriaForEntry(this.currentEntry);
+
     // Check for conflict of interest
-    const hasConflict = await this.checkConflictOfInterest(this.currentEntry);
+    const conflictResult = await this.checkConflictOfInterest(this.currentEntry);
 
     // Load existing score if any
     this.currentScore = this.currentEntry.myScore;
 
-    // Render judging panel
-    this.renderJudgingPanel(hasConflict);
+    if (conflictResult.isHardConflict) {
+      // Hard conflict: show blocking message and do NOT render the scoring form
+      const panel = document.getElementById('judgingPanel');
+      const companyDisplay = this.getCompanyDisplay(this.currentEntry);
+      panel.innerHTML = `
+        <div class="d-flex justify-content-between align-items-start mb-4">
+          <div>
+            <h3 class="mb-1">${esc(this.currentEntry.entry_title)}</h3>
+            <p class="text-muted mb-0">
+              ${companyDisplay}
+              | ${esc(this.currentEntry.awards?.award_name || '')}
+            </p>
+          </div>
+          <span class="badge bg-primary">${esc(this.currentEntry.entry_number)}</span>
+        </div>
+        <div class="alert alert-danger" role="alert">
+          <h5 class="alert-heading"><i class="bi bi-ban me-2"></i>Conflict of Interest — Scoring Blocked</h5>
+          <p class="mb-0">You have declared a conflict of interest for this entry. You cannot score this entry.</p>
+          <hr>
+          <p class="mb-0 small">If you believe this is an error, please contact the awards administrator.</p>
+        </div>
+      `;
+      this.renderEntriesList();
+      return;
+    }
+
+    // Render judging panel (passing soft-conflict flag for advisory warning)
+    this.renderJudgingPanel(conflictResult.isSoftConflict);
 
     // Update entries list to show active
     this.renderEntriesList();
   },
 
   /**
-   * Check for conflict of interest between judge and entry
+   * Load and set scoring criteria for the given entry's award.
+   * Falls back to DEFAULT_SCORING_CRITERIA if the award has no custom criteria.
+   * @param {Object} entry - The entry being selected
+   * @returns {Promise<void>}
+   */
+  async _loadScoringCriteriaForEntry(entry) {
+    // Use criteria already embedded in the entry's award relation if available
+    const awardData = entry.awards || null;
+    let customCriteria = null;
+
+    if (awardData && awardData.scoring_criteria) {
+      customCriteria = awardData.scoring_criteria;
+    } else if (entry.award_id) {
+      // Fetch the award record to get scoring_criteria
+      try {
+        const result = await apiClient.select('awards', {
+          select: 'id, scoring_criteria',
+          filters: { id: entry.award_id },
+          pageSize: 1,
+        });
+        const award = result.data?.[0];
+        if (award?.scoring_criteria) {
+          customCriteria = award.scoring_criteria;
+        }
+      } catch (e) {
+        console.warn('Could not load award scoring criteria:', e.message);
+      }
+    }
+
+    if (customCriteria) {
+      try {
+        const parsed = typeof customCriteria === 'string' ? JSON.parse(customCriteria) : customCriteria;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Convert admin-configured criteria to judge portal format
+          const totalWeight = parsed.reduce((s, c) => s + (Number(c.weight) || 0), 0) || 100;
+          this.scoringCriteria = parsed.map((c, i) => ({
+            id: `custom_score_${i}`,
+            name: c.name,
+            maxScore: 10,
+            weight: (Number(c.weight) || 0) / totalWeight,
+          }));
+          return;
+        }
+      } catch (e) {
+        console.warn('Could not parse scoring criteria JSON:', e.message);
+      }
+    }
+
+    // Fall back to defaults
+    this.scoringCriteria = this.DEFAULT_SCORING_CRITERIA;
+  },
+
+  /**
+   * Check for conflict of interest between judge and entry.
    * @param {Object} entry - The entry to check against
-   * @returns {Promise<boolean>} Whether a conflict was detected
+   * @returns {Promise<{isHardConflict: boolean, isSoftConflict: boolean}>}
+   *   isHardConflict: judge_conflicts table has a row matching this judge+org (blocking)
+   *   isSoftConflict: email domain match or judge is a contact for the org (advisory only)
    */
   async checkConflictOfInterest(entry) {
     try {
       const judgeEmail = this.currentJudge.email;
       const judgeDomain = judgeEmail.split('@')[1]?.toLowerCase();
       const companyName = (entry.organisations?.company_name || '').toLowerCase();
+      const organisationId = entry.organisation_id;
 
-      // Check 1: Judge's email domain matches company website/email domain
+      // Hard conflict check: query the judge_conflicts table for this judge+org combination
+      let isHardConflict = false;
+      if (organisationId) {
+        try {
+          const hardConflictResult = await apiClient.select('judge_conflicts', {
+            select: 'id',
+            filters: { judge_email: judgeEmail, org_id: organisationId },
+            pageSize: 1,
+          });
+          if (hardConflictResult.data && hardConflictResult.data.length > 0) {
+            isHardConflict = true;
+          }
+        } catch (_) {
+          /* non-fatal — fall through to soft checks */
+        }
+      }
+
+      if (isHardConflict) {
+        return { isHardConflict: true, isSoftConflict: false };
+      }
+
+      // Soft conflict check 1: judge's email domain matches company name
+      let isSoftConflict = false;
       if (
         judgeDomain &&
         judgeDomain !== 'gmail.com' &&
@@ -448,47 +572,39 @@ const judgePortal = {
       ) {
         const domainParts = judgeDomain.replace('.co.uk', '').replace('.com', '').replace('.org', '');
         if (companyName.includes(domainParts) || domainParts.includes(companyName.replace(/\s+/g, ''))) {
-          return true;
+          isSoftConflict = true;
         }
       }
 
-      // Check 2: Check for declared conflicts in the database
-      const conflictResult = await apiClient.select('judge_scores', {
-        select: 'conflict_declared',
-        filters: { entry_id: entry.id, judge_email: judgeEmail, conflict_declared: true },
-        pageSize: 1,
-      });
-
-      if (conflictResult.data && conflictResult.data.length > 0) {
-        return true;
-      }
-
-      // Check 3: Check if judge is listed as a contact for the organisation
-      if (entry.organisation_id) {
-        const contactResult = await apiClient.select('organisation_contacts', {
-          select: 'email',
-          filters: { organisation_id: entry.organisation_id, email: judgeEmail },
-          pageSize: 1,
-        });
-
-        if (contactResult.data && contactResult.data.length > 0) {
-          return true;
+      // Soft conflict check 2: judge is listed as a contact for the organisation
+      if (!isSoftConflict && organisationId) {
+        try {
+          const contactResult = await apiClient.select('organisation_contacts', {
+            select: 'email',
+            filters: { organisation_id: organisationId, email: judgeEmail },
+            pageSize: 1,
+          });
+          if (contactResult.data && contactResult.data.length > 0) {
+            isSoftConflict = true;
+          }
+        } catch (_) {
+          /* non-fatal */
         }
       }
 
-      return false;
+      return { isHardConflict: false, isSoftConflict };
     } catch (error) {
       console.warn('Error checking conflict of interest:', error);
-      return false;
+      return { isHardConflict: false, isSoftConflict: false };
     }
   },
 
   /**
    * Render the judging panel for the selected entry
-   * @param {boolean} hasConflict - Whether a conflict of interest was detected
+   * @param {boolean} hasSoftConflict - Whether a soft conflict of interest was detected (advisory warning only)
    * @returns {void}
    */
-  renderJudgingPanel(hasConflict) {
+  renderJudgingPanel(hasSoftConflict) {
     const panel = document.getElementById('judgingPanel');
 
     const companyDisplay = this.getCompanyDisplay(this.currentEntry);
@@ -510,11 +626,11 @@ const judgePortal = {
       </div>
 
       ${
-        hasConflict
+        hasSoftConflict
           ? `
-        <div class="conflict-warning">
-          <h5><i class="bi bi-exclamation-triangle me-2"></i>Conflict of Interest Detected</h5>
-          <p class="mb-2">You may have a conflict of interest with this entry.</p>
+        <div class="conflict-warning alert alert-warning">
+          <h5><i class="bi bi-exclamation-triangle me-2"></i>Possible Conflict of Interest</h5>
+          <p class="mb-2">You may have a conflict of interest with this entry. You may still score this entry, but please consider whether you can judge it impartially.</p>
           <div class="form-check">
             <input class="form-check-input" type="checkbox" id="declareConflict">
             <label class="form-check-label" for="declareConflict">
@@ -622,6 +738,60 @@ const judgePortal = {
 
     // Setup score sliders
     this.setupScoreSliders();
+
+    // Offer to restore localStorage draft if one exists and entry hasn't been fully scored
+    if (!this.currentEntry.hasScored) {
+      const draft = this._loadDraft(this.currentEntry.id);
+      if (draft) {
+        const savedAt = new Date(draft.savedAt).toLocaleTimeString();
+        const banner = document.createElement('div');
+        banner.id = 'draftRestoreBanner';
+        banner.className = 'alert alert-warning alert-dismissible d-flex align-items-center gap-2 mb-3';
+        banner.innerHTML = `
+          <i class="bi bi-cloud-upload"></i>
+          <div class="flex-fill">
+            <strong>Unsaved draft found</strong> — saved at ${savedAt}.
+            <button class="btn btn-sm btn-warning ms-2" id="restoreDraftBtn">Restore draft</button>
+          </div>
+          <button type="button" class="btn-close" aria-label="Dismiss"></button>
+        `;
+        const panel = document.getElementById('judgingPanel');
+        panel.insertBefore(banner, panel.firstChild);
+
+        document.getElementById('restoreDraftBtn')?.addEventListener('click', () => {
+          this._applyDraft(draft);
+          banner.remove();
+          showPortalToast('Draft restored', 'info');
+        });
+        banner.querySelector('.btn-close')?.addEventListener('click', () => banner.remove());
+      }
+    }
+  },
+
+  /**
+   * Apply a previously saved draft to the scoring form
+   * @param {Object} draft - The draft object from localStorage
+   * @returns {void}
+   */
+  _applyDraft(draft) {
+    if (!draft) return;
+    this.scoringCriteria.forEach((criterion) => {
+      const slider = document.getElementById(criterion.id);
+      const valueDisplay = document.getElementById(`${criterion.id}_value`);
+      if (slider && draft.scores?.[criterion.id] !== undefined) {
+        slider.value = draft.scores[criterion.id];
+        if (valueDisplay) valueDisplay.textContent = String(draft.scores[criterion.id]);
+      }
+    });
+    const strengths = document.getElementById('feedbackStrengths');
+    const weaknesses = document.getElementById('feedbackWeaknesses');
+    const comments = document.getElementById('feedbackComments');
+    const recommendation = document.getElementById('recommendation');
+    if (strengths && draft.strengths !== undefined) strengths.value = draft.strengths;
+    if (weaknesses && draft.weaknesses !== undefined) weaknesses.value = draft.weaknesses;
+    if (comments && draft.comments !== undefined) comments.value = draft.comments;
+    if (recommendation && draft.recommendation) recommendation.value = draft.recommendation;
+    this.updateTotalScore();
   },
 
   /**
@@ -679,10 +849,12 @@ const judgePortal = {
   },
 
   /**
-   * Setup score slider event listeners
+   * Setup score slider event listeners with debounced auto-save
    * @returns {void}
    */
   setupScoreSliders() {
+    let autoSaveTimer = null;
+
     this.scoringCriteria.forEach((criterion) => {
       const slider = document.getElementById(criterion.id);
       const valueDisplay = document.getElementById(`${criterion.id}_value`);
@@ -691,9 +863,70 @@ const judgePortal = {
         slider.addEventListener('input', (e) => {
           valueDisplay.textContent = e.target.value;
           this.updateTotalScore();
+
+          // Debounced auto-save to localStorage (500ms after last change)
+          clearTimeout(autoSaveTimer);
+          autoSaveTimer = setTimeout(() => {
+            this._autosaveDraft();
+          }, 500);
         });
       }
     });
+  },
+
+  /**
+   * Save current scoring state as a draft in localStorage
+   * @returns {void}
+   */
+  _autosaveDraft() {
+    if (!this.currentEntry) return;
+    try {
+      const scores = {};
+      this.scoringCriteria.forEach((criterion) => {
+        const slider = document.getElementById(criterion.id);
+        if (slider) scores[criterion.id] = parseFloat(slider.value) || 0;
+      });
+      const draft = {
+        entryId: this.currentEntry.id,
+        scores,
+        strengths: document.getElementById('feedbackStrengths')?.value || '',
+        weaknesses: document.getElementById('feedbackWeaknesses')?.value || '',
+        comments: document.getElementById('feedbackComments')?.value || '',
+        recommendation: document.getElementById('recommendation')?.value || '',
+        savedAt: new Date().toISOString(),
+      };
+      localStorage.setItem(`judge_scores_draft_${this.currentEntry.id}`, JSON.stringify(draft));
+    } catch (e) {
+      console.warn('Auto-save draft failed:', e.message);
+    }
+  },
+
+  /**
+   * Load a localStorage draft for an entry (if any) and offer to restore it
+   * @param {string} entryId - Entry ID to check for draft
+   * @returns {Object|null} Parsed draft or null
+   */
+  _loadDraft(entryId) {
+    try {
+      const raw = localStorage.getItem(`judge_scores_draft_${entryId}`);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch (e) {
+      return null;
+    }
+  },
+
+  /**
+   * Clear the localStorage draft for an entry (called after successful submission)
+   * @param {string} entryId - Entry ID whose draft should be cleared
+   * @returns {void}
+   */
+  _clearDraft(entryId) {
+    try {
+      localStorage.removeItem(`judge_scores_draft_${entryId}`);
+    } catch (e) {
+      // Ignore
+    }
   },
 
   /**
@@ -788,6 +1021,9 @@ const judgePortal = {
         isComplete ? 'success' : 'info'
       );
 
+      // Clear localStorage draft on successful save/submit
+      this._clearDraft(this.currentEntry.id);
+
       // Reload entries to update status
       await this.loadAssignedEntries();
       this.updateProgress();
@@ -803,18 +1039,89 @@ const judgePortal = {
   },
 
   /**
-   * Move to the next entry in the list
+   * Move to the next entry in the list; show completion card when all are scored.
    * @returns {void}
    */
   nextEntry() {
-    const currentIndex = this.assignedEntries.findIndex((e) => e.id === this.currentEntry.id);
+    const currentIndex = this.assignedEntries.findIndex((e) => e.id === this.currentEntry?.id);
     const nextIndex = currentIndex + 1;
 
     if (nextIndex < this.assignedEntries.length) {
       this.selectEntry(this.assignedEntries[nextIndex].id);
     } else {
-      showPortalToast('You have reviewed all assigned entries!', 'success');
+      this._showCompletionCard();
     }
+  },
+
+  /**
+   * Show a prominent completion card when all assigned entries have been scored.
+   * @returns {void}
+   */
+  _showCompletionCard() {
+    const scored = this.assignedEntries.filter((e) => e.hasScored);
+    const total = this.assignedEntries.length;
+
+    const tableRows = scored
+      .map(
+        (e) => `
+      <tr>
+        <td class="text-muted small">${esc(e.entry_number || '')}</td>
+        <td>${this.getCompanyDisplay(e)}</td>
+        <td class="text-muted small">${esc(e.awards?.award_name || '')}</td>
+        <td class="text-center fw-bold text-success">${parseInt(e.myScore?.total_score) || 0}<span class="text-muted fw-normal">/40</span></td>
+        <td class="text-center">
+          ${e.myScore?.recommendation === 'shortlist' ? '<span class="badge bg-success">Shortlist</span>' : e.myScore?.recommendation === 'maybe' ? '<span class="badge bg-warning text-dark">Maybe</span>' : e.myScore?.recommendation === 'reject' ? '<span class="badge bg-danger">Reject</span>' : '<span class="text-muted small">—</span>'}
+          ${e.myScore?.has_conflict ? ' <span class="badge bg-warning text-dark" title="Conflict declared">&#9888;</span>' : ''}
+        </td>
+      </tr>`
+      )
+      .join('');
+
+    const panel = document.getElementById('judgingPanel');
+    panel.innerHTML = `
+      <div class="text-center py-4 mb-4" style="background:linear-gradient(135deg,#28a745 0%,#20c997 100%);border-radius:16px;color:white;">
+        <i class="bi bi-check-circle-fill" style="font-size:4rem;"></i>
+        <h2 class="mt-3 mb-1">Judging Complete!</h2>
+        <p class="mb-0 opacity-75 fs-5">You have scored <strong>${scored.length}</strong> of <strong>${total}</strong> entries.</p>
+      </div>
+
+      ${
+        scored.length < total
+          ? `<div class="alert alert-warning mb-4">
+              <i class="bi bi-exclamation-triangle me-2"></i>
+              <strong>${total - scored.length} ${total - scored.length === 1 ? 'entry remains' : 'entries remain'} unscored.</strong>
+              You can still go back and score them by selecting them from the list on the left.
+            </div>`
+          : ''
+      }
+
+      <h5 class="mb-3"><i class="bi bi-list-check me-2"></i>Your Scored Entries</h5>
+      ${
+        scored.length > 0
+          ? `<div class="table-responsive">
+              <table class="table table-sm table-hover">
+                <thead class="table-light">
+                  <tr>
+                    <th>Entry #</th>
+                    <th>Company</th>
+                    <th>Award</th>
+                    <th class="text-center">Score</th>
+                    <th class="text-center">Recommendation</th>
+                  </tr>
+                </thead>
+                <tbody>${tableRows}</tbody>
+              </table>
+            </div>`
+          : '<p class="text-muted">No entries scored yet.</p>'
+      }
+
+      <div class="text-center mt-4">
+        <p class="text-muted small">Thank you for your contribution to the British Trade Awards judging process.</p>
+        <button class="btn btn-outline-primary" onclick="judgePortal.loadAssignedEntries()">
+          <i class="bi bi-arrow-left me-2"></i>Back to Entries
+        </button>
+      </div>
+    `;
   },
 
   /**

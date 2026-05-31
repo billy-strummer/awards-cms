@@ -5,8 +5,7 @@
  * Keeps the Anthropic API key on the server.
  */
 
-const { createClient } = require('@supabase/supabase-js');
-const { vetCompany, vetCompanies } = require('./_lib/ai-vetting-proxy');
+const { verifyAuth, hasMinimumRole, getUserRole } = require('./_lib/auth');
 
 /**
  * Vercel serverless handler for AI vetting operations.
@@ -17,23 +16,12 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Verify authentication
-  const authHeader = req.headers?.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Authentication required' });
-  }
+  const user = await verifyAuth(req, res);
+  if (!user) return;
 
-  const token = authHeader.replace('Bearer ', '');
-  const supabaseAuth = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_KEY
-  );
-  const {
-    data: { user },
-    error: authError,
-  } = await supabaseAuth.auth.getUser(token);
-  if (authError || !user) {
-    return res.status(401).json({ error: 'Invalid or expired token' });
+  const role = await getUserRole(user.email);
+  if (!hasMinimumRole(role, 'editor')) {
+    return res.status(403).json({ error: 'Insufficient permissions for AI vetting' });
   }
 
   const { action } = req.body;
@@ -45,6 +33,8 @@ module.exports = async function handler(req, res) {
         if (!companyName) {
           return res.status(400).json({ error: 'Missing required field: companyName' });
         }
+        // eslint-disable-next-line global-require
+        const { vetCompany } = require('./_lib/ai-vetting-proxy');
         const result = await vetCompany({ companyName, website, sector, county });
         return res.status(200).json(result);
       }
@@ -56,6 +46,8 @@ module.exports = async function handler(req, res) {
         if (companies.length > 50) {
           return res.status(400).json({ error: 'Batch size limited to 50 companies' });
         }
+        // eslint-disable-next-line global-require
+        const { vetCompanies } = require('./_lib/ai-vetting-proxy');
         const results = await vetCompanies(companies);
         return res.status(200).json({ results });
       }

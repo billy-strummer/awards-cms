@@ -755,7 +755,7 @@ describe('App Module - reportsScheduler', () => {
     await reportsScheduler.loadReports();
 
     const container = document.getElementById('scheduledReportsGrid');
-    expect(container.innerHTML).toContain('No scheduled reports configured yet');
+    expect(container.innerHTML).toContain('No scheduled reports yet');
   });
 
   test('loadReports renders table rows for scheduled reports', async () => {
@@ -2888,12 +2888,15 @@ describe('App Module - Connection monitoring toasts', () => {
   });
 
   test('online event shows "Connection restored" toast', () => {
+    jest.useFakeTimers();
     const showToastSpy = jest.spyOn(utils, 'showToast').mockImplementation();
 
     window.dispatchEvent(new Event('online'));
+    jest.runAllTimers();
 
     expect(showToastSpy).toHaveBeenCalledWith('Connection restored', 'success');
     showToastSpy.mockRestore();
+    jest.useRealTimers();
   });
 
   test('offline event shows "Connection lost" toast', () => {

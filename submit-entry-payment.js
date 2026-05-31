@@ -411,20 +411,13 @@
 
       // Fetch and merge custom sectors & categories
       try {
-        const [customSectorsRes, customCatsRes] = await Promise.all([
-          fetch('/api/data-proxy', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'select', table: 'custom_sectors', filters: { is_active: true }, pageSize: 200 }),
-          }).then((r) => r.json()),
-          fetch('/api/data-proxy', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'select', table: 'custom_categories', filters: { is_active: true }, pageSize: 500 }),
-          }).then((r) => r.json()),
-        ]);
-        const customSectors = customSectorsRes?.data || [];
-        const customCats = customCatsRes?.data || [];
+        const publicDataRes = await fetch('/api/entry-proxy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'get_public_data' }),
+        }).then((r) => r.json());
+        const customSectors = publicDataRes?.custom_sectors || [];
+        const customCats = publicDataRes?.custom_categories || [];
         // Merge custom sectors into the category map
         customSectors.forEach((s) => {
           if (!mergedCategories[s.name]) mergedCategories[s.name] = [];

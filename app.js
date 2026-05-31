@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 /* ==================================================== */
 /* MAIN APPLICATION INITIALIZATION */
 /* ==================================================== */
@@ -65,9 +66,13 @@ const reportsScheduler = {
     await this._loadScheduledReports();
     const reports = this._scheduledReports;
     if (reports.length === 0) {
-      container.innerHTML = `<div class="text-center py-4 text-muted">
-        <i class="bi bi-calendar-x display-4 d-block mb-2 opacity-25"></i>
-        No scheduled reports configured yet
+      container.innerHTML = `<div class="text-center py-5 text-muted">
+        <i class="bi bi-calendar-plus display-4 d-block mb-3 opacity-25"></i>
+        <p class="fw-semibold mb-1">No scheduled reports yet</p>
+        <p class="small mb-3">Create your first scheduled report to automate recurring data exports.</p>
+        <button class="btn btn-sm btn-primary" data-action="reportsScheduler.showCreateReport">
+          <i class="bi bi-plus-circle me-1"></i>Create Scheduled Report
+        </button>
       </div>`;
       return;
     }
@@ -130,11 +135,11 @@ const reportsScheduler = {
           <div class="mb-3"><label class="form-label fw-semibold">Frequency</label><select class="form-select" id="reportFrequency"><option value="Daily">Daily</option><option value="Weekly" selected>Weekly</option><option value="Monthly">Monthly</option></select></div>
           <div class="mb-3"><label class="form-label fw-semibold">Recipients</label><input type="text" class="form-control" id="reportRecipients" placeholder="admin@example.com, manager@example.com"></div>
           <div class="mb-3"><label class="form-label fw-semibold">Include</label>
-            <div class="form-check"><input class="form-check-input rpt-section" type="checkbox" value="KPI Summary" checked><label class="form-check-label">KPI Summary</label></div>
-            <div class="form-check"><input class="form-check-input rpt-section" type="checkbox" value="Pipeline" checked><label class="form-check-label">Pipeline Breakdown</label></div>
-            <div class="form-check"><input class="form-check-input rpt-section" type="checkbox" value="Overdue" checked><label class="form-check-label">Overdue Follow-ups</label></div>
-            <div class="form-check"><input class="form-check-input rpt-section" type="checkbox" value="Regional"><label class="form-check-label">Regional Distribution</label></div>
-            <div class="form-check"><input class="form-check-input rpt-section" type="checkbox" value="Data Quality"><label class="form-check-label">Data Quality Issues</label></div>
+            <div class="form-check"><input class="form-check-input rpt-section" id="rpt-cb-kpi" type="checkbox" value="KPI Summary" checked><label class="form-check-label" for="rpt-cb-kpi">KPI Summary</label></div>
+            <div class="form-check"><input class="form-check-input rpt-section" id="rpt-cb-pipeline" type="checkbox" value="Pipeline" checked><label class="form-check-label" for="rpt-cb-pipeline">Pipeline Breakdown</label></div>
+            <div class="form-check"><input class="form-check-input rpt-section" id="rpt-cb-overdue" type="checkbox" value="Overdue" checked><label class="form-check-label" for="rpt-cb-overdue">Overdue Follow-ups</label></div>
+            <div class="form-check"><input class="form-check-input rpt-section" id="rpt-cb-regional" type="checkbox" value="Regional"><label class="form-check-label" for="rpt-cb-regional">Regional Distribution</label></div>
+            <div class="form-check"><input class="form-check-input rpt-section" id="rpt-cb-dataquality" type="checkbox" value="Data Quality"><label class="form-check-label" for="rpt-cb-dataquality">Data Quality Issues</label></div>
           </div>
         </div>
         <div class="modal-footer">
@@ -217,7 +222,11 @@ const reportsScheduler = {
         .join('')}</div>`;
 
     const existingModal = document.getElementById('reportPreviewModal');
-    if (existingModal) existingModal.remove();
+    if (existingModal) {
+      const instance = bootstrap.Modal.getInstance(existingModal);
+      if (instance && typeof instance.dispose === 'function') instance.dispose();
+      existingModal.remove();
+    }
     const modalHtml = `<div class="modal fade" id="reportPreviewModal" tabindex="-1">
       <div class="modal-dialog modal-lg"><div class="modal-content">
         <div class="modal-header"><h5 class="modal-title"><i class="bi bi-file-text me-2"></i>Report Preview</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
@@ -917,6 +926,56 @@ const reportsAnalytics = {
 };
 ModuleRegistry.register('reportsAnalytics', reportsAnalytics);
 
+// ============================================
+// LAZY CHUNK LOADER
+// Injects a <script> tag for the named chunk file and resolves when loaded.
+// Deduplicates concurrent/repeated calls via _loadedChunks.
+// Shows the top loading bar (#loadingBar) while any chunk is in flight.
+// ============================================
+const _loadedChunks = new Set();
+let _chunkLoadCount = 0;
+function _setLoadingBar(active) {
+  const bar = document.getElementById('loadingBar');
+  if (!bar) return;
+  if (active) {
+    bar.classList.remove('d-none');
+  } else {
+    bar.classList.add('d-none');
+  }
+}
+function loadChunk(filename) {
+  if (_loadedChunks.has(filename)) return Promise.resolve();
+  // Avoid starting a second download if already in progress
+  if (loadChunk._pending && loadChunk._pending[filename]) return loadChunk._pending[filename];
+  if (!loadChunk._pending) loadChunk._pending = {};
+  _chunkLoadCount++;
+  _setLoadingBar(true);
+  const promise = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = filename;
+    script.onload = () => {
+      _loadedChunks.add(filename);
+      delete loadChunk._pending[filename];
+      if (--_chunkLoadCount <= 0) {
+        _chunkLoadCount = 0;
+        _setLoadingBar(false);
+      }
+      resolve();
+    };
+    script.onerror = () => {
+      delete loadChunk._pending[filename];
+      if (--_chunkLoadCount <= 0) {
+        _chunkLoadCount = 0;
+        _setLoadingBar(false);
+      }
+      reject(new Error(`Failed to load chunk: ${filename}`));
+    };
+    document.head.appendChild(script);
+  });
+  loadChunk._pending[filename] = promise;
+  return promise;
+}
+
 // Wait for DOM to be fully loaded before initializing
 document.addEventListener('DOMContentLoaded', function () {
   console.debug('Initializing British Trade Awards Admin...');
@@ -938,6 +997,18 @@ document.addEventListener('DOMContentLoaded', function () {
   if (typeof notificationsModule !== 'undefined') notificationsModule.init();
   if (typeof seatingEnhancements !== 'undefined') seatingEnhancements.init();
   if (typeof nomineeUploads !== 'undefined') nomineeUploads.init();
+
+  // Prefetch lazy chunks after 2 s so they're cache-warm when the user
+  // first clicks a tab, without competing with the initial page render.
+  setTimeout(() => {
+    ['events.chunk.js', 'media.chunk.js', 'email.chunk.js', 'crm.chunk.js', 'admin.chunk.js'].forEach((chunk) => {
+      const link = document.createElement('link');
+      link.rel = 'prefetch';
+      link.as = 'script';
+      link.href = chunk;
+      document.head.appendChild(link);
+    });
+  }, 2000);
 
   // ==========================================
   // STEP 1c: Initialize event delegation system
@@ -1209,7 +1280,18 @@ document.addEventListener('DOMContentLoaded', function () {
     mediaGalleryTab.addEventListener('click', () => {
       if (!mediaGalleryInitialized) {
         mediaGalleryInitialized = true;
-        mediaGalleryModule.initialize();
+        if (typeof mediaGalleryModule !== 'undefined') {
+          // Fast path: module already loaded (synchronous)
+          mediaGalleryModule.initialize();
+        } else {
+          // Slow path: load chunk then invoke
+          loadChunk('media.chunk.js')
+            .then(() => mediaGalleryModule.initialize())
+            .catch((e) => {
+              console.error('Failed to load media chunk:', e);
+              mediaGalleryInitialized = false;
+            });
+        }
       }
     });
 
@@ -1218,7 +1300,16 @@ document.addEventListener('DOMContentLoaded', function () {
   if (eventsTab)
     eventsTab.addEventListener('click', () => {
       if (!STATE.allEvents || STATE.allEvents.length === 0) {
-        eventsModule.loadEvents();
+        if (typeof eventsModule !== 'undefined') {
+          // Fast path: module already loaded (synchronous)
+          eventsModule.loadEvents();
+        } else {
+          // Slow path: load chunk (seating-enhancements.js is bundled before events.js
+          // in the chunk entry so seatingEnhancements.init() is called automatically)
+          loadChunk('events.chunk.js')
+            .then(() => eventsModule.loadEvents())
+            .catch((e) => console.error('Failed to load events chunk:', e));
+        }
       }
     });
 
@@ -1273,13 +1364,23 @@ document.addEventListener('DOMContentLoaded', function () {
   let reportsInitialized = false;
   const reportsTab = document.getElementById('reports-tab');
   if (reportsTab) {
-    reportsTab.addEventListener('shown.bs.tab', () => {
+    reportsTab.addEventListener('shown.bs.tab', async () => {
       if (typeof reportsAnalytics !== 'undefined') {
         reportsAnalytics.loadAnalytics();
       }
-      if (!reportsInitialized && typeof reportingModule !== 'undefined') {
-        reportsInitialized = true;
-        reportingModule.generateReport?.();
+      if (!reportsInitialized) {
+        if (typeof reportingModule === 'undefined') {
+          try {
+            await loadChunk('crm.chunk.js');
+          } catch (e) {
+            console.error('Failed to load crm chunk:', e);
+            return;
+          }
+        }
+        if (typeof reportingModule !== 'undefined') {
+          reportsInitialized = true;
+          reportingModule.generateReport?.();
+        }
       }
     });
   }
@@ -1306,13 +1407,16 @@ document.addEventListener('DOMContentLoaded', function () {
   // STEP 4: Connection Monitoring
   // ==========================================
   // Monitor online/offline status
+  let _reconnectToastTimer;
   window.addEventListener('online', () => {
     authModule.updateConnectionStatus(true);
-    utils.showToast('Connection restored', 'success');
+    clearTimeout(_reconnectToastTimer);
+    _reconnectToastTimer = setTimeout(() => utils.showToast('Connection restored', 'success'), 500);
   });
 
   window.addEventListener('offline', () => {
     authModule.updateConnectionStatus(false);
+    clearTimeout(_reconnectToastTimer);
     utils.showToast('Connection lost', 'warning');
   });
 
@@ -1511,16 +1615,34 @@ document.addEventListener('DOMContentLoaded', function () {
   // ==========================================
   // STEP 11: Marketing Tab Event Listener
   // ==========================================
+  // Helper: ensure email.chunk.js is loaded before calling email/marketing modules
+  async function _ensureEmailChunk() {
+    if (typeof marketingModule === 'undefined') {
+      await loadChunk('email.chunk.js');
+    }
+  }
+  // Helper: ensure crm.chunk.js is loaded before calling crm/payments modules
+  async function _ensureCrmChunk() {
+    if (typeof crmModule === 'undefined') {
+      await loadChunk('crm.chunk.js');
+    }
+  }
+
   // Load marketing data when marketing tab is clicked
   const marketingTab = document.getElementById('marketing-tab');
   if (marketingTab) {
-    marketingTab.addEventListener('shown.bs.tab', () => {
+    marketingTab.addEventListener('shown.bs.tab', async () => {
       console.debug('Marketing tab opened');
-      if (typeof marketingModule !== 'undefined' && STATE.currentUser) {
+      try {
+        await _ensureEmailChunk();
+      } catch (e) {
+        console.error('Failed to load email chunk:', e);
+        return;
+      }
+      if (STATE.currentUser) {
         marketingModule.loadAllData();
-        // Load branding overview if branding subtab is active (default)
-        const brandingSubTab = document.getElementById('branding-subtab');
-        if (brandingSubTab && brandingSubTab.classList.contains('active')) {
+        const brandingSubTabEl = document.getElementById('branding-subtab');
+        if (brandingSubTabEl && brandingSubTabEl.classList.contains('active')) {
           marketingModule.loadBrandingOverview();
         }
       }
@@ -1530,29 +1652,41 @@ document.addEventListener('DOMContentLoaded', function () {
   // Load branding overview when branding sub-tab is shown
   const brandingSubTab = document.getElementById('branding-subtab');
   if (brandingSubTab) {
-    brandingSubTab.addEventListener('shown.bs.tab', () => {
-      if (typeof marketingModule !== 'undefined') {
-        marketingModule.loadBrandingOverview();
+    brandingSubTab.addEventListener('shown.bs.tab', async () => {
+      try {
+        await _ensureEmailChunk();
+      } catch (e) {
+        return;
       }
+      marketingModule.loadBrandingOverview();
     });
   }
 
   // Load placeholder defaults when placeholders sub-tab is shown
   const placeholdersSubTab = document.getElementById('placeholders-subtab');
   if (placeholdersSubTab) {
-    placeholdersSubTab.addEventListener('shown.bs.tab', () => {
-      if (typeof marketingModule !== 'undefined') {
-        marketingModule.loadPlaceholderDefaults();
+    placeholdersSubTab.addEventListener('shown.bs.tab', async () => {
+      try {
+        await _ensureEmailChunk();
+      } catch (e) {
+        return;
       }
+      marketingModule.loadPlaceholderDefaults();
     });
   }
 
   // Initialize Email Builder when sub-tab is opened
   const emailBuilderSubTab = document.getElementById('email-builder-subtab');
   if (emailBuilderSubTab) {
-    emailBuilderSubTab.addEventListener('shown.bs.tab', () => {
+    emailBuilderSubTab.addEventListener('shown.bs.tab', async () => {
       console.debug('Email Builder opened');
-      if (typeof emailBuilder !== 'undefined' && !emailBuilder.initialized) {
+      try {
+        await _ensureEmailChunk();
+      } catch (e) {
+        console.error('Failed to load email chunk:', e);
+        return;
+      }
+      if (!emailBuilder.initialized) {
         emailBuilder.init();
       }
     });
@@ -1561,50 +1695,68 @@ document.addEventListener('DOMContentLoaded', function () {
   // Load Email Lists when sub-tab is opened
   const emailListsSubTab = document.getElementById('email-lists-subtab');
   if (emailListsSubTab) {
-    emailListsSubTab.addEventListener('shown.bs.tab', () => {
+    emailListsSubTab.addEventListener('shown.bs.tab', async () => {
       console.debug('Email Lists opened');
-      if (typeof emailListsModule !== 'undefined') {
-        emailListsModule.loadAllData();
+      try {
+        await _ensureEmailChunk();
+      } catch (e) {
+        return;
       }
+      emailListsModule.loadAllData();
     });
   }
 
-  // Load Accounting Integration when sub-tab is opened
+  // Load Accounting Integration when sub-tab is opened (needs payments from crm chunk)
   const accountingSubTab = document.getElementById('accounting-subtab');
   if (accountingSubTab) {
-    accountingSubTab.addEventListener('shown.bs.tab', () => {
-      if (typeof paymentsModule !== 'undefined') {
-        paymentsModule.loadAccountingIntegration();
+    accountingSubTab.addEventListener('shown.bs.tab', async () => {
+      try {
+        await _ensureCrmChunk();
+      } catch (e) {
+        return;
       }
+      paymentsModule.loadAccountingIntegration();
     });
   }
 
   // Load Email Sequences when sub-tab is opened
   const emailSequencesSubTab = document.getElementById('email-sequences-subtab');
   if (emailSequencesSubTab) {
-    emailSequencesSubTab.addEventListener('shown.bs.tab', () => {
-      if (typeof marketingModule !== 'undefined') {
-        marketingModule.loadEmailSequences();
+    emailSequencesSubTab.addEventListener('shown.bs.tab', async () => {
+      try {
+        await _ensureEmailChunk();
+      } catch (e) {
+        return;
       }
+      marketingModule.loadEmailSequences();
     });
   }
 
   // Load Content Calendar when sub-tab is opened
   const contentCalendarSubTab = document.getElementById('content-calendar-subtab');
   if (contentCalendarSubTab) {
-    contentCalendarSubTab.addEventListener('shown.bs.tab', () => {
-      if (typeof marketingModule !== 'undefined') {
-        marketingModule.loadContentCalendar();
+    contentCalendarSubTab.addEventListener('shown.bs.tab', async () => {
+      try {
+        await _ensureEmailChunk();
+      } catch (e) {
+        return;
       }
+      marketingModule.loadContentCalendar();
     });
   }
 
   // Load payments data when payments tab is clicked
   const paymentsTab = document.getElementById('payments-tab');
   if (paymentsTab) {
-    paymentsTab.addEventListener('shown.bs.tab', () => {
+    paymentsTab.addEventListener('shown.bs.tab', async () => {
       console.debug('Payments tab opened');
-      if (typeof paymentsModule !== 'undefined' && STATE.currentUser) {
+      try {
+        await _ensureCrmChunk();
+      } catch (e) {
+        console.error('Failed to load crm chunk:', e);
+        return;
+      }
+      if (STATE.currentUser) {
         paymentsModule.loadAllData();
       }
     });
@@ -1613,9 +1765,15 @@ document.addEventListener('DOMContentLoaded', function () {
   // Load CRM data when CRM tab is clicked
   const crmTab = document.getElementById('crm-tab');
   if (crmTab) {
-    crmTab.addEventListener('shown.bs.tab', () => {
+    crmTab.addEventListener('shown.bs.tab', async () => {
       console.debug('CRM tab opened');
-      if (typeof crmModule !== 'undefined' && STATE.currentUser) {
+      try {
+        await _ensureCrmChunk();
+      } catch (e) {
+        console.error('Failed to load crm chunk:', e);
+        return;
+      }
+      if (STATE.currentUser) {
         crmModule.loadAllData();
       }
     });
@@ -1637,8 +1795,17 @@ document.addEventListener('DOMContentLoaded', function () {
       tab.addEventListener('click', (e) => {
         e.preventDefault();
         if (typeof crmModule !== 'undefined') {
+          // Fast path: module already loaded (synchronous)
           crmModule.currentSubTab = crmSubTabs[tabId];
           crmModule.loadAllData();
+        } else {
+          // Slow path: load chunk then invoke
+          loadChunk('crm.chunk.js')
+            .then(() => {
+              crmModule.currentSubTab = crmSubTabs[tabId];
+              crmModule.loadAllData();
+            })
+            .catch((err) => console.error('Failed to load crm chunk:', err));
         }
       });
     }
@@ -1686,10 +1853,22 @@ document.addEventListener('DOMContentLoaded', function () {
   // ==========================================
   // STEP 12: Tooltips Initialization
   // ==========================================
-  // Initialize Bootstrap tooltips; also backfill aria-label from title for screen readers
+  // Convert plain title= attributes (excluding <abbr> and elements that already have
+  // data-bs-toggle set to something other than tooltip) into Bootstrap tooltips so they
+  // work on mobile and keyboard navigation.
+  document.querySelectorAll('[title]:not(abbr):not([data-bs-toggle])').forEach(function (el) {
+    const titleText = el.getAttribute('title');
+    if (!titleText) return;
+    el.setAttribute('data-bs-toggle', 'tooltip');
+    el.setAttribute('data-bs-title', titleText);
+    el.removeAttribute('title');
+  });
+
+  // Initialize Bootstrap tooltips on all elements that now carry data-bs-toggle="tooltip"
+  // (including those converted above and any already marked up in HTML)
   const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
   tooltipTriggerList.map(function (tooltipTriggerEl) {
-    const title = tooltipTriggerEl.getAttribute('title') || tooltipTriggerEl.getAttribute('data-bs-title');
+    const title = tooltipTriggerEl.getAttribute('data-bs-title') || tooltipTriggerEl.getAttribute('title');
     if (title && !tooltipTriggerEl.getAttribute('aria-label')) {
       tooltipTriggerEl.setAttribute('aria-label', title);
     }
@@ -1896,11 +2075,16 @@ document.addEventListener('DOMContentLoaded', function () {
         config.fn();
       }
 
-      // Tab state in URL (MEDIUM-6)
+      // Tab state in URL — supports #section/sub-tab format
       const target = e.target.getAttribute('data-bs-target') || e.target.getAttribute('href');
       if (target) {
         const tabName = target.replace('#', '');
-        history.replaceState(null, '', '#' + tabName);
+        // Determine if this is a sub-tab by checking if the parent tab panel is inside another tab-pane
+        const tabPane = document.querySelector(target);
+        const parentTabPane = tabPane?.closest('.tab-pane[id]');
+        const parentId = parentTabPane?.id;
+        const hashValue = parentId && parentId !== tabName ? `${parentId}/${tabName}` : tabName;
+        history.replaceState(null, '', '#' + hashValue);
         utils._updateBreadcrumb && utils._updateBreadcrumb(tabName);
 
         // Update browser tab title on navigation
@@ -1924,31 +2108,40 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 
+  function _activateHashTabs(hash) {
+    if (!hash || !/^[a-zA-Z0-9_/-]+$/.test(hash)) return;
+    const parts = hash.split('/');
+    const mainTab = parts[0];
+    const subTab = parts[1];
+    const mainBtn = document.querySelector(`[data-bs-target="#${mainTab}"]`);
+    if (mainBtn) {
+      mainBtn.click();
+      if (subTab) {
+        // Delay sub-tab activation to allow main tab content to render
+        setTimeout(() => {
+          const subBtn = document.querySelector(`[data-bs-target="#${subTab}"]`);
+          if (subBtn) subBtn.click();
+        }, 150);
+      }
+    }
+  }
+
   // Restore tab from URL hash when hash changes
   window.addEventListener('hashchange', () => {
-    const hash = window.location.hash.replace('#', '');
-    if (hash && /^[a-zA-Z0-9_-]+$/.test(hash)) {
-      const tabBtn = document.querySelector(`[data-bs-target="#${hash}"]`);
-      if (tabBtn) tabBtn.click();
-    }
+    _activateHashTabs(window.location.hash.replace('#', ''));
   });
 
   // Handle browser back/forward button navigation
   window.addEventListener('popstate', () => {
-    const hash = window.location.hash.replace('#', '');
-    if (hash && /^[a-zA-Z0-9_-]+$/.test(hash)) {
-      const tabBtn = document.querySelector(`[data-bs-target="#${hash}"]`);
-      if (tabBtn) tabBtn.click();
-    }
+    _activateHashTabs(window.location.hash.replace('#', ''));
   });
 
   // Restore tab from URL or user preference (LOW-6: default landing tab)
   const hashTab = window.location.hash.replace('#', '');
   const defaultTab = localStorage.getItem('defaultLandingTab');
   const startTab = hashTab || defaultTab;
-  if (startTab && /^[a-zA-Z0-9_-]+$/.test(startTab)) {
-    const tabBtn = document.querySelector(`[data-bs-target="#${startTab}"]`);
-    if (tabBtn) setTimeout(() => tabBtn.click(), 100);
+  if (startTab) {
+    setTimeout(() => _activateHashTabs(startTab), 100);
   }
 
   // ==========================================
@@ -2001,7 +2194,7 @@ document.addEventListener('DOMContentLoaded', function () {
   // ==========================================
   // STEP 17: Breadcrumb Navigation (MEDIUM-5)
   // ==========================================
-  utils._updateBreadcrumb = function (tabName) {
+  utils._updateBreadcrumb = function (tabName, subTabName) {
     let bc = document.getElementById('mainBreadcrumb');
     if (!bc) {
       bc = document.createElement('nav');
@@ -2012,9 +2205,36 @@ document.addEventListener('DOMContentLoaded', function () {
       const tabContent = document.querySelector('.tab-content');
       if (tabContent) tabContent.parentElement.insertBefore(bc, tabContent);
     }
-    const label = tabName.charAt(0).toUpperCase() + tabName.slice(1);
-    bc.innerHTML = `<ol class="breadcrumb mb-0 bg-transparent p-0"><li class="breadcrumb-item"><a href="#" data-action="dashboardModule.navigateToSection" data-args='["dashboard"]' data-prevent-default="true">Dashboard</a></li><li class="breadcrumb-item active" aria-current="page">${label}</li></ol>`;
+    const tabLabel = tabName
+      .split('-')
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ');
+    let crumbs = `<li class="breadcrumb-item"><a href="#" data-action="dashboardModule.navigateToSection" data-args='["dashboard"]' data-prevent-default="true">Dashboard</a></li>`;
+    if (subTabName) {
+      crumbs += `<li class="breadcrumb-item"><a href="#" data-action="dashboardModule.navigateToSection" data-args='["${tabName}"]' data-prevent-default="true">${tabLabel}</a></li>`;
+      const subLabel = subTabName
+        .split('-')
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(' ');
+      crumbs += `<li class="breadcrumb-item active" aria-current="page">${subLabel}</li>`;
+    } else {
+      crumbs += `<li class="breadcrumb-item active" aria-current="page">${tabLabel}</li>`;
+    }
+    bc.innerHTML = `<ol class="breadcrumb mb-0 bg-transparent p-0">${crumbs}</ol>`;
   };
+
+  // Also update breadcrumb when sub-tabs are clicked
+  document.addEventListener('shown.bs.tab', (e) => {
+    const target = e.target.getAttribute('data-bs-target') || e.target.getAttribute('href');
+    if (!target) return;
+    const subTabName = target.replace('#', '');
+    const subPane = document.querySelector(target);
+    const parentTabPane = subPane?.closest('.tab-pane[id]');
+    const parentId = parentTabPane?.id;
+    if (parentId && parentId !== subTabName) {
+      utils._updateBreadcrumb && utils._updateBreadcrumb(parentId, subTabName);
+    }
+  });
 
   // ==========================================
   // STEP 18: Initialize New UX Features
@@ -2070,6 +2290,13 @@ document.addEventListener('DOMContentLoaded', function () {
   document.querySelector('[data-bs-target="#settings-security"]')?.addEventListener('shown.bs.tab', () => {
     if (typeof settingsModule !== 'undefined' && settingsModule.loadLoginHistory) {
       settingsModule.loadLoginHistory();
+    }
+  });
+
+  // PA-L5: Load unified activity log when Activity Log sub-tab is activated
+  document.querySelector('[data-bs-target="#settings-activity-log"]')?.addEventListener('shown.bs.tab', () => {
+    if (typeof settingsModule !== 'undefined' && settingsModule.loadActivityLog) {
+      settingsModule.loadActivityLog();
     }
   });
 
@@ -2169,5 +2396,14 @@ if ('serviceWorker' in navigator) {
 */
 
 console.debug('British Trade Awards Admin - Version 2.0');
+
+// Global navigation helper referenced by data-action="app.switchTab" links
+window.app = {
+  switchTab(tabId) {
+    if (window.dashboardModule?.navigateToSection) {
+      dashboardModule.navigateToSection(tabId);
+    }
+  },
+};
 
 export { reportsScheduler };

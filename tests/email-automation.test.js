@@ -21,6 +21,7 @@ jest.mock(
   '../api/_lib/email-header',
   () => ({
     wrapEmail: jest.fn((body) => `<html><body>${body}</body></html>`),
+    textToHtml: jest.fn((text) => `<div>${text}</div>`),
   }),
   { virtual: true }
 );

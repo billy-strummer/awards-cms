@@ -20,37 +20,8 @@ const fs = require('fs');
 const path = require('path');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-const supabaseAuth = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_KEY
-);
-
-/**
- * Verify the caller's Supabase JWT.
- * Returns the authenticated user or sends 401 and returns null.
- */
-async function verifyAuth(req, res) {
-  const authHeader = req.headers?.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    res.status(401).json({ error: 'Authentication required' });
-    return null;
-  }
-  const token = authHeader.replace('Bearer ', '');
-  try {
-    const {
-      data: { user },
-      error,
-    } = await supabaseAuth.auth.getUser(token);
-    if (error || !user) {
-      res.status(401).json({ error: 'Invalid or expired token' });
-      return null;
-    }
-    return user;
-  } catch (_err) {
-    res.status(401).json({ error: 'Token verification failed' });
-    return null;
-  }
-}
+const { verifyAuth } = require('./_lib/auth');
+const { isUUID } = require('./_lib/validate');
 
 /**
  * Parse a hex color string to pdf-lib rgb values.
@@ -216,6 +187,7 @@ async function renderCertificatePDF(winner, templateData) {
  * @param {string} [format='pdf'] - Output format: 'pdf' or 'png'.
  * @returns {Promise<{publicUrl: string, filename: string}>} Certificate file details.
  */
+// eslint-disable-next-line no-unused-vars
 async function generateWinnerCertificate(winnerId, templateId, format = 'pdf') {
   console.log(`Generating certificate for winner ${winnerId}...`);
 
@@ -265,6 +237,7 @@ async function generateWinnerCertificate(winnerId, templateId, format = 'pdf') {
  * @param {string} [format='pdf'] - Output format.
  * @returns {Promise<Array<{winnerId: string, success: boolean, url?: string, error?: string}>>} Results for each winner.
  */
+// eslint-disable-next-line no-unused-vars
 async function generateBulkCertificates(winnerIds, templateId, format = 'pdf') {
   console.log(`Generating certificates for ${winnerIds.length} winners...`);
 
@@ -578,9 +551,15 @@ async function generateAllEventBadges(eventId) {
  * @param {string} qrData - The JSON string from the scanned QR code.
  * @returns {Promise<{valid: boolean, message: string, attendee?: Object, error?: string}>} Verification result.
  */
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 async function verifyQRCode(qrData) {
   try {
     const data = JSON.parse(qrData);
+
+    if (!data.id || !UUID_PATTERN.test(data.id)) {
+      return { valid: false, message: 'Invalid QR code format' };
+    }
 
     const { data: attendee, error } = await supabase
       .from('event_attendees')
@@ -623,7 +602,7 @@ async function verifyQRCode(qrData) {
     return {
       valid: false,
       message: 'Invalid QR code',
-      error: error.message,
+      error: 'QR verification error',
     };
   }
 }
@@ -637,6 +616,8 @@ async function generateCertificateEndpoint(req, res) {
     if (!winnerId || !templateId) {
       return res.status(400).json({ error: 'winnerId and templateId are required' });
     }
+    if (!isUUID(winnerId)) return res.status(400).json({ error: 'Invalid winnerId format' });
+    if (!isUUID(templateId)) return res.status(400).json({ error: 'Invalid templateId format' });
     const result = await generateWinnerCertificate(winnerId, templateId, format);
     res.json({ success: true, ...result });
   } catch (error) {
@@ -652,6 +633,10 @@ async function generateBulkCertificatesEndpoint(req, res) {
     const { winnerIds, templateId, format } = req.body;
     if (!winnerIds?.length || !templateId) {
       return res.status(400).json({ error: 'winnerIds array and templateId are required' });
+    }
+    if (!isUUID(templateId)) return res.status(400).json({ error: 'Invalid templateId format' });
+    if (!Array.isArray(winnerIds) || winnerIds.some((id) => !isUUID(id))) {
+      return res.status(400).json({ error: 'Invalid winnerId in winnerIds array' });
     }
     const results = await generateBulkCertificates(winnerIds, templateId, format);
     res.json({ success: true, results });
@@ -669,6 +654,7 @@ async function previewCertificateEndpoint(req, res) {
     if (!templateId) {
       return res.status(400).json({ error: 'templateId is required' });
     }
+    if (!isUUID(templateId)) return res.status(400).json({ error: 'Invalid templateId format' });
     const base64Pdf = await previewCertificate(templateId, sampleData);
     res.json({ success: true, pdfBase64: base64Pdf });
   } catch (error) {
@@ -686,6 +672,8 @@ async function previewCertificateEndpoint(req, res) {
 async function generateQRTicketEndpoint(req, res) {
   try {
     const { attendeeId } = req.body;
+    if (!attendeeId) return res.status(400).json({ error: 'attendeeId is required' });
+    if (!isUUID(attendeeId)) return res.status(400).json({ error: 'Invalid attendeeId format' });
     const result = await generateEventTicketQR(attendeeId);
     res.json({ success: true, ...result });
   } catch (error) {
@@ -703,6 +691,8 @@ async function generateQRTicketEndpoint(req, res) {
 async function generateBadgeEndpoint(req, res) {
   try {
     const { attendeeId } = req.body;
+    if (!attendeeId) return res.status(400).json({ error: 'attendeeId is required' });
+    if (!isUUID(attendeeId)) return res.status(400).json({ error: 'Invalid attendeeId format' });
     const result = await generateEventBadge(attendeeId);
     res.json({ success: true, ...result });
   } catch (error) {
@@ -723,6 +713,7 @@ async function generateAllBadgesEndpoint(req, res) {
     if (!eventId) {
       return res.status(400).json({ error: 'eventId is required' });
     }
+    if (!isUUID(eventId)) return res.status(400).json({ error: 'Invalid eventId format' });
     const results = await generateAllEventBadges(eventId);
     res.json({ success: true, results });
   } catch (error) {
@@ -772,10 +763,48 @@ module.exports = async function handler(req, res) {
       return verifyQREndpoint(req, res);
     case 'generate-all-badges':
       return generateAllBadgesEndpoint(req, res);
+    case 'generate-and-email':
+    case 'generate_and_email': {
+      const { winner_id, template_id } = req.body;
+      if (!winner_id) return res.status(400).json({ error: 'Missing winner_id' });
+      try {
+        const cert = await generateWinnerCertificate(winner_id, template_id);
+        // Look up winner email from organisations join
+        const { data: winnerRow } = await supabase
+          .from('winners')
+          .select('winner_name, organisations(company_name, email)')
+          .eq('id', winner_id)
+          .single();
+        const recipientEmail = winnerRow?.organisations?.email;
+        if (recipientEmail) {
+          const appUrl = process.env.APP_URL || '';
+          await fetch(`${appUrl}/api/email-automation`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'sendTemplate',
+              templateKey: 'WINNER_ANNOUNCEMENT',
+              toEmail: recipientEmail,
+              variables: {
+                company_name: winnerRow?.organisations?.company_name || '',
+                certificate_url: cert.publicUrl,
+              },
+            }),
+          });
+        } else {
+          console.warn(`[certificates-qr] generate_and_email: no recipient email for winner ${winner_id}`);
+        }
+        await supabase.from('winners').update({ certificate_sent_at: new Date().toISOString() }).eq('id', winner_id);
+        return res.json({ success: true, certificate_url: cert.publicUrl });
+      } catch (err) {
+        console.error('[certificates-qr] generate_and_email error:', err.message);
+        return res.status(500).json({ error: 'Certificate generation failed' });
+      }
+    }
     default:
       return res.status(400).json({
         error:
-          'Invalid action. Use: generate-certificate, generate-bulk-certificates, preview-certificate, generate-qr-ticket, generate-badge, generate-all-badges, verify-qr',
+          'Invalid action. Use: generate-certificate, generate-bulk-certificates, preview-certificate, generate-qr-ticket, generate-badge, generate-all-badges, verify-qr, generate_and_email',
       });
   }
 };

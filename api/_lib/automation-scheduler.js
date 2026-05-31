@@ -18,6 +18,24 @@ const { createClient } = require('@supabase/supabase-js');
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
 /**
+ * Scheduled email campaign dispatcher (runs every 5 minutes).
+ * Finds campaigns with status='Scheduled' and scheduled_date <= now, then sends them.
+ */
+cron.schedule(
+  '*/5 * * * *',
+  async () => {
+    try {
+      await dispatchScheduledCampaigns();
+    } catch (error) {
+      console.error('Error dispatching scheduled campaigns:', error);
+    }
+  },
+  {
+    timezone: 'Europe/London',
+  }
+);
+
+/**
  * Daily automation tasks (runs at 9:00 AM)
  */
 cron.schedule(
@@ -26,8 +44,9 @@ cron.schedule(
     console.log('\nRunning daily automation tasks...');
 
     try {
-      // Send deadline reminders
+      // Send deadline reminders (entry close dates and judging deadlines)
       await sendDeadlineReminders();
+      await checkDeadlineReminders();
 
       // Check for overdue invoices and send payment reminders
       await sendPaymentReminders();
@@ -40,6 +59,24 @@ cron.schedule(
   {
     timezone: 'Europe/London',
   }
+);
+
+/**
+ * Weekly data retention cleanup (runs Sunday at 2:00 AM).
+ * Deletes records older than their configured retention period per GDPR Article 5(1)(e).
+ */
+cron.schedule(
+  '0 2 * * 0',
+  async () => {
+    console.log('\nRunning weekly retention cleanup...');
+    try {
+      await runRetentionCleanup();
+      console.log('Retention cleanup complete\n');
+    } catch (error) {
+      console.error('Error in retention cleanup:', error);
+    }
+  },
+  { timezone: 'Europe/London' }
 );
 
 /**
@@ -105,6 +142,88 @@ cron.schedule(
     timezone: 'Europe/London',
   }
 );
+
+/**
+ * Dispatch all scheduled email campaigns whose send time has arrived.
+ * Finds email_campaigns with status='Scheduled' and scheduled_date <= now,
+ * calls the send_campaign_emails RPC for each, and updates the status to 'Sent' or 'Failed'.
+ * @returns {Promise<void>}
+ */
+async function dispatchScheduledCampaigns() {
+  const now = new Date().toISOString();
+
+  // Fetch due campaigns
+  const { data: campaigns, error } = await supabase
+    .from('email_campaigns')
+    .select('*')
+    .eq('status', 'Scheduled')
+    .lte('scheduled_date', now);
+
+  if (error) {
+    console.error('dispatchScheduledCampaigns: query error', error);
+    return;
+  }
+
+  if (!campaigns || campaigns.length === 0) {
+    return; // Nothing to send
+  }
+
+  console.log(`dispatchScheduledCampaigns: found ${campaigns.length} campaign(s) due`);
+
+  for (const campaign of campaigns) {
+    // Mark as Sending immediately to prevent double-dispatch
+    await supabase
+      .from('email_campaigns')
+      .update({ status: 'Sending' })
+      .eq('id', campaign.id)
+      .eq('status', 'Scheduled');
+
+    try {
+      // Parse stored campaign metadata from notes field
+      let meta = {};
+      try {
+        meta = campaign.notes ? JSON.parse(campaign.notes) : {};
+      } catch (_) {
+        meta = {};
+      }
+
+      const listId = meta.list_id;
+      if (!listId) {
+        throw new Error('No list_id in campaign notes — cannot send');
+      }
+
+      const { data: rpcResult, error: rpcError } = await supabase.rpc('send_campaign_emails', {
+        p_list_id: listId,
+        p_subject: campaign.subject || campaign.campaign_name || 'Campaign',
+        p_html: meta.html || '',
+        p_from_name: meta.from_name || process.env.FROM_NAME || 'British Trade Awards',
+        p_from_email: meta.from_email || process.env.FROM_EMAIL || '',
+        p_reply_to: meta.reply_to || meta.from_email || process.env.FROM_EMAIL || '',
+        p_campaign_name: campaign.campaign_name || campaign.subject || 'Campaign',
+      });
+
+      if (rpcError) throw rpcError;
+      if (rpcResult && !rpcResult.success) throw new Error(rpcResult.error || 'RPC returned failure');
+
+      const sentCount = rpcResult?.sent ?? campaign.total_recipients ?? 0;
+
+      await supabase
+        .from('email_campaigns')
+        .update({
+          status: 'Sent',
+          sent_date: new Date().toISOString(),
+          total_recipients: sentCount,
+        })
+        .eq('id', campaign.id);
+
+      console.log(`dispatchScheduledCampaigns: sent campaign "${campaign.campaign_name}" to ${sentCount} recipients`);
+    } catch (sendErr) {
+      console.error(`dispatchScheduledCampaigns: failed to send campaign ${campaign.id}:`, sendErr);
+
+      await supabase.from('email_campaigns').update({ status: 'Failed' }).eq('id', campaign.id);
+    }
+  }
+}
 
 /**
  * Get the nearest judging deadline from active awards.
@@ -312,6 +431,129 @@ async function generateWeeklyStats() {
 }
 
 /**
+ * Check for upcoming award deadlines and send reminder emails to entrants and judges.
+ * Checks entry_close_date at 7, 3, and 1 day intervals, and judging_deadline similarly.
+ * @returns {Promise<void>}
+ */
+async function checkDeadlineReminders() {
+  try {
+    const now = new Date();
+    const intervals = [7, 3, 1];
+    const appUrl = process.env.APP_URL || 'https://admin.britishtradeawards.com';
+
+    const todayMidnight = new Date(now.toISOString().split('T')[0] + 'T00:00:00.000Z').toISOString();
+
+    for (const daysLeft of intervals) {
+      const target = new Date(now);
+      target.setDate(target.getDate() + daysLeft);
+      const targetStr = target.toISOString().split('T')[0];
+
+      // --- Entry close date reminders ---
+      const { data: closingAwards } = await supabase
+        .from('award_years')
+        .select('id, name, entry_close_date')
+        .eq('entry_close_date', targetStr);
+
+      for (const award of closingAwards || []) {
+        const { data: entries } = await supabase
+          .from('entries')
+          .select('contact_name, contact_email')
+          .eq('award_id', award.id)
+          .in('status', ['submitted', 'under_review', 'draft'])
+          .not('contact_email', 'is', null);
+
+        for (const entry of entries || []) {
+          if (!entry.contact_email) continue;
+          // Dedup: skip if already sent today
+          const { count: alreadySent } = await supabase
+            .from('email_log')
+            .select('id', { count: 'exact', head: true })
+            .eq('template_key', 'ENTRY_DEADLINE_REMINDER')
+            .eq('recipient_email', entry.contact_email)
+            .gte('sent_at', todayMidnight);
+          if ((alreadySent || 0) > 0) continue;
+          try {
+            await fetch(`${appUrl}/api/email-automation`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'sendTemplate',
+                templateKey: 'ENTRY_DEADLINE_REMINDER',
+                toEmail: entry.contact_email,
+                variables: {
+                  contact_name: entry.contact_name || 'Entrant',
+                  award_name: award.name || 'Award',
+                  days_left: String(daysLeft),
+                  deadline: award.entry_close_date,
+                  deadline_type: 'Entry Submission',
+                },
+              }),
+            });
+          } catch (emailErr) {
+            console.warn(
+              `checkDeadlineReminders: failed to send entry reminder to ${entry.contact_email}:`,
+              emailErr.message
+            );
+          }
+        }
+      }
+
+      // --- Judging deadline reminders ---
+      const { data: judgingAwards } = await supabase
+        .from('awards')
+        .select('id, award_name, judging_deadline')
+        .eq('judging_deadline', targetStr)
+        .eq('is_active', true);
+
+      for (const award of judgingAwards || []) {
+        const { data: assignments } = await supabase
+          .from('judge_assignments')
+          .select('judge_email')
+          .eq('award_id', award.id)
+          .neq('status', 'completed');
+
+        const judgeEmails = [...new Set((assignments || []).map((a) => a.judge_email).filter(Boolean))];
+
+        for (const judgeEmail of judgeEmails) {
+          // Dedup: skip if already sent today
+          const { count: alreadySentJudge } = await supabase
+            .from('email_log')
+            .select('id', { count: 'exact', head: true })
+            .eq('template_key', 'DEADLINE_REMINDER')
+            .eq('recipient_email', judgeEmail)
+            .gte('sent_at', todayMidnight);
+          if ((alreadySentJudge || 0) > 0) continue;
+          try {
+            await fetch(`${appUrl}/api/email-automation`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'sendTemplate',
+                templateKey: 'DEADLINE_REMINDER',
+                toEmail: judgeEmail,
+                variables: {
+                  contact_name: 'Judge',
+                  award_name: award.award_name || 'Award',
+                  days_left: String(daysLeft),
+                  deadline: award.judging_deadline,
+                  deadline_type: 'Judging',
+                },
+              }),
+            });
+          } catch (emailErr) {
+            console.warn(`checkDeadlineReminders: failed to send judge reminder to ${judgeEmail}:`, emailErr.message);
+          }
+        }
+      }
+    }
+
+    console.log('checkDeadlineReminders: complete');
+  } catch (error) {
+    console.error('checkDeadlineReminders error:', error);
+  }
+}
+
+/**
  * Manually trigger winner announcements and certificate generation.
  * @returns {Promise<{success: boolean, emailsSent: number, certificatesGenerated: number}>} Results.
  * @throws {Error} If announcement or certificate generation fails.
@@ -454,6 +696,60 @@ function setupAutomationEndpoints(app) {
 }
 
 /**
+ * GDPR Article 5(1)(e) retention cleanup.
+ * Deletes personal data older than configured retention periods.
+ * Runs automatically via weekly cron and can be triggered manually.
+ * @returns {Promise<{deleted: Object}>} Count of deleted records per table.
+ */
+async function runRetentionCleanup() {
+  const now = new Date();
+  const deleted = {};
+
+  function cutoff(years) {
+    const d = new Date(now);
+    d.setFullYear(d.getFullYear() - years);
+    return d.toISOString();
+  }
+
+  // Audit logs: 2 years
+  const { data: auditDeleted } = await supabase
+    .from('cms_audit_logs')
+    .delete()
+    .lt('created_at', cutoff(2))
+    .select('id');
+  deleted.cms_audit_logs = auditDeleted?.length || 0;
+
+  // Email logs: 1 year
+  const { data: emailDeleted } = await supabase
+    .from('notification_queue')
+    .delete()
+    .lt('created_at', cutoff(1))
+    .eq('status', 'sent')
+    .select('id');
+  deleted.notification_queue = emailDeleted?.length || 0;
+
+  // Public vote records: 1 year
+  const { data: votesDeleted } = await supabase.from('public_votes').delete().lt('voted_at', cutoff(1)).select('id');
+  deleted.public_votes = votesDeleted?.length || 0;
+
+  // Event guests: 3 years after event (approximate: 3 years from created_at)
+  const { data: guestsDeleted } = await supabase.from('event_guests').delete().lt('created_at', cutoff(3)).select('id');
+  deleted.event_guests = guestsDeleted?.length || 0;
+
+  const totalDeleted = Object.values(deleted).reduce((a, b) => a + b, 0);
+  console.log(`[retention-cleanup] Deleted ${totalDeleted} records:`, deleted);
+
+  await supabase.from('cms_audit_logs').insert({
+    action: 'retention_cleanup',
+    entity_type: 'system',
+    details: JSON.stringify({ deleted }),
+    performed_by: 'automation-scheduler',
+  });
+
+  return { deleted };
+}
+
+/**
  * Start the automation scheduler and log cron schedule details.
  * @returns {void}
  */
@@ -491,10 +787,17 @@ module.exports = async function handler(req, res) {
       case 'weekly-stats':
         await generateWeeklyStats();
         return res.json({ success: true, action: 'weekly-stats' });
+      case 'send-scheduled-campaigns':
+        await dispatchScheduledCampaigns();
+        return res.json({ success: true, action: 'send-scheduled-campaigns' });
+      case 'retention-cleanup': {
+        const cleanupResult = await runRetentionCleanup();
+        return res.json({ success: true, action: 'retention-cleanup', ...cleanupResult });
+      }
       default:
         return res.status(400).json({
           error:
-            'Invalid action. Use: winner-announcements, judge-assignments, shortlist-generation, payment-reminders, judge-progress, weekly-stats',
+            'Invalid action. Use: winner-announcements, judge-assignments, shortlist-generation, payment-reminders, judge-progress, weekly-stats, send-scheduled-campaigns, retention-cleanup',
         });
     }
   } catch (error) {
@@ -511,6 +814,8 @@ module.exports.triggerShortlistGeneration = triggerShortlistGeneration;
 module.exports.sendPaymentReminders = sendPaymentReminders;
 module.exports.sendJudgeProgressReports = sendJudgeProgressReports;
 module.exports.generateWeeklyStats = generateWeeklyStats;
+module.exports.dispatchScheduledCampaigns = dispatchScheduledCampaigns;
+module.exports.runRetentionCleanup = runRetentionCleanup;
 
 // Start scheduler if running directly
 if (require.main === module) {

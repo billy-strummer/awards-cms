@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 // ============================================
 // EMAIL LISTS MODULE FOR AWARDS CMS
 // Email List Management & Subscriber Import
@@ -67,10 +68,12 @@ const emailListsModule = {
    * @returns {void}
    */
   _goToPage(page) {
-    this._fetchPage(page).then((data) => {
-      this.currentLists = data || [];
-      this.renderEmailLists();
-    });
+    this._fetchPage(page)
+      .then((data) => {
+        this.currentLists = data || [];
+        this.renderEmailLists();
+      })
+      .catch((e) => console.error('Email list page fetch error:', e.message));
   },
 
   /**
@@ -87,6 +90,7 @@ const emailListsModule = {
    * @returns {Promise<void>}
    */
   async loadEmailLists() {
+    utils.showLoading();
     try {
       const data = await this._fetchPage(1);
       this.currentLists = data || [];
@@ -101,6 +105,8 @@ const emailListsModule = {
           </div>
         </div>
       `;
+    } finally {
+      utils.hideLoading();
     }
   },
 
@@ -158,13 +164,14 @@ const emailListsModule = {
 
     if (!this.currentLists || this.currentLists.length === 0) {
       container.innerHTML = `
-        <div class="col-12">
-          <div class="alert alert-info">
-            <i class="bi bi-info-circle me-2"></i>
-            No email lists found. Click "Create List" to create your first email list.
-          </div>
-        </div>
-      `;
+        <div class="col-12 text-center py-5 text-muted">
+          <i class="bi bi-envelope-plus display-4 d-block mb-3 opacity-25"></i>
+          <p class="fw-semibold mb-1">No email lists yet</p>
+          <p class="small mb-3">Create your first list to start segmenting your audience.</p>
+          <button class="btn btn-sm btn-primary" data-action="emailListsModule.openCreateListModal">
+            <i class="bi bi-plus-circle me-1"></i>Create List
+          </button>
+        </div>`;
       return;
     }
 

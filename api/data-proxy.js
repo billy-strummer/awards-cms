@@ -19,15 +19,14 @@
  */
 
 const { createClient } = require('@supabase/supabase-js');
+const { verifyAuth, hasMinimumRole, getUserRole } = require('./_lib/auth');
+const { assertEnv } = require('./_lib/env');
+const { isValidColumnList, validateSegmentRules } = require('./_lib/validate');
+
+assertEnv(['SUPABASE_URL', 'SUPABASE_SERVICE_KEY']);
 
 // Service-role client for privileged operations
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-
-// Anon client for JWT verification
-const supabaseAuth = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_KEY
-);
 
 // ============================================
 // TENANT-SCOPED TABLES
@@ -72,21 +71,7 @@ const ALLOWED_RPCS = {
   get_next_table_number: 'editor',
 };
 
-/** Role hierarchy for RPC permission checks (higher index = more privilege) */
-const ROLE_HIERARCHY = ['viewer', 'judge', 'marketing', 'finance', 'editor', 'admin', 'super_admin'];
-
-/**
- * Check if a role meets the minimum required role level.
- * @param {string} userRole - The user's current role.
- * @param {string} requiredRole - The minimum role required.
- * @returns {boolean}
- */
-function hasMinimumRole(userRole, requiredRole) {
-  const userLevel = ROLE_HIERARCHY.indexOf(userRole);
-  const requiredLevel = ROLE_HIERARCHY.indexOf(requiredRole);
-  if (userLevel === -1 || requiredLevel === -1) return false;
-  return userLevel >= requiredLevel;
-}
+// ROLE_HIERARCHY, hasMinimumRole, getUserRole, verifyAuth imported from ./_lib/auth
 
 // ============================================
 // ALLOWED STORAGE BUCKETS
@@ -514,22 +499,6 @@ const ROLE_PERMISSIONS = {
 const READ_ONLY_TABLES = new Set(['activity_log', 'counties', 'regions']);
 
 /**
- * Fetch user role from user_roles table (canonical source of truth).
- * Falls back to 'viewer' if no role is found.
- * @param {string} userEmail - The user's email address.
- * @returns {Promise<string>} The user's role string (defaults to 'viewer').
- */
-async function getUserRole(userEmail) {
-  try {
-    const { data } = await supabase.from('user_roles').select('role').eq('email', userEmail).limit(1).maybeSingle();
-    return (data?.role || 'viewer').toLowerCase();
-  } catch (err) {
-    console.error(`[data-proxy] Failed to fetch role for user ${userEmail}:`, err.message);
-    return 'viewer';
-  }
-}
-
-/**
  * Check if a user's role permits an operation on a table.
  * @param {string} role - The user's role (e.g. 'admin', 'editor', 'viewer').
  * @param {string} table - The database table name.
@@ -553,41 +522,6 @@ function checkPermission(role, table, operation) {
   // Write operations
   if (perms.write === '*') return true;
   return perms.write.has(table);
-}
-
-// ============================================
-// AUTH VERIFICATION
-// ============================================
-
-/**
- * Verify the caller's Supabase JWT.
- * Returns the authenticated user or sends 401 and returns null.
- * @param {Object} req - Express request object.
- * @param {Object} res - Express response object.
- * @returns {Promise<Object|null>} The authenticated user object, or null if authentication fails.
- */
-async function verifyAuth(req, res) {
-  const authHeader = req.headers?.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    res.status(401).json({ error: 'Authentication required' });
-    return null;
-  }
-
-  const token = authHeader.replace('Bearer ', '');
-  try {
-    const {
-      data: { user },
-      error,
-    } = await supabaseAuth.auth.getUser(token);
-    if (error || !user) {
-      res.status(401).json({ error: 'Invalid or expired token' });
-      return null;
-    }
-    return user;
-  } catch (err) {
-    res.status(401).json({ error: 'Token verification failed' });
-    return null;
-  }
 }
 
 // ============================================
@@ -803,8 +737,12 @@ async function executeQuery(body, user) {
   try {
     return await _executeQuery(body, user, true);
   } catch (err) {
-    // If the error is about a missing tenant_id column, retry without tenant scoping
+    // If the error is about a missing tenant_id column, retry without tenant scoping.
+    // Log a warning so this is visible — tables that need multi-tenant isolation should have tenant_id.
     if (isMissingTenantColumn(err)) {
+      console.error(
+        `[data-proxy] SECURITY: table "${body.table}" lacks tenant_id column but tenant scoping was requested — falling back to unscoped query`
+      );
       return await _executeQuery(body, user, false);
     }
     throw err;
@@ -848,7 +786,7 @@ async function _executeQuery(body, user, enableTenantScope) {
       // Validate OR clause: only allow safe column.operator.value patterns
       const orStr = String(body.or);
       const safeOrPattern =
-        /^[a-zA-Z_][a-zA-Z0-9_]*\.(eq|neq|gt|gte|lt|lte|like|ilike|is|in|not)\.[^,]+(,[a-zA-Z_][a-zA-Z0-9_]*\.(eq|neq|gt|gte|lt|lte|like|ilike|is|in|not)\.[^,]+)*$/;
+        /^[a-zA-Z_][a-zA-Z0-9_]*\.(eq|neq|gt|gte|lt|lte|like|ilike|is|in)\.[^,]+(,[a-zA-Z_][a-zA-Z0-9_]*\.(eq|neq|gt|gte|lt|lte|like|ilike|is|in)\.[^,]+)*$/;
       if (safeOrPattern.test(orStr)) {
         query = query.or(orStr);
       } else {
@@ -926,7 +864,12 @@ async function _executeQuery(body, user, enableTenantScope) {
       updated_at: new Date().toISOString(),
     }));
     const upsertOpts = {};
-    if (body.onConflict) upsertOpts.onConflict = body.onConflict;
+    if (body.onConflict) {
+      if (!isValidColumnList(body.onConflict)) {
+        return { error: 'Invalid onConflict value — must be a column name or comma-separated column names' };
+      }
+      upsertOpts.onConflict = body.onConflict;
+    }
     const { data: result, error } = await supabase.from(table).upsert(enriched, upsertOpts).select();
     if (error) throw error;
     await logActivity(table, 'upsert', user, result, {});
@@ -1136,25 +1079,24 @@ const rateLimits = new Map();
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
 const RATE_LIMIT_MAX = 120; // 120 requests per minute
 
-let lastCleanup = Date.now();
-
 /**
  * Check if a user has exceeded the rate limit (120 requests per minute).
- * Uses in-memory tracking with periodic cleanup of stale entries.
+ * Uses in-memory tracking with probabilistic cleanup of stale entries.
+ * Note: rate limits are per-Vercel-instance (not distributed).
  * @param {string} userId - The user ID to check rate limits for.
  * @returns {boolean} True if the request is within rate limits, false if exceeded.
  */
 function checkRateLimit(userId) {
   const now = Date.now();
 
-  // Inline cleanup: sweep stale entries every 2 windows (works in serverless)
-  if (now - lastCleanup > RATE_LIMIT_WINDOW * 2) {
+  // Probabilistic cleanup: sweep stale entries on ~1% of requests to avoid
+  // accumulating unbounded Map entries without a shared-global race condition.
+  if (Math.random() < 0.01) {
     for (const [key, value] of rateLimits.entries()) {
       if (now - value.windowStart > RATE_LIMIT_WINDOW * 2) {
         rateLimits.delete(key);
       }
     }
-    lastCleanup = now;
   }
 
   const userLimits = rateLimits.get(userId) || { count: 0, windowStart: now };
@@ -1366,67 +1308,130 @@ async function executeSegmentQuery(rules, logic) {
     county_city: 'county_city',
   };
 
-  // Fetch all orgs with embedded award count (limit 1000 — full database)
-  const { data: orgs, error } = await supabase
-    .from('organisations')
-    .select(
-      'id, company_name, status, sector, county_city, tier, email, contact_name, contact_phone, logo_url, website, updated_at, award_assignments(count)'
-    )
-    .limit(1000);
+  // Computed fields require in-memory evaluation; simple fields can be pushed to DB WHERE clause.
+  const IN_MEMORY_FIELDS = new Set(['engagement', 'awards_count']);
 
-  if (error) throw error;
+  // For AND logic, push simple field filters to Supabase to reduce rows fetched.
+  // For OR logic, we need all rows (any one rule matching is enough, including computed fields).
+  const dbRules = logic === 'AND' ? rules.filter((r) => !IN_MEMORY_FIELDS.has(r.field)) : [];
+  const memRules = logic === 'AND' ? rules.filter((r) => IN_MEMORY_FIELDS.has(r.field)) : rules;
 
-  const processed = (orgs || []).map((org) => ({
+  // Build base query, applying DB-level filters for AND conditions
+  function buildBaseQuery() {
+    let q = supabase
+      .from('organisations')
+      .select(
+        'id, company_name, status, sector, county_city, tier, email, contact_name, contact_phone, logo_url, website, updated_at, award_assignments(count)'
+      );
+    for (const r of dbRules) {
+      const col = DB_COL[r.field] || r.field;
+      switch (r.op) {
+        case 'eq':
+          q = q.eq(col, r.val);
+          break;
+        case 'neq':
+          q = q.neq(col, r.val);
+          break;
+        case 'contains':
+          q = q.ilike(col, `%${r.val}%`);
+          break;
+        case 'gt':
+          q = q.gt(col, r.val);
+          break;
+        case 'lt':
+          q = q.lt(col, r.val);
+          break;
+        default:
+          break;
+      }
+    }
+    return q;
+  }
+
+  // Paginate, respecting the DB-filtered query when possible.
+  // Safety cap of 5,000 rows (halved from 10K since DB filtering reduces result set).
+  const PAGE_SIZE = 500;
+  const MAX_ROWS = dbRules.length > 0 ? 5000 : 10000;
+  const allOrgs = [];
+  let page = 0;
+
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const from = page * PAGE_SIZE;
+    // eslint-disable-next-line no-await-in-loop
+    const { data: batch, error } = await buildBaseQuery().range(from, from + PAGE_SIZE - 1);
+
+    if (error) throw error;
+    if (!batch || batch.length === 0) break;
+
+    allOrgs.push(...batch);
+    page++;
+
+    if (allOrgs.length >= MAX_ROWS) {
+      console.warn(
+        `[executeSegmentQuery] Safety cap reached: ${MAX_ROWS} rows loaded. Some organisations may be excluded from this segment.`
+      );
+      break;
+    }
+
+    if (batch.length < PAGE_SIZE) break; // Last page
+  }
+
+  const processed = allOrgs.map((org) => ({
     ...org,
     awards_count: org.award_assignments?.[0]?.count || 0,
     county_city: org.county_city || '',
   }));
 
+  // Apply remaining in-memory rules (engagement score, awards_count, OR-logic rules)
   const matchFn = logic === 'OR' ? 'some' : 'every';
-  const matching = processed.filter((org) =>
-    rules[matchFn]((r) => {
-      let orgVal;
-      if (r.field === 'engagement') {
-        // Simplified engagement: derived from available DB columns (no CRM last-contacted)
-        let score = 0;
-        const daysSinceUpdate = org.updated_at
-          ? Math.floor((Date.now() - new Date(org.updated_at).getTime()) / 86400000)
-          : 999;
-        if (daysSinceUpdate < 7) score += 40;
-        else if (daysSinceUpdate < 30) score += 25;
-        else if (daysSinceUpdate < 90) score += 10;
-        else if (daysSinceUpdate < 180) score += 3;
-        if (org.email) score += 8;
-        if (org.contact_name) score += 7;
-        if (org.logo_url) score += 5;
-        if (org.website) score += 5;
-        if ((org.awards_count || 0) > 0) score += 15;
-        if (org.tier) score += 5;
-        if (org.contact_phone) score += 3;
-        orgVal = score;
-      } else if (r.field === 'awards_count') {
-        orgVal = org.awards_count || 0;
-      } else {
-        const col = DB_COL[r.field] || r.field;
-        orgVal = org[col] || '';
-      }
-      const testVal = r.val;
-      switch (r.op) {
-        case 'eq':
-          return String(orgVal).toLowerCase() === testVal.toLowerCase();
-        case 'neq':
-          return String(orgVal).toLowerCase() !== testVal.toLowerCase();
-        case 'gt':
-          return Number(orgVal) > Number(testVal);
-        case 'lt':
-          return Number(orgVal) < Number(testVal);
-        case 'contains':
-          return String(orgVal).toLowerCase().includes(testVal.toLowerCase());
-        default:
-          return false;
-      }
-    })
-  );
+  const matching =
+    memRules.length === 0
+      ? processed
+      : processed.filter((org) =>
+          memRules[matchFn]((r) => {
+            let orgVal;
+            if (r.field === 'engagement') {
+              // Simplified engagement: derived from available DB columns (no CRM last-contacted)
+              let score = 0;
+              const daysSinceUpdate = org.updated_at
+                ? Math.floor((Date.now() - new Date(org.updated_at).getTime()) / 86400000)
+                : 999;
+              if (daysSinceUpdate < 7) score += 40;
+              else if (daysSinceUpdate < 30) score += 25;
+              else if (daysSinceUpdate < 90) score += 10;
+              else if (daysSinceUpdate < 180) score += 3;
+              if (org.email) score += 8;
+              if (org.contact_name) score += 7;
+              if (org.logo_url) score += 5;
+              if (org.website) score += 5;
+              if ((org.awards_count || 0) > 0) score += 15;
+              if (org.tier) score += 5;
+              if (org.contact_phone) score += 3;
+              orgVal = score;
+            } else if (r.field === 'awards_count') {
+              orgVal = org.awards_count || 0;
+            } else {
+              const col = DB_COL[r.field] || r.field;
+              orgVal = org[col] || '';
+            }
+            const testVal = r.val;
+            switch (r.op) {
+              case 'eq':
+                return String(orgVal).toLowerCase() === testVal.toLowerCase();
+              case 'neq':
+                return String(orgVal).toLowerCase() !== testVal.toLowerCase();
+              case 'gt':
+                return Number(orgVal) > Number(testVal);
+              case 'lt':
+                return Number(orgVal) < Number(testVal);
+              case 'contains':
+                return String(orgVal).toLowerCase().includes(testVal.toLowerCase());
+              default:
+                return false;
+            }
+          })
+        );
 
   return {
     count: matching.length,
@@ -1532,6 +1537,15 @@ module.exports = async function handler(req, res) {
     }
 
     if (body.operation === 'storage_url') {
+      const requiredRole = ALLOWED_STORAGE_BUCKETS[body.bucket];
+      if (!requiredRole) {
+        return res.status(400).json({ error: `Storage bucket "${body.bucket}" is not allowed` });
+      }
+      if (!hasMinimumRole(role, requiredRole)) {
+        return res
+          .status(403)
+          .json({ error: 'Forbidden', message: `Role "${role}" cannot access bucket "${body.bucket}"` });
+      }
       const urlResult = executeStorageUrl(body);
       return res.status(200).json(urlResult);
     }
@@ -1561,11 +1575,17 @@ module.exports = async function handler(req, res) {
     }
 
     if (body.operation === 'nominee_delete_all') {
-      if (!hasMinimumRole(role, 'editor')) {
-        return res.status(403).json({ error: 'Forbidden', message: 'Nominee delete requires editor role or above' });
+      if (!hasMinimumRole(role, 'super_admin')) {
+        return res.status(403).json({ error: 'Forbidden', message: 'Nominee delete requires super_admin role' });
       }
-      await supabase.from('nominee_upload_rows').delete().gte('created_at', '2000-01-01');
-      await supabase.from('nominee_upload_batches').delete().gte('uploaded_at', '2000-01-01');
+      const batchId = body.batch_id;
+      if (!batchId) {
+        return res
+          .status(400)
+          .json({ error: 'batch_id is required for nominee_delete_all to prevent accidental mass deletion' });
+      }
+      await supabase.from('nominee_upload_rows').delete().eq('batch_id', batchId);
+      await supabase.from('nominee_upload_batches').delete().eq('id', batchId);
       return res.status(200).json({ deleted: true });
     }
 
@@ -1574,7 +1594,12 @@ module.exports = async function handler(req, res) {
       if (!hasMinimumRole(role, 'viewer')) {
         return res.status(403).json({ error: 'Forbidden', message: 'Segment queries require viewer role or above' });
       }
-      const segResult = await executeSegmentQuery(body.rules || [], body.logic || 'AND');
+      const logic = body.logic === 'OR' ? 'OR' : 'AND';
+      const rulesValidation = validateSegmentRules(body.rules || []);
+      if (!rulesValidation.valid) {
+        return res.status(400).json({ error: rulesValidation.error });
+      }
+      const segResult = await executeSegmentQuery(rulesValidation.rules, logic);
       return res.status(200).json(segResult);
     }
 
@@ -1596,11 +1621,6 @@ module.exports = async function handler(req, res) {
     return res.status(200).json(result);
   } catch (error) {
     console.error('[data-proxy] Error:', error.message, error.details || '', error.hint || '');
-    return res.status(500).json({
-      error: 'Internal server error',
-      message: error.message || 'Unknown error',
-      hint: error.hint || undefined,
-      details: error.details || undefined,
-    });
+    return res.status(500).json({ error: 'Internal server error' });
   }
 };

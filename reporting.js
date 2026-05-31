@@ -26,6 +26,38 @@ const reportingModule = {
     return d ? new Date(d).getFullYear() : null;
   },
 
+  /**
+   * Get the currently active year filter from the analytics module.
+   * Returns null when "All Years" is selected.
+   * @returns {string|null}
+   */
+  _getActiveYear() {
+    if (
+      typeof reportsAnalytics !== 'undefined' &&
+      reportsAnalytics._selectedYear &&
+      reportsAnalytics._selectedYear !== 'all'
+    ) {
+      return String(reportsAnalytics._selectedYear);
+    }
+    return null;
+  },
+
+  /**
+   * Build a date range filter for a given year (full calendar year).
+   * Returns an object with `gte` and `lt` ISO strings, or null for no filter.
+   * @param {string|null} year
+   * @returns {{gte: string, lt: string}|null}
+   */
+  _yearDateRange(year) {
+    if (!year) return null;
+    const y = parseInt(year, 10);
+    if (isNaN(y)) return null;
+    return {
+      gte: new Date(y, 0, 1).toISOString(),
+      lt: new Date(y + 1, 0, 1).toISOString(),
+    };
+  },
+
   _dlBlob(blob, name) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -80,9 +112,12 @@ const reportingModule = {
   /* ---- 1. Entries by Category ---- */
   async exportEntriesByCategory(fmt = 'csv') {
     try {
+      const activeYear = this._getActiveYear();
+      const yearRange = this._yearDateRange(activeYear);
       // selectAll justified: report generation needs full dataset for category aggregation (see pagination documentation)
       const data = await apiClient.selectAll('entries', {
         select: 'status, payment_status, award_years(award_name, sector)',
+        ...(yearRange ? { filters: { 'created_at@gte': yearRange.gte, 'created_at@lt': yearRange.lt } } : {}),
       });
       const map = {};
       (data || []).forEach((e) => {
@@ -126,12 +161,25 @@ const reportingModule = {
   /* ---- 2. Revenue Report ---- */
   async exportRevenueReport(fmt = 'csv') {
     try {
+      const activeYear = this._getActiveYear();
+      const yearRange = this._yearDateRange(activeYear);
       // selectAll justified: revenue report needs all invoices and payments for quarterly aggregation (see pagination documentation)
       const [invs, pmts] = await Promise.all([
         apiClient.selectAll('invoices', {
           select: 'invoice_number, total_amount, paid_amount, payment_status, created_at, organisations(company_name)',
+          ...(yearRange ? { filters: { 'created_at@gte': yearRange.gte, 'created_at@lt': yearRange.lt } } : {}),
         }),
-        apiClient.selectAll('payments', { select: 'amount, payment_date' }),
+        apiClient.selectAll('payments', {
+          select: 'amount, payment_date',
+          ...(yearRange
+            ? {
+                filters: {
+                  'payment_date@gte': yearRange.gte.slice(0, 10),
+                  'payment_date@lt': yearRange.lt.slice(0, 10),
+                },
+              }
+            : {}),
+        }),
       ]);
 
       const qMap = {};
@@ -203,9 +251,12 @@ const reportingModule = {
   /* ---- 3. Judge Progress ---- */
   async exportJudgeProgress(fmt = 'csv') {
     try {
+      const activeYear = this._getActiveYear();
+      const yearRange = this._yearDateRange(activeYear);
       // selectAll justified: judge progress report needs all scores for per-judge aggregation (see pagination documentation)
       const data = await apiClient.selectAll('judge_scores', {
         select: 'judge_email, total_score, innovation_score, impact_score, quality_score, presentation_score',
+        ...(yearRange ? { filters: { 'created_at@gte': yearRange.gte, 'created_at@lt': yearRange.lt } } : {}),
       });
       const map = {};
       (data || []).forEach((s) => {
@@ -259,9 +310,12 @@ const reportingModule = {
   /* ---- 4. Voting Trends ---- */
   async exportVotingTrends(fmt = 'csv') {
     try {
+      const activeYear = this._getActiveYear();
+      const yearRange = this._yearDateRange(activeYear);
       // selectAll justified: voting trends report needs all votes for daily and per-entry aggregation (see pagination documentation)
       const data = await apiClient.selectAll('public_votes', {
         select: 'entry_id, created_at, entries(award_years(award_name))',
+        ...(yearRange ? { filters: { 'created_at@gte': yearRange.gte, 'created_at@lt': yearRange.lt } } : {}),
       });
       const byDay = {},
         byEntry = {};
@@ -378,13 +432,34 @@ const reportingModule = {
   async generateBoardReport() {
     try {
       utils.showToast('Generating board report\u2026', 'info');
+      const activeYear = this._getActiveYear();
+      const yearRange = this._yearDateRange(activeYear);
       // selectAll justified: board report needs complete datasets across all tables for KPI calculations (see pagination documentation)
       const [entries, judgeScores, votes, sponsors, pmts] = await Promise.all([
-        apiClient.selectAll('entries', { select: 'id, status, created_at' }),
-        apiClient.selectAll('judge_scores', { select: 'id, judge_email' }),
-        apiClient.selectAll('public_votes', { select: 'id, created_at' }),
+        apiClient.selectAll('entries', {
+          select: 'id, status, created_at',
+          ...(yearRange ? { filters: { 'created_at@gte': yearRange.gte, 'created_at@lt': yearRange.lt } } : {}),
+        }),
+        apiClient.selectAll('judge_scores', {
+          select: 'id, judge_email',
+          ...(yearRange ? { filters: { 'created_at@gte': yearRange.gte, 'created_at@lt': yearRange.lt } } : {}),
+        }),
+        apiClient.selectAll('public_votes', {
+          select: 'id, created_at',
+          ...(yearRange ? { filters: { 'created_at@gte': yearRange.gte, 'created_at@lt': yearRange.lt } } : {}),
+        }),
         apiClient.selectAll('sponsors', { select: 'id, tier' }),
-        apiClient.selectAll('payments', { select: 'id, amount, payment_date' }),
+        apiClient.selectAll('payments', {
+          select: 'id, amount, payment_date',
+          ...(yearRange
+            ? {
+                filters: {
+                  'payment_date@gte': yearRange.gte.slice(0, 10),
+                  'payment_date@lt': yearRange.lt.slice(0, 10),
+                },
+              }
+            : {}),
+        }),
       ]);
       const totalRev = (pmts || []).reduce((s, p) => s + parseFloat(p.amount || 0), 0);
       const uniqueJudges = new Set((judgeScores || []).map((s) => s.judge_email)).size;
@@ -568,7 +643,149 @@ const reportingModule = {
     }
   },
 
-  /* ---- 8. Schedule Email Report (DB-backed) ---- */
+  /* ---- 8. Payment Reconciliation Export ---- */
+  /**
+   * L8: Export payment reconciliation CSV for accounting.
+   * Columns: Invoice #, Organisation, Amount, Status, Due Date, Paid Date, Days Outstanding.
+   */
+  async exportPaymentReconciliation() {
+    try {
+      // selectAll justified: reconciliation requires all invoices for completeness
+      const invs = await apiClient.selectAll('invoices', {
+        select: '*, organisations(company_name)',
+      });
+
+      if (!invs || invs.length === 0) {
+        utils.showToast('No invoice data to export', 'warning');
+        return;
+      }
+
+      const today = Date.now();
+      const rows = invs.map((inv) => {
+        const total = parseFloat(inv.total_amount || 0);
+        const dueDate = inv.due_date ? new Date(inv.due_date) : null;
+        const paidDate = inv.paid_date || inv.payment_date || null;
+        const daysOutstanding =
+          inv.payment_status === 'paid' || paidDate
+            ? 0
+            : dueDate
+              ? Math.max(0, Math.floor((today - dueDate.getTime()) / 86400000))
+              : '';
+        return {
+          'Invoice #': inv.invoice_number || inv.id || '',
+          Organisation: inv.organisations?.company_name || '',
+          'Amount (£)': total.toFixed(2),
+          Status: inv.payment_status || '',
+          'Due Date': this._fd(inv.due_date),
+          'Paid Date': this._fd(paidDate),
+          'Days Outstanding': daysOutstanding,
+        };
+      });
+
+      this._dlBlob(this._csv(rows), `payment-reconciliation-${new Date().toISOString().slice(0, 10)}.csv`);
+      utils.showToast('Payment reconciliation exported', 'success');
+    } catch (err) {
+      console.error('exportPaymentReconciliation error:', err);
+      utils.showToast('Failed to export payment reconciliation', 'error');
+    }
+  },
+
+  /* ---- 9. Judge Scorecard PDF Export ---- */
+  /**
+   * L9: Export judge scorecard PDF grouped by award category.
+   * Shows each entry, all judges' scores, average and outlier flag (>1 std dev from mean).
+   */
+  async exportJudgeScorecard() {
+    try {
+      utils.showToast('Generating judge scorecard…', 'info');
+      // selectAll justified: scorecard needs full dataset for statistical outlier calculation
+      const scores = await apiClient.selectAll('judge_scores', {
+        select: '*, entries(entry_title, entry_number, award_years(award_name))',
+      });
+
+      if (!scores || scores.length === 0) {
+        utils.showToast('No judge scores to export', 'warning');
+        return;
+      }
+
+      // Group scores by entry
+      const entryMap = {};
+      scores.forEach((s) => {
+        const entryId = s.entry_id || s.entries?.id || s.id;
+        const entryTitle = s.entries?.entry_title || s.entry_title || entryId;
+        const entryNum = s.entries?.entry_number || '';
+        const category = s.entries?.award_years?.award_name || s.award_category || 'Unknown';
+        const scoreVal = parseFloat(s.total_score || s.score || 0);
+        const judge = s.judge_email || s.judge_name || 'Unknown';
+
+        if (!entryMap[entryId]) {
+          entryMap[entryId] = { entryId, entryTitle, entryNum, category, scores: [] };
+        }
+        entryMap[entryId].scores.push({ judge, score: scoreVal });
+      });
+
+      // Group entries by category
+      const categoryMap = {};
+      Object.values(entryMap).forEach((entry) => {
+        if (!categoryMap[entry.category]) categoryMap[entry.category] = [];
+        categoryMap[entry.category].push(entry);
+      });
+
+      const doc = new jspdf.jsPDF();
+      let isFirst = true;
+
+      Object.entries(categoryMap)
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .forEach(([category, entries]) => {
+          if (!isFirst) doc.addPage();
+          isFirst = false;
+
+          let y = this._pdfHdr(doc, `Judge Scorecard — ${category}`);
+
+          const tableBody = entries
+            .sort((a, b) => a.entryTitle.localeCompare(b.entryTitle))
+            .map((entry) => {
+              const vals = entry.scores.map((s) => s.score);
+              const avg = vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+              const variance = vals.length > 1 ? vals.reduce((a, v) => a + Math.pow(v - avg, 2), 0) / vals.length : 0;
+              const stdDev = Math.sqrt(variance);
+
+              const scoreDetails = entry.scores
+                .map((s) => {
+                  const outlier = Math.abs(s.score - avg) > stdDev && stdDev > 0 ? ' ⚑' : '';
+                  return `${s.judge}: ${s.score.toFixed(1)}${outlier}`;
+                })
+                .join('\n');
+
+              return [
+                entry.entryNum || '',
+                entry.entryTitle,
+                scoreDetails,
+                avg.toFixed(1),
+                vals.length > 0 ? Math.max(...vals).toFixed(1) : '',
+                vals.length > 0 ? Math.min(...vals).toFixed(1) : '',
+              ];
+            });
+
+          // eslint-disable-next-line no-unused-vars
+          y = this._pdfTbl(
+            doc,
+            y,
+            ['Entry #', 'Entry Title', 'Judge Scores (⚑ = outlier)', 'Avg', 'Max', 'Min'],
+            tableBody,
+            { styles: { fontSize: 7, cellPadding: 2 }, columnStyles: { 2: { cellWidth: 60 } } }
+          );
+        });
+
+      doc.save(`judge-scorecard-${new Date().toISOString().slice(0, 10)}.pdf`);
+      utils.showToast('Judge scorecard exported', 'success');
+    } catch (err) {
+      console.error('exportJudgeScorecard error:', err);
+      utils.showToast('Failed to export judge scorecard', 'error');
+    }
+  },
+
+  /* ---- 10. Schedule Email Report (DB-backed) ---- */
   async scheduleEmailReport(config = {}) {
     try {
       const { name, recipients, frequency, sections, format } = config;

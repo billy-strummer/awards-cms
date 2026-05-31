@@ -272,6 +272,7 @@ const ticketModule = {
       });
       const guest = result.data?.[0];
       if (!guest) throw new Error('Ticket not found');
+      if (!window.jspdf) throw new Error('jsPDF library not loaded');
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF({ unit: 'mm', format: 'a5', orientation: 'portrait' });
       const ev = guest.events || {};

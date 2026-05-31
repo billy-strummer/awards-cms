@@ -42,7 +42,7 @@
     }
   },
   "rewrites": [
-    { "source": "/((?!api|dist|.*\\.(js|css|png|jpg|svg|ico|woff2?|ttf)).*)", "destination": "/index.html" }
+    { "source": "/((?!api|dist|.*\\.(js|css|html|png|jpg|jpeg|gif|webp|svg|ico|woff2?|ttf|pdf)).*)", "destination": "/index.html" }
   ],
   "headers": [
     {

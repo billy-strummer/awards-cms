@@ -192,8 +192,8 @@ const nomineeVoting = {
       document.getElementById('whyShouldWinText').textContent = entry.why_should_win;
     }
 
-    // Website link
-    if (org?.website) {
+    // Website link — only allow http/https URLs to prevent javascript: injection
+    if (org?.website && /^https?:\/\//i.test(org.website)) {
       document.getElementById('websiteLinkSection').style.display = 'block';
       document.getElementById('websiteLink').href = org.website;
     }

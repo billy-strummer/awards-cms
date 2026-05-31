@@ -57,7 +57,9 @@ async function votingApi(action, params = {}) {
 
 const votingSystem = {
   allEntries: [],
+  filteredEntries: [],
   currentEntryId: null,
+  currentVote: null,
   voterEmail: sessionStorage.getItem('voterEmail') || null,
 
   /**

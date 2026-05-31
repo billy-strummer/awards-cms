@@ -62,6 +62,24 @@ cron.schedule(
 );
 
 /**
+ * Weekly data retention cleanup (runs Sunday at 2:00 AM).
+ * Deletes records older than their configured retention period per GDPR Article 5(1)(e).
+ */
+cron.schedule(
+  '0 2 * * 0',
+  async () => {
+    console.log('\nRunning weekly retention cleanup...');
+    try {
+      await runRetentionCleanup();
+      console.log('Retention cleanup complete\n');
+    } catch (error) {
+      console.error('Error in retention cleanup:', error);
+    }
+  },
+  { timezone: 'Europe/London' }
+);
+
+/**
  * Weekly automation tasks (runs Monday at 8:00 AM)
  */
 cron.schedule(
@@ -678,6 +696,60 @@ function setupAutomationEndpoints(app) {
 }
 
 /**
+ * GDPR Article 5(1)(e) retention cleanup.
+ * Deletes personal data older than configured retention periods.
+ * Runs automatically via weekly cron and can be triggered manually.
+ * @returns {Promise<{deleted: Object}>} Count of deleted records per table.
+ */
+async function runRetentionCleanup() {
+  const now = new Date();
+  const deleted = {};
+
+  function cutoff(years) {
+    const d = new Date(now);
+    d.setFullYear(d.getFullYear() - years);
+    return d.toISOString();
+  }
+
+  // Audit logs: 2 years
+  const { data: auditDeleted } = await supabase
+    .from('cms_audit_logs')
+    .delete()
+    .lt('created_at', cutoff(2))
+    .select('id');
+  deleted.cms_audit_logs = auditDeleted?.length || 0;
+
+  // Email logs: 1 year
+  const { data: emailDeleted } = await supabase
+    .from('notification_queue')
+    .delete()
+    .lt('created_at', cutoff(1))
+    .eq('status', 'sent')
+    .select('id');
+  deleted.notification_queue = emailDeleted?.length || 0;
+
+  // Public vote records: 1 year
+  const { data: votesDeleted } = await supabase.from('public_votes').delete().lt('voted_at', cutoff(1)).select('id');
+  deleted.public_votes = votesDeleted?.length || 0;
+
+  // Event guests: 3 years after event (approximate: 3 years from created_at)
+  const { data: guestsDeleted } = await supabase.from('event_guests').delete().lt('created_at', cutoff(3)).select('id');
+  deleted.event_guests = guestsDeleted?.length || 0;
+
+  const totalDeleted = Object.values(deleted).reduce((a, b) => a + b, 0);
+  console.log(`[retention-cleanup] Deleted ${totalDeleted} records:`, deleted);
+
+  await supabase.from('cms_audit_logs').insert({
+    action: 'retention_cleanup',
+    entity_type: 'system',
+    details: JSON.stringify({ deleted }),
+    performed_by: 'automation-scheduler',
+  });
+
+  return { deleted };
+}
+
+/**
  * Start the automation scheduler and log cron schedule details.
  * @returns {void}
  */
@@ -718,10 +790,14 @@ module.exports = async function handler(req, res) {
       case 'send-scheduled-campaigns':
         await dispatchScheduledCampaigns();
         return res.json({ success: true, action: 'send-scheduled-campaigns' });
+      case 'retention-cleanup': {
+        const cleanupResult = await runRetentionCleanup();
+        return res.json({ success: true, action: 'retention-cleanup', ...cleanupResult });
+      }
       default:
         return res.status(400).json({
           error:
-            'Invalid action. Use: winner-announcements, judge-assignments, shortlist-generation, payment-reminders, judge-progress, weekly-stats, send-scheduled-campaigns',
+            'Invalid action. Use: winner-announcements, judge-assignments, shortlist-generation, payment-reminders, judge-progress, weekly-stats, send-scheduled-campaigns, retention-cleanup',
         });
     }
   } catch (error) {
@@ -739,6 +815,7 @@ module.exports.sendPaymentReminders = sendPaymentReminders;
 module.exports.sendJudgeProgressReports = sendJudgeProgressReports;
 module.exports.generateWeeklyStats = generateWeeklyStats;
 module.exports.dispatchScheduledCampaigns = dispatchScheduledCampaigns;
+module.exports.runRetentionCleanup = runRetentionCleanup;
 
 // Start scheduler if running directly
 if (require.main === module) {

@@ -20,6 +20,9 @@
 
 const { createClient } = require('@supabase/supabase-js');
 const { verifyAuth, hasMinimumRole, getUserRole } = require('./_lib/auth');
+const { assertEnv } = require('./_lib/env');
+
+assertEnv(['SUPABASE_URL', 'SUPABASE_SERVICE_KEY']);
 
 // Service-role client for privileged operations
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
@@ -1070,25 +1073,24 @@ const rateLimits = new Map();
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
 const RATE_LIMIT_MAX = 120; // 120 requests per minute
 
-let lastCleanup = Date.now();
-
 /**
  * Check if a user has exceeded the rate limit (120 requests per minute).
- * Uses in-memory tracking with periodic cleanup of stale entries.
+ * Uses in-memory tracking with probabilistic cleanup of stale entries.
+ * Note: rate limits are per-Vercel-instance (not distributed).
  * @param {string} userId - The user ID to check rate limits for.
  * @returns {boolean} True if the request is within rate limits, false if exceeded.
  */
 function checkRateLimit(userId) {
   const now = Date.now();
 
-  // Inline cleanup: sweep stale entries every 2 windows (works in serverless)
-  if (now - lastCleanup > RATE_LIMIT_WINDOW * 2) {
+  // Probabilistic cleanup: sweep stale entries on ~1% of requests to avoid
+  // accumulating unbounded Map entries without a shared-global race condition.
+  if (Math.random() < 0.01) {
     for (const [key, value] of rateLimits.entries()) {
       if (now - value.windowStart > RATE_LIMIT_WINDOW * 2) {
         rateLimits.delete(key);
       }
     }
-    lastCleanup = now;
   }
 
   const userLimits = rateLimits.get(userId) || { count: 0, windowStart: now };
@@ -1300,10 +1302,50 @@ async function executeSegmentQuery(rules, logic) {
     county_city: 'county_city',
   };
 
-  // Paginate through all organisations to avoid the 1000-row silent truncation.
-  // Safety cap of 10,000 rows to prevent excessive memory usage.
+  // Computed fields require in-memory evaluation; simple fields can be pushed to DB WHERE clause.
+  const IN_MEMORY_FIELDS = new Set(['engagement', 'awards_count']);
+
+  // For AND logic, push simple field filters to Supabase to reduce rows fetched.
+  // For OR logic, we need all rows (any one rule matching is enough, including computed fields).
+  const dbRules = logic === 'AND' ? rules.filter((r) => !IN_MEMORY_FIELDS.has(r.field)) : [];
+  const memRules = logic === 'AND' ? rules.filter((r) => IN_MEMORY_FIELDS.has(r.field)) : rules;
+
+  // Build base query, applying DB-level filters for AND conditions
+  function buildBaseQuery() {
+    let q = supabase
+      .from('organisations')
+      .select(
+        'id, company_name, status, sector, county_city, tier, email, contact_name, contact_phone, logo_url, website, updated_at, award_assignments(count)'
+      );
+    for (const r of dbRules) {
+      const col = DB_COL[r.field] || r.field;
+      switch (r.op) {
+        case 'eq':
+          q = q.eq(col, r.val);
+          break;
+        case 'neq':
+          q = q.neq(col, r.val);
+          break;
+        case 'contains':
+          q = q.ilike(col, `%${r.val}%`);
+          break;
+        case 'gt':
+          q = q.gt(col, r.val);
+          break;
+        case 'lt':
+          q = q.lt(col, r.val);
+          break;
+        default:
+          break;
+      }
+    }
+    return q;
+  }
+
+  // Paginate, respecting the DB-filtered query when possible.
+  // Safety cap of 5,000 rows (halved from 10K since DB filtering reduces result set).
   const PAGE_SIZE = 500;
-  const MAX_ROWS = 10000;
+  const MAX_ROWS = dbRules.length > 0 ? 5000 : 10000;
   const allOrgs = [];
   let page = 0;
 
@@ -1311,12 +1353,7 @@ async function executeSegmentQuery(rules, logic) {
   while (true) {
     const from = page * PAGE_SIZE;
     // eslint-disable-next-line no-await-in-loop
-    const { data: batch, error } = await supabase
-      .from('organisations')
-      .select(
-        'id, company_name, status, sector, county_city, tier, email, contact_name, contact_phone, logo_url, website, updated_at, award_assignments(count)'
-      )
-      .range(from, from + PAGE_SIZE - 1);
+    const { data: batch, error } = await buildBaseQuery().range(from, from + PAGE_SIZE - 1);
 
     if (error) throw error;
     if (!batch || batch.length === 0) break;
@@ -1340,51 +1377,55 @@ async function executeSegmentQuery(rules, logic) {
     county_city: org.county_city || '',
   }));
 
+  // Apply remaining in-memory rules (engagement score, awards_count, OR-logic rules)
   const matchFn = logic === 'OR' ? 'some' : 'every';
-  const matching = processed.filter((org) =>
-    rules[matchFn]((r) => {
-      let orgVal;
-      if (r.field === 'engagement') {
-        // Simplified engagement: derived from available DB columns (no CRM last-contacted)
-        let score = 0;
-        const daysSinceUpdate = org.updated_at
-          ? Math.floor((Date.now() - new Date(org.updated_at).getTime()) / 86400000)
-          : 999;
-        if (daysSinceUpdate < 7) score += 40;
-        else if (daysSinceUpdate < 30) score += 25;
-        else if (daysSinceUpdate < 90) score += 10;
-        else if (daysSinceUpdate < 180) score += 3;
-        if (org.email) score += 8;
-        if (org.contact_name) score += 7;
-        if (org.logo_url) score += 5;
-        if (org.website) score += 5;
-        if ((org.awards_count || 0) > 0) score += 15;
-        if (org.tier) score += 5;
-        if (org.contact_phone) score += 3;
-        orgVal = score;
-      } else if (r.field === 'awards_count') {
-        orgVal = org.awards_count || 0;
-      } else {
-        const col = DB_COL[r.field] || r.field;
-        orgVal = org[col] || '';
-      }
-      const testVal = r.val;
-      switch (r.op) {
-        case 'eq':
-          return String(orgVal).toLowerCase() === testVal.toLowerCase();
-        case 'neq':
-          return String(orgVal).toLowerCase() !== testVal.toLowerCase();
-        case 'gt':
-          return Number(orgVal) > Number(testVal);
-        case 'lt':
-          return Number(orgVal) < Number(testVal);
-        case 'contains':
-          return String(orgVal).toLowerCase().includes(testVal.toLowerCase());
-        default:
-          return false;
-      }
-    })
-  );
+  const matching =
+    memRules.length === 0
+      ? processed
+      : processed.filter((org) =>
+          memRules[matchFn]((r) => {
+            let orgVal;
+            if (r.field === 'engagement') {
+              // Simplified engagement: derived from available DB columns (no CRM last-contacted)
+              let score = 0;
+              const daysSinceUpdate = org.updated_at
+                ? Math.floor((Date.now() - new Date(org.updated_at).getTime()) / 86400000)
+                : 999;
+              if (daysSinceUpdate < 7) score += 40;
+              else if (daysSinceUpdate < 30) score += 25;
+              else if (daysSinceUpdate < 90) score += 10;
+              else if (daysSinceUpdate < 180) score += 3;
+              if (org.email) score += 8;
+              if (org.contact_name) score += 7;
+              if (org.logo_url) score += 5;
+              if (org.website) score += 5;
+              if ((org.awards_count || 0) > 0) score += 15;
+              if (org.tier) score += 5;
+              if (org.contact_phone) score += 3;
+              orgVal = score;
+            } else if (r.field === 'awards_count') {
+              orgVal = org.awards_count || 0;
+            } else {
+              const col = DB_COL[r.field] || r.field;
+              orgVal = org[col] || '';
+            }
+            const testVal = r.val;
+            switch (r.op) {
+              case 'eq':
+                return String(orgVal).toLowerCase() === testVal.toLowerCase();
+              case 'neq':
+                return String(orgVal).toLowerCase() !== testVal.toLowerCase();
+              case 'gt':
+                return Number(orgVal) > Number(testVal);
+              case 'lt':
+                return Number(orgVal) < Number(testVal);
+              case 'contains':
+                return String(orgVal).toLowerCase().includes(testVal.toLowerCase());
+              default:
+                return false;
+            }
+          })
+        );
 
   return {
     count: matching.length,

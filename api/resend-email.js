@@ -71,11 +71,20 @@ async function sendEmail({ to, subject, html, text, replyTo, cc, tags }) {
   const resolvedTo =
     process.env.NODE_ENV !== 'production' && process.env.DEV_EMAIL ? [process.env.DEV_EMAIL] : recipients;
 
+  // Filter out suppressed addresses (bounces/complaints) before sending
+  const { data: suppressed } = await supabase.from('email_suppressions').select('email').in('email', resolvedTo);
+  const suppressedSet = new Set((suppressed || []).map((r) => r.email.toLowerCase()));
+  const allowedTo = resolvedTo.filter((addr) => !suppressedSet.has(addr.toLowerCase()));
+  if (allowedTo.length === 0) {
+    console.warn(`[resend-email] All recipients suppressed for subject: ${subject}`);
+    return { success: false, error: 'All recipients are suppressed' };
+  }
+
   try {
     const { data, error } = await resend.emails.send(
       /** @type {any} */ ({
         from: `${FROM_NAME} <${FROM_EMAIL}>`,
-        to: resolvedTo,
+        to: allowedTo,
         cc: cc ? (Array.isArray(cc) ? cc : [cc]) : undefined,
         subject,
         html,

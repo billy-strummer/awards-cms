@@ -151,7 +151,9 @@ async function build() {
         });
         const chunkSize = fs.statSync(path.join(DIST_DIR, chunk.outfile)).size;
         totalChunkSize += chunkSize;
-        console.log(`  JS chunk [${chunk.name}]: ${(chunkSize / 1024).toFixed(0)}KB → ${chunk.outfile}`);
+        const chunkKb = (chunkSize / 1024).toFixed(0);
+        const chunkWarn = chunkSize > 150 * 1024 ? ' ⚠️  LARGE (>150KB — consider splitting)' : '';
+        console.log(`  JS chunk [${chunk.name}]: ${chunkKb}KB → ${chunk.outfile}${chunkWarn}`);
       }
       console.log(
         `  JS chunks total: ${(totalChunkSize / 1024).toFixed(0)}KB across ${LAZY_CHUNKS.length} lazy chunks`
@@ -297,6 +299,7 @@ async function build() {
     'upload-documents.html',
     'nominate.html',
     'public-winners.html',
+    'privacy-policy.html',
   ];
 
   // Also copy shared assets needed by public pages

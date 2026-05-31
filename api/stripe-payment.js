@@ -206,6 +206,17 @@ async function handleCheckoutSessionCompleted(session) {
   try {
     const entryId = session.metadata.entry_id;
 
+    // Idempotency guard: skip if this payment_intent was already processed
+    const { data: existing } = await supabase
+      .from('invoices')
+      .select('id')
+      .eq('payment_reference', session.payment_intent)
+      .maybeSingle();
+    if (existing) {
+      console.log(`⚡ Duplicate webhook for payment_intent ${session.payment_intent} — skipping`);
+      return;
+    }
+
     // Update entry status
     const { error: updateError } = await supabase
       .from('entries')

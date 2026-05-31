@@ -14,6 +14,9 @@
 const { createClient } = require('@supabase/supabase-js');
 const { Resend } = require('resend');
 const { wrapEmail } = require('./_lib/email-header');
+const { assertEnv } = require('./_lib/env');
+
+assertEnv(['SUPABASE_URL', 'SUPABASE_SERVICE_KEY', 'RESEND_API_KEY']);
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 const { verifyAuth } = require('./_lib/auth');
@@ -21,34 +24,48 @@ const { verifyAuth } = require('./_lib/auth');
 // Initialize Resend (replacing SendGrid)
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-/**
- * Load tenant branding from database (cached for 5 minutes).
- * @returns {Promise<Object>} Branding configuration object.
- */
-/** @type {Map<string, {data: Object, time: number}>} */
+/** @type {Map<string, {data: Object, time: number} | Promise<Object>>} */
 const _brandingCacheMap = new Map();
 const BRANDING_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 /**
- * Load tenant branding from database (cached for 5 minutes per tenant).
+ * Load tenant branding from database (cached per tenant with promise-coalescing).
+ * Concurrent callers before the first fetch resolves will all receive the same promise,
+ * preventing duplicate DB queries on a traffic surge.
  * @param {string} [tenantId='default'] - The tenant identifier.
  * @returns {Promise<Object>} Branding configuration object.
  */
 async function loadTenantBranding(tenantId = 'default') {
   const now = Date.now();
   const cached = _brandingCacheMap.get(tenantId);
-  if (cached && now - cached.time < BRANDING_CACHE_TTL) {
+
+  // Return resolved cache if still fresh
+  if (cached && !(cached instanceof Promise) && now - cached.time < BRANDING_CACHE_TTL) {
     return cached.data;
   }
-  try {
-    const { data } = await supabase.from('tenant_branding').select('*').eq('tenant_id', tenantId).maybeSingle();
-    const branding = data || {};
-    _brandingCacheMap.set(tenantId, { data: branding, time: now });
-    return branding;
-  } catch (e) {
-    console.error('Failed to load tenant branding:', e);
-    return cached?.data || {};
-  }
+
+  // Return in-flight promise (promise-coalescing: concurrent callers share one DB query)
+  if (cached instanceof Promise) return cached;
+
+  const fetchPromise = supabase
+    .from('tenant_branding')
+    .select('*')
+    .eq('tenant_id', tenantId)
+    .maybeSingle()
+    .then(({ data }) => {
+      const branding = data || {};
+      _brandingCacheMap.set(tenantId, { data: branding, time: Date.now() });
+      return branding;
+    })
+    .catch((e) => {
+      console.error('Failed to load tenant branding:', e);
+      _brandingCacheMap.delete(tenantId);
+      // Return stale data if available
+      return (cached && !(cached instanceof Promise) ? cached.data : null) || {};
+    });
+
+  _brandingCacheMap.set(tenantId, fetchPromise);
+  return fetchPromise;
 }
 
 /**
@@ -836,10 +853,39 @@ module.exports = async function handler(req, res) {
       return sendDeadlineRemindersEndpoint(req, res);
     case 'send-winner-announcements':
       return sendWinnerAnnouncementsEndpoint(req, res);
+    case 'resend-bounce':
+    case 'resend-complaint':
+      return handleResendSuppressionEvent(req, res);
     default:
       return res.status(400).json({ error: `Unknown action: ${action || 'none'}` });
   }
 };
+
+/**
+ * Handle Resend bounce/complaint webhook events.
+ * Adds the affected address to the email_suppressions table.
+ * @param {Object} req - Request object.
+ * @param {Object} res - Response object.
+ * @returns {Promise<void>}
+ */
+async function handleResendSuppressionEvent(req, res) {
+  const { action, email, reason } = req.body;
+  if (!email) return res.status(400).json({ error: 'Missing email' });
+
+  const suppressionReason = action === 'resend-complaint' ? 'spam_complaint' : 'bounce';
+  const detail = reason || action;
+
+  try {
+    await supabase
+      .from('email_suppressions')
+      .upsert({ email, reason: suppressionReason, detail }, { onConflict: 'email' });
+    console.log(`[email-automation] Suppressed ${email} (${suppressionReason})`);
+    return res.status(200).json({ suppressed: email, reason: suppressionReason });
+  } catch (err) {
+    console.error('[email-automation] Failed to record suppression:', err.message);
+    return res.status(500).json({ error: 'Failed to record suppression' });
+  }
+}
 
 module.exports.sendTemplateEmail = sendTemplateEmail;
 module.exports.sendEntryConfirmation = sendEntryConfirmation;

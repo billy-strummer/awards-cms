@@ -717,8 +717,8 @@ describe('Automation Scheduler', () => {
     // Capture the calls made during module load (before any clearAllMocks)
     const cronCalls = mockCronSchedule.mock.calls.slice();
 
-    test('registers 4 cron schedules', () => {
-      expect(cronCalls).toHaveLength(4);
+    test('registers 5 cron schedules', () => {
+      expect(cronCalls).toHaveLength(5);
     });
 
     test('daily tasks schedule is 0 9 * * *', () => {
@@ -740,6 +740,13 @@ describe('Automation Scheduler', () => {
       expect(judgingCall).toBeDefined();
       expect(typeof judgingCall[1]).toBe('function');
       expect(judgingCall[2]).toEqual({ timezone: 'Europe/London' });
+    });
+
+    test('retention cleanup schedule is 0 2 * * 0', () => {
+      const retentionCall = cronCalls.find((c) => c[0] === '0 2 * * 0');
+      expect(retentionCall).toBeDefined();
+      expect(typeof retentionCall[1]).toBe('function');
+      expect(retentionCall[2]).toEqual({ timezone: 'Europe/London' });
     });
   });
 });

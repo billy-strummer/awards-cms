@@ -212,6 +212,14 @@
 
       // Toggle person/business fields based on category
       this.updateNomineeFields(categoryName);
+
+      // Show under-18 parental consent notice for Apprentice/Young Tradesperson categories
+      const ageNotice = document.getElementById('apprenticeAgeNotice');
+      if (ageNotice) {
+        const requiresAgeNotice =
+          categoryName === 'Apprentice of The Year' || categoryName === 'Young Tradesperson of the Year';
+        ageNotice.style.display = requiresAgeNotice ? 'block' : 'none';
+      }
     },
 
     // --------------------------------------------------

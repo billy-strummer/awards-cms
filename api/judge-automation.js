@@ -44,7 +44,7 @@ async function assignJudgesToEntries(awardId = null) {
     // Get all judges (from contacts or separate judges table)
     const { data: judges, error: judgesError } = await supabase
       .from('contacts')
-      .select('*')
+      .select('id, full_name, email, specialisms, organisation_name')
       .eq('contact_type', 'judge')
       .eq('is_active', true);
 
@@ -55,7 +55,12 @@ async function assignJudgesToEntries(awardId = null) {
     }
 
     // Get entries that need judging
-    let query = supabase.from('entries').select('*, organisations(*), awards:award_years(*)').eq('status', 'submitted');
+    let query = supabase
+      .from('entries')
+      .select(
+        'id, award_id, entry_number, entry_title, sector, organisations(id, company_name, sector), awards:award_years(id, award_name)'
+      )
+      .eq('status', 'submitted');
 
     if (awardId) {
       query = query.eq('award_id', awardId);

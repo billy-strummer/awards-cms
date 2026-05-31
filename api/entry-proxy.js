@@ -151,6 +151,8 @@ module.exports = async function handler(req, res) {
         return await handleSubmitNomination(req, res);
       case 'get_public_data':
         return await handleGetPublicData(req, res);
+      case 'data_export':
+        return await handleDataExport(req, res);
       default:
         return res.status(400).json({ error: `Unknown action: ${action}` });
     }
@@ -159,6 +161,65 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: 'Internal server error' });
   }
 };
+
+/**
+ * GDPR Article 20 — Data portability self-service export.
+ * Returns all data held for a given email + entry number without requiring admin login.
+ * Rate-limited by the email lookup being the only auth (entry number acts as a token).
+ */
+async function handleDataExport(req, res) {
+  const { email, entry_number: entryNumber } = req.body || {};
+  if (!email || !entryNumber) {
+    return res.status(400).json({ error: 'email and entry_number are required' });
+  }
+
+  // Validate email format
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ error: 'Invalid email address' });
+  }
+
+  const { data: entry, error } = await supabase
+    .from('entries')
+    .select(
+      'id, entry_number, entry_title, sector, county_city, contact_name, contact_email, contact_phone, entry_description, why_should_win, payment_status, status, consent_given, consent_timestamp, created_at'
+    )
+    .eq('contact_email', email.toLowerCase().trim())
+    .eq('entry_number', entryNumber.trim())
+    .maybeSingle();
+
+  if (error) {
+    console.error('[entry-proxy] data_export query error:', error.message);
+    return res.status(500).json({ error: 'Export failed' });
+  }
+
+  if (!entry) {
+    // Return generic message to avoid email enumeration
+    return res.status(404).json({ error: 'No entry found matching these details' });
+  }
+
+  // Remove fields that could expose internal identifiers
+  const exportData = {
+    entry_number: entry.entry_number,
+    entry_title: entry.entry_title,
+    sector: entry.sector,
+    county_city: entry.county_city,
+    contact_name: entry.contact_name,
+    contact_email: entry.contact_email,
+    contact_phone: entry.contact_phone,
+    entry_description: entry.entry_description,
+    why_should_win: entry.why_should_win,
+    payment_status: entry.payment_status,
+    status: entry.status,
+    consent_given: entry.consent_given,
+    consent_timestamp: entry.consent_timestamp,
+    submitted_at: entry.created_at,
+    data_controller: 'British Trade Awards',
+    export_generated_at: new Date().toISOString(),
+    your_rights: 'You may request erasure by emailing privacy@britishtradeawards.com',
+  };
+
+  return res.status(200).json({ export: exportData });
+}
 
 async function handleGetPublicData(_req, res) {
   const [sectorsResult, catsResult] = await Promise.all([
@@ -379,7 +440,7 @@ async function handleSubmitEntry(req, res) {
         })
         .eq('id', baseEntry.id);
     } catch (_e) {
-      /* non-blocking */
+      console.error('[entry-proxy] Non-blocking metadata update failed:', _e.message);
     }
 
     // Send confirmation email (non-blocking)
@@ -618,7 +679,7 @@ async function handleSubmitNomination(req, res) {
         })
         .eq('id', baseEntry.id);
     } catch (_e) {
-      /* non-blocking */
+      console.error('[entry-proxy] Non-blocking metadata update failed:', _e.message);
     }
 
     // Send confirmation email (non-blocking)

@@ -78,7 +78,13 @@ WHERE aa.organisation_id = o.id
   AND aa.voting_slug IS NULL;
 */
 
--- Function to increment vote count
+-- Function to increment vote count.
+-- SCALABILITY NOTE: Each INSERT into public_assignment_votes triggers an UPDATE on the
+-- award_assignments row for that entry. Under high concurrent voting (e.g. 500 simultaneous
+-- voters for one entry), Postgres will serialize these row-lock updates, creating a queue.
+-- At current expected loads (<100 concurrent voters per entry) this is acceptable.
+-- For higher scale, replace with an append-only vote_events table and a periodic
+-- aggregation job (SELECT COUNT(*) GROUP BY assignment_id) to flush totals.
 CREATE OR REPLACE FUNCTION increment_vote_count()
 RETURNS TRIGGER AS $$
 BEGIN

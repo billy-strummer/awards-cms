@@ -281,6 +281,7 @@ async function build() {
   // 4. Copy public-facing pages and their assets
   // These standalone pages have their own JS/CSS (not part of the admin bundle)
   const PUBLIC_PAGES = [
+    'home.html',
     'submit-entry.html',
     'submit-entry.js',
     'vote.html',
@@ -303,7 +304,16 @@ async function build() {
   ];
 
   // Also copy shared assets needed by public pages
-  const PUBLIC_ASSETS = ['config.js', 'BTA-LOGO-entry.jpg', 'BTA-LOGO-no-date.jpg'];
+  const PUBLIC_ASSETS = [
+    'config.js',
+    'BTA-LOGO-entry.jpg',
+    'BTA-LOGO-no-date.jpg',
+    'BTA_Corporate_Horizontal-Black-and-White-01.png',
+    'BTA_Corporate_Horizontal-Black-and-White-02.png',
+    'BTA_Corporate_Horizontal-Texture.png',
+    'BTA_Corporate_Horizontal-Texture.jpg',
+    'BTA-annimation-2026-smaller.mp4',
+  ];
 
   const allPublicFiles = [...PUBLIC_PAGES, ...PUBLIC_ASSETS];
   let copiedCount = 0;

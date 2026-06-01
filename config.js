@@ -388,7 +388,15 @@ ModuleRegistry.register('STATE', STATE);
 // Expose ModuleRegistry globally (works in both browser and Node/test)
 // @ts-ignore
 if (typeof globalThis !== 'undefined') globalThis.ModuleRegistry = ModuleRegistry;
-if (typeof window !== 'undefined') window.ModuleRegistry = ModuleRegistry;
+if (typeof window !== 'undefined') {
+  window.ModuleRegistry = ModuleRegistry;
+  // Public form pages (submit-entry.js, nominate.js) are non-module scripts that
+  // read these via window — config.js is a module so exports don't auto-land on window.
+  window.REGIONS_GROUPED = REGIONS_GROUPED;
+  window.COUNTIES_CITIES = COUNTIES_CITIES;
+  window.REGIONS = COUNTIES_CITIES;
+  window.SECTORS = SECTORS;
+}
 
 // REGIONS kept as backward-compat alias for COUNTIES_CITIES
 const REGIONS = COUNTIES_CITIES;

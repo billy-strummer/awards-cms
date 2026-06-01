@@ -1079,11 +1079,16 @@
       padding: 6px 14px;
       font-size: 0.8rem;
       color: rgba(255, 255, 255, 0.65);
-      cursor: default;
-      transition: background var(--transition-fast), color var(--transition-fast);
+      cursor: pointer;
+      text-decoration: none;
+      transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
     }
 
-    /* Sub-region chips are informational only — no hover feedback to avoid appearing clickable */
+    a.sub-region-chip:hover {
+      background: rgba(201, 162, 39, 0.12);
+      border-color: rgba(201, 162, 39, 0.4);
+      color: #C9A227;
+    }
 
     /* ============================================================
        SECTION 5 — FIND A TRADE
@@ -1892,7 +1897,7 @@
     <div class="categories-grid" aria-label="Award categories">
 
       <!-- 1 -->
-      <a href="#categories" class="cat-box reveal" aria-label="Building and Construction — From groundworks to roofing, the full build spectrum">
+      <a href="submit-entry.html" class="cat-box reveal" aria-label="Building and Construction — From groundworks to roofing, the full build spectrum">
         <img class="cat-bg-img" src="images/categories/building-construction.jpg" alt="" loading="lazy">
         <div class="cat-box-inner">
           <span class="cat-number" aria-hidden="true">01</span>
@@ -1903,7 +1908,7 @@
       </a>
 
       <!-- 2 -->
-      <a href="#categories" class="cat-box reveal reveal-delay-1" aria-label="Mechanical, Electrical and Plumbing — The essential services keeping Britain's homes running">
+      <a href="submit-entry.html" class="cat-box reveal reveal-delay-1" aria-label="Mechanical, Electrical and Plumbing — The essential services keeping Britain's homes running">
         <img class="cat-bg-img" src="images/categories/mechanical-electrical-plumbing.jpg" alt="" loading="lazy">
         <div class="cat-box-inner">
           <span class="cat-number" aria-hidden="true">02</span>
@@ -1914,7 +1919,7 @@
       </a>
 
       <!-- 3 -->
-      <a href="#categories" class="cat-box reveal reveal-delay-2" aria-label="Carpentry and Joinery — Crafting bespoke woodwork with precision and artistry">
+      <a href="submit-entry.html" class="cat-box reveal reveal-delay-2" aria-label="Carpentry and Joinery — Crafting bespoke woodwork with precision and artistry">
         <img class="cat-bg-img" src="images/categories/carpentry-joinery.jpg" alt="" loading="lazy">
         <div class="cat-box-inner">
           <span class="cat-number" aria-hidden="true">03</span>
@@ -1925,7 +1930,7 @@
       </a>
 
       <!-- 4 -->
-      <a href="#categories" class="cat-box reveal reveal-delay-3" aria-label="Interior Fit-Out and Finishing — Transforming interiors with expert installations">
+      <a href="submit-entry.html" class="cat-box reveal reveal-delay-3" aria-label="Interior Fit-Out and Finishing — Transforming interiors with expert installations">
         <img class="cat-bg-img" src="images/categories/interior-fitout.jpg" alt="" loading="lazy">
         <div class="cat-box-inner">
           <span class="cat-number" aria-hidden="true">04</span>
@@ -1936,7 +1941,7 @@
       </a>
 
       <!-- 5 -->
-      <a href="#categories" class="cat-box reveal" aria-label="Outdoor and Landscaping — Creating stunning outdoor spaces across Britain">
+      <a href="submit-entry.html" class="cat-box reveal" aria-label="Outdoor and Landscaping — Creating stunning outdoor spaces across Britain">
         <img class="cat-bg-img" src="images/categories/outdoor-landscaping.jpg" alt="" loading="lazy">
         <div class="cat-box-inner">
           <span class="cat-number" aria-hidden="true">05</span>
@@ -1947,7 +1952,7 @@
       </a>
 
       <!-- 6 -->
-      <a href="#categories" class="cat-box reveal reveal-delay-1" aria-label="Energy, Tech and Sustainability — Powering Britain's green future">
+      <a href="submit-entry.html" class="cat-box reveal reveal-delay-1" aria-label="Energy, Tech and Sustainability — Powering Britain's green future">
         <img class="cat-bg-img" src="images/categories/energy-tech-sustainability.jpg" alt="" loading="lazy">
         <div class="cat-box-inner">
           <span class="cat-number" aria-hidden="true">06</span>
@@ -1958,7 +1963,7 @@
       </a>
 
       <!-- 7 -->
-      <a href="#categories" class="cat-box reveal reveal-delay-2" aria-label="Specialist Trades — Niche expertise, exceptional results">
+      <a href="submit-entry.html" class="cat-box reveal reveal-delay-2" aria-label="Specialist Trades — Niche expertise, exceptional results">
         <img class="cat-bg-img" src="images/categories/specialist-trades.jpg" alt="" loading="lazy">
         <div class="cat-box-inner">
           <span class="cat-number" aria-hidden="true">07</span>
@@ -1969,7 +1974,7 @@
       </a>
 
       <!-- 8 -->
-      <a href="#categories" class="cat-box reveal reveal-delay-3" aria-label="Industry Leadership — Recognising outstanding leadership in the trades">
+      <a href="submit-entry.html" class="cat-box reveal reveal-delay-3" aria-label="Industry Leadership — Recognising outstanding leadership in the trades">
         <img class="cat-bg-img" src="images/categories/industry-leadership.svg" alt="" loading="lazy">
         <div class="cat-box-inner">
           <span class="cat-number" aria-hidden="true">08</span>
@@ -2547,7 +2552,7 @@
 
       if (subData && subData.length) {
         subList.innerHTML = subData.map(function (loc) {
-          return '<span class="sub-region-chip">' + escapeHtml(loc) + '</span>';
+          return '<a href="submit-entry.html" class="sub-region-chip">' + escapeHtml(loc) + '</a>';
         }).join('');
         subContainer.classList.add('open');
       } else {

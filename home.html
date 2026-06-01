@@ -769,7 +769,7 @@
     .categories-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      grid-template-rows: repeat(2, 280px);
+      grid-template-rows: repeat(2, 220px);
       gap: 12px;
     }
 
@@ -820,8 +820,8 @@
       flex-direction: column;
       justify-content: flex-end;
       background:
-        linear-gradient(to bottom, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.2) 35%, transparent 55%),
-        linear-gradient(to top,    rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.6) 40%, transparent 70%);
+        linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.1) 30%, transparent 50%),
+        linear-gradient(to top,    rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.75) 45%, transparent 75%);
       transition: background var(--transition-med);
     }
 
@@ -961,7 +961,7 @@
       height: 64px;
       object-fit: cover;
       border-radius: 6px;
-      margin-bottom: 16px;
+      margin: 0 auto 16px;
       display: block;
       box-shadow: 0 2px 8px rgba(0,0,0,0.4);
     }
@@ -2375,6 +2375,17 @@
 </footer>
 
 
+<!-- Category modal — must be in DOM before the inline script runs -->
+<div id="cat-modal" class="cat-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="cat-modal-title" tabindex="-1">
+  <div class="cat-modal-panel">
+    <button class="cat-modal-close" id="cat-modal-close" aria-label="Close category panel">×</button>
+    <p class="cat-modal-label" id="cat-modal-label"></p>
+    <h3 class="cat-modal-title" id="cat-modal-title"></h3>
+    <ul class="cat-modal-list" id="cat-modal-list"></ul>
+    <a href="submit-entry.html" class="btn-gold cat-modal-cta">Enter the Awards →</a>
+  </div>
+</div>
+
 <!-- ============================================================
      JAVASCRIPT — NO INLINE EVENT HANDLERS
 ============================================================ -->
@@ -2896,6 +2907,8 @@
 
   /* ============================================================
      8. CATEGORY MODAL — show sub-categories on card click
+     NOTE: #cat-modal div must exist in DOM before this IIFE runs.
+     It is declared immediately above this <script> block.
   ============================================================ */
   (function initCategoryModal() {
     var SECTOR_CATEGORIES = {
@@ -3041,15 +3054,6 @@
 })();
 </script>
 
-<div id="cat-modal" class="cat-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="cat-modal-title" tabindex="-1">
-  <div class="cat-modal-panel">
-    <button class="cat-modal-close" id="cat-modal-close" aria-label="Close category panel">×</button>
-    <p class="cat-modal-label" id="cat-modal-label"></p>
-    <h3 class="cat-modal-title" id="cat-modal-title"></h3>
-    <ul class="cat-modal-list" id="cat-modal-list"></ul>
-    <a href="submit-entry.html" class="btn-gold cat-modal-cta">Enter the Awards →</a>
-  </div>
-</div>
 
 </body>
 </html>

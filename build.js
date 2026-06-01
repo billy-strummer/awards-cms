@@ -358,6 +358,26 @@ async function build() {
 
   console.log(`  Public pages: copied ${copiedCount} files to dist/`);
 
+  // 4b. Copy images/ directory recursively (category images, etc.)
+  function copyDirRecursive(src, dest) {
+    if (!fs.existsSync(src)) return 0;
+    ensureDir(dest);
+    let count = 0;
+    for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+      const srcPath = path.join(src, entry.name);
+      const destPath = path.join(dest, entry.name);
+      if (entry.isDirectory()) {
+        count += copyDirRecursive(srcPath, destPath);
+      } else {
+        fs.copyFileSync(srcPath, destPath);
+        count++;
+      }
+    }
+    return count;
+  }
+  const imageCount = copyDirRecursive(path.join(__dirname, 'images'), path.join(DIST_DIR, 'images'));
+  if (imageCount > 0) console.log(`  Images: copied ${imageCount} files to dist/images/`);
+
   // 5. Generate build manifest
   const manifest = {
     buildTime: new Date().toISOString(),

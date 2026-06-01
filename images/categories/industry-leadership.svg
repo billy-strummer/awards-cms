@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#12100a"/>
+      <stop offset="50%" style="stop-color:#1c1808"/>
+      <stop offset="100%" style="stop-color:#231d0a"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:rgba(201,162,39,0.15)"/>
+      <stop offset="100%" style="stop-color:rgba(201,162,39,0)"/>
+    </radialGradient>
+  </defs>
+  <rect width="800" height="600" fill="url(#bg)"/>
+  <circle cx="400" cy="280" r="300" fill="url(#glow)"/>
+  <!-- Radiating lines -->
+  <g stroke="rgba(201,162,39,0.1)" stroke-width="1" fill="none">
+    <line x1="400" y1="280" x2="400" y2="0"/><line x1="400" y1="280" x2="400" y2="560"/>
+    <line x1="400" y1="280" x2="0" y2="280"/><line x1="400" y1="280" x2="800" y2="280"/>
+    <line x1="400" y1="280" x2="180" y2="60"/><line x1="400" y1="280" x2="620" y2="60"/>
+    <line x1="400" y1="280" x2="180" y2="500"/><line x1="400" y1="280" x2="620" y2="500"/>
+    <line x1="400" y1="280" x2="80" y2="170"/><line x1="400" y1="280" x2="720" y2="170"/>
+    <line x1="400" y1="280" x2="80" y2="390"/><line x1="400" y1="280" x2="720" y2="390"/>
+  </g>
+  <!-- Crown -->
+  <g fill="rgba(201,162,39,0.35)">
+    <polygon points="400,155 440,210 500,170 480,240 320,240 300,170 360,210"/>
+    <rect x="320" y="240" width="160" height="45" rx="3"/>
+    <circle cx="340" cy="195" r="8"/><circle cx="400" cy="170" r="10"/><circle cx="460" cy="195" r="8"/>
+  </g>
+  <!-- Star burst -->
+  <g fill="rgba(201,162,39,0.15)" transform="translate(400,370)">
+    <polygon points="0,-50 12,-16 46,-15 19,5 29,42 0,22 -29,42 -19,5 -46,-15 -12,-16"/>
+    <polygon points="0,-80 6,-28 50,-25 14,8 24,56 0,36 -24,56 -14,8 -50,-25 -6,-28" fill="none" stroke="rgba(201,162,39,0.18)" stroke-width="1"/>
+  </g>
+  <!-- Small accent stars -->
+  <g fill="rgba(201,162,39,0.2)">
+    <polygon points="160,150 165,165 180,165 168,174 172,190 160,181 148,190 152,174 140,165 155,165" transform="scale(0.7) translate(75,80)"/>
+    <polygon points="640,120 645,135 660,135 648,144 652,160 640,151 628,160 632,144 620,135 635,135" transform="scale(0.6) translate(420,40)"/>
+  </g>
+</svg>

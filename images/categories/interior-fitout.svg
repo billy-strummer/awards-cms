@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#140d0d"/>
+      <stop offset="50%" style="stop-color:#221212"/>
+      <stop offset="100%" style="stop-color:#2a1515"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="600" fill="url(#bg)"/>
+  <!-- Herringbone floor pattern -->
+  <g fill="none" stroke="rgba(201,162,39,0.1)" stroke-width="1">
+    <!-- Row of herringbone tiles -->
+    <g transform="translate(50,50)">
+      <g transform="translate(0,0)"><rect x="0" y="0" width="60" height="20" transform="rotate(45,30,10)"/></g>
+      <g transform="translate(70,0)"><rect x="0" y="0" width="60" height="20" transform="rotate(-45,30,10)"/></g>
+      <g transform="translate(140,0)"><rect x="0" y="0" width="60" height="20" transform="rotate(45,30,10)"/></g>
+      <g transform="translate(210,0)"><rect x="0" y="0" width="60" height="20" transform="rotate(-45,30,10)"/></g>
+      <g transform="translate(280,0)"><rect x="0" y="0" width="60" height="20" transform="rotate(45,30,10)"/></g>
+      <g transform="translate(350,0)"><rect x="0" y="0" width="60" height="20" transform="rotate(-45,30,10)"/></g>
+      <g transform="translate(420,0)"><rect x="0" y="0" width="60" height="20" transform="rotate(45,30,10)"/></g>
+      <g transform="translate(490,0)"><rect x="0" y="0" width="60" height="20" transform="rotate(-45,30,10)"/></g>
+      <g transform="translate(560,0)"><rect x="0" y="0" width="60" height="20" transform="rotate(45,30,10)"/></g>
+      <g transform="translate(630,0)"><rect x="0" y="0" width="60" height="20" transform="rotate(-45,30,10)"/></g>
+    </g>
+  </g>
+  <!-- Diamond tile grid -->
+  <g fill="none" stroke="rgba(201,162,39,0.12)" stroke-width="1">
+    <g transform="translate(400,300) rotate(45)">
+      <rect x="-200" y="-200" width="60" height="60"/>
+      <rect x="-140" y="-200" width="60" height="60"/>
+      <rect x="-80" y="-200" width="60" height="60"/>
+      <rect x="-20" y="-200" width="60" height="60"/>
+      <rect x="40" y="-200" width="60" height="60"/>
+      <rect x="100" y="-200" width="60" height="60"/>
+      <rect x="160" y="-200" width="60" height="60"/>
+      <rect x="-200" y="-140" width="60" height="60"/>
+      <rect x="-140" y="-140" width="60" height="60"/>
+      <rect x="-80" y="-140" width="60" height="60"/>
+      <rect x="-20" y="-140" width="60" height="60"/>
+      <rect x="40" y="-140" width="60" height="60"/>
+      <rect x="100" y="-140" width="60" height="60"/>
+      <rect x="160" y="-140" width="60" height="60"/>
+      <rect x="-200" y="-80" width="60" height="60"/>
+      <rect x="-140" y="-80" width="60" height="60"/>
+      <rect x="-80" y="-80" width="60" height="60"/>
+      <rect x="-20" y="-80" width="60" height="60"/>
+      <rect x="40" y="-80" width="60" height="60"/>
+      <rect x="100" y="-80" width="60" height="60"/>
+      <rect x="160" y="-80" width="60" height="60"/>
+    </g>
+  </g>
+  <!-- Interior room perspective lines -->
+  <g fill="none" stroke="rgba(201,162,39,0.2)" stroke-width="1.5">
+    <line x1="0" y1="0" x2="400" y2="300"/><line x1="800" y1="0" x2="400" y2="300"/>
+    <line x1="0" y1="600" x2="400" y2="300"/><line x1="800" y1="600" x2="400" y2="300"/>
+    <line x1="0" y1="0" x2="0" y2="600"/><line x1="800" y1="0" x2="800" y2="600"/>
+    <!-- Wall lines -->
+    <line x1="150" y1="100" x2="400" y2="300"/><line x1="650" y1="100" x2="400" y2="300"/>
+    <line x1="150" y1="500" x2="400" y2="300"/><line x1="650" y1="500" x2="400" y2="300"/>
+  </g>
+</svg>

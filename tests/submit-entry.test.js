@@ -501,7 +501,7 @@ describe('validateStep — Step 5 (Entry Details)', () => {
   });
 });
 
-describe('validateStep — Step 6 (Extra Info — always valid)', () => {
+describe('validateStep — Step 6 (Support Info — always valid)', () => {
   test('always returns true', () => {
     expect(entryFormApp.validateStep(6)).toBe(true);
   });

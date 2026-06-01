@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Submit Your Entry - British Trade Awards</title>
-  <link rel="icon" href="BTA-LOGO-entry.png" type="image/png">
+  <link rel="icon" href="BTA_Corporate_Horizontal-Texture.png" type="image/png">
 
   <!-- Bootstrap 5 -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -26,9 +26,10 @@
       --gold:       #C9A227;
       --gold-light: #e8c84a;
       --gold-dark:  #a07d1a;
+      --gold-text:  #7a5c0e; /* darker gold for readable text on white */
       --bg:         #0a0a0a;
-      --bg-card:    #0d0d0d;
-      --bg-input:   #161616;
+      --bg-card:    #ffffff;
+      --bg-input:   #f7f7f7;
     }
 
     * { box-sizing: border-box; }
@@ -47,11 +48,39 @@
       -moz-osx-font-smoothing: grayscale;
     }
 
+    /* ── Background logo watermarks ── */
+    body::before,
+    body::after {
+      content: '';
+      position: fixed;
+      width: 520px;
+      height: 520px;
+      background-image: url('BTA_Corporate_Horizontal-Black-and-White-01.png');
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      opacity: 0.11;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    body::before {
+      left: -120px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    body::after {
+      right: -120px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
     /* Subtle radial gold glow */
     .bg-glow {
       position: fixed;
       inset: 0;
-      background: radial-gradient(ellipse 80% 60% at 50% 50%, rgba(201,162,39,0.06) 0%, transparent 70%);
+      background: radial-gradient(ellipse 60% 50% at 50% 50%, rgba(201,162,39,0.07) 0%, transparent 70%);
       pointer-events: none;
       z-index: 0;
     }
@@ -64,10 +93,10 @@
     }
 
     .entry-card {
-      background: #0d0d0d;
+      background: #ffffff;
       border-radius: 16px;
-      border: 1px solid rgba(201,162,39,0.3);
-      box-shadow: 0 24px 80px rgba(0,0,0,0.8), 0 0 0 1px rgba(201,162,39,0.1);
+      border: 1px solid rgba(201,162,39,0.45);
+      box-shadow: 0 32px 80px rgba(0,0,0,0.85), 0 0 0 1px rgba(201,162,39,0.15);
       overflow: hidden;
       animation: slideIn 0.4s ease-out;
     }
@@ -82,11 +111,11 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
-    /* ── Header ── */
+    /* ── Header (stays dark) ── */
     .card-header-custom {
       background: linear-gradient(180deg, #111111 0%, #0d0d0d 100%);
-      border-bottom: 1px solid rgba(201,162,39,0.25);
-      padding: 32px 40px;
+      border-bottom: 2px solid rgba(201,162,39,0.4);
+      padding: 28px 40px;
       text-align: center;
       display: flex;
       align-items: center;
@@ -94,14 +123,26 @@
       gap: 24px;
     }
 
+    .home-link {
+      display: flex;
+      align-items: center;
+      text-decoration: none;
+      flex-shrink: 0;
+    }
+
+    .home-link:hover img {
+      opacity: 0.85;
+    }
+
     .card-header-custom img {
       height: 52px;
       width: auto;
+      transition: opacity 0.2s;
     }
 
     .card-header-custom h1 {
       font-family: 'Playfair Display', Georgia, serif;
-      font-size: 1.8rem;
+      font-size: 1.75rem;
       font-weight: 900;
       color: #C9A227;
       margin: 0;
@@ -111,19 +152,19 @@
 
     .card-header-custom .subtitle {
       font-family: 'Inter', sans-serif;
-      font-size: 0.78rem;
+      font-size: 0.75rem;
       font-weight: 400;
-      color: rgba(255,255,255,0.5);
+      color: rgba(255,255,255,0.45);
       letter-spacing: 3px;
       text-transform: uppercase;
-      margin-top: 6px;
+      margin-top: 5px;
     }
 
-    /* ── Progress bar ── */
+    /* ── Progress bar (white background) ── */
     .progress-bar-wrapper {
-      padding: 20px 30px 12px;
-      background: #0a0a0a;
-      border-bottom: 1px solid rgba(201,162,39,0.1);
+      padding: 18px 30px 10px;
+      background: #ffffff;
+      border-bottom: 1px solid rgba(0,0,0,0.07);
       position: relative;
       z-index: 1;
     }
@@ -142,7 +183,7 @@
       left: 0;
       right: 0;
       height: 2px;
-      background: rgba(255,255,255,0.08);
+      background: rgba(0,0,0,0.08);
       transform: translateY(-50%);
       z-index: 0;
     }
@@ -162,8 +203,8 @@
       width: 14px;
       height: 14px;
       border-radius: 50%;
-      background: rgba(255,255,255,0.12);
-      border: 2px solid rgba(255,255,255,0.2);
+      background: #e8e8e8;
+      border: 2px solid #cccccc;
       position: relative;
       z-index: 2;
       transition: all 0.3s;
@@ -173,18 +214,18 @@
       background: #C9A227;
       border-color: #C9A227;
       transform: scale(1.4);
-      box-shadow: 0 0 10px rgba(201,162,39,0.5);
+      box-shadow: 0 0 10px rgba(201,162,39,0.4);
     }
 
     .progress-dot.completed {
-      background: rgba(201,162,39,0.6);
-      border-color: rgba(201,162,39,0.6);
+      background: rgba(201,162,39,0.55);
+      border-color: rgba(201,162,39,0.55);
     }
 
     .step-label {
       font-family: 'Inter', sans-serif;
       font-size: 0.6rem;
-      color: rgba(255,255,255,0.35);
+      color: #aaaaaa;
       text-align: center;
       margin-top: 6px;
       font-weight: 500;
@@ -192,8 +233,8 @@
       letter-spacing: 0.5px;
     }
 
-    .step-label.active { color: #C9A227; font-weight: 600; }
-    .step-label.completed { color: rgba(255,255,255,0.35); }
+    .step-label.active { color: var(--gold-text); font-weight: 700; }
+    .step-label.completed { color: #aaaaaa; }
 
     .progress-step-wrap {
       display: flex;
@@ -210,16 +251,13 @@
       -webkit-overflow-scrolling: touch;
     }
 
-    /* scrollbar for awards list */
-    .awards-list-container::-webkit-scrollbar {
-      width: 4px;
-    }
+    .awards-list-container::-webkit-scrollbar { width: 4px; }
     .awards-list-container::-webkit-scrollbar-track {
-      background: rgba(255,255,255,0.04);
+      background: rgba(0,0,0,0.04);
       border-radius: 2px;
     }
     .awards-list-container::-webkit-scrollbar-thumb {
-      background: rgba(201,162,39,0.3);
+      background: rgba(201,162,39,0.35);
       border-radius: 2px;
     }
 
@@ -228,13 +266,14 @@
       padding: 36px 40px;
       display: flex;
       flex-direction: column;
+      background: #ffffff;
     }
 
     .step-question {
       font-family: 'Playfair Display', Georgia, serif;
       font-size: 1.5rem;
       font-weight: 700;
-      color: #ffffff;
+      color: #1a1a1a;
       margin-bottom: 8px;
       text-align: center;
     }
@@ -243,7 +282,7 @@
       font-family: 'Inter', sans-serif;
       font-size: 0.9rem;
       font-weight: 400;
-      color: rgba(255,255,255,0.45);
+      color: #777777;
       text-align: center;
       margin-bottom: 28px;
     }
@@ -251,11 +290,11 @@
     .form-step { display: none; }
     .form-step.active { display: block; animation: fadeIn 0.35s ease-out; }
 
-    /* ── Form controls ── */
+    /* ── Form controls (light theme) ── */
     .form-control, .form-control-lg, .form-select, .form-select-lg {
-      background: #161616;
-      border: 1px solid rgba(255,255,255,0.1);
-      color: #ffffff;
+      background: #f7f7f7;
+      border: 1px solid #dde1e7;
+      color: #1a1a1a;
       border-radius: 8px;
       padding: 13px 16px;
       font-family: 'Inter', sans-serif;
@@ -265,19 +304,19 @@
 
     .form-control:focus, .form-control-lg:focus,
     .form-select:focus, .form-select-lg:focus {
-      background: #161616;
-      color: #ffffff;
-      border-color: rgba(201,162,39,0.7);
-      box-shadow: 0 0 0 3px rgba(201,162,39,0.12);
+      background: #ffffff;
+      color: #1a1a1a;
+      border-color: #C9A227;
+      box-shadow: 0 0 0 3px rgba(201,162,39,0.15);
       outline: none;
     }
 
     .form-control::placeholder, .form-control-lg::placeholder {
-      color: rgba(255,255,255,0.3);
+      color: #aaaaaa;
     }
 
     .form-select, .form-select-lg {
-      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='rgba(255,255,255,0.4)' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23666666' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
       background-repeat: no-repeat;
       background-position: right 12px center;
       background-size: 16px 12px;
@@ -285,8 +324,8 @@
     }
 
     .form-select option, .form-select-lg option {
-      background: #1a1a1a;
-      color: #ffffff;
+      background: #ffffff;
+      color: #1a1a1a;
     }
 
     textarea.form-control, textarea.form-control-lg {
@@ -297,17 +336,17 @@
     .char-count {
       font-family: 'Inter', sans-serif;
       font-size: 0.78rem;
-      color: rgba(255,255,255,0.3);
+      color: #aaaaaa;
       text-align: right;
       margin-top: 4px;
     }
 
-    .char-count.warn { color: #f87171; }
+    .char-count.warn { color: #dc2626; }
 
     .field-hint {
       font-family: 'Inter', sans-serif;
       font-size: 0.82rem;
-      color: rgba(255,255,255,0.4);
+      color: #888888;
       margin-top: 6px;
       line-height: 1.4;
     }
@@ -316,16 +355,16 @@
       font-family: 'Inter', sans-serif;
       font-weight: 600;
       font-size: 0.8rem;
-      color: rgba(255,255,255,0.6);
+      color: #555555;
       text-transform: uppercase;
       letter-spacing: 0.06em;
       margin-bottom: 6px;
     }
 
-    .required-star { color: #f87171; }
+    .required-star { color: #dc2626; }
 
     .text-muted {
-      color: rgba(255,255,255,0.35) !important;
+      color: #999999 !important;
     }
 
     /* ── Buttons ── */
@@ -341,19 +380,19 @@
       transition: all 0.3s;
       width: 100%;
       margin-top: 25px;
-      box-shadow: 0 4px 20px rgba(201,162,39,0.3);
+      box-shadow: 0 4px 20px rgba(201,162,39,0.35);
       letter-spacing: 0.06em;
       text-transform: uppercase;
     }
 
     .btn-next:hover, .btn-submit:hover {
       transform: translateY(-2px);
-      box-shadow: 0 6px 28px rgba(201,162,39,0.45);
-      filter: brightness(1.08);
+      box-shadow: 0 6px 28px rgba(201,162,39,0.5);
+      filter: brightness(1.06);
     }
 
     .btn-next:disabled, .btn-submit:disabled {
-      opacity: 0.5;
+      opacity: 0.45;
       cursor: not-allowed;
       transform: none;
       filter: none;
@@ -361,51 +400,49 @@
 
     .btn-back {
       background: transparent;
-      border: 1px solid rgba(201,162,39,0.35);
-      color: rgba(201,162,39,0.8);
+      border: 1px solid #cccccc;
+      color: #666666;
       padding: 12px 40px;
       font-family: 'Inter', sans-serif;
       font-size: 0.92rem;
-      font-weight: 600;
+      font-weight: 500;
       border-radius: 8px;
-      transition: all 0.3s;
+      transition: all 0.25s;
       width: 100%;
       margin-top: 10px;
     }
 
     .btn-back:hover {
-      background: #C9A227;
-      color: #000000;
-      border-color: #C9A227;
+      background: #f0f0f0;
+      border-color: #aaaaaa;
+      color: #333333;
     }
 
     /* ── Sector group / Award options ── */
-    .sector-group {
-      margin-bottom: 20px;
-    }
+    .sector-group { margin-bottom: 20px; }
 
     .sector-group-title {
       font-family: 'Inter', sans-serif;
-      font-size: 0.82rem;
-      font-weight: 600;
-      color: #C9A227;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--gold-text);
       text-transform: uppercase;
       letter-spacing: 1px;
       padding: 8px 12px;
-      background: rgba(201,162,39,0.06);
+      background: rgba(201,162,39,0.08);
       border-left: 3px solid #C9A227;
       margin-bottom: 8px;
       border-radius: 0 6px 6px 0;
     }
 
     .award-option {
-      border: 1px solid rgba(255,255,255,0.08);
+      border: 1px solid #e8e8e8;
       padding: 14px 16px;
       border-radius: 8px;
       margin-bottom: 6px;
       cursor: pointer;
       transition: all 0.25s;
-      background: #161616;
+      background: #fafafa;
       display: flex;
       align-items: center;
       gap: 12px;
@@ -413,23 +450,23 @@
     }
 
     .award-option:hover {
-      border-color: rgba(201,162,39,0.5);
-      background: rgba(201,162,39,0.05);
+      border-color: rgba(201,162,39,0.6);
+      background: rgba(201,162,39,0.04);
       transform: translateX(3px);
     }
 
     .award-option.selected {
       border-color: #C9A227;
-      background: rgba(201,162,39,0.1);
-      box-shadow: 0 0 0 1px rgba(201,162,39,0.3);
+      background: rgba(201,162,39,0.08);
+      box-shadow: 0 0 0 1px rgba(201,162,39,0.25);
     }
 
     .award-option .award-check {
       width: 26px;
       height: 26px;
       border-radius: 50%;
-      border: 1px solid rgba(255,255,255,0.2);
-      background: rgba(255,255,255,0.05);
+      border: 1.5px solid #cccccc;
+      background: #ffffff;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -447,26 +484,26 @@
       font-family: 'Inter', sans-serif;
       font-size: 0.92rem;
       font-weight: 400;
-      color: rgba(255,255,255,0.8);
+      color: #333333;
     }
 
     .award-option.selected .award-name {
       font-weight: 600;
-      color: rgba(255,255,255,0.95);
+      color: #1a1a1a;
     }
 
     /* ── Review section ── */
     .review-section {
-      background: #111111;
+      background: #f7f7f7;
       border-radius: 10px;
       padding: 24px;
-      border: 1px solid rgba(255,255,255,0.08);
+      border: 1px solid #e8e8e8;
     }
 
     .review-group {
       margin-bottom: 16px;
       padding-bottom: 16px;
-      border-bottom: 1px solid rgba(255,255,255,0.07);
+      border-bottom: 1px solid #eeeeee;
     }
 
     .review-group:last-child {
@@ -478,8 +515,8 @@
     .review-group-title {
       font-family: 'Inter', sans-serif;
       font-size: 0.75rem;
-      font-weight: 600;
-      color: #C9A227;
+      font-weight: 700;
+      color: var(--gold-text);
       text-transform: uppercase;
       letter-spacing: 1px;
       margin-bottom: 10px;
@@ -496,7 +533,7 @@
     .review-label {
       font-family: 'Inter', sans-serif;
       font-size: 0.82rem;
-      color: rgba(255,255,255,0.45);
+      color: #888888;
       font-weight: 400;
       min-width: 120px;
       flex-shrink: 0;
@@ -505,7 +542,7 @@
     .review-value {
       font-family: 'Inter', sans-serif;
       font-size: 0.88rem;
-      color: rgba(255,255,255,0.85);
+      color: #1a1a1a;
       font-weight: 500;
       text-align: right;
       word-break: break-word;
@@ -514,25 +551,25 @@
     .review-text-block {
       font-family: 'Inter', sans-serif;
       font-size: 0.85rem;
-      color: rgba(255,255,255,0.75);
+      color: #444444;
       line-height: 1.6;
       margin-top: 6px;
-      background: #161616;
+      background: #ffffff;
       padding: 12px;
       border-radius: 6px;
-      border: 1px solid rgba(255,255,255,0.08);
+      border: 1px solid #e8e8e8;
       white-space: pre-wrap;
     }
 
     .review-edit-btn {
       font-size: 0.78rem;
-      color: #C9A227;
+      color: var(--gold-text);
       cursor: pointer;
       text-decoration: underline;
       font-weight: 600;
     }
 
-    .review-edit-btn:hover { color: #e8c84a; }
+    .review-edit-btn:hover { color: #C9A227; }
 
     /* ── Terms checkbox ── */
     .terms-check {
@@ -541,9 +578,9 @@
       gap: 10px;
       margin-top: 20px;
       padding: 14px;
-      background: rgba(201,162,39,0.04);
+      background: rgba(201,162,39,0.05);
       border-radius: 8px;
-      border: 1px solid rgba(201,162,39,0.2);
+      border: 1px solid rgba(201,162,39,0.25);
     }
 
     .terms-check input[type="checkbox"] {
@@ -558,19 +595,19 @@
     .terms-check label {
       font-family: 'Inter', sans-serif;
       font-size: 0.83rem;
-      color: rgba(255,255,255,0.6);
+      color: #555555;
       line-height: 1.5;
       cursor: pointer;
     }
 
     .terms-check label a,
     .terms-check ~ p a {
-      color: #C9A227;
+      color: var(--gold-text);
       text-decoration: underline;
     }
 
     .terms-check ~ p {
-      color: rgba(255,255,255,0.35) !important;
+      color: #999999 !important;
     }
 
     /* ── Success ── */
@@ -583,24 +620,24 @@
       font-size: 4.5rem;
       color: #C9A227;
       margin-bottom: 20px;
-      text-shadow: 0 0 24px rgba(201,162,39,0.4);
+      text-shadow: 0 0 24px rgba(201,162,39,0.3);
     }
 
     .success-message h2 {
       font-family: 'Playfair Display', Georgia, serif;
       font-weight: 700;
-      color: #ffffff;
+      color: #1a1a1a;
     }
 
     .success-message p {
-      color: rgba(255,255,255,0.5);
+      color: #777777;
     }
 
     .success-ref {
       display: inline-block;
-      background: #111111;
-      color: #C9A227;
-      border: 1px solid rgba(201,162,39,0.4);
+      background: #f7f7f7;
+      color: var(--gold-text);
+      border: 1px solid rgba(201,162,39,0.45);
       padding: 10px 24px;
       border-radius: 8px;
       font-family: 'Inter', sans-serif;
@@ -610,11 +647,11 @@
       margin-top: 10px;
     }
 
-    /* ── Choices.js dark theme ── */
+    /* ── Choices.js light theme ── */
     .choices__inner {
-      background: #161616;
-      border: 1px solid rgba(255,255,255,0.1);
-      color: white;
+      background: #f7f7f7;
+      border: 1px solid #dde1e7;
+      color: #1a1a1a;
       border-radius: 8px;
       padding: 10px 14px;
       font-size: 0.95rem;
@@ -623,44 +660,45 @@
 
     .choices__input {
       background: transparent;
-      color: white;
+      color: #1a1a1a;
       font-size: 0.95rem;
       margin-bottom: 0;
     }
 
-    .choices__input::placeholder { color: rgba(255,255,255,0.3); }
+    .choices__input::placeholder { color: #aaaaaa; }
     .choices[data-type*=select-one] .choices__inner { padding-bottom: 10px; }
 
     .choices__list--dropdown {
-      background: #1a1a1a;
+      background: #ffffff;
       border: 1px solid rgba(201,162,39,0.4);
       border-radius: 8px;
       margin-top: 4px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.12);
       z-index: 10;
     }
 
     .choices__list--dropdown .choices__item--selectable.is-highlighted {
-      background: rgba(201,162,39,0.12);
-      color: #fff;
+      background: rgba(201,162,39,0.1);
+      color: #1a1a1a;
     }
 
     .choices__list--dropdown .choices__group {
-      color: #C9A227;
-      font-weight: 600;
-      border-bottom: 1px solid rgba(201,162,39,0.2);
+      color: var(--gold-text);
+      font-weight: 700;
+      border-bottom: 1px solid rgba(201,162,39,0.15);
     }
 
     .choices__list--dropdown .choices__item {
-      color: rgba(255,255,255,0.8);
+      color: #333333;
     }
 
     .is-focused .choices__inner {
-      border-color: rgba(201,162,39,0.7);
-      box-shadow: 0 0 0 3px rgba(201,162,39,0.12);
+      border-color: #C9A227;
+      box-shadow: 0 0 0 3px rgba(201,162,39,0.15);
+      background: #ffffff;
     }
 
-    .choices__list--single .choices__item { color: rgba(255,255,255,0.85); }
+    .choices__list--single .choices__item { color: #1a1a1a; }
 
     /* ── Tablet ── */
     @media (max-width: 768px) {
@@ -674,6 +712,7 @@
     /* ── Mobile ── */
     @media (max-width: 576px) {
       body { padding: 0; align-items: flex-start; }
+      body::before, body::after { display: none; }
 
       .entry-container { max-width: 100%; }
 
@@ -691,7 +730,7 @@
       }
       .card-header-custom h1 { font-size: 1.4rem; letter-spacing: 1.5px; }
       .card-header-custom .subtitle { font-size: 0.72rem; letter-spacing: 2.5px; }
-      .card-header-custom img { height: 40px; }
+      .card-header-custom img { height: 36px; }
 
       .form-section { padding: 24px 20px; }
       .step-question { font-size: 1.2rem; }
@@ -720,7 +759,9 @@
 
       <!-- Header -->
       <div class="card-header-custom">
-        <img src="BTA_Corporate_Horizontal-Black-and-White-01.png" alt="British Trade Awards Logo">
+        <a href="/" class="home-link" aria-label="Back to homepage">
+          <img src="BTA_Corporate_Horizontal-Texture.png" alt="British Trade Awards Logo">
+        </a>
         <div>
           <h1>British Trade Awards</h1>
           <div class="subtitle">Self-Nomination Entry Form</div>
@@ -745,6 +786,7 @@
           <div class="form-section">
             <h2 class="step-question">Where are you based?</h2>
             <p class="step-subtitle">Select the county or city where your business is based or primarily operates.</p>
+            <label class="visually-hidden" for="county_city">County or city</label>
             <select class="form-select form-select-lg" id="county_city" required>
             </select>
             <button type="button" class="btn btn-next" data-action="entryFormApp.nextStep" data-args="[1]">
@@ -757,7 +799,8 @@
         <div class="form-step" id="step2">
           <div class="form-section">
             <h2 class="step-question">What sector are you in?</h2>
-            <p class="step-subtitle">Choose the trade sector that best describes your work</p>
+            <p class="step-subtitle">Choose the trade sector that best describes your work.</p>
+            <label class="visually-hidden" for="sector">Trade sector</label>
             <select class="form-select form-select-lg" id="sector" required>
               <option value="">Choose your sector...</option>
             </select>

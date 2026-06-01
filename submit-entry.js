@@ -206,7 +206,7 @@
     regionChoicesInstance: null,
 
     // Step labels for progress bar
-    stepLabels: ['Region', 'Sector', 'Category', 'Company', 'About', 'Extra', 'Contact', 'Review'],
+    stepLabels: ['Region', 'Sector', 'Category', 'Company', 'About', 'Support', 'Contact', 'Review'],
 
     // --------------------------------------------------
     // Initialize

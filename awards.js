@@ -388,17 +388,26 @@ const awardsModule = {
 
   /**
    * Called when the country field in the Add/Edit award form changes.
-   * Repopulates the area dropdown and clears the hint.
+   * Awaits the area cache before repopulating so the dropdown is never blank.
    */
-  onAwardFormCountryChange() {
+  async onAwardFormCountryChange() {
     const country = document.getElementById('awardFormCountry')?.value || '';
     const areaEl = document.getElementById('awardFormArea');
-    if (areaEl) areaEl.disabled = !country;
-    locationModule.populateAreaDropdown(
-      'awardFormArea',
-      country,
-      country ? 'Select Area...' : 'Select country first...'
-    );
+    if (!country) {
+      if (areaEl) {
+        areaEl.disabled = true;
+        areaEl.innerHTML = '<option value="">Select country first...</option>';
+      }
+      this._updateAwardFormAreaHint(null);
+      return;
+    }
+    if (areaEl) {
+      areaEl.disabled = true;
+      areaEl.innerHTML = '<option value="">Loading areas...</option>';
+    }
+    await locationModule.loadAreas();
+    if (areaEl) areaEl.disabled = false;
+    locationModule.populateAreaDropdown('awardFormArea', country, 'Select Area...');
     this._updateAwardFormAreaHint(null);
   },
 
@@ -409,6 +418,166 @@ const awardsModule = {
   onAwardFormAreaChange() {
     const areaId = document.getElementById('awardFormArea')?.value || null;
     this._updateAwardFormAreaHint(areaId);
+  },
+
+  async onAwardFormSectorChange() {
+    const sector = document.getElementById('awardFormSector')?.value || '';
+    const wrap = document.getElementById('awardCategoryPickerWrap');
+    const picker = document.getElementById('awardCategoryPicker');
+    if (!wrap || !picker) return;
+
+    if (!sector) {
+      wrap.classList.add('d-none');
+      return;
+    }
+
+    // Merge built-in categories with any custom ones for this sector
+    const builtIn = (window.STANDARD_CATEGORIES || {})[sector] || [];
+    let custom = [];
+    try {
+      const result = await apiClient.select('custom_categories', {
+        select: 'name',
+        filters: { sector_name: sector, is_active: true },
+        sort: { column: 'sort_order', ascending: true },
+        pageSize: 200,
+      });
+      custom = (result?.data || []).map((c) => c.name);
+    } catch (_) {}
+
+    const all = [...new Set([...builtIn, ...custom])];
+    if (!all.length) {
+      wrap.classList.add('d-none');
+      return;
+    }
+
+    picker.innerHTML =
+      '<option value="">— select to auto-fill name —</option>' +
+      all.map((c) => `<option value="${utils.escapeHtml(c)}">${utils.escapeHtml(c)}</option>`).join('');
+
+    picker.onchange = () => {
+      const val = picker.value;
+      if (!val) return;
+      const nameEl = document.getElementById('awardFormName');
+      if (nameEl) {
+        nameEl.value = val;
+        nameEl.classList.remove('is-invalid');
+        nameEl.focus();
+      }
+      // Reset picker so it's clearly a one-shot helper
+      picker.value = '';
+    };
+
+    wrap.classList.remove('d-none');
+  },
+
+  _toggleInlineSectorAdd() {
+    const wrap = document.getElementById('inlineSectorAddWrap');
+    if (!wrap) return;
+    const hidden = wrap.classList.toggle('d-none');
+    if (!hidden) document.getElementById('inlineSectorName')?.focus();
+  },
+
+  _cancelInlineSectorAdd() {
+    const wrap = document.getElementById('inlineSectorAddWrap');
+    if (wrap) wrap.classList.add('d-none');
+    const input = document.getElementById('inlineSectorName');
+    if (input) {
+      input.value = '';
+      input.classList.remove('is-invalid');
+    }
+  },
+
+  async _saveInlineSector() {
+    const input = document.getElementById('inlineSectorName');
+    const name = input?.value.trim().toUpperCase();
+    if (!name) {
+      input?.classList.add('is-invalid');
+      return;
+    }
+
+    const existing = [...(window.SECTORS || []), ...(window._customSectorNames || [])].map((s) => s.toUpperCase());
+    if (existing.includes(name)) {
+      utils.showToast(`"${name}" already exists`, 'error');
+      return;
+    }
+
+    try {
+      await apiClient.insert('custom_sectors', { name, sort_order: 0, is_active: true });
+      // Add to dropdown and select it
+      const select = document.getElementById('awardFormSector');
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = utils.toTitleCase(name);
+      select.appendChild(opt);
+      select.value = name;
+      // Cache so duplicate check works within same session
+      window._customSectorNames = [...(window._customSectorNames || []), name];
+      this._cancelInlineSectorAdd();
+      await this.onAwardFormSectorChange();
+      utils.showToast(`Sector "${utils.toTitleCase(name)}" added`, 'success');
+    } catch (err) {
+      utils.showToast('Failed to add sector: ' + err.message, 'error');
+    }
+  },
+
+  _toggleInlineCategoryAdd() {
+    const wrap = document.getElementById('inlineCategoryAddWrap');
+    if (!wrap) return;
+    const hidden = wrap.classList.toggle('d-none');
+    if (!hidden) document.getElementById('inlineCategoryName')?.focus();
+  },
+
+  _cancelInlineCategoryAdd() {
+    const wrap = document.getElementById('inlineCategoryAddWrap');
+    if (wrap) wrap.classList.add('d-none');
+    const input = document.getElementById('inlineCategoryName');
+    if (input) {
+      input.value = '';
+      input.classList.remove('is-invalid');
+    }
+  },
+
+  async _saveInlineCategory() {
+    const sector = document.getElementById('awardFormSector')?.value;
+    if (!sector) {
+      utils.showToast('Select a sector first', 'error');
+      return;
+    }
+
+    const input = document.getElementById('inlineCategoryName');
+    const name = input?.value.trim();
+    if (!name) {
+      input?.classList.add('is-invalid');
+      return;
+    }
+    input.classList.remove('is-invalid');
+
+    try {
+      await apiClient.insert('custom_categories', {
+        sector_name: sector,
+        name,
+        available_for_small: false,
+        sort_order: 0,
+        is_active: true,
+      });
+      // Add to picker and auto-fill award name
+      const picker = document.getElementById('awardCategoryPicker');
+      if (picker) {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        picker.appendChild(opt);
+      }
+      const nameEl = document.getElementById('awardFormName');
+      if (nameEl) {
+        nameEl.value = name;
+        nameEl.classList.remove('is-invalid');
+      }
+      this._cancelInlineCategoryAdd();
+      utils.showToast(`Category "${name}" added`, 'success');
+    } catch (err) {
+      utils.showToast('Failed to add category: ' + err.message, 'error');
+    }
   },
 
   /**
@@ -1466,7 +1635,8 @@ const awardsModule = {
   /** Show a hint if no seasons are configured */
   _updateSeasonHint() {
     const seasons = settingsModule?.allSeasons || [];
-    const seasonHelp = document.querySelector('#awardFormSeason + .form-text');
+    const seasonEl = document.getElementById('awardFormSeason');
+    const seasonHelp = seasonEl?.closest('.col-md-6')?.querySelector('.form-text');
     if (!seasonHelp) return;
     if (seasons.length === 0) {
       seasonHelp.innerHTML =
@@ -1563,6 +1733,9 @@ const awardsModule = {
         });
       })
       .catch(() => {});
+
+    // Show category picker for the pre-selected sector
+    if (award.sector) this.onAwardFormSectorChange();
 
     // Populate season dropdown
     this.populateSeasonDropdown();
@@ -1889,9 +2062,7 @@ const awardsModule = {
     if (!totalEl) return;
     const total = this._getScoringCriteria().reduce((sum, c) => sum + (Number(c.weight) || 0), 0);
     totalEl.textContent = String(total);
-    totalEl.closest('strong')
-      ? null
-      : (totalEl.style.color = total === 100 ? 'green' : total > 100 ? 'red' : 'inherit');
+    totalEl.style.color = total === 100 ? 'var(--bs-success)' : total > 100 ? 'var(--bs-danger)' : 'inherit';
   },
 
   /**

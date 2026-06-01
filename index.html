@@ -172,11 +172,6 @@
             <kbd class="d-none d-xl-inline ms-1" style="background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.75);border:1px solid rgba(255,255,255,0.3);padding:1px 5px;border-radius:3px;font-size:0.6rem;line-height:1.4;">Ctrl K</kbd>
           </button>
 
-          <!-- Keyboard Shortcuts Hint -->
-          <button class="btn btn-outline-light btn-sm" title="Keyboard shortcuts" aria-label="Keyboard shortcuts" data-action="globalActions.showShortcutsModal">
-            <kbd style="background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.85);border:1px solid rgba(255,255,255,0.3);padding:1px 6px;border-radius:3px;font-size:0.7rem;">?</kbd>
-          </button>
-
           <!-- Dark Mode Toggle -->
           <button class="btn btn-outline-light" id="darkModeToggle" title="Toggle dark mode" aria-label="Toggle dark mode">
             <i class="bi bi-moon"></i>
@@ -188,8 +183,8 @@
             <span id="userEmail"></span>
           </div>
 
-          <!-- Help -->
-          <button class="btn btn-outline-light me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#helpOffcanvas" title="Help & Guidance">
+          <!-- Help & Shortcuts -->
+          <button class="btn btn-outline-light me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#helpOffcanvas" title="Help &amp; Shortcuts (?)">
             <i class="bi bi-question-circle"></i>
           </button>
 
@@ -6686,14 +6681,59 @@
                     <h5 class="mb-1">
                       <i class="bi bi-pin-map me-2"></i>Manage Areas
                     </h5>
-                    <p class="text-muted mb-0 small">The 101 geographic areas used for award category filtering. These are pre-loaded and do not need to be edited.</p>
+                    <p class="text-muted mb-0 small">Geographic areas used for award category filtering. Import regions first, then areas.</p>
                   </div>
-                  <button class="btn btn-outline-secondary btn-sm" data-action="areasManager.loadAreas">
-                    <i class="bi bi-arrow-clockwise me-1"></i>Refresh
-                  </button>
+                  <div class="d-flex gap-2">
+                    <button class="btn btn-outline-primary btn-sm" data-action="areasManager.openImportModal" data-args='["regions"]'>
+                      <i class="bi bi-upload me-1"></i>Import Regions CSV
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm" data-action="areasManager.openImportModal" data-args='["areas"]'>
+                      <i class="bi bi-upload me-1"></i>Import Areas CSV
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm" data-action="areasManager.loadAreas">
+                      <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+                    </button>
+                  </div>
                 </div>
                 <div id="manageAreasContainer">
-                  <p class="text-muted small">Click Refresh to load areas.</p>
+                  <p class="text-muted small">Click Refresh to load areas, or Import CSV to seed the database.</p>
+                </div>
+              </div>
+            </div>
+            <!-- Areas/Regions CSV Import Modal -->
+            <input type="file" id="areasImportFileInput" accept=".csv,.txt" class="d-none">
+            <div class="modal fade" id="areasImportModal" tabindex="-1" aria-labelledby="areasImportModalLabel" aria-modal="true">
+              <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h5 class="modal-title" id="areasImportModalLabel"><i class="bi bi-upload me-2"></i><span id="areasImportModalTitle">Import CSV</span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                  </div>
+                  <div class="modal-body">
+                    <div id="areasImportFormat" class="alert alert-info small mb-3"></div>
+                    <div class="mb-3">
+                      <label class="form-label fw-semibold">Select CSV file</label>
+                      <input type="file" class="form-control" id="areasImportFileVisible" accept=".csv,.txt">
+                    </div>
+                    <div id="areasImportPreview" class="d-none">
+                      <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="fw-semibold small">Preview (<span id="areasImportPreviewCount">0</span> rows)</span>
+                        <span class="text-danger small d-none" id="areasImportErrors"></span>
+                      </div>
+                      <div class="table-responsive" style="max-height:300px;overflow-y:auto;">
+                        <table class="table table-sm table-bordered align-middle mb-0">
+                          <thead class="table-light sticky-top" id="areasImportPreviewHead"></thead>
+                          <tbody id="areasImportPreviewBody"></tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary d-none" id="areasImportConfirmBtn" data-action="areasManager.confirmImport">
+                      <i class="bi bi-check-lg me-1"></i>Import <span id="areasImportConfirmCount"></span> records
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -6913,10 +6953,15 @@
           <div class="col-12">
             <div class="card mb-4">
               <div class="card-header d-flex justify-content-between align-items-center">
-                <h6 class="mb-0"><i class="bi bi-tags me-2"></i>Custom Sectors &amp; Categories</h6>
-                <button class="btn btn-sm btn-primary" data-action="settingsModule.openAddSectorModal">
-                  <i class="bi bi-plus-lg me-1"></i>Add Sector
-                </button>
+                <h6 class="mb-0"><i class="bi bi-tags me-2"></i>Sectors &amp; Award Categories</h6>
+                <div class="d-flex gap-2">
+                  <button class="btn btn-sm btn-primary" data-action="settingsModule.openAddCategoryModal">
+                    <i class="bi bi-plus-lg me-1"></i>Add Category
+                  </button>
+                  <button class="btn btn-sm btn-outline-secondary" data-action="settingsModule.openAddSectorModal">
+                    <i class="bi bi-plus-lg me-1"></i>Add Sector
+                  </button>
+                </div>
               </div>
               <div class="card-body p-0">
                 <div id="customSectorsContainer" class="p-3">
@@ -7678,7 +7723,7 @@
   </div>
 
   <!-- Create/Edit Award Modal -->
-  <div class="modal fade" aria-modal="true" id="awardFormModal" tabindex="-1" aria-labelledby="awardFormModalTitle" aria-modal="true">
+  <div class="modal fade" id="awardFormModal" tabindex="-1" aria-labelledby="awardFormModalTitle" aria-modal="true">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header bg-primary text-white">
@@ -7701,7 +7746,7 @@
                 <label for="awardFormYear" class="form-label fw-semibold">Year <span class="text-danger">*</span></label>
                 <input type="number" class="form-control" id="awardFormYear" value="2026" min="2020" max="2035" required aria-required="true">
               </div>
-              <div class="col-md-3">
+              <div class="col-md-4">
                 <label for="awardFormCountry" class="form-label fw-semibold">Country <span class="text-danger">*</span></label>
                 <select class="form-select" id="awardFormCountry" required aria-required="true"
                         data-on-change="awardsModule.onAwardFormCountryChange">
@@ -7712,7 +7757,7 @@
                   <option value="Wales">Wales</option>
                 </select>
               </div>
-              <div class="col-md-3">
+              <div class="col-md-4">
                 <label for="awardFormArea" class="form-label fw-semibold">Area <span class="text-danger">*</span></label>
                 <select class="form-select" id="awardFormArea" required aria-required="true" disabled
                         data-on-change="awardsModule.onAwardFormAreaChange">
@@ -7720,11 +7765,45 @@
                 </select>
                 <div id="awardFormAreaHint" class="form-text mt-1"></div>
               </div>
-              <div class="col-md-6">
-                <label for="awardFormSector" class="form-label fw-semibold">Sector <span class="text-danger">*</span></label>
-                <select class="form-select" id="awardFormSector" required aria-required="true">
+              <div class="col-md-4">
+                <label for="awardFormSector" class="form-label fw-semibold d-flex justify-content-between align-items-center">
+                  <span>Sector <span class="text-danger">*</span></span>
+                  <a href="#" class="link-primary small fw-normal" data-action="awardsModule._toggleInlineSectorAdd">
+                    <i class="bi bi-plus-lg"></i> Add new
+                  </a>
+                </label>
+                <select class="form-select" id="awardFormSector" required aria-required="true"
+                        data-on-change="awardsModule.onAwardFormSectorChange">
                   <option value="">Select Sector...</option>
                 </select>
+                <div id="inlineSectorAddWrap" class="d-none mt-2">
+                  <div class="input-group input-group-sm">
+                    <input type="text" class="form-control" id="inlineSectorName" placeholder="e.g. CIVIL ENGINEERING" maxlength="100">
+                    <button class="btn btn-primary" type="button" data-action="awardsModule._saveInlineSector">Add</button>
+                    <button class="btn btn-outline-secondary" type="button" data-action="awardsModule._cancelInlineSectorAdd">✕</button>
+                  </div>
+                  <div class="form-text">Use ALL CAPS to match the existing style.</div>
+                </div>
+                <div id="awardCategoryPickerWrap" class="mt-2 d-none">
+                  <div class="d-flex justify-content-between align-items-center mb-1">
+                    <label for="awardCategoryPicker" class="form-label small text-muted mb-0">
+                      <i class="bi bi-list-ul me-1"></i>Pick from list (auto-fills name):
+                    </label>
+                    <a href="#" class="link-primary small" data-action="awardsModule._toggleInlineCategoryAdd">
+                      <i class="bi bi-plus-lg"></i> Add new
+                    </a>
+                  </div>
+                  <select class="form-select form-select-sm" id="awardCategoryPicker">
+                    <option value="">— select —</option>
+                  </select>
+                  <div id="inlineCategoryAddWrap" class="d-none mt-1">
+                    <div class="input-group input-group-sm">
+                      <input type="text" class="form-control" id="inlineCategoryName" placeholder="e.g. Glazing Company" maxlength="150">
+                      <button class="btn btn-primary" type="button" data-action="awardsModule._saveInlineCategory">Add</button>
+                      <button class="btn btn-outline-secondary" type="button" data-action="awardsModule._cancelInlineCategoryAdd">✕</button>
+                    </div>
+                  </div>
+                </div>
               </div>
               <div class="col-md-6">
                 <label for="awardFormStatus" class="form-label fw-semibold">Status</label>
@@ -7819,7 +7898,6 @@
               <div class="col-12">
                 <label for="awardFormCriteria" class="form-label fw-semibold">Eligibility Criteria</label>
                 <textarea class="form-control" id="awardFormCriteria" rows="4" placeholder="Describe who is eligible to enter this award category..."></textarea>
-                <div class="form-text">Describe who is eligible to enter this award category.</div>
               </div>
               <div class="col-12">
                 <hr class="my-1">
@@ -10530,39 +10608,6 @@
     </div>
   </div>
 
-  <!-- Keyboard Shortcuts Help Modal -->
-  <div class="modal fade" aria-modal="true" id="shortcutsHelpModal" tabindex="-1" aria-labelledby="shortcutsHelpTitle">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="shortcutsHelpTitle"><i class="bi bi-keyboard me-2"></i>Keyboard Shortcuts</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <h6 class="text-muted mb-2">Global</h6>
-          <div class="d-flex justify-content-between mb-1"><span>Search</span><kbd>Ctrl+K</kbd></div>
-          <div class="d-flex justify-content-between mb-1"><span>Close modal / deselect</span><kbd>Esc</kbd></div>
-          <div class="d-flex justify-content-between mb-1"><span>Show this help</span><kbd>?</kbd></div>
-          <hr>
-          <h6 class="text-muted mb-2">Tables</h6>
-          <div class="d-flex justify-content-between mb-1"><span>Navigate rows</span><kbd>&uarr;</kbd> <kbd>&darr;</kbd></div>
-          <div class="d-flex justify-content-between mb-1"><span>Open selected row</span><kbd>Enter</kbd></div>
-          <div class="d-flex justify-content-between mb-1"><span>Focus search</span><kbd>/</kbd></div>
-          <hr>
-          <h6 class="text-muted mb-2">Organisations</h6>
-          <div class="d-flex justify-content-between mb-1"><span>New organisation</span><kbd>Ctrl+N</kbd></div>
-          <div class="d-flex justify-content-between mb-1"><span>Next / previous page</span><kbd>Ctrl+&rarr;</kbd> <kbd>Ctrl+&larr;</kbd></div>
-          <div class="d-flex justify-content-between mb-1"><span>Toggle checkbox</span><kbd>Space</kbd></div>
-          <hr>
-          <h6 class="text-muted mb-2">Running Order / Seating</h6>
-          <div class="d-flex justify-content-between mb-1"><span>Undo</span><kbd>Ctrl+Z</kbd></div>
-          <div class="d-flex justify-content-between mb-1"><span>Redo</span><kbd>Ctrl+Y</kbd></div>
-          <div class="d-flex justify-content-between mb-1"><span>Save</span><kbd>Ctrl+S</kbd></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- Confirmation Dialog Modal -->
   <div class="modal fade" aria-modal="true" id="confirmDialogModal" tabindex="-1" aria-labelledby="confirmDialogTitle" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -11720,6 +11765,33 @@
               <option value="">Select sector...</option>
             </select>
           </div>
+          <hr class="my-2">
+          <p class="small text-muted mb-2"><i class="bi bi-geo-alt me-1"></i>Location scope (optional — leave blank to apply everywhere)</p>
+          <div class="row g-2 mb-3">
+            <div class="col-12">
+              <label for="newCategoryCountry" class="form-label small fw-semibold">Country</label>
+              <select class="form-select form-select-sm" id="newCategoryCountry">
+                <option value="">All countries</option>
+                <option value="England">England</option>
+                <option value="Northern Ireland">Northern Ireland</option>
+                <option value="Scotland">Scotland</option>
+                <option value="Wales">Wales</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <label for="newCategoryRegion" class="form-label small fw-semibold">Region</label>
+              <select class="form-select form-select-sm" id="newCategoryRegion" disabled>
+                <option value="">Select country first…</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <label for="newCategoryArea" class="form-label small fw-semibold">County / City / Borough</label>
+              <select class="form-select form-select-sm" id="newCategoryArea" disabled>
+                <option value="">Select region first…</option>
+              </select>
+            </div>
+          </div>
+          <hr class="my-2">
           <div class="mb-3">
             <label for="newCategoryName" class="form-label fw-semibold">Category Name <span class="text-danger">*</span></label>
             <input type="text" class="form-control" id="newCategoryName" placeholder="e.g. Groundworks Specialist" maxlength="150" required>
@@ -11865,9 +11937,9 @@
 </div><!-- /#dashboardPage -->
 
   <!-- Help & Guidance Offcanvas (PA-L3) -->
-  <div class="offcanvas offcanvas-end" tabindex="-1" id="helpOffcanvas" aria-labelledby="helpOffcanvasLabel" style="width:400px">
+  <div class="offcanvas offcanvas-end" tabindex="-1" id="helpOffcanvas" aria-labelledby="helpOffcanvasLabel" style="width:420px">
     <div class="offcanvas-header border-bottom">
-      <h5 class="offcanvas-title" id="helpOffcanvasLabel"><i class="bi bi-question-circle me-2 text-primary"></i>Help &amp; Guidance</h5>
+      <h5 class="offcanvas-title" id="helpOffcanvasLabel"><i class="bi bi-question-circle me-2 text-primary"></i>Help &amp; Shortcuts</h5>
       <button type="button" class="btn-close" aria-label="Close" data-bs-dismiss="offcanvas"></button>
     </div>
     <div class="offcanvas-body">
@@ -11882,26 +11954,50 @@
         <li class="list-group-item border-0 px-0 py-1 small">Announce winners via <strong>Email Campaigns</strong></li>
       </ol>
 
-      <h6 class="fw-semibold text-uppercase text-muted small mb-2">Getting Started</h6>
-      <p class="small text-muted mb-3">The <strong>Dashboard</strong> shows a getting-started checklist. Complete the four steps to unlock the full platform.</p>
-
       <h6 class="fw-semibold text-uppercase text-muted small mb-2">Quick Links</h6>
-      <div class="d-grid gap-2">
-        <button class="btn btn-sm btn-outline-primary text-start" data-action="app.switchTab" data-id="dashboard">
+      <div class="d-grid gap-2 mb-4">
+        <button class="btn btn-sm btn-outline-primary text-start" data-action="app.switchTab" data-id="dashboard" data-bs-dismiss="offcanvas">
           <i class="bi bi-speedometer2 me-2"></i>Dashboard &amp; Getting Started
         </button>
-        <button class="btn btn-sm btn-outline-primary text-start" data-action="app.switchTab" data-id="awards">
+        <button class="btn btn-sm btn-outline-primary text-start" data-action="app.switchTab" data-id="awards" data-bs-dismiss="offcanvas">
           <i class="bi bi-trophy me-2"></i>Awards &amp; Categories
         </button>
-        <button class="btn btn-sm btn-outline-primary text-start" data-action="app.switchTab" data-id="entries">
+        <button class="btn btn-sm btn-outline-primary text-start" data-action="app.switchTab" data-id="entries" data-bs-dismiss="offcanvas">
           <i class="bi bi-file-earmark-text me-2"></i>Entries &amp; Judging
         </button>
-        <button class="btn btn-sm btn-outline-primary text-start" data-action="app.switchTab" data-id="settings">
+        <button class="btn btn-sm btn-outline-primary text-start" data-action="app.switchTab" data-id="settings" data-bs-dismiss="offcanvas">
           <i class="bi bi-gear me-2"></i>Settings &amp; Configuration
         </button>
       </div>
 
-      <hr class="my-4">
+      <hr class="my-3">
+      <h6 class="fw-semibold text-uppercase text-muted small mb-2"><i class="bi bi-keyboard me-1"></i>Keyboard Shortcuts</h6>
+      <div class="mb-2">
+        <div class="text-muted small fw-semibold mb-1">Global</div>
+        <div class="d-flex justify-content-between mb-1 small"><span>Search everything</span><kbd>Ctrl+K</kbd></div>
+        <div class="d-flex justify-content-between mb-1 small"><span>Open this panel</span><kbd>?</kbd></div>
+        <div class="d-flex justify-content-between mb-1 small"><span>Focus tab search box</span><kbd>/</kbd></div>
+        <div class="d-flex justify-content-between mb-1 small"><span>Close modal / deselect</span><kbd>Esc</kbd></div>
+        <div class="d-flex justify-content-between mb-1 small"><span>Save form</span><kbd>Ctrl+Enter</kbd></div>
+      </div>
+      <div class="mb-2">
+        <div class="text-muted small fw-semibold mb-1 mt-2">Tables</div>
+        <div class="d-flex justify-content-between mb-1 small"><span>Navigate rows</span><span><kbd>&uarr;</kbd> <kbd>&darr;</kbd></span></div>
+        <div class="d-flex justify-content-between mb-1 small"><span>Open selected row</span><kbd>Enter</kbd></div>
+        <div class="d-flex justify-content-between mb-1 small"><span>Toggle checkbox</span><kbd>Space</kbd></div>
+      </div>
+      <div class="mb-2">
+        <div class="text-muted small fw-semibold mb-1 mt-2">Organisations</div>
+        <div class="d-flex justify-content-between mb-1 small"><span>New organisation</span><kbd>Ctrl+N</kbd></div>
+        <div class="d-flex justify-content-between mb-1 small"><span>Next / previous page</span><span><kbd>Ctrl+&rarr;</kbd> <kbd>Ctrl+&larr;</kbd></span></div>
+      </div>
+      <div class="mb-3">
+        <div class="text-muted small fw-semibold mb-1 mt-2">Running Order / Seating</div>
+        <div class="d-flex justify-content-between mb-1 small"><span>Undo / Redo</span><span><kbd>Ctrl+Z</kbd> <kbd>Ctrl+Y</kbd></span></div>
+        <div class="d-flex justify-content-between mb-1 small"><span>Save</span><kbd>Ctrl+S</kbd></div>
+      </div>
+
+      <hr class="my-3">
       <h6 class="fw-semibold text-uppercase text-muted small mb-2">Support</h6>
       <p class="small text-muted mb-0">For assistance, contact your system administrator or email <a href="mailto:support@britishtradeawards.com">support@britishtradeawards.com</a>.</p>
     </div>

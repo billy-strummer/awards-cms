@@ -1556,8 +1556,10 @@ const settingsModule = {
   async loadCustomSectorsCategories() {
     const container = document.getElementById('customSectorsContainer');
     if (!container) return;
+    container.innerHTML = '<p class="text-muted small p-3 mb-0">Loading...</p>';
     try {
-      const [sectorsResult, categoriesResult] = await Promise.all([
+      const [, sectorsResult, categoriesResult] = await Promise.all([
+        locationModule.loadAreas().catch(() => {}),
         apiClient.select('custom_sectors', {
           select: '*',
           sort: { column: 'sort_order', ascending: true },
@@ -1572,80 +1574,120 @@ const settingsModule = {
       const customSectors = sectorsResult?.data || [];
       const customCategories = categoriesResult?.data || [];
 
-      // All sector names: hardcoded + custom
-      const HARDCODED_SECTORS = window.SECTORS || [];
+      const builtinSectors = window.SECTORS || [];
 
-      if (customSectors.length === 0 && customCategories.length === 0) {
-        container.innerHTML = `
-          <p class="text-muted small mb-2">No custom sectors or categories added yet. The built-in list has ${HARDCODED_SECTORS.length} sectors.</p>
-          <button class="btn btn-sm btn-outline-primary" data-action="settingsModule.openAddCategoryModal">
-            <i class="bi bi-plus-lg me-1"></i>Add Category to Existing Sector
-          </button>`;
-        return;
-      }
-
-      // Group custom categories by sector
+      // Group custom categories by sector name
       const catsBySector = {};
       customCategories.forEach((c) => {
         if (!catsBySector[c.sector_name]) catsBySector[c.sector_name] = [];
         catsBySector[c.sector_name].push(c);
       });
 
-      // Show custom sectors
-      let html = '';
-      if (customSectors.length > 0) {
-        html += `<h6 class="small fw-semibold text-muted text-uppercase mb-2">Custom Sectors</h6>`;
-        html += `<table class="table table-sm table-hover mb-3"><tbody>`;
-        customSectors.forEach((s) => {
-          const catCount = (catsBySector[s.name] || []).length;
-          html += `<tr>
-            <td><span class="badge bg-primary-subtle text-primary">${utils.escapeHtml(s.name)}</span></td>
-            <td class="text-muted small">${catCount} categor${catCount === 1 ? 'y' : 'ies'}</td>
-            <td class="text-end">
-              <button class="btn btn-sm btn-outline-danger py-0 px-1" data-action="settingsModule.deleteCustomSector" data-id="${s.id}" data-name="${utils.escapeHtml(s.name)}" title="Delete sector">
-                <i class="bi bi-trash"></i>
-              </button>
-            </td>
-          </tr>`;
-        });
-        html += `</tbody></table>`;
-      }
+      // Build region lookup from cached data for display
+      const regionMap = {};
+      (locationModule._cachedRegions || []).forEach((r) => {
+        regionMap[r.id] = r.display_name;
+      });
+      const areaMap = {};
+      (locationModule._cachedAreas || []).forEach((a) => {
+        areaMap[a.id] = a.display_name;
+      });
 
-      // Show custom categories grouped by sector
-      if (customCategories.length > 0) {
-        html += `<h6 class="small fw-semibold text-muted text-uppercase mb-2">Custom Categories</h6>`;
-        const sectorsWithCustomCats = [...new Set(customCategories.map((c) => c.sector_name))];
-        sectorsWithCustomCats.forEach((sectorName) => {
-          const cats = catsBySector[sectorName] || [];
-          html += `<div class="mb-2">
-            <div class="fw-semibold small mb-1">${utils.escapeHtml(sectorName)}</div>
-            <table class="table table-sm table-hover mb-0"><tbody>`;
-          cats.forEach((c) => {
-            html += `<tr>
-              <td>${utils.escapeHtml(c.name)}</td>
-              <td>${c.available_for_small ? '<span class="badge bg-warning text-dark small">Small areas</span>' : ''}</td>
-              <td class="text-end">
-                <button class="btn btn-sm btn-outline-danger py-0 px-1" data-action="settingsModule.deleteCustomCategory" data-id="${c.id}" data-name="${utils.escapeHtml(c.name)}" title="Delete category">
+      // Render category rows for one sector (built-in or custom)
+      const renderCatRows = (sectorName) => {
+        const cats = catsBySector[sectorName] || [];
+        const addArgs = JSON.stringify([sectorName]).replace(/'/g, '&#39;');
+        if (!cats.length) {
+          return `<tr><td colspan="3" class="text-muted small fst-italic ps-3">
+            No custom categories —
+            <a href="#" class="link-primary" data-action="settingsModule.openAddCategoryModal" data-args='${addArgs}'>Add one</a>
+          </td></tr>`;
+        }
+
+        const locationBadge = (c) => {
+          if (c.area_id && areaMap[c.area_id]) {
+            return `<span class="badge bg-info-subtle text-info ms-1" style="font-size:.6rem" title="Scoped to area"><i class="bi bi-geo-alt"></i> ${utils.escapeHtml(areaMap[c.area_id])}</span>`;
+          }
+          if (c.region_id && regionMap[c.region_id]) {
+            return `<span class="badge bg-info-subtle text-info ms-1" style="font-size:.6rem" title="Scoped to region"><i class="bi bi-geo-alt"></i> ${utils.escapeHtml(regionMap[c.region_id])}</span>`;
+          }
+          if (c.country) {
+            return `<span class="badge bg-info-subtle text-info ms-1" style="font-size:.6rem" title="Scoped to country"><i class="bi bi-geo-alt"></i> ${utils.escapeHtml(c.country)}</span>`;
+          }
+          return '';
+        };
+
+        return (
+          cats
+            .map(
+              (c) => `<tr>
+              <td class="ps-3">${utils.escapeHtml(c.name)}${locationBadge(c)}</td>
+              <td>${c.available_for_small ? '<span class="badge bg-warning text-dark" style="font-size:.65rem">Small areas</span>' : ''}</td>
+              <td class="text-end pe-2">
+                <button class="btn btn-sm btn-outline-danger py-0 px-1"
+                  data-action="settingsModule.deleteCustomCategory"
+                  data-id="${c.id}" data-name="${utils.escapeHtml(c.name)}" title="Delete">
                   <i class="bi bi-trash"></i>
                 </button>
               </td>
-            </tr>`;
-          });
-          html += `</tbody></table></div>`;
-        });
-      }
+            </tr>`
+            )
+            .join('') +
+          `<tr><td colspan="3" class="text-end pe-2 pb-1">
+            <a href="#" class="link-primary small" data-action="settingsModule.openAddCategoryModal" data-args='${addArgs}'>
+              <i class="bi bi-plus-lg"></i> Add category
+            </a>
+          </td></tr>`
+        );
+      };
 
-      html += `<div class="mt-3 d-flex gap-2">
-        <button class="btn btn-sm btn-outline-primary" data-action="settingsModule.openAddCategoryModal">
-          <i class="bi bi-plus-lg me-1"></i>Add Category
-        </button>
-      </div>`;
+      let html = '<table class="table table-sm mb-0"><tbody>';
 
+      // Built-in sectors
+      builtinSectors.forEach((sectorName) => {
+        const addArgs = JSON.stringify([sectorName]).replace(/'/g, '&#39;');
+        html += `<tr class="table-light">
+          <td colspan="2" class="fw-semibold small py-2">
+            <i class="bi bi-tag me-1 text-muted"></i>${utils.escapeHtml(utils.toTitleCase(sectorName))}
+            <span class="badge bg-secondary-subtle text-secondary ms-1" style="font-size:.65rem">Built-in</span>
+          </td>
+          <td class="text-end pe-2 py-2">
+            <a href="#" class="link-primary small" data-action="settingsModule.openAddCategoryModal" data-args='${addArgs}'>
+              <i class="bi bi-plus-lg"></i> Add category
+            </a>
+          </td>
+        </tr>
+        ${renderCatRows(sectorName)}`;
+      });
+
+      // Custom sectors
+      customSectors.forEach((s) => {
+        const addArgs = JSON.stringify([s.name]).replace(/'/g, '&#39;');
+        html += `<tr class="table-primary">
+          <td colspan="2" class="fw-semibold small py-2">
+            <i class="bi bi-tag-fill me-1 text-primary"></i>${utils.escapeHtml(utils.toTitleCase(s.name))}
+            <span class="badge bg-primary-subtle text-primary ms-1" style="font-size:.65rem">Custom</span>
+          </td>
+          <td class="text-end pe-2 py-2 d-flex align-items-center justify-content-end gap-2">
+            <a href="#" class="link-primary small" data-action="settingsModule.openAddCategoryModal" data-args='${addArgs}'>
+              <i class="bi bi-plus-lg"></i> Add category
+            </a>
+            <button class="btn btn-sm btn-outline-danger py-0 px-1"
+              data-action="settingsModule.deleteCustomSector"
+              data-id="${s.id}" data-name="${utils.escapeHtml(s.name)}" title="Delete sector">
+              <i class="bi bi-trash"></i>
+            </button>
+          </td>
+        </tr>
+        ${renderCatRows(s.name)}`;
+      });
+
+      html += '</tbody></table>';
       container.innerHTML = html;
     } catch (err) {
       const container2 = document.getElementById('customSectorsContainer');
       if (container2)
-        container2.innerHTML = `<p class="text-danger small">Failed to load custom sectors: ${utils.escapeHtml(err.message)}</p>`;
+        container2.innerHTML = `<p class="text-danger small p-3">Failed to load sectors: ${utils.escapeHtml(err.message)}</p>`;
     }
   },
 
@@ -1680,14 +1722,16 @@ const settingsModule = {
     }
   },
 
-  async openAddCategoryModal() {
+  async openAddCategoryModal(preselectSectorOrEvent = null) {
+    const preselectSector = typeof preselectSectorOrEvent === 'string' ? preselectSectorOrEvent : null;
+
     // Populate sector dropdown: hardcoded + custom
     const select = document.getElementById('newCategorySector');
     select.innerHTML = '<option value="">Select sector...</option>';
 
     const hardcoded = window.SECTORS || [];
     hardcoded.forEach((s) => {
-      select.innerHTML += `<option value="${utils.escapeHtml(s)}">${utils.escapeHtml(s)}</option>`;
+      select.innerHTML += `<option value="${utils.escapeHtml(s)}">${utils.escapeHtml(utils.toTitleCase(s))}</option>`;
     });
 
     try {
@@ -1698,10 +1742,61 @@ const settingsModule = {
         pageSize: 200,
       });
       (result?.data || []).forEach((s) => {
-        select.innerHTML += `<option value="${utils.escapeHtml(s.name)}">${utils.escapeHtml(s.name)} (custom)</option>`;
+        select.innerHTML += `<option value="${utils.escapeHtml(s.name)}">${utils.escapeHtml(utils.toTitleCase(s.name))} (custom)</option>`;
       });
     } catch (_) {
       /* ignore, hardcoded sectors still available */
+    }
+
+    if (preselectSector) select.value = preselectSector;
+
+    // Reset location fields
+    const countryEl = document.getElementById('newCategoryCountry');
+    const regionEl = document.getElementById('newCategoryRegion');
+    const areaEl = document.getElementById('newCategoryArea');
+    if (countryEl) countryEl.value = '';
+    if (regionEl) {
+      regionEl.innerHTML = '<option value="">Select country first…</option>';
+      regionEl.disabled = true;
+    }
+    if (areaEl) {
+      areaEl.innerHTML = '<option value="">Select region first…</option>';
+      areaEl.disabled = true;
+    }
+
+    // Pre-load region/area data so cascades are fast
+    await locationModule.loadAreas().catch(() => {});
+
+    // Wire country → region cascade
+    if (countryEl) {
+      countryEl.onchange = () => {
+        const country = countryEl.value;
+        if (!country) {
+          regionEl.innerHTML = '<option value="">Select country first…</option>';
+          regionEl.disabled = true;
+          areaEl.innerHTML = '<option value="">Select region first…</option>';
+          areaEl.disabled = true;
+          return;
+        }
+        regionEl.disabled = false;
+        locationModule.populateRegionDropdown('newCategoryRegion', country, 'All regions');
+        areaEl.innerHTML = '<option value="">Select region first…</option>';
+        areaEl.disabled = true;
+      };
+    }
+
+    // Wire region → area cascade
+    if (regionEl) {
+      regionEl.onchange = () => {
+        const regionId = regionEl.value;
+        if (!regionId) {
+          areaEl.innerHTML = '<option value="">Select region first…</option>';
+          areaEl.disabled = true;
+          return;
+        }
+        areaEl.disabled = false;
+        locationModule.populateAreaDropdown('newCategoryArea', countryEl?.value || '', 'All areas', '', regionId);
+      };
     }
 
     document.getElementById('newCategoryName').value = '';
@@ -1715,6 +1810,9 @@ const settingsModule = {
     const sectorName = sectorEl.value.trim();
     const name = nameEl.value.trim();
     const availableForSmall = document.getElementById('newCategorySmall').checked;
+    const country = document.getElementById('newCategoryCountry')?.value || null;
+    const regionId = document.getElementById('newCategoryRegion')?.value || null;
+    const areaId = document.getElementById('newCategoryArea')?.value || null;
 
     let valid = true;
     if (!sectorName) {
@@ -1738,6 +1836,9 @@ const settingsModule = {
         available_for_small: availableForSmall,
         sort_order: 0,
         is_active: true,
+        ...(country ? { country } : {}),
+        ...(regionId ? { region_id: regionId } : {}),
+        ...(areaId ? { area_id: areaId } : {}),
       });
       bootstrap.Modal.getOrCreateInstance(document.getElementById('addCategoryModal')).hide();
       utils.showToast(`Category "${name}" added to ${sectorName}`, 'success');

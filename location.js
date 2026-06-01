@@ -139,7 +139,7 @@ const locationModule = {
     const current = el.value;
     el.innerHTML =
       `<option value="">${utils.escapeHtml(allLabel)}</option>` +
-      ['England', 'Scotland', 'Wales']
+      ['England', 'Northern Ireland', 'Scotland', 'Wales']
         .map((c) => `<option value="${c}"${current === c ? ' selected' : ''}>${c}</option>`)
         .join('');
   },

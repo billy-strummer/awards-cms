@@ -132,10 +132,10 @@ window.globalActions = {
     new bootstrap.Modal(document.getElementById('bulkDeleteConfirmModal')).show();
   },
 
-  /* Show keyboard shortcuts modal */
+  /* Show Help & Shortcuts panel */
   showShortcutsModal: function () {
-    const m = document.getElementById('shortcutsHelpModal');
-    if (m) new bootstrap.Modal(m).show();
+    const el = document.getElementById('helpOffcanvas');
+    if (el) bootstrap.Offcanvas.getOrCreateInstance(el).show();
   },
 
   /* Dismiss a workflow/getting-started banner and persist to localStorage */

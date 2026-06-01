@@ -417,7 +417,7 @@ describe('Data Proxy API', () => {
   });
 
   test('read-only tables reject insert', async () => {
-    for (const table of ['counties', 'regions', 'award_years']) {
+    for (const table of ['counties', 'award_years']) {
       const req = createReq({
         body: { table, operation: 'insert', data: { name: 'test' } },
       });
@@ -428,7 +428,7 @@ describe('Data Proxy API', () => {
   });
 
   test('read-only tables reject delete', async () => {
-    for (const table of ['counties', 'regions', 'award_years']) {
+    for (const table of ['counties', 'award_years']) {
       const req = createReq({
         body: { table, operation: 'delete', id: 'abc' },
       });

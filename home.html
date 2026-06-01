@@ -167,7 +167,6 @@
       border: 2px solid var(--gold);
       cursor: pointer;
       transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
-      will-change: transform;
       white-space: nowrap;
     }
 
@@ -178,6 +177,7 @@
       transform: translateY(-2px);
       box-shadow: 0 8px 30px rgba(201, 162, 39, 0.35);
       outline: none;
+      will-change: transform;
     }
 
     .btn-gold:active {
@@ -203,7 +203,6 @@
       border: 1px solid var(--gold);
       cursor: pointer;
       transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
-      will-change: transform;
     }
 
     .btn-ghost:hover,
@@ -212,6 +211,7 @@
       color: #000;
       transform: translateY(-2px);
       outline: none;
+      will-change: transform;
     }
 
     /* Fade-in animation via IntersectionObserver */
@@ -555,8 +555,8 @@
 
     .hero-sub {
       font-size: clamp(1rem, 1.8vw, 1.2rem);
-      font-weight: 300;
-      color: rgba(255, 255, 255, 0.75);
+      font-weight: 400;
+      color: rgba(255, 255, 255, 0.85);
       margin-bottom: 40px;
       letter-spacing: 0.02em;
     }
@@ -778,7 +778,6 @@
       border-radius: var(--radius-lg);
       overflow: hidden;
       cursor: pointer;
-      group: cat;
     }
 
     /* Fallback colours (shown when image not yet loaded or unavailable) */
@@ -803,7 +802,9 @@
       opacity: 0.85;
       z-index: 0;
     }
-    .cat-box:hover .cat-bg-img {
+    .cat-box:hover .cat-bg-img,
+    .cat-box:focus-within .cat-bg-img,
+    .cat-box:focus .cat-bg-img {
       transform: scale(1.07);
       opacity: 0.7;
     }
@@ -820,7 +821,9 @@
       transition: background var(--transition-med);
     }
 
-    .cat-box:hover .cat-box-inner {
+    .cat-box:hover .cat-box-inner,
+    .cat-box:focus-within .cat-box-inner,
+    .cat-box:focus .cat-box-inner {
       background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.5) 60%, rgba(0,0,0,0.1) 100%);
     }
 
@@ -845,7 +848,9 @@
       transition: width var(--transition-med);
     }
 
-    .cat-box:hover .cat-accent {
+    .cat-box:hover .cat-accent,
+    .cat-box:focus-within .cat-accent,
+    .cat-box:focus .cat-accent {
       width: 52px;
     }
 
@@ -871,7 +876,9 @@
       transition: max-height 0.35s ease, opacity 0.35s ease, transform 0.35s ease;
     }
 
-    .cat-box:hover .cat-desc {
+    .cat-box:hover .cat-desc,
+    .cat-box:focus-within .cat-desc,
+    .cat-box:focus .cat-desc {
       max-height: 80px;
       opacity: 1;
       transform: translateY(0);
@@ -888,7 +895,9 @@
       pointer-events: none;
     }
 
-    .cat-box:hover::after {
+    .cat-box:hover::after,
+    .cat-box:focus-within::after,
+    .cat-box:focus::after {
       border-color: rgba(201, 162, 39, 0.4);
     }
 
@@ -985,7 +994,7 @@
     }
 
     .regions-accordion.open {
-      max-height: 600px;
+      max-height: 1200px;
       opacity: 1;
       margin-top: 20px;
     }
@@ -1068,10 +1077,7 @@
       transition: background var(--transition-fast), color var(--transition-fast);
     }
 
-    .sub-region-chip:hover {
-      background: rgba(201, 162, 39, 0.08);
-      color: rgba(255, 255, 255, 0.9);
-    }
+    /* Sub-region chips are informational only — no hover feedback to avoid appearing clickable */
 
     /* ============================================================
        SECTION 5 — FIND A TRADE
@@ -1340,7 +1346,7 @@
 
     .footer-links a {
       font-size: 0.8rem;
-      color: rgba(255, 255, 255, 0.45);
+      color: rgba(255, 255, 255, 0.65);
       transition: color var(--transition-fast);
     }
 
@@ -1392,12 +1398,12 @@
 
     .footer-bottom p {
       font-size: 0.775rem;
-      color: rgba(255, 255, 255, 0.3);
+      color: rgba(255, 255, 255, 0.55);
       line-height: 1.8;
     }
 
     .footer-bottom strong {
-      color: rgba(255, 255, 255, 0.45);
+      color: rgba(255, 255, 255, 0.65);
     }
 
     /* ============================================================
@@ -1509,7 +1515,7 @@
       }
 
       /* Regional accordion */
-      .regions-accordion.open { max-height: 900px; }
+      .regions-accordion.open { max-height: 1200px; }
       .regions-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px; }
       .sub-region-chip { padding: 4px 10px; font-size: 0.75rem; }
 
@@ -1565,9 +1571,7 @@
     /* ============================================================
        LOADING / PERFORMANCE
     ============================================================ */
-    .hero-content > * {
-      will-change: opacity, transform;
-    }
+    /* will-change removed from static .hero-content > * — applied only via transition states */
 
     /* Reduced motion */
     @media (prefers-reduced-motion: reduce) {
@@ -1583,10 +1587,63 @@
         transform: none;
       }
     }
+
+    /* ============================================================
+       SKIP LINK (accessibility)
+    ============================================================ */
+    .skip-link {
+      position: absolute;
+      top: -100%;
+      left: 16px;
+      background: var(--gold);
+      color: #000;
+      padding: 8px 16px;
+      border-radius: 0 0 6px 6px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      z-index: 9999;
+      text-decoration: none;
+      transition: top 0.2s;
+    }
+    .skip-link:focus {
+      top: 0;
+    }
+
+    /* ============================================================
+       COMING SOON BADGE
+    ============================================================ */
+    .coming-soon-badge {
+      display: inline-block;
+      background: rgba(201,162,39,0.15);
+      border: 1px solid rgba(201,162,39,0.4);
+      color: var(--gold);
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 4px 12px;
+      border-radius: 100px;
+      margin-top: 12px;
+    }
+
+    /* ============================================================
+       VISIBLE FORM LABELS
+    ============================================================ */
+    .form-label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.6);
+      margin-bottom: 8px;
+    }
   </style>
 </head>
 
 <body>
+
+<a href="#hero" class="skip-link">Skip to main content</a>
 
 <!-- ============================================================
      HEADER
@@ -1657,7 +1714,7 @@
     muted
     loop
     playsinline
-    preload="none"
+    preload="metadata"
     poster="BTA_Corporate_Horizontal-Texture.jpg"
     aria-hidden="true"
   >
@@ -1685,8 +1742,7 @@
     </div>
 
     <h1>
-      Crowning the Nation's<br>
-      <em>Finest Trade Professionals</em>
+      Crowning the Nation's <em>Finest Trade Professionals</em>
     </h1>
 
     <p class="hero-sub">
@@ -1749,7 +1805,9 @@
           <!-- Calendar icon -->
           <svg viewBox="0 0 24 24" aria-hidden="true"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
         </div>
-        <h3>Key Dates 2026</h3>
+        <div>
+          <h3>Key Dates 2026</h3>
+        </div>
         <ul class="key-dates-list" role="list">
           <li class="key-date-item">
             <div class="key-date-dot" aria-hidden="true"></div>
@@ -1787,6 +1845,7 @@
             </div>
           </li>
         </ul>
+        <a href="#" class="btn-ghost" style="align-self: flex-start; margin-top: auto;">View Full Timeline</a>
       </article>
 
       <!-- Box 3: Vote -->
@@ -1825,10 +1884,10 @@
       </p>
     </div>
 
-    <div class="categories-grid" role="list" aria-label="Award categories">
+    <div class="categories-grid" aria-label="Award categories">
 
       <!-- 1 -->
-      <div class="cat-box reveal" role="listitem" tabindex="0" aria-label="Building and Construction — From groundworks to roofing, the full build spectrum">
+      <a href="#categories" class="cat-box reveal" aria-label="Building and Construction — From groundworks to roofing, the full build spectrum">
         <img class="cat-bg-img" src="images/categories/building-construction.jpg" alt="" loading="lazy">
         <div class="cat-box-inner">
           <span class="cat-number" aria-hidden="true">01</span>
@@ -1836,10 +1895,10 @@
           <h3 class="cat-name">Building &amp; Construction</h3>
           <p class="cat-desc">From groundworks to roofing, the full build spectrum</p>
         </div>
-      </div>
+      </a>
 
       <!-- 2 -->
-      <div class="cat-box reveal reveal-delay-1" role="listitem" tabindex="0" aria-label="Mechanical, Electrical and Plumbing — The essential services keeping Britain's homes running">
+      <a href="#categories" class="cat-box reveal reveal-delay-1" aria-label="Mechanical, Electrical and Plumbing — The essential services keeping Britain's homes running">
         <img class="cat-bg-img" src="images/categories/mechanical-electrical-plumbing.jpg" alt="" loading="lazy">
         <div class="cat-box-inner">
           <span class="cat-number" aria-hidden="true">02</span>
@@ -1847,10 +1906,10 @@
           <h3 class="cat-name">Mechanical, Electrical &amp; Plumbing</h3>
           <p class="cat-desc">The essential services keeping Britain's homes running</p>
         </div>
-      </div>
+      </a>
 
       <!-- 3 -->
-      <div class="cat-box reveal reveal-delay-2" role="listitem" tabindex="0" aria-label="Carpentry and Joinery — Crafting bespoke woodwork with precision and artistry">
+      <a href="#categories" class="cat-box reveal reveal-delay-2" aria-label="Carpentry and Joinery — Crafting bespoke woodwork with precision and artistry">
         <img class="cat-bg-img" src="images/categories/carpentry-joinery.jpg" alt="" loading="lazy">
         <div class="cat-box-inner">
           <span class="cat-number" aria-hidden="true">03</span>
@@ -1858,10 +1917,10 @@
           <h3 class="cat-name">Carpentry &amp; Joinery</h3>
           <p class="cat-desc">Crafting bespoke woodwork with precision and artistry</p>
         </div>
-      </div>
+      </a>
 
       <!-- 4 -->
-      <div class="cat-box reveal reveal-delay-3" role="listitem" tabindex="0" aria-label="Interior Fit-Out and Finishing — Transforming interiors with expert installations">
+      <a href="#categories" class="cat-box reveal reveal-delay-3" aria-label="Interior Fit-Out and Finishing — Transforming interiors with expert installations">
         <img class="cat-bg-img" src="images/categories/interior-fitout.jpg" alt="" loading="lazy">
         <div class="cat-box-inner">
           <span class="cat-number" aria-hidden="true">04</span>
@@ -1869,10 +1928,10 @@
           <h3 class="cat-name">Interior Fit-Out &amp; Finishing</h3>
           <p class="cat-desc">Transforming interiors with expert installations</p>
         </div>
-      </div>
+      </a>
 
       <!-- 5 -->
-      <div class="cat-box reveal" role="listitem" tabindex="0" aria-label="Outdoor and Landscaping — Creating stunning outdoor spaces across Britain">
+      <a href="#categories" class="cat-box reveal" aria-label="Outdoor and Landscaping — Creating stunning outdoor spaces across Britain">
         <img class="cat-bg-img" src="images/categories/outdoor-landscaping.jpg" alt="" loading="lazy">
         <div class="cat-box-inner">
           <span class="cat-number" aria-hidden="true">05</span>
@@ -1880,10 +1939,10 @@
           <h3 class="cat-name">Outdoor &amp; Landscaping</h3>
           <p class="cat-desc">Creating stunning outdoor spaces across Britain</p>
         </div>
-      </div>
+      </a>
 
       <!-- 6 -->
-      <div class="cat-box reveal reveal-delay-1" role="listitem" tabindex="0" aria-label="Energy, Tech and Sustainability — Powering Britain's green future">
+      <a href="#categories" class="cat-box reveal reveal-delay-1" aria-label="Energy, Tech and Sustainability — Powering Britain's green future">
         <img class="cat-bg-img" src="images/categories/energy-tech-sustainability.jpg" alt="" loading="lazy">
         <div class="cat-box-inner">
           <span class="cat-number" aria-hidden="true">06</span>
@@ -1891,10 +1950,10 @@
           <h3 class="cat-name">Energy, Tech &amp; Sustainability</h3>
           <p class="cat-desc">Powering Britain's green future</p>
         </div>
-      </div>
+      </a>
 
       <!-- 7 -->
-      <div class="cat-box reveal reveal-delay-2" role="listitem" tabindex="0" aria-label="Specialist Trades — Niche expertise, exceptional results">
+      <a href="#categories" class="cat-box reveal reveal-delay-2" aria-label="Specialist Trades — Niche expertise, exceptional results">
         <img class="cat-bg-img" src="images/categories/specialist-trades.jpg" alt="" loading="lazy">
         <div class="cat-box-inner">
           <span class="cat-number" aria-hidden="true">07</span>
@@ -1902,10 +1961,10 @@
           <h3 class="cat-name">Specialist Trades</h3>
           <p class="cat-desc">Niche expertise, exceptional results</p>
         </div>
-      </div>
+      </a>
 
       <!-- 8 -->
-      <div class="cat-box reveal reveal-delay-3" role="listitem" tabindex="0" aria-label="Industry Leadership — Recognising outstanding leadership in the trades">
+      <a href="#categories" class="cat-box reveal reveal-delay-3" aria-label="Industry Leadership — Recognising outstanding leadership in the trades">
         <img class="cat-bg-img" src="images/categories/industry-leadership.svg" alt="" loading="lazy">
         <div class="cat-box-inner">
           <span class="cat-number" aria-hidden="true">08</span>
@@ -1913,7 +1972,7 @@
           <h3 class="cat-name">Industry Leadership</h3>
           <p class="cat-desc">Recognising outstanding leadership in the trades</p>
         </div>
-      </div>
+      </a>
 
     </div>
 
@@ -1936,10 +1995,10 @@
       </p>
     </div>
 
-    <div class="country-cards reveal reveal-delay-2" role="list" aria-label="Select a country to explore regions">
+    <div class="country-cards reveal reveal-delay-2" aria-label="Select a country to explore regions">
 
       <!-- England -->
-      <div class="country-card" id="card-england" role="listitem" tabindex="0"
+      <div class="country-card" id="card-england" role="button" tabindex="0"
            aria-expanded="false" aria-controls="accordion-england" data-country="england">
         <span class="country-flag" aria-hidden="true">🏴󠁧󠁢󠁥󠁮󠁧󠁿</span>
         <div class="country-name">England</div>
@@ -1950,7 +2009,7 @@
       </div>
 
       <!-- Scotland -->
-      <div class="country-card" id="card-scotland" role="listitem" tabindex="0"
+      <div class="country-card" id="card-scotland" role="button" tabindex="0"
            aria-expanded="false" aria-controls="accordion-scotland" data-country="scotland">
         <span class="country-flag" aria-hidden="true">🏴󠁧󠁢󠁳󠁣󠁴󠁿</span>
         <div class="country-name">Scotland</div>
@@ -1961,7 +2020,7 @@
       </div>
 
       <!-- Wales -->
-      <div class="country-card" id="card-wales" role="listitem" tabindex="0"
+      <div class="country-card" id="card-wales" role="button" tabindex="0"
            aria-expanded="false" aria-controls="accordion-wales" data-country="wales">
         <span class="country-flag" aria-hidden="true">🏴󠁧󠁢󠁷󠁬󠁳󠁿</span>
         <div class="country-name">Wales</div>
@@ -2054,6 +2113,7 @@
       <p class="section-sub reveal reveal-delay-1">
         Locate the best tradespeople in your area with British Trade Awards recommended trade specialists
       </p>
+      <span class="coming-soon-badge reveal reveal-delay-2">Directory launching soon</span>
     </div>
 
     <div class="find-trade-card reveal reveal-delay-2">
@@ -2062,7 +2122,7 @@
 
         <!-- Location input with autocomplete -->
         <div class="input-wrapper">
-          <label for="location-input" class="visually-hidden">Search by County or City</label>
+          <label for="location-input" class="form-label">Search by County or City</label>
           <input
             type="text"
             id="location-input"
@@ -2086,7 +2146,7 @@
 
         <!-- Category select -->
         <div>
-          <label for="category-select" class="visually-hidden">Select a trade category</label>
+          <label for="category-select" class="form-label">Select a trade category</label>
           <select id="category-select" class="form-input" aria-label="Select a trade category">
             <option value="">All Categories</option>
             <option value="building-construction">Building &amp; Construction</option>
@@ -2268,10 +2328,10 @@
       if (y < THRESHOLD) {
         // State 1: at top — transparent
         header.className = 'at-top';
-      } else if (y > lastY) {
-        // Scrolling down — hide
+      } else if (y > lastY + 10) {
+        // Scrolling down more than 10px since last check — hide
         header.className = 'scrolled hidden';
-      } else {
+      } else if (y <= lastY) {
         // Scrolling up — show frosted glass
         header.className = 'scrolled';
       }
@@ -2551,7 +2611,7 @@
       var q = query.trim().toLowerCase();
       if (!q) return [];
       return LOCATIONS.filter(function (l) {
-        return l.toLowerCase().indexOf(q) === 0;
+        return l.toLowerCase().includes(q);
       }).slice(0, 6);
     }
 
@@ -2686,7 +2746,8 @@
 
         e.preventDefault();
         var top = target.getBoundingClientRect().top + window.scrollY - OFFSET;
-        window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+        var prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        window.scrollTo({ top: Math.max(0, top), behavior: prefersReducedMotion ? 'instant' : 'smooth' });
       });
     });
   })();
@@ -2699,11 +2760,31 @@
     var video = document.getElementById('hero-video');
     if (!video) return;
 
+    var reducedMotionMQ = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+    function shouldPlay() {
+      return !reducedMotionMQ.matches;
+    }
+
+    // Pause immediately if reduced motion is preferred
+    if (!shouldPlay()) {
+      video.pause();
+    }
+
+    // Listen for changes to the media query
+    reducedMotionMQ.addEventListener('change', function () {
+      if (!shouldPlay()) {
+        video.pause();
+      }
+    });
+
     if ('IntersectionObserver' in window) {
       var obs = new IntersectionObserver(function (entries) {
         entries.forEach(function (entry) {
           if (entry.isIntersecting) {
-            video.play().catch(function () {});
+            if (shouldPlay()) {
+              video.play().catch(function () {});
+            }
           } else {
             video.pause();
           }

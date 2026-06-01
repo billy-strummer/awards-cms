@@ -1,0 +1,2654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="British Trade Awards — Crowning the Nation's Finest Trade Professionals. Enter 2026, vote for your favourite trades, and find the best tradespeople in your area.">
+  <meta name="theme-color" content="#0a0a0a">
+  <title>British Trade Awards — Crowning the Nation's Finest Trade Professionals</title>
+  <link rel="icon" href="BTA-LOGO-entry.png" type="image/png">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400;1,700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    /* ============================================================
+       CSS CUSTOM PROPERTIES
+    ============================================================ */
+    :root {
+      --gold:          #C9A227;
+      --gold-light:    #e0b93a;
+      --gold-dark:     #a8871f;
+      --bg-primary:    #0a0a0a;
+      --bg-secondary:  #111111;
+      --bg-tertiary:   #0d0d0d;
+      --bg-footer:     #050505;
+      --text-primary:  #ffffff;
+      --text-muted:    #999999;
+      --border-subtle: #2a2a2a;
+      --border-gold:   rgba(201,162,39,0.5);
+
+      --font-display:  'Playfair Display', Georgia, serif;
+      --font-body:     'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+
+      --radius-sm:  8px;
+      --radius-md:  16px;
+      --radius-lg:  24px;
+      --radius-xl:  32px;
+
+      --transition-fast:   0.15s ease;
+      --transition-med:    0.3s ease;
+      --transition-slow:   0.5s ease;
+
+      --header-h: 72px;
+      --section-pad: clamp(64px, 8vw, 120px);
+    }
+
+    /* ============================================================
+       RESET & BASE
+    ============================================================ */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      font-size: 16px;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      font-weight: 400;
+      line-height: 1.6;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    button {
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    ul, ol {
+      list-style: none;
+    }
+
+    /* ============================================================
+       UTILITY CLASSES
+    ============================================================ */
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 0 clamp(20px, 5vw, 60px);
+    }
+
+    .section-pad {
+      padding: var(--section-pad) 0;
+    }
+
+    .gold-text {
+      color: var(--gold);
+    }
+
+    .section-heading {
+      font-family: var(--font-display);
+      font-size: clamp(2rem, 4vw, 3.25rem);
+      font-weight: 700;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+      text-align: center;
+    }
+
+    .section-heading .gold-underline {
+      position: relative;
+      display: inline-block;
+    }
+
+    .section-heading .gold-underline::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: -10px;
+      width: 60%;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, var(--gold), transparent);
+      border-radius: 2px;
+    }
+
+    /* Gold CTA Button */
+    .btn-gold {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: var(--gold);
+      color: #000;
+      font-family: var(--font-body);
+      font-weight: 700;
+      font-size: 0.85rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 14px 32px;
+      border-radius: 100px;
+      border: 2px solid var(--gold);
+      cursor: pointer;
+      transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
+      will-change: transform;
+      white-space: nowrap;
+    }
+
+    .btn-gold:hover,
+    .btn-gold:focus-visible {
+      background: var(--gold-light);
+      border-color: var(--gold-light);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(201, 162, 39, 0.35);
+      outline: none;
+    }
+
+    .btn-gold:active {
+      transform: translateY(0);
+      box-shadow: none;
+    }
+
+    /* Ghost Button */
+    .btn-ghost {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: transparent;
+      color: var(--gold);
+      font-family: var(--font-body);
+      font-weight: 600;
+      font-size: 0.85rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 12px 28px;
+      border-radius: 100px;
+      border: 1px solid var(--gold);
+      cursor: pointer;
+      transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+      will-change: transform;
+    }
+
+    .btn-ghost:hover,
+    .btn-ghost:focus-visible {
+      background: var(--gold);
+      color: #000;
+      transform: translateY(-2px);
+      outline: none;
+    }
+
+    /* Fade-in animation via IntersectionObserver */
+    .reveal {
+      opacity: 0;
+      transform: translateY(32px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+      will-change: opacity, transform;
+    }
+
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .reveal-delay-1 { transition-delay: 0.1s; }
+    .reveal-delay-2 { transition-delay: 0.2s; }
+    .reveal-delay-3 { transition-delay: 0.3s; }
+    .reveal-delay-4 { transition-delay: 0.4s; }
+
+    /* ============================================================
+       HEADER — SMART STICKY
+    ============================================================ */
+    #site-header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+      height: var(--header-h);
+      transition:
+        background var(--transition-med),
+        backdrop-filter var(--transition-med),
+        transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+        box-shadow var(--transition-med);
+      will-change: transform;
+    }
+
+    /* State 1: at top */
+    #site-header.at-top {
+      background: transparent;
+      backdrop-filter: none;
+      box-shadow: none;
+    }
+
+    /* State 2: scrolled (visible) — frosted glass */
+    #site-header.scrolled {
+      background: rgba(10, 10, 10, 0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06);
+    }
+
+    /* State: hidden (scrolling down) */
+    #site-header.hidden {
+      transform: translateY(-100%);
+    }
+
+    .header-inner {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 0 clamp(20px, 5vw, 60px);
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+
+    /* Logo */
+    .header-logo {
+      flex-shrink: 0;
+      height: 40px;
+      display: flex;
+      align-items: center;
+    }
+
+    .header-logo img {
+      height: 40px;
+      width: auto;
+      transition: opacity var(--transition-med);
+    }
+
+    /* White logo shown when at top */
+    .logo-white { display: block; }
+    .logo-dark  { display: none; }
+
+    #site-header.scrolled .logo-white { display: none; }
+    #site-header.scrolled .logo-dark  { display: block; }
+
+    /* Fallback text logo */
+    .logo-text {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 1.1rem;
+      letter-spacing: 0.02em;
+      line-height: 1.1;
+      color: #fff;
+      transition: color var(--transition-med);
+    }
+
+    .logo-text span {
+      display: block;
+      font-size: 0.65rem;
+      font-family: var(--font-body);
+      font-weight: 400;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--gold);
+    }
+
+    /* Desktop Nav */
+    .header-nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .header-nav a {
+      font-size: 0.875rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      color: rgba(255, 255, 255, 0.85);
+      padding: 8px 16px;
+      border-radius: 100px;
+      transition: color var(--transition-fast), background var(--transition-fast);
+    }
+
+    .header-nav a:hover,
+    .header-nav a:focus-visible {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.08);
+      outline: none;
+    }
+
+    /* Header CTA */
+    .header-cta {
+      flex-shrink: 0;
+    }
+
+    .header-cta .btn-gold {
+      padding: 10px 24px;
+      font-size: 0.8rem;
+    }
+
+    /* Hamburger */
+    .hamburger {
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 5px;
+      width: 44px;
+      height: 44px;
+      border-radius: 8px;
+      transition: background var(--transition-fast);
+      flex-shrink: 0;
+    }
+
+    .hamburger:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .hamburger-bar {
+      display: block;
+      width: 22px;
+      height: 2px;
+      background: #fff;
+      border-radius: 2px;
+      transition: transform 0.3s ease, opacity 0.3s ease, width 0.3s ease;
+      will-change: transform;
+    }
+
+    .hamburger[aria-expanded="true"] .hamburger-bar:nth-child(1) {
+      transform: translateY(7px) rotate(45deg);
+    }
+
+    .hamburger[aria-expanded="true"] .hamburger-bar:nth-child(2) {
+      opacity: 0;
+      width: 0;
+    }
+
+    .hamburger[aria-expanded="true"] .hamburger-bar:nth-child(3) {
+      transform: translateY(-7px) rotate(-45deg);
+    }
+
+    /* Mobile Menu Drawer */
+    .mobile-menu {
+      position: fixed;
+      top: var(--header-h);
+      left: 0;
+      right: 0;
+      background: rgba(10, 10, 10, 0.97);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 16px 0 24px;
+      z-index: 999;
+      transform: translateY(-100%);
+      opacity: 0;
+      pointer-events: none;
+      transition: transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.35s ease;
+      will-change: transform, opacity;
+    }
+
+    .mobile-menu.open {
+      transform: translateY(0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .mobile-menu-inner {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 0 clamp(20px, 5vw, 60px);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .mobile-menu a {
+      font-size: 1.1rem;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.85);
+      padding: 14px 16px;
+      border-radius: var(--radius-sm);
+      transition: color var(--transition-fast), background var(--transition-fast);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .mobile-menu a:last-of-type {
+      border-bottom: none;
+    }
+
+    .mobile-menu a:hover {
+      color: var(--gold);
+      background: rgba(201, 162, 39, 0.06);
+    }
+
+    .mobile-menu .btn-gold {
+      margin-top: 16px;
+      width: 100%;
+      justify-content: center;
+    }
+
+    /* ============================================================
+       SECTION 1 — HERO
+    ============================================================ */
+    #hero {
+      position: relative;
+      height: 100vh;
+      min-height: 600px;
+      background: var(--bg-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    /* Video */
+    #hero-video {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: 0;
+    }
+
+    /* Gradient overlay */
+    .hero-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        to bottom,
+        rgba(10, 10, 10, 0.55) 0%,
+        rgba(10, 10, 10, 0.4) 40%,
+        rgba(10, 10, 10, 0.7) 75%,
+        rgba(10, 10, 10, 0.95) 100%
+      );
+      z-index: 1;
+    }
+
+    /* Hero Content */
+    .hero-content {
+      position: relative;
+      z-index: 2;
+      text-align: center;
+      padding: 0 clamp(20px, 6vw, 80px);
+      max-width: 900px;
+      width: 100%;
+    }
+
+    .hero-logo {
+      margin: 0 auto 32px;
+      width: clamp(100px, 20vw, 160px);
+    }
+
+    .hero-logo img {
+      width: 100%;
+      height: auto;
+      filter: drop-shadow(0 0 40px rgba(201, 162, 39, 0.25));
+    }
+
+    /* Fallback text logo in hero */
+    .hero-logo-text {
+      font-family: var(--font-display);
+      font-size: clamp(1.4rem, 3vw, 2rem);
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: 0.04em;
+      text-shadow: 0 2px 20px rgba(0, 0, 0, 0.6);
+    }
+
+    .hero-logo-text span {
+      display: block;
+      font-family: var(--font-body);
+      font-size: clamp(0.65rem, 1.2vw, 0.85rem);
+      font-weight: 400;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-top: 6px;
+    }
+
+    #hero h1 {
+      font-family: var(--font-display);
+      font-size: clamp(2rem, 5.5vw, 4.5rem);
+      font-weight: 900;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+      color: #fff;
+      margin-bottom: 24px;
+      text-shadow: 0 2px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    #hero h1 em {
+      font-style: italic;
+      color: var(--gold);
+    }
+
+    .hero-sub {
+      font-size: clamp(1rem, 1.8vw, 1.2rem);
+      font-weight: 300;
+      color: rgba(255, 255, 255, 0.75);
+      margin-bottom: 40px;
+      letter-spacing: 0.02em;
+    }
+
+    .hero-cta-group {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .hero-cta-group .btn-gold {
+      font-size: 0.9rem;
+      padding: 16px 40px;
+    }
+
+    .hero-cta-group .btn-ghost {
+      font-size: 0.9rem;
+      padding: 14px 36px;
+    }
+
+    /* Scroll indicator */
+    .hero-scroll-hint {
+      position: absolute;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      color: rgba(255, 255, 255, 0.45);
+      font-size: 0.7rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+
+    .scroll-mouse {
+      width: 24px;
+      height: 38px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 12px;
+      position: relative;
+    }
+
+    .scroll-dot {
+      width: 4px;
+      height: 8px;
+      background: var(--gold);
+      border-radius: 2px;
+      position: absolute;
+      top: 6px;
+      left: 50%;
+      transform: translateX(-50%);
+      animation: scroll-bounce 2s ease infinite;
+    }
+
+    @keyframes scroll-bounce {
+      0%   { opacity: 1; transform: translateX(-50%) translateY(0); }
+      60%  { opacity: 0; transform: translateX(-50%) translateY(16px); }
+      61%  { opacity: 0; transform: translateX(-50%) translateY(0); }
+      100% { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+
+    /* ============================================================
+       SECTION 2 — FEATURE BENTO BOXES
+    ============================================================ */
+    #features {
+      background: var(--bg-secondary);
+      padding: var(--section-pad) 0;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .feature-box {
+      background: #161616;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-xl);
+      padding: clamp(28px, 4vw, 44px);
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      transition: border-color var(--transition-med), transform var(--transition-med), box-shadow var(--transition-med);
+      will-change: transform;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .feature-box::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at top left, rgba(201, 162, 39, 0.04), transparent 60%);
+      opacity: 0;
+      transition: opacity var(--transition-med);
+      pointer-events: none;
+    }
+
+    .feature-box:hover {
+      border-color: var(--gold);
+      transform: translateY(-4px) scale(1.01);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(201, 162, 39, 0.15);
+    }
+
+    .feature-box:hover::before {
+      opacity: 1;
+    }
+
+    .feature-icon {
+      width: 52px;
+      height: 52px;
+      background: rgba(201, 162, 39, 0.1);
+      border: 1px solid rgba(201, 162, 39, 0.25);
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .feature-icon svg {
+      width: 26px;
+      height: 26px;
+      color: var(--gold);
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.75;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .feature-box h3 {
+      font-family: var(--font-display);
+      font-size: clamp(1.3rem, 2vw, 1.6rem);
+      font-weight: 700;
+      color: #fff;
+      line-height: 1.2;
+    }
+
+    .feature-box p {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      line-height: 1.65;
+      flex: 1;
+    }
+
+    /* Key Dates list */
+    .key-dates-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .key-date-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+
+    .key-date-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--gold);
+      border-radius: 50%;
+      margin-top: 7px;
+      flex-shrink: 0;
+    }
+
+    .key-date-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 2px;
+    }
+
+    .key-date-desc {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+    }
+
+    /* ============================================================
+       SECTION 3 — CATEGORY GALLERY
+    ============================================================ */
+    #categories {
+      background: var(--bg-primary);
+      padding: var(--section-pad) 0;
+    }
+
+    .section-intro {
+      text-align: center;
+      margin-bottom: clamp(40px, 6vw, 72px);
+    }
+
+    .section-sub {
+      font-size: 1rem;
+      color: var(--text-muted);
+      margin-top: 20px;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .categories-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      grid-template-rows: repeat(2, 240px);
+      gap: 12px;
+    }
+
+    .cat-box {
+      position: relative;
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      cursor: pointer;
+      group: cat;
+    }
+
+    /* Unique gradients per category */
+    .cat-box:nth-child(1) { background: linear-gradient(135deg, #1a1208 0%, #2d1f05 40%, #3a2808 100%); }
+    .cat-box:nth-child(2) { background: linear-gradient(135deg, #0d1520 0%, #12202e 40%, #1a2d3d 100%); }
+    .cat-box:nth-child(3) { background: linear-gradient(135deg, #1a1208 0%, #251905 40%, #1c1408 100%); }
+    .cat-box:nth-child(4) { background: linear-gradient(135deg, #140d0d 0%, #221212 40%, #2a1515 100%); }
+    .cat-box:nth-child(5) { background: linear-gradient(135deg, #0d1a0d 0%, #111f0d 40%, #162312 100%); }
+    .cat-box:nth-child(6) { background: linear-gradient(135deg, #0d0d20 0%, #11122e 40%, #151630 100%); }
+    .cat-box:nth-child(7) { background: linear-gradient(135deg, #1a0d0d 0%, #24100e 40%, #1f0e0c 100%); }
+    .cat-box:nth-child(8) { background: linear-gradient(135deg, #12100a 0%, #1c1808 40%, #231d0a 100%); }
+
+    .cat-box-inner {
+      position: absolute;
+      inset: 0;
+      padding: clamp(20px, 3vw, 32px);
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.1) 60%, transparent 100%);
+      transition: background var(--transition-med);
+    }
+
+    .cat-box:hover .cat-box-inner {
+      background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.5) 60%, rgba(0,0,0,0.1) 100%);
+    }
+
+    .cat-number {
+      position: absolute;
+      top: 20px;
+      left: 24px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      color: rgba(201, 162, 39, 0.6);
+      text-transform: uppercase;
+    }
+
+    /* Gold accent line that grows on hover */
+    .cat-accent {
+      width: 32px;
+      height: 2px;
+      background: var(--gold);
+      border-radius: 1px;
+      margin-bottom: 12px;
+      transition: width var(--transition-med);
+    }
+
+    .cat-box:hover .cat-accent {
+      width: 52px;
+    }
+
+    .cat-name {
+      font-family: var(--font-display);
+      font-size: clamp(0.95rem, 1.4vw, 1.15rem);
+      font-weight: 700;
+      color: #fff;
+      line-height: 1.25;
+      margin-bottom: 0;
+      transition: margin-bottom var(--transition-med);
+    }
+
+    .cat-desc {
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.65);
+      line-height: 1.5;
+      margin-top: 10px;
+      max-height: 0;
+      overflow: hidden;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: max-height 0.35s ease, opacity 0.35s ease, transform 0.35s ease;
+    }
+
+    .cat-box:hover .cat-desc {
+      max-height: 80px;
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Gold shimmer on hover */
+    .cat-box::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: var(--radius-lg);
+      border: 1px solid transparent;
+      transition: border-color var(--transition-med);
+      pointer-events: none;
+    }
+
+    .cat-box:hover::after {
+      border-color: rgba(201, 162, 39, 0.4);
+    }
+
+    /* ============================================================
+       SECTION 4 — REGIONAL SECTION
+    ============================================================ */
+    #regions {
+      background: var(--bg-tertiary);
+      padding: var(--section-pad) 0;
+    }
+
+    .country-cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-top: clamp(40px, 6vw, 60px);
+    }
+
+    .country-card {
+      background: #161616;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-xl);
+      padding: 36px 28px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color var(--transition-med), transform var(--transition-med), box-shadow var(--transition-med);
+      will-change: transform;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .country-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at center top, rgba(201, 162, 39, 0.06), transparent 65%);
+      opacity: 0;
+      transition: opacity var(--transition-med);
+    }
+
+    .country-card:hover,
+    .country-card.active {
+      border-color: var(--gold);
+      transform: translateY(-3px);
+      box-shadow: 0 16px 50px rgba(0, 0, 0, 0.4);
+    }
+
+    .country-card:hover::before,
+    .country-card.active::before {
+      opacity: 1;
+    }
+
+    .country-flag {
+      font-size: 3.5rem;
+      margin-bottom: 16px;
+      display: block;
+      line-height: 1;
+    }
+
+    .country-name {
+      font-family: var(--font-display);
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 12px;
+    }
+
+    .country-explore {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--gold);
+      letter-spacing: 0.06em;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: gap var(--transition-fast);
+    }
+
+    .country-card:hover .country-explore {
+      gap: 10px;
+    }
+
+    /* Regions Accordion */
+    .regions-accordion {
+      margin-top: 20px;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border-subtle);
+      overflow: hidden;
+      background: #121212;
+      max-height: 0;
+      opacity: 0;
+      transition: max-height 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.35s ease, margin-top 0.35s ease;
+      will-change: max-height, opacity;
+    }
+
+    .regions-accordion.open {
+      max-height: 600px;
+      opacity: 1;
+      margin-top: 20px;
+    }
+
+    .regions-accordion-inner {
+      padding: 28px;
+    }
+
+    .regions-accordion h4 {
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--gold);
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .regions-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 8px;
+    }
+
+    .region-btn {
+      background: #1a1a1a;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      text-align: left;
+      font-size: 0.875rem;
+      color: rgba(255, 255, 255, 0.75);
+      cursor: pointer;
+      transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+      font-family: var(--font-body);
+    }
+
+    .region-btn:hover,
+    .region-btn.active {
+      background: rgba(201, 162, 39, 0.1);
+      border-color: rgba(201, 162, 39, 0.4);
+      color: var(--gold);
+    }
+
+    /* Sub-region (county/city) list */
+    .sub-regions {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-subtle);
+      display: none;
+    }
+
+    .sub-regions.open {
+      display: block;
+    }
+
+    .sub-regions h5 {
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    .sub-regions-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .sub-region-chip {
+      background: #1e1e1e;
+      border: 1px solid #2e2e2e;
+      border-radius: 100px;
+      padding: 6px 14px;
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.65);
+      cursor: default;
+      transition: background var(--transition-fast), color var(--transition-fast);
+    }
+
+    .sub-region-chip:hover {
+      background: rgba(201, 162, 39, 0.08);
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    /* ============================================================
+       SECTION 5 — FIND A TRADE
+    ============================================================ */
+    #find-a-trade {
+      background: var(--bg-primary);
+      padding: var(--section-pad) 0;
+    }
+
+    .find-trade-card {
+      max-width: 680px;
+      margin: clamp(40px, 6vw, 64px) auto 0;
+      background: #111;
+      border: 1px solid var(--gold);
+      border-radius: var(--radius-xl);
+      padding: clamp(28px, 5vw, 52px);
+      box-shadow: 0 0 80px rgba(201, 162, 39, 0.07);
+    }
+
+    .find-trade-fields {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    /* Input wrapper for autocomplete */
+    .input-wrapper {
+      position: relative;
+    }
+
+    .form-input {
+      width: 100%;
+      background: #1a1a1a;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 16px 20px;
+      font-size: 1rem;
+      font-family: var(--font-body);
+      color: #fff;
+      outline: none;
+      transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+      appearance: none;
+      -webkit-appearance: none;
+    }
+
+    .form-input::placeholder {
+      color: #555;
+    }
+
+    .form-input:focus {
+      border-color: rgba(201, 162, 39, 0.6);
+      box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.1);
+    }
+
+    select.form-input {
+      cursor: pointer;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 16px center;
+      padding-right: 44px;
+    }
+
+    select.form-input option {
+      background: #1a1a1a;
+      color: #fff;
+    }
+
+    /* Geolocation link */
+    .geo-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      color: var(--gold);
+      font-weight: 500;
+      cursor: pointer;
+      padding: 4px 0;
+      transition: color var(--transition-fast);
+      background: none;
+      border: none;
+      font-family: var(--font-body);
+    }
+
+    .geo-link:hover {
+      color: var(--gold-light);
+    }
+
+    .geo-link svg {
+      width: 14px;
+      height: 14px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+    }
+
+    /* Autocomplete Dropdown */
+    .autocomplete-dropdown {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      right: 0;
+      background: #1e1e1e;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      z-index: 100;
+      max-height: 220px;
+      overflow-y: auto;
+      display: none;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+    }
+
+    .autocomplete-dropdown.open {
+      display: block;
+    }
+
+    .autocomplete-item {
+      padding: 12px 16px;
+      font-size: 0.9rem;
+      color: rgba(255, 255, 255, 0.8);
+      cursor: pointer;
+      transition: background var(--transition-fast), color var(--transition-fast);
+      border-bottom: 1px solid #252525;
+    }
+
+    .autocomplete-item:last-child {
+      border-bottom: none;
+    }
+
+    .autocomplete-item:hover,
+    .autocomplete-item.highlighted {
+      background: rgba(201, 162, 39, 0.1);
+      color: #fff;
+    }
+
+    /* Find trade row */
+    .find-trade-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .find-trade-row .btn-gold {
+      flex-shrink: 0;
+    }
+
+    /* Results */
+    .find-results {
+      margin-top: 20px;
+      padding: 20px;
+      background: #151515;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-subtle);
+      text-align: center;
+      display: none;
+    }
+
+    .find-results.open {
+      display: block;
+    }
+
+    .find-results-icon {
+      width: 44px;
+      height: 44px;
+      margin: 0 auto 12px;
+      background: rgba(201, 162, 39, 0.1);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .find-results-icon svg {
+      width: 22px;
+      height: 22px;
+      fill: none;
+      stroke: var(--gold);
+      stroke-width: 1.75;
+    }
+
+    .find-results p {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .find-results strong {
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    /* ============================================================
+       SECTION 6 — FOOTER
+    ============================================================ */
+    #site-footer {
+      background: var(--bg-footer);
+      border-top: 1px solid var(--gold);
+      padding-top: 64px;
+    }
+
+    .footer-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 32px;
+      padding-bottom: 40px;
+      border-bottom: 1px solid var(--border-subtle);
+      flex-wrap: wrap;
+    }
+
+    .footer-logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .footer-logo img {
+      height: 36px;
+      width: auto;
+    }
+
+    .footer-logo-text {
+      font-family: var(--font-display);
+      font-size: 1rem;
+      font-weight: 700;
+      color: #fff;
+      line-height: 1.1;
+    }
+
+    .footer-logo-text span {
+      display: block;
+      font-family: var(--font-body);
+      font-size: 0.6rem;
+      font-weight: 400;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--gold);
+    }
+
+    .footer-nav {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .footer-nav a {
+      font-size: 0.875rem;
+      color: rgba(255, 255, 255, 0.6);
+      padding: 6px 12px;
+      border-radius: var(--radius-sm);
+      transition: color var(--transition-fast), background var(--transition-fast);
+    }
+
+    .footer-nav a:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    /* Footer Links row */
+    .footer-links {
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+      padding: 28px 0;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .footer-links a {
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.45);
+      transition: color var(--transition-fast);
+    }
+
+    .footer-links a:hover {
+      color: var(--gold);
+    }
+
+    /* Social Icons */
+    .footer-socials {
+      display: flex;
+      gap: 12px;
+      padding: 24px 0;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .social-link {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: #111;
+      border: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color var(--transition-fast), background var(--transition-fast);
+    }
+
+    .social-link svg {
+      width: 18px;
+      height: 18px;
+      fill: rgba(255, 255, 255, 0.5);
+      transition: fill var(--transition-fast);
+    }
+
+    .social-link:hover {
+      border-color: var(--gold);
+      background: rgba(201, 162, 39, 0.08);
+    }
+
+    .social-link:hover svg {
+      fill: var(--gold);
+    }
+
+    /* Copyright */
+    .footer-bottom {
+      padding: 20px 0 28px;
+      text-align: center;
+    }
+
+    .footer-bottom p {
+      font-size: 0.775rem;
+      color: rgba(255, 255, 255, 0.3);
+      line-height: 1.8;
+    }
+
+    .footer-bottom strong {
+      color: rgba(255, 255, 255, 0.45);
+    }
+
+    /* ============================================================
+       RESPONSIVE
+    ============================================================ */
+
+    /* Tablet: ≤ 1024px */
+    @media (max-width: 1024px) {
+      .categories-grid {
+        grid-template-columns: repeat(2, 1fr);
+        grid-template-rows: repeat(4, 200px);
+      }
+    }
+
+    /* Tablet/Mobile: ≤ 768px */
+    @media (max-width: 768px) {
+      :root { --header-h: 60px; }
+
+      .header-nav,
+      .header-cta {
+        display: none;
+      }
+
+      .hamburger {
+        display: flex;
+      }
+
+      .features-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .categories-grid {
+        grid-template-columns: repeat(2, 1fr);
+        grid-template-rows: repeat(4, 180px);
+      }
+
+      .country-cards {
+        grid-template-columns: 1fr;
+      }
+
+      .find-trade-row {
+        flex-direction: column;
+      }
+
+      .find-trade-row .btn-gold {
+        width: 100%;
+      }
+
+      .footer-top {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .footer-nav {
+        display: none;
+      }
+
+      .footer-links {
+        gap: 16px;
+      }
+    }
+
+    /* Mobile: ≤ 480px */
+    @media (max-width: 480px) {
+      .categories-grid {
+        grid-template-columns: 1fr;
+        grid-template-rows: none;
+      }
+
+      .cat-box {
+        height: 180px;
+      }
+
+      .cat-desc {
+        max-height: none !important;
+        opacity: 1 !important;
+        transform: none !important;
+      }
+
+      .hero-cta-group {
+        flex-direction: column;
+        align-items: center;
+      }
+    }
+
+    /* Large screens: ≥ 1920px */
+    @media (min-width: 1920px) {
+      :root { --section-pad: 140px; }
+
+      .container {
+        max-width: 1440px;
+      }
+    }
+
+    /* ============================================================
+       FOCUS STYLES (accessibility)
+    ============================================================ */
+    :focus-visible {
+      outline: 2px solid var(--gold);
+      outline-offset: 3px;
+      border-radius: 4px;
+    }
+
+    /* ============================================================
+       SCROLLBAR STYLING
+    ============================================================ */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #0a0a0a;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #2a2a2a;
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--gold-dark);
+    }
+
+    /* ============================================================
+       LOADING / PERFORMANCE
+    ============================================================ */
+    .hero-content > * {
+      will-change: opacity, transform;
+    }
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+
+      html { scroll-behavior: auto; }
+
+      .reveal {
+        opacity: 1;
+        transform: none;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<!-- ============================================================
+     HEADER
+============================================================ -->
+<header id="site-header" class="at-top" role="banner">
+  <div class="header-inner">
+
+    <!-- Logo -->
+    <a href="home.html" class="header-logo" aria-label="British Trade Awards — home">
+      <!-- White version (shown at top of page) -->
+      <img src="logo-white.png" alt="British Trade Awards" class="logo-white"
+           onerror="this.style.display='none'; this.nextElementSibling.style.display='none'; document.getElementById('header-logo-fallback').style.display='block'">
+      <!-- Gold-on-dark version (shown when scrolled) -->
+      <img src="logo-gold-black.png" alt="British Trade Awards" class="logo-dark"
+           style="display:none"
+           onerror="this.style.display='none'">
+      <!-- Fallback text logo -->
+      <span id="header-logo-fallback" class="logo-text" style="display:none">
+        British Trade Awards
+        <span>Est. 2026</span>
+      </span>
+    </a>
+
+    <!-- Desktop Nav -->
+    <nav class="header-nav" aria-label="Main navigation">
+      <a href="#categories">Categories</a>
+      <a href="#regions">Regions</a>
+      <a href="#find-a-trade">Find a Trade</a>
+      <a href="#about">About</a>
+    </nav>
+
+    <!-- Desktop CTA -->
+    <div class="header-cta">
+      <a href="submit-entry.html" class="btn-gold" aria-label="Enter the British Trade Awards 2026">Enter</a>
+    </div>
+
+    <!-- Mobile Hamburger -->
+    <button class="hamburger" id="hamburger-btn" aria-expanded="false" aria-controls="mobile-menu" aria-label="Open navigation menu">
+      <span class="hamburger-bar"></span>
+      <span class="hamburger-bar"></span>
+      <span class="hamburger-bar"></span>
+    </button>
+
+  </div>
+</header>
+
+<!-- Mobile Menu -->
+<nav class="mobile-menu" id="mobile-menu" aria-label="Mobile navigation" aria-hidden="true">
+  <div class="mobile-menu-inner">
+    <a href="#categories" class="mobile-nav-link">Categories</a>
+    <a href="#regions" class="mobile-nav-link">Regions</a>
+    <a href="#find-a-trade" class="mobile-nav-link">Find a Trade</a>
+    <a href="#about" class="mobile-nav-link">About</a>
+    <a href="submit-entry.html" class="btn-gold">Enter the Awards</a>
+  </div>
+</nav>
+
+
+<!-- ============================================================
+     SECTION 1 — HERO
+============================================================ -->
+<section id="hero" aria-label="Hero — Crowning the Nation's Finest Trade Professionals">
+
+  <!-- Video background -->
+  <video
+    id="hero-video"
+    autoplay
+    muted
+    loop
+    playsinline
+    preload="none"
+    poster="hero-poster.jpg"
+    aria-hidden="true"
+  >
+    <source src="hero-animation.webm" type="video/webm">
+    <source src="hero-animation.mp4" type="video/mp4">
+  </video>
+
+  <!-- Dark gradient overlay -->
+  <div class="hero-overlay" aria-hidden="true"></div>
+
+  <!-- Hero content -->
+  <div class="hero-content">
+
+    <!-- Logo -->
+    <div class="hero-logo" aria-hidden="true">
+      <img
+        src="logo-white.png"
+        alt=""
+        onerror="this.style.display='none'; this.nextElementSibling.style.display='block'"
+      >
+      <div class="hero-logo-text" style="display:none">
+        British Trade Awards
+        <span>Est. 2026</span>
+      </div>
+    </div>
+
+    <h1>
+      Crowning the Nation's<br>
+      <em>Finest Trade Professionals</em>
+    </h1>
+
+    <p class="hero-sub">
+      Celebrating excellence across Britain's skilled trades since 2026
+    </p>
+
+    <div class="hero-cta-group">
+      <a href="submit-entry.html" class="btn-gold">
+        <!-- Trophy icon -->
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+        Enter Now
+      </a>
+      <a href="#categories" class="btn-ghost">
+        Explore Categories
+      </a>
+    </div>
+
+  </div>
+
+  <!-- Scroll hint -->
+  <div class="hero-scroll-hint" aria-hidden="true">
+    <div class="scroll-mouse">
+      <div class="scroll-dot"></div>
+    </div>
+    <span>Scroll</span>
+  </div>
+
+</section>
+
+
+<!-- ============================================================
+     SECTION 2 — FEATURE BOXES
+============================================================ -->
+<section id="features" aria-labelledby="features-heading">
+  <div class="container section-pad">
+
+    <span id="features-heading" class="visually-hidden">Key Actions and Dates</span>
+
+    <div class="features-grid">
+
+      <!-- Box 1: Enter -->
+      <article class="feature-box reveal">
+        <div class="feature-icon" aria-hidden="true">
+          <!-- Trophy icon -->
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+        </div>
+        <div>
+          <h3>Enter the Awards</h3>
+          <p>Submit your entry for British Trade Awards 2026. Whether you're a sole trader or a national firm — if you take pride in your craft, this is your moment.</p>
+        </div>
+        <a href="submit-entry.html" class="btn-gold" style="align-self: flex-start; margin-top: auto;">
+          Submit Your Entry
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </a>
+      </article>
+
+      <!-- Box 2: Key Dates -->
+      <article class="feature-box reveal reveal-delay-1">
+        <div class="feature-icon" aria-hidden="true">
+          <!-- Calendar icon -->
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+        </div>
+        <h3>Key Dates 2026</h3>
+        <ul class="key-dates-list" role="list">
+          <li class="key-date-item">
+            <div class="key-date-dot" aria-hidden="true"></div>
+            <div>
+              <div class="key-date-label">1 Sep 2026</div>
+              <div class="key-date-desc">Entries Open</div>
+            </div>
+          </li>
+          <li class="key-date-item">
+            <div class="key-date-dot" aria-hidden="true"></div>
+            <div>
+              <div class="key-date-label">30 Nov 2026</div>
+              <div class="key-date-desc">Entries Close</div>
+            </div>
+          </li>
+          <li class="key-date-item">
+            <div class="key-date-dot" aria-hidden="true"></div>
+            <div>
+              <div class="key-date-label">Jan 2027</div>
+              <div class="key-date-desc">Judging Period</div>
+            </div>
+          </li>
+          <li class="key-date-item">
+            <div class="key-date-dot" aria-hidden="true"></div>
+            <div>
+              <div class="key-date-label">Mar 2027</div>
+              <div class="key-date-desc">Shortlist Announced</div>
+            </div>
+          </li>
+          <li class="key-date-item">
+            <div class="key-date-dot" aria-hidden="true"></div>
+            <div>
+              <div class="key-date-label">May 2027</div>
+              <div class="key-date-desc">Awards Ceremony</div>
+            </div>
+          </li>
+        </ul>
+      </article>
+
+      <!-- Box 3: Vote -->
+      <article class="feature-box reveal reveal-delay-2">
+        <div class="feature-icon" aria-hidden="true">
+          <!-- Star icon -->
+          <svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </div>
+        <div>
+          <h3>Vote for the Best</h3>
+          <p>Cast your vote for the best trade professionals in Britain. The People's Choice Award is decided entirely by public votes — every voice counts.</p>
+        </div>
+        <a href="public-voting.html" class="btn-ghost" style="align-self: flex-start; margin-top: auto;">
+          Cast Your Vote
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </a>
+      </article>
+
+    </div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     SECTION 3 — CATEGORY GALLERY
+============================================================ -->
+<section id="categories" aria-labelledby="categories-heading">
+  <div class="container section-pad">
+
+    <div class="section-intro">
+      <h2 class="section-heading reveal" id="categories-heading">
+        Find your <span class="gold-underline">Category</span>
+      </h2>
+      <p class="section-sub reveal reveal-delay-1">
+        Eight award categories spanning the full breadth of Britain's skilled trades industry
+      </p>
+    </div>
+
+    <div class="categories-grid" role="list" aria-label="Award categories">
+
+      <!-- 1 -->
+      <div class="cat-box reveal" role="listitem" tabindex="0" aria-label="Building and Construction — From groundworks to roofing, the full build spectrum">
+        <div class="cat-box-inner">
+          <span class="cat-number" aria-hidden="true">01</span>
+          <div class="cat-accent" aria-hidden="true"></div>
+          <h3 class="cat-name">Building &amp; Construction</h3>
+          <p class="cat-desc">From groundworks to roofing, the full build spectrum</p>
+        </div>
+      </div>
+
+      <!-- 2 -->
+      <div class="cat-box reveal reveal-delay-1" role="listitem" tabindex="0" aria-label="Mechanical, Electrical and Plumbing — The essential services keeping Britain's homes running">
+        <div class="cat-box-inner">
+          <span class="cat-number" aria-hidden="true">02</span>
+          <div class="cat-accent" aria-hidden="true"></div>
+          <h3 class="cat-name">Mechanical, Electrical &amp; Plumbing</h3>
+          <p class="cat-desc">The essential services keeping Britain's homes running</p>
+        </div>
+      </div>
+
+      <!-- 3 -->
+      <div class="cat-box reveal reveal-delay-2" role="listitem" tabindex="0" aria-label="Carpentry and Joinery — Crafting bespoke woodwork with precision and artistry">
+        <div class="cat-box-inner">
+          <span class="cat-number" aria-hidden="true">03</span>
+          <div class="cat-accent" aria-hidden="true"></div>
+          <h3 class="cat-name">Carpentry &amp; Joinery</h3>
+          <p class="cat-desc">Crafting bespoke woodwork with precision and artistry</p>
+        </div>
+      </div>
+
+      <!-- 4 -->
+      <div class="cat-box reveal reveal-delay-3" role="listitem" tabindex="0" aria-label="Interior Fit-Out and Finishing — Transforming interiors with expert installations">
+        <div class="cat-box-inner">
+          <span class="cat-number" aria-hidden="true">04</span>
+          <div class="cat-accent" aria-hidden="true"></div>
+          <h3 class="cat-name">Interior Fit-Out &amp; Finishing</h3>
+          <p class="cat-desc">Transforming interiors with expert installations</p>
+        </div>
+      </div>
+
+      <!-- 5 -->
+      <div class="cat-box reveal" role="listitem" tabindex="0" aria-label="Outdoor and Landscaping — Creating stunning outdoor spaces across Britain">
+        <div class="cat-box-inner">
+          <span class="cat-number" aria-hidden="true">05</span>
+          <div class="cat-accent" aria-hidden="true"></div>
+          <h3 class="cat-name">Outdoor &amp; Landscaping</h3>
+          <p class="cat-desc">Creating stunning outdoor spaces across Britain</p>
+        </div>
+      </div>
+
+      <!-- 6 -->
+      <div class="cat-box reveal reveal-delay-1" role="listitem" tabindex="0" aria-label="Energy, Tech and Sustainability — Powering Britain's green future">
+        <div class="cat-box-inner">
+          <span class="cat-number" aria-hidden="true">06</span>
+          <div class="cat-accent" aria-hidden="true"></div>
+          <h3 class="cat-name">Energy, Tech &amp; Sustainability</h3>
+          <p class="cat-desc">Powering Britain's green future</p>
+        </div>
+      </div>
+
+      <!-- 7 -->
+      <div class="cat-box reveal reveal-delay-2" role="listitem" tabindex="0" aria-label="Specialist Trades — Niche expertise, exceptional results">
+        <div class="cat-box-inner">
+          <span class="cat-number" aria-hidden="true">07</span>
+          <div class="cat-accent" aria-hidden="true"></div>
+          <h3 class="cat-name">Specialist Trades</h3>
+          <p class="cat-desc">Niche expertise, exceptional results</p>
+        </div>
+      </div>
+
+      <!-- 8 -->
+      <div class="cat-box reveal reveal-delay-3" role="listitem" tabindex="0" aria-label="Industry Leadership — Recognising outstanding leadership in the trades">
+        <div class="cat-box-inner">
+          <span class="cat-number" aria-hidden="true">08</span>
+          <div class="cat-accent" aria-hidden="true"></div>
+          <h3 class="cat-name">Industry Leadership</h3>
+          <p class="cat-desc">Recognising outstanding leadership in the trades</p>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ============================================================
+     SECTION 4 — REGIONAL SECTION
+============================================================ -->
+<section id="regions" aria-labelledby="regions-heading">
+  <div class="container section-pad">
+
+    <div class="section-intro">
+      <h2 class="section-heading reveal" id="regions-heading">
+        Find your <span class="gold-underline">County or City</span>
+      </h2>
+      <p class="section-sub reveal reveal-delay-1">
+        The British Trade Awards celebrates the finest tradespeople across England, Scotland, and Wales
+      </p>
+    </div>
+
+    <div class="country-cards reveal reveal-delay-2" role="list" aria-label="Select a country to explore regions">
+
+      <!-- England -->
+      <div class="country-card" id="card-england" role="listitem" tabindex="0"
+           aria-expanded="false" aria-controls="accordion-england" data-country="england">
+        <span class="country-flag" aria-hidden="true">🏴󠁧󠁢󠁥󠁮󠁧󠁿</span>
+        <div class="country-name">England</div>
+        <span class="country-explore" aria-hidden="true">
+          Explore
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </span>
+      </div>
+
+      <!-- Scotland -->
+      <div class="country-card" id="card-scotland" role="listitem" tabindex="0"
+           aria-expanded="false" aria-controls="accordion-scotland" data-country="scotland">
+        <span class="country-flag" aria-hidden="true">🏴󠁧󠁢󠁳󠁣󠁴󠁿</span>
+        <div class="country-name">Scotland</div>
+        <span class="country-explore" aria-hidden="true">
+          Explore
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </span>
+      </div>
+
+      <!-- Wales -->
+      <div class="country-card" id="card-wales" role="listitem" tabindex="0"
+           aria-expanded="false" aria-controls="accordion-wales" data-country="wales">
+        <span class="country-flag" aria-hidden="true">🏴󠁧󠁢󠁷󠁬󠁳󠁿</span>
+        <div class="country-name">Wales</div>
+        <span class="country-explore" aria-hidden="true">
+          Explore
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </span>
+      </div>
+
+    </div>
+
+    <!-- England Accordion -->
+    <div class="regions-accordion" id="accordion-england" aria-hidden="true">
+      <div class="regions-accordion-inner">
+        <h4>England — Select a Region</h4>
+        <div class="regions-grid" role="list" aria-label="Regions of England">
+          <button class="region-btn" data-region="North West" data-country-ref="england">North West</button>
+          <button class="region-btn" data-region="North East" data-country-ref="england">North East</button>
+          <button class="region-btn" data-region="Yorkshire" data-country-ref="england">Yorkshire</button>
+          <button class="region-btn" data-region="East Midlands" data-country-ref="england">East Midlands</button>
+          <button class="region-btn" data-region="West Midlands" data-country-ref="england">West Midlands</button>
+          <button class="region-btn" data-region="East of England" data-country-ref="england">East of England</button>
+          <button class="region-btn" data-region="London" data-country-ref="england">London</button>
+          <button class="region-btn" data-region="South East" data-country-ref="england">South East</button>
+          <button class="region-btn" data-region="South West" data-country-ref="england">South West</button>
+        </div>
+        <div class="sub-regions" id="sub-england" aria-live="polite">
+          <h5>Counties &amp; Cities</h5>
+          <div class="sub-regions-list" id="sub-list-england"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scotland Accordion -->
+    <div class="regions-accordion" id="accordion-scotland" aria-hidden="true">
+      <div class="regions-accordion-inner">
+        <h4>Scotland — Select a Region</h4>
+        <div class="regions-grid" role="list" aria-label="Regions of Scotland">
+          <button class="region-btn" data-region="Central Scotland" data-country-ref="scotland">Central Scotland</button>
+          <button class="region-btn" data-region="Highlands" data-country-ref="scotland">Highlands</button>
+          <button class="region-btn" data-region="Grampian" data-country-ref="scotland">Grampian</button>
+          <button class="region-btn" data-region="Tayside" data-country-ref="scotland">Tayside</button>
+          <button class="region-btn" data-region="Fife" data-country-ref="scotland">Fife</button>
+          <button class="region-btn" data-region="Lothian" data-country-ref="scotland">Lothian</button>
+          <button class="region-btn" data-region="Strathclyde" data-country-ref="scotland">Strathclyde</button>
+          <button class="region-btn" data-region="Borders" data-country-ref="scotland">Borders</button>
+          <button class="region-btn" data-region="Dumfries &amp; Galloway" data-country-ref="scotland">Dumfries &amp; Galloway</button>
+          <button class="region-btn" data-region="Islands" data-country-ref="scotland">Islands</button>
+        </div>
+        <div class="sub-regions" id="sub-scotland" aria-live="polite">
+          <h5>Cities &amp; Areas</h5>
+          <div class="sub-regions-list" id="sub-list-scotland"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Wales Accordion -->
+    <div class="regions-accordion" id="accordion-wales" aria-hidden="true">
+      <div class="regions-accordion-inner">
+        <h4>Wales — Select a Region</h4>
+        <div class="regions-grid" role="list" aria-label="Regions of Wales">
+          <button class="region-btn" data-region="North Wales" data-country-ref="wales">North Wales</button>
+          <button class="region-btn" data-region="Mid Wales" data-country-ref="wales">Mid Wales</button>
+          <button class="region-btn" data-region="South West Wales" data-country-ref="wales">South West Wales</button>
+          <button class="region-btn" data-region="South East Wales" data-country-ref="wales">South East Wales</button>
+          <button class="region-btn" data-region="Cardiff Capital Region" data-country-ref="wales">Cardiff Capital Region</button>
+          <button class="region-btn" data-region="Swansea Bay" data-country-ref="wales">Swansea Bay</button>
+        </div>
+        <div class="sub-regions" id="sub-wales" aria-live="polite">
+          <h5>Counties &amp; Towns</h5>
+          <div class="sub-regions-list" id="sub-list-wales"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ============================================================
+     SECTION 5 — FIND A TRADE
+============================================================ -->
+<section id="find-a-trade" aria-labelledby="find-heading">
+  <div class="container section-pad">
+
+    <div class="section-intro">
+      <h2 class="section-heading reveal" id="find-heading">
+        Find a Trade <span class="gold-underline">Professional</span>
+      </h2>
+      <p class="section-sub reveal reveal-delay-1">
+        Locate the best tradespeople in your area with British Trade Awards recommended trade specialists
+      </p>
+    </div>
+
+    <div class="find-trade-card reveal reveal-delay-2">
+
+      <form id="find-trade-form" class="find-trade-fields" novalidate>
+
+        <!-- Location input with autocomplete -->
+        <div class="input-wrapper">
+          <label for="location-input" class="visually-hidden">Search by County or City</label>
+          <input
+            type="text"
+            id="location-input"
+            class="form-input"
+            placeholder="Search by County or City"
+            autocomplete="off"
+            aria-autocomplete="list"
+            aria-controls="location-dropdown"
+            aria-expanded="false"
+          >
+          <div id="location-dropdown" class="autocomplete-dropdown" role="listbox" aria-label="Location suggestions">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <!-- Geolocation link -->
+        <button type="button" class="geo-link" id="geo-btn" aria-label="Use my current location">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 1v4"/><path d="M12 19v4"/><path d="M1 12h4"/><path d="M19 12h4"/></svg>
+          Use my location
+        </button>
+
+        <!-- Category select -->
+        <div>
+          <label for="category-select" class="visually-hidden">Select a trade category</label>
+          <select id="category-select" class="form-input" aria-label="Select a trade category">
+            <option value="">All Categories</option>
+            <option value="building-construction">Building &amp; Construction</option>
+            <option value="mep">Mechanical, Electrical &amp; Plumbing</option>
+            <option value="carpentry">Carpentry &amp; Joinery</option>
+            <option value="interior">Interior Fit-Out &amp; Finishing</option>
+            <option value="outdoor">Outdoor &amp; Landscaping</option>
+            <option value="energy">Energy, Tech &amp; Sustainability</option>
+            <option value="specialist">Specialist Trades</option>
+            <option value="leadership">Industry Leadership</option>
+          </select>
+        </div>
+
+        <!-- Find row -->
+        <div class="find-trade-row">
+          <label for="find-submit" class="visually-hidden">Find trade professionals</label>
+          <button type="submit" id="find-submit" class="btn-gold" aria-label="Search for trade professionals">
+            Find
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          </button>
+        </div>
+
+      </form>
+
+      <!-- Results Area -->
+      <div id="find-results" class="find-results" role="region" aria-live="polite" aria-label="Search results">
+        <div class="find-results-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        </div>
+        <p id="find-results-text">
+          <strong>No results found yet.</strong><br>
+          Check back when nominees are announced — our directory of Award-recommended tradespeople is coming soon.
+        </p>
+      </div>
+
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ============================================================
+     SECTION — ABOUT (anchor target)
+============================================================ -->
+<section id="about" aria-labelledby="about-heading" style="background: var(--bg-secondary); padding: var(--section-pad) 0;">
+  <div class="container">
+    <div style="max-width: 800px; margin: 0 auto; text-align: center;">
+      <h2 class="section-heading reveal" id="about-heading">
+        About the <span class="gold-underline">Awards</span>
+      </h2>
+      <p class="reveal reveal-delay-1" style="font-size: 1.05rem; color: var(--text-muted); margin-top: 28px; line-height: 1.8;">
+        The British Trade Awards exist to celebrate the skilled men and women who keep the nation running. From the plumber who responded at midnight to the landscaper who transformed a forgotten garden — this is the awards programme that finally gives the trades the national recognition they deserve.
+      </p>
+      <p class="reveal reveal-delay-2" style="font-size: 1.05rem; color: var(--text-muted); margin-top: 20px; line-height: 1.8;">
+        Independent judging. Regional heats. A national gala ceremony. Real recognition for real craft.
+      </p>
+      <div class="reveal reveal-delay-3" style="margin-top: 44px; display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
+        <a href="submit-entry.html" class="btn-gold">Enter the 2026 Awards</a>
+        <a href="#categories" class="btn-ghost">View Categories</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     FOOTER
+============================================================ -->
+<footer id="site-footer" role="contentinfo">
+  <div class="container">
+
+    <!-- Row 1: Logo + Nav -->
+    <div class="footer-top">
+      <a href="home.html" class="footer-logo" aria-label="British Trade Awards — back to top">
+        <img src="logo-white.png" alt="British Trade Awards"
+             onerror="this.style.display='none'; this.nextElementSibling.style.display='block'">
+        <div class="footer-logo-text" style="display:none">
+          British Trade Awards
+          <span>Est. 2026</span>
+        </div>
+      </a>
+
+      <nav class="footer-nav" aria-label="Footer navigation">
+        <a href="#categories">Categories</a>
+        <a href="#regions">Regions</a>
+        <a href="#find-a-trade">Find a Trade</a>
+        <a href="#about">About</a>
+        <a href="submit-entry.html" class="gold-text">Enter 2026</a>
+      </nav>
+    </div>
+
+    <!-- Row 2: Legal Links -->
+    <div class="footer-links" role="list" aria-label="Legal and policy links">
+      <a href="privacy-policy.html" role="listitem">Privacy Policy</a>
+      <a href="#" role="listitem">Terms &amp; Conditions</a>
+      <a href="#" role="listitem">Contact Us</a>
+      <a href="#" role="listitem">Sitemap</a>
+      <a href="#" role="listitem">Cookie Policy</a>
+    </div>
+
+    <!-- Row 3: Social Icons -->
+    <div class="footer-socials" aria-label="Social media links">
+
+      <!-- LinkedIn -->
+      <a href="#" class="social-link" aria-label="British Trade Awards on LinkedIn" rel="noopener noreferrer" target="_blank">
+        <svg viewBox="0 0 24 24" role="img" aria-hidden="true">
+          <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/>
+          <rect width="4" height="12" x="2" y="9"/>
+          <circle cx="4" cy="4" r="2"/>
+        </svg>
+      </a>
+
+      <!-- Instagram -->
+      <a href="#" class="social-link" aria-label="British Trade Awards on Instagram" rel="noopener noreferrer" target="_blank">
+        <svg viewBox="0 0 24 24" role="img" aria-hidden="true">
+          <rect width="20" height="20" x="2" y="2" rx="5" ry="5"/>
+          <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
+          <line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/>
+        </svg>
+      </a>
+
+      <!-- Facebook -->
+      <a href="#" class="social-link" aria-label="British Trade Awards on Facebook" rel="noopener noreferrer" target="_blank">
+        <svg viewBox="0 0 24 24" role="img" aria-hidden="true">
+          <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
+        </svg>
+      </a>
+
+      <!-- X / Twitter -->
+      <a href="#" class="social-link" aria-label="British Trade Awards on X (Twitter)" rel="noopener noreferrer" target="_blank">
+        <svg viewBox="0 0 24 24" role="img" aria-hidden="true">
+          <path d="M4 4l16 16M4 20L20 4" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round"/>
+        </svg>
+      </a>
+
+    </div>
+
+    <!-- Row 4: Copyright -->
+    <div class="footer-bottom">
+      <p>
+        &copy; 2026 British Trade Awards &nbsp;|&nbsp;
+        <strong>[Company Name Placeholder]</strong> &nbsp;|&nbsp;
+        Reg. No. <strong>[PLACEHOLDER]</strong> &nbsp;|&nbsp;
+        <strong>[Address Placeholder], United Kingdom</strong> &nbsp;|&nbsp;
+        Registered in England &amp; Wales
+      </p>
+    </div>
+
+  </div>
+</footer>
+
+
+<!-- ============================================================
+     JAVASCRIPT — NO INLINE EVENT HANDLERS
+============================================================ -->
+<script>
+(function () {
+  'use strict';
+
+  /* ============================================================
+     1. SMART STICKY HEADER
+  ============================================================ */
+  (function initHeader() {
+    var header     = document.getElementById('site-header');
+    var lastY      = 0;
+    var ticking    = false;
+    var THRESHOLD  = 80; // px before header changes state
+
+    function onScroll() {
+      if (!ticking) {
+        window.requestAnimationFrame(updateHeader);
+        ticking = true;
+      }
+    }
+
+    function updateHeader() {
+      var y = window.scrollY;
+
+      if (y < THRESHOLD) {
+        // State 1: at top — transparent
+        header.className = 'at-top';
+      } else if (y > lastY) {
+        // Scrolling down — hide
+        header.className = 'scrolled hidden';
+      } else {
+        // Scrolling up — show frosted glass
+        header.className = 'scrolled';
+      }
+
+      lastY   = y;
+      ticking = false;
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    updateHeader();
+  })();
+
+
+  /* ============================================================
+     2. MOBILE HAMBURGER MENU
+  ============================================================ */
+  (function initMobileMenu() {
+    var btn        = document.getElementById('hamburger-btn');
+    var menu       = document.getElementById('mobile-menu');
+    var navLinks   = menu.querySelectorAll('.mobile-nav-link, .btn-gold');
+    var isOpen     = false;
+
+    function open() {
+      isOpen = true;
+      btn.setAttribute('aria-expanded', 'true');
+      menu.setAttribute('aria-hidden', 'false');
+      menu.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function close() {
+      isOpen = false;
+      btn.setAttribute('aria-expanded', 'false');
+      menu.setAttribute('aria-hidden', 'true');
+      menu.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    btn.addEventListener('click', function () {
+      isOpen ? close() : open();
+    });
+
+    // Close on nav link click
+    navLinks.forEach(function (link) {
+      link.addEventListener('click', close);
+    });
+
+    // Close on Escape
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && isOpen) close();
+    });
+
+    // Close on outside click
+    document.addEventListener('click', function (e) {
+      if (isOpen && !menu.contains(e.target) && !btn.contains(e.target)) {
+        close();
+      }
+    });
+  })();
+
+
+  /* ============================================================
+     3. INTERSECTION OBSERVER — REVEAL ANIMATIONS
+  ============================================================ */
+  (function initReveal() {
+    var elements = document.querySelectorAll('.reveal');
+
+    if (!('IntersectionObserver' in window)) {
+      // Fallback: show all immediately
+      elements.forEach(function (el) {
+        el.classList.add('visible');
+      });
+      return;
+    }
+
+    var observer = new IntersectionObserver(
+      function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.12, rootMargin: '0px 0px -40px 0px' }
+    );
+
+    elements.forEach(function (el) {
+      observer.observe(el);
+    });
+  })();
+
+
+  /* ============================================================
+     4. REGIONAL ACCORDION
+  ============================================================ */
+  (function initRegions() {
+
+    // Sub-region data
+    var SUB_REGIONS = {
+      england: {
+        'North West':       ['Manchester', 'Liverpool', 'Preston', 'Blackpool', 'Chester', 'Cumbria', 'Warrington', 'Salford', 'Bolton'],
+        'North East':       ['Newcastle upon Tyne', 'Sunderland', 'Durham', 'Middlesbrough', 'Gateshead', 'South Shields'],
+        'Yorkshire':        ['Leeds', 'Sheffield', 'Bradford', 'York', 'Hull', 'Doncaster', 'Harrogate', 'Wakefield'],
+        'East Midlands':    ['Nottingham', 'Leicester', 'Derby', 'Lincoln', 'Northampton', 'Coventry', 'Stoke-on-Trent'],
+        'West Midlands':    ['Birmingham', 'Wolverhampton', 'Coventry', 'Walsall', 'Solihull', 'Hereford', 'Shrewsbury'],
+        'East of England':  ['Norwich', 'Cambridge', 'Ipswich', 'Peterborough', 'Chelmsford', 'Luton', 'Bedford'],
+        'London':           ['Central London', 'East London', 'North London', 'South London', 'West London', 'City of London'],
+        'South East':       ['Brighton', 'Southampton', 'Oxford', 'Reading', 'Canterbury', 'Maidstone', 'Guildford', 'Kent', 'Surrey', 'Essex'],
+        'South West':       ['Bristol', 'Exeter', 'Plymouth', 'Bath', 'Truro', 'Taunton', 'Bournemouth', 'Cornwall', 'Devon', 'Somerset'],
+      },
+      scotland: {
+        'Central Scotland':      ['Glasgow', 'Stirling', 'Falkirk', 'Clackmannanshire'],
+        'Highlands':             ['Inverness', 'Fort William', 'Elgin', 'Aviemore', 'Wick'],
+        'Grampian':              ['Aberdeen', 'Fraserburgh', 'Peterhead', 'Inverurie'],
+        'Tayside':               ['Dundee', 'Perth', 'Arbroath', 'Kirriemuir'],
+        'Fife':                  ['St Andrews', 'Dunfermline', 'Kirkcaldy', 'Glenrothes'],
+        'Lothian':               ['Edinburgh', 'Livingston', 'Haddington', 'Linlithgow'],
+        'Strathclyde':           ['Glasgow', 'Paisley', 'Ayr', 'Kilmarnock', 'Hamilton', 'Greenock'],
+        'Borders':               ['Galashiels', 'Hawick', 'Jedburgh', 'Peebles'],
+        'Dumfries & Galloway':   ['Dumfries', 'Stranraer', 'Newton Stewart', 'Kirkcudbright'],
+        'Islands':               ['Skye', 'Orkney', 'Shetland', 'Lewis', 'Arran'],
+      },
+      wales: {
+        'North Wales':           ['Wrexham', 'Bangor', 'Llandudno', 'Rhyl', 'Holyhead', 'Conwy'],
+        'Mid Wales':             ['Aberystwyth', 'Welshpool', 'Newtown', 'Brecon', 'Llandrindod Wells'],
+        'South West Wales':      ['Swansea', 'Neath', 'Port Talbot', 'Pembroke', 'Carmarthen', 'Milford Haven'],
+        'South East Wales':      ['Newport', 'Merthyr Tydfil', 'Tredegar', 'Ebbw Vale', 'Pontypool'],
+        'Cardiff Capital Region':['Cardiff', 'Vale of Glamorgan', 'Rhondda', 'Pontypridd', 'Caerphilly'],
+        'Swansea Bay':           ['Swansea', 'Port Talbot', 'Neath', 'Bridgend'],
+      },
+    };
+
+    var cards       = document.querySelectorAll('.country-card');
+    var activeCard  = null;
+
+    function openAccordion(country) {
+      var accordion = document.getElementById('accordion-' + country);
+      if (!accordion) return;
+      accordion.classList.add('open');
+      accordion.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeAccordion(country) {
+      var accordion = document.getElementById('accordion-' + country);
+      if (!accordion) return;
+      accordion.classList.remove('open');
+      accordion.setAttribute('aria-hidden', 'true');
+      // Clear active region buttons
+      accordion.querySelectorAll('.region-btn').forEach(function (btn) {
+        btn.classList.remove('active');
+      });
+      // Hide sub-region panel
+      var sub = document.getElementById('sub-' + country);
+      if (sub) sub.classList.remove('open');
+    }
+
+    cards.forEach(function (card) {
+      card.addEventListener('click', function () {
+        var country = card.getAttribute('data-country');
+        var isActive = card.classList.contains('active');
+
+        // Close all
+        cards.forEach(function (c) {
+          var cn = c.getAttribute('data-country');
+          c.classList.remove('active');
+          c.setAttribute('aria-expanded', 'false');
+          closeAccordion(cn);
+        });
+
+        if (!isActive) {
+          card.classList.add('active');
+          card.setAttribute('aria-expanded', 'true');
+          openAccordion(country);
+          activeCard = country;
+        } else {
+          activeCard = null;
+        }
+      });
+
+      // Keyboard: Enter/Space
+      card.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          card.click();
+        }
+      });
+    });
+
+    // Region button click — show sub-regions
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('.region-btn');
+      if (!btn) return;
+
+      var region     = btn.getAttribute('data-region');
+      var countryRef = btn.getAttribute('data-country-ref');
+      var subData    = SUB_REGIONS[countryRef] && SUB_REGIONS[countryRef][region];
+
+      // Toggle active on buttons in same accordion
+      var accordion = document.getElementById('accordion-' + countryRef);
+      accordion.querySelectorAll('.region-btn').forEach(function (b) {
+        b.classList.remove('active');
+      });
+      btn.classList.add('active');
+
+      var subContainer = document.getElementById('sub-' + countryRef);
+      var subList      = document.getElementById('sub-list-' + countryRef);
+
+      if (subData && subData.length) {
+        subList.innerHTML = subData.map(function (loc) {
+          return '<span class="sub-region-chip">' + escapeHtml(loc) + '</span>';
+        }).join('');
+        subContainer.classList.add('open');
+      } else {
+        subList.innerHTML = '<span class="sub-region-chip" style="color: var(--text-muted)">No locations found yet</span>';
+        subContainer.classList.add('open');
+      }
+    });
+  })();
+
+
+  /* ============================================================
+     5. FIND A TRADE — AUTOCOMPLETE + GEOLOCATION
+  ============================================================ */
+  (function initFindTrade() {
+    var LOCATIONS = [
+      'Kent', 'Surrey', 'Essex', 'Yorkshire', 'Lancashire',
+      'Somerset', 'Devon', 'Cornwall', 'Sussex', 'Hampshire',
+      'Oxfordshire', 'Cambridgeshire', 'Norfolk', 'Suffolk',
+      'Lincolnshire', 'Derbyshire', 'Nottinghamshire',
+      'Leicestershire', 'Warwickshire', 'Worcestershire',
+      'Shropshire', 'Staffordshire', 'Cheshire', 'Cumbria',
+      'Manchester', 'Liverpool', 'Leeds', 'Sheffield',
+      'Birmingham', 'Bristol', 'Nottingham', 'Leicester',
+      'Newcastle', 'Sunderland', 'Cardiff', 'Swansea',
+      'Edinburgh', 'Glasgow', 'Aberdeen', 'Dundee',
+    ];
+
+    var input      = document.getElementById('location-input');
+    var dropdown   = document.getElementById('location-dropdown');
+    var geoBtn     = document.getElementById('geo-btn');
+    var form       = document.getElementById('find-trade-form');
+    var results    = document.getElementById('find-results');
+    var resultsText = document.getElementById('find-results-text');
+    var highlighted = -1;
+
+    function renderDropdown(matches) {
+      dropdown.innerHTML = '';
+      highlighted = -1;
+
+      if (!matches.length) {
+        dropdown.classList.remove('open');
+        input.setAttribute('aria-expanded', 'false');
+        return;
+      }
+
+      matches.forEach(function (loc, idx) {
+        var item = document.createElement('div');
+        item.className = 'autocomplete-item';
+        item.setAttribute('role', 'option');
+        item.setAttribute('id', 'autocomplete-item-' + idx);
+        item.textContent = loc;
+        item.addEventListener('mousedown', function (e) {
+          e.preventDefault(); // prevent blur before click
+          input.value = loc;
+          dropdown.classList.remove('open');
+          input.setAttribute('aria-expanded', 'false');
+        });
+        dropdown.appendChild(item);
+      });
+
+      dropdown.classList.add('open');
+      input.setAttribute('aria-expanded', 'true');
+    }
+
+    function getMatches(query) {
+      var q = query.trim().toLowerCase();
+      if (!q) return [];
+      return LOCATIONS.filter(function (l) {
+        return l.toLowerCase().indexOf(q) === 0;
+      }).slice(0, 6);
+    }
+
+    input.addEventListener('input', function () {
+      renderDropdown(getMatches(input.value));
+    });
+
+    input.addEventListener('keydown', function (e) {
+      var items = dropdown.querySelectorAll('.autocomplete-item');
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        highlighted = Math.min(highlighted + 1, items.length - 1);
+        updateHighlight(items);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        highlighted = Math.max(highlighted - 1, -1);
+        updateHighlight(items);
+      } else if (e.key === 'Enter' && highlighted >= 0) {
+        e.preventDefault();
+        if (items[highlighted]) {
+          input.value = items[highlighted].textContent;
+          dropdown.classList.remove('open');
+          input.setAttribute('aria-expanded', 'false');
+        }
+      } else if (e.key === 'Escape') {
+        dropdown.classList.remove('open');
+        input.setAttribute('aria-expanded', 'false');
+      }
+    });
+
+    function updateHighlight(items) {
+      items.forEach(function (item, idx) {
+        item.classList.toggle('highlighted', idx === highlighted);
+        if (idx === highlighted) {
+          input.setAttribute('aria-activedescendant', item.id);
+        }
+      });
+    }
+
+    input.addEventListener('blur', function () {
+      // Delay to allow mousedown select
+      setTimeout(function () {
+        dropdown.classList.remove('open');
+        input.setAttribute('aria-expanded', 'false');
+      }, 150);
+    });
+
+    // Geolocation
+    geoBtn.addEventListener('click', function () {
+      if (!navigator.geolocation) {
+        geoBtn.textContent = 'Geolocation not supported';
+        return;
+      }
+
+      geoBtn.textContent = 'Detecting location…';
+
+      navigator.geolocation.getCurrentPosition(
+        function (pos) {
+          // Reverse geocode using open API (no key needed)
+          var lat = pos.coords.latitude;
+          var lon = pos.coords.longitude;
+          var url = 'https://nominatim.openstreetmap.org/reverse?format=json&lat=' + lat + '&lon=' + lon;
+
+          fetch(url, { headers: { 'Accept-Language': 'en' } })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+              var addr = data.address;
+              var place = addr.county || addr.city || addr.town || addr.village || addr.state || '';
+              input.value = place;
+              geoBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 1v4"/><path d="M12 19v4"/><path d="M1 12h4"/><path d="M19 12h4"/></svg> Use my location';
+            })
+            .catch(function () {
+              input.value = 'Location detected';
+              geoBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 1v4"/><path d="M12 19v4"/><path d="M1 12h4"/><path d="M19 12h4"/></svg> Use my location';
+            });
+        },
+        function () {
+          geoBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 1v4"/><path d="M12 19v4"/><path d="M1 12h4"/><path d="M19 12h4"/></svg> Location unavailable';
+        }
+      );
+    });
+
+    // Form submit
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var location = input.value.trim();
+      var category = document.getElementById('category-select').value;
+      var catLabel = document.getElementById('category-select').selectedOptions[0].text;
+
+      results.classList.add('open');
+
+      if (location || category) {
+        var loc  = location ? '<strong>' + escapeHtml(location) + '</strong>' : 'your area';
+        var cat  = category ? ' in <strong>' + escapeHtml(catLabel) + '</strong>' : '';
+        resultsText.innerHTML =
+          'No results found for ' + loc + cat + '.<br>' +
+          'Our directory of British Trade Award-recommended professionals is launching soon — check back after nominees are announced.';
+      } else {
+        resultsText.innerHTML =
+          '<strong>Please enter a location</strong> or select a category to search.';
+      }
+    });
+  })();
+
+
+  /* ============================================================
+     6. UTILITY — HTML ESCAPE
+  ============================================================ */
+  function escapeHtml(str) {
+    var div = document.createElement('div');
+    div.appendChild(document.createTextNode(str));
+    return div.innerHTML;
+  }
+
+  // Expose for inline use (used by regional data rendering)
+  window.escapeHtml = escapeHtml;
+
+
+  /* ============================================================
+     7. SMOOTH SCROLL — polyfill anchor-scroll offsets for header
+  ============================================================ */
+  (function initSmoothScroll() {
+    var OFFSET = 80; // header height compensation
+
+    document.querySelectorAll('a[href^="#"]').forEach(function (anchor) {
+      anchor.addEventListener('click', function (e) {
+        var targetId = anchor.getAttribute('href').slice(1);
+        if (!targetId) return;
+
+        var target = document.getElementById(targetId);
+        if (!target) return;
+
+        e.preventDefault();
+        var top = target.getBoundingClientRect().top + window.scrollY - OFFSET;
+        window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+      });
+    });
+  })();
+
+
+  /* ============================================================
+     8. HERO VIDEO — pause when offscreen (performance)
+  ============================================================ */
+  (function initVideo() {
+    var video = document.getElementById('hero-video');
+    if (!video) return;
+
+    if ('IntersectionObserver' in window) {
+      var obs = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            video.play().catch(function () {});
+          } else {
+            video.pause();
+          }
+        });
+      }, { threshold: 0.1 });
+
+      obs.observe(video);
+    }
+  })();
+
+})();
+</script>
+
+</body>
+</html>

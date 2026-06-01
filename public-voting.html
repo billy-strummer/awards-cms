@@ -10,25 +10,26 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
 
-  <!-- Premium Fonts -->
+  <!-- Brand Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
     :root {
-      --gold-color: #D4AF37;
-      --gold-dark: #B8941F;
+      --gold: #C9A227;
+      --gold-dark: #7a5c0e;
+      --page-bg: #0a0a0a;
     }
 
     body {
-      background: #000000;
+      background: var(--page-bg);
       min-height: 100vh;
       padding: 40px 0;
-      font-family: 'Montserrat', sans-serif;
+      font-family: 'Inter', sans-serif;
       position: relative;
       overflow-x: hidden;
     }
@@ -37,75 +38,127 @@
     body::after {
       content: '';
       position: fixed;
-      top: 0;
-      width: 50%;
-      height: 100%;
+      width: 520px;
+      height: 520px;
       background-image: url('BTA_Corporate_Horizontal-Black-and-White-01.png');
       background-size: contain;
       background-repeat: no-repeat;
-      opacity: 0.06;
-      z-index: 0;
+      background-position: center;
+      opacity: 0.11;
       pointer-events: none;
+      z-index: 0;
     }
 
     body::before {
-      left: -10%;
-      background-position: right center;
+      left: -120px;
+      top: 50%;
+      transform: translateY(-50%);
     }
 
     body::after {
-      right: -10%;
-      background-position: left center;
+      right: -120px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    @media (max-width: 576px) {
+      body::before, body::after { display: none; }
+    }
+
+    .bg-glow {
+      position: fixed;
+      top: 0; left: 50%;
+      transform: translateX(-50%);
+      width: 600px; height: 300px;
+      background: radial-gradient(ellipse at center, rgba(201,162,39,0.12) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
     }
 
     .voting-container {
       position: relative;
       z-index: 1;
-    }
-
-    .voting-container {
       max-width: 1200px;
       margin: 0 auto;
       padding: 0 20px;
     }
 
+    .brand-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .brand-header a.home-link {
+      display: inline-block;
+      text-decoration: none;
+    }
+
+    .brand-header img {
+      height: 52px;
+      width: auto;
+    }
+
+    .brand-header .brand-name {
+      font-family: 'Playfair Display', serif;
+      color: var(--gold);
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-top: 8px;
+    }
+
+    .brand-header .brand-sub {
+      color: rgba(201,162,39,0.65);
+      font-size: 0.75rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
+
     .voting-header {
-      background: white;
+      background: #ffffff;
       border-radius: 16px;
       padding: 40px;
       margin-bottom: 30px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.45), 0 0 0 1px rgba(201,162,39,0.18);
       text-align: center;
     }
 
     .voting-header h1 {
-      font-size: 3rem;
+      font-size: 2.6rem;
       font-weight: 700;
       margin-bottom: 10px;
-      font-family: 'Cinzel', serif;
-      background: linear-gradient(135deg, #D4AF37 0%, #B8941F 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      letter-spacing: 2px;
+      font-family: 'Playfair Display', serif;
+      color: var(--gold-dark);
+      letter-spacing: 1px;
+    }
+
+    .voting-header .lead {
+      color: #333333;
+    }
+
+    .voting-header .text-muted {
+      color: #666666 !important;
     }
 
     .entry-card {
-      background: white;
+      background: #ffffff;
       border-radius: 16px;
       padding: 30px;
       margin-bottom: 20px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.35), 0 0 0 1px rgba(201,162,39,0.12);
       transition: transform 0.2s, box-shadow 0.2s;
     }
 
     .entry-card:hover {
       transform: translateY(-4px);
-      box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.4), 0 0 0 1px rgba(201,162,39,0.25);
     }
 
     .entry-card.voted {
       border: 2px solid #28a745;
-      background: rgba(40, 167, 69, 0.05);
+      background: rgba(40, 167, 69, 0.04);
     }
 
     .company-logo {
@@ -116,48 +169,83 @@
     }
 
     .vote-button {
-      background: linear-gradient(135deg, #D4AF37 0%, #B8941F 100%);
+      background: linear-gradient(135deg, #a07d1a 0%, #C9A227 50%, #e8c84a 100%);
       border: none;
-      color: #000000;
+      color: #1a1100;
       padding: 12px 30px;
-      font-size: 1.1rem;
-      font-weight: 600;
+      font-size: 1.05rem;
+      font-weight: 700;
       border-radius: 8px;
-      transition: transform 0.2s;
+      transition: transform 0.2s, box-shadow 0.2s;
+      font-family: 'Inter', sans-serif;
+      letter-spacing: 0.5px;
     }
 
     .vote-button:hover {
       transform: scale(1.05);
-      box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
+      box-shadow: 0 4px 18px rgba(201,162,39,0.45);
     }
 
     .vote-button:disabled {
-      background: #6c757d;
+      background: #9ca3af;
       cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
     }
 
     .vote-count {
-      background: #f8f9fa;
-      padding: 8px 16px;
+      background: rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.85);
+      border: 1px solid rgba(201,162,39,0.25);
+      padding: 8px 18px;
       border-radius: 20px;
       font-weight: 600;
+      font-size: 0.95rem;
     }
 
     .award-filter {
-      background: white;
+      background: #ffffff;
       border-radius: 12px;
       padding: 20px;
       margin-bottom: 30px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.35), 0 0 0 1px rgba(201,162,39,0.12);
+    }
+
+    .award-filter .form-label {
+      color: #1a1a1a;
     }
 
     .verification-modal {
-      background: white;
+      background: #ffffff;
       border-radius: 16px;
       padding: 40px;
       max-width: 500px;
       margin: 100px auto;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+      box-shadow: 0 12px 50px rgba(0,0,0,0.5), 0 0 0 1px rgba(201,162,39,0.2);
+    }
+
+    .verification-modal h3 {
+      font-family: 'Playfair Display', serif;
+      color: #1a1a1a;
+    }
+
+    .verification-modal .btn-primary {
+      background: linear-gradient(135deg, #a07d1a 0%, #C9A227 50%, #e8c84a 100%);
+      border: none;
+      color: #1a1100;
+      font-weight: 700;
+      padding: 12px 24px;
+      border-radius: 8px;
+    }
+
+    .verification-modal .btn-primary:hover {
+      box-shadow: 0 4px 18px rgba(201,162,39,0.45);
+    }
+
+    .verification-modal .btn-outline-secondary {
+      border: 1px solid #cccccc;
+      color: #666666;
+      background: transparent;
     }
 
     .success-checkmark {
@@ -169,13 +257,17 @@
 </head>
 <body>
 
+  <div class="bg-glow"></div>
+
   <div class="voting-container">
 
     <!-- BTA Brand Header -->
-    <div class="text-center mb-4">
-      <img src="BTA_Corporate_Horizontal-Texture.png" alt="British Trade Awards" style="height: 80px; width: auto; filter: drop-shadow(0 0 10px rgba(212,175,55,0.5));">
-      <div style="font-family: 'Cinzel', serif; color: var(--gold-color); font-size: 1.1rem; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; margin-top: 10px;">British Trade Awards</div>
-      <div style="font-family: 'Montserrat', sans-serif; color: rgba(212,175,55,0.7); font-size: 0.75rem; letter-spacing: 2px; text-transform: uppercase;">People's Choice</div>
+    <div class="brand-header mb-4">
+      <a href="/" class="home-link">
+        <img src="BTA_Corporate_Horizontal-Texture.png" alt="British Trade Awards">
+      </a>
+      <div class="brand-name">British Trade Awards</div>
+      <div class="brand-sub">People's Choice</div>
     </div>
 
     <!-- Header -->
@@ -253,7 +345,7 @@
       </div>
       <h3>Vote Recorded!</h3>
       <p class="text-muted">Thank you for your vote. You should receive a confirmation email shortly.</p>
-      <button class="btn btn-primary" data-action="votingSystem.closeSuccessModal">
+      <button class="btn vote-button" data-action="votingSystem.closeSuccessModal">
         Continue Voting
       </button>
     </div>

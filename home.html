@@ -1649,6 +1649,59 @@
       color: rgba(255,255,255,0.6);
       margin-bottom: 8px;
     }
+
+    /* Category modal */
+    .cat-modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.88);
+      z-index: 2000;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+    .cat-modal-overlay.open { opacity: 1; pointer-events: all; }
+    .cat-modal-panel {
+      background: #131313;
+      border: 1px solid rgba(201,162,39,0.35);
+      border-radius: 16px;
+      padding: 48px 40px 40px;
+      max-width: 580px; width: 92%;
+      max-height: 80vh; overflow-y: auto;
+      position: relative;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.8);
+    }
+    .cat-modal-close {
+      position: absolute; top: 16px; right: 20px;
+      background: none; border: none;
+      color: rgba(255,255,255,0.5); font-size: 1.6rem; line-height: 1;
+      cursor: pointer; transition: color 0.15s;
+    }
+    .cat-modal-close:hover { color: #C9A227; }
+    .cat-modal-label {
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.18em;
+      text-transform: uppercase; color: #C9A227; margin: 0 0 8px;
+    }
+    .cat-modal-title {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.5rem; font-weight: 700;
+      color: #fff; margin: 0 0 24px;
+    }
+    .cat-modal-list {
+      list-style: none; padding: 0; margin: 0 0 32px;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    }
+    .cat-modal-list li {
+      background: #1c1c1c; border: 1px solid #2a2a2a;
+      border-radius: 8px; padding: 10px 14px;
+      font-size: 0.85rem; color: rgba(255,255,255,0.75);
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .cat-modal-list li:hover { border-color: rgba(201,162,39,0.4); color: #fff; }
+    .cat-modal-cta { display: inline-block; text-decoration: none; }
+    @media (max-width: 480px) {
+      .cat-modal-list { grid-template-columns: 1fr; }
+      .cat-modal-panel { padding: 40px 24px 32px; }
+    }
   </style>
 </head>
 
@@ -1897,7 +1950,7 @@
     <div class="categories-grid" aria-label="Award categories">
 
       <!-- 1 -->
-      <a href="submit-entry.html" class="cat-box reveal" aria-label="Building and Construction — From groundworks to roofing, the full build spectrum">
+      <a href="submit-entry.html" class="cat-box reveal" data-sector="BUILDING &amp; CONSTRUCTION" aria-label="Building and Construction — From groundworks to roofing, the full build spectrum">
         <img class="cat-bg-img" src="images/categories/building-construction.jpg" alt="" loading="lazy">
         <div class="cat-box-inner">
           <span class="cat-number" aria-hidden="true">01</span>
@@ -1908,7 +1961,7 @@
       </a>
 
       <!-- 2 -->
-      <a href="submit-entry.html" class="cat-box reveal reveal-delay-1" aria-label="Mechanical, Electrical and Plumbing — The essential services keeping Britain's homes running">
+      <a href="submit-entry.html" class="cat-box reveal reveal-delay-1" data-sector="MECHANICAL, ELECTRICAL &amp; PLUMBING" aria-label="Mechanical, Electrical and Plumbing — The essential services keeping Britain's homes running">
         <img class="cat-bg-img" src="images/categories/mechanical-electrical-plumbing.jpg" alt="" loading="lazy">
         <div class="cat-box-inner">
           <span class="cat-number" aria-hidden="true">02</span>
@@ -1919,7 +1972,7 @@
       </a>
 
       <!-- 3 -->
-      <a href="submit-entry.html" class="cat-box reveal reveal-delay-2" aria-label="Carpentry and Joinery — Crafting bespoke woodwork with precision and artistry">
+      <a href="submit-entry.html" class="cat-box reveal reveal-delay-2" data-sector="CARPENTRY &amp; JOINERY" aria-label="Carpentry and Joinery — Crafting bespoke woodwork with precision and artistry">
         <img class="cat-bg-img" src="images/categories/carpentry-joinery.jpg" alt="" loading="lazy">
         <div class="cat-box-inner">
           <span class="cat-number" aria-hidden="true">03</span>
@@ -1930,7 +1983,7 @@
       </a>
 
       <!-- 4 -->
-      <a href="submit-entry.html" class="cat-box reveal reveal-delay-3" aria-label="Interior Fit-Out and Finishing — Transforming interiors with expert installations">
+      <a href="submit-entry.html" class="cat-box reveal reveal-delay-3" data-sector="INTERIOR FIT-OUT &amp; FINISHING" aria-label="Interior Fit-Out and Finishing — Transforming interiors with expert installations">
         <img class="cat-bg-img" src="images/categories/interior-fitout.jpg" alt="" loading="lazy">
         <div class="cat-box-inner">
           <span class="cat-number" aria-hidden="true">04</span>
@@ -1941,7 +1994,7 @@
       </a>
 
       <!-- 5 -->
-      <a href="submit-entry.html" class="cat-box reveal" aria-label="Outdoor and Landscaping — Creating stunning outdoor spaces across Britain">
+      <a href="submit-entry.html" class="cat-box reveal" data-sector="OUTDOOR &amp; LANDSCAPING" aria-label="Outdoor and Landscaping — Creating stunning outdoor spaces across Britain">
         <img class="cat-bg-img" src="images/categories/outdoor-landscaping.jpg" alt="" loading="lazy">
         <div class="cat-box-inner">
           <span class="cat-number" aria-hidden="true">05</span>
@@ -1952,7 +2005,7 @@
       </a>
 
       <!-- 6 -->
-      <a href="submit-entry.html" class="cat-box reveal reveal-delay-1" aria-label="Energy, Tech and Sustainability — Powering Britain's green future">
+      <a href="submit-entry.html" class="cat-box reveal reveal-delay-1" data-sector="ENERGY, TECH &amp; SUSTAINABILITY" aria-label="Energy, Tech and Sustainability — Powering Britain's green future">
         <img class="cat-bg-img" src="images/categories/energy-tech-sustainability.jpg" alt="" loading="lazy">
         <div class="cat-box-inner">
           <span class="cat-number" aria-hidden="true">06</span>
@@ -1963,7 +2016,7 @@
       </a>
 
       <!-- 7 -->
-      <a href="submit-entry.html" class="cat-box reveal reveal-delay-2" aria-label="Specialist Trades — Niche expertise, exceptional results">
+      <a href="submit-entry.html" class="cat-box reveal reveal-delay-2" data-sector="SPECIALIST TRADES" aria-label="Specialist Trades — Niche expertise, exceptional results">
         <img class="cat-bg-img" src="images/categories/specialist-trades.jpg" alt="" loading="lazy">
         <div class="cat-box-inner">
           <span class="cat-number" aria-hidden="true">07</span>
@@ -1974,7 +2027,7 @@
       </a>
 
       <!-- 8 -->
-      <a href="submit-entry.html" class="cat-box reveal reveal-delay-3" aria-label="Industry Leadership — Recognising outstanding leadership in the trades">
+      <a href="submit-entry.html" class="cat-box reveal reveal-delay-3" data-sector="INDUSTRY LEADERSHIP" aria-label="Industry Leadership — Recognising outstanding leadership in the trades">
         <img class="cat-bg-img" src="images/categories/industry-leadership.svg" alt="" loading="lazy">
         <div class="cat-box-inner">
           <span class="cat-number" aria-hidden="true">08</span>
@@ -2443,15 +2496,15 @@
     // Sub-region data
     var SUB_REGIONS = {
       england: {
-        'North West':       ['Manchester', 'Liverpool', 'Preston', 'Blackpool', 'Chester', 'Cumbria', 'Warrington', 'Salford', 'Bolton'],
-        'North East':       ['Newcastle upon Tyne', 'Sunderland', 'Durham', 'Middlesbrough', 'Gateshead', 'South Shields'],
-        'Yorkshire':        ['Leeds', 'Sheffield', 'Bradford', 'York', 'Hull', 'Doncaster', 'Harrogate', 'Wakefield'],
-        'East Midlands':    ['Nottingham', 'Leicester', 'Derby', 'Lincoln', 'Northampton', 'Coventry', 'Stoke-on-Trent'],
-        'West Midlands':    ['Birmingham', 'Wolverhampton', 'Coventry', 'Walsall', 'Solihull', 'Hereford', 'Shrewsbury'],
-        'East of England':  ['Norwich', 'Cambridge', 'Ipswich', 'Peterborough', 'Chelmsford', 'Luton', 'Bedford'],
-        'London':           ['Central London', 'East London', 'North London', 'South London', 'West London', 'City of London'],
-        'South East':       ['Brighton', 'Southampton', 'Oxford', 'Reading', 'Canterbury', 'Maidstone', 'Guildford', 'Kent', 'Surrey', 'Essex'],
-        'South West':       ['Bristol', 'Exeter', 'Plymouth', 'Bath', 'Truro', 'Taunton', 'Bournemouth', 'Cornwall', 'Devon', 'Somerset'],
+        'North West':      ['Cheshire','Cumbria','Lancashire','Liverpool','Manchester'],
+        'North East':      ['County Durham','Northumberland','Tyne & Wear','Newcastle','Middlesbrough','Gateshead','Sunderland'],
+        'Yorkshire':       ['East Yorkshire','North Yorkshire','South Yorkshire','West Yorkshire','Leeds','Sheffield','Bradford','York','Hull'],
+        'East Midlands':   ['Derbyshire','Leicestershire','Lincolnshire','Northamptonshire','Nottinghamshire','Rutland','Leicester','Nottingham'],
+        'West Midlands':   ['Herefordshire','Shropshire','Staffordshire','Warwickshire','Worcestershire','Birmingham','Coventry'],
+        'East of England': ['Bedfordshire','Cambridgeshire','Essex','Hertfordshire','Norfolk','Suffolk'],
+        'London':          ['Barking & Dagenham','Barnet','Bexley','Brent','Bromley','Camden','City of London','Croydon','Ealing','Enfield','Greenwich','Hackney','Hammersmith & Fulham','Haringey','Harrow','Havering','Hillingdon','Hounslow','Islington','Kensington & Chelsea','Kingston upon Thames','Lambeth','Lewisham','Merton','Newham','Redbridge','Richmond upon Thames','Southwark','Sutton','Tower Hamlets','Waltham Forest','Wandsworth','Westminster'],
+        'South East':      ['Berkshire','Buckinghamshire','East Sussex','Hampshire','Isle of Wight','Kent','Oxfordshire','Surrey','West Sussex','Brighton & Hove','Reading','Southampton'],
+        'South West':      ['Cornwall','Devon','Dorset','Gloucestershire','Somerset','Wiltshire','Bournemouth','Bristol'],
       },
       scotland: {
         'Central Scotland':      ['Glasgow', 'Stirling', 'Falkirk', 'Clackmannanshire'],
@@ -2764,7 +2817,109 @@
 
 
   /* ============================================================
-     8. HERO VIDEO — pause when offscreen (performance)
+     8. CATEGORY MODAL — show sub-categories on card click
+  ============================================================ */
+  (function initCategoryModal() {
+    var SECTOR_CATEGORIES = {
+      'BUILDING & CONSTRUCTION': [
+        'Brickwork & Masonry Company','Drainage Company','Extension Company',
+        'General Building Company','Groundworks & Foundations Company','Guttering Company',
+        'Loft Conversion Company','Maintenance Services','New Build Company',
+        'Roofing Company','Structural Engineers','Structural Steelworks'
+      ],
+      'CARPENTRY & JOINERY': [
+        'Cabinet Maker','Carpentry Company','Joinery Company',
+        'Staircase Specialist','Timber Windows Installer'
+      ],
+      'INTERIOR FIT-OUT & FINISHING': [
+        'Bathroom Installer','Carpet Fitters','Curtains & Blinds Installer',
+        'Drylining Company','Flooring Installer','Home Office Installer',
+        'Interior Refurbishment Company','Kitchen Installer',
+        'Painting & Decorating Company','Plastering Company',
+        'Screeding Company','Tiling Installer'
+      ],
+      'MECHANICAL, ELECTRICAL & PLUMBING': [
+        'Air-Conditioning & Ventilation Company','Electrical Company',
+        'Heating Company','Plumbing Company','Underfloor Heating Company'
+      ],
+      'OUTDOOR & LANDSCAPING': [
+        'Decking Company','Driveway & Paving Company','Fencing Installer',
+        'Gardening Services','Garden Outbuilding Company',
+        'Landscaping & Garden Design Company',
+        'Outdoor Lighting & Electrical Company','Tree Surgery Services'
+      ],
+      'SPECIALIST TRADES': [
+        'Asbestos Removal Specialist','Locksmith','Pest Control Company',
+        'Rendering Company','Scaffolding Company','Shop Fitting Company',
+        'Swimming Pool & Hot Tub Company','Window & Door Installer'
+      ],
+      'ENERGY, TECH & SUSTAINABILITY': [
+        'EV Charger Installer','Insulation & Energy Efficiency Company',
+        'PV Installer','Renewable Energy Specialist',
+        'Security System Installer','Smart Home & Automation Company'
+      ],
+      'INDUSTRY LEADERSHIP': [
+        'Employer of the Year','Business Leader of the Year','Innovation Award',
+        'Apprenticeship Employer of the Year','Community Impact Award',
+        'Net Zero & Sustainability Award','Rising Star Award'
+      ]
+    };
+
+    var modal     = document.getElementById('cat-modal');
+    var closeBtn  = document.getElementById('cat-modal-close');
+    var labelEl   = document.getElementById('cat-modal-label');
+    var titleEl   = document.getElementById('cat-modal-title');
+    var listEl    = document.getElementById('cat-modal-list');
+
+    if (!modal) return;
+
+    function openModal(sectorKey) {
+      var cats = SECTOR_CATEGORIES[sectorKey];
+      if (!cats) return;
+
+      labelEl.textContent = 'Award Categories';
+      titleEl.textContent = sectorKey.replace(/&amp;/g, '&');
+
+      // Build list items using escapeHtml to avoid XSS
+      listEl.innerHTML = cats.map(function (cat) {
+        return '<li>' + escapeHtml(cat) + '</li>';
+      }).join('');
+
+      modal.classList.add('open');
+      modal.focus();
+    }
+
+    function closeModal() {
+      modal.classList.remove('open');
+    }
+
+    // Cat-box click — intercept and open modal
+    document.querySelectorAll('.cat-box[data-sector]').forEach(function (box) {
+      box.addEventListener('click', function (e) {
+        e.preventDefault();
+        openModal(box.getAttribute('data-sector').replace(/&amp;/g, '&'));
+      });
+    });
+
+    // Close button
+    closeBtn.addEventListener('click', closeModal);
+
+    // Click outside panel closes modal
+    modal.addEventListener('click', function (e) {
+      if (e.target === modal) closeModal();
+    });
+
+    // Escape key closes modal
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && modal.classList.contains('open')) {
+        closeModal();
+      }
+    });
+  })();
+
+
+  /* ============================================================
+     9. HERO VIDEO — pause when offscreen (performance)
   ============================================================ */
   (function initVideo() {
     var video = document.getElementById('hero-video');
@@ -2807,6 +2962,16 @@
 
 })();
 </script>
+
+<div id="cat-modal" class="cat-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="cat-modal-title" tabindex="-1">
+  <div class="cat-modal-panel">
+    <button class="cat-modal-close" id="cat-modal-close" aria-label="Close category panel">×</button>
+    <p class="cat-modal-label" id="cat-modal-label"></p>
+    <h3 class="cat-modal-title" id="cat-modal-title"></h3>
+    <ul class="cat-modal-list" id="cat-modal-list"></ul>
+    <a href="submit-entry.html" class="btn-gold cat-modal-cta">Enter the Awards →</a>
+  </div>
+</div>
 
 </body>
 </html>

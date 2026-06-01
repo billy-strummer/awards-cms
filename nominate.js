@@ -300,19 +300,37 @@
       }
 
       const londonBoroughs = [
+        'Barking & Dagenham',
+        'Barnet',
+        'Bexley',
+        'Brent',
         'Bromley',
         'Camden',
+        'City of London',
         'Croydon',
+        'Ealing',
+        'Enfield',
         'Greenwich',
         'Hackney',
         'Hammersmith & Fulham',
+        'Haringey',
+        'Harrow',
+        'Havering',
+        'Hillingdon',
+        'Hounslow',
         'Islington',
         'Kensington & Chelsea',
-        'Kingston & Richmond',
+        'Kingston upon Thames',
         'Lambeth',
         'Lewisham',
-        'Middlesex',
+        'Merton',
+        'Newham',
+        'Redbridge',
+        'Richmond upon Thames',
         'Southwark',
+        'Sutton',
+        'Tower Hamlets',
+        'Waltham Forest',
         'Wandsworth',
         'Westminster',
       ];
@@ -354,7 +372,7 @@
       if (counties.length > 0) {
         html += '<optgroup label="Counties">';
         counties.forEach(function (county) {
-          html += '<option value="' + self.escapeHtml(county) + '">' + self.escapeHtml(county) + '</option>';
+          html += `<option value="${self.escapeHtml(county)}" data-custom-properties='{"group":"Counties"}'>${self.escapeHtml(county)}</option>`;
         });
         html += '</optgroup>';
       }
@@ -362,7 +380,7 @@
       if (boroughList.length > 0) {
         html += '<optgroup label="London Boroughs">';
         boroughList.forEach(function (b) {
-          html += '<option value="' + self.escapeHtml(b) + '">' + self.escapeHtml(b) + '</option>';
+          html += `<option value="${self.escapeHtml(b)}" data-custom-properties='{"group":"London"}'>${self.escapeHtml(b)}</option>`;
         });
         html += '</optgroup>';
       }
@@ -370,13 +388,14 @@
       if (cityList.length > 0) {
         html += '<optgroup label="Cities">';
         cityList.forEach(function (city) {
-          html += '<option value="' + self.escapeHtml(city) + '">' + self.escapeHtml(city) + '</option>';
+          html += `<option value="${self.escapeHtml(city)}" data-custom-properties='{"group":"Cities"}'>${self.escapeHtml(city)}</option>`;
         });
         html += '</optgroup>';
       }
 
       regionSelect.innerHTML = html;
 
+      // Initialize Choices.js with Fuse.js fuzzy search
       if (typeof Choices !== 'undefined') {
         this.regionChoicesInstance = new Choices('#county_city', {
           searchEnabled: true,
@@ -386,8 +405,16 @@
           placeholderValue: 'Select county or city',
           itemSelectText: '',
           shouldSort: false,
-          searchResultLimit: 100,
+          searchResultLimit: 15,
           allowHTML: true,
+          fuseOptions: {
+            includeScore: true,
+            threshold: 0.35,
+            keys: [
+              { name: 'label', weight: 2 },
+              { name: 'customProperties.group', weight: 1 },
+            ],
+          },
         });
       }
     },

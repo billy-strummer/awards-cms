@@ -378,7 +378,7 @@
       if (counties.length > 0) {
         html += '<optgroup label="Counties">';
         counties.forEach((county) => {
-          html += `<option value="${this.escapeHtml(county)}">${this.escapeHtml(county)}</option>`;
+          html += `<option value="${this.escapeHtml(county)}" data-custom-properties='{"group":"Counties"}'>${this.escapeHtml(county)}</option>`;
         });
         html += '</optgroup>';
       }
@@ -386,7 +386,7 @@
       if (boroughList.length > 0) {
         html += '<optgroup label="London Boroughs">';
         boroughList.forEach((b) => {
-          html += `<option value="${this.escapeHtml(b)}">${this.escapeHtml(b)}</option>`;
+          html += `<option value="${this.escapeHtml(b)}" data-custom-properties='{"group":"London"}'>${this.escapeHtml(b)}</option>`;
         });
         html += '</optgroup>';
       }
@@ -394,14 +394,14 @@
       if (cityList.length > 0) {
         html += '<optgroup label="Cities">';
         cityList.forEach((city) => {
-          html += `<option value="${this.escapeHtml(city)}">${this.escapeHtml(city)}</option>`;
+          html += `<option value="${this.escapeHtml(city)}" data-custom-properties='{"group":"Cities"}'>${this.escapeHtml(city)}</option>`;
         });
         html += '</optgroup>';
       }
 
       regionSelect.innerHTML = html;
 
-      // Initialize Choices.js
+      // Initialize Choices.js with Fuse.js fuzzy search
       if (typeof Choices !== 'undefined') {
         this.regionChoicesInstance = new Choices('#county_city', {
           searchEnabled: true,
@@ -411,8 +411,16 @@
           placeholderValue: 'Select your county or city',
           itemSelectText: '',
           shouldSort: false,
-          searchResultLimit: 100,
+          searchResultLimit: 15,
           allowHTML: true,
+          fuseOptions: {
+            includeScore: true,
+            threshold: 0.35,
+            keys: [
+              { name: 'label', weight: 2 },
+              { name: 'customProperties.group', weight: 1 },
+            ],
+          },
         });
       }
     },

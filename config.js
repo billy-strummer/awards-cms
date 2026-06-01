@@ -88,6 +88,79 @@ const SECTORS = [
   'TECH & GREEN ENERGY',
 ];
 
+const STANDARD_CATEGORIES = {
+  'BUILDING & CONSTRUCTION': [
+    'Brickwork & Masonry Company',
+    'Drainage Company',
+    'Extension Company',
+    'General Building Company',
+    'Groundworks & Foundations Company',
+    'Guttering Company',
+    'Loft Conversion Company',
+    'Maintenance Services',
+    'New Build Company',
+    'Roofing Company',
+    'Structural Engineers',
+    'Structural Steelworks',
+  ],
+  'CARPENTRY & JOINERY': [
+    'Cabinet Maker',
+    'Carpentry Company',
+    'Joinery Company',
+    'Staircase Specialist',
+    'Timber Windows Installer',
+  ],
+  'FIT-OUT & FINISHES': [
+    'Bathroom Installer',
+    'Carpet Fitters',
+    'Curtains & Blinds Installer',
+    'Drylining Company',
+    'Flooring Installer',
+    'Home Office Installer',
+    'Interior Refurbishment Company',
+    'Kitchen Installer',
+    'Painting & Decorating Company',
+    'Plastering Company',
+    'Screeding Company',
+    'Tiling Installer',
+  ],
+  'MECHANICAL, ELECTRICAL & PLUMBING': [
+    'Air-Conditioning & Ventilation Company',
+    'Electrical Company',
+    'Heating Company',
+    'Plumbing Company',
+    'Underfloor Heating Company',
+  ],
+  'OUTDOOR & LANDSCAPING': [
+    'Decking Company',
+    'Driveway & Paving Company',
+    'Fencing Installer',
+    'Gardening Services',
+    'Garden Outbuilding Company',
+    'Landscaping & Garden Design Company',
+    'Outdoor Lighting & Electrical Company',
+    'Tree Surgery Services',
+  ],
+  'SPECIALIST TRADES': [
+    'Asbestos Removal Specialist',
+    'Locksmith',
+    'Pest Control Company',
+    'Rendering Company',
+    'Scaffolding Company',
+    'Shop Fitting Company',
+    'Swimming Pool & Hot Tub Company',
+    'Window & Door Installer',
+  ],
+  'TECH & GREEN ENERGY': [
+    'EV Charger Installer',
+    'Insulation & Energy Efficiency Company',
+    'PV Installer',
+    'Renewable Energy Specialist',
+    'Security System Installer',
+    'Smart Home & Automation Company',
+  ],
+};
+
 const COUNTIES_CITIES = [
   // East of England
   'Bedfordshire',
@@ -293,6 +366,7 @@ ModuleRegistry.register('MEDIA_TYPES', MEDIA_TYPES);
 ModuleRegistry.register('INACTIVITY_TIMEOUT', INACTIVITY_TIMEOUT);
 ModuleRegistry.register('YEARS', YEARS);
 ModuleRegistry.register('SECTORS', SECTORS);
+ModuleRegistry.register('STANDARD_CATEGORIES', STANDARD_CATEGORIES);
 ModuleRegistry.register('COUNTIES_CITIES', COUNTIES_CITIES);
 // Backward compat alias — some modules still reference REGIONS
 ModuleRegistry.register('REGIONS', COUNTIES_CITIES);
@@ -315,6 +389,7 @@ export {
   INACTIVITY_TIMEOUT,
   YEARS,
   SECTORS,
+  STANDARD_CATEGORIES,
   COUNTIES_CITIES,
   REGIONS,
   STATE,

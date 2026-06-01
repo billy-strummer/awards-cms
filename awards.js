@@ -420,6 +420,56 @@ const awardsModule = {
     this._updateAwardFormAreaHint(areaId);
   },
 
+  async onAwardFormSectorChange() {
+    const sector = document.getElementById('awardFormSector')?.value || '';
+    const wrap = document.getElementById('awardCategoryPickerWrap');
+    const picker = document.getElementById('awardCategoryPicker');
+    if (!wrap || !picker) return;
+
+    if (!sector) {
+      wrap.classList.add('d-none');
+      return;
+    }
+
+    // Merge built-in categories with any custom ones for this sector
+    const builtIn = (window.STANDARD_CATEGORIES || {})[sector] || [];
+    let custom = [];
+    try {
+      const result = await apiClient.select('custom_categories', {
+        select: 'name',
+        filters: { sector_name: sector, is_active: true },
+        sort: { column: 'sort_order', ascending: true },
+        pageSize: 200,
+      });
+      custom = (result?.data || []).map((c) => c.name);
+    } catch (_) {}
+
+    const all = [...new Set([...builtIn, ...custom])];
+    if (!all.length) {
+      wrap.classList.add('d-none');
+      return;
+    }
+
+    picker.innerHTML =
+      '<option value="">— select to auto-fill name —</option>' +
+      all.map((c) => `<option value="${utils.escapeHtml(c)}">${utils.escapeHtml(c)}</option>`).join('');
+
+    picker.onchange = () => {
+      const val = picker.value;
+      if (!val) return;
+      const nameEl = document.getElementById('awardFormName');
+      if (nameEl) {
+        nameEl.value = val;
+        nameEl.classList.remove('is-invalid');
+        nameEl.focus();
+      }
+      // Reset picker so it's clearly a one-shot helper
+      picker.value = '';
+    };
+
+    wrap.classList.remove('d-none');
+  },
+
   /**
    * Update the area hint div to show SMALL/LARGE indicator.
    * @param {string|null} areaId
@@ -1573,6 +1623,9 @@ const awardsModule = {
         });
       })
       .catch(() => {});
+
+    // Show category picker for the pre-selected sector
+    if (award.sector) this.onAwardFormSectorChange();
 
     // Populate season dropdown
     this.populateSeasonDropdown();

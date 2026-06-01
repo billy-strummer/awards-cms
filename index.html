@@ -7767,9 +7767,18 @@
               </div>
               <div class="col-md-4">
                 <label for="awardFormSector" class="form-label fw-semibold">Sector <span class="text-danger">*</span></label>
-                <select class="form-select" id="awardFormSector" required aria-required="true">
+                <select class="form-select" id="awardFormSector" required aria-required="true"
+                        data-on-change="awardsModule.onAwardFormSectorChange">
                   <option value="">Select Sector...</option>
                 </select>
+                <div id="awardCategoryPickerWrap" class="mt-2 d-none">
+                  <label for="awardCategoryPicker" class="form-label small text-muted mb-1">
+                    <i class="bi bi-list-ul me-1"></i>Pick from list (auto-fills name):
+                  </label>
+                  <select class="form-select form-select-sm" id="awardCategoryPicker">
+                    <option value="">— select —</option>
+                  </select>
+                </div>
               </div>
               <div class="col-md-6">
                 <label for="awardFormStatus" class="form-label fw-semibold">Status</label>

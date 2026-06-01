@@ -50,7 +50,7 @@
       'Staircase Specialist',
       'Timber Windows Installer',
     ],
-    'FIT-OUT & FINISHES': [
+    'INTERIOR FIT-OUT & FINISHING': [
       'Bathroom Installer',
       'Carpet Fitters',
       'Curtains & Blinds Installer',
@@ -74,7 +74,7 @@
       'Outdoor Lighting & Electrical Company',
       'Tree Surgery Services',
     ],
-    'TECH & GREEN ENERGY': [
+    'ENERGY, TECH & SUSTAINABILITY': [
       'EV Charger Installer',
       'Insulation & Energy Efficiency Company',
       'PV Installer',
@@ -91,6 +91,15 @@
       'Shop Fitting Company',
       'Swimming Pool & Hot Tub Company',
       'Window & Door Installer',
+    ],
+    'INDUSTRY LEADERSHIP': [
+      'Employer of the Year',
+      'Business Leader of the Year',
+      'Innovation Award',
+      'Apprenticeship Employer of the Year',
+      'Community Impact Award',
+      'Net Zero & Sustainability Award',
+      'Rising Star Award',
     ],
   };
 
@@ -113,7 +122,7 @@
       'Plumbing & Heating Company',
     ],
     'CARPENTRY & JOINERY': ['Carpentry & Joinery Company', 'Timber Windows Installer'],
-    'FIT-OUT & FINISHES': [
+    'INTERIOR FIT-OUT & FINISHING': [
       'Bathroom Installer',
       'Carpet Fitters',
       'Flooring Installer',
@@ -130,12 +139,12 @@
       'Landscaping & Garden Design Company',
       'Tree Surgery Services',
     ],
-    'TECH & GREEN ENERGY': [
+    'ENERGY, TECH & SUSTAINABILITY': [
       'EV Charger Installer',
       'Insulation & Energy Efficiency Company',
       'PV Installer',
       'Renewable Energy Specialist',
-      'Security Systems Installer',
+      'Security System Installer',
     ],
     'SPECIALIST TRADES': [
       'Locksmith',
@@ -143,6 +152,12 @@
       'Rendering Company',
       'Scaffolding Company',
       'Window & Door Installer',
+    ],
+    'INDUSTRY LEADERSHIP': [
+      'Employer of the Year',
+      'Business Leader of the Year',
+      'Innovation Award',
+      'Community Impact Award',
     ],
   };
 
@@ -165,7 +180,7 @@
     const colors = { warning: '#ffc107', error: '#dc3545', success: '#28a745', info: '#17a2b8' };
     const textColors = { warning: '#000', error: '#fff', success: '#fff', info: '#fff' };
     const toast = document.createElement('div');
-    toast.style.cssText = `background:${colors[type] || colors.warning};color:${textColors[type] || '#000'};padding:12px 20px;margin-bottom:8px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.15);font-size:14px;opacity:0;transition:opacity .3s;font-family:'Montserrat',sans-serif;text-align:center;`;
+    toast.style.cssText = `background:${colors[type] || colors.warning};color:${textColors[type] || '#000'};padding:12px 20px;margin-bottom:8px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.15);font-size:14px;opacity:0;transition:opacity .3s;font-family:'Inter',sans-serif;text-align:center;`;
     toast.textContent = msg;
     container.appendChild(toast);
     requestAnimationFrame(() => (toast.style.opacity = '1'));
@@ -297,19 +312,37 @@
       }
 
       const londonBoroughs = [
+        'Barking & Dagenham',
+        'Barnet',
+        'Bexley',
+        'Brent',
         'Bromley',
         'Camden',
+        'City of London',
         'Croydon',
+        'Ealing',
+        'Enfield',
         'Greenwich',
         'Hackney',
         'Hammersmith & Fulham',
+        'Haringey',
+        'Harrow',
+        'Havering',
+        'Hillingdon',
+        'Hounslow',
         'Islington',
         'Kensington & Chelsea',
-        'Kingston & Richmond',
+        'Kingston upon Thames',
         'Lambeth',
         'Lewisham',
-        'Middlesex',
+        'Merton',
+        'Newham',
+        'Redbridge',
+        'Richmond upon Thames',
         'Southwark',
+        'Sutton',
+        'Tower Hamlets',
+        'Waltham Forest',
         'Wandsworth',
         'Westminster',
       ];
@@ -703,7 +736,6 @@
         case 7: {
           const contactNameEl = document.getElementById('contactName');
           const contactEmailEl = document.getElementById('contactEmail');
-          const contactPhoneEl = document.getElementById('contactPhone');
           if (!contactNameEl.value.trim()) {
             this._markInvalid(contactNameEl, 'Please enter your name');
             return false;
@@ -714,10 +746,6 @@
           }
           if (!this.validateEmail(contactEmailEl.value.trim())) {
             this._markInvalid(contactEmailEl, 'Please enter a valid email address');
-            return false;
-          }
-          if (!contactPhoneEl.value.trim()) {
-            this._markInvalid(contactPhoneEl, 'Please enter your phone number');
             return false;
           }
           return true;

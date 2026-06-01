@@ -1,40 +1,341 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="800" height="500">
   <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#12100a"/>
-      <stop offset="50%" style="stop-color:#1c1808"/>
-      <stop offset="100%" style="stop-color:#231d0a"/>
+    <radialGradient id="il-bgGlow" cx="50%" cy="55%" r="60%">
+      <stop offset="0%" stop-color="#2a1f04"/>
+      <stop offset="35%" stop-color="#1c1606"/>
+      <stop offset="100%" stop-color="#080804"/>
+    </radialGradient>
+    <linearGradient id="il-bgBase" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0c0c04"/>
+      <stop offset="100%" stop-color="#1a1804"/>
     </linearGradient>
-    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" style="stop-color:rgba(201,162,39,0.15)"/>
-      <stop offset="100%" style="stop-color:rgba(201,162,39,0)"/>
+    <!-- Spotlight radial from behind trophy -->
+    <radialGradient id="il-spotlight" cx="50%" cy="50%" r="55%">
+      <stop offset="0%" stop-color="rgba(201,162,39,0.35)"/>
+      <stop offset="30%" stop-color="rgba(201,162,39,0.18)"/>
+      <stop offset="60%" stop-color="rgba(201,162,39,0.06)"/>
+      <stop offset="100%" stop-color="rgba(201,162,39,0)"/>
+    </radialGradient>
+    <!-- Trophy cup gradient -->
+    <linearGradient id="il-cupGold" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="rgba(120,90,15,0.8)"/>
+      <stop offset="20%" stop-color="rgba(201,162,39,0.95)"/>
+      <stop offset="45%" stop-color="rgba(255,245,160,1)"/>
+      <stop offset="65%" stop-color="rgba(201,162,39,0.95)"/>
+      <stop offset="85%" stop-color="rgba(150,115,20,0.85)"/>
+      <stop offset="100%" stop-color="rgba(100,75,12,0.7)"/>
+    </linearGradient>
+    <linearGradient id="il-stemGold" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="rgba(100,75,12,0.7)"/>
+      <stop offset="30%" stop-color="rgba(201,162,39,0.9)"/>
+      <stop offset="50%" stop-color="rgba(255,240,150,1)"/>
+      <stop offset="70%" stop-color="rgba(201,162,39,0.9)"/>
+      <stop offset="100%" stop-color="rgba(100,75,12,0.7)"/>
+    </linearGradient>
+    <linearGradient id="il-baseGold" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="rgba(120,90,15,0.8)"/>
+      <stop offset="25%" stop-color="rgba(201,162,39,0.9)"/>
+      <stop offset="50%" stop-color="rgba(255,245,160,1)"/>
+      <stop offset="75%" stop-color="rgba(201,162,39,0.9)"/>
+      <stop offset="100%" stop-color="rgba(120,90,15,0.8)"/>
+    </linearGradient>
+    <!-- Podium gradient -->
+    <linearGradient id="il-podiumGold" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="rgba(201,162,39,0.7)"/>
+      <stop offset="100%" stop-color="rgba(120,90,15,0.5)"/>
+    </linearGradient>
+    <!-- Star gradient -->
+    <radialGradient id="il-starGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="rgba(255,245,160,0.95)"/>
+      <stop offset="100%" stop-color="rgba(201,162,39,0.65)"/>
+    </radialGradient>
+    <filter id="il-glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="il-strongGlow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="14" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="il-trophyGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <radialGradient id="il-vignette" cx="50%" cy="50%" r="72%">
+      <stop offset="50%" stop-color="transparent"/>
+      <stop offset="100%" stop-color="rgba(0,0,0,0.65)"/>
     </radialGradient>
   </defs>
-  <rect width="800" height="600" fill="url(#bg)"/>
-  <circle cx="400" cy="280" r="300" fill="url(#glow)"/>
-  <!-- Radiating lines -->
-  <g stroke="rgba(201,162,39,0.1)" stroke-width="1" fill="none">
-    <line x1="400" y1="280" x2="400" y2="0"/><line x1="400" y1="280" x2="400" y2="560"/>
-    <line x1="400" y1="280" x2="0" y2="280"/><line x1="400" y1="280" x2="800" y2="280"/>
-    <line x1="400" y1="280" x2="180" y2="60"/><line x1="400" y1="280" x2="620" y2="60"/>
-    <line x1="400" y1="280" x2="180" y2="500"/><line x1="400" y1="280" x2="620" y2="500"/>
-    <line x1="400" y1="280" x2="80" y2="170"/><line x1="400" y1="280" x2="720" y2="170"/>
-    <line x1="400" y1="280" x2="80" y2="390"/><line x1="400" y1="280" x2="720" y2="390"/>
+
+  <!-- ===== BACKGROUND ===== -->
+  <rect width="800" height="500" fill="url(#il-bgBase)"/>
+  <rect width="800" height="500" fill="url(#il-bgGlow)"/>
+
+  <!-- ===== DRAMATIC RADIAL LIGHT RAYS ===== -->
+  <!-- Many radiating lines from centre (stage spotlight effect) -->
+  <g stroke="rgba(201,162,39,0.06)" stroke-width="2" fill="none">
+    <line x1="400" y1="260" x2="0" y2="0"/>
+    <line x1="400" y1="260" x2="100" y2="0"/>
+    <line x1="400" y1="260" x2="200" y2="0"/>
+    <line x1="400" y1="260" x2="300" y2="0"/>
+    <line x1="400" y1="260" x2="400" y2="0"/>
+    <line x1="400" y1="260" x2="500" y2="0"/>
+    <line x1="400" y1="260" x2="600" y2="0"/>
+    <line x1="400" y1="260" x2="700" y2="0"/>
+    <line x1="400" y1="260" x2="800" y2="0"/>
+    <line x1="400" y1="260" x2="0" y2="100"/>
+    <line x1="400" y1="260" x2="0" y2="200"/>
+    <line x1="400" y1="260" x2="0" y2="300"/>
+    <line x1="400" y1="260" x2="0" y2="400"/>
+    <line x1="400" y1="260" x2="0" y2="500"/>
+    <line x1="400" y1="260" x2="800" y2="100"/>
+    <line x1="400" y1="260" x2="800" y2="200"/>
+    <line x1="400" y1="260" x2="800" y2="300"/>
+    <line x1="400" y1="260" x2="800" y2="400"/>
+    <line x1="400" y1="260" x2="800" y2="500"/>
+    <line x1="400" y1="260" x2="0" y2="450"/>
+    <line x1="400" y1="260" x2="800" y2="450"/>
+    <line x1="400" y1="260" x2="150" y2="500"/>
+    <line x1="400" y1="260" x2="650" y2="500"/>
   </g>
-  <!-- Crown -->
-  <g fill="rgba(201,162,39,0.35)">
-    <polygon points="400,155 440,210 500,170 480,240 320,240 300,170 360,210"/>
-    <rect x="320" y="240" width="160" height="45" rx="3"/>
-    <circle cx="340" cy="195" r="8"/><circle cx="400" cy="170" r="10"/><circle cx="460" cy="195" r="8"/>
+  <!-- Brighter inner rays (slightly stronger) -->
+  <g stroke="rgba(201,162,39,0.1)" stroke-width="1.5" fill="none">
+    <line x1="400" y1="260" x2="350" y2="0"/>
+    <line x1="400" y1="260" x2="450" y2="0"/>
+    <line x1="400" y1="260" x2="250" y2="0"/>
+    <line x1="400" y1="260" x2="550" y2="0"/>
   </g>
-  <!-- Star burst -->
-  <g fill="rgba(201,162,39,0.15)" transform="translate(400,370)">
-    <polygon points="0,-50 12,-16 46,-15 19,5 29,42 0,22 -29,42 -19,5 -46,-15 -12,-16"/>
-    <polygon points="0,-80 6,-28 50,-25 14,8 24,56 0,36 -24,56 -14,8 -50,-25 -6,-28" fill="none" stroke="rgba(201,162,39,0.18)" stroke-width="1"/>
+
+  <!-- Spotlight glow blob at centre -->
+  <rect width="800" height="500" fill="url(#il-spotlight)"/>
+
+  <!-- ===== SCATTERED STARS ===== -->
+  <!-- Large star top-left -->
+  <g transform="translate(155,88)" filter="url(#il-glow)">
+    <polygon points="0,-22 5,-8 20,-7 8,2 12,17 0,9 -12,17 -8,2 -20,-7 -5,-8"
+      fill="url(#il-starGrad)" stroke="rgba(255,245,160,0.5)" stroke-width="0.8"/>
   </g>
-  <!-- Small accent stars -->
-  <g fill="rgba(201,162,39,0.2)">
-    <polygon points="160,150 165,165 180,165 168,174 172,190 160,181 148,190 152,174 140,165 155,165" transform="scale(0.7) translate(75,80)"/>
-    <polygon points="640,120 645,135 660,135 648,144 652,160 640,151 628,160 632,144 620,135 635,135" transform="scale(0.6) translate(420,40)"/>
+  <!-- Medium star top-right -->
+  <g transform="translate(645,72)" filter="url(#il-glow)">
+    <polygon points="0,-18 4,-6 17,-5 7,2 10,14 0,7 -10,14 -7,2 -17,-5 -4,-6"
+      fill="url(#il-starGrad)" stroke="rgba(255,245,160,0.5)" stroke-width="0.8"/>
   </g>
+  <!-- Medium star far right -->
+  <g transform="translate(718,170)" filter="url(#il-glow)">
+    <polygon points="0,-16 4,-5 15,-5 6,2 9,13 0,7 -9,13 -6,2 -15,-5 -4,-5"
+      fill="rgba(255,240,140,0.75)" stroke="rgba(255,245,160,0.4)" stroke-width="0.7"/>
+  </g>
+  <!-- Tiny star top-centre-left -->
+  <g transform="translate(280,55)">
+    <polygon points="0,-12 3,-4 11,-3 4,1 6,10 0,5 -6,10 -4,1 -11,-3 -3,-4"
+      fill="rgba(255,240,140,0.6)"/>
+  </g>
+  <!-- Tiny star lower left -->
+  <g transform="translate(90,340)">
+    <polygon points="0,-10 2,-3 9,-3 4,1 5,8 0,4 -5,8 -4,1 -9,-3 -2,-3"
+      fill="rgba(255,240,140,0.5)"/>
+  </g>
+  <!-- Small star right -->
+  <g transform="translate(710,355)">
+    <polygon points="0,-13 3,-4 12,-4 5,1 7,11 0,6 -7,11 -5,1 -12,-4 -3,-4"
+      fill="rgba(255,240,140,0.55)"/>
+  </g>
+  <!-- Distant star flecks -->
+  <g fill="rgba(255,240,140,0.3)">
+    <circle cx="70" cy="155" r="1.5"/><circle cx="730" cy="130" r="1.5"/>
+    <circle cx="190" cy="35" r="1"/><circle cx="610" cy="28" r="1"/>
+    <circle cx="50" cy="420" r="1"/><circle cx="750" cy="410" r="1"/>
+    <circle cx="200" cy="460" r="1"/><circle cx="600" cy="455" r="1.2"/>
+    <circle cx="120" cy="250" r="1"/><circle cx="680" cy="260" r="1"/>
+  </g>
+
+  <!-- ===== TROPHY SHADOW on ground ===== -->
+  <ellipse cx="400" cy="465" rx="110" ry="18" fill="rgba(0,0,0,0.55)"/>
+
+  <!-- ===== TROPHY CUP ===== -->
+  <!-- Trophy glow aura behind -->
+  <ellipse cx="400" cy="270" rx="120" ry="130" fill="rgba(201,162,39,0.12)" filter="url(#il-strongGlow)"/>
+
+  <!-- Main cup body — wide chalice shape -->
+  <!-- Cup body path: curves upward and outward from stem top -->
+  <path d="M330,175 Q280,190 262,230 Q248,262 255,300 Q262,330 300,340 L500,340 Q538,330 545,300 Q552,262 538,230 Q520,190 470,175 Z"
+    fill="url(#il-cupGold)" stroke="rgba(255,240,150,0.5)" stroke-width="1.5" filter="url(#il-glow)"/>
+
+  <!-- Cup interior / shadow -->
+  <path d="M335,178 Q290,195 274,232 Q261,265 268,302 Q274,328 308,338 L492,338 Q526,328 532,302 Q539,265 526,232 Q510,195 465,178 Z"
+    fill="rgba(80,58,10,0.5)"/>
+  <!-- Cup interior highlight -->
+  <path d="M345,182 Q310,200 298,235 Q288,262 295,298 L505,298 Q512,262 502,235 Q490,200 455,182 Z"
+    fill="rgba(255,240,150,0.06)"/>
+
+  <!-- Decorative band 1 (near top rim) -->
+  <path d="M330,175 Q400,168 470,175 Q462,190 338,190 Z"
+    fill="rgba(255,240,150,0.35)" stroke="rgba(201,162,39,0.6)" stroke-width="1"/>
+  <!-- Decorative band 2 (lower middle) -->
+  <path d="M258,285 Q400,278 542,285 Q540,298 260,298 Z"
+    fill="rgba(201,162,39,0.2)" stroke="rgba(201,162,39,0.35)" stroke-width="0.8"/>
+
+  <!-- STAR on the face of trophy (central emblem) -->
+  <g transform="translate(400,255)" filter="url(#il-glow)">
+    <polygon points="0,-32 7,-10 30,-10 12,4 19,26 0,14 -19,26 -12,4 -30,-10 -7,-10"
+      fill="rgba(255,245,160,0.75)" stroke="rgba(255,240,140,0.6)" stroke-width="1.2"/>
+    <polygon points="0,-22 5,-7 20,-7 8,3 13,18 0,10 -13,18 -8,3 -20,-7 -5,-7"
+      fill="rgba(255,245,160,0.5)"/>
+  </g>
+
+  <!-- Rim detail at top of cup -->
+  <ellipse cx="400" cy="175" rx="70" ry="14" fill="rgba(201,162,39,0.65)" stroke="rgba(255,240,150,0.6)" stroke-width="1.5"/>
+  <!-- Rim inner shadow -->
+  <ellipse cx="400" cy="175" rx="62" ry="10" fill="rgba(80,58,10,0.7)"/>
+  <!-- Rim highlight -->
+  <path d="M340,168 Q400,162 460,168" fill="none" stroke="rgba(255,245,180,0.5)" stroke-width="1.5"/>
+
+  <!-- HANDLES on the cup -->
+  <!-- Left handle -->
+  <path d="M262,230 Q225,225 220,260 Q215,295 258,300"
+    fill="none" stroke="url(#il-cupGold)" stroke-width="10" stroke-linecap="round" filter="url(#il-glow)"/>
+  <path d="M262,230 Q225,225 220,260 Q215,295 258,300"
+    fill="none" stroke="rgba(255,245,180,0.35)" stroke-width="3" stroke-linecap="round"/>
+  <!-- Handle inner shadow -->
+  <path d="M262,235 Q232,232 228,265 Q224,293 258,298"
+    fill="none" stroke="rgba(80,58,10,0.4)" stroke-width="4" stroke-linecap="round"/>
+
+  <!-- Right handle -->
+  <path d="M538,230 Q575,225 580,260 Q585,295 542,300"
+    fill="none" stroke="url(#il-cupGold)" stroke-width="10" stroke-linecap="round" filter="url(#il-glow)"/>
+  <path d="M538,230 Q575,225 580,260 Q585,295 542,300"
+    fill="none" stroke="rgba(255,245,180,0.35)" stroke-width="3" stroke-linecap="round"/>
+  <path d="M538,235 Q568,232 572,265 Q576,293 542,298"
+    fill="none" stroke="rgba(80,58,10,0.4)" stroke-width="4" stroke-linecap="round"/>
+
+  <!-- Engraved horizontal lines on cup body (decorative details) -->
+  <g stroke="rgba(80,58,10,0.4)" stroke-width="0.8" fill="none">
+    <path d="M265,220 Q400,213 535,220"/>
+    <path d="M262,240 Q400,233 538,240"/>
+    <path d="M262,260 Q400,253 538,260"/>
+    <path d="M263,310 Q400,303 537,310"/>
+    <path d="M265,325 Q400,318 535,325"/>
+  </g>
+
+  <!-- ===== TROPHY STEM ===== -->
+  <!-- Upper stem (tapers from cup base) -->
+  <path d="M365,340 Q360,350 355,370 L445,370 Q440,350 435,340 Z"
+    fill="url(#il-stemGold)" stroke="rgba(255,240,150,0.4)" stroke-width="1"/>
+  <!-- Stem node / knop (decorative sphere) -->
+  <ellipse cx="400" cy="378" rx="35" ry="18" fill="url(#il-stemGold)" stroke="rgba(255,240,150,0.5)" stroke-width="1.2"/>
+  <!-- Knop highlight -->
+  <ellipse cx="393" cy="372" rx="18" ry="8" fill="rgba(255,245,180,0.25)"/>
+  <!-- Lower stem -->
+  <path d="M372,396 Q368,406 365,418 L435,418 Q432,406 428,396 Z"
+    fill="url(#il-stemGold)" stroke="rgba(255,240,150,0.4)" stroke-width="1"/>
+
+  <!-- ===== TROPHY BASE ===== -->
+  <!-- Upper base tier -->
+  <rect x="340" y="418" width="120" height="16" rx="2"
+    fill="url(#il-baseGold)" stroke="rgba(255,240,150,0.5)" stroke-width="1.2"/>
+  <!-- Highlight on upper base -->
+  <line x1="342" y1="420" x2="458" y2="420" stroke="rgba(255,245,180,0.4)" stroke-width="1"/>
+  <!-- Lower base tier (wider) -->
+  <rect x="318" y="434" width="164" height="20" rx="3"
+    fill="url(#il-baseGold)" stroke="rgba(255,240,150,0.5)" stroke-width="1.5"/>
+  <!-- Highlight on lower base -->
+  <line x1="320" y1="436" x2="480" y2="436" stroke="rgba(255,245,180,0.4)" stroke-width="1"/>
+  <!-- Base bottom platform (widest) -->
+  <rect x="300" y="454" width="200" height="12" rx="3"
+    fill="url(#il-baseGold)" stroke="rgba(255,240,150,0.45)" stroke-width="1.2"/>
+  <!-- Engraving line on base -->
+  <line x1="315" y1="443" x2="485" y2="443" stroke="rgba(80,58,10,0.5)" stroke-width="0.8"/>
+
+  <!-- ===== LAUREL WREATH (below trophy base) ===== -->
+  <!-- Left side laurel arc -->
+  <g fill="none" stroke="rgba(201,162,39,0.5)" stroke-width="1.2">
+    <path d="M240,465 Q260,450 280,460 Q270,448 290,453 Q278,440 300,447"/>
+    <path d="M242,468 Q265,455 282,465 Q273,452 294,458"/>
+    <!-- Leaf shapes on left arc -->
+    <g fill="rgba(201,162,39,0.25)" stroke="rgba(201,162,39,0.45)" stroke-width="1">
+      <path d="M248,462 Q255,448 262,454 Q258,465 248,462 Z"/>
+      <path d="M262,457 Q270,443 277,449 Q272,462 262,457 Z"/>
+      <path d="M276,454 Q284,440 291,446 Q286,459 276,454 Z"/>
+      <path d="M290,453 Q298,440 305,447 Q299,460 290,453 Z"/>
+    </g>
+  </g>
+  <!-- Right side laurel arc -->
+  <g fill="none" stroke="rgba(201,162,39,0.5)" stroke-width="1.2">
+    <path d="M560,465 Q540,450 520,460 Q530,448 510,453 Q522,440 500,447"/>
+    <path d="M558,468 Q535,455 518,465 Q527,452 506,458"/>
+    <g fill="rgba(201,162,39,0.25)" stroke="rgba(201,162,39,0.45)" stroke-width="1">
+      <path d="M552,462 Q545,448 538,454 Q542,465 552,462 Z"/>
+      <path d="M538,457 Q530,443 523,449 Q528,462 538,457 Z"/>
+      <path d="M524,454 Q516,440 509,446 Q514,459 524,454 Z"/>
+      <path d="M510,453 Q502,440 495,447 Q501,460 510,453 Z"/>
+    </g>
+  </g>
+  <!-- Laurel tie/ribbon at bottom centre -->
+  <path d="M388,472 Q400,468 412,472 Q406,480 400,482 Q394,480 388,472 Z"
+    fill="rgba(201,162,39,0.4)" stroke="rgba(201,162,39,0.65)" stroke-width="1"/>
+
+  <!-- ===== PODIUM / PLATFORM ===== -->
+  <!-- 2nd place platform (left) -->
+  <rect x="190" y="444" width="110" height="56" rx="2"
+    fill="url(#il-podiumGold)" stroke="rgba(201,162,39,0.55)" stroke-width="1.2"/>
+  <line x1="192" y1="446" x2="298" y2="446" stroke="rgba(255,245,180,0.3)" stroke-width="1"/>
+  <!-- 1st place platform (centre — tallest) -->
+  <rect x="300" y="418" width="200" height="82" rx="2"
+    fill="url(#il-podiumGold)" stroke="rgba(201,162,39,0.65)" stroke-width="1.5"/>
+  <!-- Platform face highlights -->
+  <line x1="302" y1="420" x2="498" y2="420" stroke="rgba(255,245,180,0.4)" stroke-width="1.5"/>
+  <line x1="302" y1="420" x2="302" y2="500" stroke="rgba(255,245,180,0.2)" stroke-width="1"/>
+  <line x1="498" y1="420" x2="498" y2="500" stroke="rgba(80,58,10,0.3)" stroke-width="1"/>
+  <!-- 3rd place platform (right) -->
+  <rect x="500" y="456" width="110" height="44" rx="2"
+    fill="url(#il-podiumGold)" stroke="rgba(201,162,39,0.55)" stroke-width="1.2"/>
+  <line x1="502" y1="458" x2="608" y2="458" stroke="rgba(255,245,180,0.3)" stroke-width="1"/>
+
+  <!-- Platform edge bevels -->
+  <g fill="rgba(201,162,39,0.35)" stroke="rgba(201,162,39,0.55)" stroke-width="0.8">
+    <!-- 1st platform top edge bevel -->
+    <rect x="300" y="418" width="200" height="6" rx="1"/>
+    <!-- 2nd platform top edge bevel -->
+    <rect x="190" y="444" width="110" height="5" rx="1"/>
+    <!-- 3rd platform top edge bevel -->
+    <rect x="500" y="456" width="110" height="5" rx="1"/>
+  </g>
+
+  <!-- Platform connection (the 2nd and 3rd platforms meet 1st) -->
+  <line x1="300" y1="500" x2="190" y2="500" stroke="rgba(201,162,39,0.4)" stroke-width="1"/>
+  <line x1="500" y1="500" x2="610" y2="500" stroke="rgba(201,162,39,0.4)" stroke-width="1"/>
+
+  <!-- Number marks on podium -->
+  <!-- 1st: single line (representing "1") -->
+  <line x1="400" y1="430" x2="400" y2="452" stroke="rgba(255,245,180,0.45)" stroke-width="2.5"/>
+  <!-- 2nd: two dots -->
+  <circle cx="245" cy="458" r="3" fill="rgba(255,245,180,0.35)"/>
+  <circle cx="245" cy="465" r="3" fill="rgba(255,245,180,0.35)"/>
+  <!-- 3rd: three dots -->
+  <circle cx="555" cy="462" r="2.5" fill="rgba(255,245,180,0.3)"/>
+  <circle cx="555" cy="469" r="2.5" fill="rgba(255,245,180,0.3)"/>
+  <circle cx="555" cy="476" r="2.5" fill="rgba(255,245,180,0.3)"/>
+
+  <!-- ===== CONFETTI / SPARKLE DETAILS ===== -->
+  <!-- Small diamond sparkles -->
+  <g fill="rgba(255,245,160,0.7)">
+    <polygon points="175,210 179,218 175,226 171,218"/>
+    <polygon points="625,195 629,203 625,211 621,203"/>
+    <polygon points="100,295 104,303 100,311 96,303"/>
+    <polygon points="700,305 704,313 700,321 696,313"/>
+    <polygon points="210,380 213,386 210,392 207,386"/>
+    <polygon points="590,375 593,381 590,387 587,381"/>
+  </g>
+
+  <!-- Fine sparkle dots -->
+  <g fill="rgba(255,245,160,0.55)">
+    <circle cx="142" cy="168" r="2"/><circle cx="658" cy="152" r="2"/>
+    <circle cx="118" cy="368" r="1.5"/><circle cx="682" cy="372" r="1.5"/>
+    <circle cx="200" cy="145" r="1.5"/><circle cx="600" cy="138" r="1.5"/>
+    <circle cx="755" cy="240" r="1.5"/><circle cx="45" cy="240" r="1.5"/>
+    <circle cx="765" cy="295" r="1"/><circle cx="35" cy="300" r="1"/>
+  </g>
+
+  <!-- Vignette -->
+  <rect width="800" height="500" fill="url(#il-vignette)"/>
 </svg>

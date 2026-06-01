@@ -1,33 +1,288 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="800" height="500">
   <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#0d1520"/>
-      <stop offset="50%" style="stop-color:#12202e"/>
-      <stop offset="100%" style="stop-color:#1a2d3d"/>
+    <linearGradient id="mep-bgBase" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0d1520"/>
+      <stop offset="50%" stop-color="#0f1828"/>
+      <stop offset="100%" stop-color="#13202e"/>
     </linearGradient>
+    <radialGradient id="mep-bgGlow" cx="50%" cy="52%" r="60%">
+      <stop offset="0%" stop-color="rgba(201,162,39,0.12)"/>
+      <stop offset="60%" stop-color="rgba(201,162,39,0.03)"/>
+      <stop offset="100%" stop-color="rgba(201,162,39,0)"/>
+    </radialGradient>
+    <linearGradient id="mep-pipeH" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="rgba(255,240,160,0.12)"/>
+      <stop offset="35%" stop-color="rgba(201,162,39,0.6)"/>
+      <stop offset="65%" stop-color="rgba(201,162,39,0.55)"/>
+      <stop offset="100%" stop-color="rgba(100,80,20,0.4)"/>
+    </linearGradient>
+    <linearGradient id="mep-pipeV" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="rgba(100,80,20,0.4)"/>
+      <stop offset="35%" stop-color="rgba(201,162,39,0.55)"/>
+      <stop offset="65%" stop-color="rgba(201,162,39,0.6)"/>
+      <stop offset="100%" stop-color="rgba(255,240,160,0.12)"/>
+    </linearGradient>
+    <radialGradient id="mep-gaugeGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="rgba(255,240,160,0.35)"/>
+      <stop offset="100%" stop-color="rgba(201,162,39,0.05)"/>
+    </radialGradient>
+    <filter id="mep-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="mep-boltGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <radialGradient id="mep-vignette" cx="50%" cy="50%" r="70%">
+      <stop offset="55%" stop-color="transparent"/>
+      <stop offset="100%" stop-color="rgba(0,0,0,0.65)"/>
+    </radialGradient>
   </defs>
-  <rect width="800" height="600" fill="url(#bg)"/>
-  <!-- Circuit lines -->
-  <g fill="none" stroke="rgba(201,162,39,0.15)" stroke-width="2">
-    <line x1="0" y1="150" x2="200" y2="150"/><line x1="200" y1="150" x2="200" y2="100"/><line x1="200" y1="100" x2="400" y2="100"/>
-    <line x1="400" y1="100" x2="400" y2="200"/><line x1="400" y1="200" x2="600" y2="200"/><line x1="600" y1="200" x2="600" y2="150"/><line x1="600" y1="150" x2="800" y2="150"/>
-    <line x1="0" y1="300" x2="150" y2="300"/><line x1="150" y1="300" x2="150" y2="450"/><line x1="150" y1="450" x2="300" y2="450"/>
-    <line x1="300" y1="450" x2="300" y2="350"/><line x1="300" y1="350" x2="500" y2="350"/><line x1="500" y1="350" x2="500" y2="480"/><line x1="500" y1="480" x2="800" y2="480"/>
-    <line x1="650" y1="100" x2="650" y2="350"/><line x1="650" y1="350" x2="750" y2="350"/><line x1="750" y1="350" x2="750" y2="480"/>
+
+  <!-- ===== BACKGROUND ===== -->
+  <rect width="800" height="500" fill="url(#mep-bgBase)"/>
+  <rect width="800" height="500" fill="url(#mep-bgGlow)"/>
+
+  <!-- Blueprint grid — faint blue-gold tint -->
+  <g stroke="rgba(140,170,220,0.08)" stroke-width="0.8" fill="none">
+    <line x1="0" y1="25" x2="800" y2="25"/><line x1="0" y1="50" x2="800" y2="50"/>
+    <line x1="0" y1="75" x2="800" y2="75"/><line x1="0" y1="100" x2="800" y2="100"/>
+    <line x1="0" y1="125" x2="800" y2="125"/><line x1="0" y1="150" x2="800" y2="150"/>
+    <line x1="0" y1="175" x2="800" y2="175"/><line x1="0" y1="200" x2="800" y2="200"/>
+    <line x1="0" y1="225" x2="800" y2="225"/><line x1="0" y1="250" x2="800" y2="250"/>
+    <line x1="0" y1="275" x2="800" y2="275"/><line x1="0" y1="300" x2="800" y2="300"/>
+    <line x1="0" y1="325" x2="800" y2="325"/><line x1="0" y1="350" x2="800" y2="350"/>
+    <line x1="0" y1="375" x2="800" y2="375"/><line x1="0" y1="400" x2="800" y2="400"/>
+    <line x1="0" y1="425" x2="800" y2="425"/><line x1="0" y1="450" x2="800" y2="450"/>
+    <line x1="0" y1="475" x2="800" y2="475"/>
+    <line x1="25" y1="0" x2="25" y2="500"/><line x1="50" y1="0" x2="50" y2="500"/>
+    <line x1="75" y1="0" x2="75" y2="500"/><line x1="100" y1="0" x2="100" y2="500"/>
+    <line x1="125" y1="0" x2="125" y2="500"/><line x1="150" y1="0" x2="150" y2="500"/>
+    <line x1="175" y1="0" x2="175" y2="500"/><line x1="200" y1="0" x2="200" y2="500"/>
+    <line x1="225" y1="0" x2="225" y2="500"/><line x1="250" y1="0" x2="250" y2="500"/>
+    <line x1="275" y1="0" x2="275" y2="500"/><line x1="300" y1="0" x2="300" y2="500"/>
+    <line x1="325" y1="0" x2="325" y2="500"/><line x1="350" y1="0" x2="350" y2="500"/>
+    <line x1="375" y1="0" x2="375" y2="500"/><line x1="400" y1="0" x2="400" y2="500"/>
+    <line x1="425" y1="0" x2="425" y2="500"/><line x1="450" y1="0" x2="450" y2="500"/>
+    <line x1="475" y1="0" x2="475" y2="500"/><line x1="500" y1="0" x2="500" y2="500"/>
+    <line x1="525" y1="0" x2="525" y2="500"/><line x1="550" y1="0" x2="550" y2="500"/>
+    <line x1="575" y1="0" x2="575" y2="500"/><line x1="600" y1="0" x2="600" y2="500"/>
+    <line x1="625" y1="0" x2="625" y2="500"/><line x1="650" y1="0" x2="650" y2="500"/>
+    <line x1="675" y1="0" x2="675" y2="500"/><line x1="700" y1="0" x2="700" y2="500"/>
+    <line x1="725" y1="0" x2="725" y2="500"/><line x1="750" y1="0" x2="750" y2="500"/>
+    <line x1="775" y1="0" x2="775" y2="500"/>
   </g>
-  <!-- Circuit nodes -->
-  <g fill="rgba(201,162,39,0.35)">
-    <circle cx="200" cy="150" r="5"/><circle cx="400" cy="100" r="5"/><circle cx="600" cy="200" r="5"/>
-    <circle cx="150" cy="300" r="5"/><circle cx="300" cy="450" r="5"/><circle cx="500" cy="350" r="5"/>
-    <circle cx="650" cy="150" r="5"/><circle cx="750" cy="350" r="5"/>
+
+  <!-- Circuit trace lines (diagonal background lines) -->
+  <g stroke="rgba(201,162,39,0.1)" stroke-width="1.5" fill="none">
+    <!-- Top-left circuit traces -->
+    <polyline points="0,80 100,80 100,40 200,40 200,100 280,100"/>
+    <polyline points="0,140 80,140 80,180 160,180 160,120 320,120"/>
+    <polyline points="680,40 680,100 740,100 740,60 800,60"/>
+    <polyline points="620,140 700,140 700,180 800,180"/>
+    <!-- Bottom circuit traces -->
+    <polyline points="0,420 120,420 120,380 220,380 220,440 350,440"/>
+    <polyline points="450,460 550,460 550,420 700,420 700,460 800,460"/>
+    <polyline points="0,360 90,360 90,390 150,390"/>
+    <polyline points="680,380 740,380 740,340 800,340"/>
   </g>
-  <!-- Wrench icon -->
-  <g fill="none" stroke="rgba(201,162,39,0.4)" stroke-width="10" stroke-linecap="round">
-    <path d="M320 220 L480 380"/>
-    <circle cx="300" cy="200" r="40" fill="none"/>
-    <circle cx="500" cy="400" r="30" fill="none"/>
-    <path d="M270 170 Q300 160 330 190" stroke-width="8"/>
+  <!-- Circuit nodes (dots) at intersections -->
+  <g fill="rgba(201,162,39,0.3)">
+    <circle cx="100" cy="80" r="3.5"/><circle cx="200" cy="40" r="3.5"/>
+    <circle cx="200" cy="100" r="3.5"/><circle cx="80" cy="140" r="3.5"/>
+    <circle cx="160" cy="180" r="3.5"/><circle cx="160" cy="120" r="3.5"/>
+    <circle cx="680" cy="100" r="3.5"/><circle cx="740" cy="60" r="3.5"/>
+    <circle cx="700" cy="140" r="3.5"/><circle cx="700" cy="180" r="3.5"/>
+    <circle cx="120" cy="420" r="3.5"/><circle cx="220" cy="380" r="3.5"/>
+    <circle cx="220" cy="440" r="3.5"/><circle cx="550" cy="420" r="3.5"/>
+    <circle cx="700" cy="420" r="3.5"/>
   </g>
-  <!-- Lightning bolt -->
-  <polygon points="380,180 360,290 395,290 370,400 415,280 378,280 400,180" fill="rgba(201,162,39,0.25)"/>
+
+  <!-- ===== MAIN PIPE NETWORK ===== -->
+  <!-- Main horizontal trunk pipe -->
+  <rect x="100" y="232" width="600" height="36" rx="4" fill="url(#mep-pipeH)" stroke="rgba(201,162,39,0.6)" stroke-width="1.5" filter="url(#mep-glow)"/>
+  <!-- Pipe end caps -->
+  <rect x="96" y="228" width="12" height="44" rx="3" fill="rgba(201,162,39,0.7)" stroke="rgba(201,162,39,0.9)" stroke-width="1"/>
+  <rect x="692" y="228" width="12" height="44" rx="3" fill="rgba(201,162,39,0.7)" stroke="rgba(201,162,39,0.9)" stroke-width="1"/>
+  <!-- Pipe highlight line (top) -->
+  <line x1="100" y1="238" x2="700" y2="238" stroke="rgba(255,245,180,0.25)" stroke-width="2"/>
+
+  <!-- Pipe flanges (bolted joints) on horizontal pipe -->
+  <g fill="rgba(201,162,39,0.45)" stroke="rgba(201,162,39,0.7)" stroke-width="1">
+    <rect x="225" y="224" width="14" height="52" rx="2"/>
+    <rect x="390" y="224" width="14" height="52" rx="2"/>
+    <rect x="555" y="224" width="14" height="52" rx="2"/>
+  </g>
+  <!-- Flange bolt details -->
+  <g fill="rgba(255,240,150,0.6)">
+    <circle cx="232" cy="228" r="2.5"/><circle cx="232" cy="272" r="2.5"/>
+    <circle cx="397" cy="228" r="2.5"/><circle cx="397" cy="272" r="2.5"/>
+    <circle cx="562" cy="228" r="2.5"/><circle cx="562" cy="272" r="2.5"/>
+  </g>
+
+  <!-- ===== VERTICAL BRANCH PIPES ===== -->
+  <!-- Branch 1 - goes up from ~x=230 -->
+  <rect x="235" y="80" width="28" height="152" rx="3" fill="url(#mep-pipeV)" stroke="rgba(201,162,39,0.55)" stroke-width="1.2"/>
+  <line x1="240" y1="80" x2="240" y2="232" stroke="rgba(255,245,180,0.2)" stroke-width="1.5"/>
+  <!-- Elbow joint top-left of branch 1 -->
+  <path d="M235,100 Q220,100 220,80 L248,80 Q248,86 248,100 Z" fill="rgba(201,162,39,0.5)" stroke="rgba(201,162,39,0.7)" stroke-width="1"/>
+  <!-- T-junction at branch 1 bottom -->
+  <rect x="222" y="262" width="54" height="6" rx="2" fill="rgba(201,162,39,0.6)" stroke="rgba(201,162,39,0.8)" stroke-width="1"/>
+
+  <!-- Branch 2 - goes up from ~x=400 -->
+  <rect x="403" y="100" width="28" height="132" rx="3" fill="url(#mep-pipeV)" stroke="rgba(201,162,39,0.55)" stroke-width="1.2"/>
+  <line x1="408" y1="100" x2="408" y2="232" stroke="rgba(255,245,180,0.2)" stroke-width="1.5"/>
+  <!-- T-junction branch 2 -->
+  <rect x="390" y="262" width="54" height="6" rx="2" fill="rgba(201,162,39,0.6)" stroke="rgba(201,162,39,0.8)" stroke-width="1"/>
+
+  <!-- Branch 3 - goes down from ~x=565 -->
+  <rect x="568" y="268" width="28" height="140" rx="3" fill="url(#mep-pipeV)" stroke="rgba(201,162,39,0.55)" stroke-width="1.2"/>
+  <line x1="573" y1="268" x2="573" y2="408" stroke="rgba(255,245,180,0.2)" stroke-width="1.5"/>
+  <!-- T-junction branch 3 top -->
+  <rect x="555" y="228" width="54" height="6" rx="2" fill="rgba(201,162,39,0.6)" stroke="rgba(201,162,39,0.8)" stroke-width="1"/>
+  <!-- Elbow at bottom of branch 3 -->
+  <path d="M568,400 Q568,420 590,420 L590,408 Q580,408 580,400 Z" fill="rgba(201,162,39,0.5)" stroke="rgba(201,162,39,0.7)" stroke-width="1"/>
+  <rect x="588" y="408" width="120" height="24" rx="3" fill="url(#mep-pipeH)" stroke="rgba(201,162,39,0.5)" stroke-width="1.2"/>
+
+  <!-- Branch 1 horizontal extension (left elbow) -->
+  <rect x="115" y="213" width="125" height="22" rx="3" fill="url(#mep-pipeH)" stroke="rgba(201,162,39,0.45)" stroke-width="1"/>
+  <!-- Elbow at end -->
+  <path d="M115,213 Q100,213 100,200 L100,225 Q108,235 115,235 Z" fill="rgba(201,162,39,0.45)" stroke="rgba(201,162,39,0.65)" stroke-width="1"/>
+  <!-- Small vertical drop -->
+  <rect x="100" y="150" width="20" height="55" rx="2" fill="url(#mep-pipeV)" stroke="rgba(201,162,39,0.45)" stroke-width="1"/>
+
+  <!-- ===== PRESSURE GAUGES ===== -->
+  <!-- Gauge 1 on branch 1 (upper) -->
+  <g transform="translate(249,148)" filter="url(#mep-glow)">
+    <circle cx="0" cy="0" r="38" fill="url(#mep-gaugeGlow)" stroke="rgba(201,162,39,0.7)" stroke-width="2"/>
+    <circle cx="0" cy="0" r="33" fill="rgba(10,15,25,0.85)" stroke="rgba(201,162,39,0.35)" stroke-width="0.8"/>
+    <!-- Gauge face gradations -->
+    <g stroke="rgba(201,162,39,0.5)" stroke-width="1.5">
+      <line x1="0" y1="-28" x2="0" y2="-33"/><line x1="0" y1="28" x2="0" y2="33"/>
+      <line x1="28" y1="0" x2="33" y2="0"/><line x1="-28" y1="0" x2="-33" y2="0"/>
+      <line x1="20" y1="-20" x2="23" y2="-23"/><line x1="20" y1="20" x2="23" y2="23"/>
+      <line x1="-20" y1="-20" x2="-23" y2="-23"/><line x1="-20" y1="20" x2="-23" y2="23"/>
+    </g>
+    <!-- Minor ticks -->
+    <g stroke="rgba(201,162,39,0.3)" stroke-width="0.8">
+      <line x1="14" y1="-26" x2="16" y2="-29"/><line x1="26" y1="-14" x2="29" y2="-16"/>
+      <line x1="26" y1="14" x2="29" y2="16"/><line x1="14" y1="26" x2="16" y2="29"/>
+      <line x1="-14" y1="-26" x2="-16" y2="-29"/><line x1="-26" y1="-14" x2="-29" y2="-16"/>
+      <line x1="-26" y1="14" x2="-29" y2="16"/><line x1="-14" y1="26" x2="-16" y2="29"/>
+    </g>
+    <!-- Gauge needle pointing to 2 o'clock position -->
+    <line x1="0" y1="0" x2="16" y2="-22" stroke="rgba(255,80,80,0.85)" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="0" cy="0" r="3.5" fill="rgba(201,162,39,0.8)"/>
+    <!-- Centre bolt -->
+    <circle cx="0" cy="0" r="1.5" fill="rgba(255,240,150,0.9)"/>
+    <!-- Gauge mounting stem -->
+    <rect x="-5" y="33" width="10" height="14" rx="2" fill="rgba(201,162,39,0.55)" stroke="rgba(201,162,39,0.7)" stroke-width="0.8"/>
+  </g>
+
+  <!-- Gauge 2 on branch 2 (upper) -->
+  <g transform="translate(417,170)" filter="url(#mep-glow)">
+    <circle cx="0" cy="0" r="34" fill="url(#mep-gaugeGlow)" stroke="rgba(201,162,39,0.65)" stroke-width="2"/>
+    <circle cx="0" cy="0" r="29" fill="rgba(10,15,25,0.85)" stroke="rgba(201,162,39,0.3)" stroke-width="0.8"/>
+    <g stroke="rgba(201,162,39,0.5)" stroke-width="1.5">
+      <line x1="0" y1="-24" x2="0" y2="-29"/><line x1="0" y1="24" x2="0" y2="29"/>
+      <line x1="24" y1="0" x2="29" y2="0"/><line x1="-24" y1="0" x2="-29" y2="0"/>
+      <line x1="17" y1="-17" x2="20" y2="-20"/><line x1="17" y1="17" x2="20" y2="20"/>
+      <line x1="-17" y1="-17" x2="-20" y2="-20"/><line x1="-17" y1="17" x2="-20" y2="20"/>
+    </g>
+    <g stroke="rgba(201,162,39,0.3)" stroke-width="0.8">
+      <line x1="12" y1="-22" x2="14" y2="-25"/><line x1="22" y1="-12" x2="25" y2="-14"/>
+      <line x1="22" y1="12" x2="25" y2="14"/><line x1="12" y1="22" x2="14" y2="25"/>
+      <line x1="-12" y1="-22" x2="-14" y2="-25"/><line x1="-22" y1="-12" x2="-25" y2="-14"/>
+      <line x1="-22" y1="12" x2="-25" y2="14"/><line x1="-12" y1="22" x2="-14" y2="25"/>
+    </g>
+    <!-- Needle pointing ~10 o'clock -->
+    <line x1="0" y1="0" x2="-12" y2="-20" stroke="rgba(255,80,80,0.85)" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="0" cy="0" r="3" fill="rgba(201,162,39,0.8)"/>
+    <circle cx="0" cy="0" r="1.2" fill="rgba(255,240,150,0.9)"/>
+    <rect x="-4" y="29" width="8" height="12" rx="2" fill="rgba(201,162,39,0.55)" stroke="rgba(201,162,39,0.7)" stroke-width="0.8"/>
+  </g>
+
+  <!-- Gauge 3 on branch 3 lower section -->
+  <g transform="translate(617,380)" filter="url(#mep-glow)">
+    <circle cx="0" cy="0" r="30" fill="url(#mep-gaugeGlow)" stroke="rgba(201,162,39,0.6)" stroke-width="1.8"/>
+    <circle cx="0" cy="0" r="25" fill="rgba(10,15,25,0.85)" stroke="rgba(201,162,39,0.28)" stroke-width="0.8"/>
+    <g stroke="rgba(201,162,39,0.45)" stroke-width="1.2">
+      <line x1="0" y1="-20" x2="0" y2="-25"/><line x1="0" y1="20" x2="0" y2="25"/>
+      <line x1="20" y1="0" x2="25" y2="0"/><line x1="-20" y1="0" x2="-25" y2="0"/>
+      <line x1="14" y1="-14" x2="17" y2="-17"/><line x1="14" y1="14" x2="17" y2="17"/>
+      <line x1="-14" y1="-14" x2="-17" y2="-17"/><line x1="-14" y1="14" x2="-17" y2="17"/>
+    </g>
+    <line x1="0" y1="0" x2="8" y2="-18" stroke="rgba(255,80,80,0.85)" stroke-width="1.8" stroke-linecap="round"/>
+    <circle cx="0" cy="0" r="2.8" fill="rgba(201,162,39,0.8)"/>
+    <circle cx="0" cy="0" r="1.1" fill="rgba(255,240,150,0.9)"/>
+  </g>
+
+  <!-- ===== VALVE WHEELS on pipes ===== -->
+  <!-- Valve 1 on main pipe -->
+  <g transform="translate(330,250)" fill="none" stroke="rgba(201,162,39,0.7)" stroke-width="2">
+    <circle cx="0" cy="0" r="18"/>
+    <circle cx="0" cy="0" r="6" fill="rgba(201,162,39,0.5)"/>
+    <line x1="-18" y1="0" x2="18" y2="0"/>
+    <line x1="0" y1="-18" x2="0" y2="18"/>
+    <line x1="-13" y1="-13" x2="13" y2="13"/>
+    <line x1="13" y1="-13" x2="-13" y2="13"/>
+  </g>
+  <!-- Valve 2 on main pipe -->
+  <g transform="translate(500,250)" fill="none" stroke="rgba(201,162,39,0.65)" stroke-width="1.8">
+    <circle cx="0" cy="0" r="16"/>
+    <circle cx="0" cy="0" r="5.5" fill="rgba(201,162,39,0.45)"/>
+    <line x1="-16" y1="0" x2="16" y2="0"/>
+    <line x1="0" y1="-16" x2="0" y2="16"/>
+    <line x1="-11" y1="-11" x2="11" y2="11"/>
+    <line x1="11" y1="-11" x2="-11" y2="11"/>
+  </g>
+
+  <!-- ===== LIGHTNING BOLT (electrical) ===== -->
+  <g filter="url(#mep-boltGlow)">
+    <polygon points="155,80 125,195 158,195 128,320 188,175 152,175 178,80"
+      fill="rgba(201,162,39,0.55)" stroke="rgba(255,240,150,0.6)" stroke-width="1.2"/>
+  </g>
+  <!-- Bolt aura/glow -->
+  <polygon points="155,80 125,195 158,195 128,320 188,175 152,175 178,80"
+    fill="rgba(255,240,120,0.08)" stroke="none"/>
+
+  <!-- ===== CONDUIT / ELECTRICAL PANEL ===== -->
+  <!-- Panel box outline -->
+  <rect x="655" y="165" width="80" height="110" rx="4" fill="rgba(10,15,25,0.75)" stroke="rgba(201,162,39,0.55)" stroke-width="1.5"/>
+  <!-- Panel rows of breakers -->
+  <g fill="rgba(201,162,39,0.35)" stroke="rgba(201,162,39,0.5)" stroke-width="0.7">
+    <rect x="663" y="175" width="28" height="10" rx="1.5"/>
+    <rect x="697" y="175" width="28" height="10" rx="1.5"/>
+    <rect x="663" y="189" width="28" height="10" rx="1.5"/>
+    <rect x="697" y="189" width="28" height="10" rx="1.5"/>
+    <rect x="663" y="203" width="28" height="10" rx="1.5"/>
+    <rect x="697" y="203" width="28" height="10" rx="1.5"/>
+    <rect x="663" y="217" width="28" height="10" rx="1.5"/>
+    <rect x="697" y="217" width="28" height="10" rx="1.5"/>
+    <rect x="663" y="231" width="28" height="10" rx="1.5"/>
+    <rect x="697" y="231" width="28" height="10" rx="1.5"/>
+    <rect x="663" y="245" width="28" height="10" rx="1.5"/>
+    <rect x="697" y="245" width="28" height="10" rx="1.5"/>
+  </g>
+  <!-- Panel conduit runs (from panel) -->
+  <g stroke="rgba(201,162,39,0.35)" stroke-width="3" fill="none">
+    <line x1="656" y1="220" x2="600" y2="220"/>
+    <line x1="656" y1="230" x2="600" y2="230"/>
+  </g>
+
+  <!-- ===== PIPE INSULATION BANDS ===== -->
+  <g fill="rgba(201,162,39,0.12)" stroke="rgba(201,162,39,0.2)" stroke-width="0.8">
+    <rect x="175" y="232" width="8" height="36" rx="2"/>
+    <rect x="295" y="232" width="8" height="36" rx="2"/>
+    <rect x="335" y="232" width="8" height="36" rx="2"/>
+    <rect x="460" y="232" width="8" height="36" rx="2"/>
+    <rect x="640" y="232" width="8" height="36" rx="2"/>
+  </g>
+
+  <!-- Atmospheric glow overlays -->
+  <ellipse cx="400" cy="250" rx="300" ry="180" fill="rgba(201,162,39,0.03)"/>
+
+  <!-- Vignette -->
+  <rect width="800" height="500" fill="url(#mep-vignette)"/>
 </svg>

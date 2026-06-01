@@ -1,61 +1,341 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="800" height="500">
   <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#140d0d"/>
-      <stop offset="50%" style="stop-color:#221212"/>
-      <stop offset="100%" style="stop-color:#2a1515"/>
+    <linearGradient id="if-bgBase" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f0c0c"/>
+      <stop offset="50%" stop-color="#130e0e"/>
+      <stop offset="100%" stop-color="#1a1212"/>
     </linearGradient>
+    <radialGradient id="if-bgGlow" cx="50%" cy="50%" r="65%">
+      <stop offset="0%" stop-color="rgba(201,162,39,0.1)"/>
+      <stop offset="55%" stop-color="rgba(201,162,39,0.02)"/>
+      <stop offset="100%" stop-color="rgba(201,162,39,0)"/>
+    </radialGradient>
+    <!-- Pendant light glow -->
+    <radialGradient id="if-lightGlow" cx="50%" cy="100%" r="80%">
+      <stop offset="0%" stop-color="rgba(255,230,120,0.55)"/>
+      <stop offset="40%" stop-color="rgba(201,162,39,0.2)"/>
+      <stop offset="100%" stop-color="rgba(201,162,39,0)"/>
+    </radialGradient>
+    <!-- Floor parquet gradient -->
+    <linearGradient id="if-floorGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="rgba(201,162,39,0.22)"/>
+      <stop offset="50%" stop-color="rgba(201,162,39,0.14)"/>
+      <stop offset="100%" stop-color="rgba(201,162,39,0.06)"/>
+    </linearGradient>
+    <!-- Wall panel gradient -->
+    <linearGradient id="if-wallGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.1)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0.03)"/>
+    </linearGradient>
+    <!-- Left wall gradient -->
+    <linearGradient id="if-leftWall" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="rgba(201,162,39,0.06)"/>
+      <stop offset="100%" stop-color="rgba(201,162,39,0.12)"/>
+    </linearGradient>
+    <filter id="if-pendantGlow" x="-100%" y="-50%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="18" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="if-softGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <radialGradient id="if-vignette" cx="50%" cy="50%" r="75%">
+      <stop offset="50%" stop-color="transparent"/>
+      <stop offset="100%" stop-color="rgba(0,0,0,0.7)"/>
+    </radialGradient>
+    <clipPath id="if-roomClip">
+      <polygon points="0,0 800,0 800,500 0,500"/>
+    </clipPath>
   </defs>
-  <rect width="800" height="600" fill="url(#bg)"/>
-  <!-- Herringbone floor pattern -->
-  <g fill="none" stroke="rgba(201,162,39,0.1)" stroke-width="1">
-    <!-- Row of herringbone tiles -->
-    <g transform="translate(50,50)">
-      <g transform="translate(0,0)"><rect x="0" y="0" width="60" height="20" transform="rotate(45,30,10)"/></g>
-      <g transform="translate(70,0)"><rect x="0" y="0" width="60" height="20" transform="rotate(-45,30,10)"/></g>
-      <g transform="translate(140,0)"><rect x="0" y="0" width="60" height="20" transform="rotate(45,30,10)"/></g>
-      <g transform="translate(210,0)"><rect x="0" y="0" width="60" height="20" transform="rotate(-45,30,10)"/></g>
-      <g transform="translate(280,0)"><rect x="0" y="0" width="60" height="20" transform="rotate(45,30,10)"/></g>
-      <g transform="translate(350,0)"><rect x="0" y="0" width="60" height="20" transform="rotate(-45,30,10)"/></g>
-      <g transform="translate(420,0)"><rect x="0" y="0" width="60" height="20" transform="rotate(45,30,10)"/></g>
-      <g transform="translate(490,0)"><rect x="0" y="0" width="60" height="20" transform="rotate(-45,30,10)"/></g>
-      <g transform="translate(560,0)"><rect x="0" y="0" width="60" height="20" transform="rotate(45,30,10)"/></g>
-      <g transform="translate(630,0)"><rect x="0" y="0" width="60" height="20" transform="rotate(-45,30,10)"/></g>
+
+  <!-- ===== BACKGROUND ===== -->
+  <rect width="800" height="500" fill="url(#if-bgBase)"/>
+  <rect width="800" height="500" fill="url(#if-bgGlow)"/>
+
+  <!-- ===== ONE-POINT PERSPECTIVE ROOM ===== -->
+  <!-- Vanishing point: (400, 220) -->
+
+  <!-- CEILING PLANE -->
+  <!-- The ceiling is the quadrilateral from top-left corner(0,0) to top-right(800,0) and vanishes at (400,220) -->
+  <polygon points="0,0 800,0 400,220" fill="rgba(20,15,15,0.95)" stroke="rgba(201,162,39,0.3)" stroke-width="1.5"/>
+  <!-- Ceiling highlight line at apex -->
+
+  <!-- FLOOR PLANE (from vanishing point down to bottom edge) -->
+  <!-- Floor extends from VP(400,220) down to bottom corners (0,500) and (800,500) -->
+  <polygon points="0,500 800,500 400,220" fill="url(#if-floorGrad)" stroke="rgba(201,162,39,0.25)" stroke-width="1"/>
+
+  <!-- LEFT WALL (from top-left corner to VP to bottom-left corner) -->
+  <polygon points="0,0 400,220 0,500" fill="url(#if-leftWall)" stroke="rgba(201,162,39,0.25)" stroke-width="1.5"/>
+
+  <!-- RIGHT WALL (from top-right corner to VP to bottom-right corner) -->
+  <polygon points="800,0 400,220 800,500" fill="url(#if-wallGrad)" stroke="rgba(201,162,39,0.2)" stroke-width="1.5"/>
+
+  <!-- BACK WALL (the central rectangle where lines converge) -->
+  <rect x="120" y="48" width="560" height="344" fill="rgba(25,18,18,0.85)" stroke="rgba(201,162,39,0.25)" stroke-width="1"/>
+
+  <!-- ===== BACK WALL DETAILS ===== -->
+  <!-- Central panel on back wall -->
+  <rect x="200" y="90" width="400" height="260" rx="3" fill="rgba(201,162,39,0.04)" stroke="rgba(201,162,39,0.2)" stroke-width="1.2"/>
+  <!-- Inner moulding border -->
+  <rect x="212" y="102" width="376" height="236" rx="2" fill="none" stroke="rgba(201,162,39,0.15)" stroke-width="1"/>
+  <rect x="224" y="114" width="352" height="212" rx="2" fill="none" stroke="rgba(201,162,39,0.1)" stroke-width="0.8"/>
+
+  <!-- Skirting board at base of back wall -->
+  <rect x="122" y="375" width="556" height="16" rx="1" fill="rgba(201,162,39,0.18)" stroke="rgba(201,162,39,0.35)" stroke-width="1"/>
+  <!-- Cornice at top of back wall -->
+  <rect x="122" y="50" width="556" height="12" rx="1" fill="rgba(201,162,39,0.18)" stroke="rgba(201,162,39,0.35)" stroke-width="1"/>
+
+  <!-- ===== RIGHT WALL — VERTICAL BATTEN PANELS ===== -->
+  <!-- Battens as tall thin rectangles on right wall -->
+  <!-- Right wall is between x:400-800 in perspective -->
+  <!-- Approximate as strips getting narrower toward vanishing point -->
+  <g clip-path="url(#if-roomClip)">
+    <!-- Batten strips on right wall — drawn in perspective foreshortening -->
+    <g fill="rgba(255,255,255,0.07)" stroke="rgba(255,255,255,0.12)" stroke-width="0.8">
+      <polygon points="800,0 790,8 400,220 800,4"/>
+      <polygon points="790,8 776,20 400,220 790,12"/>
+      <polygon points="776,20 760,36 400,220 776,24"/>
+      <polygon points="760,36 742,54 400,220 760,40"/>
+      <polygon points="742,54 722,74 400,220 742,58"/>
+      <polygon points="722,74 700,96 400,220 722,78"/>
+      <polygon points="700,96 676,120 400,220 700,100"/>
+      <polygon points="676,120 650,146 400,220 676,124"/>
+      <polygon points="650,146 622,174 400,220 650,150"/>
+      <polygon points="622,174 592,204 400,220 622,178"/>
+      <polygon points="800,500 790,492 400,220 800,496"/>
+      <polygon points="790,492 776,480 400,220 790,488"/>
+      <polygon points="776,480 760,464 400,220 776,476"/>
+      <polygon points="760,464 742,446 400,220 760,460"/>
+      <polygon points="742,446 722,426 400,220 742,442"/>
+      <polygon points="722,426 700,404 400,220 722,422"/>
+      <polygon points="700,404 676,380 400,220 700,400"/>
+      <polygon points="676,380 650,354 400,220 676,376"/>
+      <polygon points="650,354 622,326 400,220 650,350"/>
+      <polygon points="622,326 592,296 400,220 622,322"/>
+    </g>
+    <!-- Batten highlight edges -->
+    <g stroke="rgba(201,162,39,0.18)" stroke-width="0.6" fill="none">
+      <line x1="800" y1="0" x2="400" y2="220"/>
+      <line x1="790" y1="8" x2="400" y2="220"/>
+      <line x1="776" y1="20" x2="400" y2="220"/>
+      <line x1="760" y1="36" x2="400" y2="220"/>
+      <line x1="742" y1="54" x2="400" y2="220"/>
+      <line x1="722" y1="74" x2="400" y2="220"/>
+      <line x1="700" y1="96" x2="400" y2="220"/>
+      <line x1="676" y1="120" x2="400" y2="220"/>
+      <line x1="650" y1="146" x2="400" y2="220"/>
+      <line x1="622" y1="174" x2="400" y2="220"/>
+      <line x1="592" y1="204" x2="400" y2="220"/>
     </g>
   </g>
-  <!-- Diamond tile grid -->
-  <g fill="none" stroke="rgba(201,162,39,0.12)" stroke-width="1">
-    <g transform="translate(400,300) rotate(45)">
-      <rect x="-200" y="-200" width="60" height="60"/>
-      <rect x="-140" y="-200" width="60" height="60"/>
-      <rect x="-80" y="-200" width="60" height="60"/>
-      <rect x="-20" y="-200" width="60" height="60"/>
-      <rect x="40" y="-200" width="60" height="60"/>
-      <rect x="100" y="-200" width="60" height="60"/>
-      <rect x="160" y="-200" width="60" height="60"/>
-      <rect x="-200" y="-140" width="60" height="60"/>
-      <rect x="-140" y="-140" width="60" height="60"/>
-      <rect x="-80" y="-140" width="60" height="60"/>
-      <rect x="-20" y="-140" width="60" height="60"/>
-      <rect x="40" y="-140" width="60" height="60"/>
-      <rect x="100" y="-140" width="60" height="60"/>
-      <rect x="160" y="-140" width="60" height="60"/>
-      <rect x="-200" y="-80" width="60" height="60"/>
-      <rect x="-140" y="-80" width="60" height="60"/>
-      <rect x="-80" y="-80" width="60" height="60"/>
-      <rect x="-20" y="-80" width="60" height="60"/>
-      <rect x="40" y="-80" width="60" height="60"/>
-      <rect x="100" y="-80" width="60" height="60"/>
-      <rect x="160" y="-80" width="60" height="60"/>
+
+  <!-- ===== LEFT WALL DETAIL ===== -->
+  <!-- Picture/artwork panel on left wall -->
+  <polygon points="60,90 200,152 200,350 60,350"
+    fill="rgba(201,162,39,0.05)" stroke="rgba(201,162,39,0.2)" stroke-width="1.2"/>
+  <!-- Inner frame -->
+  <polygon points="72,105 188,162 188,338 72,338"
+    fill="none" stroke="rgba(201,162,39,0.12)" stroke-width="1"/>
+  <!-- Left wall skirting -->
+  <polygon points="0,475 200,415 200,430 0,498" fill="rgba(201,162,39,0.15)" stroke="rgba(201,162,39,0.3)" stroke-width="1"/>
+  <!-- Left wall cornice -->
+  <polygon points="0,10 200,70 200,82 0,22" fill="rgba(201,162,39,0.15)" stroke="rgba(201,162,39,0.3)" stroke-width="1"/>
+
+  <!-- ===== HERRINGBONE PARQUET FLOOR ===== -->
+  <!-- Floor plane: polygon from (0,500) (800,500) (400,220) -->
+  <!-- Draw herringbone in perspective — rows of small rectangles at 45° angles -->
+  <!-- We'll clip them to the floor polygon area -->
+  <clipPath id="if-floorClip">
+    <polygon points="0,500 800,500 400,220"/>
+  </clipPath>
+  <g clip-path="url(#if-floorClip)">
+    <!-- Herringbone tiles — drawn as alternating 45° and -45° rotated rectangles -->
+    <!-- Row pattern across the floor, working from bottom up -->
+    <g fill="none" stroke="rgba(201,162,39,0.25)" stroke-width="0.7">
+      <!-- A dense pattern of parquet planks arranged in herringbone across floor area -->
+      <!-- Bottom-most wide rows -->
+      <g transform="translate(0,500)">
+        <g transform="translate(0,0)"><rect x="-10" y="-28" width="28" height="12" transform="rotate(45)"/></g>
+        <g transform="translate(30,0)"><rect x="-10" y="-28" width="28" height="12" transform="rotate(-45)"/></g>
+        <g transform="translate(60,0)"><rect x="-10" y="-28" width="28" height="12" transform="rotate(45)"/></g>
+        <g transform="translate(90,0)"><rect x="-10" y="-28" width="28" height="12" transform="rotate(-45)"/></g>
+        <g transform="translate(120,0)"><rect x="-10" y="-28" width="28" height="12" transform="rotate(45)"/></g>
+        <g transform="translate(150,0)"><rect x="-10" y="-28" width="28" height="12" transform="rotate(-45)"/></g>
+        <g transform="translate(180,0)"><rect x="-10" y="-28" width="28" height="12" transform="rotate(45)"/></g>
+        <g transform="translate(210,0)"><rect x="-10" y="-28" width="28" height="12" transform="rotate(-45)"/></g>
+        <g transform="translate(240,0)"><rect x="-10" y="-28" width="28" height="12" transform="rotate(45)"/></g>
+        <g transform="translate(270,0)"><rect x="-10" y="-28" width="28" height="12" transform="rotate(-45)"/></g>
+        <g transform="translate(300,0)"><rect x="-10" y="-28" width="28" height="12" transform="rotate(45)"/></g>
+        <g transform="translate(330,0)"><rect x="-10" y="-28" width="28" height="12" transform="rotate(-45)"/></g>
+        <g transform="translate(360,0)"><rect x="-10" y="-28" width="28" height="12" transform="rotate(45)"/></g>
+        <g transform="translate(390,0)"><rect x="-10" y="-28" width="28" height="12" transform="rotate(-45)"/></g>
+        <g transform="translate(420,0)"><rect x="-10" y="-28" width="28" height="12" transform="rotate(45)"/></g>
+        <g transform="translate(450,0)"><rect x="-10" y="-28" width="28" height="12" transform="rotate(-45)"/></g>
+        <g transform="translate(480,0)"><rect x="-10" y="-28" width="28" height="12" transform="rotate(45)"/></g>
+        <g transform="translate(510,0)"><rect x="-10" y="-28" width="28" height="12" transform="rotate(-45)"/></g>
+        <g transform="translate(540,0)"><rect x="-10" y="-28" width="28" height="12" transform="rotate(45)"/></g>
+        <g transform="translate(570,0)"><rect x="-10" y="-28" width="28" height="12" transform="rotate(-45)"/></g>
+        <g transform="translate(600,0)"><rect x="-10" y="-28" width="28" height="12" transform="rotate(45)"/></g>
+        <g transform="translate(630,0)"><rect x="-10" y="-28" width="28" height="12" transform="rotate(-45)"/></g>
+        <g transform="translate(660,0)"><rect x="-10" y="-28" width="28" height="12" transform="rotate(45)"/></g>
+        <g transform="translate(690,0)"><rect x="-10" y="-28" width="28" height="12" transform="rotate(-45)"/></g>
+        <g transform="translate(720,0)"><rect x="-10" y="-28" width="28" height="12" transform="rotate(45)"/></g>
+        <g transform="translate(750,0)"><rect x="-10" y="-28" width="28" height="12" transform="rotate(-45)"/></g>
+        <g transform="translate(780,0)"><rect x="-10" y="-28" width="28" height="12" transform="rotate(45)"/></g>
+      </g>
+      <!-- Row 2 offset -->
+      <g transform="translate(15,470)">
+        <g transform="translate(0,0)"><rect x="-10" y="-24" width="24" height="10" transform="rotate(45)"/></g>
+        <g transform="translate(28,0)"><rect x="-10" y="-24" width="24" height="10" transform="rotate(-45)"/></g>
+        <g transform="translate(56,0)"><rect x="-10" y="-24" width="24" height="10" transform="rotate(45)"/></g>
+        <g transform="translate(84,0)"><rect x="-10" y="-24" width="24" height="10" transform="rotate(-45)"/></g>
+        <g transform="translate(112,0)"><rect x="-10" y="-24" width="24" height="10" transform="rotate(45)"/></g>
+        <g transform="translate(140,0)"><rect x="-10" y="-24" width="24" height="10" transform="rotate(-45)"/></g>
+        <g transform="translate(168,0)"><rect x="-10" y="-24" width="24" height="10" transform="rotate(45)"/></g>
+        <g transform="translate(196,0)"><rect x="-10" y="-24" width="24" height="10" transform="rotate(-45)"/></g>
+        <g transform="translate(224,0)"><rect x="-10" y="-24" width="24" height="10" transform="rotate(45)"/></g>
+        <g transform="translate(252,0)"><rect x="-10" y="-24" width="24" height="10" transform="rotate(-45)"/></g>
+        <g transform="translate(280,0)"><rect x="-10" y="-24" width="24" height="10" transform="rotate(45)"/></g>
+        <g transform="translate(308,0)"><rect x="-10" y="-24" width="24" height="10" transform="rotate(-45)"/></g>
+        <g transform="translate(336,0)"><rect x="-10" y="-24" width="24" height="10" transform="rotate(45)"/></g>
+        <g transform="translate(364,0)"><rect x="-10" y="-24" width="24" height="10" transform="rotate(-45)"/></g>
+        <g transform="translate(392,0)"><rect x="-10" y="-24" width="24" height="10" transform="rotate(45)"/></g>
+        <g transform="translate(420,0)"><rect x="-10" y="-24" width="24" height="10" transform="rotate(-45)"/></g>
+        <g transform="translate(448,0)"><rect x="-10" y="-24" width="24" height="10" transform="rotate(45)"/></g>
+        <g transform="translate(476,0)"><rect x="-10" y="-24" width="24" height="10" transform="rotate(-45)"/></g>
+        <g transform="translate(504,0)"><rect x="-10" y="-24" width="24" height="10" transform="rotate(45)"/></g>
+        <g transform="translate(532,0)"><rect x="-10" y="-24" width="24" height="10" transform="rotate(-45)"/></g>
+        <g transform="translate(560,0)"><rect x="-10" y="-24" width="24" height="10" transform="rotate(45)"/></g>
+        <g transform="translate(588,0)"><rect x="-10" y="-24" width="24" height="10" transform="rotate(-45)"/></g>
+        <g transform="translate(616,0)"><rect x="-10" y="-24" width="24" height="10" transform="rotate(45)"/></g>
+        <g transform="translate(644,0)"><rect x="-10" y="-24" width="24" height="10" transform="rotate(-45)"/></g>
+        <g transform="translate(672,0)"><rect x="-10" y="-24" width="24" height="10" transform="rotate(45)"/></g>
+        <g transform="translate(700,0)"><rect x="-10" y="-24" width="24" height="10" transform="rotate(-45)"/></g>
+        <g transform="translate(728,0)"><rect x="-10" y="-24" width="24" height="10" transform="rotate(45)"/></g>
+        <g transform="translate(756,0)"><rect x="-10" y="-24" width="24" height="10" transform="rotate(-45)"/></g>
+        <g transform="translate(784,0)"><rect x="-10" y="-24" width="24" height="10" transform="rotate(45)"/></g>
+      </g>
+      <!-- Row 3 -->
+      <g transform="translate(0,440)">
+        <g transform="translate(60,0)"><rect x="-8" y="-20" width="20" height="9" transform="rotate(45)"/></g>
+        <g transform="translate(84,0)"><rect x="-8" y="-20" width="20" height="9" transform="rotate(-45)"/></g>
+        <g transform="translate(108,0)"><rect x="-8" y="-20" width="20" height="9" transform="rotate(45)"/></g>
+        <g transform="translate(132,0)"><rect x="-8" y="-20" width="20" height="9" transform="rotate(-45)"/></g>
+        <g transform="translate(156,0)"><rect x="-8" y="-20" width="20" height="9" transform="rotate(45)"/></g>
+        <g transform="translate(180,0)"><rect x="-8" y="-20" width="20" height="9" transform="rotate(-45)"/></g>
+        <g transform="translate(204,0)"><rect x="-8" y="-20" width="20" height="9" transform="rotate(45)"/></g>
+        <g transform="translate(228,0)"><rect x="-8" y="-20" width="20" height="9" transform="rotate(-45)"/></g>
+        <g transform="translate(252,0)"><rect x="-8" y="-20" width="20" height="9" transform="rotate(45)"/></g>
+        <g transform="translate(276,0)"><rect x="-8" y="-20" width="20" height="9" transform="rotate(-45)"/></g>
+        <g transform="translate(300,0)"><rect x="-8" y="-20" width="20" height="9" transform="rotate(45)"/></g>
+        <g transform="translate(324,0)"><rect x="-8" y="-20" width="20" height="9" transform="rotate(-45)"/></g>
+        <g transform="translate(348,0)"><rect x="-8" y="-20" width="20" height="9" transform="rotate(45)"/></g>
+        <g transform="translate(372,0)"><rect x="-8" y="-20" width="20" height="9" transform="rotate(-45)"/></g>
+        <g transform="translate(396,0)"><rect x="-8" y="-20" width="20" height="9" transform="rotate(45)"/></g>
+        <g transform="translate(420,0)"><rect x="-8" y="-20" width="20" height="9" transform="rotate(-45)"/></g>
+        <g transform="translate(444,0)"><rect x="-8" y="-20" width="20" height="9" transform="rotate(45)"/></g>
+        <g transform="translate(468,0)"><rect x="-8" y="-20" width="20" height="9" transform="rotate(-45)"/></g>
+        <g transform="translate(492,0)"><rect x="-8" y="-20" width="20" height="9" transform="rotate(45)"/></g>
+        <g transform="translate(516,0)"><rect x="-8" y="-20" width="20" height="9" transform="rotate(-45)"/></g>
+        <g transform="translate(540,0)"><rect x="-8" y="-20" width="20" height="9" transform="rotate(45)"/></g>
+        <g transform="translate(564,0)"><rect x="-8" y="-20" width="20" height="9" transform="rotate(-45)"/></g>
+        <g transform="translate(588,0)"><rect x="-8" y="-20" width="20" height="9" transform="rotate(45)"/></g>
+        <g transform="translate(612,0)"><rect x="-8" y="-20" width="20" height="9" transform="rotate(-45)"/></g>
+        <g transform="translate(636,0)"><rect x="-8" y="-20" width="20" height="9" transform="rotate(45)"/></g>
+        <g transform="translate(660,0)"><rect x="-8" y="-20" width="20" height="9" transform="rotate(-45)"/></g>
+        <g transform="translate(684,0)"><rect x="-8" y="-20" width="20" height="9" transform="rotate(45)"/></g>
+        <g transform="translate(708,0)"><rect x="-8" y="-20" width="20" height="9" transform="rotate(-45)"/></g>
+        <g transform="translate(732,0)"><rect x="-8" y="-20" width="20" height="9" transform="rotate(45)"/></g>
+      </g>
+      <!-- Row 4 near VP -->
+      <g transform="translate(120,390)">
+        <g transform="translate(60,0)"><rect x="-6" y="-16" width="16" height="7" transform="rotate(45)"/></g>
+        <g transform="translate(78,0)"><rect x="-6" y="-16" width="16" height="7" transform="rotate(-45)"/></g>
+        <g transform="translate(96,0)"><rect x="-6" y="-16" width="16" height="7" transform="rotate(45)"/></g>
+        <g transform="translate(114,0)"><rect x="-6" y="-16" width="16" height="7" transform="rotate(-45)"/></g>
+        <g transform="translate(132,0)"><rect x="-6" y="-16" width="16" height="7" transform="rotate(45)"/></g>
+        <g transform="translate(150,0)"><rect x="-6" y="-16" width="16" height="7" transform="rotate(-45)"/></g>
+        <g transform="translate(168,0)"><rect x="-6" y="-16" width="16" height="7" transform="rotate(45)"/></g>
+        <g transform="translate(186,0)"><rect x="-6" y="-16" width="16" height="7" transform="rotate(-45)"/></g>
+        <g transform="translate(204,0)"><rect x="-6" y="-16" width="16" height="7" transform="rotate(45)"/></g>
+        <g transform="translate(222,0)"><rect x="-6" y="-16" width="16" height="7" transform="rotate(-45)"/></g>
+        <g transform="translate(240,0)"><rect x="-6" y="-16" width="16" height="7" transform="rotate(45)"/></g>
+        <g transform="translate(258,0)"><rect x="-6" y="-16" width="16" height="7" transform="rotate(-45)"/></g>
+        <g transform="translate(276,0)"><rect x="-6" y="-16" width="16" height="7" transform="rotate(45)"/></g>
+        <g transform="translate(294,0)"><rect x="-6" y="-16" width="16" height="7" transform="rotate(-45)"/></g>
+        <g transform="translate(312,0)"><rect x="-6" y="-16" width="16" height="7" transform="rotate(45)"/></g>
+        <g transform="translate(330,0)"><rect x="-6" y="-16" width="16" height="7" transform="rotate(-45)"/></g>
+        <g transform="translate(348,0)"><rect x="-6" y="-16" width="16" height="7" transform="rotate(45)"/></g>
+        <g transform="translate(366,0)"><rect x="-6" y="-16" width="16" height="7" transform="rotate(-45)"/></g>
+        <g transform="translate(384,0)"><rect x="-6" y="-16" width="16" height="7" transform="rotate(45)"/></g>
+        <g transform="translate(402,0)"><rect x="-6" y="-16" width="16" height="7" transform="rotate(-45)"/></g>
+        <g transform="translate(420,0)"><rect x="-6" y="-16" width="16" height="7" transform="rotate(45)"/></g>
+        <g transform="translate(438,0)"><rect x="-6" y="-16" width="16" height="7" transform="rotate(-45)"/></g>
+        <g transform="translate(456,0)"><rect x="-6" y="-16" width="16" height="7" transform="rotate(45)"/></g>
+        <g transform="translate(474,0)"><rect x="-6" y="-16" width="16" height="7" transform="rotate(-45)"/></g>
+        <g transform="translate(492,0)"><rect x="-6" y="-16" width="16" height="7" transform="rotate(45)"/></g>
+        <g transform="translate(510,0)"><rect x="-6" y="-16" width="16" height="7" transform="rotate(-45)"/></g>
+      </g>
     </g>
+    <!-- Floor reflection glow near front -->
+    <rect x="200" y="440" width="400" height="60" fill="rgba(201,162,39,0.06)" rx="2"/>
   </g>
-  <!-- Interior room perspective lines -->
-  <g fill="none" stroke="rgba(201,162,39,0.2)" stroke-width="1.5">
-    <line x1="0" y1="0" x2="400" y2="300"/><line x1="800" y1="0" x2="400" y2="300"/>
-    <line x1="0" y1="600" x2="400" y2="300"/><line x1="800" y1="600" x2="400" y2="300"/>
-    <line x1="0" y1="0" x2="0" y2="600"/><line x1="800" y1="0" x2="800" y2="600"/>
-    <!-- Wall lines -->
-    <line x1="150" y1="100" x2="400" y2="300"/><line x1="650" y1="100" x2="400" y2="300"/>
-    <line x1="150" y1="500" x2="400" y2="300"/><line x1="650" y1="500" x2="400" y2="300"/>
+
+  <!-- ===== PENDANT LIGHT ===== -->
+  <!-- Ceiling cord -->
+  <line x1="400" y1="0" x2="400" y2="128" stroke="rgba(201,162,39,0.6)" stroke-width="2"/>
+  <!-- Pendant body (shade) -->
+  <path d="M370,128 Q360,145 365,162 L435,162 Q440,145 430,128 Z"
+    fill="rgba(201,162,39,0.35)" stroke="rgba(201,162,39,0.7)" stroke-width="1.5" filter="url(#if-softGlow)"/>
+  <!-- Pendant shade inner highlight -->
+  <path d="M375,130 Q367,144 371,158 L429,158 Q433,144 425,130 Z"
+    fill="rgba(255,230,120,0.15)" stroke="none"/>
+  <!-- Pendant bulb glow -->
+  <circle cx="400" cy="162" r="8" fill="rgba(255,230,120,0.9)" stroke="rgba(255,245,180,0.7)" stroke-width="1" filter="url(#if-pendantGlow)"/>
+  <!-- Light pool on floor -->
+  <ellipse cx="400" cy="480" rx="120" ry="30" fill="rgba(255,220,100,0.08)" filter="url(#if-pendantGlow)"/>
+  <!-- Light pool on back wall -->
+  <ellipse cx="400" cy="300" rx="90" ry="80" fill="rgba(255,220,100,0.04)"/>
+
+  <!-- Pendant radiating lines (light rays) -->
+  <g stroke="rgba(255,220,100,0.12)" stroke-width="1" fill="none">
+    <line x1="400" y1="170" x2="340" y2="250"/>
+    <line x1="400" y1="170" x2="460" y2="250"/>
+    <line x1="400" y1="170" x2="380" y2="240"/>
+    <line x1="400" y1="170" x2="420" y2="240"/>
+    <line x1="400" y1="170" x2="310" y2="280"/>
+    <line x1="400" y1="170" x2="490" y2="280"/>
   </g>
+
+  <!-- ===== MOULDING LINES at ceiling/wall junction ===== -->
+  <!-- Ceiling/left-wall junction moulding -->
+  <line x1="0" y1="0" x2="400" y2="220" stroke="rgba(201,162,39,0.35)" stroke-width="2"/>
+  <line x1="4" y1="0" x2="402" y2="218" stroke="rgba(201,162,39,0.15)" stroke-width="1"/>
+  <!-- Ceiling/right-wall junction -->
+  <line x1="800" y1="0" x2="400" y2="220" stroke="rgba(201,162,39,0.35)" stroke-width="2"/>
+  <line x1="796" y1="0" x2="398" y2="218" stroke="rgba(201,162,39,0.15)" stroke-width="1"/>
+  <!-- Floor/left-wall junction -->
+  <line x1="0" y1="500" x2="400" y2="220" stroke="rgba(201,162,39,0.2)" stroke-width="1.5"/>
+  <!-- Floor/right-wall junction -->
+  <line x1="800" y1="500" x2="400" y2="220" stroke="rgba(201,162,39,0.2)" stroke-width="1.5"/>
+
+  <!-- ===== CEILING COFFERS / DETAIL ===== -->
+  <!-- Ceiling panel frames converging to VP -->
+  <g stroke="rgba(201,162,39,0.12)" stroke-width="0.8" fill="none">
+    <line x1="200" y1="0" x2="400" y2="220"/>
+    <line x1="400" y1="0" x2="400" y2="220"/>
+    <line x1="600" y1="0" x2="400" y2="220"/>
+    <line x1="0" y1="80" x2="400" y2="220"/>
+    <line x1="800" y1="80" x2="400" y2="220"/>
+    <!-- Cross beams horizontal on ceiling -->
+    <line x1="50" y1="18" x2="750" y2="18"/>
+    <line x1="80" y1="55" x2="720" y2="55"/>
+    <line x1="110" y1="95" x2="690" y2="95"/>
+    <line x1="140" y1="138" x2="660" y2="138"/>
+    <line x1="170" y1="182" x2="630" y2="182"/>
+  </g>
+
+  <!-- Vignette -->
+  <rect width="800" height="500" fill="url(#if-vignette)"/>
 </svg>

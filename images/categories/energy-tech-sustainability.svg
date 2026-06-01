@@ -1,40 +1,343 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="800" height="500">
   <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#0d0d20"/>
-      <stop offset="50%" style="stop-color:#11122e"/>
-      <stop offset="100%" style="stop-color:#151630"/>
+    <linearGradient id="et-bgBase" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#060a18"/>
+      <stop offset="45%" stop-color="#0a0f22"/>
+      <stop offset="100%" stop-color="#0e1530"/>
     </linearGradient>
+    <radialGradient id="et-sunGlow" cx="50%" cy="22%" r="35%">
+      <stop offset="0%" stop-color="rgba(201,162,39,0.45)"/>
+      <stop offset="30%" stop-color="rgba(201,162,39,0.18)"/>
+      <stop offset="65%" stop-color="rgba(201,162,39,0.05)"/>
+      <stop offset="100%" stop-color="rgba(201,162,39,0)"/>
+    </radialGradient>
+    <radialGradient id="et-groundGlow" cx="50%" cy="90%" r="55%">
+      <stop offset="0%" stop-color="rgba(201,162,39,0.1)"/>
+      <stop offset="100%" stop-color="rgba(201,162,39,0)"/>
+    </radialGradient>
+    <!-- Solar panel gradient -->
+    <linearGradient id="et-panelFill" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="rgba(40,60,120,0.6)"/>
+      <stop offset="50%" stop-color="rgba(30,45,90,0.5)"/>
+      <stop offset="100%" stop-color="rgba(20,30,65,0.7)"/>
+    </linearGradient>
+    <linearGradient id="et-panelFrame" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="rgba(201,162,39,0.8)"/>
+      <stop offset="100%" stop-color="rgba(180,145,35,0.6)"/>
+    </linearGradient>
+    <!-- Wind turbine blade gradient -->
+    <linearGradient id="et-bladeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="rgba(255,245,180,0.15)"/>
+      <stop offset="50%" stop-color="rgba(255,255,255,0.7)"/>
+      <stop offset="100%" stop-color="rgba(200,200,200,0.4)"/>
+    </linearGradient>
+    <filter id="et-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="et-sunFilter" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="20" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <radialGradient id="et-vignette" cx="50%" cy="50%" r="72%">
+      <stop offset="50%" stop-color="transparent"/>
+      <stop offset="100%" stop-color="rgba(0,0,0,0.65)"/>
+    </radialGradient>
   </defs>
-  <rect width="800" height="600" fill="url(#bg)"/>
-  <!-- Hexagonal solar panel grid -->
-  <g fill="none" stroke="rgba(201,162,39,0.15)" stroke-width="1.5">
-    <!-- Hex grid pattern -->
-    <g transform="translate(400,300)">
-      <!-- Inner ring -->
-      <polygon points="0,-60 52,-30 52,30 0,60 -52,30 -52,-30"/>
-      <!-- Middle ring -->
-      <polygon points="104,-60 156,-30 156,30 104,60 52,90 0,60 -52,90 -104,60 -156,30 -156,-30 -104,-60 -52,-90 0,-60 52,-90 104,-60"/>
-      <!-- Connecting lines to grid -->
-      <line x1="0" y1="-60" x2="0" y2="-120"/><line x1="52" y1="-30" x2="104" y2="-60"/><line x1="52" y1="30" x2="104" y2="60"/>
-      <line x1="0" y1="60" x2="0" y2="120"/><line x1="-52" y1="30" x2="-104" y2="60"/><line x1="-52" y1="-30" x2="-104" y2="-60"/>
+
+  <!-- ===== BACKGROUND ===== -->
+  <rect width="800" height="500" fill="url(#et-bgBase)"/>
+  <rect width="800" height="500" fill="url(#et-sunGlow)"/>
+  <rect width="800" height="500" fill="url(#et-groundGlow)"/>
+
+  <!-- ===== HEXAGONAL GRID BACKGROUND ===== -->
+  <!-- Small hex grid pattern, very faint -->
+  <g stroke="rgba(100,130,220,0.1)" stroke-width="0.8" fill="none">
+    <!-- Row 1 of hexagons -->
+    <g transform="translate(0,0)">
+      <!-- Generate hex grid by repeating -->
+      <polygon points="40,10 60,0 80,10 80,30 60,40 40,30"/>
+      <polygon points="80,10 100,0 120,10 120,30 100,40 80,30"/>
+      <polygon points="120,10 140,0 160,10 160,30 140,40 120,30"/>
+      <polygon points="160,10 180,0 200,10 200,30 180,40 160,30"/>
+      <polygon points="200,10 220,0 240,10 240,30 220,40 200,30"/>
+      <polygon points="240,10 260,0 280,10 280,30 260,40 240,30"/>
+      <polygon points="280,10 300,0 320,10 320,30 300,40 280,30"/>
+      <polygon points="320,10 340,0 360,10 360,30 340,40 320,30"/>
+      <polygon points="360,10 380,0 400,10 400,30 380,40 360,30"/>
+      <polygon points="400,10 420,0 440,10 440,30 420,40 400,30"/>
+      <polygon points="440,10 460,0 480,10 480,30 460,40 440,30"/>
+      <polygon points="480,10 500,0 520,10 520,30 500,40 480,30"/>
+      <polygon points="520,10 540,0 560,10 560,30 540,40 520,30"/>
+      <polygon points="560,10 580,0 600,10 600,30 580,40 560,30"/>
+      <polygon points="600,10 620,0 640,10 640,30 620,40 600,30"/>
+      <polygon points="640,10 660,0 680,10 680,30 660,40 640,30"/>
+      <polygon points="680,10 700,0 720,10 720,30 700,40 680,30"/>
+      <polygon points="720,10 740,0 760,10 760,30 740,40 720,30"/>
+      <polygon points="760,10 780,0 800,10 800,30 780,40 760,30"/>
+      <!-- Row 2 offset -->
+      <polygon points="20,30 40,20 60,30 60,50 40,60 20,50"/>
+      <polygon points="60,30 80,20 100,30 100,50 80,60 60,50"/>
+      <polygon points="100,30 120,20 140,30 140,50 120,60 100,50"/>
+      <polygon points="140,30 160,20 180,30 180,50 160,60 140,50"/>
+      <polygon points="180,30 200,20 220,30 220,50 200,60 180,50"/>
+      <polygon points="220,30 240,20 260,30 260,50 240,60 220,50"/>
+      <polygon points="260,30 280,20 300,30 300,50 280,60 260,50"/>
+      <polygon points="300,30 320,20 340,30 340,50 320,60 300,50"/>
+      <polygon points="340,30 360,20 380,30 380,50 360,60 340,50"/>
+      <polygon points="380,30 400,20 420,30 420,50 400,60 380,50"/>
+      <polygon points="420,30 440,20 460,30 460,50 440,60 420,50"/>
+      <polygon points="460,30 480,20 500,30 500,50 480,60 460,50"/>
+      <polygon points="500,30 520,20 540,30 540,50 520,60 500,50"/>
+      <polygon points="540,30 560,20 580,30 580,50 560,60 540,50"/>
+      <polygon points="580,30 600,20 620,30 620,50 600,60 580,50"/>
+      <polygon points="620,30 640,20 660,30 660,50 640,60 620,50"/>
+      <polygon points="660,30 680,20 700,30 700,50 680,60 660,50"/>
+      <polygon points="700,30 720,20 740,30 740,50 720,60 700,50"/>
+      <polygon points="740,30 760,20 780,30 780,50 760,60 740,50"/>
+      <!-- Row 3 -->
+      <polygon points="40,50 60,40 80,50 80,70 60,80 40,70"/>
+      <polygon points="80,50 100,40 120,50 120,70 100,80 80,70"/>
+      <polygon points="120,50 140,40 160,50 160,70 140,80 120,70"/>
+      <polygon points="160,50 180,40 200,50 200,70 180,80 160,70"/>
+      <polygon points="200,50 220,40 240,50 240,70 220,80 200,70"/>
+      <polygon points="240,50 260,40 280,50 280,70 260,80 240,70"/>
+      <polygon points="280,50 300,40 320,50 320,70 300,80 280,70"/>
+      <polygon points="320,50 340,40 360,50 360,70 340,80 320,70"/>
+      <polygon points="360,50 380,40 400,50 400,70 380,80 360,70"/>
+      <polygon points="400,50 420,40 440,50 440,70 420,80 400,70"/>
+      <polygon points="440,50 460,40 480,50 480,70 460,80 440,70"/>
+      <polygon points="480,50 500,40 520,50 520,70 500,80 480,70"/>
+      <polygon points="520,50 540,40 560,50 560,70 540,80 520,70"/>
+      <polygon points="560,50 580,40 600,50 600,70 580,80 560,70"/>
+      <polygon points="600,50 620,40 640,50 640,70 620,80 600,70"/>
+      <polygon points="640,50 660,40 680,50 680,70 660,80 640,70"/>
+      <polygon points="680,50 700,40 720,50 720,70 700,80 680,70"/>
+      <polygon points="720,50 740,40 760,50 760,70 740,80 720,70"/>
+      <polygon points="760,50 780,40 800,50 800,70 780,80 760,70"/>
+      <!-- Rows 4-12: continue the hex grid pattern for the full background -->
+      <polygon points="20,70 40,60 60,70 60,90 40,100 20,90"/>
+      <polygon points="60,70 80,60 100,70 100,90 80,100 60,90"/>
+      <polygon points="100,70 120,60 140,70 140,90 120,100 100,90"/>
+      <polygon points="140,70 160,60 180,70 180,90 160,100 140,90"/>
+      <polygon points="180,70 200,60 220,70 220,90 200,100 180,90"/>
+      <polygon points="220,70 240,60 260,70 260,90 240,100 220,90"/>
+      <polygon points="260,70 280,60 300,70 300,90 280,100 260,90"/>
+      <polygon points="300,70 320,60 340,70 340,90 320,100 300,90"/>
+      <polygon points="340,70 360,60 380,70 380,90 360,100 340,90"/>
+      <polygon points="380,70 400,60 420,70 420,90 400,100 380,90"/>
+      <polygon points="420,70 440,60 460,70 460,90 440,100 420,90"/>
+      <polygon points="460,70 480,60 500,70 500,90 480,100 460,90"/>
+      <polygon points="500,70 520,60 540,70 540,90 520,100 500,90"/>
+      <polygon points="540,70 560,60 580,70 580,90 560,100 540,90"/>
+      <polygon points="580,70 600,60 620,70 620,90 600,100 580,90"/>
+      <polygon points="620,70 640,60 660,70 660,90 640,100 620,90"/>
+      <polygon points="660,70 680,60 700,70 700,90 680,100 660,90"/>
+      <polygon points="700,70 720,60 740,70 740,90 720,100 700,90"/>
+      <polygon points="740,70 760,60 780,70 780,90 760,100 740,90"/>
     </g>
-    <!-- Extra hexagons -->
-    <polygon points="400,180 452,210 452,270 400,300 348,270 348,210" transform="translate(0,-120)"/>
-    <polygon points="400,180 452,210 452,270 400,300 348,270 348,210" transform="translate(208,-60)"/>
-    <polygon points="400,180 452,210 452,270 400,300 348,270 348,210" transform="translate(-208,-60)"/>
-    <polygon points="400,180 452,210 452,270 400,300 348,270 348,210" transform="translate(208,60)"/>
-    <polygon points="400,180 452,210 452,270 400,300 348,270 348,210" transform="translate(-208,60)"/>
-    <polygon points="400,180 452,210 452,270 400,300 348,270 348,210" transform="translate(0,120)"/>
   </g>
-  <!-- Lightning bolt -->
-  <polygon points="420,150 385,290 415,290 380,430 440,270 408,270 440,150" fill="rgba(201,162,39,0.3)"/>
-  <!-- Wind turbine -->
-  <g fill="rgba(201,162,39,0.2)" transform="translate(120,180)">
-    <line x1="0" y1="0" x2="0" y2="100" stroke="rgba(201,162,39,0.3)" stroke-width="4"/>
-    <ellipse cx="0" cy="0" rx="8" ry="8"/>
-    <path d="M0,0 Q-30,-40 -10,-70 Q10,-50 0,0"/>
-    <path d="M0,0 Q40,-10 60,10 Q30,30 0,0"/>
-    <path d="M0,0 Q-10,40 -40,50 Q-40,20 0,0"/>
+
+  <!-- Circuit board traces in background centre -->
+  <g stroke="rgba(201,162,39,0.14)" stroke-width="1.5" fill="none">
+    <!-- Horizontal traces -->
+    <polyline points="320,180 380,180 380,160 440,160 440,200 480,200"/>
+    <polyline points="320,200 360,200 360,220 400,220 400,190 450,190"/>
+    <polyline points="380,240 420,240 420,260 460,260 460,230 500,230"/>
+    <polyline points="340,260 380,260 380,280 420,280 420,265 480,265"/>
+    <!-- Vertical traces -->
+    <polyline points="400,150 400,130 440,130 440,150"/>
+    <polyline points="460,160 460,140 500,140 500,170 520,170"/>
+    <polyline points="420,280 420,300 460,300 460,270 490,270"/>
   </g>
+  <!-- Circuit node dots -->
+  <g fill="rgba(201,162,39,0.4)">
+    <circle cx="380" cy="180" r="3"/><circle cx="440" cy="160" r="3"/><circle cx="440" cy="200" r="3"/>
+    <circle cx="360" cy="200" r="3"/><circle cx="400" cy="220" r="3"/><circle cx="400" cy="190" r="3"/>
+    <circle cx="420" cy="240" r="3"/><circle cx="460" cy="260" r="3"/><circle cx="460" cy="230" r="3"/>
+    <circle cx="380" cy="260" r="3"/><circle cx="420" cy="280" r="3"/>
+    <circle cx="400" cy="130" r="3"/><circle cx="440" cy="130" r="3"/>
+    <circle cx="460" cy="140" r="3"/><circle cx="500" cy="140" r="3"/>
+    <circle cx="420" cy="300" r="3"/><circle cx="460" cy="300" r="3"/>
+  </g>
+
+  <!-- ===== SUN / ENERGY CIRCLE (upper centre) ===== -->
+  <circle cx="400" cy="108" r="65" fill="rgba(201,162,39,0.06)" filter="url(#et-sunFilter)"/>
+  <circle cx="400" cy="108" r="42" fill="rgba(201,162,39,0.1)" filter="url(#et-glow)"/>
+  <circle cx="400" cy="108" r="30" fill="rgba(201,162,39,0.22)" stroke="rgba(201,162,39,0.55)" stroke-width="1.5"/>
+  <circle cx="400" cy="108" r="22" fill="rgba(201,162,39,0.35)" stroke="rgba(255,240,160,0.4)" stroke-width="1"/>
+  <circle cx="400" cy="108" r="14" fill="rgba(255,230,120,0.6)" stroke="rgba(255,245,180,0.5)" stroke-width="1"/>
+  <!-- Sun rays (long) -->
+  <g stroke="rgba(201,162,39,0.4)" stroke-width="2" stroke-linecap="round">
+    <line x1="400" y1="65" x2="400" y2="55"/>
+    <line x1="400" y1="151" x2="400" y2="161"/>
+    <line x1="357" y1="108" x2="347" y2="108"/>
+    <line x1="443" y1="108" x2="453" y2="108"/>
+    <line x1="370" y1="78" x2="363" y2="71"/>
+    <line x1="430" y1="78" x2="437" y2="71"/>
+    <line x1="370" y1="138" x2="363" y2="145"/>
+    <line x1="430" y1="138" x2="437" y2="145"/>
+  </g>
+  <!-- Sun rays (short/medium) -->
+  <g stroke="rgba(201,162,39,0.25)" stroke-width="1.2" stroke-linecap="round">
+    <line x1="384" y1="68" x2="381" y2="61"/>
+    <line x1="416" y1="68" x2="419" y2="61"/>
+    <line x1="384" y1="148" x2="381" y2="155"/>
+    <line x1="416" y1="148" x2="419" y2="155"/>
+    <line x1="360" y1="90" x2="355" y2="85"/>
+    <line x1="440" y1="90" x2="445" y2="85"/>
+    <line x1="360" y1="126" x2="355" y2="131"/>
+    <line x1="440" y1="126" x2="445" y2="131"/>
+  </g>
+
+  <!-- ===== SOLAR PANELS (left foreground) ===== -->
+  <!-- Panel array in perspective — parallelograms -->
+  <!-- Panel 1 (front) -->
+  <g filter="url(#et-glow)">
+    <polygon points="80,380 200,340 230,395 110,435"
+      fill="url(#et-panelFill)" stroke="rgba(201,162,39,0.7)" stroke-width="1.5"/>
+    <!-- Panel 1 internal cell grid -->
+    <g stroke="rgba(201,162,39,0.35)" stroke-width="0.8" fill="none">
+      <!-- Vertical dividers (in perspective) -->
+      <line x1="110" y1="345" x2="118" y2="396"/>
+      <line x1="140" y1="347" x2="148" y2="398"/>
+      <line x1="170" y1="344" x2="178" y2="395"/>
+      <line x1="200" y1="341" x2="208" y2="393"/>
+      <!-- Horizontal dividers -->
+      <line x1="82" y1="388" x2="228" y2="349"/>
+      <line x1="86" y1="397" x2="232" y2="358"/>
+      <line x1="90" y1="408" x2="234" y2="367"/>
+      <line x1="94" y1="420" x2="236" y2="380"/>
+    </g>
+    <!-- Cell highlight dots -->
+    <g fill="rgba(100,150,255,0.18)">
+      <rect x="84" y="382" width="22" height="12" transform="rotate(-18,95,388)"/>
+      <rect x="116" y="375" width="22" height="12" transform="rotate(-18,127,381)"/>
+      <rect x="148" y="370" width="22" height="12" transform="rotate(-18,159,376)"/>
+      <rect x="180" y="365" width="22" height="12" transform="rotate(-18,191,371)"/>
+      <rect x="88" y="400" width="22" height="12" transform="rotate(-18,99,406)"/>
+      <rect x="120" y="395" width="22" height="12" transform="rotate(-18,131,401)"/>
+      <rect x="152" y="390" width="22" height="12" transform="rotate(-18,163,396)"/>
+      <rect x="184" y="385" width="22" height="12" transform="rotate(-18,195,391)"/>
+    </g>
+  </g>
+
+  <!-- Panel 2 (middle row, behind) -->
+  <polygon points="90,348 210,308 238,360 118,400"
+    fill="url(#et-panelFill)" stroke="rgba(201,162,39,0.6)" stroke-width="1.2"/>
+  <g stroke="rgba(201,162,39,0.28)" stroke-width="0.7" fill="none">
+    <line x1="120" y1="313" x2="128" y2="362"/>
+    <line x1="150" y1="311" x2="158" y2="360"/>
+    <line x1="180" y1="309" x2="188" y2="358"/>
+    <line x1="210" y1="308" x2="216" y2="356"/>
+    <line x1="92" y1="355" x2="234" y2="315"/>
+    <line x1="96" y1="365" x2="236" y2="325"/>
+    <line x1="100" y1="375" x2="238" y2="337"/>
+    <line x1="104" y1="386" x2="238" y2="348"/>
+  </g>
+
+  <!-- Panel 3 (far/smaller) -->
+  <polygon points="100,318 218,280 244,328 126,366"
+    fill="url(#et-panelFill)" stroke="rgba(201,162,39,0.5)" stroke-width="1"/>
+  <g stroke="rgba(201,162,39,0.22)" stroke-width="0.6" fill="none">
+    <line x1="130" y1="284" x2="137" y2="330"/>
+    <line x1="158" y1="282" x2="165" y2="328"/>
+    <line x1="186" y1="281" x2="192" y2="327"/>
+    <line x1="102" y1="326" x2="240" y2="287"/>
+    <line x1="106" y1="337" x2="242" y2="298"/>
+    <line x1="110" y1="348" x2="244" y2="310"/>
+  </g>
+
+  <!-- Panel 4 (extra farthest) -->
+  <polygon points="108,290 224,254 248,300 132,336"
+    fill="url(#et-panelFill)" stroke="rgba(201,162,39,0.4)" stroke-width="0.8"/>
+  <g stroke="rgba(201,162,39,0.18)" stroke-width="0.5" fill="none">
+    <line x1="134" y1="258" x2="140" y2="300"/>
+    <line x1="160" y1="256" x2="166" y2="298"/>
+    <line x1="186" y1="255" x2="192" y2="297"/>
+    <line x1="110" y1="297" x2="246" y2="260"/>
+    <line x1="114" y1="308" x2="248" y2="272"/>
+  </g>
+
+  <!-- Panel mounting frames/legs -->
+  <g stroke="rgba(201,162,39,0.5)" stroke-width="2" fill="none">
+    <line x1="110" y1="435" x2="115" y2="470"/>
+    <line x1="200" y1="435" x2="205" y2="470"/>
+    <line x1="120" y1="400" x2="125" y2="435"/>
+    <line x1="210" y1="400" x2="215" y2="435"/>
+  </g>
+  <!-- Ground mount line -->
+  <line x1="100" y1="470" x2="220" y2="470" stroke="rgba(201,162,39,0.4)" stroke-width="2"/>
+
+  <!-- ===== WIND TURBINE (right side) ===== -->
+  <!-- Tower (tall vertical) -->
+  <polygon points="593,155 607,155 615,455 585,455"
+    fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.45)" stroke-width="1.5"/>
+  <!-- Tower taper highlight -->
+  <line x1="594" y1="158" x2="586" y2="452" stroke="rgba(255,255,255,0.25)" stroke-width="1"/>
+  <!-- Tower base flange -->
+  <ellipse cx="600" cy="455" rx="25" ry="8" fill="rgba(201,162,39,0.25)" stroke="rgba(201,162,39,0.5)" stroke-width="1.2"/>
+
+  <!-- Nacelle (hub housing) -->
+  <rect x="584" y="145" width="32" height="22" rx="5" fill="rgba(200,200,200,0.25)" stroke="rgba(255,255,255,0.5)" stroke-width="1.2"/>
+  <!-- Hub circle -->
+  <circle cx="600" cy="155" r="12" fill="rgba(200,200,200,0.35)" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
+  <circle cx="600" cy="155" r="5" fill="rgba(255,255,255,0.55)" stroke="rgba(255,255,255,0.7)" stroke-width="1"/>
+
+  <!-- Blade 1 — pointing straight up -->
+  <path d="M600,155 Q594,100 596,55 Q600,40 604,55 Q606,100 600,155 Z"
+    fill="url(#et-bladeGrad)" stroke="rgba(255,255,255,0.5)" stroke-width="1"/>
+  <!-- Blade 2 — lower-left -->
+  <path d="M600,155 Q554,185 515,212 Q502,220 505,228 Q515,228 530,218 Q572,196 600,155 Z"
+    fill="url(#et-bladeGrad)" stroke="rgba(255,255,255,0.5)" stroke-width="1"/>
+  <!-- Blade 3 — lower-right -->
+  <path d="M600,155 Q646,185 685,212 Q698,220 695,228 Q685,228 670,218 Q628,196 600,155 Z"
+    fill="url(#et-bladeGrad)" stroke="rgba(255,255,255,0.5)" stroke-width="1"/>
+
+  <!-- Blade shadows / depth -->
+  <path d="M600,155 Q594,100 596,55 Q598,48 600,40 Q601,55 602,100 Q601,130 600,155 Z"
+    fill="rgba(200,200,200,0.12)"/>
+
+  <!-- Turbine motion blur arc (faint) -->
+  <path d="M600,43 Q550,95 555,160" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="8"/>
+  <path d="M600,43 Q648,95 645,160" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="8"/>
+
+  <!-- ===== GROUND / HORIZON ===== -->
+  <rect x="0" y="455" width="800" height="45" fill="rgba(8,12,8,0.85)"/>
+  <line x1="0" y1="455" x2="800" y2="455" stroke="rgba(201,162,39,0.2)" stroke-width="1.5"/>
+  <!-- Ground details -->
+  <g stroke="rgba(201,162,39,0.06)" stroke-width="0.8" fill="none">
+    <line x1="0" y1="465" x2="800" y2="465"/>
+    <line x1="0" y1="475" x2="800" y2="475"/>
+    <line x1="0" y1="485" x2="800" y2="485"/>
+  </g>
+
+  <!-- Horizon energy line glow -->
+  <line x1="0" y1="455" x2="800" y2="455" stroke="rgba(201,162,39,0.15)" stroke-width="3" filter="url(#et-glow)"/>
+
+  <!-- ===== ENERGY TRANSMISSION LINES ===== -->
+  <!-- From panels to grid (circuit-style) -->
+  <g stroke="rgba(201,162,39,0.25)" stroke-width="1.5" fill="none">
+    <line x1="155" y1="440" x2="250" y2="440"/>
+    <line x1="250" y1="440" x2="250" y2="420"/>
+    <line x1="250" y1="420" x2="340" y2="420"/>
+    <line x1="340" y1="420" x2="340" y2="440"/>
+    <line x1="340" y1="440" x2="430" y2="440"/>
+    <!-- Right side to turbine -->
+    <line x1="580" y1="455" x2="520" y2="455"/>
+    <line x1="520" y1="455" x2="520" y2="440"/>
+    <line x1="520" y1="440" x2="460" y2="440"/>
+    <line x1="460" y1="440" x2="460" y2="455"/>
+    <line x1="460" y1="455" x2="430" y2="455"/>
+  </g>
+  <!-- Circuit nodes on transmission line -->
+  <g fill="rgba(201,162,39,0.5)">
+    <circle cx="250" cy="440" r="3"/><circle cx="250" cy="420" r="3"/>
+    <circle cx="340" cy="420" r="3"/><circle cx="340" cy="440" r="3"/>
+    <circle cx="520" cy="455" r="3"/><circle cx="520" cy="440" r="3"/>
+    <circle cx="460" cy="440" r="3"/><circle cx="460" cy="455" r="3"/>
+  </g>
+
+  <!-- Vignette -->
+  <rect width="800" height="500" fill="url(#et-vignette)"/>
 </svg>

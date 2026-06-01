@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0d1a0d"/>
+      <stop offset="50%" style="stop-color:#111f0d"/>
+      <stop offset="100%" style="stop-color:#162312"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="600" fill="url(#bg)"/>
+  <!-- Topographic contour lines -->
+  <g fill="none" stroke="rgba(201,162,39,0.13)" stroke-width="1.5">
+    <ellipse cx="400" cy="300" rx="50" ry="40"/>
+    <ellipse cx="400" cy="300" rx="110" ry="85"/>
+    <ellipse cx="400" cy="300" rx="170" ry="130"/>
+    <ellipse cx="400" cy="300" rx="230" ry="175"/>
+    <ellipse cx="400" cy="300" rx="290" ry="220"/>
+    <ellipse cx="400" cy="300" rx="350" ry="265"/>
+    <ellipse cx="400" cy="300" rx="420" ry="315"/>
+  </g>
+  <!-- Tree silhouettes -->
+  <g fill="rgba(201,162,39,0.2)">
+    <!-- Tree 1 -->
+    <ellipse cx="150" cy="250" rx="45" ry="60"/>
+    <rect x="145" y="310" width="10" height="40"/>
+    <!-- Tree 2 -->
+    <ellipse cx="650" cy="200" rx="55" ry="70"/>
+    <rect x="645" y="270" width="10" height="45"/>
+    <!-- Tree 3 small -->
+    <ellipse cx="280" cy="420" rx="30" ry="40"/>
+    <rect x="276" y="460" width="8" height="30"/>
+    <!-- Tree 4 small -->
+    <ellipse cx="540" cy="400" rx="35" ry="45"/>
+    <rect x="536" y="445" width="8" height="30"/>
+  </g>
+  <!-- Rolling hills -->
+  <path d="M0 480 Q200 380 400 430 Q600 480 800 400 L800 600 L0 600 Z" fill="rgba(201,162,39,0.08)"/>
+  <path d="M0 520 Q300 450 500 490 Q650 520 800 460 L800 600 L0 600 Z" fill="rgba(201,162,39,0.06)"/>
+  <!-- Sun/radial lines -->
+  <g stroke="rgba(201,162,39,0.15)" stroke-width="1" fill="none">
+    <circle cx="680" cy="120" r="35"/>
+    <line x1="680" y1="70" x2="680" y2="60"/><line x1="680" y1="170" x2="680" y2="180"/>
+    <line x1="630" y1="120" x2="620" y2="120"/><line x1="730" y1="120" x2="740" y2="120"/>
+    <line x1="645" y1="85" x2="638" y2="78"/><line x1="715" y1="155" x2="722" y2="162"/>
+    <line x1="715" y1="85" x2="722" y2="78"/><line x1="645" y1="155" x2="638" y2="162"/>
+  </g>
+</svg>

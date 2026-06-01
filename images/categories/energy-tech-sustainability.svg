@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0d0d20"/>
+      <stop offset="50%" style="stop-color:#11122e"/>
+      <stop offset="100%" style="stop-color:#151630"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="600" fill="url(#bg)"/>
+  <!-- Hexagonal solar panel grid -->
+  <g fill="none" stroke="rgba(201,162,39,0.15)" stroke-width="1.5">
+    <!-- Hex grid pattern -->
+    <g transform="translate(400,300)">
+      <!-- Inner ring -->
+      <polygon points="0,-60 52,-30 52,30 0,60 -52,30 -52,-30"/>
+      <!-- Middle ring -->
+      <polygon points="104,-60 156,-30 156,30 104,60 52,90 0,60 -52,90 -104,60 -156,30 -156,-30 -104,-60 -52,-90 0,-60 52,-90 104,-60"/>
+      <!-- Connecting lines to grid -->
+      <line x1="0" y1="-60" x2="0" y2="-120"/><line x1="52" y1="-30" x2="104" y2="-60"/><line x1="52" y1="30" x2="104" y2="60"/>
+      <line x1="0" y1="60" x2="0" y2="120"/><line x1="-52" y1="30" x2="-104" y2="60"/><line x1="-52" y1="-30" x2="-104" y2="-60"/>
+    </g>
+    <!-- Extra hexagons -->
+    <polygon points="400,180 452,210 452,270 400,300 348,270 348,210" transform="translate(0,-120)"/>
+    <polygon points="400,180 452,210 452,270 400,300 348,270 348,210" transform="translate(208,-60)"/>
+    <polygon points="400,180 452,210 452,270 400,300 348,270 348,210" transform="translate(-208,-60)"/>
+    <polygon points="400,180 452,210 452,270 400,300 348,270 348,210" transform="translate(208,60)"/>
+    <polygon points="400,180 452,210 452,270 400,300 348,270 348,210" transform="translate(-208,60)"/>
+    <polygon points="400,180 452,210 452,270 400,300 348,270 348,210" transform="translate(0,120)"/>
+  </g>
+  <!-- Lightning bolt -->
+  <polygon points="420,150 385,290 415,290 380,430 440,270 408,270 440,150" fill="rgba(201,162,39,0.3)"/>
+  <!-- Wind turbine -->
+  <g fill="rgba(201,162,39,0.2)" transform="translate(120,180)">
+    <line x1="0" y1="0" x2="0" y2="100" stroke="rgba(201,162,39,0.3)" stroke-width="4"/>
+    <ellipse cx="0" cy="0" rx="8" ry="8"/>
+    <path d="M0,0 Q-30,-40 -10,-70 Q10,-50 0,0"/>
+    <path d="M0,0 Q40,-10 60,10 Q30,30 0,0"/>
+    <path d="M0,0 Q-10,40 -40,50 Q-40,20 0,0"/>
+  </g>
+</svg>

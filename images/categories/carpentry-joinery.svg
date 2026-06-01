@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1208"/>
+      <stop offset="50%" style="stop-color:#251905"/>
+      <stop offset="100%" style="stop-color:#1c1408"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="600" fill="url(#bg)"/>
+  <!-- Wood grain lines - horizontal wavy -->
+  <g fill="none" stroke="rgba(201,162,39,0.1)" stroke-width="1.5">
+    <path d="M0 80 Q200 72 400 80 Q600 88 800 80"/>
+    <path d="M0 120 Q150 112 350 122 Q550 132 800 118"/>
+    <path d="M0 160 Q200 155 400 163 Q600 168 800 158"/>
+    <path d="M0 200 Q250 193 400 202 Q580 210 800 198"/>
+    <path d="M0 240 Q180 232 380 242 Q620 252 800 238"/>
+    <path d="M0 280 Q200 274 420 283 Q580 290 800 278"/>
+    <path d="M0 320 Q220 312 400 322 Q600 332 800 318"/>
+    <path d="M0 360 Q170 352 370 362 Q590 372 800 358"/>
+    <path d="M0 400 Q200 393 400 402 Q600 410 800 398"/>
+    <path d="M0 440 Q240 432 440 442 Q620 450 800 438"/>
+    <path d="M0 480 Q200 472 380 482 Q580 492 800 478"/>
+    <path d="M0 520 Q220 513 400 523 Q600 530 800 518"/>
+    <path d="M0 560 Q190 553 380 562 Q580 570 800 558"/>
+  </g>
+  <!-- Knot patterns in wood -->
+  <ellipse cx="200" cy="220" rx="40" ry="25" fill="none" stroke="rgba(201,162,39,0.18)" stroke-width="2"/>
+  <ellipse cx="620" cy="380" rx="50" ry="30" fill="none" stroke="rgba(201,162,39,0.18)" stroke-width="2"/>
+  <!-- Saw/chisel tool -->
+  <g fill="rgba(201,162,39,0.3)">
+    <rect x="350" y="200" width="120" height="14" rx="3"/>
+    <polygon points="470,200 510,207 470,214"/>
+    <rect x="340" y="200" width="15" height="14" rx="2"/>
+    <!-- Chisel teeth -->
+    <polygon points="470,200 478,194 486,200 494,194 502,200 510,194 510,214 470,214"/>
+  </g>
+  <!-- Dovetail joint diagram -->
+  <g fill="none" stroke="rgba(201,162,39,0.22)" stroke-width="2" transform="translate(280,320)">
+    <polygon points="0,0 40,15 0,30"/>
+    <rect x="40" y="5" width="60" height="20"/>
+    <polygon points="100,0 140,15 100,30"/>
+    <rect x="140" y="5" width="60" height="20"/>
+  </g>
+</svg>

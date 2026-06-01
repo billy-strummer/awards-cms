@@ -531,11 +531,11 @@ describe('validateStep — Step 7 (Contact)', () => {
     expect(entryFormApp.validateStep(7)).toBe(false);
   });
 
-  test('fails when contact phone is empty', () => {
+  test('passes when contact phone is empty (phone is optional)', () => {
     document.getElementById('contactName').value = 'Jane';
     document.getElementById('contactEmail').value = 'jane@acme.co.uk';
     document.getElementById('contactPhone').value = '';
-    expect(entryFormApp.validateStep(7)).toBe(false);
+    expect(entryFormApp.validateStep(7)).toBe(true);
   });
 
   test('passes with all contact fields valid', () => {
@@ -980,7 +980,7 @@ describe('Dynamic category rendering per region', () => {
 
   test('all STANDARD sectors have categories', () => {
     const standardSectors = Object.keys(entryFormApp.getCategoriesForRegion('Kent'));
-    expect(standardSectors.length).toBe(7);
+    expect(standardSectors.length).toBe(8);
     standardSectors.forEach((sector) => {
       const cats = entryFormApp.getCategoriesForRegion('Kent')[sector];
       expect(cats.length).toBeGreaterThan(0);
@@ -989,7 +989,7 @@ describe('Dynamic category rendering per region', () => {
 
   test('all SMALL sectors have categories', () => {
     const smallSectors = Object.keys(entryFormApp.getCategoriesForRegion('Rutland'));
-    expect(smallSectors.length).toBe(7);
+    expect(smallSectors.length).toBe(8);
     smallSectors.forEach((sector) => {
       const cats = entryFormApp.getCategoriesForRegion('Rutland')[sector];
       expect(cats.length).toBeGreaterThan(0);

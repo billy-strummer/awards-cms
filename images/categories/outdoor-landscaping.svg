@@ -1,46 +1,272 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="800" height="500">
   <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#0d1a0d"/>
-      <stop offset="50%" style="stop-color:#111f0d"/>
-      <stop offset="100%" style="stop-color:#162312"/>
+    <linearGradient id="ol-sky" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#070d07"/>
+      <stop offset="50%" stop-color="#0c150c"/>
+      <stop offset="100%" stop-color="#111f0d"/>
     </linearGradient>
+    <radialGradient id="ol-moonGlow" cx="78%" cy="18%" r="25%">
+      <stop offset="0%" stop-color="rgba(201,162,39,0.3)"/>
+      <stop offset="40%" stop-color="rgba(201,162,39,0.08)"/>
+      <stop offset="100%" stop-color="rgba(201,162,39,0)"/>
+    </radialGradient>
+    <radialGradient id="ol-groundGlow" cx="50%" cy="85%" r="55%">
+      <stop offset="0%" stop-color="rgba(201,162,39,0.15)"/>
+      <stop offset="60%" stop-color="rgba(201,162,39,0.04)"/>
+      <stop offset="100%" stop-color="rgba(201,162,39,0)"/>
+    </radialGradient>
+    <linearGradient id="ol-hillFar" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0d1a0d"/>
+      <stop offset="100%" stop-color="#0a140a"/>
+    </linearGradient>
+    <linearGradient id="ol-hillMid" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0f1e0e"/>
+      <stop offset="100%" stop-color="#0c190b"/>
+    </linearGradient>
+    <linearGradient id="ol-hillFront" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#122012"/>
+      <stop offset="100%" stop-color="#0f1c0e"/>
+    </linearGradient>
+    <linearGradient id="ol-pathStone" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="rgba(180,145,35,0.35)"/>
+      <stop offset="50%" stop-color="rgba(201,162,39,0.5)"/>
+      <stop offset="100%" stop-color="rgba(180,145,35,0.35)"/>
+    </linearGradient>
+    <filter id="ol-glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="ol-moonFilter" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="12" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <radialGradient id="ol-vignette" cx="50%" cy="50%" r="72%">
+      <stop offset="50%" stop-color="transparent"/>
+      <stop offset="100%" stop-color="rgba(0,0,0,0.65)"/>
+    </radialGradient>
   </defs>
-  <rect width="800" height="600" fill="url(#bg)"/>
-  <!-- Topographic contour lines -->
-  <g fill="none" stroke="rgba(201,162,39,0.13)" stroke-width="1.5">
-    <ellipse cx="400" cy="300" rx="50" ry="40"/>
-    <ellipse cx="400" cy="300" rx="110" ry="85"/>
-    <ellipse cx="400" cy="300" rx="170" ry="130"/>
-    <ellipse cx="400" cy="300" rx="230" ry="175"/>
-    <ellipse cx="400" cy="300" rx="290" ry="220"/>
-    <ellipse cx="400" cy="300" rx="350" ry="265"/>
-    <ellipse cx="400" cy="300" rx="420" ry="315"/>
+
+  <!-- ===== SKY / BACKGROUND ===== -->
+  <rect width="800" height="500" fill="url(#ol-sky)"/>
+  <rect width="800" height="500" fill="url(#ol-moonGlow)"/>
+  <rect width="800" height="500" fill="url(#ol-groundGlow)"/>
+
+  <!-- Star field -->
+  <g fill="rgba(255,255,255,0.5)">
+    <circle cx="45" cy="28" r="0.8"/><circle cx="105" cy="15" r="1.1"/>
+    <circle cx="165" cy="38" r="0.7"/><circle cx="235" cy="22" r="0.9"/>
+    <circle cx="290" cy="10" r="1"/><circle cx="350" cy="32" r="0.8"/>
+    <circle cx="420" cy="8" r="1.2"/><circle cx="500" cy="25" r="0.7"/>
+    <circle cx="560" cy="12" r="1"/><circle cx="620" cy="35" r="0.8"/>
+    <circle cx="680" cy="18" r="0.9"/><circle cx="745" cy="30" r="1.1"/>
+    <circle cx="60" cy="65" r="0.7"/><circle cx="130" cy="55" r="0.8"/>
+    <circle cx="195" cy="70" r="0.9"/><circle cx="265" cy="48" r="0.7"/>
+    <circle cx="330" cy="60" r="1"/><circle cx="475" cy="55" r="0.8"/>
+    <circle cx="535" cy="68" r="0.7"/><circle cx="595" cy="50" r="0.9"/>
+    <circle cx="655" cy="62" r="0.8"/><circle cx="715" cy="45" r="1"/>
+    <circle cx="770" cy="58" r="0.7"/>
   </g>
-  <!-- Tree silhouettes -->
-  <g fill="rgba(201,162,39,0.2)">
-    <!-- Tree 1 -->
-    <ellipse cx="150" cy="250" rx="45" ry="60"/>
-    <rect x="145" y="310" width="10" height="40"/>
-    <!-- Tree 2 -->
-    <ellipse cx="650" cy="200" rx="55" ry="70"/>
-    <rect x="645" y="270" width="10" height="45"/>
-    <!-- Tree 3 small -->
-    <ellipse cx="280" cy="420" rx="30" ry="40"/>
-    <rect x="276" y="460" width="8" height="30"/>
-    <!-- Tree 4 small -->
-    <ellipse cx="540" cy="400" rx="35" ry="45"/>
-    <rect x="536" y="445" width="8" height="30"/>
+  <!-- Dimmer distant stars -->
+  <g fill="rgba(255,255,255,0.25)">
+    <circle cx="80" cy="42" r="0.6"/><circle cx="145" cy="28" r="0.6"/>
+    <circle cx="215" cy="55" r="0.6"/><circle cx="308" cy="18" r="0.6"/>
+    <circle cx="380" cy="45" r="0.6"/><circle cx="455" cy="35" r="0.6"/>
+    <circle cx="520" cy="45" r="0.6"/><circle cx="578" cy="28" r="0.6"/>
+    <circle cx="635" cy="42" r="0.6"/><circle cx="700" cy="25" r="0.6"/>
+    <circle cx="755" cy="68" r="0.6"/>
   </g>
-  <!-- Rolling hills -->
-  <path d="M0 480 Q200 380 400 430 Q600 480 800 400 L800 600 L0 600 Z" fill="rgba(201,162,39,0.08)"/>
-  <path d="M0 520 Q300 450 500 490 Q650 520 800 460 L800 600 L0 600 Z" fill="rgba(201,162,39,0.06)"/>
-  <!-- Sun/radial lines -->
+
+  <!-- ===== TOPOGRAPHIC CONTOUR LINES in sky area ===== -->
+  <g stroke="rgba(201,162,39,0.12)" stroke-width="1" fill="none">
+    <!-- Fanning contour lines from upper-left -->
+    <path d="M0,30 Q100,20 250,35 Q350,45 450,30 Q550,15 700,28 Q760,32 800,25"/>
+    <path d="M0,55 Q90,42 220,58 Q340,72 480,55 Q600,38 750,52 Q780,55 800,50"/>
+    <path d="M0,82 Q80,68 200,85 Q330,100 500,80 Q640,62 790,76"/>
+    <path d="M0,110 Q70,95 185,112 Q310,128 510,104 Q660,84 800,100"/>
+    <path d="M0,140 Q60,124 175,142 Q300,158 520,132 Q670,110 800,126"/>
+    <path d="M0,170 Q55,154 168,172 Q295,190 535,162 Q685,138 800,152"/>
+  </g>
+
+  <!-- ===== MOON / SUN ===== -->
+  <circle cx="625" cy="85" r="38" fill="rgba(201,162,39,0.08)" filter="url(#ol-moonFilter)"/>
+  <circle cx="625" cy="85" r="28" fill="rgba(201,162,39,0.18)" stroke="rgba(201,162,39,0.45)" stroke-width="1.5" filter="url(#ol-glow)"/>
+  <circle cx="625" cy="85" r="22" fill="rgba(201,162,39,0.25)" stroke="rgba(255,240,160,0.3)" stroke-width="1"/>
+  <!-- Moon surface detail (craters) -->
+  <circle cx="618" cy="78" r="6" fill="none" stroke="rgba(201,162,39,0.2)" stroke-width="1"/>
+  <circle cx="632" cy="90" r="4" fill="none" stroke="rgba(201,162,39,0.18)" stroke-width="0.8"/>
+  <circle cx="620" cy="94" r="3" fill="none" stroke="rgba(201,162,39,0.15)" stroke-width="0.8"/>
+  <!-- Moon radiant lines -->
   <g stroke="rgba(201,162,39,0.15)" stroke-width="1" fill="none">
-    <circle cx="680" cy="120" r="35"/>
-    <line x1="680" y1="70" x2="680" y2="60"/><line x1="680" y1="170" x2="680" y2="180"/>
-    <line x1="630" y1="120" x2="620" y2="120"/><line x1="730" y1="120" x2="740" y2="120"/>
-    <line x1="645" y1="85" x2="638" y2="78"/><line x1="715" y1="155" x2="722" y2="162"/>
-    <line x1="715" y1="85" x2="722" y2="78"/><line x1="645" y1="155" x2="638" y2="162"/>
+    <line x1="625" y1="50" x2="625" y2="42"/>
+    <line x1="625" y1="120" x2="625" y2="128"/>
+    <line x1="590" y1="85" x2="582" y2="85"/>
+    <line x1="660" y1="85" x2="668" y2="85"/>
+    <line x1="600" y1="60" x2="594" y2="54"/>
+    <line x1="650" y1="60" x2="656" y2="54"/>
+    <line x1="600" y1="110" x2="594" y2="116"/>
+    <line x1="650" y1="110" x2="656" y2="116"/>
   </g>
+
+  <!-- ===== ROLLING HILLS (3 layers depth) ===== -->
+  <!-- Far hills (darkest) -->
+  <path d="M0,280 Q80,245 180,262 Q280,278 380,248 Q460,226 560,255 Q640,272 720,245 Q760,232 800,250 L800,320 L0,320 Z"
+    fill="url(#ol-hillFar)" stroke="rgba(201,162,39,0.1)" stroke-width="1"/>
+  <!-- Mid hills -->
+  <path d="M0,310 Q60,278 140,295 Q240,314 350,285 Q440,262 540,282 Q620,298 700,272 Q750,258 800,275 L800,360 L0,360 Z"
+    fill="url(#ol-hillMid)" stroke="rgba(201,162,39,0.15)" stroke-width="1.2"/>
+  <!-- Near/front hills -->
+  <path d="M0,345 Q50,318 130,335 Q210,352 320,322 Q400,300 490,318 Q580,336 660,310 Q730,290 800,308 L800,400 L0,400 Z"
+    fill="url(#ol-hillFront)" stroke="rgba(201,162,39,0.2)" stroke-width="1.2"/>
+
+  <!-- Tree line on mid-hills -->
+  <!-- Small tree silhouettes on the mid hill horizon line -->
+  <g fill="rgba(8,15,8,0.9)">
+    <!-- Left tree cluster -->
+    <ellipse cx="95" cy="295" rx="18" ry="22"/>
+    <rect x="92" y="317" width="6" height="15"/>
+    <ellipse cx="118" cy="290" rx="14" ry="18"/>
+    <rect x="115" y="308" width="5" height="12"/>
+    <!-- Conifer shape left -->
+    <polygon points="58,310 68,288 78,310"/>
+    <polygon points="60,298 68,280 76,298"/>
+    <rect x="65" y="310" width="5" height="12"/>
+  </g>
+  <!-- Right side trees on mid hill -->
+  <g fill="rgba(8,15,8,0.9)">
+    <ellipse cx="680" cy="278" rx="22" ry="26"/>
+    <rect x="677" y="304" width="7" height="18"/>
+    <ellipse cx="708" cy="282" rx="16" ry="20"/>
+    <rect x="705" y="302" width="5" height="14"/>
+    <polygon points="645,295 657,268 669,295"/>
+    <polygon points="647,280 657,258 667,280"/>
+    <rect x="654" y="295" width="5" height="14"/>
+  </g>
+
+  <!-- ===== LARGE OAK TREE (left main) ===== -->
+  <!-- Trunk -->
+  <rect x="138" y="320" width="20" height="100" rx="4" fill="rgba(80,55,12,0.85)" stroke="rgba(100,70,15,0.6)" stroke-width="1.2"/>
+  <!-- Trunk detail -->
+  <line x1="142" y1="325" x2="145" y2="395" stroke="rgba(100,70,15,0.35)" stroke-width="1"/>
+  <line x1="150" y1="325" x2="152" y2="380" stroke="rgba(100,70,15,0.25)" stroke-width="0.8"/>
+  <!-- Main root flare -->
+  <path d="M138,420 Q125,418 115,428 Q120,412 138,415 Z" fill="rgba(80,55,12,0.7)"/>
+  <path d="M158,420 Q172,418 182,428 Q176,412 158,415 Z" fill="rgba(80,55,12,0.7)"/>
+  <!-- Crown — multiple overlapping circles -->
+  <circle cx="148" cy="290" r="48" fill="rgba(12,22,10,0.9)" stroke="rgba(40,65,30,0.4)" stroke-width="1"/>
+  <circle cx="118" cy="300" r="35" fill="rgba(14,25,12,0.88)" stroke="rgba(40,65,30,0.35)" stroke-width="1"/>
+  <circle cx="176" cy="298" r="38" fill="rgba(12,22,10,0.9)" stroke="rgba(40,65,30,0.35)" stroke-width="1"/>
+  <circle cx="135" cy="268" r="32" fill="rgba(15,28,13,0.85)"/>
+  <circle cx="162" cy="272" r="36" fill="rgba(12,22,10,0.88)"/>
+  <circle cx="148" cy="258" r="28" fill="rgba(16,30,14,0.82)"/>
+  <!-- Gold leaf highlights on canopy -->
+  <g fill="rgba(201,162,39,0.12)">
+    <circle cx="130" cy="272" r="18"/>
+    <circle cx="160" cy="265" r="14"/>
+    <circle cx="145" cy="285" r="12"/>
+    <circle cx="175" cy="280" r="10"/>
+  </g>
+
+  <!-- ===== CONIFER TREE (right side) ===== -->
+  <!-- Trunk -->
+  <rect x="590" y="350" width="14" height="80" rx="2" fill="rgba(80,55,12,0.8)" stroke="rgba(100,70,15,0.5)" stroke-width="1"/>
+  <!-- Layered triangle shapes for conifer -->
+  <polygon points="597,215 635,290 559,290" fill="rgba(10,20,9,0.92)" stroke="rgba(30,55,25,0.3)" stroke-width="0.8"/>
+  <polygon points="597,248 640,320 554,320" fill="rgba(12,22,10,0.9)" stroke="rgba(30,55,25,0.3)" stroke-width="0.8"/>
+  <polygon points="597,278 645,350 549,350" fill="rgba(14,25,12,0.88)" stroke="rgba(30,55,25,0.3)" stroke-width="0.8"/>
+  <!-- Gold highlight on conifer layers -->
+  <g fill="rgba(201,162,39,0.1)">
+    <polygon points="597,230 617,268 577,268"/>
+    <polygon points="597,262 622,310 572,310"/>
+  </g>
+
+  <!-- ===== SMALLER TREE (background right) ===== -->
+  <rect x="698" y="338" width="10" height="62" rx="2" fill="rgba(80,55,12,0.7)"/>
+  <circle cx="703" cy="305" r="28" fill="rgba(10,20,9,0.88)"/>
+  <circle cx="686" cy="315" r="20" fill="rgba(12,22,10,0.85)"/>
+  <circle cx="718" cy="312" r="24" fill="rgba(10,20,9,0.88)"/>
+  <circle cx="703" cy="292" r="22" fill="rgba(13,24,11,0.82)"/>
+  <g fill="rgba(201,162,39,0.1)">
+    <circle cx="695" cy="300" r="12"/>
+    <circle cx="710" cy="295" r="10"/>
+  </g>
+
+  <!-- ===== STONE PATH / STEPS ===== -->
+  <!-- Path stones in perspective — overlapping trapezoids going toward vanishing point -->
+  <!-- Bottom (largest) step -->
+  <polygon points="290,500 510,500 490,468 310,468"
+    fill="url(#ol-pathStone)" stroke="rgba(201,162,39,0.5)" stroke-width="1.5"/>
+  <!-- Stone surface markings -->
+  <line x1="300" y1="490" x2="500" y2="490" stroke="rgba(255,240,160,0.15)" stroke-width="1"/>
+  <line x1="310" y1="478" x2="490" y2="478" stroke="rgba(201,162,39,0.1)" stroke-width="0.8"/>
+
+  <!-- Step 2 -->
+  <polygon points="310,468 490,468 472,440 328,440"
+    fill="rgba(201,162,39,0.38)" stroke="rgba(201,162,39,0.45)" stroke-width="1.2"/>
+  <line x1="320" y1="458" x2="480" y2="458" stroke="rgba(255,240,160,0.12)" stroke-width="0.8"/>
+
+  <!-- Step 3 -->
+  <polygon points="328,440 472,440 456,416 344,416"
+    fill="rgba(201,162,39,0.32)" stroke="rgba(201,162,39,0.4)" stroke-width="1.2"/>
+
+  <!-- Step 4 -->
+  <polygon points="344,416 456,416 442,396 358,396"
+    fill="rgba(201,162,39,0.26)" stroke="rgba(201,162,39,0.35)" stroke-width="1"/>
+
+  <!-- Step 5 -->
+  <polygon points="358,396 442,396 430,380 370,380"
+    fill="rgba(201,162,39,0.2)" stroke="rgba(201,162,39,0.3)" stroke-width="1"/>
+
+  <!-- Step 6 (near top, near horizon) -->
+  <polygon points="370,380 430,380 420,365 380,365"
+    fill="rgba(201,162,39,0.15)" stroke="rgba(201,162,39,0.25)" stroke-width="0.8"/>
+
+  <!-- Path edges / flanking low walls -->
+  <g fill="rgba(201,162,39,0.18)" stroke="rgba(201,162,39,0.35)" stroke-width="1">
+    <!-- Left wall -->
+    <polygon points="290,500 315,500 298,380 275,380"/>
+    <!-- Right wall -->
+    <polygon points="510,500 485,500 502,380 525,380"/>
+  </g>
+  <!-- Wall coping stones -->
+  <g fill="rgba(201,162,39,0.3)" stroke="rgba(201,162,39,0.5)" stroke-width="0.8">
+    <rect x="274" y="376" width="22" height="6" rx="1"/>
+    <rect x="277" y="400" width="22" height="6" rx="1"/>
+    <rect x="281" y="425" width="22" height="6" rx="1"/>
+    <rect x="285" y="450" width="22" height="6" rx="1"/>
+    <rect x="289" y="475" width="22" height="6" rx="1"/>
+    <rect x="504" y="376" width="22" height="6" rx="1"/>
+    <rect x="500" y="400" width="22" height="6" rx="1"/>
+    <rect x="496" y="425" width="22" height="6" rx="1"/>
+    <rect x="492" y="450" width="22" height="6" rx="1"/>
+    <rect x="488" y="475" width="22" height="6" rx="1"/>
+  </g>
+
+  <!-- Foreground grass / ground details -->
+  <!-- Grass tufts around path -->
+  <g stroke="rgba(30,60,25,0.6)" stroke-width="1.5" fill="none">
+    <path d="M240,490 Q238,478 236,470"/><path d="M248,492 Q245,480 242,472"/>
+    <path d="M255,488 Q252,476 250,468"/><path d="M265,492 Q263,480 260,472"/>
+    <path d="M545,490 Q542,478 540,470"/><path d="M555,492 Q552,480 549,472"/>
+    <path d="M565,488 Q562,476 560,468"/><path d="M575,492 Q572,480 570,472"/>
+  </g>
+  <!-- Ground foliage shapes -->
+  <g fill="rgba(20,40,18,0.7)">
+    <ellipse cx="220" cy="490" rx="35" ry="12"/>
+    <ellipse cx="580" cy="492" rx="32" ry="12"/>
+    <ellipse cx="170" cy="498" rx="25" ry="10"/>
+    <ellipse cx="630" cy="497" rx="28" ry="10"/>
+  </g>
+
+  <!-- ===== FOREGROUND GROUND PLANE ===== -->
+  <path d="M0,400 Q200,385 400,395 Q600,405 800,390 L800,500 L0,500 Z"
+    fill="rgba(10,20,9,0.85)" stroke="rgba(201,162,39,0.08)" stroke-width="1"/>
+  <!-- Ground highlight/texture -->
+  <g stroke="rgba(201,162,39,0.06)" stroke-width="0.8" fill="none">
+    <path d="M0,420 Q200,410 400,418 Q600,426 800,414"/>
+    <path d="M0,440 Q200,432 400,440 Q600,448 800,436"/>
+    <path d="M0,460 Q200,454 400,462 Q600,470 800,458"/>
+  </g>
+
+  <!-- Vignette -->
+  <rect width="800" height="500" fill="url(#ol-vignette)"/>
 </svg>

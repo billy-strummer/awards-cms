@@ -80,12 +80,13 @@ const YEARS = ['2026', '2025'];
 
 const SECTORS = [
   'BUILDING & CONSTRUCTION',
-  'CARPENTRY & JOINERY',
-  'FIT-OUT & FINISHES',
   'MECHANICAL, ELECTRICAL & PLUMBING',
+  'CARPENTRY & JOINERY',
+  'INTERIOR FIT-OUT & FINISHING',
   'OUTDOOR & LANDSCAPING',
+  'ENERGY, TECH & SUSTAINABILITY',
   'SPECIALIST TRADES',
-  'TECH & GREEN ENERGY',
+  'INDUSTRY LEADERSHIP',
 ];
 
 const STANDARD_CATEGORIES = {
@@ -110,7 +111,7 @@ const STANDARD_CATEGORIES = {
     'Staircase Specialist',
     'Timber Windows Installer',
   ],
-  'FIT-OUT & FINISHES': [
+  'INTERIOR FIT-OUT & FINISHING': [
     'Bathroom Installer',
     'Carpet Fitters',
     'Curtains & Blinds Installer',
@@ -151,13 +152,22 @@ const STANDARD_CATEGORIES = {
     'Swimming Pool & Hot Tub Company',
     'Window & Door Installer',
   ],
-  'TECH & GREEN ENERGY': [
+  'ENERGY, TECH & SUSTAINABILITY': [
     'EV Charger Installer',
     'Insulation & Energy Efficiency Company',
     'PV Installer',
     'Renewable Energy Specialist',
     'Security System Installer',
     'Smart Home & Automation Company',
+  ],
+  'INDUSTRY LEADERSHIP': [
+    'Employer of the Year',
+    'Business Leader of the Year',
+    'Innovation Award',
+    'Apprenticeship Employer of the Year',
+    'Community Impact Award',
+    'Net Zero & Sustainability Award',
+    'Rising Star Award',
   ],
 };
 
@@ -179,19 +189,37 @@ const COUNTIES_CITIES = [
   'Leicester',
   'Nottingham',
   // London Boroughs
+  'Barking & Dagenham',
+  'Barnet',
+  'Bexley',
+  'Brent',
   'Bromley',
   'Camden',
+  'City of London',
   'Croydon',
+  'Ealing',
+  'Enfield',
   'Greenwich',
   'Hackney',
   'Hammersmith & Fulham',
+  'Haringey',
+  'Harrow',
+  'Havering',
+  'Hillingdon',
+  'Hounslow',
   'Islington',
   'Kensington & Chelsea',
-  'Kingston & Richmond',
+  'Kingston upon Thames',
   'Lambeth',
   'Lewisham',
-  'Middlesex',
+  'Merton',
+  'Newham',
+  'Redbridge',
+  'Richmond upon Thames',
   'Southwark',
+  'Sutton',
+  'Tower Hamlets',
+  'Waltham Forest',
   'Wandsworth',
   'Westminster',
   // North East

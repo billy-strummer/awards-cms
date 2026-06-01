@@ -203,7 +203,6 @@
     formData: {},
     selectedAwardCategory: null,
     selectedSector: null,
-    regionChoicesInstance: null,
 
     // Step labels for progress bar
     stepLabels: ['Region', 'Sector', 'Category', 'Company', 'About', 'Support', 'Contact', 'Review'],
@@ -302,10 +301,12 @@
     },
 
     // --------------------------------------------------
-    // Populate county/city dropdown from config.js REGIONS_GROUPED
+    // Populate region group dropdown (step 1 of the two-step picker)
     // --------------------------------------------------
     populateRegions() {
-      const regionSelect = document.getElementById('county_city');
+      const regionGroupSelect = document.getElementById('region_group');
+      if (!regionGroupSelect) return;
+
       const grouped = window.REGIONS_GROUPED;
       const flat = window.COUNTIES_CITIES || window.REGIONS || [];
 
@@ -314,48 +315,50 @@
         return;
       }
 
-      let html = '<option value="" placeholder>Select your county or city</option>';
+      let html = '<option value="">Select your region</option>';
 
       if (grouped && Object.keys(grouped).length > 0) {
-        // Use geographic groups — scannable without search, searchable by region name
-        Object.entries(grouped).forEach(([groupName, options]) => {
-          html += `<optgroup label="${groupName}">`;
-          options.forEach((opt) => {
-            html += `<option value="${this.escapeHtml(opt)}" data-custom-properties='{"group":"${this.escapeHtml(groupName)}"}'>${this.escapeHtml(opt)}</option>`;
-          });
-          html += '</optgroup>';
+        Object.keys(grouped).forEach((groupName) => {
+          html += `<option value="${this.escapeHtml(groupName)}">${this.escapeHtml(groupName)}</option>`;
         });
       } else {
-        // Fallback: flat list (test environment or pre-grouped config)
-        flat.forEach((region) => {
-          html += `<option value="${this.escapeHtml(region)}">${this.escapeHtml(region)}</option>`;
-        });
+        // Fallback: treat the flat list as a single group
+        html += '<option value="__all__">United Kingdom</option>';
       }
 
-      regionSelect.innerHTML = html;
+      regionGroupSelect.innerHTML = html;
+      regionGroupSelect.addEventListener('change', () => this.handleRegionGroupChange());
+    },
 
-      // Initialize Choices.js with Fuse.js fuzzy search
-      if (typeof Choices !== 'undefined') {
-        this.regionChoicesInstance = new Choices('#county_city', {
-          searchEnabled: true,
-          searchFloor: 1,
-          searchPlaceholderValue: 'Type to search...',
-          placeholder: true,
-          placeholderValue: 'Select your county or city',
-          itemSelectText: '',
-          shouldSort: false,
-          searchResultLimit: 15,
-          allowHTML: true,
-          fuseOptions: {
-            includeScore: true,
-            threshold: 0.35,
-            keys: [
-              { name: 'label', weight: 2 },
-              { name: 'customProperties.group', weight: 1 },
-            ],
-          },
-        });
+    // Populate the county/city sub-picker when a region is chosen
+    // --------------------------------------------------
+    handleRegionGroupChange() {
+      const groupName = document.getElementById('region_group')?.value;
+      const wrapper = document.getElementById('county_city_wrapper');
+      const countySelect = document.getElementById('county_city');
+      if (!wrapper || !countySelect) return;
+
+      // Reset sub-picker
+      countySelect.value = '';
+      countySelect.innerHTML = '<option value="">Select your county, city or borough</option>';
+
+      if (!groupName) {
+        wrapper.style.display = 'none';
+        return;
       }
+
+      const grouped = window.REGIONS_GROUPED;
+      const options = grouped ? grouped[groupName] || [] : window.COUNTIES_CITIES || window.REGIONS || [];
+
+      options.forEach((opt) => {
+        const el = document.createElement('option');
+        el.value = opt;
+        el.textContent = opt;
+        countySelect.appendChild(el);
+      });
+
+      wrapper.style.display = 'block';
+      countySelect.focus();
     },
 
     // --------------------------------------------------
@@ -607,9 +610,14 @@
     validateStep(stepNum) {
       switch (stepNum) {
         case 1: {
+          const regionGroup = document.getElementById('region_group');
           const countyCity = document.getElementById('county_city');
-          if (!countyCity.value) {
-            this._markInvalid(countyCity, 'Please select your county or city');
+          if (!regionGroup?.value) {
+            this._markInvalid(regionGroup, 'Please select your region');
+            return false;
+          }
+          if (!countyCity?.value) {
+            this._markInvalid(countyCity, 'Please select your county, city or borough');
             return false;
           }
           return true;
@@ -706,7 +714,8 @@
     saveStepData(stepNum) {
       switch (stepNum) {
         case 1:
-          this.formData.county_city = document.getElementById('county_city').value;
+          this.formData.region_group = document.getElementById('region_group')?.value || '';
+          this.formData.county_city = document.getElementById('county_city')?.value || '';
           break;
         case 2:
           this.formData.sector = document.getElementById('sector').value;
@@ -761,7 +770,7 @@
           Award Details
           <span class="review-edit-btn float-end" data-action="entryFormApp.goToStep" data-args="[1]">Edit</span>
         </div>
-        ${row('Area', d.county_city)}
+        ${row('Area', d.region_group && d.county_city ? `${d.region_group} › ${d.county_city}` : d.county_city)}
         ${row('Sector', this.toTitleCase(d.sector || ''))}
         ${row('Category', d.awardCategory)}
       </div>

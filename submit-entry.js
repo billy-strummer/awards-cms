@@ -302,101 +302,34 @@
     },
 
     // --------------------------------------------------
-    // Populate county/city dropdown from config.js COUNTIES_CITIES
+    // Populate county/city dropdown from config.js REGIONS_GROUPED
     // --------------------------------------------------
     populateRegions() {
       const regionSelect = document.getElementById('county_city');
-      if (!window.COUNTIES_CITIES && !window.REGIONS) {
+      const grouped = window.REGIONS_GROUPED;
+      const flat = window.COUNTIES_CITIES || window.REGIONS || [];
+
+      if (!grouped && !flat.length) {
         console.warn('No counties/cities found in config');
         return;
       }
 
-      const londonBoroughs = [
-        'Barking & Dagenham',
-        'Barnet',
-        'Bexley',
-        'Brent',
-        'Bromley',
-        'Camden',
-        'City of London',
-        'Croydon',
-        'Ealing',
-        'Enfield',
-        'Greenwich',
-        'Hackney',
-        'Hammersmith & Fulham',
-        'Haringey',
-        'Harrow',
-        'Havering',
-        'Hillingdon',
-        'Hounslow',
-        'Islington',
-        'Kensington & Chelsea',
-        'Kingston upon Thames',
-        'Lambeth',
-        'Lewisham',
-        'Merton',
-        'Newham',
-        'Redbridge',
-        'Richmond upon Thames',
-        'Southwark',
-        'Sutton',
-        'Tower Hamlets',
-        'Waltham Forest',
-        'Wandsworth',
-        'Westminster',
-      ];
-      const cities = [
-        'Birmingham',
-        'Bournemouth',
-        'Brighton & Hove',
-        'Bristol',
-        'Cardiff',
-        'Coventry',
-        'Edinburgh',
-        'Glasgow',
-        'Leeds',
-        'Leicester',
-        'Liverpool',
-        'Manchester',
-        'Middlesbrough',
-        'Newcastle',
-        'Nottingham',
-        'Reading',
-        'Sheffield',
-        'Southampton',
-        'Swansea',
-      ];
-
-      const allCountiesCities = window.COUNTIES_CITIES || window.REGIONS || [];
-      const counties = allCountiesCities.filter((r) => !cities.includes(r) && !londonBoroughs.includes(r));
-      const boroughList = allCountiesCities.filter((r) => londonBoroughs.includes(r));
-      const cityList = allCountiesCities.filter((r) => cities.includes(r));
-
       let html = '<option value="" placeholder>Select your county or city</option>';
 
-      if (counties.length > 0) {
-        html += '<optgroup label="Counties">';
-        counties.forEach((county) => {
-          html += `<option value="${this.escapeHtml(county)}" data-custom-properties='{"group":"Counties"}'>${this.escapeHtml(county)}</option>`;
+      if (grouped && Object.keys(grouped).length > 0) {
+        // Use geographic groups — scannable without search, searchable by region name
+        Object.entries(grouped).forEach(([groupName, options]) => {
+          html += `<optgroup label="${groupName}">`;
+          options.forEach((opt) => {
+            html += `<option value="${this.escapeHtml(opt)}" data-custom-properties='{"group":"${this.escapeHtml(groupName)}"}'>${this.escapeHtml(opt)}</option>`;
+          });
+          html += '</optgroup>';
         });
-        html += '</optgroup>';
-      }
-
-      if (boroughList.length > 0) {
-        html += '<optgroup label="London Boroughs">';
-        boroughList.forEach((b) => {
-          html += `<option value="${this.escapeHtml(b)}" data-custom-properties='{"group":"London"}'>${this.escapeHtml(b)}</option>`;
+      } else {
+        // Fallback: flat list (test environment or pre-grouped config)
+        flat.forEach((region) => {
+          html += `<option value="${this.escapeHtml(region)}">${this.escapeHtml(region)}</option>`;
         });
-        html += '</optgroup>';
-      }
-
-      if (cityList.length > 0) {
-        html += '<optgroup label="Cities">';
-        cityList.forEach((city) => {
-          html += `<option value="${this.escapeHtml(city)}" data-custom-properties='{"group":"Cities"}'>${this.escapeHtml(city)}</option>`;
-        });
-        html += '</optgroup>';
       }
 
       regionSelect.innerHTML = html;

@@ -1152,33 +1152,47 @@ describe('populateSectors', () => {
 });
 
 describe('populateRegions', () => {
-  test('populates region select with grouped options', () => {
+  const origGrouped = global.window.REGIONS_GROUPED;
+
+  beforeEach(() => {
+    global.window.REGIONS_GROUPED = {
+      'East of England': ['Bedfordshire', 'Cambridgeshire', 'Essex'],
+      'London Boroughs': ['Camden', 'Hackney', 'Westminster'],
+      'North West': ['Lancashire', 'Liverpool', 'Manchester'],
+      'West Midlands': ['Birmingham', 'Coventry'],
+    };
+  });
+
+  afterEach(() => {
+    global.window.REGIONS_GROUPED = origGrouped;
+  });
+
+  test('populates region select with geographic groups from REGIONS_GROUPED', () => {
     entryFormApp.populateRegions();
     const select = document.getElementById('county_city');
     const optgroups = select.querySelectorAll('optgroup');
-    // Should have Counties, London Boroughs, and Cities groups
-    expect(optgroups.length).toBe(3);
+    expect(optgroups.length).toBe(4);
     const labels = Array.from(optgroups).map((g) => g.label);
-    expect(labels).toContain('Counties');
+    expect(labels).toContain('East of England');
     expect(labels).toContain('London Boroughs');
-    expect(labels).toContain('Cities');
+    expect(labels).toContain('North West');
+    expect(labels).toContain('West Midlands');
   });
 
-  test('places city regions under Cities group', () => {
+  test('places cities within their geographic group', () => {
     entryFormApp.populateRegions();
-    const citiesGroup = document.querySelector('optgroup[label="Cities"]');
-    const cityOptions = citiesGroup.querySelectorAll('option');
-    const values = Array.from(cityOptions).map((o) => o.value);
-    expect(values).toContain('Birmingham');
+    const nwGroup = document.querySelector('optgroup[label="North West"]');
+    const values = Array.from(nwGroup.querySelectorAll('option')).map((o) => o.value);
     expect(values).toContain('Manchester');
-    expect(values).not.toContain('London, North');
+    expect(values).toContain('Liverpool');
+    const wmGroup = document.querySelector('optgroup[label="West Midlands"]');
+    expect(Array.from(wmGroup.querySelectorAll('option')).map((o) => o.value)).toContain('Birmingham');
   });
 
   test('places London boroughs under London Boroughs group', () => {
     entryFormApp.populateRegions();
     const boroughsGroup = document.querySelector('optgroup[label="London Boroughs"]');
-    const boroughOptions = boroughsGroup.querySelectorAll('option');
-    const values = Array.from(boroughOptions).map((o) => o.value);
+    const values = Array.from(boroughsGroup.querySelectorAll('option')).map((o) => o.value);
     expect(values).toContain('Westminster');
     expect(values).toContain('Camden');
   });

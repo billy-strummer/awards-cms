@@ -289,108 +289,35 @@
     },
 
     // --------------------------------------------------
-    // Populate county/city dropdown from config.js COUNTIES_CITIES
+    // Populate county/city dropdown from config.js REGIONS_GROUPED
     // --------------------------------------------------
     populateRegions: function () {
       const self = this;
       const regionSelect = document.getElementById('county_city');
-      if (!window.COUNTIES_CITIES && !window.REGIONS) {
+      const grouped = window.REGIONS_GROUPED;
+      const flat = window.COUNTIES_CITIES || window.REGIONS || [];
+
+      if (!grouped && !flat.length) {
         console.warn('No counties/cities found in config');
         return;
       }
 
-      const londonBoroughs = [
-        'Barking & Dagenham',
-        'Barnet',
-        'Bexley',
-        'Brent',
-        'Bromley',
-        'Camden',
-        'City of London',
-        'Croydon',
-        'Ealing',
-        'Enfield',
-        'Greenwich',
-        'Hackney',
-        'Hammersmith & Fulham',
-        'Haringey',
-        'Harrow',
-        'Havering',
-        'Hillingdon',
-        'Hounslow',
-        'Islington',
-        'Kensington & Chelsea',
-        'Kingston upon Thames',
-        'Lambeth',
-        'Lewisham',
-        'Merton',
-        'Newham',
-        'Redbridge',
-        'Richmond upon Thames',
-        'Southwark',
-        'Sutton',
-        'Tower Hamlets',
-        'Waltham Forest',
-        'Wandsworth',
-        'Westminster',
-      ];
-      const cities = [
-        'Birmingham',
-        'Bournemouth',
-        'Brighton & Hove',
-        'Bristol',
-        'Cardiff',
-        'Coventry',
-        'Edinburgh',
-        'Glasgow',
-        'Leeds',
-        'Leicester',
-        'Liverpool',
-        'Manchester',
-        'Middlesbrough',
-        'Newcastle',
-        'Nottingham',
-        'Reading',
-        'Sheffield',
-        'Southampton',
-        'Swansea',
-      ];
-
-      const allCountiesCities = window.COUNTIES_CITIES || window.REGIONS || [];
-      const counties = allCountiesCities.filter(function (r) {
-        return cities.indexOf(r) === -1 && londonBoroughs.indexOf(r) === -1;
-      });
-      const boroughList = allCountiesCities.filter(function (r) {
-        return londonBoroughs.indexOf(r) !== -1;
-      });
-      const cityList = allCountiesCities.filter(function (r) {
-        return cities.indexOf(r) !== -1;
-      });
-
       let html = '<option value="" placeholder>Select county or city</option>';
 
-      if (counties.length > 0) {
-        html += '<optgroup label="Counties">';
-        counties.forEach(function (county) {
-          html += `<option value="${self.escapeHtml(county)}" data-custom-properties='{"group":"Counties"}'>${self.escapeHtml(county)}</option>`;
+      if (grouped && Object.keys(grouped).length > 0) {
+        // Use geographic groups — scannable without search, searchable by region name
+        Object.entries(grouped).forEach(function ([groupName, options]) {
+          html += '<optgroup label="' + groupName + '">';
+          options.forEach(function (opt) {
+            html += `<option value="${self.escapeHtml(opt)}" data-custom-properties='{"group":"${self.escapeHtml(groupName)}"}'>${self.escapeHtml(opt)}</option>`;
+          });
+          html += '</optgroup>';
         });
-        html += '</optgroup>';
-      }
-
-      if (boroughList.length > 0) {
-        html += '<optgroup label="London Boroughs">';
-        boroughList.forEach(function (b) {
-          html += `<option value="${self.escapeHtml(b)}" data-custom-properties='{"group":"London"}'>${self.escapeHtml(b)}</option>`;
+      } else {
+        // Fallback: flat list (test environment or pre-grouped config)
+        flat.forEach(function (region) {
+          html += '<option value="' + self.escapeHtml(region) + '">' + self.escapeHtml(region) + '</option>';
         });
-        html += '</optgroup>';
-      }
-
-      if (cityList.length > 0) {
-        html += '<optgroup label="Cities">';
-        cityList.forEach(function (city) {
-          html += `<option value="${self.escapeHtml(city)}" data-custom-properties='{"group":"Cities"}'>${self.escapeHtml(city)}</option>`;
-        });
-        html += '</optgroup>';
       }
 
       regionSelect.innerHTML = html;

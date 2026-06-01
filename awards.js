@@ -470,6 +470,116 @@ const awardsModule = {
     wrap.classList.remove('d-none');
   },
 
+  _toggleInlineSectorAdd() {
+    const wrap = document.getElementById('inlineSectorAddWrap');
+    if (!wrap) return;
+    const hidden = wrap.classList.toggle('d-none');
+    if (!hidden) document.getElementById('inlineSectorName')?.focus();
+  },
+
+  _cancelInlineSectorAdd() {
+    const wrap = document.getElementById('inlineSectorAddWrap');
+    if (wrap) wrap.classList.add('d-none');
+    const input = document.getElementById('inlineSectorName');
+    if (input) {
+      input.value = '';
+      input.classList.remove('is-invalid');
+    }
+  },
+
+  async _saveInlineSector() {
+    const input = document.getElementById('inlineSectorName');
+    const name = input?.value.trim().toUpperCase();
+    if (!name) {
+      input?.classList.add('is-invalid');
+      return;
+    }
+
+    const existing = [...(window.SECTORS || []), ...(window._customSectorNames || [])].map((s) => s.toUpperCase());
+    if (existing.includes(name)) {
+      utils.showToast(`"${name}" already exists`, 'error');
+      return;
+    }
+
+    try {
+      await apiClient.insert('custom_sectors', { name, sort_order: 0, is_active: true });
+      // Add to dropdown and select it
+      const select = document.getElementById('awardFormSector');
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = utils.toTitleCase(name);
+      select.appendChild(opt);
+      select.value = name;
+      // Cache so duplicate check works within same session
+      window._customSectorNames = [...(window._customSectorNames || []), name];
+      this._cancelInlineSectorAdd();
+      await this.onAwardFormSectorChange();
+      utils.showToast(`Sector "${utils.toTitleCase(name)}" added`, 'success');
+    } catch (err) {
+      utils.showToast('Failed to add sector: ' + err.message, 'error');
+    }
+  },
+
+  _toggleInlineCategoryAdd() {
+    const wrap = document.getElementById('inlineCategoryAddWrap');
+    if (!wrap) return;
+    const hidden = wrap.classList.toggle('d-none');
+    if (!hidden) document.getElementById('inlineCategoryName')?.focus();
+  },
+
+  _cancelInlineCategoryAdd() {
+    const wrap = document.getElementById('inlineCategoryAddWrap');
+    if (wrap) wrap.classList.add('d-none');
+    const input = document.getElementById('inlineCategoryName');
+    if (input) {
+      input.value = '';
+      input.classList.remove('is-invalid');
+    }
+  },
+
+  async _saveInlineCategory() {
+    const sector = document.getElementById('awardFormSector')?.value;
+    if (!sector) {
+      utils.showToast('Select a sector first', 'error');
+      return;
+    }
+
+    const input = document.getElementById('inlineCategoryName');
+    const name = input?.value.trim();
+    if (!name) {
+      input?.classList.add('is-invalid');
+      return;
+    }
+    input.classList.remove('is-invalid');
+
+    try {
+      await apiClient.insert('custom_categories', {
+        sector_name: sector,
+        name,
+        available_for_small: false,
+        sort_order: 0,
+        is_active: true,
+      });
+      // Add to picker and auto-fill award name
+      const picker = document.getElementById('awardCategoryPicker');
+      if (picker) {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        picker.appendChild(opt);
+      }
+      const nameEl = document.getElementById('awardFormName');
+      if (nameEl) {
+        nameEl.value = name;
+        nameEl.classList.remove('is-invalid');
+      }
+      this._cancelInlineCategoryAdd();
+      utils.showToast(`Category "${name}" added`, 'success');
+    } catch (err) {
+      utils.showToast('Failed to add category: ' + err.message, 'error');
+    }
+  },
+
   /**
    * Update the area hint div to show SMALL/LARGE indicator.
    * @param {string|null} areaId

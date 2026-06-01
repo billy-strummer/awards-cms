@@ -7766,18 +7766,43 @@
                 <div id="awardFormAreaHint" class="form-text mt-1"></div>
               </div>
               <div class="col-md-4">
-                <label for="awardFormSector" class="form-label fw-semibold">Sector <span class="text-danger">*</span></label>
+                <label for="awardFormSector" class="form-label fw-semibold d-flex justify-content-between align-items-center">
+                  <span>Sector <span class="text-danger">*</span></span>
+                  <a href="#" class="link-primary small fw-normal" data-action="awardsModule._toggleInlineSectorAdd">
+                    <i class="bi bi-plus-lg"></i> Add new
+                  </a>
+                </label>
                 <select class="form-select" id="awardFormSector" required aria-required="true"
                         data-on-change="awardsModule.onAwardFormSectorChange">
                   <option value="">Select Sector...</option>
                 </select>
+                <div id="inlineSectorAddWrap" class="d-none mt-2">
+                  <div class="input-group input-group-sm">
+                    <input type="text" class="form-control" id="inlineSectorName" placeholder="e.g. CIVIL ENGINEERING" maxlength="100">
+                    <button class="btn btn-primary" type="button" data-action="awardsModule._saveInlineSector">Add</button>
+                    <button class="btn btn-outline-secondary" type="button" data-action="awardsModule._cancelInlineSectorAdd">✕</button>
+                  </div>
+                  <div class="form-text">Use ALL CAPS to match the existing style.</div>
+                </div>
                 <div id="awardCategoryPickerWrap" class="mt-2 d-none">
-                  <label for="awardCategoryPicker" class="form-label small text-muted mb-1">
-                    <i class="bi bi-list-ul me-1"></i>Pick from list (auto-fills name):
-                  </label>
+                  <div class="d-flex justify-content-between align-items-center mb-1">
+                    <label for="awardCategoryPicker" class="form-label small text-muted mb-0">
+                      <i class="bi bi-list-ul me-1"></i>Pick from list (auto-fills name):
+                    </label>
+                    <a href="#" class="link-primary small" data-action="awardsModule._toggleInlineCategoryAdd">
+                      <i class="bi bi-plus-lg"></i> Add new
+                    </a>
+                  </div>
                   <select class="form-select form-select-sm" id="awardCategoryPicker">
                     <option value="">— select —</option>
                   </select>
+                  <div id="inlineCategoryAddWrap" class="d-none mt-1">
+                    <div class="input-group input-group-sm">
+                      <input type="text" class="form-control" id="inlineCategoryName" placeholder="e.g. Glazing Company" maxlength="150">
+                      <button class="btn btn-primary" type="button" data-action="awardsModule._saveInlineCategory">Add</button>
+                      <button class="btn btn-outline-secondary" type="button" data-action="awardsModule._cancelInlineCategoryAdd">✕</button>
+                    </div>
+                  </div>
                 </div>
               </div>
               <div class="col-md-6">

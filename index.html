@@ -11731,6 +11731,33 @@
               <option value="">Select sector...</option>
             </select>
           </div>
+          <hr class="my-2">
+          <p class="small text-muted mb-2"><i class="bi bi-geo-alt me-1"></i>Location scope (optional — leave blank to apply everywhere)</p>
+          <div class="row g-2 mb-3">
+            <div class="col-12">
+              <label for="newCategoryCountry" class="form-label small fw-semibold">Country</label>
+              <select class="form-select form-select-sm" id="newCategoryCountry">
+                <option value="">All countries</option>
+                <option value="England">England</option>
+                <option value="Northern Ireland">Northern Ireland</option>
+                <option value="Scotland">Scotland</option>
+                <option value="Wales">Wales</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <label for="newCategoryRegion" class="form-label small fw-semibold">Region</label>
+              <select class="form-select form-select-sm" id="newCategoryRegion" disabled>
+                <option value="">Select country first…</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <label for="newCategoryArea" class="form-label small fw-semibold">County / City / Borough</label>
+              <select class="form-select form-select-sm" id="newCategoryArea" disabled>
+                <option value="">Select region first…</option>
+              </select>
+            </div>
+          </div>
+          <hr class="my-2">
           <div class="mb-3">
             <label for="newCategoryName" class="form-label fw-semibold">Category Name <span class="text-danger">*</span></label>
             <input type="text" class="form-control" id="newCategoryName" placeholder="e.g. Groundworks Specialist" maxlength="150" required>

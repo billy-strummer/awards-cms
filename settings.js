@@ -1558,7 +1558,8 @@ const settingsModule = {
     if (!container) return;
     container.innerHTML = '<p class="text-muted small p-3 mb-0">Loading...</p>';
     try {
-      const [sectorsResult, categoriesResult] = await Promise.all([
+      const [, sectorsResult, categoriesResult] = await Promise.all([
+        locationModule.loadAreas().catch(() => {}),
         apiClient.select('custom_sectors', {
           select: '*',
           sort: { column: 'sort_order', ascending: true },
@@ -1582,6 +1583,16 @@ const settingsModule = {
         catsBySector[c.sector_name].push(c);
       });
 
+      // Build region lookup from cached data for display
+      const regionMap = {};
+      (locationModule._cachedRegions || []).forEach((r) => {
+        regionMap[r.id] = r.display_name;
+      });
+      const areaMap = {};
+      (locationModule._cachedAreas || []).forEach((a) => {
+        areaMap[a.id] = a.display_name;
+      });
+
       // Render category rows for one sector (built-in or custom)
       const renderCatRows = (sectorName) => {
         const cats = catsBySector[sectorName] || [];
@@ -1592,11 +1603,25 @@ const settingsModule = {
             <a href="#" class="link-primary" data-action="settingsModule.openAddCategoryModal" data-args='${addArgs}'>Add one</a>
           </td></tr>`;
         }
+
+        const locationBadge = (c) => {
+          if (c.area_id && areaMap[c.area_id]) {
+            return `<span class="badge bg-info-subtle text-info ms-1" style="font-size:.6rem" title="Scoped to area"><i class="bi bi-geo-alt"></i> ${utils.escapeHtml(areaMap[c.area_id])}</span>`;
+          }
+          if (c.region_id && regionMap[c.region_id]) {
+            return `<span class="badge bg-info-subtle text-info ms-1" style="font-size:.6rem" title="Scoped to region"><i class="bi bi-geo-alt"></i> ${utils.escapeHtml(regionMap[c.region_id])}</span>`;
+          }
+          if (c.country) {
+            return `<span class="badge bg-info-subtle text-info ms-1" style="font-size:.6rem" title="Scoped to country"><i class="bi bi-geo-alt"></i> ${utils.escapeHtml(c.country)}</span>`;
+          }
+          return '';
+        };
+
         return (
           cats
             .map(
               (c) => `<tr>
-              <td class="ps-3">${utils.escapeHtml(c.name)}</td>
+              <td class="ps-3">${utils.escapeHtml(c.name)}${locationBadge(c)}</td>
               <td>${c.available_for_small ? '<span class="badge bg-warning text-dark" style="font-size:.65rem">Small areas</span>' : ''}</td>
               <td class="text-end pe-2">
                 <button class="btn btn-sm btn-outline-danger py-0 px-1"
@@ -1725,6 +1750,55 @@ const settingsModule = {
 
     if (preselectSector) select.value = preselectSector;
 
+    // Reset location fields
+    const countryEl = document.getElementById('newCategoryCountry');
+    const regionEl = document.getElementById('newCategoryRegion');
+    const areaEl = document.getElementById('newCategoryArea');
+    if (countryEl) countryEl.value = '';
+    if (regionEl) {
+      regionEl.innerHTML = '<option value="">Select country first…</option>';
+      regionEl.disabled = true;
+    }
+    if (areaEl) {
+      areaEl.innerHTML = '<option value="">Select region first…</option>';
+      areaEl.disabled = true;
+    }
+
+    // Pre-load region/area data so cascades are fast
+    await locationModule.loadAreas().catch(() => {});
+
+    // Wire country → region cascade
+    if (countryEl) {
+      countryEl.onchange = () => {
+        const country = countryEl.value;
+        if (!country) {
+          regionEl.innerHTML = '<option value="">Select country first…</option>';
+          regionEl.disabled = true;
+          areaEl.innerHTML = '<option value="">Select region first…</option>';
+          areaEl.disabled = true;
+          return;
+        }
+        regionEl.disabled = false;
+        locationModule.populateRegionDropdown('newCategoryRegion', country, 'All regions');
+        areaEl.innerHTML = '<option value="">Select region first…</option>';
+        areaEl.disabled = true;
+      };
+    }
+
+    // Wire region → area cascade
+    if (regionEl) {
+      regionEl.onchange = () => {
+        const regionId = regionEl.value;
+        if (!regionId) {
+          areaEl.innerHTML = '<option value="">Select region first…</option>';
+          areaEl.disabled = true;
+          return;
+        }
+        areaEl.disabled = false;
+        locationModule.populateAreaDropdown('newCategoryArea', countryEl?.value || '', 'All areas', '', regionId);
+      };
+    }
+
     document.getElementById('newCategoryName').value = '';
     document.getElementById('newCategorySmall').checked = false;
     bootstrap.Modal.getOrCreateInstance(document.getElementById('addCategoryModal')).show();
@@ -1736,6 +1810,9 @@ const settingsModule = {
     const sectorName = sectorEl.value.trim();
     const name = nameEl.value.trim();
     const availableForSmall = document.getElementById('newCategorySmall').checked;
+    const country = document.getElementById('newCategoryCountry')?.value || null;
+    const regionId = document.getElementById('newCategoryRegion')?.value || null;
+    const areaId = document.getElementById('newCategoryArea')?.value || null;
 
     let valid = true;
     if (!sectorName) {
@@ -1759,6 +1836,9 @@ const settingsModule = {
         available_for_small: availableForSmall,
         sort_order: 0,
         is_active: true,
+        ...(country ? { country } : {}),
+        ...(regionId ? { region_id: regionId } : {}),
+        ...(areaId ? { area_id: areaId } : {}),
       });
       bootstrap.Modal.getOrCreateInstance(document.getElementById('addCategoryModal')).hide();
       utils.showToast(`Category "${name}" added to ${sectorName}`, 'success');

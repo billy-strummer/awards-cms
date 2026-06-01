@@ -17,7 +17,10 @@ const dom = new JSDOM(
 
   <!-- Step 1 – Region -->
   <div id="step1" class="form-step active">
-    <select id="county_city"><option value="">Select your county or city</option><option value="Kent">Kent</option><option value="Lancashire">Lancashire</option><option value="Westminster">Westminster</option></select>
+    <select id="region_group"><option value="">Select your region</option></select>
+    <div id="county_city_wrapper" style="display:none;">
+      <select id="county_city"><option value="">Select your county or city</option><option value="Kent">Kent</option><option value="Lancashire">Lancashire</option><option value="Westminster">Westminster</option></select>
+    </div>
   </div>
 
   <!-- Step 2 – Sector -->
@@ -369,7 +372,8 @@ describe('Step navigation', () => {
 
   test('nextStep does NOT advance when validation fails', async () => {
     entryFormApp.goToStep(1);
-    document.getElementById('county_city').value = ''; // empty = invalid
+    document.getElementById('region_group').value = '';
+    document.getElementById('county_city').value = '';
     await entryFormApp.nextStep(1);
     // Should stay on step 1 because region is empty
     expect(entryFormApp.currentStep).toBe(1);
@@ -401,12 +405,22 @@ describe('Step navigation', () => {
 describe('validateStep — Step 1 (Region)', () => {
   beforeEach(resetApp);
 
-  test('fails when region is empty', () => {
+  test('fails when region_group is empty', () => {
+    document.getElementById('region_group').value = '';
     document.getElementById('county_city').value = '';
     expect(entryFormApp.validateStep(1)).toBe(false);
   });
 
-  test('passes when region is selected', () => {
+  test('fails when region_group selected but county_city empty', () => {
+    document.getElementById('region_group').innerHTML += '<option value="South East">South East</option>';
+    document.getElementById('region_group').value = 'South East';
+    document.getElementById('county_city').value = '';
+    expect(entryFormApp.validateStep(1)).toBe(false);
+  });
+
+  test('passes when both region_group and county_city are selected', () => {
+    document.getElementById('region_group').innerHTML += '<option value="South East">South East</option>';
+    document.getElementById('region_group').value = 'South East';
     document.getElementById('county_city').value = 'Kent';
     expect(entryFormApp.validateStep(1)).toBe(true);
   });
@@ -873,14 +887,14 @@ describe('Error handling', () => {
 describe('saveStepData', () => {
   beforeEach(resetApp);
 
-  test('step 1 saves region', () => {
-    const sel = document.getElementById('county_city');
-    // Ensure option exists (DOMContentLoaded/populateRegions may not have run yet)
-    if (![...sel.options].some((o) => o.value === 'Kent')) {
-      sel.innerHTML += '<option value="Kent">Kent</option>';
-    }
-    sel.value = 'Kent';
+  test('step 1 saves region_group and county_city', () => {
+    const rgSel = document.getElementById('region_group');
+    rgSel.innerHTML += '<option value="South East">South East</option>';
+    rgSel.value = 'South East';
+    const ccSel = document.getElementById('county_city');
+    ccSel.value = 'Kent';
     entryFormApp.saveStepData(1);
+    expect(entryFormApp.formData.region_group).toBe('South East');
     expect(entryFormApp.formData.county_city).toBe('Kent');
   });
 
@@ -1152,35 +1166,67 @@ describe('populateSectors', () => {
 });
 
 describe('populateRegions', () => {
-  test('populates region select with grouped options', () => {
-    entryFormApp.populateRegions();
-    const select = document.getElementById('county_city');
-    const optgroups = select.querySelectorAll('optgroup');
-    // Should have Counties, London Boroughs, and Cities groups
-    expect(optgroups.length).toBe(3);
-    const labels = Array.from(optgroups).map((g) => g.label);
-    expect(labels).toContain('Counties');
-    expect(labels).toContain('London Boroughs');
-    expect(labels).toContain('Cities');
+  const origGrouped = global.window.REGIONS_GROUPED;
+
+  beforeEach(() => {
+    global.window.REGIONS_GROUPED = {
+      'East of England': ['Bedfordshire', 'Cambridgeshire', 'Essex'],
+      'London Boroughs': ['Camden', 'Hackney', 'Westminster'],
+      'North West': ['Lancashire', 'Liverpool', 'Manchester'],
+      'West Midlands': ['Birmingham', 'Coventry'],
+    };
   });
 
-  test('places city regions under Cities group', () => {
-    entryFormApp.populateRegions();
-    const citiesGroup = document.querySelector('optgroup[label="Cities"]');
-    const cityOptions = citiesGroup.querySelectorAll('option');
-    const values = Array.from(cityOptions).map((o) => o.value);
-    expect(values).toContain('Birmingham');
-    expect(values).toContain('Manchester');
-    expect(values).not.toContain('London, North');
+  afterEach(() => {
+    global.window.REGIONS_GROUPED = origGrouped;
   });
 
-  test('places London boroughs under London Boroughs group', () => {
+  test('populates region_group select with group names from REGIONS_GROUPED', () => {
     entryFormApp.populateRegions();
-    const boroughsGroup = document.querySelector('optgroup[label="London Boroughs"]');
-    const boroughOptions = boroughsGroup.querySelectorAll('option');
-    const values = Array.from(boroughOptions).map((o) => o.value);
-    expect(values).toContain('Westminster');
-    expect(values).toContain('Camden');
+    const select = document.getElementById('region_group');
+    const options = Array.from(select.querySelectorAll('option'))
+      .map((o) => o.value)
+      .filter(Boolean);
+    expect(options).toContain('East of England');
+    expect(options).toContain('London Boroughs');
+    expect(options).toContain('North West');
+    expect(options).toContain('West Midlands');
+    expect(options.length).toBe(4);
+  });
+
+  test('handleRegionGroupChange populates county_city and shows wrapper', () => {
+    entryFormApp.populateRegions();
+    document.getElementById('region_group').innerHTML += '<option value="North West">North West</option>';
+    document.getElementById('region_group').value = 'North West';
+    entryFormApp.handleRegionGroupChange();
+    const wrapper = document.getElementById('county_city_wrapper');
+    expect(wrapper.style.display).toBe('block');
+    const countyOptions = Array.from(document.getElementById('county_city').querySelectorAll('option'))
+      .map((o) => o.value)
+      .filter(Boolean);
+    expect(countyOptions).toContain('Manchester');
+    expect(countyOptions).toContain('Liverpool');
+    expect(countyOptions).toContain('Lancashire');
+  });
+
+  test('handleRegionGroupChange for London Boroughs shows all boroughs', () => {
+    entryFormApp.populateRegions();
+    document.getElementById('region_group').innerHTML += '<option value="London Boroughs">London Boroughs</option>';
+    document.getElementById('region_group').value = 'London Boroughs';
+    entryFormApp.handleRegionGroupChange();
+    const countyOptions = Array.from(document.getElementById('county_city').querySelectorAll('option'))
+      .map((o) => o.value)
+      .filter(Boolean);
+    expect(countyOptions).toContain('Westminster');
+    expect(countyOptions).toContain('Camden');
+    expect(countyOptions).toContain('Hackney');
+  });
+
+  test('handleRegionGroupChange hides wrapper when region cleared', () => {
+    entryFormApp.populateRegions();
+    document.getElementById('region_group').value = '';
+    entryFormApp.handleRegionGroupChange();
+    expect(document.getElementById('county_city_wrapper').style.display).toBe('none');
   });
 });
 
@@ -1225,32 +1271,51 @@ describe('showPublicToast — timer-based fade-out and removal', () => {
 });
 
 // ============================================================
-// 11. Coverage: Choices constructor branch (line 306)
+// 11. Coverage: two-step region picker interaction
 // ============================================================
 
-describe('populateRegions — Choices.js integration (line 306)', () => {
-  test('instantiates Choices when global Choices is defined', () => {
-    // Define a mock Choices constructor on the window
-    const mockInstance = { destroy: jest.fn() };
-    global.window.Choices = jest.fn().mockReturnValue(mockInstance);
-    // Also expose on global so the typeof check inside the IIFE sees it
-    global.Choices = global.window.Choices;
+describe('two-step region picker', () => {
+  const origGrouped = global.window.REGIONS_GROUPED;
 
+  beforeEach(() => {
+    global.window.REGIONS_GROUPED = {
+      'South East': ['Kent', 'Surrey', 'East Sussex'],
+      'London Boroughs': ['Camden', 'Westminster'],
+    };
     entryFormApp.populateRegions();
+  });
 
-    expect(global.window.Choices).toHaveBeenCalledWith(
-      '#county_city',
-      expect.objectContaining({
-        searchEnabled: true,
-        shouldSort: false,
-      })
-    );
-    expect(entryFormApp.regionChoicesInstance).toBe(mockInstance);
+  afterEach(() => {
+    global.window.REGIONS_GROUPED = origGrouped;
+  });
 
-    // Clean up
-    delete global.Choices;
-    global.window.Choices = undefined;
-    entryFormApp.regionChoicesInstance = null;
+  test('wrapper is hidden initially', () => {
+    expect(document.getElementById('county_city_wrapper').style.display).toBe('none');
+  });
+
+  test('selecting a region reveals the sub-picker with correct options', () => {
+    document.getElementById('region_group').innerHTML += '<option value="South East">South East</option>';
+    document.getElementById('region_group').value = 'South East';
+    entryFormApp.handleRegionGroupChange();
+    expect(document.getElementById('county_city_wrapper').style.display).toBe('block');
+    const values = Array.from(document.getElementById('county_city').querySelectorAll('option'))
+      .map((o) => o.value)
+      .filter(Boolean);
+    expect(values).toEqual(['Kent', 'Surrey', 'East Sussex']);
+  });
+
+  test('changing region resets and repopulates sub-picker', () => {
+    const rg = document.getElementById('region_group');
+    rg.innerHTML +=
+      '<option value="South East">South East</option><option value="London Boroughs">London Boroughs</option>';
+    rg.value = 'South East';
+    entryFormApp.handleRegionGroupChange();
+    rg.value = 'London Boroughs';
+    entryFormApp.handleRegionGroupChange();
+    const values = Array.from(document.getElementById('county_city').querySelectorAll('option'))
+      .map((o) => o.value)
+      .filter(Boolean);
+    expect(values).toEqual(['Camden', 'Westminster']);
   });
 });
 

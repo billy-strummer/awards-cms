@@ -24,7 +24,10 @@ const dom = new JSDOM(
 
   <!-- Step 2 – Region -->
   <div id="step2" class="form-step">
-    <select id="county_city"><option value="">Select...</option><option value="Kent">Kent</option></select>
+    <select id="region_group"><option value="">Select region</option><option value="South East">South East</option></select>
+    <div id="county_city_wrapper" style="display:none;">
+      <select id="county_city"><option value="">Select...</option><option value="Kent">Kent</option></select>
+    </div>
   </div>
 
   <!-- Step 3 – Nominee details -->
@@ -83,8 +86,9 @@ win.fetch = jest.fn();
 win.requestAnimationFrame = (cb) => setTimeout(cb, 0);
 
 win.SUPABASE_CONFIG = { url: 'https://test.supabase.co', anonKey: 'test-key' };
-win.COUNTIES_CITIES = ['Kent', 'Surrey'];
-win.REGIONS = [];
+win.REGIONS_GROUPED = { 'South East': ['Kent', 'Surrey'], 'London Boroughs': ['Camden', 'Westminster'] };
+win.COUNTIES_CITIES = ['Kent', 'Surrey', 'Camden', 'Westminster'];
+win.REGIONS = win.COUNTIES_CITIES;
 win.SECTORS = ['BUILDING & CONSTRUCTION'];
 
 // Load the module into the JSDOM window context
@@ -150,12 +154,20 @@ describe('nominateApp - validateStep()', () => {
     expect(app.validateStep(1)).toBe(true);
   });
 
-  test('step 2 returns false when no region selected', () => {
+  test('step 2 returns false when no region_group selected', () => {
+    getEl('region_group').value = '';
     getEl('county_city').value = '';
     expect(app.validateStep(2)).toBe(false);
   });
 
-  test('step 2 returns true when region selected', () => {
+  test('step 2 returns false when region_group set but county_city empty', () => {
+    getEl('region_group').value = 'South East';
+    getEl('county_city').value = '';
+    expect(app.validateStep(2)).toBe(false);
+  });
+
+  test('step 2 returns true when both region_group and county_city selected', () => {
+    getEl('region_group').value = 'South East';
     getEl('county_city').value = 'Kent';
     expect(app.validateStep(2)).toBe(true);
   });

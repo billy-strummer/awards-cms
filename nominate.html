@@ -15,8 +15,6 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 
-  <!-- Choices.js for searchable dropdown -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js@10.2.0/public/assets/styles/choices.min.css">
 
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -590,56 +588,16 @@
       margin-top: 10px;
     }
 
-    /* ── Choices.js light theme ── */
-    .choices__inner {
-      background: #f7f7f7;
-      border: 1px solid #dde1e7;
-      color: #1a1a1a;
-      border-radius: 8px;
-      padding: 10px 14px;
-      font-size: 0.95rem;
-      min-height: 48px;
+    /* ── Sub-region picker ── */
+    #county_city_wrapper {
+      margin-top: 16px;
+      animation: fadeSlideIn 0.2s ease;
     }
 
-    .choices__input {
-      background: transparent;
-      color: #1a1a1a;
-      font-size: 0.95rem;
-      margin-bottom: 0;
+    @keyframes fadeSlideIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
-
-    .choices__input::placeholder { color: #aaaaaa; }
-    .choices[data-type*=select-one] .choices__inner { padding-bottom: 10px; }
-
-    .choices__list--dropdown {
-      background: #ffffff;
-      border: 1px solid rgba(201,162,39,0.4);
-      border-radius: 8px;
-      margin-top: 4px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.12);
-      z-index: 10;
-    }
-
-    .choices__list--dropdown .choices__item--selectable.is-highlighted {
-      background: rgba(201,162,39,0.1);
-      color: #1a1a1a;
-    }
-
-    .choices__list--dropdown .choices__group {
-      color: var(--gold-text);
-      font-weight: 700;
-      border-bottom: 1px solid rgba(201,162,39,0.15);
-    }
-
-    .choices__list--dropdown .choices__item { color: #333333; }
-
-    .is-focused .choices__inner {
-      border-color: #C9A227;
-      box-shadow: 0 0 0 3px rgba(201,162,39,0.15);
-      background: #ffffff;
-    }
-
-    .choices__list--single .choices__item { color: #1a1a1a; }
 
     /* ── Tablet ── */
     @media (max-width: 768px) {
@@ -738,9 +696,17 @@
         <div class="form-step" id="step2">
           <div class="form-section">
             <h2 class="step-question">Where is the nominee based?</h2>
-            <p class="step-subtitle">Select the county or city they operate in</p>
-            <select class="form-select form-select-lg" id="county_city" required>
+            <p class="step-subtitle">Select their region, then their specific county, city or borough.</p>
+            <label class="visually-hidden" for="region_group">Region</label>
+            <select class="form-select form-select-lg" id="region_group" required aria-label="Select region">
+              <option value="">Select region</option>
             </select>
+            <div id="county_city_wrapper" style="display:none;">
+              <label class="visually-hidden" for="county_city">County, city or borough</label>
+              <select class="form-select form-select-lg" id="county_city" required aria-label="Select county, city or borough">
+                <option value="">Select county, city or borough</option>
+              </select>
+            </div>
             <button type="button" class="btn btn-next" data-action="nominateApp.nextStep" data-args="[2]">
               Next <i class="bi bi-arrow-right ms-2"></i>
             </button>
@@ -965,9 +931,6 @@
 
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-  <!-- Choices.js for searchable dropdown -->
-  <script src="https://cdn.jsdelivr.net/npm/choices.js@10.2.0/public/assets/scripts/choices.min.js"></script>
 
   <!-- Configuration (provides REGIONS, SUPABASE_CONFIG) -->
   <script type="module" src="config.js"></script>

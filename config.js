@@ -171,141 +171,126 @@ const STANDARD_CATEGORIES = {
   ],
 };
 
-const COUNTIES_CITIES = [
-  // East of England
-  'Bedfordshire',
-  'Cambridgeshire',
-  'Essex',
-  'Hertfordshire',
-  'Norfolk',
-  'Suffolk',
-  // East Midlands
-  'Derbyshire',
-  'Leicestershire',
-  'Lincolnshire',
-  'Northamptonshire',
-  'Nottinghamshire',
-  'Rutland',
-  'Leicester',
-  'Nottingham',
-  // London Boroughs
-  'Barking & Dagenham',
-  'Barnet',
-  'Bexley',
-  'Brent',
-  'Bromley',
-  'Camden',
-  'City of London',
-  'Croydon',
-  'Ealing',
-  'Enfield',
-  'Greenwich',
-  'Hackney',
-  'Hammersmith & Fulham',
-  'Haringey',
-  'Harrow',
-  'Havering',
-  'Hillingdon',
-  'Hounslow',
-  'Islington',
-  'Kensington & Chelsea',
-  'Kingston upon Thames',
-  'Lambeth',
-  'Lewisham',
-  'Merton',
-  'Newham',
-  'Redbridge',
-  'Richmond upon Thames',
-  'Southwark',
-  'Sutton',
-  'Tower Hamlets',
-  'Waltham Forest',
-  'Wandsworth',
-  'Westminster',
-  // North East
-  'County Durham',
-  'East Yorkshire',
-  'North Yorkshire',
-  'Northumberland',
-  'South Yorkshire',
-  'Tyne & Wear',
-  'West Yorkshire',
-  'Leeds',
-  'Middlesbrough',
-  'Newcastle',
-  'Sheffield',
-  // North West
-  'Cheshire',
-  'Cumbria',
-  'Lancashire',
-  'Liverpool',
-  'Manchester',
-  // South East
-  'Berkshire',
-  'Buckinghamshire',
-  'East Sussex',
-  'Hampshire',
-  'Isle of Wight',
-  'Kent',
-  'Oxfordshire',
-  'Surrey',
-  'West Sussex',
-  'Brighton & Hove',
-  'Reading',
-  'Southampton',
-  // South West
-  'Cornwall',
-  'Devon',
-  'Dorset',
-  'Gloucestershire',
-  'Somerset',
-  'Wiltshire',
-  'Bournemouth',
-  'Bristol',
-  // West Midlands
-  'Herefordshire',
-  'Shropshire',
-  'Staffordshire',
-  'Warwickshire',
-  'Worcestershire',
-  'Birmingham',
-  'Coventry',
-  // Wales — North
-  'Conwy & Denbighshire',
-  'Flintshire',
-  'Gwynedd & Anglesey',
-  'Wrexham',
-  // Wales — Mid & West
-  'Carmarthenshire',
-  'Ceredigion',
-  'Pembrokeshire',
-  'Powys',
-  // Wales — South
-  'Glamorgan',
-  'Gwent',
-  'Cardiff',
-  'Swansea',
-  // Scotland — North
-  'Grampian',
-  'Highlands',
-  'Scottish Islands',
-  'Tayside',
-  // Scotland — Central
-  'Central Scotland',
-  'Fife',
-  'Lothian',
-  'Edinburgh',
-  // Scotland — West
-  'Argyll & Bute',
-  'Dunbartonshire',
-  'Lanarkshire',
-  'Renfrewshire',
-  'Glasgow',
-  // Scotland — South
-  'Ayrshire',
-  'Dumfries & Galloway',
-  'Scottish Borders',
-];
+const REGIONS_GROUPED = {
+  'East of England': ['Bedfordshire', 'Cambridgeshire', 'Essex', 'Hertfordshire', 'Norfolk', 'Suffolk'],
+  'East Midlands': [
+    'Derbyshire',
+    'Leicestershire',
+    'Lincolnshire',
+    'Northamptonshire',
+    'Nottinghamshire',
+    'Rutland',
+    'Leicester',
+    'Nottingham',
+  ],
+  'London Boroughs': [
+    'Barking & Dagenham',
+    'Barnet',
+    'Bexley',
+    'Brent',
+    'Bromley',
+    'Camden',
+    'City of London',
+    'Croydon',
+    'Ealing',
+    'Enfield',
+    'Greenwich',
+    'Hackney',
+    'Hammersmith & Fulham',
+    'Haringey',
+    'Harrow',
+    'Havering',
+    'Hillingdon',
+    'Hounslow',
+    'Islington',
+    'Kensington & Chelsea',
+    'Kingston upon Thames',
+    'Lambeth',
+    'Lewisham',
+    'Merton',
+    'Newham',
+    'Redbridge',
+    'Richmond upon Thames',
+    'Southwark',
+    'Sutton',
+    'Tower Hamlets',
+    'Waltham Forest',
+    'Wandsworth',
+    'Westminster',
+  ],
+  'North East': [
+    'County Durham',
+    'East Yorkshire',
+    'North Yorkshire',
+    'Northumberland',
+    'South Yorkshire',
+    'Tyne & Wear',
+    'West Yorkshire',
+    'Leeds',
+    'Middlesbrough',
+    'Newcastle',
+    'Sheffield',
+  ],
+  'North West': ['Cheshire', 'Cumbria', 'Lancashire', 'Liverpool', 'Manchester'],
+  'South East': [
+    'Berkshire',
+    'Buckinghamshire',
+    'East Sussex',
+    'Hampshire',
+    'Isle of Wight',
+    'Kent',
+    'Oxfordshire',
+    'Surrey',
+    'West Sussex',
+    'Brighton & Hove',
+    'Reading',
+    'Southampton',
+  ],
+  'South West': ['Cornwall', 'Devon', 'Dorset', 'Gloucestershire', 'Somerset', 'Wiltshire', 'Bournemouth', 'Bristol'],
+  'West Midlands': [
+    'Herefordshire',
+    'Shropshire',
+    'Staffordshire',
+    'Warwickshire',
+    'Worcestershire',
+    'Birmingham',
+    'Coventry',
+  ],
+  Wales: [
+    'Conwy & Denbighshire',
+    'Flintshire',
+    'Gwynedd & Anglesey',
+    'Wrexham',
+    'Carmarthenshire',
+    'Ceredigion',
+    'Pembrokeshire',
+    'Powys',
+    'Glamorgan',
+    'Gwent',
+    'Cardiff',
+    'Swansea',
+  ],
+  Scotland: [
+    'Grampian',
+    'Highlands',
+    'Scottish Islands',
+    'Tayside',
+    'Central Scotland',
+    'Fife',
+    'Lothian',
+    'Edinburgh',
+    'Argyll & Bute',
+    'Dunbartonshire',
+    'Lanarkshire',
+    'Renfrewshire',
+    'Glasgow',
+    'Ayrshire',
+    'Dumfries & Galloway',
+    'Scottish Borders',
+  ],
+};
+
+const COUNTIES_CITIES = Object.values(REGIONS_GROUPED).flat();
 
 /**
  * Global application state shared across all modules.
@@ -395,6 +380,7 @@ ModuleRegistry.register('INACTIVITY_TIMEOUT', INACTIVITY_TIMEOUT);
 ModuleRegistry.register('YEARS', YEARS);
 ModuleRegistry.register('SECTORS', SECTORS);
 ModuleRegistry.register('STANDARD_CATEGORIES', STANDARD_CATEGORIES);
+ModuleRegistry.register('REGIONS_GROUPED', REGIONS_GROUPED);
 ModuleRegistry.register('COUNTIES_CITIES', COUNTIES_CITIES);
 // Backward compat alias — some modules still reference REGIONS
 ModuleRegistry.register('REGIONS', COUNTIES_CITIES);
@@ -402,7 +388,15 @@ ModuleRegistry.register('STATE', STATE);
 // Expose ModuleRegistry globally (works in both browser and Node/test)
 // @ts-ignore
 if (typeof globalThis !== 'undefined') globalThis.ModuleRegistry = ModuleRegistry;
-if (typeof window !== 'undefined') window.ModuleRegistry = ModuleRegistry;
+if (typeof window !== 'undefined') {
+  window.ModuleRegistry = ModuleRegistry;
+  // Public form pages (submit-entry.js, nominate.js) are non-module scripts that
+  // read these via window — config.js is a module so exports don't auto-land on window.
+  window.REGIONS_GROUPED = REGIONS_GROUPED;
+  window.COUNTIES_CITIES = COUNTIES_CITIES;
+  window.REGIONS = COUNTIES_CITIES;
+  window.SECTORS = SECTORS;
+}
 
 // REGIONS kept as backward-compat alias for COUNTIES_CITIES
 const REGIONS = COUNTIES_CITIES;

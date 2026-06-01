@@ -111,7 +111,6 @@
     totalSteps: 6,
     formData: {},
     selectedCategory: null,
-    regionChoicesInstance: null,
 
     // Step labels for progress bar
     stepLabels: ['Award', 'Region', 'Nominee', 'Why', 'You', 'Review'],
@@ -289,107 +288,65 @@
     },
 
     // --------------------------------------------------
-    // Populate county/city dropdown from config.js COUNTIES_CITIES
+    // Populate region group dropdown (step 1 of the two-step picker)
     // --------------------------------------------------
     populateRegions: function () {
       const self = this;
-      const regionSelect = document.getElementById('county_city');
-      if (!window.COUNTIES_CITIES && !window.REGIONS) {
+      const regionGroupSelect = document.getElementById('region_group');
+      if (!regionGroupSelect) return;
+
+      const grouped = window.REGIONS_GROUPED;
+      const flat = window.COUNTIES_CITIES || window.REGIONS || [];
+
+      if (!grouped && !flat.length) {
         console.warn('No counties/cities found in config');
         return;
       }
 
-      const londonBoroughs = [
-        'Bromley',
-        'Camden',
-        'Croydon',
-        'Greenwich',
-        'Hackney',
-        'Hammersmith & Fulham',
-        'Islington',
-        'Kensington & Chelsea',
-        'Kingston & Richmond',
-        'Lambeth',
-        'Lewisham',
-        'Middlesex',
-        'Southwark',
-        'Wandsworth',
-        'Westminster',
-      ];
-      const cities = [
-        'Birmingham',
-        'Bournemouth',
-        'Brighton & Hove',
-        'Bristol',
-        'Cardiff',
-        'Coventry',
-        'Edinburgh',
-        'Glasgow',
-        'Leeds',
-        'Leicester',
-        'Liverpool',
-        'Manchester',
-        'Middlesbrough',
-        'Newcastle',
-        'Nottingham',
-        'Reading',
-        'Sheffield',
-        'Southampton',
-        'Swansea',
-      ];
+      let html = '<option value="">Select region</option>';
 
-      const allCountiesCities = window.COUNTIES_CITIES || window.REGIONS || [];
-      const counties = allCountiesCities.filter(function (r) {
-        return cities.indexOf(r) === -1 && londonBoroughs.indexOf(r) === -1;
+      if (grouped && Object.keys(grouped).length > 0) {
+        Object.keys(grouped).forEach(function (groupName) {
+          html += '<option value="' + self.escapeHtml(groupName) + '">' + self.escapeHtml(groupName) + '</option>';
+        });
+      } else {
+        html += '<option value="__all__">United Kingdom</option>';
+      }
+
+      regionGroupSelect.innerHTML = html;
+      regionGroupSelect.addEventListener('change', function () {
+        self.handleRegionGroupChange();
       });
-      const boroughList = allCountiesCities.filter(function (r) {
-        return londonBoroughs.indexOf(r) !== -1;
-      });
-      const cityList = allCountiesCities.filter(function (r) {
-        return cities.indexOf(r) !== -1;
+    },
+
+    // Populate the county/city sub-picker when a region is chosen
+    // --------------------------------------------------
+    handleRegionGroupChange: function () {
+      const groupName = document.getElementById('region_group') && document.getElementById('region_group').value;
+      const wrapper = document.getElementById('county_city_wrapper');
+      const countySelect = document.getElementById('county_city');
+      if (!wrapper || !countySelect) return;
+
+      countySelect.value = '';
+      countySelect.innerHTML = '<option value="">Select county, city or borough</option>';
+
+      if (!groupName) {
+        wrapper.style.display = 'none';
+        return;
+      }
+
+      const grouped = window.REGIONS_GROUPED;
+      const options = grouped ? grouped[groupName] || [] : window.COUNTIES_CITIES || window.REGIONS || [];
+
+      options.forEach(function (opt) {
+        const el = document.createElement('option');
+        el.value = opt;
+        el.textContent = opt;
+        countySelect.appendChild(el);
       });
 
-      let html = '<option value="" placeholder>Select county or city</option>';
-
-      if (counties.length > 0) {
-        html += '<optgroup label="Counties">';
-        counties.forEach(function (county) {
-          html += '<option value="' + self.escapeHtml(county) + '">' + self.escapeHtml(county) + '</option>';
-        });
-        html += '</optgroup>';
-      }
-
-      if (boroughList.length > 0) {
-        html += '<optgroup label="London Boroughs">';
-        boroughList.forEach(function (b) {
-          html += '<option value="' + self.escapeHtml(b) + '">' + self.escapeHtml(b) + '</option>';
-        });
-        html += '</optgroup>';
-      }
-
-      if (cityList.length > 0) {
-        html += '<optgroup label="Cities">';
-        cityList.forEach(function (city) {
-          html += '<option value="' + self.escapeHtml(city) + '">' + self.escapeHtml(city) + '</option>';
-        });
-        html += '</optgroup>';
-      }
-
-      regionSelect.innerHTML = html;
-
-      if (typeof Choices !== 'undefined') {
-        this.regionChoicesInstance = new Choices('#county_city', {
-          searchEnabled: true,
-          searchFloor: 1,
-          searchPlaceholderValue: 'Type to search...',
-          placeholder: true,
-          placeholderValue: 'Select county or city',
-          itemSelectText: '',
-          shouldSort: false,
-          searchResultLimit: 100,
-          allowHTML: true,
-        });
-      }
+      wrapper.style.display = 'block';
+      countySelect.focus();
     },
 
     // --------------------------------------------------
@@ -507,7 +464,13 @@
           return true;
         }
         case 2: {
-          const region = document.getElementById('county_city').value;
+          const regionGroupEl = document.getElementById('region_group');
+          const countyEl = document.getElementById('county_city');
+          if (!regionGroupEl || !regionGroupEl.value) {
+            showPublicToast('Please select a region');
+            return false;
+          }
+          const region = countyEl ? countyEl.value : '';
           if (!region) {
             showPublicToast("Please select the nominee's county or city");
             return false;
@@ -625,7 +588,8 @@
           this.formData.awardCategory = this.selectedCategory;
           break;
         case 2:
-          this.formData.county_city = document.getElementById('county_city').value;
+          this.formData.region_group = (document.getElementById('region_group') || {}).value || '';
+          this.formData.county_city = (document.getElementById('county_city') || {}).value || '';
           break;
         case 3:
           if (this.selectedCategory === 'New Business of the Year') {
@@ -709,7 +673,7 @@
         '<div class="review-group">' +
         '<div class="review-group-title">Nomination <span class="review-edit-btn float-end" data-action="nominateApp.goToStep" data-args="[1]">Edit</span></div>' +
         row('Award Category', d.awardCategory) +
-        row('Area', d.county_city) +
+        row('Area', d.region_group && d.county_city ? d.region_group + ' › ' + d.county_city : d.county_city) +
         '</div>' +
         nomineeSection +
         '<div class="review-group">' +

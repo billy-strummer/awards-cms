@@ -203,7 +203,6 @@
     formData: {},
     selectedAwardCategory: null,
     selectedSector: null,
-    regionChoicesInstance: null,
 
     // Step labels for progress bar
     stepLabels: ['Region', 'Sector', 'Category', 'Company', 'About', 'Support', 'Contact', 'Review'],
@@ -302,119 +301,64 @@
     },
 
     // --------------------------------------------------
-    // Populate county/city dropdown from config.js COUNTIES_CITIES
+    // Populate region group dropdown (step 1 of the two-step picker)
     // --------------------------------------------------
     populateRegions() {
-      const regionSelect = document.getElementById('county_city');
-      if (!window.COUNTIES_CITIES && !window.REGIONS) {
+      const regionGroupSelect = document.getElementById('region_group');
+      if (!regionGroupSelect) return;
+
+      const grouped = window.REGIONS_GROUPED;
+      const flat = window.COUNTIES_CITIES || window.REGIONS || [];
+
+      if (!grouped && !flat.length) {
         console.warn('No counties/cities found in config');
         return;
       }
 
-      const londonBoroughs = [
-        'Barking & Dagenham',
-        'Barnet',
-        'Bexley',
-        'Brent',
-        'Bromley',
-        'Camden',
-        'City of London',
-        'Croydon',
-        'Ealing',
-        'Enfield',
-        'Greenwich',
-        'Hackney',
-        'Hammersmith & Fulham',
-        'Haringey',
-        'Harrow',
-        'Havering',
-        'Hillingdon',
-        'Hounslow',
-        'Islington',
-        'Kensington & Chelsea',
-        'Kingston upon Thames',
-        'Lambeth',
-        'Lewisham',
-        'Merton',
-        'Newham',
-        'Redbridge',
-        'Richmond upon Thames',
-        'Southwark',
-        'Sutton',
-        'Tower Hamlets',
-        'Waltham Forest',
-        'Wandsworth',
-        'Westminster',
-      ];
-      const cities = [
-        'Birmingham',
-        'Bournemouth',
-        'Brighton & Hove',
-        'Bristol',
-        'Cardiff',
-        'Coventry',
-        'Edinburgh',
-        'Glasgow',
-        'Leeds',
-        'Leicester',
-        'Liverpool',
-        'Manchester',
-        'Middlesbrough',
-        'Newcastle',
-        'Nottingham',
-        'Reading',
-        'Sheffield',
-        'Southampton',
-        'Swansea',
-      ];
+      let html = '<option value="">Select your region</option>';
 
-      const allCountiesCities = window.COUNTIES_CITIES || window.REGIONS || [];
-      const counties = allCountiesCities.filter((r) => !cities.includes(r) && !londonBoroughs.includes(r));
-      const boroughList = allCountiesCities.filter((r) => londonBoroughs.includes(r));
-      const cityList = allCountiesCities.filter((r) => cities.includes(r));
-
-      let html = '<option value="" placeholder>Select your county or city</option>';
-
-      if (counties.length > 0) {
-        html += '<optgroup label="Counties">';
-        counties.forEach((county) => {
-          html += `<option value="${this.escapeHtml(county)}">${this.escapeHtml(county)}</option>`;
+      if (grouped && Object.keys(grouped).length > 0) {
+        Object.keys(grouped).forEach((groupName) => {
+          html += `<option value="${this.escapeHtml(groupName)}">${this.escapeHtml(groupName)}</option>`;
         });
-        html += '</optgroup>';
+      } else {
+        // Fallback: treat the flat list as a single group
+        html += '<option value="__all__">United Kingdom</option>';
       }
 
-      if (boroughList.length > 0) {
-        html += '<optgroup label="London Boroughs">';
-        boroughList.forEach((b) => {
-          html += `<option value="${this.escapeHtml(b)}">${this.escapeHtml(b)}</option>`;
-        });
-        html += '</optgroup>';
+      regionGroupSelect.innerHTML = html;
+      regionGroupSelect.addEventListener('change', () => this.handleRegionGroupChange());
+    },
+
+    // Populate the county/city sub-picker when a region is chosen
+    // --------------------------------------------------
+    handleRegionGroupChange() {
+      const groupName = document.getElementById('region_group')?.value;
+      const wrapper = document.getElementById('county_city_wrapper');
+      const countySelect = document.getElementById('county_city');
+      if (!wrapper || !countySelect) return;
+
+      // Reset sub-picker
+      countySelect.value = '';
+      countySelect.innerHTML = '<option value="">Select your county, city or borough</option>';
+
+      if (!groupName) {
+        wrapper.style.display = 'none';
+        return;
       }
 
-      if (cityList.length > 0) {
-        html += '<optgroup label="Cities">';
-        cityList.forEach((city) => {
-          html += `<option value="${this.escapeHtml(city)}">${this.escapeHtml(city)}</option>`;
-        });
-        html += '</optgroup>';
-      }
+      const grouped = window.REGIONS_GROUPED;
+      const options = grouped ? grouped[groupName] || [] : window.COUNTIES_CITIES || window.REGIONS || [];
 
-      regionSelect.innerHTML = html;
+      options.forEach((opt) => {
+        const el = document.createElement('option');
+        el.value = opt;
+        el.textContent = opt;
+        countySelect.appendChild(el);
+      });
 
-      // Initialize Choices.js
-      if (typeof Choices !== 'undefined') {
-        this.regionChoicesInstance = new Choices('#county_city', {
-          searchEnabled: true,
-          searchFloor: 1,
-          searchPlaceholderValue: 'Type to search...',
-          placeholder: true,
-          placeholderValue: 'Select your county or city',
-          itemSelectText: '',
-          shouldSort: false,
-          searchResultLimit: 100,
-          allowHTML: true,
-        });
-      }
+      wrapper.style.display = 'block';
+      countySelect.focus();
     },
 
     // --------------------------------------------------
@@ -666,9 +610,14 @@
     validateStep(stepNum) {
       switch (stepNum) {
         case 1: {
+          const regionGroup = document.getElementById('region_group');
           const countyCity = document.getElementById('county_city');
-          if (!countyCity.value) {
-            this._markInvalid(countyCity, 'Please select your county or city');
+          if (!regionGroup?.value) {
+            this._markInvalid(regionGroup, 'Please select your region');
+            return false;
+          }
+          if (!countyCity?.value) {
+            this._markInvalid(countyCity, 'Please select your county, city or borough');
             return false;
           }
           return true;
@@ -765,7 +714,8 @@
     saveStepData(stepNum) {
       switch (stepNum) {
         case 1:
-          this.formData.county_city = document.getElementById('county_city').value;
+          this.formData.region_group = document.getElementById('region_group')?.value || '';
+          this.formData.county_city = document.getElementById('county_city')?.value || '';
           break;
         case 2:
           this.formData.sector = document.getElementById('sector').value;
@@ -820,7 +770,7 @@
           Award Details
           <span class="review-edit-btn float-end" data-action="entryFormApp.goToStep" data-args="[1]">Edit</span>
         </div>
-        ${row('Area', d.county_city)}
+        ${row('Area', d.region_group && d.county_city ? `${d.region_group} › ${d.county_city}` : d.county_city)}
         ${row('Sector', this.toTitleCase(d.sector || ''))}
         ${row('Category', d.awardCategory)}
       </div>

@@ -957,10 +957,20 @@
     }
 
     .country-flag {
-      font-size: 3.5rem;
+      width: 96px;
+      height: 64px;
+      object-fit: cover;
+      border-radius: 6px;
       margin-bottom: 16px;
       display: block;
-      line-height: 1;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    }
+    .chip-flag {
+      width: 22px;
+      height: 15px;
+      object-fit: cover;
+      border-radius: 2px;
+      flex-shrink: 0;
     }
 
     .country-name {
@@ -1076,11 +1086,14 @@
       background: #1e1e1e;
       border: 1px solid #2e2e2e;
       border-radius: 100px;
-      padding: 6px 14px;
+      padding: 6px 14px 6px 8px;
       font-size: 0.8rem;
       color: rgba(255, 255, 255, 0.65);
       cursor: pointer;
       text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
       transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
     }
 
@@ -1459,7 +1472,7 @@
         grid-template-columns: 1fr;
       }
 
-      .country-flag { font-size: 2.5rem; }
+      .country-flag { width: 72px; height: 48px; }
       .country-card { padding: 28px 20px; }
 
       .find-trade-row {
@@ -2063,7 +2076,7 @@
       <!-- England -->
       <div class="country-card" id="card-england" role="button" tabindex="0"
            aria-expanded="false" aria-controls="accordion-england" data-country="england">
-        <span class="country-flag" aria-hidden="true">🏴󠁧󠁢󠁥󠁮󠁧󠁿</span>
+        <img class="country-flag" src="images/flags/England.png" alt="England flag">
         <div class="country-name">England</div>
         <span class="country-explore" aria-hidden="true">
           Explore
@@ -2074,7 +2087,7 @@
       <!-- Scotland -->
       <div class="country-card" id="card-scotland" role="button" tabindex="0"
            aria-expanded="false" aria-controls="accordion-scotland" data-country="scotland">
-        <span class="country-flag" aria-hidden="true">🏴󠁧󠁢󠁳󠁣󠁴󠁿</span>
+        <img class="country-flag" src="images/flags/Scotland.png" alt="Scotland flag">
         <div class="country-name">Scotland</div>
         <span class="country-explore" aria-hidden="true">
           Explore
@@ -2085,7 +2098,7 @@
       <!-- Wales -->
       <div class="country-card" id="card-wales" role="button" tabindex="0"
            aria-expanded="false" aria-controls="accordion-wales" data-country="wales">
-        <span class="country-flag" aria-hidden="true">🏴󠁧󠁢󠁷󠁬󠁳󠁿</span>
+        <img class="country-flag" src="images/flags/Wales.png" alt="Wales flag">
         <div class="country-name">Wales</div>
         <span class="country-explore" aria-hidden="true">
           Explore
@@ -2493,6 +2506,66 @@
   ============================================================ */
   (function initRegions() {
 
+    // Flag filename map — location name → images/flags/<filename>
+    var FLAG_MAP = {
+      // North West
+      'Cheshire': 'Cheshire.png', 'Cumbria': 'Cumbria.png', 'Lancashire': 'Lancashire.png',
+      'Liverpool': 'Liverpool County_Merseyside.png', 'Manchester': 'Manchester.png',
+      // North East
+      'County Durham': 'County Durham.png', 'Northumberland': 'Northumberland.png',
+      'Tyne & Wear': 'Tyne & Wear.png', 'Newcastle': 'Newcastle.png', 'Middlesbrough': 'Middlesbrough.png',
+      // Yorkshire
+      'East Yorkshire': 'East Yorkshire.png', 'North Yorkshire': 'North Yorkshire.png',
+      'South Yorkshire': 'Unofficial_South Yorkshire.png', 'West Yorkshire': 'West Yorkshire.png',
+      'Leeds': 'Leeds diocese.png', 'Sheffield': 'Sheffield diocese.png',
+      // East Midlands
+      'Derbyshire': 'Derbyshire.png', 'Leicestershire': 'Leicestershire.png',
+      'Lincolnshire': 'Lincolnshire.png', 'Northamptonshire': 'Northamptonshire.png',
+      'Nottinghamshire': 'Nottinghamshire.png', 'Rutland': 'Rutland.png',
+      'Leicester': 'Leicester diocese.png', 'Nottingham': 'Nottingham diocese.png',
+      // West Midlands
+      'Herefordshire': 'Herefordshire.png', 'Shropshire': 'Shropshire.png',
+      'Staffordshire': 'Staffordshire.png', 'Warwickshire': 'Warwickshire.png',
+      'Worcestershire': 'Worcestershire.png', 'Birmingham': 'Birmingham.png', 'Coventry': 'Coventry.png',
+      // East of England
+      'Bedfordshire': 'Bedfordshire.png', 'Cambridgeshire': 'Cambridgeshire.png',
+      'Essex': 'Essex.png', 'Hertfordshire': 'Hertfordshire.png',
+      'Norfolk': 'Norfolk.png', 'Suffolk': 'Suffolk.png',
+      // London — all 33 boroughs use the London flag
+      'Barking & Dagenham': 'London.png', 'Barnet': 'London.png', 'Bexley': 'London.png',
+      'Brent': 'London.png', 'Bromley': 'London.png', 'Camden': 'London.png',
+      'City of London': 'London.png', 'Croydon': 'London.png', 'Ealing': 'London.png',
+      'Enfield': 'London.png', 'Greenwich': 'London.png', 'Hackney': 'London.png',
+      'Hammersmith & Fulham': 'London.png', 'Haringey': 'London.png', 'Harrow': 'London.png',
+      'Havering': 'London.png', 'Hillingdon': 'London.png', 'Hounslow': 'London.png',
+      'Islington': 'London.png', 'Kensington & Chelsea': 'London.png',
+      'Kingston upon Thames': 'London.png', 'Lambeth': 'London.png', 'Lewisham': 'London.png',
+      'Merton': 'London.png', 'Newham': 'London.png', 'Redbridge': 'London.png',
+      'Richmond upon Thames': 'London.png', 'Southwark': 'London.png', 'Sutton': 'London.png',
+      'Tower Hamlets': 'London.png', 'Waltham Forest': 'London.png',
+      'Wandsworth': 'London.png', 'Westminster': 'London.png',
+      // South East
+      'Berkshire': 'Berkshire.png', 'Buckinghamshire': 'Buckinghamshire.png',
+      'East Sussex': 'East Sussex.png', 'Hampshire': 'Hampshire.png',
+      'Isle of Wight': 'Isle of Wight.png', 'Kent': 'Kent.png',
+      'Oxfordshire': 'Oxfordshire.png', 'Surrey': 'Surrey.png',
+      'West Sussex': 'West Sussex.png', 'Brighton & Hove': 'Brighton & Hove.png',
+      'Southampton': 'Southampton.png',
+      // South West
+      'Cornwall': 'Cornwall.png', 'Devon': 'Devon.png', 'Dorset': 'Dorset.png',
+      'Gloucestershire': 'Gloucestershire.png', 'Somerset': 'Somerset.png',
+      'Wiltshire': 'Wiltshire.png', 'Bournemouth': 'Bournemouth.png', 'Bristol': 'Bristol.png',
+      // Wales
+      'Cardiff': 'Cardiff.png', 'Swansea': 'Swansea.png', 'Wrexham': 'Wrexham.png',
+      'Anglesey': 'Anglesey.png', 'Carmarthen': 'Carmarthenshire.png',
+      'Ceredigion': 'Ceredigion.png', 'Conwy': 'Conwy Wales.png',
+      'Denbighshire': 'Denbighshire.png', 'Flintshire': 'Flintshire.png',
+      'Glamorgan': 'Glamorgan.png', 'Gwent': 'Gwent.png',
+      'Gwynedd': 'Gwynedd.png', 'Pembrokeshire': 'Pembrokeshire.png', 'Powys': 'Powys.png',
+      // Scotland
+      'Edinburgh': 'Edinburgh.png', 'Glasgow': 'Glasgow.png',
+    };
+
     // Sub-region data
     var SUB_REGIONS = {
       england: {
@@ -2605,7 +2678,10 @@
 
       if (subData && subData.length) {
         subList.innerHTML = subData.map(function (loc) {
-          return '<a href="submit-entry.html" class="sub-region-chip">' + escapeHtml(loc) + '</a>';
+          var flag = FLAG_MAP[loc]
+            ? '<img class="chip-flag" src="images/flags/' + encodeURIComponent(FLAG_MAP[loc]) + '" alt="" aria-hidden="true">'
+            : '';
+          return '<a href="submit-entry.html" class="sub-region-chip">' + flag + escapeHtml(loc) + '</a>';
         }).join('');
         subContainer.classList.add('open');
       } else {

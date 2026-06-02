@@ -427,6 +427,8 @@
       transform: translateY(0);
       opacity: 1;
       pointer-events: auto;
+      bottom: 0;
+      overflow-y: auto;
     }
 
     .mobile-menu-inner {
@@ -1459,6 +1461,10 @@
     @media (max-width: 768px) {
       :root { --header-h: 60px; }
 
+      /* Push hero content above true-center so the scroll indicator
+         fills the bottom rather than leaving blank black space */
+      #hero { padding-bottom: 80px; }
+
       .header-nav,
       .header-cta {
         display: none;
@@ -1526,7 +1532,8 @@
       }
       .hero-cta-group .btn-gold,
       .hero-cta-group .btn-ghost { width: 100%; max-width: 280px; justify-content: center; }
-      .hero-scroll-hint { display: none; }
+      /* scroll indicator visible on mobile — gives context to the blank hero bottom */
+      .hero-scroll-hint { display: flex; }
 
       /* Feature boxes */
       .feature-box { padding: 20px; }
@@ -2523,7 +2530,7 @@
           }
         });
       },
-      { threshold: 0.12, rootMargin: '0px 0px -40px 0px' }
+      { threshold: 0.05, rootMargin: '0px 0px 0px 0px' }
     );
 
     elements.forEach(function (el) {

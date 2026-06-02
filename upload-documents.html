@@ -303,22 +303,22 @@
         </div>
 
         <!-- Drag & Drop Upload Zone -->
-        <div class="upload-zone" id="uploadZone">
-          <div class="upload-icon"><i class="bi bi-cloud-upload"></i></div>
+        <div class="upload-zone" id="uploadZone" role="button" tabindex="0" aria-label="Upload drop zone — click or drag files here">
+          <div class="upload-icon"><i class="bi bi-cloud-upload" aria-hidden="true"></i></div>
           <h4 class="d-none d-md-block">Drag & Drop Files Here</h4>
           <h4 class="d-md-none">Tap to Select Files</h4>
           <p class="text-muted d-none d-md-block">or click to browse</p>
           <button type="button" class="btn btn-outline-dark mt-2" id="browseButton">
             <i class="bi bi-folder2-open me-2"></i>Browse Files
           </button>
-          <input type="file" id="fileInput" multiple hidden accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif">
+          <input type="file" id="fileInput" multiple hidden accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif" aria-label="Select files to upload">
         </div>
 
         <!-- File List -->
         <div id="fileList" class="file-list"></div>
 
         <!-- Upload Button -->
-        <p class="small text-muted text-center mt-3 mb-1">Your files are processed in accordance with our <a href="/privacy-policy.html" target="_blank" rel="noopener">Privacy Policy</a>.</p>
+        <p class="small text-muted text-center mt-3 mb-1">Your files are processed in accordance with our <a href="/privacy-policy.html" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.</p>
         <button class="btn btn-upload" id="uploadButton" disabled>
           <i class="bi bi-upload me-2"></i>Upload All Files
         </button>

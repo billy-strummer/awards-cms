@@ -708,7 +708,8 @@ const judgePortal = {
         <div class="mb-3">
           <label class="form-label">Additional Comments</label>
           <textarea class="form-control" id="feedbackComments" rows="4"
-                    placeholder="Any additional feedback or notes...">${esc(this.currentScore?.comments || '')}</textarea>
+                    placeholder="Any additional feedback or notes..." maxlength="2000">${esc(this.currentScore?.comments || '')}</textarea>
+          <div class="char-count text-end" id="feedbackCommentsCharCount" style="font-size:0.75rem;color:#888;" aria-live="polite">${(this.currentScore?.comments || '').length} / 2000 characters</div>
         </div>
 
         <div class="mb-3">
@@ -872,6 +873,15 @@ const judgePortal = {
         });
       }
     });
+
+    // Wire up char count for Additional Comments textarea
+    const commentsTextarea = document.getElementById('feedbackComments');
+    const commentsCharCount = document.getElementById('feedbackCommentsCharCount');
+    if (commentsTextarea && commentsCharCount) {
+      commentsTextarea.addEventListener('input', () => {
+        commentsCharCount.textContent = `${commentsTextarea.value.length} / 2000 characters`;
+      });
+    }
   },
 
   /**

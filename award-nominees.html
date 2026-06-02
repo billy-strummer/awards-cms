@@ -13,6 +13,17 @@
     .winner-badge { background-color: #FFD700; color: #000; }
     .company-link { cursor: pointer; color: #0d6efd; text-decoration: none; }
     .company-link:hover { text-decoration: underline; cursor: pointer; }
+    @media (max-width: 768px) {
+      .nominees-table { font-size: 0.875rem; }
+      .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      th, td { padding: 8px 10px; }
+    }
+    @media (max-width: 480px) {
+      .nominees-header { flex-direction: column; gap: 10px; }
+      .btn { min-height: 44px; }
+      .nominees-table th:nth-child(3),
+      .nominees-table td:nth-child(3) { display: none; }
+    }
   </style>
 </head>
 <body>
@@ -27,7 +38,7 @@
   <div class="container mt-4">
 
     <!-- Auth warning (shown when not logged in) -->
-    <div id="authWarning" class="alert alert-warning d-flex align-items-center gap-2 mb-3 d-none">
+    <div id="authWarning" class="alert alert-warning d-flex align-items-center gap-2 mb-3 d-none" role="alert">
       <i class="bi bi-lock-fill"></i>
       <div><strong>Not authenticated.</strong> You must be logged in as an admin to view this page.</div>
     </div>
@@ -39,20 +50,22 @@
       </div>
     </div>
 
-    <table class="table table-hover table-bordered bg-white shadow-sm">
-      <thead class="table-dark">
-        <tr>
-          <th scope="col">Company Name</th>
-          <th scope="col">Website</th>
-          <th scope="col">Region</th>
-          <th scope="col">Status</th>
-          <th scope="col">View Profile</th>
-        </tr>
-      </thead>
-      <tbody id="nomineesContainer">
-        <tr><td colspan="5" class="text-center">Loading nominees...</td></tr>
-      </tbody>
-    </table>
+    <div class="table-responsive">
+      <table class="table table-hover table-bordered bg-white shadow-sm nominees-table" aria-label="Award nominees list">
+        <thead class="table-dark">
+          <tr>
+            <th scope="col">Company Name</th>
+            <th scope="col">Website</th>
+            <th scope="col">Region</th>
+            <th scope="col">Status</th>
+            <th scope="col">View Profile</th>
+          </tr>
+        </thead>
+        <tbody id="nomineesContainer">
+          <tr><td colspan="5" class="text-center">Loading nominees...</td></tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

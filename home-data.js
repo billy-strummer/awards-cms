@@ -241,6 +241,7 @@
         'Leeds',
         'Leicester',
         'Liverpool',
+        'London',
         'Manchester',
         'Middlesbrough',
         'Newcastle',
@@ -348,7 +349,9 @@
     Hertfordshire: 'Hertfordshire.png',
     Norfolk: 'Norfolk.png',
     Suffolk: 'Suffolk.png',
-    // London (all boroughs share the London flag)
+    // London (all boroughs share the London flag; Middlesex has its own)
+    London: 'London.png',
+    Middlesex: 'Middlesex.png',
     'Barking & Dagenham': 'London.png',
     Barnet: 'London.png',
     Bexley: 'London.png',

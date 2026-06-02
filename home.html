@@ -1725,6 +1725,11 @@
       transition: border-color 0.15s, color 0.15s;
     }
     .cat-modal-list li:hover { border-color: rgba(201,162,39,0.4); color: #fff; }
+    .cat-entry-link {
+      display: block; color: inherit; text-decoration: none;
+      width: 100%; height: 100%;
+    }
+    .cat-entry-link:hover { color: #fff; }
     .cat-modal-cta { display: inline-block; text-decoration: none; }
     @media (max-width: 480px) {
       .cat-modal-list { grid-template-columns: 1fr; }
@@ -2411,7 +2416,7 @@
   /* ============================================================
      1. SMART STICKY HEADER
   ============================================================ */
-  (function initHeader() {
+  try { (function initHeader() {
     var header     = document.getElementById('site-header');
     var lastY      = 0;
     var ticking    = false;
@@ -2444,13 +2449,13 @@
 
     window.addEventListener('scroll', onScroll, { passive: true });
     updateHeader();
-  })();
+  }) (); } catch(e) { console.warn('[BTA] initHeader', e); }
 
 
   /* ============================================================
      2. MOBILE HAMBURGER MENU
   ============================================================ */
-  (function initMobileMenu() {
+  try { (function initMobileMenu() {
     var btn        = document.getElementById('hamburger-btn');
     var menu       = document.getElementById('mobile-menu');
     var navLinks   = menu.querySelectorAll('.mobile-nav-link, .btn-gold');
@@ -2492,13 +2497,13 @@
         close();
       }
     });
-  })();
+  }) (); } catch(e) { console.warn('[BTA] initMobileMenu', e); }
 
 
   /* ============================================================
      3. INTERSECTION OBSERVER — REVEAL ANIMATIONS
   ============================================================ */
-  (function initReveal() {
+  try { (function initReveal() {
     var elements = document.querySelectorAll('.reveal');
 
     if (!('IntersectionObserver' in window)) {
@@ -2524,13 +2529,13 @@
     elements.forEach(function (el) {
       observer.observe(el);
     });
-  })();
+  }) (); } catch(e) { console.warn('[BTA] initReveal', e); }
 
 
   /* ============================================================
      4. REGIONAL ACCORDION
   ============================================================ */
-  (function initRegions() {
+  try { (function initRegions() {
 
     // Flag filename map — location name → images/flags/<filename>
     var FLAG_MAP = {
@@ -2709,7 +2714,8 @@
           var flag = FLAG_MAP[loc]
             ? '<img class="chip-flag" src="images/flags/' + encodeURIComponent(FLAG_MAP[loc]) + '" alt="" aria-hidden="true">'
             : '';
-          return '<a href="submit-entry.html" class="sub-region-chip">' + flag + escapeHtml(loc) + '</a>';
+          var qs = '?country=' + encodeURIComponent(countryRef) + '&region=' + encodeURIComponent(region) + '&city=' + encodeURIComponent(loc);
+          return '<a href="submit-entry.html' + qs + '" class="sub-region-chip">' + flag + escapeHtml(loc) + '</a>';
         }).join('');
         subContainer.classList.add('open');
       } else {
@@ -2717,13 +2723,13 @@
         subContainer.classList.add('open');
       }
     });
-  })();
+  }) (); } catch(e) { console.warn('[BTA] initRegions', e); }
 
 
   /* ============================================================
      5. FIND A TRADE — AUTOCOMPLETE + GEOLOCATION
   ============================================================ */
-  (function initFindTrade() {
+  try { (function initFindTrade() {
     var LOCATIONS = [
       'Kent', 'Surrey', 'Essex', 'Yorkshire', 'Lancashire',
       'Somerset', 'Devon', 'Cornwall', 'Sussex', 'Hampshire',
@@ -2881,7 +2887,7 @@
           '<strong>Please enter a location</strong> or select a category to search.';
       }
     });
-  })();
+  }) (); } catch(e) { console.warn('[BTA] initFindTrade', e); }
 
 
   /* ============================================================
@@ -2900,7 +2906,7 @@
   /* ============================================================
      7. SMOOTH SCROLL — polyfill anchor-scroll offsets for header
   ============================================================ */
-  (function initSmoothScroll() {
+  try { (function initSmoothScroll() {
     var OFFSET = 80; // header height compensation
 
     document.querySelectorAll('a[href^="#"]').forEach(function (anchor) {
@@ -2917,7 +2923,7 @@
         window.scrollTo({ top: Math.max(0, top), behavior: prefersReducedMotion ? 'instant' : 'smooth' });
       });
     });
-  })();
+  }) (); } catch(e) { console.warn('[BTA] initSmoothScroll', e); }
 
 
   /* ============================================================
@@ -2925,7 +2931,7 @@
      NOTE: #cat-modal div must exist in DOM before this IIFE runs.
      It is declared immediately above this <script> block.
   ============================================================ */
-  (function initCategoryModal() {
+  try { (function initCategoryModal() {
     var SECTOR_CATEGORIES = {
       'BUILDING & CONSTRUCTION': [
         'Brickwork & Masonry Company','Drainage Company','Extension Company',
@@ -2986,10 +2992,15 @@
       labelEl.textContent = 'Award Categories';
       titleEl.textContent = sectorKey.replace(/&amp;/g, '&');
 
-      // Build list items using escapeHtml to avoid XSS
+      var sectorParam = encodeURIComponent(sectorKey);
       listEl.innerHTML = cats.map(function (cat) {
-        return '<li>' + escapeHtml(cat) + '</li>';
+        var href = 'submit-entry.html?sector=' + sectorParam + '&category=' + encodeURIComponent(cat);
+        return '<li><a href="' + href + '" class="cat-entry-link">' + escapeHtml(cat) + '</a></li>';
       }).join('');
+
+      // Update CTA to pre-select the sector
+      var ctaEl = document.querySelector('.cat-modal-cta');
+      if (ctaEl) ctaEl.href = 'submit-entry.html?sector=' + sectorParam;
 
       modal.classList.add('open');
       modal.focus();
@@ -3021,13 +3032,13 @@
         closeModal();
       }
     });
-  })();
+  }) (); } catch(e) { console.warn('[BTA] initCategoryModal', e); }
 
 
   /* ============================================================
      9. HERO VIDEO — pause when offscreen (performance)
   ============================================================ */
-  (function initVideo() {
+  try { (function initVideo() {
     var video = document.getElementById('hero-video');
     if (!video) return;
 
@@ -3064,7 +3075,7 @@
 
       obs.observe(video);
     }
-  })();
+  }) (); } catch(e) { console.warn('[BTA] initVideo', e); }
 
 })();
 </script>

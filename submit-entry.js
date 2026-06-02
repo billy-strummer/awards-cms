@@ -218,6 +218,52 @@
       this.setupTermsCheckbox();
       this.updateProgressIndicator(1);
       this._checkDraftRestore();
+      this._applyUrlParams();
+    },
+
+    // Pre-populate form from URL params (deep links from home.html chips/category cards)
+    _applyUrlParams() {
+      const params = new URLSearchParams(window.location.search);
+      const country = params.get('country');
+      const region = params.get('region');
+      const city = params.get('city');
+      const sector = params.get('sector');
+      const category = params.get('category');
+
+      // Country → region → city cascade (synchronous, uses REGION_DATA)
+      if (country) {
+        this.handleCountrySelect(country);
+        if (region) {
+          const regionEl = document.getElementById('region_group');
+          if (regionEl) {
+            regionEl.value = region;
+            this.handleRegionGroupChange();
+            if (city) {
+              const cityEl = document.getElementById('county_city');
+              if (cityEl) cityEl.value = city;
+            }
+          }
+        }
+      }
+
+      // Sector + category — config.js is a module (deferred), so read after window load
+      if (sector || category) {
+        const applySelects = () => {
+          if (sector) {
+            const sectorEl = document.getElementById('sector');
+            if (sectorEl) sectorEl.value = sector;
+          }
+          if (category) {
+            const awardCatEl = document.getElementById('awardCategory');
+            if (awardCatEl) awardCatEl.value = category;
+          }
+        };
+        if (document.readyState === 'complete') {
+          applySelects();
+        } else {
+          window.addEventListener('load', applySelects, { once: true });
+        }
+      }
     },
 
     _checkDraftRestore() {

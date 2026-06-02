@@ -305,6 +305,7 @@ async function build() {
 
   // Also copy shared assets needed by public pages
   const PUBLIC_ASSETS = [
+    'robots.txt',
     'config.js',
     'BTA_Corporate_Horizontal-Black-and-White-01.png',
     'BTA_Corporate_Horizontal-Black-and-White-02.png',

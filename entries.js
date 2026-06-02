@@ -3059,7 +3059,7 @@ const entriesModule = {
             let orgId = null;
             const orgSearch = await apiClient.select('organisations', {
               select: 'id',
-              filters: { company_name: row.company_name },
+              filters: { 'company_name@ilike': row.company_name },
               page: 1,
               pageSize: 1,
             });

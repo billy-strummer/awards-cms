@@ -285,6 +285,7 @@
 
   /* ============================================================
      4. REGIONAL ACCORDION
+     Click a country card → all its counties & cities appear immediately.
   ============================================================ */
   try {
     (function initRegions() {
@@ -292,11 +293,32 @@
       const SUB_REGIONS = (window.BTA_HOME_DATA && window.BTA_HOME_DATA.regionData) || {};
 
       const cards = document.querySelectorAll('.country-card');
-      let activeCard = null; // eslint-disable-line no-unused-vars
+
+      function renderLocations(country) {
+        const countryData = SUB_REGIONS[country] || {};
+        const allLocations = Object.values(countryData).reduce(function (acc, arr) {
+          return acc.concat(arr);
+        }, []);
+        const subList = document.getElementById('sub-list-' + country);
+        if (!subList) return;
+        subList.innerHTML = allLocations
+          .map(function (loc) {
+            const flag = FLAG_MAP[loc]
+              ? '<img class="chip-flag" src="images/flags/' +
+                encodeURIComponent(FLAG_MAP[loc]) +
+                '" alt="" aria-hidden="true">'
+              : '';
+            const href =
+              'public-voting.html?city=' + encodeURIComponent(loc) + '&country=' + encodeURIComponent(country);
+            return '<a href="' + href + '" class="sub-region-chip">' + flag + escapeHtml(loc) + '</a>';
+          })
+          .join('');
+      }
 
       function openAccordion(country) {
         const accordion = document.getElementById('accordion-' + country);
         if (!accordion) return;
+        renderLocations(country);
         accordion.classList.add('open');
         accordion.setAttribute('aria-hidden', 'false');
       }
@@ -306,11 +328,6 @@
         if (!accordion) return;
         accordion.classList.remove('open');
         accordion.setAttribute('aria-hidden', 'true');
-        accordion.querySelectorAll('.region-btn').forEach(function (btn) {
-          btn.classList.remove('active');
-        });
-        const sub = document.getElementById('sub-' + country);
-        if (sub) sub.classList.remove('open');
       }
 
       cards.forEach(function (card) {
@@ -319,19 +336,15 @@
           const isActive = card.classList.contains('active');
 
           cards.forEach(function (c) {
-            const cn = c.getAttribute('data-country');
             c.classList.remove('active');
             c.setAttribute('aria-expanded', 'false');
-            closeAccordion(cn);
+            closeAccordion(c.getAttribute('data-country'));
           });
 
           if (!isActive) {
             card.classList.add('active');
             card.setAttribute('aria-expanded', 'true');
             openAccordion(country);
-            activeCard = country;
-          } else {
-            activeCard = null;
           }
         });
 
@@ -341,44 +354,6 @@
             card.click();
           }
         });
-      });
-
-      document.addEventListener('click', function (e) {
-        const btn = e.target.closest('.region-btn');
-        if (!btn) return;
-
-        const region = btn.getAttribute('data-region');
-        const countryRef = btn.getAttribute('data-country-ref');
-        const subData = SUB_REGIONS[countryRef] && SUB_REGIONS[countryRef][region];
-
-        const accordion = document.getElementById('accordion-' + countryRef);
-        accordion.querySelectorAll('.region-btn').forEach(function (b) {
-          b.classList.remove('active');
-        });
-        btn.classList.add('active');
-
-        const subContainer = document.getElementById('sub-' + countryRef);
-        const subList = document.getElementById('sub-list-' + countryRef);
-
-        if (subData && subData.length) {
-          subList.innerHTML = subData
-            .map(function (loc) {
-              const flag = FLAG_MAP[loc]
-                ? '<img class="chip-flag" src="images/flags/' +
-                  encodeURIComponent(FLAG_MAP[loc]) +
-                  '" alt="" aria-hidden="true">'
-                : '';
-              const href =
-                'public-voting.html?city=' + encodeURIComponent(loc) + '&country=' + encodeURIComponent(countryRef);
-              return '<a href="' + href + '" class="sub-region-chip">' + flag + escapeHtml(loc) + '</a>';
-            })
-            .join('');
-          subContainer.classList.add('open');
-        } else {
-          subList.innerHTML =
-            '<span class="sub-region-chip" style="color: var(--text-muted)">No locations found yet</span>';
-          subContainer.classList.add('open');
-        }
       });
     })();
   } catch (e) {

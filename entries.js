@@ -2814,23 +2814,40 @@ const entriesModule = {
   /**
    * Import nominees from CSV files.
    *
-   * Expected columns (case-insensitive, comma or tab delimited):
-   *   NominationDate, Region, Sector, Category Name, Company Name,
+   * Location hierarchy (three levels, most specific wins for county_city):
+   *   Region       = broad UK area    e.g. "South East", "East of England"
+   *   County       = county           e.g. "Bedfordshire", "Hampshire"
+   *   Catchment Area / City = town    e.g. "Bedford", "Southampton"
+   *
+   * Other expected columns (case-insensitive, comma or tab delimited):
+   *   NominationDate, Sector, Category Name, Company Name,
    *   Website URL, Direct Email, Phone Number, Contact Name,
-   *   Business or Contact Address, Catchment Area, Rank, Notes
+   *   Business or Contact Address, Rank, Notes
    *
    * Each row creates an organisation (if new) + an entry with
    * is_public=true, allow_public_voting=true, status='shortlisted'.
    */
   async importNomineesCSV() {
     // ── Column header aliases ─────────────────────────────────────
+    // Location stored as: catchment_area (most specific) → county → broad_region
     const ALIASES = {
       nominationdate: 'nomination_date',
       'nomination date': 'nomination_date',
       date: 'nomination_date',
-      region: 'region',
-      county: 'region',
-      area: 'region',
+      // Broad UK region (South East, East of England, etc.)
+      region: 'broad_region',
+      'broad region': 'broad_region',
+      'uk region': 'broad_region',
+      // County (Bedfordshire, Hampshire, etc.)
+      county: 'county',
+      'county/city': 'county',
+      'county / city': 'county',
+      // Specific city / town (Bedford, Southampton, etc.)
+      'catchment area': 'catchment_area',
+      catchment: 'catchment_area',
+      city: 'catchment_area',
+      town: 'catchment_area',
+      area: 'catchment_area',
       sector: 'sector',
       'category name': 'category',
       category: 'category',
@@ -2854,10 +2871,6 @@ const entriesModule = {
       name: 'contact_name',
       'business or contact address': 'address',
       address: 'address',
-      'catchment area': 'catchment_area',
-      catchment: 'catchment_area',
-      city: 'catchment_area',
-      town: 'catchment_area',
       rank: 'rank',
       ranking: 'rank',
       notes: 'notes',
@@ -3002,7 +3015,7 @@ const entriesModule = {
                           <td><strong>${utils.escapeHtml(r.company_name || '')}</strong></td>
                           <td>${utils.escapeHtml(r.category || '—')}</td>
                           <td>${utils.escapeHtml(r.sector || '—')}</td>
-                          <td>${utils.escapeHtml(r.catchment_area || r.region || '—')}</td>
+                          <td>${utils.escapeHtml(r.catchment_area || r.county || r.broad_region || '—')}</td>
                           <td>${utils.escapeHtml(r.contact_name || '—')}</td>
                           <td>${utils.escapeHtml(r.email || '—')}</td>
                           <td class="text-muted small">${utils.escapeHtml(r._source || '')}</td>
@@ -3059,7 +3072,7 @@ const entriesModule = {
                 email: row.email || null,
                 contact_name: row.contact_name || null,
                 contact_phone: row.phone || null,
-                county_city: row.catchment_area || row.region || null,
+                county_city: row.catchment_area || row.county || row.broad_region || null,
                 sector: row.sector || null,
                 status: 'nominee',
               });
@@ -3086,10 +3099,16 @@ const entriesModule = {
 
             // 4. Insert entry
             const entryTitle = `${row.company_name.trim()}${row.category ? ' — ' + row.category : ''}`;
+
+            // Most specific location wins for county_city (used for public page filtering)
+            const countyCity = row.catchment_area || row.county || row.broad_region || null;
+
             const supportingInfo = [
               row.notes ? `Notes: ${row.notes}` : '',
               row.rank ? `Rank: ${row.rank}` : '',
               row.address ? `Address: ${row.address}` : '',
+              row.county && row.catchment_area ? `County: ${row.county}` : '',
+              row.broad_region ? `Region: ${row.broad_region}` : '',
             ]
               .filter(Boolean)
               .join('\n');
@@ -3110,7 +3129,7 @@ const entriesModule = {
               contact_phone: row.phone || null,
               award_category: row.category || null,
               sector: row.sector || null,
-              county_city: row.catchment_area || row.region || null,
+              county_city: countyCity,
               supporting_information: supportingInfo || null,
               status: 'shortlisted',
               is_public: true,

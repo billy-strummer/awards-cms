@@ -36,7 +36,7 @@
       padding: 2rem;
       text-align: center;
     }
-    .login-header h2 { margin: 0; font-size: 1.4rem; }
+    .login-header h1 { margin: 0; font-size: 1.4rem; }
     .login-header p { margin: 0.5rem 0 0; opacity: 0.85; font-size: 0.9rem; }
     .login-body { padding: 2rem; }
     .login-body .form-label { font-weight: 500; font-size: 0.9rem; }
@@ -53,15 +53,19 @@
     .btn-judge-login:hover { background: #0d47a1; color: #fff; }
     .alert { font-size: 0.85rem; }
     #loginSpinner { display: none; }
+    @media (max-width: 480px) {
+      .login-body, .login-card { padding: 1rem !important; }
+      .login-card { margin: 8px; }
+    }
   </style>
 </head>
 <body>
 
   <div class="login-card">
     <div class="login-header">
-      <i class="bi bi-award display-4 d-block mb-2"></i>
-      <h2>British Trade Awards</h2>
-      <p>Judge Portal Login</p>
+      <i class="bi bi-award display-4 d-block mb-2" aria-hidden="true"></i>
+      <h1>Judge Portal Login</h1>
+      <p>British Trade Awards</p>
     </div>
 
     <div class="login-body">
@@ -90,6 +94,7 @@
       <p class="text-muted text-center small mb-2">Or sign in with a magic link</p>
       <form id="magicLinkForm">
         <div class="input-group mb-3">
+          <label for="magicEmail" class="visually-hidden">Email address</label>
           <input type="email" class="form-control" id="magicEmail" placeholder="your.email@example.com" required autocomplete="email">
           <button type="submit" class="btn btn-outline-primary" id="magicBtn">
             <i class="bi bi-envelope me-1"></i>Send Link

@@ -2067,7 +2067,7 @@ document.addEventListener('DOMContentLoaded', function () {
         'organisations-tab': { key: 'organisations', fn: () => orgsModule?.loadOrganisations() },
         'winners-tab': { key: 'winners', fn: () => winnersModule?.loadWinners() },
         'entries-tab': { key: 'entries', fn: () => entriesModule?.initialize() },
-        'events-tab': { key: 'events', fn: () => eventsModule?.loadEvents() },
+        'events-tab': { key: 'events', fn: () => window.eventsModule?.loadEvents() },
         'payments-tab': { key: 'payments', fn: () => paymentsModule?.loadAllData() },
       };
       const config = refreshMap[tabId];

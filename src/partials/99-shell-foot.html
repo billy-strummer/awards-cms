@@ -4033,48 +4033,6 @@
   </div>
 
 
-  <script>
-    /* Auto-insert "* Required fields" legend in modals that contain required inputs */
-    document.addEventListener('show.bs.modal', function (e) {
-      var modal = e.target;
-      var form  = modal.querySelector('form');
-      if (!form || modal.querySelector('.required-field-legend')) return;
-      if (!form.querySelector('[required]')) return;
-      var legend = document.createElement('p');
-      legend.className = 'required-field-legend text-muted small mb-3 pb-2 border-bottom';
-      legend.innerHTML = '<span class="text-danger fw-semibold" aria-hidden="true">*</span> Required fields';
-      form.insertBefore(legend, form.firstChild);
-    });
-  </script>
-
-  <script>
-    /* Sidebar collapse state */
-    (function () {
-      var sidebar = document.getElementById('appSidebar');
-      var toggle  = document.getElementById('sidebarToggle');
-      if (!sidebar || !toggle) return;
-      var isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
-      if (isCollapsed) sidebar.classList.add('collapsed');
-      toggle.title = isCollapsed ? 'Expand sidebar' : 'Collapse sidebar';
-      toggle.addEventListener('click', function () {
-        sidebar.classList.toggle('collapsed');
-        var collapsed = sidebar.classList.contains('collapsed');
-        localStorage.setItem('sidebarCollapsed', collapsed);
-        toggle.title = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
-      });
-      /* Sync active state when Bootstrap switches tab */
-      document.addEventListener('shown.bs.tab', function (e) {
-        sidebar.querySelectorAll('.sidebar-nav-link').forEach(function (btn) {
-          btn.classList.remove('active');
-          btn.setAttribute('aria-selected', 'false');
-        });
-        if (e.target && e.target.closest('.app-sidebar')) {
-          e.target.classList.add('active');
-          e.target.setAttribute('aria-selected', 'true');
-        }
-      });
-    })();
-  </script>
 
   <!-- Award Categories Reference Modal -->
   <div class="modal fade" id="awardCatRefModal" tabindex="-1" aria-labelledby="awardCatRefModalLabel" aria-hidden="true">
@@ -4271,44 +4229,6 @@
     </div>
   </div>
 
-  <script>
-    /* Global actions for confirmation dialogs */
-    window.globalActions = {
-      confirmBulkDelete: function (el) {
-        var module = el.dataset.module;
-        var fn     = el.dataset.fn;
-        var label  = el.dataset.label  || 'item';
-        var verb   = el.dataset.verb   || 'Delete';
-        /* Count checked items — try common checkbox patterns */
-        var checked = document.querySelectorAll(
-          'input[type="checkbox"]:checked:not(#awardsSelectAll):not(#selectAllOrgs):not([id$="SelectAll"]):not([id$="selectAll"])'
-        );
-        var count = checked.length || 'the selected';
-        var plural = count !== 1 ? 's' : '';
-        document.getElementById('bulkDeleteConfirmTitle').textContent = verb + ' ' + label + (typeof count === 'number' ? 's' : '');
-        document.getElementById('bulkDeleteConfirmMsg').textContent =
-          verb + ' ' + count + ' ' + label + plural + '?';
-        document.getElementById('bulkDeleteConfirmBtnLabel').textContent = verb;
-        document.getElementById('bulkDeleteConfirmBtn').onclick = function () {
-          bootstrap.Modal.getInstance(document.getElementById('bulkDeleteConfirmModal'))?.hide();
-          var mod = window[module];
-          if (mod && typeof mod[fn] === 'function') mod[fn]();
-        };
-        new bootstrap.Modal(document.getElementById('bulkDeleteConfirmModal')).show();
-      },
-      confirmClearCanvas: function () {
-        document.getElementById('bulkDeleteConfirmTitle').textContent = 'Clear Email Canvas';
-        document.getElementById('bulkDeleteConfirmMsg').textContent = 'Clear the entire email canvas?';
-        document.getElementById('bulkDeleteConfirmSub').textContent = 'All your email content will be removed and cannot be recovered.';
-        document.getElementById('bulkDeleteConfirmBtnLabel').textContent = 'Clear Canvas';
-        document.getElementById('bulkDeleteConfirmBtn').onclick = function () {
-          bootstrap.Modal.getInstance(document.getElementById('bulkDeleteConfirmModal'))?.hide();
-          emailBuilder?.clearCanvas();
-        };
-        new bootstrap.Modal(document.getElementById('bulkDeleteConfirmModal')).show();
-      }
-    };
-  </script>
 
   <!-- Bootstrap JS Bundle -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
@@ -4370,6 +4290,7 @@
   <script src="calendar.js"></script>
   <script src="rate-limiting.js"></script>
   <script src="winner-announcements.js"></script>
+  <script src="ui-init.js"></script>
 
   <!-- Back to top button -->
   <button id="backToTopBtn" class="btn btn-primary rounded-circle d-none" aria-label="Back to top"

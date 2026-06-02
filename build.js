@@ -312,7 +312,7 @@ async function build() {
     'BTA_Corporate_Horizontal-Black-and-White-02.png',
     'BTA_Corporate_Horizontal-Texture.png',
     'BTA_Corporate_Horizontal-Texture.jpg',
-    'BTA-annimation-2026-smaller.mp4',
+    'hero-video.mp4',
   ];
 
   const allPublicFiles = [...PUBLIC_PAGES, ...PUBLIC_ASSETS];

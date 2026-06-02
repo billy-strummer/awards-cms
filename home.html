@@ -1112,10 +1112,28 @@
       transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
     }
 
-    a.sub-region-chip:hover {
+    a.sub-region-chip:hover,
+    button.sub-region-chip:hover {
       background: rgba(201, 162, 39, 0.12);
       border-color: rgba(201, 162, 39, 0.4);
       color: #C9A227;
+    }
+
+    button.sub-region-chip { background: #1e1e1e; }
+    button.sub-region-chip[aria-expanded="true"] {
+      background: rgba(201, 162, 39, 0.12);
+      border-color: rgba(201, 162, 39, 0.4);
+      color: #C9A227;
+    }
+
+    .london-boroughs {
+      width: 100%;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 10px 0 4px 16px;
+      border-left: 2px solid rgba(201, 162, 39, 0.3);
+      margin-left: 4px;
     }
 
     /* ============================================================

@@ -294,25 +294,70 @@
 
       const cards = document.querySelectorAll('.country-card');
 
+      function chipHtml(loc, country) {
+        const flag = FLAG_MAP[loc]
+          ? '<img class="chip-flag" src="images/flags/' +
+            encodeURIComponent(FLAG_MAP[loc]) +
+            '" alt="" aria-hidden="true">'
+          : '';
+        const href = 'public-voting.html?city=' + encodeURIComponent(loc) + '&country=' + encodeURIComponent(country);
+        return '<a href="' + href + '" class="sub-region-chip">' + flag + escapeHtml(loc) + '</a>';
+      }
+
       function renderLocations(country) {
         const countryData = SUB_REGIONS[country] || {};
-        const allLocations = Object.values(countryData).reduce(function (acc, arr) {
-          return acc.concat(arr);
-        }, []);
+        const boroughs = countryData['London Boroughs'] || [];
+
+        // Flatten all groups except London Boroughs (those sit under the London chip)
+        const allLocations = Object.entries(countryData)
+          .filter(function (entry) {
+            return entry[0] !== 'London Boroughs';
+          })
+          .reduce(function (acc, entry) {
+            return acc.concat(entry[1]);
+          }, []);
+
         const subList = document.getElementById('sub-list-' + country);
         if (!subList) return;
+
         subList.innerHTML = allLocations
           .map(function (loc) {
-            const flag = FLAG_MAP[loc]
-              ? '<img class="chip-flag" src="images/flags/' +
-                encodeURIComponent(FLAG_MAP[loc]) +
-                '" alt="" aria-hidden="true">'
-              : '';
-            const href =
-              'public-voting.html?city=' + encodeURIComponent(loc) + '&country=' + encodeURIComponent(country);
-            return '<a href="' + href + '" class="sub-region-chip">' + flag + escapeHtml(loc) + '</a>';
+            if (loc === 'London' && boroughs.length) {
+              const flag = FLAG_MAP['London']
+                ? '<img class="chip-flag" src="images/flags/' +
+                  encodeURIComponent(FLAG_MAP['London']) +
+                  '" alt="" aria-hidden="true">'
+                : '';
+              const boroughHtml = boroughs
+                .map(function (b) {
+                  return chipHtml(b, 'england');
+                })
+                .join('');
+              return (
+                '<button class="sub-region-chip london-toggle" aria-expanded="false">' +
+                flag +
+                'London <span class="london-arrow" aria-hidden="true">▾</span>' +
+                '</button>' +
+                '<div class="london-boroughs" hidden>' +
+                boroughHtml +
+                '</div>'
+              );
+            }
+            return chipHtml(loc, country);
           })
           .join('');
+
+        // Wire London toggle
+        const londonBtn = subList.querySelector('.london-toggle');
+        if (londonBtn) {
+          londonBtn.addEventListener('click', function () {
+            const boroughList = londonBtn.nextElementSibling;
+            const expanded = londonBtn.getAttribute('aria-expanded') === 'true';
+            londonBtn.setAttribute('aria-expanded', String(!expanded));
+            londonBtn.querySelector('.london-arrow').textContent = expanded ? '▾' : '▴';
+            boroughList.hidden = expanded;
+          });
+        }
       }
 
       function openAccordion(country) {

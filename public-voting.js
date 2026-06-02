@@ -174,6 +174,7 @@ const votingSystem = {
             </div>
             <button class="vote-button ${entry.hasVoted ? 'btn btn-success' : ''}"
                     data-action="votingSystem.vote" data-id="${esc(entry.id)}"
+                    aria-pressed="${entry.hasVoted ? 'true' : 'false'}"
                     ${entry.hasVoted ? 'disabled' : ''}>
               ${
                 entry.hasVoted
@@ -277,6 +278,10 @@ const votingSystem = {
     // Prevent double-submit
     if (this._submittingVote) return;
     this._submittingVote = true;
+
+    const submitBtn = document.querySelector('#verificationForm button[type="submit"]');
+    if (submitBtn) submitBtn.setAttribute('aria-busy', 'true');
+
     try {
       const voterName = sessionStorage.getItem('voterName') || '';
 
@@ -285,6 +290,11 @@ const votingSystem = {
         voter_email: this.voterEmail,
       });
       if (recentVotes >= 10) {
+        const rateLimitNotice = document.getElementById('rateLimitNotice');
+        if (rateLimitNotice) {
+          rateLimitNotice.textContent = 'You have reached the voting limit. Please try again later.';
+          rateLimitNotice.style.display = 'block';
+        }
         showPublicToast('You have reached the voting limit. Please try again later.', 'warning');
         this.closeVerificationModal();
         return;
@@ -331,6 +341,7 @@ const votingSystem = {
       }
     } finally {
       this._submittingVote = false;
+      if (submitBtn) submitBtn.setAttribute('aria-busy', 'false');
     }
   },
 

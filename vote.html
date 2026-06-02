@@ -27,7 +27,7 @@
 
   <style>
     :root {
-      --gold-color: #D4AF37;
+      --gold-color: #C9A227;
       --gold-dark: #B8941F;
     }
 
@@ -80,7 +80,7 @@
       background: white;
       border-radius: 24px;
       padding: 50px;
-      box-shadow: 0 20px 60px rgba(212, 175, 55, 0.3);
+      box-shadow: 0 20px 60px rgba(201, 162, 39, 0.3);
       border: 2px solid var(--gold-color);
       margin-bottom: 30px;
     }
@@ -96,7 +96,7 @@
     }
 
     .award-badge {
-      background: linear-gradient(135deg, #D4AF37 0%, #B8941F 100%);
+      background: linear-gradient(135deg, #C9A227 0%, #B8941F 100%);
       color: #000000;
       padding: 8px 20px;
       border-radius: 20px;
@@ -106,7 +106,7 @@
     }
 
     .vote-button {
-      background: linear-gradient(135deg, #D4AF37 0%, #B8941F 100%);
+      background: linear-gradient(135deg, #C9A227 0%, #B8941F 100%);
       border: none;
       color: #000000;
       padding: 18px 50px;
@@ -120,7 +120,7 @@
 
     .vote-button:hover:not(:disabled) {
       transform: scale(1.05);
-      box-shadow: 0 10px 30px rgba(212, 175, 55, 0.5);
+      box-shadow: 0 10px 30px rgba(201, 162, 39, 0.5);
     }
 
     .vote-button:disabled {
@@ -133,7 +133,7 @@
       text-align: center;
       font-size: 2.5rem;
       font-weight: 700;
-      color: #D4AF37;
+      color: #C9A227;
       margin: 20px 0;
     }
 
@@ -242,6 +242,11 @@
     .website-link:hover {
       text-decoration: underline;
     }
+
+    @media (max-width: 480px) {
+      .vote-card, .candidate-card { padding: 1rem; }
+      .btn-lg { padding: 12px 20px; font-size: 0.95rem; }
+    }
   </style>
 </head>
 <body>
@@ -250,9 +255,9 @@
 
     <!-- BTA Brand Header -->
     <div class="text-center mb-4">
-      <img src="BTA_Corporate_Horizontal-Texture.png" alt="British Trade Awards" style="height: 80px; width: auto; filter: drop-shadow(0 0 10px rgba(212,175,55,0.5));">
+      <img src="BTA_Corporate_Horizontal-Texture.png" alt="British Trade Awards" style="height: 80px; width: auto; filter: drop-shadow(0 0 10px rgba(201,162,39,0.5));">
       <div style="font-family: 'Cinzel', serif; color: var(--gold-color); font-size: 1.1rem; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; margin-top: 10px;">British Trade Awards</div>
-      <div style="font-family: 'Montserrat', sans-serif; color: rgba(212,175,55,0.7); font-size: 0.75rem; letter-spacing: 2px; text-transform: uppercase;">Public Voting</div>
+      <div style="font-family: 'Montserrat', sans-serif; color: rgba(201,162,39,0.7); font-size: 0.75rem; letter-spacing: 2px; text-transform: uppercase;">Public Voting</div>
     </div>
 
     <!-- Loading State -->
@@ -312,7 +317,7 @@
 
         <!-- Website Link -->
         <div class="text-center" id="websiteLinkSection" style="display: none;">
-          <a id="websiteLink" href="" target="_blank" class="website-link">
+          <a id="websiteLink" href="" target="_blank" rel="noopener noreferrer" class="website-link">
             <i class="bi bi-globe"></i>
             <span>Visit Website</span>
             <i class="bi bi-arrow-up-right"></i>
@@ -326,11 +331,11 @@
         </div>
 
         <!-- Vote Button -->
-        <button id="voteButton" class="vote-button" data-action="nomineeVoting.vote">
+        <button id="voteButton" class="vote-button" data-action="nomineeVoting.vote" aria-busy="false">
           <i class="bi bi-hand-thumbs-up me-2"></i>Vote Now
         </button>
         <p class="text-muted small mt-2" style="font-size:0.8rem;">
-          <i class="bi bi-shield-check me-1"></i>Your IP address is recorded solely for rate-limiting (one vote per person). <a href="/privacy-policy.html" target="_blank">Privacy Policy</a>.
+          <i class="bi bi-shield-check me-1"></i>Your IP address is recorded solely for rate-limiting (one vote per person). <a href="/privacy-policy.html" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.
         </p>
 
         <!-- Share Buttons -->
@@ -366,13 +371,17 @@
       <p class="text-center text-muted">Enter your email to verify your vote</p>
 
       <form id="verificationForm">
+        <input type="text" name="website" id="hp_vote" style="display:none;position:absolute;left:-9999px;" autocomplete="off" tabindex="-1" aria-hidden="true">
+
+        <div id="rateLimitNotice" style="display:none;" class="alert alert-warning" role="alert" aria-live="assertive"></div>
+
         <div class="mb-3">
-          <label class="form-label">Email Address *</label>
+          <label class="form-label" for="voterEmail">Email Address *</label>
           <input type="email" class="form-control form-control-lg" id="voterEmail" required placeholder="your@email.com">
         </div>
 
         <div class="mb-3">
-          <label class="form-label">Your Name (Optional)</label>
+          <label class="form-label" for="voterName">Your Name (Optional)</label>
           <input type="text" class="form-control form-control-lg" id="voterName" placeholder="John Doe">
         </div>
 
@@ -384,7 +393,7 @@
         </div>
 
         <div class="d-grid gap-2">
-          <button type="submit" class="btn btn-primary btn-lg">
+          <button type="submit" class="btn btn-primary btn-lg" aria-busy="false">
             <i class="bi bi-envelope-check me-2"></i>Verify & Vote
           </button>
           <button type="button" class="btn btn-outline-secondary" data-action="nomineeVoting.closeVerificationModal">

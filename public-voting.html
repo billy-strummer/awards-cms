@@ -314,19 +314,23 @@
       <p class="text-center text-muted">Enter your email to verify your vote</p>
 
       <form id="verificationForm">
+        <input type="text" name="website" id="hp_vote" style="display:none;position:absolute;left:-9999px;" autocomplete="off" tabindex="-1" aria-hidden="true">
+
+        <div id="rateLimitNotice" style="display:none;" class="alert alert-warning" role="alert" aria-live="assertive"></div>
+
         <div class="mb-3">
-          <label class="form-label">Email Address</label>
+          <label class="form-label" for="voterEmail">Email Address</label>
           <input type="email" class="form-control" id="voterEmail" required placeholder="your@email.com">
         </div>
 
         <div class="mb-3">
-          <label class="form-label">Your Name (Optional)</label>
+          <label class="form-label" for="voterName">Your Name (Optional)</label>
           <input type="text" class="form-control" id="voterName" placeholder="John Doe">
         </div>
 
-        <p class="small text-muted text-center">By voting you agree to our <a href="/privacy-policy.html" target="_blank" rel="noopener">Privacy Policy</a>.</p>
+        <p class="small text-muted text-center">By voting you agree to our <a href="/privacy-policy.html" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.</p>
         <div class="d-grid gap-2">
-          <button type="submit" class="btn btn-primary btn-lg">
+          <button type="submit" class="btn btn-primary btn-lg" aria-busy="false">
             <i class="bi bi-envelope-check me-2"></i>Verify & Vote
           </button>
           <button type="button" class="btn btn-outline-secondary" data-action="votingSystem.closeVerificationModal">

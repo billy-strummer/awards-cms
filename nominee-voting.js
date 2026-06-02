@@ -277,6 +277,12 @@ const nomineeVoting = {
     // Prevent double-submit
     if (this._submittingVote) return;
     this._submittingVote = true;
+
+    const submitBtn = document.querySelector('#verificationForm button[type="submit"]');
+    const voteBtn = document.getElementById('voteButton');
+    if (submitBtn) submitBtn.setAttribute('aria-busy', 'true');
+    if (voteBtn) voteBtn.setAttribute('aria-busy', 'true');
+
     try {
       const voterName = sessionStorage.getItem('voterName') || '';
 
@@ -285,6 +291,11 @@ const nomineeVoting = {
         voter_email: this.voterEmail,
       });
       if (recentVotes >= 10) {
+        const rateLimitNotice = document.getElementById('rateLimitNotice');
+        if (rateLimitNotice) {
+          rateLimitNotice.textContent = 'You have reached the voting limit. Please try again later.';
+          rateLimitNotice.style.display = 'block';
+        }
         showPublicToast('You have reached the voting limit. Please try again later.', 'warning');
         this.closeVerificationModal();
         return;
@@ -343,6 +354,8 @@ const nomineeVoting = {
       }
     } finally {
       this._submittingVote = false;
+      if (submitBtn) submitBtn.setAttribute('aria-busy', 'false');
+      if (voteBtn) voteBtn.setAttribute('aria-busy', 'false');
     }
   },
 

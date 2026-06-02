@@ -22,6 +22,7 @@
   <style>
     :root {
       --gold:       #C9A227;
+      --gold-hover: #d4aa2a;
       --gold-light: #e8c84a;
       --gold-dark:  #a07d1a;
       --gold-text:  #7a5c0e; /* darker gold for readable text on white */
@@ -142,7 +143,7 @@
       font-family: 'Playfair Display', Georgia, serif;
       font-size: 1.75rem;
       font-weight: 900;
-      color: #C9A227;
+      color: var(--gold);
       margin: 0;
       line-height: 1.2;
       letter-spacing: 2px;
@@ -191,7 +192,7 @@
       top: 50%;
       left: 0;
       height: 2px;
-      background: #C9A227;
+      background: var(--gold);
       transform: translateY(-50%);
       z-index: 1;
       transition: width 0.4s ease;
@@ -209,8 +210,8 @@
     }
 
     .progress-dot.active {
-      background: #C9A227;
-      border-color: #C9A227;
+      background: var(--gold);
+      border-color: var(--gold);
       transform: scale(1.4);
       box-shadow: 0 0 10px rgba(201,162,39,0.4);
     }
@@ -304,7 +305,7 @@
     .form-select:focus, .form-select-lg:focus {
       background: #ffffff;
       color: #1a1a1a;
-      border-color: #C9A227;
+      border-color: var(--gold);
       box-shadow: 0 0 0 3px rgba(201,162,39,0.15);
       outline: none;
     }
@@ -347,6 +348,13 @@
       color: #888888;
       margin-top: 6px;
       line-height: 1.4;
+    }
+
+    .field-hint-text {
+      color: rgba(0,0,0,0.45);
+      font-size: 0.75rem;
+      margin-top: 4px;
+      display: block;
     }
 
     label.form-label {
@@ -821,7 +829,7 @@
                 placeholder="https://www.yourcompany.co.uk" autocomplete="url">
             </div>
             <div class="mb-3">
-              <label class="form-label" for="yearsInField">Years in business <span class="required-star">*</span></label>
+              <label class="form-label" for="yearsInField">Years your company has been trading <span class="required-star">*</span></label>
               <select class="form-select form-select-lg" id="yearsInField" required>
                 <option value="">Select...</option>
                 <option value="Under 1 year">Under 1 year</option>
@@ -931,6 +939,7 @@
                 <label class="form-label" for="contactEmail">Email address <span class="required-star">*</span></label>
                 <input type="email" class="form-control form-control-lg" id="contactEmail"
                   placeholder="you@yourcompany.co.uk" required autocomplete="email">
+                <small class="field-hint-text">e.g. name@company.co.uk</small>
               </div>
               <div class="mb-3">
                 <label class="form-label" for="contactPhone">Phone number <span class="text-muted small">(optional)</span></label>
@@ -957,13 +966,13 @@
             <div class="terms-check" id="termsWrap">
               <input type="checkbox" id="termsCheckbox">
               <label for="termsCheckbox">
-                I confirm the information provided is accurate and I consent to being contacted by the British Trade Awards regarding this entry and related awards activities. I understand my entry will be reviewed by the judging panel. My personal data will be stored and processed in accordance with the <a href="/privacy-policy.html" target="_blank">Privacy Policy</a>. I understand I can request access, correction, or deletion of my data at any time by emailing <a href="mailto:privacy@britishtradeawards.com">privacy@britishtradeawards.com</a>.
+                I confirm the information provided is accurate and I consent to being contacted by the British Trade Awards regarding this entry and related awards activities. I understand my entry will be reviewed by the judging panel. My personal data will be stored and processed in accordance with the <a href="/privacy-policy.html" target="_blank" rel="noopener noreferrer">Privacy Policy</a>. I understand I can request access, correction, or deletion of my data at any time by emailing <a href="mailto:privacy@britishtradeawards.com">privacy@britishtradeawards.com</a>.
               </label>
             </div>
             <p class="text-muted small mt-2">
               <i class="bi bi-shield-check me-1" aria-hidden="true"></i>
               This site uses only essential session cookies required for the form to function. No tracking or analytics cookies are used.
-              <a href="/privacy-policy.html" target="_blank">Learn more</a>.
+              <a href="/privacy-policy.html" target="_blank" rel="noopener noreferrer">Learn more</a>.
             </p>
             <p class="terms-hint" id="terms-hint">You must accept the terms before submitting.</p>
             <button type="button" class="btn btn-submit" id="submitBtn" data-action="entryFormApp.submitEntry" disabled aria-disabled="true" aria-describedby="terms-hint">

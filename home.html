@@ -352,6 +352,12 @@
       flex-shrink: 0;
     }
 
+    /* Small btn-gold variant for header and compact contexts */
+    .btn-gold-sm {
+      padding: 10px 24px;
+      font-size: 0.8rem;
+    }
+
     .header-cta .btn-gold {
       padding: 10px 24px;
       font-size: 0.8rem;
@@ -803,6 +809,7 @@
       z-index: 0;
     }
     .cat-box:hover .cat-bg-img,
+    .cat-box:active .cat-bg-img,
     .cat-box:focus-within .cat-bg-img,
     .cat-box:focus .cat-bg-img {
       transform: scale(1.06);
@@ -826,6 +833,7 @@
     }
 
     .cat-box:hover .cat-box-inner,
+    .cat-box:active .cat-box-inner,
     .cat-box:focus-within .cat-box-inner,
     .cat-box:focus .cat-box-inner {
       background:
@@ -855,6 +863,7 @@
     }
 
     .cat-box:hover .cat-accent,
+    .cat-box:active .cat-accent,
     .cat-box:focus-within .cat-accent,
     .cat-box:focus .cat-accent {
       width: 52px;
@@ -883,6 +892,7 @@
     }
 
     .cat-box:hover .cat-desc,
+    .cat-box:active .cat-desc,
     .cat-box:focus-within .cat-desc,
     .cat-box:focus .cat-desc {
       max-height: 80px;
@@ -902,6 +912,7 @@
     }
 
     .cat-box:hover::after,
+    .cat-box:active::after,
     .cat-box:focus-within::after,
     .cat-box:focus::after {
       border-color: rgba(201, 162, 39, 0.4);
@@ -945,6 +956,7 @@
     }
 
     .country-card:hover,
+    .country-card:active,
     .country-card.active {
       border-color: var(--gold);
       transform: translateY(-3px);
@@ -952,6 +964,7 @@
     }
 
     .country-card:hover::before,
+    .country-card:active::before,
     .country-card.active::before {
       opacity: 1;
     }
@@ -1010,7 +1023,7 @@
     }
 
     .regions-accordion.open {
-      max-height: 1200px;
+      max-height: 4000px;
       opacity: 1;
       margin-top: 20px;
     }
@@ -1149,7 +1162,7 @@
     }
 
     .form-input::placeholder {
-      color: #555;
+      color: rgba(255,255,255,0.45);
     }
 
     .form-input:focus {
@@ -1539,7 +1552,7 @@
       }
 
       /* Regional accordion */
-      .regions-accordion.open { max-height: 1200px; }
+      .regions-accordion.open { max-height: 4000px; }
       .regions-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px; }
       .sub-region-chip { padding: 4px 10px; font-size: 0.75rem; }
 
@@ -1616,21 +1629,23 @@
        SKIP LINK (accessibility)
     ============================================================ */
     .skip-link {
-      position: absolute;
+      position: fixed;
       top: -100%;
       left: 16px;
-      background: var(--gold);
-      color: #000;
+      z-index: 10000;
       padding: 8px 16px;
-      border-radius: 0 0 6px 6px;
-      font-weight: 600;
-      font-size: 0.9rem;
-      z-index: 9999;
+      background: #C9A227;
+      color: #000;
+      font-weight: 700;
+      font-size: 0.875rem;
+      border-radius: 4px;
       text-decoration: none;
-      transition: top 0.2s;
+      transition: top 0.15s;
     }
     .skip-link:focus {
-      top: 0;
+      top: 16px;
+      outline: 3px solid #fff;
+      outline-offset: 2px;
     }
 
     /* ============================================================

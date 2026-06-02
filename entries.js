@@ -3103,6 +3103,14 @@ const entriesModule = {
             // Most specific location wins for county_city (used for public page filtering)
             const countyCity = row.catchment_area || row.county || row.broad_region || null;
 
+            // Derive selected_country from the broad region name
+            // (Scotland,* → scotland | Wales,* → wales | else → england)
+            let selectedCountry = 'england';
+            const regionLower = (row.broad_region || '').toLowerCase();
+            if (regionLower.startsWith('scotland')) selectedCountry = 'scotland';
+            else if (regionLower.startsWith('wales')) selectedCountry = 'wales';
+            else if (regionLower.startsWith('northern ireland')) selectedCountry = 'northern-ireland';
+
             const supportingInfo = [
               row.notes ? `Notes: ${row.notes}` : '',
               row.rank ? `Rank: ${row.rank}` : '',
@@ -3130,6 +3138,7 @@ const entriesModule = {
               award_category: row.category || null,
               sector: row.sector || null,
               county_city: countyCity,
+              selected_country: selectedCountry,
               supporting_information: supportingInfo || null,
               status: 'shortlisted',
               is_public: true,

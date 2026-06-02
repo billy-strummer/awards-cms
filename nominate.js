@@ -292,40 +292,71 @@
     },
 
     // --------------------------------------------------
-    // Populate region group dropdown (step 1 of the two-step picker)
+    // Set up country flag card handlers (first of three levels)
     // --------------------------------------------------
     populateRegions: function () {
       const self = this;
-      const regionGroupSelect = document.getElementById('region_group');
-      if (!regionGroupSelect) return;
-
-      const grouped = window.REGIONS_GROUPED;
-      const flat = window.COUNTIES_CITIES || window.REGIONS || [];
-
-      if (!grouped && !flat.length) {
-        console.warn('No counties/cities found in config');
-        return;
-      }
-
-      let html = '<option value="">Select region</option>';
-
-      if (grouped && Object.keys(grouped).length > 0) {
-        Object.keys(grouped).forEach(function (groupName) {
-          html += '<option value="' + self.escapeHtml(groupName) + '">' + self.escapeHtml(groupName) + '</option>';
+      document.querySelectorAll('#country_picker .country-pick-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          self.handleCountrySelect(btn.dataset.country);
         });
-      } else {
-        html += '<option value="__all__">United Kingdom</option>';
-      }
-
-      regionGroupSelect.innerHTML = html;
-      regionGroupSelect.addEventListener('change', function () {
-        self.handleRegionGroupChange();
       });
+      const regionGroupSelect = document.getElementById('region_group');
+      if (regionGroupSelect) {
+        regionGroupSelect.addEventListener('change', function () {
+          self.handleRegionGroupChange();
+        });
+      }
     },
 
-    // Populate the county/city sub-picker when a region is chosen
-    // --------------------------------------------------
+    // Country card clicked → show region select for that country
+    handleCountrySelect: function (country) {
+      document.querySelectorAll('#country_picker .country-pick-btn').forEach(function (btn) {
+        const active = btn.dataset.country === country;
+        btn.classList.toggle('selected', active);
+        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+      });
+
+      const countryInput = document.getElementById('selected_country');
+      if (countryInput) countryInput.value = country;
+
+      const picker = document.getElementById('country_picker');
+      if (picker) {
+        const fb = picker.nextElementSibling;
+        if (fb && fb.classList.contains('invalid-feedback')) fb.style.display = 'none';
+      }
+
+      const regionSelect = document.getElementById('region_group');
+      const regionWrapper = document.getElementById('region_wrapper');
+      const countyWrapper = document.getElementById('county_city_wrapper');
+      const countySelect = document.getElementById('county_city');
+      if (!regionSelect || !regionWrapper) return;
+
+      const regions = (window.REGION_DATA || {})[country] || {};
+      regionSelect.innerHTML = '<option value="">Select region</option>';
+      Object.keys(regions).forEach(function (r) {
+        const opt = document.createElement('option');
+        opt.value = r;
+        opt.textContent = r;
+        regionSelect.appendChild(opt);
+      });
+      regionSelect.value = '';
+      regionWrapper.style.display = 'block';
+
+      if (countyWrapper) countyWrapper.style.display = 'none';
+      if (countySelect) {
+        countySelect.value = '';
+        countySelect.innerHTML = '<option value="">Select county, city or borough</option>';
+      }
+
+      setTimeout(function () {
+        regionSelect.focus();
+      }, 50);
+    },
+
+    // Region selected → show county/city/borough select
     handleRegionGroupChange: function () {
+      const country = document.getElementById('selected_country') && document.getElementById('selected_country').value;
       const groupName = document.getElementById('region_group') && document.getElementById('region_group').value;
       const wrapper = document.getElementById('county_city_wrapper');
       const countySelect = document.getElementById('county_city');
@@ -339,8 +370,8 @@
         return;
       }
 
-      const grouped = window.REGIONS_GROUPED;
-      const options = grouped ? grouped[groupName] || [] : window.COUNTIES_CITIES || window.REGIONS || [];
+      const regions = (window.REGION_DATA || {})[country] || {};
+      const options = regions[groupName] || [];
 
       options.forEach(function (opt) {
         const el = document.createElement('option');
@@ -350,7 +381,9 @@
       });
 
       wrapper.style.display = 'block';
-      countySelect.focus();
+      setTimeout(function () {
+        countySelect.focus();
+      }, 50);
     },
 
     // --------------------------------------------------
@@ -501,6 +534,23 @@
           return true;
         }
         case 2: {
+          const countryVal =
+            document.getElementById('selected_country') && document.getElementById('selected_country').value;
+          if (!countryVal) {
+            const picker = document.getElementById('country_picker');
+            if (picker) {
+              let fb = picker.nextElementSibling;
+              if (!fb || !fb.classList.contains('invalid-feedback')) {
+                fb = document.createElement('div');
+                fb.className = 'invalid-feedback';
+                picker.parentNode.insertBefore(fb, picker.nextSibling);
+              }
+              fb.style.display = 'block';
+              fb.textContent = "Please select the nominee's country";
+              picker.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            return false;
+          }
           const regionGroupEl = document.getElementById('region_group');
           const countyEl = document.getElementById('county_city');
           if (!regionGroupEl || !regionGroupEl.value) {
@@ -624,6 +674,7 @@
           this.formData.awardCategory = this.selectedCategory;
           break;
         case 2:
+          this.formData.selected_country = (document.getElementById('selected_country') || {}).value || '';
           this.formData.region_group = (document.getElementById('region_group') || {}).value || '';
           this.formData.county_city = (document.getElementById('county_city') || {}).value || '';
           break;
@@ -709,7 +760,20 @@
         '<div class="review-group">' +
         '<div class="review-group-title">Nomination <span class="review-edit-btn float-end" data-action="nominateApp.goToStep" data-args="[1]">Edit</span></div>' +
         row('Award Category', d.awardCategory) +
-        row('Area', d.region_group && d.county_city ? d.region_group + ' › ' + d.county_city : d.county_city) +
+        row(
+          'Location',
+          [
+            d.selected_country
+              ? d.selected_country.replace(/-/g, ' ').replace(/\b\w/g, function (c) {
+                  return c.toUpperCase();
+                })
+              : '',
+            d.region_group,
+            d.county_city,
+          ]
+            .filter(Boolean)
+            .join(' › ')
+        ) +
         '</div>' +
         nomineeSection +
         '<div class="review-group">' +

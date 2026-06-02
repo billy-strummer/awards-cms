@@ -1119,6 +1119,105 @@
     }
 
     /* ============================================================
+       SECTION 3.5 — FEATURED NOMINEES
+    ============================================================ */
+    #nominees {
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border-subtle);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .nominees-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+      gap: 20px;
+      margin: clamp(32px, 5vw, 56px) 0 clamp(32px, 5vw, 48px);
+    }
+
+    .nominee-card {
+      background: #1a1a1a;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: transform var(--transition-med), border-color var(--transition-med), box-shadow var(--transition-med);
+    }
+
+    .nominee-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--border-gold);
+      box-shadow: 0 8px 28px rgba(0,0,0,0.4), 0 0 0 1px rgba(201,162,39,0.2);
+    }
+
+    .nominee-logo-wrap {
+      width: 56px;
+      height: 56px;
+      border-radius: 8px;
+      background: #2a2a2a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .nominee-logo-wrap img {
+      width: 56px;
+      height: 56px;
+      object-fit: contain;
+    }
+
+    .nominee-category-badge {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--gold);
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+    }
+
+    .nominee-company-name {
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--text-primary);
+      line-height: 1.3;
+    }
+
+    .nominee-entry-title {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .nominee-vote-btn {
+      margin-top: auto;
+      padding: 9px 18px;
+      background: linear-gradient(135deg, #a07d1a 0%, #C9A227 50%, #e8c84a 100%);
+      color: #1a1100;
+      border-radius: var(--radius-sm);
+      font-weight: 700;
+      font-size: 0.85rem;
+      text-align: center;
+      text-decoration: none;
+      transition: box-shadow var(--transition-fast), transform var(--transition-fast);
+      display: block;
+    }
+
+    .nominee-vote-btn:hover {
+      box-shadow: 0 4px 14px rgba(201,162,39,0.4);
+      transform: scale(1.02);
+    }
+
+    .nominees-cta-wrap {
+      text-align: center;
+    }
+
+    /* ============================================================
        SECTION 5 — FIND A TRADE
     ============================================================ */
     #find-a-trade {
@@ -2084,6 +2183,36 @@
 
 
 <!-- ============================================================
+     SECTION 3.5 — FEATURED NOMINEES (populated from API)
+============================================================ -->
+<section id="nominees" style="display:none;" aria-labelledby="nominees-heading">
+  <div class="container section-pad">
+
+    <div class="section-intro">
+      <h2 class="section-heading reveal" id="nominees-heading">
+        Meet the <span class="gold-underline">Nominees</span>
+      </h2>
+      <p class="section-sub reveal reveal-delay-1">
+        Public voting is open — cast your vote for the best tradespeople in Britain
+      </p>
+    </div>
+
+    <div class="nominees-grid" id="nominees-grid" aria-label="Featured nominees">
+      <!-- Populated by initNominees() -->
+    </div>
+
+    <div class="nominees-cta-wrap reveal">
+      <a href="public-voting.html" class="btn-gold">
+        See All Nominees &amp; Vote
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+      </a>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ============================================================
      SECTION 4 — REGIONAL SECTION
 ============================================================ -->
 <section id="regions" aria-labelledby="regions-heading">
@@ -2721,8 +2850,9 @@
           var flag = FLAG_MAP[loc]
             ? '<img class="chip-flag" src="images/flags/' + encodeURIComponent(FLAG_MAP[loc]) + '" alt="" aria-hidden="true">'
             : '';
-          var qs = '?country=' + encodeURIComponent(countryRef) + '&region=' + encodeURIComponent(region) + '&city=' + encodeURIComponent(loc);
-          return '<a href="submit-entry.html' + qs + '" class="sub-region-chip">' + flag + escapeHtml(loc) + '</a>';
+          // Link to nominees page filtered by city/county
+          var href = 'public-voting.html?city=' + encodeURIComponent(loc) + '&country=' + encodeURIComponent(countryRef);
+          return '<a href="' + href + '" class="sub-region-chip">' + flag + escapeHtml(loc) + '</a>';
         }).join('');
         subContainer.classList.add('open');
       } else {
@@ -3000,12 +3130,13 @@
       titleEl.textContent = sectorKey.replace(/&amp;/g, '&');
 
       var sectorParam = encodeURIComponent(sectorKey);
+      // Category items link to the public voting page filtered by sector + category
       listEl.innerHTML = cats.map(function (cat) {
-        var href = 'submit-entry.html?sector=' + sectorParam + '&category=' + encodeURIComponent(cat);
+        var href = 'public-voting.html?sector=' + sectorParam + '&category=' + encodeURIComponent(cat);
         return '<li><a href="' + href + '" class="cat-entry-link">' + escapeHtml(cat) + '</a></li>';
       }).join('');
 
-      // Update CTA to pre-select the sector
+      // "Enter the Awards" CTA stays on the entry form, pre-selected to this sector
       var ctaEl = document.querySelector('.cat-modal-cta');
       if (ctaEl) ctaEl.href = 'submit-entry.html?sector=' + sectorParam;
 
@@ -3043,7 +3174,68 @@
 
 
   /* ============================================================
-     9. HERO VIDEO — pause when offscreen (performance)
+     9. FEATURED NOMINEES — load from public voting API
+  ============================================================ */
+  try { (function initNominees() {
+    var section = document.getElementById('nominees');
+    var grid    = document.getElementById('nominees-grid');
+    if (!section || !grid) return;
+
+    fetch('/api/voting-proxy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'load_entries' })
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      var entries = (data.entries || []).slice(0, 6);
+      if (!entries.length) return; // keep section hidden if no live nominees
+
+      section.style.display = '';
+
+      grid.innerHTML = entries.map(function (entry) {
+        var org   = entry.organisations || {};
+        var award = entry.awards || {};
+        var awardLabel = award.award_name || entry.award_category || '';
+
+        var logoHtml = org.logo_url
+          ? '<div class="nominee-logo-wrap"><img src="' + escapeHtml(org.logo_url) + '" alt="" loading="lazy"></div>'
+          : '<div class="nominee-logo-wrap" aria-hidden="true">' +
+              '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="1.5">' +
+                '<rect x="2" y="7" width="20" height="14" rx="2"/>' +
+                '<path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>' +
+              '</svg>' +
+            '</div>';
+
+        var voteHref = 'vote.html?id=' + encodeURIComponent(entry.id);
+
+        return '<div class="nominee-card reveal">' +
+          logoHtml +
+          (awardLabel ? '<div class="nominee-category-badge">' + escapeHtml(awardLabel) + '</div>' : '') +
+          '<div class="nominee-company-name">' + escapeHtml(org.company_name || 'Nominee') + '</div>' +
+          (entry.entry_title ? '<div class="nominee-entry-title">' + escapeHtml(entry.entry_title) + '</div>' : '') +
+          '<a href="' + voteHref + '" class="nominee-vote-btn">Vote Now →</a>' +
+        '</div>';
+      }).join('');
+
+      // Wire up reveal observer for newly injected cards
+      if ('IntersectionObserver' in window) {
+        var obs = new IntersectionObserver(function (entries_io) {
+          entries_io.forEach(function (e) {
+            if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); }
+          });
+        }, { threshold: 0.05 });
+        grid.querySelectorAll('.nominee-card.reveal').forEach(function (el) { obs.observe(el); });
+      } else {
+        grid.querySelectorAll('.nominee-card.reveal').forEach(function (el) { el.classList.add('visible'); });
+      }
+    })
+    .catch(function (e) { console.warn('[BTA] Nominees load failed:', e.message); });
+  }) (); } catch(e) { console.warn('[BTA] initNominees', e); }
+
+
+  /* ============================================================
+     10. HERO VIDEO — pause when offscreen (performance)
   ============================================================ */
   try { (function initVideo() {
     var video = document.getElementById('hero-video');

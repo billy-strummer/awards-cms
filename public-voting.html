@@ -253,6 +253,46 @@
       height: 80px;
       margin: 0 auto 20px;
     }
+
+    .filter-banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: rgba(201,162,39,0.12);
+      border: 1px solid rgba(201,162,39,0.35);
+      border-radius: 12px;
+      padding: 14px 20px;
+      margin-bottom: 20px;
+      font-size: 0.95rem;
+      color: #fff;
+      flex-wrap: wrap;
+    }
+
+    .filter-active-label {
+      color: rgba(255,255,255,0.9);
+    }
+
+    .filter-active-label strong {
+      color: var(--gold);
+    }
+
+    .filter-clear-btn {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: rgba(255,255,255,0.75);
+      padding: 5px 14px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      text-decoration: none;
+      transition: background 0.15s, color 0.15s;
+      white-space: nowrap;
+    }
+
+    .filter-clear-btn:hover {
+      background: rgba(255,255,255,0.18);
+      color: #fff;
+    }
   </style>
 </head>
 <body>
@@ -276,6 +316,9 @@
       <p class="lead mb-0">British Trade Awards <span id="footerYear"></span> - People's Choice</p>
       <p class="text-muted">Cast your vote for your favourite nominees</p>
     </div>
+
+    <!-- Active filter banner (populated by JS when URL params present) -->
+    <div id="filterBanner" class="filter-banner" style="display:none;" role="status" aria-live="polite"></div>
 
     <!-- Award Filter -->
     <div class="award-filter">

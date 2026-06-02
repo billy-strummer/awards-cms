@@ -61,11 +61,22 @@ const votingSystem = {
   currentEntryId: null,
   currentVote: null,
   voterEmail: sessionStorage.getItem('voterEmail') || null,
+  activeFilters: {},
 
   /**
    * Initialize voting system
    */
   async initialize() {
+    // Read URL filter params: ?sector=, ?category=, ?city=, ?country=
+    const urlParams = new URLSearchParams(window.location.search);
+    this.activeFilters = {
+      sector: urlParams.get('sector') || null,
+      category: urlParams.get('category') || null,
+      city: urlParams.get('city') || null,
+      country: urlParams.get('country') || null,
+    };
+
+    this.updateFilterBanner();
     await this.loadAwards();
     await this.loadEntries();
     this.setupEventListeners();
@@ -88,11 +99,17 @@ const votingSystem = {
   },
 
   /**
-   * Load entries for voting
+   * Load entries for voting, passing any active URL filters to the API
    */
   async loadEntries() {
     try {
-      const { entries } = await votingApi('load_entries');
+      const filterParams = {};
+      if (this.activeFilters.sector) filterParams.sector = this.activeFilters.sector;
+      if (this.activeFilters.category) filterParams.category = this.activeFilters.category;
+      if (this.activeFilters.city) filterParams.city = this.activeFilters.city;
+      if (this.activeFilters.country) filterParams.country = this.activeFilters.country;
+
+      const { entries } = await votingApi('load_entries', filterParams);
 
       this.allEntries = entries || [];
 
@@ -122,6 +139,41 @@ const votingSystem = {
   },
 
   /**
+   * Build a human-readable label from the active filters
+   */
+  buildFilterLabel() {
+    const f = this.activeFilters;
+    if (f.category) return f.category;
+    if (f.sector) return f.sector.charAt(0) + f.sector.slice(1).toLowerCase();
+    if (f.city) return f.city;
+    if (f.country) return f.country.charAt(0).toUpperCase() + f.country.slice(1);
+    return null;
+  },
+
+  /**
+   * Show/hide the filter banner based on active URL filters
+   */
+  updateFilterBanner() {
+    const banner = document.getElementById('filterBanner');
+    if (!banner) return;
+    const label = this.buildFilterLabel();
+    if (label) {
+      banner.innerHTML = `
+        <span class="filter-active-label">
+          <i class="bi bi-funnel-fill me-2"></i>Showing nominees for: <strong>${esc(label)}</strong>
+        </span>
+        <a href="public-voting.html" class="filter-clear-btn">Clear filter &times;</a>
+      `;
+      banner.style.display = 'flex';
+
+      // Update the page <title> for clarity
+      document.title = `${label} Nominees - British Trade Awards`;
+    } else {
+      banner.style.display = 'none';
+    }
+  },
+
+  /**
    * Render entries
    */
   renderEntries(entries) {
@@ -129,10 +181,18 @@ const votingSystem = {
     const grid = document.getElementById('entriesGrid');
 
     if (entriesToRender.length === 0) {
+      const filterLabel = this.buildFilterLabel();
       grid.innerHTML = `
-        <div class="entry-card text-center">
+        <div class="entry-card text-center py-5">
           <i class="bi bi-inbox display-1 opacity-25"></i>
-          <p class="text-muted mt-3">No entries available for voting at this time</p>
+          <p class="text-muted mt-3">
+            ${
+              filterLabel
+                ? `No nominees found for <strong>${esc(filterLabel)}</strong>.<br>
+                 <a href="public-voting.html" class="text-warning">View all nominees</a>`
+                : 'No entries available for voting at this time'
+            }
+          </p>
         </div>
       `;
       return;

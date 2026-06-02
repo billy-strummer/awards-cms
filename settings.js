@@ -1586,7 +1586,7 @@ const settingsModule = {
       // Build region lookup from cached data for display
       const regionMap = {};
       (locationModule._cachedRegions || []).forEach((r) => {
-        regionMap[r.id] = r.display_name;
+        regionMap[r.id] = r.display_name || r.name || '';
       });
       const areaMap = {};
       (locationModule._cachedAreas || []).forEach((a) => {

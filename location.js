@@ -18,12 +18,20 @@ const locationModule = {
 
     this._loadRegionsPromise = (async () => {
       try {
-        const { data } = await apiClient.select('regions', {
-          select: 'id, display_name, country, sort_order',
-          filters: { is_active: true },
-          sort: { column: 'sort_order', ascending: true },
-          pageSize: 100,
-        });
+        // Try new schema first (with display_name/country/sort_order); fall back to legacy (id, name only)
+        const { data } = await apiClient
+          .select('regions', {
+            select: 'id, name, display_name, country, sort_order',
+            sort: { column: 'sort_order', ascending: true },
+            pageSize: 100,
+          })
+          .catch(() =>
+            apiClient.select('regions', {
+              select: 'id, name',
+              sort: { column: 'name', ascending: true },
+              pageSize: 100,
+            })
+          );
         this._cachedRegions = data || [];
       } catch (e) {
         console.warn('locationModule: could not load regions:', e.message);
@@ -54,16 +62,27 @@ const locationModule = {
           regionMap[r.id] = r;
         });
 
-        const { data } = await apiClient.select('areas', {
-          select: 'id, display_name, country, area_type, is_small, sort_order, region_id',
-          filters: { is_active: true },
-          sort: { column: 'sort_order', ascending: true },
-          pageSize: 500,
-        });
+        const { data } = await apiClient
+          .select('areas', {
+            select: 'id, display_name, country, area_type, is_small, sort_order, region_id',
+            filters: { is_active: true },
+            sort: { column: 'sort_order', ascending: true },
+            pageSize: 500,
+          })
+          .catch(async () => {
+            // region_id column may not exist if migration hasn't been run yet — fall back
+            const fallback = await apiClient.select('areas', {
+              select: 'id, display_name, country, area_type, is_small, sort_order',
+              filters: { is_active: true },
+              sort: { column: 'sort_order', ascending: true },
+              pageSize: 500,
+            });
+            return fallback;
+          });
         this._cachedAreas = (data || []).map((a) => ({
           ...a,
           _region: regionMap[a.region_id] || null,
-          _regionName: regionMap[a.region_id]?.display_name || '',
+          _regionName: regionMap[a.region_id]?.display_name || regionMap[a.region_id]?.name || '',
         }));
       } catch (e) {
         console.warn('locationModule: could not load areas:', e.message);
@@ -215,7 +234,7 @@ const locationModule = {
       regions
         .map(
           (r) =>
-            `<option value="${r.id}"${pick === r.id ? ' selected' : ''}>${utils.escapeHtml(r.display_name)}</option>`
+            `<option value="${r.id}"${pick === r.id ? ' selected' : ''}>${utils.escapeHtml(r.display_name || r.name || '')}</option>`
         )
         .join('');
   },

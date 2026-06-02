@@ -21,10 +21,11 @@
   <meta property="og:type" content="website">
   <meta property="og:image" content="BTA_Corporate_Horizontal-Texture.png">
   <meta name="twitter:card" content="summary_large_image">
+  <meta name="description" content="Celebrating excellence in the British trades — meet our award winners.">
 
   <style>
     :root {
-      --gold: #c9a84c;
+      --gold: #C9A227;
       --gold-dark: #a8863a;
       --dark: #1a1a2e;
       --dark-mid: #16213e;
@@ -294,6 +295,12 @@
       .winner-card { flex-wrap: wrap; }
       .share-row { display: none; }
     }
+
+    @media (max-width: 480px) {
+      .winners-grid { grid-template-columns: 1fr !important; }
+      .winner-card { padding: 1rem; }
+      .filter-row { flex-direction: column; gap: 8px; }
+    }
   </style>
 </head>
 <body>
@@ -324,7 +331,7 @@
         Powered by <strong>British Trade Awards</strong>
       </p>
       <p class="mb-0">
-        <a href="https://www.britishtradeawards.com" target="_blank" rel="noopener">britishtradeawards.com</a>
+        <a href="https://www.britishtradeawards.com" target="_blank" rel="noopener noreferrer">britishtradeawards.com</a>
       </p>
     </div>
 

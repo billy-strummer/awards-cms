@@ -20,6 +20,10 @@
 
   // =====================================================
   // NOMINATION CATEGORIES
+  // These are INTENTIONALLY different from config.js STANDARD_CATEGORIES.
+  // STANDARD_CATEGORIES covers trade company/business award categories.
+  // NOMINATION_CATEGORIES covers peer-nominated individual leadership &
+  // special recognition awards — they are a separate award programme.
   // =====================================================
 
   const NOMINATION_CATEGORIES = [
@@ -373,6 +377,31 @@
     },
 
     // --------------------------------------------------
+    // Inline field error helper (marks field + scrolls to it)
+    // --------------------------------------------------
+    _markInvalid: function (input, message) {
+      if (!input) return;
+      input.classList.add('is-invalid');
+      let fb = input.nextElementSibling;
+      if (!fb || !fb.classList.contains('invalid-feedback')) {
+        fb = document.createElement('div');
+        fb.className = 'invalid-feedback';
+        input.parentNode.insertBefore(fb, input.nextSibling);
+      }
+      fb.textContent = message;
+      input.addEventListener(
+        'input',
+        function () {
+          input.classList.remove('is-invalid');
+        },
+        { once: true }
+      );
+      if (typeof input.scrollIntoView === 'function') {
+        input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    },
+
+    // --------------------------------------------------
     // Setup terms checkbox
     // --------------------------------------------------
     setupTermsCheckbox: function () {
@@ -380,7 +409,9 @@
       const submitBtn = document.getElementById('submitBtn');
       if (checkbox && submitBtn) {
         checkbox.addEventListener('change', function () {
-          submitBtn.disabled = !checkbox.checked;
+          const checked = checkbox.checked;
+          submitBtn.disabled = !checked;
+          submitBtn.setAttribute('aria-disabled', checked ? 'false' : 'true');
         });
       }
     },
@@ -410,6 +441,12 @@
       const target = document.getElementById('step' + stepNum);
       if (target) {
         target.classList.add('active');
+        // Move focus to step heading for keyboard/screen-reader users
+        const heading = target.querySelector('h2, h3, [tabindex]');
+        if (heading) {
+          if (!heading.hasAttribute('tabindex')) heading.setAttribute('tabindex', '-1');
+          heading.focus({ preventScroll: true });
+        }
       }
       this.updateProgressIndicator(stepNum);
       this.currentStep = stepNum;
@@ -467,12 +504,11 @@
           const regionGroupEl = document.getElementById('region_group');
           const countyEl = document.getElementById('county_city');
           if (!regionGroupEl || !regionGroupEl.value) {
-            showPublicToast('Please select a region');
+            this._markInvalid(regionGroupEl, 'Please select a region');
             return false;
           }
-          const region = countyEl ? countyEl.value : '';
-          if (!region) {
-            showPublicToast("Please select the nominee's county or city");
+          if (!countyEl || !countyEl.value) {
+            this._markInvalid(countyEl, "Please select the nominee's county or city");
             return false;
           }
           return true;
@@ -480,92 +516,92 @@
         case 3: {
           const isNewBusiness = this.selectedCategory === 'New Business of the Year';
           if (isNewBusiness) {
-            const bizName = document.getElementById('businessName').value.trim();
-            if (!bizName) {
-              showPublicToast('Please enter the business name');
+            const bizNameEl = document.getElementById('businessName');
+            if (!bizNameEl || !bizNameEl.value.trim()) {
+              this._markInvalid(bizNameEl, 'Please enter the business name');
               return false;
             }
-            if (bizName.length < 2) {
-              showPublicToast('Business name must be at least 2 characters');
+            if (bizNameEl.value.trim().length < 2) {
+              this._markInvalid(bizNameEl, 'Business name must be at least 2 characters');
               return false;
             }
-            const bizOwner = document.getElementById('businessOwner').value.trim();
-            if (!bizOwner) {
-              showPublicToast('Please enter the owner / founder name');
+            const bizOwnerEl = document.getElementById('businessOwner');
+            if (!bizOwnerEl || !bizOwnerEl.value.trim()) {
+              this._markInvalid(bizOwnerEl, 'Please enter the owner / founder name');
               return false;
             }
-            const bizDesc = document.getElementById('businessDescription').value.trim();
-            if (!bizDesc) {
-              showPublicToast('Please describe what the business does');
+            const bizDescEl = document.getElementById('businessDescription');
+            if (!bizDescEl || !bizDescEl.value.trim()) {
+              this._markInvalid(bizDescEl, 'Please describe what the business does');
               return false;
             }
-            if (bizDesc.length < 10) {
-              showPublicToast('Please provide a more detailed description (at least 10 characters)');
+            if (bizDescEl.value.trim().length < 10) {
+              this._markInvalid(bizDescEl, 'Please provide a more detailed description (at least 10 characters)');
               return false;
             }
-            const bizYears = document.getElementById('businessYearsTrading').value;
-            if (!bizYears) {
-              showPublicToast('Please select years trading');
+            const bizYearsEl = document.getElementById('businessYearsTrading');
+            if (!bizYearsEl || !bizYearsEl.value) {
+              this._markInvalid(bizYearsEl, 'Please select years trading');
               return false;
             }
           } else {
-            const name = document.getElementById('nomineeName').value.trim();
-            if (!name) {
-              showPublicToast("Please enter the nominee's name");
+            const nameEl = document.getElementById('nomineeName');
+            if (!nameEl || !nameEl.value.trim()) {
+              this._markInvalid(nameEl, "Please enter the nominee's name");
               return false;
             }
-            if (name.length < 2) {
-              showPublicToast('Name must be at least 2 characters');
+            if (nameEl.value.trim().length < 2) {
+              this._markInvalid(nameEl, 'Name must be at least 2 characters');
               return false;
             }
-            const role = document.getElementById('nomineeRole').value.trim();
-            if (!role) {
-              showPublicToast("Please enter the nominee's role or job title");
+            const roleEl = document.getElementById('nomineeRole');
+            if (!roleEl || !roleEl.value.trim()) {
+              this._markInvalid(roleEl, "Please enter the nominee's role or job title");
               return false;
             }
-            const company = document.getElementById('nomineeCompany').value.trim();
-            if (!company) {
-              showPublicToast("Please enter the nominee's company or employer");
+            const companyEl = document.getElementById('nomineeCompany');
+            if (!companyEl || !companyEl.value.trim()) {
+              this._markInvalid(companyEl, "Please enter the nominee's company or employer");
               return false;
             }
           }
           return true;
         }
         case 4: {
-          const reason = document.getElementById('nominationReason').value.trim();
-          if (!reason) {
-            showPublicToast('Please tell us why they deserve this award');
+          const reasonEl = document.getElementById('nominationReason');
+          if (!reasonEl || !reasonEl.value.trim()) {
+            this._markInvalid(reasonEl, 'Please tell us why they deserve this award');
             return false;
           }
-          if (reason.length < 20) {
-            showPublicToast('Please provide more detail (at least 20 characters)');
+          if (reasonEl.value.trim().length < 20) {
+            this._markInvalid(reasonEl, 'Please provide more detail (at least 20 characters)');
             return false;
           }
           return true;
         }
         case 5: {
-          const nomName = document.getElementById('nominatorName').value.trim();
-          const nomEmail = document.getElementById('nominatorEmail').value.trim();
-          const nomPhone = document.getElementById('nominatorPhone').value.trim();
-          const nomRelationship = document.getElementById('nominatorRelationship').value;
-          if (!nomName) {
-            showPublicToast('Please enter your name');
+          const nomNameEl = document.getElementById('nominatorName');
+          const nomEmailEl = document.getElementById('nominatorEmail');
+          const nomPhoneEl = document.getElementById('nominatorPhone');
+          const nomRelEl = document.getElementById('nominatorRelationship');
+          if (!nomNameEl || !nomNameEl.value.trim()) {
+            this._markInvalid(nomNameEl, 'Please enter your name');
             return false;
           }
-          if (!nomRelationship) {
-            showPublicToast('Please select your relationship to the nominee');
+          if (!nomRelEl || !nomRelEl.value) {
+            this._markInvalid(nomRelEl, 'Please select your relationship to the nominee');
             return false;
           }
-          if (!nomEmail) {
-            showPublicToast('Please enter your email address');
+          if (!nomEmailEl || !nomEmailEl.value.trim()) {
+            this._markInvalid(nomEmailEl, 'Please enter your email address');
             return false;
           }
-          if (!this.validateEmail(nomEmail)) {
-            showPublicToast('Please enter a valid email address');
+          if (!this.validateEmail(nomEmailEl.value.trim())) {
+            this._markInvalid(nomEmailEl, 'Please enter a valid email address');
             return false;
           }
-          if (!nomPhone) {
-            showPublicToast('Please enter your phone number');
+          if (!nomPhoneEl || !nomPhoneEl.value.trim()) {
+            this._markInvalid(nomPhoneEl, 'Please enter your phone number');
             return false;
           }
           return true;
@@ -744,6 +780,17 @@
         .then(function (result) {
           const entryNumber = result.entry.entry_number;
           document.getElementById('nominationReference').textContent = entryNumber;
+
+          // Show nominee name and category on success page
+          const successNominee = document.getElementById('success-nominee');
+          const successCategory = document.getElementById('success-category');
+          if (successNominee) {
+            successNominee.textContent = d.nomineeName || d.businessName || '';
+          }
+          if (successCategory) {
+            successCategory.textContent = d.awardCategory || '';
+          }
+
           document.querySelectorAll('.form-step').forEach(function (s) {
             s.classList.remove('active');
           });

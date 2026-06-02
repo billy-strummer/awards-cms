@@ -13,6 +13,19 @@
     .gold-text { color: #ffd700; }
     .badge-winner { background: linear-gradient(135deg, #ffd700, #ffaa00); color: #1a1a2e; font-weight: 700; }
     .trophy-icon { font-size: 4rem; color: #ffd700; }
+    .btn-sm { min-height: 36px; padding: 6px 16px; }
+    @media (max-width: 768px) {
+      .winner-content { padding: 1.5rem 1rem; }
+      .winner-name { font-size: 1.4rem; }
+      .action-buttons { flex-direction: column; gap: 8px; }
+      .action-buttons .btn { width: 100%; }
+      .btn, .btn-sm { min-height: 44px; }
+    }
+    @media (max-width: 480px) {
+      body { padding: 0; }
+      .winner-card { border-radius: 0; margin: 0; }
+      #reader { max-width: 100% !important; width: 100% !important; }
+    }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script type="module" src="config.js"></script>

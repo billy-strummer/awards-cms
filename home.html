@@ -352,6 +352,12 @@
       flex-shrink: 0;
     }
 
+    /* Small btn-gold variant for header and compact contexts */
+    .btn-gold-sm {
+      padding: 10px 24px;
+      font-size: 0.8rem;
+    }
+
     .header-cta .btn-gold {
       padding: 10px 24px;
       font-size: 0.8rem;
@@ -769,7 +775,7 @@
     .categories-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      grid-template-rows: repeat(2, 280px);
+      grid-template-rows: repeat(2, 220px);
       gap: 12px;
     }
 
@@ -803,6 +809,7 @@
       z-index: 0;
     }
     .cat-box:hover .cat-bg-img,
+    .cat-box:active .cat-bg-img,
     .cat-box:focus-within .cat-bg-img,
     .cat-box:focus .cat-bg-img {
       transform: scale(1.06);
@@ -820,12 +827,13 @@
       flex-direction: column;
       justify-content: flex-end;
       background:
-        linear-gradient(to bottom, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.2) 35%, transparent 55%),
-        linear-gradient(to top,    rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.6) 40%, transparent 70%);
+        linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.1) 30%, transparent 50%),
+        linear-gradient(to top,    rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.75) 45%, transparent 75%);
       transition: background var(--transition-med);
     }
 
     .cat-box:hover .cat-box-inner,
+    .cat-box:active .cat-box-inner,
     .cat-box:focus-within .cat-box-inner,
     .cat-box:focus .cat-box-inner {
       background:
@@ -855,6 +863,7 @@
     }
 
     .cat-box:hover .cat-accent,
+    .cat-box:active .cat-accent,
     .cat-box:focus-within .cat-accent,
     .cat-box:focus .cat-accent {
       width: 52px;
@@ -883,6 +892,7 @@
     }
 
     .cat-box:hover .cat-desc,
+    .cat-box:active .cat-desc,
     .cat-box:focus-within .cat-desc,
     .cat-box:focus .cat-desc {
       max-height: 80px;
@@ -902,6 +912,7 @@
     }
 
     .cat-box:hover::after,
+    .cat-box:active::after,
     .cat-box:focus-within::after,
     .cat-box:focus::after {
       border-color: rgba(201, 162, 39, 0.4);
@@ -945,6 +956,7 @@
     }
 
     .country-card:hover,
+    .country-card:active,
     .country-card.active {
       border-color: var(--gold);
       transform: translateY(-3px);
@@ -952,6 +964,7 @@
     }
 
     .country-card:hover::before,
+    .country-card:active::before,
     .country-card.active::before {
       opacity: 1;
     }
@@ -961,7 +974,7 @@
       height: 64px;
       object-fit: cover;
       border-radius: 6px;
-      margin-bottom: 16px;
+      margin: 0 auto 16px;
       display: block;
       box-shadow: 0 2px 8px rgba(0,0,0,0.4);
     }
@@ -1010,7 +1023,7 @@
     }
 
     .regions-accordion.open {
-      max-height: 1200px;
+      max-height: 4000px;
       opacity: 1;
       margin-top: 20px;
     }
@@ -1149,7 +1162,7 @@
     }
 
     .form-input::placeholder {
-      color: #555;
+      color: rgba(255,255,255,0.45);
     }
 
     .form-input:focus {
@@ -1539,7 +1552,7 @@
       }
 
       /* Regional accordion */
-      .regions-accordion.open { max-height: 1200px; }
+      .regions-accordion.open { max-height: 4000px; }
       .regions-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px; }
       .sub-region-chip { padding: 4px 10px; font-size: 0.75rem; }
 
@@ -1616,21 +1629,23 @@
        SKIP LINK (accessibility)
     ============================================================ */
     .skip-link {
-      position: absolute;
+      position: fixed;
       top: -100%;
       left: 16px;
-      background: var(--gold);
-      color: #000;
+      z-index: 10000;
       padding: 8px 16px;
-      border-radius: 0 0 6px 6px;
-      font-weight: 600;
-      font-size: 0.9rem;
-      z-index: 9999;
+      background: #C9A227;
+      color: #000;
+      font-weight: 700;
+      font-size: 0.875rem;
+      border-radius: 4px;
       text-decoration: none;
-      transition: top 0.2s;
+      transition: top 0.15s;
     }
     .skip-link:focus {
-      top: 0;
+      top: 16px;
+      outline: 3px solid #fff;
+      outline-offset: 2px;
     }
 
     /* ============================================================
@@ -2375,6 +2390,17 @@
 </footer>
 
 
+<!-- Category modal — must be in DOM before the inline script runs -->
+<div id="cat-modal" class="cat-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="cat-modal-title" tabindex="-1">
+  <div class="cat-modal-panel">
+    <button class="cat-modal-close" id="cat-modal-close" aria-label="Close category panel">×</button>
+    <p class="cat-modal-label" id="cat-modal-label"></p>
+    <h3 class="cat-modal-title" id="cat-modal-title"></h3>
+    <ul class="cat-modal-list" id="cat-modal-list"></ul>
+    <a href="submit-entry.html" class="btn-gold cat-modal-cta">Enter the Awards →</a>
+  </div>
+</div>
+
 <!-- ============================================================
      JAVASCRIPT — NO INLINE EVENT HANDLERS
 ============================================================ -->
@@ -2896,6 +2922,8 @@
 
   /* ============================================================
      8. CATEGORY MODAL — show sub-categories on card click
+     NOTE: #cat-modal div must exist in DOM before this IIFE runs.
+     It is declared immediately above this <script> block.
   ============================================================ */
   (function initCategoryModal() {
     var SECTOR_CATEGORIES = {
@@ -3041,15 +3069,6 @@
 })();
 </script>
 
-<div id="cat-modal" class="cat-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="cat-modal-title" tabindex="-1">
-  <div class="cat-modal-panel">
-    <button class="cat-modal-close" id="cat-modal-close" aria-label="Close category panel">×</button>
-    <p class="cat-modal-label" id="cat-modal-label"></p>
-    <h3 class="cat-modal-title" id="cat-modal-title"></h3>
-    <ul class="cat-modal-list" id="cat-modal-list"></ul>
-    <a href="submit-entry.html" class="btn-gold cat-modal-cta">Enter the Awards →</a>
-  </div>
-</div>
 
 </body>
 </html>

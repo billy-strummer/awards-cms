@@ -29,10 +29,10 @@
     );
     const url = encodeURIComponent(window.location.href);
     return `
-      <a href="https://twitter.com/intent/tweet?text=${text}&url=${url}" target="_blank" rel="noopener" class="share-btn share-btn-twitter" aria-label="Share on Twitter">
+      <a href="https://twitter.com/intent/tweet?text=${text}&url=${url}" target="_blank" rel="noopener noreferrer" class="share-btn share-btn-twitter" aria-label="Share on Twitter">
         <i class="bi bi-twitter-x"></i> Share
       </a>
-      <a href="https://www.linkedin.com/sharing/share-offsite/?url=${url}" target="_blank" rel="noopener" class="share-btn share-btn-linkedin" aria-label="Share on LinkedIn">
+      <a href="https://www.linkedin.com/sharing/share-offsite/?url=${url}" target="_blank" rel="noopener noreferrer" class="share-btn share-btn-linkedin" aria-label="Share on LinkedIn">
         <i class="bi bi-linkedin"></i> Share
       </a>`;
   }
@@ -64,8 +64,9 @@
             const label = placementLabel(w.placement);
             const badgeClass = placementBadgeClass(w.placement);
             const isFirst = label === 'Winner';
+            const winnerName = escapeHtml(w.company_name || w.name || 'Award winner');
             const logoHtml = w.logo_url
-              ? `<img src="${escapeHtml(w.logo_url)}" alt="${escapeHtml(w.company_name)} logo" class="org-logo">`
+              ? `<img src="${escapeHtml(w.logo_url)}" alt="${winnerName}" class="org-logo">`
               : `<div class="org-logo-placeholder"><i class="bi bi-building"></i></div>`;
 
             return `<div class="winner-card${isFirst ? ' winner-first' : ''}">
@@ -73,7 +74,10 @@
           <div class="winner-info">
             <div class="company-name">${escapeHtml(w.company_name)}</div>
             <div class="award-label">${escapeHtml(w.award_name)}</div>
-            <div class="share-row">${shareLinks(w.company_name, w.award_name)}</div>
+            <div class="share-row">
+              ${shareLinks(w.company_name, w.award_name)}
+              ${w.profile_url ? `<a href="${escapeHtml(w.profile_url)}" target="_blank" rel="noopener noreferrer" class="share-btn" aria-label="View profile of ${winnerName}" style="background:rgba(255,255,255,0.1);color:#f0f0f0;">View Profile</a>` : ''}
+            </div>
           </div>
           <span class="placement-badge ${badgeClass}">${escapeHtml(label)}</span>
         </div>`;
@@ -91,6 +95,15 @@
   }
 
   async function loadWinners() {
+    // Show explicit loading state before fetch begins
+    document.getElementById('winnersContent').innerHTML = `
+      <div class="loading-state">
+        <div class="spinner-border mb-3" role="status">
+          <span class="visually-hidden">Loading winners...</span>
+        </div>
+        <p class="mt-2">Loading winners…</p>
+      </div>`;
+
     try {
       const res = await fetch(API_BASE + '/api/voting-proxy', {
         method: 'POST',

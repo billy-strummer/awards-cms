@@ -1,0 +1,27 @@
+User-agent: *
+
+# Public pages — allow indexing
+Allow: /home.html
+Allow: /submit-entry.html
+Allow: /nominate.html
+Allow: /vote.html
+Allow: /public-voting.html
+Allow: /public-winners.html
+Allow: /privacy-policy.html
+
+# Admin, judge, and protected pages — block indexing
+Disallow: /index.html
+Disallow: /judge-login.html
+Disallow: /judge-portal.html
+Disallow: /register.html
+Disallow: /payment-success.html
+Disallow: /payment-cancelled.html
+Disallow: /upload-documents.html
+Disallow: /submit-entry-payment.html
+Disallow: /company-profile.html
+Disallow: /winners-portal.html
+Disallow: /check-in.html
+Disallow: /award-nominees.html
+Disallow: /api/
+
+Sitemap: https://britishtradeawards.com/sitemap.xml

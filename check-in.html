@@ -51,7 +51,7 @@
     #scannerContainer {
       padding: 16px; display: flex; flex-direction: column; align-items: center;
     }
-    #reader { width: 100%; max-width: 400px; border-radius: 12px; overflow: hidden; }
+    #reader { width: 100%; max-width: min(400px, 100%); border-radius: 12px; overflow: hidden; }
     #reader video { border-radius: 12px; }
 
     /* Search mode */
@@ -109,6 +109,19 @@
       to { transform: scale(1); opacity: 1; }
     }
 
+    @media (max-width: 768px) {
+      .check-in-container { padding: 1rem; }
+      .ci-stats { flex-wrap: wrap; gap: 8px; }
+      .ci-stat { flex: 1 1 40%; }
+      .search-input-wrap { width: 100%; }
+    }
+    @media (max-width: 480px) {
+      #reader { max-width: 100% !important; width: 100% !important; }
+      .mode-toggle { flex-direction: row; width: 100%; }
+      .mode-toggle .btn { flex: 1; font-size: 0.85rem; padding: 10px 8px; }
+      body { padding: 0; }
+    }
+
     /* Loading */
     #loadingState {
       position: fixed; inset: 0; background: var(--brand-primary);
@@ -163,10 +176,10 @@
 
     <!-- Mode Toggle -->
     <div class="mode-toggle">
-      <button class="btn btn-primary" id="btnScanMode" data-action="switchMode" data-id="scan">
+      <button class="btn btn-primary" id="btnScanMode" data-action="switchMode" data-id="scan" aria-label="Scan QR code">
         <i class="bi bi-camera me-1"></i>Scan QR
       </button>
-      <button class="btn btn-outline-light" id="btnSearchMode" data-action="switchMode" data-id="search">
+      <button class="btn btn-outline-light" id="btnSearchMode" data-action="switchMode" data-id="search" aria-label="Search by name">
         <i class="bi bi-search me-1"></i>Search Name
       </button>
     </div>

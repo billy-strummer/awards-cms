@@ -377,8 +377,14 @@
         if (el && counter) {
           el.addEventListener('input', () => {
             const len = el.value.length;
-            counter.textContent = `${len.toLocaleString()} / ${max.toLocaleString()}`;
-            counter.classList.toggle('warn', len > max * 0.9);
+            const remaining = max - len;
+            const isWarn = len > max * 0.9;
+            counter.classList.toggle('warn', isWarn);
+            if (isWarn) {
+              counter.textContent = `${remaining >= 0 ? remaining : 0} characters remaining (max ${max.toLocaleString()})`;
+            } else {
+              counter.textContent = `${len.toLocaleString()} / ${max.toLocaleString()}`;
+            }
           });
         }
       });
@@ -392,7 +398,9 @@
       const submitBtn = document.getElementById('submitBtn');
       if (checkbox && submitBtn) {
         checkbox.addEventListener('change', () => {
-          submitBtn.disabled = !checkbox.checked;
+          const isDisabled = !checkbox.checked;
+          submitBtn.disabled = isDisabled;
+          submitBtn.setAttribute('aria-disabled', String(isDisabled));
         });
       }
     },
@@ -543,6 +551,12 @@
       const target = document.getElementById(`step${stepNum}`);
       if (target) {
         target.classList.add('active');
+        // Move focus to step heading for keyboard/screen-reader users
+        const heading = target.querySelector('h2, h3, [tabindex]');
+        if (heading) {
+          if (!heading.hasAttribute('tabindex')) heading.setAttribute('tabindex', '-1');
+          heading.focus({ preventScroll: true });
+        }
       }
       this.updateProgressIndicator(stepNum);
       this.currentStep = stepNum;
@@ -829,7 +843,10 @@
       const checkbox = document.getElementById('termsCheckbox');
       const submitBtn = document.getElementById('submitBtn');
       if (checkbox) checkbox.checked = false;
-      if (submitBtn) submitBtn.disabled = true;
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.setAttribute('aria-disabled', 'true');
+      }
     },
 
     // --------------------------------------------------
@@ -892,6 +909,10 @@
 
         // Show success
         document.getElementById('entryReference').textContent = entryNumber;
+        const successCompany = document.getElementById('success-company');
+        const successCategory = document.getElementById('success-category');
+        if (successCompany) successCompany.textContent = this.formData.companyName || '';
+        if (successCategory) successCategory.textContent = this.formData.awardCategory || '';
         document.querySelectorAll('.form-step').forEach((s) => s.classList.remove('active'));
         document.getElementById('stepSuccess').classList.add('active');
 

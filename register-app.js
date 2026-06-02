@@ -332,6 +332,7 @@ function checkPaymentReturn() {
 async function submitRegistration() {
   const btn = document.getElementById('submitBtn');
   btn.disabled = true;
+  btn.setAttribute('aria-busy', 'true');
   btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Processing...';
 
   try {
@@ -380,6 +381,7 @@ async function submitRegistration() {
     console.error('Registration error:', err);
     showPublicToast('Registration failed: ' + err.message, 'error');
     btn.disabled = false;
+    btn.setAttribute('aria-busy', 'false');
     const btnText = document.getElementById('submitBtnText');
     if (btnText) btnText.textContent = 'Confirm Registration';
   }

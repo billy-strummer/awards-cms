@@ -42,8 +42,7 @@
     }
   },
   "rewrites": [
-    { "source": "/(.*)\\.html", "destination": "/$1.html" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/((?!.*\\.[a-zA-Z0-9]{1,8}$).*)", "destination": "/index.html" }
   ],
   "headers": [
     {

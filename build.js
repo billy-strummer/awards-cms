@@ -346,6 +346,8 @@ async function build() {
     'public-utils.js',
     'footer-year.js',
     'global-actions.js',
+    'home.js',
+    'home-data.js',
   ];
 
   publicJsFiles.forEach((file) => {

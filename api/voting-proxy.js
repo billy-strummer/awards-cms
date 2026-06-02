@@ -370,19 +370,19 @@ async function sendVoteConfirmation({ voter_email, company_name, award_name, ent
  */
 async function loadPublicSectors() {
   const [sectorsResult, catsResult] = await Promise.all([
-    supabase.from('custom_sectors').select('id, name, display_name').eq('is_active', true).order('display_name'),
-    supabase.from('custom_categories').select('id, name, sector, display_name').eq('is_active', true).order('name'),
+    supabase.from('custom_sectors').select('id, name').eq('is_active', true).order('name'),
+    supabase.from('custom_categories').select('id, name, sector_name').eq('is_active', true).order('name'),
   ]);
 
   const sectors = sectorsResult.data || [];
   const rawCats = catsResult.data || [];
 
-  // Group categories by sector name
+  // Group categories by sector_name (matches what settings.js writes)
   const categories = {};
   rawCats.forEach(function (cat) {
-    if (!cat.sector) return;
-    if (!categories[cat.sector]) categories[cat.sector] = [];
-    categories[cat.sector].push(cat.display_name || cat.name);
+    if (!cat.sector_name) return;
+    if (!categories[cat.sector_name]) categories[cat.sector_name] = [];
+    categories[cat.sector_name].push(cat.name);
   });
 
   return { sectors, categories };

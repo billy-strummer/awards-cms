@@ -2491,7 +2491,7 @@
         var m   = metaMap[sector] || {};
         var num = String(idx + 1).padStart(2, '0');
         var img = m.image ? 'images/categories/' + esc(m.image) : '';
-        return '<a href="submit-entry.html" class="cat-box reveal' + delays[idx % 4] + '" ' +
+        return '<a href="public-voting.html?sector=' + encodeURIComponent(sector) + '" class="cat-box reveal' + delays[idx % 4] + '" ' +
           'data-sector="' + esc(sector) + '" ' +
           'aria-label="' + esc(m.ariaLabel || m.displayName || sector) + '">' +
           (img ? '<img class="cat-bg-img" src="' + img + '" alt="" loading="lazy">' : '') +
@@ -2530,27 +2530,56 @@
     .then(function (r) { return r.json(); })
     .then(function (res) {
       var cms = res || {};
-      // Only re-render if the CMS has custom sectors defined
-      if (!cms.sectors || !cms.sectors.length) return;
+      var hasCustomSectors = cms.sectors && cms.sectors.length > 0;
+      var hasCustomCats = cms.categories && Object.keys(cms.categories).length > 0;
+      // Only re-render when the CMS actually has extra data to add
+      if (!hasCustomSectors && !hasCustomCats) return;
 
-      // Build merged sector→categories map from CMS data
+      // Start with a copy of all standard sectors
       var mergedCats = {};
-      cms.sectors.forEach(function (s) {
-        var key = (s.display_name || s.name || '').toUpperCase();
-        if (!key) return;
-        mergedCats[key] = cms.categories[key] || cms.categories[s.name] || sectorCats[key] || [];
+      var mergedMeta = {};
+      Object.keys(sectorCats).forEach(function (key) {
+        mergedCats[key] = sectorCats[key].slice();
+        mergedMeta[key] = sectorMeta[key] || {};
       });
 
-      // Build merged meta: prefer static meta, fall back to generated
-      var mergedMeta = {};
-      Object.keys(mergedCats).forEach(function (key) {
-        mergedMeta[key] = sectorMeta[key] || {
-          displayName: key.charAt(0) + key.slice(1).toLowerCase(),
-          description: '',
-          image: '',
-          ariaLabel: key,
-        };
-      });
+      // Merge custom categories into their parent sectors.
+      // CMS stores sector_name exactly as typed, e.g. "PLUMBING & HEATING".
+      // Standard sector keys are also uppercase, so a direct lookup works.
+      if (cms.categories) {
+        Object.keys(cms.categories).forEach(function (sectorKey) {
+          var normKey = sectorKey.toUpperCase();
+          if (!mergedCats[normKey]) {
+            // New custom sector — add it
+            mergedCats[normKey] = [];
+            mergedMeta[normKey] = {
+              displayName: sectorKey.charAt(0).toUpperCase() + sectorKey.slice(1).toLowerCase(),
+              description: '',
+              image: '',
+              ariaLabel: sectorKey,
+            };
+          }
+          // Append any categories not already present
+          cms.categories[sectorKey].forEach(function (cat) {
+            if (mergedCats[normKey].indexOf(cat) === -1) mergedCats[normKey].push(cat);
+          });
+        });
+      }
+
+      // Ensure every custom sector appears even if it has no categories yet
+      if (cms.sectors) {
+        cms.sectors.forEach(function (s) {
+          var key = (s.name || '').toUpperCase();
+          if (!key || mergedCats[key]) return;
+          mergedCats[key] = [];
+          mergedMeta[key] = {
+            displayName: s.name.charAt(0).toUpperCase() + s.name.slice(1).toLowerCase(),
+            description: '',
+            image: '',
+            ariaLabel: s.name,
+          };
+        });
+      }
 
       renderGrid(mergedCats, mergedMeta);
     })

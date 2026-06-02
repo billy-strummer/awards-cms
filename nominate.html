@@ -601,15 +601,55 @@
       margin-bottom: 12px;
     }
 
-    /* ── Sub-region picker ── */
-    #county_city_wrapper {
-      margin-top: 16px;
-      animation: fadeSlideIn 0.2s ease;
-    }
-
+    /* ── Country / Region cascade picker ── */
     @keyframes fadeSlideIn {
       from { opacity: 0; transform: translateY(-6px); }
       to   { opacity: 1; transform: translateY(0); }
+    }
+    .country-picker {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 4px;
+    }
+    .country-pick-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 6px;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      background: #fff;
+      cursor: pointer;
+      transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #1a1a1a;
+      font-family: 'Inter', sans-serif;
+    }
+    .country-pick-btn img {
+      width: 64px;
+      height: 40px;
+      object-fit: cover;
+      border-radius: 4px;
+      border: 1px solid #e8eaf0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .country-pick-btn:hover {
+      border-color: var(--gold);
+      box-shadow: 0 4px 12px rgba(201,162,39,0.2);
+      transform: translateY(-2px);
+    }
+    .country-pick-btn.selected {
+      border-color: var(--gold);
+      background: rgba(201,162,39,0.06);
+      box-shadow: 0 0 0 3px rgba(201,162,39,0.25);
+    }
+    #region_wrapper,
+    #county_city_wrapper {
+      margin-top: 14px;
+      animation: fadeSlideIn 0.2s ease;
     }
 
     /* ── Tablet ── */
@@ -662,6 +702,8 @@
       .review-value { text-align: left; }
       .review-label { min-width: auto; }
       .review-section { padding: 16px; }
+      .country-picker { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+      .country-pick-btn img { width: 52px; height: 33px; }
     }
   </style>
 </head>
@@ -721,17 +763,45 @@
         <div class="form-step" id="step2">
           <div class="form-section">
             <h2 class="step-question">Where is the nominee based?</h2>
-            <p class="step-subtitle">Select their region, then their specific county, city or borough.</p>
-            <label class="visually-hidden" for="region_group">Region</label>
-            <select class="form-select form-select-lg" id="region_group" required aria-label="Select region">
-              <option value="">Select region</option>
-            </select>
+            <p class="step-subtitle">Select their country, then region, then town or borough.</p>
+
+            <!-- 1. Country flag cards -->
+            <div class="country-picker" id="country_picker" role="group" aria-label="Select nominee's country">
+              <button type="button" class="country-pick-btn" data-country="england" aria-pressed="false">
+                <img src="images/flags/England.png" alt="England flag">
+                <span>England</span>
+              </button>
+              <button type="button" class="country-pick-btn" data-country="scotland" aria-pressed="false">
+                <img src="images/flags/Scotland.png" alt="Scotland flag">
+                <span>Scotland</span>
+              </button>
+              <button type="button" class="country-pick-btn" data-country="wales" aria-pressed="false">
+                <img src="images/flags/Wales.png" alt="Wales flag">
+                <span>Wales</span>
+              </button>
+              <button type="button" class="country-pick-btn" data-country="northern-ireland" aria-pressed="false">
+                <img src="images/flags/United Kingdom.png" alt="Northern Ireland flag">
+                <span>Northern Ireland</span>
+              </button>
+            </div>
+            <input type="hidden" id="selected_country" value="">
+
+            <!-- 2. Region select (slides in after country) -->
+            <div id="region_wrapper" style="display:none;" aria-live="polite">
+              <label class="visually-hidden" for="region_group">Region</label>
+              <select class="form-select form-select-lg" id="region_group" required aria-label="Select region">
+                <option value="">Select region</option>
+              </select>
+            </div>
+
+            <!-- 3. County / City / Borough select (slides in after region) -->
             <div id="county_city_wrapper" style="display:none;" aria-live="polite">
               <label class="visually-hidden" for="county_city">County, city or borough</label>
               <select class="form-select form-select-lg" id="county_city" required aria-label="Select county, city or borough">
                 <option value="">Select county, city or borough</option>
               </select>
             </div>
+
             <button type="button" class="btn btn-next" data-action="nominateApp.nextStep" data-args="[2]">
               Next <i class="bi bi-arrow-right ms-2" aria-hidden="true"></i>
             </button>
@@ -962,6 +1032,9 @@
 
   <!-- Configuration (provides REGIONS, SUPABASE_CONFIG) -->
   <script type="module" src="config.js"></script>
+
+  <!-- Region/sector/category data — loaded from home-data.js (single source of truth) -->
+  <script src="home-data.js"></script>
 
   <!-- Nomination Form Logic -->
   <script src="nominate.js"></script>

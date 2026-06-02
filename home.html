@@ -427,6 +427,8 @@
       transform: translateY(0);
       opacity: 1;
       pointer-events: auto;
+      bottom: 0;
+      overflow-y: auto;
     }
 
     .mobile-menu-inner {
@@ -1117,6 +1119,105 @@
     }
 
     /* ============================================================
+       SECTION 3.5 — FEATURED NOMINEES
+    ============================================================ */
+    #nominees {
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border-subtle);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .nominees-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+      gap: 20px;
+      margin: clamp(32px, 5vw, 56px) 0 clamp(32px, 5vw, 48px);
+    }
+
+    .nominee-card {
+      background: #1a1a1a;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: transform var(--transition-med), border-color var(--transition-med), box-shadow var(--transition-med);
+    }
+
+    .nominee-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--border-gold);
+      box-shadow: 0 8px 28px rgba(0,0,0,0.4), 0 0 0 1px rgba(201,162,39,0.2);
+    }
+
+    .nominee-logo-wrap {
+      width: 56px;
+      height: 56px;
+      border-radius: 8px;
+      background: #2a2a2a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .nominee-logo-wrap img {
+      width: 56px;
+      height: 56px;
+      object-fit: contain;
+    }
+
+    .nominee-category-badge {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--gold);
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+    }
+
+    .nominee-company-name {
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--text-primary);
+      line-height: 1.3;
+    }
+
+    .nominee-entry-title {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .nominee-vote-btn {
+      margin-top: auto;
+      padding: 9px 18px;
+      background: linear-gradient(135deg, #a07d1a 0%, #C9A227 50%, #e8c84a 100%);
+      color: #1a1100;
+      border-radius: var(--radius-sm);
+      font-weight: 700;
+      font-size: 0.85rem;
+      text-align: center;
+      text-decoration: none;
+      transition: box-shadow var(--transition-fast), transform var(--transition-fast);
+      display: block;
+    }
+
+    .nominee-vote-btn:hover {
+      box-shadow: 0 4px 14px rgba(201,162,39,0.4);
+      transform: scale(1.02);
+    }
+
+    .nominees-cta-wrap {
+      text-align: center;
+    }
+
+    /* ============================================================
        SECTION 5 — FIND A TRADE
     ============================================================ */
     #find-a-trade {
@@ -1459,6 +1560,10 @@
     @media (max-width: 768px) {
       :root { --header-h: 60px; }
 
+      /* Push hero content above true-center so the scroll indicator
+         fills the bottom rather than leaving blank black space */
+      #hero { padding-bottom: 80px; }
+
       .header-nav,
       .header-cta {
         display: none;
@@ -1526,7 +1631,8 @@
       }
       .hero-cta-group .btn-gold,
       .hero-cta-group .btn-ghost { width: 100%; max-width: 280px; justify-content: center; }
-      .hero-scroll-hint { display: none; }
+      /* scroll indicator visible on mobile — gives context to the blank hero bottom */
+      .hero-scroll-hint { display: flex; }
 
       /* Feature boxes */
       .feature-box { padding: 20px; }
@@ -1725,6 +1831,11 @@
       transition: border-color 0.15s, color 0.15s;
     }
     .cat-modal-list li:hover { border-color: rgba(201,162,39,0.4); color: #fff; }
+    .cat-entry-link {
+      display: block; color: inherit; text-decoration: none;
+      width: 100%; height: 100%;
+    }
+    .cat-entry-link:hover { color: #fff; }
     .cat-modal-cta { display: inline-block; text-decoration: none; }
     @media (max-width: 480px) {
       .cat-modal-list { grid-template-columns: 1fr; }
@@ -1970,101 +2081,42 @@
       <h2 class="section-heading reveal" id="categories-heading">
         Find your <span class="gold-underline">Category</span>
       </h2>
-      <p class="section-sub reveal reveal-delay-1">
-        Eight award categories spanning the full breadth of Britain's skilled trades industry
+      <p class="section-sub reveal reveal-delay-1" id="categories-sub">
+        Award categories spanning the full breadth of Britain's skilled trades industry
       </p>
     </div>
 
-    <div class="categories-grid" aria-label="Award categories">
+    <!-- Populated dynamically by initCategoryGrid() from BTA_HOME_DATA / CMS -->
+    <div class="categories-grid" id="categories-grid" aria-label="Award categories"></div>
 
-      <!-- 1 -->
-      <a href="submit-entry.html" class="cat-box reveal" data-sector="BUILDING &amp; CONSTRUCTION" aria-label="Building and Construction — From groundworks to roofing, the full build spectrum">
-        <img class="cat-bg-img" src="images/categories/building-construction.jpg" alt="" loading="lazy">
-        <div class="cat-box-inner">
-          <span class="cat-number" aria-hidden="true">01</span>
-          <div class="cat-accent" aria-hidden="true"></div>
-          <h3 class="cat-name">Building &amp; Construction</h3>
-          <p class="cat-desc">From groundworks to roofing, the full build spectrum</p>
-        </div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     SECTION 3.5 — FEATURED NOMINEES (populated from API)
+============================================================ -->
+<section id="nominees" style="display:none;" aria-labelledby="nominees-heading">
+  <div class="container section-pad">
+
+    <div class="section-intro">
+      <h2 class="section-heading reveal" id="nominees-heading">
+        Meet the <span class="gold-underline">Nominees</span>
+      </h2>
+      <p class="section-sub reveal reveal-delay-1">
+        Public voting is open — cast your vote for the best tradespeople in Britain
+      </p>
+    </div>
+
+    <div class="nominees-grid" id="nominees-grid" aria-label="Featured nominees">
+      <!-- Populated by initNominees() -->
+    </div>
+
+    <div class="nominees-cta-wrap reveal">
+      <a href="public-voting.html" class="btn-gold">
+        See All Nominees &amp; Vote
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
       </a>
-
-      <!-- 2 -->
-      <a href="submit-entry.html" class="cat-box reveal reveal-delay-1" data-sector="MECHANICAL, ELECTRICAL &amp; PLUMBING" aria-label="Mechanical, Electrical and Plumbing — The essential services keeping Britain's homes running">
-        <img class="cat-bg-img" src="images/categories/mechanical-electrical-plumbing.jpg" alt="" loading="lazy">
-        <div class="cat-box-inner">
-          <span class="cat-number" aria-hidden="true">02</span>
-          <div class="cat-accent" aria-hidden="true"></div>
-          <h3 class="cat-name">Mechanical, Electrical &amp; Plumbing</h3>
-          <p class="cat-desc">The essential services keeping Britain's homes running</p>
-        </div>
-      </a>
-
-      <!-- 3 -->
-      <a href="submit-entry.html" class="cat-box reveal reveal-delay-2" data-sector="CARPENTRY &amp; JOINERY" aria-label="Carpentry and Joinery — Crafting bespoke woodwork with precision and artistry">
-        <img class="cat-bg-img" src="images/categories/carpentry-joinery.jpg" alt="" loading="lazy">
-        <div class="cat-box-inner">
-          <span class="cat-number" aria-hidden="true">03</span>
-          <div class="cat-accent" aria-hidden="true"></div>
-          <h3 class="cat-name">Carpentry &amp; Joinery</h3>
-          <p class="cat-desc">Crafting bespoke woodwork with precision and artistry</p>
-        </div>
-      </a>
-
-      <!-- 4 -->
-      <a href="submit-entry.html" class="cat-box reveal reveal-delay-3" data-sector="INTERIOR FIT-OUT &amp; FINISHING" aria-label="Interior Fit-Out and Finishing — Transforming interiors with expert installations">
-        <img class="cat-bg-img" src="images/categories/interior-fitout.jpg" alt="" loading="lazy">
-        <div class="cat-box-inner">
-          <span class="cat-number" aria-hidden="true">04</span>
-          <div class="cat-accent" aria-hidden="true"></div>
-          <h3 class="cat-name">Interior Fit-Out &amp; Finishing</h3>
-          <p class="cat-desc">Transforming interiors with expert installations</p>
-        </div>
-      </a>
-
-      <!-- 5 -->
-      <a href="submit-entry.html" class="cat-box reveal" data-sector="OUTDOOR &amp; LANDSCAPING" aria-label="Outdoor and Landscaping — Creating stunning outdoor spaces across Britain">
-        <img class="cat-bg-img" src="images/categories/outdoor-landscaping.jpg" alt="" loading="lazy">
-        <div class="cat-box-inner">
-          <span class="cat-number" aria-hidden="true">05</span>
-          <div class="cat-accent" aria-hidden="true"></div>
-          <h3 class="cat-name">Outdoor &amp; Landscaping</h3>
-          <p class="cat-desc">Creating stunning outdoor spaces across Britain</p>
-        </div>
-      </a>
-
-      <!-- 6 -->
-      <a href="submit-entry.html" class="cat-box reveal reveal-delay-1" data-sector="ENERGY, TECH &amp; SUSTAINABILITY" aria-label="Energy, Tech and Sustainability — Powering Britain's green future">
-        <img class="cat-bg-img" src="images/categories/energy-tech-sustainability.jpg" alt="" loading="lazy">
-        <div class="cat-box-inner">
-          <span class="cat-number" aria-hidden="true">06</span>
-          <div class="cat-accent" aria-hidden="true"></div>
-          <h3 class="cat-name">Energy, Tech &amp; Sustainability</h3>
-          <p class="cat-desc">Powering Britain's green future</p>
-        </div>
-      </a>
-
-      <!-- 7 -->
-      <a href="submit-entry.html" class="cat-box reveal reveal-delay-2" data-sector="SPECIALIST TRADES" aria-label="Specialist Trades — Niche expertise, exceptional results">
-        <img class="cat-bg-img" src="images/categories/specialist-trades.jpg" alt="" loading="lazy">
-        <div class="cat-box-inner">
-          <span class="cat-number" aria-hidden="true">07</span>
-          <div class="cat-accent" aria-hidden="true"></div>
-          <h3 class="cat-name">Specialist Trades</h3>
-          <p class="cat-desc">Niche expertise, exceptional results</p>
-        </div>
-      </a>
-
-      <!-- 8 -->
-      <a href="submit-entry.html" class="cat-box reveal reveal-delay-3" data-sector="INDUSTRY LEADERSHIP" aria-label="Industry Leadership — Recognising outstanding leadership in the trades">
-        <img class="cat-bg-img" src="images/categories/industry-leadership.svg" alt="" loading="lazy">
-        <div class="cat-box-inner">
-          <span class="cat-number" aria-hidden="true">08</span>
-          <div class="cat-accent" aria-hidden="true"></div>
-          <h3 class="cat-name">Industry Leadership</h3>
-          <p class="cat-desc">Recognising outstanding leadership in the trades</p>
-        </div>
-      </a>
-
     </div>
 
   </div>
@@ -2401,6 +2453,9 @@
   </div>
 </div>
 
+<!-- Home page data — single source of truth for sectors, categories, regions, flags -->
+<script src="home-data.js"></script>
+
 <!-- ============================================================
      JAVASCRIPT — NO INLINE EVENT HANDLERS
 ============================================================ -->
@@ -2409,9 +2464,133 @@
   'use strict';
 
   /* ============================================================
+     0. CATEGORY GRID — render from BTA_HOME_DATA, optionally
+        refreshed with CMS-managed custom sectors from the API.
+  ============================================================ */
+  try { (function initCategoryGrid() {
+    var grid = document.getElementById('categories-grid');
+    if (!grid) return;
+
+    var data = window.BTA_HOME_DATA || {};
+    var sectorCats = data.sectorCategories || {};
+    var sectorMeta = data.sectorMeta || {};
+
+    function esc(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function renderGrid(catMap, metaMap) {
+      var sectors = Object.keys(catMap);
+      var delays  = ['', ' reveal-delay-1', ' reveal-delay-2', ' reveal-delay-3'];
+      var sub = document.getElementById('categories-sub');
+      if (sub) sub.textContent = sectors.length + ' award categor' + (sectors.length === 1 ? 'y' : 'ies') + ' spanning the full breadth of Britain\'s skilled trades industry';
+
+      grid.innerHTML = sectors.map(function (sector, idx) {
+        var m   = metaMap[sector] || {};
+        var num = String(idx + 1).padStart(2, '0');
+        var img = m.image ? 'images/categories/' + esc(m.image) : '';
+        return '<a href="public-voting.html?sector=' + encodeURIComponent(sector) + '" class="cat-box reveal' + delays[idx % 4] + '" ' +
+          'data-sector="' + esc(sector) + '" ' +
+          'aria-label="' + esc(m.ariaLabel || m.displayName || sector) + '">' +
+          (img ? '<img class="cat-bg-img" src="' + img + '" alt="" loading="lazy">' : '') +
+          '<div class="cat-box-inner">' +
+            '<span class="cat-number" aria-hidden="true">' + num + '</span>' +
+            '<div class="cat-accent" aria-hidden="true"></div>' +
+            '<h3 class="cat-name">' + esc(m.displayName || sector) + '</h3>' +
+            '<p class="cat-desc">' + esc(m.description || '') + '</p>' +
+          '</div>' +
+        '</a>';
+      }).join('');
+
+      // Re-attach click handlers (initCategoryModal uses event delegation so this is fine)
+      // Re-observe for reveal animations
+      if ('IntersectionObserver' in window) {
+        var obs = new IntersectionObserver(function (entries_io) {
+          entries_io.forEach(function (e) {
+            if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); }
+          });
+        }, { threshold: 0.05 });
+        grid.querySelectorAll('.cat-box.reveal').forEach(function (el) { obs.observe(el); });
+      } else {
+        grid.querySelectorAll('.cat-box.reveal').forEach(function (el) { el.classList.add('visible'); });
+      }
+    }
+
+    // Render immediately from static data
+    renderGrid(sectorCats, sectorMeta);
+
+    // Optionally fetch CMS-managed sectors/categories and re-render if present
+    fetch('/api/voting-proxy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'load_public_sectors' })
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (res) {
+      var cms = res || {};
+      var hasCustomSectors = cms.sectors && cms.sectors.length > 0;
+      var hasCustomCats = cms.categories && Object.keys(cms.categories).length > 0;
+      // Only re-render when the CMS actually has extra data to add
+      if (!hasCustomSectors && !hasCustomCats) return;
+
+      // Start with a copy of all standard sectors
+      var mergedCats = {};
+      var mergedMeta = {};
+      Object.keys(sectorCats).forEach(function (key) {
+        mergedCats[key] = sectorCats[key].slice();
+        mergedMeta[key] = sectorMeta[key] || {};
+      });
+
+      // Merge custom categories into their parent sectors.
+      // CMS stores sector_name exactly as typed, e.g. "PLUMBING & HEATING".
+      // Standard sector keys are also uppercase, so a direct lookup works.
+      if (cms.categories) {
+        Object.keys(cms.categories).forEach(function (sectorKey) {
+          var normKey = sectorKey.toUpperCase();
+          if (!mergedCats[normKey]) {
+            // New custom sector — add it
+            mergedCats[normKey] = [];
+            mergedMeta[normKey] = {
+              displayName: sectorKey.charAt(0).toUpperCase() + sectorKey.slice(1).toLowerCase(),
+              description: '',
+              image: '',
+              ariaLabel: sectorKey,
+            };
+          }
+          // Append any categories not already present
+          cms.categories[sectorKey].forEach(function (cat) {
+            if (mergedCats[normKey].indexOf(cat) === -1) mergedCats[normKey].push(cat);
+          });
+        });
+      }
+
+      // Ensure every custom sector appears even if it has no categories yet
+      if (cms.sectors) {
+        cms.sectors.forEach(function (s) {
+          var key = (s.name || '').toUpperCase();
+          if (!key || mergedCats[key]) return;
+          mergedCats[key] = [];
+          mergedMeta[key] = {
+            displayName: s.name.charAt(0).toUpperCase() + s.name.slice(1).toLowerCase(),
+            description: '',
+            image: '',
+            ariaLabel: s.name,
+          };
+        });
+      }
+
+      renderGrid(mergedCats, mergedMeta);
+    })
+    .catch(function () { /* keep static render on API error */ });
+  }) (); } catch(e) { console.warn('[BTA] initCategoryGrid', e); }
+
+
+  /* ============================================================
      1. SMART STICKY HEADER
   ============================================================ */
-  (function initHeader() {
+  try { (function initHeader() {
     var header     = document.getElementById('site-header');
     var lastY      = 0;
     var ticking    = false;
@@ -2444,13 +2623,13 @@
 
     window.addEventListener('scroll', onScroll, { passive: true });
     updateHeader();
-  })();
+  }) (); } catch(e) { console.warn('[BTA] initHeader', e); }
 
 
   /* ============================================================
      2. MOBILE HAMBURGER MENU
   ============================================================ */
-  (function initMobileMenu() {
+  try { (function initMobileMenu() {
     var btn        = document.getElementById('hamburger-btn');
     var menu       = document.getElementById('mobile-menu');
     var navLinks   = menu.querySelectorAll('.mobile-nav-link, .btn-gold');
@@ -2492,13 +2671,13 @@
         close();
       }
     });
-  })();
+  }) (); } catch(e) { console.warn('[BTA] initMobileMenu', e); }
 
 
   /* ============================================================
      3. INTERSECTION OBSERVER — REVEAL ANIMATIONS
   ============================================================ */
-  (function initReveal() {
+  try { (function initReveal() {
     var elements = document.querySelectorAll('.reveal');
 
     if (!('IntersectionObserver' in window)) {
@@ -2518,116 +2697,22 @@
           }
         });
       },
-      { threshold: 0.12, rootMargin: '0px 0px -40px 0px' }
+      { threshold: 0.05, rootMargin: '0px 0px 0px 0px' }
     );
 
     elements.forEach(function (el) {
       observer.observe(el);
     });
-  })();
+  }) (); } catch(e) { console.warn('[BTA] initReveal', e); }
 
 
   /* ============================================================
      4. REGIONAL ACCORDION
   ============================================================ */
-  (function initRegions() {
-
-    // Flag filename map — location name → images/flags/<filename>
-    var FLAG_MAP = {
-      // North West
-      'Cheshire': 'Cheshire.png', 'Cumbria': 'Cumbria.png', 'Lancashire': 'Lancashire.png',
-      'Liverpool': 'Liverpool County_Merseyside.png', 'Manchester': 'Manchester.png',
-      // North East
-      'County Durham': 'County Durham.png', 'Northumberland': 'Northumberland.png',
-      'Tyne & Wear': 'Tyne & Wear.png', 'Newcastle': 'Newcastle.png', 'Middlesbrough': 'Middlesbrough.png',
-      // Yorkshire
-      'East Yorkshire': 'East Yorkshire.png', 'North Yorkshire': 'North Yorkshire.png',
-      'South Yorkshire': 'Unofficial_South Yorkshire.png', 'West Yorkshire': 'West Yorkshire.png',
-      'Leeds': 'Leeds diocese.png', 'Sheffield': 'Sheffield diocese.png',
-      // East Midlands
-      'Derbyshire': 'Derbyshire.png', 'Leicestershire': 'Leicestershire.png',
-      'Lincolnshire': 'Lincolnshire.png', 'Northamptonshire': 'Northamptonshire.png',
-      'Nottinghamshire': 'Nottinghamshire.png', 'Rutland': 'Rutland.png',
-      'Leicester': 'Leicester diocese.png', 'Nottingham': 'Nottingham diocese.png',
-      // West Midlands
-      'Herefordshire': 'Herefordshire.png', 'Shropshire': 'Shropshire.png',
-      'Staffordshire': 'Staffordshire.png', 'Warwickshire': 'Warwickshire.png',
-      'Worcestershire': 'Worcestershire.png', 'Birmingham': 'Birmingham.png', 'Coventry': 'Coventry.png',
-      // East of England
-      'Bedfordshire': 'Bedfordshire.png', 'Cambridgeshire': 'Cambridgeshire.png',
-      'Essex': 'Essex.png', 'Hertfordshire': 'Hertfordshire.png',
-      'Norfolk': 'Norfolk.png', 'Suffolk': 'Suffolk.png',
-      // London — all 33 boroughs use the London flag
-      'Barking & Dagenham': 'London.png', 'Barnet': 'London.png', 'Bexley': 'London.png',
-      'Brent': 'London.png', 'Bromley': 'London.png', 'Camden': 'London.png',
-      'City of London': 'London.png', 'Croydon': 'London.png', 'Ealing': 'London.png',
-      'Enfield': 'London.png', 'Greenwich': 'London.png', 'Hackney': 'London.png',
-      'Hammersmith & Fulham': 'London.png', 'Haringey': 'London.png', 'Harrow': 'London.png',
-      'Havering': 'London.png', 'Hillingdon': 'London.png', 'Hounslow': 'London.png',
-      'Islington': 'London.png', 'Kensington & Chelsea': 'London.png',
-      'Kingston upon Thames': 'London.png', 'Lambeth': 'London.png', 'Lewisham': 'London.png',
-      'Merton': 'London.png', 'Newham': 'London.png', 'Redbridge': 'London.png',
-      'Richmond upon Thames': 'London.png', 'Southwark': 'London.png', 'Sutton': 'London.png',
-      'Tower Hamlets': 'London.png', 'Waltham Forest': 'London.png',
-      'Wandsworth': 'London.png', 'Westminster': 'London.png',
-      // South East
-      'Berkshire': 'Berkshire.png', 'Buckinghamshire': 'Buckinghamshire.png',
-      'East Sussex': 'East Sussex.png', 'Hampshire': 'Hampshire.png',
-      'Isle of Wight': 'Isle of Wight.png', 'Kent': 'Kent.png',
-      'Oxfordshire': 'Oxfordshire.png', 'Surrey': 'Surrey.png',
-      'West Sussex': 'West Sussex.png', 'Brighton & Hove': 'Brighton & Hove.png',
-      'Southampton': 'Southampton.png',
-      // South West
-      'Cornwall': 'Cornwall.png', 'Devon': 'Devon.png', 'Dorset': 'Dorset.png',
-      'Gloucestershire': 'Gloucestershire.png', 'Somerset': 'Somerset.png',
-      'Wiltshire': 'Wiltshire.png', 'Bournemouth': 'Bournemouth.png', 'Bristol': 'Bristol.png',
-      // Wales
-      'Cardiff': 'Cardiff.png', 'Swansea': 'Swansea.png', 'Wrexham': 'Wrexham.png',
-      'Anglesey': 'Anglesey.png', 'Carmarthen': 'Carmarthenshire.png',
-      'Ceredigion': 'Ceredigion.png', 'Conwy': 'Conwy Wales.png',
-      'Denbighshire': 'Denbighshire.png', 'Flintshire': 'Flintshire.png',
-      'Glamorgan': 'Glamorgan.png', 'Gwent': 'Gwent.png',
-      'Gwynedd': 'Gwynedd.png', 'Pembrokeshire': 'Pembrokeshire.png', 'Powys': 'Powys.png',
-      'Conwy & Denbighshire': 'Conwy Wales.png', 'Gwynedd & Anglesey': 'Gwynedd.png',
-      'Carmarthenshire': 'Carmarthenshire.png',
-      // Scotland
-      'Edinburgh': 'Edinburgh.png', 'Glasgow': 'Glasgow.png',
-    };
-
-    // Sub-region data
-    var SUB_REGIONS = {
-      england: {
-        'North West':      ['Cheshire','Cumbria','Lancashire','Liverpool','Manchester'],
-        'North East':      ['County Durham','Northumberland','Tyne & Wear','Newcastle','Middlesbrough','Gateshead','Sunderland'],
-        'Yorkshire':       ['East Yorkshire','North Yorkshire','South Yorkshire','West Yorkshire','Leeds','Sheffield','Bradford','York','Hull'],
-        'East Midlands':   ['Derbyshire','Leicestershire','Lincolnshire','Northamptonshire','Nottinghamshire','Rutland','Leicester','Nottingham'],
-        'West Midlands':   ['Herefordshire','Shropshire','Staffordshire','Warwickshire','Worcestershire','Birmingham','Coventry'],
-        'East of England': ['Bedfordshire','Cambridgeshire','Essex','Hertfordshire','Norfolk','Suffolk'],
-        'London':          ['Barking & Dagenham','Barnet','Bexley','Brent','Bromley','Camden','City of London','Croydon','Ealing','Enfield','Greenwich','Hackney','Hammersmith & Fulham','Haringey','Harrow','Havering','Hillingdon','Hounslow','Islington','Kensington & Chelsea','Kingston upon Thames','Lambeth','Lewisham','Merton','Newham','Redbridge','Richmond upon Thames','Southwark','Sutton','Tower Hamlets','Waltham Forest','Wandsworth','Westminster'],
-        'South East':      ['Berkshire','Buckinghamshire','East Sussex','Hampshire','Isle of Wight','Kent','Oxfordshire','Surrey','West Sussex','Brighton & Hove','Reading','Southampton'],
-        'South West':      ['Cornwall','Devon','Dorset','Gloucestershire','Somerset','Wiltshire','Bournemouth','Bristol'],
-      },
-      scotland: {
-        'Central Scotland':      ['Glasgow', 'Stirling', 'Falkirk', 'Clackmannanshire', 'Lanarkshire', 'Dunbartonshire'],
-        'Highlands':             ['Inverness', 'Fort William', 'Elgin', 'Aviemore', 'Wick'],
-        'Grampian':              ['Aberdeen', 'Fraserburgh', 'Peterhead', 'Inverurie'],
-        'Tayside':               ['Dundee', 'Perth', 'Arbroath', 'Kirriemuir'],
-        'Fife':                  ['St Andrews', 'Dunfermline', 'Kirkcaldy', 'Glenrothes'],
-        'Lothian':               ['Edinburgh', 'Livingston', 'Haddington', 'Linlithgow'],
-        'Strathclyde':           ['Glasgow', 'Paisley', 'Ayr', 'Kilmarnock', 'Hamilton', 'Greenock', 'Ayrshire', 'Renfrewshire', 'Argyll & Bute'],
-        'Borders':               ['Galashiels', 'Hawick', 'Jedburgh', 'Peebles', 'Scottish Borders'],
-        'Dumfries & Galloway':   ['Dumfries', 'Stranraer', 'Newton Stewart', 'Kirkcudbright'],
-        'Islands':               ['Skye', 'Orkney', 'Shetland', 'Lewis', 'Arran', 'Scottish Islands'],
-      },
-      wales: {
-        'North Wales':           ['Wrexham', 'Bangor', 'Llandudno', 'Rhyl', 'Holyhead', 'Conwy', 'Conwy & Denbighshire', 'Flintshire', 'Gwynedd & Anglesey'],
-        'Mid Wales':             ['Aberystwyth', 'Welshpool', 'Newtown', 'Brecon', 'Llandrindod Wells', 'Ceredigion', 'Powys'],
-        'South West Wales':      ['Swansea', 'Neath', 'Port Talbot', 'Pembroke', 'Carmarthen', 'Milford Haven', 'Carmarthenshire', 'Pembrokeshire'],
-        'South East Wales':      ['Newport', 'Merthyr Tydfil', 'Tredegar', 'Ebbw Vale', 'Pontypool', 'Gwent'],
-        'Cardiff Capital Region':['Cardiff', 'Vale of Glamorgan', 'Rhondda', 'Pontypridd', 'Caerphilly', 'Glamorgan'],
-        'Swansea Bay':           ['Swansea', 'Port Talbot', 'Neath', 'Bridgend'],
-      },
-    };
+  try { (function initRegions() {
+    // Pull region/flag data from BTA_HOME_DATA (home-data.js) — single source of truth
+    var FLAG_MAP    = (window.BTA_HOME_DATA && window.BTA_HOME_DATA.flagMap)    || {};
+    var SUB_REGIONS = (window.BTA_HOME_DATA && window.BTA_HOME_DATA.regionData) || {};
 
     var cards       = document.querySelectorAll('.country-card');
     var activeCard  = null;
@@ -2709,7 +2794,9 @@
           var flag = FLAG_MAP[loc]
             ? '<img class="chip-flag" src="images/flags/' + encodeURIComponent(FLAG_MAP[loc]) + '" alt="" aria-hidden="true">'
             : '';
-          return '<a href="submit-entry.html" class="sub-region-chip">' + flag + escapeHtml(loc) + '</a>';
+          // Link to nominees page filtered by city/county
+          var href = 'public-voting.html?city=' + encodeURIComponent(loc) + '&country=' + encodeURIComponent(countryRef);
+          return '<a href="' + href + '" class="sub-region-chip">' + flag + escapeHtml(loc) + '</a>';
         }).join('');
         subContainer.classList.add('open');
       } else {
@@ -2717,13 +2804,13 @@
         subContainer.classList.add('open');
       }
     });
-  })();
+  }) (); } catch(e) { console.warn('[BTA] initRegions', e); }
 
 
   /* ============================================================
      5. FIND A TRADE — AUTOCOMPLETE + GEOLOCATION
   ============================================================ */
-  (function initFindTrade() {
+  try { (function initFindTrade() {
     var LOCATIONS = [
       'Kent', 'Surrey', 'Essex', 'Yorkshire', 'Lancashire',
       'Somerset', 'Devon', 'Cornwall', 'Sussex', 'Hampshire',
@@ -2881,7 +2968,7 @@
           '<strong>Please enter a location</strong> or select a category to search.';
       }
     });
-  })();
+  }) (); } catch(e) { console.warn('[BTA] initFindTrade', e); }
 
 
   /* ============================================================
@@ -2900,7 +2987,7 @@
   /* ============================================================
      7. SMOOTH SCROLL — polyfill anchor-scroll offsets for header
   ============================================================ */
-  (function initSmoothScroll() {
+  try { (function initSmoothScroll() {
     var OFFSET = 80; // header height compensation
 
     document.querySelectorAll('a[href^="#"]').forEach(function (anchor) {
@@ -2917,7 +3004,7 @@
         window.scrollTo({ top: Math.max(0, top), behavior: prefersReducedMotion ? 'instant' : 'smooth' });
       });
     });
-  })();
+  }) (); } catch(e) { console.warn('[BTA] initSmoothScroll', e); }
 
 
   /* ============================================================
@@ -2925,51 +3012,9 @@
      NOTE: #cat-modal div must exist in DOM before this IIFE runs.
      It is declared immediately above this <script> block.
   ============================================================ */
-  (function initCategoryModal() {
-    var SECTOR_CATEGORIES = {
-      'BUILDING & CONSTRUCTION': [
-        'Brickwork & Masonry Company','Drainage Company','Extension Company',
-        'General Building Company','Groundworks & Foundations Company','Guttering Company',
-        'Loft Conversion Company','Maintenance Services','New Build Company',
-        'Roofing Company','Structural Engineers','Structural Steelworks'
-      ],
-      'CARPENTRY & JOINERY': [
-        'Cabinet Maker','Carpentry Company','Joinery Company',
-        'Staircase Specialist','Timber Windows Installer'
-      ],
-      'INTERIOR FIT-OUT & FINISHING': [
-        'Bathroom Installer','Carpet Fitters','Curtains & Blinds Installer',
-        'Drylining Company','Flooring Installer','Home Office Installer',
-        'Interior Refurbishment Company','Kitchen Installer',
-        'Painting & Decorating Company','Plastering Company',
-        'Screeding Company','Tiling Installer'
-      ],
-      'MECHANICAL, ELECTRICAL & PLUMBING': [
-        'Air-Conditioning & Ventilation Company','Electrical Company',
-        'Heating Company','Plumbing Company','Underfloor Heating Company'
-      ],
-      'OUTDOOR & LANDSCAPING': [
-        'Decking Company','Driveway & Paving Company','Fencing Installer',
-        'Gardening Services','Garden Outbuilding Company',
-        'Landscaping & Garden Design Company',
-        'Outdoor Lighting & Electrical Company','Tree Surgery Services'
-      ],
-      'SPECIALIST TRADES': [
-        'Asbestos Removal Specialist','Locksmith','Pest Control Company',
-        'Rendering Company','Scaffolding Company','Shop Fitting Company',
-        'Swimming Pool & Hot Tub Company','Window & Door Installer'
-      ],
-      'ENERGY, TECH & SUSTAINABILITY': [
-        'EV Charger Installer','Insulation & Energy Efficiency Company',
-        'PV Installer','Renewable Energy Specialist',
-        'Security System Installer','Smart Home & Automation Company'
-      ],
-      'INDUSTRY LEADERSHIP': [
-        'Employer of the Year','Business Leader of the Year','Innovation Award',
-        'Apprenticeship Employer of the Year','Community Impact Award',
-        'Net Zero & Sustainability Award','Rising Star Award'
-      ]
-    };
+  try { (function initCategoryModal() {
+    // Pull categories from BTA_HOME_DATA (home-data.js) — single source of truth
+    var SECTOR_CATEGORIES = (window.BTA_HOME_DATA && window.BTA_HOME_DATA.sectorCategories) || {};
 
     var modal     = document.getElementById('cat-modal');
     var closeBtn  = document.getElementById('cat-modal-close');
@@ -2986,10 +3031,16 @@
       labelEl.textContent = 'Award Categories';
       titleEl.textContent = sectorKey.replace(/&amp;/g, '&');
 
-      // Build list items using escapeHtml to avoid XSS
+      var sectorParam = encodeURIComponent(sectorKey);
+      // Category items link to the public voting page filtered by sector + category
       listEl.innerHTML = cats.map(function (cat) {
-        return '<li>' + escapeHtml(cat) + '</li>';
+        var href = 'public-voting.html?sector=' + sectorParam + '&category=' + encodeURIComponent(cat);
+        return '<li><a href="' + href + '" class="cat-entry-link">' + escapeHtml(cat) + '</a></li>';
       }).join('');
+
+      // "Enter the Awards" CTA stays on the entry form, pre-selected to this sector
+      var ctaEl = document.querySelector('.cat-modal-cta');
+      if (ctaEl) ctaEl.href = 'submit-entry.html?sector=' + sectorParam;
 
       modal.classList.add('open');
       modal.focus();
@@ -3021,13 +3072,74 @@
         closeModal();
       }
     });
-  })();
+  }) (); } catch(e) { console.warn('[BTA] initCategoryModal', e); }
 
 
   /* ============================================================
-     9. HERO VIDEO — pause when offscreen (performance)
+     9. FEATURED NOMINEES — load from public voting API
   ============================================================ */
-  (function initVideo() {
+  try { (function initNominees() {
+    var section = document.getElementById('nominees');
+    var grid    = document.getElementById('nominees-grid');
+    if (!section || !grid) return;
+
+    fetch('/api/voting-proxy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'load_entries' })
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      var entries = (data.entries || []).slice(0, 6);
+      if (!entries.length) return; // keep section hidden if no live nominees
+
+      section.style.display = '';
+
+      grid.innerHTML = entries.map(function (entry) {
+        var org   = entry.organisations || {};
+        var award = entry.awards || {};
+        var awardLabel = award.award_name || entry.award_category || '';
+
+        var logoHtml = org.logo_url
+          ? '<div class="nominee-logo-wrap"><img src="' + escapeHtml(org.logo_url) + '" alt="" loading="lazy"></div>'
+          : '<div class="nominee-logo-wrap" aria-hidden="true">' +
+              '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="1.5">' +
+                '<rect x="2" y="7" width="20" height="14" rx="2"/>' +
+                '<path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>' +
+              '</svg>' +
+            '</div>';
+
+        var voteHref = 'vote.html?id=' + encodeURIComponent(entry.id);
+
+        return '<div class="nominee-card reveal">' +
+          logoHtml +
+          (awardLabel ? '<div class="nominee-category-badge">' + escapeHtml(awardLabel) + '</div>' : '') +
+          '<div class="nominee-company-name">' + escapeHtml(org.company_name || 'Nominee') + '</div>' +
+          (entry.entry_title ? '<div class="nominee-entry-title">' + escapeHtml(entry.entry_title) + '</div>' : '') +
+          '<a href="' + voteHref + '" class="nominee-vote-btn">Vote Now →</a>' +
+        '</div>';
+      }).join('');
+
+      // Wire up reveal observer for newly injected cards
+      if ('IntersectionObserver' in window) {
+        var obs = new IntersectionObserver(function (entries_io) {
+          entries_io.forEach(function (e) {
+            if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); }
+          });
+        }, { threshold: 0.05 });
+        grid.querySelectorAll('.nominee-card.reveal').forEach(function (el) { obs.observe(el); });
+      } else {
+        grid.querySelectorAll('.nominee-card.reveal').forEach(function (el) { el.classList.add('visible'); });
+      }
+    })
+    .catch(function (e) { console.warn('[BTA] Nominees load failed:', e.message); });
+  }) (); } catch(e) { console.warn('[BTA] initNominees', e); }
+
+
+  /* ============================================================
+     10. HERO VIDEO — pause when offscreen (performance)
+  ============================================================ */
+  try { (function initVideo() {
     var video = document.getElementById('hero-video');
     if (!video) return;
 
@@ -3064,7 +3176,7 @@
 
       obs.observe(video);
     }
-  })();
+  }) (); } catch(e) { console.warn('[BTA] initVideo', e); }
 
 })();
 </script>

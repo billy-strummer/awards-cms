@@ -223,8 +223,8 @@ async function handleDataExport(req, res) {
 
 async function handleGetPublicData(_req, res) {
   const [sectorsResult, catsResult] = await Promise.all([
-    supabase.from('custom_sectors').select('id, name, display_name').eq('is_active', true).order('display_name'),
-    supabase.from('custom_categories').select('id, name, sector, county').eq('is_active', true).order('name'),
+    supabase.from('custom_sectors').select('id, name').eq('is_active', true).order('name'),
+    supabase.from('custom_categories').select('id, name, sector_name').eq('is_active', true).order('name'),
   ]);
   return res.status(200).json({
     custom_sectors: sectorsResult.data || [],

@@ -76,20 +76,26 @@ async function loadAwards() {
 
 /**
  * load_entries — return public entries with org & award data, max 500.
- * Results are cached for 60 seconds to avoid hammering Supabase under concurrent voter surge.
+ * Accepts optional filter params: sector, category (award_category), city (county_city), country (selected_country).
+ * Unfiltered results are cached for 60 seconds; filtered requests always hit the database.
  */
-async function loadEntries(_params, res) {
-  const useCache = process.env.NODE_ENV !== 'test';
+async function loadEntries(params, res) {
+  const { sector, category, city, country } = params || {};
+  const hasFilters = !!(sector || category || city || country);
+
+  // Only use in-memory cache for the full unfiltered list
+  const useCache = process.env.NODE_ENV !== 'test' && !hasFilters;
   if (useCache && _entriesCache.data && Date.now() - _entriesCache.ts < ENTRIES_CACHE_TTL_MS) {
     res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=60');
     return { entries: _entriesCache.data };
   }
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('entries')
     .select(
       `
-      id, entry_number, entry_title, public_votes, status,
+      id, entry_number, entry_title, entry_description, public_votes, status,
+      sector, award_category, county_city, selected_country,
       organisations(company_name, logo_url, website),
       awards:award_years(award_name, award_category)
     `
@@ -100,6 +106,14 @@ async function loadEntries(_params, res) {
     .neq('is_deleted', true)
     .order('public_votes', { ascending: false })
     .limit(500);
+
+  // Apply optional filters (truncated to prevent abnormally long values)
+  if (sector) query = query.eq('sector', String(sector).substring(0, 100));
+  if (category) query = query.eq('award_category', String(category).substring(0, 100));
+  if (city) query = query.eq('county_city', String(city).substring(0, 100));
+  if (country) query = query.eq('selected_country', String(country).substring(0, 50));
+
+  const { data, error } = await query;
 
   if (error) throw error;
   if (useCache) {
@@ -349,6 +363,31 @@ async function sendVoteConfirmation({ voter_email, company_name, award_name, ent
   }
 }
 
+/**
+ * load_public_sectors — return CMS-managed sectors and categories for the home page.
+ * Falls back to an empty result if the custom_sectors / custom_categories tables are
+ * not yet populated; the front-end falls back to the static data in home-data.js.
+ */
+async function loadPublicSectors() {
+  const [sectorsResult, catsResult] = await Promise.all([
+    supabase.from('custom_sectors').select('id, name').eq('is_active', true).order('name'),
+    supabase.from('custom_categories').select('id, name, sector_name').eq('is_active', true).order('name'),
+  ]);
+
+  const sectors = sectorsResult.data || [];
+  const rawCats = catsResult.data || [];
+
+  // Group categories by sector_name (matches what settings.js writes)
+  const categories = {};
+  rawCats.forEach(function (cat) {
+    if (!cat.sector_name) return;
+    if (!categories[cat.sector_name]) categories[cat.sector_name] = [];
+    categories[cat.sector_name].push(cat.name);
+  });
+
+  return { sectors, categories };
+}
+
 async function loadWinners() {
   const now = new Date().toISOString();
   const { data, error } = await supabase
@@ -386,6 +425,7 @@ async function loadWinners() {
 const ACTIONS = {
   load_awards: loadAwards,
   load_entries: loadEntries,
+  load_public_sectors: loadPublicSectors,
   check_votes: checkVotes,
   check_rate_limit: checkRateLimit,
   check_existing_vote: checkExistingVote,

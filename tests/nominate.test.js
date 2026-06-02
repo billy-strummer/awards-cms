@@ -24,7 +24,13 @@ const dom = new JSDOM(
 
   <!-- Step 2 – Region -->
   <div id="step2" class="form-step">
-    <select id="region_group"><option value="">Select region</option><option value="South East">South East</option></select>
+    <div id="country_picker">
+      <button type="button" class="country-pick-btn" data-country="england" aria-pressed="false">England</button>
+    </div>
+    <input type="hidden" id="selected_country" value="">
+    <div id="region_wrapper" style="display:none;">
+      <select id="region_group"><option value="">Select region</option><option value="South East">South East</option></select>
+    </div>
     <div id="county_city_wrapper" style="display:none;">
       <select id="county_city"><option value="">Select...</option><option value="Kent">Kent</option></select>
     </div>
@@ -84,9 +90,11 @@ const { window: win } = dom;
 // Polyfills
 win.fetch = jest.fn();
 win.requestAnimationFrame = (cb) => setTimeout(cb, 0);
+win.Element.prototype.scrollIntoView = jest.fn();
 
 win.SUPABASE_CONFIG = { url: 'https://test.supabase.co', anonKey: 'test-key' };
 win.REGIONS_GROUPED = { 'South East': ['Kent', 'Surrey'], 'London Boroughs': ['Camden', 'Westminster'] };
+win.REGION_DATA = { england: { 'South East': ['Kent', 'Surrey'], 'London Boroughs': ['Camden', 'Westminster'] } };
 win.COUNTIES_CITIES = ['Kent', 'Surrey', 'Camden', 'Westminster'];
 win.REGIONS = win.COUNTIES_CITIES;
 win.SECTORS = ['BUILDING & CONSTRUCTION'];
@@ -113,6 +121,8 @@ beforeEach(() => {
   app.currentStep = 1;
   app.formData = {};
   app.selectedCategory = null;
+  const sc = getEl('selected_country');
+  if (sc) sc.value = '';
   jest.clearAllMocks();
 });
 
@@ -161,12 +171,14 @@ describe('nominateApp - validateStep()', () => {
   });
 
   test('step 2 returns false when region_group set but county_city empty', () => {
+    getEl('selected_country').value = 'england';
     getEl('region_group').value = 'South East';
     getEl('county_city').value = '';
     expect(app.validateStep(2)).toBe(false);
   });
 
   test('step 2 returns true when both region_group and county_city selected', () => {
+    getEl('selected_country').value = 'england';
     getEl('region_group').value = 'South East';
     getEl('county_city').value = 'Kent';
     expect(app.validateStep(2)).toBe(true);

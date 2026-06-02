@@ -218,6 +218,52 @@
       this.setupTermsCheckbox();
       this.updateProgressIndicator(1);
       this._checkDraftRestore();
+      this._applyUrlParams();
+    },
+
+    // Pre-populate form from URL params (deep links from home.html chips/category cards)
+    _applyUrlParams() {
+      const params = new URLSearchParams(window.location.search);
+      const country = params.get('country');
+      const region = params.get('region');
+      const city = params.get('city');
+      const sector = params.get('sector');
+      const category = params.get('category');
+
+      // Country → region → city cascade (synchronous, uses REGION_DATA)
+      if (country) {
+        this.handleCountrySelect(country);
+        if (region) {
+          const regionEl = document.getElementById('region_group');
+          if (regionEl) {
+            regionEl.value = region;
+            this.handleRegionGroupChange();
+            if (city) {
+              const cityEl = document.getElementById('county_city');
+              if (cityEl) cityEl.value = city;
+            }
+          }
+        }
+      }
+
+      // Sector + category — config.js is a module (deferred), so read after window load
+      if (sector || category) {
+        const applySelects = () => {
+          if (sector) {
+            const sectorEl = document.getElementById('sector');
+            if (sectorEl) sectorEl.value = sector;
+          }
+          if (category) {
+            const awardCatEl = document.getElementById('awardCategory');
+            if (awardCatEl) awardCatEl.value = category;
+          }
+        };
+        if (document.readyState === 'complete') {
+          applySelects();
+        } else {
+          window.addEventListener('load', applySelects, { once: true });
+        }
+      }
     },
 
     _checkDraftRestore() {
@@ -301,44 +347,73 @@
     },
 
     // --------------------------------------------------
-    // Populate region group dropdown (step 1 of the two-step picker)
+    // Set up country flag card handlers (step 1 — first of three levels)
     // --------------------------------------------------
     populateRegions() {
+      document.querySelectorAll('#country_picker .country-pick-btn').forEach((btn) => {
+        btn.addEventListener('click', () => this.handleCountrySelect(btn.dataset.country));
+      });
+      // Wire region select change once (select exists in DOM from load)
       const regionGroupSelect = document.getElementById('region_group');
-      if (!regionGroupSelect) return;
-
-      const grouped = window.REGIONS_GROUPED;
-      const flat = window.COUNTIES_CITIES || window.REGIONS || [];
-
-      if (!grouped && !flat.length) {
-        console.warn('No counties/cities found in config');
-        return;
+      if (regionGroupSelect) {
+        regionGroupSelect.addEventListener('change', () => this.handleRegionGroupChange());
       }
-
-      let html = '<option value="">Select your region</option>';
-
-      if (grouped && Object.keys(grouped).length > 0) {
-        Object.keys(grouped).forEach((groupName) => {
-          html += `<option value="${this.escapeHtml(groupName)}">${this.escapeHtml(groupName)}</option>`;
-        });
-      } else {
-        // Fallback: treat the flat list as a single group
-        html += '<option value="__all__">United Kingdom</option>';
-      }
-
-      regionGroupSelect.innerHTML = html;
-      regionGroupSelect.addEventListener('change', () => this.handleRegionGroupChange());
     },
 
-    // Populate the county/city sub-picker when a region is chosen
-    // --------------------------------------------------
+    // Country card clicked → show region select for that country
+    handleCountrySelect(country) {
+      document.querySelectorAll('#country_picker .country-pick-btn').forEach((btn) => {
+        const active = btn.dataset.country === country;
+        btn.classList.toggle('selected', active);
+        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+      });
+
+      const countryInput = document.getElementById('selected_country');
+      if (countryInput) countryInput.value = country;
+
+      // Clear any country-level error
+      const picker = document.getElementById('country_picker');
+      if (picker) {
+        const fb = picker.nextElementSibling;
+        if (fb && fb.classList.contains('invalid-feedback')) fb.style.display = 'none';
+      }
+
+      const regionSelect = document.getElementById('region_group');
+      const regionWrapper = document.getElementById('region_wrapper');
+      const countyWrapper = document.getElementById('county_city_wrapper');
+      const countySelect = document.getElementById('county_city');
+      if (!regionSelect || !regionWrapper) return;
+
+      // Populate region options for this country
+      const regions = (window.REGION_DATA || {})[country] || {};
+      regionSelect.innerHTML = '<option value="">Select your region</option>';
+      Object.keys(regions).forEach((r) => {
+        const opt = document.createElement('option');
+        opt.value = r;
+        opt.textContent = r;
+        regionSelect.appendChild(opt);
+      });
+      regionSelect.value = '';
+      regionWrapper.style.display = 'block';
+
+      // Reset county picker
+      if (countyWrapper) countyWrapper.style.display = 'none';
+      if (countySelect) {
+        countySelect.value = '';
+        countySelect.innerHTML = '<option value="">Select your county, city or borough</option>';
+      }
+
+      setTimeout(() => regionSelect.focus(), 50);
+    },
+
+    // Region selected → show county/city/borough select
     handleRegionGroupChange() {
+      const country = document.getElementById('selected_country')?.value;
       const groupName = document.getElementById('region_group')?.value;
       const wrapper = document.getElementById('county_city_wrapper');
       const countySelect = document.getElementById('county_city');
       if (!wrapper || !countySelect) return;
 
-      // Reset sub-picker
       countySelect.value = '';
       countySelect.innerHTML = '<option value="">Select your county, city or borough</option>';
 
@@ -347,8 +422,8 @@
         return;
       }
 
-      const grouped = window.REGIONS_GROUPED;
-      const options = grouped ? grouped[groupName] || [] : window.COUNTIES_CITIES || window.REGIONS || [];
+      const regions = (window.REGION_DATA || {})[country] || {};
+      const options = regions[groupName] || [];
 
       options.forEach((opt) => {
         const el = document.createElement('option');
@@ -358,7 +433,7 @@
       });
 
       wrapper.style.display = 'block';
-      countySelect.focus();
+      setTimeout(() => countySelect.focus(), 50);
     },
 
     // --------------------------------------------------
@@ -624,6 +699,22 @@
     validateStep(stepNum) {
       switch (stepNum) {
         case 1: {
+          const country = document.getElementById('selected_country')?.value;
+          if (!country) {
+            const picker = document.getElementById('country_picker');
+            if (picker) {
+              let fb = picker.nextElementSibling;
+              if (!fb || !fb.classList.contains('invalid-feedback')) {
+                fb = document.createElement('div');
+                fb.className = 'invalid-feedback';
+                picker.parentNode.insertBefore(fb, picker.nextSibling);
+              }
+              fb.style.display = 'block';
+              fb.textContent = 'Please select your country';
+              picker.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            return false;
+          }
           const regionGroup = document.getElementById('region_group');
           const countyCity = document.getElementById('county_city');
           if (!regionGroup?.value) {
@@ -728,6 +819,7 @@
     saveStepData(stepNum) {
       switch (stepNum) {
         case 1:
+          this.formData.selected_country = document.getElementById('selected_country')?.value || '';
           this.formData.region_group = document.getElementById('region_group')?.value || '';
           this.formData.county_city = document.getElementById('county_city')?.value || '';
           break;
@@ -784,7 +876,7 @@
           Award Details
           <span class="review-edit-btn float-end" data-action="entryFormApp.goToStep" data-args="[1]">Edit</span>
         </div>
-        ${row('Area', d.region_group && d.county_city ? `${d.region_group} › ${d.county_city}` : d.county_city)}
+        ${row('Location', [this.toTitleCase((d.selected_country || '').replace(/-/g, ' ')), d.region_group, d.county_city].filter(Boolean).join(' › '))}
         ${row('Sector', this.toTitleCase(d.sector || ''))}
         ${row('Category', d.awardCategory)}
       </div>
@@ -864,6 +956,8 @@
         const result = await entryApi({
           action: 'submit_entry',
           companyName: this.formData.companyName,
+          selected_country: this.formData.selected_country,
+          region_group: this.formData.region_group,
           county_city: this.formData.county_city,
           sector: this.formData.sector,
           contactEmail: this.formData.contactEmail,

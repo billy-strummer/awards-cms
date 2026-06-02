@@ -120,6 +120,7 @@
         "check-schema.js",
         "diagnose.js",
         "bulk-csv-importer.js",
+        "clear-test-data.js",
         "jest.config.js",
         "jest-esm-transform.js",
         "scripts/**/*.js"

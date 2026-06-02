@@ -56,6 +56,7 @@ const JS_FILES = [
   'calendar.js',
   'rate-limiting.js',
   'winner-announcements.js',
+  'ui-init.js',
   'app.js',
   'btc-module.js',
 ];

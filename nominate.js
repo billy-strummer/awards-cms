@@ -382,7 +382,7 @@
     _markInvalid: function (input, message) {
       if (!input) return;
       input.classList.add('is-invalid');
-      var fb = input.nextElementSibling;
+      let fb = input.nextElementSibling;
       if (!fb || !fb.classList.contains('invalid-feedback')) {
         fb = document.createElement('div');
         fb.className = 'invalid-feedback';
@@ -438,11 +438,11 @@
       document.querySelectorAll('.form-step').forEach(function (s) {
         s.classList.remove('active');
       });
-      var target = document.getElementById('step' + stepNum);
+      const target = document.getElementById('step' + stepNum);
       if (target) {
         target.classList.add('active');
         // Move focus to step heading for keyboard/screen-reader users
-        var heading = target.querySelector('h2, h3, [tabindex]');
+        const heading = target.querySelector('h2, h3, [tabindex]');
         if (heading) {
           if (!heading.hasAttribute('tabindex')) heading.setAttribute('tabindex', '-1');
           heading.focus({ preventScroll: true });

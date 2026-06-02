@@ -6702,6 +6702,53 @@
                 </div>
               </div>
             </div>
+            <!-- Edit Area Modal (also in 99-shell-foot.html for the build) -->
+            <div class="modal fade" id="areasEditModal" tabindex="-1" aria-labelledby="areasEditModalLabel" aria-modal="true">
+              <div class="modal-dialog">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h5 class="modal-title" id="areasEditModalLabel"><i class="bi bi-pencil me-2"></i>Edit Area</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                  </div>
+                  <div class="modal-body">
+                    <input type="hidden" id="areasEditId">
+                    <div class="mb-3">
+                      <label class="form-label fw-semibold" for="areasEditName">Name</label>
+                      <input type="text" class="form-control" id="areasEditName" placeholder="e.g. Bedfordshire">
+                    </div>
+                    <div class="mb-3">
+                      <label class="form-label fw-semibold" for="areasEditType">Area Type</label>
+                      <select class="form-select" id="areasEditType">
+                        <option value="county">County</option>
+                        <option value="city">City</option>
+                        <option value="borough">Borough</option>
+                        <option value="region">Region</option>
+                        <option value="area">Area</option>
+                      </select>
+                    </div>
+                    <div class="mb-3">
+                      <label class="form-label fw-semibold" for="areasEditSize">Size</label>
+                      <select class="form-select" id="areasEditSize">
+                        <option value="false">Large — standard full category list</option>
+                        <option value="true">Small — compact category list</option>
+                      </select>
+                      <div class="form-text">Small areas get a shorter award category list (e.g. islands, rural counties).</div>
+                    </div>
+                    <div class="mb-3">
+                      <label class="form-label fw-semibold" for="areasEditOrder">Sort Order</label>
+                      <input type="number" class="form-control" id="areasEditOrder" min="0" step="1">
+                      <div class="form-text">Lower numbers appear first in dropdowns. Leave as-is unless you need to reorder.</div>
+                    </div>
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="areasEditSaveBtn" data-action="areasManager.saveEdit">
+                      <i class="bi bi-check-lg me-1"></i>Save Changes
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
             <!-- Areas/Regions CSV Import Modal -->
             <input type="file" id="areasImportFileInput" accept=".csv,.txt" class="d-none">
             <div class="modal fade" id="areasImportModal" tabindex="-1" aria-labelledby="areasImportModalLabel" aria-modal="true">

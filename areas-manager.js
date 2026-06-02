@@ -50,6 +50,11 @@ const areasManager = {
             }</td>
             <td class="text-muted small">${utils.escapeHtml(a._regionName || '—')}</td>
             <td class="text-center text-muted small">${a.sort_order ?? '-'}</td>
+            <td class="text-center">
+              <button class="btn btn-sm btn-outline-primary py-0 px-1" data-action="areasManager.openEditModal" data-id="${utils.escapeHtml(a.id)}" title="Edit area">
+                <i class="bi bi-pencil"></i>
+              </button>
+            </td>
           </tr>`
           )
           .join('');
@@ -60,7 +65,7 @@ const areasManager = {
             <table class="table table-sm table-bordered align-middle mb-0">
               <thead class="table-light">
                 <tr>
-                  <th>Area</th><th>Type</th><th>Size</th><th>Region</th><th style="width:60px;">Order</th>
+                  <th>Area</th><th>Type</th><th>Size</th><th>Region</th><th style="width:60px;">Order</th><th style="width:44px;"></th>
                 </tr>
               </thead>
               <tbody>${rows}</tbody>
@@ -288,6 +293,70 @@ const areasManager = {
     } finally {
       btn.disabled = false;
       btn.innerHTML = originalHtml;
+    }
+  },
+
+  /* -------------------------------------------------- */
+  /* EDIT AREA                                           */
+  /* -------------------------------------------------- */
+
+  /**
+   * Open the edit modal pre-populated with an area's current values.
+   * @param {string} areaId
+   */
+  openEditModal(areaId) {
+    const area = (locationModule._cachedAreas || []).find((a) => a.id === areaId);
+    if (!area) {
+      utils.showToast('Area not found — try refreshing the list', 'error');
+      return;
+    }
+
+    document.getElementById('areasEditId').value = area.id;
+    document.getElementById('areasEditName').value = area.display_name || '';
+    document.getElementById('areasEditType').value = area.area_type || 'county';
+    document.getElementById('areasEditSize').value = String(area.is_small ?? false);
+    document.getElementById('areasEditOrder').value = area.sort_order ?? 0;
+
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('areasEditModal')).show();
+  },
+
+  /**
+   * Save edits made in the edit modal back to the database.
+   */
+  async saveEdit() {
+    const id = document.getElementById('areasEditId').value;
+    const name = document.getElementById('areasEditName').value.trim();
+
+    if (!name) {
+      utils.showToast('Name cannot be empty', 'error');
+      return;
+    }
+
+    const btn = document.getElementById('areasEditSaveBtn');
+    const origHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving…';
+
+    try {
+      await apiClient.update('areas', id, {
+        display_name: name,
+        area_type: document.getElementById('areasEditType').value,
+        is_small: document.getElementById('areasEditSize').value === 'true',
+        sort_order: parseInt(document.getElementById('areasEditOrder').value, 10) || 0,
+      });
+
+      bootstrap.Modal.getInstance(document.getElementById('areasEditModal'))?.hide();
+      utils.showToast('Area updated successfully', 'success');
+
+      // Bust location cache so the updated name appears everywhere
+      locationModule._cachedAreas = null;
+      locationModule._loadPromise = null;
+      await this.loadAreas();
+    } catch (e) {
+      utils.showToast('Save failed: ' + e.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = origHtml;
     }
   },
 

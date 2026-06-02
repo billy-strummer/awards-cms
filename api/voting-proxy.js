@@ -363,6 +363,31 @@ async function sendVoteConfirmation({ voter_email, company_name, award_name, ent
   }
 }
 
+/**
+ * load_public_sectors — return CMS-managed sectors and categories for the home page.
+ * Falls back to an empty result if the custom_sectors / custom_categories tables are
+ * not yet populated; the front-end falls back to the static data in home-data.js.
+ */
+async function loadPublicSectors() {
+  const [sectorsResult, catsResult] = await Promise.all([
+    supabase.from('custom_sectors').select('id, name, display_name').eq('is_active', true).order('display_name'),
+    supabase.from('custom_categories').select('id, name, sector, display_name').eq('is_active', true).order('name'),
+  ]);
+
+  const sectors = sectorsResult.data || [];
+  const rawCats = catsResult.data || [];
+
+  // Group categories by sector name
+  const categories = {};
+  rawCats.forEach(function (cat) {
+    if (!cat.sector) return;
+    if (!categories[cat.sector]) categories[cat.sector] = [];
+    categories[cat.sector].push(cat.display_name || cat.name);
+  });
+
+  return { sectors, categories };
+}
+
 async function loadWinners() {
   const now = new Date().toISOString();
   const { data, error } = await supabase
@@ -400,6 +425,7 @@ async function loadWinners() {
 const ACTIONS = {
   load_awards: loadAwards,
   load_entries: loadEntries,
+  load_public_sectors: loadPublicSectors,
   check_votes: checkVotes,
   check_rate_limit: checkRateLimit,
   check_existing_vote: checkExistingVote,

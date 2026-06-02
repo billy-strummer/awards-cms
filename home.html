@@ -2081,102 +2081,13 @@
       <h2 class="section-heading reveal" id="categories-heading">
         Find your <span class="gold-underline">Category</span>
       </h2>
-      <p class="section-sub reveal reveal-delay-1">
-        Eight award categories spanning the full breadth of Britain's skilled trades industry
+      <p class="section-sub reveal reveal-delay-1" id="categories-sub">
+        Award categories spanning the full breadth of Britain's skilled trades industry
       </p>
     </div>
 
-    <div class="categories-grid" aria-label="Award categories">
-
-      <!-- 1 -->
-      <a href="submit-entry.html" class="cat-box reveal" data-sector="BUILDING &amp; CONSTRUCTION" aria-label="Building and Construction — From groundworks to roofing, the full build spectrum">
-        <img class="cat-bg-img" src="images/categories/building-construction.jpg" alt="" loading="lazy">
-        <div class="cat-box-inner">
-          <span class="cat-number" aria-hidden="true">01</span>
-          <div class="cat-accent" aria-hidden="true"></div>
-          <h3 class="cat-name">Building &amp; Construction</h3>
-          <p class="cat-desc">From groundworks to roofing, the full build spectrum</p>
-        </div>
-      </a>
-
-      <!-- 2 -->
-      <a href="submit-entry.html" class="cat-box reveal reveal-delay-1" data-sector="MECHANICAL, ELECTRICAL &amp; PLUMBING" aria-label="Mechanical, Electrical and Plumbing — The essential services keeping Britain's homes running">
-        <img class="cat-bg-img" src="images/categories/mechanical-electrical-plumbing.jpg" alt="" loading="lazy">
-        <div class="cat-box-inner">
-          <span class="cat-number" aria-hidden="true">02</span>
-          <div class="cat-accent" aria-hidden="true"></div>
-          <h3 class="cat-name">Mechanical, Electrical &amp; Plumbing</h3>
-          <p class="cat-desc">The essential services keeping Britain's homes running</p>
-        </div>
-      </a>
-
-      <!-- 3 -->
-      <a href="submit-entry.html" class="cat-box reveal reveal-delay-2" data-sector="CARPENTRY &amp; JOINERY" aria-label="Carpentry and Joinery — Crafting bespoke woodwork with precision and artistry">
-        <img class="cat-bg-img" src="images/categories/carpentry-joinery.jpg" alt="" loading="lazy">
-        <div class="cat-box-inner">
-          <span class="cat-number" aria-hidden="true">03</span>
-          <div class="cat-accent" aria-hidden="true"></div>
-          <h3 class="cat-name">Carpentry &amp; Joinery</h3>
-          <p class="cat-desc">Crafting bespoke woodwork with precision and artistry</p>
-        </div>
-      </a>
-
-      <!-- 4 -->
-      <a href="submit-entry.html" class="cat-box reveal reveal-delay-3" data-sector="INTERIOR FIT-OUT &amp; FINISHING" aria-label="Interior Fit-Out and Finishing — Transforming interiors with expert installations">
-        <img class="cat-bg-img" src="images/categories/interior-fitout.jpg" alt="" loading="lazy">
-        <div class="cat-box-inner">
-          <span class="cat-number" aria-hidden="true">04</span>
-          <div class="cat-accent" aria-hidden="true"></div>
-          <h3 class="cat-name">Interior Fit-Out &amp; Finishing</h3>
-          <p class="cat-desc">Transforming interiors with expert installations</p>
-        </div>
-      </a>
-
-      <!-- 5 -->
-      <a href="submit-entry.html" class="cat-box reveal" data-sector="OUTDOOR &amp; LANDSCAPING" aria-label="Outdoor and Landscaping — Creating stunning outdoor spaces across Britain">
-        <img class="cat-bg-img" src="images/categories/outdoor-landscaping.jpg" alt="" loading="lazy">
-        <div class="cat-box-inner">
-          <span class="cat-number" aria-hidden="true">05</span>
-          <div class="cat-accent" aria-hidden="true"></div>
-          <h3 class="cat-name">Outdoor &amp; Landscaping</h3>
-          <p class="cat-desc">Creating stunning outdoor spaces across Britain</p>
-        </div>
-      </a>
-
-      <!-- 6 -->
-      <a href="submit-entry.html" class="cat-box reveal reveal-delay-1" data-sector="ENERGY, TECH &amp; SUSTAINABILITY" aria-label="Energy, Tech and Sustainability — Powering Britain's green future">
-        <img class="cat-bg-img" src="images/categories/energy-tech-sustainability.jpg" alt="" loading="lazy">
-        <div class="cat-box-inner">
-          <span class="cat-number" aria-hidden="true">06</span>
-          <div class="cat-accent" aria-hidden="true"></div>
-          <h3 class="cat-name">Energy, Tech &amp; Sustainability</h3>
-          <p class="cat-desc">Powering Britain's green future</p>
-        </div>
-      </a>
-
-      <!-- 7 -->
-      <a href="submit-entry.html" class="cat-box reveal reveal-delay-2" data-sector="SPECIALIST TRADES" aria-label="Specialist Trades — Niche expertise, exceptional results">
-        <img class="cat-bg-img" src="images/categories/specialist-trades.jpg" alt="" loading="lazy">
-        <div class="cat-box-inner">
-          <span class="cat-number" aria-hidden="true">07</span>
-          <div class="cat-accent" aria-hidden="true"></div>
-          <h3 class="cat-name">Specialist Trades</h3>
-          <p class="cat-desc">Niche expertise, exceptional results</p>
-        </div>
-      </a>
-
-      <!-- 8 -->
-      <a href="submit-entry.html" class="cat-box reveal reveal-delay-3" data-sector="INDUSTRY LEADERSHIP" aria-label="Industry Leadership — Recognising outstanding leadership in the trades">
-        <img class="cat-bg-img" src="images/categories/industry-leadership.svg" alt="" loading="lazy">
-        <div class="cat-box-inner">
-          <span class="cat-number" aria-hidden="true">08</span>
-          <div class="cat-accent" aria-hidden="true"></div>
-          <h3 class="cat-name">Industry Leadership</h3>
-          <p class="cat-desc">Recognising outstanding leadership in the trades</p>
-        </div>
-      </a>
-
-    </div>
+    <!-- Populated dynamically by initCategoryGrid() from BTA_HOME_DATA / CMS -->
+    <div class="categories-grid" id="categories-grid" aria-label="Award categories"></div>
 
   </div>
 </section>
@@ -2542,12 +2453,110 @@
   </div>
 </div>
 
+<!-- Home page data — single source of truth for sectors, categories, regions, flags -->
+<script src="home-data.js"></script>
+
 <!-- ============================================================
      JAVASCRIPT — NO INLINE EVENT HANDLERS
 ============================================================ -->
 <script>
 (function () {
   'use strict';
+
+  /* ============================================================
+     0. CATEGORY GRID — render from BTA_HOME_DATA, optionally
+        refreshed with CMS-managed custom sectors from the API.
+  ============================================================ */
+  try { (function initCategoryGrid() {
+    var grid = document.getElementById('categories-grid');
+    if (!grid) return;
+
+    var data = window.BTA_HOME_DATA || {};
+    var sectorCats = data.sectorCategories || {};
+    var sectorMeta = data.sectorMeta || {};
+
+    function esc(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function renderGrid(catMap, metaMap) {
+      var sectors = Object.keys(catMap);
+      var delays  = ['', ' reveal-delay-1', ' reveal-delay-2', ' reveal-delay-3'];
+      var sub = document.getElementById('categories-sub');
+      if (sub) sub.textContent = sectors.length + ' award categor' + (sectors.length === 1 ? 'y' : 'ies') + ' spanning the full breadth of Britain\'s skilled trades industry';
+
+      grid.innerHTML = sectors.map(function (sector, idx) {
+        var m   = metaMap[sector] || {};
+        var num = String(idx + 1).padStart(2, '0');
+        var img = m.image ? 'images/categories/' + esc(m.image) : '';
+        return '<a href="submit-entry.html" class="cat-box reveal' + delays[idx % 4] + '" ' +
+          'data-sector="' + esc(sector) + '" ' +
+          'aria-label="' + esc(m.ariaLabel || m.displayName || sector) + '">' +
+          (img ? '<img class="cat-bg-img" src="' + img + '" alt="" loading="lazy">' : '') +
+          '<div class="cat-box-inner">' +
+            '<span class="cat-number" aria-hidden="true">' + num + '</span>' +
+            '<div class="cat-accent" aria-hidden="true"></div>' +
+            '<h3 class="cat-name">' + esc(m.displayName || sector) + '</h3>' +
+            '<p class="cat-desc">' + esc(m.description || '') + '</p>' +
+          '</div>' +
+        '</a>';
+      }).join('');
+
+      // Re-attach click handlers (initCategoryModal uses event delegation so this is fine)
+      // Re-observe for reveal animations
+      if ('IntersectionObserver' in window) {
+        var obs = new IntersectionObserver(function (entries_io) {
+          entries_io.forEach(function (e) {
+            if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); }
+          });
+        }, { threshold: 0.05 });
+        grid.querySelectorAll('.cat-box.reveal').forEach(function (el) { obs.observe(el); });
+      } else {
+        grid.querySelectorAll('.cat-box.reveal').forEach(function (el) { el.classList.add('visible'); });
+      }
+    }
+
+    // Render immediately from static data
+    renderGrid(sectorCats, sectorMeta);
+
+    // Optionally fetch CMS-managed sectors/categories and re-render if present
+    fetch('/api/voting-proxy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'load_public_sectors' })
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (res) {
+      var cms = res || {};
+      // Only re-render if the CMS has custom sectors defined
+      if (!cms.sectors || !cms.sectors.length) return;
+
+      // Build merged sector→categories map from CMS data
+      var mergedCats = {};
+      cms.sectors.forEach(function (s) {
+        var key = (s.display_name || s.name || '').toUpperCase();
+        if (!key) return;
+        mergedCats[key] = cms.categories[key] || cms.categories[s.name] || sectorCats[key] || [];
+      });
+
+      // Build merged meta: prefer static meta, fall back to generated
+      var mergedMeta = {};
+      Object.keys(mergedCats).forEach(function (key) {
+        mergedMeta[key] = sectorMeta[key] || {
+          displayName: key.charAt(0) + key.slice(1).toLowerCase(),
+          description: '',
+          image: '',
+          ariaLabel: key,
+        };
+      });
+
+      renderGrid(mergedCats, mergedMeta);
+    })
+    .catch(function () { /* keep static render on API error */ });
+  }) (); } catch(e) { console.warn('[BTA] initCategoryGrid', e); }
+
 
   /* ============================================================
      1. SMART STICKY HEADER
@@ -2672,103 +2681,9 @@
      4. REGIONAL ACCORDION
   ============================================================ */
   try { (function initRegions() {
-
-    // Flag filename map — location name → images/flags/<filename>
-    var FLAG_MAP = {
-      // North West
-      'Cheshire': 'Cheshire.png', 'Cumbria': 'Cumbria.png', 'Lancashire': 'Lancashire.png',
-      'Liverpool': 'Liverpool County_Merseyside.png', 'Manchester': 'Manchester.png',
-      // North East
-      'County Durham': 'County Durham.png', 'Northumberland': 'Northumberland.png',
-      'Tyne & Wear': 'Tyne & Wear.png', 'Newcastle': 'Newcastle.png', 'Middlesbrough': 'Middlesbrough.png',
-      // Yorkshire
-      'East Yorkshire': 'East Yorkshire.png', 'North Yorkshire': 'North Yorkshire.png',
-      'South Yorkshire': 'Unofficial_South Yorkshire.png', 'West Yorkshire': 'West Yorkshire.png',
-      'Leeds': 'Leeds diocese.png', 'Sheffield': 'Sheffield diocese.png',
-      // East Midlands
-      'Derbyshire': 'Derbyshire.png', 'Leicestershire': 'Leicestershire.png',
-      'Lincolnshire': 'Lincolnshire.png', 'Northamptonshire': 'Northamptonshire.png',
-      'Nottinghamshire': 'Nottinghamshire.png', 'Rutland': 'Rutland.png',
-      'Leicester': 'Leicester diocese.png', 'Nottingham': 'Nottingham diocese.png',
-      // West Midlands
-      'Herefordshire': 'Herefordshire.png', 'Shropshire': 'Shropshire.png',
-      'Staffordshire': 'Staffordshire.png', 'Warwickshire': 'Warwickshire.png',
-      'Worcestershire': 'Worcestershire.png', 'Birmingham': 'Birmingham.png', 'Coventry': 'Coventry.png',
-      // East of England
-      'Bedfordshire': 'Bedfordshire.png', 'Cambridgeshire': 'Cambridgeshire.png',
-      'Essex': 'Essex.png', 'Hertfordshire': 'Hertfordshire.png',
-      'Norfolk': 'Norfolk.png', 'Suffolk': 'Suffolk.png',
-      // London — all 33 boroughs use the London flag
-      'Barking & Dagenham': 'London.png', 'Barnet': 'London.png', 'Bexley': 'London.png',
-      'Brent': 'London.png', 'Bromley': 'London.png', 'Camden': 'London.png',
-      'City of London': 'London.png', 'Croydon': 'London.png', 'Ealing': 'London.png',
-      'Enfield': 'London.png', 'Greenwich': 'London.png', 'Hackney': 'London.png',
-      'Hammersmith & Fulham': 'London.png', 'Haringey': 'London.png', 'Harrow': 'London.png',
-      'Havering': 'London.png', 'Hillingdon': 'London.png', 'Hounslow': 'London.png',
-      'Islington': 'London.png', 'Kensington & Chelsea': 'London.png',
-      'Kingston upon Thames': 'London.png', 'Lambeth': 'London.png', 'Lewisham': 'London.png',
-      'Merton': 'London.png', 'Newham': 'London.png', 'Redbridge': 'London.png',
-      'Richmond upon Thames': 'London.png', 'Southwark': 'London.png', 'Sutton': 'London.png',
-      'Tower Hamlets': 'London.png', 'Waltham Forest': 'London.png',
-      'Wandsworth': 'London.png', 'Westminster': 'London.png',
-      // South East
-      'Berkshire': 'Berkshire.png', 'Buckinghamshire': 'Buckinghamshire.png',
-      'East Sussex': 'East Sussex.png', 'Hampshire': 'Hampshire.png',
-      'Isle of Wight': 'Isle of Wight.png', 'Kent': 'Kent.png',
-      'Oxfordshire': 'Oxfordshire.png', 'Surrey': 'Surrey.png',
-      'West Sussex': 'West Sussex.png', 'Brighton & Hove': 'Brighton & Hove.png',
-      'Southampton': 'Southampton.png',
-      // South West
-      'Cornwall': 'Cornwall.png', 'Devon': 'Devon.png', 'Dorset': 'Dorset.png',
-      'Gloucestershire': 'Gloucestershire.png', 'Somerset': 'Somerset.png',
-      'Wiltshire': 'Wiltshire.png', 'Bournemouth': 'Bournemouth.png', 'Bristol': 'Bristol.png',
-      // Wales
-      'Cardiff': 'Cardiff.png', 'Swansea': 'Swansea.png', 'Wrexham': 'Wrexham.png',
-      'Anglesey': 'Anglesey.png', 'Carmarthen': 'Carmarthenshire.png',
-      'Ceredigion': 'Ceredigion.png', 'Conwy': 'Conwy Wales.png',
-      'Denbighshire': 'Denbighshire.png', 'Flintshire': 'Flintshire.png',
-      'Glamorgan': 'Glamorgan.png', 'Gwent': 'Gwent.png',
-      'Gwynedd': 'Gwynedd.png', 'Pembrokeshire': 'Pembrokeshire.png', 'Powys': 'Powys.png',
-      'Conwy & Denbighshire': 'Conwy Wales.png', 'Gwynedd & Anglesey': 'Gwynedd.png',
-      'Carmarthenshire': 'Carmarthenshire.png',
-      // Scotland
-      'Edinburgh': 'Edinburgh.png', 'Glasgow': 'Glasgow.png',
-    };
-
-    // Sub-region data
-    var SUB_REGIONS = {
-      england: {
-        'North West':      ['Cheshire','Cumbria','Lancashire','Liverpool','Manchester'],
-        'North East':      ['County Durham','Northumberland','Tyne & Wear','Newcastle','Middlesbrough','Gateshead','Sunderland'],
-        'Yorkshire':       ['East Yorkshire','North Yorkshire','South Yorkshire','West Yorkshire','Leeds','Sheffield','Bradford','York','Hull'],
-        'East Midlands':   ['Derbyshire','Leicestershire','Lincolnshire','Northamptonshire','Nottinghamshire','Rutland','Leicester','Nottingham'],
-        'West Midlands':   ['Herefordshire','Shropshire','Staffordshire','Warwickshire','Worcestershire','Birmingham','Coventry'],
-        'East of England': ['Bedfordshire','Cambridgeshire','Essex','Hertfordshire','Norfolk','Suffolk'],
-        'London':          ['Barking & Dagenham','Barnet','Bexley','Brent','Bromley','Camden','City of London','Croydon','Ealing','Enfield','Greenwich','Hackney','Hammersmith & Fulham','Haringey','Harrow','Havering','Hillingdon','Hounslow','Islington','Kensington & Chelsea','Kingston upon Thames','Lambeth','Lewisham','Merton','Newham','Redbridge','Richmond upon Thames','Southwark','Sutton','Tower Hamlets','Waltham Forest','Wandsworth','Westminster'],
-        'South East':      ['Berkshire','Buckinghamshire','East Sussex','Hampshire','Isle of Wight','Kent','Oxfordshire','Surrey','West Sussex','Brighton & Hove','Reading','Southampton'],
-        'South West':      ['Cornwall','Devon','Dorset','Gloucestershire','Somerset','Wiltshire','Bournemouth','Bristol'],
-      },
-      scotland: {
-        'Central Scotland':      ['Glasgow', 'Stirling', 'Falkirk', 'Clackmannanshire', 'Lanarkshire', 'Dunbartonshire'],
-        'Highlands':             ['Inverness', 'Fort William', 'Elgin', 'Aviemore', 'Wick'],
-        'Grampian':              ['Aberdeen', 'Fraserburgh', 'Peterhead', 'Inverurie'],
-        'Tayside':               ['Dundee', 'Perth', 'Arbroath', 'Kirriemuir'],
-        'Fife':                  ['St Andrews', 'Dunfermline', 'Kirkcaldy', 'Glenrothes'],
-        'Lothian':               ['Edinburgh', 'Livingston', 'Haddington', 'Linlithgow'],
-        'Strathclyde':           ['Glasgow', 'Paisley', 'Ayr', 'Kilmarnock', 'Hamilton', 'Greenock', 'Ayrshire', 'Renfrewshire', 'Argyll & Bute'],
-        'Borders':               ['Galashiels', 'Hawick', 'Jedburgh', 'Peebles', 'Scottish Borders'],
-        'Dumfries & Galloway':   ['Dumfries', 'Stranraer', 'Newton Stewart', 'Kirkcudbright'],
-        'Islands':               ['Skye', 'Orkney', 'Shetland', 'Lewis', 'Arran', 'Scottish Islands'],
-      },
-      wales: {
-        'North Wales':           ['Wrexham', 'Bangor', 'Llandudno', 'Rhyl', 'Holyhead', 'Conwy', 'Conwy & Denbighshire', 'Flintshire', 'Gwynedd & Anglesey'],
-        'Mid Wales':             ['Aberystwyth', 'Welshpool', 'Newtown', 'Brecon', 'Llandrindod Wells', 'Ceredigion', 'Powys'],
-        'South West Wales':      ['Swansea', 'Neath', 'Port Talbot', 'Pembroke', 'Carmarthen', 'Milford Haven', 'Carmarthenshire', 'Pembrokeshire'],
-        'South East Wales':      ['Newport', 'Merthyr Tydfil', 'Tredegar', 'Ebbw Vale', 'Pontypool', 'Gwent'],
-        'Cardiff Capital Region':['Cardiff', 'Vale of Glamorgan', 'Rhondda', 'Pontypridd', 'Caerphilly', 'Glamorgan'],
-        'Swansea Bay':           ['Swansea', 'Port Talbot', 'Neath', 'Bridgend'],
-      },
-    };
+    // Pull region/flag data from BTA_HOME_DATA (home-data.js) — single source of truth
+    var FLAG_MAP    = (window.BTA_HOME_DATA && window.BTA_HOME_DATA.flagMap)    || {};
+    var SUB_REGIONS = (window.BTA_HOME_DATA && window.BTA_HOME_DATA.regionData) || {};
 
     var cards       = document.querySelectorAll('.country-card');
     var activeCard  = null;
@@ -3069,50 +2984,8 @@
      It is declared immediately above this <script> block.
   ============================================================ */
   try { (function initCategoryModal() {
-    var SECTOR_CATEGORIES = {
-      'BUILDING & CONSTRUCTION': [
-        'Brickwork & Masonry Company','Drainage Company','Extension Company',
-        'General Building Company','Groundworks & Foundations Company','Guttering Company',
-        'Loft Conversion Company','Maintenance Services','New Build Company',
-        'Roofing Company','Structural Engineers','Structural Steelworks'
-      ],
-      'CARPENTRY & JOINERY': [
-        'Cabinet Maker','Carpentry Company','Joinery Company',
-        'Staircase Specialist','Timber Windows Installer'
-      ],
-      'INTERIOR FIT-OUT & FINISHING': [
-        'Bathroom Installer','Carpet Fitters','Curtains & Blinds Installer',
-        'Drylining Company','Flooring Installer','Home Office Installer',
-        'Interior Refurbishment Company','Kitchen Installer',
-        'Painting & Decorating Company','Plastering Company',
-        'Screeding Company','Tiling Installer'
-      ],
-      'MECHANICAL, ELECTRICAL & PLUMBING': [
-        'Air-Conditioning & Ventilation Company','Electrical Company',
-        'Heating Company','Plumbing Company','Underfloor Heating Company'
-      ],
-      'OUTDOOR & LANDSCAPING': [
-        'Decking Company','Driveway & Paving Company','Fencing Installer',
-        'Gardening Services','Garden Outbuilding Company',
-        'Landscaping & Garden Design Company',
-        'Outdoor Lighting & Electrical Company','Tree Surgery Services'
-      ],
-      'SPECIALIST TRADES': [
-        'Asbestos Removal Specialist','Locksmith','Pest Control Company',
-        'Rendering Company','Scaffolding Company','Shop Fitting Company',
-        'Swimming Pool & Hot Tub Company','Window & Door Installer'
-      ],
-      'ENERGY, TECH & SUSTAINABILITY': [
-        'EV Charger Installer','Insulation & Energy Efficiency Company',
-        'PV Installer','Renewable Energy Specialist',
-        'Security System Installer','Smart Home & Automation Company'
-      ],
-      'INDUSTRY LEADERSHIP': [
-        'Employer of the Year','Business Leader of the Year','Innovation Award',
-        'Apprenticeship Employer of the Year','Community Impact Award',
-        'Net Zero & Sustainability Award','Rising Star Award'
-      ]
-    };
+    // Pull categories from BTA_HOME_DATA (home-data.js) — single source of truth
+    var SECTOR_CATEGORIES = (window.BTA_HOME_DATA && window.BTA_HOME_DATA.sectorCategories) || {};
 
     var modal     = document.getElementById('cat-modal');
     var closeBtn  = document.getElementById('cat-modal-close');

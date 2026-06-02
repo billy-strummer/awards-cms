@@ -1,0 +1,479 @@
+/**
+ * home-data.js — single source of truth for all public-facing page data.
+ *
+ * Loaded as a plain <script> (NOT type="module") on home.html, submit-entry.html,
+ * and nominate.html, so the data is available synchronously before the page
+ * scripts run.  When you add a new sector, category, region, or county/city,
+ * update this ONE file — every page updates automatically.
+ *
+ * Sets:
+ *   window.BTA_HOME_DATA      — full structured object (used by home.html)
+ *   window.REGION_DATA        — 3-level region hierarchy (submit-entry.js, nominate.js)
+ *   window.SECTORS            — flat sector name array (config.js backward compat)
+ *   window.STANDARD_CATEGORIES — sector→categories map (config.js backward compat)
+ */
+(function () {
+  'use strict';
+
+  /* ─────────────────────────────────────────────
+     1. SECTORS & CATEGORIES
+     Mirrors STANDARD_CATEGORIES in config.js.
+     To add/remove categories: edit this object.
+     To add a new sector: add a new key + entry in SECTOR_META below.
+  ───────────────────────────────────────────── */
+  var SECTOR_CATEGORIES = {
+    'BUILDING & CONSTRUCTION': [
+      'Brickwork & Masonry Company',
+      'Drainage Company',
+      'Extension Company',
+      'General Building Company',
+      'Groundworks & Foundations Company',
+      'Guttering Company',
+      'Loft Conversion Company',
+      'Maintenance Services',
+      'New Build Company',
+      'Roofing Company',
+      'Structural Engineers',
+      'Structural Steelworks',
+    ],
+    'MECHANICAL, ELECTRICAL & PLUMBING': [
+      'Air-Conditioning & Ventilation Company',
+      'Electrical Company',
+      'Heating Company',
+      'Plumbing Company',
+      'Underfloor Heating Company',
+    ],
+    'CARPENTRY & JOINERY': [
+      'Cabinet Maker',
+      'Carpentry Company',
+      'Joinery Company',
+      'Staircase Specialist',
+      'Timber Windows Installer',
+    ],
+    'INTERIOR FIT-OUT & FINISHING': [
+      'Bathroom Installer',
+      'Carpet Fitters',
+      'Curtains & Blinds Installer',
+      'Drylining Company',
+      'Flooring Installer',
+      'Home Office Installer',
+      'Interior Refurbishment Company',
+      'Kitchen Installer',
+      'Painting & Decorating Company',
+      'Plastering Company',
+      'Screeding Company',
+      'Tiling Installer',
+    ],
+    'OUTDOOR & LANDSCAPING': [
+      'Decking Company',
+      'Driveway & Paving Company',
+      'Fencing Installer',
+      'Gardening Services',
+      'Garden Outbuilding Company',
+      'Landscaping & Garden Design Company',
+      'Outdoor Lighting & Electrical Company',
+      'Tree Surgery Services',
+    ],
+    'ENERGY, TECH & SUSTAINABILITY': [
+      'EV Charger Installer',
+      'Insulation & Energy Efficiency Company',
+      'PV Installer',
+      'Renewable Energy Specialist',
+      'Security System Installer',
+      'Smart Home & Automation Company',
+    ],
+    'SPECIALIST TRADES': [
+      'Asbestos Removal Specialist',
+      'Locksmith',
+      'Pest Control Company',
+      'Rendering Company',
+      'Scaffolding Company',
+      'Shop Fitting Company',
+      'Swimming Pool & Hot Tub Company',
+      'Window & Door Installer',
+    ],
+    'INDUSTRY LEADERSHIP': [
+      'Employer of the Year',
+      'Business Leader of the Year',
+      'Innovation Award',
+      'Apprenticeship Employer of the Year',
+      'Community Impact Award',
+      'Net Zero & Sustainability Award',
+      'Rising Star Award',
+    ],
+  };
+
+  /* ─────────────────────────────────────────────
+     2. SECTOR DISPLAY META
+     Controls how each sector renders on home.html:
+     image, display name, short description, aria label.
+     Add a matching entry here whenever you add a new sector above.
+  ───────────────────────────────────────────── */
+  var SECTOR_META = {
+    'BUILDING & CONSTRUCTION': {
+      image: 'building-construction.jpg',
+      displayName: 'Building & Construction',
+      description: 'From groundworks to roofing, the full build spectrum',
+      ariaLabel: 'Building and Construction — From groundworks to roofing, the full build spectrum',
+    },
+    'MECHANICAL, ELECTRICAL & PLUMBING': {
+      image: 'mechanical-electrical-plumbing.jpg',
+      displayName: 'Mechanical, Electrical & Plumbing',
+      description: "The essential services keeping Britain's homes running",
+      ariaLabel: "Mechanical, Electrical and Plumbing — The essential services keeping Britain's homes running",
+    },
+    'CARPENTRY & JOINERY': {
+      image: 'carpentry-joinery.jpg',
+      displayName: 'Carpentry & Joinery',
+      description: 'Crafting bespoke woodwork with precision and artistry',
+      ariaLabel: 'Carpentry and Joinery — Crafting bespoke woodwork with precision and artistry',
+    },
+    'INTERIOR FIT-OUT & FINISHING': {
+      image: 'interior-fitout.jpg',
+      displayName: 'Interior Fit-Out & Finishing',
+      description: 'Transforming interiors with expert installations',
+      ariaLabel: 'Interior Fit-Out and Finishing — Transforming interiors with expert installations',
+    },
+    'OUTDOOR & LANDSCAPING': {
+      image: 'outdoor-landscaping.jpg',
+      displayName: 'Outdoor & Landscaping',
+      description: 'Creating stunning outdoor spaces across Britain',
+      ariaLabel: 'Outdoor and Landscaping — Creating stunning outdoor spaces across Britain',
+    },
+    'ENERGY, TECH & SUSTAINABILITY': {
+      image: 'energy-tech-sustainability.jpg',
+      displayName: 'Energy, Tech & Sustainability',
+      description: "Powering Britain's green future",
+      ariaLabel: "Energy, Tech and Sustainability — Powering Britain's green future",
+    },
+    'SPECIALIST TRADES': {
+      image: 'specialist-trades.jpg',
+      displayName: 'Specialist Trades',
+      description: 'Niche expertise, exceptional results',
+      ariaLabel: 'Specialist Trades — Niche expertise, exceptional results',
+    },
+    'INDUSTRY LEADERSHIP': {
+      image: 'industry-leadership.svg',
+      displayName: 'Industry Leadership',
+      description: 'Recognising outstanding leadership in the trades',
+      ariaLabel: 'Industry Leadership — Recognising outstanding leadership in the trades',
+    },
+  };
+
+  /* ─────────────────────────────────────────────
+     3. REGION DATA — 3-level hierarchy
+     country → region group → counties / cities
+     Used by:
+       - home.html  (regional accordion)
+       - submit-entry.js  (country→region→city picker)
+       - nominate.js      (country→region→city picker)
+     To add a new county or city: add it to the array for its region group.
+  ───────────────────────────────────────────── */
+  var REGION_DATA = {
+    england: {
+      'North West': ['Cheshire', 'Cumbria', 'Lancashire', 'Liverpool', 'Manchester'],
+      'North East': [
+        'County Durham',
+        'Northumberland',
+        'Tyne & Wear',
+        'Newcastle',
+        'Middlesbrough',
+        'Gateshead',
+        'Sunderland',
+      ],
+      Yorkshire: [
+        'East Yorkshire',
+        'North Yorkshire',
+        'South Yorkshire',
+        'West Yorkshire',
+        'Leeds',
+        'Sheffield',
+        'Bradford',
+        'York',
+        'Hull',
+      ],
+      'East Midlands': [
+        'Derbyshire',
+        'Leicestershire',
+        'Lincolnshire',
+        'Northamptonshire',
+        'Nottinghamshire',
+        'Rutland',
+        'Leicester',
+        'Nottingham',
+      ],
+      'West Midlands': [
+        'Herefordshire',
+        'Shropshire',
+        'Staffordshire',
+        'Warwickshire',
+        'Worcestershire',
+        'Birmingham',
+        'Coventry',
+      ],
+      'East of England': ['Bedfordshire', 'Cambridgeshire', 'Essex', 'Hertfordshire', 'Norfolk', 'Suffolk'],
+      London: [
+        'Barking & Dagenham',
+        'Barnet',
+        'Bexley',
+        'Brent',
+        'Bromley',
+        'Camden',
+        'City of London',
+        'Croydon',
+        'Ealing',
+        'Enfield',
+        'Greenwich',
+        'Hackney',
+        'Hammersmith & Fulham',
+        'Haringey',
+        'Harrow',
+        'Havering',
+        'Hillingdon',
+        'Hounslow',
+        'Islington',
+        'Kensington & Chelsea',
+        'Kingston upon Thames',
+        'Lambeth',
+        'Lewisham',
+        'Merton',
+        'Newham',
+        'Redbridge',
+        'Richmond upon Thames',
+        'Southwark',
+        'Sutton',
+        'Tower Hamlets',
+        'Waltham Forest',
+        'Wandsworth',
+        'Westminster',
+      ],
+      'South East': [
+        'Berkshire',
+        'Buckinghamshire',
+        'East Sussex',
+        'Hampshire',
+        'Isle of Wight',
+        'Kent',
+        'Oxfordshire',
+        'Surrey',
+        'West Sussex',
+        'Brighton & Hove',
+        'Reading',
+        'Southampton',
+      ],
+      'South West': [
+        'Cornwall',
+        'Devon',
+        'Dorset',
+        'Gloucestershire',
+        'Somerset',
+        'Wiltshire',
+        'Bournemouth',
+        'Bristol',
+      ],
+    },
+    scotland: {
+      'Central Scotland': ['Glasgow', 'Stirling', 'Falkirk', 'Clackmannanshire', 'Lanarkshire', 'Dunbartonshire'],
+      Highlands: ['Inverness', 'Fort William', 'Elgin', 'Aviemore', 'Wick'],
+      Grampian: ['Aberdeen', 'Fraserburgh', 'Peterhead', 'Inverurie'],
+      Tayside: ['Dundee', 'Perth', 'Arbroath', 'Kirriemuir'],
+      Fife: ['St Andrews', 'Dunfermline', 'Kirkcaldy', 'Glenrothes'],
+      Lothian: ['Edinburgh', 'Livingston', 'Haddington', 'Linlithgow'],
+      Strathclyde: [
+        'Paisley',
+        'Ayr',
+        'Kilmarnock',
+        'Hamilton',
+        'Greenock',
+        'Ayrshire',
+        'Renfrewshire',
+        'Argyll & Bute',
+      ],
+      Borders: ['Galashiels', 'Hawick', 'Jedburgh', 'Peebles', 'Scottish Borders'],
+      'Dumfries & Galloway': ['Dumfries', 'Stranraer', 'Newton Stewart', 'Kirkcudbright'],
+      Islands: ['Skye', 'Orkney', 'Shetland', 'Lewis', 'Arran'],
+    },
+    wales: {
+      'North Wales': [
+        'Wrexham',
+        'Bangor',
+        'Llandudno',
+        'Rhyl',
+        'Holyhead',
+        'Conwy',
+        'Conwy & Denbighshire',
+        'Flintshire',
+        'Gwynedd & Anglesey',
+      ],
+      'Mid Wales': ['Aberystwyth', 'Welshpool', 'Newtown', 'Brecon', 'Llandrindod Wells', 'Ceredigion', 'Powys'],
+      'South West Wales': [
+        'Swansea',
+        'Neath',
+        'Port Talbot',
+        'Pembroke',
+        'Carmarthen',
+        'Milford Haven',
+        'Carmarthenshire',
+        'Pembrokeshire',
+      ],
+      'South East Wales': ['Newport', 'Merthyr Tydfil', 'Tredegar', 'Ebbw Vale', 'Pontypool', 'Gwent'],
+      'Cardiff Capital Region': ['Cardiff', 'Vale of Glamorgan', 'Rhondda', 'Pontypridd', 'Caerphilly', 'Glamorgan'],
+      'Swansea Bay': ['Swansea', 'Port Talbot', 'Neath', 'Bridgend'],
+    },
+    'northern-ireland': {
+      Belfast: ['Belfast City Centre', 'North Belfast', 'South Belfast', 'East Belfast', 'West Belfast'],
+      'Antrim & Newtownabbey': ['Antrim', 'Newtownabbey', 'Ballyclare', 'Randalstown'],
+      'Ards & North Down': ['Bangor', 'Newtownards', 'Holywood', 'Comber', 'Donaghadee'],
+      'Armagh, Banbridge & Craigavon': ['Armagh', 'Banbridge', 'Craigavon', 'Lurgan', 'Portadown'],
+      'Causeway Coast & Glens': ['Coleraine', 'Ballycastle', 'Limavady', 'Ballymoney', 'Portrush'],
+      'Derry & Strabane': ['Derry / Londonderry', 'Strabane'],
+      'Fermanagh & Omagh': ['Enniskillen', 'Omagh', 'Irvinestown'],
+      'Lisburn & Castlereagh': ['Lisburn', 'Castlereagh', 'Dromore'],
+      'Mid & East Antrim': ['Ballymena', 'Carrickfergus', 'Larne'],
+      'Mid Ulster': ['Cookstown', 'Magherafelt', 'Dungannon', 'Maghera'],
+      'Newry, Mourne & Down': ['Newry', 'Newcastle', 'Downpatrick', 'Warrenpoint'],
+    },
+  };
+
+  /* ─────────────────────────────────────────────
+     4. FLAG MAP — location name → /images/flags/<filename>
+     Used by home.html regional accordion chips.
+     To add a flag: drop the image in /images/flags/ and add the entry here.
+  ───────────────────────────────────────────── */
+  var FLAG_MAP = {
+    // North West
+    Cheshire: 'Cheshire.png',
+    Cumbria: 'Cumbria.png',
+    Lancashire: 'Lancashire.png',
+    Liverpool: 'Liverpool County_Merseyside.png',
+    Manchester: 'Manchester.png',
+    // North East
+    'County Durham': 'County Durham.png',
+    Northumberland: 'Northumberland.png',
+    'Tyne & Wear': 'Tyne & Wear.png',
+    Newcastle: 'Newcastle.png',
+    Middlesbrough: 'Middlesbrough.png',
+    // Yorkshire
+    'East Yorkshire': 'East Yorkshire.png',
+    'North Yorkshire': 'North Yorkshire.png',
+    'South Yorkshire': 'Unofficial_South Yorkshire.png',
+    'West Yorkshire': 'West Yorkshire.png',
+    Leeds: 'Leeds diocese.png',
+    Sheffield: 'Sheffield diocese.png',
+    // East Midlands
+    Derbyshire: 'Derbyshire.png',
+    Leicestershire: 'Leicestershire.png',
+    Lincolnshire: 'Lincolnshire.png',
+    Northamptonshire: 'Northamptonshire.png',
+    Nottinghamshire: 'Nottinghamshire.png',
+    Rutland: 'Rutland.png',
+    Leicester: 'Leicester diocese.png',
+    Nottingham: 'Nottingham diocese.png',
+    // West Midlands
+    Herefordshire: 'Herefordshire.png',
+    Shropshire: 'Shropshire.png',
+    Staffordshire: 'Staffordshire.png',
+    Warwickshire: 'Warwickshire.png',
+    Worcestershire: 'Worcestershire.png',
+    Birmingham: 'Birmingham.png',
+    Coventry: 'Coventry.png',
+    // East of England
+    Bedfordshire: 'Bedfordshire.png',
+    Cambridgeshire: 'Cambridgeshire.png',
+    Essex: 'Essex.png',
+    Hertfordshire: 'Hertfordshire.png',
+    Norfolk: 'Norfolk.png',
+    Suffolk: 'Suffolk.png',
+    // London (all boroughs share the London flag)
+    'Barking & Dagenham': 'London.png',
+    Barnet: 'London.png',
+    Bexley: 'London.png',
+    Brent: 'London.png',
+    Bromley: 'London.png',
+    Camden: 'London.png',
+    'City of London': 'London.png',
+    Croydon: 'London.png',
+    Ealing: 'London.png',
+    Enfield: 'London.png',
+    Greenwich: 'London.png',
+    Hackney: 'London.png',
+    'Hammersmith & Fulham': 'London.png',
+    Haringey: 'London.png',
+    Harrow: 'London.png',
+    Havering: 'London.png',
+    Hillingdon: 'London.png',
+    Hounslow: 'London.png',
+    Islington: 'London.png',
+    'Kensington & Chelsea': 'London.png',
+    'Kingston upon Thames': 'London.png',
+    Lambeth: 'London.png',
+    Lewisham: 'London.png',
+    Merton: 'London.png',
+    Newham: 'London.png',
+    Redbridge: 'London.png',
+    'Richmond upon Thames': 'London.png',
+    Southwark: 'London.png',
+    Sutton: 'London.png',
+    'Tower Hamlets': 'London.png',
+    'Waltham Forest': 'London.png',
+    Wandsworth: 'London.png',
+    Westminster: 'London.png',
+    // South East
+    Berkshire: 'Berkshire.png',
+    Buckinghamshire: 'Buckinghamshire.png',
+    'East Sussex': 'East Sussex.png',
+    Hampshire: 'Hampshire.png',
+    'Isle of Wight': 'Isle of Wight.png',
+    Kent: 'Kent.png',
+    Oxfordshire: 'Oxfordshire.png',
+    Surrey: 'Surrey.png',
+    'West Sussex': 'West Sussex.png',
+    'Brighton & Hove': 'Brighton & Hove.png',
+    Southampton: 'Southampton.png',
+    // South West
+    Cornwall: 'Cornwall.png',
+    Devon: 'Devon.png',
+    Dorset: 'Dorset.png',
+    Gloucestershire: 'Gloucestershire.png',
+    Somerset: 'Somerset.png',
+    Wiltshire: 'Wiltshire.png',
+    Bournemouth: 'Bournemouth.png',
+    Bristol: 'Bristol.png',
+    // Wales
+    Cardiff: 'Cardiff.png',
+    Swansea: 'Swansea.png',
+    Wrexham: 'Wrexham.png',
+    Anglesey: 'Anglesey.png',
+    Carmarthen: 'Carmarthenshire.png',
+    Ceredigion: 'Ceredigion.png',
+    Conwy: 'Conwy Wales.png',
+    Denbighshire: 'Denbighshire.png',
+    Flintshire: 'Flintshire.png',
+    Glamorgan: 'Glamorgan.png',
+    Gwent: 'Gwent.png',
+    Gwynedd: 'Gwynedd.png',
+    Pembrokeshire: 'Pembrokeshire.png',
+    Powys: 'Powys.png',
+    'Conwy & Denbighshire': 'Conwy Wales.png',
+    'Gwynedd & Anglesey': 'Gwynedd.png',
+    Carmarthenshire: 'Carmarthenshire.png',
+    // Scotland
+    Edinburgh: 'Edinburgh.png',
+    Glasgow: 'Glasgow.png',
+  };
+
+  /* ─────────────────────────────────────────────
+     5. EXPORT
+  ───────────────────────────────────────────── */
+  window.BTA_HOME_DATA = {
+    sectorCategories: SECTOR_CATEGORIES,
+    sectorMeta: SECTOR_META,
+    regionData: REGION_DATA,
+    flagMap: FLAG_MAP,
+  };
+
+  // Backward-compatibility aliases expected by submit-entry.js, nominate.js, config.js
+  window.REGION_DATA = REGION_DATA;
+  window.SECTORS = Object.keys(SECTOR_CATEGORIES);
+  window.STANDARD_CATEGORIES = SECTOR_CATEGORIES;
+})();

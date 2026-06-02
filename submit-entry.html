@@ -1083,54 +1083,8 @@
   <!-- Configuration (provides SECTORS, REGIONS, SUPABASE_CONFIG) -->
   <script type="module" src="config.js"></script>
 
-  <!-- Region hierarchy data -->
-  <script>
-  window.REGION_DATA = {
-    england: {
-      'North West':      ['Cheshire','Cumbria','Lancashire','Liverpool','Manchester'],
-      'North East':      ['County Durham','Northumberland','Tyne & Wear','Newcastle','Middlesbrough','Gateshead','Sunderland'],
-      'Yorkshire':       ['East Yorkshire','North Yorkshire','South Yorkshire','West Yorkshire','Leeds','Sheffield','Bradford','York','Hull'],
-      'East Midlands':   ['Derbyshire','Leicestershire','Lincolnshire','Northamptonshire','Nottinghamshire','Rutland','Leicester','Nottingham'],
-      'West Midlands':   ['Herefordshire','Shropshire','Staffordshire','Warwickshire','Worcestershire','Birmingham','Coventry'],
-      'East of England': ['Bedfordshire','Cambridgeshire','Essex','Hertfordshire','Norfolk','Suffolk'],
-      'London':          ['Barking & Dagenham','Barnet','Bexley','Brent','Bromley','Camden','City of London','Croydon','Ealing','Enfield','Greenwich','Hackney','Hammersmith & Fulham','Haringey','Harrow','Havering','Hillingdon','Hounslow','Islington','Kensington & Chelsea','Kingston upon Thames','Lambeth','Lewisham','Merton','Newham','Redbridge','Richmond upon Thames','Southwark','Sutton','Tower Hamlets','Waltham Forest','Wandsworth','Westminster'],
-      'South East':      ['Berkshire','Buckinghamshire','East Sussex','Hampshire','Isle of Wight','Kent','Oxfordshire','Surrey','West Sussex','Brighton & Hove','Reading','Southampton'],
-      'South West':      ['Cornwall','Devon','Dorset','Gloucestershire','Somerset','Wiltshire','Bournemouth','Bristol'],
-    },
-    scotland: {
-      'Central Scotland':    ['Glasgow','Stirling','Falkirk','Clackmannanshire','Lanarkshire','Dunbartonshire'],
-      'Highlands':           ['Inverness','Fort William','Elgin','Aviemore','Wick'],
-      'Grampian':            ['Aberdeen','Fraserburgh','Peterhead','Inverurie'],
-      'Tayside':             ['Dundee','Perth','Arbroath','Kirriemuir'],
-      'Fife':                ['St Andrews','Dunfermline','Kirkcaldy','Glenrothes'],
-      'Lothian':             ['Edinburgh','Livingston','Haddington','Linlithgow'],
-      'Strathclyde':         ['Paisley','Ayr','Kilmarnock','Hamilton','Greenock','Ayrshire','Renfrewshire','Argyll & Bute'],
-      'Borders':             ['Galashiels','Hawick','Jedburgh','Peebles','Scottish Borders'],
-      'Dumfries & Galloway': ['Dumfries','Stranraer','Newton Stewart','Kirkcudbright'],
-      'Islands':             ['Skye','Orkney','Shetland','Lewis','Arran'],
-    },
-    wales: {
-      'North Wales':            ['Wrexham','Bangor','Llandudno','Rhyl','Holyhead','Conwy','Conwy & Denbighshire','Flintshire','Gwynedd & Anglesey'],
-      'Mid Wales':              ['Aberystwyth','Welshpool','Newtown','Brecon','Llandrindod Wells','Ceredigion','Powys'],
-      'South West Wales':       ['Swansea','Neath','Port Talbot','Pembroke','Carmarthen','Milford Haven','Carmarthenshire','Pembrokeshire'],
-      'South East Wales':       ['Newport','Merthyr Tydfil','Tredegar','Ebbw Vale','Pontypool','Gwent'],
-      'Cardiff Capital Region': ['Cardiff','Vale of Glamorgan','Rhondda','Pontypridd','Caerphilly','Glamorgan'],
-    },
-    'northern-ireland': {
-      'Belfast':                       ['Belfast City Centre','North Belfast','South Belfast','East Belfast','West Belfast'],
-      'Antrim & Newtownabbey':         ['Antrim','Newtownabbey','Ballyclare','Randalstown'],
-      'Ards & North Down':             ['Bangor','Newtownards','Holywood','Comber','Donaghadee'],
-      'Armagh, Banbridge & Craigavon': ['Armagh','Banbridge','Craigavon','Lurgan','Portadown'],
-      'Causeway Coast & Glens':        ['Coleraine','Ballycastle','Limavady','Ballymoney','Portrush'],
-      'Derry & Strabane':              ['Derry / Londonderry','Strabane'],
-      'Fermanagh & Omagh':             ['Enniskillen','Omagh','Irvinestown'],
-      'Lisburn & Castlereagh':         ['Lisburn','Castlereagh','Dromore'],
-      'Mid & East Antrim':             ['Ballymena','Carrickfergus','Larne'],
-      'Mid Ulster':                    ['Cookstown','Magherafelt','Dungannon','Maghera'],
-      'Newry, Mourne & Down':          ['Newry','Newcastle','Downpatrick','Warrenpoint'],
-    },
-  };
-  </script>
+  <!-- Region/sector/category data — loaded from home-data.js (single source of truth) -->
+  <script src="home-data.js"></script>
 
   <!-- Entry Form Logic -->
   <script src="submit-entry.js"></script>

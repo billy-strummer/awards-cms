@@ -594,6 +594,13 @@
       margin: 4px 0;
     }
 
+    .terms-hint {
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.5);
+      margin-top: 6px;
+      margin-bottom: 12px;
+    }
+
     /* ── Sub-region picker ── */
     #county_city_wrapper {
       margin-top: 16px;
@@ -686,6 +693,7 @@
 
       <!-- Form Steps -->
       <form id="nominationForm" novalidate aria-label="Nomination submission form">
+        <input type="text" name="website" id="hp_website" style="display:none;position:absolute;left:-9999px;" autocomplete="off" tabindex="-1" aria-hidden="true">
 
         <!-- Step 1: Award Category -->
         <div class="form-step active" id="step1">
@@ -916,7 +924,8 @@
                 I confirm the information provided is accurate and I consent to being contacted by the British Trade Awards regarding this nomination. I understand the nominee will be reviewed by the judging panel. I have read and agree to the <a href="/privacy-policy.html" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.
               </label>
             </div>
-            <button type="button" class="btn btn-submit" id="submitBtn" data-action="nominateApp.submitNomination" disabled>
+            <p class="terms-hint" id="terms-hint">You must accept the terms above before submitting.</p>
+            <button type="button" class="btn btn-submit" id="submitBtn" data-action="nominateApp.submitNomination" disabled aria-disabled="true" aria-describedby="terms-hint">
               <i class="bi bi-trophy me-2" aria-hidden="true"></i>Submit Nomination
             </button>
             <button type="button" class="btn btn-back" data-action="nominateApp.prevStep" data-args="[6]">

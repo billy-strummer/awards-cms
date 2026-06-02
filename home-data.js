@@ -21,7 +21,7 @@
      To add/remove categories: edit this object.
      To add a new sector: add a new key + entry in SECTOR_META below.
   ───────────────────────────────────────────── */
-  var SECTOR_CATEGORIES = {
+  const SECTOR_CATEGORIES = {
     'BUILDING & CONSTRUCTION': [
       'Brickwork & Masonry Company',
       'Drainage Company',
@@ -109,7 +109,7 @@
      image, display name, short description, aria label.
      Add a matching entry here whenever you add a new sector above.
   ───────────────────────────────────────────── */
-  var SECTOR_META = {
+  const SECTOR_META = {
     'BUILDING & CONSTRUCTION': {
       image: 'building-construction.jpg',
       displayName: 'Building & Construction',
@@ -169,7 +169,7 @@
        - nominate.js      (country→region→city picker)
      To add a new county or city: add it to the array for its region group.
   ───────────────────────────────────────────── */
-  var REGION_DATA = {
+  const REGION_DATA = {
     england: {
       'North West': ['Cheshire', 'Cumbria', 'Lancashire', 'Liverpool', 'Manchester'],
       'North East': [
@@ -340,7 +340,7 @@
      Used by home.html regional accordion chips.
      To add a flag: drop the image in /images/flags/ and add the entry here.
   ───────────────────────────────────────────── */
-  var FLAG_MAP = {
+  const FLAG_MAP = {
     // North West
     Cheshire: 'Cheshire.png',
     Cumbria: 'Cumbria.png',

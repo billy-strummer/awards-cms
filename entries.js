@@ -2944,7 +2944,7 @@ const entriesModule = {
       const files = Array.from(e.target.files || []);
       if (!files.length) return;
 
-      let allRows = [];
+      const allRows = [];
 
       for (const file of files) {
         const text = await file.text();

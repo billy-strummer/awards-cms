@@ -608,6 +608,12 @@
       color: #999999 !important;
     }
 
+    .terms-hint {
+      font-size: 0.8rem;
+      color: rgba(0,0,0,0.45);
+      margin-top: 6px;
+    }
+
     /* ── Success ── */
     .success-message {
       text-align: center;
@@ -694,7 +700,14 @@
 
       .progress-bar-wrapper { padding: 14px 12px 8px; }
       .progress-step-wrap { min-width: 0; }
-      .step-label { display: none; }
+      .step-label {
+        font-size: 0.6rem;
+        letter-spacing: 0;
+        max-width: 44px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
 
       .review-row { flex-direction: column; gap: 2px; }
       .review-value { text-align: left; }
@@ -753,7 +766,7 @@
               </select>
             </div>
             <button type="button" class="btn btn-next" data-action="entryFormApp.nextStep" data-args="[1]">
-              Next <i class="bi bi-arrow-right ms-2"></i>
+              Next <i class="bi bi-arrow-right ms-2" aria-hidden="true"></i>
             </button>
           </div>
         </div>
@@ -768,10 +781,10 @@
               <option value="">Choose your sector...</option>
             </select>
             <button type="button" class="btn btn-next" data-action="entryFormApp.nextStep" data-args="[2]">
-              Next <i class="bi bi-arrow-right ms-2"></i>
+              Next <i class="bi bi-arrow-right ms-2" aria-hidden="true"></i>
             </button>
             <button type="button" class="btn btn-back" data-action="entryFormApp.prevStep" data-args="[2]">
-              <i class="bi bi-arrow-left me-2"></i>Back
+              <i class="bi bi-arrow-left me-2" aria-hidden="true"></i>Back
             </button>
           </div>
         </div>
@@ -784,10 +797,10 @@
             <div id="awardsList" class="awards-list-container">
             </div>
             <button type="button" class="btn btn-next" data-action="entryFormApp.nextStep" data-args="[3]" id="step3NextBtn" style="display: none;">
-              Next <i class="bi bi-arrow-right ms-2"></i>
+              Next <i class="bi bi-arrow-right ms-2" aria-hidden="true"></i>
             </button>
             <button type="button" class="btn btn-back" data-action="entryFormApp.prevStep" data-args="[3]">
-              <i class="bi bi-arrow-left me-2"></i>Back
+              <i class="bi bi-arrow-left me-2" aria-hidden="true"></i>Back
             </button>
           </div>
         </div>
@@ -832,10 +845,10 @@
               </select>
             </div>
             <button type="button" class="btn btn-next" data-action="entryFormApp.nextStep" data-args="[4]">
-              Next <i class="bi bi-arrow-right ms-2"></i>
+              Next <i class="bi bi-arrow-right ms-2" aria-hidden="true"></i>
             </button>
             <button type="button" class="btn btn-back" data-action="entryFormApp.prevStep" data-args="[4]">
-              <i class="bi bi-arrow-left me-2"></i>Back
+              <i class="bi bi-arrow-left me-2" aria-hidden="true"></i>Back
             </button>
           </div>
         </div>
@@ -849,20 +862,20 @@
               <label class="form-label" for="entryDescription">Brief description of your business <span class="required-star">*</span></label>
               <textarea class="form-control form-control-lg" id="entryDescription" rows="3"
                 placeholder="Describe your business, the services you offer, and what sets you apart..." maxlength="1000"></textarea>
-              <div class="char-count" id="descCharCount">0 / 1,000</div>
+              <div class="char-count" id="descCharCount" aria-live="polite">0 / 1,000</div>
             </div>
             <div class="mb-3">
               <label class="form-label" for="whyShouldWin">Why should you win this award? <span class="required-star">*</span></label>
               <textarea class="form-control form-control-lg" id="whyShouldWin" rows="4"
                 placeholder="Tell us about your achievements, quality of work, customer satisfaction, community impact..." maxlength="2000"></textarea>
-              <div class="char-count" id="whyCharCount">0 / 2,000</div>
-              <div class="field-hint"><i class="bi bi-lightbulb me-1"></i>Consider mentioning notable projects, customer feedback, certifications, or awards.</div>
+              <div class="char-count" id="whyCharCount" aria-live="polite">0 / 2,000</div>
+              <div class="field-hint"><i class="bi bi-lightbulb me-1" aria-hidden="true"></i>Consider mentioning notable projects, customer feedback, certifications, or awards.</div>
             </div>
             <button type="button" class="btn btn-next" data-action="entryFormApp.nextStep" data-args="[5]">
-              Next <i class="bi bi-arrow-right ms-2"></i>
+              Next <i class="bi bi-arrow-right ms-2" aria-hidden="true"></i>
             </button>
             <button type="button" class="btn btn-back" data-action="entryFormApp.prevStep" data-args="[5]">
-              <i class="bi bi-arrow-left me-2"></i>Back
+              <i class="bi bi-arrow-left me-2" aria-hidden="true"></i>Back
             </button>
           </div>
         </div>
@@ -876,7 +889,7 @@
               <label class="form-label" for="supportingInfo">Additional information <small class="text-muted">(optional)</small></label>
               <textarea class="form-control form-control-lg" id="supportingInfo" rows="3"
                 placeholder="Links to reviews, case studies, press coverage, social media, or anything else you'd like us to see..." maxlength="1500"></textarea>
-              <div class="char-count" id="supportCharCount">0 / 1,500</div>
+              <div class="char-count" id="supportCharCount" aria-live="polite">0 / 1,500</div>
             </div>
             <div class="mb-3">
               <label class="form-label" for="tradeBodies">Trade body memberships <small class="text-muted">(optional)</small></label>
@@ -889,10 +902,10 @@
                 placeholder="e.g. ISO 9001, Constructionline, CHAS">
             </div>
             <button type="button" class="btn btn-next" data-action="entryFormApp.nextStep" data-args="[6]">
-              Next <i class="bi bi-arrow-right ms-2"></i>
+              Next <i class="bi bi-arrow-right ms-2" aria-hidden="true"></i>
             </button>
             <button type="button" class="btn btn-back" data-action="entryFormApp.prevStep" data-args="[6]">
-              <i class="bi bi-arrow-left me-2"></i>Back
+              <i class="bi bi-arrow-left me-2" aria-hidden="true"></i>Back
             </button>
           </div>
         </div>
@@ -926,10 +939,10 @@
               </div>
             </fieldset>
             <button type="button" class="btn btn-next" data-action="entryFormApp.nextStep" data-args="[7]">
-              Review Entry <i class="bi bi-arrow-right ms-2"></i>
+              Review Entry <i class="bi bi-arrow-right ms-2" aria-hidden="true"></i>
             </button>
             <button type="button" class="btn btn-back" data-action="entryFormApp.prevStep" data-args="[7]">
-              <i class="bi bi-arrow-left me-2"></i>Back
+              <i class="bi bi-arrow-left me-2" aria-hidden="true"></i>Back
             </button>
           </div>
         </div>
@@ -948,15 +961,16 @@
               </label>
             </div>
             <p class="text-muted small mt-2">
-              <i class="bi bi-shield-check me-1"></i>
+              <i class="bi bi-shield-check me-1" aria-hidden="true"></i>
               This site uses only essential session cookies required for the form to function. No tracking or analytics cookies are used.
               <a href="/privacy-policy.html" target="_blank">Learn more</a>.
             </p>
-            <button type="button" class="btn btn-submit" id="submitBtn" data-action="entryFormApp.submitEntry" disabled>
-              <i class="bi bi-trophy me-2"></i>Submit Entry
+            <p class="terms-hint" id="terms-hint">You must accept the terms before submitting.</p>
+            <button type="button" class="btn btn-submit" id="submitBtn" data-action="entryFormApp.submitEntry" disabled aria-disabled="true" aria-describedby="terms-hint">
+              <i class="bi bi-trophy me-2" aria-hidden="true"></i>Submit Entry
             </button>
             <button type="button" class="btn btn-back" data-action="entryFormApp.prevStep" data-args="[8]">
-              <i class="bi bi-arrow-left me-2"></i>Back to Edit
+              <i class="bi bi-arrow-left me-2" aria-hidden="true"></i>Back to Edit
             </button>
           </div>
         </div>

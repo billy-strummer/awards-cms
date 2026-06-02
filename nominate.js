@@ -20,6 +20,10 @@
 
   // =====================================================
   // NOMINATION CATEGORIES
+  // These are INTENTIONALLY different from config.js STANDARD_CATEGORIES.
+  // STANDARD_CATEGORIES covers trade company/business award categories.
+  // NOMINATION_CATEGORIES covers peer-nominated individual leadership &
+  // special recognition awards — they are a separate award programme.
   // =====================================================
 
   const NOMINATION_CATEGORIES = [
@@ -744,6 +748,17 @@
         .then(function (result) {
           const entryNumber = result.entry.entry_number;
           document.getElementById('nominationReference').textContent = entryNumber;
+
+          // Show nominee name and category on success page
+          const successNominee = document.getElementById('success-nominee');
+          const successCategory = document.getElementById('success-category');
+          if (successNominee) {
+            successNominee.textContent = d.nomineeName || d.businessName || '';
+          }
+          if (successCategory) {
+            successCategory.textContent = d.awardCategory || '';
+          }
+
           document.querySelectorAll('.form-step').forEach(function (s) {
             s.classList.remove('active');
           });

@@ -377,8 +377,14 @@
         if (el && counter) {
           el.addEventListener('input', () => {
             const len = el.value.length;
-            counter.textContent = `${len.toLocaleString()} / ${max.toLocaleString()}`;
-            counter.classList.toggle('warn', len > max * 0.9);
+            const remaining = max - len;
+            const isWarn = len > max * 0.9;
+            counter.classList.toggle('warn', isWarn);
+            if (isWarn) {
+              counter.textContent = `${remaining >= 0 ? remaining : 0} characters remaining (max ${max.toLocaleString()})`;
+            } else {
+              counter.textContent = `${len.toLocaleString()} / ${max.toLocaleString()}`;
+            }
           });
         }
       });
@@ -392,7 +398,9 @@
       const submitBtn = document.getElementById('submitBtn');
       if (checkbox && submitBtn) {
         checkbox.addEventListener('change', () => {
-          submitBtn.disabled = !checkbox.checked;
+          const isDisabled = !checkbox.checked;
+          submitBtn.disabled = isDisabled;
+          submitBtn.setAttribute('aria-disabled', String(isDisabled));
         });
       }
     },
@@ -829,7 +837,10 @@
       const checkbox = document.getElementById('termsCheckbox');
       const submitBtn = document.getElementById('submitBtn');
       if (checkbox) checkbox.checked = false;
-      if (submitBtn) submitBtn.disabled = true;
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.setAttribute('aria-disabled', 'true');
+      }
     },
 
     // --------------------------------------------------

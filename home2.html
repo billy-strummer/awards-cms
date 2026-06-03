@@ -552,7 +552,7 @@
       line-height: 1.1;
       letter-spacing: -0.02em;
       color: #fff;
-      margin-bottom: 24px;
+      margin-bottom: 40px;
       text-shadow: 0 2px 30px rgba(0, 0, 0, 0.5);
     }
 
@@ -1630,7 +1630,7 @@
       }
 
       /* ── Video repositioned inside hero-content by home2.js ──────
-         When JS moves #hero-video between .hero-sub and .hero-cta-group,
+         When JS moves #hero-video before .hero-cta-group on mobile,
          override the absolute desktop styles and make it full-bleed inline. */
       .hero-content #hero-video {
         position: relative;
@@ -1726,7 +1726,6 @@
       /* Hero — content block (sits below video on mobile) */
       .hero-content { padding: 24px 20px 36px; }
       #hero h1 { font-size: clamp(1.4rem, 6.5vw, 2rem); margin-bottom: 12px; }
-      .hero-sub { font-size: 0.88rem; margin-bottom: 18px; }
       .hero-cta-group {
         flex-direction: column;
         align-items: center;
@@ -1961,8 +1960,8 @@
 
     <!-- Logo -->
     <a href="home.html" class="header-logo" aria-label="British Trade Awards — home">
-      <!-- White version (shown at top of page) -->
-      <img src="BTA_Corporate_Horizontal-Black-and-White-01.png" alt="British Trade Awards" class="logo-white"
+      <!-- Gold version (shown at top of page) -->
+      <img src="BTA_Corporate_Horizontal-Texture.png" alt="British Trade Awards" class="logo-white"
            onerror="this.style.display='none'; this.nextElementSibling.style.display='none'; document.getElementById('header-logo-fallback').style.display='block'">
       <!-- Gold-on-dark version (shown when scrolled) -->
       <img src="BTA_Corporate_Horizontal-Texture.png" alt="British Trade Awards" class="logo-dark"
@@ -2050,10 +2049,6 @@
     <h1>
       Crowning the Nation's <em>Finest Trade Professionals</em>
     </h1>
-
-    <p class="hero-sub">
-      Celebrating excellence across Britain's skilled trades since 2026
-    </p>
 
     <div class="hero-cta-group">
       <a href="submit-entry.html" class="btn-gold">

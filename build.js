@@ -313,6 +313,7 @@ async function build() {
     'BTA_Corporate_Horizontal-Black-and-White-02.png',
     'BTA_Corporate_Horizontal-Texture.png',
     'BTA_Corporate_Horizontal-Texture.jpg',
+    'BTA_Corporate_Horizontal-gold-white.png',
     'hero-video.mp4',
   ];
 

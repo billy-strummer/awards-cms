@@ -21,13 +21,13 @@
     :root {
       --primary-color: #000000;
       --secondary-color: #1a1a1a;
-      --gold-color: #D4AF37;
-      --gold-light: #F4E5B8;
-      --gold-dark: #B8941F;
+      --gold-color: #C9A227;
+      --gold-light: rgba(201,162,39,0.15);
+      --gold-dark: #a07d1a;
     }
 
     body {
-      background: #000000;
+      background: #0a0a0a;
       min-height: 100vh;
       display: flex;
       align-items: center;
@@ -70,7 +70,7 @@
     }
 
     .upload-card {
-      background: white;
+      background: #1a1a1a;
       border-radius: 20px;
       box-shadow: 0 20px 60px rgba(212, 175, 55, 0.3);
       overflow: hidden;
@@ -115,15 +115,15 @@
     }
 
     .entry-info {
-      background: linear-gradient(135deg, var(--gold-light) 0%, #fff9e6 100%);
-      border: 2px solid var(--gold-color);
+      background: rgba(201,162,39,0.08);
+      border: 2px solid rgba(201,162,39,0.35);
       border-radius: 10px;
       padding: 20px;
       margin-bottom: 30px;
     }
 
     .entry-info h5 {
-      color: var(--gold-dark);
+      color: var(--gold-color);
       font-weight: 600;
       margin-bottom: 15px;
     }
@@ -133,20 +133,20 @@
       border-radius: 15px;
       padding: 40px;
       text-align: center;
-      background: #fafafa;
+      background: #111111;
       cursor: pointer;
       transition: all 0.3s;
       margin-bottom: 30px;
     }
 
     .upload-zone:hover {
-      background: var(--gold-light);
-      border-color: var(--gold-dark);
+      background: rgba(201,162,39,0.12);
+      border-color: var(--gold-color);
     }
 
     .upload-zone.dragover {
-      background: var(--gold-light);
-      border-color: var(--gold-dark);
+      background: rgba(201,162,39,0.12);
+      border-color: var(--gold-color);
       transform: scale(1.02);
     }
 
@@ -161,8 +161,8 @@
     }
 
     .file-item {
-      background: white;
-      border: 1px solid #dee2e6;
+      background: #1a1a1a;
+      border: 1px solid rgba(255,255,255,0.1);
       border-radius: 10px;
       padding: 15px;
       margin-bottom: 10px;
@@ -177,7 +177,7 @@
 
     .file-item.uploaded {
       border-color: var(--gold-color);
-      background: #f8f9fa;
+      background: #111111;
     }
 
     .btn-upload {
@@ -269,7 +269,7 @@
 
       <!-- Header -->
       <div class="card-header-custom">
-        <img src="BTA_Corporate_Horizontal-Texture.png" alt="British Trade Awards Logo">
+        <img src="BTA_Corporate_Horizontal-gold-white.png" alt="British Trade Awards Logo">
         <h1>Upload Supporting Documents</h1>
         <div class="subtitle">Add files to support your award entry</div>
       </div>

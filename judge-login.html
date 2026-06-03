@@ -19,7 +19,7 @@
 
   <style>
     body {
-      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+      background: #0a0a0a;
       min-height: 100vh;
       display: flex;
       align-items: center;
@@ -28,32 +28,39 @@
     .login-card {
       max-width: 440px;
       width: 100%;
-      background: #fff;
+      background: #1a1a1a;
       border-radius: 12px;
       box-shadow: 0 20px 60px rgba(0,0,0,0.3);
       overflow: hidden;
     }
     .login-header {
-      background: linear-gradient(135deg, #0d47a1, #1565c0);
-      color: #fff;
+      background: linear-gradient(180deg, #111111 0%, #0d0d0d 100%);
+      border-bottom: 2px solid rgba(201,162,39,0.4);
+      color: #C9A227;
       padding: 2rem;
       text-align: center;
     }
     .login-header h1 { margin: 0; font-size: 1.4rem; }
     .login-header p { margin: 0.5rem 0 0; opacity: 0.85; font-size: 0.9rem; }
     .login-body { padding: 2rem; }
-    .login-body .form-label { font-weight: 500; font-size: 0.9rem; }
+    .login-body .form-label { font-weight: 500; font-size: 0.9rem; color: rgba(255,255,255,0.65); }
+    .login-body .form-control { background: #111111; border: 1px solid #2a2a2a; color: #ffffff; }
+    .login-body .form-control:focus { background: #111111; color: #ffffff; border-color: #C9A227; box-shadow: 0 0 0 3px rgba(201,162,39,0.15); }
+    .login-body .form-control::placeholder { color: rgba(255,255,255,0.3); }
+    .text-muted { color: rgba(255,255,255,0.5) !important; }
+    hr { border-color: rgba(255,255,255,0.1); }
+    a.text-muted { color: rgba(255,255,255,0.4) !important; }
     .btn-judge-login {
-      background: linear-gradient(135deg, #0d47a1, #1565c0);
+      background: linear-gradient(135deg, #a07d1a 0%, #C9A227 50%, #e8c84a 100%);
       border: none;
-      color: #fff;
+      color: #000;
       padding: 0.75rem;
       font-size: 1rem;
       font-weight: 600;
       border-radius: 8px;
       width: 100%;
     }
-    .btn-judge-login:hover { background: #0d47a1; color: #fff; }
+    .btn-judge-login:hover { filter: brightness(1.08); color: #000; }
     .alert { font-size: 0.85rem; }
     #loginSpinner { display: none; }
     @media (max-width: 480px) {

@@ -11,37 +11,37 @@
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400;1,700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://js.stripe.com/v3/"></script>
   <style>
-    :root { --brand-primary: #1a1a2e; --brand-accent: #0d6efd; --gold: #C9A227; }
-    body { background: #f0f2f5; min-height: 100vh; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+    :root { --brand-primary: #0a0a0a; --brand-accent: #C9A227; --gold: #C9A227; }
+    body { background: #0a0a0a; min-height: 100vh; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
     .hero-banner {
-      background: linear-gradient(135deg, var(--brand-primary), #16213e, #0f3460);
+      background: linear-gradient(180deg, #111111 0%, #0d0d0d 100%);
       color: white; padding: 50px 0 40px; text-align: center;
     }
     .hero-banner h1 { font-weight: 800; letter-spacing: -1px; }
     .hero-banner .event-meta { opacity: 0.7; margin-top: 8px; }
     .package-card {
-      border: 2px solid #e9ecef; border-radius: 16px; padding: 28px;
+      border: 2px solid rgba(255,255,255,0.12); border-radius: 16px; padding: 28px;
       text-align: center; transition: all 0.3s; cursor: pointer; height: 100%;
     }
     .package-card:hover, .package-card.selected {
-      border-color: var(--brand-accent); box-shadow: 0 8px 30px rgba(13,110,253,0.15);
+      border-color: var(--brand-accent); box-shadow: 0 8px 30px rgba(201,162,39,0.2);
       transform: translateY(-2px);
     }
-    .package-card.selected { background: #f0f6ff; }
-    .package-card .price { font-size: 2.2rem; font-weight: 800; color: var(--brand-primary); }
-    .package-card .price small { font-size: 0.9rem; font-weight: 400; color: #6c757d; }
+    .package-card.selected { background: rgba(201,162,39,0.08); }
+    .package-card .price { font-size: 2.2rem; font-weight: 800; color: var(--gold); }
+    .package-card .price small { font-size: 0.9rem; font-weight: 400; color: rgba(255,255,255,0.5); }
     .package-card .pkg-name { font-weight: 700; font-size: 1.2rem; margin-bottom: 8px; }
     .package-card .pkg-features { list-style: none; padding: 0; margin: 16px 0 0; text-align: left; }
-    .package-card .pkg-features li { padding: 4px 0; font-size: 0.9rem; color: #495057; }
+    .package-card .pkg-features li { padding: 4px 0; font-size: 0.9rem; color: rgba(255,255,255,0.7); }
     .package-card .pkg-features li i { color: #198754; margin-right: 6px; }
-    .guest-row { background: #f8f9fa; border-radius: 8px; padding: 12px; margin-bottom: 8px; }
+    .guest-row { background: #111111; border-radius: 8px; padding: 12px; margin-bottom: 8px; }
     .confirmation-card { text-align: center; padding: 40px; }
     .confirmation-card .qr-code { max-width: 200px; margin: 20px auto; }
     .step-indicator { display: flex; justify-content: center; gap: 8px; margin: 20px 0; }
-    .step-indicator .step { width: 10px; height: 10px; border-radius: 50%; background: #dee2e6; }
-    .step-indicator .step.active { background: var(--brand-accent); width: 30px; border-radius: 5px; }
+    .step-indicator .step { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.2); }
+    .step-indicator .step.active { background: var(--gold); width: 30px; border-radius: 5px; }
     #loadingOverlay {
-      position: fixed; inset: 0; background: white; display: flex;
+      position: fixed; inset: 0; background: #0a0a0a; display: flex;
       align-items: center; justify-content: center; z-index: 9999;
     }
     #errorState { display: none; }
@@ -56,6 +56,23 @@
       body { padding: 8px 0; }
       .btn-lg { font-size: 0.95rem; padding: 12px 20px; }
     }
+      .card { background: #1a1a1a !important; border: 1px solid rgba(201,162,39,0.15) !important; color: #ffffff !important; }
+    .card-body { color: #ffffff; }
+    h4, h5, h6, strong, label { color: #ffffff; }
+    .text-muted, .text-muted small { color: rgba(255,255,255,0.5) !important; }
+    .text-primary { color: #C9A227 !important; }
+    .form-control, .form-select { background: #111111 !important; border: 1px solid #2a2a2a !important; color: #ffffff !important; }
+    .form-control::placeholder { color: rgba(255,255,255,0.3) !important; }
+    .form-control:focus, .form-select:focus { border-color: #C9A227 !important; box-shadow: 0 0 0 3px rgba(201,162,39,0.15) !important; }
+    .form-select option { background: #111111; color: #ffffff; }
+    .btn-primary { background: linear-gradient(135deg, #a07d1a, #C9A227) !important; border: none !important; color: #000 !important; font-weight: 700 !important; }
+    .btn-outline-secondary { border-color: rgba(255,255,255,0.2) !important; color: rgba(255,255,255,0.6) !important; }
+    .btn-success { background: linear-gradient(135deg, #a07d1a, #C9A227) !important; border: none !important; color: #000 !important; font-weight: 700 !important; }
+    .btn-outline-primary { border-color: #C9A227 !important; color: #C9A227 !important; }
+    .alert-info { background: rgba(201,162,39,0.1) !important; border-color: rgba(201,162,39,0.3) !important; color: rgba(255,255,255,0.85) !important; }
+    hr { border-color: rgba(255,255,255,0.1); }
+    .spinner-border { border-color: #C9A227; border-right-color: transparent; }
+    #loadingOverlay p { color: rgba(255,255,255,0.5); }
   </style>
 </head>
 <body>

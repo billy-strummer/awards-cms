@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Vote for Nominee - British Trade Awards</title>
-  <link rel="icon" href="BTA_Corporate_Horizontal-Texture.png" type="image/png">
+  <link rel="icon" href="BTA_Corporate_Horizontal-gold-white.png" type="image/png">
 
   <!-- Bootstrap 5 -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -22,17 +22,17 @@
   <meta property="og:title" content="Vote for this nominee - British Trade Awards">
   <meta property="og:description" content="Cast your vote for this nominee in the British Trade Awards">
   <meta property="og:type" content="website">
-  <meta property="og:image" content="/BTA_Corporate_Horizontal-Texture.png">
+  <meta property="og:image" content="/BTA_Corporate_Horizontal-gold-white.png">
   <meta name="twitter:card" content="summary_large_image">
 
   <style>
     :root {
       --gold-color: #C9A227;
-      --gold-dark: #B8941F;
+      --gold-dark: #a07d1a;
     }
 
     body {
-      background: #000000;
+      background: #0a0a0a;
       min-height: 100vh;
       padding: 40px 0;
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -77,7 +77,7 @@
     }
 
     .nominee-card {
-      background: white;
+      background: #1a1a1a;
       border-radius: 24px;
       padding: 50px;
       box-shadow: 0 20px 60px rgba(201, 162, 39, 0.3);
@@ -90,7 +90,7 @@
       height: 120px;
       object-fit: contain;
       border-radius: 12px;
-      border: 3px solid #f8f9fa;
+      border: 3px solid rgba(255,255,255,0.1);
       margin: 0 auto 30px;
       display: block;
     }
@@ -138,7 +138,7 @@
     }
 
     .vote-count-label {
-      color: #6c757d;
+      color: rgba(255,255,255,0.5);
       font-size: 1rem;
       text-transform: uppercase;
       letter-spacing: 1px;
@@ -195,7 +195,7 @@
     }
 
     .modal-content {
-      background: white;
+      background: #1a1a1a;
       border-radius: 16px;
       padding: 40px;
       max-width: 500px;
@@ -211,7 +211,7 @@
     }
 
     .entry-description {
-      background: #f8f9fa;
+      background: #111111;
       padding: 20px;
       border-radius: 12px;
       margin: 20px 0;
@@ -223,17 +223,18 @@
     }
 
     .error-message {
-      background: white;
+      background: #1a1a1a;
       border-radius: 16px;
       padding: 50px;
       text-align: center;
+      color: #ffffff;
     }
 
     .website-link {
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      color: #B8941F;
+      color: #C9A227;
       text-decoration: none;
       font-weight: 600;
       margin-top: 15px;
@@ -247,6 +248,16 @@
       .vote-card, .candidate-card { padding: 1rem; }
       .btn-lg { padding: 12px 20px; font-size: 0.95rem; }
     }
+      .modal-content h3, .modal-content label, .form-check-label { color: #ffffff; }
+    .text-muted { color: rgba(255,255,255,0.5) !important; }
+    .form-control, .form-control-lg { background: #111111 !important; border: 1px solid #2a2a2a !important; color: #ffffff !important; }
+    .form-control::placeholder, .form-control-lg::placeholder { color: rgba(255,255,255,0.3) !important; }
+    .form-control:focus { border-color: #C9A227 !important; box-shadow: 0 0 0 3px rgba(201,162,39,0.15) !important; }
+    .btn-primary { background: linear-gradient(135deg, #a07d1a, #C9A227) !important; border: none !important; color: #000 !important; font-weight: 700 !important; }
+    .btn-outline-secondary { border-color: rgba(255,255,255,0.2) !important; color: rgba(255,255,255,0.6) !important; }
+    .alert-info { background: rgba(201,162,39,0.1) !important; border-color: rgba(201,162,39,0.3) !important; color: rgba(255,255,255,0.85) !important; }
+    .form-check-input { background-color: #1a1a1a; border-color: #2a2a2a; }
+    .nominee-card h1, .nominee-card h3, .nominee-card h5, .nominee-card h6 { color: #ffffff; }
   </style>
 </head>
 <body>
@@ -255,9 +266,8 @@
 
     <!-- BTA Brand Header -->
     <div class="text-center mb-4">
-      <img src="BTA_Corporate_Horizontal-Texture.png" alt="British Trade Awards" style="height: 80px; width: auto; filter: drop-shadow(0 0 10px rgba(201,162,39,0.5));">
-      <div style="font-family: 'Playfair Display', Georgia, serif; color: var(--gold-color); font-size: 1.1rem; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; margin-top: 10px;">British Trade Awards</div>
-      <div style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; color: rgba(201,162,39,0.7); font-size: 0.75rem; letter-spacing: 2px; text-transform: uppercase;">Public Voting</div>
+      <img src="BTA_Corporate_Horizontal-gold-white.png" alt="British Trade Awards" style="height: 60px; width: auto; filter: drop-shadow(0 0 10px rgba(201,162,39,0.5));">
+
     </div>
 
     <!-- Loading State -->

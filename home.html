@@ -1586,11 +1586,13 @@
       #hero {
         height: auto;
         min-height: auto;
-        display: block;
+        display: flex;
+        flex-direction: column;
         padding: 0;
       }
 
       #hero-video {
+        order: 2;
         position: relative;
         inset: auto;
         width: 100%;
@@ -1600,19 +1602,24 @@
         display: block;
       }
 
-      /* Gradient overlay: only over the video strip (56.25 vw tall) */
+      /* Gradient overlay: hidden on mobile (content no longer overlays video) */
       .hero-overlay {
-        bottom: auto;
-        height: 56.25vw;
+        display: none;
       }
 
-      /* CTA block: solid background, flows below the video */
+      /* Heading block: flows above the video */
       .hero-content {
+        order: 1;
         position: relative;
         z-index: 2;
-        padding: 32px 24px 40px;
+        padding: calc(var(--header-h) + 24px) 24px 24px;
         max-width: 100%;
         background: var(--bg-primary);
+      }
+
+      /* CTA block: flows below the video */
+      .hero-cta-group {
+        order: 3;
       }
 
       .hero-logo {

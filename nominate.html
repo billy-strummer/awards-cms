@@ -618,14 +618,14 @@
       align-items: center;
       gap: 8px;
       padding: 14px 6px;
-      border: 2px solid #e2e8f0;
+      border: 2px solid rgba(255,255,255,0.15);
       border-radius: 12px;
-      background: #fff;
+      background: #1a1a1a;
       cursor: pointer;
       transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
       font-size: 0.8rem;
       font-weight: 600;
-      color: #1a1a1a;
+      color: rgba(255,255,255,0.85);
       font-family: 'Inter', sans-serif;
     }
     .country-pick-btn img {
@@ -633,8 +633,8 @@
       height: 40px;
       object-fit: cover;
       border-radius: 4px;
-      border: 1px solid #e8eaf0;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      border: 1px solid rgba(255,255,255,0.1);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
     }
     .country-pick-btn:hover {
       border-color: var(--gold);
@@ -717,7 +717,7 @@
       <!-- Header -->
       <div class="card-header-custom">
         <a href="/" class="home-link" aria-label="Back to homepage">
-          <img src="BTA_Corporate_Horizontal-Texture.png" alt="British Trade Awards Logo">
+          <img src="BTA_Corporate_Horizontal-gold-white.png" alt="British Trade Awards Logo">
         </a>
         <div>
           <h1>British Trade Awards</h1>
@@ -744,7 +744,7 @@
             <p class="step-subtitle">Select the category that best fits your nominee</p>
             <div class="alert alert-info mb-4" role="note">
               <strong><i class="bi bi-info-circle me-2" aria-hidden="true"></i>Important:</strong>
-              If nominating for the <strong>Apprentice of the Year</strong> or <strong>Young Tradesperson of the Year</strong> categories, the nominee must be under 30 years old and you must have their consent to be nominated. See our <a href="/privacy-policy.html" target="_blank" rel="noopener noreferrer">Privacy Policy</a> for details.
+              If nominating for the <strong>Apprentice of the Year</strong> or <strong>Young Tradesperson of the Year</strong> categories, the nominee must be under 25 years old and you must have their consent to be nominated. See our <a href="/privacy-policy.html" target="_blank" rel="noopener noreferrer">Privacy Policy</a> for details.
             </div>
             <div id="categoryList">
               <!-- Categories rendered by JS -->
@@ -780,7 +780,7 @@
                 <span>Wales</span>
               </button>
               <button type="button" class="country-pick-btn" data-country="northern-ireland" aria-pressed="false">
-                <img src="images/flags/United Kingdom.png" alt="Northern Ireland flag">
+                <img src="images/flags/Northern_Ireland.png" alt="Northern Ireland flag" onerror="this.src='images/flags/United Kingdom.png'">
                 <span>Northern Ireland</span>
               </button>
             </div>
@@ -1015,10 +1015,10 @@
             <p class="success-detail" id="success-nominee-wrap">Nominee: <strong id="success-nominee"></strong></p>
             <p class="success-detail" id="success-category-wrap">Category: <strong id="success-category"></strong></p>
             <div>
-              <p class="mb-1" style="font-size:0.9rem; color:#888888;">Your Nomination Reference</p>
+              <p class="mb-1" style="font-size:0.9rem; color:rgba(255,255,255,0.5);">Your Nomination Reference</p>
               <div class="success-ref" id="nominationReference"></div>
             </div>
-            <p class="mt-4" style="font-size:0.85rem; color:#999999;">A confirmation email has been sent to your email address.</p>
+            <p class="mt-4" style="font-size:0.85rem; color:rgba(255,255,255,0.5);">A confirmation email has been sent to your email address.</p>
           </div>
         </div>
 

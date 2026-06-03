@@ -803,30 +803,15 @@
       const video = document.getElementById('hero-video');
       if (!video) return;
 
-      const reducedMotionMQ = window.matchMedia('(prefers-reduced-motion: reduce)');
-
-      function shouldPlay() {
-        return !reducedMotionMQ.matches;
-      }
-
-      if (!shouldPlay()) {
-        video.pause();
-      }
-
-      reducedMotionMQ.addEventListener('change', function () {
-        if (!shouldPlay()) {
-          video.pause();
-        }
-      });
-
+      // Pause when scrolled out of view; resume when back in view.
+      // No prefers-reduced-motion gate — this is a decorative background,
+      // not a UI animation, and should play on all devices.
       if ('IntersectionObserver' in window) {
         const obs = new IntersectionObserver(
           function (entries) {
             entries.forEach(function (entry) {
               if (entry.isIntersecting) {
-                if (shouldPlay()) {
-                  video.play().catch(function () {});
-                }
+                video.play().catch(function () {});
               } else {
                 video.pause();
               }
@@ -834,8 +819,9 @@
           },
           { threshold: 0.1 }
         );
-
         obs.observe(video);
+      } else {
+        video.play().catch(function () {});
       }
     })();
   } catch (e) {

@@ -13,7 +13,7 @@
   <!-- Brand Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 
 
   <!-- Supabase -->
@@ -25,10 +25,10 @@
       --gold-hover: #d4aa2a;
       --gold-light: #e8c84a;
       --gold-dark:  #a07d1a;
-      --gold-text:  #7a5c0e; /* darker gold for readable text on white */
+      --gold-text:  #C9A227;
       --bg:         #0a0a0a;
-      --bg-card:    #ffffff;
-      --bg-input:   #f7f7f7;
+      --bg-card:    #1a1a1a;
+      --bg-input:   #111111;
     }
 
     * { box-sizing: border-box; }
@@ -92,7 +92,7 @@
     }
 
     .entry-card {
-      background: #ffffff;
+      background: #1a1a1a;
       border-radius: 16px;
       border: 1px solid rgba(201,162,39,0.45);
       box-shadow: 0 32px 80px rgba(0,0,0,0.85), 0 0 0 1px rgba(201,162,39,0.15);
@@ -114,12 +114,10 @@
     .card-header-custom {
       background: linear-gradient(180deg, #111111 0%, #0d0d0d 100%);
       border-bottom: 2px solid rgba(201,162,39,0.4);
-      padding: 28px 40px;
-      text-align: center;
+      padding: 24px 40px;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 24px;
     }
 
     .home-link {
@@ -139,31 +137,12 @@
       transition: opacity 0.2s;
     }
 
-    .card-header-custom h1 {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: 1.75rem;
-      font-weight: 900;
-      color: var(--gold);
-      margin: 0;
-      line-height: 1.2;
-      letter-spacing: 2px;
-    }
 
-    .card-header-custom .subtitle {
-      font-family: 'Inter', sans-serif;
-      font-size: 0.75rem;
-      font-weight: 400;
-      color: rgba(255,255,255,0.45);
-      letter-spacing: 3px;
-      text-transform: uppercase;
-      margin-top: 5px;
-    }
-
-    /* ── Progress bar (white background) ── */
+    /* ── Progress bar ── */
     .progress-bar-wrapper {
       padding: 18px 30px 10px;
-      background: #ffffff;
-      border-bottom: 1px solid rgba(0,0,0,0.07);
+      background: #0d0d0d;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
       position: relative;
       z-index: 1;
     }
@@ -182,7 +161,7 @@
       left: 0;
       right: 0;
       height: 2px;
-      background: rgba(0,0,0,0.08);
+      background: rgba(255,255,255,0.12);
       transform: translateY(-50%);
       z-index: 0;
     }
@@ -202,8 +181,8 @@
       width: 14px;
       height: 14px;
       border-radius: 50%;
-      background: #e8e8e8;
-      border: 2px solid #cccccc;
+      background: #2a2a2a;
+      border: 2px solid #3a3a3a;
       position: relative;
       z-index: 2;
       transition: all 0.3s;
@@ -224,7 +203,7 @@
     .step-label {
       font-family: 'Inter', sans-serif;
       font-size: 0.6rem;
-      color: #aaaaaa;
+      color: rgba(255,255,255,0.35);
       text-align: center;
       margin-top: 6px;
       font-weight: 500;
@@ -232,8 +211,8 @@
       letter-spacing: 0.5px;
     }
 
-    .step-label.active { color: var(--gold-text); font-weight: 700; }
-    .step-label.completed { color: #aaaaaa; }
+    .step-label.active { color: var(--gold); font-weight: 700; }
+    .step-label.completed { color: rgba(255,255,255,0.35); }
 
     .progress-step-wrap {
       display: flex;
@@ -252,7 +231,7 @@
 
     .awards-list-container::-webkit-scrollbar { width: 4px; }
     .awards-list-container::-webkit-scrollbar-track {
-      background: rgba(0,0,0,0.04);
+      background: rgba(255,255,255,0.05);
       border-radius: 2px;
     }
     .awards-list-container::-webkit-scrollbar-thumb {
@@ -265,14 +244,14 @@
       padding: 36px 40px;
       display: flex;
       flex-direction: column;
-      background: #ffffff;
+      background: #111111;
     }
 
     .step-question {
       font-family: 'Playfair Display', Georgia, serif;
       font-size: 1.5rem;
       font-weight: 700;
-      color: #1a1a1a;
+      color: #ffffff;
       margin-bottom: 8px;
       text-align: center;
     }
@@ -281,7 +260,7 @@
       font-family: 'Inter', sans-serif;
       font-size: 0.9rem;
       font-weight: 400;
-      color: #777777;
+      color: rgba(255,255,255,0.55);
       text-align: center;
       margin-bottom: 28px;
     }
@@ -289,11 +268,11 @@
     .form-step { display: none; }
     .form-step.active { display: block; animation: fadeIn 0.35s ease-out; }
 
-    /* ── Form controls (light theme) ── */
+    /* ── Form controls (dark theme) ── */
     .form-control, .form-control-lg, .form-select, .form-select-lg {
-      background: #f7f7f7;
-      border: 1px solid #dde1e7;
-      color: #1a1a1a;
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      color: #ffffff;
       border-radius: 8px;
       padding: 13px 16px;
       font-family: 'Inter', sans-serif;
@@ -303,19 +282,19 @@
 
     .form-control:focus, .form-control-lg:focus,
     .form-select:focus, .form-select-lg:focus {
-      background: #ffffff;
-      color: #1a1a1a;
+      background: #1a1a1a;
+      color: #ffffff;
       border-color: var(--gold);
       box-shadow: 0 0 0 3px rgba(201,162,39,0.15);
       outline: none;
     }
 
     .form-control::placeholder, .form-control-lg::placeholder {
-      color: #aaaaaa;
+      color: rgba(255,255,255,0.3);
     }
 
     .form-select, .form-select-lg {
-      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23666666' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23999999' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
       background-repeat: no-repeat;
       background-position: right 12px center;
       background-size: 16px 12px;
@@ -323,8 +302,8 @@
     }
 
     .form-select option, .form-select-lg option {
-      background: #ffffff;
-      color: #1a1a1a;
+      background: #111111;
+      color: #ffffff;
     }
 
     textarea.form-control, textarea.form-control-lg {
@@ -335,7 +314,7 @@
     .char-count {
       font-family: 'Inter', sans-serif;
       font-size: 0.78rem;
-      color: #aaaaaa;
+      color: rgba(255,255,255,0.4);
       text-align: right;
       margin-top: 4px;
     }
@@ -345,13 +324,13 @@
     .field-hint {
       font-family: 'Inter', sans-serif;
       font-size: 0.82rem;
-      color: #888888;
+      color: rgba(255,255,255,0.5);
       margin-top: 6px;
       line-height: 1.4;
     }
 
     .field-hint-text {
-      color: rgba(0,0,0,0.45);
+      color: rgba(255,255,255,0.4);
       font-size: 0.75rem;
       margin-top: 4px;
       display: block;
@@ -361,7 +340,7 @@
       font-family: 'Inter', sans-serif;
       font-weight: 600;
       font-size: 0.8rem;
-      color: #555555;
+      color: rgba(255,255,255,0.65);
       text-transform: uppercase;
       letter-spacing: 0.06em;
       margin-bottom: 6px;
@@ -406,8 +385,8 @@
 
     .btn-back {
       background: transparent;
-      border: 1px solid #cccccc;
-      color: #666666;
+      border: 1px solid rgba(255,255,255,0.2);
+      color: rgba(255,255,255,0.6);
       padding: 12px 40px;
       font-family: 'Inter', sans-serif;
       font-size: 0.92rem;
@@ -419,9 +398,9 @@
     }
 
     .btn-back:hover {
-      background: #f0f0f0;
-      border-color: #aaaaaa;
-      color: #333333;
+      background: rgba(255,255,255,0.08);
+      border-color: rgba(255,255,255,0.35);
+      color: #ffffff;
     }
 
     /* ── Sector group / Award options ── */
@@ -442,13 +421,13 @@
     }
 
     .award-option {
-      border: 1px solid #e8e8e8;
+      border: 1px solid rgba(255,255,255,0.12);
       padding: 14px 16px;
       border-radius: 8px;
       margin-bottom: 6px;
       cursor: pointer;
       transition: all 0.25s;
-      background: #fafafa;
+      background: #1e1e1e;
       display: flex;
       align-items: center;
       gap: 12px;
@@ -471,8 +450,8 @@
       width: 26px;
       height: 26px;
       border-radius: 50%;
-      border: 1.5px solid #cccccc;
-      background: #ffffff;
+      border: 1.5px solid rgba(255,255,255,0.25);
+      background: #2a2a2a;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -490,26 +469,26 @@
       font-family: 'Inter', sans-serif;
       font-size: 0.92rem;
       font-weight: 400;
-      color: #333333;
+      color: rgba(255,255,255,0.8);
     }
 
     .award-option.selected .award-name {
       font-weight: 600;
-      color: #1a1a1a;
+      color: #ffffff;
     }
 
     /* ── Review section ── */
     .review-section {
-      background: #f7f7f7;
+      background: #1a1a1a;
       border-radius: 10px;
       padding: 24px;
-      border: 1px solid #e8e8e8;
+      border: 1px solid rgba(255,255,255,0.1);
     }
 
     .review-group {
       margin-bottom: 16px;
       padding-bottom: 16px;
-      border-bottom: 1px solid #eeeeee;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
     }
 
     .review-group:last-child {
@@ -539,7 +518,7 @@
     .review-label {
       font-family: 'Inter', sans-serif;
       font-size: 0.82rem;
-      color: #888888;
+      color: rgba(255,255,255,0.45);
       font-weight: 400;
       min-width: 120px;
       flex-shrink: 0;
@@ -548,7 +527,7 @@
     .review-value {
       font-family: 'Inter', sans-serif;
       font-size: 0.88rem;
-      color: #1a1a1a;
+      color: #ffffff;
       font-weight: 500;
       text-align: right;
       word-break: break-word;
@@ -557,13 +536,13 @@
     .review-text-block {
       font-family: 'Inter', sans-serif;
       font-size: 0.85rem;
-      color: #444444;
+      color: rgba(255,255,255,0.7);
       line-height: 1.6;
       margin-top: 6px;
-      background: #ffffff;
+      background: #111111;
       padding: 12px;
       border-radius: 6px;
-      border: 1px solid #e8e8e8;
+      border: 1px solid rgba(255,255,255,0.1);
       white-space: pre-wrap;
     }
 
@@ -601,7 +580,7 @@
     .terms-check label {
       font-family: 'Inter', sans-serif;
       font-size: 0.83rem;
-      color: #555555;
+      color: rgba(255,255,255,0.65);
       line-height: 1.5;
       cursor: pointer;
     }
@@ -618,7 +597,7 @@
 
     .terms-hint {
       font-size: 0.8rem;
-      color: rgba(0,0,0,0.45);
+      color: rgba(255,255,255,0.4);
       margin-top: 6px;
     }
 
@@ -638,16 +617,16 @@
     .success-message h2 {
       font-family: 'Playfair Display', Georgia, serif;
       font-weight: 700;
-      color: #1a1a1a;
+      color: #ffffff;
     }
 
     .success-message p {
-      color: #777777;
+      color: rgba(255,255,255,0.6);
     }
 
     .success-ref {
       display: inline-block;
-      background: #f7f7f7;
+      background: rgba(255,255,255,0.05);
       color: var(--gold-text);
       border: 1px solid rgba(201,162,39,0.45);
       padding: 10px 24px;
@@ -676,14 +655,14 @@
       align-items: center;
       gap: 8px;
       padding: 14px 6px;
-      border: 2px solid #e2e8f0;
+      border: 2px solid rgba(255,255,255,0.15);
       border-radius: 12px;
-      background: #fff;
+      background: #1a1a1a;
       cursor: pointer;
       transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
       font-size: 0.8rem;
       font-weight: 600;
-      color: #1a1a1a;
+      color: rgba(255,255,255,0.85);
       font-family: 'Inter', sans-serif;
     }
     .country-pick-btn img {
@@ -691,8 +670,8 @@
       height: 40px;
       object-fit: cover;
       border-radius: 4px;
-      border: 1px solid #e8eaf0;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      border: 1px solid rgba(255,255,255,0.1);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
     }
     .country-pick-btn:hover {
       border-color: var(--gold);
@@ -733,13 +712,7 @@
         min-height: 100vh;
       }
 
-      .card-header-custom {
-        flex-direction: column;
-        gap: 14px;
-        padding: 24px 20px;
-      }
-      .card-header-custom h1 { font-size: 1.4rem; letter-spacing: 1.5px; }
-      .card-header-custom .subtitle { font-size: 0.72rem; letter-spacing: 2.5px; }
+      .card-header-custom { padding: 20px; }
       .card-header-custom img { height: 36px; }
 
       .form-section { padding: 24px 20px; }
@@ -779,12 +752,8 @@
       <!-- Header -->
       <div class="card-header-custom">
         <a href="/" class="home-link" aria-label="Back to homepage">
-          <img src="BTA_Corporate_Horizontal-Texture.png" alt="British Trade Awards Logo">
+          <img src="BTA_Corporate_Horizontal-gold-white.png" alt="British Trade Awards Logo">
         </a>
-        <div>
-          <h1>British Trade Awards</h1>
-          <div class="subtitle">Self-Nomination Entry Form</div>
-        </div>
       </div>
 
       <!-- Progress Bar -->
@@ -821,7 +790,7 @@
                 <span>Wales</span>
               </button>
               <button type="button" class="country-pick-btn" data-country="northern-ireland" aria-pressed="false">
-                <img src="images/flags/United Kingdom.png" alt="Northern Ireland flag">
+                <img src="images/flags/Northern_Ireland.png" alt="Northern Ireland flag" onerror="this.src='images/flags/United Kingdom.png'">
                 <span>Northern Ireland</span>
               </button>
             </div>

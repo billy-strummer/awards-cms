@@ -552,7 +552,7 @@
       line-height: 1.1;
       letter-spacing: -0.02em;
       color: #fff;
-      margin-bottom: 40px;
+      margin-bottom: 24px;
       text-shadow: 0 2px 30px rgba(0, 0, 0, 0.5);
     }
 
@@ -1630,7 +1630,7 @@
       }
 
       /* ── Video repositioned inside hero-content by home2.js ──────
-         When JS moves #hero-video before .hero-cta-group on mobile,
+         When JS moves #hero-video between .hero-sub and .hero-cta-group,
          override the absolute desktop styles and make it full-bleed inline. */
       .hero-content #hero-video {
         position: relative;
@@ -1726,6 +1726,7 @@
       /* Hero — content block (sits below video on mobile) */
       .hero-content { padding: 24px 20px 36px; }
       #hero h1 { font-size: clamp(1.4rem, 6.5vw, 2rem); margin-bottom: 12px; }
+      .hero-sub { font-size: 0.88rem; margin-bottom: 18px; }
       .hero-cta-group {
         flex-direction: column;
         align-items: center;
@@ -1945,6 +1946,40 @@
       .cat-modal-list { grid-template-columns: 1fr; }
       .cat-modal-panel { padding: 40px 24px 32px; }
     }
+
+    /* Desktop: strapline + heading above video (flex column, video reordered below) */
+    @media (min-width: 769px) {
+      #hero {
+        height: auto;
+        min-height: auto;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .hero-overlay { display: none; }
+
+      #hero-video {
+        order: 2;
+        position: relative;
+        inset: auto;
+        width: 100%;
+        height: auto;
+        aspect-ratio: 16 / 9;
+        object-fit: cover;
+        max-height: 75vh;
+      }
+
+      .hero-content {
+        order: 1;
+        position: relative;
+        max-width: 100%;
+        background: var(--bg-primary);
+        padding: calc(var(--header-h) + 64px) clamp(20px, 6vw, 80px) 64px;
+      }
+
+      .hero-scroll-hint { display: none; }
+    }
   </style>
 </head>
 
@@ -2049,6 +2084,10 @@
     <h1>
       Crowning the Nation's <em>Finest Trade Professionals</em>
     </h1>
+
+    <p class="hero-sub">
+      Crowning Britain's Best Trade Professionals
+    </p>
 
     <div class="hero-cta-group">
       <a href="submit-entry.html" class="btn-gold">

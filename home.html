@@ -1912,6 +1912,40 @@
       .cat-modal-list { grid-template-columns: 1fr; }
       .cat-modal-panel { padding: 40px 24px 32px; }
     }
+
+    /* Desktop: strapline + heading above video (flex column, video reordered below) */
+    @media (min-width: 769px) {
+      #hero {
+        height: auto;
+        min-height: auto;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .hero-overlay { display: none; }
+
+      #hero-video {
+        order: 2;
+        position: relative;
+        inset: auto;
+        width: 100%;
+        height: auto;
+        aspect-ratio: 16 / 9;
+        object-fit: cover;
+        max-height: 75vh;
+      }
+
+      .hero-content {
+        order: 1;
+        position: relative;
+        max-width: 100%;
+        background: var(--bg-primary);
+        padding: calc(var(--header-h) + 64px) clamp(20px, 6vw, 80px) 64px;
+      }
+
+      .hero-scroll-hint { display: none; }
+    }
   </style>
 </head>
 
@@ -1927,10 +1961,10 @@
 
     <!-- Logo -->
     <a href="home.html" class="header-logo" aria-label="British Trade Awards — home">
-      <!-- White version (shown at top of page) -->
-      <img src="BTA_Corporate_Horizontal-Black-and-White-01.png" alt="British Trade Awards" class="logo-white"
+      <!-- Gold version (shown at top of page) -->
+      <img src="BTA_Corporate_Horizontal-Texture.png" alt="British Trade Awards" class="logo-white"
            onerror="this.style.display='none'; this.nextElementSibling.style.display='none'; document.getElementById('header-logo-fallback').style.display='block'">
-      <!-- Gold-on-dark version (shown when scrolled) -->
+      <!-- Gold version (shown when scrolled) -->
       <img src="BTA_Corporate_Horizontal-Texture.png" alt="British Trade Awards" class="logo-dark"
            style="display:none"
            onerror="this.style.display='none'">
@@ -2018,7 +2052,7 @@
     </h1>
 
     <p class="hero-sub">
-      Celebrating excellence across Britain's skilled trades since 2026
+      Crowning Britain's Best Trade Professionals
     </p>
 
     <div class="hero-cta-group">

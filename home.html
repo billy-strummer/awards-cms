@@ -1578,10 +1578,53 @@
     @media (max-width: 768px) {
       :root { --header-h: 60px; }
 
-      /* Push hero content above true-center so the scroll indicator
-         fills the bottom rather than leaving blank black space */
-      #hero { padding-bottom: 80px; }
+      /* ── Hero: landscape video at natural 16:9 ratio ──────────────
+         On a portrait phone, object-fit:cover on a 100vh hero scales
+         the 1280×720 video ~3.8× — only the centre 26 % is visible.
+         Fix: let the video determine its own height (aspect-ratio 16/9),
+         then flow the CTA block below it on the same dark background. */
+      #hero {
+        height: auto;
+        min-height: auto;
+        display: block;
+        padding: 0;
+      }
 
+      #hero-video {
+        position: relative;
+        inset: auto;
+        width: 100%;
+        height: auto;
+        aspect-ratio: 16 / 9;
+        object-fit: fill;
+        display: block;
+      }
+
+      /* Gradient overlay: only over the video strip (56.25 vw tall) */
+      .hero-overlay {
+        bottom: auto;
+        height: 56.25vw;
+      }
+
+      /* CTA block: solid background, flows below the video */
+      .hero-content {
+        position: relative;
+        z-index: 2;
+        padding: 32px 24px 40px;
+        max-width: 100%;
+        background: var(--bg-primary);
+      }
+
+      .hero-logo {
+        width: clamp(80px, 18vw, 120px);
+        margin-bottom: 16px;
+      }
+
+      .hero-scroll-hint {
+        display: none;
+      }
+
+      /* ── Header ───────────────────────────────────────────────── */
       .header-nav,
       .header-cta {
         display: none;
@@ -1595,6 +1638,7 @@
       .header-logo img { height: 32px; }
       .logo-text { font-size: 0.95rem; }
 
+      /* ── Sections ─────────────────────────────────────────────── */
       .features-grid {
         grid-template-columns: 1fr;
       }
@@ -1619,6 +1663,7 @@
         width: 100%;
       }
 
+      /* ── Footer ───────────────────────────────────────────────── */
       .footer-top {
         flex-direction: column;
         align-items: flex-start;
@@ -1639,10 +1684,10 @@
     @media (max-width: 480px) {
       :root { --section-pad: 48px; }
 
-      /* Hero */
-      .hero-content { max-width: 100%; padding: 0 clamp(16px, 5vw, 24px); }
-      #hero h1 { font-size: clamp(1.5rem, 7.5vw, 2.2rem); }
-      .hero-sub { font-size: 0.9rem; margin-bottom: 20px; }
+      /* Hero — content block (sits below video on mobile) */
+      .hero-content { padding: 24px 20px 36px; }
+      #hero h1 { font-size: clamp(1.4rem, 6.5vw, 2rem); margin-bottom: 12px; }
+      .hero-sub { font-size: 0.88rem; margin-bottom: 18px; }
       .hero-cta-group {
         flex-direction: column;
         align-items: center;
@@ -1650,8 +1695,7 @@
       }
       .hero-cta-group .btn-gold,
       .hero-cta-group .btn-ghost { width: 100%; max-width: 280px; justify-content: center; }
-      /* scroll indicator visible on mobile — gives context to the blank hero bottom */
-      .hero-scroll-hint { display: flex; }
+      .hero-scroll-hint { display: none; }
 
       /* Feature boxes */
       .feature-box { padding: 20px; }

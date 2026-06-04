@@ -779,18 +779,14 @@
                 <img src="images/flags/Wales.png" alt="Wales flag">
                 <span>Wales</span>
               </button>
-              <button type="button" class="country-pick-btn" data-country="northern-ireland" aria-pressed="false">
-                <img src="images/flags/Northern_Ireland.png" alt="Northern Ireland flag" onerror="this.src='images/flags/United Kingdom.png'">
-                <span>Northern Ireland</span>
-              </button>
             </div>
             <input type="hidden" id="selected_country" value="">
 
             <!-- 2. Region select (slides in after country) -->
             <div id="region_wrapper" style="display:none;" aria-live="polite">
               <label class="visually-hidden" for="region_group">Region</label>
-              <select class="form-select form-select-lg" id="region_group" required aria-label="Select region">
-                <option value="">Select region</option>
+              <select class="form-select form-select-lg" id="region_group" required aria-label="Select your region">
+                <option value="">Select your region</option>
               </select>
             </div>
 

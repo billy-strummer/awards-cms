@@ -489,6 +489,59 @@
       z-index: 0;
     }
 
+    /* Video wrapper — needed so the end-screen can overlay the video */
+    #video-wrapper { position: relative; line-height: 0; }
+
+    /* End-screen overlay — fades in when video ends */
+    #video-end-screen {
+      position: absolute;
+      inset: 0;
+      background: rgba(10,10,10,0.88);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 1s ease;
+      z-index: 5;
+      text-align: center;
+    }
+    #video-end-screen.visible { opacity: 1; pointer-events: auto; }
+    .end-screen-link {
+      text-decoration: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      padding: clamp(20px, 5vw, 60px);
+    }
+    .end-screen-brand {
+      font-family: var(--font-display);
+      font-style: italic;
+      font-weight: 700;
+      font-size: clamp(1.4rem, 4vw, 3.2rem);
+      color: var(--gold);
+      letter-spacing: 0.03em;
+      margin: 0;
+      text-shadow: 0 2px 30px rgba(201,162,39,0.4);
+    }
+    .end-screen-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(135deg, #a07d1a, #C9A227);
+      color: #000;
+      font-family: var(--font-body);
+      font-weight: 700;
+      font-size: clamp(0.9rem, 2vw, 1.1rem);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 14px 36px;
+      border-radius: 40px;
+      transition: filter 0.2s, transform 0.2s;
+    }
+    .end-screen-link:hover .end-screen-cta { filter: brightness(1.1); transform: scale(1.03); }
+
     /* Gradient overlay */
     .hero-overlay {
       position: absolute;
@@ -1591,13 +1644,18 @@
         padding-top: var(--header-h); /* section itself clears the fixed header */
       }
 
-      #hero-video {
+      #video-wrapper {
         order: 2;
+        width: 100%;
+        aspect-ratio: 16 / 9;
+      }
+
+      #hero-video {
         position: relative;
         inset: auto;
         width: 100%;
-        height: auto;
-        aspect-ratio: 16 / 9;
+        height: 100%;
+        aspect-ratio: unset;
         object-fit: fill;
         display: block;
       }
@@ -1932,13 +1990,18 @@
 
       .hero-overlay { display: none; }
 
-      #hero-video {
+      #video-wrapper {
         order: 2;
+        width: 100%;
+        aspect-ratio: 16 / 9;
+      }
+
+      #hero-video {
         position: relative;
         inset: auto;
         width: 100%;
-        height: auto;
-        aspect-ratio: 16 / 9;
+        height: 100%;
+        aspect-ratio: unset;
         object-fit: fill;
       }
 
@@ -1999,7 +2062,7 @@
 
     <!-- Desktop CTA -->
     <div class="header-cta">
-      <a href="submit-entry.html" class="btn-gold" aria-label="Enter the British Trade Awards 2026">Enter Now</a>
+      <a href="submit-entry.html" class="btn-gold" aria-label="Enter British Trade Awards">Enter British Trade Awards</a>
     </div>
 
     <!-- Mobile Hamburger -->
@@ -2019,7 +2082,7 @@
     <a href="#regions" class="mobile-nav-link">Regions</a>
     <a href="#find-a-trade" class="mobile-nav-link">Find a Trade</a>
     <a href="#about" class="mobile-nav-link">About</a>
-    <a href="submit-entry.html" class="btn-gold">Enter the Awards</a>
+    <a href="submit-entry.html" class="btn-gold">Enter British Trade Awards</a>
   </div>
 </nav>
 
@@ -2029,18 +2092,29 @@
 ============================================================ -->
 <section id="hero" aria-label="Hero — Crowning Britain's Best Trade Professionals">
 
-  <!-- Video background -->
-  <video
-    id="hero-video"
-    autoplay
-    muted
-    loop
-    playsinline
-    preload="auto"
-    aria-hidden="true"
-  >
-    <source src="/hero-video.mp4" type="video/mp4">
-  </video>
+  <!-- Video + end-screen wrapper -->
+  <div id="video-wrapper">
+    <video
+      id="hero-video"
+      autoplay
+      muted
+      playsinline
+      preload="auto"
+      aria-hidden="true"
+    >
+      <source src="/hero-video.mp4" type="video/mp4">
+    </video>
+    <!-- Shown when video ends: freeze + CTA -->
+    <div id="video-end-screen" aria-hidden="true">
+      <a href="submit-entry.html" class="end-screen-link" aria-label="Enter British Trade Awards">
+        <p class="end-screen-brand">British Trade Awards</p>
+        <span class="end-screen-cta">
+          Enter Now
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </span>
+      </a>
+    </div>
+  </div>
 
   <!-- Dark gradient overlay -->
   <div class="hero-overlay" aria-hidden="true"></div>
@@ -2098,8 +2172,8 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
         </div>
         <div>
-          <h3>Enter the Awards</h3>
-          <p>Submit your entry for British Trade Awards 2026. Whether you're a sole trader or a national firm — if you take pride in your craft, this is your moment.</p>
+          <h3>Enter British Trade Awards</h3>
+          <p>Submit your entry for the British Trade Awards. Whether you're a sole trader or a national firm — if you take pride in your craft, this is your moment.</p>
         </div>
         <a href="submit-entry.html" class="btn-gold" style="align-self: flex-start; margin-top: auto;">
           Submit Your Entry
@@ -2114,7 +2188,7 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
         </div>
         <div>
-          <h3>Key Dates 2026</h3>
+          <h3>Key Dates</h3>
         </div>
         <ul class="key-dates-list" role="list">
           <li class="key-date-item">
@@ -2153,7 +2227,6 @@
             </div>
           </li>
         </ul>
-        <a href="#" class="btn-ghost" style="align-self: flex-start; margin-top: auto;">View Full Timeline</a>
       </article>
 
       <!-- Box 3: Vote -->
@@ -2164,7 +2237,7 @@
         </div>
         <div>
           <h3>Vote for the Best</h3>
-          <p>Cast your vote for the best trade professionals in Britain. The People's Choice Award is decided entirely by public votes — every voice counts.</p>
+          <p>Cast your vote for the best trade professionals in Britain. Decided entirely by public votes — every voice counts.</p>
         </div>
         <a href="public-voting.html" class="btn-ghost" style="align-self: flex-start; margin-top: auto;">
           Cast Your Vote
@@ -2416,7 +2489,7 @@
         Independent judging. Regional heats. A national gala ceremony. Real recognition for real craft.
       </p>
       <div class="reveal reveal-delay-3" style="margin-top: 44px; display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
-        <a href="submit-entry.html" class="btn-gold">Enter the 2026 Awards</a>
+        <a href="submit-entry.html" class="btn-gold">Enter British Trade Awards</a>
         <a href="#categories" class="btn-ghost">View Categories</a>
       </div>
     </div>
@@ -2526,6 +2599,19 @@
 <script src="home-data.js"></script>
 
 <script src="home.js"></script>
+
+<script>
+  // Video end-screen: freeze on last frame and show Enter CTA
+  (function () {
+    const video = document.getElementById('hero-video');
+    const endScreen = document.getElementById('video-end-screen');
+    if (!video || !endScreen) return;
+    video.addEventListener('ended', function () {
+      endScreen.classList.add('visible');
+      endScreen.setAttribute('aria-hidden', 'false');
+    });
+  })();
+</script>
 
 
 </body>

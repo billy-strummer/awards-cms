@@ -2546,6 +2546,33 @@
 
 
 <!-- ============================================================
+     STATS BAR
+============================================================ -->
+<div id="stats-bar" aria-label="Awards at a glance">
+  <div class="container">
+    <div class="stats-bar-inner">
+      <div class="stat-item">
+        <span class="stat-number">8</span>
+        <span class="stat-label">Trade Sectors</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-number">40+</span>
+        <span class="stat-label">Award Categories</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-number">3</span>
+        <span class="stat-label">Nations</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-number">1</span>
+        <span class="stat-label">Awards Night</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================================
      SECTION 2 — FEATURE BOXES
 ============================================================ -->
 <section id="features" aria-labelledby="features-heading">
@@ -2579,6 +2606,26 @@
         </div>
         <div>
           <h3>Key Dates</h3>
+          <!-- Countdown to entries opening: 1 Sep 2026 00:00:00 UTC -->
+          <div class="countdown-block" id="countdown-block" aria-label="Countdown to entries opening">
+            <div class="countdown-unit">
+              <span class="countdown-number" id="cd-days">--</span>
+              <span class="countdown-label">Days</span>
+            </div>
+            <div class="countdown-unit">
+              <span class="countdown-number" id="cd-hours">--</span>
+              <span class="countdown-label">Hours</span>
+            </div>
+            <div class="countdown-unit">
+              <span class="countdown-number" id="cd-mins">--</span>
+              <span class="countdown-label">Mins</span>
+            </div>
+            <div class="countdown-unit">
+              <span class="countdown-number" id="cd-secs">--</span>
+              <span class="countdown-label">Secs</span>
+            </div>
+          </div>
+          <p class="countdown-open-msg" id="countdown-open-msg">Entries are now open!</p>
         </div>
         <ul class="key-dates-list" role="list">
           <li class="key-date-item">
@@ -2641,6 +2688,44 @@
 
 
 <!-- ============================================================
+     HOW IT WORKS
+============================================================ -->
+<section id="how-it-works" aria-labelledby="how-heading">
+  <div class="container section-pad">
+
+    <div class="section-intro">
+      <h2 class="section-heading reveal" id="how-heading">
+        How It <span class="gold-underline">Works</span>
+      </h2>
+      <p class="section-sub reveal reveal-delay-1">Three simple steps to recognition</p>
+    </div>
+
+    <div class="how-steps">
+
+      <div class="how-step reveal">
+        <span class="how-step-number">01</span>
+        <h3>Submit Your Entry</h3>
+        <p>Complete our straightforward online entry form. Tell us about your business, your craft, and why you deserve to win.</p>
+      </div>
+
+      <div class="how-step reveal reveal-delay-1">
+        <span class="how-step-number">02</span>
+        <h3>Expert Judging</h3>
+        <p>A panel of industry experts reviews every entry. Regional heats whittle entries down to a national shortlist.</p>
+      </div>
+
+      <div class="how-step reveal reveal-delay-2">
+        <span class="how-step-number">03</span>
+        <h3>Awards Ceremony</h3>
+        <p>Shortlisted finalists attend our black-tie gala ceremony. Winners are announced on the night.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+<!-- ============================================================
      SECTION 3 — CATEGORY GALLERY
 ============================================================ -->
 <section id="categories" aria-labelledby="categories-heading">
@@ -2658,6 +2743,26 @@
     <!-- Populated dynamically by initCategoryGrid() from BTA_HOME_DATA / CMS -->
     <div class="categories-grid" id="categories-grid" aria-label="Award categories"></div>
 
+  </div>
+</section>
+
+
+<!-- ============================================================
+     SPONSORS BAR
+============================================================ -->
+<section id="sponsors" aria-labelledby="sponsors-label">
+  <div class="container section-pad">
+    <p class="sponsors-label" id="sponsors-label">Proudly Supported By</p>
+    <div class="sponsors-row">
+      <div class="sponsor-placeholder">Your Logo</div>
+      <div class="sponsor-placeholder">Your Logo</div>
+      <div class="sponsor-placeholder">Your Logo</div>
+      <div class="sponsor-placeholder">Your Logo</div>
+      <div class="sponsor-placeholder">Your Logo</div>
+    </div>
+    <div class="sponsors-cta">
+      <a href="#" aria-label="Become a sponsor of the British Trade Awards">Become a Sponsor &rarr;</a>
+    </div>
   </div>
 </section>
 
@@ -2776,6 +2881,49 @@
 
 
 <!-- ============================================================
+     TESTIMONIALS
+============================================================ -->
+<section id="testimonials" aria-labelledby="testimonials-heading">
+  <div class="container section-pad">
+
+    <div class="section-intro">
+      <h2 class="section-heading reveal" id="testimonials-heading">
+        What the Industry <span class="gold-underline">Says</span>
+      </h2>
+    </div>
+
+    <div class="testimonials-grid">
+
+      <div class="testimonial-card reveal">
+        <p class="testimonial-quote">"The British Trade Awards finally gives skilled tradespeople the recognition they deserve."</p>
+        <div class="testimonial-author">
+          <div class="testimonial-name">James Hartley</div>
+          <div class="testimonial-role">Master Plumber, Birmingham</div>
+        </div>
+      </div>
+
+      <div class="testimonial-card reveal reveal-delay-1">
+        <p class="testimonial-quote">"Entering was straightforward, the judging was rigorous, and winning has transformed our business."</p>
+        <div class="testimonial-author">
+          <div class="testimonial-name">Sarah Chen</div>
+          <div class="testimonial-role">Electrical Contractor, Manchester</div>
+        </div>
+      </div>
+
+      <div class="testimonial-card reveal reveal-delay-2">
+        <p class="testimonial-quote">"If you take pride in your craft, this is the awards programme for you."</p>
+        <div class="testimonial-author">
+          <div class="testimonial-name">David O'Brien</div>
+          <div class="testimonial-role">Roofing Specialist, Cardiff</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+<!-- ============================================================
      SECTION 5 — FIND A TRADE
 ============================================================ -->
 <section id="find-a-trade" aria-labelledby="find-heading">
@@ -2859,6 +3007,39 @@
 
     </div>
 
+  </div>
+</section>
+
+
+<!-- ============================================================
+     NEWSLETTER / REMINDER SIGNUP
+============================================================ -->
+<section id="newsletter" aria-labelledby="newsletter-heading">
+  <div class="container section-pad">
+    <div class="newsletter-inner">
+      <h2 class="section-heading reveal" id="newsletter-heading">
+        Be First to <span class="gold-underline">Know</span>
+      </h2>
+      <p class="newsletter-sub reveal reveal-delay-1">
+        Get notified when entries open, shortlists are announced, and tickets go on sale.
+      </p>
+      <form class="newsletter-form reveal reveal-delay-2" id="newsletter-form" novalidate aria-label="Newsletter signup">
+        <label for="newsletter-email" class="visually-hidden">Your email address</label>
+        <input
+          type="email"
+          id="newsletter-email"
+          class="form-input"
+          placeholder="Your email address"
+          autocomplete="email"
+          required
+          aria-required="true"
+        >
+        <button type="submit" class="btn-gold">Notify Me</button>
+      </form>
+      <p class="newsletter-success" id="newsletter-success" role="status" aria-live="polite">
+        You're on the list! We'll be in touch.
+      </p>
+    </div>
   </div>
 </section>
 
@@ -3002,6 +3183,74 @@
       if (window.innerWidth >= 769) return;
       endScreen.classList.add('visible');
       endScreen.setAttribute('aria-hidden', 'false');
+    });
+  })();
+</script>
+
+<script>
+  // ── Countdown timer ──────────────────────────────────────────────────────────
+  // Target: 1 September 2026 00:00:00 UTC (entries open)
+  (function () {
+    var target = Date.UTC(2026, 8, 1, 0, 0, 0); // month is 0-indexed: 8 = September
+    var block = document.getElementById('countdown-block');
+    var openMsg = document.getElementById('countdown-open-msg');
+    var elDays = document.getElementById('cd-days');
+    var elHours = document.getElementById('cd-hours');
+    var elMins = document.getElementById('cd-mins');
+    var elSecs = document.getElementById('cd-secs');
+
+    if (!block || !elDays) return;
+
+    function pad(n) {
+      return n < 10 ? '0' + n : String(n);
+    }
+
+    function tick() {
+      var now = Date.now();
+      var diff = target - now;
+      if (diff <= 0) {
+        block.style.display = 'none';
+        if (openMsg) openMsg.style.display = 'block';
+        clearInterval(timer);
+        return;
+      }
+      var totalSecs = Math.floor(diff / 1000);
+      var days  = Math.floor(totalSecs / 86400);
+      var hours = Math.floor((totalSecs % 86400) / 3600);
+      var mins  = Math.floor((totalSecs % 3600) / 60);
+      var secs  = totalSecs % 60;
+      elDays.textContent  = days;
+      elHours.textContent = pad(hours);
+      elMins.textContent  = pad(mins);
+      elSecs.textContent  = pad(secs);
+    }
+
+    tick();
+    var timer = setInterval(tick, 1000);
+  })();
+</script>
+
+<script>
+  // ── Newsletter form ───────────────────────────────────────────────────────────
+  (function () {
+    var form = document.getElementById('newsletter-form');
+    var input = document.getElementById('newsletter-email');
+    var successMsg = document.getElementById('newsletter-success');
+    if (!form) return;
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var email = input ? input.value.trim() : '';
+      // Basic email validation
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        input.focus();
+        input.style.borderColor = 'rgba(255,80,80,0.8)';
+        setTimeout(function () { input.style.borderColor = ''; }, 2000);
+        return;
+      }
+      // No real API call — show success state
+      form.style.display = 'none';
+      if (successMsg) successMsg.classList.add('visible');
     });
   })();
 </script>

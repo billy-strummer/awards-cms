@@ -6,6 +6,7 @@
   <meta name="description" content="British Trade Awards — Crowning Britain's Best Trade Professionals. Enter 2026, vote for your favourite trades, and discover the best tradespeople across the UK.">
   <meta name="theme-color" content="#0a0a0a">
   <title>British Trade Awards — Crowning Britain's Best Trade Professionals</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="icon" href="images/logos/non-stacked/BTA_Corporate_Horizontal-Texture.png" type="image/png">
   <link rel="canonical" href="https://awards-cms.vercel.app/">
 
@@ -2621,12 +2622,14 @@
 <script src="home.js"></script>
 
 <script>
-  // Video end-screen: freeze on last frame and show Enter CTA
+  // Video end-screen: mobile only — on desktop the Enter Now button is already
+  // visible directly below the video, so the overlay would be redundant.
   (function () {
     const video = document.getElementById('hero-video');
     const endScreen = document.getElementById('video-end-screen');
     if (!video || !endScreen) return;
     video.addEventListener('ended', function () {
+      if (window.innerWidth >= 769) return;
       endScreen.classList.add('visible');
       endScreen.setAttribute('aria-hidden', 'false');
     });

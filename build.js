@@ -309,11 +309,11 @@ async function build() {
   const PUBLIC_ASSETS = [
     'robots.txt',
     'config.js',
-    'BTA_Corporate_Horizontal-Black-and-White-01.png',
-    'BTA_Corporate_Horizontal-Black-and-White-02.png',
-    'BTA_Corporate_Horizontal-Texture.png',
-    'BTA_Corporate_Horizontal-Texture.jpg',
-    'BTA_Corporate_Horizontal-gold-white.png',
+    'images/logos/non-stacked/BTA_Corporate_Horizontal-Black-and-White-01.png',
+    'images/logos/non-stacked/BTA_Corporate_Horizontal-Black-and-White-02.png',
+    'images/logos/non-stacked/BTA_Corporate_Horizontal-Texture.png',
+    'images/logos/non-stacked/BTA_Corporate_Horizontal-Texture.jpg',
+    'images/logos/non-stacked/BTA_Corporate_Horizontal-gold-white.png',
     'hero-video.mp4',
   ];
 

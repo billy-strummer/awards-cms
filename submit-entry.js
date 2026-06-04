@@ -358,6 +358,11 @@
       if (regionGroupSelect) {
         regionGroupSelect.addEventListener('change', () => this.handleRegionGroupChange());
       }
+      // Wire county_city change to show borough picker when London is selected
+      const countyCitySelect = document.getElementById('county_city');
+      if (countyCitySelect) {
+        countyCitySelect.addEventListener('change', () => this.handleCountyCityChange());
+      }
     },
 
     // Country card clicked → show region select for that country
@@ -396,12 +401,13 @@
       regionSelect.value = '';
       regionWrapper.style.display = 'block';
 
-      // Reset county picker
+      // Reset county picker and borough picker
       if (countyWrapper) countyWrapper.style.display = 'none';
       if (countySelect) {
         countySelect.value = '';
         countySelect.innerHTML = '<option value="">Select your county, city or borough</option>';
       }
+      this._hideBoroughPicker();
 
       setTimeout(() => regionSelect.focus(), 50);
     },
@@ -416,6 +422,7 @@
 
       countySelect.value = '';
       countySelect.innerHTML = '<option value="">Select your county, city or borough</option>';
+      this._hideBoroughPicker();
 
       if (!groupName) {
         wrapper.style.display = 'none';
@@ -434,6 +441,42 @@
 
       wrapper.style.display = 'block';
       setTimeout(() => countySelect.focus(), 50);
+    },
+
+    // City/county selected → show London Borough picker if London chosen
+    handleCountyCityChange() {
+      const countySelect = document.getElementById('county_city');
+      if (countySelect?.value === 'London') {
+        this._showBoroughPicker();
+      } else {
+        this._hideBoroughPicker();
+      }
+    },
+
+    _showBoroughPicker() {
+      const wrapper = document.getElementById('borough_wrapper');
+      const boroughSelect = document.getElementById('london_borough');
+      if (!wrapper || !boroughSelect) return;
+      boroughSelect.innerHTML = '<option value="">Select your London borough</option>';
+      const boroughs = (window.REGION_DATA?.england || {})['London Boroughs'] || [];
+      boroughs.forEach((b) => {
+        const el = document.createElement('option');
+        el.value = b;
+        el.textContent = b;
+        boroughSelect.appendChild(el);
+      });
+      wrapper.style.display = 'block';
+      setTimeout(() => boroughSelect.focus(), 50);
+    },
+
+    _hideBoroughPicker() {
+      const wrapper = document.getElementById('borough_wrapper');
+      const boroughSelect = document.getElementById('london_borough');
+      if (wrapper) wrapper.style.display = 'none';
+      if (boroughSelect) {
+        boroughSelect.value = '';
+        boroughSelect.innerHTML = '<option value="">Select your London borough</option>';
+      }
     },
 
     // --------------------------------------------------
@@ -725,6 +768,13 @@
             this._markInvalid(countyCity, 'Please select your county, city or borough');
             return false;
           }
+          if (countyCity?.value === 'London') {
+            const boroughEl = document.getElementById('london_borough');
+            if (!boroughEl?.value) {
+              this._markInvalid(boroughEl, 'Please select your London borough');
+              return false;
+            }
+          }
           return true;
         }
         case 2: {
@@ -822,6 +872,7 @@
           this.formData.selected_country = document.getElementById('selected_country')?.value || '';
           this.formData.region_group = document.getElementById('region_group')?.value || '';
           this.formData.county_city = document.getElementById('county_city')?.value || '';
+          this.formData.london_borough = document.getElementById('london_borough')?.value || '';
           break;
         case 2:
           this.formData.sector = document.getElementById('sector').value;
@@ -876,7 +927,7 @@
           Award Details
           <span class="review-edit-btn float-end" data-action="entryFormApp.goToStep" data-args="[1]">Edit</span>
         </div>
-        ${row('Location', [this.toTitleCase((d.selected_country || '').replace(/-/g, ' ')), d.region_group, d.county_city].filter(Boolean).join(' › '))}
+        ${row('Location', [this.toTitleCase((d.selected_country || '').replace(/-/g, ' ')), d.region_group, d.county_city, d.london_borough].filter(Boolean).join(' › '))}
         ${row('Sector', this.toTitleCase(d.sector || ''))}
         ${row('Category', d.awardCategory)}
       </div>
@@ -959,6 +1010,7 @@
           selected_country: this.formData.selected_country,
           region_group: this.formData.region_group,
           county_city: this.formData.county_city,
+          london_borough: this.formData.london_borough || '',
           sector: this.formData.sector,
           contactEmail: this.formData.contactEmail,
           contactName: this.formData.contactName,

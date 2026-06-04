@@ -307,6 +307,12 @@
           self.handleRegionGroupChange();
         });
       }
+      const countyCitySelect = document.getElementById('county_city');
+      if (countyCitySelect) {
+        countyCitySelect.addEventListener('change', function () {
+          self.handleCountyCityChange();
+        });
+      }
     },
 
     // Country card clicked → show region select for that country
@@ -348,6 +354,7 @@
         countySelect.value = '';
         countySelect.innerHTML = '<option value="">Select county, city or borough</option>';
       }
+      this._hideBoroughPicker();
 
       setTimeout(function () {
         regionSelect.focus();
@@ -364,6 +371,7 @@
 
       countySelect.value = '';
       countySelect.innerHTML = '<option value="">Select county, city or borough</option>';
+      this._hideBoroughPicker();
 
       if (!groupName) {
         wrapper.style.display = 'none';
@@ -384,6 +392,45 @@
       setTimeout(function () {
         countySelect.focus();
       }, 50);
+    },
+
+    // City/county selected → show London Borough picker if London chosen
+    handleCountyCityChange: function () {
+      const countySelect = document.getElementById('county_city');
+      if (countySelect && countySelect.value === 'London') {
+        this._showBoroughPicker();
+      } else {
+        this._hideBoroughPicker();
+      }
+    },
+
+    _showBoroughPicker: function () {
+      const wrapper = document.getElementById('borough_wrapper');
+      const boroughSelect = document.getElementById('london_borough');
+      if (!wrapper || !boroughSelect) return;
+      boroughSelect.innerHTML = '<option value="">Select your London borough</option>';
+      const boroughs =
+        (window.REGION_DATA && window.REGION_DATA.england && window.REGION_DATA.england['London Boroughs']) || [];
+      boroughs.forEach(function (b) {
+        const el = document.createElement('option');
+        el.value = b;
+        el.textContent = b;
+        boroughSelect.appendChild(el);
+      });
+      wrapper.style.display = 'block';
+      setTimeout(function () {
+        boroughSelect.focus();
+      }, 50);
+    },
+
+    _hideBoroughPicker: function () {
+      const wrapper = document.getElementById('borough_wrapper');
+      const boroughSelect = document.getElementById('london_borough');
+      if (wrapper) wrapper.style.display = 'none';
+      if (boroughSelect) {
+        boroughSelect.value = '';
+        boroughSelect.innerHTML = '<option value="">Select your London borough</option>';
+      }
     },
 
     // --------------------------------------------------
@@ -561,6 +608,13 @@
             this._markInvalid(countyEl, "Please select the nominee's county or city");
             return false;
           }
+          if (countyEl && countyEl.value === 'London') {
+            const boroughEl = document.getElementById('london_borough');
+            if (!boroughEl || !boroughEl.value) {
+              this._markInvalid(boroughEl, 'Please select the London borough');
+              return false;
+            }
+          }
           return true;
         }
         case 3: {
@@ -677,6 +731,7 @@
           this.formData.selected_country = (document.getElementById('selected_country') || {}).value || '';
           this.formData.region_group = (document.getElementById('region_group') || {}).value || '';
           this.formData.county_city = (document.getElementById('county_city') || {}).value || '';
+          this.formData.london_borough = (document.getElementById('london_borough') || {}).value || '';
           break;
         case 3:
           if (this.selectedCategory === 'New Business of the Year') {
@@ -770,6 +825,7 @@
               : '',
             d.region_group,
             d.county_city,
+            d.london_borough,
           ]
             .filter(Boolean)
             .join(' › ')
@@ -817,6 +873,7 @@
         action: 'submit_nomination',
         awardCategory: d.awardCategory,
         county_city: d.county_city,
+        london_borough: d.london_borough || '',
         nominationReason: d.nominationReason,
         supportingInfo: d.supportingInfo,
         nominatorName: d.nominatorName,

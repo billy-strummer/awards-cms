@@ -685,7 +685,8 @@
       box-shadow: 0 0 0 3px rgba(201,162,39,0.25);
     }
     #region_wrapper,
-    #county_city_wrapper {
+    #county_city_wrapper,
+    #borough_wrapper {
       margin-top: 14px;
       animation: fadeSlideIn 0.2s ease;
     }
@@ -807,6 +808,14 @@
               <label class="visually-hidden" for="county_city">County, city or borough</label>
               <select class="form-select form-select-lg" id="county_city" required aria-label="Select your county, city or borough">
                 <option value="">Select your county, city or borough</option>
+              </select>
+            </div>
+
+            <!-- 4. London Borough select (slides in when London is selected) -->
+            <div id="borough_wrapper" style="display:none;" aria-live="polite">
+              <label class="visually-hidden" for="london_borough">London Borough</label>
+              <select class="form-select form-select-lg" id="london_borough" required aria-label="Select your London borough">
+                <option value="">Select your London borough</option>
               </select>
             </div>
 

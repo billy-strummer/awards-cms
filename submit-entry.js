@@ -458,7 +458,7 @@
       const boroughSelect = document.getElementById('london_borough');
       if (!wrapper || !boroughSelect) return;
       boroughSelect.innerHTML = '<option value="">Select your London borough</option>';
-      const boroughs = (window.REGION_DATA?.england || {})['London Boroughs'] || [];
+      const boroughs = window.LONDON_BOROUGHS || [];
       boroughs.forEach((b) => {
         const el = document.createElement('option');
         el.value = b;

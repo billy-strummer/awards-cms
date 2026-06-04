@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
   <meta name="description" content="British Trade Awards — Crowning Britain's Best Trade Professionals. Enter 2026, vote for your favourite trades, and discover the best tradespeople across the UK.">
   <meta name="theme-color" content="#0a0a0a">
   <title>British Trade Awards — Crowning Britain's Best Trade Professionals</title>
-  <link rel="icon" href="BTA_Corporate_Horizontal-Texture.png" type="image/png">
+  <link rel="icon" href="images/logos/non-stacked/BTA_Corporate_Horizontal-Texture.png" type="image/png">
 
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1588,7 +1588,7 @@
         min-height: auto;
         display: flex;
         flex-direction: column;
-        padding: 0;
+        padding-top: var(--header-h); /* section itself clears the fixed header */
       }
 
       #hero-video {
@@ -1607,12 +1607,12 @@
         display: none;
       }
 
-      /* Heading block: flows above the video */
+      /* Heading block: flows above the video — purely visual padding, no header math */
       .hero-content {
         order: 1;
         position: relative;
         z-index: 2;
-        padding: calc(var(--header-h) + 48px) 24px 24px;
+        padding: 48px 24px 24px;
         max-width: 100%;
         background: var(--bg-primary);
       }
@@ -1697,7 +1697,7 @@
       :root { --section-pad: 48px; }
 
       /* Hero — content block (sits below video on mobile) */
-      .hero-content { padding: calc(var(--header-h) + 48px) 20px 36px; }
+      .hero-content { padding: 48px 20px 36px; }
       #hero h1 { font-size: clamp(1.4rem, 6.5vw, 2rem); margin-bottom: 12px; }
       .hero-sub { font-size: 0.88rem; margin-bottom: 18px; }
       .hero-cta-group {
@@ -1976,10 +1976,10 @@
     <!-- Logo -->
     <a href="home.html" class="header-logo" aria-label="British Trade Awards — home">
       <!-- White version (shown at top of page, transparent dark header) -->
-      <img src="BTA_Corporate_Horizontal-gold-white.png" alt="British Trade Awards" class="logo-white"
+      <img src="images/logos/non-stacked/BTA_Corporate_Horizontal-gold-white.png" alt="British Trade Awards" class="logo-white"
            onerror="this.style.display='none'; this.nextElementSibling.style.display='none'; document.getElementById('header-logo-fallback').style.display='block'">
       <!-- Gold+white version (shown when scrolled, frosted header) -->
-      <img src="BTA_Corporate_Horizontal-gold-white.png" alt="British Trade Awards" class="logo-dark"
+      <img src="images/logos/non-stacked/BTA_Corporate_Horizontal-gold-white.png" alt="British Trade Awards" class="logo-dark"
            style="display:none"
            onerror="this.style.display='none'">
       <!-- Fallback text logo -->
@@ -2433,7 +2433,7 @@
     <!-- Row 1: Logo + Nav -->
     <div class="footer-top">
       <a href="home.html" class="footer-logo" aria-label="British Trade Awards — back to top">
-        <img src="BTA_Corporate_Horizontal-Black-and-White-01.png" alt="British Trade Awards"
+        <img src="images/logos/non-stacked/BTA_Corporate_Horizontal-Black-and-White-01.png" alt="British Trade Awards"
              onerror="this.style.display='none'; this.nextElementSibling.style.display='block'">
         <div class="footer-logo-text" style="display:none">
           British Trade Awards

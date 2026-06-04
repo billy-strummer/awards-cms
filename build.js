@@ -309,11 +309,11 @@ async function build() {
   const PUBLIC_ASSETS = [
     'robots.txt',
     'config.js',
-    'BTA_Corporate_Horizontal-Black-and-White-01.png',
-    'BTA_Corporate_Horizontal-Black-and-White-02.png',
-    'BTA_Corporate_Horizontal-Texture.png',
-    'BTA_Corporate_Horizontal-Texture.jpg',
-    'BTA_Corporate_Horizontal-gold-white.png',
+    'images/logos/non-stacked/BTA_Corporate_Horizontal-Black-and-White-01.png',
+    'images/logos/non-stacked/BTA_Corporate_Horizontal-Black-and-White-02.png',
+    'images/logos/non-stacked/BTA_Corporate_Horizontal-Texture.png',
+    'images/logos/non-stacked/BTA_Corporate_Horizontal-Texture.jpg',
+    'images/logos/non-stacked/BTA_Corporate_Horizontal-gold-white.png',
     'hero-video.mp4',
   ];
 
@@ -322,8 +322,10 @@ async function build() {
 
   allPublicFiles.forEach((file) => {
     const src = path.join(__dirname, file);
+    const dest = path.join(DIST_DIR, file);
     if (fs.existsSync(src)) {
-      fs.copyFileSync(src, path.join(DIST_DIR, file));
+      fs.mkdirSync(path.dirname(dest), { recursive: true });
+      fs.copyFileSync(src, dest);
       copiedCount++;
     }
   });

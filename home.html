@@ -645,11 +645,6 @@
 
     /* Scroll indicator */
     .hero-scroll-hint {
-      position: absolute;
-      bottom: 32px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 2;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -658,6 +653,8 @@
       font-size: 0.7rem;
       letter-spacing: 0.15em;
       text-transform: uppercase;
+      margin-top: 24px;
+      width: 100%;
     }
 
     .scroll-mouse {
@@ -1891,6 +1888,8 @@
         opacity: 1;
         transform: none;
       }
+
+      .hero-scroll-hint { display: none; }
     }
 
     /* ============================================================
@@ -2002,6 +2001,370 @@
     @media (max-width: 480px) {
       .cat-modal-list { grid-template-columns: 1fr; }
       .cat-modal-panel { padding: 40px 24px 32px; }
+    }
+
+    /* ============================================================
+       STATS BAR
+    ============================================================ */
+    #stats-bar {
+      background: #0d0d0d;
+      border-top: 2px solid var(--gold);
+      padding: 28px 0;
+    }
+
+    .stats-bar-inner {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      text-align: center;
+    }
+
+    .stat-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .stat-number {
+      font-family: var(--font-display);
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--gold);
+      line-height: 1;
+    }
+
+    .stat-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    @media (max-width: 600px) {
+      .stats-bar-inner {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 24px 16px;
+      }
+    }
+
+    /* ============================================================
+       COUNTDOWN TIMER (inside Key Dates feature box)
+    ============================================================ */
+    .countdown-block {
+      display: flex;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .countdown-unit {
+      flex: 1;
+      background: #111;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 10px 6px 8px;
+      text-align: center;
+    }
+
+    .countdown-number {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--gold);
+      line-height: 1;
+      display: block;
+    }
+
+    .countdown-label {
+      font-size: 0.6rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      display: block;
+      margin-top: 4px;
+    }
+
+    .countdown-open-msg {
+      display: none;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--gold);
+      margin-top: 8px;
+    }
+
+    /* ============================================================
+       HOW IT WORKS
+    ============================================================ */
+    #how-it-works {
+      background: var(--bg-primary);
+      padding: var(--section-pad) 0;
+    }
+
+    .how-steps {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0;
+      margin-top: clamp(40px, 6vw, 72px);
+      position: relative;
+    }
+
+    /* Connecting line between steps */
+    .how-steps::before {
+      content: '';
+      position: absolute;
+      top: 2.25rem;
+      left: calc(33.333% / 2 + 20px);
+      right: calc(33.333% / 2 + 20px);
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(201,162,39,0.4), transparent);
+      pointer-events: none;
+    }
+
+    .how-step {
+      padding: 0 clamp(16px, 3vw, 36px);
+      text-align: center;
+      position: relative;
+    }
+
+    .how-step-number {
+      font-family: var(--font-display);
+      font-size: clamp(2.5rem, 4vw, 3.5rem);
+      font-weight: 900;
+      color: var(--gold);
+      line-height: 1;
+      margin-bottom: 20px;
+      display: block;
+      position: relative;
+      z-index: 1;
+    }
+
+    .how-step h3 {
+      font-family: var(--font-display);
+      font-size: clamp(1.1rem, 1.8vw, 1.35rem);
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 14px;
+      line-height: 1.25;
+    }
+
+    .how-step p {
+      font-size: 0.925rem;
+      color: var(--text-muted);
+      line-height: 1.7;
+      max-width: 280px;
+      margin: 0 auto;
+    }
+
+    @media (max-width: 768px) {
+      .how-steps {
+        grid-template-columns: 1fr;
+        gap: 40px;
+      }
+      .how-steps::before {
+        display: none;
+      }
+    }
+
+    /* ============================================================
+       SPONSORS BAR
+    ============================================================ */
+    #sponsors {
+      background: var(--bg-secondary);
+      padding: var(--section-pad) 0;
+    }
+
+    .sponsors-label {
+      text-align: center;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 28px;
+    }
+
+    .sponsors-row {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .sponsor-placeholder {
+      border: 1px solid rgba(201,162,39,0.2);
+      border-radius: var(--radius-sm);
+      background: #111;
+      padding: 20px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 140px;
+      min-height: 72px;
+      color: rgba(255,255,255,0.25);
+      font-size: 0.8rem;
+      font-weight: 500;
+      letter-spacing: 0.05em;
+      transition: border-color var(--transition-med), color var(--transition-med);
+    }
+
+    .sponsor-placeholder:hover {
+      border-color: rgba(201,162,39,0.5);
+      color: rgba(255,255,255,0.45);
+    }
+
+    .sponsors-cta {
+      text-align: center;
+      margin-top: 28px;
+    }
+
+    .sponsors-cta a {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--gold);
+      letter-spacing: 0.04em;
+      transition: color var(--transition-fast);
+    }
+
+    .sponsors-cta a:hover {
+      color: var(--gold-light);
+    }
+
+    @media (max-width: 600px) {
+      .sponsors-row {
+        gap: 12px;
+      }
+      .sponsor-placeholder {
+        min-width: calc(50% - 6px);
+        padding: 16px 20px;
+      }
+    }
+
+    /* ============================================================
+       TESTIMONIALS
+    ============================================================ */
+    #testimonials {
+      background: #111;
+      padding: var(--section-pad) 0;
+    }
+
+    .testimonials-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      margin-top: clamp(40px, 6vw, 72px);
+    }
+
+    .testimonial-card {
+      background: #1a1a1a;
+      border-left: 3px solid var(--gold);
+      border-radius: 0 var(--radius-md) var(--radius-md) 0;
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .testimonial-quote {
+      font-family: var(--font-display);
+      font-style: italic;
+      font-size: 1rem;
+      color: rgba(255,255,255,0.85);
+      line-height: 1.7;
+      flex: 1;
+    }
+
+    .testimonial-author {
+      border-top: 1px solid var(--border-subtle);
+      padding-top: 14px;
+    }
+
+    .testimonial-name {
+      font-size: 0.875rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .testimonial-role {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    @media (max-width: 768px) {
+      .testimonials-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+    }
+
+    /* ============================================================
+       NEWSLETTER
+    ============================================================ */
+    #newsletter {
+      background: var(--bg-secondary);
+      padding: var(--section-pad) 0;
+    }
+
+    .newsletter-inner {
+      max-width: 600px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    .newsletter-inner .section-heading {
+      margin-bottom: 16px;
+    }
+
+    .newsletter-sub {
+      font-size: 1rem;
+      color: var(--text-muted);
+      margin-bottom: 32px;
+      line-height: 1.65;
+    }
+
+    .newsletter-form {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .newsletter-form .form-input {
+      flex: 1;
+      min-width: 220px;
+    }
+
+    .newsletter-form .btn-gold {
+      flex-shrink: 0;
+    }
+
+    .newsletter-success {
+      display: none;
+      margin-top: 20px;
+      font-size: 0.925rem;
+      font-weight: 600;
+      color: var(--gold);
+      padding: 12px 20px;
+      background: rgba(201,162,39,0.08);
+      border: 1px solid rgba(201,162,39,0.3);
+      border-radius: var(--radius-sm);
+    }
+
+    .newsletter-success.visible {
+      display: block;
+    }
+
+    @media (max-width: 480px) {
+      .newsletter-form {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .newsletter-form .btn-gold {
+        width: 100%;
+        justify-content: center;
+      }
     }
 
     /* Desktop: heading above video, CTAs below video */
@@ -2169,6 +2532,13 @@
     <a href="#categories" class="btn-ghost">
       Explore Categories
     </a>
+    <!-- Scroll hint -->
+    <div class="hero-scroll-hint" aria-hidden="true">
+      <div class="scroll-mouse">
+        <div class="scroll-dot"></div>
+      </div>
+      <span>Scroll</span>
+    </div>
   </div>
 
 

@@ -7,6 +7,7 @@
   <meta name="theme-color" content="#0a0a0a">
   <title>British Trade Awards — Crowning Britain's Best Trade Professionals</title>
   <link rel="icon" href="images/logos/non-stacked/BTA_Corporate_Horizontal-Texture.png" type="image/png">
+  <link rel="canonical" href="https://awards-cms.vercel.app/">
 
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -460,7 +461,9 @@
     }
 
     .mobile-menu .btn-gold {
-      margin-top: 16px;
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border-subtle);
       width: 100%;
       justify-content: center;
     }
@@ -719,6 +722,16 @@
       opacity: 0;
       transition: opacity var(--transition-med);
       pointer-events: none;
+    }
+
+    /* Enter box is the primary CTA — give it a warm gold-tinted glow */
+    .feature-box:first-child {
+      border-color: rgba(201, 162, 39, 0.35);
+      background: linear-gradient(140deg, #1d1a10 0%, #1a1a1a 60%);
+      box-shadow: 0 0 40px rgba(201, 162, 39, 0.07), inset 0 1px 0 rgba(201,162,39,0.1);
+    }
+    .feature-box:first-child::before {
+      opacity: 1;
     }
 
     .feature-box:hover {
@@ -1078,7 +1091,6 @@
     }
 
     .regions-accordion.open {
-      max-height: 4000px;
       opacity: 1;
       margin-top: 20px;
     }
@@ -1678,6 +1690,8 @@
       /* CTA block: flows below the video */
       .hero-cta-group {
         order: 3;
+        padding: 32px clamp(20px, 5vw, 40px);
+        background: var(--bg-primary);
       }
 
       .hero-logo {
@@ -1719,11 +1733,12 @@
       }
 
       .country-cards {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
       }
 
       .country-flag { width: 72px; height: 48px; }
-      .country-card { padding: 28px 20px; }
+      .country-card { padding: 24px 16px; }
 
       .find-trade-row {
         flex-direction: column;
@@ -1757,7 +1772,7 @@
       /* Hero — content block (sits below video on mobile) */
       .hero-content { padding: 48px 20px 36px; }
       #hero h1 { font-size: clamp(1.4rem, 6.5vw, 2rem); margin-bottom: 12px; }
-      .hero-sub { font-size: 0.88rem; margin-bottom: 18px; }
+      .hero-sub { font-size: 0.95rem; margin-bottom: 18px; }
       .hero-cta-group {
         flex-direction: column;
         align-items: center;
@@ -1790,13 +1805,23 @@
         line-height: 1.4;
       }
 
-      /* Regional accordion */
-      .regions-accordion.open { max-height: 4000px; }
+      /* Regional accordion — max-height set by JS */
       .regions-grid { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 6px; }
       .sub-region-chip { padding: 4px 10px; font-size: 0.75rem; }
 
-      /* Country cards */
-      .country-card { padding: 20px 16px; }
+      /* Country cards — horizontal pill layout on small screens */
+      .country-cards { grid-template-columns: 1fr; gap: 10px; }
+      .country-card {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 16px;
+        padding: 16px 20px;
+        text-align: left;
+      }
+      .country-flag { width: 56px; height: 37px; margin: 0; flex-shrink: 0; }
+      .country-name { font-size: 1.1rem; margin-bottom: 0; }
+      .country-explore { margin-top: 2px; }
 
       /* Find a trade */
       .find-trade-card { max-width: 100%; padding: 20px; }
@@ -2028,7 +2053,7 @@
 
 <body>
 
-<a href="#hero" class="skip-link">Skip to main content</a>
+<a href="#main-content" class="skip-link">Skip to main content</a>
 
 <!-- ============================================================
      HEADER
@@ -2062,7 +2087,7 @@
 
     <!-- Desktop CTA -->
     <div class="header-cta">
-      <a href="submit-entry.html" class="btn-gold" aria-label="Enter British Trade Awards">Enter British Trade Awards</a>
+      <a href="submit-entry.html" class="btn-gold" aria-label="Enter British Trade Awards">Enter Now</a>
     </div>
 
     <!-- Mobile Hamburger -->
@@ -2082,10 +2107,11 @@
     <a href="#regions" class="mobile-nav-link">Regions</a>
     <a href="#find-a-trade" class="mobile-nav-link">Find a Trade</a>
     <a href="#about" class="mobile-nav-link">About</a>
-    <a href="submit-entry.html" class="btn-gold">Enter British Trade Awards</a>
+    <a href="submit-entry.html" class="btn-gold">Enter Now</a>
   </div>
 </nav>
 
+<main id="main-content">
 
 <!-- ============================================================
      SECTION 1 — HERO
@@ -2144,13 +2170,6 @@
     </a>
   </div>
 
-  <!-- Scroll hint -->
-  <div class="hero-scroll-hint" aria-hidden="true">
-    <div class="scroll-mouse">
-      <div class="scroll-dot"></div>
-    </div>
-    <span>Scroll</span>
-  </div>
 
 </section>
 
@@ -2496,6 +2515,7 @@
   </div>
 </section>
 
+</main>
 
 <!-- ============================================================
      FOOTER

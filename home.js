@@ -366,11 +366,13 @@
         renderLocations(country);
         accordion.classList.add('open');
         accordion.setAttribute('aria-hidden', 'false');
+        accordion.style.maxHeight = accordion.scrollHeight + 'px';
       }
 
       function closeAccordion(country) {
         const accordion = document.getElementById('accordion-' + country);
         if (!accordion) return;
+        accordion.style.maxHeight = '0';
         accordion.classList.remove('open');
         accordion.setAttribute('aria-hidden', 'true');
       }

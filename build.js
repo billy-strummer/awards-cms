@@ -322,8 +322,10 @@ async function build() {
 
   allPublicFiles.forEach((file) => {
     const src = path.join(__dirname, file);
+    const dest = path.join(DIST_DIR, file);
     if (fs.existsSync(src)) {
-      fs.copyFileSync(src, path.join(DIST_DIR, file));
+      fs.mkdirSync(path.dirname(dest), { recursive: true });
+      fs.copyFileSync(src, dest);
       copiedCount++;
     }
   });

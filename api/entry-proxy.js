@@ -14,6 +14,7 @@
 
 const { createClient } = require('@supabase/supabase-js');
 const { sendEntryConfirmation, sendNominationConfirmation } = require('./email-automation');
+const { sendEmail } = require('./resend-email');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
@@ -133,6 +134,51 @@ async function insertEntryWithRetry(payload) {
 }
 
 // ────────────────────────────────────────────
+// Sponsor enquiry
+// ────────────────────────────────────────────
+
+async function handleSponsorEnquiry(req, res) {
+  const { name, company, role, email, phone, package: pkg, message } = req.body || {};
+
+  if (!name || !company || !email || !pkg) {
+    return res.status(400).json({ error: 'Missing required fields: name, company, email, package' });
+  }
+  if (!isValidEmail(email)) {
+    return res.status(400).json({ error: 'Invalid email address' });
+  }
+
+  const safeName = sanitizeString(name, 100);
+  const safeCompany = sanitizeString(company, 200);
+  const safeRole = sanitizeString(role || '', 100);
+  const safePhone = sanitizeString(phone || '', 30);
+  const safePkg = sanitizeString(pkg, 60);
+  const safeMsg = sanitizeString(message || '', 2000);
+  const safeEmail = sanitizeString(email, 254);
+
+  const toEmail = process.env.FROM_EMAIL || 'sponsorship@britishtradeawards.com';
+  const subject = `Sponsorship Enquiry — ${safePkg} — ${safeCompany}`;
+  const html = `
+    <h2 style="color:#C9A227;font-family:Georgia,serif;">New Sponsorship Enquiry</h2>
+    <table style="border-collapse:collapse;width:100%;font-family:Arial,sans-serif;font-size:14px;">
+      <tr><td style="padding:8px 16px 8px 0;color:#666;white-space:nowrap;"><strong>Name</strong></td><td style="padding:8px 0;">${safeName}</td></tr>
+      <tr style="background:#f9f9f9;"><td style="padding:8px 16px 8px 0;color:#666;"><strong>Company</strong></td><td style="padding:8px 0;">${safeCompany}</td></tr>
+      <tr><td style="padding:8px 16px 8px 0;color:#666;"><strong>Role</strong></td><td style="padding:8px 0;">${safeRole || '—'}</td></tr>
+      <tr style="background:#f9f9f9;"><td style="padding:8px 16px 8px 0;color:#666;"><strong>Email</strong></td><td style="padding:8px 0;"><a href="mailto:${safeEmail}">${safeEmail}</a></td></tr>
+      <tr><td style="padding:8px 16px 8px 0;color:#666;"><strong>Phone</strong></td><td style="padding:8px 0;">${safePhone || '—'}</td></tr>
+      <tr style="background:#f9f9f9;"><td style="padding:8px 16px 8px 0;color:#666;"><strong>Package Interest</strong></td><td style="padding:8px 0;font-weight:bold;color:#C9A227;">${safePkg}</td></tr>
+      ${safeMsg ? `<tr><td style="padding:8px 16px 8px 0;color:#666;vertical-align:top;"><strong>Message</strong></td><td style="padding:8px 0;">${safeMsg.replace(/\n/g, '<br>')}</td></tr>` : ''}
+    </table>
+    <p style="margin-top:24px;font-size:12px;color:#999;">Submitted via become-a-sponsor.html — reply directly to ${safeEmail}</p>
+  `;
+
+  const result = await sendEmail({ to: toEmail, subject, html, replyTo: safeEmail });
+  if (!result.success) {
+    return res.status(500).json({ error: 'Failed to send enquiry email. Please try again.' });
+  }
+  return res.status(200).json({ success: true });
+}
+
+// ────────────────────────────────────────────
 // Main handler
 // ────────────────────────────────────────────
 
@@ -153,6 +199,8 @@ module.exports = async function handler(req, res) {
         return await handleGetPublicData(req, res);
       case 'data_export':
         return await handleDataExport(req, res);
+      case 'sponsor_enquiry':
+        return await handleSponsorEnquiry(req, res);
       default:
         return res.status(400).json({ error: `Unknown action: ${action}` });
     }

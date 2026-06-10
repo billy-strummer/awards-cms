@@ -544,6 +544,133 @@
     }
     .footer-bottom strong { color: rgba(255,255,255,0.4); font-weight: 500; }
 
+    /* ── Enquiry Form ────────────────────────────────────────────── */
+    .enquiry-wrap {
+      max-width: 720px;
+      margin: 0 auto;
+    }
+    .enquiry-form {}
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      margin-bottom: 20px;
+    }
+    .form-row .form-group { margin-bottom: 0; }
+    label {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #333;
+      letter-spacing: 0.02em;
+    }
+    .req { color: var(--gold); margin-left: 2px; }
+    input[type="text"],
+    input[type="email"],
+    input[type="tel"],
+    select,
+    textarea {
+      font-family: var(--font-body);
+      font-size: 0.9rem;
+      color: #1a1a1a;
+      background: #fff;
+      border: 1.5px solid #d8d4cc;
+      border-radius: var(--radius-sm);
+      padding: 11px 14px;
+      outline: none;
+      transition: border-color var(--transition), box-shadow var(--transition);
+      width: 100%;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 3px rgba(201,162,39,0.15);
+    }
+    input::placeholder, textarea::placeholder { color: #aaa; }
+    select { appearance: none; -webkit-appearance: none; cursor: pointer;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      background-size: 16px;
+      padding-right: 36px;
+    }
+    textarea { resize: vertical; min-height: 110px; }
+    .form-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+    .form-note { font-size: 0.78rem; color: #888; flex: 1; min-width: 200px; }
+    .btn-submit {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--gold);
+      color: #000;
+      font-family: var(--font-body);
+      font-weight: 700;
+      font-size: 0.875rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 13px 36px;
+      border-radius: 100px;
+      border: none;
+      cursor: pointer;
+      transition: background var(--transition), transform var(--transition), opacity var(--transition);
+      white-space: nowrap;
+    }
+    .btn-submit:hover:not(:disabled) { background: var(--gold-light); transform: translateY(-1px); }
+    .btn-submit:disabled { opacity: 0.65; cursor: not-allowed; }
+    .btn-spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(0,0,0,0.2);
+      border-top-color: #000;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .form-success {
+      text-align: center;
+      padding: 56px 24px;
+    }
+    .success-icon {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: rgba(201,162,39,0.12);
+      border: 2px solid var(--gold);
+      color: var(--gold);
+      font-size: 1.6rem;
+      line-height: 56px;
+      margin: 0 auto 20px;
+    }
+    .form-success h3 {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #0a0a0a;
+      margin-bottom: 10px;
+    }
+    .form-success p { color: #555; font-size: 1rem; }
+    .form-error {
+      background: #fff3f3;
+      border: 1px solid #f5c5c5;
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      color: #c0392b;
+      font-size: 0.875rem;
+      margin-top: 16px;
+    }
+    .form-error a { color: #c0392b; text-decoration: underline; }
+
     /* ── Responsive ──────────────────────────────────────────────── */
     @media (max-width: 900px) {
       .benefits-grid  { grid-template-columns: 1fr 1fr; }
@@ -556,6 +683,9 @@
       .audience-stats { grid-template-columns: 1fr 1fr; }
       .hero-actions   { flex-direction: column; align-items: center; }
       .btn-gold, .btn-outline { width: 100%; max-width: 320px; justify-content: center; }
+      .form-row { grid-template-columns: 1fr; }
+      .form-footer { flex-direction: column; align-items: stretch; }
+      .btn-submit { text-align: center; justify-content: center; }
     }
   </style>
 </head>
@@ -586,7 +716,7 @@
     <h1 id="hero-heading">Partner with <em>Britain's</em><br>Most Celebrated Trade Awards</h1>
     <p class="hero-sub">Put your brand in front of thousands of Britain's best trade professionals, business owners, and industry leaders across England, Scotland, and Wales.</p>
     <div class="hero-actions">
-      <a href="mailto:sponsorship@britishtradeawards.com" class="btn-gold">Enquire Now</a>
+      <a href="#enquire" class="btn-gold">Enquire Now</a>
       <a href="#packages" class="btn-outline">View Packages</a>
     </div>
   </div>
@@ -723,78 +853,87 @@
       <p class="section-eyebrow">Sponsorship Packages</p>
       <h2 class="section-title" id="packages-heading">Choose Your Partnership Level</h2>
       <div class="gold-rule"></div>
-      <p class="section-sub section-dark" style="color:rgba(255,255,255,0.5);">All packages are fully customisable. Contact us to discuss bespoke arrangements.</p>
+      <p class="section-sub" style="color:rgba(255,255,255,0.5);">All packages are fully customisable. Enquire below to discuss bespoke arrangements.</p>
     </div>
 
     <div class="packages-grid">
 
-      <!-- Supporting Sponsor -->
+      <!-- Associate Partner -->
       <div class="package-card">
         <div class="package-header">
-          <p class="package-tier">Supporting Sponsor</p>
-          <h3 class="package-name">Silver</h3>
-          <p class="package-desc">Brand presence throughout the programme and at the awards ceremony.</p>
+          <p class="package-tier">Associate Partner</p>
+          <h3 class="package-name">Bronze</h3>
+          <p class="package-desc">Solid brand presence across the programme, perfect for businesses wanting national exposure in the trades market.</p>
         </div>
         <div class="package-body">
           <ul class="package-features">
-            <li>Logo on BTA website (sponsor page)</li>
+            <li>Logo on BTA website sponsors page</li>
             <li>Logo in awards ceremony programme</li>
-            <li>2 tickets to the awards night</li>
-            <li>Social media mention (×2)</li>
+            <li>2 x awards ceremony tickets</li>
+            <li>3 x social media mentions</li>
             <li>Logo in winner announcement emails</li>
+            <li>Post-event digital media pack</li>
+            <li>Certificate of partnership</li>
             <li class="muted">Category award sponsorship</li>
-            <li class="muted">Branded award trophy</li>
-            <li class="muted">VIP table at ceremony</li>
-            <li class="muted">Dedicated press release</li>
+            <li class="muted">Branded engraved trophy</li>
+            <li class="muted">VIP reserved table</li>
+            <li class="muted">Trade press release</li>
+            <li class="muted">Speaking slot at ceremony</li>
           </ul>
-          <a href="mailto:sponsorship@britishtradeawards.com?subject=Silver%20Sponsorship%20Enquiry" class="btn-outline package-cta">Enquire</a>
+          <button class="btn-outline package-cta enquire-btn" data-package="Associate Partner (Bronze)">Enquire</button>
         </div>
       </div>
 
-      <!-- Category Sponsor — featured -->
+      <!-- Category Partner — featured -->
       <div class="package-card featured">
         <div class="package-badge">Most Popular</div>
         <div class="package-header">
-          <p class="package-tier">Category Sponsor</p>
+          <p class="package-tier">Category Partner</p>
           <h3 class="package-name">Gold</h3>
-          <p class="package-desc">Own a specific award category — your brand becomes synonymous with that sector's best.</p>
+          <p class="package-desc">Own a specific award category. Your brand is "Presented by" on the trophy, winner announcements, and category pages.</p>
         </div>
         <div class="package-body">
           <ul class="package-features">
-            <li>Logo on BTA website (sponsor page + category page)</li>
+            <li>Logo on BTA website (sponsors + category page)</li>
             <li>Logo in awards ceremony programme</li>
-            <li>4 tickets to the awards night</li>
-            <li>Social media mention (×5)</li>
-            <li>Logo in winner announcement emails</li>
+            <li>4 x awards ceremony tickets</li>
+            <li>6 x social media mentions</li>
+            <li>"Presented by [Brand]" on winner announcements</li>
+            <li>Post-event digital media pack</li>
+            <li>Certificate of partnership</li>
             <li>Category award sponsorship</li>
-            <li>Branded award trophy</li>
-            <li class="muted">VIP table at ceremony</li>
-            <li class="muted">Dedicated press release</li>
+            <li>Branded engraved trophy (winner keeps it)</li>
+            <li>Post-event winner interview for your marketing</li>
+            <li class="muted">VIP reserved table</li>
+            <li class="muted">Trade press release</li>
           </ul>
-          <a href="mailto:sponsorship@britishtradeawards.com?subject=Gold%20Sponsorship%20Enquiry" class="btn-gold package-cta">Enquire Now</a>
+          <button class="btn-gold package-cta enquire-btn" data-package="Category Partner (Gold)">Enquire Now</button>
         </div>
       </div>
 
-      <!-- Headline Partner -->
+      <!-- Title Partner -->
       <div class="package-card">
         <div class="package-header">
-          <p class="package-tier">Headline Partner</p>
+          <p class="package-tier">Title Partner</p>
           <h3 class="package-name">Platinum</h3>
-          <p class="package-desc">The highest level of association — your brand co-presents the entire programme.</p>
+          <p class="package-desc">The ultimate partnership. Your brand co-presents the entire 2026 programme — maximum visibility at every touchpoint.</p>
         </div>
         <div class="package-body">
           <ul class="package-features">
-            <li>Logo on all BTA website pages</li>
-            <li>Logo in awards ceremony programme</li>
-            <li>Full VIP table (10 seats) at ceremony</li>
-            <li>Social media mention (×12 + ongoing)</li>
+            <li>Logo on every BTA website page</li>
             <li>Logo in all programme emails</li>
-            <li>Category award sponsorship (choice)</li>
-            <li>Branded award trophies</li>
-            <li>VIP table at ceremony</li>
-            <li>Dedicated press release</li>
+            <li>8 x ceremony tickets + reserved VIP table</li>
+            <li>15+ social media mentions &amp; ongoing features</li>
+            <li>"Presented by [Brand]" across the programme</li>
+            <li>Post-event digital media pack</li>
+            <li>Certificate of partnership</li>
+            <li>Category award sponsorship (your choice)</li>
+            <li>Branded engraved trophies</li>
+            <li>Post-event winner interviews for your marketing</li>
+            <li>Dedicated trade press release</li>
+            <li>Speaking slot at the awards ceremony</li>
           </ul>
-          <a href="mailto:sponsorship@britishtradeawards.com?subject=Platinum%20Sponsorship%20Enquiry" class="btn-outline package-cta">Enquire</a>
+          <button class="btn-outline package-cta enquire-btn" data-package="Title Partner (Platinum)">Enquire</button>
         </div>
       </div>
 
@@ -803,26 +942,83 @@
 </section>
 
 
-<!-- ── Quote ────────────────────────────────────────────────────────── -->
-<section class="section section-dark" style="padding-top:0;" aria-label="Sponsor testimonial">
+<!-- ── Enquiry Form ───────────────────────────────────────────────────── -->
+<section class="section section-light" id="enquire" aria-labelledby="form-heading">
   <div class="container">
-    <div class="quote-block">
-      <div class="quote-mark" aria-hidden="true">"</div>
-      <p class="quote-text">Sponsoring the British Trade Awards put our brand directly in front of the decision-makers we needed to reach. The ROI was immediate and the association with quality has been invaluable.</p>
-      <p class="quote-attr">— Previous Sponsor, Building Supplies Industry</p>
+    <div class="section-header">
+      <p class="section-eyebrow">Get In Touch</p>
+      <h2 class="section-title" id="form-heading">Submit a Sponsorship Enquiry</h2>
+      <div class="gold-rule"></div>
+      <p class="section-sub">Tell us a little about your company and what you're looking for. We'll come back to you within 2 business days.</p>
     </div>
-  </div>
-</section>
 
+    <div class="enquiry-wrap">
+      <form id="sponsor-form" class="enquiry-form" novalidate>
 
-<!-- ── CTA Band ─────────────────────────────────────────────────────── -->
-<section class="cta-band" aria-labelledby="cta-heading">
-  <div class="container">
-    <h2 id="cta-heading">Ready to be part of something<br>extraordinary?</h2>
-    <p>Spaces are limited. Get in touch today to secure your sponsorship package before the 2026 programme launches.</p>
-    <a href="mailto:sponsorship@britishtradeawards.com?subject=Sponsorship%20Enquiry%20—%20British%20Trade%20Awards%202026" class="btn-dark">
-      Contact Our Partnerships Team
-    </a>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="f-name">Full Name <span class="req" aria-hidden="true">*</span></label>
+            <input type="text" id="f-name" name="name" autocomplete="name" required placeholder="Jane Smith">
+          </div>
+          <div class="form-group">
+            <label for="f-company">Company <span class="req" aria-hidden="true">*</span></label>
+            <input type="text" id="f-company" name="company" autocomplete="organization" required placeholder="Acme Tools Ltd">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="f-role">Job Title</label>
+            <input type="text" id="f-role" name="role" autocomplete="organization-title" placeholder="Marketing Director">
+          </div>
+          <div class="form-group">
+            <label for="f-email">Email Address <span class="req" aria-hidden="true">*</span></label>
+            <input type="email" id="f-email" name="email" autocomplete="email" required placeholder="jane@acmetools.co.uk">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="f-phone">Phone Number</label>
+            <input type="tel" id="f-phone" name="phone" autocomplete="tel" placeholder="07700 900000">
+          </div>
+          <div class="form-group">
+            <label for="f-package">Package of Interest <span class="req" aria-hidden="true">*</span></label>
+            <select id="f-package" name="package" required>
+              <option value="" disabled selected>Select a package…</option>
+              <option value="Associate Partner (Bronze)">Associate Partner — Bronze</option>
+              <option value="Category Partner (Gold)">Category Partner — Gold</option>
+              <option value="Title Partner (Platinum)">Title Partner — Platinum</option>
+              <option value="Bespoke / Not sure yet">Bespoke / Not sure yet</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="f-message">Additional Notes</label>
+          <textarea id="f-message" name="message" rows="4" placeholder="Any specific categories you'd like to sponsor, budget range, or questions…"></textarea>
+        </div>
+
+        <div class="form-footer">
+          <p class="form-note">* Required fields. We'll never share your details with third parties.</p>
+          <button type="submit" class="btn-submit" id="form-submit-btn">
+            <span class="btn-label">Send Enquiry</span>
+            <span class="btn-spinner" hidden aria-hidden="true"></span>
+          </button>
+        </div>
+
+      </form>
+
+      <div id="form-success" class="form-success" hidden role="alert">
+        <div class="success-icon" aria-hidden="true">✓</div>
+        <h3>Enquiry Received</h3>
+        <p>Thank you — we'll be in touch within 2 business days.</p>
+      </div>
+
+      <div id="form-error" class="form-error" hidden role="alert">
+        <p>Something went wrong. Please try again or email us directly at <a href="mailto:sponsorship@britishtradeawards.com">sponsorship@britishtradeawards.com</a>.</p>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -873,5 +1069,94 @@
   </div>
 </footer>
 
+<script>
+  (function () {
+    // "Enquire" buttons on package cards pre-fill the package select and scroll to form
+    document.querySelectorAll('.enquire-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var pkg = btn.getAttribute('data-package');
+        var select = document.getElementById('f-package');
+        if (select && pkg) {
+          select.value = pkg;
+        }
+        var section = document.getElementById('enquire');
+        if (section) {
+          section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          // Focus first field after scroll
+          setTimeout(function () {
+            var first = document.getElementById('f-name');
+            if (first) first.focus();
+          }, 500);
+        }
+      });
+    });
+
+    // Form submission
+    var form = document.getElementById('sponsor-form');
+    var submitBtn = document.getElementById('form-submit-btn');
+    var btnLabel = submitBtn && submitBtn.querySelector('.btn-label');
+    var btnSpinner = submitBtn && submitBtn.querySelector('.btn-spinner');
+    var successEl = document.getElementById('form-success');
+    var errorEl = document.getElementById('form-error');
+
+    if (form) {
+      form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        // Simple client-side validation
+        var name = document.getElementById('f-name').value.trim();
+        var company = document.getElementById('f-company').value.trim();
+        var email = document.getElementById('f-email').value.trim();
+        var pkg = document.getElementById('f-package').value;
+
+        if (!name || !company || !email || !pkg) {
+          document.getElementById('f-name').reportValidity();
+          document.getElementById('f-company').reportValidity();
+          document.getElementById('f-email').reportValidity();
+          document.getElementById('f-package').reportValidity();
+          return;
+        }
+
+        // Show spinner
+        submitBtn.disabled = true;
+        if (btnLabel) btnLabel.textContent = 'Sending…';
+        if (btnSpinner) btnSpinner.hidden = false;
+        if (errorEl) errorEl.hidden = true;
+
+        var payload = {
+          action: 'sponsor_enquiry',
+          name: name,
+          company: company,
+          role: document.getElementById('f-role').value.trim(),
+          email: email,
+          phone: document.getElementById('f-phone').value.trim(),
+          package: pkg,
+          message: document.getElementById('f-message').value.trim(),
+        };
+
+        try {
+          var resp = await fetch('/api/entry-proxy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          var data = await resp.json();
+
+          if (resp.ok && data.success) {
+            form.hidden = true;
+            if (successEl) successEl.hidden = false;
+          } else {
+            throw new Error(data.error || 'Submission failed');
+          }
+        } catch (err) {
+          if (errorEl) errorEl.hidden = false;
+          submitBtn.disabled = false;
+          if (btnLabel) btnLabel.textContent = 'Send Enquiry';
+          if (btnSpinner) btnSpinner.hidden = true;
+        }
+      });
+    }
+  })();
+</script>
 </body>
 </html>

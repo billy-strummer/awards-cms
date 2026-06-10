@@ -1156,9 +1156,19 @@
 
     .sub-regions-list {
       display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
+      flex-direction: column;
+      gap: 16px;
     }
+    .region-group { display: flex; flex-direction: column; gap: 8px; }
+    .region-group-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin: 0;
+    }
+    .region-group-chips { display: flex; flex-wrap: wrap; gap: 8px; }
 
     .sub-region-chip {
       background: #1e1e1e;
@@ -1807,19 +1817,19 @@
       .regions-grid { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 6px; }
       .sub-region-chip { padding: 4px 10px; font-size: 0.75rem; }
 
-      /* Country cards — horizontal pill layout on small screens */
-      .country-cards { grid-template-columns: 1fr; gap: 10px; }
+      /* Country cards — 3 columns on small screens */
+      .country-cards { grid-template-columns: repeat(3, 1fr); gap: 8px; }
       .country-card {
         display: flex;
-        flex-direction: row;
+        flex-direction: column;
         align-items: center;
-        gap: 16px;
-        padding: 16px 20px;
-        text-align: left;
+        gap: 8px;
+        padding: 14px 8px;
+        text-align: center;
       }
-      .country-flag { width: 56px; height: 37px; margin: 0; flex-shrink: 0; }
-      .country-name { font-size: 1.1rem; margin-bottom: 0; }
-      .country-explore { margin-top: 2px; }
+      .country-flag { width: 52px; height: 34px; margin: 0; }
+      .country-name { font-size: 0.9rem; margin-bottom: 0; }
+      .country-explore { font-size: 0.75rem; margin-top: 0; }
 
       /* Find a trade */
       .find-trade-card { max-width: 100%; padding: 20px; }
@@ -2517,7 +2527,7 @@
     </h1>
 
     <p class="hero-sub">
-      Britain's premier awards programme celebrating excellence across the skilled trades.
+      British Trade Awards is a competition to find the champions of construction and building services across England, Scotland and Wales
     </p>
 
   </div>
@@ -2590,7 +2600,6 @@
         </div>
         <div>
           <h3>Enter British Trade Awards</h3>
-          <p>Submit your entry for the British Trade Awards. Whether you're a sole trader or a national firm — if you take pride in your craft, this is your moment.</p>
         </div>
         <a href="submit-entry.html" class="btn-gold" style="align-self: flex-start; margin-top: auto;">
           Submit Your Entry
@@ -2631,36 +2640,29 @@
           <li class="key-date-item">
             <div class="key-date-dot" aria-hidden="true"></div>
             <div>
-              <div class="key-date-label">1 Sep 2026</div>
-              <div class="key-date-desc">Entries Open</div>
+              <div class="key-date-label">1 Jul – 24 Jul 2026</div>
+              <div class="key-date-desc">Entries</div>
             </div>
           </li>
           <li class="key-date-item">
             <div class="key-date-dot" aria-hidden="true"></div>
             <div>
-              <div class="key-date-label">30 Nov 2026</div>
-              <div class="key-date-desc">Entries Close</div>
+              <div class="key-date-label">29 Jul 2026</div>
+              <div class="key-date-desc">Nominees Announced</div>
             </div>
           </li>
           <li class="key-date-item">
             <div class="key-date-dot" aria-hidden="true"></div>
             <div>
-              <div class="key-date-label">Jan 2027</div>
-              <div class="key-date-desc">Judging Period</div>
+              <div class="key-date-label">3 Aug – 1 Oct 2026</div>
+              <div class="key-date-desc">Voting</div>
             </div>
           </li>
           <li class="key-date-item">
             <div class="key-date-dot" aria-hidden="true"></div>
             <div>
-              <div class="key-date-label">Mar 2027</div>
-              <div class="key-date-desc">Shortlist Announced</div>
-            </div>
-          </li>
-          <li class="key-date-item">
-            <div class="key-date-dot" aria-hidden="true"></div>
-            <div>
-              <div class="key-date-label">May 2027</div>
-              <div class="key-date-desc">Awards Ceremony</div>
+              <div class="key-date-label">26 Nov 2026</div>
+              <div class="key-date-desc">Winners Announced</div>
             </div>
           </li>
         </ul>
@@ -2673,8 +2675,8 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
         </div>
         <div>
-          <h3>Vote for the Best</h3>
-          <p>Cast your vote for the best trade professionals in Britain. Decided entirely by public votes — every voice counts.</p>
+          <h3>Vote</h3>
+          <p>Great service deserves recognition. Vote for your favourite local trade professionals. Voting runs 3 Aug to 1 Oct 2026.</p>
         </div>
         <a href="public-voting.html" class="btn-ghost" style="align-self: flex-start; margin-top: auto;">
           Cast Your Vote
@@ -2733,7 +2735,7 @@
 
     <div class="section-intro">
       <h2 class="section-heading reveal" id="categories-heading">
-        Find your <span class="gold-underline">Category</span>
+        <span class="gold-underline">Categories</span>
       </h2>
       <p class="section-sub reveal reveal-delay-1" id="categories-sub">
         Award categories spanning the full breadth of Britain's skilled trades industry
@@ -2807,9 +2809,6 @@
       <h2 class="section-heading reveal" id="regions-heading">
         Find your <span class="gold-underline">County or City</span>
       </h2>
-      <p class="section-sub reveal reveal-delay-1">
-        The British Trade Awards celebrates the finest tradespeople across England, Scotland, and Wales
-      </p>
     </div>
 
     <div class="country-cards reveal reveal-delay-2" aria-label="Select a country to explore regions">
@@ -2934,7 +2933,7 @@
         Find a Trade <span class="gold-underline">Professional</span>
       </h2>
       <p class="section-sub reveal reveal-delay-1">
-        Locate the best tradespeople in your area with British Trade Awards recommended trade specialists
+        Source the best tradespeople in your area with the British Trade Awards guide
       </p>
       <span class="coming-soon-badge reveal reveal-delay-2">Directory launching soon</span>
     </div>
@@ -2975,7 +2974,7 @@
             <option value="building-construction">Building &amp; Construction</option>
             <option value="mep">Mechanical, Electrical &amp; Plumbing</option>
             <option value="carpentry">Carpentry &amp; Joinery</option>
-            <option value="interior">Interior Fit-Out &amp; Finishing</option>
+            <option value="interior">Fit-Out &amp; Finishing</option>
             <option value="outdoor">Outdoor &amp; Landscaping</option>
             <option value="energy">Energy, Tech &amp; Sustainability</option>
             <option value="specialist">Specialist Trades</option>
@@ -3051,13 +3050,10 @@
   <div class="container">
     <div style="max-width: 800px; margin: 0 auto; text-align: center;">
       <h2 class="section-heading reveal" id="about-heading">
-        About the <span class="gold-underline">Awards</span>
+        About <span class="gold-underline">British Trade Awards</span>
       </h2>
       <p class="reveal reveal-delay-1" style="font-size: 1.05rem; color: var(--text-muted); margin-top: 28px; line-height: 1.8;">
-        The British Trade Awards exist to celebrate the skilled men and women who keep the nation running. From the plumber who responded at midnight to the landscaper who transformed a forgotten garden — this is the awards programme that finally gives the trades the national recognition they deserve.
-      </p>
-      <p class="reveal reveal-delay-2" style="font-size: 1.05rem; color: var(--text-muted); margin-top: 20px; line-height: 1.8;">
-        Independent judging. Regional heats. A national gala ceremony. Real recognition for real craft.
+        British Trade Awards is a competition to find the champions of construction and building services across England, Scotland and Wales – voted by the public.
       </p>
       <div class="reveal reveal-delay-3" style="margin-top: 44px; display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
         <a href="submit-entry.html" class="btn-gold">Enter British Trade Awards</a>
@@ -3077,15 +3073,6 @@
 
     <!-- Row 1: Logo + Nav -->
     <div class="footer-top">
-      <a href="home.html" class="footer-logo" aria-label="British Trade Awards — back to top">
-        <img src="images/logos/non-stacked/BTA_Corporate_Horizontal-Black-and-White-01.png" alt="British Trade Awards"
-             onerror="this.style.display='none'; this.nextElementSibling.style.display='block'">
-        <div class="footer-logo-text" style="display:none">
-          British Trade Awards
-          <span>Est. 2026</span>
-        </div>
-      </a>
-
       <nav class="footer-nav" aria-label="Footer navigation">
         <a href="#categories">Categories</a>
         <a href="#regions">Regions</a>
@@ -3191,7 +3178,7 @@
   // ── Countdown timer ──────────────────────────────────────────────────────────
   // Target: 1 September 2026 00:00:00 UTC (entries open)
   (function () {
-    var target = Date.UTC(2026, 8, 1, 0, 0, 0); // month is 0-indexed: 8 = September
+    var target = Date.UTC(2026, 6, 1, 0, 0, 0); // month is 0-indexed: 6 = July
     var block = document.getElementById('countdown-block');
     var openMsg = document.getElementById('countdown-open-msg');
     var elDays = document.getElementById('cd-days');

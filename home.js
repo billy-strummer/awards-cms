@@ -308,42 +308,54 @@
         const countryData = SUB_REGIONS[country] || {};
         const boroughs = countryData['London Boroughs'] || [];
 
-        // Flatten all groups except London Boroughs (those sit under the London chip)
-        const allLocations = Object.entries(countryData)
-          .filter(function (entry) {
-            return entry[0] !== 'London Boroughs';
-          })
-          .reduce(function (acc, entry) {
-            return acc.concat(entry[1]);
-          }, []);
-
         const subList = document.getElementById('sub-list-' + country);
         if (!subList) return;
 
-        subList.innerHTML = allLocations
-          .map(function (loc) {
-            if (loc === 'London' && boroughs.length) {
-              const flag = FLAG_MAP['London']
-                ? '<img class="chip-flag" src="images/flags/' +
-                  encodeURIComponent(FLAG_MAP['London']) +
-                  '" alt="" aria-hidden="true">'
-                : '';
-              const boroughHtml = boroughs
-                .map(function (b) {
-                  return chipHtml(b, 'england');
-                })
-                .join('');
-              return (
-                '<button class="sub-region-chip london-toggle" aria-expanded="false">' +
-                flag +
-                'London <span class="london-arrow" aria-hidden="true">▾</span>' +
-                '</button>' +
-                '<div class="london-boroughs" hidden>' +
-                boroughHtml +
-                '</div>'
-              );
-            }
-            return chipHtml(loc, country);
+        // Render each group with a labelled header, keeping London Boroughs under London chip
+        const groups = Object.entries(countryData).filter(function (e) {
+          return e[0] !== 'London Boroughs';
+        });
+
+        subList.innerHTML = groups
+          .map(function (entry) {
+            const groupName = entry[0];
+            const locations = entry[1];
+            const chipsHtml = locations
+              .map(function (loc) {
+                if (loc === 'London' && boroughs.length) {
+                  const flag = FLAG_MAP['London']
+                    ? '<img class="chip-flag" src="images/flags/' +
+                      encodeURIComponent(FLAG_MAP['London']) +
+                      '" alt="" aria-hidden="true">'
+                    : '';
+                  const boroughHtml = boroughs
+                    .map(function (b) {
+                      return chipHtml(b, 'england');
+                    })
+                    .join('');
+                  return (
+                    '<button class="sub-region-chip london-toggle" aria-expanded="false">' +
+                    flag +
+                    'London <span class="london-arrow" aria-hidden="true">▾</span>' +
+                    '</button>' +
+                    '<div class="london-boroughs" hidden>' +
+                    boroughHtml +
+                    '</div>'
+                  );
+                }
+                return chipHtml(loc, country);
+              })
+              .join('');
+            return (
+              '<div class="region-group">' +
+              '<p class="region-group-label">' +
+              escapeHtml(groupName) +
+              '</p>' +
+              '<div class="region-group-chips">' +
+              chipsHtml +
+              '</div>' +
+              '</div>'
+            );
           })
           .join('');
 

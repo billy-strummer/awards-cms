@@ -155,6 +155,23 @@ async function handleSponsorEnquiry(req, res) {
   const safeMsg = sanitizeString(message || '', 2000);
   const safeEmail = sanitizeString(email, 254);
 
+  // 1. Persist to database (primary record — survives email failures)
+  const { error: dbError } = await supabase.from('sponsor_enquiries').insert({
+    name: safeName,
+    company: safeCompany,
+    role: safeRole || null,
+    email: safeEmail,
+    phone: safePhone || null,
+    package: safePkg,
+    message: safeMsg || null,
+  });
+
+  if (dbError) {
+    console.error('[entry-proxy] sponsor_enquiries insert failed:', dbError.message);
+    // Non-fatal: still attempt email so the enquiry is not silently lost
+  }
+
+  // 2. Send notification email to the team
   const toEmail = process.env.FROM_EMAIL || 'sponsorship@britishtradeawards.com';
   const subject = `Sponsorship Enquiry — ${safePkg} — ${safeCompany}`;
   const html = `
@@ -168,13 +185,17 @@ async function handleSponsorEnquiry(req, res) {
       <tr style="background:#f9f9f9;"><td style="padding:8px 16px 8px 0;color:#666;"><strong>Package Interest</strong></td><td style="padding:8px 0;font-weight:bold;color:#C9A227;">${safePkg}</td></tr>
       ${safeMsg ? `<tr><td style="padding:8px 16px 8px 0;color:#666;vertical-align:top;"><strong>Message</strong></td><td style="padding:8px 0;">${safeMsg.replace(/\n/g, '<br>')}</td></tr>` : ''}
     </table>
-    <p style="margin-top:24px;font-size:12px;color:#999;">Submitted via become-a-sponsor.html — reply directly to ${safeEmail}</p>
+    <p style="margin-top:24px;font-size:12px;color:#999;">Submitted via become-a-sponsor.html — also logged in CMS under Organisations → Sponsorship Enquiries.</p>
+    <p style="font-size:12px;color:#999;">Reply directly to <a href="mailto:${safeEmail}">${safeEmail}</a></p>
   `;
 
-  const result = await sendEmail({ to: toEmail, subject, html, replyTo: safeEmail });
-  if (!result.success) {
-    return res.status(500).json({ error: 'Failed to send enquiry email. Please try again.' });
+  const emailResult = await sendEmail({ to: toEmail, subject, html, replyTo: safeEmail });
+
+  // Return success if either the DB record was saved OR the email was sent
+  if (dbError && !emailResult.success) {
+    return res.status(500).json({ error: 'Failed to save enquiry. Please try again.' });
   }
+
   return res.status(200).json({ success: true });
 }
 

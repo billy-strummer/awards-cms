@@ -437,6 +437,248 @@ const sponsorPortalModule = {
       };
     }
   },
+  /* 8. SPONSORSHIP ENQUIRIES */
+
+  _enquiryStatusBadge(status) {
+    const map = { new: 'primary', contacted: 'warning', converted: 'success', rejected: 'secondary' };
+    const colour = map[status] || 'secondary';
+    const label = status ? status.charAt(0).toUpperCase() + status.slice(1) : 'New';
+    return `<span class="badge bg-${colour}">${utils.escapeHtml(label)}</span>`;
+  },
+
+  async renderEnquiries() {
+    const el = document.getElementById('sponsorEnquiriesView');
+    if (!el) return;
+    el.innerHTML =
+      '<div class="text-center py-5"><div class="spinner-border text-secondary" role="status"><span class="visually-hidden">Loading…</span></div></div>';
+    try {
+      /* selectAll: justified — sponsor enquiries are a small admin dataset */
+      const rows = await apiClient.selectAll('sponsor_enquiries', {
+        select: '*',
+        sort: { column: 'created_at', ascending: false },
+      });
+
+      const newCount = (rows || []).filter((r) => r.status === 'new').length;
+      const badge = document.getElementById('enquiriesNewBadge');
+      if (badge) {
+        badge.textContent = newCount;
+        badge.hidden = newCount === 0;
+      }
+
+      if (!rows || rows.length === 0) {
+        el.innerHTML = `
+          <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+              <h4 class="mb-1"><i class="bi bi-envelope-check me-2"></i>Sponsorship Enquiries</h4>
+              <p class="text-muted mb-0 small">Submitted via the "Become a Sponsor" page</p>
+            </div>
+          </div>
+          <div class="text-center py-5 text-muted">
+            <i class="bi bi-inbox display-4 d-block mb-3 opacity-25"></i>
+            <p class="mb-1 fw-semibold">No sponsorship enquiries yet.</p>
+            <p class="small mb-0">Enquiries submitted via <code>become-a-sponsor.html</code> will appear here.</p>
+          </div>`;
+        return;
+      }
+
+      el.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+          <div>
+            <h4 class="mb-1"><i class="bi bi-envelope-check me-2"></i>Sponsorship Enquiries</h4>
+            <p class="text-muted mb-0 small">Submitted via the "Become a Sponsor" page &mdash; ${rows.length} total, ${newCount} new</p>
+          </div>
+          <div class="d-flex gap-2 align-items-center">
+            <select class="form-select form-select-sm" id="enquiryStatusFilter" style="width:auto;" aria-label="Filter by status">
+              <option value="">All statuses</option>
+              <option value="new">New</option>
+              <option value="contacted">Contacted</option>
+              <option value="converted">Converted</option>
+              <option value="rejected">Rejected</option>
+            </select>
+            <button class="btn btn-outline-secondary btn-sm" data-action="sponsorPortalModule.renderEnquiries">
+              <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+            </button>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-hover align-middle" id="enquiriesTable">
+            <thead class="table-light">
+              <tr>
+                <th style="white-space:nowrap;">Date</th>
+                <th>Company</th>
+                <th>Contact</th>
+                <th>Package</th>
+                <th>Status</th>
+                <th style="width:110px;"></th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows
+                .map(
+                  (r) => `
+              <tr data-status="${utils.escapeHtml(r.status || 'new')}">
+                <td class="small text-muted" style="white-space:nowrap;">${utils.formatDate(r.created_at)}</td>
+                <td>
+                  <strong>${utils.escapeHtml(r.company)}</strong>
+                  ${r.role ? `<small class="d-block text-muted">${utils.escapeHtml(r.role)}</small>` : ''}
+                </td>
+                <td>
+                  ${utils.escapeHtml(r.name)}
+                  <small class="d-block"><a href="mailto:${utils.escapeHtml(r.email)}">${utils.escapeHtml(r.email)}</a></small>
+                  ${r.phone ? `<small class="d-block text-muted">${utils.escapeHtml(r.phone)}</small>` : ''}
+                </td>
+                <td><span class="badge bg-dark text-wrap" style="max-width:140px;white-space:normal;">${utils.escapeHtml(r.package)}</span></td>
+                <td>${this._enquiryStatusBadge(r.status)}</td>
+                <td>
+                  <button class="btn btn-sm btn-outline-primary me-1"
+                    data-action="sponsorPortalModule.viewEnquiry"
+                    data-id="${utils.escapeHtml(r.id)}"
+                    title="View / edit">
+                    <i class="bi bi-eye"></i>
+                  </button>
+                  <div class="d-inline-block">
+                    <div class="dropdown">
+                      <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                        data-bs-toggle="dropdown"
+                        aria-expanded="false"
+                        title="Change status">
+                        <i class="bi bi-pencil"></i>
+                      </button>
+                      <ul class="dropdown-menu dropdown-menu-end">
+                        ${['new', 'contacted', 'converted', 'rejected']
+                          .map(
+                            (s) => `<li>
+                          <button class="dropdown-item${r.status === s ? ' active' : ''}"
+                            data-action="sponsorPortalModule.updateEnquiryStatus"
+                            data-args='${JSON.stringify([r.id, s])}'>
+                            ${this._enquiryStatusBadge(s)} ${s.charAt(0).toUpperCase() + s.slice(1)}
+                          </button></li>`
+                          )
+                          .join('')}
+                      </ul>
+                    </div>
+                  </div>
+                </td>
+              </tr>`
+                )
+                .join('')}
+            </tbody>
+          </table>
+        </div>`;
+
+      const filterEl = document.getElementById('enquiryStatusFilter');
+      if (filterEl) {
+        filterEl.addEventListener('change', function () {
+          const val = this.value;
+          document.querySelectorAll('#enquiriesTable tbody tr').forEach((row) => {
+            row.style.display = !val || row.dataset.status === val ? '' : 'none';
+          });
+        });
+      }
+    } catch (err) {
+      console.error('renderEnquiries:', err);
+      el.innerHTML = `<div class="alert alert-danger">Failed to load enquiries: ${utils.escapeHtml(err.message)}</div>`;
+    }
+  },
+
+  async viewEnquiry(id) {
+    try {
+      const rows = await apiClient.selectAll('sponsor_enquiries', {
+        select: '*',
+        filters: { id: { eq: id } },
+      });
+      const r = rows?.[0];
+      if (!r) {
+        utils.showToast('Enquiry not found', 'error');
+        return;
+      }
+      const statusMap = { new: 'primary', contacted: 'warning', converted: 'success', rejected: 'secondary' };
+      const modalBody = document.getElementById('enquiryDetailModalBody');
+      if (!modalBody) return;
+      modalBody.innerHTML = `
+        <div class="row g-3">
+          <div class="col-md-6">
+            <div class="card h-100">
+              <div class="card-body">
+                <h6 class="card-title text-muted small text-uppercase mb-3">Contact Details</h6>
+                <dl class="row g-1 mb-0 small">
+                  <dt class="col-sm-4 fw-semibold">Name</dt><dd class="col-sm-8">${utils.escapeHtml(r.name)}</dd>
+                  <dt class="col-sm-4 fw-semibold">Company</dt><dd class="col-sm-8"><strong>${utils.escapeHtml(r.company)}</strong></dd>
+                  ${r.role ? `<dt class="col-sm-4 fw-semibold">Role</dt><dd class="col-sm-8">${utils.escapeHtml(r.role)}</dd>` : ''}
+                  <dt class="col-sm-4 fw-semibold">Email</dt><dd class="col-sm-8"><a href="mailto:${utils.escapeHtml(r.email)}">${utils.escapeHtml(r.email)}</a></dd>
+                  ${r.phone ? `<dt class="col-sm-4 fw-semibold">Phone</dt><dd class="col-sm-8">${utils.escapeHtml(r.phone)}</dd>` : ''}
+                  <dt class="col-sm-4 fw-semibold">Package</dt><dd class="col-sm-8"><span class="badge bg-dark">${utils.escapeHtml(r.package)}</span></dd>
+                  <dt class="col-sm-4 fw-semibold">Date</dt><dd class="col-sm-8">${utils.formatDate(r.created_at)}</dd>
+                  <dt class="col-sm-4 fw-semibold">Status</dt><dd class="col-sm-8">${this._enquiryStatusBadge(r.status)}</dd>
+                </dl>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="card h-100">
+              <div class="card-body">
+                <h6 class="card-title text-muted small text-uppercase mb-2">Message</h6>
+                <p class="small mb-0">${r.message ? utils.escapeHtml(r.message).replace(/\n/g, '<br>') : '<em class="text-muted">No message provided.</em>'}</p>
+              </div>
+            </div>
+          </div>
+          <div class="col-12">
+            <div class="card">
+              <div class="card-body">
+                <h6 class="card-title text-muted small text-uppercase mb-2">Internal Notes</h6>
+                <textarea class="form-control form-control-sm mb-3" id="enquiryNotesField" rows="3"
+                  placeholder="Add notes for your team…">${utils.escapeHtml(r.notes || '')}</textarea>
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                  <button class="btn btn-sm btn-primary"
+                    data-action="sponsorPortalModule.saveEnquiryNotes"
+                    data-id="${utils.escapeHtml(r.id)}">
+                    <i class="bi bi-floppy me-1"></i>Save Notes
+                  </button>
+                  <span class="text-muted small">Update status:</span>
+                  ${['new', 'contacted', 'converted', 'rejected']
+                    .map(
+                      (
+                        s
+                      ) => `<button class="btn btn-sm btn-outline-${statusMap[s] || 'secondary'}${r.status === s ? ' active' : ''}"
+                      data-action="sponsorPortalModule.updateEnquiryStatus"
+                      data-args='${JSON.stringify([r.id, s])}'>
+                      ${s.charAt(0).toUpperCase() + s.slice(1)}
+                    </button>`
+                    )
+                    .join('')}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>`;
+      new bootstrap.Modal(document.getElementById('enquiryDetailModal')).show();
+    } catch (err) {
+      console.error('viewEnquiry:', err);
+      utils.showToast('Failed to load enquiry: ' + err.message, 'error');
+    }
+  },
+
+  async updateEnquiryStatus(id, status) {
+    try {
+      await apiClient.update('sponsor_enquiries', id, { status });
+      utils.showToast(`Status updated to "${status}"`, 'success');
+      bootstrap.Modal.getInstance(document.getElementById('enquiryDetailModal'))?.hide();
+      this.renderEnquiries();
+    } catch (err) {
+      utils.showToast('Failed to update status: ' + err.message, 'error');
+    }
+  },
+
+  async saveEnquiryNotes(id) {
+    const notes = document.getElementById('enquiryNotesField')?.value ?? '';
+    try {
+      await apiClient.update('sponsor_enquiries', id, { notes });
+      utils.showToast('Notes saved', 'success');
+    } catch (err) {
+      utils.showToast('Failed to save notes: ' + err.message, 'error');
+    }
+  },
 };
 ModuleRegistry.register('sponsorPortalModule', sponsorPortalModule);
 

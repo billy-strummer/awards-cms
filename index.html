@@ -1318,6 +1318,15 @@
           <i class="bi bi-award me-2"></i>Sponsors &amp; Partners
         </button>
       </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="enquiriesViewBtn" role="tab"
+          data-bs-toggle="tab" data-bs-target="#orgsEnquiriesSection"
+          aria-controls="orgsEnquiriesSection" aria-selected="false"
+          data-action="sponsorPortalModule.renderEnquiries">
+          <i class="bi bi-envelope me-2"></i>Sponsorship Enquiries
+          <span id="enquiriesNewBadge" class="badge bg-danger ms-1" hidden>0</span>
+        </button>
+      </li>
     </ul>
 
     <div class="tab-content">
@@ -2289,6 +2298,32 @@
         </div>
       </div>
     </div><!-- /orgsSponsorSection -->
+
+    <!-- Sponsorship Enquiries Section -->
+    <div id="orgsEnquiriesSection" class="tab-pane fade" role="tabpanel" aria-labelledby="enquiriesViewBtn">
+      <div id="sponsorEnquiriesView">
+        <div class="text-center py-5 text-muted">
+          <i class="bi bi-envelope display-4 d-block mb-2 opacity-25"></i>
+          Click the tab to load sponsorship enquiries.
+        </div>
+      </div>
+
+      <!-- Enquiry detail / edit modal (rendered by sponsorPortalModule.viewEnquiry) -->
+      <div class="modal fade" id="enquiryDetailModal" tabindex="-1" aria-labelledby="enquiryDetailModalLabel">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="enquiryDetailModalLabel"><i class="bi bi-envelope me-2"></i>Enquiry Details</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="enquiryDetailModalBody"></div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /orgsEnquiriesSection -->
 
     </div><!-- /tab-content -->
 

@@ -303,6 +303,8 @@ async function build() {
     'nominate.html',
     'public-winners.html',
     'privacy-policy.html',
+    'terms-and-conditions.html',
+    'become-a-sponsor.html',
   ];
 
   // Also copy shared assets needed by public pages

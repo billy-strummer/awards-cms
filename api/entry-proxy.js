@@ -14,6 +14,8 @@
 
 const { createClient } = require('@supabase/supabase-js');
 const { sendEntryConfirmation, sendNominationConfirmation } = require('./email-automation');
+const { sendEmail } = require('./resend-email');
+const { wrapEmail } = require('./_lib/email-header');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
@@ -133,6 +135,166 @@ async function insertEntryWithRetry(payload) {
 }
 
 // ────────────────────────────────────────────
+// Sponsor enquiry
+// ────────────────────────────────────────────
+
+async function handleSponsorEnquiry(req, res) {
+  const { name, company, role, email, phone, package: pkg, message } = req.body || {};
+
+  if (!name || !company || !email || !pkg) {
+    return res.status(400).json({ error: 'Missing required fields: name, company, email, package' });
+  }
+  if (!isValidEmail(email)) {
+    return res.status(400).json({ error: 'Invalid email address' });
+  }
+
+  const safeName = sanitizeString(name, 100);
+  const safeCompany = sanitizeString(company, 200);
+  const safeRole = sanitizeString(role || '', 100);
+  const safePhone = sanitizeString(phone || '', 30);
+  const safePkg = sanitizeString(pkg, 60);
+  const safeMsg = sanitizeString(message || '', 2000);
+  const safeEmail = sanitizeString(email, 254);
+
+  // 1. Persist to database (primary record — survives email failures)
+  const { error: dbError } = await supabase.from('sponsor_enquiries').insert({
+    name: safeName,
+    company: safeCompany,
+    role: safeRole || null,
+    email: safeEmail,
+    phone: safePhone || null,
+    package: safePkg,
+    message: safeMsg || null,
+  });
+
+  if (dbError) {
+    console.error('[entry-proxy] sponsor_enquiries insert failed:', dbError.message);
+    // Non-fatal: still attempt email so the enquiry is not silently lost
+  }
+
+  // 2. Send notification email to the team
+  const toEmail = process.env.FROM_EMAIL || 'sponsorship@britishtradeawards.com';
+  const subject = `Sponsorship Enquiry — ${safePkg} — ${safeCompany}`;
+  const html = `
+    <h2 style="color:#C9A227;font-family:Georgia,serif;">New Sponsorship Enquiry</h2>
+    <table style="border-collapse:collapse;width:100%;font-family:Arial,sans-serif;font-size:14px;">
+      <tr><td style="padding:8px 16px 8px 0;color:#666;white-space:nowrap;"><strong>Name</strong></td><td style="padding:8px 0;">${safeName}</td></tr>
+      <tr style="background:#f9f9f9;"><td style="padding:8px 16px 8px 0;color:#666;"><strong>Company</strong></td><td style="padding:8px 0;">${safeCompany}</td></tr>
+      <tr><td style="padding:8px 16px 8px 0;color:#666;"><strong>Role</strong></td><td style="padding:8px 0;">${safeRole || '—'}</td></tr>
+      <tr style="background:#f9f9f9;"><td style="padding:8px 16px 8px 0;color:#666;"><strong>Email</strong></td><td style="padding:8px 0;"><a href="mailto:${safeEmail}">${safeEmail}</a></td></tr>
+      <tr><td style="padding:8px 16px 8px 0;color:#666;"><strong>Phone</strong></td><td style="padding:8px 0;">${safePhone || '—'}</td></tr>
+      <tr style="background:#f9f9f9;"><td style="padding:8px 16px 8px 0;color:#666;"><strong>Package Interest</strong></td><td style="padding:8px 0;font-weight:bold;color:#C9A227;">${safePkg}</td></tr>
+      ${safeMsg ? `<tr><td style="padding:8px 16px 8px 0;color:#666;vertical-align:top;"><strong>Message</strong></td><td style="padding:8px 0;">${safeMsg.replace(/\n/g, '<br>')}</td></tr>` : ''}
+    </table>
+    <p style="margin-top:24px;font-size:12px;color:#999;">Submitted via become-a-sponsor.html — also logged in CMS under Organisations → Sponsorship Enquiries.</p>
+    <p style="font-size:12px;color:#999;">Reply directly to <a href="mailto:${safeEmail}">${safeEmail}</a></p>
+  `;
+
+  const emailResult = await sendEmail({ to: toEmail, subject, html, replyTo: safeEmail });
+
+  // Return success if either the DB record was saved OR the email was sent
+  if (dbError && !emailResult.success) {
+    return res.status(500).json({ error: 'Failed to save enquiry. Please try again.' });
+  }
+
+  // 3. Send branded confirmation to the enquirer (non-blocking — never fail the request)
+  const confirmSubject = `Sponsorship enquiry received — British Trade Awards 2026`;
+  const confirmBody = `
+<div style="padding:36px 40px;background:#fff;font-family:Arial,Helvetica,sans-serif;">
+
+  <p style="font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#0a0a0a;margin:0 0 6px;">Hi ${safeName},</p>
+  <p style="font-size:15px;color:#444;line-height:1.75;margin:0 0 28px;">
+    Thank you for your interest in sponsoring the <strong style="color:#0a0a0a;">British Trade Awards 2026</strong>.
+    We've received your enquiry and a member of our partnerships team will be in touch within
+    <strong style="color:#0a0a0a;">2 business days</strong>.
+  </p>
+
+  <!-- Enquiry summary card -->
+  <div style="background:#f8f6f1;border-left:4px solid #C9A227;border-radius:8px;padding:22px 26px;margin-bottom:32px;">
+    <p style="font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#C9A227;margin:0 0 14px;">Your Enquiry</p>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;color:#333;">
+      <tr>
+        <td style="padding:5px 16px 5px 0;color:#888;white-space:nowrap;width:110px;">Package</td>
+        <td style="padding:5px 0;color:#0a0a0a;font-weight:700;">${safePkg}</td>
+      </tr>
+      <tr>
+        <td style="padding:5px 16px 5px 0;color:#888;">Company</td>
+        <td style="padding:5px 0;color:#0a0a0a;">${safeCompany}</td>
+      </tr>
+      ${safeRole ? `<tr><td style="padding:5px 16px 5px 0;color:#888;">Your role</td><td style="padding:5px 0;color:#0a0a0a;">${safeRole}</td></tr>` : ''}
+      ${safeMsg ? `<tr><td style="padding:5px 16px 5px 0;color:#888;vertical-align:top;">Notes</td><td style="padding:5px 0;color:#555;">${safeMsg.replace(/\n/g, '<br>')}</td></tr>` : ''}
+    </table>
+  </div>
+
+  <!-- What happens next -->
+  <p style="font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#C9A227;margin:0 0 14px;">What Happens Next</p>
+  <table style="width:100%;border-collapse:collapse;margin-bottom:32px;">
+    <tr>
+      <td style="vertical-align:top;padding:0 16px 16px 0;width:28px;">
+        <div style="width:26px;height:26px;border-radius:50%;background:#C9A227;color:#000;font-weight:700;font-size:13px;text-align:center;line-height:26px;flex-shrink:0;">1</div>
+      </td>
+      <td style="vertical-align:top;padding:0 0 16px;font-size:14px;color:#444;line-height:1.6;">
+        Our partnerships team will review your enquiry and prepare relevant package details.
+      </td>
+    </tr>
+    <tr>
+      <td style="vertical-align:top;padding:0 16px 16px 0;">
+        <div style="width:26px;height:26px;border-radius:50%;background:#C9A227;color:#000;font-weight:700;font-size:13px;text-align:center;line-height:26px;">2</div>
+      </td>
+      <td style="vertical-align:top;padding:0 0 16px;font-size:14px;color:#444;line-height:1.6;">
+        We'll be in touch within <strong>2 business days</strong> to discuss your goals and answer any questions.
+      </td>
+    </tr>
+    <tr>
+      <td style="vertical-align:top;padding:0 16px 0 0;">
+        <div style="width:26px;height:26px;border-radius:50%;background:#C9A227;color:#000;font-weight:700;font-size:13px;text-align:center;line-height:26px;">3</div>
+      </td>
+      <td style="vertical-align:top;font-size:14px;color:#444;line-height:1.6;">
+        We'll send a bespoke proposal tailored to your brand and marketing objectives.
+      </td>
+    </tr>
+  </table>
+
+  <p style="font-size:14px;color:#666;margin:0 0 6px;">
+    If you have any questions in the meantime, simply reply to this email and we'll get back to you.
+  </p>
+  <p style="font-size:14px;color:#444;margin:0 0 32px;">
+    The British Trade Awards Partnerships Team
+  </p>
+
+  <!-- Divider -->
+  <div style="border-top:1px solid #e8e4dc;padding-top:20px;">
+    <p style="font-size:12px;color:#aaa;margin:0;line-height:1.6;">
+      You're receiving this email because you submitted a sponsorship enquiry at
+      <a href="https://britishtradeawards.com/become-a-sponsor.html" style="color:#C9A227;text-decoration:none;">britishtradeawards.com</a>.
+      If this wasn't you, please ignore this message.
+    </p>
+  </div>
+
+</div>`;
+
+  const confirmHtml = wrapEmail(
+    confirmBody,
+    {
+      primary_color: '#0a0a0a',
+      secondary_color: '#111111',
+      accent_color: '#C9A227',
+    },
+    {
+      subject: confirmSubject,
+      subtitle: 'Sponsorship Enquiry Received',
+      preheader: `Hi ${safeName}, we've received your enquiry and will be in touch within 2 business days.`,
+    }
+  );
+
+  sendEmail({ to: safeEmail, subject: confirmSubject, html: confirmHtml }).catch((err) => {
+    console.error('[entry-proxy] Sponsor confirmation email failed (non-fatal):', err.message);
+  });
+
+  return res.status(200).json({ success: true });
+}
+
+// ────────────────────────────────────────────
 // Main handler
 // ────────────────────────────────────────────
 
@@ -153,6 +315,8 @@ module.exports = async function handler(req, res) {
         return await handleGetPublicData(req, res);
       case 'data_export':
         return await handleDataExport(req, res);
+      case 'sponsor_enquiry':
+        return await handleSponsorEnquiry(req, res);
       default:
         return res.status(400).json({ error: `Unknown action: ${action}` });
     }

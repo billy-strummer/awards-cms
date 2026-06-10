@@ -1206,13 +1206,20 @@
     }
 
     .london-boroughs {
-      width: 100%;
-      display: flex;
-      flex-wrap: wrap;
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
       gap: 8px;
       padding: 10px 0 4px 16px;
       border-left: 2px solid rgba(201, 162, 39, 0.3);
       margin-left: 4px;
+    }
+
+    @media (min-width: 600px) {
+      .london-boroughs { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (min-width: 900px) {
+      .london-boroughs { grid-template-columns: repeat(4, 1fr); }
     }
 
     /* ============================================================

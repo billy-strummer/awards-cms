@@ -152,6 +152,47 @@ async function insertEntryWithRetry(payload) {
 }
 
 // ────────────────────────────────────────────
+// Public winner portal lookup (token-authenticated, no Supabase JWT needed)
+// ────────────────────────────────────────────
+
+async function handleGetWinner(req, res) {
+  const { token, id } = req.body || {};
+
+  if (!token || typeof token !== 'string' || token.length < 8) {
+    return res.status(400).json({ error: 'Invalid access token' });
+  }
+
+  let query = supabase
+    .from('winners')
+    .select(
+      'id, status, winner_position, year, ' +
+        'award_years:award_years!winners_award_id_fkey(award_name, award_category, sector, county), ' +
+        'organisations(company_name, logo_url)'
+    )
+    .eq('access_token', token);
+
+  if (id) {
+    const parsedId = parseInt(id, 10);
+    if (!isNaN(parsedId) && parsedId > 0) query = query.eq('id', parsedId);
+  }
+
+  const { data, error } = await query.limit(1).maybeSingle();
+
+  if (error) {
+    console.error('[entry-proxy] get_winner error:', error.message);
+    return res.status(500).json({ error: 'Failed to load winner data' });
+  }
+
+  if (!data) {
+    return res.status(404).json({ error: 'Winner not found' });
+  }
+
+  // Strip the access_token before returning — it's an internal auth secret
+  const { access_token: _stripped, ...safeData } = data;
+  return res.status(200).json({ success: true, data: safeData });
+}
+
+// ────────────────────────────────────────────
 // Sponsor enquiry
 // ────────────────────────────────────────────
 
@@ -446,6 +487,8 @@ module.exports = async function handler(req, res) {
         return await handleDataExport(req, res);
       case 'sponsor_enquiry':
         return await handleSponsorEnquiry(req, res);
+      case 'get_winner':
+        return await handleGetWinner(req, res);
       default:
         return res.status(400).json({ error: `Unknown action: ${action}` });
     }

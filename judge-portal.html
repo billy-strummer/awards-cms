@@ -347,15 +347,15 @@
   <!-- Shared Config -->
   <script type="module" src="config.js"></script>
 
-  <!-- Public utilities (provides PublicUtils.proxyFetch / getAuthToken) -->
+  <!-- Public utilities (provides window.publicUtils.proxyFetch / getAuthToken) -->
   <script src="public-utils.js"></script>
 
-  <!-- apiClient shim: wraps PublicUtils.proxyFetch with the same interface
+  <!-- apiClient shim: wraps publicUtils.proxyFetch with the same interface
        used by judge-portal.js (select / selectAll / upsert) -->
   <script>
   var apiClient = (function () {
     function call(body) {
-      return PublicUtils.proxyFetch(body);
+      return window.publicUtils.proxyFetch(body);
     }
     return {
       async select(table, opts) {

@@ -494,7 +494,14 @@
     }
 
     /* Video wrapper — needed so the end-screen can overlay the video */
-    #video-wrapper { position: relative; line-height: 0; }
+    #video-wrapper {
+      position: relative;
+      line-height: 0;
+      border: 2px solid var(--gold);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      box-shadow: 0 0 48px rgba(201,162,39,0.14);
+    }
 
     /* End-screen overlay — fades in when video ends */
     #video-end-screen {
@@ -1679,7 +1686,8 @@
 
       #video-wrapper {
         order: 2;
-        width: 100%;
+        width: calc(100% - 32px);
+        margin: 0 auto;
         aspect-ratio: 16 / 9;
       }
 
@@ -2412,7 +2420,9 @@
 
       #video-wrapper {
         order: 2;
-        width: 100%;
+        width: calc(100% - clamp(48px, 10vw, 160px));
+        max-width: 1000px;
+        margin: 0 auto;
         aspect-ratio: 16 / 9;
       }
 

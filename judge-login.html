@@ -20,10 +20,32 @@
   <script type="module" src="config.js"></script>
 
   <style>
+    :root{--header-h:80px;}
+    #site-header{position:fixed;top:0;left:0;right:0;z-index:1000;height:var(--header-h);transition:background .3s,backdrop-filter .3s,transform .4s cubic-bezier(.25,.46,.45,.94);will-change:transform;}
+    #site-header.at-top,#site-header.scrolled{background:rgba(10,10,10,0.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);}
+    #site-header.scrolled{box-shadow:0 1px 0 rgba(255,255,255,0.06);}
+    #site-header.hidden{transform:translateY(-100%);}
+    .sh-inner{max-width:1280px;margin:0 auto;padding:0 clamp(20px,5vw,60px);height:100%;display:flex;align-items:center;justify-content:space-between;gap:24px;}
+    .sh-logo{flex-shrink:0;height:48px;display:flex;align-items:center;}.sh-logo img{height:48px;width:auto;}
+    .sh-nav{display:flex;align-items:center;gap:8px;}.sh-nav a{font-size:.875rem;font-weight:500;color:rgba(255,255,255,.85);padding:8px 16px;border-radius:100px;transition:color .15s,background .15s;text-decoration:none;}.sh-nav a:hover{color:#fff;background:rgba(255,255,255,.08);}
+    .sh-cta{flex-shrink:0;}.btn-gold-nav{display:inline-flex;align-items:center;background:#C9A227;color:#000;font-size:.875rem;font-weight:700;padding:10px 22px;border-radius:100px;text-decoration:none;}.btn-gold-nav:hover{background:#e0b93a;color:#000;}
+    .sh-hamburger{display:none;flex-direction:column;justify-content:center;gap:5px;background:none;border:none;cursor:pointer;padding:8px;width:40px;height:40px;}.sh-hbar{display:block;width:22px;height:2px;background:rgba(255,255,255,.85);border-radius:2px;}
+    #sh-mobile-menu{display:none;position:fixed;top:var(--header-h);left:0;right:0;background:rgba(10,10,10,.96);backdrop-filter:blur(20px);z-index:999;transform:translateY(-8px);opacity:0;transition:transform .25s,opacity .25s;pointer-events:none;}
+    #sh-mobile-menu.open{display:block;transform:none;opacity:1;pointer-events:auto;}
+    .sh-mob-inner{display:flex;flex-direction:column;padding:16px clamp(20px,5vw,60px) 24px;}.sh-mob-inner a{font-size:1rem;font-weight:500;color:rgba(255,255,255,.85);padding:12px 0;border-bottom:1px solid rgba(255,255,255,.06);text-decoration:none;}.sh-mob-inner a:last-child{border-bottom:none;}.sh-mob-inner a:hover{color:#C9A227;}
+    @media(max-width:768px){.sh-nav,.sh-cta{display:none;}.sh-hamburger{display:flex;}}
+    #sf{background:#050505;border-top:1px solid rgba(201,162,39,0.15);padding:56px 0 32px;margin-top:80px;}
+    .sf-cont{max-width:1280px;margin:0 auto;padding:0 clamp(20px,5vw,60px);}
+    .sf-top{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:32px;margin-bottom:40px;}.sf-logo img{height:36px;width:auto;opacity:.9;}
+    .sf-nav{display:flex;flex-wrap:wrap;gap:4px;}.sf-nav a{font-size:.8125rem;color:rgba(255,255,255,.45);padding:6px 14px;border-radius:100px;text-decoration:none;transition:color .15s,background .15s;}.sf-nav a:hover{color:#fff;background:rgba(255,255,255,.06);}.sf-nav a.sf-gold{color:#C9A227;}
+    .sf-links{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:24px;}.sf-links a{font-size:.75rem;color:rgba(255,255,255,.28);padding:4px 10px;border-radius:100px;text-decoration:none;}.sf-links a:hover{color:rgba(255,255,255,.6);}
+    .sf-socials{display:flex;gap:8px;margin-bottom:32px;}.sf-socials a{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.45);}.sf-socials a:hover{border-color:#C9A227;color:#C9A227;}.sf-socials svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;}
+    .sf-bottom{border-top:1px solid rgba(255,255,255,.06);padding-top:24px;}.sf-bottom p{font-size:.75rem;color:rgba(255,255,255,.2);margin:0;}
     body {
       background: #0a0a0a;
       min-height: 100vh;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
     }
@@ -73,7 +95,26 @@
 </head>
 <body>
 
-  <div class="login-card">
+<header id="site-header" class="at-top" role="banner">
+  <div class="sh-inner">
+    <a href="home.html" class="sh-logo" aria-label="British Trade Awards — home"><img src="images/logos/non-stacked/BTA_Corporate_Horizontal-gold-white.png" alt="British Trade Awards"></a>
+    <nav class="sh-nav" aria-label="Main navigation">
+      <a href="home.html#categories">Categories</a><a href="home.html#regions">Regions</a>
+      <a href="home.html#find-a-trade">Find a Trade</a><a href="home.html#about">About</a>
+    </nav>
+    <div class="sh-cta"><a href="submit-entry.html" class="btn-gold-nav">Enter Now</a></div>
+    <button class="sh-hamburger" id="sh-hamburger-btn" aria-expanded="false" aria-controls="sh-mobile-menu"><span class="sh-hbar"></span><span class="sh-hbar"></span><span class="sh-hbar"></span></button>
+  </div>
+</header>
+<nav id="sh-mobile-menu" aria-label="Mobile navigation" aria-hidden="true">
+  <div class="sh-mob-inner">
+    <a href="home.html#categories">Categories</a><a href="home.html#regions">Regions</a>
+    <a href="home.html#find-a-trade">Find a Trade</a><a href="home.html#about">About</a>
+    <a href="submit-entry.html" class="btn-gold-nav" style="margin-top:16px;justify-content:center;">Enter Now</a>
+  </div>
+</nav>
+
+  <div class="login-card" style="margin-top:var(--header-h);">
     <div class="login-header">
       <i class="bi bi-award display-4 d-block mb-2" aria-hidden="true"></i>
       <h1>Judge Portal Login</h1>
@@ -224,6 +265,34 @@
     // Wire up form submit handlers via addEventListener
     document.getElementById('judgeLoginForm').addEventListener('submit', handleLogin);
     document.getElementById('magicLinkForm').addEventListener('submit', handleMagicLink);
+  </script>
+
+  <footer id="sf" role="contentinfo">
+    <div class="sf-cont">
+      <div class="sf-top">
+        <a href="home.html" class="sf-logo"><img src="images/logos/non-stacked/BTA_Corporate_Horizontal-gold-white.png" alt="British Trade Awards"></a>
+        <nav class="sf-nav" aria-label="Footer navigation">
+          <a href="home.html#categories">Categories</a><a href="home.html#regions">Regions</a>
+          <a href="home.html#find-a-trade">Find a Trade</a><a href="home.html#about">About</a>
+          <a href="submit-entry.html" class="sf-gold">Enter 2026</a>
+        </nav>
+      </div>
+      <div class="sf-links" role="list">
+        <a href="privacy-policy.html" role="listitem">Privacy Policy</a>
+        <a href="terms-and-conditions.html" role="listitem">Terms &amp; Conditions</a>
+        <a href="mailto:info@britishtradeawards.com" role="listitem">Contact Us</a>
+      </div>
+      <div class="sf-socials" aria-label="Social media links">
+        <a href="#" aria-label="LinkedIn" rel="noopener noreferrer" target="_blank"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg></a>
+        <a href="#" aria-label="Instagram" rel="noopener noreferrer" target="_blank"><svg viewBox="0 0 24 24" aria-hidden="true"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg></a>
+        <a href="#" aria-label="Facebook" rel="noopener noreferrer" target="_blank"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg></a>
+        <a href="#" aria-label="X (Twitter)" rel="noopener noreferrer" target="_blank"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4l16 16M4 20L20 4" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round"/></svg></a>
+      </div>
+      <div class="sf-bottom"><p>&copy; 2026 British Trade Awards &nbsp;|&nbsp; <strong>[Company Name Placeholder]</strong> &nbsp;|&nbsp; Registered in England &amp; Wales</p></div>
+    </div>
+  </footer>
+  <script>
+  (function(){var h=document.getElementById('site-header'),btn=document.getElementById('sh-hamburger-btn'),mob=document.getElementById('sh-mobile-menu');if(h){var lastY=0,ticking=false;window.addEventListener('scroll',function(){if(!ticking){requestAnimationFrame(function(){var y=window.scrollY;h.className=y<20?'at-top':y<lastY?'scrolled':'scrolled hidden';lastY=y;ticking=false;});ticking=true;}},{passive:true});}if(btn&&mob){btn.addEventListener('click',function(){var open=mob.classList.contains('open');mob.classList.toggle('open');mob.setAttribute('aria-hidden',open?'true':'false');btn.setAttribute('aria-expanded',open?'false':'true');});mob.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(){mob.classList.remove('open');mob.setAttribute('aria-hidden','true');btn.setAttribute('aria-expanded','false');});});}})();
   </script>
 
 </body>

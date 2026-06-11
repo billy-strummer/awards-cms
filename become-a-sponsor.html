@@ -1214,5 +1214,8 @@
     }
   })();
 </script>
+<script>
+(function(){var h=document.getElementById('site-header'),btn=document.getElementById('sh-hamburger-btn'),mob=document.getElementById('sh-mobile-menu');if(h){var lastY=0,ticking=false;window.addEventListener('scroll',function(){if(!ticking){requestAnimationFrame(function(){var y=window.scrollY;h.className=y<20?'at-top':y<lastY?'scrolled':'scrolled hidden';lastY=y;ticking=false;});ticking=true;}},{passive:true});}if(btn&&mob){btn.addEventListener('click',function(){var open=mob.classList.contains('open');mob.classList.toggle('open');mob.setAttribute('aria-hidden',open?'true':'false');btn.setAttribute('aria-expanded',open?'false':'true');});mob.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(){mob.classList.remove('open');mob.setAttribute('aria-hidden','true');btn.setAttribute('aria-expanded','false');});});}})();
+</script>
 </body>
 </html>

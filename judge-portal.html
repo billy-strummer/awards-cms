@@ -347,6 +347,43 @@
   <!-- Shared Config -->
   <script type="module" src="config.js"></script>
 
+  <!-- Public utilities (provides PublicUtils.proxyFetch / getAuthToken) -->
+  <script src="public-utils.js"></script>
+
+  <!-- apiClient shim: wraps PublicUtils.proxyFetch with the same interface
+       used by judge-portal.js (select / selectAll / upsert) -->
+  <script>
+  var apiClient = (function () {
+    function call(body) {
+      return PublicUtils.proxyFetch(body);
+    }
+    return {
+      async select(table, opts) {
+        opts = opts || {};
+        return call({ table, operation: 'select', select: opts.select || '*',
+          filters: opts.filters || {}, sort: opts.sort, page: opts.page || 1,
+          pageSize: opts.pageSize || 50 });
+      },
+      async selectAll(table, opts) {
+        opts = opts || {};
+        var all = [], page = 1, totalPages = 1;
+        while (page <= totalPages) {
+          var r = await call({ table, operation: 'select', select: opts.select || '*',
+            filters: opts.filters || {}, sort: opts.sort, page: page, pageSize: opts.batchSize || 1000 });
+          all.push.apply(all, r.data || []);
+          totalPages = r.totalPages || 1;
+          page++;
+        }
+        return all;
+      },
+      async upsert(table, data, opts) {
+        opts = opts || {};
+        return call({ table, operation: 'upsert', data, onConflict: opts.onConflict });
+      }
+    };
+  })();
+  </script>
+
   <!-- Judge Portal Logic -->
   <script src="judge-portal.js"></script>
 

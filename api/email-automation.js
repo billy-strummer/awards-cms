@@ -195,18 +195,14 @@ async function sendTemplateEmail(templateKey, toEmail, variables, { tenantId = '
       upperVars.BRAND_NAME = brandName;
 
       let subject = dbTpl.subject;
-      // Escape static HTML chars in the body template first. {KEY} placeholders survive
-      // because curly braces are not HTML special characters. Then each user-supplied
-      // value is also HTML-escaped before insertion, preventing XSS injection.
-      let escapedBody = escapeHtml(dbTpl.body);
+      // Body is raw HTML stored in the DB — pass it through directly.
+      // Only user-supplied values are HTML-escaped before insertion to prevent XSS.
+      let bodyHtml = dbTpl.body;
       for (const [key, value] of Object.entries(upperVars)) {
         const regex = new RegExp(`\\{${key}\\}`, 'g');
         subject = subject.replace(regex, String(value ?? ''));
-        escapedBody = escapedBody.replace(regex, escapeHtml(String(value ?? '')));
+        bodyHtml = bodyHtml.replace(regex, escapeHtml(String(value ?? '')));
       }
-      const bodyHtml = `<div style="padding:30px 40px;"><p style="margin:0 0 16px 0;">${escapedBody
-        .replace(/\n\n/g, '</p><p style="margin:0 0 16px 0;">')
-        .replace(/\n/g, '<br>')}</p></div>`;
       const html = wrapEmailTemplate(bodyHtml, branding, subtitle, subtitle);
 
       const fromEmail = branding.email_from || process.env.FROM_EMAIL || 'awards@britishtradeawards.com';

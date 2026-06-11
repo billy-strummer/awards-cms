@@ -101,323 +101,356 @@ const emailTemplatesModule = {
     // -- Entry & Submissions --
     'Entry Confirmation': {
       subject: 'Entry Received - {ENTRY_NUMBER} | British Trade Awards',
-      body: `Dear {CONTACT_NAME},
-
-Thank you for entering the British Trade Awards. We are pleased to confirm that your entry has been received and is now being processed.
-
-Your Entry Details:
-- Entry Reference: {ENTRY_NUMBER}
-- Company: {COMPANY_NAME}
-- Category: {AWARD_NAME}
-- Sector: {SECTOR}
-- Region: {REGION}
-
-What Happens Next:
-1. Our team will review your entry to ensure all details are complete.
-2. You may upload any supporting documents (case studies, images, testimonials or other materials) using the link below.
-3. Shortlisted entries will be assessed by our independent judging panel.
-4. Winners will be announced at the awards ceremony.
-
-Upload Supporting Documents:
-{UPLOAD_LINK}
-
-Accepted formats: PDF, Word, Excel, JPG, PNG (max 10MB per file)
-
-Key Dates:
-- Entry Deadline: {DEADLINE_DATE}
-- Winners Announced: {ANNOUNCEMENT_DATE}
-
-Please keep your entry reference number safe for future correspondence.
-
-If you have any questions about your entry or the awards process, please contact us at {CONTACT_EMAIL}
-
-Kind regards,
-The British Trade Awards Team`,
+      body: `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="padding:40px 40px 36px;">
+<table width="40" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;"><tr><td style="height:3px;background:#C9A227;border-radius:2px;"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#1a1a1a;margin:0 0 16px;line-height:1.3;">Dear {CONTACT_NAME},</p>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 20px;">Thank you for entering the British Trade Awards. We are pleased to confirm that your entry has been received and is now being processed.</p>
+<p style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#C9A227;margin:0 0 10px;">Your Entry Details</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid rgba(201,162,39,0.3);border-radius:8px;overflow:hidden;margin-bottom:24px;">
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Reference</span><br><strong style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{ENTRY_NUMBER}</strong></td></tr>
+<tr><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Company</span><br><span style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{COMPANY_NAME}</span></td></tr>
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Category</span><br><span style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{AWARD_NAME}</span></td></tr>
+<tr><td style="padding:11px 16px;"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Sector &amp; Region</span><br><span style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{SECTOR} &mdash; {REGION}</span></td></tr>
+</table>
+<p style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#C9A227;margin:0 0 14px;">What Happens Next</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:10px;"><tr><td width="32" valign="top"><table cellpadding="0" cellspacing="0" border="0"><tr><td style="width:22px;height:22px;border-radius:50%;background:#C9A227;text-align:center;font-family:Georgia,serif;font-size:11px;font-weight:700;color:#000;line-height:22px;">1</td></tr></table></td><td valign="top" style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#555;line-height:1.6;padding-top:2px;padding-left:8px;">Our team will review your entry to ensure all details are complete.</td></tr></table>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:10px;"><tr><td width="32" valign="top"><table cellpadding="0" cellspacing="0" border="0"><tr><td style="width:22px;height:22px;border-radius:50%;background:#C9A227;text-align:center;font-family:Georgia,serif;font-size:11px;font-weight:700;color:#000;line-height:22px;">2</td></tr></table></td><td valign="top" style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#555;line-height:1.6;padding-top:2px;padding-left:8px;">Upload any supporting documents (case studies, images, testimonials) using the link below.</td></tr></table>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:10px;"><tr><td width="32" valign="top"><table cellpadding="0" cellspacing="0" border="0"><tr><td style="width:22px;height:22px;border-radius:50%;background:#C9A227;text-align:center;font-family:Georgia,serif;font-size:11px;font-weight:700;color:#000;line-height:22px;">3</td></tr></table></td><td valign="top" style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#555;line-height:1.6;padding-top:2px;padding-left:8px;">Shortlisted entries will be assessed by our independent judging panel.</td></tr></table>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:22px;"><tr><td width="32" valign="top"><table cellpadding="0" cellspacing="0" border="0"><tr><td style="width:22px;height:22px;border-radius:50%;background:#C9A227;text-align:center;font-family:Georgia,serif;font-size:11px;font-weight:700;color:#000;line-height:22px;">4</td></tr></table></td><td valign="top" style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#555;line-height:1.6;padding-top:2px;padding-left:8px;">Winners will be announced at the awards ceremony.</td></tr></table>
+<table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 22px;"><tr><td style="background:#C9A227;border-radius:6px;"><a href="{UPLOAD_LINK}" style="color:#000000;padding:12px 28px;text-decoration:none;display:inline-block;font-family:Arial,sans-serif;font-weight:700;font-size:14px;">Upload Supporting Documents</a></td></tr></table>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#888;line-height:1.7;margin:0 0 22px;">Ref: <strong style="color:#1a1a1a;">{ENTRY_NUMBER}</strong> &bull; Deadline: {DEADLINE_DATE} &bull; Winners Announced: {ANNOUNCEMENT_DATE}<br>Questions? <a href="mailto:{CONTACT_EMAIL}" style="color:#C9A227;text-decoration:none;">{CONTACT_EMAIL}</a></p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;"><tr><td style="height:1px;background:rgba(201,162,39,0.2);"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#1a1a1a;margin:0;line-height:1.6;">Kind regards,<br><strong>The British Trade Awards Team</strong></p>
+</td></tr>
+</table>`,
     },
     'Nomination Confirmation': {
       subject: 'Nomination Received - {ENTRY_NUMBER} | British Trade Awards',
-      body: `Dear {CONTACT_NAME},
-
-Thank you for submitting your nomination for the British Trade Awards. We are pleased to confirm that your nomination has been received and is now being processed.
-
-Nomination Details:
-- Reference: {ENTRY_NUMBER}
-- Nominee: {NOMINEE_NAME}
-- Category: {AWARD_NAME}
-
-What Happens Next:
-1. Our team will review your nomination to ensure all details are complete.
-2. Shortlisted nominations will be assessed by our independent judging panel.
-3. Winners will be announced at the awards ceremony.
-
-Please keep your nomination reference number {ENTRY_NUMBER} safe for future correspondence.
-
-If you have any questions, please contact us at {CONTACT_EMAIL}
-
-Kind regards,
-The British Trade Awards Team`,
+      body: `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="padding:40px 40px 36px;">
+<table width="40" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;"><tr><td style="height:3px;background:#C9A227;border-radius:2px;"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#1a1a1a;margin:0 0 16px;line-height:1.3;">Dear {CONTACT_NAME},</p>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 20px;">Thank you for submitting your nomination for the British Trade Awards. We are pleased to confirm that your nomination has been received and is now being processed.</p>
+<p style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#C9A227;margin:0 0 10px;">Nomination Details</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid rgba(201,162,39,0.3);border-radius:8px;overflow:hidden;margin-bottom:24px;">
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Reference</span><br><strong style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{ENTRY_NUMBER}</strong></td></tr>
+<tr><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Nominee</span><br><span style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{NOMINEE_NAME}</span></td></tr>
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Category</span><br><span style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{AWARD_NAME}</span></td></tr>
+</table>
+<p style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#C9A227;margin:0 0 14px;">What Happens Next</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:10px;"><tr><td width="32" valign="top"><table cellpadding="0" cellspacing="0" border="0"><tr><td style="width:22px;height:22px;border-radius:50%;background:#C9A227;text-align:center;font-family:Georgia,serif;font-size:11px;font-weight:700;color:#000;line-height:22px;">1</td></tr></table></td><td valign="top" style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#555;line-height:1.6;padding-top:2px;padding-left:8px;">Our team will review your nomination to ensure all details are complete.</td></tr></table>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:10px;"><tr><td width="32" valign="top"><table cellpadding="0" cellspacing="0" border="0"><tr><td style="width:22px;height:22px;border-radius:50%;background:#C9A227;text-align:center;font-family:Georgia,serif;font-size:11px;font-weight:700;color:#000;line-height:22px;">2</td></tr></table></td><td valign="top" style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#555;line-height:1.6;padding-top:2px;padding-left:8px;">Shortlisted nominations will be assessed by our independent judging panel.</td></tr></table>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:22px;"><tr><td width="32" valign="top"><table cellpadding="0" cellspacing="0" border="0"><tr><td style="width:22px;height:22px;border-radius:50%;background:#C9A227;text-align:center;font-family:Georgia,serif;font-size:11px;font-weight:700;color:#000;line-height:22px;">3</td></tr></table></td><td valign="top" style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#555;line-height:1.6;padding-top:2px;padding-left:8px;">Winners will be announced at the awards ceremony.</td></tr></table>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#888;line-height:1.7;margin:0 0 22px;">Please keep your reference <strong style="color:#1a1a1a;">{ENTRY_NUMBER}</strong> safe for future correspondence. Questions? <a href="mailto:{CONTACT_EMAIL}" style="color:#C9A227;text-decoration:none;">{CONTACT_EMAIL}</a></p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;"><tr><td style="height:1px;background:rgba(201,162,39,0.2);"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#1a1a1a;margin:0;line-height:1.6;">Kind regards,<br><strong>The British Trade Awards Team</strong></p>
+</td></tr>
+</table>`,
     },
     'Document Upload Reminder': {
       subject: 'Supporting Documents Reminder - {ENTRY_NUMBER} | British Trade Awards',
-      body: `Dear {CONTACT_NAME},
-
-We wanted to let you know that we have not yet received any supporting documents for your British Trade Awards entry.
-
-- Entry Reference: {ENTRY_NUMBER}
-- Company: {COMPANY_NAME}
-- Category: {AWARD_NAME}
-
-While supporting documents are not mandatory, they can significantly strengthen your entry. Case studies, project images, client testimonials and accreditation certificates all help our judges assess your work.
-
-You can upload your documents here:
-{UPLOAD_LINK}
-
-Accepted formats: PDF, Word, Excel, JPG, PNG (max 10MB per file)
-
-The deadline for all entries and supporting materials is {DEADLINE_DATE}.
-
-If you have already uploaded your documents, please disregard this message. If you need any assistance, please contact us at {CONTACT_EMAIL}
-
-Kind regards,
-The British Trade Awards Team`,
+      body: `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="padding:40px 40px 36px;">
+<table width="40" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;"><tr><td style="height:3px;background:#C9A227;border-radius:2px;"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#1a1a1a;margin:0 0 16px;line-height:1.3;">Dear {CONTACT_NAME},</p>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 20px;">We wanted to let you know that we have not yet received any supporting documents for your British Trade Awards entry.</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid rgba(201,162,39,0.3);border-radius:8px;overflow:hidden;margin-bottom:20px;">
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Reference</span><br><strong style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{ENTRY_NUMBER}</strong></td></tr>
+<tr><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Company</span><br><span style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{COMPANY_NAME}</span></td></tr>
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Category</span><br><span style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{AWARD_NAME}</span></td></tr>
+</table>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 20px;">While supporting documents are not mandatory, they can significantly strengthen your entry. Case studies, project images, client testimonials and accreditation certificates all help our judges assess your work.</p>
+<table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 20px;"><tr><td style="background:#C9A227;border-radius:6px;"><a href="{UPLOAD_LINK}" style="color:#000000;padding:12px 28px;text-decoration:none;display:inline-block;font-family:Arial,sans-serif;font-weight:700;font-size:14px;">Upload Supporting Documents</a></td></tr></table>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#888;line-height:1.7;margin:0 0 22px;">Accepted formats: PDF, Word, Excel, JPG, PNG (max 10 MB per file). Deadline: <strong style="color:#1a1a1a;">{DEADLINE_DATE}</strong>. Questions? <a href="mailto:{CONTACT_EMAIL}" style="color:#C9A227;text-decoration:none;">{CONTACT_EMAIL}</a></p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;"><tr><td style="height:1px;background:rgba(201,162,39,0.2);"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#1a1a1a;margin:0;line-height:1.6;">Kind regards,<br><strong>The British Trade Awards Team</strong></p>
+</td></tr>
+</table>`,
     },
     'Changes Requested': {
       subject: 'Action Required: Changes Requested - {ENTRY_TITLE}',
-      body: `Dear {CONTACT_NAME},
-
-Your entry {ENTRY_TITLE} ({ENTRY_NUMBER}) requires changes before it can proceed.
-
-Feedback:
-{FEEDBACK}
-
-Please log in to review the feedback and resubmit your entry.
-
-Kind regards,
-The British Trade Awards Team`,
+      body: `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="padding:40px 40px 36px;">
+<table width="40" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;"><tr><td style="height:3px;background:#C9A227;border-radius:2px;"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#1a1a1a;margin:0 0 16px;line-height:1.3;">Dear {CONTACT_NAME},</p>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 20px;">Your entry <strong>{ENTRY_TITLE}</strong> ({ENTRY_NUMBER}) requires some changes before it can proceed to the judging stage.</p>
+<p style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#C9A227;margin:0 0 10px;">Feedback from our team</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid rgba(201,162,39,0.3);border-radius:8px;overflow:hidden;margin-bottom:24px;">
+<tr style="background:#fffdf5;"><td style="padding:16px 20px;font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#1a1a1a;line-height:1.7;">{FEEDBACK}</td></tr>
+</table>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 22px;">Please review the feedback above and log in to update your entry at your earliest convenience.</p>
+<table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 22px;"><tr><td style="background:#C9A227;border-radius:6px;"><a href="{ACTION_LINK}" style="color:#000000;padding:12px 28px;text-decoration:none;display:inline-block;font-family:Arial,sans-serif;font-weight:700;font-size:14px;">Review &amp; Update Entry</a></td></tr></table>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;"><tr><td style="height:1px;background:rgba(201,162,39,0.2);"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#1a1a1a;margin:0;line-height:1.6;">Kind regards,<br><strong>The British Trade Awards Team</strong></p>
+</td></tr>
+</table>`,
     },
 
     // -- Payments --
     'Payment Confirmation': {
       subject: 'Entry Confirmed: {ENTRY_NUMBER} - British Trade Awards',
-      body: `Dear {CONTACT_NAME},
-
-Thank you for your entry! Your entry {ENTRY_NUMBER} has been received and payment confirmed.
-
-Entry: {ENTRY_TITLE}
-Company: {COMPANY_NAME}
-
-You can upload supporting documents at:
-{UPLOAD_LINK}
-
-We will be in touch with next steps. Good luck!
-
-Kind regards,
-The British Trade Awards Team`,
+      body: `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="padding:40px 40px 36px;">
+<table width="40" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;"><tr><td style="height:3px;background:#C9A227;border-radius:2px;"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#1a1a1a;margin:0 0 16px;line-height:1.3;">Dear {CONTACT_NAME},</p>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 6px;">Your payment has been received and your entry is now confirmed.</p>
+<p style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#C9A227;margin:16px 0 10px;">Entry Details</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid rgba(201,162,39,0.3);border-radius:8px;overflow:hidden;margin-bottom:24px;">
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Reference</span><br><strong style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{ENTRY_NUMBER}</strong></td></tr>
+<tr><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Entry Title</span><br><span style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{ENTRY_TITLE}</span></td></tr>
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Company</span><br><span style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{COMPANY_NAME}</span></td></tr>
+</table>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 22px;">You can now upload supporting documents to strengthen your entry.</p>
+<table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 22px;"><tr><td style="background:#C9A227;border-radius:6px;"><a href="{UPLOAD_LINK}" style="color:#000000;padding:12px 28px;text-decoration:none;display:inline-block;font-family:Arial,sans-serif;font-weight:700;font-size:14px;">Upload Supporting Documents</a></td></tr></table>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#555;line-height:1.7;margin:0 0 22px;">We will be in touch with next steps as the judging process progresses. Good luck!</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;"><tr><td style="height:1px;background:rgba(201,162,39,0.2);"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#1a1a1a;margin:0;line-height:1.6;">Kind regards,<br><strong>The British Trade Awards Team</strong></p>
+</td></tr>
+</table>`,
     },
     'Payment Failed': {
       subject: 'Payment Issue: {ENTRY_NUMBER} - British Trade Awards',
-      body: `Dear {CONTACT_NAME},
-
-We were unable to process payment for entry {ENTRY_NUMBER}.
-
-Reason: {ERROR_MESSAGE}
-
-Please try again or contact us for assistance at {CONTACT_EMAIL}
-
-Kind regards,
-The British Trade Awards Team`,
+      body: `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="padding:40px 40px 36px;">
+<table width="40" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;"><tr><td style="height:3px;background:#C9A227;border-radius:2px;"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#1a1a1a;margin:0 0 16px;line-height:1.3;">Dear {CONTACT_NAME},</p>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 20px;">We were unable to process your payment for entry <strong>{ENTRY_NUMBER}</strong>.</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid rgba(201,162,39,0.3);border-radius:8px;overflow:hidden;margin-bottom:24px;">
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Reference</span><br><strong style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{ENTRY_NUMBER}</strong></td></tr>
+<tr><td style="padding:11px 16px;"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Reason</span><br><span style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{ERROR_MESSAGE}</span></td></tr>
+</table>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 22px;">Please try again using the link in your original entry confirmation, or contact us at <a href="mailto:{CONTACT_EMAIL}" style="color:#C9A227;text-decoration:none;">{CONTACT_EMAIL}</a></p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;"><tr><td style="height:1px;background:rgba(201,162,39,0.2);"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#1a1a1a;margin:0;line-height:1.6;">Kind regards,<br><strong>The British Trade Awards Team</strong></p>
+</td></tr>
+</table>`,
     },
     'Refund Confirmation': {
       subject: 'Refund Processed: {ENTRY_NUMBER} - British Trade Awards',
-      body: `Dear {CONTACT_NAME},
-
-A refund has been processed for entry {ENTRY_NUMBER}.
-
-The refund should appear on your statement within 5-10 business days.
-
-If you have any questions, please contact us at {CONTACT_EMAIL}
-
-Kind regards,
-The British Trade Awards Team`,
+      body: `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="padding:40px 40px 36px;">
+<table width="40" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;"><tr><td style="height:3px;background:#C9A227;border-radius:2px;"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#1a1a1a;margin:0 0 16px;line-height:1.3;">Dear {CONTACT_NAME},</p>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 20px;">We can confirm that a refund has been processed for entry <strong>{ENTRY_NUMBER}</strong>.</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid rgba(201,162,39,0.3);border-radius:8px;overflow:hidden;margin-bottom:24px;">
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Reference</span><br><strong style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{ENTRY_NUMBER}</strong></td></tr>
+<tr><td style="padding:11px 16px;"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Company</span><br><span style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{COMPANY_NAME}</span></td></tr>
+</table>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 22px;">The refund should appear on your statement within <strong>5&ndash;10 business days</strong>. Questions? <a href="mailto:{CONTACT_EMAIL}" style="color:#C9A227;text-decoration:none;">{CONTACT_EMAIL}</a></p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;"><tr><td style="height:1px;background:rgba(201,162,39,0.2);"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#1a1a1a;margin:0;line-height:1.6;">Kind regards,<br><strong>The British Trade Awards Team</strong></p>
+</td></tr>
+</table>`,
     },
     'Payment Reminder': {
       subject: 'Payment Pending - Entry {ENTRY_NUMBER}',
-      body: `Dear {CONTACT_NAME},
-
-Your entry {ENTRY_NUMBER} is currently pending payment.
-
-Amount Due: £{ENTRY_FEE}
-Entry: {ENTRY_TITLE}
-
-Please complete your payment to confirm your entry:
-{PAYMENT_LINK}
-
-If you have any questions, please contact us at {CONTACT_EMAIL}
-
-Kind regards,
-The British Trade Awards Team`,
+      body: `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="padding:40px 40px 36px;">
+<table width="40" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;"><tr><td style="height:3px;background:#C9A227;border-radius:2px;"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#1a1a1a;margin:0 0 16px;line-height:1.3;">Dear {CONTACT_NAME},</p>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 20px;">Your entry <strong>{ENTRY_NUMBER}</strong> is currently pending payment. Please complete your payment to confirm your place.</p>
+<p style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#C9A227;margin:0 0 10px;">Payment Details</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid rgba(201,162,39,0.3);border-radius:8px;overflow:hidden;margin-bottom:24px;">
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Reference</span><br><strong style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{ENTRY_NUMBER}</strong></td></tr>
+<tr><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Entry</span><br><span style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{ENTRY_TITLE}</span></td></tr>
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Amount Due</span><br><strong style="font-family:Georgia,'Times New Roman',serif;font-size:18px;color:#C9A227;">&pound;{ENTRY_FEE}</strong></td></tr>
+</table>
+<table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 22px;"><tr><td style="background:#C9A227;border-radius:6px;"><a href="{PAYMENT_LINK}" style="color:#000000;padding:12px 28px;text-decoration:none;display:inline-block;font-family:Arial,sans-serif;font-weight:700;font-size:14px;">Complete Payment</a></td></tr></table>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#888;line-height:1.7;margin:0 0 22px;">Questions? <a href="mailto:{CONTACT_EMAIL}" style="color:#C9A227;text-decoration:none;">{CONTACT_EMAIL}</a></p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;"><tr><td style="height:1px;background:rgba(201,162,39,0.2);"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#1a1a1a;margin:0;line-height:1.6;">Kind regards,<br><strong>The British Trade Awards Team</strong></p>
+</td></tr>
+</table>`,
     },
 
     // -- Judging & Results --
     'Entry Approved/Shortlisted': {
       subject: 'You Have Been Shortlisted - {ENTRY_NUMBER} | British Trade Awards',
-      body: `Dear {CONTACT_NAME},
-
-Congratulations! We are delighted to inform you that {COMPANY_NAME} has been shortlisted in the {AWARD_NAME} category at the British Trade Awards.
-
-- Entry Reference: {ENTRY_NUMBER}
-- Company: {COMPANY_NAME}
-- Category: {AWARD_NAME}
-
-What Happens Next:
-Your entry will now be assessed by our independent panel of judges. The judging process evaluates the quality of work, customer service, innovation and overall contribution to the trade industry.
-
-Winners will be announced on {ANNOUNCEMENT_DATE}. We will be in touch with further details about the awards ceremony in due course.
-
-This is a fantastic achievement and a testament to the quality of your work. Well done to you and your team.
-
-Kind regards,
-The British Trade Awards Team`,
+      body: `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="padding:40px 40px 36px;">
+<table width="40" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;"><tr><td style="height:3px;background:#C9A227;border-radius:2px;"></td></tr></table>
+<p style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#C9A227;margin:0 0 8px;">Congratulations</p>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:26px;color:#1a1a1a;margin:0 0 16px;line-height:1.2;">You Have Been Shortlisted!</p>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 20px;">We are delighted to inform you that <strong>{COMPANY_NAME}</strong> has been shortlisted in the <strong>{AWARD_NAME}</strong> category at the British Trade Awards.</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid rgba(201,162,39,0.3);border-radius:8px;overflow:hidden;margin-bottom:24px;">
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Reference</span><br><strong style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{ENTRY_NUMBER}</strong></td></tr>
+<tr><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Company</span><br><span style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{COMPANY_NAME}</span></td></tr>
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Category</span><br><span style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{AWARD_NAME}</span></td></tr>
+</table>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 16px;">Your entry will now be assessed by our independent panel of judges. Winners will be announced on <strong>{ANNOUNCEMENT_DATE}</strong>. We will be in touch with further details about the awards ceremony.</p>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 22px;">This is a fantastic achievement and a testament to the quality of your work. Well done to you and your team.</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;"><tr><td style="height:1px;background:rgba(201,162,39,0.2);"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#1a1a1a;margin:0;line-height:1.6;">Kind regards,<br><strong>The British Trade Awards Team</strong></p>
+</td></tr>
+</table>`,
     },
     'Entry Not Shortlisted': {
       subject: 'Your Entry Update - {ENTRY_NUMBER} | British Trade Awards',
-      body: `Dear {CONTACT_NAME},
-
-Thank you for entering {COMPANY_NAME} into the {AWARD_NAME} category at the British Trade Awards.
-
-- Entry Reference: {ENTRY_NUMBER}
-- Company: {COMPANY_NAME}
-- Category: {AWARD_NAME}
-
-After careful consideration by our judging panel, we regret to inform you that your entry has not been selected for the shortlist on this occasion.
-
-We received an exceptionally high standard of entries this year, making the selection process extremely competitive. Not being shortlisted is in no way a reflection on the quality of your business or the work you do.
-
-We would very much welcome an entry from you again next year and wish you continued success.
-
-Kind regards,
-The British Trade Awards Team`,
+      body: `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="padding:40px 40px 36px;">
+<table width="40" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;"><tr><td style="height:3px;background:#C9A227;border-radius:2px;"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#1a1a1a;margin:0 0 16px;line-height:1.3;">Dear {CONTACT_NAME},</p>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 20px;">Thank you for entering <strong>{COMPANY_NAME}</strong> into the <strong>{AWARD_NAME}</strong> category at the British Trade Awards.</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid rgba(201,162,39,0.3);border-radius:8px;overflow:hidden;margin-bottom:24px;">
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Reference</span><br><strong style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{ENTRY_NUMBER}</strong></td></tr>
+<tr><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Company</span><br><span style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{COMPANY_NAME}</span></td></tr>
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Category</span><br><span style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{AWARD_NAME}</span></td></tr>
+</table>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 16px;">After careful consideration by our judging panel, we regret to inform you that your entry has not been selected for the shortlist on this occasion.</p>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 16px;">We received an exceptionally high standard of entries this year, making the selection process extremely competitive. Not being shortlisted is in no way a reflection on the quality of your business or the work you do.</p>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 22px;">We would very much welcome an entry from you again next year and wish you continued success.</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;"><tr><td style="height:1px;background:rgba(201,162,39,0.2);"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#1a1a1a;margin:0;line-height:1.6;">Kind regards,<br><strong>The British Trade Awards Team</strong></p>
+</td></tr>
+</table>`,
     },
     'Winner Announcement': {
       subject: 'WINNER - {AWARD_NAME}!',
-      body: `Dear {CONTACT_NAME},
-
-Congratulations! We are thrilled to announce that {COMPANY_NAME} is the winner of the {AWARD_NAME} at the British Trade Awards!
-
-Your exceptional work has set the standard for excellence.
-
-Your Winner's Package Includes:
-- Digital winner's certificate
-- Winner's logo and badge for your marketing
-- Press release and media coverage
-- Feature on our website and social media
-- Winner's trophy (presented at ceremony)
-
-Awards Ceremony: {CEREMONY_DATE} at {CEREMONY_VENUE}
-
-We look forward to celebrating with you!
-
-Kind regards,
-The British Trade Awards Team`,
+      body: `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="background:linear-gradient(135deg,#1a1200 0%,#2a1f00 100%);padding:36px 40px;text-align:center;">
+<p style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:#C9A227;margin:0 0 12px;opacity:0.8;">British Trade Awards</p>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:36px;font-weight:700;color:#C9A227;margin:0 0 4px;line-height:1.1;">WINNER</p>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:18px;color:rgba(201,162,39,0.7);margin:0;">{AWARD_NAME}</p>
+</td></tr>
+<tr><td style="padding:40px 40px 36px;">
+<table width="40" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;"><tr><td style="height:3px;background:#C9A227;border-radius:2px;"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#1a1a1a;margin:0 0 16px;line-height:1.3;">Dear {CONTACT_NAME},</p>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 20px;">We are thrilled to announce that <strong>{COMPANY_NAME}</strong> is the winner of the <strong>{AWARD_NAME}</strong> at the British Trade Awards!</p>
+<p style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#C9A227;margin:0 0 10px;">Your Winner&rsquo;s Package Includes</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid rgba(201,162,39,0.3);border-radius:8px;overflow:hidden;margin-bottom:24px;">
+<tr style="background:#fffdf5;"><td style="padding:10px 16px;border-bottom:1px solid rgba(201,162,39,0.15);font-family:Arial,sans-serif;font-size:14px;color:#1a1a1a;">&#10003;&nbsp; Digital winner&rsquo;s certificate</td></tr>
+<tr><td style="padding:10px 16px;border-bottom:1px solid rgba(201,162,39,0.15);font-family:Arial,sans-serif;font-size:14px;color:#1a1a1a;">&#10003;&nbsp; Winner&rsquo;s logo and badge for your marketing</td></tr>
+<tr style="background:#fffdf5;"><td style="padding:10px 16px;border-bottom:1px solid rgba(201,162,39,0.15);font-family:Arial,sans-serif;font-size:14px;color:#1a1a1a;">&#10003;&nbsp; Press release and media coverage</td></tr>
+<tr><td style="padding:10px 16px;border-bottom:1px solid rgba(201,162,39,0.15);font-family:Arial,sans-serif;font-size:14px;color:#1a1a1a;">&#10003;&nbsp; Feature on our website and social media</td></tr>
+<tr style="background:#fffdf5;"><td style="padding:10px 16px;font-family:Arial,sans-serif;font-size:14px;color:#1a1a1a;">&#10003;&nbsp; Winner&rsquo;s trophy (presented at ceremony)</td></tr>
+</table>
+<p style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#C9A227;margin:0 0 10px;">Awards Ceremony</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid rgba(201,162,39,0.3);border-radius:8px;overflow:hidden;margin-bottom:24px;">
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Date</span><br><strong style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{CEREMONY_DATE}</strong></td></tr>
+<tr><td style="padding:11px 16px;"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Venue</span><br><span style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{CEREMONY_VENUE}</span></td></tr>
+</table>
+<table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 22px;"><tr><td style="background:#C9A227;border-radius:6px;"><a href="{WINNERS_PORTAL_LINK}" style="color:#000000;padding:12px 28px;text-decoration:none;display:inline-block;font-family:Arial,sans-serif;font-weight:700;font-size:14px;">Access Winner&rsquo;s Portal</a></td></tr></table>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;"><tr><td style="height:1px;background:rgba(201,162,39,0.2);"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#1a1a1a;margin:0;line-height:1.6;">Kind regards,<br><strong>The British Trade Awards Team</strong></p>
+</td></tr>
+</table>`,
     },
     'Judge Assignment': {
       subject: 'New Judging Assignment - British Trade Awards',
-      body: `Dear {JUDGE_NAME},
-
-You have been assigned {ENTRY_COUNT} new entries to judge for the British Trade Awards.
-
-Judging Deadline: {DEADLINE}
-
-Please log in to the Judge Portal to begin scoring:
-{JUDGE_PORTAL_LINK}
-
-Please complete your scoring by the deadline. If you have any questions or conflicts of interest, please contact us immediately.
-
-Thank you for your contribution to the awards!
-
-Kind regards,
-The British Trade Awards Team`,
+      body: `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="padding:40px 40px 36px;">
+<table width="40" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;"><tr><td style="height:3px;background:#C9A227;border-radius:2px;"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#1a1a1a;margin:0 0 16px;line-height:1.3;">Dear {JUDGE_NAME},</p>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 20px;">You have been assigned <strong>{ENTRY_COUNT}</strong> new entries to judge for the British Trade Awards.</p>
+<p style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#C9A227;margin:0 0 10px;">Assignment Details</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid rgba(201,162,39,0.3);border-radius:8px;overflow:hidden;margin-bottom:24px;">
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Entries to Score</span><br><strong style="font-family:Georgia,'Times New Roman',serif;font-size:18px;color:#C9A227;">{ENTRY_COUNT}</strong></td></tr>
+<tr><td style="padding:11px 16px;"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Judging Deadline</span><br><strong style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{DEADLINE}</strong></td></tr>
+</table>
+<table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 22px;"><tr><td style="background:#C9A227;border-radius:6px;"><a href="{JUDGE_PORTAL_LINK}" style="color:#000000;padding:12px 28px;text-decoration:none;display:inline-block;font-family:Arial,sans-serif;font-weight:700;font-size:14px;">Start Judging</a></td></tr></table>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#888;line-height:1.7;margin:0 0 22px;">Please complete your scoring by the deadline. If you have any questions or conflicts of interest, reply to this email immediately. Thank you for your contribution to the awards!</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;"><tr><td style="height:1px;background:rgba(201,162,39,0.2);"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#1a1a1a;margin:0;line-height:1.6;">Kind regards,<br><strong>The British Trade Awards Team</strong></p>
+</td></tr>
+</table>`,
     },
     'Judge Reminder': {
       subject: 'Judging Deadline Reminder - {DAYS_LEFT} Days Left',
-      body: `Dear {JUDGE_NAME},
-
-This is a reminder that the judging deadline is approaching in {DAYS_LEFT} days.
-
-Deadline: {DEADLINE}
-
-Your Progress:
-- Completed: {SCORED_COUNT}/{TOTAL_COUNT} entries
-- Remaining: {PENDING_COUNT} entries
-
-Please log in to the Judge Portal to continue scoring:
-{JUDGE_PORTAL_LINK}
-
-Thank you for your time and expertise!
-
-Kind regards,
-The British Trade Awards Team`,
+      body: `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="padding:40px 40px 36px;">
+<table width="40" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;"><tr><td style="height:3px;background:#C9A227;border-radius:2px;"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#1a1a1a;margin:0 0 16px;line-height:1.3;">Dear {JUDGE_NAME},</p>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 20px;">This is a reminder that the judging deadline is approaching in <strong>{DAYS_LEFT} days</strong>.</p>
+<p style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#C9A227;margin:0 0 10px;">Your Progress</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid rgba(201,162,39,0.3);border-radius:8px;overflow:hidden;margin-bottom:24px;">
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Deadline</span><br><strong style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{DEADLINE}</strong></td></tr>
+<tr><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Completed</span><br><strong style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{SCORED_COUNT} of {TOTAL_COUNT}</strong></td></tr>
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Remaining</span><br><strong style="font-family:Georgia,'Times New Roman',serif;font-size:18px;color:#C9A227;">{PENDING_COUNT}</strong></td></tr>
+</table>
+<table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 22px;"><tr><td style="background:#C9A227;border-radius:6px;"><a href="{JUDGE_PORTAL_LINK}" style="color:#000000;padding:12px 28px;text-decoration:none;display:inline-block;font-family:Arial,sans-serif;font-weight:700;font-size:14px;">Continue Judging</a></td></tr></table>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;"><tr><td style="height:1px;background:rgba(201,162,39,0.2);"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#1a1a1a;margin:0;line-height:1.6;">Kind regards,<br><strong>The British Trade Awards Team</strong></p>
+</td></tr>
+</table>`,
     },
 
     // -- Events --
     'Event Invitation': {
       subject: "You're Invited: {EVENT_NAME}",
-      body: `Dear {CONTACT_NAME},
-
-You are cordially invited to attend the {EVENT_NAME}.
-
-Date: {EVENT_DATE}
-Venue: {VENUE}
-
-We would be honoured by your presence at this special occasion.
-
-Please RSVP at your earliest convenience:
-{RSVP_URL}
-
-Kind regards,
-The British Trade Awards Team`,
+      body: `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="padding:40px 40px 36px;">
+<table width="40" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;"><tr><td style="height:3px;background:#C9A227;border-radius:2px;"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#1a1a1a;margin:0 0 16px;line-height:1.3;">Dear {CONTACT_NAME},</p>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 20px;">You are cordially invited to attend the <strong>{EVENT_NAME}</strong>. We would be honoured by your presence at this special occasion.</p>
+<p style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#C9A227;margin:0 0 10px;">Event Details</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid rgba(201,162,39,0.3);border-radius:8px;overflow:hidden;margin-bottom:24px;">
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Event</span><br><strong style="font-family:Georgia,'Times New Roman',serif;font-size:16px;color:#1a1a1a;">{EVENT_NAME}</strong></td></tr>
+<tr><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Date</span><br><strong style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{EVENT_DATE}</strong></td></tr>
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Venue</span><br><span style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{VENUE}</span></td></tr>
+</table>
+<table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 22px;"><tr><td style="background:#C9A227;border-radius:6px;"><a href="{RSVP_URL}" style="color:#000000;padding:12px 28px;text-decoration:none;display:inline-block;font-family:Arial,sans-serif;font-weight:700;font-size:14px;">RSVP Now</a></td></tr></table>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;"><tr><td style="height:1px;background:rgba(201,162,39,0.2);"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#1a1a1a;margin:0;line-height:1.6;">Kind regards,<br><strong>The British Trade Awards Team</strong></p>
+</td></tr>
+</table>`,
     },
     'Ticket Issued': {
       subject: 'Your Ticket: {EVENT_NAME}',
-      body: `Dear {CONTACT_NAME},
-
-Your ticket for {EVENT_NAME} has been issued.
-
-Ticket Number: {TICKET_NUMBER}
-Date: {EVENT_DATE}
-Venue: {VENUE}
-
-Please present this ticket at check-in.
-
-Kind regards,
-The British Trade Awards Team`,
+      body: `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="padding:40px 40px 36px;">
+<table width="40" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;"><tr><td style="height:3px;background:#C9A227;border-radius:2px;"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#1a1a1a;margin:0 0 16px;line-height:1.3;">Dear {CONTACT_NAME},</p>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 20px;">Your ticket for <strong>{EVENT_NAME}</strong> has been issued. Please present this at check-in on the day.</p>
+<p style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#C9A227;margin:0 0 10px;">Ticket Details</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid rgba(201,162,39,0.3);border-radius:8px;overflow:hidden;margin-bottom:24px;">
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Ticket Number</span><br><strong style="font-family:Georgia,'Times New Roman',serif;font-size:18px;color:#C9A227;">{TICKET_NUMBER}</strong></td></tr>
+<tr><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Event</span><br><strong style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{EVENT_NAME}</strong></td></tr>
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Date</span><br><span style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{EVENT_DATE}</span></td></tr>
+<tr><td style="padding:11px 16px;"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Venue</span><br><span style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{VENUE}</span></td></tr>
+</table>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;"><tr><td style="height:1px;background:rgba(201,162,39,0.2);"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#1a1a1a;margin:0;line-height:1.6;">Kind regards,<br><strong>The British Trade Awards Team</strong></p>
+</td></tr>
+</table>`,
     },
     'Deadline Reminder': {
       subject: 'Reminder: {DEADLINE_TYPE} Deadline in {DAYS_LEFT} Days',
-      body: `Dear {RECIPIENT_NAME},
-
-This is a reminder that the {DEADLINE_TYPE} deadline is approaching.
-
-{DAYS_LEFT} Days Remaining
-Deadline: {DEADLINE_DATE}
-
-{ACTION_REQUIRED}
-
-Kind regards,
-The British Trade Awards Team`,
+      body: `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="padding:40px 40px 36px;">
+<table width="40" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;"><tr><td style="height:3px;background:#C9A227;border-radius:2px;"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#1a1a1a;margin:0 0 16px;line-height:1.3;">Dear {RECIPIENT_NAME},</p>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 20px;">This is a reminder that the <strong>{DEADLINE_TYPE}</strong> deadline is approaching.</p>
+<p style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#C9A227;margin:0 0 10px;">Deadline Details</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid rgba(201,162,39,0.3);border-radius:8px;overflow:hidden;margin-bottom:24px;">
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Days Remaining</span><br><strong style="font-family:Georgia,'Times New Roman',serif;font-size:24px;color:#C9A227;">{DAYS_LEFT}</strong></td></tr>
+<tr><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Deadline Type</span><br><strong style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{DEADLINE_TYPE}</strong></td></tr>
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Deadline Date</span><br><strong style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{DEADLINE_DATE}</strong></td></tr>
+</table>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 22px;">{ACTION_REQUIRED}</p>
+<table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 22px;"><tr><td style="background:#C9A227;border-radius:6px;"><a href="{ACTION_LINK}" style="color:#000000;padding:12px 28px;text-decoration:none;display:inline-block;font-family:Arial,sans-serif;font-weight:700;font-size:14px;">Take Action Now</a></td></tr></table>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;"><tr><td style="height:1px;background:rgba(201,162,39,0.2);"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#1a1a1a;margin:0;line-height:1.6;">Kind regards,<br><strong>The British Trade Awards Team</strong></p>
+</td></tr>
+</table>`,
     },
     'Sponsorship Enquiry Confirmation': {
       subject: 'Sponsorship enquiry received — British Trade Awards 2026',
-      body: `Hi {NAME},
-
-Thank you for your interest in sponsoring the British Trade Awards 2026. We've received your enquiry and a member of our partnerships team will be in touch within 2 business days.
-
-Package interest: {PACKAGE}
-Company: {COMPANY}
-
-If you have any questions in the meantime, simply reply to this email.
-
-The British Trade Awards Partnerships Team`,
+      body: `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="padding:40px 40px 36px;">
+<table width="40" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;"><tr><td style="height:3px;background:#C9A227;border-radius:2px;"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#1a1a1a;margin:0 0 16px;line-height:1.3;">Hi {NAME},</p>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 20px;">Thank you for your interest in sponsoring the <strong>British Trade Awards 2026</strong>. We&rsquo;ve received your enquiry and a member of our partnerships team will be in touch within <strong style="color:#C9A227;">2 business days</strong>.</p>
+<p style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#C9A227;margin:0 0 10px;">Your Enquiry</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid rgba(201,162,39,0.3);border-radius:8px;overflow:hidden;margin-bottom:24px;">
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Package</span><br><strong style="font-family:Georgia,'Times New Roman',serif;font-size:16px;color:#C9A227;">{PACKAGE}</strong></td></tr>
+<tr><td style="padding:11px 16px;"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Company</span><br><span style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{COMPANY}</span></td></tr>
+</table>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#888;line-height:1.7;margin:0 0 22px;">Questions in the meantime? Simply reply to this email.</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;"><tr><td style="height:1px;background:rgba(201,162,39,0.2);"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#1a1a1a;margin:0;line-height:1.6;">The British Trade Awards Partnerships Team</p>
+</td></tr>
+</table>`,
     },
   },
 

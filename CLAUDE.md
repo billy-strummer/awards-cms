@@ -2,6 +2,29 @@
 
 **Read this file first.** It provides the project context, current state, and step-by-step implementation plan. If a session gets cut off, the next Claude session should read this file and the `IMPLEMENTATION-PLAN.md` to pick up where things left off.
 
+## Design System Rules
+
+> **CLAUDE: Read these rules before touching any HTML page.**
+
+### Master Brand Template
+**`home.html` is the master brand template.** All public-facing HTML pages must align with its design system:
+- Background: `#0a0a0a` (body), `#111111` (cards), `#1a1a1a` (raised surfaces)
+- Gold: `#C9A227` (primary accent), `#e0b93a` (hover)
+- Fonts: `Playfair Display` (headings/display), `Inter` (body text)
+- Header: sticky, `rgba(10,10,10,0.92)` + `backdrop-filter:blur(12px)`, BTA logo, "Back to Home" link
+- Footer: `#050505` bg, `border-top:1px solid #1a1a1a`, nav links, copyright
+- When making UI changes to any public page, use `home.html` as the reference.
+
+### Pages Excluded from Design Updates
+The following pages serve a **legal purpose** and must **not** be restyled, restructured, or have their HTML modified as part of any design or branding update:
+
+- **`privacy-policy.html`** — Legal document. Content and structure must remain as-is.
+- **`terms-and-conditions.html`** — Legal document. Content and structure must remain as-is.
+
+These pages intentionally use a plain/light design to ensure readability and legal clarity. Future design sweeps, brand refreshes, and UI improvements **must exclude these two files**.
+
+---
+
 ## ACTIVE WORK: Full System Audit
 
 > **CLAUDE: There is a master system audit at `CMS-AUDIT-TODO.md` covering 118 checks across 12 categories (automated tests, database schema, auth, multi-user, end-to-end flows, API health, frontend tabs, forms, security, integrations, performance, error recovery). Read it at the start of every session and work through items in order. Mark each item `[x]` in the same commit as the verification or fix. If an item reveals a bug, fix it before marking it done. Resume from the first unchecked `[ ]` item.**

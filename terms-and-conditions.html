@@ -11,49 +11,138 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400;1,700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; color: #1a1a1a; background: #f9f9f9; }
-    .header-bar { background: #000; color: #D4AF37; padding: 1.5rem 0; }
-    .header-bar h1 { font-size: 1.5rem; margin: 0; }
-    .content-card { background: #fff; border-radius: 8px; padding: 2.5rem; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
-    h2 { color: #000; border-bottom: 2px solid #D4AF37; padding-bottom: .5rem; margin-top: 2rem; }
-    h3 { color: #1a1a1a; font-size: 1rem; font-weight: 600; margin-top: 1.25rem; }
-    a { color: #B8941F; }
-    p, li { line-height: 1.75; }
-    ul li, ol li { margin-bottom: 0.4rem; }
+    :root {
+      --gold: #C9A227;
+      --gold-light: #e0b93a;
+      --bg: #0a0a0a;
+      --surface: #111111;
+      --surface2: #161616;
+      --border: rgba(255,255,255,0.08);
+      --text: rgba(255,255,255,0.85);
+      --muted: rgba(255,255,255,0.4);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 15px;
+      line-height: 1.75;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--gold); text-decoration: none; }
+    a:hover { color: var(--gold-light); text-decoration: underline; }
+    .container { max-width: 800px; margin: 0 auto; padding: 0 24px; }
+    .site-header {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(10,10,10,0.92);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      height: 72px; display: flex; align-items: center;
+    }
+    .header-inner { display: flex; align-items: center; justify-content: space-between; width: 100%; }
+    .header-back { font-size: 0.875rem; font-weight: 500; color: var(--muted); display: flex; align-items: center; gap: 6px; text-decoration: none; transition: color 0.2s; }
+    .header-back:hover { color: #fff; text-decoration: none; }
+    .page-hero {
+      padding: 56px 0 48px;
+      border-bottom: 1px solid var(--border);
+    }
+    .page-hero .eyebrow { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold); margin-bottom: 12px; }
+    .page-hero h1 { font-family: 'Playfair Display', Georgia, serif; font-size: clamp(1.8rem, 4vw, 2.5rem); color: #fff; line-height: 1.2; margin-bottom: 8px; }
+    .page-hero .last-updated { font-size: 0.8rem; color: var(--muted); margin-top: 8px; }
+    .content-wrap { padding: 48px 0 64px; }
+    /* TOC */
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--gold);
+      border-radius: 8px;
+      padding: 20px 24px;
+      margin-bottom: 40px;
+    }
+    .toc-title { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold); margin-bottom: 12px; }
+    .toc ol { margin: 0; padding-left: 18px; }
+    .toc li { margin-bottom: 6px; font-size: 0.875rem; }
+    .toc a { color: rgba(255,255,255,0.6); }
+    .toc a:hover { color: var(--gold); text-decoration: none; }
+    /* Sections */
+    h2 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.25rem;
+      color: #fff;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(201,162,39,0.3);
+      margin: 40px 0 16px;
+    }
+    h3 { font-size: 0.9rem; font-weight: 600; color: rgba(255,255,255,0.8); margin: 20px 0 8px; }
+    p { margin-bottom: 16px; }
+    ul, ol { padding-left: 20px; margin-bottom: 16px; }
+    li { margin-bottom: 6px; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+    /* Tables */
+    table { width: 100%; border-collapse: collapse; margin-bottom: 24px; font-size: 0.875rem; }
+    table th { background: var(--gold); color: #000; font-weight: 700; text-align: left; padding: 10px 14px; }
+    table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: rgba(255,255,255,0.75); }
+    table tr:nth-child(even) td { background: var(--surface); }
+    table tr:hover td { background: rgba(201,162,39,0.05); }
+    /* Misc */
+    strong { color: rgba(255,255,255,0.95); font-weight: 600; }
+    .text-muted { color: var(--muted) !important; }
+    .small { font-size: 0.8rem; }
     .clause-intro { font-weight: 500; }
-    @media (max-width: 480px) {
-      .content-card { padding: 1rem !important; }
-      h1 { font-size: 1.3rem; }
-      h2 { font-size: 1.15rem; }
+    @media (max-width: 640px) {
+      .page-hero { padding: 40px 0 32px; }
+      h2 { font-size: 1.1rem; }
+      table { font-size: 0.8rem; }
+      table th, table td { padding: 8px 10px; }
     }
   </style>
 </head>
 <body>
 
-  <div class="header-bar">
+  <header class="site-header" role="banner">
+    <div class="container header-inner">
+      <a href="home.html" aria-label="British Trade Awards home">
+        <img src="images/logos/non-stacked/BTA_Corporate_Horizontal-gold-white.png"
+             alt="British Trade Awards"
+             style="height:48px;width:auto;display:block;">
+      </a>
+      <a href="home.html" class="header-back" aria-label="Back to home">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;" aria-hidden="true">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
+        Back to Home
+      </a>
+    </div>
+  </header>
+
+  <div class="page-hero">
     <div class="container">
-      <h1>British Trade Awards &mdash; Terms &amp; Conditions</h1>
-      <p class="mb-0 small">Last updated: June 2026</p>
+      <p class="eyebrow">Legal</p>
+      <h1>Terms &amp; Conditions</h1>
+      <p class="last-updated">Last updated: June 2026</p>
     </div>
   </div>
 
-  <div class="container my-5">
-    <div class="content-card">
+  <div class="content-wrap">
+    <div class="container">
 
       <!-- Table of Contents -->
-      <nav aria-label="Page contents" class="mb-4" style="background:rgba(0,0,0,0.04);border-radius:8px;padding:1rem 1.5rem;">
-        <p style="font-weight:600;margin-bottom:0.5rem;color:#B8941F;">Contents</p>
-        <ol style="margin:0;padding-left:1.2rem;color:#555;font-size:0.875rem;">
-          <li><a href="#s1" style="color:#B8941F;">Introduction and Acceptance</a></li>
-          <li><a href="#s2" style="color:#B8941F;">Eligibility</a></li>
-          <li><a href="#s3" style="color:#B8941F;">Submission of Entries</a></li>
-          <li><a href="#s4" style="color:#B8941F;">Voting Rules and Integrity</a></li>
-          <li><a href="#s5" style="color:#B8941F;">Judging and Selection</a></li>
-          <li><a href="#s6" style="color:#B8941F;">Intellectual Property and Promotion</a></li>
-          <li><a href="#s7" style="color:#B8941F;">Limitation of Liability</a></li>
-          <li><a href="#s8" style="color:#B8941F;">Data Protection</a></li>
-          <li><a href="#s9" style="color:#B8941F;">Amendments to These Terms</a></li>
-          <li><a href="#s10" style="color:#B8941F;">Governing Law</a></li>
+      <nav aria-label="Page contents" class="toc">
+        <p class="toc-title">Contents</p>
+        <ol>
+          <li><a href="#s1">Introduction and Acceptance</a></li>
+          <li><a href="#s2">Eligibility</a></li>
+          <li><a href="#s3">Submission of Entries</a></li>
+          <li><a href="#s4">Voting Rules and Integrity</a></li>
+          <li><a href="#s5">Judging and Selection</a></li>
+          <li><a href="#s6">Intellectual Property and Promotion</a></li>
+          <li><a href="#s7">Limitation of Liability</a></li>
+          <li><a href="#s8">Data Protection</a></li>
+          <li><a href="#s9">Amendments to These Terms</a></li>
+          <li><a href="#s10">Governing Law</a></li>
         </ol>
       </nav>
 
@@ -184,11 +273,24 @@
       <p>10.1. These Terms are governed by and construed in accordance with the laws of England and Wales.</p>
       <p>10.2. Any disputes arising in connection with these Terms or the Awards shall be subject to the exclusive jurisdiction of the courts of England and Wales, except that a resident of or business registered in Scotland may also bring proceedings in the Scottish courts.</p>
 
-      <hr class="mt-4">
+      <hr>
       <p class="text-muted small">British Trade Awards is a trading style. All rights reserved. &bull; <a href="privacy-policy.html">Privacy Policy</a></p>
 
     </div>
   </div>
+
+  <footer role="contentinfo" style="background:#050505;border-top:1px solid #1a1a1a;padding:48px 0 32px;">
+    <div class="container">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:20px;">
+        <a href="home.html" style="font-size:0.85rem;color:rgba(255,255,255,0.4);padding:6px 14px;border-radius:100px;text-decoration:none;">Home</a>
+        <a href="submit-entry.html" style="font-size:0.85rem;color:#C9A227;padding:6px 14px;border-radius:100px;text-decoration:none;">Enter 2026</a>
+        <a href="privacy-policy.html" style="font-size:0.85rem;color:rgba(255,255,255,0.4);padding:6px 14px;border-radius:100px;text-decoration:none;">Privacy Policy</a>
+        <a href="terms-and-conditions.html" style="font-size:0.85rem;color:rgba(255,255,255,0.4);padding:6px 14px;border-radius:100px;text-decoration:none;">Terms &amp; Conditions</a>
+        <a href="mailto:info@britishtradeawards.com" style="font-size:0.85rem;color:rgba(255,255,255,0.4);padding:6px 14px;border-radius:100px;text-decoration:none;">Contact</a>
+      </div>
+      <p style="font-size:0.75rem;color:rgba(255,255,255,0.2);text-align:center;margin:0;">&copy; 2026 British Trade Awards. All rights reserved.</p>
+    </div>
+  </footer>
 
 </body>
 </html>

@@ -200,78 +200,143 @@ async function handleSponsorEnquiry(req, res) {
   // 3. Send branded confirmation to the enquirer (non-blocking — never fail the request)
   const confirmSubject = `Sponsorship enquiry received — British Trade Awards 2026`;
   const confirmBody = `
-<div style="padding:36px 40px;background:#fff;font-family:Arial,Helvetica,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#111111;">
 
-  <p style="font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#0a0a0a;margin:0 0 6px;">Hi ${safeName},</p>
-  <p style="font-size:15px;color:#444;line-height:1.75;margin:0 0 28px;">
-    Thank you for your interest in sponsoring the <strong style="color:#0a0a0a;">British Trade Awards 2026</strong>.
-    We've received your enquiry and a member of our partnerships team will be in touch within
-    <strong style="color:#0a0a0a;">2 business days</strong>.
-  </p>
+  <!-- Greeting -->
+  <tr>
+    <td style="padding:40px 40px 24px;">
+      <p style="font-family:Georgia,'Times New Roman',serif;font-size:24px;color:#ffffff;margin:0 0 16px;line-height:1.25;">Hi ${safeName},</p>
+      <p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:rgba(255,255,255,0.65);line-height:1.8;margin:0;">
+        Thank you for your interest in sponsoring the <strong style="color:#ffffff;">British Trade Awards 2026</strong>.
+        We&rsquo;ve received your enquiry and a member of our partnerships team will be in touch
+        within <strong style="color:#C9A227;">2 business days</strong>.
+      </p>
+    </td>
+  </tr>
+
+  <!-- Gold rule -->
+  <tr>
+    <td style="padding:0 40px 28px;">
+      <table width="60" cellpadding="0" cellspacing="0" border="0">
+        <tr><td style="height:3px;background:#C9A227;border-radius:2px;"></td></tr>
+      </table>
+    </td>
+  </tr>
 
   <!-- Enquiry summary card -->
-  <div style="background:#f8f6f1;border-left:4px solid #C9A227;border-radius:8px;padding:22px 26px;margin-bottom:32px;">
-    <p style="font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#C9A227;margin:0 0 14px;">Your Enquiry</p>
-    <table style="width:100%;border-collapse:collapse;font-size:14px;color:#333;">
-      <tr>
-        <td style="padding:5px 16px 5px 0;color:#888;white-space:nowrap;width:110px;">Package</td>
-        <td style="padding:5px 0;color:#0a0a0a;font-weight:700;">${safePkg}</td>
-      </tr>
-      <tr>
-        <td style="padding:5px 16px 5px 0;color:#888;">Company</td>
-        <td style="padding:5px 0;color:#0a0a0a;">${safeCompany}</td>
-      </tr>
-      ${safeRole ? `<tr><td style="padding:5px 16px 5px 0;color:#888;">Your role</td><td style="padding:5px 0;color:#0a0a0a;">${safeRole}</td></tr>` : ''}
-      ${safeMsg ? `<tr><td style="padding:5px 16px 5px 0;color:#888;vertical-align:top;">Notes</td><td style="padding:5px 0;color:#555;">${safeMsg.replace(/\n/g, '<br>')}</td></tr>` : ''}
-    </table>
-  </div>
+  <tr>
+    <td style="padding:0 40px 36px;">
+      <p style="font-family:Arial,Helvetica,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:#C9A227;margin:0 0 14px;">Your Enquiry</p>
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid rgba(201,162,39,0.3);border-radius:10px;overflow:hidden;">
+        <tr style="background:#1a1a1a;">
+          <td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.07);">
+            <span style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.35);display:block;margin-bottom:4px;">Package</span>
+            <span style="font-family:Georgia,'Times New Roman',serif;font-size:17px;color:#C9A227;font-weight:700;">${safePkg}</span>
+          </td>
+        </tr>
+        <tr style="background:#161616;">
+          <td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.07);">
+            <span style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.35);display:block;margin-bottom:4px;">Company</span>
+            <span style="font-family:Arial,sans-serif;font-size:15px;color:#ffffff;">${safeCompany}</span>
+          </td>
+        </tr>
+        ${
+          safeRole
+            ? `<tr style="background:#1a1a1a;">
+          <td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.07);">
+            <span style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.35);display:block;margin-bottom:4px;">Your Role</span>
+            <span style="font-family:Arial,sans-serif;font-size:15px;color:#ffffff;">${safeRole}</span>
+          </td>
+        </tr>`
+            : ''
+        }
+        ${
+          safeMsg
+            ? `<tr style="background:#161616;">
+          <td style="padding:14px 20px;">
+            <span style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.35);display:block;margin-bottom:4px;">Your Message</span>
+            <span style="font-family:Arial,sans-serif;font-size:14px;color:rgba(255,255,255,0.6);line-height:1.65;">${safeMsg.replace(/\n/g, '<br>')}</span>
+          </td>
+        </tr>`
+            : ''
+        }
+      </table>
+    </td>
+  </tr>
 
   <!-- What happens next -->
-  <p style="font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#C9A227;margin:0 0 14px;">What Happens Next</p>
-  <table style="width:100%;border-collapse:collapse;margin-bottom:32px;">
-    <tr>
-      <td style="vertical-align:top;padding:0 16px 16px 0;width:28px;">
-        <div style="width:26px;height:26px;border-radius:50%;background:#C9A227;color:#000;font-weight:700;font-size:13px;text-align:center;line-height:26px;flex-shrink:0;">1</div>
-      </td>
-      <td style="vertical-align:top;padding:0 0 16px;font-size:14px;color:#444;line-height:1.6;">
-        Our partnerships team will review your enquiry and prepare relevant package details.
-      </td>
-    </tr>
-    <tr>
-      <td style="vertical-align:top;padding:0 16px 16px 0;">
-        <div style="width:26px;height:26px;border-radius:50%;background:#C9A227;color:#000;font-weight:700;font-size:13px;text-align:center;line-height:26px;">2</div>
-      </td>
-      <td style="vertical-align:top;padding:0 0 16px;font-size:14px;color:#444;line-height:1.6;">
-        We'll be in touch within <strong>2 business days</strong> to discuss your goals and answer any questions.
-      </td>
-    </tr>
-    <tr>
-      <td style="vertical-align:top;padding:0 16px 0 0;">
-        <div style="width:26px;height:26px;border-radius:50%;background:#C9A227;color:#000;font-weight:700;font-size:13px;text-align:center;line-height:26px;">3</div>
-      </td>
-      <td style="vertical-align:top;font-size:14px;color:#444;line-height:1.6;">
-        We'll send a bespoke proposal tailored to your brand and marketing objectives.
-      </td>
-    </tr>
-  </table>
+  <tr>
+    <td style="padding:0 40px 36px;">
+      <p style="font-family:Arial,Helvetica,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:#C9A227;margin:0 0 20px;">What Happens Next</p>
 
-  <p style="font-size:14px;color:#666;margin:0 0 6px;">
-    If you have any questions in the meantime, simply reply to this email and we'll get back to you.
-  </p>
-  <p style="font-size:14px;color:#444;margin:0 0 32px;">
-    The British Trade Awards Partnerships Team
-  </p>
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:14px;">
+        <tr>
+          <td width="40" valign="top">
+            <table cellpadding="0" cellspacing="0" border="0"><tr><td style="width:28px;height:28px;border-radius:50%;background:#C9A227;text-align:center;font-family:Georgia,serif;font-size:13px;font-weight:700;color:#000;line-height:28px;">1</td></tr></table>
+          </td>
+          <td valign="top" style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:rgba(255,255,255,0.6);line-height:1.7;padding-top:4px;">
+            Our partnerships team reviews your enquiry and prepares the relevant package details.
+          </td>
+        </tr>
+      </table>
+
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:14px;">
+        <tr>
+          <td width="40" valign="top">
+            <table cellpadding="0" cellspacing="0" border="0"><tr><td style="width:28px;height:28px;border-radius:50%;background:#C9A227;text-align:center;font-family:Georgia,serif;font-size:13px;font-weight:700;color:#000;line-height:28px;">2</td></tr></table>
+          </td>
+          <td valign="top" style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:rgba(255,255,255,0.6);line-height:1.7;padding-top:4px;">
+            We&rsquo;ll contact you within <strong style="color:#ffffff;">2 business days</strong> to discuss your goals and answer any questions.
+          </td>
+        </tr>
+      </table>
+
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td width="40" valign="top">
+            <table cellpadding="0" cellspacing="0" border="0"><tr><td style="width:28px;height:28px;border-radius:50%;background:#C9A227;text-align:center;font-family:Georgia,serif;font-size:13px;font-weight:700;color:#000;line-height:28px;">3</td></tr></table>
+          </td>
+          <td valign="top" style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:rgba(255,255,255,0.6);line-height:1.7;padding-top:4px;">
+            We&rsquo;ll send a bespoke proposal tailored to your brand and marketing objectives.
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
 
   <!-- Divider -->
-  <div style="border-top:1px solid #e8e4dc;padding-top:20px;">
-    <p style="font-size:12px;color:#aaa;margin:0;line-height:1.6;">
-      You're receiving this email because you submitted a sponsorship enquiry at
-      <a href="https://britishtradeawards.com/become-a-sponsor.html" style="color:#C9A227;text-decoration:none;">britishtradeawards.com</a>.
-      If this wasn't you, please ignore this message.
-    </p>
-  </div>
+  <tr>
+    <td style="padding:0 40px;">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr><td style="height:1px;background:rgba(255,255,255,0.08);"></td></tr>
+      </table>
+    </td>
+  </tr>
 
-</div>`;
+  <!-- Sign-off -->
+  <tr>
+    <td style="padding:24px 40px 32px;">
+      <p style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:rgba(255,255,255,0.4);margin:0 0 6px;">
+        Questions? Simply reply to this email.
+      </p>
+      <p style="font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#ffffff;margin:0;">
+        The British Trade Awards Partnerships Team
+      </p>
+    </td>
+  </tr>
+
+  <!-- Legal note -->
+  <tr>
+    <td style="padding:16px 40px 28px;border-top:1px solid rgba(201,162,39,0.12);">
+      <p style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:rgba(255,255,255,0.2);margin:0;line-height:1.7;">
+        You&rsquo;re receiving this because you submitted a sponsorship enquiry at
+        <a href="https://britishtradeawards.com/become-a-sponsor.html" style="color:rgba(201,162,39,0.4);text-decoration:none;">britishtradeawards.com</a>.
+        If this wasn&rsquo;t you, you can safely ignore this message.
+      </p>
+    </td>
+  </tr>
+
+</table>`;
 
   const confirmHtml = wrapEmail(
     confirmBody,

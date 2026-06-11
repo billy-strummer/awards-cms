@@ -33,7 +33,7 @@ const emailTemplatesModule = {
     judge_assignment: 'Sent to judges when new entries are assigned to them',
     judge_reminder: 'Sent to judges as they approach their scoring deadline',
     event_invitation: 'Sent when an admin invites a contact to an event',
-    ticket_issued: 'Sent when an attendee\'s event ticket is issued',
+    ticket_issued: "Sent when an attendee's event ticket is issued",
     deadline_reminder: 'Sent by the automated scheduler as key dates approach',
     sponsor_enquiry_confirmation: 'Sent automatically when someone submits the sponsorship enquiry form',
     general: 'Used manually — send from Email Builder or automation workflows',
@@ -77,6 +77,12 @@ const emailTemplatesModule = {
     RECIPIENT_NAME: "Recipient's name (generic)",
     DEADLINE_TYPE: 'Type of deadline, e.g. Entry Submission',
     ACTION_LINK: 'URL for the call-to-action button',
+    ACTION_REQUIRED: 'Description of the action the recipient needs to take',
+    ENTRY_FEE: 'Entry fee amount in GBP',
+    FEEDBACK: 'Feedback or revision notes provided by the admin',
+    ERROR_MESSAGE: 'Payment error or decline reason from the payment processor',
+    ROLE_ROW: 'Full HTML row for job title — automatically omitted if the field was left blank',
+    MESSAGE_ROW: 'Full HTML row for submission message — automatically omitted if no message was provided',
     NAME: "Enquirer's full name",
     COMPANY: "Enquirer's company",
     PACKAGE: 'Sponsorship package of interest',
@@ -643,6 +649,7 @@ The British Trade Awards Team`,
       'event_invitation',
       'ticket_issued',
       'deadline_reminder',
+      'sponsor_enquiry_confirmation',
       'general',
       'notification',
       'invite',
@@ -722,7 +729,14 @@ The British Trade Awards Team`,
       grouped[group].push(t);
     });
 
-    const groupOrder = ['Entry & Submissions', 'Payments', 'Judging & Results', 'Events & Invitations', 'General', 'Other'];
+    const groupOrder = [
+      'Entry & Submissions',
+      'Payments',
+      'Judging & Results',
+      'Events & Invitations',
+      'General',
+      'Other',
+    ];
     let html = '';
 
     groupOrder.forEach((groupName) => {
@@ -734,22 +748,24 @@ The British Trade Awards Team`,
         <i class="${config.icon} me-1"></i>${groupName}
       </div>`;
 
-      html += templates.map((template) => {
-        const isActive = template.is_active !== false;
-        const isAuto = this._isAutoTemplate(template.template_type) &&
-          !['general', 'notification', 'invite'].includes(template.template_type);
-        const triggerDesc = this._autoTriggerDescriptions[template.template_type] || '';
-        const isSelected = this.currentTemplate?.id === template.id;
-        const name = utils.escapeHtml(template.template_name || template.name || 'Untitled');
+      html += templates
+        .map((template) => {
+          const isActive = template.is_active !== false;
+          const isAuto =
+            this._isAutoTemplate(template.template_type) &&
+            !['general', 'notification', 'invite'].includes(template.template_type);
+          const triggerDesc = this._autoTriggerDescriptions[template.template_type] || '';
+          const isSelected = this.currentTemplate?.id === template.id;
+          const name = utils.escapeHtml(template.template_name || template.name || 'Untitled');
 
-        const autoBadge = isAuto
-          ? `<span class="badge rounded-pill ms-1" style="font-size:0.6rem;background:${isSelected ? 'rgba(255,255,255,0.2)' : '#dff0fa'};color:${isSelected ? '#cce' : '#0a6c8a'};" title="${utils.escapeHtml(triggerDesc)}"><i class="bi bi-lightning-charge-fill"></i> Auto</span>`
-          : '';
-        const inactiveBadge = !isActive
-          ? `<span class="badge bg-secondary rounded-pill ms-1" style="font-size:0.6rem;">Off</span>`
-          : '';
+          const autoBadge = isAuto
+            ? `<span class="badge rounded-pill ms-1" style="font-size:0.6rem;background:${isSelected ? 'rgba(255,255,255,0.2)' : '#dff0fa'};color:${isSelected ? '#cce' : '#0a6c8a'};" title="${utils.escapeHtml(triggerDesc)}"><i class="bi bi-lightning-charge-fill"></i> Auto</span>`
+            : '';
+          const inactiveBadge = !isActive
+            ? `<span class="badge bg-secondary rounded-pill ms-1" style="font-size:0.6rem;">Off</span>`
+            : '';
 
-        return `<a href="#" class="list-group-item list-group-item-action border-0 border-bottom py-2 px-3 ${isSelected ? 'active' : ''}"
+          return `<a href="#" class="list-group-item list-group-item-action border-0 border-bottom py-2 px-3 ${isSelected ? 'active' : ''}"
            data-action="emailTemplatesModule.selectTemplate" data-id="${template.id}">
           <div class="d-flex align-items-center gap-1">
             <div class="flex-grow-1 min-w-0">
@@ -762,7 +778,8 @@ The British Trade Awards Team`,
             <i class="bi bi-chevron-right flex-shrink-0" style="font-size:0.7rem;color:${isSelected ? 'rgba(255,255,255,0.5)' : '#ced4da'};"></i>
           </div>
         </a>`;
-      }).join('');
+        })
+        .join('');
     });
 
     container.innerHTML = html;
@@ -816,7 +833,8 @@ The British Trade Awards Team`,
   renderTemplateEditor(template) {
     document.getElementById('editorTitle').textContent = template.template_name || template.name || 'Edit Template';
 
-    const isAuto = this._isAutoTemplate(template.template_type) &&
+    const isAuto =
+      this._isAutoTemplate(template.template_type) &&
       !['general', 'notification', 'invite'].includes(template.template_type);
     const triggerDesc = this._autoTriggerDescriptions[template.template_type] || '';
 
@@ -837,12 +855,14 @@ The British Trade Awards Team`,
          </div>`;
 
     // Build placeholder panel
-    const placeholders = template.available_placeholders && template.available_placeholders.length > 0
-      ? template.available_placeholders
-      : [];
+    const placeholders =
+      template.available_placeholders && template.available_placeholders.length > 0
+        ? template.available_placeholders
+        : [];
 
-    const placeholderPanel = placeholders.length > 0
-      ? `<div class="mb-3">
+    const placeholderPanel =
+      placeholders.length > 0
+        ? `<div class="mb-3">
            <label class="form-label d-flex align-items-center gap-1 mb-1">
              <i class="bi bi-braces text-muted" style="font-size:0.85rem;"></i>
              <span>Available placeholders</span>
@@ -850,20 +870,22 @@ The British Trade Awards Team`,
            </label>
            <div class="rounded border p-2" style="background:#f8f9fa;">
              <div class="d-flex flex-wrap gap-1">
-               ${placeholders.map((p) => {
-                 const key = p.replace(/^\{|\}$/g, '');
-                 const desc = this._placeholderDescriptions[key] || '';
-                 return `<span class="badge border text-dark d-inline-flex align-items-center gap-1 px-2 py-1"
+               ${placeholders
+                 .map((p) => {
+                   const key = p.replace(/^\{|\}$/g, '');
+                   const desc = this._placeholderDescriptions[key] || '';
+                   return `<span class="badge border text-dark d-inline-flex align-items-center gap-1 px-2 py-1"
                    style="cursor:pointer;font-size:0.75rem;background:#fff;font-family:monospace;"
                    data-action="emailTemplatesModule.insertPlaceholder"
                    data-placeholder="${p.startsWith('{') ? p : '{' + p + '}'}"
                    title="${desc ? utils.escapeHtml(desc) : 'Click to insert'}">{${key}}</span>`;
-               }).join('')}
+                 })
+                 .join('')}
              </div>
              <p class="text-muted mb-0 mt-2" style="font-size:0.72rem;"><i class="bi bi-info-circle me-1"></i>Hover a placeholder to see what it becomes. These are replaced with real data when the email is sent.</p>
            </div>
          </div>`
-      : '';
+        : '';
 
     const hasDefault = !!this._defaultTemplates[template.template_name];
 
@@ -1014,12 +1036,24 @@ The British Trade Awards Team`,
       const action = actionEl.getAttribute('data-action');
       const id = actionEl.getAttribute('data-id');
       switch (action) {
-        case 'emailTemplatesModule.saveTemplate': this.saveTemplate(); break;
-        case 'emailTemplatesModule.previewTemplate': this.previewTemplate(); break;
-        case 'emailTemplatesModule.sendTestEmail': this.sendTestEmail(); break;
-        case 'emailTemplatesModule.revertToDefault': this.revertToDefault(); break;
-        case 'emailTemplatesModule.deleteTemplate': this.deleteTemplate(id); break;
-        case 'emailTemplatesModule.insertPlaceholder': this.insertPlaceholder(actionEl.getAttribute('data-placeholder')); break;
+        case 'emailTemplatesModule.saveTemplate':
+          this.saveTemplate();
+          break;
+        case 'emailTemplatesModule.previewTemplate':
+          this.previewTemplate();
+          break;
+        case 'emailTemplatesModule.sendTestEmail':
+          this.sendTestEmail();
+          break;
+        case 'emailTemplatesModule.revertToDefault':
+          this.revertToDefault();
+          break;
+        case 'emailTemplatesModule.deleteTemplate':
+          this.deleteTemplate(id);
+          break;
+        case 'emailTemplatesModule.insertPlaceholder':
+          this.insertPlaceholder(actionEl.getAttribute('data-placeholder'));
+          break;
       }
     });
   },
@@ -1200,7 +1234,9 @@ The British Trade Awards Team`,
     if (existing) existing.remove();
 
     const lastEmail = localStorage.getItem('bta_test_email_addr') || '';
-    document.body.insertAdjacentHTML('beforeend', `
+    document.body.insertAdjacentHTML(
+      'beforeend',
+      `
       <div class="modal fade" id="testEmailModal" tabindex="-1">
         <div class="modal-dialog modal-sm">
           <div class="modal-content">
@@ -1224,7 +1260,8 @@ The British Trade Awards Team`,
           </div>
         </div>
       </div>
-    `);
+    `
+    );
 
     const modalEl = document.getElementById('testEmailModal');
     const modal = new bootstrap.Modal(modalEl);
@@ -1354,42 +1391,74 @@ The British Trade Awards Team`,
 
     // Build type options with descriptions
     const typeOptions = [
-      { group: 'Entry & Submissions', options: [
-        { value: 'confirmation', label: 'Entry Confirmation', desc: 'Sent automatically when an entry is submitted' },
-        { value: 'nomination_confirmation', label: 'Nomination Confirmation', desc: 'Sent automatically when a peer nomination is submitted' },
-        { value: 'reminder', label: 'Upload Reminder', desc: 'Prompt entrants to upload supporting documents' },
-        { value: 'revision_request', label: 'Changes Requested', desc: 'Sent when an admin requests entry changes' },
-      ]},
-      { group: 'Payments', options: [
-        { value: 'payment_confirmation', label: 'Payment Confirmation', desc: 'Sent automatically after a successful payment' },
-        { value: 'payment_failed', label: 'Payment Failed', desc: 'Sent automatically when a payment fails' },
-        { value: 'refund_confirmation', label: 'Refund Confirmation', desc: 'Sent automatically when a refund is issued' },
-        { value: 'payment_reminder', label: 'Payment Reminder', desc: 'Sent to entrants with outstanding fees' },
-      ]},
-      { group: 'Judging & Results', options: [
-        { value: 'approval', label: 'Approved / Shortlisted', desc: 'Sent when an entry is shortlisted' },
-        { value: 'rejection', label: 'Not Shortlisted', desc: 'Sent when an entry is not shortlisted' },
-        { value: 'winner_announcement', label: 'Winner Announcement', desc: 'Sent when an entry wins' },
-        { value: 'judge_assignment', label: 'Judge Assignment', desc: 'Sent to judges when entries are assigned' },
-        { value: 'judge_reminder', label: 'Judge Reminder', desc: 'Sent to judges as deadlines approach' },
-      ]},
-      { group: 'Events & Invitations', options: [
-        { value: 'event_invitation', label: 'Event Invitation', desc: 'Invite contacts to an event' },
-        { value: 'ticket_issued', label: 'Ticket Issued', desc: 'Sent when an event ticket is issued' },
-        { value: 'deadline_reminder', label: 'Deadline Reminder', desc: 'Sent as key dates approach' },
-      ]},
-      { group: 'General', options: [
-        { value: 'general', label: 'General', desc: 'All-purpose — use from Email Builder for one-off sends' },
-        { value: 'notification', label: 'Notification', desc: 'General alerts and status updates' },
-        { value: 'invite', label: 'Invitation', desc: 'Invitation campaigns sent from Email Builder' },
-      ]},
+      {
+        group: 'Entry & Submissions',
+        options: [
+          { value: 'confirmation', label: 'Entry Confirmation', desc: 'Sent automatically when an entry is submitted' },
+          {
+            value: 'nomination_confirmation',
+            label: 'Nomination Confirmation',
+            desc: 'Sent automatically when a peer nomination is submitted',
+          },
+          { value: 'reminder', label: 'Upload Reminder', desc: 'Prompt entrants to upload supporting documents' },
+          { value: 'revision_request', label: 'Changes Requested', desc: 'Sent when an admin requests entry changes' },
+        ],
+      },
+      {
+        group: 'Payments',
+        options: [
+          {
+            value: 'payment_confirmation',
+            label: 'Payment Confirmation',
+            desc: 'Sent automatically after a successful payment',
+          },
+          { value: 'payment_failed', label: 'Payment Failed', desc: 'Sent automatically when a payment fails' },
+          {
+            value: 'refund_confirmation',
+            label: 'Refund Confirmation',
+            desc: 'Sent automatically when a refund is issued',
+          },
+          { value: 'payment_reminder', label: 'Payment Reminder', desc: 'Sent to entrants with outstanding fees' },
+        ],
+      },
+      {
+        group: 'Judging & Results',
+        options: [
+          { value: 'approval', label: 'Approved / Shortlisted', desc: 'Sent when an entry is shortlisted' },
+          { value: 'rejection', label: 'Not Shortlisted', desc: 'Sent when an entry is not shortlisted' },
+          { value: 'winner_announcement', label: 'Winner Announcement', desc: 'Sent when an entry wins' },
+          { value: 'judge_assignment', label: 'Judge Assignment', desc: 'Sent to judges when entries are assigned' },
+          { value: 'judge_reminder', label: 'Judge Reminder', desc: 'Sent to judges as deadlines approach' },
+        ],
+      },
+      {
+        group: 'Events & Invitations',
+        options: [
+          { value: 'event_invitation', label: 'Event Invitation', desc: 'Invite contacts to an event' },
+          { value: 'ticket_issued', label: 'Ticket Issued', desc: 'Sent when an event ticket is issued' },
+          { value: 'deadline_reminder', label: 'Deadline Reminder', desc: 'Sent as key dates approach' },
+        ],
+      },
+      {
+        group: 'General',
+        options: [
+          { value: 'general', label: 'General', desc: 'All-purpose — use from Email Builder for one-off sends' },
+          { value: 'notification', label: 'Notification', desc: 'General alerts and status updates' },
+          { value: 'invite', label: 'Invitation', desc: 'Invitation campaigns sent from Email Builder' },
+        ],
+      },
     ];
 
-    const typeSelectHtml = typeOptions.map(({ group, options }) =>
-      `<optgroup label="${group}">${options.map(o => `<option value="${o.value}" data-desc="${o.desc}">${o.label}</option>`).join('')}</optgroup>`
-    ).join('');
+    const typeSelectHtml = typeOptions
+      .map(
+        ({ group, options }) =>
+          `<optgroup label="${group}">${options.map((o) => `<option value="${o.value}" data-desc="${o.desc}">${o.label}</option>`).join('')}</optgroup>`
+      )
+      .join('');
 
-    document.body.insertAdjacentHTML('beforeend', `
+    document.body.insertAdjacentHTML(
+      'beforeend',
+      `
       <div class="modal fade" id="newTemplateModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
           <div class="modal-content">
@@ -1470,7 +1539,8 @@ The British Trade Awards Team`,
           </div>
         </div>
       </div>
-    `);
+    `
+    );
 
     const modalEl = document.getElementById('newTemplateModal');
 
@@ -1502,7 +1572,7 @@ The British Trade Awards Team`,
 
     // Derive available placeholders from common {PLACEHOLDER} patterns in the body
     const bodyVal = document.getElementById('newTemplateBody').value || '';
-    const foundPlaceholders = [...new Set((bodyVal.match(/\{([A-Z_]+)\}/g) || []))];
+    const foundPlaceholders = [...new Set(bodyVal.match(/\{([A-Z_]+)\}/g) || [])];
     const placeholders = foundPlaceholders;
 
     const templateData = {

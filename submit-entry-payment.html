@@ -81,7 +81,7 @@
     }
 
     .entry-card {
-      background: white;
+      background: #1a1a1a;
       border-radius: 20px;
       box-shadow: 0 20px 60px rgba(212, 175, 55, 0.3);
       overflow: hidden;
@@ -180,7 +180,7 @@
     /* Progress bar */
     .progress-bar-wrapper {
       padding: 20px 30px 10px;
-      background: #fafafa;
+      background: #111111;
       position: relative;
       z-index: 1;
     }
@@ -283,14 +283,14 @@
       font-family: 'Playfair Display', Georgia, serif;
       font-size: 1.6rem;
       font-weight: 700;
-      color: #1a1a1a;
+      color: #ffffff;
       margin-bottom: 8px;
       text-align: center;
     }
 
     .step-subtitle {
       font-size: 0.95rem;
-      color: #777;
+      color: rgba(255,255,255,0.55);
       text-align: center;
       margin-bottom: 28px;
       font-weight: 400;
@@ -304,14 +304,22 @@
       font-size: 1.05rem;
       padding: 14px 16px;
       border-radius: 10px;
-      border: 2px solid #dee2e6;
+      border: 2px solid #2a2a2a;
+      background: #111111;
+      color: #ffffff;
       transition: border-color 0.3s;
     }
 
+    .form-control-lg::placeholder { color: rgba(255,255,255,0.3); }
+
     .form-control-lg:focus, .form-select-lg:focus {
+      background: #111111;
+      color: #ffffff;
       border-color: var(--gold-color);
       box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.15);
     }
+
+    .form-select-lg option { background: #111111; color: #ffffff; }
 
     textarea.form-control-lg {
       min-height: 120px;
@@ -337,7 +345,7 @@
     label.form-label {
       font-weight: 600;
       font-size: 0.9rem;
-      color: #333;
+      color: rgba(255,255,255,0.65);
       margin-bottom: 6px;
     }
 
@@ -400,24 +408,24 @@
       font-family: 'Playfair Display', Georgia, serif;
       font-size: 0.85rem;
       font-weight: 700;
-      color: var(--gold-dark);
+      color: var(--gold-color);
       text-transform: uppercase;
       letter-spacing: 1px;
       padding: 8px 12px;
-      background: linear-gradient(135deg, #f8f6f0, #fff9e6);
+      background: rgba(201,162,39,0.08);
       border-left: 3px solid var(--gold-color);
       margin-bottom: 8px;
       border-radius: 0 6px 6px 0;
     }
 
     .award-option {
-      border: 2px solid #e8e8e8;
+      border: 1px solid rgba(255,255,255,0.12);
       padding: 14px 16px;
       border-radius: 10px;
       margin-bottom: 6px;
       cursor: pointer;
       transition: all 0.25s;
-      background: white;
+      background: #1e1e1e;
       display: flex;
       align-items: center;
       gap: 12px;
@@ -425,15 +433,15 @@
     }
 
     .award-option:hover {
-      border-color: var(--gold-color);
-      background: #fffdf5;
+      border-color: rgba(201,162,39,0.6);
+      background: rgba(201,162,39,0.04);
       transform: translateX(4px);
     }
 
     .award-option.selected {
-      border-color: var(--gold-dark);
-      background: linear-gradient(135deg, var(--gold-light) 0%, #fff9e6 100%);
-      box-shadow: 0 3px 12px rgba(212, 175, 55, 0.25);
+      border-color: var(--gold-color);
+      background: rgba(201,162,39,0.08);
+      box-shadow: 0 0 0 1px rgba(201,162,39,0.25);
     }
 
     .award-option .award-check {
@@ -457,26 +465,26 @@
     .award-option .award-name {
       font-size: 0.95rem;
       font-weight: 500;
-      color: #333;
+      color: rgba(255,255,255,0.85);
     }
 
     .award-option.selected .award-name {
       font-weight: 600;
-      color: #1a1a1a;
+      color: #ffffff;
     }
 
     /* Review section */
     .review-section {
-      background: #fafafa;
+      background: #111111;
       border-radius: 12px;
       padding: 24px;
-      border: 1px solid #eee;
+      border: 1px solid rgba(255,255,255,0.08);
     }
 
     .review-group {
       margin-bottom: 16px;
       padding-bottom: 16px;
-      border-bottom: 1px solid #eee;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
     }
 
     .review-group:last-child {
@@ -489,7 +497,7 @@
       font-family: 'Playfair Display', Georgia, serif;
       font-size: 0.8rem;
       font-weight: 700;
-      color: var(--gold-dark);
+      color: var(--gold-color);
       text-transform: uppercase;
       letter-spacing: 1px;
       margin-bottom: 10px;
@@ -505,7 +513,7 @@
 
     .review-label {
       font-size: 0.85rem;
-      color: #777;
+      color: rgba(255,255,255,0.45);
       font-weight: 500;
       min-width: 120px;
       flex-shrink: 0;
@@ -513,7 +521,7 @@
 
     .review-value {
       font-size: 0.9rem;
-      color: #1a1a1a;
+      color: #ffffff;
       font-weight: 500;
       text-align: right;
       word-break: break-word;
@@ -521,13 +529,13 @@
 
     .review-text-block {
       font-size: 0.88rem;
-      color: #333;
+      color: rgba(255,255,255,0.7);
       line-height: 1.6;
       margin-top: 6px;
-      background: white;
+      background: #0d0d0d;
       padding: 12px;
       border-radius: 8px;
-      border: 1px solid #eee;
+      border: 1px solid rgba(255,255,255,0.08);
       white-space: pre-wrap;
     }
 
@@ -568,19 +576,21 @@
 
     /* Choices.js theme */
     .choices__inner {
-      background: white;
-      border: 2px solid #dee2e6;
+      background: #111111;
+      border: 2px solid #2a2a2a;
       border-radius: 10px;
       padding: 10px 15px;
       font-size: 1.05rem;
       min-height: 50px;
+      color: #ffffff;
     }
 
-    .choices__input { font-size: 1rem; margin-bottom: 0; }
-    .choices__input::placeholder { color: #999; font-style: italic; }
+    .choices__input { font-size: 1rem; margin-bottom: 0; background: transparent; color: #ffffff; }
+    .choices__input::placeholder { color: rgba(255,255,255,0.3); font-style: italic; }
     .choices[data-type*=select-one] .choices__inner { padding-bottom: 10px; }
 
     .choices__list--dropdown {
+      background: #1a1a1a;
       border: 2px solid var(--gold-color);
       border-radius: 10px;
       margin-top: 5px;
@@ -588,18 +598,20 @@
       z-index: 10;
     }
 
+    .choices__list--dropdown .choices__item { color: rgba(255,255,255,0.85); }
+
     .choices__list--dropdown .choices__item--selectable.is-highlighted {
-      background-color: var(--gold-light);
+      background-color: rgba(201,162,39,0.15);
     }
 
     .choices__list--dropdown .choices__group {
-      color: var(--gold-dark);
+      color: var(--gold-color);
       font-weight: 600;
-      border-bottom: 1px solid var(--gold-color);
+      border-bottom: 1px solid rgba(201,162,39,0.3);
     }
 
     .is-focused .choices__inner { border-color: var(--gold-color); }
-    .choices__list--single .choices__item { color: #1a1a1a; }
+    .choices__list--single .choices__item { color: #ffffff; }
 
     /* Terms checkbox */
     .terms-check {
@@ -608,9 +620,9 @@
       gap: 10px;
       margin-top: 20px;
       padding: 14px;
-      background: #fafafa;
+      background: rgba(201,162,39,0.05);
       border-radius: 10px;
-      border: 1px solid #eee;
+      border: 1px solid rgba(201,162,39,0.25);
     }
 
     .terms-check input[type="checkbox"] {
@@ -624,14 +636,16 @@
 
     .terms-check label {
       font-size: 0.85rem;
-      color: #555;
+      color: rgba(255,255,255,0.65);
       line-height: 1.5;
       cursor: pointer;
     }
 
+    .terms-check label a { color: var(--gold-color); text-decoration: underline; }
+
     /* Payment summary */
     .payment-summary {
-      background: linear-gradient(135deg, #f8f6f0, #fff9e6);
+      background: rgba(201,162,39,0.06);
       border: 2px solid var(--gold-color);
       border-radius: 12px;
       padding: 24px;
@@ -642,13 +656,13 @@
       font-family: 'Playfair Display', Georgia, serif;
       font-size: 2.5rem;
       font-weight: 900;
-      color: #1a1a1a;
+      color: #ffffff;
       margin: 12px 0;
     }
 
     .payment-desc {
       font-size: 0.9rem;
-      color: #666;
+      color: rgba(255,255,255,0.55);
       margin-bottom: 8px;
     }
 
@@ -930,6 +944,20 @@
 
     </div>
   </div>
+
+  <!-- Footer -->
+  <footer style="background:#050505;border-top:1px solid #1a1a1a;padding:40px 0 28px;margin-top:48px;">
+    <div class="container">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-bottom:16px;">
+        <a href="home.html" style="font-size:0.8rem;color:rgba(255,255,255,0.35);padding:5px 12px;border-radius:100px;text-decoration:none;">Home</a>
+        <a href="submit-entry.html" style="font-size:0.8rem;color:#C9A227;padding:5px 12px;border-radius:100px;text-decoration:none;">Enter 2026</a>
+        <a href="privacy-policy.html" style="font-size:0.8rem;color:rgba(255,255,255,0.35);padding:5px 12px;border-radius:100px;text-decoration:none;">Privacy Policy</a>
+        <a href="terms-and-conditions.html" style="font-size:0.8rem;color:rgba(255,255,255,0.35);padding:5px 12px;border-radius:100px;text-decoration:none;">Terms &amp; Conditions</a>
+        <a href="mailto:info@britishtradeawards.com" style="font-size:0.8rem;color:rgba(255,255,255,0.35);padding:5px 12px;border-radius:100px;text-decoration:none;">Contact</a>
+      </div>
+      <p style="font-size:0.75rem;color:rgba(255,255,255,0.18);text-align:center;margin:0;">&copy; 2026 British Trade Awards. All rights reserved.</p>
+    </div>
+  </footer>
 
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

@@ -44,7 +44,7 @@
       --transition-med:    0.3s ease;
       --transition-slow:   0.5s ease;
 
-      --header-h: 80px;
+      --header-h: 90px;
       --section-pad: clamp(64px, 8vw, 120px);
     }
 
@@ -286,13 +286,13 @@
     /* Logo */
     .header-logo {
       flex-shrink: 0;
-      height: 48px;
+      height: 58px;
       display: flex;
       align-items: center;
     }
 
     .header-logo img {
-      height: 48px;
+      height: 58px;
       width: auto;
       transition: opacity var(--transition-med);
     }
@@ -333,9 +333,9 @@
     }
 
     .header-nav a {
-      font-size: 0.875rem;
+      font-size: 0.9375rem;
       font-weight: 500;
-      letter-spacing: 0.04em;
+      letter-spacing: 0.03em;
       color: rgba(255, 255, 255, 0.85);
       padding: 8px 16px;
       border-radius: 100px;
@@ -361,8 +361,8 @@
     }
 
     .header-cta .btn-gold {
-      padding: 12px 28px;
-      font-size: 0.85rem;
+      padding: 14px 36px;
+      font-size: 0.9rem;
     }
 
     /* Hamburger */
@@ -1662,7 +1662,7 @@
 
     /* Tablet/Mobile: ≤ 768px */
     @media (max-width: 768px) {
-      :root { --header-h: 60px; }
+      :root { --header-h: 68px; }
 
       /* ── Hero: landscape video at natural 16:9 ratio ──────────────
          On a portrait phone, object-fit:cover on a 100vh hero scales
@@ -1739,8 +1739,8 @@
         display: flex;
       }
 
-      .header-logo { height: 32px; }
-      .header-logo img { height: 32px; }
+      .header-logo { height: 38px; }
+      .header-logo img { height: 38px; }
       .logo-text { font-size: 0.95rem; }
 
       /* ── Sections ─────────────────────────────────────────────── */
@@ -2548,7 +2548,8 @@
     </h1>
 
     <p class="hero-sub">
-      British Trade Awards is a competition to find the champions of construction and building services across England, Scotland and Wales
+      British Trade Awards is a competition to find the champions of construction and building services<br>
+      across England, Scotland and Wales – voted by the public.
     </p>
 
   </div>

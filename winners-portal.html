@@ -3,129 +3,963 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Winners Portal - British Trade Awards</title>
+  <title>Winners Portal — British Trade Awards</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
-  <link rel="icon" href="images/logos/non-stacked/BTA_Corporate_Horizontal-Texture.png" type="image/png">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400;1,700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
   <style>
-    body { background: #0a0a0a; min-height: 100vh; color: #fff; }
-    .winner-card { background: #1a1a1a; border: 1px solid rgba(201,162,39,0.2); border-radius: 16px; transition: transform .2s; }
-    .winner-card:hover { transform: translateY(-4px); border-color: rgba(201,162,39,0.45); }
-    .gold-text { color: #C9A227; }
-    .badge-winner { background: linear-gradient(135deg, #a07d1a, #C9A227); color: #000; font-weight: 700; }
-    .trophy-icon { font-size: 4rem; color: #C9A227; }
-    .btn-sm { min-height: 36px; padding: 6px 16px; }
-    @media (max-width: 768px) {
-      .winner-content { padding: 1.5rem 1rem; }
-      .winner-name { font-size: 1.4rem; }
-      .action-buttons { flex-direction: column; gap: 8px; }
-      .action-buttons .btn { width: 100%; }
-      .btn, .btn-sm { min-height: 44px; }
+    /* ── Reset & Base ──────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0a0a0a;
+      color: #fff;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
     }
-    @media (max-width: 480px) {
-      body { padding: 0; }
-      .winner-card { border-radius: 0; margin: 0; }
-      #reader { max-width: 100% !important; width: 100% !important; }
+
+    /* ── Variables ─────────────────────────────────────────────── */
+    :root {
+      --gold: #C9A227;
+      --gold-light: #e0b93a;
+      --gold-dim: rgba(201,162,39,0.1);
+      --gold-border: rgba(201,162,39,0.22);
+      --card: #111111;
+      --raised: #181818;
+      --muted: rgba(255,255,255,0.55);
+      --dim: rgba(255,255,255,0.3);
+      --header-h: 80px;
     }
+    @media (max-width: 768px) { :root { --header-h: 64px; } }
+
+    /* ── Standard Site Header ──────────────────────────────────── */
+    #site-header { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; height: var(--header-h); will-change: transform; transition: background .3s, box-shadow .3s, transform .4s cubic-bezier(.25,.46,.45,.94); }
+    #site-header.at-top, #site-header.scrolled { background: rgba(10,10,10,0.92); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+    #site-header.scrolled { box-shadow: 0 1px 0 rgba(255,255,255,0.06); }
+    #site-header.hidden { transform: translateY(-100%); }
+    .sh-inner { max-width: 1280px; margin: 0 auto; padding: 0 clamp(20px,5vw,60px); height: 100%; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+    .sh-logo { flex-shrink: 0; height: 48px; display: flex; align-items: center; }
+    .sh-logo img { height: 48px; width: auto; }
+    .sh-nav { display: flex; align-items: center; gap: 8px; }
+    .sh-nav a { font-size: .875rem; font-weight: 500; color: rgba(255,255,255,.85); padding: 8px 16px; border-radius: 100px; transition: color .15s, background .15s; text-decoration: none; }
+    .sh-nav a:hover { color: #fff; background: rgba(255,255,255,.08); }
+    .sh-cta { flex-shrink: 0; }
+    .btn-gold-nav { display: inline-flex; align-items: center; background: var(--gold); color: #000; font-size: .875rem; font-weight: 700; padding: 10px 22px; border-radius: 100px; text-decoration: none; transition: background .15s; }
+    .btn-gold-nav:hover { background: var(--gold-light); color: #000; }
+    .sh-hamburger { display: none; flex-direction: column; justify-content: center; gap: 5px; background: none; border: none; cursor: pointer; padding: 8px; width: 40px; height: 40px; }
+    .sh-hbar { display: block; width: 22px; height: 2px; background: rgba(255,255,255,.85); border-radius: 2px; }
+    #sh-mobile-menu { display: none; position: fixed; top: var(--header-h); left: 0; right: 0; background: rgba(10,10,10,.96); backdrop-filter: blur(20px); z-index: 999; transform: translateY(-8px); opacity: 0; transition: transform .25s, opacity .25s; pointer-events: none; }
+    #sh-mobile-menu.open { display: block; transform: none; opacity: 1; pointer-events: auto; }
+    .sh-mob-inner { display: flex; flex-direction: column; padding: 16px clamp(20px,5vw,60px) 24px; }
+    .sh-mob-inner a { font-size: 1rem; font-weight: 500; color: rgba(255,255,255,.85); padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,.06); text-decoration: none; }
+    .sh-mob-inner a:last-child { border-bottom: none; }
+    .sh-mob-inner a:hover { color: var(--gold); }
+    @media (max-width: 768px) { .sh-nav, .sh-cta { display: none; } .sh-hamburger { display: flex; } }
+
+    /* ── Hero ──────────────────────────────────────────────────── */
+    .hero {
+      position: relative;
+      min-height: 100svh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: calc(var(--header-h) + 48px) clamp(20px,5vw,60px) 80px;
+      text-align: center;
+      overflow: hidden;
+    }
+
+    /* radial gold glow */
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 900px 600px at 50% 0%, rgba(201,162,39,0.13) 0%, transparent 70%),
+        radial-gradient(ellipse 600px 400px at 50% 20%, rgba(201,162,39,0.07) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    /* subtle grid lines */
+    .hero::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.022) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.022) 1px, transparent 1px);
+      background-size: 72px 72px;
+      mask-image: radial-gradient(ellipse 80% 80% at 50% 0%, black 0%, transparent 100%);
+      -webkit-mask-image: radial-gradient(ellipse 80% 80% at 50% 0%, black 0%, transparent 100%);
+      pointer-events: none;
+    }
+
+    .hero-inner { position: relative; z-index: 1; width: 100%; max-width: 720px; }
+
+    /* Trophy */
+    .trophy-ring {
+      position: relative;
+      width: 96px;
+      height: 96px;
+      margin: 0 auto 36px;
+    }
+    .trophy-ring::before, .trophy-ring::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      border: 1px solid rgba(201,162,39,0.3);
+      animation: ring-pulse 3s ease-in-out infinite;
+    }
+    .trophy-ring::after {
+      inset: -16px;
+      border-color: rgba(201,162,39,0.12);
+      animation-delay: .5s;
+    }
+    @keyframes ring-pulse {
+      0%, 100% { opacity: 0.6; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.04); }
+    }
+    .trophy-icon {
+      width: 96px;
+      height: 96px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #1a1600 0%, #111 50%, #1a1600 100%);
+      border: 1px solid rgba(201,162,39,0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--gold);
+      box-shadow: 0 0 48px rgba(201,162,39,0.2), 0 0 0 1px rgba(201,162,39,0.1);
+      animation: icon-float 4s ease-in-out infinite;
+    }
+    @keyframes icon-float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: .75rem;
+      font-weight: 700;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 20px;
+    }
+    .hero-eyebrow::before, .hero-eyebrow::after {
+      content: '';
+      display: block;
+      width: 32px;
+      height: 1px;
+      background: var(--gold);
+      opacity: 0.5;
+    }
+
+    .hero-title {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: clamp(2.75rem, 8vw, 5.5rem);
+      font-weight: 900;
+      line-height: 1.05;
+      color: #fff;
+      margin-bottom: 20px;
+      letter-spacing: -.01em;
+    }
+    .hero-title em {
+      font-style: italic;
+      color: var(--gold);
+    }
+
+    .hero-sub {
+      font-size: clamp(.9375rem, 2vw, 1.125rem);
+      color: var(--muted);
+      max-width: 520px;
+      margin: 0 auto 52px;
+      line-height: 1.7;
+    }
+
+    /* ── Loading spinner ───────────────────────────────────────── */
+    #loadingState {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+    .loading-ring {
+      width: 44px;
+      height: 44px;
+      border: 2px solid rgba(201,162,39,0.2);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-label {
+      font-size: .875rem;
+      color: var(--muted);
+      letter-spacing: .03em;
+    }
+
+    /* ── Winner Identity Card ──────────────────────────────────── */
+    #winnerCard {
+      display: none;
+      position: relative;
+      background: var(--card);
+      border: 1px solid var(--gold-border);
+      border-radius: 24px;
+      padding: clamp(36px, 6vw, 60px);
+      max-width: 580px;
+      margin: 0 auto;
+      box-shadow: 0 0 0 1px rgba(201,162,39,0.05), 0 40px 80px rgba(0,0,0,0.6), 0 0 120px rgba(201,162,39,0.06);
+      animation: reveal .7s cubic-bezier(.22,.68,0,1.15) both;
+    }
+    @keyframes reveal {
+      from { opacity: 0; transform: translateY(28px) scale(.97); }
+      to   { opacity: 1; transform: none; }
+    }
+
+    /* Corner ornaments */
+    #winnerCard::before, #winnerCard::after {
+      content: '';
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      border-color: rgba(201,162,39,0.5);
+      border-style: solid;
+    }
+    #winnerCard::before { top: 14px; left: 14px; border-width: 2px 0 0 2px; border-radius: 4px 0 0 0; }
+    #winnerCard::after  { bottom: 14px; right: 14px; border-width: 0 2px 2px 0; border-radius: 0 0 4px 0; }
+
+    .cert-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(201,162,39,0.1);
+      border: 1px solid rgba(201,162,39,0.25);
+      color: var(--gold);
+      font-size: .6875rem;
+      font-weight: 700;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      padding: 5px 14px;
+      border-radius: 100px;
+      margin-bottom: 28px;
+    }
+    .cert-status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--gold);
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .cert-company {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: clamp(1.6rem, 4vw, 2.5rem);
+      font-weight: 700;
+      color: #fff;
+      line-height: 1.15;
+      margin-bottom: 10px;
+    }
+
+    .cert-of-label {
+      font-size: .75rem;
+      font-weight: 600;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--dim);
+      margin-bottom: 10px;
+    }
+
+    .cert-award {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: clamp(1.05rem, 2.5vw, 1.375rem);
+      font-style: italic;
+      font-weight: 600;
+      color: var(--gold);
+      line-height: 1.3;
+      margin-bottom: 28px;
+    }
+
+    .cert-rule {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(201,162,39,0.35), transparent);
+      margin: 24px 0;
+    }
+
+    .cert-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+    }
+    .cert-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(255,255,255,0.035);
+      border: 1px solid rgba(255,255,255,0.07);
+      color: var(--muted);
+      font-size: .8125rem;
+      padding: 6px 13px;
+      border-radius: 8px;
+    }
+
+    /* ── Error State ───────────────────────────────────────────── */
+    #errorState {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 18px;
+      max-width: 440px;
+      margin: 0 auto;
+      text-align: center;
+    }
+    .error-icon-wrap {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(201,162,39,0.5);
+    }
+    .error-heading {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.625rem;
+      font-weight: 700;
+      color: #fff;
+    }
+    .error-body {
+      font-size: .9375rem;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+    .error-body a { color: var(--gold); text-decoration: none; }
+    .error-body a:hover { text-decoration: underline; }
+
+    /* ── Content Sections ──────────────────────────────────────── */
+    .page-section {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 80px clamp(20px,5vw,60px);
+    }
+    .section-label {
+      font-size: .75rem;
+      font-weight: 700;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+      color: var(--gold);
+      text-align: center;
+      margin-bottom: 12px;
+    }
+    .section-heading {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: clamp(1.625rem, 4vw, 2.25rem);
+      font-weight: 700;
+      color: #fff;
+      text-align: center;
+      margin-bottom: 8px;
+    }
+    .section-intro {
+      font-size: .9375rem;
+      color: var(--muted);
+      text-align: center;
+      margin-bottom: 52px;
+      line-height: 1.7;
+    }
+
+    /* ── Steps Timeline ────────────────────────────────────────── */
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 32px;
+      position: relative;
+    }
+    @media (max-width: 860px) { .steps-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 500px) { .steps-grid { grid-template-columns: 1fr; gap: 20px; } }
+
+    .steps-grid::before {
+      content: '';
+      position: absolute;
+      top: 28px;
+      left: calc(12.5% + 28px);
+      right: calc(12.5% + 28px);
+      height: 1px;
+      background: linear-gradient(90deg, rgba(201,162,39,0.12), rgba(201,162,39,0.4), rgba(201,162,39,0.12));
+    }
+    @media (max-width: 860px) { .steps-grid::before { display: none; } }
+
+    .step-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+    .step-num {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: var(--card);
+      border: 1px solid var(--gold-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--gold);
+      margin-bottom: 20px;
+      position: relative;
+      z-index: 1;
+      flex-shrink: 0;
+    }
+    .step-name {
+      font-size: .9375rem;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 6px;
+    }
+    .step-desc {
+      font-size: .8125rem;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    /* ── Action Cards ──────────────────────────────────────────── */
+    .actions-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 20px;
+    }
+
+    .action-card {
+      background: var(--card);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 18px;
+      padding: 32px 24px 28px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      transition: border-color .2s, transform .25s, box-shadow .25s;
+    }
+    .action-card:hover {
+      border-color: var(--gold-border);
+      transform: translateY(-5px);
+      box-shadow: 0 20px 48px rgba(0,0,0,0.35), 0 0 0 1px rgba(201,162,39,0.08);
+    }
+    .action-card.featured {
+      background: linear-gradient(145deg, #151200, var(--card) 60%);
+      border-color: rgba(201,162,39,0.25);
+    }
+
+    .action-icon-wrap {
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
+      background: var(--gold-dim);
+      border: 1px solid rgba(201,162,39,0.18);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--gold);
+      margin-bottom: 20px;
+      flex-shrink: 0;
+    }
+    .action-icon-wrap svg { width: 24px; height: 24px; }
+
+    .action-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+    .action-body {
+      font-size: .8125rem;
+      color: var(--muted);
+      line-height: 1.6;
+      flex: 1;
+      margin-bottom: 24px;
+    }
+
+    .btn-base {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      font-family: 'Inter', sans-serif;
+      font-size: .8125rem;
+      font-weight: 600;
+      padding: 10px 20px;
+      border-radius: 100px;
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background .15s, color .15s, opacity .15s, transform .15s;
+      white-space: nowrap;
+    }
+    .btn-gold { background: var(--gold); color: #000; }
+    .btn-gold:hover { background: var(--gold-light); color: #000; }
+    .btn-ghost { background: rgba(255,255,255,0.06); color: rgba(255,255,255,.8); border: 1px solid rgba(255,255,255,.1); }
+    .btn-ghost:hover { background: rgba(255,255,255,.1); color: #fff; }
+    .btn-disabled { opacity: 0.45; cursor: not-allowed; background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.4); border: 1px solid rgba(255,255,255,0.06); }
+    .btn-disabled:hover { transform: none; }
+
+    /* ── Share Panel ───────────────────────────────────────────── */
+    .share-wrap {
+      background: var(--card);
+      border: 1px solid var(--gold-border);
+      border-radius: 20px;
+      overflow: hidden;
+    }
+
+    .share-head {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 28px 32px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .share-head-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: var(--gold-dim);
+      border: 1px solid rgba(201,162,39,0.18);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--gold);
+      flex-shrink: 0;
+    }
+    .share-head-title { font-size: 1rem; font-weight: 700; color: #fff; margin-bottom: 2px; }
+    .share-head-sub { font-size: .8125rem; color: var(--muted); }
+
+    .share-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+    @media (max-width: 640px) { .share-grid { grid-template-columns: 1fr; } }
+
+    .share-platform {
+      padding: 28px 32px;
+      border-right: 1px solid rgba(255,255,255,0.05);
+    }
+    .share-platform:last-child { border-right: none; }
+
+    .share-platform-label {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: .6875rem;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.35);
+      margin-bottom: 14px;
+    }
+
+    .share-text {
+      font-size: .875rem;
+      color: rgba(255,255,255,0.65);
+      line-height: 1.65;
+      background: rgba(255,255,255,0.025);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 14px;
+      min-height: 100px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .share-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    /* ── Footer (standard BTA) ─────────────────────────────────── */
+    #sf { background: #050505; border-top: 1px solid rgba(201,162,39,0.15); padding: 56px 0 32px; margin-top: 80px; }
+    .sf-cont { max-width: 1280px; margin: 0 auto; padding: 0 clamp(20px,5vw,60px); }
+    .sf-top { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 32px; margin-bottom: 40px; }
+    .sf-logo img { height: 36px; width: auto; opacity: .9; }
+    .sf-nav { display: flex; flex-wrap: wrap; gap: 4px; }
+    .sf-nav a { font-size: .8125rem; color: rgba(255,255,255,.45); padding: 6px 14px; border-radius: 100px; text-decoration: none; transition: color .15s, background .15s; }
+    .sf-nav a:hover { color: #fff; background: rgba(255,255,255,.06); }
+    .sf-nav a.sf-gold { color: var(--gold); }
+    .sf-links { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 24px; }
+    .sf-links a { font-size: .75rem; color: rgba(255,255,255,.28); padding: 4px 10px; border-radius: 100px; text-decoration: none; }
+    .sf-links a:hover { color: rgba(255,255,255,.6); }
+    .sf-socials { display: flex; gap: 8px; margin-bottom: 32px; }
+    .sf-socials a { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; border: 1px solid rgba(255,255,255,.1); color: rgba(255,255,255,.45); text-decoration: none; transition: border-color .15s, color .15s; }
+    .sf-socials a:hover { border-color: var(--gold); color: var(--gold); }
+    .sf-socials svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+    .sf-bottom { border-top: 1px solid rgba(255,255,255,.06); padding-top: 24px; }
+    .sf-bottom p { font-size: .75rem; color: rgba(255,255,255,.2); }
   </style>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script type="module" src="config.js"></script>
 </head>
 <body>
-  <nav class="navbar navbar-dark" style="background: rgba(0,0,0,0.6); border-bottom: 1px solid rgba(201,162,39,0.2);">
-    <div class="container">
-      <span class="navbar-brand fw-bold"><i class="bi bi-trophy-fill gold-text me-2"></i>British Trade Awards - Winners Portal</span>
-    </div>
-  </nav>
 
-  <div class="container py-5">
-    <div class="text-center mb-5">
-      <i class="bi bi-trophy-fill trophy-icon d-block mb-3"></i>
-      <h1 class="fw-bold">Congratulations!</h1>
-      <p class="lead text-light opacity-75">You have been selected as a winner in the British Trade Awards.</p>
-    </div>
+<!-- ── Site Header ───────────────────────────────────────────────── -->
+<header id="site-header" class="at-top" role="banner">
+  <div class="sh-inner">
+    <a href="home.html" class="sh-logo" aria-label="British Trade Awards — home">
+      <img src="images/logos/non-stacked/BTA_Corporate_Horizontal-gold-white.png" alt="British Trade Awards">
+    </a>
+    <nav class="sh-nav" aria-label="Main navigation">
+      <a href="home.html#categories">Categories</a>
+      <a href="home.html#regions">Regions</a>
+      <a href="home.html#find-a-trade">Find a Trade</a>
+      <a href="home.html#about">About</a>
+    </nav>
+    <div class="sh-cta"><a href="submit-entry.html" class="btn-gold-nav">Enter Now</a></div>
+    <button class="sh-hamburger" id="sh-hamburger-btn" aria-expanded="false" aria-controls="sh-mobile-menu">
+      <span class="sh-hbar"></span><span class="sh-hbar"></span><span class="sh-hbar"></span>
+    </button>
+  </div>
+</header>
+<nav id="sh-mobile-menu" aria-label="Mobile navigation" aria-hidden="true">
+  <div class="sh-mob-inner">
+    <a href="home.html#categories">Categories</a>
+    <a href="home.html#regions">Regions</a>
+    <a href="home.html#find-a-trade">Find a Trade</a>
+    <a href="home.html#about">About</a>
+    <a href="submit-entry.html" class="btn-gold-nav" style="margin-top:16px;justify-content:center;">Enter Now</a>
+  </div>
+</nav>
 
-    <div id="loadingState" class="text-center py-5">
-      <div class="spinner-border text-warning" role="status" aria-label="Loading winner details"></div>
-      <p class="mt-3">Loading your winner details...</p>
-    </div>
+<!-- ── Hero ─────────────────────────────────────────────────────── -->
+<section class="hero" aria-labelledby="hero-heading">
+  <div class="hero-inner">
 
-    <div id="winnerContent" class="d-none">
-      <div class="row g-4 mb-5">
-        <div class="col-md-6">
-          <div class="winner-card p-4">
-            <h4 class="gold-text mb-3"><i class="bi bi-building me-2"></i>Your Award</h4>
-            <h5 id="awardName" class="fw-bold"></h5>
-            <p id="companyName" class="text-light opacity-75 mb-1"></p>
-            <p id="awardCategory" class="text-light opacity-50 small"></p>
-          </div>
-        </div>
-        <div class="col-md-6">
-          <div class="winner-card p-4">
-            <h4 class="gold-text mb-3"><i class="bi bi-list-check me-2"></i>Next Steps</h4>
-            <ul class="list-unstyled mb-0">
-              <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Upload your winner logo pack</li>
-              <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Download your digital certificate</li>
-              <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Book ceremony tickets</li>
-              <li><i class="bi bi-check-circle text-success me-2"></i>Share on social media</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      <div class="row g-4">
-        <div class="col-md-4">
-          <div class="winner-card p-4 text-center">
-            <i class="bi bi-download fs-1 gold-text d-block mb-3"></i>
-            <h6 class="fw-bold">Download Certificate</h6>
-            <p class="small text-light opacity-50">Your official winner certificate</p>
-            <button class="btn btn-outline-warning btn-sm" id="downloadCertBtn"><i class="bi bi-file-earmark-pdf me-1"></i>Download PDF</button>
-          </div>
-        </div>
-        <div class="col-md-4">
-          <div class="winner-card p-4 text-center">
-            <i class="bi bi-image fs-1 gold-text d-block mb-3"></i>
-            <h6 class="fw-bold">Winner Logo Pack</h6>
-            <p class="small text-light opacity-50">Use on your website & materials</p>
-            <button class="btn btn-outline-warning btn-sm" id="downloadLogoBtn"><i class="bi bi-cloud-download me-1"></i>Download Pack</button>
-          </div>
-        </div>
-        <div class="col-md-4">
-          <div class="winner-card p-4 text-center">
-            <i class="bi bi-ticket-perforated fs-1 gold-text d-block mb-3"></i>
-            <h6 class="fw-bold">Ceremony Tickets</h6>
-            <p class="small text-light opacity-50">Book your seats at the ceremony</p>
-            <button class="btn btn-outline-warning btn-sm" id="bookTicketsBtn"><i class="bi bi-calendar-event me-1"></i>Book Now</button>
-          </div>
-        </div>
+    <!-- Trophy ring animation -->
+    <div class="trophy-ring" aria-hidden="true">
+      <div class="trophy-icon">
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
+          <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+          <path d="M4 22h16"/>
+          <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/>
+          <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/>
+          <path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>
+        </svg>
       </div>
     </div>
 
-    <div id="errorState" class="d-none text-center py-5">
-      <i class="bi bi-exclamation-triangle fs-1 text-warning d-block mb-3"></i>
-      <h3>Unable to load winner details</h3>
-      <p class="text-light opacity-50">Please check the link or contact the awards team.</p>
+    <p class="hero-eyebrow" aria-hidden="true">British Trade Awards 2026</p>
+
+    <h1 class="hero-title" id="hero-heading">
+      <em>Congratulations</em> —<br>you're a winner
+    </h1>
+
+    <p class="hero-sub">
+      Your entry has been reviewed by our judging panel and you've been selected as a winner.
+      Your winner details and everything you need are below.
+    </p>
+
+    <!-- Loading -->
+    <div id="loadingState" role="status" aria-live="polite">
+      <div class="loading-ring" aria-hidden="true"></div>
+      <p class="loading-label">Loading your award details…</p>
+    </div>
+
+    <!-- Winner Identity Card -->
+    <div id="winnerCard" aria-live="polite">
+      <div class="cert-status" aria-label="Status: Confirmed winner">
+        <span class="cert-status-dot" aria-hidden="true"></span>
+        Confirmed Winner
+      </div>
+      <h2 class="cert-company" id="certCompany"></h2>
+      <p class="cert-of-label">Winner of</p>
+      <p class="cert-award" id="certAward"></p>
+      <div class="cert-rule"></div>
+      <div class="cert-tags" id="certTags"></div>
+    </div>
+
+    <!-- Error -->
+    <div id="errorState" role="alert">
+      <div class="error-icon-wrap" aria-hidden="true">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+      </div>
+      <h2 class="error-heading">Link not recognised</h2>
+      <p class="error-body">
+        This winner link may be invalid or has expired. Please use the exact link from your
+        congratulations email, or <a href="mailto:info@britishtradeawards.com">contact our team</a>
+        and we'll sort it out right away.
+      </p>
+    </div>
+
+  </div>
+</section>
+
+<!-- ── What happens next ──────────────────────────────────────────── -->
+<section id="stepsSection" class="page-section" aria-labelledby="steps-heading" style="display:none">
+  <p class="section-label">Your next steps</p>
+  <h2 class="section-heading" id="steps-heading">Making the most of your win</h2>
+  <p class="section-intro">Here's everything you need to celebrate and promote your achievement</p>
+
+  <div class="steps-grid">
+    <div class="step-item">
+      <div class="step-num" aria-hidden="true">1</div>
+      <p class="step-name">Confirm your details</p>
+      <p class="step-desc">Check your award and company name are correct. Email us at <a href="mailto:info@britishtradeawards.com" style="color:var(--gold)">info@britishtradeawards.com</a> with any corrections.</p>
+    </div>
+    <div class="step-item">
+      <div class="step-num" aria-hidden="true">2</div>
+      <p class="step-name">Download your materials</p>
+      <p class="step-desc">Get your digital certificate and winner badge pack to use on your website, email signature, and marketing materials.</p>
+    </div>
+    <div class="step-item">
+      <div class="step-num" aria-hidden="true">3</div>
+      <p class="step-name">Book your tickets</p>
+      <p class="step-desc">Secure your complimentary winner seats at the awards ceremony and invite your team to celebrate with you.</p>
+    </div>
+    <div class="step-item">
+      <div class="step-num" aria-hidden="true">4</div>
+      <p class="step-name">Announce your win</p>
+      <p class="step-desc">Share the news on LinkedIn and social media. We've prepared ready-to-post copy personalised for you.</p>
     </div>
   </div>
+</section>
 
-  <!-- Footer -->
-  <footer style="background:#050505;border-top:1px solid #1a1a1a;padding:40px 0 28px;margin-top:48px;">
-    <div class="container">
-      <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-bottom:16px;">
-        <a href="home.html" style="font-size:0.8rem;color:rgba(255,255,255,0.35);padding:5px 12px;border-radius:100px;text-decoration:none;transition:color 0.2s;">Home</a>
-        <a href="submit-entry.html" style="font-size:0.8rem;color:#C9A227;padding:5px 12px;border-radius:100px;text-decoration:none;">Enter 2026</a>
-        <a href="privacy-policy.html" style="font-size:0.8rem;color:rgba(255,255,255,0.35);padding:5px 12px;border-radius:100px;text-decoration:none;">Privacy Policy</a>
-        <a href="terms-and-conditions.html" style="font-size:0.8rem;color:rgba(255,255,255,0.35);padding:5px 12px;border-radius:100px;text-decoration:none;">Terms &amp; Conditions</a>
-        <a href="mailto:info@britishtradeawards.com" style="font-size:0.8rem;color:rgba(255,255,255,0.35);padding:5px 12px;border-radius:100px;text-decoration:none;">Contact</a>
+<!-- ── Winner Resources ───────────────────────────────────────────── -->
+<section id="resourcesSection" class="page-section" aria-labelledby="resources-heading" style="display:none; padding-top:0">
+  <p class="section-label">Your winner resources</p>
+  <h2 class="section-heading" id="resources-heading">Everything, ready for you</h2>
+  <p class="section-intro">All your winner materials in one place</p>
+
+  <div class="actions-grid">
+
+    <!-- Certificate -->
+    <div class="action-card featured">
+      <div class="action-icon-wrap" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+          <line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/>
+        </svg>
       </div>
-      <p style="font-size:0.75rem;color:rgba(255,255,255,0.18);text-align:center;margin:0;">&copy; 2026 British Trade Awards. All rights reserved.</p>
+      <p class="action-title">Winner Certificate</p>
+      <p class="action-body">Your official British Trade Awards certificate. Print it, frame it, and display it with pride.</p>
+      <a id="certDownloadBtn" href="#" class="btn-base btn-gold" target="_blank" rel="noopener noreferrer">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download PDF
+      </a>
     </div>
-  </footer>
-  <script src="public-utils.js"></script>
-  <script src="winners-portal-app.js"></script>
+
+    <!-- Badge Pack -->
+    <div class="action-card">
+      <div class="action-icon-wrap" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/>
+        </svg>
+      </div>
+      <p class="action-title">Winner Badge Pack</p>
+      <p class="action-body">High-resolution winner badges and logos for your website, email footer, and print materials.</p>
+      <a id="badgeDownloadBtn" href="#" class="btn-base btn-ghost" target="_blank" rel="noopener noreferrer">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download Pack
+      </a>
+    </div>
+
+    <!-- Ceremony Tickets -->
+    <div class="action-card">
+      <div class="action-icon-wrap" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+          <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+      </div>
+      <p class="action-title">Ceremony Tickets</p>
+      <p class="action-body">Attend the awards ceremony and celebrate with Britain's best. Book your seats for the evening.</p>
+      <a id="ticketsBtn" href="register.html" class="btn-base btn-ghost">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        Book Now
+      </a>
+    </div>
+
+    <!-- Share -->
+    <div class="action-card">
+      <div class="action-icon-wrap" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+        </svg>
+      </div>
+      <p class="action-title">Announce Your Win</p>
+      <p class="action-body">Ready-to-post announcements for LinkedIn and X, personalised with your company name and award.</p>
+      <button class="btn-base btn-ghost" onclick="document.getElementById('shareSection').scrollIntoView({behavior:'smooth'})">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="19 12 12 19 5 12"/><line x1="12" y1="5" x2="12" y2="19"/></svg>
+        See Templates
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- ── Social Sharing ──────────────────────────────────────────────── -->
+<section id="shareSection" class="page-section" aria-labelledby="share-heading" style="display:none; padding-top:0">
+  <p class="section-label">Spread the word</p>
+  <h2 class="section-heading" id="share-heading">Announce your win</h2>
+  <p class="section-intro">Copy-ready posts, personalised for your company</p>
+
+  <div class="share-wrap">
+    <div class="share-head">
+      <div class="share-head-icon" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+        </svg>
+      </div>
+      <div>
+        <p class="share-head-title">Ready-to-post announcements</p>
+        <p class="share-head-sub">Personalised with your company and award — click Copy, paste, and post</p>
+      </div>
+    </div>
+
+    <div class="share-grid">
+      <!-- LinkedIn -->
+      <div class="share-platform">
+        <div class="share-platform-label">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
+          LinkedIn
+        </div>
+        <div class="share-text" id="linkedinCopy" role="textbox" aria-readonly="true" aria-label="LinkedIn post text">—</div>
+        <div class="share-btns">
+          <button class="btn-base btn-ghost" onclick="copyShareText('linkedinCopy',this)" aria-label="Copy LinkedIn post to clipboard">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Copy
+          </button>
+          <a id="linkedinPostBtn" href="#" target="_blank" rel="noopener noreferrer" class="btn-base btn-ghost" aria-label="Open LinkedIn to post">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            Post on LinkedIn
+          </a>
+        </div>
+      </div>
+
+      <!-- X / Twitter -->
+      <div class="share-platform">
+        <div class="share-platform-label">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 4l16 16M4 20L20 4"/></svg>
+          X / Twitter
+        </div>
+        <div class="share-text" id="twitterCopy" role="textbox" aria-readonly="true" aria-label="X/Twitter post text">—</div>
+        <div class="share-btns">
+          <button class="btn-base btn-ghost" onclick="copyShareText('twitterCopy',this)" aria-label="Copy X/Twitter post to clipboard">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Copy
+          </button>
+          <a id="twitterPostBtn" href="#" target="_blank" rel="noopener noreferrer" class="btn-base btn-ghost" aria-label="Open X to post">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            Post on X
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Footer ─────────────────────────────────────────────────────── -->
+<footer id="sf" role="contentinfo">
+  <div class="sf-cont">
+    <div class="sf-top">
+      <a href="home.html" class="sf-logo"><img src="images/logos/non-stacked/BTA_Corporate_Horizontal-gold-white.png" alt="British Trade Awards"></a>
+      <nav class="sf-nav" aria-label="Footer navigation">
+        <a href="home.html#categories">Categories</a>
+        <a href="home.html#regions">Regions</a>
+        <a href="home.html#find-a-trade">Find a Trade</a>
+        <a href="home.html#about">About</a>
+        <a href="submit-entry.html" class="sf-gold">Enter 2026</a>
+      </nav>
+    </div>
+    <div class="sf-links" role="list">
+      <a href="privacy-policy.html" role="listitem">Privacy Policy</a>
+      <a href="terms-and-conditions.html" role="listitem">Terms &amp; Conditions</a>
+      <a href="mailto:info@britishtradeawards.com" role="listitem">Contact Us</a>
+    </div>
+    <div class="sf-socials" aria-label="Social media links">
+      <a href="#" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
+        <svg viewBox="0 0 24 24"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
+      </a>
+      <a href="#" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+        <svg viewBox="0 0 24 24"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>
+      </a>
+      <a href="#" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
+        <svg viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+      </a>
+      <a href="#" target="_blank" rel="noopener noreferrer" aria-label="X (Twitter)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4l16 16M4 20L20 4"/></svg>
+      </a>
+    </div>
+    <div class="sf-bottom">
+      <p>&copy; 2026 British Trade Awards &nbsp;|&nbsp; <strong>[Company Name Placeholder]</strong> &nbsp;|&nbsp; Registered in England &amp; Wales</p>
+    </div>
+  </div>
+</footer>
+
+<!-- ── Inline utilities ───────────────────────────────────────────── -->
+<script>
+function copyShareText(elId, btn) {
+  var el = document.getElementById(elId);
+  if (!el) return;
+  var text = el.textContent.trim();
+  var origHTML = btn.innerHTML;
+  navigator.clipboard.writeText(text).then(function() {
+    btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg> Copied!';
+    setTimeout(function() { btn.innerHTML = origHTML; }, 2200);
+  }).catch(function() {
+    var r = document.createRange();
+    r.selectNode(el);
+    window.getSelection().removeAllRanges();
+    window.getSelection().addRange(r);
+    try { document.execCommand('copy'); } catch(e) {}
+    window.getSelection().removeAllRanges();
+  });
+}
+
+/* Header scroll + hamburger */
+(function(){
+  var h = document.getElementById('site-header');
+  var btn = document.getElementById('sh-hamburger-btn');
+  var mob = document.getElementById('sh-mobile-menu');
+  if (h) {
+    var lastY = 0, ticking = false;
+    window.addEventListener('scroll', function() {
+      if (!ticking) {
+        requestAnimationFrame(function() {
+          var y = window.scrollY;
+          h.className = y < 20 ? 'at-top' : y < lastY ? 'scrolled' : 'scrolled hidden';
+          lastY = y; ticking = false;
+        });
+        ticking = true;
+      }
+    }, { passive: true });
+  }
+  if (btn && mob) {
+    btn.addEventListener('click', function() {
+      var open = mob.classList.contains('open');
+      mob.classList.toggle('open');
+      mob.setAttribute('aria-hidden', open ? 'true' : 'false');
+      btn.setAttribute('aria-expanded', open ? 'false' : 'true');
+    });
+    mob.querySelectorAll('a').forEach(function(a) {
+      a.addEventListener('click', function() {
+        mob.classList.remove('open');
+        mob.setAttribute('aria-hidden', 'true');
+        btn.setAttribute('aria-expanded', 'false');
+      });
+    });
+  }
+})();
+</script>
+
+<script src="winners-portal-app.js"></script>
 </body>
 </html>

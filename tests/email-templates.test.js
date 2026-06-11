@@ -486,7 +486,7 @@ describe('Email Templates Module - renderTemplatesList()', () => {
     emailTemplatesModule.templates = [];
     emailTemplatesModule.renderTemplatesList();
     const container = document.getElementById('templatesList');
-    expect(container.innerHTML).toContain('No templates found');
+    expect(container.innerHTML).toContain('No templates yet');
   });
 
   test('filters out email_header and email_footer system templates', () => {
@@ -500,20 +500,22 @@ describe('Email Templates Module - renderTemplatesList()', () => {
     expect(container.innerHTML).not.toContain('email_footer');
   });
 
-  test('shows Active badge for active templates and Inactive badge for inactive', () => {
+  test('shows Off badge for inactive templates (no Active badge in new UI)', () => {
     emailTemplatesModule.renderTemplatesList();
     const container = document.getElementById('templatesList');
     const html = container.innerHTML;
-    expect(html).toContain('bg-success'); // Active badge
-    expect(html).toContain('bg-secondary'); // Inactive badge (tpl-3 is inactive)
+    // Active templates have no status badge — only inactive ones get an "Off" badge
+    expect(html).not.toContain('bg-success');
+    expect(html).toContain('bg-secondary'); // Off badge for tpl-3 which is inactive
   });
 
-  test('shows Default badge for default templates', () => {
+  test('shows Auto badge for auto-triggered templates (Default badge removed from list UI)', () => {
     emailTemplatesModule.renderTemplatesList();
     const container = document.getElementById('templatesList');
     const html = container.innerHTML;
-    expect(html).toContain('bg-primary'); // Default badge
-    expect(html).toContain('Default');
+    // Default badge was removed from the list in the redesign; only Auto/Off badges remain
+    expect(html).not.toContain('bg-primary');
+    expect(html).toContain('Auto'); // Auto badge still shown for triggered templates
   });
 
   test('shows Auto badge for auto-triggered templates', () => {
@@ -550,19 +552,21 @@ describe('Email Templates Module - renderTemplatesList()', () => {
     expect(html).toContain('Winner Announcement');
   });
 
-  test('includes description as title attribute when present', () => {
+  test('includes auto-trigger description as title on the Auto badge', () => {
     emailTemplatesModule.renderTemplatesList();
     const container = document.getElementById('templatesList');
     const html = container.innerHTML;
-    expect(html).toContain('title="Sent when a new entry is submitted"');
-    expect(html).toContain('title="Reminder for document uploads"');
+    // Template descriptions are no longer used as title attributes on list items.
+    // The Auto badge carries the _autoTriggerDescriptions text as its title.
+    expect(html).toContain('Sent automatically when an entry is submitted via the public entry form');
+    expect(html).not.toContain('title="Sent when a new entry is submitted"');
   });
 
   test('shows empty state when all templates are system types', () => {
     emailTemplatesModule.templates = [...systemTemplates];
     emailTemplatesModule.renderTemplatesList();
     const container = document.getElementById('templatesList');
-    expect(container.innerHTML).toContain('No templates found');
+    expect(container.innerHTML).toContain('No templates yet');
   });
 });
 
@@ -637,7 +641,7 @@ describe('Email Templates Module - renderTemplateEditor()', () => {
     expect(html).toContain('{ENTRY_NUMBER}');
     expect(html).toContain('{CONTACT_NAME}');
     expect(html).toContain('{COMPANY_NAME}');
-    expect(html).toContain('Available Placeholders');
+    expect(html).toContain('Available placeholders');
   });
 
   test('does not render placeholders section when none available', () => {
@@ -650,7 +654,7 @@ describe('Email Templates Module - renderTemplateEditor()', () => {
     // "Entry Confirmation" is in _defaultTemplates
     emailTemplatesModule.renderTemplateEditor(sampleTemplates[0]);
     const editor = document.getElementById('templateEditor');
-    expect(editor.innerHTML).toContain('Revert to Default');
+    expect(editor.innerHTML).toContain('Revert to default');
   });
 
   test('does not render revert button for templates without defaults', () => {
@@ -683,9 +687,9 @@ describe('Email Templates Module - renderTemplateEditor()', () => {
     emailTemplatesModule.renderTemplateEditor(sampleTemplates[0]);
     const editor = document.getElementById('templateEditor');
     const html = editor.innerHTML;
-    expect(html).toContain('Save Template');
+    expect(html).toContain('Save changes');
     expect(html).toContain('Preview');
-    expect(html).toContain('Send Test');
+    expect(html).toContain('Send test');
     expect(html).toContain('Delete');
   });
 });
@@ -836,7 +840,7 @@ describe('Email Templates Module - newTemplate()', () => {
     expect(document.getElementById('newTemplateDescription')).not.toBeNull();
     expect(document.getElementById('newTemplateSubject')).not.toBeNull();
     expect(document.getElementById('newTemplateBody')).not.toBeNull();
-    expect(document.getElementById('newTemplatePlaceholders')).not.toBeNull();
+    // Placeholders are now auto-extracted from the body instead of being a manual field
     expect(document.getElementById('newTemplateActive')).not.toBeNull();
     expect(document.getElementById('newTemplateDefault')).not.toBeNull();
   });
@@ -987,8 +991,12 @@ describe('Email Templates Module - Edge Cases', () => {
     ];
     emailTemplatesModule.renderTemplatesList();
     const container = document.getElementById('templatesList');
-    expect(container.innerHTML).toContain('&quot;');
-    expect(container.innerHTML).not.toContain('description="Template with "quotes"');
+    // In the redesigned list, description is not rendered as a title attribute —
+    // it is only used for search filtering. The template name ("Quote Test") should
+    // appear but the raw description string must not leak into the HTML.
+    expect(container.innerHTML).toContain('Quote Test');
+    expect(container.innerHTML).not.toContain('Template with &quot;quotes&quot;');
+    expect(container.innerHTML).not.toContain('Template with "quotes"');
   });
 });
 
@@ -1007,7 +1015,7 @@ describe('Email Templates Module - Default Templates Content', () => {
     const tmpl = emailTemplatesModule._defaultTemplates['Winner Announcement'];
     expect(tmpl.body).toContain('{CEREMONY_DATE}');
     expect(tmpl.body).toContain('{CEREMONY_VENUE}');
-    expect(tmpl.body).toContain('Congratulations');
+    expect(tmpl.body).toContain('{WINNERS_PORTAL_LINK}');
   });
 
   test('Judge Assignment default has judge-specific placeholders', () => {

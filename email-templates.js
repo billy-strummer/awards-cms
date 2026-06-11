@@ -14,6 +14,85 @@ const emailTemplatesModule = {
   /** @type {Object} Pagination state */
   _pagination: { page: 1, totalPages: 1, count: 0, pageSize: 100 },
 
+  /** @type {string} Current search filter applied to the template list */
+  _searchQuery: '',
+
+  /** Human-readable description of when each template type is triggered */
+  _autoTriggerDescriptions: {
+    confirmation: 'Sent automatically when an entry is submitted via the public entry form',
+    nomination_confirmation: 'Sent automatically when a peer nomination is submitted',
+    reminder: 'Sent to entrants who have not yet uploaded supporting documents',
+    revision_request: 'Sent when an admin requests changes to a submitted entry',
+    payment_confirmation: 'Sent automatically after a successful payment is processed',
+    payment_failed: 'Sent automatically when a payment attempt fails',
+    refund_confirmation: 'Sent automatically when a refund is issued',
+    payment_reminder: 'Sent to entrants with outstanding unpaid entry fees',
+    approval: 'Sent when an admin marks an entry as shortlisted',
+    rejection: 'Sent when an admin marks an entry as not shortlisted',
+    winner_announcement: 'Sent when an admin designates an entry as a winner',
+    judge_assignment: 'Sent to judges when new entries are assigned to them',
+    judge_reminder: 'Sent to judges as they approach their scoring deadline',
+    event_invitation: 'Sent when an admin invites a contact to an event',
+    ticket_issued: "Sent when an attendee's event ticket is issued",
+    deadline_reminder: 'Sent by the automated scheduler as key dates approach',
+    sponsor_enquiry_confirmation: 'Sent automatically when someone submits the sponsorship enquiry form',
+    general: 'Used manually — send from Email Builder or automation workflows',
+    notification: 'Used manually or by automation workflows for general alerts',
+    invite: 'Used manually from Email Builder for invitation campaigns',
+  },
+
+  /** Short description of what each placeholder resolves to at send time */
+  _placeholderDescriptions: {
+    ENTRY_NUMBER: 'Entry reference code, e.g. BTA-2026-0001',
+    CONTACT_NAME: "Recipient's full name",
+    COMPANY_NAME: "Entrant's company name",
+    AWARD_NAME: 'Award category name',
+    SECTOR: 'Industry sector',
+    REGION: 'Geographic region',
+    ENTRY_TITLE: 'Title of the entry',
+    UPLOAD_LINK: 'URL to upload supporting documents',
+    DEADLINE_DATE: 'Entry submission deadline',
+    ANNOUNCEMENT_DATE: 'Winners announcement date',
+    CONTACT_EMAIL: 'Awards team contact email',
+    NOMINEE_NAME: 'Name of the person being nominated',
+    PAYMENT_LINK: 'Payment checkout URL',
+    AMOUNT: 'Payment amount in GBP',
+    INVOICE_NUMBER: 'Invoice reference number',
+    JUDGE_NAME: "Judge's name",
+    ENTRY_COUNT: 'Number of entries assigned to this judge',
+    DEADLINE: 'Judging deadline date',
+    JUDGE_PORTAL_LINK: 'URL to the judge portal',
+    SCORED_COUNT: 'Entries scored so far',
+    TOTAL_COUNT: 'Total entries to score',
+    PENDING_COUNT: 'Entries still to score',
+    DAYS_LEFT: 'Days remaining until the deadline',
+    CEREMONY_DATE: 'Awards ceremony date',
+    CEREMONY_VENUE: 'Awards ceremony venue',
+    WINNERS_PORTAL_LINK: "URL to the winner's portal",
+    EVENT_NAME: 'Name of the event',
+    EVENT_DATE: 'Date of the event',
+    VENUE: 'Venue name and location',
+    RSVP_URL: 'RSVP / registration URL',
+    TICKET_NUMBER: "Attendee's ticket reference number",
+    RECIPIENT_NAME: "Recipient's name (generic)",
+    DEADLINE_TYPE: 'Type of deadline, e.g. Entry Submission',
+    ACTION_LINK: 'URL for the call-to-action button',
+    ACTION_REQUIRED: 'Description of the action the recipient needs to take',
+    ENTRY_FEE: 'Entry fee amount in GBP',
+    FEEDBACK: 'Feedback or revision notes provided by the admin',
+    ERROR_MESSAGE: 'Payment error or decline reason from the payment processor',
+    ROLE_ROW: 'Full HTML row for job title — automatically omitted if the field was left blank',
+    MESSAGE_ROW: 'Full HTML row for submission message — automatically omitted if no message was provided',
+    NAME: "Enquirer's full name",
+    COMPANY: "Enquirer's company",
+    PACKAGE: 'Sponsorship package of interest',
+    ROLE: "Enquirer's job title",
+    MESSAGE: 'Message submitted with the enquiry',
+    BRAND_NAME: 'Your organisation / awards brand name',
+    SUPPORT_EMAIL: 'Support contact email address',
+    UNSUBSCRIBE_LINK: 'Unsubscribe link for marketing emails',
+  },
+
   /**
    * Default template content for reverting edits.
    * Keyed by template_name as defined in the database seed data.
@@ -22,310 +101,356 @@ const emailTemplatesModule = {
     // -- Entry & Submissions --
     'Entry Confirmation': {
       subject: 'Entry Received - {ENTRY_NUMBER} | British Trade Awards',
-      body: `Dear {CONTACT_NAME},
-
-Thank you for entering the British Trade Awards. We are pleased to confirm that your entry has been received and is now being processed.
-
-Your Entry Details:
-- Entry Reference: {ENTRY_NUMBER}
-- Company: {COMPANY_NAME}
-- Category: {AWARD_NAME}
-- Sector: {SECTOR}
-- Region: {REGION}
-
-What Happens Next:
-1. Our team will review your entry to ensure all details are complete.
-2. You may upload any supporting documents (case studies, images, testimonials or other materials) using the link below.
-3. Shortlisted entries will be assessed by our independent judging panel.
-4. Winners will be announced at the awards ceremony.
-
-Upload Supporting Documents:
-{UPLOAD_LINK}
-
-Accepted formats: PDF, Word, Excel, JPG, PNG (max 10MB per file)
-
-Key Dates:
-- Entry Deadline: {DEADLINE_DATE}
-- Winners Announced: {ANNOUNCEMENT_DATE}
-
-Please keep your entry reference number safe for future correspondence.
-
-If you have any questions about your entry or the awards process, please contact us at {CONTACT_EMAIL}
-
-Kind regards,
-The British Trade Awards Team`,
+      body: `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="padding:40px 40px 36px;">
+<table width="40" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;"><tr><td style="height:3px;background:#C9A227;border-radius:2px;"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#1a1a1a;margin:0 0 16px;line-height:1.3;">Dear {CONTACT_NAME},</p>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 20px;">Thank you for entering the British Trade Awards. We are pleased to confirm that your entry has been received and is now being processed.</p>
+<p style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#C9A227;margin:0 0 10px;">Your Entry Details</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid rgba(201,162,39,0.3);border-radius:8px;overflow:hidden;margin-bottom:24px;">
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Reference</span><br><strong style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{ENTRY_NUMBER}</strong></td></tr>
+<tr><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Company</span><br><span style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{COMPANY_NAME}</span></td></tr>
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Category</span><br><span style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{AWARD_NAME}</span></td></tr>
+<tr><td style="padding:11px 16px;"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Sector &amp; Region</span><br><span style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{SECTOR} &mdash; {REGION}</span></td></tr>
+</table>
+<p style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#C9A227;margin:0 0 14px;">What Happens Next</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:10px;"><tr><td width="32" valign="top"><table cellpadding="0" cellspacing="0" border="0"><tr><td style="width:22px;height:22px;border-radius:50%;background:#C9A227;text-align:center;font-family:Georgia,serif;font-size:11px;font-weight:700;color:#000;line-height:22px;">1</td></tr></table></td><td valign="top" style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#555;line-height:1.6;padding-top:2px;padding-left:8px;">Our team will review your entry to ensure all details are complete.</td></tr></table>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:10px;"><tr><td width="32" valign="top"><table cellpadding="0" cellspacing="0" border="0"><tr><td style="width:22px;height:22px;border-radius:50%;background:#C9A227;text-align:center;font-family:Georgia,serif;font-size:11px;font-weight:700;color:#000;line-height:22px;">2</td></tr></table></td><td valign="top" style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#555;line-height:1.6;padding-top:2px;padding-left:8px;">Upload any supporting documents (case studies, images, testimonials) using the link below.</td></tr></table>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:10px;"><tr><td width="32" valign="top"><table cellpadding="0" cellspacing="0" border="0"><tr><td style="width:22px;height:22px;border-radius:50%;background:#C9A227;text-align:center;font-family:Georgia,serif;font-size:11px;font-weight:700;color:#000;line-height:22px;">3</td></tr></table></td><td valign="top" style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#555;line-height:1.6;padding-top:2px;padding-left:8px;">Shortlisted entries will be assessed by our independent judging panel.</td></tr></table>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:22px;"><tr><td width="32" valign="top"><table cellpadding="0" cellspacing="0" border="0"><tr><td style="width:22px;height:22px;border-radius:50%;background:#C9A227;text-align:center;font-family:Georgia,serif;font-size:11px;font-weight:700;color:#000;line-height:22px;">4</td></tr></table></td><td valign="top" style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#555;line-height:1.6;padding-top:2px;padding-left:8px;">Winners will be announced at the awards ceremony.</td></tr></table>
+<table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 22px;"><tr><td style="background:#C9A227;border-radius:6px;"><a href="{UPLOAD_LINK}" style="color:#000000;padding:12px 28px;text-decoration:none;display:inline-block;font-family:Arial,sans-serif;font-weight:700;font-size:14px;">Upload Supporting Documents</a></td></tr></table>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#888;line-height:1.7;margin:0 0 22px;">Ref: <strong style="color:#1a1a1a;">{ENTRY_NUMBER}</strong> &bull; Deadline: {DEADLINE_DATE} &bull; Winners Announced: {ANNOUNCEMENT_DATE}<br>Questions? <a href="mailto:{CONTACT_EMAIL}" style="color:#C9A227;text-decoration:none;">{CONTACT_EMAIL}</a></p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;"><tr><td style="height:1px;background:rgba(201,162,39,0.2);"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#1a1a1a;margin:0;line-height:1.6;">Kind regards,<br><strong>The British Trade Awards Team</strong></p>
+</td></tr>
+</table>`,
     },
     'Nomination Confirmation': {
       subject: 'Nomination Received - {ENTRY_NUMBER} | British Trade Awards',
-      body: `Dear {CONTACT_NAME},
-
-Thank you for submitting your nomination for the British Trade Awards. We are pleased to confirm that your nomination has been received and is now being processed.
-
-Nomination Details:
-- Reference: {ENTRY_NUMBER}
-- Nominee: {NOMINEE_NAME}
-- Category: {AWARD_NAME}
-
-What Happens Next:
-1. Our team will review your nomination to ensure all details are complete.
-2. Shortlisted nominations will be assessed by our independent judging panel.
-3. Winners will be announced at the awards ceremony.
-
-Please keep your nomination reference number {ENTRY_NUMBER} safe for future correspondence.
-
-If you have any questions, please contact us at {CONTACT_EMAIL}
-
-Kind regards,
-The British Trade Awards Team`,
+      body: `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="padding:40px 40px 36px;">
+<table width="40" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;"><tr><td style="height:3px;background:#C9A227;border-radius:2px;"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#1a1a1a;margin:0 0 16px;line-height:1.3;">Dear {CONTACT_NAME},</p>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 20px;">Thank you for submitting your nomination for the British Trade Awards. We are pleased to confirm that your nomination has been received and is now being processed.</p>
+<p style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#C9A227;margin:0 0 10px;">Nomination Details</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid rgba(201,162,39,0.3);border-radius:8px;overflow:hidden;margin-bottom:24px;">
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Reference</span><br><strong style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{ENTRY_NUMBER}</strong></td></tr>
+<tr><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Nominee</span><br><span style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{NOMINEE_NAME}</span></td></tr>
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Category</span><br><span style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{AWARD_NAME}</span></td></tr>
+</table>
+<p style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#C9A227;margin:0 0 14px;">What Happens Next</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:10px;"><tr><td width="32" valign="top"><table cellpadding="0" cellspacing="0" border="0"><tr><td style="width:22px;height:22px;border-radius:50%;background:#C9A227;text-align:center;font-family:Georgia,serif;font-size:11px;font-weight:700;color:#000;line-height:22px;">1</td></tr></table></td><td valign="top" style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#555;line-height:1.6;padding-top:2px;padding-left:8px;">Our team will review your nomination to ensure all details are complete.</td></tr></table>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:10px;"><tr><td width="32" valign="top"><table cellpadding="0" cellspacing="0" border="0"><tr><td style="width:22px;height:22px;border-radius:50%;background:#C9A227;text-align:center;font-family:Georgia,serif;font-size:11px;font-weight:700;color:#000;line-height:22px;">2</td></tr></table></td><td valign="top" style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#555;line-height:1.6;padding-top:2px;padding-left:8px;">Shortlisted nominations will be assessed by our independent judging panel.</td></tr></table>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:22px;"><tr><td width="32" valign="top"><table cellpadding="0" cellspacing="0" border="0"><tr><td style="width:22px;height:22px;border-radius:50%;background:#C9A227;text-align:center;font-family:Georgia,serif;font-size:11px;font-weight:700;color:#000;line-height:22px;">3</td></tr></table></td><td valign="top" style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#555;line-height:1.6;padding-top:2px;padding-left:8px;">Winners will be announced at the awards ceremony.</td></tr></table>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#888;line-height:1.7;margin:0 0 22px;">Please keep your reference <strong style="color:#1a1a1a;">{ENTRY_NUMBER}</strong> safe for future correspondence. Questions? <a href="mailto:{CONTACT_EMAIL}" style="color:#C9A227;text-decoration:none;">{CONTACT_EMAIL}</a></p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;"><tr><td style="height:1px;background:rgba(201,162,39,0.2);"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#1a1a1a;margin:0;line-height:1.6;">Kind regards,<br><strong>The British Trade Awards Team</strong></p>
+</td></tr>
+</table>`,
     },
     'Document Upload Reminder': {
       subject: 'Supporting Documents Reminder - {ENTRY_NUMBER} | British Trade Awards',
-      body: `Dear {CONTACT_NAME},
-
-We wanted to let you know that we have not yet received any supporting documents for your British Trade Awards entry.
-
-- Entry Reference: {ENTRY_NUMBER}
-- Company: {COMPANY_NAME}
-- Category: {AWARD_NAME}
-
-While supporting documents are not mandatory, they can significantly strengthen your entry. Case studies, project images, client testimonials and accreditation certificates all help our judges assess your work.
-
-You can upload your documents here:
-{UPLOAD_LINK}
-
-Accepted formats: PDF, Word, Excel, JPG, PNG (max 10MB per file)
-
-The deadline for all entries and supporting materials is {DEADLINE_DATE}.
-
-If you have already uploaded your documents, please disregard this message. If you need any assistance, please contact us at {CONTACT_EMAIL}
-
-Kind regards,
-The British Trade Awards Team`,
+      body: `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="padding:40px 40px 36px;">
+<table width="40" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;"><tr><td style="height:3px;background:#C9A227;border-radius:2px;"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#1a1a1a;margin:0 0 16px;line-height:1.3;">Dear {CONTACT_NAME},</p>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 20px;">We wanted to let you know that we have not yet received any supporting documents for your British Trade Awards entry.</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid rgba(201,162,39,0.3);border-radius:8px;overflow:hidden;margin-bottom:20px;">
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Reference</span><br><strong style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{ENTRY_NUMBER}</strong></td></tr>
+<tr><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Company</span><br><span style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{COMPANY_NAME}</span></td></tr>
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Category</span><br><span style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{AWARD_NAME}</span></td></tr>
+</table>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 20px;">While supporting documents are not mandatory, they can significantly strengthen your entry. Case studies, project images, client testimonials and accreditation certificates all help our judges assess your work.</p>
+<table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 20px;"><tr><td style="background:#C9A227;border-radius:6px;"><a href="{UPLOAD_LINK}" style="color:#000000;padding:12px 28px;text-decoration:none;display:inline-block;font-family:Arial,sans-serif;font-weight:700;font-size:14px;">Upload Supporting Documents</a></td></tr></table>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#888;line-height:1.7;margin:0 0 22px;">Accepted formats: PDF, Word, Excel, JPG, PNG (max 10 MB per file). Deadline: <strong style="color:#1a1a1a;">{DEADLINE_DATE}</strong>. Questions? <a href="mailto:{CONTACT_EMAIL}" style="color:#C9A227;text-decoration:none;">{CONTACT_EMAIL}</a></p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;"><tr><td style="height:1px;background:rgba(201,162,39,0.2);"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#1a1a1a;margin:0;line-height:1.6;">Kind regards,<br><strong>The British Trade Awards Team</strong></p>
+</td></tr>
+</table>`,
     },
     'Changes Requested': {
       subject: 'Action Required: Changes Requested - {ENTRY_TITLE}',
-      body: `Dear {CONTACT_NAME},
-
-Your entry {ENTRY_TITLE} ({ENTRY_NUMBER}) requires changes before it can proceed.
-
-Feedback:
-{FEEDBACK}
-
-Please log in to review the feedback and resubmit your entry.
-
-Kind regards,
-The British Trade Awards Team`,
+      body: `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="padding:40px 40px 36px;">
+<table width="40" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;"><tr><td style="height:3px;background:#C9A227;border-radius:2px;"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#1a1a1a;margin:0 0 16px;line-height:1.3;">Dear {CONTACT_NAME},</p>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 20px;">Your entry <strong>{ENTRY_TITLE}</strong> ({ENTRY_NUMBER}) requires some changes before it can proceed to the judging stage.</p>
+<p style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#C9A227;margin:0 0 10px;">Feedback from our team</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid rgba(201,162,39,0.3);border-radius:8px;overflow:hidden;margin-bottom:24px;">
+<tr style="background:#fffdf5;"><td style="padding:16px 20px;font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#1a1a1a;line-height:1.7;">{FEEDBACK}</td></tr>
+</table>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 22px;">Please review the feedback above and log in to update your entry at your earliest convenience.</p>
+<table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 22px;"><tr><td style="background:#C9A227;border-radius:6px;"><a href="{ACTION_LINK}" style="color:#000000;padding:12px 28px;text-decoration:none;display:inline-block;font-family:Arial,sans-serif;font-weight:700;font-size:14px;">Review &amp; Update Entry</a></td></tr></table>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;"><tr><td style="height:1px;background:rgba(201,162,39,0.2);"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#1a1a1a;margin:0;line-height:1.6;">Kind regards,<br><strong>The British Trade Awards Team</strong></p>
+</td></tr>
+</table>`,
     },
 
     // -- Payments --
     'Payment Confirmation': {
       subject: 'Entry Confirmed: {ENTRY_NUMBER} - British Trade Awards',
-      body: `Dear {CONTACT_NAME},
-
-Thank you for your entry! Your entry {ENTRY_NUMBER} has been received and payment confirmed.
-
-Entry: {ENTRY_TITLE}
-Company: {COMPANY_NAME}
-
-You can upload supporting documents at:
-{UPLOAD_LINK}
-
-We will be in touch with next steps. Good luck!
-
-Kind regards,
-The British Trade Awards Team`,
+      body: `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="padding:40px 40px 36px;">
+<table width="40" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;"><tr><td style="height:3px;background:#C9A227;border-radius:2px;"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#1a1a1a;margin:0 0 16px;line-height:1.3;">Dear {CONTACT_NAME},</p>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 6px;">Your payment has been received and your entry is now confirmed.</p>
+<p style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#C9A227;margin:16px 0 10px;">Entry Details</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid rgba(201,162,39,0.3);border-radius:8px;overflow:hidden;margin-bottom:24px;">
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Reference</span><br><strong style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{ENTRY_NUMBER}</strong></td></tr>
+<tr><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Entry Title</span><br><span style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{ENTRY_TITLE}</span></td></tr>
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Company</span><br><span style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{COMPANY_NAME}</span></td></tr>
+</table>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 22px;">You can now upload supporting documents to strengthen your entry.</p>
+<table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 22px;"><tr><td style="background:#C9A227;border-radius:6px;"><a href="{UPLOAD_LINK}" style="color:#000000;padding:12px 28px;text-decoration:none;display:inline-block;font-family:Arial,sans-serif;font-weight:700;font-size:14px;">Upload Supporting Documents</a></td></tr></table>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#555;line-height:1.7;margin:0 0 22px;">We will be in touch with next steps as the judging process progresses. Good luck!</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;"><tr><td style="height:1px;background:rgba(201,162,39,0.2);"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#1a1a1a;margin:0;line-height:1.6;">Kind regards,<br><strong>The British Trade Awards Team</strong></p>
+</td></tr>
+</table>`,
     },
     'Payment Failed': {
       subject: 'Payment Issue: {ENTRY_NUMBER} - British Trade Awards',
-      body: `Dear {CONTACT_NAME},
-
-We were unable to process payment for entry {ENTRY_NUMBER}.
-
-Reason: {ERROR_MESSAGE}
-
-Please try again or contact us for assistance at {CONTACT_EMAIL}
-
-Kind regards,
-The British Trade Awards Team`,
+      body: `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="padding:40px 40px 36px;">
+<table width="40" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;"><tr><td style="height:3px;background:#C9A227;border-radius:2px;"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#1a1a1a;margin:0 0 16px;line-height:1.3;">Dear {CONTACT_NAME},</p>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 20px;">We were unable to process your payment for entry <strong>{ENTRY_NUMBER}</strong>.</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid rgba(201,162,39,0.3);border-radius:8px;overflow:hidden;margin-bottom:24px;">
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Reference</span><br><strong style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{ENTRY_NUMBER}</strong></td></tr>
+<tr><td style="padding:11px 16px;"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Reason</span><br><span style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{ERROR_MESSAGE}</span></td></tr>
+</table>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 22px;">Please try again using the link in your original entry confirmation, or contact us at <a href="mailto:{CONTACT_EMAIL}" style="color:#C9A227;text-decoration:none;">{CONTACT_EMAIL}</a></p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;"><tr><td style="height:1px;background:rgba(201,162,39,0.2);"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#1a1a1a;margin:0;line-height:1.6;">Kind regards,<br><strong>The British Trade Awards Team</strong></p>
+</td></tr>
+</table>`,
     },
     'Refund Confirmation': {
       subject: 'Refund Processed: {ENTRY_NUMBER} - British Trade Awards',
-      body: `Dear {CONTACT_NAME},
-
-A refund has been processed for entry {ENTRY_NUMBER}.
-
-The refund should appear on your statement within 5-10 business days.
-
-If you have any questions, please contact us at {CONTACT_EMAIL}
-
-Kind regards,
-The British Trade Awards Team`,
+      body: `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="padding:40px 40px 36px;">
+<table width="40" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;"><tr><td style="height:3px;background:#C9A227;border-radius:2px;"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#1a1a1a;margin:0 0 16px;line-height:1.3;">Dear {CONTACT_NAME},</p>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 20px;">We can confirm that a refund has been processed for entry <strong>{ENTRY_NUMBER}</strong>.</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid rgba(201,162,39,0.3);border-radius:8px;overflow:hidden;margin-bottom:24px;">
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Reference</span><br><strong style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{ENTRY_NUMBER}</strong></td></tr>
+<tr><td style="padding:11px 16px;"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Company</span><br><span style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{COMPANY_NAME}</span></td></tr>
+</table>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 22px;">The refund should appear on your statement within <strong>5&ndash;10 business days</strong>. Questions? <a href="mailto:{CONTACT_EMAIL}" style="color:#C9A227;text-decoration:none;">{CONTACT_EMAIL}</a></p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;"><tr><td style="height:1px;background:rgba(201,162,39,0.2);"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#1a1a1a;margin:0;line-height:1.6;">Kind regards,<br><strong>The British Trade Awards Team</strong></p>
+</td></tr>
+</table>`,
     },
     'Payment Reminder': {
       subject: 'Payment Pending - Entry {ENTRY_NUMBER}',
-      body: `Dear {CONTACT_NAME},
-
-Your entry {ENTRY_NUMBER} is currently pending payment.
-
-Amount Due: £{ENTRY_FEE}
-Entry: {ENTRY_TITLE}
-
-Please complete your payment to confirm your entry:
-{PAYMENT_LINK}
-
-If you have any questions, please contact us at {CONTACT_EMAIL}
-
-Kind regards,
-The British Trade Awards Team`,
+      body: `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="padding:40px 40px 36px;">
+<table width="40" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;"><tr><td style="height:3px;background:#C9A227;border-radius:2px;"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#1a1a1a;margin:0 0 16px;line-height:1.3;">Dear {CONTACT_NAME},</p>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 20px;">Your entry <strong>{ENTRY_NUMBER}</strong> is currently pending payment. Please complete your payment to confirm your place.</p>
+<p style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#C9A227;margin:0 0 10px;">Payment Details</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid rgba(201,162,39,0.3);border-radius:8px;overflow:hidden;margin-bottom:24px;">
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Reference</span><br><strong style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{ENTRY_NUMBER}</strong></td></tr>
+<tr><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Entry</span><br><span style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{ENTRY_TITLE}</span></td></tr>
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Amount Due</span><br><strong style="font-family:Georgia,'Times New Roman',serif;font-size:18px;color:#C9A227;">&pound;{ENTRY_FEE}</strong></td></tr>
+</table>
+<table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 22px;"><tr><td style="background:#C9A227;border-radius:6px;"><a href="{PAYMENT_LINK}" style="color:#000000;padding:12px 28px;text-decoration:none;display:inline-block;font-family:Arial,sans-serif;font-weight:700;font-size:14px;">Complete Payment</a></td></tr></table>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#888;line-height:1.7;margin:0 0 22px;">Questions? <a href="mailto:{CONTACT_EMAIL}" style="color:#C9A227;text-decoration:none;">{CONTACT_EMAIL}</a></p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;"><tr><td style="height:1px;background:rgba(201,162,39,0.2);"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#1a1a1a;margin:0;line-height:1.6;">Kind regards,<br><strong>The British Trade Awards Team</strong></p>
+</td></tr>
+</table>`,
     },
 
     // -- Judging & Results --
     'Entry Approved/Shortlisted': {
       subject: 'You Have Been Shortlisted - {ENTRY_NUMBER} | British Trade Awards',
-      body: `Dear {CONTACT_NAME},
-
-Congratulations! We are delighted to inform you that {COMPANY_NAME} has been shortlisted in the {AWARD_NAME} category at the British Trade Awards.
-
-- Entry Reference: {ENTRY_NUMBER}
-- Company: {COMPANY_NAME}
-- Category: {AWARD_NAME}
-
-What Happens Next:
-Your entry will now be assessed by our independent panel of judges. The judging process evaluates the quality of work, customer service, innovation and overall contribution to the trade industry.
-
-Winners will be announced on {ANNOUNCEMENT_DATE}. We will be in touch with further details about the awards ceremony in due course.
-
-This is a fantastic achievement and a testament to the quality of your work. Well done to you and your team.
-
-Kind regards,
-The British Trade Awards Team`,
+      body: `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="padding:40px 40px 36px;">
+<table width="40" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;"><tr><td style="height:3px;background:#C9A227;border-radius:2px;"></td></tr></table>
+<p style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#C9A227;margin:0 0 8px;">Congratulations</p>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:26px;color:#1a1a1a;margin:0 0 16px;line-height:1.2;">You Have Been Shortlisted!</p>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 20px;">We are delighted to inform you that <strong>{COMPANY_NAME}</strong> has been shortlisted in the <strong>{AWARD_NAME}</strong> category at the British Trade Awards.</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid rgba(201,162,39,0.3);border-radius:8px;overflow:hidden;margin-bottom:24px;">
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Reference</span><br><strong style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{ENTRY_NUMBER}</strong></td></tr>
+<tr><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Company</span><br><span style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{COMPANY_NAME}</span></td></tr>
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Category</span><br><span style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{AWARD_NAME}</span></td></tr>
+</table>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 16px;">Your entry will now be assessed by our independent panel of judges. Winners will be announced on <strong>{ANNOUNCEMENT_DATE}</strong>. We will be in touch with further details about the awards ceremony.</p>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 22px;">This is a fantastic achievement and a testament to the quality of your work. Well done to you and your team.</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;"><tr><td style="height:1px;background:rgba(201,162,39,0.2);"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#1a1a1a;margin:0;line-height:1.6;">Kind regards,<br><strong>The British Trade Awards Team</strong></p>
+</td></tr>
+</table>`,
     },
     'Entry Not Shortlisted': {
       subject: 'Your Entry Update - {ENTRY_NUMBER} | British Trade Awards',
-      body: `Dear {CONTACT_NAME},
-
-Thank you for entering {COMPANY_NAME} into the {AWARD_NAME} category at the British Trade Awards.
-
-- Entry Reference: {ENTRY_NUMBER}
-- Company: {COMPANY_NAME}
-- Category: {AWARD_NAME}
-
-After careful consideration by our judging panel, we regret to inform you that your entry has not been selected for the shortlist on this occasion.
-
-We received an exceptionally high standard of entries this year, making the selection process extremely competitive. Not being shortlisted is in no way a reflection on the quality of your business or the work you do.
-
-We would very much welcome an entry from you again next year and wish you continued success.
-
-Kind regards,
-The British Trade Awards Team`,
+      body: `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="padding:40px 40px 36px;">
+<table width="40" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;"><tr><td style="height:3px;background:#C9A227;border-radius:2px;"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#1a1a1a;margin:0 0 16px;line-height:1.3;">Dear {CONTACT_NAME},</p>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 20px;">Thank you for entering <strong>{COMPANY_NAME}</strong> into the <strong>{AWARD_NAME}</strong> category at the British Trade Awards.</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid rgba(201,162,39,0.3);border-radius:8px;overflow:hidden;margin-bottom:24px;">
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Reference</span><br><strong style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{ENTRY_NUMBER}</strong></td></tr>
+<tr><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Company</span><br><span style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{COMPANY_NAME}</span></td></tr>
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Category</span><br><span style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{AWARD_NAME}</span></td></tr>
+</table>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 16px;">After careful consideration by our judging panel, we regret to inform you that your entry has not been selected for the shortlist on this occasion.</p>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 16px;">We received an exceptionally high standard of entries this year, making the selection process extremely competitive. Not being shortlisted is in no way a reflection on the quality of your business or the work you do.</p>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 22px;">We would very much welcome an entry from you again next year and wish you continued success.</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;"><tr><td style="height:1px;background:rgba(201,162,39,0.2);"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#1a1a1a;margin:0;line-height:1.6;">Kind regards,<br><strong>The British Trade Awards Team</strong></p>
+</td></tr>
+</table>`,
     },
     'Winner Announcement': {
       subject: 'WINNER - {AWARD_NAME}!',
-      body: `Dear {CONTACT_NAME},
-
-Congratulations! We are thrilled to announce that {COMPANY_NAME} is the winner of the {AWARD_NAME} at the British Trade Awards!
-
-Your exceptional work has set the standard for excellence.
-
-Your Winner's Package Includes:
-- Digital winner's certificate
-- Winner's logo and badge for your marketing
-- Press release and media coverage
-- Feature on our website and social media
-- Winner's trophy (presented at ceremony)
-
-Awards Ceremony: {CEREMONY_DATE} at {CEREMONY_VENUE}
-
-We look forward to celebrating with you!
-
-Kind regards,
-The British Trade Awards Team`,
+      body: `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="background:linear-gradient(135deg,#1a1200 0%,#2a1f00 100%);padding:36px 40px;text-align:center;">
+<p style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:#C9A227;margin:0 0 12px;opacity:0.8;">British Trade Awards</p>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:36px;font-weight:700;color:#C9A227;margin:0 0 4px;line-height:1.1;">WINNER</p>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:18px;color:rgba(201,162,39,0.7);margin:0;">{AWARD_NAME}</p>
+</td></tr>
+<tr><td style="padding:40px 40px 36px;">
+<table width="40" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;"><tr><td style="height:3px;background:#C9A227;border-radius:2px;"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#1a1a1a;margin:0 0 16px;line-height:1.3;">Dear {CONTACT_NAME},</p>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 20px;">We are thrilled to announce that <strong>{COMPANY_NAME}</strong> is the winner of the <strong>{AWARD_NAME}</strong> at the British Trade Awards!</p>
+<p style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#C9A227;margin:0 0 10px;">Your Winner&rsquo;s Package Includes</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid rgba(201,162,39,0.3);border-radius:8px;overflow:hidden;margin-bottom:24px;">
+<tr style="background:#fffdf5;"><td style="padding:10px 16px;border-bottom:1px solid rgba(201,162,39,0.15);font-family:Arial,sans-serif;font-size:14px;color:#1a1a1a;">&#10003;&nbsp; Digital winner&rsquo;s certificate</td></tr>
+<tr><td style="padding:10px 16px;border-bottom:1px solid rgba(201,162,39,0.15);font-family:Arial,sans-serif;font-size:14px;color:#1a1a1a;">&#10003;&nbsp; Winner&rsquo;s logo and badge for your marketing</td></tr>
+<tr style="background:#fffdf5;"><td style="padding:10px 16px;border-bottom:1px solid rgba(201,162,39,0.15);font-family:Arial,sans-serif;font-size:14px;color:#1a1a1a;">&#10003;&nbsp; Press release and media coverage</td></tr>
+<tr><td style="padding:10px 16px;border-bottom:1px solid rgba(201,162,39,0.15);font-family:Arial,sans-serif;font-size:14px;color:#1a1a1a;">&#10003;&nbsp; Feature on our website and social media</td></tr>
+<tr style="background:#fffdf5;"><td style="padding:10px 16px;font-family:Arial,sans-serif;font-size:14px;color:#1a1a1a;">&#10003;&nbsp; Winner&rsquo;s trophy (presented at ceremony)</td></tr>
+</table>
+<p style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#C9A227;margin:0 0 10px;">Awards Ceremony</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid rgba(201,162,39,0.3);border-radius:8px;overflow:hidden;margin-bottom:24px;">
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Date</span><br><strong style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{CEREMONY_DATE}</strong></td></tr>
+<tr><td style="padding:11px 16px;"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Venue</span><br><span style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{CEREMONY_VENUE}</span></td></tr>
+</table>
+<table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 22px;"><tr><td style="background:#C9A227;border-radius:6px;"><a href="{WINNERS_PORTAL_LINK}" style="color:#000000;padding:12px 28px;text-decoration:none;display:inline-block;font-family:Arial,sans-serif;font-weight:700;font-size:14px;">Access Winner&rsquo;s Portal</a></td></tr></table>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;"><tr><td style="height:1px;background:rgba(201,162,39,0.2);"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#1a1a1a;margin:0;line-height:1.6;">Kind regards,<br><strong>The British Trade Awards Team</strong></p>
+</td></tr>
+</table>`,
     },
     'Judge Assignment': {
       subject: 'New Judging Assignment - British Trade Awards',
-      body: `Dear {JUDGE_NAME},
-
-You have been assigned {ENTRY_COUNT} new entries to judge for the British Trade Awards.
-
-Judging Deadline: {DEADLINE}
-
-Please log in to the Judge Portal to begin scoring:
-{JUDGE_PORTAL_LINK}
-
-Please complete your scoring by the deadline. If you have any questions or conflicts of interest, please contact us immediately.
-
-Thank you for your contribution to the awards!
-
-Kind regards,
-The British Trade Awards Team`,
+      body: `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="padding:40px 40px 36px;">
+<table width="40" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;"><tr><td style="height:3px;background:#C9A227;border-radius:2px;"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#1a1a1a;margin:0 0 16px;line-height:1.3;">Dear {JUDGE_NAME},</p>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 20px;">You have been assigned <strong>{ENTRY_COUNT}</strong> new entries to judge for the British Trade Awards.</p>
+<p style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#C9A227;margin:0 0 10px;">Assignment Details</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid rgba(201,162,39,0.3);border-radius:8px;overflow:hidden;margin-bottom:24px;">
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Entries to Score</span><br><strong style="font-family:Georgia,'Times New Roman',serif;font-size:18px;color:#C9A227;">{ENTRY_COUNT}</strong></td></tr>
+<tr><td style="padding:11px 16px;"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Judging Deadline</span><br><strong style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{DEADLINE}</strong></td></tr>
+</table>
+<table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 22px;"><tr><td style="background:#C9A227;border-radius:6px;"><a href="{JUDGE_PORTAL_LINK}" style="color:#000000;padding:12px 28px;text-decoration:none;display:inline-block;font-family:Arial,sans-serif;font-weight:700;font-size:14px;">Start Judging</a></td></tr></table>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#888;line-height:1.7;margin:0 0 22px;">Please complete your scoring by the deadline. If you have any questions or conflicts of interest, reply to this email immediately. Thank you for your contribution to the awards!</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;"><tr><td style="height:1px;background:rgba(201,162,39,0.2);"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#1a1a1a;margin:0;line-height:1.6;">Kind regards,<br><strong>The British Trade Awards Team</strong></p>
+</td></tr>
+</table>`,
     },
     'Judge Reminder': {
       subject: 'Judging Deadline Reminder - {DAYS_LEFT} Days Left',
-      body: `Dear {JUDGE_NAME},
-
-This is a reminder that the judging deadline is approaching in {DAYS_LEFT} days.
-
-Deadline: {DEADLINE}
-
-Your Progress:
-- Completed: {SCORED_COUNT}/{TOTAL_COUNT} entries
-- Remaining: {PENDING_COUNT} entries
-
-Please log in to the Judge Portal to continue scoring:
-{JUDGE_PORTAL_LINK}
-
-Thank you for your time and expertise!
-
-Kind regards,
-The British Trade Awards Team`,
+      body: `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="padding:40px 40px 36px;">
+<table width="40" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;"><tr><td style="height:3px;background:#C9A227;border-radius:2px;"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#1a1a1a;margin:0 0 16px;line-height:1.3;">Dear {JUDGE_NAME},</p>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 20px;">This is a reminder that the judging deadline is approaching in <strong>{DAYS_LEFT} days</strong>.</p>
+<p style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#C9A227;margin:0 0 10px;">Your Progress</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid rgba(201,162,39,0.3);border-radius:8px;overflow:hidden;margin-bottom:24px;">
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Deadline</span><br><strong style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{DEADLINE}</strong></td></tr>
+<tr><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Completed</span><br><strong style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{SCORED_COUNT} of {TOTAL_COUNT}</strong></td></tr>
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Remaining</span><br><strong style="font-family:Georgia,'Times New Roman',serif;font-size:18px;color:#C9A227;">{PENDING_COUNT}</strong></td></tr>
+</table>
+<table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 22px;"><tr><td style="background:#C9A227;border-radius:6px;"><a href="{JUDGE_PORTAL_LINK}" style="color:#000000;padding:12px 28px;text-decoration:none;display:inline-block;font-family:Arial,sans-serif;font-weight:700;font-size:14px;">Continue Judging</a></td></tr></table>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;"><tr><td style="height:1px;background:rgba(201,162,39,0.2);"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#1a1a1a;margin:0;line-height:1.6;">Kind regards,<br><strong>The British Trade Awards Team</strong></p>
+</td></tr>
+</table>`,
     },
 
     // -- Events --
     'Event Invitation': {
       subject: "You're Invited: {EVENT_NAME}",
-      body: `Dear {CONTACT_NAME},
-
-You are cordially invited to attend the {EVENT_NAME}.
-
-Date: {EVENT_DATE}
-Venue: {VENUE}
-
-We would be honoured by your presence at this special occasion.
-
-Please RSVP at your earliest convenience:
-{RSVP_URL}
-
-Kind regards,
-The British Trade Awards Team`,
+      body: `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="padding:40px 40px 36px;">
+<table width="40" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;"><tr><td style="height:3px;background:#C9A227;border-radius:2px;"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#1a1a1a;margin:0 0 16px;line-height:1.3;">Dear {CONTACT_NAME},</p>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 20px;">You are cordially invited to attend the <strong>{EVENT_NAME}</strong>. We would be honoured by your presence at this special occasion.</p>
+<p style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#C9A227;margin:0 0 10px;">Event Details</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid rgba(201,162,39,0.3);border-radius:8px;overflow:hidden;margin-bottom:24px;">
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Event</span><br><strong style="font-family:Georgia,'Times New Roman',serif;font-size:16px;color:#1a1a1a;">{EVENT_NAME}</strong></td></tr>
+<tr><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Date</span><br><strong style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{EVENT_DATE}</strong></td></tr>
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Venue</span><br><span style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{VENUE}</span></td></tr>
+</table>
+<table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 22px;"><tr><td style="background:#C9A227;border-radius:6px;"><a href="{RSVP_URL}" style="color:#000000;padding:12px 28px;text-decoration:none;display:inline-block;font-family:Arial,sans-serif;font-weight:700;font-size:14px;">RSVP Now</a></td></tr></table>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;"><tr><td style="height:1px;background:rgba(201,162,39,0.2);"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#1a1a1a;margin:0;line-height:1.6;">Kind regards,<br><strong>The British Trade Awards Team</strong></p>
+</td></tr>
+</table>`,
     },
     'Ticket Issued': {
       subject: 'Your Ticket: {EVENT_NAME}',
-      body: `Dear {CONTACT_NAME},
-
-Your ticket for {EVENT_NAME} has been issued.
-
-Ticket Number: {TICKET_NUMBER}
-Date: {EVENT_DATE}
-Venue: {VENUE}
-
-Please present this ticket at check-in.
-
-Kind regards,
-The British Trade Awards Team`,
+      body: `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="padding:40px 40px 36px;">
+<table width="40" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;"><tr><td style="height:3px;background:#C9A227;border-radius:2px;"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#1a1a1a;margin:0 0 16px;line-height:1.3;">Dear {CONTACT_NAME},</p>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 20px;">Your ticket for <strong>{EVENT_NAME}</strong> has been issued. Please present this at check-in on the day.</p>
+<p style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#C9A227;margin:0 0 10px;">Ticket Details</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid rgba(201,162,39,0.3);border-radius:8px;overflow:hidden;margin-bottom:24px;">
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Ticket Number</span><br><strong style="font-family:Georgia,'Times New Roman',serif;font-size:18px;color:#C9A227;">{TICKET_NUMBER}</strong></td></tr>
+<tr><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Event</span><br><strong style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{EVENT_NAME}</strong></td></tr>
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Date</span><br><span style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{EVENT_DATE}</span></td></tr>
+<tr><td style="padding:11px 16px;"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Venue</span><br><span style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{VENUE}</span></td></tr>
+</table>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;"><tr><td style="height:1px;background:rgba(201,162,39,0.2);"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#1a1a1a;margin:0;line-height:1.6;">Kind regards,<br><strong>The British Trade Awards Team</strong></p>
+</td></tr>
+</table>`,
     },
     'Deadline Reminder': {
       subject: 'Reminder: {DEADLINE_TYPE} Deadline in {DAYS_LEFT} Days',
-      body: `Dear {RECIPIENT_NAME},
-
-This is a reminder that the {DEADLINE_TYPE} deadline is approaching.
-
-{DAYS_LEFT} Days Remaining
-Deadline: {DEADLINE_DATE}
-
-{ACTION_REQUIRED}
-
-Kind regards,
-The British Trade Awards Team`,
+      body: `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="padding:40px 40px 36px;">
+<table width="40" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;"><tr><td style="height:3px;background:#C9A227;border-radius:2px;"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#1a1a1a;margin:0 0 16px;line-height:1.3;">Dear {RECIPIENT_NAME},</p>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 20px;">This is a reminder that the <strong>{DEADLINE_TYPE}</strong> deadline is approaching.</p>
+<p style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#C9A227;margin:0 0 10px;">Deadline Details</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid rgba(201,162,39,0.3);border-radius:8px;overflow:hidden;margin-bottom:24px;">
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Days Remaining</span><br><strong style="font-family:Georgia,'Times New Roman',serif;font-size:24px;color:#C9A227;">{DAYS_LEFT}</strong></td></tr>
+<tr><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Deadline Type</span><br><strong style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{DEADLINE_TYPE}</strong></td></tr>
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Deadline Date</span><br><strong style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{DEADLINE_DATE}</strong></td></tr>
+</table>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 22px;">{ACTION_REQUIRED}</p>
+<table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 22px;"><tr><td style="background:#C9A227;border-radius:6px;"><a href="{ACTION_LINK}" style="color:#000000;padding:12px 28px;text-decoration:none;display:inline-block;font-family:Arial,sans-serif;font-weight:700;font-size:14px;">Take Action Now</a></td></tr></table>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;"><tr><td style="height:1px;background:rgba(201,162,39,0.2);"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#1a1a1a;margin:0;line-height:1.6;">Kind regards,<br><strong>The British Trade Awards Team</strong></p>
+</td></tr>
+</table>`,
+    },
+    'Sponsorship Enquiry Confirmation': {
+      subject: 'Sponsorship enquiry received — British Trade Awards 2026',
+      body: `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="padding:40px 40px 36px;">
+<table width="40" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;"><tr><td style="height:3px;background:#C9A227;border-radius:2px;"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:22px;color:#1a1a1a;margin:0 0 16px;line-height:1.3;">Hi {NAME},</p>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#444444;line-height:1.7;margin:0 0 20px;">Thank you for your interest in sponsoring the <strong>British Trade Awards 2026</strong>. We&rsquo;ve received your enquiry and a member of our partnerships team will be in touch within <strong style="color:#C9A227;">2 business days</strong>.</p>
+<p style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#C9A227;margin:0 0 10px;">Your Enquiry</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid rgba(201,162,39,0.3);border-radius:8px;overflow:hidden;margin-bottom:24px;">
+<tr style="background:#fffdf5;"><td style="padding:11px 16px;border-bottom:1px solid rgba(201,162,39,0.15);"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Package</span><br><strong style="font-family:Georgia,'Times New Roman',serif;font-size:16px;color:#C9A227;">{PACKAGE}</strong></td></tr>
+<tr><td style="padding:11px 16px;"><span style="font-family:Arial,sans-serif;font-size:11px;color:#888;">Company</span><br><span style="font-family:Arial,sans-serif;font-size:15px;color:#1a1a1a;">{COMPANY}</span></td></tr>
+</table>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#888;line-height:1.7;margin:0 0 22px;">Questions in the meantime? Simply reply to this email.</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;"><tr><td style="height:1px;background:rgba(201,162,39,0.2);"></td></tr></table>
+<p style="font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#1a1a1a;margin:0;line-height:1.6;">The British Trade Awards Partnerships Team</p>
+</td></tr>
+</table>`,
     },
   },
 
@@ -527,7 +652,7 @@ The British Trade Awards Team`,
       types: ['event_invitation', 'ticket_issued', 'deadline_reminder'],
       icon: 'bi-calendar-event',
     },
-    General: { types: ['general', 'notification', 'invite'], icon: 'bi-megaphone' },
+    General: { types: ['general', 'notification', 'invite', 'sponsor_enquiry_confirmation'], icon: 'bi-megaphone' },
   },
 
   /**
@@ -570,6 +695,7 @@ The British Trade Awards Team`,
       'event_invitation',
       'ticket_issued',
       'deadline_reminder',
+      'sponsor_enquiry_confirmation',
       'general',
       'notification',
       'invite',
@@ -590,31 +716,65 @@ The British Trade Awards Team`,
     this.renderTemplatesList();
   },
 
+  /**
+   * Filter the template list by a search query (client-side, instant)
+   * @param {string} query - Search text
+   */
+  setSearchQuery(query) {
+    this._searchQuery = (query || '').trim();
+    this.renderTemplatesList();
+  },
+
   renderTemplatesList() {
     const container = document.getElementById('templatesList');
+    if (!container) return;
 
-    // Filter out system header/footer templates — those come from branding
-    const visible = this.templates.filter((t) => !['email_header', 'email_footer'].includes(t.template_type));
+    // Wire up search input once (only if not already wired)
+    const searchInput = document.getElementById('tmplSearchInput');
+    if (searchInput && !searchInput.dataset.wired) {
+      searchInput.dataset.wired = '1';
+      searchInput.addEventListener('input', (e) => this.setSearchQuery(e.target.value));
+    }
+
+    // Filter out system header/footer templates
+    const all = this.templates.filter((t) => !['email_header', 'email_footer'].includes(t.template_type));
+
+    // Apply search filter
+    let visible = all;
+    if (this._searchQuery) {
+      const q = this._searchQuery.toLowerCase();
+      visible = all.filter(
+        (t) =>
+          (t.template_name || t.name || '').toLowerCase().includes(q) ||
+          this.getTypeLabel(t.template_type).toLowerCase().includes(q) ||
+          (t.description || '').toLowerCase().includes(q)
+      );
+    }
 
     if (visible.length === 0) {
-      container.innerHTML = `
-        <div class="text-center py-5 text-muted">
-          <i class="bi bi-inbox display-4 d-block mb-2 opacity-25"></i>
-          <p>No templates found</p>
-        </div>
-      `;
+      const noTemplatesAtAll = all.length === 0;
+      container.innerHTML = noTemplatesAtAll
+        ? `<div class="text-center py-5 px-3 text-muted">
+             <i class="bi bi-envelope-open display-4 d-block mb-3 opacity-25"></i>
+             <p class="fw-semibold mb-1">No templates yet</p>
+             <p class="small mb-3">Templates control the content of every email the system sends — winner notifications, entry confirmations, payment receipts, and more.</p>
+             <button class="btn btn-sm btn-primary" data-action="emailTemplatesModule.newTemplate"><i class="bi bi-plus-lg me-1"></i>Create first template</button>
+           </div>`
+        : `<div class="text-center py-4 px-3 text-muted">
+             <i class="bi bi-search opacity-25 d-block mb-2" style="font-size:1.8rem;"></i>
+             <p class="small mb-0">No templates match <em>"${utils.escapeHtml(this._searchQuery)}"</em></p>
+           </div>`;
       return;
     }
 
     // Group templates by workflow stage
     const grouped = {};
-    visible.forEach((template) => {
-      const group = this.getGroupForType(template.template_type);
+    visible.forEach((t) => {
+      const group = this.getGroupForType(t.template_type);
       if (!grouped[group]) grouped[group] = [];
-      grouped[group].push(template);
+      grouped[group].push(t);
     });
 
-    // Render with group headers in a defined order
     const groupOrder = [
       'Entry & Submissions',
       'Payments',
@@ -628,77 +788,47 @@ The British Trade Awards Team`,
     groupOrder.forEach((groupName) => {
       const templates = grouped[groupName];
       if (!templates || templates.length === 0) return;
-
       const config = this.templateGroups[groupName] || { icon: 'bi-folder' };
-      html += `
-        <div class="list-group-item bg-light py-2 px-3" style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #6c757d; border-bottom: 2px solid #dee2e6;">
-          <i class="${config.icon} me-1"></i>${groupName}
-        </div>
-      `;
+
+      html += `<div class="px-3 pt-3 pb-1" style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:#adb5bd;">
+        <i class="${config.icon} me-1"></i>${groupName}
+      </div>`;
 
       html += templates
         .map((template) => {
-          const isAuto = this._isAutoTemplate(template.template_type);
-          const descTip = template.description ? ` title="${template.description.replace(/"/g, '&quot;')}"` : '';
-          return `
-        <a href="#" class="list-group-item list-group-item-action ${this.currentTemplate?.id === template.id ? 'active' : ''}"
-           data-action="emailTemplatesModule.selectTemplate" data-id="${template.id}"${descTip}>
-          <div class="d-flex justify-content-between align-items-start">
-            <div>
-              <strong>${template.template_name || template.name || 'Untitled'}</strong>
-              <br>
-              <small class="${this.currentTemplate?.id === template.id ? 'text-white-50' : 'text-muted'}">${this.getTypeLabel(template.template_type)}</small>
-            </div>
-            <div class="d-flex flex-column align-items-end gap-1">
-              <div>
-                ${template.is_active ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Inactive</span>'}
-              ${template.is_default ? '<span class="badge bg-primary ms-1">Default</span>' : ''}
+          const isActive = template.is_active !== false;
+          const isAuto =
+            this._isAutoTemplate(template.template_type) &&
+            !['general', 'notification', 'invite'].includes(template.template_type);
+          const triggerDesc = this._autoTriggerDescriptions[template.template_type] || '';
+          const isSelected = this.currentTemplate?.id === template.id;
+          const name = utils.escapeHtml(template.template_name || template.name || 'Untitled');
+
+          const autoBadge = isAuto
+            ? `<span class="badge rounded-pill ms-1" style="font-size:0.6rem;background:${isSelected ? 'rgba(255,255,255,0.2)' : '#dff0fa'};color:${isSelected ? '#cce' : '#0a6c8a'};" title="${utils.escapeHtml(triggerDesc)}"><i class="bi bi-lightning-charge-fill"></i> Auto</span>`
+            : '';
+          const inactiveBadge = !isActive
+            ? `<span class="badge bg-secondary rounded-pill ms-1" style="font-size:0.6rem;">Off</span>`
+            : '';
+
+          return `<a href="#" class="list-group-item list-group-item-action border-0 border-bottom py-2 px-3 ${isSelected ? 'active' : ''}"
+           data-action="emailTemplatesModule.selectTemplate" data-id="${template.id}">
+          <div class="d-flex align-items-center gap-1">
+            <div class="flex-grow-1 min-w-0">
+              <div class="d-flex align-items-center flex-wrap" style="line-height:1.3;">
+                <span class="${isSelected ? 'text-white' : ''} fw-semibold text-truncate" style="font-size:0.83rem;">${name}</span>
+                ${autoBadge}${inactiveBadge}
               </div>
-              ${isAuto ? '<span class="badge bg-info bg-opacity-75" style="font-size:0.6rem;">Auto</span>' : ''}
+              <div class="text-truncate mt-1" style="font-size:0.72rem;color:${isSelected ? 'rgba(255,255,255,0.65)' : '#6c757d'};">${utils.escapeHtml(this.getTypeLabel(template.template_type))}</div>
             </div>
+            <i class="bi bi-chevron-right flex-shrink-0" style="font-size:0.7rem;color:${isSelected ? 'rgba(255,255,255,0.5)' : '#ced4da'};"></i>
           </div>
-        </a>
-      `;
+        </a>`;
         })
         .join('');
     });
 
-    if (this._viewMode === 'grid') {
-      // M10: Card grid view
-      let gridHtml = '<div class="row g-3 p-2">';
-      visible.forEach((template) => {
-        const preview = (template.body || '').replace(/<[^>]*>/g, '').slice(0, 120);
-        const modified = template.updated_at ? utils.formatRelativeTime(template.updated_at) : '';
-        gridHtml += `
-          <div class="col-12">
-            <div class="card border ${this.currentTemplate?.id === template.id ? 'border-primary' : ''}">
-              <div class="card-body py-2 px-3">
-                <div class="fw-semibold small">${utils.escapeHtml(template.template_name || 'Untitled')}</div>
-                <div class="text-muted" style="font-size:0.7rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${utils.escapeHtml(preview)}">${utils.escapeHtml(preview) || '(no content)'}</div>
-                ${modified ? `<div class="text-muted mt-1" style="font-size:0.65rem;">${modified}</div>` : ''}
-                <div class="d-flex gap-1 mt-2">
-                  <button class="btn btn-xs btn-outline-primary py-0 px-1" style="font-size:0.7rem;" data-action="emailTemplatesModule.selectTemplate" data-id="${template.id}"><i class="bi bi-pencil"></i> Edit</button>
-                  <button class="btn btn-xs btn-outline-success py-0 px-1" style="font-size:0.7rem;" data-action="emailTemplatesModule.selectTemplate" data-id="${template.id}" title="Select and use this template"><i class="bi bi-send"></i> Use</button>
-                </div>
-              </div>
-            </div>
-          </div>`;
-      });
-      gridHtml += '</div>';
-      container.innerHTML = gridHtml;
-      return;
-    }
-
     container.innerHTML = html;
-
-    // Attach delegated click handler for template selection
-    container.addEventListener('click', (e) => {
-      const actionEl = e.target.closest('[data-action="emailTemplatesModule.selectTemplate"]');
-      if (actionEl) {
-        e.preventDefault();
-        this.selectTemplate(actionEl.getAttribute('data-id'));
-      }
-    });
   },
 
   /**
@@ -727,6 +857,7 @@ The British Trade Awards Team`,
       general: 'General',
       notification: 'Notification',
       invite: 'Invitation',
+      sponsor_enquiry_confirmation: 'Sponsorship Enquiry Confirmation',
     };
     return labels[type] || type || '';
   },
@@ -747,146 +878,204 @@ The British Trade Awards Team`,
    * Render template editor
    */
   renderTemplateEditor(template) {
-    document.getElementById('editorTitle').textContent = template.template_name;
+    document.getElementById('editorTitle').textContent = template.template_name || template.name || 'Edit Template';
 
-    const placeholdersList =
+    const isAuto =
+      this._isAutoTemplate(template.template_type) &&
+      !['general', 'notification', 'invite'].includes(template.template_type);
+    const triggerDesc = this._autoTriggerDescriptions[template.template_type] || '';
+
+    // Context banner: tells user when/how this email fires
+    const contextBanner = isAuto
+      ? `<div class="d-flex align-items-start gap-2 rounded px-3 py-2 mb-3" style="background:#e8f4f8;border-left:3px solid #0ea5c7;">
+           <i class="bi bi-lightning-charge-fill mt-1 flex-shrink-0" style="color:#0a6c8a;font-size:0.85rem;"></i>
+           <div style="font-size:0.82rem;color:#0a4d62;">
+             <strong>Sent automatically</strong> — ${utils.escapeHtml(triggerDesc)}.
+             Changes you save here take effect on the next send.
+           </div>
+         </div>`
+      : `<div class="d-flex align-items-start gap-2 rounded px-3 py-2 mb-3" style="background:#f0f4f8;border-left:3px solid #9aabbc;">
+           <i class="bi bi-hand-index-thumb mt-1 flex-shrink-0" style="color:#5a7080;font-size:0.85rem;"></i>
+           <div style="font-size:0.82rem;color:#3d5060;">
+             <strong>Used manually</strong> — ${utils.escapeHtml(triggerDesc || 'Send this from the Email Builder tab or trigger it from an automation workflow')}.
+           </div>
+         </div>`;
+
+    // Build placeholder panel
+    const placeholders =
       template.available_placeholders && template.available_placeholders.length > 0
-        ? `
-        <div class="alert alert-info">
-          <strong><i class="bi bi-info-circle me-2"></i>Available Placeholders:</strong>
-          <div class="mt-2">
-            ${template.available_placeholders
-              .map(
-                (p) => `
-              <span class="badge bg-light text-dark me-1 mb-1" style="cursor: pointer;"
-                    data-action="emailTemplatesModule.insertPlaceholder" data-placeholder="{${p}}"
-                    title="Click to insert">
-                {${p}}
-              </span>
-            `
-              )
-              .join('')}
-          </div>
-          <small class="text-muted d-block mt-2">Click a placeholder to insert it at the cursor position</small>
-        </div>
-      `
+        ? template.available_placeholders
+        : [];
+
+    const placeholderPanel =
+      placeholders.length > 0
+        ? `<div class="mb-3">
+           <label class="form-label d-flex align-items-center gap-1 mb-1">
+             <i class="bi bi-braces text-muted" style="font-size:0.85rem;"></i>
+             <span>Available placeholders</span>
+             <span class="text-muted fw-normal ms-1" style="font-size:0.78rem;">— click to insert at cursor</span>
+           </label>
+           <div class="rounded border p-2" style="background:#f8f9fa;">
+             <div class="d-flex flex-wrap gap-1">
+               ${placeholders
+                 .map((p) => {
+                   const key = p.replace(/^\{|\}$/g, '');
+                   const desc = this._placeholderDescriptions[key] || '';
+                   return `<span class="badge border text-dark d-inline-flex align-items-center gap-1 px-2 py-1"
+                   style="cursor:pointer;font-size:0.75rem;background:#fff;font-family:monospace;"
+                   data-action="emailTemplatesModule.insertPlaceholder"
+                   data-placeholder="${p.startsWith('{') ? p : '{' + p + '}'}"
+                   title="${desc ? utils.escapeHtml(desc) : 'Click to insert'}">{${key}}</span>`;
+                 })
+                 .join('')}
+             </div>
+             <p class="text-muted mb-0 mt-2" style="font-size:0.72rem;"><i class="bi bi-info-circle me-1"></i>Hover a placeholder to see what it becomes. These are replaced with real data when the email is sent.</p>
+           </div>
+         </div>`
         : '';
+
+    const hasDefault = !!this._defaultTemplates[template.template_name];
 
     const editor = document.getElementById('templateEditor');
     editor.innerHTML = `
+      ${contextBanner}
       <form id="templateForm">
-        <!-- Template Info -->
-        <div class="row mb-3">
-          <div class="col-md-6">
-            <label class="form-label">Template Name</label>
-            <input type="text" class="form-control" id="templateName" value="${template.template_name}" required>
-          </div>
-          <div class="col-md-6">
-            <label class="form-label">Template Type</label>
-            <select class="form-select" id="templateType" required>
-              <optgroup label="Entry & Submissions">
-                <option value="confirmation" ${template.template_type === 'confirmation' ? 'selected' : ''}>Entry Confirmation</option>
-                <option value="nomination_confirmation" ${template.template_type === 'nomination_confirmation' ? 'selected' : ''}>Nomination Confirmation</option>
-                <option value="reminder" ${template.template_type === 'reminder' ? 'selected' : ''}>Upload Reminder</option>
-                <option value="revision_request" ${template.template_type === 'revision_request' ? 'selected' : ''}>Changes Requested</option>
-              </optgroup>
-              <optgroup label="Payments">
-                <option value="payment_confirmation" ${template.template_type === 'payment_confirmation' ? 'selected' : ''}>Payment Confirmation</option>
-                <option value="payment_failed" ${template.template_type === 'payment_failed' ? 'selected' : ''}>Payment Failed</option>
-                <option value="refund_confirmation" ${template.template_type === 'refund_confirmation' ? 'selected' : ''}>Refund Confirmation</option>
-                <option value="payment_reminder" ${template.template_type === 'payment_reminder' ? 'selected' : ''}>Payment Reminder</option>
-              </optgroup>
-              <optgroup label="Judging & Results">
-                <option value="approval" ${template.template_type === 'approval' ? 'selected' : ''}>Approved / Shortlisted</option>
-                <option value="rejection" ${template.template_type === 'rejection' ? 'selected' : ''}>Not Shortlisted</option>
-                <option value="winner_announcement" ${template.template_type === 'winner_announcement' ? 'selected' : ''}>Winner Announcement</option>
-                <option value="judge_assignment" ${template.template_type === 'judge_assignment' ? 'selected' : ''}>Judge Assignment</option>
-                <option value="judge_reminder" ${template.template_type === 'judge_reminder' ? 'selected' : ''}>Judge Reminder</option>
-              </optgroup>
-              <optgroup label="Events & Invitations">
-                <option value="event_invitation" ${template.template_type === 'event_invitation' ? 'selected' : ''}>Event Invitation</option>
-                <option value="ticket_issued" ${template.template_type === 'ticket_issued' ? 'selected' : ''}>Ticket Issued</option>
-                <option value="deadline_reminder" ${template.template_type === 'deadline_reminder' ? 'selected' : ''}>Deadline Reminder</option>
-              </optgroup>
-              <optgroup label="General">
-                <option value="general" ${template.template_type === 'general' ? 'selected' : ''}>General</option>
-                <option value="notification" ${template.template_type === 'notification' ? 'selected' : ''}>Notification</option>
-                <option value="invite" ${template.template_type === 'invite' ? 'selected' : ''}>Invitation</option>
-              </optgroup>
-            </select>
+
+        <!-- Subject line — most important field, at top -->
+        <div class="mb-3">
+          <label class="form-label fw-semibold" for="templateSubject">Subject line <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" id="templateSubject" value="${utils.escapeHtml(template.subject || '')}" required maxlength="200"
+                 placeholder="e.g. Your entry has been received — {ENTRY_NUMBER}">
+          <div class="d-flex justify-content-between mt-1">
+            <small class="text-muted">Aim for 40–60 characters. Placeholders in {CURLY_BRACES} are replaced with real data.</small>
+            <small class="text-muted" id="subjectCharCount">${(template.subject || '').length}/200</small>
           </div>
         </div>
 
-        <!-- Description -->
+        <!-- Placeholder panel (if available) -->
+        ${placeholderPanel}
+
+        <!-- Email body -->
         <div class="mb-3">
-          <label class="form-label">Description</label>
-          <input type="text" class="form-control" id="templateDescription" value="${template.description || ''}"
-                 placeholder="Brief description of when this template is used">
+          <label class="form-label fw-semibold" for="templateBody">Email body <span class="text-danger">*</span>
+            <span class="badge bg-light text-muted border ms-1 fw-normal" style="font-size:0.7rem;">HTML or plain text</span>
+          </label>
+          <textarea class="form-control font-monospace" id="templateBody" rows="16" required
+                    style="font-size:0.82rem;line-height:1.5;">${utils.escapeHtml(template.body || '')}</textarea>
+          <small class="text-muted">You can write plain text paragraphs, or paste full HTML for a custom layout. Use {PLACEHOLDER} variables anywhere in the body.</small>
         </div>
 
-        <!-- Subject Line -->
-        <div class="mb-3">
-          <label class="form-label">Subject Line</label>
-          <input type="text" class="form-control" id="templateSubject" value="${template.subject}" required>
-        </div>
-
-        <!-- Placeholders Info -->
-        ${placeholdersList}
-
-        <!-- Email Body -->
-        <div class="mb-3">
-          <label class="form-label">Email Body</label>
-          <textarea class="form-control" id="templateBody" rows="15" required style="font-family: monospace;">${template.body}</textarea>
-        </div>
-
-        <!-- Template Settings -->
-        <div class="row mb-4">
-          <div class="col-md-6">
-            <div class="form-check form-switch">
-              <input class="form-check-input" type="checkbox" id="templateActive" ${template.is_active ? 'checked' : ''}>
-              <label class="form-check-label" for="templateActive">
-                Active (can be used for sending)
-              </label>
+        <!-- Collapsible template settings -->
+        <details class="mb-4" id="tmplSettingsDetails">
+          <summary class="text-muted" style="cursor:pointer;font-size:0.85rem;user-select:none;">
+            <i class="bi bi-sliders2 me-1"></i>Template settings
+            <span class="ms-1 badge bg-light text-muted border fw-normal" style="font-size:0.7rem;">${utils.escapeHtml(template.template_name || '')}</span>
+          </summary>
+          <div class="mt-3 pt-3 border-top">
+            <div class="row mb-3">
+              <div class="col-md-6 mb-3 mb-md-0">
+                <label class="form-label form-label-sm">Template name</label>
+                <input type="text" class="form-control form-control-sm" id="templateName" value="${utils.escapeHtml(template.template_name || '')}" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label form-label-sm">Template type</label>
+                <select class="form-select form-select-sm" id="templateType" required>
+                  <optgroup label="Entry &amp; Submissions">
+                    <option value="confirmation" ${template.template_type === 'confirmation' ? 'selected' : ''}>Entry Confirmation</option>
+                    <option value="nomination_confirmation" ${template.template_type === 'nomination_confirmation' ? 'selected' : ''}>Nomination Confirmation</option>
+                    <option value="reminder" ${template.template_type === 'reminder' ? 'selected' : ''}>Upload Reminder</option>
+                    <option value="revision_request" ${template.template_type === 'revision_request' ? 'selected' : ''}>Changes Requested</option>
+                  </optgroup>
+                  <optgroup label="Payments">
+                    <option value="payment_confirmation" ${template.template_type === 'payment_confirmation' ? 'selected' : ''}>Payment Confirmation</option>
+                    <option value="payment_failed" ${template.template_type === 'payment_failed' ? 'selected' : ''}>Payment Failed</option>
+                    <option value="refund_confirmation" ${template.template_type === 'refund_confirmation' ? 'selected' : ''}>Refund Confirmation</option>
+                    <option value="payment_reminder" ${template.template_type === 'payment_reminder' ? 'selected' : ''}>Payment Reminder</option>
+                  </optgroup>
+                  <optgroup label="Judging &amp; Results">
+                    <option value="approval" ${template.template_type === 'approval' ? 'selected' : ''}>Approved / Shortlisted</option>
+                    <option value="rejection" ${template.template_type === 'rejection' ? 'selected' : ''}>Not Shortlisted</option>
+                    <option value="winner_announcement" ${template.template_type === 'winner_announcement' ? 'selected' : ''}>Winner Announcement</option>
+                    <option value="judge_assignment" ${template.template_type === 'judge_assignment' ? 'selected' : ''}>Judge Assignment</option>
+                    <option value="judge_reminder" ${template.template_type === 'judge_reminder' ? 'selected' : ''}>Judge Reminder</option>
+                  </optgroup>
+                  <optgroup label="Events &amp; Invitations">
+                    <option value="event_invitation" ${template.template_type === 'event_invitation' ? 'selected' : ''}>Event Invitation</option>
+                    <option value="ticket_issued" ${template.template_type === 'ticket_issued' ? 'selected' : ''}>Ticket Issued</option>
+                    <option value="deadline_reminder" ${template.template_type === 'deadline_reminder' ? 'selected' : ''}>Deadline Reminder</option>
+                  </optgroup>
+                  <optgroup label="General">
+                    <option value="general" ${template.template_type === 'general' ? 'selected' : ''}>General</option>
+                    <option value="notification" ${template.template_type === 'notification' ? 'selected' : ''}>Notification</option>
+                    <option value="invite" ${template.template_type === 'invite' ? 'selected' : ''}>Invitation</option>
+                    <option value="sponsor_enquiry_confirmation" ${template.template_type === 'sponsor_enquiry_confirmation' ? 'selected' : ''}>Sponsorship Enquiry Confirmation</option>
+                  </optgroup>
+                </select>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label form-label-sm">Internal notes <span class="text-muted fw-normal">(optional — only you can see this)</span></label>
+              <input type="text" class="form-control form-control-sm" id="templateDescription" value="${utils.escapeHtml(template.description || '')}"
+                     placeholder="e.g. Sent to UK entrants only — last reviewed March 2026">
+            </div>
+            <div class="row">
+              <div class="col-md-6 mb-2 mb-md-0">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="templateActive" ${template.is_active !== false ? 'checked' : ''}>
+                  <label class="form-check-label small" for="templateActive">
+                    <strong>Active</strong> — this template can be sent
+                  </label>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="templateDefault" ${template.is_default ? 'checked' : ''}>
+                  <label class="form-check-label small" for="templateDefault">
+                    <strong>Default</strong> — use this when multiple templates share the same type
+                  </label>
+                </div>
+              </div>
             </div>
           </div>
-          <div class="col-md-6">
-            <div class="form-check form-switch">
-              <input class="form-check-input" type="checkbox" id="templateDefault" ${template.is_default ? 'checked' : ''}>
-              <label class="form-check-label" for="templateDefault">
-                Default template for this type
-              </label>
-            </div>
-          </div>
-        </div>
+        </details>
 
-        <!-- Action Buttons -->
-        <div class="d-flex gap-2 flex-wrap">
+        <!-- Action bar -->
+        <div class="d-flex align-items-center gap-2 flex-wrap pt-3 border-top">
           <button type="button" class="btn btn-primary" data-action="emailTemplatesModule.saveTemplate">
-            <i class="bi bi-save me-2"></i>Save Template
+            <i class="bi bi-check-lg me-1"></i>Save changes
           </button>
           <button type="button" class="btn btn-outline-secondary" data-action="emailTemplatesModule.previewTemplate">
-            <i class="bi bi-eye me-2"></i>Preview
+            <i class="bi bi-eye me-1"></i>Preview
           </button>
-          <button type="button" class="btn btn-outline-info" data-action="emailTemplatesModule.sendTestEmail">
-            <i class="bi bi-envelope me-2"></i>Send Test
+          <button type="button" class="btn btn-outline-secondary" data-action="emailTemplatesModule.sendTestEmail">
+            <i class="bi bi-send me-1"></i>Send test
           </button>
-          ${
-            this._defaultTemplates[template.template_name]
-              ? `
-            <button type="button" class="btn btn-outline-warning" data-action="emailTemplatesModule.revertToDefault">
-              <i class="bi bi-arrow-counterclockwise me-2"></i>Revert to Default
+          <div class="ms-auto dropdown">
+            <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="More options">
+              <i class="bi bi-three-dots"></i>
             </button>
-          `
-              : ''
-          }
-          <button type="button" class="btn btn-outline-danger ms-auto" data-action="emailTemplatesModule.deleteTemplate" data-id="${template.id}">
-            <i class="bi bi-trash me-2"></i>Delete
-          </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              ${hasDefault ? `<li><a class="dropdown-item" href="#" data-action="emailTemplatesModule.revertToDefault"><i class="bi bi-arrow-counterclockwise me-2"></i>Revert to default</a></li>` : ''}
+              ${hasDefault ? `<li><hr class="dropdown-divider"></li>` : ''}
+              <li><a class="dropdown-item text-danger" href="#" data-action="emailTemplatesModule.deleteTemplate" data-id="${template.id}"><i class="bi bi-trash me-2"></i>Delete template</a></li>
+            </ul>
+          </div>
         </div>
       </form>
     `;
 
-    // Attach delegated click handler for editor action buttons
+    // Live subject character counter
+    const subjectInput = editor.querySelector('#templateSubject');
+    const charCount = editor.querySelector('#subjectCharCount');
+    if (subjectInput && charCount) {
+      subjectInput.addEventListener('input', () => {
+        const len = subjectInput.value.length;
+        charCount.textContent = `${len}/200`;
+        charCount.className = len > 80 ? 'text-warning small' : len > 100 ? 'text-danger small' : 'text-muted small';
+      });
+    }
+
+    // Delegated click handler for editor action buttons
     editor.addEventListener('click', (e) => {
       const actionEl = e.target.closest('[data-action]');
       if (!actionEl) return;
@@ -1088,13 +1277,74 @@ The British Trade Awards Team`,
       return;
     }
 
-    const email = prompt('Enter email address to send test to:');
-    if (!email || !email.includes('@')) return;
+    const existing = document.getElementById('testEmailModal');
+    if (existing) existing.remove();
 
+    const lastEmail = localStorage.getItem('bta_test_email_addr') || '';
+    document.body.insertAdjacentHTML(
+      'beforeend',
+      `
+      <div class="modal fade" id="testEmailModal" tabindex="-1">
+        <div class="modal-dialog modal-sm">
+          <div class="modal-content">
+            <div class="modal-header py-2">
+              <h6 class="modal-title fw-semibold"><i class="bi bi-send me-2"></i>Send test email</h6>
+              <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body pb-2">
+              <p class="text-muted small mb-3">Sends the template with sample data so you can preview it in a real inbox before it goes live.</p>
+              <label class="form-label form-label-sm fw-semibold">Send to</label>
+              <input type="email" class="form-control form-control-sm" id="testEmailAddress"
+                     value="${utils.escapeHtml(lastEmail)}" placeholder="you@example.com" autocomplete="email">
+              <div id="testEmailError" class="invalid-feedback">Please enter a valid email address.</div>
+            </div>
+            <div class="modal-footer py-2">
+              <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="button" class="btn btn-sm btn-primary" id="testEmailSendBtn">
+                <i class="bi bi-send me-1"></i>Send test
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `
+    );
+
+    const modalEl = document.getElementById('testEmailModal');
+    const modal = new bootstrap.Modal(modalEl);
+    modal.show();
+
+    modalEl.addEventListener('shown.bs.modal', () => {
+      const inp = document.getElementById('testEmailAddress');
+      inp?.focus();
+      inp?.select();
+    });
+
+    const sendBtn = document.getElementById('testEmailSendBtn');
+    sendBtn.addEventListener('click', async () => {
+      const inp = document.getElementById('testEmailAddress');
+      const addr = inp?.value?.trim();
+      if (!addr || !addr.includes('@')) {
+        inp?.classList.add('is-invalid');
+        return;
+      }
+      inp?.classList.remove('is-invalid');
+      localStorage.setItem('bta_test_email_addr', addr);
+      modal.hide();
+      await this._doSendTestEmail(addr);
+    });
+
+    document.getElementById('testEmailAddress')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') sendBtn.click();
+    });
+
+    modalEl.addEventListener('hidden.bs.modal', () => modalEl.remove());
+  },
+
+  async _doSendTestEmail(email) {
     const subject = document.getElementById('templateSubject')?.value || this.currentTemplate.subject;
     const body = document.getElementById('templateBody')?.value || this.currentTemplate.body;
 
-    // Load saved placeholder defaults and branding
     const sampleData = await this._getSampleData();
     const branding = await this._getBrandingConfig();
 
@@ -1106,7 +1356,6 @@ The British Trade Awards Team`,
       testBody = testBody.replace(regex, sampleData[key]);
     });
 
-    // Wrap with branded header/footer (subtitle matches template type)
     const templateType = document.getElementById('templateType')?.value || this.currentTemplate?.template_type;
     const subtitle = this._headerSubtitles[templateType] || '';
     if (typeof brandingModule !== 'undefined' && branding && Object.keys(branding).length) {
@@ -1114,14 +1363,12 @@ The British Trade Awards Team`,
       testBody = `<style>${styles.css}</style>${styles.header}<div style="padding:24px 32px">${testBody}</div>${styles.footer}`;
     }
 
-    // Use branding email settings with fallbacks
     const fromName = branding?.company_name || 'British Trade Awards';
     const fromEmail = branding?.email_from || 'awards@britishtradeawards.com';
     const replyTo = branding?.email_reply_to || branding?.email_from || 'awards@britishtradeawards.com';
 
     try {
-      utils.showToast('Sending test email...', 'info');
-
+      utils.showToast('Sending test email…', 'info');
       const result = await apiClient.rpc('send_test_email', {
         p_to: email,
         p_subject: testSubject,
@@ -1130,10 +1377,8 @@ The British Trade Awards Team`,
         p_from_email: fromEmail,
         p_reply_to: replyTo,
       });
-
       if (result.data && !result.data.success) throw new Error(result.data.error || 'Send failed');
-
-      utils.showToast(`Test email sent to ${email}!`, 'success');
+      utils.showToast(`Test email sent to ${email}`, 'success');
     } catch (error) {
       console.error('Error sending test email:', error);
       utils.showToast('Failed to send test email: ' + error.message, 'error');
@@ -1168,12 +1413,13 @@ The British Trade Awards Team`,
       utils.showToast('Template deleted successfully', 'success');
       this.currentTemplate = null;
       document.getElementById('templateEditor').innerHTML = `
-        <div class="text-center py-5 text-muted">
+        <div class="text-center py-5 text-muted px-4">
           <i class="bi bi-envelope display-1 opacity-25 d-block mb-3"></i>
-          <p>Select a template from the list to edit</p>
+          <p class="fw-semibold mb-1">Select a template to edit</p>
+          <p class="small">Choose one from the list on the left, or create a new one.</p>
         </div>
       `;
-      document.getElementById('editorTitle').textContent = 'Select a template';
+      document.getElementById('editorTitle').textContent = 'Email Templates';
 
       await this.loadTemplates();
     } catch (error) {
@@ -1187,116 +1433,177 @@ The British Trade Awards Team`,
    * @returns {void}
    */
   newTemplate() {
-    const modalHtml = `
+    const existing = document.getElementById('newTemplateModal');
+    if (existing) existing.remove();
+
+    // Build type options with descriptions
+    const typeOptions = [
+      {
+        group: 'Entry & Submissions',
+        options: [
+          { value: 'confirmation', label: 'Entry Confirmation', desc: 'Sent automatically when an entry is submitted' },
+          {
+            value: 'nomination_confirmation',
+            label: 'Nomination Confirmation',
+            desc: 'Sent automatically when a peer nomination is submitted',
+          },
+          { value: 'reminder', label: 'Upload Reminder', desc: 'Prompt entrants to upload supporting documents' },
+          { value: 'revision_request', label: 'Changes Requested', desc: 'Sent when an admin requests entry changes' },
+        ],
+      },
+      {
+        group: 'Payments',
+        options: [
+          {
+            value: 'payment_confirmation',
+            label: 'Payment Confirmation',
+            desc: 'Sent automatically after a successful payment',
+          },
+          { value: 'payment_failed', label: 'Payment Failed', desc: 'Sent automatically when a payment fails' },
+          {
+            value: 'refund_confirmation',
+            label: 'Refund Confirmation',
+            desc: 'Sent automatically when a refund is issued',
+          },
+          { value: 'payment_reminder', label: 'Payment Reminder', desc: 'Sent to entrants with outstanding fees' },
+        ],
+      },
+      {
+        group: 'Judging & Results',
+        options: [
+          { value: 'approval', label: 'Approved / Shortlisted', desc: 'Sent when an entry is shortlisted' },
+          { value: 'rejection', label: 'Not Shortlisted', desc: 'Sent when an entry is not shortlisted' },
+          { value: 'winner_announcement', label: 'Winner Announcement', desc: 'Sent when an entry wins' },
+          { value: 'judge_assignment', label: 'Judge Assignment', desc: 'Sent to judges when entries are assigned' },
+          { value: 'judge_reminder', label: 'Judge Reminder', desc: 'Sent to judges as deadlines approach' },
+        ],
+      },
+      {
+        group: 'Events & Invitations',
+        options: [
+          { value: 'event_invitation', label: 'Event Invitation', desc: 'Invite contacts to an event' },
+          { value: 'ticket_issued', label: 'Ticket Issued', desc: 'Sent when an event ticket is issued' },
+          { value: 'deadline_reminder', label: 'Deadline Reminder', desc: 'Sent as key dates approach' },
+        ],
+      },
+      {
+        group: 'General',
+        options: [
+          { value: 'general', label: 'General', desc: 'All-purpose — use from Email Builder for one-off sends' },
+          { value: 'notification', label: 'Notification', desc: 'General alerts and status updates' },
+          { value: 'invite', label: 'Invitation', desc: 'Invitation campaigns sent from Email Builder' },
+        ],
+      },
+    ];
+
+    const typeSelectHtml = typeOptions
+      .map(
+        ({ group, options }) =>
+          `<optgroup label="${group}">${options.map((o) => `<option value="${o.value}" data-desc="${o.desc}">${o.label}</option>`).join('')}</optgroup>`
+      )
+      .join('');
+
+    document.body.insertAdjacentHTML(
+      'beforeend',
+      `
       <div class="modal fade" id="newTemplateModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
           <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Create New Template</h5>
+            <div class="modal-header py-2">
+              <div>
+                <h5 class="modal-title mb-0"><i class="bi bi-plus-circle me-2"></i>New template</h5>
+                <p class="text-muted small mb-0">Fill in the subject and body below — you can tweak everything after saving.</p>
+              </div>
               <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
               <form id="newTemplateForm">
+
                 <div class="row mb-3">
-                  <div class="col-md-6">
-                    <label class="form-label">Template Name <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control" id="newTemplateName" required placeholder="e.g., Welcome Email">
-                  </div>
-                  <div class="col-md-6">
-                    <label class="form-label">Template Type <span class="text-danger">*</span></label>
+                  <div class="col-md-6 mb-3 mb-md-0">
+                    <label class="form-label fw-semibold">What type of email is this? <span class="text-danger">*</span></label>
                     <select class="form-select" id="newTemplateType" required>
-                      <optgroup label="Entry & Submissions">
-                        <option value="confirmation">Entry Confirmation</option>
-                        <option value="nomination_confirmation">Nomination Confirmation</option>
-                        <option value="reminder">Upload Reminder</option>
-                        <option value="revision_request">Changes Requested</option>
-                      </optgroup>
-                      <optgroup label="Payments">
-                        <option value="payment_confirmation">Payment Confirmation</option>
-                        <option value="payment_failed">Payment Failed</option>
-                        <option value="refund_confirmation">Refund Confirmation</option>
-                        <option value="payment_reminder">Payment Reminder</option>
-                      </optgroup>
-                      <optgroup label="Judging & Results">
-                        <option value="approval">Approved / Shortlisted</option>
-                        <option value="rejection">Not Shortlisted</option>
-                        <option value="winner_announcement">Winner Announcement</option>
-                        <option value="judge_assignment">Judge Assignment</option>
-                        <option value="judge_reminder">Judge Reminder</option>
-                      </optgroup>
-                      <optgroup label="Events & Invitations">
-                        <option value="event_invitation">Event Invitation</option>
-                        <option value="ticket_issued">Ticket Issued</option>
-                        <option value="deadline_reminder">Deadline Reminder</option>
-                      </optgroup>
-                      <optgroup label="General">
-                        <option value="general" selected>General</option>
-                        <option value="notification">Notification</option>
-                        <option value="invite">Invitation</option>
-                      </optgroup>
+                      <option value="" disabled selected>Choose a type…</option>
+                      ${typeSelectHtml}
                     </select>
-                  </div>
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">Description</label>
-                  <input type="text" class="form-control" id="newTemplateDescription" placeholder="Brief description of when this template is used">
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">Subject Line <span class="text-danger">*</span></label>
-                  <input type="text" class="form-control" id="newTemplateSubject" required placeholder="e.g., Welcome to the British Trade Awards, {CONTACT_NAME}">
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">Email Body <span class="text-danger">*</span></label>
-                  <textarea class="form-control" id="newTemplateBody" rows="12" required style="font-family: monospace;" placeholder="Write your email body here. Use placeholders like {CONTACT_NAME}, {COMPANY_NAME}, etc."></textarea>
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">Available Placeholders <small class="text-muted">(comma-separated)</small></label>
-                  <input type="text" class="form-control" id="newTemplatePlaceholders" placeholder="e.g., CONTACT_NAME, COMPANY_NAME, AWARD_NAME">
-                  <small class="text-muted">These will be shown to users when editing the template</small>
-                </div>
-                <div class="row">
-                  <div class="col-md-6">
-                    <div class="form-check form-switch">
-                      <input class="form-check-input" type="checkbox" id="newTemplateActive" checked>
-                      <label class="form-check-label" for="newTemplateActive">Active</label>
-                    </div>
+                    <div id="newTypeDesc" class="form-text mt-1" style="min-height:1.2em;"></div>
                   </div>
                   <div class="col-md-6">
-                    <div class="form-check form-switch">
-                      <input class="form-check-input" type="checkbox" id="newTemplateDefault">
-                      <label class="form-check-label" for="newTemplateDefault">Default for this type</label>
-                    </div>
+                    <label class="form-label fw-semibold">Template name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="newTemplateName" required placeholder="e.g. Winner Notification 2026">
+                    <div class="form-text">A short internal name so you can find it later.</div>
                   </div>
                 </div>
+
+                <div class="mb-3">
+                  <label class="form-label fw-semibold">Subject line <span class="text-danger">*</span></label>
+                  <input type="text" class="form-control" id="newTemplateSubject" required placeholder="e.g. Congratulations — you've been shortlisted! 🏆">
+                  <div class="form-text">Aim for 40–60 characters. Use {PLACEHOLDER} variables like {CONTACT_NAME} or {AWARD_NAME}.</div>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label fw-semibold">Email body <span class="text-danger">*</span></label>
+                  <textarea class="form-control font-monospace" id="newTemplateBody" rows="10" required
+                            style="font-size:0.82rem;line-height:1.5;"
+                            placeholder="Dear {CONTACT_NAME},&#10;&#10;Write your message here...&#10;&#10;Kind regards,&#10;The British Trade Awards Team"></textarea>
+                  <div class="form-text">Plain text or HTML. Use {PLACEHOLDER} variables — they are replaced with real data when the email is sent.</div>
+                </div>
+
+                <details class="mb-2">
+                  <summary class="text-muted small" style="cursor:pointer;user-select:none;">
+                    <i class="bi bi-sliders2 me-1"></i>Advanced options
+                  </summary>
+                  <div class="mt-3 pt-3 border-top">
+                    <div class="mb-3">
+                      <label class="form-label form-label-sm">Internal notes <span class="text-muted fw-normal">(optional)</span></label>
+                      <input type="text" class="form-control form-control-sm" id="newTemplateDescription" placeholder="e.g. UK region only — reviewed March 2026">
+                    </div>
+                    <div class="row">
+                      <div class="col-md-6 mb-2 mb-md-0">
+                        <div class="form-check form-switch">
+                          <input class="form-check-input" type="checkbox" id="newTemplateActive" checked>
+                          <label class="form-check-label small" for="newTemplateActive"><strong>Active</strong> — ready to send</label>
+                        </div>
+                      </div>
+                      <div class="col-md-6">
+                        <div class="form-check form-switch">
+                          <input class="form-check-input" type="checkbox" id="newTemplateDefault">
+                          <label class="form-check-label small" for="newTemplateDefault"><strong>Default</strong> for this type</label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </details>
+
               </form>
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer py-2">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="button" class="btn btn-primary" data-action="emailTemplatesModule.saveNewTemplate">
-                <i class="bi bi-save me-2"></i>Create Template
+              <button type="button" class="btn btn-primary" id="saveNewTemplateBtn">
+                <i class="bi bi-check-lg me-1"></i>Create template
               </button>
             </div>
           </div>
         </div>
       </div>
-    `;
-
-    const existing = document.getElementById('newTemplateModal');
-    if (existing) existing.remove();
-
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    `
+    );
 
     const modalEl = document.getElementById('newTemplateModal');
-    modalEl.addEventListener('click', (e) => {
-      const actionEl = e.target.closest('[data-action="emailTemplatesModule.saveNewTemplate"]');
-      if (actionEl) {
-        e.preventDefault();
-        this.saveNewTemplate();
-      }
+
+    // Show type description when type changes
+    modalEl.querySelector('#newTemplateType').addEventListener('change', function () {
+      const selected = this.options[this.selectedIndex];
+      const desc = selected?.dataset?.desc || '';
+      const descEl = document.getElementById('newTypeDesc');
+      if (descEl) descEl.textContent = desc;
     });
+
+    modalEl.querySelector('#saveNewTemplateBtn').addEventListener('click', () => this.saveNewTemplate());
 
     const modal = new bootstrap.Modal(modalEl);
     modal.show();
+    modalEl.addEventListener('hidden.bs.modal', () => modalEl.remove());
   },
 
   /**
@@ -1310,13 +1617,10 @@ The British Trade Awards Team`,
       return;
     }
 
-    const placeholdersRaw = document.getElementById('newTemplatePlaceholders').value;
-    const placeholders = placeholdersRaw
-      ? placeholdersRaw
-          .split(',')
-          .map((p) => p.trim())
-          .filter((p) => p)
-      : [];
+    // Derive available placeholders from common {PLACEHOLDER} patterns in the body
+    const bodyVal = document.getElementById('newTemplateBody').value || '';
+    const foundPlaceholders = [...new Set(bodyVal.match(/\{([A-Z_]+)\}/g) || [])];
+    const placeholders = foundPlaceholders;
 
     const templateData = {
       template_name: document.getElementById('newTemplateName').value,

@@ -119,12 +119,12 @@ function wrapEmail(bodyContent, branding = {}, { subject = '', preheader = '', s
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   ${subject ? `<title>${escHtml(subject)}</title>` : ''}
 </head>
-<body style="margin:0;padding:0;background-color:#f4f4f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<body style="margin:0;padding:0;background-color:#0a0a0a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
   ${preheader ? `<div style="display:none;max-height:0;overflow:hidden;">${preheader}</div>` : ''}
-  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f4f4f7;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#0a0a0a;">
     <tr>
       <td align="center" style="padding:30px 20px;">
-        <table width="600" cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;border-radius:16px;overflow:hidden;border:2px solid ${b.accentColor};box-shadow:0 20px 60px rgba(212,175,55,0.3);">
+        <table width="600" cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;border-radius:16px;overflow:hidden;border:2px solid ${b.accentColor};box-shadow:0 20px 60px rgba(201,162,39,0.25);">
           <tr><td>${resolvedHeader}</td></tr>
           <tr><td style="padding:0;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.6;color:#333333;">${bodyContent}</td></tr>
           <tr><td>${resolvedFooter}</td></tr>
